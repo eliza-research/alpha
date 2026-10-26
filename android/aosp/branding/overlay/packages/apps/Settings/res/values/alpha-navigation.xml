@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="edge_to_edge_navigation_title">Alpha gestures</string>
+    <string name="edge_to_edge_navigation_summary">Swipe up from the bottom to go Home. Swipe inward from either edge to go back.</string>
+    <string name="legacy_navigation_title">Home and Back buttons</string>
+    <string name="legacy_navigation_summary">Use the buttons at the bottom to go Home or back.</string>
+    <string name="gesture_settings_activity_title">Alpha gestures</string>
+    <string name="accessibility_autoclick_navigation_title">Autoclick works better with navigation buttons</string>
+    <string name="accessibility_autoclick_navigation_message">For easier Home and Back actions with autoclick, use navigation buttons.</string>
+</resources>

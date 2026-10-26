@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Accessibility button navigation also offers only Back and Home. -->
+    <string name="config_navBarLayout" translatable="false">back[1WC];home;ime_switcher[1WC]</string>
+    <color name="navigation_bar_home_handle_dark_color">#FF0000FF</color>
+    <color name="navigation_bar_home_handle_light_color">#FFFFFFFF</color>
+</resources>

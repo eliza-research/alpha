@@ -1,0 +1,8 @@
+{
+  "repository": "https://github.com/elizaOS/os",
+  "commit": "b7366b138498d0544433689589e585f24badc87c",
+  "files": {
+    "scripts/distro-android/build-bootanimation.mjs": "f5d5afa7bf16cd8e12552ddaa13e6b051716f9318a3588528781cc92073dff3c",
+    "scripts/distro-android/is-main.mjs": "8b280f8548be94294774c00f4d894d88268c5f3eaea39defc772502d457ebc36"
+  }
+}

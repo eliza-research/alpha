@@ -1,16 +1,23 @@
 {
   "schemaVersion": 1,
-  "description": "Alpha Phone AOSP source lock in the pinned upstream schema (vendor/eliza/packages/os/scripts/android/verify-source-lock.ts). The manifest revision is not yet reviewed: tag, tagObject and commit stay UNSET until the Cuttlefish source is selected, and production staging refuses them.",
+  "description": "Alpha Phone Cuttlefish source lock in the pinned upstream schema (vendor/eliza/packages/os/scripts/android/verify-source-lock.ts). Android 17 platform and Cuttlefish revisions match the inspected Pixel 10a platform baseline and shared OS source lock. These are source inputs; image build, boot, signer admission and release qualification remain separate gates.",
   "profiles": {
     "cuttlefish": {
       "kind": "virtual",
       "manifest": {
         "url": "https://android.googlesource.com/platform/manifest",
-        "tag": "UNSET",
-        "tagObject": "UNSET",
-        "commit": "UNSET"
+        "tag": "android-17.0.0_r1",
+        "tagObject": "7a9e46ba6ed424f922a3457f4964e67e0b966201",
+        "commit": "5bc9a7ce1cd78dd53613bbfd0ebf506e1e4adb0f"
       },
-      "projects": [],
+      "projects": [
+        {
+          "path": "device/google/cuttlefish",
+          "name": "device/google/cuttlefish",
+          "tagObject": "fc81d4d790cf71b00c17dbcb476c9cf05279f3ff",
+          "commit": "283645aacf6cdb56cc31a9362f54d412dbc132a1"
+        }
+      ],
       "requiredSourceFiles": [
         "device/google/cuttlefish/vsoc_x86_64_only/phone/aosp_cf.mk"
       ],

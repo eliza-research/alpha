@@ -9,8 +9,8 @@
     "profile": "cuttlefish"
   },
   "hostPackages": [
-    { "name": "cuttlefish-base", "version": "UNSET", "sha256": "UNSET" },
-    { "name": "cuttlefish-user", "version": "UNSET", "sha256": "UNSET" }
+    { "name": "cuttlefish-base", "version": "1.57.0", "sha256": "22a6b3d69ecbe15d22e6f2105dbca3572fb51f510f22d2f7244fa426999d963e" },
+    { "name": "cuttlefish-user", "version": "1.57.0", "sha256": "2aad931fe632f0ca262b8948ee2ccb9f597efad50a2ad9d9314de1b65c034470" }
   ],
   "signer": {
     "apkDescriptor": "android/release-signer.json",

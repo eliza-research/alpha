@@ -1,0 +1,47 @@
+[
+  {
+    "path": "packages/apps/Launcher3/res/values/config.xml",
+    "baseSha256": "6cff89602717eaa3b9bf915679ea370ac0d7fd840190143e396585a806a897b1",
+    "sha256": "0d436c9de1036fd10329a4b16111a472e1be812114a8e738c37dd8be7a4e3056"
+  },
+  {
+    "path": "packages/apps/Launcher3/quickstep/src/com/android/quickstep/RecentsAnimationDeviceState.java",
+    "baseSha256": "083299e6b7bec5bbb908566566dcacf2b102d6c19d97bf1932e2e039fdd58388",
+    "sha256": "4de9537ff0744302a47b17be58a06a8f958d8a88ae06b5c98f65972e4e0283a0"
+  },
+  {
+    "path": "packages/apps/Launcher3/quickstep/src/com/android/quickstep/AbsSwipeUpHandler.java",
+    "baseSha256": "7bd5815f17eed4c5e59cfe323f8f61ad6d3c5bfbdedc2d95a83183984350e0df",
+    "sha256": "893fa7921cfea417e9e5ad1bcf764cdfa8aaa37bcdbd2bb2f31ead4ff114d9b4"
+  },
+  {
+    "path": "packages/apps/Launcher3/quickstep/src/com/android/quickstep/InputConsumerUtils.kt",
+    "baseSha256": "8f0dd889c09b00220c7c9953a0854d1215e041274139e7634234d0987ab78fa1",
+    "sha256": "9c7bbd3a131d2c2f83481a8f96a641f8ff4215b47441761aacc5eb4820c8d169"
+  },
+  {
+    "path": "packages/apps/Launcher3/quickstep/src/com/android/quickstep/inputconsumers/OtherActivityInputConsumer.java",
+    "baseSha256": "4a91c3c18499986db24e9e5a596bb6f8697192350a91585c63c4146612223cd0",
+    "sha256": "1cfa58a332b8bec4b82c63ec4339a2b595213b18fe196ceeac443bf4f1d608ff"
+  },
+  {
+    "path": "packages/apps/Launcher3/quickstep/src/com/android/quickstep/interaction/GestureSandboxActivity.java",
+    "baseSha256": "36dc6dabbefd5a867d9ea059e22bafa6b48b88ad61d0aacb22a8e2ed1f811619",
+    "sha256": "3f467b5fcbc15e1c3f99b4cb6be07d784ba4c4999c348717147c81658aebab27"
+  },
+  {
+    "path": "packages/apps/Launcher3/quickstep/src/com/android/quickstep/interaction/MenuFragment.java",
+    "baseSha256": "b02923414bf4a7628bf08a846ea4b764177e09cda90b0bb53e79ccc3c467dc84",
+    "sha256": "2f1635d317c909ac1c192f035319511e9cc68fbed3eb340cc3b52cd6c38b10ed"
+  },
+  {
+    "path": "packages/inputmethods/LatinIME/java/res/values/config.xml",
+    "baseSha256": "3aaf3177d271c3b985c5c6ade3da8901bf866285bb97fdc61d7ff8676120f62c",
+    "sha256": "dce9d9bfd7d2f2158a6ac7f55f27bd61433493a5b2e343c9225ec8b31ecf995a"
+  },
+  {
+    "path": "packages/inputmethods/LatinIME/java/src/com/android/inputmethod/keyboard/KeyboardTheme.java",
+    "baseSha256": "585d5233317385cd1a6b6ee8c89f9320dc9893a6c43a3567d9eb7139c54f2920",
+    "sha256": "519976c6590dc363727e530262643cac2d44e57719eab9ab424bace3d2b3abef"
+  }
+]

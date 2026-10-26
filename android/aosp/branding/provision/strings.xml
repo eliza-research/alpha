@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="alpha_name">Alpha Phone</string>
+    <string name="alpha_welcome">Welcome to Alpha Phone</string>
+    <string name="alpha_setup_description">Make this phone yours. Connect to a network, secure your screen, then continue to Alpha.</string>
+    <string name="alpha_wifi">Set up Wi-Fi</string>
+    <string name="alpha_security">Screen security</string>
+    <string name="alpha_continue">Continue to Alpha</string>
+    <string name="alpha_setup_footer">Alpha will guide you through sign-in and device permissions next. Network and screen security settings can be changed later.</string>
+    <string name="alpha_wallpaper_preview">Alpha Home and lock-screen wallpaper preview</string>
+    <string name="alpha_apply_wallpaper">Use Alpha wallpaper and colors</string>
+    <string name="alpha_wallpaper_applied">Alpha appearance applied</string>
+    <string name="alpha_wallpaper_failed">Could not apply Alpha appearance. Try again in wallpaper settings.</string>
+</resources>

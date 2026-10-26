@@ -30,7 +30,7 @@ function completeLock(t) {
   return { dir, write, product, lock };
 }
 
-test("the committed Cuttlefish product names its target, lock, host packages and signer, and is still incomplete", () => {
+test("the committed Cuttlefish source and host inputs retain the release signing gate", () => {
   const product = read(PRODUCT_DESCRIPTOR);
   assert.ok(AOSP_TARGETS.includes(product.target));
   assert.equal(product.sourceLock.profile, "cuttlefish");
@@ -45,8 +45,8 @@ test("the committed Cuttlefish product names its target, lock, host packages and
   assert.equal(read(product.physicalProduct).product, "alpha_stallion_phone");
   assert.equal(fs.existsSync(path.join(root, "android/aosp/pixel10.lock.json")), false, "the unadmitted Pixel 10 placeholder lock is retired");
   const problems = aospProductLockProblems(root);
-  for (const expected of [/manifest\.commit is unset/, /must be a full Git object ID/, /host package cuttlefish-base needs a version and a SHA-256/,
-    /signerSha256 is "unset"/, /platformCertificateSha256 must be a SHA-256/])
+  assert.ok(problems.every(problem => /signer|platformCertificateSha256/.test(problem)), problems.join("\n"));
+  for (const expected of [/signerSha256 is "unset"/, /platformCertificateSha256 must be a SHA-256/])
     assert.ok(problems.some(problem => expected.test(problem)), `${expected}\n${problems.join("\n")}`);
 });
 
@@ -86,10 +86,10 @@ test("stage-aosp --production refuses an incomplete lock before reading any APK 
     // android/aosp also holds directories (the listener image configuration).
     fs.cpSync(path.join(root, rel), path.join(unset, rel), { recursive: true });
   }
-  // The committed (unset) product: refused, naming the gaps, without touching the APK path.
+  // The committed product is refused on signing admission without touching the APK path.
   let out = stage(unset, ["--apk", "absent.apk", "--descriptor", "reviewed.json", "--production"]);
   assert.notEqual(out.status, 0);
-  assert.match(out.stderr, /Refusing production staging: the Alpha AOSP product lock is incomplete\.[\s\S]*manifest\.commit is unset/);
+  assert.match(out.stderr, /Refusing production staging: the Alpha AOSP product lock is incomplete\.[\s\S]*signerSha256 is "unset"/);
   assert.doesNotMatch(out.stderr, /absent\.apk/);
   // A complete fixture lock passes the lock check and reaches APK admission.
   out = stage(dir, ["--apk", "absent.apk", "--descriptor", "reviewed.json", "--production"]);

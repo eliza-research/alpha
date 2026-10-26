@@ -92,6 +92,15 @@ verification records for three days. This choice skips the separate test-mocks
 build and native/recovery qualification campaigns; it does not run Cloud providers.
 The default manual profile and automatic resident qualification remain `native`.
 
+## Local Pixel development follow-up — October 24
+
+The first Pixel development build uses the explicit Cloud profile (Eliza Cloud Gateway,
+Cerebras text, Cartesia STT/TTS) and tap/power-button activation. Always-on activation
+and native speech are deferred for a later pass. The local
+[deferred-work checklist](docs/alpha-pixel-cloud-first-deferred-work-2026-10-24.md)
+retains the implementation steps, acceptance gates, signing follow-up and preparation
+receipt locations. Deferred work remains open.
+
 ## Setup
 
 ```sh

@@ -1,0 +1,12 @@
+[
+  {
+    "source": "vendor/alphaphone/secure-camera/overlay/frameworks/base/core/res/res/values/config.xml",
+    "destination": "overlay/frameworks/base/core/res/res/values/alpha-secure-camera.xml",
+    "sha256": "7685aa4ba637dfacde434deb10e940cdff3c0c9b98154ef9c41e2b070bcd94d1"
+  },
+  {
+    "source": "vendor/alphaphone/secure-camera/overlay/frameworks/base/packages/SystemUI/res/values/config.xml",
+    "destination": "overlay/frameworks/base/packages/SystemUI/res/values/alpha-secure-camera.xml",
+    "sha256": "df2348161fb34217849021e18c7590f10fd342e9032e944428ddd69ab20e63b2"
+  }
+]
