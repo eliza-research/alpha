@@ -138,6 +138,17 @@ function admitApk({ apk, hash, development, manifestFile, platformCertificateSha
       throw new Error(`Refusing ${apk}: --development stages debug builds only. This is a release build that ${manifestFile} does not record as distributable.`);
   }
 }
+/**
+ * Source overrides the secure-camera source check admits. Pixel and Cuttlefish images are built from the same
+ * reviewed Android 17 tree, so both admit exactly its hash-pinned overrides; other development staging admits none.
+ */
+export function reviewedSourceOverrides({physicalSource = null, cuttlefish = false, lockPath = defaultLockPath} = {}) {
+  if (!physicalSource && !cuttlefish) return [];
+  const lockBytes = fs.readFileSync(lockPath);
+  if (physicalSource && createHash('sha256').update(lockBytes).digest('hex') !== physicalSource.sourceLockSha256) throw Error('Pixel source lock changed during staging');
+  return JSON.parse(lockBytes).overrides;
+}
+
 async function main(args) {
 const get = (key) => {
   const i = args.indexOf(key);
@@ -205,12 +216,7 @@ if (production && !listenerApk)
   throw new Error("Production staging requires --listener-apk (the always-on listener built by ./gradlew :sense:assembleRelease).");
 if (production && !listenerDescriptor)
   throw new Error("Production staging requires --listener-descriptor: an independently reviewed record of the listener's packageName, apkSha256 and certificateSha256.");
-let cameraOverrides = [];
-if (physicalSource) {
-  const lockBytes = fs.readFileSync(defaultLockPath);
-  if (createHash('sha256').update(lockBytes).digest('hex') !== physicalSource.sourceLockSha256) throw Error('Pixel source lock changed during staging');
-  cameraOverrides = JSON.parse(lockBytes).overrides;
-}
+const cameraOverrides = reviewedSourceOverrides({physicalSource, cuttlefish});
 const cameraSource = get("--aosp-source") || !development
   ? verifySecureCameraSource(get("--aosp-source"), undefined, cameraOverrides)
   : { sourceVerified: false, imageVerified: false, lockedCaptureVerified: false, deviceAcceptanceVerified: false, reason: "Development staging without reviewed AOSP source" };
