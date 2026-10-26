@@ -1,0 +1,96 @@
+{
+  "measuredAt": "2026-10-26T05:49:40.986Z",
+  "origin": "https://api.eliza.app",
+  "samplesPerProbe": 30,
+  "method": "Sequential unauthenticated GET from one client, after one discarded first request; wall-clock time to full body, including DNS/TLS reuse by Node fetch.",
+  "boundary": "Deployed public-route latency only. Not authenticated admission, plan-bucket, exhausted, expired, revoked or billing-outage latency, and not Android audio.",
+  "results": [
+    {
+      "name": "plan-catalog",
+      "path": "/api/v1/subscriptions/plans",
+      "expect": 200,
+      "statuses": {
+        "200": 30
+      },
+      "rateLimit": {
+        "limit": "100",
+        "remainingAfter": "80"
+      },
+      "firstRequestMs": 4136.5,
+      "p50Ms": 63.1,
+      "p95Ms": 2299.1,
+      "maxMs": 2435.3,
+      "observed": {
+        "catalogVersion": "v1",
+        "plans": [
+          {
+            "key": "plus_monthly",
+            "amountCents": 3000,
+            "allowanceUsd": "25.000000",
+            "rateLimits": {
+              "completionsRpm": 120,
+              "embeddingsRpm": 200,
+              "standardRpm": 60,
+              "strictRpm": 10
+            }
+          },
+          {
+            "key": "pro_monthly",
+            "amountCents": 10000,
+            "allowanceUsd": "90.000000",
+            "rateLimits": {
+              "completionsRpm": 300,
+              "embeddingsRpm": 600,
+              "standardRpm": 120,
+              "strictRpm": 30
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "entitlement-keys",
+      "path": "/api/v1/subscription/entitlement-keys",
+      "expect": 200,
+      "statuses": {
+        "200": 30
+      },
+      "rateLimit": {
+        "limit": "100",
+        "remainingAfter": "78"
+      },
+      "firstRequestMs": 41.5,
+      "p50Ms": 43,
+      "p95Ms": 145.2,
+      "maxMs": 185.6,
+      "observed": {
+        "keys": [
+          {
+            "kid": "entitlement-production-2026-10",
+            "alg": "ES256",
+            "crv": "P-256"
+          }
+        ]
+      }
+    },
+    {
+      "name": "entitlement-unauthenticated",
+      "path": "/api/v1/subscription/entitlement",
+      "expect": 401,
+      "statuses": {
+        "401": 30
+      },
+      "rateLimit": {
+        "limit": "600",
+        "remainingAfter": null
+      },
+      "firstRequestMs": 38.4,
+      "p50Ms": 46.8,
+      "p95Ms": 122,
+      "maxMs": 393.7,
+      "observed": {
+        "code": "authentication_required"
+      }
+    }
+  ]
+}

@@ -220,17 +220,44 @@ Manage plan and Sign out. Reset Alpha data asks Cloud to revoke this phone's key
 (`DELETE /api/v1/api-keys/current`, one attempt, 3 s timeouts, 8 s overall deadline) after the
 reset is recorded; a failure never blocks the local reset.
 
+## Deployed production observations (2026-10-26)
+
+Unauthenticated, read-only GET requests to `https://api.eliza.app`, recorded with
+`node scripts/cloud-subscription-latency.mjs` in
+[subscription-latency-deployed-public-2026-10-26.json](evidence/subscription-latency-deployed-public-2026-10-26.json).
+No account, key, code or subscription was used or changed.
+
+- `GET /api/v1/subscription/entitlement-keys` returns one ES256 P-256 key,
+  `kid` `entitlement-production-2026-10`, so production publishes an entitlement signing key.
+- `GET /api/v1/subscription/entitlement` without a key returns `401 authentication_required`.
+- `GET /api/v1/subscriptions/plans` returns catalog `v1`: Plus USD 30/month with a USD 25 period
+  allowance, Pro USD 100/month with USD 90; no rollover; completions/embeddings/standard/strict
+  per-minute limits 120/200/60/10 (Plus) and 300/600/120/30 (Pro). These are server-published
+  values, not an owner decision recorded here and not evidence of the cost/pilot basis. The
+  catalog has no Maps request allowance field, so P-56's separate Maps allowance is not visible
+  in it.
+- Sequential p50/p95 from one desktop client (30 samples each): entitlement keys 43/145 ms,
+  unauthenticated entitlement 47/122 ms, plan catalog 63/2299 ms (first request 4.1 s). The phone
+  does not read the plan catalog; it caches signing keys for an hour.
+- The public subscription routes share a Redis-backed budget of 100 requests per client window
+  (`x-ratelimit-limit: 100`, `Retry-After` on 429); the entitlement route reports 600. A probe
+  of more than about 100 requests is refused; the script stays inside it.
+
+This is public-route latency only. It is not authenticated admission, plan-bucket, exhausted,
+expired, revoked or billing-outage latency, and not Android audio.
+
 ## Gates that remain open
 
-- elizaOS/eliza PR #36125 implements redemption, entitlement issuance, signing keys and the
-  refusal bodies on `develop`. Whether production and staging have deployed it, with the
-  `ELIZA_ENTITLEMENT_*` and grant-code pepper secrets set, is not verified here.
+- Production publishes the entitlement signing key and plan catalog (above). Staging deployment,
+  key rotation and the grant-code pepper are not verified here.
 - No real-account end-to-end run (sign-in, redeem a real staging code, plan gate, agent admission)
   has been made; docs/cloud-subscription-qa.md lists the commands.
-- No p50/p95 latency benchmark has been run under the normal, cache-miss, exhausted, expired and
-  billing-outage conditions. It needs the deployed Cloud.
-- The numeric burst and sustained limits, the allowance and the price are not selected. They must
-  be proposed from measured provider cost and pilot traffic, and the owner decides them.
-- Live resident rate-limit waits are supported at the current pin. Allowance reset timestamps
-  on that reply path still need an upstream contract; direct HTTP reset times are supported.
+- Deployed p50/p95 is measured only for public routes (above). The normal, cache-miss, exhausted,
+  expired and billing-outage conditions need an authenticated account against the deployed Cloud;
+  the local lower bound is in [the 2026-10-15 audit](evidence/subscription-acceptance-audit-2026-10-15.md).
+- Cloud publishes catalog `v1` prices, allowances and per-minute limits (above), but no owner
+  decision recording them under P-26 and no measured provider-cost or pilot-traffic basis exists
+  here. The owner confirms or replaces them.
+- Live resident rate-limit waits and period-allowance reset times in chat terminal failures
+  (elizaOS/eliza#36549, in the current pin) are supported; neither has met a real refusal.
 - No real Cloud account, Android device or AOSP image was used for acceptance.
