@@ -5,10 +5,12 @@ This is an additive source patch for `platform/frameworks/base` revision
 recorded in `manifest.json`. This package does not claim a completed SystemUI build,
 image boot, or physical acceptance; those belong to separate build and device receipts.
 
-The Alpha shortcut adds an optional entry in Android's existing lockscreen picker.
+The Alpha shortcut adds an entry in Android's existing lockscreen picker and is preset
+at Start for an unset slot on a fresh device, with Camera preset at End.
 It resolves the installed system Alpha assistant for the current user, rejects disabled
 or suspended targets and user-switch transitions, and requests the existing unlock-gated
-assist activity path. It neither changes defaults or saved selections nor replaces camera,
+assist activity path. The defaults use Android's existing fallback: any stored slot choice,
+including an explicit “None,” wins. This does not write or migrate saved selections or replace camera,
 emergency, clock, notification-privacy, permissions, or account behavior.
 
 The expanded shade gains a static, noninteractive Alpha wordmark in both Compose and
@@ -68,7 +70,10 @@ Merge `product-overlay/values/alpha-system-entry.xml` into the existing unique
 `custom_lockscreen_shortcuts_enabled` picker flag must be enabled: the pinned platform
 defaults the latter to false. Their source defaults remain off outside the Alpha product.
 Android's device-policy restriction still gates picker availability independently, and the
-Alpha shortcut retains its current-user, installed-system-app and unlock checks. Do not create a
+Alpha shortcut retains its current-user, installed-system-app and unlock checks. The same
+overlay supplies `config_keyguardQuickAffordanceDefaults` as Alpha Start and Camera End.
+Fresh customers therefore receive the presets without choosing them in Settings. A previously
+unset slot also uses the standard fallback; any stored choice remains authoritative. Do not create a
 second competing overlay, overwrite saved shortcut/tile preferences, or reset provisioning.
 This patch does not auto-add the app's Quick Settings tile; its separately reviewed service
 and notification changes keep their own packaging and device acceptance.
@@ -104,6 +109,8 @@ adb -s <pixel-serial> shell cmd overlay disable --user current com.android.shell
 
 This does not delete stored shortcut choices. While OS17 still supplies the false factory
 default, removing the override can make the picker unavailable again. This package now
-enables the same existing bool through the normal Alpha product overlay for the **next**
-image. Verify its packaged value and provider flag before removing the temporary overlay
+enables the same existing bool and the Alpha/Camera unset-slot defaults through the normal
+Alpha product overlay for the **next** image. OS17's runtime selections and fabricated bool
+overlay do not establish that its factory image contains either correction. Verify the next
+image's packaged values and provider flag before removing the temporary overlay
 after an update. Do not describe that future default correction as already present in OS17.

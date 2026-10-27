@@ -82,6 +82,19 @@ class NativePlanTest(unittest.TestCase):
         overlay = ROOT / MANIFEST['productOverlay']['path']
         expected_flags = {'config_alpha_system_entry_enabled':'true','custom_lockscreen_shortcuts_enabled':'true'}
         self.assertEqual({n.attrib['name']:n.text for n in ET.fromstring(overlay.read_text()).findall('bool')}, expected_flags)
+        arrays = ET.fromstring(overlay.read_text()).findall('string-array')
+        self.assertEqual(len(arrays), 1)
+        self.assertEqual(arrays[0].attrib['name'], 'config_keyguardQuickAffordanceDefaults')
+        self.assertEqual([n.text for n in arrays[0]], ['bottom_start:alpha_assistant','bottom_end:camera'])
+        # Prove the overlay uses existing fallback semantics, without a duplicate selection writer.
+        manager = read(STAGED, PREFIX + 'src/com/android/systemui/keyguard/data/quickaffordance/KeyguardQuickAffordanceLocalUserSelectionManager.kt')
+        self.assertEqual(manager, read(BASE, PREFIX + 'src/com/android/systemui/keyguard/data/quickaffordance/KeyguardQuickAffordanceLocalUserSelectionManager.kt'))
+        selection_read = manager[manager.index('    override fun getSelections()'):manager.index('    override fun setSelections(')]
+        normalized = ' '.join(selection_read.split())
+        self.assertIn('val slotKeys = sharedPrefs.all.keys.filter { it.startsWith(KEY_PREFIX_SLOT) }', normalized)
+        self.assertIn('if (!value.isNullOrEmpty()) { value.split(AFFORDANCE_DELIMITER) } else { emptyList() }', normalized)
+        self.assertIn('if (!result.containsKey(slotId)) { result[slotId] = affordanceIds }', normalized)
+        self.assertNotIn('.edit()', selection_read, 'defaults do not write or migrate any saved choice')
         self.assertEqual(sha(overlay), MANIFEST['productOverlay']['sha256'])
         generated_overlay = DATA / MANIFEST['productOverlay']['path']
         self.assertEqual(generated_overlay.read_bytes(), overlay.read_bytes())
@@ -91,6 +104,9 @@ class NativePlanTest(unittest.TestCase):
         expected = read(STAGED, path).replace('            alpha: AlphaAssistantQuickAffordanceConfig,\n', '').replace('                alpha,\n', '')
         self.assertEqual(read(BASE, path), expected)
         config = read(STAGED, PREFIX + 'src/com/android/systemui/keyguard/data/quickaffordance/AlphaAssistantQuickAffordanceConfig.kt')
+        self.assertIn('override val key = "alpha_assistant"', config)
+        camera_keys = read(STAGED, PREFIX + 'src/com/android/systemui/keyguard/data/quickaffordance/BuiltInKeyguardQuickAffordanceKeys.kt')
+        self.assertIn('const val CAMERA = "camera"', camera_keys)
         for fragment in ['Intent(Intent.ACTION_ASSIST)', 'component = ComponentName(', 'canShowWhileLocked = false',
                          'getBoolean(R.bool.config_alpha_system_entry_enabled)',
                          'getTargetActivityInfo(intent(), user, false)', 'user != userTracker.userId',

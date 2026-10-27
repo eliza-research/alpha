@@ -89,15 +89,20 @@
   },
   "productOverlay": {
     "path": "product-overlay/values/alpha-system-entry.xml",
-    "sha256": "8ce834395086692cc3d0908b4a0e8891f07d023d5bfcdf42b2c5ae0af67f24b1",
+    "sha256": "1fe4230485cd39366f2af7b9166f616654b5f206d4cf9a3c2aec2e78149d578d",
     "destination": "Existing AlphaSystemUIOverlay resource directory; do not add another competing overlay package",
     "resources": {
       "config_alpha_system_entry_enabled": true,
-      "custom_lockscreen_shortcuts_enabled": true
+      "custom_lockscreen_shortcuts_enabled": true,
+      "config_keyguardQuickAffordanceDefaults": [
+        "bottom_start:alpha_assistant",
+        "bottom_end:camera"
+      ]
     }
   },
-  "selectionDefaultsChanged": false,
+  "selectionDefaultsChanged": true,
   "compilation": "pending",
   "imageBuilt": false,
-  "deviceQualified": false
+  "deviceQualified": false,
+  "savedSelectionsChanged": false
 }

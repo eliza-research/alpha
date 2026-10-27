@@ -14,7 +14,8 @@
   "reviewCorrections": [
     "Explicit no-newline markers preserve valid patch boundaries",
     "Text-only header avoids compound drawable rendering outside the checked END-aligned text bounds",
-    "Enable the independent existing Android custom-lockscreen-shortcuts feature bool through the next-image Alpha product overlay; OS17 factory default was false"
+    "Enable the independent existing Android custom-lockscreen-shortcuts feature bool through the next-image Alpha product overlay; OS17 factory default was false",
+    "Preset Alpha Start and Camera End via the existing unset-slot fallback array; stored choices and explicit None remain authoritative"
   ],
   "localEvidenceScope": [
     "Seven source and host tests passed against the packaged tools and existing offline inputs",
@@ -31,7 +32,7 @@
   ],
   "deviceOrVMOperationRequiredToPrepare": false,
   "savedSelectionsChanged": false,
-  "shortcutDefaultsChanged": false,
+  "shortcutDefaultsChanged": true,
   "automaticMicrophoneOrCloudRequest": false,
   "productionQualified": false,
   "nextImageProductOverlay": {
@@ -39,7 +40,11 @@
     "custom_lockscreen_shortcuts_enabled": true,
     "sourceDefaultsRemainOff": true,
     "devicePolicyGateRetained": true,
-    "savedSelectionsChanged": false
+    "savedSelectionsChanged": false,
+    "config_keyguardQuickAffordanceDefaults": [
+      "bottom_start:alpha_assistant",
+      "bottom_end:camera"
+    ]
   },
   "OS17RuntimeOverride": {
     "ownerReported": "Supported single-bool fabricated overlay com.android.shell:AlphaLockscreenShortcuts; no ignore-overlayable or exclusive mode",
@@ -47,5 +52,11 @@
     "runtimeProviderReportedOpenAlphaEnabled": true,
     "selection": "Owner selected Alpha Start and Camera End; not a source default or automatic migration",
     "replayedDuringSourceCorrection": false
+  },
+  "freshPresetSemantics": {
+    "freshOrPreviouslyUnsetSlot": "Alpha Start, Camera End",
+    "storedChoiceOrExplicitNone": "Preserved by unchanged pinned selection manager",
+    "selectionWritesOrMigrationAdded": false,
+    "OS17FactoryContainsNewFlagsOrDefaults": false
   }
 }

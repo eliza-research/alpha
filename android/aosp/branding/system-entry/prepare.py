@@ -375,6 +375,10 @@ overlay.write_text('''<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <bool name="config_alpha_system_entry_enabled">true</bool>
     <bool name="custom_lockscreen_shortcuts_enabled">true</bool>
+    <string-array name="config_keyguardQuickAffordanceDefaults" translatable="false">
+        <item>bottom_start:alpha_assistant</item>
+        <item>bottom_end:camera</item>
+    </string-array>
 </resources>
 ''')
 record={'schema':1,'project':'frameworks/base','revision':INPUTS['revision'],
@@ -382,8 +386,9 @@ record={'schema':1,'project':'frameworks/base','revision':INPUTS['revision'],
     'identity':{'source':str(logo.relative_to(REPO)),'sourceSha256':sha(logo.read_bytes()),'exactSvgPathPreserved':True,
                 'font':'Android serif system family; no new font payload','header':'Text-only wordmark in native foreground; keyguard icon uses existing native product tint','existingProductBlue':'#0000FF','existingProductDarkBlue':'#B8C0FF'},
     'productOverlay':{'path':'product-overlay/values/alpha-system-entry.xml','sha256':sha(overlay.read_bytes()),
-        'resources':{'config_alpha_system_entry_enabled':True,'custom_lockscreen_shortcuts_enabled':True},
+        'resources':{'config_alpha_system_entry_enabled':True,'custom_lockscreen_shortcuts_enabled':True,
+            'config_keyguardQuickAffordanceDefaults':['bottom_start:alpha_assistant','bottom_end:camera']},
         'destination':'Existing AlphaSystemUIOverlay resource directory; do not add another competing overlay package'},
-    'selectionDefaultsChanged':False,'compilation':'pending','imageBuilt':False,'deviceQualified':False}
+    'selectionDefaultsChanged':True,'savedSelectionsChanged':False,'compilation':'pending','imageBuilt':False,'deviceQualified':False}
 (DATA/'manifest.json').write_text(json.dumps(record,indent=2)+'\n')
 print(json.dumps({'files':len(manifest),'patchSHA256':record['patchSha256'],'compilation':'pending'}))
