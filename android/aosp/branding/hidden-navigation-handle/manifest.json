@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "project": "packages/apps/Launcher3",
+  "revision": "c612e6ece389f21c40f8cb9cd9a4b44239f00009",
+  "patch": "hidden-navigation-handle.patch",
+  "patchSha256": "6417efc1b667471c604d7975937e369b30b7c05bf9c0eb9b9d53e2ea2e4431a6",
+  "files": [
+    {
+      "path": "quickstep/src/com/android/launcher3/taskbar/StashedHandleView.java",
+      "beforeSha256": "a2229256598aca3b35730eacf47e4edef309f45a04d5c5bd55e12829e5a2a6f6",
+      "afterSha256": "5d2a1e95d2fbdf8493a1497fd349338a1362e0021d123d6d883f9bb6529d0eff",
+      "url": "https://android.googlesource.com/platform/packages/apps/Launcher3/+/c612e6ece389f21c40f8cb9cd9a4b44239f00009/quickstep/src/com/android/launcher3/taskbar/StashedHandleView.java"
+    }
+  ],
+  "requiredExistingResource": {
+    "path": "res/values/config.xml",
+    "name": "config_alpha_home_back_only",
+    "defaultValue": "false",
+    "owner": "Existing home-back-keyboard.patch; AlphaNavigationOverlay enables it"
+  },
+  "renderOnly": true,
+  "quickSwitchBehaviorChanged": false,
+  "compilation": "pending",
+  "deviceQualified": false
+}

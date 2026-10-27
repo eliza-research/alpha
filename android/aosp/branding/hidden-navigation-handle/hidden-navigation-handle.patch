@@ -1,0 +1,28 @@
+--- a/quickstep/src/com/android/launcher3/taskbar/StashedHandleView.java
++++ b/quickstep/src/com/android/launcher3/taskbar/StashedHandleView.java
+@@ -23,6 +23,7 @@
+ import android.animation.PropertyValuesHolder;
+ import android.annotation.Nullable;
+ import android.content.Context;
++import android.graphics.Canvas;
+ import android.graphics.Rect;
+ import android.util.AttributeSet;
+ import android.view.View;
+@@ -69,6 +70,17 @@
+                 R.color.taskbar_stashed_handle_light_color);
+         mStashedHandleDarkColor = ContextCompat.getColor(context,
+                 R.color.taskbar_stashed_handle_dark_color);
++    }
++
++    /** Hide only the taskbar navigation indicator for Alpha; keep its view and gesture geometry.
++     * Bubble stashed handles use a different id and retain their normal rendering. */
++    @Override
++    public void draw(Canvas canvas) {
++        if (getId() == R.id.stashed_handle
++                && getResources().getBoolean(R.bool.config_alpha_home_back_only)) {
++            return;
++        }
++        super.draw(canvas);
+     }
+ 
+     /**
