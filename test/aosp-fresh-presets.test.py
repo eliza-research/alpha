@@ -120,4 +120,35 @@ public class FreshTest {
   self.assertIn('palette == null || palette.isEmpty() || palette.equals("{}")',welcome)
   self.assertEqual(welcome.count('completed.run()'),1,'only confirmed completion path calls upstream finisher')
 
+ def test_actual_failure_button_opens_settings_for_its_current_failure(self):
+  source=(BRAND/'provision/AlphaWelcome.java').read_text()
+  start=source.index('        private void fail(int message) {');opened=source.index('{',start);level=1;end=opened+1
+  while level:
+   level += (source[end]=='{')-(source[end]=='}');end+=1
+  method=source[start:end]
+  with tempfile.TemporaryDirectory(prefix='alpha-preset-recovery-')as d:
+   file=Path(d)/'RecoveryTest.java';file.write_text('''
+import java.util.function.Consumer;
+public class RecoveryTest {
+ static class R { static class string {static final int alpha_home_failed=1,alpha_keyboard_failed=2,alpha_appearance_preset_failed=3,alpha_setup_state_changed=4,alpha_retry_setup=5,alpha_home_settings=6,alpha_open_settings=7;} }
+ static class Settings {static final String ACTION_HOME_SETTINGS="android.settings.HOME_SETTINGS",ACTION_INPUT_METHOD_SETTINGS="android.settings.INPUT_METHOD_SETTINGS",ACTION_SETTINGS="android.settings.SETTINGS";}
+ static class View {static final int VISIBLE=0;}
+ static class Button {int text,visibility;boolean enabled;Consumer<Object> click;void setText(int t){text=t;}void setEnabled(boolean e){enabled=e;}void setVisibility(int v){visibility=v;}void setOnClickListener(Consumer<Object> c){click=c;}}
+ static class Text {int text;void setText(int t){text=t;}}
+ final Button next=new Button(),settings=new Button();final Text notice=new Text();final Object activity=new Object();String opened;
+ void open(Object activity,String action){opened=action;}
+'''+method+'''
+ public static void main(String[] args){
+  RecoveryTest test=new RecoveryTest();int[] messages={1,2,3,4,1};
+  String[] expected={Settings.ACTION_HOME_SETTINGS,Settings.ACTION_INPUT_METHOD_SETTINGS,Settings.ACTION_SETTINGS,Settings.ACTION_SETTINGS,Settings.ACTION_HOME_SETTINGS};
+  for(int i=0;i<messages.length;i++){
+   test.fail(messages[i]);test.settings.click.accept(null);
+   if(!expected[i].equals(test.opened)||test.settings.text!=(messages[i]==1?6:7)||!test.next.enabled||test.next.text!=5||test.notice.text!=messages[i]||test.settings.visibility!=0)throw new AssertionError("recovery target or label mismatch");
+  }
+  System.out.println("PASS actual failure recovery target and label: 5 cases");
+ }
+}''')
+   subprocess.run([java_binary('javac'),'--release','11','-d',d,str(file)],check=True,capture_output=True)
+   self.assertIn('PASS actual failure recovery target and label: 5 cases',subprocess.check_output([java_binary('java'),'-cp',d,'RecoveryTest'],text=True))
+
 if __name__=='__main__':unittest.main(verbosity=2)

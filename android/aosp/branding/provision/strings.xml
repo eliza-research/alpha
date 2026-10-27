@@ -7,6 +7,7 @@
     <string name="alpha_security">Screen security</string>
     <string name="alpha_continue">Continue to Alpha</string>
     <string name="alpha_home_settings">Review Home app</string>
+    <string name="alpha_open_settings">Open settings</string>
     <string name="alpha_retry_setup">Try setup again</string>
     <string name="alpha_home_checking">Preparing Alpha as Home…</string>
     <string name="alpha_home_failed">Alpha could not be confirmed as your Home app. Try again, or review the Home app choice and return here.</string>

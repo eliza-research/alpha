@@ -118,6 +118,12 @@ final class AlphaWelcome {
         }
         private void fail(int message) {
             next.setEnabled(true); next.setText(R.string.alpha_retry_setup);
+            boolean home = message == R.string.alpha_home_failed;
+            String action = home ? Settings.ACTION_HOME_SETTINGS
+                    : message == R.string.alpha_keyboard_failed ? Settings.ACTION_INPUT_METHOD_SETTINGS
+                    : Settings.ACTION_SETTINGS;
+            settings.setText(home ? R.string.alpha_home_settings : R.string.alpha_open_settings);
+            settings.setOnClickListener(view -> open(activity, action));
             settings.setVisibility(View.VISIBLE); notice.setText(message);
         }
     }

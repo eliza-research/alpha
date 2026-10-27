@@ -2,7 +2,10 @@
 
 The first-run provisioner completes only after Alpha is confirmed as Home and eligible
 presets have been checked. A rejected grant, timeout, unavailable role service, or failed
-readback leaves retry and native Home-settings recovery. Callbacks and timers are bound
+readback leaves retry and failure-specific native Settings recovery:
+Home settings for a Home failure, input-method settings for a
+keyboard failure, and ordinary Settings for appearance or eligibility failures. The latter
+recovery buttons say “Open settings.” Callbacks and timers are bound
 to an attempt generation. The existing enterprise workflow and upstream setup completion
 methods remain unchanged. Completed, managed, profile and secondary-user installations
 do not receive first-run setting writes.
