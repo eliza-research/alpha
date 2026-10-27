@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Guarded source-only Alpha branding/first-run staging. No build, device or user-data operations."""
 from pathlib import Path
-import argparse, hashlib, json, os, subprocess, tempfile, xml.etree.ElementTree as ET
+import argparse, hashlib, json, os, subprocess, tempfile
 
 REPO = Path(__file__).resolve().parents[1]
 BRAND = REPO / 'android/aosp/branding'
@@ -91,10 +91,12 @@ def build_plan(root, assets, report_hash, source_inputs, prior=None, product_mk_
         target = project+'/src/com/android/provision/'+name
         put(target,(BRAND/'provision'/name).read_bytes(),previous.get(name,[]))
     put(project+'/res/values/alpha.xml',(BRAND/'provision/strings.xml').read_bytes(),previous.get('strings.xml',[]))
-    svg = ET.fromstring((REPO/'apps/app/public/logo-mark.svg').read_text())
-    assert svg.attrib['viewBox'] == '0 0 120 120' and len(list(svg)) == 1
-    path = next(iter(svg)).attrib['d']
-    icon = ('<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="88dp" android:height="88dp" android:viewportWidth="120" android:viewportHeight="120"><path android:fillColor="#FFFFFFFF" android:pathData="'+path+'"/></vector>\n').encode()
+    # Reuse the already reviewed product icon, including its blue circle, inset and clipping.
+    # Generating a bare logo vector here would silently change the installed setup identity.
+    icon_source = REPO / LOCK['productIcon']['path']
+    icon = icon_source.read_bytes()
+    assert digest(icon) == LOCK['productIcon']['sha256'], 'Product setup icon drift'
+    assert digest((REPO / LOCK['productIcon']['logoSource']).read_bytes()) == LOCK['productIcon']['logoSourceSHA256'], 'Product icon identity source drift'
     put(project+'/res/drawable/alpha_mark.xml',icon)
     put(project+'/res/drawable-nodpi/alpha_wallpaper.png',(assets/'default_wallpaper.png').read_bytes())
     product = safe(root,'vendor/alphaphone/product.mk'); current = product.read_bytes()
@@ -149,7 +151,7 @@ def main():
     assert not args.receipt.exists(),'Preserve existing receipt; use a new path'
     backup=args.receipt.parent/(args.receipt.stem+'-source-preimages')
     if args.apply: apply_plan(root,plan,rows,backup)
-    record={'schema':1,'state':'ALPHA_BRANDING_SOURCE_STAGED_NOT_BUILT'if args.apply else'ADMITTED_SOURCE_PLAN_NOT_APPLIED','applied':args.apply,'assetReportSha256':args.assets_report_sha256,'sourceLockSha256':digest((BRAND/'provision/source-inputs.json').read_bytes()),'files':rows,'backup':str(backup)if args.apply else None,'userDataTouched':False,'settingsWrittenDuringStaging':False,'assistantOrPowerImplementationChanged':False,'imageBuilt':False,'deviceQualified':False,'productionQualified':False}
+    record={'schema':1,'state':'ALPHA_BRANDING_SOURCE_STAGED_NOT_BUILT'if args.apply else'ADMITTED_SOURCE_PLAN_NOT_APPLIED','applied':args.apply,'assetReportSha256':args.assets_report_sha256,'productIconSha256':LOCK['productIcon']['sha256'],'sourceLockSha256':digest((BRAND/'provision/source-inputs.json').read_bytes()),'files':rows,'backup':str(backup)if args.apply else None,'userDataTouched':False,'settingsWrittenDuringStaging':False,'assistantOrPowerImplementationChanged':False,'imageBuilt':False,'deviceQualified':False,'productionQualified':False}
     args.receipt.write_text(json.dumps(record,indent=2)+'\n')
     print(json.dumps({'state':record['state'],'files':len(rows),'receipt':str(args.receipt)}))
 

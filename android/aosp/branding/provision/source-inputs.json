@@ -73,5 +73,28 @@
     }
   ],
   "settingsUpdateAuthority": "Pinned InputMethodManager.java 4380-4429 recommends direct secure-setting updates; input service 3129-3132 requires selected and enabled methods kept in sync",
-  "homeRoleAuthority": "Pinned RoleManager.java 480,513 exposes privileged get/add holders as current user; Provision already holds WRITE_SECURE_SETTINGS and stages MANAGE_ROLE_HOLDERS"
+  "homeRoleAuthority": "Pinned RoleManager.java 480,513 exposes privileged get/add holders as current user; Provision already holds WRITE_SECURE_SETTINGS and stages MANAGE_ROLE_HOLDERS",
+  "productIcon": {
+    "path": "android/app/src/main/res/drawable/app_icon.xml",
+    "sha256": "b3d0e893e82cb2ca66ba9c6647b78cd969e55de5dedb33f0ad21970f123b0b14",
+    "logoSource": "apps/app/public/logo-mark.svg",
+    "logoSourceSHA256": "cabe36effaf3ad843870fad70458ccf4411d095ac5c842ba7bce648eac206d2d",
+    "reuse": "Byte-exact existing Alpha setup/app icon, not a new renderer",
+    "geometry": {
+      "vector": {
+        "width": "180dp",
+        "height": "180dp",
+        "viewportWidth": "180",
+        "viewportHeight": "180"
+      },
+      "group": {
+        "translateX": "36",
+        "translateY": "36",
+        "scaleX": "0.9",
+        "scaleY": "0.9"
+      },
+      "clipPathSHA256": "e9002ca8b4ae714e35c05102e116f8bde4111d09c69eaed590a7426d59ba04b0"
+    },
+    "assetPreservation": "Boot animation remains the explicit owner-admitted asset input; this icon correction does not choose or regenerate it"
+  }
 }

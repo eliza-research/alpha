@@ -1,5 +1,5 @@
 from pathlib import Path
-import importlib.util, hashlib, json, os, subprocess, sys, tempfile, unittest
+import importlib.util, hashlib, json, os, subprocess, sys, tempfile, unittest, xml.etree.ElementTree as ET
 from unittest.mock import patch
 
 REPO=Path(__file__).resolve().parents[1]
@@ -72,6 +72,23 @@ public class FreshTest {
     if file.is_file():self.assertEqual((root/'vendor/alphaphone/branding'/file.relative_to(BRAND)).read_bytes(),file.read_bytes())
    overlay=root/'vendor/alphaphone/branding/overlay/frameworks/base/packages/SystemUI/res/values/alpha-system-entry.xml'
    self.assertEqual(overlay.read_bytes(),(BRAND/'system-entry/product-overlay/values/alpha-system-entry.xml').read_bytes())
+
+ def test_setup_icon_reuses_reviewed_product_bytes_geometry_and_clip(self):
+  pin=stage.LOCK['productIcon'];icon=(REPO/pin['path']).read_bytes()
+  self.assertEqual(stage.digest(icon),pin['sha256'])
+  xml=ET.fromstring(icon);a='{http://schemas.android.com/apk/res/android}'
+  self.assertEqual({k.rsplit('}',1)[-1]:v for k,v in xml.attrib.items()},pin['geometry']['vector'])
+  group=xml.find('group');self.assertIsNotNone(group)
+  self.assertEqual({k.rsplit('}',1)[-1]:v for k,v in group.attrib.items()},pin['geometry']['group'])
+  self.assertEqual(xml.find('path').attrib[a+'fillColor'],'#0000FF')
+  self.assertEqual(stage.digest(group.find('clip-path').attrib[a+'pathData'].encode()),pin['geometry']['clipPathSHA256'])
+  svg=ET.fromstring((REPO/pin['logoSource']).read_bytes())
+  self.assertEqual(group.find('path').attrib[a+'pathData'],next(iter(svg)).attrib['d'])
+  with tempfile.TemporaryDirectory(prefix='alpha-existing-icon-')as d,patch.object(stage,'check_revision'):
+   root=Path(d)/'aosp';root.mkdir();plan,_=self.plan(root)
+   self.assertEqual(plan['packages/apps/Provision/res/drawable/alpha_mark.xml'],icon)
+  source=(REPO/'scripts/stage-alpha-os-branding.py').read_text()
+  self.assertNotIn('android:viewportWidth="120"',source,'staging never invents replacement icon markup')
 
  def test_unreviewed_existing_source_and_late_drift_refuse_before_any_write(self):
   with tempfile.TemporaryDirectory(prefix='alpha-brand-drift-')as d,patch.object(stage,'check_revision'):

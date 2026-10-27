@@ -43,8 +43,13 @@ python3 scripts/stage-alpha-os-branding.py \
 ```
 
 The default is admission only: actual Git revisions, exact Provision preimages, logo/asset
-report and payload hashes, and every existing target are checked before mutation. Reviewed
-system-entry flags and Alpha Start/Camera End defaults enter the existing overlay identity.
+report and payload hashes, and every existing target are checked before mutation. The
+setup-icon bytes come directly from the existing `android/app/src/main/res/drawable/app_icon.xml`:
+its pinned 180dp blue-circle icon, 36-unit inset, scaling and clipping are retained exactly,
+rather than generating replacement artwork. The asset directory is an explicitly pinned
+build input, not an instruction to select an older local asset archive; retain the owner's
+current admitted boot animation when producing an incremental image.
+The reviewed system-entry flags and Alpha Start/Camera End defaults enter the existing overlay identity.
 All current visual overlays, including independently owned hardware-invocation defaults,
 are copied byte-exact. Staging changes no app APK, listener/assistant implementation, user
 data, provisioning bit or live device setting.
