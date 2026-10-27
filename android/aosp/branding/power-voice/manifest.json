@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "project": "frameworks/base",
+  "revision": "94b4c163b7dfe5ce3607f7bb8456f9573f7de57d",
+  "patch": "alpha-protected-power-voice.patch",
+  "patchSha256": "f8ed0f482f7a81157c091c5e44bf358936c68ea206218688d38d2954b3e65529",
+  "requiresAppliedSystemUIPatchSha256": "dba353a6d69110dbe2d010d73c965fb391e2a2561fae7c52bc9bb2ec42912391",
+  "requiresProtectedAppComponent": {
+    "component": "ai.elizaresearch.alphaphone/ai.elizaresearch.alphaphone.AlphaPowerVoiceActivity",
+    "exported": true,
+    "permission": "android.permission.STATUS_BAR_SERVICE",
+    "intentFilter": false
+  },
+  "files": [
+    {
+      "path": "services/core/java/com/android/server/search/SearchManagerService.java",
+      "beforeSha256": "ca3cb83274a605da2c309394edbed88453b15f486380115056c7a9b167957cd6",
+      "afterSha256": "7d69991d536be13d0727d4aaaedc916a719dd29317d33c789fdb33b8b47d782b"
+    },
+    {
+      "path": "packages/SystemUI/src/com/android/systemui/assist/AssistManager.java",
+      "beforeSha256": "6ee15ad5e386de1edb1f33e1100c043db9afe486a0908748ef9572b6cd4cb176",
+      "afterSha256": "e1c19e1300a6034f3270a9e33befeb1e29e99730438051ddb9cf061375c4f261"
+    }
+  ],
+  "sourceOnly": true,
+  "compiled": false,
+  "deviceQualified": false
+}

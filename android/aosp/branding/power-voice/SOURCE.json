@@ -1,0 +1,55 @@
+{
+  "atUTC": "2026-10-27T11:33:43.895441+00:00",
+  "project": "frameworks/base",
+  "revision": "94b4c163b7dfe5ce3607f7bb8456f9573f7de57d",
+  "files": [
+    {
+      "path": "packages/SystemUI/src/com/android/systemui/assist/AssistManager.java",
+      "url": "https://android.googlesource.com/platform/frameworks/base/+/94b4c163b7dfe5ce3607f7bb8456f9573f7de57d/packages/SystemUI/src/com/android/systemui/assist/AssistManager.java?format=TEXT",
+      "sha256": "6ee15ad5e386de1edb1f33e1100c043db9afe486a0908748ef9572b6cd4cb176"
+    },
+    {
+      "path": "services/core/java/com/android/server/statusbar/StatusBarManagerService.java",
+      "url": "https://android.googlesource.com/platform/frameworks/base/+/94b4c163b7dfe5ce3607f7bb8456f9573f7de57d/services/core/java/com/android/server/statusbar/StatusBarManagerService.java?format=TEXT",
+      "sha256": "e7aef6f1795385937f1ad774740495ec3d8b0566fd328beb763d6a2f1b4c389a"
+    },
+    {
+      "path": "packages/SystemUI/src/com/android/systemui/statusbar/CommandQueue.java",
+      "url": "https://android.googlesource.com/platform/frameworks/base/+/94b4c163b7dfe5ce3607f7bb8456f9573f7de57d/packages/SystemUI/src/com/android/systemui/statusbar/CommandQueue.java?format=TEXT",
+      "sha256": "1ed764f5685d834e9f3fb90fd7d222069a6472b6bfdb98f1ce4fd84438faeeaa"
+    },
+    {
+      "path": "services/core/java/com/android/server/search/SearchManagerService.java",
+      "url": "https://android.googlesource.com/platform/frameworks/base/+/94b4c163b7dfe5ce3607f7bb8456f9573f7de57d/services/core/java/com/android/server/search/SearchManagerService.java?format=TEXT",
+      "sha256": "ca3cb83274a605da2c309394edbed88453b15f486380115056c7a9b167957cd6"
+    },
+    {
+      "path": "core/java/android/app/SearchManager.java",
+      "url": "https://android.googlesource.com/platform/frameworks/base/+/94b4c163b7dfe5ce3607f7bb8456f9573f7de57d/core/java/android/app/SearchManager.java?format=TEXT",
+      "sha256": "e2c7f66182c2770bf92707ab07b612872d35a2e4c70dcf5a35f58f5dafb78360"
+    },
+    {
+      "path": "packages/SystemUI/src/com/android/systemui/LauncherProxyService.java",
+      "url": "https://android.googlesource.com/platform/frameworks/base/+/94b4c163b7dfe5ce3607f7bb8456f9573f7de57d/packages/SystemUI/src/com/android/systemui/LauncherProxyService.java?format=TEXT",
+      "sha256": "f694953736fc2d4a104a241ee317200fe14efbf4b8bbd2e5af00edaf8e51d07e"
+    },
+    {
+      "path": "core/java/com/android/internal/app/AssistUtils.java",
+      "url": "https://android.googlesource.com/platform/frameworks/base/+/94b4c163b7dfe5ce3607f7bb8456f9573f7de57d/core/java/com/android/internal/app/AssistUtils.java?format=TEXT",
+      "sha256": "27356666f28a4cc0906f89c155e5c93f382aa07ed53259a534f3a40d56693bc7"
+    },
+    {
+      "project": "packages/apps/Launcher3",
+      "revision": "c612e6ece389f21c40f8cb9cd9a4b44239f00009",
+      "path": "quickstep/AndroidManifest.xml",
+      "url": "https://android.googlesource.com/platform/packages/apps/Launcher3/+/c612e6ece389f21c40f8cb9cd9a4b44239f00009/quickstep/AndroidManifest.xml?format=TEXT",
+      "sha256": "63aad650b57cc3953a3243bddcdae0f7b29fee9e0fa3a13b0de26ee0fad9213f"
+    },
+    {
+      "path": "packages/SystemUI/src/com/android/systemui/statusbar/policy/DeviceProvisionedController.java",
+      "url": "https://android.googlesource.com/platform/frameworks/base/+/94b4c163b7dfe5ce3607f7bb8456f9573f7de57d/packages/SystemUI/src/com/android/systemui/statusbar/policy/DeviceProvisionedController.java?format=TEXT",
+      "sha256": "7b9c759bc61b4b6e16645e260fe448b74b67e5cd9c2b0378c5861a37a684f1d1"
+    }
+  ],
+  "sourceOnly": true
+}
