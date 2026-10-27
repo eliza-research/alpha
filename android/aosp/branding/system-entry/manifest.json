@@ -89,8 +89,12 @@
   },
   "productOverlay": {
     "path": "product-overlay/values/alpha-system-entry.xml",
-    "sha256": "7ae953e499483120a33ea2e403e59663d3b0b19531836948f3456274c150b007",
-    "destination": "Existing AlphaSystemUIOverlay resource directory; do not add another competing overlay package"
+    "sha256": "8ce834395086692cc3d0908b4a0e8891f07d023d5bfcdf42b2c5ae0af67f24b1",
+    "destination": "Existing AlphaSystemUIOverlay resource directory; do not add another competing overlay package",
+    "resources": {
+      "config_alpha_system_entry_enabled": true,
+      "custom_lockscreen_shortcuts_enabled": true
+    }
   },
   "selectionDefaultsChanged": false,
   "compilation": "pending",

@@ -64,7 +64,11 @@ candidate and preparing the actual component-build checkout. Repeating an exact 
 application is identified without changing source.
 
 Merge `product-overlay/values/alpha-system-entry.xml` into the existing unique
-`AlphaSystemUIOverlay` resource directory. The source bool defaults off. Do not create a
+`AlphaSystemUIOverlay` resource directory. Both the Alpha entry bool and Android's existing
+`custom_lockscreen_shortcuts_enabled` picker flag must be enabled: the pinned platform
+defaults the latter to false. Their source defaults remain off outside the Alpha product.
+Android's device-policy restriction still gates picker availability independently, and the
+Alpha shortcut retains its current-user, installed-system-app and unlock checks. Do not create a
 second competing overlay, overwrite saved shortcut/tile preferences, or reset provisioning.
 This patch does not auto-add the app's Quick Settings tile; its separately reviewed service
 and notification changes keep their own packaging and device acceptance.
@@ -76,3 +80,30 @@ strong-auth launch, picker choices and existing selections, multi-user/missing/d
 Alpha, clock/alarm/emergency/secure camera, privacy indicators, gestures, compact/landscape,
 RTL and 200% text. The decorative collision rule must be checked on the real expanded shade.
 No deferred listening-indicator code is reused or presented as activity state.
+
+## OS17 runtime correction and next image
+
+OS17's factory image did **not** include the custom-shortcut picker flag override. The
+device owner reported that its picker feature flag was false even though Alpha's separate
+entry flag was true. During physical QA the owner enabled the single-bool fabricated
+overlay `com.android.shell:AlphaLockscreenShortcuts`, targeting SystemUI's
+`custom_lockscreen_shortcuts_enabled`, through the supported overlay manager. No
+`ignore-overlayable` or exclusive overlay mode was used. This runtime overlay persists
+under device data; it is separate from OS17's factory image.
+
+The owner then reported that the correct provider URI
+`lockscreen_quickaffordance/affordances` exposed **Open Alpha** as enabled, and explicitly
+selected Alpha at Start and Camera at End in place of the disabled default Home Controls
+row. That selection is physical QA state, not a default written by this source package.
+
+To remove only that temporary feature override, the device owner can run:
+
+```sh
+adb -s <pixel-serial> shell cmd overlay disable --user current com.android.shell:AlphaLockscreenShortcuts
+```
+
+This does not delete stored shortcut choices. While OS17 still supplies the false factory
+default, removing the override can make the picker unavailable again. This package now
+enables the same existing bool through the normal Alpha product overlay for the **next**
+image. Verify its packaged value and provider flag before removing the temporary overlay
+after an update. Do not describe that future default correction as already present in OS17.

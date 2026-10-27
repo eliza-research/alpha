@@ -372,13 +372,17 @@ assert sha(patch_bytes) == reviewed['patchSha256'], 'Generated patch differs fro
 (DATA/'alpha-native-system-entry.patch').write_bytes(patch_bytes)
 overlay=DATA/'product-overlay/values/alpha-system-entry.xml';overlay.parent.mkdir(parents=True,exist_ok=True)
 overlay.write_text('''<?xml version="1.0" encoding="utf-8"?>
-<resources><bool name="config_alpha_system_entry_enabled">true</bool></resources>
+<resources>
+    <bool name="config_alpha_system_entry_enabled">true</bool>
+    <bool name="custom_lockscreen_shortcuts_enabled">true</bool>
+</resources>
 ''')
 record={'schema':1,'project':'frameworks/base','revision':INPUTS['revision'],
     'patch':'alpha-native-system-entry.patch','patchSha256':sha(patch_bytes),'files':manifest,
     'identity':{'source':str(logo.relative_to(REPO)),'sourceSha256':sha(logo.read_bytes()),'exactSvgPathPreserved':True,
                 'font':'Android serif system family; no new font payload','header':'Text-only wordmark in native foreground; keyguard icon uses existing native product tint','existingProductBlue':'#0000FF','existingProductDarkBlue':'#B8C0FF'},
     'productOverlay':{'path':'product-overlay/values/alpha-system-entry.xml','sha256':sha(overlay.read_bytes()),
+        'resources':{'config_alpha_system_entry_enabled':True,'custom_lockscreen_shortcuts_enabled':True},
         'destination':'Existing AlphaSystemUIOverlay resource directory; do not add another competing overlay package'},
     'selectionDefaultsChanged':False,'compilation':'pending','imageBuilt':False,'deviceQualified':False}
 (DATA/'manifest.json').write_text(json.dumps(record,indent=2)+'\n')

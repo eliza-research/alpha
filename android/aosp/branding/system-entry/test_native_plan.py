@@ -74,11 +74,25 @@ class NativePlanTest(unittest.TestCase):
         self.assertIn('Alignment.TopEnd', addition)
 
     def test_module_registration_adds_one_choice_without_removing_any_config(self):
+        # Android's existing picker feature gate is independent from our product entry gate.
+        upstream = ET.fromstring(read(BASE, PREFIX + 'res/values/config.xml'))
+        self.assertEqual([n.text for n in upstream.findall('bool') if n.attrib.get('name') == 'custom_lockscreen_shortcuts_enabled'], ['false'])
+        own = ET.fromstring(read(STAGED, PREFIX + 'res/values/alpha_system_entry.xml'))
+        self.assertEqual([n.text for n in own.findall('bool') if n.attrib.get('name') == 'config_alpha_system_entry_enabled'], ['false'])
+        overlay = ROOT / MANIFEST['productOverlay']['path']
+        expected_flags = {'config_alpha_system_entry_enabled':'true','custom_lockscreen_shortcuts_enabled':'true'}
+        self.assertEqual({n.attrib['name']:n.text for n in ET.fromstring(overlay.read_text()).findall('bool')}, expected_flags)
+        self.assertEqual(sha(overlay), MANIFEST['productOverlay']['sha256'])
+        generated_overlay = DATA / MANIFEST['productOverlay']['path']
+        self.assertEqual(generated_overlay.read_bytes(), overlay.read_bytes())
+        interactor = read(STAGED, PREFIX + 'src/com/android/systemui/keyguard/domain/interactor/KeyguardQuickAffordanceInteractor.kt')
+        self.assertIn('!isFeatureDisabledByDevicePolicy() && appContext.resources.getBoolean(R.bool.custom_lockscreen_shortcuts_enabled)', ' '.join(interactor.split()))
         path = PREFIX + 'src/com/android/systemui/keyguard/data/quickaffordance/KeyguardDataQuickAffordanceModule.kt'
         expected = read(STAGED, path).replace('            alpha: AlphaAssistantQuickAffordanceConfig,\n', '').replace('                alpha,\n', '')
         self.assertEqual(read(BASE, path), expected)
         config = read(STAGED, PREFIX + 'src/com/android/systemui/keyguard/data/quickaffordance/AlphaAssistantQuickAffordanceConfig.kt')
         for fragment in ['Intent(Intent.ACTION_ASSIST)', 'component = ComponentName(', 'canShowWhileLocked = false',
+                         'getBoolean(R.bool.config_alpha_system_entry_enabled)',
                          'getTargetActivityInfo(intent(), user, false)', 'user != userTracker.userId',
                          'FLAG_SYSTEM', 'FLAG_SUSPENDED', 'target.exported', 'finally {', 'removeCallback(users)',
                          'unregisterReceiver(packages)', 'if (!available()) return']:

@@ -13,7 +13,8 @@
   "brandConversion": "One exact SVG path, original 120 by 120 viewport, native-tinted keyguard vector; text-only native serif header",
   "reviewCorrections": [
     "Explicit no-newline markers preserve valid patch boundaries",
-    "Text-only header avoids compound drawable rendering outside the checked END-aligned text bounds"
+    "Text-only header avoids compound drawable rendering outside the checked END-aligned text bounds",
+    "Enable the independent existing Android custom-lockscreen-shortcuts feature bool through the next-image Alpha product overlay; OS17 factory default was false"
   ],
   "localEvidenceScope": [
     "Seven source and host tests passed against the packaged tools and existing offline inputs",
@@ -32,5 +33,19 @@
   "savedSelectionsChanged": false,
   "shortcutDefaultsChanged": false,
   "automaticMicrophoneOrCloudRequest": false,
-  "productionQualified": false
+  "productionQualified": false,
+  "nextImageProductOverlay": {
+    "config_alpha_system_entry_enabled": true,
+    "custom_lockscreen_shortcuts_enabled": true,
+    "sourceDefaultsRemainOff": true,
+    "devicePolicyGateRetained": true,
+    "savedSelectionsChanged": false
+  },
+  "OS17RuntimeOverride": {
+    "ownerReported": "Supported single-bool fabricated overlay com.android.shell:AlphaLockscreenShortcuts; no ignore-overlayable or exclusive mode",
+    "factoryOS17ContainsFeatureDefaultCorrection": false,
+    "runtimeProviderReportedOpenAlphaEnabled": true,
+    "selection": "Owner selected Alpha Start and Camera End; not a source default or automatic migration",
+    "replayedDuringSourceCorrection": false
+  }
 }
