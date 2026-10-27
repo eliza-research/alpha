@@ -1,0 +1,2 @@
+# Preserve meaningful unified-diff context lines, including upstream EOF markers.
+*.patch -whitespace

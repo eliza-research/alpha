@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "scope": "Additive optional keyguard affordance and decorative expanded-shade wordmark",
+  "productBaseCommit": "522fb3600429431acff65a824c625375e087a191",
+  "platformProject": "platform/frameworks/base",
+  "platformRevision": "94b4c163b7dfe5ce3607f7bb8456f9573f7de57d",
+  "platformRelease": "android-17.0.0_r1",
+  "sourceInputs": "SOURCE-INPUTS.json",
+  "reviewedPatch": "alpha-native-system-entry.patch",
+  "reviewedPatchSHA256": "dba353a6d69110dbe2d010d73c965fb391e2a2561fae7c52bc9bb2ec42912391",
+  "preparation": "prepare.py deterministically reproduces the reviewed patch; generated baseline/staged artifacts are excluded from Git",
+  "brandSource": "apps/app/public/logo-mark.svg",
+  "brandConversion": "One exact SVG path, original 120 by 120 viewport, native-tinted keyguard vector; text-only native serif header",
+  "reviewCorrections": [
+    "Explicit no-newline markers preserve valid patch boundaries",
+    "Text-only header avoids compound drawable rendering outside the checked END-aligned text bounds"
+  ],
+  "localEvidenceScope": [
+    "Seven source and host tests passed against the packaged tools and existing offline inputs",
+    "Actual Java admission and decoration policy execution",
+    "New Java view compiles against installed Android API 36 with only SystemUI symbol stubs",
+    "Patch application roundtrip and staged SHA256 comparison",
+    "Exact preservation of existing header controls and selection/unlock/camera sources"
+  ],
+  "notEstablishedByThisPackage": [
+    "Complete SystemUI Kotlin/Dagger/resource compilation",
+    "Product overlay integration and enforced idmap mapping",
+    "Combined image build or boot",
+    "Physical layout, unlock, privacy and saved-choice acceptance"
+  ],
+  "deviceOrVMOperationRequiredToPrepare": false,
+  "savedSelectionsChanged": false,
+  "shortcutDefaultsChanged": false,
+  "automaticMicrophoneOrCloudRequest": false,
+  "productionQualified": false
+}

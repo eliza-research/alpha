@@ -1,0 +1,99 @@
+{
+  "schema": 1,
+  "project": "frameworks/base",
+  "revision": "94b4c163b7dfe5ce3607f7bb8456f9573f7de57d",
+  "patch": "alpha-native-system-entry.patch",
+  "patchSha256": "dba353a6d69110dbe2d010d73c965fb391e2a2561fae7c52bc9bb2ec42912391",
+  "files": [
+    {
+      "path": "packages/SystemUI/compose/features/src/com/android/systemui/shade/ui/composable/ShadeHeader.kt",
+      "beforeSha256": "4fecfe8289d38854835041984e07dbab7991051067de0e0b0782df0592d41feb",
+      "afterSha256": "64192b2b3e9e4327273f98922eedddb6399110c0a44b37dea116c56e0b58ccfe",
+      "new": false
+    },
+    {
+      "path": "packages/SystemUI/res/drawable/ic_alpha_system_mark.xml",
+      "beforeSha256": null,
+      "afterSha256": "413370aeb9e855612c60d07f4d699dc8fcf474bef78792cd0de66e169b2e68c4",
+      "new": true
+    },
+    {
+      "path": "packages/SystemUI/res/layout/combined_qs_header.xml",
+      "beforeSha256": "62288a31eb150c8aa2263e0d3e95755bf7db04bd2d43374613cac5fd3de6f694",
+      "afterSha256": "4b134c2e0d39e0fb85f900a0311accbcfb8b189135dd4e17a5938cd32eae9858",
+      "new": false
+    },
+    {
+      "path": "packages/SystemUI/res/values/alpha_system_entry.xml",
+      "beforeSha256": null,
+      "afterSha256": "017b042d5be6f1bd091ca24b7a61265afaf5b23e84c840cfe45786d3f5ad71b2",
+      "new": true
+    },
+    {
+      "path": "packages/SystemUI/res/xml/large_screen_shade_header.xml",
+      "beforeSha256": "fc9d383dfba209e8585bdcd709f5e494637091094b2183ef065d2cd610a8ffec",
+      "afterSha256": "7c492812fb7d1eb2f199690d248f732de0b3cbce3156edf43536b854802cbe36",
+      "new": false
+    },
+    {
+      "path": "packages/SystemUI/res/xml/qqs_header.xml",
+      "beforeSha256": "6e66593c00a421d60e943c8e100c0e6f2c3adca3d4221fd455f8dcc817742d38",
+      "afterSha256": "1046d08e5ede177b921ad098f2ee59878eb2bf7ca0b9ad1e28b30fea4d7586c2",
+      "new": false
+    },
+    {
+      "path": "packages/SystemUI/res/xml/qs_header.xml",
+      "beforeSha256": "94be4e434aa01ac8672ee5204eaa4e1fa8de4c182e64e32051bfa68af8a0bf17",
+      "afterSha256": "6ee7e3e3e9bb56018276cdd2e694faaf92d24c0b3b6ffad3935d8d98b5b12a18",
+      "new": false
+    },
+    {
+      "path": "packages/SystemUI/src/com/android/systemui/keyguard/data/quickaffordance/AlphaAssistantQuickAffordanceConfig.kt",
+      "beforeSha256": null,
+      "afterSha256": "983cfe131720fc40df1aefcf0aa86cccad4ed28349cc2e89d91bb31bc559106a",
+      "new": true
+    },
+    {
+      "path": "packages/SystemUI/src/com/android/systemui/keyguard/data/quickaffordance/AlphaSystemEntryPolicy.java",
+      "beforeSha256": null,
+      "afterSha256": "e0fbd39cc500f426421ebca915c467557b90f0406ba5d1eefde6b5d006536be2",
+      "new": true
+    },
+    {
+      "path": "packages/SystemUI/src/com/android/systemui/keyguard/data/quickaffordance/KeyguardDataQuickAffordanceModule.kt",
+      "beforeSha256": "7fb17d0c926501e02437c1c6fbecd414060b6583e2e02413687448254f63bb75",
+      "afterSha256": "9df336ad14fadf4e3fab8aa92aadaa080f655ee41a58763e6295811e8b3eb245",
+      "new": false
+    },
+    {
+      "path": "packages/SystemUI/src/com/android/systemui/shade/AlphaShadeWordmarkPolicy.java",
+      "beforeSha256": null,
+      "afterSha256": "fb9084f5b3df4974bb35370e605695bee7fe2a9ff631c05eaa40d1f71e79ea15",
+      "new": true
+    },
+    {
+      "path": "packages/SystemUI/src/com/android/systemui/shade/AlphaShadeWordmarkView.java",
+      "beforeSha256": null,
+      "afterSha256": "6f913f7b37c0897bcef2cb73fed0fc5ed19630efe918a318877e31677c63b693",
+      "new": true
+    }
+  ],
+  "identity": {
+    "source": "apps/app/public/logo-mark.svg",
+    "sourceSha256": "cabe36effaf3ad843870fad70458ccf4411d095ac5c842ba7bce648eac206d2d",
+    "exactSvgPathPreserved": true,
+    "font": "Android serif system family; no new font payload",
+    "header": "Text-only wordmark in native foreground; keyguard icon uses existing native product tint",
+    "existingProductBlue": "#0000FF",
+    "existingProductDarkBlue": "#B8C0FF"
+  },
+  "productOverlay": {
+    "path": "product-overlay/values/alpha-system-entry.xml",
+    "sha256": "7ae953e499483120a33ea2e403e59663d3b0b19531836948f3456274c150b007",
+    "destination": "Existing AlphaSystemUIOverlay resource directory; do not add another competing overlay package"
+  },
+  "selectionDefaultsChanged": false,
+  "compilation": "pending",
+  "imageBuilt": false,
+  "deviceQualified": false
+}
