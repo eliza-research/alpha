@@ -1,0 +1,77 @@
+{
+  "schema": 1,
+  "files": [
+    {
+      "project": "packages/apps/Provision",
+      "revision": "b371531cac22752f5135471688e5924ce225414b",
+      "path": "src/com/android/provision/DefaultActivity.java",
+      "sha256": "c2278e0da3efb59c89806c0c66b29ba0075e3957952ec35d806ae4cc61cb3938",
+      "url": "https://android.googlesource.com/platform/packages/apps/Provision/+/b371531cac22752f5135471688e5924ce225414b/src/com/android/provision/DefaultActivity.java"
+    },
+    {
+      "project": "packages/apps/Provision",
+      "revision": "b371531cac22752f5135471688e5924ce225414b",
+      "path": "AndroidManifest.xml",
+      "sha256": "ea03bb26f032ccc06f162f6ffa023ae6b1b448d4759085b4f2b03e9d74f8e628",
+      "url": "https://android.googlesource.com/platform/packages/apps/Provision/+/b371531cac22752f5135471688e5924ce225414b/AndroidManifest.xml"
+    },
+    {
+      "project": "packages/apps/Provision",
+      "revision": "b371531cac22752f5135471688e5924ce225414b",
+      "path": "Android.bp",
+      "sha256": "8e70aca2ee1dfe8f8ac0ab8043aaca620f0c894a814c2f36bfedd564fc701171",
+      "url": "https://android.googlesource.com/platform/packages/apps/Provision/+/b371531cac22752f5135471688e5924ce225414b/Android.bp"
+    },
+    {
+      "project": "packages/modules/Permission",
+      "revision": "1093eca7407576c72e51b1a88550ee0667a6e5dc",
+      "path": "framework-s/java/android/app/role/RoleManager.java",
+      "sha256": "7e9c221c4f93787bd84367ab3ff818247a87f8d7bbe7ac0c693a089443b24a4f",
+      "url": "https://android.googlesource.com/platform/packages/modules/Permission/+/1093eca7407576c72e51b1a88550ee0667a6e5dc/framework-s/java/android/app/role/RoleManager.java"
+    },
+    {
+      "project": "frameworks/base",
+      "revision": "94b4c163b7dfe5ce3607f7bb8456f9573f7de57d",
+      "path": "services/core/java/com/android/server/inputmethod/InputMethodManagerService.java",
+      "sha256": "84333a7af594118a473b697a84c70cce29173adea904b69b5dd8b36a3b9191f4",
+      "url": "https://android.googlesource.com/platform/frameworks/base/+/94b4c163b7dfe5ce3607f7bb8456f9573f7de57d/services/core/java/com/android/server/inputmethod/InputMethodManagerService.java"
+    },
+    {
+      "project": "frameworks/base",
+      "revision": "94b4c163b7dfe5ce3607f7bb8456f9573f7de57d",
+      "path": "core/java/android/view/inputmethod/InputMethodManager.java",
+      "sha256": "cd2018d6352ca310f40ac907cfa87799f6842bc558eea478844554b2220d7fa5",
+      "url": "https://android.googlesource.com/platform/frameworks/base/+/94b4c163b7dfe5ce3607f7bb8456f9573f7de57d/core/java/android/view/inputmethod/InputMethodManager.java"
+    },
+    {
+      "project": "frameworks/base",
+      "revision": "94b4c163b7dfe5ce3607f7bb8456f9573f7de57d",
+      "path": "core/java/android/provider/Settings.java",
+      "sha256": "73ff89ec4deb252465b8e8993764301fef96004d141c1d8fde4d6cb4f97a42e2",
+      "url": "https://android.googlesource.com/platform/frameworks/base/+/94b4c163b7dfe5ce3607f7bb8456f9573f7de57d/core/java/android/provider/Settings.java"
+    },
+    {
+      "project": "packages/inputmethods/LatinIME",
+      "revision": "afe0d5c261c3a0c88b38894981a7b332da93e7dd",
+      "path": "java/AndroidManifest.xml",
+      "sha256": "2dcd4d2851dd8d368906e680c17084eb15d105ff35f23cd6d9b009c6243a7919",
+      "url": "https://android.googlesource.com/platform/packages/inputmethods/LatinIME/+/afe0d5c261c3a0c88b38894981a7b332da93e7dd/java/AndroidManifest.xml"
+    },
+    {
+      "project": "frameworks/base",
+      "revision": "94b4c163b7dfe5ce3607f7bb8456f9573f7de57d",
+      "path": "core/java/android/app/admin/DevicePolicyManager.java",
+      "sha256": "24ea0ff2c2ff52e9e8acc63e8c6a51b65a87b11addc91dad4b8ffd6e39480906",
+      "url": "https://android.googlesource.com/platform/frameworks/base/+/94b4c163b7dfe5ce3607f7bb8456f9573f7de57d/core/java/android/app/admin/DevicePolicyManager.java"
+    },
+    {
+      "project": "frameworks/base",
+      "revision": "94b4c163b7dfe5ce3607f7bb8456f9573f7de57d",
+      "path": "services/devicepolicy/java/com/android/server/devicepolicy/DevicePolicyManagerService.java",
+      "sha256": "1207287f2d0e143bceb9dafeb6827a2be52669179a155da25d4fb8cd974c6ad2",
+      "url": "https://android.googlesource.com/platform/frameworks/base/+/94b4c163b7dfe5ce3607f7bb8456f9573f7de57d/services/devicepolicy/java/com/android/server/devicepolicy/DevicePolicyManagerService.java"
+    }
+  ],
+  "settingsUpdateAuthority": "Pinned InputMethodManager.java 4380-4429 recommends direct secure-setting updates; input service 3129-3132 requires selected and enabled methods kept in sync",
+  "homeRoleAuthority": "Pinned RoleManager.java 480,513 exposes privileged get/add holders as current user; Provision already holds WRITE_SECURE_SETTINGS and stages MANAGE_ROLE_HOLDERS"
+}

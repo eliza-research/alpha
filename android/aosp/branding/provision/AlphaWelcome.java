@@ -5,6 +5,8 @@ import android.app.role.RoleManager;
 import android.content.Intent;
 import android.graphics.Color;
 import android.os.Process;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.Settings;
 import android.view.Gravity;
 import android.widget.Button;
@@ -12,6 +14,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.view.View;
 
 /** Alpha's first-run presentation; the existing provisioner owns completion. */
 final class AlphaWelcome {
@@ -45,27 +48,78 @@ final class AlphaWelcome {
         column.addView(description);
         button(activity, column, R.string.alpha_wifi, () -> open(activity, Settings.ACTION_WIFI_SETTINGS));
         button(activity, column, R.string.alpha_security, () -> open(activity, "android.app.action.SET_NEW_PASSWORD"));
-        Button next = button(activity, column, R.string.alpha_continue, () -> {
-            String palette = Settings.Secure.getString(activity.getContentResolver(),
-                    Settings.Secure.THEME_CUSTOMIZATION_OVERLAY_PACKAGES);
-            if (palette == null || palette.isEmpty() || palette.equals("{}")) {
-                AlphaAppearance.applyPalette(activity);
-            }
-            RoleManager roles = activity.getSystemService(RoleManager.class);
-            if (roles == null) { completed.run(); return; }
-            try {
-                roles.addRoleHolderAsUser(RoleManager.ROLE_HOME, "ai.elizaresearch.alphaphone", 0,
-                        Process.myUserHandle(), activity.getMainExecutor(), accepted -> completed.run());
-            } catch (IllegalStateException | SecurityException unavailable) {
-                // Preserve upstream provisioning and Android's normal Home chooser.
-                completed.run();
-            }
-        });
+        TextView notice = text(activity, "", 16, foreground);
+        notice.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
+        column.addView(notice);
+        Button settings = button(activity, column, R.string.alpha_home_settings,
+                () -> open(activity, Settings.ACTION_HOME_SETTINGS));
+        settings.setVisibility(View.GONE);
+        Button next = button(activity, column, R.string.alpha_continue, () -> {});
+        Completion completion = new Completion(activity, completed, next, settings, notice);
+        next.setOnClickListener(view -> completion.begin());
         next.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.BLUE));
         TextView footer = text(activity, activity.getString(R.string.alpha_setup_footer), 14, Color.rgb(180, 180, 194));
         footer.setPadding(0, dp(activity, 24), 0, 0);
         column.addView(footer);
         activity.setContentView(scroll);
+    }
+
+    private static final class Completion {
+        private static final String HOME = "ai.elizaresearch.alphaphone";
+        private final Activity activity;
+        private final Runnable completed;
+        private final Button next, settings;
+        private final TextView notice;
+        private boolean waiting;
+        private int generation;
+        Completion(Activity activity, Runnable completed, Button next, Button settings, TextView notice) {
+            this.activity = activity; this.completed = completed; this.next = next;
+            this.settings = settings; this.notice = notice;
+        }
+        void begin() {
+            if (waiting || activity.isFinishing() || activity.isDestroyed()) return;
+            final int attempt = ++generation;
+            if (!AlphaFreshPresets.eligible(activity)) { fail(R.string.alpha_setup_state_changed); return; }
+            RoleManager roles = activity.getSystemService(RoleManager.class);
+            try {
+                if (roles == null || !roles.isRoleAvailable(RoleManager.ROLE_HOME)) { fail(R.string.alpha_home_failed); return; }
+                if (held(roles)) { finishPresets(); return; }
+                waiting = true; next.setEnabled(false); notice.setText(R.string.alpha_home_checking);
+                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                    if (waiting && generation == attempt) { waiting = false; fail(R.string.alpha_home_failed); }
+                }, 15000);
+                roles.addRoleHolderAsUser(RoleManager.ROLE_HOME, HOME, 0, Process.myUserHandle(),
+                        activity.getMainExecutor(), accepted -> {
+                            if (!waiting || generation != attempt || activity.isFinishing() || activity.isDestroyed()) return;
+                            waiting = false;
+                            try {
+                                if (AlphaFreshSetupPolicy.homeVerified(Boolean.TRUE.equals(accepted), held(roles))) finishPresets();
+                                else fail(R.string.alpha_home_failed);
+                            } catch (IllegalStateException | SecurityException failure) { fail(R.string.alpha_home_failed); }
+                        });
+            } catch (IllegalStateException | SecurityException failure) { waiting = false; fail(R.string.alpha_home_failed); }
+        }
+        private boolean held(RoleManager roles) {
+            return roles.getRoleHoldersAsUser(RoleManager.ROLE_HOME, Process.myUserHandle()).contains(HOME);
+        }
+        private void finishPresets() {
+            if (!AlphaFreshPresets.eligible(activity)) { fail(R.string.alpha_setup_state_changed); return; }
+            AlphaFreshSetupPolicy.ImeResult keyboard = AlphaFreshPresets.ensureKeyboard(activity);
+            if (keyboard == AlphaFreshSetupPolicy.ImeResult.FAILED || keyboard == AlphaFreshSetupPolicy.ImeResult.SKIPPED) {
+                fail(R.string.alpha_keyboard_failed); return;
+            }
+            try {
+                String palette = Settings.Secure.getString(activity.getContentResolver(), Settings.Secure.THEME_CUSTOMIZATION_OVERLAY_PACKAGES);
+                if ((palette == null || palette.isEmpty() || palette.equals("{}")) && !AlphaAppearance.applyPalette(activity)) {
+                    fail(R.string.alpha_appearance_preset_failed); return;
+                }
+            } catch (IllegalStateException | SecurityException failure) { fail(R.string.alpha_appearance_preset_failed); return; }
+            completed.run();
+        }
+        private void fail(int message) {
+            next.setEnabled(true); next.setText(R.string.alpha_retry_setup);
+            settings.setVisibility(View.VISIBLE); notice.setText(message);
+        }
     }
 
     private static TextView text(Activity a, String value, int size, int color) {

@@ -14,9 +14,9 @@ import java.io.IOException;
 
 /** A normal user action for applying the image's wallpaper after an in-place update. */
 public final class AlphaAppearance extends Activity {
-    static void applyPalette(Activity activity) {
+    static boolean applyPalette(Activity activity) {
         // Android's existing theme engine owns colors, contrast, light/dark and control states.
-        Settings.Secure.putString(activity.getContentResolver(),
+        return Settings.Secure.putString(activity.getContentResolver(),
                 Settings.Secure.THEME_CUSTOMIZATION_OVERLAY_PACKAGES,
                 "{\"android.theme.customization.system_palette\":\"0000FF\","
                 + "\"android.theme.customization.accent_color\":\"0000FF\","
@@ -48,7 +48,7 @@ public final class AlphaAppearance extends Activity {
             try {
                 WallpaperManager.getInstance(this).setResource(R.drawable.alpha_wallpaper,
                         WallpaperManager.FLAG_SYSTEM | WallpaperManager.FLAG_LOCK);
-                applyPalette(this);
+                if (!applyPalette(this)) throw new IOException("Palette update failed");
                 Toast.makeText(this, R.string.alpha_wallpaper_applied, Toast.LENGTH_SHORT).show();
                 finish();
             } catch (IOException | SecurityException error) {

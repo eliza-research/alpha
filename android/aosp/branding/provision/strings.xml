@@ -6,6 +6,13 @@
     <string name="alpha_wifi">Set up Wi-Fi</string>
     <string name="alpha_security">Screen security</string>
     <string name="alpha_continue">Continue to Alpha</string>
+    <string name="alpha_home_settings">Review Home app</string>
+    <string name="alpha_retry_setup">Try setup again</string>
+    <string name="alpha_home_checking">Preparing Alpha as Home…</string>
+    <string name="alpha_home_failed">Alpha could not be confirmed as your Home app. Try again, or review the Home app choice and return here.</string>
+    <string name="alpha_keyboard_failed">The keyboard preset could not be confirmed. Your previous choices are kept. Try again.</string>
+    <string name="alpha_appearance_preset_failed">Alpha’s appearance preset could not be saved. Try again. Existing colors are kept.</string>
+    <string name="alpha_setup_state_changed">This setup is no longer eligible for fresh-device presets. Restart setup or ask the device administrator for help.</string>
     <string name="alpha_setup_footer">Alpha will guide you through sign-in and device permissions next. Network and screen security settings can be changed later.</string>
     <string name="alpha_wallpaper_preview">Alpha Home and lock-screen wallpaper preview</string>
     <string name="alpha_apply_wallpaper">Use Alpha wallpaper and colors</string>
