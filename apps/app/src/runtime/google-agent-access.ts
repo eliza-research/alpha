@@ -1,4 +1,4 @@
-import {cachedDevicePreferences,editDevicePreferences,initializeDevicePreferences} from '../browser/device-preferences';
+import {cachedDevicePreferences,editDevicePreferences,initializeDevicePreferences,readDevicePreferences} from '../browser/device-preferences';
 import {browserLocalAgentEnabled} from './local-agent';
 
 /** Owner switches for agent writes through Google. Off never disconnects or revokes Google; reads keep working. */
@@ -8,6 +8,10 @@ export const GOOGLE_AGENT_ACCESS_PATH='/__alpha-agent-google-access';
 export function googleAgentAccess():GoogleAgentAccess{
  const saved=cachedDevicePreferences();
  return {gmailChanges:saved?.agentGmailChanges!==false,calendarEdits:saved?.agentCalendarEdits!==false};
+}
+/** The saved Calendar edits switch, read fresh from the device document: undefined when it cannot be read, never on. */
+export async function savedGoogleCalendarEdits():Promise<boolean|undefined>{
+ try{return (await readDevicePreferences()).agentCalendarEdits;}catch{return undefined;}
 }
 export async function publishGoogleAgentAccess(){
  if(!browserLocalAgentEnabled)return;

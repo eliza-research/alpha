@@ -47,7 +47,8 @@ test('still-connected and unreadable results remain distinct and notify views to
   assert.equal((await live.helper.disconnect(account.connectionId,signal())).outcome,'still-connected');
   const failed=fixture({async gmailAccounts(){throw Error('Read unavailable');}});
   const result=await failed.helper.disconnect(account.connectionId,signal());
-  assert.deepEqual(result,{outcome:'unconfirmed',accounts:null});
+  assert.deepEqual({outcome:result.outcome,accounts:result.accounts},{outcome:'unconfirmed',accounts:null});
+  assert.equal(result.calendarLifecycle.calendarPause,'unavailable');
   assert.equal(live.events.length,1);assert.equal(failed.events.length,1);
 });
 for(const field of ['sessionId','credentialId','client'])test(`a changed ${field} prevents any request under a stale helper`,async()=>{

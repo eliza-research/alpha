@@ -44,6 +44,7 @@ Surface `api` exists in `CloudProtocol` but no shipped screen calls it at this s
 | --- | --- | --- | --- | --- |
 | connect | ui: "Connect Google account" / "Add Google account", or turning on "Gmail changes" / "Calendar edits" when the grant is missing | `initiateGoogle(write, send)` | basic_identity, gmail.triage, calendar.read, calendar.write, gmail.send | userinfo.*, gmail.readonly, calendar.readonly, calendar.events, gmail.send |
 | switch-upgrade-modify | ui: same switches when an account already holds Gmail changes | `initiateGoogle(write, modify)` | read set + gmail.send, gmail.drafts, gmail.mailbox + calendar.write | userinfo.*, gmail.readonly, gmail.send, gmail.compose, gmail.modify, calendar.readonly, calendar.events |
+| calendar-connect | ui: "Connect Google Calendar" (Google accounts opened from Calendar) when no account holds Gmail send or changes; otherwise the same intent asks connect or switch-upgrade-modify so Gmail access is never narrowed | `initiateGoogle(write, read)` | basic_identity, gmail.triage, calendar.read, calendar.write | userinfo.*, gmail.readonly, calendar.readonly, calendar.events |
 | enable-gmail-changes | api | `initiateGoogle(read, modify)` | + gmail.send, gmail.drafts, gmail.mailbox | + gmail.send, gmail.compose, gmail.modify |
 | api-drafts | api | `initiateGoogle(read, drafts)` | read set + gmail.drafts | + gmail.compose |
 | api-mailbox | api | `initiateGoogle(read, mailbox)` | read set + gmail.mailbox | + gmail.modify |

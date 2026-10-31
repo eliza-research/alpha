@@ -118,7 +118,8 @@ export class AgentCalendar {
    return {binding,control,sources:result.calendars.filter(source=>source.provider==='google'&&source.side==='owner'&&['owner','writer'].includes(source.accessRole)),visibleLocalEventIds:this.value.feed?.events.filter(event=>event.provider==='eliza'&&event.side==='owner').map(event=>event.id)??[]};
   },true);
  }
- async changeSync(review:AgentCalendarSyncReview,operation:UpdateLifeOpsLinkedCalendarControlRequest['operation'],key:string,current:()=>boolean,sourceKey?:string){
+ /** sending runs once its fence, owner and destination checks pass, immediately before the control write. */
+ async changeSync(review:AgentCalendarSyncReview,operation:UpdateLifeOpsLinkedCalendarControlRequest['operation'],key:string,current:()=>boolean,sourceKey?:string,sending?:()=>void){
   if(!current())throw Error('Keep or finish the current Calendar draft before changing sync');
   const port=this.port();
   if(!port||review.binding!==JSON.stringify([calendarOwnerKey(port),port.sessionId,port.scope])||this.value.ownerKey!==calendarOwnerKey(port))throw Error('Calendar owner or agent changed; review sync again');
@@ -134,6 +135,7 @@ export class AgentCalendar {
     if(operation==='select')request={operation,expectedRevision:review.control.revision,idempotencyKey:key,destination:{connectorAccountId:selected.connectorAccountId,providerCalendarId:selected.calendarId}};
    }
    this.current(port,epoch,signal);if(!current())throw Error('Calendar context changed; review sync again');
+   sending?.();
    return api.updateLinkedCalendarControl(request);
   },true);
  }

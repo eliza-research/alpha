@@ -81,6 +81,8 @@ export const ALPHA_CONSENT_PATHS = Object.freeze([
     capabilities: [IDENTITY, TRIAGE, "google.calendar.read", "google.calendar.write", "google.gmail.send"] },
   { id: "switch-upgrade-modify", surface: "ui", ui: "Settings > Google: turn on a switch whose grant is missing while an account already holds Gmail changes", call: ["initiateGoogle", "write", "modify"],
     capabilities: [IDENTITY, TRIAGE, ...MODIFY_STEP, "google.calendar.read", "google.calendar.write"] },
+  { id: "calendar-connect", surface: "ui", ui: "Calendar > Connect Google Calendar (Google accounts opened with the Calendar intent) when no account holds Gmail send or changes; otherwise that intent reuses connect or switch-upgrade-modify", call: ["initiateGoogle", "write", "read"],
+    capabilities: [IDENTITY, TRIAGE, "google.calendar.read", "google.calendar.write"] },
   { id: "enable-gmail-changes", surface: "api", call: ["initiateGoogle", "read", "modify"],
     capabilities: [IDENTITY, TRIAGE, ...MODIFY_STEP, "google.calendar.read"] },
   { id: "api-drafts", surface: "api", call: ["initiateGoogle", "read", "drafts"],
