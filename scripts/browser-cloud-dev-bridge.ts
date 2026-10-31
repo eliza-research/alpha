@@ -28,13 +28,18 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
  const pending=new Map<string,{environment:Environment;expiresAt:number;previousReference:string|null}>();
  const claims=new Map<string,{environment:Environment;previousReference:string|null;expiresAt:number;credential:Credential}>();
  const active=new Map<string,{controller:AbortController;environment:Environment;credentialId?:string}>();
+ // This host admits Calendar writes only after an explicit current-owner Sync intent.
+ // A resident/source restart requires a fresh intent; renderer load defaults never enable it.
+ let calendarGeneration=0,calendarAccess:{credentialId:string;reference:string;generation:number}|null=null;
+ const resetCalendarAccess=()=>{calendarAccess=null;return ++calendarGeneration;};
+ const calendarAllowed=(binding:{credentialId:string;reference:string},generation:number)=>calendarAccess?.credentialId===binding.credentialId&&calendarAccess.reference===binding.reference&&calendarAccess.generation===generation&&generation===calendarGeneration;
  async function privateFile(file:string){const st=await lstat(file);if(!st.isFile()||st.isSymbolicLink()||st.uid!==process.getuid?.()||(st.mode&0o077))throw Error('Private Cloud file required');return readFile(file,'utf8');}
  async function directory(){await mkdir(profile,{recursive:true,mode:0o700});const st=await lstat(profile);if(!st.isDirectory()||st.isSymbolicLink()||st.uid!==process.getuid?.()||(st.mode&0o077))throw Error('Private Cloud directory required');}
  async function load():Promise<Partial<Record<Environment,Credential>>>{
   await directory();try{return object(JSON.parse(await privateFile(stateFile)));}catch(error:any){if(error.code!=='ENOENT')throw error;}
   try{const seed=object(JSON.parse(await privateFile(initialFile))),env=environment(seed.environment);if(!REFERENCE.test(seed.credentialReference)||!UUID.test(seed.credentialId)||typeof seed.credentialFile!=='string'||!path.isAbsolute(seed.credentialFile)||typeof seed.credentialSha256!=='string'||!UUID.test(seed.userId)||!UUID.test(seed.organizationId))throw Error('Invalid initial Cloud binding');return {[env]:seed as Credential};}catch(error:any){if(error.code==='ENOENT')return {};throw error;}
  }
- async function save(value:Partial<Record<Environment,Credential>>){if(options.resident)await options.resident.clear();await directory();const tmp=stateFile+'.'+randomUUID();await writeFile(tmp,JSON.stringify(value)+'\n',{mode:0o600,flag:'wx'});await rename(tmp,stateFile);}
+ async function save(value:Partial<Record<Environment,Credential>>){resetCalendarAccess();if(options.resident)await options.resident.clear();await directory();const tmp=stateFile+'.'+randomUUID();await writeFile(tmp,JSON.stringify(value)+'\n',{mode:0o600,flag:'wx'});await rename(tmp,stateFile);}
  function serial<T>(run:()=>Promise<T>):Promise<T>{const result=queue.then(run,run);queue=result.catch(()=>{});return result;}
  async function keyFor(c:Credential){if(c.token)return c.token;if(!c.credentialFile||!c.credentialSha256)throw Error('Cloud credential unavailable');const token=(await privateFile(c.credentialFile)).trim();if(createHash('sha256').update(token).digest('hex')!==c.credentialSha256)throw Error('Cloud credential changed');return token;}
  async function admitted(env:Environment,reference:unknown,id?:unknown){const c=(await load())[env];if(!c)throw refusal(401,'credentials-missing');if(c.credentialReference!==reference||id!==undefined&&c.credentialId!==id)throw refusal(409,'account-changed');if(c.expiresAt!==undefined&&c.expiresAt<=Date.now())throw refusal(401,'expired');return c;}
@@ -158,11 +163,19 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
     if(!options.resident||env!==(options.environment??'production')||audio)throw Error('Cloud resident host unavailable');
     if(data.operation==='residentStart'){send(res,200,await options.resident.ready(controller.signal));return;}
     const value=await serial(async()=>{
-     if(data.operation==='residentClear')return options.resident!.clear();
+     if(data.operation==='residentClear'){resetCalendarAccess();return options.resident!.clear();}
      if(data.operation==='residentStatus')return options.resident!.status(typeof data.credentialId==='string'?data.credentialId:undefined);
+     if(data.operation==='residentGoogleCalendarAccess'){
+      if(env!=='production'||typeof data.calendarEdits!=='boolean'||!UUID.test(data.credentialId)||Object.keys(data).some(key=>!['operation','environment','credentialId','calendarEdits'].includes(key)))throw Error('Invalid Calendar access intent');
+      const c=(await load())[env];if(!c||c.credentialId!==data.credentialId)throw refusal(409,'account-changed');
+      const generation=calendarGeneration;await current(env,c,controller.signal);if(generation!==calendarGeneration)throw refusal(409,'calendar-owner-access-changed');
+      calendarAccess=data.calendarEdits?{credentialId:c.credentialId,reference:c.credentialReference,generation}:null;
+      return {calendarEdits:data.calendarEdits};
+     }
      if(data.operation!=='residentBind'||!UUID.test(data.credentialId))throw Error('Invalid resident operation');
      const c=(await load())[env];if(!c||c.credentialId!==data.credentialId)throw refusal(409,'account-changed');
      await admitted(env,c.credentialReference,data.credentialId);controller.signal.throwIfAborted();
+     resetCalendarAccess();
      const result=await options.resident!.bind({token:await keyFor(c),credentialId:c.credentialId,reference:c.credentialReference,expiresAt:c.expiresAt});
      try{await current(env,c,controller.signal);}catch(error){await options.resident!.clear();throw error;}
      return result;
@@ -242,17 +255,30 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
    const data=await boundedServiceJson(response);await current('production',c,input.signal);
    return {status:response.status,data};
   };
- return Object.assign(handler,{
-  async agentCredential(){const c=(await load()).production;return c?publicCredential(c):null;},
-  agentRead,
-  async agentCalendarOperation(input:Parameters<typeof agentRead>[0]){
+ const agentCalendarOperation=async(input:Parameters<typeof agentRead>[0])=>{
    const url=new URL(input.url),body=input.body===undefined?undefined:JSON.stringify(input.body);
    if(!url.pathname.startsWith('/api/v1/eliza/google/calendar/sync-v1/'))return agentRead(input);
    if(url.origin!==authorities.production||url.username||url.password||url.hash||url.port||!managedGoogleRequest(url,input.method,body))throw refusal(403,'agent-calendar-route-refused');
    const c=await admitted('production',input.credentialReference);
    const response=await canonical('production',url.pathname+url.search,input.signal,{method:input.method,...(body===undefined?{}:{headers:{'Content-Type':'application/json'},body})},c);
    const data=await boundedServiceJson(response);await current('production',c,input.signal);return {status:response.status,data};
-  },
+ };
+
+ async function startGoogleHost(apiToken:string,binding:{credentialId:string;reference:string}){
+  let retired=false;const generation=resetCalendarAccess();
+  const current=async()=>{if(retired||generation!==calendarGeneration)throw refusal(409,'account-changed');const c=(await load()).production;if(retired||generation!==calendarGeneration||!c||c.credentialId!==binding.credentialId||c.credentialReference!==binding.reference)throw refusal(409,'account-changed');await admitted('production',binding.reference,binding.credentialId);return publicCredential(c);};
+  const read=async(input:Parameters<typeof agentRead>[0])=>{await current();const result=await agentRead(input);await current();return result;};
+  const calendar=async(input:Parameters<typeof agentCalendarOperation>[0])=>{if(!new URL(input.url).pathname.startsWith('/api/v1/eliza/google/calendar/sync-v1/'))return read(input);await current();if(!calendarAllowed(binding,generation))throw refusal(403,'calendar-owner-access-disabled');const result=await agentCalendarOperation(input);await current();if(!calendarAllowed(binding,generation))throw refusal(409,'calendar-owner-access-changed');return result;};
+  const port={agentCredential:current,agentRead:read,agentGmailOperation:read,agentCalendarOperation:calendar};
+  await current();const host=await startManagedGoogleAgentHost({port,apiToken,access:()=>({gmailChanges:false,calendarEdits:calendarAllowed(binding,generation)})});
+  return {port:host.port,close:()=>{retired=true;if(generation===calendarGeneration)resetCalendarAccess();return host.close();}};
+ }
+ return Object.assign(handler,{
+  startGoogleHost,
+
+  async agentCredential(){const c=(await load()).production;return c?publicCredential(c):null;},
+  agentRead,
+  agentCalendarOperation,
   async agentGmailOperation(input:Parameters<typeof agentRead>[0]){
    const url=new URL(input.url),route=url.pathname,body=input.body===undefined?undefined:JSON.stringify(input.body);
    const operation=/^\/api\/v1\/eliza\/google\/gmail\/inbox-v1\/operations(?:\/[A-Za-z0-9_-]{1,160}(?:\/dispatch)?)?$/.test(route);
@@ -281,16 +307,9 @@ export function browserCloudDevBridge():Plugin {
    const profileMode=process.env.ALPHA_CLOUD_RESIDENT_PROFILE??'lean';
    if(profileMode!=='lean'&&profileMode!=='full')throw Error('Invalid Cloud resident profile mode');
    resident=await createCloudResidentHost({source:path.resolve(process.env.ALPHA_ELIZA_SOURCE!),profile:path.resolve(process.env.ALPHA_REMOTE_PROFILE!),port:Number(process.env.ALPHA_REMOTE_PORT),environment:selected,profileMode,
-    // This browser QA host admits reads only. Future writes require the canonical
-    // owner access binding; these false gates must never be promoted by a tool.
-    startGoogleHost:selected==='production'?async(apiToken:string,binding:{credentialId:string;reference:string})=>{
-     let retired=false;
-     const current=async()=>{if(retired)throw refusal(409,'account-changed');const credential=await handler.agentCredential();if(retired||!credential||credential.credentialId!==binding.credentialId||credential.credentialReference!==binding.reference)throw refusal(409,'account-changed');return credential;};
-     const read=async(input:Parameters<typeof handler.agentRead>[0])=>{await current();const result=await handler.agentRead(input);await current();return result;};
-     const googlePort={agentCredential:current,agentRead:read,agentGmailOperation:read,agentCalendarOperation:read};
-     await current();const host=await startManagedGoogleAgentHost({port:googlePort,apiToken,access:()=>({gmailChanges:false,calendarEdits:false})});
-     return {port:host.port,close:()=>{retired=true;return host.close();}};
-    }:undefined});
+    // Calendar writes require explicit current-owner intent plus the existing OAuth,
+    // canonical control and write-capability gates. Gmail remains read-only.
+    startGoogleHost:selected==='production'?handler.startGoogleHost:undefined});
   }
   if(resident)server.httpServer?.once('close',()=>{void resident.close();});
   server.middlewares.use(BROWSER_CLOUD_BRIDGE_PATH,(req,res)=>{void handler(req,res);});
