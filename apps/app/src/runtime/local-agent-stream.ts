@@ -1,3 +1,4 @@
+import {batchProgressBinding,emitBatchProgress,emitBatchReply} from './batch-voice-progress-ack';
 import {SseEventFramer} from '../../../../.eliza/client-features/packages/ui/src/api/transport.ts';
 import {findViewActionHandoff} from '../../../../.eliza/client-features/packages/core/src/views/view-action-handoff.ts';
 import type {RemoteChatReply} from './remote-protocol';
@@ -17,9 +18,10 @@ function preparedNavigation(results:unknown):readonly unknown[]|undefined {
 /** Transient planning label ("checking today's calendar") for the turn in flight.
  * It is display-only: never reply text, never history, never an effect. */
 export const localTurnStatus=new EventTarget();
-export async function readLocalAgentStream(response:Response, signal:AbortSignal, onText:(text:string)=>void,onReplyReady?:(results:readonly unknown[]|undefined)=>void):Promise<RemoteChatReply> {
+export async function readLocalAgentStream(response:Response, signal:AbortSignal, onText:(text:string)=>void,onReplyReady?:(results:readonly unknown[]|undefined)=>void,request?:{path:string;ownerId:string;body:string}):Promise<RemoteChatReply> {
  if(!response.ok)throw Object.assign(Error(`Local agent request failed (HTTP ${response.status}).`),{status:response.status});
  if(!response.headers.get('content-type')?.startsWith('text/event-stream')||!response.body)throw Error('Invalid local stream response');
+ const progressBinding=batchProgressBinding(request);
  const framer=new SseEventFramer();
  const reader=response.body.getReader(),decoder=new TextDecoder('utf-8',{fatal:true});
  let text='',received=0,readySeen=false,readyKey:string|undefined;
@@ -38,6 +40,7 @@ export async function readLocalAgentStream(response:Response, signal:AbortSignal
    throw Object.assign(Error('Local agent response interrupted. Check conversation and action history before retrying.'),kind&&kind.length<=64?{failureKind:kind}:{});
   }
   if(value.type==='status'){
+   if(!signal.aborted)emitBatchProgress(progressBinding,value);
    const label=typeof value.label==='string'?value.label.trim():'';
    if(label&&label.length<=160&&!signal.aborted)localTurnStatus.dispatchEvent(new CustomEvent('label',{detail:label}));
    return;
@@ -47,20 +50,21 @@ export async function readLocalAgentStream(response:Response, signal:AbortSignal
    if(typeof value.fullText!=='string'||value.fullText.length>200000||(value.actionResults!==undefined&&!Array.isArray(value.actionResults)))return invalid('Invalid reply-ready snapshot');
    const navigation=preparedNavigation(value.actionResults),key=navigation?JSON.stringify(navigation):undefined;
    if(readySeen&&key!==readyKey)return invalid('Reply-ready navigation changed');
-   if(!readySeen){readySeen=true;readyKey=key;signal.throwIfAborted();if(navigation)onReplyReady?.(navigation);}
+   if(!readySeen){readySeen=true;readyKey=key;signal.throwIfAborted();emitBatchReply(progressBinding);if(navigation)onReplyReady?.(navigation);}
   }
   if(value.type==='token'){
    if(typeof value.fullText==='string')text=value.fullText;
    else if(typeof value.text==='string')text+=value.text;
    else return invalid('Invalid stream text');
    if(text.length>200000)return invalid('Local reply exceeds display limit');
-   signal.throwIfAborted();onText(text);
+   signal.throwIfAborted();if(value.provisional===undefined||value.provisional===false)emitBatchReply(progressBinding);onText(text);
   }
   if(value.type==='done'){
    if(typeof value.fullText!=='string'||value.fullText.length>200000||typeof value.agentName!=='string')return invalid('Invalid terminal reply');
    const navigation=preparedNavigation(value.actionResults),key=navigation?JSON.stringify(navigation):undefined;
    if(readySeen&&key!==readyKey)return invalid('Terminal navigation disagrees with reply-ready snapshot');
    if(value.terminalFailure||value.failureKind)onReplyReady?.(undefined);
+   signal.throwIfAborted();emitBatchReply(progressBinding);
    return {...value,text:value.fullText} as RemoteChatReply;
   }
  }

@@ -1,4 +1,5 @@
 import { cloudServiceName } from '../runtime/cloud-protocol';
+import {createBatchProgressAcknowledgment} from '../runtime/batch-voice-progress-ack';
 import {developmentCloudVoiceEnabled,developmentCloudRealtimeVoiceEnabled} from '../runtime/development-cloud-voice';
 import React from 'react';
 import {alphaViewPath} from '../product/alpha-product';
@@ -524,12 +525,20 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
         addListener:(event:'recordingStopped',callback:(clip:Clip)=>void)=>deviceVoice.addListener(event,callback),
       };
       driver=cloudDriver??deviceVoice;cloudMode=!!cloudDriver;
+      let batchCaptureRetired=false;
       const sendTurn=async(input:{turnId:string;text:string;voiceTurnSignal:any;signal:AbortSignal})=>{
         input.signal.throwIfAborted();current();
         // VOICE_SEND_POLICY: 'auto-send' sends this transcript now; 'review' waits for Send or Discard.
         const sent=await sendVoiceEntry({policy:voiceSendPolicy(),transcript:input.text,review:text=>reviewConversationTurn(text,input.signal,current),send:async text=>{
           current();const turn={...conversationPrepared!};conversationReplyWatch=new Set((chat.shell.S().msgs||[]).map((m:Bag)=>String(m.id)));
-          try{return await chat.shell.sendVoiceTurn({...input,text,...turn,assertCurrent:current,navigation:navigationContinuation(chat,token,input.turnId)});}finally{conversationReplyWatch=undefined;}
+          const ack=cloudDriver?createBatchProgressAcknowledgment({turnId:input.turnId,conversationId:turn.binding.conversationId,ownerId:turn.binding.session.ownerId,signal:input.signal,assertCurrent:current,captureRetired:()=>batchCaptureRetired,speak:async(cue,signal)=>{const pending=Promise.resolve().then(()=>cloudDriver.speak(cue,signal));const owned=pending.catch(failure=>{if((failure as {code?:string})?.code==='speech-cleanup-unconfirmed'){mediaUnconfirmed=failure;stopping=Promise.reject(failure);void stopping.catch(()=>{});}throw failure;});conversationSpeech=owned;try{await owned;}finally{if(conversationSpeech===owned)conversationSpeech=undefined;}}}):undefined;
+          const retireAck=()=>{try{current();}catch{void ack?.stop().catch(()=>{});}};
+          const unsubscribeAck=ack?connectionController.subscribe(retireAck):()=>{};
+          if(ack)document.addEventListener('visibilitychange',retireAck);
+          try{
+            const reply=await chat.shell.sendVoiceTurn({...input,text,...turn,assertCurrent:current,onProgress:ack?.progress,onReplyStarted:ack?.replyStarted,navigation:navigationContinuation(chat,token,input.turnId)});
+            await ack?.finish();return reply;
+          }finally{unsubscribeAck();document.removeEventListener('visibilitychange',retireAck);try{await ack?.stop();}finally{conversationReplyWatch=undefined;}}
         }});
         if(!sent){if(token===generation&&chatDestination===chat)cancelChat();throw new DOMException('Voice message discarded','AbortError');}
         const result=sent.result;input.signal.throwIfAborted();current();
@@ -604,7 +613,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
       if(!halfDuplexDisclosed){halfDuplexDisclosed=true;chat.shell.toast('Speaking will not interrupt Alpha’s reply in this voice mode. Close the voice conversation to stop a reply.');}
       const conversation:BatchVoiceConversation<Clip>=new BatchVoiceConversation<Clip>({
         conversationId:prepared.binding.conversationId,assertCurrent:current,
-        capture:input=>{current();conversationPrepared={...conversationPrepared!,context:chat.shell.voiceConversationContext(prepared.binding)};current();return captureConversationAudio(selected,current,input);},
+        capture:async input=>{current();batchCaptureRetired=false;conversationPrepared={...conversationPrepared!,context:chat.shell.voiceConversationContext(prepared.binding)};current();const capture=await captureConversationAudio(selected,current,input);return {stop:async()=>{const value=await capture.stop();current();batchCaptureRetired=true;return value;},cancel:async()=>{await capture.cancel();batchCaptureRetired=true;}};},
         transcribe:async(value,signal)=>{
           signal.throwIfAborted();current();
           const request=crypto.randomUUID();requestId=request;

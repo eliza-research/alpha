@@ -62,7 +62,7 @@ export async function streamNativeAgent(port:NativeStreamPort,input:{path:string
   // Native rejects requestStream only before it sends anything to the runtime, so a rejection is
   // provably not dispatched; it resolves first and reports later failures as stream events.
   void dispatch.then(result=>{if(result.streamId!==streamId)fail(Error('Native stream identity changed'));if(!active||bounded.aborted)void port.cancelStream({streamId}).catch(()=>{});},()=>fail(Object.assign(Error('The on-device agent did not accept this message.'),{beforeDispatch:true})));
-  const result=await readLocalAgentStream(await response,bounded,onText,onReplyReady);
+  const result=await readLocalAgentStream(await response,bounded,onText,onReplyReady,input);
   await completed;bounded.throwIfAborted();return result;
  }finally{
   active=false;bounded.removeEventListener('abort',abort);

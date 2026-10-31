@@ -10,7 +10,8 @@ import {fileURLToPath} from 'node:url';
 // Actual adapter methods, actual delivery projection/merge and a controlled transport/React queue.
 // No SDK, app start, HTTP, model, microphone or device. These are UI-state ordering regressions.
 const sourceRoot=process.env.ALPHA_SETTLEMENT_SOURCE_ROOT?path.resolve(process.env.ALPHA_SETTLEMENT_SOURCE_ROOT):fileURLToPath(new URL('../',import.meta.url));
-const read=relative=>fs.readFileSync(path.join(sourceRoot,relative),'utf8');
+const candidateRoot=fileURLToPath(new URL('../',import.meta.url));
+const read=relative=>fs.readFileSync(relative==='apps/app/src/prototype/agent-adapter.ts'&&process.env.ALPHA_ACK_AGENT_SOURCE?process.env.ALPHA_ACK_AGENT_SOURCE:path.join(relative==='apps/app/src/prototype/agent-adapter.ts'?candidateRoot:sourceRoot,relative),'utf8');
 const adapter=read('apps/app/src/prototype/agent-adapter.ts');
 const connection=read('apps/app/src/runtime/connection-ui.tsx');
 const between=(source,start,end)=>{const a=source.indexOf(start),b=source.indexOf(end,a);assert.ok(a>=0&&b>a,start);return source.slice(a,b);};
@@ -63,7 +64,7 @@ function fixture(){
     console,Error,DOMException,AbortController,Promise,JSON,Object,Date,Set,Map,queueMicrotask,
     crypto:{randomUUID},document:{hidden:false,querySelector:()=>null},
     alphaClient:client,connectionController:controller,context(){},
-    selectedCloudName:()=> 'Eliza Cloud',localTurnStatus:new EventTarget(),
+    selectedCloudName:()=> 'Eliza Cloud',localTurnStatus:new EventTarget(),batchVoiceProgressEvents:new EventTarget(),batchVoiceReplyEvents:new EventTarget(),
     sourceOf:()=>undefined,NotDispatched:class NotDispatched extends Error{},
     AlphaClientError:class AlphaClientError extends Error{},
     privateLocalPreviewEnabled:false,residentAlwaysPresent:false,pageLeaving:false,
@@ -79,9 +80,9 @@ function fixture(){
   const reply=(extra={})=>({text:'Final reply',messageId:REPLY,userMessageId:USER,messageBinding:clone(binding),...extra});
   return {
     shell,client,controller,binding,box,sent,published,patches,held,
-    async start(kind){
+    async start(kind,extra={}){
       const signal=new AbortController().signal;
-      const task=kind==='voice'?shell.sendVoiceTurn({text:'Question',turnId:'turn-1',voiceTurnSignal:{},signal,binding,context:accepted,assertCurrent(){}}):shell.send();
+      const task=kind==='voice'?shell.sendVoiceTurn({text:'Question',turnId:'turn-1',voiceTurnSignal:{},signal,binding,context:accepted,assertCurrent(){},...extra}):shell.send();
       // Observe rejection even while a queued voice update waits for its callback.
       task.catch(()=>{});await flush();assert.equal(sent.length,1,'one actual adapter dispatch reached the recording port');return {task};
     },
@@ -182,4 +183,17 @@ for(const change of ['owner','conversation'])test(`text: focused queued unstream
   assert.equal(h.held.length,1);if(change==='owner')h.rebind();else h.chooseAnotherConversation();
   const foreign=[{id:'foreign-message',from:'agent',text:'New selected conversation'}];h.shell.state={...h.shell.state,msgs:foreign};
   assert.equal(h.drainHeld(),null);await task;assert.equal(h.shell.state.msgs,foreign);
+});
+
+// New owning regressions exercise the actual selected sendVoiceTurn method, not a reimplementation.
+test('batch progress callback is exact turn/room/owner-bound and never a stored chat reply',async()=>{
+ const f=fixture(),cues=[],reply=[];const {task}=await f.start('voice',{onProgress:value=>cues.push(value),onReplyStarted:()=>reply.push('final-start')});
+ const base={turnId:'turn-1',conversationId:f.binding.conversationId,ownerId:f.binding.session.ownerId,kind:'thinking',label:'Checking calendar'};
+ for(const patch of [{turnId:'foreign'},{conversationId:'foreign'},{ownerId:'foreign'}])f.box.batchVoiceProgressEvents.dispatchEvent(new CustomEvent('progress',{detail:{...base,...patch}}));
+ assert.equal(cues.length,0);f.box.batchVoiceProgressEvents.dispatchEvent(new CustomEvent('progress',{detail:base}));assert.equal(cues.length,1);assert.ok(f.shell.state.msgs.every(row=>row.text!=='On it.'));
+ f.stream();assert.equal(reply.length,0,'display/provisional token alone is not final-reply proof');f.box.batchVoiceReplyEvents.dispatchEvent(new CustomEvent('reply',{detail:base}));assert.equal(reply.length,1);f.resolve();await task;const before=cues.length;f.box.batchVoiceProgressEvents.dispatchEvent(new CustomEvent('progress',{detail:base}));assert.equal(cues.length,before,'listener removed after terminal reply');
+});
+test('aborted selected voice request removes progress listener without another send',async()=>{
+ const f=fixture(),abort=new AbortController(),cues=[];const {task}=await f.start('voice',{signal:abort.signal,onProgress:value=>cues.push(value)});abort.abort();f.resolve();await assert.rejects(task);
+ f.box.batchVoiceProgressEvents.dispatchEvent(new CustomEvent('progress',{detail:{turnId:'turn-1',conversationId:f.binding.conversationId,ownerId:f.binding.session.ownerId,kind:'thinking',label:'Checking'}}));assert.equal(cues.length,0);assert.equal(f.sent.length,1);
 });
