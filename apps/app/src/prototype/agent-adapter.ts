@@ -430,7 +430,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       if(reported)return at<0?null:{msgs:msgs.map((message:Shell,index:number)=>index===at?{...message,id:crypto.randomUUID(),stoppedReplyNotice:undefined}:message)};
       if(!text)return at<0?null:{msgs:msgs.filter((message:Shell)=>!message.stoppedReplyNotice)};
       const bubble={id:notice?'stopped-reply-notice':crypto.randomUUID(),from:'agent',text,interrupted:true,...(notice?{stoppedReplyNotice:true}:{}),
-        card:notice&&!pending?{type:'generic',icon:'info',title:'Check saved conversation',sub:'See whether it finished. This won’t send the message again.',checkReply:{sessionId}}:null};
+        card:null};
       // The bubble keeps its place in the transcript, directly after the stopped turn.
       return {msgs:at<0?[...msgs,bubble]:msgs.map((message:Shell,index:number)=>index===at?bubble:message)};
     });
@@ -1202,6 +1202,8 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     });
     out.msgs=projectActionMessages(out.msgs||[],live);
     out.canStopReply=!!this.S().typing&&alphaClient.getState().pending;
+    // While a reply is pending the composer's send/talk button becomes Stop.
+    out.sendVisible=!!out.hasDraft&&!out.canStopReply;out.talkVisible=!!out.noDraft&&!out.canStopReply;
     out.stopReply=()=>{connectionController.cancelViewNavigation();alphaClient.cancel();};
     if (isAndroid) {
       out.showStatus = false; out.showIndicator = false;
@@ -1460,13 +1462,10 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         }
         else if(this.live&&reconciling){if(streamed)this.setState((previous:Shell)=>({msgs:previous.msgs.map((item:Shell)=>item.id===streamedId?{...item,streaming:false,interrupted:true,text:`${item.text}\n\nStopped.`}:item)}));}
         else if (this.live) {
-          // The agent may have received this message. Offer a history check, never a blind resend.
-          const check={type:'generic',icon:'info',title:'Check saved conversation',sub:'See whether it finished. This won’t send the message again.',checkReply:{sessionId}};
-          const recoveryMessage=message==='The agent request failed. Check connection and action history before sending another request.'?'The reply stopped before it finished.':message;
-          const recoveryText=`${recoveryMessage} Check the saved conversation before trying again.`;
-          // Keep partial output and one recovery action together. Checking reads history; it never resends.
-          if(streamed)this.setState((previous:Shell)=>({msgs:previous.msgs.map((item:Shell)=>item.id===streamedId?{...item,streaming:false,interrupted:true,text:`${item.text}\n\n${recoveryText}`,card:check}:item)}));
-          else this.setState((previous:Shell)=>({...(!opened?{chat:previous.chat==='full'?'full':'sheet'}:{}),msgs:[...(previous.msgs||[]),{id:crypto.randomUUID(),from:'agent',text:recoveryText,card:check,interrupted:true}]}));
+          // The agent may have received this message; say so plainly and never resend it.
+          const recoveryText=message==='The agent request failed. Check connection and action history before sending another request.'?'Sorry, I couldn’t finish that reply.':message;
+          if(streamed)this.setState((previous:Shell)=>({msgs:previous.msgs.map((item:Shell)=>item.id===streamedId?{...item,streaming:false,interrupted:true,text:`${item.text}\n\n${recoveryText}`}:item)}));
+          else this.setState((previous:Shell)=>({...(!opened?{chat:previous.chat==='full'?'full':'sheet'}:{}),msgs:[...(previous.msgs||[]),{id:crypto.randomUUID(),from:'agent',text:recoveryText,card:null,interrupted:true}]}));
         }
       }
     }
