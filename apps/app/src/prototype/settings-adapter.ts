@@ -1,8 +1,6 @@
 import { externalVoiceInvocationEnabled } from '../runtime/voice-entry-policy';
 import {residentRecoveryCopy} from '../runtime/resident-recovery';
-import {browserCalendarScope} from './agent-calendar-adapter';
 import {cloudServiceName} from '../runtime/cloud-protocol';
-import {openCalendarSyncSettings} from '../runtime/calendar-sync-settings';
 import {browserDevProfile as devProfileQuery,developerTools} from '../browser/dev-profile';
 import {cloudRuntimeEnabled,testMocksEnabled,devSurfacesEnabled,updateChannelCheckEnabled} from '../build-flags';
 import {openCalendarRecovery} from '../browser/calendar-recovery';
@@ -511,7 +509,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
           const hasGoogleWrites=googleCalendars.some(account=>account.grantedCapabilities.includes('google.calendar.write'));
           const checking=gmail==='Checking authorization…',unavailable=gmail==='Authorization not verified';
           const googleStatus=checking?'Checking connection…':unavailable?'Connection unavailable':googleCalendars.length?(hasGoogleWrites?'Connected':'Finish connecting'):'Not connected';
-          const groups:Bag[]=[group([{kNav:true,label:'Google Calendar',lbl:'Google Calendar',sub:googleStatus,hasSub:true,chev:true,noAB:true,go:()=>api.set({page:'calendar-google'})}])];
+          const groups:Bag[]=[group([{kNav:true,label:'Google Calendar',lbl:'Google Calendar',sub:googleStatus,hasSub:true,chev:true,noAB:true,go:()=>{const scope=owner?.calendarConnectionScope?.();if(scope)googleConnectionController.openCalendar(scope);}}])];
           const needsRecovery=['legacy','android-native','browser-local'].includes(authority)||model?.status==='transition-required'||model?.status==='legacy-recovery';
           if(needsRecovery){
             const recovery:Bag[]=[info('Saved events','Your earlier saved events are kept unchanged.')];
@@ -530,17 +528,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
           }
           if(developerTools&&!Capacitor.isNativePlatform())groups.push({...group([{kNav:true,label:'Calendar backups',lbl:'Calendar backups',sub:'Events saved in this app',hasSub:true,chev:true,noAB:true,go:()=>openCalendarRecovery()}]),cap:'Saved data',hasCap:true});
           out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:'Calendar',hasTitle:true,backLabel:'Back to Settings',back:()=>api.set({page:null}),hero:{},groups});
-          if(state.page==='calendar-google')out.stack.push({isTop:false,notTop:true,cls:'enter',z:5,title:'Google Calendar',hasTitle:true,backLabel:'Back to Calendar',back:()=>api.set({page:'calendar'}),hero:{},groups:[group([
-            {kNav:true,label:googleCalendars.length?(hasGoogleWrites?'Manage Google connection':'Finish connecting Google Calendar'):'Connect Google Calendar',lbl:googleCalendars.length?(hasGoogleWrites?'Manage Google connection':'Finish connecting Google Calendar'):'Connect Google Calendar',sub:googleStatus,hasSub:true,chev:true,noAB:true,go:()=>googleConnectionController.open()},
-            {kNav:true,label:'Review calendar sync',lbl:'Review calendar sync',sub:'Review linked events and your Google calendar',hasSub:true,chev:true,noAB:true,go:()=>{
-              const shell=owner,authority=shell?.vget('calendar').calendarAuthority;
-              if(authority==='android-native'||browserCalendarScope(shell)){openCalendarSyncSettings();return;}
-              if(authority==='legacy'){api.toast('Return to Calendar before reviewing sync. Saved events are kept.');return;}
-              const calendar=shell?.agentCalendar,ownerKey=calendar?.state.ownerKey;
-              if(!calendar||!ownerKey){if(native&&!testMocksEnabled)api.set({page:'agent-connection'});else connectionController.open();return;}
-              openCalendarSyncSettings({calendar,current:()=>owner===shell&&shell.live&&shell.agentCalendar===calendar&&calendar.state.ownerKey===ownerKey&&!['android-native','legacy'].includes(shell.vget('calendar').calendarAuthority),canChange:()=>!shell.vget('calendar').form&&!shell.canonicalDraftText&&!shell.canonicalDraftInvalid&&!shell.canonicalDraft?.state.opening&&!shell.canonicalDraft?.state.consuming});
-            }},
-          ])]});
+
         }
         // calendar-settings:end
         page.groups.push(group([{

@@ -59,6 +59,16 @@ export function installAgentCalendarAdapter(Component:any,views:Bag,preservation
   controller=new AgentCalendar(port,retention);this.agentCalendar=controller;this.canonicalCalendarDispose=controller.subscribe(()=>{if(owner!==this)return;watchNextEnd();if(this.live)this.setState({});});this.canonicalCalendarConnection=connectionController.subscribe(()=>{const target=port(),key=JSON.stringify([target?.identity,target?.scope]);if(key!==boundKey){boundKey=key;controller?.retire();requestKey='';refresh();}});this.canonicalCalendarInvalidated=(event:Event)=>{const sessionId=(event as CustomEvent<{sessionId?:unknown}>).detail?.sessionId;if(typeof sessionId==='string')invalidate(sessionId);};window.addEventListener('alpha:canonical-calendar-invalidated',this.canonicalCalendarInvalidated);document.addEventListener('visibilitychange',resumed);refresh();};
  p.componentDidUpdate=function(...args:any[]){update?.apply(this,args);if(owner===this)refresh();};
  p.componentWillUnmount=function(){this.canonicalCalendarConnection?.();window.removeEventListener('alpha:canonical-calendar-invalidated',this.canonicalCalendarInvalidated);this.canonicalCalendarDispose?.();if(owner===this){clearTimeout(nextEnded);document.removeEventListener('visibilitychange',resumed);controller?.retire();controller=undefined;owner=undefined;}unmount.call(this);};
+ // A Calendar connection belongs to the exact app-record session that opened it.
+ p.calendarConnectionScope=function(){
+  const shell=this,calendar=controller,target=port(),ownerKey=calendar?.state.ownerKey;
+  const binding=target?JSON.stringify([calendarOwnerKey(target),target.sessionId,target.scope]):'';
+  const current=()=>{const now=port();if(!now)return false;return owner===shell&&shell.live&&shell.agentCalendar===calendar&&controller===calendar&&!!now?.current()&&JSON.stringify([calendarOwnerKey(now),now.sessionId,now.scope])===binding&&calendar?.state.ownerKey===ownerKey&&!['android-native','browser-local','legacy','legacy-google'].includes(shell.vget('calendar').calendarAuthority);};
+  const canChange=()=>!shell.vget('calendar').form&&!shell.canonicalDraftText&&!shell.canonicalDraftInvalid&&!shell.canonicalDraft?.state.opening&&!shell.canonicalDraft?.state.consuming;
+  if(!calendar||!ownerKey||!target?.current()||calendarOwnerKey(target)!==ownerKey||!current()){shell.toast('Return to Calendar and finish checking saved events before connecting Google.');return null;}
+  if(!canChange()){shell.toast('Finish or keep your current draft before connecting Google Calendar.');return null;}
+  return{calendar,current,canChange};
+ };
  p.calendarSelection=function(){
   if(deviceCalendarScope(this))return selection?.call(this);
   const state=this.vget('calendar'),model=this.agentCalendar as AgentCalendar|undefined;
