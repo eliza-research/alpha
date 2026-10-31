@@ -1202,8 +1202,9 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     });
     out.msgs=projectActionMessages(out.msgs||[],live);
     out.canStopReply=!!this.S().typing&&alphaClient.getState().pending;
-    // While a reply is pending the composer's send/talk button becomes Stop.
-    out.sendVisible=!!out.hasDraft&&!out.canStopReply;out.talkVisible=!!out.noDraft&&!out.canStopReply;
+    // While a reply is pending the composer's send/talk button becomes Stop; Send and Talk stay hidden for the whole turn so a tap after the request ends cannot start voice.
+    const turn=!!this.S().typing;
+    out.sendVisible=!!out.hasDraft&&!turn;out.talkVisible=!!out.noDraft&&!turn;out.replyIdle=!turn;
     out.stopReply=()=>{connectionController.cancelViewNavigation();alphaClient.cancel();};
     if (isAndroid) {
       out.showStatus = false; out.showIndicator = false;
