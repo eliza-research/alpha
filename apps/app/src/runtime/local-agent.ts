@@ -64,7 +64,7 @@ const browserBridge: LocalAgentBridge | null = developmentBridgeAllowed ? {
     const bounded=anyAbortSignal([signal,AbortSignal.timeout(120000)]);
     const response=await fetch('/__alpha-local-agent',{method:'POST',headers:{'Content-Type':'application/json','X-Alpha-Local-Agent':'1'},
       body:JSON.stringify({...input,method:'POST',stream:true}),signal:bounded,redirect:'error'});
-    return readLocalAgentStream(response,bounded,onText,onReplyReady);
+    return readLocalAgentStream(response,bounded,onText,onReplyReady,input);
   },
   async request(input, signal) {
     const response = await fetch('/__alpha-local-agent', {
