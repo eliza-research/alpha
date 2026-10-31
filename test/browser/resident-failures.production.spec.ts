@@ -16,7 +16,7 @@ const owner = { token: 'synthetic-cloud-key', userId: id, email: 'owner@example.
 const composer = (page: Page) => page.locator('[data-alpha-layer="composer"][aria-hidden="false"], [data-alpha-layer="conversation"][aria-hidden="false"]').getByRole('textbox').first();
 const conversation = (page: Page) => page.locator('[data-alpha-layer="conversation"]');
 const bubble = (page: Page, text: string) => page.getByRole('button', { name: 'Message actions: ' + text, exact: true });
-const UNKNOWN = 'The reply stopped before it finished. Check the saved conversation before trying again.';
+const UNKNOWN = 'Sorry, I couldn’t finish that reply.';
 const NOT_SENT = 'Not sent. Your message is back in the composer.';
 
 async function connected(page: Page, nativeSignIn = true) {
@@ -189,13 +189,13 @@ for (const mode of ['reject', 'busy'] as const) {
   });
 }
 
-test('a resident stream that fails after the turn was recorded offers a history check, never a resend, and a restart shows the turn once', async ({ page }) => {
+test('a resident stream that fails after the turn was recorded says the reply could not finish, never resends, and a restart shows the turn once', async ({ page }) => {
   test.setTimeout(150_000);
   await connected(page);
   await stub(page, s => { s.stream = 'drop'; });
   await send(page, 'Dropped after recording');
   await expect(page.getByText(UNKNOWN, { exact: true })).toHaveCount(1);
-  await expect(page.getByRole('button', { name: /^Check saved conversation/ })).toHaveCount(1);
+  await expect(page.getByRole('button', { name: /^Check saved conversation/ })).toHaveCount(0);
   await expect(composer(page)).toHaveValue('');
   // The one re-read of a dropped stream reuses the same clientMessageId; nothing new is posted.
   const [body] = await stub(page, s => s.bodies);

@@ -52,9 +52,9 @@ for(const outcome of ['complete','cancel','failure','done-then-failure'] as cons
    await expect(conversation.getByText('Authoritative final reply',{exact:true})).toHaveCount(1);
    await expect(conversation.getByText('First streamed text',{exact:true})).toHaveCount(0);
   }else {
-   const reason=outcome==='cancel'?'Request cancelled. A dispatched action may still need status reconciliation.':'The reply stopped before it finished.';
+   const reason=outcome==='cancel'?'Request cancelled. A dispatched action may still need status reconciliation.':'Sorry, I couldn’t finish that reply.';
    await expect(conversation.getByText('First streamed text',{exact:false})).toContainText(reason);
-   await expect(page.getByRole('button',{name:/^Check saved conversation /})).toBeVisible();
+   await expect(page.getByRole('button',{name:/^Check saved conversation/})).toHaveCount(0);
   }
   expect(await page.evaluate(()=>(window as any).streamFixture.posts)).toBe(1);
   await expect.poll(()=>page.evaluate(()=>(window as any).streamFixture.closed===true&&(window as any).streamFixture.removed===true)).toBe(true);

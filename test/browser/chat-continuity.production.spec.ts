@@ -17,7 +17,7 @@ test.beforeEach(({}, testInfo) => { test.skip(testInfo.project.name !== 'product
 const owner = { token: 'synthetic-cloud-key', userId: '9f1dc45a-4011-4e44-947a-30d999d24fa5', email: 'owner@example.invalid', balance: 5 };
 const composer = (page: Page) => page.locator('[data-alpha-layer="composer"][aria-hidden="false"], [data-alpha-layer="conversation"][aria-hidden="false"]').getByRole('textbox').first();
 const conversation = (page: Page) => page.locator('[data-alpha-layer="conversation"]');
-const UNKNOWN = 'The reply stopped before it finished. Check the saved conversation before trying again.';
+const UNKNOWN = 'Sorry, I couldn’t finish that reply.';
 const home = (page: Page) => page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
 const back = (page: Page) => page.evaluate(() => window.dispatchEvent(new Event('alpha-back', { cancelable: true })));
 
@@ -129,6 +129,7 @@ for (const step of ['Back from full to sheet', 'HOME on Home', 'a rotation and t
     await expect(conversation(page).getByText(asked, { exact: true })).toHaveCount(1);
     await expect(button(page, 'Stop reply')).toHaveCount(0);
     await expect(page.getByText(UNKNOWN, { exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^Check saved conversation/ })).toHaveCount(0);
     // The sent text's device copy was cleared once the turn was dispatched.
     await expect.poll(() => savedDrafts(page)).toEqual(['']);
     // One post, carrying this message after its current-turn screen observation.

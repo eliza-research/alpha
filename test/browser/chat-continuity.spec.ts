@@ -498,7 +498,7 @@ test('a confirmed stop of one turn is never repeated as the outcome of a later s
   expect(await fixture(page, f => ({ aborts: f.aborts, reads: f.historyReads }))).toEqual({ aborts: 2, reads: 1 });
 });
 
-test('a check that reported its result keeps that statement and its offer when another message is sent', async ({ page }) => {
+test('a check that reported its result keeps that statement, with no Check saved conversation card, when another message is sent', async ({ page }) => {
   test.setTimeout(120_000);
   await connected(page);
   await typeDraft(page, 'Still thinking');
@@ -506,14 +506,14 @@ test('a check that reported its result keeps that statement and its offer when a
   await expect.poll(() => fixture(page, f => f.posts), { timeout: 15_000 }).toBe(1);
   await stop(page).click();
   await expect(conversation(page).getByText(NOT_FINISHED, { exact: true })).toHaveCount(1, { timeout: 40_000 });
-  await expect(page.getByRole('button', { name: /^Check saved conversation/ })).toHaveCount(1);
+  await expect(page.getByRole('button', { name: /^Check saved conversation/ })).toHaveCount(0);
   await typeDraft(page, 'Another message');
   await composer(page).press('Enter');
   await expect.poll(() => fixture(page, f => f.posts), { timeout: 15_000 }).toBe(2);
   // The check did run; the chat must not now claim that it did not.
   await expect(conversation(page).getByText(NOT_CHECKED)).toHaveCount(0);
   await expect(conversation(page).getByText(NOT_FINISHED, { exact: true })).toHaveCount(1);
-  await expect(page.getByRole('button', { name: /^Check saved conversation/ })).toHaveCount(1);
+  await expect(page.getByRole('button', { name: /^Check saved conversation/ })).toHaveCount(0);
   expect(await fixture(page, f => f.historyReads)).toBe(1);
 });
 

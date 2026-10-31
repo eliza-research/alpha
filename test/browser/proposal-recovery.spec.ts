@@ -106,8 +106,9 @@ for (const mode of ['pending', 'wrong-owner', 'expired', 'wrong-reminder-context
       await expect(page.getByText('Review Notes on Home',{exact:true})).toBeVisible();
     } else {
       const failure = mode === 'rate-limit-empty' ? /The AI request rate limit was reached/
-        : mode === 'pending' ? /The agent could not complete this response\./ : /The reply stopped before it finished\. Check the saved conversation before trying again\./;
+        : mode === 'pending' ? /The agent could not complete this response\./ : /Sorry, I couldn’t finish that reply\./;
       await expect(page.getByText(failure).first()).toBeVisible();
+      await expect(page.getByRole('button', { name: /^Check saved conversation/ })).toHaveCount(0);
     }
     const counts = () => page.evaluate(() => {
       const f = (window as any).recoveryFixture;

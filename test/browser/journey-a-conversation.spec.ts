@@ -138,7 +138,7 @@ test('journey A: boot, connect, converse across apps, stop a reply, reload and r
    // the agent has no record of the stopped message. The pending notice is replaced, not added to.
    await expect(conversation.getByText(NOT_RECORDED,{exact:true})).toHaveCount(1,{timeout:60_000});
    await expect(conversation.getByText(MAY_FINISH,{exact:true})).toHaveCount(0);
-   await expect(page.getByRole('button',{name:/^Check saved conversation/})).toHaveCount(1);
+   await expect(page.getByRole('button',{name:/^Check saved conversation/})).toHaveCount(0);
    await expect(bubble(page,'Journey A cancelled request')).toHaveCount(1);
    await expect(bubble(page,REPLY)).toHaveCount(2);
    await expect(message).toHaveValue('');
@@ -151,15 +151,11 @@ test('journey A: boot, connect, converse across apps, stop a reply, reload and r
    await expect(conversation.getByText(NOT_RECORDED,{exact:true})).toHaveCount(1);
    await expect(conversation.getByText(MAY_FINISH,{exact:true})).toHaveCount(0);
    expect(await agentDocument(page)).toEqual(afterStop);
-   // The Check card is the user's explicit re-read of the agent's history. It never posts: the unconfirmed
-   // bubble is replaced by what the agent holds.
-   await page.getByRole('button',{name:/^Check saved conversation/}).click();
-   await expect(bubble(page,'Journey A cancelled request')).toHaveCount(0);
-   await expect(bubble(page,'Journey A first request')).toHaveCount(1);
-   await expect(bubble(page,'Journey A second request')).toHaveCount(1);
-   await expect(bubble(page,REPLY)).toHaveCount(2);
-   expect(await agentDocument(page)).toEqual(afterStop);
+   // The Check saved conversation card, the user's explicit re-read of the agent's history, was removed, so
+   // there is nothing to press: the stopped request stays in this transcript beside the outcome until step 8
+   // restores the agent's own copy.
    await expect(page.getByRole('button',{name:/^Check saved conversation/})).toHaveCount(0);
+   await expect(bubble(page,'Journey A cancelled request')).toHaveCount(1);
   }
  }
 
