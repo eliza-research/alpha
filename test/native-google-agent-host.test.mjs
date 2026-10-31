@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import {createHash,randomUUID} from 'node:crypto';
 if(!process.execArgv.includes('tsx')){const child=spawnSync(process.execPath,['--import','tsx',process.argv[1]],{stdio:'inherit',timeout:60000});if(child.error)throw child.error;process.exit(child.status??1);}
-const {startNativeGoogleAgentHost}=await import('../backend/native-google-agent-host.ts');
+const {startNativeGoogleAgentHost,startManagedGoogleAgentHost}=await import('../backend/native-google-agent-host.ts');
 const {createNativeGoogleCloudPort}=await import('../backend/native-google-cloud-port.ts');
 const user='11111111-1111-4111-8111-111111111111',org='22222222-2222-4222-8222-222222222222',grant='33333333-3333-4333-8333-333333333333';
 const binding=()=>({credentialId:'44444444-4444-4444-8444-444444444444',userId:user,organizationId:org,accountRef:JSON.stringify(['cloud','production',user,org]),sessionGeneration:'native-generation-1',token:'synthetic-native-cloud-key'});
@@ -54,4 +54,12 @@ test('native service port never becomes a general Cloud or credential proxy',asy
  let calls=0;const port=createNativeGoogleCloudPort(binding(),()=>{},async()=>{calls++;throw Error('No request expected');});const credential=await port.agentCredential();
  for(const url of ['https://api-staging.eliza.app/api/v1/user','https://api.eliza.app/api/v1/api-keys/current','https://example.invalid/api/v1/user'])await assert.rejects(port.agentGmailOperation({url,method:'GET',credentialReference:credential.credentialReference,signal:AbortSignal.timeout(1000)}));
  assert.equal(calls,0);
+});
+
+
+test('shared private broker validates tokens before startup and closes idempotently',async()=>{
+ const port={async agentCredential(){throw Error('No credential read expected');},async agentRead(){throw Error('No provider read expected');},async agentGmailOperation(){throw Error('No provider write expected');},async agentCalendarOperation(){throw Error('No provider write expected');}};
+ await assert.rejects(startManagedGoogleAgentHost({port,apiToken:'invalid'}),/authentication is unavailable/);
+ const host=await startManagedGoogleAgentHost({port,apiToken:'a'.repeat(64),access:()=>({gmailChanges:false,calendarEdits:false})});
+ await Promise.all([host.close(),host.close()]);await host.close();
 });

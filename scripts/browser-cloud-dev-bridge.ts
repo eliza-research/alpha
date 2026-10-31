@@ -1,5 +1,6 @@
 import {productionCloud, stagingCloud, cloudStorageNamespace} from '../apps/app/src/runtime/cloud-deployment.generated.ts';
 import {createCloudResidentHost} from './cloud-resident-host.mjs';
+import {startManagedGoogleAgentHost} from '../backend/native-google-agent-host.ts';
 import {managedGoogleRequest,boundedServiceJson,object} from '../backend/managed-google-route-policy.ts';
 import {CLOUD_EMAIL_CODE,emailCodeExpiresAt,emailCodeResendAt,emailCodeSendBody,emailCodeVerifyBody} from './cloud-email-code.ts';
 import {parseCloudServiceInfo} from '../apps/app/src/runtime/cloud-service-info.ts';
@@ -272,13 +273,26 @@ export function browserCloudDevBridge():Plugin {
   if(cloudResident&&(process.env.ELIZA_DEV_ALLOW_TEST_MOCKS==='1'||process.env.VITE_ELIZA_DEV_ALLOW_TEST_MOCKS==='1'||process.env.VITE_LOCAL_AGENT!=='1'||!process.env.ALPHA_ELIZA_SOURCE||!process.env.ALPHA_REMOTE_PROFILE))throw Error('Cloud resident requires real local source and mocks off');
   const profile=path.resolve(process.env.ALPHA_BROWSER_CLOUD_PROFILE??path.join(homedir(),'.local/share/alphaphone/browser-cloud'));
   const selected=environment(process.env.VITE_ALPHA_CLOUD_ENVIRONMENT??'production');
-  let resident;
+  let resident:Awaited<ReturnType<typeof createCloudResidentHost>>|undefined;
+  const currentResident=()=>{if(!resident)throw Error('Cloud resident host is unavailable');return resident;};
+  const residentPort=cloudResident?{bind:(credential:Parameters<NonNullable<typeof resident>['bind']>[0])=>currentResident().bind(credential),clear:()=>currentResident().clear(),status:(id?:string)=>currentResident().status(id),ready:(signal:AbortSignal)=>currentResident().ready(signal)}:undefined;
+  const handler=createBrowserCloudDevHandler({profile,resident:residentPort,...(cloudResident?{environment:selected,diagnostic:(event:unknown)=>console.info('[alpha-cloud-auth]',JSON.stringify(event))}:{})});
   if(cloudResident){
    const profileMode=process.env.ALPHA_CLOUD_RESIDENT_PROFILE??'lean';
    if(profileMode!=='lean'&&profileMode!=='full')throw Error('Invalid Cloud resident profile mode');
-   resident=await createCloudResidentHost({source:path.resolve(process.env.ALPHA_ELIZA_SOURCE!),profile:path.resolve(process.env.ALPHA_REMOTE_PROFILE!),port:Number(process.env.ALPHA_REMOTE_PORT),environment:selected,profileMode});
+   resident=await createCloudResidentHost({source:path.resolve(process.env.ALPHA_ELIZA_SOURCE!),profile:path.resolve(process.env.ALPHA_REMOTE_PROFILE!),port:Number(process.env.ALPHA_REMOTE_PORT),environment:selected,profileMode,
+    // This browser QA host admits reads only. Future writes require the canonical
+    // owner access binding; these false gates must never be promoted by a tool.
+    startGoogleHost:selected==='production'?async(apiToken:string,binding:{credentialId:string;reference:string})=>{
+     let retired=false;
+     const current=async()=>{if(retired)throw refusal(409,'account-changed');const credential=await handler.agentCredential();if(retired||!credential||credential.credentialId!==binding.credentialId||credential.credentialReference!==binding.reference)throw refusal(409,'account-changed');return credential;};
+     const read=async(input:Parameters<typeof handler.agentRead>[0])=>{await current();const result=await handler.agentRead(input);await current();return result;};
+     const googlePort={agentCredential:current,agentRead:read,agentGmailOperation:read,agentCalendarOperation:read};
+     await current();const host=await startManagedGoogleAgentHost({port:googlePort,apiToken,access:()=>({gmailChanges:false,calendarEdits:false})});
+     return {port:host.port,close:()=>{retired=true;return host.close();}};
+    }:undefined});
   }
   if(resident)server.httpServer?.once('close',()=>{void resident.close();});
-  const handler=createBrowserCloudDevHandler({profile,resident,...(cloudResident?{environment:selected,diagnostic:(event:unknown)=>console.info('[alpha-cloud-auth]',JSON.stringify(event))}:{})});server.middlewares.use(BROWSER_CLOUD_BRIDGE_PATH,(req,res)=>{void handler(req,res);});
+  server.middlewares.use(BROWSER_CLOUD_BRIDGE_PATH,(req,res)=>{void handler(req,res);});
  }};
 }

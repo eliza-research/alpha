@@ -656,3 +656,29 @@ test('service-info cancels its provider request when the browser request closes'
   const pending=f.send({operation:'signInServiceInfo',environment:'production'},{signal:controller.signal});await ready;controller.abort();await assert.rejects(pending,{name:'AbortError'});await cancelled;
  }finally{controller.abort();await f.close();}
 });
+
+
+test('browser Google broker lifetime pins the real host credential and refuses retired same-credential reads',async()=>{
+ const f=await fixture();let capturedOptions,capturedPort,closeCount=0;
+ try{
+  const {readFileSync}=await import('node:fs'),path=await import('node:path'),{transform}=await import('esbuild');
+  const text=readFileSync('scripts/browser-cloud-dev-bridge.ts','utf8'),body=text.slice(text.indexOf('export function browserCloudDevBridge()')).replace('export ','');
+  const code=(await transform(body,{loader:'ts',format:'cjs'})).code;
+  const env={VITE_ALPHA_CLOUD_RESIDENT:'1',VITE_LOCAL_AGENT:'1',ALPHA_ELIZA_SOURCE:'/synthetic/sdk',ALPHA_REMOTE_PROFILE:'/synthetic/resident',ALPHA_BROWSER_CLOUD_PROFILE:f.profile,ALPHA_REMOTE_PORT:'47869'};
+  const make=new Function('process','path','homedir','environment','createCloudResidentHost','createBrowserCloudDevHandler','BROWSER_CLOUD_BRIDGE_PATH','startManagedGoogleAgentHost','refusal',code+';return browserCloudDevBridge();');
+  const plugin=make({env},path,()=>'/synthetic',value=>value,async options=>{capturedOptions=options;return {close:async()=>{},bind:async()=>{},clear:async()=>{},ready:async()=>{},status:()=>({})};},()=>f.host(),'/__alpha-browser-cloud',async options=>{capturedPort=options.port;assert.deepEqual(options.access(),{gmailChanges:false,calendarEdits:false});return {port:47871,async close(){closeCount++;}};},(status,code)=>Object.assign(Error(code),{status,code}));
+  await plugin.configureServer({middlewares:{use(){}},httpServer:{once(){}}});
+  const before=f.calls.length,host=await capturedOptions.startGoogleHost('a'.repeat(64),{credentialId,reference});
+  const credential=await capturedPort.agentCredential();assert.equal(credential.credentialId,credentialId);assert.equal(credential.token,undefined);assert.equal(f.calls.length,before);
+  const seed=JSON.parse(await readFile(profileFile(f.profile,'initial-credential.json'),'utf8'));
+  const replacement={...seed,credentialId:randomUUID(),credentialReference:'browser-cloud-reference:'+randomUUID()};
+  await writeFile(profileFile(f.profile,'credentials.json'),JSON.stringify({production:replacement}),{mode:0o600});
+  await assert.rejects(capturedPort.agentCredential(),error=>error.code==='account-changed');assert.equal(f.calls.length,before,'changed binding refuses before provider');
+  await writeFile(profileFile(f.profile,'credentials.json'),JSON.stringify({production:seed}),{mode:0o600});
+  assert.equal((await capturedPort.agentCredential()).credentialId,credentialId);
+  await host.close();assert.equal(closeCount,1);
+  await assert.rejects(capturedPort.agentCredential(),error=>error.code==='account-changed');
+  await assert.rejects(capturedPort.agentRead({url:'https://api.eliza.app/api/v1/user',method:'GET',credentialReference:reference,signal:new AbortController().signal}),error=>error.code==='account-changed');
+  assert.equal(f.calls.length,before,'retired broker cannot read even the identical credential');
+ }finally{await f.close();}
+});

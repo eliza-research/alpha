@@ -18,7 +18,7 @@ test('Cloud host retires old processes, strips direct-provider keys and never pe
   assert.equal(host.status('first').attachable,true);assert.equal(host.status('other').attachable,false);assert.ok(!JSON.stringify(host.status()).includes(binding.token));
   await host.bind(binding);assert.equal(launches.length,2,'same binding reuses resident');
   await host.clear();assert.deepEqual(events,['start0','stop0','start1','stop1','start2']);assert.equal(host.status().configured,false);assert.equal(launches[2].env.ELIZAOS_CLOUD_API_KEY,undefined);
-  rejectStop=true;await assert.rejects(host.bind(binding),/stop failed/);assert.equal(launches.length,3);await assert.rejects(host.bind(binding),/stop failed/);assert.equal(launches.length,3,'failed retirement never launches a replacement');await assert.rejects(host.clear(),/stop failed/);await assert.rejects(host.ready(new AbortController().signal),/retirement unconfirmed/);assert.equal(launches.length,3);rejectStop=false;await host.clear();assert.equal(launches.length,4,'successful retirement can restart an unbound resident');
+  rejectStop=true;await assert.rejects(host.bind(binding),error=>error.name==='AggregateError'&&error.errors.some(cause=>/stop failed/.test(cause.message)));assert.equal(launches.length,3);await assert.rejects(host.bind(binding),error=>error.name==='AggregateError'&&error.errors.some(cause=>/stop failed/.test(cause.message)));assert.equal(launches.length,3,'failed retirement never launches a replacement');await assert.rejects(host.clear(),error=>error.name==='AggregateError'&&error.errors.some(cause=>/stop failed/.test(cause.message)));await assert.rejects(host.ready(new AbortController().signal),/retirement unconfirmed/);assert.equal(launches.length,3);rejectStop=false;await host.clear();assert.equal(launches.length,4,'successful retirement can restart an unbound resident');
   assert.ok(!(await fs.readFile(join(profile,'eliza.json'),'utf8')).includes(binding.token));assert.equal((await fs.stat(join(profile,'vault-passphrase'))).mode&0o777,0o600);
  }finally{await host.close();await fs.rm(profile,{recursive:true,force:true});}
 });
@@ -65,3 +65,53 @@ test('first readiness preserves a concurrently queued Cloud binding',async()=>{
   for(const key of ['CEREBRAS_API_KEY','OPENAI_API_KEY','ELIZAOS_CLOUD_API_KEY','ALPHA_DEV_CARTESIA','ALPHA_DEV_CLOUD_REALTIME_VOICE','VITE_ALPHA_DEV_CLOUD_VOICE'])assert.equal(env[key],null,key);
  }finally{await fs.rm(directory,{recursive:true,force:true});}
  });
+
+
+test('managed read broker is bound before launch and revoked even when resident stop fails',async()=>{
+ const profile=await fs.mkdtemp(join(tmpdir(),'alpha-calendar-broker-')),events=[],launches=[];let rejectStop=false;
+ const host=await createCloudResidentHost({profile,port:47869,
+  startGoogleHost:async(token,binding)=>{assert.match(token,/^[a-f0-9]{64}$/);assert.equal(binding.credentialId,'read-owner');events.push('broker-start');return {port:47871,async close(){events.push('broker-close');}};},
+  launch:async options=>{launches.push(options);events.push('launch');let done;return {completion:new Promise(resolve=>done=resolve),async stop(){events.push('stop');if(rejectStop)throw Error('stop failed');done({code:0});}};}});
+ try{
+  await host.bind({token:'synthetic-cloud-key',credentialId:'read-owner',reference:'read-ref'});
+  assert.deepEqual(events,['broker-start','launch']);assert.equal(launches[0].env.ELIZA_MANAGED_CALENDAR_READ_BROKER,'http://127.0.0.1:47871/__alpha-owner-gmail');
+  rejectStop=true;await assert.rejects(host.clear(),error=>error.name==='AggregateError');
+  assert.deepEqual(events,['broker-start','launch','broker-close','stop']);assert.equal(host.status('read-owner').attachable,false);assert.equal(launches.length,1);
+  rejectStop=false;await host.clear();assert.equal(launches.length,2);assert.equal(launches[1].env.ELIZA_MANAGED_CALENDAR_READ_BROKER,'');
+ }finally{rejectStop=false;await host.close();await fs.rm(profile,{recursive:true,force:true});}
+});
+
+test('managed read broker retires after either fulfilled or rejected resident completion',async()=>{
+ for(const reject of [false,true]){
+  const profile=await fs.mkdtemp(join(tmpdir(),'alpha-calendar-exit-'));let finish,fail,closed=0;
+  const host=await createCloudResidentHost({profile,port:47869,startGoogleHost:async()=>({port:47871,async close(){closed++;}}),
+   launch:async()=>({completion:new Promise((resolve,reject)=>{finish=resolve;fail=reject;}),async stop(){finish({code:0});}})});
+  try{await host.bind({token:'synthetic-cloud-key',credentialId:'read-owner',reference:'read-ref'});if(reject)fail(Error('synthetic process completion'));else finish({code:1});
+   for(let i=0;i<20&&closed===0;i++)await new Promise(resolve=>setImmediate(resolve));
+   assert.equal(closed,1);assert.equal(host.status('read-owner').configured,false);assert.equal(host.status('read-owner').attachable,false);
+  }finally{await host.close();await fs.rm(profile,{recursive:true,force:true});}
+ }
+});
+
+test('managed broker cleanup covers log setup and launch failures without starting a replacement',async()=>{
+ for(const failure of ['log','launch']){
+  const profile=await fs.mkdtemp(join(tmpdir(),'alpha-calendar-start-'));let closed=0,launches=0;
+  const host=await createCloudResidentHost({profile,port:47869,startGoogleHost:async()=>({port:47871,async close(){closed++;}}),launch:async()=>{launches++;throw Error('synthetic launch failure');}});
+  try{if(failure==='log')await fs.mkdir(join(profile,'server.log'));
+   await assert.rejects(host.bind({token:'synthetic-cloud-key',credentialId:'read-owner',reference:'read-ref'}));
+   assert.equal(closed,1);assert.equal(launches,failure==='log'?0:1);assert.equal(host.status().configured,false);
+  }finally{await host.close();await fs.rm(profile,{recursive:true,force:true});}
+ }
+});
+
+
+test('broker close rejection keeps retirement unavailable and still stops the old process',async()=>{
+ const profile=await fs.mkdtemp(join(tmpdir(),'alpha-calendar-close-'));let rejectClose=true,stops=0,launches=0,done;
+ const host=await createCloudResidentHost({profile,port:47869,startGoogleHost:async()=>({port:47871,async close(){if(rejectClose)throw Error('synthetic broker close failure');}}),
+  launch:async()=>{launches++;return {completion:new Promise(resolve=>done=resolve),async stop(){stops++;done({code:0});}};}});
+ try{await host.bind({token:'synthetic-cloud-key',credentialId:'read-owner',reference:'read-ref'});
+  await assert.rejects(host.clear(),error=>error.name==='AggregateError'&&error.errors.some(cause=>/broker close failure/.test(cause.message)));
+  assert.equal(stops,1);assert.equal(launches,1);assert.equal(host.status('read-owner').attachable,false);await assert.rejects(host.ready(new AbortController().signal),/retirement unconfirmed/);
+  rejectClose=false;
+ }finally{rejectClose=false;await host.close();await fs.rm(profile,{recursive:true,force:true});}
+});
