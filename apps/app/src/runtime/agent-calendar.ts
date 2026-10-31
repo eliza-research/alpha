@@ -17,12 +17,12 @@ const empty=():AgentCalendarState=>({ownerKey:null,status:'disconnected',feed:nu
 type ClientFactory=(p:AppRecordPort,s:AbortSignal)=>Pick<AgentCalendarClient,'getLifeOpsCalendarFeed'|'getLifeOpsCalendars'|'getLifeOpsNextCalendarEventContext'|'createLifeOpsCalendarEvent'|'updateLifeOpsCalendarEvent'|'deleteLifeOpsCalendarEvent'|'getLinkedCalendarControl'|'updateLinkedCalendarControl'>;
 /** UI snapshot only. CalendarService remains the sole app-record authority. */
 export class AgentCalendar {
- private value=empty();private epoch=0;private abort:AbortController|undefined;private listeners=new Set<()=>void>();private binding='';private nextQuery='';private deferredRefresh:GetLifeOpsCalendarFeedRequest|undefined;private sourceRevisions=new Map<string,string>();
+ private value=empty();private epoch=0;private abort:AbortController|undefined;private reading:AbortController|undefined;private listeners=new Set<()=>void>();private binding='';private nextQuery='';private deferredRefresh:GetLifeOpsCalendarFeedRequest|undefined;private sourceRevisions=new Map<string,string>();
  constructor(private port:()=>AppRecordPort|null,private preservation:CalendarPreservation,private client:ClientFactory=agentCalendarClient){}
  get state():Readonly<AgentCalendarState>{return this.value;}
  subscribe(fn:()=>void){this.listeners.add(fn);return()=>{this.listeners.delete(fn);};}
  private publish(patch:Partial<AgentCalendarState>){this.value={...this.value,...patch};for(const fn of this.listeners)fn();}
- retire(){++this.epoch;this.abort?.abort();this.abort=undefined;this.binding='';this.nextQuery='';this.deferredRefresh=undefined;this.sourceRevisions.clear();this.publish(empty());}
+ retire(){++this.epoch;this.abort?.abort();this.abort=this.reading=undefined;this.binding='';this.nextQuery='';this.deferredRefresh=undefined;this.sourceRevisions.clear();this.publish(empty());}
  private current(port:AppRecordPort,epoch:number,signal:AbortSignal){signal.throwIfAborted();if(!port.current())throw Error('Calendar owner or agent changed');const now=this.port();if(!now||epoch!==this.epoch||this.binding!==JSON.stringify([calendarOwnerKey(now),now.sessionId,now.scope]))throw Error('Calendar owner or agent changed');}
  /** Invalidate presentation freshness without changing the authoritative event/feed. */
  invalidateNext(){
@@ -33,7 +33,11 @@ export class AgentCalendar {
   // Cost: reuse the existing three reads. All refresh triggers share one pending
   // window while a mutation is in flight; never abort an accepted write for a read.
   if(this.value.mutating){this.deferredRefresh={...window};this.invalidateNext();return;}
-  const port=this.port();this.abort?.abort();const controller=this.abort=new AbortController(),signal=controller.signal,epoch=++this.epoch;
+  const port=this.port();
+  // The same query while its reads are in flight queues one trailing refresh: the resident keeps
+  // serving an aborted read, so abort-and-restart only stacks Cloud work. A changed query aborts all three.
+  if(this.reading&&port?.current()&&this.binding===JSON.stringify([calendarOwnerKey(port),port.sessionId,port.scope])&&this.nextQuery===JSON.stringify(window)){this.deferredRefresh={...window};this.invalidateNext();return;}
+  this.abort?.abort();this.deferredRefresh=undefined;const controller=this.abort=this.reading=new AbortController(),signal=controller.signal,epoch=++this.epoch;
   if(!port){this.binding='';this.publish(empty());return;}
   if(!port.current()){this.binding='';this.publish(empty());return;}const ownerKey=calendarOwnerKey(port),binding=JSON.stringify([ownerKey,port.sessionId,port.scope]),query=JSON.stringify(window);
   if(this.binding!==binding||this.nextQuery!==query)this.value=empty();this.binding=binding;this.nextQuery=query;
@@ -64,6 +68,7 @@ export class AgentCalendar {
    const nextFresh=nextRead.status==='fulfilled'&&feed?.state==='complete'&&next?.calendarFeedState==='complete';
    this.publish({feed,calendars:sources.calendars,next,nextFresh:!!nextFresh,status:!feed?'error':feed.state==='complete'?'ready':feed.state==='partial'?'partial':'unavailable',error:feedRead.status==='rejected'?'Calendar could not be refreshed. Saved next event is unverified.':nextRead.status==='rejected'?'Next event could not be refreshed. Saved event is unverified.':null});
   }catch(error){if(epoch===this.epoch&&!signal.aborted)this.publish({status:'error',error:error instanceof Error?error.message:'Calendar could not be verified',feed:null,calendars:[],next:null,nextFresh:false});}
+  finally{if(this.reading===controller){this.reading=undefined;const pending=this.deferredRefresh;this.deferredRefresh=undefined;if(pending&&epoch===this.epoch)void this.refresh(pending);}}
  }
  async confirmLegacyRetention(){
   const port=this.port(),previous=this.value.legacy;if(!port||!previous||!this.preservation.confirmReadOnly)throw Error('Calendar transition review is required');
