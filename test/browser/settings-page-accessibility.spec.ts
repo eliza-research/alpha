@@ -26,7 +26,7 @@ for (const mode of ['mock', 'dev']) {
    await expect(page.getByRole('button', {name:'Models', exact:true})).toHaveCount(0);
    await page.keyboard.press('Enter');
    await expect(password).toBeFocused();
-   const calendar=page.getByRole('button',{name:'Calendar',exact:true});await calendar.focus();await page.keyboard.press('Enter');await expect(back).toBeFocused();await expect(page.getByText('Calendars shown in Alpha',{exact:true})).toBeVisible();await expect(page.getByText('Display only',{exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Models',exact:true})).toHaveCount(0);await page.keyboard.press('Enter');await expect(calendar).toBeFocused();
+   const calendar=page.getByRole('button',{name:'Calendar',exact:true});await calendar.focus();await page.keyboard.press('Enter');await expect(back).toBeFocused();await expect(page.getByRole('button',{name:'Google Calendar',exact:true})).toBeVisible();await expect(page.getByText('Display only',{exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Models',exact:true})).toHaveCount(0);await page.keyboard.press('Enter');await expect(calendar).toBeFocused();
   } else {
    const accounts = page.getByRole('button', {name:'Accounts', exact:true});
    await accounts.focus(); await page.keyboard.press('Enter');

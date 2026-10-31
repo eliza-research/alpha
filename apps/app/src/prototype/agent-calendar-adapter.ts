@@ -70,6 +70,8 @@ export function installAgentCalendarAdapter(Component:any,views:Bag,preservation
  // owner shows in Google. Hiding one here is a display preference on this device (calPrefs), as in Calendar.
  const sourceRows=()=>controller?.state.calendars.filter(c=>c.includeInFeed===true).map(c=>({id:controller!.sourceHandle(calendarSourceKey(c)),name:c.summary,sub:c.accountEmail??c.provider,account:c.accountEmail??undefined,color:'acc',on:true,writable:['owner','writer'].includes(c.accessRole)}))??[];
  const writableRows=()=>sourceRows().filter(c=>c.writable);
+ // Alpha creates once in its own Calendar; Google receives the existing linked projection.
+ const newEventSource=()=>{const sources=controller?.state.calendars.filter(source=>source.provider==='eliza'&&source.side==='owner'&&source.grantId==='eliza-calendar'&&source.calendarId==='primary'&&source.includeInFeed===true&&['owner','writer'].includes(source.accessRole))??[];return sources.length===1?sources[0]:undefined;};
  p.calendarDayObservation=function(){
   const shell=this.S(),connection=connectionController.getSnapshot(),target=port(),model=controller?.state;
   return calendarDayObservation({live:owner===this&&this.live,view:shell.view||'home',screen:shell.screen||'home',hidden:document.hidden,pageSuspended:this.pageSuspended===true,secure:shell.secure===true,shade:!!shell.shade,connectionOpen:connection.open,recovery:!!connection.residentRecoveryReason||!!connection.residentRecovery,clockDraft:!!this.clockSelection?.(),ownerCurrent:!!target?.current(),ownerKey:model?.ownerKey??null,expectedOwnerKey:target?calendarOwnerKey(target):null,status:model?.status??'disconnected',mutating:model?.mutating===true,calendar:this.vget('calendar')},zone());
@@ -78,14 +80,15 @@ export function installAgentCalendarAdapter(Component:any,views:Bag,preservation
   if(deviceCalendarScope(owner))return displaySources?.();
   const shell=owner,prefs=shell?.vget('calendar').calPrefs??{},colors=['acc','fg','mut'];
   const sources=sourceRows().map(source=>{const id=source.id,preference=id?prefs[id]??{}:{},on=preference.on!==false,color=preference.color??source.color;
-   return{...source,on,color,change:(action:'visibility'|'color')=>{if(!id||owner!==shell||!shell?.live)return;const latest=shell.vget('calendar').calPrefs??{};shell.vset('calendar',{calPrefs:{...latest,[id]:{...latest[id],...(action==='visibility'?{on:!on}:{color:colors[(colors.indexOf(color)+1)%colors.length]})}}});}};});
+   return{...source,on:true,color,change:(action:'visibility'|'color')=>{if(!id||owner!==shell||!shell?.live)return;const latest=shell.vget('calendar').calPrefs??{};shell.vset('calendar',{calPrefs:{...latest,[id]:{...latest[id],...(action==='visibility'?{on:!on}:{color:colors[(colors.indexOf(color)+1)%colors.length]})}}});}};});
   return{native:false,canonical:true,status:controller?.state.status??'disconnected',ready:controller?.state.status==='ready',loading:controller?.state.status==='loading',error:controller?.state.status==='error',sources,retry:()=>refresh(true)};
  };
  function newForm(api:Bag){
   const state=api.get('calendar');if(state.form){api.toast('Keep or finish the current form before creating another event.');return;}
   const target=port();if(!target?.current()){api.toast(agentPendingText(undefined,'Calendar is unavailable for this agent connection. Check Settings › Agent connection.'));return;}
-  const model=controller?.state,sources=writableRows();if(!model?.ownerKey||model.ownerKey!==calendarOwnerKey(target)||!['ready','partial','unavailable'].includes(model.status)){api.toast('Wait for the agent Calendar source and preservation review.');return;}
-  api.set({open:null,form:{id:null,canonicalOwnerKey:model.ownerKey,creationId:crypto.randomUUID(),title:'',notes:'',where:'',off:state.day||0,t:17,d:1,zone:zone(),who:[],video:false,repeat:'none',alert:null,cal:sources.length===1?sources[0].id:''}});
+  const model=controller?.state,source=newEventSource();if(!model?.ownerKey||model.ownerKey!==calendarOwnerKey(target)||!['ready','partial','unavailable'].includes(model.status)){api.toast('Wait for the agent Calendar source and preservation review.');return;}
+  if(!source){api.toast('Calendar is not ready to create an event. Your saved events are unchanged.');return;}
+  api.set({open:null,form:{id:null,canonicalOwnerKey:model.ownerKey,creationId:crypto.randomUUID(),title:'',notes:'',where:'',off:state.day||0,t:17,d:1,zone:zone(),who:[],video:false,repeat:'none',alert:null,cal:controller!.sourceHandle(calendarSourceKey(source))}});
  }
  // A scan is only a draft. Admit it to the current source without writing or
  // replacing an existing form; refusal leaves the camera review intact.
@@ -95,14 +98,15 @@ export function installAgentCalendarAdapter(Component:any,views:Bag,preservation
   if(deviceCalendarScope(this)){
    this.openView('calendar',{calendarAuthority:nativeCalendarScope(this)?'android-native':'browser-local',form:draft,open:null,month:null,day:draft.off},'hidden');return true;
   }
-  const model=controller?.state,sources=writableRows();
-  if(state.calendarAuthority==='legacy'||!model?.ownerKey||!['ready','partial','unavailable'].includes(model.status)||!sources.length)return false;
-  this.openView('calendar',{calendarAuthority:'canonical',form:{...draft,canonicalOwnerKey:model.ownerKey,creationId:crypto.randomUUID(),cal:sources.length===1?sources[0].id:'',zone:zone()},open:null,month:null,day:draft.off},'hidden');return true;
+  const model=controller?.state,source=newEventSource();
+  if(state.calendarAuthority==='legacy'||!model?.ownerKey||!['ready','partial','unavailable'].includes(model.status)||!source)return false;
+  this.openView('calendar',{calendarAuthority:'canonical',form:{...draft,canonicalOwnerKey:model.ownerKey,creationId:crypto.randomUUID(),cal:controller!.sourceHandle(calendarSourceKey(source)),zone:zone()},open:null,month:null,day:draft.off},'hidden');return true;
  };
  function typedForm(f:Bag):CanonicalCalendarForm{
   const model=controller!.state;if(f.canonicalOwnerKey!==model.ownerKey)throw Error('This retained draft belongs to another owner or agent');
   const sourceKey=controller!.sourceKeyForHandle(f.cal);if(!sourceKey)throw Error('Choose a current authorized Calendar source');
   const selectedSource=controller!.state.calendars.find(c=>calendarSourceKey(c)===sourceKey);
+  if(!f.id){const source=newEventSource();if(!source)throw Error('Calendar is not ready to create an event. Your draft is kept.');if(calendarSourceKey(source)!==sourceKey)throw Error('Choose Calendar for this new event. Your draft is kept.');}
   if(selectedSource?.provider==='eliza'&&f.repeat!=='none')throw Error('Agent Calendar does not support repeating events. Your draft is kept. Choose another Calendar or explicitly remove the requested repeat.');
   if(f.video||f.alert!==null)throw Error('Meeting rooms and reminders use their own canonical actions; this event draft was kept');
   const day=addDaysToLocalDate(getZonedDateParts(new Date(),zone()),Number(f.off));
@@ -126,7 +130,7 @@ export function installAgentCalendarAdapter(Component:any,views:Bag,preservation
   const cals=legacy?[{id:'legacy',name:'Saved app calendar · Legacy · Read only',sub:'Kept on this device',color:'mut',on:true}]:sourceRows();
   // Presentation domains are not Calendar write destinations. These rows
   // already came from the existing reminder read; no reminder/provider read here.
-  const presentationSources=[...cals,...(reminderRows.length?[{id:'alpha-reminders',name:'Reminders',sub:'On this device',color:'acc',on:true}]:[])].map(source=>{const preference=source.id?state.calPrefs?.[source.id]:undefined;return{...source,on:source.on!==false&&preference?.on!==false,color:preference?.color??source.color};});
+  const presentationSources=[...cals,...(reminderRows.length?[{id:'alpha-reminders',name:'Reminders',sub:'On this device',color:'acc',on:true}]:[])].map(source=>{const preference=source.id?state.calPrefs?.[source.id]:undefined;return{...source,on:source.on!==false&&(!legacy&&source.id!=='alpha-reminders'||preference?.on!==false),color:preference?.color??source.color};});
   const visibleRows=rows.filter(row=>presentationSources.some(source=>source.id===row.cal&&source.on));
   const presentation={...state,add:null,events:visibleRows,canonicalCalendars:cals,calendarPresentationSources:presentationSources};
   const out=render(presentation,api);
@@ -147,6 +151,7 @@ export function installAgentCalendarAdapter(Component:any,views:Bag,preservation
    out.f.recurrenceScopes=recurring?['instance','this_and_following','series'].map(scope=>({label:scope==='instance'?'This occurrence':scope==='series'?'Entire series':'This and following',selected:f.recurrenceScope===scope,pick:()=>api.set({form:{...f,recurrenceScope:scope}})})):[];
    if(recurring)out.f.repeats=[{label:'Keep existing repeat',pick:()=>api.set({form:{...f,repeat:'preserve'}})},...out.f.repeats];
    const selectedSourceKey=controller?.sourceKeyForHandle(f.cal),selectedSource=controller?.state.calendars.find(c=>calendarSourceKey(c)===selectedSourceKey);
+   if(!f.id){const source=newEventSource(),key=source?calendarSourceKey(source):null,eventHandle=key===null?undefined:controller?.sourceHandle(key),reminders=out.f.cals.filter((choice:Bag)=>choice.domain==='reminders'),events=out.f.cals.filter((choice:Bag)=>!!eventHandle&&choice.id===eventHandle);out.f.cals=reminders.length?[...events.map((choice:Bag)=>({...choice,name:'Event',dot:'var(--acc)',css:f.cal===choice.id?'background:var(--fg);color:var(--bg)':'background:var(--bg)'})),...reminders]:selectedSourceKey===key?[]:events;}
    // Unsupported retained intent stays in the draft until the owner removes it.
    if((original??selectedSource)?.provider==='eliza')out.f.repeats=f.repeat==='none'?null:[{label:'Remove requested repeat',pick:()=>api.set({form:{...f,repeat:'none'}})}];
    out.f.saveOff=!!model?.mutating||!model||!['ready','partial','unavailable'].includes(model.status)||f.canonicalOwnerKey!==model.ownerKey||f.canonicalUncertain===true;out.f.save=async()=>{try{
@@ -174,8 +179,8 @@ export function installAgentCalendarAdapter(Component:any,views:Bag,preservation
   // Home's agenda reads the calendar the owner chose: Agent Calendar unless device calendars were
   // chosen explicitly in Calendar, whose read Home then shows with its own states and read times.
   if(deviceCalendarScope(this))return out;
-  const now=Date.now(),calendarState=this.vget('calendar'),hidden=new Set<string>();
-  for(const source of controller?.state.calendars??[]){const key=calendarSourceKey(source),handle=controller!.sourceHandle(key);if(handle&&calendarState.calPrefs?.[handle]?.on===false)hidden.add(key);}
+  // Canonical feed visibility is authoritative. Keep old device preferences stored, but do not hide its events.
+  const now=Date.now(),hidden=new Set<string>();
   const target=port(),model=target?.current()&&controller?.state.ownerKey===calendarOwnerKey(target)?controller.state:undefined;
   const home=homeCalendarSelection(model,zone(),hidden,new Date(now)),event=home.event;
   // Shared daily-overview states for the agent calendar feed: reading, not connected, failed, stale and fresh.
