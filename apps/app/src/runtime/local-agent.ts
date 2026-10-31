@@ -168,18 +168,58 @@ export class LocalAgentProtocol {
     const group=ownerRouteGroup(path);
     if (group ? !ownerRouteAllowed(group,path,method) || !this.session : !['GET','POST'].includes(method)) throw Error('Invalid local app request');
     if ((method==='GET'||method==='DELETE') && body!==undefined) throw Error('Invalid local request body');
-    const generation=this.generation;
-    let cancel:()=>void=()=>{};
-    const cancelled=new Promise<never>((_,reject)=>{cancel=()=>reject(signal.reason||new DOMException('Cancelled','AbortError'));});
-    signal.addEventListener('abort',cancel,{once:true});
-    let response:{status:number;body?:string};
-    try { response=await Promise.race([this.bridge.request({path,...(this.session?{ownerId:this.session.ownerId}:{}),method,headers:{Accept:'application/json',...this.deviceHeaders,...headers},
-      ...(body===undefined?{}:{body:JSON.stringify(body)}),timeoutMs:120000},signal),cancelled]); } finally { signal.removeEventListener('abort',cancel); }
-    signal.throwIfAborted();
-    if(generation!==this.generation)throw new Error('Local agent connection changed.');
-    if(response.status<200||response.status>=300)throw Object.assign(new Error(`Local agent request failed (HTTP ${response.status}).`),{status:response.status,data:(()=>{try{return JSON.parse(response.body||'{}');}catch{return {};}})()});
-    return JSON.parse(response.body || '{}');
+    const generation=this.generation,session=this.session,deadline=Date.now()+120000;
+    const recordRead=group==='records'&&method==='GET';
+    const input={path,...(session?{ownerId:session.ownerId}:{}),method,headers:{Accept:'application/json',...this.deviceHeaders,...headers},...(body===undefined?{}:{body:JSON.stringify(body)})};
+    let starting=false;
+    for(;;){
+      signal.throwIfAborted();
+      if(generation!==this.generation||(recordRead&&this.session!==session))throw new Error('Local agent connection changed.');
+      const remaining=starting?Math.min(120000,deadline-Date.now()):120000;
+      if(remaining<=0)throw new DOMException('Local agent request timed out.','TimeoutError');
+      const attempt=new AbortController(),bounded=starting?anyAbortSignal([signal,attempt.signal]):signal;
+      const timeout=starting?setTimeout(()=>attempt.abort(new DOMException('Local agent request timed out.','TimeoutError')),remaining):undefined;
+      let cancel:()=>void=()=>{};
+      const cancelled=new Promise<never>((_,reject)=>{cancel=()=>reject(bounded.reason||new DOMException('Cancelled','AbortError'));});
+      bounded.addEventListener('abort',cancel,{once:true});
+      let response:{status:number;body?:string};
+      try{
+        response=await Promise.race([this.bridge.request({...input,timeoutMs:remaining},bounded),cancelled]);
+        bounded.throwIfAborted();
+      }finally{
+        bounded.removeEventListener('abort',cancel);if(timeout!==undefined)clearTimeout(timeout);
+        // Release the existing WebView AbortSignal.any fallback's source listeners.
+        // A completed read has no accepted mutation to cancel.
+        if(starting)attempt.abort();
+      }
+      signal.throwIfAborted();
+      if(generation!==this.generation||(recordRead&&this.session!==session))throw new Error('Local agent connection changed.');
+      if(response.status>=200&&response.status<300)return JSON.parse(response.body||'{}');
+      const data=(()=>{try{return JSON.parse(response.body||'{}');}catch{return {};}})();
+      const failure=Object.assign(new Error(`Local agent request failed (HTTP ${response.status}).`),{status:response.status,data});
+      // The canonical app host rejects feature_starting BEFORE dispatch. Match
+      // that closed read barrier only; never replay mutations or generic 503s.
+      const deferred=recordRead&&response.status===503&&data&&typeof data==='object'&&!Array.isArray(data)&&
+        data.code==='feature_starting'&&data.error==='feature_starting'&&data.retryable===true&&
+        ['agent-deferred-boot','app-route-tail'].includes(data.phase)&&(data.status==='pending'||data.status==='runtime_starting'&&data.phase==='app-route-tail')&&
+        (data.retryAfter===undefined||typeof data.retryAfter==='number'&&Number.isFinite(data.retryAfter)&&data.retryAfter>=0);
+      if(!deferred||Date.now()>=deadline)throw failure;
+      starting=true;
+      // The loopback envelope has no Retry-After header. The canonical host's
+      // fixed one-second barrier is the default; retain its numeric body hint.
+      const delay=Math.min(Math.min(5000,Math.max(250,(data.retryAfter??1)*1000)),deadline-Date.now());
+      await new Promise<void>((resolve,reject)=>{
+        const aborted=()=>{clearTimeout(timer);signal.removeEventListener('abort',aborted);reject(signal.reason||new DOMException('Cancelled','AbortError'));};
+        const timer=setTimeout(()=>{signal.removeEventListener('abort',aborted);resolve();},delay);
+        signal.addEventListener('abort',aborted,{once:true});
+        if(signal.aborted)aborted();
+      });
+      signal.throwIfAborted();
+      if(generation!==this.generation||this.session!==session)throw new Error('Local agent connection changed.');
+      if(Date.now()>=deadline)throw failure;
+    }
   }
+
   async connect(signal:AbortSignal) {
     signal.throwIfAborted();
     const generation=this.generation,requestId=crypto.randomUUID();
