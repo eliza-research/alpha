@@ -2340,11 +2340,11 @@
         <button onClick="{{notes.askSearch}}" aria-label="{{notes.askQ}}" style="display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 16px; border-radius: 18px; background: var(--s2); font-size: 14px; font-weight: 600; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis"><span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;flex-shrink:0;color:var(--acct)"><span class="alpha-compute-mark" aria-hidden="true" style="width:100%;height:100%"></span></span>{{notes.askQ}}</button>
       </div>
     </sc-if>
-    <!-- Agent Notes: the device-local collection stays one explicit choice away (agent-adapter.ts selectNotesSource); the restore-only Trash sits beside it, so the header keeps the template's waveform and +. -->
+    <!-- Agent Notes: the device-local collection stays one explicit choice away (agent-adapter.ts selectNotesSource) and the restore-only Trash sits beside it, both quiet text actions under the list, so the header keeps the template's waveform and +. -->
     <sc-if value="{{notes.listActions}}">
-      <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 18px">
-        <sc-if value="{{notes.olderNotesAction}}"><button class="tap" data-agent-id="notes-source-legacy" onClick="{{notes.olderNotesAction}}" style="min-height: 48px; max-width: 100%; padding: 8px 18px; border-radius: 24px; background: var(--s2); color: var(--fg); font-size: 14px; font-weight: 600; overflow-wrap: anywhere">Previous notes</button></sc-if>
-        <sc-if value="{{notes.trashInList}}"><button class="tap" data-agent-id="notes-trash" aria-label="Open Trash" title="{{notes.trashLabel}}" onClick="{{notes.openTrash}}" style="min-height: 48px; max-width: 100%; padding: 8px 18px; border-radius: 24px; background: var(--s2); color: var(--fg); font-size: 14px; font-weight: 600; overflow-wrap: anywhere">Trash</button></sc-if>
+      <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; margin-top: 12px">
+        <sc-if value="{{notes.olderNotesAction}}"><button class="tap" data-agent-id="notes-source-legacy" onClick="{{notes.olderNotesAction}}" style="display: inline-flex; align-items: center; gap: 6px; min-height: 48px; max-width: 100%; padding: 8px 14px; border-radius: 24px; color: var(--mut); font-size: 14px; font-weight: 500; overflow-wrap: anywhere"><svg class="i" viewBox="0 0 24 24" style="width: 16px; height: 16px"><path d="{{ic.archive}}"></path></svg>Previous notes</button></sc-if>
+        <sc-if value="{{notes.trashInList}}"><button class="tap" data-agent-id="notes-trash" aria-label="Open Trash" title="{{notes.trashLabel}}" onClick="{{notes.openTrash}}" style="display: inline-flex; align-items: center; gap: 6px; min-height: 48px; max-width: 100%; padding: 8px 14px; border-radius: 24px; color: var(--mut); font-size: 14px; font-weight: 500; overflow-wrap: anywhere"><svg class="i" viewBox="0 0 24 24" style="width: 16px; height: 16px"><path d="{{ic.trash}}"></path></svg>Trash</button></sc-if>
       </div>
     </sc-if>
   </div>

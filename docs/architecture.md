@@ -505,8 +505,8 @@ Trash, review and reload) bound by `canonical-notes-ui.ts`; the device-local Old
 keeps its own store, Trash and recorder. The shared `NotesWorkspace` component is not rendered.
 Agent Notes keep the template's header, waveform and + (owner decision, 2026-10-30): the waveform
 (`notes-dictate-new`) opens a new note and runs the editor's dictation into it, speech to text through
-the platform's recognizer with no audio kept, saved like typing after +. Their Trash (`notes-trash`) is
-a pill under the list beside Previous notes.
+the platform's recognizer with no audio kept, saved like typing after +. Their Trash (`notes-trash`) and
+Previous notes (`notes-source-legacy`) are quiet text actions under the list, not filled pills.
 Notes ports are shared too: `plugin-notes/src/client` owns the document port and its browser
 implementation (`note-documents.ts`; Alpha's `runtime/browser-note-documents.ts` only registers
 it as `AlphaNoteDocuments` with the `Alpha scan` PDF file name), the deletion-receipt rule that

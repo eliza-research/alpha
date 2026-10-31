@@ -4,8 +4,8 @@ import {setTextScale} from './accessibility-states';
 
 // Live agent Notes are drawn by Alpha's own Notes template, the one mock mode shows: header with
 // Back, title, the waveform and +, the search pill, and a two-column masonry of rounded cards whose
-// type (checklist, voice note, link, text) follows the record's own data. Trash is a pill under the
-// list beside Previous notes. Screenshots land in test-results/notes-restore for side-by-side review
+// type (checklist, voice note, link, text) follows the record's own data. Trash is a quiet text action
+// under the list beside Previous notes. Screenshots land in test-results/notes-restore for side-by-side review
 // with the mock-mode reference.
 const SHOTS='test-results/notes-restore';
 const at='2026-10-30T09:00:00.000Z';
@@ -73,9 +73,10 @@ test('live agent Notes use the mock-mode Notes design with typed cards',async({p
  const ids=(scope:string)=>page.locator(`${scope} [data-agent-id]`).evaluateAll(list=>list.filter(el=>(el as HTMLElement).getClientRects().length).map(el=>el.getAttribute('data-agent-id')));
  expect(await ids('[data-alpha-subview="notes-list"]')).toEqual(['notes-dictate-new','notes-new','notes-search','launch','groceries','gifts','voice-sync','agents','voicemail','notes-source-legacy','notes-trash']);
  await shot(page,'live-list');
- // Trash stays one tap away: a pill under the list, beside Previous notes, in the list's scroll area.
+ // Trash stays one tap away: a quiet text action under the list, beside Previous notes, in the list's scroll area.
  const previous=page.getByRole('button',{name:'Previous notes',exact:true}),trash=page.locator('[data-alpha-app-scroll="notes"]').getByRole('button',{name:'Open Trash',exact:true});
  await trash.scrollIntoViewIfNeeded();await expect(trash).toHaveText('Trash');await expect(trash).toHaveAttribute('data-agent-id','notes-trash');
+ for(const action of [previous,trash])await expect(action).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
  const [p,t,last]=[(await previous.boundingBox())!,(await trash.boundingBox())!,(await card(page,'Radiator').boundingBox())!];
  expect(p.height).toBeGreaterThanOrEqual(48);expect(t.height).toBeGreaterThanOrEqual(48);
  expect(Math.round(t.y)).toBe(Math.round(p.y));expect(t.x).toBeGreaterThan(p.x+p.width);expect(t.y).toBeGreaterThan(last.y+last.height);
