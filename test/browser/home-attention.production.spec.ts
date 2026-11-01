@@ -14,7 +14,7 @@ test('not connected: the Inbox card opens Connections without inventing an unrea
   await expect(page.locator('html')).toHaveAttribute('data-connection-mode', 'live');
   const card = page.locator('[data-alpha-home-inbox]');
   await expect(card).toBeVisible();
-  await expect(card).toHaveAccessibleName('Inbox');
+  await expect(card).toHaveAccessibleName('Inbox: set up email in Connections');
   await expect(card.locator('[data-overview-part="count"]')).toHaveText('');
   await expect(page.getByText('Accounts are not connected')).toHaveCount(0);
   await page.screenshot({ path: info.outputPath('home-not-connected.png') });
