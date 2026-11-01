@@ -210,3 +210,64 @@ test('missing canonical authority never relabels the real Reminder choice as an 
   assert.deepEqual(Array.from(out.f.cals,choice=>choice.name),['Reminders']);assert.equal(out.f.cals.some(choice=>choice.name==='Event'||choice.id==='handle:google'),false);assert.equal(f.calendar.form,form);assert.equal(form.cal,'handle:google');assert.equal(f.calls.creates.length,0);assert.equal(f.calls.nativeSchedules,0);
  }finally{f.close();}
 });
+
+// Ported from f728e137 (d47ec3c1 #767 sidefile) onto this fixture: the shared presentationEvent above
+// and the canonical Eliza source id 'primary'. Its 'unverified rows ... display preferences are retained'
+// test is not ported; 'canonical feed ignores obsolete hidden preferences' above supersedes it.
+// Canonical warning presentation stays in the header, which keeps its retry action.
+test('an empty partial Calendar shows its warning once without claiming no events',()=>{
+ const f=fixture({status:'partial',empty:true}),before=structuredClone(f.state);
+ const out=f.views.calendar.render({},{});
+ assert.match(out.nativeStatusLabel,/Some Calendar sources could not be verified/);
+ assert.equal(typeof out.nativeStatusRetry,'function');
+ assert.equal(out.empty,false);
+ assert.doesNotMatch(out.emptyText,/No events/);
+ assert.deepEqual(f.state,before);
+ const template=readFileSync('apps/app/src/prototype/template.html','utf8');
+ assert.ok(template.includes('aria-label="Retry calendar and reminders" aria-description="{{calendar.nativeStatusLabel}}"'));
+ assert.ok(!template.includes('aria-label="{{calendar.nativeStatusLabel}} Retry calendar and reminders"'));
+});
+test('a verified empty Calendar retains its ordinary empty state',()=>{
+ const f=fixture({status:'ready',empty:true}),out=f.views.calendar.render({},{});
+ assert.equal(out.nativeStatusLabel,'');assert.equal(out.empty,true);
+ assert.equal(out.emptyText,'No events in this Calendar window');
+});
+test('ready with an unverified event source warns once and does not claim verified empty',()=>{
+ const f=fixture({status:'ready',empty:true,events:[presentationEvent('unverified','unknown')]}),before=structuredClone(f.state);
+ const out=f.views.calendar.render({},{});
+ assert.match(out.nativeStatusLabel,/Some event sources could not be verified/);
+ assert.deepEqual(out.renderedRows,[]);assert.equal(out.empty,false);
+ assert.doesNotMatch(out.emptyText,/No events|Free all day/);assert.deepEqual(f.state,before);
+});
+test('unavailable uses natural recovery copy once and retry uses the existing refresh',()=>{
+ const f=fixture({status:'unavailable',empty:true,error:'Implementation-only fallback'}),before=structuredClone(f.state),reads=f.refreshes.length;
+ const out=f.views.calendar.render({},{});
+ assert.equal(out.nativeStatusLabel,'Calendar is unavailable. Retry to load your schedule.');
+ assert.equal(out.empty,false);assert.doesNotMatch(out.emptyText,/Implementation-only|Free all day|No events/);
+ out.nativeStatusRetry();assert.equal(f.refreshes.length,reads+1);assert.deepEqual(f.state,before);
+});
+test('partial empty selected day cannot claim free even when another day has a verified event',()=>{
+ const f=fixture({status:'partial',empty:true,events:[presentationEvent('verified elsewhere','primary')]}),before=structuredClone(f.state);
+ const out=f.views.calendar.render({day:2},{});
+ assert.deepEqual(out.renderedRows.map(row=>row.id),['verified elsewhere']);
+ assert.match(out.nativeStatusLabel,/Some Calendar sources could not be verified/);
+ assert.doesNotMatch(out.emptyText,/Free all day|Free on these days|Nothing scheduled|No events/);
+ assert.equal(out.empty,false);assert.deepEqual(f.state,before);
+});
+test('explicit legacy and transition recovery retain their existing empty-day presentation and actions',()=>{
+ for(const options of [{authority:'legacy',status:'partial'},{authority:'legacy',status:'unavailable',error:'Saved calendar recovery detail'},{authority:'canonical',status:'transition-required'}]){
+  const f=fixture({...options,empty:true});
+  f.state.legacy={present:true,readable:true,records:[{id:'retained',title:'Retained event',begin:Date.parse('2026-10-31T12:00:00Z'),end:Date.parse('2026-10-31T13:00:00Z')} ]};
+  const before=structuredClone(f.state),reads=f.refreshes.length,toasts=[];
+  // Render the same persisted Calendar authority that the shell selected.
+  const out=f.views.calendar.render(f.calendar, {toast:message=>toasts.push(message)});
+  assert.equal(out.calendarSourceLabel,'Saved app calendar · Read only');
+  if(options.error)assert.equal(out.nativeStatusLabel,options.error,'legacy recovery detail is retained');
+  assert.equal(out.empty,true);assert.equal(out.emptyText,'Free all day','existing legacy renderer presentation is unchanged');
+  assert.deepEqual(out.renderedRows.map(row=>row.id),['legacy-calendar:retained']);
+  assert.equal(out.canConfirmCalendarTransition,options.status==='transition-required');
+  assert.equal(typeof out.confirmCalendarTransition,'function');
+  out.newEvent();assert.deepEqual(toasts,['Choose Agent Calendar to create an event.']);
+  assert.equal(f.refreshes.length,reads);assert.deepEqual(f.state,before);assert.deepEqual(f.creates,[]);
+ }
+});

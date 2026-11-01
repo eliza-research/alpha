@@ -19,6 +19,8 @@ test('explicit Calendar rejection survives the private transport; uncertain repl
   const buildPort=contents=>build({stdin:{contents:`export {createManagedCalendarMutationPort} from ${JSON.stringify(entry)};export {CalendarMutationNotAcceptedError} from ${JSON.stringify(join(dirname(original),'types.ts'))};`,resolveDir:process.cwd(),loader:'ts'},bundle:true,platform:'node',format:'esm',write:false,plugins:[{name:'upstream-patch-source',setup(b){
    b.onLoad({filter:/managed\.ts$/},args=>args.path===realpathSync(entry)?{contents,loader:'ts',resolveDir:dirname(original)}:undefined);
    b.onResolve({filter:/^@elizaos\/core$/},()=>({path:'core',namespace:'port'}));
+   // Resolve the reader's real runtime contract from the same pinned upstream source.
+   b.onResolve({filter:/^@elizaos\/contracts$/},()=>({path:join(upstream,'packages/contracts/src/calendar.ts')}));
    b.onResolve({filter:/^\.\/ledger\.js$/},()=>({path:'ledger',namespace:'port'}));
    b.onLoad({filter:/.*/,namespace:'port'},args=>({loader:'js',contents:args.path==='core'?'export class ElizaError extends Error{}':'export const calendarMutationApprovalSha256=()=>"hash";export const calendarMutationOperationKey=()=>"stable-key";'}));
   }}]});

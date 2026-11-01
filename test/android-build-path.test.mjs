@@ -41,6 +41,11 @@ function fixture(t) {
     fs.mkdirSync(path.dirname(file), {recursive: true});
     fs.writeFileSync(file, text);
   };
+  // Model a checkout's committed metadata, not native artifacts or qualification.
+  const voice = JSON.parse(read(VOICE_HOST_MANIFEST));
+  write('app.config.json', read('app.config.json'));
+  write('android/paradee-voice/asr-inputs.json', read('android/paradee-voice/asr-inputs.json'));
+  write(VOICE_HOST_MANIFEST, JSON.stringify({...voice, pin: commit, qualified: false, evidence: {deviceExecuted: false, emulatorDeviceExecuted: false, userAccepted: false, scope: 'Synthetic checkout metadata only; no native execution or acceptance'}}));
   const source = path.join(root, 'artifacts/local-agent-resident-' + commit);
   return {root, source, write, commit};
 }
