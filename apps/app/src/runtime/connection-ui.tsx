@@ -1194,6 +1194,8 @@ async function connectResident(signal: AbortSignal, admitted?: ResidentAdmission
   let admission:ResidentAdmission|null=null,bound:Awaited<ReturnType<typeof applyResidentBinding>>|null=null;
   if(isAndroid||browserCloudResidentEnabled){const status=await localProviderStatus();signal.throwIfAborted();update({providerStatus:status});}
   const ownProvider=ownProviderSelected();
+  // A prior Cloud plan may not rebind a resident now using its own keys.
+  if(ownProvider){stopEntitlementRefresh();residentBinding='unbound';}
   if(residentCloudFlow()&&!ownProvider){
     admission=admitted??await admitCloudResident(signal);
     // QA on staging (or in a browser) stops at plan admission: the on-device agent's Cloud
@@ -2660,6 +2662,7 @@ export const connectionController = {
     const now=Date.now();
     if(!explicit&&!planManagementReturn&&now-lastPlanRecheck<PLAN_RECHECK_INTERVAL_MS)return;
     planManagementReturn=false;lastPlanRecheck=now;
+    if(ownProviderSelected()){void restoreOwnProviderCloudServices();return;}
     // Without bound Cloud inference (no plan, offline, signed out) or without a running agent, the
     // account and plan are read again; the agent is rebound or restarted only when that changes.
     if(!state.session||residentBinding!=='cloud'){void recheckResidentPlan();return;}

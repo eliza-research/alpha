@@ -61,3 +61,11 @@ test('a delayed absent credential read cannot clear a newly adopted service',asy
  const check=box.run();const fresh={identity:{credentialId:'new'}};box.service=fresh;
  resolve(null);await check;assert.equal(box.service,fresh);assert.ok(!calls.includes('detach'));
 });
+
+
+test('foreground own-mode checks never refresh a prior Cloud inference plan, and recovery blocks all checks',()=>{
+ const start=source.indexOf('  recheckPlanOnReturn('),end=source.indexOf('  /**',start);
+ const method=stripTypeScriptTypes('const controller={'+source.slice(start,end)+'};globalThis.check=controller.recheckPlanOnReturn;',{mode:'transform'});
+ let services=0;const box={residentCloudFlow:()=>true,operation:null,sending:null,state:{busy:false,session:{}},Date,planManagementReturn:false,lastPlanRecheck:0,PLAN_RECHECK_INTERVAL_MS:1,ownProviderSelected:()=>true,restoreOwnProviderCloudServices:()=>{services++;},residentBinding:'cloud',entitlementRefresher:{refreshNow(){throw Error('Old Cloud plan must not be used');}}};
+ vm.createContext(box);vm.runInContext(method,box);box.check(true);assert.equal(services,1);box.state.residentRecoveryReason='blocked';box.check(true);assert.equal(services,1);
+});
