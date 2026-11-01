@@ -13,7 +13,7 @@ test('real CI source verifier rejects overlays, missing sources and forged sourc
   // Existing immutable Git objects suffice; this test never checks out or edits SDK source.
   fs.symlinkSync(fs.realpathSync(process.env.ALPHA_RUNTIME_GIT_CACHE||path.join(root,'vendor/eliza')),path.join(temporary,'vendor/eliza'),'dir');
   fs.mkdirSync(path.join(temporary,'scripts'),{recursive:true});
-  for(const relative of ['upstream.lock.json','scripts/stage-local-agent-sources.mjs','scripts/local-agent-source.mjs'])fs.copyFileSync(path.join(root,relative),path.join(temporary,relative));
+  for(const relative of ['upstream.lock.json','scripts/stage-local-agent-sources.mjs','scripts/local-agent-source.mjs','scripts/upstream-native-repairs.mjs'])fs.copyFileSync(path.join(root,relative),path.join(temporary,relative));
   const result=execFileSync('python3',['-c',String.raw`
 import sys,copy,json,hashlib,subprocess
 from pathlib import Path
@@ -22,7 +22,7 @@ from resident_native_source import verify_generated_native
 h=lambda value:hashlib.sha256(value).hexdigest()
 lock=json.loads(Path('upstream.lock.json').read_text())
 generated={'runtimeSource':{'commit':lock['commit']},'patches':[],'files':[]}
-frozen={p:h(Path(p).read_bytes()) for p in ['scripts/stage-local-agent-sources.mjs','scripts/local-agent-source.mjs']}
+frozen={p:h(Path(p).read_bytes()) for p in ['scripts/stage-local-agent-sources.mjs','scripts/local-agent-source.mjs','scripts/upstream-native-repairs.mjs']}
 for index,name in enumerate(['ElizaAgentService','IpcStartupRecovery','SecureStoreFrameInput']):
  origin='packages/app/platforms/android/app/src/main/java/ai/elizaos/app/'+name+'.java'
  committed=subprocess.check_output(['git','-C','vendor/eliza','show',lock['commit']+':'+origin])
@@ -36,7 +36,7 @@ for mutate in mutations:
  try:verify_generated_native(changed,frozen)
  except (AssertionError,KeyError):pass
  else:raise AssertionError('Tampered native source was accepted')
-for script in ['scripts/stage-local-agent-sources.mjs','scripts/local-agent-source.mjs']:
+for script in ['scripts/stage-local-agent-sources.mjs','scripts/local-agent-source.mjs','scripts/upstream-native-repairs.mjs']:
  changed=copy.deepcopy(frozen);changed[script]='0'*64
  try:verify_generated_native(generated,changed)
  except AssertionError:pass

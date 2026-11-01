@@ -3,6 +3,7 @@ import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {sourceDirectory, verifySource} from './local-agent-source.mjs';
+import {applyUpstreamRepair} from './upstream-native-repairs.mjs';
 const root=path.resolve(import.meta.dirname,'..');
 const upstream=path.join(root,'vendor/eliza');
 const pin=JSON.parse(fs.readFileSync(path.join(root,'upstream.lock.json'),'utf8')).commit;
@@ -18,11 +19,13 @@ const classes=['SecureStoreFrameInput','AgentSecureStore','DeviceRamTierPolicy',
 const output=path.join(root,'android/app/build/generated/local-agent/java');
 fs.rmSync(output,{recursive:true,force:true});
 const target=path.join(output,...identity.split('.'));fs.mkdirSync(target,{recursive:true});
-const manifest={pin,identity,runtimeSource:{commit:pin},patches:[],files:[]};
+const manifest={pin,identity,runtimeSource:{commit:pin},patches:[],upstreamRepairs:[],files:[]};
 for(const name of classes){
   const relative=`packages/app/platforms/android/app/src/main/java/ai/elizaos/app/${name}.java`;
   const input=fs.readFileSync(path.join(runtimeSource,relative),'utf8');
-  let value=input.replaceAll('ai.elizaos.app',identity).replaceAll('R.mipmap.ic_launcher','R.drawable.notification_icon');
+  const repaired=applyUpstreamRepair(relative,input);
+  if(repaired.repair)manifest.upstreamRepairs.push(repaired.repair);
+  let value=repaired.value.replaceAll('ai.elizaos.app',identity).replaceAll('R.mipmap.ic_launcher','R.drawable.notification_icon');
   // Abstract sockets are device-global. Give the consumer its own namespace.
   value=value.replaceAll('"eliza_local_agent_v1"',`"${identity}.agent.v1"`).replaceAll('"eliza_bionic_infer_v1"',`"${identity}.inference.v1"`);
   if(name==='ElizaAgentService'){

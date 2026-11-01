@@ -409,7 +409,7 @@ test('the browser build of Settings shows no fixture value and no radio or senso
  expect(await page.locator('[aria-pressed]').evaluateAll(list=>list.map(e=>e.getAttribute('aria-label')))).toEqual([]);
 });
 
-test('Settings › Eliza Cloud account & plan reports the verified plan and opens explicit code entry',async({page})=>{
+test('Settings › Eliza Cloud account & plan reports the verified plan without asking an admitted account for a code',async({page})=>{
  await nativeStub(page);
  await openSettings(page);
  const row=current(page).getByRole('button',{name:/Eliza Cloud account & plan/});
@@ -417,8 +417,8 @@ test('Settings › Eliza Cloud account & plan reports the verified plan and open
  const plan=current(page);
  await expect(plan.getByText('synthetic-settings@example.invalid',{exact:true})).toBeVisible();
  await expect(plan.getByText('Plus',{exact:true})).toBeVisible();
- await plan.getByRole('button',{name:'Redeem code',exact:true}).click();
- await expect(page.getByRole('dialog',{name:'Eliza Cloud account & plan',exact:true}).getByRole('textbox',{name:'Subscription code',exact:true})).toBeVisible();
+ await expect(plan.getByRole('button',{name:'Redeem code',exact:true})).toHaveCount(0);
+ await expect(plan.getByRole('button',{name:'Manage plan',exact:true})).toBeVisible();
  expect(await page.evaluate(()=>(window as any).truth.calls.filter((c:any)=>c.plugin==='AlphaConnection'&&c.method==='request'&&new URL(c.input.url).pathname==='/api/v1/subscription/redeem').length)).toBe(0);
 });
 
@@ -430,8 +430,9 @@ for(const subscription of ['credits','active','canceled'] as const)test(`Setting
  await page.getByRole('button',{name:'Settings',exact:true}).click();
  await current(page).getByRole('button',{name:/Eliza Cloud account & plan/}).click();
  const plan=current(page),redeem=plan.getByRole('button',{name:'Redeem code',exact:true});
- if(subscription==='credits'){
-  await expect(plan.getByText('Eliza Cloud credits',{exact:true})).toBeVisible();
+ if(subscription!=='canceled'){
+  // An account Cloud admitted (credits or an active plan) is not asked for a code.
+  if(subscription==='credits')await expect(plan.getByText('Eliza Cloud credits',{exact:true})).toBeVisible();
   await expect(redeem).toHaveCount(0);
   await expect(plan.getByRole('button',{name:'Manage plan',exact:true})).toBeVisible();
  }else{

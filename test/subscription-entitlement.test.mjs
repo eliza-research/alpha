@@ -690,11 +690,11 @@ test('Settings retains unknown, expired, inactive and credit-funded admission st
   const start = ui.indexOf('  residentPlanSettings(){');
   const end = ui.indexOf('\n  },', start);
   assert.ok(start >= 0 && end > start, 'actual Settings summary method located');
-  const summarize = new Function('state', 'residentCloudFlow', 'describeSubscription', 'readPlanAdmission', 'CLOUD_KEY_EXPIRY_WARNING_MS', 'cloudServiceName', 'cloud',
+  const summarize = new Function('state', 'residentCloudFlow', 'describeSubscription', 'readPlanAdmission', 'CLOUD_KEY_EXPIRY_WARNING_MS', 'cloudServiceName', 'cloud', 'planAdmission',
     `return ({${ui.slice(start, end + 5)}}).residentPlanSettings();`);
   const account = {email:'qa@example.invalid', userId:USER};
-  const snapshot = {cloudAccount:account, residentPlanNotice:'needs-plan', residentInference:'unavailable'};
-  const read = overrides => summarize({...snapshot, ...overrides}, () => true, describeSubscription, () => null, 86400000, () => 'Nebula', {environment:'production'});
+  const snapshot = {cloudAccount:account, residentPlanNotice:'needs-plan', residentInference:'unavailable', session:{}};
+  const read = overrides => summarize({...snapshot, ...overrides}, () => true, describeSubscription, () => null, 86400000, () => 'Nebula', {environment:'production'}, planAdmission);
   for (const reason of ['outage', 'not-published', 'invalid']) {
     const result = read({residentSubscription:{kind:'unavailable', reason}});
     assert.equal(result.plan, 'Plan status unavailable', reason);
@@ -717,6 +717,13 @@ test('Settings retains unknown, expired, inactive and credit-funded admission st
   const active = read({residentSubscription:{kind:'active', planName:'Synthetic plan', status:'active', allowance:null, expiresAt:NOW, refreshFailed:false}, residentPlanNotice:null, residentInference:'cloud'});
   assert.equal(active.plan, 'Synthetic plan');
   assert.equal(active.status, 'active');
+  // An admitted account is not offered a code; an account without a plan is.
+  assert.equal(active.offerRedeem, false);
+  assert.equal(credits.offerRedeem, false);
+  assert.equal(read({residentSubscription:{kind:'inactive', status:'none', planName:null, source:'billing-limits'}}).offerRedeem, true);
+  // A stopped agent is the reason AI is off, not the plan or Cloud.
+  const stopped = read({session:null, kind:'recovering', residentSubscription:{kind:'active', planName:'Synthetic plan', status:'active', allowance:null, expiresAt:NOW, refreshFailed:false}, residentPlanNotice:null, residentInference:'unavailable'});
+  assert.equal(stopped.inference, 'Unavailable · agent not running');
   assert.equal(read({residentSubscription:null, residentPlanNotice:null}).plan, 'Checking plan…');
   assert.equal(read({cloudAccount:null, residentSubscription:null, residentPlanNotice:null}).plan, 'Not signed in');
   const offline = read({cloudAccount:null, residentSubscription:{kind:'unavailable', reason:'outage'}, residentPlanNotice:'offline'});

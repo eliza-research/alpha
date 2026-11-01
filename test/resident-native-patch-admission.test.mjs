@@ -15,3 +15,18 @@ test('obsolete resident patch slot is refused rather than reapplied',()=>{
  assert.throws(()=>preparePatchedNative({manifestFile:'resident-native-manifest.json'}),/Unknown native patch slot/);
  assert.equal(fs.existsSync('patches/eliza/resident-ipc-recovery.patch'),false);
 });
+test('the resident stop-race repair reproduces its reviewed upstream file and refuses drift',async()=>{
+ const {UPSTREAM_REPAIRS,applyUpstreamRepair}=await import('../scripts/upstream-native-repairs.mjs');
+ const [repair]=UPSTREAM_REPAIRS;
+ const pinned=fs.readFileSync(`vendor/eliza/${repair.path}`,'utf8');
+ const {value,repair:recorded}=applyUpstreamRepair(repair.path,pinned);
+ assert.equal(sha(value),repair.repairedSha256);
+ assert.equal(recorded.commit,repair.commit);
+ // processes() reads each identity through the absence proof; a vanished process no longer refuses the stop.
+ assert.match(value,/Identity identity=observePresent\(pid,\(\)->processIdentity\(pid,deadline\)\);if\(identity==null\)continue;/);
+ assert.doesNotMatch(value,/result\.put\(pid,processIdentity\(pid,deadline\)\)/);
+ // An exited, unreaped process's empty argv goes through the same proof instead of refusing the stop.
+ assert.match(value,/observePresent\(pid,\(\)->presentArguments\(bounded\(new File\(entry,"cmdline"\),65536\)\)\)/);
+ assert.throws(()=>applyUpstreamRepair(repair.path,pinned+' '),/no longer matches/);
+ assert.deepEqual(applyUpstreamRepair('other.java','x'),{value:'x',repair:null});
+});

@@ -8,11 +8,15 @@ from pathlib import Path
 def verify_generated_native(generated, frozen, root=Path('.')):
     root = Path(root).resolve()
     digest = lambda value: hashlib.sha256(value).hexdigest()
-    for relative in ('scripts/local-agent-source.mjs', 'scripts/stage-local-agent-sources.mjs'):
+    for relative in ('scripts/local-agent-source.mjs', 'scripts/stage-local-agent-sources.mjs', 'scripts/upstream-native-repairs.mjs'):
         assert frozen[relative] == digest((root / relative).read_bytes()), 'Native source build input drift'
     lock = json.loads((root / 'upstream.lock.json').read_text())
     assert generated['runtimeSource'] == {'commit': lock['commit']}
     assert generated['patches'] == [], 'Resident source must be patchless at the merged upstream pin'
+    # Reviewed upstream commits not yet in the pin, each bound to exact source and result hashes.
+    repairs = {row['path']: row for row in generated.get('upstreamRepairs', [])}
+    for row in repairs.values():
+        assert len(row['commit']) == 40 and all(c in '0123456789abcdef' for c in row['commit']), 'Invalid upstream repair commit'
     seen = set()
     for row in generated['files']:
         origin = row['path']
@@ -22,6 +26,8 @@ def verify_generated_native(generated, frozen, root=Path('.')):
         original = digest(committed)
         assert row['sourceSha256'] == original, 'Native original source drift'
         assert row['sha256'] == original, 'Native admitted source drift'
+        if origin in repairs:
+            assert repairs[origin]['sourceSha256'] == original, 'Upstream repair source drift'
         if origin.endswith('.java'):
             target = row['generatedPath']
             assert target.startswith('android/app/build/generated/local-agent/java/') and '..' not in Path(target).parts

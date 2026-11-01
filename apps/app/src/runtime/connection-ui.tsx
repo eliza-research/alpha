@@ -580,7 +580,17 @@ async function work(message: string, action: (signal: AbortSignal) => Promise<vo
     }
     update({ error: errorMessage(error), ...(background&&!state.open?{purpose:residentCloudFlow()?'agent' as const:'cloud-account' as const}:{}), open: true, message: '' });
   }
-  finally { if (operation === controller) { operation = null; residentStartInBackground = false; } update({ busy: false, ...(background&&!state.open?{message:''}:{}) }); runQueuedResidentRebind(); runQueuedSignInReturn(); }
+  finally { if (operation === controller) { operation = null; residentStartInBackground = false; } update({ busy: false, ...(background&&!state.open?{message:''}:{}) }); runQueuedResidentRebind(); runQueuedSignInReturn(); scheduleResidentAutoRetry(); }
+}
+/** P-43: the agent always runs. A resident left `recovering` (a failed start or rebind, never a
+ * recovery review, which needs the owner) starts again by itself with backoff; Retry stays offered
+ * throughout and once the attempts are spent. A running agent resets the attempts. */
+const RESIDENT_AUTO_RETRY_MS = [3000, 10000, 30000, 60000];
+let residentAutoRetries = 0, residentAutoRetry: ReturnType<typeof setTimeout> | undefined;
+function scheduleResidentAutoRetry() {
+  if (active) { residentAutoRetries = 0; return; }
+  if (!residentAlwaysPresent || !isAndroid || testMocksEnabled || residentAutoRetry || operation || state.kind !== 'recovering' || state.residentRecoveryReason || residentAutoRetries >= RESIDENT_AUTO_RETRY_MS.length) return;
+  residentAutoRetry = setTimeout(() => { residentAutoRetry = undefined; residentAutoRetries++; void ensureResident(); }, RESIDENT_AUTO_RETRY_MS[residentAutoRetries]);
 }
 /** Start (or restart) the resident. A failure leaves the `recovering` state with a Retry, never "no agent". */
 async function startResident(message = RESIDENT_STARTING, background = true) {
@@ -1756,9 +1766,12 @@ export const connectionController = {
     const view=state.residentSubscription,account=state.cloudAccount,plan=view&&view.kind!=='checking'?describeSubscription(view,serviceName):null;
     const expiresAt=account?.expiresAt??null;
     // The agent always runs; this says only whether Eliza Cloud AI is connected to it.
-    const inference=state.residentInference==='unknown'?'Status unconfirmed':state.residentInference==='cloud'?serviceName:state.residentPlanNotice==='offline'?'Unavailable · Cloud unreachable':state.residentInference==='unavailable'?(account?(view?.kind==='inactive'?'Unavailable · check Cloud account':'Unavailable · Cloud status unconfirmed'):'Unavailable · sign in'):'Starting…';
-    if(state.residentPlanNotice==='offline'&&!account){const recent=readPlanAdmission();return {signedIn:false,offline:true,account:null,plan:recent?`${recent.planName} · offline`:'Offline',status:recent?.status??null,endsAt:state.planEndsAt??null,keyExpiresAt:null,keyExpiring:false,inference};}
+    // An agent that is not running cannot use any plan: say that, not a plan or Cloud problem.
+    const inference=!state.session&&account&&planAdmission(view)!=='needs-plan'?(state.kind==='recovering'?'Unavailable · agent not running':'Starting…'):state.residentInference==='unknown'?'Status unconfirmed':state.residentInference==='cloud'?serviceName:state.residentPlanNotice==='offline'?'Unavailable · Cloud unreachable':state.residentInference==='unavailable'?(account?(view?.kind==='inactive'?'Unavailable · check Cloud account':'Unavailable · Cloud status unconfirmed'):'Unavailable · sign in'):'Starting…';
+    if(state.residentPlanNotice==='offline'&&!account){const recent=readPlanAdmission();return {signedIn:false,offline:true,offerRedeem:false,account:null,plan:recent?`${recent.planName} · offline`:'Offline',status:recent?.status??null,endsAt:state.planEndsAt??null,keyExpiresAt:null,keyExpiring:false,inference};}
     return {signedIn:!!account,offline:false,inference,account:account?(account.email||`Account ${account.userId.slice(0,8)}`):null,
+      // A code is offered as the way to get a plan; an account Cloud admitted is not asked for one.
+      offerRedeem:!!account&&planAdmission(view)!=='admit'&&view?.kind!=='credits',
       plan:plan?.headline??(account?'Checking plan…':'Not signed in'),
       status:view?.kind==='active'?view.status:view?.kind==='inactive'?view.status:null,
       endsAt:state.planEndsAt??null,keyExpiresAt:expiresAt,keyExpiring:expiresAt!==null&&expiresAt-Date.now()<=CLOUD_KEY_EXPIRY_WARNING_MS};
