@@ -1,11 +1,10 @@
-import {runProviderConfiguration} from './provider-configuration.ts';
 import { isPreparedViewNavigationRequest } from './prepared-view-navigation.ts';
 import {subscribeNativeViewEvents,type NativeViewEventPort} from "./native-view-events";
 import {browserCloudResidentEnabled,browserResidentCall} from './browser-cloud-resident';
 import type {AppRecordMethod} from './app-record-route-policy';
 import {developmentCartesiaVoiceEnabled} from './development-cartesia-flag';
 import {parseRecoveryReview,parseRecoveryArchive} from './resident-recovery';
-import {anyAbortSignal} from './abort-signal';
+import {anyAbortSignal,runProviderConfiguration} from './abort-signal';
 import {developmentCloudVoiceEnabled} from './development-cloud-voice';
 import type {AutomationsMethod} from './automations-route-policy.ts';
 import {ownerRouteAllowed, ownerRouteGroup} from './owner-route-policy.ts';

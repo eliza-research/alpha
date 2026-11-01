@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {runProviderConfiguration} from '../apps/app/src/runtime/provider-configuration.ts';
+import {runProviderConfiguration} from '../apps/app/src/runtime/abort-signal.ts';
 
 test('native renderer propagates cancel before paused validation can commit',async()=>{
  let release,request,revoked=false,save=0,retire=0;
