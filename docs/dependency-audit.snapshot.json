@@ -103,16 +103,16 @@
   ],
   "resident": {
     "description": "Advisories for the resident runtime's npm packages at the pinned upstream commit, from the npm bulk advisory endpoint. Regenerate with: node scripts/dependency-audit.mjs --resident --write. Dispositions live in docs/dependency-audit.dispositions.json under \"resident\".",
-    "upstreamCommit": "641c179ce8214c864a7ea3dee23dae2d2bd2a682",
+    "upstreamCommit": "6f362bef81c19896882e3d582dc5c0c2df488fd2",
     "input": "vendor/eliza/bun.lock",
-    "auditedOn": "2026-10-30",
+    "auditedOn": "2026-11-01",
     "inputSha256": "7c9d7bd390a29fac9da3c16af0fdc4d0998ce7eaf6fb2b82020bc9055ee9e11e",
     "packages": 3677,
     "counts": {
       "info": 0,
-      "low": 18,
-      "moderate": 61,
-      "high": 59,
+      "low": 21,
+      "moderate": 66,
+      "high": 65,
       "critical": 1
     },
     "findings": [
@@ -462,7 +462,7 @@
           "id": "GHSA-mghh-pgcx-3jjj",
           "severity": "high",
           "vulnerableRange": ">=1.15.0 <1.20.0",
-          "title": "Axios: ReDoS (O(N\u00b2)) in shouldBypassProxy host normalization, reachable via untrusted redirect Location",
+          "title": "Axios: ReDoS (O(N²)) in shouldBypassProxy host normalization, reachable via untrusted redirect Location",
           "url": "https://github.com/advisories/GHSA-mghh-pgcx-3jjj"
         }
       },
@@ -809,11 +809,40 @@
         ],
         "severity": "high",
         "advisory": {
+          "id": "GHSA-mrwp-f3q8-3g9p",
+          "severity": "high",
+          "vulnerableRange": ">=1.16.0 <=1.16.1",
+          "title": "follow-redirects: Cross-realm sensitiveHeaders arrays are discarded and custom credentials can follow redirects",
+          "url": "https://github.com/advisories/GHSA-mrwp-f3q8-3g9p"
+        }
+      },
+      {
+        "package": "follow-redirects",
+        "versions": [
+          "1.16.0"
+        ],
+        "severity": "high",
+        "advisory": {
           "id": "GHSA-q3jh-wrc6-jgq8",
           "severity": "high",
           "vulnerableRange": ">=1.16.0 <1.16.1",
           "title": "follow-redirects array-form headers bypass cross-origin credential stripping",
           "url": "https://github.com/advisories/GHSA-q3jh-wrc6-jgq8"
+        }
+      },
+      {
+        "package": "glob",
+        "versions": [
+          "10.5.0",
+          "13.0.6"
+        ],
+        "severity": "moderate",
+        "advisory": {
+          "id": "GHSA-3g3m-2fjr-6pw4",
+          "severity": "moderate",
+          "vulnerableRange": ">=9.0.0 <=14.0.1",
+          "title": "Glob: AbortSignal cancellation bypass allows post-timeout filesystem traversal",
+          "url": "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
         }
       },
       {
@@ -840,7 +869,7 @@
           "id": "GHSA-5p4m-2wfm-xmqj",
           "severity": "high",
           "vulnerableRange": ">=4.0.0 <4.3.1",
-          "title": "JS-YAML: Quadratic CPU consumption in !!omap resolution (3.x and 4.x) \u2014 CVE-2026-59870 fix not backported",
+          "title": "JS-YAML: Quadratic CPU consumption in !!omap resolution (3.x and 4.x) — CVE-2026-59870 fix not backported",
           "url": "https://github.com/advisories/GHSA-5p4m-2wfm-xmqj"
         }
       },
@@ -874,6 +903,122 @@
         }
       },
       {
+        "package": "minimatch",
+        "versions": [
+          "10.2.5",
+          "10.2.6",
+          "3.1.4",
+          "5.1.9",
+          "9.0.9"
+        ],
+        "severity": "moderate",
+        "advisory": {
+          "id": "GHSA-g3hv-75wg-m249",
+          "severity": "moderate",
+          "vulnerableRange": "<11.0.1",
+          "title": "minimatch has potential denial of service via globparts amplification",
+          "url": "https://github.com/advisories/GHSA-g3hv-75wg-m249"
+        }
+      },
+      {
+        "package": "node-forge",
+        "versions": [
+          "1.4.0"
+        ],
+        "severity": "low",
+        "advisory": {
+          "id": "GHSA-4487-j8r4-4g2f",
+          "severity": "low",
+          "vulnerableRange": "<=1.4.0",
+          "title": "Forge: verifyCertificateChain() removes trusted CA certificates with the same subject from the CA store",
+          "url": "https://github.com/advisories/GHSA-4487-j8r4-4g2f"
+        }
+      },
+      {
+        "package": "node-forge",
+        "versions": [
+          "1.4.0"
+        ],
+        "severity": "low",
+        "advisory": {
+          "id": "GHSA-4642-5mcj-2rqw",
+          "severity": "low",
+          "vulnerableRange": "<=1.4.0",
+          "title": "Forge: ASN.1 OID first arc truncation in asn1.oidToDer",
+          "url": "https://github.com/advisories/GHSA-4642-5mcj-2rqw"
+        }
+      },
+      {
+        "package": "node-forge",
+        "versions": [
+          "1.4.0"
+        ],
+        "severity": "moderate",
+        "advisory": {
+          "id": "GHSA-525v-9gp9-w22h",
+          "severity": "moderate",
+          "vulnerableRange": "<=1.4.0",
+          "title": "Forge: TLS client crash when the server sends no certificate",
+          "url": "https://github.com/advisories/GHSA-525v-9gp9-w22h"
+        }
+      },
+      {
+        "package": "node-forge",
+        "versions": [
+          "1.4.0"
+        ],
+        "severity": "moderate",
+        "advisory": {
+          "id": "GHSA-5cwg-6vw7-rj6p",
+          "severity": "moderate",
+          "vulnerableRange": "<=1.4.0",
+          "title": "Forge: AES-GCM authentication bypass via unvalidated tagLength option",
+          "url": "https://github.com/advisories/GHSA-5cwg-6vw7-rj6p"
+        }
+      },
+      {
+        "package": "node-forge",
+        "versions": [
+          "1.4.0"
+        ],
+        "severity": "high",
+        "advisory": {
+          "id": "GHSA-5x38-2vff-x55p",
+          "severity": "high",
+          "vulnerableRange": "<=1.4.0",
+          "title": "Forge: X.509 basicConstraints bypass in verifyCertificateChain() via deprecated extension OIDs 2.5.29.10 and 2.5.29.13",
+          "url": "https://github.com/advisories/GHSA-5x38-2vff-x55p"
+        }
+      },
+      {
+        "package": "node-forge",
+        "versions": [
+          "1.4.0"
+        ],
+        "severity": "moderate",
+        "advisory": {
+          "id": "GHSA-6wvx-3r32-xmcg",
+          "severity": "moderate",
+          "vulnerableRange": "<=1.4.0",
+          "title": "Forge: Prototype Pollution in forge.http cookie handling via a malicious Set-Cookie",
+          "url": "https://github.com/advisories/GHSA-6wvx-3r32-xmcg"
+        }
+      },
+      {
+        "package": "node-forge",
+        "versions": [
+          "1.4.0"
+        ],
+        "severity": "high",
+        "advisory": {
+          "id": "GHSA-7wch-p9px-956x",
+          "severity": "high",
+          "vulnerableRange": "<=1.4.0",
+          "title": "Forge: Regular expression denial of service in PEM decoding (pem.decode)",
+          "url": "https://github.com/advisories/GHSA-7wch-p9px-956x"
+        }
+      },
+      {
         "package": "node-forge",
         "versions": [
           "1.4.0"
@@ -885,6 +1030,62 @@
           "vulnerableRange": "<=1.4.0",
           "title": "node-forge RSA PKCS#1 v1.5 signature verification accepts extra nested DigestAlgorithm elements",
           "url": "https://github.com/advisories/GHSA-86w9-cpqp-85rv"
+        }
+      },
+      {
+        "package": "node-forge",
+        "versions": [
+          "1.4.0"
+        ],
+        "severity": "high",
+        "advisory": {
+          "id": "GHSA-8hrf-8g6f-7xwp",
+          "severity": "high",
+          "vulnerableRange": "<=1.4.0",
+          "title": "Forge: Denial of service in TLS record processing via a record interleaved with a fragmented handshake message",
+          "url": "https://github.com/advisories/GHSA-8hrf-8g6f-7xwp"
+        }
+      },
+      {
+        "package": "node-forge",
+        "versions": [
+          "1.4.0"
+        ],
+        "severity": "low",
+        "advisory": {
+          "id": "GHSA-h6cr-wjv9-3cpp",
+          "severity": "low",
+          "vulnerableRange": "<=1.4.0",
+          "title": "Forge: Denial of Service via infinite loop in BigInteger.modInverse() with negative input (incomplete fix of CVE-2026-33891)",
+          "url": "https://github.com/advisories/GHSA-h6cr-wjv9-3cpp"
+        }
+      },
+      {
+        "package": "node-forge",
+        "versions": [
+          "1.4.0"
+        ],
+        "severity": "high",
+        "advisory": {
+          "id": "GHSA-hqq3-7jhf-c5jx",
+          "severity": "high",
+          "vulnerableRange": "<=1.4.0",
+          "title": "Forge: Denial of service in TLS record processing via call stack exhaustion",
+          "url": "https://github.com/advisories/GHSA-hqq3-7jhf-c5jx"
+        }
+      },
+      {
+        "package": "node-forge",
+        "versions": [
+          "1.4.0"
+        ],
+        "severity": "high",
+        "advisory": {
+          "id": "GHSA-jc66-7q78-782g",
+          "severity": "high",
+          "vulnerableRange": "<=1.4.0",
+          "title": "Forge: PKCS#12 MAC forgery and constant-key PBE via zero iteration count",
+          "url": "https://github.com/advisories/GHSA-jc66-7q78-782g"
         }
       },
       {
@@ -1094,7 +1295,7 @@
           "id": "GHSA-528h-pc64-c93x",
           "severity": "moderate",
           "vulnerableRange": "<=3.4.0",
-          "title": "stream-json: pick/ignore/filter/replace filters are O(depth\u00b2) on nested input \u2014 small crafted JSON blocks the event loop for seconds\u2192minutes (DoS)",
+          "title": "stream-json: pick/ignore/filter/replace filters are O(depth²) on nested input — small crafted JSON blocks the event loop for seconds→minutes (DoS)",
           "url": "https://github.com/advisories/GHSA-528h-pc64-c93x"
         }
       },
