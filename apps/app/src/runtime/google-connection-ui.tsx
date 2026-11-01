@@ -11,7 +11,7 @@ import {clearGoogleCalendarSelectionForConnection} from './google-calendar-selec
 import {openConnectionBrowser,googleWorkspaceReturnPort} from './native-connection';
 import {prepareGoogleWorkspaceReturn,watchGoogleWorkspaceReturn,sameGoogleWorkspaceBinding,type GoogleWorkspaceBinding} from './google-workspace-return';
 import {cloudServiceName,type GmailAccount} from './cloud-protocol';
-import {googleAgentAccess,publishGoogleAgentAccess,savedGoogleCalendarEdits,setGoogleAgentAccess} from './google-agent-access';
+import {googleAgentAccess,publishGoogleAgentAccess,captureGoogleCalendarAccess,setGoogleAgentAccess} from './google-agent-access';
 import {googleCalendarDisconnectLifecycle,linkGoogleCalendar} from './google-calendar-link';
 import {browserCloudResidentEnabled,browserResidentCall} from './browser-cloud-resident';
 import type {AgentCalendarSyncReview} from './agent-calendar';
@@ -161,16 +161,25 @@ export function GoogleConnectionsPanel(){
   }catch(error){if(!abort.signal.aborted){connectionController.rejectCloudSession(cloud.sessionId,error);setNotice('Disconnect was not confirmed. Check Google connections before trying again.'+(calendar&&[...calendar.retained.values()].some(context=>context.connectionId===account.connectionId)?' Review Calendar sync too; saved events are unchanged.':''));}}
   finally{if(active.current===abort)setBusy(false);}
  }
- /** Reads the saved Calendar edits switch first: on continues; off or unreadable shows Allow Calendar changes, never turns it on. */
+ /** Explicit Connect persists the loaded choice for the raw native reader; loading never enables writes. */
+ async function persistCalendarChanges(calendar:GoogleCalendarIntent,choice:NonNullable<Awaited<ReturnType<typeof captureGoogleCalendarAccess>>>){
+  const current=()=>googleConnectionController.calendar()===calendar&&sameGoogleConnectionReturnBinding(binding,currentGoogleConnectionReturnBinding())&&calendar.current()&&calendar.canChange();
+  if(!current())return false;
+  try{await setGoogleAgentAccess({calendarEdits:true},{current,expectedCalendarEdits:choice.calendarEdits,receipt:choice.receipt});return current();}
+  catch{if(current())setNotice('Calendar access changed or could not be saved. Review Calendar edits, then try again.');return false;}
+ }
+ /** Reads fresh first: known on is saved by explicit Connect; off or unreadable still needs the owner's Allow tap. */
  async function calendarChangesAllowed(calendar:GoogleCalendarIntent,rows:GmailAccount[]|null){
-  const saved=await savedGoogleCalendarEdits();if(saved===true)return true;
+  const choice=await captureGoogleCalendarAccess(),saved=choice?.calendarEdits;if(choice&&saved===true)return persistCalendarChanges(calendar,choice);
   if(googleConnectionController.calendar()===calendar){setChoice({calendar,rows});setNotice(`${saved===false?'Calendar edits are off.':'Calendar edits could not be read.'} Allow Calendar changes to sync Calendar with Google; Calendar keeps working in Eliza.`);}
   return false;
  }
  /** The owner's tap: Calendar edits on through the same saved switch toggleAccess uses (Gmail unchanged), then continue. */
  async function allowCalendarChanges({calendar,rows}:{calendar:GoogleCalendarIntent;rows:GmailAccount[]|null}){
   setChoice(null);
-  try{await setGoogleAgentAccess({calendarEdits:true});}catch{setNotice('Calendar edits could not be turned on, so Calendar is not synced. Turn on Calendar edits, then try again.');return;}
+  const choice=await captureGoogleCalendarAccess();
+  if(!choice){setNotice('Calendar edits could not be read. Review device settings, then try again.');return;}
+  if(!await persistCalendarChanges(calendar,choice))return;
   if(rows)await linkCalendar(calendar,rows);else await connectCalendar(calendar);
  }
  /** Calendar intent: a verified Calendar write grant links now; otherwise the normal consent, keeping granted Gmail access. */
