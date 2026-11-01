@@ -368,7 +368,9 @@ export async function flagOffAndroid(page: Page, options: FlagOffOptions = {}) {
 
 /** Reads (or changes) the harness state from the test. */
 export const harness = <T>(page: Page, read: (f: any) => T) => page.evaluate(`(${read.toString()})(window.flagOff)`) as Promise<T>;
-export const button = (page: Page, name: string) => page.getByRole('button', { name, exact: true });
+export const button = (page: Page, name: string) => name==='Inbox'
+  ? page.getByRole('button', { name, exact: true }).and(page.locator('[data-mobile-shell-tile]'))
+  : page.getByRole('button', { name, exact: true });
 
 /** Aborts and records every request that leaves the preview server. */
 export async function fenceNetwork(page: Page) {

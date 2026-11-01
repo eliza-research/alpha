@@ -29,11 +29,11 @@ export async function openCanonicalCalendarForm(page: Page, theme = "light") {
     ).canonicalCalendarAccessibility = f;
     const calendar = {
       provider: "eliza",
-      side: "agent",
-      grantId: "fixture-grant",
+      side: "owner",
+      grantId: "eliza-calendar",
       connectorAccountId: "fixture-account",
       accountEmail: null,
-      calendarId: "fixture-calendar",
+      calendarId: "primary",
       summary: "Fixture Calendar",
       description: null,
       primary: true,
@@ -64,7 +64,7 @@ export async function openCanonicalCalendarForm(page: Page, theme = "light") {
           return { success: true, data: { notes: [], trash: [], revision: 0 } };
         if (url.pathname === "/api/lifeops/calendar/feed")
           return {
-            calendarId: "fixture-calendar",
+            calendarId: "primary",
             events: [],
             source: "cache",
             state: "complete",

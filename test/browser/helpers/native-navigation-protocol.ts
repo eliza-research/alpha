@@ -35,6 +35,15 @@ export function installNativeNavigationFixture() {
     return {
       register(headers: Record<string,string>){installationId=headers['X-Eliza-Device-Id'];deviceKey=headers['X-Eliza-Device-Key'];},
       request(method: string,path: string,body: any,headers: Record<string,string>,requestOwner: unknown){
+        // The current renderer probes optional observation support and warms an idle
+        // Cloud connection. These synthetic responses advertise no capabilities and
+        // perform no inference; retain the owner/method/body boundary of both routes.
+        if(path==='/api/status'||path==='/api/cloud/warm'){
+          const expectedMethod=path==='/api/status'?'GET':'POST';
+          const emptyObject=body!==null&&typeof body==='object'&&!Array.isArray(body)&&Object.keys(body).length===0;
+          if(requestOwner===owner()&&method===expectedMethod&&(emptyObject||(expectedMethod==='GET'&&body===undefined)))return ok({});
+          f.unexpected.push(method+' '+path);return {status:400,data:{error:'Invalid fixture lifecycle contract'}};
+        }
         if(path.startsWith('/api/views/')&&(path.endsWith('/navigate')||path==='/api/views/interact-claim'||path==='/api/views/interact-result'))return navigationRequest(method,path,body,requestOwner);
         if(path==='/api/client-devices/context'){
           const id=owner();

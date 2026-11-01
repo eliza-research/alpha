@@ -35,7 +35,9 @@ test('unloaded workflow and unverified calendar states do not fabricate results 
   // An unverified agent source cannot claim a successful empty calendar read.
   const calendar = page.locator('[data-alpha-layer="home"] button[data-alpha-home-calendar]');
   await expect(calendar).toHaveAttribute('aria-label','Open Agent Calendar');
-  await expect(calendar).toContainText('Calendar has not been verified');
+  // Unverified startup keeps the neutral Calendar label until a complete source read.
+  await expect(calendar.locator('[data-overview-part="title"]')).toHaveText('Calendar');
+  await expect(calendar).not.toContainText('Nothing planned');
   await expect(calendar).not.toContainText('No upcoming events');
   await expect(calendar).toHaveAttribute('data-alpha-home-calendar-event','false');
   await expect(calendar).not.toContainText(/^(MC|JP|\+2)$/);
