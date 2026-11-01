@@ -117,10 +117,11 @@ test("bootstrap, partial, mutation and failures stay neutral and never claim emp
 	);
 });
 test("only a complete covering feed produces a real empty month", () => {
-	assert.equal(
-		select(model([]), "UTC", new Set(), now).emptyLabel,
-		"Nothing planned",
-	);
+	assert.deepEqual({ ...select(model([]), "UTC", new Set(), now) }, {
+		event: null,
+		verified: true,
+		emptyLabel: "Nothing planned",
+	});
 	const s = model([]);
 	s.feed.timeMax = "2026-10-30T00:00:00Z";
 	assert.equal(select(s, "UTC", new Set(), now).verified, false);
@@ -195,4 +196,58 @@ test("each period prefers upcoming, otherwise the most recent past", () => {
 test("week spilling before the month requires full week coverage to prove empty", () => {
  const s = model([]);
  assert.equal(select(s, "UTC", new Set(), new Date("2026-10-02T12:00:00Z")).verified, false);
+});
+
+test("a complete feed with an unknown source cannot prove an empty Home calendar", () => {
+	for (const changedIdentity of [
+		{ provider: "unrecognized-provider" },
+		{ side: "unrecognized-side" },
+		{ grantId: "another-grant" },
+		{ calendarId: "another-calendar" },
+		{ connectorAccountId: "another-account" },
+	]) {
+		const s = model([{ ...event("unverified", "2026-10-29"), ...changedIdentity }]);
+		const before = structuredClone(s);
+		assert.deepEqual({ ...select(s, "UTC", new Set(), now) }, {
+			event: null,
+			verified: false,
+			emptyLabel: "Calendar",
+		});
+		assert.deepEqual(s, before);
+	}
+});
+test("known hidden, withdrawn and unreadable sources retain their empty display policy", () => {
+	for (const [catalog, hidden] of [
+		[[source], new Set([sourceKey(source)])],
+		[[{ ...source, includeInFeed: false }], new Set()],
+		[[{ ...source, accessRole: "none" }], new Set()],
+	]) {
+		const s = { ...model([event("excluded", "2026-10-29")]), calendars: catalog };
+		const before = structuredClone(s);
+		assert.deepEqual({ ...select(s, "UTC", hidden, now) }, {
+			event: null,
+			verified: true,
+			emptyLabel: "Nothing planned",
+		});
+		assert.deepEqual(s, before);
+	}
+});
+test("an unknown source does not displace a verified visible Home event", () => {
+	const known = event("verified today", "2026-10-29");
+	const s = model([{ ...event("unverified", "2026-10-29"), calendarId: "unknown" }, known]);
+	const before = structuredClone(s);
+	const result = select(s, "UTC", new Set(), now);
+	assert.equal(result.event.id, known.id);
+	assert.equal(result.verified, true);
+	assert.deepEqual(s, before);
+});
+test("a cancelled unknown-source row does not invalidate a complete empty calendar", () => {
+	const s = model([{ ...event("cancelled", "2026-10-29"), calendarId: "unknown", status: "cancelled" }]);
+	const before = structuredClone(s);
+	assert.deepEqual({ ...select(s, "UTC", new Set(), now) }, {
+		event: null,
+		verified: true,
+		emptyLabel: "Nothing planned",
+	});
+	assert.deepEqual(s, before);
 });

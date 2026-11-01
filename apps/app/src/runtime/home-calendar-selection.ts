@@ -31,6 +31,16 @@ export function homeCalendarSelection(
 		const x = getZonedDateParts(date, allDay ? "UTC" : timeZone);
 		return Date.UTC(x.year, x.month - 1, x.day);
 	};
+	const matchesSourceIdentity = (
+		source: AgentCalendarState["calendars"][number],
+		event: NonNullable<AgentCalendarState["feed"]>["events"][number],
+	) =>
+		source.provider === event.provider &&
+		source.side === event.side &&
+		source.grantId === event.grantId &&
+		source.calendarId === event.calendarId &&
+		(!event.connectorAccountId ||
+			source.connectorAccountId === event.connectorAccountId);
 	const visible = state.feed.events.filter(
 		(event) =>
 			event.status !== "cancelled" &&
@@ -38,12 +48,7 @@ export function homeCalendarSelection(
 				(source) =>
 					source.includeInFeed === true &&
 					["owner", "writer", "reader"].includes(source.accessRole) &&
-					source.provider === event.provider &&
-					source.side === event.side &&
-					source.grantId === event.grantId &&
-					source.calendarId === event.calendarId &&
-					(!event.connectorAccountId ||
-						source.connectorAccountId === event.connectorAccountId) &&
+					matchesSourceIdentity(source, event) &&
 					!hiddenSources.has(calendarSourceKey(source)),
 			),
 	);
@@ -76,6 +81,17 @@ export function homeCalendarSelection(
 	});
 	if (candidates.length)
 		return { event: candidates[0], verified: true, emptyLabel: "" };
+	// A missing catalog identity cannot prove empty. Known hidden or excluded
+	// sources keep their existing display policy; verified visible events above
+	// still lead the card even when another row has an unknown source.
+	if (
+		state.feed.events.some(
+			(event) =>
+				event.status !== "cancelled" &&
+				!state.calendars.some((source) => matchesSourceIdentity(source, event)),
+		)
+	)
+		return quiet;
 	// An empty answer requires complete coverage of both the local week and month.
 	const begin = Date.parse(state.feed.timeMin),
 		end = Date.parse(state.feed.timeMax);
