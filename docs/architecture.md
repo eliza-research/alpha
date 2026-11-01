@@ -281,6 +281,12 @@ October 27: the native client below is the shared elizaOS library `packages/auth
 product name, Steward app client for native Google, installed slot and preference names, the
 Keystore credential store and the resident credential-intent fence. The subscription entitlement
 client is likewise `@elizaos/cloud-sdk/subscription-entitlement`; Alpha binds only its copy.
+The account UI leads with the monthly subscription, verified plan allowance and
+access end date. It does not show a credit balance or top-up action. Alpha's copy
+adapter presents legacy credit-only accounts as having no active subscription,
+without changing the shared account admission policy. Grant access dates are not
+renewal promises; pricing and paid subscription changes stay in Cloud's billing flow.
+
 
 Native sign-in stays on Alpha's own screens. Email remains available when the optional Google
 readiness probe fails or times out; its native request reports any service configuration failure.

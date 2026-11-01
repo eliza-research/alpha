@@ -150,7 +150,7 @@ const started=(page:Page)=>expect.poll(async()=>(await calls(page)).some(c=>c.pl
 /** This focused composition mounts account/plan UI. Agent controls themselves now live in
  * the actual Settings stack, covered by signed-out-page.production.spec.ts. */
 const accountPanel=(page:Page)=>page.getByRole('dialog',{name:/^Eliza Cloud account(?: & plan)?$/});
-const planDetails=(page:Page)=>accountPanel(page).getByRole('region',{name:'Eliza Cloud plan',exact:true});
+const planDetails=(page:Page)=>accountPanel(page).getByRole('region',{name:'Subscription',exact:true});
 const signInPage=(page:Page)=>page.locator('.alpha-cloud-sign-in[role="main"]');
 async function openAccountPlan(page:Page){await page.evaluate(()=>(window as any).planController.openPlan());const panel=accountPanel(page);await expect(panel).toBeVisible();return panel;}
 async function confirmBillingAccount(page:Page){
@@ -241,7 +241,7 @@ test.describe('plan state binds Cloud inference; the agent always runs',()=>{
   await expect(planDetails(page).getByText('Synthetic plan',{exact:true})).toBeVisible();
   await expect.poll(()=>page.evaluate(()=>(window as any).planController.getSnapshot().membershipBalance)).not.toBe('checking');
   await expect(page.getByText(/3 of 40 requests used this month/)).toBeVisible();
-  await expect(page.getByRole('button',{name:'Manage plan in Eliza Cloud',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Manage subscription',exact:true})).toBeVisible();
   await page.evaluate(()=>document.fonts.ready);await page.screenshot({path:info.outputPath('signed-plan-resume.png'),animations:'disabled'});
   const routes=(await calls(page)).filter(c=>c.method==='request').map(c=>c.path);
   // Explicitly opening the plan panel adds one read, without another admission or mutation.
@@ -268,24 +268,25 @@ test.describe('plan state binds Cloud inference; the agent always runs',()=>{
 
  test('a trialing plan is admitted',async({page})=>{
   await boot(page,{...await entitlements(),plan:'trialing'});
-  await admitted(page);await openAccountPlan(page);await expect(page.getByText('Synthetic plan · trial',{exact:true})).toBeVisible();await release(page);
+  await admitted(page);await openAccountPlan(page);await expect(planDetails(page).getByText('Synthetic plan',{exact:true})).toBeVisible();await expect(planDetails(page).getByText('Trial',{exact:true})).toBeVisible();await release(page);
  });
 
  test('a past-due plan is admitted with a clear warning and the hosted plan page',async({page},info)=>{
   await boot(page,{...await entitlements(),plan:'past_due'});
   await admitted(page);await openAccountPlan(page);
-  await expect(page.getByText('Synthetic plan · payment due',{exact:true})).toBeVisible();
-  await expect(page.getByText(/Payment is past due\. Update payment in Eliza Cloud to keep AI available\./)).toBeVisible();
+  await expect(planDetails(page).getByText('Synthetic plan',{exact:true})).toBeVisible();
+  await expect(planDetails(page).getByText('Payment due',{exact:true})).toBeVisible();
+  await expect(planDetails(page).getByText('Update your payment details in Eliza Cloud to keep your subscription active.',{exact:true})).toBeVisible();
   await page.evaluate(()=>document.fonts.ready);await page.screenshot({path:info.outputPath('past-due-warning.png'),animations:'disabled'});
   await release(page);
-  await page.getByRole('button',{name:'Manage plan in Eliza Cloud',exact:true}).click();await confirmBillingAccount(page);
+  await page.getByRole('button',{name:'Manage subscription',exact:true}).click();await confirmBillingAccount(page);
   await expect.poll(async()=>(await calls(page)).filter(c=>c.method==='openExternal').map(c=>c.url)).toEqual(['https://cloud.eliza.app/cloud/billing']);
  });
 
- for(const [status,heading,headline] of [['canceled','Your plan has ended','Synthetic plan has ended'],['none','Choose a plan','No active plan']] as const)test(`a ${status} plan shows "needs plan" beside the running agent and binds no inference`,async({page},info)=>{
+ for(const [status,headline] of [['canceled','Synthetic plan'],['none','No active subscription']] as const)test(`a ${status} plan shows "needs plan" beside the running agent and binds no inference`,async({page},info)=>{
   await boot(page,{...await entitlements(),plan:status});
-  await needsPlan(page);void heading;
-  await expect(page.getByText(headline,{exact:true})).toBeVisible();
+  await needsPlan(page);
+  await expect(planDetails(page).getByText(headline,{exact:true})).toBeVisible();
   await expect(page.getByRole('textbox',{name:'Membership code'})).toBeVisible();
   await expect(page.getByRole('button',{name:'Redeem',exact:true})).toBeVisible();
   await expect(page.getByRole('button',{name:'Check plan again',exact:true})).toBeVisible();
@@ -296,7 +297,7 @@ test.describe('plan state binds Cloud inference; the agent always runs',()=>{
   await started(page);
   await page.evaluate(()=>document.fonts.ready);await page.screenshot({path:info.outputPath(`needs-plan-${status}.png`),animations:'disabled'});
   // Choose a plan opens exactly the allowlisted hosted page in the system browser.
-  await page.getByRole('button',{name:'Choose a plan',exact:true}).click();await confirmBillingAccount(page);
+  await page.getByRole('button',{name:status==='none'?'Choose a monthly plan':'Manage subscription',exact:true}).click();await confirmBillingAccount(page);
   await expect.poll(async()=>(await calls(page)).filter(c=>c.method==='openExternal').map(c=>c.url)).toEqual(['https://cloud.eliza.app/cloud/billing']);
   expect(await configured(page)).toBe(0);
  });
@@ -304,7 +305,7 @@ test.describe('plan state binds Cloud inference; the agent always runs',()=>{
  test('returning from Eliza Cloud checks the plan again and admits a plan chosen there',async({page})=>{
   await boot(page,{...await entitlements(),plan:'none'});
   await needsPlan(page);await idle(page);await started(page);
-  await page.getByRole('button',{name:'Choose a plan',exact:true}).click();await confirmBillingAccount(page);await idle(page);
+  await page.getByRole('button',{name:'Choose a monthly plan',exact:true}).click();await confirmBillingAccount(page);await idle(page);
   await fixture(page,{plan:'active'});
   await page.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));
   await admitted(page);expect(await configured(page)).toBe(1);await release(page);
@@ -316,7 +317,7 @@ test.describe('plan state binds Cloud inference; the agent always runs',()=>{
   await fixture(page,{plan:'canceled'});
   await page.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));
   await needsPlan(page);
-  await expect(page.getByText('Synthetic plan has ended',{exact:true})).toBeVisible();
+  await expect(planDetails(page).getByText('Synthetic plan',{exact:true})).toBeVisible();
   expect(await page.evaluate(()=>(window as any).planController.getSnapshot().residentPlanNotice)).toBe('needs-plan');
   expect((await calls(page)).filter(c=>c.plugin==='Agent'&&c.method==='start').length).toBeGreaterThanOrEqual(2);
  });
@@ -361,7 +362,8 @@ test.describe('entitlement route unavailable: authenticated billing mode fallbac
  for(const limits of ['active','past_due'] as const)test(`a ${limits} billing snapshot admits the agent`,async({page})=>{
   await boot(page,{route:'absent',limits});
   await admitted(page);await openAccountPlan(page);
-  await expect(page.getByText(limits==='active'?'Plus':'Plus · payment due',{exact:true})).toBeVisible();
+  await expect(planDetails(page).getByText('Plus',{exact:true})).toBeVisible();
+  if(limits==='past_due')await expect(planDetails(page).getByText('Payment due',{exact:true})).toBeVisible();
   const routes=(await calls(page)).filter(c=>c.method==='request').map(c=>c.path);
   expect(routes).toEqual(expect.arrayContaining(['/api/v1/subscription/entitlement','/api/v1/billing/limits']));
   expect(routes).not.toContain('/api/v1/credits/balance');
@@ -374,9 +376,9 @@ test.describe('entitlement route unavailable: authenticated billing mode fallbac
  test('organization credits bind the verified account without inventing a subscription',async({page})=>{
   await boot(page,{route:'absent',limits:'none'});await admitted(page);
   await page.evaluate(()=>(window as any).planController.openPlan());
-  const panel=page.getByRole('dialog',{name:'Eliza Cloud account',exact:true});await expect(panel).toBeVisible();
-  await expect(panel.getByText('Eliza Cloud credits',{exact:true})).toBeVisible();
-  await expect(panel.getByRole('button',{name:'Manage billing in Eliza Cloud',exact:true})).toBeVisible();
+  const panel=page.getByRole('dialog',{name:'Eliza Cloud account & plan',exact:true});await expect(panel).toBeVisible();
+  await expect(planDetails(page).getByText('No active subscription',{exact:true})).toBeVisible();
+  await expect(panel.getByRole('button',{name:'Choose a monthly plan',exact:true})).toBeVisible();
   // The code field stays collapsed until the owner asks for it (here: explicit code entry).
   await expect(panel.getByRole('textbox',{name:'Membership code'})).toHaveCount(0);
   await page.evaluate(()=>(window as any).planController.openPlan({codeEntry:true}));
@@ -392,15 +394,15 @@ test.describe('entitlement route unavailable: authenticated billing mode fallbac
  test('credits-mode code entry uses the existing client and an invalid code leaves billing unchanged',async({page})=>{
   await boot(page,{route:'absent',limits:'none',holdProvider:false,redeem:'invalid',cashBalance:0});await expect.poll(()=>configured(page)).toBe(1);await idle(page);
   await page.evaluate(()=>(window as any).planController.openPlan());
-  const panel=page.getByRole('dialog',{name:'Eliza Cloud account',exact:true});await expect(panel).toBeVisible();
+  const panel=page.getByRole('dialog',{name:'Eliza Cloud account & plan',exact:true});await expect(panel).toBeVisible();
   const before=await configured(page);
-  await expect(panel.getByRole('button',{name:'Manage billing in Eliza Cloud',exact:true})).toBeVisible();
+  await expect(panel.getByRole('button',{name:'Choose a monthly plan',exact:true})).toBeVisible();
   await panel.getByRole('button',{name:'Enter membership code',exact:true}).click();
   await panel.getByRole('textbox',{name:'Membership code'}).fill(CODE);
   await panel.getByRole('button',{name:'Redeem',exact:true}).click();
   await expect(panel.getByRole('alert')).toHaveText('This code could not be redeemed. Check the code and try again.');
   await expect(panel.getByRole('textbox',{name:'Membership code'})).toHaveValue(CODE);
-  await expect(panel.getByText('Eliza Cloud credits',{exact:true})).toBeVisible();
+  await expect(planDetails(page).getByText('No active subscription',{exact:true})).toBeVisible();
   expect(await configured(page)).toBe(before);
   const routes=(await calls(page)).filter(c=>c.method==='request');
   expect(routes.filter(c=>c.path==='/api/v1/subscription/redeem').map(c=>[c.httpMethod,c.url])).toEqual([['POST','https://api.eliza.app/api/v1/subscription/redeem']]);
@@ -419,16 +421,22 @@ test.describe('entitlement route unavailable: authenticated billing mode fallbac
   expect(await page.evaluate(()=>(window as any).planFixture.cashBalance)).toBe(0);
   expect(await page.evaluate(()=>(window as any).planController.getSnapshot().residentSubscription.kind)).toBe('active');
  });
- test('a zero credit balance from the billing snapshot renders as zero, never as unavailable',async({page})=>{
+ test('an active plan at zero credit balance shows one subscription and no cash or top-up controls',async({page})=>{
   await boot(page,{...await entitlements(),plan:'active',limits:'active',credits:'0',holdProvider:false});
   await expect.poll(()=>configured(page)).toBe(1);await idle(page);
   await expect.poll(()=>page.evaluate(()=>(window as any).planController.getSnapshot().membershipCredits?.usd)).toBe('0');
   await page.evaluate(()=>(window as any).planController.openPlan());
   const panel=page.getByRole('dialog',{name:'Eliza Cloud account & plan',exact:true});await expect(panel).toBeVisible();
-  const credits=panel.getByRole('region',{name:'Membership and credits',exact:true});
-  await expect(credits.locator('.alpha-membership-amount')).toHaveText('$0.00USD');
-  await expect(credits.getByText('Not available',{exact:true})).toHaveCount(0);
-  // An active plan is the membership: zero credits never block the agent or open a funding sheet.
+  const subscription=panel.getByRole('region',{name:'Subscription',exact:true});
+  await expect(subscription.getByText('Synthetic plan',{exact:true})).toHaveCount(1);
+  await expect(subscription.getByText('Active',{exact:true})).toBeVisible();
+  await expect(subscription.getByRole('button',{name:'Manage subscription',exact:true})).toBeVisible();
+  await expect(panel).not.toContainText(/Available credits|Add credits|\$\d/);
+  await expect(panel.locator('.alpha-membership-amount')).toHaveCount(0);
+  await expect(panel.getByRole('region',{name:'Eliza Cloud plan',exact:true})).toHaveCount(0);
+  await expect(panel.getByRole('heading',{name:'AI',exact:true})).toHaveCount(0);
+  await expect(panel.getByText('Your agent uses Eliza Cloud for AI.',{exact:true})).toHaveCount(0);
+  // An active plan admits the agent even though the backend reports zero cash balance.
   expect(await page.evaluate(()=>(window as any).planController.getSnapshot().membershipBalance)).toBe('member');
   const routes=(await calls(page)).filter(c=>c.method==='request').map(c=>c.path);
   expect(routes).toContain('/api/v1/billing/limits');expect(routes).not.toContain('/api/v1/credits/balance');
@@ -436,8 +444,8 @@ test.describe('entitlement route unavailable: authenticated billing mode fallbac
  test('no plan source at all is unknown: needs plan with a retry, never admitted',async({page})=>{
   await boot(page,{route:'absent',limits:'absent'});
   await needsPlan(page);await idle(page);
-  await expect(page.getByText('Plan status unavailable',{exact:true})).toBeVisible();
-  await expect(page.getByText(/did not report a plan for this account/)).toBeVisible();
+  await expect(planDetails(page).getByText('Subscription not confirmed',{exact:true})).toBeVisible();
+  await expect(planDetails(page).getByText('Subscription details could not be refreshed. Check again or manage your subscription.',{exact:true})).toBeVisible();
   expect(await configured(page)).toBe(0);
   // Check plan again reads Cloud again and admits once a plan is reported.
   await fixture(page,{limits:'active'});
@@ -623,8 +631,8 @@ test.describe('account, plan and sign-in expiry',()=>{
   expect(settings).toMatchObject({signedIn:true,account:'synthetic-plan@example.invalid',plan:'Synthetic plan',status:'active',keyExpiring:false});
   await page.evaluate(()=>(window as any).planController.openPlan());
   const dialog=page.getByRole('dialog',{name:'Eliza Cloud account & plan',exact:true});await expect(dialog).toBeVisible();
-  await expect(dialog.getByRole('region',{name:'Membership and credits',exact:true}).getByText('synthetic-plan@example.invalid',{exact:true})).toBeVisible();
-  for(const name of ['Enter membership code','Manage plan in Eliza Cloud','Sign out'])await expect(dialog.getByRole('button',{name,exact:true})).toBeVisible();
+  await expect(dialog.getByRole('region',{name:'Subscription',exact:true}).getByText('synthetic-plan@example.invalid',{exact:true})).toBeVisible();
+  for(const name of ['Enter membership code','Manage subscription','Sign out'])await expect(dialog.getByRole('button',{name,exact:true})).toBeVisible();
   await page.evaluate(()=>document.fonts.ready);await page.screenshot({path:info.outputPath('plan-panel.png'),animations:'disabled'});
   await dialog.getByRole('button',{name:'Sign out',exact:true}).click();
   // Signed out, the dedicated page returns and the agent restarts without Cloud inference.
@@ -682,7 +690,7 @@ test.describe('explicit membership code entry',()=>{
   const notice=page.getByRole('region',{name:'Eliza Cloud plan notice'});await expect(notice).toBeVisible();return notice;
  }
  // On the phone's own agent the plan action opens the resident account & plan panel, which carries
- // the Membership & credits controls (code entry included) beside the plan headline and actions.
+ // the Subscription controls (code entry included) beside the plan headline and actions.
  const sheet=(page:Page)=>page.getByRole('dialog',{name:'Eliza Cloud account & plan',exact:true});
  async function noEffects(page:Page){expect((await calls(page)).filter(c=>c.path==='/api/v1/subscription/redeem'||c.method==='openExternal')).toEqual([]);}
  test('one explicit Redeem code click reveals and focuses the current account input',async({page},info)=>{

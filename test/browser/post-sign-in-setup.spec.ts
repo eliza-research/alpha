@@ -135,7 +135,7 @@ test('a verified email code goes straight to access setup while the agent restar
  await page.evaluate(async()=>(await import('/src/runtime/connection-ui.tsx')).connectionController.open());
  await expect(agentSheet.getByText('Running on this device',{exact:true})).toBeVisible();
  await expect(agentSheet.getByText('Your agent uses Eliza Cloud for AI.',{exact:true})).toBeVisible();
- await expect(agentSheet.getByText('Eliza Cloud credits',{exact:true})).toBeVisible();
+ await expect(agentSheet.getByText('No active subscription',{exact:true})).toBeVisible();
  await shot(page,info,'06-your-agent-running');
  expect(host.bound).toBe(true);expect(host.starts).toBe(2);
  expect(await snapshot(page)).toMatchObject({session:true,inference:'cloud',account:USER});

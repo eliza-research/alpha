@@ -104,7 +104,7 @@ function preflightFixture(balance, options = {}) {
   let bindings = 0;
   Object.assign(f.context, {
     AbortController, DOMException, document: {hidden: false}, navigator: {onLine: true}, setTimeout,
-    FUNDING_NEEDED: 'Add credits or enter a membership code to ask Alpha.',
+    FUNDING_NEEDED: 'Choose a monthly plan or enter a membership code to ask Alpha.',
     AlphaClientError: class AlphaClientError extends Error {constructor(code, message) {super(message); this.code = code;}},
     residentCloudFlow: () => true, residentAlwaysPresent: true,
     residentStartInBackground: false, pendingBillingReview: null,
@@ -136,14 +136,14 @@ for (const balance of ['zero', 'checking', 'unavailable', undefined, 'funded', '
       if (balance === 'zero') {
         f.context.state.membershipDismissed = true;
         await assert.rejects(f[method](), error => {
-          assert.equal(error.message, 'Add credits or enter a membership code to ask Alpha.');
+          assert.equal(error.message, 'Choose a monthly plan or enter a membership code to ask Alpha.');
           // Nothing was sent, and the composer says why instead of a generic "Not sent".
           assert.equal(error.notDispatched, true);
           assert.equal(error.refusedBeforeTurn, true);
           return true;
         });
         assert.equal(f.bindings, 0);
-        // The Membership & credits sheet is offered again even after it was closed, once the refusal is delivered.
+        // The subscription sheet is offered again even after it was closed, once the refusal is delivered.
         await new Promise(resolve => setTimeout(resolve, 0));
         assert.equal(f.snapshot().membershipDismissed, false);
       } else {

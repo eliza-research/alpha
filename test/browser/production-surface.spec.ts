@@ -389,7 +389,7 @@ for (const mode of ['signed-out','empty','credits','unavailable','funded','repla
   // running agent offers Redeem code and Choose a plan; its Redeem code opens the plan panel. A
   // sign-in that changed underneath admission is reported in the dialog. Otherwise nothing opens.
   // On the phone's own agent that plan panel is the resident account & plan panel; it carries the
-  // approved Membership and credits controls, opened at the code field.
+  // approved Subscription controls, opened at the code field.
   const signedOut=mode==='signed-out'||mode==='legacy-offline'||mode==='unpackaged',needsPlan=mode==='empty'||mode==='unavailable';
   const dialog=signedOut?page.locator('[role="main"].alpha-cloud-sign-in'):needsPlan?page.getByRole('dialog',{name:'Eliza Cloud account & plan',exact:true}):page.getByRole('region',{name:'Settings',exact:true});
   if(needsPlan){
@@ -413,7 +413,7 @@ for (const mode of ['signed-out','empty','credits','unavailable','funded','repla
    // A developer build without the runtime says so and offers Retry; it never offers an offline mode.
    await expect(dialog.getByRole('button',{name:'Email me a code',exact:true})).toBeVisible();
    await expect(dialog.getByRole('status').filter({hasText:'This developer build does not include the on-device agent.'})).toHaveText('This developer build does not include the on-device agent.');
-  }else if(needsPlan)await expect(dialog.getByRole('region',{name:'Membership and credits',exact:true})).toBeVisible();
+  }else if(needsPlan)await expect(dialog.getByRole('region',{name:'Subscription',exact:true})).toBeVisible();
   else if(!signedOut&&mode!=='replaced')await expect(dialog.getByText('On this device',{exact:true})).toBeVisible();
   if(signedOut){
    await expect(dialog.getByText('Sign in to verify your account. You’ll review access before authorizing Alpha Phone.',{exact:true})).toBeVisible();
@@ -427,15 +427,16 @@ for (const mode of ['signed-out','empty','credits','unavailable','funded','repla
   if(needsPlan){
    await expect(dialog.getByRole('textbox',{name:'Membership code',exact:true})).toBeFocused();
    await expect(dialog.getByRole('button',{name:'Redeem',exact:true})).toBeVisible();
-   await expect(dialog.getByRole('button',{name:'Add credits',exact:true})).toBeVisible();
-   // The resident panel shows the plan headline itself (planShownByHost); the membership controls do not repeat it.
-   await expect(dialog.getByRole('region',{name:'Eliza Cloud plan',exact:true}).getByText(mode==='empty'?'No active plan':'Plan status unavailable',{exact:true})).toBeVisible();
-   await expect(dialog.getByRole('region',{name:'Membership and credits',exact:true}).getByText(mode==='empty'?'No active membership':'Not confirmed',{exact:true})).toHaveCount(0);
+   await expect(dialog.getByRole('button',{name:mode==='empty'?'Choose a monthly plan':'Manage subscription',exact:true})).toBeVisible();
+   // The subscription component owns the single plan summary; the host never repeats it.
+   await expect(dialog.getByRole('region',{name:'Eliza Cloud plan',exact:true})).toHaveCount(0);
+   await expect(dialog.getByRole('region',{name:'Subscription',exact:true}).getByText(mode==='empty'?'No active subscription':'Subscription not confirmed',{exact:true})).toHaveCount(1);
+   await expect(dialog).not.toContainText(/Available credits|Add credits|\$\d/);
   }
   if(mode==='replaced')await expect(dialog.getByText(/account changed/i)).toBeVisible();
   if(admitted)await expect(dialog.getByRole('button',{name:'Sign out of Eliza Cloud',exact:true})).toBeVisible();
-  // A membership code is an alternative to credits: credit-funded accounts can enter one too.
-  if(mode==='credits'){await expect(dialog.getByText('Eliza Cloud credits',{exact:true})).toBeVisible();await expect(dialog.getByRole('button',{name:'Redeem code',exact:true})).toBeVisible();}
+  // Legacy credit admission keeps the subscription and membership-code options visible.
+  if(mode==='credits'){await expect(dialog.getByText('No active subscription',{exact:true})).toBeVisible();await expect(dialog.getByRole('button',{name:'Redeem code',exact:true})).toBeVisible();}
   for(const retired of ['Use local apps without AI','Continue offline'])await expect(dialog.getByRole('button',{name:retired,exact:true})).toHaveCount(0);
   // Every dialog but the required sign-in closes; the agent keeps running.
   if(needsPlan){await page.keyboard.press('Escape');await expect(dialog).toHaveCount(0);}else if(!signedOut){await dialog.getByRole('button',{name:'Back to Settings',exact:true}).click();}

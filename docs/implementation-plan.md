@@ -79,6 +79,10 @@ Independent preparation can proceed concurrently; these rows are not instruction
 to defer AOSP listening or Cloud Maps out of MVP. Complete prerequisite contracts
 before integrating a consumer. Subscription pricing/quotas and final model/backend
 selection are explicit tasks, with performance evidence before admission.
+The November 1 owner correction makes subscription status and included usage the
+account screen's primary facts. Hide the credit balance and top-up UI; preserve
+explicit code redemption, monthly plan management and honest temporary-access dates.
+
 
 ## Voice state and runtime design
 

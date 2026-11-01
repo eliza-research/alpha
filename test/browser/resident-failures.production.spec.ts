@@ -30,7 +30,7 @@ async function send(page: Page, text: string) { await composer(page).fill(text);
 
 const KINDS = {
   // Cloud's billing refusal of a signed-in account: one answer naming both ways back (cloud-membership-ui.tsx).
-  insufficient_credits: 'Eliza Cloud declined this AI request for your account’s billing. Add credits or enter a membership code, then send again. Nothing was retried or purchased.',
+  insufficient_credits: 'Eliza Cloud declined this AI request for your account’s billing. Check your subscription or enter a membership code, then send again. Nothing was retried or purchased.',
   provider_issue: 'Alpha’s AI service could not complete this reply. Nothing was resent.',
   generation_timeout: 'Alpha’s AI service could not complete this reply. Nothing was resent.',
   // Bound to an admitted plan, yet the agent ran without a provider: a recheck is offered.
@@ -50,15 +50,14 @@ for (const [kind, text] of Object.entries(KINDS)) for (const frame of ['done', '
     await expect(page.getByText(UNKNOWN, { exact: true })).toHaveCount(0);
     await expect(bubble(page, `Failing ${kind}`)).toHaveCount(1);
     if (kind === 'insufficient_credits') {
-      // One answer in the chat, and the Membership & credits popup opens beside it with Add credits
-      // and Enter membership code (billing-recovery.production.spec.ts covers redeem and recovery).
-      // The billing snapshot now reports $0.00 with no plan; zero is shown as zero, never as unavailable.
-      const account = page.getByRole('dialog', { name: 'Membership & credits', exact: true });
+      // One answer in the chat, and Subscription opens with plan selection and code entry.
+      // The backend's zero balance stays an admission fact; the UI never offers a cash top-up.
+      const account = page.getByRole('dialog', { name: 'Subscription', exact: true });
       await expect(account).toBeVisible();
-      const membership = account.getByRole('region', { name: 'Membership and credits', exact: true });
-      await expect(membership.locator('.alpha-membership-amount')).toHaveText('$0.00USD');
+      const membership = account.getByRole('region', { name: 'Subscription', exact: true });
+      await expect(membership).not.toContainText(/Available credits|Add credits|\$\d/);
       await expect(membership.getByRole('status').filter({ hasText: 'Eliza Cloud declined your last AI request for billing.' })).toHaveCount(1);
-      await expect(membership.getByRole('button', { name: 'Add credits', exact: true })).toBeVisible();
+      await expect(membership.getByRole('button', { name: 'Choose a monthly plan', exact: true })).toBeVisible();
       await expect(membership.getByRole('button', { name: 'Enter membership code', exact: true })).toBeVisible();
       expect(await stub(page, s => s.opened)).toEqual([]);
       await account.getByRole('button', { name: 'Close membership settings', exact: true }).click();
@@ -66,7 +65,7 @@ for (const [kind, text] of Object.entries(KINDS)) for (const frame of ['done', '
       await button(page, 'Expand chat').click();
       // No second billing message; the answer carries the one offer, which reopens the same popup.
       await expect(page.getByRole('button', { name: /^Manage billing in Eliza Cloud/ })).toHaveCount(0);
-      const offer = page.getByRole('button', { name: /^Add credits or enter a membership code/ });
+      const offer = page.getByRole('button', { name: /^Check subscription or enter a membership code/ });
       await expect(offer).toHaveCount(1);
       await offer.click();
       await expect(account).toBeVisible();
@@ -77,8 +76,8 @@ for (const [kind, text] of Object.entries(KINDS)) for (const frame of ['done', '
       await expect(account.getByRole('textbox',{name:'Membership code'})).toBeVisible();
       await page.screenshot({path:info.outputPath('membership-code-wide.png'),animations:'disabled'});
       await page.setViewportSize({width:412,height:915});
-      // Add credits opens Cloud billing only after the account check; nothing is bought here.
-      await membership.getByRole('button', { name: 'Add credits', exact: true }).click();
+      // Plan selection opens Cloud billing only after the account check; nothing is bought here.
+      await membership.getByRole('button', { name: 'Choose a monthly plan', exact: true }).click();
       await expect(page.getByRole('heading',{name:'Check the billing account',exact:true})).toBeVisible();
       await expect(page.getByRole('button',{name:'Open billing',exact:true})).toBeDisabled();
       expect(await stub(page,s=>s.opened)).toEqual([]);
@@ -127,10 +126,10 @@ for (const frame of ['done', 'error'] as const) test(`a provider-less turn witho
   await expect(plan).toHaveCount(1);
   await plan.click();
   // On the phone's own agent the plan action opens the resident account & plan panel (plan headline,
-  // Check plan again, Approve this phone again); it carries the Membership & credits controls.
+  // Check plan again, Approve this phone again); it carries the Subscription controls.
   const account = page.getByRole('dialog', { name: 'Eliza Cloud account & plan', exact: true });
   await expect(account).toBeVisible();
-  await expect(account.getByRole('region', { name: 'Membership and credits', exact: true })).toBeVisible();
+  await expect(account.getByRole('region', { name: 'Subscription', exact: true })).toBeVisible();
   // Nothing was purchased or opened, and the message was sent once.
   expect(await stub(page, s => s.opened)).toEqual([]);
   expect(await harness(page, f => f.streams)).toBe(1);
