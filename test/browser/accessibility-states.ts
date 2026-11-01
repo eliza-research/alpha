@@ -230,7 +230,7 @@ const connected = (name: string, steps: Array<string | RegExp> = [], options: { 
     await expect(page.getByRole('button', { name: 'Settings', exact: true })).toBeVisible();
     await connectMailbox(page);
     // The mailbox is read when Inbox opens; Home's card and badge come from that read.
-    await page.getByRole('button', { name: 'Inbox', exact: true }).click();
+    await page.getByRole('button', { name: 'Inbox', exact: true }).and(page.locator('[data-mobile-shell-tile]')).click();
     await expect(page.getByRole('button', { name: /^Unread, Synthetic Sender A/ })).toBeVisible();
     if (options.home) { await page.getByRole('button', { name: 'Back to apps', exact: true }).click(); await expect(page.locator('[data-alpha-home-inbox]')).toContainText('2 unread'); }
     for (const step of steps) await page.getByRole('button', { name: step, exact: typeof step === 'string' }).first().click();
