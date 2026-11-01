@@ -279,7 +279,7 @@ test("Capacitor's own permission request, and the shared plugins' requests an ap
   const guardedOverride = (source, method) => new RegExp(`@Override @PluginMethod public void ${method}\\(PluginCall call\\) ?\\{(?: if \\(refused\\(call\\)\\) return;)? ?LateLaunch\\.ask\\(call, ?\\(\\) ?-> ?super\\.${method}\\(call\\)\\); ?\\}`).test(source);
   // Plugin.requestPermissions is a plugin method of every plugin and launches for one that declares permissions.
   const declaring = files.filter(name => /@CapacitorPlugin\([^\n]*\bpermissions\s*=/.test(read(name)));
-  assert.deepEqual(declaring, ["AlphaCalendarPlugin.java", "AlphaContactsPlugin.java", "AlphaHostedResultsPlugin.java", "AlphaPhotoLibraryPlugin.java", "AlphaPhotosPlugin.java", "AlphaSystemPlugin.java", "AlphaTelephonyPlugin.java", "AlphaVoiceCloudPlugin.java", "DailyAppsPlugin.java"], "the plugins that declare permissions");
+  assert.deepEqual(declaring, ["AlphaCalendarPlugin.java", "AlphaCloudSpeechStreamPlugin.java", "AlphaContactsPlugin.java", "AlphaHostedResultsPlugin.java", "AlphaPhotoLibraryPlugin.java", "AlphaPhotosPlugin.java", "AlphaSystemPlugin.java", "AlphaTelephonyPlugin.java", "AlphaVoiceCloudPlugin.java", "DailyAppsPlugin.java"], "the plugins that declare permissions");
   for (const name of declaring.filter(name=>name!=="AlphaContactsPlugin.java")) {
     if(name==='AlphaPhotosPlugin.java'||name==='AlphaPhotoLibraryPlugin.java') {
       // Registrations of the shared PhotosPlugin and DeviceLibraryPlugin. Photos must select aliases for this

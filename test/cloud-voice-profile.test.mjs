@@ -59,7 +59,7 @@ test('real native multipart method uploads decoded WAV and clears it on credenti
  fs.writeFileSync(file,`package ai.elizaresearch.alphaphone;import java.io.*;import java.net.*;import java.util.*;import java.nio.charset.StandardCharsets;import java.util.function.BooleanSupplier;
 public class CloudWavUploadTest {
  static class BuildConfig{static final String ELIZA_RUNTIME_PROFILE="cloud";}
- boolean destroyed;String failure="";Exception error;Pending pending;Connection connection;Capture capture=new Capture();Capture recording(){return capture;}boolean destroyed(){return destroyed;}
+ CloudSpeechTimings cloudTimings=new CloudSpeechTimings();boolean destroyed;String failure="";Exception error;Pending pending;Connection connection;Capture capture=new Capture();Capture recording(){return capture;}boolean destroyed(){return destroyed;}
  static class PluginCall{String getString(String key){return "selected-recording";}}
  static class Pending{boolean cancelled;JSObject result;String failureCode;}
  static class JSObject{void put(String key,Object value){}}
@@ -79,7 +79,7 @@ public class CloudWavUploadTest {
   public void connect(){}public void disconnect(){}public boolean usingProxy(){return false;}
  }
  HttpURLConnection connect(PluginCall call,String route,Pending request)throws Exception{if(!route.equals("stt"))throw new AssertionError();if(failure.equals("connect"))throw new IOException();if(failure.equals("cancel"))request.cancelled=true;return connection=new Connection();}
- void answered(HttpURLConnection c){}
+ void answered(HttpURLConnection c){} void answeredTimed(HttpURLConnection c,CloudSpeechTimings.Record timing){}
  byte[] read(InputStream in,int max,Pending request)throws Exception{if(failure.equals("response"))throw new IOException("PRIVATE_RESPONSE_SENTINEL");return in.readAllBytes();}
  ${method}
  public static void main(String[] args)throws Exception{
@@ -104,7 +104,7 @@ public class CloudWavUploadTest {
  }
 }`);
  const binary=name=>process.env.JAVA_HOME?path.join(process.env.JAVA_HOME,'bin',name):name;
- execFileSync(binary('javac'),['--release','11','-d',out,file,'android/app/src/main/java/ai/elizaresearch/alphaphone/CloudDeployment.java','android/app/src/main/java/ai/elizaresearch/alphaphone/CloudSpeechPolicy.java']);
+ execFileSync(binary('javac'),['--release','11','-d',out,file,'android/app/src/main/java/ai/elizaresearch/alphaphone/CloudSpeechTimings.java','android/app/src/main/java/ai/elizaresearch/alphaphone/CloudDeployment.java','android/app/src/main/java/ai/elizaresearch/alphaphone/CloudSpeechPolicy.java']);
  assert.match(execFileSync(binary('java'),['-cp',out,'ai.elizaresearch.alphaphone.CloudWavUploadTest'],{encoding:'utf8'}),/PASS real native multipart WAV upload and cleanup/);
  }finally{fs.rmSync(out,{recursive:true,force:true});}
 });

@@ -29,6 +29,15 @@ public final class AlphaVoiceCloudPlugin extends LocalSpeechBridgePlugin {
  String instrumentationBaseUrl;
  String instrumentationCredentialSlot;
  private static final int AUDIO_LIMIT=8*1024*1024;
+ private final CloudSpeechTimings cloudTimings=new CloudSpeechTimings();
+ /** Numeric batch stages begin after worker admission; queue wait and audible playback are not claimed. */
+ @PluginMethod public void cloudVoiceTiming(PluginCall call){try{call.resolve(JSObject.fromJSONObject(new JSONObject(cloudTimings.snapshot())));}catch(org.json.JSONException invalid){call.reject("Cloud speech timing unavailable");}}
+ private void answeredTimed(HttpURLConnection connection,CloudSpeechTimings.Record timing)throws Exception{
+  int status=connection.getResponseCode();cloudTimings.mark(timing,"headers");
+  String provider=connection.getHeaderField("X-Eliza-STT-Provider");if(provider==null)provider=connection.getHeaderField("X-Eliza-TTS-Provider");
+  cloudTimings.response(timing,status,provider,connection.getHeaderField("Server-Timing"));cloudTimings.moderation(timing,connection.getHeaderField("X-Eliza-TTS-Moderation"));answered(connection);
+ }
+
 
  /** VAD segments go only to the on-device agent of the owner who started the capture. */
  @Override protected LiveCaptureController.Route residentRoute(String owner){return ()->AlphaLocalAgentPlugin.openNativeVoiceTransport(owner);}
@@ -94,21 +103,23 @@ public final class AlphaVoiceCloudPlugin extends LocalSpeechBridgePlugin {
   if(request.cancelled)throw new IOException();return c;
  }
  @PluginMethod public void transcribeRecording(PluginCall call){submit(call,request->{
-  request.failureCode="voice-stt-decode";
+  CloudSpeechTimings.Record timing=cloudTimings.begin("stt");boolean completed=false;try{
+  request.failureCode="voice-stt-decode";cloudTimings.mark(timing,"decode-start");
   String recordingId=required(call.getString("recordingId"),256);File file=recording().selected(recordingId);if(file==null)throw new IOException();
   // Android's MPEG_4 recorder emits mp42, which the Cloud signature gate classifies as video.
   // Decode the selected bounded mono draft to real PCM WAV; changing its MIME label is insufficient.
-  HttpURLConnection c;byte[] audio=RecordingPcm.decode(file,()->request.cancelled||destroyed());
+  HttpURLConnection c;byte[] audio=RecordingPcm.decode(file,()->request.cancelled||destroyed());cloudTimings.mark(timing,"decode-end");
   try{
   String boundary="AlphaVoice"+UUID.randomUUID().toString().replace("-","");
   byte[] prefix=("--"+boundary+"\r\nContent-Disposition: form-data; name=\"provider\"\r\n\r\ncartesia\r\n--"+boundary+"\r\nContent-Disposition: form-data; name=\"audio\"; filename=\"recording.wav\"\r\nContent-Type: audio/wav\r\n\r\n").getBytes(StandardCharsets.US_ASCII);
   byte[] suffix=("\r\n--"+boundary+"--\r\n").getBytes(StandardCharsets.US_ASCII);
-  request.failureCode="voice-stt-connect";c=connect(call,"stt",request);
+  request.failureCode="voice-stt-connect";cloudTimings.mark(timing,"upload-start");c=connect(call,"stt",request);
   request.failureCode="voice-stt-upload";c.setRequestProperty("Content-Type","multipart/form-data; boundary="+boundary);c.setFixedLengthStreamingMode(prefix.length+audio.length+suffix.length);
-  try(OutputStream out=c.getOutputStream()){if(request.cancelled)throw new IOException();out.write(prefix);out.write(audio);out.write(suffix);}
+  try(OutputStream out=c.getOutputStream()){if(request.cancelled)throw new IOException();out.write(prefix);out.write(audio);out.write(suffix);}cloudTimings.mark(timing,"upload-end");
   }finally{Arrays.fill(audio,(byte)0);}
-  request.failureCode="voice-stt-response";answered(c);CloudSpeechPolicy.requireProvider(BuildConfig.ELIZA_RUNTIME_PROFILE,c.getHeaderField("X-Eliza-STT-Provider"));byte[] response;try(InputStream in=c.getInputStream()){response=read(in,256*1024,request);}JSONObject data=new JSONObject(new String(response,StandardCharsets.UTF_8));Object transcript=data.get("transcript");if(!(transcript instanceof String))throw new IOException();
-  if(request.cancelled||destroyed())throw new IOException();JSObject result=new JSObject();result.put("text",transcript);result.put("local",false);request.result=result;request.failureCode=null;
+  request.failureCode="voice-stt-response";answeredTimed(c,timing);CloudSpeechPolicy.requireProvider(BuildConfig.ELIZA_RUNTIME_PROFILE,c.getHeaderField("X-Eliza-STT-Provider"));byte[] response;try(InputStream in=c.getInputStream()){response=read(in,256*1024,request);}cloudTimings.mark(timing,"body-end");JSONObject data=new JSONObject(new String(response,StandardCharsets.UTF_8));Object transcript=data.get("transcript");if(!(transcript instanceof String))throw new IOException();
+  if(request.cancelled||destroyed())throw new IOException();JSObject result=new JSObject();result.put("text",transcript);result.put("local",false);request.result=result;request.failureCode=null;completed=true;
+  }finally{cloudTimings.finish(timing,request.cancelled||destroyed()?"cancelled":completed?"completed":"failed");}
  });}
  @PluginMethod public void synthesize(PluginCall call){if(Boolean.FALSE.equals(call.getBoolean("replace",true))&&speakerBusy()){call.reject("Speaker is in use","playback-busy");return;}synthesizeAudio(call,false,null);}
 
@@ -176,9 +187,11 @@ public final class AlphaVoiceCloudPlugin extends LocalSpeechBridgePlugin {
 
  /** Cloud or paired synthesis into a prepared clip on the shared playback. */
  private void synthesizeAudio(PluginCall call,boolean paired,String reviewed){submit(call,request->{
-  String text=required(reviewed==null?call.getString("text"):reviewed,5000);HttpURLConnection c=paired?connectPaired(call,false,request,false):connect(call,"tts",request);byte[] body=(paired?PairedSpeechContract.ttsBody(text):new JSONObject().put("text",text).put("format","mp3")).toString().getBytes(StandardCharsets.UTF_8);if(paired)c.setRequestProperty("X-Request-Id",PairedSpeechContract.requestId(call.getString("requestId")));c.setRequestProperty("Content-Type","application/json");c.setFixedLengthStreamingMode(body.length);try(OutputStream out=c.getOutputStream()){if(request.cancelled)throw new IOException();out.write(body);}answered(c);
+  CloudSpeechTimings.Record timing=paired?null:cloudTimings.begin("tts");boolean completed=false;try{
+  String text=required(reviewed==null?call.getString("text"):reviewed,5000);cloudTimings.mark(timing,"upload-start");HttpURLConnection c=paired?connectPaired(call,false,request,false):connect(call,"tts",request);byte[] body=(paired?PairedSpeechContract.ttsBody(text):new JSONObject().put("text",text).put("format","mp3")).toString().getBytes(StandardCharsets.UTF_8);if(paired)c.setRequestProperty("X-Request-Id",PairedSpeechContract.requestId(call.getString("requestId")));c.setRequestProperty("Content-Type","application/json");c.setFixedLengthStreamingMode(body.length);try(OutputStream out=c.getOutputStream()){if(request.cancelled)throw new IOException();out.write(body);}cloudTimings.mark(timing,"upload-end");if(paired)answered(c);else answeredTimed(c,timing);
   if(!paired)CloudSpeechPolicy.requireProvider(BuildConfig.ELIZA_RUNTIME_PROFILE,c.getHeaderField("X-Eliza-TTS-Provider"));
-  String mime=c.getContentType();if(paired)PairedSpeechContract.ttsHeaders(call.getString("requestId"),c.getHeaderField("X-Request-Id"),c.getHeaderField("X-Eliza-Speech-Provider"),mime);if(mime==null||!Set.of("audio/mpeg","audio/mp3","audio/wav").contains(mime.split(";")[0].trim().toLowerCase(Locale.ROOT)))throw new IOException();byte[] audio;try(InputStream in=c.getInputStream()){audio=read(in,AUDIO_LIMIT,request);}if(audio.length==0)throw new IOException();
-  publishPreparedAudio(call,request,audio);
+  String mime=c.getContentType();if(paired)PairedSpeechContract.ttsHeaders(call.getString("requestId"),c.getHeaderField("X-Request-Id"),c.getHeaderField("X-Eliza-Speech-Provider"),mime);if(mime==null||!Set.of("audio/mpeg","audio/mp3","audio/wav").contains(mime.split(";")[0].trim().toLowerCase(Locale.ROOT)))throw new IOException();byte[] audio;try(InputStream in=c.getInputStream()){audio=read(in,AUDIO_LIMIT,request);}cloudTimings.mark(timing,"body-end");if(audio.length==0)throw new IOException();
+  publishPreparedAudio(call,request,audio);completed=request.failure==null&&request.result!=null;if(completed)cloudTimings.mark(timing,"prepared");
+  }finally{cloudTimings.finish(timing,request.cancelled||destroyed()?"cancelled":completed?"completed":"failed");}
  });}
 }

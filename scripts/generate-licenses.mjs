@@ -65,6 +65,8 @@ export const MAVEN_FAMILIES = [
   {prefix: 'org.jetbrains.kotlinx', name: 'Kotlin coroutines', license: 'Apache-2.0', source: 'https://github.com/Kotlin/kotlinx.coroutines'},
   {prefix: 'org.jetbrains.kotlin', name: 'Kotlin standard library', license: 'Apache-2.0', source: 'https://github.com/JetBrains/kotlin'},
   {prefix: 'org.jetbrains', exact: true, name: 'JetBrains Java annotations', license: 'Apache-2.0', source: 'https://github.com/JetBrains/java-annotations'},
+  {prefix: 'com.squareup.okhttp3', exact: true, name: 'OkHttp HTTP and WebSocket client', license: 'Apache-2.0', source: 'https://square.github.io/okhttp/'},
+  {prefix: 'com.squareup.okio', exact: true, name: 'Okio I/O library', license: 'Apache-2.0', source: 'https://square.github.io/okio/'},
   {prefix: 'com.google.guava', name: 'Guava and ListenableFuture', license: 'Apache-2.0', source: 'https://github.com/google/guava'},
   {prefix: 'com.google.auto.value', name: 'AutoValue annotations', license: 'Apache-2.0', source: 'https://github.com/google/auto'},
   {prefix: 'org.jspecify', name: 'JSpecify annotations', license: 'Apache-2.0', source: 'https://github.com/jspecify/jspecify'},

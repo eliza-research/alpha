@@ -48,6 +48,7 @@
       { "configuration": "implementation", "coordinate": "androidx.credentials:credentials-play-services-auth:1.6.0" },
       { "configuration": "implementation", "coordinate": "com.google.android.libraries.identity.googleid:googleid:1.1.1" },
       { "configuration": "implementation", "coordinate": "androidx.browser:browser:1.9.0" },
+      { "configuration": "implementation", "coordinate": "com.squareup.okhttp3:okhttp:5.3.2" },
       { "configuration": "implementation", "coordinate": "androidx.media3:media3-transformer:1.11.1" },
       { "configuration": "implementation", "coordinate": "androidx.media3:media3-effect:1.11.1" },
       { "configuration": "implementation", "coordinate": "androidx.work:work-runtime:2.11.0" },

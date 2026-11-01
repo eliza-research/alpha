@@ -7,7 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {ALLOWED_REPOSITORIES, ALLOWED_REPOSITORY_URLS, CLASSPATH, HOST_TEMPLATES, METADATA, MIRROR_PROPERTY, REVIEWED_GROUPS, VERIFIED_TASKS, addArtifact, buildScripts, checkVerification, coordinateChecksum, declaredRepositories, parseVerificationMetadata, referencePath, repositoryProblem} from '../scripts/gradle-verification.mjs';
+import {ALLOWED_REPOSITORIES, ALLOWED_REPOSITORY_URLS, CLASSPATH, HOST_TEMPLATES, METADATA, MIRROR_PROPERTY, REVIEWED_GROUPS, VERIFIED_TASKS, addArtifact, buildScripts, checkVerification, coordinateChecksum, declaredRepositories, parseVerificationArgs, parseVerificationMetadata, referencePath, repositoryProblem} from '../scripts/gradle-verification.mjs';
 import {HOST_DESCRIPTOR} from '../scripts/android-host.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
@@ -50,8 +50,8 @@ test('the committed metadata verifies every artifact by SHA-256 and trusts nothi
 
 test('every coordinate that ships in the APKs is pinned, and the build tools are pinned for each CI host', () => {
   const classpath = JSON.parse(read(CLASSPATH));
-  assert.equal(classpath.coordinates.length, 103, 'resolved runtime snapshot includes native Google sign-in dependencies');
-  for (const coordinate of ['com.google.android.gms:play-services-auth:21.1.1', 'com.google.android.libraries.identity.googleid:googleid:1.1.1'])
+  assert.equal(classpath.coordinates.length, 107, 'resolved runtime snapshot includes native Google sign-in and streaming speech dependencies');
+  for (const coordinate of ['com.google.android.gms:play-services-auth:21.1.1', 'com.google.android.libraries.identity.googleid:googleid:1.1.1', 'com.squareup.okhttp3:okhttp-android:5.3.2', 'com.squareup.okio:okio-jvm:3.16.4'])
     assert.ok(classpath.coordinates.includes(coordinate), coordinate);
   let archives = 0;
   for (const coordinate of classpath.coordinates) {
@@ -175,6 +175,14 @@ test('a host-specific archive is inserted in order and only once', () => {
 test('staged Java-only native patches retain their authenticated dependency descriptors', () => {
  assert.ok(buildScripts(ROOT).includes('vendor/eliza/plugins/plugin-native-secure-store/android/build.gradle'));
  assert.ok(!buildScripts(ROOT).some(name=>name.includes('android/elizaos-capacitor-secure-store/')));
+});
+
+
+test('dependency verification selects Cloud explicitly and refuses unpackaged Cloud', () => {
+  assert.deepEqual(parseVerificationArgs(['--write', '--runtime-profile=cloud']), {mode:'--write',runtimeProfile:'cloud',allowUnpackagedRuntime:false});
+  assert.deepEqual(parseVerificationArgs(['--check']), {mode:'--check',runtimeProfile:'native',allowUnpackagedRuntime:false});
+  assert.throws(() => parseVerificationArgs(['--write','--runtime-profile=cloud','--allow-unpackaged-runtime']), /genuine packaged resident/);
+  assert.throws(() => parseVerificationArgs(['--write','--runtime-profile=other']), /Usage/);
 });
 
 /** A real Git-backed auth module: staging must authenticate both the source and patched bytes. */
