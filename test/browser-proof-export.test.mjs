@@ -110,3 +110,34 @@ test('worker module declaration must still be in the verified manifest',t=>{
  const f=workerFixture(t);f.write(`${f.prefix}/compiler/node_modules/@types/ws/unlisted.d.mts`,'export {}');
  const result=f.run('worker');assert.notEqual(result.status,0);assert.match(result.stderr,/Unexpected worker file/);
 });
+
+test('verified compiler cookie and credential declarations are source, not private data',t=>{
+ const declarations={
+  'compiler/node_modules/effect/dist/unstable/http/Cookies.d.ts':'export interface Cookies {}',
+  'compiler/node_modules/undici-types/cookies.d.ts':'export interface Cookie {}',
+  'compiler/node_modules/example/Credentials.d.mts':'export interface Credentials {}',
+  'compiler/types/example/Session.d.cts':'export interface Session {}',
+ };
+ const f=workerFixture(t,declarations),result=f.run('worker');assert.equal(result.status,0,result.stderr);
+ const output=join(f.root,'test-results/browser-proof/worker');
+ const identity=JSON.parse(readFileSync(join(output,'identity.json'),'utf8'));
+ for(const [path,source] of Object.entries(declarations))assert.equal(identity.files['payload/'+path],sha256(source));
+});
+test('all rejected cookie, credential and profile data paths are reported without contents',t=>{
+ const data={
+  'compiler/node_modules/example/cookies.json':'PRIVATE COOKIE DATA',
+  'compiler/node_modules/example/credentials.json':'PRIVATE CREDENTIAL DATA',
+  'compiler/node_modules/example/profiles/Account.d.ts':'PRIVATE PROFILE DATA',
+  'compiler/node_modules/example/.env.d.ts':'PRIVATE ENV DATA',
+ };
+ const f=workerFixture(t,data),result=f.run('worker');assert.notEqual(result.status,0);
+ const bytes=readFileSync(join(f.root,'test-results/resident-ci-browser-proof-rejections-worker.json'),'utf8');
+ const report=JSON.parse(bytes);
+ assert.deepEqual(report.rejected.map(x=>x.path).sort(),Object.keys(data).sort());
+ assert.equal(report.rejectedCount,4);assert.doesNotMatch(bytes,/PRIVATE .* DATA/);
+ for(const entry of report.rejected)assert.match(entry.pathSha256,/^[0-9a-f]{64}$/);
+});
+test('an unverified cookie declaration still fails the worker manifest check',t=>{
+ const f=workerFixture(t);f.write(`${f.prefix}/compiler/node_modules/effect/Cookies.d.ts`,'export interface Cookies {}');
+ const result=f.run('worker');assert.notEqual(result.status,0);assert.match(result.stderr,/Unexpected worker file/);
+});

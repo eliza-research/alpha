@@ -50,10 +50,18 @@ const source=checked(mode==='renderer'?resolve('test-results/browser-proof-rende
 const output=checked(resolve(`test-results/browser-proof/${mode}`),true);
 directory(dirname(output));mkdirSync(output); // Exclusive: never overlay a previous export.
 const files={};
-const sensitive=/(?:^|\/)(?:\.env(?:\..*)?|\.npmrc|\.netrc|credentials?(?:\..*)?|cookies?(?:\..*)?|profiles?|sessions?|id_rsa|id_ed25519)(?:\/|$)|\.(?:pem|key|p12|pfx|db|sqlite\d?|log|node|so(?:\.\d+)*|dylib|dll|exe|a|o)$/i;
+const forbidden=/(?:^|\/)(?:\.env(?:\..*)?|\.npmrc(?:\..*)?|\.netrc(?:\..*)?|id_rsa(?:\..*)?|id_ed25519(?:\..*)?)(?:\/|$)|\.(?:pem|key|p12|pfx|db|sqlite\d?|log|node|so(?:\.\d+)*|dylib|dll|exe|a|o)$/i;
+const privateDataName=/^(?:credentials?|cookies?|profiles?|sessions?)(?:\..*)?$/i;
+let verifiedWorkerPaths=new Set();
 const license=name=>/^(?:LICENSE|LICENCE|COPYING|NOTICE)(?:[._-][A-Za-z0-9._-]+)?$/i.test(basename(name));
 function allowed(path){
- if(!/^[A-Za-z0-9@_.+/-]+$/.test(path)||path.split('/').some(x=>!x||x==='.'||x==='..')||sensitive.test(path))return false;
+ const parts=path.split('/');
+ if(!/^[A-Za-z0-9@_.+/-]+$/.test(path)||parts.some(x=>!x||x==='.'||x==='..')||forbidden.test(path))return false;
+ // Declaration names describe types, not stored cookie/credential data. Only an
+ // exact manifest-verified compiler declaration may use one of those basenames.
+ const declaration=mode==='worker'&&verifiedWorkerPaths.has(path)&&/^compiler\/(?:node_modules|types)\//.test(path)&&/\.d\.(?:ts|mts|cts)$/.test(path);
+ if(parts.slice(0,-1).some(part=>privateDataName.test(part)))return false;
+ if(privateDataName.test(parts.at(-1))&&!declaration)return false;
  if(mode==='worker')return ['manifest.json','dependencies.json','google-host.mjs'].includes(path)
   ||(/^lib\/[^/]+\.js$/.test(path))
   ||(/^(?:node_modules|compiler)\//.test(path)&&(/\.(?:js|mjs|cjs|json|d\.ts)$/.test(path)||license(path)))
@@ -82,20 +90,33 @@ if(mode==='renderer'){
  const prepared=checked(resolve(`artifacts/local-agent-resident-${sdk}`));
  const stamp=read(join(prepared,'.alpha-runtime-source.json')),sdkLock=read(join(prepared,'bun.lock'));
  worker=verifyWorkerArtifact(source,{sourceStampSha256:hash(stamp),lockSha256:hash(sdkLock)});
+ verifiedWorkerPaths=new Set(worker.files.map(([path])=>path));
  exportBytes('provenance/runtime-source.json',stamp);
 }
-const inventory=[];
+const inventory=[],rejected=[];const MAX_FILES=4096;
+function rejection(path,reason){rejected.push({path:path.slice(0,240),pathSha256:hash(Buffer.from(path)),truncated:path.length>240,reason});}
+function reportRejections(){
+ const report=checked(resolve(`test-results/resident-ci-browser-proof-rejections-${mode}.json`),true);directory(dirname(report));
+ const bytes=JSON.stringify({schema:1,mode,rejectedCount:rejected.length,inspectedFiles:inventory.length,maxFiles:MAX_FILES,rejected},null,2)+'\n';
+ if(Buffer.byteLength(bytes)>2*1024*1024)throw Error('Rejection report exceeds 2 MiB');
+ writeFileSync(report,bytes,{flag:'wx'});
+ throw Error(`Unexpected payload: ${rejected[0].path}; ${rejected.length} rejected path(s); complete bounded report: ${relative(root,report)}`);
+}
 function walk(dir){
  for(const name of readdirSync(checked(dir)).sort()){
   const path=checked(join(dir,name)),stat=lstatSync(path);
   if(stat.isDirectory())walk(path);
   else{
-   const rel=relative(source,path);if(!allowed(rel))throw Error('Unexpected payload: '+rel);
+   const rel=relative(source,path);
+   if(inventory.length>=MAX_FILES){rejection(rel,'inventory-limit');reportRejections();}
    inventory.push(rel);
+   if(!stat.isFile())rejection(rel,'not-regular-file');
+   else if(!allowed(rel))rejection(rel,'payload-policy');
   }
  }
 }
 walk(source);
+if(rejected.length)reportRejections();
 if(worker){
  const expected=worker.files.map(([path])=>path).sort();
  if(JSON.stringify([...inventory].sort())!==JSON.stringify(expected))throw Error('Worker inventory differs from verified manifest');
