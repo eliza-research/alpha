@@ -123,6 +123,10 @@ html:not(.standalone-app) [data-alpha-layer="home"][data-alpha-home-fits="true"]
 
 .note-source-dialog footer button { flex:1 1 180px; min-width:0; overflow-wrap:normal; }
 .note-source-content:focus-visible { outline:2px solid currentColor; outline-offset:-2px; }
+/* Document actions scroll with their details; Done remains outside the scroll area. */
+.note-source-document-dialog .note-source-content { min-height:44px; }
+.note-source-options { display:flex; flex-wrap:wrap; gap:8px; }
+.note-source-options button { flex:1 1 180px; min-width:min-content; max-width:100%; overflow-wrap:normal; word-break:normal; }
 /* Keep review actions outside the scrolling details at every text size. The body can shrink
  * within the viewport while retaining its own keyboard-scrollable focus region. */
 .alpha-large-text .note-source-dialog footer button { overflow-wrap:anywhere; }
