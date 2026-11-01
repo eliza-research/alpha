@@ -7,14 +7,15 @@ import { test, expect } from '@playwright/test';
 test.beforeEach(({}, info) => { test.skip(info.project.name !== 'production', 'Runs against the flag-off production build only'); });
 const offline = () => localStorage.setItem('alpha.connection.selection.v1', JSON.stringify({ kind: 'offline' }));
 
-test('not connected: the attention card offers Gmail setup and opens Connections', async ({ page }, info) => {
+test('not connected: the Inbox card opens Connections without inventing an unread count', async ({ page }, info) => {
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
   await page.addInitScript(offline);
   await page.goto('/');
   await expect(page.locator('html')).toHaveAttribute('data-connection-mode', 'live');
-  const card = page.getByRole('button', { name: 'Connect email', exact: true });
+  const card = page.locator('[data-alpha-home-inbox]');
   await expect(card).toBeVisible();
-  await expect(card).toHaveAccessibleName('Connect email');
+  await expect(card).toHaveAccessibleName('Inbox');
+  await expect(card.locator('[data-overview-part="count"]')).toHaveText('');
   await expect(page.getByText('Accounts are not connected')).toHaveCount(0);
   await page.screenshot({ path: info.outputPath('home-not-connected.png') });
   await card.click();

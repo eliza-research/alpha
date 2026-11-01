@@ -210,7 +210,7 @@ test('Android: the send review shows Cc and Bcc, an edit after review is reviewe
   expect(state.unexpected).toEqual([]);
 });
 
-test('Android: after an account change elsewhere, the Home Inbox card says when it last updated', async ({ page }) => {
+test('Android: Home withholds the old count until a changed account is reverified', async ({ page }) => {
   test.setTimeout(120_000);
   await androidWithMailbox(page);
   await connected(page);
@@ -220,15 +220,31 @@ test('Android: after an account change elsewhere, the Home Inbox card says when 
   const card = page.locator('[data-alpha-layer="home"] [data-alpha-home-inbox]');
   await expect(card).toContainText(/Updated \d{1,2}:\d{2}/);
   await expect(card).not.toContainText('Not updated since');
-  // Settings announces a Gmail account change this way after a disconnect; Home reads no mail.
+  // Hold the new account lookup: the old read cannot become current merely because
+  // Settings announced a change. Home now refreshes its authorized source itself.
   const searches = (await fixture(page)).searches;
-  await page.evaluate(() => window.dispatchEvent(new CustomEvent('alpha:gmail-accounts-changed', { detail: { source: 'settings' } })));
-  await expect(card).toContainText(/Not updated since .*\d{1,2}:\d{2}/);
-  await expect(card).not.toContainText(/Read \d|unread/);
-  await expect(card).toHaveAccessibleName(/^Open Inbox: .+ has not updated since .*\d{1,2}:\d{2} (AM|PM); 0 unread emails when last read$/);
-  await expect(card).toHaveAttribute('aria-description', /^Not updated since /);
+  await page.evaluate(() => {
+    const w=window as any,base=w.Capacitor.nativePromise;
+    let held=true,release!:()=>void;
+    const gate=new Promise<void>(resolve=>{release=resolve;});
+    w.releaseHomeAccountRead=()=>{held=false;release();};
+    w.Capacitor.nativePromise=async(plugin:string,method:string,input:any)=>{
+      if(held&&plugin==='AlphaConnection'&&method==='request'&&new URL(input.url).pathname==='/api/v1/eliza/google/accounts')await gate;
+      return base(plugin,method,input);
+    };
+    window.dispatchEvent(new CustomEvent('alpha:gmail-accounts-changed', { detail: { source: 'settings' } }));
+  });
+  // The current-account background reader clears the old identity while it is
+  // unverified, rather than retaining another account's count or timestamp.
+  await expect(card).toHaveAccessibleName('Inbox');
+  await expect(card).not.toContainText(/Updated|Read \d|unread/);
+  await expect(card.locator('[data-overview-part="count"]')).toHaveText('');
   expect((await fixture(page)).searches).toBe(searches);
-  // Opening it from the stale card reads the account again.
+  await page.evaluate(()=>(window as any).releaseHomeAccountRead());
+  await expect(card).toContainText(/Updated \d{1,2}:\d{2}/);
+  await expect(card).not.toContainText('Not updated since');
+  await expect.poll(async()=>(await fixture(page)).searches).toBeGreaterThan(searches);
+  // The current card still opens the same verified mailbox.
   await card.click();
   await expect(button(page, 'Synthetic sender, Harbour schedule')).toBeVisible({ timeout: 30_000 });
   expect((await fixture(page)).unexpected).toEqual([]);
