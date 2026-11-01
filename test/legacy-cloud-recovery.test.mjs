@@ -203,7 +203,7 @@ test('automatic startup requests presence-only unbind; explicit provider clear r
  const code=transformSync(source.slice(start,end).replace('export ',''),{loader:'ts',format:'cjs'}).code;
  const calls=[],native={async clearProvider(input){calls.push(input);return {configured:false};}};
  const run=new Function('native',`const browserCloudResidentEnabled=false,Capacitor={isNativePlatform:()=>true},record=value=>value,localProviderStatus=async()=>({configured:false});${code};return clearLocalProvider;`)(native);
- await run();await run(true);assert.deepEqual(calls,[undefined,{onlyIfPresent:true}]);
+ await run();await run(true);assert.deepEqual(calls,[{},{onlyIfPresent:true}]);
  const ui=readFileSync(join(root,'apps/app/src/runtime/connection-ui.tsx'),'utf8');
  // The shared resident binding controller asks for a plain unbind as `unbound`: presence-only.
  assert.match(ui,/A plain unbind is a no-op \(no restart\) when no binding is stored\.\s*clearProvider:async\(_signal,reason\)=>\{await clearLocalProvider\(reason==='unbound'\);\}/);

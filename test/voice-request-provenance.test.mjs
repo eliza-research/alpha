@@ -15,6 +15,7 @@ test('accepted SDK final state binds one current voice request; raw text cannot 
   const performed = [], errors = [], requests = [];
   let selected = true;
   const fixture = {connection: {
+    getSnapshot:()=>({residentInference:"cloud"}),
     getBrowserSpeechAgent: () => agent,
     voiceConversationCurrent: () => selected,
     voiceRendererClientId: () => 'renderer',

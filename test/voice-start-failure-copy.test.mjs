@@ -11,7 +11,8 @@ const catchBody=adapter.slice(adapter.indexOf('}catch(failure){if(token!==genera
 const expression=catchBody.slice(catchBody.indexOf('error=')+6,catchBody.indexOf(';refresh();'));
 const cloud=readFileSync(new URL('../apps/app/src/runtime/cloud-voice.ts',import.meta.url),'utf8');
 const mapperSource=cloud.slice(cloud.indexOf('function voiceLimitMessage('),cloud.indexOf('export type VoiceClip')).replace('export function cloudVoiceFailure','function cloudVoiceFailure');
-const cloudMapper=new Function('developmentCloudVoiceEnabled','browserCloudResidentEnabled','connectionController','cloudServiceName','cloudVoiceServiceLimit','retryDuration',stripTypeScriptTypes(mapperSource,{mode:'transform'})+';return cloudVoiceFailure;')(false,false,{getCloudEnvironment:()=> 'production'},()=> 'Cloud',error=>error.code==='voice-http-429'?{kind:'request-limit',retryAfterMs:120000}:null,()=> '2 minutes');
+const makeCloudMapper=own=>new Function('developmentCloudVoiceEnabled','browserCloudResidentEnabled','connectionController','cloudServiceName','cloudVoiceServiceLimit','retryDuration',stripTypeScriptTypes(mapperSource,{mode:'transform'})+';return cloudVoiceFailure;')(false,false,{getCloudEnvironment:()=> 'production',getSnapshot:()=>({residentInference:own?'direct':'cloud'})},()=> 'Cloud',error=>error.code==='voice-http-429'?{kind:'request-limit',retryAfterMs:120000}:null,()=> '2 minutes');
+const cloudMapper=makeCloudMapper(false);
 const render=new Function('failure','cloudVoiceFailure','voiceFailure','Capacitor','classified','return ('+expression+');');
 const message=(failure,native=true)=>render(failure,cloudMapper,voiceFailure,{isNativePlatform:()=>native},voiceFailure(failure,{transcribing:false,browser:!native}));
 
@@ -31,4 +32,12 @@ test('known auth, provider, rate-limit and microphone recovery stays actionable'
  assert.match(message({code:'permission-denied'}),/Open app settings/);
  assert.match(message({name:'NotAllowedError'},false),/browser’s site settings/);
  assert.match(message({name:'NotFoundError'}),/No usable microphone/);
+});
+
+test('own-provider HTTP failures name Cartesia and never request a Cloud plan or expose provider text',()=>{
+ for(const code of ['voice-http-401','voice-http-403','voice-http-429','voice-http-503']){
+  const text=render({code,message:'PRIVATE_PROVIDER_TEXT'},makeCloudMapper(true),voiceFailure,{isNativePlatform:()=>true},{});
+  assert.match(text,/Cartesia.*Check your own key or provider allowance/);
+  assert.doesNotMatch(text,/Sign in to Cloud|plan|PRIVATE_PROVIDER_TEXT/);
+ }
 });
