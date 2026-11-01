@@ -154,8 +154,9 @@ test('Activity reconciles a reconciliation-required entry as not applied', async
   await page.getByText('Privacy & data', { exact: true }).click();
   await page.getByRole('button', { name: 'Activity', exact: true }).click();
   const app = page.locator('[data-alpha-layer="app"]');
-  // The review read after connecting already loaded the history, so Activity lists the entry
-  // without a separate Load (it offers Refresh instead).
+  // Background proposal recovery stays passive. Activity loads its history only
+  // when the owner asks, before any reconciliation decision is available.
+  await app.getByRole('button', { name: 'Load phone action history', exact: true }).click();
   await expect(app.getByRole('button', { name: 'Refresh phone action history', exact: true })).toBeVisible();
   await expect(app.getByRole('button', { name: 'Load phone action history', exact: true })).toHaveCount(0);
   await expect(app.getByText('Needs your review', { exact: true })).toBeVisible();
