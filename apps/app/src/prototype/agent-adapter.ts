@@ -282,7 +282,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     if(conflicts.length){conflicted();if(shell.live)shell.toast('Recovered some unsaved Notes changes. Others conflict with newer edits.');return;}
     if(await SecureNotesStore.clearDraft(secureConnectionStore,draft).catch(()=>false))shell.notesDraftKept=null;
     notesDataset('notesDraftState','resumed');
-    if(shell.live){originalSet.call(shell,'notes',{storageStatus:'Recovered unsaved changes from your last session and saved them on this device.'});shell.toast('Recovered unsaved Notes changes.');}
+    if(shell.live)originalSet.call(shell,'notes',{storageStatus:'Recovered unsaved changes from your last session and saved them on this device.'});
   }
   /** Android Notes recovery: export saved Notes with the draft; reset clears only what is broken. */
   function openNativeNotesRecovery(shell:Shell,signal:AbortSignal){
@@ -724,7 +724,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         }
         return { status:'failed', summary:'Development previews cannot write records.' };
       });
-      if (this.live) { const send=transport.send.bind(transport);transport.send=input=>trackDispatch(this,()=>send(input));alphaClient.attachVerifiedTransport(transport); this.toast('Connected to the development agent'); }
+      if (this.live) { const send=transport.send.bind(transport);transport.send=input=>trackDispatch(this,()=>send(input));alphaClient.attachVerifiedTransport(transport); }
       else transport.close?.();
     };
     connectionController.setDeviceRecovery(async(operation,operationId,bindingHash,signal)=>{
@@ -1167,7 +1167,9 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     out.draftRecovery=!!draft?.error&&!!this.composerDraft?.recovery();
     out.recoverDraft=()=>{const recovery=this.composerDraft?.recovery();if(!recovery)return;this.draftRecoveryAbort?.abort();const controller=this.draftRecoveryAbort=new AbortController();openDomainRecovery({capture:async signal=>{const captured=await recovery.capture(signal);return {...captured,raw:JSON.stringify({saved:captured.raw,currentDraft:String(this.S().draft||'')})};},reset:recovery.reset},'assistant draft','Assistant draft recovery','Download the saved bytes and current text before resetting this conversation’s draft. Reset does not delete messages or send anything. Reloading discards the current unsaved text.',controller.signal,undefined,Capacitor.getPlatform()==='android'?'device':'browser');};
     // The resident's hosted inference needs a network; local apps keep working without one.
-    const connection=connectionController.getSnapshot(),offline=connection.inferenceOffline&&connection.kind==='resident'&&!!connection.session;
+    // A Cloud outage already has a dismissible notice at the top of the phone.
+    // Keep the composer status for draft recovery and outages without that notice.
+    const connection=connectionController.getSnapshot(),offline=connection.inferenceOffline&&connection.kind==='resident'&&!!connection.session&&connection.residentPlanNotice!=='offline';
     // Routine startup stays quiet. Recovery failures remain actionable, and an
     // attempted send still explains why it cannot dispatch before readiness.
     const residentPending=residentAlwaysPresent&&!connection.session&&connection.kind==='recovering'?agentPendingText(connection):'';

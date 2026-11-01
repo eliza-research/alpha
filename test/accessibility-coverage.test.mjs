@@ -217,7 +217,8 @@ test('the dock, title and toast fixes the sweep depends on stay in the source', 
   assert.match(main, /installToastLayer\(\)/);
   const toast = read('apps/app/src/runtime/toast-layer.ts');
   assert.match(toast, /region\.setAttribute\('aria-live', 'polite'\)/);
-  assert.match(toast, /region\.setAttribute\('popover', 'manual'\)/);
+  assert.match(toast, /dialog\.prepend\(region\)/);
+  assert.doesNotMatch(toast, /showPopover|position:fixed/);
   assert.match(toast, /dialog\.matches\(':modal'\)/);
 });
 

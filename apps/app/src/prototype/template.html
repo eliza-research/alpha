@@ -3995,6 +3995,18 @@
       <button class="tap" disabled="{{emailUse.blocked}}" onClick="{{emailUse.confirm}}" style="min-height:52px;padding:10px 16px;border-radius:26px;background:var(--acc);color:var(--alpha-white);font:inherit;font-weight:600;flex-shrink:0;text-align:center;justify-content:center">{{emailUse.confirmLabel}}</button>
     </div>
   </sc-if>
+  <div class="alpha-chat-notices">
+  <sc-if value="{{panelComposer}}">
+  <sc-if value="{{draftStatus}}"><div style="max-height:24dvh;overflow:auto;padding:6px 16px;background:var(--bg);color:var(--fg);border-radius:16px;font-size:12px"><p role="status" aria-label="Assistant draft status" style="margin:0">{{draftStatus}}</p><sc-if value="{{draftConflict}}"><p style="white-space:pre-wrap;max-height:80px;overflow:auto">Saved copy: {{draftSavedText}}</p><button onClick="{{restoreSavedDraft}}" style="min-height:44px;padding:8px">Restore saved draft</button><button onClick="{{keepCurrentDraft}}" style="min-height:44px;padding:8px">Replace saved draft with this text</button></sc-if><sc-if value="{{draftRetry}}"><button onClick="{{retryDraft}}" style="min-height:44px;padding:8px">Retry draft storage</button></sc-if><sc-if value="{{draftRecovery}}"><button onClick="{{recoverDraft}}" style="min-height:44px;padding:8px">Recover assistant draft</button></sc-if></div></sc-if>
+  </sc-if>
+  <sc-if value="{{inlineChatRecorder}}">
+    <sc-if value="{{chatRecorder.cloudDisclosure}}"><p class="alpha-voice-error" role="note">{{chatRecorder.cloudDisclosureText}}</p></sc-if>
+    <sc-if value="{{chatRecorder.errorDetail}}"><p class="alpha-voice-error">{{chatRecorder.errorDetail}}</p></sc-if>
+    <sc-if value="{{chatRecorder.problem}}"><p class="alpha-voice-error" role="alert"><sc-for list="{{chatRecorder.lines}}" as="line"><span>{{line.t}}</span></sc-for></p></sc-if>
+      <sc-if value="{{chatRecorder.recoveryLabel}}"><button data-alpha-voice-recovery class="tap alpha-voice-recovery" onClick="{{chatRecorder.recover}}">{{chatRecorder.recoveryLabel}}</button></sc-if>
+    <sc-if value="{{chatRecorder.needsPlaybackUnlock}}"><button class="tap alpha-voice-unlock" onClick="{{chatRecorder.unlockPlayback}}">Enable sound</button></sc-if>
+  </sc-if>
+  </div>
   <sc-if value="{{legacyChatRecorder}}">
     <section data-alpha-chat-recorder data-voice-state="{{chatRecorder.state}}" role="region" aria-label="{{chatRecorder.regionLabel}}" style="display:flex;flex-direction:column;flex:{{chatRecorder.flex}};min-height:0;padding:8px 20px 20px;box-sizing:border-box;gap:12px">
       <div style="display:flex;align-items:center;gap:12px;flex-shrink:0">
@@ -4151,14 +4163,9 @@
       <sc-if value="{{chatRecorder.canMute}}"><button class="ib" aria-label="{{chatRecorder.muteLabel}}" disabled="{{chatRecorder.muteDisabled}}" aria-pressed="{{chatRecorder.muted}}" onClick="{{chatRecorder.toggleMute}}"><span aria-hidden="true" class="mail-toolbar-icon" style="mask-image:url('{{chatRecorder.muteAsset}}');-webkit-mask-image:url('{{chatRecorder.muteAsset}}')"></span></button></sc-if>
       <button class="alpha-voice-primary" aria-label="{{chatRecorder.primaryLabel}}" disabled="{{chatRecorder.primaryDisabled}}" onClick="{{chatRecorder.stop}}"><svg class="i" viewBox="0 0 24 24"><path d="{{chatRecorder.primaryIcon}}"></path></svg></button>
     </section>
-    <sc-if value="{{chatRecorder.voiceDetails}}"><details class="alpha-voice-error"><summary>Voice details</summary><sc-if value="{{chatRecorder.cloudDisclosure}}"><p role="note">{{chatRecorder.cloudDisclosureText}}</p></sc-if><sc-if value="{{chatRecorder.errorDetail}}"><p>{{chatRecorder.errorDetail}}</p></sc-if></details></sc-if>
-    <sc-if value="{{chatRecorder.problem}}"><p class="alpha-voice-error" role="alert"><sc-for list="{{chatRecorder.lines}}" as="line"><span>{{line.t}}</span></sc-for></p></sc-if>
-      <sc-if value="{{chatRecorder.recoveryLabel}}"><button data-alpha-voice-recovery class="tap alpha-voice-recovery" onClick="{{chatRecorder.recover}}" style="align-self:center;min-height:max(44px,calc(45px / var(--phone-scale,1)));margin:-18px 16px 12px;padding:8px 16px;border-radius:22px;color:var(--acct);font:inherit">{{chatRecorder.recoveryLabel}}</button></sc-if>
-    <sc-if value="{{chatRecorder.needsPlaybackUnlock}}"><button class="tap alpha-voice-unlock" onClick="{{chatRecorder.unlockPlayback}}">Enable sound</button></sc-if>
   </sc-if>
   <sc-if value="{{panelComposer}}">
   <sc-if value="{{messageComposeContext}}"><div style="display:flex;align-items:center;gap:8px;padding:6px 16px;font-size:13px;background:var(--s2);border-radius:14px"><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{messageComposeContext}}</span><button class="tap" aria-label="Cancel reply or edit" onClick="{{cancelMessageContext}}" style="min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center"><svg class="i" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="{{ic.x}}"></path></svg></button></div></sc-if>
-  <sc-if value="{{draftStatus}}"><div style="max-height:24dvh;overflow:auto;padding:6px 16px;background:var(--bg);color:var(--fg);border-radius:16px;font-size:12px"><p role="status" aria-label="Assistant draft status" style="margin:0">{{draftStatus}}</p><sc-if value="{{draftConflict}}"><p style="white-space:pre-wrap;max-height:80px;overflow:auto">Saved copy: {{draftSavedText}}</p><button onClick="{{restoreSavedDraft}}" style="min-height:44px;padding:8px">Restore saved draft</button><button onClick="{{keepCurrentDraft}}" style="min-height:44px;padding:8px">Replace saved draft with this text</button></sc-if><sc-if value="{{draftRetry}}"><button onClick="{{retryDraft}}" style="min-height:44px;padding:8px">Retry draft storage</button></sc-if><sc-if value="{{draftRecovery}}"><button onClick="{{recoverDraft}}" style="min-height:44px;padding:8px">Recover assistant draft</button></sc-if></div></sc-if>
 
     <div class="alpha-chat-composer">
       <textarea disabled="{{draftOpening}}" onPointerDown="{{composerPointer}}" data-alpha-composer="true" rows="1" aria-label="Message {{name}}" placeholder="Message {{name}}" value="{{draft}}" onChange="{{onDraft}}" onKeyDown="{{onKey}}" style="flex-grow: 1; min-width: 0; height: 44px; min-height:44px; max-height:min(168px,28dvh); resize:none; overflow-y:auto; font-family:inherit; line-height:22px; padding-top:11px; padding-bottom:11px; box-sizing:border-box; border: 0; outline: 0; background: transparent; color: var(--fg); font-size: 16px"></textarea>
@@ -4173,9 +4180,11 @@
 
 
 <sc-if value="{{showComposer}}">
+<div data-alpha-draft-notice aria-hidden="{{dockHidden}}" inert="{{dockHidden}}">
+  <sc-if value="{{draftStatus}}"><div style="max-height:24dvh;overflow:auto;padding:6px 16px;background:var(--bg);color:var(--fg);border-radius:16px;font-size:12px"><p role="status" aria-label="Assistant draft status" style="margin:0">{{draftStatus}}</p><sc-if value="{{draftConflict}}"><p style="white-space:pre-wrap;max-height:80px;overflow:auto">Saved copy: {{draftSavedText}}</p><button onClick="{{restoreSavedDraft}}" style="min-height:44px;padding:8px">Restore saved draft</button><button onClick="{{keepCurrentDraft}}" style="min-height:44px;padding:8px">Replace saved draft with this text</button></sc-if><sc-if value="{{draftRetry}}"><button onClick="{{retryDraft}}" style="min-height:44px;padding:8px">Retry draft storage</button></sc-if><sc-if value="{{draftRecovery}}"><button onClick="{{recoverDraft}}" style="min-height:44px;padding:8px">Recover assistant draft</button></sc-if></div></sc-if>
+</div>
 <div data-alpha-layer="composer" role="group" aria-label="Assistant controls" aria-hidden="{{dockHidden}}" inert="{{dockHidden}}" style="position: absolute; left: 16px; right: 16px; bottom: {{cmpBottom}}px; z-index: 40">
   <sc-if value="{{messageComposeContext}}"><div style="display:flex;align-items:center;gap:8px;padding:6px 16px;font-size:13px;background:var(--s2);border-radius:14px"><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{messageComposeContext}}</span><button class="tap" aria-label="Cancel reply or edit" onClick="{{cancelMessageContext}}" style="min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center"><svg class="i" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="{{ic.x}}"></path></svg></button></div></sc-if>
-  <sc-if value="{{draftStatus}}"><div style="max-height:24dvh;overflow:auto;padding:6px 16px;background:var(--bg);color:var(--fg);border-radius:16px;font-size:12px"><p role="status" aria-label="Assistant draft status" style="margin:0">{{draftStatus}}</p><sc-if value="{{draftConflict}}"><p style="white-space:pre-wrap;max-height:80px;overflow:auto">Saved copy: {{draftSavedText}}</p><button onClick="{{restoreSavedDraft}}" style="min-height:44px;padding:8px">Restore saved draft</button><button onClick="{{keepCurrentDraft}}" style="min-height:44px;padding:8px">Replace saved draft with this text</button></sc-if><sc-if value="{{draftRetry}}"><button onClick="{{retryDraft}}" style="min-height:44px;padding:8px">Retry draft storage</button></sc-if><sc-if value="{{draftRecovery}}"><button onClick="{{recoverDraft}}" style="min-height:44px;padding:8px">Recover assistant draft</button></sc-if></div></sc-if>
 
   <div data-alpha-input-bar class="enter" onPointerDown="{{inputSw.down}}" onPointerMove="{{inputSw.move}}" onPointerUp="{{inputSw.up}}" onPointerCancel="{{inputSw.cancel}}" onLostPointerCapture="{{inputSw.lost}}" style="{{inputDragStyle}}; position:relative; display: flex; align-items: center; gap: 4px; min-height: 62px; padding: 6px 8px 6px 9px; border-radius: 31px; background: var(--s2); box-shadow: 0 14px 40px var(--shc); touch-action: pan-y">
     <span data-alpha-input-drag-background aria-hidden="true" style="position:absolute;inset:0;z-index:0;border-radius:inherit;touch-action:none"></span>
@@ -4326,7 +4335,7 @@
 </sc-if>
 
 
-<div data-alpha-toast aria-live="polite" aria-atomic="true" style="position: absolute; bottom: {{toastBottom}}px; left: 16px; right: 16px; display: flex; justify-content: center; z-index: 97; pointer-events: none">
+<div data-alpha-toast aria-live="polite" aria-atomic="true">
 <sc-if value="{{toastOn}}">
   <div class="drop" style="pointer-events: auto; min-height: 48px; max-width: 100%; box-sizing: border-box; padding: 0 {{toastPadR}}px 0 18px; border-radius: 24px; background: var(--fg); color: var(--bg); font-size: 14px; font-weight: 600; display: flex; gap: 14px; align-items: center; box-shadow: 0 8px 24px var(--shc)">
     <span style="flex-grow: 1; min-width: 0; padding: 8px 0; overflow-wrap: anywhere">{{toast}}</span>
@@ -4335,11 +4344,7 @@
 </sc-if>
 </div>
 
-<sc-if value="{{showHint}}">
-<div style="position: absolute; left: 0; right: 0; bottom: 100px; z-index: 99; display: flex; justify-content: center; pointer-events: none">
-  <div class="drop" style="display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px 0 10px; border-radius: 18px; background: var(--fg); color: var(--bg); font-size: 13px; font-weight: 600"><svg class="i" viewBox="0 0 24 24" style="width: 16px; height: 16px"><path d="{{ic.up}}"></path></svg>Swipe up to go home</div>
-</div>
-</sc-if>
+
 <sc-if value="{{showIndicator}}">
 <button aria-label="Home" onClick="{{homeBar}}" style="position: absolute; bottom: 0; left: 126px; width: 160px; height: 22px; z-index: 99; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 8px; box-sizing: border-box"><span style="width: 108px; height: 4px; border-radius: 2px; background: {{homeIndicatorColor}}; opacity: .85"></span></button>
 </sc-if>

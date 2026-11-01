@@ -43,6 +43,9 @@ async function noMedia(page:Page){expect(await page.evaluate(()=>{const f=(windo
 test('unsigned chat voice stays in Home and offers only explicit Cloud sign-in',async({page},info)=>{
  await setup(page,false);await page.getByRole('button',{name:'Talk',exact:true}).click();await expect(voice(page)).toBeVisible();await expect(page.locator('html')).toHaveAttribute('data-active-view','home');
  await expect(page.getByRole('button',{name:'Connect Eliza Cloud',exact:true})).toBeEnabled();await expect(voice(page).getByRole('button',{name:'Microphone off',exact:true})).toBeDisabled();await expect(voice(page).getByRole('button',{name:'Stop voice conversation',exact:true})).toBeEnabled();expect(await page.evaluate(()=>(window as any).chatVoiceFixture.starts)).toBe(0);await expect(page.locator('[data-alpha-subview="notes-recording"]')).toHaveCount(0);await expect(page.locator('[data-alpha-transcript]')).toBeVisible();await expect(page.locator('textarea[data-alpha-composer]')).toHaveCount(0);
+ const notice=page.locator('.alpha-chat-notices');await expect(notice.getByRole('alert')).toBeVisible();
+ const layout=await page.evaluate(()=>{const notice=document.querySelector('.alpha-chat-notices')!.getBoundingClientRect(),voice=document.querySelector('[data-alpha-chat-recorder]')!.getBoundingClientRect(),recovery=document.querySelector('[data-alpha-voice-recovery]')!.getBoundingClientRect();return {noticeBottom:notice.bottom,voiceTop:voice.top,recoveryBottom:recovery.bottom};});
+ expect(layout.noticeBottom).toBeLessThanOrEqual(layout.voiceTop);expect(layout.recoveryBottom).toBeLessThanOrEqual(layout.noticeBottom);
  await page.screenshot({path:info.outputPath('unsigned-stop-microphone-off.png'),animations:'disabled'});
  await voice(page).getByRole('button',{name:'Stop voice conversation',exact:true}).click();await expect(voice(page)).toHaveCount(0);await expect(page.locator('[data-alpha-layer="conversation"]')).toBeVisible();await expect(page.locator('textarea[data-alpha-composer]')).toBeVisible();expect(await page.evaluate(()=>(window as any).chatVoiceFixture.starts)).toBe(0);await noMedia(page);
 });
@@ -71,7 +74,7 @@ test('the recorded-clip conversation says once that speaking will not interrupt 
 });
 test('the default send policy is auto-send: a finished transcript is sent with no review step',async({page})=>{
  await setup(page);expect(await page.evaluate(async()=>(await import('/src/runtime/voice-selection.ts')).voiceSendPolicy())).toBe('auto-send');
- await page.getByRole('button',{name:'Talk',exact:true}).click();await expect(voice(page)).toHaveAttribute('data-voice-state','listening');await expect(voice(page)).toContainText('sent to this conversation');
+ await page.getByRole('button',{name:'Talk',exact:true}).click();await expect(voice(page)).toHaveAttribute('data-voice-state','listening');await expect(voice(page)).toContainText('Listening…');
  await utterance(page);await expect(voice(page)).toHaveAttribute('data-voice-state','speaking');
  await expect(voice(page).getByRole('button',{name:'Send voice message',exact:true})).toHaveCount(0);await expect(voice(page).getByRole('textbox',{name:'Review transcript',exact:true})).toHaveCount(0);
  expect(await page.evaluate(()=>{const f=(window as any).chatVoiceFixture;return {sends:f.sends,sent:f.sent};})).toEqual({sends:1,sent:'Synthetic Cloud transcript'});
@@ -79,7 +82,7 @@ test('the default send policy is auto-send: a finished transcript is sent with n
 });
 test('the review send policy holds each transcript for an edited Send or a Discard that sends nothing',async({page})=>{
  await setup(page);expect(await page.evaluate(async()=>(await import('/src/runtime/voice-selection.ts')).setVoiceSendPolicyForTests('review'))).toBe(true);
- await page.getByRole('button',{name:'Talk',exact:true}).click();await expect(voice(page)).toHaveAttribute('data-voice-state','listening');await expect(voice(page)).toContainText('shown to you before anything is sent');
+ await page.getByRole('button',{name:'Talk',exact:true}).click();await expect(voice(page)).toHaveAttribute('data-voice-state','listening');await expect(voice(page)).toContainText('Listening…');
  await utterance(page);await expect(voice(page)).toHaveAttribute('data-voice-state','review');
  await expect(voice(page).getByRole('button',{name:'Stop voice conversation',exact:true})).toBeEnabled();await expect(voice(page).getByRole('button',{name:'Microphone off',exact:true})).toBeDisabled();
  const review=voice(page).getByRole('textbox',{name:'Review transcript',exact:true});await expect(review).toHaveValue('Synthetic Cloud transcript');await expect(voice(page)).toContainText('Nothing has been sent.');

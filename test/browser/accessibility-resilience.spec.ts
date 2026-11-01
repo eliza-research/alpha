@@ -616,7 +616,7 @@ test.describe('a toast raised while a top-layer dialog is open', () => {
     return dialog;
   }
 
-  test('it is drawn above the dialog, inside it, in a live region that was there before the text', async ({ page }) => {
+  test('it takes space at the top of the dialog in a live region that was there before the text', async ({ page }) => {
     const dialog = await openDialog(page);
     const region = dialog.locator('[data-alpha-dialog-toast]');
     // Present and empty as soon as the dialog is open.
@@ -633,9 +633,10 @@ test.describe('a toast raised while a top-layer dialog is open', () => {
     const measured = await region.evaluate(el => {
       const body = el.firstElementChild!, box = body.getBoundingClientRect(), screen = document.querySelector('[data-screen]')!.getBoundingClientRect();
       const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
-      return { onTop: !!hit && body.contains(hit), inside: box.left >= screen.left && box.right <= screen.right && box.bottom <= screen.bottom && box.top >= screen.top, height: Math.round(box.height), inert: !!el.closest('[inert]'), topLayer: el.matches(':popover-open') };
+      const content = el.nextElementSibling!.getBoundingClientRect();
+      return { onTop: !!hit && body.contains(hit), inside: box.left >= screen.left && box.right <= screen.right && box.bottom <= screen.bottom && box.top >= screen.top, height: Math.round(box.height), inert: !!el.closest('[inert]'), beforeContent: box.bottom <= content.top, position: getComputedStyle(el).position };
     });
-    expect(measured).toEqual({ onTop: true, inside: true, height: 48, inert: false, topLayer: true });
+    expect(measured).toEqual({ onTop: true, inside: true, height: 48, inert: false, beforeContent: true, position: 'static' });
     // Assistive technology is offered it: the text is in Chromium's accessibility tree once, not ignored.
     const session = await page.context().newCDPSession(page);
     await session.send('Accessibility.enable');
@@ -662,9 +663,16 @@ test.describe('a toast raised while a top-layer dialog is open', () => {
     await page.keyboard.press('Escape');
     await expect(page.locator('dialog[open]')).toHaveCount(0);
     await expect(page.locator('[data-alpha-dialog-toast]')).toHaveCount(0);
+    // Notes deliberately hides the composer while editing. Leave the editor and
+    // open chat so the notice is checked against an input the user can reach.
+    await page.getByRole('button', { name: 'Back to notes', exact: true }).click();
+    await page.getByRole('button', { name: 'Open conversation', exact: true }).click();
     // With no dialog the page's own region is the one on screen again.
     await raise(page, 'Back on the page');
     await expect(page.locator('[data-alpha-toast]')).toContainText('Back on the page');
+    const toast = (await page.locator('[data-alpha-toast]').boundingBox())!;
+    const input = (await page.locator('[data-alpha-composer]:visible').boundingBox())!;
+    expect(toast.y + toast.height).toBeLessThan(input.y);
     const found = format(await auditPage(page, { dock: true })).filter(line => line.startsWith('toast-'));
     expect(found, found.join('\n')).toEqual([]);
   });

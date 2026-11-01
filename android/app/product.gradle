@@ -111,10 +111,13 @@ def selectedParadeeAbis = project.findProperty('elizaParadeeAbis')?.toString()?.
 if (!selectedParadeeAbis || selectedParadeeAbis.toSet().size() != selectedParadeeAbis.size() || selectedParadeeAbis.any { !(it in ['arm64-v8a', 'x86_64']) }) throw new GradleException('Invalid elizaParadeeAbis')
 def paradeeAbiArgs = selectedParadeeAbis.collectMany { ['--abi', it] }
 def verifyParadeeAppLinkage = tasks.register('verifyParadeeAppLinkage', Exec) {
+ // Cloud has no local engine; verifyEmbeddingHost checks its packaged exclusions.
+ onlyIf { runtimeProfile != 'cloud' }
  workingDir rootProject.projectDir.parentFile
  commandLine(['node', 'scripts/paradee-runtime.mjs', '--app-linkage'] + paradeeAbiArgs + ((unpackagedRuntime || runtimeProfile == 'cloud') ? ['--allow-absent'] : []))
 }
 def verifyVoiceHost = tasks.register('verifyVoiceHost', Exec) {
+ onlyIf { runtimeProfile != 'cloud' }
  workingDir rootProject.projectDir.parentFile
  commandLine(['node', 'scripts/voice-host.mjs', '--verify'] + paradeeAbiArgs + ((unpackagedRuntime || runtimeProfile == 'cloud') ? ['--allow-absent'] : []))
 }

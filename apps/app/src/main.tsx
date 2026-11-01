@@ -321,7 +321,7 @@ async function mountPhone() {
   installTextScale();
   // The floating dock's footprint is measured too: Home ends above it (runtime/dock-clearance.ts).
   installDockClearance();
-  // A toast raised under a top-layer dialog is shown and announced inside that dialog (runtime/toast-layer.ts).
+  // Dialog feedback is announced in its own flow above the form (runtime/toast-layer.ts).
   installToastLayer();
   // Focus dropped by a screen change or HOME lands on the new screen's title (runtime/view-focus.ts).
   installViewFocus();
