@@ -2,98 +2,354 @@
   "schema": 1,
   "repository": "elizaOS/eliza",
   "base": "develop",
-  "baseCommit": "53f78e1e1d7e851572f3466655ae3d8c4261f18f",
-  "head": "641c179ce8214c864a7ea3dee23dae2d2bd2a682",
-  "recordedAt": "2026-10-30",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...641c179ce8214c864a7ea3dee23dae2d2bd2a682",
+  "baseCommit": "3861ffd1cbac332f25e1552dc977953a87f1adee",
+  "head": "2cdc3e0aae4eaeb006a9f83aa7bc400f885dedb2",
+  "recordedAt": "2026-11-01",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...2cdc3e0aae4eaeb006a9f83aa7bc400f885dedb2",
   "status": "ahead",
-  "aheadBy": 22,
+  "aheadBy": 85,
   "behindBy": 0,
-  "mergeBase": "53f78e1e1d7e851572f3466655ae3d8c4261f18f",
+  "mergeBase": "3861ffd1cbac332f25e1552dc977953a87f1adee",
   "pinOnlyCommits": [
     {
-      "sha": "5bf3316457ab12cb0e708a9db89e354d9ca7b974",
-      "subject": "fix(core): render Stage-1 routing and loop verdict events without envelope ids"
+      "sha": "8c1c23a90aee40214fdf7d8a67712622f9ed3774",
+      "subject": "Prevent Notes writes on read-only turns"
     },
     {
-      "sha": "9e7bc30d54cc1abf26d9ca9fe80584d71d84227d",
-      "subject": "fix(calendar): bind a bare intent number in a Stage-1 Calendar read"
+      "sha": "754bf2e1b578c3615e8a3e60ce92585a9734f17e",
+      "subject": "Fix Notes request guard export and typed regression fixtures"
     },
     {
-      "sha": "18fc48f2217986a4d4d97baeaad0bd92650fdbf5",
-      "subject": "fix(personal-assistant): offer separate free slots in propose_times"
+      "sha": "0fc5c43cac8300502b575fc02f82e4bb799a3289",
+      "subject": "Enroll Notes request-effect regressions in the default test lane"
     },
     {
-      "sha": "d232d4d3cd248d80e6ab3d8b7260fc213e6f9288",
-      "subject": "fix(agent): name view-interact controls only for views with scoped actions"
+      "sha": "682b9d1aa5f4cf8485bad437635f15df012c9440",
+      "subject": "feat(calendar): expose owner-only managed read diagnostics"
     },
     {
-      "sha": "8c2649601fbc9940f9654fe5625c0d5e9739250f",
-      "subject": "fix(assistant): reroute an applied-claim follow-up to its recent effect's domains"
+      "sha": "73f625cd5b51bfc9d72d4fb978ffb82794cf7429",
+      "subject": "fix(host/voice): speak the reply after Cartesia closes an idle cue context"
     },
     {
-      "sha": "3c665465ab9e713b6f2afb54093bda40156d7615",
-      "subject": "fix(assistant): say plainly which calendar check failed and what changed"
+      "sha": "0f9b695955b0289698b580d046f9c8cb2814ac93",
+      "subject": "fix(calendar): scope handled managed-source error reporting"
     },
     {
-      "sha": "f90f1fbd6adff049e2f0d442c0747ff8dea8d36b",
-      "subject": "fix(assistant): drop empty follow-up, session and DM census provider text"
+      "sha": "4e71468f9a160cc88c0e6b2dd36e2907349d190c",
+      "subject": "ci: qualify Notes owning regressions before lint"
     },
     {
-      "sha": "e20d35c9c719eb14974c123ebbb77c1f6523c4d6",
-      "subject": "fix(lifeops): move a one-off owner reminder by delayMinutes on update"
+      "sha": "8c8fd5cd3f5823081affd0b2ce56ca6cecce85dd",
+      "subject": "test(notes): repair runtime fixture and expose owning failures"
     },
     {
-      "sha": "520dfbf111cf002598bdfb67080fe2f6fffb22b3",
-      "subject": "fix(trigger): send an OWNER_REMINDERS reminder's update back to OWNER_REMINDERS"
+      "sha": "3b3847dc147aed07fdc2e9ef89e333f92d644211",
+      "subject": "ci(calendar): run owning regressions and format read contracts"
     },
     {
-      "sha": "c76b573f831ad7d6765bc7da459b0b3b96e66bac",
-      "subject": "perf(assistant): lead the Stage-1 user message with its static catalog and Task"
+      "sha": "2405740d71ae305ec5b356c620600dac0f732b78",
+      "subject": "ci(calendar): check owning lint before builds"
     },
     {
-      "sha": "2696c422056820d89600226f6b78f34ac55d8be5",
-      "subject": "fix(assistant): replay each call's declared turn scope in model history"
+      "sha": "30c7a8cab5f6302db0ec3b431c1424ae198d5b28",
+      "subject": "fix(assistant): report a saved reminder and a verified calendar read as done"
     },
     {
-      "sha": "0ef20d63a8f60f10c87cd315519d049ebd949f04",
-      "subject": "perf(assistant): keep the turn-scope protocol out of every tool schema"
+      "sha": "912d0af1591eebca97d86d5c408a21dda6b2cf74",
+      "subject": "fix(elizacloud): retry a Cloud connection reset before any response"
     },
     {
-      "sha": "3ab51a24de11d3470cac03552d821fb6b1f3ce97",
-      "subject": "fix(assistant): reroute a referential follow-up to the domain its effect owns"
+      "sha": "02c452802258494778c5478e85732e48294354dd",
+      "subject": "fix(notes): bind requested-operation completion to the current host turn"
     },
     {
-      "sha": "fc0f8c9ebd37f8dd65a90db2028c6927a5ce2ff5",
-      "subject": "fix(calendar): encode aggregated feed reads that carry an undefined field"
+      "sha": "8a003cb3a13528a24b57e528b195f665a590ffbc",
+      "subject": "style(assistant): apply Biome formatting to planner-loop and two scope tests"
     },
     {
-      "sha": "cf99e5955566e6001c2f771e28ef6ccf690d63ef",
-      "subject": "test(personal-assistant): accept Bun's slot time format in the spread test"
+      "sha": "864408a0af7307374e874f098207598900cbf56c",
+      "subject": "style(assistant): format existing planner scope regressions"
     },
     {
-      "sha": "6077930ff6ffd25ad01ece23e6a2cd1eb21da9fb",
-      "subject": "fix(assistant): leave an undeclared call's scope unknown in retry feedback"
+      "sha": "fd5046a834f54f095eae8040f008e8257d681689",
+      "subject": "style(assistant): format existing planner scope regressions"
     },
     {
-      "sha": "a69613c195181452dcf4efe408fd084ce95e506b",
-      "subject": "fix(lifeops): refuse a fractional delay on a relative reminder update"
+      "sha": "702c1dae848dddd3a6008e08730a48df1bfc956e",
+      "subject": "fix(notes): project immutable interpretation into the JSON plan contract"
     },
     {
-      "sha": "56b6bfcb0ce628d34952469f283127ba65ca5b58",
-      "subject": "Warm the Cloud inference connection before the first model call"
+      "sha": "08c1941ca08a47c7167d91f247673738bc965e80",
+      "subject": "fix(elizacloud): retry a Cloud reset only soon after the send, keep its transport label"
     },
     {
-      "sha": "bcc2099d8791e69f0bc9ece64100e0379461f215",
-      "subject": "Say what the Cloud pre-warm cannot warm"
+      "sha": "9e68f67280e6823260c51332bbc69900a185ab1e",
+      "subject": "Revert \"fix(assistant): report a saved reminder and a verified calendar read as done\""
     },
     {
-      "sha": "1c4080b3052839dfc1301b5e8ac8ef4aa5065ecb",
-      "subject": "fix(lifeops): resolve an unknown mutation target by its one-match title"
+      "sha": "3f7ee10e21c7141a4a07b8e1fb65bbd564d4bdb3",
+      "subject": "fix(assistant): count a verified calendar read when the evaluator omits its citation"
     },
     {
-      "sha": "d8f2e1fc35b841acd176184b0ae439e22c0eabf7",
-      "subject": "fix(lifeops): keep the target's guards on a title-resolved delete"
+      "sha": "8141c6338090857859fb9a54b33378eed991fd3c",
+      "subject": "style(personal-assistant): apply Biome formatting to life.ts and the reminder-delay test"
+    },
+    {
+      "sha": "9d9c78b411814e25a50b35e63f332555c502fefe",
+      "subject": "test(notes): supply native call IDs and expose bounded failure phases"
+    },
+    {
+      "sha": "32351bef6868593c18775103b3fbb004473960e2",
+      "subject": "fix(notes): bound terminal recovery without releasing required operations"
+    },
+    {
+      "sha": "3eb1322afe18b178597247309b0f1d41ad41cca1",
+      "subject": "style(personal-assistant): apply reviewed relative-delay formatting"
+    },
+    {
+      "sha": "e30d5ca3e737d22de2948d39e39a7665c8dc9d15",
+      "subject": "style(personal-assistant): apply reviewed relative-delay formatting"
+    },
+    {
+      "sha": "cb9944a1ce6f36d64914af71374f6283cf3f0870",
+      "subject": "Merge elizaOS/eliza#38365 (calendar managed-read diagnostics) into the v2 collector"
+    },
+    {
+      "sha": "8e9f5d095a8b324e9f508877beabedeedb07dfb6",
+      "subject": "test(notes): assert canonical stored and projected body contracts"
+    },
+    {
+      "sha": "6ae9512570960a4522e5df87f2d8af09fc82371f",
+      "subject": "fix(notes): complete typed fixture collaborators and order imports"
+    },
+    {
+      "sha": "053f7f0edd95a9a336bee0b6677e700304a5bd44",
+      "subject": "fix(assistant): bind the uncited Calendar read fallback to its request"
+    },
+    {
+      "sha": "932458344b074832446c3cd25f17e07ed0416700",
+      "subject": "fix(assistant): never let a Google read stand in for the unread app Calendar"
+    },
+    {
+      "sha": "d82cdd73d249cdf170808fac30b9cfd24fa19a33",
+      "subject": "style(agent): order view-route imports and wrap owner restriction call"
+    },
+    {
+      "sha": "b3456010a2df91eaeee89d4b63600d8b9f738d47",
+      "subject": "ci(assistant): run the Calendar read coverage suite when the assistant changes"
+    },
+    {
+      "sha": "a101bf1cb3acb6ba8b430946cd7d64a4e83f97d2",
+      "subject": "style(notes): qualify Core and assistant owning lint scopes"
+    },
+    {
+      "sha": "88922075c6baa61942ece9522e446e4f1126d7f0",
+      "subject": "fix(assistant): judge a cited Calendar read like the uncited fallback"
+    },
+    {
+      "sha": "40821e72e4ae8229bfda3074f227f8f8f905fa33",
+      "subject": "Merge elizaOS/eliza#38355 (Notes write authority) into the v2 collector"
+    },
+    {
+      "sha": "c10917a657298ebddb44095c7a8776ea575f1616",
+      "subject": "fix(browser): never claim a native client opened an unconfirmed site"
+    },
+    {
+      "sha": "76aa941a12dc8b996341f6fdda1880fac51febe7",
+      "subject": "fix(assistant): the model judges a website open, code grounds it in the typed address"
+    },
+    {
+      "sha": "6929a45948ab3dbb17edaf81d9fbb5e1071e6898",
+      "subject": "fix(contracts): refuse an open whose negation is set off by an aside"
+    },
+    {
+      "sha": "a4d1e858ebb5c4559d21f920c7b53eff2cbb9174",
+      "subject": "fix(contracts): refuse an open whose verb group or short span is negated"
+    },
+    {
+      "sha": "ab9176b9c1ed90bc9efbb30abbcf3b64fb71d995",
+      "subject": "fix(assistant): say when the generic device tool may open a typed address"
+    },
+    {
+      "sha": "e76720abf25bd9461b20dc4b70e1a176b185a7d0",
+      "subject": "fix(contracts): refuse an address that a later negation or marked-up negation refuses"
+    },
+    {
+      "sha": "2da665660730453c0454e55f2bc2b669d238dd6c",
+      "subject": "fix(contracts): scope the guard's trailing, stop and question rules to their clause"
+    },
+    {
+      "sha": "b136c7bbd3dcc91d66a7d3abf6df3b967230b91a",
+      "subject": "fix(contracts): read \"never mind open x.com\" as a request"
+    },
+    {
+      "sha": "28e9217c544ac1bd86e2f2bd95adda7693046ca7",
+      "subject": "fix(contracts): refuse a host that any of its occurrences refuses"
+    },
+    {
+      "sha": "de3dab92ea789139d33304aef50fb33aee967db0",
+      "subject": "fix(contracts): refuse a host that any word naming it refuses"
+    },
+    {
+      "sha": "7bd1ead993d95128abeedeae536a0564e3b25fba",
+      "subject": "test(calendar): drop a header line that says the diagnostics test is not run"
+    },
+    {
+      "sha": "aa62708ced98da94abd7306a646011f1c56af0e3",
+      "subject": "ci: run the Calendar regression steps when their imports change"
+    },
+    {
+      "sha": "3c43445560147dc4267bd873aebce4cc2b0bf689",
+      "subject": "ci: run the website open owning tests, and keep Notes checks after a Calendar failure"
+    },
+    {
+      "sha": "21d83ec2d5b77ab8152d1e6094b6db3506b9155b",
+      "subject": "ci: run the device actions e2e pair when Core, assistant or Notes change"
+    },
+    {
+      "sha": "7b8e7a9fd5152f0bc593fd48ba4efc4bc80a3509",
+      "subject": "fix(assistant): answer the agenda from the phone Calendar when Google fails"
+    },
+    {
+      "sha": "386a877746e4d7619d5b895daf74abbe5c574aaa",
+      "subject": "test(notes): bind canonical authority for native counter-requests"
+    },
+    {
+      "sha": "efe631f22eb046a59cb5b4ac32b3a3a1bd8fb6dc",
+      "subject": "style(assistant): format the Notes counter-request fixture"
+    },
+    {
+      "sha": "6adbaf63a8af32183878fdbb4ee62612299528f2",
+      "subject": "fix(lifeops): edit the live reminder, not a fired or cancelled namesake"
+    },
+    {
+      "sha": "983b303744869bda5bf4f5ef8517444fd0b28ff2",
+      "subject": "fix(lifeops): honor a namesake the owner names by clock time"
+    },
+    {
+      "sha": "cc4f161b38eb2d793766d82aca58b80bd1031e9b",
+      "subject": "fix(lifeops): pick a reminder namesake only when the owner's words leave one"
+    },
+    {
+      "sha": "0b5b71c52e9e30f7fddf0faf01a6ea62539047bd",
+      "subject": "fix(lifeops): follow the saved reminder only for a plain \"make that\" edit"
+    },
+    {
+      "sha": "8d99c40098e374c47c33ef8e1dfd8e0f3b65c0b0",
+      "subject": "fix(lifeops): follow the saved reminder only for the value the planner sent"
+    },
+    {
+      "sha": "dd4c4e9f3a14426356d9dfee0a312c8d0e1cf6bb",
+      "subject": "fix(lifeops): narrow only the reminder group the planner names"
+    },
+    {
+      "sha": "b7222665c5d956851efb0899ce18676a79ad9c9d",
+      "subject": "style(personal-assistant): format the reminder namesake changes"
+    },
+    {
+      "sha": "85415ce57e00b657e930a16c3bbf89864059911b",
+      "subject": "chore(security): allow the reminder namesake fixture seed key in gitleaks"
+    },
+    {
+      "sha": "eb1886ace063196513e8a4c7732e514331cc73e1",
+      "subject": "ci: run the reminder edit regressions when the reminder sources change"
+    },
+    {
+      "sha": "5754c2caf6786d6d4ddd2d89c833dfed7cf999c4",
+      "subject": "Revert \"ci: run the reminder edit regressions when the reminder sources change\""
+    },
+    {
+      "sha": "b9afc6dfeea98bbba7f95a9dd291e3450782e43d",
+      "subject": "fix: keep personal assistant UI stub aliases root-only"
+    },
+    {
+      "sha": "3fb40f1d68c8b1de78d21d9860958475a2656e6b",
+      "subject": "ci: run the reminder edit regressions when the reminder sources or their resolution inputs change"
+    },
+    {
+      "sha": "c3a5b42973a613b0083bf18674542aecc8bc202f",
+      "subject": "Merge current develop into the Alpha QA SDK collector"
+    },
+    {
+      "sha": "90177c7da271fa861f3a886abdbfe27df53654c0",
+      "subject": "fix(assistant): replan follow-up work dropped after prepared navigation"
+    },
+    {
+      "sha": "89a699dee4ca9eea6945bdb62cd8c1045474e697",
+      "subject": "fix(voice): acknowledge tool work when no planning cue was drafted"
+    },
+    {
+      "sha": "9942879cb9ac1f9ed6fce97b605181636d03d678",
+      "subject": "fix(calendar): preserve managed Google connection references with read diagnostics"
+    },
+    {
+      "sha": "757a00a6961bd18c33f9fd7b167a056232d47051",
+      "subject": "ci: qualify Alpha collector owning suites on the normal dependency graph"
+    },
+    {
+      "sha": "7096cd181fb6930da4e77431180e034b4ca26fdc",
+      "subject": "test(core): cover the complete type-only schema leaf inventory"
+    },
+    {
+      "sha": "78f268ec82468701c184789e9651cca09ccf07b3",
+      "subject": "test(assistant): assert exact ingress replay and reject conflicting bytes"
+    },
+    {
+      "sha": "af3c5e2a0c6c4a35ef43997a653d7c68dad86ca3",
+      "subject": "test(assistant): report bounded grounding recovery diagnostics"
+    },
+    {
+      "sha": "0721f7f9e3b135ecff1fec3ec0804d73808f784f",
+      "subject": "fix(calendar): ground zoneless agenda reads in the producer timezone"
+    },
+    {
+      "sha": "f91d0440cb0b1a3dcbc45a2715501c04eef22bfb",
+      "subject": "test(assistant): bind positive planner fixtures through the normal evaluator parser"
+    },
+    {
+      "sha": "f9096dffd8a1c3d7530c1c56304c5ac03f7add92",
+      "subject": "fix(assistant): preserve verified child reply proof in parent projection"
+    },
+    {
+      "sha": "3f99b512ce7c17849b517ed55b0336a4b90f645d",
+      "subject": "fix(assistant): restore checked reply-only recovery after claim rejection"
+    },
+    {
+      "sha": "11e77e0bbe1c2582800524df64ff0cbd8276a852",
+      "subject": "fix(assistant): preserve checked coding reply proof and exercise the host evaluator path"
+    },
+    {
+      "sha": "51df0dc94a0f314dbb0424dad0c50c4b0c8f0385",
+      "subject": "test(notes): bind fixture requests through canonical field and issuer boundaries"
+    },
+    {
+      "sha": "13c8a33f7fb85e75c4abe3a75a9a519a99f07dfb",
+      "subject": "test(notes): use faithful planner wire verdicts and the normal runtime facade"
+    },
+    {
+      "sha": "45c8fce802b12316ba73b56986d4513c432ff1a5",
+      "subject": "test(notes): provide the real connector event contract in delete fixtures"
+    },
+    {
+      "sha": "d9d009aced8220f92a81278de0664e7c75133e76",
+      "subject": "test(assistant): enumerate the exact owning diagnostic union"
+    },
+    {
+      "sha": "4c9e50514d6406ace985fb533a1ce2d38d872382",
+      "subject": "test(assistant): collect Calendar discovery through the owning bundler harness"
+    },
+    {
+      "sha": "a8cd77be5bc962d84b15e6e4e24020b127437960",
+      "subject": "test(notes): bind scripted requests to fixture world owner"
+    },
+    {
+      "sha": "d77bcd8035923b009ffea7486583264f01d928ea",
+      "subject": "test(assistant): format ingress and require trajectory results"
+    },
+    {
+      "sha": "2cdc3e0aae4eaeb006a9f83aa7bc400f885dedb2",
+      "subject": "test(notes): end scripted retry after terminal-only continuation"
     }
   ],
   "pullRequests": [
@@ -447,7 +703,10 @@
     },
     {
       "url": "https://github.com/elizaOS/eliza/pull/38382",
-      "status": "merged"
+      "status": "open",
+      "draft": true,
+      "merged": false
     }
-  ]
+  ],
+  "qualificationNote": "Published unmerged PR head for pre-merge Cloud QA. Ahead of observed develop; no merge, native, provider or resident-audit qualification inferred."
 }

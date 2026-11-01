@@ -1,6 +1,6 @@
 {
   "from": "641c179ce8214c864a7ea3dee23dae2d2bd2a682",
-  "to": "83faf434d015f9c73a4bbde8204e484fda961a25",
+  "to": "2cdc3e0aae4eaeb006a9f83aa7bc400f885dedb2",
   "inputs": [
     {
       "path": "plugins/plugin-local-inference/native/llama.cpp",
@@ -117,5 +117,5 @@
   "qualificationTransferred": false,
   "admitted": false,
   "requalificationRequired": true,
-  "note": "Every recorded native engine, model, JNI and Bun input is byte-identical between 641c179ce8 and 83faf434d0. APK-compiled Android module sources changed: none. Historical native qualification is not transferred; nothing here was built, staged or run."
+  "note": "Every recorded native engine, model, JNI and Bun input is byte-identical between 641c179ce8 and 2cdc3e0aae. APK-compiled Android module sources changed: none. Historical native qualification is not transferred; nothing here was built, staged or run."
 }
