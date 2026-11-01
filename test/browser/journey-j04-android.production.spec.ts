@@ -1,6 +1,7 @@
-import {selectCalendarSource} from './helpers/browser-calendar';
+import {openRetainedCalendarSource} from './helpers/browser-calendar';
+import {installCanonicalCalendarFixture} from './helpers/canonical-calendar';
 // J04 on the FLAG-OFF bundle with the Android bridge stubbed: an event read from the device
-// calendar, its location handed to Maps with no Maps provider configured, an explicit hand-off to
+// CalendarService, its location handed to Maps with no Maps provider configured, an explicit hand-off to
 // an installed map app, and Back to event restoring that same event.
 //
 // The stub is flag-off-android.ts, read-only; this file adds a location to its provider rows and
@@ -17,10 +18,11 @@ test.beforeEach(({}, testInfo) => { test.skip(testInfo.project.name !== 'product
 const LOCATION = 'Pier 4, Harbour Road';
 const TITLE = 'Ferry inspection';
 
-/** This journey exercises CalendarProvider rows, so choose their explicit source. */
+/** Separate compatibility case for an older installation's retained native authority. */
 async function openAndroidCalendars(page: Page) {
-  await selectCalendarSource(page, 'Android calendars');
+  await openRetainedCalendarSource(page, 'android-native');
 }
+const calendarReads=(page:Page)=>page.evaluate(()=>(window as any).canonicalCalendarAccessibility.requests as Array<{path:string;method:string}>);
 
 /** Adds the event location and an installed map app (DailyApps.capabilities/perform) to the stub. */
 async function mapsApp(page: Page, location: string) {
@@ -45,11 +47,12 @@ test('an event location opens unconfigured Maps, hands off to an installed map a
   const foreign = await fenceNetwork(page);
   // Two hours ahead, but always today: the Calendar list opens on today, so a run after 22:00 keeps the event on it.
   const begin = (() => { const now = new Date(), at = new Date(now); at.setHours(at.getHours() + 2, 0, 0, 0); if (at.getDate() !== now.getDate()) { at.setTime(now.getTime()); at.setHours(22, 0, 0, 0); } return at.getTime(); })();
-  await flagOffAndroid(page, { calendar: { access: 'granted', calendars: [{ id: '7', name: 'Harbour team', account: 'owner@example.invalid' }], events: [{ id: '42', calendarId: '7', title: TITLE, begin, end: begin + 1_800_000 }] } });
+  await flagOffAndroid(page);
   await mapsApp(page, LOCATION);
+  await installCanonicalCalendarFixture(page,{eventTitle:TITLE,location:LOCATION,begin,end:begin+1_800_000});
   await residentHome(page);
 
-  await openAndroidCalendars(page);
+  await button(page,'Calendar').click();
   await page.getByRole('button', { name: new RegExp(`^${TITLE},`) }).first().click();
   await expect(page.getByRole('heading', { name: TITLE, exact: true })).toBeVisible();
   await button(page, LOCATION).click();
@@ -73,11 +76,12 @@ test('an event location opens unconfigured Maps, hands off to an installed map a
   await expect(maps.locator('[data-alpha-maps-status] [role="status"]')).toHaveText('Opened in your maps app. Review the place there.');
 
   // Back to event reads that exact event again and restores it.
-  const before = (await j04(page)).lists.length;
+  const before = (await calendarReads(page)).length;
   await button(page, 'Back to event').click();
   await expect(page.getByRole('heading', { name: TITLE, exact: true })).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('data-active-view', 'calendar');
-  expect((await j04(page)).lists.slice(before)).toContainEqual({ begin: begin - 1, end: begin + 1 });
+  expect((await calendarReads(page)).slice(before).some(row=>{const url=new URL(row.path,'http://fixture.invalid');return row.method==='GET'&&url.pathname==='/api/lifeops/calendar/feed'&&Date.parse(url.searchParams.get('timeMin')!)===begin-1&&Date.parse(url.searchParams.get('timeMax')!)===begin+1;})).toBe(true);
+  expect(await harness(page,f=>f.calendar.lists)).toBe(0);
   expect((await j04(page)).performs).toHaveLength(1);
 
   // Opening Maps again from the same event and reloading performs nothing more.
@@ -102,7 +106,7 @@ test('an event location opens unconfigured Maps, hands off to an installed map a
 // longer warns that it will not link back. The draft is placed in the Calendar view's state as the note hand-off
 // (voice-adapter draftFromNote) leaves it; the Keystore-encrypted note and retained audio that lead
 // there are not stubbed here. Renderer evidence only.
-test('an Android event draft from a note no longer says it will not link back; nothing is saved or linked before Save', async ({ page }) => {
+test('a retained native-authority event draft from a note no longer says it will not link back; nothing is saved or linked before Save', async ({ page }) => {
   test.setTimeout(120_000);
   const foreign = await fenceNetwork(page);
   await flagOffAndroid(page, { calendar: { access: 'granted', calendars: [{ id: '7', name: 'Harbour team', account: 'owner@example.invalid' }], events: [] } });
