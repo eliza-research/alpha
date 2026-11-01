@@ -43,6 +43,8 @@
 .alpha-connection .alpha-btn--primary:active{background:var(--connection-acc,#0000ff);filter:brightness(.9)}
 .alpha-connection .alpha-btn--secondary{background:var(--connection-bg,#fff);color:var(--connection-fg,#000);border-color:var(--connection-line,#d6d6d6)}
 .alpha-connection .alpha-btn--text{min-height:44px;padding:10px 12px;background:none;color:var(--connection-acc,#0000ff);font-size:15px}
+/* Back and Cancel: one muted text action on every screen. */
+.alpha-connection .alpha-btn--quiet{color:var(--connection-mut,#666)}
 .alpha-connection button[aria-busy=true]{opacity:1;cursor:progress}
 .alpha-connection input:disabled{opacity:.5;cursor:default}
 .alpha-connection input::placeholder{color:var(--connection-mut,#6b6b6b);opacity:.8}
@@ -62,19 +64,25 @@
 .alpha-cloud-sign-in h1{margin:0 0 28px}
 .alpha-auth-methods,.alpha-own-keys{display:flex;flex-direction:column;gap:var(--alpha-gap)}
 .alpha-cloud-sign-in form{display:flex;flex-direction:column;gap:var(--alpha-gap);margin:0}
-.alpha-cloud-sign-in label{font-size:14px;font-weight:500;margin:0;gap:8px;color:var(--connection-fg,#000)}
-.alpha-cloud-sign-in input{min-height:54px;border-radius:12px;background:var(--connection-bg,#fff);padding:14px 16px}
+/* The own-keys form is the same form on the sign-in page and in Settings › AI provider. */
+.alpha-cloud-sign-in label,.alpha-connection .alpha-own-keys label{font-size:14px;font-weight:500;margin:0;gap:8px;color:var(--connection-fg,#000)}
+.alpha-cloud-sign-in input,.alpha-connection .alpha-own-keys input{min-height:54px;border-radius:12px;background:var(--connection-bg,#fff);padding:14px 16px}
 .alpha-cloud-sign-in p{margin:0}
 .alpha-cloud-sign-in [role=status],.alpha-cloud-sign-in [role=alert]{margin:0}
 .alpha-cloud-sign-in>[role=status],.alpha-cloud-sign-in>[role=alert]{margin-top:16px}
 .alpha-google-icon{display:inline-block;flex:none;width:20px;height:20px;background:url('/icons/senders/google.com.png') center/contain no-repeat}
 .alpha-auth-divider{display:flex;align-items:center;gap:14px;margin:8px 0;color:var(--connection-mut,#666);font-size:13px}
 .alpha-auth-divider::before,.alpha-auth-divider::after{content:'';flex:1;height:1px;background:var(--connection-line,#dedede)}
+.alpha-cloud-sign-in-code p{overflow-wrap:anywhere}
 .alpha-cloud-sign-in-code .alpha-auth-resend{font-variant-numeric:tabular-nums}
 .alpha-cloud-sign-in-code .alpha-auth-resend:disabled:not([aria-busy=true]){opacity:1;color:var(--connection-mut,#666);cursor:default}
 .alpha-auth-alt{display:flex;flex-direction:column;gap:4px;margin-top:24px;padding-top:16px;border-top:1px solid var(--connection-line,#e3e3e3)}
-.alpha-auth-footer{margin-top:16px}
-.alpha-connection.alpha-cloud-sign-in .alpha-auth-footer>.alpha-connection-cancel{border:0;color:var(--connection-mut,#666)}
+/* The footer Back sits as far below the last control as Back in the own-keys form does. */
+.alpha-auth-footer{margin-top:8px}
+.alpha-auth-waiting{display:flex;justify-content:center;margin:0 0 4px}
+.alpha-spinner{display:block;width:28px;height:28px;border-radius:50%;border:3px solid var(--connection-line,#e3e3e3);border-top-color:var(--connection-acc,#0000ff);animation:alpha-spin .9s linear infinite}
+@keyframes alpha-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.alpha-spinner{animation-duration:2.4s}}
 .alpha-own-keys-note{font-size:13px}
 .alpha-own-keys .alpha-form-actions{margin-top:8px}
 .alpha-connection .alpha-auth-notice{border-top:1px solid var(--connection-line,#dedede);padding-top:16px;margin-top:28px;font-size:12px;line-height:1.6;color:var(--connection-mut,#666);background:none;border-radius:0}
@@ -82,7 +90,11 @@
 @media(max-height:620px){.alpha-auth-page .alpha-auth-content{padding-top:calc(env(safe-area-inset-top) + 24px)}.alpha-auth-brand{margin-bottom:16px}.alpha-auth-page h1{margin-bottom:20px}}
 
 /* Settings › AI provider: a two-segment choice; the selected segment is filled. */
-.alpha-provider-dialog header h1{margin:0}
+.alpha-provider-dialog header h1{margin:0;min-width:0;overflow-wrap:anywhere}
+/* The close icon stays centred in its 44px target whatever the text size. */
+.alpha-provider-dialog header button{display:flex;align-items:center;justify-content:center;flex:none;padding:0;line-height:1}
+/* Text zoom enlarges the title too: hold it near its 100% size so it stays beside the close button. */
+.alpha-large-text .alpha-provider-dialog header h1{font-size:min(30px,calc(36px / var(--alpha-text-scale,1)))}
 .alpha-provider{display:flex;flex-direction:column;gap:12px;margin-top:12px}
 .alpha-provider p{margin:0}
 .alpha-provider h3{font-size:18px;font-weight:500;margin:0}
@@ -94,3 +106,6 @@
 .alpha-provider-confirm{display:flex;flex-direction:column;gap:0}
 .alpha-provider-confirm .alpha-form-actions{margin-top:12px}
 .alpha-provider .alpha-form-actions{margin-top:4px}
+.alpha-provider-own{display:flex;flex-direction:column;gap:12px}
+.alpha-provider-status{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.alpha-connection .alpha-provider-status .alpha-btn--text{width:auto}

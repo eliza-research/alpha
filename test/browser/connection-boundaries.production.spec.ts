@@ -253,7 +253,7 @@ for (const mode of ['revoked', 'unsupported', 'failed', 'refused-in-body', 'not-
     }
     // This bridge has no sign-in readiness service. Its automatic refusal must not erase
     // the completed sign-out receipt or turn an unconfirmed revocation into success.
-    await expect(page.getByRole('alert').filter({hasText:'Eliza Cloud sign-in is unavailable right now. Try again.'})).toBeVisible();
+    await expect(page.getByRole('alert').filter({hasText:'Eliza Cloud sign-in is unavailable.'})).toBeVisible();
     const status = page.locator('.alpha-connection').getByRole('status').filter({ hasText: /Signed out|sign-in token was removed/ });
     if (mode === 'revoked') await expect(status).toContainText('Signed out of Eliza Cloud. This sign-in was revoked.');
     else {

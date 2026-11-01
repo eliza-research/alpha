@@ -50,9 +50,12 @@ export type CloudSignInPort = NativeCloudSignInPort<CloudEnvironment> & {
 export const CloudSignInError = NativeCloudSignInError;
 export type CloudSignInError = NativeCloudSignInError;
 
-/** Owner-facing copy. Never includes server text, codes or addresses. */
+/** Owner-facing copy. Never includes server text, codes or addresses. Where the screen already
+ * carries the next step (a Try again button, Resend under the code), Alpha states only the fact. */
 export function signInFailureMessage(code: CloudSignInFailureCode, serviceName: string): string {
-  return nativeCloudSignInFailureMessage(code, { serviceName, productName: 'Alpha' });
+  if (code === 'invalid-code') return 'That code didn’t work.';
+  const message = nativeCloudSignInFailureMessage(code, { serviceName, productName: 'Alpha' });
+  return message === `${serviceName} sign-in is unavailable right now. Try again.` ? `${serviceName} sign-in is unavailable.` : message;
 }
 export const authenticated = (value: unknown, environment: CloudEnvironment): CloudSignInAuthenticated => nativeSignInAuthenticated(value, environment);
 export const emailStarted = (value: unknown): CloudSignInEmailStarted => nativeSignInCodeStarted(value);

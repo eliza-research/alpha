@@ -26,7 +26,7 @@ function Preview(){
           cancel,
           google:()=>{setView({step:'google',environment:'production'});later('Waiting for the Google account picker…',()=>{setView(choose);setError('Google sign-in was cancelled. You can try again or use email.');});},
           email:email=>later('Sending your code…',()=>setView({step:'code',environment:'production',email,attemptId:String(generation.current),expiresAt:Date.now()+600000,resendAt:Date.now()+30000})),
-          verify:code=>later('Checking your code…',()=>{if(code!=='123456'){setError('That code did not work. Check it and try again, or send a new code.');return;}setDone(true);}),
+          verify:code=>later('Checking your code…',()=>{if(code!=='123456'){setError('That code didn’t work.');return;}setDone(true);}),
           resend:()=>{if(view.step==='code')later('Sending your code…',()=>setView({...view,attemptId:String(generation.current),resendAt:Date.now()+30000}));},
         }}
         extra={!ready&&!busy?<button onClick={()=>later('Checking Eliza Cloud sign-in…',()=>setReady(true))}>Retry sign-in</button>:undefined}

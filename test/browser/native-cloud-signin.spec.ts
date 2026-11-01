@@ -167,7 +167,7 @@ test.describe('in-app Eliza Cloud sign-in on the production Android composition'
   await expect(dialog.getByRole('button',{name:/^Resend code in \d+s$/})).toBeDisabled();
   expect((await calls(page)).find(c=>c.method==='startEmail')).toMatchObject({email:'synthetic-signin@example.invalid',environment:'production'});
   await dialog.getByLabel('Six-digit code').fill('000000');await dialog.getByRole('button',{name:'Verify',exact:true}).click();
-  await expect(dialog.getByRole('alert')).toContainText('That code did not work');
+  await expect(dialog.getByRole('alert')).toContainText('That code didn’t work');
   // A rejected code stays editable for correction; it is never stored as a credential.
   await expect(dialog.getByLabel('Six-digit code')).toHaveValue('000000');
   await expect(dialog.getByLabel('Six-digit code')).toBeFocused();
@@ -303,7 +303,7 @@ test.describe('in-app Eliza Cloud sign-in on the production Android composition'
   await readySignIn(page);
   const dialog=signInDialog(page);
   await dialog.getByRole('button',{name:'Continue with Google',exact:true}).click();
-  await expect(dialog.getByRole('heading',{name:'Finish in your browser',exact:true})).toBeVisible();
+  await expect(dialog.getByRole('heading',{name:'Finish in your browser.',exact:true})).toBeVisible();
   await dialog.getByRole('button',{name:'Back',exact:true}).click();
   await expect.poll(async()=>(await calls(page)).some(c=>c.plugin==='AlphaCloudSignIn'&&c.method==='cancel')).toBe(true);
   await expect(dialog.getByRole('button',{name:'Continue with Google',exact:true})).toBeEnabled();
@@ -356,7 +356,7 @@ for (const mode of ['ok','mfa'] as const) test(`phone code stays inside Alpha th
  await expect(dialog.getByRole('form',{name:'Enter your phone code'})).toBeVisible();
  await expect(dialog.getByRole('button',{name:/Resend code in/})).toBeDisabled();
  await dialog.getByLabel('Six-digit code').fill('000000');await dialog.getByRole('button',{name:'Verify',exact:true}).click();
- await expect(dialog.getByRole('alert')).toContainText('That code did not work');
+ await expect(dialog.getByRole('alert')).toContainText('That code didn’t work');
  // A rejected code stays editable for correction; it is never stored as a credential.
   await expect(dialog.getByLabel('Six-digit code')).toHaveValue('000000');
  expect((await fixture(page)).saved).toBe(false);
@@ -449,18 +449,23 @@ test('sign-in screens keep one button hierarchy and even spacing at each step',a
  await dialog.getByRole('button',{name:'Email me a code',exact:true}).click();
  await expect(dialog.getByRole('form',{name:'Enter your email code'})).toBeVisible();await expectButtonSystem(page);await shot('04-code');
  await dialog.getByLabel('Six-digit code').fill('000000');await dialog.getByRole('button',{name:'Verify',exact:true}).click();
- await expect(dialog.getByRole('alert')).toContainText('That code did not work');await shot('05-code-wrong');
+ await expect(dialog.getByRole('alert')).toContainText('That code didn’t work');await shot('05-code-wrong');
  await dialog.getByRole('button',{name:'Back',exact:true}).click();
  await expect(dialog.getByRole('textbox',{name:'Email',exact:true})).toHaveValue('synthetic-signin@example.invalid');await shot('06-back-address-kept');
  await noHandOff(page);
 });
-test('Google and second-step screens: one heading, Back only',async({page},info)=>{
+test('Google waiting: one heading, a way to reopen the Google page, and Back',async({page},info)=>{
  const shot=async(name:string)=>{await page.evaluate(()=>document.fonts.ready);await page.screenshot({path:info.outputPath(`${name}.png`),animations:'disabled'});};
  await boot(page,{...await entitlements(),signIn:'hold'});await agent(page,'unavailable');await readySignIn(page);
  const dialog=signInDialog(page);
  await dialog.getByRole('button',{name:'Continue with Google',exact:true}).click();
- await expect(dialog.getByRole('heading',{name:'Finish in your browser',exact:true})).toBeVisible();
- await expect(dialog.getByRole('button')).toHaveText(['Back']);await shot('07-google-waiting');
+ await expect(dialog.getByRole('heading',{name:'Finish in your browser.',exact:true})).toBeVisible();
+ await expect(dialog.getByRole('button')).toHaveText(['Open Google again','Back']);await expectButtonSystem(page);await shot('07-google-waiting');
+ // A closed Custom Tab is not a dead end: the waiting attempt is cancelled and a fresh one opens.
+ await dialog.getByRole('button',{name:'Open Google again',exact:true}).click();
+ await expect.poll(async()=>(await calls(page)).filter(c=>c.method==='startGoogle').length).toBe(2);
+ expect((await calls(page)).some(c=>c.plugin==='AlphaCloudSignIn'&&c.method==='cancel')).toBe(true);
+ await expect(dialog.getByRole('heading',{name:'Finish in your browser.',exact:true})).toBeVisible();
  await dialog.getByRole('button',{name:'Back',exact:true}).click();
  await expect(dialog.getByRole('button',{name:'Continue with Google',exact:true})).toBeEnabled();
 });

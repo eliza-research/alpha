@@ -14,14 +14,23 @@ async function fixture(page:Page, signedOut=false, freshAccess=false){
  await page.addInitScript(({signedOut,dataKey})=>{
   const w=window as any,base=w.Capacitor.nativePromise;
   const leases=new Set<string>();let selected:any=null;
-  const f=w.ownProvider={events:[] as string[],saved:0,cancelled:0,cleared:0,checks:0,hold:false,reject:false,pending:false,release:null as null|(()=>void),matched:false};
+  const f=w.ownProvider={events:[] as string[],saved:0,cancelled:0,cleared:0,checks:0,hold:false,reject:false,pending:false,release:null as null|(()=>void),matched:false,startFail:false,startHold:false,startRelease:null as null|(()=>void),starting:false};
   localStorage.setItem(dataKey,'existing local app data');
   if(signedOut){delete w.flagOff.slots['cloud:production'];w.flagOff.persist();}
   const status=()=>selected?{provider:'cerebras',configured:true,selected:true,model:'qwen-3.8-27b',revision:selected.revision,voiceConfigured:selected.voice}:base('Agent','providerStatus',{});
   w.Capacitor.PluginHeaders.find((p:any)=>p.name==='AlphaNotifications').methods.push({name:'addListener',rtype:'callback'},{name:'removeListener',rtype:'callback'});
+  // The chat-only image confirms its wake listener is off at startup.
+  if(!w.Capacitor.PluginHeaders.some((p:any)=>p.name==='ElizaSense'))w.Capacitor.PluginHeaders.push({name:'ElizaSense',methods:[{name:'turnOff',rtype:'promise'},{name:'status',rtype:'promise'}]});
+  // A provider change retires the running agent's background delivery before restarting it.
+  if(!w.Capacitor.PluginHeaders.some((p:any)=>p.name==='AlphaHostedResults'))w.Capacitor.PluginHeaders.push({name:'AlphaHostedResults',methods:[{name:'disableBackground',rtype:'promise'},{name:'addListener',rtype:'callback'},{name:'removeListener',rtype:'callback'}]});
   w.Capacitor.PluginHeaders.find((p:any)=>p.name==='Agent').methods.push(...['prepareProviderConfiguration','configureProvider','cancelProviderConfiguration'].map(name=>({name,rtype:'promise'})));
   w.Capacitor.nativePromise=async(plugin:string,method:string,input:any)=>{
+   if(plugin==='AlphaHostedResults'&&method==='disableBackground')return {};
+   if(plugin==='ElizaSense')return {available:true,state:'OFF',label:'Listening off',consented:false,listening:false,microphoneOpen:false};
    if(plugin!=='Agent')return base(plugin,method,input);
+   // The agent restart after a provider change: held, or refused, when a test asks.
+   if(method==='start'&&f.startHold){f.starting=true;await new Promise<void>(resolve=>f.startRelease=resolve);f.starting=false;}
+   if(method==='start'&&f.startFail)throw Error('Local agent failed to start.');
    if(method==='providerStatus'){f.checks++;return status();}
    if(method==='prepareProviderConfiguration'){const id=crypto.randomUUID();leases.add(id);f.events.push('reserve');return {requestId:id};}
    if(method==='cancelProviderConfiguration'){leases.delete(input.requestId);f.cancelled++;f.events.push('cancel');return {};}
@@ -91,7 +100,7 @@ test('Cloud is the default; explicit own-key save and return to Cloud preserve e
  await expect(page.getByRole('button',{name:'AI provider',exact:true})).toContainText('Own API keys');
  await page.getByRole('button',{name:'AI provider',exact:true}).click();
  await expect(dialog(page).getByRole('button',{name:'Own API keys',exact:true})).toHaveAttribute('aria-pressed','true');
- await expect(dialog(page).getByText('Voice: Cartesia',{exact:true})).toBeVisible();
+ await expect(dialog(page).getByText('Cerebras · Voice: Cartesia',{exact:true})).toBeVisible();
  await expect(dialog(page).getByRole('button',{name:'Change keys',exact:true})).toBeEnabled();
  await expect(dialog(page).getByRole('button',{name:'Own API keys',exact:true})).toHaveCSS('background-color',selectedColor);
  await expect(dialog(page).getByRole('button',{name:'Cloud',exact:true})).not.toHaveCSS('background-color',selectedColor);
@@ -113,15 +122,18 @@ test('Cloud is the default; explicit own-key save and return to Cloud preserve e
  await expect(page.locator('.alpha-cloud-sign-in')).toHaveCount(0);await noLeaks(page,observed);
 });
 
-test('a rejected own-key check keeps Cloud selected and clears entered secrets',async({page})=>{
+test('a rejected own-key check keeps Cloud selected and the entered keys for correction',async({page})=>{
  const observed=await fixture(page);await residentHome(page);await openProvider(page);await enterKeys(page);
  await page.evaluate(()=>(window as any).ownProvider.reject=true);
  await dialog(page).getByRole('button',{name:'Save and use own keys',exact:true}).click();
  // The reason sits with the form it refers to.
  const alert=dialog(page).getByRole('form',{name:'Own API keys'}).getByRole('alert');
  await expect(alert).toContainText('Cerebras did not accept this key');await expect(dialog(page).getByRole('alert')).toHaveCount(1);
- await expect(dialog(page).getByLabel('Cerebras API key',{exact:true})).toHaveValue('');
- await expect(dialog(page).getByLabel('Cartesia API key (optional)',{exact:true})).toHaveValue('');
+ // Only the rejected key is retyped: it is focused and selected, and the Cartesia key stays.
+ const rejected=dialog(page).getByLabel('Cerebras API key',{exact:true});
+ await expect(rejected).toBeFocused();await expect(rejected).toHaveAttribute('aria-invalid','true');
+ expect(await rejected.evaluate((el:HTMLInputElement)=>[el.selectionStart,el.selectionEnd,el.value.length])).toEqual([0,AI_KEY.length,AI_KEY.length]);
+ await expect(dialog(page).getByLabel('Cartesia API key (optional)',{exact:true})).toHaveValue(VOICE_KEY);
  expect(await page.evaluate(()=>(window as any).ownProvider.saved)).toBe(0);
  await dialog(page).getByRole('button',{name:'Cancel',exact:true}).click();
  await expect(dialog(page).getByRole('alert')).toHaveCount(0);
@@ -202,7 +214,8 @@ test('welcome-page own keys: a rejected key is explained at the form, Back retur
  await enterKeys(page,welcome,'Use my own API keys');
  await welcome.getByRole('button',{name:'Save and use own keys',exact:true}).click();
  await expect(welcome.getByRole('form',{name:'Own API keys'}).getByRole('alert')).toContainText('Cerebras did not accept this key');
- await expect(welcome.getByLabel('Cerebras API key',{exact:true})).toHaveValue('');
+ await expect(welcome.getByLabel('Cerebras API key',{exact:true})).toBeFocused();
+ await expect(welcome.getByLabel('Cartesia API key (optional)',{exact:true})).toHaveValue(VOICE_KEY);
  await page.screenshot({path:info.outputPath('welcome-own-keys-rejected.png'),animations:'disabled'});
  await welcome.getByRole('button',{name:'Back',exact:true}).click();
  // Back leaves the key form for the Cloud sign-in state it replaced (this fixture's Cloud readiness is unavailable).
@@ -248,5 +261,30 @@ test('own keys chosen on a fresh phone continue into first-run access setup',asy
  await expect(page.locator('dialog.alpha-startup-permissions')).toBeVisible({timeout:15_000});
  await expect(page.locator('dialog.alpha-startup-permissions')).not.toContainText('AI is not ready yet');
  await page.screenshot({path:info.outputPath('own-keys-access-setup.png'),animations:'disabled'});
+ expect(observed.errors).toEqual([]);expect(observed.foreign).toEqual([]);
+});
+
+test('a failed restart after a Settings key save is shown in the AI provider dialog',async({page})=>{
+ const observed=await fixture(page);await residentHome(page);await openProvider(page);await enterKeys(page);
+ await page.evaluate(()=>{(window as any).ownProvider.startFail=true;});
+ await dialog(page).getByRole('button',{name:'Save and use own keys',exact:true}).click();
+ // The key was saved; the restart's failure comes back to the dialog that started it.
+ await expect(dialog(page)).toBeVisible();
+ await expect(dialog(page).getByRole('alert')).toBeVisible();
+ await expect(dialog(page).getByRole('button',{name:'Own API keys',exact:true})).toHaveAttribute('aria-pressed','true');
+ expect(await page.evaluate(()=>(window as any).ownProvider.saved)).toBe(1);
+ expect(observed.errors).toEqual([]);
+});
+
+test('first-run setup opens while the agent is still starting on own keys',async({page})=>{
+ const observed=await fixture(page,true,true);await page.goto('/');
+ const welcome=welcomePage(page);await expect(welcome).toBeVisible();
+ await page.evaluate(()=>{(window as any).ownProvider.startHold=true;});
+ await enterKeys(page,welcome,'Use my own API keys');await welcome.getByRole('button',{name:'Save and use own keys',exact:true}).click();
+ await expect.poll(()=>page.evaluate(()=>(window as any).ownProvider.starting)).toBe(true);
+ // Setup never waits for the agent's first boot (the same rule as after Cloud sign-in).
+ await expect(page.locator('dialog.alpha-startup-permissions')).toBeVisible();
+ expect(await page.evaluate(()=>(window as any).ownProvider.starting)).toBe(true);
+ await page.evaluate(()=>{const f=(window as any).ownProvider;f.startHold=false;f.startRelease?.();});
  expect(observed.errors).toEqual([]);expect(observed.foreign).toEqual([]);
 });

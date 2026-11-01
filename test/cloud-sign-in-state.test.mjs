@@ -51,7 +51,7 @@ test('actual OTP form retains input through submission, pending state and wrong-
   await render({busy:true,message:'Checking your code…'});
   await act(()=>document.querySelector('form').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true})));
   assert.equal(calls.length,1,'pending submit must not dispatch again');
-  await render({busy:false,message:'',error:'That code did not work. Check it and try again, or send a new code.'});
+  await render({busy:false,message:'',error:'That code didn’t work.'});
   assert.equal(document.querySelector('input').value,'123456');
   assert.equal(document.querySelector('input').disabled,false);
   assert.equal(document.querySelector('form button').textContent,'Verify');
@@ -119,6 +119,7 @@ function controllerFixture({isAndroid=false,browserCloudResidentEnabled=false}={
     ${ui.includes('export function explicitSignedOutCloudEntry(')?part('export function explicitSignedOutCloudEntry(', 'export function connectionChooserVisible(').replace('export ',''):'function explicitSignedOutCloudEntry(){return false;}'}
     const validSignInEmail=()=>true,normalizeSignInCode=value=>/^\\d{6}$/.test(value)?value:null;
     class CloudSignInError extends Error {constructor(code){super(code);this.code=code;}}
+    class CodeExpiredError extends Error {constructor(){super('code-expired');}}
     const signInFailureMessage=code=>code,signInFailed=(environment,keep=false)=>{if(!keep)update({signIn:{step:'choose',environment}});};
     const signedIn=async()=>events.push({authenticated:true});
     ${part('async function work(', '/** Start (or restart) the resident.')}
@@ -174,7 +175,9 @@ test('an expired or exhausted code keeps the address with a new code ready; othe
     f.client.verifyEmailSignIn=async()=>{throw new f.CloudSignInError(failure);};
     await f.connectionController.verifySignInCode('123456');
     assert.equal(f.state.signIn.step,'code');assert.equal(f.state.signIn.email,'person@example.invalid');
-    assert.equal(f.state.signIn.resendAt,0,'Resend is available at once');assert.equal(f.state.error,failure);
+    assert.equal(f.state.signIn.resendAt,0,'Resend is available at once');assert.equal(f.state.signIn.stale,true,'the dead code cannot be verified again');
+    // An expired code says to send a new one (the screen offers Resend), never "start again".
+    assert.equal(f.state.error,failure==='expired'?'code-expired':failure);
   }
   const f=controllerFixture();f.client.verifyEmailSignIn=async()=>{throw new f.CloudSignInError('rejected');};
   await f.connectionController.verifySignInCode('123456');assert.equal(f.state.signIn.step,'choose');
@@ -200,9 +203,15 @@ test('wrong code is reported at the code field and selected for replacement; res
 
 test('Google waits in the browser with one heading and Back; passkey MFA shows only its reason',async()=>panel(async({document,render})=>{
   await render({view:{step:'google',environment:'production'},busy:true,message:'Continue in your browser.'});
-  assert.equal(document.querySelector('h1').textContent,'Finish in your browser');
+  assert.equal(document.querySelector('h1').textContent,'Finish in your browser.');
   assert.equal(document.querySelector('[role="status"]'),null);
-  assert.deepEqual([...document.querySelectorAll('button')].map(button=>button.textContent),['Back']);
+  assert.deepEqual([...document.querySelectorAll('button')].map(button=>button.textContent),['Back'],'without a reopen action only Back is offered');
+  let reopened=0;
+  await render({actions:{verify(){},google(){},email(){},resend(){},cancel(){},reopenGoogle:()=>{reopened++;}}});
+  const reopen=[...document.querySelectorAll('button')].find(button=>button.textContent==='Open Google again');
+  assert.ok(reopen,'a closed Google page can be opened again');assert.equal(reopen.disabled,false);
+  assert.ok(document.querySelector('.alpha-spinner'),'waiting shows progress');
+  reopen.click();assert.equal(reopened,1);
   await render({view:{step:'mfa',environment:'production',attemptId:'a',method:'passkey',expiresAt:Date.now()+60000},busy:false,message:'',error:'mfa-unsupported'});
   assert.equal(document.querySelector('h1').textContent,'Can’t finish sign-in');
   assert.equal(document.querySelectorAll('[role="alert"]').length,1);assert.equal(document.querySelector('input'),null);
@@ -260,7 +269,7 @@ test('verified account is not redirected from membership into first-run sign-in'
 
 test('explicit account chooser preserves newer in-app email/phone readiness and never starts hosted auth',async()=>{
  const begin=part('  async beginSignIn(', '  /** Leaves the sign-in screen');
- const body=`${explicitEntrySource}function make(purpose,methods){let operation=null,epoch=0,signInReadinessOwner=null,inAppGoogle=false,inAppPhone=false,inAppEmail=false;const cloudSignIn={},cloudServiceName=()=> 'Eliza Cloud',state={open:true,purpose,cloudAccount:null},updates=[],calls=[];const residentCloudFlow=()=>false,residentEnvironment=()=> 'production',cloudEnvironmentAllowed=()=>true,isAndroid=false;let cloud={environment:'production',cancelLogin(){calls.push('cancel');}};const inAppSignInMethods=async()=>{calls.push('status');return methods;},update=patch=>{updates.push(patch);Object.assign(state,patch);},work=async(_,fn)=>fn(new AbortController().signal),ensureResident=async()=>{},browserCloudLoginAction=async()=>calls.push('web-auth'),residentBrowserLoginAction=async()=>calls.push('resident-auth');const connectionController={${begin}};return {controller:connectionController,state,updates,calls,methods:()=>({google:inAppGoogle,phone:inAppPhone,email:inAppEmail})};}`;
+ const body=`${explicitEntrySource}const OWN_KEYS_TAKEOVER=new DOMException('Cancelled','AbortError');function make(purpose,methods){let operation=null,epoch=0,signInReadinessOwner=null,inAppGoogle=false,inAppPhone=false,inAppEmail=false;const cloudSignIn={},cloudServiceName=()=> 'Eliza Cloud',state={open:true,purpose,cloudAccount:null},updates=[],calls=[];const residentCloudFlow=()=>false,residentEnvironment=()=> 'production',cloudEnvironmentAllowed=()=>true,isAndroid=false;let cloud={environment:'production',cancelLogin(){calls.push('cancel');}};const inAppSignInMethods=async()=>{calls.push('status');return methods;},update=patch=>{updates.push(patch);Object.assign(state,patch);},work=async(_,fn)=>fn(new AbortController().signal),ensureResident=async()=>{},browserCloudLoginAction=async()=>calls.push('web-auth'),residentBrowserLoginAction=async()=>calls.push('resident-auth');const connectionController={${begin}};return {controller:connectionController,state,updates,calls,methods:()=>({google:inAppGoogle,phone:inAppPhone,email:inAppEmail})};}`;
  const compiled=transformSync(body,{loader:'ts',format:'cjs'}).code,make=new Function(compiled+';return make;')();
  for(const purpose of ['cloud-account','plan','agent'])for(const methods of [null,{google:false,phone:true,email:false}]){const f=make(purpose,methods);await f.controller.beginSignIn('production');assert.equal(f.state.signIn.step,'choose');assert.deepEqual(f.calls,['status','cancel']);assert.deepEqual(f.methods(),{google:false,phone:methods?.phone===true,email:methods===null||methods.email!==false});}
 });
@@ -308,3 +317,27 @@ test('required chooser Back retains its guard on Android and browser-resident pl
   f.connectionController.cancelSignIn();assert.deepEqual(f.state.signIn,choose);assert.equal(f.events.length,0);
  }
 });
+
+test('a prefilled phone chooser still switches to email and back',async()=>panel(async({document,render})=>{
+  await render({view:{...choose,phone:'+14155550100'},google:false,phone:true,emailEnabled:true,ready:true,busy:false});
+  assert.ok(document.querySelector('form[aria-label="Sign in with phone"]'),'Back from a text-message code shows the number it was sent to');
+  assert.equal(document.querySelector('input[name="phone"]').value,'+14155550100');
+  await act(async()=>{[...document.querySelectorAll('button')].find(button=>button.textContent==='Use email instead').click();});
+  assert.ok(document.querySelector('form[aria-label="Sign in with email"]'),'the email form replaces the phone form');
+  assert.equal(document.querySelector('form[aria-label="Sign in with phone"]'),null);
+  await act(async()=>{[...document.querySelectorAll('button')].find(button=>button.textContent==='Use phone number instead').click();});
+  assert.ok(document.querySelector('form[aria-label="Sign in with phone"]'));
+}));
+
+test('an expired code keeps Resend and disables Verify until a new code arrives',async()=>panel(async({document,window,render,calls})=>{
+  await render({view:{...code,stale:true},error:'That code expired. Send a new code.'});
+  const verify=[...document.querySelectorAll('button')].find(button=>button.textContent==='Verify');
+  assert.equal(verify.disabled,true);
+  document.querySelector('input').value='123456';
+  await act(()=>document.querySelector('form').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true})));
+  assert.deepEqual(calls,[],'a dead code is never sent');
+  const resend=[...document.querySelectorAll('button')].find(button=>button.textContent==='Resend code');
+  assert.equal(resend.disabled,false);
+  await render({view:{...code,attemptId:'attempt-2'},error:''});
+  assert.equal([...document.querySelectorAll('button')].find(button=>button.textContent==='Verify').disabled,false);
+}));

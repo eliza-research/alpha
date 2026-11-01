@@ -9,6 +9,8 @@ import type { SignInView } from './connection-ui';
  */
 export interface CloudSignInActions {
   phone?(number: string): void; google(): void; email(address: string): void; verify(code: string): void; resend(): void; cancel(): void; retry?(): void;
+  /** Ends the waiting Google attempt and opens a fresh Google page. */
+  reopenGoogle?(): void;
 }
 export function AlphaAuthBrand() {
   return <div className="alpha-auth-brand"><span className="alpha-auth-mark" aria-hidden="true"/></div>;
@@ -41,9 +43,11 @@ export function CloudSignInPanel({ view, busy, google, phone, emailEnabled = tru
   const email = useRef<HTMLInputElement>(null), code = useRef<HTMLInputElement>(null);
   const [now, setNow] = useState(() => Date.now());
   const [pending, setPending] = useState<Pending>(null);
-  const [preferPhone, setPreferPhone] = useState(false);
+  // The owner's last explicit choice wins; until then a prefilled number (Back from a text-message
+  // code, a failed send) selects the phone form.
+  const [method, setMethod] = useState<'email' | 'phone' | null>(null);
   const choose = view.step === 'choose' ? view : null;
-  const showPhone = !!phone && (!emailEnabled || preferPhone || (!!choose?.phone && !choose.email));
+  const showPhone = !!phone && (!emailEnabled || (method ?? (choose?.phone && !choose.email ? 'phone' : 'email')) === 'phone');
   const showGoogle = google || !ready;
   // Resend becomes available when the host's cooldown ends; the countdown is the only timer.
   useEffect(() => {
@@ -58,7 +62,7 @@ export function CloudSignInPanel({ view, busy, google, phone, emailEnabled = tru
   useEffect(() => { if (!busy) setPending(null); }, [busy, view.step]);
   // Switching between email and text message moves focus to the field that replaced the other one.
   const switched = useRef(false);
-  useEffect(() => { if (!switched.current) { switched.current = true; return; } (showPhone ? phoneInput : email).current?.focus(); }, [preferPhone]);
+  useEffect(() => { if (!switched.current) { switched.current = true; return; } (showPhone ? phoneInput : email).current?.focus(); }, [method]);
   useEffect(() => {
     // Disabled inputs lose focus during verification. Restore it for a wrong-code retry too, with
     // the rejected code selected so the next digits replace it.
@@ -73,9 +77,11 @@ export function CloudSignInPanel({ view, busy, google, phone, emailEnabled = tru
   const verifying = busy && !sending && (view.step === 'code' || view.step === 'mfa');
   const inlineStatus = (view.step === 'google' && message === SIGN_IN_BROWSER) || sending || verifying;
   const passkey = view.step === 'mfa' && view.method === 'passkey';
-  const submitCode = (event: FormEvent) => { event.preventDefault(); if (!busy && ready) actions.verify(code.current?.value || ''); };
+  // An expired or exhausted code cannot be verified; only a new code continues.
+  const stale = view.step === 'code' && view.stale === true;
+  const submitCode = (event: FormEvent) => { event.preventDefault(); if (!busy && ready && !stale) actions.verify(code.current?.value || ''); };
   const noMethods = ready && !google && !emailEnabled && !phone;
-  const title = view.step === 'choose' ? 'Welcome to Alpha.' : view.step === 'google' ? 'Finish in your browser' : passkey ? 'Can’t finish sign-in' : 'Check your code.';
+  const title = view.step === 'choose' ? 'Welcome to Alpha.' : view.step === 'google' ? 'Finish in your browser.' : passkey ? 'Can’t finish sign-in' : 'Check your code.';
   const codeError = (view.step === 'code' || (view.step === 'mfa' && !passkey)) && !!error && !errorIsNotice;
   const errorLine = error && !codeError ? <p role={errorIsNotice ? 'status' : 'alert'} className={errorIsNotice ? 'alpha-auth-notice' : 'alpha-connection-error'}>{error}</p> : null;
   // Back always returns to the chooser (or closes an explicit entry). The required page's own
@@ -101,7 +107,7 @@ export function CloudSignInPanel({ view, busy, google, phone, emailEnabled = tru
         <label>Phone number<input ref={phoneInput} type="tel" name="phone" autoComplete="tel" placeholder="+14155550100" maxLength={16} required defaultValue={choose?.phone || undefined} disabled={busy || !ready} /></label>
         <button className="alpha-btn alpha-btn--primary" aria-busy={(sending && pending === 'phone') || undefined} disabled={busy || !ready}>{sendLabel('phone', 'Text me a code')}</button>
       </form>}
-      {emailEnabled && phone && <button type="button" className="alpha-btn alpha-btn--text" disabled={busy || !ready} onClick={() => setPreferPhone(!showPhone)}>{showPhone ? 'Use email instead' : 'Use phone number instead'}</button>}
+      {emailEnabled && phone && <button type="button" className="alpha-btn alpha-btn--text" disabled={busy || !ready} onClick={() => setMethod(showPhone ? 'email' : 'phone')}>{showPhone ? 'Use email instead' : 'Use phone number instead'}</button>}
       {!showGoogle && actions.retry && <button type="button" className="alpha-btn alpha-btn--text" disabled={busy} onClick={actions.retry}>Retry Google sign-in</button>}
       {errorLine}
     </div>}
@@ -112,10 +118,14 @@ export function CloudSignInPanel({ view, busy, google, phone, emailEnabled = tru
         <label>Six-digit code<input ref={code} name="one-time-code" autoComplete="one-time-code" inputMode="numeric" pattern="[0-9 -]{6,9}" maxLength={9} required disabled={busy}
           aria-invalid={codeError || undefined} aria-describedby={codeError ? 'cloud-sign-in-code-error' : undefined} /></label>
         {codeError && <p id="cloud-sign-in-code-error" role="alert" className="alpha-connection-error">{error}</p>}
-        <button className="alpha-btn alpha-btn--primary alpha-auth-submit" aria-live="polite" aria-busy={verifying || undefined} disabled={busy}>{verifying ? signingIn ? 'Signing in…' : 'Checking code…' : 'Verify'}</button>
+        <button className="alpha-btn alpha-btn--primary alpha-auth-submit" aria-live="polite" aria-busy={verifying || undefined} disabled={busy || stale}>{verifying ? signingIn ? 'Signing in…' : 'Checking code…' : 'Verify'}</button>
       </>}
       {view.step === 'code' && <button type="button" className="alpha-btn alpha-btn--text alpha-auth-resend" aria-busy={sending || undefined} disabled={busy || wait > 0} onClick={() => { setPending('resend'); actions.resend(); }}>{sending ? 'Sending code…' : wait > 0 ? `Resend code in ${wait}s` : 'Resend code'}</button>}
     </form>}
+    {view.step === 'google' && <div className="alpha-auth-methods">
+      <p className="alpha-auth-waiting" aria-hidden="true"><span className="alpha-spinner"/></p>
+      {actions.reopenGoogle && <button type="button" className="alpha-btn alpha-btn--secondary alpha-auth-google" onClick={actions.reopenGoogle}><span aria-hidden="true" className="alpha-google-icon"/>Open Google again</button>}
+    </div>}
     {view.step !== 'choose' && errorLine}
     {!alternate && message && !inlineStatus && <p role="status">{message}</p>}
     {view.step === 'choose' && !alternate && (ownKeys || extra) && <div className="alpha-auth-alt">
@@ -123,7 +133,7 @@ export function CloudSignInPanel({ view, busy, google, phone, emailEnabled = tru
       {extra}
     </div>}
     {back && <div className="alpha-connection-actions alpha-auth-footer">
-      <button type="button" className="alpha-btn alpha-btn--text alpha-connection-cancel" onClick={actions.cancel}>Back</button>
+      <button type="button" className="alpha-btn alpha-btn--text alpha-btn--quiet alpha-connection-cancel" onClick={actions.cancel}>Back</button>
     </div>}
   </>;
 }
