@@ -16,8 +16,13 @@ import {sourceDirectory,verifySource} from '../scripts/local-agent-source.mjs';
 // normal prepared and installed SDK graph: the admitted runtime source at the pinned commit
 // (npm run agent:prepare: the exact commit, then bun install --frozen-lockfile), verified before and
 // after. vendor/eliza is source only, with no dependency install, so it cannot qualify this transport.
-test('explicit Calendar rejection survives the private transport; uncertain replies stay blocked',async()=>{
- const commit=JSON.parse(readFileSync('upstream.lock.json','utf8')).commit,upstream=sourceDirectory(resolve('.'));
+// npm test runs without a prepared graph and skips, as the Cloud signature classifier does; the
+// resident-prepare job runs this file after agent:prepare with ALPHA_REQUIRE_PREPARED_SDK=1, where a
+// missing graph fails instead of skipping.
+const preparedGraph=sourceDirectory(resolve('.'));
+const skipUnprepared=!existsSync(preparedGraph)&&process.env.ALPHA_REQUIRE_PREPARED_SDK!=='1'?'Prepared SDK graph unavailable; run npm run agent:prepare':false;
+test('explicit Calendar rejection survives the private transport; uncertain replies stay blocked',{skip:skipUnprepared},async()=>{
+ const commit=JSON.parse(readFileSync('upstream.lock.json','utf8')).commit,upstream=preparedGraph;
  assert.ok(existsSync(upstream),`The pinned SDK graph is not prepared at ${upstream}; run npm run agent:prepare`);
  verifySource(upstream,commit);
  const relative='plugins/plugin-calendar/src/mutations/managed.ts',original=join(upstream,relative);
