@@ -80,3 +80,33 @@ test('worker compiler input must be listed in the verified producer manifest',t=
  const f=workerFixture(t);f.write(`${f.prefix}/compiler/node_modules/example/extra.ts`,'export {}');
  const result=f.run('worker');assert.notEqual(result.status,0);assert.match(result.stderr,/Unexpected worker file/);
 });
+
+// The canonical compiler copies program.getSourceFiles(), not just .d.ts files.
+const compilerSourceFiles={
+ 'compiler/node_modules/@types/ws/index.d.mts':'export interface WebSocket {}',
+ 'compiler/node_modules/@types/example/index.d.cts':'export interface CommonJS {}',
+ 'compiler/node_modules/example/source.mts':'export const value = 1;',
+ 'compiler/node_modules/example/source.cts':'export const value = 1;',
+ 'compiler/node_modules/example/component.tsx':'export const value = <div />;',
+ 'compiler/types/example/component.jsx':'export const value = <div />;',
+};
+test('worker exports the complete compiler source extension family from its verified inventory',t=>{
+ const f=workerFixture(t,compilerSourceFiles),result=f.run('worker');assert.equal(result.status,0,result.stderr);
+ const output=join(f.root,'test-results/browser-proof/worker');
+ const identity=JSON.parse(readFileSync(join(output,'identity.json'),'utf8'));
+ for(const [path,source] of Object.entries(compilerSourceFiles)){
+  const bytes=readFileSync(join(output,'payload',path));assert.equal(bytes.toString(),source);
+  assert.equal(identity.files['payload/'+path],sha256(bytes));
+ }
+});
+for(const suffix of ['d.mts','d.cts','tsx','jsx']){
+ test(`worker keeps ${suffix} compiler-only`,t=>{
+  const path=`node_modules/example/source.${suffix}`;
+  const f=workerFixture(t,{[path]:'export {}'}),result=f.run('worker');
+  assert.notEqual(result.status,0);assert.match(result.stderr,/Unexpected payload:/);
+ });
+}
+test('worker module declaration must still be in the verified manifest',t=>{
+ const f=workerFixture(t);f.write(`${f.prefix}/compiler/node_modules/@types/ws/unlisted.d.mts`,'export {}');
+ const result=f.run('worker');assert.notEqual(result.status,0);assert.match(result.stderr,/Unexpected worker file/);
+});
