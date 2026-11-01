@@ -1,5 +1,4 @@
-import {selectCalendarSource} from './helpers/browser-calendar';
-import {flagOffAndroid,residentHome,fenceNetwork} from './flag-off-android';
+import {openCanonicalCalendar} from './helpers/canonical-calendar';
 import { openLegacyNotes } from './helpers/legacy-notes';
 import { test, expect, type Page, type Locator } from '@playwright/test';
 
@@ -17,18 +16,8 @@ const COLUMN = 720;
 
 async function open(page: Page, app: string) {
   if(app==='Calendar'){
-    // Layout only: a synthetic native provider row, not a CalendarProvider write.
-    await fenceNetwork(page);
-    const begin=new Date();begin.setHours(12,0,0,0);
-    await flagOffAndroid(page,{calendar:{access:'granted',calendars:[{id:'7',name:'Layout calendar',account:'layout@example.invalid'}],events:[{id:'42',calendarId:'7',title:'Column check',begin:begin.getTime(),end:begin.getTime()+1800000}]}});
-    await page.addInitScript(()=>{
-      const bridge=(window as any).Capacitor,base=bridge.nativePromise;
-      bridge.nativePromise=(plugin:string,method:string,input:any)=>plugin==='ElizaSystem'&&method==='getBuildInfo'
-        ?Promise.resolve({launcher:false,version:'standalone-layout-fixture'})
-        :base(plugin,method,input);
-    });
-    await residentHome(page);
-    await selectCalendarSource(page, 'Android calendars');
+    // Layout-only CalendarService read, through the same canonical source as the app.
+    await openCanonicalCalendar(page,{eventTitle:'Column check',launcher:false});
     return;
   }
   await page.addInitScript(() => localStorage.setItem('alpha.connection.selection.v1', JSON.stringify({ kind: 'offline', localApps: true })));
