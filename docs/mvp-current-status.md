@@ -85,9 +85,9 @@ the operator's index of build, provisioning, release and support material is the
 
 ## Product boundaries
 
-Current source projection: SDK `4573a187b0` is the recorded elizaOS/eliza `develop` head as of 2026-11-01 (`scripts/ci/upstream-reachability.json`). It includes the reviewed direct-provider routing and credential readback fixes, owner-granted Gmail task reads, browser request grounding and browser-protection updates. The client feature projection continues to use the SDK's browser-safe modules. Native engine/model/JNI inputs are unchanged from `6cd75d6820`; the Android provider credential readback changed. Existing native requalification remains required.
+Current source projection: SDK `9ba8ec5673` is the recorded elizaOS/eliza `develop` head as of 2026-11-01 (`scripts/ci/upstream-reachability.json`). It adds the Cloud speech admission, gate-timing and trace-key diagnostics, organization-owned native registrations, Sonic 3.6 Cartesia speech, and the caller-set Paradee speed range (#38470, libelizainference ABI 21). That last change moves the native engine gitlink from d960f633 to b3eb2bf6 and changes the voice JNI and shared voice Java sources (docs/evidence/sdk-9ba8ec5673-build-input-admission-20261101.json). The client feature projection continues to use the SDK's browser-safe modules. Existing native requalification remains required.
 
-The current upstream source pin is `4573a187b0`; the preceding pin was `6cd75d6820`. Runtime and device results remain bound to their own source, artifact and account receipts. This source update does not transfer historical APK or device qualification.
+The current upstream source pin is `9ba8ec5673`; the preceding pin was `4573a187b0`. Runtime and device results remain bound to their own source, artifact and account receipts. This source update does not transfer historical APK or device qualification.
 
 The historical October 14 development rebuild used upstream `193d9264fc`; current source pins have advanced since that build. Acceptance evidence below remains scoped to its recorded builds.
 
