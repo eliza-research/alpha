@@ -37,6 +37,13 @@ async function setup(page:Page,signed=true,theme='light'){
  await expect.poll(()=>page.evaluate(()=>!!(window as any).chatVoiceFixture.shell)).toBe(true);
  await expect.poll(()=>page.evaluate(()=>(window as any).chatVoiceFixture.shell.swallowed())).toBe(false);
 }
+// A retained typed draft intentionally shows Send instead of Talk. This is
+// explicit public-API coverage of preserving that draft, not a claim that a
+// second Talk control is visible beside Send.
+async function startWithRetainedDraft(page:Page){
+ await expect(page.getByRole('button',{name:'Talk',exact:true})).toHaveCount(0);
+ await page.evaluate(()=>(window as any).chatVoiceFixture.shell.startVoice());
+}
 async function utterance(page:Page){await page.evaluate(()=>(window as any).chatVoiceFixture.peak=.25);await page.waitForTimeout(950);await page.evaluate(()=>(window as any).chatVoiceFixture.peak=0);}
 async function noMedia(page:Page){expect(await page.evaluate(()=>{const f=(window as any).chatVoiceFixture;return {media:f.media,local:f.localProbes};})).toEqual({media:0,local:0});}
 
@@ -55,6 +62,8 @@ test('ongoing Cloud conversation stays in Calendar, sends only new speech and pr
 });
 test('the recorded-clip conversation shows no interruption notice and records its batch path',async({page})=>{
  await setup(page);await page.evaluate(()=>{const f=(window as any).chatVoiceFixture,toast=f.shell.toast.bind(f.shell);f.toasts=[];f.shell.toast=(message:string,...rest:unknown[])=>{f.toasts.push(message);return toast(message,...rest);};});
+ await expect(page.locator('textarea[data-alpha-composer]')).toHaveValue('');
+ await expect(page.getByRole('button',{name:'Talk',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Talk',exact:true}).click();await expect(voice(page)).toHaveAttribute('data-voice-state','listening');
  await utterance(page);await expect(voice(page)).toHaveAttribute('data-voice-state','speaking');
  await voice(page).getByRole('button',{name:'Stop voice conversation',exact:true}).click();await expect(voice(page)).toHaveCount(0);
@@ -67,19 +76,19 @@ test('the recorded-clip conversation shows no interruption notice and records it
  expect(paths.live[0]).toEqual({mode:'batch',partials:0});expect(paths.paths[0]).toBe('batch');
  await noMedia(page);
 });
-test('the default send policy is auto-send: a finished transcript is sent with no review step',async({page})=>{
+test('explicit voice API with a retained draft uses auto-send without a review step',async({page})=>{
  await setup(page);expect(await page.evaluate(async()=>(await import('/src/runtime/voice-selection.ts')).voiceSendPolicy())).toBe('auto-send');
  await page.evaluate(()=>new Promise<void>(resolve=>(window as any).chatVoiceFixture.shell.setState({draft:'Existing unsent draft'},resolve)));
- await page.getByRole('button',{name:'Talk',exact:true}).click();await expect(voice(page)).toHaveAttribute('data-voice-state','listening');await expect(voice(page)).toContainText('Listening…');expect(await page.evaluate(()=>(window as any).chatVoiceFixture.sends)).toBe(0);
+ await startWithRetainedDraft(page);await expect(voice(page)).toHaveAttribute('data-voice-state','listening');await expect(voice(page)).toContainText('Listening…');expect(await page.evaluate(()=>(window as any).chatVoiceFixture.sends)).toBe(0);
  await utterance(page);await expect(voice(page)).toHaveAttribute('data-voice-state','speaking');
  await expect(voice(page).getByRole('button',{name:'Send voice message',exact:true})).toHaveCount(0);await expect(voice(page).getByRole('textbox',{name:'Review transcript',exact:true})).toHaveCount(0);
  expect(await page.evaluate(()=>{const f=(window as any).chatVoiceFixture;return {sends:f.sends,sent:f.sent};})).toEqual({sends:1,sent:'Synthetic Cloud transcript'});
  await voice(page).getByRole('button',{name:'Stop voice conversation',exact:true}).click();expect(await page.evaluate(()=>(window as any).chatVoiceFixture.shell.S().draft)).toBe('Existing unsent draft');await noMedia(page);
 });
-test('the review send policy holds each transcript for an edited Send or a Discard that sends nothing',async({page})=>{
+test('explicit voice API with a retained draft holds review for edited Send or zero-send Discard',async({page})=>{
  await setup(page);expect(await page.evaluate(async()=>(await import('/src/runtime/voice-selection.ts')).setVoiceSendPolicyForTests('review'))).toBe(true);
  await page.evaluate(()=>new Promise<void>(resolve=>(window as any).chatVoiceFixture.shell.setState({draft:'Existing unsent draft'},resolve)));
- await page.getByRole('button',{name:'Talk',exact:true}).click();await expect(voice(page)).toHaveAttribute('data-voice-state','listening');await expect(voice(page)).toContainText('Listening…');expect(await page.evaluate(()=>(window as any).chatVoiceFixture.sends)).toBe(0);
+ await startWithRetainedDraft(page);await expect(voice(page)).toHaveAttribute('data-voice-state','listening');await expect(voice(page)).toContainText('Listening…');expect(await page.evaluate(()=>(window as any).chatVoiceFixture.sends)).toBe(0);
  await utterance(page);await expect(voice(page)).toHaveAttribute('data-voice-state','review');
  await expect(voice(page).getByRole('button',{name:'Stop voice conversation',exact:true})).toBeEnabled();await expect(voice(page).getByRole('button',{name:'Microphone off',exact:true})).toBeDisabled();
  const review=voice(page).getByRole('textbox',{name:'Review transcript',exact:true});await expect(review).toHaveValue('Synthetic Cloud transcript');await expect(voice(page)).toContainText('Nothing has been sent.');
