@@ -245,9 +245,10 @@ renderer canvas, with space above the navigation buttons. Standalone Android fit
 its WebView inside the bars and supplies zero remaining inset. Floating controls,
 expanded text input and voice controls share the same clearance; their measured
 height bounds top notices, including when a draft grows or the keyboard opens.
-Routine saves, toggles and draft restoration stay quiet. Draft conflicts and voice
-recovery appear at the top of the chat, while transient errors and Undo appear at
-the top of the phone. Modal feedback takes space above the form instead of floating
+Routine saves, toggles and draft restoration stay quiet. In the chat, draft conflicts
+and voice recovery appear above the conversation's composer; on the floating dock a
+draft-storage problem stays attached above the input bar, never over or below it.
+Transient errors and Undo appear at the top of the phone. Modal feedback takes space above the form instead of floating
 over its fields. Cloud voice retains its pre-start upload and plan disclosure.
 
 ## Build surfaces

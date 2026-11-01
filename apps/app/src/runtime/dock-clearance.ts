@@ -25,6 +25,8 @@ import { installDockClearance as installSharedDockClearance, visibleDocks as sha
 export const DOCK_CLEARANCE_PROPERTY = '--alpha-dock-clearance';
 export const DOCK_REST_PROPERTY = '--alpha-dock-rest';
 const HEADER_CLEARANCE_PROPERTY = '--alpha-header-clearance';
+// App headers, and the shared All apps drawer's title row with its Close button.
+const APP_HEADERS = '[data-alpha-app-header],[data-alpha-layer="drawer"] div:has(> h1)';
 const DOCK = '[data-alpha-layer="composer"],[data-alpha-layer="pill"] > *,.alpha-chat-composer';
 
 /** The dock elements on screen now: rendered, and not retired behind the shade or a voice session. */
@@ -57,7 +59,7 @@ function installHeaderClearance(): () => void {
     const box = screen.getBoundingClientRect(), scale = box.width / screen.offsetWidth || 1;
     const conversation = screen.querySelector<HTMLElement>('[data-alpha-layer="conversation"]:not([inert])');
     const fullChat = conversation && screen.dataset.alphaChatHalf !== 'true';
-    const headers = Array.from((fullChat ? conversation : screen).querySelectorAll<HTMLElement>(fullChat ? '[data-alpha-chat-header]' : '[data-alpha-app-header]'))
+    const headers = Array.from((fullChat ? conversation : screen).querySelectorAll<HTMLElement>(fullChat ? '[data-alpha-chat-header]' : APP_HEADERS))
       .filter(header => header.getClientRects().length > 0 && !header.closest('[inert]'));
     const measured = [screen, ...headers];
     if (measured.length !== watched.length || measured.some((header, index) => header !== watched[index])) {
