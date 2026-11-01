@@ -2,31 +2,49 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'rea
 import type { SignInView } from './connection-ui';
 
 /**
- * Alpha's own Eliza Cloud sign-in screens: Google in the user's external browser, or an email
- * code typed here, then a second verification when the account has one. No Eliza Cloud web page.
- * Codes stay in the input while verification is pending or can be retried. They are never stored
- * outside the form, and a different attempt or verification step replaces the input.
+ * Alpha's own Eliza Cloud sign-in screens: Google in the user's external browser, or an email or
+ * text-message code typed here, then a second verification when the account has one. No Eliza
+ * Cloud web page. Codes stay in the input while verification is pending or can be retried. They
+ * are never stored outside the form, and a different attempt or verification step replaces the input.
  */
 export interface CloudSignInActions {
   phone?(number: string): void; google(): void; email(address: string): void; verify(code: string): void; resend(): void; cancel(): void; retry?(): void;
 }
 export function AlphaAuthBrand() {
-  return <div className="alpha-auth-brand"><span className="alpha-auth-mark" aria-hidden="true"/><span className="serif">Alpha</span></div>;
+  return <div className="alpha-auth-brand"><span className="alpha-auth-mark" aria-hidden="true"/></div>;
 }
-export function CloudSignInPanel({ view, busy, google, phone, emailEnabled = true, message, error, errorIsNotice = false, actions, extra, ready = true, dismissible = true }: {
+/** Exact busy messages the controller uses; the panel shows them on the control that started them. */
+export const SIGN_IN_SENDING = 'Sending your code…';
+export const SIGN_IN_SIGNING_IN = 'Signing in…';
+export const SIGN_IN_BROWSER = 'Continue in your browser.';
+type Pending = 'email' | 'phone' | 'resend' | null;
+export function CloudSignInPanel({ view, busy, google, phone, emailEnabled = true, message, error, errorIsNotice = false, actions, extra, ready = true, dismissible = true, probing = false, unavailable = false, ownKeys, alternate }: {
   view: SignInView; busy: boolean; google: boolean; phone?: boolean; emailEnabled?: boolean; message: string; error: string; actions: CloudSignInActions;
   errorIsNotice?: boolean;
-  /** Optional hosted sign-in entry supplied by the caller's build gate. */
+  /** Low-emphasis entries under the methods (saved sign-in recovery, test-mocks diagnostics). */
   extra?: ReactNode;
   /** The native readiness probe has admitted this attempt. */
   ready?: boolean;
   /** Required first-run sign-in has no screen to go Back to. */
   dismissible?: boolean;
+  /** The readiness probe is running; it is not an attempt the owner started. */
+  probing?: boolean;
+  /** Readiness failed or was cancelled: only the reason and one retry are shown. */
+  unavailable?: boolean;
+  /** Offers the owner-provided keys path instead of Cloud sign-in. */
+  ownKeys?: () => void;
+  /** Replaces the sign-in methods, status and footer while the owner-provided keys form is open. */
+  alternate?: ReactNode;
 }) {
   const googleButton=useRef<HTMLButtonElement>(null);
   const phoneInput = useRef<HTMLInputElement>(null);
   const email = useRef<HTMLInputElement>(null), code = useRef<HTMLInputElement>(null);
   const [now, setNow] = useState(() => Date.now());
+  const [pending, setPending] = useState<Pending>(null);
+  const [preferPhone, setPreferPhone] = useState(false);
+  const choose = view.step === 'choose' ? view : null;
+  const showPhone = !!phone && (!emailEnabled || preferPhone || (!!choose?.phone && !choose.email));
+  const showGoogle = google || !ready;
   // Resend becomes available when the host's cooldown ends; the countdown is the only timer.
   useEffect(() => {
     if (view.step !== 'code') return;
@@ -37,45 +55,75 @@ export function CloudSignInPanel({ view, busy, google, phone, emailEnabled = tru
     const timer = setInterval(() => { setNow(Date.now()); if (Date.now() >= view.resendAt) clearInterval(timer); }, 1000);
     return () => clearInterval(timer);
   }, [view]);
+  useEffect(() => { if (!busy) setPending(null); }, [busy, view.step]);
+  // Switching between email and text message moves focus to the field that replaced the other one.
+  const switched = useRef(false);
+  useEffect(() => { if (!switched.current) { switched.current = true; return; } (showPhone ? phoneInput : email).current?.focus(); }, [preferPhone]);
   useEffect(() => {
-    // Disabled inputs lose focus during verification. Restore it for a wrong-code retry too.
-    if (!busy) (view.step === 'code' || view.step === 'mfa' ? code : view.step === 'choose' ? google ? googleButton : emailEnabled ? email : phoneInput : null)?.current?.focus();
-  }, [view.step, busy, google, emailEnabled, phone]);
+    // Disabled inputs lose focus during verification. Restore it for a wrong-code retry too, with
+    // the rejected code selected so the next digits replace it.
+    if (busy || alternate) return;
+    const target = view.step === 'code' || view.step === 'mfa' ? code : view.step === 'choose' ? google ? googleButton : showPhone ? phoneInput : email : null;
+    target?.current?.focus();
+    if (error && target === code) code.current?.select();
+  }, [view.step, busy, google, emailEnabled, phone, error, !!alternate]);
   const wait = view.step === 'code' ? Math.max(0, Math.ceil((view.resendAt - now) / 1000)) : 0;
-  const sending = message === 'Sending your code…';
-  // The code is verified; the account is being admitted (connection-ui residentSignedIn).
-  const signingIn = message === 'Signing in…';
-  const inlineStatus = busy && ((view.step === 'choose' && ready && sending) || ((view.step === 'code' || view.step === 'mfa') && (sending || signingIn || message === 'Checking your code…')));
+  const sending = busy && message === SIGN_IN_SENDING;
+  const signingIn = busy && message === SIGN_IN_SIGNING_IN;
+  const verifying = busy && !sending && (view.step === 'code' || view.step === 'mfa');
+  const inlineStatus = (view.step === 'google' && message === SIGN_IN_BROWSER) || sending || verifying;
+  const passkey = view.step === 'mfa' && view.method === 'passkey';
   const submitCode = (event: FormEvent) => { event.preventDefault(); if (!busy && ready) actions.verify(code.current?.value || ''); };
+  const noMethods = ready && !google && !emailEnabled && !phone;
+  const title = view.step === 'choose' ? 'Welcome to Alpha.' : view.step === 'google' ? 'Finish in your browser' : passkey ? 'Can’t finish sign-in' : 'Check your code.';
+  const codeError = (view.step === 'code' || (view.step === 'mfa' && !passkey)) && !!error && !errorIsNotice;
+  const errorLine = error && !codeError ? <p role={errorIsNotice ? 'status' : 'alert'} className={errorIsNotice ? 'alpha-auth-notice' : 'alpha-connection-error'}>{error}</p> : null;
+  // Back always returns to the chooser (or closes an explicit entry). The required page's own
+  // readiness check is not something the owner started, so it offers nothing to go back from.
+  const back = !alternate && (view.step !== 'choose' || dismissible || (busy && !probing));
+  const sendLabel = (method: 'email' | 'phone', idle: string) => sending && pending === method ? 'Sending code…' : idle;
   return <>
     <AlphaAuthBrand/>
-    <header><h1 id="cloud-sign-in-title" className="serif">{view.step === 'choose' ? 'Welcome to Alpha.' : view.step === 'google' ? 'Continue with Google' : 'Check your code.'}</h1></header>
-    {view.step === 'choose' && <>
-      {ready && !google && <p id="alpha-google-unavailable" role="status">{!phone && !emailEnabled ? 'Sign-in is unavailable.' : 'Google sign-in is unavailable.'} {actions.retry && <button type="button" disabled={busy} onClick={actions.retry}>Retry</button>}</p>}
-      <div className="alpha-connection-actions alpha-auth-google"><button ref={googleButton} disabled={busy || !ready || !google} onClick={actions.google}><span aria-hidden="true" className="alpha-google-icon"/>Continue with Google</button></div>
-      {emailEnabled && <form className="alpha-cloud-sign-in-email" aria-label="Sign in with email" onSubmit={event => { event.preventDefault(); actions.email(email.current?.value || ''); }}>
-        <label>Email<input ref={email} type="email" name="email" autoComplete="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} inputMode="email" maxLength={320} required disabled={busy || !ready} /></label>
-        <button disabled={busy || !ready}>{busy && sending ? 'Sending code…' : 'Email me a code'}</button>
+    <header><h1 id="cloud-sign-in-title" className="serif">{title}</h1></header>
+    {view.step === 'choose' && alternate}
+    {view.step === 'choose' && !alternate && (unavailable || noMethods) && <div className="alpha-auth-methods">
+      {errorLine ?? <p role="status">Sign-in is unavailable.</p>}
+      {actions.retry && <button type="button" className="alpha-btn alpha-btn--primary" onClick={actions.retry}>Try again</button>}
+    </div>}
+    {view.step === 'choose' && !alternate && !unavailable && !noMethods && <div className="alpha-auth-methods">
+      {showGoogle && <button ref={googleButton} type="button" className="alpha-btn alpha-btn--secondary alpha-auth-google" disabled={busy || !ready || !google} onClick={actions.google}><span aria-hidden="true" className="alpha-google-icon"/>Continue with Google</button>}
+      {showGoogle && (emailEnabled || phone) && <div className="alpha-auth-divider" aria-hidden="true">or</div>}
+      {emailEnabled && !showPhone && <form className="alpha-cloud-sign-in-email" aria-label="Sign in with email" onSubmit={event => { event.preventDefault(); setPending('email'); actions.email(email.current?.value || ''); }}>
+        <label>Email<input ref={email} type="email" name="email" autoComplete="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} inputMode="email" maxLength={320} required defaultValue={choose?.email || undefined} disabled={busy || !ready} /></label>
+        <button className="alpha-btn alpha-btn--primary" aria-busy={(sending && pending === 'email') || undefined} disabled={busy || !ready}>{sendLabel('email', 'Email me a code')}</button>
       </form>}
-      {phone && <form aria-label="Sign in with phone" onSubmit={event => { event.preventDefault(); actions.phone?.(phoneInput.current?.value || ''); }}>
-        <label>Phone number with country code<input ref={phoneInput} type="tel" name="phone" autoComplete="tel" placeholder="+14155550100" maxLength={16} required disabled={busy || !ready} /></label>
-        <button disabled={busy || !ready}>Text me a code</button>
+      {showPhone && <form className="alpha-cloud-sign-in-phone" aria-label="Sign in with phone" onSubmit={event => { event.preventDefault(); setPending('phone'); actions.phone?.(phoneInput.current?.value || ''); }}>
+        <label>Phone number<input ref={phoneInput} type="tel" name="phone" autoComplete="tel" placeholder="+14155550100" maxLength={16} required defaultValue={choose?.phone || undefined} disabled={busy || !ready} /></label>
+        <button className="alpha-btn alpha-btn--primary" aria-busy={(sending && pending === 'phone') || undefined} disabled={busy || !ready}>{sendLabel('phone', 'Text me a code')}</button>
       </form>}
-    </>}
+      {emailEnabled && phone && <button type="button" className="alpha-btn alpha-btn--text" disabled={busy || !ready} onClick={() => setPreferPhone(!showPhone)}>{showPhone ? 'Use email instead' : 'Use phone number instead'}</button>}
+      {!showGoogle && actions.retry && <button type="button" className="alpha-btn alpha-btn--text" disabled={busy} onClick={actions.retry}>Retry Google sign-in</button>}
+      {errorLine}
+    </div>}
     {(view.step === 'code' || view.step === 'mfa') && <form key={`${view.step}:${view.attemptId}`} className="alpha-cloud-sign-in-code" aria-busy={busy || undefined} aria-label={view.step === 'code' ? view.phone ? 'Enter your phone code' : 'Enter your email code' : 'Enter your verification code'} onSubmit={submitCode}>
       {view.step === 'code' && <p>Code sent to <strong>{view.phone || view.email}</strong>.</p>}
-      {view.step === 'mfa' && <p>{view.method === 'totp' ? 'Enter your authenticator code.' : view.method === 'sms' ? 'Enter the code sent to your phone.' : 'This verification method is unavailable.'}</p>}
-      {(view.step === 'code' || view.method !== 'passkey') && <>
-        <label>Six-digit code<input ref={code} name="one-time-code" autoComplete="one-time-code" inputMode="numeric" pattern="[0-9 -]{6,9}" maxLength={9} required disabled={busy} /></label>
-        <button className="alpha-auth-submit" aria-live="polite" aria-busy={busy || undefined} disabled={busy}>{busy ? sending ? 'Sending code…' : signingIn ? 'Signing in…' : 'Checking code…' : 'Verify'}</button>
+      {view.step === 'mfa' && !passkey && <p>{view.method === 'totp' ? 'Enter your authenticator code.' : 'Enter the code sent to your phone.'}</p>}
+      {!passkey && <>
+        <label>Six-digit code<input ref={code} name="one-time-code" autoComplete="one-time-code" inputMode="numeric" pattern="[0-9 -]{6,9}" maxLength={9} required disabled={busy}
+          aria-invalid={codeError || undefined} aria-describedby={codeError ? 'cloud-sign-in-code-error' : undefined} /></label>
+        {codeError && <p id="cloud-sign-in-code-error" role="alert" className="alpha-connection-error">{error}</p>}
+        <button className="alpha-btn alpha-btn--primary alpha-auth-submit" aria-live="polite" aria-busy={verifying || undefined} disabled={busy}>{verifying ? signingIn ? 'Signing in…' : 'Checking code…' : 'Verify'}</button>
       </>}
-      {view.step === 'code' && <button type="button" disabled={busy || wait > 0} onClick={actions.resend}>{wait > 0 ? `Resend code in ${wait}s` : 'Resend code'}</button>}
+      {view.step === 'code' && <button type="button" className="alpha-btn alpha-btn--text alpha-auth-resend" aria-busy={sending || undefined} disabled={busy || wait > 0} onClick={() => { setPending('resend'); actions.resend(); }}>{sending ? 'Sending code…' : wait > 0 ? `Resend code in ${wait}s` : 'Resend code'}</button>}
     </form>}
-    {message && !inlineStatus && <p role="status">{message}</p>}
-    {error && <p role={errorIsNotice ? 'status' : 'alert'} className={errorIsNotice ? 'alpha-auth-notice' : 'alpha-connection-error'}>{error}</p>}
-    <div className="alpha-connection-actions">
-      {(dismissible || view.step !== 'choose' || busy) && <button type="button" className="alpha-connection-cancel" onClick={actions.cancel}>{view.step === 'choose' && !busy ? 'Back' : 'Cancel sign-in'}</button>}
-      {view.step === 'choose' && extra}
-    </div>
+    {view.step !== 'choose' && errorLine}
+    {!alternate && message && !inlineStatus && <p role="status">{message}</p>}
+    {view.step === 'choose' && !alternate && (ownKeys || extra) && <div className="alpha-auth-alt">
+      {ownKeys && <button type="button" className="alpha-btn alpha-btn--text" disabled={busy && !probing} onClick={ownKeys}>Use my own API keys</button>}
+      {extra}
+    </div>}
+    {back && <div className="alpha-connection-actions alpha-auth-footer">
+      <button type="button" className="alpha-btn alpha-btn--text alpha-connection-cancel" onClick={actions.cancel}>Back</button>
+    </div>}
   </>;
 }

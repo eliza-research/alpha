@@ -1,7 +1,7 @@
 .alpha-connection-scrim{position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.24);display:flex;justify-content:center;align-items:stretch;padding:max(env(safe-area-inset-top),12px) 12px max(env(safe-area-inset-bottom),12px);box-sizing:border-box;color:#000;font:15px/1.45 'Public Sans',system-ui,sans-serif}
 .alpha-connection{background:var(--connection-bg,#fff);color:var(--connection-fg,#000);width:100%;max-width:480px;padding:20px 22px 28px;border-radius:26px;box-sizing:border-box;overflow:auto;overscroll-behavior:contain;scrollbar-width:none;outline:none;box-shadow:0 8px 40px rgba(0,0,0,.15)}
 .alpha-connection header{display:flex;justify-content:space-between;align-items:center}.alpha-connection-logo{font-size:54px;line-height:1}.alpha-connection header button{font-size:30px;width:44px;height:44px;text-align:center}
-.alpha-connection h1{font-size:46px;line-height:1.04;font-weight:300;letter-spacing:-1.2px;margin:20px 0}.alpha-connection p{color:var(--connection-mut,#6b6b6b);margin:12px 0 18px;font-size:14px}.alpha-connection details{border-top:1px solid var(--connection-line,#e3e3e3);padding:16px 0}.alpha-connection summary{font-size:18px;font-weight:500;cursor:pointer;min-height:28px}.alpha-connection label{display:flex;flex-direction:column;gap:7px;margin:14px 0;font-size:13px;color:var(--connection-mut,#555)}.alpha-connection input,.alpha-connection select,.alpha-connection textarea{font:inherit;font-size:16px;background:var(--connection-s2,#f3f3f3);color:var(--connection-fg,#000);border:1px solid var(--connection-line,#e3e3e3);border-radius:12px;padding:13px 12px;min-width:0;box-sizing:border-box;width:100%}.alpha-connection button{min-height:44px;padding:10px 13px;border-radius:22px;color:var(--connection-acc,#0000ff);font-weight:500}.alpha-connection button:focus-visible,.alpha-connection input:focus-visible,.alpha-connection select:focus-visible,.alpha-connection textarea:focus-visible,.alpha-connection summary:focus-visible{outline:2px solid var(--connection-acc,#0000ff);outline-offset:3px}.alpha-connection button:disabled{opacity:.4;cursor:default}.alpha-connection button:active{background:var(--connection-s2,#e9e9e9)}.alpha-connection-actions{display:flex;flex-wrap:wrap;gap:4px}.alpha-connection-actions button:first-child,.alpha-connection form>button{background:var(--connection-fg,#000);color:var(--connection-bg,#fff)}.alpha-connection [role=status]{font-size:14px;color:var(--connection-mut,#555);margin:10px 0}.alpha-connection .alpha-connection-error{color:#a32121;background:#fff2f2;border-radius:12px;padding:12px}.alpha-connection-current,.alpha-connection-agent{background:var(--connection-s2,#f3f3f3);border-radius:16px;padding:12px;margin:12px 0;display:flex;gap:6px;flex-wrap:wrap;align-items:center}.alpha-connection-current strong,.alpha-connection-agent strong{width:100%}.alpha-connection-current span,.alpha-connection-agent span{font-size:13px;color:var(--connection-mut,#6b6b6b);flex:1}.alpha-connection .alpha-connection-offline{margin-top:14px;width:100%;background:var(--connection-s2,#f3f3f3);color:var(--connection-fg,#000)}.alpha-connection-cancel{border:1px solid var(--connection-line,#e3e3e3)}
+.alpha-connection h1{font-size:46px;line-height:1.04;font-weight:300;letter-spacing:-1.2px;margin:20px 0}.alpha-connection p{color:var(--connection-mut,#6b6b6b);margin:12px 0 18px;font-size:14px}.alpha-connection details{border-top:1px solid var(--connection-line,#e3e3e3);padding:16px 0}.alpha-connection summary{font-size:18px;font-weight:500;cursor:pointer;min-height:28px}.alpha-connection label{display:flex;flex-direction:column;gap:7px;margin:14px 0;font-size:13px;color:var(--connection-mut,#555)}.alpha-connection input,.alpha-connection select,.alpha-connection textarea{font:inherit;font-size:16px;background:var(--connection-s2,#f3f3f3);color:var(--connection-fg,#000);border:1px solid var(--connection-line,#e3e3e3);border-radius:12px;padding:13px 12px;min-width:0;box-sizing:border-box;width:100%}.alpha-connection button{min-height:44px;padding:10px 13px;border-radius:22px;color:var(--connection-acc,#0000ff);font-weight:500}.alpha-connection button:focus-visible,.alpha-connection input:focus-visible,.alpha-connection select:focus-visible,.alpha-connection textarea:focus-visible,.alpha-connection summary:focus-visible{outline:2px solid var(--connection-acc,#0000ff);outline-offset:3px}.alpha-connection button:disabled{opacity:.4;cursor:default}.alpha-connection button:active{background:var(--connection-s2,#e9e9e9)}.alpha-connection-actions{display:flex;flex-wrap:wrap;gap:8px}.alpha-connection-actions button:first-child:not(.alpha-btn),.alpha-connection form>button:not(.alpha-btn){background:var(--connection-fg,#000);color:var(--connection-bg,#fff)}.alpha-connection [role=status]{font-size:14px;color:var(--connection-mut,#555);margin:10px 0}.alpha-connection .alpha-connection-error{color:var(--connection-danger,#a32121);background:var(--connection-danger-bg,#fff2f2);border-radius:12px;padding:12px}.alpha-connection-current,.alpha-connection-agent{background:var(--connection-s2,#f3f3f3);border-radius:16px;padding:12px;margin:12px 0;display:flex;gap:6px;flex-wrap:wrap;align-items:center}.alpha-connection-current strong,.alpha-connection-agent strong{width:100%}.alpha-connection-current span,.alpha-connection-agent span{font-size:13px;color:var(--connection-mut,#6b6b6b);flex:1}.alpha-connection .alpha-connection-offline{margin-top:14px;width:100%;background:var(--connection-s2,#f3f3f3);color:var(--connection-fg,#000)}.alpha-connection-cancel{border:1px solid var(--connection-line,#e3e3e3)}
 
 .alpha-connection textarea{resize:vertical;min-height:100px}
 
@@ -34,39 +34,63 @@
 .alpha-plan-notice-actions button[aria-label]{margin-left:auto;min-width:44px;font-size:22px;color:var(--fg,#000)}
 .alpha-plan-notice-actions button:focus-visible{outline:2px solid var(--acct,#0000ff);outline-offset:3px}
 
-/* The production signed-out route is a page, never an agent status sheet. */
-.alpha-auth-page{position:fixed;inset:0;z-index:10000;display:flex;align-items:stretch;background:var(--bg,#fff);color:var(--fg,#000);font:15px/1.45 'Public Sans',system-ui,sans-serif}
-.alpha-auth-page .alpha-auth-content{width:100%;max-width:none;min-height:100%;display:flex;flex-direction:column;justify-content:safe center;padding:calc(env(safe-area-inset-top) + 28px) max(env(safe-area-inset-right),24px) calc(env(safe-area-inset-bottom) + 28px) max(env(safe-area-inset-left),24px);border-radius:0;box-shadow:none}
-.alpha-auth-body{width:min(100%,28rem);margin:auto;flex-shrink:0}
-.alpha-auth-body h1{margin:0 0 16px}
-.alpha-auth-body>p{margin:0 0 28px}
-.alpha-auth-body .alpha-connection-actions button{width:100%;min-height:52px}
-.alpha-auth-body [role=status],.alpha-auth-body [role=alert]{margin-top:16px}
+/* Shared buttons for sign-in, own keys and provider settings: one primary, one outlined
+   secondary and one text action, at one height and radius, with centred (wrapping) labels. */
+/* Danger colours follow the copied theme (light or dark) instead of a fixed light-only pair. */
+.alpha-connection{--alpha-btn-h:52px;--alpha-btn-radius:14px;--alpha-gap:12px;--connection-danger:color-mix(in srgb,#e03131 72%,var(--connection-fg,#000));--connection-danger-bg:color-mix(in srgb,#e03131 12%,var(--connection-bg,#fff))}
+.alpha-connection .alpha-btn{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;min-height:var(--alpha-btn-h);padding:12px 20px;border-radius:var(--alpha-btn-radius);font-size:16px;line-height:1.25;font-weight:500;text-align:center;box-sizing:border-box;border:1px solid transparent;cursor:pointer}
+.alpha-connection .alpha-btn--primary{background:var(--connection-acc,#0000ff);color:#fff}
+.alpha-connection .alpha-btn--primary:active{background:var(--connection-acc,#0000ff);filter:brightness(.9)}
+.alpha-connection .alpha-btn--secondary{background:var(--connection-bg,#fff);color:var(--connection-fg,#000);border-color:var(--connection-line,#d6d6d6)}
+.alpha-connection .alpha-btn--text{min-height:44px;padding:10px 12px;background:none;color:var(--connection-acc,#0000ff);font-size:15px}
+.alpha-connection button[aria-busy=true]{opacity:1;cursor:progress}
+.alpha-connection input:disabled{opacity:.5;cursor:default}
+.alpha-connection input::placeholder{color:var(--connection-mut,#6b6b6b);opacity:.8}
+.alpha-connection input[aria-invalid=true]{border-color:var(--connection-danger,#a32121)}
+.alpha-form-actions{display:flex;flex-direction:column;gap:8px;margin-top:20px}
 
-/* Alpha identity and the same task hierarchy across sign-in and code entry. */
-.alpha-auth-brand{display:flex;align-items:center;gap:12px;margin:0 0 44px;color:var(--connection-fg,#000)}
-.alpha-auth-brand>.serif{font-size:32px;line-height:1;letter-spacing:-.02em}
-.alpha-auth-mark{display:block;width:44px;height:44px;flex:none;background:var(--connection-acc,#0000ff);mask:url('/logo-mark.svg') center/contain no-repeat;-webkit-mask:url('/logo-mark.svg') center/contain no-repeat}
-.alpha-auth-page .alpha-auth-content{padding-top:max(calc(env(safe-area-inset-top) + 32px),8vh);padding-bottom:calc(env(safe-area-inset-bottom) + 32px)}
+/* The production signed-out route is a page, never an agent status sheet. The content is
+   top-aligned so the brand and heading stay in one place on every step. */
+.alpha-auth-page{position:fixed;inset:0;z-index:10000;display:flex;align-items:stretch;background:var(--bg,#fff);color:var(--fg,#000);font:15px/1.45 'Public Sans',system-ui,sans-serif}
+.alpha-auth-page .alpha-auth-content{width:100%;max-width:none;min-height:100%;display:flex;flex-direction:column;justify-content:flex-start;padding:max(calc(env(safe-area-inset-top) + 32px),8vh) max(env(safe-area-inset-right),24px) calc(env(safe-area-inset-bottom) + 32px) max(env(safe-area-inset-left),24px);border-radius:0;box-shadow:none}
 .alpha-auth-page .alpha-cloud-sign-in{width:min(100%,32rem);margin-inline:auto}
-.alpha-auth-page h1{font-size:clamp(36px,9vw,48px);line-height:1.08;letter-spacing:-.025em;text-wrap:balance;margin:0 0 16px}
-.alpha-auth-page .alpha-auth-intro{font-size:16px;line-height:1.6;margin:0 0 30px;max-width:30ch}
-.alpha-auth-body .alpha-connection-actions button:first-child,.alpha-cloud-sign-in form>button:first-of-type{background:var(--connection-acc,#0000ff);color:#fff;min-height:52px;padding:14px 20px;border-radius:14px;font-size:16px}
-.alpha-auth-google button:first-child{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;min-height:52px;padding:14px 18px;background:var(--connection-bg,#fff);color:var(--connection-fg,#000);border:1px solid var(--connection-line,#d6d6d6);border-radius:14px;font-size:16px}
-.alpha-google-icon{display:inline-block;flex:none;width:20px;height:20px;background:url('/icons/senders/google.com.png') center/contain no-repeat}
-.alpha-auth-divider{display:flex;align-items:center;gap:14px;margin:26px 0;color:var(--connection-mut,#666);font-size:13px}
-.alpha-auth-divider::before,.alpha-auth-divider::after{content:'';flex:1;height:1px;background:var(--connection-line,#dedede)}
-.alpha-cloud-sign-in form>button:first-of-type{width:100%}
-.alpha-cloud-sign-in-code>button[type=button]{margin-top:8px;padding-inline:0;background:none;color:var(--connection-mut,#666)}
-.alpha-cloud-sign-in label{font-size:14px;font-weight:500;margin:0 0 16px;gap:9px;color:var(--connection-fg,#000)}
+.alpha-auth-brand{display:flex;align-items:center;margin:0 0 24px;color:var(--connection-fg,#000)}
+.alpha-auth-mark{display:block;width:44px;height:44px;flex:none;background:var(--connection-acc,#0000ff);mask:url('/logo-mark.svg') center/contain no-repeat;-webkit-mask:url('/logo-mark.svg') center/contain no-repeat}
+.alpha-auth-page h1{font-size:clamp(36px,9vw,48px);line-height:1.08;letter-spacing:-.025em;text-wrap:balance;margin:0 0 28px}
+.alpha-large-text .alpha-auth-page h1{font-size:min(48px,calc(54px / var(--alpha-text-scale,1)))}
+.alpha-cloud-sign-in>header{display:block}
+.alpha-cloud-sign-in h1{margin:0 0 28px}
+.alpha-auth-methods,.alpha-own-keys{display:flex;flex-direction:column;gap:var(--alpha-gap)}
+.alpha-cloud-sign-in form{display:flex;flex-direction:column;gap:var(--alpha-gap);margin:0}
+.alpha-cloud-sign-in label{font-size:14px;font-weight:500;margin:0;gap:8px;color:var(--connection-fg,#000)}
 .alpha-cloud-sign-in input{min-height:54px;border-radius:12px;background:var(--connection-bg,#fff);padding:14px 16px}
-.alpha-connection .alpha-auth-method-note{font-size:13px;line-height:1.5;margin:10px 0 0}
+.alpha-cloud-sign-in p{margin:0}
+.alpha-cloud-sign-in [role=status],.alpha-cloud-sign-in [role=alert]{margin:0}
+.alpha-cloud-sign-in>[role=status],.alpha-cloud-sign-in>[role=alert]{margin-top:16px}
+.alpha-google-icon{display:inline-block;flex:none;width:20px;height:20px;background:url('/icons/senders/google.com.png') center/contain no-repeat}
+.alpha-auth-divider{display:flex;align-items:center;gap:14px;margin:8px 0;color:var(--connection-mut,#666);font-size:13px}
+.alpha-auth-divider::before,.alpha-auth-divider::after{content:'';flex:1;height:1px;background:var(--connection-line,#dedede)}
+.alpha-cloud-sign-in-code .alpha-auth-resend{font-variant-numeric:tabular-nums}
+.alpha-cloud-sign-in-code .alpha-auth-resend:disabled:not([aria-busy=true]){opacity:1;color:var(--connection-mut,#666);cursor:default}
+.alpha-auth-alt{display:flex;flex-direction:column;gap:4px;margin-top:24px;padding-top:16px;border-top:1px solid var(--connection-line,#e3e3e3)}
+.alpha-auth-footer{margin-top:16px}
+.alpha-connection.alpha-cloud-sign-in .alpha-auth-footer>.alpha-connection-cancel{border:0;color:var(--connection-mut,#666)}
+.alpha-own-keys-note{font-size:13px}
+.alpha-own-keys .alpha-form-actions{margin-top:8px}
 .alpha-connection .alpha-auth-notice{border-top:1px solid var(--connection-line,#dedede);padding-top:16px;margin-top:28px;font-size:12px;line-height:1.6;color:var(--connection-mut,#666);background:none;border-radius:0}
-.alpha-cloud-sign-in>.alpha-connection-actions:last-child{margin-top:20px}
-.alpha-connection.alpha-cloud-sign-in .alpha-connection-actions>.alpha-connection-cancel{background:none;border:0;box-shadow:none;color:var(--connection-mut,#666)}
-.alpha-cloud-sign-in .alpha-auth-submit[aria-busy=true]{opacity:1;cursor:progress}
-.alpha-cloud-sign-in-code>button[type=button]{min-height:44px;font-size:14px;font-variant-numeric:tabular-nums}
-@media(max-height:620px){.alpha-auth-page .alpha-auth-content{justify-content:flex-start;padding-top:calc(env(safe-area-inset-top) + 24px)}.alpha-auth-body{margin-block:0}.alpha-auth-brand{margin-bottom:28px}}
-/* Provider selection follows its current choice, not the generic first-action emphasis. */
-.alpha-connection [aria-label="AI provider"] .alpha-connection-actions button[aria-pressed="false"]{background:transparent;color:var(--connection-acc,#0000ff)}
-.alpha-connection [aria-label="AI provider"] .alpha-connection-actions button[aria-pressed="true"]{background:var(--connection-fg,#000);color:var(--connection-bg,#fff)}
+.alpha-large-text .alpha-auth-brand{margin-bottom:16px}
+@media(max-height:620px){.alpha-auth-page .alpha-auth-content{padding-top:calc(env(safe-area-inset-top) + 24px)}.alpha-auth-brand{margin-bottom:16px}.alpha-auth-page h1{margin-bottom:20px}}
+
+/* Settings › AI provider: a two-segment choice; the selected segment is filled. */
+.alpha-provider-dialog header h1{margin:0}
+.alpha-provider{display:flex;flex-direction:column;gap:12px;margin-top:12px}
+.alpha-provider p{margin:0}
+.alpha-provider h3{font-size:18px;font-weight:500;margin:0}
+.alpha-provider label{margin:0}
+.alpha-provider .alpha-own-keys{gap:var(--alpha-gap)}
+.alpha-segmented{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:var(--alpha-btn-radius,14px);background:var(--connection-s2,#f3f3f3)}
+.alpha-connection .alpha-segmented button{min-height:44px;border-radius:10px;padding:8px 12px;text-align:center;color:var(--connection-fg,#000);background:transparent;line-height:1.25}
+.alpha-connection .alpha-segmented button[aria-pressed=true]{background:var(--connection-fg,#000);color:var(--connection-bg,#fff)}
+.alpha-provider-confirm{display:flex;flex-direction:column;gap:0}
+.alpha-provider-confirm .alpha-form-actions{margin-top:12px}
+.alpha-provider .alpha-form-actions{margin-top:4px}

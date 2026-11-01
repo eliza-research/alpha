@@ -10,17 +10,25 @@ const between=(text,start,end)=>{const a=text.indexOf(start),b=text.indexOf(end,
 const compiled=transformSync(panelSource.replace(/^import .*;\n/gm,'').replaceAll('export ',''),{loader:'tsx',jsxFactory:'React.createElement'}).code;
 const CloudSignInPanel=new Function('React','useRef','useState','useEffect','cloudServiceName',compiled+';return CloudSignInPanel;')(React,React.useRef,React.useState,React.useEffect,()=> 'Eliza Cloud');
 const branch=between(source,'  const requiredSignInView:', '  const accountCreatedNotice=');
-const renderBranch=new Function('React','CloudSignInPanel','snapshot','productionSignInRequired','signInEntryRequired','residentEnvironment','inAppGoogle','panel','RESIDENT_UNPACKAGED','connectionController','browserCloudResidentEnabled','testMocksEnabled','ResidentRecoveryPanel','loadSignInService','cloudSignInPhone','inAppPhone','inAppEmail',transformSync('function render(){const providerChoice=null;'+branch+'return null;}',{loader:'tsx',jsxFactory:'React.createElement'}).code+';return render();');
+const renderBranch=new Function('React','CloudSignInPanel','snapshot','productionSignInRequired','signInEntryRequired','residentEnvironment','inAppGoogle','panel','RESIDENT_UNPACKAGED','connectionController','browserCloudResidentEnabled','testMocksEnabled','ResidentRecoveryPanel','loadSignInService','cloudSignInPhone','inAppPhone','inAppEmail',transformSync('function render(){const providerChoice=null;const ownKeyEntry=false,setOwnKeyEntry=()=>{},ownKeyAttempted=false,setOwnKeyAttempted=()=>{},signInPageShown=!!snapshot.signIn||signInEntryRequired,OwnKeyForm=()=>null,ownKeySaving=false,LOCAL_PROVIDER_MODEL=\'qwen\',automaticSignInProbe={current:false},signInProbeMessage=()=>\'Checking Eliza Cloud sign-in…\',ownProviderSelected=()=>false;'+branch+'return null;}',{loader:'tsx',jsxFactory:'React.createElement'}).code+';return render();');
 const controller={beginSignIn(){},signInGoogle(){},signInEmail(){},verifySignInCode(){},resendSignInCode(){},cancelSignIn(){}};
 const render=snapshot=>renderToStaticMarkup(renderBranch(React,CloudSignInPanel,snapshot,true,true,()=> 'production',false,null,'unpackaged',controller,false,false,()=>null,undefined,null,false,true));
 test('production signed-out entry server-renders direct options before readiness without false Google failure',()=>{
  const html=render({signIn:null,busy:false,message:'',error:''});
- assert.match(html,/Welcome to Alpha/);assert.match(html,/Continue with Google/);assert.match(html,/Email me a code/);assert.match(html,/Retry sign-in/);
- assert.doesNotMatch(html,/Sign in with Eliza Cloud|Google sign-in is unavailable/);assert.match(html,/disabled/);
+ assert.match(html,/Welcome to Alpha/);assert.match(html,/Continue with Google/);assert.match(html,/Email me a code/);
+ assert.doesNotMatch(html,/Sign in with Eliza Cloud|unavailable|Try again/);assert.match(html,/disabled/);
+ // Own API keys are offered on the welcome page, below the Cloud methods and independent of readiness.
+ assert.ok(html.indexOf('cloud-sign-in-title')<html.indexOf('Use my own API keys'));
+ assert.match(html,/<button type="button" class="alpha-btn alpha-btn--text">Use my own API keys<\/button>/);
 });
-test('ready choice renders usable email path and explicit unavailable Google notice',()=>{
+test('a failed readiness check shows its reason and one retry instead of disabled forms',()=>{
+ const html=render({signIn:null,busy:false,message:'',error:'Alpha could not reach Eliza Cloud. Check your connection and try again.'});
+ assert.match(html,/could not reach Eliza Cloud/);assert.match(html,/>Try again<\/button>/);
+ assert.doesNotMatch(html,/type="email"|Continue with Google/);assert.match(html,/Use my own API keys/);
+});
+test('ready choice hides an unavailable Google entry and keeps a quiet retry',()=>{
  const html=render({signIn:{step:'choose',environment:'production'},busy:false,message:'',error:''});
- assert.match(html,/Google sign-in is unavailable/);assert.match(html,/<button type="button">Retry<\/button>/);assert.match(html,/<input[^>]+type="email"(?![^>]*disabled)/);
+ assert.doesNotMatch(html,/Continue with Google|Google sign-in is unavailable/);assert.match(html,/>Retry Google sign-in<\/button>/);assert.match(html,/<input[^>]+type="email"(?![^>]*disabled)/);
 });
 test('automatic readiness probes once per unresolved entry, rearms after a form closes and never initiates sign-in',()=>{
  const code=between(source,'  const automaticSignInProbe =','  const visible=');
