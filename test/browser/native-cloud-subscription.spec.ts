@@ -283,10 +283,11 @@ test.describe('plan state binds Cloud inference; the agent always runs',()=>{
   await expect.poll(async()=>(await calls(page)).filter(c=>c.method==='openExternal').map(c=>c.url)).toEqual(['https://cloud.eliza.app/cloud/billing']);
  });
 
- for(const [status,headline] of [['canceled','Synthetic plan'],['none','No active subscription']] as const)test(`a ${status} plan shows "needs plan" beside the running agent and binds no inference`,async({page},info)=>{
+ for(const status of ['canceled','none'] as const)test(`a ${status} plan shows "needs plan" beside the running agent and binds no inference`,async({page},info)=>{
   await boot(page,{...await entitlements(),plan:status});
   await needsPlan(page);
-  await expect(planDetails(page).getByText(headline,{exact:true})).toBeVisible();
+  await expect(planDetails(page).getByText('No active subscription',{exact:true})).toBeVisible();
+  await expect(planDetails(page).getByText('Active',{exact:true})).toHaveCount(0);
   await expect(page.getByRole('textbox',{name:'Membership code'})).toBeVisible();
   await expect(page.getByRole('button',{name:'Redeem',exact:true})).toBeVisible();
   await expect(page.getByRole('button',{name:'Check plan again',exact:true})).toBeVisible();
@@ -297,7 +298,7 @@ test.describe('plan state binds Cloud inference; the agent always runs',()=>{
   await started(page);
   await page.evaluate(()=>document.fonts.ready);await page.screenshot({path:info.outputPath(`needs-plan-${status}.png`),animations:'disabled'});
   // Choose a plan opens exactly the allowlisted hosted page in the system browser.
-  await page.getByRole('button',{name:status==='none'?'Choose a monthly plan':'Manage subscription',exact:true}).click();await confirmBillingAccount(page);
+  await page.getByRole('button',{name:'Choose a monthly plan',exact:true}).click();await confirmBillingAccount(page);
   await expect.poll(async()=>(await calls(page)).filter(c=>c.method==='openExternal').map(c=>c.url)).toEqual(['https://cloud.eliza.app/cloud/billing']);
   expect(await configured(page)).toBe(0);
  });
@@ -317,7 +318,8 @@ test.describe('plan state binds Cloud inference; the agent always runs',()=>{
   await fixture(page,{plan:'canceled'});
   await page.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));
   await needsPlan(page);
-  await expect(planDetails(page).getByText('Synthetic plan',{exact:true})).toBeVisible();
+  await expect(planDetails(page).getByText('No active subscription',{exact:true})).toBeVisible();
+  await expect(planDetails(page).getByText('Active',{exact:true})).toHaveCount(0);
   expect(await page.evaluate(()=>(window as any).planController.getSnapshot().residentPlanNotice)).toBe('needs-plan');
   expect((await calls(page)).filter(c=>c.plugin==='Agent'&&c.method==='start').length).toBeGreaterThanOrEqual(2);
  });
@@ -495,7 +497,8 @@ test.describe('outages and offline use',()=>{
  test('a billing outage without a recent plan is "needs plan" with a retry',async({page})=>{
   await boot(page,{route:'503'});
   await needsPlan(page);await started(page);
-  await expect(page.getByText(/could not confirm a plan for this account right now/)).toBeVisible();
+  await expect(planDetails(page).getByText('Subscription not confirmed',{exact:true})).toBeVisible();
+  await expect(planDetails(page).getByText('Subscription details could not be refreshed. Check again or manage your subscription.',{exact:true})).toBeVisible();
   expect(await configured(page)).toBe(0);
  });
  test('a billing outage after a recent verified plan keeps the agent',async({page})=>{
@@ -557,7 +560,11 @@ test.describe('redeem a subscription code',()=>{
   expect(await page.evaluate(()=>(window as any).planFixture.cashBalance)).toBe(0);
   expect((await calls(page)).some(c=>c.path==='/api/v1/credits/balance'||c.path==='/api/signup-code/redeem')).toBe(false);
   await expect(page.getByText(/^Code redeemed for Plus\. It runs until /)).toBeVisible();
-  await expect(page.getByText(/Plan runs until/)).toBeVisible();
+  // The membership refresh follows the actual provider binding. Complete the held native
+  // promise instead of cancelling it, then verify the new subscription and its access window.
+  await page.evaluate(()=>(window as any).planFixture.releaseProvider());await idle(page);
+  await expect(planDetails(page).getByText('Active',{exact:true})).toBeVisible();
+  await expect(planDetails(page).getByText(/^Access through /)).toBeVisible();
   // The code is not kept anywhere the renderer can read back.
   const stored=await page.evaluate(()=>JSON.stringify({...localStorage})+JSON.stringify({...sessionStorage})+document.body.innerText);
   expect(stored).not.toContain(NORMALIZED);expect(stored.toLowerCase()).not.toContain(CODE);
@@ -663,7 +670,7 @@ test.describe('account, plan and sign-in expiry',()=>{
  });
 });
 
-test('failed native provider binding reports AI off and exposes the error before history',async({page})=>{
+test('failed native provider binding reports unconfirmed inference and exposes the error before history',async({page})=>{
  const pageErrors:string[]=[];page.on('pageerror',error=>pageErrors.push(error.message));
  await boot(page,{...await entitlements(),holdProvider:false,providerFailure:'Synthetic account verification failure',fullApp:true});await started(page);await idle(page);
  await page.getByRole('button',{name:'Settings',exact:true}).click();
@@ -671,10 +678,14 @@ test('failed native provider binding reports AI off and exposes the error before
  const settings=page.getByRole('region',{name:'Settings',exact:true});
  await expect(settings.getByText('Not available',{exact:true})).toBeVisible();
  const error=settings.getByText(/Synthetic account verification failure/);await expect(error).toBeVisible();
+ await expect(error).toContainText('Cloud inference removal could not be confirmed. Your agent is running; retry in Settings.');
  const history=settings.getByText('Conversation history',{exact:true});await expect(history).toBeVisible();
  expect(await error.evaluate((node,other)=>(node.compareDocumentPosition(other!)&Node.DOCUMENT_POSITION_FOLLOWING)!==0,await history.elementHandle())).toBe(true);
  expect(await configured(page)).toBe(1);
- expect(await page.evaluate(()=>(window as any).planController.getSnapshot().residentInference)).toBe('unavailable');
+ // The configure call failed before returning a binding guard. The client cannot claim the
+ // old provider was removed, and must not clear it with a fresh, unscoped mutation.
+ expect(await page.evaluate(()=>(window as any).planController.getSnapshot().residentInference)).toBe('unknown');
+ expect((await calls(page)).some(c=>c.plugin==='Agent'&&c.method==='clearProvider')).toBe(false);
  expect(await page.evaluate(()=>(window as any).residentAgent.state.unexpected)).toEqual([]);
  expect(pageErrors).toEqual([]);
 });

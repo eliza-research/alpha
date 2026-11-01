@@ -513,7 +513,7 @@ async function refreshMembershipBalance(){
   }
   membershipRead?.abort();const controller=new AbortController();membershipRead=controller;const timer=setTimeout(()=>controller.abort(),10000);
   // The balance last read, kept before a $0 or unknown balance is cleared to "checking" below.
-  const before=state.membershipCredits;
+  const before=state.membershipCredits,beforePlan=state.membershipPlan,beforeLimit=state.lastServiceLimit;
   if(!['funded','member'].includes(state.membershipBalance??''))update({membershipBalance:'checking',membershipCredits:null});
   try{
     const [credits,checked]=await Promise.all([
@@ -524,9 +524,12 @@ async function refreshMembershipBalance(){
     let balance:MembershipBalance=credits.state;
     if(checked.view.kind==='active')balance='member';
     else if(balance!=='funded'&&!['inactive','credits'].includes(checked.view.kind))balance='unavailable';
-    // Credits that rose since Cloud declined a turn for billing (added in Cloud's billing page) end that refusal.
+    // A newly activated subscription ends the earlier billing refusal without a cash top-up.
+    // An unchanged active plan does not prove that a later billing refusal has recovered.
+    const activated=checked.view.kind==='active'&&checked.view.status!=='past_due'&&(beforePlan?.kind==='credits'||beforePlan?.kind==='inactive'||beforePlan?.kind==='active'&&beforePlan.status==='past_due');
     const raised=!!state.fundingRefused&&before!=null&&credits.usd!==null&&Number(credits.usd)>Number(before.usd);
-    if(membershipRead===controller&&service===account)update({membershipBalance:balance,...(raised?{fundingRefused:false}:{}),membershipCredits:credits.usd!==null&&credits.observedAt!==null?{usd:credits.usd,observedAt:credits.observedAt}:null,membershipPlan:checked.view,...(checked.entitlement?.planEndsAt!==undefined?{planEndsAt:checked.entitlement.planEndsAt}:checked.view.kind==='active'&&checked.view.source==='billing-limits'&&checked.view.expiresAt>0?{planEndsAt:checked.view.expiresAt}:checked.view.kind==='inactive'?{planEndsAt:null}:{})});
+    const recovered=!!state.fundingRefused&&(raised||activated);
+    if(membershipRead===controller&&service===account)update({membershipBalance:balance,...(recovered?{fundingRefused:false,...(state.lastServiceLimit===beforeLimit&&beforeLimit?.kind==='billing-refused'?{lastServiceLimit:null}:{})}:{}),membershipCredits:credits.usd!==null&&credits.observedAt!==null?{usd:credits.usd,observedAt:credits.observedAt}:null,membershipPlan:checked.view,...(checked.entitlement?.planEndsAt!==undefined?{planEndsAt:checked.entitlement.planEndsAt}:checked.view.kind==='active'&&checked.view.source==='billing-limits'&&checked.view.expiresAt>0?{planEndsAt:checked.view.expiresAt}:checked.view.kind==='inactive'?{planEndsAt:null}:{})});
   }catch(error){reportMembershipReadFailure('refresh',error);if(membershipRead===controller&&service===account)update({membershipBalance:'unavailable',membershipCredits:null,membershipPlan:{kind:'unavailable',reason:'outage'}});}
   finally{clearTimeout(timer);if(membershipRead===controller)membershipRead=null;}
 }

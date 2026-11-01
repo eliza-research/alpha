@@ -213,3 +213,21 @@ test('a refusal at zero balance ends when the owner returns from Cloud billing w
   expect(await stub(page, s => s.opened)).toEqual([]);
   expect(foreign).toEqual([]);
 });
+
+test('an unchanged active subscription does not clear a Cloud billing refusal', async ({ page }) => {
+  const foreign = await boot(page, { plan: undefined, balance: 0 });
+  await residentHome(page);
+  await setStub(page, { stream: { failure: 'insufficient_credits', frame: 'done', runtime: true } });
+  await send(page, 'Check my account');
+  await expect(sheet(page)).toBeVisible();
+  await expect(controls(page).getByText('Plus', { exact: true })).toBeVisible();
+  const reads = () => stub(page, s => s.cloud.filter((r: { path: string }) => r.path === '/api/v1/billing/limits').length);
+  const before = await reads();
+  await controls(page).getByRole('button', { name: 'Refresh', exact: true }).click();
+  await expect.poll(reads).toBeGreaterThan(before);
+  await expect(controls(page).getByRole('status').filter({ hasText: SHEET_REFUSED })).toHaveCount(1);
+  await expect(sheet(page)).toBeVisible();
+  expect(await harness(page, f => f.streams)).toBe(1);
+  expect(await stub(page, s => s.opened)).toEqual([]);
+  expect(foreign).toEqual([]);
+});
