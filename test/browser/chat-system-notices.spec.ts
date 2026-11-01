@@ -7,6 +7,7 @@ import { test, expect, type Page } from '@playwright/test';
 const REMOTE = 'https://agent.example.test';
 const UPSTREAM_RUNTIME = 'Eliza needs attention. Check the connected host\'s diagnostics before trying again.';
 const ALPHA_RUNTIME = 'Part of your agent stopped working, so this reply may not arrive. Nothing was resent. Send your message again in a moment.';
+const ALPHA_BACKGROUND = 'Part of your agent stopped working. Chat can still answer, but some features may not work until it recovers.';
 type Row = { role: 'user' | 'assistant'; text: string };
 
 async function remoteAgent(page: Page, rows: Row[]) {
@@ -78,6 +79,21 @@ test('four replayed escalation notices followed by a working reply show no notic
   await expect(conversation(page).getByText('Hello back', { exact: true })).toHaveCount(1, { timeout: 20_000 });
   await expect(conversation(page).getByText(UPSTREAM_RUNTIME, { exact: true })).toHaveCount(0);
   await expect(conversation(page).getByText(ALPHA_RUNTIME, { exact: true })).toHaveCount(0);
+  await expect(conversation(page).getByText(ALPHA_BACKGROUND, { exact: true })).toHaveCount(0);
+});
+
+test('boot-time notices after a working reply show one calm notice, never worded as a failed send', async ({ page }) => {
+  test.setTimeout(90_000);
+  await connected(page, [{ role: 'user', text: 'Hello agent' }, { role: 'assistant', text: 'Hello back' }, notice, notice, notice, notice]);
+  await expect(conversation(page).getByText('Hello back', { exact: true })).toHaveCount(1, { timeout: 20_000 });
+  await expect(conversation(page).getByText(ALPHA_BACKGROUND, { exact: true })).toHaveCount(1);
+  await composer(page).fill('Next question');
+  await composer(page).press('Enter');
+  await expect.poll(() => fixture(page, f => f.posts), { timeout: 15_000 }).toBe(1);
+  await expect(conversation(page).getByText(ALPHA_RUNTIME, { exact: true })).toHaveCount(0);
+  await fixture(page, f => f.release('Answer.'));
+  await expect(conversation(page).getByText('Answer.', { exact: true })).toHaveCount(1, { timeout: 15_000 });
+  await expect(conversation(page).getByText(ALPHA_BACKGROUND, { exact: true })).toHaveCount(0);
 });
 
 test('notices after an unanswered message collapse to one owner-facing notice, which a later reply retires', async ({ page }) => {

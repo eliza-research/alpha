@@ -12,7 +12,7 @@ const dcConstructor=slice(dc,'    constructor(p)','    render()');
 const callback=stripTypeScriptTypes('(function(){const session=connectionController.getSnapshot().session?.sessionId;'+slice(adapter,'      const history = connectionController.getSnapshot().history;','      syncStoppedReplyNotice(')+'})',{mode:'transform'});
 const merge=stripTypeScriptTypes(slice(connection,'export function mergeConversationDelivery','const actionReceipts =').replace('export ',''),{mode:'transform'});
 // The real escalation-notice collapse the history and delivery callbacks apply.
-const notices=stripTypeScriptTypes(read('apps/app/src/runtime/system-notices.ts'),{mode:'transform'}).replace(/export /g,'');
+const notices=stripTypeScriptTypes(read('apps/app/src/runtime/action-message-presentation.ts'),{mode:'transform'}).replace(/export /g,'');
 function fixture(){
  let snapshot={session:{sessionId:'owner-a'},history:null,conversationDelivery:null};const pending=[];
  const box={structuredClone,QUICK_SETTINGS:{wifi:false},ALPHA_PRODUCT:{identity:{characterName:'Alpha'}},Date,connectionController:{getSnapshot:()=>snapshot,getSelectedConversationId:()=> 'room'},alphaClient:{disconnect(){}},cancelMessageContext(){}};

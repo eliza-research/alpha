@@ -65,3 +65,84 @@ export function projectActionMessages(rendered: Message[], source: Message[]): M
     return message;
   });
 }
+
+/*
+ * Upstream escalation notices in Alpha's chat.
+ *
+ * The agent's escalation service posts a system notice into client chat when the same error
+ * repeats (`packages/agent/src/runtime/error-escalation.ts`), and re-posts it on every agent start
+ * and retry, each as a new stored message (`client-chat-sender.ts`). Conversation history returns
+ * those rows as ordinary assistant text, so the text equal to pinned `systemNoticeText()`
+ * (`packages/core/src/types/system-notice.ts`) is the only marker a runtime-error row carries.
+ *
+ * At most the latest notice is shown, and only until an ordinary agent reply follows it. A
+ * runtime-error notice uses Alpha's words, not the upstream host-operator copy ("Check the
+ * connected host's diagnostics"): it says a reply may not arrive only when it arrived while the
+ * owner's latest message was unanswered; otherwise it says calmly that part of the agent is down.
+ */
+export type SystemNoticeKind = 'model-unavailable' | 'runtime-error' | 'model-and-runtime-error';
+
+/** Byte-equal to pinned upstream `systemNoticeText()` (test/system-notice-collapse.test.mjs). */
+export const UPSTREAM_MODEL_UNAVAILABLE_NOTICE = 'Eliza cannot respond yet. Configure a model provider on the connected host in Settings.';
+export const UPSTREAM_RUNTIME_ERROR_NOTICE = 'Eliza needs attention. Check the connected host\'s diagnostics before trying again.';
+const UPSTREAM_COMBINED_NOTICE = `${UPSTREAM_MODEL_UNAVAILABLE_NOTICE}\n---\n${UPSTREAM_RUNTIME_ERROR_NOTICE}`;
+
+/** A runtime-error notice that arrived while the owner's latest message was unanswered. */
+export const RUNTIME_ERROR_NOTICE = 'Part of your agent stopped working, so this reply may not arrive. Nothing was resent. Send your message again in a moment.';
+/** A runtime-error notice that arrived with nothing waiting (a service failing at start, for example). */
+export const RUNTIME_ERROR_BACKGROUND_NOTICE = 'Part of your agent stopped working. Chat can still answer, but some features may not work until it recovers.';
+
+/** The upstream notice a stored assistant text is, if any. */
+export function systemNoticeKind(text: unknown): SystemNoticeKind | undefined {
+  if (typeof text !== 'string') return undefined;
+  const value = text.trim();
+  return value === UPSTREAM_MODEL_UNAVAILABLE_NOTICE ? 'model-unavailable'
+    : value === UPSTREAM_RUNTIME_ERROR_NOTICE ? 'runtime-error'
+    : value === UPSTREAM_COMBINED_NOTICE ? 'model-and-runtime-error'
+    : undefined;
+}
+
+/** The owner-facing text of a stored notice row. Model-unavailable keeps its upstream recovery step;
+ * the combined form keeps both halves. `waiting`: it arrived while the owner's message was unanswered. */
+export function systemNoticeDisplayText(kind: SystemNoticeKind, waiting = false): string {
+  const runtime = waiting ? RUNTIME_ERROR_NOTICE : RUNTIME_ERROR_BACKGROUND_NOTICE;
+  return kind === 'runtime-error' ? runtime
+    : kind === 'model-and-runtime-error' ? `${UPSTREAM_MODEL_UNAVAILABLE_NOTICE}\n${runtime}`
+    : UPSTREAM_MODEL_UNAVAILABLE_NOTICE;
+}
+
+type ChatRow = { from?: unknown; text?: unknown; systemNotice?: unknown; interrupted?: unknown; unfinished?: unknown; streaming?: unknown; card?: unknown };
+
+/** An agent row that proves the chat answered: a settled text reply, not a notice, a failed or
+ * restored-unfinished reply, a stream still in progress, or a client-made card (proposals). */
+function ordinaryReply(message: ChatRow): boolean {
+  return message.from === 'agent' && !message.systemNotice && message.interrupted !== true && message.unfinished !== true
+    && message.streaming !== true && !message.card && typeof message.text === 'string' && message.text.trim() !== '';
+}
+
+/**
+ * Collapse upstream notices: keep at most the latest one, drop it once an ordinary reply follows,
+ * and word a runtime-error notice for whether it arrived while the owner's latest message was
+ * unanswered. Returns the same array when nothing changes, so callers can skip a render.
+ */
+export function collapseSystemNotices<T extends ChatRow>(messages: T[]): T[] {
+  let latest = -1, lastReply = -1, lastUser = -1;
+  for (let index = 0; index < messages.length; index++) {
+    const message = messages[index];
+    if (message.systemNotice) latest = index;
+    else if (ordinaryReply(message)) lastReply = index;
+    else if (message.from === 'user') lastUser = index;
+  }
+  const keep = latest > lastReply ? latest : -1;
+  let changed = false;
+  const result: T[] = [];
+  messages.forEach((message, index) => {
+    if (!message.systemNotice) { result.push(message); return; }
+    if (index !== keep) { changed = true; return; }
+    const kind = message.systemNotice as SystemNoticeKind;
+    const text = systemNoticeDisplayText(kind, lastUser > lastReply && keep > lastUser);
+    if (message.text === text) { result.push(message); return; }
+    changed = true; result.push({ ...message, text });
+  });
+  return changed ? result : messages;
+}

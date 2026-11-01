@@ -135,7 +135,7 @@ const selectionSource = stripTypeScriptTypes(await readFile(new URL('../apps/app
 vm.runInNewContext(selectionSource + '\nglobalThis.selectionApi = { captureConversationChoice, selectConversation };', selectionSandbox);
 Object.assign(sandbox, selectionSandbox.selectionApi);
 // The real escalation-notice classifier restoredMessages() uses.
-const noticesSource = stripTypeScriptTypes(await readFile(new URL('../apps/app/src/runtime/system-notices.ts', import.meta.url), 'utf8'), { mode: 'transform' }).replace(/export /g, '');
+const noticesSource = stripTypeScriptTypes(await readFile(new URL('../apps/app/src/runtime/action-message-presentation.ts', import.meta.url), 'utf8'), { mode: 'transform' }).replace(/export /g, '');
 const noticesSandbox = {};
 vm.runInNewContext(noticesSource + '\nglobalThis.noticesApi = { systemNoticeKind, systemNoticeDisplayText, collapseSystemNotices };', noticesSandbox);
 Object.assign(sandbox, noticesSandbox.noticesApi);
