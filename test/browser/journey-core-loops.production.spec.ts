@@ -805,6 +805,8 @@ async function openAndroidCalendar(page:Page){
 
 test('loop B / J02 on Android: a recorded note, a resident summary and reviewed hand-offs save one reminder and one device event, each only on Save', async ({ page }) => {
   test.setTimeout(240_000);
+  // Tomorrow crosses the week boundary; the saved day must be reachable after reload.
+  await page.clock.setFixedTime(new Date('2026-11-01T12:00:00Z'));
   const foreign = await fenceNetwork(page);
   await android(page, { voice: TRANSCRIPT });
   await residentHome(page);
@@ -892,8 +894,9 @@ test('loop B / J02 on Android: a recorded note, a resident summary and reviewed 
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
   // Device records are reviewed through the explicit Android source; Home uses Agent Calendar.
   await openAndroidCalendar(page);
-  const savedDay=await page.evaluate(timestamp=>new Date(timestamp).getDate(),reminder.dueAt);
-  await button(page,`Day ${savedDay}`).click();
+  const savedDate=await page.evaluate(timestamp=>{const date=new Date(timestamp);return date.toLocaleDateString('en-US',{weekday:'long'})+' '+date.toLocaleDateString('en-US',{month:'long'})+' '+date.getDate();},reminder.dueAt);
+  await button(page,'Month view').click();
+  await page.getByRole('dialog',{name:'Choose calendar date',exact:true}).getByRole('button',{name:savedDate,exact:true}).click();
   await expect(page.getByRole('button', { name: /^Book the venue,/ })).toHaveCount(1);
   await expect(page.getByRole('button', { name: /^Venue walkthrough,/ })).toHaveCount(1);
   await page.getByRole('button', { name: /^Book the venue,/ }).click();
