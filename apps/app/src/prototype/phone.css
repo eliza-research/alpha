@@ -250,6 +250,13 @@ html.alpha-text-xl:not(.standalone-app) [data-alpha-app-header]:not([data-alpha-
 html.alpha-text-xl:not(.standalone-app) [data-alpha-app-header]:not([data-alpha-browser-header]) > :is([data-alpha-app-title],:has([data-alpha-app-title])) { order:1; flex:1 0 100%; min-width:0; box-sizing:border-box; }
 html.alpha-text-xl:not(.standalone-app) [data-alpha-app-header]:not([data-alpha-browser-header]) > :is([data-alpha-app-title],:has([data-alpha-app-title])) + * { margin-left:auto; }
 html.alpha-text-xl:not(.standalone-app) [data-alpha-app-header]:not([data-alpha-browser-header]) [data-alpha-app-title] { white-space:normal!important; overflow:visible!important; text-overflow:clip!important; overflow-wrap:anywhere; }
+/* A main header's title is one word ("Workflows", "September"): at 300% its 32px serif is drawn at
+ * 96px, wider than the phone, and the row above split it mid-word. It is drawn no larger than lets
+ * 4.4em (the widest such word) beside Calendar's month chevron fit its row. Text zoom multiplies the
+ * declared size, so the room is divided by the measured scale; the browser text size multiplies a
+ * calc() only when it is written in, as display.ts writes plain sizes. */
+html.alpha-text-xl:not(.standalone-app) [data-alpha-app-header="main"]:not([data-alpha-browser-header]) { container-type:inline-size; }
+html.alpha-text-xl:not(.standalone-app) [data-alpha-app-header="main"]:not([data-alpha-browser-header]) [data-alpha-app-title] { font-size:min(calc(32px * var(--browser-text-scale,1)), calc((100cqi - 30px) / 4.4 / var(--alpha-text-scale,1) * var(--browser-text-scale,1)))!important; }
 
 .app-header-action-icon { display:none; }
 .standalone-app [data-alpha-app-header] [data-alpha-header-icon-action] { width:52px; height:52px; min-width:52px; min-height:52px; padding:0!important; display:flex; align-items:center; justify-content:center; flex-shrink:0; }

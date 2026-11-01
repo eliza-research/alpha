@@ -31,9 +31,9 @@ const focusState = (page: Page) => page.evaluate(() => {
     title: !!el?.matches('[data-alpha-app-title]'),
   };
 });
-/** Activates a Home tile from the keyboard, as Switch Access or a TalkBack double tap does. */
+/** Activates a Home app tile from the keyboard, as Switch Access or a TalkBack double tap does. */
 async function openFromHome(page: Page, view: string) {
-  const tile = page.locator('[data-alpha-layer="home"]').getByRole('button', { name: view, exact: true }).first();
+  const tile = page.locator('[data-alpha-layer="home"]').getByRole('button', { name: view, exact: true }).and(page.locator('[data-mobile-shell-tile]'));
   await tile.focus();
   await page.keyboard.press('Enter');
   await expect.poll(() => activeView(page)).toBe(view.toLowerCase());

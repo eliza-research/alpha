@@ -79,6 +79,18 @@ for (const state of [...LIVE_STATES, ...LAUNCHER_STATES]) {
     else expect(found, found.join('\n')).toEqual([]);
   });
 }
+// Calendar's title is the month, so the sweep above checks whichever month it runs in. September
+// is the widest month name; "November" split mid-word in the launcher at 300% when the lane above
+// first ran in November.
+test('300% text keeps the widest month name whole in the launcher Calendar header', async ({ page }) => {
+  test.setTimeout(LARGE_TEXT_TIMEOUT);
+  await page.clock.setFixedTime(new Date('2026-09-15T12:00:00'));
+  await LAUNCHER_STATES.find(state => state.name === 'launcher Calendar')!.open(page, 'light');
+  await setTextScale(page, 3);
+  await expect(page.getByRole('heading', { name: 'September', exact: true })).toBeVisible();
+  const found = blocking(format([...await auditPage(page, { clipping: true, overlap: true, dock: true }), ...await auditTree(page)]));
+  expect(found, found.join('\n')).toEqual([]);
+});
 
 test.describe('landscape', () => {
   // A touch phone on its side (the Android WebView path in main.tsx).
