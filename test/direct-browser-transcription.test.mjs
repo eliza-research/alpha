@@ -9,7 +9,7 @@ function browser(run){
  const audio=new Uint8Array([1,2,3]),clip={blob:new Blob(['captured']),durationMs:20},listeners=[];
  const agent={session:snapshot.session,async developmentCloudSpeech(input,signal,route){calls++;assert.equal(route,'direct');assert.equal(input.kind,'asr');assert.deepEqual(input.audio,audio);return run(signal);}};
  const connection={getSnapshot:()=>snapshot,getBrowserSpeechAgent:()=>agent,getCloudEnvironment:()=>null,getCloudClient:()=>null,subscribe:listener=>{listeners.push(listener);return()=>{};}};
- const source=fs.readFileSync('apps/app/src/browser/voice.ts','utf8').replace(/^import\b[\s\S]*?;\s*$/gm,'').replace('export class BrowserVoice','class BrowserVoice').replaceAll('import.meta.env.DEV','false');
+ const source=fs.readFileSync('apps/app/src/browser/voice.ts','utf8').replace(/^import\b[\s\S]*?;\s*$/gm,'').replace(/^export (?=(?:class|function)\b)/gm,'').replaceAll('import.meta.env.DEV','false');
  const box={connectionController:connection,WebPlugin:class{notifyListeners(){}},BrowserAudioCapture:class{get(){return clip;}cancel(){}clear(){}},window:{addEventListener(){}},document:{hidden:false,addEventListener(){}},migrateAudio:async()=>{},BroadcastChannel:undefined,recordingPcmWav:async()=>audio,Blob,AbortController,DOMException,crypto:{randomUUID},URL,console,speechCancelled:(_kind,reason)=>new DOMException(reason,'AbortError')};
  vm.runInNewContext(stripTypeScriptTypes(source,{mode:'transform'})+';globalThis.voice=new BrowserVoice();',box);
  return {voice:box.voice,calls:()=>calls,clip,change(value,notify=false){snapshot={...snapshot,...value};if(notify)for(const listener of listeners)listener();}};
