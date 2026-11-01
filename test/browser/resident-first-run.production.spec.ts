@@ -12,7 +12,7 @@ const account: StubAccount = { token: 'first-run-key', userId: id, email: 'new-o
 const WAITING = 'Checking code…';
 const starts = (page: Page) => stub(page, s => s.order.filter((entry: string) => entry === 'Agent.start').length) as Promise<number>;
 
-async function firstRun(page: Page, overrides: Partial<StubAccount> = {}) {
+async function firstRun(page: Page, overrides: Partial<StubAccount> = {}, ownedLifecycle = false) {
   const foreign = await fenceNetwork(page);
   await flagOffAndroid(page,{freshAccess:true});
   await residentStub(page, { nativeSignIn:true, emptyKeystore: true, accounts: [{ ...account, ...overrides }] });
@@ -41,6 +41,30 @@ async function firstRun(page: Page, overrides: Partial<StubAccount> = {}) {
       return previous(plugin,method,input);
     };
   });
+  if (ownedLifecycle) await page.addInitScript(({ownerId}) => {
+    const w=window as any, previous=w.Capacitor.nativePromise;
+    w.firstRunLifecycle=[] as Array<{path:string;method:string;ownerId:string;credentialId:string|null}>;
+    w.Capacitor.nativePromise=async(plugin:string,method:string,input:any)=>{
+      if(plugin==='Agent'&&method==='request'&&['/api/status','/api/cloud/warm'].includes(input.path)){
+        const expectedMethod=input.path==='/api/status'?'GET':'POST';
+        const validBody=expectedMethod==='GET'?input.body===undefined:input.body==='{}';
+        if(input.method!==expectedMethod||input.ownerId!==ownerId||!validBody||input.headers?.Accept!=='application/json'){
+          w.flagOff.unexpected.push(`${input.method} ${input.path} invalid lifecycle binding`);
+          throw Error('Unexpected lifecycle request binding');
+        }
+        const credentialId=w.flagOff.slots['native:local-agent-provider']??null;
+        if(input.path==='/api/cloud/warm'&&!credentialId){
+          w.flagOff.unexpected.push('POST /api/cloud/warm without provider');
+          throw Error('Cloud warm without bound provider');
+        }
+        w.firstRunLifecycle.push({path:input.path,method:input.method,ownerId:input.ownerId,credentialId});
+        w.flagOff.calls.push('Agent.request');
+        // No observation capability is advertised; warming is advisory and synthetic.
+        return {status:200,body:JSON.stringify({})};
+      }
+      return previous(plugin,method,input);
+    };
+  }, {ownerId:id});
   await page.goto('/');
   await setStub(page, { nextToken: account.token });
   // P-43: the resident starts by itself, signed out. Every Alpha Phone needs an Eliza Cloud account,
@@ -98,7 +122,7 @@ test('first run: a neutral loading screen, never Home, until the sign-in page op
 
 test('first run: native email sign-in, credits, provider binding, then the resident agent answers', async ({ page }) => {
   test.setTimeout(120_000);
-  const { foreign, welcome } = await firstRun(page);
+  const { foreign, welcome } = await firstRun(page, {}, true);
   await enterNativeEmailCode(page);
   await expect(welcome).toHaveCount(0, { timeout: 30_000 });
   // Fresh sign-in owns the original required sequence, with no Skip or automatic requests.
@@ -147,6 +171,11 @@ test('first run: native email sign-in, credits, provider binding, then the resid
   await expect(settings.getByText('Conversation history',{exact:true})).toBeVisible();
   expect(await page.locator('body').innerText()).not.toContain(account.token);
   await expectNoDevelopmentSurface(page);
+  const lifecycle=await page.evaluate(()=>(window as any).firstRunLifecycle) as Array<{path:string;method:string;ownerId:string;credentialId:string|null}>;
+  expect(lifecycle.filter(row=>row.path==='/api/status')).toHaveLength(2);
+  expect(lifecycle.filter(row=>row.path==='/api/cloud/warm')).toEqual([{path:'/api/cloud/warm',method:'POST',ownerId:id,credentialId:stored.credentialId}]);
+  expect(lifecycle.every(row=>row.ownerId===id)).toBe(true);
+  expect(lifecycle.every(row=>row.credentialId===null||row.credentialId===stored.credentialId)).toBe(true);
   expect(await harness(page, f => f.unexpected)).toEqual([]);
   expect(foreign).toEqual([]);
 });

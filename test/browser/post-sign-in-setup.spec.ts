@@ -81,13 +81,14 @@ test('a verified email code goes straight to access setup while the agent restar
  test.setTimeout(120_000);
  const host=await hosts(page);
  await page.goto(origin+'/');
- // Signed out, the agent starts without Cloud AI and the sign-in is required (P-43).
+ // Settled browser guests go straight to the approved Cloud sign-in panel.
  const agentSheet=page.getByRole('dialog',{name:'Your agent',exact:true});
- await expect(agentSheet.getByRole('button',{name:'Sign in with Eliza Cloud',exact:true})).toBeEnabled({timeout:60_000});
+ const signIn=page.getByRole('dialog',{name:'Welcome to Alpha.',exact:true});
+ await expect(signIn).toBeVisible({timeout:60_000});
+ await expect(signIn.getByRole('button',{name:'Email me a code',exact:true})).toBeEnabled();
+ await expect(agentSheet).toHaveCount(0);
  expect(host.starts).toBe(1);
  await shot(page,info,'01-signed-out');
- await agentSheet.getByRole('button',{name:'Sign in with Eliza Cloud',exact:true}).click();
- const signIn=page.getByRole('dialog',{name:'Welcome to Alpha.',exact:true});
  await signIn.getByRole('textbox',{name:'Email',exact:true}).fill('new-owner@example.invalid');
  await signIn.getByRole('button',{name:'Email me a code',exact:true}).click();
  const code=page.getByRole('form',{name:'Enter your email code'});
