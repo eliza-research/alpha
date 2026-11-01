@@ -11,10 +11,12 @@ import {cloudVoiceViewFixture} from './fixtures/cloud-voice-view.mjs';
 // The actual production template and DCLogic renderer, closed presentation ports only.
 test('actual voice error clears input activity while retaining disclosure, support code and uncertain cleanup',async()=>{
  const template=fs.readFileSync('apps/app/src/prototype/template.html','utf8');
- const start=template.indexOf('<sc-if value="{{inlineChatRecorder}}">');
- const end=template.indexOf('<sc-if value="{{panelComposer}}">',start);
- assert.ok(start>=0&&end>start);
- const fragment='<div class="os"><div data-screen="1">'+template.slice(start,end)+'</div></div>';
+ const noticesStart=template.indexOf('<div class="alpha-chat-notices">');
+ const noticesEnd=template.indexOf('<sc-if value="{{legacyChatRecorder}}">',noticesStart);
+ const controlsStart=template.indexOf('<sc-if value="{{inlineChatRecorder}}">',noticesEnd);
+ const controlsEnd=template.indexOf('<sc-if value="{{panelComposer}}">',controlsStart);
+ assert.ok(noticesStart>=0&&noticesEnd>noticesStart&&controlsStart>noticesEnd&&controlsEnd>controlsStart);
+ const fragment='<div class="os"><div data-screen="1">'+template.slice(noticesStart,noticesEnd)+template.slice(controlsStart,controlsEnd)+'</div></div>';
  const bundle=await build({stdin:{contents:`import React from 'react';import{renderToStaticMarkup}from'react-dom/server';import{DCLogic}from'./apps/app/src/prototype/dc-lite.js';import{VoiceActivity}from'./apps/app/src/prototype/voice-activity.tsx';export const createActivity=props=>React.createElement(VoiceActivity,props);class Fixture extends DCLogic{renderVals(){return this.props.values;}}export const render=values=>renderToStaticMarkup(React.createElement(Fixture,{phoneSurface:true,values}));`,resolveDir:process.cwd(),loader:'js'},bundle:true,platform:'node',format:'cjs',write:false,plugins:[{name:'actual-voice-template',setup(b){b.onResolve({filter:/template\.html\?raw$/},()=>({path:'voice',namespace:'actual-template'}));b.onLoad({filter:/.*/,namespace:'actual-template'},()=>({contents:'export default '+JSON.stringify(fragment),loader:'js'}));}}]});
  const temporary=fs.mkdtempSync(path.join(os.tmpdir(),'voice-copy-markup-')),file=path.join(temporary,'renderer.cjs'),before=globalThis.document;
  const env=new JSDOM('<!doctype html>'),beforeMedia=globalThis.matchMedia;
@@ -38,16 +40,23 @@ test('actual voice error clears input activity while retaining disclosure, suppo
    const model=state==='starting'?f.initialView:f.renderChat();
    assert.equal(model.state,state);assert.equal(model.activity===null,error);
    const html=render({inlineChatRecorder:true,chatRecorder:model});
-   const doc=new JSDOM(html).window.document,details=doc.querySelector('details');
+   const doc=new JSDOM(html).window.document,notices=doc.querySelector('.alpha-chat-notices'),controls=doc.querySelector('.alpha-voice-composer');
    const alert=doc.querySelector('[role="alert"]');
-   // Speech routing is disclosed in Settings > Voice; the live composer opens details only for an error.
+   assert.ok(notices&&controls);
+   assert.ok(notices.compareDocumentPosition(controls)&doc.defaultView.Node.DOCUMENT_POSITION_FOLLOWING,'chat notices precede the voice controls');
+   assert.equal(notices.querySelectorAll('[role="note"]').length,1);
+   assert.match(notices.querySelector('[role="note"]').textContent,/uploads recordings.*plan allowance.*Cartesia/);
+   // Active Cloud disclosure and error recovery belong above the composer.
    if(error){
-    assert.ok(details);assert.equal(details.querySelector('summary').textContent,'Voice details');
-    assert.equal(details.hasAttribute('open'),false,'an error never forces the disclosure open');
-    assert.equal(doc.querySelectorAll('[role="note"]').length,1);
-    assert.match(details.textContent,/uploads recordings.*plan allowance.*Cartesia/);
-    assert.match(alert.textContent,/Voice is unavailable/);assert.doesNotMatch(alert.textContent,/503|uploads/);assert.match(details.textContent,/HTTP 503/);
-   }else{assert.equal(details,null,'no details panel during a healthy conversation');assert.equal(alert,null);}
+    assert.ok(notices.contains(alert),'the voice error stays above the controls');
+    assert.match(alert.textContent,/Voice is unavailable/);assert.doesNotMatch(alert.textContent,/503|uploads/);assert.match(notices.textContent,/HTTP 503/);
+    assert.equal(notices.querySelector('[data-alpha-voice-recovery]').textContent,'Try voice again');
+    assert.doesNotMatch(doc.body.textContent,/PRIVATE_PROVIDER_BODY/);
+   }else{
+    assert.equal(alert,null);
+    assert.equal(notices.querySelector('.alpha-voice-error:not([role="note"])'),null,'healthy conversation has no error or support-code content');
+    assert.equal(notices.querySelector('[data-alpha-voice-recovery]'),null);
+   }
    assert.ok(doc.querySelector('[aria-label="Stop voice conversation"]'));
    assert.equal(doc.querySelectorAll('[data-alpha-voice-animation]').length,error?0:1);
    assert.equal(doc.querySelectorAll('[aria-label="Voice activity"]').length,error?0:1);
@@ -62,7 +71,7 @@ test('actual voice error clears input activity while retaining disclosure, suppo
   assert.equal(held.recoveryLabel,undefined);assert.match(held.lines[0].t,/Could not confirm voice media stopped/);
   const heldDoc=new JSDOM(render({inlineChatRecorder:true,chatRecorder:held})).window.document;
   assert.equal(heldDoc.querySelectorAll('[data-alpha-voice-animation]').length,0);
-  assert.match(heldDoc.querySelector('[role="alert"]').textContent,/Could not confirm voice media stopped/);
+  assert.match(heldDoc.querySelector('.alpha-chat-notices [role="alert"]').textContent,/Could not confirm voice media stopped/);
   assert.ok(heldDoc.querySelector('[aria-label="Stop voice conversation"]'));
   assert.equal(f.starts,0);assert.equal(f.uploads,0);
  }finally{f?.close();globalThis.matchMedia=beforeMedia;globalThis.document=before;env.window.close();fs.rmSync(temporary,{recursive:true,force:true});}
