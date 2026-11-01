@@ -7,8 +7,9 @@ import {fileURLToPath} from 'node:url';
 const original=process.env.ALPHA_ACK_HOST_ROOT||fileURLToPath(new URL('../',import.meta.url));
 const require=createRequire(original+'/package.json');const {build}=require('esbuild');
 const dir=fileURLToPath(new URL('../apps/app/src/runtime/',import.meta.url));
-const contents=readFileSync(dir+'local-agent-stream.ts','utf8')+'\nexport {batchVoiceProgressEvents,batchVoiceReplyEvents} from "./batch-voice-progress-ack";';
-const compiled=await build({stdin:{contents,loader:'ts',resolveDir:original+'/apps/app/src/runtime'},bundle:true,write:false,platform:'node',format:'esm',plugins:[{name:'actual-isolated-progress-helper',setup(b){b.onResolve({filter:/^\.\/batch-voice-progress-ack$/},()=>({path:dir+'batch-voice-progress-ack.ts'}));}}]});
+// The actual stream parser exports its own Batch progress channel.
+const contents=readFileSync(dir+'local-agent-stream.ts','utf8');
+const compiled=await build({stdin:{contents,loader:'ts',resolveDir:original+'/apps/app/src/runtime'},bundle:true,write:false,platform:'node',format:'esm'});
 const {readLocalAgentStream,batchVoiceProgressEvents:events,batchVoiceReplyEvents:replies,localTurnStatus}=await import('data:text/javascript;base64,'+Buffer.from(compiled.outputFiles[0].text).toString('base64'));
 const turn='11111111-1111-4111-8111-111111111111',room='22222222-2222-4222-8222-222222222222';
 const request={path:`/api/conversations/${room}/messages/stream`,ownerId:'owner',body:JSON.stringify({clientMessageId:turn,channelType:'VOICE_DM'})};

@@ -1,5 +1,5 @@
 import { cloudServiceName } from '../runtime/cloud-protocol';
-import {createBatchProgressAcknowledgment} from '../runtime/batch-voice-progress-ack';
+import {createBatchProgressAcknowledgment} from '../runtime/local-agent-stream';
 import {developmentCloudVoiceEnabled,developmentCloudRealtimeVoiceEnabled} from '../runtime/development-cloud-voice';
 import React from 'react';
 import {alphaViewPath} from '../product/alpha-product';

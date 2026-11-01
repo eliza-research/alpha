@@ -13,7 +13,6 @@ import {tsImport} from 'tsx/esm/api';
 const load=path=>tsImport(new URL(path,import.meta.url).href,{parentURL:import.meta.url});
 const {AgentCalendar}=await load('../apps/app/src/runtime/agent-calendar.ts');
 const {assertAppRecordRequestAllowed}=await load('../apps/app/src/runtime/app-record-route-policy.ts');
-const calendarLink=await load('../apps/app/src/runtime/google-calendar-link.ts');
 const gmailGrants=await load('../apps/app/src/runtime/gmail-grants.ts');
 const {cloudServiceName}=await load('../apps/app/src/runtime/cloud-protocol.ts');
 const connectionReturn=await load('../apps/app/src/runtime/google-connection-return.ts');
@@ -21,6 +20,8 @@ const workspaceReturn=await load('../apps/app/src/runtime/google-workspace-retur
 /** The actual Google accounts callsite and disconnect helper, bundled as scripts/test-google-accounts.mjs does. */
 const accountsBundle=buildSync({entryPoints:[new URL('../apps/app/src/runtime/google-accounts.ts',import.meta.url).pathname],bundle:true,write:false,platform:'node',format:'esm',define:{'import.meta.env':'{}'}}).outputFiles[0].text;
 const googleAccounts=await import('data:text/javascript;base64,'+Buffer.from(accountsBundle).toString('base64'));
+// The Calendar link and its disconnect lifecycle are part of the same Google accounts module.
+const calendarLink=googleAccounts;
 
 const OWNER='owner@example.test',SECOND='second@example.test',GRANT='alpha-google:'+'a'.repeat(64),OTHER='alpha-google:'+'b'.repeat(64);
 const READ=['google.basic_identity','google.gmail.triage','google.calendar.read'],WRITE=[...READ,'google.calendar.write'];
@@ -286,14 +287,15 @@ async function panel(rows,{calendarEdits=true,gmailChanges=true,unreadable=false
  const snapshot={cloudAccount:{environment:'production',userId:'22222222-2222-4222-8222-222222222222',organizationId:'33333333-3333-4333-8333-333333333333'}};
  const live=binding=>{if(binding.credentialId!==cloud.credentialId)throw new DOMException('The Cloud account changed.','AbortError');};
  const modules={
-  './cloud-protocol':{cloudServiceName},'./google-connection-return':connectionReturn,'./google-workspace-return':workspaceReturn,'./gmail-grants':gmailGrants,'./google-calendar-link':calendarLink,
+  './cloud-protocol':{cloudServiceName},'./google-connection-return':connectionReturn,'./google-workspace-return':workspaceReturn,'./gmail-grants':gmailGrants,
   '../daily':{DailyApps:{addListener:async()=>({remove(){}})}},'../native':{isAndroid:false},
   // The browser Cloud stage's same-origin bridge: 'current' answers like Codex's proposed host, 'missing' like today's host.
   './browser-cloud-resident':{browserCloudResidentEnabled:browser,browserResidentCall:async(...call)=>{p.policy.push(call);p.onPolicy?.();if(host==='missing')throw Error('Cloud resident binding unavailable');return host==='wrong'?{}:{calendarEdits:call[2]};}},
   './gmail-background':{gmailBackgroundStatus:async()=>({}),gmailBackgroundMessage:()=>'',GMAIL_BACKGROUND_CHANGED:'alpha:test-gmail-background'},
   './modal-inert':{holdPhoneInert:()=>()=>{}},
   './connection-ui':{connectionController:{subscribe:()=>()=>{},getSnapshot:()=>snapshot,getCloudClient:()=>cloud,rejectCloudSession:()=>{},openCloudAccount:()=>{throw Error('Unexpected sign-in');}}},
-  './google-accounts':{GOOGLE_ACCOUNTS_CHANGED:'alpha:test-google-accounts',googleDisconnectConfirmation:()=>'',googleDisconnectMessage:outcome=>`Disconnect ${outcome}.`,createGoogleAccounts:(binding,current,changed,calendar)=>({
+  // The actual Calendar link and disconnect lifecycle; only the Cloud account calls are synthetic.
+  './google-accounts':{GOOGLE_ACCOUNTS_CHANGED:'alpha:test-google-accounts',googleDisconnectConfirmation:()=>'',googleDisconnectMessage:outcome=>`Disconnect ${outcome}.`,linkGoogleCalendar:calendarLink.linkGoogleCalendar,googleCalendarDisconnectLifecycle:calendarLink.googleCalendarDisconnectLifecycle,createGoogleAccounts:(binding,current,changed,calendar)=>({
    list:async()=>{live(binding);p.lists++;return structuredClone(p.rows);},
    connect:async(signal,calendarPermission,gmailPermission)=>{live(binding);p.consents.push([calendarPermission,gmailPermission]);return 'https://accounts.google.com/o/oauth2/v2/auth';},
    // No Cloud disconnect runs: only what the panel hands the callsite is recorded.

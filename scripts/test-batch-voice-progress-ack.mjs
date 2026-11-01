@@ -1,9 +1,10 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
-const source=readFileSync(new URL('../apps/app/src/runtime/batch-voice-progress-ack.ts',import.meta.url),'utf8');
-const {createBatchProgressAcknowledgment:create,genuineBatchProgress,batchProgressBinding,emitBatchProgress,batchVoiceProgressEvents:events}=await import('data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(source)).toString('base64'));
+import {fileURLToPath} from 'node:url';
+import {build} from 'esbuild';
+// The helper lives in the actual local agent stream module, which produces its cues.
+const compiled=await build({entryPoints:[fileURLToPath(new URL('../apps/app/src/runtime/local-agent-stream.ts',import.meta.url))],bundle:true,write:false,platform:'node',format:'esm'});
+const {createBatchProgressAcknowledgment:create,genuineBatchProgress,batchProgressBinding,emitBatchProgress,batchVoiceProgressEvents:events}=await import('data:text/javascript;base64,'+Buffer.from(compiled.outputFiles[0].text).toString('base64'));
 const turn='11111111-1111-4111-8111-111111111111',room='22222222-2222-4222-8222-222222222222';
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return{promise,resolve,reject};};

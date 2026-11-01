@@ -33,9 +33,8 @@ test('Google settings offer no calendar choice, revalidate grants and own Androi
   './gmail-grants':{gmailGrantTier:()=> 'send',googleAccountAccessLabel:()=> 'Read and send access'},
   './modal-inert':{holdPhoneInert:()=>()=>{}},
   './connection-ui':{connectionController:{subscribe:()=>()=>{},getSnapshot:()=>snapshot,getCloudClient:()=>binding,rejectCloudSession:()=>{throw Error('Unexpected rejection');}}},
-  './google-accounts':{GOOGLE_ACCOUNTS_CHANGED:ACCOUNTS,createGoogleAccounts:()=>({list:async()=>{counts.accounts++;return [account];}})},
+  './google-accounts':{GOOGLE_ACCOUNTS_CHANGED:ACCOUNTS,createGoogleAccounts:()=>({list:async()=>{counts.accounts++;return [account];}}),linkGoogleCalendar:()=>{throw Error('Unexpected Calendar link without the Calendar intent');}},
   './google-calendar-selection':{clearGoogleCalendarSelectionForConnection:()=>{throw Error('Unexpected disconnect');}},
-  './google-calendar-link':{linkGoogleCalendar:()=>{throw Error('Unexpected Calendar link without the Calendar intent');}},
   './native-connection':{openConnectionBrowser:()=>{throw Error('Unexpected OAuth request');},googleWorkspaceReturnPort:undefined},
   './google-agent-access':{googleAgentAccess:()=>({...access}),publishGoogleAgentAccess:async()=>{published.push({...access});},setGoogleAgentAccess:async change=>{Object.assign(access,change);dom.window.dispatchEvent(new dom.window.Event('alpha:device-settings'));}},
  };

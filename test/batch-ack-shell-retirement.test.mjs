@@ -6,7 +6,8 @@ import path from 'node:path';
 const fixtureRoot=process.env.ALPHA_ACK_HOST_ROOT?pathToFileURL(path.resolve(process.env.ALPHA_ACK_HOST_ROOT)+path.sep):new URL('../',import.meta.url);
 const {cloudVoiceViewFixture}=await import(new URL('test/fixtures/cloud-voice-view.mjs',fixtureRoot));
 const {voiceFakeClock}=await import(new URL('test/fixtures/shared-batch-voice.mjs',fixtureRoot));
-const helper=readFileSync(new URL('../apps/app/src/runtime/batch-voice-progress-ack.ts',import.meta.url),'utf8')
+// The actual helper source: local-agent-stream.ts, whose imports the view fixture strips.
+const helper=readFileSync(new URL('../apps/app/src/runtime/local-agent-stream.ts',import.meta.url),'utf8')
   .replace(/^export /gm,'').replaceAll('new EventTarget()','({dispatchEvent(){}})');
 const adapter=readFileSync(process.env.ALPHA_ACK_VIEW_SOURCE||new URL('../apps/app/src/prototype/voice-adapter.ts',import.meta.url),'utf8');
 async function startedCue({failCleanup=false}={}){
