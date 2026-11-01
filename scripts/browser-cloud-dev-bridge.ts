@@ -267,7 +267,7 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
  };
 
  async function startGoogleHost(apiToken:string,binding:{credentialId:string;reference:string}){
-  let retired=false;const retainedAccess=calendarAccess?.credentialId===binding.credentialId&&calendarAccess.reference===binding.reference;const generation=++calendarGeneration;calendarAccess=retainedAccess?{...binding,generation}:null;
+  let retired=false;const generation=resetCalendarAccess();
   const current=async()=>{if(retired||generation!==calendarGeneration)throw refusal(409,'account-changed');const c=(await load()).production;if(retired||generation!==calendarGeneration||!c||c.credentialId!==binding.credentialId||c.credentialReference!==binding.reference)throw refusal(409,'account-changed');await admitted('production',binding.reference,binding.credentialId);return publicCredential(c);};
   const read=async(input:Parameters<typeof agentRead>[0])=>{await current();const result=await agentRead(input);await current();return result;};
   const calendar=async(input:Parameters<typeof agentCalendarOperation>[0])=>{if(!new URL(input.url).pathname.startsWith('/api/v1/eliza/google/calendar/sync-v1/'))return read(input);await current();if(!calendarAllowed(binding,generation))throw refusal(403,'calendar-owner-access-disabled');const result=await agentCalendarOperation(input);await current();if(!calendarAllowed(binding,generation))throw refusal(409,'calendar-owner-access-changed');return result;};
