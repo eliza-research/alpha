@@ -10,7 +10,7 @@ const between=(text,start,end)=>{const a=text.indexOf(start),b=text.indexOf(end,
 const compiled=transformSync(panelSource.replace(/^import .*;\n/gm,'').replaceAll('export ',''),{loader:'tsx',jsxFactory:'React.createElement'}).code;
 const CloudSignInPanel=new Function('React','useRef','useState','useEffect','cloudServiceName',compiled+';return CloudSignInPanel;')(React,React.useRef,React.useState,React.useEffect,()=> 'Eliza Cloud');
 const branch=between(source,'  const requiredSignInView:', '  const accountCreatedNotice=');
-const renderBranch=new Function('React','CloudSignInPanel','snapshot','productionSignInRequired','signInEntryRequired','residentEnvironment','inAppGoogle','panel','RESIDENT_UNPACKAGED','connectionController','browserCloudResidentEnabled','testMocksEnabled','ResidentRecoveryPanel','loadSignInService','cloudSignInPhone','inAppPhone','inAppEmail',transformSync('function render(){'+branch+'return null;}',{loader:'tsx',jsxFactory:'React.createElement'}).code+';return render();');
+const renderBranch=new Function('React','CloudSignInPanel','snapshot','productionSignInRequired','signInEntryRequired','residentEnvironment','inAppGoogle','panel','RESIDENT_UNPACKAGED','connectionController','browserCloudResidentEnabled','testMocksEnabled','ResidentRecoveryPanel','loadSignInService','cloudSignInPhone','inAppPhone','inAppEmail',transformSync('function render(){const providerChoice=null;'+branch+'return null;}',{loader:'tsx',jsxFactory:'React.createElement'}).code+';return render();');
 const controller={beginSignIn(){},signInGoogle(){},signInEmail(){},verifySignInCode(){},resendSignInCode(){},cancelSignIn(){}};
 const render=snapshot=>renderToStaticMarkup(renderBranch(React,CloudSignInPanel,snapshot,true,true,()=> 'production',false,null,'unpackaged',controller,false,false,()=>null,undefined,null,false,true));
 test('production signed-out entry server-renders direct options before readiness without false Google failure',()=>{
@@ -38,7 +38,7 @@ test('automatic readiness probes once per unresolved entry, rearms after a form 
 test('Cancel delegates in-flight readiness to the existing abort operation, without clearing saved credentials',()=>{
  const code=between(source,'  cancelSignIn() {','  async signInGoogle()');let aborted=0,closed=0,changes=[];
  const entry=between(source,'export function explicitSignedOutCloudEntry(', 'export function connectionChooserVisible(').replace('export ','');
- const make=new Function('operation','connectionController','state','productionCloudSignInRequired','update',transformSync('const isAndroid=false,browserCloudResidentEnabled=false;'+entry+'const target={'+code+'};',{loader:'ts'}).code+';return target;');
+ const make=new Function('operation','connectionController','state','productionCloudSignInRequired','update',transformSync('const ownProviderSelected=()=>false,isAndroid=false,browserCloudResidentEnabled=false;'+entry+'const target={'+code+'};',{loader:'ts'}).code+';return target;');
  const run=(active,signIn=null,required=false,rest={})=>make(active,{cancel(){aborted++;},close(){closed++;}},{signIn,...rest},()=>required,v=>changes.push(v)).cancelSignIn();
  run({});assert.equal(aborted,1);assert.deepEqual(changes,[{signIn:null,message:'',error:''}]);
  changes=[];run({}, {step:'code',environment:'production'});assert.equal(aborted,2);assert.deepEqual(changes,[{signIn:{step:'choose',environment:'production'},message:'',error:''}]);

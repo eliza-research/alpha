@@ -130,7 +130,8 @@ test('Cloud inference is bound only for an admitted plan and unbound otherwise',
   assert.ok(!bind.includes('bindResidentCloudProvider('), 'applyResidentBinding never binds directly');
   const ports = between(ui, 'function residentBindingController(', 'async function connectResident(');
   assert.equal(ports.split('bindResidentCloudProvider(').length, 2, 'one bind port');
-  assert.equal(ui.split('bindResidentCloudProvider(').length, 2, 'the bind port is the only bind call');
+  assert.equal(ui.split('bindResidentCloudProvider(').length, 3, 'the guarded Cloud bind port and explicit Cloud-account rebind are the only callers');
+  assert.match(ui,/if\(ownProviderSelected\(\)&&issued&&state\.cloudAccount\)\{await bindResidentCloudProvider\(issued\);signal\.throwIfAborted\(\);\}/);
   // Failed admitted binding explicitly clears (tombstone). Ordinary unbound startup only removes a
   // genuinely present provider, preserving legacy recovery when native observes absence.
   assert.match(ports, /clearProvider:async\(_signal,reason\)=>\{await clearLocalProvider\(reason==='unbound'\);\}/);
@@ -183,7 +184,7 @@ test('the plan surface is a notice beside the running agent, not a gate', () => 
   assert.ok(chooser.includes('<aside className="alpha-plan-notice" role="region" aria-label={`${serviceName} plan notice`}>'));
   // Admission without a plan opens nothing; only a required sign-in opens (and locks) the dialog.
   assert.ok(between(ui, 'async function admitCloudResident(', 'function residentPlanEnded(').includes("update({residentSubscription:plan.view,residentPlanNotice:'needs-plan',planEndsAt:null});\n    return {binding:'unbound',account:admitted};"));
-  assert.ok(chooser.includes("const residentMustSignIn=residentCloudFlow()&&!snapshot.cloudAccount&&snapshot.residentPlanNotice!=='offline'&&!snapshot.residentStarting;"));
+  assert.ok(chooser.includes("const residentMustSignIn=!ownProviderSelected()&&residentCloudFlow()&&!snapshot.cloudAccount&&snapshot.residentPlanNotice!=='offline'&&!snapshot.residentStarting;"));
   assert.ok(chooser.includes('{!residentMustSignIn&&<button aria-label="Close connection settings"'));
   // Auth owns Back even while busy; the required top-level chooser remains protected.
   const close = between(ui, '  close() {', '  cancel() {');

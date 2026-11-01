@@ -7,6 +7,7 @@ import vm from 'node:vm';
 const source=await readFile(process.env.ALPHA_PRESENTATION_SOURCE||new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
 function section(start,end){const a=source.indexOf(start),b=source.indexOf(end,a+start.length);assert.ok(a>=0&&b>a);return source.slice(a,b).replace(/^export /gm,'');}
 const functions=[
+ section('function ownProviderSelected(', '\n'),
  section('function update(', '// P-43: where'),
  section('export function productionCloudSignInRequired(', 'export function ConnectionChooser('),
  section('async function refreshActionReview(', 'function boundNavigation('),
@@ -382,4 +383,15 @@ test('explicit signed-out account and plan entries remain available for a retain
   f.update({startupResolved:true,residentSavedCredential:true,residentPlanNotice:'offline'});
   assert.equal(f.context.explicitSignedOutCloudEntry(f.snapshot()),true);
  }
+});
+
+
+test('selected own inference does not require Cloud sign-in; changing back restores the gate',()=>{
+ const f=fixture({account:null});
+ f.update({providerStatus:{provider:'cerebras',selected:true,configured:true},startupResolved:true,open:false});
+ assert.equal(f.context.productionCloudSignInRequired(f.snapshot()),false);
+ assert.equal(f.context.connectionChooserVisible(f.snapshot()),false);
+ f.update({providerStatus:{provider:'cerebras',selected:false,configured:true}});
+ assert.equal(f.context.productionCloudSignInRequired(f.snapshot()),true);
+ assert.equal(f.snapshot().open,true);
 });

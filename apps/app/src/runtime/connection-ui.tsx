@@ -246,7 +246,7 @@ const ALWAYS_LOCAL = 'Your agent always runs on this device. Sign out of Cloud o
  * First run and a rejected sign-in: the Eliza Cloud sign-in dialog cannot be dismissed. The agent
  * runs meanwhile (without Cloud inference). Offline is not a sign-in requirement.
  */
-function ownProviderSelected(): boolean { return state.providerStatus?.selected===true&&state.providerStatus.provider==='cerebras'; }
+function ownProviderSelected(snapshot: Pick<ConnectionSnapshot,'providerStatus'>=state): boolean { return snapshot.providerStatus?.selected===true&&snapshot.providerStatus.provider==='cerebras'; }
 function residentSignInRequired(): boolean { return !ownProviderSelected()&&residentCloudFlow() && !state.cloudAccount && state.residentPlanNotice !== 'offline' && !state.residentStarting; }
 function residentEnvironment(): CloudEnvironment { return browserCloudResidentEnabled?browserCloudResidentEnvironment:residentQa() ?? 'production'; }
 /** The on-device agent's Cloud inference binding is production-only (native reads cloud:production). */
@@ -2988,10 +2988,10 @@ export const connectionController = {
 if (cloudSignIn?.addListener) Promise.resolve(cloudSignIn.addListener('signInCompleted', outcome => { void connectionController.signInReturned(outcome); })).catch(() => { /* No retained return. */ });
 if (cloudSignIn?.addListener) Promise.resolve(cloudSignIn.addListener('signInMfaRequired', outcome => { void connectionController.signInReturned(outcome); })).catch(() => { /* No retained challenge. */ });
 if (cloudSignIn?.addListener) Promise.resolve(cloudSignIn.addListener('signInIncomplete', value => { connectionController.signInIncomplete(value); })).catch(() => { /* No retained return. */ });
-export function productionCloudSignInRequired(snapshot: Pick<ConnectionSnapshot,'cloudAccount'|'error'>&Partial<Pick<ConnectionSnapshot,'startupResolved'|'residentSavedCredential'|'residentPlanNotice'>>): boolean {
+export function productionCloudSignInRequired(snapshot: Pick<ConnectionSnapshot,'cloudAccount'|'error'>&Partial<Pick<ConnectionSnapshot,'startupResolved'|'residentSavedCredential'|'residentPlanNotice'|'providerStatus'>>): boolean {
   // A null account before saved-session restoration finishes is not signed out.
   // Do not let the automatic readiness probe compete with that restoration.
-  if(ownProviderSelected())return false;
+  if(ownProviderSelected(snapshot))return false;
   if(snapshot.startupResolved===false&&!snapshot.error)return false;
   // Unreachable identity is unverified, not signed out. Local use stays available;
   // admission still leaves Cloud inference unbound or under its existing grace rule.
@@ -3001,7 +3001,7 @@ export function productionCloudSignInRequired(snapshot: Pick<ConnectionSnapshot,
 /** Explicit account/plan and settled first-sign-in entries use Alpha's existing sign-in screen. */
 export function explicitSignedOutCloudEntry(
   snapshot: Pick<ConnectionSnapshot,'open'|'cloudAccount'|'purpose'> &
-    Partial<Pick<ConnectionSnapshot,'startupResolved'|'residentSavedCredential'|'residentStarting'|'residentRecoveryReason'|'residentPlanNotice'|'error'>>,
+    Partial<Pick<ConnectionSnapshot,'startupResolved'|'residentSavedCredential'|'residentStarting'|'residentRecoveryReason'|'residentPlanNotice'|'providerStatus'|'error'>>,
 ): boolean {
   // Browser resident previews use the same approved form, without imposing Android's
   // required-sign-in policy or replacing genuine restore/offline/recovery controls.
@@ -3010,16 +3010,16 @@ export function explicitSignedOutCloudEntry(
     snapshot.startupResolved===true && snapshot.residentSavedCredential===false &&
     !snapshot.residentStarting && !snapshot.residentRecoveryReason &&
     snapshot.residentPlanNotice!=='offline' && !snapshot.error;
-  if(ownProviderSelected()&&snapshot.purpose==='agent')return false;
+  if(ownProviderSelected(snapshot)&&snapshot.purpose==='agent')return false;
   return snapshot.open&&!snapshot.cloudAccount&&(
     snapshot.purpose==='cloud-account'||snapshot.purpose==='plan'||firstBrowserResidentSignIn
   );
 }
-export function connectionChooserVisible(snapshot: Pick<ConnectionSnapshot,'open'|'automaticRestore'|'busy'|'error'>&Partial<Pick<ConnectionSnapshot,'cloudAccount'|'purpose'|'signIn'|'membershipBalance'|'fundingRefused'|'billingReviewEmail'|'membershipDismissed'|'startupResolved'|'residentSavedCredential'|'residentPlanNotice'>>,foregroundReply=false): boolean {
+export function connectionChooserVisible(snapshot: Pick<ConnectionSnapshot,'open'|'automaticRestore'|'busy'|'error'>&Partial<Pick<ConnectionSnapshot,'cloudAccount'|'purpose'|'signIn'|'membershipBalance'|'fundingRefused'|'billingReviewEmail'|'membershipDismissed'|'startupResolved'|'residentSavedCredential'|'residentPlanNotice'|'providerStatus'>>,foregroundReply=false): boolean {
   if(snapshot.billingReviewEmail)return true;
-  if(!ownProviderSelected()&&snapshot.cloudAccount&&!snapshot.membershipDismissed&&(snapshot.membershipBalance==='zero'||snapshot.fundingRefused)&&!foregroundReply)return true;
+  if(!ownProviderSelected(snapshot)&&snapshot.cloudAccount&&!snapshot.membershipDismissed&&(snapshot.membershipBalance==='zero'||snapshot.fundingRefused)&&!foregroundReply)return true;
   if(isAndroid&&!testMocksEnabled&&'cloudAccount' in snapshot){
-    if(productionCloudSignInRequired({cloudAccount:snapshot.cloudAccount??null,error:snapshot.error,startupResolved:snapshot.startupResolved,residentSavedCredential:snapshot.residentSavedCredential,residentPlanNotice:snapshot.residentPlanNotice}))return true;
+    if(productionCloudSignInRequired({cloudAccount:snapshot.cloudAccount??null,error:snapshot.error,startupResolved:snapshot.startupResolved,residentSavedCredential:snapshot.residentSavedCredential,residentPlanNotice:snapshot.residentPlanNotice,providerStatus:snapshot.providerStatus}))return true;
     // Agent state and controls live in Settings, never in an automatic sheet.
     if(!snapshot.signIn&&snapshot.purpose!=='cloud-account'&&snapshot.purpose!=='plan'&&snapshot.purpose!=='provider')return false;
   }
