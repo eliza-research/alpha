@@ -1140,9 +1140,9 @@ const RATE_LIMITED = 'The agent provider is rate-limiting requests. Wait before 
 /** Owner-facing states for upstream's CHAT_FAILURE_KINDS (pinned contracts `chat.ts`). Each says
  * what happened and what to do next; none retries the message. Unlisted kinds keep the generic text. */
 export const REPLY_FAILURES = {
-  hosted_unreachable: 'Hosted inference (Cloud / Cerebras) could not be reached; nothing was retried.',
+  hosted_unreachable: (serviceName: string) => `Hosted inference (${serviceName} / Cerebras) could not be reached; nothing was retried.`,
   provider_unreachable: 'The agent’s model provider could not be reached; nothing was retried.',
-  no_provider_resident: 'Your agent answered without its Cloud AI connection. Check Cloud again; nothing was retried.',
+  no_provider_resident: (serviceName: string) => `Your agent answered without its ${serviceName} AI connection. Check ${serviceName} again; nothing was retried.`,
   no_provider: 'The agent has no model provider configured. Set one up on the agent; nothing was retried.',
 } as const;
 /** The upstream failure kind a reply or a stream error frame carried, if any. */
@@ -1165,14 +1165,14 @@ function replyFailure(kind:string|undefined,selected:Active,limit:ServiceLimit|n
   // answer as a recorded provider-less reply, with its plan action. Nothing is retried or purchased.
   if(kind==='no_provider'&&selected.kind==='resident'&&residentCloudFlow()){
     // Bound to an admitted plan, yet the agent ran without a provider: say so and offer a recheck.
-    if(state.residentInference==='cloud')return Object.assign(new AlphaClientError('transport-failed',REPLY_FAILURES.no_provider_resident),{failureKind:kind,planAction:'retry'});
+    if(state.residentInference==='cloud')return Object.assign(new AlphaClientError('transport-failed',REPLY_FAILURES.no_provider_resident(cloudServiceName(cloud.environment))),{failureKind:kind,planAction:'retry'});
     const notice=state.residentPlanNotice??null,signedIn=!!state.cloudAccount;
     return Object.assign(new AlphaClientError('transport-failed',inferenceUnavailableReply(notice,signedIn)),{failureKind:kind,planAction:notice==='offline'?'retry':signedIn?'plan':'sign-in'});
   }
-  const resident=selected.kind==='resident'&&isAndroid;
+  const resident=selected.kind==='resident'&&isAndroid,serviceName=cloudServiceName(cloud.environment);
   // insufficient_credits is a Cloud billing refusal (readServiceLimit above), never a mapped kind here.
-  const text=kind==='provider_issue'||kind==='generation_timeout'?(resident?REPLY_FAILURES.hosted_unreachable:REPLY_FAILURES.provider_unreachable)
-    :kind==='no_provider'?(resident?REPLY_FAILURES.no_provider_resident:REPLY_FAILURES.no_provider):undefined;
+  const text=kind==='provider_issue'||kind==='generation_timeout'?(resident?REPLY_FAILURES.hosted_unreachable(serviceName):REPLY_FAILURES.provider_unreachable)
+    :kind==='no_provider'?(resident?REPLY_FAILURES.no_provider_resident(serviceName):REPLY_FAILURES.no_provider):undefined;
   return text?Object.assign(new AlphaClientError('transport-failed',text),{failureKind:kind}):new Error('The agent could not complete this response.');
 }
 /** After a failed reply or a lost network, "Connected" is no longer a true statement; only a later
