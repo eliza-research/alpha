@@ -3,11 +3,11 @@
   "repository": "elizaOS/eliza",
   "base": "develop",
   "baseCommit": "3861ffd1cbac332f25e1552dc977953a87f1adee",
-  "head": "2cdc3e0aae4eaeb006a9f83aa7bc400f885dedb2",
+  "head": "e13cd6fd0178728d709b58ccdb11e5173f6af0ef",
   "recordedAt": "2026-11-01",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...2cdc3e0aae4eaeb006a9f83aa7bc400f885dedb2",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...e13cd6fd0178728d709b58ccdb11e5173f6af0ef",
   "status": "ahead",
-  "aheadBy": 85,
+  "aheadBy": 90,
   "behindBy": 0,
   "mergeBase": "3861ffd1cbac332f25e1552dc977953a87f1adee",
   "pinOnlyCommits": [
@@ -338,6 +338,26 @@
     {
       "sha": "2cdc3e0aae4eaeb006a9f83aa7bc400f885dedb2",
       "subject": "test(notes): end scripted retry after terminal-only continuation"
+    },
+    {
+      "sha": "18e9449e14e885cce4c95b37ac7ac53fe7ddb8a0",
+      "subject": "fix(assistant): require direct browser intent for automatic client navigation"
+    },
+    {
+      "sha": "fce92983dbd979fa69d130e6264e55ddd8b602d3",
+      "subject": "fix(contracts): retain file-like bare-host ambiguity in direct browser requests"
+    },
+    {
+      "sha": "b44387af3a060cc9771c5651683aace330c48975",
+      "subject": "fix(contracts): preserve explicit polite browser requests"
+    },
+    {
+      "sha": "3614172f2c183ea4ee1d1fd1cf64d065744df95b",
+      "subject": "test(reminders): restore reviewed owning fixtures and qualification lanes"
+    },
+    {
+      "sha": "e13cd6fd0178728d709b58ccdb11e5173f6af0ef",
+      "subject": "fix(build): isolate orchestrator CJS generation after ESM and declarations"
     }
   ],
   "pullRequests": [
@@ -696,5 +716,5 @@
       "merged": false
     }
   ],
-  "qualificationNote": "Published unmerged PR head for pre-merge Cloud QA. Ahead of observed develop; no merge, native, provider or resident-audit qualification inferred."
+  "qualificationNote": "Published unmerged SDK candidate; normal build/runtime/native qualification is pending. No qualification transfers from old pin."
 }
