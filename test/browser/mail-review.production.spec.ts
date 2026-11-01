@@ -240,7 +240,7 @@ test('Android: Home withholds the old count until a changed account is reverifie
   });
   // The current-account background reader clears the old identity while it is
   // unverified, rather than retaining another account's count or timestamp.
-  await expect(card).toHaveAccessibleName('Inbox');
+  await expect(card).toHaveAccessibleName('Open Inbox');
   await expect(card).not.toContainText(/Updated|Read \d|unread/);
   await expect(card.locator('[data-overview-part="count"]')).toHaveText('');
   expect((await fixture(page)).searches).toBe(searches);
