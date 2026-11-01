@@ -6,17 +6,18 @@ import {fileURLToPath} from 'node:url';
 import {upstreamNativeSource,sha} from './upstream-native-source.mjs';
 const ROOT=fileURLToPath(new URL('../',import.meta.url));
 const HEX=/^[a-f0-9]{64}$/;
+const AUTH_ANDROID_MODULE='packages/auth/android';
 const safe=name=>typeof name==='string'&&!name.startsWith('/')&&!name.split('/').some(x=>!x||x==='.'||x==='..')&&!name.includes('\\');
 function inventory(root){const files={};function visit(dir){for(const row of fs.readdirSync(dir,{withFileTypes:true})){const name=path.join(dir,row.name);if(row.isSymbolicLink())throw Error('Symlink in patched source');if(row.isDirectory())visit(name);else if(row.isFile())files[path.relative(root,name)]=sha(fs.readFileSync(name));else throw Error('Nonregular patched source');}}visit(root);return files;}
 function verifyModes(root,modes){for(const [name,mode] of Object.entries(modes))if((fs.statSync(path.join(root,name)).mode&0o111)!==(mode==='100755'?0o111:0))throw Error('Native staged source mode drift');}
 function same(a,b){return JSON.stringify(Object.entries(a).sort())===JSON.stringify(Object.entries(b).sort());}
-/** Verify every input and output byte; patches may modify only declared existing Java/Kotlin files. */
+/** Verify every input and output byte; patches may modify declared existing Java/Kotlin files and the shared auth dependency descriptor. */
 export function materializeNativePatches({source,manifest,patchRoot,temporary}){
  if(manifest.schema!==1||manifest.baseCommit!==source.pin||!Array.isArray(manifest.patches))throw Error('Native patch manifest pin/schema mismatch');
  // Modules with no remaining patch are still staged from the pin so Gradle compiles authenticated source.
  if(manifest.modules!==undefined&&(!Array.isArray(manifest.modules)||manifest.modules.some(m=>typeof m!=='string')))throw Error('Invalid native patch modules');
  const modules=[...new Set([...(manifest.modules||[]),...manifest.patches.map(p=>p.module)])].sort(),files=new Map(),expected={};
- for(const module of modules){if(!/^plugins\/plugin-native-[a-z-]+\/android$/.test(module))throw Error('Invalid native patch module');for(const [name,file] of source.read(module)){files.set(name,file);expected[name]=file.sha256;}}
+ for(const module of modules){if(module!==AUTH_ANDROID_MODULE&&!/^plugins\/plugin-native-[a-z-]+\/android$/.test(module))throw Error('Invalid native patch module');for(const [name,file] of source.read(module)){files.set(name,file);expected[name]=file.sha256;}}
  for(const [name,file] of files){const dest=path.join(temporary,name);fs.mkdirSync(path.dirname(dest),{recursive:true});fs.writeFileSync(dest,file.bytes,{mode:parseInt(file.mode,8)});}
  const targets=new Set();
  for(const patch of manifest.patches){
@@ -24,7 +25,11 @@ export function materializeNativePatches({source,manifest,patchRoot,temporary}){
   const filename=path.join(patchRoot,patch.file);if(!fs.lstatSync(filename).isFile()||fs.lstatSync(filename).isSymbolicLink())throw Error('Nonregular native patch');
   for(let current=filename;current!==patchRoot;current=path.dirname(current))if(fs.lstatSync(current).isSymbolicLink())throw Error('Symlink in native patch path');
   const bytes=fs.readFileSync(filename);if(sha(bytes)!==patch.sha256)throw Error('Native patch digest mismatch');
-  for(const target of patch.targets){if(!safe(target.path)||!target.path.startsWith(patch.module+'/src/main/java/')||!(/\.(?:java|kt)$/.test(target.path))||targets.has(target.path)||!HEX.test(target.beforeSha256)||!HEX.test(target.afterSha256)||expected[target.path]!==target.beforeSha256)throw Error('Native patch target/source mismatch');targets.add(target.path);expected[target.path]=target.afterSha256;}
+  for(const target of patch.targets){
+   const sourceTarget=typeof target.path==='string'&&target.path.startsWith(patch.module+'/src/main/java/')&&/\.(?:java|kt)$/.test(target.path);
+   const authDescriptor=patch.module===AUTH_ANDROID_MODULE&&target.path===AUTH_ANDROID_MODULE+'/build.gradle';
+   if(!safe(target.path)||(!sourceTarget&&!authDescriptor)||targets.has(target.path)||!HEX.test(target.beforeSha256)||!HEX.test(target.afterSha256)||expected[target.path]!==target.beforeSha256)throw Error('Native patch target/source mismatch');targets.add(target.path);expected[target.path]=target.afterSha256;
+  }
   const headers=bytes.toString('utf8').split('\n').filter(line=>line.startsWith('--- ')||line.startsWith('+++ '));
   const wanted=patch.targets.flatMap(target=>['--- a/'+target.path,'+++ b/'+target.path]);
   if(JSON.stringify(headers)!==JSON.stringify(wanted))throw Error('Native patch headers do not match declared targets');

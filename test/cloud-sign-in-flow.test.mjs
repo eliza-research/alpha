@@ -6,6 +6,7 @@ import {existsSync,mkdtempSync,readFileSync,rmSync,writeFileSync} from 'node:fs'
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {execFileSync} from 'node:child_process';
+import {preparePatchedNative} from '../scripts/prepare-patched-native.mjs';
 
 // Alpha's registration of the shared native Eliza Cloud sign-in client (elizaOS/eliza
 // packages/auth/android; its policy, plugin methods and contract vectors are tested there). These
@@ -17,12 +18,13 @@ const read=file=>readFileSync(join(root,file),'utf8');
 const between=(text,start,end)=>{const from=text.indexOf(start),to=text.indexOf(end,from+start.length);assert.ok(from>=0&&to>from,`${start} … ${end} located`);return text.slice(from,to);};
 const java=process.env.JAVA_HOME||(process.platform==='darwin'?'/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home':'');const binary=name=>java?join(java,'bin',name):name;
 const native='android/app/src/main/java/ai/elizaresearch/alphaphone/';
-const shared='vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud/';
+const patched=preparePatchedNative({root});
+const shared=patched.root.slice(root.length+1)+'/packages/auth/android/src/main/java/ai/eliza/auth/cloud/';
 
 test('Alpha registers the shared native sign-in client with its own identity, deployments and installed names',()=>{
  const plugin=read(native+'AlphaCloudSignInPlugin.java');
  assert.match(plugin,/^@CapacitorPlugin\(name = "AlphaCloudSignIn"\)\npublic final class AlphaCloudSignInPlugin extends CloudSignInPlugin \{/m);
- for(const fragment of ['.clientId("ai.elizaresearch.alphaphone")','.deviceName("Alpha Phone")','.productName("Alpha Phone")','.googleClientId("alpha-phone")','.logTag("AlphaCloudSignIn")',
+ for(const fragment of ['.clientId("ai.elizaresearch.alphaphone")','.deviceName("Alpha Phone")','.productName("Alpha Phone")','.googleClientId("alpha-phone")','.googleSignInMode("browser")','.logTag("AlphaCloudSignIn")',
   '.readinessPreferences("alpha-cloud-signin-readiness-" + CloudDeployment.STORAGE_NAMESPACE)','.pendingSlot(PENDING_SLOT).receiptSlotPrefix("cloud-signin:v1:ack:").credentialSlotPrefix("cloud:")',
   'static final String PENDING_SLOT = "cloud-signin:v1:pending";','static final String CALLBACK_PATH = "/alphaphone/auth/callback";','static final CloudSignInConfig REGISTRATION = registration(BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS);'])
   assert.ok(plugin.includes(fragment),fragment);
@@ -39,7 +41,7 @@ test('Alpha registers the shared native sign-in client with its own identity, de
   assert.equal(existsSync(join(root,native,moved)),false,`${moved} lives only in the shared client`);
  // The generated Gradle host (android/consumer-host.json) compiles the shared client from the reviewed pin.
  const cloudAuth=JSON.parse(read('android/consumer-host.json')).profile.modules.filter(module=>module.name==='eliza-cloud-auth');
- assert.deepEqual(cloudAuth,[{name:'eliza-cloud-auth',source:{root:'upstream',path:'packages/auth/android'}}]);
+ assert.deepEqual(cloudAuth,[{name:'eliza-cloud-auth',source:{root:'patchedNative',path:'packages/auth/android'},relocateBuild:true}]);
  assert.match(read(native+'MainActivity.java'),/registerPlugin\(AlphaCloudSignInPlugin\.class\);/);
  assert.match(read(native+'RendererCredentialSlots.java'),/"cloud-signin"/,'pending and receipt slots are native-only');
  for(const route of ['signInRoute','signInOrigin','signInAssetLinks'])assert.doesNotMatch(read(native+'ConnectionRoutes.java'),new RegExp(`static boolean ${route}\\(`),'the renderer transport keeps no sign-in route');
@@ -71,12 +73,13 @@ test('Alpha callback contract vectors through the shared native parser',()=>{
  }finally{rmSync(temporary,{recursive:true,force:true});}
 });
 
-test('the sign-in App Link is build-gated with the delegation return; staging lives in the test-mocks overlay',()=>{
+test('the sign-in App Link defaults to the configured Cloud host; staging lives in the test-mocks overlay',()=>{
  const strip=text=>text.replace(/<!--[\s\S]*?-->/g,'');
  const main=strip(read('android/app/src/main/AndroidManifest.xml')),mocks=strip(read('android/app/src/testMocks/AndroidManifest.xml')),gradle=read('android/app/product.gradle');
  const filter=host=>`<intent-filter android:autoVerify="true"><action android:name="android.intent.action.VIEW"/><category android:name="android.intent.category.DEFAULT"/><category android:name="android.intent.category.BROWSABLE"/><data android:scheme="https" android:host="${host}" android:path="/alphaphone/auth/callback"/></intent-filter>`;
- assert.ok(!main.includes('autoVerify'),'a default build declares no https App Link');
- assert.ok(gradle.includes(filter('\\${appLinkHost}')),'ELIZAOS_APP_LINK_HOST adds the sign-in return beside the delegation return');
+ assert.ok(!main.includes('autoVerify'),'the generated overlay owns the HTTPS App Link');
+ assert.match(gradle,/\? cloudWebHost : appLinkHostRaw\.toString\(\)\.trim\(\)/,'default builds declare the configured Cloud host');
+ assert.ok(gradle.includes(filter('\\${appLinkHost}')),'the overlay adds the sign-in return beside the delegation return');
  assert.ok(!main.includes('staging.eliza.app'),'no staging host in a product manifest');
  assert.ok(between(main,'<activity android:name=".MainActivity"','</activity>').includes('<data android:scheme="alphaphone" android:host="cloud-delegation"/>'),'the delegation return is unchanged');
  // The shared DelegationCallback admits only the scheme and host the plugin passes; they must be the manifest's.

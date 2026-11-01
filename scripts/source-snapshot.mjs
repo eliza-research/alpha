@@ -32,6 +32,8 @@ roots.push('android/app/src/main/assets/agent','android/app/src/main/jniLibs',
  'android/app/build/generated/local-agent/java',
  'android/app/build/generated/local-agent/source-manifest.json',
  'upstream.lock.json',
+ // Authored patch manifests and patch bytes change the native source compiled into an APK.
+ 'patches/eliza',
  'scripts/prepare-local-agent.mjs','scripts/local-agent-source.mjs','scripts/copy-file-clone.mjs',
  'scripts/stage-local-agent-runtime.mjs','scripts/stage-local-agent-sources.mjs',
  'scripts/prepare-patched-native.mjs','scripts/upstream-native-source.mjs',

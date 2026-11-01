@@ -4,13 +4,13 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'rea
 import type { SignInView } from './connection-ui';
 
 /**
- * Alpha's own Eliza Cloud sign-in screens: Google (Android's native account picker), or an email
+ * Alpha's own Eliza Cloud sign-in screens: Google in the user's external browser, or an email
  * code typed here, then a second verification when the account has one. No Eliza Cloud web page.
  * Codes stay in the input while verification is pending or can be retried. They are never stored
  * outside the form, and a different attempt or verification step replaces the input.
  */
 export interface CloudSignInActions {
-  phone?(number: string): void; google(): void; email(address: string): void; verify(code: string): void; resend(): void; cancel(): void;
+  phone?(number: string): void; google(): void; email(address: string): void; verify(code: string): void; resend(): void; cancel(): void; retry?(): void;
 }
 export function AlphaAuthBrand() {
   return <div className="alpha-auth-brand"><span className="alpha-auth-mark" aria-hidden="true"/><span className="serif">Alpha</span></div>;
@@ -66,7 +66,7 @@ export function CloudSignInPanel({ view, busy, google, phone, emailEnabled = tru
       {!google && !phone && !emailEnabled && <p role="status">This service offers no sign-in method supported by this app. Contact the service administrator.</p>}
       <p className="alpha-auth-intro">Use your {service?.name || cloudServiceName(view.environment)} account to sign in. Your agent runs on this device.</p>
       <p role="note">Sign in to verify your account. You’ll review access before authorizing Alpha Phone.</p>
-      {ready && !google && <p id="alpha-google-unavailable" role="status">Google sign-in is unavailable. Use another sign-in method below.</p>}
+      {ready && !google && <p id="alpha-google-unavailable" role="status">Google sign-in is unavailable. Use another sign-in method below. {actions.retry && <button type="button" disabled={busy} onClick={actions.retry}>Retry sign-in options</button>}</p>}
       <div className="alpha-connection-actions alpha-auth-google"><button ref={googleButton} disabled={busy || !ready || !google} onClick={actions.google}><span aria-hidden="true" className="alpha-google-icon"/>Continue with Google</button></div>
       {emailEnabled && <form className="alpha-cloud-sign-in-email" aria-label="Sign in with email" onSubmit={event => { event.preventDefault(); actions.email(email.current?.value || ''); }}>
         <label>Email<input ref={email} type="email" name="email" autoComplete="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} inputMode="email" maxLength={320} required disabled={busy || !ready} /></label>
@@ -77,7 +77,7 @@ export function CloudSignInPanel({ view, busy, google, phone, emailEnabled = tru
         <button disabled={busy || !ready}>Text me a code</button>
       </form>}
     </>}
-    {view.step === 'google' && <p>Choose your Google account in the Android sign-in sheet. Alpha will finish signing you in.</p>}
+    {view.step === 'google' && <p>Continue with Google in your browser. You’ll return to Alpha to finish signing in.</p>}
     {(view.step === 'code' || view.step === 'mfa') && <form key={`${view.step}:${view.attemptId}`} className="alpha-cloud-sign-in-code" aria-busy={busy || undefined} aria-label={view.step === 'code' ? view.phone ? 'Enter your phone code' : 'Enter your email code' : 'Enter your verification code'} onSubmit={submitCode}>
       {view.step === 'code' && <p>Enter the six-digit code sent to <strong>{view.phone || view.email}</strong>.</p>}
       {view.step === 'mfa' && <p>{view.method === 'totp' ? 'This account uses an authenticator app. Enter its six-digit code.' : view.method === 'sms' ? 'Enter the six-digit code sent to your phone.' : 'This account’s second verification is not available in Alpha yet.'}</p>}

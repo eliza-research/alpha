@@ -65,7 +65,7 @@ async function boot(page:Page,initial:{signIn?:SignInMode;tokens?:Record<string,
   const store=()=>{f.saved=true;f.credential={credentialId:crypto.randomUUID(),token:'synthetic-mobile-key',expiresAt:Date.now()+((f as any).keyLifetimeMs??30*24*3600*1000),serverCredentialId:'55555555-5555-4555-8555-555555555555'};return {status:'authenticated',environment:'production',expiresAt:f.credential.expiresAt,accountCreated:f.signIn==='created'};};
   const reply=(status:number,body:unknown)=>({status,body:JSON.stringify(body)});
   w.Capacitor={PluginHeaders:Object.entries(names).map(([name,methods])=>({name,methods:methods.map(name=>({name,rtype:'promise'}))})),nativePromise:async(plugin:string,method:string,input:any)=>{
-   f.calls.push({plugin,method,path:input?.url?new URL(input.url).pathname:input?.path,email:input?.email,phone:input?.phone,environment:input?.environment});
+   f.calls.push({plugin,method,path:input?.url?new URL(input.url).pathname:input?.path,email:input?.email,phone:input?.phone,environment:input?.environment,refreshNegative:input?.refreshNegative});
    if(plugin==='AlphaCloudSignIn'){
     if(method==='addListener'||method==='removeListener')return {};
     if(method==='serviceInfo'){const doc={title:'Terms of Service',revision:'fixture-v1',sections:[{title:'Provider terms',paragraphs:f.legalParagraphs||['<img src=x onerror=alert(1)> is plain text.','Synthetic provider document.']}]};return {success:true,version:1,service:{name:f.serviceName||'Eliza Cloud',terms:doc,privacy:{...doc,title:'Privacy Policy'}}};}
@@ -119,7 +119,7 @@ async function boot(page:Page,initial:{signIn?:SignInMode;tokens?:Record<string,
  // The composition imports the complete runtime before publishing its readiness marker.
  await expect.poll(()=>page.evaluate(()=>(window as any).planFlags),{timeout:30000}).toEqual({native:'android',mocks:false});
 }
-type Call={plugin:string;method:string;path?:string;email?:string;phone?:string;environment?:string};
+type Call={refreshNegative?:boolean;plugin:string;method:string;path?:string;email?:string;phone?:string;environment?:string};
 const calls=(page:Page)=>page.evaluate(()=>(window as any).signInFixture.calls as Call[]);
 const snapshot=(page:Page)=>page.evaluate(()=>(window as any).planController.getSnapshot());
 const fixture=(page:Page)=>page.evaluate(()=>{const f=(window as any).signInFixture;return {saved:f.saved,bound:f.bound,running:f.running};});
@@ -197,6 +197,21 @@ test.describe('in-app Eliza Cloud sign-in on the production Android composition'
   await expect(dialog.getByRole('button',{name:'Resend code in 60s',exact:true})).toBeDisabled();
   await page.clock.runFor(60000);
   await expect(dialog.getByRole('button',{name:'Resend code',exact:true})).toBeEnabled();
+  await noHandOff(page);
+ });
+
+ test('Google readiness can be retried after Android finishes verifying the return link',async({page})=>{
+  await boot(page,{...await entitlements(),methods:{email:true,phone:true,google:false}});
+  await agent(page,'unavailable');
+  await readySignIn(page);
+  const dialog=signInDialog(page);
+  await expect(dialog.getByRole('button',{name:'Continue with Google',exact:true})).toBeDisabled();
+  const retry=dialog.getByRole('button',{name:'Retry sign-in options',exact:true});
+  await expect(retry).toBeEnabled();
+  await page.evaluate(()=>{(window as any).signInFixture.methods.google=true;});
+  await retry.click();
+  await expect(dialog.getByRole('button',{name:'Continue with Google',exact:true})).toBeEnabled();
+  expect((await calls(page)).filter(c=>c.plugin==='AlphaCloudSignIn'&&c.method==='status').at(-1)?.refreshNegative).toBe(true);
   await noHandOff(page);
  });
 
@@ -288,7 +303,7 @@ test.describe('in-app Eliza Cloud sign-in on the production Android composition'
   await readySignIn(page);
   const dialog=signInDialog(page);
   await dialog.getByRole('button',{name:'Continue with Google',exact:true}).click();
-  await expect(dialog.getByText('Choose your Google account in the Android sign-in sheet. Alpha will finish signing you in.',{exact:true})).toBeVisible();
+  await expect(dialog.getByText('Continue with Google in your browser. You’ll return to Alpha to finish signing in.',{exact:true})).toBeVisible();
   await dialog.getByRole('button',{name:'Cancel sign-in',exact:true}).click();
   await expect.poll(async()=>(await calls(page)).some(c=>c.plugin==='AlphaCloudSignIn'&&c.method==='cancel')).toBe(true);
   await expect(dialog.getByRole('button',{name:'Continue with Google',exact:true})).toBeEnabled();

@@ -195,6 +195,8 @@ function scratchRoot(t) {
   fs.symlinkSync(path.join(ROOT, 'apps/app/public'), path.join(dir, 'apps/app/public'));
   for (const name of ['package.json', 'package-lock.json', 'upstream.lock.json']) fs.copyFileSync(path.join(ROOT, name), path.join(dir, name));
   for (const name of ['licenses', 'config']) fs.cpSync(path.join(ROOT, name), path.join(dir, name), {recursive: true});
+  // Match the declared Android dependency inputs while keeping derived native staging inside this fixture.
+  fs.cpSync(path.join(ROOT, 'patches/eliza'), path.join(dir, 'patches/eliza'), {recursive: true});
   // The reviewed ASR model pins are listed in the notices, so their recorded reasons are not stale.
   fs.mkdirSync(path.join(dir, 'scripts'));
   fs.copyFileSync(path.join(ROOT, 'scripts/host-speech-assets.json'), path.join(dir, 'scripts/host-speech-assets.json'));

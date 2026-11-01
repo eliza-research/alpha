@@ -20,7 +20,7 @@ test('production signed-out entry server-renders direct options before readiness
 });
 test('ready choice renders usable email path and explicit unavailable Google notice',()=>{
  const html=render({signIn:{step:'choose',environment:'production'},busy:false,message:'',error:''});
- assert.match(html,/Google sign-in is unavailable/);assert.doesNotMatch(html,/Retry sign-in/);assert.match(html,/<input[^>]+type="email"(?![^>]*disabled)/);
+ assert.match(html,/Google sign-in is unavailable/);assert.match(html,/<button type="button">Retry sign-in options<\/button>/);assert.match(html,/<input[^>]+type="email"(?![^>]*disabled)/);
 });
 test('automatic readiness probes once per unresolved entry, rearms after a form closes and never initiates sign-in',()=>{
  const code=between(source,'  const automaticSignInProbe =','  const visible=');

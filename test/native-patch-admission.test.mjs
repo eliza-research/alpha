@@ -6,7 +6,7 @@ import path from 'node:path';
 import {materializeNativePatches,verifyNativePatchReceipt} from '../scripts/prepare-patched-native.mjs';
 import {sha} from '../scripts/upstream-native-source.mjs';
 const module='plugins/plugin-native-test/android',target=module+'/src/main/java/Test.java';
-function fixture(run){const root=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-patch-test-'));try{const before=Buffer.from('old\n'),after=Buffer.from('new\n'),patch=`--- a/${target}\n+++ b/${target}\n@@ -1 +1 @@\n-old\n+new\n`,patchRoot=path.join(root,'patches'),temporary=path.join(root,'stage');fs.mkdirSync(patchRoot);fs.mkdirSync(temporary);fs.writeFileSync(path.join(patchRoot,'test.patch'),patch);const manifest={schema:1,baseCommit:'pin',patches:[{module,file:'test.patch',sha256:sha(patch),targets:[{path:target,beforeSha256:sha(before),afterSha256:sha(after)}]}]};const source={pin:'pin',read:()=>new Map([[target,{bytes:before,mode:'100644',sha256:sha(before)}]])};run({root,manifest,source,patchRoot,temporary});}finally{fs.rmSync(root,{recursive:true,force:true});}}
+function fixture(run,sourceModule=module,sourceTarget=sourceModule+'/src/main/java/Test.java'){const root=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-patch-test-'));try{const before=Buffer.from('old\n'),after=Buffer.from('new\n'),patch=`--- a/${sourceTarget}\n+++ b/${sourceTarget}\n@@ -1 +1 @@\n-old\n+new\n`,patchRoot=path.join(root,'patches'),temporary=path.join(root,'stage');fs.mkdirSync(patchRoot);fs.mkdirSync(temporary);fs.writeFileSync(path.join(patchRoot,'test.patch'),patch);const manifest={schema:1,baseCommit:'pin',patches:[{module:sourceModule,file:'test.patch',sha256:sha(patch),targets:[{path:sourceTarget,beforeSha256:sha(before),afterSha256:sha(after)}]}]};const source={pin:'pin',read:()=>new Map([[sourceTarget,{bytes:before,mode:'100644',sha256:sha(before)}]])};run({root,manifest,source,patchRoot,temporary});}finally{fs.rmSync(root,{recursive:true,force:true});}}
 test('admission materializes only authenticated declared source',()=>fixture(args=>{const result=materializeNativePatches(args);assert.equal(result.files[target],sha('new\n'));assert.equal(fs.readFileSync(path.join(args.temporary,target),'utf8'),'new\n');}));
 for(const [name,mutate,error] of [
  ['wrong pin',a=>a.manifest.baseCommit='other',/pin/],
@@ -40,3 +40,37 @@ test('plugin patch admission refuses resident service modules now owned by upstr
  args.manifest.patches[0].module='packages/app/platforms/android/app';
  assert.throws(()=>materializeNativePatches(args),/Invalid native patch module/);
 }));
+
+const authModule='packages/auth/android';
+for(const authTarget of [authModule+'/src/main/java/CloudSignInPlugin.java',authModule+'/build.gradle'])test(`shared auth admission authenticates ${authTarget}`,()=>fixture(args=>{
+ const descriptor=authModule+'/settings.gradle',unchanged=Buffer.from('unchanged descriptor\n'),read=args.source.read;
+ args.source.read=prefix=>{assert.equal(prefix,authModule);return new Map([...read(),[descriptor,{bytes:unchanged,mode:'100644',sha256:sha(unchanged)}]]);};
+ const output=materializeNativePatches(args);
+ assert.deepEqual(output.modules,[authModule]);
+ assert.equal(output.files[authTarget],sha('new\n'));
+ assert.equal(fs.readFileSync(path.join(args.temporary,authTarget),'utf8'),'new\n');
+ assert.equal(output.files[descriptor],sha(unchanged));
+ assert.deepEqual(fs.readFileSync(path.join(args.temporary,descriptor)),unchanged);
+},authModule,authTarget));
+
+for(const invalidModule of ['packages/auth','packages/auth/android-extra','packages/auth/android/src','packages/auth/android/../other','packages/other/android','/packages/auth/android','packages\\auth\\android'])test(`shared auth admission rejects module ${invalidModule}`,()=>fixture(args=>{
+ args.manifest.patches[0].module=invalidModule;
+ args.source.read=()=>{assert.fail('an unadmitted module must not be read');};
+ assert.throws(()=>materializeNativePatches(args),/Invalid native patch module/);
+},authModule));
+
+for(const [sourceModule,invalidTarget] of [
+ [module,module+'/build.gradle'],
+ [authModule,authModule+'/settings.gradle'],
+ [authModule,authModule+'/build.gradle.kts'],
+ [authModule,authModule+'/src/main/java/../build.gradle'],
+ [authModule,authModule+'/../android/build.gradle'],
+ [authModule,'packages/other/android/build.gradle'],
+])test(`shared auth descriptor exception rejects ${invalidTarget}`,()=>fixture(args=>{
+ assert.throws(()=>materializeNativePatches(args),/target\/source mismatch/);
+},sourceModule,invalidTarget));
+
+test('shared auth descriptor patch still rejects unauthenticated output',()=>fixture(args=>{
+ args.manifest.patches[0].targets[0].afterSha256='0'.repeat(64);
+ assert.throws(()=>materializeNativePatches(args),/output differs/);
+},authModule,authModule+'/build.gradle'));

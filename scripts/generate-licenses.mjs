@@ -2,6 +2,7 @@
 import {VOICE_HOST_MANIFEST, voiceHostProblems} from './voice-host.mjs';
 import {HOST_DESCRIPTOR, generateAlphaAndroidHost, readHostDescriptor} from './android-host.mjs';
 import {HOST_TEMPLATES, referencePath} from './gradle-verification.mjs';
+import {preparePatchedNative} from './prepare-patched-native.mjs';
 import {readAgentBundleDependencies} from './agent-bundle-dependencies.mjs';
 // Generates the third-party notices shipped in the web bundle and in every APK payload.
 //
@@ -537,7 +538,8 @@ export function parseGradleTree(output) {
 /**
  * Fingerprint only inputs that can change the resolved runtime classpath: the host descriptor's
  * dependencies and app modules, the pinned generator toolchain and template, and each linked
- * module's own declarations (a staged patched module reads its unchanged pinned descriptor).
+ * module's own declarations. Native plugin descriptors stay pinned; shared auth's
+ * one patchable descriptor contributes its authenticated staged bytes under its canonical label.
  */
 export function androidDependencyFingerprint(root) {
   const {profile} = readHostDescriptor(root);
@@ -551,10 +553,19 @@ export function androidDependencyFingerprint(root) {
     `${HOST_TEMPLATES}/app.gradle:\n${template.join('\n')}`,
   ];
   const files = modules.map(([, directory]) => path.posix.join(directory, 'build.gradle'));
+  const authDescriptor = 'packages/auth/android/build.gradle', authFile = `vendor/eliza/${authDescriptor}`;
+  const patchManifest = 'patches/eliza/native-manifest.json';
+  const patches = exists(root, patchManifest) ? readJson(root, patchManifest).patches : [];
+  const patchedDescriptors = new Map();
+  if (files.includes(authFile) && patches?.some(patch => patch.targets?.some(target => target.path === authDescriptor))) {
+    const staged = preparePatchedNative({root});
+    patchedDescriptors.set(authFile, fs.readFileSync(path.join(staged.root, authDescriptor), 'utf8'));
+  }
+  const readDescriptor = file => patchedDescriptors.get(file) ?? read(root, file);
   // A module that applies a shared script (`ext.<dir> = file('…')` then `apply from: new File(ext.<dir>, '<file>')`) declares its dependencies there.
   for (const file of [...files]) {
     if (!exists(root, file)) continue;
-    const text = read(root, file);
+    const text = readDescriptor(file);
     for (const [, variable, applied] of text.matchAll(/apply from:\s*new File\(ext\.(\w+),\s*'([^']+)'\)/g)) {
       const dir = text.match(new RegExp(`ext\\.${variable}\\s*=\\s*file\\('([^']+)'\\)`))?.[1];
       if (dir) files.push(path.posix.join(path.posix.dirname(file), dir, applied));
@@ -566,7 +577,7 @@ export function androidDependencyFingerprint(root) {
   const lines = [...declared];
   for (const file of [...new Set(files)].sort()) {
     if (!exists(root, file)) { lines.push(`${file}: missing`); continue; }
-    const relevant = read(root, file).split('\n').map(line => line.trim())
+    const relevant = readDescriptor(file).split('\n').map(line => line.trim())
       .filter(line => /^(implementation|api|runtimeOnly)\b/.test(line) || /Version\s*=/.test(line) || /^include\b|projectDir\s*=/.test(line));
     lines.push(`${file}:\n${relevant.join('\n')}`);
   }

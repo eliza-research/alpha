@@ -5,12 +5,13 @@ import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {execFileSync} from 'node:child_process';
 import {root,nativeSource,upstreamAgentRuntime,runJvm,jsonJarSkip} from './fixtures/jvm-tools.mjs';
+import {preparePatchedNative} from '../scripts/prepare-patched-native.mjs';
 test('explicit native legacy recovery uses real encrypted slots and current token validation',{skip:jsonJarSkip},()=>{
  const dir=mkdtempSync(join(tmpdir(),'alpha-legacy-recovery-'));
  try{
   const relative='plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/JsonCredentialSlots.java';
   const manifest=JSON.parse(readFileSync(join(root,'patches/eliza/native-manifest.json'),'utf8'));
-  assert.deepEqual(manifest.patches,[],'this fixture requires the unpatched canonical slot implementation');
+  assert.ok(!manifest.patches.some(patch=>patch.module==='plugins/plugin-native-secure-store/android'),'this fixture requires the unpatched canonical slot implementation');
   assert.match(manifest.baseCommit,/^[a-f0-9]{40}$/);
   const prepared=join(root,'vendor/eliza');
   const pinned=execFileSync('git',['-C',process.env.ALPHA_TEST_SDK_OBJECTS||prepared,'-c','core.hooksPath=/dev/null','-c','core.fsmonitor=false','show',manifest.baseCommit+':'+relative],{env:{...process.env,GIT_NO_LAZY_FETCH:'1',GIT_NO_REPLACE_OBJECTS:'1'}});
@@ -128,6 +129,7 @@ test('Restore saved sign-in around the shared sign-in client: eligible restore, 
   const lifecycle=readFileSync(nativeSource('AlphaLocalAgentPlugin.java'),'utf8');
   const intent=lifecycle.match(/^ static long reserveCredentialIntent\(\)\{.*\}$/m)?.[0],require=lifecycle.match(/^ static void requireCredentialIntent\(long intent\)\{.*\}$/m)?.[0];
   assert.ok(intent&&require,'actual credential-intent methods');
+  const staged=preparePatchedNative({root});
   const sources=[
    upstreamAgentRuntime('CredentialIntentFence.java'),upstreamAgentRuntime('CredentialRequestFence.java'),join(root,'vendor/eliza/plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/CredentialIntentFence.java'),nativeSource('AlphaCloudSignInPlugin.java'),nativeSource('PluginWorkers.java'),nativeSource('CloudDeployment.java'),
    file('Capacitor.java',`package com.getcapacitor;public class Capacitor{}`),
@@ -139,7 +141,7 @@ test('Restore saved sign-in around the shared sign-in client: eligible restore, 
    file('Context.java',`package android.content;public class Context{}`),
    file('Intent.java',`package android.content;public class Intent{private java.net.URI data;public Intent(){}public Intent(String uri){data=java.net.URI.create(uri);}public java.net.URI getData(){return data;}}`),
    file('CloudCredentialSlots.java',`package ai.eliza.auth.cloud;public interface CloudCredentialSlots{String read(String s)throws Exception;void write(String s,String v)throws Exception;void remove(String s)throws Exception;}`),
-   ...['CloudSignInEnvironment.java','CloudSignInConfig.java','CloudSignInFlow.java','CloudEmailCode.java','CloudSmsCode.java'].map(name=>join(root,'vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud',name)),
+   ...['CloudSignInEnvironment.java','CloudSignInConfig.java','CloudSignInFlow.java','CloudEmailCode.java','CloudSmsCode.java'].map(name=>join(staged.root,'packages/auth/android/src/main/java/ai/eliza/auth/cloud',name)),
    file('CloudSignInPlugin.java',`package ai.eliza.auth.cloud;import com.getcapacitor.*;public abstract class CloudSignInPlugin extends Plugin{public final java.util.List<String> calls=new java.util.concurrent.CopyOnWriteArrayList<>();
     protected abstract CloudSignInConfig registration();protected abstract CloudCredentialSlots credentials(Runnable guard);protected abstract <T> T withCredentialRead(java.util.concurrent.Callable<T> read) throws Exception;protected Runnable reserveCredentialCommit(){return()->{};}
     /** Stands in for the shared client's commit of a minted key: reserve, then write under the guard. */

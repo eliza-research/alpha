@@ -22,7 +22,7 @@ import {
 /**
  * Alpha binding of the shared native Eliza Cloud sign-in renderer contract (owner directive
  * 2026-10-14, #410). Sign-in happens on Alpha's own screens: an email or SMS code typed into
- * Alpha, or Android's native Google account picker. No Eliza Cloud web page is part of a
+ * Alpha, or Google in the user's external browser. No Eliza Cloud web page is part of a
  * successful sign-in.
  *
  * The port's host (AlphaCloudSignInPlugin, a registration of the shared

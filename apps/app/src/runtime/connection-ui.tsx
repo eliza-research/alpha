@@ -2422,7 +2422,7 @@ export const connectionController = {
   async residentCloudLogin() { await connectionController.beginSignIn(residentEnvironment()); },
   /** Opens Alpha's own sign-in screen when ready. Nothing is sent until the owner chooses Google or
    * enters an email; no Eliza Cloud web page is opened. */
-  async beginSignIn(environment: CloudEnvironment = residentCloudFlow() ? residentEnvironment() : cloud.environment, refreshNegative = false, automatic = false) {
+  async beginSignIn(environment: CloudEnvironment = residentCloudFlow() ? residentEnvironment() : cloud.environment, refreshNegative = true, automatic = false) {
     if (operation || !cloudEnvironmentAllowed(environment)) return;
     // An automatic readiness probe must not erase why the saved sign-in was refused.
     // A new attempt explicitly started by the owner still clears the earlier error.
@@ -2470,7 +2470,7 @@ export const connectionController = {
     update({ signIn: view && (pending || view.step !== 'choose') ? { step: 'choose', environment: view.environment } : null, message: '', error: '' });
     if(closeExplicitEntry)connectionController.close();
   },
-  /** Android's native Google account picker, followed by the existing session flow. */
+  /** Google's external browser flow, followed by the existing native session exchange. */
   async signInGoogle() {
     const view = state.signIn; if (!view) return;
     await work('Choose your Google account to sign in to Alpha.', async signal => {
@@ -3216,7 +3216,7 @@ export function ConnectionChooser() {
   if (snapshot.signIn || signInEntryRequired) return <div className={productionSignInRequired?'alpha-auth-page':'alpha-connection-scrim'}><div className={`alpha-connection alpha-connection-native alpha-cloud-sign-in${productionSignInRequired?' alpha-auth-content':''}`} role={productionSignInRequired?'main':'dialog'} aria-modal={productionSignInRequired?undefined:true} aria-labelledby="cloud-sign-in-title" aria-busy={snapshot.busy||undefined} tabIndex={-1} ref={panel}>
     {providerChoice}
     <CloudSignInPanel serviceLoader={loadSignInService} phone={cloudSignInPhone && inAppPhone} emailEnabled={inAppEmail} view={requiredSignInView} busy={snapshot.busy} ready={!!snapshot.signIn} dismissible={!productionSignInRequired} google={inAppGoogle} message={snapshot.message} error={snapshot.error} errorIsNotice={snapshot.error===RESIDENT_UNPACKAGED}
-      actions={{phone:number=>void connectionController.signInPhone(number),google:()=>void connectionController.signInGoogle(),email:address=>void connectionController.signInEmail(address),verify:code=>void connectionController.verifySignInCode(code),resend:()=>void connectionController.resendSignInCode(),cancel:()=>connectionController.cancelSignIn()}}
+      actions={{phone:number=>void connectionController.signInPhone(number),google:()=>void connectionController.signInGoogle(),email:address=>void connectionController.signInEmail(address),verify:code=>void connectionController.verifySignInCode(code),resend:()=>void connectionController.resendSignInCode(),cancel:()=>connectionController.cancelSignIn(),retry:()=>void connectionController.beginSignIn(requiredSignInView.environment,true)}}
       extra={signInEntryRequired && !snapshot.signIn && !snapshot.busy
         ? <button onClick={()=>void connectionController.beginSignIn(residentEnvironment(),true)}>Retry sign-in</button>
         : testMocksEnabled?<button disabled={snapshot.busy} onClick={()=>void connectionController.signInBrowser()}>Browser sign-in (diagnostic)</button>:undefined}/>

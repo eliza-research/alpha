@@ -41,6 +41,7 @@ public final class AlphaCloudSignInPlugin extends CloudSignInPlugin {
  static CloudSignInConfig registration(boolean testMocks) {
   CloudSignInConfig.Builder builder = CloudSignInConfig.builder()
    .clientId("ai.elizaresearch.alphaphone").deviceName("Alpha Phone").productName("Alpha Phone").googleClientId("alpha-phone")
+   .googleSignInMode("browser")
    .logTag("AlphaCloudSignIn").readinessPreferences("alpha-cloud-signin-readiness-" + CloudDeployment.STORAGE_NAMESPACE)
    .pendingSlot(PENDING_SLOT).receiptSlotPrefix("cloud-signin:v1:ack:").credentialSlotPrefix("cloud:")
    .environment(new CloudSignInEnvironment("production", CloudDeployment.PRODUCTION_API_HOST, CloudDeployment.PRODUCTION_WEB_HOST,

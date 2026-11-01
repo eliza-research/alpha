@@ -30,7 +30,7 @@
       { "name": "eliza-reminders", "source": { "root": "patchedNative", "path": "plugins/plugin-native-reminders/android" }, "relocateBuild": true },
       { "name": "elizaos-capacitor-secure-store", "source": { "root": "patchedNative", "path": "plugins/plugin-native-secure-store/android" }, "relocateBuild": true },
       { "name": "eliza-passwords", "source": { "root": "upstream", "path": "plugins/plugin-native-passwords/android" } },
-      { "name": "eliza-cloud-auth", "source": { "root": "upstream", "path": "packages/auth/android" } },
+      { "name": "eliza-cloud-auth", "source": { "root": "patchedNative", "path": "packages/auth/android" }, "relocateBuild": true },
       { "name": "eliza-notifications", "source": { "root": "patchedNative", "path": "plugins/plugin-native-notifications/android" }, "relocateBuild": true },
       { "name": "eliza-owned-media", "source": { "root": "patchedNative", "path": "plugins/plugin-native-media/android" }, "relocateBuild": true },
       { "name": "eliza-contacts", "source": { "root": "upstream", "path": "plugins/plugin-native-contacts/android" } },

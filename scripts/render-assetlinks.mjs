@@ -24,7 +24,7 @@
  * recorded release signer.
  *
  * Publishing is the operator's step (docs/human-actions.md H-13). The https
- * autoVerify filter itself is emitted only by a build with ELIZAOS_APP_LINK_HOST set
+ * autoVerify filter itself defaults to the configured production web host
  * (android/app/product.gradle); appLinkFilters() reads it back from an APK manifest dump.
  */
 import fs from "node:fs";
@@ -114,6 +114,33 @@ export function appLinkFilters(xmltree) {
     if (autoVerify && https) for (const host of found) hosts.add(host);
   }
   return { present: hosts.size > 0, hosts: [...hosts].sort() };
+}
+
+/** Required callback on a parsed aapt XMLtree (the shared parseXmlTree output). */
+export function requiredAppLinkProblems(tree, {host, path: callbackPath, activity}) {
+  const manifest = tree?.name === 'manifest' ? tree : tree?.children?.find(node => node.name === 'manifest');
+  const application = manifest?.children?.find(node => node.name === 'application');
+  const yes = value => value === '0xffffffff' || value === 'true';
+  const qualified = name => name?.startsWith('.') ? manifest?.attrs?.package + name : name;
+  const matches = (application?.children ?? []).filter(node => node.name === 'activity' && qualified(node.attrs.name) === activity)
+    .filter(node => yes(node.attrs.exported) && !['0x0', 'false'].includes(node.attrs.enabled))
+    .flatMap(node => node.children.filter(child => child.name === 'intent-filter'))
+    .some(filter => {
+      if (!yes(filter.attrs.autoVerify)) return false;
+      const names = tag => filter.children.filter(node => node.name === tag).map(node => node.attrs.name);
+      if (!names('action').includes('android.intent.action.VIEW') ||
+          !names('category').includes('android.intent.category.DEFAULT') ||
+          !names('category').includes('android.intent.category.BROWSABLE')) return false;
+      const data = filter.children.filter(node => node.name === 'data');
+      const values = name => [...new Set(data.map(node => node.attrs[name]).filter(value => value !== undefined))];
+      // Android combines data attributes within one filter. Accept split exact attributes,
+      // but never a prefix/pattern or an extra authority that broadens this callback filter.
+      return values('scheme').length === 1 && values('scheme')[0] === 'https' &&
+        values('host').length === 1 && values('host')[0] === host &&
+        values('path').length === 1 && values('path')[0] === callbackPath &&
+        data.every(node => Object.keys(node.attrs).every(name => ['scheme', 'host', 'path'].includes(name)));
+    });
+  return matches ? [] : [`Missing exported HTTPS autoVerify callback https://${host}${callbackPath} on ${activity}`];
 }
 
 /**
