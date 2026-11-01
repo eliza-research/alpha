@@ -81,15 +81,24 @@ export function homeCalendarSelection(
 	});
 	if (candidates.length)
 		return { event: candidates[0], verified: true, emptyLabel: "" };
-	// A missing catalog identity cannot prove empty. Known hidden or excluded
-	// sources keep their existing display policy; verified visible events above
-	// still lead the card even when another row has an unknown source.
+	// Unknown sources only prevent empty when their event belongs to the
+	// existing Home periods. Undecidable bounds still cannot prove empty.
 	if (
-		state.feed.events.some(
-			(event) =>
-				event.status !== "cancelled" &&
-				!state.calendars.some((source) => matchesSourceIdentity(source, event)),
-		)
+		state.feed.events.some((event) => {
+			if (
+				event.status === "cancelled" ||
+				state.calendars.some((source) => matchesSourceIdentity(source, event))
+			)
+				return false;
+			const { start, end } = bounds(event);
+			return (
+				!Number.isFinite(start) ||
+				!Number.isFinite(end) ||
+				end <= start ||
+				Date.parse(event.endAt) <= Date.parse(event.startAt) ||
+				rank(event) >= 0
+			);
+		})
 	)
 		return quiet;
 	// An empty answer requires complete coverage of both the local week and month.

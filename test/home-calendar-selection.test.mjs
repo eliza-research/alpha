@@ -251,3 +251,34 @@ test("a cancelled unknown-source row does not invalidate a complete empty calend
 	});
 	assert.deepEqual(s, before);
 });
+
+test("valid unknown-source events outside every Home period do not block a verified empty card", () => {
+	for (const date of ["2026-09-20", "2026-11-20"]) {
+		const s = model([{ ...event("outside Home periods", date), calendarId: "unknown" }]);
+		s.feed.timeMin = "2026-09-01T00:00:00Z";
+		const before = structuredClone(s);
+		assert.deepEqual({ ...select(s, "UTC", new Set(), now) }, {
+			event: null,
+			verified: true,
+			emptyLabel: "Nothing planned",
+		});
+		assert.deepEqual(s, before);
+	}
+});
+test("unknown-source events with malformed or reversed bounds cannot prove an empty card", () => {
+	for (const brokenBounds of [
+		{ startAt: "not-a-date" },
+		{ endAt: "not-a-date" },
+		{ startAt: "2026-10-29T18:00:00Z", endAt: "2026-10-29T17:00:00Z" },
+		{ startAt: "2026-11-20T18:00:00Z", endAt: "2026-11-20T17:00:00Z" },
+	]) {
+		const s = model([{ ...event("undecidable", "2026-10-29"), calendarId: "unknown", ...brokenBounds }]);
+		const before = structuredClone(s);
+		assert.deepEqual({ ...select(s, "UTC", new Set(), now) }, {
+			event: null,
+			verified: false,
+			emptyLabel: "Calendar",
+		});
+		assert.deepEqual(s, before);
+	}
+});
