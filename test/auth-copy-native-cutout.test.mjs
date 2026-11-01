@@ -8,18 +8,17 @@ import {JSDOM,VirtualConsole} from 'jsdom';
 const source=readFileSync(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
 const begin=source.indexOf('{!snapshot.cloudAccount&&snapshot.legacySignInRecovery');
 assert.ok(begin>=0);
-const end=source.indexOf('</details>}',begin)+11;
+const end=source.indexOf('</div>}',begin)+7;
 const fragment=source.slice(begin+1,end-1);
 const code=transformSync('function recovery(snapshot,requiredSignInView){return ('+fragment+');}',{loader:'tsx',jsxFactory:'React.createElement'}).code;
 let calls=0;
 const recovery=new Function('React','connectionController',code+';return recovery;')(React,{restoreSavedSignIn:()=>{calls++;}});
 const eligible={cloudAccount:null,legacySignInRecovery:true,busy:false};
 const choose={step:'choose',environment:'production'};
-test('actual eligible legacy action is behind a closed troubleshooting disclosure',()=>{
+test('actual eligible legacy action is a direct button with no disclosure or explainer',()=>{
  const element=recovery(eligible,choose),html=renderToStaticMarkup(element);
- assert.match(html,/<details aria-label="Sign-in troubleshooting"><summary>Trouble signing in\?<\/summary>/);
- assert.doesNotMatch(html,/<details[^>]* open/);assert.match(html,/Restore saved sign-in/);
- assert.equal(calls,0);element.props.children[1].props.onClick();assert.equal(calls,1);
+ assert.equal(html,'<div class="alpha-connection-actions"><button>Restore saved sign-in</button></div>');
+ assert.equal(calls,0);element.props.children.props.onClick();assert.equal(calls,1);
 });
 test('ordinary, signed-in, staging and verification states expose no legacy restore; busy disables it',()=>{
  for(const [snapshot,view] of [[{...eligible,legacySignInRecovery:false},choose],[{...eligible,cloudAccount:{}},choose],[eligible,{...choose,environment:'staging'}],[eligible,{...choose,step:'code'}]])assert.equal(renderToStaticMarkup(recovery(snapshot,view)),'');

@@ -225,16 +225,11 @@ test('initial chooser visibly presents email alongside Google without another di
   }
 }));
 
-test('service terms and privacy still open without the technical service-documents label',async()=>panel(async({document,render})=>{
- const service={name:'Eliza Cloud',terms:{title:'Terms of Service',revision:'1',sections:[{title:'Terms',paragraphs:['Terms content.']}]},privacy:{title:'Privacy Policy',revision:'1',sections:[{title:'Privacy',paragraphs:['Privacy content.']}]}};
- await render({view:choose,ready:true,serviceLoader:async()=>service});
+test('sign-in shows no explainer, legal subview or service-documents text',async()=>panel(async({document,render})=>{
+ await render({view:choose,ready:true});
  await act(async()=>{await Promise.resolve();});
- assert.doesNotMatch(document.body.textContent,/Service documents:/);
- const button=label=>[...document.querySelectorAll('button')].find(item=>item.textContent===label);
- assert.ok(button('Terms of Service'));assert.ok(button('Privacy Policy'));
- await act(()=>button('Terms of Service').click());assert.match(document.querySelector('.alpha-cloud-legal').textContent,/Terms content/);
- await act(()=>button('Back to sign-in').click());
- await act(()=>button('Privacy Policy').click());assert.match(document.querySelector('.alpha-cloud-legal').textContent,/Privacy content/);
+ assert.doesNotMatch(document.body.textContent,/Terms of Service|Privacy Policy|Service documents|Your agent runs on this device|review access/);
+ assert.equal(document.querySelector('details,.alpha-cloud-legal'),null);
 }));
 
 // Extracted controller functions retain their real module-level platform collaborators.

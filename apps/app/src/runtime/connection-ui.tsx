@@ -1,6 +1,5 @@
 import {isCalendarReadFailureCode} from "../../../../.eliza/client-features/packages/contracts/src/calendar.ts";
 import {SingleFlightMemo} from "@elizaos/core/read-memo";
-import {parseCloudServiceInfo} from './cloud-service-info';
 import {productionCloud, stagingCloud} from './cloud-deployment.generated.ts';
 import {browserCloudResidentEnabled,browserCloudResidentEnvironment,browserResidentCall} from './browser-cloud-resident';
 import {appRecordInvalidations} from './app-record-completion';
@@ -588,10 +587,6 @@ async function personalWork(message:string,action:(binding:NonNullable<typeof pe
 function detachCloudTarget() { if (testMocksEnabled && active?.kind === 'cloud') retire(); }
 // Only the Android transport admits Cloud's self-revocation DELETE; elsewhere sign-out reports a local removal.
 // Product builds construct only the managed-services adapter; the hosted-agent fixture exists only with test mocks.
-async function loadSignInService(environment: CloudEnvironment) {
- if (!cloudSignIn?.serviceInfo) throw new Error('Service information unavailable');
- return parseCloudServiceInfo(await cloudSignIn.serviceInfo({environment}));
-}
 function makeCloud(environment: CloudEnvironment): CloudProtocol { return testMocksEnabled ? new DevelopmentCloudAgentProtocol(environment, nativeCloudRequest, cloudCredentialStore, openConnectionBrowser, { deleteRequests: cloudSelfRevocationSupported, signIn: cloudSignIn }) : new CloudProtocol(environment, nativeCloudRequest, cloudCredentialStore, openConnectionBrowser, { deleteRequests: cloudSelfRevocationSupported, signIn: cloudSignIn }); }
 /** The client for an in-app sign-in in this environment; replaced when the environment changes. */
 function signInClient(environment: CloudEnvironment): CloudProtocol {
@@ -650,7 +645,7 @@ function signInFailed(environment: CloudEnvironment, keepStep = false) {
 /** The provider authenticated only the first factor; keep the credential and agent unchanged. */
 function showGoogleMfa(outcome: Extract<CloudSignInGoogleOutcome, { status: 'mfa' }>) {
   update({ open: true, signIn: { step: 'mfa', environment: outcome.environment, attemptId: outcome.attemptId, method: outcome.method, expiresAt: outcome.expiresAt },
-    message: outcome.method === 'totp' ? 'Enter the six-digit code from your authenticator app.' : outcome.method === 'sms' ? 'Enter the six-digit code sent to your phone.' : '',
+    message: '',
     error: outcome.method === 'passkey' ? signInFailureMessage('mfa-unsupported') : '' });
 }
 /** A verified interactive sign-in finishes through setup, not the account/plan modal underneath it. */
@@ -2476,7 +2471,7 @@ export const connectionController = {
   /** Google's external browser flow, followed by the existing native session exchange. */
   async signInGoogle() {
     const view = state.signIn; if (!view) return;
-    await work('Choose your Google account to sign in to Alpha.', async signal => {
+    await work('Continue in your browser.', async signal => {
       update({ signIn: { step: 'google', environment: view.environment } });
       const client = signInClient(view.environment);
       let outcome: CloudSignInGoogleOutcome;
@@ -2496,7 +2491,7 @@ export const connectionController = {
     await work('Sending your code…', async signal => {
       const started = await signInClient(view.environment).startEmailSignIn(address, signal).catch(error => { signal.throwIfAborted(); throw error; });
       signal.throwIfAborted();
-      update({ signIn: { step: 'code', environment: view.environment, email: address, ...started }, message: `We sent a six-digit code to ${address}. Enter it here.` });
+      update({ signIn: { step: 'code', environment: view.environment, email: address, ...started }, message: '' });
     });
     if (state.error && state.signIn?.step !== 'code') update({ signIn: { step: 'choose', environment: view.environment } });
   },
@@ -2506,7 +2501,7 @@ export const connectionController = {
     if (!validSignInPhone(number)) { update({ error: signInFailureMessage('invalid-phone') }); return; }
     await work('Sending your code…', async signal => {
       const started = await signInClient(view.environment).startPhoneSignIn(number, signal);
-      update({ signIn: { step: 'code', environment: view.environment, email: '', phone: number, ...started }, message: `We sent a six-digit code to ${number}. Enter it here.` });
+      update({ signIn: { step: 'code', environment: view.environment, email: '', phone: number, ...started }, message: '' });
     });
     if (state.error && state.signIn?.step !== 'code') update({ signIn: { step: 'choose', environment: view.environment } });
   },
@@ -2527,7 +2522,7 @@ export const connectionController = {
           if (codeOutcome.status === 'mfa') {
             signInFailed(view.environment, true);
             update({ signIn: { step: 'mfa', environment: view.environment, email: view.email, attemptId: view.attemptId, method: codeOutcome.method, expiresAt: codeOutcome.expiresAt },
-              message: codeOutcome.method === 'totp' ? 'Enter the six-digit code from your authenticator app.' : codeOutcome.method === 'sms' ? 'Enter the six-digit code sent to your phone.' : '' });
+              message: '' });
             if (codeOutcome.method === 'passkey') throw new CloudSignInError('mfa-unsupported');
             return;
           }
@@ -3218,12 +3213,12 @@ export function ConnectionChooser() {
   const requiredSignInView: SignInView = snapshot.signIn ?? { step: 'choose', environment: residentEnvironment() };
   if (snapshot.signIn || signInEntryRequired) return <div className={productionSignInRequired?'alpha-auth-page':'alpha-connection-scrim'}><div className={`alpha-connection alpha-connection-native alpha-cloud-sign-in${productionSignInRequired?' alpha-auth-content':''}`} role={productionSignInRequired?'main':'dialog'} aria-modal={productionSignInRequired?undefined:true} aria-labelledby="cloud-sign-in-title" aria-busy={snapshot.busy||undefined} tabIndex={-1} ref={panel}>
     {providerChoice}
-    <CloudSignInPanel serviceLoader={loadSignInService} phone={cloudSignInPhone && inAppPhone} emailEnabled={inAppEmail} view={requiredSignInView} busy={snapshot.busy} ready={!!snapshot.signIn} dismissible={!productionSignInRequired} google={inAppGoogle} message={snapshot.message} error={snapshot.error} errorIsNotice={snapshot.error===RESIDENT_UNPACKAGED}
+    <CloudSignInPanel phone={cloudSignInPhone && inAppPhone} emailEnabled={inAppEmail} view={requiredSignInView} busy={snapshot.busy} ready={!!snapshot.signIn} dismissible={!productionSignInRequired} google={inAppGoogle} message={snapshot.message} error={snapshot.error} errorIsNotice={snapshot.error===RESIDENT_UNPACKAGED}
       actions={{phone:number=>void connectionController.signInPhone(number),google:()=>void connectionController.signInGoogle(),email:address=>void connectionController.signInEmail(address),verify:code=>void connectionController.verifySignInCode(code),resend:()=>void connectionController.resendSignInCode(),cancel:()=>connectionController.cancelSignIn(),retry:()=>void connectionController.beginSignIn(requiredSignInView.environment,true)}}
       extra={signInEntryRequired && !snapshot.signIn && !snapshot.busy
         ? <button onClick={()=>void connectionController.beginSignIn(residentEnvironment(),true)}>Retry sign-in</button>
         : testMocksEnabled?<button disabled={snapshot.busy} onClick={()=>void connectionController.signInBrowser()}>Browser sign-in (diagnostic)</button>:undefined}/>
-    {!snapshot.cloudAccount&&snapshot.legacySignInRecovery&&requiredSignInView.step==='choose'&&requiredSignInView.environment==='production'&&<details aria-label="Sign-in troubleshooting"><summary>Trouble signing in?</summary><button disabled={snapshot.busy} onClick={()=>void connectionController.restoreSavedSignIn()}>Restore saved sign-in</button></details>}
+    {!snapshot.cloudAccount&&snapshot.legacySignInRecovery&&requiredSignInView.step==='choose'&&requiredSignInView.environment==='production'&&<div className="alpha-connection-actions"><button disabled={snapshot.busy} onClick={()=>void connectionController.restoreSavedSignIn()}>Restore saved sign-in</button></div>}
     {snapshot.signOutNotice && snapshot.signOutNotice!==snapshot.message && <p role="status">{snapshot.signOutNotice}</p>}
     {productionSignInRequired && <ResidentRecoveryPanel snapshot={snapshot}/>}
   </div></div>;
@@ -3412,11 +3407,6 @@ function ResidentRecoveryPanel({snapshot}:{snapshot:ConnectionSnapshot}) {
   return reason&&!snapshot.session&&<section aria-label="Restart Alpha">
     <p role="status">{residentRecoveryCopy(reason,recovery)}</p>
     {reason==='ipc-recovery-retention-limit'&&<button disabled={snapshot.busy} onClick={()=>void connectionController.restartRecovery()}>Restart Alpha</button>}
-    <details><summary>Details</summary>
-      <p>Reason: {reason}</p>
-      {recovery&&<p>Stage: {recovery.step}</p>}
-      {recovery?.step==='review'&&<p>Startup records to keep: {recovery.review.retainedCount}</p>}
-    </details>
   </section>;
 }
 

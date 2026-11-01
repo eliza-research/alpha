@@ -416,7 +416,7 @@ for (const mode of ['signed-out','empty','credits','unavailable','funded','repla
   }else if(needsPlan)await expect(dialog.getByRole('region',{name:'Subscription',exact:true})).toBeVisible();
   else if(!signedOut&&mode!=='replaced')await expect(dialog.getByText('On this device',{exact:true})).toBeVisible();
   if(signedOut){
-   await expect(dialog.getByText('Sign in to verify your account. You’ll review access before authorizing Alpha Phone.',{exact:true})).toBeVisible();
+   await expect(dialog.getByText(/Sign in to verify your account|review access/)).toHaveCount(0);
    await expect(dialog.getByRole('button',{name:'Email me a code',exact:true})).toBeVisible();
    await expect(dialog.getByRole('button',{name:'Close connection settings',exact:true})).toHaveCount(0);
    await page.keyboard.press('Escape');await expect(dialog).toBeVisible();

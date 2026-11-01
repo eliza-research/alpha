@@ -34,7 +34,7 @@ async function accessFixture(page:import('@playwright/test').Page){
  return page.locator('dialog.alpha-startup-permissions');
 }
 test('required native access keeps focused, reachable controls at narrow widths and large text, with honest limited grants',async({page})=>{
- const panel=await accessFixture(page);const heading=panel.getByRole('heading',{name:'Stay in the loop.',exact:true}),action=panel.getByRole('button',{name:'Continue',exact:true});
+ const panel=await accessFixture(page);const heading=panel.getByRole('heading',{name:'Notifications',exact:true}),action=panel.getByRole('button',{name:'Continue',exact:true});
  await expect(heading).toBeFocused();
  for(const viewport of [{width:274,height:538,scale:1},{width:280,height:538,scale:1},{width:360,height:740,scale:2},{width:360,height:800,scale:2}]){
   await page.setViewportSize({width:viewport.width,height:viewport.height});await setTextScale(page,viewport.scale);await action.scrollIntoViewIfNeeded();
@@ -43,10 +43,10 @@ test('required native access keeps focused, reachable controls at narrow widths 
  }
  await page.setViewportSize({width:360,height:740});await setTextScale(page,1);
  await heading.focus();await page.keyboard.press('Tab');await expect(action).toBeFocused();
- for(const name of ['Stay in the loop.','Talk to Alpha.','Capture a moment.','Find your way.','Plan your day.','Your photos, here.']){
+ for(const name of ['Notifications','Microphone','Camera','Location','Calendar','Photos']){
   await expect(panel.getByRole('heading',{name,exact:true})).toBeVisible();
-  if(name==='Find your way.')await expect(panel.getByText('Approximate location allowed',{exact:true})).toBeVisible();
-  if(name==='Your photos, here.')await expect(panel.getByText('Selected photos and videos only',{exact:true})).toBeVisible();
+  if(name==='Location')await expect(panel.getByText('Approximate location allowed',{exact:true})).toBeVisible();
+  if(name==='Photos')await expect(panel.getByText('Selected photos and videos only',{exact:true})).toBeVisible();
   await panel.getByRole('button',{name:'Continue',exact:true}).click();
  }
  await expect(panel.getByRole('heading',{name:'You’re all set',exact:true})).toBeFocused();await panel.getByRole('button',{name:'Go to Alpha',exact:true}).click();await expect(panel).toHaveCount(0);
@@ -56,11 +56,11 @@ test('required native access keeps focused, reachable controls at narrow widths 
 test('explicit Settings review starts at the original heading and targeted Done preserves completion',async({page})=>{
  const panel=await accessFixture(page);
  for(let i=0;i<6;i++)await panel.getByRole('button',{name:'Continue',exact:true}).click();await panel.getByRole('button',{name:'Go to Alpha',exact:true}).click();
- await page.evaluate(()=>(window as any).access.reopen());await expect(panel.getByRole('heading',{name:'Stay in the loop.',exact:true})).toBeFocused();expect(await panel.evaluate(el=>el.scrollTop)).toBe(0);
+ await page.evaluate(()=>(window as any).access.reopen());await expect(panel.getByRole('heading',{name:'Notifications',exact:true})).toBeFocused();expect(await panel.evaluate(el=>el.scrollTop)).toBe(0);
  for(let i=0;i<6;i++)await panel.getByRole('button',{name:'Continue',exact:true}).click();await panel.getByRole('button',{name:'Go to Alpha',exact:true}).click();
  const before=await page.evaluate(()=>localStorage.getItem('alpha:startup-permission-walkthrough:v1'));
  await page.evaluate(()=>window.dispatchEvent(new CustomEvent('alpha:startup-permissions-reopen',{detail:{permission:'camera'}})));
- await expect(panel.getByRole('heading',{name:'Capture a moment.',exact:true})).toBeVisible();await panel.getByRole('button',{name:'Done',exact:true}).click();await expect(panel).toHaveCount(0);
+ await expect(panel.getByRole('heading',{name:'Camera',exact:true})).toBeVisible();await panel.getByRole('button',{name:'Done',exact:true}).click();await expect(panel).toHaveCount(0);
  expect(await page.evaluate(()=>localStorage.getItem('alpha:startup-permission-walkthrough:v1'))).toBe(before);
  expect(await page.evaluate(()=>(window as any).access.calls.filter((c:any)=>['requestPermissions','requestAccess','openSettings'].includes(c.method)))).toEqual([]);
 });

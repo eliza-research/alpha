@@ -106,18 +106,18 @@ test('a verified email code goes straight to access setup while the agent restar
  host.admit!();
  await expect.poll(()=>host.starts,{timeout:15_000}).toBe(2);
  const setup=page.locator('dialog.alpha-startup-permissions');
- await setup.getByRole('heading',{name:'Stay in the loop.',exact:true}).waitFor({timeout:5_000}).catch(()=>{});
+ await setup.getByRole('heading',{name:'Notifications',exact:true}).waitFor({timeout:5_000}).catch(()=>{});
  await shot(page,info,'03-after-code-agent-starting');
  const starting=await page.locator('body').innerText();
  // Setup is shown while the agent is still starting; no sheet, busy code check or AI/billing claim.
- await expect(setup.getByRole('heading',{name:'Stay in the loop.',exact:true})).toBeVisible();
+ await expect(setup.getByRole('heading',{name:'Notifications',exact:true})).toBeVisible();
  expect(host.release).not.toBeNull();
  for(const text of STARTING_SLOP)expect(starting).not.toContain(text);
  await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
  expect(await snapshot(page)).toMatchObject({session:false,kind:'starting',inference:null,account:USER});
- for(const name of ['Stay in the loop.','Talk to Alpha.','Capture a moment.','Find your way.']){await expect(setup.getByRole('heading',{name,exact:true})).toBeVisible();await setup.getByRole('button',{name:'Allow',exact:true}).click();}
+ for(const name of ['Notifications','Microphone','Camera','Location']){await expect(setup.getByRole('heading',{name,exact:true})).toBeVisible();await setup.getByRole('button',{name:'Allow',exact:true}).click();}
  await expect(setup.getByRole('heading',{name:'You’re all set',exact:true})).toBeVisible();
- await expect(setup.getByText('This sign-in created a new Eliza Cloud account (new-owner@example.invalid).',{exact:true})).toBeVisible();
+ await expect(setup.getByText('Account created: new-owner@example.invalid.',{exact:true})).toBeVisible();
  await shot(page,info,'04-all-set-agent-starting');
  for(const text of STARTING_SLOP)expect(await setup.innerText()).not.toContain(text);
  await setup.getByRole('button',{name:'Go to Alpha',exact:true}).click();
@@ -162,7 +162,7 @@ test('a signed-in start opens access setup directly, with no Home while the acco
  await expect(startupLoading(page)).toBeVisible();await page.waitForTimeout(500);
  await expect(page.locator('[data-alpha-layer="home"]')).toHaveCount(0);
  host.admit!();
- await expect(page.locator('dialog.alpha-startup-permissions').getByRole('heading',{name:'Stay in the loop.',exact:true})).toBeFocused({timeout:30_000});
+ await expect(page.locator('dialog.alpha-startup-permissions').getByRole('heading',{name:'Notifications',exact:true})).toBeFocused({timeout:30_000});
  await expect(startupLoading(page)).toHaveCount(0);
  await expectNoHomeBeforePrompt(page);
 });

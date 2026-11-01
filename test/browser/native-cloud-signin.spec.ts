@@ -52,7 +52,7 @@ async function entitlements(overrides:Record<string,unknown>={}){
 
 
 type SignInMode='ok'|'created'|'mfa'|'hold'|'offline'|'readiness-hold'|'not-ready';
-async function boot(page:Page,initial:{signIn?:SignInMode;tokens?:Record<string,string>;keys?:unknown[];serviceName?:string;legalParagraphs?:string[];keyLifetimeMs?:number;methods?:{email:boolean;phone:boolean;google:boolean}}={}){
+async function boot(page:Page,initial:{signIn?:SignInMode;tokens?:Record<string,string>;keys?:unknown[];serviceName?:string;keyLifetimeMs?:number;methods?:{email:boolean;phone:boolean;google:boolean}}={}){
  page.on('pageerror',(error:Error)=>console.error('Composition page error:',error.message));
  await page.route('https://**',route=>route.abort());
  await page.addInitScript(initial=>{
@@ -68,7 +68,7 @@ async function boot(page:Page,initial:{signIn?:SignInMode;tokens?:Record<string,
    f.calls.push({plugin,method,path:input?.url?new URL(input.url).pathname:input?.path,email:input?.email,phone:input?.phone,environment:input?.environment,refreshNegative:input?.refreshNegative});
    if(plugin==='AlphaCloudSignIn'){
     if(method==='addListener'||method==='removeListener')return {};
-    if(method==='serviceInfo'){const doc={title:'Terms of Service',revision:'fixture-v1',sections:[{title:'Provider terms',paragraphs:f.legalParagraphs||['<img src=x onerror=alert(1)> is plain text.','Synthetic provider document.']}]};return {success:true,version:1,service:{name:f.serviceName||'Eliza Cloud',terms:doc,privacy:{...doc,title:'Privacy Policy'}}};}
+    if(method==='serviceInfo'){const doc={title:'Terms of Service',revision:'fixture-v1',sections:[{title:'Provider terms',paragraphs:['Synthetic provider document.']}]};return {success:true,version:1,service:{name:f.serviceName||'Eliza Cloud',terms:doc,privacy:{...doc,title:'Privacy Policy'}}};}
     if(method==='cancel'){f.release?.(fail('cancelled'));f.release=null;return {};}
     if(method==='status'&&f.signIn==='readiness-hold')return new Promise(resolve=>{(f as any).releaseReadiness=()=>resolve({active:false,inApp:true,google:true,email:true,phone:true});});
     if(method==='status'&&f.methods)return {active:false,inApp:Object.values(f.methods).some(Boolean),methodsKnown:true,...f.methods};
@@ -206,7 +206,7 @@ test.describe('in-app Eliza Cloud sign-in on the production Android composition'
   await readySignIn(page);
   const dialog=signInDialog(page);
   await expect(dialog.getByRole('button',{name:'Continue with Google',exact:true})).toBeDisabled();
-  const retry=dialog.getByRole('button',{name:'Retry sign-in options',exact:true});
+  const retry=dialog.getByRole('button',{name:'Retry',exact:true});
   await expect(retry).toBeEnabled();
   await page.evaluate(()=>{(window as any).signInFixture.methods.google=true;});
   await retry.click();
@@ -291,7 +291,7 @@ test.describe('in-app Eliza Cloud sign-in on the production Android composition'
   await readySignIn(page);
   await signInDialog(page).getByRole('button',{name:'Continue with Google',exact:true}).click();
   await agent(page,'cloud');
-  await expect(page.getByText(/This sign-in created a new Eliza Cloud account \(synthetic-signin@example\.invalid\)/)).toBeVisible();
+  await expect(page.getByText('Account created: synthetic-signin@example.invalid.',{exact:true})).toBeVisible();
   expect((await calls(page)).filter(c=>c.method==='startGoogle').map(c=>c.environment)).toEqual(['production']);
   await noHandOff(page);
   await page.evaluate(()=>document.fonts.ready);await page.screenshot({path:info.outputPath('sign-in-account-created.png'),animations:'disabled'});
@@ -303,7 +303,7 @@ test.describe('in-app Eliza Cloud sign-in on the production Android composition'
   await readySignIn(page);
   const dialog=signInDialog(page);
   await dialog.getByRole('button',{name:'Continue with Google',exact:true}).click();
-  await expect(dialog.getByText('Continue with Google in your browser. You’ll return to Alpha to finish signing in.',{exact:true})).toBeVisible();
+  await expect(dialog.getByText('Continue in your browser.',{exact:true})).toBeVisible();
   await dialog.getByRole('button',{name:'Cancel sign-in',exact:true}).click();
   await expect.poll(async()=>(await calls(page)).some(c=>c.plugin==='AlphaCloudSignIn'&&c.method==='cancel')).toBe(true);
   await expect(dialog.getByRole('button',{name:'Continue with Google',exact:true})).toBeEnabled();
@@ -324,7 +324,7 @@ test.describe('in-app Eliza Cloud sign-in on the production Android composition'
   await dialog.getByRole('textbox',{name:'Email',exact:true}).fill('synthetic-signin@example.invalid');await dialog.getByRole('button',{name:'Email me a code',exact:true}).click();
   await dialog.getByLabel('Six-digit code').fill('123456');await dialog.getByRole('button',{name:'Verify',exact:true}).click();
   await expect(dialog.getByRole('form',{name:'Enter your verification code'})).toBeVisible();
-  await expect(dialog.getByText('This account uses an authenticator app. Enter its six-digit code.',{exact:true})).toBeVisible();
+  await expect(dialog.getByText('Enter your authenticator code.',{exact:true})).toBeVisible();
   expect((await fixture(page)).saved).toBe(false);
   await dialog.getByLabel('Six-digit code').fill('654321');await dialog.getByRole('button',{name:'Verify',exact:true}).click();
   await agent(page,'cloud');
@@ -396,63 +396,27 @@ for(const phone of [true,false]) test(`tenant method discovery ${phone?'offers p
  await expect(dialog.getByRole('button',{name:'Email me a code',exact:true})).toHaveCount(0);
  await expect(dialog.getByRole('button',{name:'Continue with Google',exact:true})).toBeDisabled();
  await expect(dialog.getByRole('button',{name:'Text me a code',exact:true})).toHaveCount(phone?1:0);
- if(!phone)await expect(dialog.getByText('This service offers no sign-in method supported by this app. Contact the service administrator.',{exact:true})).toBeVisible();
+ if(!phone)await expect(dialog.getByText('Sign-in is unavailable.')).toBeVisible();
  expect((await calls(page)).filter(c=>['startPhone','startEmail','startGoogle'].includes(c.method))).toEqual([]);
  await noHandOff(page);
 });
 
-test('provider legal text stays inside Alpha and returning preserves phone entry and the code attempt',async({page},info)=>{
+test('sign-in has no provider documents or explainer and keeps phone entry and the code attempt',async({page})=>{
  await page.setViewportSize({width:390,height:844});
- await boot(page,await entitlements());await agent(page,'unavailable');
- await readySignIn(page);
- const dialog=signInDialog(page);
- await revealOtherMethods(page);
- await dialog.getByLabel('Phone number with country code').fill('+14155550100');
- await dialog.getByRole('button',{name:'Terms of Service',exact:true}).click();
- await expect(dialog.getByRole('heading',{name:'Terms of Service',exact:true})).toBeFocused();
- await expect(dialog.getByText('<img src=x onerror=alert(1)> is plain text.',{exact:true})).toBeVisible();
- await expect(dialog.locator('.alpha-cloud-legal img')).toHaveCount(0);
- await page.screenshot({path:info.outputPath('native-legal-mobile.png'),animations:'disabled'});
- await dialog.getByRole('button',{name:'Back to sign-in',exact:true}).click();
- await expect(dialog.getByRole('button',{name:'Terms of Service',exact:true})).toBeFocused();
- await expect(dialog.getByLabel('Phone number with country code')).toHaveValue('+14155550100');
- await dialog.getByRole('button',{name:'Text me a code',exact:true}).click();
- await dialog.getByLabel('Six-digit code').fill('123');
- await dialog.getByRole('button',{name:'Privacy Policy',exact:true}).click();
- await expect(dialog.getByRole('heading',{name:'Privacy Policy',exact:true})).toBeVisible();
- await dialog.getByRole('button',{name:'Back to sign-in',exact:true}).click();
- await expect(dialog.getByLabel('Six-digit code')).toHaveValue('123');
- expect((await calls(page)).filter(c=>c.method==='startPhone')).toHaveLength(1);
- expect((await calls(page)).filter(c=>c.method==='verifyPhone')).toHaveLength(0);
- await noHandOff(page);
-});
-
-test('configured provider name is shown in the app-owned sign-in view',async({page})=>{
  await boot(page,{...await entitlements(),serviceName:'Example Service'});await agent(page,'unavailable');
  await readySignIn(page);
- await expect(signInDialog(page).getByRole('heading',{name:'Welcome to Alpha.',exact:true})).toBeVisible();
- await expect(signInDialog(page)).toContainText('Use your Example Service account to sign in.');
- await noHandOff(page);
-});
-
-
-test('long provider documents scroll to the end and return to an unfinished sign-in on a small phone',async({page})=>{
- await page.setViewportSize({width:320,height:568});
- const paragraphs=Array.from({length:40},(_,i)=>`Section ${i+1}. ${'Provider document text with readable wrapping. '.repeat(12)}`);
- paragraphs.push('End of the provider document.');
- await boot(page,{...await entitlements(),legalParagraphs:paragraphs});await agent(page,'unavailable');
- await readySignIn(page);
  const dialog=signInDialog(page);
  await revealOtherMethods(page);
- await dialog.getByLabel('Email',{exact:true}).fill('unfinished@example.invalid');
- await dialog.getByRole('button',{name:'Terms of Service',exact:true}).click();
- await expect(dialog.getByRole('heading',{name:'Terms of Service',exact:true})).toBeInViewport();
- const end=dialog.getByText('End of the provider document.',{exact:true});
- await end.scrollIntoViewIfNeeded();await expect(end).toBeInViewport();
- const back=dialog.getByRole('button',{name:'Return to sign-in',exact:true});
- await back.scrollIntoViewIfNeeded();await expect(back).toBeInViewport();await back.click();
- await expect(dialog.getByRole('button',{name:'Terms of Service',exact:true})).toBeFocused();
- await expect(dialog.getByLabel('Email',{exact:true})).toHaveValue('unfinished@example.invalid');
- expect((await calls(page)).filter(c=>['startEmail','startPhone','startGoogle'].includes(c.method))).toEqual([]);
+ await expect(dialog.getByRole('button',{name:/Terms of Service|Privacy Policy/})).toHaveCount(0);
+ await expect(dialog.locator('details,.alpha-cloud-legal,[role="note"]')).toHaveCount(0);
+ await expect(dialog).not.toContainText('Example Service');
+ await dialog.getByLabel('Phone number with country code').fill('+14155550100');
+ await dialog.getByRole('button',{name:'Text me a code',exact:true}).click();
+ await expect(dialog.getByText(/^Code sent to/)).toContainText('+14155550100');
+ await dialog.getByLabel('Six-digit code').fill('123');
+ await expect(dialog.getByLabel('Six-digit code')).toHaveValue('123');
+ expect((await calls(page)).filter(c=>c.method==='serviceInfo')).toEqual([]);
+ expect((await calls(page)).filter(c=>c.method==='startPhone')).toHaveLength(1);
+ expect((await calls(page)).filter(c=>c.method==='verifyPhone')).toHaveLength(0);
  await noHandOff(page);
 });

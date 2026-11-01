@@ -77,7 +77,7 @@ test('browser restores an existing host Cloud account, uses canonical voice and 
   const signIn=page.getByRole('dialog',{name:'Welcome to Alpha.',exact:true});
   await expect(signIn.getByRole('form',{name:'Sign in with email'})).toBeVisible();
   await expect(signIn.getByRole('button',{name:'Continue with Google',exact:true})).toBeDisabled();
-  await expect(signIn.getByRole('status').filter({hasText:'Google sign-in is unavailable. Use another sign-in method below.'})).toContainText('Google sign-in is unavailable. Use another sign-in method below.');
+  await expect(signIn.getByRole('status').filter({hasText:'Google sign-in is unavailable.'})).toContainText('Google sign-in is unavailable.');
   await signIn.getByRole('button',{name:'Browser sign-in (diagnostic)',exact:true}).click();
   await expect.poll(()=>page.evaluate(async()=>(await import('/src/runtime/connection-ui.tsx')).connectionController.getSnapshot().cloudAccount?.userId)).toBe(owner);
   await expect(page.getByRole('dialog',{name:'Eliza Cloud',exact:true})).toHaveCount(0);
