@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {stripTypeScriptTypes} from 'node:module';
 import vm from 'node:vm';
 const source=readFileSync('apps/app/src/runtime/connection-ui.tsx','utf8');
-const start=source.indexOf('async function restoreOwnProviderCloudServices(');
+const start=source.indexOf('let ownCloudServiceRestore:');
 const end=source.indexOf('/** `admitted`:',start);
 assert.ok(start>=0&&end>start);
 const code=stripTypeScriptTypes(source.slice(start,end),{mode:'transform'});
@@ -35,4 +35,21 @@ test('Cloud service restoration starts only after the resident is active and nev
  const connect=source.slice(source.indexOf('async function connectResident('),source.indexOf('async function connectCloud('));assert.ok(connect.indexOf('void restoreOwnProviderCloudServices()')>connect.indexOf("activate({kind:'resident'"));assert.ok(connect.includes('if(residentCloudFlow()&&!ownProvider)'));
  const recheck=source.slice(source.indexOf('async function recheckResidentPlan('),source.indexOf('/** Bind or unbind Eliza Cloud inference'));
  assert.ok(recheck.indexOf('if(ownProviderSelected())')<recheck.indexOf('await admitCloudResident('));assert.ok(recheck.includes('state.residentRecoveryReason'));
+});
+
+
+test('an older optional service failure cannot detach a newer successful check',async()=>{
+ let reject,checks=0;const pending=new Promise((_,no)=>{reject=no;});
+ const {box,calls}=fixture({verify:async()=>{if(++checks===1)await pending;}});
+ const first=box.run();await new Promise(resolve=>setImmediate(resolve));
+ await box.run();const service=box.service;reject(Error('older failed'));await first;
+ assert.equal(box.service,service);assert.equal(box.state.cloudAccount.userId,'owner-A');assert.ok(!calls.includes('detach'));
+});
+
+test('a changed service object and credential reference survive a delayed old failure',async()=>{
+ let reject;const pending=new Promise((_,no)=>{reject=no;});const {box,calls}=fixture({verify:async()=>pending});
+ box.service={identity:{credentialId:'cloud-A'},credentialReference:'ref-A'};
+ const old=box.run();await new Promise(resolve=>setImmediate(resolve));
+ const fresh={identity:{credentialId:'cloud-A'},credentialReference:'ref-B'};box.service=fresh;
+ reject(Error('old failed'));await old;assert.equal(box.service,fresh);assert.ok(!calls.includes('detach'));
 });

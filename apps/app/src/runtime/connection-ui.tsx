@@ -1166,25 +1166,28 @@ function residentBindingController(environment:CloudEnvironment,client:CloudProt
 const RESIDENT_UNPACKAGED = !testMocksEnabled ? 'This developer build does not include the on-device agent.' : !isAndroid && browserLocalAgentEnabled ? 'The local agent on this computer is not running. Start it with bun run dev.' : webCloudUnavailable() ? 'The local agent is unavailable here. Alpha runs its agent on the phone; this preview needs the local agent.' : 'The local agent is unavailable in this version. Connect a remote agent or sign in with Cloud.';
 /** Restore optional Cloud services independently of owner-provided inference. Neither an
  * absent account nor a failed read may unbind, restart, or delay the resident agent. */
+let ownCloudServiceRestore:AbortController|null=null;
 async function restoreOwnProviderCloudServices():Promise<void>{
   const selected=active,session=state.session,generation=epoch;
   if(!selected||!session||!ownProviderSelected()||state.residentRecoveryReason)return;
-  const controller=new AbortController();appRequests.add(controller);
+  ownCloudServiceRestore?.abort();
+  const controller=ownCloudServiceRestore=new AbortController();appRequests.add(controller);
+  const previousService=service;
   const timer=setTimeout(()=>controller.abort(new DOMException('Cloud service check timed out','AbortError')),10000);
-  const current=()=>epoch===generation&&active===selected&&state.session===session&&ownProviderSelected();
-  let credentialId:string|undefined;
+  const current=()=>ownCloudServiceRestore===controller&&epoch===generation&&active===selected&&state.session===session&&ownProviderSelected();
+  let credentialId:string|undefined,credentialReference:string|undefined;
   try{
     const client=makeCloud(residentEnvironment());
     const credential=await cloudCredentialStore.read(client.environment);
     if(!current()||controller.signal.aborted)return;
     if(!credential?.credentialId){if(service)detachService();return;}
-    credentialId=credential.credentialId;
+    credentialId=credential.credentialId;credentialReference=credential.credentialReference;
     await verifyService(client,controller.signal,{credentialId,credentialReference:credential.credentialReference});
   }catch{
     // Keep the saved credential for an explicit retry. An older request cannot
     // clear a newer account; direct inference remains selected throughout.
-    if(current()&&!controller.signal.aborted&&service?.identity.credentialId===credentialId)detachService();
-  }finally{clearTimeout(timer);appRequests.delete(controller);}
+    if(current()&&!controller.signal.aborted&&service&&service===previousService&&service.identity.credentialId===credentialId&&service.credentialReference===credentialReference)detachService();
+  }finally{clearTimeout(timer);appRequests.delete(controller);if(ownCloudServiceRestore===controller)ownCloudServiceRestore=null;}
 }
 /** `admitted`: the admission a sign-in just made for this start (residentSignedIn); otherwise it is read here. */
 async function connectResident(signal: AbortSignal, admitted?: ResidentAdmission) {
