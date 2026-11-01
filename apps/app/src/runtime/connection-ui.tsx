@@ -1457,8 +1457,6 @@ const AI_OFF_MESSAGE = 'Your agent is running. Sign in to Cloud to turn AI back 
 function connectionToast(message: string) { window.dispatchEvent(new CustomEvent('alpha:connection-toast', { detail: message })); }
 export const OWN_KEY_CHECKING = 'Checking key…';
 const OWN_KEY_BUSY = 'Alpha is busy. Try again in a moment.';
-/** The abort reason when saving own keys ends the readiness probe: nothing starts after it. */
-const OWN_KEYS_TAKEOVER = new DOMException('Cancelled', 'AbortError');
 const signInProbeMessage = (environment: CloudEnvironment) => `Checking ${cloudServiceName(environment)} sign-in…`;
 const PAIRING_RETIRED = 'Pairing is unavailable. Your agent runs on this device; sign in to Cloud for inference.';
 const RESIDENT_SIGN_IN_EXPIRED = 'Your Cloud sign-in has expired. Sign in with Cloud again.';
@@ -2352,7 +2350,7 @@ export const connectionController = {
     const probe=operation&&signInReadinessOwner===operation.signal?operation:null;
     // The readiness probe is not the owner's attempt: end it (its caller then starts nothing
     // else, see beginSignIn), then wait (bounded) for it to unwind.
-    if(probe){probe.abort(OWN_KEYS_TAKEOVER);for(let wait=0;operation===probe&&wait<200;wait++)await new Promise(resolve=>setTimeout(resolve,10));}
+    if(probe){probe.abort(Object.assign(new DOMException('Cancelled','AbortError'),{ownKeysTakeover:true}));for(let wait=0;operation===probe&&wait<200;wait++)await new Promise(resolve=>setTimeout(resolve,10));}
     // Another operation still holds the slot: say so instead of dropping the save silently.
     if(operation){update({error:OWN_KEY_BUSY});return;}
     await work(OWN_KEY_CHECKING,async signal=>{await configureLocalProvider(apiKey,model,cartesiaKey,signal);signal.throwIfAborted();const providerStatus=await localProviderStatus();signal.throwIfAborted();update({providerStatus,providerStatusError:false,signIn:null,residentPlanNotice:null});
@@ -2494,7 +2492,8 @@ export const connectionController = {
     }, false, false, automatic);
     adoptLate();
     // Readiness does not stop the agent and must not retry a blocked startup.
-    if (!automatic && probeSignal?.reason !== OWN_KEYS_TAKEOVER) await ensureResident();
+    // Saving own keys ended this probe and takes the slot next: start nothing that would take it first.
+    if (!automatic && !(probeSignal?.reason as { ownKeysTakeover?: boolean } | undefined)?.ownKeysTakeover) await ensureResident();
   },
   /** Leaves the sign-in screen for the chooser and burns the pending attempt. Stored sign-in stays unchanged. */
   cancelSignIn() {
