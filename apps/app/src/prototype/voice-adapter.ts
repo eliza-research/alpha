@@ -160,6 +160,13 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
   // Live voice (Android): app-process VAD frames to the agent's on-device streaming ASR. The
   // interim text is display only: never a draft, a message, storage or a log line.
   let conversationLive:VoiceAssistantSession|undefined;
+  // Its open capture: whether the user is speaking, and `release`, which hands the session a speech
+  // start held in an ack's echo window. The Mute control releases it first, so Mute finalizes that
+  // speech as without an ack (a muted session ignores starts, so at Unmute it changes nothing), and
+  // the ack's turn releases it when its request settles. `release(true)` drops it instead: at an
+  // owner-review pause the session closes the microphone and drops what it heard, and a start Mute
+  // handed over whose end is still to come is closed there, so the pause keeps its review.
+  let liveCapture:{speaking:boolean;release(drop?:boolean):void}|undefined;
   let conversationInterim='';
   let conversationInterimKnownMessages=new Set<string>();
   let assistantState:AssistantState={phase:'idle'};
@@ -555,12 +562,24 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
       };
       driver=cloudDriver??deviceVoice;cloudMode=!!cloudDriver;
       let batchCaptureRetired=false;
+      // The turn's one model acknowledgement, spoken by the path in use (none: silence): the clip
+      // loop once its capture is retired, the live session on its open capture (heard there as
+      // playback). A cue whose own speech call fails is silence too; only unconfirmed cleanup ends
+      // the conversation, or a failure that ends the live capture, which the session handles at
+      // once (see its listen port). That includes the browser's clip loop, where a failed cue used
+      // to end the conversation. A CueTurn is the cue's agent turn: its signal and whether its
+      // request has settled. When the request settles, a speech start held for the cue reaches the
+      // session first, as at Mute, unless the reply pauses for owner review: the session then drops
+      // what it heard, and the held start with it.
+      type CueTurn={signal:AbortSignal;settled?:boolean};
+      let cueSpeech:{captureRetired:(()=>boolean)|null;speak(text:string,signal:AbortSignal,turn:CueTurn):Promise<void>}|undefined;
       const sendTurn=async(input:{turnId:string;text:string;voiceTurnSignal:any;signal:AbortSignal})=>{
+        const cueTurn:CueTurn={signal:input.signal};try{
         input.signal.throwIfAborted();current();
         // VOICE_SEND_POLICY: 'auto-send' sends this transcript now; 'review' waits for Send or Discard.
         const sent=await sendVoiceEntry({policy:voiceSendPolicy(),transcript:input.text,review:text=>reviewConversationTurn(text,input.signal,current),send:async text=>{
           current();const turn={...conversationPrepared!};conversationReplyWatch=new Set((chat.shell.S().msgs||[]).map((m:Bag)=>String(m.id)));
-          const ack=cloudDriver&&!Capacitor.isNativePlatform()?createBatchProgressAcknowledgment({turnId:input.turnId,conversationId:turn.binding.conversationId,ownerId:turn.binding.session.ownerId,signal:input.signal,assertCurrent:current,captureRetired:()=>batchCaptureRetired,speak:async(cue,signal)=>{const pending=Promise.resolve().then(()=>cloudDriver.speak(cue,signal));const owned=pending.catch(failure=>{if((failure as {code?:string})?.code==='speech-cleanup-unconfirmed'){mediaUnconfirmed=failure;stopping=Promise.reject(failure);void stopping.catch(()=>{});}throw failure;});conversationSpeech=owned;try{await owned;}finally{if(conversationSpeech===owned)conversationSpeech=undefined;}}}):undefined;
+          const cue=cueSpeech;const ack=cue?createBatchProgressAcknowledgment({turnId:input.turnId,conversationId:turn.binding.conversationId,ownerId:turn.binding.session.ownerId,signal:input.signal,assertCurrent:current,captureRetired:cue.captureRetired,speak:async(label,signal)=>{const pending=Promise.resolve().then(()=>cue.speak(label,signal,cueTurn));const owned=pending.catch(failure=>{if((failure as {code?:string})?.code!=='speech-cleanup-unconfirmed')return;mediaUnconfirmed=failure;stopping=Promise.reject(failure);void stopping.catch(()=>{});throw failure;});conversationSpeech=owned;try{await owned;}finally{if(conversationSpeech===owned)conversationSpeech=undefined;}}}):undefined;
           const retireAck=()=>{try{current();}catch{void ack?.stop().catch(()=>{});}};
           const unsubscribeAck=ack?connectionController.subscribe(retireAck):()=>{};
           if(ack)document.addEventListener('visibilitychange',retireAck);
@@ -572,12 +591,14 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
         if(!sent){if(token===generation&&chatDestination===chat)cancelChat();throw new DOMException('Voice message discarded','AbortError');}
         const result=sent.result;input.signal.throwIfAborted();current();
         if(result.complete){markVoiceTiming('first-token');markVoiceTiming('final-reply');}
-        conversationLastTranscript=sent.text;conversationLastReply=result.text;conversationReviewRequired=result.reviewRequired===true&&!result.awaitingUserInput;return result;
+        conversationLastTranscript=sent.text;conversationLastReply=result.text;conversationReviewRequired=result.reviewRequired===true&&!result.awaitingUserInput;if(result.awaitingUserInput!==undefined)liveCapture?.release(true);return result;
+        }finally{cueTurn.settled=true;liveCapture?.release();}
       };
       const voiceStopped=(value:BatchVoiceState)=>cloudVoiceFailure(value.error)||((value.error as {reason?:unknown})?.reason==='call-active'?'Voice paused for a phone call. Start the voice conversation again after the call, or switch to the keyboard.':null)||((value.error as {code?:unknown})?.code==='no-speech'?(cloudDriver?`${voiceServiceName()} heard no speech, so nothing was sent. Start the voice conversation again, or switch to the keyboard.`:'No speech was heard, so nothing was sent. Start the voice conversation again, or switch to the keyboard.'):(value.error as {code?:unknown})?.code==='live-asr'?'On-device transcription stopped. Start the voice conversation again, or switch to the keyboard.':(value.error as {code?:unknown})?.code==='capture'?'The microphone stopped. Start the voice conversation again, or switch to the keyboard.':'Voice stopped. Check your connection and conversation history before trying again.');
       // Cloud uses a persistent speech-only socket, server Ink endpointing and native PCM
       // playback. Agent execution/actions remain on the resident; no batch audio upload or
-      // extra spoken progress request sits in this path. Native profile retains local VAD/ASR.
+      // extra speech request sits in this path: a turn's acknowledgement plays on the same
+      // socket and the reply preempts it. Native profile retains local VAD/ASR.
       if(streamingCloud||!cloudDriver&&local&&await nativeLiveVoiceReady(controller.signal)){
         current();
         // The resident's end-of-turn and heard routes (voice-turn-routes.ts), fenced to this
@@ -594,15 +615,69 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
         });
         // Voice timing record of each submitted turn, for its later heard outcome (ids only).
         const timingTurns=new Map<string,string>();
+        // The turn's cue plays on the open capture, which the session hears as its own playback.
+        // While the cue's turn request is pending, speech that starts while the cue's audio plays,
+        // or CUE_TAIL_MS after it (its residual echo, or a start reported once the audio ended),
+        // reaches the session with its end, at Mute, or when that request settles, whichever comes
+        // first, so until then it interrupts that turn only by its transcript, as during a reply;
+        // without echo cancellation, speech in the cue's audio is ignored, as in a reply. Handed
+        // over still open (at Mute, or when the request settles) it is the session's from that
+        // moment, as without a cue: its 700 ms rule runs from then, it can interrupt the turn or
+        // the reply, or be sent; at an owner-review pause it is dropped with what the session
+        // heard, and the pause stays. Once that request is interrupted, stopped or answered, every
+        // start reaches the session at once. The session's echo gate checks every transcript
+        // against the cue too. A cue never starts over the user.
+        const CUE_TAIL_MS=1500;
+        let cueHeard:{text:string;settledAt?:number;turn:CueTurn}|undefined;
+        const cueAge=(heard:{settledAt?:number})=>heard.settledAt===undefined?0:Math.max(0,Date.now()-heard.settledAt);
+        const pending=(turn:CueTurn)=>!turn.settled&&!turn.signal.aborted;
+        cueSpeech={captureRetired:null,speak:async(text,signal,turn)=>{
+          if(liveCapture?.speaking)return;
+          const heard:{text:string;settledAt?:number;turn:CueTurn}={text,turn};let audible=false;
+          const started=()=>{audible=true;cueHeard=heard;};
+          try{await (streamingCloud?streamingCloud.speak(text,signal,started):local!.speak(text,signal,started,true));}
+          finally{if(audible)heard.settledAt=Date.now();}
+        }};
+        const listen=streamingCloud?streamingCloud.listen:nativeAssistantListener({onLatency:recordLiveVoiceTiming,onInterim:text=>{if(token!==generation||chatDestination!==chat)return;conversationInterim=text;refresh();}});
         const assistant:VoiceAssistantSession=new VoiceAssistantSession({
           conversationId:prepared.binding.conversationId,
           assertCurrent:current,
           // Each utterance is sent with the screen context current when the user began speaking.
           beginUtterance:()=>{current();conversationPrepared={...conversationPrepared!,context:chat.shell.voiceConversationContext(prepared.binding)};current();},
-          listen:streamingCloud?streamingCloud.listen:nativeAssistantListener({onLatency:recordLiveVoiceTiming,onInterim:text=>{if(token!==generation||chatDestination!==chat)return;conversationInterim=text;refresh();}}),
+          listen:async handlers=>{
+            // One entry per closed segment: false when its result is not the session's (ignored).
+            // `handed`: a held start handed to the session (at Mute or settlement) whose end has not come yet.
+            const results:boolean[]=[];let heldAt:number|undefined,handed=false,ignoring=false;
+            const own={speaking:false,fullDuplex:false,release:(drop?:boolean)=>{
+              const at=heldAt;heldAt=undefined;
+              if(!drop){if(at!==undefined){handed=true;handlers.onSpeechStart(at);}return;}
+              // An owner-review pause: the session closes the microphone and drops what it heard,
+              // but its 700 ms barge-in timer for speech still open then outlives the drop and cuts
+              // the paused turn. A start handed over at Mute can still be open here, since a muted
+              // capture's close waits for its final (Cloud's, up to 2.5 s; on-device, the bridge's
+              // stop on the compatibility route). It is closed here, before the pause, so that timer
+              // finds no open speech and the paused turn keeps its review; its own end and final,
+              // when they come, are not the session's.
+              if(handed){handed=false;ignoring=true;handlers.onSpeechEnd(Date.now());}
+            }};liveCapture=own;
+            // Every capture end reaches the session at once, as without a cue, the speech socket's
+            // 'protocol' failure included: 'protocol' is the bridge's code for any fault in its
+            // message handler (its own session checks, an invalid, oversized or unexpected frame,
+            // or Cloud completing an utterance with no audio), so it never identifies the cue. A cue
+            // that fails the speech socket therefore ends the turn and the conversation on the
+            // native streaming route, until the bridge reports a failure bound to the session and to
+            // the cue's own request. A refused speak call fails only that call: the cue is silence
+            // and the turn goes on.
+            const opened=await listen({...handlers,
+              onSpeechStart:at=>{own.speaking=true;const heard=cueHeard&&pending(cueHeard.turn)&&cueAge(cueHeard)<=CUE_TAIL_MS?cueHeard:undefined;if(!heard)handlers.onSpeechStart(at);else if(heard.settledAt===undefined&&!own.fullDuplex)ignoring=true;else heldAt=at;},
+              onSpeechEnd:at=>{own.speaking=false;if(ignoring){ignoring=false;results.push(false);}else{own.release();results.push(true);handlers.onSpeechEnd(at);}handed=false;},
+              onSegment:text=>{if(results.shift()!==false)handlers.onSegment(text);},
+            });
+            own.fullDuplex=opened.fullDuplex===true;return opened;
+          },
           // After the short gap: the chain. Unavailable, slow or failing: the long gap decides.
           ...(streamingCloud?{}:{endpoint:(text:string,signal:AbortSignal)=>{current();return semanticEndpoint!(text,signal);}}),
-          shouldRespond:(text,context)=>shouldRespondToVoiceTurn(text,context),
+          shouldRespond:(text,context)=>shouldRespondToVoiceTurn(text,context)&&(!cueHeard||shouldRespondToVoiceTurn(text,{recentAgentReply:cueHeard.text,replyAgeMs:cueAge(cueHeard),agentSpeaking:cueHeard.settledAt===undefined})),
           turnSignal:text=>buildVoiceTurnSignal(text),
           send:sendTurn,
           speakable:text=>toSpeakableText(text),
@@ -646,6 +721,8 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
         }
       }
       // The live assistant is not ready (or this is a Cloud route): the recorded-clip loop listens only between replies.
+      // Its cue plays through the reply's own speaker (Cloud or provider speech, or on-device speech) on every platform.
+      cueSpeech={captureRetired:()=>batchCaptureRetired,speak:(text,signal)=>local?local.speak(text,signal,undefined,true):cloudDriver!.speak(text,signal)};
       const conversation:BatchVoiceConversation<Clip>=new BatchVoiceConversation<Clip>({
         conversationId:prepared.binding.conversationId,assertCurrent:current,
         capture:async input=>{current();batchCaptureRetired=false;conversationPrepared={...conversationPrepared!,context:chat.shell.voiceConversationContext(prepared.binding)};current();const capture=await captureConversationAudio(selected,current,input);return {stop:async()=>{const value=await capture.stop();current();batchCaptureRetired=true;return value;},cancel:async()=>{await capture.cancel();batchCaptureRetired=true;}};},
@@ -723,7 +800,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     const assistant=conversationLive&&conversationVoice===conversationLive?conversationLive:undefined;
     if(assistant)messages.speaking='Alpha is speaking.';
     if(assistant&&assistantState.muted)messages.listening='Microphone off.';
-    const assistantControls=assistant&&phase!=='error'?{canMute:phase!=='awaiting-user-input',muted:assistant.muted?'true':'false',muteLabel:assistant.muted?'Unmute microphone':'Mute microphone',toggleMute:()=>{if(owned())void assistant.setMuted(!assistant.muted).finally(refresh);}}:{};
+    const assistantControls=assistant&&phase!=='error'?{canMute:phase!=='awaiting-user-input',muted:assistant.muted?'true':'false',muteLabel:assistant.muted?'Unmute microphone':'Mute microphone',toggleMute:()=>{if(owned()){liveCapture?.release();void assistant.setMuted(!assistant.muted).finally(refresh);}}}:{};
     const extra=assistant?assistantControls:direct?{canMute:true,muteAutomatically:direct.microphoneAutomaticallyMuted,muteLabel:direct.microphoneAutomaticallyMuted?'Microphone paused while Alpha responds':direct.microphoneMuted?'Unmute microphone':'Mute microphone',muted:direct.microphoneMuted||direct.microphoneAutomaticallyMuted?'true':'false',toggleMute:()=>{if(owned()){direct.setMicrophoneMuted(!direct.microphoneMuted);refresh();}},needsPlaybackUnlock:direct.needsPlaybackUnlock,unlockPlayback:()=>{if(owned())void direct.unlockPlayback().then(refresh).catch(failure=>{error=failure instanceof Error?failure.message:'Playback could not unlock.';refresh();});}}:{};
     return {...extra,regionLabel:'Voice conversation',closeLabel:'Close voice conversation',state:phase,flex:awaiting?'0 0 auto':'1',clockSize:awaiting?28:48,clock:awaiting?'Review':`${Math.floor(seconds/60)}:${String(Math.floor(seconds%60)).padStart(2,'0')}`,live,levels:conversationLevels.map(peak=>({h:4+Math.round(44*peak)})),progressText,errorDetail:unavailable?'Voice service returned HTTP 503.':'',lines:[{t:conversationReviewRequired?'Microphone off. Review the phone action in this conversation. Switch to keyboard to continue; voice cannot resume this older request.':visibleError||messages[phase]}],review:false,typeChoice:false,lastTranscript:awaiting?'':conversationLastTranscript,interimTranscript:awaiting||(!direct&&!['listening','transcribing'].includes(phase))?'':conversationInterim,lastReply:awaiting?'':conversationLastReply,primaryLabel:'Stop voice conversation',primaryIcon:icons.stop,primaryDisabled:false,stop:()=>{if(owned())cancelChat(false,true);},recoveryLabel:mediaUnconfirmed?'':cloudRuntimeEnabled&&phase==='idle'&&!cloudConnectRequired?'Start Cloud voice':cloudConnectRequired?`Connect ${voiceServiceName()}`:!connectionController.getSnapshot().session?'Connect agent':phase==='error'&&!conversationReviewRequired?'Try voice again':'',recover,discard:()=>{if(owned())cancelChat();},keyboard:()=>{if(owned())cancelChat(true);}};
   }

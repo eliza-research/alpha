@@ -1,7 +1,7 @@
 # Native Google sign-in deployment
 
-Alpha renders its own Cloud sign-in screen. Google account authorization uses the
-provider's Custom Tab and returns to Alpha through a verified App Link; it must
+Alpha renders its own Cloud sign-in screen. Google account authorization uses an
+external browser and returns to Alpha through a verified App Link; it must
 not open the hosted Eliza login page. Email codes stay in Alpha and do not depend
 on Google redirect or App Link readiness.
 
@@ -20,8 +20,10 @@ Inspect the final APK manifest, not only the generated overlay. Both distributio
 must declare HTTPS host `eliza.app` and exact path `/alphaphone/auth/callback`.
 The same host also receives the Google connector delegation return filter.
 
-Alpha selects `googleSignInMode("browser")` in the shared native auth client. An installed
-external browser must offer Android Custom Tabs; the image's WebView shell is insufficient.
+Alpha selects `googleSignInMode("browser")` in the shared native auth client. A browser that
+offers Android Custom Tabs opens as a Custom Tab. Without one (stock AOSP ships only the WebView
+shell browser), the default HTTPS browser opens with a plain `ACTION_VIEW`, as Google
+connections do; Alpha's own WebView is never used. At least one external HTTPS browser is required.
 This supports AOSP without Google Play services. PKCE, the pending state, code exchange,
 MFA and credential writes stay in the native client. A cancelled, expired or superseded
 attempt cannot commit a credential. A process restart during browser sign-in requires a

@@ -9,6 +9,7 @@ public class CloudSignInBrowserTest extends BrowserPluginBase {
  final Handler main = new Handler();
  static class Handler { final ArrayDeque<Runnable> queue=new ArrayDeque<>(); void postDelayed(Runnable task,long delay){check(delay==1500,"bounded browser return grace");queue.add(task);}void drain(){while(!queue.isEmpty())queue.remove().run();} }
  final Object lock = new Object(); boolean destroyed, browserAvailable = true, verified = true, associated = true, acceptsHttps = true;
+ final List<String> httpsHandlers = new ArrayList<>(List.of("example.browser")); String defaultHandler = "example.browser"; final List<String> via = new ArrayList<>();
  long intent; Attempt attempt; final ArrayDeque<Runnable> workers = new ArrayDeque<>(), ui = new ArrayDeque<>();
  final Map<String,String> slots = new HashMap<>(); final List<String> launched = new ArrayList<>(); String failure;
  static class SignInFailure extends Exception { final String code; SignInFailure(String code) { this.code=code; } }
@@ -25,21 +26,32 @@ public class CloudSignInBrowserTest extends BrowserPluginBase {
   void launchUrl(Activity activity, Uri uri) {
    check("example.browser".equals(intent.selected),"external Custom Tabs package is explicit");
    check(activity.host.slots.containsKey(activity.host.config().pendingSlot),"encrypted pending record exists before launch");
-   activity.host.launched.add(uri.value);
+   activity.host.launched.add(uri.value);activity.host.via.add("tab:"+intent.selected);
   }
  }
- static class Activity { final CloudSignInBrowserTest host; Activity(CloudSignInBrowserTest host){this.host=host;} void runOnUiThread(Runnable work){host.ui.add(work);} }
+ static class Activity { final CloudSignInBrowserTest host; Activity(CloudSignInBrowserTest host){this.host=host;} void runOnUiThread(Runnable work){host.ui.add(work);}
+  void startActivity(Intent view){
+   check(Intent.ACTION_VIEW.equals(view.action)&&Intent.CATEGORY_BROWSABLE.equals(view.category)&&view.uri.value.startsWith("https://api.eliza.app/steward/auth/oauth/google/authorize?"),"plain browsable VIEW of the same authorize URL");
+   check(view.selected!=null&&!view.selected.equals(host.getContext().getPackageName()),"external browser, never the host");
+   check(host.slots.containsKey(host.config().pendingSlot),"encrypted pending record exists before launch");
+   host.launched.add(view.uri.value);host.via.add("view:"+view.selected);
+  }
+ }
  Activity getActivity(){return new Activity(this);}
  CloudSignInConfig config(){return TestRegistration.base().googleSignInMode("browser").environment(TestRegistration.PRODUCTION).build();}
  Context getContext(){return new Context(this);}
  static class Context { final CloudSignInBrowserTest host; Context(CloudSignInBrowserTest host){this.host=host;} String getPackageName(){return "ai.example.signin";} PackageManager getPackageManager(){return new PackageManager(host);} }
- static class Intent { static final String ACTION_VIEW="VIEW",CATEGORY_BROWSABLE="BROWSABLE";String action,selected;Uri uri;Intent(String action){this.action=action;}Intent(String action,Uri uri){this.action=action;this.uri=uri;}Intent addCategory(String category){check(CATEGORY_BROWSABLE.equals(category),"browser page is browsable");return this;}Intent setPackage(String name){selected=name;return this;} }
+ static class Intent { static final String ACTION_VIEW="VIEW",CATEGORY_BROWSABLE="BROWSABLE";String action,selected,category;Uri uri;Intent(String action){this.action=action;}Intent(String action,Uri uri){this.action=action;this.uri=uri;}Intent addCategory(String category){check(CATEGORY_BROWSABLE.equals(category),"browser page is browsable");this.category=category;return this;}Intent setPackage(String name){selected=name;return this;} }
  static class ServiceInfo { String packageName;boolean exported=true;ServiceInfo(String name){packageName=name;} }
- static class ResolveInfo { ServiceInfo serviceInfo;ResolveInfo(String name){serviceInfo=new ServiceInfo(name);} }
+ static class ActivityInfo { String packageName;ActivityInfo(String name){packageName=name;} }
+ static class ResolveInfo { ServiceInfo serviceInfo;ActivityInfo activityInfo;ResolveInfo(String name){serviceInfo=new ServiceInfo(name);activityInfo=new ActivityInfo(name);} }
  static class PackageManager {
   static final int MATCH_DEFAULT_ONLY=1;final CloudSignInBrowserTest host;PackageManager(CloudSignInBrowserTest host){this.host=host;}
   List<ResolveInfo> queryIntentServices(Intent service,int flags){check(service.action.equals("android.support.customtabs.action.CustomTabsService")&&flags==0,"query actual available Custom Tabs services");return host.browserAvailable?List.of(new ResolveInfo("ai.example.signin"),new ResolveInfo("example.browser"),new ResolveInfo("example.browser")):List.of();}
-  List<ResolveInfo> queryIntentActivities(Intent page,int flags){check(page.action.equals(Intent.ACTION_VIEW)&&page.uri.value.startsWith("https://")&&flags==MATCH_DEFAULT_ONLY,"require normal HTTPS default-category handler");return host.acceptsHttps?List.of(new ResolveInfo(page.selected)):List.of();}
+  List<ResolveInfo> queryIntentActivities(Intent page,int flags){check(page.action.equals(Intent.ACTION_VIEW)&&page.uri.value.startsWith("https://")&&Intent.CATEGORY_BROWSABLE.equals(page.category)&&flags==MATCH_DEFAULT_ONLY,"require normal HTTPS default-category handler");
+   if(page.selected==null){List<ResolveInfo> all=new ArrayList<>();for(String name:host.httpsHandlers)all.add(new ResolveInfo(name));return all;}
+   return host.acceptsHttps?List.of(new ResolveInfo(page.selected)):List.of();}
+  ResolveInfo resolveActivity(Intent page,int flags){check(page.action.equals(Intent.ACTION_VIEW)&&page.uri.value.startsWith("https://")&&Intent.CATEGORY_BROWSABLE.equals(page.category)&&page.selected==null&&flags==MATCH_DEFAULT_ONLY,"resolve the user's default HTTPS browser");return host.defaultHandler==null?null:new ResolveInfo(host.defaultHandler);}
  }
  static class CustomTabsClient {
   static String preferred="example.resolver";
@@ -64,15 +76,40 @@ public class CloudSignInBrowserTest extends BrowserPluginBase {
   check(good.launched.isEmpty()&&good.slots.isEmpty(),"no launch or persistence before worker");
   good.drainWorkers();check(good.launched.isEmpty()&&good.slots.containsKey(good.config().pendingSlot),"guarded persistence precedes queued UI launch");
   good.drainUi();check(good.launched.size()==1&&owner.browserLaunched,"non-default installed browser launches even when default is resolver");
+  check(good.via.equals(List.of("tab:example.browser")),"a Custom Tabs browser is still preferred and opened as a Custom Tab");
   CloudSignInFlow.Pending pending=CloudSignInFlow.Pending.parse(good.slots.get(good.config().pendingSlot),good.config());
   check(pending!=null&&pending.state.equals(owner.browserState),"browser and pending record share exact state");
   check(!good.launched.get(0).contains(pending.verifier)&&good.launched.get(0).contains(CloudSignInFlow.s256(pending.verifier)),"only the challenge reaches browser");
   for(int missing=0;missing<3;missing++){
-   CloudSignInBrowserTest bad=new CloudSignInBrowserTest();bad.browserAvailable=missing!=0;bad.verified=missing!=1;bad.associated=missing!=2;
+   CloudSignInBrowserTest bad=new CloudSignInBrowserTest();bad.browserAvailable=missing!=0;bad.verified=missing!=1;bad.associated=missing!=2;if(missing==0)bad.httpsHandlers.clear();
    bad.startGoogleBrowser(bad.owner());bad.drainWorkers();bad.drainUi();
    check(bad.slots.isEmpty()&&bad.launched.isEmpty()&&bad.failure!=null,"missing browser or association cannot persist or launch");
   }
   CloudSignInBrowserTest serviceOnly=new CloudSignInBrowserTest();serviceOnly.acceptsHttps=false;check(serviceOnly.browserPackage()==null,"Custom Tabs service without HTTPS handler is refused");
+  // Stock AOSP: no Custom Tabs service; the only HTTPS handler is the WebView shell browser.
+  CloudSignInBrowserTest aosp=new CloudSignInBrowserTest();aosp.browserAvailable=false;aosp.httpsHandlers.clear();aosp.httpsHandlers.add("org.chromium.webview_shell");aosp.defaultHandler="org.chromium.webview_shell";
+  check(aosp.browserPackage()==null&&"org.chromium.webview_shell".equals(aosp.defaultBrowserPackage()),"without Custom Tabs the default HTTPS browser qualifies");
+  Attempt aospOwner=aosp.owner();aosp.startGoogleBrowser(aospOwner);aosp.drainWorkers();
+  check(aosp.launched.isEmpty()&&aosp.slots.containsKey(aosp.config().pendingSlot),"default browser: guarded persistence precedes queued UI launch");
+  aosp.drainUi();check(aosp.via.equals(List.of("view:org.chromium.webview_shell"))&&aospOwner.browserLaunched&&aosp.failure==null,"default browser opens with a plain external VIEW");
+  CloudSignInFlow.Pending aospPending=CloudSignInFlow.Pending.parse(aosp.slots.get(aosp.config().pendingSlot),aosp.config());
+  check(aospPending!=null&&aospPending.state.equals(aospOwner.browserState)&&!aosp.launched.get(0).contains(aospPending.verifier)&&aosp.launched.get(0).contains(CloudSignInFlow.s256(aospPending.verifier))&&aosp.launched.get(0).contains("state="+aospPending.state),"default browser gets the same authorize request: challenge and state only");
+  aosp.handleOnPause();aosp.handleOnResume();aospOwner.callbackReceived=true;aosp.main.drain();
+  check(aosp.failure==null&&!aospOwner.cancelled,"default browser: callback during resume grace keeps live attempt");
+  CloudSignInBrowserTest aospBack=new CloudSignInBrowserTest();aospBack.browserAvailable=false;aospBack.httpsHandlers.clear();aospBack.httpsHandlers.add("org.chromium.webview_shell");aospBack.defaultHandler="org.chromium.webview_shell";
+  Attempt backed=aospBack.owner();aospBack.startGoogleBrowser(backed);aospBack.drainWorkers();aospBack.drainUi();aospBack.handleOnPause();aospBack.handleOnResume();aospBack.main.drain();
+  check(backed.cancelled&&"browser-closed".equals(aospBack.failure)&&!aospBack.slots.containsKey(aospBack.config().pendingSlot),"default browser: Back without a return ends as browser-closed and burns the pending record");
+  CloudSignInBrowserTest none=new CloudSignInBrowserTest();none.browserAvailable=false;none.httpsHandlers.clear();none.defaultHandler=null;
+  none.startGoogleBrowser(none.owner());none.drainWorkers();none.drainUi();
+  check(none.defaultBrowserPackage()==null&&"browser-unavailable".equals(none.failure)&&none.slots.isEmpty()&&none.launched.isEmpty(),"no HTTPS browser at all is refused before persistence");
+  CloudSignInBrowserTest selfOnly=new CloudSignInBrowserTest();selfOnly.browserAvailable=false;selfOnly.httpsHandlers.clear();selfOnly.httpsHandlers.add("ai.example.signin");selfOnly.defaultHandler="ai.example.signin";
+  check(selfOnly.defaultBrowserPackage()==null,"the host is never its own OAuth browser");
+  CloudSignInBrowserTest unset=new CloudSignInBrowserTest();unset.browserAvailable=false;unset.httpsHandlers.clear();unset.httpsHandlers.addAll(List.of("ai.example.signin","example.one","example.two","example.one"));unset.defaultHandler="android";
+  check("example.one".equals(unset.defaultBrowserPackage()),"with no default set the resolver is skipped for the first browser");
+  unset.defaultHandler="example.two";check("example.two".equals(unset.defaultBrowserPackage()),"the user's default browser is preferred");
+  CloudSignInBrowserTest mixed=new CloudSignInBrowserTest();mixed.httpsHandlers.add(0,"org.chromium.webview_shell");mixed.defaultHandler="org.chromium.webview_shell";
+  mixed.startGoogleBrowser(mixed.owner());mixed.drainWorkers();mixed.drainUi();
+  check(mixed.via.equals(List.of("tab:example.browser")),"an installed Custom Tabs browser wins over a non-Custom-Tabs default");
   CloudSignInBrowserTest cancelled=new CloudSignInBrowserTest();Attempt first=cancelled.owner();cancelled.startGoogleBrowser(first);first.cancelled=true;cancelled.attempt=null;cancelled.drainWorkers();cancelled.drainUi();
   check(cancelled.slots.isEmpty()&&cancelled.launched.isEmpty(),"cancel before persistence stops browser");
   CloudSignInBrowserTest replaced=new CloudSignInBrowserTest();Attempt older=replaced.owner();replaced.startGoogleBrowser(older);replaced.owner();replaced.slots.put(replaced.config().pendingSlot,"successor");replaced.drainWorkers();replaced.drainUi();
