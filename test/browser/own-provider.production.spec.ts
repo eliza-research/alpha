@@ -104,6 +104,34 @@ test('a rejected own-key check keeps Cloud selected and clears entered secrets',
  await expect(page.locator('.alpha-cloud-sign-in')).toHaveCount(0);await noLeaks(page,observed);
 });
 
+test('a signed-in Cloud subscription remains accessible with own Cerebras keys selected',async({page})=>{
+ const observed=await fixture(page);await residentHome(page);await openProvider(page);await enterKeys(page);
+ await dialog(page).getByRole('button',{name:'Save and use own keys',exact:true}).click();
+ await expect(dialog(page)).toHaveCount(0);await completeAccessSetup(page);
+ await expect.poll(()=>page.evaluate(async()=>{
+  const snapshot=(await import('/src/runtime/connection-ui.tsx')).connectionController.getSnapshot();
+  return {signedIn:!!snapshot.cloudAccount,provider:snapshot.providerStatus?.provider,selected:snapshot.providerStatus?.selected};
+ })).toEqual({signedIn:true,provider:'cerebras',selected:true});
+ await page.evaluate(async()=>(await import('/src/runtime/connection-ui.tsx')).connectionController.openPlan());
+ const account=page.getByRole('dialog',{name:'Eliza Cloud account & plan',exact:true});
+ const subscription=account.getByRole('region',{name:'Subscription',exact:true});
+ await expect(account).toBeVisible();await expect(subscription).toBeVisible();
+ await expect(subscription.getByText('Plus',{exact:true})).toBeVisible();
+ await expect(subscription.getByRole('button',{name:'Manage subscription',exact:true})).toBeVisible();
+ await subscription.getByRole('button',{name:'Enter membership code',exact:true}).click();
+ const code=subscription.getByRole('textbox',{name:'Membership code',exact:true});
+ await expect(code).toBeFocused();await code.fill('SYNTHETIC-UNSUBMITTED');
+ await expect(subscription.getByRole('button',{name:'Redeem',exact:true})).toBeEnabled();
+ await expect(account).not.toContainText(/Available credits|Add credits|\$\d/);
+ await expect(account.getByLabel('Cerebras API key',{exact:true})).toHaveCount(0);
+ expect(await page.evaluate(()=>(window as any).ownProvider.cleared)).toBe(0);
+ expect(await page.evaluate(async()=>{
+  const state=(await import('/src/runtime/connection-ui.tsx')).connectionController.getSnapshot();
+  return state.providerStatus?.provider==='cerebras'&&state.providerStatus.selected===true;
+ })).toBe(true);
+ await noLeaks(page,observed);
+});
+
 test('Back cancels an in-flight native lease before the key can be saved',async({page})=>{
  const observed=await fixture(page);await residentHome(page);await openProvider(page);await enterKeys(page);
  await page.evaluate(()=>(window as any).ownProvider.hold=true);
