@@ -6,7 +6,8 @@ import {createHash,randomUUID,randomBytes} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {verifySource,preparedSourceEnv,workerArtifactDirectory,digest} from '../../scripts/local-agent-source.mjs';
 import {verifyWorkerArtifact} from '../../scripts/workflow-worker-artifact.mjs';
-import {preparePrivateRuntimeProfile,runtimeEnvironment} from '../../vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs';
+import {preparePrivateRuntimeProfile,writePrivateRuntimeJson,runtimeEnvironment} from '../../vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs';
+import {LOCAL_EMBEDDING_ROUTE,localEmbeddingEnvironment} from '../../scripts/agent-embeddings.mjs';
 import {CLOUD_SDK_BASES} from '../../scripts/cloud-sdk-authority.mjs';
 const hash=b=>createHash('sha256').update(b).digest('hex');
 // Real host function and admission helpers; only its product-root location and
@@ -31,7 +32,7 @@ export function productCharacterHostFixture(mode,options={}){
  if(mode==='input-changed')fs.appendFileSync(path.join(root,input),'changed');
  if(mode==='manifest-changed'){const manifest=JSON.parse(fs.readFileSync(path.join(worker,'manifest.json')));manifest.sourceStampSha256='0'.repeat(64);fs.writeFileSync(path.join(worker,'manifest.json'),JSON.stringify(manifest));}
  if(mode==='symlink'){fs.renameSync(worker,worker+'-real');fs.symlinkSync(worker+'-real',worker);}
- const globals={fs,path,randomUUID,randomBytes,preparePrivateRuntimeProfile,runtimeEnvironment,verifySource,preparedSourceEnv,workerArtifactDirectory,digest,verifyWorkerArtifact,verifyNativeGoogleHostArtifact,CLOUD_SDK_BASES,nativeViewDeclarationsJson:'[]',scriptDirectory:path.join(root,'scripts'),process,fetch,AbortSignal,setTimeout,clearTimeout};
+ const globals={fs,path,randomUUID,randomBytes,preparePrivateRuntimeProfile,writePrivateRuntimeJson,runtimeEnvironment,verifySource,preparedSourceEnv,workerArtifactDirectory,digest,verifyWorkerArtifact,verifyNativeGoogleHostArtifact,CLOUD_SDK_BASES,LOCAL_EMBEDDING_ROUTE,localEmbeddingEnvironment,nativeViewDeclarationsJson:'[]',scriptDirectory:path.join(root,'scripts'),process,fetch,AbortController,AbortSignal,setTimeout,clearTimeout};
  vm.runInNewContext(source+';globalThis.make=createCloudResidentHost;',globals);
  const launches=[];const launch=async options=>{launches.push(options);let done;return {completion:new Promise(resolve=>done=resolve),async stop(){done({code:0});}};};
  return {root,sdk,worker,profile,launches,async make(){return globals.make({...options,source:sdk,profile:options.profile??profile,port:options.port??47869,launch:options.launch??launch,inherited:{...options.inherited,PATH:process.env.PATH,ALPHA_WORKFLOW_WORKER_OUTPUT:worker,ELIZA_NATIVE_GOOGLE_HOST_MODULE:'/untrusted/module',ELIZA_SMTHRS_RUNTIME_DIR:'/untrusted/root',ELIZA_AGENT_CHARACTER_JSON:'untrusted',CEREBRAS_API_KEY:'untrusted'}});},close(){fs.rmSync(root,{recursive:true,force:true});}};

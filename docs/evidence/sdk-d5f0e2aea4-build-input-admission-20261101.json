@@ -1,6 +1,6 @@
 {
-  "from": "641c179ce8214c864a7ea3dee23dae2d2bd2a682",
-  "to": "6f362bef81c19896882e3d582dc5c0c2df488fd2",
+  "from": "6f362bef81c19896882e3d582dc5c0c2df488fd2",
+  "to": "d5f0e2aea48a7ce578cdb16f9808f4d26f006ba2",
   "inputs": [
     {
       "path": "plugins/plugin-local-inference/native/llama.cpp",
@@ -64,18 +64,29 @@
     },
     {
       "path": "plugins/plugin-local-inference/native",
-      "entries": 333,
-      "gitModeTypeBlobPathInventorySha256": "ff3afb4f16314d2f89bfb4bac0701abaf2f387bbe15d370d391a704d0e4693d3",
-      "unchanged": true
+      "entries": 334,
+      "gitModeTypeBlobPathInventorySha256": "f424ed6a222558627c3fed7b712732015278a21725e5eb54dc3d08009aa0390b",
+      "unchanged": false
     },
     {
       "path": "packages/app/scripts/paradee-voice",
       "entries": 38,
       "gitModeTypeBlobPathInventorySha256": "a9d0da370c51dbc11f11e23106d81357f257c17370cc2fb67fefdd0bf7c805d9",
       "unchanged": true
+    },
+    {
+      "path": "plugins/plugin-native-agent/android",
+      "entries": 91,
+      "gitModeTypeBlobPathInventorySha256": "f7308f7f9a54b99cd1c24a8cf69784d29774a45aaaff72c7dd582f368ca982b5",
+      "unchanged": false
     }
   ],
-  "changedPaths": [],
+  "changedPaths": [
+    "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CartesiaSpeech.java",
+    "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/CredentialRequestFence.java",
+    "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/NativeProviderAdmission.java",
+    "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/NativeProviderSlot.java"
+  ],
   "forkPins": {
     "from": "d960f633ddb034d0dd828a55216cfc17d012acbd",
     "to": "d960f633ddb034d0dd828a55216cfc17d012acbd"
@@ -93,7 +104,9 @@
     ]
   },
   "consumerAndroidModules": {
-    "changedPaths": [],
+    "changedPaths": [
+      "plugins/plugin-native-agent/android"
+    ],
     "unchangedPaths": [
       "plugins/plugin-native-system/android",
       "plugins/plugin-native-camera/android",
@@ -117,5 +130,5 @@
   "qualificationTransferred": false,
   "admitted": false,
   "requalificationRequired": true,
-  "note": "Every recorded native engine, model, JNI and Bun input is byte-identical between 641c179ce8 and 6f362bef81. APK-compiled Android module sources changed: none. Historical native qualification is not transferred; nothing here was built, staged or run."
+  "note": "Own-provider feature changes Cartesia speech and native-agent provider admission, credential slots and cancellation leases. Both native areas require normal compile and requalification; no historical qualification transfers."
 }

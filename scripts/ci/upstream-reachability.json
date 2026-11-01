@@ -3,11 +3,11 @@
   "repository": "elizaOS/eliza",
   "base": "develop",
   "baseCommit": "3861ffd1cbac332f25e1552dc977953a87f1adee",
-  "head": "6f362bef81c19896882e3d582dc5c0c2df488fd2",
+  "head": "d5f0e2aea48a7ce578cdb16f9808f4d26f006ba2",
   "recordedAt": "2026-11-01",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...6f362bef81c19896882e3d582dc5c0c2df488fd2",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...d5f0e2aea48a7ce578cdb16f9808f4d26f006ba2",
   "status": "ahead",
-  "aheadBy": 92,
+  "aheadBy": 94,
   "behindBy": 0,
   "mergeBase": "3861ffd1cbac332f25e1552dc977953a87f1adee",
   "pinOnlyCommits": [
@@ -366,6 +366,14 @@
     {
       "sha": "6f362bef81c19896882e3d582dc5c0c2df488fd2",
       "subject": "fix(agent): recognize bounded spoken view navigation commands"
+    },
+    {
+      "sha": "01d696920c2f3e57af3e57140a2677aaf1709445",
+      "subject": "test(voice): align speech-port assertions with model-only acknowledgements"
+    },
+    {
+      "sha": "d5f0e2aea48a7ce578cdb16f9808f4d26f006ba2",
+      "subject": "feat(native-agent): support owner-provided inference and voice credentials"
     }
   ],
   "pullRequests": [
@@ -719,6 +727,12 @@
     },
     {
       "url": "https://github.com/elizaOS/eliza/pull/38382",
+      "status": "open",
+      "draft": true,
+      "merged": false
+    },
+    {
+      "url": "https://github.com/elizaOS/eliza/pull/38443",
       "status": "open",
       "draft": true,
       "merged": false
