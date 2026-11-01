@@ -81,6 +81,26 @@ export class AgentCalendar {
   const matches=this.value.calendars.filter(c=>c.provider===e.provider&&c.side===e.side&&c.grantId===e.grantId&&c.calendarId===e.calendarId&&(!e.connectorAccountId||c.connectorAccountId===e.connectorAccountId));if(matches.length!==1)return;
   return{kind:'canonical-calendar-event',id:e.id,revision:e.metadata.etag.trim(),accountId:e.grantId,sourceRevision:this.sourceRevisions.get(calendarSourceKey(matches[0]))};
  }
+ /** Read back the selected canonical event before returning from Maps. This does not mutate or publish a new collection. */
+ async verifyEventReturn(input:{eventKey:string;revision:string;sourceRevision:string;begin:number},signal:AbortSignal):Promise<'found'|'missing'|'unknown'>{
+  const selected=()=>{const value=this.selection(input.eventKey);return value?.revision===input.revision&&value.sourceRevision===input.sourceRevision;};
+  const port=this.port(),epoch=this.epoch;
+  if(!port||this.value.mutating||!selected()||!Number.isSafeInteger(input.begin))return 'unknown';
+  this.current(port,epoch,signal);
+  const window={timeMin:new Date(input.begin-1).toISOString(),timeMax:new Date(input.begin+1).toISOString(),timeZone:'UTC'};
+  const api=this.client(port,signal);
+  const [feed,sources]=await Promise.all([api.getLifeOpsCalendarFeed(window,{signal}),api.getLifeOpsCalendars({}, {signal})]);
+  this.current(port,epoch,signal);
+  if(this.value.mutating||!selected()||feed.state!=='complete'||Date.parse(feed.timeMin)!==Date.parse(window.timeMin)||Date.parse(feed.timeMax)!==Date.parse(window.timeMax))return 'unknown';
+  if(feed.events.some(event=>event.agentId!==port.identity.agentId))return 'unknown';
+  const matches=feed.events.filter(event=>calendarEventKey(event)===input.eventKey);
+  if(!matches.length)return 'missing';
+  if(matches.length!==1)return 'unknown';
+  const event=matches[0];
+  if(event.status==='cancelled'||Date.parse(event.startAt)!==input.begin||event.metadata.etag!==input.revision)return 'missing';
+  const readable=sources.calendars.filter(source=>source.includeInFeed===true&&['owner','writer','reader'].includes(source.accessRole)&&source.provider===event.provider&&source.side===event.side&&source.grantId===event.grantId&&source.calendarId===event.calendarId&&(!event.connectorAccountId||source.connectorAccountId===event.connectorAccountId));
+  return readable.length===1?'found':'missing';
+ }
  sourceSelection(sourceKey:string){const c=this.value.calendars.find(c=>calendarSourceKey(c)===sourceKey);if(!c||(!Number.isSafeInteger(c.selectionVersion)||c.selectionVersion<0))return;return{kind:'canonical-calendar-source',id:c.calendarId,revision:String(c.selectionVersion),accountId:c.grantId,sourceRevision:this.sourceRevisions.get(sourceKey)};}
  sourceHandle(key:string){const revision=this.sourceRevisions.get(key);return revision?'agent:'+revision:undefined;}
  sourceKeyForHandle(handle:string){return this.value.calendars.map(calendarSourceKey).find(key=>this.sourceHandle(key)===handle);}

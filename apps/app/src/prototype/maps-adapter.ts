@@ -93,7 +93,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     try{
       // Only a ready read without the event withdraws the control; a refused or failed read keeps it.
       let outcome:'found'|'missing'|'permission'|'unknown'='unknown';
-      try{const result=await calendarPlugin.list({begin:origin.begin-1,end:origin.begin+1});outcome=result.status==='ready'?(mapsEventStillThere(origin,result.events)?'found':'missing'):result.status==='permission-required'?'permission':'unknown';}catch{/* A thrown read says nothing about the event. */}
+      try{if(origin.version===2){const abort=new AbortController(),cancel=()=>{if(document.hidden||!currentApi.isActive())abort.abort();};document.addEventListener('visibilitychange',cancel);window.addEventListener('pagehide',cancel);try{outcome=await currentApi.checkCanonicalCalendarReturn?.(origin,abort.signal)??'unknown';}finally{document.removeEventListener('visibilitychange',cancel);window.removeEventListener('pagehide',cancel);}}else{const result=await calendarPlugin.list({begin:origin.begin-1,end:origin.begin+1});outcome=result.status==='ready'?(mapsEventStillThere(origin,result.events)?'found':'missing'):result.status==='permission-required'?'permission':'unknown';}}catch{/* A thrown read says nothing about the event. */}
       if(disposed||document.hidden||!currentApi.isActive()||currentApi.get('maps').fromEvent!==raw||!mapsEventReturnOffered(raw,api?.S.stack,screen.isNavigating()))return;
       if(outcome==='permission'){currentApi.toast('Calendar access is needed to check this event. Allow calendar access, then try again.');return;}
       if(outcome==='unknown'){currentApi.toast('The event could not be checked. Maps stays open; try again.');return;}
@@ -102,7 +102,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       // Unwind this visit's Maps layers (route, place, results, search text) as system Back would, so
       // nothing of the hand-off is left to show or replay when Maps is opened again.
       screen.unwind();
-      currentApi.setView('calendar',{open:origin.rowId,openDay:origin.day,day:origin.day,month:null,form:null});
+      currentApi.setView('calendar',{...(origin.version===2?{calendarAuthority:'canonical'}:{}),open:origin.rowId,openDay:origin.day,day:origin.day,month:null,form:null});
       currentApi.open('calendar',{keepState:true});currentApi.shell({stack});
     }finally{returningToEvent=false;}
   }
