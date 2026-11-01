@@ -14,7 +14,9 @@ import { installResidentAgentPlugin } from './helpers/resident-agent-plugin';
 const AGENT = '6f1d3c3e-8c55-4c1b-9d1f-2b6f0b0d3a11';
 type Wire = { requestId: string; digest: string; proposal: string };
 test.beforeEach(({}, testInfo) => { test.skip(testInfo.project.name !== 'production', 'Production bundle only'); });
-const button = (page: Page, name: string) => page.getByRole('button', { name, exact: true });
+const button = (page: Page, name: string) => name==='Inbox'
+  ? page.getByRole('button', { name, exact: true }).and(page.locator('[data-mobile-shell-tile]'))
+  : page.getByRole('button', { name, exact: true });
 
 async function androidWithMailbox(page: Page) {
   await installResidentAgentPlugin(page);
@@ -98,6 +100,8 @@ async function androidWithMailbox(page: Page) {
         if (plugin === 'Agent') {
           const owned = resident.answer(method, input); if (owned) return owned;
           if (method === 'getStatus') return { packaged: true, state: 'stopped', serviceActive: false, socketListening: false };
+          // Retained direct inference and the independent Cloud Gmail credential
+          // above must coexist; selecting own keys must not sign Cloud services out.
           if (method === 'providerStatus') return { provider: 'cerebras', configured: true, model: 'qwen-3.8-27b' };
           if (method === 'request') {
             const result = agent(input.method || 'GET', input.path, input.body ? JSON.parse(input.body) : {}, input.headers || {});
