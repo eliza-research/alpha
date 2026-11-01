@@ -867,10 +867,11 @@ function activate(next: Active, session: VerifiedSession, name: string) {
  * left stopped because of plan state. At most one rebind runs; one more is queued behind it.
  */
 function queueResidentRebind(interruptReply=false) {
-  if (!residentCloudFlow()) return;
+  if (!residentCloudFlow()||state.residentRecoveryReason) return;
   void residentRebinds().request(rebindResident, interruptReply ? () => !!operation : residentRebindBlocked).catch(() => {});
 }
 function rebindResident() {
+  if(state.residentRecoveryReason)return Promise.resolve();
   // An outcome the open dialog is showing (a sign-out, a cancelled sign-in) stays visible after the rebind.
   const shown = state.open ? { message: state.message, error: state.error, startFailed: !!state.error && state.error === residentStartFailure } : null;
   const signIn = state.signIn;
@@ -1067,7 +1068,7 @@ function residentRefreshRefused(account:NonNullable<typeof service>,error:unknow
  * that failed is retried. Never stops the agent because of plan state.
  */
 async function recheckResidentPlan(){
-  if(operation)return;
+  if(operation||state.residentRecoveryReason)return;
   if(!state.session||active?.kind!=='resident'){queueResidentRebind();return;}
   const controller=new AbortController();signInReadinessOwner=null;operation=controller;
   try{
@@ -2622,7 +2623,7 @@ export const connectionController = {
   },
   /** Checks the plan again after the owner returns from Eliza Cloud (resume or visibility). */
   recheckPlanOnReturn(explicit=false) {
-    if(!residentCloudFlow()||operation||sending||state.busy)return;
+    if(!residentCloudFlow()||operation||sending||state.busy||state.residentRecoveryReason)return;
     const now=Date.now();
     if(!explicit&&!planManagementReturn&&now-lastPlanRecheck<PLAN_RECHECK_INTERVAL_MS)return;
     planManagementReturn=false;lastPlanRecheck=now;
