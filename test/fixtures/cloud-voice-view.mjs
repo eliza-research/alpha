@@ -34,6 +34,14 @@ export function cloudVoiceViewFixture(options={}){
  // Issue #395 native stage bridge: a no-op outside the phone.
  box.installNativeVoiceTurnMarks=()=>{};
  box.alphaViewPath=alphaViewPath;box.cloudServiceName=cloudServiceName;box.cloudVoiceLimitOf=cloudVoiceLimitOf;box.readServiceLimit=readServiceLimit;box.retryDuration=retryDuration;
+ // The adapter's imports are stripped by load(), so provide its real progress helper
+ // in this same VM realm before evaluating any custom adapter source transform.
+ load('runtime/local-agent-stream.ts',box,['createBatchProgressAcknowledgment'],source=>{
+  const start=source.indexOf('export function genuineBatchProgress(');
+  const end=source.indexOf('export async function readLocalAgentStream(',start);
+  if(start<0||end<0)throw Error('Missing actual batch progress helper source');
+  return source.slice(start,end);
+ });
  load('prototype/voice-adapter.ts',box,['installPrototypeVoiceAdapter'],options.adapterSourceTransform);
  const icons={check:'check',mic:'official-mic-path',stop:'stop',play:'play',x:'close',cloud:'cloud',user:'account'};
  class Shell{

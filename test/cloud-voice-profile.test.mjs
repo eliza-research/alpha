@@ -141,7 +141,7 @@ test('Cloud profile sends one credential-bound recorded turn and speaks its matc
  try {
   f.box.React={createElement:()=>null};f.box.VoiceActivity=()=>null;
   await f.shell.startVoice();await clock.flush();
-  await clock.advance(700);f.peak=0;await clock.advance(1200);
+  await clock.advance(700);f.peak=0;await clock.advance(1200);await clock.flush();
   assert.equal(f.uploads,1);assert.equal(f.sends,1);assert.equal(f.cloudSpeech,1);
   assert.equal(f.transcribeInput.environment,'production');assert.equal(f.transcribeInput.credentialId,'cloud-credential');
   assert.equal(f.speechInputs[0].credentialId,'cloud-credential');assert.equal(f.speechInputs[0].text,'Synthetic matching reply.');

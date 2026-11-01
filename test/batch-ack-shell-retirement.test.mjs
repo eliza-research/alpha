@@ -6,15 +6,12 @@ import path from 'node:path';
 const fixtureRoot=process.env.ALPHA_ACK_HOST_ROOT?pathToFileURL(path.resolve(process.env.ALPHA_ACK_HOST_ROOT)+path.sep):new URL('../',import.meta.url);
 const {cloudVoiceViewFixture}=await import(new URL('test/fixtures/cloud-voice-view.mjs',fixtureRoot));
 const {voiceFakeClock}=await import(new URL('test/fixtures/shared-batch-voice.mjs',fixtureRoot));
-// The actual helper source: local-agent-stream.ts, whose imports the view fixture strips.
-const helper=readFileSync(new URL('../apps/app/src/runtime/local-agent-stream.ts',import.meta.url),'utf8')
-  .replace(/^export /gm,'').replaceAll('new EventTarget()','({dispatchEvent(){}})');
 const adapter=readFileSync(process.env.ALPHA_ACK_VIEW_SOURCE||new URL('../apps/app/src/prototype/voice-adapter.ts',import.meta.url),'utf8');
 async function startedCue({failCleanup=false}={}){
  const clock=voiceFakeClock();
  const f=cloudVoiceViewFixture({cloudProfile:true,clock,peak:.5,holdReply:true,holdPlayback:true,
    holdPlaybackCleanup:true,playbackCleanupError:failCleanup?Error('Native stop failed'):undefined,
-   adapterSourceTransform:()=>helper+'\n'+adapter});
+   adapterSourceTransform:()=>adapter});
  f.box.React={createElement:()=>null};f.box.VoiceActivity=()=>null;
  await f.shell.startVoice();await clock.flush();await clock.advance(700);f.peak=0;await clock.advance(1200);
  assert.equal(f.sends,1);assert.equal(f.activeRecording,null,'actual capture retired before cue');
