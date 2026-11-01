@@ -64,6 +64,7 @@ test('Cloud is the default; explicit own-key save and return to Cloud preserve e
  const observed=await fixture(page);await residentHome(page);
  const account=await page.evaluate(()=>({cloud:(window as any).flagOff.slots['cloud:production'],agent:sessionStorage.getItem('flag-off-agent')}));
  await openProvider(page);await expect(dialog(page).getByLabel('Cerebras API key',{exact:true})).toHaveCount(0);
+ const selectedColor=await dialog(page).getByRole('button',{name:'Cloud',exact:true}).evaluate(el=>getComputedStyle(el).backgroundColor);
  await expect(page.locator('.alpha-cloud-sign-in')).toHaveCount(0);
  await enterKeys(page);await dialog(page).getByRole('button',{name:'Cancel',exact:true}).click();
  expect(await page.evaluate(()=>(window as any).ownProvider.events)).toEqual([]);
@@ -72,6 +73,8 @@ test('Cloud is the default; explicit own-key save and return to Cloud preserve e
  await page.getByRole('button',{name:'AI provider',exact:true}).click();
  await expect(dialog(page).getByText('Own API keys · Cerebras',{exact:true})).toBeVisible();
  await expect(dialog(page).getByText('Voice uses your Cartesia key when you start the microphone.',{exact:true})).toBeVisible();
+ await expect(dialog(page).getByRole('button',{name:'Own API keys',exact:true})).toHaveCSS('background-color',selectedColor);
+ await expect(dialog(page).getByRole('button',{name:'Cloud',exact:true})).not.toHaveCSS('background-color',selectedColor);
  await page.screenshot({path:info.outputPath('own-provider-settings.png'),animations:'disabled'});
  expect(await page.evaluate(()=>(window as any).ownProvider.matched)).toBe(true);
  await expect(page.locator('.alpha-cloud-sign-in')).toHaveCount(0);

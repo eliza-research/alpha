@@ -67,3 +67,6 @@
 .alpha-cloud-sign-in .alpha-auth-submit[aria-busy=true]{opacity:1;cursor:progress}
 .alpha-cloud-sign-in-code>button[type=button]{min-height:44px;font-size:14px;font-variant-numeric:tabular-nums}
 @media(max-height:620px){.alpha-auth-page .alpha-auth-content{justify-content:flex-start;padding-top:calc(env(safe-area-inset-top) + 24px)}.alpha-auth-body{margin-block:0}.alpha-auth-brand{margin-bottom:28px}}
+/* Provider selection follows its current choice, not the generic first-action emphasis. */
+.alpha-connection [aria-label="AI provider"] .alpha-connection-actions button[aria-pressed="false"]{background:transparent;color:var(--connection-acc,#0000ff)}
+.alpha-connection [aria-label="AI provider"] .alpha-connection-actions button[aria-pressed="true"]{background:var(--connection-fg,#000);color:var(--connection-bg,#fff)}
