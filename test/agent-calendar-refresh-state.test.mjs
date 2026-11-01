@@ -72,3 +72,21 @@ test('foreign next event keeps the specific owner refusal before the source/end-
  const f=await fixture();f.next.event={...f.event,agentId:'another-agent'};await f.calendar.refresh({});
  assert.equal(f.calendar.state.status,'error');assert.match(f.calendar.state.error,/another agent/);assert.equal(f.calendar.state.feed,null);assert.equal(f.calendar.state.next,null);assert.equal(f.calendar.state.nextFresh,false);assert.equal(f.writes.length,0);f.retire();
 });
+test('an identical refresh while reading queues one trailing read instead of aborting and stacking resident reads; a changed window still aborts all three',async()=>{
+ // The resident keeps serving an aborted read (next-context ignores disconnect), so abort-and-restart of the
+ // same query only stacks Cloud work. Each read set uses the client bound to its refresh signal, as agentCalendarClient does.
+ const f=await fixture(),signals=[],held=[],zones=[],idle=async()=>{for(let i=0;i<5;i++)await new Promise(r=>setTimeout(r,0));};
+ const client=(_port,signal)=>{signals.push(signal);return {...f.api,getLifeOpsCalendarFeed:async window=>{zones.push(window.timeZone??null);signal.throwIfAborted();return{state:'complete',events:[]};},getLifeOpsNextCalendarEventContext:()=>new Promise((resolve,reject)=>{held.push(()=>resolve(f.next));signal.addEventListener('abort',()=>reject(signal.reason),{once:true});})};};
+ const calendar=new AgentCalendar(()=>f.port,{capture:async()=>({fingerprint:'same',present:false,readable:true,pending:false,records:[]}),retainedReadOnly:async()=>true},client);
+ const first=calendar.refresh({});await idle();const repeats=[calendar.refresh({}),calendar.refresh({})];await idle();
+ assert.equal(signals.length,1);assert.equal(signals[0].aborted,false);assert.equal(held.length,1);
+ held[0]();await first;await Promise.all(repeats);await idle();
+ assert.equal(calendar.state.status,'loading');assert.equal(signals.length,2,'one trailing read set for both repeats');
+ held[1]();await idle();assert.equal(calendar.state.status,'ready');assert.equal(calendar.state.nextFresh,true);
+ const london=calendar.refresh({timeZone:'Europe/London'});await idle();const repeat=calendar.refresh({timeZone:'Europe/London'});await idle();
+ const paris=calendar.refresh({timeZone:'Europe/Paris'});await idle();
+ assert.equal(signals[2].aborted,true,'a changed window aborts feed, sources and next-context of the read it supersedes');
+ held[3]();await Promise.all([london,repeat,paris]);await idle();
+ assert.deepEqual(zones,[null,null,'Europe/London','Europe/Paris'],'the superseded window never runs as a trailing read');
+ assert.equal(signals.length,4);assert.equal(calendar.state.status,'ready');calendar.retire();f.retire();
+});
