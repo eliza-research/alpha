@@ -57,9 +57,10 @@ public final class AlphaConnectionPlugin extends Plugin {
   call.resolve();
  }
 
- /** Workspace return uses only its own native protected pending slot. */
+ /** Workspace return uses only its own native protected pending slot, on the build's verified App Link host
+  * (BuildConfig.ELIZAOS_APP_LINK_HOST, the sign-in return host). A build without one reports the return unsupported. */
  private GoogleWorkspaceReturnFlow workspaceFlow(){
-  return new GoogleWorkspaceReturnFlow(new GoogleWorkspaceReturnFlow.Store(){
+  return new GoogleWorkspaceReturnFlow(BuildConfig.ELIZAOS_APP_LINK_HOST,new GoogleWorkspaceReturnFlow.Store(){
    public String credential()throws Exception{return storage().readCredentialSlot("cloud:production");}
    public String pending()throws Exception{return storage().readCredentialSlot(GoogleWorkspaceReturn.SLOT);}
    public boolean comparePending(String expected,String value)throws Exception{return storage().compareExchangeCredentialSlot(GoogleWorkspaceReturn.SLOT,expected,value);}
@@ -69,13 +70,14 @@ public final class AlphaConnectionPlugin extends Plugin {
   return GoogleWorkspaceReturnFlow.binding(call.getString("environment"),call.getString("userId"),call.getString("organizationId"),call.getString("credentialId"),raw);
  }
  private String workspaceAppLinkAssociation(){
-  if(android.os.Build.VERSION.SDK_INT<31)return null;
+  String callback=GoogleWorkspaceReturn.callback(BuildConfig.ELIZAOS_APP_LINK_HOST);
+  if(callback==null||android.os.Build.VERSION.SDK_INT<31)return null;
   try{
    android.content.pm.verify.domain.DomainVerificationManager manager=getContext().getSystemService(android.content.pm.verify.domain.DomainVerificationManager.class);
    android.content.pm.verify.domain.DomainVerificationUserState state=manager==null?null:manager.getDomainVerificationUserState(getContext().getPackageName());
    if(state==null)return null;
-   Integer domain=state.getHostToStateMap().get("alphacompute.ai");
-   Intent intent=new Intent(Intent.ACTION_VIEW,Uri.parse(GoogleWorkspaceReturn.CALLBACK));intent.addCategory(Intent.CATEGORY_BROWSABLE);intent.addCategory(Intent.CATEGORY_DEFAULT);intent.setPackage(getContext().getPackageName());
+   Integer domain=state.getHostToStateMap().get(BuildConfig.ELIZAOS_APP_LINK_HOST);
+   Intent intent=new Intent(Intent.ACTION_VIEW,Uri.parse(callback));intent.addCategory(Intent.CATEGORY_BROWSABLE);intent.addCategory(Intent.CATEGORY_DEFAULT);intent.setPackage(getContext().getPackageName());
    boolean ownCallback=!getContext().getPackageManager().queryIntentActivities(intent,android.content.pm.PackageManager.MATCH_DEFAULT_ONLY).isEmpty();
    return GoogleWorkspaceReturn.association(state.isLinkHandlingAllowed(),ownCallback,java.util.Objects.equals(domain,android.content.pm.verify.domain.DomainVerificationUserState.DOMAIN_STATE_VERIFIED),java.util.Objects.equals(domain,android.content.pm.verify.domain.DomainVerificationUserState.DOMAIN_STATE_SELECTED));
   }catch(Exception unavailable){return null;}
@@ -98,7 +100,7 @@ public final class AlphaConnectionPlugin extends Plugin {
  }
  private void captureWorkspaceCallback(Intent intent){
   final String url=intent==null||intent.getData()==null?null:intent.getData().toString();
-  if(GoogleWorkspaceReturn.parse(url)==null)return;
+  if(GoogleWorkspaceReturn.parse(BuildConfig.ELIZAOS_APP_LINK_HOST,url)==null)return;
   storageTasks.submit(()->{try{
    if(destroyed||workspaceAppLinkAssociation()==null||!workspaceFlow().captureAllowed(url,System.currentTimeMillis()))return;
    workspaceCallback=url;notifyListeners("googleWorkspaceReturn",new JSObject(),true);

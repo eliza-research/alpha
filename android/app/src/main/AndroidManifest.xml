@@ -114,8 +114,10 @@
    <intent-filter><action android:name="android.intent.action.VIEW"/><category android:name="android.intent.category.DEFAULT"/><category android:name="android.intent.category.BROWSABLE"/><data android:scheme="alphaphone" android:host="cloud-delegation"/></intent-filter>
    <!-- Verified App Links are build-gated: with the Gradle property ELIZAOS_APP_LINK_HOST set,
         android/app/product.gradle overlays https autoVerify filters for ${appLinkHost} with pathPrefix
-        /alphaphone/cloud-delegation and path /alphaphone/auth/callback (the in-app Eliza Cloud sign-in
-        return, AlphaCloudSignInPlugin). Unset (the default), no such filter exists. Set it only after
+        /alphaphone/cloud-delegation, path /alphaphone/auth/callback (the in-app Eliza Cloud sign-in
+        return, AlphaCloudSignInPlugin) and path /alphaphone/gmail/callback (the Google Workspace consent
+        return, GoogleWorkspaceReturn). Unset (the default), no such filter exists and the Workspace
+        return reports itself unsupported. Set it only after
         scripts/render-assetlinks.mjs output (release signer, never a debug or placeholder fingerprint)
         is published at /.well-known/assetlinks.json on that host. The in-app sign-in is offered only
         once its Cloud readiness probe sees this phone's App Link verified for the sign-in return

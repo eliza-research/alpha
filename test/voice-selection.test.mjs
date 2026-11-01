@@ -16,7 +16,7 @@ function load(store, f = {account: true, dev: false}) {
     cloudRuntimeEnabled: f.cloud === true, testMocksEnabled: f.mocks === true, localStorage: store, Date, JSON, Number, Event: class { constructor(type) { this.type = type; } },
     window: {dispatchEvent: event => { events.push(event.type); return true; }},
     get browserDevProfile() { return f.dev; },
-    connectionController: {getSnapshot:()=>({residentInference:f.own?'direct':'cloud',providerStatus:{voiceConfigured:f.voice===true}}),getCloudEnvironment: () => f.account ? 'production' : null, getCloudClient: () => f.account ? {sessionId: 'synthetic-session', credentialId: 'synthetic-credential'} : null},
+    connectionController: {getSnapshot:()=>({residentInference:(f.own||f.direct)?'direct':'cloud',providerStatus:{voiceConfigured:f.voice===true}}),getCloudEnvironment: () => f.account ? 'production' : null, getCloudClient: () => f.account ? {sessionId: 'synthetic-session', credentialId: 'synthetic-credential'} : null},
   };
   const source = fs.readFileSync('apps/app/src/runtime/voice-selection.ts', 'utf8').replace(/^import .*;\n/gm, '').replaceAll('export function', 'function').replaceAll('export type', 'type');
   vm.runInNewContext('{' + stripTypeScriptTypes(source, {mode: 'transform'}) + '\nglobalThis.api={selectVoiceRoute,chooseVoiceRoute,voiceRoutePreference,cloudVoiceAvailable,voicePreferenceKeys,cloudSpeechDisclosure,voiceSendPolicy,setVoiceSendPolicyForTests};}', box);
@@ -79,4 +79,11 @@ test('own-provider voice availability follows the selected optional Cartesia key
   const v=load(storage(),{account:false,dev:false,own:true,voice});
   assert.equal(v.cloudVoiceAvailable(),voice,'no Cloud account or plan substitutes for the own voice selection');
  }
+});
+
+test('explicit own keys choose the resident network voice route without a Cloud account',()=>{
+ const v=load(storage(),{direct:true,voice:true,account:false});
+ assert.equal(v.selectVoiceRoute('default'),'cloud');assert.equal(v.selectVoiceRoute('agent'),'cloud');assert.equal(v.selectVoiceRoute('device'),'device');
+ assert.equal(v.cloudVoiceAvailable(),true);assert.match(v.cloudSpeechDisclosure(),/own API key/);assert.doesNotMatch(v.cloudSpeechDisclosure(),/Cloud account/);
+ const off=load(storage(),{direct:true,voice:false,account:false});assert.equal(off.cloudVoiceAvailable(),false);assert.equal(off.selectVoiceRoute('default'),'cloud');
 });

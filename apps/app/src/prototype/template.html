@@ -925,6 +925,7 @@
     </div>
   </sc-if>
 
+  <sc-if value="{{calendar.deepOpening}}"><div data-alpha-subview="calendar-opening" aria-hidden="true" style="position:absolute;inset:0;background:var(--bg);z-index:4"></div></sc-if>
   <sc-if value="{{calendar.detail}}">
     <div ref="{{calendar.detailFocus}}" data-alpha-subview="calendar-detail" inert="{{calendar.detailCovered}}" aria-hidden="{{calendar.detailCovered}}" class="enter" style="position: absolute; inset: 0; background: var(--bg); display: flex; flex-direction: column; z-index: 4">
       <div data-alpha-app-header="detail" style="display: flex; align-items: center; height: 56px; margin-top: 44px; padding: 0 8px; gap: 2px; flex-shrink: 0">
@@ -4011,7 +4012,6 @@
         <sc-if value="{{chatRecorder.review}}"><textarea aria-label="Review transcript" disabled="{{chatRecorder.transcriptDisabled}}" value="{{chatRecorder.transcript}}" onChange="{{chatRecorder.onTranscript}}" style="width:100%;flex:1;min-height:112px;box-sizing:border-box;background:var(--s2);border:0;border-radius:16px;padding:12px;color:var(--fg);font:inherit;line-height:1.45;resize:vertical"></textarea></sc-if>
         <sc-if value="{{chatRecorder.typeChoice}}"><button class="tap" onClick="{{chatRecorder.typeInstead}}" style="min-height:44px;padding:8px 12px;border-radius:20px;background:var(--s2);color:var(--fg)">Type transcript instead</button></sc-if>
       </div>
-      <sc-if value="{{chatRecorder.canInterrupt}}"><button class="tap" onClick="{{chatRecorder.interrupt}}" style="min-height:44px;padding:8px 16px;border-radius:16px;background:var(--s2);color:var(--fg)">Stop speaking</button></sc-if>
       <sc-if value="{{chatRecorder.canMute}}"><button class="tap" disabled="{{chatRecorder.muteDisabled}}" aria-pressed="{{chatRecorder.muted}}" onClick="{{chatRecorder.toggleMute}}" style="min-height:44px;padding:8px 16px;border-radius:16px;background:var(--s2);color:var(--fg)">{{chatRecorder.muteLabel}}</button></sc-if>
     <sc-if value="{{chatRecorder.needsPlaybackUnlock}}"><button class="tap" onClick="{{chatRecorder.unlockPlayback}}" style="min-height:44px;padding:8px 16px;border-radius:16px;background:var(--s2);color:var(--fg)">Enable sound</button></sc-if>
       <button class="tap" aria-label="{{chatRecorder.primaryLabel}}" disabled="{{chatRecorder.primaryDisabled}}" onClick="{{chatRecorder.stop}}" style="display:flex;align-items:center;justify-content:center;gap:10px;min-height:56px;flex-shrink:0;padding:10px 16px;border-radius:28px;background:var(--acc);color:var(--alpha-white);font:inherit;font-weight:600"><svg class="i" viewBox="0 0 24 24" style="width:24px;height:24px;flex-shrink:0"><path d="{{chatRecorder.primaryIcon}}"></path></svg><span>{{chatRecorder.primaryLabel}}</span></button>

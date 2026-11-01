@@ -377,6 +377,25 @@ test('non-resident browser, signed-in state and native required-sign-in policy r
  assert.equal(native.context.explicitSignedOutCloudEntry(native.snapshot()),false);
  assert.equal(native.context.productionCloudSignInRequired(native.snapshot()),true);
 });
+test('the automatic entry is one full page with no Back on every platform; opened sign-ins stay dialogs',()=>{
+ const native=fixture({account:null,purpose:'agent',open:true});native.update({startupResolved:true});
+ assert.equal(native.context.signInEntryPage(native.snapshot()),true);
+ const browser=fixture({android:false,browserResident:true,account:null,purpose:'agent',open:true});
+ browser.update({startupResolved:true,residentSavedCredential:false});
+ assert.equal(browser.context.signInEntryPage(browser.snapshot()),true);
+ // An error during an attempt (a wrong code, a rejected key) keeps the page instead of a dismissible dialog.
+ browser.update({signIn:{step:'code',environment:'production'},error:'That code did not work.'});
+ assert.equal(browser.context.signInEntryPage(browser.snapshot()),true);
+ // Without an attempt an error is not the first-run entry; startup and recovery views keep their place.
+ browser.update({signIn:null});
+ assert.equal(browser.context.signInEntryPage(browser.snapshot()),false);
+ for(const purpose of ['cloud-account','plan'])for(const android of [false,true]){
+  const opened=fixture({android,browserResident:!android,account:null,purpose,open:true});
+  opened.update({startupResolved:true,residentSavedCredential:false,providerStatus:{provider:'cerebras',selected:true,configured:true}});
+  assert.equal(opened.context.explicitSignedOutCloudEntry(opened.snapshot()),true);
+  assert.equal(opened.context.signInEntryPage(opened.snapshot()),false,`${purpose} opened on ${android?'Android':'browser'} keeps its Back`);
+ }
+});
 test('explicit signed-out account and plan entries remain available for a retained offline identity',()=>{
  for(const purpose of ['cloud-account','plan']){
   const f=fixture({android:false,browserResident:true,account:null,purpose,open:true});

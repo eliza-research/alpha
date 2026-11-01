@@ -25,7 +25,7 @@ import { voiceFailure, transcriptProvenance, deniedSettingsChoice, DENIED_SETTIN
 import { createPairedVoice } from '../runtime/paired-voice';
 import { createCloudVoice, cloudVoiceFailure, createCloudStreamingSpeech, nativeCloudStreamingAvailable } from '../runtime/cloud-voice';
 import { speakCloudSpeechChunks } from '../../../../.eliza/client-features/packages/voice/src/cloud-speech-chunks.ts';
-import { clefEndpointStage, selectVoiceRoute, voiceSendPolicy, type VoicePreference } from '../runtime/voice-selection';
+import { clefEndpointStage, selectVoiceRoute, voiceSendPolicy, cloudSpeechDisclosure, type VoicePreference } from '../runtime/voice-selection';
 import { beginVoiceTurn, markVoiceTiming, abandonVoiceTurn, finishVoiceTurn, sendVoiceEntry, recordLiveVoiceTiming, recordEndpointVoiceTiming, recordHeardVoiceTiming, activeVoiceTurn } from '../runtime/voice-timing';
 import { residentEndpoint, createHeardReporter, createEndpointChain } from '../runtime/voice-turn-routes';
 import { createNativeLiveDictation, nativeAssistantListener, nativeLiveVoiceReady, type NativeLiveDictation } from '../runtime/native-live-voice';
@@ -34,7 +34,7 @@ import { VoiceAssistantSession, type AssistantState } from '../runtime/voice-ass
 import { shouldRespondToVoiceTurn, buildVoiceTurnSignal } from '@elizaos/voice/turn';
 import { toSpeakableText } from '@elizaos/ui/voice/voice-chat-playback';
 import { connectionController } from '../runtime/connection-ui';
-const voiceServiceName = () => cloudServiceName(connectionController.getCloudEnvironment() ?? connectionController.getSnapshot().cloudAccount?.environment ?? connectionController.getSnapshot().signIn?.environment ?? 'production');
+const voiceServiceName = () => connectionController.getSnapshot().residentInference==='direct'?'Cartesia':cloudServiceName(connectionController.getCloudEnvironment() ?? connectionController.getSnapshot().cloudAccount?.environment ?? connectionController.getSnapshot().signIn?.environment ?? 'production');
 type Bag = Record<string, any>;
 type Clip = { recordingId: string; durationMs: number };
 const voice = registerPlugin<{
@@ -179,7 +179,6 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
   // partials, so timing and the diagnostics export tell it from the live assistant ('stream').
   const batchRecordingEnded=(id:string|undefined)=>{if(!id||timedRecording===id)return;recordingEnded(id,'conversation');recordLiveVoiceTiming({mode:'batch',partials:0});};
   // Said once per page session: the half-duplex loop cannot hear the user while a reply plays.
-  let halfDuplexDisclosed=false;
   let mediaUnconfirmed:unknown;
   let retirement:{shell:any;phase:'stopping'|'error';returnChat:string;view:string|null;binding:string;panelChat:string;promise:Promise<void>;approval?:AbortController;proposalId?:string}|undefined;
   const refresh = () => chatDestination ? chatDestination.shell.setState({}) : api?.setView('notes', { nativeVoiceRevision: Date.now() });
@@ -621,9 +620,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
           streamingCloud=null;conversationLive=undefined;conversationVoice=undefined;conversationState={phase:'starting'};
         }
       }
-      // The live assistant is not ready (or this is a Cloud route): the recorded-clip loop listens
-      // only between replies, so say once that speaking will not interrupt a reply.
-      if(!halfDuplexDisclosed){halfDuplexDisclosed=true;chat.shell.toast('Speaking will not interrupt Alpha’s reply in this voice mode. Close the voice conversation to stop a reply.');}
+      // The live assistant is not ready (or this is a Cloud route): the recorded-clip loop listens only between replies.
       const conversation:BatchVoiceConversation<Clip>=new BatchVoiceConversation<Clip>({
         conversationId:prepared.binding.conversationId,assertCurrent:current,
         capture:async input=>{current();batchCaptureRetired=false;conversationPrepared={...conversationPrepared!,context:chat.shell.voiceConversationContext(prepared.binding)};current();const capture=await captureConversationAudio(selected,current,input);return {stop:async()=>{const value=await capture.stop();current();batchCaptureRetired=true;return value;},cancel:async()=>{await capture.cancel();batchCaptureRetired=true;}};},
@@ -663,7 +660,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     if(this.pendingActionApproval||document.querySelector('dialog[open]')){this.toast('Finish or cancel the current review before transcribing.');return;}
     if(retirement||mediaUnconfirmed||stage!=='closed'){this.toast('Finish or discard the current recording before transcribing.');return;}
     const state=this.S(),chat:ChatDestination={mode:'dictation',shell:this,view:state.view||null,chat:state.chat,draft:String(state.draft||''),reply:this.messageReplyTarget,edit:this.messageEditTarget,binding:composerBinding(),...(document.activeElement instanceof HTMLElement?{opener:document.activeElement}:{})};
-    const readingStopped=stopLocalSpeechPlayback();enter(undefined,undefined,'device',chat);
+    const readingStopped=stopLocalSpeechPlayback();enter(undefined,undefined,!Capacitor.isNativePlatform()&&connectionController.getSnapshot().residentInference==='direct'?'agent':'device',chat);
     stopping=Promise.all([stopping,Promise.resolve(readingStopped)]).then(()=>{}).catch(failure=>{mediaUnconfirmed=failure;throw failure;});void stopping.catch(()=>{});
     const token=generation;this.setState({chat:state.chat==='full'?'full':'sheet',voice:'off'},()=>{if(token!==generation||chatDestination!==chat)return;document.querySelector<HTMLElement>('[data-alpha-chat-recorder] button')?.focus({preventScroll:true});maybeStartDictation();});
   };
@@ -698,8 +695,8 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     const assistant=conversationLive&&conversationVoice===conversationLive?conversationLive:undefined;
     if(assistant)messages.speaking='Alpha is speaking.';
     if(assistant&&assistantState.muted)messages.listening='Microphone off.';
-    const assistantControls=assistant&&phase!=='error'?{canMute:phase!=='awaiting-user-input',muted:assistant.muted?'true':'false',muteLabel:assistant.muted?'Unmute microphone':'Mute microphone',toggleMute:()=>{if(owned())void assistant.setMuted(!assistant.muted).finally(refresh);},canInterrupt:phase==='speaking',interrupt:()=>{if(owned()&&assistant.interruptSpeech())refresh();}}:{};
-    const extra=assistant?assistantControls:direct?{canMute:true,muteAutomatically:direct.microphoneAutomaticallyMuted,muteLabel:direct.microphoneAutomaticallyMuted?'Microphone paused while Alpha speaks':direct.microphoneMuted?'Unmute microphone':'Mute microphone',muted:direct.microphoneMuted||direct.microphoneAutomaticallyMuted?'true':'false',toggleMute:()=>{if(owned()){direct.setMicrophoneMuted(!direct.microphoneMuted);refresh();}},needsPlaybackUnlock:direct.needsPlaybackUnlock,unlockPlayback:()=>{if(owned())void direct.unlockPlayback().then(refresh).catch(failure=>{error=failure instanceof Error?failure.message:'Playback could not unlock.';refresh();});}}:{};
+    const assistantControls=assistant&&phase!=='error'?{canMute:phase!=='awaiting-user-input',muted:assistant.muted?'true':'false',muteLabel:assistant.muted?'Unmute microphone':'Mute microphone',toggleMute:()=>{if(owned())void assistant.setMuted(!assistant.muted).finally(refresh);}}:{};
+    const extra=assistant?assistantControls:direct?{canMute:true,muteAutomatically:direct.microphoneAutomaticallyMuted,muteLabel:direct.microphoneAutomaticallyMuted?'Microphone paused while Alpha responds':direct.microphoneMuted?'Unmute microphone':'Mute microphone',muted:direct.microphoneMuted||direct.microphoneAutomaticallyMuted?'true':'false',toggleMute:()=>{if(owned()){direct.setMicrophoneMuted(!direct.microphoneMuted);refresh();}},needsPlaybackUnlock:direct.needsPlaybackUnlock,unlockPlayback:()=>{if(owned())void direct.unlockPlayback().then(refresh).catch(failure=>{error=failure instanceof Error?failure.message:'Playback could not unlock.';refresh();});}}:{};
     return {...extra,regionLabel:'Voice conversation',closeLabel:'Close voice conversation',state:phase,flex:awaiting?'0 0 auto':'1',clockSize:awaiting?28:48,clock:awaiting?'Review':`${Math.floor(seconds/60)}:${String(Math.floor(seconds%60)).padStart(2,'0')}`,live,levels:conversationLevels.map(peak=>({h:4+Math.round(44*peak)})),progressText,errorDetail:unavailable?'Voice service returned HTTP 503.':'',lines:[{t:conversationReviewRequired?'Microphone off. Review the phone action in this conversation. Switch to keyboard to continue; voice cannot resume this older request.':visibleError||messages[phase]},...(phase==='error'&&conversationLastTranscript?[{t:'Last transcript: '+conversationLastTranscript}]:[])],review:false,typeChoice:false,lastTranscript:awaiting?'':conversationLastTranscript,interimTranscript:awaiting||(!direct&&!['listening','transcribing'].includes(phase))?'':conversationInterim,lastReply:awaiting?'':conversationLastReply,primaryLabel:'Stop voice conversation',primaryIcon:icons.stop,primaryDisabled:false,stop:()=>{if(owned())cancelChat(false,true);},recoveryLabel:mediaUnconfirmed?'':cloudRuntimeEnabled&&phase==='idle'&&!cloudConnectRequired?'Start Cloud voice':cloudConnectRequired?`Connect ${voiceServiceName()}`:!connectionController.getSnapshot().session?'Connect agent':phase==='error'&&!conversationReviewRequired?'Try voice again':'',recover,discard:()=>{if(owned())cancelChat();},keyboard:()=>{if(owned())cancelChat(true);}};
   }
   /**
@@ -914,7 +911,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
       // A saved recording's reviewed transcript uses the same disclosed speech route as text notes.
       const voText = noteSpeechText(selected), voReading = currentNoteReading()?.noteId === selected.id;
       vo.readLabel = cloudRuntimeEnabled ? `Read with ${voiceServiceName()}` : 'Read aloud';
-      vo.cloudSpeechDisclosure = cloudRuntimeEnabled ? `Read with ${voiceServiceName()} uploads this note’s text to your selected Cloud account for Cartesia speech and uses your plan allowance.` : '';
+      vo.cloudSpeechDisclosure = cloudRuntimeEnabled||connectionController.getSnapshot().residentInference==='direct' ? cloudSpeechDisclosure(voiceServiceName()) : '';
       vo.stopReading = voReading ? () => stopSpeaking() : undefined;
       vo.readAloud = voText && !voReading ? () => {
         stopSaved();
@@ -960,7 +957,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
       const live = mine && currentNoteReading()?.noteId === note.id;
       ed.reading = live; ed.readAvailable = !!note && !!text;
       ed.readLabel = live ? 'Stop reading' : cloudRuntimeEnabled ? `Read with ${voiceServiceName()}` : 'Read aloud';
-      ed.cloudSpeechDisclosure = cloudRuntimeEnabled ? `Read with ${voiceServiceName()} uploads this note’s text to your selected Cloud account for Cartesia speech and uses your plan allowance.` : '';
+      ed.cloudSpeechDisclosure = cloudRuntimeEnabled||connectionController.getSnapshot().residentInference==='direct' ? cloudSpeechDisclosure(voiceServiceName()) : '';
       ed.stopReading = live ? () => stopSpeaking() : undefined;
       ed.readAloud = ed.readAvailable && !live ? () => {
         if (!note || !text) return;
@@ -980,7 +977,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     const owned=()=>token===generation&&chatDestination===chat&&(!chat||chatCurrent());
     const seconds = stage === 'recording' ? (Date.now() - started) / 1000 : (clip?.durationMs || 0) / 1000;
     const labels: Bag = { ready: 'Start recording', starting: 'Starting microphone', recording: 'Stop recording', recorded: onDeviceReady ? 'Transcribe on this phone' : pairedAsrReady ? 'Transcribe with agent Whisper' : deviceOnly ? 'Review recording' : cloudMode ? `Transcribe with ${voiceServiceName()}` : 'Transcribe locally', transcribing: 'Cancel transcription', review: chatDestination ? 'Use in conversation' : destination ? 'Apply transcript' : 'Save note' };
-    const messages: Bag = { ready: deviceOnly ? 'Record up to 59 seconds in this app. You can add a transcript manually and save without signing in. Nothing is uploaded.' : cloudMode ? `Record up to 59 seconds. Audio stays in this app until you choose Transcribe with ${voiceServiceName()}; uploads use your Cloud plan allowance.` : 'Development voice: record up to 59 seconds. Audio goes to this computer only after you choose Transcribe locally.', starting: 'Waiting for microphone access.', recording: 'Recording. Waveform levels are unavailable. Stop does not upload audio.', recorded: deviceOnly ? 'Microphone is off. Review the recording and enter a transcript manually. Cloud transcription is not connected; nothing is uploaded.' : cloudMode ? `Microphone is off. Choose Transcribe with ${voiceServiceName()} to upload this recording to your selected Cloud account.` : 'Microphone is off. Choose Transcribe locally to process this clip on the connected development computer.', transcribing: cloudMode ? `Transcribing with ${voiceServiceName()}. Nothing has been saved.` : 'Transcribing on the local computer. Nothing has been saved.', review: deviceOnly ? 'Enter a transcript manually, then save it with this recording in this app. Nothing is uploaded or sent to an agent.' : chatDestination ? 'Review the transcript, then use it in the conversation. Press Send there to send it to your agent.' : 'Review and edit the transcript, then save the recording and transcript in this app. Nothing is sent to the agent.' };
+    const messages: Bag = { ready: deviceOnly ? 'Record up to 59 seconds in this app. You can add a transcript manually and save without signing in. Nothing is uploaded.' : cloudMode ? `Record up to 59 seconds. Audio stays in this app until you choose Transcribe with ${voiceServiceName()}; uploads use ${connectionController.getSnapshot().residentInference==='direct'?'your own Cartesia allowance':'your Cloud plan allowance'}.` : 'Development voice: record up to 59 seconds. Audio goes to this computer only after you choose Transcribe locally.', starting: 'Waiting for microphone access.', recording: 'Recording. Waveform levels are unavailable. Stop does not upload audio.', recorded: deviceOnly ? 'Microphone is off. Review the recording and enter a transcript manually. Cloud transcription is not connected; nothing is uploaded.' : cloudMode ? `Microphone is off. Choose Transcribe with ${voiceServiceName()} to upload this recording to your selected provider.` : 'Microphone is off. Choose Transcribe locally to process this clip on the connected development computer.', transcribing: cloudMode ? `Transcribing with ${voiceServiceName()}. Nothing has been saved.` : 'Transcribing on the local computer. Nothing has been saved.', review: deviceOnly ? 'Enter a transcript manually, then save it with this recording in this app. Nothing is uploaded or sent to an agent.' : chatDestination ? 'Review the transcript, then use it in the conversation. Press Send there to send it to your agent.' : 'Review and edit the transcript, then save the recording and transcript in this app. Nothing is sent to the agent.' };
     if (pairedAsrReady) { messages.ready = 'Record up to 59 seconds. English transcription uses your selected agent. Audio stays in this app until you choose Transcribe with agent Whisper.'; messages.recorded = 'Microphone is off. Transcribe with agent Whisper uploads this recording to your selected agent for English speech recognition.'; messages.transcribing = 'Transcribing with your selected agent. Nothing has been saved.'; messages.review = chatDestination ? 'Review the agent transcript, then use it in the conversation. Press Send there to send the message.' : 'Review and edit the agent transcript, then save it with the recording in this app. Nothing is sent as a chat message.'; }
     if (onDeviceReady) {
       messages.ready = 'Record up to 29 seconds. English transcription runs on this phone. Nothing is uploaded.';
@@ -991,7 +988,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     }
     if (destination) messages.review = 'Review the transcript, then insert it at your saved selection. This keeps your text note; the recording is discarded after applying. ' + (onDeviceReady ? 'Nothing was uploaded.' : cloudMode ? `${voiceServiceName()} processed the audio. No chat message was sent.` : pairedAsrReady ? 'Your selected agent processed the audio. No chat message was sent.' : 'No chat message was sent.');
     if (pairedReady && stage === 'review' && !destination) messages.review = playing ? 'Playing selected-agent audio. Tap Stop audio to stop. Your recording remains in this app.' : 'Save keeps this recording and transcript in this app. Listen to transcript sends only this text to your selected agent for audio playback.';
-    if (cloudMode && stage === 'review') messages.review += playing ? ' Playing Cloud audio. Tap Stop audio to stop.' : ` Listen to transcript sends this text to ${voiceServiceName()} for audio playback.`;
+    if (cloudMode && stage === 'review') messages.review += playing ? ` Playing ${voiceServiceName()} audio. Tap Stop audio to stop.` : ` Listen to transcript sends this text to ${voiceServiceName()} for audio playback.`;
     if (selectedRoute === 'device' && !onDeviceReady && !preparingLocal && stage === 'ready') labels.ready = 'On-device speech unavailable';
     if (preparingPaired && stage === 'ready') { labels.ready = 'Checking selected agent voice'; messages.ready = 'Checking transcription and playback on your selected agent. No audio is uploaded.'; }
     if (preparingLocal && stage === 'ready') { labels.ready = 'Preparing on-device speech'; messages.ready = 'Loading and checking speech models on this phone. Nothing is uploaded.'; }

@@ -70,7 +70,7 @@ export function chooseVoiceRoute(route: VoiceRouteChoice, disclosure?: { disclos
   return write(voiceRouteKey, route === 'cloud' ? { version: 1, route, disclosed: disclosure!.disclosed, chosenAt: Date.now() } : { version: 1, route: 'device', chosenAt: Date.now() });
 }
 /** Disclosure shown wherever Cloud speech can be chosen. */
-export function cloudSpeechDisclosure(serviceName = 'Cloud') { return `${serviceName} speech uploads recordings and reply text to your Cloud account and counts toward your plan allowance.`; }
+export function cloudSpeechDisclosure(serviceName = 'Cloud') { if(connectionController.getSnapshot().residentInference==='direct')return 'Cartesia speech sends recordings and reply text using your own API key and provider allowance.'; return `${serviceName} speech uploads recordings and reply text to your Cloud account and counts toward your plan allowance.`; }
 
 /** A usable Cloud speech account is signed in for this renderer. */
 export function cloudVoiceAvailable(): boolean {
@@ -80,6 +80,7 @@ export function cloudVoiceAvailable(): boolean {
 
 /** Explicit local/manual routes are available only in test-mocks builds. */
 export function selectVoiceRoute(preference: VoicePreference = 'default'): 'device' | 'cloud' | 'agent' | 'manual' {
+  if(connectionController.getSnapshot().residentInference==='direct'&&(preference==='default'||preference==='agent'))return 'cloud';
   if (cloudRuntimeEnabled) return 'cloud';
   if (!testMocksEnabled) return 'device';
   if (testMocksEnabled && (preference === 'device' || preference === 'manual')) return preference;

@@ -10,12 +10,16 @@ const between=(text,start,end)=>{const a=text.indexOf(start),b=text.indexOf(end,
 const compiled=transformSync(panelSource.replace(/^import .*;\n/gm,'').replaceAll('export ',''),{loader:'tsx',jsxFactory:'React.createElement'}).code;
 const CloudSignInPanel=new Function('React','useRef','useState','useEffect','cloudServiceName',compiled+';return CloudSignInPanel;')(React,React.useRef,React.useState,React.useEffect,()=> 'Eliza Cloud');
 const branch=between(source,'  const requiredSignInView:', '  const accountCreatedNotice=');
-const renderBranch=new Function('React','CloudSignInPanel','snapshot','productionSignInRequired','signInEntryRequired','residentEnvironment','inAppGoogle','panel','RESIDENT_UNPACKAGED','connectionController','browserCloudResidentEnabled','testMocksEnabled','ResidentRecoveryPanel','loadSignInService','cloudSignInPhone','inAppPhone','inAppEmail',transformSync('function render(){const providerChoice=null;'+branch+'return null;}',{loader:'tsx',jsxFactory:'React.createElement'}).code+';return render();');
+// Render the retained main AI-provider composition, not the removed welcome wrapper.
+const ownSource=transformSync(source.slice(source.indexOf('function OwnProviderChoice(')),{loader:'tsx',jsxFactory:'React.createElement'}).code;
+const OwnProviderChoice=new Function('React','useRef','useState','Capacitor','browserCloudResidentEnabled',ownSource+';return OwnProviderChoice;')(React,React.useRef,React.useState,{isNativePlatform:()=>false},true);
+
+const renderBranch=new Function('React','CloudSignInPanel','snapshot','productionSignInRequired','signInEntryRequired','residentEnvironment','inAppGoogle','panel','RESIDENT_UNPACKAGED','connectionController','browserCloudResidentEnabled','testMocksEnabled','ResidentRecoveryPanel','loadSignInService','cloudSignInPhone','inAppPhone','inAppEmail','providerChoice',transformSync('function render(){'+branch+'return null;}',{loader:'tsx',jsxFactory:'React.createElement'}).code+';return render();');
 const controller={beginSignIn(){},signInGoogle(){},signInEmail(){},verifySignInCode(){},resendSignInCode(){},cancelSignIn(){}};
-const render=snapshot=>renderToStaticMarkup(renderBranch(React,CloudSignInPanel,snapshot,true,true,()=> 'production',false,null,'unpackaged',controller,false,false,()=>null,undefined,null,false,true));
+const render=snapshot=>renderToStaticMarkup(renderBranch(React,CloudSignInPanel,snapshot,true,true,()=> 'production',false,null,'unpackaged',controller,false,false,()=>null,undefined,null,false,true,React.createElement(OwnProviderChoice,{busy:snapshot.busy,status:snapshot.providerStatus,error:snapshot.error,message:snapshot.message,onSave:async()=>{},onCancel:()=>{},onCloud:async()=>{}})));
 test('production signed-out entry server-renders direct options before readiness without false Google failure',()=>{
  const html=render({signIn:null,busy:false,message:'',error:''});
- assert.match(html,/Welcome to Alpha/);assert.match(html,/Continue with Google/);assert.match(html,/Email me a code/);assert.match(html,/Retry sign-in/);
+ assert.match(html,/Welcome to Alpha/);assert.match(html,/Continue with Google/);assert.match(html,/Email me a code/);assert.match(html,/Retry sign-in/);assert.match(html,/AI provider/);assert.match(html,/>Own API keys</);assert.doesNotMatch(html,/Use your own API keys/);
  assert.doesNotMatch(html,/Sign in with Eliza Cloud|Google sign-in is unavailable/);assert.match(html,/disabled/);
 });
 test('ready choice renders usable email path and explicit unavailable Google notice',()=>{
@@ -35,15 +39,15 @@ test('automatic readiness probes once per unresolved entry, rearms after a form 
  draw(true,true);assert.equal(count,1);draw(true);draw(true);assert.equal(count,2);
  draw(false);draw(true);assert.equal(count,3);
 });
-test('Cancel delegates in-flight readiness to the existing abort operation, without clearing saved credentials',()=>{
- const code=between(source,'  cancelSignIn() {','  async signInGoogle()');let aborted=0,closed=0,changes=[];
+test('Cancel delegates in-flight readiness to the existing abort operation, without clearing saved credentials',async()=>{
+ const code=between(source,'  async cancelSignIn() {','  async signInGoogle()');let aborted=0,closed=0,changes=[];
  const entry=between(source,'export function explicitSignedOutCloudEntry(', 'export function connectionChooserVisible(').replace('export ','');
  const make=new Function('operation','connectionController','state','productionCloudSignInRequired','update',transformSync('const ownProviderSelected=()=>false,isAndroid=false,browserCloudResidentEnabled=false;'+entry+'const target={'+code+'};',{loader:'ts'}).code+';return target;');
  const run=(active,signIn=null,required=false,rest={})=>make(active,{cancel(){aborted++;},close(){closed++;}},{signIn,...rest},()=>required,v=>changes.push(v)).cancelSignIn();
- run({});assert.equal(aborted,1);assert.deepEqual(changes,[{signIn:null,message:'',error:''}]);
- changes=[];run({}, {step:'code',environment:'production'});assert.equal(aborted,2);assert.deepEqual(changes,[{signIn:{step:'choose',environment:'production'},message:'',error:''}]);
- changes=[];run(null,{step:'choose',environment:'production'},true);assert.equal(aborted,2);assert.deepEqual(changes,[],'required idle chooser remains usable');
- run(null);assert.equal(aborted,3);assert.deepEqual(changes,[{signIn:null,message:'',error:''}]);
- run(null,null,false,{open:true,purpose:'cloud-account',cloudAccount:null});assert.equal(closed,1,'idle explicit signed-out account entry returns to the app');
- run({},null,false,{open:true,purpose:'cloud-account',cloudAccount:null});assert.equal(closed,1,'in-flight work is cancelled without dismissing its entry');
+ await run({});assert.equal(aborted,1);assert.deepEqual(changes,[{signIn:null,message:'',error:''}]);
+ changes=[];await run({}, {step:'code',environment:'production'});assert.equal(aborted,2);assert.deepEqual(changes,[{signIn:{step:'choose',environment:'production'},message:'',error:''}]);
+ changes=[];await run(null,{step:'choose',environment:'production'},true);assert.equal(aborted,2);assert.deepEqual(changes,[],'required idle chooser remains usable');
+ await run(null);assert.equal(aborted,3);assert.deepEqual(changes,[{signIn:null,message:'',error:''}]);
+ await run(null,null,false,{open:true,purpose:'cloud-account',cloudAccount:null});assert.equal(closed,1,'idle explicit signed-out account entry returns to the app');
+ await run({},null,false,{open:true,purpose:'cloud-account',cloudAccount:null});assert.equal(closed,1,'in-flight work is cancelled without dismissing its entry');
 });

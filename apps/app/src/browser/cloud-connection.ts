@@ -68,19 +68,51 @@ export async function browserCloudVoice(input:{environment:string;credentialId:s
   throw Object.assign(Error('Cloud voice request failed.'),{code:'voice-http-'+response.status,status:response.status,...(data?{data}:{})});
  }return response;
 }
-/** Development host in-app sign-in (email code). The host keeps the Steward session and the key;
- * this page receives only the non-secret outcome. Google needs the phone's App Link return. */
+/** Development host sign-in (in-app email code or canonical hosted Google OAuth). The host keeps the Steward session and the key;
+ * this page receives only non-secret outcomes. Google uses the canonical hosted web flow. */
 export class BrowserCloudSignIn extends WebPlugin {
- private async signIn(data:Record<string,unknown>){
-  const response=await browserCloudCall(data);let body:Record<string,unknown>={};try{body=await response.json();}catch{/* Reported as unavailable. */}
+ private googleController?:AbortController;
+ private googlePopup?:Window;
+ private googleAttemptId?:string;
+ private async signIn(data:Record<string,unknown>,signal?:AbortSignal){
+  const response=await browserCloudCall(data,signal);let body:Record<string,unknown>={};try{body=await response.json();}catch{/* Reported as unavailable. */}
   if(!response.ok)throw Object.assign(Error('Cloud development sign-in failed'),{code:typeof body.code==='string'?body.code:'unavailable'});
   return body;
  }
  async serviceInfo(input:{environment:CloudEnvironment}){return this.signIn({operation:'signInServiceInfo',environment:input.environment});}
- async startGoogle(){throw Object.assign(Error('Google sign-in needs the Android app'),{code:'browser-unavailable'});}
+ async startGoogle(input:{environment:CloudEnvironment}){
+  if(this.googleController)throw Object.assign(Error('Sign-in already active'),{code:'login-active'});
+  // Called before the first await in the user-click path; do not defer popup creation.
+  if(typeof window==='undefined')throw Object.assign(Error('Browser sign-in window unavailable'),{code:'browser-unavailable'});
+  const popup=window.open('about:blank','_blank');if(!popup)throw Object.assign(Error('Allow the sign-in window and try again.'),{code:'browser-unavailable'});
+  popup.opener=null;this.googlePopup=popup;const attemptId=this.googleAttemptId=crypto.randomUUID();const controller=this.googleController=new AbortController();
+  try{
+   const started=await this.signIn({operation:'signInStartGoogle',environment:input.environment,attemptId},controller.signal);
+   const url=new URL(String(started.browserUrl)),origin=input.environment==='production'?productionCloud.web:stagingCloud.web;
+   if(url.origin!==origin||url.pathname!=='/auth/cli-login'||url.username||url.password||url.hash||url.searchParams.getAll('app').length!==1||url.searchParams.get('app')!=='alpha'||url.searchParams.getAll('provider').length!==1||url.searchParams.get('provider')!=='google'||url.searchParams.getAll('session').length!==1||!/^[0-9a-f-]{36}$/i.test(url.searchParams.get('session')||'')||[...url.searchParams.keys()].some(key=>!['session','app','provider'].includes(key))||started.attemptId!==attemptId||!Number.isFinite(started.expiresAt)||Number(started.expiresAt)<=Date.now())throw Object.assign(Error('Invalid sign-in response'),{code:'unavailable'});
+   controller.signal.throwIfAborted();popup.location.replace(url.href);
+   while(Date.now()<Number(started.expiresAt)){
+    // OAuth COOP or a successful auto-close may detach the handle. Only the
+    // host outcome, explicit Cancel or expiry can retire this login.
+    const result=await this.signIn({operation:'signInPollGoogle',attemptId:started.attemptId},controller.signal);
+    if(result.status==='authenticated')return result;
+    await new Promise<void>((resolve,reject)=>{const done=()=>{clearTimeout(timer);controller.signal.removeEventListener('abort',abort);resolve();},abort=()=>{clearTimeout(timer);controller.signal.removeEventListener('abort',abort);reject(controller.signal.reason);},timer=setTimeout(done,1000);controller.signal.addEventListener('abort',abort,{once:true});if(controller.signal.aborted)abort();});
+   }
+   throw Object.assign(Error('Sign-in expired'),{code:'expired'});
+  }finally{controller.abort();popup.close();if(this.googleController===controller){this.googleController=undefined;this.googlePopup=undefined;this.googleAttemptId=undefined;await this.signIn({operation:'signInCancelGoogle',attemptId}).catch(()=>{});}}
+ }
  async startEmail(input:{environment:string;email:string}){return this.signIn({operation:'signInStartEmail',environment:input.environment,email:input.email});}
  async verifyEmail(input:{attemptId:string;code:string}){return this.signIn({operation:'signInVerifyEmail',attemptId:input.attemptId,code:input.code});}
  async verifyMfa(input:{attemptId:string;code:string}){return this.signIn({operation:'signInVerifyMfa',attemptId:input.attemptId,code:input.code});}
- async cancel(){await this.signIn({operation:'signInCancel'}).catch(()=>{});}
- async status(){return this.signIn({operation:'signInStatus'});}
+ async cancelGoogleSignIn(){
+  const attemptId=this.googleAttemptId;if(!attemptId)return {status:'cancelled'};
+  const outcome=await this.signIn({operation:'signInCancelGoogle',attemptId});
+  if(outcome?.status!=='authenticated'){this.googleController?.abort();this.googlePopup?.close();}
+  return outcome;
+ }
+ async cancel(){
+  if(this.googleAttemptId){await this.cancelGoogleSignIn();return;}
+  await this.signIn({operation:'signInCancel'}).catch(()=>{});
+ }
+ async status(input?:{environment:CloudEnvironment}){return this.signIn({operation:'signInStatus',...(input?{environment:input.environment}:{})});}
 }

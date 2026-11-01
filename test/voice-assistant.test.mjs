@@ -598,7 +598,8 @@ test('sources: no Web Speech, storage or logging in the assistant path; the adap
   const template = fs.readFileSync(new URL('../apps/app/src/prototype/template.html', import.meta.url), 'utf8');
   assert.doesNotMatch(template, /aria-label="Transcribe" title="Transcribe into draft"/);
   assert.match(template, /title="Voice assistant" aria-label="Talk" onPointerDown="\{\{chatControlPointer\}\}" onClick="\{\{startVoice\}\}"/);
-  assert.match(template, /chatRecorder\.canInterrupt[\s\S]{0,200}Stop speaking/);
+  // Voice controls are Mute and Stop only; there is no Stop speaking button.
+  assert.doesNotMatch(template, /canInterrupt|Stop speaking/);
   assert.match(template, /aria-pressed="\{\{chatRecorder\.muted\}\}"/);
 });
 

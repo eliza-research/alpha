@@ -293,7 +293,6 @@ export class LocalAgentProtocol {
   /** Explicit developer speech through the same owner-bound agent as text inference. */
   async developmentCloudSpeech(input:{kind:'asr';audio:Uint8Array}|{kind:'tts';text:string},signal:AbortSignal,route:'cloud'|'direct'='cloud'){
     const direct=route==='direct';
-    if(direct&&input.kind!=='tts')throw Error('Direct read-aloud only supports speech output.');
     if(!(direct?(developmentCartesiaVoiceEnabled||browserCloudResidentEnabled):developmentCloudVoiceEnabled)||!this.browserSpeechAvailable||!this.session)throw Error('Developer Cloud speech is unavailable.');
     const session=this.session,generation=this.generation,controller=new AbortController(),requestId=crypto.randomUUID();
     this.streams.add(controller);const bounded=anyAbortSignal([signal,controller.signal]);
@@ -301,7 +300,7 @@ export class LocalAgentProtocol {
       bounded.throwIfAborted();let audioBase64:string|undefined;
       if(input.kind==='asr'){if(!input.audio.byteLength||input.audio.byteLength>2*1024*1024)throw Error('Recording is too large.');let binary='';for(let i=0;i<input.audio.length;i+=8192)binary+=String.fromCharCode(...input.audio.subarray(i,i+8192));audioBase64=btoa(binary);}
       else if(!input.text.trim()||input.text.length>16000)throw Error('Choose text between 1 and 16000 characters.');
-      const response=await this.bridge.request({path:direct?'/api/v1/voice/session/read-aloud':input.kind==='asr'?'/api/asr/cloud':'/api/tts/cloud',ownerId:session.ownerId,method:'POST',headers:{},requestId,timeoutMs:120000,...(audioBase64?{audioBase64}:{body:JSON.stringify({text:(input as {text:string}).text})})},bounded);
+      const response=await this.bridge.request({path:direct?(input.kind==='asr'?'/api/v1/voice/session/transcribe':'/api/v1/voice/session/read-aloud'):input.kind==='asr'?'/api/asr/cloud':'/api/tts/cloud',ownerId:session.ownerId,method:'POST',headers:{},requestId,timeoutMs:120000,...(audioBase64?{audioBase64}:{body:JSON.stringify({text:(input as {text:string}).text})})},bounded);
       bounded.throwIfAborted();if(session!==this.session||generation!==this.generation)throw new DOMException('Voice selection changed','AbortError');
       if(response.status!==200)throw Object.assign(Error(`${direct?'Direct':'Cloud'} speech unavailable (HTTP ${response.status}).`),{code:'voice-http-'+response.status});
       const result=JSON.parse(response.body||'{}');

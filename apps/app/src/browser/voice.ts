@@ -15,7 +15,7 @@ import { WebPlugin } from '@capacitor/core';
 // private local agent, which uses the native llama.cpp-based libelizainference stack.
 export class BrowserVoice extends WebPlugin {
  private connection=Promise.resolve(connectionController).then(connectionController=>{
-  const selected=()=>JSON.stringify([connectionController.getSnapshot().session?.sessionId,connectionController.getCloudEnvironment(),connectionController.getCloudClient()?.sessionId,connectionController.getCloudClient()?.credentialId]);
+  const selected=()=>JSON.stringify([connectionController.getSnapshot().session?.sessionId,connectionController.getCloudEnvironment(),connectionController.getCloudClient()?.sessionId,connectionController.getCloudClient()?.credentialId,connectionController.getSnapshot().residentInference,connectionController.getSnapshot().providerStatus?.revision]);
   let binding=selected();
   connectionController.subscribe(()=>{const next=selected();if(next!==binding){binding=next;void this.releaseLocalSpeech();}});
   return connectionController;
@@ -90,9 +90,12 @@ export class BrowserVoice extends WebPlugin {
    return {playbackId};
   },input.requestId);
  }
- async transcribeDevelopmentCloudRecording(input:{recordingId:string;requestId:string}){
+ async transcribeDevelopmentCloudRecording(input:{recordingId:string;requestId:string;route?:'cloud'|'direct'}){
   const clip=this.capture.get(input.recordingId);if(!clip)throw Error('Record a clip first.');
-  return this.withAgentSpeech('stt',async signal=>{const connection=await this.connection,agent=connection.getBrowserSpeechAgent();if(!agent)throw Error('Connect the developer agent first.');const result=await agent.developmentCloudSpeech({kind:'asr',audio:await recordingPcmWav(clip.blob,signal)},signal);signal.throwIfAborted();if(agent!==connection.getBrowserSpeechAgent()||result instanceof Blob)throw Error('Cloud voice selection changed.');return result;},input.requestId);
+  return this.withAgentSpeech('stt',async signal=>{const connection=await this.connection,agent=connection.getBrowserSpeechAgent(),snapshot=connection.getSnapshot(),route=input.route??'cloud',session=agent?.session,revision=snapshot.providerStatus?.revision;
+   if(!agent||!session)throw Error('Connect the resident agent first.');
+   const current=()=>{signal.throwIfAborted();const now=connection.getSnapshot();if(agent!==connection.getBrowserSpeechAgent()||agent.session!==session||(route==='direct'?(now.residentInference!=='direct'||now.providerStatus?.voiceConfigured!==true||now.providerStatus?.revision!==revision):now.residentInference==='direct'))throw new DOMException('Voice selection changed','AbortError');};
+   current();const audio=await recordingPcmWav(clip.blob,signal);current();const result=await agent.developmentCloudSpeech({kind:'asr',audio},signal,route);current();if(result instanceof Blob)throw Error('Transcription returned no text.');return result;},input.requestId);
  }
  async synthesizeDevelopmentCloud(input:{text:string;requestId:string;replace?:boolean;route?:'cloud'|'direct'}){
   if(input.replace===false&&(this.activeSpeechId||this.audio||this.pendingAudioId||this.speechRequests.has('stt')||this.speechRequests.has('tts')))throw Object.assign(Error('Playback is busy.'),{code:'playback-busy'});

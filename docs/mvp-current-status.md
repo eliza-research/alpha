@@ -1,6 +1,6 @@
 # Current MVP status
 
-Current source pin: `e40497d5d0111d557aef022eb01d4f03023c9fc8`; existing source and native evidence below retain their original revisions. This metadata refresh does not promote performance or device acceptance.
+Proposed SDK source pin: `5e0feca4ee65c7dc81b18fd0fb866e1ede28325e`. Source-only comparison from 7e8b5d3eb1 to the corrected reconciled SDK 5e0feca4ee (draft elizaOS/eliza #38516). Listed native sources, patch targets, mobile UUID builder and bun.lock are unchanged. This does not admit recorded artifacts or transfer historical qualification. Normal checks, fresh native builds and device qualification remain pending; none ran for this proposal.
 
 Previous source checkpoint: Current local integration candidate: clean coherent SDK `de16c240f8ef77779edd3aa411e407018d2be209` with preserved public/native/recovery/Power and current Calendar/catalog/planner/Notes fixes. Shared source qualification is recorded at exact component/joined heads; product preparation/current-head checks and live Notes/Calendar semantics remain pending. Native/model/ABI history and qualified=false are unchanged; current APK/simulator/physical acceptance is separate. No GitHub publication or cleanup was performed.
 

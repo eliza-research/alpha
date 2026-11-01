@@ -117,21 +117,21 @@ export function createLocalAgentDevHandler(options:{origin:string;tokenFile:stri
       const renderer=conversationRenderer||input.path==='/api/views/voice-channel';
       if(renderer&&((!conversationRenderer&&!realtimeEnabled)||input.method!=='POST'||typeof input.ownerId!=='string'||typeof input.body!=='string'||Object.keys(input.headers??{}).some(key=>!['accept','content-type','x-eliza-device-id','x-eliza-device-key','x-eliza-device-capabilities'].includes(key.toLowerCase()))||input.stream||input.storage||input.audioBase64||input.requestId)){fail(400,'Invalid renderer channel request');return;}
       let rendererId:string|undefined;if(renderer){const body=JSON.parse(input.body);if(!body||Object.keys(body).length!==1||!VOICE_UUID.test(body.clientId)){fail(400,'Invalid renderer identity');return;}rendererId=body.clientId;}
-      const directTts=input.path===VOICE_PATH+'/read-aloud',voicePath=typeof input.path==='string'&&input.path.startsWith(VOICE_PATH)&&!directTts,voice=voicePath&&realtimeEnabled?voiceControl(input):null;
+      const directAsr=input.path===VOICE_PATH+'/transcribe',directTts=input.path===VOICE_PATH+'/read-aloud',voicePath=typeof input.path==='string'&&input.path.startsWith(VOICE_PATH)&&!directTts&&!directAsr,voice=voicePath&&realtimeEnabled?voiceControl(input):null;
       if(voicePath&&!voice){fail(400,'Unsupported development voice request');return;}
-      if(directTts&&options.cartesiaEnabled!==true&&options.selectableProvider!==true){fail(400,'Developer direct speech is disabled');return;}
+      if((directTts||directAsr)&&options.cartesiaEnabled!==true&&options.selectableProvider!==true){fail(400,'Developer direct speech is disabled');return;}
       const cloudAsr=input.path==='/api/asr/cloud',cloudTts=input.path==='/api/tts/cloud',cloudSpeech=cloudAsr||cloudTts;
       if(cloudSpeech&&options.cloudVoiceEnabled!==true){fail(400,'Developer Cloud speech is disabled');return;}
-      const asr=cloudAsr||input.path===ASR_PATH||input.path===ASR_PATH+'/status',tts=directTts||cloudTts||input.path===TTS_PATH||input.path===TTS_PATH+'/status';
+      const asr=directAsr||cloudAsr||input.path===ASR_PATH||input.path===ASR_PATH+'/status',tts=directTts||cloudTts||input.path===TTS_PATH||input.path===TTS_PATH+'/status';
       const speech=asr||tts,ttsAudio=(directTts||cloudTts||input.path===TTS_PATH)&&input.method==='POST';
-      if(size>LIMIT&&!((cloudAsr||input.path===ASR_PATH)&&input.method==='POST')){fail(413,'Request too large');return;}
+      if(size>LIMIT&&!((directAsr||cloudAsr||input.path===ASR_PATH)&&input.method==='POST')){fail(413,'Request too large');return;}
       if(input.storage){const result=localAgentStorage(join(dirname(options.tokenFile),'browser-device'),input.storage);res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(result));return;}
       let preparedNavigation=false;
       if(typeof input.body==='string'){
         try{preparedNavigation=isPreparedViewNavigationRequest(input.path,JSON.parse(input.body),input.method);}catch{/* Malformed preparation stays outside the route allowlist. */}
       }
       const group=ownerRouteGroup(input.path);
-      if((!renderer&&!voice&&!cloudSpeech&&!directTts&&!localAgentPathAllowed(input.path)&&!preparedNavigation)||(group?!ownerRouteAllowed(group,input.path,input.method)||typeof input.ownerId!=='string'||!input.ownerId.trim():!['GET','POST'].includes(input.method))||
+      if((!renderer&&!voice&&!cloudSpeech&&!directTts&&!directAsr&&!localAgentPathAllowed(input.path)&&!preparedNavigation)||(group?!ownerRouteAllowed(group,input.path,input.method)||typeof input.ownerId!=='string'||!input.ownerId.trim():!['GET','POST'].includes(input.method))||
          (trajectoryReadAllowed(input.path)&&(input.method!=='GET'||typeof input.ownerId!=='string'||!input.ownerId.trim()))||
          ((input.path.startsWith('/api/views/')||input.path.endsWith('/messages/truncate'))&&(input.method!=='POST'||typeof input.ownerId!=='string'||!input.ownerId.trim()))||
          (input.body!==undefined&&typeof input.body!=='string')||
@@ -183,6 +183,7 @@ export function createLocalAgentDevHandler(options:{origin:string;tokenFile:stri
       if(ttsAudio){headers['X-Request-Id']=input.requestId;headers.Accept=cloudTts?'audio/mpeg':'audio/wav';}
       const result=await request(origin.origin+input.path,{method:input.method,headers,body:audio??input.body,redirect:'error',
         signal:AbortSignal.any([abort.signal,AbortSignal.timeout(voice?10000:120000)])});
+      if(directAsr&&!result.ok){await result.body?.cancel();res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify({status:result.status,body:JSON.stringify({code:'direct_transcription_unavailable'})}));return;}
       if(cloudSpeech&&!result.ok){await result.body?.cancel();res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify({status:result.status,body:JSON.stringify({code:'cloud_voice_unavailable'})}));return;}
       if(cloudSpeech&&(result.headers.get('x-eliza-speech-provider')!=='cartesia'||result.headers.get('x-eliza-speech-route')!=='cloud'||(cloudTts&&result.headers.get('content-type')?.split(';')[0]!=='audio/mpeg'))){await result.body?.cancel();fail(502,'Cloud speech provider was not verified');return;}
       if(directTts&&result.ok&&(result.headers.get('x-eliza-speech-provider')!=='cartesia'||result.headers.get('x-eliza-speech-route')!=='direct')){await result.body?.cancel();fail(502,'Direct speech provider was not verified');return;}
@@ -202,11 +203,12 @@ export function createLocalAgentDevHandler(options:{origin:string;tokenFile:stri
       if(reader)try{while(true){const item=await reader.read();if(item.done)break;received+=item.value.length;if(received>(voice?16*1024:(cloudTts||directTts)&&result.ok?8*1024*1024:ttsAudio&&result.ok?1440044:speech?128*1024:LIMIT))throw new Error('Response too large');output.push(item.value);}}finally{await reader.cancel();}
       if(abort.signal.aborted)return;
       const bytes=Buffer.concat(output);
-      if((cloudSpeech||directTts)&&(readFileSync(options.tokenFile,'utf8').trim()!==token||credential.expiresAt<=Date.now())){fail(409,'Cloud voice owner changed');return;}
+      if((cloudSpeech||directTts||directAsr)&&(readFileSync(options.tokenFile,'utf8').trim()!==token||credential.expiresAt<=Date.now())){fail(409,'Cloud voice owner changed');return;}
       if(cloudTts&&!bytes.length){fail(502,'Empty Cloud speech audio');return;}
       if(ttsAudio&&!cloudTts&&result.ok&&(bytes.length<44||bytes.toString('ascii',0,4)!=='RIFF'||bytes.toString('ascii',8,12)!=='WAVE'||bytes.readUInt32LE(4)+8!==bytes.length)){fail(502,'Invalid local speech audio');return;}
       let body=ttsAudio&&result.ok?JSON.stringify({audioBase64:bytes.toString('base64'),requestId:input.requestId,provider:cloudTts||directTts?'cartesia':'libelizainference-paradee',...(cloudTts?{route:'cloud'}:directTts?{route:'direct'}:{}),contentType:cloudTts?'audio/mpeg':'audio/wav'}):bytes.toString('utf8');
-      if(cloudAsr){const transcript=JSON.parse(body);if(typeof transcript.text!=='string'||transcript.text.length>16000){fail(502,'Invalid Cloud transcript');return;}body=JSON.stringify({text:transcript.text,provider:'cartesia',route:'cloud',requestId:input.requestId});}
+      if(directAsr&&result.ok&&(result.headers.get('x-eliza-stt-provider')!=='cartesia'||result.headers.get('x-eliza-speech-route')!=='direct'||result.headers.get('x-request-id')!==input.requestId))throw Error('Direct transcription provider was not verified');
+      if(directAsr||cloudAsr){const transcript=JSON.parse(body);if(typeof transcript.text!=='string'||transcript.text.length>16000){fail(502,'Invalid Cloud transcript');return;}body=JSON.stringify({text:transcript.text,provider:'cartesia',route:directAsr?'direct':'cloud',requestId:input.requestId});}
       // The upstream machine session ID is its bearer token. Keep it on the host.
       if(voice){try{if(readFileSync(options.tokenFile,'utf8').trim()!==token||credential.expiresAt<=Date.now())throw Error('Voice owner changed');const projected=voiceControlResponse(voice,input,result.status,body,origin,options.cloudRealtimeEnabled===true,options.selectableProvider===true);
         if(result.ok&&voice==='mint'){for(const [id,ticket]of tickets)if(ticket.expiresAt<=Date.now()){ticket.close?.();tickets.delete(id);}if(tickets.size>=32)throw Error('Voice capacity reached');tickets.set(projected.sessionId,{root:token,ownerId:credential.ownerId,expiresAt:projected.expiresAt,claimed:false});projected.wsUrl=`ws://${host}${LOCAL_VOICE_WS_PATH}?sessionId=${projected.sessionId}`;}
