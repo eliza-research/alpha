@@ -34,7 +34,7 @@ async function nativeStub(page:Page,fixture:Fixture={}){
    status:{permissionGranted:true,appEnabled:true,interruption:'all',scope:'alpha-phone',channels:[{id:'c-reminders',name:'Reminders',importance:4,blocked:false,groupBlocked:false},{id:'c-results',name:'Scheduled digest results',importance:3,blocked:false,groupBlocked:false}]} as Record<string,any>,
    cross:{revision:'r1',enabled:false,paused:false,accessGranted:false,connected:false,history:true,apps:[]} as Record<string,unknown>,
    history:[{appLabel:'Stub Mail',state:'posted',at:now-60_000}] as unknown[],
-   items:[] as unknown[],openFails:false,unspecific:[] as string[],unavailable:[] as string[],torch:true,shadeOutcome:'opened' as string,provider:provider??{configured:false},
+   items:[] as unknown[],openFails:false,unspecific:[] as string[],unavailable:[] as string[],torch:true,shadeOutcome:'opened' as string,provider:provider??{provider:'elizacloud',configured:false},
   };
   for(const key of drop)delete state.snapshot[key];
   w.truth={calls:[] as any[],shared:[] as string[],state,resume:()=>listeners.filter(l=>l.plugin==='DailyApps'&&l.event==='appResumed').forEach(l=>l.callback({}))};
@@ -117,7 +117,11 @@ const callNames=(page:Page)=>page.evaluate(()=>[...new Set((window as any).truth
 /** Production Android starts the resident by itself (P-43). Offline with a saved sign-in, nothing gates it and no dialog opens. */
 async function start(page:Page){
  await page.goto('/');
- if(await page.evaluate(()=>!!(window as any).truth))await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
+ if(await page.evaluate(()=>!!(window as any).truth)){
+  await expect.poll(()=>page.evaluate(()=>(window as any).truth.calls.some((call:any)=>call.plugin==='Agent'&&call.method==='request'&&call.input.path==='/api/auth/me'))).toBe(true);
+  await expect(page.locator('.alpha-cloud-sign-in')).toHaveCount(0);
+  await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
+ }
  await page.getByRole('button',{name:'Settings',exact:true}).waitFor({state:'visible'});
 }
 async function openSettings(page:Page){
