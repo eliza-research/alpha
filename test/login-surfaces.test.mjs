@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import {execFileSync} from 'node:child_process';
+import {preparePatchedNative} from '../scripts/prepare-patched-native.mjs';
 
 // Issue #404 (P-20): every eligible login surface in Alpha supports password-manager fill,
 // website fills bind to the committed HTTPS origin, app fills to verified app identity, and
@@ -217,13 +218,15 @@ test('External authorization uses the browser and Google sign-in uses the native
   }
   assert.deepEqual(returns.sort(), ['android/app/src/testMocks/AndroidManifest.xml:${stagingCloudWebHost}'], 'the production return comes only from the ELIZAOS_APP_LINK_HOST overlay (android/app/product.gradle); the staging return exists only in the test-mocks overlay');
   assert.match(read('android/app/product.gradle'), /android:host="\\\$\{appLinkHost\}" android:path="\/alphaphone\/auth\/callback"\/><\/intent-filter>/, 'the build-gated sign-in return is one exact path');
-  // The shared native client (vendor/eliza packages/auth/android) that AlphaCloudSignInPlugin registers.
-  const signIn = read('vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java');
+  // Inspect the exact shared source that the Android build packages.
+  const staged=preparePatchedNative({root:process.cwd()});
+  const signIn = read(path.join(staged.root,'packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java'));
   assert.match(read('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCloudSignInPlugin.java'), /extends CloudSignInPlugin/);
-  assert.equal(inventory.surfaces.find(s=>s.id==='eliza-cloud-sign-in-google').kind,'native-account-picker');
-  assert.doesNotMatch(signIn,/CustomTabsIntent/, 'Google sign-in does not open a browser consent flow');
-  assert.match(signIn,/NativeGoogleCredential\.request\(getActivity\(\), clientId, nonce, next\.googleCancellation/,'system picker remains bound to server client, nonce and cancellation');
-  assert.doesNotMatch(signIn, /WebView|AlphaBrowserPlugin/, 'never an embedded user agent');
+  assert.equal(inventory.surfaces.find(s=>s.id==='eliza-cloud-sign-in-google').kind,'external-browser');
+  assert.match(signIn,/CustomTabsIntent/, 'Google sign-in uses the external browser');
+  assert.match(read('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCloudSignInPlugin.java'),/googleSignInMode\("browser"\)/);
+  assert.match(signIn,/tab\.intent\.setPackage\(browser\)/, 'launch targets the selected Custom Tabs browser');
+  assert.doesNotMatch(signIn, /new WebView|WebView\.loadUrl|AlphaBrowserPlugin/, 'never an embedded user agent');
   const ui = read('apps/app/src/runtime/google-connection-ui.tsx');
   assert.match(ui, /await openConnectionBrowser\(url,abort\.signal\);/);
 });

@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {deploymentOutputs,validateCloudDeployment} from '../scripts/cloud-deployment.mjs';
+import {preparePatchedNative} from '../scripts/prepare-patched-native.mjs';
 const defaults=JSON.parse(fs.readFileSync(new URL('../config/cloud-deployment.json',import.meta.url)));
 test('committed renderer and native authorities match the deployment configuration',()=>{
  for(const [file,contents] of Object.entries(deploymentOutputs(defaults)))assert.equal(fs.readFileSync(file,'utf8'),contents);
@@ -22,8 +23,9 @@ test('a different deployment changes actual native login, request admission and 
   const plugin=fs.readFileSync(native+'AlphaCloudSignInPlugin.java','utf8');
   const registration=plugin.slice(plugin.indexOf(' static final String PENDING_SLOT'),plugin.indexOf(' static String receiptSlot('));
   assert.ok(registration.includes('static CloudSignInConfig registration(boolean testMocks)'));
-  const shared='vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud/';
-  const sharedFiles=['CloudSignInConfig.java','CloudSignInEnvironment.java','CloudSignInFlow.java','CloudSignInRoutes.java','CloudKeyRevocation.java','CloudEmailCode.java','CloudSmsCode.java'].map(file=>shared+file).concat('vendor/eliza/packages/auth/android/test/org/json/JSONObject.java','vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/connection/CloudConnectionPolicy.java');
+  const staged=preparePatchedNative({root:path.resolve(import.meta.dirname,'..')});
+  const shared=path.join(staged.root,'packages/auth/android/src/main/java/ai/eliza/auth/cloud');
+  const sharedFiles=['CloudSignInConfig.java','CloudSignInEnvironment.java','CloudSignInFlow.java','CloudSignInRoutes.java','CloudKeyRevocation.java','CloudEmailCode.java','CloudSmsCode.java'].map(file=>path.join(shared,file)).concat('vendor/eliza/packages/auth/android/test/org/json/JSONObject.java','vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/connection/CloudConnectionPolicy.java');
   fs.writeFileSync(path.join(temp,'AlphaRegistration.java'),`package ai.elizaresearch.alphaphone;
 import ai.eliza.auth.cloud.*;
 final class BuildConfig {static final boolean ELIZA_DEV_ALLOW_TEST_MOCKS=false;}

@@ -270,7 +270,8 @@ earlier one, the earlier entry carries a dated "Amended by" note and keeps its o
   **0.1.0**, and its versionCode is the next integer above the last recorded release. With no
   branch protection (P-57), keeping the secrets to the signing job is a matter of workflow review.
 - **P-59** — H-37 ([#660](https://github.com/eliza-research/alphaphone/issues/660), [#659](https://github.com/eliza-research/alphaphone/issues/659)): The two defaults taken on 2026-10-28 are
-  confirmed. (1) The Settings membership sheet stays **"Membership & credits"**, the
+  confirmed. (1) The Settings membership sheet stays **"Membership & credits"** (superseded
+  by the November 1 subscription presentation correction below), the
   organization-credit mode of the October 16 Cloud credit billing entry. For that mode this is an
   exception to P-26's "rather than a user-facing credit top-up" and **amends P-26**; subscription
   plans keep P-26 as written, including no billing round trip per turn. On the phone's own agent the
@@ -398,3 +399,16 @@ earlier one, the earlier entry carries a dated "Amended by" note and keeps its o
   It is an owner acceptance, not legal review.
 
 - **P-78** — [#743](https://github.com/eliza-research/alphaphone/issues/743#issuecomment-6514832799): Voice is in-chat only; hardware invocation and wake listening are deferred. Chat microphone controls remain available. Hardware hold, assistant overlays, lock-screen voice and voice shortcuts do not start capture; their implementations stay dormant. Wake-listening Settings are hidden. Startup requests the canonical listener turn-off; an unconfirmed stop is reported without blocking chat. This supersedes earlier hardware/wake voice requirements for the Alpha/Mac lane.
+
+
+## November 1 subscription presentation correction
+
+The owner clarified: "we are showing credits but its supposed to be a monthly
+subscription." This supersedes P-59's credit-first presentation exception and restores
+P-26's subscription presentation. The account sheet is **Subscription**: show the
+verified plan, included usage and access window, with **Choose a monthly plan** or
+**Manage subscription** and code redemption. Do not present an organization balance
+or a credit top-up as the product's billing model. P-62's monthly catalog remains in
+force; prices and renewal terms come from Cloud's billing flow, never inferred by the
+phone. A temporary grant remains temporary access and is not described as a paid
+renewal. This changes presentation, not Cloud's existing account admission or charging.

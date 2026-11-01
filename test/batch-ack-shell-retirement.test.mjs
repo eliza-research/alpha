@@ -9,7 +9,9 @@ const {voiceFakeClock}=await import(new URL('test/fixtures/shared-batch-voice.mj
 const adapter=readFileSync(process.env.ALPHA_ACK_VIEW_SOURCE||new URL('../apps/app/src/prototype/voice-adapter.ts',import.meta.url),'utf8');
 async function startedCue({failCleanup=false}={}){
  const clock=voiceFakeClock();
- const f=cloudVoiceViewFixture({cloudProfile:true,clock,peak:.5,holdReply:true,holdPlayback:true,
+ // Browser compatibility still supports spoken ACKs; native Cloud voice no longer
+ // adds a second TTS request ahead of the answer.
+ const f=cloudVoiceViewFixture({cloudProfile:true,native:false,platform:'web',clock,peak:.5,holdReply:true,holdPlayback:true,
    holdPlaybackCleanup:true,playbackCleanupError:failCleanup?Error('Native stop failed'):undefined,
    adapterSourceTransform:()=>adapter});
  f.box.React={createElement:()=>null};f.box.VoiceActivity=()=>null;

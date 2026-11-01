@@ -79,10 +79,10 @@
     },
     {
       "id": "eliza-cloud-sign-in-google",
-      "kind": "native-account-picker",
+      "kind": "external-browser",
       "eligible": false,
       "owner": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCloudSignInPlugin.java (startGoogle), apps/app/src/runtime/cloud-sign-in-ui.tsx",
-      "reason": "Android Credential Manager owns the Google account picker. Alpha receives the returned Google ID token through its native sign-in bridge and exchanges it for its own session. No reusable Google password field is rendered in Alpha; Google account credentials are managed by the system provider."
+      "reason": "Google sign-in opens the user's external Custom Tabs browser so AOSP does not need Google Play services. Google credentials remain in that browser. Alpha's native bridge validates the returned state and exchanges the authorization code with its original PKCE verifier; no Google password or authorization code crosses the renderer bridge."
     },
     {
       "id": "eliza-cloud-sign-in-code",

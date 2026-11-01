@@ -1,0 +1,191 @@
+{
+  "runUrl": "https://github.com/elizaOS/eliza/actions/runs/41286696075",
+  "result": "failed_trace_collection",
+  "deployment": {
+    "kind": "deployment",
+    "deploySha": "2fe70612438707c181fdb8f4cd5656707b4c69ee",
+    "environment": "staging"
+  },
+  "source": {
+    "kind": "certification_source",
+    "sourceSha": "bbc5cd6ee6b73b71a0c3cfa42655dce888a4e01b",
+    "deploySha": "2fe70612438707c181fdb8f4cd5656707b4c69ee",
+    "relationship": "develop_ancestor",
+    "verifierContractChanged": false,
+    "verifierContractDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "changedVerifierPaths": [],
+    "verifierContractAcknowledged": false
+  },
+  "latency": [
+    {
+      "target": "direct",
+      "phase": "cold",
+      "count": 1,
+      "successful": 1,
+      "firstToken": {
+        "n": 1,
+        "p50Ms": 205.46,
+        "p95Ms": 205.46,
+        "maxMs": 205.46
+      },
+      "responseHeaders": {
+        "n": 1,
+        "p50Ms": 160.33,
+        "p95Ms": 160.33,
+        "maxMs": 160.33
+      }
+    },
+    {
+      "target": "direct",
+      "phase": "post-idle",
+      "count": 1,
+      "successful": 1,
+      "firstToken": {
+        "n": 1,
+        "p50Ms": 123.65,
+        "p95Ms": 123.65,
+        "maxMs": 123.65
+      },
+      "responseHeaders": {
+        "n": 1,
+        "p50Ms": 73.52,
+        "p95Ms": 73.52,
+        "maxMs": 73.52
+      }
+    },
+    {
+      "target": "direct",
+      "phase": "warm",
+      "count": 20,
+      "successful": 20,
+      "firstToken": {
+        "n": 20,
+        "p50Ms": 134.25,
+        "p95Ms": 254.67,
+        "maxMs": 379.45
+      },
+      "responseHeaders": {
+        "n": 20,
+        "p50Ms": 72.66,
+        "p95Ms": 90.16,
+        "maxMs": 92.82
+      }
+    },
+    {
+      "target": "gateway",
+      "phase": "cold",
+      "count": 1,
+      "successful": 1,
+      "firstToken": {
+        "n": 1,
+        "p50Ms": 2443.9,
+        "p95Ms": 2443.9,
+        "maxMs": 2443.9
+      },
+      "responseHeaders": {
+        "n": 1,
+        "p50Ms": 2400.77,
+        "p95Ms": 2400.77,
+        "maxMs": 2400.77
+      }
+    },
+    {
+      "target": "gateway",
+      "phase": "post-idle",
+      "count": 1,
+      "successful": 1,
+      "firstToken": {
+        "n": 1,
+        "p50Ms": 665.23,
+        "p95Ms": 665.23,
+        "maxMs": 665.23
+      },
+      "responseHeaders": {
+        "n": 1,
+        "p50Ms": 553.85,
+        "p95Ms": 553.85,
+        "maxMs": 553.85
+      }
+    },
+    {
+      "target": "gateway",
+      "phase": "warm",
+      "count": 20,
+      "successful": 20,
+      "firstToken": {
+        "n": 20,
+        "p50Ms": 628.15,
+        "p95Ms": 1420.14,
+        "maxMs": 1773.76
+      },
+      "responseHeaders": {
+        "n": 20,
+        "p50Ms": 556.88,
+        "p95Ms": 1363.4,
+        "maxMs": 1718.22
+      }
+    }
+  ],
+  "warmPairedGatewayExtraFirstToken": {
+    "n": 20,
+    "p50Ms": 461.56,
+    "p95Ms": 1277.31,
+    "maxMs": 1644.35
+  },
+  "auth": {
+    "counts": {
+      "hit": 30,
+      "miss": 10
+    },
+    "suspendedGuard": "not_requested",
+    "hitAuthResolveMs": {
+      "p50": 76,
+      "p90": 84,
+      "p95": 105,
+      "max": 142
+    },
+    "missAuthResolveMs": {
+      "p50": 274,
+      "p90": 463,
+      "p95": 502,
+      "max": 502
+    },
+    "missIdentityLookupMs": {
+      "p50": 30,
+      "p90": 34,
+      "p95": 38,
+      "max": 38
+    },
+    "missModerationMs": {
+      "p50": 18,
+      "p90": 26,
+      "p95": 27,
+      "max": 27
+    },
+    "missCacheReadMs": {
+      "p50": 90,
+      "p90": 214,
+      "p95": 246,
+      "max": 246
+    },
+    "missCacheWriteMs": {
+      "p50": null,
+      "p90": null,
+      "p95": null,
+      "max": null
+    }
+  },
+  "workerAuthCacheHits": 31,
+  "workerAuthCacheHitsWithPrimaryIdentityOrModerationStage": 0,
+  "traceDenial": {
+    "kind": "cloudflare_trace_api_denial",
+    "endpoint": "keys",
+    "httpStatus": 403,
+    "errorCodes": [
+      10104
+    ],
+    "documentationUrls": []
+  },
+  "dbCountProof": "unavailable; trace capture denied; do not infer zero DB queries from missing traces",
+  "percentileMethod": "nearest-rank"
+}

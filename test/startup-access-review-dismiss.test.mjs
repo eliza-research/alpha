@@ -32,10 +32,10 @@ async function fixture(t,{durable=null,denied=false,active=true}={}){
 }
 test('Settings review of completed setup closes at once by button, Escape or back and never rewrites completion',async t=>{
  const f=await fixture(t,{durable:completed});assert.equal(f.dialog(),null);
- await f.reopen();assert.equal(f.heading(),'Stay in the loop.');assert.deepEqual(f.buttons(),['Continue','Close']);assert.deepEqual(f.progress(),completed);
- await f.click('Continue');assert.equal(f.heading(),'Talk to Alpha.');assert.deepEqual(f.progress(),completed);
+ await f.reopen();assert.equal(f.heading(),'Notifications');assert.deepEqual(f.buttons(),['Continue','Close']);assert.deepEqual(f.progress(),completed);
+ await f.click('Continue');assert.equal(f.heading(),'Microphone');assert.deepEqual(f.progress(),completed);
  await f.click('Close');assert.equal(f.dialog(),null);assert.deepEqual(f.progress(),completed);
- await f.reopen();assert.equal(f.heading(),'Stay in the loop.');await f.cancel();assert.equal(f.dialog(),null);
+ await f.reopen();assert.equal(f.heading(),'Notifications');await f.cancel();assert.equal(f.dialog(),null);
  await f.reopen();await f.back();assert.equal(f.dialog(),null);assert.deepEqual(f.progress(),completed);
  await f.remount();assert.equal(f.dialog(),null);assert.equal(f.calls.length,0);
 });
@@ -44,14 +44,14 @@ test('Settings review can also be left from Ready, and finishing it keeps comple
  await f.reopen();for(let i=0;i<4;i++)await f.click('Continue');await f.click('Go to Alpha');assert.equal(f.dialog(),null);assert.deepEqual(f.progress(),completed);await f.remount();assert.equal(f.dialog(),null);
 });
 test('a targeted review of completed setup closes on Escape without rewriting completion',async t=>{
- const f=await fixture(t,{durable:completed});await f.reopen('camera');assert.equal(f.heading(),'Capture a moment.');assert(!f.button('Close'));await f.cancel();assert.equal(f.dialog(),null);assert.deepEqual(f.progress(),completed);
+ const f=await fixture(t,{durable:completed});await f.reopen('camera');assert.equal(f.heading(),'Camera');assert(!f.button('Close'));await f.cancel();assert.equal(f.dialog(),null);assert.deepEqual(f.progress(),completed);
 });
 test('an unfinished walkthrough reopened from Settings stays required: no Close, Escape and back keep it open',async t=>{
- const f=await fixture(t,{active:false});assert.equal(f.dialog(),null);await f.reopen();assert.equal(f.heading(),'Stay in the loop.');assert.deepEqual(f.buttons(),['Continue']);
- await f.cancel();await f.back();assert.equal(f.heading(),'Stay in the loop.');assert.deepEqual(f.progress(),{version:1,status:'pending',step:0});
+ const f=await fixture(t,{active:false});assert.equal(f.dialog(),null);await f.reopen();assert.equal(f.heading(),'Notifications');assert.deepEqual(f.buttons(),['Continue']);
+ await f.cancel();await f.back();assert.equal(f.heading(),'Notifications');assert.deepEqual(f.progress(),{version:1,status:'pending',step:0});
 });
 test('blocked browser access only mentions skipping once Skip for now is on screen',async t=>{
  t.mock.timers.enable({apis:['setTimeout']});const f=await fixture(t,{denied:true});
  await f.click('Check access');assert.match(document.body.textContent,/Access is still off\. Change it using the site controls\./);assert.doesNotMatch(document.body.textContent,/skip this step/);assert(!f.button('Skip for now'));
- await React.act(async()=>t.mock.timers.tick(20000));assert(f.button('Skip for now'));assert.match(document.body.textContent,/You can skip this step for now\./);
+ await React.act(async()=>t.mock.timers.tick(20000));assert(f.button('Skip for now'));
 });

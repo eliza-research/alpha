@@ -166,7 +166,7 @@ buckets (elizaOS/eliza PR #36255).
 | Valid entitlement, plan `active` or `trialing` | Plan name and the Cloud allowance | yes |
 | Valid entitlement, plan `past_due` | Plan name, "Payment is past due" warning and "Manage plan in Eliza Cloud" | yes |
 | Valid entitlement, plan `canceled`, or `none` without explicit organization-credit mode | Non-blocking plan notice beside the running agent (Redeem code, Choose a plan); the plan panel shows "<plan> has ended" or "No active plan" with Check plan again | no |
-| Verified entitlement `none` plus authenticated snapshot `organization-credits` | Eliza Cloud credits; no plan or balance is invented, and the canonical snapshot refreshes periodically | yes, every request still checked by Cloud |
+| Verified entitlement `none` plus authenticated snapshot `organization-credits` | No active subscription; choose a monthly plan or redeem a code. The compatibility snapshot refreshes periodically, without a user-facing credit meter | yes, every request still checked by Cloud |
 | Route absent (404/405/501) | `GET /api/v1/billing/limits`, `data.v2.subscription`: `trialing`/`active` bind, `grace`/`past_due`/`unpaid` bind with the warning, `canceled`/`incomplete_expired` need a plan; `not_applicable` with reason `no_organization_subscription` uses credit mode (other reasons remain inactive) | as mapped |
 | Route absent and the billing snapshot is absent or reports no known state | Plan notice; "Plan status unavailable" with Check plan again, Redeem code and Choose a plan | no |
 | Billing outage (5xx, timeout) after identity succeeded | Bound when this sign-in had an admitting plan verified within the last 7 days ("Plan status unavailable"); otherwise the plan notice with a retry | as stated |

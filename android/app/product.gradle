@@ -26,11 +26,11 @@ def cloudDeployment = new groovy.json.JsonSlurper().parse(file('../../config/clo
 def cloudWebHost = new URI(cloudDeployment.production.web).host
 def stagingCloudWebHost = new URI(cloudDeployment.staging.web).host
 // Verified App Links return for Cloud delegation and the in-app Cloud sign-in
-// at the configured production web host. Unset by default: no https autoVerify
-// filter is emitted. When set, a generated overlay adds the filter for ${appLinkHost}; publish
-// the assetlinks.json rendered by scripts/render-assetlinks.mjs on that host first.
+// at the configured production web host. Browser Google sign-in requires this
+// return in every build. A generated overlay declares the configured host;
+// publish the assetlinks.json rendered by scripts/render-assetlinks.mjs there.
 def appLinkHostRaw = project.findProperty('ELIZAOS_APP_LINK_HOST') ?: envValue('ELIZAOS_APP_LINK_HOST')
-def appLinkHost = appLinkHostRaw == null || appLinkHostRaw.toString().trim().isEmpty() ? '' : appLinkHostRaw.toString().trim()
+def appLinkHost = appLinkHostRaw == null || appLinkHostRaw.toString().trim().isEmpty() ? cloudWebHost : appLinkHostRaw.toString().trim()
 if (appLinkHost && !(appLinkHost ==~ /(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,61}[a-z0-9]/))
  throw new GradleException('ELIZAOS_APP_LINK_HOST must be a lower-case DNS host name without scheme, port or path')
 if (appLinkHost && appLinkHost != cloudWebHost)

@@ -10,7 +10,7 @@ import { recordStartupFrames, expectNoHomeBeforePrompt, startupLoading } from '.
 test.beforeEach(({}, testInfo) => { test.skip(testInfo.project.name !== 'production', 'Production bundle only'); });
 
 const account = { token: 'post-sign-in-key', userId: '9f1dc45a-4011-4e44-947a-30d999d24fa5', email: 'new-owner@example.invalid', balance: 5 };
-const STEPS = ['Stay in the loop.', 'Talk to Alpha.', 'Capture a moment.', 'Find your way.', 'Plan your day.', 'Your photos, here.'];
+const STEPS = ['Notifications', 'Microphone', 'Camera', 'Location', 'Calendar', 'Photos'];
 /** Starting-state copy the owner reported: none of it may show while the agent merely starts. */
 const STARTING_SLOP = ['AI is off', 'Checking your code', 'Checking code', 'Eliza Cloud credits', 'Manage billing', 'AI is not ready yet'];
 const starts = (page: Page) => stub(page, s => s.order.filter((entry: string) => entry === 'Agent.start').length) as Promise<number>;

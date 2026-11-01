@@ -4,7 +4,7 @@
  * Verification of the signed short-lived entitlement, account binding, admission, background
  * refresh, expiry/outage states, Cloud refusal parsing with retry times and the owner-facing copy
  * live upstream in `@elizaos/cloud-sdk/subscription-entitlement`, projected from the pinned
- * checkout. Alpha supplies only its product name and the noun for local data. Nothing here
+ * checkout. Alpha supplies its product names and subscription-first presentation. Nothing here
  * selects a price, quota, allowance or limit; turns never read billing.
  */
 import {
@@ -28,6 +28,12 @@ export function alphaSubscriptionCopy(serviceName = 'Cloud'): SubscriptionCopy {
   return { serviceName, productName: 'Alpha Phone', deviceNoun: 'phone' };
 }
 export function describeSubscription(view: SubscriptionView | null | undefined, serviceName = 'Cloud'): SubscriptionDescription {
+  if (view?.kind === 'credits') return {
+    headline: 'No active subscription',
+    detail: 'Choose a monthly plan or enter a membership code.',
+    manage: true,
+    manageLabel: 'Choose a monthly plan',
+  };
   return sharedDescribeSubscription(view, alphaSubscriptionCopy(serviceName));
 }
 export function allowanceText(allowance: PlanAllowance | null, now: number = Date.now(), serviceName = 'Cloud'): string {
@@ -41,5 +47,5 @@ export function redeemFailureMessage(error: unknown, serviceName = 'Cloud'): str
 }
 export function subscriptionSummary(view: SubscriptionView | null | undefined, options: { planEndsAt?: number | null; lastLimit?: ServiceLimit | null; lastLimitAt?: number | null; now?: number; serviceName?: string } = {}): SubscriptionSummary {
   const { serviceName, ...rest } = options;
-  return sharedSubscriptionSummary(view, { ...rest, copy: alphaSubscriptionCopy(serviceName) });
+  return { ...sharedSubscriptionSummary(view, { ...rest, copy: alphaSubscriptionCopy(serviceName) }), ...describeSubscription(view, serviceName) };
 }

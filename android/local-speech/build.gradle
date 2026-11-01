@@ -3,7 +3,12 @@ def selectedParadeeAbis = project.findProperty('elizaParadeeAbis')?.toString()?.
 if (!selectedParadeeAbis || selectedParadeeAbis.toSet().size() != selectedParadeeAbis.size() || selectedParadeeAbis.any { !(it in ['arm64-v8a', 'x86_64']) }) throw new GradleException('Invalid elizaParadeeAbis')
 def paradeeAbiArgs = selectedParadeeAbis.collectMany { ['--abi', it] }
 // Shared native speech API and build policy come from the exact reviewed pin.
-def paradee = file('../../vendor/eliza/plugins/plugin-local-inference/native/android')
+def preparedSpeech = new groovy.json.JsonSlurper().parseText(providers.exec {
+ workingDir rootProject.projectDir.parentFile
+ commandLine 'node', 'scripts/prepare-patched-native.mjs'
+}.standardOutput.asText.get())
+def paradee = new File(preparedSpeech.root.toString(), 'plugins/plugin-local-inference/native/android')
+if (!paradee.isDirectory()) paradee = file('../../vendor/eliza/plugins/plugin-local-inference/native/android')
 if (!paradee.isDirectory()) {
  ext.elizaSpeechSourceDir = file('../../vendor/eliza/packages/app/platforms/android/local-speech')
  apply from: new File(ext.elizaSpeechSourceDir, 'consumer.gradle')
@@ -40,3 +45,6 @@ if (!paradee.isDirectory()) {
  }
  tasks.named('preBuild').configure { dependsOn verifySpeechInputs }
 }
+
+// Shared relay compiles against the same pinned OkHttp API implemented by the app.
+dependencies { compileOnly 'com.squareup.okhttp3:okhttp:5.3.2' }

@@ -1,15 +1,17 @@
 #!/usr/bin/env node
 import {HOST_DESCRIPTOR, readHostDescriptor} from './android-host.mjs';
+import {preparePatchedNative} from './prepare-patched-native.mjs';
 /**
  * Gradle dependency verification metadata (android/gradle/verification-metadata.xml).
  *
  *   node scripts/gradle-verification.mjs --check                 # offline; also run by `npm test`
- *   node scripts/gradle-verification.mjs --write [--allow-unpackaged-runtime]
+ *   node scripts/gradle-verification.mjs --write [--allow-unpackaged-runtime | --runtime-profile=cloud]
  *                                                                # npm run android:deps:write-verification
  *
  * While the file exists Gradle refuses any plugin or dependency artifact whose SHA-256 is not
  * listed in it, in every build of the generated android/ host: nothing has to opt in and no
- * build step is added. `--check` reads committed files only. `--write` is the one command that uses the
+ * build step is added. `--check` verifies committed inputs and their authenticated patched
+ * descriptors offline. `--write` is the one command that uses the
  * network: it runs the real build tasks with `--write-verification-metadata sha256` (Gradle adds
  * what they resolve and never removes an entry), then records the Linux and Windows builds of
  * aapt2, which a macOS build never resolves, from Google's Maven repository. Review the diff
@@ -134,7 +136,7 @@ export function repositoryProblem(entry) {
   return 'is not a reviewed form';
 }
 
-/** A descriptor reference as a checkout-relative path. Staged patched modules read their unchanged pinned descriptors. */
+/** A descriptor reference as a checkout-relative path; patched descriptors are checked separately below. */
 export function referencePath({root, path: relative}) {
   if (root === 'consumer') return relative;
   if (root === 'upstream' || root === 'patchedNative') return path.posix.join('vendor/eliza', relative);
@@ -147,7 +149,9 @@ export function referencePath({root, path: relative}) {
  * templates the generated root, settings and app scripts come from, Alpha's product script and
  * the build.gradle of each module android/consumer-host.json includes (the fixtures, the speech
  * and listener modules, Capacitor from node_modules and the plugins from the pinned upstream checkout).
- * Native patch admission permits only Java/Kotlin edits, so a staged module's descriptor is the pinned one.
+ * This is the canonical input list. The one patchable Gradle descriptor, shared auth's
+ * build.gradle, is materialized and checked separately so its repositories cannot hide behind
+ * the unchanged pinned copy.
  */
 export function buildScripts(root) {
   const {profile} = readHostDescriptor(root);
@@ -155,6 +159,17 @@ export function buildScripts(root) {
   if (new Set(modules).size !== modules.length) throw new Error(`${HOST_DESCRIPTOR} includes one module directory twice`);
   return [`${HOST_TEMPLATES}/settings.gradle`, `${HOST_TEMPLATES}/build.gradle`, `${HOST_TEMPLATES}/app.gradle`,
     ...(profile.appScripts ?? []).map(referencePath), ...modules.sort()];
+}
+
+/** Only shared auth's build.gradle may be patched; authenticate it before checking its declarations. */
+function patchedBuildScripts(root) {
+  const file = path.join(root, 'patches/eliza/native-manifest.json');
+  if (!fs.existsSync(file)) return []; // Canonical-only fixture/checkouts have no native patch manifest.
+  const manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
+  const target = 'packages/auth/android/build.gradle';
+  if (!manifest.patches?.some(patch => patch.targets?.some(candidate => candidate.path === target))) return [];
+  const staged = preparePatchedNative({root});
+  return [path.relative(root, path.join(staged.root, target)).split(path.sep).join('/')];
 }
 
 export function checkVerification(root) {
@@ -193,7 +208,8 @@ export function checkVerification(root) {
     for (const host of AAPT2_HOSTS)
       if (!component.artifacts.some(artifact => artifact.name === `aapt2-${component.version}-${host}.jar`)) problems.push(`aapt2 ${component.version} has no ${host} archive recorded`);
   if (!metadata.components.some(item => item.group === 'com.android.tools.build' && item.name === 'aapt2')) problems.push('aapt2 is not recorded: the metadata was not generated from a real build');
-  for (const script of buildScripts(root)) {
+  const patchedScripts = patchedBuildScripts(root);
+  for (const script of [...buildScripts(root), ...patchedScripts]) {
     const file = path.join(root, script);
     // An included project that cannot be read was not reviewed; the checkout or npm ci is incomplete.
     if (!fs.existsSync(file)) { problems.push(`${script} is missing: the repositories it declares cannot be checked (git submodule update --init vendor/eliza; npm ci)`); continue; }
@@ -202,7 +218,7 @@ export function checkVerification(root) {
       if (problem) problems.push(`${script} declares repository ${repository}, which ${problem}; reviewed: ${ALLOWED_REPOSITORIES.join(', ')} and maven { } naming ${ALLOWED_REPOSITORY_URLS.join(' or ')}`);
     }
   }
-  for (const file of MIRROR_FREE)
+  for (const file of [...MIRROR_FREE, ...patchedScripts])
     if (fs.existsSync(path.join(root, file)) && fs.readFileSync(path.join(root, file), 'utf8').includes(MIRROR_PROPERTY))
       problems.push(`${file} mentions ${MIRROR_PROPERTY}: a Maven Central mirror is not a reviewed source`);
   return {problems, metadata};
@@ -241,18 +257,30 @@ async function recordOtherHostAapt2(root) {
   fs.writeFileSync(file, text);
 }
 
-async function write(root, {allowUnpackagedRuntime}) {
+export function parseVerificationArgs(args) {
+  const mode = args.filter(arg => ['--check', '--write'].includes(arg));
+  if (mode.length !== 1 || args.some(arg => !['--check', '--write', '--allow-unpackaged-runtime', '--runtime-profile=cloud'].includes(arg)))
+    throw new Error('Usage: node scripts/gradle-verification.mjs --check | --write [--allow-unpackaged-runtime | --runtime-profile=cloud]');
+  const runtimeProfile=args.includes('--runtime-profile=cloud')?'cloud':'native';
+  const allowUnpackagedRuntime=args.includes('--allow-unpackaged-runtime');
+  if(runtimeProfile==='cloud'&&allowUnpackagedRuntime)throw new Error('Cloud profile requires a genuine packaged resident');
+  return {mode:mode[0],runtimeProfile,allowUnpackagedRuntime};
+}
+
+async function write(root, {allowUnpackagedRuntime,runtimeProfile}) {
   const {androidEnv} = await import('./toolchain.mjs');
   const env = {...androidEnv()};
   for (const name of ['ELIZA_DEV_ALLOW_TEST_MOCKS', 'VITE_ELIZA_DEV_ALLOW_TEST_MOCKS', 'ORG_GRADLE_PROJECT_ELIZA_DEV_ALLOW_TEST_MOCKS']) delete env[name];
-  const preflight = [path.join(root, 'scripts/android-build-preflight.mjs'), ...(allowUnpackagedRuntime ? ['--allow-unpackaged-runtime'] : [])];
+  env.VITE_ELIZA_RUNTIME_PROFILE=runtimeProfile;
+  const profileArgs=runtimeProfile==='cloud'?['--runtime-profile=cloud']:[];
+  const preflight = [path.join(root, 'scripts/android-build-preflight.mjs'), ...profileArgs, ...(allowUnpackagedRuntime ? ['--allow-unpackaged-runtime'] : [])];
   execFileSync(process.execPath, preflight, {cwd: root, stdio: 'inherit', env});
   execFileSync(process.execPath, [path.join(root, 'scripts/android-host.mjs')], {cwd: root, stdio: 'inherit', env});
   execFileSync('npm', ['run', 'android:sync'], {cwd: root, stdio: 'inherit', env});
   // No ALPHA_NOTIFICATION_FIXTURE_KEYSTORE here: the fixture then takes the default debug key, and
   // its dependencies resolve exactly as in scripts/build-notification-fixture.mjs.
   execFileSync('./gradlew', ['--no-daemon', '--write-verification-metadata', 'sha256', '-PELIZA_DEV_ALLOW_TEST_MOCKS=0',
-    `-PELIZA_ALLOW_UNPACKAGED_RUNTIME=${allowUnpackagedRuntime ? '1' : '0'}`, ...VERIFIED_TASKS], {cwd: path.join(root, 'android'), stdio: 'inherit', env});
+    `-PELIZA_ALLOW_UNPACKAGED_RUNTIME=${allowUnpackagedRuntime ? '1' : '0'}`, ...(runtimeProfile==='cloud'?['-PELIZA_RUNTIME_PROFILE=cloud']:[]), ...VERIFIED_TASKS], {cwd: path.join(root, 'android'), stdio: 'inherit', env});
   await recordOtherHostAapt2(root);
   const {problems} = checkVerification(root);
   if (problems.length) throw new Error(`Written metadata does not pass --check:\n${problems.map(item => `  - ${item}`).join('\n')}`);
@@ -262,12 +290,9 @@ async function write(root, {allowUnpackagedRuntime}) {
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
   const root = path.resolve(import.meta.dirname, '..');
-  const mode = args.filter(arg => ['--check', '--write'].includes(arg));
-  if (mode.length !== 1 || args.some(arg => !['--check', '--write', '--allow-unpackaged-runtime'].includes(arg))) {
-    console.error('Usage: node scripts/gradle-verification.mjs --check | --write [--allow-unpackaged-runtime]');
-    process.exit(2);
-  }
-  if (mode[0] === '--write') await write(root, {allowUnpackagedRuntime: args.includes('--allow-unpackaged-runtime')});
+  let options;
+  try {options=parseVerificationArgs(args);}catch(error){console.error(error.message);process.exit(2);}
+  if (options.mode === '--write') await write(root, options);
   else {
     const {problems, metadata} = checkVerification(root);
     if (problems.length) { console.error(`Gradle dependency verification problems:\n${problems.map(item => `  - ${item}`).join('\n')}`); process.exit(1); }

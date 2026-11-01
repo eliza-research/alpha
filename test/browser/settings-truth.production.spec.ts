@@ -466,17 +466,19 @@ test('Settings › Eliza Cloud account & plan reports the verified plan and open
  await expect(plan.getByText('Plus',{exact:true})).toBeVisible();
  await plan.getByRole('button',{name:'Redeem code',exact:true}).click();
  // On the phone's own agent Redeem code opens the resident account & plan panel at the code field of
- // its Membership and credits controls.
+ // its Subscription controls.
  const account=page.getByRole('dialog',{name:'Eliza Cloud account & plan',exact:true});
- const credits=account.getByRole('region',{name:'Membership and credits',exact:true});
+ const credits=account.getByRole('region',{name:'Subscription',exact:true});
  await expect(credits.getByRole('textbox',{name:'Membership code',exact:true})).toBeFocused();
  // Owner decision (2026-10-30): the plan sheet shows only account, plan and billing. Agent status,
  // conversation history and phone-action receipts stay in Settings › Agent connection.
  await expect(account.getByRole('region',{name:'Agent status',exact:true})).toHaveCount(0);
  for(const text of ['Running on this device','Reconnect agent','Conversation history','Phone action history'])await expect(account).not.toContainText(text);
- // The billing snapshot's zero balance is shown as zero, never as unavailable or as a funding block.
- await expect(credits.locator('.alpha-membership-amount')).toHaveText('$0.00USD');
- await expect(credits.getByText('Not available',{exact:true})).toHaveCount(0);
+ // The active subscription remains visible at zero balance; account cash and top-up controls stay hidden.
+ await expect(credits.getByText('Plus',{exact:true})).toHaveCount(1);
+ await expect(credits.getByRole('button',{name:'Manage subscription',exact:true})).toBeVisible();
+ await expect(account).not.toContainText(/Available credits|Add credits|\$\d/);
+ await expect(account.locator('.alpha-membership-amount')).toHaveCount(0);
  expect(await page.evaluate(()=>(window as any).truth.calls.filter((c:any)=>c.plugin==='AlphaConnection'&&c.method==='request'&&new URL(c.input.url).pathname==='/api/v1/subscription/redeem').length)).toBe(0);
  expect(await page.evaluate(()=>(window as any).truth.calls.some((c:any)=>c.plugin==='AlphaConnection'&&c.method==='request'&&new URL(c.input.url).pathname==='/api/v1/credits/balance'))).toBe(false);
 });
@@ -490,13 +492,13 @@ for(const subscription of ['credits','active','canceled'] as const)test(`Setting
  await current(page).getByRole('button',{name:/Eliza Cloud account & plan/}).click();
  const plan=current(page),redeem=plan.getByRole('button',{name:'Redeem code',exact:true});
  if(subscription==='credits'){
-  await expect(plan.getByText('Eliza Cloud credits',{exact:true})).toBeVisible();
+  await expect(plan.getByText('No active subscription',{exact:true})).toBeVisible();
   await expect(plan.getByRole('button',{name:'Manage plan',exact:true})).toBeVisible();
  }
- // A membership code is an alternative to credits: Cloud redeems it for credit-funded accounts too.
+ // Legacy credit admission does not hide the subscription choices or explicit membership-code entry.
  await expect(redeem).toBeVisible();await redeem.click();
  await expect(page.getByLabel('Membership code',{exact:true})).toBeVisible();
- await expect(page.getByRole('dialog',{name:subscription==='credits'?'Eliza Cloud account':'Eliza Cloud account & plan',exact:true}).getByRole('region',{name:'Membership and credits',exact:true}).getByRole('button',{name:'Redeem',exact:true})).toBeVisible();
+ await expect(page.getByRole('dialog',{name:'Eliza Cloud account & plan',exact:true}).getByRole('region',{name:'Subscription',exact:true}).getByRole('button',{name:'Redeem',exact:true})).toBeVisible();
  expect(await page.evaluate(()=>(window as any).truth.calls.filter((c:any)=>c.plugin==='AlphaConnection'&&c.method==='request'&&new URL(c.input.url).pathname==='/api/v1/subscription/redeem').length)).toBe(0);
 });
 

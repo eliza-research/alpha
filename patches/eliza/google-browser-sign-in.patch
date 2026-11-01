@@ -1,0 +1,432 @@
+diff --git a/packages/auth/android/build.gradle b/packages/auth/android/build.gradle
+index dd0601db5f..7b80d66825 100644
+--- a/packages/auth/android/build.gradle
++++ b/packages/auth/android/build.gradle
+@@ -13,6 +13,7 @@ dependencies {
+  implementation project(':capacitor-android')
+  // Plugin.getActivity() returns an AppCompatActivity; Capacitor does not export AppCompat.
+  implementation "androidx.appcompat:appcompat:${project.hasProperty('androidxAppCompatVersion') ? rootProject.ext.androidxAppCompatVersion : '1.7.1'}"
++ implementation 'androidx.browser:browser:1.9.0'
+  implementation 'androidx.credentials:credentials:1.6.0'
+  implementation 'androidx.credentials:credentials-play-services-auth:1.6.0'
+  implementation 'com.google.android.libraries.identity.googleid:googleid:1.1.1'
+diff --git a/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInConfig.java b/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInConfig.java
+index 2a74fbb6ba..86ec54c96c 100644
+--- a/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInConfig.java
++++ b/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInConfig.java
+@@ -19,6 +19,8 @@ public final class CloudSignInConfig {
+  public final String productName;
+  /** Steward app client id for native Google sign-in. */
+  public final String googleClientId;
++ /** Explicit host selection. Native is the default; browser requires verified App Links and Custom Tabs. */
++ public final String googleSignInMode;
+  /** Tag of the one bounded Google diagnostic line. */
+  public final String logTag;
+  /** Plain preferences file that caches non-secret readiness. */
+@@ -36,6 +38,7 @@ public final class CloudSignInConfig {
+   deviceName = label(builder.deviceName, "device name");
+   productName = label(builder.productName, "product name");
+   googleClientId = required(builder.googleClientId, "[a-z0-9][a-z0-9_-]{2,63}", "Google client id");
++  googleSignInMode = required(builder.googleSignInMode, "native|browser", "Google sign-in mode");
+   logTag = required(builder.logTag, "[A-Za-z][A-Za-z0-9_]{0,22}", "log tag");
+   readinessPreferences = required(builder.readinessPreferences, "[A-Za-z0-9._:-]{1,200}", "readiness preferences");
+   pendingSlot = required(builder.pendingSlot, "[A-Za-z0-9._:-]{1,128}", "pending slot");
+@@ -72,6 +75,7 @@ public final class CloudSignInConfig {
+  public static Builder builder() { return new Builder(); }
+  public static final class Builder {
+   private String clientId, deviceName, productName, googleClientId, logTag = "ElizaCloudSignIn";
++  private String googleSignInMode = "native";
+   private String readinessPreferences = "eliza-cloud-signin-readiness", pendingSlot = "cloud-signin:v1:pending";
+   private String receiptSlotPrefix = "cloud-signin:v1:ack:", credentialSlotPrefix = "cloud:";
+   private final List<CloudSignInEnvironment> environments = new ArrayList<>();
+@@ -80,6 +84,7 @@ public final class CloudSignInConfig {
+   public Builder deviceName(String value) { deviceName = value; return this; }
+   public Builder productName(String value) { productName = value; return this; }
+   public Builder googleClientId(String value) { googleClientId = value; return this; }
++  public Builder googleSignInMode(String value) { googleSignInMode = value; return this; }
+   public Builder logTag(String value) { logTag = value; return this; }
+   public Builder readinessPreferences(String value) { readinessPreferences = value; return this; }
+   public Builder pendingSlot(String value) { pendingSlot = value; return this; }
+diff --git a/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInFlow.java b/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInFlow.java
+index 1d7091624f..272b839a87 100644
+--- a/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInFlow.java
++++ b/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInFlow.java
+@@ -55,6 +55,23 @@ public final class CloudSignInFlow {
+  public static boolean validVerifier(String value) { return value != null && value.matches("[A-Za-z0-9._~-]{43,128}"); }
+  public static boolean validState(String value) { return value != null && value.matches("[A-Za-z0-9_-]{43}"); }
+ 
++ /** Exact browser authorization request; state and verifier remain owned by the native attempt. */
++ public static String authorizeUrl(CloudSignInEnvironment environment, String challenge, String state) {
++  if (!validState(state) || !validState(challenge)) throw new IllegalArgumentException("Invalid browser proof");
++  return environment.api() + "/steward/auth/oauth/google/authorize?response_type=code&tenant_id=" + percent(environment.tenant)
++   + "&redirect_uri=" + percent(environment.callback())
++   + "&code_challenge=" + challenge + "&code_challenge_method=S256&state=" + state + "&prompt=select_account&mfa=exchange";
++ }
++ private static String percent(String value) {
++  StringBuilder out = new StringBuilder();
++  for (byte valueByte : value.getBytes(StandardCharsets.UTF_8)) {
++   int c = valueByte & 0xff;
++   if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.' || c == '~') out.append((char) c);
++   else out.append('%').append(String.format(java.util.Locale.ROOT, "%02X", c));
++  }
++  return out.toString();
++ }
++
+  /** What a return to the callback URL carries (shared callback contract). */
+  public enum ReturnKind { SUCCESS, ERROR, RETURN }
+  /** A return to this environment's callback. SUCCESS sets code and state, ERROR sets error and state, RETURN sets neither. */
+diff --git a/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java b/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java
+index 4b5990b840..36dc6e40a2 100644
+--- a/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java
++++ b/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java
+@@ -2,9 +2,18 @@ package ai.eliza.auth.cloud;
+ 
+ import android.app.AlertDialog;
+ import android.content.Intent;
++import android.content.pm.PackageInfo;
++import android.content.pm.PackageManager;
++import android.content.pm.ResolveInfo;
++import android.content.pm.Signature;
++import android.content.pm.verify.domain.DomainVerificationManager;
++import android.content.pm.verify.domain.DomainVerificationUserState;
++import android.os.Build;
+ import android.net.Uri;
+ import android.os.Handler;
+ import android.os.Looper;
++import androidx.browser.customtabs.CustomTabsClient;
++import androidx.browser.customtabs.CustomTabsIntent;
+ import com.getcapacitor.JSObject;
+ import com.getcapacitor.Plugin;
+ import com.getcapacitor.PluginCall;
+@@ -17,8 +26,10 @@ import java.nio.charset.StandardCharsets;
+ import java.time.Instant;
+ import java.util.ArrayList;
+ import java.util.HashMap;
++import java.util.HashSet;
+ import java.util.List;
+ import java.util.Map;
++import java.util.Set;
+ import java.util.UUID;
+ import java.util.concurrent.CountDownLatch;
+ import java.util.concurrent.TimeUnit;
+@@ -30,8 +41,8 @@ import org.json.JSONTokener;
+ 
+ /**
+  * Native Eliza Cloud sign-in for a registered Android application. Native screens collect an email
+- * or phone code or use Android's Google account picker; no Eliza Cloud web page is part of a
+- * successful sign-in. Every secret-bearing request (Steward code exchange or email/SMS/MFA
++ * or phone code or use the host-selected Google account picker or external Custom Tab; no hosted
++ * Eliza Cloud login page is part of sign-in. Every secret-bearing request (Steward code exchange or email/SMS/MFA
+  * verification, mobile App Auth connect, token and ack, Steward logout) is made here with fixed URLs
+  * (CloudSignInRoutes). The Steward session, refresh token, authorization codes and PKCE verifiers
+  * never cross the bridge; the Steward session is revoked after one sign-in and never stored.
+@@ -53,6 +64,7 @@ import org.json.JSONTokener;
+  */
+ public abstract class CloudSignInPlugin extends Plugin {
+  private static final int RESPONSE_LIMIT = 256 * 1024;
++ private static final long BROWSER_RETURN_GRACE_MS = 1500;
+ 
+  /** Thrown with a stable, non-secret code the renderer maps to copy. */
+  public static final class SignInFailure extends Exception {
+@@ -68,7 +80,8 @@ public abstract class CloudSignInPlugin extends Plugin {
+   /** Renderer correlation only; never account or credential authority. */
+   final String requestId;
+   final Runnable credentialGuard;
+-  volatile boolean cancelled, callbackReceived;
++  volatile boolean cancelled, callbackReceived, browserLaunched, browserPaused;
++  String browserState;
+   volatile HttpURLConnection connection;
+   volatile android.os.CancellationSignal googleCancellation;
+   String googleVerifier, googleChallengeId;
+@@ -155,6 +168,22 @@ public abstract class CloudSignInPlugin extends Plugin {
+   probe(config().defaultEnvironment(), null, false);
+  }
+  @Override protected void handleOnNewIntent(Intent intent) { super.handleOnNewIntent(intent); captureCallback(intent); }
++ @Override protected void handleOnPause() {
++  synchronized (lock) { if (attempt != null && attempt.browserLaunched) attempt.browserPaused = true; }
++  super.handleOnPause();
++ }
++ @Override protected void handleOnResume() {
++  super.handleOnResume();
++  final Attempt current;
++  synchronized (lock) { current = attempt; }
++  if (current == null || !current.browserPaused) return;
++  main.postDelayed(() -> {
++   synchronized (lock) {
++    if (attempt != current || current.cancelled || current.callbackReceived) return;
++    end(current, "browser-closed", true);
++   }
++  }, BROWSER_RETURN_GRACE_MS);
++ }
+  @Override protected void handleOnDestroy() {
+   destroyed = true;
+   synchronized (lock) { if (attempt != null) attempt.cancel(); attempt = null; }
+@@ -230,14 +259,14 @@ public abstract class CloudSignInPlugin extends Plugin {
+  /** Cloud refused this app's native sign-in: invalidate the readiness cache. */
+  private void forgetReadiness(CloudSignInEnvironment environment) {
+   synchronized (lock) { readiness.remove(environment.name); }
+-  try { getContext().getSharedPreferences(config().readinessPreferences, android.content.Context.MODE_PRIVATE).edit().remove(environment.name).apply(); } catch (Exception ignored) { /* Re-probed anyway. */ }
++  try { getContext().getSharedPreferences(config().readinessPreferences + "-" + config().googleSignInMode, android.content.Context.MODE_PRIVATE).edit().remove(environment.name).apply(); } catch (Exception ignored) { /* Re-probed anyway. */ }
+  }
+  private CloudSignInReadiness.Result storedReadiness(CloudSignInEnvironment environment) {
+-  try { return CloudSignInReadiness.Result.parse(getContext().getSharedPreferences(config().readinessPreferences, android.content.Context.MODE_PRIVATE).getString(environment.name, null)); }
++  try { return CloudSignInReadiness.Result.parse(getContext().getSharedPreferences(config().readinessPreferences + "-" + config().googleSignInMode, android.content.Context.MODE_PRIVATE).getString(environment.name, null)); }
+   catch (Exception unreadable) { return null; }
+  }
+  private void storeReadiness(CloudSignInEnvironment environment, CloudSignInReadiness.Result result) {
+-  try { getContext().getSharedPreferences(config().readinessPreferences, android.content.Context.MODE_PRIVATE).edit().putString(environment.name, result.serialize()).apply(); }
++  try { getContext().getSharedPreferences(config().readinessPreferences + "-" + config().googleSignInMode, android.content.Context.MODE_PRIVATE).edit().putString(environment.name, result.serialize()).apply(); }
+   catch (Exception ignored) { /* Kept in memory. */ }
+  }
+  /** The readiness observations (CloudSignInReadiness). Every read is short, fixed and fail-safe. */
+@@ -261,12 +290,111 @@ public abstract class CloudSignInPlugin extends Plugin {
+   if (emailOffered) try { emailRoute = CloudSignInReadiness.emailRoutePresent(probePost(environment, CloudEmailCode.SEND_PATH)); } catch (Exception unavailable) { /* Other methods remain independent. */ }
+   // Native Google verifies an ID token and does not require a browser return.
+   boolean googleReady = Boolean.TRUE.equals(providers.data.opt("googleNative"));
++  if ("browser".equals(config().googleSignInMode)) {
++   googleReady = false;
++   if (Boolean.TRUE.equals(providers.data.opt("google")) && browserPackage() != null && appLinkVerified(environment)) {
++    try {
++     Response browser = get(CloudSignInFlow.authorizeUrl(environment, CloudSignInFlow.s256(CloudSignInFlow.newVerifier()), CloudSignInFlow.newState()));
++     googleReady = CloudSignInReadiness.redirectAllowed(browser.status, browser.location) && assetLinksGrant(environment);
++    } catch (Exception unavailable) { /* Other sign-in methods remain independent. */ }
++   }
++  }
+   boolean emailReady = emailOffered && emailRoute;
+   return new CloudSignInReadiness.Result(emailReady, googleReady, phoneOffered,
+    now + (emailReady || googleReady || phoneOffered ? CloudSignInReadiness.READY_TTL_MS : CloudSignInReadiness.NOT_READY_TTL_MS));
+  }
+  // ── Google: native Credential Manager with server-bound nonce and PKCE ────────────────────
+ 
++ /** A real external Custom Tabs browser only. The host's WebView is never an OAuth user agent. */
++ private String browserPackage() {
++  try {
++   List<String> candidates = new ArrayList<>();
++   PackageManager manager = getContext().getPackageManager();
++   Intent service = new Intent("android.support.customtabs.action.CustomTabsService");
++   for (ResolveInfo resolved : manager.queryIntentServices(service, 0)) {
++    if (resolved.serviceInfo == null || !resolved.serviceInfo.exported) continue;
++    String name = resolved.serviceInfo.packageName;
++    if (name == null || name.equals(getContext().getPackageName()) || candidates.contains(name)) continue;
++    Intent page = new Intent(Intent.ACTION_VIEW, Uri.parse("https://accounts.google.com/"))
++     .addCategory(Intent.CATEGORY_BROWSABLE).setPackage(name);
++    if (!manager.queryIntentActivities(page, PackageManager.MATCH_DEFAULT_ONLY).isEmpty()) candidates.add(name);
++   }
++   String browser = CustomTabsClient.getPackageName(getContext(), candidates);
++   return candidates.contains(browser) ? browser : null;
++  } catch (RuntimeException unavailable) { return null; }
++ }
++ private boolean appLinkVerified(CloudSignInEnvironment environment) {
++  try {
++   if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
++    DomainVerificationManager manager = getContext().getSystemService(DomainVerificationManager.class);
++    DomainVerificationUserState state = manager == null ? null : manager.getDomainVerificationUserState(getContext().getPackageName());
++    Integer host = state == null ? null : state.getHostToStateMap().get(environment.callbackHost);
++    return state != null && state.isLinkHandlingAllowed() && host != null && host == DomainVerificationUserState.DOMAIN_STATE_VERIFIED;
++   }
++   Intent view = new Intent(Intent.ACTION_VIEW, Uri.parse(environment.callback())).addCategory(Intent.CATEGORY_BROWSABLE).setPackage(getContext().getPackageName());
++   return !getContext().getPackageManager().queryIntentActivities(view, PackageManager.MATCH_DEFAULT_ONLY).isEmpty();
++  } catch (Exception unavailable) { return false; }
++ }
++ private boolean assetLinksGrant(CloudSignInEnvironment environment) {
++  try {
++   URI url = new URI("https://" + environment.callbackHost + "/.well-known/assetlinks.json");
++   Fetched response = fetch(url, null, null);
++   if (response.status != 200) return false;
++   Object parsed = new JSONTokener(response.body).nextValue();
++   if (!(parsed instanceof JSONArray)) return false;
++   JSONArray rows = (JSONArray) parsed;
++   List<CloudSignInReadiness.Statement> statements = new ArrayList<>();
++   for (int i = 0; i < rows.length() && i < 64; i++) {
++    JSONObject row = rows.optJSONObject(i), target = row == null ? null : row.optJSONObject("target");
++    if (target != null) statements.add(new CloudSignInReadiness.Statement(strings(row.optJSONArray("relation")), target.optString("namespace", null),
++     target.optString("package_name", null), strings(target.optJSONArray("sha256_cert_fingerprints"))));
++   }
++   int flags = Build.VERSION.SDK_INT >= 28 ? PackageManager.GET_SIGNING_CERTIFICATES : PackageManager.GET_SIGNATURES;
++   PackageInfo info = getContext().getPackageManager().getPackageInfo(getContext().getPackageName(), flags);
++   Signature[] signatures = Build.VERSION.SDK_INT >= 28 ? info.signingInfo == null ? null : info.signingInfo.getApkContentsSigners() : info.signatures;
++   Set<String> signers = new HashSet<>();
++   if (signatures != null) for (Signature signature : signatures) {
++    String fingerprint = CloudSignInReadiness.certificateFingerprint(signature.toByteArray());
++    if (fingerprint != null) signers.add(fingerprint);
++   }
++   return CloudSignInReadiness.assetLinksGrant(statements, getContext().getPackageName(), signers);
++  } catch (Exception unavailable) { return false; }
++ }
++ private static List<String> strings(JSONArray array) {
++  List<String> values = new ArrayList<>();
++  if (array != null) for (int i = 0; i < array.length() && i < 64; i++) values.add(array.optString(i));
++  return values;
++ }
++ /** Browser mode remains an explicit host selection, never a fallback from a failed account picker. */
++ private void startGoogleBrowser(Attempt next) {
++  final CloudSignInFlow.Pending pending = CloudSignInFlow.Pending.create(next.environment, System.currentTimeMillis());
++  next.browserState = pending.state; next.expiresAt = pending.expiresAt; next.busy = true;
++  run(() -> {
++   try {
++    String browser = browserPackage();
++    if (browser == null) throw new SignInFailure("browser-unavailable");
++    if (!appLinkVerified(next.environment) || !assetLinksGrant(next.environment)) throw new SignInFailure("app-link-unverified");
++    credentials(() -> {
++     if (destroyed || next.cancelled) throw new IllegalStateException("Sign-in closed");
++     next.credentialGuard.run();
++    }).write(config().pendingSlot, pending.serialize());
++    String url = CloudSignInFlow.authorizeUrl(next.environment, CloudSignInFlow.s256(pending.verifier), pending.state);
++    getActivity().runOnUiThread(() -> {
++     synchronized (lock) {
++      if (attempt != next || next.cancelled || destroyed) return;
++      next.browserLaunched = true;
++     }
++     try {
++      CustomTabsIntent tab = new CustomTabsIntent.Builder().setShowTitle(true).setShareState(CustomTabsIntent.SHARE_STATE_OFF).build();
++      tab.intent.setPackage(browser);
++      tab.launchUrl(getActivity(), Uri.parse(url));
++     } catch (RuntimeException unavailable) { end(next, "browser-unavailable", true); }
++    });
++   } catch (SignInFailure failure) { end(next, failure.code, true); }
++   catch (Exception unavailable) { end(next, "unavailable", true); }
++  });
++ }
++
+  /** Optional caller identity scopes retained events to the interactive request that began them. */
+  private static String callerRequestId(PluginCall call) throws SignInFailure {
+   if (!call.getData().has("requestId")) return null;
+@@ -289,6 +417,7 @@ public abstract class CloudSignInPlugin extends Plugin {
+    next = new Attempt(environment, true, requestId, reserveCredentialCommit());
+    attempt = next; next.waiting = call;
+   }
++  if ("browser".equals(config().googleSignInMode)) { startGoogleBrowser(next); return; }
+   next.googleVerifier = CloudSignInFlow.newVerifier();
+   next.googleCancellation = new android.os.CancellationSignal();
+   next.busy = true;
+@@ -380,7 +509,7 @@ public abstract class CloudSignInPlugin extends Plugin {
+    catch (Exception storage) { /* Treated as no pending record. */ }
+    long now = System.currentTimeMillis();
+    final Attempt waiting;
+-   synchronized (lock) { waiting = attempt != null && attempt.google && attempt.environment == returned && !attempt.callbackReceived ? attempt : null; }
++   synchronized (lock) { waiting = attempt != null && attempt.google && attempt.browserLaunched && attempt.environment == returned && !attempt.callbackReceived ? attempt : null; }
+    if (received.kind == CloudSignInFlow.ReturnKind.RETURN) {
+     if (pending == null || pending.environment != returned || pending.expired(now)) return;
+     if (waiting != null) { synchronized (lock) { waiting.callbackReceived = true; } end(waiting, "app-link-unverified", false); }
+@@ -389,16 +518,21 @@ public abstract class CloudSignInPlugin extends Plugin {
+    }
+    // Not this device's request (unknown, foreign or duplicate): ignored, nothing burned or ended.
+    if (pending == null || pending.environment != returned || !pending.sameState(received)) return;
+-   // The matching return: single use, burned before any network request, whatever the outcome.
+-   try { if (store != null) store.remove(config().pendingSlot); } catch (Exception storage) { /* Expires on its own. */ }
+    Attempt owner = waiting;
+-   if (owner != null) synchronized (lock) { owner.callbackReceived = true; }
+-   else {
+-    // Legacy browser input carries no live credential intent. It cannot acquire fresh
+-    // authority after a sign-out or process restart; begin a new explicit native sign-in.
++   if (owner == null) {
++    // A return after process death has no live credential intent and cannot authorize a write.
+     notifyListeners("signInIncomplete", new JSObject().put("code", "app-link-unverified"), true);
+     return;
+    }
++   if (!pending.state.equals(owner.browserState)) return;
++   // State and the original live credential intent must both match before consuming the code.
++   try {
++    credentials(() -> {
++     if (destroyed || owner.cancelled) throw new IllegalStateException("Sign-in closed");
++     owner.credentialGuard.run();
++    }).remove(config().pendingSlot);
++   } catch (Exception storage) { end(owner, "state-mismatch", false); return; }
++   synchronized (lock) { owner.callbackReceived = true; }
+    if (pending.expired(now)) { end(owner, "expired", false); return; }
+    owner.expiresAt = pending.expiresAt;
+    owner.callbackReceived = true;
+@@ -411,7 +545,8 @@ public abstract class CloudSignInPlugin extends Plugin {
+      .put("tenantId", returned.tenant).put("codeVerifier", pending.verifier);
+     Response exchanged = post(owner, "/steward/auth/oauth/exchange", body, null);
+     if (exchanged.status != 200) throw new SignInFailure(CloudSignInFlow.failureForStatus("exchange", exchanged.status));
+-    complete(owner, exchanged.data);
++    JSONObject session = exchanged.data.optJSONObject("data") != null && !exchanged.data.has("token") ? exchanged.data.optJSONObject("data") : exchanged.data;
++    completeOrRequireMfa(owner, session);
+    } catch (SignInFailure failure) { end(owner, failure.code, false); }
+    catch (Exception unexpected) { end(owner, "unavailable", false); }
+   });
+@@ -821,7 +956,7 @@ public abstract class CloudSignInPlugin extends Plugin {
+  private void end(Attempt current, String code, boolean burn) {
+   PluginCall waiting;
+   synchronized (lock) { current.cancel(); waiting = current.waiting; current.waiting = null; if (attempt == current) attempt = null; }
+-  if (current.google && burn) burnUnclaimedPending();
++  if (current.google && burn) burnUnclaimedPending(current);
+   refused(current.environment, code);
+   if (waiting != null) waiting.reject(code, code);
+  }
+diff --git a/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInReadiness.java b/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInReadiness.java
+index 61af587b1b..9c479f0bc3 100644
+--- a/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInReadiness.java
++++ b/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInReadiness.java
+@@ -1,6 +1,9 @@
+ package ai.eliza.auth.cloud;
+ 
+ import java.util.List;
++import java.util.Set;
++import java.util.Locale;
++import java.security.MessageDigest;
+ 
+ /**
+  * Pure policy for the native sign-in readiness probe (no Android classes, so it runs on a plain JVM).
+@@ -31,6 +34,47 @@ public final class CloudSignInReadiness {
+  /** The email code route exists: a bodiless request is refused as invalid, not as unknown. */
+  public static boolean emailRoutePresent(int status) { return status >= 400 && status < 500 && status != 404 && status != 405; }
+ 
++ /** A probe must redirect directly to Google's HTTPS account origin; no redirect is followed. */
++ public static boolean redirectAllowed(int status, String location) {
++  if ((status != 302 && status != 303 && status != 307) || location == null) return false;
++  try {
++   java.net.URI uri = new java.net.URI(location);
++   return "https".equals(uri.getScheme()) && "accounts.google.com".equals(uri.getHost())
++    && uri.getRawUserInfo() == null && (uri.getPort() == -1 || uri.getPort() == 443);
++  } catch (java.net.URISyntaxException invalid) { return false; }
++ }
++ public static final class Statement {
++  final List<String> relations; final String namespace, packageName; final List<String> fingerprints;
++  public Statement(List<String> relations, String namespace, String packageName, List<String> fingerprints) {
++   this.relations = relations; this.namespace = namespace; this.packageName = packageName; this.fingerprints = fingerprints;
++  }
++ }
++ public static String certificateFingerprint(byte[] certificate) {
++  try {
++   byte[] digest = MessageDigest.getInstance("SHA-256").digest(certificate);
++   StringBuilder hex = new StringBuilder();
++   for (byte value : digest) hex.append(String.format(Locale.ROOT, "%02X", value & 0xff));
++   return fingerprint(hex.toString());
++  } catch (Exception unavailable) { return null; }
++ }
++ private static String fingerprint(String value) {
++  if (value == null) return null;
++  String hex = value.replace(":", "").toUpperCase(Locale.ROOT);
++  if (!hex.matches("[0-9A-F]{64}")) return null;
++  StringBuilder out = new StringBuilder();
++  for (int i = 0; i < 64; i += 2) { if (i > 0) out.append(':'); out.append(hex, i, i + 2); }
++  return out.toString();
++ }
++ public static boolean assetLinksGrant(List<Statement> statements, String packageName, Set<String> signers) {
++  if (statements == null || packageName == null || signers == null || signers.isEmpty()) return false;
++  for (Statement statement : statements) {
++   if (statement == null || statement.relations == null || !statement.relations.contains("delegate_permission/common.handle_all_urls")
++       || !"android_app".equals(statement.namespace) || !packageName.equals(statement.packageName) || statement.fingerprints == null) continue;
++   for (String listed : statement.fingerprints) { String normalized = fingerprint(listed); if (normalized != null && signers.contains(normalized)) return true; }
++  }
++  return false;
++ }
++
+  /** The probe's answer. */
+  public static final class Result {
+   public final boolean inApp, email, google, phone, methodsKnown; public final long until;
+diff --git a/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInRoutes.java b/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInRoutes.java
+index 5bfe749d54..9bb1649f25 100644
+--- a/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInRoutes.java
++++ b/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInRoutes.java
+@@ -10,7 +10,7 @@ import java.util.Set;
+ public final class CloudSignInRoutes {
+  private CloudSignInRoutes() {}
+  /** Readiness reads: service document, App Auth registration and Steward providers. */
+- public static final Set<String> READS = Set.of("/api/public/service", "/api/v1/app-auth/mobile/config", "/steward/auth/providers");
++ public static final Set<String> READS = Set.of("/api/public/service", "/api/v1/app-auth/mobile/config", "/steward/auth/providers", "/steward/auth/oauth/google/authorize");
+  public static final Set<String> WRITES = Set.of(CloudSmsCode.SEND_PATH, CloudSmsCode.VERIFY_PATH, CloudEmailCode.SEND_PATH, CloudEmailCode.VERIFY_PATH,
+   "/steward/auth/oauth/exchange", "/steward/auth/oauth/google/native/challenge", "/steward/auth/oauth/google/native/verify",
+   "/steward/auth/mfa/totp/complete", "/steward/auth/mfa/sms/complete", "/steward/auth/logout",

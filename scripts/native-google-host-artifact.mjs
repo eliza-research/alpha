@@ -31,7 +31,8 @@ export function addNativeGoogleHostArtifact(root,directory){
   verifySource(sdk,pin);
   execFileSync(bun,['--conditions=eliza-source','scripts/build-native-google-host.ts',root,sdk,file,meta],{cwd:root,stdio:'pipe'});
   verifySource(sdk,pin);
-  const metadata=JSON.parse(fs.readFileSync(meta,'utf8')),names=new Set([...Object.keys(metadata.inputs),'package.json','tsconfig.json','vendor/eliza/tsconfig.json',path.relative(root,path.join(sdk,'tsconfig.json')),'scripts/build-native-google-host.ts','scripts/local-agent-source.mjs','upstream.lock.json','scripts/native-google-host-artifact.mjs','scripts/prepare-client-features.mjs']);
+  const metadata=JSON.parse(fs.readFileSync(meta,'utf8')),names=new Set([...Object.keys(metadata.inputs),'package.json','tsconfig.json','vendor/eliza/tsconfig.json',path.relative(root,path.join(sdk,'tsconfig.json')),'scripts/build-native-google-host.ts','scripts/local-agent-source.mjs','upstream.lock.json','scripts/native-google-host-artifact.mjs','scripts/prepare-client-features.mjs','scripts/client-speech-patch.mjs']);
+  for(const name of ['patches/eliza/cloud-speech-client-manifest.json','patches/eliza/cloud-speech-client.patch'])if(fs.existsSync(path.join(root,name)))names.add(name);
   const inputs={};for(const name of [...names].sort()){
    if(!safe(name))throw Error('Native Google build input escaped product source');
    const source=path.join(root,name),stat=fs.lstatSync(source);if(!stat.isFile()||stat.isSymbolicLink())throw Error('Native Google build input is not regular');

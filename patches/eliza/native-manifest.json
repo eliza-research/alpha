@@ -1,8 +1,70 @@
 {
   "schema": 1,
   "baseCommit": "4573a187b0dc44c0b0dd111a0b0720aaa13d6bc4",
-  "patches": [],
+  "patches": [
+    {
+      "file": "google-browser-sign-in.patch",
+      "sha256": "96cad02a3cee6ee864d1d47ac90b616c61efc202e19b99e4ee435c96710ba271",
+      "module": "packages/auth/android",
+      "targets": [
+        {
+          "path": "packages/auth/android/build.gradle",
+          "beforeSha256": "3646fd6127c5fe0d7d6b9fd593871e558684a8c816ed96691e5341ddb0385ddf",
+          "afterSha256": "a343928a6a5fc7e346de79d9ea89795006072d3aa345efa0efcad6067e1d00b4"
+        },
+        {
+          "path": "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInConfig.java",
+          "beforeSha256": "73bc99db2cbe955887f5696109952dfecc08532cb1c711159d9106dcd9499336",
+          "afterSha256": "0e1a05bbccb86714275c3cb11c94375f8267a624862e43bc91d059e27642dc48"
+        },
+        {
+          "path": "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInFlow.java",
+          "beforeSha256": "5a333c1b5e6295ff30afd4959bbb5d25aaa5a6d97da61b0ea9a82b6d639b4242",
+          "afterSha256": "37439cfc9e929d95515d6cbd575b5d62ef88128b093e4b4ca5409e1ebbc224b8"
+        },
+        {
+          "path": "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java",
+          "beforeSha256": "0c2ba91faf22459538bd852cb305507ac2b17982afbe6bdc6e8465526a1ba1d4",
+          "afterSha256": "0f2db4e638b42d782ddf2dc5168bef0405f45aa78e8736a53d5bebe8c4beee9c"
+        },
+        {
+          "path": "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInReadiness.java",
+          "beforeSha256": "7d2cc138b5ec88a1ef2ad41aa4de39819788861dfa41a1d18c00f8799889aa9a",
+          "afterSha256": "ea8c32c69bdb9dc0ed145dc15266fa25fa2f73d10cc193059647f3f36ef2174f"
+        },
+        {
+          "path": "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInRoutes.java",
+          "beforeSha256": "2212e5fb65109ecef6ae1cb2fb6a8fd172de2f38c3cd5bf133cfda8c8e408556",
+          "afterSha256": "60861474e28f99fddacac70d382612e762a6c7526f2c455ecee1dd5f2128d825"
+        }
+      ]
+    },
+    {
+      "file": "cloud-speech-native.patch",
+      "sha256": "35e980637b0fe28711d6e37918b4f873cbad3b60c5bf60b6cbd32f349be6df63",
+      "module": "plugins/plugin-local-inference/native/android",
+      "targets": [
+        {
+          "path": "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechStreamBridgePlugin.java",
+          "beforeSha256": null,
+          "afterSha256": "a130108828f055fa337f634df08e7d780de9649d61055de6f44cd8f8def9d771"
+        },
+        {
+          "path": "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechTimings.java",
+          "beforeSha256": null,
+          "afterSha256": "e38e0413662e7f00cf01557174046c47783f8fddf49b2bf8fe58a677c6dd099b"
+        },
+        {
+          "path": "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechWire.java",
+          "beforeSha256": null,
+          "afterSha256": "1ea0e5b147169d7548290d24122edb287e65b29c8682531db314f35b3292945e"
+        }
+      ]
+    }
+  ],
   "modules": [
+    "packages/auth/android",
+    "plugins/plugin-local-inference/native/android",
     "plugins/plugin-native-action-journal/android",
     "plugins/plugin-native-calendar/android",
     "plugins/plugin-native-media/android",

@@ -18,6 +18,7 @@ import {fileURLToPath} from 'node:url';
 import {verifyEmbeddingHost} from './stage-embedding-host.mjs';
 import {VOICE_ASSET_ROOT, VOICE_HOST_MANIFEST, verifyVoiceHost} from './voice-host.mjs';
 import {BUILD_TOOLCHAIN, HUMAN_ACTION, QUALIFIED_HOST, stagedLibraries} from './build-embedding-host.mjs';
+import {verifyMobileBuildReceipt,MOBILE_UUID_POLICY} from './mobile-uuid-adapter.mjs';
 
 export {VOICE_ASSET_ROOT, VOICE_HOST_MANIFEST};
 export const GRADLE_VERIFICATION = 'android/gradle/verification-metadata.xml';
@@ -81,6 +82,10 @@ export function preparedRuntimeProblems(root, preparedSource, {allowUnpackagedRu
     return [`The resident runtime is not staged, so release APKs would not be distributable. Run: npm run agent:build-workflow-worker && npm run agent:stage-android (or ${FULL_CHAIN}), or pass -- --allow-unpackaged-runtime for non-distributable developer APKs.`, ...embedding];
   if (fs.readFileSync(staged, 'utf8') !== fs.readFileSync(stamp, 'utf8'))
     return [`The staged resident runtime was built from a different prepared source than ${path.relative(root, preparedSource)}. Run: npm run agent:build-workflow-worker && npm run agent:stage-android (or ${FULL_CHAIN}).`, ...embedding];
+  if(fs.existsSync(path.join(root,MOBILE_UUID_POLICY))){
+    try{verifyMobileBuildReceipt(root,preparedSource,path.dirname(staged));}
+    catch(error){return [`The staged resident build producer is not admitted (${error.message}). Run: npm run agent:stage-android.`,...embedding];}
+  }
   return embedding;
 }
 

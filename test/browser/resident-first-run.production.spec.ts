@@ -75,7 +75,7 @@ async function firstRun(page: Page, overrides: Partial<StubAccount> = {}, ownedL
   await expect(welcome.getByRole('button', { name: 'Close connection settings', exact: true })).toHaveCount(0);
   expect(await harness(page, f => f.slots['cloud:production'] ?? null)).toBeNull();
   expect(await stub(page, s => s.order.some((entry: string) => entry.startsWith('configureCloudProvider')))).toBe(false);
-  await expect(welcome.getByRole('note')).toHaveText('Sign in to verify your account. You’ll review access before authorizing Alpha Phone.');
+  await expect(welcome.getByRole('note')).toHaveCount(0);
   await expect(welcome.getByRole('button', { name: 'Use local apps without AI', exact: true })).toHaveCount(0);
   await expect(welcome.getByRole('button',{name:'Reconnect agent',exact:true})).toHaveCount(0);
   await expect(welcome.getByText('Your agent runs with AI off until you sign in to Eliza Cloud.',{exact:true})).toHaveCount(0);
@@ -129,7 +129,7 @@ test('first run: native email sign-in, credits, provider binding, then the resid
   const access=page.locator('dialog.alpha-startup-permissions');
   await expect(access).toBeVisible();
   expect(await page.evaluate(()=>(window as any).firstRunAccess.requests)).toEqual([]);
-  for(const name of ['Stay in the loop.','Talk to Alpha.','Capture a moment.','Find your way.','Plan your day.','Your photos, here.']) {
+  for(const name of ['Notifications','Microphone','Camera','Location','Calendar','Photos']) {
     await expect(access.getByRole('heading',{name,exact:true})).toBeVisible();
     await expect(access.getByRole('button',{name:/Skip|Not now|Back/})).toHaveCount(0);
     await access.getByRole('button',{name:'Allow',exact:true}).click();

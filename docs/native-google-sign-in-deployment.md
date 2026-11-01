@@ -7,18 +7,27 @@ on Google redirect or App Link readiness.
 
 ## Build and server requirements
 
-Build the production Android variants with `ELIZAOS_APP_LINK_HOST=eliza.app`:
+Production Android variants declare the configured production web host by default:
 
 ```sh
-ELIZAOS_APP_LINK_HOST=eliza.app npm run android:build:local
+npm run android:build:local
 ```
 
-Without that explicit build setting, Gradle emits no HTTPS App Link filter.
+`ELIZAOS_APP_LINK_HOST`, when supplied, must equal the configured production web host.
 `android/app/product.gradle` deliberately writes a `${appLinkHost}` manifest
 placeholder; Android manifest merging resolves it from `manifestPlaceholders`.
 Inspect the final APK manifest, not only the generated overlay. Both distributions
 must declare HTTPS host `eliza.app` and exact path `/alphaphone/auth/callback`.
 The same host also receives the Google connector delegation return filter.
+
+Alpha selects `googleSignInMode("browser")` in the shared native auth client. An installed
+external browser must offer Android Custom Tabs; the image's WebView shell is insufficient.
+This supports AOSP without Google Play services. PKCE, the pending state, code exchange,
+MFA and credential writes stay in the native client. A cancelled, expired or superseded
+attempt cannot commit a credential. A process restart during browser sign-in requires a
+fresh explicit attempt rather than granting the old return new credential authority.
+The pinned shared source is unchanged; the reviewed patch and source hashes are in
+`patches/eliza/native-manifest.json`.
 
 The Cloud and Steward deployments must independently satisfy all of these:
 
@@ -76,7 +85,7 @@ observations with the requests the phone makes, once each, and names the owning 
 | Hosted callback page, service documents, entitlement keys | Passed | Passed |
 | Maps and Google connector routes | Not checkable without an account | Not checkable without an account |
 
-Native Google on a release-signed build still needs an Android OAuth client for the release
+At the time of this historical probe, native Google on a release-signed build needed an Android OAuth client for the release
 certificate's SHA-1 under `alpha-phone` in `STEWARD_GOOGLE_NATIVE_CLIENT_IDS` (H-12), and the
 release fingerprint in `ELIZA_ANDROID_ASSET_LINKS_JSON` (H-13). Cloud's global auth gate
 answers every protected `/api/` path that carries no credential with 401 before routing, so an

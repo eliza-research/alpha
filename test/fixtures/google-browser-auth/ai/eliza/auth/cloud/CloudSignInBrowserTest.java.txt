@@ -1,0 +1,90 @@
+package ai.eliza.auth.cloud;
+
+import java.util.*;
+
+/** Executes the exact browser-start method against controlled native activity/storage ports. */
+class BrowserPluginBase { protected void handleOnPause() {} protected void handleOnResume() {} }
+public class CloudSignInBrowserTest extends BrowserPluginBase {
+ static final long BROWSER_RETURN_GRACE_MS = 1500;
+ final Handler main = new Handler();
+ static class Handler { final ArrayDeque<Runnable> queue=new ArrayDeque<>(); void postDelayed(Runnable task,long delay){check(delay==1500,"bounded browser return grace");queue.add(task);}void drain(){while(!queue.isEmpty())queue.remove().run();} }
+ final Object lock = new Object(); boolean destroyed, browserAvailable = true, verified = true, associated = true, acceptsHttps = true;
+ long intent; Attempt attempt; final ArrayDeque<Runnable> workers = new ArrayDeque<>(), ui = new ArrayDeque<>();
+ final Map<String,String> slots = new HashMap<>(); final List<String> launched = new ArrayList<>(); String failure;
+ static class SignInFailure extends Exception { final String code; SignInFailure(String code) { this.code=code; } }
+ static class Attempt {
+  final CloudSignInEnvironment environment=TestRegistration.PRODUCTION; final Runnable credentialGuard;
+  boolean cancelled, browserLaunched, browserPaused, callbackReceived, busy; String browserState; long expiresAt;
+  Attempt(Runnable guard) { credentialGuard=guard; }
+ }
+ static class Uri { static Uri parse(String value) { return new Uri(value); } final String value; Uri(String value) { this.value=value; } }
+ static class CustomTabsIntent {
+  final Intent intent=new Intent("browser");
+  static final int SHARE_STATE_OFF=0;
+  static class Builder { Builder setShowTitle(boolean value){return this;} Builder setShareState(int value){return this;} CustomTabsIntent build(){return new CustomTabsIntent();} }
+  void launchUrl(Activity activity, Uri uri) {
+   check("example.browser".equals(intent.selected),"external Custom Tabs package is explicit");
+   check(activity.host.slots.containsKey(activity.host.config().pendingSlot),"encrypted pending record exists before launch");
+   activity.host.launched.add(uri.value);
+  }
+ }
+ static class Activity { final CloudSignInBrowserTest host; Activity(CloudSignInBrowserTest host){this.host=host;} void runOnUiThread(Runnable work){host.ui.add(work);} }
+ Activity getActivity(){return new Activity(this);}
+ CloudSignInConfig config(){return TestRegistration.base().googleSignInMode("browser").environment(TestRegistration.PRODUCTION).build();}
+ Context getContext(){return new Context(this);}
+ static class Context { final CloudSignInBrowserTest host; Context(CloudSignInBrowserTest host){this.host=host;} String getPackageName(){return "ai.example.signin";} PackageManager getPackageManager(){return new PackageManager(host);} }
+ static class Intent { static final String ACTION_VIEW="VIEW",CATEGORY_BROWSABLE="BROWSABLE";String action,selected;Uri uri;Intent(String action){this.action=action;}Intent(String action,Uri uri){this.action=action;this.uri=uri;}Intent addCategory(String category){check(CATEGORY_BROWSABLE.equals(category),"browser page is browsable");return this;}Intent setPackage(String name){selected=name;return this;} }
+ static class ServiceInfo { String packageName;boolean exported=true;ServiceInfo(String name){packageName=name;} }
+ static class ResolveInfo { ServiceInfo serviceInfo;ResolveInfo(String name){serviceInfo=new ServiceInfo(name);} }
+ static class PackageManager {
+  static final int MATCH_DEFAULT_ONLY=1;final CloudSignInBrowserTest host;PackageManager(CloudSignInBrowserTest host){this.host=host;}
+  List<ResolveInfo> queryIntentServices(Intent service,int flags){check(service.action.equals("android.support.customtabs.action.CustomTabsService")&&flags==0,"query actual available Custom Tabs services");return host.browserAvailable?List.of(new ResolveInfo("ai.example.signin"),new ResolveInfo("example.browser"),new ResolveInfo("example.browser")):List.of();}
+  List<ResolveInfo> queryIntentActivities(Intent page,int flags){check(page.action.equals(Intent.ACTION_VIEW)&&page.uri.value.startsWith("https://")&&flags==MATCH_DEFAULT_ONLY,"require normal HTTPS default-category handler");return host.acceptsHttps?List.of(new ResolveInfo(page.selected)):List.of();}
+ }
+ static class CustomTabsClient {
+  static String preferred="example.resolver";
+  static String getPackageName(Context context,List<String> candidates){check(!candidates.contains(context.getPackageName()),"host never becomes browser");check(new HashSet<>(candidates).size()==candidates.size(),"browser candidates deduplicated");return candidates.contains(preferred)?preferred:candidates.isEmpty()?null:candidates.get(0);}
+ }
+ /* ACTUAL_BROWSER_PACKAGE */
+ boolean appLinkVerified(CloudSignInEnvironment environment){return verified;}
+ boolean assetLinksGrant(CloudSignInEnvironment environment){return associated;}
+ CloudCredentialSlots credentials(Runnable guard){return new CloudCredentialSlots(){
+  public String read(String key){return slots.get(key);} public void write(String key,String value){guard.run();slots.put(key,value);} public void remove(String key){guard.run();slots.remove(key);}
+ };}
+ void run(Runnable task){workers.add(task);}
+ void end(Attempt owner,String code,boolean burn){owner.cancelled=true;if(attempt==owner)attempt=null;failure=code;if(burn&&intent==1)slots.remove(config().pendingSlot);}
+ void drainWorkers(){while(!workers.isEmpty())workers.remove().run();}
+ void drainUi(){while(!ui.isEmpty())ui.remove().run();}
+ Attempt owner(){long epoch=++intent;attempt=new Attempt(()->{if(epoch!=intent)throw new IllegalStateException("superseded");});return attempt;}
+ /* ACTUAL_BROWSER_START */
+ /* ACTUAL_BROWSER_LIFECYCLE */
+ static void check(boolean value,String reason){if(!value)throw new AssertionError(reason);}
+ public static void main(String[] args){
+  CloudSignInBrowserTest good=new CloudSignInBrowserTest();Attempt owner=good.owner();good.startGoogleBrowser(owner);
+  check(good.launched.isEmpty()&&good.slots.isEmpty(),"no launch or persistence before worker");
+  good.drainWorkers();check(good.launched.isEmpty()&&good.slots.containsKey(good.config().pendingSlot),"guarded persistence precedes queued UI launch");
+  good.drainUi();check(good.launched.size()==1&&owner.browserLaunched,"non-default installed browser launches even when default is resolver");
+  CloudSignInFlow.Pending pending=CloudSignInFlow.Pending.parse(good.slots.get(good.config().pendingSlot),good.config());
+  check(pending!=null&&pending.state.equals(owner.browserState),"browser and pending record share exact state");
+  check(!good.launched.get(0).contains(pending.verifier)&&good.launched.get(0).contains(CloudSignInFlow.s256(pending.verifier)),"only the challenge reaches browser");
+  for(int missing=0;missing<3;missing++){
+   CloudSignInBrowserTest bad=new CloudSignInBrowserTest();bad.browserAvailable=missing!=0;bad.verified=missing!=1;bad.associated=missing!=2;
+   bad.startGoogleBrowser(bad.owner());bad.drainWorkers();bad.drainUi();
+   check(bad.slots.isEmpty()&&bad.launched.isEmpty()&&bad.failure!=null,"missing browser or association cannot persist or launch");
+  }
+  CloudSignInBrowserTest serviceOnly=new CloudSignInBrowserTest();serviceOnly.acceptsHttps=false;check(serviceOnly.browserPackage()==null,"Custom Tabs service without HTTPS handler is refused");
+  CloudSignInBrowserTest cancelled=new CloudSignInBrowserTest();Attempt first=cancelled.owner();cancelled.startGoogleBrowser(first);first.cancelled=true;cancelled.attempt=null;cancelled.drainWorkers();cancelled.drainUi();
+  check(cancelled.slots.isEmpty()&&cancelled.launched.isEmpty(),"cancel before persistence stops browser");
+  CloudSignInBrowserTest replaced=new CloudSignInBrowserTest();Attempt older=replaced.owner();replaced.startGoogleBrowser(older);replaced.owner();replaced.slots.put(replaced.config().pendingSlot,"successor");replaced.drainWorkers();replaced.drainUi();
+  check("successor".equals(replaced.slots.get(replaced.config().pendingSlot))&&replaced.launched.isEmpty(),"older queued start preserves successor pending state");
+  CloudSignInBrowserTest afterWrite=new CloudSignInBrowserTest();Attempt written=afterWrite.owner();afterWrite.startGoogleBrowser(written);afterWrite.drainWorkers();written.cancelled=true;afterWrite.attempt=null;afterWrite.drainUi();
+  check(afterWrite.launched.isEmpty(),"cancel between persistence and UI never launches browser");
+  good.handleOnPause();good.handleOnResume();owner.callbackReceived=true;good.main.drain();
+  check(good.failure==null&&!owner.cancelled,"callback during resume grace keeps live attempt");
+  CloudSignInBrowserTest closed=new CloudSignInBrowserTest();Attempt closing=closed.owner();closing.browserLaunched=true;closed.handleOnPause();closed.handleOnResume();closed.main.drain();
+  check(closing.cancelled&&"browser-closed".equals(closed.failure),"manual browser return ends waiting state");
+  CloudSignInBrowserTest newer=new CloudSignInBrowserTest();Attempt retired=newer.owner();retired.browserLaunched=true;newer.handleOnPause();newer.handleOnResume();Attempt successor=newer.owner();newer.main.drain();
+  check(newer.attempt==successor&&!successor.cancelled&&newer.failure==null,"old resume timer cannot cancel new attempt");
+  System.out.println("PASS browser Google start: native custody, readiness, cancellation and replacement");
+ }
+}

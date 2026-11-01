@@ -1,5 +1,33 @@
 # Fused speech: libelizainference on the device and on the local agent
 
+## November 1 Cloud streaming source ownership
+
+The explicit Cloud profile now has a native streaming relay behind the existing
+Alpha speech adapter. Its reusable Java implementation, PCM framing and numeric
+timing collector live in the reviewed additions in
+`patches/eliza/cloud-speech-native.patch`, under the shared
+`plugins/plugin-local-inference/native/android/speech-bridge` package. The
+framework-independent client session and text chunking live in
+`patches/eliza/cloud-speech-client.patch`, under `packages/voice/src`.
+Alpha supplies only its plugin name, Cloud origin, credential-authority ports and
+connection lifecycle. The pinned `vendor/eliza` checkout is never edited.
+
+`prepare-patched-native.mjs` binds the exact base revision, patch digest, absent
+preimage, output digest and complete native module inventory before Gradle uses
+the staged source. Additions are admitted only in the shared speech Java package;
+existing native patch rules remain in force. `prepare-client-features.mjs` likewise
+authenticates the base voice tree and the client patch's exact additions before
+copying them into its managed cache. Its receipt includes the patch and preparer
+hashes. Neither preparation overlays the immutable resident runtime.
+
+The native relay requires an explicitly started, credential-bound Cloud session.
+It sends microphone PCM as captured and plays returned PCM incrementally; pause,
+account changes and Stop retire the session. A server that rejects startup with
+exactly HTTP 404 before microphone capture may use the retained disclosed batch
+path. Other failures cannot replay recorded speech. Server deployment, physical
+audio latency and the shared-source migration's build/test results must be
+recorded separately; source support alone is not Cloud or device acceptance.
+
 Alpha Phone has one local speech engine: **libelizainference**, the llama.cpp-based native
 library from the elizaOS llama.cpp fork (decision P-42). At the pin `968348d792d3` (llama.cpp
 gitlink `3e5f73922ee8`, voice ABI 18, built with `LLAMA_BUILD_PARAKEET=ON`) it contains ggml, the
@@ -16,7 +44,7 @@ loads GGUF models only; no other neural runtime or model ships anywhere
 | Android phone, live voice conversation | Silero VAD in the app process (shared `ai.eliza.voice.LiveVoiceCapture` on the process-wide `InferenceSession` VAD context), Phonon-2 streaming decode in the resident agent's bionic host | The agent's `POST /api/asr/local-inference/live` through the owner-authenticated agent bridge (see Live voice below) |
 | Browser with the local agent | The agent's host workers load libelizainference from `ELIZA_INFERENCE_LIBRARY` | TTS `POST /api/tts/paradee` (provider `libelizainference-paradee`); ASR `POST /api/asr/libelizainference` (provider `local-inference`) |
 | Browser without the local agent | none | Local speech reports `local-agent-required`; replies are read as text. There is no Web Speech, no in-browser engine and no automatic network fallback |
-| Eliza Cloud | provider-side | Test-mocks builds only; production speech stays on the device (P-43) |
+| Explicit Cloud QA profile | provider-side | Authenticated Eliza Cloud speech; no local speech model is packaged. This is the October 18 scoped override below. |
 
 Since the October 27 consolidation the speech engine owner (`LocalSpeechEngine`, `SessionSpeech`),
 streamed playback (`StreamingSpeechPlayback`, `SpeechPcmQueue`, `AudioTrackSpeechOutput`), audio
@@ -47,6 +75,54 @@ upstream `elizavoice-jni.cpp` with `-DELIZA_VOICE_JNI_CLASS=ai/elizaresearch/alp
 and no source rewrite (`scripts/embedding-native-contract.mjs`). The paradee-voice library links
 the app's engine instead of packaging a second copy, so the two must be byte-identical
 (`node scripts/paradee-runtime.mjs --app-linkage`, Gradle `:app:verifyParadeeAppLinkage`).
+
+## Cloud speech diagnosis — November 1
+
+The Pixel's selected `cloud` profile runs the resident agent and history on the
+phone. Speech recognition and synthesis use Eliza Cloud; local Paradee/Phonon
+models are absent. This differs from the default native profile described here.
+
+The installed v12 path was serial: finish recording, upload batch STT, wait for
+the complete resident-agent reply, fetch complete TTS, then play. Saved completed
+turns took 8.3–18.0 seconds from recording stop to playback start. This boundary
+excludes input endpointing and is not a microphone-to-speaker acoustic measure.
+The native Android bridge now records decode/upload/response/download/prepare
+stages and the bounded numeric server timing fields. The streaming bridge records
+session bootstrap, STT final, first PCM and AudioTrack playback timing. Export
+only these fields with `node scripts/android-cloud-voice-timing.mjs --out FILE`;
+it excludes credentials, transcripts and reply text.
+
+The Cloud client uses one native PCM WebSocket for input and output, with final
+STT events delivered to the existing local `VoiceAssistantSession`. It removes
+the second silence timer and the native Cloud thinking-acknowledgment TTS request.
+Reply speech still follows the existing complete-reply and action checks.
+AudioTrack can play incoming PCM before synthesis ends. A `404` on the new
+speech endpoint retains the existing batch route; authentication or provider
+failures do not replay a request through a second route.
+
+The installed v15 retry recognized speech with 154 ms of decode, 21 ms of
+upload and 2,582 ms waiting for Cloud response. It did not complete an answer.
+A normal typed probe also failed: the resident emitted terminal
+`provider_issue` after 128 ms. Its log identified `ReferenceError: default10 is
+not defined` at `agent-bundle.js:39523:19870`. The evidence is in
+[`v15-resident-failure.json`](evidence/cloud-streaming-2026-11-01/v15-resident-failure.json).
+This separate bundle defect must be fixed before an end-to-end comparison.
+
+Generic client transport, phrase planning, native socket/media ownership and
+wire/timing parsing are explicit, byte-verified shared-source patches under
+`patches/eliza`. Product wrappers supply only bridge registration, current owner,
+credential slots, deployment origins and diagnostic format names. The immutable
+vendor checkout and resident source are not patched. The feature-parity allowlist
+must not grow for this work.
+
+Cloud implementation and rollout are tracked in
+[elizaOS/eliza#38469](https://github.com/elizaOS/eliza/pull/38469). Production at
+this diagnosis does not mount the new speech relay. The new route uses a bounded
+60-second session and reserves its budget at bootstrap; PCM and TTS frames then
+run through the Durable Object. Unique reply text still needs the service's
+content-safety check. The exact-input positive safety cache is not an audio cache.
+A production streaming or latency acceptance claim requires the deployed backend
+and a completed physical-device turn, separately from APK checks.
 
 ## October 24 source update
 
@@ -422,3 +498,24 @@ and settings. Cold process starts open the assistant with the microphone closed;
 a wake starts voice automatically only when the native process already had the
 same authenticated owner binding. Locked, stale, consumed or changed-owner wakes
 never start capture.
+
+### Android agent producer UUID admission
+
+The Cloud speech investigation found a separate first-turn agent failure in the
+Android mobile bundle: Bun 1.4.2 lowered UUID's named re-export barrel into an
+undeclared `default10` binding. The bundle loaded, but creating a message response
+ID failed before any model request. `patches/eliza/mobile-uuid-build.json` admits
+the exact upstream producer, Bun revision, dependency lock, and UUID 14.0.2 module
+hashes. `scripts/build-mobile-agent.mjs` runs that unchanged producer with a
+bounded build adapter for the one admitted UUID barrel. The adapter imports the
+real UUID algorithms through CommonJS namespace properties; it does not supply a
+replacement UUID implementation or rewrite emitted bundle text.
+
+Every build exercises UUID options, buffers, versions and known name vectors in
+the actual emitted bundle, then reaches the real message-turn response-ID path
+and stops before provider execution. The staged `alpha-mobile-build.json`
+receipt binds these producer inputs and the resulting bundle. Cloud and native
+build preflight, APK verification, and the build source snapshot enforce that
+receipt separately from the unchanged upstream source stamp. These host smoke
+tests verify the failing code path; they do not establish device voice latency
+or a successful Cloud model response.

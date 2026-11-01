@@ -21,7 +21,7 @@
  * UNRESOLVED_FONT_LICENCE_BLOCKS_DISTRIBUTION (scripts/licence-policy.mjs) is true.
  * It never fails verification of a developer build.
  * App Links: each row records `appLinks` ({present, hosts}), the https autoVerify filters in
- * the packaged manifest. A default build has none; ELIZAOS_APP_LINK_HOST adds one.
+ * the packaged manifest. Default builds declare the configured production web host.
  * --test-mocks: the separate artifacts/test-mocks/ build, which is never
  * distributable. This is APK-build evidence only; it does not install or run
  * anything.
@@ -32,7 +32,7 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
-  auditBundle, distributionProblems, extractWebPayload, readBuildFlags, signerDigest, validateApk, verifyOwnerRouteTable,
+  auditBundle, distributionProblems, extractWebPayload, parseXmlTree, readBuildFlags, signerDigest, validateApk, verifyOwnerRouteTable,
 } from "./apk.mjs";
 import { androidEnv, tool } from "./toolchain.mjs";
 import { readApkEntries } from "../vendor/eliza/packages/app/scripts/mobile/artifact-inspection/apk-distribution.mjs";
@@ -41,7 +41,7 @@ import { BUN_ENTRY } from "./generate-licenses.mjs";
 import { fontLicenceCheck, fontLicenceLine } from "./font-license-blockers.mjs";
 import { licenceFlagLines, licenceFlagRecords } from "./licence-policy.mjs";
 import { packagedGzipProblems } from "./android-gzip-assets.mjs";
-import { appLinkFilters } from "./render-assetlinks.mjs";
+import { appLinkFilters, requiredAppLinkProblems } from "./render-assetlinks.mjs";
 import { readVoiceHost, VOICE_BUNDLE_ASSETS, VOICE_BUNDLE_FORMAT } from "./voice-host.mjs";
 import { apkPermissions, checkListenerPermissions, checkListenerSpeechBundle, listenerPackage } from "./aosp-listener.mjs";
 import { listenerApkRow, listenerManifestSection, readListenerRecord } from "./listener-qualification.mjs";
@@ -68,6 +68,7 @@ const manifestFile = path.join(directory, "apk-manifest.json");
 fs.rmSync(manifestFile, { force: true });
 
 const identity = JSON.parse(fs.readFileSync("app.config.json"));
+const callbackHost = new URL(JSON.parse(fs.readFileSync("config/cloud-deployment.json", "utf8")).production.web).hostname;
 const buildRecordFile = path.join(directory, "build-config.json");
 const buildRecord = fs.existsSync(buildRecordFile) ? JSON.parse(fs.readFileSync(buildRecordFile, "utf8")) : null;
 if((buildRecord?.runtimeProfile||"native")!==runtimeProfile)throw Error("Build runtime profile differs from verification");
@@ -128,6 +129,9 @@ for (const variant of ["standalone", "launcher"])
     if (d.debuggable !== (mode === "debug"))
       throw new Error(`Wrong debug flag: ${file}`);
     const { facts, problems } = distributionProblems(d, { mode, testMocks });
+    problems.push(...requiredAppLinkProblems(parseXmlTree(d.xml), {
+      host: callbackHost, path: '/alphaphone/auth/callback', activity: `${identity.appId}.MainActivity`,
+    }));
     // Shared web bundle audit on the exact packaged payload.
     const payload = extractWebPayload(file);
     let flags;

@@ -4,6 +4,7 @@ import {existsSync,readdirSync,mkdtempSync,rmSync} from 'node:fs';
 import {homedir,tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {execFileSync} from 'node:child_process';
+import {preparePatchedNative} from '../../scripts/prepare-patched-native.mjs';
 
 export const root=resolve(import.meta.dirname,'../..');
 export const nativeSource=name=>join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone',name);
@@ -35,4 +36,11 @@ export function runJvm(sources,mainClass,{json=false,args=[],input}={}){
   execFileSync(javaBinary('javac'),['--release','11',...classpath,'-d',temporary,...sources],{timeout:120000});
   return execFileSync(javaBinary('java'),['-cp',json?temporary+':'+jsonJar:temporary,mainClass,...args],{encoding:'utf8',timeout:120000,input});
  }finally{rmSync(temporary,{recursive:true,force:true});}
+}
+
+/** Authenticated shared voice additions, compiled from the reviewed patch, never a vendor edit. */
+export function sharedSpeechSource(name) {
+ if(!/^[A-Za-z][A-Za-z0-9]*\.java$/.test(name))throw Error('Invalid shared speech source');
+ const staged=preparePatchedNative({root});
+ return join(staged.root,'plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice',name);
 }

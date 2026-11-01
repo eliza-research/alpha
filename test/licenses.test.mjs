@@ -260,5 +260,7 @@ function scratchRoot(t, {ownNodeModules = false} = {}) {
   fs.symlinkSync(path.join(ROOT, 'apps/app/public'), path.join(dir, 'apps/app/public'));
   for (const name of ['package.json', 'package-lock.json', 'upstream.lock.json']) fs.copyFileSync(path.join(ROOT, name), path.join(dir, name));
   fs.cpSync(path.join(ROOT, 'licenses'), path.join(dir, 'licenses'), {recursive: true});
+  // The classpath fingerprint binds the actual patched auth descriptor; stage it privately from the same authored inputs.
+  fs.cpSync(path.join(ROOT, 'patches/eliza'), path.join(dir, 'patches/eliza'), {recursive: true});
   return dir;
 }

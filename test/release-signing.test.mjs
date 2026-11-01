@@ -122,12 +122,13 @@ test("the bundle audit fails an assetlinks.json with a placeholder or debug fing
   assert.equal(auditWebBundle(dir, { debugFingerprints: [SIGNER] }).ok, false);
 });
 
-test("the https autoVerify filter is build-gated by ELIZAOS_APP_LINK_HOST and read back from the APK manifest", () => {
+test("the https autoVerify filter defaults to the configured host and is read back from the APK manifest", () => {
   const gradle = fs.readFileSync("android/app/product.gradle", "utf8");
   const manifest = fs.readFileSync("android/app/src/main/AndroidManifest.xml", "utf8");
-  // Default build: the main manifest has no https autoVerify filter at all; only the property adds the overlay.
+  // The generated overlay owns the HTTPS filter and defaults to the configured Cloud host.
   assert.doesNotMatch(manifest.replace(/<!--[\s\S]*?-->/g, ""), /autoVerify/);
   assert.match(gradle, /project\.findProperty\('ELIZAOS_APP_LINK_HOST'\) \?: envValue\('ELIZAOS_APP_LINK_HOST'\)/);
+  assert.match(gradle, /\? cloudWebHost : appLinkHostRaw\.toString\(\)\.trim\(\)/);
   assert.ok(gradle.includes('<activity android:name="${android.namespace}.MainActivity" android:exported="true">'), 'the generated App Link activity explicitly exports its external return intent');
   assert.match(gradle, /manifestPlaceholders\.put\('appLinkHost', appLinkHost\)/);
   assert.match(gradle, /if \(appLinkHost\) androidComponents \{ onVariants\(selector\(\)\.all\(\)\) \{ variant -> variant\.sources\.manifests\.addStaticManifestFile\(appLinksManifest\) \} \}/);

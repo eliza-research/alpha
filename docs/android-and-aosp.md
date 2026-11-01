@@ -140,14 +140,14 @@ privileged permission whitelist is fabricated for a thin launcher.
 
 ## App Links
 
-**Build gate.** A default build declares no https `autoVerify` filter. With the Gradle property
-`ELIZAOS_APP_LINK_HOST` set, `android/app/product.gradle` overlays verified filters on that host for
+**Build configuration.** `android/app/product.gradle` defaults to the configured production web
+host and overlays verified filters on that host for
 `/alphaphone/cloud-delegation` (prefix) and `/alphaphone/auth/callback` (exact path, the in-app
 Eliza Cloud sign-in return). Steward returns sign-in only to `eliza.app`, so the sign-in return
-works with `ELIZAOS_APP_LINK_HOST=eliza.app`. Test-mocks builds always add
+works with the default configuration. `ELIZAOS_APP_LINK_HOST`, if set, must match it. Test-mocks builds always add
 `https://staging.eliza.app/alphaphone/auth/callback` from `src/testMocks/AndroidManifest.xml`.
 The release fingerprint must be listed at `/.well-known/assetlinks.json` on the host before a
-release build sets the property (never a debug or placeholder fingerprint). On `eliza.app` Cloud
+release build can receive the return (never a debug or placeholder fingerprint). On `eliza.app` Cloud
 serves that file from `ELIZA_ANDROID_ASSET_LINKS_JSON`: `node scripts/render-assetlinks.mjs --cloud-config`
 prints the value with Alpha's entry, and `--check <url>` verifies the published file
 ([human actions](human-actions.md) H-13). For a host Alpha controls, publish the file the default

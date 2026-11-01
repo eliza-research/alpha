@@ -10,11 +10,11 @@ const source=readFileSync(new URL('../apps/app/src/runtime/connection-ui.tsx',im
 const compiled=transformSync(source.slice(source.indexOf('function ResidentRecoveryPanel(')),{loader:'tsx',jsx:'transform'}).code;
 const token='d32f7f34-962b-47b7-8f0d-f2fe7f12610a';
 const snapshot={residentRecoveryReason:'ipc-recovery-retention-limit',residentRecovery:{step:'review',review:{retainedCount:8,reviewToken:token}},session:null,busy:false};
-test('real React recovery panel has one restart action and optional finite details without private token',()=>{
+test('real React recovery panel has one restart action, no collapsible details and no private token',()=>{
  const context={React,residentRecoveryCopy,connectionController:{}};vm.createContext(context);vm.runInContext(compiled,context);
  const html=renderToStaticMarkup(React.createElement(context.ResidentRecoveryPanel,{snapshot}));
  assert.equal((html.match(/<button/g)||[]).length,1);assert.match(html,/>Restart Alpha<\/button>/);
- assert.match(html,/Alpha is ready to restart/);assert.doesNotMatch(html,/Your data is safe/);assert.match(html,/<details><summary>Details<\/summary>/);assert.match(html,/Startup records to keep: 8/);assert.doesNotMatch(html,new RegExp(token));
+ assert.match(html,/Alpha is ready to restart/);assert.doesNotMatch(html,/Your data is safe/);assert.doesNotMatch(html,/<details|<summary|Startup records to keep/);assert.doesNotMatch(html,new RegExp(token));
  const failed=renderToStaticMarkup(React.createElement(context.ResidentRecoveryPanel,{snapshot:{...snapshot,busy:true,residentRecovery:{step:'unavailable'}}}));
  assert.doesNotMatch(failed,/Your data is safe/);assert.match(failed,/<button disabled=""/);
 });
