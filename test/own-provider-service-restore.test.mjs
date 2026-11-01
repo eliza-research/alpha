@@ -22,6 +22,7 @@ test('own inference restores a saved Cloud service using the exact credential wi
 });
 test('no saved Cloud account or a pending recovery does not start optional authentication',async()=>{
  const empty=fixture({credential:null});await empty.box.run();assert.deepEqual(empty.calls,['credential']);
+ const removed=fixture({credential:null});removed.box.service={identity:{credentialId:'old'}};await removed.box.run();assert.ok(removed.calls.includes('detach'));assert.equal(removed.box.state.providerStatus.selected,true);
  const recovery=fixture();recovery.box.state.residentRecoveryReason='blocked';await recovery.box.run();assert.deepEqual(recovery.calls,[]);
 });
 test('Cloud identity failure retains own inference and the stored credential',async()=>{
