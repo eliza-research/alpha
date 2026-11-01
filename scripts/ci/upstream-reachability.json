@@ -2,13 +2,13 @@
   "schema": 1,
   "repository": "elizaOS/eliza",
   "base": "develop",
-  "baseCommit": "3861ffd1cbac332f25e1552dc977953a87f1adee",
+  "baseCommit": "fdc2b036364e24eff3edf9673836aff70192949d",
   "head": "6cd75d68202db3322dbec9d36d200902f08849c4",
   "recordedAt": "2026-11-01",
-  "command": "Prior recorded compare for d5f0e2aea48a7ce578cdb16f9808f4d26f006ba2 plus verified direct-child commit 6cd75d68202db3322dbec9d36d200902f08849c4",
-  "status": "ahead",
-  "aheadBy": 95,
-  "behindBy": 0,
+  "command": "gh api repos/elizaOS/eliza/compare/develop...6cd75d68202db3322dbec9d36d200902f08849c4",
+  "status": "diverged",
+  "aheadBy": 89,
+  "behindBy": 1,
   "mergeBase": "3861ffd1cbac332f25e1552dc977953a87f1adee",
   "pinOnlyCommits": [
     {
@@ -24,16 +24,8 @@
       "subject": "Enroll Notes request-effect regressions in the default test lane"
     },
     {
-      "sha": "682b9d1aa5f4cf8485bad437635f15df012c9440",
-      "subject": "feat(calendar): expose owner-only managed read diagnostics"
-    },
-    {
       "sha": "73f625cd5b51bfc9d72d4fb978ffb82794cf7429",
       "subject": "fix(host/voice): speak the reply after Cartesia closes an idle cue context"
-    },
-    {
-      "sha": "0f9b695955b0289698b580d046f9c8cb2814ac93",
-      "subject": "fix(calendar): scope handled managed-source error reporting"
     },
     {
       "sha": "4e71468f9a160cc88c0e6b2dd36e2907349d190c",
@@ -42,14 +34,6 @@
     {
       "sha": "8c8fd5cd3f5823081affd0b2ce56ca6cecce85dd",
       "subject": "test(notes): repair runtime fixture and expose owning failures"
-    },
-    {
-      "sha": "3b3847dc147aed07fdc2e9ef89e333f92d644211",
-      "subject": "ci(calendar): run owning regressions and format read contracts"
-    },
-    {
-      "sha": "2405740d71ae305ec5b356c620600dac0f732b78",
-      "subject": "ci(calendar): check owning lint before builds"
     },
     {
       "sha": "30c7a8cab5f6302db0ec3b431c1424ae198d5b28",
@@ -69,10 +53,6 @@
     },
     {
       "sha": "864408a0af7307374e874f098207598900cbf56c",
-      "subject": "style(assistant): format existing planner scope regressions"
-    },
-    {
-      "sha": "fd5046a834f54f095eae8040f008e8257d681689",
       "subject": "style(assistant): format existing planner scope regressions"
     },
     {
@@ -102,10 +82,6 @@
     {
       "sha": "32351bef6868593c18775103b3fbb004473960e2",
       "subject": "fix(notes): bound terminal recovery without releasing required operations"
-    },
-    {
-      "sha": "3eb1322afe18b178597247309b0f1d41ad41cca1",
-      "subject": "style(personal-assistant): apply reviewed relative-delay formatting"
     },
     {
       "sha": "e30d5ca3e737d22de2948d39e39a7665c8dc9d15",
@@ -740,8 +716,12 @@
       "status": "open",
       "draft": true,
       "merged": false
+    },
+    {
+      "url": "https://github.com/elizaOS/eliza/pull/38445",
+      "status": "open",
+      "draft": true,
+      "merged": false
     }
-  ],
-  "qualificationNote": "Published unmerged SDK candidate; normal build/runtime/native qualification is pending. No qualification transfers from old pin.",
-  "derivedFromHead": "d5f0e2aea48a7ce578cdb16f9808f4d26f006ba2"
+  ]
 }
