@@ -159,7 +159,7 @@ test('an element that lets its MediaSource go stops the streamed download and re
  const f=await start(page);
  try{
   const result=await page.evaluate(async frames=>{
-   const {StreamedSpeech,streamedSpeechSource}=await import('/src/browser/streamed-speech.ts');
+   const {StreamedSpeech,streamedSpeechSource}=await import('/src/browser/voice.ts');
    let cancelled:unknown;const body=new ReadableStream<Uint8Array<ArrayBuffer>>({start(controller){controller.enqueue(new Uint8Array(frames));},cancel(reason){cancelled=reason;}});
    const revoked:string[]=[],revoke=URL.revokeObjectURL;URL.revokeObjectURL=url=>{revoked.push(url);revoke(url);};
    try{

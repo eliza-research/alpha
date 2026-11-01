@@ -196,9 +196,13 @@ export function createLocalAgentDevHandler(options:{origin:string;tokenFile:stri
           await result.body?.cancel();fail(result.ok?502:result.status,'Local agent stream unavailable. No automatic retry was made.');return;
         }
         res.writeHead(200,{'Content-Type':'text/event-stream','Cache-Control':'no-store, no-transform','X-Content-Type-Options':'nosniff'});res.flushHeaders();
+        // The request deadline covers idle reads and drain waits on a page that stops reading, and cancels the upstream.
+        // A failure after the headers destroys the response (outer catch), so the page never sees a cleanly ended stream.
+        // A listener misses an earlier abort (a request that resolved late), so the signal is checked before the first read.
         const reader=result.body.getReader();let received=0;
-        try{while(true){const part=await reader.read();if(part.done)break;received+=part.value.byteLength;if(received>LIMIT)throw Error('Stream too large');if(!res.write(part.value))await once(res,'drain',{signal:abort.signal});}}
-        finally{await reader.cancel().catch(()=>{});}
+        const cancel=()=>{void reader.cancel(upstream.reason).catch(()=>{});};upstream.addEventListener('abort',cancel,{once:true});
+        try{upstream.throwIfAborted();while(true){const part=await reader.read();upstream.throwIfAborted();if(part.done)break;received+=part.value.byteLength;if(received>LIMIT)throw Error('Stream too large');if(!res.write(part.value))await once(res,'drain',{signal:upstream});}}
+        finally{upstream.removeEventListener('abort',cancel);await reader.cancel(upstream.reason).catch(()=>{});}
         if(!abort.signal.aborted)res.end();return;
       }
       const owned=()=>readFileSync(options.tokenFile,'utf8').trim()===token&&credential.expiresAt>Date.now();
@@ -209,9 +213,11 @@ export function createLocalAgentDevHandler(options:{origin:string;tokenFile:stri
         // first chunk, so an empty or re-owned clip still gets its JSON failure. A failure after that
         // destroys the response (outer catch): the page sees a truncated clip, never a cleanly ended one.
         // The deadline covers idle reads and drain waits on a page that stops reading, and cancels the upstream.
+        // A listener misses an earlier abort (a request that resolved late), so the signal is checked before the first read.
         const reader=result.body?.getReader(),moderation=result.headers.get('x-eliza-tts-moderation');let received=0,committed=false;
         const cancel=()=>{void reader?.cancel(upstream.reason).catch(()=>{});};upstream.addEventListener('abort',cancel,{once:true});
         try{
+          upstream.throwIfAborted();
           while(reader){
             const part=await reader.read();upstream.throwIfAborted();if(part.done)break;if(!part.value.byteLength)continue;
             received+=part.value.byteLength;if(received>8*1024*1024)throw Error('Response too large');
@@ -220,7 +226,7 @@ export function createLocalAgentDevHandler(options:{origin:string;tokenFile:stri
               ...(timings.length?{'Server-Timing':timings.map(value=>`${value.name};dur=${value.durationMs}`).join(', ')}:{}),...(moderation==='reviewed'||moderation==='approved-hit'?{'X-Eliza-TTS-Moderation':moderation}:{})});}
             if(!res.write(part.value))await once(res,'drain',{signal:upstream});
           }
-        }finally{upstream.removeEventListener('abort',cancel);await reader?.cancel().catch(()=>{});}
+        }finally{upstream.removeEventListener('abort',cancel);await reader?.cancel(upstream.reason).catch(()=>{});}
         if(abort.signal.aborted)return;
         if(!committed){if(!owned())fail(409,'Cloud voice owner changed');else fail(502,'Empty Cloud speech audio');return;}
         res.end();return;

@@ -25,7 +25,7 @@ import { voiceFailure, transcriptProvenance, deniedSettingsChoice, DENIED_SETTIN
 import { createPairedVoice } from '../runtime/paired-voice';
 import { createCloudVoice, cloudVoiceFailure, createCloudStreamingSpeech, nativeCloudStreamingAvailable } from '../runtime/cloud-voice';
 import { speakCloudSpeechChunks } from '../../../../.eliza/client-features/packages/voice/src/cloud-speech-chunks.ts';
-import { clefEndpointStage, selectVoiceRoute, voiceSendPolicy, cloudSpeechDisclosure, type VoicePreference } from '../runtime/voice-selection';
+import { clefEndpointStage, selectVoiceRoute, voiceSendPolicy, type VoicePreference } from '../runtime/voice-selection';
 import { beginVoiceTurn, markVoiceTiming, abandonVoiceTurn, finishVoiceTurn, sendVoiceEntry, recordLiveVoiceTiming, recordEndpointVoiceTiming, recordHeardVoiceTiming, activeVoiceTurn } from '../runtime/voice-timing';
 import { residentEndpoint, createHeardReporter, createEndpointChain } from '../runtime/voice-turn-routes';
 import { createNativeLiveDictation, nativeAssistantListener, nativeLiveVoiceReady, type NativeLiveDictation } from '../runtime/native-live-voice';
@@ -35,6 +35,8 @@ import { shouldRespondToVoiceTurn, buildVoiceTurnSignal } from '@elizaos/voice/t
 import { toSpeakableText } from '@elizaos/ui/voice/voice-chat-playback';
 import { connectionController } from '../runtime/connection-ui';
 const voiceServiceName = () => connectionController.getSnapshot().residentInference==='direct'?'Cartesia':cloudServiceName(connectionController.getCloudEnvironment() ?? connectionController.getSnapshot().cloudAccount?.environment ?? connectionController.getSnapshot().signIn?.environment ?? 'production');
+// Reading a note aloud sends only that note's text, never recordings or replies, so Notes names it.
+const noteSpeechDisclosure = () => connectionController.getSnapshot().residentInference==='direct' ? 'Cartesia speech sends this note’s text using your own API key and provider allowance.' : cloudRuntimeEnabled ? `Read with ${voiceServiceName()} uploads this note’s text to your selected Cloud account for Cartesia speech and uses your plan allowance.` : '';
 type Bag = Record<string, any>;
 type Clip = { recordingId: string; durationMs: number };
 const voice = registerPlugin<{
@@ -911,7 +913,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
       // A saved recording's reviewed transcript uses the same disclosed speech route as text notes.
       const voText = noteSpeechText(selected), voReading = currentNoteReading()?.noteId === selected.id;
       vo.readLabel = cloudRuntimeEnabled ? `Read with ${voiceServiceName()}` : 'Read aloud';
-      vo.cloudSpeechDisclosure = cloudRuntimeEnabled||connectionController.getSnapshot().residentInference==='direct' ? cloudSpeechDisclosure(voiceServiceName()) : '';
+      vo.cloudSpeechDisclosure = noteSpeechDisclosure();
       vo.stopReading = voReading ? () => stopSpeaking() : undefined;
       vo.readAloud = voText && !voReading ? () => {
         stopSaved();
@@ -957,7 +959,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
       const live = mine && currentNoteReading()?.noteId === note.id;
       ed.reading = live; ed.readAvailable = !!note && !!text;
       ed.readLabel = live ? 'Stop reading' : cloudRuntimeEnabled ? `Read with ${voiceServiceName()}` : 'Read aloud';
-      ed.cloudSpeechDisclosure = cloudRuntimeEnabled||connectionController.getSnapshot().residentInference==='direct' ? cloudSpeechDisclosure(voiceServiceName()) : '';
+      ed.cloudSpeechDisclosure = noteSpeechDisclosure();
       ed.stopReading = live ? () => stopSpeaking() : undefined;
       ed.readAloud = ed.readAvailable && !live ? () => {
         if (!note || !text) return;

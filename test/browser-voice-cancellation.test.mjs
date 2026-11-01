@@ -7,9 +7,8 @@ import test from 'node:test';
 // as fetch does; zero network, audio, IndexedDB or agent I/O.
 const load=(file,names)=>stripTypeScriptTypes(readFileSync(file,'utf8').replace(/^import .*;\n/gm,'').replace(/^export /gm,'').replaceAll('import.meta.env.DEV','true'),{mode:'transform'})+`;return {${names}};`;
 const {speechError,speechCancelled}=new Function(load('apps/app/src/browser/speech-errors.ts','speechError,speechCancelled:typeof speechCancelled==="function"?speechCancelled:undefined'))();
+// voice.ts carries the real streamed clip and support check; only MediaSource is a stand-in that accepts audio/mpeg.
 const voiceCode=load('apps/app/src/browser/voice.ts','BrowserVoice');
-// The real streamed clip and support check; only MediaSource is a stand-in that accepts audio/mpeg.
-const {StreamedSpeech,streamedSpeechSupported}=new Function('MediaSource',load('apps/app/src/browser/streamed-speech.ts','StreamedSpeech,streamedSpeechSupported'))({isTypeSupported:type=>type==='audio/mpeg'});
 const idle=async()=>{for(let i=0;i<5;i++)await new Promise(resolve=>setTimeout(resolve,0));};
 function harness(){
  const window=new EventTarget(),document=new EventTarget(),warnings=[],held=[],bodies=[];let hidden=false;
@@ -23,8 +22,8 @@ function harness(){
  class WebPlugin{notifyListeners(){return Promise.resolve();}}
  class BrowserAudioCapture{get(){return {blob:new Blob(['pcm'])};}cancel(){}clear(){}}
  const unexpected=()=>{throw Error('Unexpected dependency');};
- const {BrowserVoice}=new Function('browserLocalSpeechStatus','transcribeWithSelectedBrowserAgent','devSurfacesEnabled','browserCloudVoice','browserCloudCredential','connectionController','recordingPcmWav','browserMediaVolume','audioRecord','audioMetadata','retainAudio','changeAudioDeleted','audioDeletionStatus','migrateAudio','purgeAudio','speechError','speechCancelled','BrowserAudioCapture','StreamedSpeech','streamedSpeechSource','streamedSpeechSupported','WebPlugin','window','document','console','BroadcastChannel',voiceCode)(
-  (_agent,signal)=>hold('status',signal,{ready:true,playback:true,execution:'browser',route:'local-agent'}),(_agent,_wav,signal)=>hold('stt',signal,{text:'local',local:true}),true,cloud,unexpected,connection,async()=>new Blob(),()=>1,unexpected,unexpected,unexpected,unexpected,unexpected,async()=>{},unexpected,speechError,speechCancelled,BrowserAudioCapture,StreamedSpeech,unexpected,streamedSpeechSupported,WebPlugin,window,document,{warn:(...args)=>warnings.push(args)},undefined);
+ const {BrowserVoice}=new Function('browserLocalSpeechStatus','transcribeWithSelectedBrowserAgent','devSurfacesEnabled','browserCloudVoice','browserCloudCredential','connectionController','recordingPcmWav','browserMediaVolume','audioRecord','audioMetadata','retainAudio','changeAudioDeleted','audioDeletionStatus','migrateAudio','purgeAudio','speechError','speechCancelled','BrowserAudioCapture','WebPlugin','MediaSource','window','document','console','BroadcastChannel',voiceCode)(
+  (_agent,signal)=>hold('status',signal,{ready:true,playback:true,execution:'browser',route:'local-agent'}),(_agent,_wav,signal)=>hold('stt',signal,{text:'local',local:true}),true,cloud,unexpected,connection,async()=>new Blob(),()=>1,unexpected,unexpected,unexpected,unexpected,unexpected,async()=>{},unexpected,speechError,speechCancelled,BrowserAudioCapture,WebPlugin,{isTypeSupported:type=>type==='audio/mpeg'},window,document,{warn:(...args)=>warnings.push(args)},undefined);
  return {voice:new BrowserVoice(),held,bodies,warnings,window,hide(){hidden=true;document.dispatchEvent(new Event('visibilitychange'));},show(){hidden=false;}};
 }
 const stt=(h,requestId='stt')=>h.voice.transcribeRecording({recordingId:'clip',requestId,environment:'env',credentialId:'cred'});

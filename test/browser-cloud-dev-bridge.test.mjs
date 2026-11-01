@@ -627,13 +627,15 @@ test('browser sign-in exposes the native-compatible public service-info method',
 test('service-info bridge reads only the selected canonical public endpoint without account or login changes',async()=>{
  const f=await fixture(undefined,'production');try{
   const before=await readFile(profileFile(f.profile,'initial-credential.json'),'utf8');
-  f.setSignIn(async(path,input)=>{assert.equal(path,'/api/public/service');assert.equal(input.method,'GET');assert.equal(input.redirect,'error');assert.equal(new Headers(input.headers).get('Authorization'),null);assert.equal(input.body,undefined);assert.ok(input.signal instanceof AbortSignal);return Response.json(publicService);});
+  f.setSignIn(async(path,input)=>{if(path==='/steward/auth/providers')return null;assert.equal(path,'/api/public/service');assert.equal(input.method,'GET');assert.equal(input.redirect,'error');assert.equal(new Headers(input.headers).get('Authorization'),null);assert.equal(input.body,undefined);assert.ok(input.signal instanceof AbortSignal);return Response.json(publicService);});
   assert.deepEqual(await f.rpc({operation:'signInServiceInfo',environment:'production'}),{status:200,data:publicService});
   assert.equal(f.calls[0].url,productionCloud.api+'/api/public/service');assert.equal(f.calls.length,1);assert.deepEqual((await f.rpc({operation:'signInStatus'})).data,{active:false,inApp:true,google:false,email:true});
+  // Status answers Google availability from the public provider list only: no credential, no login.
+  assert.equal(f.calls.length,2);assert.equal(f.calls[1].url,productionCloud.api+'/steward/auth/providers?tenantId='+encodeURIComponent(productionCloud.tenant));assert.equal(f.calls[1].input.method,'GET');assert.equal(new Headers(f.calls[1].input.headers).get('Authorization'),null);
   assert.equal(await readFile(profileFile(f.profile,'initial-credential.json'),'utf8'),before);await assert.rejects(readFile(profileFile(f.profile,'credentials.json')),{code:'ENOENT'});
   for(const input of [{environment:'staging'},{environment:'other'},{environment:'production',url:'https://attacker.invalid'},{environment:'production',credentialReference:reference},{environment:'production',headers:{Authorization:'Bearer '+secret}}])assert.notEqual((await f.rpc({operation:'signInServiceInfo',...input})).status,200);
   for(const headers of [{Origin:'http://attacker.invalid'},{'X-Alpha-Browser-Cloud':'0'}])assert.equal((await f.send({operation:'signInServiceInfo',environment:'production'},{headers})).status,403);
-  assert.equal(f.calls.length,1,'unadmitted requests never reach the provider');
+  assert.equal(f.calls.length,2,'unadmitted requests never reach the provider');
  }finally{await f.close();}
 });
 test('service-info bridge rejects unavailable, oversized and noncanonical documents without leaking content',async()=>{

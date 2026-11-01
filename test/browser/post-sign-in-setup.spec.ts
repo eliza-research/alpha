@@ -204,6 +204,9 @@ test('a cancelled check and a rejected own key keep the welcome page, with the r
  const welcome=page.getByRole('main',{name:'Welcome to Alpha.',exact:true});
  await expect(welcome).toBeVisible({timeout:60_000});
  // The readiness check is held; after 4 s the owner cancels it, so no sign-in view is active.
+ // While it runs, its Cancel stays in view: the switch to own keys waits for it.
+ await expect(welcome.getByRole('button',{name:'Cancel sign-in',exact:true})).toBeEnabled({timeout:10_000});
+ await expect(welcome.getByRole('button',{name:'Use your own API keys',exact:true})).toBeDisabled();
  await welcome.getByRole('button',{name:'Cancel sign-in',exact:true}).click({timeout:10_000});
  await expect(welcome.getByRole('button',{name:'Retry sign-in',exact:true})).toBeVisible();
  await welcome.getByRole('button',{name:'Use your own API keys',exact:true}).click();

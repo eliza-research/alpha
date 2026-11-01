@@ -25,10 +25,10 @@ def envValue = { String name -> def value = System.getenv(name); value == null |
 def cloudDeployment = new groovy.json.JsonSlurper().parse(file('../../config/cloud-deployment.json'))
 def cloudWebHost = new URI(cloudDeployment.production.web).host
 def stagingCloudWebHost = new URI(cloudDeployment.staging.web).host
-// Verified App Links return for Cloud delegation and the in-app Cloud sign-in
-// at the configured production web host. Browser Google sign-in requires this
-// return in every build. A generated overlay declares the configured host;
-// publish the assetlinks.json rendered by scripts/render-assetlinks.mjs there.
+// Verified App Links return for Cloud delegation, the in-app Cloud sign-in and the Google
+// Workspace consent return (GoogleWorkspaceReturn) at the configured production web host.
+// Browser Google sign-in requires this return in every build. A generated overlay declares
+// the configured host; publish the assetlinks.json rendered by scripts/render-assetlinks.mjs there.
 def appLinkHostRaw = project.findProperty('ELIZAOS_APP_LINK_HOST') ?: envValue('ELIZAOS_APP_LINK_HOST')
 def appLinkHost = appLinkHostRaw == null || appLinkHostRaw.toString().trim().isEmpty() ? cloudWebHost : appLinkHostRaw.toString().trim()
 if (appLinkHost && !(appLinkHost ==~ /(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,61}[a-z0-9]/))
@@ -45,6 +45,7 @@ if (appLinkHost) {
   <activity android:name="${android.namespace}.MainActivity" android:exported="true">
    <intent-filter android:autoVerify="true"><action android:name="android.intent.action.VIEW"/><category android:name="android.intent.category.DEFAULT"/><category android:name="android.intent.category.BROWSABLE"/><data android:scheme="https" android:host="\${appLinkHost}" android:pathPrefix="/alphaphone/cloud-delegation"/></intent-filter>
    <intent-filter android:autoVerify="true"><action android:name="android.intent.action.VIEW"/><category android:name="android.intent.category.DEFAULT"/><category android:name="android.intent.category.BROWSABLE"/><data android:scheme="https" android:host="\${appLinkHost}" android:path="/alphaphone/auth/callback"/></intent-filter>
+   <intent-filter android:autoVerify="true"><action android:name="android.intent.action.VIEW"/><category android:name="android.intent.category.DEFAULT"/><category android:name="android.intent.category.BROWSABLE"/><data android:scheme="https" android:host="\${appLinkHost}" android:path="/alphaphone/gmail/callback"/></intent-filter>
   </activity>
  </application>
 </manifest>
@@ -80,18 +81,6 @@ android {
  }
 }
 if (appLinkHost) androidComponents { onVariants(selector().all()) { variant -> variant.sources.manifests.addStaticManifestFile(appLinksManifest) } }
-// Workspace return shares the configured sign-in host. Runtime still requires verified domain handling.
-def workspaceReturnManifest = 'build/generated/workspace-return/AndroidManifest.xml'
-file(workspaceReturnManifest).parentFile.mkdirs()
-file(workspaceReturnManifest).text = """<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"><application>
- <activity android:name="${android.namespace}.MainActivity" android:exported="true">
-  <intent-filter android:autoVerify="true"><action android:name="android.intent.action.VIEW"/><category android:name="android.intent.category.DEFAULT"/><category android:name="android.intent.category.BROWSABLE"/><data android:scheme="https" android:host="\${appLinkHost}" android:path="/alphaphone/gmail/callback"/></intent-filter>
- </activity>
-</application></manifest>
-"""
-androidComponents { onVariants(selector().all()) { variant -> variant.sources.manifests.addStaticManifestFile(workspaceReturnManifest) } }
-
 
 // The shared bionic host is packaged only from the reviewed consumer artifact and BGE pin.
 def verifyEmbeddingHost = tasks.register('verifyEmbeddingHost', Exec) {

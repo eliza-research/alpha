@@ -3276,14 +3276,15 @@ export function ConnectionChooser() {
   const providerChoice=<OwnProviderChoice busy={snapshot.busy} status={snapshot.providerStatus} error={snapshot.error} message={snapshot.message} onSave={(key,voice)=>connectionController.configureLocal(key,LOCAL_PROVIDER_MODEL,voice)} onCancel={dismiss} onCloud={()=>connectionController.selectCloudProvider()}/>;
   if(snapshot.purpose==='provider')return <div className="alpha-connection-scrim"><div className="alpha-connection alpha-connection-native" role="dialog" aria-modal="true" aria-labelledby="provider-title" tabIndex={-1} ref={panel}><header><h1 id="provider-title">AI provider</h1><button aria-label="Close AI provider settings" disabled={snapshot.busy} onClick={()=>connectionController.close()}>×</button></header>{providerChoice}{snapshot.error&&<p role="alert">{snapshot.error}</p>}{snapshot.message&&<p role="status">{snapshot.message}</p>}</div></div>;
   const requiredSignInView: SignInView = snapshot.signIn ?? { step: 'choose', environment: residentEnvironment() };
-  if (snapshot.signIn || signInEntryRequired) return <div className={productionSignInRequired?'alpha-auth-page':'alpha-connection-scrim'}><div className={`alpha-connection alpha-connection-native alpha-cloud-sign-in${productionSignInRequired?' alpha-auth-content':''}`} role={productionSignInRequired?'main':'dialog'} aria-modal={productionSignInRequired?undefined:true} aria-labelledby="cloud-sign-in-title" aria-busy={snapshot.busy||undefined} tabIndex={-1} ref={panel}>
-    {providerChoice}
-    <CloudSignInPanel phone={cloudSignInPhone && inAppPhone} emailEnabled={inAppEmail} view={requiredSignInView} busy={snapshot.busy} ready={!!snapshot.signIn} dismissible={!productionSignInRequired} google={inAppGoogle} message={snapshot.message} error={snapshot.error} errorIsNotice={snapshot.error===RESIDENT_UNPACKAGED}
+  if (snapshot.signIn || signInEntryRequired) return <div className={signInPage?'alpha-auth-page':'alpha-connection-scrim'}><div className={`alpha-connection alpha-connection-native alpha-cloud-sign-in${signInPage?' alpha-auth-content':''}`} role={signInPage?'main':'dialog'} aria-modal={signInPage?undefined:true} aria-labelledby="cloud-sign-in-title" aria-busy={snapshot.busy||undefined} tabIndex={-1} ref={panel}>
+    <SignInOrOwnKeys busy={snapshot.busy} ownKeys={back=><OwnProviderChoice busy={snapshot.busy} status={snapshot.providerStatus} error={snapshot.error} message={snapshot.message} onSave={(key,voice)=>connectionController.configureLocal(key,LOCAL_PROVIDER_MODEL,voice)} onCancel={dismiss} onCloud={()=>connectionController.selectCloudProvider()} onBack={checked=>{if(checked)connectionController.clearOutcome();back();}}/>}>
+    <CloudSignInPanel phone={cloudSignInPhone && inAppPhone} emailEnabled={inAppEmail} view={requiredSignInView} busy={snapshot.busy} ready={!!snapshot.signIn} dismissible={!signInPage} google={inAppGoogle} message={snapshot.message} error={snapshot.error} errorIsNotice={snapshot.error===RESIDENT_UNPACKAGED}
       actions={{phone:number=>void connectionController.signInPhone(number),google:()=>void connectionController.signInGoogle(),email:address=>void connectionController.signInEmail(address),verify:code=>void connectionController.verifySignInCode(code),resend:()=>void connectionController.resendSignInCode(),cancel:()=>connectionController.cancelSignIn(),retry:()=>void connectionController.beginSignIn(requiredSignInView.environment,true)}}
       extra={signInEntryRequired && !snapshot.signIn && !snapshot.busy
         ? <button onClick={()=>void connectionController.beginSignIn(residentEnvironment(),true)}>Retry sign-in</button>
         : testMocksEnabled?<button disabled={snapshot.busy} onClick={()=>void connectionController.signInBrowser()}>Browser sign-in (diagnostic)</button>:undefined}/>
     {!snapshot.cloudAccount&&snapshot.legacySignInRecovery&&requiredSignInView.step==='choose'&&requiredSignInView.environment==='production'&&<div className="alpha-connection-actions"><button disabled={snapshot.busy} onClick={()=>void connectionController.restoreSavedSignIn()}>Restore saved sign-in</button></div>}
+    </SignInOrOwnKeys>
     {snapshot.signOutNotice && snapshot.signOutNotice!==snapshot.message && <p role="status">{snapshot.signOutNotice}</p>}
     {productionSignInRequired && <ResidentRecoveryPanel snapshot={snapshot}/>}
   </div></div>;
@@ -3473,6 +3474,19 @@ function ResidentRecoveryPanel({snapshot}:{snapshot:ConnectionSnapshot}) {
     <p role="status">{residentRecoveryCopy(reason,recovery)}</p>
     {reason==='ipc-recovery-retention-limit'&&<button disabled={snapshot.busy} onClick={()=>void connectionController.restartRecovery()}>Restart Alpha</button>}
   </section>;
+}
+
+/** First run shows one sign-in method at a time: Cloud, or the owner's own keys. While a Cloud
+ * sign-in runs the switch waits, so its panel, Cancel and outcome stay in view, as in Settings. */
+function SignInOrOwnKeys({busy,children,ownKeys}:{busy:boolean;children:import('react').ReactNode;ownKeys:(back:()=>void)=>import('react').ReactNode}){
+ const [own,setOwn]=useState(false);
+ if(own)return <>
+  <AlphaAuthBrand/>
+  <header><h1 id="cloud-sign-in-title" className="serif">Welcome to Alpha.</h1></header>
+  <p className="alpha-auth-intro">Use your own Cerebras key. Add a Cartesia key for voice.</p>
+  {ownKeys(()=>setOwn(false))}
+ </>;
+ return <>{children}<div className="alpha-connection-actions"><button type="button" className="alpha-connection-cancel" disabled={busy} onClick={()=>setOwn(true)}>Use your own API keys</button></div></>;
 }
 
 /** One explicit choice; key values live only in the submitted form and native credential vault. */

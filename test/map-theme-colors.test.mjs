@@ -1,7 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {resolveMapColors} from '../apps/app/src/maps/theme-colors.ts';
+import {stripTypeScriptTypes} from 'node:module';
+
+// Extract the actual standalone resolver without importing MapLibre or the SDK.
+const mapPlaneUrl=new URL('../apps/app/src/maps/map-plane.ts',import.meta.url);
+const mapPlaneSource=readFileSync(mapPlaneUrl,'utf8');
+const resolverStart=mapPlaneSource.indexOf('export function resolveMapColors(');
+const resolverEnd=mapPlaneSource.indexOf('\n/** Product palette',resolverStart);
+assert.equal(mapPlaneSource.split('export function resolveMapColors(').length,2);
+assert.ok(resolverStart>=0&&resolverEnd>resolverStart,'standalone resolver boundaries must exist');
+const resolverJavaScript=stripTypeScriptTypes(mapPlaneSource.slice(resolverStart,resolverEnd),{mode:'strip',sourceUrl:mapPlaneUrl.href});
+const {resolveMapColors}=await import(`data:text/javascript;base64,${Buffer.from(resolverJavaScript).toString('base64')}`);
 
 // Controlled CSSOM port only: no MapLibre/SDK import, browser, GPU, provider or location request.
 const serializations={
