@@ -5097,6 +5097,12 @@ var BASE = {
 };
 
 class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    // React state updaters can run before mount-time history restoration.
+    // Give each shell its own complete state instead of relying on S() defaults.
+    this.state = structuredClone(BASE);
+  }
   componentDidMount() {
     this.G = {}; this.I = {};
     var self = this;
