@@ -112,10 +112,6 @@
       "subject": "style(personal-assistant): apply reviewed relative-delay formatting"
     },
     {
-      "sha": "cb9944a1ce6f36d64914af71374f6283cf3f0870",
-      "subject": "Merge elizaOS/eliza#38365 (calendar managed-read diagnostics) into the v2 collector"
-    },
-    {
       "sha": "8e9f5d095a8b324e9f508877beabedeedb07dfb6",
       "subject": "test(notes): assert canonical stored and projected body contracts"
     },
@@ -146,10 +142,6 @@
     {
       "sha": "88922075c6baa61942ece9522e446e4f1126d7f0",
       "subject": "fix(assistant): judge a cited Calendar read like the uncited fallback"
-    },
-    {
-      "sha": "40821e72e4ae8229bfda3074f227f8f8f905fa33",
-      "subject": "Merge elizaOS/eliza#38355 (Notes write authority) into the v2 collector"
     },
     {
       "sha": "c10917a657298ebddb44095c7a8776ea575f1616",
@@ -266,10 +258,6 @@
     {
       "sha": "3fb40f1d68c8b1de78d21d9860958475a2656e6b",
       "subject": "ci: run the reminder edit regressions when the reminder sources or their resolution inputs change"
-    },
-    {
-      "sha": "c3a5b42973a613b0083bf18674542aecc8bc202f",
-      "subject": "Merge current develop into the Alpha QA SDK collector"
     },
     {
       "sha": "90177c7da271fa861f3a886abdbfe27df53654c0",
