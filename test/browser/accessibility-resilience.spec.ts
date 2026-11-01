@@ -442,8 +442,9 @@ for (const shell of HOME_SHELLS) for (const scale of [1, 1.5, 2]) {
     await expect(last).toBeInViewport({ ratio: 1 });
     const tile = (await last.boundingBox())!, bar = (await page.locator('[data-alpha-input-bar]').boundingBox())!;
     expect(tile.y + tile.height).toBeLessThanOrEqual(bar.y);
-    // At 200% Home has to scroll (three columns, four rows); that is the case the emulator caught.
-    if (scale === 2) expect(top.scrolls).toBe(true);
+    // At 200% the launcher's Home has to scroll; that is the case the emulator caught. The standalone
+    // app's Home (three columns, four rows) fits the screen there, which the checks above hold.
+    if (scale === 2 && shell.name === 'launcher') expect(top.scrolls).toBe(true);
     // The rule the sweep runs agrees.
     const found = format(await auditPage(page, { dock: true, clipping: true, overlap: true })).filter(line => !line.startsWith('text-truncated:'));
     expect(found, found.join('\n')).toEqual([]);
@@ -460,7 +461,7 @@ test('Home keeps enough scroll clearance when Android raises the dock and when t
  await home.evaluate(el=>{el.scrollTop=el.scrollHeight;});expect((await homeUnderDock(page)).under).toEqual([]);await expect(home.getByRole('button',{name:'All apps',exact:true})).toBeInViewport({ratio:1});
 });
 test('a status line on the composer adds Home scroll clearance without moving its rows',async({page})=>{
- await openHome(page,'/',1);const home=page.locator('[data-alpha-layer="home"]'),tile=home.getByRole('button',{name:'Inbox',exact:true});
+ await openHome(page,'/',1);const home=page.locator('[data-alpha-layer="home"]'),tile=home.getByRole('button',{name:'Inbox',exact:true}).and(page.locator('[data-mobile-shell-tile]'));
  const before={tile:(await tile.boundingBox())!.y,height:(await home.boundingBox())!.height,padding:await page.locator('[data-alpha-home-layout]').evaluate(el=>parseFloat(getComputedStyle(el).paddingBottom))};
  await page.evaluate(()=>{const block=document.createElement('div');block.dataset.testStack='';block.style.height='40px';document.querySelector('[data-alpha-layer="composer"]')!.prepend(block);});
  await expect.poll(()=>page.locator('[data-alpha-home-layout]').evaluate(el=>parseFloat(getComputedStyle(el).paddingBottom))).toBe(before.padding+40);

@@ -145,7 +145,7 @@ export function installPrototypeDataAdapter(Component: any, views: Record<string
       // reminder, and lets an upcoming reminder lead when it comes first.
       homeAgendaInput: agentAgendaInput, homeAgendaReminder: !!agenda?.event.alphaReminderId && !overdue,
       homeAgendaNextReminder: !!following?.event.alphaReminderId,
-      homeAttentionLabel: attention.label,
+      homeAttentionLabel: attention.label, homeAttentionAction: attention.action,
       homeAttentionPeople: [], homeAttentionPeopleVisibility: 'hidden',
       ...(browserDevProfile?{homeInboxCount:attention.count,homeInboxRows:unreadRows.slice(0,2).map(mail=>({subject:mail.subj||'(no subject)',from:mail.name||mail.email||''})),homeInboxHasRows:unread>0,homeInboxTitle:unread?'':'No unread email',homeInboxStatus:'Development inbox'}:{}),
       homeWorkflowLabel: brief.label, homeWorkflowTitle: brief.title, homeWorkflowTime: brief.time, homeWorkflowSource: brief.source,
