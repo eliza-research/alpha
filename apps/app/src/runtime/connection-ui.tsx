@@ -869,10 +869,11 @@ function activate(next: Active, session: VerifiedSession, name: string) {
  * left stopped because of plan state. At most one rebind runs; one more is queued behind it.
  */
 function queueResidentRebind(interruptReply=false) {
-  if (!residentCloudFlow()) return;
+  if (!residentCloudFlow()||state.residentRecoveryReason) return;
   void residentRebinds().request(rebindResident, interruptReply ? () => !!operation : residentRebindBlocked).catch(() => {});
 }
 function rebindResident() {
+  if(state.residentRecoveryReason)return Promise.resolve();
   // An outcome the open dialog is showing (a sign-out, a cancelled sign-in) stays visible after the rebind.
   const shown = state.open ? { message: state.message, error: state.error, startFailed: !!state.error && state.error === residentStartFailure } : null;
   const signIn = state.signIn;
@@ -1069,7 +1070,8 @@ function residentRefreshRefused(account:NonNullable<typeof service>,error:unknow
  * that failed is retried. Never stops the agent because of plan state.
  */
 async function recheckResidentPlan(){
-  if(operation)return;
+  if(operation||state.residentRecoveryReason)return;
+  if(ownProviderSelected()){void restoreOwnProviderCloudServices();return;}
   if(!state.session||active?.kind!=='resident'){queueResidentRebind();return;}
   const controller=new AbortController();signInReadinessOwner=null;operation=controller;
   try{
@@ -1162,6 +1164,27 @@ function residentBindingController(environment:CloudEnvironment,client:CloudProt
 /** The packaged-runtime refusal. Android production without the runtime is a non-distributable
  * developer build (--allow-unpackaged-runtime); browser development needs the host agent running. */
 const RESIDENT_UNPACKAGED = !testMocksEnabled ? 'This developer build does not include the on-device agent.' : !isAndroid && browserLocalAgentEnabled ? 'The local agent on this computer is not running. Start it with bun run dev.' : webCloudUnavailable() ? 'The local agent is unavailable here. Alpha runs its agent on the phone; this preview needs the local agent.' : 'The local agent is unavailable in this version. Connect a remote agent or sign in with Cloud.';
+/** Restore optional Cloud services independently of owner-provided inference. Neither an
+ * absent account nor a failed read may unbind, restart, or delay the resident agent. */
+async function restoreOwnProviderCloudServices():Promise<void>{
+  const selected=active,session=state.session,generation=epoch;
+  if(!selected||!session||!ownProviderSelected()||state.residentRecoveryReason)return;
+  const controller=new AbortController();appRequests.add(controller);
+  const timer=setTimeout(()=>controller.abort(new DOMException('Cloud service check timed out','AbortError')),10000);
+  const current=()=>epoch===generation&&active===selected&&state.session===session&&ownProviderSelected();
+  let credentialId:string|undefined;
+  try{
+    const client=makeCloud(residentEnvironment());
+    const credential=await cloudCredentialStore.read(client.environment);
+    if(!current()||controller.signal.aborted||!credential?.credentialId)return;
+    credentialId=credential.credentialId;
+    await verifyService(client,controller.signal,{credentialId,credentialReference:credential.credentialReference});
+  }catch{
+    // Keep the saved credential for an explicit retry. An older request cannot
+    // clear a newer account; direct inference remains selected throughout.
+    if(current()&&!controller.signal.aborted&&service?.identity.credentialId===credentialId)detachService();
+  }finally{clearTimeout(timer);appRequests.delete(controller);}
+}
 /** `admitted`: the admission a sign-in just made for this start (residentSignedIn); otherwise it is read here. */
 async function connectResident(signal: AbortSignal, admitted?: ResidentAdmission) {
   let admission:ResidentAdmission|null=null,bound:Awaited<ReturnType<typeof applyResidentBinding>>|null=null;
@@ -1223,7 +1246,7 @@ async function connectResident(signal: AbortSignal, admitted?: ResidentAdmission
   save({kind:'resident'});
   activate({kind:'resident',remote:client,origin:client.origin,actions,workflowProtocol,request:deviceRequest,...(userTextFormatVersion?{userTextFormatVersion}:{})},session,name);
   if(reason)update({phoneCapabilityReason:reason});
-  if(ownProvider)update({residentInference:'direct',residentPlanNotice:null});
+  if(ownProvider){update({residentInference:'direct',residentPlanNotice:null});void restoreOwnProviderCloudServices();}
   // Restore only the saved choice for this verified agent and owner; opening history never replays actions.
   if(residentCloudFlow()&&admission&&bound){
     residentBinding=bound.binding;
@@ -2629,7 +2652,7 @@ export const connectionController = {
   },
   /** Checks the plan again after the owner returns from Eliza Cloud (resume or visibility). */
   recheckPlanOnReturn(explicit=false) {
-    if(!residentCloudFlow()||operation||sending||state.busy)return;
+    if(!residentCloudFlow()||operation||sending||state.busy||state.residentRecoveryReason)return;
     const now=Date.now();
     if(!explicit&&!planManagementReturn&&now-lastPlanRecheck<PLAN_RECHECK_INTERVAL_MS)return;
     planManagementReturn=false;lastPlanRecheck=now;
