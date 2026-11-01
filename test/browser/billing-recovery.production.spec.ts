@@ -57,7 +57,7 @@ test('an account without a subscription is told why nothing was sent and gets th
   await expect(controls(page).getByRole('button', { name: 'Enter membership code', exact: true })).toBeVisible();
   await expect(page.getByText(/AI is off/)).toHaveCount(0);
   await shot(page, info, '01-zero-balance-sheet.png');
-  await sheet(page).getByRole('button', { name: 'Close membership settings', exact: true }).click();
+  await sheet(page).getByRole('button', { name: 'Close subscription', exact: true }).click();
   await expect(sheet(page)).toHaveCount(0);
   await send(page, 'Hello with no credits');
   // The reason is said in the composer's notice, the draft is kept, and the same popup returns.
@@ -159,7 +159,7 @@ test('Cloud declining a turn mid-use gives one answer and the popup; after plan 
   await expect(controls(page).getByRole('button', { name: 'Enter membership code', exact: true })).toBeVisible();
   await expect(page.getByText(/AI is off/)).toHaveCount(0);
   await shot(page, info, '07-midturn-refusal-popup.png');
-  await sheet(page).getByRole('button', { name: 'Close membership settings', exact: true }).click();
+  await sheet(page).getByRole('button', { name: 'Close subscription', exact: true }).click();
   await expect(sheet(page)).toHaveCount(0);
   // One answer in the chat: the agent's provider prose and a second billing message never appear.
   await button(page, 'Expand chat').click();

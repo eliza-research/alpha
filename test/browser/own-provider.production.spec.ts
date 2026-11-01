@@ -7,10 +7,10 @@ import {completeAccessSetup, expectNoDevelopmentSurface, fenceNetwork, flagOffAn
 const AI_KEY='synthetic-own-cerebras-ui-key';
 const VOICE_KEY='synthetic-own-cartesia-ui-key';
 const DATA_KEY='own-provider-ui-existing-data';
-async function fixture(page:Page, signedOut=false){
+async function fixture(page:Page, signedOut=false, freshAccess=false){
  const logs:string[]=[];page.on('console',message=>logs.push(message.text()));
  const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
- const foreign=await fenceNetwork(page);await flagOffAndroid(page);
+ const foreign=await fenceNetwork(page);await flagOffAndroid(page,{freshAccess});
  await page.addInitScript(({signedOut,dataKey})=>{
   const w=window as any,base=w.Capacitor.nativePromise;
   const leases=new Set<string>();let selected:any=null;
@@ -40,14 +40,17 @@ async function fixture(page:Page, signedOut=false){
  return {logs,errors,foreign};
 }
 const dialog=(page:Page)=>page.getByRole('dialog',{name:'AI provider',exact:true});
-async function openProvider(page:Page){
+const welcomePage=(page:Page)=>page.getByRole('main',{name:'Welcome to Alpha.',exact:true});
+const toast=(page:Page)=>page.locator('[data-alpha-toast]');
+async function openProvider(page:Page,pressed:'Cloud'|'Own API keys'='Cloud'){
  await page.getByRole('button',{name:'Settings',exact:true}).click();
  await page.getByRole('button',{name:'AI provider',exact:true}).click();
  await expect(dialog(page)).toBeVisible();
- await expect(dialog(page).getByRole('button',{name:'Cloud',exact:true})).toHaveAttribute('aria-pressed','true');
+ await expect(dialog(page).getByRole('button',{name:pressed,exact:true})).toHaveAttribute('aria-pressed','true');
 }
-async function enterKeys(page:Page,container=dialog(page)){
- await container.getByRole('button',{name:'Own API keys',exact:true}).click();
+/** Settings uses the Cloud / Own API keys choice; the welcome page offers one "Use my own API keys" entry. */
+async function enterKeys(page:Page,container=dialog(page),entry='Own API keys'){
+ await container.getByRole('button',{name:entry,exact:true}).click();
  await expect(container.getByLabel('Cerebras API key',{exact:true})).toHaveAttribute('type','password');
  await expect(container.getByLabel('Cartesia API key (optional)',{exact:true})).toHaveAttribute('autocomplete','off');
  await container.getByLabel('Cerebras API key',{exact:true}).fill(AI_KEY);
@@ -59,31 +62,50 @@ async function noLeaks(page:Page,observed:Awaited<ReturnType<typeof fixture>>){
  expect(values.data).toBe('existing local app data');expect(observed.errors).toEqual([]);expect(observed.foreign).toEqual([]);
  await expectNoDevelopmentSurface(page);
 }
+/** First-run setup after own keys ends on "You’re all set" without a false AI warning (#772 regression). */
+async function ownKeySetupReady(page:Page){
+ const setup=page.locator('dialog.alpha-startup-permissions');
+ if(await setup.count())await expect(setup).not.toContainText('AI is not ready yet');
+ await completeAccessSetup(page);
+}
 
 test('Cloud is the default; explicit own-key save and return to Cloud preserve existing app data',async({page},info)=>{
  const observed=await fixture(page);await residentHome(page);
  const account=await page.evaluate(()=>({cloud:(window as any).flagOff.slots['cloud:production'],agent:sessionStorage.getItem('flag-off-agent')}));
  await openProvider(page);await expect(dialog(page).getByLabel('Cerebras API key',{exact:true})).toHaveCount(0);
+ // One title: no second "AI provider" heading or status line repeating the pressed segment.
+ await expect(dialog(page).getByRole('heading',{name:'AI provider',exact:true})).toHaveCount(1);
  const selectedColor=await dialog(page).getByRole('button',{name:'Cloud',exact:true}).evaluate(el=>getComputedStyle(el).backgroundColor);
  await expect(page.locator('.alpha-cloud-sign-in')).toHaveCount(0);
- await enterKeys(page);await dialog(page).getByRole('button',{name:'Cancel',exact:true}).click();
+ await enterKeys(page);
+ await expect(dialog(page).getByRole('button',{name:'Own API keys',exact:true})).toHaveAttribute('aria-pressed','true');
+ await expect(dialog(page)).not.toContainText(/Cerebras receives|Android Keystore|model list|Switching is manual/);
+ await page.screenshot({path:info.outputPath('own-provider-form.png'),animations:'disabled'});
+ await dialog(page).getByRole('button',{name:'Cancel',exact:true}).click();
  expect(await page.evaluate(()=>(window as any).ownProvider.events)).toEqual([]);
+ await expect(dialog(page).getByRole('button',{name:'Cloud',exact:true})).toHaveAttribute('aria-pressed','true');
  await enterKeys(page);await dialog(page).getByRole('button',{name:'Save and use own keys',exact:true}).click();
- await expect(dialog(page)).toHaveCount(0);await completeAccessSetup(page);
+ // A provider change from Settings is not onboarding: no access walkthrough, just a receipt.
+ await expect(dialog(page)).toHaveCount(0);await expect(toast(page)).toContainText('Own keys saved.');
+ await expect(page.locator('dialog.alpha-startup-permissions')).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'AI provider',exact:true})).toContainText('Own API keys');
  await page.getByRole('button',{name:'AI provider',exact:true}).click();
- await expect(dialog(page).getByText('Own API keys · Cerebras',{exact:true})).toBeVisible();
- await expect(dialog(page).getByText('Voice uses your Cartesia key when you start the microphone.',{exact:true})).toBeVisible();
+ await expect(dialog(page).getByRole('button',{name:'Own API keys',exact:true})).toHaveAttribute('aria-pressed','true');
+ await expect(dialog(page).getByText('Voice: Cartesia',{exact:true})).toBeVisible();
+ await expect(dialog(page).getByRole('button',{name:'Change keys',exact:true})).toBeEnabled();
  await expect(dialog(page).getByRole('button',{name:'Own API keys',exact:true})).toHaveCSS('background-color',selectedColor);
  await expect(dialog(page).getByRole('button',{name:'Cloud',exact:true})).not.toHaveCSS('background-color',selectedColor);
  await page.screenshot({path:info.outputPath('own-provider-settings.png'),animations:'disabled'});
  expect(await page.evaluate(()=>(window as any).ownProvider.matched)).toBe(true);
  await expect(page.locator('.alpha-cloud-sign-in')).toHaveCount(0);
  await dialog(page).getByRole('button',{name:'Cloud',exact:true}).click();
- await dialog(page).getByRole('button',{name:'Keep own keys',exact:true}).click();
+ await expect(dialog(page).getByText('Switch to Cloud? Your own keys will be removed.',{exact:true})).toBeVisible();
+ await page.screenshot({path:info.outputPath('own-provider-switch-confirm.png'),animations:'disabled'});
+ await dialog(page).getByRole('button',{name:'Cancel',exact:true}).click();
  expect(await page.evaluate(()=>(window as any).ownProvider.cleared)).toBe(0);
  await dialog(page).getByRole('button',{name:'Cloud',exact:true}).click();
  await dialog(page).getByRole('button',{name:'Switch to Cloud',exact:true}).click();
- await expect(dialog(page)).toHaveCount(0);
+ await expect(dialog(page)).toHaveCount(0);await expect(toast(page)).toContainText('Switched to Cloud.');
  await page.getByRole('button',{name:'AI provider',exact:true}).click();
  await expect(dialog(page).getByRole('button',{name:'Cloud',exact:true})).toHaveAttribute('aria-pressed','true');
  expect(await page.evaluate(()=>(window as any).ownProvider.cleared)).toBe(1);
@@ -95,11 +117,14 @@ test('a rejected own-key check keeps Cloud selected and clears entered secrets',
  const observed=await fixture(page);await residentHome(page);await openProvider(page);await enterKeys(page);
  await page.evaluate(()=>(window as any).ownProvider.reject=true);
  await dialog(page).getByRole('button',{name:'Save and use own keys',exact:true}).click();
- await expect(dialog(page).getByRole('alert')).toContainText('Cerebras did not accept this key');
+ // The reason sits with the form it refers to.
+ const alert=dialog(page).getByRole('form',{name:'Own API keys'}).getByRole('alert');
+ await expect(alert).toContainText('Cerebras did not accept this key');await expect(dialog(page).getByRole('alert')).toHaveCount(1);
  await expect(dialog(page).getByLabel('Cerebras API key',{exact:true})).toHaveValue('');
  await expect(dialog(page).getByLabel('Cartesia API key (optional)',{exact:true})).toHaveValue('');
  expect(await page.evaluate(()=>(window as any).ownProvider.saved)).toBe(0);
  await dialog(page).getByRole('button',{name:'Cancel',exact:true}).click();
+ await expect(dialog(page).getByRole('alert')).toHaveCount(0);
  await expect(dialog(page).getByRole('button',{name:'Cloud',exact:true})).toHaveAttribute('aria-pressed','true');
  await expect(page.locator('.alpha-cloud-sign-in')).toHaveCount(0);await noLeaks(page,observed);
 });
@@ -107,7 +132,7 @@ test('a rejected own-key check keeps Cloud selected and clears entered secrets',
 test('a signed-in Cloud subscription remains accessible with own Cerebras keys selected',async({page})=>{
  const observed=await fixture(page);await residentHome(page);await openProvider(page);await enterKeys(page);
  await dialog(page).getByRole('button',{name:'Save and use own keys',exact:true}).click();
- await expect(dialog(page)).toHaveCount(0);await completeAccessSetup(page);
+ await expect(dialog(page)).toHaveCount(0);
  await expect(page.getByRole('button',{name:'AI provider',exact:true})).toContainText('Own API keys');
  await page.getByRole('button',{name:'Eliza Cloud account & plan',exact:true}).click();
  await page.getByRole('region',{name:'Settings',exact:true}).getByRole('button',{name:'Redeem code',exact:true}).click();
@@ -134,6 +159,9 @@ test('Back cancels an in-flight native lease before the key can be saved',async(
  await page.evaluate(()=>(window as any).ownProvider.hold=true);
  await dialog(page).getByRole('button',{name:'Save and use own keys',exact:true}).click();
  await expect.poll(()=>page.evaluate(()=>(window as any).ownProvider.pending)).toBe(true);
+ // The check shows on its own button; the form's Cancel stays available to abort it.
+ await expect(dialog(page).getByRole('button',{name:'Checking key…',exact:true})).toHaveAttribute('aria-busy','true');
+ await expect(dialog(page).getByRole('button',{name:'Cancel',exact:true})).toBeEnabled();
  await page.keyboard.press('Escape');
  await expect.poll(()=>page.evaluate(()=>(window as any).ownProvider.cancelled)).toBe(1);
  await page.evaluate(()=>(window as any).ownProvider.release());
@@ -144,14 +172,81 @@ test('Back cancels an in-flight native lease before the key can be saved',async(
  await noLeaks(page,observed);
 });
 
-test('signed-out onboarding can explicitly select own keys without starting a Cloud sign-in',async({page})=>{
+test('signed-out onboarding can explicitly select own keys without starting a Cloud sign-in',async({page},info)=>{
  const observed=await fixture(page,true);await page.goto('/');
- const welcome=page.getByRole('main',{name:'Welcome to Alpha.',exact:true});await expect(welcome).toBeVisible();
- await enterKeys(page,welcome);await welcome.getByRole('button',{name:'Save and use own keys',exact:true}).click();
- await expect(welcome).toHaveCount(0);await completeAccessSetup(page);
+ const welcome=welcomePage(page);await expect(welcome).toBeVisible();
+ // The page is the Cloud sign-in first; own keys are one quiet entry below it, not a settings toggle above the brand.
+ await expect(welcome.getByRole('region',{name:'AI provider'})).toHaveCount(0);
+ const own=welcome.getByRole('button',{name:'Use my own API keys',exact:true});
+ const heading=await welcome.getByRole('heading',{name:'Welcome to Alpha.',exact:true}).boundingBox(),entry=await own.boundingBox();
+ expect(entry!.y).toBeGreaterThan(heading!.y);
+ await enterKeys(page,welcome,'Use my own API keys');
+ // The key form replaces the Cloud methods instead of stacking two flows.
+ await expect(welcome.getByRole('button',{name:'Continue with Google',exact:true})).toHaveCount(0);
+ await expect(welcome.getByRole('form',{name:'Sign in with email'})).toHaveCount(0);
+ await expect(welcome.getByRole('button',{name:'Back',exact:true})).toBeVisible();
+ await page.screenshot({path:info.outputPath('welcome-own-keys.png'),animations:'disabled'});
+ await welcome.getByRole('button',{name:'Save and use own keys',exact:true}).click();
+ await expect(welcome).toHaveCount(0);await ownKeySetupReady(page);
  await expect(page.getByRole('button',{name:'Settings',exact:true})).toBeVisible();
  expect(await page.evaluate(()=>(window as any).ownProvider.saved)).toBe(1);
  expect(await page.evaluate(()=>(window as any).flagOff.slots['cloud:production']??null)).toBeNull();
  expect(await page.evaluate(()=>(window as any).flagOff.calls.filter((call:string)=>/AlphaCloudSignIn\.(start|verify)/.test(call)))).toEqual([]);
  await noLeaks(page,observed);
+});
+
+test('welcome-page own keys: a rejected key is explained at the form, Back returns to Cloud sign-in',async({page},info)=>{
+ const observed=await fixture(page,true);await page.goto('/');
+ const welcome=welcomePage(page);await expect(welcome).toBeVisible();
+ await page.evaluate(()=>(window as any).ownProvider.reject=true);
+ await enterKeys(page,welcome,'Use my own API keys');
+ await welcome.getByRole('button',{name:'Save and use own keys',exact:true}).click();
+ await expect(welcome.getByRole('form',{name:'Own API keys'}).getByRole('alert')).toContainText('Cerebras did not accept this key');
+ await expect(welcome.getByLabel('Cerebras API key',{exact:true})).toHaveValue('');
+ await page.screenshot({path:info.outputPath('welcome-own-keys-rejected.png'),animations:'disabled'});
+ await welcome.getByRole('button',{name:'Back',exact:true}).click();
+ // Back leaves the key form for the Cloud sign-in state it replaced (this fixture's Cloud readiness is unavailable).
+ await expect(welcome.getByRole('form',{name:'Own API keys'})).toHaveCount(0);
+ await expect(welcome).not.toContainText('Cerebras did not accept this key');
+ await expect(welcome.getByRole('button',{name:'Use my own API keys',exact:true})).toBeEnabled();
+ expect(await page.evaluate(()=>(window as any).ownProvider.saved)).toBe(0);
+ await noLeaks(page,observed);
+});
+
+test('own keys chosen at onboarding can switch to Cloud sign-in and back to own keys',async({page},info)=>{
+ const observed=await fixture(page,true);await page.goto('/');
+ const welcome=welcomePage(page);await expect(welcome).toBeVisible();
+ await enterKeys(page,welcome,'Use my own API keys');await welcome.getByRole('button',{name:'Save and use own keys',exact:true}).click();
+ await expect(welcome).toHaveCount(0);await ownKeySetupReady(page);
+ await openProvider(page,'Own API keys');
+ await dialog(page).getByRole('button',{name:'Cloud',exact:true}).click();
+ // No saved Cloud account: the confirmation says what happens next instead of naming one.
+ await expect(dialog(page).getByText('Switch to Cloud? Your keys will be removed and you’ll sign in next.',{exact:true})).toBeVisible();
+ await page.screenshot({path:info.outputPath('switch-to-cloud-signed-out-confirm.png'),animations:'disabled'});
+ await dialog(page).getByRole('button',{name:'Switch to Cloud',exact:true}).click();
+ await expect(welcome).toBeVisible();
+ // The keys are gone (later starts may also confirm the empty slot) and nothing signed in.
+ expect(await page.evaluate(()=>(window as any).ownProvider.cleared)).toBeGreaterThanOrEqual(1);
+ expect(await page.evaluate(async()=>(await (window as any).Capacitor.nativePromise('Agent','providerStatus',{})).provider)).not.toBe('cerebras');
+ await expect(welcome.getByRole('button',{name:'Use my own API keys',exact:true})).toBeVisible();
+ await page.screenshot({path:info.outputPath('switched-to-cloud-sign-in.png'),animations:'disabled'});
+ await enterKeys(page,welcome,'Use my own API keys');await welcome.getByRole('button',{name:'Save and use own keys',exact:true}).click();
+ await expect(welcome).toHaveCount(0);await completeAccessSetup(page);
+ // The owner is back where the switch started: Settings, with own keys selected again.
+ await expect(page.getByRole('button',{name:'AI provider',exact:true})).toContainText('Own API keys');
+ expect(await page.evaluate(()=>(window as any).ownProvider.saved)).toBe(2);
+ expect(await page.evaluate(()=>(window as any).flagOff.calls.filter((call:string)=>/AlphaCloudSignIn\.(start|verify)/.test(call)))).toEqual([]);
+ await noLeaks(page,observed);
+});
+
+test('own keys chosen on a fresh phone continue into first-run access setup',async({page},info)=>{
+ const observed=await fixture(page,true,true);await page.goto('/');
+ const welcome=welcomePage(page);await expect(welcome).toBeVisible();
+ await enterKeys(page,welcome,'Use my own API keys');await welcome.getByRole('button',{name:'Save and use own keys',exact:true}).click();
+ await expect(welcome).toHaveCount(0);
+ // Setup used to require a Cloud account, so an owner who skipped Cloud never saw it.
+ await expect(page.locator('dialog.alpha-startup-permissions')).toBeVisible({timeout:15_000});
+ await expect(page.locator('dialog.alpha-startup-permissions')).not.toContainText('AI is not ready yet');
+ await page.screenshot({path:info.outputPath('own-keys-access-setup.png'),animations:'disabled'});
+ expect(observed.errors).toEqual([]);expect(observed.foreign).toEqual([]);
 });
