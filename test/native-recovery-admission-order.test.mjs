@@ -17,6 +17,7 @@ const declarations=[
 const hooks=part('  const automaticSignInProbe =','  const visible=');
 const methods=part('  async restoreSavedSignIn()','  async pair(')+part('  async beginSignIn(','  /** Leaves the sign-in screen');
 const body=`function make(React, signInReadiness, options){
+ const ownProviderSelected=()=>false;
  const {useRef,useEffect,useSyncExternalStore}=React;
  let state={residentRecoveryReason:options.recoveryReason,open:true,purpose:'agent',cloudAccount:null,startupResolved:true,residentSavedCredential:false,residentPlanNotice:null,error:'',message:'',busy:false,signIn:{step:'choose',environment:'production'},session:{sessionId:'existing-owner-session'},kind:'resident',legacySignInRecovery:true};
  let epoch=0,operation=null,residentStartInBackground=false,residentStartFailure='',sending=null,active={kind:'resident'},signInReadinessOwner=null,inAppGoogle=false,inAppPhone=false,inAppEmail=true;

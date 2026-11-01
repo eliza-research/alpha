@@ -41,8 +41,8 @@ export const DENYLIST = Object.freeze([
   ...RETIRED_NO_AGENT_TEXT,
   // Subscription gate QA (test-mocks builds only, docs/cloud-subscription-qa.md).
   'gate QA', 'resident-qa.v1',
-  // Production uses managed Cloud inference; manual provider-key entry is a test fixture.
-  'Cerebras API key',
+  // Owner-provided keys are a product feature. The older developer-only dialog remains gated.
+  'A new key takes effect after the agent restarts.',
   // Hosted and paired agents (#406): the agent always runs on the phone. Remote pairing, Cloud agent
   // discovery, personal/Dedicated setup and the hosted phone protocol are development fixtures only.
   '/api/auth/pair', 'Pair this agent before connecting', 'Choose an endpoint serving one agent', 'Pair the agent again',

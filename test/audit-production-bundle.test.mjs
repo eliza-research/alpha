@@ -48,3 +48,12 @@ test('a leaked provider dialog and gateway fail through the CLI; a recorded test
   assert.equal(clean.status, 0, clean.stderr);
   assert.match(clean.stdout, /^PASS /);
 });
+
+test('owner-provided key labels are allowed while the legacy developer provider dialog stays excluded', t => {
+  const product=auditWebBundle(fixture(t, 'const labels=["Cerebras API key","Cartesia API key (optional)","Save and use own keys"];'));
+  assert.equal(product.ok,true);
+  const legacy='A new key takes effect after the agent restarts.';
+  const leaked=auditWebBundle(fixture(t, JSON.stringify(legacy)));
+  assert.equal(leaked.ok,false);
+  assert.deepEqual(leaked.findings,[{file:'assets/index.js',rule:legacy}]);
+});

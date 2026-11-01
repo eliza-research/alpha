@@ -39,7 +39,7 @@ test('native configuration keeps only the verified module path through unbound p
  const captured=unbound.indexOf('String productModule=env.get("ELIZA_NATIVE_GOOGLE_HOST_MODULE");'),cleaned=unbound.indexOf('NativeProviderSlot.applyUnboundEnvironment(env);'),restored=unbound.indexOf('if(productModule!=null)env.put("ELIZA_NATIVE_GOOGLE_HOST_MODULE",productModule);');
  assert.ok(captured>=0&&cleaned>captured&&restored>cleaned);assert.equal(unbound.match(/env\.put\(/g).length,1);
  const configure=java.slice(java.indexOf(' static void configureEnvironment('),java.indexOf(' /** Explicit Retry'));
- const put='env.put("ELIZA_NATIVE_GOOGLE_HOST_MODULE"',installed=configure.indexOf('WorkflowWorkerAssets.install('),module=configure.indexOf(put),credentials=configure.indexOf('String saved=null'),launch=configure.indexOf('NativeProviderSlot.applyLaunchEnvironment('),reapplied=configure.indexOf(put,module+1),cloud=configure.indexOf('if(provider!=null&&"elizacloud"');
+ const put='env.put("ELIZA_NATIVE_GOOGLE_HOST_MODULE"',installed=configure.indexOf('WorkflowWorkerAssets.install('),module=configure.indexOf(put),credentials=configure.indexOf('String saved=null'),launch=configure.indexOf('NativeProviderSlot.applyLaunchEnvironment('),reapplied=configure.indexOf(put,module+1),cloud=configure.indexOf('LocalAgentProviderAdmission.applyManagedGoogleEnvironment(');
  assert.ok(installed>=0&&module>installed&&credentials>module&&launch>credentials&&reapplied>launch&&cloud>reapplied);
  assert.ok(configure.includes('else if("cloud".equals(BuildConfig.ELIZA_RUNTIME_PROFILE))throw'));
  // Both writes are the same verified packaged path, before and after shared provider cleanup.

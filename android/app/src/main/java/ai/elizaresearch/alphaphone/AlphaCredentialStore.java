@@ -200,6 +200,7 @@ final class AlphaCredentialStore {
   String saved=slots.read(CloudDeployment.storageSlot(LocalAgentProviderAdmission.PROVIDER_SLOT));
   if(saved==null)return;
   org.json.JSONObject provider=new org.json.JSONObject(saved);
+  if(!"elizacloud".equals(provider.optString("provider")))return;
   if(!changedSlot.equals("cloud:"+provider.optString("environment","production")))return;
   String previous=slots.read(CloudDeployment.storageSlot(changedSlot));
   if(replacement!=null&&LocalAgentProviderAdmission.currentGeneration(saved,previous)!=null
@@ -209,7 +210,7 @@ final class AlphaCredentialStore {
  /** Only explicit, validated native provider configuration may establish admission identity. */
  String compareExchangeProviderAdmission(String expected,String selection,String credentialSlot,String expectedCredential,org.json.JSONObject verifiedIdentity)throws Exception{
   return AlphaLocalAgentPlugin.mutateCredentials(context,assertOwner,new AlphaLocalAgentPlugin.CredentialMutation<String>(){
-   String admitted;boolean conflict;
+   String admitted;boolean conflict,servicesChanged;
    public boolean requiresShutdown()throws Exception{
     conflict=credentialSlot!=null&&!java.util.Objects.equals(slots.read(CloudDeployment.storageSlot(credentialSlot)),expectedCredential)
       ||!java.util.Objects.equals(slots.read(CloudDeployment.storageSlot(LocalAgentProviderAdmission.PROVIDER_SLOT)),expected);
@@ -217,10 +218,19 @@ final class AlphaCredentialStore {
     legacyRecovery().block();
     org.json.JSONObject requested=new org.json.JSONObject(selection);
     boolean cloud="elizacloud".equals(requested.optString("provider"));
-    if(cloud?!"cloud:production".equals(credentialSlot):credentialSlot!=null||expectedCredential!=null||verifiedIdentity!=null)throw new IllegalArgumentException();
-    admitted=LocalAgentProviderAdmission.admit(expected,selection,expectedCredential,verifiedIdentity);
+    boolean refreshServices=!cloud&&credentialSlot!=null;
+    if(cloud&&!"cloud:production".equals(credentialSlot))throw new IllegalArgumentException();
+    if(refreshServices){
+     if(!"cloud:production".equals(credentialSlot)||expected==null||verifiedIdentity==null)throw new IllegalArgumentException();
+     org.json.JSONObject old=new org.json.JSONObject(expected),services=requested.getJSONObject("cloudServices");
+     if(!"cerebras".equals(old.optString("provider")))throw new IllegalArgumentException();
+     for(String field:new String[]{"provider","key","cartesiaKey","model","revision"})if(!java.util.Objects.equals(old.opt(field),requested.opt(field)))throw new IllegalArgumentException();
+     if(LocalAgentProviderAdmission.currentGeneration(services.toString(),expectedCredential)==null||!services.getJSONObject("verifiedCloudIdentity").toString().equals(verifiedIdentity.toString()))throw new SecurityException("Cloud services admission changed");
+    }else if(!cloud&&(expectedCredential!=null||verifiedIdentity!=null))throw new IllegalArgumentException();
+    servicesChanged=expected!=null&&!java.util.Objects.equals(new org.json.JSONObject(expected).opt("cloudServices"),requested.opt("cloudServices"));
+    admitted=LocalAgentProviderAdmission.admit(expected,selection,expectedCredential,cloud?verifiedIdentity:null);
     String oldGeneration=expected==null?null:LocalAgentProviderAdmission.currentGeneration(expected,expectedCredential);
-    return oldGeneration==null||!oldGeneration.equals(LocalAgentProviderAdmission.currentGeneration(admitted,expectedCredential));
+    return servicesChanged||oldGeneration==null||!oldGeneration.equals(LocalAgentProviderAdmission.currentGeneration(admitted,expectedCredential));
    }
    public String commit()throws Exception{
     if(conflict)return null;
@@ -231,7 +241,7 @@ final class AlphaCredentialStore {
     // A fresh random request revision alone must not revoke a protected cold-start grant.
     String previousGeneration=expected==null?null:LocalAgentProviderAdmission.currentGeneration(expected,expectedCredential);
     String admittedGeneration=LocalAgentProviderAdmission.currentGeneration(admitted,expectedCredential);
-    if(previousGeneration==null||!previousGeneration.equals(admittedGeneration))AlphaLocalAgentPlugin.powerAuthorizationChanged();
+    if(servicesChanged||previousGeneration==null||!previousGeneration.equals(admittedGeneration))AlphaLocalAgentPlugin.powerAuthorizationChanged();
     slots.write(CloudDeployment.storageSlot(LocalAgentProviderAdmission.PROVIDER_SLOT),admitted);return admitted;
    }
   });
@@ -280,6 +290,9 @@ final class AlphaCredentialStore {
    String generation=LocalAgentProviderAdmission.currentGeneration(saved,cloud);
    if(generation==null)throw new SecurityException("Native provider binding unavailable");
    String accountRef="elizacloud".equals(kind)?LocalAgentProviderAdmission.cloudAccountRef(selected):"native-local";
+   // Keep the trusted local account identity across inference changes. This is not Cloud
+   // service authorization: managedGoogleBinding separately revalidates the live credential.
+   if("cerebras".equals(kind)&&selected.has("cloudServices"))accountRef=LocalAgentProviderAdmission.cloudAccountRef(selected.getJSONObject("cloudServices"));
    return new org.json.JSONObject().put("provider",kind).put("environment","production").put("accountRef",accountRef).put("sessionGeneration",generation);
   }
  }

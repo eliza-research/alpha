@@ -74,6 +74,7 @@ export function cloudSpeechDisclosure(serviceName = 'Cloud') { return `${service
 
 /** A usable Cloud speech account is signed in for this renderer. */
 export function cloudVoiceAvailable(): boolean {
+  const current=connectionController.getSnapshot();if(current.residentInference==='direct')return current.providerStatus?.voiceConfigured===true;
   return (cloudRuntimeEnabled || testMocksEnabled) && !browserDevProfile && connectionController.getCloudEnvironment() !== null && connectionController.getCloudClient() !== null;
 }
 

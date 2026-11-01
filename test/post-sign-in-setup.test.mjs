@@ -18,7 +18,7 @@ function harness({admission={binding:'cloud'},admitted=true,refusedAccount=false
   // The agent before the sign-in ran without Cloud AI ('unavailable').
   const events=[],state={signIn:{step:'code'},open:true,busy:true,message:'Checking your code…',kind:'starting',purpose:'agent',setupRevision:0,cloudAccount:null,residentPlanNotice:null,residentStarting:false,residentInference:'unavailable'};
   let stored={credentialId:ISSUED};
-  const box={state,events,active:null,residentAlwaysPresent:true,cloud:{environment:'production'},
+  const box={ownProviderSelected:()=>false,state,events,active:null,residentAlwaysPresent:true,cloud:{environment:'production'},
     update:patch=>{Object.assign(state,patch);events.push({update:patch,snapshot:{...state}});},
     retire:()=>{events.push('retire');state.kind='starting';},
     residentEnvironment:()=>'production',cloudServiceName:()=>'Eliza Cloud',

@@ -16,7 +16,7 @@ function load(store, f = {account: true, dev: false}) {
     cloudRuntimeEnabled: f.cloud === true, testMocksEnabled: f.mocks === true, localStorage: store, Date, JSON, Number, Event: class { constructor(type) { this.type = type; } },
     window: {dispatchEvent: event => { events.push(event.type); return true; }},
     get browserDevProfile() { return f.dev; },
-    connectionController: {getCloudEnvironment: () => f.account ? 'production' : null, getCloudClient: () => f.account ? {sessionId: 'synthetic-session', credentialId: 'synthetic-credential'} : null},
+    connectionController: {getSnapshot:()=>({residentInference:f.own?'direct':'cloud',providerStatus:{voiceConfigured:f.voice===true}}),getCloudEnvironment: () => f.account ? 'production' : null, getCloudClient: () => f.account ? {sessionId: 'synthetic-session', credentialId: 'synthetic-credential'} : null},
   };
   const source = fs.readFileSync('apps/app/src/runtime/voice-selection.ts', 'utf8').replace(/^import .*;\n/gm, '').replaceAll('export function', 'function').replaceAll('export type', 'type');
   vm.runInNewContext('{' + stripTypeScriptTypes(source, {mode: 'transform'}) + '\nglobalThis.api={selectVoiceRoute,chooseVoiceRoute,voiceRoutePreference,cloudVoiceAvailable,voicePreferenceKeys,cloudSpeechDisclosure,voiceSendPolicy,setVoiceSendPolicyForTests};}', box);
@@ -72,4 +72,11 @@ test('explicit production Cloud profile never silently selects local speech or e
     assert.equal(v.cloudVoiceAvailable(),account);assert.equal(v.voiceRoutePreference(),'cloud');
     assert.equal(v.setVoiceSendPolicyForTests('review'),false);
   }
+});
+
+test('own-provider voice availability follows the selected optional Cartesia key',()=>{
+ for(const voice of [false,true]){
+  const v=load(storage(),{account:false,dev:false,own:true,voice});
+  assert.equal(v.cloudVoiceAvailable(),voice,'no Cloud account or plan substitutes for the own voice selection');
+ }
 });

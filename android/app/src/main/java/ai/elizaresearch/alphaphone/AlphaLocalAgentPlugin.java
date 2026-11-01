@@ -7,6 +7,7 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import ai.eliza.plugins.agent.runtime.CredentialIntentFence;
+import ai.eliza.plugins.agent.runtime.CredentialRequestFence;
 import ai.eliza.plugins.agent.runtime.NativeProviderSlot;
 import ai.eliza.plugins.agent.runtime.ResidentAttachment;
 import java.io.File;
@@ -34,6 +35,7 @@ public final class AlphaLocalAgentPlugin extends Plugin {
  private static boolean startOwnsLaunch;
  /** Last-intent-wins credential fence (plugin-native-agent), guarded by the lifecycle lock. */
  private static final CredentialIntentFence credentialIntents=new CredentialIntentFence(lifecycleLock);
+ private final CredentialRequestFence providerConfigurations=new CredentialRequestFence(lifecycleLock,credentialIntents);
  private static long powerAuthorizationMutationEpoch;
  static long credentialAuthorityEpoch(){synchronized(lifecycleLock){return powerAuthorizationMutationEpoch;}}
  /** Revalidate an async operation against semantic credential changes, using the existing lock order. */
@@ -304,30 +306,44 @@ public final class AlphaLocalAgentPlugin extends Plugin {
    }}
   }catch(Exception unavailable){call.resolve(new JSObject().put("attachable",false).put("reason","unavailable"));}},()->{call.reject("Local agent bridge is closed.");});
  }
- /** A direct (bring-your-own) Cerebras key is a test-mocks developer surface only. Product phones use
-  * the owner's Eliza Cloud plan through configureCloudProvider; production refuses before reading the key. */
+ /** Owner-selected direct provider configuration; shared admission owns validation and secure CAS. */
  static boolean directProviderAllowed(boolean testMocks){return NativeProviderSlot.directProviderAllowed(testMocks);}
  @PluginMethod public void configureProvider(PluginCall call) {
   if(!directProviderAllowed(BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS)){call.reject(PRODUCT_NAME+" uses your Cloud plan for AI.");return;}
   if(!runtimePackaged()){call.reject("On-device agent is unavailable in this version.");return;}
   String key=call.getString("apiKey",""),model=call.getString("model",CEREBRAS_PROVIDER_MODEL);
+  String cartesia=call.getString("cartesiaKey",null);
+  if(cartesia!=null&&!validProviderToken(cartesia,1024)){call.reject("Enter a valid Cartesia key or leave voice off.");return;}
   if(!validProviderToken(key,1024)||!model.matches("[A-Za-z0-9][A-Za-z0-9._/-]{0,127}")){call.reject("Enter a valid Cerebras key.");return;}
   if(!CEREBRAS_PROVIDER_MODEL.equals(model)){call.reject(PRODUCT_NAME+" uses "+CEREBRAS_PROVIDER_MODEL+" on Cerebras.");return;}
-  final long configuration=reserveCredentialIntent();
+  final String requestId=call.getString("requestId","");final long configuration;
+  try{configuration=providerConfigurations.begin(requestId);}catch(Exception unavailable){call.reject("Provider request was cancelled or is unavailable.");return;}
   PluginWorkers.submit(workers,()->{try{
-   AlphaCredentialStore store=new AlphaCredentialStore(getContext(),()->{if(disposed)throw new IllegalStateException("Local agent bridge closed");requireCredentialIntent(configuration);});
-   String failure=saveVerifiedProvider(store,key,model,NativeProviderSlot::checkCerebrasKey);
+   AlphaCredentialStore store=new AlphaCredentialStore(getContext(),()->{if(disposed)throw new IllegalStateException("Local agent bridge closed");providerConfigurations.require(requestId,configuration);});
+   store.assertCurrent();
+   String failure=NativeProviderSlot.saveVerifiedProvider(providerSlot(store),key,model,cartesia,NativeProviderSlot::checkCerebrasKey,PRODUCT_NAME);
    if(failure!=null){call.reject(failure);return;}
    store.assertCurrent();call.resolve(providerIdentity(store.readCredentialSlot("local-agent-provider:v1")));
-  }catch(Exception error){call.reject("Provider could not be saved securely.");}},()->{call.reject("Local agent bridge is closed.");});
+  }catch(Exception error){call.reject("Provider could not be saved securely.");}finally{providerConfigurations.finish(requestId,configuration);}},()->{providerConfigurations.finish(requestId,configuration);call.reject("Local agent bridge is closed.");});
+ }
+ /** Reserve a native-issued lease before receiving any provider keys or removal request. */
+ @PluginMethod public void prepareProviderConfiguration(PluginCall call){
+  try{call.resolve(new JSObject().put("requestId",providerConfigurations.reserve()));}
+  catch(Exception unavailable){call.reject("Provider setup is busy. Try again shortly.");}
+ }
+ /** Cancels only this request's still-current credential intent; no store write or runtime stop. */
+ @PluginMethod public void cancelProviderConfiguration(PluginCall call){
+  try{providerConfigurations.cancel(call.getString("requestId",""));call.resolve();}
+  catch(Exception invalid){call.reject("Invalid provider cancellation request.");}
  }
  /** Deletes the provider slot and reads it back; resolves only when the slot is gone. */
  @PluginMethod public void clearProvider(PluginCall call) {
   final boolean onlyIfPresent=Boolean.TRUE.equals(call.getBoolean("onlyIfPresent"));
-  final long configuration=reserveCredentialIntent();
+  final String requestId=call.getString("requestId",null);final long configuration;
+  try{configuration=requestId==null?reserveCredentialIntent():providerConfigurations.begin(requestId);}catch(Exception cancelled){call.reject("Provider change was cancelled or is unavailable.");return;}
   PluginWorkers.submit(workers,()->{try{
-   call.resolve(clearProviderSlot(new AlphaCredentialStore(getContext(),()->{if(disposed)throw new IllegalStateException("Local agent bridge closed");requireCredentialIntent(configuration);}),onlyIfPresent));
-  }catch(Exception error){call.reject("The provider key could not be removed.");}},()->{call.reject("Local agent bridge is closed.");});
+   call.resolve(clearProviderSlot(new AlphaCredentialStore(getContext(),()->{if(disposed)throw new IllegalStateException("Local agent bridge closed");if(requestId==null)requireCredentialIntent(configuration);else providerConfigurations.require(requestId,configuration);}),onlyIfPresent));
+  }catch(Exception error){call.reject("The provider key could not be removed.");}finally{if(requestId!=null)providerConfigurations.finish(requestId,configuration);}},()->{if(requestId!=null)providerConfigurations.finish(requestId,configuration);call.reject("Local agent bridge is closed.");});
  }
  @PluginMethod public void clearProviderIfCurrent(PluginCall call){
   String guard=call.getString("bindingGuard","");
@@ -363,14 +379,20 @@ public final class AlphaLocalAgentPlugin extends Plugin {
    public String readCloud()throws Exception{return store.readCredentialSlot("cloud:production");}
    public void assertCurrent()throws Exception{store.assertCurrent();}
    public JSONObject identity(String token)throws Exception{return AlphaConnectionPlugin.readCloudIdentity(token);}
-   public String admit(String previous,String selection,String cloud,JSONObject identity)throws Exception{return store.compareExchangeProviderAdmission(previous,selection,"cloud:production",cloud,identity);}
+   public String admit(String previous,String selection,String cloud,JSONObject identity)throws Exception{
+    if(previous!=null&&"cerebras".equals(new JSONObject(previous).optString("provider"))){
+     String services=LocalAgentProviderAdmission.admit(null,selection,cloud,identity);
+     selection=new JSONObject(LocalAgentProviderAdmission.withoutAdmission(previous)).put("cloudServices",new JSONObject(services)).toString();
+    }
+    return store.compareExchangeProviderAdmission(previous,selection,"cloud:production",cloud,identity);
+   }
    public void rollback(String binding,String previous)throws Exception{store.rollbackProviderAdmission(binding,previous);}
   },credentialId,model,System::currentTimeMillis);
  }
  // The provider rules live in LocalAgentProviderAdmission (host-JVM tested); these names stay for callers.
  static boolean validProviderToken(String token,int maximumLength){return LocalAgentProviderAdmission.validProviderToken(token,maximumLength);}
  static String cloudProviderToken(String saved,String credentialId,long now) throws Exception {return LocalAgentProviderAdmission.cloudProviderToken(saved,credentialId,now);}
- static void applyProviderEnvironment(JSONObject provider,String cloudSaved,java.util.Map<String,String> env,long now) throws Exception {if("cloud".equals(BuildConfig.ELIZA_RUNTIME_PROFILE)&&!"elizacloud".equals(provider.optString("provider")))throw new SecurityException("Cloud runtime requires Cloud provider admission");LocalAgentProviderAdmission.applyProviderEnvironment(provider,cloudSaved,env,now);}
+ static void applyProviderEnvironment(JSONObject provider,String cloudSaved,java.util.Map<String,String> env,long now) throws Exception {LocalAgentProviderAdmission.applyProviderEnvironment(provider,cloudSaved,env,now);}
  static final String PROVIDER_MODEL_PATTERN=LocalAgentProviderAdmission.PROVIDER_MODEL_PATTERN;
  /**
   * No admitted plan, Cloud unreachable without a recent plan, or signed out: the agent runs with no
@@ -417,7 +439,7 @@ public final class AlphaLocalAgentPlugin extends Plugin {
   final long epoch;
   synchronized(lifecycleLock){launchedGeneration=null;if(!accepting||stopping||credentialMutationEpoch>=0)throw new java.io.IOException("Local provider is retiring");epoch=lifecycleEpoch;}
   configureNativeViews(context.getAssets().open("agent/native-view-declarations.json"),env);
-  for(String key:new String[]{"ELIZA_NATIVE_GOOGLE_HOST_MODULE","ELIZA_NATIVE_GOOGLE_BINDING_JSON","ELIZA_MANAGED_GMAIL_READ_BROKER","ELIZA_MANAGED_GMAIL_SEND_BROKER","ELIZA_MANAGED_GMAIL_OPERATION_BROKER","ELIZA_MANAGED_CALENDAR_READ_BROKER","ELIZA_MANAGED_CALENDAR_DELETE_ENABLED","ELIZA_NATIVE_GOOGLE_GMAIL_SEND_ENABLED","ELIZA_MANAGED_GMAIL_MAILBOX_CHANGES_ENABLED"})env.remove(key);
+  for(String key:new String[]{"ELIZA_NATIVE_GOOGLE_HOST_MODULE","ELIZA_NATIVE_GOOGLE_BINDING_JSON","ELIZA_NATIVE_GOOGLE_API_KEY","ELIZA_MANAGED_GMAIL_READ_BROKER","ELIZA_MANAGED_GMAIL_SEND_BROKER","ELIZA_MANAGED_GMAIL_OPERATION_BROKER","ELIZA_MANAGED_CALENDAR_READ_BROKER","ELIZA_MANAGED_CALENDAR_DELETE_ENABLED","ELIZA_NATIVE_GOOGLE_GMAIL_SEND_ENABLED","ELIZA_MANAGED_GMAIL_MAILBOX_CHANGES_ENABLED"})env.remove(key);
   env.remove("ELIZA_MOBILE_WORKFLOWS");
   java.io.File nativeHostResources=null;
   java.io.InputStream workerIndex=null;
@@ -443,16 +465,16 @@ public final class AlphaLocalAgentPlugin extends Plugin {
   try{
    saved=new AlphaCredentialStore(context).readCredentialSlot("local-agent-provider:v1");
    provider=saved==null?null:new JSONObject(saved);
-   cloudSaved=provider!=null&&"elizacloud".equals(provider.optString("provider"))?new AlphaCredentialStore(context).readCredentialSlot("cloud:production"):null;
+   cloudSaved=provider!=null&&("elizacloud".equals(provider.optString("provider"))||provider.has("cloudServices"))?new AlphaCredentialStore(context).readCredentialSlot("cloud:production"):null;
   }catch(Exception unreadable){saved=null;provider=null;cloudSaved=null;}
   // Shared provider admission and native embedding order. Keep the verified
   // product module independently of credential availability for Alpha identity.
   if(!NativeProviderSlot.applyLaunchEnvironment(BuildConfig.ELIZA_RUNTIME_PROFILE,provider,cloudSaved,new File(context.getApplicationInfo().nativeLibraryDir),context.getFilesDir(),env,System.currentTimeMillis())){provider=null;saved=null;cloudSaved=null;}
   if(google!=null&&google.isFile())env.put("ELIZA_NATIVE_GOOGLE_HOST_MODULE",google.getCanonicalPath());
-  if(provider!=null&&"elizacloud".equals(provider.optString("provider"))){
+  if(provider!=null&&("elizacloud".equals(provider.optString("provider"))||provider.has("cloudServices"))){
    if(google==null||!google.isFile())throw new java.io.IOException("Native Cloud routing module unavailable");
    {
-    JSONObject binding=LocalAgentProviderAdmission.managedGoogleBinding(saved,cloudSaved,System.currentTimeMillis());
+    JSONObject binding=LocalAgentProviderAdmission.applyManagedGoogleEnvironment(saved,cloudSaved,env,System.currentTimeMillis());
     if(binding!=null){
     JSONObject current=new AlphaCredentialStore(context).providerAdmissionSnapshot();
     if(!binding.getString("accountRef").equals(current.getString("accountRef"))||!binding.getString("sessionGeneration").equals(current.getString("sessionGeneration"))||!LocalAgentProviderAdmission.sameCloudCredential(cloudSaved,new AlphaCredentialStore(context).readCredentialSlot("cloud:production")))throw new SecurityException("Native Google provider changed");

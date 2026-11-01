@@ -178,6 +178,22 @@
       "file": "apps/app/src/prototype/model.js",
       "pattern": "stRow\\(\"kInput\", \\{ d: IC\\.lock, label: \"Password\", ph: \"Password\", type: \"password\", value: st\\.addPw",
       "reason": "Simulated prototype email sign-in. Production Settings forces adding:false, so this form is unreachable; real email accounts connect through Eliza Cloud in the user's browser."
+    },
+    {
+      "id": "own-cerebras-provider-key",
+      "kind": "service-token",
+      "eligible": false,
+      "file": "apps/app/src/runtime/connection-ui.tsx",
+      "pattern": "<label>Cerebras API key<input ref=\\{ai\\} type=\"password\" autoComplete=\"off\"",
+      "reason": "An explicitly supplied provider API token, not a website or app login password. The privileged Alpha renderer stays excluded from Android Autofill; this field is never a vault or password-provider fill target. Submission clears the form, then uses the Android secure store or the private browser host session without putting tokens in observations or transcripts."
+    },
+    {
+      "id": "own-cartesia-provider-key",
+      "kind": "service-token",
+      "eligible": false,
+      "file": "apps/app/src/runtime/connection-ui.tsx",
+      "pattern": "<label>Cartesia API key \\(optional\\)<input ref=\\{speech\\} type=\"password\" autoComplete=\"off\"",
+      "reason": "An explicitly supplied provider API token, not a website or app login password. The privileged Alpha renderer stays excluded from Android Autofill; this field is never a vault or password-provider fill target. Submission clears the form, then uses the Android secure store or the private browser host session without putting tokens in observations or transcripts."
     }
   ]
 }

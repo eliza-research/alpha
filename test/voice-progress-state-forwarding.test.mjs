@@ -6,7 +6,7 @@ import path from 'node:path';
 import {createRequire} from 'node:module';
 import {build} from 'esbuild';
 
-test('the real adapter forwards accepted SDK progress state, ignores raw progress and retires its callbacks', async () => {
+for(const own of [false,true])test(`the real ${own?'own-key':'development'} adapter forwards accepted SDK progress state, ignores raw progress and retires its callbacks`, async () => {
   const requests = [];
   const states = [];
   let current = true;
@@ -17,7 +17,9 @@ test('the real adapter forwards accepted SDK progress state, ignores raw progres
     return {wsUrl: 'ws://owned.invalid/__alpha-local-renderer/ws?ticket=synthetic', expiresAt: Date.now() + 60000};
   }};
   const fixture = {
+    own,
     connection: {
+      getSnapshot:()=>({residentInference:own?"direct":"cloud",providerStatus:{voiceConfigured:own}}),
       getBrowserSpeechAgent: () => agent,
       voiceConversationCurrent: () => true,
       voiceRendererClientId: () => 'owned-renderer',
@@ -29,7 +31,7 @@ test('the real adapter forwards accepted SDK progress state, ignores raw progres
   const stubs = new Map([
     ['./connection-ui', 'export const connectionController=globalThis.__alphaVoiceProgressFixture.connection;'],
     ['./development-cloud-voice', 'export const developmentCloudRealtimeVoiceEnabled=false;'],
-    ['./development-cartesia-flag', 'export const developmentCartesiaVoiceEnabled=true;'],
+    ['./development-cartesia-flag', 'export const developmentCartesiaVoiceEnabled=!globalThis.__alphaVoiceProgressFixture.own;'],
     ['../browser/device-preferences', 'export async function readDevicePreferences(){return {askBeforeAgentActions:true};}'],
     ['@elizaos/ui/voice/voice-session-client', 'export function createVoiceSessionClient(options){globalThis.__alphaVoiceProgressFixture.options=options;return globalThis.__alphaVoiceProgressFixture.client;}'],
   ]);

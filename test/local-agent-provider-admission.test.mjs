@@ -14,9 +14,9 @@ test('Cloud and direct environments, expiry, credential match, identity and roll
  assert.match(runJvm([admissionSource,nativeSource('LocalAgentProviderAdmission.java'),join(shared,'test/provider-admission/NativeProviderAdmissionTest.java')],'ai.eliza.plugins.agent.runtime.NativeProviderAdmissionTest',{json:true}),/^PASS local agent provider admission/);
 });
 
-test('the plugin delegates provider rules to the admission class and keeps the direct key a test-mocks route',()=>{
+test('the plugin delegates provider rules to the admission class and admits explicitly selected own keys',()=>{
  const source=readFileSync(nativeSource('AlphaLocalAgentPlugin.java'),'utf8');
- assert.match(source,/static void applyProviderEnvironment\([^)]*\) throws Exception \{if\("cloud"\.equals\(BuildConfig\.ELIZA_RUNTIME_PROFILE\)&&!"elizacloud"\.equals\(provider\.optString\("provider"\)\)\)throw new SecurityException\("Cloud runtime requires Cloud provider admission"\);LocalAgentProviderAdmission\.applyProviderEnvironment\(provider,cloudSaved,env,now\);\}/);
+ assert.match(source,/static void applyProviderEnvironment\([^)]*\) throws Exception \{LocalAgentProviderAdmission\.applyProviderEnvironment\(provider,cloudSaved,env,now\);\}/);
  assert.match(source,/static String cloudProviderToken\([^)]*\) throws Exception \{return LocalAgentProviderAdmission\.cloudProviderToken\(saved,credentialId,now\);\}/);
  assert.match(source,/LocalAgentProviderAdmission\.bindCloudProvider\(new LocalAgentProviderAdmission\.CloudBindingStore\(\)\{/);
  assert.match(source,/LocalAgentProviderAdmission\.providerStatus\(saved,cloud,System\.currentTimeMillis\(\)\)/);

@@ -1,6 +1,7 @@
 package ai.elizaresearch.alphaphone;
 
 import ai.eliza.voice.LiveCaptureController;
+import ai.eliza.voice.CartesiaSpeech;
 import ai.eliza.voice.LocalSpeechBridgePlugin;
 import ai.eliza.voice.RecordingPcm;
 import ai.eliza.voice.SpeechRequestGate;
@@ -53,6 +54,7 @@ public final class AlphaVoiceCloudPlugin extends LocalSpeechBridgePlugin {
  /** Adds only sanitized plan-limit facts after the shared bridge released admission.
   * Cancellation, destruction and all non-limit failures retain shared settlement. */
  @Override protected void rejectFailure(PluginCall call,String message,String code,Exception failure){
+  if(failure instanceof CartesiaSpeech.HttpFailure){call.reject("Cartesia voice request failed","voice-http-"+((CartesiaSpeech.HttpFailure)failure).status);return;}
   if(failure instanceof VoiceHttpException){VoiceHttpException limited=(VoiceHttpException)failure;call.reject(message,"voice-http-"+limited.status,limitData(limited.limit));return;}
   super.rejectFailure(call,message,code,failure);
  }
@@ -109,6 +111,29 @@ public final class AlphaVoiceCloudPlugin extends LocalSpeechBridgePlugin {
   if(request.cancelled||destroyed())throw new IOException();JSObject result=new JSObject();result.put("text",transcript);result.put("local",false);request.result=result;request.failureCode=null;
  });}
  @PluginMethod public void synthesize(PluginCall call){if(Boolean.FALSE.equals(call.getBoolean("replace",true))&&speakerBusy()){call.reject("Speaker is in use","playback-busy");return;}synthesizeAudio(call,false,null);}
+
+ /** Explicit own-key voice uses the shared transport inside the existing request/Stop lifecycle. */
+ private final class OwnSpeech implements CartesiaSpeech.Guard {
+  final SpeechRequestGate.Request request;final long epoch;final String revision,key;
+  OwnSpeech(PluginCall call,SpeechRequestGate.Request request)throws Exception{
+   this.request=request;epoch=AlphaLocalAgentPlugin.credentialAuthorityEpoch();revision=required(call.getString("providerRevision"),128);
+   key=AlphaLocalAgentPlugin.withCredentialAuthority(epoch,()->{
+    JSONObject provider=new JSONObject(new AlphaCredentialStore(getContext()).readCredentialSlot("local-agent-provider:v1"));
+    if(!"cerebras".equals(provider.optString("provider"))||!revision.equals(provider.optString("revision")))throw new SecurityException("Provider changed");
+    String value=provider.optString("cartesiaKey","");if(!LocalAgentProviderAdmission.validProviderToken(value,1024))throw new SecurityException("Voice is not configured");return value;
+   });
+  }
+  public void check()throws Exception{if(request.cancelled||destroyed())throw new IOException("Speech cancelled");AlphaLocalAgentPlugin.withCredentialAuthority(epoch,()->{JSONObject provider=new JSONObject(new AlphaCredentialStore(getContext()).readCredentialSlot("local-agent-provider:v1"));if(!revision.equals(provider.optString("revision")))throw new SecurityException("Provider changed");return null;});}
+  public void opened(HttpURLConnection connection)throws Exception{request.connection=connection;check();}
+ }
+ @PluginMethod public void transcribeOwnRecording(PluginCall call){submit(call,request->{
+  OwnSpeech own=new OwnSpeech(call,request);String recordingId=required(call.getString("recordingId"),256);File file=recording().selected(recordingId);if(file==null)throw new IOException("Recording unavailable");
+  byte[] wav=RecordingPcm.decode(file,()->request.cancelled||destroyed());
+  try{String text=CartesiaSpeech.transcribe(own.key,wav,own,CartesiaSpeech.HTTPS);own.check();JSObject result=new JSObject();result.put("text",text);result.put("local",false);result.put("provider","cartesia");result.put("route","direct");request.result=result;}finally{Arrays.fill(wav,(byte)0);}
+ });}
+ @PluginMethod public void synthesizeOwn(PluginCall call){if(Boolean.FALSE.equals(call.getBoolean("replace",true))&&speakerBusy()){call.reject("Speaker is in use","playback-busy");return;}submit(call,request->{
+  OwnSpeech own=new OwnSpeech(call,request);byte[] audio=CartesiaSpeech.synthesize(own.key,required(call.getString("text"),5000),own,CartesiaSpeech.HTTPS);own.check();publishPreparedAudio(call,request,audio);
+ });}
 
  // ---- Paired agent speech (development and hosted agents) -----------------------------------
 

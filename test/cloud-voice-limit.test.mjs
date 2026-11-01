@@ -21,9 +21,10 @@ const SENTINEL='PRIVATE_PROVIDER_BODY_SENTINEL';
 
 function loadCloudVoice(f={}){
  const notes=[];
- const native={transcribeRecording:async()=>{throw f.failure;},synthesize:async()=>{throw f.failure;},transcribeDevelopmentCloudRecording:async()=>{throw f.failure;}};
- const box={browserCloudResidentEnabled:false,developmentCartesiaVoiceEnabled:false,developmentCloudVoiceEnabled:f.developer===true,registerPlugin:()=>native,
-  connectionController:{getCloudEnvironment:()=>'production',getCloudClient:()=>({sessionId:f.session??'account-session',credentialId:'credential'}),getBrowserSpeechAgent:()=>({session:{sessionId:'developer'}}),getSnapshot:()=>({open:false}),subscribe:()=>()=>{},
+ const native={transcribeRecording:async()=>{throw f.failure;},synthesize:async()=>{throw f.failure;},transcribeOwnRecording:async()=>{throw f.failure;},synthesizeOwn:async()=>{throw f.failure;},transcribeDevelopmentCloudRecording:async()=>{throw f.failure;}};
+ const snapshot={open:false,residentInference:f.own?'direct':'cloud',session:{sessionId:'owner-session'},providerStatus:{voiceConfigured:true,revision:'own-revision'}};
+ const box={Capacitor:{isNativePlatform:()=>true},browserCloudResidentEnabled:false,developmentCartesiaVoiceEnabled:false,developmentCloudVoiceEnabled:f.developer===true,registerPlugin:()=>native,
+  connectionController:{getCloudEnvironment:()=>'production',getCloudClient:()=>({sessionId:f.session??'account-session',credentialId:'credential'}),getBrowserSpeechAgent:()=>({session:{sessionId:'developer'}}),getSnapshot:()=>snapshot,subscribe:()=>()=>{},
    noteCloudServiceLimit:(limit,sessionId)=>{notes.push({limit,sessionId});return true;}},
   document:{hidden:false,addEventListener(){},removeEventListener(){}},AbortController,DOMException,Date,markTtsPlaybackStarted(){},markTtsPlaybackEnded(){},
   playOwnedSpeech:async(_native,_signal,prepare)=>{await prepare('request');},
@@ -108,7 +109,7 @@ test('native CloudVoiceLimit keeps the same facts and never the body text',()=>{
  assert.match(plugin,/super\.rejectFailure\(call,message,code,failure\)/);
  assert.doesNotMatch(plugin,/submitLimited|request\.resolvedEarly/,'429 delivery never bypasses shared post-cleanup settlement');
  assert.equal(plugin.match(/successful\(c\)/g).length,1,'every Alpha speech response goes through answered, which keeps a 429 limit');
- assert.equal(plugin.match(/submit\(call,/g).length,5,'all Alpha speech requests use the shared settlement path');
+ assert.equal(plugin.match(/submit\(call,/g).length,7,'all Alpha speech requests use the shared settlement path');
  // String members only: JSON null or a number is no code or instant (optString would coerce them).
  const limitOf=plugin.slice(plugin.indexOf('private static CloudVoiceLimit limitOf('),plugin.indexOf('private static JSObject limitData('));
  assert.doesNotMatch(limitOf,/optString/);
@@ -122,7 +123,7 @@ test('native CloudVoiceLimit keeps the same facts and never the body text',()=>{
 test('only the explicit Cloud profile and development browser-resident builds reach Cloud speech',()=>{
  const selection=fs.readFileSync('apps/app/src/runtime/voice-selection.ts','utf8').replace(/^import .*;\n/gm,'').replaceAll('export function','function').replaceAll('export type','type');
  for(const [cloud,mocks,expected] of [[false,false,'device'],[true,false,'cloud']]){
-  const box={cloudRuntimeEnabled:cloud,testMocksEnabled:mocks,browserDevProfile:false,localStorage:{getItem:()=>JSON.stringify({version:1,route:'cloud',disclosed:'cloud-speech-uses-plan',chosenAt:1}),setItem(){}},JSON,Number,Date,connectionController:{getCloudEnvironment:()=>'production',getCloudClient:()=>({})}};
+  const box={cloudRuntimeEnabled:cloud,testMocksEnabled:mocks,browserDevProfile:false,localStorage:{getItem:()=>JSON.stringify({version:1,route:'cloud',disclosed:'cloud-speech-uses-plan',chosenAt:1}),setItem(){}},JSON,Number,Date,connectionController:{getSnapshot:()=>({residentInference:'cloud'}),getCloudEnvironment:()=>'production',getCloudClient:()=>({})}};
   vm.runInNewContext('{'+stripTypeScriptTypes(selection,{mode:'transform'})+'\nglobalThis.api={selectVoiceRoute,voiceRoutePreference};}',box);
   // A native flag-off build routes speech to the device even with a stored Cloud choice.
   for(const requested of ['default','device','manual','agent'])assert.equal(box.api.selectVoiceRoute(requested),expected);
@@ -131,4 +132,12 @@ test('only the explicit Cloud profile and development browser-resident builds re
  // The development browser route is the only other caller: a test-mocks (development) surface.
  const browser=fs.readFileSync('apps/app/src/browser/voice.ts','utf8');
  assert.match(browser,/if\(!devSurfacesEnabled\)throw Error\('Cloud voice requires the native app or a development host\.'\)/);
+});
+
+test('own-key HTTP limits never mutate the retained Cloud account limit',async()=>{
+ const failure=Object.assign(Error(SENTINEL),{code:'voice-http-429',data:{retryAfterSeconds:30,limitCode:'rate_limited'}});
+ const {box,notes}=loadCloudVoice({failure,own:true});const voice=box.create();
+ await assert.rejects(voice.transcribeRecording({recordingId:'clip',requestId:'request'}),error=>error===failure);
+ await assert.rejects(voice.speak('Reply',new AbortController().signal),error=>error===failure);
+ assert.deepEqual(notes,[]);assert.match(box.failure(failure),/Cartesia.*own key or provider allowance/);
 });
