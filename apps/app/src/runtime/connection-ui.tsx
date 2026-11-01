@@ -1180,7 +1180,7 @@ async function restoreOwnProviderCloudServices():Promise<void>{
     const client=makeCloud(residentEnvironment());
     const credential=await cloudCredentialStore.read(client.environment);
     if(!current()||controller.signal.aborted)return;
-    if(!credential?.credentialId){if(service)detachService();return;}
+    if(!credential?.credentialId){if(service&&service===previousService)detachService();return;}
     credentialId=credential.credentialId;credentialReference=credential.credentialReference;
     await verifyService(client,controller.signal,{credentialId,credentialReference:credential.credentialReference});
   }catch{

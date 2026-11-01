@@ -53,3 +53,11 @@ test('a changed service object and credential reference survive a delayed old fa
  const fresh={identity:{credentialId:'cloud-A'},credentialReference:'ref-B'};box.service=fresh;
  reject(Error('old failed'));await old;assert.equal(box.service,fresh);assert.ok(!calls.includes('detach'));
 });
+
+
+test('a delayed absent credential read cannot clear a newly adopted service',async()=>{
+ let resolve;const pending=new Promise(done=>{resolve=done;});const {box,calls}=fixture();
+ box.service={identity:{credentialId:'old'}};box.cloudCredentialStore.read=()=>pending;
+ const check=box.run();const fresh={identity:{credentialId:'new'}};box.service=fresh;
+ resolve(null);await check;assert.equal(box.service,fresh);assert.ok(!calls.includes('detach'));
+});
