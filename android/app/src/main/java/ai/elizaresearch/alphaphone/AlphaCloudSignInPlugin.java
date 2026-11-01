@@ -60,6 +60,9 @@ public final class AlphaCloudSignInPlugin extends CloudSignInPlugin {
    @Override public void remove(String slot) throws Exception { store.removeCredentialSlot(slot); }
   };
  }
+ @Override protected <T> T withCredentialRead(java.util.concurrent.Callable<T> read) throws Exception {
+  return AlphaLocalAgentPlugin.withCredentialRead(read);
+ }
  @Override protected Runnable reserveCredentialCommit() {
   supersedeRecovery();
   long intent = AlphaLocalAgentPlugin.reserveCredentialIntent();
@@ -121,7 +124,17 @@ public final class AlphaCloudSignInPlugin extends CloudSignInPlugin {
  @Override @PluginMethod public void startPhone(PluginCall call) { supersedeRecovery(); super.startPhone(call); }
  @Override @PluginMethod public void cancel(PluginCall call) { supersedeRecovery(); super.cancel(call); }
  /** A browser return may complete a sign-in into storage: it supersedes a restore as well. */
- @Override protected void handleOnNewIntent(Intent intent) { supersedeRecovery(); super.handleOnNewIntent(intent); }
+ /** Only this pending sign-in return may supersede saved-sign-in recovery. */
+ @Override protected void handleOnNewIntent(Intent intent) {
+  if(intent!=null&&intent.getData()!=null){try{
+   ai.eliza.auth.cloud.CloudSignInFlow.Pending pending=ai.eliza.auth.cloud.CloudSignInFlow.Pending.parse(new AlphaCredentialStore(getContext()).readCredentialSlot(PENDING_SLOT),REGISTRATION);
+   if(pending!=null){
+    ai.eliza.auth.cloud.CloudSignInFlow.Callback callback=ai.eliza.auth.cloud.CloudSignInFlow.parseCallback(intent.getData().toString(),pending.environment);
+    if(pending.sameState(callback))supersedeRecovery();
+   }
+  }catch(Exception ignored){/* Unrelated intents never alter recovery ownership. */}}
+  super.handleOnNewIntent(intent);
+ }
  @Override protected void handleOnDestroy() {
   closed = true;
   supersedeRecovery();

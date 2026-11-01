@@ -66,17 +66,22 @@ test('the approved Membership & credits sheet adds the plan allowance and the la
   assert.match(active, /25% of this billing period&#x27;s plan allowance is left/);
   assert.match(active, /Ends .+ days left/);
   assert.match(active, /<dt>AI requests<\/dt><dd role="status">The AI request rate limit was reached\. Try again in about (59|60) seconds\./);
-  // The approved sheet: exact credits with Refresh, Add funds, then the code entry behind one action.
+  // The approved sheet: exact credits with Refresh, Add credits, then the code entry behind one action.
   assert.match(active, /<dt>Available credits<\/dt>/);
   assert.match(active, /\$9\.00<span class="alpha-membership-currency">USD/);
-  assert.match(active, />Add funds</);
-  assert.match(active, />Use membership code</);
+  assert.match(active, />Add credits</);
+  assert.match(active, />Enter membership code</);
   const credits = render({balance: 'funded', plan: {kind: 'credits', source: 'billing-limits'}, credits: {usd: '1234.5', observedAt: Date.now()}});
   assert.match(credits, /\$1,234\.50/);
   assert.match(credits, /No active membership/);
   assert.doesNotMatch(credits, /plan allowance|AI requests/, 'no allowance or limit line without a reported allowance or a current limit');
   const none = render({balance: 'zero', plan: {kind: 'inactive', planName: null, status: 'none', source: 'billing-limits'}});
-  assert.match(none, /Add funds or use a membership code to ask Alpha\./);
+  assert.match(none, /Add credits or enter a membership code to ask Alpha\./);
+  // After Cloud declined a turn for billing the sheet says so, above the same two actions.
+  const refused = render({balance: 'funded', refused: true, plan: {kind: 'credits', source: 'billing-limits'}, credits: {usd: '0.02', observedAt: Date.now()}});
+  assert.match(refused, /Eliza Cloud declined your last AI request for billing\. Add credits or enter a membership code, then send again\./);
+  assert.match(refused, />Add credits</);
+  assert.match(refused, />Enter membership code</);
   // A lapsed limit is not shown.
   const lapsed = render({plan: {kind: 'credits', source: 'billing-limits'}, lastLimit: {kind: 'rate-limited', retryAfterMs: 1000, resetsAt: null, observedAt: Date.now() - 120000}});
   assert.doesNotMatch(lapsed, /AI requests/);
@@ -94,7 +99,7 @@ test('the approved Membership & credits sheet adds the plan allowance and the la
   assert.doesNotMatch(source, /serviceLimitNextChange|setTimeout/);
   assert.match(hookSource, /const nextChange =\s+summary\.limit && lastLimit\s+\? serviceLimitNextChange\(lastLimit, lastLimit\.observedAt, now\)\s+: null;\s+useEffect\(\(\) => \{\s+if \(nextChange === null\) return;\s+const timer = setTimeout\(\(\) => tick\(\(value\) => value \+ 1\), nextChange\);/);
   const ui = fs.readFileSync('apps/app/src/runtime/connection-ui.tsx', 'utf8');
-  assert.match(ui, /lastLimit=\{snapshot\.lastServiceLimit\} serviceName=\{serviceName\}/, 'the sheet receives the latest Cloud limit');
+  assert.match(ui, /lastLimit=\{snapshot\.fundingRefused&&snapshot\.lastServiceLimit\?\.kind==='billing-refused'\?null:snapshot\.lastServiceLimit\} refused=\{!!snapshot\.fundingRefused\} serviceName=\{serviceName\}/, 'the sheet receives the latest Cloud limit; a billing refusal is said once, by the sheet');
   assert.match(ui, /className="serif">Membership &amp; credits<\/h1>/);
 });
 
@@ -102,13 +107,16 @@ test('a resident turn failure forwards its own reset fields and records the late
   const ui = fs.readFileSync('apps/app/src/runtime/connection-ui.tsx', 'utf8');
   assert.match(ui, /readServiceLimit\(\{ failureKind: 'failureKind' in reply \? reply\.failureKind : undefined, terminalFailure: 'terminalFailure' in reply \? reply\.terminalFailure : undefined, resetAt: timing\.resetAt, retryAfterSeconds: timing\.retryAfterSeconds \}\)/);
   const failure = ui.slice(ui.indexOf('function replyFailure('), ui.indexOf("if(kind==='rate_limited')return new AlphaClientError"));
-  assert.match(failure, /if\(limit\)update\(\{lastServiceLimit:\{\.\.\.limit,observedAt:Date\.now\(\)\}\}\);/);
+  assert.match(failure, /if\(limit\)update\(\{lastServiceLimit:\{\.\.\.limit,observedAt:Date\.now\(\)\},\.\.\.\(funding\?\{fundingRefused:true,membershipDismissed:false\}:\{\}\)\}\);/);
+  // A billing refusal of a signed-in account answers once and offers the Membership & credits sheet.
+  assert.match(failure, /const funding=limit\?\.kind==='billing-refused'&&!!state\.cloudAccount;/);
+  assert.match(failure, /fundingRefusedReply\(cloudServiceName\(cloud\.environment\)\)\),\{failureKind:kind\?\?limit\.kind,serviceLimit:limit\.kind,planAction:'funding'\}/);
   assert.match(ui.slice(ui.indexOf('function detachService()'), ui.indexOf('async function verifyService')), /lastServiceLimit:null/);
-  assert.match(ui, /lastLimit=\{snapshot\.lastServiceLimit\}/);
+  assert.match(ui, /lastLimit=\{snapshot\.fundingRefused&&snapshot\.lastServiceLimit\?\.kind==='billing-refused'\?null:snapshot\.lastServiceLimit\}/);
   // A limit seen on one account never appears for another, and it ends once AI gets through again.
   assert.match(ui.slice(ui.indexOf('async function verifyService'), ui.indexOf('let pendingBillingReview')), /\.\.\.\(!same\?\{[^}]*lastServiceLimit:null/);
   assert.match(ui.slice(ui.indexOf('  async residentRedeem('), ui.indexOf("update({redeemNotice:redeemSuccessMessage(result)});")), /redeemed=true;[\s\S]*lastServiceLimit:null/);
-  assert.match(ui.slice(ui.indexOf('  async send('), ui.indexOf('export function ConnectionChooser')), /if\(!failed&&state\.lastServiceLimit\)update\(\{lastServiceLimit:null\}\);/);
+  assert.match(ui.slice(ui.indexOf('  async send('), ui.indexOf('export function ConnectionChooser')), /if\(!failed&&\(state\.lastServiceLimit\|\|state\.fundingRefused\)\)update\(\{lastServiceLimit:null,fundingRefused:false\}\);/);
   // A request-level 429 that reads as a Cloud limit is recorded too; a refusal before the turn is the agent being busy.
   assert.match(ui.slice(ui.indexOf('  async send('), ui.indexOf('export function ConnectionChooser')), /const limit = refused \? null : readServiceLimit\(error\);\s+if \(limit\) update\(\{ lastServiceLimit: \{ \.\.\.limit, observedAt: Date\.now\(\) \} \}\);/);
 });

@@ -6,13 +6,15 @@ import {join,resolve} from 'node:path';
 import {spawnSync,execFileSync} from 'node:child_process';
 import {AGENT_MODEL} from '../scripts/agent-model.mjs';
 
-function launch({noConfig,route,override,swaps,existingToken=true,runtimeConfigUpdate=false,repeat=false,autoReset}={}) {
+function launch({route,override,swaps,existingToken=true,retainedIdentity=true,runtimeConfigUpdate=false,repeat=false,autoReset}={}) {
  const dir=mkdtempSync(join(tmpdir(),'alpha-model-')),profile=join(dir,'profile'),source=join(dir,'source'),receipt=join(dir,'models.json'),childReceipt=join(dir,'child.json'),bun=join(dir,'fake-bun');
  mkdirSync(profile);mkdirSync(join(source,'packages/app/src/runtime'),{recursive:true});writeFileSync(join(source,'packages/app/src/runtime/dev-server.ts'),'');
  execFileSync('git',['init','-q',source]);execFileSync('git',['-C',source,'-c','user.name=Fixture','-c','user.email=fixture@example.invalid','commit','--allow-empty','-qm','fixture']);
  writeFileSync(bun,`#!/usr/bin/env node\nconst fs=require('node:fs');fs.writeFileSync(${JSON.stringify(childReceipt)},JSON.stringify({pid:process.pid,hostRevision:process.env.ELIZA_HOST_CONTEXT_REVISION,autoReset:process.env.ELIZA_PGLITE_AUTO_RESET??null,unexpected:process.env.ALPHA_UNRELATED_ENV??null,token:process.env.ELIZA_API_TOKEN,nativeViews:JSON.parse(process.env.ELIZA_NATIVE_VIEW_DECLARATIONS),swaps:{secret:process.env.ELIZA_SECRET_SWAP_ENABLED??null,pii:process.env.ELIZA_PII_SWAP_ENABLED??null},config:JSON.parse(fs.readFileSync(process.env.ELIZA_CONFIG_PATH,'utf8'))}));fs.writeFileSync(${JSON.stringify(receipt)},JSON.stringify(Object.fromEntries(['CEREBRAS_MODEL','CEREBRAS_SMALL_MODEL','CEREBRAS_LARGE_MODEL'].map(k=>[k,process.env[k]]))));${runtimeConfigUpdate?"fs.writeFileSync(process.env.ELIZA_CONFIG_PATH,JSON.stringify({...JSON.parse(fs.readFileSync(process.env.ELIZA_CONFIG_PATH,'utf8')),runtimeSelection:'retained'}));":''}`,{mode:0o700});
  const tokenPath=join(profile,'owner-token'),retainedToken='a'.repeat(64);if(existingToken)writeFileSync(tokenPath,retainedToken,{mode:0o600});
- const config=join(profile,'eliza.json');if(route||existingToken&&!noConfig)writeFileSync(config,JSON.stringify({...(route?{serviceRouting:{llmText:route},fixtureKeep:'preserve'}:{cloud:{enabled:false},serviceRouting:{llmText:{backend:'cerebras',transport:'direct',smallModel:AGENT_MODEL,largeModel:AGENT_MODEL}},plugins:{entries:{'personal-assistant':{enabled:false}}}}),agents:{list:[{id:'main',default:true,identityName:'Alpha'}]}}),{mode:0o600});
+ // An existing profile carries an explicitly retained agent identity; the launcher refuses ambiguous ones.
+ const identity={agents:{list:[{id:'retained',default:true,name:'Retained Eliza',identityName:'Retained Eliza'}]}};
+ const config=join(profile,'eliza.json');if(route||(existingToken&&retainedIdentity))writeFileSync(config,JSON.stringify({serviceRouting:{llmText:route??{backend:'cerebras',transport:'direct'}},...identity,fixtureKeep:'preserve'}),{mode:0o600});
  const before=existsSync(config)?readFileSync(config,'utf8'):null;
  let ownedLivePid;
  const env={...process.env,ALPHA_UNRELATED_ENV:'must-stay-outside',ELIZA_ASR_ENABLED:'0',ELIZA_PARADEE_ENABLED:'0',ALPHA_ELIZA_SOURCE:source,ALPHA_REMOTE_PROFILE:profile,ALPHA_REMOTE_PORT:'47999',ALPHA_BUN:bun,CEREBRAS_API_KEY:'synthetic-fixture-key'};for(const key of ['ELIZA_SECRET_SWAP_ENABLED','ELIZA_PII_SWAP_ENABLED','CEREBRAS_MODEL','ELIZA_PGLITE_AUTO_RESET'])delete env[key];Object.assign(env,swaps||{});if(override!==undefined)env.CEREBRAS_MODEL=override;if(autoReset!==undefined)env.ELIZA_PGLITE_AUTO_RESET=autoReset;
@@ -36,11 +38,11 @@ test('conflicting or malformed explicit model selection fails before a child sta
 });
 
 test('redaction rejects unqualified source before starting a child or creating configuration',()=>{
- const r=launch({noConfig:true,swaps:{ELIZA_SECRET_SWAP_ENABLED:'true',ELIZA_PII_SWAP_ENABLED:'true'}});assert.notEqual(r.status,0);assert.equal(r.models,null);assert.equal(r.after,null);assert.match(r.error,/Prepared runtime base commit changed/);
+ const r=launch({swaps:{ELIZA_SECRET_SWAP_ENABLED:'true',ELIZA_PII_SWAP_ENABLED:'true'},retainedIdentity:false});assert.notEqual(r.status,0);assert.equal(r.models,null);assert.equal(r.after,null);assert.match(r.error,/Prepared runtime base commit changed/);
 });
 test('invalid or partial redaction selection cannot silently start an unprotected agent',()=>{
  for(const [swaps,error] of [[{ELIZA_PII_SWAP_ENABLED:'true'},/Set ELIZA_SECRET_SWAP_ENABLED and ELIZA_PII_SWAP_ENABLED together/],[{ELIZA_SECRET_SWAP_ENABLED:'yes',ELIZA_PII_SWAP_ENABLED:'true'},/must be true or false/]]){
-  const r=launch({noConfig:true,swaps});assert.notEqual(r.status,0);assert.equal(r.models,null);assert.equal(r.after,null);assert.match(r.error,error);
+  const r=launch({swaps,retainedIdentity:false});assert.notEqual(r.status,0);assert.equal(r.models,null);assert.equal(r.after,null);assert.match(r.error,error);
  }
 });
 

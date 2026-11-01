@@ -1,5 +1,7 @@
 import type { CloudEnvironment } from './cloud-protocol.ts';
 
+/** The Google calendar that device Calendar sync writes to, per Cloud account. Display never uses it:
+ * Calendar is one merged view of the agent's feed. Chosen in the sync dialog, not in Google accounts. */
 export interface GoogleCalendarAccountKey { environment: CloudEnvironment; userId: string; organizationId: string }
 export interface GoogleCalendarSelection { connectionId: string; sourceId: string; providerCalendarId: string; name: string; account: string }
 export type GoogleCalendarSelectionStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;

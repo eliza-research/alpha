@@ -12,7 +12,10 @@ function sendProposal(input:AgentSendContent){
  if(!Array.isArray(input.to)||input.to.length<1||input.to.length>20||input.to.some(value=>typeof value!=='string'||value.length>320||!/^\S+@[^\s@]+\.[^\s@]+$/.test(value)||/[\p{Cc}\p{Cf}]/u.test(value))||typeof input.subject!=='string'||input.subject.length>998||/[\r\n]/.test(input.subject)||typeof input.bodyText!=='string'||input.bodyText.length>64000)throw Error('Review valid recipients, subject, and email text before preparing this send.');
  return {kind:'send',mode:'compose',to:input.to,cc:[],bcc:[],subject:input.subject,bodyText:input.bodyText,attachments:[]};
 }
-export function createManagedGoogleAgentHost(host:ManagedGoogleAgentPort){
+/** The owner's Settings switches. Off refuses agent writes before any Google request; reads, receipts and the connection stay. */
+export type GoogleAgentAccess={gmailChanges:boolean;calendarEdits:boolean};
+export function createManagedGoogleAgentHost(host:ManagedGoogleAgentPort,access:()=>GoogleAgentAccess=()=>({gmailChanges:true,calendarEdits:true})){
+ const allowed=(kind:keyof GoogleAgentAccess)=>{if(access()[kind]!==true)throw Error(kind==='gmailChanges'?'Gmail changes are turned off in Settings › Google accounts. Google stays connected; nothing was changed.':'Calendar edits are turned off in Settings › Google accounts. Google stays connected; nothing was changed.');};
  const refuseWrite=()=>{throw Error('Gmail agent reads cannot change credentials or mail.');};
  /** The verified Cloud owner and its connected accounts holding `capability`, each with its owner-scoped id. */
  async function ownerAccounts(parent:AbortSignal|undefined,capability:string,operation:false|true|'calendar'){
@@ -44,8 +47,9 @@ export function createManagedGoogleAgentHost(host:ManagedGoogleAgentPort){
   const value=await run(client,accounts[0].grantId,accounts[0].scope,signal);await confirm([accounts[0].grantId]);return value;
  }
  return {
-  async mailbox(input:AgentMailboxChange,parent?:AbortSignal){return verified((client,grantId,scope,signal)=>gmailAgentMailbox(client,grantId,scope,input,signal),parent,'google.gmail.mailbox',true);},
+  async mailbox(input:AgentMailboxChange,parent?:AbortSignal){allowed('gmailChanges');return verified((client,grantId,scope,signal)=>gmailAgentMailbox(client,grantId,scope,input,signal),parent,'google.gmail.mailbox',true);},
   async calendarWrite(input:Record<string,unknown>,parent?:AbortSignal){
+   allowed('calendarEdits');
    const {client,signal,accounts,confirm}=await ownerAccounts(parent,'google.calendar.write','calendar');
    const selected=accounts.filter(account=>input.grantId===`alpha-google:${account.scope}`);
    if(selected.length!==1)throw Error('Select a Calendar from the current owner connection.');
@@ -53,7 +57,7 @@ export function createManagedGoogleAgentHost(host:ManagedGoogleAgentPort){
    await confirm([account.grantId]);return result;
   },
   async prepareSend(input:AgentSendContent&{requestId:string},parent?:AbortSignal){
-   const proposal=sendProposal(input);if(!/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(input.requestId))throw Error('Invalid send request identity.');
+   allowed('gmailChanges');const proposal=sendProposal(input);if(!/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(input.requestId))throw Error('Invalid send request identity.');
    return verified(async(client,grantId,scope,signal)=>{
     const prepared=await client.gmailPrepareOperation(grantId,input.requestId,proposal,signal);
     const digest=createHash('sha256').update(JSON.stringify(prepared.review)).digest('hex');
@@ -70,7 +74,7 @@ export function createManagedGoogleAgentHost(host:ManagedGoogleAgentPort){
    },parent,'google.gmail.send',true);
   },
   async dispatchSend(input:AgentSendContent&{id:string;reviewDigest:string},parent?:AbortSignal){
-   const proposal=sendProposal(input);if(!/^[a-f0-9]{64}$/.test(input.reviewDigest))throw Error('An exact prepared review is required.');
+   allowed('gmailChanges');const proposal=sendProposal(input);if(!/^[a-f0-9]{64}$/.test(input.reviewDigest))throw Error('An exact prepared review is required.');
    return verified(async(client,grantId,scope,signal)=>{
     const prefix=`alpha-gmail-send:${scope}:`,requestId=input.id.slice(prefix.length);
     if(!input.id.startsWith(prefix)||!/^[-a-f0-9]{36}$/i.test(requestId))throw Error('This send belongs to another account or credential.');
@@ -86,9 +90,11 @@ export function createManagedGoogleAgentHost(host:ManagedGoogleAgentPort){
    // An unconnected optional provider contributes no sources. Connected-owner
    // identity/permission/provider failures still propagate.
    if(!await host.agentCredential())return [];
-   // Calendar reads are scoped per grant, so every connected account's calendars are listed.
+   // Calendar reads are scoped per grant, so every connected account's calendars are listed. Alpha shows one
+   // merged Calendar: each account's own calendar and every calendar the owner shows in Google Calendar join the
+   // agent feed by default (CalendarService keeps an explicit per-calendar choice once the owner makes one).
    const {client,signal,accounts,confirm}=await ownerAccounts(parent,'google.calendar.read','calendar');
-   const sources=(await Promise.all(accounts.map(async({account,grantId,scope})=>(await client.googleCalendars(grantId,signal)).filter(row=>['reader','writer','owner'].includes(row.accessRole)).map(row=>({...row,provider:'google',side:'owner',grantId:`alpha-google:${scope}`,connectorAccountId:`alpha-google:${scope}`,accountEmail:account.label,includeInFeed:true,selectionVersion:1}))))).flat();
+   const sources=(await Promise.all(accounts.map(async({account,grantId,scope})=>(await client.googleCalendars(grantId,signal)).filter(row=>['reader','writer','owner'].includes(row.accessRole)).map(row=>({...row,provider:'google',side:'owner',grantId:`alpha-google:${scope}`,connectorAccountId:`alpha-google:${scope}`,managedGoogleConnectionId:grantId,accountEmail:account.label,includeInFeed:row.primary||row.selected,selectionVersion:1}))))).flat();
    await confirm(accounts.map(a=>a.grantId));return sources;
    }catch(error){recordManagedGoogleFailure(error,'calendar-sources');throw error;}
   },

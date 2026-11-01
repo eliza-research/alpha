@@ -8,7 +8,7 @@ import { connectionController } from '../runtime/connection-ui';
 import { planLocalSpeech } from '../runtime/local-speech-text';
 import { createOnDeviceVoice } from '../runtime/local-voice';
 import { createCloudVoice, cloudVoiceFailure } from '../runtime/cloud-voice';
-import { selectVoiceRoute, speakRepliesEnabled } from '../runtime/voice-selection';
+import { selectVoiceRoute } from '../runtime/voice-selection';
 
 let cancelCurrent: (() => Promise<void>|void) | undefined;
 let cancelOwner: object | undefined;
@@ -78,21 +78,19 @@ async function readNote(text: string, owner: { noteId?: string }): Promise<'fini
   finally { if (noteReading === reading) { noteReading = undefined; noteReadingChanged(); } }
 }
 
-/* ---- Spoken replies to voice-originated turns ---- */
-type VoiceTurn = { draft: string; known: Set<string>; binding: string; userId?: string; sentAt?: number; firstToken?: boolean };
+/* ---- Timing for dictated turns ---- */
+type VoiceTurn = { draft: string; known: Set<string>; binding: string; userId?: string; firstToken?: boolean };
 let voiceTurn: VoiceTurn | undefined;
 const conversationBinding = () => JSON.stringify([connectionController.getSnapshot().session?.sessionId, connectionController.getSnapshot().history?.conversationId, connectionController.getCloudClient()?.sessionId]);
 /**
- * The reviewed transcript was placed in the composer. If the user sends exactly that text,
- * the turn is voice-originated: its reply can be spoken (opt-in) and its timing recorded.
+ * The reviewed transcript was placed in the composer. If the user sends exactly that text, the
+ * turn's send, first token and final reply are timed. Its reply is never spoken: only the voice
+ * conversation speaks replies, and there is no setting for this.
  */
 export function noteVoiceDraft(text: string, messages: { id?: unknown }[] = []) {
   const draft = String(text || '').trim();
   voiceTurn = draft ? { draft, known: new Set(messages.map(m => String(m.id))), binding: conversationBinding() } : undefined;
 }
-/** A reply older than this, or for an earlier turn, is stale and is never spoken. */
-const replyDeadlineMs = 5 * 60 * 1000;
-
 
 /** Message actions use the existing speech route; playback always requires a user gesture. */
 export function installLocalSpeechPlayback(Component: Shell) {
@@ -139,7 +137,7 @@ export function installLocalSpeechPlayback(Component: Shell) {
   }
   const refresh = (shell: Shell) => { if (shell.live !== false) shell.setState({ localSpeechRevision: Date.now() }); };
   const stop = (shell: Shell) => { const old = states.get(shell); old?.controller?.abort(); if(old?.pending)retainSpeechRetirement(old.pending);states.delete(shell); if (cancelOwner === shell) { cancelCurrent = undefined; cancelOwner = undefined; } };
-  async function listen(shell: Shell, id: string, text: string, onStarted?:()=>void, spokenText = text) {
+  async function listen(shell: Shell, id: string, text: string, spokenText = text) {
     const old = states.get(shell);
     if (old?.id === id && old.controller) { stop(shell); refresh(shell); return; }
     const selection=()=>JSON.stringify([connectionController.getSnapshot().session,connectionController.getSnapshot().history?.conversationId,connectionController.getCloudEnvironment(),connectionController.getCloudClient()?.sessionId,connectionController.getCloudClient()?.credentialId]);
@@ -166,7 +164,7 @@ export function installLocalSpeechPlayback(Component: Shell) {
       if (!current()) return;
       state.message = 'Reading aloud…'; refresh(shell);
       if(!current())return;
-      const pending=state.pending=(cloud ? createCloudVoice(directReadAloud?'direct':'cloud').speak(spokenText, controller.signal, onStarted) : speakOnDevice(spokenText, controller.signal, onStarted));await pending;
+      const pending=state.pending=(cloud ? createCloudVoice(directReadAloud?'direct':'cloud').speak(spokenText, controller.signal) : speakOnDevice(spokenText, controller.signal));await pending;
       if (current()) { state.controller = undefined; state.message = 'Finished reading.'; refresh(shell); }
     } catch (error) {
       if((error as {code?:string})?.code==='speech-cleanup-unconfirmed'&&state.pending)retainSpeechRetirement(state.pending);
@@ -177,7 +175,7 @@ export function installLocalSpeechPlayback(Component: Shell) {
       refresh(shell);
     } finally {if(states.get(shell)===state&&!current()){stop(shell);refresh(shell);}}
   }
-  /** Observe the conversation for the voice-originated turn: send, first token, final reply. */
+  /** Observe the conversation for the dictated turn: send, first token, final reply. */
   function followVoiceTurn(shell: Shell) {
     const turn = voiceTurn; if (!turn) return;
     const msgs: Shell[] = shell.S().msgs || [];
@@ -185,9 +183,9 @@ export function installLocalSpeechPlayback(Component: Shell) {
     if (!turn.userId) {
       const sent = msgs.filter(m => m.from === 'user' && !turn.known.has(String(m.id)));
       if (!sent.length) return;
-      // Only an unchanged reviewed transcript makes the turn voice-originated.
+      // Only an unchanged reviewed transcript is timed as the dictated turn.
       if (sent.length !== 1 || String(sent[0].text || '').trim() !== turn.draft || typeof sent[0].id !== 'string') { voiceTurn = undefined; abandonVoiceTurn(); return; }
-      turn.userId = sent[0].id; turn.sentAt = Date.now(); markVoiceTiming('send');
+      turn.userId = sent[0].id; markVoiceTiming('send');
     }
     const at = msgs.findIndex(m => m.id === turn.userId);
     if (at < 0) { voiceTurn = undefined; abandonVoiceTurn(); return; }
@@ -200,10 +198,7 @@ export function installLocalSpeechPlayback(Component: Shell) {
     if (reply.streaming) return;
     voiceTurn = undefined;
     if (reply.interrupted || typeof reply.id !== 'string' || typeof reply.text !== 'string' || !reply.text.trim()) { abandonVoiceTurn(); return; }
-    markVoiceTiming('final-reply');
-    const fresh = Date.now() - (turn.sentAt || 0) <= replyDeadlineMs && ['sheet', 'full'].includes(shell.S().chat) && !document.hidden && shell.live !== false;
-    if (!speakRepliesEnabled() || !fresh) { finishVoiceTurn(); return; }
-    void listen(shell, reply.id, reply.text, () => { markVoiceTiming('first-audio'); });
+    markVoiceTiming('final-reply'); finishVoiceTurn();
   }
   p.renderVals = function () {
     const out = original.call(this), source = this.S().msgs || [], state = states.get(this);
@@ -250,7 +245,7 @@ export function installLocalSpeechPlayback(Component: Shell) {
         messageActionsAnnouncement: opened && menu ? menu.announcement || '' : '',
         localSpeechAvailable: available && entry.from === 'agent', localSpeechLabel: 'Read aloud', localSpeechControlLabel:selected&&state?.controller?'Stop reading':'Read aloud',localSpeechIcon:selected&&state?.controller?out.ic.stop:out.ic.wave,localSpeechActive:!!(selected&&state?.controller),
         localSpeechMessage: selected&&!state?.controller&&state?.message!=='Finished reading.' ? state?.message : '',
-        localSpeech: () => { void listen(this, entry.id, entry.text, undefined, visibleText); }
+        localSpeech: () => { void listen(this, entry.id, entry.text, visibleText); }
       };
     });
     return out;

@@ -96,6 +96,73 @@ export function readVoiceHost(root) {
   return record;
 }
 
+/** Metadata-only staging classification for the explicit unavailable lane.
+ * The normal stager owns .eliza/paradee-voice/native. Raw/default Gradle
+ * speech roots and old upstream outputs must not masquerade as its absence.
+ * This says nothing about a built APK, native capability or voice acceptance.
+ */
+function voiceStagingState(root) {
+  const at = relative => {
+    let current = path.resolve(root);
+    const rootStat = fs.lstatSync(current);
+    if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) throw Error('Voice staging root must be a real directory');
+    let value;
+    const parts = relative.split('/');
+    for (let index = 0; index < parts.length; index++) {
+      current = path.join(current, parts[index]);
+      try { value = fs.lstatSync(current); }
+      catch (error) { if (error.code === 'ENOENT') return undefined; throw error; }
+      if (value.isSymbolicLink() || (index < parts.length - 1 && !value.isDirectory())) throw Error('Voice staging contains a link or non-directory parent');
+    }
+    return value;
+  };
+  for (const relative of [
+    'vendor/eliza/plugins/plugin-local-inference/native/android/native',
+    'vendor/eliza/packages/app/platforms/android/paradee-voice/native',
+  ]) if (at(relative)) throw Error(`Unrecognized voice staging outside the admitted product output: ${relative}`);
+  const checkRawVoiceJni = rawJni => {
+    if (!at(rawJni)) return;
+    const entries = fs.readdirSync(path.join(root, rawJni), {withFileTypes: true});
+    if (entries.length > 64) throw Error('Voice staging ABI inventory is unbounded');
+    for (const entry of entries) {
+      if (entry.isSymbolicLink()) throw Error('Voice staging JNI sources contain a link');
+      if (entry.name === 'libparadeevoicejni.so' || entry.isDirectory() && at(`${rawJni}/${entry.name}/libparadeevoicejni.so`))
+        throw Error('Unrecorded voice JNI payload is staged in the application');
+    }
+  };
+  // AGP's ordinary main/build-type/flavor/variant overlays stay active in the
+  // Java-only branch too. Check every real src/* directory conservatively,
+  // including release/debug and standalone/launcher combinations.
+  for (const module of ['android/local-speech', 'android/app']) {
+    const sourceRoot = `${module}/src`;
+    const present = at(sourceRoot);
+    if (!present) continue;
+    if (!present.isDirectory()) throw Error('Voice source-set root is not a directory');
+    const sets = fs.readdirSync(path.join(root, sourceRoot), {withFileTypes: true});
+    if (sets.length > 64) throw Error('Voice source-set inventory is unbounded');
+    for (const set of sets) {
+      if (set.isSymbolicLink()) throw Error('Voice source-set overlay contains a link');
+      if (!set.isDirectory()) continue;
+      const base = `${sourceRoot}/${set.name}`;
+      if (module === 'android/local-speech') {
+        if (at(`${base}/assets`) || at(`${base}/jniLibs`)) throw Error(`Unrecognized voice staging in a speech source-set overlay: ${base}`);
+      } else {
+        if (at(`${base}/assets/paradee-voice`)) throw Error(`Unrecognized voice staging in an application source-set overlay: ${base}`);
+        checkRawVoiceJni(`${base}/jniLibs`);
+      }
+    }
+  }
+  const owner = '.eliza/paradee-voice';
+  const ownerStat = at(owner);
+  if (!ownerStat) return 'absent';
+  if (!ownerStat.isDirectory()) throw Error('Voice staging owner is not a directory');
+  const children = fs.readdirSync(path.join(root, owner));
+  if (children.length !== 1 || children[0] !== 'native') throw Error('Partial or unknown voice staging owner is present');
+  const native = at(`${owner}/native`);
+  if (!native?.isDirectory()) throw Error('Voice staging native output is not a real directory');
+  return 'present';
+}
+
 /**
  * Build admission. Absent native voice outputs are accepted only for the explicit unpackaged
  * developer lane (`allowAbsentRuntime`); present outputs must be complete and byte-exact against
@@ -103,12 +170,15 @@ export function readVoiceHost(root) {
  */
 export function verifyVoiceHost(root, {allowAbsentRuntime = false, runtime = verifyParadeeRuntime, abis} = {}) {
   const selected = selectedAndroidAbis(abis);
+  const staging = voiceStagingState(root);
+  // Only explicit mode + metadata-proven absence can avoid reading a record.
+  // Present/partial/orphaned output never inherits a stale source admission.
+  if (allowAbsentRuntime === true && staging === 'absent') return {status: 'not-packaged', qualified: false};
+  const record = readVoiceHost(root);
   const native = path.join(root, PARADEE_NATIVE);
-  if (!fs.existsSync(native)) {
-    if (allowAbsentRuntime) return {status: 'not-packaged', qualified: false};
+  if (staging === 'absent') {
     throw Error(`On-device voice outputs are not staged in ${PARADEE_NATIVE}; run node scripts/android-stage-voice-models.mjs`);
   }
-  const record = readVoiceHost(root);
   runtime(root, {abis: selected});
   const build = JSON.parse(fs.readFileSync(path.join(native, 'build-record.json'), 'utf8'));
   const recorded = new Map(build.files.map(row => [row.path, row]));
@@ -128,6 +198,5 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const {rest: args, abis} = abiArguments(process.argv.slice(2));
   if (args[0] !== '--verify' || args.slice(1).some(arg => arg !== '--allow-absent')) throw Error('Usage: node scripts/voice-host.mjs --verify [--allow-absent]');
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  readVoiceHost(root);
   console.log(JSON.stringify(verifyVoiceHost(root, {allowAbsentRuntime: args.includes('--allow-absent'), abis})));
 }

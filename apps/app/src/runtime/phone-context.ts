@@ -1,5 +1,5 @@
 import {NOTE_ID_REGEXP} from '../../../../.eliza/client-features/plugins/plugin-notes/src/note-id.ts';
-import {parseClientTurnObservation} from '../../../../.eliza/client-features/packages/contracts/src/client-turn-observation.ts';
+import {parseClientTurnObservation,parseClientCalendarDayObservation} from '../../../../.eliza/client-features/packages/contracts/src/client-turn-observation.ts';
 import {clockTimeZone} from './clock-contract.ts';
 import {reminderTarget} from '../../../../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/reminder-contract.ts';
 import {notesTarget} from './notes-contract.ts';
@@ -25,6 +25,11 @@ export function sanitizePhoneContext(input: ContextEnvelope): ContextEnvelope {
   if (!Number.isSafeInteger(input.revision) || input.revision < 0) throw new Error('The screen observation has an invalid revision.');
   const result: ContextEnvelope = { view: input.view, revision: input.revision, sensitive: false };
   if(input.timeZone!==undefined)result.timeZone=clockTimeZone(input.timeZone);
+  if(input.calendarDay!==undefined){
+    const day=parseClientCalendarDayObservation(input.calendarDay);
+    if(input.view!=='calendar'||day.timeZone!==result.timeZone)throw Error('The Calendar day observation changed.');
+    result.calendarDay=day;
+  }
   if (input.selectedObject) {
     const selected = input.selectedObject;
     if (!kinds.has(selected.kind)) throw new Error('This selected object cannot share agent context.');

@@ -8,7 +8,7 @@
 //   review              send - transcript-ready   (the user's review and Send; P-01: never automatic)
 //   firstToken          first-token - send
 //   finalReply          final-reply - send
-//   firstAudio          first-audio - send        (only when Speak replies is on)
+//   firstAudio          first-audio - send        (voice conversation turns; a dictated turn is never spoken)
 //   speechToTokenExcludingReview  recognition + firstToken
 //   speechToAudioExcludingReview  recognition + firstAudio
 //   speechToTokenIncludingReview  first-token - recording-end

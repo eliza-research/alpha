@@ -10,8 +10,10 @@
 import { expect, type Page } from '@playwright/test';
 
 export interface StubAccount { token: string; userId: string; email: string; balance: number; userStatus?: number; inbox?: string;
-  /** 'none': the billing snapshot reports a canceled plan, so no plan admits Cloud inference. */
-  plan?: 'none' }
+  /** 'none': the billing snapshot reports a canceled plan, so no plan admits Cloud inference.
+   * 'credits': no subscription (Cloud's organization-credit mode, every new account); a redeemed
+   * code turns it into an active membership. Absent: an active Plus membership. */
+  plan?: 'none' | 'credits' }
 export type StubStream =
   /** Native refuses the stream call before anything reaches the runtime. */
   | 'reject'
@@ -23,8 +25,10 @@ export type StubStream =
   | 'drop'
   /** The reply is held until `release()`; the user turn is recorded first. */
   | 'hold'
-  /** The turn fails on the agent with this upstream failure kind, in a `done` or `error` frame. */
-  | { failure: string; frame: 'done' | 'error' };
+  /** The turn fails on the agent with this upstream failure kind, in a `done` or `error` frame.
+   * `runtime`: the exact `done` frame the agent's conversation stream writes when a Cloud 402 ends a
+   * turn before any text (fullText is upstream's credits reply, `failureKind` with no terminalFailure). */
+  | { failure: string; frame: 'done' | 'error'; runtime?: boolean };
 /** One Cloud Maps place in the deployed `/api/v1/maps` shape. */
 export interface StubMapsPlace { id: string; name: string; latitude: number; longitude: number; address?: string }
 /** Eliza Cloud Maps (#412) behind the synthetic Cloud: capabilities, places/search and routes only.
@@ -74,6 +78,9 @@ export async function residentStub(page: Page, options: ResidentStubOptions = {}
       ...kept,
       // Per page load: the stream mode and a held reply do not survive a restart.
       stream: null as any, release: null as null | (() => void), recoveries: [] as string[], capabilities: '',
+      // Cloud's answer to the next code redemption: 'ok' grants Plus; 'invalid' is Cloud's one answer
+      // for unknown, expired, disabled and used-up codes (400 invalid_subscription_code).
+      redeem: 'ok' as 'ok' | 'invalid', redeemed: [] as Array<{ code: string; idempotencyKey: string }>,
       maps: { requests: [] as Array<{ route: string; body: any; requestId: string }>, cancelled: [] as string[], hold: false, limit: null as null | string },
     };
     const persist = () => sessionStorage.setItem('resident-stub', JSON.stringify({ order: s.order, cloud: s.cloud, bodies: s.bodies, opened: s.opened, accounts: s.accounts, login: s.login, nextToken: s.nextToken, polls: s.polls, start: s.start, held: s.held }));
@@ -191,8 +198,14 @@ export async function residentStub(page: Page, options: ResidentStubOptions = {}
           if (path === '/api/v1/user') { if (owner.userStatus && owner.userStatus !== 200) return { status: owner.userStatus, data: {} }; return { status: 200, data: { success: true, data: { id: owner.userId, email: owner.email } } }; }
           // The billing snapshot answers the plan while the entitlement route is absent (404, from the base
           // harness), and carries the organization credit balance (the retired /api/v1/credits/balance is never read).
+          if (path === '/api/v1/subscription/redeem' && input.method === 'POST') {
+            const body = JSON.parse(input.body); s.redeemed.push({ code: body.code, idempotencyKey: body.idempotencyKey }); s.order.push('redeem ' + owner.email); persist();
+            if (s.redeem === 'invalid') return { status: 400, data: { success: false, error: 'This subscription code cannot be redeemed.', code: 'invalid_subscription_code' } };
+            owner.plan = undefined; persist();
+            return { status: 200, data: { success: true, replayed: false, grant: { id: 'synthetic-grant', planKey: 'plus_monthly', startsAt: '2026-10-30T00:00:00.000Z', endsAt: '2027-04-30T00:00:00.000Z', revoked: false, paidPlanTakesPrecedence: false }, entitlement: { plan: { id: 'plus_monthly', name: 'Plus', status: 'active' }, source: 'grant', effectiveUntil: '2027-04-30T00:00:00.000Z' } } };
+          }
           if (path === '/api/v1/billing/limits') { s.order.push('plan ' + owner.email); persist(); return { status: 200, data: { success: true, data: { schemaVersion: 2, v2: {
-            subscription: { status: 'available', value: { planKey: 'plus_monthly', state: owner.plan === 'none' ? 'canceled' : 'active', currentPeriodEnd: '2099-01-01T00:00:00.000Z' } },
+            subscription: owner.plan === 'credits' ? { status: 'not_applicable', reason: 'no_organization_subscription' } : { status: 'available', value: { planKey: 'plus_monthly', state: owner.plan === 'none' ? 'canceled' : 'active', currentPeriodEnd: '2099-01-01T00:00:00.000Z' } },
             balance: { status: 'available', source: 'organizations', observedAt: new Date().toISOString(), value: { balance: { value: String(owner.balance), unit: 'usd', currency: 'USD' }, revision: '1' } } } } } }; }
           if (path === '/api/v1/eliza/google/accounts') return { status: 200, data: owner.inbox ? [{ configured: true, connected: true, reason: 'connected', connectionId: 'grant-' + owner.userId.slice(0, 8), grantedCapabilities: ['google.gmail.triage'], identity: { email: owner.inbox } }] : [] };
         }
@@ -216,12 +229,14 @@ export async function residentStub(page: Page, options: ResidentStubOptions = {}
         }
         if (mode === 'busy' || mode === 'expired') { setTimeout(() => { emit(streamId, { type: 'response', status: mode === 'busy' ? 429 : 401, headers: { 'content-type': 'application/json' } }); emit(streamId, { type: 'complete' }); }, 0); return { streamId }; }
         f.posts.push(String(body.text));
-        record(conversation, { id: crypto.randomUUID(), role: 'user', text: body.text, timestamp: Date.now() });
+        const userMessageId = crypto.randomUUID();
+        record(conversation, { id: userMessageId, role: 'user', text: body.text, timestamp: Date.now() });
         setTimeout(() => {
           emit(streamId, { type: 'response', status: 200, headers: { 'content-type': 'text/event-stream' } });
           if (mode === 'drop') { emit(streamId, { type: 'complete', error: 'Stream interrupted. Outcome unknown; check history before retrying.' }); return; }
           const terminalFailure = { kind: mode.failure, message: 'PRIVATE_PROVIDER_ERROR_CANARY', transient: false };
-          if (mode.frame === 'error') data(streamId, { type: 'error', message: 'PRIVATE_PROVIDER_ERROR_CANARY', failureKind: mode.failure, terminalFailure });
+          if (mode.runtime) data(streamId, { agentName: 'Alpha', messageId: crypto.randomUUID(), userMessageId, failureKind: mode.failure, type: 'done', fullText: 'The configured AI provider is out of credits or quota. Add credits or increase its quota, then try again.' });
+          else if (mode.frame === 'error') data(streamId, { type: 'error', message: 'PRIVATE_PROVIDER_ERROR_CANARY', failureKind: mode.failure, terminalFailure });
           else data(streamId, { type: 'done', fullText: 'PRIVATE_PROVIDER_ERROR_CANARY', agentName: 'Alpha', failureKind: mode.failure, terminalFailure });
           emit(streamId, { type: 'complete' });
         }, 0);

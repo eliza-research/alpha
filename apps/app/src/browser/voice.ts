@@ -6,7 +6,7 @@ import {browserSpeechConnection as connectionController} from './agent-speech';
 import {recordingPcmWav} from '../../../../.eliza/client-features/packages/voice/src/browser-capture/recording-pcm.ts';
 import {browserMediaVolume} from './audio-settings';
 import {audioRecord,audioMetadata,retainAudio,changeAudioDeleted,audioDeletionStatus,migrateAudio,purgeAudio} from './note-audio-store';
-import { speechError } from './speech-errors';
+import { speechError, speechCancelled, type SpeechRequestKind, type SpeechCancelReason } from './speech-errors';
 import { BrowserAudioCapture } from './audio-capture';
 import { WebPlugin } from '@capacitor/core';
 // Recordings stay local until transcription is requested. The selected Cloud or
@@ -20,8 +20,7 @@ export class BrowserVoice extends WebPlugin {
   connectionController.subscribe(()=>{const next=selected();if(next!==binding){binding=next;void this.releaseLocalSpeech();}});
   return connectionController;
  });
- private speechRequest?:AbortController;
- private speechRequestId?:string;
+ private speechRequests=new Map<SpeechRequestKind,{controller:AbortController;requestId?:string}>();
  private capture=new BrowserAudioCapture(event=>{void this.notifyListeners('recordingStopped',event);});
  private speech=new Map<string,{text:string;requestId?:string}>();
  private agentAudio=new Map<string,{blob:Blob;requestId?:string;agent?:LocalAgentProtocol;sessionId:string;cloud?:{environment:string;credentialId:string}}>();
@@ -37,11 +36,11 @@ export class BrowserVoice extends WebPlugin {
   window.addEventListener('alpha:device-settings',()=>{if(this.audio)this.audio.volume=browserMediaVolume();});
   if(this.audioChanges)this.audioChanges.onmessage=event=>{if(event.data?.deleted&&[this.audioId,this.pendingAudioId].includes(event.data.audioId))void this.stopPlayback();};
   void migrateAudio().catch(()=>{});
-  document.addEventListener('visibilitychange',()=>{if(document.hidden)void this.cancel();});
-  window.addEventListener('pagehide',()=>{void this.cancel();});
-  window.addEventListener('alpha:device-state',()=>{void this.cancel();});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)void this.cancel(undefined,'hidden');});
+  window.addEventListener('pagehide',()=>{void this.cancel(undefined,'pagehide');});
+  window.addEventListener('alpha:device-state',()=>{void this.cancel(undefined,'device-state');});
  }
- async localSpeechStatus(){return this.withAgentSpeech(async signal=>{
+ async localSpeechStatus(){return this.withAgentSpeech('status',async signal=>{
   // The entrypoint binds this facade after browser factories have registered.
   const connectionController=await this.connection;signal.throwIfAborted();
   if(connectionController.getBrowserSpeechAgent())return browserLocalSpeechStatus(()=>connectionController.getBrowserSpeechAgent(),signal);
@@ -56,7 +55,7 @@ export class BrowserVoice extends WebPlugin {
  async transcribeLocalRecording(input:{recordingId:string;requestId?:string}){
   const requestId=input.requestId;
   const clip=this.capture.get(input.recordingId);if(!clip)throw Error('Record a clip first.');
-  return this.withAgentSpeech(async signal=>{
+  return this.withAgentSpeech('stt',async signal=>{
    const connectionController=await this.connection;signal.throwIfAborted();
    // No silent fallback to Cloud or to an in-browser engine; the recording stays in this app.
    if(!connectionController.getBrowserSpeechAgent())throw speechError('local-agent-required','Connect the local agent to transcribe on this computer.');
@@ -73,7 +72,7 @@ export class BrowserVoice extends WebPlugin {
  }
  async transcribeRecording(input:{recordingId:string;requestId:string;environment:string;credentialId:string}){
   if(!devSurfacesEnabled)throw Error('Cloud voice requires the native app or a development host.');
-  return this.withAgentSpeech(async signal=>{
+  return this.withAgentSpeech('stt',async signal=>{
    const binding=await this.cloudBinding(input),clip=this.capture.get(input.recordingId);if(!clip)throw Error('Record a clip first.');
    const response=await browserCloudVoice(input,'stt',clip.blob,signal),result=await response.json();signal.throwIfAborted();binding.current();
    if(result.local!==false||typeof result.text!=='string'||!result.text.trim())throw Error('Cloud returned no usable transcript.');
@@ -82,8 +81,8 @@ export class BrowserVoice extends WebPlugin {
  }
  async synthesize(input:{text:string;requestId:string;environment:string;credentialId:string;replace?:boolean}){
   if(!devSurfacesEnabled)throw Error('Cloud voice requires the native app or a development host.');
-  if(input.replace===false&&(this.activeSpeechId||this.audio||this.pendingAudioId||this.speechRequest))throw Object.assign(Error('Playback is busy.'),{code:'playback-busy'});
-  return this.withAgentSpeech(async signal=>{
+  if(input.replace===false&&(this.activeSpeechId||this.audio||this.pendingAudioId||this.speechRequests.has('stt')||this.speechRequests.has('tts')))throw Object.assign(Error('Playback is busy.'),{code:'playback-busy'});
+  return this.withAgentSpeech('tts',async signal=>{
    const binding=await this.cloudBinding(input),response=await browserCloudVoice(input,'tts',input.text,signal),blob=await response.blob();signal.throwIfAborted();binding.current();
    if(!blob.size||blob.size>8*1024*1024||!['audio/mpeg','audio/mp3','audio/wav'].includes(blob.type.split(';')[0]))throw Error('Cloud returned no usable speech.');
    const playbackId=crypto.randomUUID();this.agentAudio.set(playbackId,{blob,requestId:input.requestId,sessionId:binding.sessionId,cloud:{environment:input.environment,credentialId:input.credentialId}});
@@ -93,16 +92,16 @@ export class BrowserVoice extends WebPlugin {
  }
  async transcribeDevelopmentCloudRecording(input:{recordingId:string;requestId:string}){
   const clip=this.capture.get(input.recordingId);if(!clip)throw Error('Record a clip first.');
-  return this.withAgentSpeech(async signal=>{const connection=await this.connection,agent=connection.getBrowserSpeechAgent();if(!agent)throw Error('Connect the developer agent first.');const result=await agent.developmentCloudSpeech({kind:'asr',audio:await recordingPcmWav(clip.blob,signal)},signal);signal.throwIfAborted();if(agent!==connection.getBrowserSpeechAgent()||result instanceof Blob)throw Error('Cloud voice selection changed.');return result;},input.requestId);
+  return this.withAgentSpeech('stt',async signal=>{const connection=await this.connection,agent=connection.getBrowserSpeechAgent();if(!agent)throw Error('Connect the developer agent first.');const result=await agent.developmentCloudSpeech({kind:'asr',audio:await recordingPcmWav(clip.blob,signal)},signal);signal.throwIfAborted();if(agent!==connection.getBrowserSpeechAgent()||result instanceof Blob)throw Error('Cloud voice selection changed.');return result;},input.requestId);
  }
  async synthesizeDevelopmentCloud(input:{text:string;requestId:string;replace?:boolean;route?:'cloud'|'direct'}){
-  if(input.replace===false&&(this.activeSpeechId||this.audio||this.pendingAudioId||this.speechRequest))throw Object.assign(Error('Playback is busy.'),{code:'playback-busy'});
-  return this.withAgentSpeech(async signal=>{const connection=await this.connection,agent=connection.getBrowserSpeechAgent(),sessionId=agent?.session?.sessionId;if(!agent||!sessionId)throw Error('Connect the developer agent first.');const blob=await agent.developmentCloudSpeech({kind:'tts',text:input.text},signal,input.route??'cloud');signal.throwIfAborted();if(agent!==connection.getBrowserSpeechAgent()||agent.session?.sessionId!==sessionId||!(blob instanceof Blob))throw new DOMException('Voice selection changed','AbortError');const playbackId=crypto.randomUUID();this.agentAudio.set(playbackId,{blob,requestId:input.requestId,agent,sessionId});while(this.agentAudio.size>8)this.agentAudio.delete(this.agentAudio.keys().next().value!);return {playbackId};},input.requestId);
+  if(input.replace===false&&(this.activeSpeechId||this.audio||this.pendingAudioId||this.speechRequests.has('stt')||this.speechRequests.has('tts')))throw Object.assign(Error('Playback is busy.'),{code:'playback-busy'});
+  return this.withAgentSpeech('tts',async signal=>{const connection=await this.connection,agent=connection.getBrowserSpeechAgent(),sessionId=agent?.session?.sessionId;if(!agent||!sessionId)throw Error('Connect the developer agent first.');const blob=await agent.developmentCloudSpeech({kind:'tts',text:input.text},signal,input.route??'cloud');signal.throwIfAborted();if(agent!==connection.getBrowserSpeechAgent()||agent.session?.sessionId!==sessionId||!(blob instanceof Blob))throw new DOMException('Voice selection changed','AbortError');const playbackId=crypto.randomUUID();this.agentAudio.set(playbackId,{blob,requestId:input.requestId,agent,sessionId});while(this.agentAudio.size>8)this.agentAudio.delete(this.agentAudio.keys().next().value!);return {playbackId};},input.requestId);
  }
  async synthesizeLocal(input:{text:string;requestId?:string}){
   const {text,requestId}=input;
   if(typeof text!=='string'||!text.trim()||text.length>16000)throw Error('Choose text between 1 and 16000 characters.');
-  return this.withAgentSpeech(async signal=>{
+  return this.withAgentSpeech('tts',async signal=>{
   const connectionController=await this.connection;signal.throwIfAborted();
   const agent=connectionController.getBrowserSpeechAgent();
   if(agent){
@@ -196,22 +195,29 @@ export class BrowserVoice extends WebPlugin {
  async remove(input:{audioId:string;noteId:string;operationId:string}){const result=await changeAudioDeleted(input.audioId,input.noteId,true,input.operationId);if(result.status==='removed'){if([this.audioId,this.pendingAudioId].includes(input.audioId))await this.stopPlayback();this.audioChanges?.postMessage({audioId:input.audioId,deleted:true});}return result;}
  async restore(input:{audioId:string;noteId:string;operationId:string}){return changeAudioDeleted(input.audioId,input.noteId,false,input.operationId);}
  async purge(input:{audioId:string;noteId:string;operationId:string}){if([this.audioId,this.pendingAudioId].includes(input.audioId))await this.stopPlayback();return purgeAudio(input.audioId,input.noteId,input.operationId);}
- private async withAgentSpeech<T>(run:(signal:AbortSignal)=>Promise<T>,requestId?:string){
-  this.speechRequest?.abort();const controller=this.speechRequest=new AbortController();this.speechRequestId=requestId;
-  try{const result=await run(controller.signal);controller.signal.throwIfAborted();return result;}finally{if(this.speechRequest===controller){this.speechRequest=undefined;this.speechRequestId=undefined;}}
+ // Only a newer request of the same kind supersedes: a readiness check never cancels transcription or synthesis.
+ private async withAgentSpeech<T>(kind:SpeechRequestKind,run:(signal:AbortSignal)=>Promise<T>,requestId?:string){
+  this.abortSpeech(kind,'superseded');const request={controller:new AbortController(),requestId};this.speechRequests.set(kind,request);
+  try{const result=await run(request.controller.signal);request.controller.signal.throwIfAborted();return result;}finally{if(this.speechRequests.get(kind)===request)this.speechRequests.delete(kind);}
  }
- async cancel(input?:{requestId?:string}){
+ private abortSpeech(kind:SpeechRequestKind,reason:SpeechCancelReason){
+  const request=this.speechRequests.get(kind);if(!request)return;this.speechRequests.delete(kind);
+  // DEV trace, enums only: which trigger cancelled an in-flight speech request.
+  if(import.meta.env.DEV)console.warn('[Alpha speech]',{kind,reason});
+  request.controller.abort(speechCancelled(kind,reason));
+ }
+ async cancel(input?:{requestId?:string},reason:SpeechCancelReason='stopped'){
   const requestId=input?.requestId;
   if(requestId!==undefined){
-   if(requestId===this.speechRequestId){this.speechRequest?.abort();this.speechRequest=undefined;this.speechRequestId=undefined;}
+   for(const [kind,request] of [...this.speechRequests])if(request.requestId===requestId)this.abortSpeech(kind,'cancelled');
    await this.stopPlayback({requestId});
    for(const [id,audio] of this.agentAudio)if(audio.requestId===requestId)this.agentAudio.delete(id);
    for(const [id,speech] of this.speech)if(speech.requestId===requestId)this.speech.delete(id);
    return;
   }
-  this.speechRequest?.abort();this.speechRequest=undefined;this.speechRequestId=undefined;this.capture.cancel();await this.stopPlayback();
+  for(const kind of [...this.speechRequests.keys()])this.abortSpeech(kind,reason);this.capture.cancel();await this.stopPlayback();
  }
- async releaseLocalSpeech(){await this.cancel();this.speech.clear();this.agentAudio.clear();this.capture.clear();}
+ async releaseLocalSpeech(){await this.cancel(undefined,'released');this.speech.clear();this.agentAudio.clear();this.capture.clear();}
 }
 function playbackWait<T>(work:Promise<T>,signal:AbortSignal):Promise<T>{
  return new Promise((resolve,reject)=>{

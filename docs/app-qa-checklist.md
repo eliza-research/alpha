@@ -220,7 +220,7 @@ Prepared camera successor: the SDK remains `985322b5`; the separate runtime cand
 | settings-16 | Problems, diagnostics and licenses | Pending | Pending | Pending |
 | settings-17 | About and actual installed version | Pending | Pending | Pending |
 | settings-18 | Reset Alpha data scoped to disposable native qualification | Pending | Pending | Pending |
-| settings-google-account-controls | Google account card, named calendar choices, theme and Back | Pending visible QA | Readable one-column card and named radio controls verified at574; Back returns to Accounts. Dark visual check pending. | Pending |
+| settings-google-account-controls | Google account card (no calendar picker: Calendar is one merged view), theme and Back | Pending visible QA | Readable one-column card and named radio controls verified at574; Back returns to Accounts. Dark visual check pending. | Pending |
 
 ## Platform and release
 

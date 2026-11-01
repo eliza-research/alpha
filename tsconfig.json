@@ -98,6 +98,13 @@
       ],
       "@elizaos/cloud-sdk/subscription-entitlement": [
         "./.eliza/client-features/packages/cloud/sdk/src/subscription-entitlement.ts"
+      ],
+      "@elizaos/contracts/stated-clock-time": ["./.eliza/client-features/packages/contracts/src/stated-clock-time.ts"],
+      "@elizaos/contracts/browser-request-grounding": [
+        "./.eliza/client-features/packages/contracts/src/browser-request-grounding.ts"
+      ],
+      "@elizaos/contracts/phone-dial": [
+        "./.eliza/client-features/packages/contracts/src/phone-dial.ts"
       ]
     }
   },

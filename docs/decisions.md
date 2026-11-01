@@ -396,3 +396,5 @@ earlier one, the earlier entry carries a dated "Amended by" note and keeps its o
   repositories meet the source-availability obligation. This **amends P-71**, which accepted the
   flagged copyleft obligations for the pilot only; AGPL dependencies are now accepted generally.
   It is an owner acceptance, not legal review.
+
+- **P-78** — [#743](https://github.com/eliza-research/alphaphone/issues/743#issuecomment-6514832799): Voice is in-chat only; hardware invocation and wake listening are deferred. Chat microphone controls remain available. Hardware hold, assistant overlays, lock-screen voice and voice shortcuts do not start capture; their implementations stay dormant. Wake-listening Settings are hidden. Startup requests the canonical listener turn-off; an unconfirmed stop is reported without blocking chat. This supersedes earlier hardware/wake voice requirements for the Alpha/Mac lane.

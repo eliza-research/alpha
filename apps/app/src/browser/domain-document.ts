@@ -53,9 +53,14 @@ export class BrowserDomainDocument {
   const raw=await this.readRaw(signal);signal?.throwIfAborted();
   const value:T=raw===null?await initial():JSON.parse(raw);signal?.throwIfAborted();return value;
  }
- async edit<T,R>(initial:()=>T|Promise<T>,edit:(data:T)=>R|Promise<R>,signal?:AbortSignal):Promise<R>{
+ async edit<T,R>(initial:()=>T|Promise<T>,edit:(data:T)=>R|Promise<R>,signal?:AbortSignal,expected?:DomainRecovery):Promise<R>{
   return this.documents.edit(this.key,async before=>{
    signal?.throwIfAborted();const legacy=this.legacy();
+   // An explicit reviewed intent must not survive an intervening write, even an ABA value change.
+   if(expected){
+    unchanged(legacy,expected.legacy);
+    if(before?.revision!==expected.snapshot?.revision||before?.raw!==expected.snapshot?.raw)throw Error('Device settings changed. Review the current choice and try again.');
+   }
    const value:Envelope=before?envelope(before.raw):{version:1,legacy,value:legacy};
    unchanged(legacy,value.legacy);
    const data:T=value.value===null?await initial():JSON.parse(value.value);

@@ -1,3 +1,4 @@
+import { externalVoiceInvocationEnabled } from '../runtime/voice-entry-policy';
 import iconCatalog from '../icon-catalog.json';
 /* Seeds, scripted replies and fixture images. Production builds resolve this
    specifier to ./fixtures.empty.js (same names, empty values). */
@@ -1139,7 +1140,6 @@ function calCals(st, api) {
       else list.push({ id: a.id || ("acct" + i), name: a.provider || "Calendar", sub: a.address || "", color: "mut" });
     });
   } else { var subs = copy("calendar").calendarSubs || []; list[0].sub = subs[0] || ""; list[1].sub = subs[1] || ""; }
-  if (st.googleCalendarName) list.push({ id: 'google', name: st.googleCalendarName, sub: 'Google Calendar', color: 'acc' });
   var prefs = st.calPrefs || {};
   return list.map(function (c) { var p = prefs[c.id] || {}; return Object.assign({}, c, { on: p.on !== false, color: p.color || c.color }); });
 }
@@ -1795,7 +1795,7 @@ registerView("browser", {
       pageContentAvailable: Object.prototype.hasOwnProperty.call(BR_PAGES, url),
       pageShareAvailable: Object.prototype.hasOwnProperty.call(BR_PAGES, url),
       pg: pg, heroNews: imgBg("news", "var(--alpha-black)"), heroEnc: imgBg("enclave", "var(--alpha-blue)"), heroBook: imgBg("nopa", "var(--alpha-web-hero-1)"), heroArt: IMG.news ? "none" : "block", isNews: pg.kind === "news", isEnc: pg.kind === "enclave", isBook: pg.kind === "book", isSearch: pg.kind === "search", isNew: pg.kind === "newtab", isGeneric: pg.kind === "generic", genLinks: (pg.links || []).map(function (l) { return { label: l.label, host: l.url, go: link(l.url) }; }),
-      host: pg.host || "Search or type address", hostCss: pg.host ? "" : "color:var(--mut)", path: pg.path, hasLock: !!pg.host,
+      host: pg.host || "Search or address", hostCss: pg.host ? "" : "color:var(--mut)", path: pg.path, hasLock: !!pg.host,
       backOp: canBack ? 1 : 0.3, fwdOp: canFwd ? 1 : 0.3, goBack: stepTab(-1), goFwd: stepTab(1),
       nTabs: st.tabs.length, openTabs: function () { set({ tabsOpen: true, menu: false, editing: false }); }, closeTabs: function () { set({ tabsOpen: false }); },
       tabsTitle: st.tabs.length === 1 ? "1 tab" : st.tabs.length + " tabs", tabCards: tabCards, newTab: newTab, tabsOpen: st.tabsOpen,
@@ -2905,10 +2905,12 @@ var NOTES_RED = "var(--alpha-notes-red)";
 var NOTES_WAVE = []; (function () { for (var i = 0; i < 56; i++) NOTES_WAVE.push(Math.round(8 + 26 * Math.abs(Math.sin(i * 0.9) * Math.cos(i * 0.37)) + (i % 3) * 3)); })();
 var NT = { pend: false, recI: null, playI: null, dicI: null, dIdx: 0, undoT: null };
 
-function notesFmt(sec) { sec = Math.max(0, Math.floor(sec)); return Math.floor(sec / 60) + ":" + pad2(sec % 60); }
+function notesFmt(sec) { if (!Number.isFinite(sec)) return ""; sec = Math.max(0, Math.floor(sec)); return Math.floor(sec / 60) + ":" + pad2(sec % 60); }
 function notesNowLabel(d) { return formatTime(d); }
 function notesFind(list, id) { for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i]; return null; }
+/* Live agent Notes (canonical-notes-ui.ts) bind api.canonicalNotes: the same view, saved through the canonical Notes client. */
 function notesUpd(api, id, patch) {
+  if (api.canonicalNotes) return api.canonicalNotes.update(id, patch);
   var s = api.get("notes");
   var list = s.list.map(function (n) { return n.id === id ? Object.assign({}, n, typeof patch === "function" ? patch(n) : patch) : n; });
   var change = { list: list };
@@ -2928,6 +2930,7 @@ function notesClose(api) {
 /** Leaves the open note as Back does: dictation and the unsent checklist item end with it, and an
  * empty new note is dropped. On a split canvas (#411) another note opens beside the list directly. */
 function notesLeave(api, next) {
+  if (api.canonicalNotes) { void api.canonicalNotes.leave(next); return {}; }
   var s = api.get("notes"); notesStopTimers();
   var n = s.open !== next && s.open === s.blankCreationId ? notesFind(s.list, s.open) : null;
   var patch = { open: next, sheet: null, playing: false, dict: false, newItem: "", blankCreationId: next === s.open ? s.blankCreationId : null };
@@ -2938,6 +2941,7 @@ function notesUndoable(api, note, idx, label) {
   api.toast(label, { undo: function () { var s = api.get("notes"); if (notesFind(s.list, note.id)) return; var l = s.list.slice(); l.splice(Math.min(idx, l.length), 0, note); api.set({ list: l }); } });
 }
 async function notesDelete(api, id) {
+  if (api.canonicalNotes) return api.canonicalNotes.remove(id, api);
   var s = api.get("notes"); notesStopTimers();
   var idx = -1; s.list.forEach(function (n, i) { if (n.id === id) idx = i; });
   if (idx < 0) return;
@@ -2948,6 +2952,7 @@ async function notesDelete(api, id) {
   notesUndoable(api, note, idx, (note.title || "Note") + " deleted");
 }
 function notesNew(api, kind) {
+  if (api.canonicalNotes) { void api.canonicalNotes.create(kind); api.set({ compose: false, q: null }); return; }
   var id = "n" + Date.now();
   var n = kind === "list" ? { id: id, kind: "list", title: "", items: [], pinned: false, when: "Now" } : { id: id, kind: "text", title: "", body: "", pinned: false, when: "Now" };
   var leave = notesLeave(api, id);
@@ -3043,7 +3048,7 @@ registerView("notes", {
       var body = card.body || (card.bullets || []).join("\n");
       if (api.canonicalNotes) {
         var content = card.title ? card.title + (body ? "\n" + body : "") : body;
-        if (await api.canonicalNotes.saveCard(content)) api.toast("Saved to Notes");
+        if (await api.canonicalNotes.saveCard(content, api)) api.toast("Saved to Notes");
         return;
       }
       var s = api.get("notes");
@@ -3113,15 +3118,15 @@ registerView("notes", {
       return hay.indexOf(q) >= 0;
     });
     shown = shown.filter(function (n) { return n.pinned; }).concat(shown.filter(function (n) { return !n.pinned; }));
-    var cards = shown.map(function (n) {
+    var cards = shown.map(function (n, order) {
       var items = (n.items || []).slice(0, 5).map(function (i) { return { t: i.t, css: i.done ? "text-decoration: line-through; color: var(--mut)" : "", box: i.done ? "background: var(--fg); box-shadow: none" : "box-shadow: inset 0 0 0 1.5px var(--mut)", done: i.done }; });
       var more = (n.items || []).length - items.length;
       var bars = NOTES_WAVE.slice(0, 22);
       return {
         id: n.id, title: n.title || "Untitled", hasTitle: true, body: n.kind === "text" ? String(n.body || "").slice(0, 180) : "", hasBody: n.kind === "text" && !!String(n.body || "").trim(),
         isList: n.kind === "list", isVoice: n.kind === "voice", isLink: n.kind === "link", items: items, more: more > 0 ? "+" + more : "", hasMore: more > 0,
-        bars: bars, dur: n.kind === "voice" ? notesFmt(n.dur) + (n.actions && n.actions.length ? " · " + n.actions.length + " to-dos" : "") : "", domain: n.domain || "",
-        pinned: !!n.pinned, current: st.open === n.id ? "true" : "false", open: function () { api.set(Object.assign(notesLeave(api, n.id), { pos: 0 })); }
+        bars: bars, dur: n.kind === "voice" ? [notesFmt(n.dur), n.actions && n.actions.length ? n.actions.length + " to-dos" : ""].filter(Boolean).join(" · ") : "", domain: n.domain || "",
+        pinned: !!n.pinned, current: st.open === n.id ? "true" : "false", order: order, open: function () { api.set(Object.assign(notesLeave(api, n.id), { pos: 0 })); }
       };
     });
     var colL = [], colR = [];
@@ -3152,7 +3157,7 @@ registerView("notes", {
         },
         items: (n.items || []).map(function (it, i) {
           return {
-            t: it.t, done: it.done, css: it.done ? "text-decoration: line-through; color: var(--mut)" : "",
+            t: it.t, done: it.done, idx: i, css: it.done ? "text-decoration: line-through; color: var(--mut)" : "",
             box: it.done ? "background: var(--fg); color: var(--bg)" : "box-shadow: inset 0 0 0 1.5px var(--mut); color: transparent",
             label: (it.done ? "Uncheck " : "Check ") + (it.t || "item"),
             toggle: function () { notesUpd(api, n.id, function (x) { return { items: x.items.map(function (y, j) { return j === i ? Object.assign({}, y, { done: !y.done }) : y; }) }; }); },
@@ -3195,7 +3200,7 @@ registerView("notes", {
       var bars = NOTES_WAVE.map(function (h, i) { return { h: h, c: i / NOTES_WAVE.length < frac ? "var(--acct)" : "var(--s3)" }; });
       var nextIdx = -1; (n.lines || []).forEach(function (l, i) { if (l.at <= pos) nextIdx = i; });
       vo = Object.assign({}, common, {
-        meta: n.when + " · " + notesFmt(n.dur), bars: bars,
+        meta: [n.when, notesFmt(n.dur)].filter(Boolean).join(" · "), bars: bars, hasPlayback: true,
         time: notesFmt(pos) + " / " + notesFmt(n.dur),
         playIcon: st.playing ? IC.pause : IC.play, playLabel: st.playing ? "Pause" : "Play", playCss: st.playing ? "" : "fill: currentColor",
         play: function () {
@@ -3214,7 +3219,7 @@ registerView("notes", {
         hasActions: (n.actions || []).length > 0,
         actCount: (n.actions || []).length === 1 ? "1 action item" : (n.actions || []).length + " action items",
         actions: (n.actions || []).map(function (a, i) {
-          return { t: a.t, css: a.done ? "text-decoration: line-through; color: var(--mut)" : "", box: a.done ? "background: var(--fg); color: var(--bg)" : "box-shadow: inset 0 0 0 1.5px var(--mut); color: transparent", label: (a.done ? "Uncheck " : "Check ") + a.t,
+          return { t: a.t, idx: i, css: a.done ? "text-decoration: line-through; color: var(--mut)" : "", box: a.done ? "background: var(--fg); color: var(--bg)" : "box-shadow: inset 0 0 0 1.5px var(--mut); color: transparent", label: (a.done ? "Uncheck " : "Check ") + a.t,
             toggle: function () { notesUpd(api, n.id, function (x) { return { actions: x.actions.map(function (y, j) { return j === i ? Object.assign({}, y, { done: !y.done }) : y; }) }; }); } };
         }),
         calIcon: n.onCal ? IC.check : IC.cal, calLabel: n.onCal ? "Added to calendar" : "Add action items to calendar", calText: n.onCal ? "On calendar" : "Add to calendar",
@@ -3268,7 +3273,7 @@ registerView("notes", {
 
     var shareSheet = st.sheet === "share" && !!n;
     return {
-      legacyNotes: true, notesTitle: "Notes", primaryNotes: true, canRecord: true,
+      notesTitle: "Notes", primaryNotes: true, canRecord: true, canCreate: true,
       searching: st.q !== null && st.q !== undefined, notSearching: st.q === null || st.q === undefined,
       q: st.q || "",
       onQ: function (e) { api.set({ q: e.target.value }); },
@@ -4220,7 +4225,7 @@ function wfRawFlows(api) { return api.get("workflows").flows || WF_SEED; }
 function wfFlows(api) { return wfRawFlows(api).filter(wfAllowed); }
 // Editing an enabled fixture must not erase retained out-of-scope user records.
 function wfMerge(api, enabled) { return wfRawFlows(api).filter(function (f) { return !wfAllowed(f); }).concat(enabled.filter(wfAllowed)); }
-function wfDeferred(api) { api.toast("This workflow is deferred from the MVP"); }
+function wfDeferred(api) { api.toast("This workflow is not available on this phone yet."); }
 function wfFind(list, id) { for (var i = 0; i < list.length; i++) if (String(list[i].id) === String(id)) return list[i]; return null; }
 function wfMatch(list, t) {
   var best = null, sc = 0;
@@ -4361,9 +4366,9 @@ registerView("workflows", {
     }
     // create
     if (/^(every|whenever|each)\b|\bevery (day|weekday|morning|evening|night|week|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\bwhenever\b|\bwhen i (get|arrive|leave)\b|automate|new workflow/.test(t)) {
-      if (wfDeferredRequest(raw)) return { text: "This workflow is deferred from the MVP." };
+      if (wfDeferredRequest(raw)) return { text: "I can't set up that workflow on this phone yet." };
       var nf = wfFromText(t, raw, api);
-      if (!wfAllowed(nf)) return { text: "This workflow is deferred from the MVP." };
+      if (!wfAllowed(nf)) return { text: "I can't set up that workflow on this phone yet." };
       return { text: "Here's the workflow. Turn it on?", card: { type: "flow", name: nf.name, short: nf.summary, flow: nf, act: { mod: "workflows", fn: "enable" } } };
     }
     return null;
@@ -4843,8 +4848,7 @@ registerView("settings", {
           ] },
           { rows: ST_PERMS.map(function (pm) { var n = Object.keys(st.perms[pm[0]] || {}).filter(function (k) { return st.perms[pm[0]][k] && (k === "alpha" || isMvpView(k)); }).length; return stNav({ d: IC[pm[2]], label: pm[1], val: n === 1 ? "1 app" : n + " apps", go: function () { set({ perm: pm[0] }); } }); }) },
           { rows: [
-            stNav({ d: IC.stList, label: "Activity", val: logN + " today", go: function () { set({ log: true }); } }),
-            stNav({ d: IC.flow, label: "Workflow runs", go: function () { api.open("workflows"); } })
+            stNav({ d: IC.stList, label: "Activity", val: logN + " today", go: function () { set({ log: true }); } })
           ] },
           { rows: [
             // No "Wipe memory" action: there is no reviewed memory-erase path to call, so none is offered.
@@ -5018,8 +5022,7 @@ registerView("settings", {
     } else if (P === "privacy" && st.log) {
       var lg = ST_LOG.slice(); if (api.get("browser").booked && BR_LINKS.venue) lg.unshift(["now", "Booked " + BR_LINKS.venue + " for you (confirmed)", "globe"]);
       p2 = page("Activity", { back: function () { set({ log: false }); }, groups: [
-        { rows: lg.map(function (l) { return stNav({ d: IC[l[2]] || IC.check, label: l[1], val: l[0], noChev: true, go: function () {} }); }) },
-        { rows: [stNav({ d: IC.flow, label: "Workflow runs", go: function () { api.open("workflows"); } })] }
+        { rows: lg.map(function (l) { return stNav({ d: IC[l[2]] || IC.check, label: l[1], val: l[0], noChev: true, go: function () {} }); }) }
       ] });
     }
     if (p2) { p2.z = 6; stack.push(p2); }
@@ -5094,6 +5097,12 @@ var BASE = {
 };
 
 class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    // React state updaters can run before mount-time history restoration.
+    // Give each shell its own complete state instead of relying on S() defaults.
+    this.state = structuredClone(BASE);
+  }
   componentDidMount() {
     this.G = {}; this.I = {};
     var self = this;
@@ -5240,7 +5249,7 @@ class Component extends DCLogic {
     // The development stand-in for Android's shade; product builds have no Alpha shade (#416).
     if (n === "shade") return this.setState(Object.assign({}, home, { shade: this.simulatedShade() }));
     if (n === "sheet" || n === "full") return this.setState(Object.assign({}, home, { chat: n }));
-    if (n === "voice") { this.setState(home); this.later(function () { self.startVoice(); }, 60); return; }
+    if (n === "voice") { if (!externalVoiceInvocationEnabled) return; this.setState(home); this.later(function () { self.startVoice(); }, 60); return; }
     if (n === "heads") { this.setState(home); this.later(function () { self.showHeads(); }, 60); return; }
     var parts = String(n).split(":"); var k = parts[0], sub = parts[1];
     if (VIEWS[k]) {
@@ -5283,7 +5292,7 @@ class Component extends DCLogic {
     this.setState(Object.assign(this.shellNavigate({ type: "home", assistant: chat === "sheet" || chat === "full" ? chat : "input" }), { shade: false, hint: false, heads: false }));
   }
   openView(k, patch, chat, opts) {
-    if (!isMvpView(k)) return this.toast("This app is deferred from the MVP");
+    if (!isMvpView(k)) return this.toast("This app is not available on this phone yet.");
     // openView(view, { keepState: true }) is shorthand for the keepState option.
     if (patch && patch.keepState === true && Object.keys(patch).length === 1) { opts = Object.assign({}, opts, { keepState: true }); patch = null; }
     // keepState returns to a view exactly as it was left (open note, event, email or tab and its
@@ -5447,7 +5456,7 @@ class Component extends DCLogic {
   }
   send(textArg) {
     var S = this.S(); var text = String(textArg != null ? textArg : S.draft).trim(); if (!text) return;
-    if (deferredMvpPrompt(text)) return this.toast("This action is deferred from the MVP");
+    if (deferredMvpPrompt(text)) return this.toast("This action is not available on this phone yet.");
     var id = Date.now(); var self = this;
     if (textArg == null && S.editCard) { // composer holds an edited draft card: send it as the draft, not as a question
       var em = S.msgs.filter(function (x) { return x.id === S.editCard; })[0];
@@ -5471,7 +5480,7 @@ class Component extends DCLogic {
   }
   cardAct(m) {
     var S = this.S(); var c = m.card || {}; var self = this;
-    if ((c.act && DEFERRED_MVP_VIEWS.has(c.act.mod)) || (c.go && DEFERRED_MVP_VIEWS.has(c.go.view))) return this.toast("This action is deferred from the MVP");
+    if ((c.act && DEFERRED_MVP_VIEWS.has(c.act.mod)) || (c.go && DEFERRED_MVP_VIEWS.has(c.go.view))) return this.toast("This action is not available on this phone yet.");
     var markDone = function () { self.setState({ msgs: self.S().msgs.map(function (x) { return x.id === m.id ? Object.assign({}, x, { card: Object.assign({}, x.card, m.card, { done: true }) }) : x; }) }); };
     if (c.act && VIEWS[c.act.mod] && VIEWS[c.act.mod].actions && VIEWS[c.act.mod].actions[c.act.fn]) {
       if (c.done) { if (c.go) this.openView(c.go.view, c.go.patch, c.go.chat || "hidden"); return; }
@@ -5620,7 +5629,7 @@ class Component extends DCLogic {
       [IC.back, "Swipe in from either edge · back one step inside the app"],
       [IC.down, "Swipe down on launcher Home, or tap Notifications · Android notifications and quick settings"],
       [IC.half, "Swipe up on Home · chat. Drag its grabber to resize"],
-      [IC.mic, "Side key: hold · talk, tap · lock"]
+      [IC.lock, "Side key: tap · lock or wake"]
     ].map(function (l) { return { d: l[0], t: l[1] }; });
 
     var showPill = isOn && S.chat === "hidden" && !voiceOn && !imm.noPill;
@@ -5688,6 +5697,7 @@ class Component extends DCLogic {
       pillSw: this.sw(function (dx, dy) { if (dy < 0) self.setState({ chat: "sheet" }); }),
       voiceOn: voiceOn, vShow: vShow, vRing: S.voice === "listening" || S.voice === "speaking",
       vTextCss: S.voice === "thinking" ? "color:var(--mut)" : "", vBarColor: S.voice === "thinking" ? "var(--line)" : "var(--acc)", vPlay: S.voice === "thinking" ? "paused" : "running", bars: bars,
+      externalVoiceInvocation: externalVoiceInvocationEnabled,
       startVoice: function () { self.startVoice(); }, stopVoice: function () { self.stopVoice(); },
       voiceToType: function () { var vt = self.S().vtext; self.stopVoice(); self.setState({ chat: self.S().screen === "home" ? "sheet" : self.S().chat, draft: vt }); },
       headsSw: this.sw(function () { self.setState({ heads: false }); }),
@@ -5697,7 +5707,7 @@ class Component extends DCLogic {
       headsReply: function () { self.setState({ heads: false }); if (HEADS) self.agentSay("Here's a reply to " + HEADS.who.split(" ")[0] + ".", { type: "draft", to: HEADS.who, body: HEADS.reply, act: { mod: "messages", fn: "sendDraft" }, pid: HEADS.pid }); },
       fireHeads: function () { var S2 = self.S(); if (S2.screen !== "home") self.unlock(); self.later(function () { self.showHeads(); }, 80); },
       unlock: function () { self.unlock(); }, wake: function () { self.setState({ screen: "lock" }); },
-      pDown: function (e) { e.stopPropagation(); self.pLong = false; clearTimeout(self.pT); self.pT = setTimeout(function () { self.pLong = true; self.startVoice(); }, 550); },
+      pDown: function (e) { e.stopPropagation(); self.pLong = false; clearTimeout(self.pT); if (externalVoiceInvocationEnabled) self.pT = setTimeout(function () { self.pLong = true; self.startVoice(); }, 550); },
       pUp: function (e) {
         e.stopPropagation(); clearTimeout(self.pT); if (self.pLong) return; self.pLong = true;
         var now = Date.now();

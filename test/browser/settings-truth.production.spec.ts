@@ -10,10 +10,12 @@ test.beforeEach(async({},testInfo)=>{test.skip(testInfo.project.name!=='producti
 
 type Fixture={snapshot?:Record<string,unknown>;drop?:string[];subscription?:'credits'|'active'|'canceled';agentStartFailure?:boolean;
  /** Exact USD organization credit balance in the billing snapshot (data.v2.balance); absent when unset. */
- credits?:string};
+ credits?:string;
+ /** The resident's providerStatus answer; tests change truth.state.provider to model a later binding. */
+ provider?:Record<string,unknown>};
 async function nativeStub(page:Page,fixture:Fixture={}){
  await installResidentAgentPlugin(page);
- await page.addInitScript(({snapshot,drop,subscription,agentStartFailure,credits})=>{
+ await page.addInitScript(({snapshot,drop,subscription,agentStartFailure,credits,provider})=>{
   const w=window as any;w.androidBridge={};
   localStorage.setItem('alpha.startup-permissions.v1',JSON.stringify({dismissed:true,attempted:{}}));
   const now=Date.now(),store=new Map<string,string>();
@@ -32,7 +34,7 @@ async function nativeStub(page:Page,fixture:Fixture={}){
    status:{permissionGranted:true,appEnabled:true,interruption:'all',scope:'alpha-phone',channels:[{id:'c-reminders',name:'Reminders',importance:4,blocked:false,groupBlocked:false},{id:'c-results',name:'Scheduled digest results',importance:3,blocked:false,groupBlocked:false}]} as Record<string,any>,
    cross:{revision:'r1',enabled:false,paused:false,accessGranted:false,connected:false,history:true,apps:[]} as Record<string,unknown>,
    history:[{appLabel:'Stub Mail',state:'posted',at:now-60_000}] as unknown[],
-   items:[] as unknown[],openFails:false,unspecific:[] as string[],unavailable:[] as string[],torch:true,shadeOutcome:'opened' as string,
+   items:[] as unknown[],openFails:false,unspecific:[] as string[],unavailable:[] as string[],torch:true,shadeOutcome:'opened' as string,provider:provider??{provider:'elizacloud',configured:false},
   };
   for(const key of drop)delete state.snapshot[key];
   w.truth={calls:[] as any[],shared:[] as string[],state,resume:()=>listeners.filter(l=>l.plugin==='DailyApps'&&l.event==='appResumed').forEach(l=>l.callback({}))};
@@ -67,7 +69,7 @@ async function nativeStub(page:Page,fixture:Fixture={}){
      const owned=resident.answer(method,input);if(owned)return owned;
      if(agentStartFailure&&method==='start')throw Error('Synthetic resident startup failure');
      if(method==='request'){const id=residentId;return {status:200,body:JSON.stringify(input.path==='/api/auth/me'?{identity:{id,kind:'owner'},access:{role:'OWNER',mode:'local'}}:input.path==='/api/agents'?{agents:[{id,name:'Alpha',status:'running'}]}:input.path==='/api/conversations'?{conversations:[]}:{} )};}
-     return method==='providerStatus'?{configured:false}:{packaged:true,state:'stopped',serviceActive:false,socketListening:false};
+     return method==='providerStatus'?state.provider:{packaged:true,state:'stopped',serviceActive:false,socketListening:false};
     }
     if(plugin==='AlphaConnection'){
      if(method==='secureRead')return {value:store.get(input.slot)??null};
@@ -104,7 +106,7 @@ async function nativeStub(page:Page,fixture:Fixture={}){
     throw Error('Unexpected native operation '+plugin+'.'+method);
    },
   };
- },{snapshot:fixture.snapshot??{},drop:fixture.drop??[],subscription:fixture.subscription,agentStartFailure:fixture.agentStartFailure,credits:fixture.credits});
+ },{snapshot:fixture.snapshot??{},drop:fixture.drop??[],subscription:fixture.subscription,agentStartFailure:fixture.agentStartFailure,credits:fixture.credits,provider:fixture.provider});
 }
 const app=(page:Page)=>page.locator('[data-alpha-layer="app"]');
 const current=(page:Page)=>page.locator('[data-settings-page]:not([inert])').last();
@@ -115,7 +117,11 @@ const callNames=(page:Page)=>page.evaluate(()=>[...new Set((window as any).truth
 /** Production Android starts the resident by itself (P-43). Offline with a saved sign-in, nothing gates it and no dialog opens. */
 async function start(page:Page){
  await page.goto('/');
- if(await page.evaluate(()=>!!(window as any).truth))await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
+ if(await page.evaluate(()=>!!(window as any).truth)){
+  await expect.poll(()=>page.evaluate(()=>(window as any).truth.calls.some((call:any)=>call.plugin==='Agent'&&call.method==='request'&&call.input.path==='/api/auth/me'))).toBe(true);
+  await expect(page.locator('.alpha-cloud-sign-in')).toHaveCount(0);
+  await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
+ }
  await page.getByRole('button',{name:'Settings',exact:true}).waitFor({state:'visible'});
 }
 async function openSettings(page:Page){
@@ -199,7 +205,7 @@ test('switches Android does not report are shown as a handoff, never as off, and
  const about=await current(page).innerText();
  expect(about).toMatch(/Alpha Phone\s*0\.1\.0\s/);
  expect(about).not.toContain('Installed or last updated');
- expect(about).toMatch(/Updates\s*Alpha does not check for updates/);
+ expect(about).not.toMatch(/Updates|Alpha does not check for updates|Runtime/);
 });
 
 test('every Settings page shows native facts or an honest handoff, with no fixture value or simulated switch',async({page})=>{
@@ -223,9 +229,13 @@ test('every Settings page shows native facts or an honest handoff, with no fixtu
   'Sound & vibration':[/Media\s*40%/,/Ring\s*100%/,/Alarm\s*0%/,/Do Not Disturb\s*No DND suppression reported/],
   'Notifications':[/Reminders\s*Channel allowed/,/Scheduled digest results\s*Channel allowed/],'Battery':[/64%/,/On battery/,/Battery saver\s*Off/],
   'Privacy & data':[/Device location\s*On/,/Microphone\s*Allowed for Alpha/,/Camera\s*Not allowed/],
-  'About':[/Stub phone/,/Alpha Phone\s*0\.1\.0 \(7\)/,/Installed or last updated/,/Updates\s*Alpha does not check for updates/,/Android\s*16/,/Security patch\s*2026-09-05/,/Inference model\s*Not reported by agent/],
-  // Telegram, Discord and the other deferred connectors cannot be connected in this build.
-  'Connections':[/Other connectors\s*Not available in this version/],'Models':[/Inference model\s*Not reported by agent/],
+  'About':[/Stub phone/,/Alpha Phone\s*0\.1\.0 \(7\)/,/Installed or last updated/,/Android\s*16/,/Security patch\s*2026-09-05/,/Inference model\s*Not reported by agent/],
+  'Connections':[/Manage Google accounts/],'Models':[/Inference model\s*Not reported by agent/],
+ };
+ // Dead-end and negative rows the Settings cleanup removed.
+ const gone:Record<string,RegExp[]>={
+  'About':[/Updates|Alpha does not check for updates/,/Runtime/,/Android app/],'Connections':[/Other connectors|Not available in this version/],
+  'Notifications':[/Delivery timing|Android battery policies may delay alerts/],'Calendar':[/Display only|Agent access is reviewed separately/],
  };
  await expect(current(page).getByRole('button',{name:'Developer',exact:true})).toHaveCount(0);
  const report:string[]=[`Settings: ${top.replace(/\s+/g,' ')}`];
@@ -242,6 +252,7 @@ test('every Settings page shows native facts or an honest handoff, with no fixtu
   noFixtures(text,label);
   if(label==='Privacy & data')await expect(current(page).getByText('Memory',{exact:true})).toHaveCount(0);
   for(const pattern of shown[label]||[])expect(text,`${label} shows ${pattern}`).toMatch(pattern);
+  for(const pattern of gone[label]||[])expect(text,`${label} no longer shows ${pattern}`).not.toMatch(pattern);
   if(label==='About'){await expect(current(page).getByRole('button',{name:'Problem log',exact:true})).toBeVisible();await expect(current(page).getByRole('button',{name:'Export diagnostics',exact:true})).toBeVisible();}
   // A switch must be backed by app-owned state; the email preference is exercised here and across reload below.
   const switches=await current(page).locator('[role="switch"],[aria-pressed],[aria-checked],input[type="checkbox"],input[type="range"]').evaluateAll(list=>list.map(e=>e.getAttribute('aria-label')||e.textContent?.trim()||e.tagName));
@@ -384,10 +395,11 @@ test('the browser build of Settings shows no fixture value and no radio or senso
   noFixtures(text,label);
   if(label==='Privacy & data')await expect(current(page).getByText('Memory',{exact:true})).toHaveCount(0);
   expect(text).not.toMatch(/Wi-Fi\s*(On|Off)\b|Bluetooth\s*(On|Off)\b|Airplane mode\s*(On|Off)\b/);
-  if(label==='Connections'){expect(text).toMatch(/Other connectors\s*Not available in this version/);expect(text).not.toMatch(/Other connectors\s*Not connected/);}
+  if(label==='Connections')expect(text).not.toMatch(/Other connectors|Not available in this version/);
+  if(label==='Calendar')expect(text).not.toMatch(/Display only|Agent access is reviewed separately/);
   if(label==='Notifications'){
    expect(text).toContain('In-app alerts enabled');
-   expect(text).toContain('Shown while Alpha is open');
+   expect(text).not.toMatch(/Delivery timing|Shown while Alpha is open/);
    expect(text).not.toMatch(/App notifications allowed|Channel allowed|Android battery policies/);
    expect(text).not.toMatch(/Manage development notification access|selected-app collection|other-app collection|Choose notification apps|Hide app choices|Local metadata history|local metadata history|Notification privacy/);
    await expect(current(page).getByRole('button',{name:'Manage Reminders',exact:true})).toBeVisible();
@@ -406,7 +418,7 @@ test('the browser build of Settings shows no fixture value and no radio or senso
  }
  await test.info().attach('browser-settings-rows',{body:report.join('\n\n'),contentType:'text/plain'});
  const about=report.find(row=>row.startsWith('About: '))||'';
- expect(about).toMatch(/Updates Alpha does not check for updates/);
+ expect(about).not.toMatch(/Updates|Alpha does not check for updates|Runtime/);
  expect(about).not.toContain('Installed or last updated');
  // The browser build is the standalone app: no Alpha shade, no tiles and no notifications button (#416, #417).
  await page.goto('/');
@@ -417,6 +429,31 @@ test('the browser build of Settings shows no fixture value and no radio or senso
  await drag(page,{x:206,y:420},240);
  await expect(alphaShade(page)).toHaveCount(0);
  expect(await page.locator('[aria-pressed]').evaluateAll(list=>list.map(e=>e.getAttribute('aria-label')))).toEqual([]);
+});
+
+// The audit's demo contradiction: About said "Not reported by agent" while Models named the model.
+// Both read the provider the resident reports when Settings refreshes, so a binding that lands after
+// Settings first opened is shown the same way on both pages.
+test('About and Models report the same inference model after the provider binds',async({page},info)=>{
+ const row=async()=>/Inference model\s*([^\n]+)/.exec(await current(page).innerText())?.[1];
+ await nativeStub(page,{provider:{provider:'elizacloud',configured:false}});
+ await openSettings(page);
+ await current(page).getByRole('button',{name:'About',exact:true}).click();
+ await expect.poll(row).toBe('Not reported by agent');
+ // The binding lands later; Settings reads the provider again when the app resumes.
+ await set(page,{provider:{provider:'elizacloud',configured:true,model:'cerebras/qwen-3.8-27b'}});
+ await resume(page);
+ await page.getByRole('button',{name:'Back to Settings',exact:true}).click();
+ await current(page).getByRole('button',{name:'Models',exact:true}).click();
+ await expect(current(page)).toContainText(/Inference provider\s*Eliza Cloud/);
+ await expect.poll(row).not.toBe('Not reported by agent');
+ const models=await row();
+ await page.screenshot({path:info.outputPath('models.png'),animations:'disabled'});
+ await page.getByRole('button',{name:'Back to Settings',exact:true}).click();
+ await current(page).getByRole('button',{name:'About',exact:true}).click();
+ try{await expect.poll(row,{timeout:5000}).toBe(models);}
+ finally{await page.screenshot({path:info.outputPath('about.png'),animations:'disabled'});}
+ expect(models).toBe('Eliza Cloud · qwen-3.8-27b (Cerebras)');
 });
 
 test('Settings › Eliza Cloud account & plan reports the verified plan and opens explicit code entry',async({page})=>{
@@ -433,6 +470,10 @@ test('Settings › Eliza Cloud account & plan reports the verified plan and open
  const account=page.getByRole('dialog',{name:'Eliza Cloud account & plan',exact:true});
  const credits=account.getByRole('region',{name:'Membership and credits',exact:true});
  await expect(credits.getByRole('textbox',{name:'Membership code',exact:true})).toBeFocused();
+ // Owner decision (2026-10-30): the plan sheet shows only account, plan and billing. Agent status,
+ // conversation history and phone-action receipts stay in Settings › Agent connection.
+ await expect(account.getByRole('region',{name:'Agent status',exact:true})).toHaveCount(0);
+ for(const text of ['Running on this device','Reconnect agent','Conversation history','Phone action history'])await expect(account).not.toContainText(text);
  // The billing snapshot's zero balance is shown as zero, never as unavailable or as a funding block.
  await expect(credits.locator('.alpha-membership-amount')).toHaveText('$0.00USD');
  await expect(credits.getByText('Not available',{exact:true})).toHaveCount(0);
@@ -450,13 +491,12 @@ for(const subscription of ['credits','active','canceled'] as const)test(`Setting
  const plan=current(page),redeem=plan.getByRole('button',{name:'Redeem code',exact:true});
  if(subscription==='credits'){
   await expect(plan.getByText('Eliza Cloud credits',{exact:true})).toBeVisible();
-  await expect(redeem).toHaveCount(0);
   await expect(plan.getByRole('button',{name:'Manage plan',exact:true})).toBeVisible();
- }else{
-  await expect(redeem).toBeVisible();await redeem.click();
-  await expect(page.getByLabel('Membership code',{exact:true})).toBeVisible();
-  await expect(page.getByRole('dialog',{name:'Eliza Cloud account & plan',exact:true}).getByRole('region',{name:'Membership and credits',exact:true}).getByRole('button',{name:'Redeem',exact:true})).toBeVisible();
  }
+ // A membership code is an alternative to credits: Cloud redeems it for credit-funded accounts too.
+ await expect(redeem).toBeVisible();await redeem.click();
+ await expect(page.getByLabel('Membership code',{exact:true})).toBeVisible();
+ await expect(page.getByRole('dialog',{name:subscription==='credits'?'Eliza Cloud account':'Eliza Cloud account & plan',exact:true}).getByRole('region',{name:'Membership and credits',exact:true}).getByRole('button',{name:'Redeem',exact:true})).toBeVisible();
  expect(await page.evaluate(()=>(window as any).truth.calls.filter((c:any)=>c.plugin==='AlphaConnection'&&c.method==='request'&&new URL(c.input.url).pathname==='/api/v1/subscription/redeem').length)).toBe(0);
 });
 

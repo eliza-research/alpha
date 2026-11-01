@@ -101,7 +101,7 @@ adapterTest('actual adapter starts existing Cartesia route without local preflig
   assert.equal(h.renderChat().lines[0].t,'Listening…');
   assert.match(h.renderChat().cloudDisclosureText,/Cartesia.*direct Cerebras/);
   assert.doesNotMatch(h.renderChat().cloudDisclosureText,/Cloud account|plan allowance/);
-  assert.equal(h.renderChat().voiceDetails,true);
+  assert.equal(h.renderChat().voiceDetails,false);
   h.directOptions.onState('transcribing');
   assert.equal(h.renderChat().lines[0].t,'Transcribing…');
   h.directOptions.onError(Error('Synthetic owned transport failure'));
@@ -167,18 +167,18 @@ adapterTest('Cloud conversation keeps concise phases and accessible route detail
     recheck(){}
   };
   await h.shell.startVoice();
-  assert.equal(h.initialView.state,'starting');assert.equal(h.initialView.voiceDetails,true);
+  assert.equal(h.initialView.state,'starting');assert.equal(h.initialView.voiceDetails,false);
   assert.match(h.initialView.cloudDisclosureText,/uploads recordings.*plan allowance/);
   for(const [phase,caption] of [['listening','Listening…'],['transcribing','Transcribing…'],['thinking','Thinking…'],['preparing-speech','Thinking…'],['speaking','Speaking…']]){
     h.batchOptions.onState({phase});const view=h.renderChat();
     assert.equal(view.lines[0].t,caption);
-    assert.equal(view.voiceDetails,true);
+    assert.equal(view.voiceDetails,false);
     assert.match(view.cloudDisclosureText,/uploads recordings and reply text.*account.*plan allowance.*Cartesia/);
     assert.equal(typeof view.stop,'function');assert.equal(typeof view.keyboard,'function');
   }
   h.batchOptions.onState({phase:'idle'});
   assert.equal(h.renderChat().lines[0].t,'Voice conversation stopped.');
-  assert.equal(h.renderChat().voiceDetails,true);
+  assert.equal(h.renderChat().voiceDetails,false);
 });
 adapterTest('typed native 503 stays actionable and diagnosable across rendering',async t=>{
   const failure=Object.assign(new Error('PRIVATE_PROVIDER_BODY'),{code:'voice-http-503'});

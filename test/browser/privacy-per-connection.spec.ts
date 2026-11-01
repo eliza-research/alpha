@@ -178,7 +178,7 @@ test('provider key never reaches renderer state, bridge payloads or test output'
   expect(dump).not.toContain('synthetic-provider-key');
 });
 
-test('Activity shows an empty connect state and Workflow runs opens Workflows', async ({ page }) => {
+test('Activity shows an empty connect state and no Workflow runs row', async ({ page }) => {
   await page.goto('/');
   await openSettings(page, 'Privacy & data');
   await expect(page.getByText(REDACTION.offline, { exact: true })).toBeVisible();
@@ -187,15 +187,14 @@ test('Activity shows an empty connect state and Workflow runs opens Workflows', 
   const text = await page.locator('body').innerText();
   for (const row of fixtureActivity) expect(text).not.toMatch(row);
   await expect(page.locator('html')).toHaveAttribute('data-active-view', 'settings');
-  await page.getByRole('button', { name: 'Workflow runs', exact: true }).click();
-  await expect(page.locator('html')).toHaveAttribute('data-active-view', 'workflows');
+  await expect(page.getByRole('button', { name: 'Workflow runs', exact: true })).toHaveCount(0);
 });
 
-test('Workflow runs on the privacy page opens Workflows, not Android settings', async ({ page }) => {
+test('Privacy & data has no Workflow runs row: runs live in the Workflows app', async ({ page }) => {
   await page.goto('/');
   await openSettings(page, 'Privacy & data');
-  await page.getByRole('button', { name: 'Workflow runs', exact: true }).click();
-  await expect(page.locator('html')).toHaveAttribute('data-active-view', 'workflows');
+  await expect(page.getByRole('button', { name: 'Activity', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Workflow runs', exact: true })).toHaveCount(0);
 });
 
 const proposalReads = (page: Page) => page.evaluate(() => (window as any).privacyFixture.calls.filter((call: any) => call.plugin === 'Agent' && call.input?.path === '/api/client-devices/proposals').length);

@@ -226,7 +226,7 @@ test('adapter: new items and widened grants reload a fresh first page; agent rea
  assert.match(execFileSync(process.execPath,['--import=tsx',join(root,'test/fixtures/photo-library-adapter.mjs')],{cwd:root,encoding:'utf8',timeout:120000}),/PASS photo library adapter/);
 });
 
-test('library operations are registered in Alpha device actions: Photos-only, negotiated, journaled and receipted',()=>{
+test('library operations are registered in Alpha device actions: Photos-only, negotiated, journaled and receipted',async()=>{
  const root=resolve(import.meta.dirname,'..');
  const script=`const d=await import(${JSON.stringify(join(root,'apps/app/src/runtime/device-actions.ts'))});
  const out={};
@@ -242,10 +242,14 @@ test('library operations are registered in Alpha device actions: Photos-only, ne
  assert.equal(out.home,'Open Photos > Device library to review this action.');
  assert.equal(out.locked,'Unlock the phone to review this action.');
  assert.equal(out.photos,null);
- const actions=readFileSync('apps/app/src/runtime/device-actions.ts','utf8');
- assert.match(actions,/if\(isLibraryOperation\(op\)&&!this\.credential\.capabilities\?\.includes\(PHOTO_LIBRARY_CAPABILITY\)\)throw/);
- assert.match(actions,/photoLibraryResult=validateLibraryResult\(p\.operation,result\.photoLibraryResult\)/);
- assert.equal((actions.match(/photoLibraryResult\?\{result:photoLibraryResult\}/g)||[]).length,3,'approve, sync and reconcile receipts');
+ const {DeviceActions}=await import('./fixtures/device-action-policy.mjs');
+ const proposal={id:'photo',digest:'a'.repeat(64),state:'pending',expiresAt:new Date(Date.now()+60000).toISOString(),subjectUserId:'owner',requestedBy:'agent',action:'device_action',payload:{action:'device_action',version:1,installationId:'device',enrollmentId:'enrollment',operation:{type:'photo_library_search',limit:5}}};
+ for(const enabled of [false,true]){
+  let writes=0;
+  const actions=new DeviceActions({ownerId:'owner',agentId:'agent',origin:'https://agent.example',sessionId:'session'},{installationId:'device',enrollmentId:'enrollment',key:'b'.repeat(64),capabilities:enabled?['photos.library.v1']:[]},'c'.repeat(64),async(_path,body)=>{if(body!==undefined){writes++;throw Error('No approval authorized');}return {proposals:[proposal]};},{},async()=>{throw Error('No effect authorized');});
+  const items=await actions.pendingReview({view:'photos',revision:1,sensitive:false},new AbortController().signal);
+  assert.equal(items.some(item=>item.proposal!==null),enabled);assert.equal(writes,0);
+ }
  const executor=readFileSync('apps/app/src/prototype/agent-adapter.ts','utf8');
  assert.match(executor,/if\(isLibraryOperation\(operation\)\)\{[\s\S]*deviceLibraryAgent\(\)[\s\S]*expectedContext\.view!=='photos'/);
  const journal=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaActionJournal.java','utf8');

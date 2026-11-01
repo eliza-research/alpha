@@ -283,7 +283,7 @@ test("standalone SMS stays unavailable at the UI and agent boundaries", async ()
   assert.equal((connection.match(/if\(aospImage&&.*includes\(SMS_SEND_CAPABILITY\)/g)||[]).length,1);
   assert.match(connection.slice(connection.indexOf('async function deviceCapabilities('),connection.indexOf("return capabilities.join(',');")),/if\(aospImage&&agent\.includes\(SMS_SEND_CAPABILITY\)\)capabilities\.push\(SMS_SEND_CAPABILITY\);/);
   assert.equal((connection.match(/await deviceCapabilities\(/g)||[]).length,3);
-  assert.match(read("apps/app/src/runtime/device-actions.ts"),/claimed.providerIdempotencyKey!==operationId/);
+  assert.match(read(".eliza/client-features/plugins/plugin-assistant/src/services/device-actions/client-coordinator.ts"),/claimed\.providerIdempotencyKey\s*!==\s*operationId/);
   assert.match(read("apps/app/src/prototype/agent-adapter.ts"),/if\(!aospImage\|\|expectedContext.sensitive/);
   const telephony = read("apps/app/src/runtime/aosp-telephony.ts");
   assert.doesNotMatch(telephony.replace(/\/\*[\s\S]*?\*\//g, ""), /location\.|localStorage|testMocksEnabled/, "nothing outside the native image capability turns messages on");

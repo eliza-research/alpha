@@ -1,6 +1,7 @@
 import {calendarSourceKey,type AgentCalendar,type AgentCalendarSyncReview} from './agent-calendar';
-import { calendarSyncHost } from "./calendar-sync-host";
-import { googleConnectionController } from "./google-connection-ui";
+import { calendarSyncHost, googleCalendarSyncDestinations } from "./calendar-sync-host";
+import { saveGoogleCalendarSelection } from "./google-calendar-selection";
+import { googleCalendarAccountKey } from "./google-connection-ui";
 import { holdPhoneInert } from "./modal-inert";
 import type { CalendarSyncReview } from "./calendar-sync-host";
 /** Explicit destination review. Opening Settings does not enable sync or dispatch provider writes. */
@@ -31,6 +32,10 @@ export function openCalendarSyncSettings(canonical?:CanonicalCalendarSyncSetting
 	summary.setAttribute("aria-live", "polite");
 	summary.textContent = "Sync stays off until you review and enable it.";
 	const details = document.createElement("p");
+	const destinations = document.createElement("div");
+	destinations.setAttribute("role", "group");
+	destinations.setAttribute("aria-label", "Google calendars for sync");
+	destinations.style.cssText = "display:grid;gap:8px;margin:8px 0";
 	const footer = document.createElement("footer");
 	const chooseCalendar = document.createElement("button"),
 		reviewButton = document.createElement("button"),
@@ -49,7 +54,7 @@ export function openCalendarSyncSettings(canonical?:CanonicalCalendarSyncSetting
 	const primary = document.createElement("div");
 	primary.style.cssText = "display:flex;flex-wrap:wrap;gap:8px";
 	primary.append(chooseCalendar, reviewButton, enable, sync, pause);
-	content.append(title, description, summary, details, primary);
+	content.append(title, description, summary, details, destinations, primary);
 	footer.append(close);
 	dialog.append(content, footer);
 	const prior = document.activeElement as HTMLElement | null,
@@ -57,6 +62,7 @@ export function openCalendarSyncSettings(canonical?:CanonicalCalendarSyncSetting
 	let alive = true,
 		busy = false,
 		review: CalendarSyncReview | undefined;
+	const lifetime = new AbortController();
 	const update = () => {
 		if (!alive) return;
 		const state = calendarSyncHost.snapshot();
@@ -79,6 +85,7 @@ export function openCalendarSyncSettings(canonical?:CanonicalCalendarSyncSetting
 	const finish = () => {
 		if (!alive) return;
 		alive = false;
+		lifetime.abort();
 		unsubscribe();
 		calendarSyncHost.cancel();
 		window.removeEventListener("alpha-back", back, true);
@@ -111,11 +118,36 @@ export function openCalendarSyncSettings(canonical?:CanonicalCalendarSyncSetting
 			update();
 		}
 	};
-	chooseCalendar.onclick = () => {
-		if (busy || calendarSyncHost.snapshot().running) return;
-		finish();
-		googleConnectionController.open();
-	};
+	// The sync destination is the only Google calendar choice: Calendar itself always shows every calendar.
+	chooseCalendar.onclick = () =>
+		void run(async () => {
+			destinations.replaceChildren();
+			const offered = await googleCalendarSyncDestinations(lifetime.signal);
+			if (!alive) return;
+			if (!offered.length) {
+				details.textContent =
+					"No Google calendar accepts Calendar changes. Approve Calendar sync in Settings › Google accounts.";
+				return;
+			}
+			for (const destination of offered) {
+				const choice = document.createElement("button");
+				choice.textContent =
+					destination.name === destination.account
+						? destination.name
+						: `${destination.name} · ${destination.account}`;
+				choice.onclick = () => {
+					const key = googleCalendarAccountKey();
+					destinations.replaceChildren();
+					review = undefined;
+					details.textContent =
+						key && saveGoogleCalendarSelection(key, destination)
+							? `Sync destination: ${choice.textContent}. Review sync to continue.`
+							: "The sync destination could not be saved.";
+					update();
+				};
+				destinations.append(choice);
+			}
+		});
 	reviewButton.onclick = () =>
 		void run(async () => {
 			review = undefined;

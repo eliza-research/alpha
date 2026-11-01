@@ -12,18 +12,19 @@ test('fresh Home shows unverified Agent Calendar state, no brief card, no fixtur
  await page.goto('/');
  await expect(page.locator('html')).toHaveAttribute('data-connection-mode','live');
  const home=page.getByRole('region',{name:'Home',exact:true}),calendar=page.locator('[data-alpha-home-calendar]');
- await expect(calendar).toContainText('Calendar has not been verified');
+ await expect(calendar.locator('[data-overview-part="title"]')).toHaveText('Calendar');
+ await expect(calendar).not.toContainText('Nothing planned');
  await expect(calendar).not.toContainText('No upcoming events');
  await expect(calendar.locator('[data-alpha-home-calendar-source]')).toHaveCount(0);
  await expect(calendar.locator('[data-alpha-home-calendar-origin]')).toHaveText('');
- // No agent calendar is connected on a fresh profile: the card says so instead of claiming a read.
- await expect(calendar).toHaveAttribute('aria-description','Connect to view Agent Calendar.');
+ // Neutral startup does not claim a successful Calendar read or show a freshness timestamp.
+ await expect(calendar).not.toContainText(/Updated|Read at/);
  await expect(calendar).toHaveAttribute('data-overview-state','empty');
  await expect(calendar).toHaveAccessibleName('Open Agent Calendar');
  await expect(calendar).toHaveAttribute('data-alpha-home-calendar-overdue','false');
  await expect(home.locator('[data-alpha-home-brief]')).toHaveCount(0);
  const inbox=home.locator('[data-alpha-home-inbox]');
- await expect(inbox).toHaveAccessibleName('Connect email');
+ await expect(inbox).toHaveAccessibleName('Inbox');
  await expect(inbox).not.toContainText(/unread|Read \d/);
  await expect(home).not.toContainText(/Morning brief|Design review|7:02 AM|No brief yet/);
  await expect(home.getByText(/^(MC|JP|PN|\+2)$/)).toHaveCount(0);

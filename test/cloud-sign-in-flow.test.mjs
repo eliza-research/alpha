@@ -122,18 +122,20 @@ test('native sign-in never falls back to hosted login when readiness fails',asyn
 });
 
 // Evaluate the actual JSX prop, rather than maintaining a second sign-in view.
-test('browser resident sign-in exposes the existing hosted hand-off only in its admitted view',()=>{
+test('browser resident sign-in has no browser hand-off entry; only test mocks keep the diagnostic',()=>{
  const ui=read('apps/app/src/runtime/connection-ui.tsx');
+ assert.doesNotMatch(ui,/Sign in with browser/,'owner removed the browser sign-in entry from the sign-in page');
  const expression=between(ui,'      extra={','}/>\n').slice('      extra={'.length);
  const compiled=transformSync('const extra='+expression+';',{loader:'tsx',jsxFactory:'React.createElement'}).code;
  const render=new Function('React','browserCloudResidentEnabled','testMocksEnabled','snapshot','connectionController','signInEntryRequired','residentEnvironment',compiled+'return extra;');
- let calls=0;const controller={signInBrowser(){calls++;}};
+ let calls=0;const controller={signInBrowser(){calls++;},beginSignIn(){}};
  assert.equal(render(React,false,false,{busy:false},controller,false,()=>'production'),undefined,'ordinary browser and packaged views have no extra entry');
- const browser=render(React,true,false,{busy:false},controller,false,()=>'production');
- assert.equal(browser.type,'button');assert.equal(browser.props.children,'Sign in with browser');assert.equal(browser.props.disabled,false);
- browser.props.onClick();assert.equal(calls,1,'dispatches the existing hosted sign-in callback');
- assert.equal(render(React,true,false,{busy:true},controller,false,()=>'production').props.disabled,true);
- assert.equal(render(React,false,true,{busy:false},controller,false,()=>'production').props.children,'Browser sign-in (diagnostic)');
+ assert.equal(render(React,true,false,{busy:false},controller,false,()=>'production'),undefined,'the browser Cloud resident (dev:cloud) view has no browser sign-in entry');
+ assert.equal(render(React,true,false,{busy:false},controller,true,()=>'production').props.children,'Retry sign-in','a required sign-in keeps its retry');
+ const diagnostic=render(React,false,true,{busy:false},controller,false,()=>'production');
+ assert.equal(diagnostic.type,'button');assert.equal(diagnostic.props.children,'Browser sign-in (diagnostic)');assert.equal(diagnostic.props.disabled,false);
+ diagnostic.props.onClick();assert.equal(calls,1,'dispatches the existing hosted sign-in callback');
+ assert.equal(render(React,false,true,{busy:true},controller,false,()=>'production').props.disabled,true);
 });
 
 test('native sign-in errors survive resident startup without hiding genuine startup failures', async () => {

@@ -60,7 +60,7 @@ test('the plugin start path attaches before it would retire shared work, and att
  const admit=ui.slice(ui.indexOf('async function admitCloudResident('),ui.indexOf('async function connectResident('));
  // The shared controller (@elizaos/auth/auth/cloud-resident-binding) binds only an admitted identity
  // through the bind port, which uses the attach-aware helper.
- assert.ok(admit.includes('bindProvider:async(credentialId,signal)=>{')&&admit.includes('await bindResidentCloudProvider(credentialId);')&&!admit.includes('configureLocalCloudProvider('));
+ assert.ok(admit.includes('bindProvider:(credentialId,_signal)=>bindResidentCloudProvider(credentialId),')&&!admit.includes('configureLocalCloudProvider('));
  // Plan admission decides the binding before any bind or attach; Cloud inference is bound only for an admitted plan.
  assert.ok(admit.indexOf('planAdmission(view)')>0&&admit.indexOf('planAdmission(view)')<admit.indexOf('bindResidentCloudProvider'),'plan admission precedes any bind');
  assert.ok(admit.includes("admission.binding==='cloud'&&admission.credentialId&&admission.account?{identity:{credentialId:admission.credentialId,"),'an identity is passed only for an admitted Cloud binding');

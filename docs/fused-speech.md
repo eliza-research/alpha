@@ -179,10 +179,10 @@ recording a clip on the device:
    in `voice-selection.ts`, P-39: the assistant submits automatically; Transcribe only inserts
    editable text the user sends). A reply carrying action proposals ends voice for review in
    the conversation: automatic submission never approves a side effect.
-   **Read replies aloud** (Settings, Voice and agent settings; off by default, `setSpeakReplies`)
-   speaks the reply to a message dictated with Transcribe and sent exactly as placed; a typed or
-   edited message stays silent. The switch shows the stored preference and reports a save that
-   storage did not confirm.
+   **Spoken replies follow voice mode.** Replies are spoken in the voice conversation and nowhere
+   else: a typed message, or one dictated with Transcribe and sent from the composer, gets a
+   silent reply. There is no setting for this; a stored `alphaphone:speak-replies:v1` value from
+   an earlier build is ignored. A message action's Read aloud still plays one reply on request.
    **Path.** When the live assistant is not ready (`nativeLiveVoiceReady` false) or the route is
    Cloud, the conversation runs the recorded-clip loop (`BatchVoiceConversation`), which cannot hear
    the user while a reply plays; Alpha says so once per session ("Speaking will not interrupt

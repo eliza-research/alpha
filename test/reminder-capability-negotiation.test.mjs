@@ -13,6 +13,7 @@ if(!process.execArgv.some((arg,i)=>arg==='--import'&&process.execArgv[i+1]==='ts
  process.exit(child.status??1);
 }
 const {DeviceActions}=await import('../apps/app/src/runtime/device-actions.ts');
+const {PHONE_DIAL_CAPABILITY,telephonyDeviceCapabilities}=await import('../apps/app/src/runtime/phone-dial-contract.ts');
 
 const connection=readFileSync(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
 const start=connection.indexOf('async function deviceCapabilities(');
@@ -28,8 +29,9 @@ async function capabilities(platform,offers=offered){
   Capacitor:{getPlatform:()=>platform,isNativePlatform:()=>platform!=='web',isPluginAvailable:()=>false},
   CAMERA_CAPTURE_CAPABILITY:'camera.capture-photo.v1',SMS_SEND_CAPABILITY:'sms.send.v1',
   CALENDAR_AVAILABILITY_CAPABILITY:'calendar.availability-read.v1',
-  availabilityNegotiated:()=>false,foregroundExecutor:undefined,aospImage:false,PHONE_DIAL_CAPABILITY:'phone.dial.v1',telephonyDeviceCapabilities:()=>[],
+  availabilityNegotiated:()=>false,foregroundExecutor:undefined,aospImage:false,
   clockHandoffCapabilities:()=>[],clockRepeatDaysSupported:async()=>false,
+  PHONE_DIAL_CAPABILITY,telephonyDeviceCapabilities,
  });
  return (await negotiate(offers)).split(',');
 }

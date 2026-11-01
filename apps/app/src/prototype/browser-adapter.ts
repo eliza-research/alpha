@@ -443,7 +443,7 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
     // transmitted merely by opening the agent. Navigation changes the revision
     // so a proposal for an earlier document cannot retain current authority.
     this.browserSelection = () => tabs.selection(state()?.cur);
-    const S=this.S();const b=this.vget('browser');if(S.view!=='browser'||b.menu||b.editing||b.tabsOpen||b.lib||S.shade||['sheet','full'].includes(S.chat))hide();return oldRender.call(this);};
+    const S=this.S();const b=this.vget('browser');if(S.view!=='browser'||b.menu||b.editing||b.tabsOpen||b.lib||S.shade||nativeUnderAssistant())hide();return oldRender.call(this);};
   let listener: any, resumeListener: any, openedListener: any, closedListener: any, noticeListener: any, findListener: any, fullscreenListener: any;
   void Browser.addListener('findResult',(event:BrowserFindResult)=>{
     const s=state(),found=s&&!disposed?tabs.findResult(event,s.findTab):undefined;if(!found)return;
@@ -482,15 +482,21 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
    * build the page is an element inside the host document, below any modal, and stays shown. */
   const hostModalOpen = (root: { querySelector(selector: string): unknown }, nativeSurface: boolean): boolean => nativeSurface && !!root.querySelector('dialog:modal, .alpha-connection-scrim');
   // host-modal:end
+  /** Android draws its native page above the whole host WebView, so the chat sheet can be seen only while
+   * that page is withdrawn: when the sheet rests open and as soon as it is pulled. The web build's page is
+   * an element of the phone canvas below the assistant layers and stays where it is under the sheet. */
+  const nativeUnderAssistant = () => Capacitor.isNativePlatform() && (['sheet','full'].includes(shell?.S().chat) || !!shell?.chatMotion?.moved);
   const update = () => {
     if(disposed)return;
     const s=state(), S=shell?.S();
     const element=document.querySelector('[data-native-browser-viewport]') as HTMLElement|null;
-    const hidden=questionReview || confirming || hostModalOpen(document, Capacitor.isNativePlatform()) || !s || !element || !element.isConnected || !element.getClientRects().length || S?.view!=='browser' || s.editing || s.tabsOpen || s.menu || s.lib || s.share || s.ag || s.confirm || S?.shade || S?.screen !== 'home' || ['sheet','full'].includes(S?.chat) || document.hidden;
+    const hidden=questionReview || confirming || hostModalOpen(document, Capacitor.isNativePlatform()) || !s || !element || !element.isConnected || !element.getClientRects().length || S?.view!=='browser' || s.editing || s.tabsOpen || s.menu || s.lib || s.share || s.ag || s.confirm || S?.shade || S?.screen !== 'home' || nativeUnderAssistant() || document.hidden;
     if(reading && (disposed || document.hidden || document.documentElement.hasAttribute('data-dev-background') || S?.screen!=='home' || S?.view!=='browser' || s?.tabsOpen || s?.editing || S?.shade || ['sheet','full'].includes(S?.chat)))stopReading();
     const rect=element?.getBoundingClientRect();
-    const composer=document.querySelector('[aria-label="Open conversation"]')?.parentElement?.getBoundingClientRect();
-    const height=rect ? Math.max(0,Math.min(rect.bottom,composer && composer.height ? composer.top-8 : rect.bottom)-rect.top) : 0;
+    // The page ends above the resting dock's reserve (template.html), never above the dock's current
+    // painted position: a composer pulled up with the sheet, or the sheet itself, does not resize it.
+    const page=document.querySelector('[data-alpha-browser-page]')?.getBoundingClientRect();
+    const height=rect ? Math.max(0,Math.min(rect.bottom,page?.bottom ?? rect.bottom)-rect.top) : 0;
     // A restored cold-start tab loads its last committed page when first shown.
     if(!hidden && s && restored.has(s.cur) && !tabs.has(s.cur) && !clearingData){const saved=restored.get(s.cur)!;void navigate(saved.url,false,undefined,false,true);}
     saveSession();

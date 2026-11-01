@@ -23,7 +23,11 @@ import {
 } from "./calendar-linked-store";
 import { connectionController } from "./connection-ui";
 import { nativeCalendarSync } from "./native-calendar-sync";
-import { readGoogleCalendarSelection } from "./google-calendar-selection";
+import { createGoogleAccounts } from "./google-accounts";
+import {
+	type GoogleCalendarSelection,
+	readGoogleCalendarSelection,
+} from "./google-calendar-selection";
 
 export type {
 	CalendarSyncReport,
@@ -69,8 +73,7 @@ function owner() {
 		userId: account.userId,
 		organizationId: account.organizationId,
 	});
-	if (!selection)
-		throw Error("Choose a Google calendar in Google accounts first.");
+	if (!selection) throw Error("Choose a Google calendar for sync first.");
 	return {
 		account,
 		cloud,
@@ -117,6 +120,45 @@ const deviceGate: CalendarSyncDeviceGate = {
 	pause: () => nativeCalendarSync.pause(),
 	cancel: () => nativeCalendarSync.cancel(),
 };
+/** Calendars device sync may write to: owned or writable calendars of the connected Google accounts that
+ * granted Calendar changes, each account's own calendar first. Review still verifies write access. */
+export async function googleCalendarSyncDestinations(
+	signal: AbortSignal,
+): Promise<GoogleCalendarSelection[]> {
+	const cloud = connectionController.getCloudClient();
+	if (!cloud)
+		throw Error("Connect your Cloud account before choosing a Google calendar.");
+	const accounts = (
+		await createGoogleAccounts(cloud, () =>
+			connectionController.getCloudClient(),
+		).list(signal)
+	).filter(
+		(account) =>
+			account.connected &&
+			account.connectionId &&
+			account.grantedCapabilities.includes("google.calendar.write"),
+	);
+	const destinations = await Promise.all(
+		accounts.map(async (account) => {
+			const connectionId = account.connectionId as string;
+			return (await cloud.client.googleCalendars(connectionId, signal))
+				.filter((calendar) => ["owner", "writer"].includes(calendar.accessRole))
+				.sort((a, b) => Number(b.primary) - Number(a.primary))
+				.map((calendar) => ({
+					connectionId,
+					sourceId: `google:${encodeURIComponent(connectionId)}:${encodeURIComponent(calendar.calendarId)}`,
+					providerCalendarId: calendar.calendarId,
+					name: calendar.summary,
+					account: account.label,
+				}));
+		}),
+	);
+	signal.throwIfAborted();
+	if (connectionController.getCloudClient()?.sessionId !== cloud.sessionId)
+		throw new DOMException("The Cloud account changed", "AbortError");
+	return destinations.flat();
+}
+
 const nativeSelection = (value: CalendarSyncTarget) => ({
 	environment: value.environment,
 	connectionId: value.connectionId,

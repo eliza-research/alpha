@@ -52,7 +52,7 @@ test('native Google and email share MFA admission; callback state custody remain
  assert.ok(complete.indexOf('session.opt("mfaRequired")')<complete.indexOf('session.optString("token"'),'MFA is handled before a token is required');
  assert.match(complete,/Math\.min\(current\.expiresAt, expiresAt\)/);
  assert.match(complete,/deadline <= System\.currentTimeMillis\(\)/);
- assert.match(complete,/if \(attempt != current \|\| current\.cancelled\)/);
+ assert.match(complete,/if \(destroyed \|\| attempt != current \|\| current\.cancelled\)/,'destroyed, replaced and cancelled attempts cannot publish MFA');
  assert.match(complete,/if \(current\.mfaType != null\)/,'a second challenge cannot replace an active challenge');
  assert.match(complete,/notifyListeners\("signInMfaRequired", required, true\)/,'cold Google return retains only its nonsecret outcome');
  const verify=method(source,' private void verify(PluginCall call, boolean mfa)',' private void release(');

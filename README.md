@@ -177,6 +177,13 @@ npm run dev                       # local agent + development server, switch on
 npm run dev:ui                    # renderer-only development server, switch on
 ```
 
+`npm run dev` shows the product connection sheet, **Alpha connection** (connected, connecting
+or couldn't connect, **Try again**, conversation history), and attaches to the local agent in
+the background, so loading the page while the agent restarts leaves Home recovering instead of
+opening the sheet. Set `ALPHA_DEV_CONNECTION_TOOLS=1` for the development connection sheet:
+development profiles (`?mode=dev`), mock mode, subscription gate QA and the development Cloud
+and pairing tools. `npm run dev:ui` keeps the development connection sheet.
+
 For configured regional Maps, prepare the data once as described in
 [regional Maps setup](docs/maps-regional-validation.md), then run `npm run dev:maps`.
 This starts the local router, gateway and app together; use `-- --port 5194` to
@@ -195,15 +202,16 @@ ignore them and open the live app:
   profile with durable local app data and device controls.
 
 For the complete capability matrix and current verification results, see
-[browser development parity](docs/browser-dev-parity.md). Developer controls are hidden by default, including with `bun run dev`. Add `?tools=1` (or `&tools=1`) to an explicitly enabled development-server URL to show **Tools**. This query cannot enable controls in production builds or on Android. Add `?shell=launcher` only to preview the launcher system presentation; the default preview is the standalone app. In the development profile with tools enabled, open **Device controls** with the sliders button beside **Tools** or **Dev data** below the phone preview. Its profile buttons switch between app and development data. In **Device controls**, use
+[browser development parity](docs/browser-dev-parity.md). Developer controls are hidden by default, including with `bun run dev`. Add `?tools=1` (or `&tools=1`) to an explicitly enabled development-server URL to show **Tools**. The same query is the one Developer gate in Settings: the Developer page, Try mock mode, saved-data recovery rows, Calendar backups and the update channel row appear only with it. This query cannot enable controls in production builds or on Android. Add `?shell=launcher` only to preview the launcher system presentation; the default preview is the standalone app. In the development profile with tools enabled, open **Device controls** with the sliders button beside **Tools** or **Dev data** below the phone preview. Its profile buttons switch between app and development data. In **Device controls**, use
 Home, Back, Power, Background and Resume to exercise device lifecycle; use Incoming
 call/message/email and Post notification to drive incoming events. Location controls
 provide a saved Home place and manual movement for location-triggered workflows.
 The role buttons persist the development device's selected Home, assistant, dialer
 and SMS roles.
 
-On the development server (switch on), **Settings → Agent connection** offers development
-profiles to exercise conversations, approvals and durable receipts without credentials.
+On the development server (switch on; with `npm run dev`, also `ALPHA_DEV_CONNECTION_TOOLS=1`),
+**Settings → Agent connection** offers development profiles to exercise conversations,
+approvals and durable receipts without credentials.
 Use `?mode=dev&workflows=agent` (switch on, development server only) to exercise the
 agent workflow UI with that profile.
 For real host inference and speech, follow the separate [local agent setup](docs/local-agent-development.md).
@@ -379,6 +387,19 @@ process memory and the private account store. Sign-out retires the bound process
 commit; `ALPHA_CLOUD_UI_PORT` and `ALPHA_REMOTE_PORT` select free loopback ports.
 This browser check exercises real login, subscription and inference only after
 those actions are completed; it does not establish Android or device acceptance.
+
+The default resident remains the lean chat profile. For full application QA, use
+`ALPHA_CLOUD_RESIDENT_PROFILE=full npm run dev:cloud` with an explicitly selected,
+separate Cloud-only `ALPHA_REMOTE_PROFILE`. A new full profile enables the
+canonical personal assistant and uses the normal SDK plugin set, including Notes
+and Calendar. It uses the same account-bound Cloud inference and speech routes;
+it does not impersonate Android or enable mocks.
+
+Full mode refuses an existing profile whose personal assistant is disabled or
+not explicitly enabled. It never reverses that saved choice or converts a direct
+provider profile. Existing accounts, credentials and histories are not copied or
+reset. Verify the running Notes and Calendar services and real Cloud requests
+before treating the preview as full application acceptance.
 
 ```sh
 npm run android:build

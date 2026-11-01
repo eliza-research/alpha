@@ -24,7 +24,7 @@ async function mountControls(content){
 async function openControls(content){
  const view=await mountControls(content),{container}=view;
  assert.equal(container.querySelector('input'),null,'approved B without a retained code error starts with one direct code-entry action');
- const buttons=[...container.querySelectorAll('button')].filter(button=>button.textContent==='Use membership code');assert.ok(buttons.length);
+ const buttons=[...container.querySelectorAll('button')].filter(button=>button.textContent==='Enter membership code');assert.ok(buttons.length);
  await act(async()=>{for(const button of buttons)button.dispatchEvent(new dom.window.MouseEvent('click',{bubbles:true}));});
  return view;
 }
@@ -53,12 +53,12 @@ test('retained redemption error exposes and focuses its associated field without
  const view=await mountControls(controls({error:'Retained code error.',onRedeem:async()=>{redeemed++;return false;}}));try{
   const input=view.container.querySelector('input');assert.ok(input,'the retained error never hides its code field');assert.equal(document.activeElement,input);
   const error=document.getElementById(input.getAttribute('aria-describedby'));assert.equal(error.textContent,'Retained code error.');assert.equal(error.getAttribute('role'),'alert');assert.equal(redeemed,0);
-  assert.equal([...view.container.querySelectorAll('button')].some(button=>button.textContent==='Use membership code'),false,'no extra reveal is needed for a retained error');
+  assert.equal([...view.container.querySelectorAll('button')].some(button=>button.textContent==='Enter membership code'),false,'no extra reveal is needed for a retained error');
  }finally{await view.close();}
 });
 test('connection failures do not impersonate a redemption error or reveal the code field',async()=>{
  const view=await mountControls(controls({connectionError:'Connection unavailable.'}));try{
   assert.equal(view.container.querySelector('input'),null);assert.equal(view.container.querySelector('[role="alert"]').textContent,'Connection unavailable.');
-  assert.equal([...view.container.querySelectorAll('button')].filter(button=>button.textContent==='Use membership code').length,1);
+  assert.equal([...view.container.querySelectorAll('button')].filter(button=>button.textContent==='Enter membership code').length,1);
  }finally{await view.close();}
 });

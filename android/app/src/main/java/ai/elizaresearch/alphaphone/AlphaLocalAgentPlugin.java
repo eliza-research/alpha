@@ -35,6 +35,27 @@ public final class AlphaLocalAgentPlugin extends Plugin {
  /** Last-intent-wins credential fence (plugin-native-agent), guarded by the lifecycle lock. */
  private static final CredentialIntentFence credentialIntents=new CredentialIntentFence(lifecycleLock);
  private static long powerAuthorizationMutationEpoch;
+ static long credentialAuthorityEpoch(){synchronized(lifecycleLock){return powerAuthorizationMutationEpoch;}}
+ /** Revalidate an async operation against semantic credential changes, using the existing lock order. */
+ static <T> T withCredentialAuthority(long owner,java.util.concurrent.Callable<T> action)throws Exception{
+  synchronized(lifecycleLock){
+   if(owner!=powerAuthorizationMutationEpoch)throw new SecurityException("Cloud authority changed");
+   synchronized(ai.eliza.plugins.securestore.nativeonly.JsonCredentialSlots.LOCK){return action.call();}
+  }
+ }
+ /** Shared sign-in reads and delivery: the credential writers' lifecycle then vault lock order, never inside a mutation. */
+ static <T> T withCredentialRead(java.util.concurrent.Callable<T> read)throws Exception{
+  synchronized(lifecycleLock){synchronized(ai.eliza.plugins.securestore.nativeonly.JsonCredentialSlots.LOCK){
+   if(credentialMutationEpoch>=0)throw new IllegalStateException("Credential mutation in progress");
+   return read.call();
+  }}
+ }
+ /** Noncritical slots share the canonical lock order without changing credential authority. */
+ static <T> T withCredentialSlotMutation(Runnable guard,java.util.concurrent.Callable<T> commit)throws Exception{
+  synchronized(lifecycleLock){synchronized(ai.eliza.plugins.securestore.nativeonly.JsonCredentialSlots.LOCK){
+   guard.run();return commit.call();
+  }}
+ }
  /** Native-only authorization mutation marker. Both locks are already held by credential commit. */
  static void powerAuthorizationChanged(){
   if(!Thread.holdsLock(lifecycleLock)||!Thread.holdsLock(ai.eliza.plugins.securestore.nativeonly.JsonCredentialSlots.LOCK))throw new IllegalStateException("Credential lock order required");
@@ -147,6 +168,7 @@ public final class AlphaLocalAgentPlugin extends Plugin {
 
  private static final class Superseded extends Exception {}
  private static void clearEnrollment(){AlphaCanonicalNotifications.stop();rootToken=null;ownerToken=null;ownerIdentity=null;notificationAgent=null;expiresAt=0;}
+ static long currentCredentialIntent(){return credentialIntents.current();}
  static long reserveCredentialIntent(){return credentialIntents.reserve();}
  static void requireCredentialIntent(long intent){credentialIntents.require(intent);}
  interface CredentialMutation<T> {
@@ -165,9 +187,12 @@ public final class AlphaLocalAgentPlugin extends Plugin {
    AlphaCanonicalNotifications.forget(context);
    invalidateCalls();epoch=++lifecycleEpoch;credentialMutationEpoch=epoch;accepting=false;stopping=true;clearEnrollment();
   }
+  // The service's stop ACK proves absence but keeps starts fenced (CredentialShutdownLease). As the
+  // shared CredentialMutationConductor does: a completed commit releases this exact request, a stop
+  // with no commit attempt abandons it (released at its ACK), and an uncertain commit keeps it.
+  long stopRequest=-1;boolean commitAttempted=false,commitFailed=false;
   try{
-   final long stopRequest;
-   synchronized(lifecycleLock){assertOwner.run();if(epoch!=lifecycleEpoch||credentialMutationEpoch!=epoch)throw new Superseded();credentialShutdownRequest=-2;stopRequest=ElizaAgentService.stopForCredentialChange(context);credentialShutdownRequest=stopRequest;}
+   synchronized(lifecycleLock){assertOwner.run();if(epoch!=lifecycleEpoch||credentialMutationEpoch!=epoch)throw new Superseded();credentialShutdownRequest=-2;stopRequest=ElizaAgentService.reserveCredentialShutdown();credentialShutdownRequest=stopRequest;ElizaAgentService.retryCredentialShutdown(context,stopRequest);}
    long deadline=android.os.SystemClock.elapsedRealtime()+15000;
    while(true){
     synchronized(lifecycleLock){assertOwner.run();if(epoch!=lifecycleEpoch||credentialMutationEpoch!=epoch)throw new Superseded();}
@@ -175,14 +200,20 @@ public final class AlphaLocalAgentPlugin extends Plugin {
     synchronized(lifecycleLock){
      assertOwner.run();if(epoch!=lifecycleEpoch||credentialMutationEpoch!=epoch)throw new Superseded();
      if(shutdownConfirmed(status)&&ElizaAgentService.isCredentialShutdownConfirmed(stopRequest)){
-      synchronized(ai.eliza.plugins.securestore.nativeonly.JsonCredentialSlots.LOCK){return commitCredentials(mutation);}
+      synchronized(ai.eliza.plugins.securestore.nativeonly.JsonCredentialSlots.LOCK){commitAttempted=true;return commitCredentials(mutation);}
      }
     }
     if(android.os.SystemClock.elapsedRealtime()>=deadline)throw new IllegalStateException("Native shutdown unconfirmed");
     Thread.sleep(50);
    }
+  }catch(Throwable failure){
+   // Only the commit follows commitAttempted, so a failure after it is an uncertain write.
+   commitFailed=commitAttempted;throw failure;
   }finally{
-   synchronized(lifecycleLock){if(credentialMutationEpoch==epoch)credentialMutationEpoch=-1;}
+   synchronized(lifecycleLock){
+    if(stopRequest>=0){if(!commitAttempted)ElizaAgentService.abandonCredentialShutdown(stopRequest);else if(!commitFailed)ElizaAgentService.releaseCredentialShutdown(stopRequest);}
+    if(credentialMutationEpoch==epoch)credentialMutationEpoch=-1;
+   }
   }
  }
  /** Every provider and Cloud credential write commits here; the cached listener owner never outlives one. */
@@ -256,18 +287,21 @@ public final class AlphaLocalAgentPlugin extends Plugin {
  @PluginMethod public void residentAttachment(PluginCall call) {
   final String credentialId=call.getString("credentialId");
   PluginWorkers.submit(workers,()->{try{
-   AlphaCredentialStore store=new AlphaCredentialStore(getContext());
-   String refusal=null;
-   if(credentialId!=null){
-    try{
-     JSONObject provider=new JSONObject(store.readCredentialSlot("local-agent-provider:v1"));
-     if(!"elizacloud".equals(provider.optString("provider"))||!credentialId.equals(provider.optString("credentialId"))||!CLOUD_PROVIDER_MODEL.equals(provider.optString("model")))refusal="provider-changed";
-    }catch(Exception unreadable){refusal="provider-unadmitted";}
-   }
-   String generation=storedProviderGeneration(store),root=ElizaAgentService.localAgentToken();
    JSONObject bootState=ElizaAgentService.getLocalAgentBootState(getContext());
-   if(refusal==null)synchronized(lifecycleLock){refusal=attachRefusalLocked(bootState,root,generation);}
-   call.resolve(new JSObject(ResidentAttachment.describe(refusal).toString()));
+   synchronized(lifecycleLock){synchronized(ai.eliza.plugins.securestore.nativeonly.JsonCredentialSlots.LOCK){
+    AlphaCredentialStore store=new AlphaCredentialStore(getContext());
+    String saved=store.readCredentialSlot("local-agent-provider:v1"),refusal=null;
+    if(credentialId!=null){
+     try{
+      JSONObject provider=new JSONObject(saved);
+      if(!"elizacloud".equals(provider.optString("provider"))||!credentialId.equals(provider.optString("credentialId"))||!CLOUD_PROVIDER_MODEL.equals(provider.optString("model")))refusal="provider-changed";
+     }catch(Exception unreadable){refusal="provider-unadmitted";}
+    }
+    if(refusal==null)refusal=attachRefusalLocked(bootState,ElizaAgentService.localAgentToken(),storedProviderGeneration(store));
+    JSObject result=new JSObject(ResidentAttachment.describe(refusal).toString());
+    if(refusal==null&&credentialId!=null)result.put("bindingGuard",store.providerBindingGuard(saved));
+    call.resolve(result);
+   }}
   }catch(Exception unavailable){call.resolve(new JSObject().put("attachable",false).put("reason","unavailable"));}},()->{call.reject("Local agent bridge is closed.");});
  }
  /** A direct (bring-your-own) Cerebras key is a test-mocks developer surface only. Product phones use
@@ -295,6 +329,15 @@ public final class AlphaLocalAgentPlugin extends Plugin {
    call.resolve(clearProviderSlot(new AlphaCredentialStore(getContext(),()->{if(disposed)throw new IllegalStateException("Local agent bridge closed");requireCredentialIntent(configuration);}),onlyIfPresent));
   }catch(Exception error){call.reject("The provider key could not be removed.");}},()->{call.reject("Local agent bridge is closed.");});
  }
+ @PluginMethod public void clearProviderIfCurrent(PluginCall call){
+  String guard=call.getString("bindingGuard","");
+  if(!guard.matches("[a-f0-9]{64}")){call.reject("Invalid binding guard");return;}
+  PluginWorkers.submit(workers,()->{try{
+   AlphaCredentialStore store=new AlphaCredentialStore(getContext(),()->{if(disposed)throw new IllegalStateException("Local agent bridge closed");});
+   boolean cleared=store.removeProviderIfCurrent(guard);
+   call.resolve(new JSObject().put("outcome",cleared?"cleared":"changed"));
+  }catch(Exception error){call.reject("Conditional provider removal could not be confirmed.");}},()->call.reject("Local agent bridge is closed."));
+ }
  static final String CLOUD_PROVIDER_MODEL=LocalAgentProviderAdmission.CLOUD_PROVIDER_MODEL;
  static final String CLOUD_PROVIDER_BASE=LocalAgentProviderAdmission.CLOUD_PROVIDER_BASE;
  /** Binds an existing account credential; no bearer value crosses this method's renderer API. */
@@ -305,8 +348,8 @@ public final class AlphaLocalAgentPlugin extends Plugin {
   final long configuration=reserveCredentialIntent();
   PluginWorkers.submit(workers,()->{try{
    AlphaCredentialStore store=new AlphaCredentialStore(getContext(),()->{if(disposed)throw new IllegalStateException("Local agent bridge closed");requireCredentialIntent(configuration);});
-   bindCloudProvider(store,credentialId,model);store.assertCurrent();
-   call.resolve(new JSObject().put("configured",true));
+   String applied=bindCloudProvider(store,credentialId,model);store.assertCurrent();
+   call.resolve(new JSObject().put("configured",true).put("bindingGuard",store.providerBindingGuard(applied)));
   }catch(Exception unavailable){
    String code="NATIVE_CLOUD_ADMISSION_UNAVAILABLE";
    if(unavailable instanceof LocalAgentProviderAdmission.CloudBindingFailure){LocalAgentProviderAdmission.CloudBindingFailure failure=(LocalAgentProviderAdmission.CloudBindingFailure)unavailable;code="NATIVE_CLOUD_ADMISSION_"+failure.stage.toUpperCase(java.util.Locale.ROOT).replace('-','_');android.util.Log.w("AlphaCloudAdmission",failure.diagnostic.toString());}
@@ -314,8 +357,8 @@ public final class AlphaLocalAgentPlugin extends Plugin {
   }},()->{call.reject("Local agent bridge is closed.");});
  }
  /** Preserve the previous selection when admission loses its account, without replacing a newer selection. */
- static void bindCloudProvider(AlphaCredentialStore store,String credentialId,String model) throws Exception {
-  LocalAgentProviderAdmission.bindCloudProvider(new LocalAgentProviderAdmission.CloudBindingStore(){
+ static String bindCloudProvider(AlphaCredentialStore store,String credentialId,String model) throws Exception {
+  return LocalAgentProviderAdmission.bindCloudProvider(new LocalAgentProviderAdmission.CloudBindingStore(){
    public String readProvider()throws Exception{return store.readCredentialSlot("local-agent-provider:v1");}
    public String readCloud()throws Exception{return store.readCredentialSlot("cloud:production");}
    public void assertCurrent()throws Exception{store.assertCurrent();}
@@ -329,8 +372,18 @@ public final class AlphaLocalAgentPlugin extends Plugin {
  static String cloudProviderToken(String saved,String credentialId,long now) throws Exception {return LocalAgentProviderAdmission.cloudProviderToken(saved,credentialId,now);}
  static void applyProviderEnvironment(JSONObject provider,String cloudSaved,java.util.Map<String,String> env,long now) throws Exception {if("cloud".equals(BuildConfig.ELIZA_RUNTIME_PROFILE)&&!"elizacloud".equals(provider.optString("provider")))throw new SecurityException("Cloud runtime requires Cloud provider admission");LocalAgentProviderAdmission.applyProviderEnvironment(provider,cloudSaved,env,now);}
  static final String PROVIDER_MODEL_PATTERN=LocalAgentProviderAdmission.PROVIDER_MODEL_PATTERN;
- /** No usable provider: every provider credential and selector is removed (shared NativeProviderSlot). */
- static void applyUnboundEnvironment(java.util.Map<String,String> env){NativeProviderSlot.applyUnboundEnvironment(env);}
+ /**
+  * No admitted plan, Cloud unreachable without a recent plan, or signed out: the agent runs with no
+  * hosted inference. Every provider credential and selector is removed, so no request can reach a
+  * model provider; the pinned upstream runtime answers chat turns as provider-less (no_provider).
+  */
+ static void applyUnboundEnvironment(java.util.Map<String,String> env){
+  // The verified product module is credential-independent; shared cleanup
+  // predates that contract and removes the same module for other hosts.
+  String productModule=env.get("ELIZA_NATIVE_GOOGLE_HOST_MODULE");
+  NativeProviderSlot.applyUnboundEnvironment(env);
+  if(productModule!=null)env.put("ELIZA_NATIVE_GOOGLE_HOST_MODULE",productModule);
+ }
  static JSObject providerIdentity(String saved) {
   try{return new JSObject(LocalAgentProviderAdmission.providerIdentity(saved).toString());}
   catch(org.json.JSONException impossible){throw new IllegalStateException(impossible);}
@@ -376,6 +429,11 @@ public final class AlphaLocalAgentPlugin extends Plugin {
    WorkflowWorkerAssets.configureEnvironment(worker,env);
    nativeHostResources=worker;
   }
+  // The packaged product declaration is credential-independent. Its parent was
+  // authenticated by WorkflowWorkerAssets.install, including every indexed hash.
+  java.io.File google=nativeHostResources==null?null:new java.io.File(nativeHostResources,"google-host.mjs");
+  if(google!=null&&google.isFile())env.put("ELIZA_NATIVE_GOOGLE_HOST_MODULE",google.getCanonicalPath());
+  else if("cloud".equals(BuildConfig.ELIZA_RUNTIME_PROFILE))throw new java.io.IOException("Native Cloud routing module unavailable");
   try {
   // Decision P-43: the resident always runs. With no provider slot it launches with no hosted
   // provider environment; upstream then reports no_provider for each turn.
@@ -387,17 +445,13 @@ public final class AlphaLocalAgentPlugin extends Plugin {
    provider=saved==null?null:new JSONObject(saved);
    cloudSaved=provider!=null&&"elizacloud".equals(provider.optString("provider"))?new AlphaCredentialStore(context).readCredentialSlot("cloud:production"):null;
   }catch(Exception unreadable){saved=null;provider=null;cloudSaved=null;}
-  // One shared launch order: provider admission (or unbound), then the native runtime profile's embedding route,
-  // so native keeps BGE embeddings on the device (unavailable, never Cloud, when the packaged engine/JNI pair or
-  // model is missing). A stored provider whose Cloud sign-in is gone or expired cannot be applied; the resident
-  // still launches, with no provider, under the no-provider generation (never attachable to a binding).
+  // Shared provider admission and native embedding order. Keep the verified
+  // product module independently of credential availability for Alpha identity.
   if(!NativeProviderSlot.applyLaunchEnvironment(BuildConfig.ELIZA_RUNTIME_PROFILE,provider,cloudSaved,new File(context.getApplicationInfo().nativeLibraryDir),context.getFilesDir(),env,System.currentTimeMillis())){provider=null;saved=null;cloudSaved=null;}
+  if(google!=null&&google.isFile())env.put("ELIZA_NATIVE_GOOGLE_HOST_MODULE",google.getCanonicalPath());
   if(provider!=null&&"elizacloud".equals(provider.optString("provider"))){
-   if(nativeHostResources==null)throw new java.io.IOException("Native Cloud routing resources unavailable");
-   java.io.File google=new java.io.File(nativeHostResources,"google-host.mjs");
-   if(!google.isFile())throw new java.io.IOException("Native Cloud routing module unavailable");
+   if(google==null||!google.isFile())throw new java.io.IOException("Native Cloud routing module unavailable");
    {
-    env.put("ELIZA_NATIVE_GOOGLE_HOST_MODULE",google.getCanonicalPath());
     JSONObject binding=LocalAgentProviderAdmission.managedGoogleBinding(saved,cloudSaved,System.currentTimeMillis());
     if(binding!=null){
     JSONObject current=new AlphaCredentialStore(context).providerAdmissionSnapshot();
@@ -450,8 +504,12 @@ public final class AlphaLocalAgentPlugin extends Plugin {
     synchronized(lifecycleLock){
      requireShutdownRetry(call,retryEpoch,retryIntent);
      credentialShutdownRequest=-2;
-     stopRequest=ElizaAgentService.stopForCredentialChange(getContext());
+     stopRequest=ElizaAgentService.reserveCredentialShutdown();
      credentialShutdownRequest=stopRequest;
+     // Retain the exact request even if Android dispatch throws. Retry commits nothing;
+     // abandonment keeps starts fenced until this request's actual stop ACK.
+     try{ElizaAgentService.retryCredentialShutdown(getContext(),stopRequest);}
+     finally{ElizaAgentService.abandonCredentialShutdown(stopRequest);}
     }
     ResidentCredentialShutdownRetry.await(
      ()->{synchronized(lifecycleLock){requireShutdownRetry(call,retryEpoch,retryIntent);}},
@@ -857,7 +915,7 @@ public final class AlphaLocalAgentPlugin extends Plugin {
   OwnerRoutes routes;
   try{routes=OwnerRoutes.shipped(getContext().getAssets()::open);}catch(IllegalStateException unavailable){logRequestFailure("other",method,0,"route-table");call.reject("Unsupported local agent request.");return;}
   String group=routes.group(path);
-  if((group!=null? !routes.allowed(group,path,method)||expectedOwner==null||expectedOwner.trim().isEmpty() : ((path.startsWith("/api/views/")||path.endsWith("/messages/truncate")||path.endsWith("/heard"))&&(!method.equals("POST")||expectedOwner==null||expectedOwner.trim().isEmpty()))||(path.equals("/api/asr/local-inference/end-of-turn")&&!method.equals("POST"))||(path.contains("?before=")&&!method.equals("GET"))||(path.startsWith("/api/turns/")&&!method.equals("POST"))||path.contains("..")||path.contains("%")||path.contains("\\")||!path.matches("^/api/(auth/me|agents|status|conversations(/[A-Za-z0-9_-]+(/messages(/truncate|/[0-9a-fA-F-]{36}/heard|\\?before=[0-9]{1,16}(&beforeId=[0-9a-fA-F-]{36})?(&limit=[0-9]{1,3})?)?)?)?|turns/[0-9a-fA-F-]{36}/abort|views/(interact-(claim|result)|[A-Za-z0-9_-]+/navigate)|client-devices/[A-Za-z0-9_/-]+|workflow(/[A-Za-z0-9_/?=&-]+)?|asr/local-inference/(live(/status)?|end-of-turn))$")||!(method.equals("GET")||method.equals("POST")))||((method.equals("GET")||method.equals("DELETE"))&&body!=null)||(body!=null&&body.length()>2*1024*1024)){
+  if((group!=null? !routes.allowed(group,path,method)||expectedOwner==null||expectedOwner.trim().isEmpty() : ((path.startsWith("/api/views/")||path.endsWith("/messages/truncate")||path.endsWith("/heard"))&&(!method.equals("POST")||expectedOwner==null||expectedOwner.trim().isEmpty()))||(path.equals("/api/asr/local-inference/end-of-turn")&&!method.equals("POST"))||(path.contains("?before=")&&!method.equals("GET"))||(path.startsWith("/api/turns/")&&!method.equals("POST"))||path.contains("..")||path.contains("%")||path.contains("\\")||!path.matches("^/api/(auth/me|agents|status|cloud/warm|conversations(/[A-Za-z0-9_-]+(/messages(/truncate|/[0-9a-fA-F-]{36}/heard|\\?before=[0-9]{1,16}(&beforeId=[0-9a-fA-F-]{36})?(&limit=[0-9]{1,3})?)?)?)?|turns/[0-9a-fA-F-]{36}/abort|views/(interact-(claim|result)|[A-Za-z0-9_-]+/navigate)|client-devices/[A-Za-z0-9_/-]+|workflow(/[A-Za-z0-9_/?=&-]+)?|asr/local-inference/(live(/status)?|end-of-turn))$")||!(method.equals("GET")||method.equals("POST")))||((method.equals("GET")||method.equals("DELETE"))&&body!=null)||(body!=null&&body.length()>2*1024*1024)){
    logRequestFailure(group==null?"other":group,method,0,"gate");
    call.reject("Unsupported local agent request.");return;
   }

@@ -5,11 +5,10 @@
 
 <div style="position: relative; width: 440px; height: 939px; flex-shrink: 0">
 <div style="position: absolute; inset: 0; border-radius: 62px; background: {{frame}}; box-shadow: 0 0 0 1px var(--alpha-gray-2c), 0 40px 90px rgba(0,0,0,.6)"></div>
-<button aria-label="Side key. Tap to lock or wake, hold to talk" onPointerDown="{{pDown}}" onPointerUp="{{pUp}}" onPointerLeave="{{pCancel}}" style="position: absolute; right: -6px; top: 214px; width: 7px; height: 76px; border-radius: 0 5px 5px 0; background: var(--alpha-gray-2e)"></button>
+<button aria-label="Side key. Tap to lock or wake" onPointerDown="{{pDown}}" onPointerUp="{{pUp}}" onPointerLeave="{{pCancel}}" style="position: absolute; right: -6px; top: 214px; width: 7px; height: 76px; border-radius: 0 5px 5px 0; background: var(--alpha-gray-2e)"></button>
 <div style="position: absolute; right: -5px; top: 316px; width: 6px; height: 118px; border-radius: 0 4px 4px 0; background: var(--alpha-gray-26)"></div>
 
 <div data-screen="1" data-alpha-chat-half="{{nonblockingChat}}" onPointerDown="{{gDown}}" onPointerUp="{{gUp}}" onPointerCancel="{{gCancel}}" style="position: absolute; top: 12px; left: 14px; width: 412px; height: 915px; border-radius: 48px; overflow: hidden; background: var(--bg); color: var(--fg); user-select: none; -webkit-user-select: none; touch-action: none; font-size: 15px; --alpha-chat-clearance:{{panelH}}px">
-{{canonicalNotesWorkspace}}
 
 <div data-alpha-system-cutout style="position: absolute; top: 13px; left: 195px; width: 22px; height: 22px; border-radius: 11px; background: var(--alpha-black); box-shadow: 0 0 0 1.5px var(--alpha-gray-11); z-index: 99; pointer-events: none"></div>
 
@@ -776,7 +775,6 @@
       <h1 data-alpha-app-title class="serif" style="margin: 0; min-width: 0; font-size: 32px; letter-spacing: -.01em; white-space: nowrap">{{calendar.month}}</h1>
       <svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px; color: var(--mut); margin-top: 4px"><path d="{{calendar.chevron}}"></path></svg>
     </button>
-    <sc-if value="{{calendar.canRefreshGoogleCalendar}}"><button class="ib" aria-label="Refresh Google Calendar" disabled="{{calendar.googleCalendarRefreshing}}" onClick="{{calendar.refreshGoogleCalendar}}"><span aria-hidden="true" style="display:block;width:20px;height:20px;background:currentColor;mask:url('/icons/lucide/rotate-cw.svg') center/contain no-repeat;-webkit-mask:url('/icons/lucide/rotate-cw.svg') center/contain no-repeat"></span></button></sc-if>
     <button class="ib" aria-label="Clock alarms" onClick="{{calendar.openClock}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.clock}}"></path></svg></button>
 
     <sc-if value="{{calendar.dayMode}}">
@@ -805,10 +803,7 @@
   <sc-if value="{{calendar.reminderRecovery}}"><button aria-label="Recover browser reminder creation history" onClick="{{calendar.openReminderCreationRecovery}}" style="margin:0 16px 8px;padding:12px;border-radius:12px;background:var(--s2);color:var(--fg)">Reminder creation recovery</button></sc-if>
   <sc-if value="{{calendar.reminderRecovery}}"><button aria-label="Recover browser reminder action history" onClick="{{calendar.openReminderActionRecovery}}" style="margin:0 16px 8px;padding:12px;border-radius:12px;background:var(--s2);color:var(--fg)">Reminder action recovery</button></sc-if>
   <sc-if value="{{calendar.creationRecovery}}"><div role="status" style="margin: 0 16px 8px; padding: 12px; border-radius: 12px; background: var(--s2); font-size: 13px"><p>{{calendar.creationRecoveryText}}</p><button onClick="{{calendar.checkCreations}}" style="padding: 8px">Check event creation receipts</button><button onClick="{{calendar.separateCreation}}" style="padding: 8px">Create a separate event</button></div></sc-if>
-  <sc-if value="{{calendar.calendarAuthorityChoices}}"><details style="margin:8px 24px"><summary style="min-height:44px;align-content:center;cursor:pointer">Calendar sources</summary><p role="status">{{calendar.calendarSourceLabel}}</p><p>{{calendar.calendarSourceText}}</p><sc-for list="{{calendar.calendarAuthorityChoices}}" as="choice"><button onClick="{{choice.go}}" style="display:block;min-height:44px;padding:10px;text-align:left">{{choice.label}}</button></sc-for></details></sc-if>
-  <sc-if value="{{calendar.canConfirmCalendarTransition}}"><button onClick="{{calendar.confirmCalendarTransition}}" style="margin:8px 24px;padding:12px;border-radius:16px;background:var(--s2)">Keep saved app records read only and use Agent Calendar</button></sc-if>
-  <sc-if value="{{calendar.nativeStatusLabel}}"><button aria-label="Retry calendar and reminders" onClick="{{calendar.nativeStatusRetry}}" style="margin: 0 16px 8px; padding: 10px 12px; border-radius: 12px; background: var(--s2); color: var(--fg); text-align: left; font-size: 13px">{{calendar.nativeStatusLabel}}</button></sc-if>
-  <sc-if value="{{calendar.googleCalendarNotice}}"><p role="status" style="margin:0;padding:4px 24px 8px;font-size:13px;color:var(--mut)">{{calendar.googleCalendarNotice}}</p></sc-if>
+  <sc-if value="{{calendar.nativeStatusLabel}}"><button aria-label="Retry calendar and reminders" aria-description="{{calendar.nativeStatusLabel}}" onClick="{{calendar.nativeStatusRetry}}" style="margin: 0 16px 8px; padding: 10px 12px; border-radius: 12px; background: var(--s2); color: var(--fg); text-align: left; font-size: 13px">{{calendar.nativeStatusLabel}}</button></sc-if>
   <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); padding: 4px 12px 8px; flex-shrink: 0">
     <sc-for list="{{calendar.week}}" as="w">
       <button onClick="{{w.pick}}" aria-label="Day {{w.n}}" style="display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 4px 0">
@@ -1129,6 +1124,7 @@
           </div>
 
           <div style="display: flex; flex-direction: column; gap: 4px; padding: 8px 12px 8px 16px; border-radius: 16px; background: var(--s2)">
+            <sc-if value="{{calendar.f.cals.length}}">
             <div style="display: flex; align-items: center; gap: 14px; min-height: 48px">
               <svg class="i" viewBox="0 0 24 24" style="color: var(--mut); flex-shrink: 0"><path d="{{ic.cal}}"></path></svg>
               <div style="display: flex; gap: 8px; flex-wrap: wrap; flex: 1 1 0; min-width: 0">
@@ -1137,6 +1133,7 @@
                 </sc-for>
               </div>
             </div>
+            </sc-if>
             <sc-if value="{{calendar.f.repeats}}">
             <div style="display: flex; align-items: center; gap: 14px; min-height: 48px">
               <svg class="i" viewBox="0 0 24 24" style="color: var(--mut); flex-shrink: 0"><path d="{{ic.calRepeat}}"></path></svg>
@@ -1344,6 +1341,10 @@
   </div>
 
   <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 130px; background: linear-gradient(to bottom, transparent, var(--bg) 70%); pointer-events: none; z-index: 1"></div>
+  <!-- Where a website is presented: the page area above the resting dock's reserve, the clearance Home keeps
+       for the composer and the pill alike. It is measured in layout pixels, so dragging or opening the chat sheet
+       never resizes the page; the sheet is drawn over it (browser-adapter.ts, browser-surface.ts). -->
+  <div data-alpha-browser-page aria-hidden="true" style="position: absolute; left: 0; right: 0; top: 0; bottom: var(--alpha-dock-reserve, 108px); visibility: hidden; pointer-events: none"></div>
   <sc-if value="{{browser.agOn}}">
     <div style="position: absolute; inset: 0; z-index: 2; pointer-events: none; box-shadow: inset 0 0 0 3px var(--acc); border-radius: 0 0 48px 48px"></div>
   </sc-if>
@@ -2237,12 +2238,12 @@
 </sc-if>
 
 
-<sc-if value="{{is.notes}}"><sc-if value="{{notes.legacyNotes}}">
+<sc-if value="{{is.notes}}">
 <div onFocusCapture="{{notes.captureSubviewFocus}}" class="notes-layout" style="display: flex; flex-direction: column; height: 100%; position: relative; padding-top: 44px; box-sizing: border-box">
   <sc-if value="{{notes.audioDeletionUnknown}}"><div role="status" style="padding:8px 24px;font-size:13px">Voice note deletion needs review. No deletion will be repeated.<button class="tap" onClick="{{notes.checkAudioDeletion}}" style="display:block;min-height:44px;padding:0 4px;color:var(--acct);font-weight:600;text-align:left">Check deletion status</button><sc-for list="{{notes.audioDeletionPending}}" as="pending"><div>{{pending.title}} <button class="tap" onClick="{{pending.restore}}" style="min-height:44px;padding:0 4px;color:var(--acct);font-weight:600;text-align:left">Restore note and recording</button></div></sc-for></div></sc-if>
   <sc-if value="{{notes.browserRecovery}}"><div style="display:flex;gap:8px;padding:0 24px 6px;flex-wrap:wrap"><button aria-label="Recover browser Notes" onClick="{{notes.openBrowserRecovery}}" style="min-height:44px;padding:10px;border-radius:12px;background:var(--s2);color:var(--fg)">Notes recovery</button><button aria-label="Recover note audio deletion history" onClick="{{notes.openAudioRecovery}}" style="min-height:44px;padding:10px;border-radius:12px;background:var(--s2);color:var(--fg)">Audio deletion recovery</button></div></sc-if>
   <sc-if value="{{notes.storageStatus}}"><div class="notes-storage-status" role="status" aria-live="polite" style="flex-shrink:0;padding:0 24px 6px;font-size:12px;line-height:1.34;color:var(--mut);overflow-wrap:anywhere">{{notes.storageStatus}}</div></sc-if>
-  <sc-if value="{{notes.canonicalReview}}"><button class="tap" onClick="{{notes.canonicalReviewAction}}" style="min-height:44px;margin:0 16px 8px;padding:0 16px;border-radius:22px;background:var(--s2);color:var(--fg)">{{notes.canonicalReviewLabel}}</button></sc-if>
+  <sc-if value="{{notes.canonicalReview}}"><button class="tap" data-agent-id="notes-reload" onClick="{{notes.canonicalReviewAction}}" style="min-height:48px;margin:0 16px 8px;padding:0 16px;border-radius:22px;background:var(--s2);color:var(--fg)">{{notes.canonicalReviewLabel}}</button></sc-if>
   <div class="notes-workspace" style="position:relative;display:flex;flex-direction:column;flex:1;min-height:0">
   <div data-alpha-subview="notes-list" inert="{{notes.listCovered}}" aria-hidden="{{notes.listCovered}}" style="display:flex;flex-direction:column;flex:1;min-height:0">
   <sc-if value="{{notes.notSearching}}">
@@ -2251,9 +2252,10 @@
       <sc-if value="{{notes.returnToNotesAction}}"><button class="ib" aria-label="Return to Notes" onClick="{{notes.returnToNotesAction}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button></sc-if>
       <h1 data-alpha-app-title class="serif" style="margin: 0; font-size: 32px; flex-grow: 1; letter-spacing: -.01em">{{notes.notesTitle}}</h1>
       <sc-if value="{{notes.canRecord}}"><button class="ib" aria-label="Record and transcribe" onClick="{{notes.record}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.notesWave}}"></path></svg></button></sc-if>
+      <sc-if value="{{notes.canDictateNew}}"><button class="ib" data-agent-id="notes-dictate-new" aria-label="Dictate new note" disabled="{{notes.createDisabled}}" onClick="{{notes.dictateNew}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.notesWave}}"></path></svg></button></sc-if>
       <sc-if value="{{notes.canImportText}}"><button class="ib" aria-label="Import text note" disabled="{{notes.documentBusy}}" onClick="{{notes.importText}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.filesDown}}"></path></svg></button></sc-if>
-      <sc-if value="{{notes.trashAvailable}}"><button class="ib" aria-label="Open Trash" title="{{notes.trashLabel}}" onClick="{{notes.openTrash}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.trash}}"></path></svg></button></sc-if>
-      <button class="ib" aria-label="New note" onClick="{{notes.newNote}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.plus}}"></path></svg></button>
+      <sc-if value="{{notes.trashAvailable}}"><button class="ib" data-agent-id="notes-trash" aria-label="Open Trash" title="{{notes.trashLabel}}" onClick="{{notes.openTrash}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.trash}}"></path></svg></button></sc-if>
+      <sc-if value="{{notes.canCreate}}"><button class="ib" data-agent-id="notes-new" aria-label="New note" disabled="{{notes.createDisabled}}" onClick="{{notes.newNote}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.plus}}"></path></svg></button></sc-if>
     </div>
   </sc-if>
   <sc-if value="{{notes.searching}}">
@@ -2269,7 +2271,7 @@
 
   <div class="scr" data-alpha-app-scroll="notes" style="flex-grow: 1; overflow-y: auto; touch-action: pan-y; padding: 8px 16px 190px; box-sizing: border-box">
     <sc-if value="{{notes.notSearching}}">
-      <button onClick="{{notes.search}}" aria-label="Search notes" style="display: flex; align-items: center; gap: 10px; width: 100%; height: 48px; padding: 0 16px; margin-bottom: 12px; border-radius: 24px; background: var(--s2); color: var(--mut); font-size: 16px; box-sizing: border-box"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.search}}"></path></svg>Search</button>
+      <button onClick="{{notes.search}}" data-agent-id="notes-search" aria-label="Search notes" style="display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 0 16px; margin-bottom: 12px; border-radius: 24px; background: var(--s2); color: var(--mut); font-size: 16px; box-sizing: border-box"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.search}}"></path></svg>Search</button>
     </sc-if>
     <sc-if value="{{notes.none}}">
       <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; padding-top: 110px; color: var(--mut); padding-left: 24px; padding-right: 24px; text-align: center">
@@ -2277,10 +2279,10 @@
         <div style="font-size: 15px">{{notes.emptyText}}</div>
       </div>
     </sc-if>
-    <div style="display: flex; gap: 10px; align-items: flex-start">
+    <div data-alpha-notes-cards style="display: flex; gap: 10px; align-items: flex-start">
       <div style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 10px">
         <sc-for list="{{notes.colL}}" as="n">
-          <button onClick="{{n.open}}" class="tap" aria-label="Open {{n.title}}" aria-current="{{n.current}}" style="display: block; width: 100%; padding: 16px; border-radius: 22px; background: var(--s2); box-sizing: border-box; text-align: left; position: relative">
+          <button onClick="{{n.open}}" class="tap note-card" data-agent-id="{{n.id}}" aria-label="Open {{n.title}}" aria-current="{{n.current}}" style="display: block; width: 100%; padding: 16px; border-radius: 22px; background: var(--s2); box-sizing: border-box; text-align: left; position: relative; order: {{n.order}}">
             <sc-if value="{{n.pinned}}"><svg class="i" viewBox="0 0 24 24" style="position: absolute; top: 14px; right: 12px; width: 16px; height: 16px; color: var(--acct)"><path d="{{ic.notesPin}}"></path></svg></sc-if>
             <sc-if value="{{n.isVoice}}">
               <div style="display: flex; align-items: center; gap: 2px; height: 30px; margin-bottom: 12px">
@@ -2295,7 +2297,7 @@
             <sc-if value="{{n.isList}}">
               <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 10px">
                 <sc-for list="{{n.items}}" as="it">
-                  <div style="display: flex; align-items: center; gap: 8px; font-size: 13.5px"><span style="width: 13px; height: 13px; border-radius: 4px; flex-shrink: 0; {{it.box}}"></span><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; {{it.css}}">{{it.t}}</span></div>
+                  <div style="display: flex; align-items: center; gap: 8px; font-size: 13.5px"><span style="width: 13px; height: 13px; border-radius: 4px; flex-shrink: 0; {{it.box}}"></span><span class="note-card-item" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; {{it.css}}">{{it.t}}</span></div>
                 </sc-for>
                 <sc-if value="{{n.hasMore}}"><div style="font-size: 13px; color: var(--mut); padding-left: 21px">{{n.more}}</div></sc-if>
               </div>
@@ -2307,7 +2309,7 @@
       </div>
       <div style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 10px">
         <sc-for list="{{notes.colR}}" as="n">
-          <button onClick="{{n.open}}" class="tap" aria-label="Open {{n.title}}" aria-current="{{n.current}}" style="display: block; width: 100%; padding: 16px; border-radius: 22px; background: var(--s2); box-sizing: border-box; text-align: left; position: relative">
+          <button onClick="{{n.open}}" class="tap note-card" data-agent-id="{{n.id}}" aria-label="Open {{n.title}}" aria-current="{{n.current}}" style="display: block; width: 100%; padding: 16px; border-radius: 22px; background: var(--s2); box-sizing: border-box; text-align: left; position: relative; order: {{n.order}}">
             <sc-if value="{{n.pinned}}"><svg class="i" viewBox="0 0 24 24" style="position: absolute; top: 14px; right: 12px; width: 16px; height: 16px; color: var(--acct)"><path d="{{ic.notesPin}}"></path></svg></sc-if>
             <sc-if value="{{n.isVoice}}">
               <div style="display: flex; align-items: center; gap: 2px; height: 30px; margin-bottom: 12px">
@@ -2322,7 +2324,7 @@
             <sc-if value="{{n.isList}}">
               <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 10px">
                 <sc-for list="{{n.items}}" as="it">
-                  <div style="display: flex; align-items: center; gap: 8px; font-size: 13.5px"><span style="width: 13px; height: 13px; border-radius: 4px; flex-shrink: 0; {{it.box}}"></span><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; {{it.css}}">{{it.t}}</span></div>
+                  <div style="display: flex; align-items: center; gap: 8px; font-size: 13.5px"><span style="width: 13px; height: 13px; border-radius: 4px; flex-shrink: 0; {{it.box}}"></span><span class="note-card-item" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; {{it.css}}">{{it.t}}</span></div>
                 </sc-for>
                 <sc-if value="{{n.hasMore}}"><div style="font-size: 13px; color: var(--mut); padding-left: 21px">{{n.more}}</div></sc-if>
               </div>
@@ -2338,6 +2340,13 @@
         <button onClick="{{notes.askSearch}}" aria-label="{{notes.askQ}}" style="display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 16px; border-radius: 18px; background: var(--s2); font-size: 14px; font-weight: 600; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis"><span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;flex-shrink:0;color:var(--acct)"><span class="alpha-compute-mark" aria-hidden="true" style="width:100%;height:100%"></span></span>{{notes.askQ}}</button>
       </div>
     </sc-if>
+    <!-- Agent Notes: the device-local collection stays one explicit choice away (agent-adapter.ts selectNotesSource) and the restore-only Trash sits beside it, both quiet text actions under the list, so the header keeps the template's waveform and +. -->
+    <sc-if value="{{notes.listActions}}">
+      <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; margin-top: 12px">
+        <sc-if value="{{notes.olderNotesAction}}"><button class="tap" data-agent-id="notes-source-legacy" onClick="{{notes.olderNotesAction}}" style="display: inline-flex; align-items: center; gap: 6px; min-height: 48px; max-width: 100%; padding: 8px 14px; border-radius: 24px; color: var(--mut); font-size: 14px; font-weight: 500; overflow-wrap: anywhere"><svg class="i" viewBox="0 0 24 24" style="width: 16px; height: 16px"><path d="{{ic.archive}}"></path></svg>Previous notes</button></sc-if>
+        <sc-if value="{{notes.trashInList}}"><button class="tap" data-agent-id="notes-trash" aria-label="Open Trash" title="{{notes.trashLabel}}" onClick="{{notes.openTrash}}" style="display: inline-flex; align-items: center; gap: 6px; min-height: 48px; max-width: 100%; padding: 8px 14px; border-radius: 24px; color: var(--mut); font-size: 14px; font-weight: 500; overflow-wrap: anywhere"><svg class="i" viewBox="0 0 24 24" style="width: 16px; height: 16px"><path d="{{ic.trash}}"></path></svg>Trash</button></sc-if>
+      </div>
+    </sc-if>
   </div>
 
   
@@ -2345,26 +2354,28 @@
   <sc-if value="{{notes.isEdit}}">
     <div ref="{{notes.editorFocus}}" data-alpha-subview="notes-editor" inert="{{notes.detailCovered}}" aria-hidden="{{notes.detailCovered}}" class="enter note-editor" style="position: absolute; inset: 0; background: var(--bg); display: flex; flex-direction: column; z-index: 4">
       <div data-alpha-app-header="detail" style="display: flex; align-items: center; height: 56px; margin-top: 0; padding: 0 8px; gap: 2px; flex-shrink: 0">
-        <button class="ib" aria-label="Back to notes" onClick="{{notes.ed.close}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button>
+        <button class="ib" data-agent-id="notes-back" aria-label="Back to notes" onClick="{{notes.ed.close}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button>
         <div style="flex-grow: 1"></div>
-        <sc-if value="{{notes.ed.readAloud}}"><button class="ib alpha-note-speech-control" aria-label="{{notes.ed.readLabel}}" title="{{notes.ed.readLabel}}" onClick="{{notes.ed.readAloud}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.wave}}"></path></svg></button></sc-if>
+        <sc-if value="{{notes.ed.readAloud}}"><button class="ib alpha-note-speech-control" data-agent-id="notes-readAloud" aria-label="{{notes.ed.readLabel}}" title="{{notes.ed.readLabel}}" onClick="{{notes.ed.readAloud}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.wave}}"></path></svg></button></sc-if>
         <sc-if value="{{notes.ed.stopReading}}"><button class="ib alpha-note-speech-control" aria-label="Stop reading" onClick="{{notes.ed.stopReading}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.stop}}"></path></svg></button></sc-if>
-        <button class="ib" aria-label="{{notes.ed.dictLabel}}" onClick="{{notes.ed.dictate}}" style="{{notes.ed.dictCss}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.mic}}"></path></svg></button>
-        <button class="ib" aria-label="{{notes.ed.listLabel}}" onClick="{{notes.ed.toggleList}}" style="{{notes.ed.listCss}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.notesList}}"></path></svg></button>
-        <button class="ib" aria-label="{{notes.ed.pinLabel}}" onClick="{{notes.ed.pin}}" style="{{notes.ed.pinCss}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.notesPin}}"></path></svg></button>
-        <button class="ib" aria-label="Share note" onClick="{{notes.ed.share}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.share}}"></path></svg></button>
-        <button class="ib" aria-label="Delete note" onClick="{{notes.ed.del}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.trash}}"></path></svg></button>
+        <button class="ib" data-agent-id="notes-dictate" aria-label="{{notes.ed.dictLabel}}" onClick="{{notes.ed.dictate}}" style="{{notes.ed.dictCss}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.mic}}"></path></svg></button>
+        <button class="ib" data-agent-id="notes-format" aria-label="{{notes.ed.listLabel}}" onClick="{{notes.ed.toggleList}}" style="{{notes.ed.listCss}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.notesList}}"></path></svg></button>
+        <button class="ib" data-agent-id="notes-pin" aria-label="{{notes.ed.pinLabel}}" onClick="{{notes.ed.pin}}" style="{{notes.ed.pinCss}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.notesPin}}"></path></svg></button>
+        <button class="ib" data-agent-id="notes-share" aria-label="Share note" onClick="{{notes.ed.share}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.share}}"></path></svg></button>
+        <button class="ib" data-agent-id="notes-delete" aria-label="Delete note" onClick="{{notes.ed.del}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.trash}}"></path></svg></button>
       </div>
       <div class="note-title-column" style="padding: 4px 24px 0; flex-shrink: 0">
-        <input aria-label="Title" placeholder="Title" value="{{notes.ed.title}}" onChange="{{notes.ed.onTitle}}" class="serif" style="width: 100%; box-sizing: border-box; border: 0; outline: 0; background: transparent; color: var(--fg); font-size: 32px; font-family: 'Denton', 'Fraunces', Georgia, serif; font-weight: 300; padding: 6px 0; letter-spacing: -.01em">
+        <input data-agent-id="notes-title" aria-label="Title" placeholder="Title" value="{{notes.ed.title}}" onChange="{{notes.ed.onTitle}}" class="serif" style="width: 100%; box-sizing: border-box; border: 0; outline: 0; background: transparent; color: var(--fg); font-size: 32px; font-family: 'Denton', 'Fraunces', Georgia, serif; font-weight: 300; padding: 6px 0; letter-spacing: -.01em">
       </div>
       <div class="note-source-actions">
       <sc-if value="{{notes.hasWebSource}}"><button class="note-source-trigger" onClick="{{notes.openWebSource}}">Web source linked</button></sc-if>
       <sc-if value="{{notes.canLinkSource}}"><button class="note-source-trigger" onClick="{{notes.sourceDocument}}">{{notes.sourceLabel}}</button></sc-if>
+      <sc-if value="{{notes.ed.draftReminder}}"><button class="note-source-trigger" data-agent-id="notes-draftReminder" aria-label="Review reminder draft" style="min-height: 48px" onClick="{{notes.ed.draftReminder}}">Review reminder</button></sc-if>
+      <sc-if value="{{notes.ed.draftEvent}}"><button class="note-source-trigger" data-agent-id="notes-draftEvent" aria-label="Review calendar event draft" style="min-height: 48px" onClick="{{notes.ed.draftEvent}}">Review event</button></sc-if>
       </div>
       <sc-if value="{{notes.ed.cloudSpeechDisclosure}}"><p role="note" style="padding:0 24px;font-size:13px;line-height:1.4">{{notes.ed.cloudSpeechDisclosure}}</p></sc-if>
       <sc-if value="{{notes.ed.isText}}">
-        <textarea aria-label="Note" placeholder="Note" value="{{notes.ed.body}}" onChange="{{notes.ed.onBody}}" class="scr" style="flex-grow: 1; width: calc(100% - 48px); margin: 0 24px; box-sizing: border-box; resize: none; border: 0; outline: 0; background: transparent; color: var(--fg); font: inherit; font-size: 17px; line-height: 1.55; padding: 10px 0 16px; min-height: 0; touch-action: pan-y"></textarea>
+        <textarea data-agent-id="notes-body" aria-label="Note" placeholder="Note" value="{{notes.ed.body}}" onChange="{{notes.ed.onBody}}" class="scr" style="flex-grow: 1; width: calc(100% - 48px); margin: 0 24px; box-sizing: border-box; resize: none; border: 0; outline: 0; background: transparent; color: var(--fg); font: inherit; font-size: 17px; line-height: 1.55; padding: 10px 0 16px; min-height: 0; touch-action: pan-y"></textarea>
       </sc-if>
       <sc-if value="{{notes.ed.isList}}">
       <div class="scr note-checklist-column" style="flex-grow: 1; overflow-y: auto; padding: 8px 12px 190px; touch-action: pan-y">
@@ -2372,11 +2383,11 @@
             <div style="display: flex; align-items: center; gap: 2px; min-height: 48px">
               <button aria-label="{{it.label}}" onClick="{{it.toggle}}" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><span style="width: 22px; height: 22px; border-radius: 7px; display: flex; align-items: center; justify-content: center; {{it.box}}"><svg class="i" viewBox="0 0 24 24" style="width: 15px; height: 15px; "><path d="{{ic.check}}"></path></svg></span></button>
               <input aria-label="Item" value="{{it.t}}" onChange="{{it.onText}}" style="flex-grow: 1; min-width: 0; height: 44px; border: 0; outline: 0; background: transparent; color: var(--fg); font-size: 17px; {{it.css}}">
-              <button class="ib" aria-label="Remove {{it.t}}" onClick="{{it.remove}}" style="color: var(--mut)"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.x}}"></path></svg></button>
+              <button class="ib" data-agent-id="notes-remove-item-{{it.idx}}" aria-label="Remove {{it.t}}" onClick="{{it.remove}}" style="color: var(--mut)"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.x}}"></path></svg></button>
             </div>
           </sc-for>
           <div style="display: flex; align-items: center; gap: 2px; min-height: 48px">
-            <button aria-label="Add item" onClick="{{notes.ed.addItem}}" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--mut)"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.plus}}"></path></svg></button>
+            <button data-agent-id="notes-add-item" aria-label="Add item" onClick="{{notes.ed.addItem}}" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--mut)"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.plus}}"></path></svg></button>
             <input aria-label="New item" placeholder="Add item" value="{{notes.ed.newItem}}" onChange="{{notes.ed.onNew}}" onKeyDown="{{notes.ed.newKey}}" style="flex-grow: 1; min-width: 0; height: 44px; border: 0; outline: 0; background: transparent; color: var(--fg); font-size: 17px">
           </div>
         </div>
@@ -2388,19 +2399,20 @@
   <sc-if value="{{notes.isVoice}}">
     <div ref="{{notes.voiceFocus}}" data-alpha-subview="notes-voice" inert="{{notes.detailCovered}}" aria-hidden="{{notes.detailCovered}}" class="enter" style="position: absolute; inset: 0; background: var(--bg); display: flex; flex-direction: column; z-index: 4">
       <div data-alpha-app-header="detail" style="display: flex; align-items: center; height: 56px; margin-top: 0; padding: 0 8px; gap: 2px; flex-shrink: 0">
-        <button class="ib" aria-label="Back to notes" onClick="{{notes.vo.close}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button>
+        <button class="ib" data-agent-id="notes-back" aria-label="Back to notes" onClick="{{notes.vo.close}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button>
         <div style="flex-grow: 1"></div>
         <sc-if value="{{notes.vo.readAloud}}"><button class="ib alpha-note-speech-control" aria-label="{{notes.vo.readLabel}}" title="{{notes.vo.readLabel}}" onClick="{{notes.vo.readAloud}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.wave}}"></path></svg></button></sc-if>
         <sc-if value="{{notes.vo.stopReading}}"><button class="ib alpha-note-speech-control" aria-label="Stop reading" onClick="{{notes.vo.stopReading}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.stop}}"></path></svg></button></sc-if>
-        <button class="ib" aria-label="{{notes.vo.pinLabel}}" onClick="{{notes.vo.pin}}" style="{{notes.vo.pinCss}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.notesPin}}"></path></svg></button>
-        <button class="ib" aria-label="Share note" onClick="{{notes.vo.share}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.share}}"></path></svg></button>
-        <button class="ib" aria-label="Delete note" onClick="{{notes.vo.del}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.trash}}"></path></svg></button>
+        <button class="ib" data-agent-id="notes-pin" aria-label="{{notes.vo.pinLabel}}" onClick="{{notes.vo.pin}}" style="{{notes.vo.pinCss}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.notesPin}}"></path></svg></button>
+        <button class="ib" data-agent-id="notes-share" aria-label="Share note" onClick="{{notes.vo.share}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.share}}"></path></svg></button>
+        <button class="ib" data-agent-id="notes-delete" aria-label="Delete note" onClick="{{notes.vo.del}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.trash}}"></path></svg></button>
       </div>
       <sc-if value="{{notes.vo.cloudSpeechDisclosure}}"><p role="note" style="padding:0 24px;font-size:13px;line-height:1.4">{{notes.vo.cloudSpeechDisclosure}}</p></sc-if>
       <div class="scr note-voice-column" style="flex-grow: 1; overflow-y: auto; padding: 4px 24px 150px; touch-action: pan-y">
         <input aria-label="Title" value="{{notes.vo.title}}" onChange="{{notes.vo.onTitle}}" style="width: 100%; box-sizing: border-box; border: 0; outline: 0; background: transparent; color: var(--fg); font-size: 34px; font-family: 'Denton', 'Fraunces', Georgia, serif; font-weight: 300; padding: 4px 0; letter-spacing: -.01em">
         <div style="font-size: 14px; color: var(--mut); margin-top: 2px">{{notes.vo.meta}}</div>
 
+        <sc-if value="{{notes.vo.hasPlayback}}">
         <div style="display: flex; align-items: center; gap: 14px; margin-top: 22px">
           <button aria-label="{{notes.vo.playLabel}}" onClick="{{notes.vo.play}}" style="width: 52px; height: 52px; border-radius: 26px; background: var(--acc); color: var(--alpha-white); display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px; {{notes.vo.playCss}}"><path d="{{notes.vo.playIcon}}"></path></svg></button>
           <div style="flex-grow: 1; min-width: 0">
@@ -2410,6 +2422,7 @@
             <div style="font-size: 12px; color: var(--mut); margin-top: 4px; text-align: right">{{notes.vo.time}}</div>
           </div>
         </div>
+        </sc-if>
 
         <sc-if value="{{notes.vo.canReviewTranscript}}"><button class="note-source-trigger" style="margin:16px 0 0;width:100%" onClick="{{notes.vo.reviewTranscript}}">Review transcript with Alpha</button><p style="color:var(--mut);font-size:14px">Choose the text to discuss before sending it to your agent.</p></sc-if>
         <sc-if value="{{notes.vo.proc}}">
@@ -2432,7 +2445,7 @@
             <div class="enter" style="padding: 8px 8px 10px 6px; border-radius: 24px; background: var(--s2); margin-top: 10px">
               <sc-for list="{{notes.vo.actions}}" as="a">
                 <div style="display: flex; align-items: flex-start; gap: 4px">
-                  <button aria-label="{{a.label}}" onClick="{{a.toggle}}" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><span style="width: 22px; height: 22px; border-radius: 7px; display: flex; align-items: center; justify-content: center; {{a.box}}"><svg class="i" viewBox="0 0 24 24" style="width: 15px; height: 15px; "><path d="{{ic.check}}"></path></svg></span></button>
+                  <button data-agent-id="notes-action-{{a.idx}}" aria-label="{{a.label}}" onClick="{{a.toggle}}" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><span style="width: 22px; height: 22px; border-radius: 7px; display: flex; align-items: center; justify-content: center; {{a.box}}"><svg class="i" viewBox="0 0 24 24" style="width: 15px; height: 15px; "><path d="{{ic.check}}"></path></svg></span></button>
                   <span style="font-size: 15px; line-height: 1.4; padding: 11px 8px 11px 0; {{a.css}}">{{a.t}}</span>
                 </div>
               </sc-for>
@@ -2461,11 +2474,11 @@
   <sc-if value="{{notes.isLink}}">
     <div ref="{{notes.linkFocus}}" data-alpha-subview="notes-link" inert="{{notes.detailCovered}}" aria-hidden="{{notes.detailCovered}}" class="enter" style="position: absolute; inset: 0; background: var(--bg); display: flex; flex-direction: column; z-index: 4">
       <div data-alpha-app-header="detail" style="display: flex; align-items: center; height: 56px; margin-top: 0; padding: 0 8px; gap: 2px; flex-shrink: 0">
-        <button class="ib" aria-label="Back to notes" onClick="{{notes.lk.close}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button>
+        <button class="ib" data-agent-id="notes-back" aria-label="Back to notes" onClick="{{notes.lk.close}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button>
         <div style="flex-grow: 1"></div>
-        <button class="ib" aria-label="{{notes.lk.pinLabel}}" onClick="{{notes.lk.pin}}" style="{{notes.lk.pinCss}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.notesPin}}"></path></svg></button>
-        <button class="ib" aria-label="Share note" onClick="{{notes.lk.share}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.share}}"></path></svg></button>
-        <button class="ib" aria-label="Delete note" onClick="{{notes.lk.del}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.trash}}"></path></svg></button>
+        <button class="ib" data-agent-id="notes-pin" aria-label="{{notes.lk.pinLabel}}" onClick="{{notes.lk.pin}}" style="{{notes.lk.pinCss}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.notesPin}}"></path></svg></button>
+        <button class="ib" data-agent-id="notes-share" aria-label="Share note" onClick="{{notes.lk.share}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.share}}"></path></svg></button>
+        <button class="ib" data-agent-id="notes-delete" aria-label="Delete note" onClick="{{notes.lk.del}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.trash}}"></path></svg></button>
       </div>
       <div class="scr" style="flex-grow: 1; overflow-y: auto; padding: 4px 24px 150px; touch-action: pan-y">
         <h1 class="serif" style="margin: 0; font-size: 34px; line-height: 1.08; letter-spacing: -.01em">{{notes.lk.title}}</h1>
@@ -2501,7 +2514,7 @@
               <div style="font-size: 16px; font-weight: 600; overflow-wrap: anywhere">{{t.title}}</div>
               <div style="font-size: 13px; color: var(--mut); margin-top: 2px">{{t.kind}} · {{t.left}}</div>
               <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px">
-                <button class="tap" aria-label="{{t.restoreLabel}}" disabled="{{t.disabled}}" onClick="{{t.restore}}" style="min-height: 44px; padding: 0 16px; border-radius: 22px; background: var(--acc); color: var(--alpha-white); font-size: 14px; font-weight: 600">Restore</button>
+                <button class="tap" data-agent-id="notes-restore-{{t.id}}" aria-label="{{t.restoreLabel}}" disabled="{{t.disabled}}" onClick="{{t.restore}}" style="min-height: 44px; padding: 0 16px; border-radius: 22px; background: var(--acc); color: var(--alpha-white); font-size: 14px; font-weight: 600">Restore</button>
                 <sc-if value="{{notes.trashCanErase}}"><button class="tap" aria-label="{{t.deleteLabel}}" disabled="{{t.disabled}}" onClick="{{t.erase}}" style="min-height: 44px; padding: 0 16px; border-radius: 22px; background: var(--s2); color: var(--fg); font-size: 14px; font-weight: 600">Delete forever</button></sc-if>
               </div>
             </li>
@@ -2563,7 +2576,6 @@
 </sc-if>
 
 
-</sc-if>
 <sc-if value="{{is.contacts}}">
 <div style="display: flex; flex-direction: column; height: 100%; position: relative">
   <sc-if value="{{contacts.notSearching}}">
@@ -3949,6 +3961,10 @@
 </div>
 </sc-if>
 
+<!-- The web build's website frames (browser/browser-surface.ts) live here, always mounted so a frame is never
+     re-parented (that reloads it): above the app layer, below the composer, pill, scrim and chat sheet, which
+     float over the page. Retired with the app layer under full chat, the shade and voice. -->
+<div data-alpha-browser-surfaces inert="{{appHidden}}" aria-hidden="{{appHidden}}" style="position: absolute; inset: 0; z-index: 20; pointer-events: none"></div>
 
 <sc-if value="{{isOn}}">
 <div onClick="{{scrimTap}}" style="position: absolute; inset: 0; z-index: 45; background: var(--scrim); opacity: {{scrimOp}}; pointer-events: {{scrimPE}}; transition: opacity .45s"></div>
@@ -3961,7 +3977,6 @@
     </button>
     <button aria-label="Resize chat" onPointerDown="{{grabSw.down}}" onPointerMove="{{grabSw.move}}" onPointerUp="{{grabSw.up}}" onPointerCancel="{{grabSw.cancel}}" onLostPointerCapture="{{grabSw.lost}}" onClick="{{grabTap}}" style="width:44px;height:44px;min-height:44px;display:flex;align-items:flex-start;justify-content:center;padding:6px 2px 0;box-sizing:border-box;border-radius:12px;cursor:grab;touch-action:none"><span style="width:40px;height:4px;border-radius:2px;background:var(--mut);opacity:.45"></span></button>
     <div data-alpha-chat-controls style="display:flex;align-items:center;justify-content:flex-end;gap:2px;min-width:0">
-      <sc-if value="{{canStopReply}}"><button class="tap" aria-label="Stop reply" onClick="{{stopReply}}" style="min-height:44px;padding:0 12px;color:var(--acct);font-weight:600">Stop</button></sc-if>
       <button class="ib" data-alpha-chat-size aria-label="{{sizeLabel}}" onClick="{{grabTap}}"><svg class="i" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="{{sizeIcon}}"></path></svg></button>
       <sc-if value="{{assistantSurface}}"><button class="ib" aria-label="Close assistant" onClick="{{closeAssistant}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.x}}"></path></svg></button></sc-if>
       <sc-if value="{{notAssistantSurface}}"><button class="ib" aria-label="Minimize chat" onClick="{{closeChat}}"><svg class="i" viewBox="0 0 24 24" style="width:20px;height:20px"><path d="{{ic.down}}"></path></svg></button></sc-if>
@@ -4147,8 +4162,9 @@
 
     <div class="alpha-chat-composer">
       <textarea disabled="{{draftOpening}}" onPointerDown="{{composerPointer}}" data-alpha-composer="true" rows="1" aria-label="Message {{name}}" placeholder="Message {{name}}" value="{{draft}}" onChange="{{onDraft}}" onKeyDown="{{onKey}}" style="flex-grow: 1; min-width: 0; height: 44px; min-height:44px; max-height:min(168px,28dvh); resize:none; overflow-y:auto; font-family:inherit; line-height:22px; padding-top:11px; padding-bottom:11px; box-sizing:border-box; border: 0; outline: 0; background: transparent; color: var(--fg); font-size: 16px"></textarea>
-      <sc-if value="{{hasDraft}}"><button aria-label="Send" onClick="{{sendNow}}" style="width: 44px; height: 44px; border-radius: 22px; background: var(--acc); color: var(--alpha-white); display: flex; align-items: center; justify-content: center"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.send}}"></path></svg></button></sc-if>
-      <sc-if value="{{noDraft}}"><button title="Voice assistant" aria-label="Talk" onPointerDown="{{chatControlPointer}}" onClick="{{startVoice}}" style="width: 44px; height: 44px; border-radius: 22px; background: var(--fg); color: var(--bg); display: flex; align-items: center; justify-content: center"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.mic}}"></path></svg></button></sc-if>
+      <sc-if value="{{canStopReply}}"><button aria-label="Stop reply" onClick="{{stopReply}}" style="width: 44px; height: 44px; border-radius: 22px; flex-shrink: 0; background: var(--fg); color: var(--bg); display: flex; align-items: center; justify-content: center"><svg class="i" viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor" stroke="none"></rect></svg></button></sc-if>
+      <sc-if value="{{sendVisible}}"><button aria-label="Send" onClick="{{sendNow}}" style="width: 44px; height: 44px; border-radius: 22px; background: var(--acc); color: var(--alpha-white); display: flex; align-items: center; justify-content: center"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.send}}"></path></svg></button></sc-if>
+      <sc-if value="{{talkVisible}}"><button title="Voice assistant" aria-label="Talk" onPointerDown="{{chatControlPointer}}" onClick="{{startVoice}}" style="width: 44px; height: 44px; border-radius: 22px; background: var(--fg); color: var(--bg); display: flex; align-items: center; justify-content: center"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.mic}}"></path></svg></button></sc-if>
     </div>
   </sc-if>
   <sc-if value="{{voiceOn}}"><div style="height: 150px; flex-shrink: 0"></div></sc-if>
@@ -4165,8 +4181,9 @@
     <span data-alpha-input-drag-background aria-hidden="true" style="position:absolute;inset:0;z-index:0;border-radius:inherit;touch-action:none"></span>
     <button data-alpha-input-drag-alpha aria-label="Open conversation" onClick="{{openSheet}}" style="position:relative;z-index:1;touch-action:none;width: 44px; height: 44px; border-radius: 22px; background: var(--acc); color: var(--alpha-white); display: flex; align-items: center; justify-content: center; font-family: Denton, Fraunces, Georgia, serif; font-style: italic; font-size: 24px; flex-shrink: 0"><span class="alpha-compute-mark" aria-hidden="true"></span></button>
     <textarea disabled="{{draftOpening}}" onPointerDown="{{inputComposerPointer}}" data-alpha-composer="true" rows="1" aria-label="{{cmpPlaceholder}}" placeholder="{{cmpPlaceholder}}" value="{{draft}}" onChange="{{onDraft}}" onKeyDown="{{onKey}}" style="position:relative;z-index:1;touch-action:{{inputComposerTouchAction}};flex-grow: 1; min-width: 0; height: 44px; min-height:44px; max-height:min(168px,28dvh); resize:none; overflow-y:auto; font-family:inherit; line-height:22px; padding-top:11px; padding-bottom:11px; box-sizing:border-box; border: 0; outline: 0; background: transparent; color: var(--fg); font-size: 16px; padding-left: 8px"></textarea>
-    <sc-if value="{{hasDraft}}"><button aria-label="Send" onClick="{{sendNow}}" style="position:relative;z-index:1;width: 44px; height: 44px; border-radius: 22px; background: var(--acc); color: var(--alpha-white); display: flex; align-items: center; justify-content: center"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.send}}"></path></svg></button></sc-if>
-    <sc-if value="{{noDraft}}"><button class="ib" style="position:relative;z-index:1" title="Voice assistant" aria-label="Talk" onPointerDown="{{chatControlPointer}}" onClick="{{startVoice}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.mic}}"></path></svg></button></sc-if>
+    <sc-if value="{{canStopReply}}"><button aria-label="Stop reply" onClick="{{stopReply}}" style="position:relative;z-index:1;width: 44px; height: 44px; border-radius: 22px; flex-shrink: 0; background: var(--fg); color: var(--bg); display: flex; align-items: center; justify-content: center"><svg class="i" viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor" stroke="none"></rect></svg></button></sc-if>
+    <sc-if value="{{sendVisible}}"><button aria-label="Send" onClick="{{sendNow}}" style="position:relative;z-index:1;width: 44px; height: 44px; border-radius: 22px; background: var(--acc); color: var(--alpha-white); display: flex; align-items: center; justify-content: center"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.send}}"></path></svg></button></sc-if>
+    <sc-if value="{{talkVisible}}"><button class="ib" style="position:relative;z-index:1" title="Voice assistant" aria-label="Talk" onPointerDown="{{chatControlPointer}}" onClick="{{startVoice}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.mic}}"></path></svg></button></sc-if>
   </div>
 </div>
 </sc-if>
@@ -4177,7 +4194,8 @@
   <div class="enter" onPointerDown="{{pillSw.down}}" onPointerMove="{{pillSw.move}}" onPointerUp="{{pillSw.up}}" onPointerCancel="{{pillSw.cancel}}" onLostPointerCapture="{{pillSw.lost}}" style="{{pillDragStyle}}; pointer-events: auto; display: flex; align-items: center; gap: 2px; padding: 5px; border-radius: 30px; background: var(--s2); box-shadow: 0 12px 34px var(--shc); touch-action: none">
     <sc-if value="{{pillVoiceInactive}}">    <button aria-label="Open conversation" onClick="{{openSheet}}" style="width: 44px; height: 44px; border-radius: 22px; background: var(--acc); color: var(--alpha-white); display: flex; align-items: center; justify-content: center; font-family: Denton, Fraunces, Georgia, serif; font-style: italic; font-size: 24px"><span class="alpha-compute-mark" aria-hidden="true"></span></button>
     <button class="ib" aria-label="Type" onClick="{{toInput}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.kbd}}"></path></svg></button>
-    <button class="ib" title="Voice assistant" aria-label="Talk" onPointerDown="{{chatControlPointer}}" onClick="{{startVoice}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.mic}}"></path></svg></button></sc-if>
+    <sc-if value="{{canStopReply}}"><button class="ib" aria-label="Stop reply" onClick="{{stopReply}}"><svg class="i" viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor" stroke="none"></rect></svg></button></sc-if>
+    <sc-if value="{{replyIdle}}"><button class="ib" title="Voice assistant" aria-label="Talk" onPointerDown="{{chatControlPointer}}" onClick="{{startVoice}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.mic}}"></path></svg></button></sc-if></sc-if>
     <sc-if value="{{pillVoice}}"><div data-alpha-pill-voice class="alpha-pill-voice-controls" onPointerDown="{{pillVoice.controlDown}}">
       <button class="alpha-pill-voice-synth" aria-label="Open conversation" onClick="{{openSheet}}"><span class="alpha-voice-waveform">{{pillVoice.activity}}</span></button>
       <sc-if value="{{pillVoice.connecting}}"><span class="alpha-voice-status-hidden" role="status">Connecting to voice…</span></sc-if>
@@ -4265,7 +4283,7 @@
   <div data-alpha-lock-clock class="serif" style="font-size: 132px; line-height: .9; margin-top: 44px; letter-spacing: -.035em">{{clock}}</div>
   <div style="margin-top: 16px; color: var(--mut); font-size: 15px">{{dateStr}}</div>
   <div style="position: absolute; bottom: 58px; left: 34px; right: 34px; display: flex; justify-content: space-between; align-items: center">
-    <button aria-label="Talk to {{name}}" onPointerDown="{{chatControlPointer}}" onClick="{{startVoice}}" style="width: 58px; height: 58px; border-radius: 29px; background: var(--s2); display: flex; align-items: center; justify-content: center"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.mic}}"></path></svg></button>
+    <sc-if value="{{externalVoiceInvocation}}"><button aria-label="Talk to {{name}}" onPointerDown="{{chatControlPointer}}" onClick="{{startVoice}}" style="width: 58px; height: 58px; border-radius: 29px; background: var(--s2); display: flex; align-items: center; justify-content: center"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.mic}}"></path></svg></button></sc-if>
     <button aria-label="Unlock with fingerprint" onClick="{{unlock}}" style="width: 76px; height: 76px; border-radius: 38px; box-shadow: inset 0 0 0 1px var(--line); display: flex; align-items: center; justify-content: center; color: var(--acct)"><svg class="i" viewBox="0 0 24 24" style="width: 34px; height: 34px"><path d="{{ic.fp}}"></path></svg></button>
     <sc-if value="{{lockCameraOffered}}"><button aria-label="Camera" onClick="{{lockCamera}}" style="width: 58px; height: 58px; border-radius: 29px; background: var(--s2); display: flex; align-items: center; justify-content: center"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.camera}}"></path></svg></button></sc-if>
     <sc-if value="{{noLockCamera}}"><div aria-hidden="true" style="width: 58px; height: 58px"></div></sc-if>
@@ -4374,7 +4392,7 @@
       </sc-for>
     </div>
     <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 6px">
-      <button onPointerDown="{{chatControlPointer}}" onClick="{{startVoice}}" style="height: 40px; border-radius: 20px; background: var(--alpha-blue); display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; font-weight: 600"><svg class="i" viewBox="0 0 24 24" style="width: 16px; height: 16px"><path d="{{ic.mic}}"></path></svg>Talk</button>
+    <sc-if value="{{externalVoiceInvocation}}"><button onPointerDown="{{chatControlPointer}}" onClick="{{startVoice}}" style="height: 40px; border-radius: 20px; background: var(--alpha-blue); display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; font-weight: 600"><svg class="i" viewBox="0 0 24 24" style="width: 16px; height: 16px"><path d="{{ic.mic}}"></path></svg>Talk</button></sc-if>
       <button onClick="{{fireHeads}}" style="height: 40px; border-radius: 20px; border: 1px solid var(--alpha-gray-26); display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px"><svg class="i" viewBox="0 0 24 24" style="width: 16px; height: 16px"><path d="{{ic.bell}}"></path></svg>Incoming text</button>
     </div>
   </div>

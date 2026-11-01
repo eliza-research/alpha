@@ -22,10 +22,13 @@ allowance and latest limit). Alpha tests: `test/subscription-entitlement.test.mj
   Alpha supports the owner's credit-funded inference setup and never grants credits or shows a
   per-token meter. The account sheet is the approved "Membership & credits" design (product
   decision recorded for the owner, NubsCarson 7a44d7038): the exact Cloud credit balance with
-  Refresh, the membership and its end, Add funds (which opens Cloud's own billing page only after
-  the account review) and the membership code entry. From the shared subscription summary it adds,
+  Refresh, the membership and its end, Add credits (which opens Cloud's own billing page only after
+  the account review) and Enter membership code. From the shared subscription summary it adds,
   read-only, the plan allowance Cloud reports and the latest Cloud limit with its retry time.
-  Nothing is bought on the phone.
+  Nothing is bought on the phone. The sheet opens by itself for a verified $0 account without a
+  membership (a send is refused before dispatch and offers it again) and after Cloud declines a turn
+  for billing (one answer in the chat, which offers it too); a redeemed code, credits that rose since
+  the refusal, or a turn Cloud admits end the refusal without a reload or a new sign-in.
 - An assistant turn never waits on a billing service. Cloud authorises each inference or Maps
   request from its own cached quota or token bucket.
 - Every Alpha Phone signs in to Eliza Cloud. Admission accepts a valid active/trialing plan or

@@ -103,9 +103,12 @@ test('native CloudVoiceLimit keeps the same facts and never the body text',()=>{
  }finally{fs.rmSync(out,{recursive:true,force:true});}
  const plugin=fs.readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaVoiceCloudPlugin.java','utf8');
  assert.match(plugin,/if\(status==429\)throw new VoiceHttpException\(status,limitOf\(c\)\);successful\(c\);/);
- assert.match(plugin,/request\.resolvedEarly=true;\s*call\.reject\(request\.failure,request\.failureCode,limitData\(limited\.limit\)\);/);
+ assert.match(plugin,/@Override protected void rejectFailure\(PluginCall call,String message,String code,Exception failure\)/);
+ assert.match(plugin,/call\.reject\(message,"voice-http-"\+limited\.status,limitData\(limited\.limit\)\)/);
+ assert.match(plugin,/super\.rejectFailure\(call,message,code,failure\)/);
+ assert.doesNotMatch(plugin,/submitLimited|request\.resolvedEarly/,'429 delivery never bypasses shared post-cleanup settlement');
  assert.equal(plugin.match(/successful\(c\)/g).length,1,'every Alpha speech response goes through answered, which keeps a 429 limit');
- assert.equal(plugin.match(/[^d]submit\(call,/g).length,1,'Alpha speech requests use submitLimited');
+ assert.equal(plugin.match(/submit\(call,/g).length,5,'all Alpha speech requests use the shared settlement path');
  // String members only: JSON null or a number is no code or instant (optString would coerce them).
  const limitOf=plugin.slice(plugin.indexOf('private static CloudVoiceLimit limitOf('),plugin.indexOf('private static JSObject limitData('));
  assert.doesNotMatch(limitOf,/optString/);

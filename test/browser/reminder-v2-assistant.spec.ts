@@ -92,7 +92,8 @@ for (const mode of ['read', 'update', 'complete', 'cancel', 'stale', 'recurring-
     const input=page.locator('[data-alpha-layer="composer"][aria-hidden="false"], [data-alpha-layer="conversation"][aria-hidden="false"]').getByRole('textbox').first();
     await input.fill('Review this reminder action before applying it.');await input.press('Enter');
     if(mode==='older-peer'||mode==='create-old-peer'){
-      await expect(page.getByText('The reply stopped before it finished. Check the saved conversation before trying again.',{exact:true})).toBeVisible();
+      await expect(page.getByText('Sorry, I couldn’t finish that reply.',{exact:true})).toBeVisible();
+      await expect(page.getByRole('button',{name:/^Check saved conversation/})).toHaveCount(0);
       expect(await page.evaluate(()=>(window as any).recoveryFixture.lists)).toBeGreaterThan(0);
       expect(await page.evaluate(()=>(window as any).recoveryFixture.proposal.payload.operation.type)).toBe(mode==='older-peer'?'reminder_complete':'reminder_create');
       expect(await page.evaluate(()=>(window as any).recoveryFixture.posts)).toBe(1);

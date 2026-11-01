@@ -1,0 +1,39 @@
+{
+  "atUTC": "2026-10-29T20:57:07.699134+00:00",
+  "state": "PRIVATE_SOURCE_BINDING_PENDING_NEW_NORMAL_QUALIFICATION",
+  "appSourceBeforeBinding": "7945fb451b746d5f6ba8be8768620efaffce7441",
+  "SDK": "7854f43ff93082452c8aca5c4bf56aff0e0015bf",
+  "previousSDK": "210bc893b3dda55daba72d914bd851155f954f86",
+  "exactSDKChangedPaths": [
+    "plugins/plugin-assistant/src/services/device-actions/service.ts",
+    "plugins/plugin-calendar/src/actions/calendar-handler.ts",
+    "plugins/plugin-calendar/src/actions/deps.ts",
+    "plugins/plugin-calendar/src/index.ts",
+    "plugins/plugin-calendar/src/internal/calendar-normalize.ts",
+    "plugins/plugin-personal-assistant/src/actions/calendar.ts",
+    "plugins/plugin-personal-assistant/test/calendar-action-effect-receipts.pglite.test.ts"
+  ],
+  "changedProjectedInput": "plugins/plugin-calendar/src/index.ts now value-exports DEFAULT_TIMED_CALENDAR_EVENT_DURATION_MINUTES; regenerate normal map/stamp",
+  "appSourceLeaves": [
+    "d2732a32926295343e01c07035d5d811fb192b60",
+    "0e8f3857a49be3dc860f86daf0181d3350a7701a"
+  ],
+  "sourceReviews": [
+    "/Users/nubs/Documents/ChatGPT/test/paired-review-20261028/calendar-rerun-current-20261029/APP-D273-INDEPENDENT-REVIEW.json",
+    "/Users/nubs/Documents/ChatGPT/test/paired-review-20261028/calendar-rerun-current-20261029/SDK-7854-INDEPENDENT-REVIEW.json",
+    "/Users/nubs/.local/state/eliza-five-lane-coordination/sdk38069-reconciliation-e87-20261028/EMBEDDING-MODELS-DIR-0E8F-INDEPENDENT-REVIEW.json"
+  ],
+  "PApublicationTypes": "UNPREPARED_DIST_GRAPH_NOT_PASS; separate later normal publication-producer gate; no stubs or old dist relabel",
+  "SDKsourceTypes": "Calendar and assistant PASS",
+  "SDKregisteredOwning": "71 cases PASS; not whole SDK/API green",
+  "nativeProfile": "cloud-only; existing false/requalification/history unchanged",
+  "normalizedRegistryInputAndFindings": "Unchanged Bun package input; no new waiver or fresh registry audit claimed",
+  "priorReplay": "c124/210 exact9 semanticFAIL preserved with one canonical Breakfast; no repeated mutations",
+  "newActorModelAPIProfileDeviceOrPublicEffects": false,
+  "next": [
+    "New normal client generation and actual stamp",
+    "Relevant joint owning/types/build/audit and normal source consumer closure",
+    "Root single actor GO for corrected create/read and real sameID/version EDIT with calls/tokens/speed/BG separate",
+    "Then5229/Android retained continuity and canonical publication/merge gates"
+  ]
+}

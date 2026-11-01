@@ -103,11 +103,11 @@ test('the note editor keeps Delete on screen beside the other header actions', a
   const {foreign,errors}=await canonicalNotesFixture(page);
   await openCanonicalNotes(page);
   await page.getByRole('button', { name: 'New note', exact: true }).click();
-  // The shared Notes workspace editor: its first action row is the header; Share is in the later row.
-  for (const name of ['Back to notes', 'Pin', 'Delete note']) await reachable(page, page.getByRole('button', { name, exact: true }));
-  const sizes = await page.locator('section[aria-label="Note editor"] > .notes-workspace-actions').first().locator('button').evaluateAll(list => list.map(el => el.getBoundingClientRect().width));
-  for (const width of sizes) expect(width).toBeGreaterThanOrEqual(44);
-  expect(sizes.length).toBeGreaterThanOrEqual(3);
+  // Alpha's note editor header holds Back and every note action, Share and Delete included, in one row.
+  for (const name of ['Back to notes', 'Pin', 'Share note', 'Delete note']) await reachable(page, page.getByRole('button', { name, exact: true }));
+  const sizes = await page.locator('[data-alpha-subview="notes-editor"] [data-alpha-app-header="detail"] button').evaluateAll(list => list.map(el => el.getBoundingClientRect().width));
+  for (const width of sizes) expect(width).toBeGreaterThanOrEqual(43.5);
+  expect(sizes.length).toBeGreaterThanOrEqual(6);
   expect(foreign).toEqual([]);
   expect(errors).toEqual([]);
 });
@@ -177,7 +177,7 @@ test.describe('menus and sheets over a scrim own focus', () => {
       const ownedInfo=start==='photos:viewer'&&name==='Photo info';
       const nativeShare=start==='notes:editor'&&name==='Share';
       if(nativeShare){
-        // The shared Notes workspace hands Share straight to the OS; the share panel is the Older notes editor's.
+        // Alpha's note editor opens the share panel for agent Notes and Older notes alike; Older notes needs no agent fixture.
         await page.addInitScript(offline);await page.goto('/');await openLegacyNotes(page);
         await page.getByRole('button',{name:'New note',exact:true}).click();
         await page.getByRole('textbox',{name:'Title',exact:true}).fill('Owned share focus note');

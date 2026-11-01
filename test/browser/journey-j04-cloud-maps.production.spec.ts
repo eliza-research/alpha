@@ -1,11 +1,11 @@
-// J04 with Eliza Cloud Maps on the FLAG-OFF bundle: a device-calendar event's location is passed to
+// J04 with Eliza Cloud Maps on the FLAG-OFF bundle: a canonical Calendar event's location is passed to
 // Maps once, searched through the account-bound Cloud Maps routes (/api/v1/maps capabilities, search
 // and routes), routed from an explicit origin with an explicit travel-mode choice, started and
 // stopped, and Back to event restores that exact event. A mid-search cancel, an out-of-coverage
 // place and a Retry-After request limit are shown as the shipped renderer words them.
 //
 // Synthetic boundaries, all at the Capacitor bridge (flag-off-android.ts, resident-stub.ts):
-// CalendarProvider rows, the Cloud Maps HTTP answers (resident-stub `maps`), the ElizaLocation fix
+// CalendarService rows, the Cloud Maps HTTP answers (resident-stub `maps`), the ElizaLocation fix
 // stream and the AlphaMapsTransport screen-off service. The shipped renderer, CloudProtocol, the
 // plugin-maps Cloud provider, controller and screen all run.
 //
@@ -13,7 +13,7 @@
 // deployed Cloud Maps service, Nominatim or GraphHopper, GPS, the Android foreground service, an
 // APK, an emulator or a device.
 import { test, expect, type Page } from '@playwright/test';
-import { selectCalendarSource } from './helpers/browser-calendar';
+import {installCanonicalCalendarFixture} from './helpers/canonical-calendar';
 import { flagOffAndroid, harness, button, fenceNetwork, expectNoDevelopmentSurface, residentHome } from './flag-off-android';
 import { residentStub, stub, type StubMaps } from './resident-stub';
 
@@ -70,6 +70,7 @@ async function devicePorts(page: Page, location: string) {
     };
   }, location);
 }
+const calendarReads=(page:Page)=>page.evaluate(()=>(window as any).canonicalCalendarAccessibility.requests as Array<{path:string;method:string}>);
 const j04 = (page: Page) => page.evaluate(() => (window as any).j04 as { lists: Array<{ begin: number; end: number }>; navigation: string[]; watches: string[]; cleared: string[] });
 const mapsRequests = (page: Page) => stub(page, s => s.maps.requests.map((row: any) => ({ route: row.route, body: row.body })));
 /** Route request endpoints and mode; whether alternatives were asked for is asserted separately. */
@@ -81,16 +82,17 @@ test('an event location is searched once in Cloud Maps, routed from an explicit 
   test.setTimeout(180_000);
   const foreign = await fenceNetwork(page);
   const begin = (() => { const now = new Date(), at = new Date(now); at.setHours(at.getHours() + 2, 0, 0, 0); if (at.getDate() !== now.getDate()) { at.setTime(now.getTime()); at.setHours(22, 0, 0, 0); } return at.getTime(); })();
-  await flagOffAndroid(page, { calendar: { access: 'granted', calendars: [{ id: '7', name: 'Harbour team', account: 'owner@example.invalid' }], events: [{ id: '42', calendarId: '7', title: TITLE, begin, end: begin + 1_800_000 }] } });
+  await flagOffAndroid(page);
   await residentStub(page, { maps: MAPS });
   await devicePorts(page, LOCATION);
+  await installCanonicalCalendarFixture(page,{eventTitle:TITLE,location:LOCATION,begin,end:begin+1_800_000});
   await residentHome(page);
 
   const maps = page.getByRole('region', { name: 'Maps' });
   const search = page.getByRole('textbox', { name: 'Search places', exact: true });
 
   await test.step('the event location is passed to Maps once and searched in Cloud Maps', async () => {
-    await selectCalendarSource(page, 'Android calendars');
+    await button(page,'Calendar').click();
     await page.getByRole('button', { name: new RegExp(`^${TITLE},`) }).first().click();
     await expect(page.getByRole('heading', { name: TITLE, exact: true })).toBeVisible();
     // Viewing the event contacts no Maps route.
@@ -140,11 +142,12 @@ test('an event location is searched once in Cloud Maps, routed from an explicit 
   });
 
   await test.step('Back to event reads that exact event again', async () => {
-    const before = (await j04(page)).lists.length;
+    const before = (await calendarReads(page)).length;
     await button(page, 'Back to event').click();
     await expect(page.getByRole('heading', { name: TITLE, exact: true })).toBeVisible();
     await expect(page.locator('html')).toHaveAttribute('data-active-view', 'calendar');
-    expect((await j04(page)).lists.slice(before)).toContainEqual({ begin: begin - 1, end: begin + 1 });
+    expect((await calendarReads(page)).slice(before).some(row=>{const url=new URL(row.path,'http://fixture.invalid');return row.method==='GET'&&url.pathname==='/api/lifeops/calendar/feed'&&Date.parse(url.searchParams.get('timeMin')!)===begin-1&&Date.parse(url.searchParams.get('timeMax')!)===begin+1;})).toBe(true);
+    expect(await harness(page,f=>f.calendar.lists)).toBe(0);
     // The hand-off searched once; returning replays nothing.
     expect((await mapsRequests(page)).filter(row => row.route === 'places/search')).toHaveLength(1);
   });

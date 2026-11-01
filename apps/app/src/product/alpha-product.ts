@@ -7,7 +7,6 @@
  */
 import {
   createMobileViewRegistry,
-  type MobileViewContribution,
   defineMobileProductRegistration,
   mobileShellThemeVariables,
   mobileShellViewPath,
@@ -20,19 +19,12 @@ import {isMvpView} from '../prototype/mvp-features';
 
 export const ALPHA_PRODUCT = defineMobileProductRegistration(record as MobileProductRegistration);
 
-/**
- * Views the shared shell renders itself (MobileViewHost), as lazy components. The rest are still
- * drawn by the prototype renderer (docs/architecture.md, remaining host pieces). Each loader is
- * read only when its view opens, so agent navigation and voice never load a view.
- */
-export const ALPHA_VIEW_LOADERS: readonly MobileViewContribution[] = [
-  { id: 'notes', loader: () => import('./notes-view') },
-];
-
 /** Alpha's view registry and its navigation answers for one availability policy, given by
  * Alpha renderer key. The app uses the MVP scope and AOSP image admission (below). */
 export function alphaNavigation(available: (hostKey: string) => boolean) {
-  const views = createMobileViewRegistry(ALPHA_PRODUCT, {views: ALPHA_VIEW_LOADERS, available: view => available(views.hostKey(view))});
+  // Every view is drawn by Alpha's own renderer (docs/architecture.md, remaining host pieces): none
+  // is contributed to the shell's MobileViewHost.
+  const views = createMobileViewRegistry(ALPHA_PRODUCT, {available: view => available(views.hostKey(view))});
   return {
     views,
     /** The renderer key navigation to any accepted id lands on ('home' for Home); undefined when

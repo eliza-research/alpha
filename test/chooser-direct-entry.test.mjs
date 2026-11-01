@@ -38,7 +38,7 @@ test('automatic readiness probes once per unresolved entry, rearms after a form 
 test('Cancel delegates in-flight readiness to the existing abort operation, without clearing saved credentials',()=>{
  const code=between(source,'  cancelSignIn() {','  async signInGoogle()');let aborted=0,closed=0,changes=[];
  const entry=between(source,'export function explicitSignedOutCloudEntry(', 'export function connectionChooserVisible(').replace('export ','');
- const make=new Function('operation','connectionController','state','productionCloudSignInRequired','update',transformSync(entry+'const target={'+code+'};',{loader:'ts'}).code+';return target;');
+ const make=new Function('operation','connectionController','state','productionCloudSignInRequired','update',transformSync('const isAndroid=false,browserCloudResidentEnabled=false;'+entry+'const target={'+code+'};',{loader:'ts'}).code+';return target;');
  const run=(active,signIn=null,required=false,rest={})=>make(active,{cancel(){aborted++;},close(){closed++;}},{signIn,...rest},()=>required,v=>changes.push(v)).cancelSignIn();
  run({});assert.equal(aborted,1);assert.deepEqual(changes,[{signIn:null,message:'',error:''}]);
  changes=[];run({}, {step:'code',environment:'production'});assert.equal(aborted,2);assert.deepEqual(changes,[{signIn:{step:'choose',environment:'production'},message:'',error:''}]);

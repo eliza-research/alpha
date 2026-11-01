@@ -52,37 +52,30 @@ function fixture({native = true} = {}) {
   return f;
 }
 
-test('Speak replies is off by default: a voice-originated reply is timed but not spoken', async () => {
-  const f = fixture(), text = f.voiceTurn();
-  f.say({id: 'u1', from: 'user', text});
-  f.say({id: 'a1', from: 'agent', text: 'Partial', streaming: true});
-  f.replace('a1', {text: 'You have two events today.', streaming: false});
-  await tick();
-  assert.equal(f.spoken.length, 0);
-  assert.deepEqual(Object.keys(f.row().marks), ['recording-end', 'transcript-ready', 'send', 'first-token', 'final-reply']);
+// Replies are spoken only in the voice conversation (voice-adapter.ts). A message dictated with
+// Transcribe and sent from the composer is timed through its reply but never read aloud, and a
+// Read replies aloud value stored by an earlier build changes nothing.
+const oldReadRepliesAloud = f => f.store.set('alphaphone:speak-replies:v1', JSON.stringify({version: 1, enabled: true}));
+
+test('a dictated and sent message is timed through its final reply, and the reply is never spoken', async () => {
+  for (const stored of [false, true]) {
+    const f = fixture(); if (stored) oldReadRepliesAloud(f);
+    const text = f.voiceTurn();
+    f.say({id: 'u1', from: 'user', text});
+    f.say({id: 'a1', from: 'agent', text: 'Partial', streaming: true});
+    f.replace('a1', {text: 'You have two events today.', streaming: false});
+    await tick(); await tick();
+    assert.deepEqual(f.spoken, [], stored ? 'an old stored Read replies aloud value is ignored' : 'no reply is spoken');
+    assert.deepEqual(Object.keys(f.row().marks), ['recording-end', 'transcript-ready', 'send', 'first-token', 'final-reply']);
+    assert.equal(f.row().outcome, undefined);
+    assert.equal(f.shell.renderVals().msgs[1].localSpeechControlLabel, 'Read aloud');
+  }
 });
 
-test('with Speak replies on, the final reply plays once on the device route and records first audio', async () => {
-  const f = fixture();
-  assert.equal(f.box.setSpeakReplies(true), true);
-  const text = f.voiceTurn();
-  f.say({id: 'u1', from: 'user', text});
-  f.say({id: 'a1', from: 'agent', text: 'Partial', streaming: true});
-  await tick(); assert.equal(f.spoken.length, 0, 'a streaming reply is not spoken');
-  f.replace('a1', {text: 'You have two events today.', streaming: false});
-  await tick(); await tick();
-  assert.deepEqual(f.spoken, [{text: 'You have two events today.', execution: 'device'}]);
-  assert.ok(f.row().marks['first-audio'] >= f.row().marks['final-reply']);
-  // Later updates never replay it.
-  f.say({id: 'a2', from: 'agent', text: 'Approve: something', card: {}});
-  await tick(); assert.equal(f.spoken.length, 1);
-});
-
-test('a spoken reply can be cancelled from its Stop reading control and by the next turn', async () => {
-  const f = fixture(); f.box.setSpeakReplies(true); f.hold = true;
-  let text = f.voiceTurn();
-  f.say({id: 'u1', from: 'user', text}); f.say({id: 'a1', from: 'agent', text: 'Long reply.'});
-  await tick(); await tick();
+test('a reply read with Read aloud can be stopped from its Stop reading control and by the next message', async () => {
+  const f = fixture(); f.hold = true;
+  f.say({id: 'u1', from: 'user', text: 'First'}); f.say({id: 'a1', from: 'agent', text: 'Long reply.'});
+  f.shell.renderVals().msgs[1].localSpeech(); await tick(); await tick();
   assert.equal(f.spoken.length, 1);
   const row = f.shell.renderVals().msgs[1];
   assert.equal(row.localSpeechControlLabel, 'Stop reading');
@@ -90,11 +83,9 @@ test('a spoken reply can be cancelled from its Stop reading control and by the n
   assert.equal(row.localSpeechMessage, '');
   row.localSpeech(); await tick();
   assert.equal(f.signals[0].aborted, true);
-  text = f.voiceTurn('Second question');
-  f.say({id: 'u2', from: 'user', text}); f.say({id: 'a2', from: 'agent', text: 'Second reply.'});
-  await tick(); await tick();
+  f.shell.renderVals().msgs[1].localSpeech(); await tick(); await tick();
   assert.equal(f.spoken.length, 2);
-  f.say({id: 'u3', from: 'user', text: 'Typed follow-up'});
+  f.say({id: 'u2', from: 'user', text: 'Typed follow-up'});
   await tick();
   assert.equal(f.signals[1].aborted, true, 'a new user message stops the reply being read');
 });
@@ -113,20 +104,19 @@ test('Listen on an earlier reply is not stopped by user messages that were alrea
   assert.equal(f.signals[0].aborted, true, 'a user message sent after Listen began stops it');
 });
 
-test('stale, edited, interrupted or other-conversation replies are never spoken', async () => {
-  for (const scenario of ['edited', 'newer-turn', 'interrupted', 'conversation', 'closed', 'late']) {
-    const f = fixture(); f.box.setSpeakReplies(true);
-    const realNow = Date.now; let offset = 0; f.box.Date = class extends Date { static now() { return realNow() + offset; } };
+test('an edited, superseded, interrupted or other-conversation dictated turn is abandoned and never spoken', async () => {
+  for (const scenario of ['edited', 'newer-turn', 'interrupted', 'conversation']) {
+    const f = fixture(); oldReadRepliesAloud(f);
     const text = f.voiceTurn();
     if (scenario === 'edited') f.say({id: 'u1', from: 'user', text: text + ' and tomorrow'});
     else f.say({id: 'u1', from: 'user', text});
     if (scenario === 'newer-turn') f.say({id: 'u2', from: 'user', text: 'Never mind'});
     if (scenario === 'conversation') f.conversation = 'conversation-2';
-    if (scenario === 'closed') f.shell.state.chat = 'hidden';
-    if (scenario === 'late') offset = 6 * 60 * 1000;
     f.say({id: 'a1', from: 'agent', text: 'Reply.', ...(scenario === 'interrupted' ? {interrupted: true} : {})});
     await tick(); await tick();
     assert.equal(f.spoken.length, 0, scenario);
+    assert.equal(f.row().outcome, 'abandoned', scenario);
+    assert.equal(f.row().marks['final-reply'], undefined, scenario);
   }
 });
 

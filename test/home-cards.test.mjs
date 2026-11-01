@@ -1,6 +1,8 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import vm from 'node:vm';
+import {transformSync} from 'esbuild';
 const L = await import('../apps/app/src/prototype/locale-time.ts');
 const H = await import('../apps/app/src/prototype/home-cards.ts');
 L.setLocalePreferences({locale: 'en-US'});
@@ -217,9 +219,40 @@ test('Agent Calendar freshness: an unverified next event is never fresh or an em
   // A stale feed with a failed retry leads a phone reminder with the agent's read line.
   const local = {now, item: {title: 'Call mom', begin: at(16), allDay: false, video: false}, provenance: {origin: 'Reminder', read: '', description: 'Reminder saved on this browser'}};
   assert.equal(H.presentHomeAgendaCard(H.agentReminderLead(local, failed)).stale, true);
+  // Exercise the current adapter's actual render closure with the real complete-feed
+  // selector. A future-only `next` result must never authorize Home's agenda.
   const adapter = readFileSync(new URL('../apps/app/src/prototype/agent-calendar-adapter.ts', import.meta.url), 'utf8');
-  assert.match(adapter, /canonicalHomeCalendar\(controller\?\.state\.next\?\?null,controller\?\.state\.nextFresh===true\)/);
-  assert.match(adapter, /presentAgentAgendaFeed\(controller\?\.state,!!event,now,home\.emptyLabel\)/);
+  const selectSource = readFileSync(new URL('../apps/app/src/runtime/home-calendar-selection.ts', import.meta.url), 'utf8');
+  const key = source => JSON.stringify([source.provider,source.side,source.grantId,source.connectorAccountId,source.calendarId]);
+  const loaded = {exports:{}};
+  const parts = (date,timeZone) => Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone,year:'numeric',month:'numeric',day:'numeric',hour:'numeric',minute:'numeric',second:'numeric',hourCycle:'h23'}).formatToParts(date).filter(p=>p.type!=='literal').map(p=>[p.type,Number(p.value)]));
+  vm.runInNewContext(transformSync(selectSource,{loader:'ts',format:'cjs'}).code,{module:loaded,exports:loaded.exports,require:specifier=>{
+    if(specifier==='./agent-calendar')return {calendarSourceKey:key,calendarEventKey:event=>event.id};
+    if(specifier.endsWith('/internal/time'))return {getZonedDateParts:parts};
+    throw Error('Unexpected selector dependency '+specifier);
+  }});
+  const start=adapter.indexOf(' p.renderVals=function()'),end=adapter.indexOf('\n };',start);
+  assert.ok(start>=0&&end>start,'actual Home render closure must exist');
+  const source={provider:'eliza',side:'owner',grantId:'fixture',connectorAccountId:null,calendarId:'primary',includeInFeed:true,accessRole:'owner'};
+  const event={...source,id:'event',title:'Verified today',status:'confirmed',startAt:new Date(at(16)).toISOString(),endAt:new Date(at(17)).toISOString()};
+  let current=true,owner='owner',state={ownerKey:'owner',status:'ready',mutating:false,calendars:[source],next:{event},nextFresh:true,feed:undefined};
+  let reads=0;const opened=[],context={p:{},renderVals:()=>({}),deviceCalendarScope:()=>false,Date:class extends Date{static now(){return now;}},controller:{get state(){return state;},sourceHandle:()=> 'fixture'},calendarSourceKey:key,port:()=>({current:()=>current}),calendarOwnerKey:()=>owner,zone:()=> 'UTC',homeCalendarSelection:loaded.exports.homeCalendarSelection,homeCalendarValues:H.homeCalendarValues,presentHomeAgendaCard:H.presentHomeAgendaCard,presentHomeAgendaFeed:H.presentHomeAgendaFeed,agentReminderLead:H.agentReminderLead,overdueAgendaNext:H.overdueAgendaNext,refresh:force=>{assert.equal(force,true);reads++;},calendarEventKey:e=>e.id,canonicalCalendarRow:()=>({off:0})};
+  vm.runInNewContext(transformSync(adapter.slice(start,end+4),{loader:'ts'}).code,context);
+  let savedPrefs={};const shell={vget:()=>({calPrefs:savedPrefs}),openView:(...args)=>opened.push(args)},render=()=>context.p.renderVals.call(shell);
+  let home=render();assert.doesNotMatch(home.homeCalendarTitle,/Verified today|Nothing planned/,'next-only cache is unverified');
+  state={...state,feed:{state:'complete',events:[event],timeMin:'2026-09-28T00:00:00Z',timeMax:'2026-11-09T00:00:00Z'}};
+  home=render();assert.equal(home.homeCalendarTitle,'Verified today');savedPrefs={fixture:{on:false,color:'mut'}};const retainedPrefs=structuredClone(savedPrefs);assert.equal(render().homeCalendarTitle,'Verified today','canonical Home follows authoritative feed despite obsolete hidden preference');assert.deepEqual(savedPrefs,retainedPrefs,'display policy never deletes old preferences');home.goCalendar();assert.equal(opened.at(-1)[0],'calendar');assert.equal(opened.at(-1)[1].calendarAuthority,'canonical','one merged Calendar route');
+  for(const update of [{mutating:true},{status:'loading'},{ownerKey:'retired'},{feed:{...state.feed,state:'partial'}}]){
+    const saved=state;state={...state,...update};assert.doesNotMatch(render().homeCalendarTitle,/Verified today|Nothing planned/,'unverified feed or owner never authorizes agenda');state=saved;
+  }
+  assert.equal(reads,0,'rendering and verified navigation never read');
+  for(const status of ['error','unavailable','partial']){
+    const saved=state;state={...state,status,error:'Calendar service unavailable',feed:status==='partial'?{...state.feed,state:'partial'}:null};
+    const failed=render();assert.equal(reads,0,'failure rendering never starts reads');assert.doesNotMatch(failed.homeCalendarTitle,/Verified today|Nothing planned/);
+    failed.goCalendar();assert.equal(reads,1,'explicit navigation retries the actual failed/unverified feed');reads=0;state=saved;
+  }
+  current=false;assert.doesNotMatch(render().homeCalendarTitle,/Verified today|Nothing planned/,'retired connection drops the event');current=true;
+  state={...state,feed:{...state.feed,events:[]}};assert.equal(render().homeCalendarTitle,'Nothing planned','only complete covered feed can assert empty');
 });
 test('inbox status: readable freshness and every non-ready state', () => {
   const base = {failure: false, pending: false, cached: null, connected: false, unchecked: false, now};

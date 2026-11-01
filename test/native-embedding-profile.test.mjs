@@ -10,6 +10,9 @@ test('Alpha selects embeddings only through the shared native runtime profile',(
  const calls=source.split('\n').filter(line=>line.includes('NativeProviderSlot.applyLaunchEnvironment('));
  assert.equal(calls.length,1);
  assert.match(calls[0],/NativeProviderSlot\.applyLaunchEnvironment\(BuildConfig\.ELIZA_RUNTIME_PROFILE,provider,cloudSaved,new File\(context\.getApplicationInfo\(\)\.nativeLibraryDir\),context\.getFilesDir\(\),env,System\.currentTimeMillis\(\)\)/);
+ const configure=source.slice(source.indexOf(' static void configureEnvironment('));
+ assert.ok(configure.indexOf('ELIZA_NATIVE_GOOGLE_HOST_MODULE",google.getCanonicalPath()')>=0,'verified product module must survive credential-independent startup');
+ assert.ok(configure.lastIndexOf('ELIZA_NATIVE_GOOGLE_HOST_MODULE",google.getCanonicalPath()')>configure.indexOf('NativeProviderSlot.applyLaunchEnvironment('),'restore verified product module after shared unbound cleanup');
  const slot=fs.readFileSync('vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/NativeProviderSlot.java','utf8');
  const launch=slot.slice(slot.indexOf('public static boolean applyLaunchEnvironment('));
  assert.ok(launch.indexOf('applyProviderEnvironment(')<launch.indexOf('NativeRuntimeEmbeddings.apply(')&&launch.indexOf('applyUnboundEnvironment(env)')<launch.indexOf('NativeRuntimeEmbeddings.apply('),'the embedding route is applied after provider admission');

@@ -6,12 +6,20 @@ export function browserNavigationSummary(url: string): string {
   if (destination.protocol !== 'https:') throw Error('Expected an HTTPS destination');
   return `Opened ${destination.host}.`;
 }
-function cardDestination(message: Message): string | undefined {
-  if (message.from !== 'agent' || !message.card?.proposalId || typeof message.text !== 'string') return;
+function browserCardUrl(description: unknown): string | undefined {
   const prefix = 'Open browser destination ';
-  if (!message.text.startsWith(prefix)) return;
-  const url = message.text.slice(prefix.length);
+  if (typeof description !== 'string' || !description.startsWith(prefix)) return;
+  const url = description.slice(prefix.length);
   try { if (new URL(url).protocol === 'https:') return url; } catch { /* Keep unrecognized content intact. */ }
+}
+/** The destination of a browser proposal whose receipt succeeded with exactly the Browser summary
+ * (no pending server receipt or other note), else undefined. */
+export function succeededBrowserDestination(card: {description: string} | null | undefined, receipt: {status: string; summary: string}): string | undefined {
+  const url = browserCardUrl(card?.description);
+  if (url && receipt.status === 'succeeded' && receipt.summary === browserNavigationSummary(url)) return url;
+}
+function cardDestination(message: Message): string | undefined {
+  if (message.from === 'agent' && message.card?.proposalId) return browserCardUrl(message.text);
 }
 export function projectActionMessages(rendered: Message[], source: Message[]): Message[] {
   const byId = new Map(source.map(message => [message.id, message]));
@@ -33,6 +41,10 @@ export function projectActionMessages(rendered: Message[], source: Message[]): M
     const actions = turn.filter(message => message.from === 'agent' && (message.card?.proposalId || message.deviceReceipt));
     if (!actions.length) return;
     for (const message of turn) if (message.from === 'agent' && message.text === REVIEW_TEXT) hidden.add(message.id);
+    // A shown agent reply already answers a requested Browser open. Only a succeeded browser receipt
+    // carries browserDestination; failures and other device receipts stay visible.
+    if (!turn.some(message => renderedIds.has(message.id) && message.from === 'agent' && !message.deviceReceipt && !message.card && !message.interrupted && message.text !== REVIEW_TEXT && typeof message.text === 'string' && message.text.trim())) return;
+    for (const message of turn) if (message.from === 'agent' && message.deviceReceipt === true && !message.card && message.browserDestination) hidden.add(message.id);
   };
   for (const message of source) { if (message.from === 'user') { finish(); turn = []; } turn.push(message); } finish();
   return rendered.filter(message => !hidden.has(message.id)).map(message => {

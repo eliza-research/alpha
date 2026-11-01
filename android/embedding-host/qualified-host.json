@@ -69,8 +69,8 @@
   },
   "requalification": {
     "required": true,
-    "atPin": "fbc2d23d4bae0c7086ea529c019e5a47fb7b8352",
-    "reason": "elizaOS/eliza develop fbc2d23d4b moves the native engine gitlink plugins/plugin-local-inference/native/llama.cpp from 0d9fd4b9 to 13d0ccbf and changes stage-elizavoice-lib.ts and the elizavoice JNI sources, so the reviewed libelizainference, libelizavoicejni and libc++ bytes built at fork 0d9fd4b9 are not admitted. A fresh embedding host build from the pinned sources and a new qualification receipt are required; nothing was built or run at this pin.",
+    "atPin": "6f362bef81c19896882e3d582dc5c0c2df488fd2",
+    "reason": "elizaOS/eliza develop fbc2d23d4b moves the native engine gitlink plugins/plugin-local-inference/native/llama.cpp from 0d9fd4b9 to 13d0ccbf and changes stage-elizavoice-lib.ts and the elizavoice JNI sources, so the reviewed libelizainference, libelizavoicejni and libc++ bytes built at fork 0d9fd4b9 are not admitted. A fresh embedding host build from the pinned sources and a new qualification receipt are required; nothing was built or run at this pin. The pin then moved to 9af104a1c7 (the head of the open draft elizaOS/eliza #38251), which moves the same gitlink again to 6973dc6c and changes the stage-elizavoice-lib.ts and elizavoice JNI inputs further, so the earlier statement still holds: nothing was built or run at this pin. The pin then moved to 89714cd4b8, which moves the engine gitlink again to d960f633 with no further embedding build input change, so the earlier statement still holds: nothing was built or run at this pin. The pin then moved to 641c179ce8, which keeps the engine gitlink at d960f633 with no further embedding build input change, so the earlier statement still holds: nothing was built or run at this pin. The pin then moved to 6f362bef81, which keeps the engine gitlink at d960f633 with no further embedding build input change, so the earlier statement still holds: nothing was built or run at this pin.",
     "evidence": "docs/evidence/develop-fbc2d23d-build-input-admission-20261029.json"
   }
 }

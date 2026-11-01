@@ -254,7 +254,6 @@ export function installPrototypeNativeAdapters(
       if (['pay', 'auth', 'verify', 'next', 'scan', 'reload', 'remove', 'setDef', 'startPay'].includes(key)) return unavailable(api, 'Wallet payments and verification are not connected. Nothing has been charged or verified.');
     }
     if (module === 'settings') {
-      if (st.page === 'privacy' && key === 'go' && row.label === 'Workflow runs') return () => api.open('workflows');
       // Opening Activity only shows what is already known; reading history is a separate explicit step.
       if (st.page === 'privacy' && key === 'go' && row.label === 'Activity') return () => api.set({ log: true });
       if (key === 'pick' && st.page !== 'display') return unavailable(api, 'This setting needs a connected provider. No change was applied.');
@@ -347,7 +346,7 @@ export function installPrototypeNativeAdapters(
               : actionHistoryRead === sessionId
                 ? [{ rows: [info('No phone actions recorded', ''), load('Refresh phone action history')] }]
                 : [{ rows: [info('Phone action history', 'Not loaded'), load('Load phone action history')] }];
-        page.groups = [...groups, { rows: [nav('Workflow runs', () => api.open('workflows'))] }];
+        page.groups = groups;
       }
       // Memory deletion is not connected; do not offer a control that only explains that.
       for (const group of page.groups) if (Array.isArray(group?.rows)) group.rows = group.rows.filter((row: Bag) => row?.label !== 'Wipe memory' && (page.title !== 'Privacy & data' || row?.label !== 'Memory'));

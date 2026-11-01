@@ -10,6 +10,11 @@ on:
         options:
           - native
           - cloud
+      build_version_code:
+        description: Cloud regression versionCode (25..2100000000; native ignores this input)
+        type: string
+        required: true
+        default: '26'
   # Optional automatic PACKAGED qualification. Both triggers are inert unless the
   # repository variable ELIZA_RESIDENT_QUALIFICATION is "push" (every main commit)
   # or "nightly" (once a day, default branch only). See docs/ci-cost-policy.md.
@@ -35,6 +40,10 @@ jobs:
     env:
       # Automatic qualification always retains the native profile.
       ALPHA_RUNTIME_PROFILE: ${{ github.event_name == 'workflow_dispatch' && inputs.runtime_profile || 'native' }}
+      ELIZA_ANDROID_BUN_TARGET: ${{ github.event_name == 'workflow_dispatch' && inputs.runtime_profile == 'cloud' && 'android' || 'linux-musl' }}
+      ELIZA_ANDROID_TARGET_ABIS: ${{ github.event_name == 'workflow_dispatch' && inputs.runtime_profile == 'cloud' && 'arm64-v8a' || 'arm64-v8a,x86_64' }}
+      ELIZA_BUN_CHANNEL: stable
+      ELIZAOS_VERSION_CODE: ${{ github.event_name == 'workflow_dispatch' && inputs.runtime_profile == 'cloud' && inputs.build_version_code || '' }}
       ANDROID_NDK: /usr/local/lib/android/sdk/ndk/28.2.13676358
       ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/28.2.13676358
       ANDROID_NDK_ROOT: /usr/local/lib/android/sdk/ndk/28.2.13676358
@@ -49,6 +58,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: true
+          persist-credentials: false
       # Install the selected toolchain before capacity provisioning authenticates it.
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
@@ -142,12 +152,33 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: "1.4.2"
+      - name: Validate Cloud regression build version
+        if: env.ALPHA_RUNTIME_PROFILE == 'cloud'
+        run: |
+          python3 - <<'PYCODE'
+          import os, re
+          value = os.environ['ELIZAOS_VERSION_CODE']
+          assert re.fullmatch(r'[1-9][0-9]{0,9}', value) and 25 <= int(value) <= 2100000000, 'Cloud candidate requires versionCode > retained V24'
+          PYCODE
+      - name: Verify acquisition target and transport contracts
+        run: python3 -B scripts/ci/test-acquire-resident-bun.py
       - name: Admit exact tools and fresh source paths
         run: |
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test "$(node --version)" = "v24.15.0"
           test "$(bun --version)" = "1.4.2"
           python3 -c 'import shutil; assert shutil.disk_usage(".").free >= 10*1024**3'
+          mkdir -p test-results/resident-ci
+          python3 - <<'PYCODE'
+          import json, os
+          from pathlib import Path
+          limits = {}
+          for file in ('/sys/fs/cgroup/memory.max', '/sys/fs/cgroup/memory/memory.limit_in_bytes'):
+              path = Path(file)
+              if path.is_file():
+                  limits[file] = path.read_text().strip()
+          Path('test-results/resident-ci/host-resources.json').write_text(json.dumps({'hostMemoryBytes': os.sysconf('SC_PHYS_PAGES') * os.sysconf('SC_PAGE_SIZE'), 'cpuCount': os.cpu_count(), 'kernelMemoryLimits': limits, 'phaseEntryGiB': 10, 'phaseStopGiB': 4, 'PGIDRSSCap': None, 'phaseLogByteCap': None, 'nodeHeapMiB': 4096, 'turboConcurrency': 1}, indent=2) + '\n')
+          PYCODE
           echo "ALPHA_LOCAL_AGENT_SOURCE_DIR=$GITHUB_WORKSPACE/artifacts/resident-ci-92fc" >> "$GITHUB_ENV"
           echo "ALPHA_WORKFLOW_WORKER_OUTPUT=$GITHUB_WORKSPACE/artifacts/worker-ci-92fc" >> "$GITHUB_ENV"
       - name: Qualify supervisor on real Linux processes
@@ -167,6 +198,33 @@ jobs:
           RUN_TURBO_CONCURRENCY: "1"
         run: |
           python3 scripts/ci/resident-phase.py --name prepare --seconds 3600 npm run agent:prepare
+      - name: Verify the hydrated Cloud SDK graph with OS-network-denied frozen install
+        if: env.ALPHA_RUNTIME_PROFILE == 'cloud'
+        run: |
+          source="$ALPHA_LOCAL_AGENT_SOURCE_DIR"
+          bun_executable="$(command -v bun)"
+          mkdir -p test-results/resident-ci
+          sha256sum "$source/bun.lock" > test-results/resident-ci/sdk-lock.sha256
+          (cd "$source" && "$bun_executable" --no-env-file pm ls --all) > test-results/resident-ci/sdk-graph-before.txt
+          python3 -c 'from pathlib import Path; assert Path("test-results/resident-ci/sdk-graph-before.txt").stat().st_size <= 16*1024**2'
+          # sudo only creates the fresh network namespace. unshare drops to the
+          # runner UID/GID BEFORE the pinned Bun process; no token is forwarded.
+          python3 scripts/ci/resident-phase.py --name sdk-offline-install --seconds 600 \
+            sudo unshare --net --setgid "$(id -g)" --setuid "$(id -u)" -- \
+            env -i HOME="$HOME" PATH="$PATH" TMPDIR="$RUNNER_TEMP" NO_COLOR=1 \
+            BUN_INSTALL_CACHE_DIR="${BUN_INSTALL_CACHE_DIR:-$HOME/.bun/install/cache}" \
+            BUN_RUNTIME_TRANSPILER_CACHE_PATH=0 \
+            /bin/sh -c 'cd "$1" && shift && exec "$@"' sh "$source" \
+            "$bun_executable" --no-env-file install --offline --frozen-lockfile --ignore-scripts
+          sha256sum --check test-results/resident-ci/sdk-lock.sha256
+          (cd "$source" && "$bun_executable" --no-env-file pm ls --all) > test-results/resident-ci/sdk-graph-after.txt
+          cmp test-results/resident-ci/sdk-graph-before.txt test-results/resident-ci/sdk-graph-after.txt
+          node scripts/prepare-local-agent.mjs --source-only
+      - name: Qualify the prepared resident source
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+          RUN_TURBO_CONCURRENCY: "1"
+        run: |
           python3 scripts/ci/resident-phase.py --name device-timing-flow --seconds 600 npm run agent:test-device-timing
           python3 scripts/ci/resident-phase.py --name worker-build --seconds 900 npm run agent:build-workflow-worker
           python3 scripts/ci/resident-phase.py --name native-cloud-routing --seconds 300 node scripts/test-native-cloud-runtime-config.mjs
@@ -200,6 +258,10 @@ jobs:
           # Gate distribution on exactly the npm set the staged payload ships (A-4).
           python3 scripts/ci/resident-phase.py --name packaged-dependency-audit --seconds 180 node scripts/dependency-audit.mjs --resident --notices apps/app/public/licenses/third-party-notices.json
           if [ "$ALPHA_RUNTIME_PROFILE" = cloud ]; then
+            node scripts/prepare-local-agent.mjs --source-only
+            export ALPHA_CLOUD_COLLECTOR_SOURCE="$ALPHA_LOCAL_AGENT_SOURCE_DIR"
+            export ALPHA_BUN="$(command -v bun)"
+            test "$("$ALPHA_BUN" --version)" = "1.4.2"
             # Genuine Cloud resident, all four APKs, test mocks off. No provider calls.
             python3 scripts/ci/resident-phase.py --name cloud-archive --seconds 3000 node scripts/build-archive.mjs --runtime-profile=cloud test-results/resident-ci-cloud
           else
@@ -209,6 +271,56 @@ jobs:
             # that exists only in the separate, never-distributable test-mocks build.
             python3 scripts/ci/resident-phase.py --name archive --seconds 3000 node scripts/build-archive.mjs --test-mocks test-results/resident-ci-archive
           fi
+      - name: Retain bounded Cloud producer evidence for local QA signing
+        if: env.ALPHA_RUNTIME_PROFILE == 'cloud'
+        run: |
+          node scripts/runtime-profile.mjs --verify-cloud
+          node scripts/prepare-local-agent.mjs --source-only
+          sha256sum --check test-results/resident-ci/sdk-lock.sha256
+          (cd "$ALPHA_LOCAL_AGENT_SOURCE_DIR" && bun --no-env-file pm ls --all) > test-results/resident-ci/sdk-graph-final.txt
+          cmp test-results/resident-ci/sdk-graph-before.txt test-results/resident-ci/sdk-graph-final.txt
+          python3 - <<'PYCODE'
+          import hashlib, json, os, shutil, stat
+          from pathlib import Path
+          root = Path.cwd().resolve()
+          out = root / 'test-results/resident-ci-cloud/producer-evidence'
+          out.mkdir(mode=0o700, exist_ok=False)
+          inputs = [
+              ('artifacts/build-config.json', 'artifacts/build-config.json'),
+              ('artifacts/apk-manifest.json', 'artifacts/apk-manifest.json'),
+              ('artifacts/sbom', 'artifacts/sbom'),
+              ('apps/app/public/licenses', 'apps/app/public/licenses'),
+              ('licenses', 'licenses'),
+              ('android/app/src/main/assets/agent', 'android/app/src/main/assets/agent'),
+              ('android/app/src/main/jniLibs', 'android/app/src/main/jniLibs'),
+              ('android/app/build/generated/local-agent/source-manifest.json', 'native-source-manifest.json'),
+              (str(Path(os.environ['ALPHA_LOCAL_AGENT_SOURCE_DIR']) / '.alpha-runtime-source.json'), 'prepared-source-stamp.json'),
+              (str(Path(os.environ['ALPHA_WORKFLOW_WORKER_OUTPUT']) / 'manifest.json'), 'worker-manifest.json'),
+          ]
+          files, total = {}, 0
+          for source, destination in inputs:
+              source = root / source
+              assert source.exists() and not source.is_symlink() and source.resolve().is_relative_to(root), 'Missing/outside/symlink producer evidence'
+              paths = sorted(source.rglob('*')) if source.is_dir() else [source]
+              for file in paths:
+                  info = file.lstat()
+                  assert not stat.S_ISLNK(info.st_mode), 'Evidence symlink'
+                  if stat.S_ISDIR(info.st_mode):
+                      continue
+                  assert stat.S_ISREG(info.st_mode), 'Evidence special file'
+                  relative = Path(destination) / file.relative_to(source) if source.is_dir() else Path(destination)
+                  assert str(relative) not in files, 'Duplicate producer evidence'
+                  total += info.st_size
+                  assert total <= 512 * 1024**2 and len(files) < 4096, 'Producer evidence bound exceeded'
+                  target = out / relative
+                  target.parent.mkdir(parents=True, exist_ok=True)
+                  with file.open('rb') as src, target.open('xb') as dst:
+                      shutil.copyfileobj(src, dst)
+                  digest = hashlib.sha256(target.read_bytes()).hexdigest()
+                  assert digest == hashlib.sha256(file.read_bytes()).hexdigest(), 'Evidence changed during retention'
+                  files[str(relative)] = {'bytes': info.st_size, 'sha256': digest}
+          (out / 'manifest.json').write_text(json.dumps({'source': os.environ['GITHUB_SHA'], 'runtimeProfile': 'cloud', 'versionCode': int(os.environ['ELIZAOS_VERSION_CODE']), 'bytes': total, 'files': files}, indent=2) + '\n')
+          PYCODE
       - name: Build and anchor private endpoint helper
         if: env.ALPHA_RUNTIME_PROFILE == 'native'
         run: python3 scripts/ci/build-private-peer.py

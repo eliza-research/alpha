@@ -131,7 +131,7 @@ test('a transport refusal before dispatch keeps the text in its own conversation
   expect(await page.evaluate(() => { const f = (window as any).dispatchFixture; return { posts: f.posts, created: f.created }; })).toEqual({ posts: 0, created: false });
 });
 
-test('a failure after dispatch offers Check saved conversation and never resends', async ({ page }) => {
+test('a failure after dispatch says the reply could not finish and never resends', async ({ page }) => {
   await remoteAgent(page, 'post-fails');
   await page.goto('/');
   await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0, { timeout: 20_000 });
@@ -139,9 +139,8 @@ test('a failure after dispatch offers Check saved conversation and never resends
   await expect.poll(() => savedDraft(page), { timeout: 15_000 }).toBe('Was this delivered?');
   const key = await bindingKey(page);
   await composer(page).press('Enter');
-  const check = page.getByRole('button', { name: /^Check saved conversation/ });
-  await expect(check).toBeVisible();
-  await expect(page.getByText('The reply stopped before it finished. Check the saved conversation before trying again.', { exact: true })).toBeVisible();
+  await expect(page.getByText('Sorry, I couldn’t finish that reply.', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Check saved conversation/ })).toHaveCount(0);
   // The message may have been received, so it is not offered again as a draft.
   await expect(composer(page)).toHaveValue('');
   await expect.poll(() => savedDraft(page, key)).toBe('');
@@ -150,8 +149,6 @@ test('a failure after dispatch offers Check saved conversation and never resends
   const sent = await page.evaluate(() => { const f = (window as any).dispatchFixture; return { posts: f.posts, ids: [...new Set(f.messageIds)], bodies: [...new Set(f.bodies)] }; });
   expect(sent.posts).toBeGreaterThanOrEqual(1); expect(sent.posts).toBeLessThanOrEqual(2);
   expect(sent.ids).toHaveLength(1); expect(typeof sent.ids[0]).toBe('string'); expect(sent.bodies).toHaveLength(1);
-  await check.click();
-  await expect(page.getByText('Yes, your message arrived. Here is the reply.', { exact: true })).toBeVisible();
-  // Check for reply only reads history; nothing is posted again.
-  expect(await page.evaluate(() => { const f = (window as any).dispatchFixture; return { posts: f.posts, historyReads: f.historyReads }; })).toEqual({ posts: sent.posts, historyReads: 1 });
+  // The Check saved conversation card and its history read were removed, so the click-to-check step
+  // that ended this test is gone with them.
 });

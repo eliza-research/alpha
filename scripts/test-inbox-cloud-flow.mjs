@@ -7,6 +7,8 @@ import {GmailReadAhead} from '../apps/app/src/runtime/gmail-read-ahead.ts';
 import {presentHomeInboxCard} from '../apps/app/src/prototype/home-cards.ts';
 // Real Inbox adapter lifecycle with an account-bound provider fixture, no real mail.
 import assert from 'node:assert/strict';
+import {test} from 'node:test';
+import {ServiceReadCache} from '../apps/app/src/runtime/service-read-cache.ts';
 import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
 import {stripTypeScriptTypes} from 'node:module';
@@ -104,7 +106,7 @@ render();await tick();assert.equal(render().rows.length,2,'re-bound account load
 // Classified failures each offer an explicit Retry; nothing retries on its own.
 for(const [error,kind,text] of [[new TypeError('Failed to fetch'),'offline',/offline/],[new CloudProtocolError('http',409),'revoked',/revoked or needs authorization/],[new CloudProtocolError('http',503),'unavailable',/unavailable/]]){
  failNext=error;const before=searches.filter(s=>!s.pageToken).length;chip('Refresh').pick();await tick();
- assert.equal(searches.filter(s=>!s.pageToken).length,before+1,'one demand attempt only');assert.match(render().emptyText,text,kind);assert.match(shell.renderVals().homeInboxStatus,/retry/,'Home keeps failure distinct from an empty Inbox');if(kind==='revoked')assert.equal(shell.renderVals().homeInboxHasRows,false,'revoked access drops cached subjects');
+ assert.equal(searches.filter(s=>!s.pageToken).length,before+1,'one demand attempt only');assert.match(render().emptyText,text,kind);const home=shell.renderVals();if(kind==='revoked'){assert.equal(home.homeInboxHasRows,false,'revoked access retires cached Home subjects');assert.equal(home.homeInboxStatus,'','Home keeps the approved quiet uncached failure state');assert.equal(home.homeInboxState,'pending','an unverified failed read is not an empty success');assert.doesNotMatch(home.homeInboxCount,/0 unread|Nothing unread/,'failure never claims a verified empty Inbox');}else{assert.equal(home.homeInboxHasRows,true,'same-account cached mail survives a failed refresh');assert.match(home.homeInboxStatus,/retry/,'cached Home mail keeps its failed-refresh state');}chip('Retry');if(kind==='revoked')assert.equal(shell.renderVals().homeInboxHasRows,false,'revoked access drops cached subjects');
  if(kind==='revoked')chip('Reconnect Gmail');
  chip('Retry').pick();await tick();assert.equal(searches.filter(s=>!s.pageToken).length,before+2,'Retry is the explicit second demand attempt');assert.equal(render().rows.length,2);
 }
@@ -192,3 +194,68 @@ assert.equal(searches.length,searchesBeforeRestore,'fresh retained snapshot need
 assert.equal(backgroundSelections.length,selectionsBeforeReload,'cold-start hydration neither withdraws nor reconfigures native background checks');
 reloaded.componentWillUnmount();
 console.log('PASS: Reloaded Inbox cache also restores Home subjects/count/time without a provider read.');
+
+// Home's startup warmup: a late saved summary, a same-account rebind and a revoked grant.
+{
+ class WarmShell{constructor(){this.st={q:null,compose:null};}renderVals(){return {};}componentDidMount(){}componentWillUnmount(){}vset(_,patch){Object.assign(this.st,patch);}}
+ const warmViews={inbox:{state:{}}};sandbox.installInboxCloudAdapter(WarmShell,warmViews);const home=new WarmShell(),warmApi={...api,get:()=>home.st,set:patch=>home.vset('inbox',patch)},inbox=()=>warmViews.inbox.render(home.st,warmApi);
+ let release,cleared=0;const gate=new Promise(r=>{release=r;}),resumed=[];
+ sandbox.serviceReadCache=async()=>({get:async key=>{await gate;return key==='gmail:mailbox'&&!cleared?{value:structuredClone(retainedMailbox)}:null;},put:async()=>{},clear:async()=>{cleared++;}});
+ sandbox.DailyApps={addListener:async(_,fn)=>{resumed.push(fn);return {remove:async()=>{}};}};
+ pages['in:inbox']=[[mail('fresh-1',{unread:true}),mail('fresh-2',{unread:true})]];inboxActive=false;const before=searches.length;
+ home.componentDidMount();await tick();for(const fn of listeners)fn();await tick();release();await tick();
+ assert.deepEqual(searches.slice(before),[{query:'in:inbox',size:25,pageToken:null}],'Home reads one bounded header page');
+ assert.deepEqual(local(home.renderVals().homeInboxRows),[{subject:'Fixture fresh-1',from:'Sender'},{subject:'Fixture fresh-2',from:'Sender'}],'a saved summary that lands after the warmup never replaces it');
+ inboxActive=true;inbox();await tick();inbox().rows[0].open();await tick();assert.equal(home.st.open,'fresh-1');const opened=searches.length;
+ const rebound={...client};controller.getCloudClient=()=>session?{client:rebound,sessionId:session,credentialId:'fixture-credential'}:null;for(const fn of listeners)fn();await tick();
+ assert.equal(inbox().rows.length,2,'a same-account rebind keeps the mailbox');assert.equal(home.st.open,'fresh-1','and the open message');assert.ok(inbox().d,'and its body');assert.equal(searches.length,opened,'and reads nothing again');
+ warmViews.inbox.onLeave();inboxActive=false;assert.equal(home.renderVals().homeInboxHasRows,true);
+ const now=Date.now;Date.now=()=>now()+61000;failNext=new CloudProtocolError('http',403);for(const fn of resumed)fn();await tick();Date.now=now;
+ assert.equal(cleared,1,'a revoked warmup purges the saved mailbox');const revoked=home.renderVals();
+ assert.equal(revoked.homeInboxHasRows,false,'and the Inbox page Home was showing');assert.equal(revoked.homeInboxStatus,'');assert.equal(warmViews.inbox.badge(),false);
+ home.componentWillUnmount();
+}
+console.log('PASS: Home warmup outlives a late saved summary and a same-account rebind; a revoked warmup purges saved mail.');
+
+// A fresh Home adapter never opens Inbox: `selected` must not mask the revoked restore gate.
+for(const purgeFailure of ['reject','exhausted-cas'])await test(`a fresh Home shell cannot restore revoked subjects after ${purgeFailure} purge`,async()=>{
+ class FreshHomeShell{constructor(){this.st={q:null,compose:null};}renderVals(){return {};}componentDidMount(){}componentWillUnmount(){}vset(_,patch){Object.assign(this.st,patch);}}
+ const freshViews={inbox:{state:{}}};sandbox.installInboxCloudAdapter(FreshHomeShell,freshViews);
+ let localGets=0,casAttempts=0,purgeSettled;
+ const owner='fresh-revoked-cache-'+purgeFailure;
+ const raw={version:1,owner,entries:[{key:'gmail:mailbox',at:Date.now(),value:structuredClone(retainedMailbox)}]};
+ const cache=new ServiceReadCache(owner,{read:async()=>structuredClone(raw),compareExchange:async()=>{casAttempts++;if(purgeFailure==='reject')throw Error('Closed fixture failed purge');return 'conflict';}});
+ const get=cache.get.bind(cache),clear=cache.clear.bind(cache);
+ cache.get=async function(...args){localGets++;return get(...args);};
+ cache.clear=function(){const task=clear();purgeSettled=task.then(()=>{},()=>{});return task;};
+ const previousCache=sandbox.serviceReadCache,previousClient=controller.getCloudClient;
+ sandbox.serviceReadCache=async()=>cache;controller.getCloudClient=()=>session?{client,sessionId:session,credentialId:'fixture-credential'}:null;
+ const fresh=new FreshHomeShell();
+ inboxActive=false;connected=true;readGrant=true;delay=false;delayAccounts=true;failNext=new CloudProtocolError('http',403);
+ const beforeSearch=searches.length,beforeBodies=reads.length,priorAccountGate=releaseAccounts;
+ try{
+  fresh.componentDidMount();await tick();
+  assert.equal(localGets,1,'fresh Home reads the real retained cache once before network decision');
+  assert.deepEqual(local(fresh.renderVals().homeInboxRows),[{subject:'Fixture retained-unread',from:'Sender'}],'saved subject was genuinely visible before revocation');
+  assert.equal(typeof releaseAccounts,'function','warmup discovery is pending, without an Inbox render/open');
+  assert.notEqual(releaseAccounts,priorAccountGate,'this fresh shell reached its own gated account discovery');
+  delayAccounts=false;releaseAccounts();await tick();
+  assert.ok(purgeSettled,'warm403 actually called the real cache clear');await purgeSettled;await tick();
+  assert.equal(casAttempts,purgeFailure==='reject'?1:3,'real ServiceReadCache exercised rejected or exhausted purge');
+  assert.equal(raw.entries[0].value.lists[0].messages[0].subject,'Fixture retained-unread','failed purge leaves a real readable stale snapshot');
+  assert.equal((await get('gmail:mailbox')).value.lists[0].messages[0].subject,'Fixture retained-unread','the real cache can still serve the stale saved subject after failed deletion');
+  assert.equal(searches.length,beforeSearch+1,'one bounded warm page received403');
+  assert.equal(fresh.renderVals().homeInboxHasRows,false,'warm403 initially retires its subject');
+  const getsAfterRevocation=localGets;
+  for(const listener of [...listeners])listener();await tick();
+  const after=fresh.renderVals();
+  assert.equal(after.homeInboxHasRows,false,'a NEW same-owner notification must not restore revoked subjects');
+  assert.deepEqual(local(after.homeInboxRows),[],'no stale cached header survives known revocation');
+  assert.equal(after.homeInboxStatus,'','the approved revoked-uncached state stays quiet');
+  assert.equal(localGets,getsAfterRevocation,'the known revoked decision prevents a new cache read despite failed deletion');
+  assert.equal(searches.length,beforeSearch+1,'notification does not silently retry provider access');
+  assert.equal(reads.length,beforeBodies,'fresh Home never reads a body');
+ }finally{
+  fresh.componentWillUnmount();sandbox.serviceReadCache=previousCache;controller.getCloudClient=previousClient;delayAccounts=false;failNext=null;
+ }
+});

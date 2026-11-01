@@ -6,4 +6,8 @@ const devSurfacesEnabled:boolean=import.meta.env!==undefined&&import.meta.env.DE
  * build without ELIZA_DEV_ALLOW_TEST_MOCKS=1 on the development server. */
 export const browserDevProfile=devSurfacesEnabled&&!Capacitor.isNativePlatform()&&new URLSearchParams(location.search).get('mode')==='dev';
 
+/** The one Developer gate for Settings: a development-server build opened with ?tools=1.
+ * Never true in a product build or the demo APK, whatever the URL says. */
+export const developerTools=devSurfacesEnabled&&new URLSearchParams(location.search).get('tools')==='1';
+
 export const developmentAgentWorkflows=browserDevProfile&&new URLSearchParams(location.search).get('workflows')==='agent';

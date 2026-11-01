@@ -15,14 +15,18 @@ export class BrowserSurface extends WebPlugin {
     if(this.tabs.has(this.key(input)))return;
     const container=document.createElement('div'),frame=document.createElement('iframe'),link=document.createElement('a'),status=document.createElement('p');
     container.dataset.browserSurface=input.id;
-    container.style.cssText='position:fixed;display:none;z-index:20;background:var(--bg,#fff);overflow:hidden;flex-direction:column';
+    // The phone canvas keeps one layer for web pages under its assistant layers (template.html),
+    // so the composer and the chat sheet are composited over the page without moving or resizing
+    // it. Created once there and never moved: re-parenting a frame would reload its page.
+    const host=document.querySelector<HTMLElement>('[data-alpha-browser-surfaces]');
+    container.style.cssText=`position:${host?'absolute':'fixed'};display:none;z-index:20;background:var(--bg,#fff);overflow:hidden;flex-direction:column;pointer-events:auto;transform-origin:0 0`;
     frame.title='Website';frame.referrerPolicy='no-referrer';
     // Opaque origin also isolates a same-origin development page from local state.
     frame.setAttribute('sandbox','allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads');
     frame.style.cssText='width:100%;flex:1;min-height:0;border:0;background:white';
     link.textContent='Open in browser';const external=document.createElement('span');external.setAttribute('aria-hidden','true');external.dataset.alphaIcon='/icons/lucide/external-link.svg';Object.assign(external.style,iconStyle('external-link'),{width:'14px',height:'14px'});link.append(external);link.target='_blank';link.rel='noopener noreferrer';link.style.cssText='padding:8px 12px;color:var(--fg,#111);font:12px system-ui;text-align:right;display:flex;justify-content:flex-end;align-items:center;gap:6px';
     status.setAttribute('role','status');status.style.cssText='margin:0;padding:12px;font:14px/1.4 system-ui';status.hidden=true;
-    container.append(link,status,frame);document.body.append(container);
+    container.append(link,status,frame);(host??document.body).append(container);
     const tab:Tab={session:input.session,id:input.id,private:!!input.private,frame,container,link,status,history:[],position:-1,sequence:0,navigation:0,loading:false,committed:false,error:''};
     this.tabs.set(this.key(input),tab);
   }
@@ -47,8 +51,16 @@ export class BrowserSurface extends WebPlugin {
     else if(input.command==='reload'&&tab.position>=0)this.load(tab);
     else if(input.command==='stop'&&tab.loading){const previous=tab.frame,blank=previous.cloneNode(false) as HTMLIFrameElement;blank.src='about:blank';tab.frame=blank;previous.replaceWith(blank);tab.navigation++;tab.loading=false;tab.committed=false;tab.error='Loading stopped. Reload to open this page.';this.emit(tab);}
   }
+  /** Geometry is in viewport pixels, as for the native surface. Inside the scaled phone canvas the
+   * page is placed in its host's pixels and drawn back at viewport size, so it lays out exactly as wide
+   * and tall as presented. */
   async present(input:{session:string;id:string|null;x?:number;y?:number;width?:number;height?:number}) {
-    for(const tab of this.tabs.values())if(tab.session===input.session){const visible=tab.id===input.id;tab.container.style.display=visible?'flex':'none';if(visible)Object.assign(tab.container.style,{left:`${input.x||0}px`,top:`${input.y||0}px`,width:`${input.width||0}px`,height:`${input.height||0}px`});}
+    for(const tab of this.tabs.values())if(tab.session===input.session){
+      const visible=tab.id===input.id;tab.container.style.display=visible?'flex':'none';if(!visible)continue;
+      const host=tab.container.parentElement,box=host&&host!==document.body?host.getBoundingClientRect():null;
+      const scale=box&&host!.offsetWidth?box.width/host!.offsetWidth:1;
+      Object.assign(tab.container.style,{left:`${((input.x||0)-(box?.left||0))/scale}px`,top:`${((input.y||0)-(box?.top||0))/scale}px`,width:`${input.width||0}px`,height:`${input.height||0}px`,transform:scale===1?'':`scale(${1/scale})`});
+    }
   }
   async close(input:{session:string;id:string}) {const tab=this.tabs.get(this.key(input));tab?.container.remove();this.tabs.delete(this.key(input));}
   async bookmarks() {return {urls:await bookmarkDocument.read<string[]>(()=>[])};}

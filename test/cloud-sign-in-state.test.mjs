@@ -43,6 +43,12 @@ test('actual OTP form retains input through submission, pending state and wrong-
   assert.equal(document.querySelector('form').getAttribute('aria-busy'),'true');
   assert.equal(document.querySelector('form button').textContent,'Checking code…');
   assert.equal(document.querySelector('[role="status"]:not(#alpha-google-unavailable)')===null,true,'busy feedback stays inside the button without adding a line');
+  // Once the code is verified the account is admitted: the code check has ended (owner report 2026-10-30).
+  await render({busy:true,message:'Signing in…'});
+  assert.equal(document.querySelector('form button').textContent,'Signing in…');
+  assert.equal(document.querySelector('[role="status"]:not(#alpha-google-unavailable)')===null,true);
+  assert.ok(!document.body.textContent.includes('Checking'));
+  await render({busy:true,message:'Checking your code…'});
   await act(()=>document.querySelector('form').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true})));
   assert.equal(calls.length,1,'pending submit must not dispatch again');
   await render({busy:false,message:'',error:'That code did not work. Check it and try again, or send a new code.'});
@@ -90,7 +96,7 @@ test('resend starts at thirty seconds and cannot be clicked during the countdown
  });
 });
 
-function controllerFixture(){
+function controllerFixture({isAndroid=false,browserCloudResidentEnabled=false}={}){
   const source=`
     let operation=null,residentStartInBackground=false,active=null,signInReadinessOwner=null;
     const state={signIn:{step:'code',environment:'production',attemptId:'old',email:'person@example.invalid'},open:true,busy:false,message:'',error:''};
@@ -99,7 +105,7 @@ function controllerFixture(){
     const client={};
     const signInClient=()=>client,ensureResident=async()=>{},residentRecoveryReason=()=>null;
     const errorMessage=e=>e.message,runQueuedResidentRebind=()=>{},runQueuedSignInReturn=()=>{};
-    const testMocksEnabled=false,expired=()=>false,residentCloudFlow=()=>true;
+    const testMocksEnabled=false,isAndroid=${isAndroid},browserCloudResidentEnabled=${browserCloudResidentEnabled},expired=()=>false,residentCloudFlow=()=>true;
     let required=false;const productionCloudSignInRequired=()=>required,residentSignInRequired=()=>required;let pendingBillingReview=null;const clearPersonalSetup=()=>{};
     ${ui.includes('export function explicitSignedOutCloudEntry(')?part('export function explicitSignedOutCloudEntry(', 'export function connectionChooserVisible(').replace('export ',''):'function explicitSignedOutCloudEntry(){return false;}'}
     const validSignInEmail=()=>true,normalizeSignInCode=value=>/^\\d{6}$/.test(value)?value:null;
@@ -183,7 +189,7 @@ test('Back on the required chooser keeps sign-in enabled instead of creating a r
 const entryStart=ui.indexOf('  const requiredSignInView:'),entryEnd=ui.indexOf('  const accountCreatedNotice=',entryStart);assert.ok(entryStart>=0&&entryEnd>entryStart);
 const selectorSource=ui.slice(entryStart,entryEnd);
 const explicitEntrySource=ui.includes('export function explicitSignedOutCloudEntry(')?part('export function explicitSignedOutCloudEntry(', 'export function connectionChooserVisible(').replace('export ',''):'function explicitSignedOutCloudEntry(){return false;}';
-const entryFunction=transformSync(`${explicitEntrySource}function selectEntry(snapshot){const productionSignInRequired=false,explicitSignInEntry=explicitSignedOutCloudEntry(snapshot),signInEntryRequired=productionSignInRequired||explicitSignInEntry;const panel=null,residentEnvironment=()=> 'production',inAppGoogle=false,inAppPhone=false,inAppEmail=true,cloudSignInPhone=false,loadSignInService=()=>null,RESIDENT_UNPACKAGED='unpackaged',browserCloudResidentEnabled=false,testMocksEnabled=false;${selectorSource}return null;}`,{loader:'tsx',format:'cjs',jsx:'automatic'}).code;
+const entryFunction=transformSync(`const isAndroid=false,browserCloudResidentEnabled=false;${explicitEntrySource}function selectEntry(snapshot){const productionSignInRequired=false,explicitSignInEntry=explicitSignedOutCloudEntry(snapshot),signInEntryRequired=productionSignInRequired||explicitSignInEntry;const panel=null,residentEnvironment=()=> 'production',inAppGoogle=false,inAppPhone=false,inAppEmail=true,cloudSignInPhone=false,loadSignInService=()=>null,RESIDENT_UNPACKAGED='unpackaged',browserCloudResidentEnabled=false,testMocksEnabled=false;${selectorSource}return null;}`,{loader:'tsx',format:'cjs',jsx:'automatic'}).code;
 const noAuthCalls=[];const entryController=new Proxy({},{get:(_,name)=>()=>noAuthCalls.push(name)});
 const selectEntry=new Function('require','CloudSignInPanel','connectionController','ResidentRecoveryPanel',entryFunction+';return selectEntry;')(createRequire(import.meta.url),CloudSignInPanel,entryController,()=>null);
 test('explicit signed-out account and plan entry render approved email/Google chooser directly, with no legacy CTA or auth action',async()=>{const {renderToStaticMarkup}=await import('react-dom/server');for(const purpose of['cloud-account','plan']){const element=selectEntry({open:true,purpose,cloudAccount:null,busy:false,message:'',error:'',signIn:null});assert.ok(element,'the actual root-page branch must select the existing sign-in component');const html=renderToStaticMarkup(element);assert.match(html,/Welcome to Alpha/);assert.match(html,/Continue with Google/);assert.match(html,/Sign in with email/);assert.doesNotMatch(html,/Sign in to use connected services such as Gmail/);assert.deepEqual(noAuthCalls,[]);}});
@@ -230,3 +236,11 @@ test('service terms and privacy still open without the technical service-documen
  await act(()=>button('Back to sign-in').click());
  await act(()=>button('Privacy Policy').click());assert.match(document.querySelector('.alpha-cloud-legal').textContent,/Privacy content/);
 }));
+
+// Extracted controller functions retain their real module-level platform collaborators.
+test('required chooser Back retains its guard on Android and browser-resident platforms',()=>{
+ for(const platform of [{isAndroid:true,browserCloudResidentEnabled:false},{isAndroid:false,browserCloudResidentEnabled:true}]){
+  const f=controllerFixture(platform);f.state.signIn={...choose};f.setRequired(true);
+  f.connectionController.cancelSignIn();assert.deepEqual(f.state.signIn,choose);assert.equal(f.events.length,0);
+ }
+});

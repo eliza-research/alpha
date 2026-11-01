@@ -9,6 +9,9 @@ const directory=mkdtempSync(join(tmpdir(),'alpha-local-contract-'));
 const root='a'.repeat(64),token='synthetic-machine-secret';
 const tokenFile=join(directory,'token');writeFileSync(tokenFile,root,{mode:0o600});
 let pairs=0,sends=0,truncates=0,approvalReads=0,trajectoryReads=0,mode='ok';
+const metadataPath='/api/trajectories/11111111-1111-4111-8111-111111111111?includePayloads=0';
+const metadataDetail={trajectory:{id:'11111111-1111-4111-8111-111111111111',llmCallCount:2},llmCalls:[{id:'call-a',trajectoryId:'11111111-1111-4111-8111-111111111111',purpose:'action-extraction',promptTokens:12,completionTokens:4},{id:'call-b',trajectoryId:'11111111-1111-4111-8111-111111111111',purpose:'response',promptTokens:20,completionTokens:8}]};
+const trajectoryPaths=[];
 const host=http.createServer(async(req,res)=>{
  let raw='';for await(const chunk of req)raw+=chunk;
  const auth=req.headers.authorization;
@@ -23,7 +26,7 @@ const host=http.createServer(async(req,res)=>{
   assert.equal(auth,`Bearer ${token}`);
   if(url==='/api/auth/me')value={identity:{id:'owner',kind:'owner'},access:{role:'OWNER',mode:'session'},session:{id:token,expiresAt:Date.now()+60000}};
   else if(url==='/api/approvals?state=all&limit=500'){approvalReads++;assert.equal(req.method,'GET');value={approvals:[]};}
-  else if(url.startsWith('/api/trajectories')){trajectoryReads++;assert.equal(req.method,'GET');value={trajectories:[]};}
+  else if(url.startsWith('/api/trajectories')){trajectoryReads++;trajectoryPaths.push(url);assert.equal(req.method,'GET');value=url===metadataPath?metadataDetail:{trajectories:[]};}
   else if(url==='/api/agents')value={agents:[{id:'agent',name:'Fixture',status:'running'}]};
   else if(url==='/api/conversations'&&req.method==='POST')value={conversation:{id:'thread',title:'Contract'}};
   else if(url==='/api/conversations')value={conversations:[{id:'thread',title:'Contract'}]};
@@ -70,6 +73,28 @@ try{
  const trace=await invoke({path:trajectoryPath,method:'GET',ownerId:'owner'});assert.equal(trace.status,200);assert.deepEqual(JSON.parse((await trace.json()).body),{trajectories:[]});
  for(const input of [{path:trajectoryPath,method:'POST',ownerId:'owner',body:'{}'},{path:trajectoryPath,method:'GET'},{path:'/api/trajectories?limit=11',method:'GET',ownerId:'owner'},{path:'/api/trajectories/config',method:'GET',ownerId:'owner'},{path:'/api/trajectories/export',method:'POST',ownerId:'owner',body:'{}'}])assert.equal((await invoke(input)).status,400);
  assert.equal((await invoke({path:trajectoryPath,method:'GET',ownerId:'another-owner'})).status,409);assert.equal(trajectoryReads,1,'refused diagnostic reads never reach the agent');
+
+ // Exact metadata detail is the existing SDK getTrajectoryDetail(...,{includePayloads:false}) route.
+ assert.equal(localAgentPathAllowed(metadataPath),true);
+ assert.equal(localAgentPathAllowed('/api/trajectories/step-1792180105633-ulsxnc?includePayloads=0'),true);
+ const metadata=await invoke({path:metadataPath,method:'GET',ownerId:'owner'});assert.equal(metadata.status,200);
+ assert.deepEqual(JSON.parse((await metadata.json()).body),metadataDetail);assert.equal(trajectoryPaths.at(-1),metadataPath);assert.equal(trajectoryReads,2);
+ const rejectedMetadata=[
+  metadataPath.replace('=0','=1'),metadataPath.replace('=0','=false'),metadataPath+'&includePayloads=0',metadataPath+'&unknown=1',
+  metadataPath.replace('?includePayloads=0','?unknown=1&includePayloads=0'),metadataPath.replace('includePayloads','IncludePayloads'),
+  metadataPath.replace('=0','=00'),metadataPath+'&',metadataPath+'#fragment',metadataPath.replace('?','/?'),
+  '/api/trajectories?includePayloads=0','/api/trajectories?limit=10&includePayloads=0',
+  ...['config','CONFIG','export','stats'].map(id=>'/api/trajectories/'+id+'?includePayloads=0'),
+  '/api/trajectories/%63onfig?includePayloads=0','/api/trajectories/id%2Fother?includePayloads=0','/api/trajectories/../id?includePayloads=0',
+  '/api/trajectories/id?includePayloads=%30','/api/trajectories/id?includePayloads=0\n','/api/trajectories/'+'a'.repeat(129)+'?includePayloads=0',
+ ];
+ for(const path of rejectedMetadata){assert.equal(localAgentPathAllowed(path),false,path);assert.equal((await invoke({path,method:'GET',ownerId:'owner'})).status,400,path);}
+ for(const input of [{path:metadataPath,method:'POST',ownerId:'owner',body:'{}'},{path:metadataPath,method:'GET'},{path:metadataPath,method:'GET',ownerId:'   '},{path:metadataPath,method:'GET',ownerId:'owner',body:'{}'},{path:metadataPath,method:'GET',ownerId:'owner',headers:{'X-Elizaos-Client-Id':'22222222-2222-4222-8222-222222222222'}}])assert.equal((await invoke(input)).status,400);
+ assert.equal((await invoke({path:metadataPath,method:'GET',ownerId:'another-owner'})).status,409);
+ assert.equal((await invoke({path:metadataPath,method:'GET',ownerId:'owner'},{'X-Alpha-Local-Agent':'0'})).status,403);
+ assert.equal((await invoke({path:metadataPath,method:'GET',ownerId:'owner'},{Origin:'https://foreign.invalid'})).status,403);
+ assert.equal(trajectoryReads,2,'metadata refusals preserve owner/GET/header gates and never reach the agent');
+
 
  client.deviceHeaders={'X-Eliza-Device-Id':'device'};
  assert.equal((await client.send('thread','Hello')).text,'Fixture reply');

@@ -8,7 +8,7 @@ await build({entryPoints:[path.join(root,'apps/app/src/runtime/cloud-membership-
 const{CloudMembershipControls,BillingAccountReview}=await import(pathToFileURL(file).href);
 const calls=[];const base={email:'example@alpha.test',busy:false,balance:'funded',credits:{usd:'9.911418',observedAt:Date.UTC(2026,9,25)},plan:{kind:'credits'},onRedeem:async()=>{calls.push('redeem');return false;},onAddFunds:()=>calls.push('funds'),onRefresh:()=>calls.push('refresh')};
 const render=(extra={})=>renderToStaticMarkup(React.createElement(CloudMembershipControls,{...base,...extra}));
-test('approved B exposes one code-entry action, not another accordion or an initial code form',()=>{const s=render();assert.match(s,/Use membership code/);assert.doesNotMatch(s,/<details|Have a membership code|<input/);assert.deepEqual(calls,[]);});
+test('approved B exposes one code-entry action, not another accordion or an initial code form',()=>{const s=render();assert.match(s,/Enter membership code/);assert.doesNotMatch(s,/<details|Have a membership code|<input/);assert.deepEqual(calls,[]);});
 test('exact nonzero credits survive display formatting while redundant trailing zeroes are removed',()=>{assert.match(render(),/\$9\.911418/);assert.match(render({credits:{usd:'0.000005',observedAt:0}}),/\$0\.000005/);assert.match(render({credits:{usd:'12.340000',observedAt:0}}),/\$12\.34</);assert.doesNotMatch(render({credits:{usd:'12.340000',observedAt:0}}),/12\.340000/);});
 test('unavailable and checking balances never invent zero credits',()=>{for(const balance of['unavailable','checking']){const s=render({balance,credits:null,plan:null});assert.doesNotMatch(s,/\$0\.00|No active membership/);assert.match(s,balance==='checking'?/Checking…/:/Not available/);}});
 test('active membership retains its verified plan and end date',()=>{const s=render({plan:{kind:'active',planName:'Example plan'},endsAt:Date.now()+86400000});assert.match(s,/Example plan/);assert.match(s,/Ends /);});
@@ -22,5 +22,5 @@ test('inside the resident plan panel the plan and its allowance are shown once, 
  const plan={kind:'active',planName:'Example plan',allowance:{unit:'requests',period:'month',limit:40,used:3,resetsAt:null}};
  const own=render({plan,endsAt:Date.now()+86400000});assert.match(own,/Membership/);assert.match(own,/Example plan/);
  const hosted=render({plan,endsAt:Date.now()+86400000,planShownByHost:true});
- assert.doesNotMatch(hosted,/Membership<|Example plan|Ends /);assert.match(hosted,/Available credits/);assert.match(hosted,/Use membership code/);
+ assert.doesNotMatch(hosted,/Membership<|Example plan|Ends /);assert.match(hosted,/Available credits/);assert.match(hosted,/Enter membership code/);
 });

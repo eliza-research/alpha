@@ -1,3 +1,4 @@
+import {nativeGoogleWorkspaceReturnAvailable,type GoogleWorkspaceBinding,type GoogleWorkspaceReturnPort} from './google-workspace-return';
 import {cloudStorageSlot} from './cloud-deployment.generated.ts';
 import {browserCloudResidentEnabled,browserCloudManagedServiceAllowed} from './browser-cloud-resident';
 import {managedServiceRequest} from './managed-service-routes';
@@ -26,6 +27,11 @@ export const cloudSignIn:CloudSignInPort|undefined=nativeSignInHeader?registerPl
   :browserCloudHost?registerPlugin<CloudSignInPort>('AlphaCloudSignIn',{web:()=>new BrowserCloudSignIn()}):undefined;
 
 export interface ConnectionPort {
+  prepareGoogleWorkspaceReturn?(binding:GoogleWorkspaceBinding):ReturnType<GoogleWorkspaceReturnPort['prepare']>;
+  consumeGoogleWorkspaceReturn?(binding:GoogleWorkspaceBinding):ReturnType<GoogleWorkspaceReturnPort['consume']>;
+  cancelGoogleWorkspaceReturn?(input:{state:string}):Promise<void>;
+  addListener?(name:'googleWorkspaceReturn',listener:()=>void):Promise<{remove():void|Promise<void>}>;
+
   /** `retryAfter` is the Retry-After header of an error response (seconds or an HTTP date), when present. */
   request(input: { requestId: string; url: string; method: string; headers: Record<string,string>; body?: string; credentialReference?:string; expiresAt?: number }): Promise<{status:number;data:unknown;retryAfter?:string}>;
   cancel(input:{requestId:string}):Promise<void>;
@@ -179,6 +185,14 @@ let browserConnection:ConnectionPort|undefined;
 // Capacitor keeps the first registration. browser/register.ts imports this module first, so the
 // web build gets this implementation while Android keeps the native plugin.
 const native = registerPlugin<ConnectionPort>('AlphaConnection',!nativeConnectionHeader&&!Capacitor.isNativePlatform()?{web:()=>browserCloudHost?new BrowserCloudConnection():browserConnection??=createBrowserConnection()}:undefined);
+
+/** Unsupported or unverified native app links retain the existing manual-return flow. */
+export const googleWorkspaceReturnPort:GoogleWorkspaceReturnPort|undefined=Capacitor.getPlatform()==='android'&&nativeGoogleWorkspaceReturnAvailable((Capacitor as typeof Capacitor&{PluginHeaders?:unknown}).PluginHeaders)?{
+ async prepare(binding){if(binding.environment!=='production')return {supported:false};return native.prepareGoogleWorkspaceReturn?native.prepareGoogleWorkspaceReturn(binding):{supported:false};},
+ async consume(binding){return native.consumeGoogleWorkspaceReturn?native.consumeGoogleWorkspaceReturn(binding):{result:'none'};},
+ async cancel(state){await native.cancelGoogleWorkspaceReturn?.({state});},
+ async subscribe(listener){return native.addListener?native.addListener('googleWorkspaceReturn',listener):{remove(){}};},
+}:undefined;
 
 export const secureConnectionStore = {
   async readRaw(slot:string):Promise<string|null> { return (await native.secureRead({slot})).value; },

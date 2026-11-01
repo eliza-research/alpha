@@ -10,11 +10,11 @@ const work=section('async function work(', '/** Start (or restart) the resident.
 const helper=source.includes('async function restoreOptionalBrowserCloudAccount(')?section('async function restoreOptionalBrowserCloudAccount(', 'export const connectionController ='):'';
 const code=stripTypeScriptTypes(work+'\n'+helper+'\nglobalThis.controller={'+initialize+'};',{mode:'transform'});
 const credential={credentialId:'fixture-id',credentialReference:'browser-cloud-reference:fixture'};
-function fixture({values=[credential,credential],choice={kind:'resident'},attachFails=false,android=false,profile=false,cloudResident=false,accepts=true,search='',readChoice}={}){
+function fixture({values=[credential,credential],choice={kind:'resident'},attachFails=false,android=false,profile=false,cloudResident=false,accepts=true,search='',readChoice,testMocks=false}={}){
  const calls=[],history={messages:[{id:'retained',text:'Exact retained history'}]};let context;
  const state={open:false,error:'',busy:false,history,cloudAccount:null};
  context=vm.createContext({state,epoch:1,startup:null,operation:null,active:null,residentStartInBackground:false,privateLocalPreviewEnabled:true,
-  browserDevProfile:profile,browserCloudResidentEnabled:cloudResident,isAndroid:android,testMocksEnabled:false,
+  browserDevProfile:profile,browserCloudResidentEnabled:cloudResident,isAndroid:android,testMocksEnabled:testMocks,
   update:patch=>Object.assign(state,patch),AbortController,DOMException,URLSearchParams,location:{search},residentRecoveryReason:()=>undefined,errorMessage:error=>error.message,expired:()=>false,
   runQueuedResidentRebind(){},runQueuedSignInReturn(){},residentCloudFlow:()=>false,settleResidentAfterStartup(){},selection:()=>context.choice,choice,
   connectResident:async()=>{calls.push('attach');if(attachFails)throw Error('Private owner unavailable');context.active={kind:'resident'};state.session={ownerId:'local-owner'};},
@@ -32,6 +32,12 @@ test('an empty optional Cloud store does not reopen sign-in or disturb the priva
 });
 test('a replaced reference with the same credential ID cannot publish the old Cloud account',async()=>{
  const f=fixture({values:[credential,{...credential,credentialReference:'browser-cloud-reference:replacement'}]});await f.initialize();assert.deepEqual(f.calls,['attach','read','read']);assert.match(f.state.error,/Cloud account changed/);assert.equal(f.state.cloudAccount,null);assert.equal(f.context.active.kind,'resident');assert.equal(f.state.history,f.history);
+});
+// `npm run dev` sets the preview flag with test mocks on (scripts/dev-local.mjs): a page loaded while the
+// agent restarts attaches in the background, so the failed attach (a 503) leaves the sheet closed.
+test('npm run dev: a failed startup attach leaves the sheet closed and the agent recovering, with test mocks on',async()=>{
+ const f=fixture({attachFails:true,testMocks:true});await f.initialize();assert.deepEqual(f.calls,['attach']);
+ assert.equal(f.state.open,false);assert.equal(f.state.kind,'recovering');assert.equal(f.state.busy,false);assert.match(f.state.error,/Private owner unavailable/);
 });
 test('failed private attachment never starts unrelated Cloud discovery',async()=>{
  const f=fixture({attachFails:true});await f.initialize();assert.deepEqual(f.calls,['attach']);assert.match(f.state.error,/Private owner unavailable/);assert.equal(f.state.cloudAccount,null);

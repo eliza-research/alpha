@@ -255,7 +255,7 @@ test('double activation makes one draft; a reload mid hand-off keeps the draft a
 });
 
 // Canonical path: an agent Notes record (closed app-record fixture, no server) hands its text to a
-// reminder draft through the shared NotesWorkspace draft port. The saved reminder keeps a version 2
+// reminder draft from Alpha's note editor (canonical-notes-ui.ts, the shared noteScheduleDraft). The saved reminder keeps a version 2
 // record link (note id and a hash of its authored fields only) that opens that exact record.
 test('a canonical note opens a reminder draft whose saved reminder links back to that exact record',async({page})=>{
  const {errors}=await canonicalNotesFixture(page);
@@ -264,9 +264,9 @@ test('a canonical note opens a reminder draft whose saved reminder links back to
  await button(page,'New note').click();await title(page).fill('Venue plan');
  await page.getByRole('textbox',{name:'Note',exact:true}).fill('Book the venue');
  await button(page,'Back to notes').click();
- await button(page,'Note Venue plan').click();
+ await button(page,'Open Venue plan').click();
  const before=await page.evaluate(()=>structuredClone((window as any).canonicalNotesFixture.state.notes));
- await button(page,'Reminder draft').click();
+ await button(page,'Review reminder draft').click();
  await expect(page.getByRole('textbox',{name:'Notes',exact:true})).toHaveValue('Book the venue');
  await expect(page.getByText('Review the time, then Save. Nothing scheduled yet.',{exact:true})).toBeVisible();
  expect(await reminders(page)).toEqual([]);expect(await stored(page)).toEqual({});

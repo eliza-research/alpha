@@ -19,19 +19,11 @@
 .alpha-google-connections>header h2{margin:0;font-size:24px;line-height:1.2}
 .alpha-google-account>strong,.alpha-google-account>span{min-width:0;overflow-wrap:anywhere}
 .alpha-google-account>span{flex:none}
-.alpha-google-account details{padding:0;width:100%}
-.alpha-google-account summary{display:flex;align-items:center;gap:12px;min-height:44px;font-size:14px;list-style:none}
-.alpha-google-account summary::-webkit-details-marker{display:none}
-.alpha-google-account summary::after{content:'';width:6px;height:6px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);margin:0 5px 4px auto;flex:none}
-.alpha-google-account details[open] summary::after{transform:rotate(225deg);margin-bottom:0}
 .alpha-google-account .alpha-google-disconnect{align-self:flex-start;color:var(--connection-mut,#6b6b6b)}
-.alpha-google-calendar-choices{display:grid;gap:8px}
-.alpha-google-connections .alpha-google-calendar-option{display:flex;flex-direction:row;align-items:center;gap:12px;min-height:52px;margin:0;padding:10px 12px;border:1px solid var(--connection-line,#e3e3e3);border-radius:14px;box-sizing:border-box;cursor:pointer;color:var(--connection-fg,#000)}
-.alpha-google-calendar-option.is-selected{border-color:var(--connection-acc,#0000ff);background:var(--connection-s2,#f3f3f3)}
-.alpha-google-connections .alpha-google-calendar-option input{width:20px;height:20px;min-height:0;margin:0;padding:0;flex:none;accent-color:var(--connection-acc,#0000ff)}
-.alpha-google-calendar-option>span{min-width:0;overflow-wrap:anywhere}
-.alpha-google-calendar-option strong{display:block;font-weight:500}
-.alpha-google-calendar-option small{display:block;color:var(--connection-mut,#6b6b6b);font-size:12px;margin-top:2px}
+.alpha-google-connections .alpha-google-switch{display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:12px;min-height:52px;margin:0 0 8px;padding:10px 12px;border:1px solid var(--connection-line,#e3e3e3);border-radius:14px;box-sizing:border-box;cursor:pointer;color:var(--connection-fg,#000)}
+.alpha-google-switch>span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.alpha-google-switch small{color:var(--connection-mut,#6b6b6b)}
+.alpha-google-switch input{flex:none;width:22px;height:22px;accent-color:var(--connection-acc,#0000ff)}
 
 /* Plan notice beside the running agent: never modal, never covers the whole phone. */
 .alpha-plan-notice{position:fixed;left:12px;right:12px;top:calc(max(env(safe-area-inset-top),12px) + 28px);z-index:9000;max-width:480px;margin:0 auto;box-sizing:border-box;padding:12px 14px;border-radius:18px;background:var(--s2,#f3f3f3);color:var(--fg,#000);box-shadow:0 4px 20px rgba(0,0,0,.14);font:14px/1.4 'Public Sans',system-ui,sans-serif}
@@ -71,7 +63,7 @@
 .alpha-connection .alpha-auth-method-note{font-size:13px;line-height:1.5;margin:10px 0 0}
 .alpha-connection .alpha-auth-notice{border-top:1px solid var(--connection-line,#dedede);padding-top:16px;margin-top:28px;font-size:12px;line-height:1.6;color:var(--connection-mut,#666);background:none;border-radius:0}
 .alpha-cloud-sign-in>.alpha-connection-actions:last-child{margin-top:20px}
-.alpha-cloud-sign-in>.alpha-connection-actions:last-child .alpha-connection-cancel{border:0;padding-inline:0;background:none;color:var(--connection-mut,#666)}
+.alpha-connection.alpha-cloud-sign-in .alpha-connection-actions>.alpha-connection-cancel{background:none;border:0;box-shadow:none;color:var(--connection-mut,#666)}
 .alpha-cloud-sign-in .alpha-auth-submit[aria-busy=true]{opacity:1;cursor:progress}
 .alpha-cloud-sign-in-code>button[type=button]{min-height:44px;font-size:14px;font-variant-numeric:tabular-nums}
 @media(max-height:620px){.alpha-auth-page .alpha-auth-content{justify-content:flex-start;padding-top:calc(env(safe-area-inset-top) + 24px)}.alpha-auth-body{margin-block:0}.alpha-auth-brand{margin-bottom:28px}}

@@ -32,8 +32,15 @@ function matches(actual, expected) {
     Object.entries(expected).every(([file, digest]) => actual[file] === digest);
 }
 export const CLIENT_FEATURE_PATHS = [
+  'packages/contracts/src/browser-address-input.ts',
+  'packages/contracts/src/browser-request-grounding.ts',
+  // Generated IANA TLD data imported by browser-request-grounding; this leaf has no imports.
+  'packages/contracts/src/iana-tlds.ts',
+  'packages/contracts/src/stated-clock-time.ts',
+  'packages/contracts/src/phone-dial.ts',
   'packages/contracts/src/device-action-execution.ts',
   'packages/contracts/src/client-turn-observation.ts',
+  'packages/contracts/src/contracts/remote-agent-pairing.ts',
   'packages/contracts/src/notice-routes.ts',
   'packages/contracts/src/deletion-window.ts',
   'packages/contracts/src/phone-workflow.ts',
@@ -47,6 +54,7 @@ export const CLIENT_FEATURE_PATHS = [
   'packages/ui/src/agent-surface/types.ts',
   'packages/ui/src/agent-surface/useAgentElement.ts',
   'packages/ui/src/api/api-error.ts',
+  'packages/ui/src/api/conversation-turn-controller.ts',
   'packages/ui/src/components/composites/deferred-deletion-notice.tsx',
   'packages/ui/src/components/composites/page-panel/content-state.tsx',
   'packages/ui/src/components/composites/page-panel/index.ts',
@@ -86,12 +94,18 @@ export const CLIENT_FEATURE_PATHS = [
   'packages/ui/src/components/pages/InstalledAppsLauncher.tsx',
   'packages/contracts/src/contracts/theme.ts',
   'packages/ui/src/config/theme.ts',
+  // The shared mobile entry also exports the page registry, its application catalog and
+  // MobileApplication (elizaOS/eliza#38276); these leaves are their whole closure.
+  'packages/ui/src/app-shell-pages.ts',
+  'packages/ui/src/registry-host.ts',
   'packages/ui/src/mobile-shell/index.ts',
+  'packages/ui/src/mobile-shell/application-catalog.ts',
   'packages/ui/src/mobile-shell/core.ts',
   'packages/ui/src/mobile-shell/eliza-product.ts',
   'packages/ui/src/mobile-shell/feature-manifest.ts',
   'packages/ui/src/mobile-shell/gestures.ts',
   'packages/ui/src/mobile-shell/MobileAllAppsDrawer.tsx',
+  'packages/ui/src/mobile-shell/MobileApplication.tsx',
   'packages/ui/src/mobile-shell/MobileHomeScreen.tsx',
   'packages/ui/src/mobile-shell/MobileViewHost.tsx',
   'packages/ui/src/mobile-shell/mobile-launcher.ts',
@@ -99,6 +113,8 @@ export const CLIENT_FEATURE_PATHS = [
   'packages/ui/src/mobile-shell/product-registration.ts',
   'packages/ui/src/mobile-shell/view-id-migration.ts',
   'packages/ui/src/mobile-shell/view-ids.ts',
+  // core.ts re-exports the shared mobile discovery policy (a type-and-function leaf, no imports).
+  'packages/ui/src/mobile-shell/view-policy.ts',
   'packages/ui/src/mobile-shell/view-registry.ts',
   'packages/ui/src/voice/pcm-wave.ts',
   "packages/ui/src/utils/reminder-presentation.ts",
@@ -111,7 +127,9 @@ export const CLIENT_FEATURE_PATHS = [
   'packages/core/src/schema-types.ts',
   'packages/core/src/types/json.ts',
   'packages/core/src/types/schema.ts',
+  'packages/core/src/types/surface-manifest.ts',
   'packages/core/src/types/view-capability.ts',
+  'packages/core/src/types/view-kind.ts',
   'plugins/plugin-calendar/src/meetings/auto-join-types.ts',
   'packages/core/src/types/permissions.ts',
   'packages/contracts/src/lifeops/gmail.ts',
@@ -219,7 +237,11 @@ export const CLIENT_FEATURE_PATHS = [
   'packages/ui/src/state/durable-draft-controller.ts',
   'packages/contracts/src/native-notes-query.ts',
   'packages/contracts/src/device-reviews.ts',
-  'packages/contracts/src/calendar-linked-sync.ts',
+  'plugins/plugin-assistant/src/services/device-actions/contract.ts',
+  'plugins/plugin-assistant/src/services/device-actions/phone-dial-contract.ts',
+  'plugins/plugin-assistant/src/services/device-actions/client-coordinator.ts',
+  'plugins/plugin-assistant/src/services/device-actions/maps-contract.ts',
+  'plugins/plugin-assistant/src/services/device-actions/workflow-contract.ts',
   'plugins/plugin-assistant/src/services/device-actions/camera-contract.ts',
   'plugins/plugin-assistant/src/services/device-actions/photo-library-contract.ts',
   'plugins/plugin-native-camera/src/definitions.ts',
@@ -229,17 +251,13 @@ export const CLIENT_FEATURE_PATHS = [
   'plugins/plugin-assistant/src/services/device-actions/notes-query-result.ts',
   'packages/contracts/src/sms-send.ts',
   'plugins/plugin-assistant/src/services/device-actions/sms-contract.ts',
-  'packages/contracts/src/sms-send.ts',
   'packages/contracts/src/mms-send.ts',
   'packages/contracts/src/native-telephony.ts',
   'packages/contracts/src/native-telephony-session.ts',
-  'packages/contracts/src/phone-dial.ts',
   'plugins/plugin-assistant/src/services/device-actions/clock-contract.ts',
   'plugins/plugin-assistant/src/services/device-actions/clock-handoff.ts',
   'plugins/plugin-assistant/src/services/device-actions/clock-handoff-history.ts',
   'plugins/plugin-assistant/src/services/device-actions/clock-review-executor.ts',
-  'plugins/plugin-assistant/src/services/device-actions/clock-handoff.ts',
-  'plugins/plugin-assistant/src/services/device-actions/clock-handoff-history.ts',
   'plugins/plugin-assistant/src/services/device-actions/reminder-journal.ts',
   'plugins/plugin-native-reminders/src/android-definitions.ts',
   'plugins/plugin-native-reminders/src/occurrence.ts',
@@ -282,8 +300,17 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true 
   // Only two re-export maps remain: they select upstream leaves for bare package specifiers
   // and carry no declarations of their own.
   const project = (name, text) => source.set(name, {bytes:Buffer.from(text),mode:'100644',sha256:hash(Buffer.from(text))});
-  project('client-contracts.ts', 'export * from "./packages/contracts/src/calendar";\nexport * from "./packages/contracts/src/calendar-linked-sync";\nexport * from "./packages/contracts/src/device-reviews";\nexport * from "./packages/contracts/src/contracts/theme";\n');
+  project('client-contracts.ts', 'export * from "./packages/contracts/src/calendar";\nexport * from "./packages/contracts/src/calendar-linked-sync";\nexport * from "./packages/contracts/src/device-reviews";\nexport * from "./packages/contracts/src/workflow-device";\nexport * from "./packages/contracts/src/contracts/theme";\n');
   const text = name => source.get(name).bytes.toString();
+  // The native compatibility entry re-exports the shared parser by package name.
+  // Plain Node consumers need that one import resolved within the copied graph.
+  {
+    const name = 'plugins/plugin-native-browser-surface/src/address-input.ts';
+    const before = 'from "@elizaos/contracts/browser-address-input";';
+    const content = text(name);
+    if (content.split(before).length !== 2) throw Error('Review changed browser address re-export: ' + name);
+    project(name, content.replace(before, 'from "../../../packages/contracts/src/browser-address-input.ts";'));
+  }
   // Upstream voice sessions import the shared random-id helper by its emitted .js name. Plain
   // Node (tests and scripts that strip types) cannot map that to the copied .ts source, so the
   // one reviewed value import is pointed at the .ts file; type-only .js imports are erased.
@@ -293,15 +320,6 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true 
     if (content.split(before).length !== 2) throw Error('Review changed voice random-id import: ' + name);
     project(name, content.replace(before, 'import { randomId } from "./random-id.ts";'));
   }
-  // The shared native live transport imports the live session's values by their emitted .js name
-  // (and only types from turn timing, which type stripping erases); point that one import at .ts.
-  {
-    const name = 'packages/voice/src/native-live-voice.ts', before = '} from "./live-voice-session.js";';
-    const content = text(name);
-    if (content.split(before).length !== 2 || /^import (?!type )[^;]*from "\.\/(?!live-voice-session\.js")/m.test(content)) throw Error('Review changed native live voice imports: ' + name);
-    project(name, content.replace(before, '} from "./live-voice-session.ts";'));
-  }
-
   // The shared account billing reader imports the entitlement helpers by their emitted .js name.
   // Plain Node (tests and scripts that strip types) cannot map that to the copied .ts source, so
   // the one reviewed value import is pointed at the .ts file; its type-only .js import is erased.
@@ -310,6 +328,15 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true 
     const content = text(name);
     if (content.split(before).length !== 2) throw Error('Review changed account billing import: ' + name);
     project(name, content.replace(before, '} from "./subscription-entitlement.ts";'));
+  }
+
+  // The shared native live transport imports the live session's values by their emitted .js name
+  // (and only types from turn timing, which type stripping erases); point that one import at .ts.
+  {
+    const name = 'packages/voice/src/native-live-voice.ts', before = '} from "./live-voice-session.js";';
+    const content = text(name);
+    if (content.split(before).length !== 2 || /^import (?!type )[^;]*from "\.\/(?!live-voice-session\.js")/m.test(content)) throw Error('Review changed native live voice imports: ' + name);
+    project(name, content.replace(before, '} from "./live-voice-session.ts";'));
   }
 
   // The shared linked-sync modules import @elizaos/contracts by package name. Alpha has no

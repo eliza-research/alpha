@@ -1,8 +1,7 @@
+import { externalVoiceInvocationEnabled } from '../runtime/voice-entry-policy';
 import {residentRecoveryCopy} from '../runtime/resident-recovery';
-import {browserCalendarScope} from './agent-calendar-adapter';
 import {cloudServiceName} from '../runtime/cloud-protocol';
-import {openCalendarSyncSettings} from '../runtime/calendar-sync-settings';
-import {browserDevProfile as devProfileQuery} from '../browser/dev-profile';
+import {browserDevProfile as devProfileQuery,developerTools} from '../browser/dev-profile';
 import {cloudRuntimeEnabled,testMocksEnabled,devSurfacesEnabled,updateChannelCheckEnabled} from '../build-flags';
 import {openCalendarRecovery} from '../browser/calendar-recovery';
 import {openNotificationRecovery} from '../browser/notification-recovery';
@@ -14,10 +13,10 @@ import { registerPlugin } from '../platform-plugins';
 import { broaderPageNotice, switchValue } from './native-adapter';
 import { Capacitor } from '@capacitor/core';
 import { DailyApps } from '../daily';
-import { connectionController, agentAvailabilityNotice } from '../runtime/connection-ui';
+import { connectionController } from '../runtime/connection-ui';
 import {googleConnectionController} from '../runtime/google-connection-ui';
 import {GOOGLE_ACCOUNTS_CHANGED,googleDisconnectConfirmation,googleDisconnectMessage} from '../runtime/google-accounts';
-import { browserLocalAgentEnabled } from '../runtime/local-agent';
+import { browserLocalAgentEnabled, modelLabel } from '../runtime/local-agent';
 import {developmentCartesiaVoiceEnabled} from '../runtime/development-cartesia-conversation';
 import type { GmailAccount } from '../runtime/cloud-protocol';
 import { disconnectGmailAccount, disconnectMessage, GMAIL_ACCOUNTS_CHANGED } from '../runtime/gmail-mailbox';
@@ -27,9 +26,8 @@ import { clearCrashLog, describeCrashEntry, readCrashLog, recordCloudInferenceFa
 import { buildDiagnostics, diagnosticsFileName, diagnosticsText } from '../runtime/diagnostics-export';
 import {planAdmission} from '../runtime/subscription-entitlement';
 import { exportVoiceTiming } from '../runtime/voice-timing';
-import { setSpeakReplies, speakRepliesEnabled } from '../runtime/voice-selection';
 import { readNativeVoiceTiming } from '../runtime/native-voice-turn';
-import { listenerStatus, openListenerSettings, pauseListener, turnOffListener, type ListenerStatus } from '../runtime/always-on-listener';
+import { listenerStatus, openListenerSettings, pauseListener, turnOffListener, wakeListeningStopUnconfirmed, type ListenerStatus } from '../runtime/always-on-listener';
 import { reviewDataReset, type DataResetPlugin } from '@elizaos/capacitor-system/reset';
 import { androidRoleLabel, parseRoleStatuses } from '@elizaos/capacitor-system/settings';
 import { leavePasswordManager, passwordEntryPage, passwordManagerGroups, passwordManagerLifecycle, refreshPasswordManager, PASSWORD_PAGES } from '../passwords/password-manager';
@@ -126,12 +124,9 @@ export function versionLabel(version: unknown, code: unknown): string {
   const name = typeof version === 'string' && version ? version : 'Unavailable';
   return Number.isSafeInteger(code) && (code as number) > 0 && name !== 'Unavailable' ? `${name} (${code})` : name;
 }
-/** Alpha has no update check: say so, and show only the install time Android recorded. */
-export function updateRows(updatedAt: unknown, format: (at: number) => string = at => new Date(at).toLocaleDateString()): Array<[string, string]> {
-  const rows: Array<[string, string]> = [];
-  if (Number.isSafeInteger(updatedAt) && (updatedAt as number) > 0) rows.push(['Installed or last updated', format(updatedAt as number)]);
-  rows.push(['Updates', 'Alpha does not check for updates']);
-  return rows;
+/** Only the install time Android recorded; Alpha has no update check, so it shows no update row. */
+export function installedRows(updatedAt: unknown, format: (at: number) => string = at => new Date(at).toLocaleDateString()): Array<[string, string]> {
+  return Number.isSafeInteger(updatedAt) && (updatedAt as number) > 0 ? [['Installed or last updated', format(updatedAt as number)]] : [];
 }
 /** Cloud QA profile facts replace prototype navigation, not device settings links. */
 export function cloudPrivacyRow(label: string): [string, string] | null {
@@ -171,10 +166,10 @@ export function installSettingsAdapter(Component: any, views: Bag) {
   let recovery: RecoveryDomain[] = [];
   let capabilityAbort: AbortController | null = null;
   let inferenceAbort:AbortController|null=null;
-  let gmailAccounts: GmailAccount[] = [], gmailBusy = '', gmailNotice = '', settingsApi: Bag | undefined;
-  let roles: Record<string, RoleRow> | null = null, launcher: boolean | null = null, roleBusy = false, roleNotice = '';
+  let gmailAccounts: GmailAccount[] = [], gmailBusy = '', settingsApi: Bag | undefined;
+  let roles: Record<string, RoleRow> | null = null, launcher: boolean | null = null, roleBusy = false;
   let crashLog: CrashLog | null = null, crashBusy = false, diagnosticsBusy = false;
-  let gmail = 'Not checked', digests = 'Not checked';
+  let gmail = 'Not checked';
   let inferenceProvider = 'Not reported by agent';
   // The AOSP image's always-on listener (#424): status, Pause and Turn off only. Turning listening on
   // or resuming happens in the listener's own consent screen, never here.
@@ -207,19 +202,19 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     capabilityAbort?.abort();
     // Hidden Settings must not turn a Home cache restore or account switch into remote discovery.
     if(!enteringSettings&&owner?.S?.().view!=='settings'){
-      capabilityAbort=null;gmailAccounts=[];gmail='Not checked';digests='Not checked';inferenceProvider='Not reported by agent';return;
+      capabilityAbort=null;gmailAccounts=[];gmail='Not checked';inferenceProvider='Not reported by agent';return;
     }
     const abort = capabilityAbort = new AbortController();
-    const cloud = connectionController.getCloudClient(), workflow = connectionController.getWorkflowClient(), instance = owner;
+    const cloud = connectionController.getCloudClient(), instance = owner;
     gmail = cloud ? 'Checking authorization…' : 'Cloud sign-in required'; gmailAccounts = [];
-    digests = workflow ? 'Checking agent support…' : agentAvailabilityNotice();
     inferenceProvider = 'Not reported by agent';
     changed();
-    const timeout = setTimeout(() => { abort.abort(); if (owner === instance && capabilityAbort === abort) { if (gmail === 'Checking authorization…') gmail = 'Authorization not verified'; if (digests === 'Checking agent support…') digests = 'Agent support not verified'; changed(); } }, 10000);
+    const timeout = setTimeout(() => { abort.abort(); if (owner === instance && capabilityAbort === abort) { if (gmail === 'Checking authorization…') gmail = 'Authorization not verified'; changed(); } }, 10000);
     try {
       await Promise.allSettled([
         (async () => {
           // A status read older than a Pause or Turn off never replaces that action's result.
+          if (!externalVoiceInvocationEnabled) return;
           const sequence = ++listenerSequence, status = await listenerStatus();
           if (owner === instance && capabilityAbort === abort && sequence === listenerSequence) listener = status;
         })(),
@@ -243,14 +238,6 @@ export function installSettingsAdapter(Component: any, views: Bag) {
             gmail = gmailGrantLabel(accounts);
           } catch { if (owner === instance && capabilityAbort === abort) gmail = 'Authorization not verified'; }
         })(),
-        (async () => {
-          if (!workflow) return;
-          try {
-            const available = await workflow.client.hosted().available(abort.signal);
-            if (abort.signal.aborted || owner !== instance || capabilityAbort !== abort || connectionController.getWorkflowClient()?.sessionId !== workflow.sessionId) return;
-            digests = available ? 'Supported by selected agent' : 'Unavailable on selected agent';
-          } catch { if (owner === instance && capabilityAbort === abort) digests = 'Agent support not verified'; }
-        })(),
       ]);
     } finally { clearTimeout(timeout); if (owner === instance && capabilityAbort === abort) changed(); }
   }
@@ -259,7 +246,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     const cloud = connectionController.getCloudClient(), instance = owner;
     if (!cloud || !account.connectionId || gmailBusy) return;
     if (!window.confirm(googleDisconnectConfirmation(account.label,cloudServiceName(cloud.client.environment)))) return;
-    gmailBusy = account.connectionId; gmailNotice = ''; changed();
+    gmailBusy = account.connectionId; changed();
     // Native background state is retired alongside the revoke; it never gates it.
     const retirement = retireGmailBackground(account.connectionId);
     try {
@@ -267,25 +254,23 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       if (owner !== instance || connectionController.getCloudClient()?.sessionId !== cloud.sessionId) return;
       if (result.accounts) { gmailAccounts = result.accounts; gmail = gmailGrantLabel(result.accounts); }
       else gmail = 'Authorization not verified';
-      gmailNotice = googleDisconnectMessage(result.outcome, account.label,cloudServiceName(cloud.client.environment));
-      settingsApi?.toast(gmailNotice);
+      settingsApi?.toast(googleDisconnectMessage(result.outcome, account.label,cloudServiceName(cloud.client.environment)));
       window.dispatchEvent(new CustomEvent(GMAIL_ACCOUNTS_CHANGED, { detail: { source: 'settings' } }));
       window.dispatchEvent(new Event(GOOGLE_ACCOUNTS_CHANGED));
-    } catch { if (owner === instance) { gmailNotice = disconnectMessage('unconfirmed', account.label); gmail = 'Authorization not verified'; } }
+    } catch { if (owner === instance) { settingsApi?.toast(disconnectMessage('unconfirmed', account.label)); gmail = 'Authorization not verified'; } }
     finally { await retirement.settled(); gmailBusy = ''; if (owner === instance) changed(); }
   }
   /** Android shows its own role dialog; the result is read back from getStatus, never assumed. */
   async function requestHome(api: Bag) {
     if (roleBusy) return;
-    const instance = owner; roleBusy = true; roleNotice = ''; changed();
+    const instance = owner; roleBusy = true; changed();
     try {
       await system.requestRole({ role: 'home' });
       const next = readRoles(await system.getStatus());
       if (owner !== instance) return;
       roles = next;
-      roleNotice = next.home?.held ? 'Alpha Phone is your Home app' : 'Home app not changed';
-      api.toast(roleNotice);
-    } catch { if (owner === instance) { roleNotice = 'Home app change is unconfirmed'; api.toast('Android did not confirm a Home app change.'); } }
+      api.toast(next.home?.held ? 'Alpha Phone is your Home app' : 'Home app not changed');
+    } catch { if (owner === instance) api.toast('Android did not confirm a Home app change.'); }
     finally { roleBusy = false; if (owner === instance) { changed(); void refresh(); } }
   }
   /** Redacted by construction (diagnostics-export.ts). Shared through Android's chooser or saved as a file. */
@@ -357,8 +342,8 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     delivery = noticeState.status === 'fulfilled' ? noticeState.value : {};
     cross = crossState.status === 'fulfilled' ? crossState.value : {};
     if(metadata.status==='fulfilled'&&metadata.value!==null)history=metadata.value.items;
-    // Browser-only stores; native Android data has its own platform recovery.
-    if(!Capacitor.isNativePlatform()){const next=await recoveryNeeded().catch(()=>[] as RecoveryDomain[]);if(owner!==instance||generation!==token)return;recovery=next;}
+    // Browser-only stores, probed only for the Developer gate's recovery rows; native Android data has its own platform recovery.
+    if(developerTools&&!Capacitor.isNativePlatform()){const next=await recoveryNeeded().catch(()=>[] as RecoveryDomain[]);if(owner!==instance||generation!==token)return;recovery=next;}
     instance.vset('settings', { nativeReadAt: Date.now() });
     refreshPasswordManager();
   }
@@ -407,7 +392,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     }
   };
   p.componentWillUnmount = function () {
-    if (owner === this) { capabilityAbort?.abort(); capabilityAbort = null; inferenceAbort?.abort();inferenceAbort=null; owner = null; ++generation; facts = {}; controls = {}; delivery = {}; cross={}; choices=null; history=null; roles=null; crashLog=null; roleNotice=''; }
+    if (owner === this) { capabilityAbort?.abort(); capabilityAbort = null; inferenceAbort?.abort();inferenceAbort=null; owner = null; ++generation; facts = {}; controls = {}; delivery = {}; cross={}; choices=null; history=null; roles=null; crashLog=null; }
     window.removeEventListener('alpha:device-settings',this.mailImagePreferenceChanged);
     window.removeEventListener('storage',this.appearanceStorageListener);
     window.removeEventListener('pageshow',this.appearanceResumeListener);
@@ -424,7 +409,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
   };
   definition.render = (state: Bag, api: Bag) => {
     settingsApi = api;
-    const out = render({ ...state, page: settingsPage(state.page, devSurfacesEnabled), acct: null, adding: false, sheet: ['conn', 'voice', 'wipe', 'wifiPw', 'forget'].includes(state.sheet?.kind) ? null : state.sheet }, api);
+    const out = render({ ...state, page: settingsPage(state.page, developerTools), acct: null, adding: false, sheet: ['conn', 'voice', 'wipe', 'wifiPw', 'forget'].includes(state.sheet?.kind) ? null : state.sheet }, api);
     // Prototype personality values are mock-only until the agent reports them.
     out.persona = 'Voice and agent settings';
     const connection = connectionController.getSnapshot();
@@ -432,6 +417,9 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     const serviceName = cloudServiceName(connectionController.getCloudClient()?.client.environment ?? account?.environment ?? connection.signIn?.environment ?? 'production');
     const target = connection.session ? connection.name : 'Not connected';
     const runtimeLocation=!connection.session?'Not connected':connection.kind==='resident'?(Capacitor.isNativePlatform()?'On this device':'On this computer · development'):testMocksEnabled?'Remote agent':'Unsupported connection';
+    // About and Models read the model the resident reports the same way, so the two pages agree.
+    const residentProvider=Capacitor.isNativePlatform()&&connection.kind==='resident'&&connection.session?connection.providerStatus:null;
+    const inferenceModel=residentProvider?.configured&&residentProvider.model?modelLabel(residentProvider.provider==='elizacloud'?serviceName:'Cerebras',residentProvider.model):'Not reported by agent';
     const cloudLabel = account ? account.email||`Account ${account.userId.slice(0, 8)}` : 'Not signed in';
     const manage = (page: string) => () => void device.openSettings({ page }).then(opened => { const notice = broaderPageNotice(page, opened); if (notice) api.toast(notice); }, () => api.toast('This Android settings page is unavailable.'));
     const info = (label: string, val: string): Bag => ({ kInfo: true, label, val, hasVal: true, noAB: true });
@@ -439,17 +427,10 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     const nav = (label: string, page: string): Bag => ({ kNav: true, label, lbl: label, chev: true, noAB: true, go: manage(page) });
     const group = (rows: Bag[]) => ({ css: 'background:var(--s2);padding:4px 0', rows });
     // Speech follows the explicit production runtime profile; developer routes stay separate.
-    const speechRows = (): Bag[] => [info('Speech', developmentCartesiaVoiceEnabled?'Cartesia · development':cloudRuntimeEnabled?`${serviceName} · Cartesia output (uses your plan)`:testMocksEnabled?`${serviceName} (counts toward your plan)`:'On this device')];
+    const speechRows = (): Bag[] => [info('Speech', developmentCartesiaVoiceEnabled?'Cartesia · development':cloudRuntimeEnabled?`${serviceName} · Cartesia output (uses your plan)`:testMocksEnabled?`${serviceName} (counts toward your plan)`:'On this device'), ...(wakeListeningStopUnconfirmed() ? [note('Wake listening', 'Could not confirm listening is off. Turn it off in Android settings.')] : [])];
     const action = (label: string, go: () => void): Bag => ({ kNav:true, label, lbl:label, chev:true, noAB:true, go });
-    // P-39: a reply to a message you dictated (Transcribe, then Send) can be read aloud. The switch
-    // shows the stored preference, never the requested one: a save that storage does not confirm
-    // keeps the old position and says so.
-    const speakRepliesRow = (): Bag => {
-      const on = speakRepliesEnabled();
-      return { kTog:true, label:'Read replies aloud', aria:'Read replies aloud', hasSub:true, sub:'Speak the reply to a message you dictated and sent. Typed messages stay silent.', on, track:on?'background:var(--acc)':'background:var(--line)', kx:on?20:0,
-        toggle:()=>{ const next=!speakRepliesEnabled(); if(!setSpeakReplies(next)||speakRepliesEnabled()!==next) api.toast('Read replies aloud could not be saved. Try again.'); changed(); } };
-    };
     const listenerRows = (): Bag[] => {
+      if (!externalVoiceInvocationEnabled) return [];
       if (!listener.available) return [info('Wake word', 'Not available')];
       const status = listener;
       return [
@@ -482,7 +463,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     };
     for (const page of out.stack) {
       if (page.isTop) {
-        page.groups = page.groups.map((group: Bag) => ({ ...group, rows: settingsNavigationRows(group.rows, devSurfacesEnabled) }));
+        page.groups = page.groups.map((group: Bag) => ({ ...group, rows: settingsNavigationRows(group.rows, developerTools) }));
         const native=Capacitor.isNativePlatform(), provider=facts.passwordProvider||{};
         const installation:Bag={installed:'Installed · publisher verified',disabled:'Installed but disabled',absent:'Not installed','unrecognized-publisher':'Installed · publisher not recognized',unknown:'Not checked'};
         const selection:Bag={proton:provider.installation==='installed'?'Proton Pass selected':provider.installation==='disabled'?'Proton Pass selected · app disabled':'Provider package selected · publisher not verified',other:'Another provider selected',none:'No provider selected',unknown:'Selection unavailable'};
@@ -519,36 +500,37 @@ export function installSettingsAdapter(Component: any, views: Bag) {
             ])]});
           }
         }
+        // calendar-settings:begin
         page.groups.push(group([{kNav:true,label:'Calendar',lbl:'Calendar',chev:true,noAB:true,go:()=>api.set({page:'calendar'})}]));
-        if(state.page==='calendar'){
-          const display=views.calendar.displaySources?.(),rows:Bag[]=[info('Display only','Agent access is reviewed separately')];
-          if(display){rows.push(info(display.native?'Device calendars':'In this app',display.loading?'Loading calendars…':display.status));
-            rows.push({kNav:true,label:display.native?'Connect or refresh device calendars':'Refresh calendar',lbl:display.native?'Connect or refresh device calendars':'Refresh calendar',busy:display.loading,chev:true,noAB:true,go:display.connect??display.retry});
-            for(const source of display.sources||[])if(display.native)rows.push(info(source.name,source.account));else rows.push({kCalendarDisplay:true,label:source.name,sub:source.account,on:source.on,busy:display.loading,aria:`Show ${source.name} calendar`,track:api.track(source.on),kx:api.kx(source.on),toggle:()=>void source.change('visibility'),color:()=>void source.change('color'),colorLabel:`Change ${source.name} calendar color`,sw:({acc:'var(--acct)',fg:'var(--fg)',mut:'var(--mut)'} as Bag)[source.color]||'var(--acct)'});
-            if(display.native)rows.push(info('Calendar visibility','Managed in Android Calendar'));
-          }else rows.push(info('Calendar access','Not available in this version'));
-          const groups=[{...group(rows),cap:'Calendars shown in Alpha',hasCap:true}];
-          const calendarView=owner?views.calendar.render(owner.vget('calendar'),owner.api('calendar')):null;
-          if(calendarView?.calendarAuthorityChoices?.length){
-            const sourceRows:Bag[]=[info('Current source',calendarView.calendarSourceLabel)];
-            if(calendarView.calendarSourceText)sourceRows.push(info('Status',calendarView.calendarSourceText));
-            sourceRows.push(...calendarView.calendarAuthorityChoices.map((choice:Bag)=>({kNav:true,label:choice.label,lbl:choice.label,chev:true,noAB:true,go:choice.go})));
-            if(calendarView.canConfirmCalendarTransition)sourceRows.push({kNav:true,label:'Keep saved app records read only and use Agent Calendar',lbl:'Keep saved app records read only and use Agent Calendar',chev:true,noAB:true,go:calendarView.confirmCalendarTransition});
-            groups.unshift({...group(sourceRows),cap:'Calendar sources',hasCap:true});
+        if(state.page==='calendar'||state.page==='calendar-google'){
+          const display=views.calendar.displaySources?.(),calendarView=owner?views.calendar.render(owner.vget('calendar'),owner.api('calendar')):null;
+          const model=owner?.agentCalendar?.state,authority=owner?.vget('calendar').calendarAuthority;
+          const googleCalendars=gmailAccounts.filter(account=>account.connected&&account.connectionId&&account.grantedCapabilities.includes('google.calendar.read'));
+          const hasGoogleWrites=googleCalendars.some(account=>account.grantedCapabilities.includes('google.calendar.write'));
+          const checking=gmail==='Checking authorization…',unavailable=gmail==='Authorization not verified';
+          const googleStatus=checking?'Checking connection…':unavailable?'Connection unavailable':googleCalendars.length?(hasGoogleWrites?'Connected':'Finish connecting'):'Not connected';
+          const groups:Bag[]=[group([{kNav:true,label:'Google Calendar',lbl:'Google Calendar',sub:googleStatus,hasSub:true,chev:true,noAB:true,go:()=>{const scope=owner?.calendarConnectionScope?.();if(scope)googleConnectionController.openCalendar(scope);}}])];
+          const needsRecovery=['legacy','android-native','browser-local'].includes(authority)||model?.status==='transition-required'||model?.status==='legacy-recovery';
+          if(needsRecovery){
+            const recovery:Bag[]=[info('Saved events','Your earlier saved events are kept unchanged.')];
+            if(calendarView?.canConfirmCalendarTransition)recovery.push({kNav:true,label:'Review saved events',lbl:'Review saved events',chev:true,noAB:true,go:calendarView.confirmCalendarTransition});
+            if(model?.status==='legacy-recovery')recovery.push({kNav:true,label:'Recover saved events',lbl:'Recover saved events',chev:true,noAB:true,go:()=>openCalendarRecovery()});
+            if(['legacy','android-native','browser-local'].includes(authority)){
+              const useCalendar=calendarView?.calendarAuthorityChoices?.find((choice:Bag)=>choice.label==='Agent Calendar');
+              if(useCalendar)recovery.push({kNav:true,label:'Return to Calendar',lbl:'Return to Calendar',chev:true,noAB:true,go:useCalendar.go});
+            }
+            groups.push({...group(recovery),cap:'Recovery',hasCap:true});
+          }else if(['error','partial','unavailable'].includes(model?.status)||model?.status==='ready'&&calendarView?.nativeStatusLabel){
+            const message=model?.status==='partial'||model?.status==='ready'?'Some events could not load. Try again.':'Calendar could not load. Try again.';
+            groups.push(group([info('Calendar needs attention',message),{kNav:true,label:'Retry calendar',lbl:'Retry calendar',chev:true,noAB:true,go:calendarView?.nativeStatusRetry??display?.retry}]));
+          }else if(display?.native&&!display.loading&&!display.ready){
+            groups.push(group([{kNav:true,label:'Review calendar access',lbl:'Review calendar access',chev:true,noAB:true,go:display.connect??display.retry}]));
           }
-          const syncAuthority=owner?.vget('calendar').calendarAuthority;
-          const syncUnavailable=syncAuthority==='android-native'||browserCalendarScope(owner)?'':syncAuthority==='legacy'||syncAuthority==='legacy-google'?'Choose Agent Calendar to review sync. Retained calendars stay read only.':!owner?.agentCalendar?.state.ownerKey?'Connect to Agent Calendar to review sync.':'';
-          groups.push({...group([syncUnavailable?info('Google Calendar sync',syncUnavailable):{kNav:true,label:'Google Calendar sync',lbl:'Google Calendar sync',sub:'Review the destination and enable linked event sync',hasSub:true,chev:true,noAB:true,go:()=>{
-            const shell=owner,authority=shell?.vget('calendar').calendarAuthority;
-            if(authority==='android-native'||browserCalendarScope(shell)){openCalendarSyncSettings();return;}
-            if(authority==='legacy'||authority==='legacy-google'){api.toast('Choose Agent Calendar before reviewing sync. Retained calendars stay read only.');return;}
-            const calendar=shell?.agentCalendar,ownerKey=calendar?.state.ownerKey;
-            if(!calendar||!ownerKey){if(native&&!testMocksEnabled)api.set({page:'agent-connection'});else connectionController.open();return;}
-            openCalendarSyncSettings({calendar,current:()=>owner===shell&&shell.live&&shell.agentCalendar===calendar&&calendar.state.ownerKey===ownerKey&&!['android-native','legacy','legacy-google'].includes(shell.vget('calendar').calendarAuthority),canChange:()=>!shell.vget('calendar').form&&!shell.canonicalDraftText&&!shell.canonicalDraftInvalid&&!shell.canonicalDraft?.state.opening&&!shell.canonicalDraft?.state.consuming});
-          }}]),cap:'Sync',hasCap:true});
-          if(testMocksEnabled&&!Capacitor.isNativePlatform())groups.push({...group([{kNav:true,label:'Calendar backups',lbl:'Calendar backups',sub:'Events saved in this app',hasSub:true,chev:true,noAB:true,go:()=>openCalendarRecovery()}]),cap:'Saved data',hasCap:true});
+          if(developerTools&&!Capacitor.isNativePlatform())groups.push({...group([{kNav:true,label:'Calendar backups',lbl:'Calendar backups',sub:'Events saved in this app',hasSub:true,chev:true,noAB:true,go:()=>openCalendarRecovery()}]),cap:'Saved data',hasCap:true});
           out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:'Calendar',hasTitle:true,backLabel:'Back to Settings',back:()=>api.set({page:null}),hero:{},groups});
+
         }
+        // calendar-settings:end
         page.groups.push(group([{
           kTog:true,label:'Ask before agent actions',aria:'Ask before agent actions',hasSub:true,
           sub:'Off: carry out simple local requests. On: review them first. Sends, deletions and calendar or reminder changes still require review.',
@@ -568,7 +550,6 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         if(native){
           const home=roles?.home,canRequestHome=launcher===true&&!!home&&home.available&&!home.held;
           page.groups.push(group([info('Home app',roles?roleValue(home):'Unavailable'),info('Assistant app',roles?roleValue(roles.assistant):'Unavailable'),
-            ...(roleNotice?[info('Last change',roleNotice)]:[]),
             ...(canRequestHome?[{kNav:true,label:'Make Alpha your Home app',lbl:roleBusy?'Waiting for Android…':'Make Alpha your Home app',chev:true,noAB:true,go:()=>void requestHome(api)}]:[]),
             nav('Default apps in Android','default-apps')]));
         }
@@ -589,7 +570,8 @@ export function installSettingsAdapter(Component: any, views: Bag) {
             if(connection.busy)rows.push(info('Status',connection.message||'Please wait…'));
             const actions:Bag[]=connection.busy?[action('Cancel',()=>connectionController.cancel())]:plan.signedIn?[
               ...(plan.keyExpiring?[{kNav:true,label:'Approve this phone again',lbl:'Approve this phone again',chev:true,noAB:true,go:()=>void connectionController.residentCloudLogin()}]:[]),
-              ...(connection.residentSubscription?.kind!=='credits'?[{kNav:true,label:'Redeem code',lbl:'Redeem code',chev:true,noAB:true,go:()=>connectionController.openPlan({codeEntry:true})}]:[]),
+              // A membership code is an alternative to credits: Cloud redeems it for credit-funded accounts too.
+              {kNav:true,label:'Redeem code',lbl:'Redeem code',chev:true,noAB:true,go:()=>connectionController.openPlan({codeEntry:true})},
               {kNav:true,label:'Manage plan',lbl:'Manage plan',chev:true,noAB:true,go:()=>void connectionController.residentManagePlan()},
               {kNav:true,label:'Sign out',lbl:`Sign out of ${serviceName}`,chev:true,noAB:true,go:()=>void connectionController.cloudSignOut()},
             ]:plan.offline?[{kNav:true,label:'Check plan again',lbl:'Check plan again',chev:true,noAB:true,go:()=>connectionController.recheckPlanOnReturn()}]
@@ -598,7 +580,8 @@ export function installSettingsAdapter(Component: any, views: Bag) {
           }
         }
         page.groups.push(group([{kNav:true,label:'Agent connection',lbl:'Agent connection',val:connectionController.getSnapshot().name,hasVal:true,chev:true,noAB:true,go:()=>native&&!testMocksEnabled?api.set({page:'agent-connection'}):connectionController.open()}]));
-        if(native&&!testMocksEnabled&&state.page==='agent-recovery-details'){
+        // Raw recovery reason, stage and record count are developer data: the product keeps the plain status.
+        if(native&&developerTools&&state.page==='agent-recovery-details'){
           const reason=connection.residentRecoveryReason,recovery=connection.residentRecovery;
           const rows:Bag[]=[info('Status',reason?residentRecoveryCopy(reason,recovery):connection.session?'Alpha is running.':'Restart status is unavailable.')];
           if(reason)rows.push(info('Reason',reason));
@@ -607,14 +590,14 @@ export function installSettingsAdapter(Component: any, views: Bag) {
           out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:'Restart details',hasTitle:true,backLabel:'Back to Agent connection',back:()=>api.set({page:'agent-connection'}),hero:{},groups:[group(rows)]});
         }
         if(native&&!testMocksEnabled&&state.page==='agent-connection'){
-          const agentRows=[info('Agent',connection.session?'Running on this device':connection.residentRecoveryReason?(connection.residentRecoveryReason==='ipc-recovery-retention-limit'?'Restart needed':'Needs attention'):connection.kind==='recovering'?'Not running':'Starting…'),info('AI',connection.residentInference==='cloud'?serviceName:connection.cloudAccount?'Not available':'Sign in required')];
+          const agentRows=[info('Agent',connection.session?'Running on this device':connection.residentRecoveryReason?(connection.residentRecoveryReason==='ipc-recovery-retention-limit'?'Restart needed':'Needs attention'):connection.kind==='recovering'?'Not running':'Starting…'),info('AI',connection.residentInference==='cloud'?serviceName:!connection.cloudAccount?'Sign in required':!connection.session&&connection.kind==='starting'&&!connection.residentRecoveryReason?'Starting…':'Not available')];
           if(connection.message)agentRows.push(info('Status',connection.message));
           if(connection.error)agentRows.push(info('Connection problem',connection.error));
           if(connection.residentRecoveryReason&&!connection.session){
             agentRows.push(info('Status',residentRecoveryCopy(connection.residentRecoveryReason,connection.residentRecovery)));
             if(connection.residentRecoveryReason==='ipc-recovery-retention-limit'&&!connection.busy)
               agentRows.push(action('Restart Alpha',()=>void connectionController.restartRecovery()));
-            agentRows.push(action('Details',()=>api.set({page:'agent-recovery-details'})));
+            if(developerTools)agentRows.push(action('Details',()=>api.set({page:'agent-recovery-details'})));
           }else if(!connection.busy)agentRows.push(action(connection.session?'Reconnect agent':'Retry',()=>void connectionController.startLocal()));
           if(connection.busy){
             agentRows.push(info('Connection','Please wait…'));
@@ -649,8 +632,8 @@ export function installSettingsAdapter(Component: any, views: Bag) {
           // Shared native review (@elizaos/capacitor-system/reset): only cancelled or unavailable reach here.
           api.toast((await reviewDataReset(registerPlugin<DataResetPlugin>('AlphaReset'))).message);
         }}]));
-        if(testMocksEnabled)page.groups.push(group([{kNav:true,label:'Try mock mode',lbl:'Try mock mode',chev:true,noAB:true,go:()=>connectionController.mock()}]));
-        if(testMocksEnabled&&recovery.length)page.groups.push(group([info('Saved data needs recovery','Back up before resetting'),...recovery.map(name=>({kNav:true,label:recoveryActions[name].label,lbl:recoveryActions[name].label,chev:true,noAB:true,go:()=>recoveryActions[name].open()}))]));
+        if(developerTools)page.groups.push(group([{kNav:true,label:'Try mock mode',lbl:'Try mock mode',chev:true,noAB:true,go:()=>connectionController.mock()}]));
+        if(developerTools&&recovery.length)page.groups.push(group([info('Saved data needs recovery','Back up before resetting'),...recovery.map(name=>({kNav:true,label:recoveryActions[name].label,lbl:recoveryActions[name].label,chev:true,noAB:true,go:()=>recoveryActions[name].open()}))]));
         if(state.page==='problems'){
           const rows=crashLog?[...crashLog.entries].reverse().map(entry=>{const line=describeCrashEntry(entry);return {kLog:true,time:new Date(entry.at).toLocaleString(),text:`${line.title} · ${line.detail}`};}):[];
           out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:'Problem log',hasTitle:true,backLabel:'Back to Settings',back:()=>api.set({page:null}),hero:{},groups:[
@@ -675,11 +658,9 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         const connected = gmailAccounts.filter(a => a.connected && a.connectionId);
         page.groups = [group([{ kNav:true,label:'Manage Google accounts',lbl:'Manage Google accounts',chev:true,noAB:true,go:()=>googleConnectionController.open() },info('Gmail', gmail),
           ...connected.map(a => ({...info(a.label, ''), hasSub:true, sub:googleAccountAccessLabel(a)})),
-          ...(gmailNotice ? [info('Last change', gmailNotice)] : []),
           { kNav:true, label:'Open Inbox', lbl:'Open Inbox', chev:true, noAB:true, go:()=>api.open('inbox') },
           ...connected.map(a => { const label = `Disconnect Google account ${a.label}`; return { kNav:true, label, lbl:gmailBusy === a.connectionId ? 'Disconnecting…' : label, chev:true, noAB:true, go:()=>void disconnectGmail(a) }; }),
-          { kNav:true, label:'Check Gmail connection', lbl:'Check Gmail connection', chev:true, noAB:true, go:()=>{ gmailNotice = ''; void refreshCapabilities(); } },
-          info('Other connectors', 'Not available in this version')]),group([{
+          { kNav:true, label:'Check Gmail connection', lbl:'Check Gmail connection', chev:true, noAB:true, go:()=>{ void refreshCapabilities(); } }]),group([{
             kTog:true,label:'Automatically load email images',aria:'Automatically load email images',
             hasSub:true,sub:mailImagesSaving?'Saving…':cachedDevicePreferences()?'Load remote images when you open an email.':'Image preference unavailable. Reopen Settings to try again.',
             on:cachedDevicePreferences()?.autoLoadMailImages===true,
@@ -697,21 +678,19 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         // The reference character page deliberately has no visible title.
         page.groups = browserDevProfile?[group([
           info('Speech','Record and review in this app'),
-          speakRepliesRow(),
-          {kNav:true,label:'Wake assistant',lbl:'Wake assistant',chev:true,noAB:true,go:()=>void owner?.startVoice()},
+          ...(externalVoiceInvocationEnabled ? [{kNav:true,label:'Wake assistant',lbl:'Wake assistant',chev:true,noAB:true,go:()=>void owner?.startVoice()}] : []),
           {kNav:true,label:'Open conversation',lbl:'Open conversation',chev:true,noAB:true,go:()=>api.composeContentQuestion('')},
           {kNav:true,label:'Agent connection',lbl:'Agent connection',chev:true,noAB:true,go:()=>connectionController.open()},
-          {kNav:true,label:'Scheduled digests',lbl:'Scheduled digests',chev:true,noAB:true,go:()=>window.dispatchEvent(new Event('alpha:hosted-digests'))},
-        ])]:[group([...speechRows(), speakRepliesRow(), ...listenerRows(), { kNav:true, label:'Scheduled digests', lbl:'Scheduled digests', val:digests, hasVal:true, chev:true, noAB:true, go:()=>window.dispatchEvent(new Event('alpha:hosted-digests')) }, info('Personality settings', 'Managed by your agent')])];
+        ])]:[group([...speechRows(), ...listenerRows()])];
       } else if (page.title === 'Battery') {
         page.hero = { ...page.hero, big: percent, sub: typeof facts.charging === 'boolean' ? facts.charging ? 'Charging' : 'On battery' : 'Battery reading unavailable', hasMeter: typeof facts.batteryPercent === 'number', meter: facts.batteryPercent ?? 0 };
         page.groups = [group([info('Battery saver', typeof facts.powerSave === 'boolean' ? facts.powerSave ? 'On' : 'Off' : 'Unavailable'), nav('Manage battery in Android', 'battery')])];
       } else if (page.title === 'About') {
         page.hero = { ...page.hero, big: facts.model || 'This phone', sub: facts.manufacturer || 'Device information unavailable' };
         page.groups = [group([
-          info('Alpha Phone', versionLabel(facts.appVersion || buildVersion, facts.appVersionCode)), ...updateRows(facts.appUpdatedAt).map(([label, val]) => info(label, val)), ...(devSurfacesEnabled?[info('Update channel (development)',updateChannelCheckEnabled?'Read-only check on · never downloads or installs':'Off')]:[]), info('Android', facts.androidRelease || 'Unavailable'),
+          info('Alpha Phone', versionLabel(facts.appVersion || buildVersion, facts.appVersionCode)), ...installedRows(facts.appUpdatedAt).map(([label, val]) => info(label, val)), ...(developerTools?[info('Update channel (development)',updateChannelCheckEnabled?'Read-only check on · never downloads or installs':'Off')]:[]), info('Android', facts.androidRelease || 'Unavailable'),
           info('Build', facts.build || 'Unavailable'), info('Security patch', facts.securityPatch || 'Unavailable'),
-          info('Runtime', 'Android app'), info('Agent execution', runtimeLocation), info('Agent', target), info('Inference model', 'Not reported by agent'),
+          info('Agent execution', runtimeLocation), info('Agent', target), info('Inference model', inferenceModel),
         ]), group([problemsRow(), diagnosticsRow()]), group([nav('Android device information', 'about')]), group([licensesRow()])];
       } else if (page.title === 'Wi-Fi') {
         page.hasHdrTog = false; page.hdrTog = null;
@@ -725,9 +704,9 @@ export function installSettingsAdapter(Component: any, views: Bag) {
           ...(Capacitor.isNativePlatform() ? [info('Mobile data', reported(facts.mobileDataEnabled)), info('Airplane mode', reported(facts.airplaneMode))] : []),
           nav('Manage mobile networks', 'mobile'), ...(Capacitor.isNativePlatform() ? [nav('Airplane mode in Android', 'airplane')] : [])])];
       } else if (page.title === 'Models') {
-        const native=Capacitor.isNativePlatform(),provider=connection.kind==='resident'&&connection.session?connection.providerStatus:null;
+        const native=Capacitor.isNativePlatform();
         page.hero = { ...page.hero, big: target, sub: cloudRuntimeEnabled?`Conversation uses ${serviceName}. Speech uploads recordings and reply text to your Cloud account and uses your plan allowance.`:native?'Conversation uses the selected agent. Voice runs on this device.':developmentCartesiaVoiceEnabled?'Direct Cerebras and Cartesia · development':`Conversation uses the selected agent. Voice uses ${serviceName}.` };
-        page.groups = [group([info('Connection', native?runtimeLocation:connection.kind), ...(native?[info('Inference provider',provider?provider.configured?(provider.provider==='elizacloud'?serviceName:'Cerebras'):'Not configured':'Status unavailable')]:browserLocalAgentEnabled ? [info('Inference provider', inferenceProvider)] : []), info('Inference model', native&&provider?.configured&&provider.model?provider.model:'Not reported by agent'), info('Voice', cloudRuntimeEnabled?(account?`${serviceName} · Cartesia output`:'Cloud sign-in required'):native?'On this device':developmentCartesiaVoiceEnabled?'Cartesia · development':account ? serviceName : 'Sign-in required'), { kNav:true, label:`${serviceName} account`, lbl:`${serviceName} account`, chev:true, noAB:true, go:()=>connectionController.openCloudAccount() }])];
+        page.groups = [group([info('Connection', runtimeLocation), ...(native?[info('Inference provider',residentProvider?residentProvider.configured?(residentProvider.provider==='elizacloud'?serviceName:'Cerebras'):'Not configured':'Status unavailable')]:browserLocalAgentEnabled ? [info('Inference provider', inferenceProvider)] : []), info('Inference model', inferenceModel), info('Voice', cloudRuntimeEnabled?(account?`${serviceName} · Cartesia output`:'Cloud sign-in required'):native?'On this device':developmentCartesiaVoiceEnabled?'Cartesia · development':account ? serviceName : 'Sign-in required'), { kNav:true, label:`${serviceName} account`, lbl:`${serviceName} account`, chev:true, noAB:true, go:()=>connectionController.openCloudAccount() }])];
       } else if (page.title === 'Developer') {
         page.groups = [group([info('App version', facts.appVersion || buildVersion), info('Agent memory', connection.session?'Usage not reported by agent':'Not connected')]), group([problemsRow(), diagnosticsRow()]), group([nav('Android developer settings', 'developer')])];
       } else if (page.title === 'Notifications') {
@@ -757,7 +736,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
           }),custom('View local metadata history',()=>{if(notificationBusy)return;notificationBusy=true;const current=owner;void notifications.notificationHistory().then(result=>{if(owner===current){history=result.items;owner?.vset('settings',{notificationChanged:Date.now()});}}).catch(()=>api.toast('Local notification history is unavailable.')).finally(()=>{notificationBusy=false;});}),custom('Clear local metadata history',()=>{if(window.confirm('Permanently clear local notification metadata history?'))void run(async()=>{await notifications.clearNotificationHistory();history=[];});}));
           if(history!==null){if(!history.length)crossRows.push(info('History','No retained events'));for(const row of history)crossRows.push(info(row.appLabel,`${row.state} · ${new Date(row.at).toLocaleString()} · no action available`));}
         }
-        page.groups = [group([info(browserNotifications ? 'In-app alerts' : 'Alpha notifications', topValues.Notifications),info('Do Not Disturb',interruptionLabels[delivery.interruption]||'Unavailable'),info('Delivery timing',browserNotifications ? 'Shown while Alpha is open' : 'Android battery policies may delay alerts'),Capacitor.isNativePlatform()?nav('Manage Alpha notifications', 'notifications'):custom(browserNotifications ? 'Manage in-app alerts' : 'Manage Alpha notifications',()=>void run(async()=>{await notifications.openAppSettings();}))]),
+        page.groups = [group([info(browserNotifications ? 'In-app alerts' : 'Alpha notifications', topValues.Notifications),info('Do Not Disturb',interruptionLabels[delivery.interruption]||'Unavailable'),Capacitor.isNativePlatform()?nav('Manage Alpha notifications', 'notifications'):custom(browserNotifications ? 'Manage in-app alerts' : 'Manage Alpha notifications',()=>void run(async()=>{await notifications.openAppSettings();}))]),
           ...((delivery.channels||[]).map((channel:Bag)=>group([info(channel.name,browserNotifications ? (channel.blocked||channel.groupBlocked||!delivery.appEnabled||!delivery.permissionGranted ? 'In-app alert off' : 'In-app alert enabled') : channel.blocked?'Channel blocked':channel.groupBlocked?'Channel group blocked':!delivery.appEnabled||!delivery.permissionGranted?'App notifications off':channel.importance<=2?'Silent channel':'Channel allowed'),{kNav:true,label:`Manage ${channel.name}`,lbl:`Manage ${channel.name}`,chev:true,noAB:true,go:()=>void notifications.openChannelSettings({id:channel.id}).catch(()=>api.toast('This notification channel is unavailable.'))}]))),...(crossRows.length ? [group(crossRows)] : [])];
       } else if (page.title === 'Privacy & data') {
         if (cloudRuntimeEnabled) page.groups = page.groups.map((g: Bag) => ({ ...g, rows: g.rows.map((row: Bag) => {
@@ -814,9 +793,9 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     }
     if(!Capacitor.isNativePlatform()) {
       for(const page of out.stack){
-        if(page.title==='About')page.groups=[group([info('Alpha Phone',buildVersion),...updateRows(undefined).map(([label,val])=>info(label,val)),...(devSurfacesEnabled?[info('Update channel (development)',updateChannelCheckEnabled?'Read-only check on · never downloads or installs':'Off')]:[]),info('Runtime',devSurfacesEnabled?'Development preview':'Web app'),info('Agent execution',runtimeLocation),info('Agent',target),info('Inference model','Not reported by agent'),info('Storage','App storage')]),group([problemsRow(),diagnosticsRow()]),group([licensesRow()])];
+        if(page.title==='About')page.groups=[group([info('Alpha Phone',buildVersion),...(developerTools?[info('Update channel (development)',updateChannelCheckEnabled?'Read-only check on · never downloads or installs':'Off')]:[]),info('Agent execution',runtimeLocation),info('Agent',target),info('Inference model',inferenceModel),info('Storage','App storage')]),group([problemsRow(),diagnosticsRow()]),group([licensesRow()])];
       }
-      const browserLabels=(value:any):any=>{if(typeof value==='string')return value.replaceAll('Manage brightness in Android','Brightness').replaceAll('Manage sound in Android','Sound settings').replaceAll('Manage in Android','App settings').replaceAll('Device accounts in Android','System accounts').replaceAll('Wi-Fi transport · network names stay in Android settings','Network names stay in system settings').replaceAll('in Android','in system settings').replaceAll('Android settings','System settings').replaceAll('Android Calendar','App calendar').replaceAll('Android device information','System information').replaceAll('Android developer settings','App development settings').replaceAll('On this phone','In this app').replaceAll('on this phone','in this app').replaceAll('Android access not granted','Development event access off').replaceAll('Waiting for Android listener','Waiting for local events').replaceAll('Selected apps connected','Selected development apps connected').replaceAll('Android battery policies may delay alerts','Alerts appear while Alpha is open').replaceAll('Native setting unavailable','Managed by your system');if(Array.isArray(value))return value.map(browserLabels);if(value&&typeof value==='object')return Object.fromEntries(Object.entries(value).map(([k,v])=>[k,browserLabels(v)]));return value;};
+      const browserLabels=(value:any):any=>{if(typeof value==='string')return value.replaceAll('Manage brightness in Android','Brightness').replaceAll('Manage sound in Android','Sound settings').replaceAll('Manage in Android','App settings').replaceAll('Device accounts in Android','System accounts').replaceAll('Wi-Fi transport · network names stay in Android settings','Network names stay in system settings').replaceAll('in Android','in system settings').replaceAll('Android settings','System settings').replaceAll('Android Calendar','App calendar').replaceAll('Android device information','System information').replaceAll('Android developer settings','App development settings').replaceAll('On this phone','In this app').replaceAll('on this phone','in this app').replaceAll('Android access not granted','Development event access off').replaceAll('Waiting for Android listener','Waiting for local events').replaceAll('Selected apps connected','Selected development apps connected').replaceAll('Native setting unavailable','Managed by your system');if(Array.isArray(value))return value.map(browserLabels);if(value&&typeof value==='object')return Object.fromEntries(Object.entries(value).map(([k,v])=>[k,browserLabels(v)]));return value;};
       return browserLabels(out);
     }
     return out;

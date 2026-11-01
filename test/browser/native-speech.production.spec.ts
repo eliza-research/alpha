@@ -13,7 +13,7 @@ async function utterance(page:Page){
 }
 async function noCloud(page:Page,foreign:string[]){expect(await page.evaluate(()=>(window as any).nativeSpeech.forbidden)).toEqual([]);expect(foreign).toEqual([]);}
 test('production chat captures locally, transcribes locally, plays local reply and cancels playback',async({page})=>{
- const foreign=await setup(page);await button(page,'Talk').click();await expect(voice(page)).toHaveAttribute('data-voice-state','listening');await expect(voice(page)).toContainText('transcribed on this device');await utterance(page);await expect(voice(page)).toHaveAttribute('data-voice-state','speaking');
+ const foreign=await setup(page);await button(page,'Talk').click();await expect(voice(page)).toHaveAttribute('data-voice-state','listening');await expect(voice(page)).toContainText('Listening…');await utterance(page);await expect(voice(page)).toHaveAttribute('data-voice-state','speaking');
  expect(await page.evaluate(()=>{const f=(window as any).nativeSpeech;return {starts:f.starts,stops:f.stops,transcripts:f.transcripts,spoken:f.spoken,plays:f.plays,posts:(window as any).flagOff.posts.map((text:string)=>text.split('[USER MESSAGE]\n').at(-1))};})).toEqual({starts:1,stops:1,transcripts:1,spoken:['Resident reply 1'],plays:1,posts:['Local spoken request']});
  // Issue #395: transcript, request and first token reach the native collector; later stages and the reply's synthesis carry its turn id.
  const linked=await page.evaluate(()=>{const f=(window as any).nativeSpeech;return {stages:f.stages,turns:f.turns};});
@@ -21,7 +21,7 @@ test('production chat captures locally, transcribes locally, plays local reply a
  await button(page,'Stop voice conversation').click();await expect(voice(page)).toHaveCount(0);await expect.poll(()=>page.evaluate(()=>(window as any).nativeSpeech.stopped)).toBeGreaterThan(0);await noCloud(page,foreign);
 });
 test('unavailable local speech offers keyboard without trying network speech',async({page})=>{
- const foreign=await setup(page);await page.evaluate(()=>(window as any).nativeSpeech.ready=false);await button(page,'Talk').click();await expect(voice(page)).toContainText('On-device speech is unavailable');await button(page,'Minimize chat').click();await expect(voice(page)).toHaveCount(0);await button(page,'Type').click();await expect(page.locator('textarea[data-alpha-composer]')).toBeVisible();expect(await page.evaluate(()=>(window as any).nativeSpeech.starts)).toBe(0);await noCloud(page,foreign);
+ const foreign=await setup(page);await page.evaluate(()=>(window as any).nativeSpeech.ready=false);await button(page,'Talk').click();await expect(voice(page)).toContainText('Voice could not start. Try again, or use the keyboard.');await button(page,'Minimize chat').click();await expect(voice(page)).toHaveCount(0);await button(page,'Type').click();await expect(page.locator('textarea[data-alpha-composer]')).toBeVisible();expect(await page.evaluate(()=>(window as any).nativeSpeech.starts)).toBe(0);await noCloud(page,foreign);
 });
 test('cancelling local transcription rejects late output without submitting a turn',async({page})=>{
  const foreign=await setup(page);await page.evaluate(()=>(window as any).nativeSpeech.holdTranscript=true);await button(page,'Talk').click();await expect(voice(page)).toHaveAttribute('data-voice-state','listening');await utterance(page);await expect(voice(page)).toHaveAttribute('data-voice-state','transcribing');await button(page,'Stop voice conversation').click();await expect(voice(page)).toHaveCount(0);await page.evaluate(()=>(window as any).nativeSpeech.releaseTranscript());await expect.poll(()=>page.evaluate(()=>(window as any).nativeSpeech.cancels.length)).toBeGreaterThan(0);expect(await page.evaluate(()=>(window as any).flagOff.posts)).toEqual([]);await noCloud(page,foreign);
@@ -58,7 +58,7 @@ test('offline and fenced, speech still captures, transcribes and reads aloud on 
  await page.addInitScript(()=>{Object.defineProperty(Navigator.prototype,'onLine',{configurable:true,get:()=>false});});
  const foreign=await setup(page);await page.evaluate(()=>window.dispatchEvent(new Event('offline')));
  expect(await page.evaluate(()=>navigator.onLine)).toBe(false);
- await button(page,'Talk').click();await expect(voice(page)).toHaveAttribute('data-voice-state','listening');await expect(voice(page)).toContainText('transcribed on this device');await utterance(page);
+ await button(page,'Talk').click();await expect(voice(page)).toHaveAttribute('data-voice-state','listening');await expect(voice(page)).toContainText('Listening…');await utterance(page);
  await expect(voice(page)).toHaveAttribute('data-voice-state','error');await expect(voice(page)).toContainText('Local spoken request');
  expect(await page.evaluate(()=>{const f=(window as any).nativeSpeech;return {starts:f.starts,transcripts:f.transcripts,spoken:f.spoken,posts:(window as any).flagOff.posts.length};})).toEqual({starts:1,transcripts:1,spoken:[],posts:0});
  await button(page,'Stop voice conversation').click();await expect(voice(page)).toHaveCount(0);

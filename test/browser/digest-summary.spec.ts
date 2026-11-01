@@ -10,7 +10,9 @@ for(const theme of ['light','dark'])for(const kind of ['snapshot','native'])test
   await expect(article.getByText('Execution details',{exact:true})).toHaveCount(0);await expect(article.locator('details')).toHaveCount(0);await expect(article.getByText(/SYNTHETIC_RAW_SOURCE_123/)).toHaveCount(0);
   const text=await article.innerText();expect(text).not.toContain(times.observedAt);expect(text).not.toContain(times.expiresAt);expect(text).not.toContain('"nodeId"');
  }else{
-  const details=article.locator('details');await expect(details).not.toHaveAttribute('open');await expect(details.locator('pre')).toBeHidden();await article.getByText('Execution details',{exact:true}).click();await expect(details.locator('pre')).toContainText('SYNTHETIC_RAW_SOURCE_123');
+  const details=article.locator('details');await expect(details).not.toHaveAttribute('open');await expect(details.locator('pre')).toBeHidden();await article.getByText('Execution details',{exact:true}).click();await expect(details.locator('p')).toHaveText(/^Started .+\. Finished .+\.$/);
+  // The raw output is a development surface only (this lane); production shows the readable line alone.
+  await expect(details.locator('pre')).toContainText('SYNTHETIC_RAW_SOURCE_123');
  }
  await page.reload();await page.evaluate(()=>window.dispatchEvent(new Event('alpha:hosted-digests')));await expect(summary).toBeVisible();
  if(kind==='native'){await expect(article.locator('details')).toHaveCount(0);await expect(article).toContainText(times.expiryDisplay);await expect(article.getByText(/SYNTHETIC_RAW_SOURCE_123/)).toHaveCount(0);expect(await article.innerText()).not.toContain(times.expiresAt);}

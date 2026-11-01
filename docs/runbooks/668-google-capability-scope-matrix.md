@@ -33,15 +33,19 @@ authoritative and must be rechecked when the screen is configured.
 
 ## Every consent request Alpha can start
 
-Surface `ui` is a button in `apps/app/src/runtime/google-connection-ui.tsx` (Settings > Google).
+Surface `ui` is a button or switch in `apps/app/src/runtime/google-connection-ui.tsx` (Settings > Google).
+Connect asks for everything Cloud's Google provider allowlist accepts at this source; the "Gmail changes" and
+"Calendar edits" switches only stop agent writes and never revoke or disconnect Google.
+Cloud's Google `defaultScopes` (also its allowlist) do not include `gmail.compose` or `gmail.modify`, so the
+`modify`, `drafts` and `mailbox` paths are refused by Cloud before Google is reached until that allowlist changes.
 Surface `api` exists in `CloudProtocol` but no shipped screen calls it at this source.
 
 | Path | Surface | Call | Capabilities posted | Scopes Google shows |
 | --- | --- | --- | --- | --- |
-| connect | ui: "Connect Google account" / "Add Google account" | `initiateGoogle(read, read)` | basic_identity, gmail.triage, calendar.read | userinfo.email, userinfo.profile, gmail.readonly, calendar.readonly |
-| enable-gmail-changes | ui: "Enable Gmail changes" | `initiateGoogle(read, modify)` | + gmail.send, gmail.drafts, gmail.mailbox | + gmail.send, gmail.compose, gmail.modify |
-| upgrade-send-calendar | ui: "Review Google permission upgrade" (no account holds Gmail changes) | `initiateGoogle(write, send)` | basic_identity, gmail.triage, calendar.read, calendar.write, gmail.send | userinfo.*, gmail.readonly, calendar.readonly, calendar.events, gmail.send |
-| upgrade-modify-calendar | ui: same button when an account already holds Gmail changes | `initiateGoogle(write, modify)` | read set + gmail.send, gmail.drafts, gmail.mailbox + calendar.write | userinfo.*, gmail.readonly, gmail.send, gmail.compose, gmail.modify, calendar.readonly, calendar.events |
+| connect | ui: "Connect Google account" / "Add Google account", or turning on "Gmail changes" / "Calendar edits" when the grant is missing | `initiateGoogle(write, send)` | basic_identity, gmail.triage, calendar.read, calendar.write, gmail.send | userinfo.*, gmail.readonly, calendar.readonly, calendar.events, gmail.send |
+| switch-upgrade-modify | ui: same switches when an account already holds Gmail changes | `initiateGoogle(write, modify)` | read set + gmail.send, gmail.drafts, gmail.mailbox + calendar.write | userinfo.*, gmail.readonly, gmail.send, gmail.compose, gmail.modify, calendar.readonly, calendar.events |
+| calendar-connect | ui: "Connect Google Calendar" (Google accounts opened from Calendar) when no account holds Gmail send or changes; otherwise the same intent asks connect or switch-upgrade-modify so Gmail access is never narrowed | `initiateGoogle(write, read)` | basic_identity, gmail.triage, calendar.read, calendar.write | userinfo.*, gmail.readonly, calendar.readonly, calendar.events |
+| enable-gmail-changes | api | `initiateGoogle(read, modify)` | + gmail.send, gmail.drafts, gmail.mailbox | + gmail.send, gmail.compose, gmail.modify |
 | api-drafts | api | `initiateGoogle(read, drafts)` | read set + gmail.drafts | + gmail.compose |
 | api-mailbox | api | `initiateGoogle(read, mailbox)` | read set + gmail.mailbox | + gmail.modify |
 | api-gmail-read | api | `initiateGmail(read)` | basic_identity, gmail.triage | userinfo.*, gmail.readonly |

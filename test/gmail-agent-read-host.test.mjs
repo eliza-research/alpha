@@ -16,7 +16,7 @@ async function fixture(){
  const scoped=join(profile,cloudStorageNamespace.replaceAll(':','-'));await mkdir(scoped,{mode:0o700});
  const credential={credentialReference:'browser-cloud-reference:44444444-4444-4444-8444-444444444444',credentialId:grant,userId:owner,organizationId:org,token:'synthetic-only'};
  const save=()=>writeFile(join(scoped,'credentials.json'),JSON.stringify({production:credential}),{mode:0o600});await save();
- const calls=[],sends=new Map();let loseDispatch=false,accounts=()=>[account],afterRead=async()=>{},pages=()=>({messages:[message],syncedAt:message.receivedAt});
+ const calls=[],sends=new Map();let loseDispatch=false,accounts=()=>[account],afterRead=async()=>{},pages=()=>({messages:[message],syncedAt:message.receivedAt}),calendars=()=>[{calendarId:'primary',summary:'Owned calendar',primary:true,selected:true,accessRole:'owner'}];
  const original=globalThis.fetch;globalThis.fetch=async(url,init={})=>{
   const u=new URL(url);calls.push(u);
   if(u.pathname==='/api/v1/user')return Response.json({success:true,data:{id:owner,organization_id:org}});
@@ -36,14 +36,14 @@ async function fixture(){
    }
    return Response.json({version:1,providerExactlyOnce:false,receipt:saved.receipt});
   }
-  if(u.pathname.endsWith('/calendars'))return Response.json([{calendarId:'primary',summary:'Owned calendar',primary:true,selected:true,accessRole:'owner'}]);
+  if(u.pathname.endsWith('/calendars'))return Response.json(calendars());
   if(u.pathname.endsWith('/feed')){await afterRead();return Response.json({calendarId:'primary',events:[],syncedAt:message.receivedAt});}
   if(u.pathname.endsWith('/search')){const data=pages(u);await afterRead();return Response.json(data);}
   if(u.pathname.endsWith('/read')){await afterRead();return Response.json({message:{...message,metadata:{historyId:'h1'}},bodyText:'Exact synthetic body'});}
   throw Error('Unexpected route');
  };
  let reader;try{reader=createGmailAgentReadHost(profile);}finally{globalThis.fetch=original;}
- return {reader,calls,credential,save,sends,setAccounts:fn=>accounts=fn,setAfterRead:fn=>afterRead=fn,setPages:fn=>pages=fn,loseDispatch:()=>{loseDispatch=true;},close:()=>rm(profile,{recursive:true,force:true})};
+ return {reader,calls,credential,save,sends,setAccounts:fn=>accounts=fn,setAfterRead:fn=>afterRead=fn,setPages:fn=>pages=fn,setCalendars:fn=>calendars=fn,loseDispatch:()=>{loseDispatch=true;},close:()=>rm(profile,{recursive:true,force:true})};
 }
 const sendAccount={...account,grantedCapabilities:['google.gmail.triage','google.gmail.send']};
 const email=()=>({requestId:randomUUID(),to:['self@example.invalid'],subject:'Synthetic QA',bodyText:'No real email is sent by this fixture.'});
@@ -93,6 +93,17 @@ test('Calendar reads bind the current grant and refuse a revoked source before r
   assert.equal((await f.reader.calendarFeed(input)).state,'complete');
   await assert.rejects(f.reader.calendarFeed({...input,grantId:'alpha-google:'+'f'.repeat(64)}),/current owner/);
   f.setAfterRead(async()=>f.setAccounts(()=>[]));await assert.rejects(f.reader.calendarFeed(input),/permission changed/);
+ }finally{await f.close();}
+});
+
+test('Calendar sources join the one merged agent feed when Google shows them, and only then',async()=>{
+ const f=await fixture();try{
+  f.setAccounts(()=>[{...account,label:'owned@example.invalid',grantedCapabilities:['google.calendar.read']}]);
+  const row=(calendarId,primary,selected,accessRole)=>({calendarId,summary:calendarId,primary,selected,accessRole});
+  f.setCalendars(()=>[row('owned@example.invalid',true,false,'owner'),row('en.usa#holiday@group.v.calendar.google.com',false,true,'reader'),row('team@group.calendar.google.com',false,true,'writer'),row('addressbook#contacts@group.v.calendar.google.com',false,false,'reader'),row('freebusy@group.calendar.google.com',false,true,'freeBusyReader')]);
+  const sources=await f.reader.calendarSources();
+  // Each account's own calendar always joins; other calendars join exactly when Google shows them.
+  assert.deepEqual(sources.map(source=>[source.calendarId,source.includeInFeed]),[['owned@example.invalid',true],['en.usa#holiday@group.v.calendar.google.com',true],['team@group.calendar.google.com',true],['addressbook#contacts@group.v.calendar.google.com',false]]);
  }finally{await f.close();}
 });
 

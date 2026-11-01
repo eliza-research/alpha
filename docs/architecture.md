@@ -19,11 +19,11 @@ records the migration order and the gaps that prevent a completion claim.
 ### Shell host pieces and their upstream targets
 
 The shared mobile shell (`@elizaos/ui/mobile-shell`) renders Home, All apps, the view
-registry and navigation from `config/alpha-product.json`. Views whose registration carries a
-lazy loader (`ALPHA_VIEW_LOADERS` in `apps/app/src/product/alpha-product.ts`) render through
-`MobileViewHost`, with its failure-and-retry notice drawn in Alpha's chrome (`renderError`) and
-`active={false}` keeping a view mounted behind Home so drafts and selection survive. Today that
-is Notes (the upstream `NotesWorkspace` from `plugin-notes`). Gesture zones are the shell's
+registry and navigation from `config/alpha-product.json`. A view whose registration carries a
+lazy loader renders through `MobileViewHost`; Alpha contributes none today. Notes, live and mock
+alike, is Alpha's own Notes template (`prototype/template.html`, `model.js`): live agent notes are
+bound to it by `prototype/canonical-notes-ui.ts` over the shared Notes client, controller and
+editor (owner decision, 2026-10-30). Gesture zones are the shell's
 `resolveMobileShellSwipe`, and the launcher shade and empty-Home pull policy is
 `@elizaos/capacitor-system/shade`; Alpha keeps only its wording and Home selector
 (`prototype/system-shade.ts`). Colours, fonts and backgrounds are the record's theme, including
@@ -40,7 +40,7 @@ where each moves:
 | Lock screen and secure surface | template lock layer, `unlock()` | a mobile-shell lock surface over the shared navigation state; device credentials stay Android's |
 | Chat overlay, pill, composer, sheet and full detents | template conversation layers, `chat-overlay-motion-adapter.ts`, `usePullGesture` binding in `main.tsx` | `@elizaos/ui` shell chat sheet driven by `navigateMobileShell`'s assistant detent |
 | Development stand-in shade | template shade layer behind `ELIZA_DEV_ALLOW_TEST_MOCKS` | stays a development surface; product builds use Android's shade |
-| Domain views other than Notes (Calendar, Messages, Phone, Contacts, Maps, Browser, Camera, Photos, Files, Wallet, Workflows, Settings) | template views with adapters | each plugin's shared view, registered as a `MobileViewHost` loader by its own workstream |
+| Domain views (Notes, Calendar, Messages, Phone, Contacts, Maps, Browser, Camera, Photos, Files, Wallet, Workflows, Settings) | template views with adapters; live Notes binds the shared Notes client in `canonical-notes-ui.ts` | each plugin's shared view, registered as a `MobileViewHost` loader by its own workstream; Notes keeps Alpha's own Notes design (owner decision, 2026-10-30) |
 
 Alpha Phone is an independent Android product. `apps/app` owns its renderer,
 navigation, presentation, capability policy and storage configuration. Shared
@@ -499,15 +499,20 @@ recording summary proposal (`notes-recording-summary.ts`). Alpha keeps its insta
 document, lock and claim names, the native recording store (`AlphaNoteAudio`), the editor
 deletion and restore flows, and presentation. The renderer
 lease must stay equal to `NotesDeletionLease.LEASE_MS` used by the Android native passes.
-The device-local Older notes collection still renders through Alpha's own Notes view; the
-shared `NotesWorkspace` serves only canonical agent notes until it gains a device-local
-client and recording ports.
+Both Notes sources render through Alpha's own Notes view. Agent notes use the shared
+`plugin-notes/src/client` controller and editor (canonical records, `expectedRevision`, restore-only
+Trash, review and reload) bound by `canonical-notes-ui.ts`; the device-local Older notes collection
+keeps its own store, Trash and recorder. The shared `NotesWorkspace` component is not rendered.
+Agent Notes keep the template's header, waveform and + (owner decision, 2026-10-30): the waveform
+(`notes-dictate-new`) opens a new note and runs the editor's dictation into it, speech to text through
+the platform's recognizer with no audio kept, saved like typing after +. Their Trash (`notes-trash`) and
+Previous notes (`notes-source-legacy`) are quiet text actions under the list, not filled pills.
 Notes ports are shared too: `plugin-notes/src/client` owns the document port and its browser
 implementation (`note-documents.ts`; Alpha's `runtime/browser-note-documents.ts` only registers
 it as `AlphaNoteDocuments` with the `Alpha scan` PDF file name), the deletion-receipt rule that
 retires a From note link (`note-deleted-origins.ts`; Alpha's `browser/deleted-note-origins.ts`
 only supplies its deletion documents as the receipts port) and the reviewed Calendar/reminder
-draft (`note-schedule-draft.ts`, `NotesWorkspacePorts.draftEvent`/`draftReminder`). One
+draft (`note-schedule-draft.ts`, the note editor's Review reminder and Review event in `canonical-notes-ui.ts`). One
 Notes file remains Alpha's because it binds Alpha storage rather than Notes rules:
 `runtime/notes-trash.ts` (the Trash slot `notes-trash:v1:device` and browser document under the
 shared Trash policy). The Trash storage step itself
@@ -516,7 +521,7 @@ shared Trash policy). The Trash storage step itself
 (elizaOS/eliza#38104, develop d2578cb4); once the pin includes it, `notes-trash.ts` keeps only its two slot
 ports and its slot names. Note-origin links name either an Older notes voice recording (version 1) or a canonical
 Notes record (version 2, a SHA-256 of its authored fields) and share one index
-(`note-origins:v1:device`); `canonical-notes-ui.ts` binds the draft ports, so a canonical
+(`note-origins:v1:device`); `canonical-notes-ui.ts` binds the draft actions, so a canonical
 note's Calendar draft or reminder draft keeps a From note link that opens that exact record.
 
 `AlphaNoteAudioPlugin` is installed-data compatibility, not a second recording engine. Storage,

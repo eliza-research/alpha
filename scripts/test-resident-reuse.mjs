@@ -17,12 +17,14 @@ assert.equal(await residentAttachable(credential,{},true),false,'older native br
 
 // Attachable: the provider is not rebound, so the running agent is never stopped.
 const order=[];
-assert.equal(await bindResidentCloudProvider(credential,{attachable:async id=>{order.push(['attachable',id]);return true;},configure:async id=>{order.push(['configure',id]);}}),'attached');
+assert.equal(await bindResidentCloudProvider(credential,{attachable:async id=>{order.push(['attachable',id]);return true;},configure:async id=>{order.push(['configure',id]);}}),undefined);
 assert.deepEqual(order,[['attachable',credential]]);
 // Not attachable: the ordinary stop → bind path runs once, after the query.
 order.length=0;
-assert.equal(await bindResidentCloudProvider(credential,{attachable:async id=>{order.push(['attachable',id]);return false;},configure:async id=>{order.push(['configure',id]);}}),'configured');
+assert.equal(await bindResidentCloudProvider(credential,{attachable:async id=>{order.push(['attachable',id]);return false;},configure:async id=>{order.push(['configure',id]);}}),undefined);
 assert.deepEqual(order,[['attachable',credential],['configure',credential]]);
+const bindingGuard='a'.repeat(64);
+assert.equal(await bindResidentCloudProvider(credential,{attachable:async()=>false,configure:async()=>bindingGuard}),bindingGuard,'new binding guard is forwarded unchanged');
 // A failed bind is reported, never swallowed into an attach.
 await assert.rejects(bindResidentCloudProvider(credential,{attachable:async()=>false,configure:async()=>{throw Error('Cloud account changed');}}),/Cloud account changed/);
 
@@ -72,7 +74,7 @@ assert.equal(failing.log.filter(row=>row[0]==='cancelStart').length,1);
 const willing=id=>residentAttachable(id,bridge({attachable:true}),true);
 assert.equal(await willing(credential),false,'an attach that failed owner verification is not trusted again');
 order.length=0;
-assert.equal(await bindResidentCloudProvider(credential,{attachable:willing,configure:async id=>{order.push(['configure',id]);}}),'configured');
+assert.equal(await bindResidentCloudProvider(credential,{attachable:willing,configure:async id=>{order.push(['configure',id]);}}),undefined);
 assert.deepEqual(order,[['configure',credential]]);
 // The next verified connection (here the restarted runtime) restores attach.
 await new LocalAgentProtocol(host({state:'ready'}).bridge).connect(new AbortController().signal);

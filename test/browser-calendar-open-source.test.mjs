@@ -16,7 +16,7 @@ test('a browser Calendar link preserves an explicitly selected source',()=>{
  assert.deepEqual(open(),[['calendar',{calendarAuthority:'browser-local'}]]);
 });
 test('ordinary, native and production Calendar links never adopt the browser source',()=>{
- for(const setup of [{authority:'canonical'},{authority:'legacy'},{authority:'legacy-google'},{authority:'android-native',platform:'android'},{platform:'android'},{testMocks:false}]){
+ for(const setup of [{authority:'canonical'},{authority:'legacy'},{authority:'android-native',platform:'android'},{platform:'android'},{testMocks:false}]){
   assert.deepEqual(open(setup),[['calendar',undefined]],JSON.stringify(setup));
  }
 });

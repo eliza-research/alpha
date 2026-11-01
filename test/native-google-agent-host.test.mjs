@@ -3,20 +3,20 @@ import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import {createHash,randomUUID} from 'node:crypto';
 if(!process.execArgv.includes('tsx')){const child=spawnSync(process.execPath,['--import','tsx',process.argv[1]],{stdio:'inherit',timeout:60000});if(child.error)throw child.error;process.exit(child.status??1);}
-const {startNativeGoogleAgentHost}=await import('../backend/native-google-agent-host.ts');
+const {startNativeGoogleAgentHost,startManagedGoogleAgentHost}=await import('../backend/native-google-agent-host.ts');
 const {createNativeGoogleCloudPort}=await import('../backend/native-google-cloud-port.ts');
 const user='11111111-1111-4111-8111-111111111111',org='22222222-2222-4222-8222-222222222222',grant='33333333-3333-4333-8333-333333333333';
 const binding=()=>({credentialId:'44444444-4444-4444-8444-444444444444',userId:user,organizationId:org,accountRef:JSON.stringify(['cloud','production',user,org]),sessionGeneration:'native-generation-1',token:'synthetic-native-cloud-key'});
 // The Android SDK emits 48 random bytes as 64 URL-safe Base64 characters.
 const apiToken='Z_-q'.repeat(16);
-async function fixture(){
+async function fixture({accounts,retireAfterCalendars=false}={}){
  const calls=[],receipts=new Map();let current=true,otherOwner=false,dispatches=0;
  const request=async(url,init={})=>{
   const u=new URL(url);calls.push(u.pathname);assert.equal(init.headers.Authorization,'Bearer synthetic-native-cloud-key');assert.equal(init.redirect,'error');
   if(u.pathname==='/api/v1/user')return Response.json({success:true,data:{id:otherOwner?grant:user,organization_id:org}});
-  if(u.pathname.endsWith('/accounts'))return Response.json([{configured:true,connected:true,reason:'connected',connectionId:grant,identity:{email:'owned@example.invalid'},grantedCapabilities:['google.gmail.triage','google.gmail.send','google.gmail.mailbox','google.calendar.read','google.calendar.write']}]);
+  if(u.pathname.endsWith('/accounts'))return Response.json(accounts??[{configured:true,connected:true,reason:'connected',connectionId:grant,identity:{email:'owned@example.invalid'},grantedCapabilities:['google.gmail.triage','google.gmail.send','google.gmail.mailbox','google.calendar.read','google.calendar.write']}]);
   if(u.pathname.endsWith('/search'))return Response.json({messages:[{externalId:'mail1',threadId:'thread1',subject:'A &amp; B',from:'Sender',to:[],snippet:'Hello',receivedAt:'2026-10-16T00:00:00Z',isUnread:true}],syncedAt:'2026-10-16T00:00:00Z'});
-  if(u.pathname.endsWith('/calendars'))return Response.json([{calendarId:'primary',summary:'Owned',primary:true,selected:true,accessRole:'owner'}]);
+  if(u.pathname.endsWith('/calendars')){if(retireAfterCalendars)current=false;return Response.json([{calendarId:'primary',summary:'Owned',primary:true,selected:true,accessRole:accounts?'reader':'owner'}]);}
   const body=init.body?JSON.parse(init.body):null;
   if(u.pathname.endsWith('/operations')){
    const review={from:'owned@example.invalid',...body.proposal},reviewDigest=createHash('sha256').update(JSON.stringify(review)).digest('hex');
@@ -54,4 +54,29 @@ test('native service port never becomes a general Cloud or credential proxy',asy
  let calls=0;const port=createNativeGoogleCloudPort(binding(),()=>{},async()=>{calls++;throw Error('No request expected');});const credential=await port.agentCredential();
  for(const url of ['https://api-staging.eliza.app/api/v1/user','https://api.eliza.app/api/v1/api-keys/current','https://example.invalid/api/v1/user'])await assert.rejects(port.agentGmailOperation({url,method:'GET',credentialReference:credential.credentialReference,signal:AbortSignal.timeout(1000)}));
  assert.equal(calls,0);
+});
+
+
+test('shared private broker validates tokens before startup and closes idempotently',async()=>{
+ const port={async agentCredential(){throw Error('No credential read expected');},async agentRead(){throw Error('No provider read expected');},async agentGmailOperation(){throw Error('No provider write expected');},async agentCalendarOperation(){throw Error('No provider write expected');}};
+ await assert.rejects(startManagedGoogleAgentHost({port,apiToken:'invalid'}),/authentication is unavailable/);
+ const host=await startManagedGoogleAgentHost({port,apiToken:'a'.repeat(64),access:()=>({gmailChanges:false,calendarEdits:false})});
+ await Promise.all([host.close(),host.close()]);await host.close();
+});
+
+test('native Calendar sources bind exact verified Google connections, not duplicate account labels',async()=>{
+ const second='55555555-5555-4555-8555-555555555555';
+ const accounts=[grant,second].map(connectionId=>({configured:true,connected:true,reason:'connected',connectionId,identity:{email:'same@example.invalid'},grantedCapabilities:['google.calendar.read']}));
+ const f=await fixture({accounts});try{
+  const result=await f.call({calendar:{operation:'sources'}});assert.equal(result.status,200);
+  const sources=result.data.calendars;assert.deepEqual(sources.map(s=>s.managedGoogleConnectionId),[grant,second]);
+  assert.notEqual(sources[0].grantId,sources[1].grantId);assert.equal(sources[0].calendarId,sources[1].calendarId);
+  for(const source of sources){assert.equal(source.connectorAccountId,source.grantId);assert.equal(source.accessRole,'reader');assert.equal(source.write,undefined);}
+  const encoded=JSON.stringify(sources);for(const secret of [binding().token,binding().credentialId,binding().sessionGeneration])assert.equal(encoded.includes(secret),false);
+ }finally{await f.host.close();}
+});
+test('native Calendar sources publish no stale association after owner retirement during discovery',async()=>{
+ const f=await fixture({retireAfterCalendars:true});try{
+  const result=await f.call({calendar:{operation:'sources'}});assert.equal(result.status,409);assert.equal(result.data.calendars,undefined);
+ }finally{await f.host.close();}
 });

@@ -19,17 +19,26 @@ test('real React recovery panel has one restart action and optional finite detai
  assert.doesNotMatch(failed,/Your data is safe/);assert.match(failed,/<button disabled=""/);
 });
 const settings=readFileSync(new URL('../apps/app/src/prototype/settings-adapter.ts',import.meta.url),'utf8');
-const start=settings.indexOf("        if(native&&!testMocksEnabled&&state.page==='agent-recovery-details')");
+const start=settings.indexOf("        if(native&&developerTools&&state.page==='agent-recovery-details')");
 const end=settings.indexOf("        if(native&&!testMocksEnabled&&state.page==='agent-connection')",start);
 // Execute the actual detail page and recovery rows with the existing adapter helper boundaries.
 const rowsStart=settings.indexOf('          if(connection.residentRecoveryReason&&!connection.session){',end);
 const rowsEnd=settings.indexOf('          if(connection.busy){',rowsStart);
 const rows=settings.slice(rowsStart,rowsEnd);
-function nativeFixture(connection=snapshot,page='agent-connection'){
- const actions=[];const context={native:true,testMocksEnabled:false,state:{page},connection,agentRows:[],out:{stack:[]},residentRecoveryCopy,info:(label,value)=>({label,value}),action:(label,go)=>({label,go}),group:rows=>rows,api:{set:value=>actions.push(value)},connectionController:{restartRecovery:()=>actions.push('restart'),startLocal:()=>actions.push('start')}};
+function nativeFixture(connection=snapshot,page='agent-connection',developerTools=true){
+ const actions=[];const context={native:true,testMocksEnabled:false,developerTools,state:{page},connection,agentRows:[],out:{stack:[]},residentRecoveryCopy,info:(label,value)=>({label,value}),action:(label,go)=>({label,go}),group:rows=>rows,api:{set:value=>actions.push(value)},connectionController:{restartRecovery:()=>actions.push('restart'),startLocal:()=>actions.push('start')}};
  vm.createContext(context);vm.runInContext(transformSync(page==='agent-connection'?rows:settings.slice(start,end),{loader:'ts'}).code,context);return {context,actions};
 }
-test('native Settings exposes same single action and navigates to details without starting recovery',()=>{
+test('the product keeps the plain recovery status and Restart Alpha, with no raw Restart details',()=>{
+ assert.ok(start>0&&end>start,'Restart details is gated by the Developer gate');
+ const f=nativeFixture(snapshot,'agent-connection',false);
+ assert.deepEqual(Array.from(f.context.agentRows,r=>r.label),['Status','Restart Alpha']);
+ assert.equal(f.context.agentRows[0].value,residentRecoveryCopy(snapshot.residentRecoveryReason,snapshot.residentRecovery));
+ assert.deepEqual(Array.from(nativeFixture({...snapshot,residentRecoveryReason:'runtime-identity-unavailable',residentRecovery:undefined},'agent-connection',false).context.agentRows,r=>r.label),['Status']);
+ // A stale or direct selection of the details page renders nothing in the product.
+ assert.deepEqual(nativeFixture(snapshot,'agent-recovery-details',false).context.out.stack,[]);
+});
+test('behind the Developer gate, Settings navigates to details without starting recovery',()=>{
  const f=nativeFixture();assert.deepEqual(f.actions,[]);
  assert.deepEqual(Array.from(f.context.agentRows,r=>r.label),['Status','Restart Alpha','Details']);
  f.context.agentRows[2].go();assert.equal(f.actions[0].page,'agent-recovery-details');

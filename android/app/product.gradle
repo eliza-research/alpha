@@ -80,6 +80,18 @@ android {
  }
 }
 if (appLinkHost) androidComponents { onVariants(selector().all()) { variant -> variant.sources.manifests.addStaticManifestFile(appLinksManifest) } }
+// Existing backend AppReturn v2 target. Runtime opt-in additionally requires verified domain handling.
+def workspaceReturnManifest = 'build/generated/workspace-return/AndroidManifest.xml'
+file(workspaceReturnManifest).parentFile.mkdirs()
+file(workspaceReturnManifest).text = """<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"><application>
+ <activity android:name="${android.namespace}.MainActivity" android:exported="true">
+  <intent-filter android:autoVerify="true"><action android:name="android.intent.action.VIEW"/><category android:name="android.intent.category.DEFAULT"/><category android:name="android.intent.category.BROWSABLE"/><data android:scheme="https" android:host="alphacompute.ai" android:path="/alphaphone/gmail/callback"/></intent-filter>
+ </activity>
+</application></manifest>
+"""
+androidComponents { onVariants(selector().all()) { variant -> variant.sources.manifests.addStaticManifestFile(workspaceReturnManifest) } }
+
 
 // The shared bionic host is packaged only from the reviewed consumer artifact and BGE pin.
 def verifyEmbeddingHost = tasks.register('verifyEmbeddingHost', Exec) {

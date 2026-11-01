@@ -18,11 +18,14 @@ test('accepted voice progress is ephemeral, clears with SDK state and cannot ret
   await f.shell.startVoice();
   const first = sessions[0];
   first.onState('thinking', 'Creating that now.');
-  assert.equal(f.renderChat().lines[0].t, 'Creating that now.');
-  assert.equal(f.renderChat().statusClass, 'alpha-turn-status');
+  // The label shimmers on the transcript line above the composer; the composer keeps the phase.
+  assert.equal(f.shell.renderVals().turnStatus, 'Creating that now.');
+  assert.equal(f.renderChat().lines[0].t, 'Thinking…');
+  assert.notEqual(f.renderChat().statusClass, 'alpha-turn-status');
   assert.equal(f.shell.renderVals().pillVoice?.progressText || '', '');
   first.onState('speaking', 'Creating that now.');
-  assert.equal(f.renderChat().lines[0].t, 'Creating that now.');
+  assert.equal(f.shell.renderVals().turnStatus, 'Creating that now.');
+  assert.equal(f.renderChat().lines[0].t, 'Speaking…');
   assert.equal(JSON.stringify(f.shell.state.msgs), messagesBefore, 'progress is never saved as a message');
   assert.equal(f.sends, 0, 'displaying progress must not send another turn');
   assert.equal(f.cloudSpeech, 0, 'the server owns progress TTS');
@@ -49,5 +52,5 @@ test('accepted voice progress is ephemeral, clears with SDK state and cannot ret
   assert.equal(f.renderChat().progressText || '', '');
   assert.doesNotMatch(JSON.stringify(f.renderChat()), /Obsolete session label/);
   sessions[1].onState('thinking', 'Current session label');
-  assert.equal(f.renderChat().lines[0].t, 'Current session label');
+  assert.equal(f.shell.renderVals().turnStatus, 'Current session label');
 });

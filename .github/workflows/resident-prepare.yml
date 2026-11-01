@@ -32,6 +32,15 @@ jobs:
       - run: python3 scripts/ci/resident-phase.py --name prepare --seconds 3600 npm run agent:prepare
       - name: Verify actual Cloud recording signature classifier
         run: python3 scripts/ci/resident-phase.py --name cloud-recording-signature --seconds 60 node scripts/check-cloud-recording-signature.mjs
+      # The rejection test bundles with the product's own esbuild and imports the projected client
+      # features (npm test gets them from its pretest hook), so install the locked product dependencies
+      # as resident-android does and project the client before running the test file directly.
+      - run: python3 scripts/ci/resident-phase.py --name product-install --seconds 600 npm ci
+      - run: python3 scripts/ci/resident-phase.py --name client-projection --seconds 300 npm run upstream:prepare-client
+      - name: Verify managed Calendar rejection against the prepared SDK graph
+        env:
+          ALPHA_REQUIRE_PREPARED_SDK: '1'
+        run: python3 scripts/ci/resident-phase.py --name calendar-managed-rejection --seconds 120 node --test test/calendar-managed-rejection.test.mjs
       - name: Verify digest recovery across independent runtime processes
         env:
           TMPDIR: ${{ github.workspace }}/test-results/digest-restart

@@ -1,6 +1,10 @@
 import React,{useEffect,useId,useRef,useState} from 'react';
 import './cloud-membership-ui.css';
 export type MembershipBalance='checking'|'zero'|'funded'|'member'|'unavailable';
+/** A verified $0 balance without a membership: the sheet's line and the reason a send is refused. */
+export const FUNDING_NEEDED='Add credits or enter a membership code to ask Alpha.';
+/** Cloud declined a turn for this account's billing: the chat's one answer, beside this sheet. */
+export function fundingRefusedReply(serviceName:string):string {return `${serviceName} declined this AI request for your account’s billing. Add credits or enter a membership code, then send again. Nothing was retried or purchased.`;}
 import {alphaSubscriptionCopy,type ServiceLimit,type SubscriptionView} from './subscription-entitlement';
 import {useCloudSubscriptionSummary} from '../../../../.eliza/client-features/packages/ui/src/components/settings/cloud-subscription-summary.tsx';
 function creditLabel(usd:string):string {
@@ -16,13 +20,15 @@ function endLabel(endsAt:number):string {
  * Approved "Membership & credits" bottom-sheet content (decision: NubsCarson 7a44d7038); balances and
  * actions remain bound to the current Cloud account. The shared subscription summary
  * (`@elizaos/cloud-sdk/subscription-entitlement`, through the shared `useCloudSubscriptionSummary` hook) adds, read-only, the plan allowance Cloud reports and
- * the latest Cloud limit with its retry time (#410). Nothing is bought here: Add funds opens Cloud's
- * own billing page after the account review.
+ * the latest Cloud limit with its retry time (#410). Nothing is bought here: Add credits opens Cloud's
+ * own billing page after the account review; Enter membership code reveals the code field.
+ *
+ * `refused`: Cloud declined this account's last AI request for billing, so the sheet says so.
  *
  * `planShownByHost`: the resident agent dialog already shows the plan with its allowance and end and
  * the plan actions. There the sheet content leaves out its Membership row, so no plan fact appears twice.
  */
-export function CloudMembershipControls({balance,busy,error,connectionError,notice,email,credits,plan,endsAt,lastLimit,serviceName='Cloud',codeEntry=false,planShownByHost=false,onRedeem,onAddFunds,onRefresh}:{balance:MembershipBalance;busy:boolean;error?:string;connectionError?:string;notice?:string;email?:string;credits?:{usd:string;observedAt:number}|null;plan?:SubscriptionView|null;endsAt?:number|null;lastLimit?:(ServiceLimit&{observedAt:number})|null;serviceName?:string;codeEntry?:boolean;planShownByHost?:boolean;onRedeem:(code:string)=>Promise<boolean>;onAddFunds:()=>void;onRefresh:()=>void}){
+export function CloudMembershipControls({balance,busy,error,connectionError,notice,email,credits,plan,endsAt,lastLimit,refused=false,serviceName='Cloud',codeEntry=false,planShownByHost=false,onRedeem,onAddFunds,onRefresh}:{balance:MembershipBalance;busy:boolean;error?:string;connectionError?:string;notice?:string;email?:string;credits?:{usd:string;observedAt:number}|null;plan?:SubscriptionView|null;endsAt?:number|null;lastLimit?:(ServiceLimit&{observedAt:number})|null;refused?:boolean;serviceName?:string;codeEntry?:boolean;planShownByHost?:boolean;onRedeem:(code:string)=>Promise<boolean>;onAddFunds:()=>void;onRefresh:()=>void}){
  const code=useRef<HTMLInputElement>(null),pending=useRef(false),codeEntryId=useId(),errorId=useId();
  // A retained redemption error must keep its associated input exposed.
  const [codeVisible,setCodeVisible]=useState(Boolean(error)),[submitting,setSubmitting]=useState(false),[submissionError,setSubmissionError]=useState(''),[codeValue,setCodeValue]=useState('');
@@ -51,8 +57,8 @@ export function CloudMembershipControls({balance,busy,error,connectionError,noti
     {!planShownByHost&&<div className="alpha-membership-plan-fact"><dt>Membership</dt><dd>{active?plan.planName:plan?.kind==='inactive'||plan?.kind==='credits'?'No active membership':balance==='checking'?'Checking…':'Not confirmed'}{active&&<small>{typeof endsAt==='number'&&Number.isFinite(endsAt)?endLabel(endsAt):'End date not provided'}</small>}{active&&summary.allowance&&<small className="alpha-membership-allowance">{summary.allowance}</small>}</dd></div>}
     {summary.limit&&<div className="alpha-membership-limit-fact"><dt>AI requests</dt><dd role="status">{summary.limit}</dd></div>}
    </dl>
-   <p className="alpha-membership-support" role="status">{balance==='checking'?'Checking your account…':balance==='unavailable'?'Account details could not be refreshed. You can still redeem a code or check again.':balance==='zero'?'Add funds or use a membership code to ask Alpha.':''}</p>
-   <div className="alpha-membership-main-actions"><button type="button" className="alpha-membership-primary" disabled={disabled} onClick={onAddFunds}>Add funds</button>{!showCode&&<button type="button" className="alpha-membership-secondary" aria-expanded={false} aria-controls={codeEntryId} disabled={disabled} onClick={()=>setCodeVisible(true)}>Use membership code</button>}</div>
+   <p className="alpha-membership-support" role="status">{refused?`${serviceName} declined your last AI request for billing. Add credits or enter a membership code, then send again.`:balance==='checking'?'Checking your account…':balance==='unavailable'?'Account details could not be refreshed. You can still redeem a code or check again.':balance==='zero'?FUNDING_NEEDED:''}</p>
+   <div className="alpha-membership-main-actions"><button type="button" className="alpha-membership-primary" disabled={disabled} onClick={onAddFunds}>Add credits</button>{!showCode&&<button type="button" className="alpha-membership-secondary" aria-expanded={false} aria-controls={codeEntryId} disabled={disabled} onClick={()=>setCodeVisible(true)}>Enter membership code</button>}</div>
    {showCode&&<div id={codeEntryId} className="alpha-membership-code-entry"><form aria-label="Redeem a membership code" onSubmit={event=>void redeem(event)}>
      <label>Membership code<input ref={code} name="membership-code" value={codeValue} onChange={event=>setCodeValue(event.target.value)} placeholder="Enter code" autoComplete="one-time-code" autoCapitalize="characters" autoCorrect="off" spellCheck={false} data-autofill-ignore="true" maxLength={64} disabled={disabled} required aria-invalid={!!error||!!submissionError||undefined} aria-describedby={error||submissionError?errorId:undefined}/></label>
      <button type="submit" disabled={disabled||!codeValue.trim()}>{submitting?'Redeeming…':'Redeem'}</button>

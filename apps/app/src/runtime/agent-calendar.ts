@@ -17,12 +17,12 @@ const empty=():AgentCalendarState=>({ownerKey:null,status:'disconnected',feed:nu
 type ClientFactory=(p:AppRecordPort,s:AbortSignal)=>Pick<AgentCalendarClient,'getLifeOpsCalendarFeed'|'getLifeOpsCalendars'|'getLifeOpsNextCalendarEventContext'|'createLifeOpsCalendarEvent'|'updateLifeOpsCalendarEvent'|'deleteLifeOpsCalendarEvent'|'getLinkedCalendarControl'|'updateLinkedCalendarControl'>;
 /** UI snapshot only. CalendarService remains the sole app-record authority. */
 export class AgentCalendar {
- private value=empty();private epoch=0;private abort:AbortController|undefined;private listeners=new Set<()=>void>();private binding='';private nextQuery='';private deferredRefresh:GetLifeOpsCalendarFeedRequest|undefined;private sourceRevisions=new Map<string,string>();
+ private value=empty();private epoch=0;private abort:AbortController|undefined;private reading:AbortController|undefined;private listeners=new Set<()=>void>();private binding='';private nextQuery='';private deferredRefresh:GetLifeOpsCalendarFeedRequest|undefined;private sourceRevisions=new Map<string,string>();
  constructor(private port:()=>AppRecordPort|null,private preservation:CalendarPreservation,private client:ClientFactory=agentCalendarClient){}
  get state():Readonly<AgentCalendarState>{return this.value;}
  subscribe(fn:()=>void){this.listeners.add(fn);return()=>{this.listeners.delete(fn);};}
  private publish(patch:Partial<AgentCalendarState>){this.value={...this.value,...patch};for(const fn of this.listeners)fn();}
- retire(){++this.epoch;this.abort?.abort();this.abort=undefined;this.binding='';this.nextQuery='';this.deferredRefresh=undefined;this.sourceRevisions.clear();this.publish(empty());}
+ retire(){++this.epoch;this.abort?.abort();this.abort=this.reading=undefined;this.binding='';this.nextQuery='';this.deferredRefresh=undefined;this.sourceRevisions.clear();this.publish(empty());}
  private current(port:AppRecordPort,epoch:number,signal:AbortSignal){signal.throwIfAborted();if(!port.current())throw Error('Calendar owner or agent changed');const now=this.port();if(!now||epoch!==this.epoch||this.binding!==JSON.stringify([calendarOwnerKey(now),now.sessionId,now.scope]))throw Error('Calendar owner or agent changed');}
  /** Invalidate presentation freshness without changing the authoritative event/feed. */
  invalidateNext(){
@@ -33,7 +33,11 @@ export class AgentCalendar {
   // Cost: reuse the existing three reads. All refresh triggers share one pending
   // window while a mutation is in flight; never abort an accepted write for a read.
   if(this.value.mutating){this.deferredRefresh={...window};this.invalidateNext();return;}
-  const port=this.port();this.abort?.abort();const controller=this.abort=new AbortController(),signal=controller.signal,epoch=++this.epoch;
+  const port=this.port();
+  // The same query while its reads are in flight queues one trailing refresh: the resident keeps
+  // serving an aborted read, so abort-and-restart only stacks Cloud work. A changed query aborts all three.
+  if(this.reading&&port?.current()&&this.binding===JSON.stringify([calendarOwnerKey(port),port.sessionId,port.scope])&&this.nextQuery===JSON.stringify(window)){this.deferredRefresh={...window};this.invalidateNext();return;}
+  this.abort?.abort();this.deferredRefresh=undefined;const controller=this.abort=this.reading=new AbortController(),signal=controller.signal,epoch=++this.epoch;
   if(!port){this.binding='';this.publish(empty());return;}
   if(!port.current()){this.binding='';this.publish(empty());return;}const ownerKey=calendarOwnerKey(port),binding=JSON.stringify([ownerKey,port.sessionId,port.scope]),query=JSON.stringify(window);
   if(this.binding!==binding||this.nextQuery!==query)this.value=empty();this.binding=binding;this.nextQuery=query;
@@ -64,6 +68,7 @@ export class AgentCalendar {
    const nextFresh=nextRead.status==='fulfilled'&&feed?.state==='complete'&&next?.calendarFeedState==='complete';
    this.publish({feed,calendars:sources.calendars,next,nextFresh:!!nextFresh,status:!feed?'error':feed.state==='complete'?'ready':feed.state==='partial'?'partial':'unavailable',error:feedRead.status==='rejected'?'Calendar could not be refreshed. Saved next event is unverified.':nextRead.status==='rejected'?'Next event could not be refreshed. Saved event is unverified.':null});
   }catch(error){if(epoch===this.epoch&&!signal.aborted)this.publish({status:'error',error:error instanceof Error?error.message:'Calendar could not be verified',feed:null,calendars:[],next:null,nextFresh:false});}
+  finally{if(this.reading===controller){this.reading=undefined;const pending=this.deferredRefresh;this.deferredRefresh=undefined;if(pending&&epoch===this.epoch)void this.refresh(pending);}}
  }
  async confirmLegacyRetention(){
   const port=this.port(),previous=this.value.legacy;if(!port||!previous||!this.preservation.confirmReadOnly)throw Error('Calendar transition review is required');
@@ -75,6 +80,26 @@ export class AgentCalendar {
   const e=this.value.feed?.events.find(e=>calendarEventKey(e)===eventKey);if(!e||typeof e.metadata.etag!=='string'||!e.metadata.etag.trim()||!e.grantId)return;
   const matches=this.value.calendars.filter(c=>c.provider===e.provider&&c.side===e.side&&c.grantId===e.grantId&&c.calendarId===e.calendarId&&(!e.connectorAccountId||c.connectorAccountId===e.connectorAccountId));if(matches.length!==1)return;
   return{kind:'canonical-calendar-event',id:e.id,revision:e.metadata.etag.trim(),accountId:e.grantId,sourceRevision:this.sourceRevisions.get(calendarSourceKey(matches[0]))};
+ }
+ /** Read back the selected canonical event before returning from Maps. This does not mutate or publish a new collection. */
+ async verifyEventReturn(input:{eventKey:string;revision:string;sourceRevision:string;begin:number},signal:AbortSignal):Promise<'found'|'missing'|'unknown'>{
+  const selected=()=>{const value=this.selection(input.eventKey);return value?.revision===input.revision&&value.sourceRevision===input.sourceRevision;};
+  const port=this.port(),epoch=this.epoch;
+  if(!port||this.value.mutating||!selected()||!Number.isSafeInteger(input.begin))return 'unknown';
+  this.current(port,epoch,signal);
+  const window={timeMin:new Date(input.begin-1).toISOString(),timeMax:new Date(input.begin+1).toISOString(),timeZone:'UTC'};
+  const api=this.client(port,signal);
+  const [feed,sources]=await Promise.all([api.getLifeOpsCalendarFeed(window,{signal}),api.getLifeOpsCalendars({}, {signal})]);
+  this.current(port,epoch,signal);
+  if(this.value.mutating||!selected()||feed.state!=='complete'||Date.parse(feed.timeMin)!==Date.parse(window.timeMin)||Date.parse(feed.timeMax)!==Date.parse(window.timeMax))return 'unknown';
+  if(feed.events.some(event=>event.agentId!==port.identity.agentId))return 'unknown';
+  const matches=feed.events.filter(event=>calendarEventKey(event)===input.eventKey);
+  if(!matches.length)return 'missing';
+  if(matches.length!==1)return 'unknown';
+  const event=matches[0];
+  if(event.status==='cancelled'||Date.parse(event.startAt)!==input.begin||event.metadata.etag!==input.revision)return 'missing';
+  const readable=sources.calendars.filter(source=>source.includeInFeed===true&&['owner','writer','reader'].includes(source.accessRole)&&source.provider===event.provider&&source.side===event.side&&source.grantId===event.grantId&&source.calendarId===event.calendarId&&(!event.connectorAccountId||source.connectorAccountId===event.connectorAccountId));
+  return readable.length===1?'found':'missing';
  }
  sourceSelection(sourceKey:string){const c=this.value.calendars.find(c=>calendarSourceKey(c)===sourceKey);if(!c||(!Number.isSafeInteger(c.selectionVersion)||c.selectionVersion<0))return;return{kind:'canonical-calendar-source',id:c.calendarId,revision:String(c.selectionVersion),accountId:c.grantId,sourceRevision:this.sourceRevisions.get(sourceKey)};}
  sourceHandle(key:string){const revision=this.sourceRevisions.get(key);return revision?'agent:'+revision:undefined;}
@@ -113,7 +138,8 @@ export class AgentCalendar {
    return {binding,control,sources:result.calendars.filter(source=>source.provider==='google'&&source.side==='owner'&&['owner','writer'].includes(source.accessRole)),visibleLocalEventIds:this.value.feed?.events.filter(event=>event.provider==='eliza'&&event.side==='owner').map(event=>event.id)??[]};
   },true);
  }
- async changeSync(review:AgentCalendarSyncReview,operation:UpdateLifeOpsLinkedCalendarControlRequest['operation'],key:string,current:()=>boolean,sourceKey?:string){
+ /** sending runs once its fence, owner and destination checks pass, immediately before the control write. */
+ async changeSync(review:AgentCalendarSyncReview,operation:UpdateLifeOpsLinkedCalendarControlRequest['operation'],key:string,current:()=>boolean,sourceKey?:string,sending?:()=>void){
   if(!current())throw Error('Keep or finish the current Calendar draft before changing sync');
   const port=this.port();
   if(!port||review.binding!==JSON.stringify([calendarOwnerKey(port),port.sessionId,port.scope])||this.value.ownerKey!==calendarOwnerKey(port))throw Error('Calendar owner or agent changed; review sync again');
@@ -129,6 +155,7 @@ export class AgentCalendar {
     if(operation==='select')request={operation,expectedRevision:review.control.revision,idempotencyKey:key,destination:{connectorAccountId:selected.connectorAccountId,providerCalendarId:selected.calendarId}};
    }
    this.current(port,epoch,signal);if(!current())throw Error('Calendar context changed; review sync again');
+   sending?.();
    return api.updateLinkedCalendarControl(request);
   },true);
  }

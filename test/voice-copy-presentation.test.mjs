@@ -39,13 +39,15 @@ test('actual voice error clears input activity while retaining disclosure, suppo
    assert.equal(model.state,state);assert.equal(model.activity===null,error);
    const html=render({inlineChatRecorder:true,chatRecorder:model});
    const doc=new JSDOM(html).window.document,details=doc.querySelector('details');
-   assert.ok(details);assert.equal(details.querySelector('summary').textContent,'Voice details');
-   assert.equal(details.hasAttribute('open'),false,'phase never forces the disclosure open');
-   assert.equal(doc.querySelectorAll('[role="note"]').length,1);
-   assert.match(details.textContent,/uploads recordings.*plan allowance.*Cartesia/);
    const alert=doc.querySelector('[role="alert"]');
-   if(error){assert.match(alert.textContent,/Voice is unavailable/);assert.doesNotMatch(alert.textContent,/503|uploads/);assert.match(details.textContent,/HTTP 503/);}
-   else assert.equal(alert,null);
+   // Speech routing is disclosed in Settings > Voice; the live composer opens details only for an error.
+   if(error){
+    assert.ok(details);assert.equal(details.querySelector('summary').textContent,'Voice details');
+    assert.equal(details.hasAttribute('open'),false,'an error never forces the disclosure open');
+    assert.equal(doc.querySelectorAll('[role="note"]').length,1);
+    assert.match(details.textContent,/uploads recordings.*plan allowance.*Cartesia/);
+    assert.match(alert.textContent,/Voice is unavailable/);assert.doesNotMatch(alert.textContent,/503|uploads/);assert.match(details.textContent,/HTTP 503/);
+   }else{assert.equal(details,null,'no details panel during a healthy conversation');assert.equal(alert,null);}
    assert.ok(doc.querySelector('[aria-label="Stop voice conversation"]'));
    assert.equal(doc.querySelectorAll('[data-alpha-voice-animation]').length,error?0:1);
    assert.equal(doc.querySelectorAll('[aria-label="Voice activity"]').length,error?0:1);

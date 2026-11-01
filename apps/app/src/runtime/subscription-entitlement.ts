@@ -43,4 +43,3 @@ export function subscriptionSummary(view: SubscriptionView | null | undefined, o
   const { serviceName, ...rest } = options;
   return sharedSubscriptionSummary(view, { ...rest, copy: alphaSubscriptionCopy(serviceName) });
 }
-

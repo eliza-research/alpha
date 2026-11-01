@@ -15,7 +15,7 @@ final class RendererCredentialSlots {
   "workflow-notice-delivery", "workflow-notice-owner", "workflow-approval-notices", "action-journal", "hosted-background",
   "hosted-digests", "hosted-notices", "note-audio-metadata", "reminder-taps",
   // In-app Cloud sign-in: the pending Google PKCE record and the key acknowledgement receipt.
-  "cloud-signin",
+  "cloud-signin", "google-workspace-return",
   // Physical deployment slots are native-owned. Renderer calls must use logical names.
   "cloud-deployment"
  };

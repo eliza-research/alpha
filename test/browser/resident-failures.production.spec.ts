@@ -16,7 +16,7 @@ const owner = { token: 'synthetic-cloud-key', userId: id, email: 'owner@example.
 const composer = (page: Page) => page.locator('[data-alpha-layer="composer"][aria-hidden="false"], [data-alpha-layer="conversation"][aria-hidden="false"]').getByRole('textbox').first();
 const conversation = (page: Page) => page.locator('[data-alpha-layer="conversation"]');
 const bubble = (page: Page, text: string) => page.getByRole('button', { name: 'Message actions: ' + text, exact: true });
-const UNKNOWN = 'The reply stopped before it finished. Check the saved conversation before trying again.';
+const UNKNOWN = 'Sorry, I couldn’t finish that reply.';
 const NOT_SENT = 'Not sent. Your message is back in the composer.';
 
 async function connected(page: Page, nativeSignIn = true) {
@@ -29,8 +29,8 @@ async function connected(page: Page, nativeSignIn = true) {
 async function send(page: Page, text: string) { await composer(page).fill(text); await composer(page).press('Enter'); }
 
 const KINDS = {
-  // Cloud's billing refusal is a service limit (subscription-entitlement.ts): nothing is bought or upgraded.
-  insufficient_credits: "Eliza Cloud declined this AI request for your account's billing. Check your account in Settings. Alpha Phone did not retry your message, and nothing is purchased automatically. Local apps keep working.",
+  // Cloud's billing refusal of a signed-in account: one answer naming both ways back (cloud-membership-ui.tsx).
+  insufficient_credits: 'Eliza Cloud declined this AI request for your account’s billing. Add credits or enter a membership code, then send again. Nothing was retried or purchased.',
   provider_issue: 'Alpha’s AI service could not complete this reply. Nothing was resent.',
   generation_timeout: 'Alpha’s AI service could not complete this reply. Nothing was resent.',
   // Bound to an admitted plan, yet the agent ran without a provider: a recheck is offered.
@@ -50,33 +50,35 @@ for (const [kind, text] of Object.entries(KINDS)) for (const frame of ['done', '
     await expect(page.getByText(UNKNOWN, { exact: true })).toHaveCount(0);
     await expect(bubble(page, `Failing ${kind}`)).toHaveCount(1);
     if (kind === 'insufficient_credits') {
-      await button(page, 'Expand chat').click();
-      // A billing refusal offers the billing page only when the owner asks; no purchase is started.
-      const manage = page.getByRole('button', { name: /^Manage billing in Eliza Cloud/ });
-      await expect(manage).toHaveCount(1);
-      expect(await stub(page, s => s.opened)).toEqual([]);
-      const code = page.getByRole('button', { name: /^Use a membership code/ });
-      await expect(code).toBeVisible();
-      await code.click();
-      // The billing snapshot reports a zero credit balance with no plan, so the approved Membership &
-      // credits sheet (the funding guard in connection-ui) carries the code entry, opened at the code
-      // field, with Add funds. Zero is shown as zero, never as unavailable.
+      // One answer in the chat, and the Membership & credits popup opens beside it with Add credits
+      // and Enter membership code (billing-recovery.production.spec.ts covers redeem and recovery).
+      // The billing snapshot now reports $0.00 with no plan; zero is shown as zero, never as unavailable.
       const account = page.getByRole('dialog', { name: 'Membership & credits', exact: true });
       await expect(account).toBeVisible();
       const membership = account.getByRole('region', { name: 'Membership and credits', exact: true });
-      await expect(membership).toBeVisible();
-      await expect(membership.getByRole('textbox', { name: 'Membership code' })).toBeVisible();
       await expect(membership.locator('.alpha-membership-amount')).toHaveText('$0.00USD');
-      await expect(membership.getByRole('button', { name: 'Add funds', exact: true })).toBeVisible();
+      await expect(membership.getByRole('status').filter({ hasText: 'Eliza Cloud declined your last AI request for billing.' })).toHaveCount(1);
+      await expect(membership.getByRole('button', { name: 'Add credits', exact: true })).toBeVisible();
+      await expect(membership.getByRole('button', { name: 'Enter membership code', exact: true })).toBeVisible();
       expect(await stub(page, s => s.opened)).toEqual([]);
+      await account.getByRole('button', { name: 'Close membership settings', exact: true }).click();
+      await expect(account).toHaveCount(0);
+      await button(page, 'Expand chat').click();
+      // No second billing message; the answer carries the one offer, which reopens the same popup.
+      await expect(page.getByRole('button', { name: /^Manage billing in Eliza Cloud/ })).toHaveCount(0);
+      const offer = page.getByRole('button', { name: /^Add credits or enter a membership code/ });
+      await expect(offer).toHaveCount(1);
+      await offer.click();
+      await expect(account).toBeVisible();
+      await membership.getByRole('button', { name: 'Enter membership code', exact: true }).click();
+      await expect(membership.getByRole('textbox', { name: 'Membership code' })).toBeVisible();
       await page.screenshot({path:info.outputPath('membership-code-mobile.png'),animations:'disabled'});
       await page.setViewportSize({width:1024,height:768});
       await expect(account.getByRole('textbox',{name:'Membership code'})).toBeVisible();
       await page.screenshot({path:info.outputPath('membership-code-wide.png'),animations:'disabled'});
       await page.setViewportSize({width:412,height:915});
-      await account.getByRole('button', { name: 'Close membership settings', exact: true }).click();
-      await expect(account).toHaveCount(0);
-      await manage.click();
+      // Add credits opens Cloud billing only after the account check; nothing is bought here.
+      await membership.getByRole('button', { name: 'Add credits', exact: true }).click();
       await expect(page.getByRole('heading',{name:'Check the billing account',exact:true})).toBeVisible();
       await expect(page.getByRole('button',{name:'Open billing',exact:true})).toBeDisabled();
       expect(await stub(page,s=>s.opened)).toEqual([]);
@@ -187,13 +189,13 @@ for (const mode of ['reject', 'busy'] as const) {
   });
 }
 
-test('a resident stream that fails after the turn was recorded offers a history check, never a resend, and a restart shows the turn once', async ({ page }) => {
+test('a resident stream that fails after the turn was recorded says the reply could not finish, never resends, and a restart shows the turn once', async ({ page }) => {
   test.setTimeout(150_000);
   await connected(page);
   await stub(page, s => { s.stream = 'drop'; });
   await send(page, 'Dropped after recording');
   await expect(page.getByText(UNKNOWN, { exact: true })).toHaveCount(1);
-  await expect(page.getByRole('button', { name: /^Check saved conversation/ })).toHaveCount(1);
+  await expect(page.getByRole('button', { name: /^Check saved conversation/ })).toHaveCount(0);
   await expect(composer(page)).toHaveValue('');
   // The one re-read of a dropped stream reuses the same clientMessageId; nothing new is posted.
   const [body] = await stub(page, s => s.bodies);

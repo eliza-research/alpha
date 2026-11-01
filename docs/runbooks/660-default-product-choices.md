@@ -47,9 +47,9 @@ browser, an APK, an emulator, an image or on a device.
   `H-37 external  Confirm or override the default product choices`. H-37 has no repository check, so
   the status can never read **done**, and the issue's "human:status shows H-37 done" cannot happen
   as written. A check is drafted below.
-- **Notes storage.** `docs/architecture.md` (Notes section) says the device-local **Older notes**
-  collection still renders through Alpha's own Notes view. The shared `NotesWorkspace` serves only
-  canonical agent notes. `runtime/notes-trash.ts`, `runtime/browser-note-documents.ts` and
+- **Notes storage.** `docs/architecture.md` (Notes section): agent notes and the device-local
+  **Older notes** collection both render through Alpha's own Notes view; agent notes are saved
+  through the shared canonical Notes client. `runtime/notes-trash.ts`, `runtime/browser-note-documents.ts` and
   `runtime/deleted-note-origin.ts` stay Alpha's until `plugin-notes` has a storage and
   document-picker port. Note-origin links point only at Older notes voice recordings.
 

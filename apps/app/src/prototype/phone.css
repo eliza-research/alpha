@@ -203,6 +203,8 @@ html:not(.standalone-app) [data-alpha-layer="home"][data-alpha-home-fits="true"]
 [data-alpha-message-text][role="button"]:focus-visible, [data-alpha-message-actions] [role="menuitem"]:focus-visible { outline: 2px solid var(--acct); outline-offset: 3px; }
 
 .alpha-compute-mark{display:inline-block;width:1em;height:1em;flex-shrink:0;background:currentColor;mask:url('/logo-mark.svg') center/contain no-repeat;-webkit-mask:url('/logo-mark.svg') center/contain no-repeat}
+/* Before startup decides between sign-in, access setup and Home: the mark alone, after a pause (main.tsx). */
+.alpha-startup-loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;font-size:56px;animation:fade .7s .3s both}
 
 /* Portable block-axis scroll-fade behavior from shared UI shadcn-utilities.css.
    Only timeline content is masked; Calendar headers and form controls stay clear. */
@@ -276,6 +278,9 @@ html.alpha-text-xl:not(.standalone-app) [data-alpha-app-header]:not([data-alpha-
  padding-bottom:calc(var(--alpha-chat-clearance,0px) + 16px)!important;
  scroll-padding-bottom:calc(var(--alpha-chat-clearance,0px) + 16px);
 }
+/* An open note's text field and checklist end above the half chat, so the owner keeps typing beside it. */
+[data-screen][data-alpha-chat-half="true"] .note-editor { padding-bottom:calc(var(--alpha-chat-clearance,0px) + 16px)!important; }
+[data-screen][data-alpha-chat-half="true"] .note-editor > .note-checklist-column { padding-bottom:16px!important; }
 
 /* Keep Home's flexible spacing tied to the viewport, not the sheet footprint.
    Clearance extends only its scroll range after the stable icon layout. */
@@ -389,6 +394,12 @@ html.alpha-text-xl:not(.alpha-landscape) [data-alpha-camera="modes"] button{heig
  * it leave the top of the screen: the Files selection count and the Notes Trash heading. */
 .standalone-app [data-alpha-app-header][data-alpha-header-grow]{height:auto!important}
 [data-alpha-subview="notes-trash"]>div:first-child{height:auto!important;min-height:56px}
+/* Notes cards above 150% text (#701): one column in collection order, and every card's text wraps
+ * instead of clipping at the column edge. */
+.alpha-text-xl [data-alpha-notes-cards] { flex-direction:column; align-items:stretch!important; }
+.alpha-text-xl [data-alpha-notes-cards] > div { display:contents; }
+.alpha-text-xl .note-card :is(div,span) { overflow-wrap:anywhere; }
+.alpha-text-xl .note-card-item { white-space:normal!important; text-overflow:clip!important; }
 
 /* Modal reviews are outside the scaled phone canvas. The software keyboard may
  * shrink/pan only the visual viewport, leaving 100dvh and the dialog's default

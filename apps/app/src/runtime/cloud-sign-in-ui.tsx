@@ -54,7 +54,9 @@ export function CloudSignInPanel({ view, busy, google, phone, emailEnabled = tru
   }, [view.step, busy, google, emailEnabled, phone]);
   const wait = view.step === 'code' ? Math.max(0, Math.ceil((view.resendAt - now) / 1000)) : 0;
   const sending = message === 'Sending your code…';
-  const inlineStatus = busy && ((view.step === 'choose' && ready && sending) || ((view.step === 'code' || view.step === 'mfa') && (sending || message === 'Checking your code…')));
+  // The code is verified; the account is being admitted (connection-ui residentSignedIn).
+  const signingIn = message === 'Signing in…';
+  const inlineStatus = busy && ((view.step === 'choose' && ready && sending) || ((view.step === 'code' || view.step === 'mfa') && (sending || signingIn || message === 'Checking your code…')));
   const submitCode = (event: FormEvent) => { event.preventDefault(); if (!busy && ready) actions.verify(code.current?.value || ''); };
   return <>
     <AlphaAuthBrand/>
@@ -81,7 +83,7 @@ export function CloudSignInPanel({ view, busy, google, phone, emailEnabled = tru
       {view.step === 'mfa' && <p>{view.method === 'totp' ? 'This account uses an authenticator app. Enter its six-digit code.' : view.method === 'sms' ? 'Enter the six-digit code sent to your phone.' : 'This account’s second verification is not available in Alpha yet.'}</p>}
       {(view.step === 'code' || view.method !== 'passkey') && <>
         <label>Six-digit code<input ref={code} name="one-time-code" autoComplete="one-time-code" inputMode="numeric" pattern="[0-9 -]{6,9}" maxLength={9} required disabled={busy} /></label>
-        <button className="alpha-auth-submit" aria-live="polite" aria-busy={busy || undefined} disabled={busy}>{busy ? sending ? 'Sending code…' : 'Checking code…' : 'Verify'}</button>
+        <button className="alpha-auth-submit" aria-live="polite" aria-busy={busy || undefined} disabled={busy}>{busy ? sending ? 'Sending code…' : signingIn ? 'Signing in…' : 'Checking code…' : 'Verify'}</button>
       </>}
       {view.step === 'code' && <button type="button" disabled={busy || wait > 0} onClick={actions.resend}>{wait > 0 ? `Resend code in ${wait}s` : 'Resend code'}</button>}
     </form>}

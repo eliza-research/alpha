@@ -66,7 +66,7 @@ public class CloudWavUploadTest {
  static class JSONObject{static int reads;JSONObject(String value){reads++;}Object get(String key){return "transcript";}}
  static class Capture{File file=new File("opaque-selected-recording");File selected(String id){return file;}}
  interface Work{void run(Pending request)throws Exception;}
- void submitLimited(PluginCall call,Work work){pending=new Pending();try{work.run(pending);}catch(Exception e){error=e;}}
+ void submit(PluginCall call,Work work){pending=new Pending();try{work.run(pending);}catch(Exception e){error=e;}}
  String required(String value,int limit){return value;}
  static class RecordingPcm{static byte[] last;static File selected;static String failure;static byte[] decode(File file,BooleanSupplier cancelled)throws Exception{selected=file;if("decode".equals(failure)||cancelled.getAsBoolean())throw new IOException("PRIVATE_DECODE_SENTINEL");last=new byte[]{82,73,70,70,0,0,0,0,87,65,86,69};return last;}}
  class Connection extends HttpURLConnection {
@@ -141,7 +141,7 @@ test('Cloud profile sends one credential-bound recorded turn and speaks its matc
  try {
   f.box.React={createElement:()=>null};f.box.VoiceActivity=()=>null;
   await f.shell.startVoice();await clock.flush();
-  await clock.advance(700);f.peak=0;await clock.advance(1200);
+  await clock.advance(700);f.peak=0;await clock.advance(1200);await clock.flush();
   assert.equal(f.uploads,1);assert.equal(f.sends,1);assert.equal(f.cloudSpeech,1);
   assert.equal(f.transcribeInput.environment,'production');assert.equal(f.transcribeInput.credentialId,'cloud-credential');
   assert.equal(f.speechInputs[0].credentialId,'cloud-credential');assert.equal(f.speechInputs[0].text,'Synthetic matching reply.');

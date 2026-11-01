@@ -58,7 +58,7 @@ async function nativeStub(page:Page,options:Options={}){
   };
  },{launcher:options.launcher??true,decline:options.decline??0,upstreamPin});
 }
-const settings=async(page:Page)=>{await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();await expect(page.locator('html')).toHaveAttribute('data-active-view','settings');};
+const settings=async(page:Page,query='')=>{await page.goto(`/${query}`);await page.getByRole('button',{name:'Settings',exact:true}).click();await expect(page.locator('html')).toHaveAttribute('data-active-view','settings');};
 const app=(page:Page)=>page.locator('[data-alpha-layer="app"]');
 const calls=(page:Page,plugin:string,method:string)=>page.evaluate(([plugin,method])=>(window as any).settingsFixture.calls.filter((c:any)=>c.plugin===plugin&&c.method===method).length,[plugin,method]);
 
@@ -72,6 +72,8 @@ test('Settings shows HOME and assistant role state and reads it back after a dec
  const reads=await calls(page,'ElizaSystem','getStatus');
  await make.click();
  await expect(page.getByText('Home app not changed',{exact:true}).first()).toBeVisible();
+ // The toast is the only notice; Settings keeps no "Last change" row.
+ await expect(app(page).getByText('Last change',{exact:true})).toHaveCount(0);
  expect(await calls(page,'ElizaSystem','getStatus')).toBeGreaterThan(reads);
  await expect(make).toBeVisible();
  await make.click();
@@ -96,7 +98,10 @@ test('the standalone variant shows role state but never offers the HOME request'
 
 test('Privacy shows Calendar and no Contacts, Developer has no NPU or uptime, and diagnostics are redacted',async({page})=>{
  await nativeStub(page);
+ // Developer appears only behind the one gate: a development server opened with ?tools=1.
  await settings(page);
+ await expect(app(page).getByRole('button',{name:'Developer',exact:true})).toHaveCount(0);
+ await settings(page,'?tools=1');
  await app(page).getByRole('button',{name:'Privacy & data',exact:true}).click();
  await expect(app(page).getByText('Calendar',{exact:true}).first()).toBeVisible();
  await expect(app(page).getByText('Allowed for Alpha',{exact:true}).first()).toBeVisible();

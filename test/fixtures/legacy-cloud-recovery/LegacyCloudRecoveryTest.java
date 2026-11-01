@@ -42,5 +42,6 @@ public final class LegacyCloudRecoveryTest {
   System.out.println("PASS "+passed+" real encrypted-slot recovery assertions");
   StoreIntegrationTest.main(new String[]{new File(root,"integration").getPath()});
   RendererRecoverySlotsTest.main(new String[0]);
+  ProviderConditionalClearTest.main(new String[]{new File(root,"conditional").getPath()});
  }
 }

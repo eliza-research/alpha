@@ -395,7 +395,7 @@ test.describe('entitlement route unavailable: authenticated billing mode fallbac
   const panel=page.getByRole('dialog',{name:'Eliza Cloud account',exact:true});await expect(panel).toBeVisible();
   const before=await configured(page);
   await expect(panel.getByRole('button',{name:'Manage billing in Eliza Cloud',exact:true})).toBeVisible();
-  await panel.getByRole('button',{name:'Use membership code',exact:true}).click();
+  await panel.getByRole('button',{name:'Enter membership code',exact:true}).click();
   await panel.getByRole('textbox',{name:'Membership code'}).fill(CODE);
   await panel.getByRole('button',{name:'Redeem',exact:true}).click();
   await expect(panel.getByRole('alert')).toHaveText('This code could not be redeemed. Check the code and try again.');
@@ -412,7 +412,7 @@ test.describe('entitlement route unavailable: authenticated billing mode fallbac
   await page.evaluate(()=>(window as any).planController.openPlan());
   const panel=page.getByRole('dialog',{name:'Eliza Cloud account & plan',exact:true});await expect(panel).toBeVisible();
   await expect(panel.getByText('Synthetic plan',{exact:true})).toBeVisible();
-  await panel.getByRole('button',{name:'Use membership code',exact:true}).click();
+  await panel.getByRole('button',{name:'Enter membership code',exact:true}).click();
   await expect(panel.getByRole('textbox',{name:'Membership code'})).toBeVisible();
   const routes=(await calls(page)).filter(c=>c.method==='request').map(c=>c.path);
   expect(routes).not.toContain('/api/v1/credits/balance');expect(routes).not.toContain('/api/v1/subscription/redeem');
@@ -597,7 +597,7 @@ test.describe('redeem a subscription code',()=>{
   await release(page);
   // A second owner submission (from the plan panel) is a new attempt with a new key.
   await page.evaluate(()=>(window as any).planController.openPlan());
-  await page.getByRole('button',{name:'Use membership code',exact:true}).click();
+  await page.getByRole('button',{name:'Enter membership code',exact:true}).click();
   await page.getByRole('textbox',{name:'Membership code'}).fill(CODE);
   await page.getByRole('button',{name:'Redeem',exact:true}).click();
   await expect.poll(()=>page.evaluate(()=>(window as any).planFixture.bodies.length)).toBe(3);
@@ -624,7 +624,7 @@ test.describe('account, plan and sign-in expiry',()=>{
   await page.evaluate(()=>(window as any).planController.openPlan());
   const dialog=page.getByRole('dialog',{name:'Eliza Cloud account & plan',exact:true});await expect(dialog).toBeVisible();
   await expect(dialog.getByRole('region',{name:'Membership and credits',exact:true}).getByText('synthetic-plan@example.invalid',{exact:true})).toBeVisible();
-  for(const name of ['Use membership code','Manage plan in Eliza Cloud','Sign out'])await expect(dialog.getByRole('button',{name,exact:true})).toBeVisible();
+  for(const name of ['Enter membership code','Manage plan in Eliza Cloud','Sign out'])await expect(dialog.getByRole('button',{name,exact:true})).toBeVisible();
   await page.evaluate(()=>document.fonts.ready);await page.screenshot({path:info.outputPath('plan-panel.png'),animations:'disabled'});
   await dialog.getByRole('button',{name:'Sign out',exact:true}).click();
   // Signed out, the dedicated page returns and the agent restarts without Cloud inference.
@@ -697,13 +697,13 @@ test.describe('explicit membership code entry',()=>{
   const input=sheet(page).getByRole('textbox',{name:'Membership code',exact:true});await expect(input).toBeFocused();await input.fill('SYNTHETIC-OLD-DRAFT');
   await sheet(page).getByRole('button',{name:'Close connection settings',exact:true}).click();
   await page.evaluate(()=>(window as any).planController.openPlan());await expect(sheet(page)).toBeVisible();await expect(sheet(page).getByRole('textbox',{name:'Membership code',exact:true})).toHaveCount(0);
-  await sheet(page).getByRole('button',{name:'Use membership code',exact:true}).click();const fresh=sheet(page).getByRole('textbox',{name:'Membership code',exact:true});await expect(fresh).toHaveValue('');await expect(fresh).toBeFocused();await noEffects(page);
+  await sheet(page).getByRole('button',{name:'Enter membership code',exact:true}).click();const fresh=sheet(page).getByRole('textbox',{name:'Membership code',exact:true});await expect(fresh).toHaveValue('');await expect(fresh).toBeFocused();await noEffects(page);
  });
  test('cancelling current controller work retires the explicit draft',async({page})=>{
   const entry=await notice(page);await entry.getByRole('button',{name:'Redeem code',exact:true}).click();
   const input=sheet(page).getByRole('textbox',{name:'Membership code',exact:true});await input.fill('SYNTHETIC-CANCELLED');
   await page.evaluate(()=>(window as any).planController.cancel());await expect(input).toHaveCount(0);
-  await sheet(page).getByRole('button',{name:'Use membership code',exact:true}).click();await expect(input).toHaveValue('');await expect(input).toBeFocused();await noEffects(page);
+  await sheet(page).getByRole('button',{name:'Enter membership code',exact:true}).click();await expect(input).toHaveValue('');await expect(input).toBeFocused();await noEffects(page);
  });
  test('Settings Redeem code opens the existing field directly',async({page})=>{
   await boot(page,{...await entitlements(),plan:'none',cashBalance:5,holdProvider:false,fullApp:true});await started(page);await idle(page);

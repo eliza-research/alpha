@@ -59,6 +59,9 @@ export const DENYLIST = Object.freeze([
   'Browser calendar (development)',
   // The read-only OS update-channel check is registered off; its About row is development only.
   'Update channel (development)',
+  // Internal project scope is never user copy (owner decision 2026-10-30): unavailable apps and
+  // actions say they are not available on this phone yet.
+  'deferred from the MVP',
 ]);
 const TEXT = /\.(?:html?|js|mjs|cjs|css|json|txt|svg|xml|webmanifest)$/i;
 

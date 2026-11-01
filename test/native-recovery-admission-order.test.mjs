@@ -26,7 +26,7 @@ const body=`function make(React, signInReadiness, options){
  const residentCloudFlow=()=>true,residentEnvironment=()=> 'production',cloudEnvironmentAllowed=environment=>environment==='production';
  const cloudServiceName=()=> 'Service',cloud={environment:'production',cancelLogin(){}};
  const makeCloud=()=>cloud,errorMessage=error=>error?.status===401?'Expired':error?.message??'Unavailable',expired=()=>false,residentRecoveryReason=()=>null,residentRecoveryMessage=()=> 'Recovery required';
- const flushConversationEvents=()=>Promise.resolve(),retireConversationEvents=()=>{},retireReadReplies=()=>{},pauseHostedBackground=()=>Promise.resolve(),retireClockReviews=()=>Promise.resolve(),cancelStoppedReply=()=>{},runQueuedResidentRebind=()=>{},runQueuedSignInReturn=()=>{};
+ const flushConversationEvents=()=>Promise.resolve(),retireConversationEvents=()=>{},retireReadReplies=()=>{},pauseHostedBackground=()=>Promise.resolve(),retireClockReviews=()=>Promise.resolve(),cancelStoppedReply=()=>{},runQueuedResidentRebind=()=>{},runQueuedSignInReturn=()=>{},clearClientObservationSupport=()=>{};
  let nativeResolve,admissionResolve,nativeCalls=0,nativeCancels=0,admissions=0,probeCalls=0,copied=false,invocation;const admissionGate=new Promise(resolve=>{admissionResolve=resolve;});
  const native=new Promise(resolve=>{nativeResolve=resolve;}),probeResolves=[];
  const cloudSignIn={restoreSavedSignIn(){nativeCalls++;timeline.push('native-request');return native;},async cancel(){nativeCancels++;timeline.push('native-cancel');},async savedSignInRecoveryStatus(){return{eligible:!copied};},status(){probeCalls++;timeline.push('readiness-start');return new Promise(resolve=>probeResolves.push(resolve));}};

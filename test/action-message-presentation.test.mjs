@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {build} from 'esbuild';
 const bundle=await build({entryPoints:['apps/app/src/runtime/action-message-presentation.ts'],bundle:true,platform:'node',format:'esm',write:false});
-const {projectActionMessages,browserNavigationSummary}=await import('data:text/javascript;base64,'+Buffer.from(bundle.outputFiles[0].text).toString('base64'));
+const {projectActionMessages,browserNavigationSummary,succeededBrowserDestination}=await import('data:text/javascript;base64,'+Buffer.from(bundle.outputFiles[0].text).toString('base64'));
 const notice='Review this request on your phone before it can run.';
 const old='Opened an approved HTTPS destination in a new browser tab. Page loading is not verified.';
 const user={id:'user',from:'user',text:'Open example.com'};
@@ -21,16 +21,14 @@ test('restored verified browser receipt hides only exact protocol instruction in
 });
 test('no page loaded or read claim; malformed/non-HTTPS destinations refuse',()=>{assert.equal(browserNavigationSummary('https://example.com/path'),'Opened example.com.');assert.throws(()=>browserNavigationSummary('http://example.com/'));assert.throws(()=>browserNavigationSummary('not a URL'));});
 
-const {readFileSync}=await import('node:fs');const {stripTypeScriptTypes}=await import('node:module');const vm=await import('node:vm');
-const device=readFileSync('apps/app/src/runtime/device-actions.ts','utf8');
-const method=stripTypeScriptTypes('({'+device.slice(device.indexOf('  async conversationReceipts('),device.indexOf('  async history('))+'})',{mode:'transform'});
-const restore=vm.runInNewContext(method,{browserNavigationSummary,object:value=>value,text:value=>value,actionScope:async value=>value,isCalendarOperation:()=>false}).conversationReceipts;
-function restoredReceipt(change=()=>{}){
+import {DeviceActions,actionScope} from './fixtures/device-action-policy.mjs';
+async function restoredReceipt(change=()=>{}){
  const operation={type:'browser_navigate',url:'https://example.com/'};
  const proposal={id:'p',state:'done',requestMessageId:'user',attemptId:'attempt',digest:'digest',operation,providerReceipt:{outcome:'applied',operationId:'effect'}};
- const entry={scope:'scope',phase:'terminal',status:'succeeded',attemptId:'attempt',operationId:'effect',operationHash:JSON.stringify(operation),summary:old,result:{operationId:'effect'},record:{operation,digest:'digest',ownerId:'owner',agentId:'agent',sessionId:'session',origin:'origin',installationId:'installation',enrollmentId:'enrollment'}};
- const owner={scope:'scope',session:{ownerId:'owner',agentId:'agent',origin:'origin'},credential:{installationId:'installation',enrollmentId:'enrollment'},list:async()=>[proposal],journal:{get:async()=>({entry})}};
- change(proposal,entry);return restore.call(owner,new Set(['user']),new AbortController().signal);
+ const entry={scope:'scope',phase:'terminal',status:'succeeded',attemptId:'attempt',operationId:'effect',operationHash:await actionScope(JSON.stringify(operation)),summary:old,result:{operationId:'effect'},record:{operation,digest:'digest',ownerId:'owner',agentId:'agent',sessionId:'session',origin:'origin',installationId:'installation',enrollmentId:'enrollment'}};
+ const owner=new DeviceActions({ownerId:'owner',agentId:'agent',origin:'origin'},{installationId:'installation',enrollmentId:'enrollment'},'scope',async()=>{}, {get:async()=>({entry})},async()=>{throw Error('No navigation during history');});
+ owner.list=async()=>[proposal];
+ change(proposal,entry);return owner.conversationReceipts(new Set(['user']),new AbortController().signal);
 }
 test('cold history reads one fully matched browser receipt without executing navigation',async()=>{
  const result=await restoredReceipt();assert.equal(result.length,1);assert.equal(result[0].summary,'Opened example.com.');assert.equal(result[0].browserDestination,'https://example.com/');
@@ -82,4 +80,40 @@ test('cross-turn collapse retains pending, foreign, quoted, different and offscr
  }
  const rows=[queued,user,receipt],visible=render([user,receipt]);
  assert.deepEqual(projectActionMessages(visible,rows).map(message=>message.id),['user','device-receipt:clock']);
+});
+
+// Live 2026-10-30 tj-79465dcbc873b2 "open example.com": the direct Browser open showed the reply
+// "Opening example.com." and then the device receipt "Opened example.com.". The reply is the one answer.
+const browserReply={id:'reply',from:'agent',text:'Opening example.com.'};
+const browserReceipt={id:'device-receipt:p',from:'agent',text:'Opened example.com.',deviceReceipt:true,inReplyTo:'user',browserDestination:'https://example.com'};
+test('a requested Browser open answered by the agent reply shows that reply once, live or restored',()=>{
+ for(const rows of [[user,browserReply,browserReceipt],[user,browserReceipt,browserReply],[user,browserReply,{...browserReceipt,inReplyTo:undefined}],[user,{id:'n',from:'agent',text:notice},browserReply,browserReceipt]]){
+  const frozen=structuredClone(rows);
+  assert.deepEqual(projectActionMessages(render(rows),rows).map(message=>message.id),['user','reply']);
+  assert.deepEqual(rows,frozen);
+ }
+});
+test('failed, other, unanswered and offscreen-reply receipts stay visible',()=>{
+ for(const rows of [
+  [user,browserReply,{id:'device-receipt:p',from:'agent',text:'Approved browser navigation is unavailable. No page opened.',deviceReceipt:true}],
+  [user,browserReply,{id:'device-receipt:n',from:'agent',text:'Note saved.',deviceReceipt:true}],
+  [user,{...browserReply,interrupted:true},browserReceipt],
+  [user,{...browserReply,text:''},browserReceipt],
+  [user,browserReply,{id:'next',from:'user',text:'Thanks'},browserReceipt],
+ ])assert.deepEqual(projectActionMessages(render(rows),rows).map(message=>message.id),rows.map(message=>message.id));
+ const rows=[user,browserReply,browserReceipt];
+ assert.deepEqual(projectActionMessages(render([user,browserReceipt]),rows).map(message=>message.id),['user','device-receipt:p']);
+});
+test('only a browser proposal receipt that succeeded with its exact summary names its destination',()=>{
+ const card={id:'p',description:'Open browser destination https://example.com'},opened={status:'succeeded',summary:'Opened example.com.'};
+ assert.equal(succeededBrowserDestination(card,opened),'https://example.com');
+ for(const [proposal,receipt] of [
+  [card,{status:'succeeded',summary:'Opened example.com. Server receipt is pending; check action history.'}],
+  [card,{status:'failed',summary:'Approved browser navigation is unavailable. No page opened.'}],
+  [card,{...opened,status:'unknown'}],
+  [{id:'p',description:'Open browser destination https://other.example'},opened],
+  [{id:'p',description:'Open browser destination http://example.com'},opened],
+  [{id:'p',description:'Save one note'},opened],
+  [null,opened],[undefined,opened],
+ ])assert.equal(succeededBrowserDestination(proposal,receipt),undefined);
 });

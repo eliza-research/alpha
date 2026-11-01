@@ -53,10 +53,10 @@ test("revoke and account or session changes isolate cached mail and unsent revie
   assert.equal(gmailGrantChange({ sessionId: s, account: account(READ) }, { sessionId: "session-2", account: account(READ) }).dropReadCache, true);
 });
 
-test("Inbox uses the single modify step and discards unsent reviews when change access is withdrawn", () => {
+test("Inbox keeps one combined consent and discards unsent reviews when change access is withdrawn", () => {
   const inbox = fs.readFileSync("apps/app/src/prototype/inbox-cloud-adapter.ts", "utf8");
   const panel=fs.readFileSync('apps/app/src/runtime/google-connection-ui.tsx','utf8');
-  assert.match(panel,/connect\('modify'\)/,'Settings offers the single incremental modify consent');
+  assert.match(panel,/connect\(accounts\.some\(account=>gmailGrantTier\(account\)==='modify'\)\?'modify':'send','write'\)/,'A missing grant falls back to one consent that keeps an existing modify grant');
   assert.doesNotMatch(panel,/connect\('(send|drafts|mailbox)'\)/,'no separate per-capability buttons');
   assert.doesNotMatch(inbox, /connect\('(send|drafts|mailbox)'\)/, "no separate per-capability consent prompts");
   assert.match(inbox, /if\(previous&&grantChange\.withdrawn\.length\)provider\.withdrawn\(\);/);

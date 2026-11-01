@@ -13,7 +13,7 @@ test('connected browser host discloses inference egress and retains resident mem
   else body={};
   await route.fulfill({json:{status:200,body:JSON.stringify(body)}});
  });
- await page.goto('/');
+ await page.goto('/?tools=1');
  await page.evaluate(async()=>{const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');await c.initialize();await c.startLocal();if(c.getSnapshot().kind!=='resident'||!c.getSnapshot().session)throw Error('Synthetic host did not connect');});
  await page.getByRole('button',{name:'Settings',exact:true}).click();
  await page.getByRole('button',{name:'Privacy & data',exact:true}).click();

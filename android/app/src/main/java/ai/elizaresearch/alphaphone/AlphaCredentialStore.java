@@ -84,10 +84,10 @@ final class AlphaCredentialStore {
  }
  private boolean mutateSlotOnce(String name,String expected,String value,boolean compare)throws Exception{
   if(!"cloud:production".equals(name)&&!"cloud:staging".equals(name)&&!LocalAgentProviderAdmission.PROVIDER_SLOT.equals(name)){
-   synchronized(JsonCredentialSlots.LOCK){
-    assertOwner.run();if(compare&&!java.util.Objects.equals(slots.read(CloudDeployment.storageSlot(name)),expected))return false;
+   return AlphaLocalAgentPlugin.withCredentialSlotMutation(assertOwner,()->{
+    if(compare&&!java.util.Objects.equals(slots.read(CloudDeployment.storageSlot(name)),expected))return false;
     if(value==null)slots.remove(CloudDeployment.storageSlot(name));else slots.write(CloudDeployment.storageSlot(name),value);return true;
-   }
+   });
   }
   return AlphaLocalAgentPlugin.mutateCredentials(context,assertOwner,new AlphaLocalAgentPlugin.CredentialMutation<Boolean>(){
    String before,provider;boolean conflict;
@@ -118,6 +118,7 @@ final class AlphaCredentialStore {
       ?!java.util.Objects.equals(before,committed):!LocalAgentProviderAdmission.sameCloudCredential(before,committed);
     if(authorityChanged)AlphaLocalAgentPlugin.powerAuthorizationChanged();
     invalidateProviderAdmission(name,value);
+    if("cloud:production".equals(name)&&authorityChanged)slots.remove(CloudDeployment.storageSlot(GoogleWorkspaceReturn.SLOT));
     if(value==null)slots.remove(CloudDeployment.storageSlot(name));
     else slots.write(CloudDeployment.storageSlot(name),committed);
     return true;
@@ -139,6 +140,51 @@ final class AlphaCredentialStore {
   if(before==null)return;
   if(!compareExchangeCredentialSlot(LocalAgentProviderAdmission.PROVIDER_SLOT,before,null))throw new IllegalStateException("Provider changed");
  }
+ /** Opaque cleanup authority for the exact binding and existing intent, never a credential. */
+ String providerBindingGuard(String expected)throws Exception{
+  long authority=AlphaLocalAgentPlugin.credentialAuthorityEpoch();
+  return AlphaLocalAgentPlugin.withCredentialAuthority(authority,()->{
+   assertOwner.run();
+   String provider=slots.read(CloudDeployment.storageSlot(LocalAgentProviderAdmission.PROVIDER_SLOT));
+   if(provider==null||expected!=null&&!expected.equals(provider))throw new SecurityException("Provider changed");
+   String cloud=slots.read(CloudDeployment.storageSlot("cloud:production"));
+   String value=new org.json.JSONArray().put(provider).put(cloud).put(authority).put(AlphaLocalAgentPlugin.currentCredentialIntent()).toString();
+   byte[] bytes=java.security.MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));
+   StringBuilder hash=new StringBuilder();for(byte b:bytes)hash.append(String.format(java.util.Locale.ROOT,"%02x",b&255));return hash.toString();
+  });
+ }
+ static final class ProviderChanged extends Exception {}
+ /** Automatic cleanup never reserves an intent or alters a different binding. */
+ boolean removeProviderIfCurrent(String guard)throws Exception{
+  if(guard==null||!guard.matches("[a-f0-9]{64}"))throw new IllegalArgumentException("Invalid binding guard");
+  final long[] intent={-1};
+  try{
+   return AlphaLocalAgentPlugin.mutateCredentials(context,()->{
+    assertOwner.run();if(intent[0]>=0)AlphaLocalAgentPlugin.requireCredentialIntent(intent[0]);
+   },new AlphaLocalAgentPlugin.CredentialMutation<Boolean>(){
+    String provider,cloud;long authority;
+    public boolean requiresShutdown()throws Exception{
+     try{if(!guard.equals(providerBindingGuard(null)))throw new ProviderChanged();}
+     catch(SecurityException changed){throw new ProviderChanged();}
+     provider=slots.read(CloudDeployment.storageSlot(LocalAgentProviderAdmission.PROVIDER_SLOT));
+     cloud=slots.read(CloudDeployment.storageSlot("cloud:production"));
+     authority=AlphaLocalAgentPlugin.credentialAuthorityEpoch();
+     intent[0]=AlphaLocalAgentPlugin.reserveCredentialIntent();
+     legacyRecovery().block();return true;
+    }
+    public Boolean commit()throws Exception{
+     if(authority!=AlphaLocalAgentPlugin.credentialAuthorityEpoch()
+       ||!java.util.Objects.equals(provider,slots.read(CloudDeployment.storageSlot(LocalAgentProviderAdmission.PROVIDER_SLOT)))
+       ||!java.util.Objects.equals(cloud,slots.read(CloudDeployment.storageSlot("cloud:production"))))throw new ProviderChanged();
+     AlphaLocalAgentPlugin.powerAuthorizationChanged();
+     slots.remove(CloudDeployment.storageSlot(LocalAgentProviderAdmission.PROVIDER_SLOT));
+     if(slots.read(CloudDeployment.storageSlot(LocalAgentProviderAdmission.PROVIDER_SLOT))!=null)throw new IllegalStateException("Provider removal unconfirmed");
+     return true;
+    }
+   });
+  }catch(ProviderChanged changed){return false;}
+  catch(Exception failure){if(intent[0]>=0&&AlphaLocalAgentPlugin.currentCredentialIntent()!=intent[0])return false;throw failure;}
+ }
  boolean legacyCloudRecoveryEligible()throws Exception{return recoveryStep(()->legacyRecovery().eligible());}
  boolean restoreLegacyCloudCredential()throws Exception{
   LegacyCloudRecovery.Snapshot before=recoveryStep(()->legacyRecovery().snapshot());
@@ -146,7 +192,7 @@ final class AlphaCredentialStore {
   // Never hold lifecycle or vault locks across HTTP. The second critical section rechecks
   // intent/owner, exact old bytes, journal and absent targets before committing.
   AlphaConnectionPlugin.readCloudIdentity(before.token());
-  return recoveryStep(()->legacyRecovery().commit(before));
+  return recoveryStep(()->{boolean restored=legacyRecovery().commit(before);if(restored)AlphaLocalAgentPlugin.powerAuthorizationChanged();return restored;});
  }
  void assertCurrent(){assertOwner.run();}
  private void invalidateProviderAdmission(String changedSlot,String replacement)throws Exception{

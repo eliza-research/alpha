@@ -1,6 +1,7 @@
 /** Browser-safe boundary. The composition root supplies an authenticated transport;
  * this module neither invents endpoints nor handles credentials. */
 import {validateNativeNotesReadReplyHint,validateNativeNotesReadReplyOrigin,type NativeNotesReadReplyOrigin,type NativeNotesReadReplyHint} from '../../../../.eliza/client-features/packages/contracts/src/native-notes-query.ts';
+import {parseClientCalendarDayObservation,type ClientCalendarDayObservation} from '../../../../.eliza/client-features/packages/contracts/src/client-turn-observation.ts';
 export type {NativeNotesReadReply,NativeNotesReadReplyHint} from '../../../../.eliza/client-features/packages/contracts/src/native-notes-query.ts';
 export type AlphaView =
   | "home"
@@ -25,6 +26,8 @@ export type AlphaView =
 export interface ViewContext {
   view: AlphaView;
   timeZone?: string;
+  /** Ordinary visible Calendar day; lookup context, never source or effect authority. */
+  calendarDay?: ClientCalendarDayObservation;
   /** Opaque provider IDs only. Never put document bodies or credentials here. */
   selectedObject?: {
     kind: string;
@@ -165,6 +168,7 @@ const copyContext = (
   view: context.view,
   sensitive: context.sensitive === true,
   ...(context.timeZone === undefined ? {} : {timeZone:context.timeZone}),
+  ...(context.calendarDay===undefined||context.view!=='calendar'||context.sensitive===true?{}:{calendarDay:parseClientCalendarDayObservation(context.calendarDay)}),
   ...(context.selectedObject
     ? { selectedObject: { ...context.selectedObject } }
     : {}),

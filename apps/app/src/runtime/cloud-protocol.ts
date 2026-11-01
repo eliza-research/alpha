@@ -1,3 +1,4 @@
+import {googleWorkspaceRedirectAllowed} from './google-workspace-return.ts';
 import {productionCloud, stagingCloud} from './cloud-deployment.generated.ts';
 import {browserCloudResidentEnabled,browserCloudResidentEnvironment} from './browser-cloud-resident.ts';
 import {calendarSyncHttp,type CalendarSyncRequest} from './calendar-linked-provider.ts';
@@ -462,14 +463,21 @@ export class CloudProtocol {
     return { userId: uuid(data.id), ...(typeof data.email==='string'&&data.email.trim()&&data.email.length<=320?{email:data.email.trim()}:{}), ...(data.organization_id == null ? {} : { organizationId: uuid(data.organization_id) }) };
   }
   /** Read access by default; Calendar writes require explicit additional consent. */
-  async initiateGoogle(signal:AbortSignal, calendarPermission:'read'|'write'='read', gmailPermission:'read'|'modify'|'send'|'drafts'|'mailbox'='read'):Promise<string> {
+  private async requestGoogleAuthorization(signal:AbortSignal, calendarPermission:'read'|'write'='read', gmailPermission:'read'|'modify'|'send'|'drafts'|'mailbox'='read', redirectUrl?:string):Promise<{authUrl:string;appReturn:boolean}> {
+    if(redirectUrl!==undefined&&!googleWorkspaceRedirectAllowed(redirectUrl))throw new TypeError('Invalid Google return URL');
     if(!['read','write'].includes(calendarPermission))throw new TypeError('Invalid Calendar permission');
     if(!['read','modify','send','drafts','mailbox'].includes(gmailPermission))throw new TypeError('Invalid Gmail permission');
-    const response=object(await this.accountRequest('/api/v1/eliza/google/connect/initiate',signal,{side:'owner',capabilities:[
+    const response=object(await this.accountRequest('/api/v1/eliza/google/connect/initiate',signal,{side:'owner',...(redirectUrl?{redirectUrl}:{}),capabilities:[
       ...gmailCapabilitiesFor(gmailPermission==='modify'?'modify':'read'),'google.calendar.read',...(calendarPermission==='write'?['google.calendar.write']:[]),
       ...(['read','modify'].includes(gmailPermission)?[]:[gmailPermission==='send'?'google.gmail.send':gmailPermission==='drafts'?'google.gmail.drafts':'google.gmail.mailbox']),
     ]}));
-    return this.googleAuthUrl(response.authUrl);
+    return {authUrl:this.googleAuthUrl(response.authUrl),appReturn:redirectUrl!==undefined&&response.appReturn===2};
+  }
+  async initiateGoogle(signal:AbortSignal,calendarPermission:'read'|'write'='read',gmailPermission:'read'|'modify'|'send'|'drafts'|'mailbox'='read'):Promise<string> {
+    return (await this.requestGoogleAuthorization(signal,calendarPermission,gmailPermission)).authUrl;
+  }
+  async initiateGoogleWithReturn(signal:AbortSignal,redirectUrl:string,calendarPermission:'read'|'write'='read',gmailPermission:'read'|'modify'|'send'|'drafts'|'mailbox'='read'):Promise<{authUrl:string;appReturn:boolean}> {
+    return this.requestGoogleAuthorization(signal,calendarPermission,gmailPermission,redirectUrl);
   }
   private googleAuthUrl(value:unknown):string {
     let url:URL;try{url=new URL(string(value));}catch{throw new CloudProtocolError('invalid-response');}

@@ -22,11 +22,14 @@ const { cloudServiceName, CloudProtocol, CloudProtocolError, CloudProvisionAccep
 const { PersonalProtocolError } = await import('../apps/app/src/runtime/cloud-personal-protocol.ts');
 const { DevelopmentCloudAgentProtocol } = await import('../apps/app/src/runtime/development-cloud-agents.ts');
 const { phoneContextMessage } = await import('../apps/app/src/runtime/phone-context.ts');
-const { findStoppedUserTurn } = await import('../apps/app/src/runtime/stopped-reply-match.ts');
+const { findStoppedUserTurn } = await import('../.eliza/client-features/packages/ui/src/api/conversation-turn-controller.ts');
 const { RemoteProtocol } = await import('../apps/app/src/runtime/remote-protocol.ts');
 const { presentDeviceRecordOperation } = await import('../apps/app/src/runtime/device-record-presentation.ts');
 const subscriptionEntitlement = await import('../apps/app/src/runtime/subscription-entitlement.ts');
-const { AlphaClientError } = await import('../apps/app/src/runtime/alpha-client.ts');
+const { AlphaClient, AlphaClientError } = await import('../apps/app/src/runtime/alpha-client.ts');
+const {loadBrowserModule}=await import('../test/fixtures/browser-source.mjs');
+const [{LocalAgentProtocol},{withResidentMapsNavigation}]=await loadBrowserModule(['apps/app/src/runtime/local-agent.ts','apps/app/src/maps/resident-relay.ts']);
+const { ClientObservationSupportSession } = await import('../apps/app/src/runtime/client-observation-support.ts');
 const user = '11111111-1111-4111-8111-111111111111', agent = '22222222-2222-4222-8222-222222222222', organization = '99999999-9999-4999-8999-999999999999';
 const personal = 'personal:12345678-1234-5234-8234-123456789abc', agentHost = `https://${agent}.cloud.eliza.app`;
 const conversation = '33333333-3333-4333-8333-333333333333';
@@ -82,6 +85,7 @@ const remoteServer=http.createServer(async(req,res)=>{
     return reply(200,{messages:older.slice(0,limit).reverse(),hasMore:older.length>limit});
   }
   if(url.pathname===`/api/conversations/${remoteConversation}/messages`&&req.method==='POST'){
+    remote.lastBody=body;
     if(remote.failPost){remote.failPost=false;remote.failedPosts=(remote.failedPosts||0)+1;return reply(500,{});}
     // Upstream reply shape for a refused turn: ChatTerminalFailure carries only kind/message/transient/code.
     if(remote.failureReply){const failure=remote.failureReply;remote.failureReply=null;remote.failureReplies=(remote.failureReplies||0)+1;return reply(200,{text:remote.failureText??'',agentName:'Remote fixture',messageId:remote.failureMessageId,userMessageId:remote.failureUserMessageId,failureKind:failure.kind,terminalFailure:failure});}
@@ -116,8 +120,8 @@ const retireClockReviews=async()=>{clockRetirements++;clockRetirementStarted?.()
 // This controller fixture models a host whose transport reaches Eliza Cloud. The flag-off web page
 // has none and starts no Cloud route; test/browser/connection-boundaries.production.spec.ts covers it.
 const sandbox = { validateUuid, isCalendarReadFailureCode, appRecordInvalidations,AUTOMATIONS_COMMITTED_EVENT,automationsCommitted, browserCloudResidentEnabled:false,browserCloudResidentEnvironment:'production',...residentRecovery,CAMERA_CAPTURE_CAPABILITY:'camera.capture-photo.v1',clockHandoffCapabilities,PHONE_DIAL_CAPABILITY,telephonyDeviceCapabilities,readDevicePreferences:async()=>({askBeforeAgentActions:true}),  resolveCloudEnvironment,fixtureViteEnv:{DEV:true},...subscriptionEntitlement, ...cloudSignInModule, cloudSignIn:undefined, cloudSignInGoogle:false, AlphaClientError, browserLocalAgentEnabled:true, retireClockReviews, workflowPresentationProtocol:async()=>2, browserDevProfile:false,privateLocalPreviewEnabled:false, devProfileQuery:false, testMocksEnabled:true, devSurfacesEnabled:true, secureConnectionStore:{read:async slot=>deviceSlots.get(slot)??null,write:async(slot,value)=>{deviceSlots.set(slot,value);},remove:async slot=>{deviceSlots.delete(slot);}},
-  PersonalProtocolError, personalIntent:async()=>null, savePersonalIntent:async(_owner,intent)=>intent, clearPersonalIntent:async()=>{},
-  RemoteProtocol, remoteCredentialStore, nativeRemoteRequest, DeviceActions, presentDeviceRecordOperation, actionScope:async value=>Buffer.from(value).toString('base64url').slice(0,32), negotiateEnabledViews:async()=>'',
+  PersonalProtocolError, ClientObservationSupportSession, personalIntent:async()=>null, savePersonalIntent:async(_owner,intent)=>intent, clearPersonalIntent:async()=>{},
+  withResidentMapsNavigation, RemoteProtocol, remoteCredentialStore, nativeRemoteRequest, DeviceActions, presentDeviceRecordOperation, actionScope:async value=>Buffer.from(value).toString('base64url').slice(0,32), negotiateEnabledViews:async()=>'',
   Capacitor:{getPlatform:()=>'web',isNativePlatform:()=>false},aospImage:false,SMS_SEND_CAPABILITY:'sms.send.v1', setTimeout:(callback,ms)=>setTimeout(callback,ms===15000?20:ms), clearTimeout, Intl, Date, Buffer, pauseHostedBackground:async()=>{}, configureHostedBackground:async()=>{}, registerPlugin: () => ({}), cloudServiceName, CloudProtocol, CloudProtocolError, DevelopmentCloudAgentProtocol, CloudProvisionAcceptedError, phoneContextMessage, findStoppedUserTurn, nativeCloudRequest,
   cloudCredentialStore: { read: async () => credential, write: async (_environment, value) => { credential = value; }, clear: async () => { credential = null; } },
   openConnectionBrowser: async () => { throw new Error('Unexpected browser effect'); },
@@ -133,6 +137,8 @@ Object.assign(sandbox, selectionSandbox.selectionApi);
 let source = (await readFile(new URL('../apps/app/src/runtime/connection-ui.tsx', import.meta.url), 'utf8')).split('export function ConnectionChooser()')[0].replace(/\nfunction ResidentRecoveryPanel\([\s\S]*?\n}\n(?=export function productionCloudSignInRequired)/, '\n');
 source = source.replace(/^import .*;\n/gm, '').replace(/export /g, '').replaceAll('import.meta.env','fixtureViteEnv');
 source += '\nglobalThis.controller = connectionController;';
+source += '\nglobalThis.observationFixture={activate:(client,format)=>activate({kind:"resident",remote:client,origin:client.origin,userTextFormatVersion:format},client.session,"Observation fixture"),retire:()=>retire()};';
+vm.createContext(sandbox);
 installWorkflowDeviceBindings(sandbox);
 vm.runInContext(stripTypeScriptTypes(source, { mode: 'transform' }), sandbox);
 const controller = sandbox.controller;
@@ -188,6 +194,8 @@ try {
     assert.equal(sent.metadata.userTextFormat,version===1?'plain-v1':undefined);
     assert.equal(Object.hasOwn(sent.metadata,'alphaPhone'),version!==1);
     assert.equal(sent.metadata.clientDevice.context.view,'notes');
+    await controller.send('No compatible Cloud day carrier',{view:'calendar',revision:11,sensitive:false,timeZone:'America/Los_Angeles',calendarDay:{date:'2026-10-29',timeZone:'America/Los_Angeles'}},'cloud-day-'+String(version),new AbortController().signal);
+    assert.equal(JSON.stringify(sentBodies.at(-1)).includes('calendarDay'),false,'Cloud/legacy paths omit the unsupported day in every metadata/text projection');
     if(version===undefined){
       // A product build never sends the legacy envelope: an unnegotiated peer receives the
       // authored text, with the observation only in metadata.
@@ -311,7 +319,8 @@ try {
   const beforeCalendar=remote.failureReplies||0;
   remote.failureReply=calendarFailure;remote.failureText=calendarText;
   remote.failureMessageId='11111111-1111-4111-8111-111111111112';remote.failureUserMessageId='11111111-1111-4111-8111-111111111113';
-  const kept=await controller.send('Calendar availability',{view:'home',revision:14,sensitive:false},'calendar-failure',new AbortController().signal);
+  const kept=await controller.send('Calendar availability',{view:'calendar',revision:14,sensitive:false,timeZone:'America/Los_Angeles',calendarDay:{date:'2026-10-29',timeZone:'America/Los_Angeles'}},'calendar-failure',new AbortController().signal);
+  assert.equal(JSON.stringify(remote.lastBody).includes('calendarDay'),false,'an unqualified remote peer receives no day in either wire projection');
   assert.equal(kept.text,calendarText);assert.equal(kept.messageId,remote.failureMessageId);
   assert.equal(kept.userMessageId,remote.failureUserMessageId);assert.equal(kept.messageBinding.conversationId,remoteConversation);
   assert.equal(kept.planAction,undefined);assert.deepEqual(Array.from(kept.proposals||[]),[]);
@@ -327,5 +336,42 @@ try {
   }
   delete remote.failureText;delete remote.failureMessageId;delete remote.failureUserMessageId;
   await controller.disconnect();
+  // Actual AlphaClient -> production controller -> LocalAgentProtocol JSON serialization.
+  // Only the bridge is synthetic: no native operation, model or real host is started.
+  const day={date:'2026-10-29',timeZone:'America/Los_Angeles'},calendar={view:'calendar',sensitive:false,timeZone:day.timeZone,calendarDay:day};
+  const processA='11111111-1111-4111-8111-111111111111',processB='22222222-2222-8222-8222-222222222222';
+  let processId=processA,statusReads=0,holdStatus=false,statusStarted,releaseStatus;const actualWires=[];
+  const bridge={start:async()=>({}),request:async input=>{
+    let value;
+    if(input.path==='/api/auth/me')value={identity:{kind:'owner',id:user},access:{role:'OWNER',mode:'local'}};
+    else if(input.path==='/api/agents')value={agents:[{id:agent,name:'Observation fixture',status:'running'}]};
+    else if(input.path==='/api/status'){
+      statusReads++;
+      value={serverInstanceId:processId,clientTurnObservationSupport:{version:1,optionalFields:['calendarDay']}};
+      if(holdStatus){statusStarted?.();value=await new Promise(resolve=>{releaseStatus=()=>resolve(value);});}
+    }else if(input.path==='/api/conversations'&&input.method==='POST'){assert.deepEqual(JSON.parse(input.body),{title:'Alpha Phone'});value={conversation:{id:conversation,title:'Observation fixture'}};}
+    else if(input.path==='/api/conversations')value={conversations:[{id:conversation,title:'Observation fixture'}]};
+    else if(input.path.endsWith('/messages')&&input.method==='GET')value={messages:[]};
+    else if(input.path.endsWith('/messages')&&input.method==='POST'){actualWires.push(JSON.parse(input.body));value={text:'Synthetic answer',agentName:'Observation fixture'};}
+    else throw Error('Unexpected observation fixture route: '+input.path);
+    return {status:200,body:JSON.stringify(value)};
+  }};
+  const local=new LocalAgentProtocol(bridge),alpha=new AlphaClient();
+  const bind=async()=>{
+    await local.connect(new AbortController().signal);sandbox.observationFixture.activate(local,1);
+    alpha.attachVerifiedTransport({session:local.session,send:input=>controller.send(input.text,input.context,input.requestId,input.signal,input.onText,input.replyTo,input.onReplyReady,input.channelType??'DM',input.expectedConversationId,input.voiceTurnSignal).catch(error=>{console.error('Observation fixture controller rejection:',{name:error?.name,message:error?.message});throw error;}),execute:async()=>{throw Error('No effects in the observation fixture');}});
+  };
+  await bind();alpha.setViewContext(calendar);await alpha.send('Move my 3pm to 4');
+  assert.equal(actualWires.at(-1).text,'Move my 3pm to 4');assert.equal((JSON.stringify(actualWires.at(-1)).match(/"calendarDay"/g)||[]).length,1);assert.deepEqual(actualWires.at(-1).metadata.clientDevice.context.calendarDay,day);
+  assert.equal(Object.hasOwn(actualWires.at(-1).metadata,'alphaPhone'),false);assert.equal(statusReads,2,'one handshake and one fresh status check');
+  const oldRevision=alpha.getState().context.revision;alpha.setViewContext({...calendar,calendarDay:{...day,date:'2026-10-30'}});assert.equal(alpha.getState().context.revision,oldRevision+1);
+  holdStatus=true;const entered=new Promise(resolve=>{statusStarted=resolve;}),beforeStale=actualWires.length;
+  const stale=alpha.send('Do not dispatch this stale day');const rejected=assert.rejects(stale);await entered;
+  alpha.setViewContext({...calendar,calendarDay:{...day,date:'2026-10-31'}});holdStatus=false;releaseStatus();await rejected;
+  assert.equal(actualWires.length,beforeStale,'date-only revision cancellation wins before message serialization');
+  await bind();processId=processB;await alpha.send('Changed server stays ordinary');assert.equal(actualWires.at(-1).metadata.clientDevice.context.calendarDay,undefined);
+  const afterMismatch=statusReads;await alpha.send('Never relearn this server under the old session');assert.equal(statusReads,afterMismatch);assert.equal(actualWires.at(-1).metadata.clientDevice.context.calendarDay,undefined);
+  await bind();await alpha.send('A new verified binding may admit the new process');assert.deepEqual(actualWires.at(-1).metadata.clientDevice.context.calendarDay,{...day,date:'2026-10-31'});
+  alpha.disconnect();await sandbox.observationFixture.retire();
   console.log('PASS: Cloud refusal reply shapes (insufficient_credits, rate_limited, provider_issue) map to owner copy without retry; real Cloud protocol/controller HTTP history membership, context stripping, action exclusion, next-send binding, current device timezone metadata and omission, separate service disconnect and scoped rejection; remote pairing, keyset history paging over 260 messages, restore on reconnect, device/session revocation with old-bearer 401, plain action presentation, reject/reconcile controller API, single Stop reconciliation and explicit turn abort. Synthetic only.');
 } finally { server.closeAllConnections(); remoteServer.closeAllConnections(); await new Promise(resolve => server.close(resolve)); await new Promise(resolve => remoteServer.close(resolve)); }

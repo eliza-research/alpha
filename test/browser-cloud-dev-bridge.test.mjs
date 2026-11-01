@@ -656,3 +656,73 @@ test('service-info cancels its provider request when the browser request closes'
   const pending=f.send({operation:'signInServiceInfo',environment:'production'},{signal:controller.signal});await ready;controller.abort();await assert.rejects(pending,{name:'AbortError'});await cancelled;
  }finally{controller.abort();await f.close();}
 });
+
+
+test('browser Google broker lifetime pins the real host credential and refuses retired same-credential reads',async()=>{
+ const f=await fixture(),token='a'.repeat(64);let host;
+ f.setResponse(async url=>{if(new URL(url).pathname.endsWith('/accounts'))return Response.json([]);throw Error('Unexpected synthetic Cloud request');});
+ try{
+  host=await f.host().startGoogleHost(token,{credentialId,reference});
+  const call=()=>fetch('http://127.0.0.1:'+host.port+'/__alpha-owner-gmail',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({calendar:{operation:'sources'}})});
+  assert.equal((await call()).status,200);
+  const before=f.calls.length,seed=JSON.parse(await readFile(profileFile(f.profile,'initial-credential.json'),'utf8'));
+  const replacement={...seed,credentialId:randomUUID(),credentialReference:'browser-cloud-reference:'+randomUUID()};
+  await writeFile(profileFile(f.profile,'credentials.json'),JSON.stringify({production:replacement}),{mode:0o600});
+  assert.equal((await call()).status,409);assert.equal(f.calls.length,before,'changed binding refuses before provider');
+  await writeFile(profileFile(f.profile,'credentials.json'),JSON.stringify({production:seed}),{mode:0o600});
+  assert.equal((await call()).status,200);
+  await Promise.all([host.close(),host.close()]);const retiredCalls=f.calls.length;
+  await assert.rejects(call());assert.equal(f.calls.length,retiredCalls,'retired broker cannot read even the identical credential');
+ }finally{await host?.close();await f.close();}
+});
+
+test('full browser resident Calendar writes require exact owner intent and preserve read-only Gmail',async()=>{
+ const resident={async bind(){return {};},async clear(){return {configured:false,attachable:false};},status(){return {};},async ready(){return {};}};
+ const f=await fixture(resident,'production'),token='a'.repeat(64),grant='55555555-5555-4555-8555-555555555555';let google,second,third;
+ let readOnly=false,capabilityStatus=200;
+ f.setResponse(async(url)=>{
+  const path=new URL(url).pathname;
+  if(path.endsWith('/accounts'))return Response.json([{configured:true,connected:true,reason:'connected',connectionId:grant,identity:{email:'owner@example.invalid'},grantedCapabilities:['google.calendar.read',...(readOnly?[]:['google.calendar.write'])]}]);
+  if(path.endsWith('/calendars'))return Response.json([{calendarId:'primary',summary:'Owner',primary:true,selected:true,accessRole:'owner'}]);
+  if(path.endsWith('/sync-v1/capabilities')){if(capabilityStatus!==200)return Response.json({error:'Synthetic provider unavailable'},{status:capabilityStatus});return Response.json({version:1,calendarId:'primary',accountId:'verified-account',read:true,write:true,idempotentCreate:true,conditionalWrites:true,providerExactlyOnce:false});}
+  throw Error('Unexpected synthetic Cloud operation '+path);
+ });
+ const privateCall=async(host,body)=>{const r=await fetch('http://127.0.0.1:'+host.port+'/__alpha-owner-gmail',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify(body)});return {status:r.status,data:await r.json()};};
+ const intent=calendarEdits=>f.rpc({operation:'residentGoogleCalendarAccess',environment:'production',credentialId,calendarEdits});
+ try{
+  google=await f.host().startGoogleHost(token,{credentialId,reference});
+  const source=await privateCall(google,{calendar:{operation:'sources'}});assert.equal(source.status,200);
+  const write={calendar:{operation:'write-capabilities',grantId:source.data.calendars[0].grantId,calendarId:'primary'}};
+  let count=f.calls.length;assert.notEqual((await privateCall(google,write)).status,200);assert.equal(f.calls.length,count,'Default Calendar gate refuses before Cloud');
+  for(const patch of [{credentialId:grant},{calendarEdits:'true'},{gmailChanges:true}]){
+   const result=await f.rpc({operation:'residentGoogleCalendarAccess',environment:'production',credentialId,calendarEdits:true,...patch});assert.notEqual(result.status,200);
+  }
+  assert.deepEqual((await intent(true)).data,{calendarEdits:true});
+  const permitted=await privateCall(google,write);assert.equal(permitted.status,200);assert.equal(permitted.data.write,true);
+  count=f.calls.length;
+  assert.notEqual((await privateCall(google,{send:{operation:'prepare',to:['self@example.invalid'],subject:'Not sent',bodyText:'Synthetic only',requestId:randomUUID()}})).status,200);assert.equal(f.calls.length,count,'Calendar intent never enables Gmail writes');
+  assert.equal((await intent(false)).status,200);count=f.calls.length;
+  assert.notEqual((await privateCall(google,write)).status,200);assert.equal(f.calls.length,count,'Explicit off refuses before any provider read or write');
+  assert.equal((await intent(true)).status,200);readOnly=true;count=f.calls.length;
+  assert.notEqual((await privateCall(google,write)).status,200);assert.equal(f.calls.slice(count).some(call=>new URL(call.url).pathname.endsWith('/sync-v1/capabilities')),false,'Host intent does not invent Google WRITE scope');readOnly=false;
+  capabilityStatus=503;count=f.calls.length;
+  assert.notEqual((await privateCall(google,write)).status,200);assert.equal(f.calls.slice(count).filter(call=>new URL(call.url).pathname.endsWith('/sync-v1/capabilities')).length,1,'Provider refusal is not retried or reported as a write capability');capabilityStatus=200;
+  second=await f.host().startGoogleHost(token,{credentialId,reference});count=f.calls.length;
+  assert.notEqual((await privateCall(second,write)).status,200);assert.equal(f.calls.length,count,'A new resident generation starts read-only');
+  assert.notEqual((await privateCall(google,write)).status,200);assert.equal(f.calls.length,count,'Old generation is retired even with the same credential');
+  assert.equal((await intent(true)).status,200);await google.close();google=undefined;
+  assert.equal((await privateCall(second,write)).status,200,'Old close does not clear the replacement generation intent');
+  const initial=profileFile(f.profile,'initial-credential.json'),seed=JSON.parse(await readFile(initial,'utf8'));
+  await writeFile(initial,JSON.stringify({...seed,credentialReference:'browser-cloud-reference:66666666-6666-4666-8666-666666666666'}),{mode:0o600});
+  assert.equal((await intent(true)).status,200);count=f.calls.length;
+  assert.notEqual((await privateCall(second,write)).status,200);assert.equal(f.calls.length,count,'A reused credential ID cannot revive a host bound to another reference');
+  third=await f.host().startGoogleHost(token,{credentialId,reference:'browser-cloud-reference:66666666-6666-4666-8666-666666666666'});
+  const freshSources=await privateCall(third,{calendar:{operation:'sources'}});assert.equal(freshSources.status,200);
+  const freshWrite={calendar:{...write.calendar,grantId:freshSources.data.calendars[0].grantId}};
+  assert.equal((await intent(true)).status,200);assert.equal((await privateCall(third,freshWrite)).data.write,true,'The new current binding is live before Clear');
+  assert.equal((await f.rpc({operation:'residentClear',environment:'production'})).status,200);count=f.calls.length;
+  assert.notEqual((await privateCall(third,freshWrite)).status,200);assert.equal(f.calls.length,count,'Clear retires the independently current intent');
+
+
+ }finally{await google?.close();await second?.close();await third?.close();await f.close();}
+});

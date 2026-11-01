@@ -81,6 +81,14 @@ test('Ready retains verified new-account, AI readiness and prior-key revocation 
  const message='Signed in. Eliza Cloud did not confirm revoking the sign-in this phone used before.';const f=await fixture(t,{connection:{accountCreated:true,residentInference:'unknown',message,error:'Cloud binding could not be verified.'}});for(let i=0;i<4;i++)await f.click('Continue');assert.equal(f.heading(),'You’re all set');assert.match(document.body.textContent,/AI is not ready yet/);assert.match(document.body.textContent,/new Eliza Cloud account \(owner@example\.invalid\)/);assert(document.body.textContent.includes(message));assert.equal(document.querySelectorAll('dialog').length,1);assert.equal(f.calls.length,0);
 });
 
+test('Ready while the agent still starts after sign-in makes no AI claim',async t=>{
+ // Setup no longer waits for the agent (owner report 2026-10-30): its AI binding is not known yet.
+ const starting=await fixture(t,{connection:{residentInference:null}});for(let i=0;i<4;i++)await starting.click('Continue');assert.equal(starting.heading(),'You’re all set');assert.doesNotMatch(document.body.textContent,/AI is not ready yet|AI needs an active Cloud plan/);
+});
+test('Ready shows a needs-plan admission before the agent that setup no longer waits for has started',async t=>{
+ const f=await fixture(t,{connection:{residentInference:null,residentPlanNotice:'needs-plan'}});for(let i=0;i<4;i++)await f.click('Continue');assert.equal(f.heading(),'You’re all set');assert.match(document.body.textContent,/AI needs an active Cloud plan\. Manage it in Settings\./);
+});
+
 test('opening an existing Google panel hides required setup and closing it resumes the same step without permission requests',async t=>{
  const f=await fixture(t);await f.click('Continue');assert.equal(f.heading(),'Talk to Alpha.');const before=f.progress();await f.google(true);assert.equal(document.querySelector('dialog'),null);await f.google(false);assert.equal(f.heading(),'Talk to Alpha.');assert.deepEqual(f.progress(),before);assert.equal(f.calls.length,0);
 });

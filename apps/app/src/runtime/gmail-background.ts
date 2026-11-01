@@ -11,7 +11,6 @@ export const withdrawGmailBackground=(grantId?:string)=>background.withdraw(gran
 export const retireGmailBackground=(grantId:string)=>background.retire(grantId);
 export const gmailBackgroundStatus=()=>background.status();
 export const gmailBackgroundMessage=mailBackgroundMessage;
-export const gmailNotificationSettings=()=>background.notificationSettings();
 /** Native validates the persisted owner/grant again before returning a tap; renderer validates current UI ownership too. */
 export const pendingGmailNotice=()=>background.pending();
 export const consumeGmailNotice=(token:string)=>background.consume(token);

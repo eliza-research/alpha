@@ -92,16 +92,16 @@ async function boot(options){
 }
 const searches=t=>t.calls.filter(c=>Array.isArray(c)&&c[0]==='search');
 
-// Home must not query mail at mount, resume, or when leaving Inbox.
+// Home reads one bounded header page at mount; resume within a minute and leaving Inbox do not query mail.
 {
  const t=await boot();
  t.mount();await t.tick();
- deq(searches(t),[],'Home does not fetch Gmail metadata');
- assert.equal(t.views.inbox.badge(),false);
+ deq(t.calls,['accounts',['search','in:inbox',25,null]],'Home reads accounts and one 25-header page, no bodies or drafts');
+ assert.equal(t.views.inbox.badge(),true,'the accepted header page sets the badge');
  for(const fn of t.resume)fn();await t.tick();
- deq(searches(t),[],'resume outside Inbox does not fetch mail');
+ deq(t.calls,['accounts',['search','in:inbox',25,null]],'resume within a minute outside Inbox does not read mail again');
  t.setActive(true);t.render();await t.tick();
- deq(searches(t),[['search','in:inbox',25,null]],'explicit Inbox open loads mail');
+ deq(searches(t),[['search','in:inbox',25,null]],'explicit Inbox open consumes the Home header page');assert.equal(t.calls.filter(c=>c==='accounts').length,1,'no second account discovery');
  assert.equal(t.attention().state,'ready');assert.equal(t.attention().unread,2);
  assert.equal(t.views.inbox.badge(),true);
  const rows=t.render().rows;assert.equal(rows[0].clip,true);assert.match(rows[0].label,/has attachments/);assert.equal(rows[1].clip,false);
@@ -326,7 +326,7 @@ deq(t.prepared.at(-1).attachments.map(a=>a.name),['c.txt','a.txt']);assert.equal
  assert.equal(t.prepared.length,0);assert.equal(t.dispatched.length,0);
  t.shell.componentWillUnmount();
 }
-console.log('PASS: Inbox attention (not-connected/ready/error/stale), no background mail fetch, openInbox, reviewed HTTPS links in Browser, clip/time rows, Archive/Trash/Drafts folders, provider draft editing, three-attachment add/remove, forwarded source attachments, opaque Save to Files, Use in email and its reviewed destination binding. Fixture only; zero dispatches.');
+console.log('PASS: Inbox attention (not-connected/ready/error/stale), one bounded Home header read, openInbox, reviewed HTTPS links in Browser, clip/time rows, Archive/Trash/Drafts folders, provider draft editing, three-attachment add/remove, forwarded source attachments, opaque Save to Files, Use in email and its reviewed destination binding. Fixture only; zero dispatches.');
 
 // Preparation remains read-only and cannot retain revoked content or run after hiding.
 const preparationFailures=[];

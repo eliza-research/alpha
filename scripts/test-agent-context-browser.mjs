@@ -182,10 +182,11 @@ try {
   await limited.getByRole('button', { name: 'Type', exact: true }).click();
   const input = limited.locator('[data-alpha-layer="composer"][aria-hidden="false"], [data-alpha-layer="conversation"][aria-hidden="false"]').getByRole('textbox').first();
   await input.fill('First visible fixture message'); await input.press('Enter');
-  // An HTTP failure may be uncertain; a typed failure is the agent's recorded outcome.
-  const message='The AI request rate limit was reached. Wait a moment before sending again. Alpha Phone did not retry your message.'+(mode==='http429'?' Check the saved conversation before trying again.':'');
+  // An HTTP failure may be uncertain; a typed failure is the agent's recorded outcome. Both show the
+  // message as it is, with no Check saved conversation card.
+  const message='The AI request rate limit was reached. Wait a moment before sending again. Alpha Phone did not retry your message.';
   await limited.getByText(message, { exact: true }).waitFor();
-  assert.equal(await limited.getByRole('button',{name:/^Check saved conversation/}).count(),mode==='http429'?1:0);
+  assert.equal(await limited.getByRole('button',{name:/^Check saved conversation/}).count(),0);
   assert.equal(await limited.getByText('PRIVATE_PROVIDER_ERROR_CANARY', { exact: true }).count(), 0);
   await limited.waitForTimeout(1200);
   assert.equal(await limited.evaluate(() => window.rateFixture.posts), 1, mode + ': no automatic repeated POST');

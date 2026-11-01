@@ -6,10 +6,9 @@ import { connectionController } from './connection-ui';
  * Neither deployment silently falls back to the other speech route. */
 // Plain constants and function exports only: Node contract tests evaluate this source directly.
 const voiceRouteKey = 'alphaphone:voice-route:v1';
-const speakRepliesKey = 'alphaphone:speak-replies:v1';
 const voicePreferencesEvent = 'alpha:voice-preferences';
 /** Storage keys and the change event, for Settings and diagnostics. */
-export function voicePreferenceKeys() { return { route: voiceRouteKey, speakReplies: speakRepliesKey, event: voicePreferencesEvent }; }
+export function voicePreferenceKeys() { return { route: voiceRouteKey, event: voicePreferencesEvent }; }
 export type VoiceRouteChoice = 'device' | 'cloud';
 export type VoicePreference = 'default' | 'device' | 'agent' | 'manual';
 /**
@@ -72,11 +71,6 @@ export function chooseVoiceRoute(route: VoiceRouteChoice, disclosure?: { disclos
 }
 /** Disclosure shown wherever Cloud speech can be chosen. */
 export function cloudSpeechDisclosure(serviceName = 'Cloud') { return `${serviceName} speech uploads recordings and reply text to your Cloud account and counts toward your plan allowance.`; }
-
-/** Opt-in: replies to voice-originated turns are read aloud. Off unless explicitly enabled. */
-export function speakRepliesEnabled(): boolean { const value = record(read(speakRepliesKey)); return !!value && value.version === 1 && value.enabled === true; }
-/** Settings > Voice and agent settings > Read replies aloud (P-39). False when storage did not confirm the save. */
-export function setSpeakReplies(enabled: boolean): boolean { return write(speakRepliesKey, { version: 1, enabled: enabled === true }); }
 
 /** A usable Cloud speech account is signed in for this renderer. */
 export function cloudVoiceAvailable(): boolean {

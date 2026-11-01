@@ -77,14 +77,14 @@ const MODIFY_STEP = ["google.gmail.send", "google.gmail.drafts", "google.gmail.m
  * `api` paths exist in CloudProtocol but no shipped screen calls them today.
  */
 export const ALPHA_CONSENT_PATHS = Object.freeze([
-  { id: "connect", surface: "ui", ui: "Settings > Google: connect an account", call: ["initiateGoogle", "read", "read"],
-    capabilities: [IDENTITY, TRIAGE, "google.calendar.read"] },
-  { id: "enable-gmail-changes", surface: "ui", ui: "Settings > Google: Enable Gmail changes", call: ["initiateGoogle", "read", "modify"],
-    capabilities: [IDENTITY, TRIAGE, ...MODIFY_STEP, "google.calendar.read"] },
-  { id: "upgrade-send-calendar", surface: "ui", ui: "Settings > Google: Review Google permission upgrade (no Gmail change grant yet)", call: ["initiateGoogle", "write", "send"],
+  { id: "connect", surface: "ui", ui: "Settings > Google: Connect / Add Google account, or turn on a Gmail changes / Calendar edits switch whose grant is missing", call: ["initiateGoogle", "write", "send"],
     capabilities: [IDENTITY, TRIAGE, "google.calendar.read", "google.calendar.write", "google.gmail.send"] },
-  { id: "upgrade-modify-calendar", surface: "ui", ui: "Settings > Google: Review Google permission upgrade (an account already holds Gmail changes)", call: ["initiateGoogle", "write", "modify"],
+  { id: "switch-upgrade-modify", surface: "ui", ui: "Settings > Google: turn on a switch whose grant is missing while an account already holds Gmail changes", call: ["initiateGoogle", "write", "modify"],
     capabilities: [IDENTITY, TRIAGE, ...MODIFY_STEP, "google.calendar.read", "google.calendar.write"] },
+  { id: "calendar-connect", surface: "ui", ui: "Calendar > Connect Google Calendar (Google accounts opened with the Calendar intent) when no account holds Gmail send or changes; otherwise that intent reuses connect or switch-upgrade-modify", call: ["initiateGoogle", "write", "read"],
+    capabilities: [IDENTITY, TRIAGE, "google.calendar.read", "google.calendar.write"] },
+  { id: "enable-gmail-changes", surface: "api", call: ["initiateGoogle", "read", "modify"],
+    capabilities: [IDENTITY, TRIAGE, ...MODIFY_STEP, "google.calendar.read"] },
   { id: "api-drafts", surface: "api", call: ["initiateGoogle", "read", "drafts"],
     capabilities: [IDENTITY, TRIAGE, "google.calendar.read", "google.gmail.drafts"] },
   { id: "api-mailbox", surface: "api", call: ["initiateGoogle", "read", "mailbox"],

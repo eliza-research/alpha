@@ -29,8 +29,9 @@ export interface LocalAgentBridge {
   configureProvider?(input:{apiKey:string;model:string}):Promise<unknown>;
   providerStatus?():Promise<{provider?:unknown;configured?:unknown;model?:unknown}>;
   clearProvider?(input?:{onlyIfPresent:true}):Promise<{configured?:unknown}>;
+  clearProviderIfCurrent?(input:{bindingGuard:string}):Promise<{outcome?:unknown}>;
   /** Read-only native query; see residentAttachable. */
-  residentAttachment?(input:{credentialId?:string}):Promise<{attachable?:unknown;reason?:unknown}>;
+  residentAttachment?(input:{credentialId?:string}):Promise<{attachable?:unknown;reason?:unknown;bindingGuard?:unknown}>;
   configureCloudProvider?(input:{credentialId:string;model:string}):Promise<unknown>;
   request(input: { path: string; audioBase64?:string;requestId?:string;ownerId?:string; method: LocalAgentMethod; headers: Record<string,string>; body?: string; timeoutMs: number }, signal?:AbortSignal): Promise<{status:number;body?:string}>;
   stream?(input:{path:string;ownerId:string;headers:Record<string,string>;body:string},signal:AbortSignal,onText:(text:string)=>void,onReplyReady?:(results:readonly unknown[]|undefined)=>void):Promise<RemoteChatReply>;
@@ -63,7 +64,7 @@ const browserBridge: LocalAgentBridge | null = developmentBridgeAllowed ? {
     const bounded=anyAbortSignal([signal,AbortSignal.timeout(120000)]);
     const response=await fetch('/__alpha-local-agent',{method:'POST',headers:{'Content-Type':'application/json','X-Alpha-Local-Agent':'1'},
       body:JSON.stringify({...input,method:'POST',stream:true}),signal:bounded,redirect:'error'});
-    return readLocalAgentStream(response,bounded,onText,onReplyReady);
+    return readLocalAgentStream(response,bounded,onText,onReplyReady,input);
   },
   async request(input, signal) {
     const response = await fetch('/__alpha-local-agent', {
@@ -167,18 +168,58 @@ export class LocalAgentProtocol {
     const group=ownerRouteGroup(path);
     if (group ? !ownerRouteAllowed(group,path,method) || !this.session : !['GET','POST'].includes(method)) throw Error('Invalid local app request');
     if ((method==='GET'||method==='DELETE') && body!==undefined) throw Error('Invalid local request body');
-    const generation=this.generation;
-    let cancel:()=>void=()=>{};
-    const cancelled=new Promise<never>((_,reject)=>{cancel=()=>reject(signal.reason||new DOMException('Cancelled','AbortError'));});
-    signal.addEventListener('abort',cancel,{once:true});
-    let response:{status:number;body?:string};
-    try { response=await Promise.race([this.bridge.request({path,...(this.session?{ownerId:this.session.ownerId}:{}),method,headers:{Accept:'application/json',...this.deviceHeaders,...headers},
-      ...(body===undefined?{}:{body:JSON.stringify(body)}),timeoutMs:120000},signal),cancelled]); } finally { signal.removeEventListener('abort',cancel); }
-    signal.throwIfAborted();
-    if(generation!==this.generation)throw new Error('Local agent connection changed.');
-    if(response.status<200||response.status>=300)throw Object.assign(new Error(`Local agent request failed (HTTP ${response.status}).`),{status:response.status,data:(()=>{try{return JSON.parse(response.body||'{}');}catch{return {};}})()});
-    return JSON.parse(response.body || '{}');
+    const generation=this.generation,session=this.session,deadline=Date.now()+120000;
+    const recordRead=group==='records'&&method==='GET';
+    const input={path,...(session?{ownerId:session.ownerId}:{}),method,headers:{Accept:'application/json',...this.deviceHeaders,...headers},...(body===undefined?{}:{body:JSON.stringify(body)})};
+    let starting=false;
+    for(;;){
+      signal.throwIfAborted();
+      if(generation!==this.generation||(recordRead&&this.session!==session))throw new Error('Local agent connection changed.');
+      const remaining=starting?Math.min(120000,deadline-Date.now()):120000;
+      if(remaining<=0)throw new DOMException('Local agent request timed out.','TimeoutError');
+      const attempt=new AbortController(),bounded=starting?anyAbortSignal([signal,attempt.signal]):signal;
+      const timeout=starting?setTimeout(()=>attempt.abort(new DOMException('Local agent request timed out.','TimeoutError')),remaining):undefined;
+      let cancel:()=>void=()=>{};
+      const cancelled=new Promise<never>((_,reject)=>{cancel=()=>reject(bounded.reason||new DOMException('Cancelled','AbortError'));});
+      bounded.addEventListener('abort',cancel,{once:true});
+      let response:{status:number;body?:string};
+      try{
+        response=await Promise.race([this.bridge.request({...input,timeoutMs:remaining},bounded),cancelled]);
+        bounded.throwIfAborted();
+      }finally{
+        bounded.removeEventListener('abort',cancel);if(timeout!==undefined)clearTimeout(timeout);
+        // Release the existing WebView AbortSignal.any fallback's source listeners.
+        // A completed read has no accepted mutation to cancel.
+        if(starting)attempt.abort();
+      }
+      signal.throwIfAborted();
+      if(generation!==this.generation||(recordRead&&this.session!==session))throw new Error('Local agent connection changed.');
+      if(response.status>=200&&response.status<300)return JSON.parse(response.body||'{}');
+      const data=(()=>{try{return JSON.parse(response.body||'{}');}catch{return {};}})();
+      const failure=Object.assign(new Error(`Local agent request failed (HTTP ${response.status}).`),{status:response.status,data});
+      // The canonical app host rejects feature_starting BEFORE dispatch. Match
+      // that closed read barrier only; never replay mutations or generic 503s.
+      const deferred=recordRead&&response.status===503&&data&&typeof data==='object'&&!Array.isArray(data)&&
+        data.code==='feature_starting'&&data.error==='feature_starting'&&data.retryable===true&&
+        ['agent-deferred-boot','app-route-tail'].includes(data.phase)&&(data.status==='pending'||data.status==='runtime_starting'&&data.phase==='app-route-tail')&&
+        (data.retryAfter===undefined||typeof data.retryAfter==='number'&&Number.isFinite(data.retryAfter)&&data.retryAfter>=0);
+      if(!deferred||Date.now()>=deadline)throw failure;
+      starting=true;
+      // The loopback envelope has no Retry-After header. The canonical host's
+      // fixed one-second barrier is the default; retain its numeric body hint.
+      const delay=Math.min(Math.min(5000,Math.max(250,(data.retryAfter??1)*1000)),deadline-Date.now());
+      await new Promise<void>((resolve,reject)=>{
+        const aborted=()=>{clearTimeout(timer);signal.removeEventListener('abort',aborted);reject(signal.reason||new DOMException('Cancelled','AbortError'));};
+        const timer=setTimeout(()=>{signal.removeEventListener('abort',aborted);resolve();},delay);
+        signal.addEventListener('abort',aborted,{once:true});
+        if(signal.aborted)aborted();
+      });
+      signal.throwIfAborted();
+      if(generation!==this.generation||this.session!==session)throw new Error('Local agent connection changed.');
+      if(Date.now()>=deadline)throw failure;
+    }
   }
+
   async connect(signal:AbortSignal) {
     signal.throwIfAborted();
     const generation=this.generation,requestId=crypto.randomUUID();
@@ -422,20 +463,32 @@ export async function clearLocalProvider(onlyIfPresent=false):Promise<LocalProvi
  * it never starts, stops, pairs or rebinds. Any error or doubt reports false, which keeps the
  * ordinary stop → bind → start path; so does an earlier attach by this surface that failed its
  * owner-session verification. */
-export async function residentAttachable(credentialId:string,bridge:Pick<LocalAgentBridge,'residentAttachment'>=native,nativePlatform:boolean=Capacitor.isNativePlatform()):Promise<boolean> {
-  if(browserCloudResidentEnabled){if(attachDistrusted)return false;try{return (await browserResidentCall('residentStatus',credentialId)).attachable===true;}catch{return false;}}
-  if(attachDistrusted||!nativePlatform||typeof credentialId!=='string'||!credentialId||!bridge.residentAttachment)return false;
-  try{return (await bridge.residentAttachment({credentialId}))?.attachable===true;}catch{return false;}
+async function residentAttachmentStatus(credentialId:string,bridge:Pick<LocalAgentBridge,'residentAttachment'>=native,nativePlatform:boolean=Capacitor.isNativePlatform()):Promise<{attachable:boolean;bindingGuard?:string}> {
+  if(attachDistrusted||!nativePlatform&&!browserCloudResidentEnabled||typeof credentialId!=='string'||!credentialId)return {attachable:false};
+  try{
+    const result=browserCloudResidentEnabled?await browserResidentCall('residentStatus',credentialId):await bridge.residentAttachment?.({credentialId});
+    const guard=result&&typeof result.bindingGuard==='string'&&/^[a-f0-9]{64}$/.test(result.bindingGuard)?result.bindingGuard:undefined;
+    return {attachable:result?.attachable===true,...(guard?{bindingGuard:guard}:{})};
+  }catch{return {attachable:false};}
 }
-/** Bind the resident's Cloud provider for one surface. A surface that can attach (the assistant
- * opening beside Home, or either surface reconnecting while the other keeps the enrollment)
- * reuses the running agent: rebinding would stop it, retiring another surface's in-flight work
- * and restarting inference. When the last surface is destroyed native clears the enrollment, so
- * a lone recreated surface is not attachable and takes the ordinary path. */
-export async function bindResidentCloudProvider(credentialId:string,ports:{attachable:(credentialId:string)=>Promise<boolean>;configure:(credentialId:string)=>Promise<void>}={attachable:residentAttachable,configure:configureLocalCloudProvider}):Promise<'attached'|'configured'> {
-  if(await ports.attachable(credentialId))return 'attached';
-  await ports.configure(credentialId);
-  return 'configured';
+export async function residentAttachable(credentialId:string,bridge:Pick<LocalAgentBridge,'residentAttachment'>=native,nativePlatform:boolean=Capacitor.isNativePlatform()):Promise<boolean> {
+  return (await residentAttachmentStatus(credentialId,bridge,nativePlatform)).attachable;
+}
+/** A returned guard identifies this call's exact attachment or newly applied binding. */
+export async function bindResidentCloudProvider(credentialId:string,ports?:{attachable:(credentialId:string)=>Promise<boolean>;configure:(credentialId:string)=>Promise<void|string>}):Promise<string|undefined> {
+  const attachment=ports?{attachable:await ports.attachable(credentialId)}:await residentAttachmentStatus(credentialId);
+  if(attachment.attachable)return 'bindingGuard' in attachment?attachment.bindingGuard:undefined;
+  const bindingGuard=await (ports?.configure??configureLocalCloudProvider)(credentialId);
+  return typeof bindingGuard==='string'?bindingGuard:undefined;
+}
+/** Automatic failed-bind cleanup has no unguarded fallback, including on older hosts. */
+export async function clearLocalProviderIfCurrent(bindingGuard:string,signal:AbortSignal):Promise<'cleared'|'changed'> {
+  signal.throwIfAborted();
+  if(!/^[a-f0-9]{64}$/.test(bindingGuard)||browserCloudResidentEnabled||!Capacitor.isNativePlatform()||!native.clearProviderIfCurrent)throw Error('Conditional provider removal is unavailable.');
+  const result=await native.clearProviderIfCurrent({bindingGuard});
+  signal.throwIfAborted();
+  if(result.outcome!=='cleared'&&result.outcome!=='changed')throw Error('Conditional provider removal was not confirmed.');
+  return result.outcome;
 }
 
 /** The renderer has not attempted a credential bind when this stop fails.
@@ -453,7 +506,8 @@ export async function configureLocalCloudProvider(credentialId:string) {
   try { await stopLocalAgent(); }
   catch(cause) { throw new LocalCloudProviderStopUnconfirmed(cause); }
   if(!native.configureCloudProvider)throw Error('Cloud billing is unavailable in this version.');
-  await native.configureCloudProvider({credentialId,model:'cerebras/qwen-3.8-27b'});
+  const result=record(await native.configureCloudProvider({credentialId,model:'cerebras/qwen-3.8-27b'}));
+  return typeof result.bindingGuard==='string'&&/^[a-f0-9]{64}$/.test(result.bindingGuard)?result.bindingGuard:undefined;
 }
 
 export async function stopLocalAgent() {

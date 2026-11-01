@@ -210,7 +210,8 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
   if(ready)return <dialog ref={dialog} className="alpha-startup-permissions" aria-label="You’re all set" onCancel={event=>{event.preventDefault();close();}}><div className="alpha-permission-content">
     <span className="alpha-permission-icon" aria-hidden="true"><span style={iconStyle('check')}/></span><h2 className="serif" tabIndex={-1}>You’re all set</h2>
     <p>{progressError ? 'Your choices apply for this session. This browser could not save setup progress.' : 'Your choices are saved.'}</p>
-    {connection.residentInference&&connection.residentInference!=='cloud'&&<p role="status" className="alpha-permission-status">{connection.residentPlanNotice==='needs-plan'?'AI needs an active Cloud plan. Manage it in Settings.':'AI is not ready yet. Check your connection in Settings.'}</p>}
+    {/* A missing plan is known at admission. Setup does not wait for the agent to start, so this notice does not either. */}
+    {(connection.residentPlanNotice==='needs-plan'||connection.residentInference&&connection.residentInference!=='cloud')&&<p role="status" className="alpha-permission-status">{connection.residentPlanNotice==='needs-plan'?'AI needs an active Cloud plan. Manage it in Settings.':'AI is not ready yet. Check your connection in Settings.'}</p>}
     {connection.error&&<p role="alert" className="alpha-permission-status">{connection.error}</p>}
     {connection.message?.includes('did not confirm revoking')&&<p role="status" className="alpha-permission-status">{connection.message}</p>}
     {connection.accountCreated&&<p role="status" className="alpha-permission-status">This sign-in created a new {cloudServiceName(connection.cloudAccount?.environment ?? 'production')} account{connection.cloudAccount?.email?` (${connection.cloudAccount.email})`:''}.</p>}

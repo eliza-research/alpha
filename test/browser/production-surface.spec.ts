@@ -137,8 +137,10 @@ test('the chooser and Settings offer only production connections', async ({ page
   expect(settingsText).not.toMatch(/mock mode/i);
   expect(settingsText).not.toMatch(/staging/i);
   await page.getByText('About', { exact: true }).click();
-  // The About header and the Runtime row both name the web runtime.
-  await expect(settings.getByText('Web app', { exact: true }).first()).toBeVisible();
+  // The About header names the web runtime; there is no separate Runtime row.
+  await expect(settings.getByText('Web browser', { exact: true }).first()).toBeVisible();
+  await expect(settings.getByText('Runtime', { exact: true })).toHaveCount(0);
+  await expect(settings.getByText('Web app', { exact: true })).toHaveCount(0);
   await expect(settings.getByText('Development preview', { exact: true })).toHaveCount(0);
   await expect(settings.getByText(/^\d+\.\d+\.\d+/).first()).toBeVisible();
   await settings.getByText('Open source licenses', { exact: true }).click();
@@ -197,7 +199,7 @@ test('deferred apps are absent and root views show honest unconnected states', a
   };
   for (const [view, expected] of Object.entries(states)) {
     await page.goto('/?tools=1');
-    await page.getByRole('button', { name: view, exact: true }).click();
+    await page.getByRole('button', { name: view, exact: true }).and(page.locator('[data-mobile-shell-tile]')).click();
     await expect(page.locator('html')).toHaveAttribute('data-active-view', view.toLowerCase());
     await expect(page.locator('[data-screen]')).toContainText(expected);
     const text = await page.locator('body').innerText();
@@ -425,14 +427,15 @@ for (const mode of ['signed-out','empty','credits','unavailable','funded','repla
   if(needsPlan){
    await expect(dialog.getByRole('textbox',{name:'Membership code',exact:true})).toBeFocused();
    await expect(dialog.getByRole('button',{name:'Redeem',exact:true})).toBeVisible();
-   await expect(dialog.getByRole('button',{name:'Add funds',exact:true})).toBeVisible();
+   await expect(dialog.getByRole('button',{name:'Add credits',exact:true})).toBeVisible();
    // The resident panel shows the plan headline itself (planShownByHost); the membership controls do not repeat it.
    await expect(dialog.getByRole('region',{name:'Eliza Cloud plan',exact:true}).getByText(mode==='empty'?'No active plan':'Plan status unavailable',{exact:true})).toBeVisible();
    await expect(dialog.getByRole('region',{name:'Membership and credits',exact:true}).getByText(mode==='empty'?'No active membership':'Not confirmed',{exact:true})).toHaveCount(0);
   }
   if(mode==='replaced')await expect(dialog.getByText(/account changed/i)).toBeVisible();
   if(admitted)await expect(dialog.getByRole('button',{name:'Sign out of Eliza Cloud',exact:true})).toBeVisible();
-  if(mode==='credits'){await expect(dialog.getByText('Eliza Cloud credits',{exact:true})).toBeVisible();await expect(dialog.getByRole('button',{name:'Redeem code',exact:true})).toHaveCount(0);}
+  // A membership code is an alternative to credits: credit-funded accounts can enter one too.
+  if(mode==='credits'){await expect(dialog.getByText('Eliza Cloud credits',{exact:true})).toBeVisible();await expect(dialog.getByRole('button',{name:'Redeem code',exact:true})).toBeVisible();}
   for(const retired of ['Use local apps without AI','Continue offline'])await expect(dialog.getByRole('button',{name:retired,exact:true})).toHaveCount(0);
   // Every dialog but the required sign-in closes; the agent keeps running.
   if(needsPlan){await page.keyboard.press('Escape');await expect(dialog).toHaveCount(0);}else if(!signedOut){await dialog.getByRole('button',{name:'Back to Settings',exact:true}).click();}

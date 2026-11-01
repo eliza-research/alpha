@@ -59,3 +59,22 @@ test('private sign-in bridge requires all explicit preview/profile gates and cre
  const actual=await mount(allowed);assert.equal(actual.providers,0);assert.equal(actual.mounted.length,1);assert.equal(actual.mounted[0].route,'/__alpha-browser-cloud');assert.equal(actual.handlers[0].profile,'/synthetic/cloud-profile');assert.equal(actual.handlers[0].resident,undefined);
  for(const name of Object.keys(allowed)){const env={...allowed};delete env[name];assert.equal((await mount(env)).mounted.length,0,name+' is required');}
 });
+
+test('the real Cloud development plugin forwards only an explicit valid resident profile mode', async () => {
+ const {readFileSync} = await import('node:fs');
+ const path = await import('node:path');
+ const {transform} = await import('esbuild');
+ const text = readFileSync('scripts/browser-cloud-dev-bridge.ts', 'utf8');
+ const body = text.slice(text.indexOf('export function browserCloudDevBridge()')).replace('export ', '');
+ const code = (await transform(body, {loader: 'ts', format: 'cjs'})).code;
+ async function mount(mode) {
+  const launches = [];
+  const env = {VITE_ALPHA_CLOUD_RESIDENT: '1', VITE_LOCAL_AGENT: '1', ALPHA_ELIZA_SOURCE: '/synthetic/sdk', ALPHA_REMOTE_PROFILE: '/synthetic/resident', ALPHA_REMOTE_PORT: '47869', ...(mode === undefined ? {} : {ALPHA_CLOUD_RESIDENT_PROFILE: mode})};
+  const plugin = new Function('process', 'path', 'homedir', 'environment', 'createCloudResidentHost', 'createBrowserCloudDevHandler', 'BROWSER_CLOUD_BRIDGE_PATH', code + ';return browserCloudDevBridge();')({env}, path, () => '/synthetic', value => value, async options => { launches.push(options); return {close() {}}; }, () => () => {}, '/__alpha-browser-cloud');
+  await plugin.configureServer({middlewares: {use() {}}, httpServer: {once() {}}});
+  return launches;
+ }
+ assert.equal((await mount(undefined))[0].profileMode, 'lean');
+ assert.equal((await mount('full'))[0].profileMode, 'full');
+ await assert.rejects(mount('unknown'), /profile mode/);
+});
