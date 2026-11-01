@@ -32,6 +32,9 @@ jobs:
       - run: python3 scripts/ci/resident-phase.py --name prepare --seconds 3600 npm run agent:prepare
       - name: Verify actual Cloud recording signature classifier
         run: python3 scripts/ci/resident-phase.py --name cloud-recording-signature --seconds 60 node scripts/check-cloud-recording-signature.mjs
+      # The rejection test bundles with the product's own esbuild, so this job installs the product's
+      # locked dependencies exactly as resident-android does before it reaches product tests.
+      - run: python3 scripts/ci/resident-phase.py --name product-install --seconds 600 npm ci
       - name: Verify managed Calendar rejection against the prepared SDK graph
         env:
           ALPHA_REQUIRE_PREPARED_SDK: '1'
