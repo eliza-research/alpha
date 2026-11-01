@@ -37,6 +37,8 @@ export interface LocalAgentBridge {
   configureCloudProvider?(input:{credentialId:string;model:string}):Promise<unknown>;
   request(input: { path: string; audioBase64?:string;requestId?:string;ownerId?:string; method: LocalAgentMethod; headers: Record<string,string>; body?: string; timeoutMs: number }, signal?:AbortSignal): Promise<{status:number;body?:string}>;
   stream?(input:{path:string;ownerId:string;headers:Record<string,string>;body:string},signal:AbortSignal,onText:(text:string)=>void,onReplyReady?:(results:readonly unknown[]|undefined)=>void):Promise<RemoteChatReply>;
+  /** Cloud read-aloud as it arrives: binary audio/mpeg, or the JSON envelope of a refusal. */
+  speechAudio?(input:{path:'/api/tts/cloud';ownerId:string;requestId:string;body:string},signal:AbortSignal):Promise<Response>;
 }
 const native = registerPlugin<Omit<LocalAgentBridge, 'subscribeVoiceEvents'> & NativeStreamPort & NativeVoiceEventPort & NativeViewEventPort>('Agent');
 // Capacitor proxies synthesize functions for unknown methods. Do not use that
@@ -75,6 +77,12 @@ const browserBridge: LocalAgentBridge | null = developmentBridgeAllowed ? {
     });
     if (!response.ok) throw Object.assign(new Error('Local agent development bridge unavailable. Check the development server.'),{status:response.status});
     return response.json();
+  },
+  async speechAudio(input,signal){
+    const response=await fetch('/__alpha-local-agent',{method:'POST',headers:{'Content-Type':'application/json','X-Alpha-Local-Agent':'1'},
+      body:JSON.stringify({...input,method:'POST',headers:{}}),signal:anyAbortSignal([signal,AbortSignal.timeout(120000)]),redirect:'error'});
+    if(!response.ok){await response.body?.cancel().catch(()=>{});throw Object.assign(new Error('Local agent development bridge unavailable. Check the development server.'),{status:response.status});}
+    return response;
   },
 } : null;
 /** Passive owner conversation events over the existing authenticated renderer WS bridge.
@@ -295,20 +303,52 @@ export class LocalAgentProtocol {
     const direct=route==='direct';
     if(!(direct?(developmentCartesiaVoiceEnabled||browserCloudResidentEnabled):developmentCloudVoiceEnabled)||!this.browserSpeechAvailable||!this.session)throw Error('Developer Cloud speech is unavailable.');
     const session=this.session,generation=this.generation,controller=new AbortController(),requestId=crypto.randomUUID();
-    this.streams.add(controller);const bounded=anyAbortSignal([signal,controller.signal]);
+    this.streams.add(controller);const bounded=anyAbortSignal([signal,controller.signal]);let streaming=false;
     try{
       bounded.throwIfAborted();let audioBase64:string|undefined;
       if(input.kind==='asr'){if(!input.audio.byteLength||input.audio.byteLength>2*1024*1024)throw Error('Recording is too large.');let binary='';for(let i=0;i<input.audio.length;i+=8192)binary+=String.fromCharCode(...input.audio.subarray(i,i+8192));audioBase64=btoa(binary);}
       else if(!input.text.trim()||input.text.length>16000)throw Error('Choose text between 1 and 16000 characters.');
-      const response=await this.bridge.request({path:direct?(input.kind==='asr'?'/api/v1/voice/session/transcribe':'/api/v1/voice/session/read-aloud'):input.kind==='asr'?'/api/asr/cloud':'/api/tts/cloud',ownerId:session.ownerId,method:'POST',headers:{},requestId,timeoutMs:120000,...(audioBase64?{audioBase64}:{body:JSON.stringify({text:(input as {text:string}).text})})},bounded);
+      if(input.kind==='tts'&&!direct){const audio=await this.cloudSpeechAudio(input.text,requestId,controller,bounded);streaming=true;return audio;}
+      const response=await this.bridge.request({path:direct?(input.kind==='asr'?'/api/v1/voice/session/transcribe':'/api/v1/voice/session/read-aloud'):'/api/asr/cloud',ownerId:session.ownerId,method:'POST',headers:{},requestId,timeoutMs:120000,...(audioBase64?{audioBase64}:{body:JSON.stringify({text:(input as {text:string}).text})})},bounded);
       bounded.throwIfAborted();if(session!==this.session||generation!==this.generation)throw new DOMException('Voice selection changed','AbortError');
       if(response.status!==200)throw Object.assign(Error(`${direct?'Direct':'Cloud'} speech unavailable (HTTP ${response.status}).`),{code:'voice-http-'+response.status});
       const result=JSON.parse(response.body||'{}');
       if(result.provider!=='cartesia'||result.route!==route||result.requestId!==requestId)throw Error('Cloud speech provider was not verified.');
       if(input.kind==='asr'){if(typeof result.text!=='string'||result.text.length>16000)throw Error('Invalid Cloud transcript.');return {text:result.text,local:false as const};}
-      if(result.contentType!==(direct?'audio/wav':'audio/mpeg')||typeof result.audioBase64!=='string'||!result.audioBase64.length||result.audioBase64.length>11184812)throw Error('Invalid Cloud speech audio.');
-      const bytes=Uint8Array.from(atob(result.audioBase64),c=>c.charCodeAt(0));if(bytes.length>8*1024*1024)throw Error('Cloud speech audio is too large.');if(direct&&(bytes.length<44||String.fromCharCode(...bytes.subarray(0,4))!=='RIFF'||String.fromCharCode(...bytes.subarray(8,12))!=='WAVE'||new DataView(bytes.buffer).getUint32(4,true)+8!==bytes.length))throw Error('Invalid direct speech audio.');return new Blob([bytes],{type:direct?'audio/wav':'audio/mpeg'});
-    }finally{this.streams.delete(controller);}
+      // Direct read-aloud: a whole verified WAV. Cloud read-aloud streams (cloudSpeechAudio).
+      if(result.contentType!=='audio/wav'||typeof result.audioBase64!=='string'||!result.audioBase64.length||result.audioBase64.length>11184812)throw Error('Invalid Cloud speech audio.');
+      const bytes=Uint8Array.from(atob(result.audioBase64),c=>c.charCodeAt(0));if(bytes.length>8*1024*1024)throw Error('Cloud speech audio is too large.');if(bytes.length<44||String.fromCharCode(...bytes.subarray(0,4))!=='RIFF'||String.fromCharCode(...bytes.subarray(8,12))!=='WAVE'||new DataView(bytes.buffer).getUint32(4,true)+8!==bytes.length)throw Error('Invalid direct speech audio.');return new Blob([bytes],{type:'audio/wav'});
+    }finally{if(!streaming)this.streams.delete(controller);}
+  }
+  /** Cloud read-aloud bytes as they arrive (audio/mpeg). Until the body ends, it stays bound to the
+   * captured session, generation and cancellation; disconnect() aborts it like any owned request. */
+  private async cloudSpeechAudio(text:string,requestId:string,controller:AbortController,signal:AbortSignal):Promise<ReadableStream<Uint8Array<ArrayBuffer>>>{
+    const session=this.session,generation=this.generation;
+    if(!session||!this.bridge.speechAudio)throw Error('Developer Cloud speech is unavailable.');
+    const response=await this.bridge.speechAudio({path:'/api/tts/cloud',ownerId:session.ownerId,requestId,body:JSON.stringify({text})},signal);
+    const current=()=>{signal.throwIfAborted();if(session!==this.session||generation!==this.generation)throw new DOMException('Voice selection changed','AbortError');};
+    const body=response.body;
+    try{
+      current();
+      if(response.headers.get('content-type')==='application/json'){const envelope=await response.json();current();if(envelope?.status===200)throw Error('Invalid Cloud speech audio.');throw Object.assign(Error(`Cloud speech unavailable (HTTP ${envelope?.status}).`),{code:'voice-http-'+envelope?.status});}
+      if(response.headers.get('content-type')!=='audio/mpeg'||response.headers.get('x-eliza-speech-provider')!=='cartesia'||response.headers.get('x-eliza-speech-route')!=='cloud'||response.headers.get('x-request-id')!==requestId||!body)throw Error('Cloud speech provider was not verified.');
+    }catch(error){await body?.cancel().catch(()=>{});throw error;}
+    const reader=body.getReader();let received=0;
+    const end=(error?:unknown)=>{this.streams.delete(controller);if(error!==undefined){controller.abort(error);void reader.cancel(error).catch(()=>{});}};
+    return new ReadableStream<Uint8Array<ArrayBuffer>>({
+      pull:async out=>{
+        try{
+          for(;;){
+            const part=await reader.read();current();
+            if(part.done){if(!received)throw Error('Invalid Cloud speech audio.');end();out.close();return;}
+            if(!part.value.byteLength)continue;
+            received+=part.value.byteLength;if(received>8*1024*1024)throw Error('Cloud speech audio is too large.');
+            out.enqueue(part.value);return;
+          }
+        }catch(error){end(error);out.error(error);}
+      },
+      cancel:reason=>end(reason??new DOMException('Speech cancelled','AbortError')),
+    });
   }
   async synthesizeSpeech(text:string,signal:AbortSignal):Promise<Blob>{
     if(!this.browserSpeechAvailable||!this.session)throw Error('Connect the local agent first.');

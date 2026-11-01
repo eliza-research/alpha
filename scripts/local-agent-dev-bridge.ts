@@ -181,8 +181,10 @@ export function createLocalAgentDevHandler(options:{origin:string;tokenFile:stri
       if(cloudAsr)headers['X-Eliza-STT-Provider']='cartesia';
       if(audio){headers['Content-Type']='audio/wav';headers['X-Request-Id']=input.requestId;}
       if(ttsAudio){headers['X-Request-Id']=input.requestId;headers.Accept=cloudTts?'audio/mpeg':'audio/wav';}
-      const result=await request(origin.origin+input.path,{method:input.method,headers,body:audio??input.body,redirect:'error',
-        signal:AbortSignal.any([abort.signal,AbortSignal.timeout(voice?10000:120000)])});
+      // Ends the upstream request when the page goes away or the deadline passes. A streamed body
+      // stays under it until its last chunk is sent.
+      const upstream=AbortSignal.any([abort.signal,AbortSignal.timeout(voice?10000:120000)]);
+      const result=await request(origin.origin+input.path,{method:input.method,headers,body:audio??input.body,redirect:'error',signal:upstream});
       if(directAsr&&!result.ok){await result.body?.cancel();res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify({status:result.status,body:JSON.stringify({code:'direct_transcription_unavailable'})}));return;}
       if(cloudSpeech&&!result.ok){await result.body?.cancel();res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify({status:result.status,body:JSON.stringify({code:'cloud_voice_unavailable'})}));return;}
       if(cloudSpeech&&(result.headers.get('x-eliza-speech-provider')!=='cartesia'||result.headers.get('x-eliza-speech-route')!=='cloud'||(cloudTts&&result.headers.get('content-type')?.split(';')[0]!=='audio/mpeg'))){await result.body?.cancel();fail(502,'Cloud speech provider was not verified');return;}
@@ -199,14 +201,37 @@ export function createLocalAgentDevHandler(options:{origin:string;tokenFile:stri
         finally{await reader.cancel().catch(()=>{});}
         if(!abort.signal.aborted)res.end();return;
       }
+      const owned=()=>readFileSync(options.tokenFile,'utf8').trim()===token&&credential.expiresAt>Date.now();
+      const timings=cloudSpeech?[...(result.headers.get('server-timing')||'').slice(0,4096).matchAll(/(?:^|,)\s*([A-Za-z][A-Za-z0-9_-]{0,80});dur=([0-9]+(?:\.[0-9]+)?)/g)].slice(0,32).map(match=>({name:match[1],durationMs:Number(match[2])})).filter(value=>Number.isFinite(value.durationMs)):[];
+      if(cloudTts){
+        // Cloud read-aloud streams as binary audio/mpeg so the page can play the first frames while the
+        // rest arrives. Every chunk passes the owner check before it is sent. Headers go out with the
+        // first chunk, so an empty or re-owned clip still gets its JSON failure. A failure after that
+        // destroys the response (outer catch): the page sees a truncated clip, never a cleanly ended one.
+        // The deadline covers idle reads and drain waits on a page that stops reading, and cancels the upstream.
+        const reader=result.body?.getReader(),moderation=result.headers.get('x-eliza-tts-moderation');let received=0,committed=false;
+        const cancel=()=>{void reader?.cancel(upstream.reason).catch(()=>{});};upstream.addEventListener('abort',cancel,{once:true});
+        try{
+          while(reader){
+            const part=await reader.read();upstream.throwIfAborted();if(part.done)break;if(!part.value.byteLength)continue;
+            received+=part.value.byteLength;if(received>8*1024*1024)throw Error('Response too large');
+            if(!owned()){if(committed)throw Error('Cloud voice owner changed');fail(409,'Cloud voice owner changed');return;}
+            if(!committed){committed=true;res.writeHead(200,{'Content-Type':'audio/mpeg','Cache-Control':'no-store, no-transform','X-Content-Type-Options':'nosniff','X-Request-Id':input.requestId,'X-Eliza-Speech-Provider':'cartesia','X-Eliza-Speech-Route':'cloud',
+              ...(timings.length?{'Server-Timing':timings.map(value=>`${value.name};dur=${value.durationMs}`).join(', ')}:{}),...(moderation==='reviewed'||moderation==='approved-hit'?{'X-Eliza-TTS-Moderation':moderation}:{})});}
+            if(!res.write(part.value))await once(res,'drain',{signal:upstream});
+          }
+        }finally{upstream.removeEventListener('abort',cancel);await reader?.cancel().catch(()=>{});}
+        if(abort.signal.aborted)return;
+        if(!committed){if(!owned())fail(409,'Cloud voice owner changed');else fail(502,'Empty Cloud speech audio');return;}
+        res.end();return;
+      }
       const reader=result.body?.getReader();let received=0;const output:Uint8Array[]=[];
-      if(reader)try{while(true){const item=await reader.read();if(item.done)break;received+=item.value.length;if(received>(voice?16*1024:(cloudTts||directTts)&&result.ok?8*1024*1024:ttsAudio&&result.ok?1440044:speech?128*1024:LIMIT))throw new Error('Response too large');output.push(item.value);}}finally{await reader.cancel();}
+      if(reader)try{while(true){const item=await reader.read();if(item.done)break;received+=item.value.length;if(received>(voice?16*1024:directTts&&result.ok?8*1024*1024:ttsAudio&&result.ok?1440044:speech?128*1024:LIMIT))throw new Error('Response too large');output.push(item.value);}}finally{await reader.cancel();}
       if(abort.signal.aborted)return;
       const bytes=Buffer.concat(output);
-      if((cloudSpeech||directTts||directAsr)&&(readFileSync(options.tokenFile,'utf8').trim()!==token||credential.expiresAt<=Date.now())){fail(409,'Cloud voice owner changed');return;}
-      if(cloudTts&&!bytes.length){fail(502,'Empty Cloud speech audio');return;}
-      if(ttsAudio&&!cloudTts&&result.ok&&(bytes.length<44||bytes.toString('ascii',0,4)!=='RIFF'||bytes.toString('ascii',8,12)!=='WAVE'||bytes.readUInt32LE(4)+8!==bytes.length)){fail(502,'Invalid local speech audio');return;}
-      let body=ttsAudio&&result.ok?JSON.stringify({audioBase64:bytes.toString('base64'),requestId:input.requestId,provider:cloudTts||directTts?'cartesia':'libelizainference-paradee',...(cloudTts?{route:'cloud'}:directTts?{route:'direct'}:{}),contentType:cloudTts?'audio/mpeg':'audio/wav'}):bytes.toString('utf8');
+      if((cloudSpeech||directTts||directAsr)&&!owned()){fail(409,'Cloud voice owner changed');return;}
+      if(ttsAudio&&result.ok&&(bytes.length<44||bytes.toString('ascii',0,4)!=='RIFF'||bytes.toString('ascii',8,12)!=='WAVE'||bytes.readUInt32LE(4)+8!==bytes.length)){fail(502,'Invalid local speech audio');return;}
+      let body=ttsAudio&&result.ok?JSON.stringify({audioBase64:bytes.toString('base64'),requestId:input.requestId,provider:directTts?'cartesia':'libelizainference-paradee',...(directTts?{route:'direct'}:{}),contentType:'audio/wav'}):bytes.toString('utf8');
       if(directAsr&&result.ok&&(result.headers.get('x-eliza-stt-provider')!=='cartesia'||result.headers.get('x-eliza-speech-route')!=='direct'||result.headers.get('x-request-id')!==input.requestId))throw Error('Direct transcription provider was not verified');
       if(directAsr||cloudAsr){const transcript=JSON.parse(body);if(typeof transcript.text!=='string'||transcript.text.length>16000){fail(502,'Invalid Cloud transcript');return;}body=JSON.stringify({text:transcript.text,provider:'cartesia',route:directAsr?'direct':'cloud',requestId:input.requestId});}
       // The upstream machine session ID is its bearer token. Keep it on the host.
@@ -217,7 +242,7 @@ export function createLocalAgentDevHandler(options:{origin:string;tokenFile:stri
       if(input.path==='/api/auth/me'&&result.status===200){const who=JSON.parse(body);if(who.session)who.session.id='host-owned-session';body=JSON.stringify(who);}
       if(result.status===401)pairing=undefined; // Never replay the failed request.
       res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});
-      const timings=cloudSpeech?[...(result.headers.get('server-timing')||'').slice(0,4096).matchAll(/(?:^|,)\s*([A-Za-z][A-Za-z0-9_-]{0,80});dur=([0-9]+(?:\.[0-9]+)?)/g)].slice(0,32).map(match=>({name:match[1],durationMs:Number(match[2])})).filter(value=>Number.isFinite(value.durationMs)):[];const moderation=cloudTts?result.headers.get('x-eliza-tts-moderation'):null;const moderationCache=moderation==='reviewed'||moderation==='approved-hit'?moderation:undefined;res.end(JSON.stringify({status:result.status,body,...(timings.length?{timings}:{}),...(moderationCache?{moderationCache}:{})}));
+      res.end(JSON.stringify({status:result.status,body,...(timings.length?{timings}:{})}));
     }catch{if(!abort.signal.aborted){if(!res.headersSent)fail(503,'Local runtime unavailable. Check the private host log.');else res.destroy();}}
     finally{res.off('close',onClose);}
   };

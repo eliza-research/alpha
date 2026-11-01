@@ -8,6 +8,7 @@ import {browserMediaVolume} from './audio-settings';
 import {audioRecord,audioMetadata,retainAudio,changeAudioDeleted,audioDeletionStatus,migrateAudio,purgeAudio} from './note-audio-store';
 import { speechError, speechCancelled, type SpeechRequestKind, type SpeechCancelReason } from './speech-errors';
 import { BrowserAudioCapture } from './audio-capture';
+import {StreamedSpeech,streamedSpeechSource,streamedSpeechSupported} from './streamed-speech';
 import { WebPlugin } from '@capacitor/core';
 // Recordings stay local until transcription is requested. The selected Cloud or
 // explicit local/development route owns processing; provider credentials stay off-page.
@@ -23,7 +24,7 @@ export class BrowserVoice extends WebPlugin {
  private speechRequests=new Map<SpeechRequestKind,{controller:AbortController;requestId?:string}>();
  private capture=new BrowserAudioCapture(event=>{void this.notifyListeners('recordingStopped',event);});
  private speech=new Map<string,{text:string;requestId?:string}>();
- private agentAudio=new Map<string,{blob:Blob;requestId?:string;agent?:LocalAgentProtocol;sessionId:string;cloud?:{environment:string;credentialId:string}}>();
+ private agentAudio=new PreparedAudio();
  private audio?:HTMLAudioElement;
  private audioId?:string;
  private pendingAudioId?:string;
@@ -95,11 +96,19 @@ export class BrowserVoice extends WebPlugin {
   return this.withAgentSpeech('stt',async signal=>{const connection=await this.connection,agent=connection.getBrowserSpeechAgent(),snapshot=connection.getSnapshot(),route=input.route??'cloud',session=agent?.session,revision=snapshot.providerStatus?.revision;
    if(!agent||!session)throw Error('Connect the resident agent first.');
    const current=()=>{signal.throwIfAborted();const now=connection.getSnapshot();if(agent!==connection.getBrowserSpeechAgent()||agent.session!==session||(route==='direct'?(now.residentInference!=='direct'||now.providerStatus?.voiceConfigured!==true||now.providerStatus?.revision!==revision):now.residentInference==='direct'))throw new DOMException('Voice selection changed','AbortError');};
-   current();const audio=await recordingPcmWav(clip.blob,signal);current();const result=await agent.developmentCloudSpeech({kind:'asr',audio},signal,route);current();if(result instanceof Blob)throw Error('Transcription returned no text.');return result;},input.requestId);
+   current();const audio=await recordingPcmWav(clip.blob,signal);current();const result=await agent.developmentCloudSpeech({kind:'asr',audio},signal,route);current();if(!('local' in result))throw Error('Transcription returned no text.');return result;},input.requestId);
  }
  async synthesizeDevelopmentCloud(input:{text:string;requestId:string;replace?:boolean;route?:'cloud'|'direct'}){
   if(input.replace===false&&(this.activeSpeechId||this.audio||this.pendingAudioId||this.speechRequests.has('stt')||this.speechRequests.has('tts')))throw Object.assign(Error('Playback is busy.'),{code:'playback-busy'});
-  return this.withAgentSpeech('tts',async signal=>{const connection=await this.connection,agent=connection.getBrowserSpeechAgent(),sessionId=agent?.session?.sessionId;if(!agent||!sessionId)throw Error('Connect the developer agent first.');const blob=await agent.developmentCloudSpeech({kind:'tts',text:input.text},signal,input.route??'cloud');signal.throwIfAborted();if(agent!==connection.getBrowserSpeechAgent()||agent.session?.sessionId!==sessionId||!(blob instanceof Blob))throw new DOMException('Voice selection changed','AbortError');const playbackId=crypto.randomUUID();this.agentAudio.set(playbackId,{blob,requestId:input.requestId,agent,sessionId});while(this.agentAudio.size>8)this.agentAudio.delete(this.agentAudio.keys().next().value!);return {playbackId};},input.requestId);
+  return this.withAgentSpeech('tts',async signal=>{const connection=await this.connection,agent=connection.getBrowserSpeechAgent(),sessionId=agent?.session?.sessionId;if(!agent||!sessionId)throw Error('Connect the developer agent first.');
+   // Cloud read-aloud arrives as a stream that plays while it downloads. Without MediaSource it is
+   // buffered whole, as before streaming; a direct route's WAV is always whole.
+   let audio=await agent.developmentCloudSpeech({kind:'tts',text:input.text},signal,input.route??'cloud');
+   try{
+    if(audio instanceof ReadableStream&&!streamedSpeechSupported())audio=new Blob([await new Response(audio).arrayBuffer()],{type:'audio/mpeg'});
+    signal.throwIfAborted();if(agent!==connection.getBrowserSpeechAgent()||agent.session?.sessionId!==sessionId||!(audio instanceof Blob||audio instanceof ReadableStream))throw new DOMException('Voice selection changed','AbortError');
+   }catch(error){if(audio instanceof ReadableStream)void audio.cancel(error).catch(()=>{});throw error;}
+   const playbackId=crypto.randomUUID();this.agentAudio.set(playbackId,{...(audio instanceof Blob?{blob:audio}:{stream:new StreamedSpeech(audio)}),requestId:input.requestId,agent,sessionId});while(this.agentAudio.size>8)this.agentAudio.delete(this.agentAudio.keys().next().value!);return {playbackId};},input.requestId);
  }
  async synthesizeLocal(input:{text:string;requestId?:string}){
   const {text,requestId}=input;
@@ -145,11 +154,15 @@ export class BrowserVoice extends WebPlugin {
     const cloud=connectionController.getCloudClient();
     const stale=prepared.cloud ? connectionController.getCloudEnvironment()!==prepared.cloud.environment||cloud?.credentialId!==prepared.cloud.credentialId||cloud?.sessionId!==prepared.sessionId : !prepared.agent||connectionController.getBrowserSpeechAgent()!==prepared.agent||prepared.agent.session?.sessionId!==prepared.sessionId;
     if(stale){this.agentAudio.delete(input.playbackId);throw new DOMException('Voice selection changed','AbortError');}
-    const url=URL.createObjectURL(prepared.blob);let audio:HTMLAudioElement;
+    // A streamed clip starts on its first frames; Stop (abort) ends its download with the playback.
+    const source=prepared.stream?streamedSpeechSource(prepared.stream,abort.signal):undefined;
+    const url=source?.url??URL.createObjectURL(prepared.blob!);let audio:HTMLAudioElement;
     try{audio=new Audio(url);audio.volume=browserMediaVolume();}catch(error){URL.revokeObjectURL(url);throw error;}
     this.audio=audio;
     const finish=(event:'playbackEnded'|'playbackFailed')=>{if(!current()||this.audio!==audio)return;this.releaseAudio(audio);this.activeSpeechId=undefined;this.activeSpeechRequestId=undefined;this.agentAudio.delete(input.playbackId!);void this.notifyListeners(event,{playbackId:input.playbackId});};
     audio.onended=()=>finish('playbackEnded');audio.onerror=()=>finish('playbackFailed');
+    // A clip whose download fails part way is a failed reading, never a finished one.
+    void source?.fed.catch(()=>finish('playbackFailed'));
     try{const playing=audio.play();void playing.then(()=>{if(!current())audio.pause();},()=>{});await playbackWait(playing,abort.signal);if(!current())throw new DOMException('Playback cancelled','AbortError');return;}
     catch(error){if(this.audio===audio)finish('playbackFailed');throw error;}
    }
@@ -219,8 +232,16 @@ export class BrowserVoice extends WebPlugin {
    return;
   }
   for(const kind of [...this.speechRequests.keys()])this.abortSpeech(kind,reason);this.capture.cancel();await this.stopPlayback();
+  // A streamed clip, played or not, leaves with its download, so none outlives a global cancel.
+  // A Blob clip stays playable, as before streaming.
+  for(const [id,audio] of this.agentAudio)if(audio.stream)this.agentAudio.delete(id);
  }
  async releaseLocalSpeech(){await this.cancel(undefined,'released');this.speech.clear();this.agentAudio.clear();this.capture.clear();}
+}
+/** Prepared speech by playback id. A streamed clip stops downloading when its entry leaves. */
+class PreparedAudio extends Map<string,{blob?:Blob;stream?:StreamedSpeech;requestId?:string;agent?:LocalAgentProtocol;sessionId:string;cloud?:{environment:string;credentialId:string}}> {
+ override delete(id:string){this.get(id)?.stream?.cancel();return super.delete(id);}
+ override clear(){for(const entry of this.values())entry.stream?.cancel();super.clear();}
 }
 function playbackWait<T>(work:Promise<T>,signal:AbortSignal):Promise<T>{
  return new Promise((resolve,reject)=>{
