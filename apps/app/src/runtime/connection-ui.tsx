@@ -3004,7 +3004,12 @@ export const connectionController = {
       const messageBinding={conversationId:id,session:{...session}},recorded=typeof reply.userMessageId==='string'?{userMessageId:reply.userMessageId,messageBinding}:{};
       // A failed reply can follow a durably recorded proposal. Recover only the
       // existing identity/context-bound review; never retry chat or execute it.
-      if (responseFailure && !proposals?.length) throw Object.assign(responseFailure,recorded);
+      if (responseFailure && !proposals?.length) {
+        // Keep the original mapped failure and its funding/retry metadata. A
+        // generic failure uses the same trusted copy as AlphaClient's sanitizer.
+        const failure=responseFailure instanceof AlphaClientError?responseFailure:new AlphaClientError('transport-failed','The agent request failed. Check connection and action history before sending another request.');
+        throw Object.assign(failure,{messageBinding},recorded,notices.length?{notices}:{});
+      }
       if(!failed&&directRequestedActions&&message.context.view==='home'&&cameraNavigation&&cameraAttempt&&typeof reply.userMessageId==='string'&&Array.isArray(reply.actionResults)){
         requestedCameraContinuation={messageId:reply.userMessageId,selected,session,generation,conversationId:id,client:cameraNavigation,attempt:cameraAttempt,expiresAt:Date.now()+30_000};
       }
