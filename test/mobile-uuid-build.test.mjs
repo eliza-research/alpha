@@ -27,7 +27,11 @@ function fixture(t){
 }
 function transform(f){
  const adapter=createMobileUuidAdapter(f.root,f.source);let load;
- adapter.plugin.setup({onLoad(options,callback){assert.ok(options.filter.test('/uuid/dist-node/index.js'));load=callback;}});
+ adapter.plugin.setup({onLoad(options,callback){
+  assert.ok(options.filter.test('/node_modules/.bun/uuid@14.0.2/node_modules/uuid/dist-node/index.js'));
+  for(const version of ['8.3.2','9.0.1'])assert.equal(options.filter.test(`/node_modules/.bun/uuid@${version}/node_modules/uuid/dist/index.js`),false,'upstream CommonJS dependencies are not rewritten');
+  load=callback;
+ }});
  return {adapter,load,index:path.join(f.source,f.policy.package.root,'dist-node/index.js')};
 }
 test('the reviewed UUID barrel uses the real algorithm modules through a bounded namespace bridge',t=>{

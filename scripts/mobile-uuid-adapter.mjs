@@ -56,7 +56,9 @@ export function mobileBuildInputs(root,source){
 export function createMobileUuidAdapter(root,source){
  const inputs=mobileBuildInputs(root,source),index=path.join(inputs.packageRoot,'dist-node/index.js'),transforms=[];
  return {inputs,transforms,plugin:{name:'reviewed-mobile-uuid-cjs',setup(build){
-  build.onLoad({filter:/[\\/]uuid[\\/]dist(?:-node)?[\\/]index\.js$/},args=>{
+  // Older UUID packages already use CommonJS and remain the upstream producer's
+  // responsibility. Only this exact locked ESM package needs the adapter.
+  build.onLoad({filter:/[\\/]uuid@14\.0\.2[\\/]node_modules[\\/]uuid[\\/]dist(?:-node)?[\\/]index\.js$/},args=>{
    if(path.resolve(args.path)!==index)throw Error('Unreviewed UUID barrel reached the Android producer');
    const bytes=readRegular(inputs.packageRoot,'dist-node/index.js');
    if(hash(bytes)!==inputs.policy.package.files['dist-node/index.js'])throw Error('UUID barrel changed during build');
