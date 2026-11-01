@@ -101,6 +101,18 @@ test('build admission rejects drift in either renderer or native generated autho
  }finally{fs.rmSync(temp,{recursive:true,force:true});}
 });
 
+test('build admission rejects a resident Cloud SDK base that disagrees with the deployment configuration',async()=>{
+ const {checkCloudDeployment}=await import('../scripts/cloud-deployment.mjs');
+ const {CLOUD_SDK_BASES,cloudSdkBases}=await import('../scripts/cloud-sdk-authority.mjs');
+ assert.deepEqual(CLOUD_SDK_BASES,{production:defaults.production.api+'/api/v1',staging:defaults.staging.api+'/api/v1'});
+ checkCloudDeployment();
+ assert.throws(()=>checkCloudDeployment(undefined,{...CLOUD_SDK_BASES,production:'https://api.example.org/api/v1'}),/Cloud SDK bases .* disagree/);
+ const config=structuredClone(defaults);config.production.api='https://api.example.org';
+ assert.equal(cloudSdkBases(config).production,'https://api.example.org/api/v1');
+ // No second hard-coded authority: the resident hosts take the base from the configured module only.
+ for(const file of ['scripts/cloud-sdk-authority.mjs','scripts/cloud-resident-host.mjs','scripts/start-cloud-qa.mjs'])assert.doesNotMatch(fs.readFileSync(file,'utf8'),/https:\/\/api(-staging)?\.eliza\.app/,file);
+});
+
 test('every authority change gives renderer and native credentials a new namespace',async()=>{
  const file='apps/app/src/runtime/cloud-deployment.generated.ts';
  const load=async config=>{
