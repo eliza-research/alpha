@@ -1,0 +1,34 @@
+{
+  "format": "alpha-resident-voice-failure-v1",
+  "observedAt": "2026-11-01T08:00:55.892994+00:00",
+  "installedVersion": "0.1.0-cloud-voice-streaming-v15",
+  "probe": "one normal typed arithmetic request through the current app; no credentials or response prose retained",
+  "transport": {
+    "status": 200,
+    "headersElapsedMs": 70,
+    "completeElapsedMs": 128,
+    "terminalKind": "provider_issue"
+  },
+  "residentFailure": {
+    "type": "ReferenceError",
+    "identifier": "default10",
+    "file": "agent-bundle.js",
+    "line": 39523,
+    "column": 19870,
+    "matchingErrorsInResidentLog": 8
+  },
+  "speechInput": {
+    "provider": "cartesia",
+    "status": 200,
+    "decodeMs": 154,
+    "uploadMs": 21,
+    "responseWaitMs": 2582,
+    "totalMs": 2759
+  },
+  "streamingBootstrap": {
+    "status": 404,
+    "latestCompletedElapsedMs": 2478,
+    "audioFramesSent": 0
+  },
+  "outcome": "No completed agent answer or TTS. This is not a successful end-to-end latency sample."
+}

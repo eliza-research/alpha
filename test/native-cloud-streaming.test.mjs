@@ -5,7 +5,7 @@ import vm from 'node:vm';
 import {stripTypeScriptTypes} from 'node:module';
 
 function fixture(options={}){
- const source=fs.readFileSync('apps/app/src/runtime/native-cloud-streaming.ts','utf8').replace(/^import .*;\n/gm,'').replaceAll('export interface','interface').replaceAll('export const','const').replaceAll('export function','function');
+ const source=fs.readFileSync('.eliza/client-features/packages/voice/src/native-cloud-speech.ts','utf8').replace(/^import .*;\n/gm,'').replaceAll('export interface','interface').replaceAll('export const','const').replaceAll('export function','function');
  const box={crypto,AbortController,DOMException,Error,Promise,Map,Date,setTimeout,clearTimeout,registerPlugin:()=>({}),Capacitor:{isNativePlatform:()=>true,isPluginAvailable:()=>true}};
  vm.runInNewContext(stripTypeScriptTypes(source)+'\nglobalThis.create=createCloudStreamingSpeech;',box);
  let listener,sessionId,current=true,stops=0,mutes=[],speaks=[],cancels=[],removed=0;

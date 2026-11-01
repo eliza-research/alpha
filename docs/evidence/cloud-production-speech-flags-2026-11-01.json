@@ -1,0 +1,60 @@
+{
+  "versionId": "d7c919ac-8ff6-4559-9e28-5c81e21f5be6",
+  "createdOn": "2026-10-30T10:19:48.91773Z",
+  "metadataKeys": [
+    "created_on",
+    "source",
+    "author_id",
+    "author_email",
+    "has_preview"
+  ],
+  "resourceKeys": [
+    "script",
+    "script_runtime",
+    "bindings"
+  ],
+  "flags": [
+    {
+      "name": "INFERENCE_AUTH_CACHE_ENABLED",
+      "value": "true"
+    },
+    {
+      "name": "INFERENCE_DEFERRED_ADMISSION",
+      "value": "true"
+    },
+    {
+      "name": "INFERENCE_HOT_PATH_CACHES",
+      "value": "true"
+    },
+    {
+      "name": "INFERENCE_SNAPSHOT_ADMISSION_ENABLED",
+      "value": "false"
+    },
+    {
+      "name": "INFERENCE_STRONG_REVOCATION_ENABLED",
+      "value": "false"
+    },
+    {
+      "name": "VOICE_REALTIME_WS_ENABLED",
+      "value": "true"
+    }
+  ],
+  "durableBindings": [
+    {
+      "name": "AUTHENTICATION_STATE",
+      "className": "AuthenticationState"
+    },
+    {
+      "name": "INFERENCE_ADMISSION_GATES",
+      "className": "InferenceAdmissionGate"
+    },
+    {
+      "name": "VOICE_USAGE_STATE",
+      "className": "VoiceUsageState"
+    }
+  ],
+  "flagNamesNotReturned": [
+    "INFERENCE_FUNDED_BUDGET_ENABLED",
+    "VOICE_SPEECH_RELAY_ENABLED"
+  ]
+}

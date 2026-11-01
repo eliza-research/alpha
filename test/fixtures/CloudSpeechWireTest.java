@@ -1,4 +1,4 @@
-package ai.elizaresearch.alphaphone;
+package ai.eliza.voice;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 public final class CloudSpeechWireTest {

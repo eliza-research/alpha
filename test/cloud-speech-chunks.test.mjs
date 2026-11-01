@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {CLOUD_FIRST_SPEECH_CHARS, CLOUD_SPEECH_REQUEST_CHARS, planCloudSpeechChunks, speakCloudSpeechChunks} from '../apps/app/src/runtime/cloud-speech-chunks.ts';
+import {CLOUD_FIRST_SPEECH_CHARS, CLOUD_SPEECH_REQUEST_CHARS, planCloudSpeechChunks, speakCloudSpeechChunks} from '../.eliza/client-features/packages/voice/src/cloud-speech-chunks.ts';
 
 const normalize = text => text.replace(/\s+/g, ' ').trim();
 const first = 'Your next meeting starts at three o’clock.';

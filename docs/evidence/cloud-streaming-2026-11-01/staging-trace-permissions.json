@@ -1,0 +1,25 @@
+{
+  "runId": 41286891861,
+  "safeRecords": [
+    {
+      "endpoint": "user",
+      "httpStatus": 200,
+      "failure": null,
+      "status": "active",
+      "permissionReport": {
+        "httpStatus": 403,
+        "failure": "http_error",
+        "policyCount": null,
+        "observabilityWriteAllowPolicyCount": null,
+        "observabilityWriteDenyPolicyCount": null,
+        "scope": "token_policy_metadata_only"
+      }
+    },
+    {
+      "endpoint": "account",
+      "httpStatus": 401,
+      "failure": "http_error",
+      "status": null
+    }
+  ]
+}

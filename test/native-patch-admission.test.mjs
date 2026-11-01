@@ -74,3 +74,28 @@ test('shared auth descriptor patch still rejects unauthenticated output',()=>fix
  args.manifest.patches[0].targets[0].afterSha256='0'.repeat(64);
  assert.throws(()=>materializeNativePatches(args),/output differs/);
 },authModule,authModule+'/build.gradle'));
+
+const speechModule='plugins/plugin-local-inference/native/android';
+const speechTarget=speechModule+'/speech-bridge/src/main/java/ai/eliza/voice/SharedRelay.java';
+function speechAddition(run){fixture(args=>{
+ const base=speechModule+'/src/main/java/ai/eliza/voice/Existing.java',body='package ai.eliza.voice; class SharedRelay {}\n';
+ const original=Buffer.from('package ai.eliza.voice; class Existing {}\n');
+ args.source.read=()=>new Map([[base,{bytes:original,mode:'100644',sha256:sha(original)}]]);
+ const patch=`--- /dev/null\n+++ b/${speechTarget}\n@@ -0,0 +1 @@\n+${body}`;
+ fs.writeFileSync(path.join(args.patchRoot,'test.patch'),patch);
+ args.manifest.patches=[{module:speechModule,file:'test.patch',sha256:sha(patch),targets:[{path:speechTarget,beforeSha256:null,afterSha256:sha(body)}]}];
+ run(args,body);
+},speechModule);}
+test('shared speech additions are hash-bound and retain exact source/mode inventory',()=>speechAddition((args,body)=>{
+ const result=materializeNativePatches(args);
+ assert.equal(result.files[speechTarget],sha(body));assert.equal(result.modes[speechTarget],'100644');
+ assert.equal(fs.readFileSync(path.join(args.temporary,speechTarget),'utf8'),body);
+}));
+for(const scenario of ['existing','namespace','module','output'])test(`shared speech addition rejects ${scenario}`,()=>speechAddition((args,body)=>{
+ const patch=args.manifest.patches[0];
+ if(scenario==='existing'){const read=args.source.read;args.source.read=()=>new Map([...read(),[speechTarget,{bytes:Buffer.from(body),mode:'100644',sha256:sha(body)}]]);}
+ if(scenario==='namespace')patch.targets[0].path=speechTarget.replace('/ai/eliza/voice/','/unreviewed/');
+ if(scenario==='module')patch.module=module;
+ if(scenario==='output')patch.targets[0].afterSha256='0'.repeat(64);
+ assert.throws(()=>materializeNativePatches(args),/mismatch|output differs/);
+}));

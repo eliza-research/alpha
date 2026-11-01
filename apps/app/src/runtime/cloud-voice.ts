@@ -1,3 +1,4 @@
+import {createCloudStreamingSpeech as createSharedCloudStreamingSpeech, type CloudStreamPort} from '../../../../.eliza/client-features/packages/voice/src/native-cloud-speech.ts';
 import {browserCloudResidentEnabled} from './browser-cloud-resident';
 import {developmentCartesiaVoiceEnabled} from './development-cartesia-flag';
 import {developmentCloudVoiceEnabled} from './development-cloud-voice';
@@ -51,6 +52,11 @@ export function cloudVoiceFailure(error: unknown, context: { recording?: boolean
   if (code === 'voice-stt-response') return 'Cloud voice returned no usable transcript. Your recording is kept. Try again later.';
   return null;
 }
+
+/** Product registration only; shared transport owns speech lifecycle and cancellation. */
+const streamingNative = registerPlugin<CloudStreamPort>('AlphaCloudSpeechStream');
+export function nativeCloudStreamingAvailable() { return Capacitor.isNativePlatform() && Capacitor.isPluginAvailable('AlphaCloudSpeechStream'); }
+export function createCloudStreamingSpeech(input: Parameters<typeof createSharedCloudStreamingSpeech>[0]) { return createSharedCloudStreamingSpeech(input, streamingNative); }
 
 export type VoiceClip = { recordingId: string; durationMs: number };
 const native = registerPlugin<{

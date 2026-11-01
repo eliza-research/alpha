@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { upstreamNativeSource } from './upstream-native-source.mjs';
+import { clientSpeechPatch } from './client-speech-patch.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -292,6 +293,8 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true 
   const upstream = upstreamNativeSource(root);
   const source = new Map(CLIENT_FEATURE_PATHS.flatMap(prefix => [...upstream.read(prefix)]));
   const sourceFiles = Object.fromEntries([...source].map(([name, file]) => [name, file.sha256]));
+  const speechPatch=clientSpeechPatch(root,upstream);
+  for(const [name,file] of speechPatch.files)source.set(name,file);
 
 
   if(projectVoice){
@@ -355,7 +358,7 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true 
   project('alpha-voice-core-protocol.ts','export {ElizaError} from "./packages/core/src/errors";\nexport {redactTrailingArgs} from "./packages/core/src/security/log-redaction";\nexport {parseViewInteractionClientId, AGENT_SURFACE_CAPABILITY_IDS} from "./packages/core/src/views/view-interact-protocol";\nexport {findViewActionHandoff, type ViewActionHandoff} from "./packages/core/src/views/view-action-handoff";\nexport type {PermissionState} from "./packages/core/src/types/permissions";\n');
   }
   const files = Object.fromEntries([...source].map(([name, file]) => [name, file.sha256]));
-  const provenance = { baseCommit: upstream.pin, sourceFiles, projectionVersion:projectVoice?12:0, files };
+  const provenance = { baseCommit: upstream.pin, sourceFiles, projectionVersion:projectVoice?12:0, ...(speechPatch.receipt?{speechPatch:speechPatch.receipt}:{}), files };
   const parent = path.join(root, '.eliza'), destination = path.join(parent, 'client-features');
   regularPath(parent, true);
   const exists = regularPath(destination, true), stamp = path.join(destination, '.source.json');
@@ -363,7 +366,7 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true 
     if (!regularPath(stamp)) throw Error('Refusing to replace an unrecognized client feature directory.');
     const previous = JSON.parse(fs.readFileSync(stamp));
     const actual = inventory(destination); delete actual['.source.json'];
-    if (previous.baseCommit === upstream.pin && previous.projectionVersion === provenance.projectionVersion && matches(previous.files || {}, files) && matches(actual, files)) return destination;
+    if (previous.baseCommit === upstream.pin && previous.projectionVersion === provenance.projectionVersion && JSON.stringify(previous.speechPatch ?? null) === JSON.stringify(provenance.speechPatch ?? null) && matches(previous.files || {}, files) && matches(actual, files)) return destination;
   }
   fs.mkdirSync(parent, { recursive: true });
   const temporary = fs.mkdtempSync(path.join(parent, 'client-features-stage-'));

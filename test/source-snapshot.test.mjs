@@ -43,3 +43,14 @@ test('source snapshot excludes generated patch staging and unrelated private sta
  write(root,'private-state/account.json','private fixture bytes\n');
  assert.deepEqual(snapshot(root),before);
 });
+
+test('source snapshot binds the shared client patch preparer and managed source receipt',t=>{
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-client-patch-snapshot-'));
+ t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
+ for(const name of ['scripts/client-speech-patch.mjs','scripts/prepare-client-features.mjs','.eliza/client-features/.source.json'])write(root,name,'first');
+ const before=snapshot(root);
+ for(const name of Object.keys(before.files))assert.equal(before.files[name],sha('first'));
+ assert.equal(Object.keys(before.files).length,3);
+ write(root,'scripts/client-speech-patch.mjs','changed helper');
+ assert.notEqual(snapshot(root).digest,before.digest);
+});

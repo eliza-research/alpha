@@ -1,3 +1,4 @@
+import {sharedSpeechSource} from './fixtures/jvm-tools.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -56,7 +57,7 @@ test('real native multipart method uploads decoded WAV and clears it on credenti
  const out=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-cloud-wav-upload-'));
  try{
  const file=path.join(out,'CloudWavUploadTest.java');
- fs.writeFileSync(file,`package ai.elizaresearch.alphaphone;import java.io.*;import java.net.*;import java.util.*;import java.nio.charset.StandardCharsets;import java.util.function.BooleanSupplier;
+ fs.writeFileSync(file,`package ai.elizaresearch.alphaphone;import ai.eliza.voice.CloudSpeechTimings;import java.io.*;import java.net.*;import java.util.*;import java.nio.charset.StandardCharsets;import java.util.function.BooleanSupplier;
 public class CloudWavUploadTest {
  static class BuildConfig{static final String ELIZA_RUNTIME_PROFILE="cloud";}
  CloudSpeechTimings cloudTimings=new CloudSpeechTimings();boolean destroyed;String failure="";Exception error;Pending pending;Connection connection;Capture capture=new Capture();Capture recording(){return capture;}boolean destroyed(){return destroyed;}
@@ -104,7 +105,7 @@ public class CloudWavUploadTest {
  }
 }`);
  const binary=name=>process.env.JAVA_HOME?path.join(process.env.JAVA_HOME,'bin',name):name;
- execFileSync(binary('javac'),['--release','11','-d',out,file,'android/app/src/main/java/ai/elizaresearch/alphaphone/CloudSpeechTimings.java','android/app/src/main/java/ai/elizaresearch/alphaphone/CloudDeployment.java','android/app/src/main/java/ai/elizaresearch/alphaphone/CloudSpeechPolicy.java']);
+ execFileSync(binary('javac'),['--release','11','-d',out,file,sharedSpeechSource('CloudSpeechTimings.java'),'android/app/src/main/java/ai/elizaresearch/alphaphone/CloudDeployment.java','android/app/src/main/java/ai/elizaresearch/alphaphone/CloudSpeechPolicy.java']);
  assert.match(execFileSync(binary('java'),['-cp',out,'ai.elizaresearch.alphaphone.CloudWavUploadTest'],{encoding:'utf8'}),/PASS real native multipart WAV upload and cleanup/);
  }finally{fs.rmSync(out,{recursive:true,force:true});}
 });

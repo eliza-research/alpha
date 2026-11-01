@@ -38,16 +38,39 @@
           "afterSha256": "60861474e28f99fddacac70d382612e762a6c7526f2c455ecee1dd5f2128d825"
         }
       ]
+    },
+    {
+      "file": "cloud-speech-native.patch",
+      "sha256": "35e980637b0fe28711d6e37918b4f873cbad3b60c5bf60b6cbd32f349be6df63",
+      "module": "plugins/plugin-local-inference/native/android",
+      "targets": [
+        {
+          "path": "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechStreamBridgePlugin.java",
+          "beforeSha256": null,
+          "afterSha256": "a130108828f055fa337f634df08e7d780de9649d61055de6f44cd8f8def9d771"
+        },
+        {
+          "path": "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechTimings.java",
+          "beforeSha256": null,
+          "afterSha256": "e38e0413662e7f00cf01557174046c47783f8fddf49b2bf8fe58a677c6dd099b"
+        },
+        {
+          "path": "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechWire.java",
+          "beforeSha256": null,
+          "afterSha256": "1ea0e5b147169d7548290d24122edb287e65b29c8682531db314f35b3292945e"
+        }
+      ]
     }
   ],
   "modules": [
+    "packages/auth/android",
+    "plugins/plugin-local-inference/native/android",
     "plugins/plugin-native-action-journal/android",
     "plugins/plugin-native-calendar/android",
     "plugins/plugin-native-media/android",
     "plugins/plugin-native-notifications/android",
     "plugins/plugin-native-reminders/android",
     "plugins/plugin-native-secure-store/android",
-    "plugins/plugin-native-system/android",
-    "packages/auth/android"
+    "plugins/plugin-native-system/android"
   ]
 }
