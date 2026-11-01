@@ -41,7 +41,7 @@ test('browser restores an existing host Cloud account, uses canonical voice and 
   await expect(setup).toHaveCount(0);
   await completeAccessSetup(page);
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(page.getByRole('button',{name:'Inbox',exact:true})).toBeVisible();
+  await expect(page.locator('button[data-mobile-shell-tile][aria-label="Inbox"]')).toBeVisible();
   expect(await page.evaluate(async()=>(await import('/src/runtime/connection-ui.tsx')).connectionController.getSnapshot().open)).toBe(false);
   const voice=await page.evaluate(async()=>{
    const {connectionController:c}=await import('/src/runtime/connection-ui.tsx'),binding=c.getCloudClient()!,{BrowserVoice}=await import('/src/browser/voice.ts'),v=new BrowserVoice();
@@ -77,7 +77,7 @@ test('browser restores an existing host Cloud account, uses canonical voice and 
   const signIn=page.getByRole('dialog',{name:'Welcome to Alpha.',exact:true});
   await expect(signIn.getByRole('form',{name:'Sign in with email'})).toBeVisible();
   await expect(signIn.getByRole('button',{name:'Continue with Google',exact:true})).toBeDisabled();
-  await expect(signIn.getByText('Google sign-in is unavailable. Use another sign-in method below.',{exact:true})).toBeVisible();
+  await expect(signIn.getByRole('status').filter({hasText:'Google sign-in is unavailable. Use another sign-in method below.'})).toContainText('Google sign-in is unavailable. Use another sign-in method below.');
   await signIn.getByRole('button',{name:'Browser sign-in (diagnostic)',exact:true}).click();
   await expect.poll(()=>page.evaluate(async()=>(await import('/src/runtime/connection-ui.tsx')).connectionController.getSnapshot().cloudAccount?.userId)).toBe(owner);
   await expect(page.getByRole('dialog',{name:'Eliza Cloud',exact:true})).toHaveCount(0);
@@ -85,7 +85,7 @@ test('browser restores an existing host Cloud account, uses canonical voice and 
   await expect(page.locator('dialog.alpha-startup-permissions')).toHaveCount(0);
   expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('alpha:startup-permission-walkthrough:v1')!).status)).toBe('completed');
   await completeAccessSetup(page);
-  await expect(page.getByRole('button',{name:'Inbox',exact:true})).toBeVisible();
+  await expect(page.locator('button[data-mobile-shell-tile][aria-label="Inbox"]')).toBeVisible();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.evaluate(async()=>(await import('/src/runtime/connection-ui.tsx')).connectionController.openCloudAccount());
   await expect(page.getByRole('dialog',{name:'Subscription',exact:true}).getByRole('region',{name:'Subscription',exact:true}).getByText('owned@example.invalid',{exact:true})).toBeVisible();

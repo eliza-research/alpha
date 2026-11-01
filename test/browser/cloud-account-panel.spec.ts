@@ -2,7 +2,7 @@
 // route; the production sign-in button uses native email and never falls back to this route.
 import {seedCompletedAccessSetup} from './flag-off-android';
 import {test,expect,type Page} from '@playwright/test';
-async function openInbox(page:Page){await page.getByRole('button',{name:'Inbox',exact:true}).click();await page.getByRole('button',{name:'Connect Eliza Cloud',exact:true}).click();}
+async function openInbox(page:Page){await page.locator('button[data-mobile-shell-tile][aria-label="Inbox"]').click();await page.getByRole('button',{name:'Connect Eliza Cloud',exact:true}).click();}
 // Signed out, an explicit account entry (Inbox Connect Eliza Cloud, Settings Manage Cloud account) is Alpha's
 // sign-in screen (explicitSignedOutCloudEntry); signed in, it is the approved Subscription sheet (H-37).
 const signInDialog=(page:Page)=>page.getByRole('dialog',{name:'Welcome to Alpha.',exact:true});
