@@ -184,9 +184,7 @@ test('Cloud declining a turn mid-use gives one answer and the popup; after a top
   await expect(conversation(page).getByText(/^Resident reply \d+$/)).toHaveCount(1, { timeout: 30_000 });
   await shot(page, info, '09-reply-after-top-up.png');
   expect(await harness(page, f => f.streams)).toBe(2);
-  // The harness does not answer the resident's client-observation handshake (GET /api/status); that read
-  // is recorded for every resident turn at this base, failing kind or not. Nothing else is unexpected.
-  expect(await harness(page, f => f.unexpected.filter((row: string) => row !== 'GET /api/status'))).toEqual([]);
+  expect(await harness(page, f => f.unexpected)).toEqual([]);
   await expectNoDevelopmentSurface(page);
   expect(foreign).toEqual([]);
 });

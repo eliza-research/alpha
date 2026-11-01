@@ -22,7 +22,9 @@ test.beforeEach(({}, testInfo) => { test.skip(testInfo.project.name !== 'product
 
 const SELECTION = 'alpha.connection.selection.v1';
 const offline = () => localStorage.setItem('alpha.connection.selection.v1', JSON.stringify({ kind: 'offline' }));
-const button = (page: Page, name: string) => page.getByRole('button', { name, exact: true });
+const button = (page: Page, name: string) => name==='Inbox'
+  ? page.getByRole('button', { name, exact: true }).and(page.locator('[data-mobile-shell-tile]'))
+  : page.getByRole('button', { name, exact: true });
 /** No mock, fixture or development surface, whatever the loop. */
 async function expectNoDevelopmentSurface(page: Page) {
   await expect(page.locator('.mock-mode-banner')).toHaveCount(0);

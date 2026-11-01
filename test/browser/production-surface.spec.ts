@@ -199,7 +199,7 @@ test('deferred apps are absent and root views show honest unconnected states', a
   };
   for (const [view, expected] of Object.entries(states)) {
     await page.goto('/?tools=1');
-    await page.getByRole('button', { name: view, exact: true }).click();
+    await page.getByRole('button', { name: view, exact: true }).and(page.locator('[data-mobile-shell-tile]')).click();
     await expect(page.locator('html')).toHaveAttribute('data-active-view', view.toLowerCase());
     await expect(page.locator('[data-screen]')).toContainText(expected);
     const text = await page.locator('body').innerText();
