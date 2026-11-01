@@ -158,14 +158,19 @@ test('the ordinary controller reply contract exposes planAction while stored-his
   assert.equal(rows.length,1);assert.equal(rows[0].text,'Saved reply');assert.equal(rows[0].planAction,undefined);
 });
 
-// The follow-up removes only the duplicate Calendar-view entry points; Settings keeps the actual actions.
-test('Calendar sources and transition controls remain in Settings after duplicate view controls are removed',()=>{
+// The single Calendar design removes source plumbing while retaining conditional recovery.
+test('Calendar Settings keeps one Google entry and conditional recovery without source-picker plumbing',()=>{
   const template=read('apps/app/src/prototype/template.html');
   const settings=read('apps/app/src/prototype/settings-adapter.ts');
+  const start=settings.indexOf('// calendar-settings:begin'),end=settings.indexOf('// calendar-settings:end',start);
+  assert(start>=0&&end>start,'current Settings Calendar block is present');
+  const calendar=settings.slice(start,end);
   assert.doesNotMatch(template,/calendar\.calendarAuthorityChoices|calendar\.canConfirmCalendarTransition/);
-  assert.match(settings,/sourceRows\.push\(\.\.\.calendarView\.calendarAuthorityChoices\.map/);
-  assert.match(settings,/go:calendarView\.confirmCalendarTransition/);
-  assert.match(settings,/cap:'Calendar sources',hasCap:true/);
+  assert.match(calendar,/label:'Google Calendar'/);assert.match(calendar,/googleConnectionController\.openCalendar\(scope\)/);
+  assert.match(calendar,/go:calendarView\.confirmCalendarTransition/);assert.match(calendar,/cap:'Recovery',hasCap:true/);
+  assert.match(calendar,/label:'Recover saved events'/);assert.match(calendar,/label:'Return to Calendar'/);
+  assert.match(calendar,/label:'Retry calendar'/);assert.match(calendar,/back:\(\)=>api\.set\(\{page:null\}\)/);
+  assert.doesNotMatch(calendar,/sourceRows|cap:'Calendar sources'|label:'Current source'|cap:'Sync'/);
 });
 
 for(const kind of ['text','voice'])test(`${kind}: focused existing non-null card metadata stays authoritative`,async()=>{

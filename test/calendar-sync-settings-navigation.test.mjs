@@ -70,25 +70,44 @@ async function canonicalFixture({draft=false,delay=false}={}){
  const f=await canonicalFixture({delay:true});f.retire();f.resolve();await f.flush();assert.equal(f.env.window.document.querySelector('dialog'),null);assert.equal(f.calls.changes.length,0);assert.equal(f.calls.legacy,0);f.env.window.close();
 }
 console.log('PASS 3 canonical sync dialog cases: same-source review/select/resume, retained draft blocks changes, owner retirement drops stale review; zero legacy host reads.');
-// Execute the real Settings row callback, leaving the connected/native/legacy fences intact.
+// Exercise the delimited current Settings block, not a removed per-source/Sync row.
 {
  const settings=fs.readFileSync(new URL('../apps/app/src/prototype/settings-adapter.ts',import.meta.url),'utf8');
- const start=settings.indexOf("groups.push({...group([",settings.indexOf("cap:'Calendar sources'"));assert(start>=0);
- const begin=start+"groups.push({...group([".length,end=settings.indexOf("]),cap:'Sync'",begin);assert(end>begin);
- const rowExpression=settings.slice(begin,end);
- function row({native=false,mocks=false,authority='canonical',calendar=null}={}){
-  const calls={pages:[],connections:0,sync:[],toasts:[]};const api={set:x=>calls.pages.push(x),toast:x=>calls.toasts.push(x)};const shell={live:true,agentCalendar:calendar,vget:()=>({calendarAuthority:authority}),canonicalDraftText:'',canonicalDraftInvalid:false};
-  const browserCalendarScope=owner=>mocks&&!!owner&&!native&&owner.vget('calendar').calendarAuthority==='browser-local';
-  const info=(label,val)=>({kInfo:true,label,val,hasVal:true,noAB:true});
-  const prefix=settings.slice(settings.lastIndexOf('          const syncAuthority',begin),begin);
-  const setup=prefix.startsWith('          const syncAuthority')?prefix.split('          groups.push')[0]:'';
-  const value=new Function('owner','api','native','testMocksEnabled','connectionController','openCalendarSyncSettings','browserCalendarScope','info',`${setup}return (${rowExpression});`)(shell,api,native,mocks,{open:()=>calls.connections++},x=>calls.sync.push(x),browserCalendarScope,info);return{value,go:value.go,calls,shell};
+ const start=settings.indexOf('// calendar-settings:begin'),end=settings.indexOf('// calendar-settings:end',start);
+ assert(start>=0&&end>start,'the actual Settings Calendar block must remain explicit');
+ const block=stripTypeScriptTypes(settings.slice(start,end),{mode:'transform'});
+ function page({native=false,authority='canonical',status='ready',grants=[],gmail='',display={},transition=false,choices=false,scopeAvailable=true}={}){
+  const calls={pages:[],connects:[],transition:0,recovery:0,returned:0,retry:0};
+  const scope={owner:'synthetic-calendar-scope'},state={page:'calendar'},page={groups:[]},out={stack:[]};
+  const shell={agentCalendar:{state:{ownerKey:'owner',status}},vget:()=>({calendarAuthority:authority}),api:()=>({}),calendarConnectionScope:()=>scopeAvailable?scope:null};
+  const calendarView={canConfirmCalendarTransition:transition,confirmCalendarTransition:()=>calls.transition++,
+   calendarAuthorityChoices:choices?[{label:'Agent Calendar',go:()=>calls.returned++},{label:'Old source',go:()=>{throw Error('No arbitrary source chooser');}}]:[],
+   nativeStatusRetry:()=>calls.retry++};
+  const context=vm.createContext({state,page,out,owner:shell,native,developerTools:false,
+   Capacitor:{isNativePlatform:()=>native},views:{calendar:{displaySources:()=>display,render:()=>calendarView}},
+   gmailAccounts:grants,gmail,group:rows=>({rows}),info:(label,val)=>({label,val,kInfo:true}),
+   api:{set:x=>calls.pages.push(x)},googleConnectionController:{openCalendar:x=>calls.connects.push(x)},
+   openCalendarRecovery:()=>calls.recovery++});
+  vm.runInContext(block,context);assert.equal(out.stack.length,1);
+  const frame=out.stack[0],rows=frame.groups.flatMap(group=>group.rows);
+  const find=label=>rows.find(row=>row.label===label);
+  return {calls,scope,frame,rows,find,shell};
  }
- for(const native of [false,true]){const f=row({native});assert.equal(f.value.kInfo,true);assert.match(f.value.val,/Connect to Agent Calendar/);assert.equal(f.go,undefined);assert.equal(f.calls.connections,0);}
- const native=row({authority:'android-native'});assert.equal(native.value.kNav,true);native.go();assert.equal(native.calls.sync.length,1);assert.equal(native.calls.connections,0);
- const browser=row({authority:'browser-local',mocks:true});assert.equal(browser.value.kNav,true);browser.go();assert.equal(browser.calls.sync.length,1);assert.equal(browser.calls.connections,0);
- const notBrowser=row({authority:'browser-local',mocks:true,native:true});assert.equal(notBrowser.value.kInfo,true);assert.equal(notBrowser.go,undefined);
- for(const authority of ['legacy']){const f=row({authority,calendar:{state:{ownerKey:'owner'}}});assert.equal(f.value.kInfo,true);assert.match(f.value.val,/Retained calendars stay read only/);assert.equal(f.go,undefined);assert.equal(f.calls.sync.length,0);assert.equal(f.calls.toasts.length,0);}
- const calendar={state:{ownerKey:'owner'}};const f=row({calendar});f.go();assert.equal(f.calls.sync.length,1);const review=f.calls.sync[0];assert.equal(review.calendar,calendar);assert(review.current());assert(review.canChange());f.shell.canonicalDraftText='unsent';assert.equal(review.canChange(),false);calendar.state.ownerKey='other';assert.equal(review.current(),false);assert.equal(f.calls.connections,0);
- console.log('PASS real Settings sync row: offline connection recovery, native/legacy routing, connected owner and draft fences');
+ for(const native of [false,true]){
+  for(const [grants,expected]of [[[],'Not connected'],[[{connected:true,connectionId:'id',grantedCapabilities:['google.calendar.read']}],'Finish connecting'],[[{connected:true,connectionId:'id',grantedCapabilities:['google.calendar.read','google.calendar.write']}],'Connected']]){
+   const f=page({native,grants});assert.equal(f.find('Google Calendar').sub,expected);
+   assert.equal(f.calls.connects.length,0,'rendering Settings never connects');
+   assert.equal(f.rows.filter(row=>row.label==='Google Calendar').length,1);
+   assert(!f.rows.some(row=>['Current source','Google Calendar sync','Old source'].includes(row.label)));
+   f.find('Google Calendar').go();assert.equal(f.calls.connects.length,1);assert.equal(f.calls.connects[0],f.scope);
+   f.frame.back();assert.equal(JSON.stringify(f.calls.pages),JSON.stringify([{page:null}]));
+  }
+  const missing=page({native,scopeAvailable:false});missing.find('Google Calendar').go();assert.equal(missing.calls.connects.length,0,'missing current scope cannot start connection');
+ }
+ const recovery=page({authority:'legacy',status:'legacy-recovery',transition:true,choices:true});
+ recovery.find('Review saved events').go();recovery.find('Recover saved events').go();recovery.find('Return to Calendar').go();
+ assert.deepEqual([recovery.calls.transition,recovery.calls.recovery,recovery.calls.returned],[1,1,1]);
+ assert(!recovery.find('Old source'),'arbitrary source controls remain removed');
+ for(const status of ['error','partial','unavailable']){const f=page({status});assert(f.find('Calendar needs attention'));f.find('Retry calendar').go();assert.equal(f.calls.retry,1);}
+ console.log('PASS current Settings Calendar block: one Google entry, scoped connect, retained recovery/retry and Back; no obsolete source/Sync controls.');
 }
