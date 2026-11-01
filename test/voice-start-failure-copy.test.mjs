@@ -10,7 +10,7 @@ const adapter=readFileSync(new URL('../apps/app/src/prototype/voice-adapter.ts',
 const catchBody=adapter.slice(adapter.indexOf('}catch(failure){if(token!==generation||controller.signal.aborted)return;conversationState='));
 const expression=catchBody.slice(catchBody.indexOf('error=')+6,catchBody.indexOf(';refresh();'));
 const cloud=readFileSync(new URL('../apps/app/src/runtime/cloud-voice.ts',import.meta.url),'utf8');
-const mapperSource=cloud.slice(cloud.indexOf('function voiceLimitMessage('),cloud.indexOf('export type VoiceClip')).replace('export function cloudVoiceFailure','function cloudVoiceFailure');
+const mapperSource=cloud.slice(cloud.indexOf('function voiceLimitMessage('),cloud.indexOf('/** Product registration only;')).replace('export function cloudVoiceFailure','function cloudVoiceFailure');
 const makeCloudMapper=own=>new Function('developmentCloudVoiceEnabled','browserCloudResidentEnabled','connectionController','cloudServiceName','cloudVoiceServiceLimit','retryDuration',stripTypeScriptTypes(mapperSource,{mode:'transform'})+';return cloudVoiceFailure;')(false,false,{getCloudEnvironment:()=> 'production',getSnapshot:()=>({residentInference:own?'direct':'cloud'})},()=> 'Cloud',error=>error.code==='voice-http-429'?{kind:'request-limit',retryAfterMs:120000}:null,()=> '2 minutes');
 const cloudMapper=makeCloudMapper(false);
 const render=new Function('failure','cloudVoiceFailure','voiceFailure','Capacitor','classified','return ('+expression+');');

@@ -6,6 +6,7 @@ import {fileURLToPath} from 'node:url';
 import {sourceDirectory,verifySource,workerArtifactDirectory,digest} from './local-agent-source.mjs';
 import {verifyWorkerArtifact,workerHash} from './workflow-worker-artifact.mjs';
 import {verifyNativeGoogleHostArtifact} from './native-google-host-artifact.mjs';
+import {verifyMobileBuildReceipt} from './mobile-uuid-adapter.mjs';
 const json=file=>JSON.parse(fs.readFileSync(file,'utf8'));
 export function verifyCloudResident(root,source=sourceDirectory(root)) {
  const main=path.join(root,'android/app/src/main'),agent=path.join(main,'assets/agent');
@@ -39,6 +40,7 @@ export function verifyCloudResident(root,source=sourceDirectory(root)) {
  for(const name of ['pglite.wasm','pglite.data','pglite-initdb.bin','vector.tar','fuzzystrmatch.tar']){const original=fs.readFileSync(path.join(source,'packages/agent/dist-mobile',name.endsWith('.tar')?name+'.gz':name));if(workerHash(name.endsWith('.tar')?gunzipSync(original):original)!==digest(path.join(agent,name)))throw Error('Cloud PGlite differs from prepared build: '+name);}
  for(const abi of runtimeAbis){const arch=abi==='arm64-v8a'?'aarch64':'x64';if(!bun.artifacts?.[arch]||digest(path.join(main,'jniLibs',abi,'libeliza_bun.so'))!==bun.artifacts[arch].binarySha256)throw Error('Cloud Bun executable differs from pinned artifact: '+abi);}
  if(digest(path.join(agent,'agent-bundle.js'))!==digest(path.join(source,'packages/agent/dist-mobile/agent-bundle.js')))throw Error('Cloud agent bundle differs from prepared build');
+ verifyMobileBuildReceipt(root,source,agent);
  for(const abi of runtimeAbis){
   const musl=[abi==='arm64-v8a'?'libeliza_ld_musl_aarch64.so':'libeliza_ld_musl_x86_64.so','libeliza_stdcpp.so','libeliza_gcc_s.so','libsigsys-handler.so',abi==='arm64-v8a'?'libeliza_ld_musl_aarch64_real.so':'libeliza_ld_musl_x86_64_real.so'];
   if(bunTarget==='android'&&musl.some(name=>seen.has(`lib/${abi}/${name}`)))throw Error('Native Android Cloud runtime contains musl libraries');

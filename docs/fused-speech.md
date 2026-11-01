@@ -498,3 +498,24 @@ and settings. Cold process starts open the assistant with the microphone closed;
 a wake starts voice automatically only when the native process already had the
 same authenticated owner binding. Locked, stale, consumed or changed-owner wakes
 never start capture.
+
+### Android agent producer UUID admission
+
+The Cloud speech investigation found a separate first-turn agent failure in the
+Android mobile bundle: Bun 1.4.2 lowered UUID's named re-export barrel into an
+undeclared `default10` binding. The bundle loaded, but creating a message response
+ID failed before any model request. `patches/eliza/mobile-uuid-build.json` admits
+the exact upstream producer, Bun revision, dependency lock, and UUID 14.0.2 module
+hashes. `scripts/build-mobile-agent.mjs` runs that unchanged producer with a
+bounded build adapter for the one admitted UUID barrel. The adapter imports the
+real UUID algorithms through CommonJS namespace properties; it does not supply a
+replacement UUID implementation or rewrite emitted bundle text.
+
+Every build exercises UUID options, buffers, versions and known name vectors in
+the actual emitted bundle, then reaches the real message-turn response-ID path
+and stops before provider execution. The staged `alpha-mobile-build.json`
+receipt binds these producer inputs and the resulting bundle. Cloud and native
+build preflight, APK verification, and the build source snapshot enforce that
+receipt separately from the unchanged upstream source stamp. These host smoke
+tests verify the failing code path; they do not establish device voice latency
+or a successful Cloud model response.

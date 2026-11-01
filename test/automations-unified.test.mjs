@@ -14,7 +14,9 @@ const workflow={id:'workflow:flow',type:'workflow',title:'Reviewed workflow',des
 const prompt={id:'trigger:prompt',type:'coordinator_text',title:'Owner prompt',description:'Review a supplied document',enabled:false,status:'paused',triggerId:'prompt',schedules:[{triggerType:'cron',cronExpression:'0 9 * * 1',timezone:'UTC'}]};
 const schedule={taskId:'scheduled-task',kind:'recap',promptInstructions:'Manual recap',trigger:{kind:'manual'},state:{status:'scheduled'},source:'default_pack',ownerVisible:true,metadata:{recordKey:'weekly-review'}};
 const reminder={definition:{id:'definition',title:'Check the draft',description:'',status:'active',timezone:'UTC',cadence:{kind:'once',dueAt:'2020-01-01T12:00:00Z'}},occurrence:{id:'occurrence',state:'pending'},latestAttempt:null};
-const future=()=>protocol.automationLocalDateInput(Date.now()+3600000);
+// One hour can land in the repeated local hour at the autumn DST boundary.
+// This general future fixture is distinct from the explicit DST cases below.
+const future=()=>protocol.automationLocalDateInput(Date.now()+24*3600000);
 async function fixture(handler){
  const calls=[];
  const server=http.createServer(async(req,res)=>{let raw='';for await(const chunk of req)raw+=chunk;const call={path:req.url,method:req.method,body:raw?JSON.parse(raw):undefined};calls.push(call);assert.equal(req.headers.authorization,'Bearer synthetic-owner');

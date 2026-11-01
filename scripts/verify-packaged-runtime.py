@@ -107,6 +107,35 @@ def verify(apk, release=False, runtime_profile="native"):
 
         for name in ['alpha-source.json', 'agent-bundle.js', 'agent-bundle-dependencies.json', 'workflow-worker/files.sha256', 'workflow-worker/manifest.json']:
             check('assets/agent/' + name, staged / name)
+        # Explicit build adapters are separate from the unmodified source stamp.
+        # If this build declares one, bind its receipt and producer input hashes too.
+        mobile_receipt_file = staged / 'alpha-mobile-build.json'
+        mobile_policy_file = ROOT / 'patches/eliza/mobile-uuid-build.json'
+        if mobile_policy_file.exists() or mobile_receipt_file.exists() or 'assets/agent/alpha-mobile-build.json' in names:
+            check('assets/agent/alpha-mobile-build.json', mobile_receipt_file)
+            mobile_receipt = json.loads(archive.read('assets/agent/alpha-mobile-build.json'))
+            mobile_policy = json.loads(mobile_policy_file.read_text())
+            if (mobile_receipt.get('format') != 'alpha-mobile-build-v1' or
+                    mobile_receipt.get('sourcePin') != pin or
+                    mobile_policy.get('baseCommit') != pin or
+                    mobile_receipt.get('sourceStampSha256') != file_hash(stamp_file) or
+                    mobile_receipt.get('lockSha256') != mobile_policy.get('lockSha256') or
+                    mobile_receipt.get('bun') != mobile_policy.get('bun') or
+                    mobile_receipt.get('builder') != mobile_policy.get('builder') or
+                    mobile_receipt.get('uuid') != {'version': mobile_policy['package']['version'], 'files': mobile_policy['package']['files']} or
+                    mobile_receipt.get('bundleSha256') != checks['assets/agent/agent-bundle.js'] or
+                    mobile_receipt.get('policySha256') != file_hash(mobile_policy_file) or
+                    mobile_receipt.get('smoke') != {'uuidSemantics': True, 'messageTurnBeforeProvider': True}):
+                raise ValueError('Packaged mobile producer receipt differs')
+            transforms = mobile_receipt.get('transforms', [])
+            if (len(transforms) != 1 or
+                    transforms[0].get('path') != mobile_policy['package']['root'] + '/dist-node/index.js' or
+                    transforms[0].get('sourceSha256') != mobile_policy['package']['files']['dist-node/index.js'] or
+                    not re.fullmatch('[a-f0-9]{64}', str(transforms[0].get('bridgeSha256', '')))):
+                raise ValueError('Packaged mobile UUID transform differs')
+            expected_adapters = ['scripts/build-mobile-agent.mjs', 'scripts/mobile-uuid-adapter.mjs', 'scripts/mobile-bundle-smoke.mjs']
+            if mobile_receipt.get('adapterFiles') != {name: file_hash(ROOT / name) for name in expected_adapters}:
+                raise ValueError('Packaged mobile producer adapter changed')
         bundle_dependencies = json.loads(archive.read('assets/agent/agent-bundle-dependencies.json'))
         if (bundle_dependencies.get('version') != 1 or
                 bundle_dependencies.get('bundleSha256') != checks['assets/agent/agent-bundle.js'] or

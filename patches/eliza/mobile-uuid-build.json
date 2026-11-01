@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "baseCommit": "6cd75d68202db3322dbec9d36d200902f08849c4",
+  "bun": {
+    "version": "1.4.2",
+    "revision": "744846f844374847c902b5e7fd59b4342a51ef99"
+  },
+  "builder": {
+    "path": "packages/agent/scripts/build-mobile-bundle.ts",
+    "sha256": "b56b0f722fd25fdbf99e71c0ba79385addc2b4af495205ebf091fa46367b14c8"
+  },
+  "package": {
+    "name": "uuid",
+    "version": "14.0.2",
+    "root": "node_modules/.bun/uuid@14.0.2/node_modules/uuid",
+    "files": {
+      "package.json": "f7478df6f4ddaffacba855e97974626c264a0d022c02e4bcc1cdbc8471cbc6ee",
+      "dist-node/index.js": "65e9fae8f22278e6c9ac5b016dbe1ead01b8014f66ce08a807741885d4bf01f1",
+      "dist-node/max.js": "8f81a7b2a5f8704ea1b4e8f83d36659856fdf3d122b2bd16fe1b5c47c97b6ffa",
+      "dist-node/md5.js": "9e143aad0b68e277fa3552a6f783052320bcd5d61d1d8c45fc64aac10113279c",
+      "dist-node/nil.js": "a6f8ac293df0b75af2946e5190d8f00336b826bb1340b96d669a09beb8885ff8",
+      "dist-node/parse.js": "a383f50a691c05533a40bbb4a87f718daa050abbc96debc9715efdc74d8538b4",
+      "dist-node/regex.js": "774bc4bc767a58458dfdd252430d96b71b3d380ac241b50df6cb757aaa1b4783",
+      "dist-node/rng.js": "69d169609cd3f16d85b120b1d88e247216a59c7c5a27b321290c0604627db5c3",
+      "dist-node/sha1.js": "445563946f94669cb7efb10fbfa6d24b825d466ee99faad3e58d939f3ee46c5e",
+      "dist-node/stringify.js": "bb592b599f2b00be6ca9fb2ac2fb7350abf3a6e6e274201cf6865c8c15e52b6a",
+      "dist-node/types.js": "8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881",
+      "dist-node/uuid-bin.js": "40ab2c3c4a7fe2932875b5e073d2d1a19b6d205363b3baef81f95e9fae0174bf",
+      "dist-node/v1.js": "d9b4e9be4baa72c35dcabe41be85dec482db18592278f5acc96b38d277be1e5d",
+      "dist-node/v1ToV6.js": "f0a2d19ee0d4398607808fcfc3eebeb1ea7af08a0c17d71d42fc612f97241a3f",
+      "dist-node/v3.js": "3b65ad31501886af057e13aeec03afedc54f1f85cc8d332b0eb89800b11fbce4",
+      "dist-node/v35.js": "ce090c2ea41db958cff64383cdcd09de21b577d33a57fa281cad1dde2c87b02d",
+      "dist-node/v4.js": "eb4b917bb2bfcb3e723fedf3c5d0256b83578a9285e85ebf4c60caa953aa3d39",
+      "dist-node/v5.js": "daaf09616ea3b145ccd6a1dfea190b65d546267a9916c5741e026d4290c61ae9",
+      "dist-node/v6.js": "32f4c875353e043cb8d790f2d63d46e7b23d592fa3d5d09ace6afcff1dd44e03",
+      "dist-node/v6ToV1.js": "78475a282beaea6e8c45e5f2586134929be2e21728f159fb8559df06d7288475",
+      "dist-node/v7.js": "3076cc79dd38200d1090d80bff1d3590729a66ace6578b510cf775b6b9cd0227",
+      "dist-node/validate.js": "78ba6a91a3c2d219e3a6980d7704c0998e8152cabcaece0f5a04989025d0e60c",
+      "dist-node/version.js": "5a43d6eb8496806fd5e152f92edda603dbb1f77108045edcf034f22c9e320ce8"
+    }
+  },
+  "lockSha256": "0afe2acbbd38fbe2178bb481f0f2b8151276b66a791024e29bd89608bc3c066c"
+}
