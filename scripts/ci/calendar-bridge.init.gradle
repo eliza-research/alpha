@@ -1,0 +1,267 @@
+// Source-only CI proposal. Explicit --init-script only; no install/global hook/finalizer.
+import groovy.json.JsonOutput
+import org.gradle.api.tasks.compile.JavaCompile
+import java.nio.file.*
+import java.nio.file.attribute.BasicFileAttributes
+import java.security.MessageDigest
+
+// Each anonymous writer captures its final sink lexically; never resolve a dynamic `out` property.
+def boundedStream = { OutputStream destination, int maximum ->
+    final OutputStream target = destination
+    final int limit = maximum
+    new OutputStream() {
+        int count = 0
+        @Override synchronized void write(int value) {
+            if (++count > limit) throw new IOException('Bounded output limit exceeded')
+            target.write(value)
+        }
+        @Override synchronized void write(byte[] bytes, int offset, int length) {
+            if ((count += length) > limit) throw new IOException('Bounded output limit exceeded')
+            target.write(bytes, offset, length)
+        }
+        @Override synchronized void flush() { target.flush() }
+    }
+}
+
+gradle.projectsEvaluated {
+    def app = gradle.rootProject.project(':app')
+    def configFile = new File(app.property('calendarBridgeInputs').toString())
+    if (Files.isSymbolicLink(configFile.toPath()) || configFile.length() > 65536)
+        throw new GradleException('Invalid bounded qualification config')
+    def configBytes = Files.newInputStream(configFile.toPath()).withCloseable { it.readNBytes(65537) }
+    if (configBytes.length > 65536) throw new GradleException('Actual config read bound exceeded')
+    def cfg = new groovy.json.JsonSlurper().parseText(new String(configBytes, 'UTF-8'))
+    def root = new File(cfg.root).canonicalFile
+    if (gradle.rootProject.projectDir.canonicalFile != new File(root, 'android'))
+        throw new GradleException('Unexpected normal production project')
+    def readRoots = cfg.readRoots.collect { new File(it).toPath().toRealPath() }
+    long readBytes = 0
+    int entries = 0
+    def checked = { File file ->
+        def path = file.toPath().toAbsolutePath().normalize()
+        if (path.toString().length() > 4096 || !readRoots.any { path.startsWith(it) })
+            throw new GradleException('Input outside reviewed roots or path bound')
+        for (def part = path; part != null; part = part.parent)
+            if (Files.isSymbolicLink(part)) throw new GradleException('Symlink in qualification input')
+        path
+    }
+    def record = { File file ->
+        def path = checked(file)
+        if (!Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)) throw new GradleException('Nonregular input')
+        if (++entries > 12000) throw new GradleException('Global input entry bound exceeded')
+        def before = Files.readAttributes(path, BasicFileAttributes, LinkOption.NOFOLLOW_LINKS)
+        if (before.size() > 160L * 1024 * 1024)
+            throw new GradleException('Single input byte bound exceeded')
+        def md = MessageDigest.getInstance('SHA-256')
+        Files.newInputStream(path).withCloseable { stream ->
+            byte[] buffer = new byte[65536]
+            long count = 0
+            for (int n; (n = stream.read(buffer)) != -1;) {
+                count += n; readBytes += n
+                if (count > 160L * 1024 * 1024 || readBytes > 1536L * 1024 * 1024)
+                    throw new GradleException('Actual streamed hash budget exceeded')
+                md.update(buffer, 0, n)
+            }
+            if (count != before.size()) throw new GradleException('Input grew/shrank during bounded hash')
+        }
+        def after = Files.readAttributes(path, BasicFileAttributes, LinkOption.NOFOLLOW_LINKS)
+        if (before.size() != after.size() || before.lastModifiedTime() != after.lastModifiedTime() || before.fileKey() != after.fileKey())
+            throw new GradleException('Input changed during hash')
+        [path: path.toString(), bytes: after.size(), sha256: md.digest().encodeHex().toString()]
+    }
+    def walk = { File directory ->
+        def result = []
+        Files.walkFileTree(checked(directory), new SimpleFileVisitor<Path>() {
+            @Override FileVisitResult preVisitDirectory(Path path, BasicFileAttributes attributes) {
+                checked(path.toFile())
+                if (++entries > 12000) throw new GradleException('Global walk entry bound exceeded')
+                FileVisitResult.CONTINUE
+            }
+            @Override FileVisitResult visitFile(Path path, BasicFileAttributes attributes) {
+                if (!attributes.isRegularFile() || Files.isSymbolicLink(path))
+                    throw new GradleException('Nonregular classpath/output member')
+                result.add(record(path.toFile()))
+                FileVisitResult.CONTINUE
+            }
+        })
+        result.sort { it.path }
+    }
+    def collection = { value -> value == null ? [] : value.files.collect { File file ->
+        file.isDirectory() ? [path: file.absolutePath, files: walk(file)] : record(file)
+    } }
+    def sources = { JavaCompile task ->
+        def rows = []
+        task.source.each { File file -> rows.add(record(file)) }
+        rows.sort { it.path }
+    }
+    def fixed = {
+        cfg.fixedInputs.collect { name, expected ->
+            def actual = record(new File(name))
+            if (actual.sha256 != expected) throw new GradleException('Fixed input changed')
+            actual
+        }
+    }
+    def gitEnv = [PATH:'/usr/bin:/bin', LANG:'C.UTF-8', LC_ALL:'C.UTF-8',
+        GIT_CONFIG_NOSYSTEM:'1', GIT_CONFIG_GLOBAL:'/dev/null', GIT_NO_REPLACE_OBJECTS:'1',
+        GIT_NO_LAZY_FETCH:'1', GIT_OPTIONAL_LOCKS:'0', GIT_TERMINAL_PROMPT:'0']
+    def binding = {
+        def result = [:]
+        [head:['rev-parse','HEAD'], tree:['rev-parse','HEAD^{tree}'], sdk:['rev-parse','HEAD:vendor/eliza']].each { key, args ->
+            def output = new ByteArrayOutputStream()
+            def errors = new ByteArrayOutputStream()
+            def bounded = boundedStream(output, 256)
+            def boundedErrors = boundedStream(errors, 2048)
+            def status = app.exec { org.gradle.process.ExecSpec spec ->
+                spec.commandLine(['/usr/bin/git','-c','core.hooksPath=/dev/null','-c','core.fsmonitor=false',
+                    '-c','core.pager=cat','-C',root.absolutePath] + args)
+                spec.setEnvironment(gitEnv)
+                spec.setStandardOutput(bounded)
+                spec.setErrorOutput(boundedErrors)
+                spec.setIgnoreExitValue(true)
+            }
+            if (status.exitValue != 0)
+                throw new GradleException('Git identity read failed: ' + errors.toString('UTF-8'))
+            if (output.size() > 256) throw new GradleException('Git identity output bound exceeded')
+            result[key] = output.toString('UTF-8').trim()
+        }
+        if (result != [head:cfg.head, tree:cfg.tree, sdk:cfg.sdk])
+            throw new GradleException('Source binding drift: expected=' + [head:cfg.head, tree:cfg.tree, sdk:cfg.sdk] + ', actual=' + result)
+        result
+    }
+    def out = new File(cfg.outputDirectory).toPath().toAbsolutePath().normalize()
+    if (out.parent != configFile.toPath().toAbsolutePath().parent || Files.exists(out, LinkOption.NOFOLLOW_LINKS))
+        throw new GradleException('Output is not a fresh owned sibling of the run config')
+    for (def part = out.parent; part != null; part = part.parent)
+        if (Files.isSymbolicLink(part)) throw new GradleException('Symlink in owned output ancestry')
+    if (Files.getOwner(out.parent).name != System.getProperty('user.name'))
+        throw new GradleException('Qualification output parent not owned')
+    Files.createDirectory(out)
+    def write = { String name, value, int limit ->
+        long bytes = 0
+        def file = out.resolve(name)
+        Files.newBufferedWriter(file, java.nio.charset.StandardCharsets.UTF_8,
+            StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE).withCloseable { writer ->
+            def emit = { String text ->
+                bytes += text.getBytes('UTF-8').length
+                if (bytes > limit) throw new GradleException('Receipt byte bound exceeded')
+                writer.write(text)
+            }
+            Closure json
+            json = { item ->
+                if (item instanceof Map) {
+                    emit('{'); int i = 0
+                    item.each { key, child -> if (i++ > 0) emit(','); emit(JsonOutput.toJson(key.toString())); emit(':'); json(child) }
+                    emit('}')
+                } else if (item instanceof Collection) {
+                    emit('['); int i = 0; item.each { child -> if (i++ > 0) emit(','); json(child) }; emit(']')
+                } else {
+                    if (item instanceof CharSequence && item.length() > 65536) throw new GradleException('Scalar length bound exceeded')
+                    emit(JsonOutput.toJson(item))
+                }
+            }
+            json(value); emit('\n')
+        }
+    }
+    def appJava = app.tasks.named('compileStandaloneReleaseJavaWithJavac', JavaCompile)
+    def javaTasks = [appJava,
+        gradle.rootProject.project(':eliza-calendar').tasks.named('compileReleaseJavaWithJavac', JavaCompile),
+        gradle.rootProject.project(':eliza-action-journal').tasks.named('compileReleaseJavaWithJavac', JavaCompile)]
+    def before = [:]
+    def after = [:]
+    gradle.taskGraph.whenReady { graph ->
+        if (graph.allTasks.size() > 1000) throw new GradleException('Qualification task graph exceeds bound')
+        if (graph.allTasks.any { it.name ==~ /(?i)(assemble.*|install.*|uninstall.*|lint.*|.*AndroidTest|package(Standalone|Launcher)(Debug|Release))/ })
+            throw new GradleException('APK/instrumentation/lint task is outside this qualification')
+        write('taskgraph.json', graph.allTasks*.path, 32768)
+    }
+    def compileInputs = { JavaCompile task ->
+        def compiler = task.javaCompiler.get()
+        if (compiler.metadata.installationPath.asFile.canonicalPath != cfg.javaHome ||
+            compiler.metadata.languageVersion.toString() != '21' || task.options.forkOptions.executable || task.options.forkOptions.javaHome)
+            throw new GradleException('Compiler differs from normal reviewed toolchain')
+        def args = task.options.allCompilerArgs
+        if (args.size() > 256 || args.any { it.length() > 4096 }) throw new GradleException('Compiler argv bound exceeded')
+        [sources:sources(task), javac:record(compiler.executablePath.asFile), javaHome:cfg.javaHome,
+            java:record(new File(cfg.javaHome, 'bin/java')), releaseMetadata:record(new File(cfg.javaHome, 'release')),
+            classpath:collection(task.classpath), bootstrap:collection(task.options.bootstrapClasspath),
+            annotationProcessors:collection(task.options.annotationProcessorPath),
+            sourceCompatibility:task.sourceCompatibility, targetCompatibility:task.targetCompatibility,
+            release:task.options.release.orNull, encoding:task.options.encoding, compilerArgs:args,
+            fork:task.options.fork, forkExecutable:task.options.forkOptions.executable,
+            forkJavaHome:task.options.forkOptions.javaHome?.canonicalPath,
+            forkJvmArgs:task.options.forkOptions.jvmArgs, incremental:task.options.incremental,
+            forkMemoryInitial:task.options.forkOptions.memoryInitialSize,
+            forkMemoryMaximum:task.options.forkOptions.memoryMaximumSize,
+            debug:task.options.debug, debugLevel:task.options.debugOptions.debugLevel,
+            deprecation:task.options.deprecation, failOnError:task.options.failOnError,
+            verbose:task.options.verbose, warnings:task.options.warnings, listFiles:task.options.listFiles]
+    }
+    javaTasks.each { provider -> provider.configure { JavaCompile task ->
+        // Only this explicit qualification changes these three actions; shipping defaults stay unchanged.
+        outputs.upToDateWhen { false }
+        outputs.cacheIf { false }
+        options.incremental = false
+        doFirst {
+            binding()
+            before[task.path] = [fixed:fixed(), compiler:compileInputs(task)]
+        }
+        doLast {
+            def current = [fixed:fixed(), compiler:compileInputs(task)]
+            if (current != before[task.path]) throw new GradleException('Compile inputs/tools/options/classpath drifted')
+            after[task.path] = [before:before[task.path], after:current,
+                destination:task.destinationDirectory.get().asFile.canonicalPath,
+                classes:walk(task.destinationDirectory.get().asFile)]
+        }
+    } }
+    app.tasks.register('qualifyCalendarPairedJournalBridge') {
+        dependsOn(javaTasks)
+        outputs.upToDateWhen { false }
+        doLast {
+            def source = binding()
+            javaTasks.each { provider ->
+                def task = provider.get()
+                if (!before.containsKey(task.path) || !after.containsKey(task.path) || task.state.failure ||
+                    task.state.noSource || task.state.skipped || task.state.upToDate || !task.state.didWork)
+                    throw new GradleException('All three actual normal compile actions must run; no skipped/cache substitute')
+                after[task.path].state = [didWork:task.state.didWork, skipped:task.state.skipped,
+                    upToDate:task.state.upToDate, skipMessage:task.state.skipMessage]
+            }
+            def selected = appJava.get()
+            def cp = selected.classpath.files.toList()
+            if (selected.options.bootstrapClasspath != null) cp.addAll(selected.options.bootstrapClasspath.files)
+            def command = [cfg.node,cfg.driver,'--classes',selected.destinationDirectory.get().asFile.canonicalPath,
+                '--classpath',cp.collect { it.canonicalPath }.join(File.pathSeparator),'--json',cfg.json,
+                '--host','ai.elizaresearch.alphaphone.AlphaCalendarPlugin',
+                '--journal','alpha-calendar-creations-v1','--prefix','alphaphone://calendar-creation/']
+            write('inputs.json', [source:source, fixed:fixed(), normalJavaCompile:after,
+                command:command, bridgeClasspath:'normal compile classpath followed by normal bootstrap APIs'], 786432)
+            def tmp = Files.createDirectory(out.resolve('tmp'))
+            def env = [JAVA_HOME:cfg.javaHome, TMPDIR:tmp.toString(),
+                PATH:cfg.javaHome+'/bin:/usr/bin:/bin', LANG:'C.UTF-8', LC_ALL:'C.UTF-8']
+            def log = out.resolve('bridge.log')
+            Files.newOutputStream(log, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE).withCloseable { stream ->
+                def bounded = boundedStream(stream, 65536)
+                app.exec { org.gradle.process.ExecSpec spec ->
+                    spec.commandLine(command)
+                    spec.workingDir(root)
+                    spec.setEnvironment(env)
+                    spec.setStandardOutput(bounded)
+                    spec.setErrorOutput(bounded)
+                }.assertNormalExitValue()
+            }
+            if (Files.size(log) > 65536) throw new GradleException('Bridge log read bound exceeded')
+            def pass = 'PASS actual ai.elizaresearch.alphaphone.AlphaCalendarPlugin: denied/bounded list, option unknown/recovery/ack, exact namespace, cross-journal collision/corruption/no-rewrite and two-instance race, foreground external handoff'
+            if (Files.readAllLines(log).findAll { it == pass }.size() != 1) throw new GradleException('Owning bridge PASS missing/duplicate')
+            binding(); def finalFixed = fixed()
+            javaTasks.each { provider ->
+                def task = provider.get(); def row = after[task.path]
+                if ([fixed:finalFixed, compiler:compileInputs(task)] != row.after ||
+                    walk(task.destinationDirectory.get().asFile) != row.classes)
+                    throw new GradleException('Production source/classes/dependencies drifted during fixture')
+            }
+            write('result.json', [status:'PASS_CONTROLLED_JVM_BRIDGE', source:source,
+                actualNormalCompileTasks:after.keySet().toList(), fixtureOnly:true, androidProviderAcceptance:false,
+                deviceAcceptance:false, hashBytes:readBytes, enumeratedEntries:entries], 32768)
+        }
+    }
+}
