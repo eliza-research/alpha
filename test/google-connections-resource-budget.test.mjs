@@ -16,7 +16,7 @@ test('Google settings offer no calendar choice, revalidate grants and own Androi
  const saved={window:globalThis.window,document:globalThis.document,HTMLElement:globalThis.HTMLElement,IS_REACT_ACT_ENVIRONMENT:globalThis.IS_REACT_ACT_ENVIRONMENT};
  Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
  const require=createRequire(import.meta.url),React=require('react'),{createRoot}=require('react-dom/client');
- const counts={accounts:0,calendars:0};const access={gmailChanges:true,calendarEdits:true},published=[];
+ const counts={accounts:0,calendars:0};const access={gmailChanges:true,calendarEdits:true},published=[],hostCalls=[];
  const account={connectionId:'11111111-1111-4111-8111-111111111111',connected:true,label:'owner@example.invalid',grantedCapabilities:['google.calendar.read','google.calendar.write','google.gmail.read','google.gmail.send']};
  // Calendar is one merged view of the agent's feed: the panel never lists or reads Google calendars.
  const binding={client:{googleCalendars:async()=>{counts.calendars++;return [];}},sessionId:'fixture-session',credentialId:'fixture-credential'};
@@ -29,11 +29,13 @@ test('Google settings offer no calendar choice, revalidate grants and own Androi
   '../daily':{DailyApps:{addListener:async()=>({remove(){}})}},
   './gmail-background':{gmailBackgroundStatus:async()=>({}),gmailBackgroundMessage:()=>'',GMAIL_BACKGROUND_CHANGED:'alpha:test-gmail-background'},
   '../native':{isAndroid:true},
+  './browser-cloud-resident':{browserCloudResidentEnabled:true,browserResidentCall:async(...call)=>{hostCalls.push(call);}},
   './gmail-grants':{gmailGrantTier:()=> 'send',googleAccountAccessLabel:()=> 'Read and send access'},
   './modal-inert':{holdPhoneInert:()=>()=>{}},
   './connection-ui':{connectionController:{subscribe:()=>()=>{},getSnapshot:()=>snapshot,getCloudClient:()=>binding,rejectCloudSession:()=>{throw Error('Unexpected rejection');}}},
   './google-accounts':{GOOGLE_ACCOUNTS_CHANGED:ACCOUNTS,createGoogleAccounts:()=>({list:async()=>{counts.accounts++;return [account];}})},
   './google-calendar-selection':{clearGoogleCalendarSelectionForConnection:()=>{throw Error('Unexpected disconnect');}},
+  './google-calendar-link':{linkGoogleCalendar:()=>{throw Error('Unexpected Calendar link without the Calendar intent');}},
   './native-connection':{openConnectionBrowser:()=>{throw Error('Unexpected OAuth request');},googleWorkspaceReturnPort:undefined},
   './google-agent-access':{googleAgentAccess:()=>({...access}),publishGoogleAgentAccess:async()=>{published.push({...access});},setGoogleAgentAccess:async change=>{Object.assign(access,change);dom.window.dispatchEvent(new dom.window.Event('alpha:device-settings'));}},
  };
@@ -59,6 +61,7 @@ test('Google settings offer no calendar choice, revalidate grants and own Androi
   await React.act(async()=>{refresh.click();await flush();});
   assert.deepEqual(counts,{accounts:2,calendars:0});
   assert.deepEqual(published.at(-1),{gmailChanges:true,calendarEdits:true},'The agent host receives the default-on switches');
+  assert.deepEqual(hostCalls,[],'Loading the default-on switches never enables browser host Calendar writes');
   {const gmail=dom.window.document.querySelector('[aria-label="Agent access to Google"] input[aria-label="Gmail changes"]'),calendar=dom.window.document.querySelector('[aria-label="Agent access to Google"] input[aria-label="Calendar edits"]');
    assert.equal(gmail.checked,true,'Gmail changes default on when granted');assert.equal(calendar.checked,true,'Calendar edits default on when granted');
    await React.act(async()=>{gmail.click();await flush();});
