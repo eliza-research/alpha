@@ -57,6 +57,9 @@ function allowed(path){
  if(mode==='worker')return ['manifest.json','dependencies.json','google-host.mjs'].includes(path)
   ||(/^lib\/[^/]+\.js$/.test(path))
   ||(/^(?:node_modules|compiler)\//.test(path)&&(/\.(?:js|mjs|cjs|json|d\.ts)$/.test(path)||license(path)))
+  // The compiler copies its resolved declaration graph, including upstream .ts inputs.
+  // Only this compiler subtree is admitted, and worker.files must match the verified manifest.
+  ||(/^compiler\/(?:node_modules|types)\/.+\.ts$/.test(path))
   ||(/^licenses\/[a-f0-9]+\//.test(path)&&license(path));
  return ['index.html','delegation-return.html','build-flags.json','logo.svg','logo-mark.svg','denton-300.woff2'].includes(path)
   ||(/^(?:assets|icons|fonts|licenses)\//.test(path)&&/\.(?:js|mjs|css|json|txt|svg|png|jpe?g|webp|gif|ico|woff2?|ttf|otf|wasm)$/.test(path))
