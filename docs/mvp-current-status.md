@@ -85,9 +85,9 @@ the operator's index of build, provisioning, release and support material is the
 
 ## Product boundaries
 
-Current source projection: SDK `6cd75d6820` (elizaOS/eliza 6cd75d6820, compare to develop not yet recorded; scripts/ci/upstream-reachability.json records the compare; successor of `641c179ce8`); the client feature projection now reads the SDK's browser-safe `@elizaos/core/schema-types`, `@elizaos/ui/api/transport`, Calendar auto-join types and Clock hand-off modules. Source metadata only; runtime, artifact and device qualification remains separate as recorded above.
+Current source projection: SDK `4573a187b0` is the recorded elizaOS/eliza `develop` head as of 2026-11-01 (`scripts/ci/upstream-reachability.json`). It includes the reviewed direct-provider routing and credential readback fixes, owner-granted Gmail task reads, browser request grounding and browser-protection updates. The client feature projection continues to use the SDK's browser-safe modules. Native engine/model/JNI inputs are unchanged from `6cd75d6820`; the Android provider credential readback changed. Existing native requalification remains required.
 
-The current upstream source pin is `6cd75d6820` (elizaOS/eliza 6cd75d6820, compare to develop not yet recorded; scripts/ci/upstream-reachability.json records the compare) from upstream.lock.json; the preceding pins were `641c179ce8`, `89714cd4b8`, `9af104a1c7`, `fbc2d23d4b`, `1f2a922f86`, `756ba00966`, `6c1a31f233`, `5794c8c0d1` and `e40497d5d0`. Runtime and device results remain bound to their own source, artifact and account receipts.
+The current upstream source pin is `4573a187b0`; the preceding pin was `6cd75d6820`. Runtime and device results remain bound to their own source, artifact and account receipts. This source update does not transfer historical APK or device qualification.
 
 The historical October 14 development rebuild used upstream `193d9264fc`; current source pins have advanced since that build. Acceptance evidence below remains scoped to its recorded builds.
 
