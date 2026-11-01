@@ -15,7 +15,8 @@ async function fixture(page:Page, signedOut=false){
   const w=window as any,base=w.Capacitor.nativePromise;
   const leases=new Set<string>();let selected:any=null;
   // reject: true refuses the key; 'echo' refuses it with a message that repeats most of the entered key.
-  const f=w.ownProvider={events:[] as string[],saved:0,cancelled:0,cleared:0,checks:0,hold:false,reject:false as boolean|'echo',pending:false,release:null as null|(()=>void),matched:false};
+  // holdReply holds the next chat reply until releaseReply(): the turn is dispatched, nothing has streamed yet.
+  const f=w.ownProvider={events:[] as string[],saved:0,cancelled:0,cleared:0,checks:0,hold:false,reject:false as boolean|'echo',pending:false,release:null as null|(()=>void),matched:false,holdReply:false,replyHeld:false,releaseReply:null as null|(()=>void)};
   localStorage.setItem(dataKey,'existing local app data');
   if(signedOut){delete w.flagOff.slots['cloud:production'];w.flagOff.persist();}
   const status=()=>selected?{provider:'cerebras',configured:true,selected:true,model:'qwen-3.8-27b',revision:selected.revision,voiceConfigured:selected.voice}:base('Agent','providerStatus',{});
@@ -23,6 +24,7 @@ async function fixture(page:Page, signedOut=false){
   w.Capacitor.PluginHeaders.find((p:any)=>p.name==='Agent').methods.push(...['prepareProviderConfiguration','configureProvider','cancelProviderConfiguration'].map(name=>({name,rtype:'promise'})));
   w.Capacitor.nativePromise=async(plugin:string,method:string,input:any)=>{
    if(plugin!=='Agent')return base(plugin,method,input);
+   if(method==='requestStream'&&f.holdReply){f.holdReply=false;f.replyHeld=true;await new Promise<void>(resolve=>f.releaseReply=resolve);f.replyHeld=false;}
    if(method==='providerStatus'){f.checks++;return status();}
    if(method==='prepareProviderConfiguration'){const id=crypto.randomUUID();leases.add(id);f.events.push('reserve');return {requestId:id};}
    if(method==='cancelProviderConfiguration'){leases.delete(input.requestId);f.cancelled++;f.events.push('cancel');return {};}
@@ -90,6 +92,33 @@ test('Cloud is the default; explicit own-key save and return to Cloud preserve e
  expect(await page.evaluate(()=>(window as any).ownProvider.cleared)).toBe(1);
  expect(await page.evaluate(()=>({cloud:(window as any).flagOff.slots['cloud:production'],agent:sessionStorage.getItem('flag-off-agent')}))).toEqual(account);
  await expect(page.locator('.alpha-cloud-sign-in')).toHaveCount(0);await noLeaks(page,observed);
+});
+
+// A reply in flight does not survive opening AI provider: an open connection dialog is a sensitive
+// screen, so the reply stops there with the usual stopped-reply notice (never "The connection
+// changed."), before any switch. Its switch lock lifts as that stop settles, and the switch works.
+test('opening AI provider during a reply stops it as a sensitive screen; the switch is then usable and works',async({page})=>{
+ const observed=await fixture(page);await residentHome(page);
+ await page.getByRole('button',{name:'Settings',exact:true}).click();
+ await page.evaluate(()=>(window as any).ownProvider.holdReply=true);
+ await page.getByRole('button',{name:'Type',exact:true}).click();
+ const composer=page.locator('[data-alpha-layer="composer"][aria-hidden="false"], [data-alpha-layer="conversation"][aria-hidden="false"]').getByRole('textbox').first();
+ await composer.fill('Reply while I open AI provider');await composer.press('Enter');
+ await expect.poll(()=>page.evaluate(()=>(window as any).ownProvider.replyHeld)).toBe(true);
+ await expect(page.getByRole('button',{name:'Stop reply',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'AI provider',exact:true}).click();
+ await expect(dialog(page)).toBeVisible();
+ await expect(page.getByText('The agent may still finish this reply. Alpha Phone will check once and show it here if it does.',{exact:true})).toHaveCount(1);
+ await expect(page.getByRole('button',{name:'Stop reply',exact:true})).toHaveCount(0);
+ await expect(page.getByText(/The connection changed/)).toHaveCount(0);
+ await enterKeys(page);
+ await expect(dialog(page).getByRole('button',{name:'Save and use own keys',exact:true})).toBeEnabled();
+ await dialog(page).getByRole('button',{name:'Save and use own keys',exact:true}).click();
+ await expect(dialog(page)).toHaveCount(0);await completeAccessSetup(page);
+ await page.getByRole('button',{name:'AI provider',exact:true}).click();
+ await expect(dialog(page).getByText('Own API keys · Cerebras',{exact:true})).toBeVisible();
+ expect(await page.evaluate(()=>{const f=(window as any).ownProvider;f.releaseReply?.();return {saved:f.saved,matched:f.matched};})).toEqual({saved:1,matched:true});
+ await noLeaks(page,observed);
 });
 
 test('a rejected own-key check keeps Cloud selected and clears entered secrets',async({page})=>{

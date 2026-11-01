@@ -2331,7 +2331,7 @@ export const connectionController = {
       try{await connectResident(signal);}catch(error){if(residentAlwaysPresent&&!active)update({kind:'recovering'});throw error;}
     });
   },
-  async configureLocal(apiKey:string,model:string=LOCAL_PROVIDER_MODEL,cartesiaKey?:string) { if(operation)return;const generation=++providerStatusGeneration;let cancelled=false; try { await work('Checking the key with Cerebras…',async signal=>{signal.addEventListener('abort',()=>{cancelled=true;},{once:true});try{await configureLocalProvider(apiKey,model,cartesiaKey,signal);signal.throwIfAborted();const providerStatus=await localProviderStatus();signal.throwIfAborted();update({providerStatus,signIn:null,residentPlanNotice:null});showPostSignInSetup();await retire();await connectResident(signal);update({message:isAndroid?'Cerebras key verified and saved in Android Keystore. Own API keys selected.':'Cerebras key verified. Own keys are active for this host session only.'});}
+  async configureLocal(apiKey:string,model:string=LOCAL_PROVIDER_MODEL,cartesiaKey?:string) { if(operation||sending)return;const generation=++providerStatusGeneration;let cancelled=false; try { await work('Checking the key with Cerebras…',async signal=>{signal.addEventListener('abort',()=>{cancelled=true;},{once:true});try{await configureLocalProvider(apiKey,model,cartesiaKey,signal);signal.throwIfAborted();const providerStatus=await localProviderStatus();signal.throwIfAborted();update({providerStatus,signIn:null,residentPlanNotice:null});showPostSignInSetup();await retire();await connectResident(signal);update({message:isAndroid?'Cerebras key verified and saved in Android Keystore. Own API keys selected.':'Cerebras key verified. Own keys are active for this host session only.'});}
     // A provider or native failure never carries an entered key into the visible error: not the
     // key, not the key without surrounding spaces, and not any 12 characters of it in a row.
     catch(error){if(error instanceof Error&&[apiKey,cartesiaKey].some(key=>{const value=key?.trim()??'',run=Math.min(12,value.length);for(let at=0;run&&at+run<=value.length;at++)if(error.message.includes(value.slice(at,at+run)))return true;return false;}))throw Error(OWN_KEYS_NOT_SET_UP);throw error;}}); }
@@ -2345,7 +2345,7 @@ export const connectionController = {
   /** Leaving the welcome own-key view after a key check drops that check's outcome, so the Cloud
    * view never shows a key rejection as its own. */
   clearOutcome(){if(!operation)update({message:'',error:''});},
-  async selectCloudProvider(){if(operation)return;providerStatusGeneration++;await work('Switching to Cloud…',async signal=>{if(browserCloudResidentEnabled)await browserResidentCall('residentCloud',undefined,undefined,undefined,signal);else await clearLocalProvider(false,signal);signal.throwIfAborted();const providerStatus=await localProviderStatus();signal.throwIfAborted();update({providerStatus});await retire();await connectResident(signal);});},
+  async selectCloudProvider(){if(operation||sending)return;providerStatusGeneration++;await work('Switching to Cloud…',async signal=>{if(browserCloudResidentEnabled)await browserResidentCall('residentCloud',undefined,undefined,undefined,signal);else await clearLocalProvider(false,signal);signal.throwIfAborted();const providerStatus=await localProviderStatus();signal.throwIfAborted();update({providerStatus});await retire();await connectResident(signal);});},
   async refreshProviderStatus(generation=providerStatusGeneration) {
     try { const status=await localProviderStatus();if(generation!==providerStatusGeneration)return null;update({providerStatus:status});return status; }
     catch { if(generation===providerStatusGeneration)update({providerStatus:null});return null; }
@@ -3273,11 +3273,11 @@ export function ConnectionChooser() {
       </div>
     </aside>;
   }
-  const providerChoice=<OwnProviderChoice busy={snapshot.busy} status={snapshot.providerStatus} error={snapshot.error} message={snapshot.message} onSave={(key,voice)=>connectionController.configureLocal(key,LOCAL_PROVIDER_MODEL,voice)} onCancel={dismiss} onCloud={()=>connectionController.selectCloudProvider()}/>;
+  const providerChoice=<OwnProviderChoice busy={snapshot.busy} replying={!!sending} status={snapshot.providerStatus} error={snapshot.error} message={snapshot.message} onSave={(key,voice)=>connectionController.configureLocal(key,LOCAL_PROVIDER_MODEL,voice)} onCancel={dismiss} onCloud={()=>connectionController.selectCloudProvider()}/>;
   if(snapshot.purpose==='provider')return <div className="alpha-connection-scrim"><div className="alpha-connection alpha-connection-native" role="dialog" aria-modal="true" aria-labelledby="provider-title" tabIndex={-1} ref={panel}><header><h1 id="provider-title">AI provider</h1><button aria-label="Close AI provider settings" disabled={snapshot.busy} onClick={()=>connectionController.close()}>×</button></header>{providerChoice}{snapshot.error&&<p role="alert">{snapshot.error}</p>}{snapshot.message&&<p role="status">{snapshot.message}</p>}</div></div>;
   const requiredSignInView: SignInView = snapshot.signIn ?? { step: 'choose', environment: residentEnvironment() };
   if (snapshot.signIn || signInEntryRequired) return <div className={signInPage?'alpha-auth-page':'alpha-connection-scrim'}><div className={`alpha-connection alpha-connection-native alpha-cloud-sign-in${signInPage?' alpha-auth-content':''}`} role={signInPage?'main':'dialog'} aria-modal={signInPage?undefined:true} aria-labelledby="cloud-sign-in-title" aria-busy={snapshot.busy||undefined} tabIndex={-1} ref={panel}>
-    <SignInOrOwnKeys busy={snapshot.busy} ownKeys={back=><OwnProviderChoice busy={snapshot.busy} status={snapshot.providerStatus} error={snapshot.error} message={snapshot.message} onSave={(key,voice)=>connectionController.configureLocal(key,LOCAL_PROVIDER_MODEL,voice)} onCancel={dismiss} onCloud={()=>connectionController.selectCloudProvider()} onBack={checked=>{if(checked)connectionController.clearOutcome();back();}}/>}>
+    <SignInOrOwnKeys busy={snapshot.busy} ownKeys={back=><OwnProviderChoice busy={snapshot.busy} replying={!!sending} status={snapshot.providerStatus} error={snapshot.error} message={snapshot.message} onSave={(key,voice)=>connectionController.configureLocal(key,LOCAL_PROVIDER_MODEL,voice)} onCancel={dismiss} onCloud={()=>connectionController.selectCloudProvider()} onBack={checked=>{if(checked)connectionController.clearOutcome();back();}}/>}>
     <CloudSignInPanel phone={cloudSignInPhone && inAppPhone} emailEnabled={inAppEmail} view={requiredSignInView} busy={snapshot.busy} ready={!!snapshot.signIn} dismissible={!signInPage} google={inAppGoogle} message={snapshot.message} error={snapshot.error} errorIsNotice={snapshot.error===RESIDENT_UNPACKAGED}
       actions={{phone:number=>void connectionController.signInPhone(number),google:()=>void connectionController.signInGoogle(),email:address=>void connectionController.signInEmail(address),verify:code=>void connectionController.verifySignInCode(code),resend:()=>void connectionController.resendSignInCode(),cancel:()=>connectionController.cancelSignIn(),retry:()=>void connectionController.beginSignIn(requiredSignInView.environment,true)}}
       extra={signInEntryRequired && !snapshot.signIn && !snapshot.busy
@@ -3490,12 +3490,15 @@ function SignInOrOwnKeys({busy,children,ownKeys}:{busy:boolean;children:import('
 }
 
 /** One explicit choice; key values live only in the submitted form and native credential vault. */
-function OwnProviderChoice({busy,status,error,message,onSave,onCancel,onCloud,onBack}:{busy:boolean;status?:LocalProviderStatus|null;error?:string;message?:string;onSave:(key:string,voice?:string)=>Promise<void>;onCancel:()=>void;onCloud:()=>Promise<void>;onBack?:(checked:boolean)=>void}){
+function OwnProviderChoice({busy,replying=false,status,error,message,onSave,onCancel,onCloud,onBack}:{busy:boolean;replying?:boolean;status?:LocalProviderStatus|null;error?:string;message?:string;onSave:(key:string,voice?:string)=>Promise<void>;onCancel:()=>void;onCloud:()=>Promise<void>;onBack?:(checked:boolean)=>void}){
  const [editing,setEditing]=useState(!!onBack),[switching,setSwitching]=useState(false),[attempted,setAttempted]=useState(false);
  const ai=useRef<HTMLInputElement>(null),speech=useRef<HTMLInputElement>(null);
  const own=status?.selected===true&&status.provider==='cerebras';
  const native=Capacitor.isNativePlatform(),host=native||browserCloudResidentEnabled;
  const clear=()=>{if(ai.current)ai.current.value='';if(speech.current)speech.current.value='';};
+ // A switch restarts the agent, which ends a reply in flight, so its two commits also wait for the
+ // reply. Everything else, Cancel and Back included, stays usable while the reply streams.
+ const locked=busy||replying;
  // The one key form (config/login-surfaces.json inventories its two fields once); first run and
  // Settings differ only in its note and Settings' Cancel. While a check runs, both offer Cancel:
  // the dispatch Escape and Android Back use. If cancellation lands after commit, status readback
@@ -3504,7 +3507,7 @@ function OwnProviderChoice({busy,status,error,message,onSave,onCancel,onCloud,on
    <label>Cerebras API key<input ref={ai} type="password" autoComplete="off" autoCapitalize="none" spellCheck={false} required disabled={busy}/></label>
    <label>Cartesia API key (optional)<input ref={speech} type="password" autoComplete="off" autoCapitalize="none" spellCheck={false} disabled={busy}/></label>
    <p>{note}</p>
-   <button disabled={busy}>Save and use own keys</button>{busy?<button type="button" onClick={()=>{clear();onCancel();}}>Cancel</button>:cancel}
+   <button disabled={locked}>Save and use own keys</button>{busy?<button type="button" onClick={()=>{clear();onCancel();}}>Cancel</button>:cancel}
   </form>;
  // First run offers the key form alone; Settings keeps the explicit Cloud or own-key switch.
  if(onBack)return <section aria-label="Own API keys">
@@ -3521,7 +3524,7 @@ function OwnProviderChoice({busy,status,error,message,onSave,onCancel,onCloud,on
    <button type="button" disabled={busy} aria-pressed={!own&&!editing} onClick={()=>{setEditing(false);if(own)setSwitching(true);}}>Cloud</button>
    <button type="button" disabled={busy} aria-pressed={own||editing} onClick={()=>{setSwitching(false);setEditing(true);}}>Own API keys</button>
   </div>
-  {switching&&<div><p>Switch to your saved Cloud account? Your conversations and phone data stay. You will need to enter your own keys again to switch back.</p><button disabled={busy} onClick={()=>{setSwitching(false);void onCloud();}}>Switch to Cloud</button><button disabled={busy} onClick={()=>setSwitching(false)}>Keep own keys</button></div>}
+  {switching&&<div><p>Switch to your saved Cloud account? Your conversations and phone data stay. You will need to enter your own keys again to switch back.</p><button disabled={locked} onClick={()=>{setSwitching(false);void onCloud();}}>Switch to Cloud</button><button disabled={busy} onClick={()=>setSwitching(false)}>Keep own keys</button></div>}
   {own&&!editing&&<p>{status.voiceConfigured?'Voice uses your Cartesia key when you start the microphone.':'Voice is off. Add a Cartesia key to configure voice.'}</p>}
   {editing&&<>
    <p>Cerebras receives prompts and selected context. Optional Cartesia voice receives recordings and reply text. Provider charges use your own accounts. Switching is manual; failed requests never switch providers.</p>

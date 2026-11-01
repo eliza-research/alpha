@@ -17,7 +17,7 @@ const OwnProviderChoice=new Function('React','useRef','useState','Capacitor','br
 const ownKeys=transformSync(between(source,'/** First run shows one sign-in method','/** One explicit choice;'),{loader:'tsx',jsxFactory:'React.createElement'}).code;
 const SignInOrOwnKeys=new Function('React','useState','AlphaAuthBrand',ownKeys+';return SignInOrOwnKeys;')(React,React.useState,()=>null);
 
-const renderBranch=new Function('React','CloudSignInPanel','snapshot','productionSignInRequired','signInEntryRequired','signInPage','residentEnvironment','inAppGoogle','panel','RESIDENT_UNPACKAGED','connectionController','browserCloudResidentEnabled','testMocksEnabled','ResidentRecoveryPanel','loadSignInService','cloudSignInPhone','inAppPhone','inAppEmail','SignInOrOwnKeys','OwnProviderChoice','LOCAL_PROVIDER_MODEL','dismiss',transformSync('function render(){'+branch+'return null;}',{loader:'tsx',jsxFactory:'React.createElement'}).code+';return render();');
+const renderBranch=new Function('React','CloudSignInPanel','snapshot','productionSignInRequired','signInEntryRequired','signInPage','residentEnvironment','inAppGoogle','panel','RESIDENT_UNPACKAGED','connectionController','browserCloudResidentEnabled','testMocksEnabled','ResidentRecoveryPanel','loadSignInService','cloudSignInPhone','inAppPhone','inAppEmail','SignInOrOwnKeys','OwnProviderChoice','LOCAL_PROVIDER_MODEL','dismiss','sending',transformSync('function render(){'+branch+'return null;}',{loader:'tsx',jsxFactory:'React.createElement'}).code+';return render();');
 const controller={beginSignIn(){},signInGoogle(){},signInEmail(){},verifySignInCode(){},resendSignInCode(){},cancelSignIn(){}};
 const render=snapshot=>renderToStaticMarkup(renderBranch(React,CloudSignInPanel,snapshot,true,true,true,()=> 'production',false,null,'unpackaged',controller,false,false,()=>null,undefined,null,false,true,SignInOrOwnKeys,OwnProviderChoice,'model'));
 test('production signed-out entry server-renders direct options before readiness without false Google failure',()=>{
@@ -36,17 +36,21 @@ test('Restore saved sign-in is a Cloud control: offered with Cloud sign-in, abse
  assert.doesNotMatch(html,/Restore saved sign-in|Continue with Google|Email me a code|Retry sign-in/);
 });
 // The same welcome branch in a DOM, so the method switch and a Cloud outcome are used as the owner uses them.
-async function welcome(run){
+async function inDom(run){
  const dom=new JSDOM('<div id="root"></div>',{url:'http://localhost/'}),previous={};
  for(const key of ['window','document','HTMLElement','IS_REACT_ACT_ENVIRONMENT']){previous[key]=Object.getOwnPropertyDescriptor(globalThis,key);Object.defineProperty(globalThis,key,{value:key==='IS_REACT_ACT_ENVIRONMENT'?true:dom.window[key],configurable:true,writable:true});}
  const {createRoot}=await import('react-dom/client');const root=createRoot(dom.window.document.getElementById('root'));
- const calls=[],cloud={...controller,signInEmail(address){calls.push('email:'+address);},cancelSignIn(){calls.push('cancel');},clearOutcome(){calls.push('clear');}};
- const Welcome=({snapshot})=>renderBranch(React,CloudSignInPanel,snapshot,true,true,true,()=> 'production',false,null,'unpackaged',cloud,false,false,()=>null,undefined,null,false,true,SignInOrOwnKeys,OwnProviderChoice,'model',()=>calls.push('dismiss'));
- const show=snapshot=>act(async()=>{root.render(React.createElement(Welcome,{snapshot}));});
- const document=dom.window.document,button=name=>[...document.querySelectorAll('button')].find(item=>item.textContent===name),ownView=()=>document.querySelector('section[aria-label="Own API keys"]');
- try{await run({document,window:dom.window,show,button,ownView,calls});}
+ const document=dom.window.document,button=name=>[...document.querySelectorAll('button')].find(item=>item.textContent===name);
+ try{await run({document,window:dom.window,root,button});}
  finally{await act(()=>root.unmount());dom.window.close();for(const [key,value] of Object.entries(previous)){if(value)Object.defineProperty(globalThis,key,value);else delete globalThis[key];}}
 }
+const welcome=run=>inDom(async({document,window,root,button})=>{
+ const calls=[],cloud={...controller,signInEmail(address){calls.push('email:'+address);},cancelSignIn(){calls.push('cancel');},clearOutcome(){calls.push('clear');}};
+ const Welcome=({snapshot,sending})=>renderBranch(React,CloudSignInPanel,snapshot,true,true,true,()=> 'production',false,null,'unpackaged',cloud,false,false,()=>null,undefined,null,false,true,SignInOrOwnKeys,OwnProviderChoice,'model',()=>calls.push('dismiss'),sending);
+ const show=(snapshot,sending=null)=>act(async()=>{root.render(React.createElement(Welcome,{snapshot,sending}));});
+ const ownView=()=>document.querySelector('section[aria-label="Own API keys"]');
+ await run({document,window,show,button,ownView,calls});
+});
 const idle={signIn:{step:'choose',environment:'production'},cloudAccount:null,busy:false,message:'',error:''};
 test('with no Cloud sign-in running, the welcome page switches to own keys and back',async()=>welcome(async({show,button,ownView,calls})=>{
  await show(idle);
@@ -110,3 +114,47 @@ test('Cancel delegates in-flight readiness to the existing abort operation, with
  await run(null,null,false,{open:true,purpose:'cloud-account',cloudAccount:null});assert.equal(closed,1,'idle explicit signed-out account entry returns to the app');
  await run({},null,false,{open:true,purpose:'cloud-account',cloudAccount:null});assert.equal(closed,1,'in-flight work is cancelled without dismissing its entry');
 });
+
+// A provider switch restarts the agent, which ends a chat reply in flight ("The connection changed.").
+// While a reply streams, the two switch commits wait, as they wait for a key check; the choices,
+// key fields, Cancel and Back stay usable. Idle, and once the reply settles, nothing changes.
+test('Settings provider switch waits for a streaming reply, keeps Cancel, and switches once the reply settles',async()=>inDom(async({document,root,button})=>{
+ const calls=[],own={provider:'cerebras',selected:true,configured:true,voiceConfigured:false};
+ const show=props=>act(async()=>{root.render(React.createElement(OwnProviderChoice,{busy:false,status:own,onSave:async(key,voice)=>{calls.push(['save',key,voice]);},onCancel(){calls.push(['cancel check']);},onCloud:async()=>{calls.push(['cloud']);},...props}));});
+ const field=()=>document.querySelector('input[type="password"]');
+ await show({replying:true});
+ assert.equal(button('Cloud').disabled,false);assert.equal(button('Own API keys').disabled,false);
+ await act(async()=>button('Cloud').click());
+ assert.equal(button('Switch to Cloud').disabled,true,'Switch to Cloud waits for the reply');assert.equal(button('Keep own keys').disabled,false);
+ await act(async()=>button('Switch to Cloud').click());
+ await act(async()=>button('Keep own keys').click());assert.equal(button('Switch to Cloud'),undefined);
+ await act(async()=>button('Own API keys').click());
+ assert.equal(button('Save and use own keys').disabled,true,'Save waits for the reply');assert.equal(field().disabled,false);
+ field().value='synthetic-cerebras-key';await act(async()=>button('Save and use own keys').click());
+ assert.equal(field().value,'synthetic-cerebras-key','a waiting save neither runs nor clears the key');
+ assert.equal(button('Cancel').disabled,false);await act(async()=>button('Cancel').click());
+ assert.equal(field(),null,'Cancel closes the key form during a reply');
+ assert.deepEqual(calls,[],'nothing switched while the reply streamed');
+ // The reply settles: the same view switches as it does idle.
+ await show({replying:false});
+ await act(async()=>button('Own API keys').click());
+ field().value='synthetic-cerebras-key';assert.equal(button('Save and use own keys').disabled,false);
+ await act(async()=>button('Save and use own keys').click());
+ await act(async()=>button('Cloud').click());assert.equal(button('Switch to Cloud').disabled,false);
+ await act(async()=>button('Switch to Cloud').click());
+ assert.deepEqual(calls,[['save','synthetic-cerebras-key',undefined],['cloud']]);
+ // A key check still offers its Cancel, which stops the check.
+ await act(async()=>button('Own API keys').click());await show({busy:true});
+ assert.equal(button('Save and use own keys').disabled,true);assert.equal(button('Cancel').disabled,false);
+ await act(async()=>button('Cancel').click());
+ assert.deepEqual(calls.at(-1),['cancel check']);
+}));
+test('the welcome own-key save waits for a reply in flight; Back to Cloud stays usable',async()=>welcome(async({show,button,ownView,calls})=>{
+ await show(idle,new AbortController());
+ await act(async()=>button('Use your own API keys').click());
+ assert.equal(button('Save and use own keys').disabled,true);assert.equal(button('Sign in with Cloud instead').disabled,false);
+ await show(idle);
+ assert.equal(button('Save and use own keys').disabled,false);
+ await act(async()=>button('Sign in with Cloud instead').click());
+ assert.equal(ownView(),null);assert.deepEqual(calls,[]);
+}));

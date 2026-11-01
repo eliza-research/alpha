@@ -12,7 +12,7 @@ function fixture(){
  const old={configured:true,provider:'cerebras',selected:true,revision:'old-key'};
  const cloud={configured:false,provider:'elizacloud',selected:false,revision:'cloud'};
  const box=new Function('methods','old','cloud','reading','release',`
-  let operation=null,providerStatusGeneration=0;const state={providerStatus:old,message:''};
+  let operation=null,sending=null,providerStatusGeneration=0;const state={providerStatus:old,message:''};
   const update=patch=>Object.assign(state,patch),LOCAL_PROVIDER_MODEL='model',OWN_KEYS_NOT_SET_UP='Unavailable',isAndroid=false,browserCloudResidentEnabled=false;
   const work=async(_label,run)=>{operation=new AbortController();try{await run(operation.signal);}catch(error){if(!operation.signal.aborted)throw error;}finally{operation=null;}};
   const configureLocalProvider=async(_key,_model,_voice,signal)=>new Promise((_resolve,reject)=>signal.addEventListener('abort',()=>reject(signal.reason),{once:true}));
