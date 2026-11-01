@@ -7,7 +7,7 @@ import {voiceFailure} from '../apps/app/src/runtime/voice-states.ts';
 // The actual start-catch expression and Cloud mapper, without starting voice,
 // importing the app, opening credentials or contacting any service.
 const adapter=readFileSync(new URL('../apps/app/src/prototype/voice-adapter.ts',import.meta.url),'utf8');
-const catchBody=adapter.slice(adapter.indexOf('}catch(failure){if(token!==generation||controller.signal.aborted)return;conversationState='));
+const catchBody=adapter.slice(adapter.indexOf('}catch(failure){if(token!==generation||controller.signal.aborted)return;if(quietVoiceRetry(failure,chat,token))return;conversationState='));
 const expression=catchBody.slice(catchBody.indexOf('error=')+6,catchBody.indexOf(';refresh();'));
 const cloud=readFileSync(new URL('../apps/app/src/runtime/cloud-voice.ts',import.meta.url),'utf8');
 const mapperSource=cloud.slice(cloud.indexOf('function voiceLimitMessage('),cloud.indexOf('/** Product registration only;')).replace('export function cloudVoiceFailure','function cloudVoiceFailure');

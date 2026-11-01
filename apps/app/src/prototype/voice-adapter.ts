@@ -23,7 +23,7 @@ import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
 import { createOnDeviceVoice } from '../runtime/local-voice';
 import { voiceFailure, transcriptProvenance, deniedSettingsChoice, DENIED_SETTINGS_LABEL, type VoiceFailure, type TranscriptProvenance } from '../runtime/voice-states';
 import { createPairedVoice } from '../runtime/paired-voice';
-import { createCloudVoice, cloudVoiceFailure, createCloudStreamingSpeech, nativeCloudStreamingAvailable } from '../runtime/cloud-voice';
+import { createCloudVoice, cloudVoiceFailure, cloudVoiceServiceLimit, createCloudStreamingSpeech, nativeCloudStreamingAvailable } from '../runtime/cloud-voice';
 import { speakCloudSpeechChunks } from '../../../../.eliza/client-features/packages/voice/src/cloud-speech-chunks.ts';
 import { clefEndpointStage, selectVoiceRoute, voiceSendPolicy, type VoicePreference } from '../runtime/voice-selection';
 import { beginVoiceTurn, markVoiceTiming, abandonVoiceTurn, finishVoiceTurn, sendVoiceEntry, recordLiveVoiceTiming, recordEndpointVoiceTiming, recordHeardVoiceTiming, activeVoiceTurn } from '../runtime/voice-timing';
@@ -164,6 +164,8 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
   let conversationInterimKnownMessages=new Set<string>();
   let assistantState:AssistantState={phase:'idle'};
   let conversationLastTranscript='',conversationLastReply='';
+  /** Quiet waits after a transient Cloud voice refusal (quietVoiceRetry); reset by a spoken reply or a new start. */
+  let quietRetries=0,quietRetry:ReturnType<typeof setTimeout>|undefined;
   /** Review policy only: the finished transcript held for an explicit Send or Discard. */
   let conversationReview:{text:string;settle:(text:string|null)=>void}|undefined;
   /** Message ids present before a conversation send; the first new agent text is the first token. */
@@ -196,7 +198,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     // Stopping the assistant cancels its capture, request and playback and releases its agent session.
     const conversationStopped=previousConversation?.stop();
     closeTranscriptQuestion?.();
-    ++generation; readiness?.abort(); readiness = undefined; transcription?.abort(); transcription = undefined; pairedVoice = null; onDeviceVoice = null; onDeviceReady = false; liveDictation = undefined; preparingLocal = false; preparingPaired = false; pairedReady = false; pairedAsrReady = false; busy = false; stopClock(); stopSaved();
+    ++generation; readiness?.abort(); readiness = undefined; transcription?.abort(); transcription = undefined; pairedVoice = null; onDeviceVoice = null; onDeviceReady = false; liveDictation = undefined; preparingLocal = false; preparingPaired = false; pairedReady = false; pairedAsrReady = false; busy = false; stopClock(); stopSaved(); if (quietRetry) clearTimeout(quietRetry); quietRetry = undefined;
     if (requestId) void driver.cancel({ requestId }).catch(() => {});
     playback?.abort(); playback = undefined; playing = false;
     requestId = undefined;
@@ -501,6 +503,25 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
       conversationReview=held;signal.addEventListener('abort',aborted,{once:true});if(signal.aborted)aborted();else refresh();
     });
   }
+  // A Cloud voice 429 rate limit or 503 warm-up is transient, not the owner's problem: voice stays
+  // calm, waits out the server's Retry-After, then listens again with a fresh capture. The refused
+  // or answered turn is never resent or replayed, so nothing is charged twice. Twice at most; after
+  // that, or for a long wait, voice ends with one calm line. Own-key Cartesia failures and plan,
+  // billing, auth or microphone failures keep their honest message.
+  function quietVoiceRetry(failure:unknown,chat:ChatDestination,token:number){
+    const code=(failure as {code?:unknown})?.code,limit=code==='voice-http-429'?cloudVoiceServiceLimit(failure):null;
+    if(connectionController.getSnapshot().residentInference==='direct'||code!=='voice-http-503'&&limit?.kind!=='rate-limited')return false;
+    // A start failure reaches both the loop's error state and the start catch: one wait covers it.
+    if(quietRetry)return true;
+    const wait=limit?.retryAfterMs??2000;stopClock();
+    const pause=()=>{cancelChat(false,true);chat.shell.toast('Voice paused. Tap the mic to talk again.');};
+    if(quietRetries>=2||wait>30000){pause();return true;}
+    quietRetries++;conversationState={phase:'starting'};error='';refresh();
+    // A chat that stopped being current during the wait (page hidden, account sheet open) cannot
+    // listen again, and nothing else re-arms it: voice ends calmly instead of connecting forever.
+    quietRetry=setTimeout(()=>{quietRetry=undefined;if(token!==generation||chatDestination!==chat)return;if(chatCurrent())void beginConversation();else pause();},wait);
+    return true;
+  }
   async function beginConversation(){
     const chat=chatDestination;if(!chat||!chatCurrent())return;
     const provider=connectionController.getSnapshot();
@@ -605,6 +626,8 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
           onLevel:peak=>{if(token!==generation)return;conversationLevels=[...conversationLevels.slice(-43),peak];},
           onState:value=>{
             if(token!==generation||chatDestination!==chat||conversationVoice!==assistant)return;
+            if(value.phase==='error'&&quietVoiceRetry((value as BatchVoiceState).error,chat,token))return;
+            if(value.phase==='speaking')quietRetries=0;
             assistantState=value;conversationState=value as BatchVoiceState;
             if(value.phase==='thinking'&&value.transcript){conversationLastTranscript=value.transcript;conversationLastReply='';}
             if(value.phase!=='listening')conversationInterim='';
@@ -636,10 +659,13 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
         },
         send:sendTurn,
         speak:async input=>{input.signal.throwIfAborted();current();const started=()=>{current();markVoiceTiming('first-audio');input.onStarted();};const pending=local?local.speak(input.text,input.signal,started,true):speakCloudSpeechChunks({text:input.text,signal:input.signal,assertCurrent:current,onStarted:started,speak:(text,signal,onStarted)=>cloudDriver!.speak(text,signal,onStarted)});conversationSpeech=pending;try{await pending;input.signal.throwIfAborted();current();}catch(failure){if((failure as {code?:string})?.code==='speech-cleanup-unconfirmed'){mediaUnconfirmed=failure;stopping=Promise.reject(failure);void stopping.catch(()=>{});}throw failure;}finally{if(conversationSpeech===pending)conversationSpeech=undefined;finishVoiceTurn();}},
-        onState:value=>{if(token!==generation||chatDestination!==chat||conversationVoice!==conversation)return;conversationState=value;if(value.phase==='error')error=voiceStopped(value);if(value.phase==='listening'){stopClock();tick=setInterval(refresh,250);}else stopClock();refresh();},
+        onState:value=>{if(token!==generation||chatDestination!==chat||conversationVoice!==conversation)return;if(value.phase==='error'&&quietVoiceRetry(value.error,chat,token))return;
+          // The loop retires itself (idle) before it reports a failure: keep this frame until the retire
+          // settles, so a quiet wait never flashes "Voice conversation stopped." and Start Cloud voice.
+          if(value.phase==='idle'&&conversationState.phase!=='idle'){const held=conversationState;void conversation.stop().catch(()=>{}).then(()=>{if(token===generation&&chatDestination===chat&&conversationVoice===conversation&&conversationState===held){conversationState=value;stopClock();refresh();}});return;}if(value.phase==='speaking')quietRetries=0;conversationState=value;if(value.phase==='error')error=voiceStopped(value);if(value.phase==='listening'){stopClock();tick=setInterval(refresh,250);}else stopClock();refresh();},
       });
       conversationVoice=conversation;await conversation.start();current();
-    }catch(failure){if(token!==generation||controller.signal.aborted)return;conversationState={phase:'error',error:failure};const classified=voiceFailure(failure,{transcribing:false,browser:!Capacitor.isNativePlatform()});error=cloudVoiceFailure(failure)||(classified&&(classified.kind==='denied'||classified.kind==='no-microphone')?classified.message:null)||'Voice could not start. Try again, or use the keyboard.';refresh();}
+    }catch(failure){if(token!==generation||controller.signal.aborted)return;if(quietVoiceRetry(failure,chat,token))return;conversationState={phase:'error',error:failure};const classified=voiceFailure(failure,{transcribing:false,browser:!Capacitor.isNativePlatform()});error=cloudVoiceFailure(failure)||(classified&&(classified.kind==='denied'||classified.kind==='no-microphone')?classified.message:null)||'Voice could not start. Try again, or use the keyboard.';refresh();}
   }
   Component.prototype.stopVoiceConversation = function(){if(chatDestination?.shell===this){cancelChat(false,true);return stopping;}if(retirement&&retirement.shell===this)return retirement.promise;if(mediaUnconfirmed)return stopping;};
   Component.prototype.resumeReadReplyVoice=function(hint:import('../runtime/alpha-client').NativeNotesReadReplyHint,reply:import('../runtime/alpha-client').NativeNotesReadReply){
@@ -675,14 +701,14 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     const state=this.S();
     const chat:ChatDestination={shell:this,view:state.view||null,chat:state.chat,draft:String(state.draft||''),reply:this.messageReplyTarget,edit:this.messageEditTarget,binding:composerBinding(),...(typeof HTMLElement!=='undefined'&&document.activeElement instanceof HTMLElement?{opener:document.activeElement}:{})};
     const readingStopped=stopLocalSpeechPlayback();
-    enter(undefined,undefined,'default',chat);stopping=Promise.all([stopping,Promise.resolve(readingStopped)]).then(()=>{}).catch(failure=>{mediaUnconfirmed=failure;throw failure;});void stopping.catch(()=>{});conversationLastTranscript='';conversationLastReply='';const token=generation;
+    enter(undefined,undefined,'default',chat);stopping=Promise.all([stopping,Promise.resolve(readingStopped)]).then(()=>{}).catch(failure=>{mediaUnconfirmed=failure;throw failure;});void stopping.catch(()=>{});conversationLastTranscript='';conversationLastReply='';quietRetries=0;const token=generation;
     await new Promise<void>(resolve=>this.setState({chat:state.chat==='hidden'&&!cloudRuntimeEnabled?'hidden':state.chat==='full'?'full':'sheet',voice:'off'},()=>{document.querySelector<HTMLElement>(state.chat==='hidden'&&!cloudRuntimeEnabled?'[data-alpha-pill-voice] button':'[data-alpha-chat-recorder] button')?.focus({preventScroll:true});if(chatDestination===chat&&generation===token){void beginConversation().finally(resolve);}else resolve();}));
   };
   function conversationRecorderView(icons:Bag){
     const token=generation,chat=chatDestination,owned=()=>token===generation&&chatDestination===chat&&chatCurrent();
     const phase=conversationState.phase,live=phase==='listening',seconds=live?(Date.now()-started)/1000:(clip?.durationMs||0)/1000;
     const messages:Record<string,string>={idle:'Voice conversation stopped.',starting:'Connecting to voice…',listening:'Listening…',transcribing:'Transcribing…',thinking:'Thinking…','awaiting-user-input':'Microphone off. Review the Notes request in this conversation. Only the note you explicitly share can be used for the answer.','preparing-speech':'Thinking…',speaking:'Speaking…',error:error||'Voice stopped. Check history before starting again.'};
-    const recover=()=>{if(!owned()||mediaUnconfirmed)return;if(cloudConnectRequired){cleanup();connectionController.openCloudAccount();}else if(!connectionController.getSnapshot().session){cleanup();connectionController.open();}else if((phase==='error'&&!conversationReviewRequired)||phase==='idle')void beginConversation();else cancelChat(false,true);};
+    const recover=()=>{if(!owned()||mediaUnconfirmed)return;if(cloudConnectRequired){cleanup();connectionController.openCloudAccount();}else if(!connectionController.getSnapshot().session){cleanup();connectionController.open();}else if((phase==='error'&&!conversationReviewRequired)||phase==='idle'){quietRetries=0;void beginConversation();}else cancelChat(false,true);};
     const unavailable=phase==='error'&&(conversationState.error as {code?:unknown})?.code==='voice-http-503';
     const visibleError=unavailable?'Voice is unavailable right now. Try again later or use the keyboard.':error;
     const awaiting=phase==='awaiting-user-input'||conversationReviewRequired;
@@ -699,7 +725,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     if(assistant&&assistantState.muted)messages.listening='Microphone off.';
     const assistantControls=assistant&&phase!=='error'?{canMute:phase!=='awaiting-user-input',muted:assistant.muted?'true':'false',muteLabel:assistant.muted?'Unmute microphone':'Mute microphone',toggleMute:()=>{if(owned())void assistant.setMuted(!assistant.muted).finally(refresh);}}:{};
     const extra=assistant?assistantControls:direct?{canMute:true,muteAutomatically:direct.microphoneAutomaticallyMuted,muteLabel:direct.microphoneAutomaticallyMuted?'Microphone paused while Alpha responds':direct.microphoneMuted?'Unmute microphone':'Mute microphone',muted:direct.microphoneMuted||direct.microphoneAutomaticallyMuted?'true':'false',toggleMute:()=>{if(owned()){direct.setMicrophoneMuted(!direct.microphoneMuted);refresh();}},needsPlaybackUnlock:direct.needsPlaybackUnlock,unlockPlayback:()=>{if(owned())void direct.unlockPlayback().then(refresh).catch(failure=>{error=failure instanceof Error?failure.message:'Playback could not unlock.';refresh();});}}:{};
-    return {...extra,regionLabel:'Voice conversation',closeLabel:'Close voice conversation',state:phase,flex:awaiting?'0 0 auto':'1',clockSize:awaiting?28:48,clock:awaiting?'Review':`${Math.floor(seconds/60)}:${String(Math.floor(seconds%60)).padStart(2,'0')}`,live,levels:conversationLevels.map(peak=>({h:4+Math.round(44*peak)})),progressText,errorDetail:unavailable?'Voice service returned HTTP 503.':'',lines:[{t:conversationReviewRequired?'Microphone off. Review the phone action in this conversation. Switch to keyboard to continue; voice cannot resume this older request.':visibleError||messages[phase]},...(phase==='error'&&conversationLastTranscript?[{t:'Last transcript: '+conversationLastTranscript}]:[])],review:false,typeChoice:false,lastTranscript:awaiting?'':conversationLastTranscript,interimTranscript:awaiting||(!direct&&!['listening','transcribing'].includes(phase))?'':conversationInterim,lastReply:awaiting?'':conversationLastReply,primaryLabel:'Stop voice conversation',primaryIcon:icons.stop,primaryDisabled:false,stop:()=>{if(owned())cancelChat(false,true);},recoveryLabel:mediaUnconfirmed?'':cloudRuntimeEnabled&&phase==='idle'&&!cloudConnectRequired?'Start Cloud voice':cloudConnectRequired?`Connect ${voiceServiceName()}`:!connectionController.getSnapshot().session?'Connect agent':phase==='error'&&!conversationReviewRequired?'Try voice again':'',recover,discard:()=>{if(owned())cancelChat();},keyboard:()=>{if(owned())cancelChat(true);}};
+    return {...extra,regionLabel:'Voice conversation',closeLabel:'Close voice conversation',state:phase,flex:awaiting?'0 0 auto':'1',clockSize:awaiting?28:48,clock:awaiting?'Review':`${Math.floor(seconds/60)}:${String(Math.floor(seconds%60)).padStart(2,'0')}`,live,levels:conversationLevels.map(peak=>({h:4+Math.round(44*peak)})),progressText,errorDetail:unavailable?'Voice service returned HTTP 503.':'',lines:[{t:conversationReviewRequired?'Microphone off. Review the phone action in this conversation. Switch to keyboard to continue; voice cannot resume this older request.':visibleError||messages[phase]}],review:false,typeChoice:false,lastTranscript:awaiting?'':conversationLastTranscript,interimTranscript:awaiting||(!direct&&!['listening','transcribing'].includes(phase))?'':conversationInterim,lastReply:awaiting?'':conversationLastReply,primaryLabel:'Stop voice conversation',primaryIcon:icons.stop,primaryDisabled:false,stop:()=>{if(owned())cancelChat(false,true);},recoveryLabel:mediaUnconfirmed?'':cloudRuntimeEnabled&&phase==='idle'&&!cloudConnectRequired?'Start Cloud voice':cloudConnectRequired?`Connect ${voiceServiceName()}`:!connectionController.getSnapshot().session?'Connect agent':phase==='error'&&!conversationReviewRequired?'Try voice again':'',recover,discard:()=>{if(owned())cancelChat();},keyboard:()=>{if(owned())cancelChat(true);}};
   }
   /**
    * The recording side of voice-note deletion (receipts, erase, Trash purge, approved agent
@@ -1066,7 +1092,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     out.voiceInterim=recorder?.interimTranscript&&!out.msgs?.some((message:Bag)=>message.isUser&&message.text===recorder.interimTranscript&&(!(ownBrowserVoiceActive()||developmentCloudRealtimeVoiceEnabled||(developmentCartesiaVoiceEnabled&&!developmentCloudVoiceEnabled))||!conversationInterimKnownMessages.has(String(message.id))))?recorder.interimTranscript:'';
     if(recorder){recorder.connecting=['starting','connecting'].includes(recorder.state);// A voice planning label shares the transcript's shimmer line above the composer, as typed chat does.
       if(recorder.progressText)out.turnStatus=recorder.progressText;
-      recorder.statusClass=recorder.connecting?'alpha-voice-connecting':'alpha-voice-status-hidden';const phase=recorder.muted==='true'&&!recorder.muteAutomatically?'paused':recorder.state==='starting'?'connecting':recorder.state==='preparing-speech'?'thinking':recorder.state==='awaiting-user-input'?'paused':recorder.state==='stopping'?'interrupting':recorder.state;recorder.problem=recorder.state==='error';recorder.activity=recorder.problem?null:React.createElement(VoiceActivity,{phase,theme:this.S().theme==='dark'?'dark':'light'});
+      recorder.statusClass=recorder.connecting?'alpha-voice-connecting':'alpha-voice-status-hidden';const phase=recorder.muted==='true'&&!recorder.muteAutomatically?'paused':recorder.state==='starting'?'connecting':recorder.state==='preparing-speech'?'thinking':recorder.state==='awaiting-user-input'?'paused':recorder.state==='stopping'?'interrupting':recorder.state;recorder.problem=recorder.state==='error';recorder.statusLines=recorder.problem?[]:recorder.lines;recorder.activity=recorder.problem?null:React.createElement(VoiceActivity,{phase,theme:this.S().theme==='dark'?'dark':'light'});
       const directSpeech=chatDestination?.mode!=='dictation'&&(connectionController.getSnapshot().residentInference==='direct'||cloudMode&&developmentCartesiaVoiceEnabled&&!developmentCloudVoiceEnabled);
       recorder.cloudDisclosure=cloudRuntimeEnabled||directSpeech||developmentCloudRealtimeVoiceEnabled;
       recorder.cloudDisclosureText=directSpeech?'Voice sends recordings and reply text to Cartesia. Your agent runs on this device and uses your direct Cerebras provider.':developmentCloudRealtimeVoiceEnabled?`Voice sends recordings and reply text to ${voiceServiceName()} through the connected developer agent. Your agent runs on this computer.`:`Voice uploads recordings and reply text to your ${voiceServiceName()} account, uses your plan allowance, and plays replies with Cartesia.`;

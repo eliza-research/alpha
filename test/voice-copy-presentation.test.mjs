@@ -9,7 +9,7 @@ import {JSDOM} from 'jsdom';
 import {cloudVoiceViewFixture} from './fixtures/cloud-voice-view.mjs';
 
 // The actual production template and DCLogic renderer, closed presentation ports only.
-test('actual voice error clears input activity while retaining disclosure, support code and uncertain cleanup',async()=>{
+test('actual voice error clears input activity, says one honest line and retains uncertain cleanup',async()=>{
  const template=fs.readFileSync('apps/app/src/prototype/template.html','utf8');
  const start=template.indexOf('<sc-if value="{{inlineChatRecorder}}">');
  const end=template.indexOf('<sc-if value="{{panelComposer}}">',start);
@@ -34,19 +34,18 @@ test('actual voice error clears input activity while retaining disclosure, suppo
   await f.shell.startVoice();
   for(const state of ['starting','listening','error']){
    const error=state==='error';
-   if(error)f.batchOptions.onState({phase:'error',error:Object.assign(new Error('PRIVATE_PROVIDER_BODY'),{code:'voice-http-503'})});
+   // A Cloud 503 is now waited out quietly (voice-calm-cloud-errors.test.mjs); a refused sign-in is terminal.
+   if(error)f.batchOptions.onState({phase:'error',error:Object.assign(new Error('PRIVATE_PROVIDER_BODY'),{code:'voice-http-401'})});
    const model=state==='starting'?f.initialView:f.renderChat();
    assert.equal(model.state,state);assert.equal(model.activity===null,error);
    const html=render({inlineChatRecorder:true,chatRecorder:model});
    const doc=new JSDOM(html).window.document,details=doc.querySelector('details');
    const alert=doc.querySelector('[role="alert"]');
-   // Speech routing is disclosed in Settings > Voice; the live composer opens details only for an error.
+   // Speech routing is disclosed in Settings > Voice; the live composer opens details only for an error support code.
    if(error){
-    assert.ok(details);assert.equal(details.querySelector('summary').textContent,'Voice details');
-    assert.equal(details.hasAttribute('open'),false,'an error never forces the disclosure open');
-    assert.equal(doc.querySelectorAll('[role="note"]').length,1);
-    assert.match(details.textContent,/uploads recordings.*plan allowance.*Cartesia/);
-    assert.match(alert.textContent,/Voice is unavailable/);assert.doesNotMatch(alert.textContent,/503|uploads/);assert.match(details.textContent,/HTTP 503/);
+    assert.equal(details,null,'no support code, so no details panel');
+    assert.equal(alert.textContent,'Sign in to Cloud again in Settings, then retry voice.');assert.doesNotMatch(alert.textContent,/401|PRIVATE/);
+    assert.equal(doc.querySelector('[role="status"][aria-label="Voice conversation status"]').textContent,'','the alert is not repeated in the status region');
    }else{assert.equal(details,null,'no details panel during a healthy conversation');assert.equal(alert,null);}
    assert.ok(doc.querySelector('[aria-label="Stop voice conversation"]'));
    assert.equal(doc.querySelectorAll('[data-alpha-voice-animation]').length,error?0:1);

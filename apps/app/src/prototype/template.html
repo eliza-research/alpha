@@ -4147,7 +4147,7 @@
   </sc-if>
   <sc-if value="{{inlineChatRecorder}}">
     <section data-alpha-chat-recorder data-voice-state="{{chatRecorder.state}}" class="alpha-chat-composer alpha-voice-composer" role="region" aria-label="Voice conversation">
-      <div class="alpha-voice-input"><div role="status" aria-label="Voice conversation status" class="{{chatRecorder.statusClass}}"><sc-for list="{{chatRecorder.lines}}" as="line"><span>{{line.t}}</span></sc-for></div><sc-if value="{{chatRecorder.activity}}"><div class="alpha-voice-waveform" role="img" aria-label="Voice activity">{{chatRecorder.activity}}</div></sc-if></div>
+      <div class="alpha-voice-input"><div role="status" aria-label="Voice conversation status" class="{{chatRecorder.statusClass}}"><sc-for list="{{chatRecorder.statusLines}}" as="line"><span>{{line.t}}</span></sc-for></div><sc-if value="{{chatRecorder.activity}}"><div class="alpha-voice-waveform" role="img" aria-label="Voice activity">{{chatRecorder.activity}}</div></sc-if></div>
       <sc-if value="{{chatRecorder.canMute}}"><button class="ib" aria-label="{{chatRecorder.muteLabel}}" disabled="{{chatRecorder.muteDisabled}}" aria-pressed="{{chatRecorder.muted}}" onClick="{{chatRecorder.toggleMute}}"><span aria-hidden="true" class="mail-toolbar-icon" style="mask-image:url('{{chatRecorder.muteAsset}}');-webkit-mask-image:url('{{chatRecorder.muteAsset}}')"></span></button></sc-if>
       <button class="alpha-voice-primary" aria-label="{{chatRecorder.primaryLabel}}" disabled="{{chatRecorder.primaryDisabled}}" onClick="{{chatRecorder.stop}}"><svg class="i" viewBox="0 0 24 24"><path d="{{chatRecorder.primaryIcon}}"></path></svg></button>
     </section>
