@@ -11,11 +11,13 @@ const component=slice(model,'class Component extends DCLogic {','  componentDidM
 const dcConstructor=slice(dc,'    constructor(p)','    render()');
 const callback=stripTypeScriptTypes('(function(){const session=connectionController.getSnapshot().session?.sessionId;'+slice(adapter,'      const history = connectionController.getSnapshot().history;','      syncStoppedReplyNotice(')+'})',{mode:'transform'});
 const merge=stripTypeScriptTypes(slice(connection,'export function mergeConversationDelivery','const actionReceipts =').replace('export ',''),{mode:'transform'});
+// The real escalation-notice collapse the history and delivery callbacks apply.
+const notices=stripTypeScriptTypes(read('apps/app/src/runtime/system-notices.ts'),{mode:'transform'}).replace(/export /g,'');
 function fixture(){
  let snapshot={session:{sessionId:'owner-a'},history:null,conversationDelivery:null};const pending=[];
  const box={structuredClone,QUICK_SETTINGS:{wifi:false},ALPHA_PRODUCT:{identity:{characterName:'Alpha'}},Date,connectionController:{getSnapshot:()=>snapshot,getSelectedConversationId:()=> 'room'},alphaClient:{disconnect(){}},cancelMessageContext(){}};
  // Evaluate the actual shell constructor and history/delivery callback with queued React-style state updates.
- const context=vm.createContext({...box,pending});vm.runInContext('class ReactBase {constructor(props){this.props=props;}setState(update){pending.push(()=>{const patch=typeof update==="function"?update(this.state):update;if(patch)Object.assign(this.state,patch);});}} class DCLogic extends ReactBase {'+dcConstructor+'}'+base+component+';globalThis.Component=Component;'+merge+';globalThis.changed='+callback,context);
+ const context=vm.createContext({...box,pending});vm.runInContext('class ReactBase {constructor(props){this.props=props;}setState(update){pending.push(()=>{const patch=typeof update==="function"?update(this.state):update;if(patch)Object.assign(this.state,patch);});}} class DCLogic extends ReactBase {'+dcConstructor+'}'+base+component+';globalThis.Component=Component;'+merge+';'+notices+';globalThis.changed='+callback,context);
  const shell=new context.Component({});Object.assign(shell,{live:true,composerDraft:{retire(){}},closeSummaryReview(){}});
  return {shell,newShell:()=>new context.Component({}),setSnapshot:value=>snapshot=value,get snapshot(){return snapshot;},changed:()=>context.changed.call(shell),flush:()=>{while(pending.length)pending.shift()();}};
 }
