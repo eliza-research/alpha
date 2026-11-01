@@ -3,6 +3,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { flagOffAndroid, harness, button, fenceNetwork, expectNoDevelopmentSurface, openYourAgent } from './flag-off-android';
 import { residentStub, stub, setStub, enterNativeEmailCode, type StubAccount } from './resident-stub';
+import { recordStartupFrames, expectNoHomeBeforePrompt, startupLoading } from './helpers/startup-frames';
 
 test.beforeEach(({}, testInfo) => { test.skip(testInfo.project.name !== 'production', 'Production bundle only'); });
 
@@ -72,6 +73,28 @@ async function nothingLeft(page: Page, welcome: ReturnType<Page['getByRole']>, u
   } else expect(await starts(page)).toBeGreaterThanOrEqual(2);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('alpha.connection.selection.v1') ?? 'null'))).toEqual({ kind: 'resident' });
 }
+
+test('first run: a neutral loading screen, never Home, until the sign-in page opens', async ({ page }) => {
+  const foreign = await fenceNetwork(page);
+  await flagOffAndroid(page);
+  await residentStub(page, { nativeSignIn: true, emptyKeystore: true, accounts: [account] });
+  await recordStartupFrames(page);
+  // The first agent start is held (a first boot took about 27 s on the owner's run).
+  await page.addInitScript(() => {
+    const w = window as any, previous = w.Capacitor.nativePromise; w.firstStart = { release: null };
+    w.Capacitor.nativePromise = async (plugin: string, method: string, input: any) => { if (plugin === 'Agent' && method === 'start' && !w.firstStart.release) await new Promise<void>(resolve => { w.firstStart.release = resolve; }); return previous(plugin, method, input); };
+  });
+  await page.goto('/');
+  await expect.poll(() => page.evaluate(() => !!(window as any).firstStart.release), { timeout: 30_000 }).toBe(true);
+  await page.waitForTimeout(500);
+  await expect(page.locator('[data-alpha-layer="home"]')).toHaveCount(0);
+  await expect(startupLoading(page)).toBeVisible();
+  await page.evaluate(() => (window as any).firstStart.release());
+  await expect(page.locator('[role="main"].alpha-cloud-sign-in')).toBeVisible({ timeout: 30_000 });
+  await expect(startupLoading(page)).toHaveCount(0);
+  await expectNoHomeBeforePrompt(page);
+  expect(foreign).toEqual([]);
+});
 
 test('first run: native email sign-in, credits, provider binding, then the resident agent answers', async ({ page }) => {
   test.setTimeout(120_000);

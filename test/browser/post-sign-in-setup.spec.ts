@@ -2,6 +2,7 @@ import {test,expect,type Page,type TestInfo} from '@playwright/test';
 import {createServer,type ViteDevServer} from 'vite';
 import {resolve} from 'node:path';
 import {randomUUID} from 'node:crypto';
+import {recordStartupFrames,expectNoHomeBeforePrompt,startupLoading} from './helpers/startup-frames';
 
 // The dev:cloud renderer (VITE_ALPHA_CLOUD_RESIDENT=1, test mocks off) after a brand-new account
 // verifies its email code (owner report 2026-10-30): access setup opens at once while the resident
@@ -137,4 +138,43 @@ test('a verified email code goes straight to access setup while the agent restar
  await shot(page,info,'06-your-agent-running');
  expect(host.bound).toBe(true);expect(host.starts).toBe(2);
  expect(await snapshot(page)).toMatchObject({session:true,inference:'cloud',account:USER});
+});
+
+test('a first start shows a neutral loading screen, never Home, until the sign-in opens',async({page})=>{
+ const host=await hosts(page);await recordStartupFrames(page);host.hold=true;
+ await page.goto(origin+'/');
+ // However long the agent takes to start, nothing usable is shown before the sign-in.
+ await expect.poll(()=>!!host.release,{timeout:60_000}).toBe(true);
+ await expect(startupLoading(page)).toBeVisible();await page.waitForTimeout(500);
+ await expect(page.locator('[data-alpha-layer="home"]')).toHaveCount(0);
+ host.release!();
+ await expect(page.getByRole('dialog',{name:'Welcome to Alpha.',exact:true})).toBeVisible({timeout:30_000});
+ await expect(startupLoading(page)).toHaveCount(0);await expect(page.locator('[data-alpha-layer="home"]')).toHaveCount(1);
+ await expectNoHomeBeforePrompt(page);
+});
+
+test('a signed-in start opens access setup directly, with no Home while the account is checked',async({page})=>{
+ const host=await hosts(page);await recordStartupFrames(page);
+ host.stored={credentialReference:'browser-cloud-reference:'+randomUUID(),credentialId:randomUUID(),userId:USER,organizationId:ORG,expiresAt:Date.now()+30*86400000};host.holdAdmission=true;
+ await page.goto(origin+'/');
+ await expect.poll(()=>!!host.admit,{timeout:60_000}).toBe(true);
+ await expect(startupLoading(page)).toBeVisible();await page.waitForTimeout(500);
+ await expect(page.locator('[data-alpha-layer="home"]')).toHaveCount(0);
+ host.admit!();
+ await expect(page.locator('dialog.alpha-startup-permissions').getByRole('heading',{name:'Stay in the loop.',exact:true})).toBeFocused({timeout:30_000});
+ await expect(startupLoading(page)).toHaveCount(0);
+ await expectNoHomeBeforePrompt(page);
+});
+
+test('a start that has not decided in 60 s shows Home as before, and the sign-in still follows',async({page})=>{
+ const host=await hosts(page);host.hold=true;await page.clock.install();
+ await page.goto(origin+'/');
+ await expect.poll(()=>!!host.release,{timeout:60_000}).toBe(true);
+ await page.clock.fastForward(59_000);
+ await expect(startupLoading(page)).toBeVisible();
+ await page.clock.fastForward(2_000);
+ await expect(page.getByRole('region',{name:'Home',exact:true})).toBeVisible();
+ await expect(startupLoading(page)).toHaveCount(0);await expect(page.locator('.alpha-connection')).toHaveCount(0);
+ host.release!();
+ await expect(page.getByRole('dialog',{name:'Welcome to Alpha.',exact:true})).toBeVisible({timeout:30_000});
 });

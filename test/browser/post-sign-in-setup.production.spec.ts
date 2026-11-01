@@ -5,6 +5,7 @@
 import { test, expect, type Page, type TestInfo } from '@playwright/test';
 import { flagOffAndroid, button, fenceNetwork, openYourAgent } from './flag-off-android';
 import { residentStub, stub, setStub } from './resident-stub';
+import { recordStartupFrames, expectNoHomeBeforePrompt, startupLoading } from './helpers/startup-frames';
 
 test.beforeEach(({}, testInfo) => { test.skip(testInfo.project.name !== 'production', 'Production bundle only'); });
 
@@ -110,4 +111,48 @@ test('APK path: a verified email code goes straight to the six access steps whil
   expect(foreign).toEqual([]);
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
   await expect(button(page, 'Notes')).toBeVisible();
+});
+
+test('APK path: a signed-in start with access setup left to do opens it directly, with no Home while the account is checked', async ({ page }) => {
+  const foreign = await fenceNetwork(page);
+  await flagOffAndroid(page, { freshAccess: true });
+  await residentStub(page, { accounts: [account] });
+  await recordStartupFrames(page);
+  // The account read at startup is held until released.
+  await page.addInitScript(() => {
+    const w = window as any, previous = w.Capacitor.nativePromise; w.admission = { admit: null };
+    w.Capacitor.nativePromise = async (plugin: string, method: string, input: any) => { if (plugin === 'AlphaConnection' && method === 'request' && new URL(input.url).pathname === '/api/v1/user' && !w.admission.admit) await new Promise<void>(resolve => { w.admission.admit = resolve; }); return previous(plugin, method, input); };
+  });
+  await page.goto('/');
+  await expect.poll(() => page.evaluate(() => !!(window as any).admission.admit), { timeout: 30_000 }).toBe(true);
+  await page.waitForTimeout(500);
+  await expect(page.locator('[data-alpha-layer="home"]')).toHaveCount(0);
+  await expect(startupLoading(page)).toBeVisible();
+  await page.evaluate(() => (window as any).admission.admit());
+  await expect(page.locator('dialog.alpha-startup-permissions').getByRole('heading', { name: STEPS[0], exact: true })).toBeFocused({ timeout: 30_000 });
+  await expect(startupLoading(page)).toHaveCount(0);
+  await expectNoHomeBeforePrompt(page);
+  expect(foreign).toEqual([]);
+});
+
+test('APK path: a saved sign-in that cannot reach Cloud at startup shows Home without waiting for the agent to start', async ({ page }) => {
+  const foreign = await fenceNetwork(page);
+  await flagOffAndroid(page);
+  await residentStub(page, { accounts: [account] });
+  // Cloud is unreachable (503 on the account read) and the agent start is held.
+  await page.addInitScript(() => {
+    const w = window as any, previous = w.Capacitor.nativePromise; w.firstStart = { release: null };
+    w.Capacitor.nativePromise = async (plugin: string, method: string, input: any) => {
+      if (plugin === 'AlphaConnection' && method === 'request' && new URL(input.url).pathname === '/api/v1/user') return { status: 503, data: {} };
+      if (plugin === 'Agent' && method === 'start' && !w.firstStart.release) await new Promise<void>(resolve => { w.firstStart.release = resolve; });
+      return previous(plugin, method, input);
+    };
+  });
+  await page.goto('/');
+  await expect(page.getByRole('region', { name: 'Home', exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(startupLoading(page)).toHaveCount(0);
+  await expect(page.locator('.alpha-connection')).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => !!(window as any).firstStart.release)).toBe(true);
+  await page.evaluate(() => (window as any).firstStart.release());
+  expect(foreign).toEqual([]);
 });
