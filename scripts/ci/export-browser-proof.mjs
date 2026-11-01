@@ -74,6 +74,12 @@ function allowed(path){
   ||(/^(?:assets|icons|fonts|licenses)\//.test(path)&&/\.(?:js|mjs|css|json|txt|svg|png|jpe?g|webp|gif|ico|woff2?|ttf|otf|wasm)$/.test(path))
   ||(/^pdfjs-assets\/(?:cmaps|standard_fonts|wasm)\/[^/]+\.(?:bcmap|pfb|ttf|wasm|js|json)$/.test(path))
   ||path==='pdfjs-assets/LICENSE'
+  // Exact notices emitted by browser-pdf-assets.ts from pinned pdfjs-dist 6.3.289.
+  ||['pdfjs-assets/cmaps/LICENSE',
+    'pdfjs-assets/standard_fonts/LICENSE_FOXIT','pdfjs-assets/standard_fonts/LICENSE_LIBERATION',
+    'pdfjs-assets/wasm/LICENSE_JBIG2','pdfjs-assets/wasm/LICENSE_OPENJPEG',
+    'pdfjs-assets/wasm/LICENSE_PDFJS_JBIG2','pdfjs-assets/wasm/LICENSE_PDFJS_OPENJPEG',
+    'pdfjs-assets/wasm/LICENSE_PDFJS_QCMS','pdfjs-assets/wasm/LICENSE_QCMS'].includes(path)
   ||/^ocr\/(?:worker\.min\.js|tesseract-core-(?:lstm|simd-lstm|relaxedsimd-lstm)\.wasm\.js|eng\.traineddata\.gz|(?:tesseract|core|pdf-lib|tessdata)-LICENSE\.txt)$/.test(path);
 }
 function exportBytes(path,bytes){

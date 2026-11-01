@@ -141,3 +141,28 @@ test('an unverified cookie declaration still fails the worker manifest check',t=
  const f=workerFixture(t);f.write(`${f.prefix}/compiler/node_modules/effect/Cookies.d.ts`,'export interface Cookies {}');
  const result=f.run('worker');assert.notEqual(result.status,0);assert.match(result.stderr,/Unexpected worker file/);
 });
+
+test('renderer retains all nine pinned PDF asset notices with exact identity hashes',t=>{
+ const notices=[
+  'cmaps/LICENSE','standard_fonts/LICENSE_FOXIT','standard_fonts/LICENSE_LIBERATION',
+  'wasm/LICENSE_JBIG2','wasm/LICENSE_OPENJPEG','wasm/LICENSE_PDFJS_JBIG2',
+  'wasm/LICENSE_PDFJS_OPENJPEG','wasm/LICENSE_PDFJS_QCMS','wasm/LICENSE_QCMS',
+ ];
+ const f=fixture(t);
+ for(const path of notices)f.write('test-results/browser-proof-renderer/pdfjs-assets/'+path,'Fixture notice '+path);
+ const result=f.run();assert.equal(result.status,0,result.stderr);
+ const output=join(f.root,'test-results/browser-proof/renderer');
+ const identity=JSON.parse(readFileSync(join(output,'identity.json'),'utf8'));
+ for(const path of notices){
+  const payload='payload/pdfjs-assets/'+path,expected='Fixture notice '+path;
+  assert.equal(readFileSync(join(output,payload),'utf8'),expected);
+  assert.equal(identity.files[payload],sha256(expected));
+ }
+});
+for(const path of ['pdfjs-assets/wasm/LICENSE_UNREVIEWED','pdfjs-assets/elsewhere/LICENSE_QCMS','pdfjs-assets/wasm/credentials.json','pdfjs-assets/wasm/.env','pdfjs-assets/wasm/secret.key']){
+ test('renderer still refuses unreviewed or sensitive PDF payload: '+path,t=>{
+  const f=fixture(t);f.write('test-results/browser-proof-renderer/'+path,'PRIVATE FIXTURE CONTENT');
+  const result=f.run();assert.notEqual(result.status,0);assert.match(result.stderr,/Unexpected payload:/);
+  assert.equal(readFileSync(join(f.root,'test-results/resident-ci-browser-proof-rejections-renderer.json'),'utf8').includes('PRIVATE FIXTURE CONTENT'),false);
+ });
+}
