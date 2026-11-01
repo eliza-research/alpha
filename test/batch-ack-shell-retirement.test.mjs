@@ -17,7 +17,7 @@ async function startedCue({failCleanup=false}={}){
  assert.equal(f.sends,1);assert.equal(f.activeRecording,null,'actual capture retired before cue');
  const input=f.sendInputs[0];input.onProgress({turnId:input.turnId,conversationId:input.binding.conversationId,
    ownerId:input.binding.session.ownerId,kind:'thinking',label:'Checking calendar'});
- await clock.flush();assert.equal(f.cloudSpeech,1);assert.equal(f.speechInputs[0].text,'On it.');
+ await clock.flush();assert.equal(f.cloudSpeech,1);assert.equal(f.speechInputs[0].text,'Checking calendar');
  return{f,clock,input};
 }
 test('actual Batch/session shell Stop retains ACK media until native cleanup settles',async()=>{

@@ -80,9 +80,11 @@ export function createBatchProgressAcknowledgment(input: {
   const preempt = () => { final = true; cue.abort(new DOMException('Final voice reply superseded its cue.', 'AbortError')); };
   return {
     progress(value: BatchProgressCue): void {
-      if (used || final || retired || cue.signal.aborted || !genuineBatchProgress(value) ||
+      if (used || final || retired || cue.signal.aborted || value.kind !== 'thinking' || !genuineBatchProgress(value) ||
           value.turnId !== input.turnId || value.conversationId !== input.conversationId || value.ownerId !== input.ownerId)
         return;
+      const label = value.label;
+      if (typeof label !== 'string' || !label.trim() || label.length > 160) return;
       try { check(); if (!input.captureRetired()) return; } catch { cancel(); return; }
       used = true;
       // One microtask lets an already-ready final/token preempt queued prospective speech.
@@ -90,7 +92,7 @@ export function createBatchProgressAcknowledgment(input: {
         if (final || retired || cue.signal.aborted) return;
         check();
         if (!input.captureRetired()) throw Error('Voice capture was not retired before acknowledgement.');
-        try { await input.speak('On it.', cue.signal); }
+        try { await input.speak(label, cue.signal); }
         catch (error) {
           // Normal selected playback may reject AbortError AFTER confirmed cleanup.
           // Unconfirmed cleanup/provider errors are not hidden or converted into permission to listen.

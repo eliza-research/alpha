@@ -18,8 +18,8 @@ function fixture(){
 test('missing genuine cue is negative control: no TTS, no chat/agent/model/tool work',async()=>{
  const f=fixture(),a=f.make();await a.finish();assert.equal(f.calls.length,0);assert.deepEqual(f.history,[{id:'existing'}]);
 });
-test('genuine planner status speaks prospective fixed On it once, not arbitrary label',async()=>{
- const f=fixture(),a=f.make();a.progress(cue());await tick();a.progress(cue());a.progress(cue({kind:'running_tool',toolName:'calendar.read'}));await a.finish();assert.equal(f.calls.length,1);assert.equal(f.calls[0].text,'On it.');assert.deepEqual(f.history,[{id:'existing'}]);
+test('genuine planner status speaks the exact model-provided label once',async()=>{
+ const f=fixture(),a=f.make();a.progress(cue());await tick();a.progress(cue());a.progress(cue({kind:'running_tool',toolName:'calendar.read'}));await a.finish();assert.equal(f.calls.length,1);assert.equal(f.calls[0].text,'Checking the calendar');assert.deepEqual(f.history,[{id:'existing'}]);
 });
 for(const patch of [{kind:'thinking',label:undefined},{kind:'streaming'},{kind:'waking'},{kind:'speaking'},{kind:'running_tool',toolName:undefined},{kind:'running_action',actionName:undefined}])test('initial/fake/unqualified status never cues '+JSON.stringify(patch),async()=>{
  const f=fixture(),a=f.make();a.progress(cue(patch));await a.finish();assert.equal(f.calls.length,0);
@@ -50,7 +50,7 @@ test('unconfirmed cleanup is not swallowed on final/Stop',async()=>{
  const f=fixture(),bad=Object.assign(Error('cleanup unconfirmed'),{code:'speech-cleanup-unconfirmed'});f.input.speak=async()=>{throw bad;};const a=f.make();a.progress(cue());await tick();await assert.rejects(a.finish(),e=>e===bad);await assert.rejects(a.stop(),e=>e===bad);
 });
 test('reply after cue completed still has zero overlap or repeated cue',async()=>{
- const f=fixture(),a=f.make();a.progress(cue({kind:'running_action',actionName:'CALENDAR'}));await tick();await a.finish();a.progress(cue());await tick();assert.equal(f.calls.length,1);
+ const f=fixture(),a=f.make();a.progress(cue({label:'Checking calendar'}));await tick();await a.finish();a.progress(cue());await tick();assert.equal(f.calls.length,1);
 });
 test('request binding admits only actual VOICE_DM clientMessageId and exact room stream path',()=>{
  const r={path:`/api/conversations/${room}/messages/stream`,ownerId:'owner',body:JSON.stringify({channelType:'VOICE_DM',clientMessageId:turn})};assert.deepEqual(batchProgressBinding(r),{turnId:turn,conversationId:room,ownerId:'owner'});
@@ -61,4 +61,16 @@ test('only bound real planner/tool status emits a typed cue; legacy global strin
  try{emitBatchProgress(undefined,{kind:'thinking',label:'plan'});emitBatchProgress({turnId:turn,conversationId:room,ownerId:'owner'},{kind:'thinking'});assert.equal(found.length,0);
  emitBatchProgress({turnId:turn,conversationId:room,ownerId:'owner'},{kind:'running_tool',toolName:'Calendar.read'});assert.equal(found.length,1);assert.equal(found[0].turnId,turn);assert.ok(Object.isFrozen(found[0]));assert.equal(genuineBatchProgress(found[0]),true);}
  finally{events.removeEventListener('progress',listener);}
+});
+
+test('named tool and action status without a model label stays silent without consuming the cue',async()=>{
+ const f=fixture(),a=f.make();a.progress(cue({kind:'running_tool',toolName:'calendar.read',label:undefined}));a.progress(cue({kind:'running_action',actionName:'CALENDAR',label:undefined}));await tick();assert.equal(f.calls.length,0);
+ a.progress(cue({label:'Let me check your calendar.'}));await tick();await a.finish();assert.equal(f.calls.length,1);assert.equal(f.calls[0].text,'Let me check your calendar.');
+});
+for(const label of ['', '   ', 'x'.repeat(161)])test('invalid model label remains silent '+label.length,async()=>{const f=fixture(),a=f.make();a.progress(cue({label}));await tick();await a.finish();assert.equal(f.calls.length,0);});
+test('queued speech keeps the validated model wording even if its source object is mutated',async()=>{const f=fixture(),a=f.make(),value=cue({label:'Checking your saved notes.'});a.progress(value);value.label='Different words';await tick();await a.finish();assert.equal(f.calls[0].text,'Checking your saved notes.');});
+
+for (const status of [{kind:'running_tool',toolName:'calendar.read'},{kind:'running_action',actionName:'CALENDAR'}]) test('named '+status.kind+' with a synthetic label stays visual-only and does not consume the model cue',async()=>{
+ const f=fixture(),a=f.make();a.progress(cue({...status,label:'Synthetic system status'}));await tick();assert.equal(f.calls.length,0);
+ a.progress(cue({label:'Checking your calendar now.'}));await tick();await a.finish();assert.equal(f.calls.length,1);assert.equal(f.calls[0].text,'Checking your calendar now.');
 });

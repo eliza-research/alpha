@@ -3,11 +3,11 @@
   "repository": "elizaOS/eliza",
   "base": "develop",
   "baseCommit": "3861ffd1cbac332f25e1552dc977953a87f1adee",
-  "head": "e13cd6fd0178728d709b58ccdb11e5173f6af0ef",
+  "head": "6f362bef81c19896882e3d582dc5c0c2df488fd2",
   "recordedAt": "2026-11-01",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...e13cd6fd0178728d709b58ccdb11e5173f6af0ef",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...6f362bef81c19896882e3d582dc5c0c2df488fd2",
   "status": "ahead",
-  "aheadBy": 90,
+  "aheadBy": 92,
   "behindBy": 0,
   "mergeBase": "3861ffd1cbac332f25e1552dc977953a87f1adee",
   "pinOnlyCommits": [
@@ -358,6 +358,14 @@
     {
       "sha": "e13cd6fd0178728d709b58ccdb11e5173f6af0ef",
       "subject": "fix(build): isolate orchestrator CJS generation after ESM and declarations"
+    },
+    {
+      "sha": "8bb9b6489340a866de848a858973cbd0cfce487f",
+      "subject": "fix(voice): emit only audience-checked model-generated acknowledgements"
+    },
+    {
+      "sha": "6f362bef81c19896882e3d582dc5c0c2df488fd2",
+      "subject": "fix(agent): recognize bounded spoken view navigation commands"
     }
   ],
   "pullRequests": [
