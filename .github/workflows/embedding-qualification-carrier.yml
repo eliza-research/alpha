@@ -1,27 +1,22 @@
 name: Publish reviewed embedding qualification
 on:
-  workflow_dispatch:
+  workflow_call:
     inputs:
-      carrier_commit:
-        description: Exact reviewed data-only commit containing embedding-qualification files
+      carrier_json:
+        description: Exact reviewed commit and the two public-corpus file digests
         required: true
         type: string
       component_artifact_id:
-        description: Original compiled component artifact ID
         required: true
         type: string
       component_sha256:
-        description: Original compiled component ZIP SHA-256
         required: true
         type: string
-      qualification_file_sha256:
-        description: Reviewed QUALIFICATION.json SHA-256
-        required: true
-        type: string
-      semantic_file_sha256:
-        description: Reviewed public-corpus embedding-qualification.json SHA-256
-        required: true
-        type: string
+    outputs:
+      artifact_id:
+        value: ${{ jobs.publish.outputs.artifact_id }}
+      artifact_sha256:
+        value: ${{ jobs.publish.outputs.artifact_sha256 }}
 permissions:
   contents: read
   actions: read
@@ -30,11 +25,9 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
-      ALPHA_EMBEDDING_CARRIER_COMMIT: ${{ inputs.carrier_commit }}
+      ALPHA_EMBEDDING_CARRIER_JSON: ${{ inputs.carrier_json }}
       ALPHA_EMBEDDING_COMPONENT_ARTIFACT_ID: ${{ inputs.component_artifact_id }}
       ALPHA_EMBEDDING_COMPONENT_SHA256: ${{ inputs.component_sha256 }}
-      ALPHA_EMBEDDING_QUALIFICATION_FILE_SHA256: ${{ inputs.qualification_file_sha256 }}
-      ALPHA_EMBEDDING_SEMANTIC_FILE_SHA256: ${{ inputs.semantic_file_sha256 }}
     outputs:
       artifact_id: ${{ steps.receipt.outputs.artifact-id }}
       artifact_sha256: ${{ steps.receipt.outputs.artifact-digest }}
@@ -50,7 +43,7 @@ jobs:
       # This checkout is data only. No code or hooks from it are executed.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.carrier_commit }}
+          ref: ${{ fromJSON(inputs.carrier_json).commit }}
           path: qualification-carrier
           persist-credentials: false
           sparse-checkout-cone-mode: false

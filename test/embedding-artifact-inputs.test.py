@@ -181,6 +181,15 @@ class EmbeddingInputsTest(unittest.TestCase):
                 args=self.fixture(root);args[2]['libraries'][0].update(changed)
                 with self.assertRaises(ValueError):module.validate_receipts(*args,root)
 
+    def test_registered_carrier_json_is_exact_and_bounded(self):
+        value={'commit':'d'*40,'qualification_sha256':'b'*64,'semantic_sha256':'c'*64}
+        env={'ALPHA_EMBEDDING_CARRIER_JSON':json.dumps(value),'ALPHA_EMBEDDING_COMPONENT_ARTIFACT_ID':'11','ALPHA_EMBEDDING_COMPONENT_SHA256':'a'*64}
+        expanded=module.carrier_environment(env)
+        self.assertEqual(module.carrier_settings(expanded),('11','a'*64))
+        self.assertEqual(expanded['ALPHA_EMBEDDING_CARRIER_COMMIT'],value['commit'])
+        for raw in ['not json',json.dumps({**value,'command':'unapproved'}),json.dumps({**value,'commit':{}}),'x'*513]:
+            with self.assertRaises(ValueError):module.carrier_environment({**env,'ALPHA_EMBEDDING_CARRIER_JSON':raw})
+
     def test_component_bytes_must_match_qualification(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);args=self.fixture(root);(root/module.LIBRARIES[0]).write_bytes(b'changed')

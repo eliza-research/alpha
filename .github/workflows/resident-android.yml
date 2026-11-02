@@ -2,6 +2,18 @@ name: Resident Android exact source
 on:
   workflow_dispatch:
     inputs:
+      operation:
+        description: Build APKs or publish only a reviewed embedding qualification
+        type: choice
+        required: false
+        default: build
+        options:
+          - build
+          - publish-qualification
+      qualification_carrier:
+        description: Upload-only JSON with commit, qualification_sha256, semantic_sha256
+        type: string
+        required: false
       runtime_profile:
         description: Resident runtime profile (Cloud builds skip native qualification campaigns)
         type: choice
@@ -49,15 +61,25 @@ concurrency:
   # Dispatches on one ref supersede each other. Push and nightly runs (mostly skipped
   # when the opt-in variable is unset) get their own group, so they never cancel a
   # running dispatched qualification.
-  group: resident-${{ github.event_name == 'workflow_dispatch' && github.ref || format('{0}-{1}', github.event_name, github.sha) }}
+  group: resident-${{ github.event_name == 'workflow_dispatch' && github.ref || format('{0}-{1}', github.event_name, github.sha) }}${{ inputs.operation == 'publish-qualification' && '-carrier' || '' }}
   cancel-in-progress: ${{ github.event_name == 'workflow_dispatch' }}
 jobs:
+  publish-qualification:
+    if: github.event_name == 'workflow_dispatch' && inputs.operation == 'publish-qualification'
+    permissions:
+      contents: read
+      actions: read
+    uses: ./.github/workflows/embedding-qualification-carrier.yml
+    with:
+      carrier_json: ${{ inputs.qualification_carrier }}
+      component_artifact_id: ${{ inputs.embedding_component_artifact_id }}
+      component_sha256: ${{ inputs.embedding_component_sha256 }}
   build:
     permissions:
       contents: read
       actions: read
     if: >-
-      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_dispatch' && (inputs.operation == 'build' || inputs.operation == '')) ||
       (github.event_name == 'push' && vars.ELIZA_RESIDENT_QUALIFICATION == 'push') ||
       (github.event_name == 'schedule' && vars.ELIZA_RESIDENT_QUALIFICATION == 'nightly')
     # All consumers select the reviewed NDK before unused image SDKs are removed.
@@ -419,7 +441,7 @@ jobs:
             android/app/build/reports/
   native:
     needs: build
-    if: github.event_name != 'workflow_dispatch' || inputs.runtime_profile != 'cloud'
+    if: (github.event_name != 'workflow_dispatch' || inputs.operation == 'build' || inputs.operation == '') && (github.event_name != 'workflow_dispatch' || inputs.runtime_profile != 'cloud')
     runs-on: ubuntu-24.04
     timeout-minutes: 100
     env:
@@ -502,7 +524,7 @@ jobs:
 
   recovery-ui:
     needs: build
-    if: github.event_name != 'workflow_dispatch' || inputs.runtime_profile != 'cloud'
+    if: (github.event_name != 'workflow_dispatch' || inputs.operation == 'build' || inputs.operation == '') && (github.event_name != 'workflow_dispatch' || inputs.runtime_profile != 'cloud')
     runs-on: ubuntu-24.04
     timeout-minutes: 55
     env:

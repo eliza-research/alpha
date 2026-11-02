@@ -48,7 +48,10 @@ test('Android foundation runs on main and develop pushes and both workflows end 
   assert.match(browser, /name: Browser MVP result\n    needs: \[changes, verify, browser, production\]\n    if: always\(\)/);
   assert.match(browser, /name: Repository verification\n/);
   assert.match(browser, /node scripts\/verify-upstream\.mjs/);
-  const resident = read('.github/workflows/resident-android.yml');
+  const residentFull = read('.github/workflows/resident-android.yml');
+  const carrierGroupSuffix = "${{ inputs.operation == 'publish-qualification' && '-carrier' || '' }}";
+  assert.ok(residentFull.includes(carrierGroupSuffix));
+  const resident = residentFull.replace(carrierGroupSuffix, '');
   assert.match(resident, /vars\.ELIZA_RESIDENT_QUALIFICATION == 'push'/);
   assert.match(resident, /vars\.ELIZA_RESIDENT_QUALIFICATION == 'nightly'/);
   // Push and nightly runs never share a group with, or cancel, a dispatched qualification.

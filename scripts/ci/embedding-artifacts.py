@@ -196,6 +196,24 @@ def validate_receipts(component, intent, qualification, semantic, semantic_bytes
 
 
 
+def carrier_environment(env):
+    raw = env.get('ALPHA_EMBEDDING_CARRIER_JSON')
+    if raw is None:
+        return env
+    require(isinstance(raw, str) and len(raw) <= 512, 'Carrier JSON exceeds bound')
+    try:
+        value = json.loads(raw)
+    except (ValueError, TypeError):
+        raise ValueError('Invalid carrier JSON') from None
+    require(isinstance(value, dict) and set(value) == {'commit', 'qualification_sha256', 'semantic_sha256'}, 'Unexpected carrier JSON fields')
+    require(all(isinstance(item, str) for item in value.values()), 'Carrier values must be strings')
+    result = dict(env)
+    result.update(ALPHA_EMBEDDING_CARRIER_COMMIT=value['commit'],
+                  ALPHA_EMBEDDING_QUALIFICATION_FILE_SHA256=value['qualification_sha256'],
+                  ALPHA_EMBEDDING_SEMANTIC_FILE_SHA256=value['semantic_sha256'])
+    return result
+
+
 def carrier_settings(env):
     require(re.fullmatch(r'[0-9a-f]{40}', env.get('ALPHA_EMBEDDING_CARRIER_COMMIT', '')), 'Exact carrier commit required')
     identity = env.get('ALPHA_EMBEDDING_COMPONENT_ARTIFACT_ID', '')
@@ -235,6 +253,7 @@ def read_carrier_bytes(root, name, expected):
 
 
 def prepare_carrier(env):
+    env = carrier_environment(env)
     identity, digest = carrier_settings(env)
     require(env.get('GITHUB_REPOSITORY') == REPOSITORY and env.get('GH_TOKEN'), 'Canonical artifact access required')
     work = Path('test-results/embedding-carrier-inputs')
@@ -262,7 +281,7 @@ def prepare_carrier(env):
 
 def main(args, env=os.environ):
     if args == ['--check-carrier-inputs']:
-        carrier_settings(env)
+        carrier_settings(carrier_environment(env))
         print('Exact carrier commit and file inputs valid')
         return
     if args == ['--prepare-carrier']:

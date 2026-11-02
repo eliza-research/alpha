@@ -35,3 +35,24 @@ test('artifact acquisition follows supervisor proof and precedes product install
  const install=workflow.indexOf('--name product-install');
  assert.ok(proof>=0&&proof<acquisition&&acquisition<install);
 });
+
+function jobCondition(name,event,operation,profile='native',mode='off'){
+ const block=workflow.split('\n  '+name+':\n')[1].split(/\n  [a-z][a-z-]*:\n/)[0];
+ const multiline=block.match(/    if: >-\n((?:      [^\n]*\n)+)/);
+ const single=block.match(/    if: ([^\n]+)\n/);
+ const expression=(multiline?multiline[1]:single[1]).trim().replaceAll('github.event_name','event').replaceAll('inputs.operation','operation').replaceAll('inputs.runtime_profile','profile').replaceAll('vars.ELIZA_RESIDENT_QUALIFICATION','mode');
+ return new Function('event','operation','profile','mode','return '+expression)(event,operation,profile,mode);
+}
+test('registered upload-only mode cannot run APK or native jobs',()=>{
+ for(const profile of ['native','cloud']){
+  assert.equal(jobCondition('publish-qualification','workflow_dispatch','publish-qualification',profile),true);
+  for(const job of ['build','native','recovery-ui'])assert.equal(jobCondition(job,'workflow_dispatch','publish-qualification',profile),false);
+ }
+ assert.equal(jobCondition('build','workflow_dispatch','build','cloud'),true);
+ assert.equal(jobCondition('build','workflow_dispatch','','cloud'),true);
+ assert.equal(jobCondition('build','workflow_dispatch','unknown','native'),false);
+ assert.equal(jobCondition('native','push',null,'native'),true);
+ assert.equal(jobCondition('recovery-ui','schedule',null,'native'),true);
+ assert.ok(workflow.includes('uses: ./.github/workflows/embedding-qualification-carrier.yml'));
+ assert.ok(workflow.includes("inputs.operation == 'publish-qualification' && '-carrier'"));
+});
