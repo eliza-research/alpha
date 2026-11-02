@@ -3,11 +3,11 @@
   "repository": "elizaOS/eliza",
   "base": "develop",
   "baseCommit": "b2dbeff3ab689a69f7e518deb7d608d1c4607790",
-  "head": "77ef61e737d4d848b64e901145ed6e7f38c42705",
+  "head": "d38e4ec7fad5952fdf4f40d4c809240d639792ac",
   "recordedAt": "2026-11-02",
-  "command": "gh api repos/elizaOS/eliza/compare/b2dbeff3ab689a69f7e518deb7d608d1c4607790...77ef61e737d4d848b64e901145ed6e7f38c42705",
+  "command": "gh api repos/elizaOS/eliza/compare/b2dbeff3ab689a69f7e518deb7d608d1c4607790...d38e4ec7fad5952fdf4f40d4c809240d639792ac",
   "status": "diverged",
-  "aheadBy": 22,
+  "aheadBy": 23,
   "behindBy": 24,
   "mergeBase": "7e8b5d3eb1c05ee6ea72a1a2d5ce5b966c404e9c",
   "pinOnlyCommits": [
@@ -98,6 +98,10 @@
     {
       "sha": "77ef61e737d4d848b64e901145ed6e7f38c42705",
       "subject": "fix(native): select local embeddings for direct provider in cloud profile"
+    },
+    {
+      "sha": "d38e4ec7fad5952fdf4f40d4c809240d639792ac",
+      "subject": "fix: repair Calendar coverage and acknowledgments; bound native speech build"
     }
   ],
   "pullRequests": [
