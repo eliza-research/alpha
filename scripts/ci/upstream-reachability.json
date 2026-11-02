@@ -3,11 +3,11 @@
   "repository": "elizaOS/eliza",
   "base": "develop",
   "baseCommit": "b2dbeff3ab689a69f7e518deb7d608d1c4607790",
-  "head": "35e0a605b3d560eedec664e79693d5ecc0b5ece3",
+  "head": "4e2bc0e6074eb78bab841ca83b93e09fe2705919",
   "recordedAt": "2026-11-02",
-  "command": "gh api repos/elizaOS/eliza/compare/b2dbeff3ab689a69f7e518deb7d608d1c4607790...35e0a605b3d560eedec664e79693d5ecc0b5ece3",
+  "command": "gh api repos/elizaOS/eliza/compare/b2dbeff3ab689a69f7e518deb7d608d1c4607790...4e2bc0e6074eb78bab841ca83b93e09fe2705919",
   "status": "diverged",
-  "aheadBy": 12,
+  "aheadBy": 13,
   "behindBy": 24,
   "mergeBase": "7e8b5d3eb1c05ee6ea72a1a2d5ce5b966c404e9c",
   "pinOnlyCommits": [
@@ -58,6 +58,10 @@
     {
       "sha": "35e0a605b3d560eedec664e79693d5ecc0b5ece3",
       "subject": "fix(assistant): guide missed-reply repeats through validated source quotes"
+    },
+    {
+      "sha": "4e2bc0e6074eb78bab841ca83b93e09fe2705919",
+      "subject": "fix(alpha): compose reviewed Notes, web acknowledgements and Metal cache support"
     }
   ],
   "pullRequests": [
