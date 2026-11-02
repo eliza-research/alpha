@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
 import {CLOUD_SDK_BASES} from '../scripts/cloud-sdk-authority.mjs';
+import fs from 'node:fs';
+const deployment=JSON.parse(fs.readFileSync(new URL('../config/cloud-deployment.json',import.meta.url),'utf8'));
 // Uses the pinned resident's actual installed provider SDK. Fetch is intercepted;
 // this verifies routing only and never performs inference or uses a credential.
 test('resident SDK appends chat completions to the versioned Cloud base',{skip:!process.env.ALPHA_ELIZA_SOURCE},async()=>{
@@ -13,6 +15,6 @@ test('resident SDK appends chat completions to the versioned Cloud base',{skip:!
   let captured;
   const provider=createOpenAI({baseURL:CLOUD_SDK_BASES[environment],apiKey:'synthetic-routing-test',fetch:async(url,init)=>{captured={url:String(url),model:JSON.parse(init.body).model};throw Error('Routing capture only');}});
   await generateText({model:provider.chat('cerebras/qwen-3.8-27b'),prompt:'Routing test',maxRetries:0}).catch(()=>{});
-  assert.deepEqual(captured,{url:`https://${environment==='staging'?'api-staging':'api'}.eliza.app/api/v1/chat/completions`,model:'cerebras/qwen-3.8-27b'});
+  assert.deepEqual(captured,{url:`${deployment[environment].api}/api/v1/chat/completions`,model:'cerebras/qwen-3.8-27b'});
  }
 });
