@@ -14,11 +14,30 @@ function sendProposal(input:AgentSendContent){
 }
 /** The owner's Settings switches. Off refuses agent writes before any Google request; reads, receipts and the connection stay. */
 export type GoogleAgentAccess={gmailChanges:boolean;calendarEdits:boolean};
+/** How long one source lookup can serve one read's feed step, from the lookup's start. */
+const CALENDAR_READ_STEP_MS=5_000;
 export function createManagedGoogleAgentHost(host:ManagedGoogleAgentPort,access:()=>GoogleAgentAccess=()=>({gmailChanges:true,calendarEdits:true})){
  const allowed=(kind:keyof GoogleAgentAccess)=>{if(access()[kind]!==true)throw Error(kind==='gmailChanges'?'Gmail changes are turned off in Settings › Google accounts. Google stays connected; nothing was changed.':'Calendar edits are turned off in Settings › Google accounts. Google stays connected; nothing was changed.');};
  const refuseWrite=()=>{throw Error('Gmail agent reads cannot change credentials or mail.');};
+ // One Calendar read lists sources, then reads each feed. Without this the feed verifies the owner and lists calendars
+ // again. A feed reuses the source step's lookups for seconds, and concurrent reads join one lookup. Source lists only
+ // ever join a lookup still in flight, never a finished one, and every read ends with a fresh grant check.
+ const shared=new Map<string,{monotonic:number;wall:number;pending:boolean;value:Promise<unknown>}>();
+ let sharedOwner:string|undefined;
+ async function sharedLookup<T>(key:string,read:()=>Promise<T>,reuseFinished:boolean):Promise<T>{
+  const entry=shared.get(key);
+  // Age takes the larger clock: the wall clock counts a suspended phone, the monotonic clock a corrected wall clock.
+  const young=entry&&Math.max(performance.now()-entry.monotonic,Date.now()-entry.wall)<CALENDAR_READ_STEP_MS;
+  // A failed lookup belongs to its caller, whose request may have ended: a joiner reads for itself.
+  if(entry&&young&&(entry.pending||reuseFinished))return (entry.value as Promise<T>).catch(read);
+  const value=read(),next={monotonic:performance.now(),wall:Date.now(),pending:true,value};shared.set(key,next);
+  const drop=()=>{if(shared.get(key)===next)shared.delete(key);};
+  value.then(()=>{next.pending=false;setTimeout(drop,CALENDAR_READ_STEP_MS).unref?.();},drop);
+  return value;
+ }
+ const googleCalendars=(client:CloudProtocol,grantId:string,scope:string,signal:AbortSignal,reuseFinished:boolean)=>sharedLookup(`${scope}:calendars`,()=>client.googleCalendars(grantId,signal),reuseFinished);
  /** The verified Cloud owner and its connected accounts holding `capability`, each with its owner-scoped id. */
- async function ownerAccounts(parent:AbortSignal|undefined,capability:string,operation:false|true|'calendar'){
+ async function ownerAccounts(parent:AbortSignal|undefined,capability:string,operation:false|true|'calendar',reuseFinished=false){
   let stage:ManagedGoogleFailureStage='credential';
   try{
   const credential=await host.agentCredential();if(!credential)throw Error('Sign in to Eliza Cloud before reading Gmail.');
@@ -27,17 +46,22 @@ export function createManagedGoogleAgentHost(host:ManagedGoogleAgentPort,access:
   const current=async()=>{signal.throwIfAborted();if(JSON.stringify(await host.agentCredential())!==identity)throw Error('Cloud account changed while reading Gmail.');};
   stage='client';
   const client=new CloudProtocol('production',operation==='calendar'?host.agentCalendarOperation:operation?host.agentGmailOperation:host.agentRead,{acceptsReferences:true,read:async()=>{await current();return credential;},write:async()=>refuseWrite(),clear:async()=>refuseWrite()},async()=>refuseWrite());
-  stage='identity';
-  const owner=await client.identity(signal);await current();
-  if(owner.userId!==credential.userId||owner.organizationId!==credential.organizationId)throw Error('Cloud owner could not be verified for Gmail.');
-  stage='accounts';
-  const listed=await client.gmailAccounts(signal);
+  const calendarRead=capability==='google.calendar.read',ownerKey=createHash('sha256').update(identity).digest('hex');
+  const listOwned=async()=>{
+   stage='identity';
+   const owner=await client.identity(signal);await current();
+   if(owner.userId!==credential.userId||owner.organizationId!==credential.organizationId)throw Error('Cloud owner could not be verified for Gmail.');
+   stage='accounts';
+   return client.gmailAccounts(signal);
+  };
+  if(calendarRead&&sharedOwner!==ownerKey){shared.clear();sharedOwner=ownerKey;}
+  const listed=calendarRead?await sharedLookup(ownerKey,listOwned,reuseFinished):await listOwned();
   stage='account-projection';
   const accounts=listed.filter(a=>a.connected&&a.connectionId&&a.grantedCapabilities.includes(capability)).map(account=>({account,grantId:account.connectionId!,scope:createHash('sha256').update(identity+':'+account.connectionId).digest('hex')}));
   stage='credential-recheck';
   await current();
   // Every grant used by the read must still hold the capability after it, or nothing is returned.
-  const confirm=async(grantIds:string[])=>{try{const latest=await client.gmailAccounts(signal);if(grantIds.some(id=>!latest.some(a=>a.connectionId===id&&a.connected&&a.grantedCapabilities.includes(capability))))throw Error('Gmail permission changed.');await current();}catch(error){recordManagedGoogleFailure(error,'permission-recheck');throw error;}};
+  const confirm=async(grantIds:string[])=>{try{const latest=await client.gmailAccounts(signal);if(grantIds.some(id=>!latest.some(a=>a.connectionId===id&&a.connected&&a.grantedCapabilities.includes(capability))))throw Error('Gmail permission changed.');await current();}catch(error){if(calendarRead)shared.clear();recordManagedGoogleFailure(error,'permission-recheck');throw error;}};
   return {client,signal,accounts,confirm};
   }catch(error){recordManagedGoogleFailure(error,stage);throw error;}
  }
@@ -94,14 +118,18 @@ export function createManagedGoogleAgentHost(host:ManagedGoogleAgentPort,access:
    // merged Calendar: each account's own calendar and every calendar the owner shows in Google Calendar join the
    // agent feed by default (CalendarService keeps an explicit per-calendar choice once the owner makes one).
    const {client,signal,accounts,confirm}=await ownerAccounts(parent,'google.calendar.read','calendar');
-   const sources=(await Promise.all(accounts.map(async({account,grantId,scope})=>(await client.googleCalendars(grantId,signal)).filter(row=>['reader','writer','owner'].includes(row.accessRole)).map(row=>({...row,provider:'google',side:'owner',grantId:`alpha-google:${scope}`,connectorAccountId:`alpha-google:${scope}`,managedGoogleConnectionId:grantId,accountEmail:account.label,includeInFeed:row.primary||row.selected,selectionVersion:1}))))).flat();
+   const sources=(await Promise.all(accounts.map(async({account,grantId,scope})=>(await googleCalendars(client,grantId,scope,signal,false)).filter(row=>['reader','writer','owner'].includes(row.accessRole)).map(row=>({...row,provider:'google',side:'owner',grantId:`alpha-google:${scope}`,connectorAccountId:`alpha-google:${scope}`,managedGoogleConnectionId:grantId,accountEmail:account.label,includeInFeed:row.primary||row.selected,selectionVersion:1}))))).flat();
    await confirm(accounts.map(a=>a.grantId));return sources;
    }catch(error){recordManagedGoogleFailure(error,'calendar-sources');throw error;}
   },
   async calendarFeed(input:{grantId:string;calendarId:string;timeMin:string;timeMax:string;timeZone:string},parent?:AbortSignal){
-   const {client,signal,accounts,confirm}=await ownerAccounts(parent,'google.calendar.read','calendar');
-   const grantId=accounts.find(a=>input.grantId===`alpha-google:${a.scope}`)?.grantId;if(!grantId)throw Error('Select a calendar from the current owner connection.');
-   const calendar=(await client.googleCalendars(grantId,signal)).find(row=>row.calendarId===input.calendarId&&['reader','writer','owner'].includes(row.accessRole));
+   const {client,signal,accounts,confirm}=await ownerAccounts(parent,'google.calendar.read','calendar',true);
+   try{
+   const owned=accounts.find(a=>input.grantId===`alpha-google:${a.scope}`);if(!owned)throw Error('Select a calendar from the current owner connection.');
+   const {grantId,scope}=owned,readable=(rows:Awaited<ReturnType<typeof googleCalendars>>)=>rows.find(row=>row.calendarId===input.calendarId&&['reader','writer','owner'].includes(row.accessRole));
+   // A calendar added since the previous step is still readable.
+   let calendar=readable(await googleCalendars(client,grantId,scope,signal,true));
+   if(!calendar)calendar=readable(await googleCalendars(client,grantId,scope,signal,false));
    if(!calendar)throw Error('This calendar is not currently readable.');
    const result=await client.googleCalendarFeed(grantId,input.calendarId,{timeMin:input.timeMin,timeMax:input.timeMax,timeZone:input.timeZone},signal);
    const key={provider:'google',side:'owner',grantId:input.grantId,connectorAccountId:input.grantId,calendarId:input.calendarId};
@@ -109,6 +137,7 @@ export function createManagedGoogleAgentHost(host:ManagedGoogleAgentPort,access:
    return {...result,source:'synced',state:'complete',timeMin:input.timeMin,timeMax:input.timeMax,
     sources:[{key,summary:calendar.summary,accessRole:calendar.accessRole,visibility:'details',status:'fresh',syncedAt:result.syncedAt,error:null}],
     events:result.events.map(event=>({...event,id:`${input.grantId}:${event.externalId}`,agentId:'',provider:'google',side:'owner',grantId:input.grantId,connectorAccountId:input.grantId,syncedAt:result.syncedAt,updatedAt:typeof event.metadata.updated==='string'?event.metadata.updated:result.syncedAt,calendarSummary:calendar.summary}))};
+   }catch(error){shared.clear();throw error;}
   },
   async list({limit=25,query='',since}:{limit?:number;query?:string;since?:string},parent?:AbortSignal){
    if(!Number.isSafeInteger(limit)||limit<1||limit>51||typeof query!=='string'||query.length>4096)throw Error('Choose a Gmail read limit from 1 to 50 plus its overflow probe.');
