@@ -43,7 +43,7 @@ export const SIGNING_ENV = (() => {
     throw new Error("android/consumer-host.json must name four release-signing environment variables");
   return Object.freeze(names);
 })();
-const USAGE = "Usage: npm run android:build -- [--test-mocks] [--allow-unpackaged-runtime] [--skip-instrumentation]";
+const USAGE = "Usage: npm run android:build -- [--test-mocks] [--allow-unpackaged-runtime] [--skip-instrumentation] [--allow-older-upstream-pin]";
 
 export function parseBuildArgs(argv) {
   const options = { testMocks: false, allowUnpackagedRuntime: false, skipInstrumentation: false };
@@ -52,6 +52,8 @@ export function parseBuildArgs(argv) {
     else if (arg === "--runtime-profile=cloud") options.runtimeProfile = "cloud";
     else if (arg === "--skip-instrumentation") options.skipInstrumentation = true;
     else if (arg === "--allow-unpackaged-runtime") options.allowUnpackagedRuntime = true;
+    // Checked by the preflight only (it receives the same arguments): a reviewed upstream rollback.
+    else if (arg === "--allow-older-upstream-pin") options.allowOlderUpstreamPin = true;
     else throw new Error(`Unknown option ${arg}. ${USAGE}`);
   }
   if (options.runtimeProfile === "cloud" && (options.testMocks || options.allowUnpackagedRuntime)) throw Error("Cloud profile requires a genuine packaged resident and test mocks off");

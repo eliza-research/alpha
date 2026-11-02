@@ -2,7 +2,7 @@
 /**
  * Fail fast, before web sync and Gradle, when an Android build input is missing.
  *
- *   node scripts/android-build-preflight.mjs [--before-prepare] [--allow-unpackaged-runtime] [--test-mocks]
+ *   node scripts/android-build-preflight.mjs [--before-prepare] [--allow-unpackaged-runtime] [--test-mocks] [--allow-older-upstream-pin]
  *   node scripts/android-build-preflight.mjs --report [--json]     (npm run android:build:inputs)
  *
  * build-android.mjs runs the full check. `--before-prepare` checks only inputs that
@@ -33,13 +33,80 @@ function readHead(directory) {
   }
 }
 
+const MAIN_REFS = ['refs/remotes/origin/main', 'origin/main'];
+export const ALLOW_OLDER_PIN = '--allow-older-upstream-pin';
+
+const git = (directory, args) => execFileSync('git', ['-C', directory, ...args], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore']});
+
+/**
+ * Whether this branch's pin is the upstream pin on origin/main or a descendant of it. A branch
+ * whose lock and checkout agree but pin an older upstream builds an agent that rejects the newer
+ * state a device already holds, so a consistent pin is not enough.
+ *   state: 'equal' | 'descendant' | 'older' | 'unknown' (main's pin is not in vendor/eliza)
+ *        | 'shallow' (vendor/eliza history too short to decide) | 'unavailable' (no origin/main ref)
+ */
+export function mainPinStatus(root, pin) {
+  let mainPin = null, ref = null;
+  for (const candidate of MAIN_REFS) {
+    try {
+      mainPin = JSON.parse(git(root, ['show', `${candidate}:upstream.lock.json`])).commit;
+      ref = candidate;
+      break;
+    } catch { /* try the next spelling of the ref */ }
+  }
+  if (typeof mainPin !== 'string' || !mainPin) return {state: 'unavailable', mainPin: null, ref: null};
+  if (mainPin === pin) return {state: 'equal', mainPin, ref};
+  const upstream = path.join(root, 'vendor/eliza');
+  try { git(upstream, ['cat-file', '-e', `${mainPin}^{commit}`]); } catch { return {state: 'unknown', mainPin, ref}; }
+  try {
+    git(upstream, ['merge-base', '--is-ancestor', mainPin, pin]);
+    return {state: 'descendant', mainPin, ref};
+  } catch {
+    let shallow = false;
+    try { shallow = git(upstream, ['rev-parse', '--is-shallow-repository']).trim() === 'true'; } catch { /* treat as complete */ }
+    return {state: shallow ? 'shallow' : 'older', mainPin, ref};
+  }
+}
+
+/** The problem a non-descendant pin reports, or null. `notes` receives what was not checked. */
+export function mainPinProblem(root, pin, {allowOlderUpstreamPin = false, notes = []} = {}) {
+  const status = mainPinStatus(root, pin);
+  const override = `Only a deliberate, reviewed upstream rollback may pass ${ALLOW_OLDER_PIN}.`;
+  switch (status.state) {
+    case 'unavailable':
+      notes.push(`No origin/main ref in this clone, so the upstream pin ${pin} was not compared with main's (git fetch origin main to check it).`);
+      return null;
+    case 'older':
+    case 'shallow':
+      if (allowOlderUpstreamPin) {
+        notes.push(`${ALLOW_OLDER_PIN}: building upstream pin ${pin}, which does not descend from ${status.ref}'s pin ${status.mainPin}.`);
+        return null;
+      }
+      return status.state === 'older'
+        ? `upstream.lock.json pins ${pin}, which is older than or diverged from the pin ${status.mainPin} on ${status.ref}; an APK from it can reject state written by the newer agent on a device. Run: git fetch origin && git rebase origin/main (or merge it), then git submodule update --init vendor/eliza. ${override}`
+        : `vendor/eliza is a shallow clone, so it cannot show that the pin ${pin} descends from the pin ${status.mainPin} on ${status.ref}. Run: git -C vendor/eliza fetch --unshallow origin. ${override}`;
+    case 'unknown':
+      if (allowOlderUpstreamPin) {
+        notes.push(`${ALLOW_OLDER_PIN}: ${status.ref}'s pin ${status.mainPin} is not in vendor/eliza; not compared.`);
+        return null;
+      }
+      return `The upstream pin ${status.mainPin} on ${status.ref} is not in vendor/eliza, so the pin ${pin} cannot be shown to descend from it. Run: git -C vendor/eliza fetch origin. ${override}`;
+    default:
+      return null;
+  }
+}
+
 /** Inputs no preparation step produces: the pinned checkout and the on-device voice outputs. */
-export function checkoutProblems(root, {voiceHost = verifyVoiceHost, allowUnpackagedRuntime = false, runtimeProfile = "native"} = {}) {
+export function checkoutProblems(root, {voiceHost = verifyVoiceHost, allowUnpackagedRuntime = false, runtimeProfile = "native", allowOlderUpstreamPin = false, notes = []} = {}) {
   const problems = [];
   const pin = JSON.parse(fs.readFileSync(path.join(root, 'upstream.lock.json'), 'utf8')).commit;
   const head = readHead(path.join(root, 'vendor/eliza'));
   if (head !== pin)
     problems.push(`vendor/eliza is ${head ? `at ${head}` : 'not checked out'}; upstream.lock.json pins ${pin}. Run: git submodule update --init vendor/eliza`);
+  else {
+    const older = mainPinProblem(root, pin, {allowOlderUpstreamPin, notes});
+    if (older) problems.push(older);
+  }
   if(runtimeProfile !== "cloud") problems.push(...voiceHostProblems(root, {voiceHost, allowUnpackagedRuntime}));
   return problems;
 }
@@ -124,7 +191,12 @@ export function strictBuildInputs(root, preparedSource, {env = process.env, voic
   const add = (input, ok, suppliedBy, detail, action) => rows.push({input, state: ok ? 'ready' : 'missing', suppliedBy, detail, action: ok ? null : action});
   const pin = readJson(root, 'upstream.lock.json').commit;
   const head = readHead(path.join(root, 'vendor/eliza'));
-  add('pinned upstream checkout', head === pin, 'script', `vendor/eliza ${head ? `at ${head}` : 'not checked out'}; pin ${pin}`, 'git submodule update --init vendor/eliza');
+  // The checkout must match the lock, and the lock must not pin an upstream older than main's.
+  const notes = [];
+  const older = head === pin ? mainPinProblem(root, pin, {notes}) : null;
+  add('pinned upstream checkout', head === pin && !older, 'script',
+    [`vendor/eliza ${head ? `at ${head}` : 'not checked out'}; pin ${pin}`, ...(older ? [older] : notes)].join('; '),
+    older ? 'Rebase on origin/main (or fetch vendor/eliza), then git submodule update --init vendor/eliza' : 'git submodule update --init vendor/eliza');
 
   // On-device voice is the only speech route: a distribution build needs the staged outputs, and
   // verify-apks records a release without a qualified voice host as distributable:false.
@@ -183,7 +255,7 @@ export function formatReport(rows) {
 async function main() {
   const args = process.argv.slice(2);
   for (const arg of args)
-    if (!['--before-prepare', '--allow-unpackaged-runtime', '--test-mocks', '--report', '--json', '--runtime-profile=cloud'].includes(arg)) throw new Error(`Unknown option ${arg}`);
+    if (!['--before-prepare', '--allow-unpackaged-runtime', '--test-mocks', '--report', '--json', '--runtime-profile=cloud', ALLOW_OLDER_PIN].includes(arg)) throw new Error(`Unknown option ${arg}`);
   const root = path.resolve(import.meta.dirname, '..');
   if (args.includes('--report')) {
     // The source guard imports the pinned checkout; without it the prepared path is unknown.
@@ -194,7 +266,9 @@ async function main() {
     return;
   }
   const runtimeProfile=args.includes('--runtime-profile=cloud')?'cloud':'native';
-  let problems = checkoutProblems(root,{allowUnpackagedRuntime:args.includes('--allow-unpackaged-runtime'),runtimeProfile});
+  const notes = [];
+  let problems = checkoutProblems(root,{allowUnpackagedRuntime:args.includes('--allow-unpackaged-runtime'),runtimeProfile,allowOlderUpstreamPin:args.includes(ALLOW_OLDER_PIN),notes});
+  for (const note of notes) console.error(`Note: ${note}`);
   if (!problems.length && !args.includes('--before-prepare')) {
     // The source guard imports the pinned checkout, so load it only once that is verified.
     const {sourceDirectory} = await import('./local-agent-source.mjs');

@@ -312,7 +312,17 @@ npm run android:build -- --allow-unpackaged-runtime
 (exit 2), before the web sync and Gradle, naming the command to run when the pinned
 `vendor/eliza` checkout, the prepared runtime source or (for distribution builds) the staged
 runtime payload is missing or stale, or when the on-device voice outputs are missing (distribution
-builds) or not admitted by the voice-host record.
+builds) or not admitted by the voice-host record. A checkout that matches its own
+`upstream.lock.json` is not enough: the preflight (and `npm run android:build:inputs`) also
+reads the lock on the local `origin/main` ref (`git show origin/main:upstream.lock.json`) and
+refuses a pin that is not that commit or a descendant of it (`git -C vendor/eliza merge-base
+--is-ancestor`), because an APK from a stale branch runs an older agent that can reject state
+the newer agent already wrote on the device. Rebase on `origin/main` to fix it. When main's pin
+is not in `vendor/eliza` it asks for `git -C vendor/eliza fetch origin` (or `--unshallow` for a
+shallow clone) instead of passing; when the clone has no `origin/main` ref at all (a CI
+pull-request checkout) it prints a note and skips the comparison. Run `git fetch origin` first
+so the ref is current. `--allow-older-upstream-pin` (to the preflight or `npm run android:build
+--`) is only for a deliberate, reviewed upstream rollback.
 
 Three inputs of a distributable build cannot come from a script, and
 `npm run android:build:inputs` names each with who supplies it:
