@@ -13,6 +13,7 @@ html,body,#root{margin:0;width:100%;height:100%;overflow:hidden;overscroll-behav
 }
 .alpha-phone :is([data-alpha-layer="composer"],[data-alpha-layer="pill"],[data-alpha-voice-panel]) { bottom:var(--alpha-bottom-clearance)!important; }
 .alpha-phone [data-alpha-toast] { position:absolute; top:var(--alpha-notice-top); left:16px; right:16px; z-index:97; max-height:max(0px,calc(100% - var(--alpha-notice-top) - var(--alpha-dock-clearance,102px) - 12px)); overflow:auto; }
+/* A top notice can sit over an open sheet's title row: only its Undo takes taps, so the controls under it stay usable. */
 [data-alpha-toast] { display:flex; align-items:flex-start; justify-content:center; pointer-events:none; }
 [data-alpha-toast] > * { flex-shrink:0; }
 .alpha-chat-notices { max-height:30%; overflow:auto; flex-shrink:0; }
