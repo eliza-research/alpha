@@ -322,7 +322,11 @@ is not in `vendor/eliza` it asks for `git -C vendor/eliza fetch origin` (or `--u
 shallow clone) instead of passing; when the clone has no `origin/main` ref at all (a CI
 pull-request checkout) it prints a note and skips the comparison. Run `git fetch origin` first
 so the ref is current. `--allow-older-upstream-pin` (to the preflight or `npm run android:build
---`) is only for a deliberate, reviewed upstream rollback.
+--`) is only for a deliberate, reviewed upstream rollback. `npm run android:build:local` does not
+pass it to its first (`--before-prepare`) check, so a rollback runs the steps of that script
+itself, starting with `node scripts/android-build-preflight.mjs --before-prepare
+--allow-older-upstream-pin`. The comparison is only as current as the local `origin/main` ref:
+a clone that has not fetched since main was repinned still passes.
 
 Three inputs of a distributable build cannot come from a script, and
 `npm run android:build:inputs` names each with who supplies it:
