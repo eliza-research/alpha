@@ -3,19 +3,27 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {spawnSync} from 'node:child_process';
+import {spawnSync,execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {embeddingBuildRemap,SDK_PROVENANCE_RECEIPT} from '../scripts/embedding-build-remap.mjs';
 const root=path.resolve(import.meta.dirname,'..');
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
+// SDK remap fixtures use committed historical provenance, never a CI-staged current host.
+const historical=JSON.parse(execFileSync('git',['show','HEAD:android/embedding-host/qualified-host.json'],{cwd:root,encoding:'utf8'}));
+function historicalFixture(t){
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-remap-historical-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
+ for(const [name,bytes] of [['android/embedding-host/qualified-host.json',JSON.stringify(historical)],[SDK_PROVENANCE_RECEIPT,fs.readFileSync(path.join(root,SDK_PROVENANCE_RECEIPT))]]){const file=path.join(dir,name);fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,bytes);}
+ return dir;
+}
 const run=(...args)=>spawnSync(process.execPath,['scripts/prepare-embedding-host.mjs',...args],{cwd:root,encoding:'utf8'});
-test('remapping authenticates the reviewed SDK root and covers NDK header debug paths',()=>{
- const env=embeddingBuildRemap(root,{sdk:'/different/android-sdk',staging:'/isolated/source',fork:'/isolated/engine',build:'/isolated/jni'});
+test('remapping authenticates the reviewed SDK root and covers NDK header debug paths',t=>{
+ const fixture=historicalFixture(t);
+ const env=embeddingBuildRemap(fixture,{sdk:'/different/android-sdk',staging:'/isolated/source',fork:'/isolated/engine',build:'/isolated/jni'});
  const receipt=JSON.parse(fs.readFileSync(path.join(root,SDK_PROVENANCE_RECEIPT),'utf8'));
  assert.ok(receipt.env.CCC_OVERRIDE_OPTIONS.includes(`+-ffile-prefix-map=${receipt.env.ANDROID_HOME}=/work/android-sdk`));
  assert.ok(env.CCC_OVERRIDE_OPTIONS.includes('+-ffile-prefix-map=/different/android-sdk=/work/android-sdk'));
  assert.ok(env.CCC_OVERRIDE_OPTIONS.includes('+-ffile-prefix-map=/isolated/jni=/alphaphone-embedding-host/jni-build'));
- assert.throws(()=>embeddingBuildRemap(root,{sdk:'/sdk with spaces',staging:'/source',fork:'/engine',build:'/build'}),/absolute paths without whitespace/);
+ assert.throws(()=>embeddingBuildRemap(fixture,{sdk:'/sdk with spaces',staging:'/source',fork:'/engine',build:'/build'}),/absolute paths without whitespace/);
 });
 test('an edited provenance receipt cannot choose another canonical SDK path',()=>{
  const temp=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'alpha-sdk-provenance-')));
@@ -50,7 +58,7 @@ test('wrong engine revision is refused before creating output or running a build
 
 // Exercise both receipt schemas without changing the product's admitted legacy engine.
 function componentFixture() {
- const manifest=JSON.parse(fs.readFileSync(path.join(root,'android/embedding-host/qualified-host.json'),'utf8'));
+ const manifest=structuredClone(historical);
  const legacyBytes=fs.readFileSync(path.join(root,SDK_PROVENANCE_RECEIPT));
  const legacy=JSON.parse(legacyBytes), engine=manifest.libraries.find(row=>row.name==='libelizainference.so');
  const receipt={schemaVersion:1,nativeCommit:manifest.forkPin,engine:{sha256:engine.sha256,bytes:engine.bytes,abi:manifest.abi},previousEngineSha256:engine.sha256,toolchain:{pathRemap:legacy.env.CCC_OVERRIDE_OPTIONS}};
