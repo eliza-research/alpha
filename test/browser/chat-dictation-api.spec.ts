@@ -9,7 +9,8 @@ import {setupLiveAssistant} from './voice-assistant-fixture';
 // capture recovery (two cases); interruptSpeech accounting is retained separately.
 // Dictation's public component API is retained but there is no chat dictation button.
 // Override only the source build-flags module to exercise local/native branches; no shipped hooks.
-test.beforeEach(async({page})=>{await page.route('**/src/build-flags.ts*',route=>route.fulfill({contentType:'application/javascript',body:'export const testMocksEnabled=false;export const devSurfacesEnabled=false;export const cloudRuntimeEnabled=false;export const privateLocalPreviewEnabled=false;'}));});
+// The stub must export every build flag: updateChannelCheckEnabled joined the module in f4ebce3b3 (#713).
+test.beforeEach(async({page})=>{await page.route('**/src/build-flags.ts*',route=>route.fulfill({contentType:'application/javascript',body:'export const testMocksEnabled=false;export const devSurfacesEnabled=false;export const cloudRuntimeEnabled=false;export const privateLocalPreviewEnabled=false;export const updateChannelCheckEnabled=false;'}));});
 async function captureApi(page:Page){
  await page.evaluate(async()=>{const {Component}=await import('/src/prototype/model.js'),{connectionController:c}=await import('/src/runtime/connection-ui.tsx');const render=Component.prototype.renderVals;Component.prototype.renderVals=function(){(window as any).dictationApiFixture=this;return render.call(this);};c.close();});
  await expect.poll(()=>page.evaluate(()=>!!(window as any).dictationApiFixture)).toBe(true);
@@ -69,7 +70,8 @@ test('API dictation and assistant stay distinct: draft editing never sends, voic
  await button(page,'Talk').click();
  await expect(voice(page)).toHaveAttribute('data-voice-state','listening');
  expect(await live(page,f=>f.captures.map((c:any)=>c.echoCancel))).toEqual([false,true]);
- await expect(voice(page)).toContainText('Speak at any time to interrupt');
+ // 5f669f286 (#745) shortened the assistant status to 'Listening…'; interruption stays behavioural (mic open while speaking).
+ await expect(voice(page)).toContainText('Listening…');
  await say(page,'What is on my calendar today');
  await expect.poll(()=>posts(page)).toEqual(['What is on my calendar today']);
  await expect(voice(page)).toHaveAttribute('data-voice-state','speaking');
