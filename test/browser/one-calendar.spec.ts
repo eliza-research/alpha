@@ -32,20 +32,21 @@ test('Calendar, Home and Google accounts show one merged calendar without a cale
  expect(fixture.requests.every(request=>request.startsWith('GET ')),'reading the merged calendar writes nothing').toBe(true);
 });
 
-test('hiding one merged calendar in Settings is a display choice for Calendar and Home on this device',async({page})=>{
+// Since 79215b912 ("Simplify Calendar settings") Settings > Calendar no longer lists "Calendars shown in
+// Alpha" with per-calendar switches: it has one Google Calendar entry reporting the actual grant.
+test('Settings Calendar shows one Google Calendar entry and no per-calendar switches; Calendar and Home keep the merged view',async({page})=>{
  await installOneCalendar(page,{googleInFeed:true});
  await page.getByRole('button',{name:'Settings',exact:true}).click();
  await page.getByRole('button',{name:'Calendar',exact:true}).click();
- await expect(page.getByText('Calendars shown in Alpha',{exact:true})).toBeVisible();
- // Only calendars in the agent's feed are listed: the built-in calendar and the ones shown in Google.
- for(const name of ['Eliza Calendar','owner@example.test','Holidays in United States'])await expect(page.getByRole('switch',{name:`Show ${name} calendar`})).toBeChecked();
- await page.getByRole('switch',{name:'Show Holidays in United States calendar'}).click();
- await expect(page.getByRole('switch',{name:'Show Holidays in United States calendar'})).not.toBeChecked();
+ const google=page.getByRole('button',{name:'Google Calendar',exact:true});
+ await expect(google).toBeVisible();await expect(google).toContainText('Connected');
+ await expect(page.getByText('Calendars shown in Alpha',{exact:true})).toHaveCount(0);
+ await expect(page.getByRole('switch',{name:/^Show .+ calendar$/})).toHaveCount(0);
  await page.evaluate(()=>window.dispatchEvent(new Event('launcher-home')));
  await expect(page.locator('html')).toHaveAttribute('data-active-view','home');
  const card=page.locator('[data-alpha-home-calendar]');
- await expect(card).toContainText('Team standup');
- expect((await requests(page)).requests.every(request=>request.startsWith('GET ')),'a display choice changes no source').toBe(true);
+ await expect(card).toContainText('Public holiday');
+ expect((await requests(page)).requests.every(request=>request.startsWith('GET ')),'opening Calendar settings changes no source').toBe(true);
 });
 
 test('without a connected Google account Calendar and Home show the local calendar with no errors',async({page})=>{
@@ -68,8 +69,9 @@ test('without a connected Google account Calendar and Home show the local calend
  await expect(page.locator('html')).toHaveAttribute('data-active-view','home');
  await page.getByRole('button',{name:'Settings',exact:true}).click();
  await page.getByRole('button',{name:'Calendar',exact:true}).click();
- await expect(page.getByRole('switch',{name:'Show Eliza Calendar calendar'})).toBeChecked();
- await expect(page.getByRole('switch',{name:/^Show .+ calendar$/})).toHaveCount(1);
+ const google=page.getByRole('button',{name:'Google Calendar',exact:true});
+ await expect(google).toBeVisible();await expect(google).toContainText('Not connected');
+ await expect(page.getByRole('switch',{name:/^Show .+ calendar$/})).toHaveCount(0);
  const fixture=await requests(page);
  expect(fixture.googleCalendarLists,'no Google calendar is listed without a Google account').toBe(0);
  expect(errors,'no page errors').toEqual([]);
