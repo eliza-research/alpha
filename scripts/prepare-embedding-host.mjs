@@ -4,24 +4,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
-import {nativeInputPaths,nativeJavaPath,nativeBinding,nativeInputs,nativeGenerated,nativeCmakeOptions,verifyNativeJava,nativeRequiredSymbols,verifyNativeSymbols} from './embedding-native-contract.mjs';
+import {embeddingProducerInputPaths as producerInputPaths,nativeInputPaths,nativeJavaPath,nativeBinding,nativeInputs,nativeGenerated,nativeCmakeOptions,verifyNativeJava,nativeRequiredSymbols,verifyNativeSymbols} from './embedding-native-contract.mjs';
 import {embeddingBuildRemap} from './embedding-build-remap.mjs';
 // Full producer module closure and repository-shape metadata; no dependency install.
-const producerInputPaths=[
- "package.json",
- "packages/agent/package.json",
- "packages/app/package.json",
- "packages/app/scripts/aosp/compile-libllama-paths.ts",
- "packages/app/scripts/aosp/compile-libllama.ts",
- "packages/app/scripts/aosp/compile-shim.ts",
- "packages/app/scripts/aosp/vulkan-source-contract.ts",
- "packages/app/scripts/aosp/zig-toolchain.ts",
- "packages/app/scripts/build-helpers/arm64-simd.ts",
- "packages/app/scripts/build-helpers/omnivoice-merged.ts",
- "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
- "packages/app/scripts/lib/repo-root.ts",
- "packages/app/scripts/stage-elizavoice-lib.ts"
-];
+
 const root=path.resolve(import.meta.dirname,'..'),upstream=path.join(root,'vendor/eliza');
 const args=process.argv.slice(2),option=name=>{const i=args.indexOf(name);return i<0?undefined:args[i+1];};
 for(let i=0;i<args.length;i++){if(args[i]==='--build'||args[i]==='--remap-build-path')continue;if(['--fork','--output','--abi'].includes(args[i])){if(!args[++i]||args[i].startsWith('--'))throw Error('Missing option value');}else throw Error('Unknown option');}

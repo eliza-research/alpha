@@ -29,7 +29,7 @@ export function verifyCloudResident(root,source=sourceDirectory(root),{localEmbe
  const runtimeAbis=bunTarget==='android'?provenance.bun?.architectures:['arm64-v8a','x86_64'];
  if(!Array.isArray(runtimeAbis)||!runtimeAbis.length||new Set(runtimeAbis).size!==runtimeAbis.length||runtimeAbis.some(abi=>!['arm64-v8a','x86_64'].includes(abi)))throw Error('Invalid Cloud Bun ABI admission');
  if(localEmbeddings&&(runtimeAbis.length!==1||runtimeAbis[0]!=='arm64-v8a'))throw Error('Local embeddings require the qualified ARM64 host');
- if(localEmbeddings)verifyEmbeddingHost(root);
+ if(localEmbeddings)verifyEmbeddingHost(root,{requireProducerInputs:true});
  if(!bun||bun.version!==provenance.bun.version||bun.revision!==provenance.bun.revision)throw Error('Cloud Bun provenance differs from pinned producer lock');
  const seen=new Set();
  for(const row of provenance.files){

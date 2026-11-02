@@ -6,7 +6,7 @@ import os from 'node:os';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {verifyEmbeddingHost, verifyEmbeddingInputs} from '../scripts/stage-embedding-host.mjs';
-import {nativeInputPaths, nativeBinding, nativeInputs, nativeGenerated} from '../scripts/embedding-native-contract.mjs';
+import {embeddingProducerInputPaths,nativeInputPaths, nativeBinding, nativeInputs, nativeGenerated} from '../scripts/embedding-native-contract.mjs';
 const root=path.resolve(import.meta.dirname,'..');
 const git=(directory,...args)=>execFileSync('git',['-C',directory,...args],{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
 const committed=JSON.parse(fs.readFileSync(path.join(root,'android/embedding-host/qualified-host.json'),'utf8'));
@@ -30,7 +30,7 @@ const qualified=(()=>{
  });
  return record;
 })();
-function fixture({currentOnly=false}={}){
+function fixture({currentOnly=false,producerInputs=false}={}){
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-embed-admission-'));
  for(const name of ['upstream.lock.json','app.config.json','android/embedding-host/qualified-host.json']){fs.mkdirSync(path.dirname(path.join(dir,name)),{recursive:true});fs.copyFileSync(path.join(root,name),path.join(dir,name));}
  const vendor=path.join(dir,'vendor/eliza');fs.mkdirSync(path.dirname(vendor),{recursive:true});
@@ -43,7 +43,7 @@ function fixture({currentOnly=false}={}){
   const objects=git(path.join(root,'vendor/eliza'),'rev-parse','--path-format=absolute','--git-path','objects');
   fs.writeFileSync(path.join(vendor,'.git/objects/info/alternates'),objects+'\n');
   git(vendor,'sparse-checkout','init','--no-cone');
-  git(vendor,'sparse-checkout','set','--no-cone',...qualified.inputs.map(row=>'/'+row.path),'/plugins/plugin-local-inference/native/llama.cpp');
+  git(vendor,'sparse-checkout','set','--no-cone',...qualified.inputs.map(row=>'/'+row.path),...embeddingProducerInputPaths.map(name=>'/'+name),'/plugins/plugin-local-inference/native/llama.cpp');
   git(vendor,'checkout','--detach',JSON.parse(fs.readFileSync(path.join(dir,'upstream.lock.json'),'utf8')).commit);
  }
  git(vendor,'config','user.name','Embedding fixture');git(vendor,'config','user.email','embedding-fixture@example.invalid');
@@ -55,6 +55,7 @@ function fixture({currentOnly=false}={}){
  // Tiny content fixtures retain the production manifest shape; the known BGE hash is checked last.
  for(const row of qualified.libraries){const file=path.join(dir,'android/app/src/main/jniLibs/arm64-v8a',row.name);fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,'fixture-'+row.name);}
  const manifest=structuredClone(qualified);for(const row of manifest.libraries){row.sha256=createHash('sha256').update('fixture-'+row.name).digest('hex');row.bytes=Buffer.byteLength('fixture-'+row.name);}
+ if(producerInputs)manifest.producerInputs=embeddingProducerInputPaths.map(name=>({path:name,sha256:sha(execFileSync('git',['-C',vendor,'show','HEAD:'+name]))}));
  fs.writeFileSync(path.join(dir,'android/embedding-host/qualified-host.json'),JSON.stringify(manifest));
  return {dir,vendor,manifest,lock(commit){const file=path.join(dir,'upstream.lock.json'),lock=JSON.parse(fs.readFileSync(file,'utf8'));lock.commit=commit;fs.writeFileSync(file,JSON.stringify(lock));},write(){fs.writeFileSync(path.join(dir,'android/embedding-host/qualified-host.json'),JSON.stringify(manifest));},close(){fs.rmSync(dir,{recursive:true,force:true});}};
 }
@@ -138,4 +139,34 @@ test('the committed record is admissible at the pin, or names why it must be req
   assert.throws(()=>verifyEmbeddingHost(dir),/requalification required/,'distribution admission names the requalification first');
   assert.deepEqual(verifyEmbeddingHost(dir,{allowAbsentRuntime:true}),{status:'not-packaged',distributable:false},'an unpackaged developer build is unaffected');
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});
+
+
+test('complete producer closure is required for new embedding-capable admission and preserves the built pin',()=>{
+ const legacy=fixture();try{assert.throws(()=>verifyEmbeddingInputs(legacy.dir,legacy.manifest,{requireProducerInputs:true}),/producer input qualification missing/);}finally{legacy.close();}
+ const f=fixture({producerInputs:true});try{
+  const built=f.manifest.pin;assert.doesNotThrow(()=>verifyEmbeddingInputs(f.dir,f.manifest,{requireProducerInputs:true}));assert.equal(f.manifest.pin,built);
+ }finally{f.close();}
+});
+test('missing, duplicated or changed producer records cannot qualify embeddings',()=>{
+ for(const mutate of [r=>r.producerInputs.pop(),r=>r.producerInputs.push(r.producerInputs[0]),r=>r.producerInputs[0].sha256='0'.repeat(64)]){
+  const f=fixture({producerInputs:true});try{mutate(f.manifest);assert.throws(()=>verifyEmbeddingInputs(f.dir,f.manifest,{requireProducerInputs:true}),/producer input/);}finally{f.close();}
+ }
+});
+test('producer helper drift is rejected both dirty and after a committed source change',()=>{
+ const f=fixture({producerInputs:true});try{
+  const helper='packages/app/scripts/aosp/compile-libllama.ts';fs.appendFileSync(path.join(f.vendor,helper),'\n// changed producer helper\n');
+  assert.throws(()=>verifyEmbeddingInputs(f.dir,f.manifest,{requireProducerInputs:true}),/source admission changed/);
+  git(f.vendor,'add',helper);git(f.vendor,'commit','-m','Change producer helper');f.lock(git(f.vendor,'rev-parse','HEAD'));
+  assert.throws(()=>verifyEmbeddingInputs(f.dir,f.manifest,{requireProducerInputs:true}),/Embedding producer input changed/);
+ }finally{f.close();}
+});
+
+test('staging serializes the original producer receipt inputs without replacing its built pin',()=>{
+ const stage=fs.readFileSync(new URL('../scripts/stage-embedding-host.mjs',import.meta.url),'utf8');
+ const literal=stage.match(/const manifest=(\{pin:receipt\.pin[^\n]+);/)[1];
+ const make=new Function('receipt','identity','model','libraries','hash','args','return '+literal);
+ const receipt={pin:'1'.repeat(40),forkPin:'2'.repeat(40),abi:'arm64-v8a',inputs:[],producerInputs:[{path:'packages/app/scripts/stage-elizavoice-lib.ts',sha256:'3'.repeat(64)}]};
+ const manifest=JSON.parse(JSON.stringify(make(receipt,'test.app',{},[],()=> '4'.repeat(64),['--receipt','fixture.json'])));
+ assert.deepEqual(manifest.producerInputs,receipt.producerInputs);assert.equal(manifest.pin,receipt.pin);
 });

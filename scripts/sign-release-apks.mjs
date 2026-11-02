@@ -154,7 +154,7 @@ export async function main(argv, { root = process.cwd(), env = process.env, log 
   const build = !options.apk && fs.existsSync(path.join(artifacts, "build-config.json")) ? JSON.parse(fs.readFileSync(path.join(artifacts, "build-config.json"), "utf8")) : {};
   if (build.localEmbeddings === true) {
     const {verifyEmbeddingHost}=await import('./stage-embedding-host.mjs');
-    verifyEmbeddingHost(root);
+    verifyEmbeddingHost(root,{requireProducerInputs:true});
   }
   if (build.testMocks === true) problems.push("artifacts/build-config.json records a test-mocks build, which is never distributable");
   try { targets = signingTargets({ artifacts, apk: options.apk && path.resolve(root, options.apk), out: options.out && path.resolve(root, options.out) }); }

@@ -2,12 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import {embeddingProducerInputPaths} from '../scripts/embedding-native-contract.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
 const source = fs.readFileSync(path.join(root, 'scripts/prepare-embedding-host.mjs'), 'utf8');
-const match = source.match(/const producerInputPaths=(\[[\s\S]*?\]);/);
-assert.ok(match, 'producer declares its copied source closure');
-const copied = new Set(JSON.parse(match[1]));
+assert.match(source, /embeddingProducerInputPaths as producerInputPaths/, 'producer uses the shared admitted closure');
+const copied = new Set(embeddingProducerInputPaths);
 
 function checkClosure(read, allowed) {
   const pending = ['packages/app/scripts/stage-elizavoice-lib.ts'], seen = new Set();

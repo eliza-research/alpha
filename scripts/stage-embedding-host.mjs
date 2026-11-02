@@ -3,7 +3,7 @@ import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {nativeInputPaths,nativeJavaPath,nativeBinding,nativeInputs,nativeGenerated,verifyNativeJava} from './embedding-native-contract.mjs';
+import {embeddingProducerInputPaths,nativeInputPaths,nativeJavaPath,nativeBinding,nativeInputs,nativeGenerated,verifyNativeJava} from './embedding-native-contract.mjs';
 const root=path.resolve(import.meta.dirname,'..');
 const sha=value=>createHash('sha256').update(value).digest('hex');
 const hash=file=>sha(fs.readFileSync(file));
@@ -13,7 +13,7 @@ const forkPath='plugins/plugin-local-inference/native/llama.cpp';
 
 const isCommit=value=>typeof value==='string'&&/^[a-f0-9]{40}$/.test(value)&&value!=='0'.repeat(40);
 /** A new runtime pin may reuse reviewed binaries only when every native build input is exact. */
-export function verifyEmbeddingInputs(productRoot,qualification) {
+export function verifyEmbeddingInputs(productRoot,qualification,{requireProducerInputs=false}={}) {
  const pin=JSON.parse(fs.readFileSync(path.join(productRoot,'upstream.lock.json'),'utf8')).commit;
  const identity=JSON.parse(fs.readFileSync(path.join(productRoot,'app.config.json'),'utf8')).appId;
  if(!isCommit(pin)||!isCommit(qualification.pin)||!isCommit(qualification.forkPin)||qualification.identity!==identity||qualification.abi!=='arm64-v8a')throw Error('Embedding host source or identity admission changed');
@@ -30,6 +30,12 @@ export function verifyEmbeddingInputs(productRoot,qualification) {
    if(!qualification.jniBinding||Object.keys(qualification.jniBinding).length!==3||Object.entries(binding).some(([key,value])=>qualification.jniBinding[key]!==value))throw Error('Native registration identity qualification missing or changed');
    verifyNativeJava(cpp,source(nativeJavaPath));
   }
+  const producers=qualification.producerInputs;
+  if(requireProducerInputs||producers!==undefined){
+   if(!Array.isArray(producers)||producers.length!==embeddingProducerInputPaths.length||new Set(producers.map(row=>row?.path)).size!==embeddingProducerInputPaths.length||producers.some(row=>!embeddingProducerInputPaths.includes(row?.path)||!/^[a-f0-9]{64}$/.test(row.sha256)))throw Error('Embedding producer input qualification missing or changed');
+   git('diff','--quiet','HEAD','--',...embeddingProducerInputPaths);
+   for(const row of producers)if(sha(git('show',pin+':'+row.path))!==row.sha256)throw Error('Embedding producer input changed: '+row.path);
+  }
   git('diff','--quiet','HEAD','--',...inputPaths,forkPath);
   const fork=git('ls-tree',pin,forkPath).toString().match(/^160000 commit ([a-f0-9]{40})\t/)?.[1];
   if(fork!==qualification.forkPin)throw Error('Native engine gitlink changed');
@@ -41,7 +47,7 @@ export function verifyEmbeddingInputs(productRoot,qualification) {
  } catch(error){throw Error('Embedding host source admission changed: '+error.message,{cause:error});}
 }
 /** Build admission reads exact staged bytes; it never downloads or repairs a missing artifact. */
-export function verifyEmbeddingHost(productRoot,{allowAbsentRuntime=false}={}) {
+export function verifyEmbeddingHost(productRoot,{allowAbsentRuntime=false,requireProducerInputs=false}={}) {
  // The explicit unpackaged developer build has no agent to use this host. Never
  // admit a partial resident payload or a partially staged native host this way.
  if(allowAbsentRuntime){
@@ -55,7 +61,7 @@ export function verifyEmbeddingHost(productRoot,{allowAbsentRuntime=false}={}) {
  // Set by a pin move that changed a native build input or the engine gitlink; a new --receipt replaces the record.
  if(manifest.requalification?.required===true)throw Error('Embedding host requalification required at '+String(manifest.requalification.atPin).slice(0,12)+': '+manifest.requalification.reason);
  if(!/^[a-f0-9]{64}$/.test(manifest.qualificationReceiptSha256)||manifest.jniIdentityRelocated!==true)throw Error('Embedding host qualification missing or changed');
- verifyEmbeddingInputs(productRoot,manifest);
+ verifyEmbeddingInputs(productRoot,manifest,{requireProducerInputs});
  if(manifest.model?.sha256!==model.sha256||manifest.model?.path!==model.path||manifest.model?.dimensions!==384)throw Error('Embedding host model admission changed');
  if(!Array.isArray(manifest.libraries)||manifest.libraries.length!==names.length||new Set(manifest.libraries.map(row=>row.name)).size!==names.length)throw Error('Incomplete embedding host library set');
  for(const row of manifest.libraries){
@@ -74,7 +80,7 @@ if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.ur
   const receipt=JSON.parse(fs.readFileSync(args[1],'utf8'));
   const identity=JSON.parse(fs.readFileSync(path.join(root,'app.config.json'),'utf8')).appId;
   if(receipt.built!==true||!receipt.qualifiedAt||!Array.isArray(receipt.libraries)||receipt.libraries.length!==3)throw Error('Exact qualified ARM64 receipt required');
-  verifyEmbeddingInputs(root,receipt);
+  verifyEmbeddingInputs(root,receipt,{requireProducerInputs:true});
   const libraries=names.map(name=>{
    const matches=receipt.libraries.filter(row=>path.basename(row.path)===name);
    if(matches.length!==1)throw Error('Incomplete embedding host receipt');
@@ -86,12 +92,12 @@ if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.ur
   // agent:stage-android stages the model with the runtime payload; this command only checks it.
   if(!fs.existsSync(path.join(root,model.path)))throw Error('Pinned BGE model is not staged: run npm run agent:prepare, npm run agent:build-workflow-worker and npm run agent:stage-android first');
   if(hash(path.join(root,model.path))!==model.sha256)throw Error('Pinned BGE model bytes changed');
-  const manifest={pin:receipt.pin,forkPin:receipt.forkPin,identity,abi:receipt.abi,model,libraries:libraries.map(({source,target,...row})=>row),qualificationReceiptSha256:hash(args[1]),jniIdentityRelocated:true,inputs:receipt.inputs,...(receipt.jniBinding?{jniBinding:receipt.jniBinding}:{})};
+  const manifest={pin:receipt.pin,forkPin:receipt.forkPin,identity,abi:receipt.abi,model,libraries:libraries.map(({source,target,...row})=>row),qualificationReceiptSha256:hash(args[1]),jniIdentityRelocated:true,inputs:receipt.inputs,producerInputs:receipt.producerInputs,...(receipt.jniBinding?{jniBinding:receipt.jniBinding}:{})};
   const manifestFile=path.join(root,'android/embedding-host/qualified-host.json');
   // A record marked for requalification is replaced by the new qualification; any other differing record needs review first.
   if(fs.existsSync(manifestFile)&&fs.readFileSync(manifestFile,'utf8')!==JSON.stringify(manifest,null,2)+'\n'&&JSON.parse(fs.readFileSync(manifestFile,'utf8')).requalification?.required!==true)throw Error('Existing embedding qualification differs; review before replacing');
   for(const row of libraries){fs.mkdirSync(path.dirname(row.target),{recursive:true});if(!fs.existsSync(row.target))fs.copyFileSync(row.source,row.target,fs.constants.COPYFILE_EXCL);}
   fs.mkdirSync(path.dirname(manifestFile),{recursive:true});fs.writeFileSync(manifestFile,JSON.stringify(manifest,null,2)+'\n');
-  verifyEmbeddingHost(root);console.log('Qualified ARM64 embedding host staged. Runtime policy and Cloud text/speech unchanged.');
+  verifyEmbeddingHost(root,{requireProducerInputs:true});console.log('Qualified ARM64 embedding host staged. Runtime policy and Cloud text/speech unchanged.');
  }else throw Error('Usage: node scripts/stage-embedding-host.mjs --receipt <QUALIFICATION.json> | --verify');
 }

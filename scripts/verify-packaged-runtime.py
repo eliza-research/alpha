@@ -41,7 +41,7 @@ def verify_local_embedding_source(root):
     script = (root / 'scripts/stage-embedding-host.mjs').resolve(strict=True)
     result = subprocess.run(
         [os.environ.get('ALPHA_NODE', 'node'), '--input-type=module', '-e',
-         'const {verifyEmbeddingHost}=await import(process.argv[1]); verifyEmbeddingHost(process.argv[2]);',
+         'const {verifyEmbeddingHost}=await import(process.argv[1]); verifyEmbeddingHost(process.argv[2],{requireProducerInputs:true});',
          script.as_uri(), str(root.resolve())],
         cwd=root, capture_output=True, text=True, timeout=45)
     if result.returncode or len(result.stdout) + len(result.stderr) > 65536:
