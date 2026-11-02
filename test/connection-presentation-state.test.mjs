@@ -377,6 +377,25 @@ test('non-resident browser, signed-in state and native required-sign-in policy r
  assert.equal(native.context.explicitSignedOutCloudEntry(native.snapshot()),false);
  assert.equal(native.context.productionCloudSignInRequired(native.snapshot()),true);
 });
+test('the automatic entry is one full page with no Back on every platform; opened sign-ins stay dialogs',()=>{
+ const native=fixture({account:null,purpose:'agent',open:true});native.update({startupResolved:true});
+ assert.equal(native.context.signInEntryPage(native.snapshot()),true);
+ const browser=fixture({android:false,browserResident:true,account:null,purpose:'agent',open:true});
+ browser.update({startupResolved:true,residentSavedCredential:false});
+ assert.equal(browser.context.signInEntryPage(browser.snapshot()),true);
+ // An error during an attempt (a wrong code, a rejected key) keeps the page instead of a dismissible dialog.
+ browser.update({signIn:{step:'code',environment:'production'},error:'That code did not work.'});
+ assert.equal(browser.context.signInEntryPage(browser.snapshot()),true);
+ // Without an attempt an error is not the first-run entry; startup and recovery views keep their place.
+ browser.update({signIn:null});
+ assert.equal(browser.context.signInEntryPage(browser.snapshot()),false);
+ for(const purpose of ['cloud-account','plan'])for(const android of [false,true]){
+  const opened=fixture({android,browserResident:!android,account:null,purpose,open:true});
+  opened.update({startupResolved:true,residentSavedCredential:false,providerStatus:{provider:'cerebras',selected:true,configured:true}});
+  assert.equal(opened.context.explicitSignedOutCloudEntry(opened.snapshot()),true);
+  assert.equal(opened.context.signInEntryPage(opened.snapshot()),false,`${purpose} opened on ${android?'Android':'browser'} keeps its Back`);
+ }
+});
 test('explicit signed-out account and plan entries remain available for a retained offline identity',()=>{
  for(const purpose of ['cloud-account','plan']){
   const f=fixture({android:false,browserResident:true,account:null,purpose,open:true});
@@ -394,4 +413,42 @@ test('selected own inference does not require Cloud sign-in; changing back resto
  f.update({providerStatus:{provider:'cerebras',selected:false,configured:true}});
  assert.equal(f.context.productionCloudSignInRequired(f.snapshot()),true);
  assert.equal(f.snapshot().open,true);
+});
+
+// Settings > AI provider during a streaming reply. Switching restarts the agent, and the actual
+// retire() ends the reply in flight with "The connection changed.", so both switch handlers wait
+// for the reply as they wait for a connection operation. Once it settles they switch as before.
+const providerSwitchSource=stripTypeScriptTypes([
+ section('function retire(', '/** Test mocks only'),
+ 'globalThis.providerController={',
+ section('  async configureLocal(', '  /** Stops the running agent'),
+ '};',
+].join('\n'),{mode:'transform'});
+function providerSwitchFixture(){
+ const events=[];
+ const context=vm.createContext({AbortController,DOMException,
+  operation:null,sending:null,providerStatusGeneration:0,epoch:1,active:null,state:{session:null},appRequests:new Set(),actionReceipts:new Map(),conversationMemory:new Map(),
+  testMocksEnabled:false,residentAlwaysPresent:true,RESIDENT_NAME:'Alpha',isAndroid:true,browserCloudResidentEnabled:false,OWN_KEYS_NOT_SET_UP:'Own API keys could not be set up.',LOCAL_PROVIDER_MODEL:'model',
+  clearClientObservationSupport(){},retireConversationEvents(){},retireReadReplies(){},pauseHostedBackground:async()=>{},retireClockReviews:async()=>{},cancelStoppedReply(){},
+  secureConnectionStore:{remove:async()=>{}},update(){},showPostSignInSetup(){},
+  work:async(label,run)=>{events.push(label);await run(new AbortController().signal);},
+  configureLocalProvider:async()=>{events.push('check key');},clearLocalProvider:async()=>{events.push('clear own keys');return {configured:false};},
+  localProviderStatus:async()=>({provider:'cerebras',selected:true,configured:true}),connectResident:async()=>{events.push('restart agent');},
+ });
+ vm.runInContext(providerSwitchSource,context);
+ return {context,events,controller:context.providerController};
+}
+test('a provider switch during a streaming reply leaves the reply running; once it settles the switch works as before',async()=>{
+ const switches={configureLocal:[f=>f.controller.configureLocal('synthetic-cerebras-key','model'),['Checking the key with Cerebras…','check key','restart agent']],
+  selectCloudProvider:[f=>f.controller.selectCloudProvider(),['Switching to Cloud…','clear own keys','restart agent']]};
+ for(const [name,[run,idle]] of Object.entries(switches)){
+  const f=providerSwitchFixture(),reply=new AbortController();
+  f.context.sending=reply;await run(f);
+  assert.equal(reply.signal.aborted,false,`${name} ended the reply in flight: ${reply.signal.reason?.message}`);
+  assert.equal(f.context.sending,reply);assert.equal(f.context.epoch,1);
+  assert.deepEqual(f.events,[],`${name}: no key check, key removal or agent restart while the reply streams`);
+  // The reply settles (send clears sending); the same switch now runs unchanged.
+  f.context.sending=null;await run(f);
+  assert.deepEqual(f.events,idle,name);assert.equal(f.context.epoch,2,`${name} retired the old connection`);
+ }
 });

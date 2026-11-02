@@ -9,13 +9,18 @@ import {setupLiveAssistant} from './voice-assistant-fixture';
 // capture recovery (two cases); interruptSpeech accounting is retained separately.
 // Dictation's public component API is retained but there is no chat dictation button.
 // Override only the source build-flags module to exercise local/native branches; no shipped hooks.
-test.beforeEach(async({page})=>{await page.route('**/src/build-flags.ts*',route=>route.fulfill({contentType:'application/javascript',body:'export const testMocksEnabled=false;export const devSurfacesEnabled=false;export const cloudRuntimeEnabled=false;export const privateLocalPreviewEnabled=false;'}));});
+test.beforeEach(async({page})=>{await page.route('**/src/build-flags.ts*',route=>route.fulfill({contentType:'application/javascript',body:'export const testMocksEnabled=false;export const devSurfacesEnabled=false;export const cloudRuntimeEnabled=false;export const privateLocalPreviewEnabled=false;export const updateChannelCheckEnabled=false;'}));});
 async function captureApi(page:Page){
  await page.evaluate(async()=>{const {Component}=await import('/src/prototype/model.js'),{connectionController:c}=await import('/src/runtime/connection-ui.tsx');const render=Component.prototype.renderVals;Component.prototype.renderVals=function(){(window as any).dictationApiFixture=this;return render.call(this);};c.close();});
  await expect.poll(()=>page.evaluate(()=>!!(window as any).dictationApiFixture)).toBe(true);
 }
 async function setupNative(page:Page){const foreign=await setupNativeSpeech(page);await captureApi(page);return foreign;}
-async function setupLive(page:Page){const foreign=await setupLiveAssistant(page);await captureApi(page);return foreign;}
+async function setupLive(page:Page){
+ const foreign=await setupLiveAssistant(page);await captureApi(page);
+ // Observe the actual shared controller, not an obsolete renderer callback.
+ await page.evaluate(async()=>{const {VoiceAssistantSession}=await import('/src/runtime/voice-assistant.ts');const start=VoiceAssistantSession.prototype.start;VoiceAssistantSession.prototype.start=function(){(window as any).live.sharedVoiceSession=this;return start.call(this);};});
+ return foreign;
+}
 async function invokeDictation(page:Page){await page.evaluate(()=>(window as any).dictationApiFixture.startTranscription());}
 const voice=(page:Page)=>page.getByRole('region',{name:'Voice conversation',exact:true});
 async function noCloud(page:Page,foreign:string[]){expect(await page.evaluate(()=>(window as any).nativeSpeech.forbidden)).toEqual([]);expect(foreign).toEqual([]);}
@@ -66,10 +71,11 @@ test('API dictation and assistant stay distinct: draft editing never sends, voic
  expect(await posts(page)).toEqual([]);
 
  await page.locator('textarea[data-alpha-composer]').fill('');
+ await expect(button(page,'Talk')).toBeVisible();
  await button(page,'Talk').click();
  await expect(voice(page)).toHaveAttribute('data-voice-state','listening');
  expect(await live(page,f=>f.captures.map((c:any)=>c.echoCancel))).toEqual([false,true]);
- await expect(voice(page)).toContainText('Speak at any time to interrupt');
+ await expect(voice(page)).toContainText('Listening…');
  await say(page,'What is on my calendar today');
  await expect.poll(()=>posts(page)).toEqual(['What is on my calendar today']);
  await expect(voice(page)).toHaveAttribute('data-voice-state','speaking');
@@ -94,10 +100,14 @@ test('API interruptSpeech preserves listening; Mute controls capture with presse
  await expect.poll(()=>live(page,f=>f.captures.length)).toBe(2);
  await say(page,'How is the weather');
  await expect(voice(page)).toHaveAttribute('data-voice-state','speaking');
- await page.evaluate(()=>(window as any).dictationApiFixture.renderVals().chatRecorder.interrupt());
+ expect(await page.evaluate(()=>typeof(window as any).dictationApiFixture.renderVals().chatRecorder.interrupt)).toBe('undefined');
+ await expect.poll(()=>live(page,f=>typeof f.sharedVoiceSession?.interruptSpeech)).toBe('function');
+ expect(await page.evaluate(()=>(window as any).live.sharedVoiceSession.interruptSpeech())).toBe(true);
  await expect(voice(page)).toHaveAttribute('data-voice-state','listening');
  await expect.poll(()=>live(page,f=>f.stopped)).toBeGreaterThan(0);
+ expect(await live(page,f=>({starts:f.captures.length,stops:f.stops.length}))).toEqual({starts:2,stops:1});
  await button(page,'Stop voice conversation').click();
+ await expect.poll(()=>live(page,f=>f.stops.length)).toBe(2);
  await expect(page.getByText('(Interrupted before this reply was played.)')).toBeVisible();
  expect(await posts(page)).toEqual(['How is the weather']);
  await clean(page,foreign);

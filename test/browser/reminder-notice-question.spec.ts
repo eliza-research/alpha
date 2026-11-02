@@ -8,7 +8,7 @@ for(const mode of ['compose','cancel','source-changed','owner-changed'] as const
    localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));
    const store=new Map();
    const f=w.deliveryFixture={configured:0,cancelled:0,disabled:[] as string[],nativeSync:0,foregroundSync:0,polling:true,enabled:false,notifications:false,events:[] as string[],input:null as any,release:null as any,holdRetire:false,retireRelease:null as any,mockHold:false,mockReleases:{} as Record<string,()=>void>,removed:[] as string[]};
-   const agent=w.residentAgent=w.createResidentAgentPlugin({owner:()=>f.owner||'fixture-owner',agentId:'fixture-agent'});
+   const agent=w.residentAgent=w.createResidentAgentPlugin({owner:()=>f.owner||'fixture-owner',agentId:'fixture-agent', providerStatus: {provider: 'elizacloud', configured: false}});
    const methods=(names:string[])=>names.map(name=>({name,rtype:'promise'}));
    w.Capacitor={PluginHeaders:[
     {name:'DailyApps',methods:methods(['surfaceInfo','listReminders','pendingReminderTap','consumeReminderTap','releaseReminderQuestion','addListener','removeListener'])},

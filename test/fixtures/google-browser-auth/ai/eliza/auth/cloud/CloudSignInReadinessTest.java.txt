@@ -35,8 +35,9 @@ public class CloudSignInReadinessTest {
  final Map<String, List<PluginCall>> probing = new HashMap<>();
  CloudSignInConfig selected = TestRegistration.PRODUCT;
  CloudSignInConfig config() { return selected; }
- boolean browserAvailable = true, linksVerified = true, assetsVerified = true, browserReady = true;
+ boolean browserAvailable = true, defaultBrowser = true, linksVerified = true, assetsVerified = true, browserReady = true;
  String browserPackage() { return browserAvailable ? "example.browser" : null; }
+ String defaultBrowserPackage() { return defaultBrowser ? "example.view" : null; }
  boolean appLinkVerified(CloudSignInEnvironment environment) { return linksVerified; }
  boolean assetLinksGrant(CloudSignInEnvironment environment) { return assetsVerified; }
  CloudSignInReadiness.Result storedReadiness(CloudSignInEnvironment environment) { return stored.get(environment.name); }
@@ -87,10 +88,17 @@ public class CloudSignInReadinessTest {
   browser.googleNative = false;
   check(browser.measure(e).google, "browser mode works without native Google");
   for (int gate = 0; gate < 4; gate++) {
-   browser.browserAvailable = gate != 0; browser.linksVerified = gate != 1; browser.assetsVerified = gate != 2; browser.browserReady = gate != 3;
+   browser.browserAvailable = gate != 0; browser.defaultBrowser = gate != 0; browser.linksVerified = gate != 1; browser.assetsVerified = gate != 2; browser.browserReady = gate != 3;
    CloudSignInReadiness.Result result = browser.measure(e);
    check(!result.google && result.email && result.phone, "browser gate failure preserves other methods " + gate);
   }
+  browser.linksVerified = true; browser.assetsVerified = true; browser.browserReady = true;
+  browser.browserAvailable = false; browser.defaultBrowser = true;
+  check(browser.measure(e).google, "without Custom Tabs the default HTTPS browser keeps Google available");
+  browser.browserAvailable = true; browser.defaultBrowser = false;
+  check(browser.measure(e).google, "a Custom Tabs browser alone keeps Google available");
+  browser.browserAvailable = false; browser.defaultBrowser = true; browser.linksVerified = false;
+  check(!browser.measure(e).google, "no verified return keeps Google unavailable whatever the browser");
 
   // status/probe: fresh caches are served, an explicit retry refreshes only negative or partial answers.
   for (boolean persisted : new boolean[]{false, true}) {

@@ -12,7 +12,7 @@ for(const scenario of ['lookup-unavailable','lookup-unavailable-navigation','ask
    localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));
    const store=new Map();
    const f=w.deliveryFixture={configured:0,cancelled:0,disabled:[] as string[],nativeSync:0,foregroundSync:0,polling:true,enabled:false,notifications:false,events:[] as string[],input:null as any,release:null as any,holdRetire:false,retireRelease:null as any,mockHold:false,mockReleases:{} as Record<string,()=>void>,removed:[] as string[]};
-   const agent=w.residentAgent=w.createResidentAgentPlugin({owner:()=>f.owner||'fixture-owner',agentId:'fixture-agent'});
+   const agent=w.residentAgent=w.createResidentAgentPlugin({owner:()=>f.owner||'fixture-owner',agentId:'fixture-agent', providerStatus: {provider: 'elizacloud', configured: false}});
    if(scenario.startsWith('lookup-unavailable')){
     f.lookupUnavailable=true;f.lookupFailures=0;f.noticeToasts=[];
     new MutationObserver(()=>{const shown=document.body?.innerText.match(/Workflow notifications? (?:retained|could not be checked)[^\n]*/)?.[0];if(shown&&!f.noticeToasts.includes(shown))f.noticeToasts.push(shown);}).observe(document,{subtree:true,childList:true,characterData:true});

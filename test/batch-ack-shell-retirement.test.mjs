@@ -7,11 +7,11 @@ const fixtureRoot=process.env.ALPHA_ACK_HOST_ROOT?pathToFileURL(path.resolve(pro
 const {cloudVoiceViewFixture}=await import(new URL('test/fixtures/cloud-voice-view.mjs',fixtureRoot));
 const {voiceFakeClock}=await import(new URL('test/fixtures/shared-batch-voice.mjs',fixtureRoot));
 const adapter=readFileSync(process.env.ALPHA_ACK_VIEW_SOURCE||new URL('../apps/app/src/prototype/voice-adapter.ts',import.meta.url),'utf8');
-async function startedCue({failCleanup=false}={}){
+// The browser and the Pixel batch fallback speak the same model ACK through the Cloud driver.
+const platforms=[{native:false,platform:'web'},{native:true,platform:'android'}];
+async function startedCue({failCleanup=false,platform}){
  const clock=voiceFakeClock();
- // Browser compatibility still supports spoken ACKs; native Cloud voice no longer
- // adds a second TTS request ahead of the answer.
- const f=cloudVoiceViewFixture({cloudProfile:true,native:false,platform:'web',clock,peak:.5,holdReply:true,holdPlayback:true,
+ const f=cloudVoiceViewFixture({cloudProfile:true,...platform,clock,peak:.5,holdReply:true,holdPlayback:true,
    holdPlaybackCleanup:true,playbackCleanupError:failCleanup?Error('Native stop failed'):undefined,
    adapterSourceTransform:()=>adapter});
  f.box.React={createElement:()=>null};f.box.VoiceActivity=()=>null;
@@ -22,8 +22,8 @@ async function startedCue({failCleanup=false}={}){
  await clock.flush();assert.equal(f.cloudSpeech,1);assert.equal(f.speechInputs[0].text,'Checking calendar');
  return{f,clock,input};
 }
-test('actual Batch/session shell Stop retains ACK media until native cleanup settles',async()=>{
- const {f,clock}=await startedCue();
+for(const platform of platforms)test(platform.platform+': actual Batch/session shell Stop retains ACK media until native cleanup settles',async()=>{
+ const {f,clock}=await startedCue({platform});
  try{
   f.renderChat().stop();await clock.flush();assert.equal(f.renderChat()?.state,'stopping');
   assert.equal(f.starts,1);assert.equal(typeof f.releasePlaybackCleanup,'function');
@@ -32,8 +32,8 @@ test('actual Batch/session shell Stop retains ACK media until native cleanup set
   assert.equal(f.starts,1,'Stop never resumes capture');
  }finally{f.releasePlaybackCleanup?.();f.releaseReply?.();await clock.flush();f.close();await clock.flush();}
 });
-test('actual ACK cleanup failure latches shell media error and blocks restart',async()=>{
- const {f,clock}=await startedCue({failCleanup:true});
+for(const platform of platforms)test(platform.platform+': actual ACK cleanup failure latches shell media error and blocks restart',async()=>{
+ const {f,clock}=await startedCue({failCleanup:true,platform});
  try{
   f.renderChat().stop();await clock.flush();assert.equal(f.renderChat()?.state,'stopping');
   f.releasePlaybackCleanup();await clock.flush();assert.equal(f.renderChat()?.state,'error');

@@ -70,7 +70,7 @@ test('actual OTP form clears only when the attempt or verification stage changes
   assert.equal(document.querySelector('[name="one-time-code"]'),null,'cancel leaves no code input');
 }));
 
-test('mandatory chooser omits inert Back and distinguishes readiness from an email request',async()=>panel(async({document,render})=>{
+test('mandatory chooser omits inert Back and keeps pending requests cancellable',async()=>panel(async({document,render})=>{
   await render({view:choose,dismissible:false,ready:false,extra:React.createElement('button',null,'Retry sign-in')});
   assert.equal([...document.querySelectorAll('button')].some(button=>button.textContent==='Back'),false);
   assert.equal(document.querySelector('[name="email"]').disabled,true);
@@ -80,7 +80,8 @@ test('mandatory chooser omits inert Back and distinguishes readiness from an ema
   await render({busy:true,message:'Sending your code…'});
   assert.equal(document.querySelector('form button').textContent,'Sending code…');
   assert.equal(document.querySelector('[role="status"]:not(#alpha-google-unavailable)')===null,true,'sending does not add a line or shift the form');
-  assert.equal([...document.querySelectorAll('.alpha-connection-cancel')].some(button=>button.textContent==='Cancel sign-in'),true);
+  const cancel=()=>[...document.querySelectorAll('.alpha-connection-cancel')].some(button=>button.textContent==='Cancel sign-in');
+  assert.equal(cancel(),true,'the retained main form exposes cancellation while a request is pending');
 }));
 
 test('resend starts at thirty seconds and cannot be clicked during the countdown',async context=>{
@@ -98,7 +99,7 @@ test('resend starts at thirty seconds and cannot be clicked during the countdown
 
 function controllerFixture({isAndroid=false,browserCloudResidentEnabled=false}={}){
   const source=`
-    const ownProviderSelected=()=>false;let operation=null,residentStartInBackground=false,active=null,signInReadinessOwner=null;
+    const ownProviderSelected=()=>false;let operation=null,residentStartInBackground=false,active=null,signInReadinessOwner=null,googleSignInGeneration=0;
     const state={signIn:{step:'code',environment:'production',attemptId:'old',email:'person@example.invalid'},open:true,busy:false,message:'',error:''};
     const events=[],update=values=>{Object.assign(state,values);events.push({...values});};
     const cloud={cancelLogin(){events.push({cancel:true});}};
@@ -116,7 +117,7 @@ function controllerFixture({isAndroid=false,browserCloudResidentEnabled=false}={
     const connectionController={
     ${part('  close() {', '  cancel() {')}
     cancel(){operation?.abort(new DOMException('Cancelled','AbortError'));cloud.cancelLogin();},
-    ${part('  cancelSignIn() {','  async signInGoogle()')}
+    ${part('  async cancelSignIn() {','  async signInGoogle()')}
     ${part('  async signInGoogle()', '  /** Sends a six-digit code')}
     ${part('  async signInEmail(', '  /**\n   * Native finished a Google return')}
     };
@@ -130,7 +131,7 @@ function deferred(){let resolve,reject;const promise=new Promise((yes,no)=>{reso
 test('actual controller cancellation returns to chooser and ignores late verification success',async()=>{
   const f=controllerFixture(),pending=deferred();f.client.verifyEmailSignIn=()=>pending.promise;
   const request=f.connectionController.verifySignInCode('123456');
-  assert.equal(f.state.busy,true);f.connectionController.cancelSignIn();
+  assert.equal(f.state.busy,true);await f.connectionController.cancelSignIn();
   assert.deepEqual(f.state.signIn,choose);pending.resolve({status:'authenticated'});await request;
   assert.equal(f.state.busy,false);assert.equal(f.state.error,'');
   assert.ok(!f.events.some(e=>e.authenticated));
@@ -142,7 +143,7 @@ test('actual controller rejects late email challenge and Google failure after ca
     if(method==='email')f.client.startEmailSignIn=()=>pending.promise;
     else f.client.signInWithGoogle=()=>pending.promise;
     const request=method==='email'?f.connectionController.signInEmail('person@example.invalid'):f.connectionController.signInGoogle();
-    f.connectionController.cancelSignIn();
+    await f.connectionController.cancelSignIn();
     if(method==='email')pending.resolve({attemptId:'late',expiresAt:1,resendAt:1});else pending.reject(new Error('late provider error'));
     await request;assert.equal(f.state.error,'');assert.equal(f.state.busy,false);
     assert.deepEqual(f.state.signIn,choose,'cancelled send/picker returns to a usable chooser');
@@ -160,7 +161,7 @@ test('actual controller keeps wrong-code challenge and prevents duplicate verifi
 });
 
 test('native Back and Escape share auth cancellation instead of leaving an expired code form',()=>{
-  const source=part('    const dismiss = () => {','    const back = ');
+  const source=part('  const dismiss = () => {','  useEffect(');
   const compile=transformSync(source,{loader:'ts',format:'cjs'}).code;
   let current={signIn:{...code}},calls=[];
   const controller={getSnapshot:()=>current,cancelSignIn:()=>calls.push('auth'),cancel:()=>calls.push('generic'),close:()=>calls.push('close')};
@@ -169,6 +170,7 @@ test('native Back and Escape share auth cancellation instead of leaving an expir
   current={signIn:null};dismiss();assert.deepEqual(calls,['auth','generic'],'reads the current auth state, not stale effect state');
   const handlers=part('    const back = ','      if (event.key === \'Tab\'');
   assert.equal((handlers.match(/dismiss\(\)/g)||[]).length,2,'edge Back and Escape use the same dispatch');
+  assert.equal((ui.match(/onCancel=\{dismiss\}/g)||[]).length,2,'the own-key Cancel on the welcome page and in Settings uses it too');
 });
 
 test('cancelling another operation does not conceal its genuine late failure',async()=>{
@@ -178,31 +180,32 @@ test('cancelling another operation does not conceal its genuine late failure',as
   await request;assert.equal(f.state.error,'Saved effect could not be confirmed');
 });
 
-test('Back on the required chooser keeps sign-in enabled instead of creating a retry dead end',()=>{
+test('Back on the required chooser keeps sign-in enabled instead of creating a retry dead end',async()=>{
   const f=controllerFixture();f.state.signIn={...choose};f.setRequired(true);
-  f.connectionController.cancelSignIn();
+  await f.connectionController.cancelSignIn();
   assert.deepEqual(f.state.signIn,choose);assert.equal(f.events.length,0);
-  f.setRequired(false);f.connectionController.cancelSignIn();
+  f.setRequired(false);await f.connectionController.cancelSignIn();
   assert.equal(f.state.signIn,null,'optional account dialog can still be dismissed');
 });
 
 const entryStart=ui.indexOf('  const requiredSignInView:'),entryEnd=ui.indexOf('  const accountCreatedNotice=',entryStart);assert.ok(entryStart>=0&&entryEnd>entryStart);
 const selectorSource=ui.slice(entryStart,entryEnd);
 const explicitEntrySource=ui.includes('export function explicitSignedOutCloudEntry(')?part('export function explicitSignedOutCloudEntry(', 'export function connectionChooserVisible(').replace('export ',''):'function explicitSignedOutCloudEntry(){return false;}';
-const entryFunction=transformSync(`const isAndroid=false,browserCloudResidentEnabled=false,ownProviderSelected=()=>false;${explicitEntrySource}function selectEntry(snapshot){const productionSignInRequired=false,explicitSignInEntry=explicitSignedOutCloudEntry(snapshot),signInEntryRequired=productionSignInRequired||explicitSignInEntry;const providerChoice=null,panel=null,residentEnvironment=()=> 'production',inAppGoogle=false,inAppPhone=false,inAppEmail=true,cloudSignInPhone=false,loadSignInService=()=>null,RESIDENT_UNPACKAGED='unpackaged',browserCloudResidentEnabled=false,testMocksEnabled=false;${selectorSource}return null;}`,{loader:'tsx',format:'cjs',jsx:'automatic'}).code;
+const ownKeysSource=part('/** First run shows one sign-in method','/** One explicit choice;');
+const entryFunction=transformSync(`const isAndroid=false,browserCloudResidentEnabled=false,ownProviderSelected=()=>false,productionCloudSignInRequired=()=>false,AlphaAuthBrand=()=>null,OwnProviderChoice=()=>null,LOCAL_PROVIDER_MODEL='model';${explicitEntrySource}${ownKeysSource}function selectEntry(snapshot){const productionSignInRequired=false,explicitSignInEntry=explicitSignedOutCloudEntry(snapshot),signInEntryRequired=productionSignInRequired||explicitSignInEntry,signInPage=signInEntryPage(snapshot);const providerChoice=null,panel=null,residentEnvironment=()=> 'production',inAppGoogle=false,inAppPhone=false,inAppEmail=true,cloudSignInPhone=false,loadSignInService=()=>null,RESIDENT_UNPACKAGED='unpackaged',browserCloudResidentEnabled=false,testMocksEnabled=false;${selectorSource}return null;}`,{loader:'tsx',format:'cjs',jsx:'automatic'}).code;
 const noAuthCalls=[];const entryController=new Proxy({},{get:(_,name)=>()=>noAuthCalls.push(name)});
-const selectEntry=new Function('require','CloudSignInPanel','connectionController','ResidentRecoveryPanel',entryFunction+';return selectEntry;')(createRequire(import.meta.url),CloudSignInPanel,entryController,()=>null);
-test('explicit signed-out account and plan entry render approved email/Google chooser directly, with no legacy CTA or auth action',async()=>{const {renderToStaticMarkup}=await import('react-dom/server');for(const purpose of['cloud-account','plan']){const element=selectEntry({open:true,purpose,cloudAccount:null,busy:false,message:'',error:'',signIn:null});assert.ok(element,'the actual root-page branch must select the existing sign-in component');const html=renderToStaticMarkup(element);assert.match(html,/Welcome to Alpha/);assert.match(html,/Continue with Google/);assert.match(html,/Sign in with email/);assert.doesNotMatch(html,/Sign in to use connected services such as Gmail/);assert.deepEqual(noAuthCalls,[]);}});
+const selectEntry=new Function('require','CloudSignInPanel','connectionController','ResidentRecoveryPanel','useState',entryFunction+';return selectEntry;')(createRequire(import.meta.url),CloudSignInPanel,entryController,()=>null,React.useState);
+test('explicit signed-out account and plan entry render approved email/Google chooser directly, with no legacy CTA or auth action',async()=>{const {renderToStaticMarkup}=await import('react-dom/server');for(const purpose of['cloud-account','plan']){const element=selectEntry({open:true,purpose,cloudAccount:null,busy:false,message:'',error:'',signIn:null});assert.ok(element,'the actual root-page branch must select the existing sign-in component');const html=renderToStaticMarkup(element);assert.match(html,/Welcome to Alpha/);assert.match(html,/Continue with Google/);assert.match(html,/Sign in with email/);assert.match(html,/role="dialog"/,'an opened sign-in stays a dialog');assert.match(html,/>Back</,'an opened sign-in keeps Back');assert.doesNotMatch(html,/Sign in to use connected services such as Gmail/);assert.deepEqual(noAuthCalls,[]);}});
 test('verified account is not redirected from membership into first-run sign-in',()=>{assert.equal(selectEntry({open:true,purpose:'cloud-account',cloudAccount:{userId:'synthetic-owner'},busy:false,signIn:null}),null);});
 
 test('explicit account chooser preserves newer in-app email/phone readiness and never starts hosted auth',async()=>{
  const begin=part('  async beginSignIn(', '  /** Leaves the sign-in screen');
- const body=`${explicitEntrySource}function make(purpose,methods){let operation=null,epoch=0,signInReadinessOwner=null,inAppGoogle=false,inAppPhone=false,inAppEmail=false;const cloudSignIn={},cloudServiceName=()=> 'Eliza Cloud',state={open:true,purpose,cloudAccount:null},updates=[],calls=[];const residentCloudFlow=()=>false,residentEnvironment=()=> 'production',cloudEnvironmentAllowed=()=>true,isAndroid=false;let cloud={environment:'production',cancelLogin(){calls.push('cancel');}};const inAppSignInMethods=async()=>{calls.push('status');return methods;},update=patch=>{updates.push(patch);Object.assign(state,patch);},work=async(_,fn)=>fn(new AbortController().signal),ensureResident=async()=>{},browserCloudLoginAction=async()=>calls.push('web-auth'),residentBrowserLoginAction=async()=>calls.push('resident-auth');const connectionController={${begin}};return {controller:connectionController,state,updates,calls,methods:()=>({google:inAppGoogle,phone:inAppPhone,email:inAppEmail})};}`;
+ const body=`${explicitEntrySource}function make(purpose,methods){let operation=null,epoch=0,signInReadinessOwner=null,googleSignInGeneration=0,inAppGoogle=false,inAppPhone=false,inAppEmail=false;const cloudSignIn={},cloudServiceName=()=> 'Eliza Cloud',state={open:true,purpose,cloudAccount:null},updates=[],calls=[];const residentCloudFlow=()=>false,residentEnvironment=()=> 'production',cloudEnvironmentAllowed=()=>true,isAndroid=false;let cloud={environment:'production',cancelLogin(){calls.push('cancel');}};const inAppSignInMethods=async()=>{calls.push('status');return methods;},update=patch=>{updates.push(patch);Object.assign(state,patch);},work=async(_,fn)=>fn(new AbortController().signal),ensureResident=async()=>{},browserCloudLoginAction=async()=>calls.push('web-auth'),residentBrowserLoginAction=async()=>calls.push('resident-auth');const connectionController={${begin}};return {controller:connectionController,state,updates,calls,methods:()=>({google:inAppGoogle,phone:inAppPhone,email:inAppEmail})};}`;
  const compiled=transformSync(body,{loader:'ts',format:'cjs'}).code,make=new Function(compiled+';return make;')();
  for(const purpose of ['cloud-account','plan','agent'])for(const methods of [null,{google:false,phone:true,email:false}]){const f=make(purpose,methods);await f.controller.beginSignIn('production');assert.equal(f.state.signIn.step,'choose');assert.deepEqual(f.calls,['status','cancel']);assert.deepEqual(f.methods(),{google:false,phone:methods?.phone===true,email:methods===null||methods.email!==false});}
 });
 
-test('Back from optional explicit sign-in returns to Settings through the existing close fence',()=>{const f=controllerFixture();Object.assign(f.state,{signIn:{...choose},purpose:'cloud-account',cloudAccount:null});f.connectionController.cancelSignIn();assert.equal(f.state.signIn,null);assert.equal(f.state.open,false);assert.equal(f.state.purpose,'agent');assert.ok(!f.events.some(event=>event.authenticated));});
+test('Back from optional explicit sign-in returns to Settings through the existing close fence',async()=>{const f=controllerFixture();Object.assign(f.state,{signIn:{...choose},purpose:'cloud-account',cloudAccount:null});await f.connectionController.cancelSignIn();assert.equal(f.state.signIn,null);assert.equal(f.state.open,false);assert.equal(f.state.purpose,'agent');assert.ok(!f.events.some(event=>event.authenticated));});
 
 test('initial chooser visibly presents email alongside Google without another disclosure',async()=>panel(async({document,window,render})=>{
   const visible=element=>{
@@ -233,9 +236,9 @@ test('sign-in shows no explainer, legal subview or service-documents text',async
 }));
 
 // Extracted controller functions retain their real module-level platform collaborators.
-test('required chooser Back retains its guard on Android and browser-resident platforms',()=>{
+test('required chooser Back retains its guard on Android and browser-resident platforms',async()=>{
  for(const platform of [{isAndroid:true,browserCloudResidentEnabled:false},{isAndroid:false,browserCloudResidentEnabled:true}]){
   const f=controllerFixture(platform);f.state.signIn={...choose};f.setRequired(true);
-  f.connectionController.cancelSignIn();assert.deepEqual(f.state.signIn,choose);assert.equal(f.events.length,0);
+  await f.connectionController.cancelSignIn();assert.deepEqual(f.state.signIn,choose);assert.equal(f.events.length,0);
  }
 });

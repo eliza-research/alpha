@@ -11,14 +11,14 @@ index dd0601db5f..7b80d66825 100644
   implementation 'androidx.credentials:credentials-play-services-auth:1.6.0'
   implementation 'com.google.android.libraries.identity.googleid:googleid:1.1.1'
 diff --git a/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInConfig.java b/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInConfig.java
-index 2a74fbb6ba..86ec54c96c 100644
+index 2a74fbb6ba..afe28594f5 100644
 --- a/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInConfig.java
 +++ b/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInConfig.java
 @@ -19,6 +19,8 @@ public final class CloudSignInConfig {
   public final String productName;
   /** Steward app client id for native Google sign-in. */
   public final String googleClientId;
-+ /** Explicit host selection. Native is the default; browser requires verified App Links and Custom Tabs. */
++ /** Explicit host selection. Native is the default; browser requires verified App Links and an external browser. */
 + public final String googleSignInMode;
   /** Tag of the one bounded Google diagnostic line. */
   public final String logTag;
@@ -76,7 +76,7 @@ index 1d7091624f..272b839a87 100644
   public enum ReturnKind { SUCCESS, ERROR, RETURN }
   /** A return to this environment's callback. SUCCESS sets code and state, ERROR sets error and state, RETURN sets neither. */
 diff --git a/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java b/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java
-index 4b5990b840..36dc6e40a2 100644
+index 4b5990b840..9a643af4bb 100644
 --- a/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java
 +++ b/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java
 @@ -2,9 +2,18 @@ package ai.eliza.auth.cloud;
@@ -115,7 +115,7 @@ index 4b5990b840..36dc6e40a2 100644
   * Native Eliza Cloud sign-in for a registered Android application. Native screens collect an email
 - * or phone code or use Android's Google account picker; no Eliza Cloud web page is part of a
 - * successful sign-in. Every secret-bearing request (Steward code exchange or email/SMS/MFA
-+ * or phone code or use the host-selected Google account picker or external Custom Tab; no hosted
++ * or phone code or use the host-selected Google account picker or external browser; no hosted
 + * Eliza Cloud login page is part of sign-in. Every secret-bearing request (Steward code exchange or email/SMS/MFA
   * verification, mobile App Auth connect, token and ack, Steward logout) is made here with fixed URLs
   * (CloudSignInRoutes). The Steward session, refresh token, authorization codes and PKCE verifiers
@@ -179,13 +179,13 @@ index 4b5990b840..36dc6e40a2 100644
    catch (Exception ignored) { /* Kept in memory. */ }
   }
   /** The readiness observations (CloudSignInReadiness). Every read is short, fixed and fail-safe. */
-@@ -261,12 +290,111 @@ public abstract class CloudSignInPlugin extends Plugin {
+@@ -261,12 +290,131 @@ public abstract class CloudSignInPlugin extends Plugin {
    if (emailOffered) try { emailRoute = CloudSignInReadiness.emailRoutePresent(probePost(environment, CloudEmailCode.SEND_PATH)); } catch (Exception unavailable) { /* Other methods remain independent. */ }
    // Native Google verifies an ID token and does not require a browser return.
    boolean googleReady = Boolean.TRUE.equals(providers.data.opt("googleNative"));
 +  if ("browser".equals(config().googleSignInMode)) {
 +   googleReady = false;
-+   if (Boolean.TRUE.equals(providers.data.opt("google")) && browserPackage() != null && appLinkVerified(environment)) {
++   if (Boolean.TRUE.equals(providers.data.opt("google")) && (browserPackage() != null || defaultBrowserPackage() != null) && appLinkVerified(environment)) {
 +    try {
 +     Response browser = get(CloudSignInFlow.authorizeUrl(environment, CloudSignInFlow.s256(CloudSignInFlow.newVerifier()), CloudSignInFlow.newState()));
 +     googleReady = CloudSignInReadiness.redirectAllowed(browser.status, browser.location) && assetLinksGrant(environment);
@@ -214,6 +214,25 @@ index 4b5990b840..36dc6e40a2 100644
 +   }
 +   String browser = CustomTabsClient.getPackageName(getContext(), candidates);
 +   return candidates.contains(browser) ? browser : null;
++  } catch (RuntimeException unavailable) { return null; }
++ }
++ /**
++  * Without a Custom Tabs provider (stock AOSP ships only the WebView shell browser), the default
++  * external HTTPS browser, opened with a plain VIEW as AppAuth does. Never the host itself.
++  */
++ private String defaultBrowserPackage() {
++  try {
++   PackageManager manager = getContext().getPackageManager();
++   Intent page = new Intent(Intent.ACTION_VIEW, Uri.parse("https://accounts.google.com/")).addCategory(Intent.CATEGORY_BROWSABLE);
++   List<String> handlers = new ArrayList<>();
++   for (ResolveInfo resolved : manager.queryIntentActivities(page, PackageManager.MATCH_DEFAULT_ONLY)) {
++    String name = resolved.activityInfo == null ? null : resolved.activityInfo.packageName;
++    if (name != null && !name.equals(getContext().getPackageName()) && !handlers.contains(name)) handlers.add(name);
++   }
++   // With no default set the system resolver answers, which is not a handler: use the first browser.
++   ResolveInfo preferred = manager.resolveActivity(page, PackageManager.MATCH_DEFAULT_ONLY);
++   String chosen = preferred == null || preferred.activityInfo == null ? null : preferred.activityInfo.packageName;
++   return handlers.contains(chosen) ? chosen : handlers.isEmpty() ? null : handlers.get(0);
 +  } catch (RuntimeException unavailable) { return null; }
 + }
 + private boolean appLinkVerified(CloudSignInEnvironment environment) {
@@ -264,7 +283,7 @@ index 4b5990b840..36dc6e40a2 100644
 +  next.browserState = pending.state; next.expiresAt = pending.expiresAt; next.busy = true;
 +  run(() -> {
 +   try {
-+    String browser = browserPackage();
++    String tabs = browserPackage(), browser = tabs != null ? tabs : defaultBrowserPackage();
 +    if (browser == null) throw new SignInFailure("browser-unavailable");
 +    if (!appLinkVerified(next.environment) || !assetLinksGrant(next.environment)) throw new SignInFailure("app-link-unverified");
 +    credentials(() -> {
@@ -278,6 +297,7 @@ index 4b5990b840..36dc6e40a2 100644
 +      next.browserLaunched = true;
 +     }
 +     try {
++      if (tabs == null) { getActivity().startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)).addCategory(Intent.CATEGORY_BROWSABLE).setPackage(browser)); return; }
 +      CustomTabsIntent tab = new CustomTabsIntent.Builder().setShowTitle(true).setShareState(CustomTabsIntent.SHARE_STATE_OFF).build();
 +      tab.intent.setPackage(browser);
 +      tab.launchUrl(getActivity(), Uri.parse(url));
@@ -291,7 +311,7 @@ index 4b5990b840..36dc6e40a2 100644
   /** Optional caller identity scopes retained events to the interactive request that began them. */
   private static String callerRequestId(PluginCall call) throws SignInFailure {
    if (!call.getData().has("requestId")) return null;
-@@ -289,6 +417,7 @@ public abstract class CloudSignInPlugin extends Plugin {
+@@ -289,6 +437,7 @@ public abstract class CloudSignInPlugin extends Plugin {
     next = new Attempt(environment, true, requestId, reserveCredentialCommit());
     attempt = next; next.waiting = call;
    }
@@ -299,7 +319,7 @@ index 4b5990b840..36dc6e40a2 100644
    next.googleVerifier = CloudSignInFlow.newVerifier();
    next.googleCancellation = new android.os.CancellationSignal();
    next.busy = true;
-@@ -380,7 +509,7 @@ public abstract class CloudSignInPlugin extends Plugin {
+@@ -380,7 +529,7 @@ public abstract class CloudSignInPlugin extends Plugin {
     catch (Exception storage) { /* Treated as no pending record. */ }
     long now = System.currentTimeMillis();
     final Attempt waiting;
@@ -308,7 +328,7 @@ index 4b5990b840..36dc6e40a2 100644
     if (received.kind == CloudSignInFlow.ReturnKind.RETURN) {
      if (pending == null || pending.environment != returned || pending.expired(now)) return;
      if (waiting != null) { synchronized (lock) { waiting.callbackReceived = true; } end(waiting, "app-link-unverified", false); }
-@@ -389,16 +518,21 @@ public abstract class CloudSignInPlugin extends Plugin {
+@@ -389,16 +538,21 @@ public abstract class CloudSignInPlugin extends Plugin {
     }
     // Not this device's request (unknown, foreign or duplicate): ignored, nothing burned or ended.
     if (pending == null || pending.environment != returned || !pending.sameState(received)) return;
@@ -336,7 +356,7 @@ index 4b5990b840..36dc6e40a2 100644
     if (pending.expired(now)) { end(owner, "expired", false); return; }
     owner.expiresAt = pending.expiresAt;
     owner.callbackReceived = true;
-@@ -411,7 +545,8 @@ public abstract class CloudSignInPlugin extends Plugin {
+@@ -411,7 +565,8 @@ public abstract class CloudSignInPlugin extends Plugin {
       .put("tenantId", returned.tenant).put("codeVerifier", pending.verifier);
      Response exchanged = post(owner, "/steward/auth/oauth/exchange", body, null);
      if (exchanged.status != 200) throw new SignInFailure(CloudSignInFlow.failureForStatus("exchange", exchanged.status));
@@ -346,7 +366,7 @@ index 4b5990b840..36dc6e40a2 100644
     } catch (SignInFailure failure) { end(owner, failure.code, false); }
     catch (Exception unexpected) { end(owner, "unavailable", false); }
    });
-@@ -821,7 +956,7 @@ public abstract class CloudSignInPlugin extends Plugin {
+@@ -821,7 +976,7 @@ public abstract class CloudSignInPlugin extends Plugin {
   private void end(Attempt current, String code, boolean burn) {
    PluginCall waiting;
    synchronized (lock) { current.cancel(); waiting = current.waiting; current.waiting = null; if (attempt == current) attempt = null; }

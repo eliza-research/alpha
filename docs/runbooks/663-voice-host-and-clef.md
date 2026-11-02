@@ -140,7 +140,7 @@ the diagnostics export (`alpha-native-voice-timing-v3`; numbers only, never audi
 | I-3 | Endpointing | Turn submits about 1.2 s after speech ends; timing record `endpoint.path` is `gap` (or `semantic` where the scorer loaded), with the reason recorded |
 | I-4 | Cancel before playback | Speech during a pending reply cancels it; the turn is not resent |
 | I-5 | Barge-in during playback | With echo canceller attached, speech interrupts; the view marks "(Interrupted…)" and only played sentences are kept; a `heard` outcome is recorded |
-| I-6 | Stop speaking button | Playback stops at once; rest marked unplayed |
+| I-6 | No Stop speaking button | Voice view shows only Mute and Stop voice conversation |
 | I-7 | Cough or echo of the reply | Reply keeps running |
 | I-8 | Action proposal reply | Voice ends for review; nothing is approved automatically |
 | I-9 | Account change / sign-out mid-turn | Capture stops; no audio crosses owners |

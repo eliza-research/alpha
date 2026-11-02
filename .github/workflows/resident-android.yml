@@ -187,6 +187,23 @@ jobs:
           python3 scripts/ci/test-resident-phase.py
           python3 test/resident-crash-diagnostic.test.py
       - run: python3 scripts/ci/resident-phase.py --name product-install --seconds 600 npm ci
+      - name: Verify source metadata and voice contracts before resident preparation
+        timeout-minutes: 5
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: |
+          python3 scripts/ci/resident-phase.py --name source-metadata --seconds 240 \
+            bash -e -c '
+              npm run upstream:prepare-client
+              exec node --test --test-concurrency=1 \
+                test/docs-inventory-consistency.test.mjs \
+                test/docs-requirements-consistency.test.mjs \
+                test/embedding-host-admission.test.mjs \
+                test/upstream-reachability.test.mjs \
+                test/voice-host-record.test.mjs \
+                test/cloud-voice-profile.test.mjs \
+                test/private-preview-cartesia-route.test.mjs
+            '
       - run: node --test vendor/eliza/packages/os/scripts/__tests__/stage-launcher-overlay.node.test.ts
       # On-device speech is libelizainference with the shared paradee-voice library only; this archive
       # stages no voice outputs (local speech reports unavailable). The record is still checked.

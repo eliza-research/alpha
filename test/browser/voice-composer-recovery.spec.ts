@@ -154,7 +154,7 @@ test('speaking shows automatic microphone pause without changing the manual mute
  const voice=page.locator('.alpha-voice-composer');
  await voice.getByRole('button',{name:'Mute microphone',exact:true}).click();
  await page.evaluate(()=>(window as any).voicePresentationFixture.phase('speaking'));
- const paused=voice.getByRole('button',{name:'Microphone paused while Alpha speaks',exact:true});
+ const paused=voice.getByRole('button',{name:'Microphone paused while Alpha responds',exact:true});
  await expect(paused).toBeDisabled();await expect(paused).toHaveAttribute('aria-pressed','true');
  await expect(voice.locator('[data-alpha-voice-animation]')).toHaveAttribute('data-phase','speaking');
  await page.evaluate(()=>(window as any).voicePresentationFixture.phase('listening'));

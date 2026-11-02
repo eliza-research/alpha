@@ -12,7 +12,7 @@ for (const mode of ['checking', 'unavailable', 'available'] as const) {
       const methods = (names: string[]) => names.map(name => ({ name, rtype: 'promise' }));
       w.Capacitor = {
         PluginHeaders: [
-          { name: 'Agent', methods: methods(['getStatus', 'configureProvider', 'start']) },
+          { name: 'Agent', methods: methods(['getStatus', 'prepareProviderConfiguration', 'configureProvider', 'cancelProviderConfiguration', 'providerStatus', 'start']) },
           { name: 'AlphaConnection', methods: methods(['secureRead', 'secureWrite','secureCompareExchange', 'secureRemove', 'request', 'cancel', 'addListener', 'removeListener', 'pauseNotificationCollection']) },
           { name: 'AlphaHostedResults', methods: methods(['disableBackground','addListener','removeListener','pendingResult','status']) },
           { name: 'AlphaActionJournal', methods: methods(['list']) },
@@ -24,7 +24,10 @@ for (const mode of ['checking', 'unavailable', 'available'] as const) {
               if (mode === 'checking') return new Promise(resolve => { w.releasePackaging = resolve; });
               return { packaged: mode === 'available', state: 'stopped' };
             }
-            if (method === 'configureProvider') { w.packagingFixture.saved++; w.packagingFixture.keys.push(input.apiKey); return { configured: true }; }
+            if (method === 'prepareProviderConfiguration') return { requestId: 'packaging-lease' };
+            if (method === 'cancelProviderConfiguration') return {};
+            if (method === 'configureProvider') { if (input.requestId !== 'packaging-lease') throw Error('Unleased provider request'); w.packagingFixture.saved++; w.packagingFixture.keys.push(input.apiKey); return { configured: true }; }
+            if (method === 'providerStatus') return w.packagingFixture.saved ? { provider: 'cerebras', configured: true, model: 'qwen-3.8-27b' } : { provider: 'cerebras', configured: false };
             if (method === 'start') { w.packagingFixture.started++; throw Error('Runtime start is outside this fixture'); }
           }
           if (plugin === 'AlphaConnection') {
@@ -62,7 +65,9 @@ for (const mode of ['checking', 'unavailable', 'available'] as const) {
       await chooser.locator('summary').filter({ hasText: /^Model provider$/ }).click();
       await chooser.getByLabel('Cerebras API key').fill('synthetic-e2e-key');
       await chooser.getByRole('button', { name: 'Save provider', exact: true }).click();
-      await expect(chooser.getByText('Provider saved. Start or restart the local agent to use it.')).toBeVisible();
+      // A verified key is selected and the agent restarts with it at once; this fixture refuses the start.
+      await expect(chooser.getByRole('alert')).toHaveText('Runtime start is outside this fixture');
+      await expect(chooser.getByText('Cerebras key verified and saved in Android Keystore. Own API keys selected.')).toHaveCount(0);
       await expect(chooser.getByLabel('Cerebras API key')).toHaveValue('');
     }
     await chooser.locator('summary').filter({ hasText: /^Remote agent$/ }).click();
@@ -71,7 +76,7 @@ for (const mode of ['checking', 'unavailable', 'available'] as const) {
     await chooser.locator('summary').filter({ hasText: /^Development Cloud agent infrastructure$/ }).click();
     await expect(chooser.getByRole('button', { name: 'Sign in', exact: true })).toBeEnabled();
     expect(await page.evaluate(() => (window as any).packagingFixture)).toEqual({
-      saved: mode === 'available' ? 1 : 0, started: 0, requests: 0,
+      saved: mode === 'available' ? 1 : 0, started: mode === 'available' ? 1 : 0, requests: 0,
       keys: mode === 'available' ? ['synthetic-e2e-key'] : [],
     });
     await chooser.locator('summary').filter({ hasText: /^Mock mode$/ }).click();
