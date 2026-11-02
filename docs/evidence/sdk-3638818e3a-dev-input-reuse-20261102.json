@@ -1,0 +1,23 @@
+{
+  "state": "CALENDAR_ONLY_SOURCE_INPUT_EQUIVALENCE_NOT_NATIVE_QUALIFICATION",
+  "fromSDK": "61f2b9a62672533b086619bd5a21c1345399ec68",
+  "toSDK": "3638818e3aa97c0a0f926c4a54c7c140fce8f0ca",
+  "exactChangedPaths": [
+    "packages/contracts/src/calendar.ts",
+    "plugins/plugin-assistant/src/runtime/evaluator.ts",
+    "plugins/plugin-calendar/src/actions/calendar-handler.ts",
+    "plugins/plugin-calendar/src/calendar-read-result.ts",
+    "plugins/plugin-calendar/src/providers/calendar-sources.ts",
+    "plugins/plugin-calendar/src/read-binding.test.ts",
+    "plugins/plugin-calendar/src/read-binding.ts",
+    "plugins/plugin-calendar/src/search-filter-evidence.ts",
+    "plugins/plugin-calendar/src/service/CalendarService.ts",
+    "plugins/plugin-calendar/test/calendar-read-projection.test.ts",
+    "plugins/plugin-calendar/test/eliza-calendar.pglite.test.ts"
+  ],
+  "proof": "One-parent GitHub compare, exact11reviewed Calendar/evaluator/contract paths. No lockfile, package manifest, nativecc8, Android bridge, or build producer changed.",
+  "nativeArtifactsAdmitted": false,
+  "freshNativeBuildOrDeviceQualification": false,
+  "previousEvidence": "docs/evidence/sdk-61f2b9a626-dev-input-reuse-20261102.json",
+  "desktopCPUReuse": "Require originalCPUstamp/library/model hashes and canonical CPU --check before reuse."
+}
