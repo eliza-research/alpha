@@ -1,5 +1,9 @@
 import {test,expect} from '@playwright/test';
+// The fixture models an installation that already finished access setup; a signed-in account with
+// pending setup is owed the startup walkthrough, which would otherwise cover Home once the swapped
+// snapshot re-renders (startup-permissions-walkthrough.spec.ts owns that flow).
 for(const reason of ['disconnected','scope-revoked'] as const)test(`Gmail same-ID ${reason} clears read availability and recovers explicitly`,async({page})=>{
+ await page.addInitScript(()=>localStorage.setItem('alpha:startup-permission-walkthrough:v1',JSON.stringify({version:1,status:'completed',step:4})));
  await page.goto('/');
  await page.evaluate(async()=>{
   const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');
