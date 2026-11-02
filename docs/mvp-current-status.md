@@ -85,7 +85,9 @@ the operator's index of build, provisioning, release and support material is the
 
 ## Product boundaries
 
-Current source projection: SDK `3638818e3a`. Current source pin 3638818e3aa97c0a0f926c4a54c7c140fce8f0ca combines the reviewed Calendar projection/filter evidence/timing changes with the retained acknowledgment fix. Exact11-path delta from61f2 leaves dependency/native/build inputs unchanged; see docs/evidence/sdk-3638818e3a-dev-input-reuse-20261102.json. Live Calendar and Android acceptance remain separate and pending. 
+Current source projection: SDK `eaf3a0b011`. Current source pin eaf3a0b011e2f58437573ddde72b01f8ebf879ad includes the reviewed public-news acknowledgment grammar fix, with Calendar fixes retained. Exact source delta leaves dependency/native/build inputs unchanged; see docs/evidence/sdk-eaf3a0b011-dev-input-reuse-20261102.json. Live prompt and Android acceptance remain separate and pending. 
+
+Historical source projection (SDK3638818e3a): Current source pin 3638818e3aa97c0a0f926c4a54c7c140fce8f0ca combines the reviewed Calendar projection/filter evidence/timing changes with the retained acknowledgment fix. Exact11-path delta from61f2 leaves dependency/native/build inputs unchanged; see docs/evidence/sdk-3638818e3a-dev-input-reuse-20261102.json. Live Calendar and Android acceptance remain separate and pending. 
 
 Historical source projection (SDK61f2): Current source pin 61f2b9a62672533b086619bd5a21c1345399ec68 adds only the reviewed natural-language acknowledgment guard/test to4e2. The exact unchanged dependency/native input proof is docs/evidence/sdk-61f2b9a626-dev-input-reuse-20261102.json. Source adoption and JS artifact regeneration remain separate from live prompt and Android acceptance. Historical qualification records and unresolved audit/reachability/native gates remain unchanged. 
 
