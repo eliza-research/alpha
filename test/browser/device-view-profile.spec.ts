@@ -14,7 +14,7 @@ for(const scenario of ['supported','legacy','unsupported','malformed','lost','re
    w.Capacitor={PluginHeaders:[
     {name:'AlphaNotifications',methods:methods(['status','crossAppStatus','addListener','removeListener'])},
     {name:'AlphaVoiceCloud',methods:methods(['checkPermissions'])},
-    {name:'Agent',methods:methods(['getStatus','start','request','addListener','removeListener','subscribeViewEvents','unsubscribeViewEvents'])},
+    {name:'Agent',methods:methods(['getStatus','start','request','providerStatus','addListener','removeListener','subscribeViewEvents','unsubscribeViewEvents'])},
     {name:'AlphaConnection',methods:methods(['secureRead','secureWrite','secureCompareExchange','secureRemove','cancel','addListener','removeListener','pauseNotificationCollection'])},
     {name:'AlphaActionJournal',methods:methods(['list'])},
     {name:'ElizaSystem',methods:methods(['getBuildInfo'])},
@@ -28,6 +28,8 @@ for(const scenario of ['supported','legacy','unsupported','malformed','lost','re
      // The real Agent plugin always exposes the Android resident renderer feed.
      if(method==='subscribeViewEvents')return {subscriptionId:input.subscriptionId};
      if(method==='unsubscribeViewEvents'||method==='addListener'||method==='removeListener')return {};
+     // Read before every resident start since e15f0b735; nothing is saved, so Cloud stays the default.
+     if(method==='providerStatus')return {provider:'elizacloud',configured:false};
      const path=input.path;let body:any;
      if(path==='/api/auth/me')body={identity:{kind:'owner',id:'fixture-owner'},access:{role:'OWNER',mode:'session'}};
      else if(path==='/api/agents')body={agents:[{id:'fixture-agent',name:'Profile fixture',status:'running'}]};
