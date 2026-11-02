@@ -2,13 +2,13 @@
   "schema": 1,
   "repository": "elizaOS/eliza",
   "base": "develop",
-  "baseCommit": "b2dbeff3ab689a69f7e518deb7d608d1c4607790",
-  "head": "c3442ded79de62b883cf0a84d2614734596ac9ad",
+  "baseCommit": "9a159c88fd346f35993c8ad5856988b3f637378a",
+  "head": "47982b8f49d16d520990e14e07cdeb5c6931df81",
   "recordedAt": "2026-11-02",
-  "command": "gh api repos/elizaOS/eliza/compare/b2dbeff3ab689a69f7e518deb7d608d1c4607790...c3442ded79de62b883cf0a84d2614734596ac9ad",
+  "command": "gh api repos/elizaOS/eliza/compare/9a159c88fd346f35993c8ad5856988b3f637378a...47982b8f49d16d520990e14e07cdeb5c6931df81",
   "status": "diverged",
-  "aheadBy": 24,
-  "behindBy": 24,
+  "aheadBy": 25,
+  "behindBy": 26,
   "mergeBase": "7e8b5d3eb1c05ee6ea72a1a2d5ce5b966c404e9c",
   "pinOnlyCommits": [
     {
@@ -106,6 +106,10 @@
     {
       "sha": "c3442ded79de62b883cf0a84d2614734596ac9ad",
       "subject": "fix(app): authorize paired sessions for inference warm-up"
+    },
+    {
+      "sha": "47982b8f49d16d520990e14e07cdeb5c6931df81",
+      "subject": "fix(calendar): bind implicit read windows to the owner request"
     }
   ],
   "pullRequests": [
