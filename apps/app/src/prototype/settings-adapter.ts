@@ -532,8 +532,8 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         }
         // calendar-settings:end
         page.groups.push(group([{
-          kTog:true,label:'Ask before agent actions',aria:'Ask before agent actions',hasSub:true,
-          sub:'Off: carry out simple local requests. On: review them first. Sends, deletions and calendar or reminder changes still require review.',
+          kTog:true,label:'Review phone actions first',aria:'Review phone actions first',hasSub:true,
+          sub:'Applies to creating notes, opening apps or websites, taking photos and choosing photos. Calendar changes are handled separately. Required permissions and reviews still apply.',
           on:cachedDevicePreferences()?.askBeforeAgentActions===true,
           track:cachedDevicePreferences()?.askBeforeAgentActions?'background:var(--acc)':'background:var(--line)',
           kx:cachedDevicePreferences()?.askBeforeAgentActions?20:0,
