@@ -558,7 +558,6 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         const plan=connectionController.residentPlanSettings();
         if(plan){
           const day=(at:number)=>new Date(at).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'});
-          page.groups.push(group([{kNav:true,label:`${serviceName} account & plan`,lbl:`${serviceName} account & plan`,val:plan.keyExpiring?'Sign-in expiring':plan.plan,hasVal:true,chev:true,noAB:true,go:()=>api.set({page:'cloud-plan'})}]));
           if(state.page==='cloud-plan'){
             // Runtime location and Cloud inference are separate facts.
             const rows:Bag[]=[info('Account',plan.account??(plan.offline?`${serviceName} unreachable`:'Not signed in')),info('Plan',plan.plan),info('Agent execution',runtimeLocation),info('AI replies',plan.inference)];
@@ -653,7 +652,8 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         continue;
       }
       if (page.title === 'Accounts') {
-        page.groups = [group([info(serviceName, cloudLabel), { kNav:true, label:'Manage Cloud account', lbl:'Manage Cloud account', chev:true, noAB:true, go:()=>connectionController.openCloudAccount() }, {kNav:true,label:'Google accounts',lbl:'Google accounts',chev:true,noAB:true,go:()=>googleConnectionController.open()}, nav('Device accounts in Android', 'accounts')])];
+        const plan=connectionController.residentPlanSettings();
+        page.groups = [group([{ kNav:true, label:`${serviceName} account & plan`, lbl:`${serviceName} account & plan`, sub:plan?.keyExpiring?'Sign-in expiring':cloudLabel, hasSub:true, chev:true, noAB:true, go:()=>plan?api.set({page:'cloud-plan'}):connectionController.openCloudAccount() }, ...(Capacitor.isNativePlatform()?[nav('Device accounts in Android', 'accounts')]:[])])];
       } else if (page.title === 'Connections') {
         const connected = gmailAccounts.filter(a => a.connected && a.connectionId);
         page.groups = [group([{ kNav:true,label:'Manage Google accounts',lbl:'Manage Google accounts',chev:true,noAB:true,go:()=>googleConnectionController.open() },info('Gmail', gmail),

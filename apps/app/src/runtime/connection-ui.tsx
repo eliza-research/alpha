@@ -3274,7 +3274,11 @@ export function ConnectionChooser() {
     </aside>;
   }
   const providerChoice=<OwnProviderChoice busy={snapshot.busy} replying={!!sending} status={snapshot.providerStatus} error={snapshot.error} message={snapshot.message} onSave={(key,voice)=>connectionController.configureLocal(key,LOCAL_PROVIDER_MODEL,voice)} onCancel={dismiss} onCloud={()=>connectionController.selectCloudProvider()}/>;
-  if(snapshot.purpose==='provider')return <div className="alpha-connection-scrim"><div className="alpha-connection alpha-connection-native" role="dialog" aria-modal="true" aria-labelledby="provider-title" tabIndex={-1} ref={panel}><header><h1 id="provider-title">AI provider</h1><button aria-label="Close AI provider settings" disabled={snapshot.busy} onClick={()=>connectionController.close()}>×</button></header>{providerChoice}{snapshot.error&&<p role="alert">{snapshot.error}</p>}{snapshot.message&&<p role="status">{snapshot.message}</p>}</div></div>;
+  if(snapshot.purpose==='provider')return <div className="alpha-connection-scrim" data-alpha-provider-overlay="true"><div className="alpha-connection alpha-connection-native alpha-provider-panel" role="dialog" aria-modal="true" aria-labelledby="provider-title" tabIndex={-1} ref={panel}>
+    <div className="alpha-provider-handle" aria-hidden="true"/>
+    <header><h1 id="provider-title" className="serif">AI provider</h1><button aria-label="Close AI provider settings" disabled={snapshot.busy} onClick={()=>connectionController.close()}><span aria-hidden="true" data-alpha-icon="/icons/lucide/x.svg" style={iconStyle("x")}/></button></header>
+    {providerChoice}{snapshot.error&&<p role="alert">{snapshot.error}</p>}{snapshot.message&&<p role="status">{snapshot.message}</p>}
+  </div></div>;
   const requiredSignInView: SignInView = snapshot.signIn ?? { step: 'choose', environment: residentEnvironment() };
   if (snapshot.signIn || signInEntryRequired) return <div className={signInPage?'alpha-auth-page':'alpha-connection-scrim'}><div className={`alpha-connection alpha-connection-native alpha-cloud-sign-in${signInPage?' alpha-auth-content':''}`} role={signInPage?'main':'dialog'} aria-modal={signInPage?undefined:true} aria-labelledby="cloud-sign-in-title" aria-busy={snapshot.busy||undefined} tabIndex={-1} ref={panel}>
     <SignInOrOwnKeys busy={snapshot.busy} ownKeys={back=><OwnProviderChoice busy={snapshot.busy} replying={!!sending} status={snapshot.providerStatus} error={snapshot.error} message={snapshot.message} onSave={(key,voice)=>connectionController.configureLocal(key,LOCAL_PROVIDER_MODEL,voice)} onCancel={dismiss} onCloud={()=>connectionController.selectCloudProvider()} onBack={checked=>{if(checked)connectionController.clearOutcome();back();}}/>}>
@@ -3518,7 +3522,6 @@ function OwnProviderChoice({busy,replying=false,status,error,message,onSave,onCa
   <div className="alpha-connection-actions"><button type="button" className="alpha-connection-cancel" disabled={busy} onClick={()=>{clear();onBack(attempted);}}>Sign in with Cloud instead</button></div>
  </section>;
  return <section aria-label="AI provider">
-  <h3>AI provider</h3>
   <p>{own?'Own API keys · Cerebras':status?.provider==='elizacloud'?'Cloud':'Choose Cloud or your own API keys.'}</p>
   <div className="alpha-connection-actions">
    <button type="button" disabled={busy} aria-pressed={!own&&!editing} onClick={()=>{setEditing(false);if(own)setSwitching(true);}}>Cloud</button>

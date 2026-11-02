@@ -212,7 +212,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     if (listener) void listener.remove(); listener = undefined;
     const previous = driver;
     const pendingStart=startingCapture;
-    stopping = stopping.then(async () => { await conversationStopped;await previousSpeech?.catch(error=>{if(error?.code==='speech-cleanup-unconfirmed')throw error;});await previousNotesSpeech?.catch(error=>{if(error?.code==='speech-cleanup-unconfirmed')throw error;});if(pendingStart)try{await pendingStart;}catch{}try { await previous.cancelRecording(); } catch(error) {if(hadCapture||previousConversation)throw error;} });
+    stopping = stopping.then(async () => { await conversationStopped;await previousSpeech?.catch(error=>{if(error?.code==='speech-cleanup-unconfirmed')throw error;});await previousNotesSpeech?.catch(error=>{if(error?.code==='speech-cleanup-unconfirmed')throw error;});if(pendingStart)try{await pendingStart;}catch{}if(hadCapture)await previous.cancelRecording(); });
     stopping=stopping.catch(failure=>{mediaUnconfirmed=failure;throw failure;});void stopping.catch(()=>{});
     if(chatShell&&(previousConversation||previousSpeech||hadCapture)){
       const held:NonNullable<typeof retirement>={shell:chatShell,phase:'stopping',returnChat:previousChat!.chat,view:previousChat!.view,binding:previousChat!.binding,panelChat:chatShell.S().chat,promise:stopping,approval:chatShell.pendingActionApproval,proposalId:chatShell.pendingActionApprovalProposalId};retirement=held;

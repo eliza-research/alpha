@@ -70,3 +70,16 @@
 /* Provider selection follows its current choice, not the generic first-action emphasis. */
 .alpha-connection [aria-label="AI provider"] .alpha-connection-actions button[aria-pressed="false"]{background:transparent;color:var(--connection-acc,#0000ff)}
 .alpha-connection [aria-label="AI provider"] .alpha-connection-actions button[aria-pressed="true"]{background:var(--connection-fg,#000);color:var(--connection-bg,#fff)}
+
+/* Provider settings share Alpha's content-sized sheet and phone bounds. */
+.alpha-connection-scrim[data-alpha-provider-overlay]{inset:auto;left:var(--phone-left,0px);top:var(--phone-top,0px);width:var(--phone-width,100vw);height:var(--phone-height,100dvh);transform:scale(var(--phone-scale,1));transform-origin:top left;align-items:flex-end;padding:max(12px,var(--native-top-inset,0px),env(safe-area-inset-top,0px)) max(0px,env(safe-area-inset-right,0px)) 0 max(0px,env(safe-area-inset-left,0px))}
+.alpha-connection-scrim .alpha-provider-panel{align-self:flex-end;flex:0 1 420px;max-width:100%;max-height:100%;min-height:0;padding:12px 26px max(28px,calc(20px + var(--native-bottom-inset,0px)),env(safe-area-inset-bottom,0px));border-radius:28px 28px 0 0;overflow-y:auto;overflow-wrap:anywhere;box-shadow:0 -4px 24px #00000012}
+.alpha-provider-handle{width:32px;height:4px;border-radius:4px;background:var(--connection-line,#d7d7d7);margin:0 auto 16px}
+.alpha-provider-panel header{gap:12px;margin-bottom:12px}
+.alpha-provider-panel header h1{min-width:0;margin:0;font-size:30px;line-height:1.1;letter-spacing:-.03em;font-weight:400}
+.alpha-provider-panel header>button{flex:none;width:48px;height:48px;padding:12px;color:var(--connection-fg,#111)}
+.alpha-provider-panel button{min-height:max(48px,calc(48px / var(--phone-scale,1)))}
+.alpha-provider-panel [aria-label="AI provider"]>.alpha-connection-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-block:16px}
+.alpha-provider-panel [aria-label="AI provider"]>.alpha-connection-actions button{min-width:0;padding:12px}
+.alpha-provider-panel form>button{display:block;width:100%;margin-top:10px}
+.alpha-provider-panel form>button[type="button"]{background:var(--connection-s2,#f1f1f1);color:var(--connection-fg,#111)}
