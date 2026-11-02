@@ -42,6 +42,6 @@ test('Alpha binds the shared coordinator with its installed slots, bridge and wo
  assert.match(alpha('AlphaActionJournalPlugin'),/DeletionReceiptRecovery\.recover\(entry,receipt,reminderResult\)/);
  assert.equal(existsSync(join(root,'apps/app/src/runtime/deletion-window.ts')),false,'the renderer contract is @elizaos/contracts/deletion-window');
  const notice=readFileSync(join(root,'apps/app/src/runtime/deletion-undo.tsx'),'utf8');
- assert.match(notice,/<DeferredDeletionNotice bridge=\{deletions\} identity=\{identity\} concealed=\{browserScreenLocked\} refreshEvents=\{refreshEvents\} onChanged=\{refreshDeletionViews\} className="alpha-deletion-undo"/);
+ assert.match(notice,/<DeferredDeletionNotice bridge=\{notice\.bridge\} identity=\{notice\.identity\} concealed=\{browserScreenLocked\} refreshEvents=\{refreshEvents\} onChanged=\{refreshDeletionViews\} className="alpha-deletion-undo"/);
  assert.match(notice,/\[session\.origin,session\.ownerId,session\.agentId,session\.sessionId\]/,'an owner or session change clears the notice');
 });

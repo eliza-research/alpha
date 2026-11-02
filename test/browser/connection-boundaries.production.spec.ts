@@ -458,21 +458,30 @@ test('transient startup storage failures recover without flashing global notices
   expect(await page.evaluate(()=>(window as any).startupStorage.flashes)).toEqual([]);
 });
 
-test('an unavailable deletion receipt status does not block account settings controls', async ({ page }) => {
+test('passive deletion failures stay quiet; known pending failures preserve settings access', async ({ page }) => {
   await android(page, { cloudCredential: true, balance: 5, revoke: 'revoked' });
   await page.goto('/');
   await completeAccessSetup(page);
   await expect(page.getByRole('button', { name: 'Notes', exact: true })).toBeVisible();
   await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
   await page.evaluate(() => {
+    const state=(window as any).deletionNoticeFixture={known:false,checks:0};
     const bridge = (window as any).Capacitor, original = bridge.nativePromise;
     bridge.nativePromise = (plugin: string, method: string, input: unknown) => {
-      if (plugin === 'AlphaDeletions' && method === 'pending') return Promise.reject(Error('Receipt store unavailable'));
+      if (plugin === 'AlphaDeletions' && method === 'pending') {
+        state.checks++;
+        return state.known?Promise.resolve({deletions:[{id:'known-pending',kind:'calendar',phase:'queued',window:'open',target:{row:{title:'Known pending event'}}}]}):Promise.reject(Error('Receipt store unavailable'));
+      }
       return original(plugin, method, input);
     };
     window.dispatchEvent(new Event('alpha:deletions-changed'));
   });
   const notice = page.getByRole('complementary', { name: 'Pending deletions' });
+  await expect.poll(()=>page.evaluate(()=>(window as any).deletionNoticeFixture.checks)).toBeGreaterThanOrEqual(3);
+  await expect(notice).toHaveCount(0);
+  await page.evaluate(()=>{(window as any).deletionNoticeFixture.known=true;window.dispatchEvent(new Event('alpha:deletions-changed'));});
+  await expect(notice).toContainText('Known pending event');
+  await page.evaluate(()=>{Object.assign((window as any).deletionNoticeFixture,{known:false,checks:0});window.dispatchEvent(new Event('alpha:deletions-changed'));});
   await expect(notice).toContainText('Pending deletion status is unavailable');
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.getByRole('button', { name: 'Eliza Cloud account & plan',exact:true }).click();
@@ -483,8 +492,8 @@ test('an unavailable deletion receipt status does not block account settings con
     Object.assign(banner.style, { top: `${rect.top}px`, left: `${rect.left}px`, right: 'auto', bottom: 'auto', width: `${rect.width}px` });
   });
   await signout.click();
-  await expect(page.locator('.alpha-connection').getByRole('status').filter({ hasText: 'Signed out of Eliza Cloud. This sign-in was revoked.' })).toBeVisible();
-  await expect(notice).toContainText('Pending deletion status is unavailable');
+  await expect(page.locator('.alpha-connection').getByRole('status')).toContainText('Signed out of Eliza Cloud. This sign-in was revoked.');
+  await expect(notice).toHaveCount(0);
 });
 
 // UI progress only: this feature fixture does not manufacture OS/provider grants.
