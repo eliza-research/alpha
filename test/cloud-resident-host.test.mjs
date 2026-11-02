@@ -75,9 +75,11 @@ test('managed read broker is bound before launch and revoked even when resident 
  try{
   await host.bind({token:'synthetic-cloud-key',credentialId:'read-owner',reference:'read-ref'});
   assert.deepEqual(events,['broker-start','launch']);assert.equal(launches[0].env.ELIZA_MANAGED_CALENDAR_READ_BROKER,'http://127.0.0.1:47871/__alpha-owner-gmail');
+  assert.equal(launches[0].env.ELIZA_MANAGED_GMAIL_READ_BROKER,launches[0].env.ELIZA_MANAGED_CALENDAR_READ_BROKER);
+  for(const key of ['ELIZA_MANAGED_GMAIL_SEND_BROKER','ELIZA_MANAGED_GMAIL_OPERATION_BROKER'])assert.equal(launches[0].env[key],undefined,key);
   rejectStop=true;await assert.rejects(host.clear(),error=>error.name==='AggregateError');
   assert.deepEqual(events,['broker-start','launch','broker-close','stop']);assert.equal(host.status('read-owner').attachable,false);assert.equal(launches.length,1);
-  rejectStop=false;await host.clear();assert.equal(launches.length,2);assert.equal(launches[1].env.ELIZA_MANAGED_CALENDAR_READ_BROKER,'');
+  rejectStop=false;await host.clear();assert.equal(launches.length,2);assert.equal(launches[1].env.ELIZA_MANAGED_CALENDAR_READ_BROKER,'');assert.equal(launches[1].env.ELIZA_MANAGED_GMAIL_READ_BROKER,'');
  }finally{rejectStop=false;await host.close();await fs.rm(profile,{recursive:true,force:true});}
 });
 
@@ -138,4 +140,29 @@ test('explicit Cloud realtime host switches to Direct and back without leaking r
    assert.equal(launches.at(-1).env.ELIZA_SELF_HOSTED_VOICE_CLOUD_RELAY_ENABLED,undefined);
   }finally{await host.close();}
  }
+});
+
+
+test('Gmail read broker follows the retained owner through Direct selection and account rotation',async()=>{
+ const profile=await fs.mkdtemp(join(tmpdir(),'alpha-gmail-read-launch-')),launches=[],events=[],bindings=[];let nextPort=47870;
+ const host=await createCloudResidentHost({profile,port:47869,
+  inherited:{ELIZA_MANAGED_GMAIL_READ_BROKER:'http://untrusted.invalid',ELIZA_MANAGED_GMAIL_SEND_BROKER:'http://untrusted.invalid',ELIZA_MANAGED_GMAIL_OPERATION_BROKER:'http://untrusted.invalid'},
+  request:async()=>Response.json({data:[{id:'qwen-3.8-27b'}]}),
+  startGoogleHost:async(_token,binding)=>{const port=++nextPort;bindings.push(binding.credentialId);events.push('broker:'+port);return {port,async close(){events.push('close:'+port);}};},
+  launch:async options=>{launches.push(options);events.push('launch');let done;return {completion:new Promise(resolve=>done=resolve),async stop(){events.push('stop');done({code:0});}};}});
+ const assertRead=(entry,port)=>{
+  assert.equal(entry.env.ELIZA_MANAGED_GMAIL_READ_BROKER,`http://127.0.0.1:${port}/__alpha-owner-gmail`);
+  assert.equal(entry.env.ELIZA_MANAGED_GMAIL_READ_BROKER,entry.env.ELIZA_MANAGED_CALENDAR_READ_BROKER);
+  for(const key of ['ELIZA_MANAGED_GMAIL_SEND_BROKER','ELIZA_MANAGED_GMAIL_OPERATION_BROKER'])assert.equal(entry.env[key],undefined,key);
+ };
+ try{
+  await host.bind({token:'synthetic-cloud-a',credentialId:'owner-a',reference:'ref-a'});assertRead(launches.at(-1),47871);
+  await host.selectOwn({apiKey:'synthetic-direct-key'});assertRead(launches.at(-1),47872);
+  assert.equal(launches.at(-1).env.CEREBRAS_API_KEY,'synthetic-direct-key');assert.equal(launches.at(-1).env.ELIZAOS_CLOUD_API_KEY,undefined);assert.equal(launches.at(-1).env.ELIZAOS_CLOUD_USE_INFERENCE,'false');
+  await host.bind({token:'synthetic-cloud-b',credentialId:'owner-b',reference:'ref-b'});assertRead(launches.at(-1),47873);
+  assert.deepEqual(bindings,['owner-a','owner-a','owner-b']);assert.equal(host.status('owner-a').attachable,false);
+  assert.ok(events.indexOf('close:47871')<events.indexOf('broker:47872'));assert.ok(events.indexOf('close:47872')<events.indexOf('broker:47873'));
+  await host.clear();assert.equal(launches.at(-1).env.ELIZA_MANAGED_GMAIL_READ_BROKER,'');assert.equal(launches.at(-1).env.ELIZA_MANAGED_CALENDAR_READ_BROKER,'');
+  for(const key of ['ELIZA_MANAGED_GMAIL_SEND_BROKER','ELIZA_MANAGED_GMAIL_OPERATION_BROKER'])assert.equal(launches.at(-1).env[key],undefined,key);
+ }finally{await host.close();await fs.rm(profile,{recursive:true,force:true});}
 });
