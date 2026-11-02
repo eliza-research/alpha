@@ -2376,7 +2376,7 @@ export const connectionController = {
     // a newer provider operation with this cancelled attempt's late readback.
     finally { if(cancelled&&generation===providerStatusGeneration){
       const status=await this.refreshProviderStatus(generation);
-      if(status&&generation===providerStatusGeneration&&status.selected&&status.provider==='cerebras')update({message:'Own API keys are selected.'});
+      if(status&&generation===providerStatusGeneration&&status.selected&&status.provider==='cerebras'){update({message:'Own API keys are selected.'});connectionToast('Own API keys are selected.');}
     } }
   },
   async selectCloudProvider(){if(operation||sending)return;providerStatusGeneration++;await work('Switching to Cloud…',async signal=>{if(browserCloudResidentEnabled)await browserResidentCall('residentCloud',undefined,undefined,undefined,signal);else await clearLocalProvider(false,signal);signal.throwIfAborted();const providerStatus=await localProviderStatus();signal.throwIfAborted();
