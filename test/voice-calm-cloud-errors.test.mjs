@@ -11,7 +11,7 @@ import {voiceFakeClock} from './fixtures/shared-batch-voice.mjs';
 
 // The actual voice adapter, production template and DCLogic renderer with closed ports only:
 // a Cloud voice 429/503 is waited out quietly, a terminal failure is said once and plainly.
-const CALM='Voice paused. Tap the mic to talk again.';
+const CALM=[]; // Exhausted transient waits close quietly; no voice error toast.
 const SLOP=/request limit|Last transcript|Try voice again|Wait a moment|HTTP 503|Voice is unavailable/;
 const limited=(data={retryAfterSeconds:3,limitCode:'rate_limited'})=>Object.assign(Error('PRIVATE_PROVIDER_BODY'),{code:'voice-http-429',data});
 
@@ -84,7 +84,7 @@ test('retries are bounded: a third refusal (or a long wait) ends voice with one 
  assert.equal(runs.length,3);
  await fail(limited());
  assert.equal(f.renderChat(),null,'voice ended');
- assert.deepEqual(f.shell.messages,[CALM]);
+ assert.deepEqual(f.shell.messages,CALM);
  await clock.advance(120_000);assert.equal(runs.length,3,'no retry after voice ended');
  assert.equal(f.sends,0);
 });
@@ -92,7 +92,7 @@ test('retries are bounded: a third refusal (or a long wait) ends voice with one 
 test('a long Retry-After is not waited out silently',async t=>{
  const {f,clock,runs,fail}=await voice(t);
  await fail(limited({retryAfterSeconds:600,limitCode:'rate_limited'}));
- assert.equal(f.renderChat(),null);assert.deepEqual(f.shell.messages,[CALM]);
+ assert.equal(f.renderChat(),null);assert.deepEqual(f.shell.messages,CALM);
  await clock.advance(700_000);assert.equal(runs.length,1);
 });
 
@@ -123,10 +123,10 @@ test('terminal failures keep one honest line without the transcript tail or a du
    assert.equal(shown.model.state,'error');
    assert.equal(shown.model.lines.length,1);assert.match(shown.model.lines[0].t,expected);
    assert.doesNotMatch(shown.text,/Last transcript|so \./);
-   assert.equal(shown.text.split(shown.model.lines[0].t).length-1,1,'the message is on screen once');
+   assert.equal(shown.text.split(shown.model.lines[0].t).length-1,0,'classified failure is not put on screen');
    const status=shown.doc.querySelector('[role="status"][aria-label="Voice conversation status"]');
    assert.equal(status.textContent,'','the visible alert is the only announcement');
-   assert.equal(shown.doc.querySelector('[role="alert"]').textContent,shown.model.lines[0].t);
+   assert.equal(shown.doc.querySelector('[role="alert"]'),null,'terminal failure is internal, not a banner');
    await clock.advance(60_000);assert.equal(runs.length,1,'terminal failures are not retried');assert.deepEqual(f.shell.messages,[]);
   });
  }
@@ -175,7 +175,7 @@ test('a chat that stops being current during the quiet wait ends calmly instead 
  f.box.document.hidden=true;await clock.advance(4_000);
  f.box.document.hidden=false;f.shell.componentDidUpdate?.();await clock.advance(60_000);
  assert.equal(f.renderChat(),null,'not left on Connecting to voice…');
- assert.deepEqual(f.shell.messages,[CALM]);
+ assert.deepEqual(f.shell.messages,CALM);
  assert.equal(f.starts,starts,'the microphone does not reopen without a tap');
 });
 

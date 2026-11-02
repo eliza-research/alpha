@@ -4005,7 +4005,7 @@
       </div>
       <div class="scr" style="display:flex;flex-direction:column;flex:1;min-height:0;overflow:auto;gap:12px;touch-action:pan-y">
         <sc-if value="{{chatRecorder.live}}"><div role="img" aria-label="Recording activity" style="display:flex;align-items:center;gap:3px;min-height:40px;flex-shrink:0"><sc-for list="{{chatRecorder.levels}}" as="level"><span style="flex:1;height:{{level.h}}px;border-radius:2px;background:var(--acct)"></span></sc-for></div></sc-if>
-        <div role="status" aria-label="Voice conversation status" style="font-size:14px;line-height:1.45;color:var(--mut);overflow-wrap:anywhere"><sc-for list="{{chatRecorder.lines}}" as="line"><p style="margin:0">{{line.t}}</p></sc-for></div>
+        <div role="status" aria-label="Voice conversation status" style="font-size:14px;line-height:1.45;color:var(--mut);overflow-wrap:anywhere"><sc-for list="{{chatRecorder.statusLines}}" as="line"><p style="margin:0">{{line.t}}</p></sc-for></div>
         <sc-if value="{{chatRecorder.interimTranscript}}"><p data-alpha-voice-interim aria-label="Heard so far, not sent" style="margin:0;font-size:15px;line-height:1.45;color:var(--mut);font-style:italic;overflow-wrap:anywhere">{{chatRecorder.interimTranscript}}</p></sc-if>
         <sc-if value="{{chatRecorder.lastTranscript}}"><p aria-label="Your voice message" style="margin:0;font-size:15px;line-height:1.45;color:var(--mut);overflow-wrap:anywhere">{{chatRecorder.lastTranscript}}</p></sc-if>
         <sc-if value="{{chatRecorder.lastReply}}"><p aria-label="Alpha voice reply" style="margin:0;font-size:16px;line-height:1.5;color:var(--fg);overflow-wrap:anywhere">{{chatRecorder.lastReply}}</p></sc-if>
@@ -4152,7 +4152,6 @@
       <button class="alpha-voice-primary" aria-label="{{chatRecorder.primaryLabel}}" disabled="{{chatRecorder.primaryDisabled}}" onClick="{{chatRecorder.stop}}"><svg class="i" viewBox="0 0 24 24"><path d="{{chatRecorder.primaryIcon}}"></path></svg></button>
     </section>
     <sc-if value="{{chatRecorder.voiceDetails}}"><details class="alpha-voice-error"><summary>Voice details</summary><sc-if value="{{chatRecorder.cloudDisclosure}}"><p role="note">{{chatRecorder.cloudDisclosureText}}</p></sc-if><sc-if value="{{chatRecorder.errorDetail}}"><p>{{chatRecorder.errorDetail}}</p></sc-if></details></sc-if>
-    <sc-if value="{{chatRecorder.problem}}"><p class="alpha-voice-error" role="alert"><sc-for list="{{chatRecorder.lines}}" as="line"><span>{{line.t}}</span></sc-for></p></sc-if>
       <sc-if value="{{chatRecorder.recoveryLabel}}"><button data-alpha-voice-recovery class="tap alpha-voice-recovery" onClick="{{chatRecorder.recover}}" style="align-self:center;min-height:max(44px,calc(45px / var(--phone-scale,1)));margin:-18px 16px 12px;padding:8px 16px;border-radius:22px;color:var(--acct);font:inherit">{{chatRecorder.recoveryLabel}}</button></sc-if>
     <sc-if value="{{chatRecorder.needsPlaybackUnlock}}"><button class="tap alpha-voice-unlock" onClick="{{chatRecorder.unlockPlayback}}">Enable sound</button></sc-if>
   </sc-if>
