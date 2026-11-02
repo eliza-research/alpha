@@ -27,7 +27,8 @@ test('the runtime-error copy names an owner step, not the host operator diagnost
  assert.doesNotMatch(RUNTIME_ERROR_BACKGROUND_NOTICE,/may not arrive|resent/,'nothing was waiting, so nothing is said about a reply');
  assert.equal(systemNoticeDisplayText('runtime-error'),RUNTIME_ERROR_BACKGROUND_NOTICE);
  assert.equal(systemNoticeDisplayText('runtime-error',true),RUNTIME_ERROR_NOTICE);
- assert.equal(systemNoticeDisplayText('model-and-runtime-error'),`${systemNoticeText('model-unavailable')}\n${RUNTIME_ERROR_BACKGROUND_NOTICE}`,'a combined notice keeps both halves');
+ assert.equal(systemNoticeDisplayText('model-and-runtime-error'),`${notices.MODEL_UNAVAILABLE_NOTICE}\n${RUNTIME_ERROR_BACKGROUND_NOTICE}`,'a combined notice keeps both halves');
+ for(const kind of ['runtime-error','model-unavailable','model-and-runtime-error'])for(const waiting of [false,true])assert.doesNotMatch(systemNoticeDisplayText(kind,waiting),/Eliza|connected host|diagnostics/,'shown notices never use the shared runtime name or host-operator steps');
 });
 
 test('replayed history with four identical notices and a normal reply shows no notice',()=>{
