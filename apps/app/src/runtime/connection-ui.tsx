@@ -2550,8 +2550,13 @@ export const connectionController = {
     }
     // The automatic entry page has nowhere to go back to; keep its controls usable.
     if (!pending && view?.step === 'choose' && signInEntryPage(state)) return;
-    const closeExplicitEntry=!pending&&(!view||view.step==='choose')&&explicitSignedOutCloudEntry(state);
+    // The readiness probe is not an attempt the owner started: Back during it still closes an
+    // entry the owner opened, as Back does once the probe has settled.
+    const probe=pending&&operation&&signInReadinessOwner===operation.signal?operation:null;
+    const closeExplicitEntry=(!pending||!!probe)&&(!view||view.step==='choose')&&explicitSignedOutCloudEntry(state);
     connectionController.cancel();
+    // close() keeps the entry while busy: let the cancelled probe unwind (bounded) first.
+    if(probe&&closeExplicitEntry)for(let wait=0;operation===probe&&wait<200;wait++)await new Promise(resolve=>setTimeout(resolve,10));
     const prefill = view?.step === 'code' ? (view.phone ? { phone: view.phone } : view.email ? { email: view.email } : {}) : view?.step === 'choose' ? { ...(view.email ? { email: view.email } : {}), ...(view.phone ? { phone: view.phone } : {}) } : {};
     update({ signIn: view && (pending || view.step !== 'choose') ? { step: 'choose', environment: view.environment, ...prefill } : null, message: '', error: '' });
     if(closeExplicitEntry)connectionController.close();
