@@ -332,7 +332,17 @@ try {
   assert.equal(remote.failureReplies,beforeCalendar+1,'restoring the saved refusal never resends it');
   for(const [code,transient,text] of [['UNKNOWN_CODE',false,calendarText],['CALENDAR_READ_RECEIPT_MISMATCH',true,calendarText],['CALENDAR_READ_RECEIPT_MISMATCH',false,'']]){
     remote.failureReply={...calendarFailure,code,transient};remote.failureText=text;
-    await assert.rejects(controller.send('Refused Calendar',{view:'home',revision:15,sensitive:false},'refused-calendar-'+code+transient+text,new AbortController().signal),/could not complete/);
+    const beforeRefusal=remote.failureReplies||0;
+    const refused=await controller.send('Refused Calendar',{view:'home',revision:15,sensitive:false},'refused-calendar-'+code+transient+text,new AbortController().signal).then(()=>null,error=>error);
+    assert.ok(refused instanceof AlphaClientError,'unknown/transient/empty Calendar failures still reject, never return a successful answer');
+    assert.equal(refused.code,'transport-failed');
+    assert.equal(refused.message,'The agent request failed. Check connection and action history before sending another request.');
+    assert.doesNotMatch(refused.message,/UNKNOWN_CODE|CALENDAR_READ_RECEIPT_MISMATCH|Synthetic upstream text/,'failure copy does not expose upstream diagnostics');
+    assert.equal(refused.userMessageId,remote.failureUserMessageId,'the recorded user row identity survives a failed reply');
+    assert.equal(refused.messageBinding.conversationId,remoteConversation);
+    assert.deepEqual(JSON.parse(JSON.stringify(refused.messageBinding.session)),JSON.parse(JSON.stringify(controller.getSnapshot().session)),'failure remains bound to the full verified session');
+    assert.equal(refused.notDispatched,undefined,'a recorded failed turn is not described as unsent');
+    assert.equal(remote.failureReplies,beforeRefusal+1,'each rejected Calendar turn is posted once and never retried');
   }
   delete remote.failureText;delete remote.failureMessageId;delete remote.failureUserMessageId;
   await controller.disconnect();

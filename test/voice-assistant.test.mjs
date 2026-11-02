@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 // Voice assistant controller (apps/app/src/runtime/voice-assistant.ts, #423): endpointing,
-// generations, barge-in, heard-content accounting, account change, and the live segment stream
+// generations, closed-input busy holds, explicit interruption, heard-content accounting, account change, and the live segment stream
 // it listens through (live-segment-stream.ts). Fake clock, capture, agent and speaker.
 const {VoiceAssistantSession, splitSpokenSentences, ASSISTANT_TIMING_DEFAULTS} = await import('../apps/app/src/runtime/voice-assistant.ts');
 const {createLiveSegmentStream} = await import('../apps/app/src/runtime/live-segment-stream.ts');
@@ -32,17 +32,20 @@ function deferred() { let resolve, reject; const promise = new Promise((yes, no)
 
 function harness(options = {}) {
   const clock = fakeClock();
-  const log = {sends: [], spoken: [], heard: [], states: [], turns: [], endpoints: [], captures: 0, cancelled: 0, closed: 0};
+  const log = {sends: [], spoken: [], heard: [], states: [], turns: [], endpoints: [], captures: 0, activeCaptures: 0, cancelled: 0, closed: 0};
   let mic, current = true;
   const replies = [];
   const speeches = [];
+  const captures = [];
   const ports = {
     conversationId: 'room-1',
     assertCurrent: () => { if (!current) throw new DOMException('binding changed', 'AbortError'); },
     listen: async handlers => {
       log.captures++; mic = handlers;
       if (options.holdOpen) await options.holdOpen.promise;
-      return {fullDuplex: options.fullDuplex ?? true, close: async () => { log.closed++; }, cancel: () => { log.cancelled++; }};
+      const capture = {handlers, active: true}; captures.push(capture); log.activeCaptures++;
+      const retire = () => { if (capture.active) { capture.active = false; log.activeCaptures--; } };
+      return {fullDuplex: options.fullDuplex ?? true, close: async () => { log.closed++; retire(); }, cancel: () => { log.cancelled++; retire(); }};
     },
     shouldRespond: options.shouldRespond,
     endpoint: options.endpoint,
@@ -56,7 +59,7 @@ function harness(options = {}) {
     speak: input => {
       const done = deferred();
       speeches.push({input, done});
-      input.signal.addEventListener('abort', () => done.reject(new DOMException('stopped', 'AbortError')), {once: true});
+      input.signal.addEventListener('abort', () => { if (!options.holdSpeechDrain) done.reject(new DOMException('stopped', 'AbortError')); }, {once: true});
       return done.promise;
     },
     onHeard: value => log.heard.push(value),
@@ -69,7 +72,7 @@ function harness(options = {}) {
     reply.resolve({requestId: input.turnId, conversationId: 'room-1', userMessageId: `u-${index}`, assistantMessageId: `a-${index}`, text, complete: true, ...extra});
   };
   return {
-    clock, log, session, replies, speeches, answer,
+    clock, log, session, replies, speeches, captures, answer,
     get mic() { return mic; },
     setCurrent(value) { current = value; },
     async say(text, durationMs = 400) {
@@ -241,68 +244,88 @@ test('semantic endpoint races: resumed speech aborts the call and drops a late c
   assert.deepEqual(h.log.endpoints, [{by: 'gap', semantic: 'incomplete', latencyMs: 300}], 'no reported latency: the client round trip');
 });
 
-test('barge-in during inference cancels the request, drops its late reply and sends the new speech as the next turn after the first settles', async () => {
+test('closed input during inference ignores stale speech; normal drain reopens once and Stop drops a later reply', async () => {
   const h = harness();
   await h.session.start();
   await h.say('book a table');
+  const retired = h.mic;
   await h.clock.advance(ASSISTANT_TIMING_DEFAULTS.longGapMs);
   assert.equal(h.log.sends.length, 1);
+  assert.equal(h.log.closed, 1, 'the submitted turn confirmed its capture closed');
+  assert.equal(h.log.activeCaptures, 0, 'no input remains open during inference');
+  assert.equal(h.session.getSnapshot().inputHeld, true);
   const first = h.replies[0];
-  // A cough: the segment closes before the hold and its transcript is filler, so the request continues.
-  h.mic.onSpeechStart(h.clock.now()); await flush();
-  await h.clock.advance(560); h.mic.onSpeechEnd(h.clock.now()); h.mic.onSegment(''); await flush();
-  assert.equal(first.input.signal.aborted, false, 'noise does not cancel the request');
-  assert.equal(h.phase(), 'thinking');
-  // Held speech confirms the interruption before its transcript arrives.
-  h.mic.onSpeechStart(h.clock.now()); await flush();
-  assert.equal(first.input.signal.aborted, false, 'speech start alone is tentative');
-  await h.clock.advance(ASSISTANT_TIMING_DEFAULTS.bargeInConfirmMs);
-  assert.equal(first.input.signal.aborted, true, 'the in-flight request is cancelled');
-  assert.deepEqual(h.log.turns.map(([event]) => event), ['submitted', 'interrupted']);
-  await h.clock.advance(300); h.mic.onSpeechEnd(h.clock.now()); h.mic.onSegment('for four people'); await flush();
+  // Both noise and a complete transcript delivered by the retired handle stay outside the busy turn.
+  retired.onSpeechStart(h.clock.now()); await flush();
+  await h.clock.advance(560); retired.onSpeechEnd(h.clock.now()); retired.onSegment(''); await flush();
+  retired.onSpeechStart(h.clock.now()); await h.clock.advance(ASSISTANT_TIMING_DEFAULTS.bargeInConfirmMs * 2);
+  retired.onSpeechEnd(h.clock.now()); retired.onSegment('for four people'); await flush();
   await h.clock.advance(ASSISTANT_TIMING_DEFAULTS.longGapMs);
-  assert.deepEqual(h.log.sends.map(send => send.text), ['book a table', 'for four people'], 'the earlier turn is never resent');
-  assert.notEqual(h.log.sends[1].turnId, h.log.sends[0].turnId);
-  // A reply racing in for the cancelled turn is never spoken.
+  assert.equal(first.input.signal.aborted, false, 'closed-handle speech cannot cancel the real request');
+  assert.deepEqual(h.log.sends.map(send => send.text), ['book a table']);
+  assert.deepEqual(h.log.turns.map(([event]) => event), ['submitted']);
+  assert.equal(h.log.captures, 1, 'there is no speculative reopen');
   h.answer(0, 'Which restaurant?'); await flush();
-  assert.equal(h.speeches.length, 0);
-  h.answer(1, 'Booked for four.'); await flush();
   assert.equal(h.speeches.length, 1);
-  assert.equal(h.speeches[0].input.text, 'Booked for four.');
+  assert.equal(h.speeches[0].input.text, 'Which restaurant?');
+  h.speeches[0].input.onStarted(); await flush();
+  assert.equal(h.log.activeCaptures, 0);
+  h.speeches[0].done.resolve(); await flush();
+  assert.equal(h.phase(), 'listening');
+  assert.equal(h.log.captures, 2, 'one capture opens after the original reply drains');
+  assert.equal(h.log.activeCaptures, 1);
+  await h.say('for four people');
+  await h.clock.advance(ASSISTANT_TIMING_DEFAULTS.longGapMs);
+  assert.deepEqual(h.log.sends.map(send => send.text), ['book a table', 'for four people'], 'only fresh speech after reopen becomes the next turn');
+  assert.notEqual(h.log.sends[1].turnId, h.log.sends[0].turnId);
+  await h.session.stop();
+  assert.equal(h.replies[1].input.signal.aborted, true, 'explicit Stop still cancels inference');
+  h.answer(1, 'Booked for four.'); await flush();
+  assert.equal(h.speeches.length, 1, 'the stopped request never speaks a late reply');
+  assert.equal(h.log.activeCaptures, 0);
+  assert.equal(h.log.captures, 2, 'Stop does not reopen input');
 });
 
-test('barge-in during playback stops it and keeps only the sentences that finished playing', async () => {
-  const h = harness();
+test('closed input during playback cannot interrupt; explicit Stop speaking preserves the heard prefix until drain', async () => {
+  const h = harness({holdSpeechDrain: true});
   await h.session.start();
   await h.say('tell me about my day');
+  const retired = h.mic;
   await h.clock.advance(ASSISTANT_TIMING_DEFAULTS.longGapMs);
   h.answer(0, 'You have three meetings today. The first starts at nine with Priya. Then lunch with Sam at noon.'); await flush();
   assert.equal(h.speeches.length, 1);
   h.speeches[0].input.onStarted(); await flush();
-  assert.equal(h.phase(), 'speaking');
   h.speeches[0].done.resolve(); await flush();
   assert.equal(h.speeches.length, 2);
   h.speeches[1].input.onStarted(); await flush();
-  // The user talks over the second sentence: during playback only the transcript confirms, however
-  // long the VAD stays open (residual echo can last a whole sentence).
-  h.mic.onSpeechStart(h.clock.now()); await flush();
-  assert.equal(h.speeches[1].input.signal.aborted, false, 'tentative until confirmed');
-  await h.clock.advance(ASSISTANT_TIMING_DEFAULTS.bargeInConfirmMs * 2); h.mic.onSpeechEnd(h.clock.now()); await flush();
-  assert.equal(h.speeches[1].input.signal.aborted, false);
-  h.mic.onSegment('wait'); await flush();
-  assert.equal(h.speeches[1].input.signal.aborted, true, 'playback is aborted once the speech is accepted');
-  assert.equal(h.speeches.length, 2, 'no further sentence starts');
+  assert.equal(h.phase(), 'speaking');
+  assert.equal(h.log.activeCaptures, 0);
+  retired.onSpeechStart(h.clock.now()); await h.clock.advance(ASSISTANT_TIMING_DEFAULTS.bargeInConfirmMs * 2);
+  retired.onSpeechEnd(h.clock.now()); retired.onSegment('wait'); await flush();
+  assert.equal(h.speeches[1].input.signal.aborted, false, 'a retired capture cannot interrupt playback');
+  assert.equal(h.log.sends.length, 1);
+  assert.equal(h.log.captures, 1);
+  assert.equal(h.session.interruptSpeech(), true, 'the explicit control remains available');
+  assert.equal(h.speeches[1].input.signal.aborted, true);
+  assert.equal(h.speeches.length, 2, 'no third sentence starts');
   assert.deepEqual(h.log.heard, [{turnId: h.log.sends[0].turnId, replyId: 'a-0', heard: 'You have three meetings today.', unheard: 'The first starts at nine with Priya. Then lunch with Sam at noon.', interrupted: true}]);
-  assert.equal(h.phase(), 'listening');
-  // A late playback callback from the interrupted reply changes nothing.
+  assert.equal(h.log.activeCaptures, 0, 'interrupting does not prove playback has drained');
+  assert.equal(h.session.getSnapshot().inputHeld, true);
   h.speeches[1].input.onStarted(); await flush();
+  assert.equal(h.log.heard.length, 1, 'late playback callbacks do not duplicate the report');
+  assert.equal(h.log.captures, 1);
+  h.speeches[1].done.resolve(); await flush();
   assert.equal(h.phase(), 'listening');
+  assert.equal(h.log.captures, 2);
+  assert.equal(h.log.activeCaptures, 1, 'one input reopens after the interrupted playback actually settles');
+  await h.session.stop();
 });
 
-test('Stop speaking interrupts like barge-in; a reply that plays to the end is heard in full', async () => {
-  const h = harness();
+test('Stop speaking holds input until interrupted playback settles; the next complete reply is heard in full', async () => {
+  const h = harness({holdSpeechDrain: true});
   await h.session.start();
   await h.say('what time is it');
+  const retired = h.mic;
   await h.clock.advance(ASSISTANT_TIMING_DEFAULTS.longGapMs);
   h.answer(0, 'It is nine thirty in the morning.'); await flush();
   assert.equal(h.session.interruptSpeech(), false, 'nothing to stop before playback starts');
@@ -310,13 +333,24 @@ test('Stop speaking interrupts like barge-in; a reply that plays to the end is h
   assert.equal(h.session.interruptSpeech(), true);
   assert.equal(h.log.heard.at(-1).heard, '', 'the interrupted first sentence is not claimed as heard');
   assert.equal(h.log.heard.at(-1).interrupted, true);
-
+  assert.equal(h.log.activeCaptures, 0);
+  assert.equal(h.log.captures, 1);
+  retired.onSpeechStart(h.clock.now()); retired.onSpeechEnd(h.clock.now()); retired.onSegment('not a fresh turn');
+  await h.clock.advance(ASSISTANT_TIMING_DEFAULTS.longGapMs);
+  assert.equal(h.log.sends.length, 1, 'the hold refuses speech while the original playback still drains');
+  assert.equal(h.session.getSnapshot().inputHeld, true);
+  h.speeches[0].done.resolve(); await flush();
+  assert.equal(h.log.captures, 2);
+  assert.equal(h.log.activeCaptures, 1);
   await h.say('and tomorrow');
   await h.clock.advance(ASSISTANT_TIMING_DEFAULTS.longGapMs);
   h.answer(1, 'Tomorrow is Thursday.'); await flush();
   h.speeches[1].input.onStarted(); h.speeches[1].done.resolve(); await flush();
   assert.deepEqual(h.log.heard.at(-1), {turnId: h.log.sends[1].turnId, replyId: 'a-1', heard: 'Tomorrow is Thursday.', unheard: '', interrupted: false});
   assert.deepEqual(h.log.turns.map(([event]) => event), ['submitted', 'first-audio', 'interrupted', 'submitted', 'first-audio', 'finished']);
+  assert.equal(h.log.captures, 3, 'each completed or drained turn releases exactly one hold');
+  assert.equal(h.log.activeCaptures, 1);
+  await h.session.stop();
 });
 
 test('echo of the reply heard while it plays is not sent as a turn', async () => {
@@ -392,43 +426,60 @@ test('account or binding change stops the conversation: capture cancelled, nothi
   assert.equal(g.speeches.length, 0);
 });
 
-test('Stop discards an unsent utterance; Mute finalizes speech up to the mute and Unmute reopens the microphone', async () => {
+test('Stop discards unsent speech; Mute finalizes once and Unmute waits for the submitted turn to drain', async () => {
   const h = harness();
   await h.session.start();
   await h.say('cancel my');
   await h.session.stop();
   await h.clock.advance(ASSISTANT_TIMING_DEFAULTS.longGapMs * 2);
   assert.equal(h.log.sends.length, 0, 'Stop never sends what was not submitted');
-
+  assert.equal(h.log.activeCaptures, 0);
   const m = harness();
   await m.session.start();
   m.mic.onSpeechStart(m.clock.now()); await flush();
   const muting = m.session.setMuted(true);
-  // The capture stops at the mute: its open segment is closed and its final delivered before close resolves.
+  // The capture delivers its final before the close settles.
   m.mic.onSpeechEnd(m.clock.now()); m.mic.onSegment('turn off the alarm');
   await muting;
   assert.equal(m.log.closed, 1);
+  assert.equal(m.log.activeCaptures, 0);
   assert.equal(m.session.muted, true);
   await m.clock.advance(ASSISTANT_TIMING_DEFAULTS.longGapMs);
   assert.deepEqual(m.log.sends.map(send => send.text), ['turn off the alarm']);
   m.mic.onSpeechStart(m.clock.now()); await flush();
-  assert.equal(m.replies[0].input.signal.aborted, false, 'a muted microphone cannot barge in');
-  await m.session.setMuted(false);
-  assert.equal(m.log.captures, 2);
+  assert.equal(m.replies[0].input.signal.aborted, false, 'a muted or retired microphone cannot interrupt');
+  await m.session.setMuted(false); await flush();
+  assert.equal(m.session.muted, false, 'manual mute is independent of the busy hold');
+  assert.equal(m.log.captures, 1, 'Unmute cannot reopen during inference');
+  assert.equal(m.log.activeCaptures, 0);
+  m.answer(0, 'The alarm is off.'); await flush();
+  m.speeches[0].input.onStarted(); await flush();
+  assert.equal(m.log.activeCaptures, 0, 'input also stays closed throughout the reply');
+  m.speeches[0].done.resolve(); await flush();
+  assert.equal(m.log.sends.length, 1, 'the mute-finalized utterance is never duplicated');
+  assert.equal(m.log.captures, 2, 'the settled turn releases one capture');
+  assert.equal(m.log.activeCaptures, 1);
+  await m.session.stop();
 });
 
-test('an automatic voice turn never approves: a reply with proposals ends voice without speaking it', async () => {
+test('an automatic voice turn never approves: a proposal ends voice with input already closed', async () => {
   const h = harness();
   await h.session.start();
   await h.say('delete my dentist appointment');
   await h.clock.advance(ASSISTANT_TIMING_DEFAULTS.longGapMs);
+  assert.equal(h.log.closed, 1);
+  assert.equal(h.log.activeCaptures, 0);
   h.answer(0, 'Review the deletion below.', {complete: false}); await flush();
   assert.equal(h.speeches.length, 0);
   assert.equal(h.phase(), 'error');
-  assert.equal(h.log.cancelled, 1, 'the microphone is released');
+  assert.equal(h.log.sends.length, 1, 'review was not automatically approved or resubmitted');
+  assert.equal(h.log.cancelled, 0, 'the already confirmed closed capture needs no cancellation');
+  await h.clock.advance(ASSISTANT_TIMING_DEFAULTS.longGapMs * 2);
+  assert.equal(h.log.captures, 1, 'a failed automatic proposal cannot reopen input');
+  assert.equal(h.log.activeCaptures, 0);
 });
 
-test('a Notes read-reply pause turns the microphone off until the exact approved result is resumed', async () => {
+test('a Notes review keeps input closed through exact approval and approved playback before one reopen', async () => {
   const h = harness();
   await h.session.start();
   await h.say('summarize my packing note');
@@ -436,13 +487,28 @@ test('a Notes read-reply pause turns the microphone off until the exact approved
   h.answer(0, 'Share the note?', {complete: false, awaitingUserInput: {proposalId: 'p-1', digest: 'd-1'}}); await flush();
   const state = h.session.getSnapshot();
   assert.equal(state.phase, 'awaiting-user-input');
-  assert.equal(h.log.cancelled, 1, 'microphone off while the owner reviews');
+  assert.equal(h.log.closed, 1);
+  assert.equal(h.log.activeCaptures, 0, 'the owner reviews without open input');
+  assert.equal(h.log.cancelled, 0, 'the submission already retired the capture by confirmed close');
   const pause = state.awaitingUserInput;
   assert.equal(h.session.resume({pause: {...pause, digest: 'other'}, reply: {requestId: pause.requestId, conversationId: 'room-1', userMessageId: pause.userMessageId, assistantMessageId: 'a-2', text: 'x', complete: true}}), false);
+  assert.equal(h.phase(), 'awaiting-user-input');
+  assert.equal(h.log.captures, 1, 'a wrong digest has no capture or speech effect');
+  assert.equal(h.speeches.length, 0);
   assert.equal(h.session.resume({pause, reply: {requestId: pause.requestId, conversationId: 'room-1', userMessageId: pause.userMessageId, assistantMessageId: 'a-2', text: 'Passport, charger and boots.', complete: true}}), true);
   await flush();
-  assert.equal(h.log.captures, 2, 'listening resumes');
+  assert.equal(h.log.captures, 1, 'approval does not reopen while its reply is pending playback');
+  assert.equal(h.log.activeCaptures, 0);
+  assert.equal(h.log.sends.length, 1, 'resume is the separately approved result, not a second agent send');
+  assert.equal(h.replies[0].input.signal.aborted, false, 'the approved original turn is not orphan-aborted');
   assert.equal(h.speeches[0].input.text, 'Passport, charger and boots.');
+  h.speeches[0].input.onStarted(); await flush();
+  assert.equal(h.log.activeCaptures, 0);
+  h.speeches[0].done.resolve(); await flush();
+  assert.equal(h.log.captures, 2, 'exactly one capture opens after the approved reply drains');
+  assert.equal(h.log.activeCaptures, 1);
+  assert.equal(h.phase(), 'listening');
+  await h.session.stop();
 });
 
 test('sentence splitting keeps the reply text and avoids tiny fragments', () => {
@@ -598,7 +664,8 @@ test('sources: no Web Speech, storage or logging in the assistant path; the adap
   const template = fs.readFileSync(new URL('../apps/app/src/prototype/template.html', import.meta.url), 'utf8');
   assert.doesNotMatch(template, /aria-label="Transcribe" title="Transcribe into draft"/);
   assert.match(template, /title="Voice assistant" aria-label="Talk" onPointerDown="\{\{chatControlPointer\}\}" onClick="\{\{startVoice\}\}"/);
-  assert.match(template, /chatRecorder\.canInterrupt[\s\S]{0,200}Stop speaking/);
+  // Voice controls are Mute and Stop only; there is no Stop speaking button.
+  assert.doesNotMatch(template, /canInterrupt|Stop speaking/);
   assert.match(template, /aria-pressed="\{\{chatRecorder\.muted\}\}"/);
 });
 

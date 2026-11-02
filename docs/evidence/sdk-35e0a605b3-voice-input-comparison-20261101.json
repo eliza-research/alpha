@@ -1,0 +1,295 @@
+{
+  "atUTC": "2026-11-02T01:00:24.104637+00:00",
+  "kind": "SOURCE_COMPARISON_NOT_NATIVE_QUALIFICATION",
+  "fromSDK": "9950213832d6bb6965121a517e268ce898ef0100",
+  "toSDK": "35e0a605b3d560eedec664e79693d5ecc0b5ece3",
+  "product": "b2add119db0f43f32e790b8ac9ba7650a75a480d",
+  "boundPathRoots": [
+    {
+      "path": "packages/app/platforms/android/app/src/main/elizavoice-jni",
+      "state": "UNCHANGED",
+      "beforeEntries": 2,
+      "afterEntries": 2,
+      "beforeTreeDigest": "81cd89c8509af3a5895358590c6d6416895d1d4a1704f9d4b92a0ec228c2fa82",
+      "afterTreeDigest": "81cd89c8509af3a5895358590c6d6416895d1d4a1704f9d4b92a0ec228c2fa82"
+    },
+    {
+      "path": "packages/app/platforms/android/app/src/main/elizavoice-jni/CMakeLists.txt",
+      "state": "UNCHANGED",
+      "beforeEntries": 1,
+      "afterEntries": 1,
+      "beforeTreeDigest": "c45796368b36f9547378e2a0ebce0d8b0d2d079bb721a1e1c739eceba6278534",
+      "afterTreeDigest": "c45796368b36f9547378e2a0ebce0d8b0d2d079bb721a1e1c739eceba6278534"
+    },
+    {
+      "path": "packages/app/platforms/android/app/src/main/elizavoice-jni/elizavoice-jni.cpp",
+      "state": "UNCHANGED",
+      "beforeEntries": 1,
+      "afterEntries": 1,
+      "beforeTreeDigest": "d2fbaac858d31d1b7f25ae49aeec3c510c7fd7f323f315b64779261ebc42c7bd",
+      "afterTreeDigest": "d2fbaac858d31d1b7f25ae49aeec3c510c7fd7f323f315b64779261ebc42c7bd"
+    },
+    {
+      "path": "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+      "state": "UNCHANGED",
+      "beforeEntries": 1,
+      "afterEntries": 1,
+      "beforeTreeDigest": "ad91653c4e3b4698c482e7d103bb0fea17ab566e72f68394c4629ce01d0a272c",
+      "afterTreeDigest": "ad91653c4e3b4698c482e7d103bb0fea17ab566e72f68394c4629ce01d0a272c"
+    },
+    {
+      "path": "packages/app/scripts/build-helpers/arm64-simd.ts",
+      "state": "UNCHANGED",
+      "beforeEntries": 1,
+      "afterEntries": 1,
+      "beforeTreeDigest": "e69446eb596f97313454d3045430c0fdeb0f0d7428484ef7f86aab5212cbf32b",
+      "afterTreeDigest": "e69446eb596f97313454d3045430c0fdeb0f0d7428484ef7f86aab5212cbf32b"
+    },
+    {
+      "path": "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
+      "state": "UNCHANGED",
+      "beforeEntries": 1,
+      "afterEntries": 1,
+      "beforeTreeDigest": "0e72010f548bab1d03ddbd704423d65a347e5571f9021616515c071bf2ed54ee",
+      "afterTreeDigest": "0e72010f548bab1d03ddbd704423d65a347e5571f9021616515c071bf2ed54ee"
+    },
+    {
+      "path": "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+      "state": "UNCHANGED",
+      "beforeEntries": 1,
+      "afterEntries": 1,
+      "beforeTreeDigest": "2f8373a83ebc261217c9d4b1261102b3459648b3c1922cc7e252b730f16fcc1a",
+      "afterTreeDigest": "2f8373a83ebc261217c9d4b1261102b3459648b3c1922cc7e252b730f16fcc1a"
+    },
+    {
+      "path": "packages/app/scripts/paradee-voice",
+      "state": "CHANGED",
+      "beforeEntries": 38,
+      "afterEntries": 38,
+      "beforeTreeDigest": "9d7a2832daecb8715cfdd455ca441c26cdc05f02bc39d482a5a5ecd73c415c2f",
+      "afterTreeDigest": "4b7821c774d33532b30ccf36fee34478a0e8edcb0c8ef1cdfa8730e0b9bf518d"
+    },
+    {
+      "path": "packages/app/scripts/paradee-voice/build-native.ts",
+      "state": "UNCHANGED",
+      "beforeEntries": 1,
+      "afterEntries": 1,
+      "beforeTreeDigest": "222e7a6a2c7032bf578172e05db1aa5b89344b4233f19247c87a386c1730d3be",
+      "afterTreeDigest": "222e7a6a2c7032bf578172e05db1aa5b89344b4233f19247c87a386c1730d3be"
+    },
+    {
+      "path": "packages/app/scripts/stage-elizavoice-lib.ts",
+      "state": "UNCHANGED",
+      "beforeEntries": 1,
+      "afterEntries": 1,
+      "beforeTreeDigest": "06572b3bf7af98036011503ed11440a48bb79a2128dfd591a7ccc62b896c6537",
+      "afterTreeDigest": "06572b3bf7af98036011503ed11440a48bb79a2128dfd591a7ccc62b896c6537"
+    },
+    {
+      "path": "packages/auth/android/build.gradle",
+      "state": "UNCHANGED",
+      "beforeEntries": 1,
+      "afterEntries": 1,
+      "beforeTreeDigest": "03017d04a55831ebf2f3f3919debd1888917a9de7036af7b1054982066234a56",
+      "afterTreeDigest": "03017d04a55831ebf2f3f3919debd1888917a9de7036af7b1054982066234a56"
+    },
+    {
+      "path": "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInConfig.java",
+      "state": "UNCHANGED",
+      "beforeEntries": 1,
+      "afterEntries": 1,
+      "beforeTreeDigest": "d3ff641b7992b29e941ca447658335e2b145b98ae633739d498b3943d08cac16",
+      "afterTreeDigest": "d3ff641b7992b29e941ca447658335e2b145b98ae633739d498b3943d08cac16"
+    },
+    {
+      "path": "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInFlow.java",
+      "state": "UNCHANGED",
+      "beforeEntries": 1,
+      "afterEntries": 1,
+      "beforeTreeDigest": "541faab184f17fc583be41103471e8b7c4b334a10973145438abbcd32d1422ff",
+      "afterTreeDigest": "541faab184f17fc583be41103471e8b7c4b334a10973145438abbcd32d1422ff"
+    },
+    {
+      "path": "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java",
+      "state": "UNCHANGED",
+      "beforeEntries": 1,
+      "afterEntries": 1,
+      "beforeTreeDigest": "d94419e57b2df0a0c75dbc932841b513587020c93fe6ae2cf6d947bb932cc99b",
+      "afterTreeDigest": "d94419e57b2df0a0c75dbc932841b513587020c93fe6ae2cf6d947bb932cc99b"
+    },
+    {
+      "path": "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInReadiness.java",
+      "state": "UNCHANGED",
+      "beforeEntries": 1,
+      "afterEntries": 1,
+      "beforeTreeDigest": "400bce8d09f68e28d901f872048b980c2983bd9d8cbe3a5a66354b03a11db6b4",
+      "afterTreeDigest": "400bce8d09f68e28d901f872048b980c2983bd9d8cbe3a5a66354b03a11db6b4"
+    },
+    {
+      "path": "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInRoutes.java",
+      "state": "UNCHANGED",
+      "beforeEntries": 1,
+      "afterEntries": 1,
+      "beforeTreeDigest": "cbbd035cecefd66002f4721073c7bea5c7815b8dd3c06b97b79e63af1f1ff6e4",
+      "afterTreeDigest": "cbbd035cecefd66002f4721073c7bea5c7815b8dd3c06b97b79e63af1f1ff6e4"
+    },
+    {
+      "path": "packages/voice/src/cloud-speech-chunks.ts",
+      "state": "ABSENT_BOTH_NOT_INPUT_PROOF",
+      "beforeEntries": 0,
+      "afterEntries": 0,
+      "beforeTreeDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "afterTreeDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+    },
+    {
+      "path": "packages/voice/src/native-cloud-speech.ts",
+      "state": "ABSENT_BOTH_NOT_INPUT_PROOF",
+      "beforeEntries": 0,
+      "afterEntries": 0,
+      "beforeTreeDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "afterTreeDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+    },
+    {
+      "path": "plugins/plugin-local-inference/native",
+      "state": "CHANGED",
+      "beforeEntries": 334,
+      "afterEntries": 334,
+      "beforeTreeDigest": "4300399b137b7403e16c6966a046205afcd1509e3d7521c14cba3c8670b73427",
+      "afterTreeDigest": "378f9bf2f52aeecac9ff1c0fe5a5efec5d95e2e97d4a69156e276f9a3b480b18"
+    },
+    {
+      "path": "plugins/plugin-local-inference/native/android/consumer.gradle",
+      "state": "UNCHANGED",
+      "beforeEntries": 1,
+      "afterEntries": 1,
+      "beforeTreeDigest": "645b93f1077c8e72a6d2501fde7fbc69c120cde69b20962132886bb9abed2c61",
+      "afterTreeDigest": "645b93f1077c8e72a6d2501fde7fbc69c120cde69b20962132886bb9abed2c61"
+    },
+    {
+      "path": "plugins/plugin-local-inference/native/android/inputs.json",
+      "state": "UNCHANGED",
+      "beforeEntries": 1,
+      "afterEntries": 1,
+      "beforeTreeDigest": "df560d0dacbd31c30870892a449e7bf123e05d6bd897ce21702ced9515b22c0c",
+      "afterTreeDigest": "df560d0dacbd31c30870892a449e7bf123e05d6bd897ce21702ced9515b22c0c"
+    },
+    {
+      "path": "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechTimings.java",
+      "state": "ABSENT_BOTH_NOT_INPUT_PROOF",
+      "beforeEntries": 0,
+      "afterEntries": 0,
+      "beforeTreeDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "afterTreeDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+    },
+    {
+      "path": "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechWire.java",
+      "state": "ABSENT_BOTH_NOT_INPUT_PROOF",
+      "beforeEntries": 0,
+      "afterEntries": 0,
+      "beforeTreeDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "afterTreeDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+    },
+    {
+      "path": "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechStreamBridgePlugin.java",
+      "state": "ABSENT_BOTH_NOT_INPUT_PROOF",
+      "beforeEntries": 0,
+      "afterEntries": 0,
+      "beforeTreeDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "afterTreeDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+    },
+    {
+      "path": "plugins/plugin-local-inference/native/llama.cpp",
+      "state": "UNCHANGED",
+      "beforeEntries": 1,
+      "afterEntries": 1,
+      "beforeTreeDigest": "3f86e1b90068a13de79392ae26bf25df790493d3ea1cc4f6e53b69c92a02697e",
+      "afterTreeDigest": "3f86e1b90068a13de79392ae26bf25df790493d3ea1cc4f6e53b69c92a02697e"
+    }
+  ],
+  "actualBoundEntries": 385,
+  "changedBoundPaths": [
+    {
+      "path": "packages/app/scripts/paradee-voice/speech-pipeline-contract.test.mjs",
+      "before": "100644 blob 04d769c98a881ea2a67d3e46edc60d8488b7375c",
+      "after": "100644 blob b5360d9ca4182c81f8e37ce43d53a74663daa08a"
+    },
+    {
+      "path": "packages/app/scripts/paradee-voice/speech-pipeline/LiveCaptureControllerTest.java",
+      "before": "100644 blob 568592e27973ecdfd2223685e2c7ecfa0a62168e",
+      "after": "100644 blob 2f01371e83d8a1c4e941d87927f16d0eb9839bd1"
+    },
+    {
+      "path": "plugins/plugin-local-inference/native/android/README.md",
+      "before": "100644 blob 0d73e3dd486db1c9a8fb7e7cb940f3677b71da87",
+      "after": "100644 blob e7c14f6430d95df10cbc14132f9d7aac4d9f17bc"
+    },
+    {
+      "path": "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/LocalSpeechBridgePlugin.java",
+      "before": "100644 blob 8939b7dea0a0863c7ad51a5be9ac481e5ebc1f37",
+      "after": "100644 blob 073a37b538e06109d867c09817eedef61370c82c"
+    },
+    {
+      "path": "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureController.java",
+      "before": "100644 blob e984705225c542b93c769861de58d64008ab0625",
+      "after": "100644 blob 0583c8a5563aa934eab0a14144b92f8a29473b04"
+    }
+  ],
+  "consumerLifecycleChanges": [
+    "packages/voice/README.md",
+    "packages/voice/src/live-voice-session.test.ts",
+    "packages/voice/src/live-voice-session.ts",
+    "packages/voice/src/native-live-voice.test.ts",
+    "packages/voice/src/native-live-voice.ts",
+    "packages/voice/src/voice-assistant-session.test.ts",
+    "packages/voice/src/voice-assistant-session.ts",
+    "packages/voice/src/voice-turn-routes.test.ts"
+  ],
+  "currentEngineGitlink": "b3eb2bf63b3c02cd37ee09d442911ace99975b38",
+  "recordedCompiledEngineGitlink": "0d9fd4b9db239bbf851068f98c99f4263f8c05c5",
+  "recordedABIs": [
+    {
+      "abi": "arm64-v8a",
+      "abiVersion": 19,
+      "libraries": [
+        {
+          "name": "libelizainference.so",
+          "sha256": "c1679c25c28f1ba5a7757aa821265135f3c8f09657a16804ae744761f262eb1e",
+          "bytes": 8066120
+        },
+        {
+          "name": "libc++_shared.so",
+          "sha256": "cd61762848882a16c8244c964a6f396c0caa0b440588a210ce9cc4ab0e6d9f0c",
+          "bytes": 1253544
+        }
+      ]
+    },
+    {
+      "abi": "x86_64",
+      "abiVersion": 19,
+      "libraries": [
+        {
+          "name": "libelizainference.so",
+          "sha256": "fe1f563e5cd02b86ba547d2f6971822303a8338b11374818393432a002f80581",
+          "bytes": 8694208
+        },
+        {
+          "name": "libc++_shared.so",
+          "sha256": "2e855857f80819737d25a663109fedf816a5e996a85423166806014a06593256",
+          "bytes": 1229808
+        }
+      ]
+    }
+  ],
+  "freshBuildOrNativeExecution": false,
+  "nativeArtifactsAdmitted": false,
+  "historicalEvidenceScope": "Pinned component corpora and full Alpha JNI embedding only; not physical capture/playback or product acceptance.",
+  "admissionFence": "UnchangedverifyParadeeRuntime requires currentbuildrecord.sourceCommit/nativeCommit, exactFFIcheckout andallfilehashes; old0d9compiledABI19 cannot count ascurrentb3eb qualification.",
+  "currentStage": "ExplicitCloudnativevoiceabsent; stagedhostBGEobservedseparately; noAPK",
+  "nextNativeProof": [
+    "FreshcurrentforkbothABIbuildrecords/libraries/alignment/exports",
+    "Model+bundleintegrity",
+    "Installedappcapture/playback/stream/Stop/lifecycle",
+    "Physicaldeviceanduseracceptance"
+  ],
+  "missingPreviouslyListedPaths": "FiveclaimedinputpathsabsentatbothSDKs, listedasABSENT_BOTH_NOT_INPUT_PROOF; notmisrepresentedasequalfilebytes."
+}

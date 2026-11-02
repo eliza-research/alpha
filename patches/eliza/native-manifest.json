@@ -1,10 +1,10 @@
 {
   "schema": 1,
-  "baseCommit": "7e8b5d3eb1c05ee6ea72a1a2d5ce5b966c404e9c",
+  "baseCommit": "35e0a605b3d560eedec664e79693d5ecc0b5ece3",
   "patches": [
     {
       "file": "google-browser-sign-in.patch",
-      "sha256": "96cad02a3cee6ee864d1d47ac90b616c61efc202e19b99e4ee435c96710ba271",
+      "sha256": "70e1e2b28e25e70822b01ea20f273f01471102fb1b4775dff47c48059624322b",
       "module": "packages/auth/android",
       "targets": [
         {
@@ -15,7 +15,7 @@
         {
           "path": "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInConfig.java",
           "beforeSha256": "73bc99db2cbe955887f5696109952dfecc08532cb1c711159d9106dcd9499336",
-          "afterSha256": "0e1a05bbccb86714275c3cb11c94375f8267a624862e43bc91d059e27642dc48"
+          "afterSha256": "e9175c8d72a58bd0670356f059070a09e0e57fa391a07120f12c8c49e4a7c167"
         },
         {
           "path": "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInFlow.java",
@@ -25,7 +25,7 @@
         {
           "path": "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java",
           "beforeSha256": "0c2ba91faf22459538bd852cb305507ac2b17982afbe6bdc6e8465526a1ba1d4",
-          "afterSha256": "0f2db4e638b42d782ddf2dc5168bef0405f45aa78e8736a53d5bebe8c4beee9c"
+          "afterSha256": "adfbaf5e99254ea49071d57d921054036a9e82ed0f3aa382f0676e762f98eb6e"
         },
         {
           "path": "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInReadiness.java",

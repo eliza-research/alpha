@@ -9,9 +9,9 @@ import {JSDOM} from 'jsdom';
 import {cloudVoiceViewFixture} from './fixtures/cloud-voice-view.mjs';
 
 // The actual production template and DCLogic renderer, closed presentation ports only.
-test('actual voice error clears input activity while retaining disclosure, support code and uncertain cleanup',async()=>{
+test('actual voice error clears input activity, keeps failure internal without a banner and retains uncertain cleanup',async()=>{
  const template=fs.readFileSync('apps/app/src/prototype/template.html','utf8');
- const start=template.indexOf('<sc-if value="{{inlineChatRecorder}}">');
+ const start=template.indexOf('<sc-if value="{{legacyChatRecorder}}">');
  const end=template.indexOf('<sc-if value="{{panelComposer}}">',start);
  assert.ok(start>=0&&end>start);
  const fragment='<div class="os"><div data-screen="1">'+template.slice(start,end)+'</div></div>';
@@ -34,19 +34,18 @@ test('actual voice error clears input activity while retaining disclosure, suppo
   await f.shell.startVoice();
   for(const state of ['starting','listening','error']){
    const error=state==='error';
-   if(error)f.batchOptions.onState({phase:'error',error:Object.assign(new Error('PRIVATE_PROVIDER_BODY'),{code:'voice-http-503'})});
+   // A Cloud 503 is now waited out quietly (voice-calm-cloud-errors.test.mjs); a refused sign-in is terminal.
+   if(error)f.batchOptions.onState({phase:'error',error:Object.assign(new Error('PRIVATE_PROVIDER_BODY'),{code:'voice-http-401'})});
    const model=state==='starting'?f.initialView:f.renderChat();
    assert.equal(model.state,state);assert.equal(model.activity===null,error);
    const html=render({inlineChatRecorder:true,chatRecorder:model});
    const doc=new JSDOM(html).window.document,details=doc.querySelector('details');
    const alert=doc.querySelector('[role="alert"]');
-   // Speech routing is disclosed in Settings > Voice; the live composer opens details only for an error.
+   // Speech routing is disclosed in Settings > Voice; the live composer opens details only for an error support code.
    if(error){
-    assert.ok(details);assert.equal(details.querySelector('summary').textContent,'Voice details');
-    assert.equal(details.hasAttribute('open'),false,'an error never forces the disclosure open');
-    assert.equal(doc.querySelectorAll('[role="note"]').length,1);
-    assert.match(details.textContent,/uploads recordings.*plan allowance.*Cartesia/);
-    assert.match(alert.textContent,/Voice is unavailable/);assert.doesNotMatch(alert.textContent,/503|uploads/);assert.match(details.textContent,/HTTP 503/);
+    assert.equal(details,null,'no support code, so no details panel');
+    assert.equal(alert,null,'no voice error banner');assert.equal(model.lines[0].t,'Sign in to Cloud again in Settings, then retry voice.','failure remains classified internally');assert.doesNotMatch(doc.body.textContent,/Sign in to Cloud|401|PRIVATE/);
+    assert.equal(doc.querySelector('[role="status"][aria-label="Voice conversation status"]').textContent,'','the alert is not repeated in the status region');
    }else{assert.equal(details,null,'no details panel during a healthy conversation');assert.equal(alert,null);}
    assert.ok(doc.querySelector('[aria-label="Stop voice conversation"]'));
    assert.equal(doc.querySelectorAll('[data-alpha-voice-animation]').length,error?0:1);
@@ -62,8 +61,21 @@ test('actual voice error clears input activity while retaining disclosure, suppo
   assert.equal(held.recoveryLabel,undefined);assert.match(held.lines[0].t,/Could not confirm voice media stopped/);
   const heldDoc=new JSDOM(render({inlineChatRecorder:true,chatRecorder:held})).window.document;
   assert.equal(heldDoc.querySelectorAll('[data-alpha-voice-animation]').length,0);
-  assert.match(heldDoc.querySelector('[role="alert"]').textContent,/Could not confirm voice media stopped/);
+  assert.equal(heldDoc.querySelector('[role="alert"]'),null);assert.doesNotMatch(heldDoc.body.textContent,/Could not confirm|Close the app/);
+  await f.shell.startVoice();await f.tick();assert.equal(f.renderChat().state,'error','unknown media remains blocked, not falsely idle');assert.deepEqual(f.shell.messages,[],'repeated start while unsafe stays quiet');
   assert.ok(heldDoc.querySelector('[aria-label="Stop voice conversation"]'));
   assert.equal(f.starts,0);assert.equal(f.uploads,0);
+  // Legacy dictation has named failure states, not just 'error'. Its failure flag must drive
+  // the same quiet presentation without renaming the state or bypassing any action guard.
+  const adapter=fs.readFileSync('apps/app/src/prototype/voice-adapter.ts','utf8');
+  assert.match(adapter,/state: failure \|\| stage,\s+failed: Boolean\(error \|\| failure\)/);
+  assert.match(adapter,/recorder\.problem=recorder\.state==='error'\|\|recorder\.failed===true/);
+  for(const state of ['denied','no-speech','local-agent','recognition','permission-denied']){
+   const model={...held,state,failed:true,statusLines:[],lines:[{t:'INTERNAL_FAILURE_DETAIL'}],recoveryLabel:''};
+   const legacy=new JSDOM(render({legacyChatRecorder:true,chatRecorder:model})).window.document;
+   assert.equal(legacy.querySelector('[role="alert"]'),null);
+   assert.doesNotMatch(legacy.body.textContent,/INTERNAL_FAILURE_DETAIL/);
+   assert.equal(model.state,state,'failure identity is unchanged');
+  }
  }finally{f?.close();globalThis.matchMedia=beforeMedia;globalThis.document=before;env.window.close();fs.rmSync(temporary,{recursive:true,force:true});}
 });

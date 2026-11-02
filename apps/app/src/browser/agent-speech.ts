@@ -4,7 +4,7 @@ type SpeechConnection={
  getBrowserSpeechAgent():LocalAgentProtocol|null;
  getCloudEnvironment?():string|null;
  getCloudClient?():{sessionId:string;credentialId:string}|null;
- getSnapshot():{session?:{sessionId:string}|null;kind?:string};
+ getSnapshot():{session?:{sessionId:string}|null;kind?:string;residentInference?:string|null;providerStatus?:{voiceConfigured?:boolean;revision?:string}|null};
  subscribe(listener:()=>void):()=>void;
 };
 let connection:SpeechConnection|undefined,detach:(()=>void)|undefined;

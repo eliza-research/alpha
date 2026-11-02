@@ -133,39 +133,67 @@ test('heard reporting: 409 is a conflict without retry; 404 and 503 retry once l
   assert.equal(await late.heard.report(interrupted()), 'stale');
 });
 
-test('heard reporting never blocks the next turn: a barge-in during playback reports the played sentence while the next turn is sent', async () => {
+test('heard reporting does not block the next turn after explicit Stop speaking and settled playback drain', async () => {
   let now = 0;
   const timers = new Map(); let id = 0;
   const clock = {now: () => now, setTimer: (callback, ms) => { timers.set(++id, {at: now + ms, callback}); return id; }, clearTimer: handle => timers.delete(handle)};
   const advance = async ms => { const end = now + ms; for (;;) { const next = [...timers.entries()].filter(([, t]) => t.at <= end).sort((a, b) => a[1].at - b[1].at)[0]; if (!next) break; timers.delete(next[0]); now = next[1].at; next[1].callback(); await flush(); } now = end; await flush(); };
   const requests = [];
-  let release;
-  const heardRoute = new Promise(resolve => { release = resolve; });
+  let release, heardSettled = false;
+  const heardRoute = new Promise(resolve => { release = value => { heardSettled = true; resolve(value); }; });
   const heard = routes.createHeardReporter({
     request: () => (path, body) => { requests.push({path, body}); return heardRoute; },
     current: () => true, isAssistantReply: (c, m) => c === conversationId && m === replyId,
   });
-  const sends = [], speeches = [];
-  let mic;
+  const sends = [], sentIds = [], speeches = [], captures = [], heardEvents = [];
+  let mic, activeCaptures = 0;
   const session = new VoiceAssistantSession({
     conversationId, assertCurrent() {},
-    listen: async handlers => { mic = handlers; return {fullDuplex: true, close: async () => {}, cancel() {}}; },
-    send: input => { sends.push(input.text); return sends.length === 1 ? Promise.resolve({requestId: input.turnId, conversationId, userMessageId: 'u-1', assistantMessageId: replyId, text: 'You have two meetings today. The first one starts at nine.', complete: true}) : new Promise(() => {}); },
-    speak: input => new Promise((resolve, reject) => { speeches.push(resolve); input.onStarted(); input.signal.addEventListener('abort', () => reject(new DOMException('stopped', 'AbortError')), {once: true}); }),
-    onHeard: value => { void heard.report({conversationId, ...value}); },
+    listen: async handlers => {
+      mic = handlers; const capture = {active: true}; captures.push(capture); activeCaptures++;
+      const retire = () => { if (capture.active) { capture.active = false; activeCaptures--; } };
+      return {fullDuplex: true, close: async () => retire(), cancel: retire};
+    },
+    send: input => {
+      sends.push(input.text); sentIds.push(input.turnId);
+      return sends.length === 1
+        ? Promise.resolve({requestId: input.turnId, conversationId, userMessageId: 'u-1', assistantMessageId: replyId, text: 'You have two meetings today. The first one starts at nine.', complete: true})
+        : new Promise((resolve, reject) => input.signal.addEventListener('abort', () => reject(new DOMException('stopped', 'AbortError')), {once: true}));
+    },
+    // Abort requests stopping immediately; only this explicit resolver proves playback drained.
+    speak: input => new Promise(resolve => { speeches.push({input, resolve}); input.onStarted(); }),
+    onHeard: value => { heardEvents.push(value); void heard.report({conversationId, ...value}); },
   }, {clock});
   await session.start();
   const say = async text => { mic.onSpeechStart(now); await advance(400); mic.onSpeechEnd(now); mic.onSegment(text); await flush(); };
   await say('what is on my calendar');
+  const retired = mic;
   await advance(1200);
-  speeches[0](); await flush();
+  speeches[0].resolve(); await flush();
   assert.equal(speeches.length, 2, 'the second sentence is playing');
-  await say('and tomorrow');
+  assert.equal(activeCaptures, 0);
+  assert.equal(session.interruptSpeech(), true);
+  assert.equal(speeches[1].input.signal.aborted, true);
   assert.deepEqual(requests, [{path: `/api/conversations/room-1/messages/${replyId}/heard`, body: {heardText: 'You have two meetings today.'}}]);
+  assert.deepEqual(heardEvents, [{turnId: sentIds[0], replyId, heard: 'You have two meetings today.', unheard: 'The first one starts at nine.', interrupted: true}]);
+  retired.onSpeechStart(now); retired.onSpeechEnd(now); retired.onSegment('ignored while playback drains');
+  await advance(1200);
+  assert.equal(sends.length, 1, 'a retired handle cannot queue a next turn during drain');
+  assert.equal(captures.length, 1);
+  assert.equal(activeCaptures, 0);
+  assert.equal(session.getSnapshot().inputHeld, true);
+  speeches[1].resolve(); await flush();
+  assert.equal(captures.length, 2);
+  assert.equal(activeCaptures, 1);
+  assert.equal(requests.length, 1, 'late playback settlement does not duplicate heard reporting');
+  await say('and tomorrow');
   await advance(1200);
   assert.deepEqual(sends, ['what is on my calendar', 'and tomorrow'], 'the next turn is sent while the heard request is still pending');
+  assert.notEqual(sentIds[1], sentIds[0]);
+  assert.equal(heardSettled, false, 'report I/O is not the microphone or request drain gate');
   release({ok: true, messageId: replyId, text: 'You have two meetings today.', truncated: true, changed: true});
   await session.stop();
+  assert.equal(activeCaptures, 0);
 });
 
 test('voice timing and diagnostics keep the endpoint path and heard outcome as enums only', () => {

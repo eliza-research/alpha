@@ -8,16 +8,18 @@ import org.json.JSONArray;
 import org.json.JSONTokener;
 
 /** One pending Workspace return in the existing native store; never writes credentials.
- * The host invalidates pending state on logout or credential-authority replacement. UI session IDs are not durable identity. */
+ * The host invalidates pending state on logout or credential-authority replacement. UI session IDs are not durable identity.
+ * The return lives on the build's App Link host; a build without one prepares and admits nothing. */
 final class GoogleWorkspaceReturnFlow {
  interface Store {
   String credential() throws Exception;
   String pending() throws Exception;
   boolean comparePending(String expected,String value) throws Exception;
  }
+ private final String host;
  private final Store store;
- GoogleWorkspaceReturnFlow(Store store) {
-  if(store==null)throw new IllegalArgumentException("Workspace store required");this.store=store;
+ GoogleWorkspaceReturnFlow(String host,Store store) {
+  if(store==null)throw new IllegalArgumentException("Workspace store required");this.host=host;this.store=store;
  }
  static String credentialHash(String raw) {
   if(raw==null)throw new IllegalArgumentException("Workspace credential required");
@@ -67,6 +69,8 @@ final class GoogleWorkspaceReturnFlow {
   return binding.credentialHash.equals(credentialHash(raw));
  }
  String prepare(GoogleWorkspaceReturn.Binding binding,String nonce,long now) throws Exception {
+  String callback=GoogleWorkspaceReturn.callback(host);
+  if(callback==null)throw new IllegalStateException("Workspace App Link unavailable");
   GoogleWorkspaceReturn.Pending next=new GoogleWorkspaceReturn.Pending(binding,nonce,now);
   if(!current(binding,now))throw new IllegalStateException("Workspace account changed");
   String before=store.pending();
@@ -78,18 +82,18 @@ final class GoogleWorkspaceReturnFlow {
    store.comparePending(encoded,null);
    throw new IllegalStateException("Workspace account changed");
   }
-  return GoogleWorkspaceReturn.CALLBACK+"?state="+nonce;
+  return callback+"?state="+nonce;
  }
  /** Capture eligibility only; never consumes or replaces an incoming return. */
  boolean captureAllowed(String url,long now) throws Exception {
-  GoogleWorkspaceReturn.Callback callback=GoogleWorkspaceReturn.parse(url);
+  GoogleWorkspaceReturn.Callback callback=GoogleWorkspaceReturn.parse(host,url);
   if(callback==null)return false;
   GoogleWorkspaceReturn.Pending retained=pending(store.pending());
   return retained!=null&&GoogleWorkspaceReturn.accepts(retained,retained.binding,callback,now)&&current(retained.binding,now);
  }
  /** Consume before the caller performs its canonical connection/account readback. */
  GoogleWorkspaceReturn.Callback consume(GoogleWorkspaceReturn.Binding binding,String url,long now) throws Exception {
-  GoogleWorkspaceReturn.Callback callback=GoogleWorkspaceReturn.parse(url);
+  GoogleWorkspaceReturn.Callback callback=GoogleWorkspaceReturn.parse(host,url);
   if(callback==null)return null;
   String raw=store.pending();GoogleWorkspaceReturn.Pending retained=pending(raw);
   if(!GoogleWorkspaceReturn.accepts(retained,binding,callback,now)||!current(binding,now))return null;

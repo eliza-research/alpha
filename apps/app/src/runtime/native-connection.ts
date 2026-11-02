@@ -18,12 +18,15 @@ export const cloudSelfRevocationSupported=Capacitor.getPlatform()==='android'||b
 const nativeSignInHeader=(Capacitor as typeof Capacitor&{PluginHeaders?:{name:string}[]}).PluginHeaders?.some(header=>header.name==='AlphaCloudSignIn')??false;
 /**
  * In-app Eliza Cloud sign-in host: AlphaCloudSignInPlugin on Android, or the development Cloud bridge
- * (email code only) in a test-mocks browser build. Undefined where this build has no sign-in.
+ * (email code or canonical hosted Google OAuth) in the explicit browser host. Undefined where this build has no sign-in.
  */
-/** Google sign-in needs the phone's App Link return; the browser bridge offers email only. */
-export const cloudSignInGoogle=nativeSignInHeader;
+/** Google uses the native picker or the explicitly hosted browser OAuth flow. */
+export const cloudSignInGoogle=nativeSignInHeader||browserCloudHost;
 export const cloudSignInPhone=(Capacitor as typeof Capacitor&{PluginHeaders?:{name:string;methods?:{name:string}[]}[]}).PluginHeaders?.some(header=>header.name==='AlphaCloudSignIn'&&header.methods?.some(method=>method.name==='startPhone')&&header.methods?.some(method=>method.name==='verifyPhone'))??false;
-export const cloudSignIn:CloudSignInPort|undefined=nativeSignInHeader?registerPlugin<CloudSignInPort>('AlphaCloudSignIn')
+// The durable Google commit/cancel extension belongs to BrowserCloudSignIn only.
+// Capacitor synthesizes functions even for absent native methods; a cancellation
+// method in a native header does not imply the browser's reference-only receipt contract.
+export const cloudSignIn:CloudSignInPort|undefined=nativeSignInHeader?new Proxy(registerPlugin<CloudSignInPort>('AlphaCloudSignIn'),{get(target,property,receiver){if(property==='cancelGoogleSignIn')return undefined;return Reflect.get(target,property,receiver);}})
   :browserCloudHost?registerPlugin<CloudSignInPort>('AlphaCloudSignIn',{web:()=>new BrowserCloudSignIn()}):undefined;
 
 export interface ConnectionPort {

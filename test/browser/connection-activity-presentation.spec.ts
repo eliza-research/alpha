@@ -10,7 +10,7 @@ test('Activity presents recorded phone actions in plain language with reconcile 
     const store = new Map<string, string>();
     const f = w.activityFixture = { installationId: '', reconciliations: [] as unknown[] };
     const methods = (names: string[]) => names.map(name => ({ name, rtype: 'promise' }));
-    const agent = w.residentAgent = w.createResidentAgentPlugin({ owner: () => 'fixture-owner', agentId: 'fixture-agent' });
+    const agent = w.residentAgent = w.createResidentAgentPlugin({ owner: () => 'fixture-owner', agentId: 'fixture-agent', providerStatus: {provider: 'elizacloud', configured: false} });
     const proposal = (id: string, state: string, operation: unknown) => ({ id, subjectUserId: 'fixture-owner', requestedBy: 'fixture-agent', action: 'device_action', state, expiresAt: new Date(Date.now() + 3_600_000).toISOString(), digest: 'a'.repeat(64),
       payload: { action: 'device_action', version: 1, installationId: f.installationId, enrollmentId: 'fixture-enrollment', operation } });
     w.Capacitor = {

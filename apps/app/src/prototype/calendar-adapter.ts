@@ -120,13 +120,14 @@ export function installCalendarAdapter(Component: any, views: Bag, options:{acti
     event.preventDefault();
     void (async()=>{let opened=false;try{
       const day=(civilDay(new Date(request.begin),request.allDay)-civilDay(new Date()))/DAY;
-      currentOwner.vset('calendar',{day,month:null,open:null,openDay:null,form:null});desired=rangeFor({day});
+      // Cover the day list until the event opens, so a deep link never flashes the full calendar.
+      currentOwner.vset('calendar',{day,month:null,open:null,openDay:null,form:null,deepOpening:request.id});desired=rangeFor({day});
       await refresh(false,true);
       if(owner!==currentOwner||epoch!==navigationEpoch||document.hidden||currentOwner.S().view!=='calendar'||currentOwner.vget('calendar').day!==day)return;
       const row=currentOwner.nativeCalendarRows?.find((row:Bag)=>row.alphaCalendarId===request.id);
       if(!row)return;
-      currentOwner.vset('calendar',{open:row.id,openDay:day});opened=true;
-    }finally{request.complete(opened);}})();
+      currentOwner.vset('calendar',{open:row.id,openDay:day,deepOpening:null,deepOpened:row.id});opened=true;
+    }finally{if(!opened&&owner===currentOwner&&epoch===navigationEpoch)currentOwner.vset('calendar',{deepOpening:null});request.complete(opened);}})();
   };
   const calendarCommitted=()=>{if(owner&&active(owner)){owner.vset('calendar',{open:null,openDay:null});void refresh(false,true);}};
   p.refreshAgentCalendar=function(){return refresh(false,true);};
@@ -142,6 +143,11 @@ export function installCalendarAdapter(Component: any, views: Bag, options:{acti
     const browserCalendar=!Capacitor.isNativePlatform()?calendars.find(c=>c.id==='local'):undefined;
     if(browserCalendar){state={...state,calPrefs:{...state.calPrefs,personal:{on:browserCalendar.visible!==false,color:browserCalendar.color||'acc'}},events:browserCalendar.visible===false?(state.events||[]).filter((e:Bag)=>!e.alphaCalendarId):state.events};}
     const out=render(state,api);
+    // The cover stays under a deep-linked event while it fades in and is open, so the day list never shows through.
+    out.deepOpening=!!state.deepOpening&&!state.open||!!state.open&&state.open===state.deepOpened;
+    // While the open still waits for its read, only Back to apps sits above that cover: the owner can leave,
+    // and the other header actions stay covered until the event is shown.
+    out.openingBackCss=!!state.deepOpening&&!state.open?'position:relative;z-index:5':'';
     if(browserCalendar?.visible===false&&state.open){const detail=render(providerState,api);out.ev=detail.ev;out.detail=detail.detail;}
     out.emptyText=rangeReady?(truncated?'Calendar results incomplete. Some events may be missing.':reminderStale?'Reminders unavailable. Retry before relying on this schedule.':'No visible events or reminders for this day.'+(Capacitor.isNativePlatform()?' Only calendars stored in Android Calendar on this phone appear here.':'')):status;
     // Source disclosure: Android CalendarProvider calendars only. Connected Google calendars need OAuth (not yet available).

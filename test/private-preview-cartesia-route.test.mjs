@@ -6,6 +6,7 @@ import vm from 'node:vm';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {cloudVoiceViewFixture} from './fixtures/cloud-voice-view.mjs';
+import {voiceFakeClock} from './fixtures/shared-batch-voice.mjs';
 
 const flagSource = stripTypeScriptTypes([
   'apps/app/src/build-flags.ts',
@@ -40,7 +41,7 @@ const adapterCases = Object.freeze([
   'actual adapter fences explicit device conversation from private Cartesia',
   'actual adapter fences explicit manual conversation from private Cartesia',
   'Cloud conversation keeps concise phases and accessible route details',
-  'typed native 503 stays actionable and diagnosable across rendering',
+  'typed native 503 is waited out quietly, then voice ends with one calm line',
   'unknown native voice failures retain their existing recovery',
 ]);
 const childCase = process.env.ALPHA_PRIVATE_CARTESIA_TEST_CASE;
@@ -176,32 +177,36 @@ adapterTest('Cloud conversation keeps concise phases and accessible route detail
     assert.match(view.cloudDisclosureText,/uploads recordings and reply text.*account.*plan allowance.*Cartesia/);
     assert.equal(typeof view.stop,'function');assert.equal(typeof view.keyboard,'function');
   }
-  h.batchOptions.onState({phase:'idle'});
+  // The loop's own idle is shown once its retire settles (a failure it is about to report replaces it).
+  h.batchOptions.onState({phase:'idle'});await new Promise(resolve=>setImmediate(resolve));
   assert.equal(h.renderChat().lines[0].t,'Voice conversation stopped.');
   assert.equal(h.renderChat().voiceDetails,false);
 });
-adapterTest('typed native 503 stays actionable and diagnosable across rendering',async t=>{
-  const failure=Object.assign(new Error('PRIVATE_PROVIDER_BODY'),{code:'voice-http-503'});
-  const h=cloudFixture({startError:failure});t.after(()=>h.close());
+adapterTest('typed native 503 is waited out quietly, then voice ends with one calm line',async t=>{
+  // A Cloud 503 while voice warms is transient: no alarming copy, no support code, no Try voice again.
+  const failure=Object.assign(new Error('PRIVATE_PROVIDER_BODY'),{code:'voice-http-503'}),clock=voiceFakeClock();
+  const h=cloudFixture({startError:failure,clock});t.after(()=>h.close());
   const originalMessages=JSON.stringify(h.shell.state.msgs);
-  await h.shell.startVoice();await h.tick();
-  for(let render=0;render<3;render++){
-    const view=h.renderChat();assert.equal(view.state,'error');
-    assert.equal(view.lines[0].t,'Voice is unavailable right now. Try again later or use the keyboard.');
-    assert.equal(view.errorDetail,'Voice service returned HTTP 503.');
-    assert.equal(view.voiceDetails,true);assert.equal(view.recoveryLabel,'Try voice again');
-    assert.doesNotMatch(JSON.stringify(view),/PRIVATE_PROVIDER_BODY/);
+  await h.shell.startVoice();await clock.flush();
+  for(let attempt=1;attempt<=2;attempt++){
+    const view=h.renderChat();assert.equal(view.state,'starting');
+    assert.equal(view.errorDetail,'');assert.equal(view.voiceDetails,false);assert.ok(!view.recoveryLabel);
+    assert.doesNotMatch(JSON.stringify(view),/PRIVATE_PROVIDER_BODY|Voice is unavailable|Try voice again|503/);
     assert.equal(typeof view.stop,'function');assert.equal(typeof view.keyboard,'function');
+    assert.equal(h.starts,attempt);await clock.advance(2_000);
   }
+  // Two quiet waits, then one calm line instead of an error screen.
+  assert.equal(h.starts,3);assert.equal(h.renderChat(),null);
+  assert.deepEqual(h.shell.messages,[],'exhausted retries end without a voice error toast');
   assert.equal(failure.code,'voice-http-503');assert.equal(failure.message,'PRIVATE_PROVIDER_BODY');
   assert.equal(JSON.stringify(h.shell.state.msgs),originalMessages);
-  assert.equal(h.starts,1);assert.equal(h.uploads,0);
-  h.renderChat().keyboard();await h.tick();assert.equal(h.renderChat(),null);
+  assert.equal(h.uploads,0);
+  await clock.advance(60_000);assert.equal(h.starts,3);
 });
 adapterTest('unknown native voice failures retain their existing recovery',async t=>{
   const h=cloudFixture({startError:Object.assign(new Error('Unknown voice failure remains'),{code:'voice-http-503-extra'})});t.after(()=>h.close());
   await h.shell.startVoice();await h.tick();const view=h.renderChat();
   assert.equal(view.state,'error');assert.equal(view.errorDetail,'');
   assert.doesNotMatch(view.lines[0].t,/Voice is unavailable right now/);
-  assert.equal(view.recoveryLabel,'Try voice again');
+  assert.equal(view.recoveryLabel,'Try voice again');assert.equal(view.statusLines.length,0);assert.equal(view.voiceDetails,false);assert.equal(h.startError?.code,'voice-http-503-extra','underlying failure is retained');assert.deepEqual(h.shell.messages,[]);
 });
