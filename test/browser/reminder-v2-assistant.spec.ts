@@ -91,7 +91,10 @@ for (const mode of ['read', 'update', 'complete', 'cancel', 'stale', 'recurring-
     await page.getByRole('button',{name:'Type',exact:true}).click();
     const input=page.locator('[data-alpha-layer="composer"][aria-hidden="false"], [data-alpha-layer="conversation"][aria-hidden="false"]').getByRole('textbox').first();
     await input.fill('Review this reminder action before applying it.');await input.press('Enter');
-    if(mode==='older-peer'||mode==='create-old-peer'){
+    // A browser never negotiates device reminder creation, even when the agent offers it:
+    // browser chat reminders use the runtime scheduler (6bd5aa59c). Its creation proposals,
+    // like an older peer's, stay unapprovable and nothing is applied.
+    if(mode==='older-peer'||mode.startsWith('create-')){
       await expect(page.getByText('Sorry, I couldn’t finish that reply.',{exact:true})).toBeVisible();
       await expect(page.getByRole('button',{name:/^Check saved conversation/})).toHaveCount(0);
       expect(await page.evaluate(()=>(window as any).recoveryFixture.lists)).toBeGreaterThan(0);

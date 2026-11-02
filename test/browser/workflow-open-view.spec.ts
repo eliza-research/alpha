@@ -98,19 +98,19 @@ for (const mode of ['pending', 'wrong-owner', 'expired'] as const) {
       await expect.poll(async()=> (await counts()).journal).toEqual(['reserve', 'markApplying', 'finish']);
       // Receipt upload can finish before navigation retires the request epoch.
       // Otherwise the explicit recovery control uploads the durable result.
-      // Explicit sync may resend the identical receipt, without replaying navigation.
+      // Explicit sync uploads a receipt only while the agent still awaits this
+      // attempt (eliza fd6d778412, #38163): once the proposal is done it is not resent.
       const afterNavigation=await counts();expect([0,1]).toContain(afterNavigation.receipts);
       expect({...afterNavigation,receipts:0}).toEqual({ posts: 1, decisions: 1, claims: 1, receipts: 0, automationLists: 1, journal: ['reserve', 'markApplying', 'finish'] });
       await returnToApps(page);
       await page.getByRole('button',{name:'Settings',exact:true}).click();
       await page.getByRole('button',{name:'Agent connection',exact:true}).click();
       await page.getByText('Phone action history',{exact:true}).click();
-      const beforeSync=(await counts()).receipts;
       await page.getByRole('button',{name:'Sync recorded receipts',exact:true}).click();
-      await expect.poll(async()=> (await counts()).receipts).toBe(beforeSync+1);
+      await expect.poll(async()=> (await counts()).receipts).toBe(1);
       // History shows the agent state, then this phone's journal outcome.
       await expect(page.getByText('done · this phone: succeeded',{exact:true})).toBeVisible();
-      expect(await counts()).toEqual({ posts: 1, decisions: 1, claims: 1, receipts: beforeSync+1, automationLists: 1, journal: ['reserve', 'markApplying', 'finish'] });
+      expect(await counts()).toEqual({ posts: 1, decisions: 1, claims: 1, receipts: 1, automationLists: 1, journal: ['reserve', 'markApplying', 'finish'] });
       expect(await page.evaluate(()=>new Set((window as any).navigationFixture.receiptBodies).size)).toBe(1);
     } else {
       await expect(page.locator('.alpha-action-review')).toHaveCount(0);
