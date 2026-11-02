@@ -25,6 +25,8 @@ const env={...process.env,ELIZA_DEV_ALLOW_TEST_MOCKS:'',VITE_ELIZA_DEV_ALLOW_TES
 for(const key of Object.keys(env))if(/^(?:CEREBRAS_|OPENAI_|ANTHROPIC_|ELIZAOS_CLOUD_|ALPHA_DEV_|VITE_ALPHA_DEV_)/.test(key))delete env[key];
 // Batch speech uses this resident's selected Cloud account, never an inherited direct key.
 env.ALPHA_DEV_CLOUD_VOICE='1';
+// Explicit relay preview opt-in; inherited developer flags remain stripped.
+if(process.env.ALPHA_CLOUD_REALTIME_VOICE==='1'){env.ALPHA_DEV_CLOUD_REALTIME_VOICE='1';env.VITE_ALPHA_DEV_CLOUD_REALTIME_VOICE='1';}
 const child=spawn(process.execPath,['node_modules/vite/bin/vite.js','--host','127.0.0.1','--port',String(uiPort),'--strictPort'],{cwd:root,env,stdio:'inherit'});
 for(const signal of ['SIGINT','SIGTERM'])process.on(signal,()=>child.kill(signal));
 child.on('error',()=>{console.error('Cloud development server failed');process.exitCode=1;});child.on('exit',code=>{process.exitCode=code??1;});

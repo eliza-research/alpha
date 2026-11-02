@@ -10,7 +10,7 @@ import {LOCAL_EMBEDDING_ROUTE,localEmbeddingEnvironment} from './agent-embedding
 import {CLOUD_SDK_BASES} from './cloud-sdk-authority.mjs';
 export const CLOUD_MODEL='cerebras/qwen-3.8-27b';
 /** Host-owned process. No provider key is written to configuration or returned to the renderer. */
-export async function createCloudResidentHost({source,profile,port,environment='production',profileMode='lean',launch=startPrivateRuntimeProcess,inherited=process.env,request=fetch,startGoogleHost}){
+export async function createCloudResidentHost({source,profile,port,environment='production',profileMode='lean',launch=startPrivateRuntimeProcess,inherited=process.env,request=fetch,startGoogleHost,cloudRealtimeVoice=false}){
  if(!['production','staging'].includes(environment))throw Error('Invalid Cloud environment');
  if(profileMode!=='lean'&&profileMode!=='full')throw Error('Invalid Cloud resident profile mode');
  const root=path.resolve(import.meta.dirname,'..');
@@ -54,6 +54,7 @@ export async function createCloudResidentHost({source,profile,port,environment='
   if(credential&&(!credential.token||typeof credential.token!=='string'||!credential.credentialId||credential.expiresAt!==undefined&&(!Number.isFinite(credential.expiresAt)||credential.expiresAt<=Date.now())))throw Error('Invalid Cloud resident binding');
   await stop();
   const settings={...(environment==='staging'?{ELIZA_DEV_SOURCE:'1',ELIZA_DEV_CLOUD_ENV_AUTHORITY:'staging-explicit'}:{}),ELIZA_VAULT_PASSPHRASE:vaultPassphrase,ELIZAOS_CLOUD_USE_INFERENCE:credential?'true':'false',ELIZAOS_CLOUD_USE_EMBEDDINGS:credential?'true':'false',ELIZA_DISABLE_LOCAL_EMBEDDINGS:'true',ELIZA_LOCAL_EMBEDDING_ENABLED:'0',ELIZA_ASR_ENABLED:'0',ELIZA_PARADEE_ENABLED:'0',...(credential?{ELIZAOS_CLOUD_API_KEY:credential.token,ELIZAOS_CLOUD_BASE_URL:CLOUD_SDK_BASES[environment],ELIZAOS_CLOUD_SMALL_MODEL:CLOUD_MODEL,ELIZAOS_CLOUD_LARGE_MODEL:CLOUD_MODEL,ELIZAOS_CLOUD_EMBEDDING_MODEL:'bge-small-en-v1.5',ELIZAOS_CLOUD_EMBEDDING_DIMENSIONS:'384'}:{})};
+  if(credential&&!direct&&cloudRealtimeVoice)Object.assign(settings,{ELIZA_SELF_HOSTED_VOICE_ENABLED:'1',ELIZA_SELF_HOSTED_VOICE_CLOUD_RELAY_ENABLED:'1'});
   if(direct){Object.assign(settings,localEmbeddingEnvironment(inherited),{ELIZA_DISABLE_LOCAL_EMBEDDINGS:'false',ELIZA_LOCAL_EMBEDDING_ENABLED:'1',CEREBRAS_API_KEY:direct.apiKey,CEREBRAS_BASE_URL:'https://api.cerebras.ai/v1',CEREBRAS_MODEL:'qwen-3.8-27b',CEREBRAS_SMALL_MODEL:'qwen-3.8-27b',CEREBRAS_LARGE_MODEL:'qwen-3.8-27b',ELIZA_PROVIDER:'cerebras',ELIZAOS_CLOUD_USE_INFERENCE:'false',ELIZAOS_CLOUD_USE_EMBEDDINGS:'false',...(direct.cartesiaKey?{CARTESIA_API_KEY:direct.cartesiaKey,ELIZA_SELF_HOSTED_VOICE_ENABLED:'1'}:{})});for(const key of ['ELIZAOS_CLOUD_API_KEY','ELIZAOS_CLOUD_BASE_URL','ELIZAOS_CLOUD_SMALL_MODEL','ELIZAOS_CLOUD_LARGE_MODEL'])delete settings[key];}
   // Derive only the nonsecret route for this launch; account, history and base config are retained.
   const launchConfigPath=path.join(profile,'provider-launch.json');
