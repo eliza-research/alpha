@@ -1,3 +1,4 @@
+import {createCalendarReadTiming,type CalendarCacheBucket} from './calendar-read-timing.ts';
 import {recordManagedGoogleFailure,type ManagedGoogleFailureStage} from './managed-google-failure-stage.ts';
 import {gmailAgentMailbox,type AgentMailboxChange} from '../scripts/gmail-agent-mailbox-host.ts';
 import {calendarAgentWrite} from '../vendor/eliza/plugins/plugin-calendar/src/service/managed-calendar-host.ts';
@@ -17,6 +18,7 @@ export type GoogleAgentAccess={gmailChanges:boolean;calendarEdits:boolean};
 /** How long one source lookup can serve one read's feed step, from the lookup's start. */
 const CALENDAR_READ_STEP_MS=5_000;
 export function createManagedGoogleAgentHost(host:ManagedGoogleAgentPort,access:()=>GoogleAgentAccess=()=>({gmailChanges:true,calendarEdits:true})){
+ const timing=createCalendarReadTiming(process.env.ALPHA_CALENDAR_READ_TIMING==='1');
  const allowed=(kind:keyof GoogleAgentAccess)=>{if(access()[kind]!==true)throw Error(kind==='gmailChanges'?'Gmail changes are turned off in Settings › Google accounts. Google stays connected; nothing was changed.':'Calendar edits are turned off in Settings › Google accounts. Google stays connected; nothing was changed.');};
  const refuseWrite=()=>{throw Error('Gmail agent reads cannot change credentials or mail.');};
  // One Calendar read lists sources, then reads each feed. Without this the feed verifies the owner and lists calendars
@@ -24,10 +26,12 @@ export function createManagedGoogleAgentHost(host:ManagedGoogleAgentPort,access:
  // ever join a lookup still in flight, never a finished one, and every read ends with a fresh grant check.
  const shared=new Map<string,{monotonic:number;wall:number;pending:boolean;value:Promise<unknown>}>();
  let sharedOwner:string|undefined;
- async function sharedLookup<T>(key:string,read:()=>Promise<T>,reuseFinished:boolean):Promise<T>{
+ async function sharedLookup<T>(key:string,read:()=>Promise<T>,reuseFinished:boolean,bucket:CalendarCacheBucket):Promise<T>{
   const entry=shared.get(key);
   // Age takes the larger clock: the wall clock counts a suspended phone, the monotonic clock a corrected wall clock.
-  const young=entry&&Math.max(performance.now()-entry.monotonic,Date.now()-entry.wall)<CALENDAR_READ_STEP_MS;
+  const age=entry?Math.max(performance.now()-entry.monotonic,Date.now()-entry.wall):null;
+  const young=entry&&age!==null&&age<CALENDAR_READ_STEP_MS;
+  timing.cache(bucket,entry&&young&&(entry.pending||reuseFinished)?entry.pending?'in-flight':'completed':'miss',age);
   // A failed lookup belongs to its caller, whose request may have ended: a joiner reads for itself.
   if(entry&&young&&(entry.pending||reuseFinished))return (entry.value as Promise<T>).catch(read);
   const value=read(),next={monotonic:performance.now(),wall:Date.now(),pending:true,value};shared.set(key,next);
@@ -35,7 +39,7 @@ export function createManagedGoogleAgentHost(host:ManagedGoogleAgentPort,access:
   value.then(()=>{next.pending=false;setTimeout(drop,CALENDAR_READ_STEP_MS).unref?.();},drop);
   return value;
  }
- const googleCalendars=(client:CloudProtocol,grantId:string,scope:string,signal:AbortSignal,reuseFinished:boolean)=>sharedLookup(`${scope}:calendars`,()=>client.googleCalendars(grantId,signal),reuseFinished);
+ const googleCalendars=(client:CloudProtocol,grantId:string,scope:string,signal:AbortSignal,reuseFinished:boolean)=>sharedLookup(`${scope}:calendars`,()=>client.googleCalendars(grantId,signal),reuseFinished,'calendars-cache');
  /** The verified Cloud owner and its connected accounts holding `capability`, each with its owner-scoped id. */
  async function ownerAccounts(parent:AbortSignal|undefined,capability:string,operation:false|true|'calendar',reuseFinished=false){
   let stage:ManagedGoogleFailureStage='credential';
@@ -45,8 +49,10 @@ export function createManagedGoogleAgentHost(host:ManagedGoogleAgentPort,access:
   const identity=JSON.stringify(credential),signal=parent?AbortSignal.any([parent,AbortSignal.timeout(30000)]):AbortSignal.timeout(30000);
   const current=async()=>{signal.throwIfAborted();if(JSON.stringify(await host.agentCredential())!==identity)throw Error('Cloud account changed while reading Gmail.');};
   stage='client';
-  const client=new CloudProtocol('production',operation==='calendar'?host.agentCalendarOperation:operation?host.agentGmailOperation:host.agentRead,{acceptsReferences:true,read:async()=>{await current();return credential;},write:async()=>refuseWrite(),clear:async()=>refuseWrite()},async()=>refuseWrite());
-  const calendarRead=capability==='google.calendar.read',ownerKey=createHash('sha256').update(identity).digest('hex');
+  const calendarRead=capability==='google.calendar.read';
+  const transport=operation==='calendar'?host.agentCalendarOperation:operation?host.agentGmailOperation:host.agentRead;
+  const client=new CloudProtocol('production',calendarRead?timing.request(transport):transport,{acceptsReferences:true,read:async()=>{await current();return credential;},write:async()=>refuseWrite(),clear:async()=>refuseWrite()},async()=>refuseWrite());
+  const ownerKey=createHash('sha256').update(identity).digest('hex');
   const listOwned=async()=>{
    stage='identity';
    const owner=await client.identity(signal);await current();
@@ -55,7 +61,7 @@ export function createManagedGoogleAgentHost(host:ManagedGoogleAgentPort,access:
    return client.gmailAccounts(signal);
   };
   if(calendarRead&&sharedOwner!==ownerKey){shared.clear();sharedOwner=ownerKey;}
-  const listed=calendarRead?await sharedLookup(ownerKey,listOwned,reuseFinished):await listOwned();
+  const listed=calendarRead?await sharedLookup(ownerKey,listOwned,reuseFinished,'owner-cache'):await listOwned();
   stage='account-projection';
   const accounts=listed.filter(a=>a.connected&&a.connectionId&&a.grantedCapabilities.includes(capability)).map(account=>({account,grantId:account.connectionId!,scope:createHash('sha256').update(identity+':'+account.connectionId).digest('hex')}));
   stage='credential-recheck';
