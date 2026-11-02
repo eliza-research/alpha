@@ -1,10 +1,11 @@
 import {test,expect,type Route} from '@playwright/test';
 const endpoint='**/__alpha-browser-cloud';
 // Public metadata/readiness reads are independent of credential discovery; never hold or count them as store reads.
+// The readiness read names the environment whose Google availability the bridge checks.
 async function fulfillPublicSignInRead(route:Route):Promise<boolean>{
  const data=route.request().postDataJSON();if(data.operation!=='signInServiceInfo'&&data.operation!=='signInStatus')return false;
  expect(route.request().method()).toBe('POST');expect(route.request().headers()['x-alpha-browser-cloud']).toBe('1');
- if(data.operation==='signInStatus'){expect(data).toEqual({operation:'signInStatus'});await route.fulfill({json:{active:false,inApp:true,google:false,email:true}});return true;}
+ if(data.operation==='signInStatus'){expect(data).toEqual({operation:'signInStatus',environment:'production'});await route.fulfill({json:{active:false,inApp:true,google:false,email:true}});return true;}
  expect(data).toEqual({operation:'signInServiceInfo',environment:'production'});
  await route.fulfill({json:{success:true,version:1,service:{name:'Example Cloud',terms:{title:'Terms',revision:'terms-1',sections:[{title:'Use',paragraphs:['Public fixture terms.']}]},privacy:{title:'Privacy',revision:'privacy-1',sections:[{title:'Data',paragraphs:['Public fixture privacy.']}]}}}});return true;
 }

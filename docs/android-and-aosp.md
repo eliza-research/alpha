@@ -142,8 +142,9 @@ privileged permission whitelist is fabricated for a thin launcher.
 
 **Build configuration.** `android/app/product.gradle` defaults to the configured production web
 host and overlays verified filters on that host for
-`/alphaphone/cloud-delegation` (prefix) and `/alphaphone/auth/callback` (exact path, the in-app
-Eliza Cloud sign-in return). Steward returns sign-in only to `eliza.app`, so the sign-in return
+`/alphaphone/cloud-delegation` (prefix), `/alphaphone/auth/callback` (exact path, the in-app
+Eliza Cloud sign-in return) and `/alphaphone/gmail/callback` (exact path, the Google Workspace
+consent return). Steward returns sign-in only to `eliza.app`, so the sign-in return
 works with the default configuration. `ELIZAOS_APP_LINK_HOST`, if set, must match it. Test-mocks builds always add
 `https://staging.eliza.app/alphaphone/auth/callback` from `src/testMocks/AndroidManifest.xml`.
 The release fingerprint must be listed at `/.well-known/assetlinks.json` on the host before a

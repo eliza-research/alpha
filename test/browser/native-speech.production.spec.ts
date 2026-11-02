@@ -3,6 +3,20 @@ import {test,expect,type Page} from '@playwright/test';
 import {button} from './flag-off-android';
 import {setupNativeSpeech as setup} from './native-speech-fixture';
 const voice=(page:Page)=>page.getByRole('region',{name:'Voice conversation',exact:true});
+// Inline voice errors are announced beside, not inside, the recorder region.
+const voiceError=(page:Page)=>page.locator('p.alpha-voice-error[role="alert"]');
+// Read the actual mounted shell's current recorder model. No synthetic transcript/state is set:
+// offline delivery never creates a message, but must retain what local ASR heard for recovery.
+async function retainedVoiceTranscript(page:Page){
+ return page.locator('[data-screen]').evaluate(screen=>{
+  const node=screen as any,key=Object.keys(node).find(name=>name.startsWith('__reactFiber$'));
+  let fiber=key?node[key]:null;
+  while(fiber&&!(fiber.stateNode&&typeof fiber.stateNode.renderVals==='function'&&typeof fiber.stateNode.startVoice==='function'))fiber=fiber.return;
+  if(!fiber)throw Error('Mounted voice shell not found');
+  const recorder=fiber.stateNode.renderVals().chatRecorder;
+  return {state:recorder?.state,transcript:recorder?.lastTranscript,failure:recorder?.lines?.map((line:any)=>line.t).join('')};
+ });
+}
 async function utterance(page:Page){
  // Wait for capture to sample its quiet warmup, then hold the synthetic speech until
  // the renderer has actually sampled a sustained pulse, even on a busy test worker.
@@ -21,7 +35,7 @@ test('production chat captures locally, transcribes locally, plays local reply a
  await button(page,'Stop voice conversation').click();await expect(voice(page)).toHaveCount(0);await expect.poll(()=>page.evaluate(()=>(window as any).nativeSpeech.stopped)).toBeGreaterThan(0);await noCloud(page,foreign);
 });
 test('unavailable local speech offers keyboard without trying network speech',async({page})=>{
- const foreign=await setup(page);await page.evaluate(()=>(window as any).nativeSpeech.ready=false);await button(page,'Talk').click();await expect(voice(page)).toContainText('Voice could not start. Try again, or use the keyboard.');await button(page,'Minimize chat').click();await expect(voice(page)).toHaveCount(0);await button(page,'Type').click();await expect(page.locator('textarea[data-alpha-composer]')).toBeVisible();expect(await page.evaluate(()=>(window as any).nativeSpeech.starts)).toBe(0);await noCloud(page,foreign);
+ const foreign=await setup(page);await page.evaluate(()=>(window as any).nativeSpeech.ready=false);await button(page,'Talk').click();await expect(voice(page)).toHaveAttribute('data-voice-state','error');await expect(voiceError(page)).toHaveCount(0);await expect(button(page,'Try voice again')).toBeVisible();await expect.poll(()=>retainedVoiceTranscript(page)).toMatchObject({state:'error',failure:'Voice could not start. Try again, or use the keyboard.'});await button(page,'Minimize chat').click();await expect(voice(page)).toHaveCount(0);await button(page,'Type').click();await expect(page.locator('textarea[data-alpha-composer]')).toBeVisible();expect(await page.evaluate(()=>(window as any).nativeSpeech.starts)).toBe(0);await noCloud(page,foreign);
 });
 test('cancelling local transcription rejects late output without submitting a turn',async({page})=>{
  const foreign=await setup(page);await page.evaluate(()=>(window as any).nativeSpeech.holdTranscript=true);await button(page,'Talk').click();await expect(voice(page)).toHaveAttribute('data-voice-state','listening');await utterance(page);await expect(voice(page)).toHaveAttribute('data-voice-state','transcribing');await button(page,'Stop voice conversation').click();await expect(voice(page)).toHaveCount(0);await page.evaluate(()=>(window as any).nativeSpeech.releaseTranscript());await expect.poll(()=>page.evaluate(()=>(window as any).nativeSpeech.cancels.length)).toBeGreaterThan(0);expect(await page.evaluate(()=>(window as any).flagOff.posts)).toEqual([]);await noCloud(page,foreign);
@@ -59,7 +73,7 @@ test('offline and fenced, speech still captures, transcribes and reads aloud on 
  const foreign=await setup(page);await page.evaluate(()=>window.dispatchEvent(new Event('offline')));
  expect(await page.evaluate(()=>navigator.onLine)).toBe(false);
  await button(page,'Talk').click();await expect(voice(page)).toHaveAttribute('data-voice-state','listening');await expect(voice(page)).toContainText('Listening…');await utterance(page);
- await expect(voice(page)).toHaveAttribute('data-voice-state','error');await expect(voice(page)).toContainText('Local spoken request');
+ await expect(voice(page)).toHaveAttribute('data-voice-state','error');await expect(voiceError(page)).toHaveCount(0);await expect.poll(()=>retainedVoiceTranscript(page)).toEqual({state:'error',transcript:'Local spoken request',failure:'Voice stopped. Check your connection and conversation history before trying again.'});
  expect(await page.evaluate(()=>{const f=(window as any).nativeSpeech;return {starts:f.starts,transcripts:f.transcripts,spoken:f.spoken,posts:(window as any).flagOff.posts.length};})).toEqual({starts:1,transcripts:1,spoken:[],posts:0});
  await button(page,'Stop voice conversation').click();await expect(voice(page)).toHaveCount(0);
  await openRetainedNativeNotes(page);await button(page,'New note').click();await page.getByRole('textbox',{name:'Title',exact:true}).fill('Offline');await page.getByRole('textbox',{name:'Note',exact:true}).fill('Still speaks.');await button(page,'Read aloud').click();

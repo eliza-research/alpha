@@ -40,7 +40,7 @@ test('Google controller shows the native MFA panel and does not bind an account 
  const compiled=transformSync('const controller={'+code+'};',{loader:'ts'}).code;
  for(const outcome of [required(),{status:'authenticated',environment:'production',expiresAt:Date.now()+60000,accountCreated:false}]){
   let shown=0,signed=0,ensured=0;
-  const run=new Function('state','work','update','signInClient','signInFailed','showGoogleMfa','signedIn','ensureResident',compiled+'return controller.signInGoogle();');
+  const run=new Function('state','work','update','signInClient','signInFailed','showGoogleMfa','signedIn','ensureResident','let googleSignInGeneration=0;'+compiled+'return controller.signInGoogle();');
   await run({signIn:{step:'choose',environment:'production'}},async(_,fn)=>fn(new AbortController().signal),()=>{},()=>({signInWithGoogle:async()=>outcome}),()=>{},value=>{assert.equal(value.attemptId,attemptId);shown++;},async()=>{signed++;},async()=>{ensured++;});
   assert.equal(shown,outcome.status==='mfa'?1:0);assert.equal(signed,outcome.status==='mfa'?0:1);assert.equal(ensured,1);
  }

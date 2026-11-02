@@ -6,7 +6,7 @@
   "reviewed_pr_head": "44c9d57ce38b3b29f5b104a2f6efc103fdd914c3",
   "integrated_main": "06ca5d62e09e8898fc9242db5e6a70f5be374510",
   "reviewed_upstream_pin": "0d40aa6e6e1b5192311ca916515003c8a4473c0c",
-  "upstream_pin": "7e8b5d3eb1c05ee6ea72a1a2d5ce5b966c404e9c",
+  "upstream_pin": "35e0a605b3d560eedec664e79693d5ecc0b5ece3",
   "ledger_refresh": {
     "date": "2026-10-10",
     "branch": "claude/r6-ledger",
@@ -1674,5 +1674,8 @@
     "plan": "docs/owner-approved-mvp-plan-2026-10-12.md",
     "meaning": "Choices resolved; remaining work is implementation/qualification, not new owner scope decisions. Historical current fields retained as observations only."
   },
-  "ledger_refresh_2026_10_26": "Source identity only; fixed19bd/349 producer, installed877a separate. No requirement/item status changed."
+  "ledger_refresh_2026_10_26": "Source identity only; fixed19bd/349 producer, installed877a separate. No requirement/item status changed.",
+  "ledger_refresh_2026_11_01_reconciliation": "Source-only comparison from 7e8b5d3eb1 to the corrected reconciled SDK 5e0feca4ee (draft elizaOS/eliza #38516). Listed native sources, patch targets, mobile UUID builder and bun.lock are unchanged. This does not admit recorded artifacts or transfer historical qualification. Normal checks, fresh native builds and device qualification remain pending; none ran for this proposal.",
+  "ledger_refresh_2026_11_01_cache_type_fix": "Source-only repin from published SDK 5e0feca4ee to its direct child 9950213832: a ProviderCacheEntry type marker, test property guard and formatting correction. No native inputs changed. The earlier native requalification requirement remains; no runtime or build acceptance transfers.",
+  "ledger_refresh_2026_11_01_source_join": "Current source pin 35e0a605b3d560eedec664e79693d5ecc0b5ece3 includes the reviewed Notes confirmation fix, the narrow R3 busy-input/Mute changes and reply-source guidance. This is source composition only: normal producer, native input qualification, browser tests and device acceptance remain pending. Historical build and device receipts retain their original pins."
 }

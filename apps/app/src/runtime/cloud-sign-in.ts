@@ -44,6 +44,8 @@ export type CloudSignInGoogleOutcome = NativeCloudSignInGoogleOutcome<CloudEnvir
 /** The shared native port plus Alpha's native-only explicit recovery of the same product's saved
  * pre-namespace credential (AlphaCloudSignInPlugin). Never a startup migration. */
 export type CloudSignInPort = NativeCloudSignInPort<CloudEnvironment> & {
+  /** Browser-host only: settles the credential commit boundary before cancellation. */
+  cancelGoogleSignIn?(): Promise<unknown>;
   savedSignInRecoveryStatus?(): Promise<{eligible: boolean}>;
   restoreSavedSignIn?(): Promise<{restored: boolean}>;
 };

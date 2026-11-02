@@ -66,7 +66,9 @@ export function createBatchProgressAcknowledgment(input: {
   turnId: string; conversationId: string; ownerId: string;
   signal: AbortSignal;
   assertCurrent(): void;
-  captureRetired(): boolean;
+  /** The recorded clip's capture is retired (batch). null on a live path: its capture stays open
+   * for barge-in and the host's live session hears the cue as its own playback. */
+  captureRetired: (() => boolean) | null;
   /** Existing selected speech facade; settles only after matching playback/media cleanup. */
   speak(text: string, signal: AbortSignal): Promise<void>;
 }) {
@@ -74,6 +76,7 @@ export function createBatchProgressAcknowledgment(input: {
   let used = false, final = false, retired = false;
   let pending: Promise<void> = Promise.resolve();
   const check = () => { input.signal.throwIfAborted(); input.assertCurrent(); };
+  const microphoneClear = () => input.captureRetired === null || input.captureRetired();
   const cancel = () => { retired = true; cue.abort(input.signal.reason ?? new DOMException('Voice cue retired.', 'AbortError')); };
   input.signal.addEventListener('abort', cancel, { once: true });
   if (input.signal.aborted) cancel();
@@ -85,13 +88,13 @@ export function createBatchProgressAcknowledgment(input: {
         return;
       const label = value.label;
       if (typeof label !== 'string' || !label.trim() || label.length > 160) return;
-      try { check(); if (!input.captureRetired()) return; } catch { cancel(); return; }
+      try { check(); if (!microphoneClear()) return; } catch { cancel(); return; }
       used = true;
       // One microtask lets an already-ready final/token preempt queued prospective speech.
       pending = Promise.resolve().then(async () => {
         if (final || retired || cue.signal.aborted) return;
         check();
-        if (!input.captureRetired()) throw Error('Voice capture was not retired before acknowledgement.');
+        if (!microphoneClear()) throw Error('Voice capture was not retired before acknowledgement.');
         try { await input.speak(label, cue.signal); }
         catch (error) {
           // Normal selected playback may reject AbortError AFTER confirmed cleanup.

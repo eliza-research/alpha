@@ -1,0 +1,40 @@
+{
+  "state": "SOURCE_ONLY_UNQUALIFIED",
+  "from": "5e0feca4ee65c7dc81b18fd0fb866e1ede28325e",
+  "to": "9950213832d6bb6965121a517e268ce898ef0100",
+  "nativePathsUnchanged": [
+    "packages/app/platforms/android/app/src/main/elizavoice-jni",
+    "packages/app/platforms/android/app/src/main/elizavoice-jni/CMakeLists.txt",
+    "packages/app/platforms/android/app/src/main/elizavoice-jni/elizavoice-jni.cpp",
+    "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+    "packages/app/scripts/build-helpers/arm64-simd.ts",
+    "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
+    "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+    "packages/app/scripts/paradee-voice",
+    "packages/app/scripts/paradee-voice/build-native.ts",
+    "packages/app/scripts/stage-elizavoice-lib.ts",
+    "packages/auth/android/build.gradle",
+    "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInConfig.java",
+    "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInFlow.java",
+    "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java",
+    "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInReadiness.java",
+    "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInRoutes.java",
+    "packages/voice/src/cloud-speech-chunks.ts",
+    "packages/voice/src/native-cloud-speech.ts",
+    "plugins/plugin-local-inference/native",
+    "plugins/plugin-local-inference/native/android/consumer.gradle",
+    "plugins/plugin-local-inference/native/android/inputs.json",
+    "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechTimings.java",
+    "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechWire.java",
+    "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechStreamBridgePlugin.java",
+    "plugins/plugin-local-inference/native/llama.cpp"
+  ],
+  "changedPaths": [
+    "packages/core/src/runtime/provider-context.ts",
+    "packages/core/src/types/state.ts",
+    "plugins/plugin-personal-assistant/src/providers/lifeops.parallel-reads.test.ts"
+  ],
+  "admitted": false,
+  "requalificationRequired": true,
+  "note": "Source-only repin from published SDK 5e0feca4ee to its direct child 9950213832: a ProviderCacheEntry type marker, test property guard and formatting correction. No native inputs changed. The earlier native requalification requirement remains; no runtime or build acceptance transfers."
+}

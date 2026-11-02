@@ -47,15 +47,15 @@ export function installNoteSourceAdapter(views:Bag){
    if(!note||note.kind!=='text')return;
    let expected=JSON.stringify(note),source=sourceOf(note.documentSource),closed=false,busy=false,opened=false;const pickerAbort=new AbortController();
    const previous=document.activeElement;
-   const dialog=document.createElement('dialog');dialog.className='note-source-dialog';dialog.setAttribute('aria-label','Note source document');const theme=document.querySelector('.os');if(theme){const style=getComputedStyle(theme);for(const token of ['bg','fg'])dialog.style.setProperty('--source-'+token,style.getPropertyValue('--'+token));dialog.style.colorScheme=style.getPropertyValue('--bg').trim().toUpperCase()==='#000000'?'dark':'light';}
+   const dialog=document.createElement('dialog');dialog.className='note-source-dialog note-source-document-dialog';dialog.setAttribute('aria-label','Note source document');const theme=document.querySelector('.os');if(theme){const style=getComputedStyle(theme);for(const token of ['bg','fg'])dialog.style.setProperty('--source-'+token,style.getPropertyValue('--'+token));dialog.style.colorScheme=style.getPropertyValue('--bg').trim().toUpperCase()==='#000000'?'dark':'light';}
    const heading=document.createElement('h2');heading.textContent='Source document';
    const content=document.createElement('div');content.className='note-source-content';content.tabIndex=0;content.setAttribute('role','region');content.setAttribute('aria-label','Source details');
    const name=document.createElement('p'),detail=document.createElement('p');
    const description=document.createElement('p');description.textContent='Link a PDF, image or text file (up to 5 MiB). Saved library links can reopen directly while access remains available. Otherwise choose the file again. Its bytes must match the linked source. Opening shares only that selected copy with the viewer.';
    const status=document.createElement('p');status.setAttribute('role','status');
-   const actions=document.createElement('footer');
-   const button=(label:string)=>{const el=document.createElement('button');el.type='button';el.textContent=label;actions.append(el);return el;};
-   const linked=button('Open linked source'),link=button('Link file'),open=button('Choose source file to open'),remove=button('Remove source link'),done=button('Done');
+   const actions=document.createElement('div');actions.className='note-source-options';const footer=document.createElement('footer');
+   const button=(label:string)=>{const el=document.createElement('button');el.type='button';el.textContent=label;return el;};
+   const linked=button('Open linked source'),link=button('Link file'),open=button('Choose source file to open'),remove=button('Remove source link'),done=button('Done');actions.append(linked,link,open,remove);footer.append(done);
    const current=()=>!closed&&api.isActive()&&api.get('notes').open===note.id&&JSON.stringify(api.get('notes').list.find((n:Bag)=>n.id===note.id))===expected;
    const close=()=>{if(closed)return;closed=true;pickerAbort.abort();if(opened)void attachments.cancel().catch(()=>{});dialog.remove();window.removeEventListener('alpha-back',back,true);window.removeEventListener('pagehide',close);if(closeCurrent===close)closeCurrent=undefined;if(previous instanceof HTMLElement&&previous.isConnected)previous.focus();};
    const back=(event:Event)=>{if([...document.querySelectorAll('dialog[open]')].at(-1)!==dialog)return;event.preventDefault();event.stopImmediatePropagation();close();};
@@ -105,7 +105,7 @@ export function installNoteSourceAdapter(views:Bag){
    linked.onclick=async()=>{if(busy||!current()||!source?.reference)return;busy=true;opened=true;paint();status.textContent='Opening verified source…';try{const result=await attachments.openSourceReference({reference:source.reference,sha256:source.sha256,size:source.size,mimeType:source.mimeType});if(!closed)status.textContent=result.message;}catch{if(!closed)status.textContent='Linked source changed or access is unavailable. Choose the matching source file again.';}finally{busy=false;if(!closed)paint();}};
    link.onclick=()=>void choose('link');open.onclick=()=>void choose('open');remove.onclick=async()=>{if(busy||!current())return;busy=true;paint();try{await save(undefined);if(!closed)status.textContent='Source link removed. The file was not deleted.';}catch(error){if(!closed)status.textContent=(error as Error).message;}finally{busy=false;if(!closed)paint();}};
    done.onclick=close;dialog.oncancel=event=>{event.preventDefault();close();};
-   content.append(name,detail,description,status);dialog.append(heading,content,actions);document.body.append(dialog);closeCurrent=close;window.addEventListener('alpha-back',back,true);window.addEventListener('pagehide',close);paint();dialog.showModal();done.focus();
+   content.append(name,detail,description,status,actions);dialog.append(heading,content,footer);document.body.append(dialog);closeCurrent=close;window.addEventListener('alpha-back',back,true);window.addEventListener('pagehide',close);paint();dialog.showModal();done.focus();
   };
   return out;
  };

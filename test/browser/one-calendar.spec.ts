@@ -32,20 +32,29 @@ test('Calendar, Home and Google accounts show one merged calendar without a cale
  expect(fixture.requests.every(request=>request.startsWith('GET ')),'reading the merged calendar writes nothing').toBe(true);
 });
 
-test('hiding one merged calendar in Settings is a display choice for Calendar and Home on this device',async({page})=>{
+test('Calendar Settings keeps one Google entry without narrowing the merged Calendar or Home',async({page})=>{
  await installOneCalendar(page,{googleInFeed:true});
+ const card=page.locator('[data-alpha-home-calendar]');
+ await expect(card).toContainText('Public holiday');
  await page.getByRole('button',{name:'Settings',exact:true}).click();
  await page.getByRole('button',{name:'Calendar',exact:true}).click();
- await expect(page.getByText('Calendars shown in Alpha',{exact:true})).toBeVisible();
- // Only calendars in the agent's feed are listed: the built-in calendar and the ones shown in Google.
- for(const name of ['Eliza Calendar','owner@example.test','Holidays in United States'])await expect(page.getByRole('switch',{name:`Show ${name} calendar`})).toBeChecked();
- await page.getByRole('switch',{name:'Show Holidays in United States calendar'}).click();
- await expect(page.getByRole('switch',{name:'Show Holidays in United States calendar'})).not.toBeChecked();
+ const google=page.getByRole('button',{name:'Google Calendar',exact:true});
+ await expect(google).toBeVisible();
+ await expect(google).toContainText('Connected');
+ await expect(page.getByText('Calendars shown in Alpha',{exact:true})).toHaveCount(0);
+ await expect(page.getByRole('switch',{name:/^Show .+ calendar$/})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:/^Change .+ calendar color$/})).toHaveCount(0);
+ await expect(page.getByText('Current source',{exact:true})).toHaveCount(0);
  await page.evaluate(()=>window.dispatchEvent(new Event('launcher-home')));
  await expect(page.locator('html')).toHaveAttribute('data-active-view','home');
- const card=page.locator('[data-alpha-home-calendar]');
- await expect(card).toContainText('Team standup');
- expect((await requests(page)).requests.every(request=>request.startsWith('GET ')),'a display choice changes no source').toBe(true);
+ await expect(card).toContainText('Public holiday');
+ await card.click();
+ await expect(page.locator('html')).toHaveAttribute('data-active-view','calendar');
+ await page.evaluate(()=>window.dispatchEvent(new Event('alpha-back',{cancelable:true})));
+ for(const title of ['Team standup','Dentist','Design review','Public holiday'])await expect(page.getByText(title,{exact:true}).first()).toBeVisible();
+ const fixture=await requests(page);
+ expect(fixture.googleCalendarLists,'Settings never asks for a calendar chooser').toBe(0);
+ expect(fixture.requests.every(request=>request.startsWith('GET ')),'visiting Settings changes no calendar source').toBe(true);
 });
 
 test('without a connected Google account Calendar and Home show the local calendar with no errors',async({page})=>{
@@ -68,9 +77,17 @@ test('without a connected Google account Calendar and Home show the local calend
  await expect(page.locator('html')).toHaveAttribute('data-active-view','home');
  await page.getByRole('button',{name:'Settings',exact:true}).click();
  await page.getByRole('button',{name:'Calendar',exact:true}).click();
- await expect(page.getByRole('switch',{name:'Show Eliza Calendar calendar'})).toBeChecked();
- await expect(page.getByRole('switch',{name:/^Show .+ calendar$/})).toHaveCount(1);
+ const google=page.getByRole('button',{name:'Google Calendar',exact:true});
+ await expect(google).toBeVisible();
+ await expect(google).toContainText('Not connected');
+ await expect(page.getByRole('switch',{name:/^Show .+ calendar$/})).toHaveCount(0);
+ await expect(page.getByText('Calendars shown in Alpha',{exact:true})).toHaveCount(0);
+ await expect(page.getByText('Current source',{exact:true})).toHaveCount(0);
+ await page.evaluate(()=>window.dispatchEvent(new Event('launcher-home')));
+ await expect(card).toContainText('Dentist');
+ await expect(card).not.toContainText('Team standup');
  const fixture=await requests(page);
  expect(fixture.googleCalendarLists,'no Google calendar is listed without a Google account').toBe(0);
+ expect(fixture.requests.every(request=>request.startsWith('GET ')),'local Calendar remains available without a Google grant or write').toBe(true);
  expect(errors,'no page errors').toEqual([]);
 });

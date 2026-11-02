@@ -36,7 +36,13 @@ export async function developmentCartesiaConversation(input:{binding:VoiceConver
  let acceptedState:Readonly<{traceId:string|null;phase:string;finalTranscript:string;cancelledTraceId:string|null}>|undefined;
  let completedRequest:{traceId:string;messageId:string;proof:CurrentDeviceActionRequest}|undefined;
  const clearTurn=()=>{currentTurn=undefined;acceptedFinal=undefined;completedRequest=undefined;};
- let navigationTask=Promise.resolve();let phase='idle';
+ let navigationTask=Promise.resolve();let phase='idle',progressText='';
+ // UI projection only: processing ends at a matching terminal receipt, while
+ // playback ends at its own matching completion. Neither changes manual mute.
+ let callerBusyTrace:string|undefined,playbackTrace:string|undefined,playbackEndTrace:string|undefined;
+ const microphoneBusy=()=>callerBusyTrace!==undefined||playbackTrace!==undefined;
+ const retiredBusyTraces=new Set<string>();
+ const retireBusyTrace=(trace:string|undefined)=>{if(!trace)return;if(retiredBusyTraces.size>=64)retiredBusyTraces.delete(retiredBusyTraces.values().next().value!);retiredBusyTraces.add(trace);};
  // OG's targeted renderer channel owns early delivery. The voice terminal
  // suppresses its duplicate once that transport has accepted the frame.
  const navigate=(event:RealtimeVoiceNavigation)=>{
@@ -63,18 +69,42 @@ export async function developmentCartesiaConversation(input:{binding:VoiceConver
   fetch:async(path,init={})=>{if(path!=='/api/v1/voice/session'||init.method!=='POST'||typeof init.body!=='string')throw Error('Unsupported developer voice request');const body=JSON.parse(init.body);if(body.agentId!==input.binding.session.agentId||body.conversationId!==input.binding.conversationId||body.transport!=='websocket')throw Error('Developer voice binding changed');return Response.json(await request(path,body,init.signal??lifecycle.signal));},
   onMinted:result=>{minted.add(result.sessionId);try{current();}catch{void stop().catch(error=>input.onError(error instanceof Error?error:Error('Developer voice retirement was not confirmed.')));}},
   onState:state=>{if(!stopped){current();
+   // Accepted client session reset is terminal for the prior session's local
+   // projection; unlike a retryable STT error, no old usage/drain is promised.
+   if(['connecting','ready','idle'].includes(state.phase)){
+    retireBusyTrace(callerBusyTrace);retireBusyTrace(playbackTrace);
+    callerBusyTrace=undefined;playbackTrace=undefined;playbackEndTrace=undefined;
+   }
    acceptedState=Object.freeze({traceId:state.traceId,phase:state.phase,finalTranscript:state.finalTranscript,cancelledTraceId:state.progressCancelledTraceId??null});
+   // The SDK emits listening for this trace only after its local playback drain.
+   // Raw speaking_end merely closes input and must not release the microphone UI.
+   if(state.phase==='listening'&&state.traceId===playbackTrace&&state.traceId===playbackEndTrace){const drained=playbackTrace;playbackTrace=undefined;playbackEndTrace=undefined;if(callerBusyTrace!==drained)retireBusyTrace(drained);}
    if((currentTurn&&state.traceId!==currentTurn)||state.phase==='interrupted'||state.progressCancelledTraceId===currentTurn||['idle','connecting','ready'].includes(state.phase))clearTurn();
-   phase=state.phase;input.onState(state.phase,state.progressText??'');
+   phase=state.phase;progressText=state.progressText??'';input.onState(phase,progressText);
   }},
-  onServerEvent:event=>{if(stopped)return;current();if(event.t==='stt_partial'||event.t==='stt_final')input.onTranscript(event.text);
+  onServerEvent:event=>{if(stopped)return;current();const wasBusy=microphoneBusy();if(event.t==='stt_partial'||event.t==='stt_final')input.onTranscript(event.text);
    // The raw callback is only the commit notification. Text and trace proof
    // come from the SDK reducer's accepted state, never interim or reply prose.
    if(event.t==='interrupted'&&currentTurn===event.traceId)clearTurn();
-   if(event.t==='stt_final'&&acceptedState?.traceId===event.traceId&&acceptedState.cancelledTraceId!==event.traceId&&['thinking','speaking'].includes(acceptedState.phase)&&acceptedState.finalTranscript.trim()){
-    acceptedFinal=Object.freeze({traceId:acceptedState.traceId,text:acceptedState.finalTranscript});currentTurn=acceptedFinal.traceId;
+   if(event.t==='stt_final'&&!retiredBusyTraces.has(event.traceId)&&acceptedState?.traceId===event.traceId&&acceptedState.cancelledTraceId!==event.traceId&&['thinking','speaking'].includes(acceptedState.phase)&&acceptedState.finalTranscript.trim()){
+    acceptedFinal=Object.freeze({traceId:acceptedState.traceId,text:acceptedState.finalTranscript});currentTurn=acceptedFinal.traceId;if(callerBusyTrace!==currentTurn)retireBusyTrace(callerBusyTrace);if(playbackTrace!==currentTurn)retireBusyTrace(playbackTrace);callerBusyTrace=currentTurn;playbackTrace=undefined;playbackEndTrace=undefined;
     if(submitted.size>=64)submitted.delete(submitted.values().next().value!);submitted.add(currentTurn);
    }
+   if(event.t==='speaking_start'&&acceptedState?.traceId===event.traceId&&acceptedState.phase==='speaking'&&
+     !retiredBusyTraces.has(event.traceId)&&(!callerBusyTrace||callerBusyTrace===event.traceId)){
+    // A fresh server-owned trace may be a greeting or post-turn fallback.
+    // Known retired traces and a different busy request cannot restart it.
+    if(playbackTrace!==event.traceId){retireBusyTrace(playbackTrace);playbackTrace=event.traceId;playbackEndTrace=undefined;}
+   }
+   if(event.t==='speaking_end'&&playbackTrace===event.traceId)playbackEndTrace=event.traceId;
+   if(event.t==='usage'&&callerBusyTrace===event.traceId){callerBusyTrace=undefined;if(playbackTrace!==event.traceId)retireBusyTrace(event.traceId);}
+   // Retryable transport recovery does not finish the server's active turn.
+   if(event.t==='interrupted'||event.t==='error'&&!event.retryable){
+    const trace=event.traceId;
+    if(trace===undefined||trace===callerBusyTrace){retireBusyTrace(callerBusyTrace);callerBusyTrace=undefined;}
+    if(trace===undefined||trace===playbackTrace){retireBusyTrace(playbackTrace);playbackTrace=undefined;playbackEndTrace=undefined;}
+   }
+   if(wasBusy!==microphoneBusy())input.onState(phase,progressText);
    if(['ready','stt_final','speaking_start','reply_complete','usage'].includes(event.t))reconcile();
    if(event.t==='navigate_view')navigate(event);
    if(event.t==='reply_complete'&&acceptedFinal?.traceId===event.traceId&&event.traceId===currentTurn&&submitted.has(event.traceId)&&directActions&&'userMessageId' in event&&typeof event.userMessageId==='string'&&validateUuid(event.userMessageId)&&!performedMessages.has(event.userMessageId)&&!performedTurns.has(event.traceId)){
@@ -88,9 +118,9 @@ export async function developmentCartesiaConversation(input:{binding:VoiceConver
 
   },
   onPlaybackUnlockChange:()=>{if(!stopped)input.onPlaybackUnlockChange?.();},
-  onError:error=>{clearTurn();acceptedState=undefined;if(!stopped)input.onError(error);},
+  onError:error=>{retireBusyTrace(callerBusyTrace);retireBusyTrace(playbackTrace);callerBusyTrace=undefined;playbackTrace=undefined;playbackEndTrace=undefined;clearTurn();acceptedState=undefined;if(!stopped)input.onError(error);},
  });
- const stop=()=>{if(stopPromise)return stopPromise;stopped=true;clearTurn();acceptedState=undefined;window.removeEventListener('alpha:device-settings',preferenceChanged);if(rendererRenewal)clearTimeout(rendererRenewal);rendererRenewal=undefined;lifecycle.abort();renderer?.close();pendingRenderer?.close();stopPromise=(async()=>{await client.stop();for(const id of minted){if(agent!==connectionController.getBrowserSpeechAgent())throw Error('Developer voice retirement could not be confirmed after connection change.');try{const result=await agent.request(`/api/v1/voice/session/${id}/revoke`,{},new AbortController().signal);if(result.revoked!==true)throw Error('Developer voice retirement was not confirmed.');}catch(error){const failure=error as {status?:number;data?:{code?:string}};if(failure.status!==404||failure.data?.code!=='voice_session_not_found')throw error;}}})();return stopPromise;};
+ const stop=()=>{if(stopPromise)return stopPromise;stopped=true;retireBusyTrace(callerBusyTrace);retireBusyTrace(playbackTrace);callerBusyTrace=undefined;playbackTrace=undefined;playbackEndTrace=undefined;clearTurn();acceptedState=undefined;window.removeEventListener('alpha:device-settings',preferenceChanged);if(rendererRenewal)clearTimeout(rendererRenewal);rendererRenewal=undefined;lifecycle.abort();renderer?.close();pendingRenderer?.close();stopPromise=(async()=>{await client.stop();for(const id of minted){if(agent!==connectionController.getBrowserSpeechAgent())throw Error('Developer voice retirement could not be confirmed after connection change.');try{const result=await agent.request(`/api/v1/voice/session/${id}/revoke`,{},new AbortController().signal);if(result.revoked!==true)throw Error('Developer voice retirement was not confirmed.');}catch(error){const failure=error as {status?:number;data?:{code?:string}};if(failure.status!==404||failure.data?.code!=='voice_session_not_found')throw error;}}})();return stopPromise;};
  // Renderer authority is independent of the canonical audio socket. Renew its
  // short, single-use ticket without restarting capture or resetting turn deduplication.
  const renewRenderer=():Promise<void>=>{
@@ -118,7 +148,7 @@ export async function developmentCartesiaConversation(input:{binding:VoiceConver
  };
  try{await renewRenderer();current();}catch(error){await stop();throw error;}
  return {start:async()=>{try{current();await client.start();current();}catch(error){await stop();throw error;}},recheck:()=>{try{current();}catch{void stop().catch(error=>input.onError(error instanceof Error?error:Error('Developer voice retirement was not confirmed.')));}},resume:()=>false,
-  get microphoneAutomaticallyMuted(){return phase==='speaking';},get microphoneMuted(){return client.microphoneMuted;},setMicrophoneMuted:(muted:boolean)=>{current();client.setMicrophoneMuted(muted);},
+  get microphoneAutomaticallyMuted(){return !stopped&&microphoneBusy();},get microphoneMuted(){return client.microphoneMuted;},setMicrophoneMuted:(muted:boolean)=>{current();client.setMicrophoneMuted(muted);},
   get needsPlaybackUnlock(){return client.needsPlaybackUnlock;},unlockPlayback:async()=>{current();await client.unlockPlayback();current();},
   stop,
  };

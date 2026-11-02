@@ -118,7 +118,8 @@ public final class StoreIntegrationTest {
   admissionRaw.write(CloudDeployment.storageSlot("cloud:production"),original);
   AlphaCredentialStore admissionStore=new AlphaCredentialStore(admissionContext);
   int[] calls={0};
-  GoogleWorkspaceReturnFlow flow=new GoogleWorkspaceReturnFlow(new GoogleWorkspaceReturnFlow.Store(){
+  // A release build's ELIZAOS_APP_LINK_HOST is the production web host (android/app/product.gradle).
+  GoogleWorkspaceReturnFlow flow=new GoogleWorkspaceReturnFlow(CloudDeployment.PRODUCTION_WEB_HOST,new GoogleWorkspaceReturnFlow.Store(){
    private void locked(){check(Thread.holdsLock(AlphaLocalAgentPlugin.lifecycleLock)&&Thread.holdsLock(JsonCredentialSlots.LOCK),"native admission holds lifecycle then vault");calls[0]++;}
    public String credential()throws Exception{locked();return admissionStore.readCredentialSlot("cloud:production");}
    public String pending()throws Exception{locked();return admissionStore.readCredentialSlot(GoogleWorkspaceReturn.SLOT);}
@@ -135,7 +136,7 @@ public final class StoreIntegrationTest {
   admissionStore.writeCredentialSlot("cloud:production",metadata);
   check(AlphaLocalAgentPlugin.credentialAuthorityEpoch()==currentEpoch,"metadata-only refresh retains authority epoch");
   String redirect=AlphaLocalAgentPlugin.withCredentialAuthority(currentEpoch,()->flow.prepare(owner,"B".repeat(43),1000));
-  check(redirect.equals(GoogleWorkspaceReturn.CALLBACK+"?state="+"B".repeat(43))&&calls[0]>0,"current API admits real flow under both locks");
+  check(redirect.equals("https://eliza.app/alphaphone/gmail/callback?state="+"B".repeat(43))&&calls[0]>0,"current API admits real flow under both locks");
   check(admissionStore.readCredentialSlot(GoogleWorkspaceReturn.SLOT)!=null,"current API retains prepared pending record");
   System.out.println("PASS Workspace credential lifecycle and native-slot isolation");
  }

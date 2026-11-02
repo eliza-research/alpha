@@ -47,6 +47,17 @@ jobs:
         run: |
           mkdir -p "$TMPDIR"
           python3 scripts/ci/resident-phase.py --name digest-restart --seconds 480 npm run agent:test-digest-restart
+      # Reuses this job's prepared SDK graph; no Android/Gradle/native build.
+      - name: Build the portable worker dependency proof
+        run: |
+          python3 scripts/ci/resident-phase.py --name browser-proof-worker --seconds 600 npm run agent:build-workflow-worker
+          node scripts/ci/export-browser-proof.mjs worker
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: browser-proof-worker-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: test-results/browser-proof/worker/
+          retention-days: 3
+          if-no-files-found: error
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:

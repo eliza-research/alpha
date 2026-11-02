@@ -1,6 +1,6 @@
 # Current MVP status
 
-Current source pin: `e40497d5d0111d557aef022eb01d4f03023c9fc8`; existing source and native evidence below retain their original revisions. This metadata refresh does not promote performance or device acceptance.
+Historical SDK source proposal: `9950213832d6bb6965121a517e268ce898ef0100`. Source-only repin from published SDK 5e0feca4ee to its direct child 9950213832: a ProviderCacheEntry type marker, test property guard and formatting correction. No native inputs changed. The earlier native requalification requirement remains; no runtime or build acceptance transfers.
 
 Previous source checkpoint: Current local integration candidate: clean coherent SDK `de16c240f8ef77779edd3aa411e407018d2be209` with preserved public/native/recovery/Power and current Calendar/catalog/planner/Notes fixes. Shared source qualification is recorded at exact component/joined heads; product preparation/current-head checks and live Notes/Calendar semantics remain pending. Native/model/ABI history and qualified=false are unchanged; current APK/simulator/physical acceptance is separate. No GitHub publication or cleanup was performed.
 
@@ -85,9 +85,11 @@ the operator's index of build, provisioning, release and support material is the
 
 ## Product boundaries
 
-Current source projection: SDK `7e8b5d3eb1` is the recorded elizaOS/eliza `develop` head as of 2026-11-01 (`scripts/ci/upstream-reachability.json`). It adds fenced rate-policy admission, Cartesia settings preservation, native-app isolation from personal account lifetime, creatorless app recovery leases and restored fast streaming speech for native clients. Native engine/model/JNI inputs are unchanged from `9ba8ec5673`, whose move to engine b3eb2bf6 (#38470) still requires native requalification. The client feature projection continues to use the SDK's browser-safe modules.
+Current source projection: SDK `35e0a605b3`. Current source pin 35e0a605b3d560eedec664e79693d5ecc0b5ece3 includes the reviewed Notes confirmation fix, the narrow R3 busy-input/Mute changes and reply-source guidance. This is source composition only: normal producer, native input qualification, browser tests and device acceptance remain pending. Historical build and device receipts retain their original pins.
 
-The current upstream source pin is `7e8b5d3eb1`; the preceding pins were `9ba8ec5673` and `4573a187b0`. Runtime and device results remain bound to their own source, artifact and account receipts. This source update does not transfer historical APK or device qualification.
+Previous source projection: SDK `9950213832` adds three source-only commits from draft elizaOS/eliza #38516 to `7e8b5d3eb1`, the recorded elizaOS/eliza `develop` merge base as of 2026-11-01 (`scripts/ci/upstream-reachability.json`). `7e8b5d3eb1` adds fenced rate-policy admission, Cartesia settings preservation, native-app isolation from personal account lifetime, creatorless app recovery leases and restored fast streaming speech for native clients. The three commits reconcile reviewed runtime features with current shared Eliza and correct deferred provider typing; they change no native input (docs/evidence/sdk-5e0feca4ee-build-input-admission-20261101.json, docs/evidence/sdk-9950213832-build-input-admission-20261101.json). Native engine/model/JNI inputs are unchanged from `9ba8ec5673`, whose move to engine b3eb2bf6 (#38470) still requires native requalification. The client feature projection continues to use the SDK's browser-safe modules.
+
+The previous upstream source pin was `9950213832`; the preceding pins were `5e0feca4ee`, `7e8b5d3eb1`, `9ba8ec5673` and `4573a187b0`. Runtime and device results remain bound to their own source, artifact and account receipts. This source update does not transfer historical APK or device qualification.
 
 The historical October 14 development rebuild used upstream `193d9264fc`; current source pins have advanced since that build. Acceptance evidence below remains scoped to its recorded builds.
 

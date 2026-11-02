@@ -14,8 +14,9 @@ test('only advertised complete native method capability enables the return adapt
  for(const headers of [undefined,[],[{name:'AlphaConnection'}],[{name:'AlphaConnection',methods:methods.slice(1)}],[{name:'Other',methods}]])assert.equal(flow.nativeGoogleWorkspaceReturnAvailable(headers),false);
 });
 test('callback redirect accepts only exact target and single literal nonce',()=>{
+ assert.equal(flow.GOOGLE_WORKSPACE_CALLBACK,'https://eliza.app/alphaphone/gmail/callback','the return is the production web host, the build-gated sign-in App Link host');
  assert.equal(flow.googleWorkspaceRedirectAllowed(redirect),true);
- for(const value of [redirect+'&x=1',redirect+'&state='+state,redirect+'#ok',redirect.replace('https:','http:'),redirect.replace('alphacompute.ai','evil.test'),redirect.replace('state=','%73tate='),redirect.replace('?','/?')])assert.equal(flow.googleWorkspaceRedirectAllowed(value),false,value);
+ for(const value of [redirect+'&x=1',redirect+'&state='+state,redirect+'#ok',redirect.replace('https:','http:'),redirect.replace('eliza.app','evil.test'),redirect.replace('eliza.app','alphacompute.ai'),redirect.replace('eliza.app','staging.eliza.app'),redirect.replace('eliza.app','eliza.app:443'),redirect.replace('state=','%73tate='),redirect.replace('?','/?')])assert.equal(flow.googleWorkspaceRedirectAllowed(value),false,value);
 });
 test('missing native capability uses existing manual return without any port call',async()=>{assert.equal(await flow.prepareGoogleWorkspaceReturn(undefined,binding,()=>binding),undefined)});
 test('unsupported native association preserves manual return',async()=>{const n=native();n.port.prepare=async()=>({supported:false});assert.equal(await flow.prepareGoogleWorkspaceReturn(n.port,binding,()=>binding),undefined)});

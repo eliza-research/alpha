@@ -56,6 +56,7 @@ for (const mode of ['read', 'update', 'complete', 'cancel', 'stale', 'recurring-
             if(mode!=='older-peer'&&input.headers['X-Eliza-Device-Capabilities'].split(',').includes('reminders.local-record.v1'))throw Error('Duplicate reminder version negotiated');
             fixture.posts++;
             const sent=JSON.parse(input.body);w.calendarSent=sent;
+            w.calendarSentCapabilities=input.headers['X-Eliza-Device-Capabilities'].split(',');
             const target=sent.metadata.clientDevice.context.selectedObject;
             const fields={title:'Assistant planned reminder',body:'Reviewed details',schedule:{at:Date.now()+7200000,recurrence:null,dueAt:Date.now()+7800000,alertMinutes:10}};
             const operation=mode.startsWith('create-')?{type:'reminder_create',fields:{title:'Assistant created reminder',body:'Reviewed creation body',schedule:{at:Date.parse('2026-10-02T14:00:00Z')-(mode==='create-lead'?600000:0),dueAt:Date.parse('2026-10-02T14:00:00Z'),alertMinutes:mode==='create-lead'?10:null,recurrence:mode==='create-repeat'?{rule:'daily',zone:'UTC',date:'2026-10-02',time:'14:00',leadMinutes:0}:null}}}:mode==='create'?{type:'create_reminder',title:'Assistant created reminder',dueAt:new Date(Date.now()+7200000).toISOString()}:{type:mode==='read'?'reminder_read_selected':mode==='stale'||mode==='recurring-complete'||mode==='older-peer'?'reminder_complete':'reminder_'+mode,target:{sourceId:target.accountId,sourceRevision:target.sourceRevision,reminderId:target.id,occurrenceId:target.occurrenceId,revision:target.revision,timingVersion:target.timingVersion},...(mode==='update'?{fields}:{})};
@@ -91,17 +92,32 @@ for (const mode of ['read', 'update', 'complete', 'cancel', 'stale', 'recurring-
     await page.getByRole('button',{name:'Type',exact:true}).click();
     const input=page.locator('[data-alpha-layer="composer"][aria-hidden="false"], [data-alpha-layer="conversation"][aria-hidden="false"]').getByRole('textbox').first();
     await input.fill('Review this reminder action before applying it.');await input.press('Enter');
-    if(mode==='older-peer'||mode==='create-old-peer'){
-      await expect(page.getByText('Sorry, I couldn’t finish that reply.',{exact:true})).toBeVisible();
-      await expect(page.getByRole('button',{name:/^Check saved conversation/})).toHaveCount(0);
-      expect(await page.evaluate(()=>(window as any).recoveryFixture.lists)).toBeGreaterThan(0);
-      expect(await page.evaluate(()=>(window as any).recoveryFixture.proposal.payload.operation.type)).toBe(mode==='older-peer'?'reminder_complete':'reminder_create');
-      expect(await page.evaluate(()=>(window as any).recoveryFixture.posts)).toBe(1);
-      expect(await page.evaluate(()=>(window as any).recoveryFixture.decisions)).toBe(0);
-      expect(await page.evaluate(()=>(window as any).recoveryFixture.claims)).toBe(0);
-      expect(await page.evaluate(()=>(window as any).recoveryFixture.journal)).toEqual([]);
-      expect(await page.evaluate(async ()=>JSON.parse((await (await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw())!).reminders[0].status)).toBe('pending');
-      await expect(page.getByText('Complete selected reminder',{exact:true})).toHaveCount(0);return;
+    if(mode==='older-peer'||mode.startsWith('create-')){
+      // Browser reminders use the runtime scheduler, not a second phone-creation
+      // lifecycle. The saved unsupported proposal is explained, never approved.
+      await expect(page.getByText(/An agent action could not be shown on this phone/).first()).toBeVisible();
+      await expect(page.getByText(/Pending phone actions are available for separate review/)).toHaveCount(0);
+      const fixture=await page.evaluate(()=>(window as any).recoveryFixture);
+      expect(fixture.lists).toBeGreaterThan(0);
+      expect(fixture.proposal.state).toBe('pending');
+      expect(fixture.proposal.payload.operation.type).toBe(mode==='older-peer'?'reminder_complete':'reminder_create');
+      expect(fixture.posts).toBe(1);
+      expect(fixture.decisions).toBe(0);
+      expect(fixture.claims).toBe(0);
+      expect(fixture.receipts).toBe(0);
+      expect(fixture.journal).toEqual([]);
+      const rows=await page.evaluate(async ()=>JSON.parse((await (await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw())!).reminders);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({title:'Selected private reminder',status:'pending',alertMinutes:null,dueAt:Date.parse('2026-10-02T13:00:00Z')});
+      if(mode.startsWith('create-')){
+        expect(await page.evaluate(()=>(window as any).calendarSentCapabilities)).not.toContain('reminders.create.v1');
+        expect(fixture.proposal.payload.operation.fields).toMatchObject({title:'Assistant created reminder',body:'Reviewed creation body',schedule:{dueAt:Date.parse('2026-10-02T14:00:00Z'),alertMinutes:mode==='create-lead'?10:null,recurrence:mode==='create-repeat'?{rule:'daily',zone:'UTC',date:'2026-10-02',time:'14:00',leadMinutes:0}:null}});
+      }
+      await expect(page.getByText('Create reminder',{exact:true})).toHaveCount(0);
+      await expect(page.getByText('Complete selected reminder',{exact:true})).toHaveCount(0);
+      await page.reload();
+      expect(await page.evaluate(async ()=>JSON.parse((await (await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw())!).reminders)).toEqual(rows);
+      return;
     }
     await expect(page.getByText(/Pending phone actions are available for separate review/)).toBeVisible();
     expect(await page.evaluate(()=>(window as any).calendarSent.metadata.clientDevice.context.selectedObject)).toMatchObject({kind:'reminder',timingVersion:2});
