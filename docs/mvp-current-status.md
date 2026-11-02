@@ -85,7 +85,9 @@ the operator's index of build, provisioning, release and support material is the
 
 ## Product boundaries
 
-Current source projection: SDK `4e2bc0e607`. Current source pin 4e2bc0e6074eb78bab841ca83b93e09fe2705919 selects native engine cc8c979157e1f577448d8b8c6ff598b7cfc3d661. Regenerated source-input comparison, UUID package checks, reachability and resident advisory records bind this source only. Historical native compiled0d9/ABI19 records remain unqualified; fresh Android builds and device qualification remain required. See docs/evidence/sdk-4e2bc0e607-native-input-comparison-20261102.json. 
+Current source projection: SDK `61f2b9a626`. Current source pin 61f2b9a62672533b086619bd5a21c1345399ec68 adds only the reviewed natural-language acknowledgment guard/test to4e2. The exact unchanged dependency/native input proof is docs/evidence/sdk-61f2b9a626-dev-input-reuse-20261102.json. Source adoption and JS artifact regeneration remain separate from live prompt and Android acceptance. Historical qualification records and unresolved audit/reachability/native gates remain unchanged. 
+
+Historical source projection (SDK4e2): Current source pin 4e2bc0e6074eb78bab841ca83b93e09fe2705919 selects native engine cc8c979157e1f577448d8b8c6ff598b7cfc3d661. Regenerated source-input comparison, UUID package checks, reachability and resident advisory records bind this source only. Historical native compiled0d9/ABI19 records remain unqualified; fresh Android builds and device qualification remain required. See docs/evidence/sdk-4e2bc0e607-native-input-comparison-20261102.json. 
 
 Historical source projection (SDK35): Current source pin 35e0a605b3d560eedec664e79693d5ecc0b5ece3 includes the reviewed Notes confirmation fix, the narrow R3 busy-input/Mute changes and reply-source guidance. This is source composition only: normal producer, native input qualification, browser tests and device acceptance remain pending. Historical build and device receipts retain their original pins.
 
