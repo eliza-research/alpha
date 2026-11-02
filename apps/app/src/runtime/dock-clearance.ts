@@ -25,8 +25,10 @@ import { installDockClearance as installSharedDockClearance, visibleDocks as sha
 export const DOCK_CLEARANCE_PROPERTY = '--alpha-dock-clearance';
 export const DOCK_REST_PROPERTY = '--alpha-dock-rest';
 const HEADER_CLEARANCE_PROPERTY = '--alpha-header-clearance';
-// App headers, and the shared All apps drawer's title row with its Close button.
-const APP_HEADERS = '[data-alpha-app-header],[data-alpha-layer="drawer"] div:has(> h1)';
+// App headers, the shared All apps drawer's title row with its Close button, and an open
+// in-phone modal sheet (a month picker, a menu): a notice goes below it, or, when the sheet
+// leaves no room, just above the dock as before, never over the sheet's header.
+const APP_HEADERS = '[data-alpha-app-header],[data-alpha-layer="drawer"] div:has(> h1),[role="dialog"][aria-modal="true"]:not([data-alpha-layer="drawer"])';
 const DOCK = '[data-alpha-layer="composer"],[data-alpha-layer="pill"] > *,.alpha-chat-composer';
 
 /** The dock elements on screen now: rendered, and not retired behind the shade or a voice session. */
