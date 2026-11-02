@@ -5,6 +5,10 @@ html,body,#root{margin:0;width:100%;height:100%;overflow:hidden;overscroll-behav
 .alpha-phone>[data-screen]{top:0!important;left:0!important;border-radius:0!important;height:var(--phone-height,915px)!important}
 .standalone-app .alpha-phone,.standalone-app .alpha-phone>[data-screen]{width:var(--phone-width,412px)!important}
 .native-phone .alpha-phone>[data-screen]>div:first-child{display:none}
+/* Full-screen chat on the launcher is drawn under Android's status bar. Its header (and the
+ * Resize chat grabber) starts 16 screen pixels below the bar, so a pull down on the grabber
+ * is Alpha's and never lands in the top-edge band where Android opens its shade. */
+.alpha-phone{--alpha-chat-full-top:max(60px,calc((max(var(--native-top-inset,0px),env(safe-area-inset-top,0px)) + 16px) / var(--phone-scale,1)))}
 .native-phone [data-screen]>div[style*="bottom: 26px"],.native-phone [data-screen]>div[style*="bottom: 28px"]{bottom:max(28px,calc(var(--native-bottom-inset,48px) + 8px))!important}
 .voice-overlay{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.2);font-family:'Public Sans',sans-serif;display:flex;align-items:end}
 .voice-overlay .dialog-backdrop{width:100%}

@@ -35,6 +35,7 @@ SystemUI, because a browser has none; it is a developer surface (`simulatedShade
 | A swipe in from the left or right edge | Android (gesture navigation) | Android delivers Back. In the browser build the same swipe within 30px of an edge goes Back. |
 | A swipe up from the bottom edge | Android (gesture navigation) | Android delivers HOME; the launcher flavor shows Alpha Home. |
 | A swipe up on Alpha Home, away from the bottom edge | Alpha | Opens the conversation sheet. |
+| Full-screen chat (launcher): the Resize chat grabber | Alpha | A drag down shrinks the chat. The header starts 16 screen pixels below Android's status bar (`--alpha-chat-full-top`, at least 60px of canvas), so the drag never starts in Android's top-edge band. |
 
 ## Empty Home
 

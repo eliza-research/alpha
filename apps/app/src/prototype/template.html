@@ -3988,7 +3988,7 @@
 <sc-if value="{{isOn}}">
 <div onClick="{{scrimTap}}" style="position: absolute; inset: 0; z-index: 45; background: var(--scrim); opacity: {{scrimOp}}; pointer-events: {{scrimPE}}; transition: opacity .45s"></div>
 <div data-alpha-layer="conversation" aria-hidden="{{conversationHidden}}" inert="{{conversationHidden}}" style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 50; height: {{panelH}}px; border-radius: {{panelR}}; background: var(--s1); overflow: hidden; display: flex; flex-direction: column; opacity: {{panelOp}}; pointer-events: {{panelPE}}; box-shadow: 0 -1px 0 var(--line), 0 -20px 60px var(--shc); transition: {{panelTransition}}">
-  <div style="height: {{panelTop}}px; flex-shrink: 0; transition: height .4s"></div>
+  <div data-alpha-chat-top style="height: {{panelTop}}; flex-shrink: 0; transition: height .4s"></div>
   <div data-alpha-chat-header style="display:grid;grid-template-columns:minmax(0,1fr) 44px minmax(0,1fr);align-items:center;padding:0 12px 4px;gap:0;flex-shrink:0">
     <button class="tap" data-alpha-chat-home aria-label="Go Home" onPointerDown="{{chatControlPointer}}" onClick="{{backToApps}}" style="display:flex;align-items:center;gap:12px;min-width:0;min-height:44px;text-align:left;border-radius:12px">
       <span style="width:34px;height:34px;border-radius:17px;flex-shrink:0;background:var(--acc);color:#fff;display:flex;align-items:center;justify-content:center"><span class="alpha-compute-mark" aria-hidden="true"></span></span>
@@ -4003,7 +4003,7 @@
     </div>
   </div>
   <sc-if value="{{emailUseOpen}}">
-    <div ref="{{emailUseModal}}" class="scr inbox-review-modal" role="dialog" aria-modal="true" aria-label="Review email suggestion" style="position:absolute;inset:0;z-index:6;background:var(--s1);padding:calc({{panelTop}}px + 16px) 20px 28px;overflow:auto;box-sizing:border-box;display:flex;flex-direction:column;gap:12px">
+    <div ref="{{emailUseModal}}" class="scr inbox-review-modal" role="dialog" aria-modal="true" aria-label="Review email suggestion" style="position:absolute;inset:0;z-index:6;background:var(--s1);padding:calc({{panelTop}} + 16px) 20px 28px;overflow:auto;box-sizing:border-box;display:flex;flex-direction:column;gap:12px">
       <button class="tap" onClick="{{emailUse.close}}" style="align-self:flex-start;min-height:44px;padding:0 14px;border-radius:22px;background:var(--s2);color:var(--fg);font:inherit;font-weight:600">Cancel</button>
       <h2 class="serif" style="margin:0;font-size:26px;font-weight:400">Use this reply in an email?</h2>
       <p data-alpha-email-use-account style="margin:0;font-size:15px;font-weight:600;overflow-wrap:anywhere">{{emailUse.account}}</p>
