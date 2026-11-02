@@ -111,13 +111,14 @@ export function systemNoticeDisplayText(kind: SystemNoticeKind, waiting = false)
     : UPSTREAM_MODEL_UNAVAILABLE_NOTICE;
 }
 
-type ChatRow = { from?: unknown; text?: unknown; systemNotice?: unknown; interrupted?: unknown; unfinished?: unknown; streaming?: unknown; card?: unknown };
+type ChatRow = { from?: unknown; text?: unknown; systemNotice?: unknown; interrupted?: unknown; unfinished?: unknown; streaming?: unknown; card?: unknown; deviceReceipt?: unknown };
 
 /** An agent row that proves the chat answered: a settled text reply, not a notice, a failed or
- * restored-unfinished reply, a stream still in progress, or a client-made card (proposals). */
+ * restored-unfinished reply, a stream still in progress, a client-made card (proposals) or a phone
+ * action receipt, which records what the phone did, not that chat answered. */
 function ordinaryReply(message: ChatRow): boolean {
   return message.from === 'agent' && !message.systemNotice && message.interrupted !== true && message.unfinished !== true
-    && message.streaming !== true && !message.card && typeof message.text === 'string' && message.text.trim() !== '';
+    && message.streaming !== true && !message.card && !message.deviceReceipt && typeof message.text === 'string' && message.text.trim() !== '';
 }
 
 /**

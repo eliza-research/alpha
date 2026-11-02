@@ -58,10 +58,10 @@ test('a stale escalation before a new send is never worded as if that send faile
  assert.deepEqual(collapseSystemNotices([...rows,reply('a1')]).map(m=>m.id),['a0','u1','a1'],'the reply retires it');
 });
 
-test('failed, unfinished, streaming and card rows do not prove chat works',()=>{
+test('failed, unfinished, streaming, card and phone receipt rows do not prove chat works',()=>{
  const rows=[user('u1'),{id:'x',from:'agent',text:'This reply did not finish.',interrupted:true},notice('n1')];
  assert.deepEqual(collapseSystemNotices(rows).map(m=>m.id),['u1','x','n1'],'a live interrupted reply');
- for(const row of [{id:'x',from:'agent',text:'This reply did not finish.',unfinished:true},{id:'x',from:'agent',text:'Partial',streaming:true},{id:'x',from:'agent',text:'Open browser destination https://a.example',card:{proposalId:'p'}}])
+ for(const row of [{id:'x',from:'agent',text:'This reply did not finish.',unfinished:true},{id:'x',from:'agent',text:'Partial',streaming:true},{id:'x',from:'agent',text:'Open browser destination https://a.example',card:{proposalId:'p'}},{id:'x',from:'agent',text:'Reminder set for 9:00.',deviceReceipt:true}])
   assert.deepEqual(collapseSystemNotices([user('u1'),notice('n1'),row]).map(m=>m.id),['u1','n1','x'],JSON.stringify(row));
 });
 
