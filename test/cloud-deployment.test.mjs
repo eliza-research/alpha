@@ -109,6 +109,7 @@ test('build admission rejects a resident Cloud SDK base that disagrees with the 
  assert.throws(()=>checkCloudDeployment(undefined,{...CLOUD_SDK_BASES,production:'https://api.example.org/api/v1'}),/Cloud SDK bases .* disagree/);
  const config=structuredClone(defaults);config.production.api='https://api.example.org';
  assert.equal(cloudSdkBases(config).production,'https://api.example.org/api/v1');
+ for(const api of ['http://api.example.org','https://api.example.org/','not a url'])assert.throws(()=>cloudSdkBases({...config,production:{...config.production,api}}),/Invalid Cloud API origin/,api);
  // No second hard-coded authority: the resident hosts take the base from the configured module only.
  for(const file of ['scripts/cloud-sdk-authority.mjs','scripts/cloud-resident-host.mjs','scripts/start-cloud-qa.mjs'])assert.doesNotMatch(fs.readFileSync(file,'utf8'),/https:\/\/api(-staging)?\.eliza\.app/,file);
 });
