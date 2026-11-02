@@ -25,7 +25,7 @@ test('one explicit Talk action starts Cloud voice, keeps its disclosure, and sto
 });
 test('signed-out production Cloud speech offers sign-in without microphone or local fallback',async()=>{
  const f=cloudVoiceViewFixture({cloudProfile:true,account:null});
- try {f.box.React={createElement:()=>null};f.box.VoiceActivity=()=>null;await f.shell.startVoice();const view=f.renderChat();assert.equal(view.state,'error');assert.equal(view.recoveryLabel,'');assert.equal(view.statusLines.length,0);assert.equal(view.voiceDetails,false);assert.equal(f.accountOpens,0,'failed Talk never opens sign-in automatically');assert.equal(typeof view.recover,'function','internal recovery classification remains available to Settings');assert.equal(f.starts,0);assert.equal(f.localFactories,0);}finally{f.close();await f.tick();}
+ try {f.box.React={createElement:()=>null};f.box.VoiceActivity=()=>null;await f.shell.startVoice();const view=f.renderChat();assert.equal(view.state,'error');assert.equal(view.recoveryLabel,'Connect Eliza Cloud');assert.equal(view.statusLines.length,0);assert.equal(view.voiceDetails,false);assert.equal(f.accountOpens,0,'failed Talk never opens sign-in automatically');view.recover();await f.tick();assert.equal(f.accountOpens,1,'sign-in opens only from the explicit recovery');assert.equal(f.starts,0);assert.equal(f.localFactories,0);}finally{f.close();await f.tick();}
 });
 test('native production Cloud voice pins host and Cartesia; staging and other output providers fail closed',()=>{
  const out=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-cloud-speech-'));
@@ -163,7 +163,7 @@ test('configured service name follows explicit Talk and signed-out recovery',asy
    await f.shell.startVoice();const view=f.renderChat();
    assert.doesNotMatch(JSON.stringify(view),/Eliza Cloud/);
    if(account){assert.match(view.cloudDisclosureText,/recordings and reply text to your Nebula account/);assert.match(view.cloudDisclosureText,/plan allowance/);assert.equal(view.state,'listening');}
-   else {assert.equal(view.state,'error');assert.equal(view.recoveryLabel,'');assert.equal(view.statusLines.length,0);assert.equal(view.voiceDetails,false);assert.equal(f.accountOpens,0,'no automatic sign-in from a failed Talk');assert.equal(typeof view.recover,'function');}
+   else {assert.equal(view.state,'error');assert.equal(view.recoveryLabel,'Connect Nebula');assert.equal(view.statusLines.length,0);assert.equal(view.voiceDetails,false);assert.equal(f.accountOpens,0,'no automatic sign-in from a failed Talk');view.recover();await f.tick();assert.equal(f.accountOpens,1);}
    assert.equal(f.starts,account?1:0);assert.equal(f.uploads,0);assert.equal(f.localFactories,0);
   }finally{f.close();await f.tick();}
  }

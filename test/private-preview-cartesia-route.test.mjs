@@ -208,5 +208,5 @@ adapterTest('unknown native voice failures retain their existing recovery',async
   await h.shell.startVoice();await h.tick();const view=h.renderChat();
   assert.equal(view.state,'error');assert.equal(view.errorDetail,'');
   assert.doesNotMatch(view.lines[0].t,/Voice is unavailable right now/);
-  assert.equal(view.recoveryLabel,'');assert.equal(view.statusLines.length,0);assert.equal(view.voiceDetails,false);assert.equal(h.startError?.code,'voice-http-503-extra','underlying failure is retained');assert.deepEqual(h.shell.messages,[]);
+  assert.equal(view.recoveryLabel,'Try voice again');assert.equal(view.statusLines.length,0);assert.equal(view.voiceDetails,false);assert.equal(h.startError?.code,'voice-http-503-extra','underlying failure is retained');assert.deepEqual(h.shell.messages,[]);
 });

@@ -50,7 +50,7 @@ test('actual voice error clears input activity, keeps failure internal without a
    assert.ok(doc.querySelector('[aria-label="Stop voice conversation"]'));
    assert.equal(doc.querySelectorAll('[data-alpha-voice-animation]').length,error?0:1);
    assert.equal(doc.querySelectorAll('[aria-label="Voice activity"]').length,error?0:1);
-   if(error){assert.equal(model.muted,'mixed');assert.equal(model.muteLabel,'Microphone status unconfirmed');assert.equal(model.recoveryLabel,'');}
+   if(error){assert.equal(model.muted,'mixed');assert.equal(model.muteLabel,'Microphone status unconfirmed');assert.equal(model.recoveryLabel,'Try voice again');}
 
   }
   // The same actual adapter must preserve uncertain cleanup instead of claiming mic-off.
@@ -58,7 +58,7 @@ test('actual voice error clears input activity, keeps failure internal without a
   f.renderChat().stop();for(let count=0;count<10;count++)await f.tick();
   const held=f.renderChat();assert.equal(held.state,'error');assert.equal(held.activity,null);
   assert.equal(held.muted,'mixed');assert.equal(held.muteLabel,'Microphone status unconfirmed');
-  assert.equal(held.recoveryLabel,'');assert.match(held.lines[0].t,/Could not confirm voice media stopped/);
+  assert.equal(held.recoveryLabel,undefined);assert.match(held.lines[0].t,/Could not confirm voice media stopped/);
   const heldDoc=new JSDOM(render({inlineChatRecorder:true,chatRecorder:held})).window.document;
   assert.equal(heldDoc.querySelectorAll('[data-alpha-voice-animation]').length,0);
   assert.equal(heldDoc.querySelector('[role="alert"]'),null);assert.doesNotMatch(heldDoc.body.textContent,/Could not confirm|Close the app/);
