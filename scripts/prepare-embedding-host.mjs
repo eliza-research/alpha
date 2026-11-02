@@ -6,6 +6,22 @@ import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {nativeInputPaths,nativeJavaPath,nativeBinding,nativeInputs,nativeGenerated,nativeCmakeOptions,verifyNativeJava,nativeRequiredSymbols,verifyNativeSymbols} from './embedding-native-contract.mjs';
 import {embeddingBuildRemap} from './embedding-build-remap.mjs';
+// Full producer module closure and repository-shape metadata; no dependency install.
+const producerInputPaths=[
+ "package.json",
+ "packages/agent/package.json",
+ "packages/app/package.json",
+ "packages/app/scripts/aosp/compile-libllama-paths.ts",
+ "packages/app/scripts/aosp/compile-libllama.ts",
+ "packages/app/scripts/aosp/compile-shim.ts",
+ "packages/app/scripts/aosp/vulkan-source-contract.ts",
+ "packages/app/scripts/aosp/zig-toolchain.ts",
+ "packages/app/scripts/build-helpers/arm64-simd.ts",
+ "packages/app/scripts/build-helpers/omnivoice-merged.ts",
+ "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
+ "packages/app/scripts/lib/repo-root.ts",
+ "packages/app/scripts/stage-elizavoice-lib.ts"
+];
 const root=path.resolve(import.meta.dirname,'..'),upstream=path.join(root,'vendor/eliza');
 const args=process.argv.slice(2),option=name=>{const i=args.indexOf(name);return i<0?undefined:args[i+1];};
 for(let i=0;i<args.length;i++){if(args[i]==='--build'||args[i]==='--remap-build-path')continue;if(['--fork','--output','--abi'].includes(args[i])){if(!args[++i]||args[i].startsWith('--'))throw Error('Missing option value');}else throw Error('Unknown option');}
@@ -45,6 +61,15 @@ for(const relative of files){
  const target=path.join(staging,relative);fs.mkdirSync(path.dirname(target),{recursive:true});fs.writeFileSync(target,generated);
  const sha=value=>createHash('sha256').update(value).digest('hex');inputs.push({path:relative,sourceSha256:sha(original),generatedSha256:sha(generated)});
 }
+// These unmodified producer files are distinct from the relocated native compile inputs.
+const producerInputs=[];
+for(const relative of producerInputPaths){
+ const original=source(relative),target=path.join(staging,relative);
+ const digest=createHash('sha256').update(original).digest('hex');
+ if(!files.includes(relative)){fs.mkdirSync(path.dirname(target),{recursive:true});fs.writeFileSync(target,original);}
+ else if(createHash('sha256').update(fs.readFileSync(target)).digest('hex')!==digest)throw Error('Producer input overlaps a relocated native input');
+ producerInputs.push({path:relative,sha256:digest});
+}
 fs.mkdirSync(path.dirname(path.join(staging,forkPath)),{recursive:true});fs.symlinkSync(fork,path.join(staging,forkPath),'dir');
 const nativeSource=path.join(staging,'packages/app/platforms/android/app/src/main/elizavoice-jni');
 const commands=[
@@ -58,7 +83,7 @@ const commands=[
 // toolchain file ignores CFLAGS). Bytes built with and without it differ; a receipt records which.
 const remap=args.includes('--remap-build-path');
 const remapEnv=remap?embeddingBuildRemap(root,{sdk,staging,fork,build:path.join(output,'jni-build')}):{};
-const receipt={pin,forkPin,identity,abi,inputs,...(jniBinding.mode==='registered'?{jniBinding}:{}),commands,env:{ANDROID_HOME:sdk,ELIZA_NDK_VERSION:ndkVersion,CMAKE_BUILD_PARALLEL_LEVEL:'2',...remapEnv},buildPathRemapped:remap,built:false,packaged:false,runtimePolicyChanged:false};
+const receipt={pin,forkPin,identity,abi,inputs,producerInputs,...(jniBinding.mode==='registered'?{jniBinding}:{}),commands,env:{ANDROID_HOME:sdk,ELIZA_NDK_VERSION:ndkVersion,CMAKE_BUILD_PARALLEL_LEVEL:'2',...remapEnv},buildPathRemapped:remap,built:false,packaged:false,runtimePolicyChanged:false};
 fs.writeFileSync(path.join(output,'PREPARATION.json'),JSON.stringify(receipt,null,2)+'\n');
 if(args.includes('--build')){
  for(const [executable,...argv] of commands)execFileSync(executable,argv,{cwd:staging,env:{...process.env,...receipt.env},stdio:'inherit'});
@@ -75,6 +100,12 @@ if(args.includes('--build')){
   if(!loads.length||loads.some(line=>parseInt(line.trim().split(/\s+/).at(-1),16)<16384))throw Error('Native library is not 16 KiB compatible');
   return {path:file,sha256:createHash('sha256').update(fs.readFileSync(file)).digest('hex'),bytes:fs.statSync(file).size,requiredSymbols:required,alignment16KiB:true};
  });
+ for(const row of producerInputs){
+  const stagedHash=createHash('sha256').update(fs.readFileSync(path.join(staging,row.path))).digest('hex');
+  const sourceHash=createHash('sha256').update(source(row.path)).digest('hex');
+  if(stagedHash!==row.sha256||sourceHash!==row.sha256)throw Error('Producer source changed during build');
+ }
+ if(git(upstream,'rev-parse','HEAD')!==pin)throw Error('Upstream source pin changed during build');
  if(git(fork,'rev-parse','HEAD')!==forkPin||git(fork,'status','--porcelain'))throw Error('Engine source changed during build');
  receipt.built=true;
  fs.writeFileSync(path.join(output,'PREPARATION.json'),JSON.stringify(receipt,null,2)+'\n');

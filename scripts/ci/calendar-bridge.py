@@ -14,7 +14,7 @@ import stat
 import subprocess
 import sys
 
-SDK = 'c42c779a789667629b2ce9adb8dbf153c63108b7'
+SDK = '77ef61e737d4d848b64e901145ed6e7f38c42705'
 HOST = 'f222d4ce2e67fc0c401bec9d35bb3b72fbe83e9d74ca6c2bf7353d0d79e2026b'
 JSON_SHA = '3ea61b2a06e31edf1c91134fe9106b0ebb16628be169f3db75bc7a2b06b45796'
 ENTRY_SECONDS = 180  # <240s GHA timeout, leaving >=60s platform margin.

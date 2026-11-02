@@ -4,6 +4,8 @@
 // inputs and admission: runtime profile, App Links, voice and embedding hosts.
 def runtimeProfile = (project.findProperty('ELIZA_RUNTIME_PROFILE') ?: 'native').toString()
 if (!(runtimeProfile in ['native','cloud'])) throw new GradleException('Unknown ELIZA_RUNTIME_PROFILE')
+def localEmbeddings = (project.findProperty('ELIZA_LOCAL_EMBEDDINGS') ?: '0').toString()
+if (!(localEmbeddings in ['0','1']) || localEmbeddings == '1' && runtimeProfile != 'cloud') throw new GradleException('Local embeddings require the Cloud profile')
 def unpackagedRuntime = project.findProperty('ELIZA_ALLOW_UNPACKAGED_RUNTIME')?.toString() == '1'
 if (runtimeProfile == 'cloud' && unpackagedRuntime) throw new GradleException('Cloud requires a packaged resident')
 // Upstream switch (vendor/eliza/packages/app/scripts/dev-ui.ts): the generator attaches test-only
@@ -86,6 +88,7 @@ if (appLinkHost) androidComponents { onVariants(selector().all()) { variant -> v
 def verifyEmbeddingHost = tasks.register('verifyEmbeddingHost', Exec) {
  workingDir rootProject.projectDir.parentFile
  def args = runtimeProfile == 'cloud' ? ['node', 'scripts/runtime-profile.mjs', '--verify-cloud'] : ['node', 'scripts/stage-embedding-host.mjs', '--verify']
+ if (runtimeProfile == 'cloud' && localEmbeddings == '1') args += '--local-embeddings'
  if (runtimeProfile == 'native' && unpackagedRuntime) args += '--allow-unpackaged-runtime'
  commandLine args
 }

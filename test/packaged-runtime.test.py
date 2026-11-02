@@ -225,5 +225,86 @@ class PackagedRuntimeTest(unittest.TestCase):
             verifier.verify(self.apk)
 
 
+    def local_entries(self):
+        entries=dict(self.cloud_entries())
+        # ZIP-only fixtures stub the separately tested canonical native source gate.
+        source_gate=verifier.verify_local_embedding_source
+        verifier.verify_local_embedding_source=lambda root: None
+        self.addCleanup(setattr,verifier,'verify_local_embedding_source',source_gate)
+        entries.pop('lib/x86_64/libeliza_bun.so')
+        model=b'synthetic embedding model, not qualified device evidence'
+        old=verifier.LOCAL_EMBEDDING_MODEL
+        verifier.LOCAL_EMBEDDING_MODEL={**old,'sha256':sha(model)}
+        self.addCleanup(setattr,verifier,'LOCAL_EMBEDDING_MODEL',old)
+        entries[old['path']]=model
+        libraries=[]
+        for name in ['libelizainference.so','libelizavoicejni.so','libc++_shared.so']:
+            data=('synthetic '+name).encode();entries['lib/arm64-v8a/'+name]=data
+            self.write('android/app/src/main/jniLibs/arm64-v8a/'+name,data)
+            libraries.append({'name':name,'sha256':sha(data)})
+        record={'abi':'arm64-v8a','jniIdentityRelocated':True,'model':{'sha256':sha(model),'dimensions':384},'libraries':libraries}
+        self.write('android/embedding-host/qualified-host.json',json.dumps(record).encode())
+        self.record=record
+        entries['assets/agent/alpha-runtime-profile.json']=json.dumps({'version':1,'runtimeProfile':'cloud','omittedLocalModels':[],'localEmbeddings':True}).encode()
+        provenance=json.loads(entries['assets/agent/android-agent-runtime-provenance.json'])
+        provenance['bun']={'target':'android','architectures':['arm64-v8a']}
+        provenance['files']=[row for row in provenance['files'] if not row['path'].startswith('lib/x86_64/')]
+        provenance['files'].append({'path':old['path'],'sha256':sha(model),'size_bytes':len(model)})
+        entries['assets/agent/android-agent-runtime-provenance.json']=json.dumps(provenance).encode()
+        for name,data in entries.items():
+            if name.startswith('assets/'):self.write('android/app/src/main/'+name,data)
+        return entries
+
+    def test_explicit_capability_accepts_exact_model_and_three_libraries(self):
+        entries=self.local_entries();result=verifier.verify(self.package(entries),runtime_profile='cloud',local_embeddings=True)
+        self.assertEqual(result['runtime'],'PACKAGED');self.assertFalse(result['runtimeExecution'])
+
+    def test_capability_cannot_be_assumed_from_assets(self):
+        with self.assertRaisesRegex(ValueError,'profile mismatch'):
+            verifier.verify(self.package(self.local_entries()),runtime_profile='cloud')
+
+    def test_missing_library_rejected(self):
+        entries=self.local_entries();entries.pop('lib/arm64-v8a/libelizavoicejni.so')
+        with self.assertRaises(KeyError):verifier.verify(self.package(entries),runtime_profile='cloud',local_embeddings=True)
+
+    def test_wrong_model_rejected(self):
+        entries=self.local_entries();entries[verifier.LOCAL_EMBEDDING_MODEL['path']]=b'wrong'
+        with self.assertRaises(ValueError):verifier.verify(self.package(entries),runtime_profile='cloud',local_embeddings=True)
+
+    def test_stale_native_qualification_rejected(self):
+        entries=self.local_entries();self.record['requalification']={'required':True};self.write('android/embedding-host/qualified-host.json',json.dumps(self.record).encode())
+        with self.assertRaisesRegex(ValueError,'current qualification'):verifier.verify(self.package(entries),runtime_profile='cloud',local_embeddings=True)
+
+    def test_speech_or_extra_model_rejected(self):
+        entries=self.local_entries()
+        for name in ['assets/paradee-voice/voice.gguf','assets/agent/models/chat.gguf','lib/arm64-v8a/libparadeevoicejni.so']:
+            with self.subTest(name=name),self.assertRaisesRegex(ValueError,'unadmitted local inference'):
+                verifier.verify(self.package({**entries,name:b'extra'}),runtime_profile='cloud',local_embeddings=True)
+
+    def test_model_free_cloud_rejected_when_local_capability_requested(self):
+        with self.assertRaisesRegex(ValueError,'profile mismatch'):verifier.verify(self.package(self.cloud_entries()),runtime_profile='cloud',local_embeddings=True)
+
+    def test_production_bge_pin_unchanged(self):
+        self.assertEqual(verifier.LOCAL_EMBEDDING_MODEL['sha256'],'f0b2fef971e8366438bfd2d9aefea1b0115919389448806d290237f638bae999')
+
+    def test_canonical_native_source_failure_refuses_matching_payload(self):
+        entries=self.local_entries()
+        def rejected(root):
+            raise ValueError('Local embedding source qualification failed')
+        verifier.verify_local_embedding_source=rejected
+        with self.assertRaisesRegex(ValueError,'source qualification failed'):
+            verifier.verify(self.package(entries),runtime_profile='cloud',local_embeddings=True)
+
+    def test_missing_canonical_source_checker_refuses_matching_payload(self):
+        entries=self.local_entries()
+        # Restore the actual subprocess gate: the fixture has no qualified checker/source.
+        import importlib.util
+        spec=importlib.util.spec_from_file_location('real_verifier',Path(__file__).resolve().parents[1]/'scripts/verify-packaged-runtime.py')
+        real=importlib.util.module_from_spec(spec);spec.loader.exec_module(real)
+        verifier.verify_local_embedding_source=real.verify_local_embedding_source
+        with self.assertRaises(FileNotFoundError):
+            verifier.verify(self.package(entries),runtime_profile='cloud',local_embeddings=True)
+
+
 if __name__ == '__main__':
     unittest.main()

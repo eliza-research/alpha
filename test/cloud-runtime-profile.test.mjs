@@ -118,3 +118,22 @@ test('native Android Cloud admission uses its explicit target pin before any leg
   f.provenance.bun.target='android';f.provenance.bun.architectures=['riscv64'];f.save();assert.throws(()=>verifyCloudResident(f.root,f.source),/Invalid Cloud Bun ABI admission/);
  } finally {fs.rmSync(f.root,{recursive:true,force:true});}
 });
+
+
+test('Cloud embedding capability refuses a missing native qualification',()=>{
+ const f=databaseAdmissionFixture({bunTarget:'android'});
+ try{
+  fs.writeFileSync(path.join(f.agent,'alpha-runtime-profile.json'),JSON.stringify({version:1,runtimeProfile:'cloud',omittedLocalModels:[],localEmbeddings:true}));
+  assert.throws(()=>verifyCloudResident(f.root,f.source,{localEmbeddings:true}),/qualified-host\.json/);
+ }finally{fs.rmSync(f.root,{recursive:true,force:true});}
+});
+
+test('Cloud embedding capability retains the native requalification fence',()=>{
+ const f=databaseAdmissionFixture({bunTarget:'android'});
+ try{
+  fs.writeFileSync(path.join(f.agent,'alpha-runtime-profile.json'),JSON.stringify({version:1,runtimeProfile:'cloud',omittedLocalModels:[],localEmbeddings:true}));
+  const dir=path.join(f.root,'android/embedding-host');fs.mkdirSync(dir,{recursive:true});
+  fs.writeFileSync(path.join(dir,'qualified-host.json'),JSON.stringify({requalification:{required:true,atPin:'current',reason:'Fresh native qualification is required'}}));
+  assert.throws(()=>verifyCloudResident(f.root,f.source,{localEmbeddings:true}),/requalification required/);
+ }finally{fs.rmSync(f.root,{recursive:true,force:true});}
+});

@@ -6,7 +6,7 @@
   "reviewed_pr_head": "44c9d57ce38b3b29f5b104a2f6efc103fdd914c3",
   "integrated_main": "06ca5d62e09e8898fc9242db5e6a70f5be374510",
   "reviewed_upstream_pin": "0d40aa6e6e1b5192311ca916515003c8a4473c0c",
-  "upstream_pin": "c42c779a789667629b2ce9adb8dbf153c63108b7",
+  "upstream_pin": "77ef61e737d4d848b64e901145ed6e7f38c42705",
   "ledger_refresh": {
     "date": "2026-10-10",
     "branch": "claude/r6-ledger",
@@ -1685,5 +1685,6 @@
   "source_binding_5113e59025": "Current source pin 5113e59025664fc39a6542338d076b7f49ead4d7 includes the reviewed Stage1 read guidance and voice response brevity, retaining Calendar and news ACK fixes. Exact source delta leaves dependency/native/build inputs unchanged; see docs/evidence/sdk-5113e59025-dev-input-reuse-20261102.json. Live prompt and Android acceptance remain separate and pending. ",
   "source_binding_1cb0f104e2": "Current source pin 1cb0f104e22d9001a4b8da1b8777a1d88f28b977 includes the reviewed acknowledgment-authoring alignment and stronger short spoken-response guidance. Exact source delta leaves dependency/native/build inputs unchanged; see docs/evidence/sdk-1cb0f104e2-dev-input-reuse-20261102.json. Live prompt and Android acceptance remain separate and pending. ",
   "source_binding_ac5d57f8ec": "Current source pin ac5d57f8ec6eb95b3efae6f2e4c20a1ffae3249c includes the reviewed news qualifier, Calendar discovery diagnostics, and final voice-policy placement; bounded Calendar lookup retained. Exact source delta leaves dependency/native/build inputs unchanged; see docs/evidence/sdk-ac5d57f8ec-dev-input-reuse-20261102.json. Live prompt and Android acceptance remain separate and pending. ",
-  "source_binding_c42c779a78": "Current source pin c42c779a789667629b2ce9adb8dbf153c63108b7 includes the reviewed final speech generation-field policy and bounded acknowledgment grammar correction. Exact source delta leaves dependency/native/build inputs unchanged; see docs/evidence/sdk-c42c779a78-dev-input-reuse-20261102.json. Live prompt and Android acceptance remain separate and pending. "
+  "source_binding_c42c779a78": "Current source pin c42c779a789667629b2ce9adb8dbf153c63108b7 includes the reviewed final speech generation-field policy and bounded acknowledgment grammar correction. Exact source delta leaves dependency/native/build inputs unchanged; see docs/evidence/sdk-c42c779a78-dev-input-reuse-20261102.json. Live prompt and Android acceptance remain separate and pending. ",
+  "source_binding_77ef61e737": "Current source pin 77ef61e737d4d848b64e901145ed6e7f38c42705 includes the reviewed Android Direct-provider embedding policy; local BGE capability still requires qualified packaged assets. Exact source delta leaves dependency/native/build inputs unchanged; see docs/evidence/sdk-77ef61e737-dev-input-reuse-20261102.json. Live prompt and Android acceptance remain separate and pending. "
 }

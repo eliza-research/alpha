@@ -152,6 +152,10 @@ export async function main(argv, { root = process.cwd(), env = process.env, log 
   let targets = [];
   const artifacts = path.join(root, "artifacts");
   const build = !options.apk && fs.existsSync(path.join(artifacts, "build-config.json")) ? JSON.parse(fs.readFileSync(path.join(artifacts, "build-config.json"), "utf8")) : {};
+  if (build.localEmbeddings === true) {
+    const {verifyEmbeddingHost}=await import('./stage-embedding-host.mjs');
+    verifyEmbeddingHost(root);
+  }
   if (build.testMocks === true) problems.push("artifacts/build-config.json records a test-mocks build, which is never distributable");
   try { targets = signingTargets({ artifacts, apk: options.apk && path.resolve(root, options.apk), out: options.out && path.resolve(root, options.out) }); }
   catch (problem) { problems.push(problem.message); }
@@ -199,7 +203,7 @@ export async function main(argv, { root = process.cwd(), env = process.env, log 
   }
   const runner = run ?? ((command, args) => execFileSync(command, args, { cwd: root, stdio: "inherit" }));
   const { sbomArgs } = await import("./build-android.mjs");
-  runner(process.execPath, ["scripts/verify-apks.mjs", ...(build.runtimeProfile === "cloud" ? ["--runtime-profile=cloud"] : [])]);
+  runner(process.execPath, ["scripts/verify-apks.mjs", ...(build.runtimeProfile === "cloud" ? ["--runtime-profile=cloud"] : []), ...(build.localEmbeddings ? ["--local-embeddings"] : [])]);
   runner(process.execPath, ["scripts/generate-sbom.mjs", ...sbomArgs("artifacts", root)]);
   log("apk-manifest.json and the SBOM now describe the signed releases. A signed release is distributable only when verify-apks says so; it is not installation, image or device evidence.");
   return 0;

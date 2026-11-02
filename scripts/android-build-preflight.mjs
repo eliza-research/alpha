@@ -64,10 +64,10 @@ export function voiceHostProblems(root, {allowUnpackagedRuntime = false, voiceHo
  * Prepared runtime inputs. `preparedSource` is the resolved prepared runtime
  * directory (sourceDirectory()). Distribution builds also need the staged runtime.
  */
-export function preparedRuntimeProblems(root, preparedSource, {allowUnpackagedRuntime = false, testMocks = false, embeddingHost = verifyEmbeddingHost, runtimeProfile = "native"} = {}) {
+export function preparedRuntimeProblems(root, preparedSource, {allowUnpackagedRuntime = false, testMocks = false, embeddingHost = verifyEmbeddingHost, runtimeProfile = "native", localEmbeddings = false} = {}) {
   if(runtimeProfile === "cloud") {
     if(allowUnpackagedRuntime || testMocks) return ["Cloud profile requires a genuine packaged resident and test mocks off"];
-    try { execFileSync(process.execPath,[path.join(root,'scripts/runtime-profile.mjs'),'--verify-cloud'],{cwd:root,env:{...process.env,ALPHA_LOCAL_AGENT_SOURCE_DIR:preparedSource},stdio:['ignore','pipe','pipe']}); return []; } catch(error) { return [error.message]; }
+    try { execFileSync(process.execPath,[path.join(root,'scripts/runtime-profile.mjs'),'--verify-cloud',...(localEmbeddings?['--local-embeddings']:[])],{cwd:root,env:{...process.env,ALPHA_LOCAL_AGENT_SOURCE_DIR:preparedSource},stdio:['ignore','pipe','pipe']}); return []; } catch(error) { return [error.message]; }
   }
   const stamp = path.join(preparedSource, '.alpha-runtime-source.json');
   if (!fs.existsSync(stamp))
@@ -183,7 +183,7 @@ export function formatReport(rows) {
 async function main() {
   const args = process.argv.slice(2);
   for (const arg of args)
-    if (!['--before-prepare', '--allow-unpackaged-runtime', '--test-mocks', '--report', '--json', '--runtime-profile=cloud'].includes(arg)) throw new Error(`Unknown option ${arg}`);
+    if (!['--before-prepare', '--allow-unpackaged-runtime', '--test-mocks', '--report', '--json', '--runtime-profile=cloud','--local-embeddings'].includes(arg)) throw new Error(`Unknown option ${arg}`);
   const root = path.resolve(import.meta.dirname, '..');
   if (args.includes('--report')) {
     // The source guard imports the pinned checkout; without it the prepared path is unknown.
@@ -194,13 +194,14 @@ async function main() {
     return;
   }
   const runtimeProfile=args.includes('--runtime-profile=cloud')?'cloud':'native';
+  if(args.includes('--local-embeddings')&&runtimeProfile!=='cloud')throw Error('--local-embeddings requires the Cloud profile');
   let problems = checkoutProblems(root,{allowUnpackagedRuntime:args.includes('--allow-unpackaged-runtime'),runtimeProfile});
   if (!problems.length && !args.includes('--before-prepare')) {
     // The source guard imports the pinned checkout, so load it only once that is verified.
     const {sourceDirectory} = await import('./local-agent-source.mjs');
     problems = [...preparedRuntimeProblems(root, sourceDirectory(root), {
       allowUnpackagedRuntime: args.includes('--allow-unpackaged-runtime'),
-      testMocks: args.includes('--test-mocks'),runtimeProfile,
+      testMocks: args.includes('--test-mocks'),runtimeProfile,localEmbeddings:args.includes('--local-embeddings'),
     })];
   }
   if (problems.length) {

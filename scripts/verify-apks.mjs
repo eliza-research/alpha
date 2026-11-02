@@ -46,11 +46,12 @@ import { readVoiceHost, VOICE_BUNDLE_ASSETS, VOICE_BUNDLE_FORMAT } from "./voice
 import { apkPermissions, checkListenerPermissions, checkListenerSpeechBundle, listenerPackage } from "./aosp-listener.mjs";
 import { listenerApkRow, listenerManifestSection, readListenerRecord } from "./listener-qualification.mjs";
 
+import {verifyEmbeddingHost} from './stage-embedding-host.mjs';
 import { preparePatchedNative, nativePatchReceipt, verifyNativePatchReceipt } from './prepare-patched-native.mjs';
 const USAGE = "Usage: node scripts/verify-apks.mjs [--test-mocks] [--allow-unpackaged-runtime] [--signer-api-level=N]";
 const args = process.argv.slice(2);
 for (const arg of args)
-  if (!["--test-mocks", "--allow-unpackaged-runtime", "--runtime-profile=cloud"].includes(arg) && !/^--signer-api-level=[1-9][0-9]*$/.test(arg)) throw new Error(`Unknown option ${arg}. ${USAGE}`);
+  if (!["--test-mocks", "--allow-unpackaged-runtime", "--runtime-profile=cloud", "--local-embeddings"].includes(arg) && !/^--signer-api-level=[1-9][0-9]*$/.test(arg)) throw new Error(`Unknown option ${arg}. ${USAGE}`);
 // Artifact signing admission is explicitly scoped to this Android API. Device
 // install/update independently verify the certificate applicable to the actual device.
 const signerApiArgs = args.filter(arg => arg.startsWith("--signer-api-level="));
@@ -59,6 +60,8 @@ const signerApiLevel = signerApiArgs.length ? Number(signerApiArgs[0].split("=")
 if (signerApiLevel !== undefined && !Number.isSafeInteger(signerApiLevel)) throw new Error("Invalid signer API level");
 const testMocks = args.includes("--test-mocks");
 const runtimeProfile=args.includes("--runtime-profile=cloud")?"cloud":"native";
+const localEmbeddings=args.includes("--local-embeddings");
+if(localEmbeddings&&runtimeProfile!=="cloud")throw Error("--local-embeddings requires the Cloud profile");
 if(runtimeProfile==="cloud"&&(testMocks||args.includes("--allow-unpackaged-runtime")))throw Error("Cloud requires a genuine resident without mocks");
 const admittedNativePatches = preparePatchedNative();
 const allowUnpackaged = args.includes("--allow-unpackaged-runtime");
@@ -72,6 +75,8 @@ const callbackHost = new URL(JSON.parse(fs.readFileSync("config/cloud-deployment
 const buildRecordFile = path.join(directory, "build-config.json");
 const buildRecord = fs.existsSync(buildRecordFile) ? JSON.parse(fs.readFileSync(buildRecordFile, "utf8")) : null;
 if((buildRecord?.runtimeProfile||"native")!==runtimeProfile)throw Error("Build runtime profile differs from verification");
+if((buildRecord?.localEmbeddings===true)!==localEmbeddings)throw Error("Build local-embedding capability differs from verification");
+if(localEmbeddings)verifyEmbeddingHost(process.cwd());
 if (buildRecord && buildRecord.testMocks !== testMocks)
   throw new Error(`${buildRecordFile} records testMocks=${buildRecord.testMocks}; refusing to verify it as testMocks=${testMocks}`);
 
@@ -229,6 +234,7 @@ for (const row of release) {
 // Debug keeps the original report-only semantics; releases need the runtime.
 const runtimeArgs = [
   ...(runtimeProfile==="cloud"?["--runtime-profile=cloud"]:[]),
+  ...(localEmbeddings?["--local-embeddings"]:[]),
   ...(allowUnpackaged || testMocks ? ["--allow-unpackaged-runtime"] : []),
   ...release.flatMap(row => ["--release", row.file]),
   ...results.filter(row => row.mode === "debug").map(row => row.file),
@@ -320,6 +326,7 @@ fs.writeFileSync(
       mapsConfigured: buildRecord ? buildRecord.mapsConfigured : Boolean(process.env.VITE_MAPS_BASE_URL),
       allowUnpackagedRuntime: allowUnpackaged,
       runtimeProfile,
+      ...(localEmbeddings ? {localEmbeddings:true} : {}),
       version: { code: versionCode, name: versionName },
       signing: {
         release: release.every(row => row.signed) ? { signed: true, signerSha256: release[0].signerSha256 } : { signed: false },
