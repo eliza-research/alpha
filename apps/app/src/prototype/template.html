@@ -770,7 +770,7 @@
 <div onFocusCapture="{{calendar.captureSubviewFocus}}" style="display: flex; flex-direction: column; height: 100%; position: relative">
   <div data-alpha-subview="calendar-list" inert="{{calendar.listCovered}}" aria-hidden="{{calendar.listCovered}}" style="display:flex;flex-direction:column;flex:1;min-height:0">
   <div data-alpha-app-header="main" style="display: flex; align-items: center; min-height: 56px; height: auto; margin-top: 44px; padding: 0 8px 0 20px; gap: 2px; flex-shrink: 0">
-    <sc-if value="{{showAppBack}}"><button class="app-header-back" aria-label="Back to apps" onClick="{{backToApps}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button></sc-if>
+    <sc-if value="{{showAppBack}}"><button class="app-header-back" aria-label="Back to apps" onClick="{{backToApps}}" style="{{calendar.openingBackCss}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button></sc-if>
     <button onClick="{{calendar.toggleMonth}}" aria-label="Month view" aria-expanded="{{calendar.monthOpen}}" style="display: flex; align-items: center; gap: 6px; min-height: 48px; flex-grow: 1; min-width: 0">
       <h1 data-alpha-app-title class="serif" style="margin: 0; min-width: 0; font-size: 32px; letter-spacing: -.01em; white-space: nowrap">{{calendar.month}}</h1>
       <svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px; color: var(--mut); margin-top: 4px"><path d="{{calendar.chevron}}"></path></svg>
@@ -925,6 +925,7 @@
     </div>
   </sc-if>
 
+  <sc-if value="{{calendar.deepOpening}}"><div aria-hidden="true" style="position:absolute;inset:0;background:var(--bg);z-index:4"></div></sc-if>
   <sc-if value="{{calendar.detail}}">
     <div ref="{{calendar.detailFocus}}" data-alpha-subview="calendar-detail" inert="{{calendar.detailCovered}}" aria-hidden="{{calendar.detailCovered}}" class="enter" style="position: absolute; inset: 0; background: var(--bg); display: flex; flex-direction: column; z-index: 4">
       <div data-alpha-app-header="detail" style="display: flex; align-items: center; height: 56px; margin-top: 44px; padding: 0 8px; gap: 2px; flex-shrink: 0">
@@ -1026,7 +1027,7 @@
       <div data-alpha-app-header="detail" style="display: flex; align-items: center; height: 56px; margin-top: 44px; padding: 0 16px 0 8px; gap: 2px; flex-shrink: 0">
         <button class="ib" aria-label="Back to calendar" onClick="{{calendar.f.cancel}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button>
         <span style="flex-grow: 1"></span>
-        <button aria-label="Save event" aria-disabled="{{calendar.f.saveOff}}" onClick="{{calendar.f.save}}" style="height: 36px; padding: 0 18px; border-radius: 18px; font-weight: 600; font-size: 15px; transition: background .2s; {{calendar.f.saveCss}}">Save</button>
+        <button aria-label="Save event" aria-disabled="{{calendar.f.saveOff}}" onClick="{{calendar.f.save}}" style="padding: 0 18px; border-radius: 18px; font-weight: 600; font-size: 15px; transition: background .2s; {{calendar.f.saveCss}}">Save</button>
       </div>
       <div class="scr calendar-draft-fields" role="region" aria-label="Event details" tabindex="0" style="flex-grow: 1; overflow-y: auto; padding: 4px 0 130px; touch-action: pan-y">
         <sc-if value="{{calendar.f.recurrenceScopes}}"><div style="margin:4px 24px"><sc-for list="{{calendar.f.recurrenceScopes}}" as="scope"><button onClick="{{scope.pick}}" aria-pressed="{{scope.selected}}" style="min-height:44px;padding:10px">{{scope.label}}</button></sc-for></div></sc-if>
@@ -4001,8 +4002,7 @@
   </sc-if>
   <sc-if value="{{inlineChatRecorder}}">
     <sc-if value="{{chatRecorder.cloudDisclosure}}"><p class="alpha-voice-error" role="note">{{chatRecorder.cloudDisclosureText}}</p></sc-if>
-    <sc-if value="{{chatRecorder.errorDetail}}"><p class="alpha-voice-error">{{chatRecorder.errorDetail}}</p></sc-if>
-    <sc-if value="{{chatRecorder.problem}}"><p class="alpha-voice-error" role="alert"><sc-for list="{{chatRecorder.lines}}" as="line"><span>{{line.t}}</span></sc-for></p></sc-if>
+    <sc-if value="{{chatRecorder.voiceDetails}}"><sc-if value="{{chatRecorder.errorDetail}}"><p class="alpha-voice-error">{{chatRecorder.errorDetail}}</p></sc-if></sc-if>
       <sc-if value="{{chatRecorder.recoveryLabel}}"><button data-alpha-voice-recovery class="tap alpha-voice-recovery" onClick="{{chatRecorder.recover}}">{{chatRecorder.recoveryLabel}}</button></sc-if>
     <sc-if value="{{chatRecorder.needsPlaybackUnlock}}"><button class="tap alpha-voice-unlock" onClick="{{chatRecorder.unlockPlayback}}">Enable sound</button></sc-if>
   </sc-if>
@@ -4016,14 +4016,13 @@
       </div>
       <div class="scr" style="display:flex;flex-direction:column;flex:1;min-height:0;overflow:auto;gap:12px;touch-action:pan-y">
         <sc-if value="{{chatRecorder.live}}"><div role="img" aria-label="Recording activity" style="display:flex;align-items:center;gap:3px;min-height:40px;flex-shrink:0"><sc-for list="{{chatRecorder.levels}}" as="level"><span style="flex:1;height:{{level.h}}px;border-radius:2px;background:var(--acct)"></span></sc-for></div></sc-if>
-        <div role="status" aria-label="Voice conversation status" style="font-size:14px;line-height:1.45;color:var(--mut);overflow-wrap:anywhere"><sc-for list="{{chatRecorder.lines}}" as="line"><p style="margin:0">{{line.t}}</p></sc-for></div>
+        <div role="status" aria-label="Voice conversation status" style="font-size:14px;line-height:1.45;color:var(--mut);overflow-wrap:anywhere"><sc-for list="{{chatRecorder.statusLines}}" as="line"><p style="margin:0">{{line.t}}</p></sc-for></div>
         <sc-if value="{{chatRecorder.interimTranscript}}"><p data-alpha-voice-interim aria-label="Heard so far, not sent" style="margin:0;font-size:15px;line-height:1.45;color:var(--mut);font-style:italic;overflow-wrap:anywhere">{{chatRecorder.interimTranscript}}</p></sc-if>
         <sc-if value="{{chatRecorder.lastTranscript}}"><p aria-label="Your voice message" style="margin:0;font-size:15px;line-height:1.45;color:var(--mut);overflow-wrap:anywhere">{{chatRecorder.lastTranscript}}</p></sc-if>
         <sc-if value="{{chatRecorder.lastReply}}"><p aria-label="Alpha voice reply" style="margin:0;font-size:16px;line-height:1.5;color:var(--fg);overflow-wrap:anywhere">{{chatRecorder.lastReply}}</p></sc-if>
         <sc-if value="{{chatRecorder.review}}"><textarea aria-label="Review transcript" disabled="{{chatRecorder.transcriptDisabled}}" value="{{chatRecorder.transcript}}" onChange="{{chatRecorder.onTranscript}}" style="width:100%;flex:1;min-height:112px;box-sizing:border-box;background:var(--s2);border:0;border-radius:16px;padding:12px;color:var(--fg);font:inherit;line-height:1.45;resize:vertical"></textarea></sc-if>
         <sc-if value="{{chatRecorder.typeChoice}}"><button class="tap" onClick="{{chatRecorder.typeInstead}}" style="min-height:44px;padding:8px 12px;border-radius:20px;background:var(--s2);color:var(--fg)">Type transcript instead</button></sc-if>
       </div>
-      <sc-if value="{{chatRecorder.canInterrupt}}"><button class="tap" onClick="{{chatRecorder.interrupt}}" style="min-height:44px;padding:8px 16px;border-radius:16px;background:var(--s2);color:var(--fg)">Stop speaking</button></sc-if>
       <sc-if value="{{chatRecorder.canMute}}"><button class="tap" disabled="{{chatRecorder.muteDisabled}}" aria-pressed="{{chatRecorder.muted}}" onClick="{{chatRecorder.toggleMute}}" style="min-height:44px;padding:8px 16px;border-radius:16px;background:var(--s2);color:var(--fg)">{{chatRecorder.muteLabel}}</button></sc-if>
     <sc-if value="{{chatRecorder.needsPlaybackUnlock}}"><button class="tap" onClick="{{chatRecorder.unlockPlayback}}" style="min-height:44px;padding:8px 16px;border-radius:16px;background:var(--s2);color:var(--fg)">Enable sound</button></sc-if>
       <button class="tap" aria-label="{{chatRecorder.primaryLabel}}" disabled="{{chatRecorder.primaryDisabled}}" onClick="{{chatRecorder.stop}}" style="display:flex;align-items:center;justify-content:center;gap:10px;min-height:56px;flex-shrink:0;padding:10px 16px;border-radius:28px;background:var(--acc);color:var(--alpha-white);font:inherit;font-weight:600"><svg class="i" viewBox="0 0 24 24" style="width:24px;height:24px;flex-shrink:0"><path d="{{chatRecorder.primaryIcon}}"></path></svg><span>{{chatRecorder.primaryLabel}}</span></button>
@@ -4159,7 +4158,7 @@
   </sc-if>
   <sc-if value="{{inlineChatRecorder}}">
     <section data-alpha-chat-recorder data-voice-state="{{chatRecorder.state}}" class="alpha-chat-composer alpha-voice-composer" role="region" aria-label="Voice conversation">
-      <div class="alpha-voice-input"><div role="status" aria-label="Voice conversation status" class="{{chatRecorder.statusClass}}"><sc-for list="{{chatRecorder.lines}}" as="line"><span>{{line.t}}</span></sc-for></div><sc-if value="{{chatRecorder.activity}}"><div class="alpha-voice-waveform" role="img" aria-label="Voice activity">{{chatRecorder.activity}}</div></sc-if></div>
+      <div class="alpha-voice-input"><div role="status" aria-label="Voice conversation status" class="{{chatRecorder.statusClass}}"><sc-for list="{{chatRecorder.statusLines}}" as="line"><span>{{line.t}}</span></sc-for></div><sc-if value="{{chatRecorder.activity}}"><div class="alpha-voice-waveform" role="img" aria-label="Voice activity">{{chatRecorder.activity}}</div></sc-if></div>
       <sc-if value="{{chatRecorder.canMute}}"><button class="ib" aria-label="{{chatRecorder.muteLabel}}" disabled="{{chatRecorder.muteDisabled}}" aria-pressed="{{chatRecorder.muted}}" onClick="{{chatRecorder.toggleMute}}"><span aria-hidden="true" class="mail-toolbar-icon" style="mask-image:url('{{chatRecorder.muteAsset}}');-webkit-mask-image:url('{{chatRecorder.muteAsset}}')"></span></button></sc-if>
       <button class="alpha-voice-primary" aria-label="{{chatRecorder.primaryLabel}}" disabled="{{chatRecorder.primaryDisabled}}" onClick="{{chatRecorder.stop}}"><svg class="i" viewBox="0 0 24 24"><path d="{{chatRecorder.primaryIcon}}"></path></svg></button>
     </section>

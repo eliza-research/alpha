@@ -7,6 +7,8 @@ import {installNativeNavigationFixture} from './native-navigation-protocol';
  * Call `await installResidentAgentPlugin(page)` before the spec's own fixture script, then call
  * `window.createResidentAgentPlugin(...)` from it. The model covers what the real
  * AlphaLocalAgentPlugin always exposes besides the spec's own request routing:
+ * - optional, explicit read-only providerStatus capability for fixtures that start the resident;
+ *   provider-specific fixtures keep their own responses unless they opt in;
  * - Capacitor's Plugin base addListener/removeListener (native `callback` methods, so the
  *   fixture's Capacitor global must use the returned `nativeCallback`);
  * - subscribeViewEvents/unsubscribeViewEvents for the renderer's alphaViewEvent feed;
@@ -21,7 +23,7 @@ export async function installResidentAgentPlugin(page: Page) {
 
 function defineResidentAgentPlugin() {
   // `unexpected` lets a spec collect contract violations in the list it already asserts empty.
-  (window as any).createResidentAgentPlugin = (options: {owner: () => string; agentId: string; unexpected?: string[]}) => {
+  (window as any).createResidentAgentPlugin = (options: {owner: () => string; agentId: string; unexpected?: string[]; providerStatus?: {provider: 'elizacloud'|'cerebras'; configured: boolean; selected?: boolean; model?: string; voiceConfigured?: boolean}}) => {
     const listeners = new Map<string, {eventName: string; callback: (value: unknown) => void}>();
     const state = {subscriptions: [] as string[], unsubscribed: [] as string[], unexpected: options.unexpected ?? [] as string[]};
     const protocol = (window as any).createNativeNavigationFixture(options.owner, options.agentId, state);
@@ -31,7 +33,7 @@ function defineResidentAgentPlugin() {
       /** Agent header: the spec's own promise methods plus the plugin's listener and view-event methods. */
       methods(names: string[]) {
         return [
-          ...[...names, 'subscribeViewEvents', 'unsubscribeViewEvents'].map(name => ({name, rtype: 'promise'})),
+          ...[...names, 'subscribeViewEvents', 'unsubscribeViewEvents', ...(options.providerStatus && !names.includes('providerStatus') ? ['providerStatus'] : [])].map(name => ({name, rtype: 'promise'})),
           {name: 'addListener', rtype: 'callback'},
           {name: 'removeListener', rtype: 'callback'},
         ];
@@ -49,6 +51,9 @@ function defineResidentAgentPlugin() {
       },
       /** Answers an Agent promise call the model owns, or returns undefined for the spec to route. */
       answer(method: string, input: any): unknown {
+        // Explicit capability only: provider-setting specs without this option keep
+        // their own provider response and malformed/refusal controls.
+        if (method === 'providerStatus' && options.providerStatus) return {...options.providerStatus};
         if (method === 'subscribeViewEvents') {
           if (typeof input?.subscriptionId !== 'string' || input?.ownerId !== options.owner() || typeof input?.clientId !== 'string') {
             state.unexpected.push('Agent.subscribeViewEvents');

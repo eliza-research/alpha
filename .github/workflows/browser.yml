@@ -53,6 +53,25 @@ jobs:
           echo "ALPHA_BUN=$ALPHA_BUN" >> "$GITHUB_ENV"
           echo "ALPHA_CLOUD_COLLECTOR_SOURCE=$prepared_source" >> "$GITHUB_ENV"
       - run: npm run verify
+      # Reuses the product dependencies and client projection prepared by npm run verify.
+      - name: Build the connected browser proof renderer
+        env:
+          VITE_ALPHA_CLOUD_RESIDENT: '1'
+          VITE_ALPHA_CLOUD_ENVIRONMENT: staging
+          VITE_LOCAL_AGENT: '1'
+          VITE_ELIZA_RUNTIME_PROFILE: cloud
+          VITE_ELIZA_DEV_ALLOW_TEST_MOCKS: ''
+          ELIZA_DEV_ALLOW_TEST_MOCKS: ''
+        run: |
+          npx vite build --outDir ../../test-results/browser-proof-renderer
+          node scripts/audit-production-bundle.mjs test-results/browser-proof-renderer
+          node scripts/ci/export-browser-proof.mjs renderer
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: browser-proof-renderer-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: test-results/browser-proof/renderer/
+          retention-days: 3
+          if-no-files-found: error
       # Recorded develop compare; warns (never networks) when develop cannot reach the pin.
       - name: Report upstream develop reachability
         run: node scripts/verify-upstream.mjs --reachability-only

@@ -23,6 +23,7 @@ import * as grants from '../apps/app/src/runtime/gmail-grants.ts';
 import * as googleAccounts from '../apps/app/src/runtime/google-accounts.ts';
 import { presentHomeInboxStatus } from '../apps/app/src/prototype/home-cards.ts';
 import { formatTime } from '../apps/app/src/prototype/locale-time.ts';
+import { whenLabel } from '../apps/app/src/prototype/home-cards.ts';
 import {createMailReviewController} from '../.eliza/client-features/plugins/plugin-inbox/src/mailbox/review-controller.ts';
 import {createMailDraftsController} from '../.eliza/client-features/plugins/plugin-inbox/src/mailbox/drafts-controller.ts';
 import * as mailboxList from '../.eliza/client-features/plugins/plugin-inbox/src/mailbox/mailbox-list.ts';
@@ -176,7 +177,9 @@ shell.componentWillUnmount();
 console.log('PASS: Inbox auto-load, Refresh, provider paging, Sent folder, unread badge, account/query fences, classified errors with explicit Retry, shared compose prefill, compact toolbar and immediate pagination feedback. Provider fixture only.');
 
 // A new adapter instance represents a reload: restore only the current owner's retained inbox.
-const cachedAt=Date.now()-30000,cachedReadLabel=formatTime(new Date(cachedAt));
+// Deliberately cross local midnight: the retained timestamp is unchanged while its label includes the prior date.
+const restoreNow=new Date(2026,10,2,0,0,15).getTime(),cachedAt=restoreNow-30000,cachedReadLabel=whenLabel(cachedAt,restoreNow);
+assert.notEqual(cachedReadLabel,formatTime(new Date(cachedAt)),'prior-day label includes its date');
 const retainedMailbox={accounts:[{connectionId:'grant-a',label:'Fixture account',connected:true,grantedCapabilities:['google.gmail.triage']}],selected:'grant-a',spamTrashSearch:false,lists:[{key:'old-session-key',at:cachedAt,firstPageRevision:null,messages:[mail('retained-unread',{unread:true})],query:'in:inbox',cursor:null,revision:'old-revision',cursors:[],newerMail:false,status:'Retained inbox'}],bodies:[]};
 sandbox.serviceReadCache=async()=>({get:async key=>key==='gmail:mailbox'?{value:structuredClone(retainedMailbox)}:null,put:async()=>{},clear:async()=>{}});
 // Without a nameable owner (no organization) the saved native selection and cursor are never withdrawn.
@@ -185,11 +188,14 @@ const priorSnapshot=controller.getSnapshot;controller.getSnapshot=()=>({...prior
 class ReloadShell {constructor(){this.st={q:null,compose:null};}renderVals(){return {};}componentDidMount(){}componentWillUnmount(){}vset(_,patch){Object.assign(this.st,patch);}}
 const reloadViews={inbox:{state:{}}};sandbox.installInboxCloudAdapter(ReloadShell,reloadViews);const reloaded=new ReloadShell();reloaded.componentDidMount();
 const reloadApi={...api,get:()=>reloaded.st,set:patch=>reloaded.vset('inbox',patch)};const searchesBeforeRestore=searches.length;
+const priorRestoreClock=Date.now;Date.now=()=>restoreNow;
 reloadViews.inbox.render(reloaded.st,reloadApi);await tick();
 assert.equal(reloadViews.inbox.render(reloaded.st,reloadApi).rows.length,1,'cached Inbox renders after reload');
 assert.equal(reloaded.renderVals().homeInboxCount,'1 unread','Home rebuilds the same cached unread count after reload');
 assert.deepEqual(local(reloaded.renderVals().homeInboxRows),[{subject:'Fixture retained-unread',from:'Sender'}]);
-assert.equal(reloaded.renderVals().homeInboxStatus,`Fixture account · Updated ${cachedReadLabel}`,'restore keeps the original read time');
+assert.equal(reloaded.renderVals().homeInboxStatus,`Fixture account · Updated ${cachedReadLabel}`,'restore formats the original read time across midnight');
+assert.equal(sandbox.inboxAttention().updatedAt,new Date(cachedAt).toISOString(),'restore preserves the exact original read timestamp');
+Date.now=priorRestoreClock;
 assert.equal(searches.length,searchesBeforeRestore,'fresh retained snapshot needs no provider read to populate Home');
 assert.equal(backgroundSelections.length,selectionsBeforeReload,'cold-start hydration neither withdraws nor reconfigures native background checks');
 reloaded.componentWillUnmount();

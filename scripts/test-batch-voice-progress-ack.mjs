@@ -30,6 +30,10 @@ for(const patch of [{turnId:'foreign'},{conversationId:'foreign'},{ownerId:'fore
 test('microphone must already be retired before cue; no forced stop/resume',async()=>{
  const f=fixture();f.retired=false;const a=f.make();a.progress(cue());await tick();assert.equal(f.calls.length,0);f.retired=true;a.progress(cue());await tick();await a.finish();assert.equal(f.calls.length,1);
 });
+test('a live path passes no retirement claim (null): its cue plays with the capture open, still once and still preemptable',async()=>{
+ const f=fixture();f.retired=false;f.input.captureRetired=null;const a=f.make();a.progress(cue());await tick();a.progress(cue());await a.finish();assert.equal(f.calls.length,1);assert.equal(f.calls[0].text,'Checking the calendar');
+ const g=fixture();g.input.captureRetired=null;const b=g.make();b.progress(cue());b.replyStarted();await b.finish();assert.equal(g.calls.length,0);
+});
 test('early final/token preempts cue queued in same turn',async()=>{
  const f=fixture(),a=f.make();a.progress(cue());a.replyStarted();await a.finish();assert.equal(f.calls.length,0);a.progress(cue());await tick();assert.equal(f.calls.length,0);
 });

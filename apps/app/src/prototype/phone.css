@@ -130,19 +130,18 @@ html:not(.standalone-app) [data-alpha-layer="home"][data-alpha-home-fits="true"]
 .note-source-dialog { width:min(480px,calc(100vw - 24px),calc(var(--phone-width,100vw) - 24px)); max-height:min(calc(100dvh - 24px),calc(var(--phone-height,100dvh) - 24px)); box-sizing:border-box; padding:20px; border:0; border-radius:20px; background:var(--source-bg,Canvas); color:var(--source-fg,CanvasText); font:16px 'Public Sans',system-ui,sans-serif; font-size:calc(16px * var(--browser-text-scale,1)); overflow:hidden; }
 .note-source-dialog[open] { display:flex; flex-direction:column; gap:12px; }
 .note-source-dialog h2 { margin:0 0 12px; font-family:Denton,Fraunces,Georgia,serif; font-weight:300; font-size:1.875em; overflow-wrap:anywhere; }
-.note-source-content { min-height:0; overflow:auto; overflow-wrap:anywhere; }
+.note-source-content { flex:1 1 auto; min-height:0; min-width:0; overflow:auto; overflow-wrap:anywhere; overscroll-behavior:contain; }
 .note-source-dialog footer { display:flex; flex-wrap:wrap; gap:8px; flex-shrink:0; }
 .note-source-dialog button { min-height:44px; padding:8px 12px; border:0; border-radius:24px; background:color-mix(in srgb,var(--source-fg,CanvasText) 7%,var(--source-bg,Canvas)); color:var(--source-fg,CanvasText); font:inherit; }
 
 .note-source-dialog footer button { flex:1 1 180px; min-width:0; overflow-wrap:normal; }
 .note-source-content:focus-visible { outline:2px solid currentColor; outline-offset:-2px; }
-/* At large text the heading and the wrapped actions alone can fill the dialog, leaving the details
- * region no height (and its focus ring nowhere to show) and pushing the last actions past the
- * dialog's edge. There the whole dialog scrolls instead: every action stays reachable, and the
- * details region takes the height of its text so its focus ring is drawn around it. */
-.alpha-large-text .note-source-dialog { overflow:auto; overscroll-behavior:contain; }
-.alpha-large-text .note-source-content { flex-shrink:0; overflow:visible; }
-.alpha-large-text .note-source-content:focus-visible { outline-offset:2px; }
+/* Document actions scroll with their details; Done remains outside the scroll area. */
+.note-source-document-dialog .note-source-content { min-height:44px; }
+.note-source-options { display:flex; flex-wrap:wrap; gap:8px; }
+.note-source-options button { flex:1 1 180px; min-width:min-content; max-width:100%; overflow-wrap:normal; word-break:normal; }
+/* Keep review actions outside the scrolling details at every text size. The body can shrink
+ * within the viewport while retaining its own keyboard-scrollable focus region. */
 .alpha-large-text .note-source-dialog footer button { overflow-wrap:anywhere; }
 
 .note-source-dialog button:disabled { opacity:.5; cursor:default; }
@@ -175,7 +174,8 @@ html:not(.standalone-app) [data-alpha-layer="home"][data-alpha-home-fits="true"]
 /* Calendar drafts retain fixed navigation while every field can scroll above the assistant bar. */
 .calendar-draft-fields { min-height:0; overflow-x:hidden; overscroll-behavior:contain; scroll-padding-block:16px 130px; }
 .calendar-draft-fields:focus-visible { outline:2px solid var(--acct); outline-offset:-2px; }
-.calendar-draft button { min-height:52px; min-width:52px; flex-shrink:0; }
+/* Inline chip dimensions must not reduce targets below 44 visible pixels when the phone scales. */
+.calendar-draft button { min-height:max(52px,calc(44px / var(--phone-scale,1)))!important; min-width:max(52px,calc(44px / var(--phone-scale,1))); flex-shrink:0; }
 .calendar-draft-fields button { max-width:100%; overflow-wrap:anywhere; }
 .calendar-draft-fields textarea { scroll-margin-block:16px 130px; }
 

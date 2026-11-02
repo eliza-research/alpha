@@ -9,7 +9,7 @@ const begin=between('  async beginSignIn(','  /** Leaves the sign-in screen');
 // cloud-sign-in.ts imports the shared native sign-in contract; Node loads the TypeScript directly.
 const contract=await import('../apps/app/src/runtime/cloud-sign-in.ts');
 const factory=transformSync(`(()=>{
- let epoch=0,operation=null,signInReadinessOwner=null,inAppGoogle=false,inAppPhone=false,inAppEmail=true;
+ let epoch=0,operation=null,signInReadinessOwner=null,googleSignInGeneration=0,inAppGoogle=false,inAppPhone=false,inAppEmail=true;
  let state={purpose:'agent',open:true,signIn:null,cloudAccount:null};let timeout,resolve,reject,count=0,signal,probeController;
  const cloudSignIn={status(){count++;return new Promise((yes,no)=>{resolve=yes;reject=no;});}};
  const SIGN_IN_READINESS_WAIT_MS=6000,setTimeout=fn=>(timeout=fn,1),clearTimeout=()=>{};

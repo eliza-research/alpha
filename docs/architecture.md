@@ -313,10 +313,10 @@ There is no automatic Eliza Cloud website sign-in fallback.
     and the email code route exists (an empty-object POST is refused as invalid, not as unknown; no
     email is sent);
   - Alpha selects the shared client's browser Google mode for AOSP. Google is offered only when
-    Steward offers it, its authorize endpoint admits the exact callback, an external Custom Tabs
-    browser is installed, and Android and the callback host's asset links verify this package and
-    signing certificate. Google Play services are not required. The shared native mode remains
-    available to other hosts and uses `googleNative`.
+    Steward offers it, its authorize endpoint admits the exact callback, an external HTTPS browser
+    is installed (a Custom Tabs browser is preferred), and Android and the callback host's asset
+    links verify this package and signing certificate. Google Play services are not required. The
+    shared native mode remains available to other hosts and uses `googleNative`.
   A refusal from Cloud during an in-app sign-in clears the cache so the next
   attempt re-checks. The renderer waits at most 6 seconds, then offers email alone. A late result cannot
   change the already opened attempt.
@@ -330,8 +330,9 @@ There is no automatic Eliza Cloud website sign-in fallback.
     phone, or longer when Cloud asks.
     A second verification uses `/steward/auth/mfa/{totp,sms}/complete`. SMS codes use the
     tenant-bound `/steward/auth/sms/{send,verify}` (`CloudSmsCode`) under the same send cooldown.
-  - Google: an external Custom Tab opens Steward's Google authorize endpoint with fresh state and
-    S256 PKCE, `prompt=select_account` and `mfa=exchange`. Google credentials stay in that browser;
+  - Google: an external browser (a Custom Tab when available, otherwise the default browser)
+    opens Steward's Google authorize endpoint with fresh state and S256 PKCE,
+    `prompt=select_account` and `mfa=exchange`. Google credentials stay in that browser;
     Alpha's privileged WebView never hosts Google. The native client keeps the verifier in the
     encrypted, single-use, ten-minute pending record (`cloud-signin:v1:pending`, a native-only slot)
     and returns through the verified App Link `https://eliza.app/alphaphone/auth/callback`.

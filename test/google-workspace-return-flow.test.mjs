@@ -26,10 +26,16 @@ public class WorkspaceFlowTest {
   public synchronized boolean comparePending(String expected,String next){if(rejectCAS||!Objects.equals(expected,pending))return false;pending=next;changes++;Runnable hook=afterCAS;afterCAS=null;if(hook!=null)hook.run();return true;}
  }
  static GoogleWorkspaceReturn.Binding owner(Memory m){return GoogleWorkspaceReturnFlow.binding("production",USER,ORG,"credential",m.credential);}
- static String callback(String nonce,String result){return GoogleWorkspaceReturn.CALLBACK+"#state="+nonce+"&result="+result+(result.equals("connected")?"&connectionId=grant_1":"");}
+ static final String HOST="eliza.app",CALLBACK="https://eliza.app/alphaphone/gmail/callback";
+ static String callback(String nonce,String result){return CALLBACK+"#state="+nonce+"&result="+result+(result.equals("connected")?"&connectionId=grant_1":"");}
  public static void main(String[]args)throws Exception{
-  Memory m=new Memory();GoogleWorkspaceReturn.Binding binding=owner(m);GoogleWorkspaceReturnFlow flow=new GoogleWorkspaceReturnFlow(m);
-  check(flow.prepare(binding,A,1000).equals(GoogleWorkspaceReturn.CALLBACK+"?state="+A));
+  Memory m=new Memory();GoogleWorkspaceReturn.Binding binding=owner(m);GoogleWorkspaceReturnFlow flow=new GoogleWorkspaceReturnFlow(HOST,m);
+  // A build without an App Link host prepares, captures and consumes nothing, and writes no pending state.
+  for(String none:new String[]{null,""}){GoogleWorkspaceReturnFlow off=new GoogleWorkspaceReturnFlow(none,m);rejects(()->off.prepare(binding,A,1000));check(m.pending==null&&m.changes==0);}
+  check(flow.prepare(binding,A,1000).equals(CALLBACK+"?state="+A));
+  GoogleWorkspaceReturnFlow off=new GoogleWorkspaceReturnFlow("",m),staging=new GoogleWorkspaceReturnFlow("staging.eliza.app",m);String held=m.pending;
+  check(!off.captureAllowed(callback(A,"connected"),1001)&&off.consume(binding,callback(A,"connected"),1001)==null&&!staging.captureAllowed(callback(A,"connected"),1001)&&staging.consume(binding,callback(A,"connected"),1001)==null&&m.pending.equals(held));
+  m.pending=null;check(flow.prepare(binding,A,1000).equals(CALLBACK+"?state="+A));
   JSONObject record=new JSONObject(m.pending);check(record.length()==7&&!record.has("sessionId")&&!m.pending.contains("synthetic-secret")&&!m.pending.contains("token"));check(m.credential.equals(ORIGINAL));
   int writes=m.changes;check(flow.captureAllowed(callback(A,"connected"),1001));check(m.changes==writes);check(!flow.captureAllowed(callback(B,"connected"),1001));check(m.changes==writes);
   GoogleWorkspaceReturn.Callback result=flow.consume(binding,callback(A,"connected"),1001);check(result!=null&&result.connectionId.equals("grant_1")&&m.pending==null);check(flow.consume(binding,callback(A,"connected"),1002)==null);check(m.credential.equals(ORIGINAL));
@@ -50,10 +56,10 @@ public class WorkspaceFlowTest {
   flow.prepare(binding,A,1000);m.credential=new JSONObject().put("token","synthetic-secret").put("credentialId","credential").toString();check(flow.consume(binding,callback(A,"connected"),1001)!=null);m.credential=ORIGINAL;
   for(String identityField:new String[]{"credentialId","token","userId","organizationId"}){flow.prepare(binding,A,1000);m.credential=new JSONObject(ORIGINAL).put(identityField,"changed-authority").toString();check(!flow.captureAllowed(callback(A,"connected"),1001));check(flow.consume(binding,callback(A,"connected"),1001)==null);m.credential=ORIGINAL;}
   // Cold recreation rebuilds the durable binding; ephemeral UI sessions do not enter native state.
-  flow.prepare(binding,A,1000);check(new GoogleWorkspaceReturnFlow(m).consume(owner(m),callback(A,"connected"),1001)!=null);
+  flow.prepare(binding,A,1000);check(new GoogleWorkspaceReturnFlow(HOST,m).consume(owner(m),callback(A,"connected"),1001)!=null);
   // Exactly one concurrent consumer wins the existing store CAS.
   flow.prepare(binding,A,1000);ExecutorService pool=Executors.newFixedThreadPool(2);CountDownLatch ready=new CountDownLatch(1);AtomicInteger accepted=new AtomicInteger();List<Future<?>> tasks=new ArrayList<>();
-  for(int i=0;i<2;i++)tasks.add(pool.submit(()->{try{ready.await();if(new GoogleWorkspaceReturnFlow(m).consume(owner(m),callback(A,"connected"),1001)!=null)accepted.incrementAndGet();}catch(Exception e){throw new RuntimeException(e);}}));ready.countDown();for(Future<?> task:tasks)task.get();pool.shutdown();check(accepted.get()==1&&m.pending==null);
+  for(int i=0;i<2;i++)tasks.add(pool.submit(()->{try{ready.await();if(new GoogleWorkspaceReturnFlow(HOST,m).consume(owner(m),callback(A,"connected"),1001)!=null)accepted.incrementAndGet();}catch(Exception e){throw new RuntimeException(e);}}));ready.countDown();for(Future<?> task:tasks)task.get();pool.shutdown();check(accepted.get()==1&&m.pending==null);
   for(String malformed:new String[]{"{}","not-json",new JSONObject().put("state",A).toString(),record.put("extra",true).toString()}){m.pending=malformed;writes=m.changes;check(!flow.captureAllowed(callback(A,"connected"),1001));check(flow.consume(binding,callback(A,"connected"),1001)==null&&m.changes==writes);}
   m.pending=null;flow.prepare(binding,A,1000);retained=m.pending;check(!flow.captureAllowed(callback(A,"connected")+"&unknown=x",1001));check(flow.consume(binding,callback(A,"connected")+"&unknown=x",1001)==null&&m.pending.equals(retained));
   rejects(()->GoogleWorkspaceReturnFlow.binding("production",USER,ORG,"wrong",ORIGINAL));

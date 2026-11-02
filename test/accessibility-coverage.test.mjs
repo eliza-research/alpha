@@ -50,6 +50,11 @@ test('every subview of a retained view is opened by a state that asserts it is t
   // photos-empty (the viewer left open after its photo disappears) has no tap path; a fixture state
   // opens it directly and asserts it like the others.
   const unreachable = new Set();
+  // A subview is a screen a state exposes, so none is hidden from assistive technology by markup alone.
+  // A blank cover, such as the one a Home calendar card opens its event over, is not a subview.
+  const tags = [...template.matchAll(/<[a-z]+ [^>]*data-alpha-subview="([^"]+)"[^>]*>/g)];
+  assert.equal(tags.length, [...template.matchAll(/data-alpha-subview="/g)].length, 'every subview tag is read');
+  for (const [tag, id] of tags) assert.doesNotMatch(tag, /aria-hidden="true"/, `${id} can be the exposed subview`);
   const table = states.slice(states.indexOf('const SUBVIEW'), states.indexOf('export const MOCK_STATES'));
   assert.match(states, /\.map\(start => mock\(start, \[\], SUBVIEW\[start\]\)\)/, 'deep-link states assert their subview');
   assert.match(states, /const showing = async[\s\S]*?\[data-alpha-subview="\$\{subview\}"\]:not\(\[inert\]\)[\s\S]*?toBeVisible\(\)/, 'a declared subview is asserted when the state opens');

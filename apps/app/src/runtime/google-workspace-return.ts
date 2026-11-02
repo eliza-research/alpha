@@ -1,5 +1,8 @@
-/** Google Workspace's existing AppReturn v2, separate from Cloud sign-in. */
-export const GOOGLE_WORKSPACE_CALLBACK='https://alphacompute.ai/alphaphone/gmail/callback';
+import {productionCloud} from './cloud-deployment.generated.ts';
+/** Google Workspace's existing AppReturn v2, separate from Cloud sign-in but on its verified App Link host:
+ * ELIZAOS_APP_LINK_HOST must equal production.web (android/app/product.gradle). A build without that host
+ * reports the native return unsupported. */
+export const GOOGLE_WORKSPACE_CALLBACK=`${productionCloud.web}/alphaphone/gmail/callback`;
 export interface GoogleWorkspaceBinding {
  environment:'production'|'staging';userId:string;organizationId:string;credentialId:string;sessionId:string;
 }
