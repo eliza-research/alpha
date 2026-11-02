@@ -7,10 +7,15 @@ import java.util.Map;
 
 /** Pure Workspace return contract. The native host owns storage, CAS and account readback. */
 final class GoogleWorkspaceReturn {
- static final String CALLBACK="https://alphacompute.ai/alphaphone/gmail/callback";
+ /** Exact return path on the build's verified App Link host (ELIZAOS_APP_LINK_HOST, android/app/product.gradle), as for sign-in. */
+ static final String PATH="/alphaphone/gmail/callback";
  static final String SLOT="google-workspace-return:v1:pending";
  static final long TTL=600000L;
  private GoogleWorkspaceReturn() {}
+ /** The exact return on host, or null when the build declares no App Link host: the native return is then unavailable. */
+ static String callback(String host){
+  return host==null||!host.matches("(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z][a-z0-9-]{0,61}[a-z0-9]")?null:"https://"+host+PATH;
+ }
  /** Selected is an explicit OS user choice, not proof of production domain verification. */
  static String association(boolean enabled,boolean ownCallback,boolean verified,boolean selected){
   return !enabled||!ownCallback?null:verified?"verified":selected?"user-selected":null;
@@ -65,13 +70,14 @@ final class GoogleWorkspaceReturn {
   }
  }
 
- /** Parse literal contract fields only; percent encoding is not an alternate spelling. */
- static Callback parse(String value) {
-  if(value==null||value.length()>512||!value.startsWith(CALLBACK+"#"))return null;
+ /** Parse literal contract fields only, on host's exact return; percent encoding is not an alternate spelling. */
+ static Callback parse(String host,String value) {
+  String callback=callback(host);
+  if(callback==null||value==null||value.length()>512||!value.startsWith(callback+"#"))return null;
   try {
    URI uri=new URI(value);
-   if(!"https".equals(uri.getScheme())||!"alphacompute.ai".equals(uri.getHost())||uri.getPort()!=-1||uri.getRawUserInfo()!=null
-     ||!"/alphaphone/gmail/callback".equals(uri.getRawPath())||uri.getRawQuery()!=null||uri.getRawFragment()==null)return null;
+   if(!"https".equals(uri.getScheme())||!host.equals(uri.getHost())||uri.getPort()!=-1||uri.getRawUserInfo()!=null
+     ||!PATH.equals(uri.getRawPath())||uri.getRawQuery()!=null||uri.getRawFragment()==null)return null;
    Map<String,String> fields=new HashMap<>();
    for(String part:uri.getRawFragment().split("&",-1)) {
     int equal=part.indexOf('=');if(equal<=0||equal!=part.lastIndexOf('='))return null;

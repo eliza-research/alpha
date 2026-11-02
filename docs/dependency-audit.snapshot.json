@@ -103,9 +103,9 @@
   ],
   "resident": {
     "description": "Advisories for the resident runtime's npm packages at the pinned upstream commit, from the npm bulk advisory endpoint. Regenerate with: node scripts/dependency-audit.mjs --resident --write. Dispositions live in docs/dependency-audit.dispositions.json under \"resident\".",
-    "upstreamCommit": "7e8b5d3eb1c05ee6ea72a1a2d5ce5b966c404e9c",
+    "upstreamCommit": "35e0a605b3d560eedec664e79693d5ecc0b5ece3",
     "input": "vendor/eliza/bun.lock",
-    "auditedOn": "2026-11-01",
+    "auditedOn": "2026-11-02",
     "inputSha256": "7c9d7bd390a29fac9da3c16af0fdc4d0998ce7eaf6fb2b82020bc9055ee9e11e",
     "packages": 3677,
     "counts": {
@@ -462,7 +462,7 @@
           "id": "GHSA-mghh-pgcx-3jjj",
           "severity": "high",
           "vulnerableRange": ">=1.15.0 <1.20.0",
-          "title": "Axios: ReDoS (O(N²)) in shouldBypassProxy host normalization, reachable via untrusted redirect Location",
+          "title": "Axios: ReDoS (O(N\u00b2)) in shouldBypassProxy host normalization, reachable via untrusted redirect Location",
           "url": "https://github.com/advisories/GHSA-mghh-pgcx-3jjj"
         }
       },
@@ -869,7 +869,7 @@
           "id": "GHSA-5p4m-2wfm-xmqj",
           "severity": "high",
           "vulnerableRange": ">=4.0.0 <4.3.1",
-          "title": "JS-YAML: Quadratic CPU consumption in !!omap resolution (3.x and 4.x) — CVE-2026-59870 fix not backported",
+          "title": "JS-YAML: Quadratic CPU consumption in !!omap resolution (3.x and 4.x) \u2014 CVE-2026-59870 fix not backported",
           "url": "https://github.com/advisories/GHSA-5p4m-2wfm-xmqj"
         }
       },
@@ -1295,7 +1295,7 @@
           "id": "GHSA-528h-pc64-c93x",
           "severity": "moderate",
           "vulnerableRange": "<=3.4.0",
-          "title": "stream-json: pick/ignore/filter/replace filters are O(depth²) on nested input — small crafted JSON blocks the event loop for seconds→minutes (DoS)",
+          "title": "stream-json: pick/ignore/filter/replace filters are O(depth\u00b2) on nested input \u2014 small crafted JSON blocks the event loop for seconds\u2192minutes (DoS)",
           "url": "https://github.com/advisories/GHSA-528h-pc64-c93x"
         }
       },

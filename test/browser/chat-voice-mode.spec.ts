@@ -37,6 +37,13 @@ async function setup(page:Page,signed=true,theme='light'){
  await expect.poll(()=>page.evaluate(()=>!!(window as any).chatVoiceFixture.shell)).toBe(true);
  await expect.poll(()=>page.evaluate(()=>(window as any).chatVoiceFixture.shell.swallowed())).toBe(false);
 }
+// A retained typed draft intentionally shows Send instead of Talk. This is
+// explicit public-API coverage of preserving that draft, not a claim that a
+// second Talk control is visible beside Send.
+async function startWithRetainedDraft(page:Page){
+ await expect(page.getByRole('button',{name:'Talk',exact:true})).toHaveCount(0);
+ await page.evaluate(()=>(window as any).chatVoiceFixture.shell.startVoice());
+}
 async function utterance(page:Page){await page.evaluate(()=>(window as any).chatVoiceFixture.peak=.25);await page.waitForTimeout(950);await page.evaluate(()=>(window as any).chatVoiceFixture.peak=0);}
 async function noMedia(page:Page){expect(await page.evaluate(()=>{const f=(window as any).chatVoiceFixture;return {media:f.media,local:f.localProbes};})).toEqual({media:0,local:0});}
 
@@ -53,33 +60,35 @@ test('ongoing Cloud conversation stays in Calendar, sends only new speech and pr
  expect(await page.evaluate(()=>{const f=(window as any).chatVoiceFixture;return {notes:JSON.stringify(f.shell.vget('notes'))===f.notes,draft:f.shell.S().draft,starts:f.starts,uploads:f.uploads,sends:f.sends,sent:f.sent,speech:f.speech};})).toEqual({notes:true,draft:'Existing unsent draft',starts:1,uploads:1,sends:1,sent:'Synthetic Cloud transcript',speech:1});
  await voice(page).getByRole('button',{name:'Stop voice conversation',exact:true}).click();await expect(voice(page)).toHaveCount(0);expect(await page.evaluate(()=>(window as any).chatVoiceFixture.shell.S().draft)).toBe('Existing unsent draft');await noMedia(page);
 });
-test('the recorded-clip conversation says once that speaking will not interrupt a reply, and records its batch path',async({page})=>{
- const notice='Speaking will not interrupt Alpha’s reply in this voice mode. Close the voice conversation to stop a reply.';
+test('the recorded-clip conversation shows no interruption notice and records its batch path',async({page})=>{
  await setup(page);await page.evaluate(()=>{const f=(window as any).chatVoiceFixture,toast=f.shell.toast.bind(f.shell);f.toasts=[];f.shell.toast=(message:string,...rest:unknown[])=>{f.toasts.push(message);return toast(message,...rest);};});
+ await expect(page.locator('textarea[data-alpha-composer]')).toHaveValue('');
+ await expect(page.getByRole('button',{name:'Talk',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Talk',exact:true}).click();await expect(voice(page)).toHaveAttribute('data-voice-state','listening');
- await expect(page.getByText(notice,{exact:true})).toBeVisible();
  await utterance(page);await expect(voice(page)).toHaveAttribute('data-voice-state','speaking');
  await voice(page).getByRole('button',{name:'Stop voice conversation',exact:true}).click();await expect(voice(page)).toHaveCount(0);
  await page.getByRole('button',{name:'Talk',exact:true}).click();await expect(voice(page)).toHaveAttribute('data-voice-state','listening');
  await voice(page).getByRole('button',{name:'Stop voice conversation',exact:true}).click();
- expect(await page.evaluate(n=>(window as any).chatVoiceFixture.toasts.filter((m:string)=>m===n).length,notice)).toBe(1);
+ expect(await page.evaluate(()=>(window as any).chatVoiceFixture.toasts)).toEqual([]);
  const paths=await page.evaluate(async()=>{const timing=await import('/src/runtime/voice-timing.ts'),{buildDiagnostics}=await import('/src/runtime/diagnostics-export.ts');
   const records=timing.voiceTimingRecords().filter((r:any)=>r.entry==='conversation');
   return {live:records.map((r:any)=>r.live),paths:buildDiagnostics({voiceTiming:JSON.parse(timing.exportVoiceTiming())}).voiceTiming.records.filter((r:any)=>r.entry==='conversation').map((r:any)=>r.path)};});
  expect(paths.live[0]).toEqual({mode:'batch',partials:0});expect(paths.paths[0]).toBe('batch');
  await noMedia(page);
 });
-test('the default send policy is auto-send: a finished transcript is sent with no review step',async({page})=>{
+test('explicit voice API with a retained draft uses auto-send without a review step',async({page})=>{
  await setup(page);expect(await page.evaluate(async()=>(await import('/src/runtime/voice-selection.ts')).voiceSendPolicy())).toBe('auto-send');
- await page.getByRole('button',{name:'Talk',exact:true}).click();await expect(voice(page)).toHaveAttribute('data-voice-state','listening');await expect(voice(page)).toContainText('sent to this conversation');
+ await page.evaluate(()=>new Promise<void>(resolve=>(window as any).chatVoiceFixture.shell.setState({draft:'Existing unsent draft'},resolve)));
+ await startWithRetainedDraft(page);await expect(voice(page)).toHaveAttribute('data-voice-state','listening');await expect(voice(page)).toContainText('Listening…');expect(await page.evaluate(()=>(window as any).chatVoiceFixture.sends)).toBe(0);
  await utterance(page);await expect(voice(page)).toHaveAttribute('data-voice-state','speaking');
  await expect(voice(page).getByRole('button',{name:'Send voice message',exact:true})).toHaveCount(0);await expect(voice(page).getByRole('textbox',{name:'Review transcript',exact:true})).toHaveCount(0);
  expect(await page.evaluate(()=>{const f=(window as any).chatVoiceFixture;return {sends:f.sends,sent:f.sent};})).toEqual({sends:1,sent:'Synthetic Cloud transcript'});
- await voice(page).getByRole('button',{name:'Stop voice conversation',exact:true}).click();await noMedia(page);
+ await voice(page).getByRole('button',{name:'Stop voice conversation',exact:true}).click();expect(await page.evaluate(()=>(window as any).chatVoiceFixture.shell.S().draft)).toBe('Existing unsent draft');await noMedia(page);
 });
-test('the review send policy holds each transcript for an edited Send or a Discard that sends nothing',async({page})=>{
+test('explicit voice API with a retained draft holds review for edited Send or zero-send Discard',async({page})=>{
  await setup(page);expect(await page.evaluate(async()=>(await import('/src/runtime/voice-selection.ts')).setVoiceSendPolicyForTests('review'))).toBe(true);
- await page.getByRole('button',{name:'Talk',exact:true}).click();await expect(voice(page)).toHaveAttribute('data-voice-state','listening');await expect(voice(page)).toContainText('shown to you before anything is sent');
+ await page.evaluate(()=>new Promise<void>(resolve=>(window as any).chatVoiceFixture.shell.setState({draft:'Existing unsent draft'},resolve)));
+ await startWithRetainedDraft(page);await expect(voice(page)).toHaveAttribute('data-voice-state','listening');await expect(voice(page)).toContainText('Listening…');expect(await page.evaluate(()=>(window as any).chatVoiceFixture.sends)).toBe(0);
  await utterance(page);await expect(voice(page)).toHaveAttribute('data-voice-state','review');
  await expect(voice(page).getByRole('button',{name:'Stop voice conversation',exact:true})).toBeEnabled();await expect(voice(page).getByRole('button',{name:'Microphone off',exact:true})).toBeDisabled();
  const review=voice(page).getByRole('textbox',{name:'Review transcript',exact:true});await expect(review).toHaveValue('Synthetic Cloud transcript');await expect(voice(page)).toContainText('Nothing has been sent.');
@@ -90,7 +99,7 @@ test('the review send policy holds each transcript for an edited Send or a Disca
  await page.evaluate(()=>(window as any).chatVoiceFixture.finishPlayback());await expect(voice(page)).toHaveAttribute('data-voice-state','listening');
  await utterance(page);await expect(voice(page)).toHaveAttribute('data-voice-state','review');await voice(page).getByRole('button',{name:'Discard voice message',exact:true}).click();
  await expect(voice(page)).toHaveCount(0);await expect(page.locator('textarea[data-alpha-composer]')).toBeVisible();
- expect(await page.evaluate(()=>{const f=(window as any).chatVoiceFixture;return {sends:f.sends,uploads:f.uploads,active:f.active};})).toEqual({sends:1,uploads:2,active:null});await noMedia(page);
+ expect(await page.evaluate(()=>{const f=(window as any).chatVoiceFixture;return {sends:f.sends,uploads:f.uploads,active:f.active,draft:f.shell.S().draft};})).toEqual({sends:1,uploads:2,active:null,draft:'Existing unsent draft'});await noMedia(page);
 });
 test('minimize returns the same owned capture to compact pill; explicit Stop retires media',async({page})=>{await setup(page);await page.evaluate(()=>(window as any).chatVoiceFixture.shell.setState({chat:'hidden',draft:'Keep this draft'}));await page.getByRole('button',{name:'Talk',exact:true}).click();await expect(page.locator('[data-alpha-pill-voice]')).toBeVisible();expect(await page.evaluate(()=>(window as any).chatVoiceFixture.shell.S().chat)).toBe('hidden');await expect.poll(()=>page.evaluate(()=>(window as any).chatVoiceFixture.shell.swallowed())).toBe(false);await page.locator('[data-alpha-pill-voice]').getByRole('button',{name:'Open conversation',exact:true}).click();await expect(voice(page)).toHaveAttribute('data-voice-state','listening');await page.getByRole('button',{name:'Minimize chat',exact:true}).click();await expect(page.locator('[data-alpha-pill-voice]')).toBeVisible();expect(await page.evaluate(()=>{const f=(window as any).chatVoiceFixture;return {chat:f.shell.S().chat,draft:f.shell.S().draft,active:f.active,starts:f.starts,sends:f.sends};})).toEqual({chat:'hidden',draft:'Keep this draft',active:'synthetic-clip-1',starts:1,sends:0});await page.locator('[data-alpha-pill-voice]').getByRole('button',{name:'Stop voice conversation',exact:true}).click();await expect.poll(()=>page.evaluate(()=>(window as any).chatVoiceFixture.active)).toBe(null);await expect(page.locator('[data-alpha-pill-voice]')).toHaveCount(0);expect(await page.evaluate(()=>(window as any).chatVoiceFixture.starts)).toBe(1);await noMedia(page);});
 test('account change discards held ASR and never resumes it',async({page})=>{await setup(page);await page.evaluate(()=>(window as any).chatVoiceFixture.holdTranscript=true);await page.getByRole('button',{name:'Talk',exact:true}).click();await expect(voice(page)).toHaveAttribute('data-voice-state','listening');await utterance(page);await expect(voice(page)).toHaveAttribute('data-voice-state','transcribing');await page.evaluate(async()=>{const f=(window as any).chatVoiceFixture;f.owner='b';(await import('/src/runtime/connection-ui.tsx')).connectionController.close();});await expect(voice(page)).toHaveCount(0);await page.evaluate(()=>(window as any).chatVoiceFixture.releaseTranscript());expect(await page.evaluate(()=>(window as any).chatVoiceFixture.sends)).toBe(0);await noMedia(page);});

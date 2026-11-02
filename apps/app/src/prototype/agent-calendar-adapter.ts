@@ -191,6 +191,8 @@ export function installAgentCalendarAdapter(Component:any,views:Bag,preservation
   if(out.empty&&out.nativeStatusLabel&&out.emptyText===out.nativeStatusLabel)out.empty=false;
   return out;
  };
+ // A deep-linked event (Home card) keeps a cover under its detail while it fades in, so the day list never shows through.
+ {const inner=views.calendar.render;views.calendar.render=function(this:unknown,state:Bag,api:Bag){const out=inner.call(this,state,api);out.deepOpening=!!state.deepOpening&&!state.open||!!state.open&&state.open===state.deepOpened;return out;};}
  p.renderVals=function(){const out=renderVals.call(this);
   // Home's agenda reads the calendar the owner chose: Agent Calendar unless device calendars were
   // chosen explicitly in Calendar, whose read Home then shows with its own states and read times.
@@ -217,6 +219,6 @@ export function installAgentCalendarAdapter(Component:any,views:Bag,preservation
   if(out.homeAgendaReminder===true&&local?.item&&(!item||local.item.begin<item.begin)){const retry=feed.state==='error'||feed.state==='stale';
    return{...out,...homeCalendarValues(presentHomeAgendaCard(agentReminderLead(local,feed))),...(retry&&typeof out.goCalendar==='function'?{goCalendar:()=>{refresh(true);out.goCalendar();}}:{})};}
   return{...out,...homeCalendarValues(presentHomeAgendaCard({now,item,provenance,stale:feed.stale,emptyTitle:feed.title,sourceName:'Agent Calendar'})),
-   goCalendar:()=>{if(feed.state==='error'||feed.state==='stale')refresh(true);this.openView('calendar',{calendarAuthority:'canonical',...(event?{open:'canonical-calendar:'+calendarEventKey(event),day:canonicalCalendarRow(event,zone()).off}:{} )});}};
+   goCalendar:()=>{if(feed.state==='error'||feed.state==='stale')refresh(true);this.openView('calendar',{calendarAuthority:'canonical',...(event?(key=>({open:key,deepOpened:key,day:canonicalCalendarRow(event,zone()).off}))('canonical-calendar:'+calendarEventKey(event)):{} )});}};
  };
 }

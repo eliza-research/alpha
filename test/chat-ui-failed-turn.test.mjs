@@ -40,7 +40,24 @@ test('the failed turn says the action went through, keeps a mapped limit, and ne
 
 test('a failed turn the agent recorded carries its user row identity, thrown or returned with proposals',()=>{
  assert.match(send,/const messageBinding=\{conversationId:id,session:\{\.\.\.session\}\},recorded=typeof reply\.userMessageId==='string'\?\{userMessageId:reply\.userMessageId,messageBinding\}:\{\};/);
- assert.match(send,/if \(responseFailure && !proposals\?\.length\) throw Object\.assign\(responseFailure,recorded\);/);
+ // Execute the actual throw boundary rather than fixing its statement layout.
+ const failureBoundary=between(send,'      if (responseFailure && !proposals?.length) {','      if(!failed&&directRequestedActions');
+ class FixtureClientError extends Error{constructor(code,message){super(message);this.code=code;}}
+ const reject=new Function('responseFailure','proposals','messageBinding','recorded','notices','AlphaClientError',ts(failureBoundary));
+ const binding={conversationId:'recorded-conversation',session:{sessionId:'s',ownerId:'o',agentId:'a',origin:'https://fixture.invalid'}};
+ const recorded={userMessageId:'recorded-user-row',messageBinding:binding},notices=['Saved action needs attention'];
+ assert.throws(()=>reject(new Error('PRIVATE_PROVIDER_CANARY'),[],binding,recorded,notices,FixtureClientError),error=>{
+  assert(error instanceof FixtureClientError);assert.equal(error.code,'transport-failed');
+  assert.equal(error.message,'The agent request failed. Check connection and action history before sending another request.');
+  assert.equal(error.userMessageId,recorded.userMessageId);assert.equal(error.messageBinding,binding);assert.deepEqual(error.notices,notices);
+  assert.doesNotMatch(error.message,/PRIVATE_PROVIDER_CANARY/);return true;
+ });
+ const typed=Object.assign(new FixtureClientError('transport-failed','Mapped billing refusal'),{failureKind:'insufficient_credits',serviceLimit:'billing-refused',planAction:'funding'});
+ assert.throws(()=>reject(typed,[],binding,recorded,notices,FixtureClientError),error=>{
+  assert.equal(error,typed);assert.equal(error.userMessageId,recorded.userMessageId);assert.equal(error.messageBinding,binding);
+  assert.equal(error.failureKind,'insufficient_credits');assert.equal(error.serviceLimit,'billing-refused');assert.equal(error.planAction,'funding');return true;
+ });
+ assert.doesNotThrow(()=>reject(typed,[{id:'reviewable-proposal'}],binding,recorded,notices,FixtureClientError),'reviewable proposal still takes the existing return path');
  assert.match(send,/\.\.\.\(!responseFailure\?\{\.\.\.\(typeof reply\.messageId==='string'\?\{messageId:reply\.messageId\}:\{\}\),messageBinding\}:\{\}\), \.\.\.recorded,/,'the failed assistant row keeps the phone text; only the user row identity is adopted');
  // The adapter adopts it on every dispatched failure branch, before the interrupted bubble is added.
  const dispatched=between(adapter,'        if(fromComposer)await this.composerDraft?.commit();\n        // The agent recorded','        else if(this.live&&e instanceof AlphaClientError&&typeof (e as {failureKind?:unknown}).failureKind===\'string\'){');

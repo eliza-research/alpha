@@ -83,7 +83,7 @@ test('plan state never stops or withholds the on-device agent', () => {
   assert.ok(browser.indexOf('cloud.login(') >= 0 && browser.indexOf('await residentSignedIn(signal,') > browser.indexOf('cloud.login('), 'reconnect only after the browser sign-in returned');
   assert.match(browser, /catch\(error\)\{if\(kept\)residentRebinds\(\)\.queue\(\);throw error;\}/, 'a cancelled sign-in re-admits a kept sign-in');
   const signedIn = between(ui, 'async function signedIn(', '/** The development hosted-agent client.');
-  assert.ok(signedIn.includes('if (residentCloudFlow()) { update({ accountCreated: created }); await residentSignedIn(signal, unconfirmed); return; }'), 'the in-app sign-in finishes through the shared resident step');
+  assert.ok(signedIn.includes('if (residentCloudFlow()) { update({ accountCreated: created }); await residentSignedIn(signal, unconfirmed, expected); return; }'), 'the in-app sign-in finishes through the shared resident step');
   // Both sign-ins reconnect once the key is stored, with the admission they made: access setup opens
   // as soon as the account is admitted and the agent restarts behind it, shown as starting (owner
   // report 2026-10-30); setup never waits for the agent's first boot.

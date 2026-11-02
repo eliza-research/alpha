@@ -177,18 +177,22 @@ test.describe('launcher', () => {
 
   test('a Home scrolled away from its top scrolls back before a pull opens the shade', async ({ page }) => {
     await home(page);
-    // Large text makes Home taller than the screen.
-    await page.evaluate(async () => { const display = await import('/src/browser/display.ts' as string); display.installBrowserDisplay(); document.documentElement.style.setProperty('--browser-text-scale', '2'); });
+    // Model the bounded dock/content clearance the Home fit observer already watches.
+    // Large text alone is not an overflow guarantee: the current Home adapts its layout.
+    const clearance = page.locator('[data-alpha-home-clearance]');
+    await clearance.evaluate(element => { (element as HTMLElement).style.height = '160px'; });
     const layer = page.locator('[data-alpha-layer="home"]');
     await expect.poll(() => layer.evaluate(element => element.scrollHeight > element.clientHeight + 40)).toBe(true);
     // An overflowing Home keeps ordinary vertical scrolling for touch.
     await expect(layer).toHaveAttribute('data-alpha-home-fits', 'false');
     await layer.evaluate(element => { element.scrollTop = 120; });
+    await expect.poll(() => layer.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
     await drag(page, { x: 206, y: 420 }, 240);
     await closed(page, 'scrolled Home');
     await layer.evaluate(element => { element.scrollTop = 0; });
     await drag(page, { x: 206, y: 420 }, 240);
     await expect(shade(page)).toHaveAttribute('aria-hidden', 'false');
+    await clearance.evaluate(element => { (element as HTMLElement).style.removeProperty('height'); });
   });
 
   for (const height of [915, 1200]) test(`a Home that fits hands vertical touch drags to the page at 412x${height}`, async ({ page }) => {

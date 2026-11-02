@@ -115,7 +115,7 @@ test('native sign-in never falls back to hosted login when readiness fails',asyn
  for(const methods of [null,{google:false},{google:true}]) {
   const updates=[];let ensured=false,checking='';
   const run=new Function('operation','cloudEnvironmentAllowed','work','inAppSignInMethods','cloudSignIn','CloudSignInError','cloud','residentCloudFlow','state','update','ensureResident','cloudServiceName',
-   'let epoch=0,signInReadinessOwner=null,inAppGoogle=false,inAppPhone=false,inAppEmail=true;'+compiled+';return controller.beginSignIn("production");');
+   'let epoch=0,signInReadinessOwner=null,googleSignInGeneration=0,inAppGoogle=false,inAppPhone=false,inAppEmail=true;'+compiled+';return controller.beginSignIn("production");');
   await run(false,()=>true,async(message,action)=>{checking=message;return action(new AbortController().signal);},async()=>methods,{},Error,{environment:'production',cancelLogin(){}},()=>true,{purpose:'agent'},v=>updates.push(v),async()=>{ensured=true;},()=> 'Independent Service');
   assert.equal(updates.at(-1).signIn.step,'choose');assert.equal(ensured,true);assert.equal(checking,'Checking Independent Service sign-in…');
  }

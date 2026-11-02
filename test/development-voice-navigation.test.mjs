@@ -65,8 +65,11 @@ test('interrupted and superseded finalized turns cannot deliver a late screen ef
 
 test('direct adapter reports automatic playback mute separately from manual mute',async()=>{
  const f=harness(),voice=await f.create();assert.equal(voice.microphoneAutomaticallyMuted,false);
- f.options.onState({phase:'speaking'});assert.equal(voice.microphoneAutomaticallyMuted,true);
- f.options.onState({phase:'listening'});assert.equal(voice.microphoneAutomaticallyMuted,false);
+ // Playback pause follows the accepted speaking frame for its trace, not a bare phase.
+ // Raw speaking_end only closes input; the SDK's listening state after local drain releases it.
+ f.options.onServerEvent({t:'speaking_start',traceId:'turn'});assert.equal(voice.microphoneAutomaticallyMuted,true);
+ f.options.onServerEvent({t:'speaking_end',traceId:'turn'});assert.equal(voice.microphoneAutomaticallyMuted,true);
+ f.options.onState({...INITIAL_VOICE_SESSION_STATE,phase:'listening',traceId:'turn'});assert.equal(voice.microphoneAutomaticallyMuted,false);
 });
 
 test('targeted renderer delivery opens Notes even when the voice terminal suppresses its duplicate',async()=>{

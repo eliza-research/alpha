@@ -11,7 +11,7 @@ unverified, a package that ships no licence file, or a proprietary item with no 
 Each flagged entry below states what its flags oblige. A flag is not legal review and not a clearance.
 
 copyleft-strong (3):
-  - eSpeak NG 1.52.0 (statically linked into libelizainference)@elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza 7e8b5d3eb1c05ee6ea72a1a2d5ce5b966c404e9c); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified (GPL-3.0-or-later)
+  - eSpeak NG 1.52.0 (statically linked into libelizainference)@elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza 35e0a605b3d560eedec664e79693d5ecc0b5ece3); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified (GPL-3.0-or-later)
   - eSpeak NG 1.52.0 English data (voice bundle, tts/paradee/espeak-ng-data)@tts/paradee/espeak-ng-data/phontab sha256 1b40690667e1e9aa1ba5e5234773c799e7e72ea751426e5150423d53c3f24fa2 (58652 bytes); tts/paradee/espeak-ng-data/phonindex sha256 384e5fa6f714ba5356c58008249b78699c31c1ad044b243068d263fb806b7d73 (43316 bytes); tts/paradee/espeak-ng-data/phondata sha256 a0b643b155cb6b12628d9e7865b57d9fca0d35844614f2594a5e009c80c80bb4 (554740 bytes); tts/paradee/espeak-ng-data/intonations sha256 031a105bf6bb2ebcd73a2c579ccfb42469b27266db0078af65ae298fd3588b21 (2312 bytes); tts/paradee/espeak-ng-data/en_dict sha256 1053f74a34af38abb6fbd64b7838dacbc655a687c48ce1bb663d364a127b05de (168204 bytes); tts/paradee/espeak-ng-data/lang/gmw/en sha256 4605d5330801de3641c6e366d15f129ea1f5ffbce8722642aba01ace07ab9c83 (140 bytes); tts/paradee/espeak-ng-data/lang/gmw/en-US sha256 41534c2a22df5dd4f1052ff9e1a33a3ea7bff5a26b5c02bdad5ba8ddb7524704 (257 bytes) (GPL-3.0-or-later)
   - pdf.js standard fonts: Liberation@bundled with pdfjs-dist 6.3.289 (GPL-2.0-only WITH Font-exception-2.0)
 copyleft-weak (1):
@@ -42,22 +42,22 @@ licence-text-missing-from-package (26):
   - Android dependency com.google.android.gms:play-services-identity-credentials@16.0.0-alpha08 (UNKNOWN)
   - Android dependency com.google.android.gms:play-services-tasks@18.2.0 (UNKNOWN)
   - Android dependency com.google.android.libraries.identity.googleid:googleid@1.1.1 (UNKNOWN)
-  - elizaOS voice runtime sources (Paradee graph, kokoro layers, eliza-inference FFI, elizavoice-jni) in libelizainference@elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza 7e8b5d3eb1c05ee6ea72a1a2d5ce5b966c404e9c); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified (license unverified)
-  - eSpeak NG 1.52.0 (statically linked into libelizainference)@elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza 7e8b5d3eb1c05ee6ea72a1a2d5ce5b966c404e9c); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified (GPL-3.0-or-later)
+  - elizaOS voice runtime sources (Paradee graph, kokoro layers, eliza-inference FFI, elizavoice-jni) in libelizainference@elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza 35e0a605b3d560eedec664e79693d5ecc0b5ece3); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified (license unverified)
+  - eSpeak NG 1.52.0 (statically linked into libelizainference)@elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza 35e0a605b3d560eedec664e79693d5ecc0b5ece3); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified (GPL-3.0-or-later)
   - eSpeak NG 1.52.0 English data (voice bundle, tts/paradee/espeak-ng-data)@tts/paradee/espeak-ng-data/phontab sha256 1b40690667e1e9aa1ba5e5234773c799e7e72ea751426e5150423d53c3f24fa2 (58652 bytes); tts/paradee/espeak-ng-data/phonindex sha256 384e5fa6f714ba5356c58008249b78699c31c1ad044b243068d263fb806b7d73 (43316 bytes); tts/paradee/espeak-ng-data/phondata sha256 a0b643b155cb6b12628d9e7865b57d9fca0d35844614f2594a5e009c80c80bb4 (554740 bytes); tts/paradee/espeak-ng-data/intonations sha256 031a105bf6bb2ebcd73a2c579ccfb42469b27266db0078af65ae298fd3588b21 (2312 bytes); tts/paradee/espeak-ng-data/en_dict sha256 1053f74a34af38abb6fbd64b7838dacbc655a687c48ce1bb663d364a127b05de (168204 bytes); tts/paradee/espeak-ng-data/lang/gmw/en sha256 4605d5330801de3641c6e366d15f129ea1f5ffbce8722642aba01ace07ab9c83 (140 bytes); tts/paradee/espeak-ng-data/lang/gmw/en-US sha256 41534c2a22df5dd4f1052ff9e1a33a3ea7bff5a26b5c02bdad5ba8ddb7524704 (257 bytes) (GPL-3.0-or-later)
-  - llama.cpp, ggml and mtmd (libelizainference)@elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza 7e8b5d3eb1c05ee6ea72a1a2d5ce5b966c404e9c); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified (MIT)
-  - LLVM libc++ (libc++_shared.so from the Android NDK)@elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza 7e8b5d3eb1c05ee6ea72a1a2d5ce5b966c404e9c); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified (Apache-2.0 WITH LLVM-exception)
+  - llama.cpp, ggml and mtmd (libelizainference)@elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza 35e0a605b3d560eedec664e79693d5ecc0b5ece3); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified (MIT)
+  - LLVM libc++ (libc++_shared.so from the Android NDK)@elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza 35e0a605b3d560eedec664e79693d5ecc0b5ece3); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified (Apache-2.0 WITH LLVM-exception)
   - misaki English (US) lexicon (g2p-lexicon)@tts/paradee/misaki-en-us.lex sha256 fbf09090cff0a41f3f579bf03ab9fc42710b04d7284767b10467a5f182c23925 (12947790 bytes) (Apache-2.0)
-  - misaki G2P (C++ port in libelizainference)@elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza 7e8b5d3eb1c05ee6ea72a1a2d5ce5b966c404e9c); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified (Apache-2.0)
+  - misaki G2P (C++ port in libelizainference)@elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza 35e0a605b3d560eedec664e79693d5ecc0b5ece3); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified (Apache-2.0)
   - murmurhash-js@1.0.0 (MIT)
   - Paradee-8M v1.2 (F32 GGUF) (tts-model)@tts/paradee/paradee-8m-v1_2.gguf sha256 4b2819180a9e3b096fb71a93d6a719794246ee230f7faa857edcc0bee2a1529e (31276064 bytes) (Apache-2.0)
-  - Parakeet-TDT decoder (tools/parakeet parakeet_lib, statically linked into libelizainference)@elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza 7e8b5d3eb1c05ee6ea72a1a2d5ce5b966c404e9c); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified (MIT)
+  - Parakeet-TDT decoder (tools/parakeet parakeet_lib, statically linked into libelizainference)@elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza 35e0a605b3d560eedec664e79693d5ecc0b5ece3); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified (MIT)
   - pdf.js QuickJS sandbox@bundled with pdfjs-dist 6.3.289 (license unverified)
-  - Silero VAD (graph in libelizainference)@elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza 7e8b5d3eb1c05ee6ea72a1a2d5ce5b966c404e9c); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified (MIT)
+  - Silero VAD (graph in libelizainference)@elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza 35e0a605b3d560eedec664e79693d5ecc0b5ece3); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified (MIT)
   - Silero VAD v5 (GGUF) (vad-model)@vad/silero-vad-v5.gguf sha256 d348cd6d87ea53dcd3e6680698c88be326082e27dae899adef653d090bee4995 (620736 bytes) (MIT)
   - tr46@0.0.3 (MIT)
 unverified (4):
-  - elizaOS voice runtime sources (Paradee graph, kokoro layers, eliza-inference FFI, elizavoice-jni) in libelizainference@elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza 7e8b5d3eb1c05ee6ea72a1a2d5ce5b966c404e9c); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified (license unverified)
+  - elizaOS voice runtime sources (Paradee graph, kokoro layers, eliza-inference FFI, elizavoice-jni) in libelizainference@elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza 35e0a605b3d560eedec664e79693d5ecc0b5ece3); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified (license unverified)
   - On-device elizaOS agent runtime payload@pinned upstream runtime when present in the APK payload (license unverified)
   - pdf.js QuickJS sandbox@bundled with pdfjs-dist 6.3.289 (license unverified)
   - Phonon-2 (Parakeet-TDT 0.6B, five-value GGUF; ASR slot model) (asr-model)@asr/phonon-2-fv5.gguf sha256 c0f6ad42f0a5b481904416077dde0a1a78e5b8642295fdf2356ace822588c3df (208932352 bytes) (CC-BY-4.0)
@@ -2899,9 +2899,9 @@ THIS SOFTWARE.
 
 ==============================================================================
 elizaOS
-Version: 2.0.4 (7e8b5d3eb1c05ee6ea72a1a2d5ce5b966c404e9c)
+Version: 2.0.4 (35e0a605b3d560eedec664e79693d5ecc0b5ece3)
 License: MIT
-Source: https://github.com/elizaOS/eliza/tree/7e8b5d3eb1c05ee6ea72a1a2d5ce5b966c404e9c
+Source: https://github.com/elizaOS/eliza/tree/35e0a605b3d560eedec664e79693d5ecc0b5ece3
 
 MIT License
 
@@ -2927,7 +2927,7 @@ SOFTWARE.
 
 ==============================================================================
 elizaOS voice runtime sources (Paradee graph, kokoro layers, eliza-inference FFI, elizavoice-jni) in libelizainference
-Version: elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza 7e8b5d3eb1c05ee6ea72a1a2d5ce5b966c404e9c); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified
+Version: elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza 35e0a605b3d560eedec664e79693d5ecc0b5ece3); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified
 License: license unverified
 Source: https://github.com/elizaOS/llama.cpp tools/paradee, tools/kokoro, tools/omnivoice; https://github.com/elizaOS/eliza packages/app/platforms/android
         Recorded libraries:
@@ -3151,7 +3151,7 @@ Source: https://github.com/google/error-prone
 
 ==============================================================================
 eSpeak NG 1.52.0 (statically linked into libelizainference)
-Version: elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza 7e8b5d3eb1c05ee6ea72a1a2d5ce5b966c404e9c); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified
+Version: elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza 35e0a605b3d560eedec664e79693d5ecc0b5ece3); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified
 License: GPL-3.0-or-later
 Source: https://github.com/espeak-ng/espeak-ng/tree/1.52.0
         Recorded libraries:
@@ -6572,7 +6572,7 @@ litigation is filed.
 
 ==============================================================================
 llama.cpp, ggml and mtmd (libelizainference)
-Version: elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza 7e8b5d3eb1c05ee6ea72a1a2d5ce5b966c404e9c); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified
+Version: elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza 35e0a605b3d560eedec664e79693d5ecc0b5ece3); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified
 License: MIT
 Source: https://github.com/elizaOS/llama.cpp (fork of ggml-org/llama.cpp)
         Recorded libraries:
@@ -6606,7 +6606,7 @@ SOFTWARE.
 
 ==============================================================================
 LLVM libc++ (libc++_shared.so from the Android NDK)
-Version: elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza 7e8b5d3eb1c05ee6ea72a1a2d5ce5b966c404e9c); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified
+Version: elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza 35e0a605b3d560eedec664e79693d5ecc0b5ece3); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified
 License: Apache-2.0 WITH LLVM-exception
 Source: https://github.com/llvm/llvm-project/tree/main/libcxx
         Recorded libraries:
@@ -7609,7 +7609,7 @@ Obligation (licence-text-missing-from-package): The package ships no licence fil
 
 ==============================================================================
 misaki G2P (C++ port in libelizainference)
-Version: elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza 7e8b5d3eb1c05ee6ea72a1a2d5ce5b966c404e9c); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified
+Version: elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza 35e0a605b3d560eedec664e79693d5ecc0b5ece3); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified
 License: Apache-2.0
 Source: https://github.com/hexgrad/misaki (fba1236595f2d2bf21d414ba6e57d25256afada3), ported in elizaOS/llama.cpp tools/misaki-g2p
         Recorded libraries:
@@ -9254,7 +9254,7 @@ Obligation (licence-text-missing-from-package): The package ships no licence fil
 
 ==============================================================================
 Parakeet-TDT decoder (tools/parakeet parakeet_lib, statically linked into libelizainference)
-Version: elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza 7e8b5d3eb1c05ee6ea72a1a2d5ce5b966c404e9c); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified
+Version: elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza 35e0a605b3d560eedec664e79693d5ecc0b5ece3); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified
 License: MIT
 Source: https://github.com/elizaOS/llama.cpp tools/parakeet
         Recorded libraries:
@@ -11131,7 +11131,7 @@ SOFTWARE.
 
 ==============================================================================
 Silero VAD (graph in libelizainference)
-Version: elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza 7e8b5d3eb1c05ee6ea72a1a2d5ce5b966c404e9c); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified
+Version: elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza 35e0a605b3d560eedec664e79693d5ecc0b5ece3); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified
 License: MIT
 Source: https://github.com/snakers4/silero-vad
         Recorded libraries:

@@ -2,15 +2,64 @@
   "schema": 1,
   "repository": "elizaOS/eliza",
   "base": "develop",
-  "baseCommit": "7e8b5d3eb1c05ee6ea72a1a2d5ce5b966c404e9c",
-  "head": "7e8b5d3eb1c05ee6ea72a1a2d5ce5b966c404e9c",
-  "recordedAt": "2026-11-01",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...7e8b5d3eb1c05ee6ea72a1a2d5ce5b966c404e9c",
-  "status": "identical",
-  "aheadBy": 0,
-  "behindBy": 0,
+  "baseCommit": "b2dbeff3ab689a69f7e518deb7d608d1c4607790",
+  "head": "35e0a605b3d560eedec664e79693d5ecc0b5ece3",
+  "recordedAt": "2026-11-02",
+  "command": "gh api repos/elizaOS/eliza/compare/b2dbeff3ab689a69f7e518deb7d608d1c4607790...35e0a605b3d560eedec664e79693d5ecc0b5ece3",
+  "status": "diverged",
+  "aheadBy": 12,
+  "behindBy": 24,
   "mergeBase": "7e8b5d3eb1c05ee6ea72a1a2d5ce5b966c404e9c",
-  "pinOnlyCommits": [],
+  "pinOnlyCommits": [
+    {
+      "sha": "05290f673c034a3b42d0e2db58e4205007f5c928",
+      "subject": "fix(alpha): reconcile reviewed runtime features with current shared Eliza"
+    },
+    {
+      "sha": "5e0feca4ee65c7dc81b18fd0fb866e1ede28325e",
+      "subject": "fix(core): narrow deferred provider event before field access"
+    },
+    {
+      "sha": "9950213832d6bb6965121a517e268ce898ef0100",
+      "subject": "fix(core): declare deferred provider cache marker and align owning checks"
+    },
+    {
+      "sha": "f474bf608a753f4ecef8b421477b825666d71c21",
+      "subject": "style(assistant): apply owning formatter corrections"
+    },
+    {
+      "sha": "77705c5658a3070e89948d52c56dce6c47d563a5",
+      "subject": "fix(voice): stream Cloud audio with bounded cancellation"
+    },
+    {
+      "sha": "05050011ef2fd9ccdb9478139e61fd6bd1824431",
+      "subject": "fix(assistant): guide model-authored navigation acknowledgments"
+    },
+    {
+      "sha": "5ecc5fe7ef8367a10e86b4c73d5cdffead6816dd",
+      "subject": "style(assistant): sort acknowledgment test imports"
+    },
+    {
+      "sha": "4fc63239072190dbea34c07d73773748fc08a79d",
+      "subject": "fix(assistant): parse bounded native evaluator verdict envelopes"
+    },
+    {
+      "sha": "44ecc6c0e37da8e266f8fadf19677726d9703b05",
+      "subject": "fix(pdf): expose the canonical workspace source entry"
+    },
+    {
+      "sha": "7a34cc0f7fff01b5886e9c261a1b6f86ec5e5538",
+      "subject": "fix(notes): confirm canonical patch edits requested as updates"
+    },
+    {
+      "sha": "368a3da3b2b0ab2ebf377d4794b9db3743b4b2f8",
+      "subject": "fix(voice): hold input through replies and retire failed microphone closure"
+    },
+    {
+      "sha": "35e0a605b3d560eedec664e79693d5ecc0b5ece3",
+      "subject": "fix(assistant): guide missed-reply repeats through validated source quotes"
+    }
+  ],
   "pullRequests": [
     {
       "url": "https://github.com/elizaOS/eliza/pull/37059",
@@ -389,6 +438,10 @@
       "status": "merged",
       "draft": false,
       "merged": true
+    },
+    {
+      "url": "https://github.com/elizaOS/eliza/pull/38516",
+      "status": "open draft"
     }
   ]
 }
