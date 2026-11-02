@@ -177,13 +177,15 @@ test.describe('launcher', () => {
 
   test('a Home scrolled away from its top scrolls back before a pull opens the shade', async ({ page }) => {
     await home(page);
-    // Large text makes Home taller than the screen.
+    // Large text makes Home taller than the screen. The shared mobile shell Home (bddae1cf8) packs its
+    // rows closer, so at 200% the launcher Home overflows by less than a row: it scrolls, by however
+    // much it has.
     await page.evaluate(async () => { const display = await import('/src/browser/display.ts' as string); display.installBrowserDisplay(); document.documentElement.style.setProperty('--browser-text-scale', '2'); });
     const layer = page.locator('[data-alpha-layer="home"]');
-    await expect.poll(() => layer.evaluate(element => element.scrollHeight > element.clientHeight + 40)).toBe(true);
+    await expect.poll(() => layer.evaluate(element => element.scrollHeight > element.clientHeight + 1)).toBe(true);
     // An overflowing Home keeps ordinary vertical scrolling for touch.
     await expect(layer).toHaveAttribute('data-alpha-home-fits', 'false');
-    await layer.evaluate(element => { element.scrollTop = 120; });
+    expect(await layer.evaluate(element => { element.scrollTop = 120; return element.scrollTop; })).toBeGreaterThan(0);
     await drag(page, { x: 206, y: 420 }, 240);
     await closed(page, 'scrolled Home');
     await layer.evaluate(element => { element.scrollTop = 0; });

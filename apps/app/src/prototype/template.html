@@ -1129,7 +1129,7 @@
               <svg class="i" viewBox="0 0 24 24" style="color: var(--mut); flex-shrink: 0"><path d="{{ic.cal}}"></path></svg>
               <div style="display: flex; gap: 8px; flex-wrap: wrap; flex: 1 1 0; min-width: 0">
                 <sc-for list="{{calendar.f.cals}}" as="c">
-                  <button onClick="{{c.pick}}" style="min-height: 48px; max-width: 100%; padding: 6px 14px; box-sizing: border-box; border-radius: 24px; font-size: 13.5px; font-weight: 600; display: flex; align-items: center; gap: 8px; text-align: left; overflow-wrap: anywhere; {{c.css}}"><span style="width: 8px; height: 8px; border-radius: 4px; flex-shrink: 0; background: {{c.dot}}"></span><span style="min-width: 0">{{c.name}}</span></button>
+                  <button onClick="{{c.pick}}" style="max-width: 100%; padding: 6px 14px; box-sizing: border-box; border-radius: 24px; font-size: 13.5px; font-weight: 600; display: flex; align-items: center; gap: 8px; text-align: left; overflow-wrap: anywhere; {{c.css}}"><span style="width: 8px; height: 8px; border-radius: 4px; flex-shrink: 0; background: {{c.dot}}"></span><span style="min-width: 0">{{c.name}}</span></button>
                 </sc-for>
               </div>
             </div>
@@ -1139,7 +1139,7 @@
               <svg class="i" viewBox="0 0 24 24" style="color: var(--mut); flex-shrink: 0"><path d="{{ic.calRepeat}}"></path></svg>
               <div style="display: flex; gap: 6px; flex-wrap: wrap; flex: 1 1 0; min-width: 0">
                 <sc-for list="{{calendar.f.repeats}}" as="c">
-                  <button onClick="{{c.pick}}" style="min-height: 48px; max-width: 100%; padding: 6px 12px; box-sizing: border-box; border-radius: 24px; font-size: 13.5px; font-weight: 600; overflow-wrap: anywhere; {{c.css}}">{{c.label}}</button>
+                  <button onClick="{{c.pick}}" style="max-width: 100%; padding: 6px 12px; box-sizing: border-box; border-radius: 24px; font-size: 13.5px; font-weight: 600; overflow-wrap: anywhere; {{c.css}}">{{c.label}}</button>
                 </sc-for>
               </div>
             </div>
@@ -1149,7 +1149,7 @@
               <svg class="i" viewBox="0 0 24 24" style="color: var(--mut); flex-shrink: 0"><path d="{{ic.bell}}"></path></svg>
               <div style="display: flex; gap: 6px; flex-wrap: wrap; flex: 1 1 0; min-width: 0">
                 <sc-for list="{{calendar.f.alerts}}" as="c">
-                  <button onClick="{{c.pick}}" style="min-height: 48px; max-width: 100%; padding: 6px 12px; box-sizing: border-box; border-radius: 24px; font-size: 13.5px; font-weight: 600; overflow-wrap: anywhere; {{c.css}}">{{c.label}}</button>
+                  <button onClick="{{c.pick}}" style="max-width: 100%; padding: 6px 12px; box-sizing: border-box; border-radius: 24px; font-size: 13.5px; font-weight: 600; overflow-wrap: anywhere; {{c.css}}">{{c.label}}</button>
                 </sc-for>
               </div>
             </div>

@@ -123,14 +123,16 @@ html:not(.standalone-app) [data-alpha-layer="home"][data-alpha-home-fits="true"]
 
 .note-source-dialog footer button { flex:1 1 180px; min-width:0; overflow-wrap:normal; }
 .note-source-content:focus-visible { outline:2px solid currentColor; outline-offset:-2px; }
-/* At large text the heading and the wrapped actions alone can fill the dialog, leaving the details
- * region no height (and its focus ring nowhere to show) and pushing the last actions past the
- * dialog's edge. There the whole dialog scrolls instead: every action stays reachable, and the
- * details region takes the height of its text so its focus ring is drawn around it. */
-.alpha-large-text .note-source-dialog { overflow:auto; overscroll-behavior:contain; }
-.alpha-large-text .note-source-content { flex-shrink:0; overflow:visible; }
-.alpha-large-text .note-source-content:focus-visible { outline-offset:2px; }
-.alpha-large-text .note-source-dialog footer button { overflow-wrap:anywhere; }
+/* Above 150% text (a large system font, alpha-text-xl) the heading and the wrapped actions alone can
+ * fill the dialog, leaving the details region no height (and its focus ring nowhere to show) and
+ * pushing the last actions past the dialog's edge. There the whole dialog scrolls instead: every
+ * action stays reachable, and the details region takes the height of its text so its focus ring is
+ * drawn around it. Up to 150% the details region scrolls and the actions stay pinned below it, so
+ * a compact window still shows them without scrolling the dialog. */
+.alpha-text-xl .note-source-dialog { overflow:auto; overscroll-behavior:contain; }
+.alpha-text-xl .note-source-content { flex-shrink:0; overflow:visible; }
+.alpha-text-xl .note-source-content:focus-visible { outline-offset:2px; }
+.alpha-text-xl .note-source-dialog footer button { overflow-wrap:anywhere; }
 
 .note-source-dialog button:disabled { opacity:.5; cursor:default; }
 
