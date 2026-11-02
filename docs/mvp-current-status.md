@@ -85,7 +85,9 @@ the operator's index of build, provisioning, release and support material is the
 
 ## Product boundaries
 
-Current source projection: SDK `5113e59025`. Current source pin 5113e59025664fc39a6542338d076b7f49ead4d7 includes the reviewed Stage1 read guidance and voice response brevity, retaining Calendar and news ACK fixes. Exact source delta leaves dependency/native/build inputs unchanged; see docs/evidence/sdk-5113e59025-dev-input-reuse-20261102.json. Live prompt and Android acceptance remain separate and pending. 
+Current source projection: SDK `1cb0f104e2`. Current source pin 1cb0f104e22d9001a4b8da1b8777a1d88f28b977 includes the reviewed acknowledgment-authoring alignment and stronger short spoken-response guidance. Exact source delta leaves dependency/native/build inputs unchanged; see docs/evidence/sdk-1cb0f104e2-dev-input-reuse-20261102.json. Live prompt and Android acceptance remain separate and pending. 
+
+Historical source projection (SDK5113e59025): Current source pin 5113e59025664fc39a6542338d076b7f49ead4d7 includes the reviewed Stage1 read guidance and voice response brevity, retaining Calendar and news ACK fixes. Exact source delta leaves dependency/native/build inputs unchanged; see docs/evidence/sdk-5113e59025-dev-input-reuse-20261102.json. Live prompt and Android acceptance remain separate and pending. 
 
 Historical source projection (SDKeaf3a0b011): Current source pin eaf3a0b011e2f58437573ddde72b01f8ebf879ad includes the reviewed public-news acknowledgment grammar fix, with Calendar fixes retained. Exact source delta leaves dependency/native/build inputs unchanged; see docs/evidence/sdk-eaf3a0b011-dev-input-reuse-20261102.json. Live prompt and Android acceptance remain separate and pending. 
 

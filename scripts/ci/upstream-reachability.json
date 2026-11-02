@@ -3,11 +3,11 @@
   "repository": "elizaOS/eliza",
   "base": "develop",
   "baseCommit": "b2dbeff3ab689a69f7e518deb7d608d1c4607790",
-  "head": "5113e59025664fc39a6542338d076b7f49ead4d7",
+  "head": "1cb0f104e22d9001a4b8da1b8777a1d88f28b977",
   "recordedAt": "2026-11-02",
-  "command": "gh api repos/elizaOS/eliza/compare/b2dbeff3ab689a69f7e518deb7d608d1c4607790...5113e59025664fc39a6542338d076b7f49ead4d7",
+  "command": "gh api repos/elizaOS/eliza/compare/b2dbeff3ab689a69f7e518deb7d608d1c4607790...1cb0f104e22d9001a4b8da1b8777a1d88f28b977",
   "status": "diverged",
-  "aheadBy": 18,
+  "aheadBy": 19,
   "behindBy": 24,
   "mergeBase": "7e8b5d3eb1c05ee6ea72a1a2d5ce5b966c404e9c",
   "pinOnlyCommits": [
@@ -82,6 +82,10 @@
     {
       "sha": "5113e59025664fc39a6542338d076b7f49ead4d7",
       "subject": "fix(assistant): join spoken reply and fresh-read guidance"
+    },
+    {
+      "sha": "1cb0f104e22d9001a4b8da1b8777a1d88f28b977",
+      "subject": "fix(assistant): align voice authoring with safe progress and brief replies"
     }
   ],
   "pullRequests": [
