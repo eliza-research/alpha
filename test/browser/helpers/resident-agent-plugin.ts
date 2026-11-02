@@ -10,6 +10,9 @@ import {installNativeNavigationFixture} from './native-navigation-protocol';
  * - Capacitor's Plugin base addListener/removeListener (native `callback` methods, so the
  *   fixture's Capacitor global must use the returned `nativeCallback`);
  * - subscribeViewEvents/unsubscribeViewEvents for the renderer's alphaViewEvent feed;
+ * - providerStatus, which the renderer reads before every resident start since e15f0b735 (Cloud or
+ *   owner-provided inference). It answers an unconfigured provider unless the spec lists
+ *   `providerStatus` in `methods(...)` itself, which leaves the answer to the spec's own routing;
  * - the agent routes the resident renderer reaches once it is subscribed, through the shared
  *   native navigation protocol: GET /api/client-devices/context, answered with the identity the
  *   device registered with (#651's committed-enrollment read), and committed-view reporting.
@@ -26,12 +29,14 @@ function defineResidentAgentPlugin() {
     const state = {subscriptions: [] as string[], unsubscribed: [] as string[], unexpected: options.unexpected ?? [] as string[]};
     const protocol = (window as any).createNativeNavigationFixture(options.owner, options.agentId, state);
     let nextCallback = 0;
+    let specProviderStatus = false;
     return {
       state,
-      /** Agent header: the spec's own promise methods plus the plugin's listener and view-event methods. */
+      /** Agent header: the spec's own promise methods plus the plugin's listener, view-event and provider-status methods. */
       methods(names: string[]) {
+        specProviderStatus = names.includes('providerStatus');
         return [
-          ...[...names, 'subscribeViewEvents', 'unsubscribeViewEvents'].map(name => ({name, rtype: 'promise'})),
+          ...[...new Set([...names, 'subscribeViewEvents', 'unsubscribeViewEvents', 'providerStatus'])].map(name => ({name, rtype: 'promise'})),
           {name: 'addListener', rtype: 'callback'},
           {name: 'removeListener', rtype: 'callback'},
         ];
@@ -58,6 +63,8 @@ function defineResidentAgentPlugin() {
           return {subscriptionId: input.subscriptionId};
         }
         if (method === 'unsubscribeViewEvents') { state.unsubscribed.push(input?.subscriptionId); return {}; }
+        // Nothing saved: the native store reports no provider configured (Cloud remains the default).
+        if (method === 'providerStatus' && !specProviderStatus) return {provider: 'elizacloud', configured: false};
         if (method !== 'request') return undefined;
         const headers = input.headers ?? {};
         // Observe (never answer) registration so the context read reports the enrolled identity.

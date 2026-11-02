@@ -14,11 +14,13 @@ async function stubAgent(page: import('@playwright/test').Page, cloud = false) {
     const status = () => cloud ? { provider: 'elizacloud', configured: true, model: 'cerebras/qwen-3.8-27b' } : f.saved ? { provider: 'cerebras', configured: true, model: 'qwen-3.8-27b' } : { provider: 'cerebras', configured: false };
     w.Capacitor = {
       PluginHeaders: [
-        { name: 'Agent', methods: agent.methods(['getStatus', 'start', 'stop', 'request', 'configureProvider', 'providerStatus', 'clearProvider']) },
+        { name: 'Agent', methods: agent.methods(['getStatus', 'start', 'stop', 'request', 'providerStatus', 'prepareProviderConfiguration', 'configureProvider', 'cancelProviderConfiguration', 'clearProvider']) },
         { name: 'AlphaConnection', methods: methods(['secureRead', 'secureWrite', 'secureCompareExchange', 'secureRemove', 'request', 'cancel', 'addListener', 'removeListener']) },
         { name: 'AlphaNotifications', methods: methods(['status', 'crossAppStatus', 'addListener', 'removeListener']) },
         { name: 'AlphaVoiceCloud', methods: methods(['checkPermissions']) },
         { name: 'ElizaSystem', methods: methods(['getBuildInfo']) },
+        // Removing a key while the resident runs retires its background delivery (e15f0b735 starts it on save).
+        { name: 'AlphaHostedResults', methods: methods(['disableBackground', 'pendingResult', 'status', 'addListener', 'removeListener']) },
       ],
       nativeCallback: (plugin: string, method: string, input: any, callback: (value: unknown) => void) => plugin === 'Agent' ? agent.nativeCallback(plugin, method, input, callback) : 'provider-fixture-listener',
       nativePromise: async (plugin: string, method: string, input: any) => {
@@ -26,6 +28,7 @@ async function stubAgent(page: import('@playwright/test').Page, cloud = false) {
         if (plugin === 'AlphaNotifications') return { permissionGranted: true, appEnabled: true };
         if (plugin === 'AlphaVoiceCloud') return { microphone: 'granted' };
         if (plugin === 'AlphaConnection') return method === 'secureRead' ? { value: null } : {};
+        if (plugin === 'AlphaHostedResults') return {};
         if (plugin === 'Agent') {
           const owned = agent.answer(method, input); if (owned) return owned;
           if (method === 'getStatus') return { packaged: true, state: 'stopped', serviceActive: false, socketListening: false };
@@ -39,6 +42,9 @@ async function stubAgent(page: import('@playwright/test').Page, cloud = false) {
             return { status: body ? 200 : 404, body: JSON.stringify(body ?? {}) };
           }
           if (method === 'providerStatus') return status();
+          // Cancellable provider setup, as AlphaLocalAgentPlugin exposes it since e15f0b735.
+          if (method === 'prepareProviderConfiguration') return { requestId: 'provider-request-' + (f.configures.length + f.clears + 1) };
+          if (method === 'cancelProviderConfiguration') return {};
           if (method === 'configureProvider') { f.configures.push(input); if (f.reject) throw new Error(f.reject); f.saved = { model: input.model }; return status(); }
           if (method === 'clearProvider') { f.clears++; f.saved = null; return { provider: 'cerebras', configured: false }; }
           if (method === 'stop') { f.stops++; return { state: 'stopping' }; }
@@ -69,6 +75,12 @@ test('provider status, pinned model, verified save and confirmed key removal', a
   await page.evaluate(() => { (window as any).providerFixture.reject = ''; });
   await chooser.getByLabel('Cerebras API key').fill('synthetic-accepted-key');
   await chooser.getByRole('button', { name: 'Save provider', exact: true }).click();
+  // Since e15f0b735 a verified key selects own keys and starts the agent with them at once, which
+  // closes the chooser; reopening it shows the saved provider.
+  await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: /Agent connection/ }).click();
+  await chooser.getByText('Model provider', { exact: true }).click();
   await expect(chooser.getByText('Configured · Cerebras · qwen-3.8-27b', { exact: true })).toBeVisible();
   await expect(chooser.getByLabel('Cerebras API key')).toHaveValue('');
   const configures = await page.evaluate(() => (window as any).providerFixture.configures);
@@ -80,9 +92,14 @@ test('provider status, pinned model, verified save and confirmed key removal', a
   expect(await page.evaluate(() => (window as any).providerFixture.clears)).toBe(0);
   await chooser.getByRole('button', { name: 'Remove key…', exact: true }).click();
   await chooser.getByRole('button', { name: 'Remove key', exact: true }).click();
-  await expect(chooser.getByText('Not configured', { exact: true })).toBeVisible();
-  await expect(chooser.getByText(/Provider key removed from this phone/)).toBeVisible();
+  // The running agent holds the key: removal stops it, clears the key, and restarts it with AI off,
+  // which closes the chooser again.
+  await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
   expect(await page.evaluate(() => (window as any).providerFixture.clears)).toBe(1);
+  expect(await page.evaluate(() => (window as any).providerFixture.stops)).toBe(1);
+  await page.getByRole('button', { name: /Agent connection/ }).click();
+  await chooser.getByText('Model provider', { exact: true }).click();
+  await expect(chooser.getByText('Not configured', { exact: true })).toBeVisible();
   await expect(chooser.getByRole('button', { name: 'Remove key…', exact: true })).toHaveCount(0);
   // Nothing in the page carries the key.
   expect(await page.content()).not.toContain('synthetic-accepted-key');
