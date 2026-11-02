@@ -12,7 +12,9 @@ html,body,#root{margin:0;width:100%;height:100%;overflow:hidden;overscroll-behav
   --alpha-notice-top:max(48px,calc(var(--alpha-header-clearance,0px) + 8px),calc((max(var(--native-top-inset,0px),env(safe-area-inset-top,0px)) + 12px) / var(--phone-scale,1)));
 }
 .alpha-phone :is([data-alpha-layer="composer"],[data-alpha-layer="pill"],[data-alpha-voice-panel]) { bottom:var(--alpha-bottom-clearance)!important; }
-.alpha-phone [data-alpha-toast] { position:absolute; top:var(--alpha-notice-top); left:16px; right:16px; z-index:97; max-height:max(0px,calc(100% - var(--alpha-notice-top) - var(--alpha-dock-clearance,102px) - 12px)); overflow:auto; }
+/* Top notices sit below the header and above the dock. When a short window (landscape with the
+ * keyboard open) leaves no room, they keep one usable row and rise over the header, never vanish. */
+.alpha-phone [data-alpha-toast] { --alpha-toast-row:56px; --alpha-toast-top:max(8px,min(var(--alpha-notice-top),calc(100% - var(--alpha-dock-clearance,102px) - 12px - var(--alpha-toast-row)))); position:absolute; top:var(--alpha-toast-top); left:16px; right:16px; z-index:97; min-height:0; max-height:max(var(--alpha-toast-row),calc(100% - var(--alpha-toast-top) - var(--alpha-dock-clearance,102px) - 12px)); overflow:auto; }
 [data-alpha-toast] { display:flex; align-items:flex-start; justify-content:center; pointer-events:none; }
 [data-alpha-toast] > * { flex-shrink:0; }
 .alpha-chat-notices { max-height:30%; overflow:auto; flex-shrink:0; }
