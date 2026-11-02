@@ -3,11 +3,11 @@
   "repository": "elizaOS/eliza",
   "base": "develop",
   "baseCommit": "b2dbeff3ab689a69f7e518deb7d608d1c4607790",
-  "head": "ac5d57f8ec6eb95b3efae6f2e4c20a1ffae3249c",
+  "head": "c42c779a789667629b2ce9adb8dbf153c63108b7",
   "recordedAt": "2026-11-02",
-  "command": "gh api repos/elizaOS/eliza/compare/b2dbeff3ab689a69f7e518deb7d608d1c4607790...ac5d57f8ec6eb95b3efae6f2e4c20a1ffae3249c",
+  "command": "gh api repos/elizaOS/eliza/compare/b2dbeff3ab689a69f7e518deb7d608d1c4607790...c42c779a789667629b2ce9adb8dbf153c63108b7",
   "status": "diverged",
-  "aheadBy": 20,
+  "aheadBy": 21,
   "behindBy": 24,
   "mergeBase": "7e8b5d3eb1c05ee6ea72a1a2d5ce5b966c404e9c",
   "pinOnlyCommits": [
@@ -90,6 +90,10 @@
     {
       "sha": "ac5d57f8ec6eb95b3efae6f2e4c20a1ffae3249c",
       "subject": "fix(voice): join final response policy and reviewed diagnostics"
+    },
+    {
+      "sha": "c42c779a789667629b2ce9adb8dbf153c63108b7",
+      "subject": "fix(assistant): bind voice style to final generation field"
     }
   ],
   "pullRequests": [

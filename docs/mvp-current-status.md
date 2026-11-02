@@ -85,7 +85,9 @@ the operator's index of build, provisioning, release and support material is the
 
 ## Product boundaries
 
-Current source projection: SDK `ac5d57f8ec`. Current source pin ac5d57f8ec6eb95b3efae6f2e4c20a1ffae3249c includes the reviewed news qualifier, Calendar discovery diagnostics, and final voice-policy placement; bounded Calendar lookup retained. Exact source delta leaves dependency/native/build inputs unchanged; see docs/evidence/sdk-ac5d57f8ec-dev-input-reuse-20261102.json. Live prompt and Android acceptance remain separate and pending. 
+Current source projection: SDK `c42c779a78`. Current source pin c42c779a789667629b2ce9adb8dbf153c63108b7 includes the reviewed final speech generation-field policy and bounded acknowledgment grammar correction. Exact source delta leaves dependency/native/build inputs unchanged; see docs/evidence/sdk-c42c779a78-dev-input-reuse-20261102.json. Live prompt and Android acceptance remain separate and pending. 
+
+Historical source projection (SDKac5d57f8ec): Current source pin ac5d57f8ec6eb95b3efae6f2e4c20a1ffae3249c includes the reviewed news qualifier, Calendar discovery diagnostics, and final voice-policy placement; bounded Calendar lookup retained. Exact source delta leaves dependency/native/build inputs unchanged; see docs/evidence/sdk-ac5d57f8ec-dev-input-reuse-20261102.json. Live prompt and Android acceptance remain separate and pending. 
 
 Historical source projection (SDK1cb0f104e2): Current source pin 1cb0f104e22d9001a4b8da1b8777a1d88f28b977 includes the reviewed acknowledgment-authoring alignment and stronger short spoken-response guidance. Exact source delta leaves dependency/native/build inputs unchanged; see docs/evidence/sdk-1cb0f104e2-dev-input-reuse-20261102.json. Live prompt and Android acceptance remain separate and pending. 
 
