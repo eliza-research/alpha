@@ -115,3 +115,27 @@ test('broker close rejection keeps retirement unavailable and still stops the ol
   rejectClose=false;
  }finally{rejectClose=false;await host.close();await fs.rm(profile,{recursive:true,force:true});}
 });
+
+
+test('explicit Cloud realtime host switches to Direct and back without leaking relay authority',async()=>{
+ for(const cloudRealtimeVoice of [false,true]){
+  const launches=[];
+  const host=await createCloudResidentHost({cloudRealtimeVoice,launch:async options=>{launches.push(options);let done;return {completion:new Promise(resolve=>done=resolve),async stop(){done({code:0});}};},request:async()=>Response.json({data:[{id:'qwen-3.8-27b'}]})});
+  try{
+   await host.clear();
+   assert.equal(launches.at(-1).env.ELIZA_SELF_HOSTED_VOICE_CLOUD_RELAY_ENABLED,undefined,'unbound host cannot use relay');
+   await host.bind({token:'synthetic-cloud-key',credentialId:'relay-owner',reference:'relay-reference'});
+   assert.equal(launches.at(-1).env.ELIZA_SELF_HOSTED_VOICE_CLOUD_RELAY_ENABLED,cloudRealtimeVoice?'1':undefined);
+   await host.selectOwn({apiKey:'synthetic-direct-key',cartesiaKey:'synthetic-cartesia-key'});
+   assert.equal(launches.at(-1).env.ELIZA_SELF_HOSTED_VOICE_CLOUD_RELAY_ENABLED,undefined,'Direct keeps its own provider');
+   assert.equal(launches.at(-1).env.CARTESIA_API_KEY,'synthetic-cartesia-key');
+   assert.equal(launches.at(-1).env.ELIZAOS_CLOUD_API_KEY,undefined);
+   await host.selectCloud();
+   assert.equal(launches.at(-1).env.ELIZA_SELF_HOSTED_VOICE_CLOUD_RELAY_ENABLED,cloudRealtimeVoice?'1':undefined);
+   assert.equal(launches.at(-1).env.ELIZAOS_CLOUD_API_KEY,'synthetic-cloud-key');
+   assert.equal(launches.at(-1).env.CARTESIA_API_KEY,undefined);
+   await host.clear();
+   assert.equal(launches.at(-1).env.ELIZA_SELF_HOSTED_VOICE_CLOUD_RELAY_ENABLED,undefined);
+  }finally{await host.close();}
+ }
+});
