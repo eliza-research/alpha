@@ -1,0 +1,73 @@
+name: Publish reviewed embedding qualification
+on:
+  workflow_dispatch:
+    inputs:
+      carrier_commit:
+        description: Exact reviewed data-only commit containing embedding-qualification files
+        required: true
+        type: string
+      component_artifact_id:
+        description: Original compiled component artifact ID
+        required: true
+        type: string
+      component_sha256:
+        description: Original compiled component ZIP SHA-256
+        required: true
+        type: string
+      qualification_file_sha256:
+        description: Reviewed QUALIFICATION.json SHA-256
+        required: true
+        type: string
+      semantic_file_sha256:
+        description: Reviewed public-corpus embedding-qualification.json SHA-256
+        required: true
+        type: string
+permissions:
+  contents: read
+  actions: read
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      ALPHA_EMBEDDING_CARRIER_COMMIT: ${{ inputs.carrier_commit }}
+      ALPHA_EMBEDDING_COMPONENT_ARTIFACT_ID: ${{ inputs.component_artifact_id }}
+      ALPHA_EMBEDDING_COMPONENT_SHA256: ${{ inputs.component_sha256 }}
+      ALPHA_EMBEDDING_QUALIFICATION_FILE_SHA256: ${{ inputs.qualification_file_sha256 }}
+      ALPHA_EMBEDDING_SEMANTIC_FILE_SHA256: ${{ inputs.semantic_file_sha256 }}
+    outputs:
+      artifact_id: ${{ steps.receipt.outputs.artifact-id }}
+      artifact_sha256: ${{ steps.receipt.outputs.artifact-digest }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v6.1.0
+        with:
+          python-version: "3.12"
+      - name: Validate immutable carrier inputs
+        run: python3 scripts/ci/embedding-artifacts.py --check-carrier-inputs
+      # This checkout is data only. No code or hooks from it are executed.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.carrier_commit }}
+          path: qualification-carrier
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /embedding-qualification/QUALIFICATION.json
+            /embedding-qualification/embedding-qualification.json
+      - name: Validate public-corpus receipt against original component
+        timeout-minutes: 6
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/ci/embedding-artifacts.py --prepare-carrier
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        id: receipt
+        with:
+          name: embedding-semantic-qualification-${{ github.run_id }}
+          if-no-files-found: error
+          retention-days: 7
+          path: |
+            test-results/embedding-qualified-carrier/QUALIFICATION.json
+            test-results/embedding-qualified-carrier/embedding-qualification.json

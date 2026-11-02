@@ -11,6 +11,17 @@ const names=['libelizainference.so','libelizavoicejni.so','libc++_shared.so'];
 const model={path:'android/app/src/main/assets/agent/models/bge-small-en-v1.5-f16.gguf',sha256:'f0b2fef971e8366438bfd2d9aefea1b0115919389448806d290237f638bae999',dimensions:384};
 const forkPath='plugins/plugin-local-inference/native/llama.cpp';
 
+/** Map original receipt paths onto a verified extracted artifact without rewriting the receipt. */
+export function embeddingLibrarySource(row,libraryRoot){
+ if(libraryRoot===undefined)return row.path;
+ if(!path.isAbsolute(libraryRoot)||path.resolve(libraryRoot)!==libraryRoot||fs.realpathSync(libraryRoot)!==libraryRoot||!fs.lstatSync(libraryRoot).isDirectory())throw Error('Embedding library root must be a canonical directory');
+ const name=path.basename(row.path);
+ if(!names.includes(name)||(row.artifactPath!==undefined&&row.artifactPath!==name))throw Error('Unexpected embedding artifact path');
+ const file=path.join(libraryRoot,name),stat=fs.lstatSync(file);
+ if(!stat.isFile()||stat.isSymbolicLink())throw Error('Embedding artifact library must be a regular file');
+ return file;
+}
+
 const isCommit=value=>typeof value==='string'&&/^[a-f0-9]{40}$/.test(value)&&value!=='0'.repeat(40);
 /** A new runtime pin may reuse reviewed binaries only when every native build input is exact. */
 export function verifyEmbeddingInputs(productRoot,qualification,{requireProducerInputs=false}={}) {
@@ -76,7 +87,8 @@ export function verifyEmbeddingHost(productRoot,{allowAbsentRuntime=false,requir
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  const args=process.argv.slice(2);
  if(args[0]==='--verify'&&(args.length===1||args.length===2&&args[1]==='--allow-unpackaged-runtime')){const result=verifyEmbeddingHost(root,{allowAbsentRuntime:args.includes('--allow-unpackaged-runtime')});console.log(result.status==='not-packaged'?'No resident embedding host packaged; developer APK only.':'Qualified ARM64 embedding host and BGE384 bytes verified. No device execution claimed.');}
- else if(args.length===2&&args[0]==='--receipt'){
+ else if(args[0]==='--receipt'&&(args.length===2||args.length===4&&args[2]==='--library-root')){
+  const libraryRoot=args.length===4?args[3]:undefined;
   const receipt=JSON.parse(fs.readFileSync(args[1],'utf8'));
   const identity=JSON.parse(fs.readFileSync(path.join(root,'app.config.json'),'utf8')).appId;
   if(receipt.built!==true||!receipt.qualifiedAt||!Array.isArray(receipt.libraries)||receipt.libraries.length!==3)throw Error('Exact qualified ARM64 receipt required');
@@ -84,10 +96,10 @@ if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.ur
   const libraries=names.map(name=>{
    const matches=receipt.libraries.filter(row=>path.basename(row.path)===name);
    if(matches.length!==1)throw Error('Incomplete embedding host receipt');
-   const row=matches[0];if(!Number.isSafeInteger(row.bytes)||row.bytes<=0||fs.statSync(row.path).size!==row.bytes||row.alignment16KiB!==true||hash(row.path)!==row.sha256)throw Error('Qualified library bytes changed');
+   const row=matches[0],sourcePath=embeddingLibrarySource(row,libraryRoot);if(!Number.isSafeInteger(row.bytes)||row.bytes<=0||fs.statSync(sourcePath).size!==row.bytes||row.alignment16KiB!==true||hash(sourcePath)!==row.sha256)throw Error('Qualified library bytes changed');
    const target=path.join(root,'android/app/src/main/jniLibs',receipt.abi,name);
    if(fs.existsSync(target)&&(fs.lstatSync(target).isSymbolicLink()||hash(target)!==row.sha256))throw Error('Existing native library differs; review ownership before replacing '+name);
-   return {name,sha256:row.sha256,bytes:row.bytes,alignment16KiB:true,source:row.path,target};
+   return {name,sha256:row.sha256,bytes:row.bytes,alignment16KiB:true,source:sourcePath,target};
   });
   // agent:stage-android stages the model with the runtime payload; this command only checks it.
   if(!fs.existsSync(path.join(root,model.path)))throw Error('Pinned BGE model is not staged: run npm run agent:prepare, npm run agent:build-workflow-worker and npm run agent:stage-android first');
@@ -99,5 +111,5 @@ if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.ur
   for(const row of libraries){fs.mkdirSync(path.dirname(row.target),{recursive:true});if(!fs.existsSync(row.target))fs.copyFileSync(row.source,row.target,fs.constants.COPYFILE_EXCL);}
   fs.mkdirSync(path.dirname(manifestFile),{recursive:true});fs.writeFileSync(manifestFile,JSON.stringify(manifest,null,2)+'\n');
   verifyEmbeddingHost(root,{requireProducerInputs:true});console.log('Qualified ARM64 embedding host staged. Runtime policy and Cloud text/speech unchanged.');
- }else throw Error('Usage: node scripts/stage-embedding-host.mjs --receipt <QUALIFICATION.json> | --verify');
+ }else throw Error('Usage: node scripts/stage-embedding-host.mjs --receipt <QUALIFICATION.json> [--library-root <directory>] | --verify');
 }
