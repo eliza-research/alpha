@@ -103,9 +103,9 @@
   ],
   "resident": {
     "description": "Advisories for the resident runtime's npm packages at the pinned upstream commit, from the npm bulk advisory endpoint. Regenerate with: node scripts/dependency-audit.mjs --resident --write. Dispositions live in docs/dependency-audit.dispositions.json under \"resident\".",
-    "upstreamCommit": "9950213832d6bb6965121a517e268ce898ef0100",
+    "upstreamCommit": "35e0a605b3d560eedec664e79693d5ecc0b5ece3",
     "input": "vendor/eliza/bun.lock",
-    "auditedOn": "2026-11-01",
+    "auditedOn": "2026-11-02",
     "inputSha256": "7c9d7bd390a29fac9da3c16af0fdc4d0998ce7eaf6fb2b82020bc9055ee9e11e",
     "packages": 3677,
     "counts": {
@@ -2288,11 +2288,6 @@
           "url": "https://github.com/advisories/GHSA-mrhx-c7xc-m3w5"
         }
       }
-    ],
-    "sourceBinding": {
-      "priorUpstreamCommit": "7e8b5d3eb1c05ee6ea72a1a2d5ce5b966c404e9c",
-      "unchangedBunLockGitBlob": "1cc61ff8862fd52607467743370879b575050d4d",
-      "note": "Source binding reviewed from 7e8b5d3eb1c05ee6ea72a1a2d5ce5b966c404e9c to 9950213832d6bb6965121a517e268ce898ef0100: immutable upstream bun.lock has the identical Git blob 1cc61ff8862fd52607467743370879b575050d4d (1,294,180 bytes). The 2026-11-01 registry audit, normalized package input, all 153 finding rows and severity counts are retained unchanged; no new registry query or new packaged-runtime qualification is claimed. Existing exception scope, review/expiration dates, pending fixes and unknown packaged reachability remain unchanged."
-    }
+    ]
   }
 }
