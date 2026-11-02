@@ -75,13 +75,18 @@ test('Reconnect Gmail opens Google accounts; each authorization hands off once a
  // Opening the panel lists connections only: nothing was authorized, opened or read.
  let state=await f();
  expect(state.initiates).toEqual([]);expect(state.opened).toEqual([]);expect(state.reads).toBe(1);
- for(const [label,permission] of [['Add Google account','read'],['Enable Gmail changes','modify']] as const){
+ // One consent (10e15eff99): Add Google account asks for Gmail read and send plus Calendar read and edit.
+ // The account already sends mail but has no Calendar write, so turning Calendar edits on asks Google once
+ // for the same grant (it replaced the removed 'Gmail permissions / Enable Gmail changes' upgrade).
+ for(const label of ['Add Google account','Calendar edits'] as const){
   const before=await f();
-  if(label==='Enable Gmail changes')await panel.getByText('Gmail permissions',{exact:true}).click();
-  await panel.getByRole('button',{name:label,exact:true}).click();
+  if(label==='Calendar edits')await panel.getByRole('switch',{name:label,exact:true}).click();
+  else await panel.getByRole('button',{name:label,exact:true}).click();
+  // The switch first saves the device choice, then hands off; the prompt may still show from the first one.
+  await expect.poll(async()=>(await f()).opened.length,label).toBe(before.opened.length+1);
   await expect(next).toBeVisible();
   const after=await f();
-  expect(after.initiates.slice(before.initiates.length),label).toEqual([['read',permission]]);
+  expect(after.initiates.slice(before.initiates.length),label).toEqual([['write','send']]);
   expect(after.opened.slice(before.opened.length),label).toEqual([AUTH]);
   expect(after.reads,label+': no mailbox read until the owner checks again').toBe(before.reads);
  }

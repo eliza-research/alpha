@@ -14,7 +14,7 @@ for(const scenario of ['supported','legacy','unsupported','malformed','lost','re
    w.Capacitor={PluginHeaders:[
     {name:'AlphaNotifications',methods:methods(['status','crossAppStatus','addListener','removeListener'])},
     {name:'AlphaVoiceCloud',methods:methods(['checkPermissions'])},
-    {name:'Agent',methods:methods(['getStatus','start','request','addListener','removeListener','subscribeViewEvents','unsubscribeViewEvents'])},
+    {name:'Agent',methods:methods(['getStatus','providerStatus','start','request','addListener','removeListener','subscribeViewEvents','unsubscribeViewEvents'])},
     {name:'AlphaConnection',methods:methods(['secureRead','secureWrite','secureCompareExchange','secureRemove','cancel','addListener','removeListener','pauseNotificationCollection'])},
     {name:'AlphaActionJournal',methods:methods(['list'])},
     {name:'ElizaSystem',methods:methods(['getBuildInfo'])},
@@ -24,6 +24,8 @@ for(const scenario of ['supported','legacy','unsupported','malformed','lost','re
     if(plugin==='AlphaVoiceCloud')return {microphone:'granted'};
     if(plugin==='Agent'){
      if(method==='getStatus')return {packaged:true,state:'ready'};
+     // Read-only provider choice the resident start consults (unconfigured Cloud: no keys, no inference).
+     if(method==='providerStatus')return {provider:'elizacloud',configured:false};
      if(method==='start')return {state:'ready'};
      // The real Agent plugin always exposes the Android resident renderer feed.
      if(method==='subscribeViewEvents')return {subscriptionId:input.subscriptionId};

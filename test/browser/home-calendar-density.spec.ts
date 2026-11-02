@@ -35,7 +35,7 @@ for(const [theme,size,kind] of [
  });
  expect(geometry.cardHeight).toBeCloseTo(196,1);expect(geometry.overflow).toBe(0);expect(geometry.titleOverflow).toBe(0);expect(geometry.clamp).toBe(expected?'3':'none');
  if(expected){expect(geometry.font).toBe(26);expect(geometry.height/geometry.line).toBeCloseTo(3,1);expect(geometry.footerText).toBe(expected.footer);expect(geometry.footerOverflow).toBe(0);expect(geometry.footerTop!-geometry.titleBottom).toBeGreaterThanOrEqual(11*geometry.scale);expect(geometry.cardBottom-geometry.footerBottom!).toBeGreaterThanOrEqual(21*geometry.scale);}
- else{expect(geometry.font).toBe(36);await expect(card.locator('.home-calendar-footer')).toHaveCount(0);await expect(card).toContainText(/No upcoming events in this window/);}
+ else{expect(geometry.font).toBe(36);await expect(card.locator('.home-calendar-footer')).toHaveCount(0);await expect(card).toContainText(/Nothing planned/);}
  await writeFile(info.outputPath('geometry.json'),JSON.stringify(geometry,null,2));await page.screenshot({path:info.outputPath('home-calendar.png'),animations:'disabled'});
  if(expected){await card.click();await expect(page.locator('html')).toHaveAttribute('data-active-view','calendar');}
 });

@@ -202,9 +202,10 @@ export function installAgentCalendarAdapter(Component:any,views:Bag,preservation
   const target=port(),model=target?.current()&&controller?.state.ownerKey===calendarOwnerKey(target)?controller.state:undefined;
   const home=homeCalendarSelection(model,zone(),hidden,new Date(now)),event=home.event;
   // Shared daily-overview states for the agent calendar feed: reading, not connected, failed, stale and fresh.
-  // Only a current complete feed may supply an item or a real empty state.
+  // Only a current complete feed may supply an item or a real empty state. A shown agent event names its
+  // source quietly (no read time), as the shared ready feed does, so it is never unattributed.
   const failed=model?.status==='error'||model?.status==='unavailable',unverified=model?.status==='partial';
-  const feed=failed||unverified?presentHomeAgendaFeed({status:model!.status,hasItem:!!event,feedState:model?.feed?.state??null,asOf:Date.parse(model?.feed?.syncedAt??'')||null,error:model?.error??null,now,source:'Agent Calendar',emptyLabel:home.emptyLabel}):{state:home.verified?'ready':'pending',read:'',description:'',stale:false,title:home.emptyLabel};
+  const feed=failed||unverified?presentHomeAgendaFeed({status:model!.status,hasItem:!!event,feedState:model?.feed?.state??null,asOf:Date.parse(model?.feed?.syncedAt??'')||null,error:model?.error??null,now,source:'Agent Calendar',emptyLabel:home.emptyLabel}):{state:home.verified?'ready':'pending',read:event&&home.verified?'Agent Calendar':'',description:event&&home.verified?'Agent Calendar':'',stale:false,title:home.emptyLabel};
   const provenance={origin:'',read:feed.read,description:feed.description};
   // The agent's next event as an agenda item; an all-day event starts at local midnight of its first day.
   const day=(at:string)=>{const d=new Date(at);return new Date(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()).getTime();};

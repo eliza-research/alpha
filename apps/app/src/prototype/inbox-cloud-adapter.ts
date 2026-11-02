@@ -677,8 +677,9 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
       failure:homeFailure?homeFailure==='revoked'?'revoked':'error':null,
       stale:binding&&attention.state==='stale'?{state:'stale',unread:attention.unread,...(attention.source?{source:attention.source}:{}),updatedAt:attention.updatedAt}:null});
     // Until a page is loaded the card shows only "Inbox". Its name keeps that word and says where it
-    // opens (Home opens Connections while no email is set up): a bare "Inbox" is the Inbox app tile's name.
-    if(!cached&&(pending||!binding||!accountsChecked||homeFailure))return {...out,homeAttentionLabel:out.homeAttentionAction==='connections'?'Inbox: set up email in Connections':'Open Inbox',homeInboxCount:'',homeInboxRows:[],homeInboxHasRows:false,homeInboxTitle:'Inbox',homeInboxStatus:'',homeInboxDescription:'',homeInboxState:'pending'};
+    // opens: a bare "Inbox" is the Inbox app tile's name. A resolved startup with no email set up is not
+    // unknown: it uses the shared "Connect email" card (docs/daily-overview.md), which opens Connections.
+    if(!cached&&!disconnected&&(pending||!binding||!accountsChecked||homeFailure))return {...out,homeAttentionLabel:out.homeAttentionAction==='connections'?'Inbox: set up email in Connections':'Open Inbox',homeInboxCount:'',homeInboxRows:[],homeInboxHasRows:false,homeInboxTitle:'Inbox',homeInboxStatus:'',homeInboxDescription:'',homeInboxState:'pending'};
     return {...out,homeAttentionLabel:card.label,homeInboxCount:card.count,homeInboxRows:card.rows.map(row=>({subject:row.title,from:row.detail})),homeInboxHasRows:card.rows.length>0,
       homeInboxTitle:card.title,homeInboxStatus:card.status,homeInboxDescription:card.description,homeInboxState:card.state};
   };
