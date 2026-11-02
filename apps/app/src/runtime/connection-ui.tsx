@@ -2811,7 +2811,8 @@ export const connectionController = {
       await client.disconnect(expected);
       // Own API keys keep AI on after sign-out: no AI-off notice and no dialog, only a receipt.
       const own = ownProviderSelected();
-      const message = own ? `Signed out of ${cloudServiceName(cloud.environment)}.` : (revoked ? `Signed out of ${cloudServiceName(cloud.environment)}. This sign-in was revoked.` : `Signed out of ${cloudServiceName(cloud.environment)} on this phone. The sign-in token was removed here; ${cloudServiceName(cloud.environment)} did not confirm revoking it.`)+(isAndroid&&!testMocksEnabled?' '+AI_OFF_MESSAGE:'');
+      // An unconfirmed revocation is reported either way: the token may still be valid on the service.
+      const message = (revoked ? `Signed out of ${cloudServiceName(cloud.environment)}. This sign-in was revoked.` : `Signed out of ${cloudServiceName(cloud.environment)} on this phone. The sign-in token was removed here; ${cloudServiceName(cloud.environment)} did not confirm revoking it.`)+(!own&&isAndroid&&!testMocksEnabled?' '+AI_OFF_MESSAGE:'');
       update({ agents: [], residentSavedCredential:false, ...(residentCloudFlow()?{purpose:'agent' as const}:{}), ...(own?{message:''}:{message, signOutNotice:message}) });
       if (own) connectionToast(message);
       // The agent keeps running: reconnected (or restarted) without Cloud inference, and the
@@ -3502,7 +3503,7 @@ function OwnKeyForm({busy,saving,error,onSave,onCancel,idleCancelLabel='Cancel'}
  return <form className="alpha-own-keys" aria-label="Own API keys" onSubmit={event=>{event.preventDefault();const key=ai.current?.value||'',voice=speech.current?.value||'';void onSave(key,voice||undefined);}}>
   <label>Cerebras API key<input ref={ai} type="password" autoComplete="off" autoCapitalize="none" spellCheck={false} required disabled={busy} aria-invalid={(!!error&&!voiceError)||undefined} aria-describedby={error&&!voiceError?'own-keys-error':undefined}/></label>
   <label>Cartesia API key (optional)<input ref={speech} type="password" autoComplete="off" autoCapitalize="none" spellCheck={false} disabled={busy} aria-invalid={voiceError||undefined} aria-describedby={voiceError?'own-keys-error':undefined}/></label>
-  {!native&&<p className="alpha-own-keys-note">Keys last for this session only.</p>}
+  <p className="alpha-own-keys-note">Cerebras receives your prompts; Cartesia, if added, receives voice recordings and reply text.{native?'':' Keys last for this session only.'}</p>
   {error&&<p id="own-keys-error" role="alert" className="alpha-connection-error">{error}</p>}
   <div className="alpha-form-actions">
    <button className="alpha-btn alpha-btn--primary" disabled={busy} aria-busy={saving||undefined}>{saving?OWN_KEY_CHECKING:'Save and use own keys'}</button>

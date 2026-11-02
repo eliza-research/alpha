@@ -88,7 +88,7 @@ test('Cloud is the default; explicit own-key save and return to Cloud preserve e
  await expect(page.locator('.alpha-cloud-sign-in')).toHaveCount(0);
  await enterKeys(page);
  await expect(dialog(page).getByRole('button',{name:'Own API keys',exact:true})).toHaveAttribute('aria-pressed','true');
- await expect(dialog(page)).not.toContainText(/Cerebras receives|Android Keystore|model list|Switching is manual/);
+ await expect(dialog(page)).toContainText('Cerebras receives your prompts; Cartesia, if added, receives voice recordings and reply text.');await expect(dialog(page)).not.toContainText(/selected context|Android Keystore|model list|Switching is manual/);
  await page.screenshot({path:info.outputPath('own-provider-form.png'),animations:'disabled'});
  await dialog(page).getByRole('button',{name:'Cancel',exact:true}).click();
  expect(await page.evaluate(()=>(window as any).ownProvider.events)).toEqual([]);
