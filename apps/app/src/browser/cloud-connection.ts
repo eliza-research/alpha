@@ -75,9 +75,11 @@ export class BrowserCloudSignIn extends WebPlugin {
  private googlePopup?:Window;
  private googleAttemptId?:string;
  private async signIn(data:Record<string,unknown>,signal?:AbortSignal){
-  const response=await browserCloudCall(data,signal);let body:Record<string,unknown>={};try{body=await response.json();}catch{/* Reported as unavailable. */}
-  if(!response.ok)throw Object.assign(Error('Cloud development sign-in failed'),{code:typeof body.code==='string'?body.code:'unavailable'});
-  return body;
+  const response=await browserCloudCall(data,signal);let body:unknown;try{body=await response.json();}catch{/* An unreadable reply cannot confirm cancellation. */}
+  if(!body||typeof body!=='object'||Array.isArray(body))throw Object.assign(Error('Cloud development sign-in failed'),{code:'unavailable'});
+  const result=body as Record<string,unknown>;
+  if(!response.ok)throw Object.assign(Error('Cloud development sign-in failed'),{code:typeof result.code==='string'?result.code:'unavailable'});
+  return result;
  }
  async serviceInfo(input:{environment:CloudEnvironment}){return this.signIn({operation:'signInServiceInfo',environment:input.environment});}
  async startGoogle(input:{environment:CloudEnvironment}){
@@ -105,9 +107,15 @@ export class BrowserCloudSignIn extends WebPlugin {
  async verifyEmail(input:{attemptId:string;code:string}){return this.signIn({operation:'signInVerifyEmail',attemptId:input.attemptId,code:input.code});}
  async verifyMfa(input:{attemptId:string;code:string}){return this.signIn({operation:'signInVerifyMfa',attemptId:input.attemptId,code:input.code});}
  async cancelGoogleSignIn(){
-  const attemptId=this.googleAttemptId;if(!attemptId)return {status:'cancelled'};
+  const attemptId=this.googleAttemptId,controller=this.googleController,popup=this.googlePopup;if(!attemptId)return {status:'cancelled'};
   const outcome=await this.signIn({operation:'signInCancelGoogle',attemptId});
-  if(outcome?.status!=='authenticated'){this.googleController?.abort();this.googlePopup?.close();}
+  if(outcome.status==='authenticated'){
+   if(outcome.attemptId!==attemptId)throw Object.assign(Error('Cloud development sign-in failed'),{code:'unavailable'});
+   return outcome;
+  }
+  if(outcome.status!=='cancelled'||Object.keys(outcome).some(key=>key!=='status'))throw Object.assign(Error('Cloud sign-in cancellation is unconfirmed'),{code:'unavailable'});
+  // The answer belongs to the attempt that sent it, even if another attempt is now open.
+  if(this.googleAttemptId===attemptId&&this.googleController===controller&&this.googlePopup===popup){controller?.abort();popup?.close();}
   return outcome;
  }
  async cancel(){

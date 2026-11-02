@@ -197,7 +197,7 @@ adapterTest('typed native 503 is waited out quietly, then voice ends with one ca
   }
   // Two quiet waits, then one calm line instead of an error screen.
   assert.equal(h.starts,3);assert.equal(h.renderChat(),null);
-  assert.deepEqual(h.shell.messages,['Voice paused. Tap the mic to talk again.']);
+  assert.deepEqual(h.shell.messages,[],'exhausted retries end without a voice error toast');
   assert.equal(failure.code,'voice-http-503');assert.equal(failure.message,'PRIVATE_PROVIDER_BODY');
   assert.equal(JSON.stringify(h.shell.state.msgs),originalMessages);
   assert.equal(h.uploads,0);
@@ -208,5 +208,5 @@ adapterTest('unknown native voice failures retain their existing recovery',async
   await h.shell.startVoice();await h.tick();const view=h.renderChat();
   assert.equal(view.state,'error');assert.equal(view.errorDetail,'');
   assert.doesNotMatch(view.lines[0].t,/Voice is unavailable right now/);
-  assert.equal(view.recoveryLabel,'Try voice again');
+  assert.equal(view.recoveryLabel,'');assert.equal(view.statusLines.length,0);assert.equal(view.voiceDetails,false);assert.equal(h.startError?.code,'voice-http-503-extra','underlying failure is retained');assert.deepEqual(h.shell.messages,[]);
 });
