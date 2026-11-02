@@ -3,11 +3,11 @@
   "repository": "elizaOS/eliza",
   "base": "develop",
   "baseCommit": "b2dbeff3ab689a69f7e518deb7d608d1c4607790",
-  "head": "d38e4ec7fad5952fdf4f40d4c809240d639792ac",
+  "head": "c3442ded79de62b883cf0a84d2614734596ac9ad",
   "recordedAt": "2026-11-02",
-  "command": "gh api repos/elizaOS/eliza/compare/b2dbeff3ab689a69f7e518deb7d608d1c4607790...d38e4ec7fad5952fdf4f40d4c809240d639792ac",
+  "command": "gh api repos/elizaOS/eliza/compare/b2dbeff3ab689a69f7e518deb7d608d1c4607790...c3442ded79de62b883cf0a84d2614734596ac9ad",
   "status": "diverged",
-  "aheadBy": 23,
+  "aheadBy": 24,
   "behindBy": 24,
   "mergeBase": "7e8b5d3eb1c05ee6ea72a1a2d5ce5b966c404e9c",
   "pinOnlyCommits": [
@@ -102,6 +102,10 @@
     {
       "sha": "d38e4ec7fad5952fdf4f40d4c809240d639792ac",
       "subject": "fix: repair Calendar coverage and acknowledgments; bound native speech build"
+    },
+    {
+      "sha": "c3442ded79de62b883cf0a84d2614734596ac9ad",
+      "subject": "fix(app): authorize paired sessions for inference warm-up"
     }
   ],
   "pullRequests": [

@@ -85,7 +85,9 @@ the operator's index of build, provisioning, release and support material is the
 
 ## Product boundaries
 
-Current source projection: SDK `d38e4ec7fa`. Current source pin d38e4ec7fad5952fdf4f40d4c809240d639792ac includes the reviewed Calendar coverage and acknowledgment repair plus bounded Ninja producer parallelism; native qualification must use the changed producer. Dependency lock and native engine/JNI inputs are unchanged; the Android stage producer changed and requires fresh qualification; see docs/evidence/sdk-d38e4ec7fa-dev-input-reuse-20261102.json. Live prompt and Android acceptance remain separate and pending. 
+Current source projection: SDK `c3442ded79`. Current source pin c3442ded79de62b883cf0a84d2614734596ac9ad includes the reviewed paired-session protection for POST /api/cloud/warm; compiled native tuples remain unchanged. Exact source delta leaves dependency/native/build inputs unchanged; see docs/evidence/sdk-c3442ded79-dev-input-reuse-20261102.json. Live prompt and Android acceptance remain separate and pending. 
+
+Historical source projection (SDKd38e4ec7fa): Current source pin d38e4ec7fad5952fdf4f40d4c809240d639792ac includes the reviewed Calendar coverage and acknowledgment repair plus bounded Ninja producer parallelism; native qualification must use the changed producer. Dependency lock and native engine/JNI inputs are unchanged; the Android stage producer changed and requires fresh qualification; see docs/evidence/sdk-d38e4ec7fa-dev-input-reuse-20261102.json. Live prompt and Android acceptance remain separate and pending. 
 
 Historical source projection (SDK77ef61e737): Current source pin 77ef61e737d4d848b64e901145ed6e7f38c42705 includes the reviewed Android Direct-provider embedding policy; local BGE capability still requires qualified packaged assets. Exact source delta leaves dependency/native/build inputs unchanged; see docs/evidence/sdk-77ef61e737-dev-input-reuse-20261102.json. Live prompt and Android acceptance remain separate and pending. 
 
