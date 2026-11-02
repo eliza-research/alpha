@@ -202,7 +202,10 @@ export function installAgentCalendarAdapter(Component:any,views:Bag,preservation
   // Shared daily-overview states for the agent calendar feed: reading, not connected, failed, stale and fresh.
   // Only a current complete feed may supply an item or a real empty state.
   const failed=model?.status==='error'||model?.status==='unavailable',unverified=model?.status==='partial';
-  const feed=failed||unverified?presentHomeAgendaFeed({status:model!.status,hasItem:!!event,feedState:model?.feed?.state??null,asOf:Date.parse(model?.feed?.syncedAt??'')||null,error:model?.error??null,now,source:'Agent Calendar',emptyLabel:home.emptyLabel}):{state:home.verified?'ready':'pending',read:'',description:'',stale:false,title:home.emptyLabel};
+  // A verified event names its source on the card and on an overdue reminder's Next line; the quiet
+  // read claims no read time, and an empty or unverified card names no source.
+  const source=event&&home.verified?'Agent Calendar':'';
+  const feed=failed||unverified?presentHomeAgendaFeed({status:model!.status,hasItem:!!event,feedState:model?.feed?.state??null,asOf:Date.parse(model?.feed?.syncedAt??'')||null,error:model?.error??null,now,source:'Agent Calendar',emptyLabel:home.emptyLabel}):{state:home.verified?'ready':'pending',read:source,description:source,stale:false,title:home.emptyLabel};
   const provenance={origin:'',read:feed.read,description:feed.description};
   // The agent's next event as an agenda item; an all-day event starts at local midnight of its first day.
   const day=(at:string)=>{const d=new Date(at);return new Date(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()).getTime();};
