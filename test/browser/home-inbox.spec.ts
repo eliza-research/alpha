@@ -38,8 +38,9 @@ test('Home Inbox distinguishes complete empty results from partial loaded result
  await page.evaluate(()=>{(window as any).homeInboxFixture.more=false;});await page.getByRole('button',{name:'Inbox',exact:true}).click();await page.getByRole('button',{name:'Refresh inbox',exact:true}).click();await expect(page.getByText('Your Inbox is empty',{exact:true})).toBeVisible();await returnToApps(page);await expect(tile(page)).toContainText('No unread email');await expect(tile(page).locator('[data-alpha-home-inbox-subjects]')).toHaveCount(0);
 });
 
-test('Home Inbox offers Connect email before a connection and never reads mail',async({page})=>{
- await page.addInitScript(()=>{localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));localStorage.setItem('alpha.startup-permissions.v1',JSON.stringify({dismissed:true,attempted:{}}));});await page.goto('/');await expect(tile(page)).toContainText('Connect email');await expect(tile(page)).not.toContainText('View email accounts');await expect(tile(page)).not.toContainText('No unread');
+// Without a connection the quiet card keeps "Inbox" and its name says it opens Connections (#775).
+test('Home Inbox points to Connections before a connection and never reads mail',async({page})=>{
+ await page.addInitScript(()=>{localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));localStorage.setItem('alpha.startup-permissions.v1',JSON.stringify({dismissed:true,attempted:{}}));});await page.goto('/');await expect(tile(page)).toHaveAccessibleName('Inbox: set up email in Connections');await expect(tile(page).locator('[data-overview-part="count"]')).toHaveText('');await expect(tile(page)).not.toContainText('View email accounts');await expect(tile(page)).not.toContainText('No unread');
 });
 
 test('Home Inbox retains failure and retires cached subjects on owner change',async({page})=>{

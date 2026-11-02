@@ -44,7 +44,7 @@ test('a failed calendar read shows the retry state instead of neutral copy, then
 test('a failed Agent Calendar read shows the retry state and recovers only after retry', async ({ page }) => {
   await page.goto('/');await installHomeCalendar(page);
   const card = page.locator('[data-alpha-home-calendar]');
-  await expect(card).toContainText('No upcoming events in this window');
+  await expect(card).toContainText('Nothing planned');
   await refreshHomeCalendar(page,{fail:true});
   await expect(card).toHaveAttribute('aria-label', 'Open Agent Calendar');
   await expect(card).toContainText('Calendar unavailable');
@@ -58,7 +58,7 @@ test('a failed Agent Calendar read shows the retry state and recovers only after
   await expect(page.locator('html')).toHaveAttribute('data-active-view','calendar');
   await expect.poll(()=>page.evaluate(()=>(window as any).homeCalendarFixture.requests.length)).toBeGreaterThan(before);
   await returnToApps(page);
-  await expect(card).toContainText('No upcoming events in this window');
+  await expect(card).toContainText('Nothing planned');
 });
 
 // A retained brief sits beside the attention items without replacing them; a record of an
