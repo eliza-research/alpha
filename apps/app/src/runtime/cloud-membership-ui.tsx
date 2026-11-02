@@ -47,7 +47,7 @@ export function CloudMembershipControls({balance,busy,error,connectionError,noti
   finally{pending.current=false;setSubmitting(false);}
  }
  return <section className="alpha-membership" aria-label="Subscription">
-   <p className="alpha-membership-account">{email||'Signed in to Eliza Cloud'}</p>
+   <p className="alpha-membership-account">{email||`Signed in to ${serviceName}`}</p>
    <dl className="alpha-membership-facts">
     <div className="alpha-membership-plan-fact"><dt>Plan</dt><dd>
      <div className="alpha-membership-plan-heading"><strong className="alpha-membership-plan-name">{planName}</strong><button type="button" className="alpha-membership-refresh" disabled={disabled||checking} onClick={onRefresh}>{checking?'Checking…':'Refresh'}</button></div>

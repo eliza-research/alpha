@@ -35,3 +35,10 @@ test('the subscription section shows one plan and one reported monthly allowance
  assert.match(html,/Enter membership code/);
  assert.deepEqual(calls,[]);
 });
+
+test('an account without an email names the configured Cloud service, never a fixed brand',()=>{
+ const html=render({email:'',serviceName:'Example Cloud'});
+ assert.match(html,/Signed in to Example Cloud/);
+ assert.doesNotMatch(html,/Eliza Cloud/);
+ assert.match(render({email:''}),/Signed in to Cloud</);
+});
