@@ -1,5 +1,5 @@
 import {cloudServiceName} from '../runtime/cloud-protocol';
-import {browserNavigationSummary,projectActionMessages} from '../runtime/action-message-presentation';
+import {browserNavigationSummary,collapseSystemNotices,projectActionMessages} from '../runtime/action-message-presentation';
 import {CanonicalNotesUi} from './canonical-notes-ui';
 import {openExistingBrowserNotes,openExistingDeviceNotes} from './legacy-notes-access';
 import {executeNamedCalendarRead,type NamedCalendarReadProvider} from '../../../../.eliza/client-features/plugins/plugin-calendar/src/client/named-read.ts';
@@ -604,7 +604,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
           if(!this.live||connectionController.getSnapshot().history!==history)return null;
           const messages=history.messages.map(message => ({ ...message, messageBinding:message.deviceReceipt?undefined:{conversationId:history.conversationId,session:connectionController.getSnapshot().session}, card:null }));
           const newer=history.deliveryRevisionAtStart===undefined?[]:previous.msgs.filter((message:any)=>typeof message.conversationDeliveryRevision==='number'&&(history.automatic||message.conversationDeliveryRevision>history.deliveryRevisionAtStart!)&&message.messageBinding?.conversationId===history.conversationId);
-          return {msgs:mergeConversationDelivery(messages,newer),typing:false,...(history.automatic?{}:{draft:'',chat:'full'})};
+          return {msgs:collapseSystemNotices(mergeConversationDelivery(messages,newer)),typing:false,...(history.automatic?{}:{draft:'',chat:'full'})};
         });
       }
       const delivery=connectionController.getSnapshot().conversationDelivery;
@@ -614,7 +614,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         if(this.live)this.setState((previous:Shell)=>{
           if(!this.live||connectionController.getSnapshot().session!==currentSession||connectionController.getSelectedConversationId()!==delivery.conversationId)return null;
           const messages=delivery.messages.map(message=>({...message,messageBinding:message.deviceReceipt?undefined:{conversationId:delivery.conversationId,session:currentSession},conversationDeliveryRevision:delivery.revision,card:null}));
-          const msgs=mergeConversationDelivery(previous.msgs,messages);return msgs===previous.msgs?null:{msgs};
+          const msgs=collapseSystemNotices(mergeConversationDelivery(previous.msgs,messages));return msgs===previous.msgs||msgs.length===previous.msgs.length&&msgs.every((item:Shell,index:number)=>item===previous.msgs[index])?null:{msgs};
         });
       }
       syncStoppedReplyNotice(this,session!==undefined&&history?.sessionId===session?history:null);
@@ -1188,6 +1188,9 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     };
     // Pending proposals offer Decline beside approval. The digest card renders one button per row.
     const live:Shell[]=this.S().msgs||[];
+    // Upstream escalation notices show once and only while still true; a later reply hides them.
+    const shownNotices=collapseSystemNotices(live);
+    if(shownNotices!==live){const kept=new Set(shownNotices.map(item=>item.id)),hidden=new Set(live.filter(item=>item.systemNotice&&!kept.has(item.id)).map(item=>item.id));out.msgs=(out.msgs||[]).filter((m:Shell)=>!hidden.has(m.id));}
     out.msgs=(out.msgs||[]).map((m:Shell)=>{
       const c=m.c||{};
       // A system notice card already carries its text; do not print it a second time above the card.

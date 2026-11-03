@@ -127,6 +127,7 @@ export const CLIENT_FEATURE_PATHS = [
   'plugins/plugin-native-browser-surface/src/tab-host.ts',
   'packages/core/src/schema-types.ts',
   'packages/core/src/types/json.ts',
+  'packages/core/src/types/system-notice.ts',
   'packages/core/src/types/schema.ts',
   'packages/core/src/types/surface-manifest.ts',
   'packages/core/src/types/view-capability.ts',
