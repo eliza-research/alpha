@@ -1,3 +1,4 @@
+import {beginRealtimeVoiceTiming} from './voice-timing';
 import {validateUuid} from '../../../../vendor/eliza/packages/core/src/utils/uuid';
 import {readDevicePreferences} from '../browser/device-preferences';
 import type { ViewActionHandoff } from "@elizaos/core/view-interaction";
@@ -14,6 +15,7 @@ export async function developmentCartesiaConversation(input:{binding:VoiceConver
  if(!own&&developmentCartesiaVoiceEnabled&&developmentCloudRealtimeVoiceEnabled)throw Error('Choose direct or Cloud realtime speech, not both.');
  if(!own&&!developmentCartesiaVoiceEnabled&&!developmentCloudRealtimeVoiceEnabled)throw Error('Developer realtime speech is disabled.');
  const agent=connectionController.getBrowserSpeechAgent();if(!agent)throw Error('Connect the local developer agent first.');
+ let timing:ReturnType<typeof beginRealtimeVoiceTiming>|undefined;
  const lifecycle=new AbortController(),minted=new Set<string>();let stopped=false,stopPromise:Promise<void>|undefined,rendererId:string|undefined;
  let renderer:WebSocket|undefined,pendingRenderer:WebSocket|undefined,rendererRenewal:ReturnType<typeof setTimeout>|undefined,rendererTask:Promise<void>|undefined;
  const current=()=>{lifecycle.signal.throwIfAborted();input.assertCurrent();if(agent!==connectionController.getBrowserSpeechAgent()||!connectionController.voiceConversationCurrent(input.binding)||rendererId!==undefined&&rendererId!==connectionController.voiceRendererClientId())throw new DOMException('Developer voice connection changed','AbortError');};
@@ -88,7 +90,7 @@ export async function developmentCartesiaConversation(input:{binding:VoiceConver
    if(event.t==='interrupted'&&currentTurn===event.traceId)clearTurn();
    if(event.t==='stt_final'&&!retiredBusyTraces.has(event.traceId)&&acceptedState?.traceId===event.traceId&&acceptedState.cancelledTraceId!==event.traceId&&['thinking','speaking'].includes(acceptedState.phase)&&acceptedState.finalTranscript.trim()){
     acceptedFinal=Object.freeze({traceId:acceptedState.traceId,text:acceptedState.finalTranscript});currentTurn=acceptedFinal.traceId;if(callerBusyTrace!==currentTurn)retireBusyTrace(callerBusyTrace);if(playbackTrace!==currentTurn)retireBusyTrace(playbackTrace);callerBusyTrace=currentTurn;playbackTrace=undefined;playbackEndTrace=undefined;
-    if(submitted.size>=64)submitted.delete(submitted.values().next().value!);submitted.add(currentTurn);
+    if(submitted.size>=64)submitted.delete(submitted.values().next().value!);submitted.add(currentTurn);timing?.acceptedFinal(currentTurn);
    }
    if(event.t==='speaking_start'&&acceptedState?.traceId===event.traceId&&acceptedState.phase==='speaking'&&
      !retiredBusyTraces.has(event.traceId)&&(!callerBusyTrace||callerBusyTrace===event.traceId)){
@@ -105,6 +107,8 @@ export async function developmentCartesiaConversation(input:{binding:VoiceConver
     if(trace===undefined||trace===playbackTrace){retireBusyTrace(playbackTrace);playbackTrace=undefined;playbackEndTrace=undefined;}
    }
    if(wasBusy!==microphoneBusy())input.onState(phase,progressText);
+   if(event.t==='reply_complete'||event.t==='usage'||event.t==='interrupted')timing?.control(event.t,event.traceId);
+   if(event.t==='error'&&!event.retryable)timing?.control('fatal-error',event.traceId);
    if(['ready','stt_final','speaking_start','reply_complete','usage'].includes(event.t))reconcile();
    if(event.t==='navigate_view')navigate(event);
    if(event.t==='reply_complete'&&acceptedFinal?.traceId===event.traceId&&event.traceId===currentTurn&&submitted.has(event.traceId)&&directActions&&'userMessageId' in event&&typeof event.userMessageId==='string'&&validateUuid(event.userMessageId)&&!performedMessages.has(event.userMessageId)&&!performedTurns.has(event.traceId)){
@@ -117,10 +121,11 @@ export async function developmentCartesiaConversation(input:{binding:VoiceConver
    }
 
   },
+  onTraceMark:mark=>{timing?.trace(mark.name,mark.traceId);},
   onPlaybackUnlockChange:()=>{if(!stopped)input.onPlaybackUnlockChange?.();},
-  onError:error=>{retireBusyTrace(callerBusyTrace);retireBusyTrace(playbackTrace);callerBusyTrace=undefined;playbackTrace=undefined;playbackEndTrace=undefined;clearTurn();acceptedState=undefined;if(!stopped)input.onError(error);},
+  onError:error=>{timing?.error();retireBusyTrace(callerBusyTrace);retireBusyTrace(playbackTrace);callerBusyTrace=undefined;playbackTrace=undefined;playbackEndTrace=undefined;clearTurn();acceptedState=undefined;if(!stopped)input.onError(error);},
  });
- const stop=()=>{if(stopPromise)return stopPromise;stopped=true;retireBusyTrace(callerBusyTrace);retireBusyTrace(playbackTrace);callerBusyTrace=undefined;playbackTrace=undefined;playbackEndTrace=undefined;clearTurn();acceptedState=undefined;window.removeEventListener('alpha:device-settings',preferenceChanged);if(rendererRenewal)clearTimeout(rendererRenewal);rendererRenewal=undefined;lifecycle.abort();renderer?.close();pendingRenderer?.close();stopPromise=(async()=>{await client.stop();for(const id of minted){if(agent!==connectionController.getBrowserSpeechAgent())throw Error('Developer voice retirement could not be confirmed after connection change.');try{const result=await agent.request(`/api/v1/voice/session/${id}/revoke`,{},new AbortController().signal);if(result.revoked!==true)throw Error('Developer voice retirement was not confirmed.');}catch(error){const failure=error as {status?:number;data?:{code?:string}};if(failure.status!==404||failure.data?.code!=='voice_session_not_found')throw error;}}})();return stopPromise;};
+ const stop=()=>{if(stopPromise)return stopPromise;timing?.stop();stopped=true;retireBusyTrace(callerBusyTrace);retireBusyTrace(playbackTrace);callerBusyTrace=undefined;playbackTrace=undefined;playbackEndTrace=undefined;clearTurn();acceptedState=undefined;window.removeEventListener('alpha:device-settings',preferenceChanged);if(rendererRenewal)clearTimeout(rendererRenewal);rendererRenewal=undefined;lifecycle.abort();renderer?.close();pendingRenderer?.close();stopPromise=(async()=>{await client.stop();for(const id of minted){if(agent!==connectionController.getBrowserSpeechAgent())throw Error('Developer voice retirement could not be confirmed after connection change.');try{const result=await agent.request(`/api/v1/voice/session/${id}/revoke`,{},new AbortController().signal);if(result.revoked!==true)throw Error('Developer voice retirement was not confirmed.');}catch(error){const failure=error as {status?:number;data?:{code?:string}};if(failure.status!==404||failure.data?.code!=='voice_session_not_found')throw error;}}})();return stopPromise;};
  // Renderer authority is independent of the canonical audio socket. Renew its
  // short, single-use ticket without restarting capture or resetting turn deduplication.
  const renewRenderer=():Promise<void>=>{
@@ -147,7 +152,7 @@ export async function developmentCartesiaConversation(input:{binding:VoiceConver
   })().finally(()=>{rendererTask=undefined;});return rendererTask;
  };
  try{await renewRenderer();current();}catch(error){await stop();throw error;}
- return {start:async()=>{try{current();await client.start();current();}catch(error){await stop();throw error;}},recheck:()=>{try{current();}catch{void stop().catch(error=>input.onError(error instanceof Error?error:Error('Developer voice retirement was not confirmed.')));}},resume:()=>false,
+ return {start:async()=>{try{current();timing?.stop();timing=beginRealtimeVoiceTiming(own?'direct-cartesia':'cloud-cartesia');await client.start();current();}catch(error){await stop();throw error;}},recheck:()=>{try{current();}catch{void stop().catch(error=>input.onError(error instanceof Error?error:Error('Developer voice retirement was not confirmed.')));}},resume:()=>false,
   get microphoneAutomaticallyMuted(){return !stopped&&microphoneBusy();},get microphoneMuted(){return client.microphoneMuted;},setMicrophoneMuted:(muted:boolean)=>{current();client.setMicrophoneMuted(muted);},
   get needsPlaybackUnlock(){return client.needsPlaybackUnlock;},unlockPlayback:async()=>{current();await client.unlockPlayback();current();},
   stop,

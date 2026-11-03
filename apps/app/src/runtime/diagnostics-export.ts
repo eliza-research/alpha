@@ -1,3 +1,4 @@
+import {sanitizeRealtimeTiming} from '../../../../.eliza/client-features/packages/voice/src/realtime-voice-timing.ts';
 import {sanitizeCrashEntries,type CrashEntry} from './crash-log.ts';
 import type {PlanAdmission, PlanStatus, SubscriptionView} from './subscription-entitlement.ts';
 import type {VoiceTimingLive,VoiceTimingEndpoint} from './voice-timing.ts';
@@ -47,6 +48,8 @@ export type DiagnosticsInput={
  cloudPlan?:{view?:unknown;source?:unknown;status?:unknown;admission?:unknown;reason?:unknown};
  /** Parsed exportVoiceTiming() output. */
  voiceTiming?:unknown;
+ /** Raw bounded realtime document; sanitizer parses it only after size checks. */
+ realtimeVoiceTiming?:unknown;
  /** AlphaVoiceCloud.nativeVoiceTiming() output (alpha-native-voice-timing-v3). */
  nativeVoiceTiming?:unknown;
 };
@@ -57,6 +60,7 @@ type VoiceTimingRow={version:1;id:string;recordedAt:number;route:string;cold:boo
   * records endpointing, or streaming ASR) or 'batch' (the recorded-clip loop, live mode 'batch'). */
  path?:'live'|'batch'};
 export type DiagnosticsReport={
+ realtimeVoiceTiming?:ReturnType<typeof sanitizeRealtimeTiming>;
  format:typeof DIAGNOSTICS_FORMAT;generatedAt:string;platform:'android'|'web';
  app:{version:string|null;versionCode?:number;variant?:'launcher'|'standalone';buildType?:'debug'|'release';testMocks?:boolean};
  os:{androidRelease?:string;securityPatch?:string;sdkInt?:number};
@@ -172,6 +176,7 @@ export function buildDiagnostics(input:DiagnosticsInput,now=Date.now()):Diagnost
   voiceTiming:{format:VOICE_TIMING_FORMAT,marks:[...VOICE_MARKS],records:voiceTimingRows(input.voiceTiming)},
   nativeVoiceTiming:{format:NATIVE_VOICE_TIMING_FORMAT,clock:'CLOCK_MONOTONIC',units:'ms',marks:[...NATIVE_MARKS],...nativeVoiceRows(input.nativeVoiceTiming)},
  };
+ if(input.realtimeVoiceTiming!==undefined)report.realtimeVoiceTiming=sanitizeRealtimeTiming(input.realtimeVoiceTiming);
  if(Number.isSafeInteger(app.versionCode)&&(app.versionCode as number)>=0)report.app.versionCode=app.versionCode as number;
  const variant=one(app.variant,['launcher','standalone'] as const);if(variant)report.app.variant=variant;
  const buildType=one(app.buildType,['debug','release'] as const);if(buildType)report.app.buildType=buildType;

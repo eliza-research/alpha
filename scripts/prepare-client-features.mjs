@@ -203,6 +203,7 @@ export const CLIENT_FEATURE_PATHS = [
   'packages/voice/src/native-speech-request.ts',
   'packages/voice/src/voice-turn-routes.ts',
   'packages/voice/src/voice-turn-timing.ts',
+  'packages/voice/src/realtime-voice-timing.ts',
   'packages/voice/src/voice-endpoint-chain.ts',
   'packages/voice/src/voice-eot.ts',
   'packages/voice/src/random-id.ts',
