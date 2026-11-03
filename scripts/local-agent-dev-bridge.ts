@@ -41,7 +41,7 @@ function voiceControl(input:any):'health'|'consent'|'mint'|'revoke'|null {
  if(!value||typeof value!=='object'||Array.isArray(value))return null;
  if(input.path===VOICE_PATH+'/consent'&&Object.keys(value).length===0)return 'consent';
  if(new RegExp('^'+VOICE_PATH+'/[0-9a-f-]{36}/revoke$','i').test(input.path)&&VOICE_UUID.test(input.path.split('/')[5])&&Object.keys(value).length===0)return 'revoke';
- if(input.path===VOICE_PATH&&Object.keys(value).every(key=>['agentId','conversationId','consentNonce','transport'].includes(key))&&VOICE_AGENT_ID.test(value.agentId)&&VOICE_UUID.test(value.conversationId)&&typeof value.consentNonce==='string'&&/^[A-Za-z0-9_-]{43}$/.test(value.consentNonce)&&value.transport==='websocket')return 'mint';
+ if(input.path===VOICE_PATH&&Object.keys(value).every(key=>['agentId','conversationId','consentNonce','transport','predecessorSessionId'].includes(key))&&VOICE_AGENT_ID.test(value.agentId)&&VOICE_UUID.test(value.conversationId)&&typeof value.consentNonce==='string'&&/^[A-Za-z0-9_-]{43}$/.test(value.consentNonce)&&value.transport==='websocket'&&(!Object.hasOwn(value,'predecessorSessionId')||typeof value.predecessorSessionId==='string'&&value.predecessorSessionId.length===36&&VOICE_UUID.test(value.predecessorSessionId)))return 'mint';
  return null;
 }
 function voiceControlResponse(kind:string,input:any,status:number,raw:string,origin:URL,cloudRealtime=false,selectableProvider=false){
@@ -51,7 +51,10 @@ function voiceControlResponse(kind:string,input:any,status:number,raw:string,ori
  else if(kind==='consent'){if(!exact(['consentNonce','expiresAt'])||typeof value.consentNonce!=='string'||!/^[A-Za-z0-9_-]{43}$/.test(value.consentNonce))throw Error('Invalid voice consent');}
  else if(kind==='revoke'){if(!exact(['revoked'])||value.revoked!==true)throw Error('Invalid voice revocation');}
  else{
-  if(!exact(['sessionId','token','expiresAt','wsUrl','uplink','downlink','iceServers'])||!VOICE_UUID.test(value.sessionId)||typeof value.token!=='string'||!/^[A-Za-z0-9_-]{43}$/.test(value.token)||value.iceServers!==null||JSON.stringify(value.uplink)!=='{"codecs":["pcm16"]}'||JSON.stringify(value.downlink)!=='{"codecs":["pcm16"]}')throw Error('Invalid voice mint');
+  if(!exact(['sessionId','token','expiresAt','wsUrl','uplink','downlink','iceServers','stopIntentVersion','stopIntentGeneration','rotationPreparation'])||!VOICE_UUID.test(value.sessionId)||typeof value.token!=='string'||!/^[A-Za-z0-9_-]{43}$/.test(value.token)||value.iceServers!==null||JSON.stringify(value.uplink)!=='{"codecs":["pcm16"]}'||JSON.stringify(value.downlink)!=='{"codecs":["pcm16"]}')throw Error('Invalid voice mint');
+  const hasVersion=Object.hasOwn(value,'stopIntentVersion'),hasGeneration=Object.hasOwn(value,'stopIntentGeneration'),hasRotation=Object.hasOwn(value,'rotationPreparation');
+  // Preserve the legacy shape; newer stop authority is an exact paired attestation bound to this minted session.
+  if(hasVersion!==hasGeneration||hasVersion&&(value.stopIntentVersion!==1||typeof value.stopIntentGeneration!=='string'||value.stopIntentGeneration.length!==36||!VOICE_UUID.test(value.stopIntentGeneration)||value.stopIntentGeneration!==value.sessionId)||hasRotation&&(!hasVersion||value.rotationPreparation!=='retire-before-open-v1'||!cloudRealtime&&!selectableProvider))throw Error('Invalid voice stop or renewal attestation');
   const ws=new URL(value.wsUrl);if(ws.protocol!=='ws:'||ws.host!==origin.host||ws.username||ws.password||ws.hash||ws.pathname!==VOICE_PATH+'/ws'||ws.search!==`?sessionId=${value.sessionId}`)throw Error('Invalid voice socket destination');
  }
  if(kind==='mint'||kind==='consent')if(!Number.isFinite(value.expiresAt)||value.expiresAt<=now||value.expiresAt>now+125000)throw Error('Invalid voice expiry');
