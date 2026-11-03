@@ -1,3 +1,4 @@
+import type {RealtimeCancellationCause} from '../../../../.eliza/client-features/packages/voice/src/realtime-voice-timing.ts';
 import { cloudServiceName } from '../runtime/cloud-protocol';
 import {createBatchProgressAcknowledgment} from '../runtime/local-agent-stream';
 import {developmentCloudVoiceEnabled,developmentCloudRealtimeVoiceEnabled} from '../runtime/development-cloud-voice';
@@ -194,13 +195,19 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
   let retirement:{shell:any;phase:'stopping'|'error';returnChat:string;view:string|null;binding:string;panelChat:string;promise:Promise<void>;approval?:AbortController;proposalId?:string}|undefined;
   const refresh = () => chatDestination ? chatDestination.shell.setState({}) : api?.setView('notes', { nativeVoiceRevision: Date.now() });
   const stopClock = () => { if (tick) clearInterval(tick); tick = undefined; };
-  function cleanup(close = true,publish=true) {
+  function noteRealtimeCancellation(previous:typeof conversationVoice,cause:RealtimeCancellationCause|undefined) {
+    if(!cause||!previous||!('recordCancellationCause' in previous)||typeof previous.recordCancellationCause!=='function')return;
+    try{previous.recordCancellationCause(cause);}catch{/* Diagnostic-only metadata cannot change cleanup. */}
+  }
+  function cleanup(close = true,publish=true,cause?:RealtimeCancellationCause) {
+    const previousConversation=conversationVoice;
+    noteRealtimeCancellation(previousConversation,cause);
     conversationState={...conversationState,progressText:''};
     ownedNavigation=undefined;
     // Discard, cancel, keyboard, navigation and account changes all end here: an unsent turn is abandoned.
     abandonVoiceTurn();conversationReview=undefined;conversationReplyWatch=undefined;
     const hadCapture=!!recordingId||!!startingCapture||!!clip;
-    const previousChat=chatDestination;const chatShell=previousChat?.shell,previousConversation=conversationVoice,previousSpeech=conversationSpeech,previousNotesSpeech=notesSpeech;conversationVoice=undefined;conversationPrepared=undefined;
+    const previousChat=chatDestination;const chatShell=previousChat?.shell,previousSpeech=conversationSpeech,previousNotesSpeech=notesSpeech;conversationVoice=undefined;conversationPrepared=undefined;
     conversationLive=undefined;conversationInterim='';assistantState={phase:'idle'};
     // Stopping the assistant cancels its capture, request and playback and releases its agent session.
     const conversationStopped=previousConversation?.stop();
@@ -315,13 +322,13 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     started = Date.now(); stage = 'recording'; tick = setInterval(refresh, 250); refresh();
   }
   async function primary() {
-    if(chatDestination&&!chatCurrent()){cleanup();return;}
+    if(chatDestination&&!chatCurrent()){cleanup(true,true,'foreground-check-failed');return;}
     if (cloudConnectRequired) { cleanup(); connectionController.openCloudAccount(); return; }
     if (stage === 'transcribing') {if(chatDestination?.mode==='dictation'){cancelChat(true);return;} reopen('Transcription cancelled. Record again to continue.'); return; }
     if (stage === 'review') {
       if (!draft.trim()) return;
       if (chatDestination) {
-        if(!chatCurrent()){cleanup();return;}
+        if(!chatCurrent()){cleanup(true,true,'foreground-check-failed');return;}
         const { shell, chat, draft:previousDraft } = chatDestination;
         const text=previousDraft?[previousDraft,draft].join('\n'):draft;
         cleanup();
@@ -445,8 +452,8 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
         if(!attempted)return;
         attempted=false;
         if(!held||chat.shell.voiceSendTurnId!==turnId||ownedNavigation!==held||token!==generation||chatDestination!==chat)return;
-        if(!delivered||!held.context||!chatCurrent()||(chat.shell.S().view||'home')!==held.view){cleanup();return;}
-        try{const next=chat.shell.voiceConversationContext(conversationPrepared!.binding);if(next.view!==held.view||JSON.stringify(next)!==JSON.stringify(held.context))throw Error('Voice navigation changed.');chat.view=held.view==='home'?null:held.view;conversationPrepared={...conversationPrepared!,context:next};ownedNavigation=undefined;return next;}catch{cleanup();return;}
+        if(!delivered||!held.context||!chatCurrent()||(chat.shell.S().view||'home')!==held.view){cleanup(true,true,'owned-navigation-unconfirmed');return;}
+        try{const next=chat.shell.voiceConversationContext(conversationPrepared!.binding);if(next.view!==held.view||JSON.stringify(next)!==JSON.stringify(held.context))throw Error('Voice navigation changed.');chat.view=held.view==='home'?null:held.view;conversationPrepared={...conversationPrepared!,context:next};ownedNavigation=undefined;return next;}catch{cleanup(true,true,'owned-navigation-unconfirmed');return;}
       },
     };
   }
@@ -466,7 +473,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
 
       if(retirement?.shell===this&&method==='back')return;
       const owned=ownedNavigation;const ownEffect=owned?.applying&&owned.chat.shell===this&&(method==='goHome'?owned.view==='home':method==='openView'&&args[0]===owned.view);
-      if(chatDestination?.shell===this&&!ownEffect){if(method==='back'){cancelChat();return;}cleanup();}
+      if(chatDestination?.shell===this&&!ownEffect){noteRealtimeCancellation(conversationVoice,'shell-navigation-unowned');if(method==='back'){cancelChat();return;}cleanup();}
       return original.apply(this,args);
     };
   }
@@ -1189,7 +1196,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
   const updated=Component.prototype.componentDidUpdate;
   Component.prototype.componentDidUpdate=function(...args:any[]){
     updated?.apply(this,args);
-    if(chatDestination?.shell===this){if(!chatCurrent())cleanup();else conversationVoice?.recheck();}
+    if(chatDestination?.shell===this){if(!chatCurrent())cleanup(true,true,'foreground-check-failed');else conversationVoice?.recheck();}
     // The first agent text of the turn being sent, as it streams into the conversation.
     const watch=conversationReplyWatch;
     if(watch&&chatDestination?.shell===this&&(this.S().msgs||[]).some((m:Bag)=>m.from==='agent'&&!watch.has(String(m.id))&&String(m.text||'').trim())){conversationReplyWatch=undefined;markVoiceTiming('first-token');}
@@ -1199,27 +1206,28 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
   notes.back = (state: Bag, current: Bag) => { if (stage !== 'closed'&&!chatDestination) { cleanup(); return true; } return back?.(state, current); };
   const noteReadingChanged=()=>{if(api)api.setView('notes',{noteReadingRevision:Date.now()});};
   window.addEventListener('alpha:note-reading',noteReadingChanged);
-  notes.onLeave = (current: Bag) => { closeTranscriptQuestion?.();stopSpeaking();if(!ownedNavigation?.applying)cleanup(); leave?.(current); };
+  notes.onLeave = (current: Bag) => { if(!ownedNavigation?.applying)noteRealtimeCancellation(conversationVoice,'notes-left-unowned');closeTranscriptQuestion?.();stopSpeaking();if(!ownedNavigation?.applying)cleanup(); leave?.(current); };
   const visibility = () => {
     // Speech preparation is foreground-only; returning prepares the same route again.
     if (!document.hidden) { if (reprepare && stage === 'ready' && !busy) { reprepare = false; reopen(error); } return; }
+    if(chatDestination||['recording','transcribing'].includes(stage))noteRealtimeCancellation(conversationVoice,'document-hidden');
     stopSaved();
     if (playing) { playback?.abort(); playing = false; refresh(); }
     if(chatDestination){cleanup();return;}
     if (['recording', 'transcribing'].includes(stage)) { cleanup(false); stage = 'ready'; error = 'Voice stopped when the app left the foreground. Record again to continue.'; reprepare = true; refresh(); }
   };
-  const pagehide = () => { if (stage !== 'closed') cleanup(); };
+  const pagehide = () => { if (stage !== 'closed') cleanup(true,true,'page-hidden'); };
   const binding = composerBinding;
   let account = binding();
   const unsubscribe = connectionController.subscribe(() => {
     const next = binding();
-    if (connectionController.getSnapshot().open) { closeTranscriptQuestion?.(); if (stage !== 'closed') cleanup(); }
-    if (next !== account) { closeTranscriptQuestion?.(); account = next; stopSaved(); if (stage !== 'closed') cleanup(); }
+    if (connectionController.getSnapshot().open) { if(stage!=='closed')noteRealtimeCancellation(conversationVoice,'connection-opened');closeTranscriptQuestion?.(); if (stage !== 'closed') cleanup(); }
+    if (next !== account) { if(stage!=='closed')noteRealtimeCancellation(conversationVoice,'account-changed');closeTranscriptQuestion?.(); account = next; stopSaved(); if (stage !== 'closed') cleanup(); }
   });
   document.addEventListener('visibilitychange', visibility);
   window.addEventListener('pagehide', pagehide);
   const unmount = Component.prototype.componentWillUnmount;
-  Component.prototype.componentWillUnmount = function () { window.removeEventListener('alpha:note-reading',noteReadingChanged);stopSpeaking();api = undefined; chatDestination=undefined;cleanup(); unsubscribe(); document.removeEventListener('visibilitychange', visibility); window.removeEventListener('pagehide', pagehide); unmount?.call(this); };
+  Component.prototype.componentWillUnmount = function () { noteRealtimeCancellation(conversationVoice,'component-unmounted');window.removeEventListener('alpha:note-reading',noteReadingChanged);stopSpeaking();api = undefined; chatDestination=undefined;cleanup(); unsubscribe(); document.removeEventListener('visibilitychange', visibility); window.removeEventListener('pagehide', pagehide); unmount?.call(this); };
 }
 
 function ownBrowserVoiceActive(){const state=connectionController.getSnapshot();return !Capacitor.isNativePlatform()&&state.residentInference==='direct'&&state.providerStatus?.voiceConfigured===true;}

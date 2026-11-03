@@ -1,3 +1,4 @@
+import type {RealtimeCancellationCause} from '../../../../.eliza/client-features/packages/voice/src/realtime-voice-timing.ts';
 import {beginRealtimeVoiceTiming} from './voice-timing';
 import {validateUuid} from '../../../../vendor/eliza/packages/core/src/utils/uuid';
 import {readDevicePreferences} from '../browser/device-preferences';
@@ -16,6 +17,8 @@ export async function developmentCartesiaConversation(input:{binding:VoiceConver
  if(!own&&!developmentCartesiaVoiceEnabled&&!developmentCloudRealtimeVoiceEnabled)throw Error('Developer realtime speech is disabled.');
  const agent=connectionController.getBrowserSpeechAgent();if(!agent)throw Error('Connect the local developer agent first.');
  let timing:ReturnType<typeof beginRealtimeVoiceTiming>|undefined;
+ // Diagnostic only: the existing Direct route records no text/identity and never changes stop custody.
+ const recordCancellationCause=(cause:RealtimeCancellationCause)=>{if(!own)return;try{timing?.noteCancellation(cause);}catch{/* Diagnostics cannot change voice cleanup. */}};
  const lifecycle=new AbortController(),minted=new Set<string>();let stopped=false,stopPromise:Promise<void>|undefined,rendererId:string|undefined;
  let renderer:WebSocket|undefined,pendingRenderer:WebSocket|undefined,rendererRenewal:ReturnType<typeof setTimeout>|undefined,rendererTask:Promise<void>|undefined;
  const current=()=>{lifecycle.signal.throwIfAborted();input.assertCurrent();if(agent!==connectionController.getBrowserSpeechAgent()||!connectionController.voiceConversationCurrent(input.binding)||rendererId!==undefined&&rendererId!==connectionController.voiceRendererClientId())throw new DOMException('Developer voice connection changed','AbortError');};
@@ -69,7 +72,7 @@ export async function developmentCartesiaConversation(input:{binding:VoiceConver
  const client=createVoiceSessionClient({agentId:input.binding.session.agentId,conversationId:input.binding.conversationId,preLiveMaxReconnects:0,preLiveMaxAttempts:1,...(developmentCloudRealtimeVoiceEnabled?{maxReconnects:0}:{}),getUiContext:()=>{current();const uiClientId=connectionController.voiceRendererClientId();if(!uiClientId)throw Error('The voice renderer is not bound.');return {...input.getUiContext?.(),uiClientId,...(directActions?{agentActionMode:'direct-request-v1' as const}:{})};},
   getConsentNonce:async()=>{const result=await request('/api/v1/voice/session/consent',{});return typeof result.consentNonce==='string'?result.consentNonce:null;},
   fetch:async(path,init={})=>{if(path!=='/api/v1/voice/session'||init.method!=='POST'||typeof init.body!=='string')throw Error('Unsupported developer voice request');const body=JSON.parse(init.body);if(body.agentId!==input.binding.session.agentId||body.conversationId!==input.binding.conversationId||body.transport!=='websocket')throw Error('Developer voice binding changed');return Response.json(await request(path,body,init.signal??lifecycle.signal));},
-  onMinted:result=>{minted.add(result.sessionId);try{current();}catch{void stop().catch(error=>input.onError(error instanceof Error?error:Error('Developer voice retirement was not confirmed.')));}},
+  onMinted:result=>{minted.add(result.sessionId);try{current();}catch{recordCancellationCause('binding-check-failed');void stop().catch(error=>input.onError(error instanceof Error?error:Error('Developer voice retirement was not confirmed.')));}},
   onState:state=>{if(!stopped){current();
    // Accepted client session reset is terminal for the prior session's local
    // projection; unlike a retryable STT error, no old usage/drain is promised.
@@ -146,13 +149,13 @@ export async function developmentCartesiaConversation(input:{binding:VoiceConver
    try{current();}catch(error){next.close();throw error;}
    const previous=renderer;renderer=next;pendingRenderer=undefined;
    next.onmessage=event=>{if(renderer===next)receiveNavigation(event);};
-   next.onclose=()=>{if(!stopped&&renderer===next){void stop().catch(error=>input.onError(error));input.onError(Error('The voice renderer disconnected. Start voice again.'));}};
+   next.onclose=()=>{if(!stopped&&renderer===next){recordCancellationCause('renderer-closed');void stop().catch(error=>input.onError(error));input.onError(Error('The voice renderer disconnected. Start voice again.'));}};
    previous?.close();
    rendererRenewal=setTimeout(()=>{rendererRenewal=undefined;void renewRenderer().catch(error=>{if(!stopped){void stop().catch(failure=>input.onError(failure));input.onError(error instanceof Error?error:Error('The voice renderer could not renew.'));}});},expiresAt-Date.now()-10000);
   })().finally(()=>{rendererTask=undefined;});return rendererTask;
  };
  try{await renewRenderer();current();}catch(error){await stop();throw error;}
- return {start:async()=>{try{current();timing?.stop();timing=beginRealtimeVoiceTiming(own?'direct-cartesia':'cloud-cartesia');await client.start();current();}catch(error){await stop();throw error;}},recheck:()=>{try{current();}catch{void stop().catch(error=>input.onError(error instanceof Error?error:Error('Developer voice retirement was not confirmed.')));}},resume:()=>false,
+ return {recordCancellationCause,start:async()=>{try{current();timing?.stop();timing=beginRealtimeVoiceTiming(own?'direct-cartesia':'cloud-cartesia');await client.start();current();}catch(error){await stop();throw error;}},recheck:()=>{try{current();}catch{recordCancellationCause('binding-check-failed');void stop().catch(error=>input.onError(error instanceof Error?error:Error('Developer voice retirement was not confirmed.')));}},resume:()=>false,
   get microphoneAutomaticallyMuted(){return !stopped&&microphoneBusy();},get microphoneMuted(){return client.microphoneMuted;},setMicrophoneMuted:(muted:boolean)=>{current();client.setMicrophoneMuted(muted);},
   get needsPlaybackUnlock(){return client.needsPlaybackUnlock;},unlockPlayback:async()=>{current();await client.unlockPlayback();current();},
   stop,
