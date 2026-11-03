@@ -170,7 +170,7 @@ export function GoogleConnectionsPanel(){
  /** Reads fresh first: known on is saved by explicit Connect; off or unreadable still needs the owner's Allow tap. */
  async function calendarChangesAllowed(calendar:GoogleCalendarIntent,rows:GmailAccount[]|null){
   const choice=await captureGoogleCalendarAccess(),saved=choice?.calendarEdits;if(choice&&saved===true)return persistCalendarChanges(calendar,choice);
-  if(googleConnectionController.calendar()===calendar){setChoice({calendar,rows});setNotice(`${saved===false?'Calendar edits are off.':'Calendar edits could not be read.'} Allow Calendar changes to sync Calendar with Google; Calendar keeps working in Eliza.`);}
+  if(googleConnectionController.calendar()===calendar){setChoice({calendar,rows});setNotice(`${saved===false?'Calendar edits are off.':'Calendar edits could not be read.'} Allow Calendar changes to sync Calendar with Google; Calendar keeps working.`);}
   return false;
  }
  /** The owner's tap: Calendar edits on through the same saved switch toggleAccess uses (Gmail unchanged), then continue. */
@@ -196,7 +196,7 @@ export function GoogleConnectionsPanel(){
   try{
    if(!await calendarChangesAllowed(calendar,rows)||!current())return;
    // Browser Cloud stage: its host admits Calendar writes only after this confirmed intent, before any control write.
-   if(browserCloudResidentEnabled&&rows.some(calendarWrite)&&!(cloud&&await browserCalendarWrites(cloud.credentialId,true))){calendar.authorizing=false;if(current())setNotice('Calendar sync is not available on this host yet, so Calendar is not synced. Calendar keeps working in Eliza.');return;}
+   if(browserCloudResidentEnabled&&rows.some(calendarWrite)&&!(cloud&&await browserCalendarWrites(cloud.credentialId,true))){calendar.authorizing=false;if(current())setNotice('Calendar sync is not available on this host yet, so Calendar is not synced. Calendar keeps working.');return;}
    const result=await linkGoogleCalendar({calendar:calendar.calendar,current,canChange:calendar.canChange},rows,abort.signal);
    // A link that read nothing (no write grant) keeps the review; any other result replaces it, even with none.
    if(result.outcome!=='needs-grant'){calendar.authorizing=false;calendar.review=result.review;}
@@ -211,7 +211,7 @@ export function GoogleConnectionsPanel(){
  return <div className="alpha-connection-scrim"><div className="alpha-connection alpha-google-connections" role="dialog" aria-modal="true" aria-labelledby="google-connections-title" tabIndex={-1} ref={panel}>
   <header><h2 id="google-connections-title">Google accounts</h2><button aria-label="Close Google accounts" onClick={()=>{active.current?.abort();googleConnectionController.close();}}><span aria-hidden="true" data-alpha-icon="/icons/lucide/x.svg" style={icon}/></button></header>
   <p>Connect Gmail and Google Calendar.</p>
-  {calendarIntent&&<p>Calendar syncs both ways with your Google calendar. All eligible saved Eliza events are sent, including dates outside the current view. Google receives event details and guest email addresses. Your Eliza events stay saved.</p>}
+  {calendarIntent&&<p>Calendar syncs both ways with your Google calendar. All eligible saved Calendar events are sent, including dates outside the current view. Google receives event details and guest email addresses. Your Calendar events stay saved.</p>}
   <p role="status">{notice}</p>
   <p>{background}</p>
   {connected.map(account=><section className="alpha-connection-current alpha-google-account" key={account.connectionId}><strong>{account.label}</strong><span>{googleAccountAccessLabel(account)}</span><button className="alpha-google-disconnect" aria-label={`Disconnect Google account ${account.label}`} disabled={busy} onClick={()=>setConfirm(account)}>Disconnect</button></section>)}

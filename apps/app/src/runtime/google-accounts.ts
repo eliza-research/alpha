@@ -350,7 +350,7 @@ function calendarSettled(calendar:AgentCalendar,signal:AbortSignal){
  * Two-way sync, link dedupe and the all-eligible bootstrap on resume stay in the shared Calendar service. */
 export async function linkGoogleCalendar(scope:CanonicalCalendarSyncSettings,accounts:readonly GmailAccount[],signal:AbortSignal):Promise<GoogleCalendarLink>{
  const granted=accounts.filter(account=>account.connected&&account.grantedCapabilities.includes('google.calendar.write'));
- if(!granted.length)return{outcome:'needs-grant',message:accounts.some(account=>account.connected&&account.grantedCapabilities.includes('google.calendar.read'))?'Google Calendar access is read only, so Calendar is not synced. Approve Calendar changes for Google to sync; Calendar keeps working in Eliza.':'Google Calendar is not connected. Calendar keeps working in Eliza.'};
+ if(!granted.length)return{outcome:'needs-grant',message:accounts.some(account=>account.connected&&account.grantedCapabilities.includes('google.calendar.read'))?'Google Calendar access is read only, so Calendar is not synced. Approve Calendar changes for Google to sync; Calendar keeps working.':'Google Calendar is not connected. Calendar keeps working.'};
  const emails=new Set(granted.map(account=>account.label.toLowerCase()));
  const fence=()=>!signal.aborted&&scope.current()&&scope.canChange();
  const ready=async()=>{await calendarSettled(scope.calendar,signal);return fence();};
@@ -358,7 +358,7 @@ export async function linkGoogleCalendar(scope:CanonicalCalendarSyncSettings,acc
  // latest: the last readback with no write sent after it.
  let sent=false,revision:number|undefined,latest:AgentCalendarSyncReview|undefined;
  const result=(outcome:GoogleCalendarLink['outcome'],message:string):GoogleCalendarLink=>latest?{outcome,message,review:latest}:{outcome,message};
- const stopped=()=>result('not-linked',signal.aborted||!scope.current()?'Calendar sync was not finished. Calendar keeps working in Eliza.':'Finish or close the Calendar draft, then connect Google Calendar again.');
+ const stopped=()=>result('not-linked',signal.aborted||!scope.current()?'Calendar sync was not finished. Calendar keeps working.':'Finish or close the Calendar draft, then connect Google Calendar again.');
  const unconfirmed=(reason='')=>result('unconfirmed',`${reason}Calendar sync was not confirmed; check it before another change.`);
  try{
   // Review, select the primary, review, resume, review: Synced is the last readback, never the last request.
@@ -376,7 +376,7 @@ export async function linkGoogleCalendar(scope:CanonicalCalendarSyncSettings,acc
    if(control.pendingDispatch)return result('not-linked','A prior Calendar sync operation needs review in Calendar sync before Google can sync.');
    if(step===2)break; // The last step only reads back.
    const primary=review.sources.filter(source=>source.primary===true&&emails.has(source.accountEmail?.toLowerCase()??''));
-   if(!saved&&primary.length!==1)return result('not-linked','Choose the Google calendar to sync in Calendar sync. Calendar keeps working in Eliza.');
+   if(!saved&&primary.length!==1)return result('not-linked','Choose the Google calendar to sync in Calendar sync. Calendar keeps working.');
    // A reviewed destination keeps its mappings: resume it rather than replace it with the primary.
    const operation=saved?'resume':'select',target=saved||primary[0];
    const key=await linkOperationKey(owner,operation,control.revision,target.connectorAccountId,target.calendarId);
@@ -386,7 +386,7 @@ export async function linkGoogleCalendar(scope:CanonicalCalendarSyncSettings,acc
   }
  }catch(error){
   const reason=(error instanceof Error?error.message:'').replace(/\.$/,'');
-  return sent?unconfirmed(`${reason||'Calendar sync could not be verified'}. `):!fence()?stopped():result('not-linked',`${reason||'Calendar sync could not be reviewed'}. Calendar sync was not finished; nothing was sent. Calendar keeps working in Eliza.`);
+  return sent?unconfirmed(`${reason||'Calendar sync could not be verified'}. `):!fence()?stopped():result('not-linked',`${reason||'Calendar sync could not be reviewed'}. Calendar sync was not finished; nothing was sent. Calendar keeps working.`);
  }
  return unconfirmed();
 }
