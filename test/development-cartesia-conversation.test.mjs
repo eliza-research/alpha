@@ -1,3 +1,5 @@
+import {build} from "esbuild";
+import {createRealtimeVoiceTiming} from '../vendor/eliza/packages/voice/src/realtime-voice-timing.ts';
 import {validateUuid} from '../vendor/eliza/packages/core/src/utils/uuid.ts';
 import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from 'node:module';import vm from 'node:vm';
 import {applyServerEvent,loopToListening,INITIAL_VOICE_SESSION_STATE} from '../vendor/eliza/packages/ui/src/voice/voice-session-state.ts';
@@ -8,13 +10,13 @@ const sdkOptions=options=>{let state={...INITIAL_VOICE_SESSION_STATE,phase:'list
  onServerEvent(event){if(event.t!=='speaking_end'){state=applyServerEvent(state,event);options.onState(state);}options.onServerEvent(event);}};};
 const source=stripTypeScriptTypes((readFileSync('apps/app/src/runtime/development-cartesia-flag.ts','utf8')+readFileSync('apps/app/src/runtime/development-cartesia-conversation.ts','utf8')).replace(/^import .*;\n/gm,'').replace(/^export \{.*\} from .*;\n/gm,'').replace("await import('@elizaos/ui/voice/voice-session-client')","await loadClient()").replace(/^export /gm,''),{mode:'transform'});
 const binding={conversationId:'conversation',session:{agentId:'agent'}};
-async function setup({revoked=true,alreadyRetired=false,cloudRealtime=false,attestation={},askBefore=true}={}){
- let current=true,options,sdk,stops=0,history=0,manualMuted=false;const calls=[],errors=[],performed=[];const preferenceWindow=new EventTarget();
- const agent={async request(path,body){calls.push({path,body});if(path.includes('/health'))return {ready:true,conversationId:'conversation',agentId:'agent',...attestation};if(path==='/api/views/voice-channel')return {wsUrl:'ws://localhost/__alpha-local-renderer/ws?sessionId=fixture',expiresAt:Date.now()+120000};if(path.includes('/revoke')){if(alreadyRetired)throw Object.assign(Error('Retired'),{status:404,data:{code:'voice_session_not_found'}});return {revoked};}return {};}};
- const context=vm.createContext({validateUuid,readDevicePreferences:async()=>({askBeforeAgentActions:askBefore}),window:preferenceWindow,AbortController,DOMException,Response,Error,URL,Date,setTimeout,clearTimeout,location:{host:'localhost'},WebSocket:class{constructor(){queueMicrotask(()=>this.onopen?.());}close(){}},Capacitor:{isNativePlatform:()=>false},developmentCloudRealtimeVoiceEnabled:cloudRealtime,devSurfacesEnabled:true,connectionController:{getSnapshot:()=>({residentInference:"cloud"}),getBrowserSpeechAgent:()=>agent,voiceRendererClientId:()=>'11111111-1111-4111-8111-111111111111',voiceConversationCurrent:()=>current,async refreshDeveloperVoiceHistory(){history++;},async performVoiceRequestedActions(_binding,messageId){performed.push(messageId);return [{summary:"Note saved"}];}},loadClient:async()=>({createVoiceSessionClient:o=>{options=o;sdk=sdkOptions(o);return {async start(){o.onMinted({sessionId:'owned'});},async stop(){stops++;manualMuted=false;},get microphoneMuted(){return manualMuted;},setMicrophoneMuted(value){manualMuted=value;},needsPlaybackUnlock:false,async unlockPlayback(){}};}})});
+async function setup({revoked=true,alreadyRetired=false,cloudRealtime=false,attestation={},askBefore=true,clientFactory}={}){
+ let current=true,options,sdk,stops=0,history=0,manualMuted=false;const calls=[],errors=[],performed=[],notices=[];const preferenceWindow=new EventTarget();
+ const agent={async request(path,body){calls.push({path,body});if(path.includes('/health'))return {ready:true,turnTerminal:true,conversationId:'conversation',agentId:'agent',...attestation};if(path==='/api/v1/voice/session/consent')return {consentNonce:'fixture-consent'};if(path==='/api/v1/voice/session')return {sessionId:'fixture-session',token:'fixture-ticket',turnTerminal:true,expiresAt:Date.now()+60000,wsUrl:'ws://fixture.invalid/session',uplink:{codecs:['pcm16']},downlink:{codecs:['pcm16']}};if(path==='/api/views/voice-channel')return {wsUrl:'ws://localhost/__alpha-local-renderer/ws?sessionId=fixture',expiresAt:Date.now()+120000};if(path.includes('/revoke')){if(alreadyRetired)throw Object.assign(Error('Retired'),{status:404,data:{code:'voice_session_not_found'}});return {revoked};}return {};}};
+ const context=vm.createContext({beginRealtimeVoiceTiming:()=>createRealtimeVoiceTiming({storageKey:"fixture",storage:()=>undefined}).start("direct-cartesia"),validateUuid,readDevicePreferences:async()=>({askBeforeAgentActions:askBefore}),window:preferenceWindow,AbortController,DOMException,Response,Error,URL,Date,setTimeout,clearTimeout,location:{host:'localhost'},WebSocket:class{constructor(){queueMicrotask(()=>this.onopen?.());}close(){}},Capacitor:{isNativePlatform:()=>false},developmentCloudRealtimeVoiceEnabled:cloudRealtime,devSurfacesEnabled:true,connectionController:{voiceTurnFailureMessage:code=>`fixture failure ${code}`,getSnapshot:()=>({residentInference:"cloud"}),getBrowserSpeechAgent:()=>agent,voiceRendererClientId:()=>'11111111-1111-4111-8111-111111111111',voiceConversationCurrent:()=>current,async refreshDeveloperVoiceHistory(){history++;},async performVoiceRequestedActions(_binding,messageId){performed.push(messageId);return [{summary:"Note saved"}];}},loadClient:async()=>({createVoiceSessionClient:o=>{options=o;if(clientFactory)return clientFactory(o);sdk=sdkOptions(o);return {async start(){o.onMinted({sessionId:'owned'});},async stop(){stops++;manualMuted=false;},get microphoneMuted(){return manualMuted;},setMicrophoneMuted(value){manualMuted=value;},needsPlaybackUnlock:false,async unlockPlayback(){}};}})});
  vm.runInContext(source.replace('import.meta.env.DEV','true').replace("import.meta.env.VITE_ALPHA_DEV_CARTESIA",cloudRealtime?"'0'":"'1'")+ ';globalThis.create=developmentCartesiaConversation;',context);
- const controller=await context.create({binding,assertCurrent(){if(!current)throw Error('Changed');},onState(){},onTranscript(){},getUiContext:()=>({viewDelivery:"completed-action",uiViewPath:"/chat"}),onError:e=>errors.push(e)});
- return {controller,calls,errors,performed,changePreference(value){askBefore=value;preferenceWindow.dispatchEvent(new Event("alpha:device-settings"));},setAcceptedState(state){options.onState(state);},get options(){return sdk;},get stops(){return stops;},get history(){return history;},change(){current=false;}};
+ const controller=await context.create({binding,assertCurrent(){if(!current)throw Error('Changed');},onState(){},onTranscript(){},getUiContext:()=>({viewDelivery:"completed-action",uiViewPath:"/chat"}),onError:e=>errors.push(e),onActionResult:text=>notices.push(text)});
+ return {controller,calls,errors,performed,notices,changePreference(value){askBefore=value;preferenceWindow.dispatchEvent(new Event("alpha:device-settings"));},setAcceptedState(state){options.onState(state);},get options(){return sdk;},get stops(){return stops;},get history(){return history;},change(){current=false;}};
 }
 test('canonical completion refreshes history without a second transcript/model dispatch',async()=>{const h=await setup();await h.controller.start();h.options.onServerEvent({t:'stt_final',text:'synthetic',traceId:'owned'});h.options.onServerEvent({t:'reply_complete',traceId:'owned'});await Promise.resolve();assert.equal(h.history,1);assert.ok(h.calls.every(c=>!c.path.includes('/messages')));await h.controller.stop();assert.equal(h.calls.filter(c=>c.path.includes('/revoke')).length,1);await h.controller.stop();assert.equal(h.stops,1);});
 test('failed retirement remains failed on repeated Stop',async()=>{const h=await setup({revoked:false});await h.controller.start();await assert.rejects(h.controller.stop(),/not confirmed/);await assert.rejects(h.controller.stop(),/not confirmed/);assert.equal(h.stops,1);});
@@ -37,10 +39,10 @@ async function lifecycleFixture(){
   message(frame){this.onmessage?.({data:JSON.stringify(frame)});}
  }
  const ticket=()=>({wsUrl:'ws://localhost/__alpha-local-renderer/ws?sessionId='+id,expiresAt:now+120000});
- const agent={async request(path,body,signal){calls.push({path,body,signal});if(path.includes('/health'))return {ready:true,conversationId:'conversation',agentId:'agent'};
+ const agent={async request(path,body,signal){calls.push({path,body,signal});if(path.includes('/health'))return {ready:true,turnTerminal:true,conversationId:'conversation',agentId:'agent'};
   if(path==='/api/views/voice-channel'){if(holdFetch)return new Promise(resolve=>{resolveFetch=()=>resolve(ticket());});return ticket();}
   if(path.includes('/revoke'))return {revoked:true};return {};}};
- const context=vm.createContext({validateUuid,readDevicePreferences:async()=>({askBeforeAgentActions:true}),window:new EventTarget(),AbortController,DOMException,Response,Error,URL,Date:Clock,setTimeout:setTimer,clearTimeout:clearTimer,location:{host:'localhost'},WebSocket:Socket,Capacitor:{isNativePlatform:()=>false},developmentCloudRealtimeVoiceEnabled:false,devSurfacesEnabled:true,
+ const context=vm.createContext({beginRealtimeVoiceTiming:()=>createRealtimeVoiceTiming({storageKey:"fixture",storage:()=>undefined}).start("direct-cartesia"),validateUuid,readDevicePreferences:async()=>({askBeforeAgentActions:true}),window:new EventTarget(),AbortController,DOMException,Response,Error,URL,Date:Clock,setTimeout:setTimer,clearTimeout:clearTimer,location:{host:'localhost'},WebSocket:Socket,Capacitor:{isNativePlatform:()=>false},developmentCloudRealtimeVoiceEnabled:false,devSurfacesEnabled:true,
   connectionController:{getSnapshot:()=>({residentInference:"cloud"}),getBrowserSpeechAgent:()=>swapped?{}:agent,voiceRendererClientId:()=>rendererId,voiceConversationCurrent:()=>current,async refreshDeveloperVoiceHistory(){}},
   loadClient:async()=>({createVoiceSessionClient:o=>{clients++;options=o;sdk=sdkOptions(o);return {async start(){starts++;o.onMinted({sessionId:'owned-1'});},async stop(){stops++;},get microphoneMuted(){return muted;},setMicrophoneMuted(value){muted=value;},needsPlaybackUnlock:false,async unlockPlayback(){}};}})});
  vm.runInContext(source.replace('import.meta.env.DEV','true').replace("import.meta.env.VITE_ALPHA_DEV_CARTESIA","'1'")+';globalThis.create=developmentCartesiaConversation;',context);
@@ -169,4 +171,58 @@ test('accepted session reset retires busy traces and old frames cannot revive th
  h.options.onServerEvent({t:'stt_final',text:'late old request',traceId:'old'});h.options.onServerEvent({t:'speaking_start',traceId:'old'});h.options.onServerEvent({t:'speaking_end',traceId:'old'});h.options.onServerEvent({t:'usage',traceId:'old',sttMs:0,ttsChars:0});assert.equal(h.controller.microphoneAutomaticallyMuted,false);
  h.options.onServerEvent({t:'stt_final',text:'fresh request',traceId:'new'});assert.equal(h.controller.microphoneAutomaticallyMuted,true);h.options.onServerEvent({t:'usage',traceId:'new',sttMs:0,ttsChars:0});assert.equal(h.controller.microphoneAutomaticallyMuted,false);
  }finally{await h.controller.stop();}
+});
+
+
+test('actual SDK and Alpha preserve A queued playback while B failure settles once',async()=>{
+ // Compile the paired SDK client without replacing its reducer, frame parser or drain.
+ const bundled=await build({entryPoints:['vendor/eliza/packages/ui/src/voice/voice-session-client-core.ts'],bundle:true,platform:'browser',conditions:['eliza-source','browser'],format:'esm',write:false});
+ const {createVoiceSessionClient}=await import('data:text/javascript;base64,'+Buffer.from(bundled.outputFiles[0].text).toString('base64'));
+ const sockets=[],playbackProcessors=[],tracks=[];
+ const node=()=>({connect(){return this;},disconnect(){}});
+ class Socket {
+  readyState=0;binaryType='arraybuffer';listeners=new Map();
+  constructor(){sockets.push(this);queueMicrotask(()=>{this.readyState=1;this.emit('open',{});});}
+  addEventListener(type,fn){this.listeners.set(type,[...(this.listeners.get(type)||[]),fn]);}
+  removeEventListener(type,fn){this.listeners.set(type,(this.listeners.get(type)||[]).filter(item=>item!==fn));}
+  emit(type,event){for(const fn of this.listeners.get(type)||[])fn(event);}
+  frame(value){this.emit('message',{data:JSON.stringify(value)});}
+  send(value){if(typeof value==='string'&&JSON.parse(value).t==='hello')queueMicrotask(()=>this.frame({t:'ready',turnTerminal:true,sessionId:'fixture-session',traceId:'ready',playbackCompletion:true}));}
+  close(){if(this.readyState===3)return;this.readyState=3;this.emit('close',{});}
+ }
+ const h=await setup({askBefore:false,clientFactory:options=>createVoiceSessionClient({...options,rotationLeadMs:0,
+  webSocketFactory:()=>new Socket(),
+  getUserMedia:async()=>{const track={enabled:true,stop(){}};tracks.push(track);return {getTracks:()=>[track],getAudioTracks:()=>[track]};},
+  createMicAudioContext:()=>({sampleRate:16000,destination:node(),createMediaStreamSource:()=>node(),createScriptProcessor:()=>({...node(),onaudioprocess:null}),async resume(){},async close(){}}),
+  createPlaybackAudioContext:()=>({sampleRate:16000,state:'running',destination:node(),createScriptProcessor:()=>{const processor={...node(),onaudioprocess:null};playbackProcessors.push(processor);return processor;},async resume(){},async close(){}}),
+ })});
+ const flush=async()=>{for(let i=0;i<30;i++)await Promise.resolve();};
+ try{
+  await h.controller.start();await flush();const socket=sockets[0];
+  socket.frame({t:'stt_final',text:'first request',traceId:'A'});socket.frame({t:'speaking_start',traceId:'A'});
+  socket.emit('message',{data:new Int16Array(320).fill(1000).buffer});
+  socket.frame({t:'stt_final',text:'second request',traceId:'B'});
+  socket.frame({t:'turn_terminal',traceId:'B',outcome:'failed',code:'handler_error'});
+  socket.frame({t:'turn_terminal',traceId:'B',outcome:'failed',code:'handler_error'});
+  assert.equal(h.controller.microphoneAutomaticallyMuted,true);assert.equal(tracks[0].enabled,false);
+  assert.deepEqual(h.notices,['fixture failure handler_error']);assert.deepEqual(h.errors,[]);assert.equal(h.performed.length,0);assert.equal(sockets.length,1);
+  for(const traceId of ['unknown','B'])socket.frame({t:'interrupted',traceId,reason:'explicit'});
+  assert.equal(h.controller.microphoneAutomaticallyMuted,true);assert.equal(tracks[0].enabled,false);
+  socket.frame({t:'speaking_end',traceId:'A'});await flush();assert.equal(h.controller.microphoneAutomaticallyMuted,true);
+  for(const processor of playbackProcessors)processor.onaudioprocess?.({outputBuffer:{numberOfChannels:1,getChannelData:()=>new Float32Array(4096)}});
+  await flush();assert.equal(h.controller.microphoneAutomaticallyMuted,false);assert.equal(tracks[0].enabled,true);
+ }finally{await h.controller.stop();}
+});
+
+
+test('existing health discovery refuses missing/false settlement capability before client creation',async()=>{
+ for(const turnTerminal of [undefined,false,'true'])await assert.rejects(setup({attestation:{turnTerminal}}),/selected developer speech service is unavailable/);
+});
+
+
+test('both Direct and local Cloud callers opt in by resident transport',async()=>{
+ for(const cloudRealtime of [false,true]){
+  const h=await setup({cloudRealtime,attestation:cloudRealtime?{speechRoute:'cloud',speechProvider:'cartesia',providerAdmission:'at-session-start'}:{}});
+  assert.equal(h.options.requireTurnTerminal,true);await h.controller.stop();
+ }
 });

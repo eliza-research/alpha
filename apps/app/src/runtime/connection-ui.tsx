@@ -2170,6 +2170,7 @@ export const connectionController = {
     signal.throwIfAborted();if(generation!==epoch||selected!==active||session!==state.session)throw new DOMException('The connection changed','AbortError');
     return sanitizeCloudInferenceFailure(status?.cloudInferenceFailure);
   },
+  voiceTurnFailureMessage(code?:string){return active?replyFailure(code,active,readServiceLimit({failureKind:code})).message:REPLY_FAILURES.hosted_unreachable;},
   getBrowserSpeechAgent(){return active?.kind==='resident'&&state.session&&active.remote.browserSpeechAvailable?active.remote:null;},
   /** The resident agent's owner-authenticated request path, for its on-device live ASR route (live-voice.ts). */
   getResidentLiveVoice():{sessionId:string;subscribe:(listener:(envelope:unknown)=>void)=>()=>void;request:(path:string,body:unknown,signal:AbortSignal)=>Promise<unknown>}|null{
