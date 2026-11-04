@@ -12,20 +12,65 @@ test('the version row shows only what the build and Android report',()=>{
  for(const code of [0,-1,1.5,'7',null,NaN])assert.equal(m.versionLabel('0.1.0',code),'0.1.0');
  for(const version of ['',undefined,null,7])assert.equal(m.versionLabel(version,7),'Unavailable');
 });
-test('updates are never reported as checked, available or current',()=>{
+test('About shows only the install time Android recorded and never claims the app is current',()=>{
  const format=at=>'day '+at;
  assert.deepEqual(m.installedRows(1760000000000,format),[['Installed or last updated','day 1760000000000']]);
  for(const at of [undefined,null,0,-5,'1760000000000',1.5])assert.deepEqual(m.installedRows(at,format),[]);
- // No dead-end Updates row either: Alpha does not check, so About says nothing about updates.
- assert.doesNotMatch(source,/Alpha does not check for updates|updateRows/);
  // The OS update-channel check is registered off; only the Developer gate (both About pages)
  // shows its state, and the production bundle audit denies the row.
  assert.match(readFileSync('apps/app/src/build-flags.ts','utf8'),/export const updateChannelCheckEnabled = false as boolean;/);
  assert.equal((source.match(/\.\.\.\(developerTools\?\[info\('Update channel \(development\)',updateChannelCheckEnabled\?'Read-only check on · never downloads or installs':'Off'\)\]:\[\]\)/g)??[]).length,2);
  assert.match(readFileSync('scripts/audit-production-bundle.mjs','utf8'),/'Update channel \(development\)'/);
- // Neither the adapter nor the native plugin carries an update-check claim.
- assert.doesNotMatch(source,/Up to date|Update available|Check for updates/);
+ // Nothing claims the app is current or that an update failed; Software update has no notice text at all.
+ assert.doesNotMatch(source,/Up to date|Update available|Update failed/);
  assert.doesNotMatch(java,/Up to date|Update available/);
+});
+// Software update (settings-adapter.ts, AlphaDevicePlugin): the renderer's manifest policy and check cadence.
+// The rendered rows, the check wiring and the install payload are in test/browser/settings-device-facts.spec.ts.
+const installed={versionCode:7,launcher:true,signerSha256:'5c'.repeat(32)};
+const manifest={schema:'alpha-update/v1',versionCode:8,versionName:'0.1.1',variant:'launcher',signerSha256:'5c'.repeat(32),apkUrl:'https://github.com/eliza-research/alphaphone/releases/download/app-8/alpha-phone-8.apk',sha256:'0a'.repeat(32),sizeBytes:400_000_000,notes:'Faster Home'};
+test('Software update offers only a complete, newer manifest for this flavor and signer, with an HTTPS APK, a SHA-256 and a bounded size',()=>{
+ assert.equal(m.UPDATE_SCHEMA,'alpha-update/v1');
+ const {schema,variant,signerSha256,...offered}=manifest;
+ assert.deepEqual(m.parseUpdateManifest(manifest,installed),offered);
+ assert.deepEqual(m.parseUpdateManifest({...manifest,notes:undefined},installed),{...offered,notes:''},'notes are optional');
+ // Notes are only shown: a string of at most 500 characters is, anything else is left out and never refuses the update.
+ assert.equal(m.parseUpdateManifest({...manifest,notes:'x'.repeat(500)},installed)?.notes,'x'.repeat(500));
+ for(const notes of ['x'.repeat(501),7,null,{text:'Faster Home'}])assert.deepEqual(m.parseUpdateManifest({...manifest,notes},installed),{...offered,notes:''},String(notes).slice(0,20));
+ // So is versionName: 1 to 64 characters without control characters are, anything else is left out and never refuses the update.
+ assert.equal(m.parseUpdateManifest({...manifest,versionName:'x'.repeat(64)},installed)?.versionName,'x'.repeat(64));
+ for(const versionName of [undefined,null,7,'','x'.repeat(65),'0.1\n1'])assert.deepEqual(m.parseUpdateManifest({...manifest,versionName},installed),{...offered,versionName:''},String(versionName).slice(0,20));
+ assert.equal(m.parseUpdateManifest({...manifest,sizeBytes:m.UPDATE_MAX_BYTES},installed)?.sizeBytes,m.UPDATE_MAX_BYTES);
+ // Newer only, against the versionCode Android reports; an unknown installed version offers nothing.
+ for(const versionCode of [8,9,undefined,null,'7',0.5,Number.NaN])assert.equal(m.parseUpdateManifest(manifest,{...installed,versionCode}),null,String(versionCode));
+ // This flavor only: the standalone APK over the launcher would drop HOME, Phone and SMS admission, and an unknown flavor offers nothing.
+ assert.equal(m.parseUpdateManifest({...manifest,variant:'standalone'},installed),null);
+ assert.deepEqual(m.parseUpdateManifest({...manifest,variant:'standalone'},{...installed,launcher:false}),offered);
+ for(const launcher of [null,undefined,'true'])assert.equal(m.parseUpdateManifest(manifest,{...installed,launcher}),null,String(launcher));
+ for(const variant of [undefined,'Launcher','both'])assert.equal(m.parseUpdateManifest({...manifest,variant},installed),null,String(variant));
+ // Signed like this install: Android refuses any other signer only after the whole download. An unreported signer offers nothing.
+ // appSigner is the lineage's original certificate, so an APK Signature Scheme v3 rotation never changes what a manifest names.
+ for(const signer of ['6d'.repeat(32),'5C'.repeat(32),undefined])assert.equal(m.parseUpdateManifest({...manifest,signerSha256:signer},installed),null,String(signer));
+ for(const signer of [undefined,null,''])assert.equal(m.parseUpdateManifest({...manifest,signerSha256:signer},{...installed,signerSha256:signer}),null,'unreported '+signer);
+ // HTTPS only, without credentials in the URL.
+ for(const apkUrl of ['http://example.com/a.apk','file:///sdcard/a.apk','content://downloads/a.apk','https://user:secret@example.com/a.apk','example.com/a.apk','','https://'+'a'.repeat(2048)+'.apk',7])
+  assert.equal(m.parseUpdateManifest({...manifest,apkUrl},installed),null,String(apkUrl).slice(0,40));
+ // SHA-256 as 64 lowercase hex characters, and a positive whole size within the bound the native download enforces.
+ for(const sha256 of ['0A'.repeat(32),'0a'.repeat(31),'0a'.repeat(33),'g'.repeat(64),'',undefined])assert.equal(m.parseUpdateManifest({...manifest,sha256},installed),null,String(sha256));
+ for(const sizeBytes of [0,-1,1.5,m.UPDATE_MAX_BYTES+1,'400000000',undefined])assert.equal(m.parseUpdateManifest({...manifest,sizeBytes},installed),null,String(sizeBytes));
+ assert.equal(m.UPDATE_MAX_BYTES,2**30);assert.match(java,/static final long UPDATE_MAX_BYTES=1L<<30;/,'renderer and native bounds agree');
+ for(const change of [{schema:'alpha-update/v2'},{schema:undefined},{versionCode:'8'},{versionCode:8.5}])
+  assert.equal(m.parseUpdateManifest({...manifest,...change},installed),null,JSON.stringify(change));
+ for(const value of [null,undefined,[],'{}',7])assert.equal(m.parseUpdateManifest(value,installed),null);
+});
+test('the automatic update check is due a day after the last answered check',()=>{
+ const day=m.UPDATE_CHECK_INTERVAL_MS,at=1_760_000_000_000;
+ assert.equal(day,86_400_000);
+ assert.equal(m.updateCheckDue(Number.NaN,at),true,'never answered');
+ assert.equal(m.updateCheckDue(at,at),false);
+ assert.equal(m.updateCheckDue(at,at+day-1),false);
+ assert.equal(m.updateCheckDue(at,at+day),true);
+ assert.equal(m.updateCheckDue(at+60_000,at),true,'a clock set back does not postpone checks');
 });
 test('dead-end and negative Settings rows are gone from the adapter',()=>{
  for(const row of ["info('Other connectors'","info('Personality settings'","info('Runtime'","info('Display only'","info('Delivery timing'","'Last change'"])assert.ok(!source.includes(row),row);

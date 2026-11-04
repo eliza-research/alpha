@@ -1,7 +1,7 @@
 // Alpha product configuration applied by the generated host (android/consumer-host.json,
 // appScripts). The upstream generator owns SDK, dependencies, variants, signing,
 // version and test-mocks policy; this file holds only Alpha's Gradle-time product
-// inputs and admission: runtime profile, App Links, voice and embedding hosts.
+// inputs and admission: runtime profile, App Links, update manifest, voice and embedding hosts.
 def runtimeProfile = (project.findProperty('ELIZA_RUNTIME_PROFILE') ?: 'native').toString()
 if (!(runtimeProfile in ['native','cloud'])) throw new GradleException('Unknown ELIZA_RUNTIME_PROFILE')
 def localEmbeddings = (project.findProperty('ELIZA_LOCAL_EMBEDDINGS') ?: '0').toString()
@@ -37,6 +37,10 @@ if (appLinkHost && !(appLinkHost ==~ /(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z
  throw new GradleException('ELIZAOS_APP_LINK_HOST must be a lower-case DNS host name without scheme, port or path')
 if (appLinkHost && appLinkHost != cloudWebHost)
  throw new GradleException('ELIZAOS_APP_LINK_HOST must match config/cloud-deployment.json production.web')
+// One-tap app update (AlphaDevicePlugin checkForUpdate): the one HTTPS update manifest, app.config.json updateManifestUrl.
+def updateManifestUrl = new groovy.json.JsonSlurper().parse(file('../../app.config.json')).updateManifestUrl
+if (!(updateManifestUrl instanceof String) || new URI(updateManifestUrl).scheme != 'https' || !new URI(updateManifestUrl).host)
+ throw new GradleException('app.config.json updateManifestUrl must be an HTTPS URL')
 def appLinksManifest = 'build/generated/app-links/AndroidManifest.xml'
 if (appLinkHost) {
  file(appLinksManifest).parentFile.mkdirs()
@@ -66,6 +70,7 @@ android {
   buildConfigField 'String', 'ELIZA_RUNTIME_PROFILE', "\"${runtimeProfile}\""
   // The verified App Link host this build declares (ELIZAOS_APP_LINK_HOST), or "" when none.
   buildConfigField 'String', 'ELIZAOS_APP_LINK_HOST', "\"${appLinkHost}\""
+  buildConfigField 'String', 'ALPHA_UPDATE_MANIFEST_URL', "\"${updateManifestUrl}\""
   // The shared voice loader configures Phonon-2's in-tree ggml backend.
   // Decode threads may be supplied by the host; empty means one per big core.
   def elizaAsrThreads = (System.getenv('ELIZA_ASR_THREADS') ?: '').trim()
