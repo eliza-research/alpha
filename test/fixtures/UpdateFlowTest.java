@@ -40,6 +40,31 @@ import javax.net.ssl.HttpsURLConnection;
  * does, they do not prove it.
  */
 public final class UpdateFlowTest {
+ /** Fixture-only ownership. A new installing() Context starts an independent scenario/iteration;
+  * restarted() deliberately does NOT retire anything while crash-boundary assertions still run. */
+ private static final List<AlphaDevicePlugin> fixtureBridges=new java.util.ArrayList<>();
+ private static final List<CountDownLatch> fixtureCrashes=new java.util.ArrayList<>();
+ /** Teardown leaves a crash cutpoint by unwinding, never by continuing into commit or another side effect. */
+ private static final class RetiredCrash extends Error {
+  RetiredCrash(){super("Fixture crash retired after its assertions",null,false,false);}
+ }
+ private static void retireFixtureWorkers()throws Exception{
+  java.util.List<java.util.concurrent.ExecutorService> workers=new java.util.ArrayList<>();
+  for(AlphaDevicePlugin bridge:fixtureBridges)for(String name:List.of("updateWorker","diagnosticsWorker")){
+   java.lang.reflect.Field field=AlphaDevicePlugin.class.getDeclaredField(name);field.setAccessible(true);
+   java.util.concurrent.ExecutorService worker=(java.util.concurrent.ExecutorService)field.get(bridge);
+   workers.add(worker);worker.shutdownNow();
+  }
+  // Only after all scenario assertions: parked crashed workers may now unwind. No new scenario
+  // starts until every old executor has terminated, including its resource/finally cleanup.
+  for(CountDownLatch crash:fixtureCrashes)crash.countDown();
+  long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(20);
+  for(java.util.concurrent.ExecutorService worker:workers){
+   long left=deadline-System.nanoTime();
+   check(left>0&&worker.awaitTermination(left,TimeUnit.NANOSECONDS),"fixture worker retires before the next independent scenario");
+  }
+  fixtureCrashes.clear();fixtureBridges.clear();
+ }
  private static final byte[] APK="the offered update".getBytes(java.nio.charset.StandardCharsets.UTF_8);
  private static byte[] served=APK;
  private interface Body {InputStream open(Served connection);}
@@ -99,6 +124,7 @@ public final class UpdateFlowTest {
  }
  private static AlphaDevicePlugin bridge(Context context,Lifecycle.State state){
   AlphaDevicePlugin plugin=new AlphaDevicePlugin();
+  fixtureBridges.add(plugin);
   plugin.context=context;plugin.activity=new Activity();plugin.activity.state=state;plugin.load();
   return plugin;
  }
@@ -170,7 +196,12 @@ public final class UpdateFlowTest {
  }
  /** Where a kill stops a worker: it never runs another line of Alpha. */
  private static Runnable killedAt(CountDownLatch reached){
-  return ()->{reached.countDown();for(;;)try{new CountDownLatch(1).await();}catch(InterruptedException noAnswer){/* A kill answers to nothing. */}};
+  CountDownLatch retired=new CountDownLatch(1);fixtureCrashes.add(retired);
+  return ()->{
+   reached.countDown();
+   while(retired.getCount()>0)try{retired.await();}catch(InterruptedException noAnswer){/* No continuation while this crash is under assertion. */}
+   throw new RetiredCrash();
+  };
  }
  /** Seconds pass after Alpha's last exchange with Android, without a test sleeping through them. */
  private static void settled()throws Exception{plugin("updateAsked",0L);}
@@ -178,7 +209,7 @@ public final class UpdateFlowTest {
  private static void aged(long millis)throws Exception{plugin("updateAsked",System.nanoTime()-TimeUnit.MILLISECONDS.toNanos(millis));}
  private static void resume(AlphaDevicePlugin plugin){plugin.activity.state=Lifecycle.State.RESUMED;plugin.handleOnResume();}
  private static void stop(AlphaDevicePlugin plugin){plugin.activity.state=Lifecycle.State.CREATED;}
- private static Context installing(File cache)throws Exception{forgetProcess();Build.VERSION.SDK_INT=37;Build.VERSION.CODENAME="REL";Context context=new Context(cache);context.packages.archive=archive(context.getPackageName(),8);return context;}
+ private static Context installing(File cache)throws Exception{retireFixtureWorkers();forgetProcess();Build.VERSION.SDK_INT=37;Build.VERSION.CODENAME="REL";Context context=new Context(cache);context.packages.archive=archive(context.getPackageName(),8);return context;}
  /** The confirmation goes with no status, as Home or Alpha's own singleTask relaunch can do it. Alpha returns, and time passes. */
  private static void dismissed(AlphaDevicePlugin plugin)throws Exception{stop(plugin);resume(plugin);settled();}
 
@@ -1647,6 +1678,7 @@ public final class UpdateFlowTest {
   }catch(RuntimeException|AssertionError failed){
    failed.printStackTrace();
   }finally{
+   retireFixtureWorkers();
    for(File left:cache.listFiles())left.delete();
    cache.delete();
   }
