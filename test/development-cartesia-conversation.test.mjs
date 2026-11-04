@@ -3,11 +3,33 @@ import {createRealtimeVoiceTiming} from '../vendor/eliza/packages/voice/src/real
 import {validateUuid} from '../vendor/eliza/packages/core/src/utils/uuid.ts';
 import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from 'node:module';import vm from 'node:vm';
 import {applyServerEvent,loopToListening,INITIAL_VOICE_SESSION_STATE} from '../vendor/eliza/packages/ui/src/voice/voice-session-state.ts';
-// Like the pinned SDK client, reduce each frame into accepted state before the raw callback.
-const sdkOptions=options=>{let state={...INITIAL_VOICE_SESSION_STATE,phase:'listening'};return options&&{...options,
- // Mirror existing SDK local drain: raw generation-end is deliberately not reduced.
- drainPlayback(traceId){if(state.phase==='speaking'&&state.traceId===traceId){state=loopToListening(applyServerEvent(state,{t:'speaking_end',traceId}));options.onState(state);}},
- onServerEvent(event){if(event.t!=='speaking_end'){state=applyServerEvent(state,event);options.onState(state);}options.onServerEvent(event);}};};
+// Match the SDK reducer ordering plus pending/audio eligibility and terminal tombstones.
+// The real SDK accepts global interruption only for pending work, owned audio, or a local ACK.
+// This unit port omits socket negotiation/local-barge ACKs; it is not a full client replica.
+// The paired-client test below uses the actual SDK for those transport/lifecycle paths.
+const sdkOptions=options=>{
+ let state={...INITIAL_VOICE_SESSION_STATE,phase:'listening'},playbackTrace;
+ const pending=new Set(),terminal=new Set();
+ return options&&{...options,
+  // Mirror the existing local drain; raw generation-end is deliberately not reduced.
+  drainPlayback(traceId){if(state.phase==='speaking'&&state.traceId===traceId){playbackTrace=undefined;state=loopToListening(applyServerEvent(state,{t:'speaking_end',traceId}));options.onState(state);}},
+  onServerEvent(event){
+   if(event.t==='ready'){pending.clear();terminal.clear();playbackTrace=undefined;}
+   if(event.t==='stt_final'&&terminal.has(event.traceId))return;
+   if(event.t==='interrupted'){
+    if(typeof event.traceId!=='string'||!event.traceId||event.traceId.length>256||!['acoustic','explicit'].includes(event.reason)||(!pending.has(event.traceId)&&playbackTrace!==event.traceId))return;
+    for(const trace of pending)terminal.add(trace);terminal.add(event.traceId);
+    pending.clear();playbackTrace=undefined;
+   }
+   if(event.t==='speaking_start')playbackTrace=event.traceId;
+   if(event.t==='turn_terminal'){if(!pending.delete(event.traceId))return;terminal.add(event.traceId);}
+   if(event.t!=='speaking_end'){state=applyServerEvent(state,event);options.onState(state);}
+   options.onServerEvent(event);
+   if(event.t==='stt_final'&&event.text.trim())pending.add(event.traceId);
+   if(event.t==='usage')pending.delete(event.traceId);
+  },
+ };
+};
 const source=stripTypeScriptTypes((readFileSync('apps/app/src/runtime/development-cartesia-flag.ts','utf8')+readFileSync('apps/app/src/runtime/development-cartesia-conversation.ts','utf8')).replace(/^import .*;\n/gm,'').replace(/^export \{.*\} from .*;\n/gm,'').replace("await import('@elizaos/ui/voice/voice-session-client')","await loadClient()").replace(/^export /gm,''),{mode:'transform'});
 const binding={conversationId:'conversation',session:{agentId:'agent'}};
 async function setup({revoked=true,alreadyRetired=false,cloudRealtime=false,attestation={},askBefore=true,clientFactory}={}){
@@ -175,6 +197,8 @@ test('accepted session reset retires busy traces and old frames cannot revive th
 
 
 test('actual SDK and Alpha preserve A queued playback while B failure settles once',async()=>{
+ const observed=[];let readAutomaticMute;
+ const observe=row=>{if(observed.length<32&&Buffer.byteLength(JSON.stringify([...observed,row]))<=7168)observed.push(row);};
  // Compile the paired SDK client without replacing its reducer, frame parser or drain.
  const bundled=await build({entryPoints:['vendor/eliza/packages/ui/src/voice/voice-session-client-core.ts'],bundle:true,platform:'browser',conditions:['eliza-source','browser'],format:'esm',write:false});
  const {createVoiceSessionClient}=await import('data:text/javascript;base64,'+Buffer.from(bundled.outputFiles[0].text).toString('base64'));
@@ -186,16 +210,19 @@ test('actual SDK and Alpha preserve A queued playback while B failure settles on
   addEventListener(type,fn){this.listeners.set(type,[...(this.listeners.get(type)||[]),fn]);}
   removeEventListener(type,fn){this.listeners.set(type,(this.listeners.get(type)||[]).filter(item=>item!==fn));}
   emit(type,event){for(const fn of this.listeners.get(type)||[])fn(event);}
-  frame(value){this.emit('message',{data:JSON.stringify(value)});}
+  frame(value){observe({kind:'wire',type:value.t,trace:typeof value.traceId==='string'?value.traceId.slice(0,160):null});this.emit('message',{data:JSON.stringify(value)});}
   send(value){if(typeof value==='string'&&JSON.parse(value).t==='hello')queueMicrotask(()=>this.frame({t:'ready',turnTerminal:true,sessionId:'fixture-session',traceId:'ready',playbackCompletion:true}));}
   close(){if(this.readyState===3)return;this.readyState=3;this.emit('close',{});}
  }
  const h=await setup({askBefore:false,clientFactory:options=>createVoiceSessionClient({...options,rotationLeadMs:0,
+  onState:(state,status)=>{options.onState?.(state,status);observe({kind:'state-delivered',phase:state.phase,trace:state.traceId?.slice(0,160)??null,playback:state.playbackTraceId?.slice(0,160)??null,muted:readAutomaticMute?.()??null});},
+  onServerEvent:event=>{options.onServerEvent?.(event);observe({kind:'event-delivered',type:event.t,trace:'traceId'in event&&typeof event.traceId==='string'?event.traceId.slice(0,160):null,muted:readAutomaticMute?.()??null});},
   webSocketFactory:()=>new Socket(),
   getUserMedia:async()=>{const track={enabled:true,stop(){}};tracks.push(track);return {getTracks:()=>[track],getAudioTracks:()=>[track]};},
   createMicAudioContext:()=>({sampleRate:16000,destination:node(),createMediaStreamSource:()=>node(),createScriptProcessor:()=>({...node(),onaudioprocess:null}),async resume(){},async close(){}}),
   createPlaybackAudioContext:()=>({sampleRate:16000,state:'running',destination:node(),createScriptProcessor:()=>{const processor={...node(),onaudioprocess:null};playbackProcessors.push(processor);return processor;},async resume(){},async close(){}}),
  })});
+ readAutomaticMute=()=>h.controller.microphoneAutomaticallyMuted;
  const flush=async()=>{for(let i=0;i<30;i++)await Promise.resolve();};
  try{
   await h.controller.start();await flush();const socket=sockets[0];
@@ -211,7 +238,7 @@ test('actual SDK and Alpha preserve A queued playback while B failure settles on
   socket.frame({t:'speaking_end',traceId:'A'});await flush();assert.equal(h.controller.microphoneAutomaticallyMuted,true);
   for(const processor of playbackProcessors)processor.onaudioprocess?.({outputBuffer:{numberOfChannels:1,getChannelData:()=>new Float32Array(4096)}});
   await flush();assert.equal(h.controller.microphoneAutomaticallyMuted,false);assert.equal(tracks[0].enabled,true);
- }finally{await h.controller.stop();}
+ }catch(error){if(error instanceof Error)error.message+='\nActual paired SDK callback trace: '+JSON.stringify(observed);throw error;}finally{await h.controller.stop();}
 });
 
 
