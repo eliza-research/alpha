@@ -219,13 +219,16 @@ test('actual SDK and Alpha preserve A queued playback while B failure settles on
   onServerEvent:event=>{options.onServerEvent?.(event);observe({kind:'event-delivered',type:event.t,trace:'traceId'in event&&typeof event.traceId==='string'?event.traceId.slice(0,160):null,muted:readAutomaticMute?.()??null});},
   webSocketFactory:()=>new Socket(),
   getUserMedia:async()=>{const track={enabled:true,stop(){}};tracks.push(track);return {getTracks:()=>[track],getAudioTracks:()=>[track]};},
-  createMicAudioContext:()=>({sampleRate:16000,destination:node(),createMediaStreamSource:()=>node(),createScriptProcessor:()=>({...node(),onaudioprocess:null}),async resume(){},async close(){}}),
+  createMicAudioContext:()=>({sampleRate:16000,state:'running',destination:node(),createMediaStreamSource:()=>node(),createScriptProcessor:()=>({...node(),onaudioprocess:null}),async resume(){},async close(){}}),
   createPlaybackAudioContext:()=>({sampleRate:16000,state:'running',destination:node(),createScriptProcessor:()=>{const processor={...node(),onaudioprocess:null};playbackProcessors.push(processor);return processor;},async resume(){},async close(){}}),
  })});
  readAutomaticMute=()=>h.controller.microphoneAutomaticallyMuted;
  const flush=async()=>{for(let i=0;i<30;i++)await Promise.resolve();};
  try{
   await h.controller.start();await flush();const socket=sockets[0];
+  assert.deepEqual(h.errors,[],'Actual SDK capture must start without an error before turn frames');
+  assert.ok(observed.some(row=>row.kind==='state-delivered'&&row.phase==='listening'),'Actual SDK must reach listening before turn frames');
+  assert.equal(tracks[0]?.enabled,true,'Actual SDK microphone must be admitted before turn frames');
   socket.frame({t:'stt_final',text:'first request',traceId:'A'});socket.frame({t:'speaking_start',traceId:'A'});
   socket.emit('message',{data:new Int16Array(320).fill(1000).buffer});
   socket.frame({t:'stt_final',text:'second request',traceId:'B'});
