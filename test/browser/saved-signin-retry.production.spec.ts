@@ -6,7 +6,7 @@ import {installResidentAgentPlugin} from './helpers/resident-agent-plugin';
 // A Cloud sign-in kept on the phone after a restart, under decision P-43 (resident agent always
 // present). An older build's "local apps without AI" choice is stored; it now reads as the resident.
 // The resident starts by itself at app start and the kept sign-in is tried once to bind inference.
-// An unreachable saved sign-in leaves local use available with a Cloud notice; Settings can
+// An unreachable saved sign-in leaves local use available with no Cloud notice; Settings can
 // reconnect the agent with that same key. A rejected key is reported as no longer valid and is not
 // offered again, while an admitted one binds inference. The agent runs in every case on this device.
 //
@@ -89,9 +89,10 @@ test('an unreachable saved sign-in stays available in agent settings and can be 
   const gate=await openYourAgent(page);
   await expect(gate.getByRole('button',{name:'Reconnect agent',exact:true})).toBeEnabled();
   await expect(gate).not.toContainText(/Signed in|Credits available/);
-  const offlineNotice=page.getByRole('region',{name:'Eliza Cloud plan notice',exact:true});
-  await expect(offlineNotice).toContainText('Cloud cannot be reached right now.');
-  await offlineNotice.getByRole('button',{name:'Dismiss plan notice',exact:true}).click();
+  // Cloud being unreachable shows no banner or status text, and no sign-in is asked for (owner, 2026-11-03).
+  await expect(page.getByRole('region',{name:'Eliza Cloud plan notice',exact:true})).toHaveCount(0);
+  await expect(page.getByText(/Cloud cannot be reached/)).toHaveCount(0);
+  await expect(gate).not.toContainText('Sign in required');
   const starts=(await agentCalls(page)).filter(call=>call==='start').length;
   await gate.getByRole('button',{name:'Reconnect agent',exact:true}).click();
   await expect.poll(async()=>(await agentCalls(page)).filter(call=>call==='start').length).toBeGreaterThan(starts);

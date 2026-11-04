@@ -595,8 +595,11 @@ test('loop J03 in the web build: a chosen document can be reviewed for a questio
   await expect(question.getByRole('textbox', { name: 'Content excerpt' })).toHaveValue('Public fact: twelve raised beds.');
   await question.getByRole('button', { name: 'Use in conversation', exact: true }).click();
   await button(page, 'Send').click();
-  await expect(page.getByRole('status', { name: 'Assistant draft status' })).toHaveText('Not sent. Your message is back in the composer.');
   await expect(page.locator('.alpha-connection').getByText('Your agent runs locally in the Android app. Remote agents and pairing are unavailable.', { exact: true })).toBeVisible();
+  // The refused send gets its text back with no line under the composer (owner, 2026-11-03).
+  await expect.poll(() => page.locator('textarea[data-alpha-composer]').evaluateAll(fields => fields.some(field => (field as HTMLTextAreaElement).value.includes('Public fact: twelve raised beds.')))).toBe(true);
+  await expect(page.getByRole('status', { name: 'Assistant draft status' })).toHaveCount(0);
+  await expect(page.getByText('Your message is back in the composer')).toHaveCount(0);
   await expect(page.getByText('Review summary note', { exact: true })).toHaveCount(0);
   await page.locator('.alpha-connection').getByRole('button', { name: 'Close connection settings', exact: true }).click();
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));

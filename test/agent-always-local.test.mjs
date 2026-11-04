@@ -53,7 +53,7 @@ test('plan state never stops or withholds the on-device agent', () => {
   // The binding rules (account fences, the 7-day offline rule) are the shared controller's
   // (@elizaos/auth/auth/cloud-resident-binding, covered by its own tests); this file maps outcomes.
   assert.match(admission, /const admission=await binding\.admit\(signal\);/);
-  for (const binding of ["return {binding:'unbound',notice:{open:true}};", "return {binding:admission.binding,notice:{message:OFFLINE_NOTICE}};", "return {binding:'unbound',account:admitted};", "return {binding:'cloud',credentialId:identity.credentialId,account:admitted};"])
+  for (const binding of ["return {binding:'unbound',notice:{open:true}};", "return {binding:admission.binding};", "return {binding:'unbound',account:admitted};", "return {binding:'cloud',credentialId:identity.credentialId,account:admitted};"])
     assert.ok(admission.includes(binding), `admission returns ${binding}`);
   // A plan that ends, or a rejected refresh, rebinds the running agent; it is never stopped.
   assert.match(between(ui, 'function residentPlanEnded(', 'function residentRefreshRefused('), /queueResidentRebind\(\);/);

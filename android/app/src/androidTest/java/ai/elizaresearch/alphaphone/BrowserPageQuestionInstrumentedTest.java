@@ -347,7 +347,7 @@ public final class BrowserPageQuestionInstrumentedTest {
  }
 
  /** Menu -> Ask about page -> native review -> question editor -> composer -> Send while inference is
-  * unavailable (decision P-43: the resident is present, starting or offline; nothing is dispatched).
+  * unavailable (decision P-43: the resident is running with no network; nothing is dispatched).
   * Shared with JourneyJ05InstrumentedTest. Returns the reviewed text that reached the composer. */
  String askAboutPageUpToSend(Pages pages, String garden) throws Exception {
     String reviewed = "Reviewed excerpt " + letters(UUID.randomUUID()) + ": twelve raised beds.";
@@ -377,11 +377,14 @@ public final class BrowserPageQuestionInstrumentedTest {
     // Before Send: neither the page text nor the reviewed draft has reached any agent, network or other native call.
     assertEquals("Nothing reaches an agent before Send: " + leaks(reviewed), 0, leaks(reviewed).length());
     assertEquals(0, leaks(ARTICLE).length());
-    // Send while inference is unavailable (the resident is starting, or running with no network): the
-    // refusal says so, no chooser opens, nothing is dispatched and the draft is kept.
+    // Send while inference is unavailable (the resident is running with no network): no
+    // line or toast says so (owner, 2026-11-03), no chooser opens, nothing is dispatched and the draft
+    // is kept. The send is seen settling in the composer's own saved copy: marked as sending, then unmarked.
     waitFor("document.querySelector('button[aria-label=Send]')&&!document.querySelector('button[aria-label=Send]').disabled");
+    int before = Integer.parseInt(js("window.__pageCalls.length"));
     js("document.querySelector('button[aria-label=Send]').click()");
-    waitFor("['Nothing is sent until this phone is back online','Nothing was sent'].some(t=>document.body.innerText.includes(t))");
+    waitFor("(m=>m.includes(true)&&m[m.length-1]===false)(window.__pageCalls.slice(" + before + ").filter(c=>{if(c.plugin!=='AlphaConnection'||c.method!=='secureCompareExchange')return false;try{const b=JSON.parse(c.body);return String(b.slot).startsWith('assistant-draft:v1:')&&!!b.value;}catch(e){return false;}}).map(c=>JSON.parse(JSON.parse(c.body).value).sending===true))");
+    assertEquals("No refusal text at the composer", "false", js("document.body.innerText.includes('Your message is back in the composer')"));
     assertEquals("No connection chooser opens", "false", js("!!document.querySelector('.alpha-connection-scrim')"));
     assertEquals("Not mock mode", "null", js("document.documentElement.dataset.connectionMode==='mock'?'mock':null"));
     assertEquals("Send while inference is unavailable dispatches nothing: " + leaks(reviewed), 0, leaks(reviewed).length());

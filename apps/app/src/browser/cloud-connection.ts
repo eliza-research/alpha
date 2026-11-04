@@ -88,6 +88,7 @@ export class BrowserCloudSignIn extends WebPlugin {
   if(typeof window==='undefined')throw Object.assign(Error('Browser sign-in window unavailable'),{code:'browser-unavailable'});
   const popup=window.open('about:blank','_blank');if(!popup)throw Object.assign(Error('Allow the sign-in window and try again.'),{code:'browser-unavailable'});
   popup.opener=null;this.googlePopup=popup;const attemptId=this.googleAttemptId=crypto.randomUUID();const controller=this.googleController=new AbortController();
+  let committed=false;
   try{
    const started=await this.signIn({operation:'signInStartGoogle',environment:input.environment,attemptId},controller.signal);
    const url=new URL(String(started.browserUrl)),origin=input.environment==='production'?productionCloud.web:stagingCloud.web;
@@ -97,11 +98,13 @@ export class BrowserCloudSignIn extends WebPlugin {
     // OAuth COOP or a successful auto-close may detach the handle. Only the
     // host outcome, explicit Cancel or expiry can retire this login.
     const result=await this.signIn({operation:'signInPollGoogle',attemptId:started.attemptId},controller.signal);
-    if(result.status==='authenticated')return result;
+    if(result.status==='authenticated'){committed=true;return result;}
     await new Promise<void>((resolve,reject)=>{const done=()=>{clearTimeout(timer);controller.signal.removeEventListener('abort',abort);resolve();},abort=()=>{clearTimeout(timer);controller.signal.removeEventListener('abort',abort);reject(controller.signal.reason);},timer=setTimeout(done,1000);controller.signal.addEventListener('abort',abort,{once:true});if(controller.signal.aborted)abort();});
    }
    throw Object.assign(Error('Sign-in expired'),{code:'expired'});
-  }finally{controller.abort();popup.close();if(this.googleController===controller){this.googleController=undefined;this.googlePopup=undefined;this.googleAttemptId=undefined;await this.signIn({operation:'signInCancelGoogle',attemptId}).catch(()=>{});}}
+  }finally{controller.abort();popup.close();if(this.googleController===controller){this.googleController=undefined;this.googlePopup=undefined;this.googleAttemptId=undefined;
+   // The authenticated poll already cleared the host attempt; a further round trip would let a Cancel land between the commit and its report.
+   if(!committed)await this.signIn({operation:'signInCancelGoogle',attemptId}).catch(()=>{});}}
  }
  async startEmail(input:{environment:string;email:string}){return this.signIn({operation:'signInStartEmail',environment:input.environment,email:input.email});}
  async verifyEmail(input:{attemptId:string;code:string}){return this.signIn({operation:'signInVerifyEmail',attemptId:input.attemptId,code:input.code});}

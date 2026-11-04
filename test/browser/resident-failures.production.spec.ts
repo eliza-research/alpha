@@ -17,7 +17,8 @@ const composer = (page: Page) => page.locator('[data-alpha-layer="composer"][ari
 const conversation = (page: Page) => page.locator('[data-alpha-layer="conversation"]');
 const bubble = (page: Page, text: string) => page.getByRole('button', { name: 'Message actions: ' + text, exact: true });
 const UNKNOWN = 'Sorry, I couldn’t finish that reply.';
-const NOT_SENT = 'Not sent. Your message is back in the composer.';
+// Retired generic refusal (owner, 2026-11-03): it never shows at the composer or as a toast.
+const NOT_SENT = 'Your message is back in the composer';
 
 async function connected(page: Page, nativeSignIn = true) {
   const foreign = await fenceNetwork(page);
@@ -27,6 +28,20 @@ async function connected(page: Page, nativeSignIn = true) {
   return foreign;
 }
 async function send(page: Page, text: string) { await composer(page).fill(text); await composer(page).press('Enter'); }
+/** A send refused before dispatch says nothing (owner, 2026-11-03). It is seen settling in the
+ * composer's own saved copy: marked as sending, then unmarked with the text back in the composer. */
+async function sendRefused(page: Page, text: string) {
+  await page.evaluate(() => {
+    const w = window as any, native = w.Capacitor.nativePromise; w.draftMarks = [];
+    w.Capacitor.nativePromise = (plugin: string, method: string, input: any) => {
+      if (plugin === 'AlphaConnection' && method === 'secureCompareExchange' && String(input?.slot).startsWith('assistant-draft:v1:') && input.value) w.draftMarks.push(JSON.parse(input.value).sending === true);
+      return native(plugin, method, input);
+    };
+  });
+  await send(page, text);
+  await expect.poll(() => page.evaluate(() => { const marks = (window as any).draftMarks as boolean[]; return marks.includes(true) && marks[marks.length - 1] === false; })).toBe(true);
+  await expect(composer(page)).toHaveValue(text);
+}
 
 const KINDS = {
   // Cloud's billing refusal of a signed-in account: one answer naming both ways back (cloud-membership-ui.tsx).
@@ -137,18 +152,24 @@ for (const frame of ['done', 'error'] as const) test(`a provider-less turn witho
   expect(foreign).toEqual([]);
 });
 
-test('without a network the resident says AI needs a connection, sends nothing, and clears the notice when back online', async ({ page, context }) => {
+test('without a network the composer stays silent, sends nothing, keeps the draft, and sends when back online', async ({ page, context }) => {
   test.setTimeout(120_000);
   await connected(page);
-  const notice = page.getByText('Your agent is running; AI needs a connection. Nothing is sent until this phone is back online.', { exact: true });
-  await expect(notice).toHaveCount(0);
+  const draftStatus = page.getByRole('status', { name: 'Assistant draft status', exact: true });
+  // Owner, 2026-11-03: no line, toast or banner says the phone is offline or that the send was refused.
+  const offlineText = page.getByText(/AI needs a connection|until this phone is back online|Cloud cannot be reached/);
+  await expect(draftStatus).toHaveCount(0);
   await context.setOffline(true);
-  await expect(notice).toBeVisible();
-  await send(page, 'Sent while offline');
-  await expect(page.getByText(NOT_SENT, { exact: true }).first()).toBeVisible();
-  await expect(composer(page)).toHaveValue('Sent while offline');
+  await page.waitForFunction(() => navigator.onLine === false);
+  await expect(draftStatus).toHaveCount(0);
+  await sendRefused(page, 'Sent while offline');
+  await expect(bubble(page, 'Sent while offline')).toHaveCount(0);
+  await expect(page.getByText(NOT_SENT)).toHaveCount(0);
+  await expect(draftStatus).toHaveCount(0);
+  await expect(offlineText).toHaveCount(0);
+  await expect(page.getByRole('region', { name: 'Eliza Cloud plan notice', exact: true })).toHaveCount(0);
   expect(await harness(page, f => f.streams)).toBe(0);
-  // Local apps keep working: Notes opens and the notice stays beside the composer.
+  // Local apps keep working: Notes opens.
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
   await button(page, 'Notes').click();
   await expect(page.locator('html')).toHaveAttribute('data-active-view', 'notes');
@@ -160,7 +181,8 @@ test('without a network the resident says AI needs a connection, sends nothing, 
   await page.getByRole('button', { name: 'Back to Settings', exact: true }).click();
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
   await context.setOffline(false);
-  await expect(notice).toHaveCount(0);
+  await page.waitForFunction(() => navigator.onLine);
+  await expect(offlineText).toHaveCount(0);
   // Only the owner's own Send posts it, once.
   await composer(page).fill('Sent when back online'); await composer(page).press('Enter');
   await expect(bubble(page, 'Resident reply 1')).toHaveCount(1);
@@ -172,9 +194,10 @@ for (const mode of ['reject', 'busy'] as const) {
     test.setTimeout(120_000);
     await connected(page);
     await setStub(page, { stream: mode });
-    await send(page, `Refused by ${mode}`);
-    await expect(page.getByText(mode === 'busy' ? 'Not sent. The agent is busy and did not accept this message. Wait, then send it again.' : NOT_SENT, { exact: true }).first()).toBeVisible();
-    await expect(composer(page)).toHaveValue(`Refused by ${mode}`);
+    await sendRefused(page, `Refused by ${mode}`);
+    // A 429 refusal names its own reason; a refusal with none says nothing, the text simply comes back.
+    if (mode === 'busy') await expect(page.getByText('Not sent. The agent is busy and did not accept this message. Wait, then send it again.', { exact: true })).toBeVisible();
+    await expect(page.getByText(NOT_SENT)).toHaveCount(0);
     await expect(bubble(page, `Refused by ${mode}`)).toHaveCount(0);
     await expect(page.getByText(UNKNOWN, { exact: true })).toHaveCount(0);
     expect(await harness(page, f => ({ streams: f.streams, posts: f.posts.length }))).toEqual({ streams: 1, posts: 0 });

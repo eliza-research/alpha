@@ -1,5 +1,5 @@
 import {seedCompletedAccessSetup} from './flag-off-android';
-import {completeAccessSetup} from './flag-off-android';
+import {completeAccessSetup, openYourAgent} from './flag-off-android';
 import { test, expect, type Page } from '@playwright/test';
 import {installResidentAgentPlugin} from './helpers/resident-agent-plugin';
 import { readdirSync, readFileSync } from 'node:fs';
@@ -450,7 +450,7 @@ for (const mode of ['signed-out','empty','credits','unavailable','funded','repla
   if(mode==='unpackaged')expect(native).not.toContain('start');
  });
 }
-test('resident always present (P-43): a kept local-apps choice and a saved sign-in with no network start the resident, AI off with Try again',async({page})=>{
+test('resident always present (P-43): a kept local-apps choice and a saved sign-in with no network start the resident, AI off with no Cloud notice',async({page})=>{
  await installResidentAgentPlugin(page);
  await page.addInitScript(()=>{
   const w=window as any;w.androidBridge={};w.residentCalls=[];
@@ -487,10 +487,13 @@ test('resident always present (P-43): a kept local-apps choice and a saved sign-
  await expect(page.getByRole('button',{name:'Notes',exact:true})).toBeVisible();
  await expect.poll(async()=>((await page.evaluate(()=>(window as any).residentCalls)) as any[]).filter(c=>c.plugin==='Agent').map(c=>c.method)).toContain('start');
  await expect(page.locator('[role="main"].alpha-cloud-sign-in')).toHaveCount(0);
- const dialog=page.getByRole('region',{name:'Eliza Cloud plan notice',exact:true});
- await expect(dialog).toContainText('Cloud cannot be reached right now. Your agent is running on this device');
- await expect(dialog.getByRole('button',{name:'Try again',exact:true})).toBeVisible();
- await expect(dialog.getByRole('button',{name:'Use local apps without AI',exact:true})).toHaveCount(0);
+ // Owner, 2026-11-03: Cloud being unreachable shows no banner or status text, and asks for no sign-in.
+ const settings=await openYourAgent(page);
+ await expect(settings).toContainText('Running on this device');
+ await expect(settings).not.toContainText('Sign in required');
+ await expect(page.getByRole('region',{name:'Eliza Cloud plan notice',exact:true})).toHaveCount(0);
+ await expect(page.getByText(/Cloud cannot be reached/)).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Use local apps without AI',exact:true})).toHaveCount(0);
  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('alpha.connection.selection.v1')!))).toEqual({kind:'resident'});
  const calls=await page.evaluate(()=>(window as any).residentCalls);
  expect(calls.filter((c:any)=>c.plugin==='Agent').map((c:any)=>c.method)).not.toContain('configureCloudProvider');
