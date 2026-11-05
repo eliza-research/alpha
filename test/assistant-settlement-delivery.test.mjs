@@ -1,4 +1,4 @@
-import {systemNoticeKind,collapseSystemNotices} from '../apps/app/src/runtime/action-message-presentation.ts';
+import {systemNoticeKind,systemNoticeDisplayText,collapseSystemNotices} from '../apps/app/src/runtime/action-message-presentation.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -25,8 +25,7 @@ const notices=between(adapter,'function replyNotices(','/** Decline one pending 
 const merge=between(connection,'export function mergeConversationDelivery','const actionReceipts =').replace('export ','');
 const history=between(connection,'function restoredMessages(','/** Eliza Cloud\'s API');
 const delivery=between(adapter,'      const delivery=connectionController.getSnapshot().conversationDelivery;','      syncStoppedReplyNotice');
-const systemNotices=read('apps/app/src/runtime/action-message-presentation.ts').replace(/export /g,'');
-const compiled=ts(`${systemNotices}\n${plan}\n${notices}\n${merge}\n${history}\nfunction methods(){const p={};\n${voice}\n${send}\n${say}\np.receiveCanonicalDelivery=function(){const session=connectionController.getSnapshot().session?.sessionId;\n${delivery}\n};return p;}globalThis.methods=methods();globalThis.projectHistory=restoredMessages;`);
+const compiled=ts(`${plan}\n${notices}\n${merge}\n${history}\nfunction methods(){const p={};\n${voice}\n${send}\n${say}\np.receiveCanonicalDelivery=function(){const session=connectionController.getSnapshot().session?.sessionId;\n${delivery}\n};return p;}globalThis.methods=methods();globalThis.projectHistory=restoredMessages;`);
 const USER='03160f61-656a-4ceb-8495-8d7bd3eaf220',REPLY='b714dcf4-46d3-443d-8ff9-998942438767';
 const ROOM='a954925f-5698-4639-b1ea-6d1bb760a142';
 const RECEIPT={proposalId:'device-operation-1',summary:'The reviewed operation was applied.'};
@@ -63,7 +62,7 @@ function fixture(){
     },
   };
   const box={
-    systemNoticeKind,collapseSystemNotices,
+    systemNoticeKind,systemNoticeDisplayText,collapseSystemNotices,
     console,Error,DOMException,AbortController,Promise,JSON,Object,Date,Set,Map,queueMicrotask,
     crypto:{randomUUID},document:{hidden:false,querySelector:()=>null},
     alphaClient:client,connectionController:controller,context(){},

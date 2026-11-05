@@ -2570,7 +2570,7 @@ export const connectionController = {
           if(committed)return;
           if(operation!==cancellingOperation||state.signIn!==view)return;
         }catch{
-          if(operation===cancellingOperation)update({error:'Sign-in completion is unconfirmed. Wait for the result before trying again.'});
+          if(operation===cancellingOperation)update({error:'Cancel could not be confirmed. Sign-in is still in progress.'});
           return;
         }
       }

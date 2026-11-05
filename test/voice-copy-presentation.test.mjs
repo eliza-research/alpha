@@ -54,7 +54,7 @@ test('actual voice error clears input activity, keeps failure internal without a
    if(error){
     assert.equal(model.lines[0].t,'Sign in to Cloud again in Settings, then retry voice.','failure remains classified internally');assert.doesNotMatch(doc.body.textContent,/Sign in to Cloud|401|PRIVATE/);
     assert.equal(doc.querySelector('[role="status"][aria-label="Voice conversation status"]').textContent,'','the alert is not repeated in the status region');
-    assert.equal(notices.querySelector('[data-alpha-voice-recovery]').textContent,'Try voice again');
+    assert.equal(notices.querySelector('[data-alpha-voice-recovery]'),null,'uncertain capture keeps retry out of the composer');
    }else assert.equal(notices.querySelector('[data-alpha-voice-recovery]'),null);
    assert.ok(doc.querySelector('[aria-label="Stop voice conversation"]'));
    assert.equal(doc.querySelectorAll('[data-alpha-voice-animation]').length,error?0:1);
