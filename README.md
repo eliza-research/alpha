@@ -239,9 +239,10 @@ file flows, dialog accessibility, disclosed adapter fixtures and reference desig
 states. Reports/screenshots are in `test-results/browser-report` and
 `test-results/browser`. Browser CI runs independently of Android qualification.
 
-Use Node 24.15.0 and JDK 21. Resident preparation requires Bun 1.4.2, matching
-the pinned upstream package manager and CI. Put that version on `PATH` or set
-`ALPHA_BUN` to its absolute executable path; an older Bun can emit incompatible
+Use Node 24.15.0, the prepared source's pinned Bun version (currently 1.4.2), and JDK 21.
+`agent:prepare` checks Bun against the upstream `packageManager` before installing dependencies.
+Put that Bun version first on `PATH` for the build scripts; `ALPHA_BUN` may also select
+its absolute executable for preparation and nested tools. An older Bun can emit incompatible
 plugin imports during the runtime build. Native builds require Android SDK platform 36 and
 build-tools 36.0.0. Set `JAVA_HOME` and `ANDROID_HOME` on Linux; the scripts also
 recognize the usual macOS Homebrew JDK/Android SDK locations. The Gradle 8.13

@@ -20,9 +20,11 @@ const before={document:globalThis.document,matchMedia:globalThis.matchMedia};
 test.before(async()=>{
  page=new JSDOM('<!doctype html>');globalThis.document=page.window.document;globalThis.matchMedia=()=>({matches:true});
  const template=fs.readFileSync('apps/app/src/prototype/template.html','utf8');
- const start=template.indexOf('<sc-if value="{{inlineChatRecorder}}">'),end=template.indexOf('<sc-if value="{{panelComposer}}">',start);
- assert.ok(start>=0&&end>start);
- const fragment='<div class="os"><div data-screen="1">'+template.slice(start,end)+'</div></div>';
+ // The chat notices above the composer (disclosure, recovery) and the inline voice controls.
+ const noticesStart=template.indexOf('<div class="alpha-chat-notices">'),noticesEnd=template.indexOf('<sc-if value="{{legacyChatRecorder}}">',noticesStart);
+ const start=template.indexOf('<sc-if value="{{inlineChatRecorder}}">',noticesEnd),end=template.indexOf('<sc-if value="{{panelComposer}}">',start);
+ assert.ok(noticesStart>=0&&noticesEnd>noticesStart&&start>noticesEnd&&end>start);
+ const fragment='<div class="os"><div data-screen="1">'+template.slice(noticesStart,noticesEnd)+template.slice(start,end)+'</div></div>';
  const bundle=await build({stdin:{contents:`import React from 'react';import{renderToStaticMarkup}from'react-dom/server';import{DCLogic}from'./apps/app/src/prototype/dc-lite.js';class Fixture extends DCLogic{renderVals(){return this.props.values;}}export const render=values=>renderToStaticMarkup(React.createElement(Fixture,{phoneSurface:true,values}));`,resolveDir:process.cwd(),loader:'js'},bundle:true,platform:'node',format:'cjs',write:false,plugins:[{name:'actual-voice-template',setup(b){b.onResolve({filter:/template\.html\?raw$/},()=>({path:'voice',namespace:'actual-template'}));b.onLoad({filter:/.*/,namespace:'actual-template'},()=>({contents:'export default '+JSON.stringify(fragment),loader:'js'}));}}]});
  temporary=fs.mkdtempSync(path.join(os.tmpdir(),'voice-calm-markup-'));const file=path.join(temporary,'renderer.cjs');
  fs.writeFileSync(file,bundle.outputFiles[0].text);renderer=createRequire(import.meta.url)(file).render;

@@ -1,6 +1,6 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
 import {openLegacyAttachment,openLegacyNotes} from './helpers/legacy-notes';
-import { setTextScale } from './accessibility-states';
+import { LAUNCHER_STATES, setTextScale } from './accessibility-states';
 import {canonicalNotesFixture,openCanonicalNotes} from './helpers/canonical-notes';
 import {openOwnedPhotoViewer} from './helpers/owned-photo';
 import { auditPage, auditTabOrder, format } from './accessibility-audit';
@@ -616,7 +616,7 @@ test.describe('a toast raised while a top-layer dialog is open', () => {
     return dialog;
   }
 
-  test('it is drawn above the dialog, inside it, in a live region that was there before the text', async ({ page }) => {
+  test('it takes space at the top of the dialog in a live region that was there before the text', async ({ page }) => {
     const dialog = await openDialog(page);
     const region = dialog.locator('[data-alpha-dialog-toast]');
     // Present and empty as soon as the dialog is open.
@@ -633,9 +633,10 @@ test.describe('a toast raised while a top-layer dialog is open', () => {
     const measured = await region.evaluate(el => {
       const body = el.firstElementChild!, box = body.getBoundingClientRect(), screen = document.querySelector('[data-screen]')!.getBoundingClientRect();
       const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
-      return { onTop: !!hit && body.contains(hit), inside: box.left >= screen.left && box.right <= screen.right && box.bottom <= screen.bottom && box.top >= screen.top, height: Math.round(box.height), inert: !!el.closest('[inert]'), topLayer: el.matches(':popover-open') };
+      const content = el.nextElementSibling!.getBoundingClientRect();
+      return { onTop: !!hit && body.contains(hit), inside: box.left >= screen.left && box.right <= screen.right && box.bottom <= screen.bottom && box.top >= screen.top, height: Math.round(box.height), inert: !!el.closest('[inert]'), beforeContent: box.bottom <= content.top, position: getComputedStyle(el).position };
     });
-    expect(measured).toEqual({ onTop: true, inside: true, height: 48, inert: false, topLayer: true });
+    expect(measured).toEqual({ onTop: true, inside: true, height: 48, inert: false, beforeContent: true, position: 'sticky' });
     // Assistive technology is offered it: the text is in Chromium's accessibility tree once, not ignored.
     const session = await page.context().newCDPSession(page);
     await session.send('Accessibility.enable');
@@ -647,6 +648,31 @@ test.describe('a toast raised while a top-layer dialog is open', () => {
     // It leaves when the toast does, and the region stays for the next one.
     await expect(region).toBeEmpty({ timeout: 5000 });
     await expect(region).toHaveCount(1);
+  });
+
+  test('feedback raised while a dialog is scrolled down stays in view with a usable Undo', async ({ page }) => {
+    const dialog = await openDialog(page);
+    // A modal that scrolls its own content (Clock, retained data, permissions, large-text note source).
+    await dialog.evaluate(el => {
+      el.style.setProperty('max-height', '320px', 'important'); el.style.setProperty('overflow', 'auto', 'important');
+      const filler = document.createElement('div'); filler.style.cssText = 'height:1600px;flex-shrink:0'; filler.setAttribute('aria-hidden', 'true');
+      el.append(filler);
+      el.scrollTop = el.scrollHeight;
+    });
+    await expect.poll(() => dialog.evaluate(el => { el.scrollTop = el.scrollHeight; return el.scrollTop; })).toBeGreaterThan(400);
+    // An async source: no focus move and no scroll may be needed for it to be seen.
+    await raise(page, 'Note deleted', true);
+    const undo = dialog.locator('[data-alpha-dialog-toast]').getByRole('button', { name: 'Undo', exact: true });
+    await expect(undo).toBeVisible();
+    await expect.poll(() => dialog.evaluate(el => {
+      const body = el.querySelector('[data-alpha-dialog-toast]')!.firstElementChild!.getBoundingClientRect(), frame = el.getBoundingClientRect();
+      const hit = document.elementFromPoint(body.left + body.width / 2, body.top + body.height / 2);
+      return body.height >= 40 && body.top >= frame.top - 1 && body.bottom <= frame.bottom + 1 && !!hit && el.querySelector('[data-alpha-dialog-toast]')!.contains(hit);
+    })).toBe(true);
+    // Shown where the reader already is: the dialog was not scrolled back to its top.
+    expect(await dialog.evaluate(el => el.scrollTop)).toBeGreaterThan(400);
+    await undo.click();
+    expect(await page.evaluate(() => (window as any).__undone)).toBe(1);
   });
 
   test('Undo works from inside the dialog, and nothing is left behind when the dialog closes', async ({ page }) => {
@@ -662,9 +688,16 @@ test.describe('a toast raised while a top-layer dialog is open', () => {
     await page.keyboard.press('Escape');
     await expect(page.locator('dialog[open]')).toHaveCount(0);
     await expect(page.locator('[data-alpha-dialog-toast]')).toHaveCount(0);
+    // Notes deliberately hides the composer while editing. Leave the editor and
+    // open chat so the notice is checked against an input the user can reach.
+    await page.getByRole('button', { name: 'Back to notes', exact: true }).click();
+    await page.getByRole('button', { name: 'Open conversation', exact: true }).click();
     // With no dialog the page's own region is the one on screen again.
     await raise(page, 'Back on the page');
     await expect(page.locator('[data-alpha-toast]')).toContainText('Back on the page');
+    const toast = (await page.locator('[data-alpha-toast]').boundingBox())!;
+    const input = (await page.locator('[data-alpha-composer]:visible').boundingBox())!;
+    expect(toast.y + toast.height).toBeLessThan(input.y);
     const found = format(await auditPage(page, { dock: true })).filter(line => line.startsWith('toast-'));
     expect(found, found.join('\n')).toEqual([]);
   });
@@ -710,4 +743,26 @@ test('standalone app: Home offers no notifications control; Android\'s top-edge 
   await page.goto('/');
   await expect(page.getByRole('button', { name: 'Settings', exact: true })).toBeVisible();
   await expect(page.locator('[data-alpha-shade-handle]')).toHaveCount(0);
+});
+
+// A notice raised while an in-phone sheet is open (here the launcher month picker) lands below
+// the sheet instead of over its header or dates, so every control in it stays tappable.
+test('a notice over an open month sheet leaves every sheet control tappable', async ({ page }) => {
+  await LAUNCHER_STATES.find(state => state.name === 'launcher Calendar month')!.open(page, 'light');
+  await page.evaluate(() => {
+    const screen = document.querySelector('[data-screen]') as any;
+    const key = Object.keys(screen).find(name => name.startsWith('__reactFiber$'))!;
+    let fiber = screen[key];
+    while (fiber && !(fiber.stateNode && typeof fiber.stateNode.toast === 'function')) fiber = fiber.return;
+    fiber.stateNode.toast('Synthetic notice');
+  });
+  await expect(page.locator('[data-alpha-toast]')).toContainText('Synthetic notice');
+  await expect.poll(() => page.evaluate(() => {
+    const sheet = document.querySelector('.calendar-month-dialog')!, toast = document.querySelector('[data-alpha-toast]')!.firstElementChild!.getBoundingClientRect();
+    const covered = Array.from(sheet.querySelectorAll('button')).filter(button => {
+      const box = button.getBoundingClientRect(), hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+      return !hit || !button.contains(hit);
+    }).map(button => button.getAttribute('aria-label') || button.textContent);
+    return { covered, below: toast.top >= sheet.getBoundingClientRect().bottom };
+  })).toEqual({ covered: [], below: true });
 });

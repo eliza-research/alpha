@@ -15,7 +15,7 @@ function fixture(t){
  t.after(()=>fs.rmSync(directory,{recursive:true,force:true}));
  const cache=path.join(directory,'cache'),consumer=path.join(directory,'consumer'),destination=path.join(consumer,'artifacts/source');
  const write=(file,bytes)=>{fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,bytes);};
- write(path.join(cache,'package.json'),JSON.stringify({workspaces:['packages/*']}));write(path.join(cache,'turbo.json'),'{"tasks":{}}');
+ write(path.join(cache,'package.json'),JSON.stringify({packageManager:'bun@1.4.2',workspaces:['packages/*']}));write(path.join(cache,'turbo.json'),'{"tasks":{}}');
  write(path.join(cache,'.gitignore'),'ignored/\nnode_modules/\n');write(path.join(cache,'packages/example/package.json'),'{"name":"fixture"}');
  write(path.join(cache,'packages/example/data.bin'),randomBytes(1024*1024));write(path.join(cache,'packages/example/tool.sh'),'#!/bin/sh\nexit 0\n');fs.chmodSync(path.join(cache,'packages/example/tool.sh'),0o755);
  for(let index=0;index<40;index++)write(path.join(cache,'packages/example',`extra-${index}.txt`),'small fixture file\n');
@@ -152,7 +152,7 @@ test('directory batches reduce real clone processes and preserve renamed files a
 
 test('full source preparation uses the calling Bun frozen install and preserves the vendor on installer failure',t=>{
  const f=fixture(t),before=f.snapshot(),bun=path.join(f.directory,'bin/bun'),receipt=path.join(f.directory,'installer.json');
- f.write(bun,`#!/usr/bin/env node\nconst fs=require('node:fs');fs.writeFileSync(process.env.ALPHA_INSTALL_RECEIPT,JSON.stringify({args:process.argv.slice(2),cwd:process.cwd()}));if(process.env.ALPHA_INSTALL_FAIL)process.exit(9);fs.mkdirSync('node_modules',{recursive:true});`);fs.chmodSync(bun,0o700);
+ f.write(bun,`#!/usr/bin/env node\nif(process.argv[2]==='--version'){console.log('1.4.2');process.exit(0);}const fs=require('node:fs');fs.writeFileSync(process.env.ALPHA_INSTALL_RECEIPT,JSON.stringify({args:process.argv.slice(2),cwd:process.cwd()}));if(process.env.ALPHA_INSTALL_FAIL)process.exit(9);fs.mkdirSync('node_modules',{recursive:true});`);fs.chmodSync(bun,0o700);
  const env={ALPHA_BUN:'',npm_execpath:bun,ALPHA_INSTALL_RECEIPT:receipt};
  const first=f.run({full:true,env});assert.equal(first.status,0,first.stderr);
  assert.deepEqual(JSON.parse(fs.readFileSync(receipt)),{args:['install','--frozen-lockfile'],cwd:f.destination});assert.ok(fs.existsSync(path.join(f.destination,'node_modules')));assert.deepEqual(f.snapshot(),before);
@@ -163,10 +163,22 @@ for(const selection of ['override','npm_execpath','bare'])test(`nested installer
  const f=fixture(t),before=f.snapshot(),selected=path.join(f.directory,'selected/bun'),old=path.join(f.directory,'old/bun'),receipt=path.join(f.directory,'nested.json');
  const executable=(file,body)=>{f.write(file,`#!${process.execPath}\n${body}`);fs.chmodSync(file,0o700);};
  executable(old,`require('node:fs').writeFileSync(process.env.ALPHA_INSTALL_RECEIPT,JSON.stringify({wrongBun:true}));process.exit(71);`);
- executable(selected,`const fs=require('node:fs'),{execFileSync}=require('node:child_process');if(process.argv[2]==='nested'){fs.writeFileSync(process.env.ALPHA_INSTALL_RECEIPT,JSON.stringify({args:JSON.parse(process.env.ALPHA_INSTALL_ARGS),executable:process.argv[1],path:process.env.PATH,agent:process.env.CLAUDECODE??null}));}else{execFileSync('bun',['nested'],{env:{...process.env,ALPHA_INSTALL_ARGS:JSON.stringify(process.argv.slice(2))}});fs.mkdirSync('node_modules',{recursive:true});}`);
+ executable(selected,`if(process.argv[2]==='--version'){console.log('1.4.2');process.exit(0);}const fs=require('node:fs'),{execFileSync}=require('node:child_process');if(process.argv[2]==='nested'){fs.writeFileSync(process.env.ALPHA_INSTALL_RECEIPT,JSON.stringify({args:JSON.parse(process.env.ALPHA_INSTALL_ARGS),executable:process.argv[1],path:process.env.PATH,agent:process.env.CLAUDECODE??null}));}else{execFileSync('bun',['nested'],{env:{...process.env,ALPHA_INSTALL_ARGS:JSON.stringify(process.argv.slice(2))}});fs.mkdirSync('node_modules',{recursive:true});}`);
  const inheritedPath=[selection==='bare'?path.dirname(selected):path.dirname(old),process.env.PATH].filter(Boolean).join(path.delimiter);
  const env={PATH:inheritedPath,ALPHA_BUN:selection==='override'?selected:selection==='bare'?'bun':'',npm_execpath:selection==='npm_execpath'?selected:process.execPath,ALPHA_INSTALL_RECEIPT:receipt,CLAUDECODE:'1'};
  const result=f.run({full:true,env});assert.equal(result.status,0,result.stderr);
  const actual=JSON.parse(fs.readFileSync(receipt));assert.deepEqual(actual.args,['install','--frozen-lockfile']);assert.equal(actual.executable,selected);assert.equal(actual.agent,null);
  assert.equal(actual.path,selection==='bare'?inheritedPath:[path.dirname(selected),inheritedPath].join(path.delimiter));assert.deepEqual(f.snapshot(),before);
+});
+
+for(const version of ['1.3.14','unavailable'])test(`full preparation refuses ${version} Bun before dependency installation`,t=>{
+ const f=fixture(t),before=f.snapshot(),bun=path.join(f.directory,'bin/bun'),receipt=path.join(f.directory,'installer.json');
+ if(version!=='unavailable'){
+  f.write(bun,`#!${process.execPath}\nif(process.argv[2]==='--version'){console.log(${JSON.stringify(version)});process.exit(0);}require('node:fs').writeFileSync(process.env.ALPHA_INSTALL_RECEIPT,'unexpected install');`);fs.chmodSync(bun,0o700);
+ }
+ const result=f.run({full:true,env:{ALPHA_BUN:bun,ALPHA_INSTALL_RECEIPT:receipt}});
+ assert.notEqual(result.status,0);assert.match(result.stderr,/requires Bun 1\.4\.2/);assert.match(result.stderr,/ALPHA_BUN/);
+ if(version!=='unavailable')assert.match(result.stderr,/is 1\.3\.14/);
+ assert.equal(fs.existsSync(receipt),false);assert.equal(fs.existsSync(path.join(f.destination,'node_modules')),false);assert.deepEqual(f.snapshot(),before);
+ const sourceOnly=f.run({env:{ALPHA_BUN:bun}});assert.equal(sourceOnly.status,0,sourceOnly.stderr);
 });

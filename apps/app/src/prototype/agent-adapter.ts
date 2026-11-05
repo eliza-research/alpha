@@ -282,7 +282,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     if(conflicts.length){conflicted();if(shell.live)shell.toast('Recovered some unsaved Notes changes. Others conflict with newer edits.');return;}
     if(await SecureNotesStore.clearDraft(secureConnectionStore,draft).catch(()=>false))shell.notesDraftKept=null;
     notesDataset('notesDraftState','resumed');
-    if(shell.live){originalSet.call(shell,'notes',{storageStatus:'Recovered unsaved changes from your last session and saved them on this device.'});shell.toast('Recovered unsaved Notes changes.');}
+    if(shell.live)originalSet.call(shell,'notes',{storageStatus:'Recovered unsaved changes from your last session and saved them on this device.'});
   }
   /** Android Notes recovery: export saved Notes with the draft; reset clears only what is broken. */
   function openNativeNotesRecovery(shell:Shell,signal:AbortSignal){
@@ -723,7 +723,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         }
         return { status:'failed', summary:'Development previews cannot write records.' };
       });
-      if (this.live) { const send=transport.send.bind(transport);transport.send=input=>trackDispatch(this,()=>send(input));alphaClient.attachVerifiedTransport(transport); this.toast('Connected to the development agent'); }
+      if (this.live) { const send=transport.send.bind(transport);transport.send=input=>trackDispatch(this,()=>send(input));alphaClient.attachVerifiedTransport(transport); }
       else transport.close?.();
     };
     connectionController.setDeviceRecovery(async(operation,operationId,bindingHash,signal)=>{

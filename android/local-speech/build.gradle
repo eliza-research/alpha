@@ -18,9 +18,10 @@ if (!paradee.isDirectory()) {
  def nativeOutput = file('../../.eliza/paradee-voice/native')
  def cloudProfile = project.findProperty('ELIZA_RUNTIME_PROFILE')?.toString() == 'cloud'
  def unpackaged = project.findProperty('ELIZA_ALLOW_UNPACKAGED_RUNTIME')?.toString() == '1'
- if ((unpackaged || cloudProfile) && !nativeOutput.exists()) {
-  // Explicit developer APK: real Java API, no native engine or model assets.
-  // Calls report unavailable; this lane cannot provide speech acceptance evidence.
+ if (cloudProfile || (unpackaged && !nativeOutput.exists())) {
+  // Cloud keeps the Java API without admitting a local engine or model, even
+  // when a developer has staged native speech for a separate build.
+  // The unpackaged developer lane also keeps this API when outputs are absent.
   apply plugin: 'com.android.library'
   android {
    namespace 'ai.eliza.voice'
@@ -29,6 +30,8 @@ if (!paradee.isDirectory()) {
    sourceSets.main {
     java.srcDirs = [new File(paradee, 'src/main/java'), new File(paradee, 'speech-bridge/src/main/java')]
     manifest.srcFile new File(paradee, 'src/main/AndroidManifest.xml')
+    assets.srcDirs = []
+    jniLibs.srcDirs = []
    }
    compileOptions { sourceCompatibility JavaVersion.VERSION_21; targetCompatibility JavaVersion.VERSION_21 }
   }
@@ -40,6 +43,7 @@ if (!paradee.isDirectory()) {
   apply from: new File(paradee, 'consumer.gradle')
  }
  def verifySpeechInputs = tasks.register('verifySpeechInputs', Exec) {
+  onlyIf { !cloudProfile }
   workingDir rootProject.projectDir.parentFile
   commandLine(['node', 'scripts/paradee-runtime.mjs'] + paradeeAbiArgs + ((unpackaged || cloudProfile) ? ['--allow-absent'] : []))
  }

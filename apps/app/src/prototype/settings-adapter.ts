@@ -328,7 +328,6 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       const next = readRoles(await system.getStatus());
       if (owner !== instance) return;
       roles = next;
-      api.toast(next.home?.held ? 'Alpha Phone is your Home app' : 'Home app not changed');
     } catch { if (owner === instance) api.toast('Android did not confirm a Home app change.'); }
     finally { roleBusy = false; if (owner === instance) { changed(); void refresh(); } }
   }
@@ -381,7 +380,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     if (crashBusy || !window.confirm('Clear the local problem log?')) return;
     inferenceAbort?.abort();inferenceAbort=null;
     const instance = owner; crashBusy = true; changed();
-    try { await clearCrashLog(); crashLog = await readCrashLog(); if (owner === instance) api.toast('Problem log cleared'); }
+    try { await clearCrashLog(); crashLog = await readCrashLog(); }
     catch { if (owner === instance) api.toast('The problem log could not be cleared.'); }
     finally { crashBusy = false; if (owner === instance) changed(); }
   }

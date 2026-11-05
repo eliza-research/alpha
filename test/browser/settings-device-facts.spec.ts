@@ -76,14 +76,14 @@ test('Settings shows HOME and assistant role state and reads it back after a dec
  const make=app(page).getByRole('button',{name:'Make Alpha your Home app',exact:true});
  const reads=await calls(page,'ElizaSystem','getStatus');
  await make.click();
- await expect(page.getByText('Home app not changed',{exact:true}).first()).toBeVisible();
- // The toast is the only notice; Settings keeps no "Last change" row.
+ // A decline is read back from Android quietly: no toast and no "Last change" row.
+ await expect.poll(()=>calls(page,'ElizaSystem','getStatus')).toBeGreaterThan(reads);
+ await expect(app(page).getByText('Not Alpha Phone',{exact:true})).toBeVisible();
+ await expect(page.getByText('Home app not changed',{exact:true})).toHaveCount(0);
  await expect(app(page).getByText('Last change',{exact:true})).toHaveCount(0);
- expect(await calls(page,'ElizaSystem','getStatus')).toBeGreaterThan(reads);
  await expect(make).toBeVisible();
  await make.click();
- await expect(page.getByText('Alpha Phone is your Home app',{exact:true}).first()).toBeVisible();
- await expect(app(page).getByText('Alpha Phone',{exact:true})).toBeVisible();
+  await expect(app(page).getByText('Alpha Phone',{exact:true})).toBeVisible();
  await expect(make).toHaveCount(0);
  // A native resume re-reads Android's answer rather than trusting the earlier result.
  const before=await calls(page,'ElizaSystem','getStatus');
