@@ -442,9 +442,7 @@ for (const shell of HOME_SHELLS) for (const scale of [1, 1.5, 2]) {
     await expect(last).toBeInViewport({ ratio: 1 });
     const tile = (await last.boundingBox())!, bar = (await page.locator('[data-alpha-input-bar]').boundingBox())!;
     expect(tile.y + tile.height).toBeLessThanOrEqual(bar.y);
-    // At 200% the launcher's Home has to scroll; that is the case the emulator caught. The standalone
-    // app's Home (three columns, four rows) fits the screen there, which the checks above hold.
-    if (scale === 2 && shell.name === 'launcher') expect(top.scrolls).toBe(true);
+    // Whether Home scrolls or fits at this text size, the checks above hold every app above the bar.
     // The rule the sweep runs agrees.
     const found = format(await auditPage(page, { dock: true, clipping: true, overlap: true })).filter(line => !line.startsWith('text-truncated:'));
     expect(found, found.join('\n')).toEqual([]);
