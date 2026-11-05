@@ -239,9 +239,10 @@ file flows, dialog accessibility, disclosed adapter fixtures and reference desig
 states. Reports/screenshots are in `test-results/browser-report` and
 `test-results/browser`. Browser CI runs independently of Android qualification.
 
-Use Node 24.15.0 and JDK 21. Resident preparation requires Bun 1.4.2, matching
-the pinned upstream package manager and CI. Put that version on `PATH` or set
-`ALPHA_BUN` to its absolute executable path; an older Bun can emit incompatible
+Use Node 24.15.0, the prepared source's pinned Bun version (currently 1.4.2), and JDK 21.
+`agent:prepare` checks Bun against the upstream `packageManager` before installing dependencies.
+Put that Bun version first on `PATH` for the build scripts; `ALPHA_BUN` may also select
+its absolute executable for preparation and nested tools. An older Bun can emit incompatible
 plugin imports during the runtime build. Native builds require Android SDK platform 36 and
 build-tools 36.0.0. Set `JAVA_HOME` and `ANDROID_HOME` on Linux; the scripts also
 recognize the usual macOS Homebrew JDK/Android SDK locations. The Gradle 8.13
@@ -312,7 +313,21 @@ npm run android:build -- --allow-unpackaged-runtime
 (exit 2), before the web sync and Gradle, naming the command to run when the pinned
 `vendor/eliza` checkout, the prepared runtime source or (for distribution builds) the staged
 runtime payload is missing or stale, or when the on-device voice outputs are missing (distribution
-builds) or not admitted by the voice-host record.
+builds) or not admitted by the voice-host record. A checkout that matches its own
+`upstream.lock.json` is not enough: the preflight (and `npm run android:build:inputs`) also
+reads the lock on the local `origin/main` ref (`git show origin/main:upstream.lock.json`) and
+refuses a pin that is not that commit or a descendant of it (`git -C vendor/eliza merge-base
+--is-ancestor`), because an APK from a stale branch runs an older agent that can reject state
+the newer agent already wrote on the device. Rebase on `origin/main` to fix it. When main's pin
+is not in `vendor/eliza` it asks for `git -C vendor/eliza fetch origin` (or `--unshallow` for a
+shallow clone) instead of passing; when the clone has no `origin/main` ref at all (a CI
+pull-request checkout) it prints a note and skips the comparison. Run `git fetch origin` first
+so the ref is current. `--allow-older-upstream-pin` (to the preflight or `npm run android:build
+--`) is only for a deliberate, reviewed upstream rollback. `npm run android:build:local` does not
+pass it to its first (`--before-prepare`) check, so a rollback runs the steps of that script
+itself, starting with `node scripts/android-build-preflight.mjs --before-prepare
+--allow-older-upstream-pin`. The comparison is only as current as the local `origin/main` ref:
+a clone that has not fetched since main was repinned still passes.
 
 Three inputs of a distributable build cannot come from a script, and
 `npm run android:build:inputs` names each with who supplies it:

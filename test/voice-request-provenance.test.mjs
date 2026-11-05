@@ -26,7 +26,7 @@ test('accepted SDK final state binds one current voice request; raw text cannot 
   }, client: {async stop() {}, async start() {}}};
   const agent = {async request(route) {
     requests.push(route);
-    if (route.startsWith('/api/v1/voice/session/health?')) return {ready: true, conversationId: 'conversation', agentId: 'agent', speechRoute: 'direct'};
+    if (route.startsWith('/api/v1/voice/session/health?')) return {ready: true, turnTerminal: true, conversationId: 'conversation', agentId: 'agent', speechRoute: 'direct'};
     assert.equal(route, '/api/views/voice-channel');
     return {wsUrl: 'ws://owned.invalid/__alpha-local-renderer/ws?ticket=synthetic', expiresAt: Date.now() + 60000};
   }};

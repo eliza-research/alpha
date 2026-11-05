@@ -290,20 +290,21 @@ export class CloudProtocol {
     let rejectAbort: (reason: unknown) => void = () => {};
     let resolveCommitted: (value: unknown) => void = () => {};
     const interrupted = new Promise<unknown>((resolve, reject) => { resolveCommitted=resolve;rejectAbort = reject; });
-    let cancellation:Promise<boolean>|null=null,committedCancellation=false;
+    let cancellation:Promise<boolean>|null=null,committedCancellation=false,googleCommitParsed=false;
     const cancel = ():Promise<boolean> => cancellation??=(async()=>{
       if(onCommittedCancellation&&port.cancelGoogleSignIn){
         const result=await port.cancelGoogleSignIn();
         // Parse the ordinary authenticated contract; never infer success from a phase flag.
         if(result&&typeof result==='object'&&(result as {status?:unknown}).status==='authenticated'){
-          parse(result);committedCancellation=true;onCommittedCancellation();resolveCommitted(result);return true;
+          parse(result);googleCommitParsed=true;committedCancellation=true;onCommittedCancellation();resolveCommitted(result);return true;
         }
         if(!result||typeof result!=='object'||Array.isArray(result)||(result as {status?:unknown}).status!=='cancelled'||Object.keys(result).some(key=>key!=='status'))throw new CloudSignInError("unavailable");
       }
       controller.abort(signal.reason??new DOMException("Login cancelled","AbortError"));return false;
     })().catch(error=>{
-      // A lost or invalid cancellation reply leaves the host outcome unknown. Keep polling and allow retry.
-      cancellation=null;throw error;
+      // A lost or invalid cancellation reply leaves the host outcome unknown, unless the attempt
+      // already committed. Keep polling and allow retry.
+      cancellation=null;if(googleCommitParsed)return true;throw error;
     });
     if(onCommittedCancellation&&port.cancelGoogleSignIn)this.activeGoogleCancellation=cancel;
     const abort = () => {if(onCommittedCancellation&&port.cancelGoogleSignIn)void cancel().catch(()=>{});else controller.abort(signal.reason);};
@@ -314,7 +315,7 @@ export class CloudProtocol {
       const value = await Promise.race([run(port), interrupted]);
       if(!committedCancellation)controller.signal.throwIfAborted();
       const parsed=parse(value);
-      if(onCommittedCancellation&&value&&typeof value==='object'&&(value as {status?:unknown}).status==='authenticated')this.googleSignInCommitted=true;
+      if(onCommittedCancellation&&value&&typeof value==='object'&&(value as {status?:unknown}).status==='authenticated'){googleCommitParsed=true;this.googleSignInCommitted=true;}
       return parsed;
     } catch (error) {
       if (controller.signal.aborted) throw controller.signal.reason;

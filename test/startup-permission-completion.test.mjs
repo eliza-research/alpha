@@ -85,6 +85,10 @@ test('Ready while the agent still starts after sign-in makes no AI claim',async 
  // Setup no longer waits for the agent (owner report 2026-10-30): its AI binding is not known yet.
  const starting=await fixture(t,{connection:{residentInference:null}});for(let i=0;i<4;i++)await starting.click('Continue');assert.equal(starting.heading(),'You’re all set');assert.doesNotMatch(document.body.textContent,/AI is not ready yet|AI needs an active Cloud plan/);
 });
+test('Ready after saving own API keys makes no false AI-not-ready claim',async t=>{
+ // Own Cerebras keys bind the agent's inference directly ('direct'): AI is ready (#772 regression).
+ const own=await fixture(t,{connection:{residentInference:'direct'}});for(let i=0;i<4;i++)await own.click('Continue');assert.equal(own.heading(),'You’re all set');assert.doesNotMatch(document.body.textContent,/AI is not ready yet|AI needs an active Cloud plan/);
+});
 test('Ready shows a needs-plan admission before the agent that setup no longer waits for has started',async t=>{
  const f=await fixture(t,{connection:{residentInference:null,residentPlanNotice:'needs-plan'}});for(let i=0;i<4;i++)await f.click('Continue');assert.equal(f.heading(),'You’re all set');assert.match(document.body.textContent,/AI needs an active Cloud plan\. Manage it in Settings\./);
 });

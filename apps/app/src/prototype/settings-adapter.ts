@@ -25,7 +25,7 @@ import { gmailGrantLabel, googleAccountAccessLabel } from '../runtime/gmail-gran
 import { clearCrashLog, describeCrashEntry, readCrashLog, recordCloudInferenceFailure, type CrashLog } from '../runtime/crash-log';
 import { buildDiagnostics, diagnosticsFileName, diagnosticsText } from '../runtime/diagnostics-export';
 import {planAdmission} from '../runtime/subscription-entitlement';
-import { exportVoiceTiming } from '../runtime/voice-timing';
+import { exportVoiceTiming, exportRealtimeVoiceTiming } from '../runtime/voice-timing';
 import { readNativeVoiceTiming } from '../runtime/native-voice-turn';
 import { listenerStatus, openListenerSettings, pauseListener, turnOffListener, wakeListeningStopUnconfirmed, type ListenerStatus } from '../runtime/always-on-listener';
 import { reviewDataReset, type DataResetPlugin } from '@elizaos/capacitor-system/reset';
@@ -105,6 +105,8 @@ const device = registerPlugin<{
   setTextScale(input:{percent:number}):Promise<{textScalePercent:number;effectiveTextZoom:number}>;
   diagnosticsFacts(): Promise<Bag>;
   shareDiagnostics(input: { text: string }): Promise<{ status: string }>;
+  checkForUpdate(): Promise<{ manifest?: string }>;
+  installUpdate(input: Pick<AppUpdate, 'apkUrl' | 'sha256' | 'sizeBytes' | 'versionCode'>): Promise<void>;
 }>('AlphaDevice');
 const notifications = registerPlugin<{status():Promise<Bag>;openAppSettings():Promise<Bag>;openChannelSettings(input:{id:string}):Promise<{status:string}>;crossAppStatus():Promise<Bag>;notificationApps():Promise<{apps:Bag[]}>;setNotificationPolicy(input:Bag):Promise<Bag>;resumeCrossApp(input:{expectedRevision:string}):Promise<Bag>;openNotificationAccess():Promise<Bag>;notificationHistory():Promise<{items:Bag[]}>;clearNotificationHistory():Promise<void>}>('AlphaNotifications');
 const system = registerPlugin<{ getDeviceSettings(): Promise<Bag>; getStatus(): Promise<{ roles?: Bag[] }>; requestRole(input: { role: string }): Promise<{ role: string; held: boolean; resultCode: number }>; getBuildInfo(): Promise<{ launcher?: boolean; version?: string }> }>('ElizaSystem');
@@ -124,9 +126,40 @@ export function versionLabel(version: unknown, code: unknown): string {
   const name = typeof version === 'string' && version ? version : 'Unavailable';
   return Number.isSafeInteger(code) && (code as number) > 0 && name !== 'Unavailable' ? `${name} (${code})` : name;
 }
-/** Only the install time Android recorded; Alpha has no update check, so it shows no update row. */
+/** Only the install time Android recorded. */
 export function installedRows(updatedAt: unknown, format: (at: number) => string = at => new Date(at).toLocaleDateString()): Array<[string, string]> {
   return Number.isSafeInteger(updatedAt) && (updatedAt as number) > 0 ? [['Installed or last updated', format(updatedAt as number)]] : [];
+}
+/**
+ * Software update manifest (app.config.json updateManifestUrl, fetched by AlphaDevice.checkForUpdate):
+ * {schema: "alpha-update/v1", versionCode, versionName (optional; shown only as 1 to 64 characters without
+ * control characters), variant ("launcher" or "standalone"), signerSha256 (the original certificate of the
+ * signing lineage, AlphaDevice appSigner, which APK Signature Scheme v3 key rotation never changes), apkUrl
+ * (HTTPS), sha256 (64 lowercase hex), sizeBytes, notes (optional; shown only as a string of at most 500
+ * characters)}.
+ */
+export const UPDATE_SCHEMA = 'alpha-update/v1';
+/** AlphaDevicePlugin.UPDATE_MAX_BYTES, which the native download enforces, is the same bound. */
+export const UPDATE_MAX_BYTES = 1024 * 1024 * 1024;
+export const UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
+type AppUpdate = {versionCode: number; versionName: string; apkUrl: string; sha256: string; sizeBytes: number; notes: string};
+/**
+ * The update a manifest offers this install, or null unless it is complete and HTTPS, newer than the
+ * installed versionCode, and for this flavor and signer. Android refuses another signer after the whole
+ * download, and the other flavor would silently change what the phone admits (HOME, Phone, SMS).
+ */
+export function parseUpdateManifest(value: unknown, installed: {versionCode: unknown; launcher: unknown; signerSha256: unknown}): AppUpdate | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const {schema, versionCode, versionName, variant, signerSha256, apkUrl, sha256, sizeBytes, notes} = value as Record<string, unknown>;
+  if (schema !== UPDATE_SCHEMA || !Number.isSafeInteger(installed.versionCode) || !Number.isSafeInteger(versionCode) || (versionCode as number) <= (installed.versionCode as number)) return null;
+  if (typeof installed.launcher !== 'boolean' || variant !== (installed.launcher ? 'launcher' : 'standalone') || typeof signerSha256 !== 'string' || !/^[0-9a-f]{64}$/.test(signerSha256) || signerSha256 !== installed.signerSha256) return null;
+  if (typeof sha256 !== 'string' || !/^[0-9a-f]{64}$/.test(sha256) || !Number.isSafeInteger(sizeBytes) || (sizeBytes as number) <= 0 || (sizeBytes as number) > UPDATE_MAX_BYTES || typeof apkUrl !== 'string' || apkUrl.length > 2048) return null;
+  try { const url = new URL(apkUrl); if (url.protocol !== 'https:' || url.username || url.password) return null; } catch { return null; }
+  return {versionCode: versionCode as number, versionName: typeof versionName === 'string' && /^[^\u0000-\u001f\u007f]{1,64}$/.test(versionName) ? versionName : '', apkUrl, sha256, sizeBytes: sizeBytes as number, notes: typeof notes === 'string' && notes.length <= 500 ? notes : ''};
+}
+/** A day after the last answered check, or at once when that time is unknown or in the future. */
+export function updateCheckDue(checkedAt: number, now: number): boolean {
+  return !(now >= checkedAt && now - checkedAt < UPDATE_CHECK_INTERVAL_MS);
 }
 /** Cloud QA profile facts replace prototype navigation, not device settings links. */
 export function cloudPrivacyRow(label: string): [string, string] | null {
@@ -156,6 +189,31 @@ export function resolveAppearance(choice: AppearanceChoice): 'light' | 'dark' {
   return choice === 'system' ? (systemScheme()?.matches ? 'dark' : 'light') : choice;
 }
 
+const UPDATE_KEY = 'alpha.app-update.v1';
+/** The last manifest a check was answered with, and when, so a restart offers it without checking again; and the check in flight. */
+let lastUpdate: {checkedAt: number; manifest: unknown} | undefined, updateCheck: Promise<void> | undefined;
+function savedUpdate() {
+  if (lastUpdate) return lastUpdate;
+  try {
+    const value = JSON.parse(localStorage.getItem(UPDATE_KEY) ?? 'null');
+    if (value && typeof value === 'object' && Number.isFinite(value.checkedAt)) return lastUpdate = {checkedAt: value.checkedAt, manifest: value.manifest};
+  } catch { /* Unreadable storage only means the next check is due. */ }
+  return lastUpdate = {checkedAt: Number.NaN, manifest: null};
+}
+/**
+ * At most one automatic check a day (app start and resume) and one at a time; `force` is the owner's
+ * Check for updates. Only an answer is kept: a 404 withdraws the offer, and a failed check is quiet and
+ * leaves the next start or resume due. Undefined when no check runs.
+ */
+function checkForUpdate(force: boolean): Promise<void> | undefined {
+  if (!updateCheck && Capacitor.isNativePlatform() && (force || updateCheckDue(savedUpdate().checkedAt, Date.now())))
+    updateCheck = device.checkForUpdate().then(({ manifest }) => {
+      lastUpdate = { checkedAt: Date.now(), manifest: typeof manifest === 'string' ? JSON.parse(manifest) : null };
+      try { localStorage.setItem(UPDATE_KEY, JSON.stringify(lastUpdate)); } catch { /* Kept for this session. */ }
+    }).catch(() => { /* Quiet: the next start, resume or tap checks again. */ }).finally(() => { updateCheck = undefined; });
+  return updateCheck;
+}
+
 /** Keep the reference settings components; never present fixture device facts. */
 export function installSettingsAdapter(Component: any, views: Bag) {
   const definition = views.settings, render = definition.render, p = Component.prototype;
@@ -169,6 +227,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
   let gmailAccounts: GmailAccount[] = [], gmailBusy = '', settingsApi: Bag | undefined;
   let roles: Record<string, RoleRow> | null = null, launcher: boolean | null = null, roleBusy = false;
   let crashLog: CrashLog | null = null, crashBusy = false, diagnosticsBusy = false;
+  let updateBusy: '' | 'check' | 'install' = '';
   let gmail = 'Not checked';
   let inferenceProvider = 'Not reported by agent';
   // The AOSP image's always-on listener (#424): status, Pause and Turn off only. Turning listening on
@@ -269,7 +328,6 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       const next = readRoles(await system.getStatus());
       if (owner !== instance) return;
       roles = next;
-      api.toast(next.home?.held ? 'Alpha Phone is your Home app' : 'Home app not changed');
     } catch { if (owner === instance) api.toast('Android did not confirm a Home app change.'); }
     finally { roleBusy = false; if (owner === instance) { changed(); void refresh(); } }
   }
@@ -299,6 +357,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
           reason: subscription.kind === 'unavailable' ? subscription.reason : undefined,
         } : undefined,
         // Per-turn voice latency kept on this device; buildDiagnostics copies timing fields only.
+        realtimeVoiceTiming: exportRealtimeVoiceTiming(),
         voiceTiming: (() => { try { return JSON.parse(exportVoiceTiming()); } catch { return null; } })(),
         // Native audio-clock voice latency (issue #395): timings, turn ids and hashes only.
         nativeVoiceTiming: nativeTiming.status === 'fulfilled' ? nativeTiming.value : null,
@@ -321,9 +380,15 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     if (crashBusy || !window.confirm('Clear the local problem log?')) return;
     inferenceAbort?.abort();inferenceAbort=null;
     const instance = owner; crashBusy = true; changed();
-    try { await clearCrashLog(); crashLog = await readCrashLog(); if (owner === instance) api.toast('Problem log cleared'); }
+    try { await clearCrashLog(); crashLog = await readCrashLog(); }
     catch { if (owner === instance) api.toast('The problem log could not be cleared.'); }
     finally { crashBusy = false; if (owner === instance) changed(); }
+  }
+  /** Software update is quiet: only the busy label changes while a check or install runs. */
+  async function updateAction(busy: 'check' | 'install', run: () => Promise<void> | undefined) {
+    if (updateBusy) return;
+    updateBusy = busy; changed();
+    try { await run(); } finally { updateBusy = ''; changed(); }
   }
   async function refresh() {
     const instance = owner, token = ++generation;
@@ -351,7 +416,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     mount.call(this); owner = this;
     this.mailImagePreferenceChanged=changed;
     window.addEventListener('alpha:device-settings',this.mailImagePreferenceChanged);
-    initializeDevicePreferences(); void refresh(); void refreshCapabilities();
+    initializeDevicePreferences(); void refresh(); void refreshCapabilities(); void checkForUpdate(false)?.then(changed);
     this.passwordLifecycle = passwordManagerLifecycle(changed);
     if(!new URLSearchParams(location.search).has('theme')){
       // A read from storage or the system scheme carries a marker, so componentDidUpdate never writes it back.
@@ -376,7 +441,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     });
     this.googleAccountsChanged=()=>void refreshCapabilities();
     window.addEventListener(GOOGLE_ACCOUNTS_CHANGED,this.googleAccountsChanged);
-    this.deviceResume = DailyApps.addListener('appResumed', () => { void refresh(); void refreshCapabilities(); }).catch(() => null);
+    this.deviceResume = DailyApps.addListener('appResumed', () => { void refresh(); void refreshCapabilities(); void checkForUpdate(false)?.then(changed); }).catch(() => null);
   };
   p.componentDidUpdate = function (previousProps: Bag, previousState: Bag) {
     update?.call(this, previousProps, previousState);
@@ -532,8 +597,8 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         }
         // calendar-settings:end
         page.groups.push(group([{
-          kTog:true,label:'Ask before agent actions',aria:'Ask before agent actions',hasSub:true,
-          sub:'Off: carry out simple local requests. On: review them first. Sends, deletions and calendar or reminder changes still require review.',
+          kTog:true,label:'Review phone actions first',aria:'Review phone actions first',hasSub:true,
+          sub:'Applies to creating notes, opening apps or websites, taking photos and choosing photos. Calendar changes are handled separately. Required permissions and reviews still apply.',
           on:cachedDevicePreferences()?.askBeforeAgentActions===true,
           track:cachedDevicePreferences()?.askBeforeAgentActions?'background:var(--acc)':'background:var(--line)',
           kx:cachedDevicePreferences()?.askBeforeAgentActions?20:0,
@@ -552,13 +617,17 @@ export function installSettingsAdapter(Component: any, views: Bag) {
           page.groups.push(group([info('Home app',roles?roleValue(home):'Unavailable'),info('Assistant app',roles?roleValue(roles.assistant):'Unavailable'),
             ...(canRequestHome?[{kNav:true,label:'Make Alpha your Home app',lbl:roleBusy?'Waiting for Android…':'Make Alpha your Home app',chev:true,noAB:true,go:()=>void requestHome(api)}]:[]),
             nav('Default apps in Android','default-apps')]));
+          // Install update only for the version the last manifest offers this install, and an explicit check. No error or "up to date" claim.
+          const update=parseUpdateManifest(savedUpdate().manifest,{versionCode:facts.appVersionCode,launcher,signerSha256:facts.appSigner});
+          page.groups.push(group([
+            ...(update?[{...action(updateBusy==='install'?'Downloading update…':'Install update',()=>void updateAction('install',()=>device.installUpdate({apkUrl:update.apkUrl,sha256:update.sha256,sizeBytes:update.sizeBytes,versionCode:update.versionCode}).catch(()=>{/* Quiet: the row stays and the next tap retries. */}))),val:update.versionName?versionLabel(update.versionName,update.versionCode):String(update.versionCode),hasVal:true,sub:update.notes,hasSub:!!update.notes,busy:!!updateBusy}]:[]),
+            {...action(updateBusy==='check'?'Checking for updates…':'Check for updates',()=>void updateAction('check',()=>checkForUpdate(true))),busy:!!updateBusy}]));
         }
         page.groups.push(group([{kNav:true,label:'Scheduled digests',lbl:'Scheduled digests',chev:true,noAB:true,go:()=>window.dispatchEvent(new Event('alpha:hosted-digests'))}]));
         // Every Alpha Phone signs in to Eliza Cloud and holds a plan: account, plan and sign-in expiry.
         const plan=connectionController.residentPlanSettings();
         if(plan){
           const day=(at:number)=>new Date(at).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'});
-          page.groups.push(group([{kNav:true,label:`${serviceName} account & plan`,lbl:`${serviceName} account & plan`,val:plan.keyExpiring?'Sign-in expiring':plan.plan,hasVal:true,chev:true,noAB:true,go:()=>api.set({page:'cloud-plan'})}]));
           if(state.page==='cloud-plan'){
             // Runtime location and Cloud inference are separate facts.
             const rows:Bag[]=[info('Account',plan.account??(plan.offline?`${serviceName} unreachable`:'Not signed in')),info('Plan',plan.plan),info('Agent execution',runtimeLocation),info('AI replies',plan.inference)];
@@ -579,7 +648,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
             out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:`${serviceName} account & plan`,hasTitle:true,backLabel:'Back to Settings',back:()=>api.set({page:null}),hero:{},groups:[group(rows),group(actions)]});
           }
         }
-        page.groups.push(group([{kNav:true,label:'Agent connection',lbl:'Agent connection',val:connectionController.getSnapshot().name,hasVal:true,chev:true,noAB:true,go:()=>native&&!testMocksEnabled?api.set({page:'agent-connection'}):connectionController.open()},{kNav:true,label:'AI provider',lbl:'AI provider',val:connection.providerStatus?.selected&&connection.providerStatus.provider==='cerebras'?'Own API keys':'Cloud',hasVal:true,chev:true,noAB:true,go:()=>connectionController.openProviderSettings()}]));
+        page.groups.push(group([{kNav:true,label:'Agent connection',lbl:'Agent connection',val:connectionController.getSnapshot().name,hasVal:true,chev:true,noAB:true,go:()=>native&&!testMocksEnabled?api.set({page:'agent-connection'}):connectionController.open()},{kNav:true,label:'AI provider',lbl:'AI provider',val:connection.providerStatus?.selected&&connection.providerStatus.provider==='cerebras'?'Own API keys':connection.providerStatusError?'Status unavailable':'Cloud',hasVal:true,chev:true,noAB:true,go:()=>connectionController.openProviderSettings()}]));
         // Raw recovery reason, stage and record count are developer data: the product keeps the plain status.
         if(native&&developerTools&&state.page==='agent-recovery-details'){
           const reason=connection.residentRecoveryReason,recovery=connection.residentRecovery;
@@ -590,7 +659,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
           out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:'Restart details',hasTitle:true,backLabel:'Back to Agent connection',back:()=>api.set({page:'agent-connection'}),hero:{},groups:[group(rows)]});
         }
         if(native&&!testMocksEnabled&&state.page==='agent-connection'){
-          const agentRows=[info('Agent',connection.session?'Running on this device':connection.residentRecoveryReason?(connection.residentRecoveryReason==='ipc-recovery-retention-limit'?'Restart needed':'Needs attention'):connection.kind==='recovering'?'Not running':'Starting…'),info('AI',connection.residentInference==='cloud'?serviceName:!connection.cloudAccount?'Sign in required':!connection.session&&connection.kind==='starting'&&!connection.residentRecoveryReason?'Starting…':'Not available')];
+          const agentRows=[info('Agent',connection.session?'Running on this device':connection.residentRecoveryReason?(connection.residentRecoveryReason==='ipc-recovery-retention-limit'?'Restart needed':'Needs attention'):connection.kind==='recovering'?'Not running':'Starting…'),info('AI',connection.residentInference==='direct'?'Cerebras · own API key':connection.residentInference==='cloud'?serviceName:!connection.cloudAccount&&connection.residentPlanNotice!=='offline'?'Sign in required':!connection.session&&connection.kind==='starting'&&!connection.residentRecoveryReason?'Starting…':'Not available')];
           if(connection.message)agentRows.push(info('Status',connection.message));
           if(connection.error)agentRows.push(info('Connection problem',connection.error));
           if(connection.residentRecoveryReason&&!connection.session){
@@ -653,7 +722,8 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         continue;
       }
       if (page.title === 'Accounts') {
-        page.groups = [group([info(serviceName, cloudLabel), { kNav:true, label:'Manage Cloud account', lbl:'Manage Cloud account', chev:true, noAB:true, go:()=>connectionController.openCloudAccount() }, {kNav:true,label:'Google accounts',lbl:'Google accounts',chev:true,noAB:true,go:()=>googleConnectionController.open()}, nav('Device accounts in Android', 'accounts')])];
+        const plan=connectionController.residentPlanSettings();
+        page.groups = [group([{ kNav:true, label:`${serviceName} account & plan`, lbl:`${serviceName} account & plan`, sub:plan?.keyExpiring?'Sign-in expiring':cloudLabel, hasSub:true, chev:true, noAB:true, go:()=>plan?api.set({page:'cloud-plan'}):connectionController.openCloudAccount() }, ...(Capacitor.isNativePlatform()?[nav('Device accounts in Android', 'accounts')]:[])])];
       } else if (page.title === 'Connections') {
         const connected = gmailAccounts.filter(a => a.connected && a.connectionId);
         page.groups = [group([{ kNav:true,label:'Manage Google accounts',lbl:'Manage Google accounts',chev:true,noAB:true,go:()=>googleConnectionController.open() },info('Gmail', gmail),
@@ -705,8 +775,8 @@ export function installSettingsAdapter(Component: any, views: Bag) {
           nav('Manage mobile networks', 'mobile'), ...(Capacitor.isNativePlatform() ? [nav('Airplane mode in Android', 'airplane')] : [])])];
       } else if (page.title === 'Models') {
         const native=Capacitor.isNativePlatform();
-        page.hero = { ...page.hero, big: target, sub: cloudRuntimeEnabled?`Conversation uses ${serviceName}. Speech uploads recordings and reply text to your Cloud account and uses your plan allowance.`:native?'Conversation uses the selected agent. Voice runs on this device.':developmentCartesiaVoiceEnabled?'Direct Cerebras and Cartesia · development':`Conversation uses the selected agent. Voice uses ${serviceName}.` };
-        page.groups = [group([info('Connection', runtimeLocation), ...(native?[info('Inference provider',residentProvider?residentProvider.configured?(residentProvider.provider==='elizacloud'?serviceName:'Cerebras'):'Not configured':'Status unavailable')]:browserLocalAgentEnabled ? [info('Inference provider', inferenceProvider)] : []), info('Inference model', inferenceModel), info('Voice', cloudRuntimeEnabled?(account?`${serviceName} · Cartesia output`:'Cloud sign-in required'):native?'On this device':developmentCartesiaVoiceEnabled?'Cartesia · development':account ? serviceName : 'Sign-in required'), { kNav:true, label:`${serviceName} account`, lbl:`${serviceName} account`, chev:true, noAB:true, go:()=>connectionController.openCloudAccount() }])];
+        page.hero = { ...page.hero, big: target, sub: native&&connection.residentInference==='direct'?'Cerebras · own key':cloudRuntimeEnabled?`Conversation uses ${serviceName}. Speech uploads recordings and reply text to your Cloud account and uses your plan allowance.`:native?'Conversation uses the selected agent. Voice runs on this device.':developmentCartesiaVoiceEnabled?'Direct Cerebras and Cartesia · development':`Conversation uses the selected agent. Voice uses ${serviceName}.` };
+        page.groups = [group([info('Connection', runtimeLocation), ...(native?[info('Inference provider',residentProvider?residentProvider.configured?(residentProvider.provider==='elizacloud'?serviceName:'Cerebras'):'Not configured':'Status unavailable')]:browserLocalAgentEnabled ? [info('Inference provider', inferenceProvider)] : []), info('Inference model', inferenceModel), info('Voice', native&&connection.residentInference==='direct'?(connection.providerStatus?.voiceConfigured?'Cartesia · own API key':'Off · add a Cartesia key'):cloudRuntimeEnabled?(account?`${serviceName} · Cartesia output`:'Cloud sign-in required'):native?'On this device':developmentCartesiaVoiceEnabled?'Cartesia · development':account ? serviceName : 'Sign-in required'), { kNav:true, label:`${serviceName} account`, lbl:`${serviceName} account`, chev:true, noAB:true, go:()=>connectionController.openCloudAccount() }])];
       } else if (page.title === 'Developer') {
         page.groups = [group([info('App version', facts.appVersion || buildVersion), info('Agent memory', connection.session?'Usage not reported by agent':'Not connected')]), group([problemsRow(), diagnosticsRow()]), group([nav('Android developer settings', 'developer')])];
       } else if (page.title === 'Notifications') {

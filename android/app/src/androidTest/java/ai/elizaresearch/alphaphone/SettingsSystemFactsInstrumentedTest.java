@@ -62,8 +62,9 @@ public final class SettingsSystemFactsInstrumentedTest {
   if(facts.has("adaptiveBrightness"))assertEquals("1".equals(shell("settings get system screen_brightness_mode")),facts.getBoolean("adaptiveBrightness"));
   assertEquals(BuildConfig.VERSION_CODE,facts.getInt("appVersionCode"));
   assertTrue("Android recorded an install time",facts.getLong("appUpdatedAt")>0);
+  assertTrue("the signing certificate digest is 64 lowercase hex characters",facts.getString("appSigner").matches("[0-9a-f]{64}"));
   // Only these keys: the snapshot never carries a guessed or default switch.
-  java.util.Set<String> allowed=new java.util.HashSet<>(java.util.Arrays.asList("wifiEnabled","bluetoothEnabled","airplaneMode","locationEnabled","mobileDataEnabled","interruptionFilter","adaptiveBrightness","wifiActive","cellularActive","internetValidated","batteryPercent","charging","powerSave","appVersionCode","appUpdatedAt"));
+  java.util.Set<String> allowed=new java.util.HashSet<>(java.util.Arrays.asList("wifiEnabled","bluetoothEnabled","airplaneMode","locationEnabled","mobileDataEnabled","interruptionFilter","adaptiveBrightness","wifiActive","cellularActive","internetValidated","batteryPercent","charging","powerSave","appVersionCode","appUpdatedAt","appSigner"));
   for(java.util.Iterator<String> keys=facts.keys();keys.hasNext();)assertTrue(allowed.contains(keys.next()));
  }
  @Test public void everySettingsPageHasASpecificFirstChoice(){

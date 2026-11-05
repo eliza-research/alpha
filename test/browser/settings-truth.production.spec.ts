@@ -1,3 +1,4 @@
+import {openCloudPlanFromSettings} from './helpers/cloud-plan-settings';
 import {seedCompletedAccessSetup} from './flag-off-android';
 import {writeFileSync} from 'node:fs';
 import {test,expect,type Page} from '@playwright/test';
@@ -139,7 +140,7 @@ async function drag(page:Page,from:{x:number;y:number},dy:number){
  await page.mouse.move(box.x+from.x*scale,box.y+(from.y+dy)*scale,{steps:10});await page.mouse.up();
 }
 /** Values that exist only in the reference fixtures or as prototype simulations. */
-const fixtureValues=['you@gmail.example','you@alpha.example','Alpha Home','Studio 5G','Ritual Coffee','Neighbors_2.4','Pixel Buds Pro 2','Keyboard K3','Kitchen Speaker','Vision 2B','Core 7B','elizaOS 2.1','AC1.260915','Alpha Compute phone','Powered by elizaOS','Alpha Mobile','3.2 of 20 GB','2,418 items','About 1 day','Redaction on','Redaction receipt','Enclave lock','Memory wiped','Wipe memory','Up to date','Check for updates','Cloud fallback','Charge to 80%','Verbose logs','Agent summaries','Last sync','Export logs','Logs saved','Pair new device','Tap to pair','Hey Alpha','Speak replies','Proactive briefings','Roaming','This month','Device uptime','NPU'];
+const fixtureValues=['you@gmail.example','you@alpha.example','Alpha Home','Studio 5G','Ritual Coffee','Neighbors_2.4','Pixel Buds Pro 2','Keyboard K3','Kitchen Speaker','Vision 2B','Core 7B','elizaOS 2.1','AC1.260915','Alpha Compute phone','Powered by elizaOS','Alpha Mobile','3.2 of 20 GB','2,418 items','About 1 day','Redaction on','Redaction receipt','Enclave lock','Memory wiped','Wipe memory','Up to date','Cloud fallback','Charge to 80%','Verbose logs','Agent summaries','Last sync','Export logs','Logs saved','Pair new device','Tap to pair','Hey Alpha','Speak replies','Proactive briefings','Roaming','This month','Device uptime','NPU'];
 const noFixtures=(text:string,where:string)=>{for(const value of fixtureValues)expect(text,`${where} shows the fixture value "${value}"`).not.toContain(value);};
 
 test('launcher Home asks Android for its own shade and draws no Alpha shade, tiles or brightness',async({page})=>{
@@ -371,7 +372,7 @@ test('the flag-off build exports redacted diagnostics with the real version and 
  expect(report.format).toBe('alpha-diagnostics/v1');
  expect(report.app).toEqual({version:'0.1.0',versionCode:7,variant:'launcher',buildType:'release',testMocks:false});
  expect(report.permissions).toEqual({Microphone:true,Location:false,Camera:false,Calendar:true,Notifications:true});
- expect(Object.keys(report).sort()).toEqual(['app','cloudPlan','connection','crashes','format','generatedAt','nativeVoiceTiming','os','permissions','platform','roles','runtimeHashes','upstreamPin','voiceTiming']);
+ expect(Object.keys(report).sort()).toEqual(['app','cloudPlan','connection','crashes','format','generatedAt','nativeVoiceTiming','os','permissions','platform','realtimeVoiceTiming','roles','runtimeHashes','upstreamPin','voiceTiming']);
  expect(report.cloudPlan).toEqual({view:'active',admission:'admit',source:'billing-limits',status:'active'});
  for(const leak of ['csk-synthetic','synthetic-settings-key','synthetic-settings@example.invalid','9f1dc45a-4011-4e44-947a-30d999d24fa5','5c1f2a9e-3b4d-4e6f-8a7b-9c0d1e2f3a4b','Stub phone','Stub maker','stub-build','Stub Mail','update','Update'])expect(shared).not.toContain(leak);
 });
@@ -457,8 +458,7 @@ test('About and Models report the same inference model after the provider binds'
 test('Settings › Eliza Cloud account & plan reports the verified plan and opens explicit code entry',async({page})=>{
  await nativeStub(page,{credits:'0'});
  await openSettings(page);
- const row=current(page).getByRole('button',{name:/Eliza Cloud account & plan/});
- await expect(row).toContainText('Plus');await row.click();
+ await openCloudPlanFromSettings(page);
  const plan=current(page);
  await expect(plan.getByText('synthetic-settings@example.invalid',{exact:true})).toBeVisible();
  await expect(plan.getByText('Plus',{exact:true})).toBeVisible();
@@ -486,8 +486,11 @@ for(const subscription of ['credits','active','canceled'] as const)test(`Setting
  await page.goto('/');
  // Plan admission does not open an automatic account sheet.
  await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
+ const notice=page.getByRole('region',{name:'Eliza Cloud plan notice',exact:true});
+ if(subscription==='canceled')await expect(notice).toBeVisible();
  await page.getByRole('button',{name:'Settings',exact:true}).click();
- await current(page).getByRole('button',{name:/Eliza Cloud account & plan/}).click();
+ await expect(notice).toBeHidden();
+ await openCloudPlanFromSettings(page);
  const plan=current(page),redeem=plan.getByRole('button',{name:'Redeem code',exact:true});
  if(subscription==='credits'){
   await expect(plan.getByText('No active subscription',{exact:true})).toBeVisible();
@@ -528,7 +531,7 @@ for(const scenario of ['unbound','recovering','connected'] as const)test(`Cloud 
  }
  await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
  await page.getByRole('button',{name:'Settings',exact:true}).click();
- await current(page).getByRole('button',{name:/Eliza Cloud account & plan/}).click();
+ await openCloudPlanFromSettings(page);
  const plan=current(page);
  await expect(plan).not.toContainText('Running on this phone',{timeout:1000});
  await expect(plan).toContainText('Agent execution');

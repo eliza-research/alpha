@@ -1,9 +1,11 @@
 // Alpha product configuration applied by the generated host (android/consumer-host.json,
 // appScripts). The upstream generator owns SDK, dependencies, variants, signing,
 // version and test-mocks policy; this file holds only Alpha's Gradle-time product
-// inputs and admission: runtime profile, App Links, voice and embedding hosts.
+// inputs and admission: runtime profile, App Links, update manifest, voice and embedding hosts.
 def runtimeProfile = (project.findProperty('ELIZA_RUNTIME_PROFILE') ?: 'native').toString()
 if (!(runtimeProfile in ['native','cloud'])) throw new GradleException('Unknown ELIZA_RUNTIME_PROFILE')
+def localEmbeddings = (project.findProperty('ELIZA_LOCAL_EMBEDDINGS') ?: '0').toString()
+if (!(localEmbeddings in ['0','1']) || localEmbeddings == '1' && runtimeProfile != 'cloud') throw new GradleException('Local embeddings require the Cloud profile')
 def unpackagedRuntime = project.findProperty('ELIZA_ALLOW_UNPACKAGED_RUNTIME')?.toString() == '1'
 if (runtimeProfile == 'cloud' && unpackagedRuntime) throw new GradleException('Cloud requires a packaged resident')
 // Upstream switch (vendor/eliza/packages/app/scripts/dev-ui.ts): the generator attaches test-only
@@ -35,6 +37,10 @@ if (appLinkHost && !(appLinkHost ==~ /(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z
  throw new GradleException('ELIZAOS_APP_LINK_HOST must be a lower-case DNS host name without scheme, port or path')
 if (appLinkHost && appLinkHost != cloudWebHost)
  throw new GradleException('ELIZAOS_APP_LINK_HOST must match config/cloud-deployment.json production.web')
+// One-tap app update (AlphaDevicePlugin checkForUpdate): the one HTTPS update manifest, app.config.json updateManifestUrl.
+def updateManifestUrl = new groovy.json.JsonSlurper().parse(file('../../app.config.json')).updateManifestUrl
+if (!(updateManifestUrl instanceof String) || new URI(updateManifestUrl).scheme != 'https' || !new URI(updateManifestUrl).host)
+ throw new GradleException('app.config.json updateManifestUrl must be an HTTPS URL')
 def appLinksManifest = 'build/generated/app-links/AndroidManifest.xml'
 if (appLinkHost) {
  file(appLinksManifest).parentFile.mkdirs()
@@ -64,6 +70,7 @@ android {
   buildConfigField 'String', 'ELIZA_RUNTIME_PROFILE', "\"${runtimeProfile}\""
   // The verified App Link host this build declares (ELIZAOS_APP_LINK_HOST), or "" when none.
   buildConfigField 'String', 'ELIZAOS_APP_LINK_HOST', "\"${appLinkHost}\""
+  buildConfigField 'String', 'ALPHA_UPDATE_MANIFEST_URL', "\"${updateManifestUrl}\""
   // The shared voice loader configures Phonon-2's in-tree ggml backend.
   // Decode threads may be supplied by the host; empty means one per big core.
   def elizaAsrThreads = (System.getenv('ELIZA_ASR_THREADS') ?: '').trim()
@@ -86,6 +93,7 @@ if (appLinkHost) androidComponents { onVariants(selector().all()) { variant -> v
 def verifyEmbeddingHost = tasks.register('verifyEmbeddingHost', Exec) {
  workingDir rootProject.projectDir.parentFile
  def args = runtimeProfile == 'cloud' ? ['node', 'scripts/runtime-profile.mjs', '--verify-cloud'] : ['node', 'scripts/stage-embedding-host.mjs', '--verify']
+ if (runtimeProfile == 'cloud' && localEmbeddings == '1') args += '--local-embeddings'
  if (runtimeProfile == 'native' && unpackagedRuntime) args += '--allow-unpackaged-runtime'
  commandLine args
 }
@@ -100,10 +108,13 @@ def selectedParadeeAbis = project.findProperty('elizaParadeeAbis')?.toString()?.
 if (!selectedParadeeAbis || selectedParadeeAbis.toSet().size() != selectedParadeeAbis.size() || selectedParadeeAbis.any { !(it in ['arm64-v8a', 'x86_64']) }) throw new GradleException('Invalid elizaParadeeAbis')
 def paradeeAbiArgs = selectedParadeeAbis.collectMany { ['--abi', it] }
 def verifyParadeeAppLinkage = tasks.register('verifyParadeeAppLinkage', Exec) {
+ // Cloud has no local engine; verifyEmbeddingHost checks its packaged exclusions.
+ onlyIf { runtimeProfile != 'cloud' }
  workingDir rootProject.projectDir.parentFile
  commandLine(['node', 'scripts/paradee-runtime.mjs', '--app-linkage'] + paradeeAbiArgs + ((unpackagedRuntime || runtimeProfile == 'cloud') ? ['--allow-absent'] : []))
 }
 def verifyVoiceHost = tasks.register('verifyVoiceHost', Exec) {
+ onlyIf { runtimeProfile != 'cloud' }
  workingDir rootProject.projectDir.parentFile
  commandLine(['node', 'scripts/voice-host.mjs', '--verify'] + paradeeAbiArgs + ((unpackagedRuntime || runtimeProfile == 'cloud') ? ['--allow-absent'] : []))
 }

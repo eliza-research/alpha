@@ -14,7 +14,7 @@ function fixture({native = true} = {}) {
   const f = {spoken: [], signals: [], hold: false, releases: [], store: new Map(), session: 'agent-session', conversation: 'conversation-1', open: false, events: []};
   const box = {
     cloudRuntimeEnabled:false,    developmentCartesiaVoiceEnabled:false,developmentCloudVoiceEnabled:false, testMocksEnabled: false, browserDevProfile: false, Date, JSON, Number, Set, console, AbortController, DOMException, setTimeout, clearTimeout,
-    crypto, performance,
+    crypto, performance, TextEncoder,
     Event: class { constructor(type) { this.type = type; } },
     Capacitor: {isNativePlatform: () => native, getPlatform: () => native ? 'android' : 'web'},
     connectionController: {getCloudEnvironment: () => 'production', getCloudClient: () => ({sessionId: 'cloud-session', credentialId: 'cloud-credential'}), getSnapshot: () => ({open: f.open, session: {sessionId: f.session}, history: {conversationId: f.conversation}}), subscribe: () => () => {}},
@@ -34,7 +34,7 @@ function fixture({native = true} = {}) {
     },
   };
   // voice-timing.ts configures the shared recorder projected from the pin, evaluated in this realm.
-  for (const [file, name] of [['../../../.eliza/client-features/packages/voice/src/voice-turn-timing.ts', 'createVoiceTurnTiming'], ['runtime/voice-selection.ts', 'selectVoiceRoute'], ['runtime/voice-timing.ts', 'markVoiceTiming'], ['prototype/local-speech-playback.ts', 'installLocalSpeechPlayback']]) load(file, name, box);
+  for (const [file, name] of [['../../../.eliza/client-features/packages/voice/src/realtime-voice-timing.ts', 'createRealtimeVoiceTiming'], ['../../../.eliza/client-features/packages/voice/src/voice-turn-timing.ts', 'createVoiceTurnTiming'], ['runtime/voice-selection.ts', 'selectVoiceRoute'], ['runtime/voice-timing.ts', 'markVoiceTiming'], ['prototype/local-speech-playback.ts', 'installLocalSpeechPlayback']]) load(file, name, box);
   class Shell {
     constructor() { this.state = {chat: 'sheet', msgs: []}; this.live = true; }
     S() { return this.state; }

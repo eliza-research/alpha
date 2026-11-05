@@ -87,6 +87,13 @@ jobs:
       matrix:
         shard: ${{ fromJSON(needs.changes.outputs.browser_shards) }}
     steps:
+      - name: Free disk on the disposable browser runner
+        if: runner.environment == 'github-hosted'
+        run: |
+          for unused in /usr/share/dotnet /usr/local/.ghcup /opt/ghc /usr/local/share/powershell; do
+            if [ -d "$unused" ]; then sudo rm -rf -- "$unused"; fi
+          done
+          df -h "$GITHUB_WORKSPACE"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: true

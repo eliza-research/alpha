@@ -16,6 +16,9 @@
  <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
  <!-- Camera access is requested only on entry to the native camera view. -->
  <uses-permission android:name="android.permission.CAMERA" />
+ <!-- One-tap app update (AlphaDevicePlugin installUpdate): Android asks the owner to allow installs from Alpha and to
+      confirm each update, and installs only an APK of this package signed like Alpha. Not privileged or silent. -->
+ <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
  <uses-feature android:name="android.hardware.camera" android:required="false" />
  <uses-feature android:name="android.hardware.camera.any" android:required="false" />
  <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />

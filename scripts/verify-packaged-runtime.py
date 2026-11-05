@@ -10,6 +10,8 @@ other positional APKs keep the original semantics: NOT_PACKAGED is reported,
 not rejected. Byte mismatches always raise (exit 1).
 """
 import argparse
+import os
+import subprocess
 import hashlib
 import json
 import re
@@ -18,6 +20,7 @@ import sys
 import zipfile
 
 ROOT = Path(__file__).resolve().parent.parent
+LOCAL_EMBEDDING_MODEL = {'path': 'assets/agent/models/bge-small-en-v1.5-f16.gguf', 'sha256': 'f0b2fef971e8366438bfd2d9aefea1b0115919389448806d290237f638bae999'}
 
 
 def digest(stream):
@@ -32,7 +35,22 @@ def file_hash(path):
         return digest(stream)
 
 
-def verify(apk, release=False, runtime_profile="native"):
+
+def verify_local_embedding_source(root):
+    # This is the existing source/receipt/model/library gate, not a second qualification schema.
+    script = (root / 'scripts/stage-embedding-host.mjs').resolve(strict=True)
+    result = subprocess.run(
+        [os.environ.get('ALPHA_NODE', 'node'), '--input-type=module', '-e',
+         'const {verifyEmbeddingHost}=await import(process.argv[1]); verifyEmbeddingHost(process.argv[2],{requireProducerInputs:true});',
+         script.as_uri(), str(root.resolve())],
+        cwd=root, capture_output=True, text=True, timeout=45)
+    if result.returncode or len(result.stdout) + len(result.stderr) > 65536:
+        raise ValueError('Local embedding source qualification failed')
+
+
+def verify(apk, release=False, runtime_profile="native", local_embeddings=False):
+    if local_embeddings and runtime_profile != "cloud":
+        raise ValueError("Local embeddings require the Cloud profile")
     staged = ROOT / 'android/app/src/main/assets/agent'
     stamp_file = staged / 'alpha-source.json'
     with zipfile.ZipFile(apk) as archive:
@@ -79,12 +97,15 @@ def verify(apk, release=False, runtime_profile="native"):
             if hashlib.sha256(archive.read(profile_entry)).hexdigest() != file_hash(staged / 'alpha-runtime-profile.json'):
                 raise ValueError('Cloud profile differs from staged profile')
             profile = json.loads(archive.read(profile_entry))
-            omitted = {'path': 'assets/agent/models/bge-small-en-v1.5-f16.gguf', 'sha256': 'f0b2fef971e8366438bfd2d9aefea1b0115919389448806d290237f638bae999'}
-            if profile != {'version': 1, 'runtimeProfile': 'cloud', 'omittedLocalModels': [omitted]}:
+            omitted = LOCAL_EMBEDDING_MODEL
+            expected_profile = {'version': 1, 'runtimeProfile': 'cloud', 'omittedLocalModels': [] if local_embeddings else [omitted]}
+            if local_embeddings:
+                expected_profile['localEmbeddings'] = True
+            if profile != expected_profile:
                 raise ValueError('Packaged Cloud profile mismatch')
             for row in provenance['files']:
                 entry = row['path']
-                if entry == omitted['path']:
+                if entry == omitted['path'] and not local_embeddings:
                     if row['sha256'] != omitted['sha256'] or entry in names:
                         raise ValueError('Cloud local-model omission differs')
                     continue
@@ -95,8 +116,36 @@ def verify(apk, release=False, runtime_profile="native"):
                 with archive.open(entry) as stream:
                     if digest(stream) != row['sha256']:
                         raise ValueError('Packaged Cloud runtime provenance mismatch: ' + entry)
-            if any((re.match(r'^(lib(?:elizainference|elizavoicejni|paradeevoicejni|llama|ggml|omnivoice)|llama-server)', PurePosixPath(name).name) or name.startswith('assets/paradee-voice/') or re.search(r'\.(gguf|onnx|safetensors|pt|pth)$', name)) for name in names):
-                raise ValueError('Cloud APK includes local inference')
+            allowed_embedding_entries = set()
+            if local_embeddings:
+                verify_local_embedding_source(ROOT)
+                if runtime_abis != {'arm64-v8a'}:
+                    raise ValueError('Local embeddings require the qualified ARM64 host')
+                record = json.loads((ROOT / 'android/embedding-host/qualified-host.json').read_text())
+                required_libraries = {'libelizainference.so', 'libelizavoicejni.so', 'libc++_shared.so'}
+                if record.get('requalification', {}).get('required') is True or record.get('abi') != 'arm64-v8a' or record.get('jniIdentityRelocated') is not True:
+                    raise ValueError('Local embedding host requires current qualification')
+                if record.get('model', {}).get('sha256') != omitted['sha256'] or record.get('model', {}).get('dimensions') != 384:
+                    raise ValueError('Local embedding model differs')
+                rows = record.get('libraries', [])
+                if len(rows) != 3 or {row.get('name') for row in rows} != required_libraries:
+                    raise ValueError('Local embedding library inventory differs')
+                allowed_embedding_entries.add(omitted['path'])
+                with archive.open(omitted['path']) as stream:
+                    observed = digest(stream)
+                if observed != omitted['sha256'] or observed != file_hash(staged / 'models/bge-small-en-v1.5-f16.gguf'):
+                    raise ValueError('Packaged BGE model differs')
+                checks[omitted['path']] = observed
+                for row in rows:
+                    entry = 'lib/arm64-v8a/' + row['name']
+                    allowed_embedding_entries.add(entry)
+                    with archive.open(entry) as stream:
+                        observed = digest(stream)
+                    if observed != row['sha256'] or observed != file_hash(ROOT / 'android/app/src/main/jniLibs/arm64-v8a' / row['name']):
+                        raise ValueError('Packaged embedding host differs: ' + entry)
+                    checks[entry] = observed
+            if any(name not in allowed_embedding_entries and (re.match(r'^(lib(?:elizainference|elizavoicejni|paradeevoicejni|llama|ggml|omnivoice)|llama-server)', PurePosixPath(name).name) or name.startswith('assets/paradee-voice/') or re.search(r'\.(gguf|onnx|safetensors|pt|pth)$', name)) for name in names):
+                raise ValueError('Cloud APK includes unadmitted local inference')
 
         def check(entry, local, expected=None):
             with archive.open(entry) as stream:
@@ -186,6 +235,7 @@ NOT_DISTRIBUTABLE = 3
 
 def main(argv):
     parser = argparse.ArgumentParser(description='Verify packaged runtime bytes in APKs.')
+    parser.add_argument('--local-embeddings', action='store_true', help='require qualified local BGE inputs in the Cloud profile')
     parser.add_argument('--runtime-profile', choices=['native', 'cloud'], default='native')
     parser.add_argument('--release', action='append', default=[], metavar='APK', help='distribution release APK; requires a packaged runtime')
     parser.add_argument('--allow-unpackaged-runtime', action='store_true', help='developer option: report unpackaged releases as distributable=false instead of failing')
@@ -196,13 +246,13 @@ def main(argv):
     results = []
     refused = []
     for apk in args.release:
-        result = verify(Path(apk), release=True, runtime_profile=args.runtime_profile)
+        result = verify(Path(apk), release=True, runtime_profile=args.runtime_profile, local_embeddings=args.local_embeddings)
         result['release'] = True
         result['distributable'] = result['runtime'] == 'PACKAGED'
         if not result['distributable']:
             refused.append(apk)
         results.append(result)
-    results.extend(verify(Path(apk), runtime_profile=args.runtime_profile) for apk in args.apks)
+    results.extend(verify(Path(apk), runtime_profile=args.runtime_profile, local_embeddings=args.local_embeddings) for apk in args.apks)
     print(json.dumps(results, indent=2))
     if refused and not args.allow_unpackaged_runtime:
         print('Release APKs without a packaged resident runtime are not distributable: ' + ', '.join(refused)

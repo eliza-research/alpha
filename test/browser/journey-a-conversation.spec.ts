@@ -62,8 +62,10 @@ test('journey A: boot, connect, converse across apps, stop a reply, reload and r
 
  // 1b. Composer draft around a failed send: with no agent nothing is sent and the text returns to the composer.
  await ask.fill('Journey A unsent draft');await ask.press('Enter');
- await expect(page.getByRole('status',{name:'Assistant draft status'})).toHaveText('Not sent. Your message is back in the composer.');
  await expect(message).toHaveValue('Journey A unsent draft');
+ // The text simply comes back: no line under the composer and no toast (owner, 2026-11-03).
+ await expect(page.getByRole('status',{name:'Assistant draft status'})).toHaveCount(0);
+ await expect(page.getByText('Your message is back in the composer')).toHaveCount(0);
  await expect(bubble(page,'Journey A unsent draft')).toHaveCount(0);
  expect(await agentDocument(page)).toBeNull();
  await message.fill('');
@@ -292,7 +294,9 @@ test('journey A: a spoken request is transcribed, sent once, answered once and r
  await expect(talk).toHaveCount(1);
  await talk.click();
  await expect(voice).toHaveAttribute('data-voice-state','listening',{timeout:30_000});
- await expect(voice).toContainText('Speech is transcribed with Eliza Cloud and sent to this conversation');
+ // Speech routing is disclosed in Settings > Voice; the live composer stays quiet (#745).
+ await expect(voice).toContainText('Listening…');
+ await expect(voice).not.toContainText('Eliza Cloud');
  // Silence: the microphone is open and nothing is transcribed or sent.
  await page.waitForTimeout(2500);
  expect(await cloud()).toEqual({transcriptions:0,speech:[]});

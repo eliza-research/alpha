@@ -113,15 +113,16 @@ test('production Settings shows no developer or removed rows, even with ?tools=1
 test('production Google account entry opens and dismisses its owned dialog',async({page})=>{
  await page.addInitScript(offline);
  await openSettings(page);
- await current(page).getByRole('button',{name:'Accounts',exact:true}).click();
- await current(page).getByRole('button',{name:'Google accounts',exact:true}).click();
+ await current(page).getByRole('button',{name:'Connections',exact:true}).click({timeout:5000});
+ const manage=current(page).getByRole('button',{name:'Manage Google accounts',exact:true});
+ await manage.click({timeout:5000});
  const panel=page.getByRole('dialog',{name:'Google accounts',exact:true});
  await expect(panel).toBeVisible();
  await expect(panel.getByRole('button',{name:'Sign in to Eliza Cloud',exact:true})).toBeVisible();
  await expect(panel.getByText('Gmail notification settings',{exact:true})).toHaveCount(0);
  await closeOverlays(page);
  await expect(panel).toHaveCount(0);
- await expect(current(page).getByRole('button',{name:'System accounts',exact:true})).toBeVisible();
+ await expect(manage).toBeVisible();
 });
 test('production Settings shows no fixture device facts and reports the model honestly',async({page})=>{
  await page.addInitScript(offline);
@@ -166,7 +167,7 @@ test('production Export diagnostics saves redacted JSON',async({page})=>{
  expect(report.platform).toBe('web');
  expect(report.app.testMocks).toBe(false);
  expect(report.connection).toEqual({kind:'offline',connected:false});
- expect(Object.keys(report).sort()).toEqual(['app','connection','crashes','format','generatedAt','nativeVoiceTiming','os','permissions','platform','roles','runtimeHashes','upstreamPin','voiceTiming']);
+ expect(Object.keys(report).sort()).toEqual(['app','connection','crashes','format','generatedAt','nativeVoiceTiming','os','permissions','platform','realtimeVoiceTiming','roles','runtimeHashes','upstreamPin','voiceTiming']);
  // The voice timing section is an aggregator-ready document with timing fields only.
  expect(report.voiceTiming.format).toBe('alpha-voice-timing-v1');
  expect(report.voiceTiming.records).toEqual([{version:1,id:'0b0c7a52-6d5e-4e0f-9a43-5c1d2e3f4a5b',recordedAt:1760000000000,route:'eliza-cloud',cold:true,entry:'conversation',policy:'auto-send',marks:{'recording-end':0,'transcript-ready':640,send:640,'first-token':1210,'final-reply':2380}}]);

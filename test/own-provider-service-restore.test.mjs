@@ -66,6 +66,36 @@ test('a delayed absent credential read cannot clear a newly adopted service',asy
 test('foreground own-mode checks never refresh a prior Cloud inference plan, and recovery blocks all checks',()=>{
  const start=source.indexOf('  recheckPlanOnReturn('),end=source.indexOf('  /**',start);
  const method=stripTypeScriptTypes('const controller={'+source.slice(start,end)+'};globalThis.check=controller.recheckPlanOnReturn;',{mode:'transform'});
- let services=0;const box={residentCloudFlow:()=>true,operation:null,sending:null,state:{busy:false,session:{}},Date,planManagementReturn:false,lastPlanRecheck:0,PLAN_RECHECK_INTERVAL_MS:1,ownProviderSelected:()=>true,restoreOwnProviderCloudServices:()=>{services++;},residentBinding:'cloud',entitlementRefresher:{refreshNow(){throw Error('Old Cloud plan must not be used');}}};
- vm.createContext(box);vm.runInContext(method,box);box.check(true);assert.equal(services,1);box.state.residentRecoveryReason='blocked';box.check(true);assert.equal(services,1);
+ let services=0;const box={residentCloudFlow:()=>true,operation:null,sending:null,state:{busy:false,session:{}},Date,planManagementReturn:false,lastPlanRecheck:0,PLAN_RECHECK_INTERVAL_MS:1,ownProviderSelected:()=>true,restoreOwnProviderCloudServices:()=>{services++;},ownCloudServiceRestore:null,networkLostUnder:null,planCheckScope:()=>'scope',residentBinding:'cloud',entitlementRefresher:{refreshNow(){throw Error('Old Cloud plan must not be used');}}};
+ vm.createContext(box);vm.runInContext(method,box);box.check();assert.equal(services,1);box.state.residentRecoveryReason='blocked';box.planManagementReturn=true;box.check();assert.equal(services,1);
+});
+
+// The network's return with the owner's own provider, through the real return check and Cloud
+// services restore: the provider stands for the plan check scope, so a services read that fails
+// offline (and detaches the account) keeps the return, and no Cloud request is made while signed out.
+const returnCode=stripTypeScriptTypes([
+ ...source.match(/^(function planCheckScope\(|let networkLostUnder\b|let planRecheck\b).*$/gm),
+ 'globalThis.controller={'+source.slice(source.indexOf('  recheckPlanOnReturn('),source.indexOf('  /**',source.indexOf('  recheckPlanOnReturn(')))+source.slice(source.indexOf('  networkChanged('),source.indexOf('  openCloudAccount('))+'};',
+].join('\n'),{mode:'transform'});
+function returning(options){
+ const restore=fixture(options),{box}=restore;
+ Object.assign(box,{residentCloudFlow:()=>true,operation:null,sending:null,Date,planManagementReturn:false,lastPlanRecheck:-Infinity,PLAN_RECHECK_INTERVAL_MS:60000,residentBinding:'unbound',update:patch=>{Object.assign(box.state,patch);},retractReadiness(){}});
+ Object.assign(box.state,{busy:false,inferenceOffline:false});
+ vm.runInContext(returnCode,box);
+ return {...restore,settled:()=>new Promise(resolve=>setImmediate(resolve)),reads:()=>restore.calls.map(call=>typeof call==='string'?call:'verify')};
+}
+test('own inference signed out of Cloud: a network return reads only the stored sign-in, never Cloud',async()=>{
+ const {box,settled,reads}=returning({credential:null});
+ box.controller.recheckPlanOnReturn();await settled();
+ box.controller.networkChanged(false);box.controller.networkChanged(true);box.controller.recheckPlanOnReturn();await settled();
+ assert.deepEqual(reads(),['credential','credential']);
+});
+test('own inference: a Cloud services read that fails offline and detaches the account keeps the network return',async()=>{
+ const {box,settled,reads}=returning({verify:async box=>{if(box.state.inferenceOffline)throw Error('Connection request failed');}});
+ box.service={identity:{credentialId:'cloud-A'},credentialReference:'ref-A'};box.state.cloudAccount={credentialId:'cloud-A'};
+ box.controller.networkChanged(false);box.controller.recheckPlanOnReturn();await settled();
+ assert.deepEqual(reads(),['credential','verify','detach']);
+ box.controller.networkChanged(true);box.controller.recheckPlanOnReturn();await settled();
+ assert.deepEqual(reads(),['credential','verify','detach','credential','verify']);
+ assert.equal(box.state.cloudAccount.userId,'owner-A');
 });

@@ -12,7 +12,7 @@ for(const own of [false,true])test(`the real ${own?'own-key':'development'} adap
   let current = true;
   const agent = {async request(route) {
     requests.push(route);
-    if (route.startsWith('/api/v1/voice/session/health?')) return {ready: true, conversationId: 'owned-conversation', agentId: 'owned-agent', speechRoute: 'direct'};
+    if (route.startsWith('/api/v1/voice/session/health?')) return {ready: true, turnTerminal: true, conversationId: 'owned-conversation', agentId: 'owned-agent', speechRoute: 'direct'};
     assert.equal(route, '/api/views/voice-channel');
     return {wsUrl: 'ws://owned.invalid/__alpha-local-renderer/ws?ticket=synthetic', expiresAt: Date.now() + 60000};
   }};

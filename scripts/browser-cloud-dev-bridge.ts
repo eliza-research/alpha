@@ -376,7 +376,7 @@ export function browserCloudDevBridge():Plugin {
   if(cloudResident){
    const profileMode=process.env.ALPHA_CLOUD_RESIDENT_PROFILE??'lean';
    if(profileMode!=='lean'&&profileMode!=='full')throw Error('Invalid Cloud resident profile mode');
-   resident=await createCloudResidentHost({source:path.resolve(process.env.ALPHA_ELIZA_SOURCE!),profile:path.resolve(process.env.ALPHA_REMOTE_PROFILE!),port:Number(process.env.ALPHA_REMOTE_PORT),environment:selected,profileMode,
+   resident=await createCloudResidentHost({source:path.resolve(process.env.ALPHA_ELIZA_SOURCE!),profile:path.resolve(process.env.ALPHA_REMOTE_PROFILE!),port:Number(process.env.ALPHA_REMOTE_PORT),environment:selected,profileMode,cloudRealtimeVoice:process.env.ALPHA_DEV_CLOUD_REALTIME_VOICE==='1',
     // Calendar writes require explicit current-owner intent plus the existing OAuth,
     // canonical control and write-capability gates. Gmail remains read-only.
     startGoogleHost:selected==='production'?handler.startGoogleHost:undefined});

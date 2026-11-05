@@ -2,13 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {stripTypeScriptTypes} from 'node:module';
+import {build} from 'esbuild';
 // Upstream's escalation service posts "Eliza needs attention" into client chat for any repeated
 // error (a Notes state the resident could not read at start produced one per boot), and history
 // replays every stored copy. Alpha shows at most the latest notice, only while it can be true.
 const ts=source=>stripTypeScriptTypes(source,{mode:'transform'});
-const notices=await import('data:text/javascript;base64,'+Buffer.from(ts(fs.readFileSync('apps/app/src/runtime/action-message-presentation.ts','utf8'))).toString('base64'));
+const bundle=await build({entryPoints:['apps/app/src/runtime/action-message-presentation.ts'],bundle:true,platform:'node',format:'esm',write:false});
+const notices=await import('data:text/javascript;base64,'+Buffer.from(bundle.outputFiles[0].text).toString('base64'));
 const {systemNoticeText}=await import('data:text/javascript;base64,'+Buffer.from(ts(fs.readFileSync('vendor/eliza/packages/core/src/types/system-notice.ts','utf8'))).toString('base64'));
-const {collapseSystemNotices,systemNoticeKind,systemNoticeDisplayText,RUNTIME_ERROR_NOTICE,RUNTIME_ERROR_BACKGROUND_NOTICE}=notices;
+const {collapseSystemNotices,systemNoticeKind,systemNoticeDisplayText,MODEL_UNAVAILABLE_NOTICE,RUNTIME_ERROR_NOTICE,RUNTIME_ERROR_BACKGROUND_NOTICE}=notices;
 const ui=fs.readFileSync('apps/app/src/runtime/connection-ui.tsx','utf8'),adapter=fs.readFileSync('apps/app/src/prototype/agent-adapter.ts','utf8');
 const notice=(id,kind='runtime-error')=>({id,from:'agent',text:systemNoticeDisplayText(kind),systemNotice:kind});
 const user=(id,text='hi')=>({id,from:'user',text}),reply=(id,text='Hello')=>({id,from:'agent',text});
@@ -27,7 +29,17 @@ test('the runtime-error copy names an owner step, not the host operator diagnost
  assert.doesNotMatch(RUNTIME_ERROR_BACKGROUND_NOTICE,/may not arrive|resent/,'nothing was waiting, so nothing is said about a reply');
  assert.equal(systemNoticeDisplayText('runtime-error'),RUNTIME_ERROR_BACKGROUND_NOTICE);
  assert.equal(systemNoticeDisplayText('runtime-error',true),RUNTIME_ERROR_NOTICE);
- assert.equal(systemNoticeDisplayText('model-and-runtime-error'),`${systemNoticeText('model-unavailable')}\n${RUNTIME_ERROR_BACKGROUND_NOTICE}`,'a combined notice keeps both halves');
+ assert.equal(systemNoticeDisplayText('model-and-runtime-error'),`${MODEL_UNAVAILABLE_NOTICE}\n${RUNTIME_ERROR_BACKGROUND_NOTICE}`,'a combined notice keeps both halves');
+});
+
+test('model-unavailable display is product-neutral while raw protocol recognition and stored bytes remain intact',()=>{
+ assert.match(MODEL_UNAVAILABLE_NOTICE,/AI provider in Settings/);
+ for(const kind of ['model-unavailable','runtime-error','model-and-runtime-error'])assert.doesNotMatch(systemNoticeDisplayText(kind),/Eliza|connected host|host's diagnostics/);
+ const original=[user('u1'),{id:'m1',from:'agent',text:systemNoticeText('model-unavailable'),systemNotice:'model-unavailable'}],saved=structuredClone(original);
+ const shown=collapseSystemNotices(original);
+ assert.equal(shown.find(m=>m.id==='m1').text,MODEL_UNAVAILABLE_NOTICE);
+ assert.deepEqual(original,saved,'presentation must never rewrite stored notice bytes');
+ assert.equal(systemNoticeKind(systemNoticeText('model-unavailable')),'model-unavailable');
 });
 
 test('replayed history with four identical notices and a normal reply shows no notice',()=>{

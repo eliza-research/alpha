@@ -66,9 +66,14 @@ for (const mode of ['checking', 'unavailable', 'available'] as const) {
       await chooser.getByLabel('Cerebras API key').fill('synthetic-e2e-key');
       await chooser.getByRole('button', { name: 'Save provider', exact: true }).click();
       // A verified key is selected and the agent restarts with it at once; this fixture refuses the start.
-      await expect(chooser.getByRole('alert')).toHaveText('Runtime start is outside this fixture');
+      const provider = page.getByRole('dialog', { name: 'AI provider', exact: true });
+      await expect(provider.getByRole('alert')).toHaveText('Runtime start is outside this fixture');
       await expect(chooser.getByText('Cerebras key verified and saved in Android Keystore. Own API keys selected.')).toHaveCount(0);
-      await expect(chooser.getByLabel('Cerebras API key')).toHaveValue('');
+      await provider.getByRole('button', { name: 'Change keys', exact: true }).click();
+      await expect(provider.getByLabel('Cerebras API key')).toHaveValue('');
+      await provider.getByRole('button', { name: 'Close AI provider settings', exact: true }).click();
+      await page.getByRole('button', { name: 'Settings', exact: true }).click();
+      await page.getByRole('button', { name: 'Agent connection', exact: true }).click({ timeout: 5000 });
     }
     await chooser.locator('summary').filter({ hasText: /^Remote agent$/ }).click();
     await expect(chooser.getByLabel('Agent HTTPS address')).toBeEditable();

@@ -20,6 +20,8 @@ async function stubAgent(page: import('@playwright/test').Page, cloud = false) {
         { name: 'AlphaVoiceCloud', methods: methods(['checkPermissions']) },
         { name: 'AlphaHostedResults', methods: methods(['disableBackground', 'addListener', 'removeListener', 'pendingResult', 'status']) },
         { name: 'ElizaSystem', methods: methods(['getBuildInfo']) },
+        // Removing a key while the resident runs retires its background delivery (e15f0b735 starts it on save).
+        { name: 'AlphaHostedResults', methods: methods(['disableBackground', 'pendingResult', 'status', 'addListener', 'removeListener']) },
       ],
       nativeCallback: (plugin: string, method: string, input: any, callback: (value: unknown) => void) => plugin === 'Agent' ? agent.nativeCallback(plugin, method, input, callback) : 'provider-fixture-listener',
       nativePromise: async (plugin: string, method: string, input: any) => {
@@ -29,6 +31,7 @@ async function stubAgent(page: import('@playwright/test').Page, cloud = false) {
         // Stopping the running agent pauses its hosted background work.
         if (plugin === 'AlphaHostedResults') return {};
         if (plugin === 'AlphaConnection') return method === 'secureRead' ? { value: null } : {};
+        if (plugin === 'AlphaHostedResults') return {};
         if (plugin === 'Agent') {
           const owned = agent.answer(method, input); if (owned) return owned;
           if (method === 'getStatus') return { packaged: true, state: 'stopped', serviceActive: false, socketListening: false };
@@ -75,13 +78,13 @@ test('provider status, pinned model, verified save and confirmed key removal', a
   await page.evaluate(() => { (window as any).providerFixture.reject = ''; });
   await chooser.getByLabel('Cerebras API key').fill('synthetic-accepted-key');
   await chooser.getByRole('button', { name: 'Save provider', exact: true }).click();
-  // A verified key is selected at once and the agent restarts with it; the chooser closes on it.
+  // A verified key is selected at once and the agent restarts with it; the chooser closes on it
+  // (the receipt is a toast, not a message left in the closed sheet).
   await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   const agentConnection = page.getByRole('button', { name: 'Agent connection', exact: true });
   await expect(agentConnection).toContainText('Provider fixture');
   await agentConnection.click();
-  await expect(chooser.getByText('Cerebras key verified and saved in Android Keystore. Own API keys selected.', { exact: true })).toBeVisible();
   await chooser.getByText('Model provider', { exact: true }).click();
   await expect(chooser.getByText('Configured · Cerebras · qwen-3.8-27b', { exact: true })).toBeVisible();
   await expect(chooser.getByLabel('Cerebras API key')).toHaveValue('');

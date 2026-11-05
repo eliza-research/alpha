@@ -30,7 +30,7 @@ test('Cloud profile keeps native speech and embeddings guards as default',()=>{
  const gradle=fs.readFileSync('android/app/product.gradle','utf8');
  assert.match(gradle,/ELIZA_RUNTIME_PROFILE.*native/);
  assert.match(gradle,/runtimeProfile == 'cloud'.*runtime-profile.mjs/);
- assert.match(fs.readFileSync('android/local-speech/build.gradle','utf8'),/unpackaged \|\| cloudProfile/);
+ assert.match(fs.readFileSync('android/local-speech/build.gradle','utf8'),/cloudProfile \|\| \(unpackaged && !nativeOutput\.exists\(\)\)/);
  // Routing belongs to the shared upstream profile; Alpha declares only its deployment.
  const declaration=fs.readFileSync('backend/native-cloud-runtime.ts','utf8');
  assert.doesNotMatch(declaration,/serviceRouting|updateRoutingPreferences|ELIZA_RUNTIME_PROFILE/);
@@ -117,4 +117,23 @@ test('native Android Cloud admission uses its explicit target pin before any leg
   f.provenance.bun.target='unknown';f.save();assert.throws(()=>verifyCloudResident(f.root,f.source),/Unsupported Cloud Bun target/);
   f.provenance.bun.target='android';f.provenance.bun.architectures=['riscv64'];f.save();assert.throws(()=>verifyCloudResident(f.root,f.source),/Invalid Cloud Bun ABI admission/);
  } finally {fs.rmSync(f.root,{recursive:true,force:true});}
+});
+
+
+test('Cloud embedding capability refuses a missing native qualification',()=>{
+ const f=databaseAdmissionFixture({bunTarget:'android'});
+ try{
+  fs.writeFileSync(path.join(f.agent,'alpha-runtime-profile.json'),JSON.stringify({version:1,runtimeProfile:'cloud',omittedLocalModels:[],localEmbeddings:true}));
+  assert.throws(()=>verifyCloudResident(f.root,f.source,{localEmbeddings:true}),/qualified-host\.json/);
+ }finally{fs.rmSync(f.root,{recursive:true,force:true});}
+});
+
+test('Cloud embedding capability retains the native requalification fence',()=>{
+ const f=databaseAdmissionFixture({bunTarget:'android'});
+ try{
+  fs.writeFileSync(path.join(f.agent,'alpha-runtime-profile.json'),JSON.stringify({version:1,runtimeProfile:'cloud',omittedLocalModels:[],localEmbeddings:true}));
+  const dir=path.join(f.root,'android/embedding-host');fs.mkdirSync(dir,{recursive:true});
+  fs.writeFileSync(path.join(dir,'qualified-host.json'),JSON.stringify({requalification:{required:true,atPin:'current',reason:'Fresh native qualification is required'}}));
+  assert.throws(()=>verifyCloudResident(f.root,f.source,{localEmbeddings:true}),/requalification required/);
+ }finally{fs.rmSync(f.root,{recursive:true,force:true});}
 });

@@ -12,6 +12,9 @@ import {installNativeNavigationFixture} from './native-navigation-protocol';
  * - Capacitor's Plugin base addListener/removeListener (native `callback` methods, so the
  *   fixture's Capacitor global must use the returned `nativeCallback`);
  * - subscribeViewEvents/unsubscribeViewEvents for the renderer's alphaViewEvent feed;
+ * - providerStatus, which the renderer reads before every resident start since e15f0b735 (Cloud or
+ *   owner-provided inference). It answers an unconfigured provider unless the spec lists
+ *   `providerStatus` in `methods(...)` itself, which leaves the answer to the spec's own routing;
  * - the agent routes the resident renderer reaches once it is subscribed, through the shared
  *   native navigation protocol: GET /api/client-devices/context, answered with the identity the
  *   device registered with (#651's committed-enrollment read), and committed-view reporting.
@@ -30,7 +33,7 @@ function defineResidentAgentPlugin() {
     let nextCallback = 0;
     return {
       state,
-      /** Agent header: the spec's own promise methods plus the plugin's listener and view-event methods. */
+      /** Agent header: the spec's own promise methods plus the plugin's listener, view-event and provider-status methods. */
       methods(names: string[]) {
         return [
           ...[...names, 'subscribeViewEvents', 'unsubscribeViewEvents', ...(options.providerStatus && !names.includes('providerStatus') ? ['providerStatus'] : [])].map(name => ({name, rtype: 'promise'})),

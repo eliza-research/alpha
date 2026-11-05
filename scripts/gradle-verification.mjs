@@ -259,20 +259,22 @@ async function recordOtherHostAapt2(root) {
 
 export function parseVerificationArgs(args) {
   const mode = args.filter(arg => ['--check', '--write'].includes(arg));
-  if (mode.length !== 1 || args.some(arg => !['--check', '--write', '--allow-unpackaged-runtime', '--runtime-profile=cloud'].includes(arg)))
+  if (mode.length !== 1 || args.some(arg => !['--check', '--write', '--allow-unpackaged-runtime', '--runtime-profile=cloud','--local-embeddings'].includes(arg)))
     throw new Error('Usage: node scripts/gradle-verification.mjs --check | --write [--allow-unpackaged-runtime | --runtime-profile=cloud]');
   const runtimeProfile=args.includes('--runtime-profile=cloud')?'cloud':'native';
   const allowUnpackagedRuntime=args.includes('--allow-unpackaged-runtime');
   if(runtimeProfile==='cloud'&&allowUnpackagedRuntime)throw new Error('Cloud profile requires a genuine packaged resident');
-  return {mode:mode[0],runtimeProfile,allowUnpackagedRuntime};
+  const localEmbeddings=args.includes('--local-embeddings');
+  if(localEmbeddings&&runtimeProfile!=='cloud')throw new Error('Local embeddings require the Cloud profile');
+  return {mode:mode[0],runtimeProfile,allowUnpackagedRuntime,...(localEmbeddings?{localEmbeddings:true}:{})};
 }
 
-async function write(root, {allowUnpackagedRuntime,runtimeProfile}) {
+async function write(root, {allowUnpackagedRuntime,runtimeProfile,localEmbeddings=false}) {
   const {androidEnv} = await import('./toolchain.mjs');
   const env = {...androidEnv()};
   for (const name of ['ELIZA_DEV_ALLOW_TEST_MOCKS', 'VITE_ELIZA_DEV_ALLOW_TEST_MOCKS', 'ORG_GRADLE_PROJECT_ELIZA_DEV_ALLOW_TEST_MOCKS']) delete env[name];
   env.VITE_ELIZA_RUNTIME_PROFILE=runtimeProfile;
-  const profileArgs=runtimeProfile==='cloud'?['--runtime-profile=cloud']:[];
+  const profileArgs=[...(runtimeProfile==='cloud'?['--runtime-profile=cloud']:[]),...(localEmbeddings?['--local-embeddings']:[])];
   const preflight = [path.join(root, 'scripts/android-build-preflight.mjs'), ...profileArgs, ...(allowUnpackagedRuntime ? ['--allow-unpackaged-runtime'] : [])];
   execFileSync(process.execPath, preflight, {cwd: root, stdio: 'inherit', env});
   execFileSync(process.execPath, [path.join(root, 'scripts/android-host.mjs')], {cwd: root, stdio: 'inherit', env});
@@ -280,7 +282,7 @@ async function write(root, {allowUnpackagedRuntime,runtimeProfile}) {
   // No ALPHA_NOTIFICATION_FIXTURE_KEYSTORE here: the fixture then takes the default debug key, and
   // its dependencies resolve exactly as in scripts/build-notification-fixture.mjs.
   execFileSync('./gradlew', ['--no-daemon', '--write-verification-metadata', 'sha256', '-PELIZA_DEV_ALLOW_TEST_MOCKS=0',
-    `-PELIZA_ALLOW_UNPACKAGED_RUNTIME=${allowUnpackagedRuntime ? '1' : '0'}`, ...(runtimeProfile==='cloud'?['-PELIZA_RUNTIME_PROFILE=cloud']:[]), ...VERIFIED_TASKS], {cwd: path.join(root, 'android'), stdio: 'inherit', env});
+    `-PELIZA_ALLOW_UNPACKAGED_RUNTIME=${allowUnpackagedRuntime ? '1' : '0'}`, ...(runtimeProfile==='cloud'?['-PELIZA_RUNTIME_PROFILE=cloud']:[]), ...(localEmbeddings?['-PELIZA_LOCAL_EMBEDDINGS=1']:[]), ...VERIFIED_TASKS], {cwd: path.join(root, 'android'), stdio: 'inherit', env});
   await recordOtherHostAapt2(root);
   const {problems} = checkVerification(root);
   if (problems.length) throw new Error(`Written metadata does not pass --check:\n${problems.map(item => `  - ${item}`).join('\n')}`);

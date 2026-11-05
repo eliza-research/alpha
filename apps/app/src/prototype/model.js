@@ -538,7 +538,7 @@ registerView("messages", {
     if (sub === "new") return { compose: true };
   },
   badge: function (st) { var u = st.unread || {}; return Object.keys(u).some(function (k) { return u[k] > 0; }); },
-  immersive: function (st) { return (st.thread || typeof st.compose === "string") ? { noPill: true, toastBottom: 104 } : null; },
+  immersive: function (st) { return (st.thread || typeof st.compose === "string") ? { noPill: true } : null; },
   back: function (st, api) {
     if (st.tray) { api.set({ tray: false }); return true; }
     // Opened from this app's list: back to the list. Deep-linked (contacts, shade, chat, share): hand back to the shell's stack.
@@ -1808,11 +1808,11 @@ registerView("browser", {
       sugg: sugg,
       menu: st.menu, toggleMenu: function () { set({ menu: !api.get("browser").menu, editing: false }); }, closeMenu: function () { set({ menu: false }); },
       markIcon: IC.star, markFill: marked ? "currentColor" : "none", markLabel: marked ? "Bookmarked" : "Bookmark",
-      toggleMark: function () { var s = api.get("browser"); var on = s.marks.indexOf(url) >= 0; if (!pg.host) return; set({ marks: on ? s.marks.filter(function (x) { return x !== url; }) : [url].concat(s.marks), menu: false }); api.toast(on ? "Bookmark removed" : "Bookmarked"); },
+      toggleMark: function () { var s = api.get("browser"); var on = s.marks.indexOf(url) >= 0; if (!pg.host) return; set({ marks: on ? s.marks.filter(function (x) { return x !== url; }) : [url].concat(s.marks), menu: false }); },
       openLib: function () { set({ lib: "bookmarks", menu: false }); }, lib: !!st.lib, closeLib: function () { set({ lib: null }); },
       libMarks: function () { set({ lib: "bookmarks" }); }, libHist: function () { set({ lib: "history" }); },
       libMarksCss: st.lib !== "history" ? "background:var(--acc);color:var(--alpha-white)" : "color:var(--mut)", libHistCss: st.lib === "history" ? "background:var(--acc);color:var(--alpha-white)" : "color:var(--mut)",
-      libRows: libRows, libEmpty: !libRows.length, libIsHist: st.lib === "history" && libRows.length > 0, clearHist: function () { set({ visits: [] }); api.toast("History cleared"); },
+      libRows: libRows, libEmpty: !libRows.length, libIsHist: st.lib === "history" && libRows.length > 0, clearHist: function () { set({ visits: [] }); },
       openShare: function () { set({ share: true, menu: false }); }, share: st.share, closeShare: function () { set({ share: false }); }, people: people,
       copyLink: function () { set({ share: false }); api.toast("Link copied"); },
       readAloud: function () { set({ menu: false }); api.toast("Reading aloud · " + (pg.host || "page")); },
@@ -2476,7 +2476,7 @@ registerView("photos", {
       selDim: nSel === 0 ? "opacity:.35;pointer-events:none" : "",
       selCancel: function () { api.set({ sel: null }); },
       selShare: function () { var s = api.get("photos"); if (s.sel && s.sel.length) api.set({ sheet: "share", shareIds: s.sel }); },
-      selFav: function () { var s = api.get("photos"); var ids = s.sel || []; var all = s.list.filter(function (it) { return ids.indexOf(it.id) >= 0; }).every(function (it) { return it.fav; }); api.set({ sel: null, list: s.list.map(function (it) { return ids.indexOf(it.id) >= 0 ? Object.assign({}, it, { fav: !all }) : it; }) }); api.toast(all ? "Removed from favorites" : "Added to favorites"); },
+      selFav: function () { var s = api.get("photos"); var ids = s.sel || []; var all = s.list.filter(function (it) { return ids.indexOf(it.id) >= 0; }).every(function (it) { return it.fav; }); api.set({ sel: null, list: s.list.map(function (it) { return ids.indexOf(it.id) >= 0 ? Object.assign({}, it, { fav: !all }) : it; }) }); },
       selDel: function () { var s = api.get("photos"); if (s.sel && s.sel.length) phDelete(s.sel, api); },
       viewing: !!vw, v: vw, editing: !!(vw && vw.ed), viewEmpty: !!st.open && !cur,
       trashAsk: function () { api.set({ sheet: "empty" }); }, emptyOpen: st.sheet === "empty", trashCount: (st.trash || []).length === 1 ? "1 item" : (st.trash || []).length + " items",
@@ -2817,7 +2817,6 @@ registerView("maps", {
           var l = (st.saved || []).slice(); var i = l.indexOf(place.id);
           api.set({ saved: i >= 0 ? l.filter(function (x) { return x !== place.id; }) : l.concat([place.id]) });
           if (i >= 0) api.toast(place.name + " removed from saved", { undo: function () { var cur = api.get("maps").saved || []; if (cur.indexOf(place.id) < 0) api.set({ saved: cur.concat([place.id]) }); } });
-          else api.toast(place.name + " saved");
         },
         share: function () { api.open("messages", { compose: true, text: place.name + ", " + place.addr }); },
         web: function () { api.open("browser", { url: place.web, newTab: true }); }
@@ -2859,7 +2858,7 @@ registerView("maps", {
           left: arrived ? "Arrived" : mapsFmtMin(left),
           meta: arrived ? dst.addr : mapsDist(dst.mi * (1 - (st.prog || 0))) + " · " + mapsEta(api, left),
           voiceD: st.voice ? IC.mapsVol : IC.mapsMute, voiceLabel: st.voice ? "Mute voice guidance" : "Turn on voice guidance",
-          voice: function () { var v = !api.get("maps").voice; api.set({ voice: v }); api.toast(v ? "Voice guidance on" : "Voice guidance off"); },
+          voice: function () { var v = !api.get("maps").voice; api.set({ voice: v }); },
           ask: function () { api.chat(""); },
           end: function () { mapsEndNav(api); }
         };
@@ -3139,7 +3138,7 @@ registerView("notes", {
     var common = n ? {
       close: function () { notesClose(api); },
       pinIcon: IC.notesPin, pinCss: n.pinned ? "color: var(--acct)" : "", pinLabel: n.pinned ? "Unpin" : "Pin",
-      pin: async function () { if(await notesUpd(api, n.id, { pinned: !n.pinned })!==false) api.toast(n.pinned ? "Unpinned" : "Pinned"); },
+      pin: async function () { await notesUpd(api, n.id, { pinned: !n.pinned }); },
       share: function () { api.set({ sheet: "share" }); },
       del: function () { notesDelete(api, n.id); },
       title: n.title || "",
@@ -3706,7 +3705,7 @@ registerView("files", {
           return { label: m[2], d: m[1], on: m[3], go: function () { api.set(Object.assign({ menu: false }, m[4])); } };
         }),
         sortLabel: st.sort === "name" ? "Sort by date" : "Sort by name", sortCss: st.sort === "name" ? "color: var(--acct)" : "",
-        toggleSort: function () { var nx = st.sort === "name" ? "recent" : "name"; api.set({ sort: nx }); api.toast(nx === "name" ? "Sorted by name" : "Sorted by date"); },
+        toggleSort: function () { var nx = st.sort === "name" ? "recent" : "name"; api.set({ sort: nx }); },
         select: function () { api.set({ sel: [] }); }
       };
     }
@@ -4322,7 +4321,6 @@ registerView("workflows", {
       if (!wfAllowed(card.flow)) return wfDeferred(api);
       var f = Object.assign({}, card.flow, { id: Date.now(), on: true, runs: [] });
       api.set({ flows: wfMerge(api, wfFlows(api).concat([f])) });
-      api.toast(f.name + " is on");
     }
   },
   reply: function (t, raw, api) {
@@ -4377,7 +4375,7 @@ registerView("workflows", {
     var list = (st.flows || WF_SEED).filter(wfAllowed);
     var set = function (p) { if (p.flows) p = Object.assign({}, p, { flows: wfMerge(api, p.flows) }); api.set(p); };
     var setFlow = function (id, p) { set({ flows: list.map(function (x) { return x.id === id ? Object.assign({}, x, p) : x; }) }); };
-    var toggle = function (f) { return function () { if (!wfAllowed(f)) return wfDeferred(api); setFlow(f.id, { on: !f.on }); api.toast(f.name + (f.on ? " is off" : " is on")); }; };
+    var toggle = function (f) { return function () { if (!wfAllowed(f)) return wfDeferred(api); setFlow(f.id, { on: !f.on }); }; };
     var chipsOf = function (f) { return wfApps(f).map(function (a) { return { name: a, d: IC[WF_APP_IC[a]] || IC.grid }; }); };
 
     var cards = list.map(function (f) {
@@ -4491,8 +4489,8 @@ registerView("workflows", {
           var name = (b.name || "").trim() || (b.steps[b.steps.length - 1].k === "Write" ? cap(wfLc(b.steps[b.steps.length - 1].t)) : wfTrigText(b.trig, api));
           var nf = { name: name, trig: b.trig, steps: b.steps };
           nf.summary = wfSummary(nf, api); nf.short = wfShort(nf, api);
-          if (b.id) { set({ flows: list.map(function (x) { return x.id === b.id ? Object.assign({}, x, nf) : x; }), build: null, sheet: null }); api.toast("Saved"); }
-          else { var id = Date.now(); set({ flows: list.concat([Object.assign(nf, { id: id, on: true, runs: [] })]), build: null, sheet: null, open: id }); api.toast(name + " is on"); }
+          if (b.id) { set({ flows: list.map(function (x) { return x.id === b.id ? Object.assign({}, x, nf) : x; }), build: null, sheet: null }); }
+          else { var id = Date.now(); set({ flows: list.concat([Object.assign(nf, { id: id, on: true, runs: [] })]), build: null, sheet: null, open: id }); }
         },
         sheetOn: !!sheet, closeSheet: function () { set({ sheet: null }); },
         isTrig: !!sheet && sheet.type === "trig", isStep: !!sheet && sheet.type === "step"
@@ -5282,9 +5280,7 @@ class Component extends DCLogic {
     this.setState({ screen: "lock", shade: false, heads: false, voice: "off" });
   }
   homeHint() {
-    if (this.hintDone) return; this.hintDone = true; var self = this;
-    this.later(function () { self.setState({ hint: true }); }, 700, "hint");
-    this.later(function () { self.setState({ hint: false }); }, 3600, "hint");
+    this.hintDone = true;
   }
   goHome(chat) {
     this.clear("hint"); this.leave();
@@ -5655,7 +5651,7 @@ class Component extends DCLogic {
       showStatus: !P.nativeSystemChrome && S.screen !== "boot" && S.screen !== "off" && !imm.noStatus, micLive: S.voice === "listening",
       showIndicator: !P.nativeSystemChrome && (isOn || S.screen === "lock") && !(isOn && !S.view && !S.drawer && !S.shade && S.chat !== "sheet" && S.chat !== "full"),
       toast: S.toast, toastOn: !!S.toast, toastUndo: !!S.toastUndo, toastPadR: S.toastUndo ? 5 : 18, doUndo: function () { var f = self.undoFn; self.undoFn = null; self.clear("t"); self.setState({ toast: "", toastUndo: false }); if (f) f(); },
-      hasOngoing: !!ongoing && isOn, ongoing: ongoing || {}, sbWifi: S.q.wifi, sbPlane: S.q.plane, toastBottom: imm.toastBottom || ((isOn && (S.chat === "input" || (S.chat === "hidden" && !imm.noPill))) ? 104 : 40),
+      hasOngoing: !!ongoing && isOn, ongoing: ongoing || {}, sbWifi: S.q.wifi, sbPlane: S.q.plane,
       goCalendar: function () { self.openView("calendar", copy("shell").homeCalendar || null); },
       goTriage: function () { self.send("What needs me?"); },
       goFlows: function () { self.openView("workflows", copy("shell").homeWorkflow || null); },
@@ -5679,6 +5675,8 @@ class Component extends DCLogic {
       showComposer: showComposer, showPill: showPill, cmpBottom: 28,
       cmpPlaceholder: (mod && mod.placeholder) ? mod.placeholder : "Ask " + name,
       draft: S.draft, hasDraft: !!S.draft, noDraft: !S.draft,
+      // The composer template binds these; the agent adapter refines them for a live turn.
+      sendVisible: !!S.draft && !S.typing, talkVisible: !S.draft && !S.typing, replyIdle: !S.typing,
       onDraft: function (e) { self.setState(e.target.value ? { draft: e.target.value } : { draft: "", editCard: null }); },
       onKey: function (e) { if (e.key === "Enter") { e.preventDefault(); self.send(); } },
       sendNow: function () { self.send(); },
@@ -5715,7 +5713,6 @@ class Component extends DCLogic {
       bootMark: S.bootStep >= 1 ? 1 : 0, bootMarkY: S.bootStep >= 1 ? 0 : 12, bootTag: S.bootStep >= 2 ? 1 : 0,
       jumps: jumps, subJumps: subJumps, hasSubJumps: subJumps.length > 0, modes: modes, legend: legend,
       fs: fs, notFs: !fs, rootJustify: fs ? "center" : "flex-start",
-      showHint: P.systemShell !== false && isOn && S.hint && !S.shade && S.chat !== "sheet" && S.chat !== "full",
       homeBar: function () { if (self.swallowed()) return; var S2 = self.S(); if (S2.screen === "lock") return self.unlock(); if (S2.screen === "home") self.goHome(); },
       toggleFs: function () {
         var next = !fs; self.setState({ fs: next });

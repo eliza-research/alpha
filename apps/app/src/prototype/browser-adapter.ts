@@ -3,7 +3,7 @@ import {parseBrowserAddressInput} from "../../../../.eliza/client-features/plugi
 import {browsingSnapshot, restoreBrowsing, DEFAULT_BROWSING_LIMITS} from "../../../../.eliza/client-features/plugins/plugin-native-browser-surface/src/browsing-session.ts";
 import {BrowserTabSession, newBrowserTabId as newTabId, type BrowserFindResult, type BrowserFullscreen, type BrowserTabEvent, type BrowserTabNotice, type BrowserTabOpened, type BrowserTabState} from "../../../../.eliza/client-features/plugins/plugin-native-browser-surface/src/tab-host.ts";
 import { registerPlugin } from '../platform-plugins';
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, CapacitorException, ExceptionCode } from '@capacitor/core';
 import { DailyApps } from '../daily';
 import { createNativeReadingVoice } from '../runtime/native-reading-voice';
 import {reviewContentQuestion} from '../browser/content-question';
@@ -71,10 +71,14 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
     }).finally(() => { bookmarkRead = undefined; });
     return bookmarkRead;
   }
-  function refreshBookmarks() {
+  const unimplemented = (error: unknown) => error instanceof CapacitorException && error.code === ExceptionCode.Unimplemented;
+  /** `background`: the first read at startup, outside Browser. A host without the Browser plugin
+   * then says nothing over whatever screen is open (sign-in, setup, Settings); opening Browser
+   * reads again and reports it there. */
+  function refreshBookmarks(background = false) {
     if (disposed || bookmarkRefreshQueued) return;
     bookmarkRefreshQueued = true;
-    bookmarkQueue = bookmarkQueue.then(() => disposed ? undefined : loadBookmarks()).catch(report).finally(() => { bookmarkRefreshQueued = false; });
+    bookmarkQueue = bookmarkQueue.then(() => disposed ? undefined : loadBookmarks()).catch((error: unknown) => { if (!(background && unimplemented(error))) report(error); }).finally(() => { bookmarkRefreshQueued = false; });
   }
   function saveBookmark(url: string, saved?: boolean) {
     bookmarkQueue = bookmarkQueue.then(async () => {
@@ -100,7 +104,7 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
   function stopReading() { const active=reading; reading=undefined; active?.abort(); void Browser.cancelReading({session}).catch(()=>{}); }
   const unsubscribeReading = connectionController.subscribe(()=>{ if(reading && (connectionController.getSnapshot().open || document.hidden)) stopReading(); });
   async function readPage() {
-    if(reading){stopReading();shell?.toast('Reading stopped');return;}
+    if(reading){stopReading();return;}
     const id=state()?.cur, info=tabInfo(id), revision=tabs.revision(id);
     if(!Capacitor.isNativePlatform()){
       // The refusal is not left behind an open menu (the same rule as Ask about page).
@@ -124,8 +128,7 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
       shell.vset('browser',{menu:false});await new Promise(resolve=>setTimeout(resolve,150));valid();lastGeometry='';await update();
       if(!await voice.ready(controller.signal))throw new Error('The selected agent is not ready for speech.');valid();
       const result=await Browser.reviewReading({session,id,url:info.url,navigation:info.navigation,...binding});valid();
-      shell.toast('Preparing reviewed page speech');
-      await voice.speak(result.readingToken,controller.signal);valid();shell.toast('Reading finished');
+      await voice.speak(result.readingToken,controller.signal);valid();
     }catch(error){if(!controller.signal.aborted)report(error);}finally{unsubscribe();if(reading===controller){reading=undefined;void Browser.cancelReading({session}).catch(()=>{});}}
   }
   async function askPage() {
@@ -138,7 +141,7 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
     const controller=new AbortController();reading=controller;
     const current=()=>!controller.signal.aborted&&!disposed&&!document.hidden&&!document.documentElement.hasAttribute('data-dev-background')&&shell.S().screen==='home'&&shell.S().view==='browser'&&state()?.cur===id&&tabs.revision(id)===revision&&!connectionController.getSnapshot().open;
     try{
-      shell.vset('browser',{menu:false});shell.toast('Preparing page excerpt…');
+      shell.vset('browser',{menu:false});
       let text='';
       if(Capacitor.isNativePlatform()){
         await new Promise(resolve=>setTimeout(resolve,150));if(!current())return;lastGeometry='';await update();
@@ -322,7 +325,9 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
       else if (next.visits.length !== s.visits.length) shell.vset('browser', { visits: next.visits });
       sessionHydrated = true;
       lastSaved = JSON.stringify(savedSnapshot());
-    } catch {
+    } catch (error) {
+      // Restore runs at startup, over any screen: a host without the Browser plugin has no saved tabs to report.
+      if (unimplemented(error)) return;
       report(new Error('Saved tabs and history could not be opened. They were kept unchanged; Clear browsing data resets them.'));
     }
   }
@@ -404,7 +409,7 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
   const oldRender = Component.prototype.renderVals;
   Component.prototype.renderVals = function(){shell=this;
     const browserActive = this.S().view === 'browser';
-    if (!initialBookmarkRead || (browserActive && !browserWasActive)) { initialBookmarkRead = true; refreshBookmarks(); }
+    if (!initialBookmarkRead || (browserActive && !browserWasActive)) { initialBookmarkRead = true; refreshBookmarks(!browserActive); }
     if (browserActive && !browserWasActive) void readingSupport?.check();
     if (!sessionRead && this.vget('browser')?.tabs) void restoreSession();
     browserWasActive = browserActive;
@@ -511,9 +516,10 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
     shell?.openView(view,view==='calendar'&&browserCalendarScope(shell)?{calendarAuthority:'browser-local'}:undefined);
   };
   window.addEventListener('alpha:browser-open-view', openBrowserView);
-  window.addEventListener('alpha:bookmarks-document-changed',refreshBookmarks);
+  const bookmarksDocumentChanged = () => refreshBookmarks();
+  window.addEventListener('alpha:bookmarks-document-changed',bookmarksDocumentChanged);
   const timer=window.setInterval(update,100);
   const visibility = () => { lastGeometry=''; update(); if (!document.hidden && shell?.S().view === 'browser') refreshBookmarks(); };
   window.addEventListener('resize',update);document.addEventListener('visibilitychange',visibility);
-  return ()=>{window.removeEventListener('alpha:bookmarks-document-changed',refreshBookmarks);window.removeEventListener('alpha:browser-open-view',openBrowserView);stopReading();unsubscribeReading();disposed=true;clearInterval(timer);window.removeEventListener('resize',update);document.removeEventListener('visibilitychange',visibility);void resumeListener?.remove();void listener?.remove();void openedListener?.remove();void closedListener?.remove();void noticeListener?.remove();void findListener?.remove();void fullscreenListener?.remove();window.clearTimeout(findTimer);for(const id of tabs.dispose())void Browser.close({session,id}).catch(()=>{});};
+  return ()=>{window.removeEventListener('alpha:bookmarks-document-changed',bookmarksDocumentChanged);window.removeEventListener('alpha:browser-open-view',openBrowserView);stopReading();unsubscribeReading();disposed=true;clearInterval(timer);window.removeEventListener('resize',update);document.removeEventListener('visibilitychange',visibility);void resumeListener?.remove();void listener?.remove();void openedListener?.remove();void closedListener?.remove();void noticeListener?.remove();void findListener?.remove();void fullscreenListener?.remove();window.clearTimeout(findTimer);for(const id of tabs.dispose())void Browser.close({session,id}).catch(()=>{});};
 }

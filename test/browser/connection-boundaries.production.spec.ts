@@ -1,3 +1,4 @@
+import {openCloudPlanFromSettings} from './helpers/cloud-plan-settings';
 import { cloudStorageSlot } from '../../apps/app/src/runtime/cloud-deployment.generated';
 import {seedCompletedAccessSetup} from './flag-off-android';
 import { test, expect, type Page, type Route } from '@playwright/test';
@@ -138,8 +139,10 @@ for (const legacy of [{ name: 'remote agent', selection: { kind: 'remote', origi
     await expect.poll(async () => (await nativeCalls(page)).filter(call => call.plugin === 'Agent').map(call => call.method)).toContain('start');
     // Every Alpha Phone signs in to Eliza Cloud: no local-only bypass and no close while signed out.
     await expect(welcome.getByRole('button', { name: 'Use local apps without AI', exact: true })).toHaveCount(0);
-    await expect(welcome.getByRole('button', { name: 'Continue with Google', exact: true })).toBeVisible();
-    await expect(welcome.getByRole('form', { name: 'Sign in with email', exact: true })).toBeVisible();
+    // This fixture has no native sign-in plugin: the page shows the reason and one retry (and the
+    // own-keys entry), never a column of disabled sign-in controls.
+    await expect(welcome.getByRole('button', { name: 'Try again', exact: true })).toBeVisible();
+    await expect(welcome.getByRole('button', { name: 'Use my own API keys', exact: true })).toBeVisible();
     await expect(welcome.getByRole('button', { name: 'Close connection settings', exact: true })).toHaveCount(0);
     expectRemoteUntouched(await nativeCalls(page));
     expect((await secureValues(page))[remoteSlot]).toBe(saved[remoteSlot]);
@@ -238,7 +241,7 @@ for (const mode of ['revoked', 'unsupported', 'failed', 'refused-in-body', 'not-
     await expect(page.getByRole('button', { name: 'Notes', exact: true })).toBeVisible();
     await expect.poll(async () => (await nativeCalls(page)).filter(call => call.plugin === 'Agent').map(call => call.method)).toContain('start');
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
-    await page.getByRole('button', { name: 'Eliza Cloud account & plan',exact:true }).click();
+    await openCloudPlanFromSettings(page);
     await expect(page.getByRole('button', { name: 'Sign out of Eliza Cloud', exact: true })).toBeVisible();
     const before = (await nativeCalls(page)).length;
     if (mode === 'cancelled') await page.evaluate(() => { (window as any).holdStop = true; });
@@ -251,7 +254,7 @@ for (const mode of ['revoked', 'unsupported', 'failed', 'refused-in-body', 'not-
     }
     // This bridge has no sign-in readiness service. Its automatic refusal must not erase
     // the completed sign-out receipt or turn an unconfirmed revocation into success.
-    await expect(page.getByRole('alert').filter({hasText:'Eliza Cloud sign-in is unavailable right now. Try again.'})).toBeVisible();
+    await expect(page.getByRole('alert').filter({hasText:'Eliza Cloud sign-in is unavailable.'})).toBeVisible();
     const status = page.locator('.alpha-connection').getByRole('status').filter({ hasText: /Signed out|sign-in token was removed/ });
     if (mode === 'revoked') await expect(status).toContainText('Signed out of Eliza Cloud. This sign-in was revoked.');
     else {
@@ -271,7 +274,7 @@ for (const mode of ['revoked', 'unsupported', 'failed', 'refused-in-body', 'not-
     expect(calls.slice(before).some(call => call.plugin === 'AlphaHostedResults' && call.method === 'disableBackground')).toBe(true);
     if (mode !== 'cancelled') expect(stop).toBeLessThan(calls.indexOf(revocations[0]));
     expect(await secureValues(page)).not.toHaveProperty('cloud:production');
-    await expect(page.getByRole('main', { name: 'Welcome to Alpha.', exact: true }).getByRole('button', { name: 'Continue with Google', exact: true })).toBeVisible();
+    await expect(page.getByRole('main', { name: 'Welcome to Alpha.', exact: true }).getByRole('button', { name: 'Try again', exact: true })).toBeVisible();
     // P-43: sign-out unbinds inference only; the resident restarted and the outcome says so.
     if (mode !== 'cancelled') await expect(status).toContainText('Your agent is running. Sign in to Cloud to turn AI back on.');
     await expect.poll(async () => (await nativeCalls(page)).slice(before).filter(call => call.plugin === 'Agent' && call.method === 'start').length).toBeGreaterThan(0);
@@ -458,24 +461,33 @@ test('transient startup storage failures recover without flashing global notices
   expect(await page.evaluate(()=>(window as any).startupStorage.flashes)).toEqual([]);
 });
 
-test('an unavailable deletion receipt status does not block account settings controls', async ({ page }) => {
+test('passive deletion failures stay quiet; known pending failures preserve settings access', async ({ page }) => {
   await android(page, { cloudCredential: true, balance: 5, revoke: 'revoked' });
   await page.goto('/');
   await completeAccessSetup(page);
   await expect(page.getByRole('button', { name: 'Notes', exact: true })).toBeVisible();
   await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
   await page.evaluate(() => {
+    const state=(window as any).deletionNoticeFixture={known:false,checks:0};
     const bridge = (window as any).Capacitor, original = bridge.nativePromise;
     bridge.nativePromise = (plugin: string, method: string, input: unknown) => {
-      if (plugin === 'AlphaDeletions' && method === 'pending') return Promise.reject(Error('Receipt store unavailable'));
+      if (plugin === 'AlphaDeletions' && method === 'pending') {
+        state.checks++;
+        return state.known?Promise.resolve({deletions:[{id:'known-pending',kind:'calendar',phase:'queued',window:'open',target:{row:{title:'Known pending event'}}}]}):Promise.reject(Error('Receipt store unavailable'));
+      }
       return original(plugin, method, input);
     };
     window.dispatchEvent(new Event('alpha:deletions-changed'));
   });
   const notice = page.getByRole('complementary', { name: 'Pending deletions' });
+  await expect.poll(()=>page.evaluate(()=>(window as any).deletionNoticeFixture.checks)).toBeGreaterThanOrEqual(3);
+  await expect(notice).toHaveCount(0);
+  await page.evaluate(()=>{(window as any).deletionNoticeFixture.known=true;window.dispatchEvent(new Event('alpha:deletions-changed'));});
+  await expect(notice).toContainText('Known pending event');
+  await page.evaluate(()=>{Object.assign((window as any).deletionNoticeFixture,{known:false,checks:0});window.dispatchEvent(new Event('alpha:deletions-changed'));});
   await expect(notice).toContainText('Pending deletion status is unavailable');
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.getByRole('button', { name: 'Eliza Cloud account & plan',exact:true }).click();
+  await openCloudPlanFromSettings(page);
   const signout = page.getByRole('button', { name: 'Sign out of Eliza Cloud', exact: true });
   // Force geometric overlap without forcing the click: informational text must not consume it.
   await signout.evaluate(button => {
@@ -483,8 +495,8 @@ test('an unavailable deletion receipt status does not block account settings con
     Object.assign(banner.style, { top: `${rect.top}px`, left: `${rect.left}px`, right: 'auto', bottom: 'auto', width: `${rect.width}px` });
   });
   await signout.click();
-  await expect(page.locator('.alpha-connection').getByRole('status').filter({ hasText: 'Signed out of Eliza Cloud. This sign-in was revoked.' })).toBeVisible();
-  await expect(notice).toContainText('Pending deletion status is unavailable');
+  await expect(page.locator('.alpha-connection').getByRole('status')).toContainText('Signed out of Eliza Cloud. This sign-in was revoked.');
+  await expect(notice).toHaveCount(0);
 });
 
 // UI progress only: this feature fixture does not manufacture OS/provider grants.

@@ -43,18 +43,22 @@ export const SIGNING_ENV = (() => {
     throw new Error("android/consumer-host.json must name four release-signing environment variables");
   return Object.freeze(names);
 })();
-const USAGE = "Usage: npm run android:build -- [--test-mocks] [--allow-unpackaged-runtime] [--skip-instrumentation]";
+const USAGE = "Usage: npm run android:build -- [--test-mocks] [--allow-unpackaged-runtime] [--skip-instrumentation] [--allow-older-upstream-pin]";
 
 export function parseBuildArgs(argv) {
   const options = { testMocks: false, allowUnpackagedRuntime: false, skipInstrumentation: false };
   for (const arg of argv) {
     if (arg === "--test-mocks") options.testMocks = true;
     else if (arg === "--runtime-profile=cloud") options.runtimeProfile = "cloud";
+    else if (arg === "--local-embeddings") options.localEmbeddings = true;
     else if (arg === "--skip-instrumentation") options.skipInstrumentation = true;
     else if (arg === "--allow-unpackaged-runtime") options.allowUnpackagedRuntime = true;
+    // Checked by the preflight only (it receives the same arguments): a reviewed upstream rollback.
+    else if (arg === "--allow-older-upstream-pin") options.allowOlderUpstreamPin = true;
     else throw new Error(`Unknown option ${arg}. ${USAGE}`);
   }
   if (options.runtimeProfile === "cloud" && (options.testMocks || options.allowUnpackagedRuntime)) throw Error("Cloud profile requires a genuine packaged resident and test mocks off");
+  if (options.localEmbeddings && options.runtimeProfile !== "cloud") throw Error("--local-embeddings requires the Cloud profile");
   if (options.testMocks && options.skipInstrumentation) throw new Error("Test-mocks builds require instrumentation APKs");
   return options;
 }
@@ -63,6 +67,8 @@ export function parseBuildArgs(argv) {
 export function buildEnv(base, { testMocks, runtimeProfile = "native" }) {
   const env = { ...base };
   for (const name of FLAG_ENV_NAMES) delete env[name];
+  delete env.ELIZA_LOCAL_EMBEDDINGS;
+  delete env.ORG_GRADLE_PROJECT_ELIZA_LOCAL_EMBEDDINGS;
   env.VITE_ELIZA_RUNTIME_PROFILE = runtimeProfile;
   if (testMocks) {
     env[FLAG] = "1";
@@ -71,8 +77,8 @@ export function buildEnv(base, { testMocks, runtimeProfile = "native" }) {
   return env;
 }
 
-export function gradleFlagArgs({ testMocks, allowUnpackagedRuntime = false, runtimeProfile = "native" }) {
-  return [...(runtimeProfile === "cloud" ? ["-PELIZA_RUNTIME_PROFILE=cloud"] : []),`-P${FLAG}=${testMocks ? "1" : "0"}`, `-PELIZA_ALLOW_UNPACKAGED_RUNTIME=${allowUnpackagedRuntime ? "1" : "0"}`];
+export function gradleFlagArgs({ testMocks, allowUnpackagedRuntime = false, runtimeProfile = "native", localEmbeddings = false }) {
+  return [...(localEmbeddings ? ["-PELIZA_LOCAL_EMBEDDINGS=1"] : []),...(runtimeProfile === "cloud" ? ["-PELIZA_RUNTIME_PROFILE=cloud"] : []),`-P${FLAG}=${testMocks ? "1" : "0"}`, `-PELIZA_ALLOW_UNPACKAGED_RUNTIME=${allowUnpackagedRuntime ? "1" : "0"}`];
 }
 
 export const outputDirectory = ({ testMocks }) => (testMocks ? "artifacts/test-mocks" : "artifacts");
@@ -220,6 +226,7 @@ export function consumerBuildOptions(options, env, root) {
         createdAt: new Date().toISOString(),
         testMocks: options.testMocks,
         runtimeProfile: options.runtimeProfile || "native",
+        ...(options.localEmbeddings ? {localEmbeddings:true} : {}),
         mapsConfigured: Boolean(env.VITE_MAPS_BASE_URL),
         signingRequested: signingRequested(env),
         versionOverride: { code: env.ELIZAOS_VERSION_CODE ?? null, name: env.ELIZAOS_VERSION_NAME ?? null },
@@ -228,7 +235,8 @@ export function consumerBuildOptions(options, env, root) {
     verify: { command: "node", args: ["scripts/verify-apks.mjs",
       ...(options.testMocks ? ["--test-mocks"] : []),
       ...(options.allowUnpackagedRuntime ? ["--allow-unpackaged-runtime"] : []),
-      ...(options.runtimeProfile === "cloud" ? ["--runtime-profile=cloud"] : [])] },
+      ...(options.runtimeProfile === "cloud" ? ["--runtime-profile=cloud"] : []),
+      ...(options.localEmbeddings ? ["--local-embeddings"] : [])] },
     archive: null,
   };
 }

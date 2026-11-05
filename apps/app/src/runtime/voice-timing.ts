@@ -73,3 +73,9 @@ export function exportVoiceTiming(): string { return voiceTiming.exportJson(); }
 export function clearVoiceTiming() { voiceTiming.clear(); }
 /** Test hook: a deterministic clock. */
 export function setVoiceTimingClock(clock: () => number) { voiceTiming.setClock(clock); }
+
+// Realtime control/arrival diagnostics use the same localStorage engine, a distinct versioned document.
+import {createRealtimeVoiceTiming} from '../../../../.eliza/client-features/packages/voice/src/realtime-voice-timing.ts';
+const realtimeVoiceTiming=createRealtimeVoiceTiming({storageKey:'alphaphone:realtime-voice-timing:v1',storage:()=>globalThis.localStorage});
+export const beginRealtimeVoiceTiming=(route:'direct-cartesia'|'cloud-cartesia')=>realtimeVoiceTiming.start(route);
+export const exportRealtimeVoiceTiming=()=>realtimeVoiceTiming.exportJson();
