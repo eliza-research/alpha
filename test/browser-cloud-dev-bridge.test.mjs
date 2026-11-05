@@ -864,7 +864,7 @@ async function wholeGoogleStackFixture(options={}){
  const verify=stripTypeScriptTypes(source.slice(source.indexOf('async function verifyService('),source.indexOf('let pendingBillingReview:')),{mode:'transform'});
  const serviceSlot=source.match(/const CLOUD_SERVICE = ('[^']+');/);assert.ok(serviceSlot);
  const harness=new Function('client','methods','signed','verify','store','crypto','CLOUD_SERVICE',`
- let operation=null,googleSignInGeneration=0,cloud=client;
+ let operation=null,signInReadinessOwner=null,googleSignInGeneration=0,cloud=client;
  const state={signIn:{step:'choose',environment:'production'},open:true,purpose:'cloud-account'};
  const listeners=new Set();let service=null,membershipRead=null,pendingBillingReview=null;
  const update=patch=>{Object.assign(state,patch);for(const listener of listeners)listener();},signInClient=()=>client;
