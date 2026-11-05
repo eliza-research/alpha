@@ -3,13 +3,22 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {spawnSync,execFileSync} from 'node:child_process';
+import {spawnSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {embeddingBuildRemap,SDK_PROVENANCE_RECEIPT} from '../scripts/embedding-build-remap.mjs';
 const root=path.resolve(import.meta.dirname,'..');
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
-// SDK remap fixtures use committed historical provenance, never a CI-staged current host.
-const historical=JSON.parse(execFileSync('git',['show','HEAD:android/embedding-host/qualified-host.json'],{cwd:root,encoding:'utf8'}));
+// The committed historical receipt owns this fixture even after the active
+// host is staged from a different engine revision.
+const reviewedBytes=fs.readFileSync(path.join(root,SDK_PROVENANCE_RECEIPT));
+const reviewedSha='78d598438eb62947532b02251565181e7c8f505fe453488deec605b10a65f20a';
+assert.equal(sha(reviewedBytes),reviewedSha);
+const reviewed=JSON.parse(reviewedBytes);
+const historical={
+ pin:reviewed.pin,forkPin:reviewed.forkPin,identity:reviewed.identity,abi:reviewed.abi,
+ qualificationReceiptSha256:reviewedSha,
+ libraries:reviewed.libraries.map(row=>({...row,name:path.basename(row.path)})),
+};
 function historicalFixture(t){
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-remap-historical-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
  for(const [name,bytes] of [['android/embedding-host/qualified-host.json',JSON.stringify(historical)],[SDK_PROVENANCE_RECEIPT,fs.readFileSync(path.join(root,SDK_PROVENANCE_RECEIPT))]]){const file=path.join(dir,name);fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,bytes);}
