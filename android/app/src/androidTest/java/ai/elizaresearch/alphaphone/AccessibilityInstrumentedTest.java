@@ -160,7 +160,7 @@ public final class AccessibilityInstrumentedTest {
     assertTrue("Alpha is in front again after Android's shade closes",device.wait(androidx.test.uiautomator.Until.hasObject(By.pkg(BuildConfig.APPLICATION_ID).depth(0)),5000));
     SystemClock.sleep(500);
     // Home offers no Notifications button in either flavor: Android's own swipe, above, is the way in.
-    assertEquals("Home offers no Notifications button","0",js("document.querySelectorAll('[aria-label=\\"Open notifications\\"]').length"));
+    assertEquals("Home offers no Notifications button","0",js("document.querySelectorAll('[aria-label=\"Open notifications\"]').length"));
     if(BuildConfig.IS_LAUNCHER){
      // 2. On launcher Home a pull down that starts on empty Home asks for the same shade. It starts
      // mid-screen, outside the system's top-edge zone.
