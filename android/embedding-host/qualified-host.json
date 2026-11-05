@@ -120,5 +120,11 @@
     "mode": "registered",
     "className": "ai/elizaresearch/alphaphone/ElizaVoiceNative",
     "subset": "full"
+  },
+  "requalification": {
+    "required": true,
+    "atPin": "018a2b9537d3fd985ceb958ab9ae53c15cde5f07",
+    "reason": "elizaOS/eliza #38761 moves the native engine gitlink plugins/plugin-local-inference/native/llama.cpp from cc8c9791 to the fork main tip b3eb2bf6 and reformats stage-elizavoice-lib.ts. The fork delta is one Metal-only CMake commit and the producer arguments are unchanged, but no rebuild has compared the bytes, so the reviewed ARM64 embedding host (engine cc8c9791, SDK d38e4ec7) needs a new reviewed receipt.",
+    "evidence": "docs/evidence/sdk-018a2b9537-build-input-admission-20261105.json"
   }
 }
