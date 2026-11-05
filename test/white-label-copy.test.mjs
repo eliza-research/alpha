@@ -20,8 +20,9 @@ test('runtime and native sources carry no hard-coded Eliza product name outside 
   const rel=path.join(dir,String(name));
   if(!pattern.test(rel)||generated.has(rel))continue;
   stripComments(fs.readFileSync(path.join(root,rel),'utf8')).split('\n').forEach((line,index)=>{
-   // X-Eliza-* are wire headers (protocol, not branding).
-   if(/(?<![\w-])Eliza(?![\w-])/.test(line.replace(/X-Eliza-[\w-]+/g,'')))found.push(`${rel}:${index+1}`);
+   // X-Eliza-* are wire headers (protocol, not branding). UPSTREAM_*_NOTICE constants are the pinned
+   // upstream text Alpha recognizes and replaces; they are matched, never displayed.
+   if(/(?<![\w-])Eliza(?![\w-])/.test(line.replace(/X-Eliza-[\w-]+/g,'').replace(/^export const UPSTREAM_\w+_NOTICE = .*$/,'')))found.push(`${rel}:${index+1}`);
   });
  }
  assert.deepEqual(found,[]);

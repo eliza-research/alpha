@@ -87,6 +87,8 @@ export const UPSTREAM_MODEL_UNAVAILABLE_NOTICE = 'Eliza cannot respond yet. Conf
 export const UPSTREAM_RUNTIME_ERROR_NOTICE = 'Eliza needs attention. Check the connected host\'s diagnostics before trying again.';
 const UPSTREAM_COMBINED_NOTICE = `${UPSTREAM_MODEL_UNAVAILABLE_NOTICE}\n---\n${UPSTREAM_RUNTIME_ERROR_NOTICE}`;
 
+/** A model-unavailable notice, in Alpha's words with upstream's recovery step. */
+export const MODEL_UNAVAILABLE_NOTICE = 'Your agent cannot respond yet. Choose a model provider in Settings.';
 /** A runtime-error notice that arrived while the owner's latest message was unanswered. */
 export const RUNTIME_ERROR_NOTICE = 'Part of your agent stopped working, so this reply may not arrive. Nothing was resent. Send your message again in a moment.';
 /** A runtime-error notice that arrived with nothing waiting (a service failing at start, for example). */
@@ -102,13 +104,13 @@ export function systemNoticeKind(text: unknown): SystemNoticeKind | undefined {
     : undefined;
 }
 
-/** The owner-facing text of a stored notice row. Model-unavailable keeps its upstream recovery step;
+/** The owner-facing text of a stored notice row. Model-unavailable keeps upstream's recovery step;
  * the combined form keeps both halves. `waiting`: it arrived while the owner's message was unanswered. */
 export function systemNoticeDisplayText(kind: SystemNoticeKind, waiting = false): string {
   const runtime = waiting ? RUNTIME_ERROR_NOTICE : RUNTIME_ERROR_BACKGROUND_NOTICE;
   return kind === 'runtime-error' ? runtime
-    : kind === 'model-and-runtime-error' ? `${UPSTREAM_MODEL_UNAVAILABLE_NOTICE}\n${runtime}`
-    : UPSTREAM_MODEL_UNAVAILABLE_NOTICE;
+    : kind === 'model-and-runtime-error' ? `${MODEL_UNAVAILABLE_NOTICE}\n${runtime}`
+    : MODEL_UNAVAILABLE_NOTICE;
 }
 
 type ChatRow = { from?: unknown; text?: unknown; systemNotice?: unknown; interrupted?: unknown; unfinished?: unknown; streaming?: unknown; card?: unknown; deviceReceipt?: unknown };

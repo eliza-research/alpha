@@ -18,6 +18,7 @@ test('the recognized texts are byte-equal to the pinned upstream systemNoticeTex
  assert.equal(notices.UPSTREAM_MODEL_UNAVAILABLE_NOTICE,systemNoticeText('model-unavailable'));
  for(const kind of ['runtime-error','model-unavailable','model-and-runtime-error'])assert.equal(systemNoticeKind(systemNoticeText(kind)),kind);
  assert.equal(systemNoticeKind('Eliza needs attention.'),undefined,'only the exact notice is recognized');
+ for(const kind of ['model-unavailable','runtime-error','model-and-runtime-error'])assert.doesNotMatch(systemNoticeDisplayText(kind),/Eliza/,'a notice is shown in Alpha\'s words');
  assert.equal(systemNoticeKind(undefined),undefined);
 });
 
@@ -27,7 +28,7 @@ test('the runtime-error copy names an owner step, not the host operator diagnost
  assert.doesNotMatch(RUNTIME_ERROR_BACKGROUND_NOTICE,/may not arrive|resent/,'nothing was waiting, so nothing is said about a reply');
  assert.equal(systemNoticeDisplayText('runtime-error'),RUNTIME_ERROR_BACKGROUND_NOTICE);
  assert.equal(systemNoticeDisplayText('runtime-error',true),RUNTIME_ERROR_NOTICE);
- assert.equal(systemNoticeDisplayText('model-and-runtime-error'),`${systemNoticeText('model-unavailable')}\n${RUNTIME_ERROR_BACKGROUND_NOTICE}`,'a combined notice keeps both halves');
+ assert.equal(systemNoticeDisplayText('model-and-runtime-error'),`${notices.MODEL_UNAVAILABLE_NOTICE}\n${RUNTIME_ERROR_BACKGROUND_NOTICE}`,'a combined notice keeps both halves');
 });
 
 test('replayed history with four identical notices and a normal reply shows no notice',()=>{
