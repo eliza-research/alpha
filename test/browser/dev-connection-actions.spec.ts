@@ -37,7 +37,6 @@ test('two tabs cannot execute the same development proposal twice',async({page,c
  await setup(page);await queue(page);await chat(page);
  const other=await context.newPage();await other.goto('/?mode=dev');await openLegacyNotes(other);await returnToApps(other);
  await expect.poll(()=>other.evaluate(async()=>{const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');return !!c.getSnapshot().session;})).toBe(true);
- await other.getByRole('button',{name:'Type',exact:true}).click();
  await other.getByRole('textbox',{name:/^(Ask Alpha|Message Alpha)$/}).fill('Review this proposal');
  await other.getByRole('textbox',{name:/^(Ask Alpha|Message Alpha)$/}).press('Enter');
  await expect(other.getByText('Create note',{exact:true})).toBeVisible();

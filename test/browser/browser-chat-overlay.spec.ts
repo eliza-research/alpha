@@ -64,11 +64,10 @@ test('pulling, opening and expanding the chat sheet leaves the website under it 
  await expect(screen).toHaveAttribute('data-alpha-chat-half','true');
  await page.waitForTimeout(600);
  expect(await geometry()).toEqual(settled);
- // The resting sheet is drawn over the page; the page above it stays visible and usable.
+ // The resting sheet is drawn over the page. The page above it stays visible, and a touch there
+ // only collapses the sheet; the next touch reaches the page.
  expect(await layerAt(page,'inside')).toBe('conversation');
- expect(await layerAt(page,'above')).toBe('website');
- await page.frameLocator('iframe[title="Website"]').getByRole('button',{name:'Tap'}).click();
- await expect(page.frameLocator('iframe[title="Website"]').getByRole('button',{name:'Tapped'})).toBeVisible();
+ expect(await layerAt(page,'above')).toBeUndefined();
 
  // Full chat covers the page and retires it from focus with the app, without hiding or resizing it.
  await page.getByRole('button',{name:'Expand chat',exact:true}).click();
@@ -76,7 +75,7 @@ test('pulling, opening and expanding the chat sheet leaves the website under it 
  await page.waitForTimeout(600);
  expect(await geometry()).toEqual(settled);
 
- // Closing returns the pill, not the composer: the page reserve is the same for both.
+ // Closing returns the view's resting form: the page reserve is the same for pill and composer.
  await page.getByRole('button',{name:'Minimize chat',exact:true}).click();
  await expect(screen).toHaveAttribute('data-alpha-chat-half','false');
  await expect(page.locator('[data-alpha-browser-surfaces]')).not.toHaveAttribute('inert','');
@@ -84,6 +83,8 @@ test('pulling, opening and expanding the chat sheet leaves the website under it 
  expect(await geometry()).toEqual(settled);
  expect(await site.evaluate(()=>scrollY)).toBe(600);
  expect(loads()).toBe(1);
+ await page.frameLocator('iframe[title="Website"]').getByRole('button',{name:'Tap'}).click();
+ await expect(page.frameLocator('iframe[title="Website"]').getByRole('button',{name:'Tapped'})).toBeVisible();
 });
 
 test('a website is not reloaded or scrolled when Browser is left and opened again',async({page})=>{
