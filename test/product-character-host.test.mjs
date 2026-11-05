@@ -21,7 +21,7 @@ test('native declaration uses canonical product name and the existing bio withou
 });
 test('bound and unbound Cloud launches get only the verified packaged module paths, independently of credential settings',async()=>{
  const f=fixture();let host;try{host=await f.make();await host.clear();await host.bind({token:'synthetic-token',credentialId:'one',reference:'one'});await host.clear();assert.equal(f.launches.length,3);
- for(const launched of f.launches){assert.equal(launched.env.ELIZA_SMTHRS_RUNTIME_DIR,f.worker);assert.equal(launched.env.ELIZA_NATIVE_GOOGLE_HOST_MODULE,path.join(f.worker,'google-host.mjs'));assert.equal(launched.env.ELIZA_AGENT_CHARACTER_JSON,undefined);assert.equal(launched.env.CEREBRAS_API_KEY,undefined);assert.equal(launched.env.ELIZA_NATIVE_GOOGLE_BINDING_JSON,undefined);assert.equal(launched.env.ELIZA_MANAGED_GMAIL_READ_BROKER,undefined);}
+ for(const launched of f.launches){assert.equal(launched.env.ELIZA_SMTHRS_RUNTIME_DIR,f.worker);assert.equal(launched.env.ELIZA_NATIVE_GOOGLE_HOST_MODULE,path.join(f.worker,'google-host.mjs'));assert.equal(launched.env.ELIZA_AGENT_CHARACTER_JSON,undefined);assert.equal(launched.env.CEREBRAS_API_KEY,undefined);assert.equal(launched.env.ELIZA_NATIVE_GOOGLE_BINDING_JSON,undefined);assert.equal(launched.env.ELIZA_MANAGED_GMAIL_READ_BROKER,'');assert.equal(launched.env.ELIZA_MANAGED_CALENDAR_READ_BROKER,'');}
  assert.equal(f.launches[0].env.ELIZAOS_CLOUD_API_KEY,undefined);assert.equal(f.launches[1].env.ELIZAOS_CLOUD_API_KEY,'synthetic-token');assert.equal(f.launches[2].env.ELIZAOS_CLOUD_API_KEY,undefined);
  assert.ok(!fs.readFileSync(path.join(f.profile,'eliza.json'),'utf8').includes('synthetic-token'));
  }finally{await host?.close();f.close();}

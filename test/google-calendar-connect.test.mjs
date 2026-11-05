@@ -334,7 +334,7 @@ test('the Calendar intent asks Google once for Gmail read plus Calendar read and
  try{
   await p.act(()=>p.controller.openCalendar(f.scope));
   assert.ok(p.button('Connect Google Calendar'));assert.equal(p.button('Connect Google account'),undefined,'one Connect for the Calendar intent');
-  assert.match(p.text(),/syncs both ways with your Google calendar\. All eligible saved Eliza events are sent, including dates outside the current view\. Google receives event details and guest email addresses/);
+  assert.match(p.text(),/syncs both ways with your Google calendar\. All eligible saved Calendar events are sent, including dates outside the current view\. Google receives event details and guest email addresses/);
   assert.equal(p.lists,1);assert.equal(f.reads,0,'opening the panel never reads or links the Calendar');
   await p.act(()=>p.button('Connect Google Calendar').click());
   assert.deepEqual(p.consents,[['write','read']]);assert.equal(p.opens,1);assert.equal(f.reads,0,'no link before Google returns');

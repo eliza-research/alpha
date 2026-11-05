@@ -1,4 +1,4 @@
-import {systemNoticeText} from '../../../../.eliza/client-features/packages/core/src/types/system-notice';
+import {systemNoticeText} from '../../../../.eliza/client-features/packages/core/src/types/system-notice.ts';
 /** Display only. Stored messages, proposals and journal receipts are never rewritten. */
 type Message = Record<string, any>;
 const REVIEW_TEXT = 'Review this request on your phone before it can run.';

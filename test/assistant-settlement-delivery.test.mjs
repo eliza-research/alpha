@@ -1,3 +1,4 @@
+import {systemNoticeKind,collapseSystemNotices} from '../apps/app/src/runtime/action-message-presentation.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -61,6 +62,7 @@ function fixture(){
     },
   };
   const box={
+    systemNoticeKind,collapseSystemNotices,
     console,Error,DOMException,AbortController,Promise,JSON,Object,Date,Set,Map,queueMicrotask,
     crypto:{randomUUID},document:{hidden:false,querySelector:()=>null},
     alphaClient:client,connectionController:controller,context(){},
