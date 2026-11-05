@@ -36,11 +36,15 @@
  <queries>
   <intent><action android:name="android.intent.action.SENDTO"/><data android:scheme="smsto"/></intent>
  </queries>
- <!-- Launcher flavor only (#417): a downward pull on empty Home, or Home's Notifications button,
+ <!-- Launcher flavor only (#417): a downward pull on empty Home
       asks Android to expand its own notification shade, as stock launchers do. Install-time
       permission; see SystemShade.java. The standalone app does not request it. -->
  <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
- <application><activity android:name=".MainActivity" android:exported="true">
+ <application>
+  <!-- The launcher is portrait only. The standalone app keeps app.config.json's orientation and rotates. -->
+  <activity android:name=".AlphaAssistActivity" android:screenOrientation="portrait" tools:replace="android:screenOrientation" />
+  <activity android:name=".AlphaPowerVoiceActivity" android:screenOrientation="portrait" tools:replace="android:screenOrientation" />
+  <activity android:name=".MainActivity" android:exported="true" android:screenOrientation="portrait" tools:replace="android:screenOrientation">
   <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.HOME"/><category android:name="android.intent.category.DEFAULT"/></intent-filter>
  </activity>
   <!-- The two foreground services of src/main, restated with the same types. Android lint's
