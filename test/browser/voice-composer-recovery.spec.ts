@@ -51,7 +51,8 @@ test('synthetic voice: one idle mic, full-width synth, mute and Stop preserve vi
 });
 
 test('synthetic pill voice keeps five-bar synth, mute and Stop compact without opening chat',async({page},info)=>{
- await setup(page);await page.evaluate(()=>new Promise<void>(resolve=>(window as any).voicePresentationFixture.shell.setState({chat:'hidden'},resolve)));
+ await setup(page);await page.evaluate(()=>{(window as any).voicePresentationFixture.shell.setState({chat:'hidden'});});
+ await expect.poll(()=>page.evaluate(()=>(window as any).voicePresentationFixture.shell.S().chat)).toBe('hidden');
  await page.getByRole('button',{name:'Talk',exact:true}).click();
  const pill=page.locator('[data-alpha-pill-voice]');await expect(pill).toBeVisible();await expect(pill.locator('[data-alpha-voice-bar]')).toHaveCount(5);
  expect(await page.evaluate(()=>(window as any).voicePresentationFixture.shell.S().chat)).toBe('hidden');
