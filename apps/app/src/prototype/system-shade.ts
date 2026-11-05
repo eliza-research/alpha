@@ -15,11 +15,11 @@ import {
  * docs/gesture-zones.md). Alpha posts its notices as ordinary Android notifications with
  * owner-bound taps and draws no shade of its own in a product build:
  *
- * - launcher Home (Android): the Home "Notifications" button, or a downward pull that starts on
- *   empty Home, asks Android to expand its shade (AlphaDevice.openNotificationShade, which needs
+ * - launcher Home (Android): a downward pull that starts on empty Home asks Android to expand
+ *   its shade (AlphaDevice.openNotificationShade, which needs
  *   EXPAND_STATUS_BAR on the launcher flavor). Any other outcome shows a truthful fallback;
  *   Android's own top-edge swipe always remains.
- * - standalone app: an ordinary app. No button and no pull; Android's top-edge swipe only.
+ * - standalone app: an ordinary app. No pull; Android's top-edge swipe only.
  * - browser development build (ELIZA_DEV_ALLOW_TEST_MOCKS=1): a simulated Android shade stands
  *   in for SystemUI, because a browser has none. It is a developer surface and is never shown
  *   by a production bundle or on Android.

@@ -21,10 +21,6 @@
 <sc-element value="{{homeShell}}">
 <sc-slot name="header">
 <sc-if value="{{storageAccessWarning}}"><p role="alert" class="storage-access-warning">{{storageAccessWarning}}</p></sc-if>
-  <!-- Launcher Home only (docs/gesture-zones.md, #416, #417): Android's shade is the one
-       notification and quick-settings surface. This visible control asks Android to open it, as
-       a pull down on empty Home does; the top-edge swipe stays Android's. Alpha draws no shade. -->
-  <sc-if value="{{showShadeButton}}"><div class="alpha-shade-row"><button type="button" class="alpha-shade-handle" data-alpha-shade-handle aria-label="Open notifications" aria-description="Opens Android's notifications and quick settings" onClick="{{openSystemShade}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.bell}}"></path></svg><span>Notifications</span><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.down}}"></path></svg></button></div></sc-if>
 </sc-slot>
 <sc-slot name="cards">
     {{homeAgendaCard}}
@@ -3968,23 +3964,23 @@
 <div data-alpha-browser-surfaces inert="{{appHidden}}" aria-hidden="{{appHidden}}" style="position: absolute; inset: 0; z-index: 20; pointer-events: none"></div>
 
 <sc-if value="{{isOn}}">
-<div onClick="{{scrimTap}}" style="position: absolute; inset: 0; z-index: 45; background: var(--scrim); opacity: {{scrimOp}}; pointer-events: {{scrimPE}}; transition: opacity .45s"></div>
+<div data-alpha-chat-scrim aria-hidden="true" onPointerDown="{{scrimSw.down}}" onPointerMove="{{scrimSw.move}}" onPointerUp="{{scrimSw.up}}" onPointerCancel="{{scrimSw.cancel}}" onClick="{{scrimTap}}" style="position: absolute; inset: 0; z-index: 45; background: var(--scrim); opacity: {{scrimOp}}; pointer-events: {{scrimPE}}; touch-action: none; transition: opacity .45s"></div>
 <div data-alpha-layer="conversation" aria-hidden="{{conversationHidden}}" inert="{{conversationHidden}}" style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 50; height: {{panelH}}px; border-radius: {{panelR}}; background: var(--s1); overflow: hidden; display: flex; flex-direction: column; opacity: {{panelOp}}; pointer-events: {{panelPE}}; box-shadow: 0 -1px 0 var(--line), 0 -20px 60px var(--shc); transition: {{panelTransition}}">
-  <div style="height: {{panelTop}}px; flex-shrink: 0; transition: height .4s"></div>
+  <div data-alpha-chat-top style="height: {{panelTop}}; flex-shrink: 0; transition: height .4s"></div>
   <div data-alpha-chat-header style="display:grid;grid-template-columns:minmax(0,1fr) 44px minmax(0,1fr);align-items:center;padding:0 12px 4px;gap:0;flex-shrink:0">
     <button class="tap" data-alpha-chat-home aria-label="Go Home" onPointerDown="{{chatControlPointer}}" onClick="{{backToApps}}" style="display:flex;align-items:center;gap:12px;min-width:0;min-height:44px;text-align:left;border-radius:12px">
       <span style="width:34px;height:34px;border-radius:17px;flex-shrink:0;background:var(--acc);color:var(--alpha-white);display:flex;align-items:center;justify-content:center"><span class="alpha-compute-mark" aria-hidden="true"></span></span>
       <span style="font-weight:600;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{name}}</span>
     </button>
-    <button aria-label="Resize chat" onPointerDown="{{grabSw.down}}" onPointerMove="{{grabSw.move}}" onPointerUp="{{grabSw.up}}" onPointerCancel="{{grabSw.cancel}}" onLostPointerCapture="{{grabSw.lost}}" onClick="{{grabTap}}" style="width:44px;height:44px;min-height:44px;display:flex;align-items:flex-start;justify-content:center;padding:6px 2px 0;box-sizing:border-box;border-radius:12px;cursor:grab;touch-action:none"><span style="width:40px;height:4px;border-radius:2px;background:var(--mut);opacity:.45"></span></button>
-    <div data-alpha-chat-controls style="display:flex;align-items:center;justify-content:flex-end;gap:2px;min-width:0">
+    <sc-if value="{{showGrabber}}"><button aria-label="Resize chat" onPointerDown="{{grabSw.down}}" onPointerMove="{{grabSw.move}}" onPointerUp="{{grabSw.up}}" onPointerCancel="{{grabSw.cancel}}" onLostPointerCapture="{{grabSw.lost}}" onClick="{{grabTap}}" style="width:44px;height:44px;min-height:44px;display:flex;align-items:flex-start;justify-content:center;padding:6px 2px 0;box-sizing:border-box;border-radius:12px;cursor:grab;touch-action:none"><span style="width:40px;height:4px;border-radius:2px;background:var(--mut);opacity:.45"></span></button></sc-if>
+    <div data-alpha-chat-controls style="grid-column:3;display:flex;align-items:center;justify-content:flex-end;gap:2px;min-width:0">
       <button class="ib" data-alpha-chat-size aria-label="{{sizeLabel}}" onClick="{{grabTap}}"><svg class="i" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="{{sizeIcon}}"></path></svg></button>
       <sc-if value="{{assistantSurface}}"><button class="ib" aria-label="Close assistant" onClick="{{closeAssistant}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.x}}"></path></svg></button></sc-if>
       <sc-if value="{{notAssistantSurface}}"><button class="ib" aria-label="Minimize chat" onClick="{{closeChat}}"><svg class="i" viewBox="0 0 24 24" style="width:20px;height:20px"><path d="{{ic.down}}"></path></svg></button></sc-if>
     </div>
   </div>
   <sc-if value="{{emailUseOpen}}">
-    <div ref="{{emailUseModal}}" class="scr inbox-review-modal" role="dialog" aria-modal="true" aria-label="Review email suggestion" style="position:absolute;inset:0;z-index:6;background:var(--s1);padding:calc({{panelTop}}px + 16px) 20px 28px;overflow:auto;box-sizing:border-box;display:flex;flex-direction:column;gap:12px">
+    <div ref="{{emailUseModal}}" class="scr inbox-review-modal" role="dialog" aria-modal="true" aria-label="Review email suggestion" style="position:absolute;inset:0;z-index:6;background:var(--s1);padding:calc({{panelTop}} + 16px) 20px 28px;overflow:auto;box-sizing:border-box;display:flex;flex-direction:column;gap:12px">
       <button class="tap" onClick="{{emailUse.close}}" style="align-self:flex-start;min-height:44px;padding:0 14px;border-radius:22px;background:var(--s2);color:var(--fg);font:inherit;font-weight:600">Cancel</button>
       <h2 class="serif" style="margin:0;font-size:26px;font-weight:400">Use this reply in an email?</h2>
       <p data-alpha-email-use-account style="margin:0;font-size:15px;font-weight:600;overflow-wrap:anywhere">{{emailUse.account}}</p>

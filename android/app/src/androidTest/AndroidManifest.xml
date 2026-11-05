@@ -19,15 +19,5 @@
          test package, which has its own package name and the instrumentation signer. -->
     <activity android:name="ai.elizaresearch.alphaphone.PasswordFillFixtureActivity"
       android:exported="true" android:label="Alpha autofill fixture" />
-    <!-- Bound only while AccessibilityInstrumentedTest performs its accessibility click, so that
-         WebView is in the accessibility mode a screen reader gets. Never part of an app APK. -->
-    <service android:name="ai.elizaresearch.alphaphone.ScreenReaderStandInService"
-      android:exported="true" android:label="Alpha screen reader stand-in (test)"
-      android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
-      <intent-filter>
-        <action android:name="android.accessibilityservice.AccessibilityService" />
-      </intent-filter>
-      <meta-data android:name="android.accessibilityservice" android:resource="@xml/screen_reader_stand_in" />
-    </service>
   </application>
 </manifest>

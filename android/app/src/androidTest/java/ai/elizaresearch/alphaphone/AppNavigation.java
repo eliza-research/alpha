@@ -62,11 +62,4 @@ final class AppNavigation {
  static String selected(String view) { return "document.documentElement.dataset.activeView==="+JSONObject.quote(view.toLowerCase()); }
  static String composer() { return "[...document.querySelectorAll('textarea[data-alpha-composer]')].find(e=>!e.disabled&&e.getClientRects().length&&!e.closest('[inert], [aria-hidden=\"true\"]'))"; }
  static String type() { return "document.querySelector('button[aria-label=\"Type\"]')?.click()"; }
- /**
-  * Clicks launcher Home's "Notifications" button, which asks Android to open its own shade (#416,
-  * #417; docs/gesture-zones.md). Alpha draws no shade: observe the result with AndroidShade.
-  * Evaluates to true once the button was clicked; false while Home is not the view in front, and
-  * always false on the standalone app, which has no button.
-  */
- static String openNotifications() { return "(()=>{const handle=document.querySelector('[data-screen] button[data-alpha-shade-handle]');if(!handle||!handle.getClientRects().length||handle.disabled||handle.closest('[inert]'))return false;handle.click();return true;})()"; }
 }
