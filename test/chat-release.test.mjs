@@ -52,3 +52,10 @@ test('release speed comes from the end of the drag and is zero after a hold', ()
   assert.equal(m.releaseVelocity([{ y: 400, t: 0 }], 5), 0);
   assert.equal(m.releaseVelocity([], 5), 0);
 });
+
+test('a remembered height follows the screen but never rests too short for the chat', () => {
+  assert.equal(m.restingHeight(undefined, 915, 549), 549);
+  assert.equal(m.restingHeight(0.5, 915, 549), 458);
+  assert.equal(m.restingHeight(0.23, 450, 270), 200, 'the keyboard shrank the screen');
+  assert.equal(m.restingHeight(0.23, 300, 180), 180, 'a short window keeps its default');
+});

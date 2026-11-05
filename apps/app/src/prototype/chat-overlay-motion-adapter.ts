@@ -22,6 +22,8 @@ export const CHAT_FLICK_VELOCITY = 1;
 const FLICK_WINDOW_MS = 100;
 /** A finger held still this long before lifting has not flicked, however fast it got there. */
 const FLICK_HOLD_MS = 80;
+/** A remembered sheet never rests shorter than this: the keyboard can shrink its screen. */
+const SHEET_MIN_HEIGHT = 200;
 
 /** Upward speed at release in pixels per millisecond; zero when the finger had stopped. */
 export function releaseVelocity(track: Sample[], time: number): number {
@@ -31,6 +33,12 @@ export function releaseVelocity(track: Sample[], time: number): number {
 	return first && last.t > first.t
 		? (first.y - last.y) / (last.t - first.t)
 		: 0;
+}
+
+/** The open sheet's resting height: the share of the screen it was left at, else the default. */
+export function restingHeight(share: number | undefined, full: number, half: number): number {
+	if (!share) return half;
+	return Math.min(full, Math.max(Math.round(share * full), Math.min(SHEET_MIN_HEIGHT, half)));
 }
 
 /**
@@ -75,7 +83,7 @@ type Drag = {
 	half: number;
 	floor: number;
 	track: Sample[];
-	flick: boolean;
+	flick?: "up" | "down";
 	moved: boolean;
 	tap?: () => void;
 };
@@ -124,11 +132,8 @@ export function installChatOverlayMotion(Component: Shell) {
 			scale: screen ? screen.getBoundingClientRect().height / viewportH : 1,
 		};
 	}
-	/** The open sheet's resting height: where the person last left it, else the default. */
 	function sheetHeight(shell: Shell, geometry: ReturnType<typeof bounds>) {
-		return shell.chatSheetShare
-			? Math.min(geometry.full, Math.round(shell.chatSheetShare * geometry.full))
-			: geometry.half;
+		return restingHeight(shell.chatSheetShare, geometry.full, geometry.half);
 	}
 	function retire(shell: Shell, redraw = true) {
 		const drag: Drag | undefined = shell.chatMotion;
@@ -259,11 +264,12 @@ export function installChatOverlayMotion(Component: Shell) {
 		}
 		const next = chatRelease({
 			mode: d.mode,
-			direction,
+			// A flick goes where it was aimed, even against the drag's net travel.
+			direction: d.flick ?? direction,
 			height: d.height,
 			floor: d.floor,
 			full: d.full,
-			flick: d.flick,
+			flick: !!d.flick,
 		});
 		if (next.height !== undefined)
 			this.chatSheetShare = next.height / Math.max(1, d.full);
@@ -417,7 +423,6 @@ export function installChatOverlayMotion(Component: Shell) {
 					half: g.half,
 					floor,
 					track: [{ y: event.clientY, t: event.timeStamp }],
-					flick: false,
 					moved: false,
 					tap,
 				} satisfies Drag;
@@ -443,7 +448,8 @@ export function installChatOverlayMotion(Component: Shell) {
 				if (event.pointerType !== "touch")
 					d.track.push({ y: event.clientY, t: event.timeStamp });
 				const speed = releaseVelocity(d.track, event.timeStamp) / d.scale;
-				d.flick = Math.abs(speed) >= CHAT_FLICK_VELOCITY;
+				if (Math.abs(speed) >= CHAT_FLICK_VELOCITY)
+					d.flick = speed > 0 ? "up" : "down";
 				binding.onPointerUp(event);
 			},
 			cancel(event: PointerEvent) {
