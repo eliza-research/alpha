@@ -154,6 +154,12 @@ test('access setup is not held behind a background resident start, only behind a
   assert.equal(active({...signedIn,busy:true,residentStarting:false}),false,'a foreground step such as checking a code');
   assert.equal(active({...signedIn,signIn:{step:'code'},busy:false}),false);
   assert.equal(active({cloudAccount:null,signIn:null,busy:false}),false);
+  // Own Cerebras keys open setup only after the sign-in page saved them (setupRevision), not on a passive status read.
+  const ownKeys={cloudAccount:null,signIn:null,busy:false,providerStatus:{selected:true,provider:'cerebras'}};
+  assert.equal(active(ownKeys),false,'configured own keys without onboarding');
+  assert.equal(active({...ownKeys,setupRevision:1}),true,'own keys saved from the sign-in page');
+  assert.equal(active({...ownKeys,setupRevision:1,busy:true,residentStarting:true}),true,'the agent restarting behind setup');
+  assert.equal(active({...ownKeys,setupRevision:1,providerStatus:{selected:false,provider:'elizacloud'}}),false);
 });
 
 test('Settings says the agent and its AI are starting instead of "Not available"',()=>{

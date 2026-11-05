@@ -12,12 +12,12 @@ function fixture(){
  const old={configured:true,provider:'cerebras',selected:true,revision:'old-key'};
  const cloud={configured:false,provider:'elizacloud',selected:false,revision:'cloud'};
  const box=new Function('methods','old','cloud','reading','release',`
-  let operation=null,sending=null,providerStatusGeneration=0;const state={providerStatus:old,message:''};
+  let operation=null,sending=null,providerStatusGeneration=0,signInReadinessOwner=null;const state={providerStatus:old,message:''};
   const update=patch=>Object.assign(state,patch),LOCAL_PROVIDER_MODEL='model',OWN_KEYS_NOT_SET_UP='Unavailable',isAndroid=false,browserCloudResidentEnabled=false;
   const work=async(_label,run)=>{operation=new AbortController();try{await run(operation.signal);}catch(error){if(!operation.signal.aborted)throw error;}finally{operation=null;}};
   const configureLocalProvider=async(_key,_model,_voice,signal)=>new Promise((_resolve,reject)=>signal.addEventListener('abort',()=>reject(signal.reason),{once:true}));
   let reads=0;const localProviderStatus=async()=>{reads++;if(reads===1){reading.resolve();return release.promise;}return cloud;};
-  const clearLocalProvider=async()=>cloud,retire=async()=>{},connectResident=async()=>{},showPostSignInSetup=()=>{},ownProviderSelected=()=>state.providerStatus?.selected===true;
+  const clearLocalProvider=async()=>cloud,retire=async()=>{},connectResident=async()=>{},restartAfterProviderChange=async()=>{},connectionToast=()=>{},OWN_KEY_BUSY='Busy',OWN_KEY_CHECKING='Checking key…',showPostSignInSetup=()=>{},ownProviderSelected=()=>state.providerStatus?.selected===true;
   const api=eval(methods);return {api,state,cancel:()=>operation.abort(new DOMException('Cancelled','AbortError')),get busy(){return !!operation;}};
  `)(methods,old,cloud,reading,release);
  return {...box,reading,release,old,cloud};

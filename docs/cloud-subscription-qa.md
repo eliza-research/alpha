@@ -106,12 +106,15 @@ not reuse production codes.
    | Case | Expected |
    |---|---|
    | Email: valid address, **Email me a code** | Code screen names the address. **Resend code** stays disabled for 60 s. |
-   | Email: wrong code | "That code did not work"; the field is cleared; the step stays. |
+   | Email: wrong code | "That code did not work" under the field; the rejected code is selected so typing replaces it; the step stays. |
+   | Email: expired code, or too many wrong codes | The step stays with the address shown, **Verify** disabled and **Resend code** available at once ("That code expired. Send a new code."). |
+   | **Use phone number instead**, then **Text me a code** | Code screen names the number; only the tapped button shows "Sending code…". |
    | Email: right code | Signed in; the plan gate continues below. |
    | Account with an authenticator app or SMS second step | **Enter your verification code** screen; the right code signs in. |
    | **Continue with Google** | A Custom Tab shows Google's own page (not Eliza's). After consent it returns straight to Alpha and signs in. |
-   | Google: close the tab without finishing | "Google sign-in was closed before it finished"; nothing is stored. |
-   | **Cancel sign-in** while waiting | Back to the choice screen; the pending attempt is burned; nothing is stored. |
+   | Google: close the tab without finishing | "Google sign-in was closed before it finished"; nothing is stored. While Alpha still waits ("Finish in your browser."), **Open Google again** cancels that attempt and opens a fresh Google page. |
+   | **Back** while waiting | Back to the choice screen; the pending attempt is burned; nothing is stored. |
+   | **Use my own API keys** (below the sign-in methods) | The Cloud methods give way to the Cerebras and optional Cartesia fields; **Save and use own keys** shows "Checking key…"; a rejected key is explained under the fields and only that field is selected for retyping (the other key stays); **Back** returns to sign-in. |
    | A second sign-in while one runs | Refused ("already in progress"). |
    | A brand-new email or Google account | Signed in, and the account panel says "This sign-in created a new Eliza Cloud account". |
    | Existing account (e.g. the owner's) via Google and via email | Same Cloud user and organization both ways; no "new account" notice. |

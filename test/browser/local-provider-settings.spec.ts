@@ -75,13 +75,13 @@ test('provider status, pinned model, verified save and confirmed key removal', a
   await page.evaluate(() => { (window as any).providerFixture.reject = ''; });
   await chooser.getByLabel('Cerebras API key').fill('synthetic-accepted-key');
   await chooser.getByRole('button', { name: 'Save provider', exact: true }).click();
-  // A verified key is selected at once and the agent restarts with it; the chooser closes on it.
+  // A verified key is selected at once and the agent restarts with it; the chooser closes on it
+  // (the receipt is a toast, not a message left in the closed sheet).
   await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   const agentConnection = page.getByRole('button', { name: 'Agent connection', exact: true });
   await expect(agentConnection).toContainText('Provider fixture');
   await agentConnection.click();
-  await expect(chooser.getByText('Cerebras key verified and saved in Android Keystore. Own API keys selected.', { exact: true })).toBeVisible();
   await chooser.getByText('Model provider', { exact: true }).click();
   await expect(chooser.getByText('Configured · Cerebras · qwen-3.8-27b', { exact: true })).toBeVisible();
   await expect(chooser.getByLabel('Cerebras API key')).toHaveValue('');

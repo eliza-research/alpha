@@ -90,7 +90,7 @@ test('a stored mock selection on Android reads as the resident (P-43) and never 
   // P-43: the resident is the selection (this stub has no packaged runtime). Signed out, the
   // Eliza Cloud sign-in dialog opens; no chooser, mock or pairing surface does.
   await expect(page.locator('[role="main"].alpha-cloud-sign-in')).toBeVisible();
-  await expect(chooser.getByRole('button', { name: 'Email me a code', exact: true })).toBeVisible();
+  await expect(chooser.getByRole('button', { name: 'Try again', exact: true })).toBeVisible();
   await expect(chooser.getByText(/Mock mode|Pairing code|Remote agent/)).toHaveCount(0);
   await expect(page.locator('html')).toHaveAttribute('data-connection-mode', 'live');
   await expect(page.locator('.mock-mode-banner')).toHaveCount(0);

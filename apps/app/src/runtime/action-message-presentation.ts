@@ -83,7 +83,9 @@ export function projectActionMessages(rendered: Message[], source: Message[]): M
  */
 export type SystemNoticeKind = 'model-unavailable' | 'runtime-error' | 'model-and-runtime-error';
 
-/** Byte-equal to pinned upstream `systemNoticeText()` (test/system-notice-collapse.test.mjs). */
+/** Byte-equal to pinned upstream `systemNoticeText()` (test/system-notice-collapse.test.mjs). These
+ * recognise stored notice rows only; they are never shown, since they name the shared runtime and
+ * a host operator's step. */
 export const UPSTREAM_MODEL_UNAVAILABLE_NOTICE = systemNoticeText('model-unavailable');
 export const UPSTREAM_RUNTIME_ERROR_NOTICE = systemNoticeText('runtime-error');
 const UPSTREAM_COMBINED_NOTICE = `${UPSTREAM_MODEL_UNAVAILABLE_NOTICE}\n---\n${UPSTREAM_RUNTIME_ERROR_NOTICE}`;
@@ -92,6 +94,8 @@ const UPSTREAM_COMBINED_NOTICE = `${UPSTREAM_MODEL_UNAVAILABLE_NOTICE}\n---\n${U
 export const MODEL_UNAVAILABLE_NOTICE = 'Your agent cannot respond yet. Check your AI provider in Settings.';
 
 /** A runtime-error notice that arrived while the owner's latest message was unanswered. */
+/** A model-unavailable notice in Alpha's words: the owner's own recovery step. */
+export const MODEL_UNAVAILABLE_NOTICE = 'Your agent cannot reply yet. Choose an AI provider in Settings, then send your message again.';
 export const RUNTIME_ERROR_NOTICE = 'Part of your agent stopped working, so this reply may not arrive. Nothing was resent. Send your message again in a moment.';
 /** A runtime-error notice that arrived with nothing waiting (a service failing at start, for example). */
 export const RUNTIME_ERROR_BACKGROUND_NOTICE = 'Part of your agent stopped working. Chat can still answer, but some features may not work until it recovers.';
@@ -106,7 +110,7 @@ export function systemNoticeKind(text: unknown): SystemNoticeKind | undefined {
     : undefined;
 }
 
-/** The owner-facing text of a stored notice row. Model-unavailable keeps the provider recovery step;
+/** The owner-facing text of a stored notice row, always in Alpha's words;
  * the combined form keeps both halves. `waiting`: it arrived while the owner's message was unanswered. */
 export function systemNoticeDisplayText(kind: SystemNoticeKind, waiting = false): string {
   const runtime = waiting ? RUNTIME_ERROR_NOTICE : RUNTIME_ERROR_BACKGROUND_NOTICE;

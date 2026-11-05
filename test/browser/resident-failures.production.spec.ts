@@ -75,7 +75,7 @@ for (const [kind, text] of Object.entries(KINDS)) for (const frame of ['done', '
       await expect(membership.getByRole('button', { name: 'Choose a monthly plan', exact: true })).toBeVisible();
       await expect(membership.getByRole('button', { name: 'Enter membership code', exact: true })).toBeVisible();
       expect(await stub(page, s => s.opened)).toEqual([]);
-      await account.getByRole('button', { name: 'Close membership settings', exact: true }).click();
+      await account.getByRole('button', { name: 'Close subscription', exact: true }).click();
       await expect(account).toHaveCount(0);
       await button(page, 'Expand chat').click();
       // No second billing message; the answer carries the one offer, which reopens the same popup.
@@ -260,7 +260,8 @@ test('a resident send the runtime no longer accepts (401) asks for an Eliza Clou
   await send(page, 'Sent with an expired session');
   const dialog = page.getByRole('main',{name:'Welcome to Alpha.',exact:true});
   await expect(dialog.getByRole('alert')).toHaveText('Your Cloud sign-in has expired. Sign in with Cloud again.', { timeout: 30_000 });
-  await expect(dialog.getByRole('button', { name: 'Continue with Google', exact: true })).toBeVisible();
+  // This fixture reports Google unavailable: a quiet retry instead of a dead Google button.
+  await expect(dialog.getByRole('button', { name: 'Retry Google sign-in', exact: true })).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'Email me a code', exact: true })).toBeEnabled();
   expect(await harness(page, f => ({ streams: f.streams, posts: f.posts.length }))).toEqual({ streams: 1, posts: 0 });
   await expect(page.locator('body')).not.toContainText(/pair/i);

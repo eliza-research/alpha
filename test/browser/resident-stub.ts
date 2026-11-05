@@ -255,8 +255,6 @@ export const setStub = (page: Page, patch: Record<string, unknown>) => page.eval
 export async function emailCode(page: Page, verify = true) {
   const dialog=page.locator('.alpha-cloud-sign-in');
   await expect(dialog).toBeVisible();
-  const otherMethods=dialog.getByRole('button',{name:'Other sign-in methods',exact:true});
-  if(await otherMethods.isVisible())await otherMethods.click();
   await dialog.getByRole('textbox',{name:'Email',exact:true}).fill('fixture@example.invalid');
   await dialog.getByRole('button',{name:'Email me a code',exact:true}).click();
   await expect(dialog.getByLabel('Six-digit code')).toBeVisible();
@@ -267,8 +265,6 @@ export async function emailCode(page: Page, verify = true) {
 export async function enterNativeEmailCode(page: Page, email='owner@example.invalid') {
   const panel=page.locator('.alpha-cloud-sign-in');
   await expect(panel).toBeVisible();
-  const otherMethods=panel.getByRole('button',{name:'Other sign-in methods',exact:true});
-  if(await otherMethods.isVisible())await otherMethods.click();
   await panel.getByRole('textbox',{name:'Email',exact:true}).fill(email);
   await panel.getByRole('button',{name:'Email me a code',exact:true}).click();
   await panel.getByLabel('Six-digit code').fill('123456');

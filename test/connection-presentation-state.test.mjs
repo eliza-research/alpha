@@ -874,6 +874,7 @@ test('selected own inference does not require Cloud sign-in; changing back resto
 // for the reply as they wait for a connection operation. Once it settles they switch as before.
 const providerSwitchSource=stripTypeScriptTypes([
  section('function retire(', '/** Test mocks only'),
+ section('async function restartAfterProviderChange(', '/** P-43: a startup path'),
  'globalThis.providerController={',
  section('  async configureLocal(', '  /** Stops the running agent'),
  '};',
@@ -883,6 +884,7 @@ function providerSwitchFixture(){
  const context=vm.createContext({AbortController,DOMException,
   operation:null,sending:null,providerStatusGeneration:0,epoch:1,active:null,state:{session:null},appRequests:new Set(),actionReceipts:new Map(),conversationMemory:new Map(),
   testMocksEnabled:false,residentAlwaysPresent:true,RESIDENT_NAME:'Alpha',isAndroid:true,browserCloudResidentEnabled:false,OWN_KEYS_NOT_SET_UP:'Own API keys could not be set up.',LOCAL_PROVIDER_MODEL:'model',
+  signInReadinessOwner:null,OWN_KEY_BUSY:'Alpha is busy. Try again in a moment.',OWN_KEY_CHECKING:'Checking key…',connectionToast(){},
   clearClientObservationSupport(){},retireConversationEvents(){},retireReadReplies(){},pauseHostedBackground:async()=>{},retireClockReviews:async()=>{},cancelStoppedReply(){},
   secureConnectionStore:{remove:async()=>{}},update(){},showPostSignInSetup(){},
   work:async(label,run)=>{events.push(label);await run(new AbortController().signal);},
@@ -893,7 +895,7 @@ function providerSwitchFixture(){
  return {context,events,controller:context.providerController};
 }
 test('a provider switch during a streaming reply leaves the reply running; once it settles the switch works as before',async()=>{
- const switches={configureLocal:[f=>f.controller.configureLocal('synthetic-cerebras-key','model'),['Checking the key with Cerebras…','check key','restart agent']],
+ const switches={configureLocal:[f=>f.controller.configureLocal('synthetic-cerebras-key','model'),['Checking key…','check key','restart agent']],
   selectCloudProvider:[f=>f.controller.selectCloudProvider(),['Switching to Cloud…','clear own keys','restart agent']]};
  for(const [name,[run,idle]] of Object.entries(switches)){
   const f=providerSwitchFixture(),reply=new AbortController();
