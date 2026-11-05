@@ -6,9 +6,10 @@ const voice=(page:Page)=>page.getByRole('region',{name:'Voice conversation',exac
 async function restartVoice(page:Page){
  await voice(page).getByRole('button',{name:'Stop voice conversation',exact:true}).click();
  await expect(voice(page)).toHaveCount(0);
- // The expanded composer keeps its unsent draft and shows Send. Talk is
- // available from the minimized controls without editing the draft.
+ // The composer keeps its unsent draft and shows Send. Talk is available from
+ // the pill, a pull down from the bar, without editing the draft.
  await page.getByRole('button',{name:'Minimize chat',exact:true}).click();
+ await page.evaluate(()=>(window as any).ownedVoiceNavigation.shell.setState({chat:'hidden'}));
  await page.getByRole('button',{name:'Talk',exact:true}).click({timeout:5000});
  await expect.poll(()=>page.evaluate(()=>(window as any).ownedVoiceNavigation.shell.swallowed())).toBe(false);
  await page.locator('[data-alpha-pill-voice]').getByRole('button',{name:'Open conversation',exact:true}).press('Enter',{timeout:5000});

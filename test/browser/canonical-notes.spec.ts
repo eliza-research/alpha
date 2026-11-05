@@ -243,7 +243,7 @@ test('canonical Notes editor stays focusable beside half chat and isolates witho
  await expect(notes).not.toHaveAttribute('inert','');
  await expect(title).toHaveValue('Overlay draft');await expect(note).toHaveValue(body);
  await expect(page.getByRole('textbox',{name:'Message Alpha',exact:true})).toHaveValue('Keep the unsent chat draft');
- await page.getByRole('button',{name:'Back to notes',exact:true}).click();
+ await page.getByRole('button',{name:'Back to notes',exact:true}).press('Enter');
  await expect.poll(()=>snapshot(page).then((s:any)=>s.notes.length)).toBe(1);
  expect((await snapshot(page)).notes[0].body).toBe('\n'+body);
  expect(foreign).toEqual([]);expect(errors).toEqual([]);
