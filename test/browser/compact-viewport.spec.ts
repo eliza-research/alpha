@@ -57,6 +57,13 @@ for(const theme of ['light','dark']) test(`Scheduled digests respects ${theme} a
 });
 
 test('Connection dialog follows a live theme change and remains keyboard accessible',async({page},info)=>{
+  await page.route('**/__alpha-browser-cloud',async route=>{
+    if(route.request().postDataJSON()?.operation==='signInStatus'){
+      await route.fulfill({json:{active:false,inApp:true,google:false,email:true}});
+      return;
+    }
+    await route.fallback();
+  });
   await page.goto('/');
   await page.getByRole('button',{name:'Settings',exact:true}).click();
   await page.getByRole('button',{name:'Display',exact:true}).click();
