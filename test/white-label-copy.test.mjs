@@ -20,7 +20,9 @@ test('runtime and native sources carry no hard-coded Eliza product name outside 
   const rel=path.join(dir,String(name));
   if(!pattern.test(rel)||generated.has(rel))continue;
   stripComments(fs.readFileSync(path.join(root,rel),'utf8')).split('\n').forEach((line,index)=>{
-   // X-Eliza-* are wire headers (protocol, not branding).
+   // X-Eliza-* are wire headers (protocol, not branding). The UPSTREAM_* notice markers are the
+   // pinned upstream text, matched to recognise stored rows and never shown (system-notice-collapse.test.mjs).
+   if(/^export const UPSTREAM_[A-Z_]+_NOTICE = /.test(line)&&rel==='apps/app/src/runtime/action-message-presentation.ts')return;
    if(/(?<![\w-])Eliza(?![\w-])/.test(line.replace(/X-Eliza-[\w-]+/g,'')))found.push(`${rel}:${index+1}`);
   });
  }

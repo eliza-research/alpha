@@ -103,11 +103,12 @@ test('a verified email code goes straight to access setup while the agent restar
  await signIn.getByRole('button',{name:'Email me a code',exact:true}).click();
  const code=page.getByRole('form',{name:'Enter your email code'});
  await expect(code).toBeVisible();
- // A wrong code reports inside the same page; the error never turns it into a dismissible dialog.
+ // A wrong code reports inside the same page; the error never turns it into a dismissible dialog
+ // (its Back returns to the email form on the same page).
  await code.getByLabel('Six-digit code').fill('000000');await code.getByRole('button',{name:'Verify',exact:true}).click();
  const codePage=page.getByRole('main',{name:'Check your code.',exact:true});
  await expect(codePage.getByRole('alert')).toBeVisible();
- await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);await expect(codePage.getByRole('button',{name:'Back',exact:true})).toHaveCount(0);
+ await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);await expect(page.locator('.alpha-auth-page')).toHaveCount(1);
  // The agent's restart with the new key takes as long as a first boot; hold it there. The account
  // admission (identity and plan reads) is held too, to show what the verified step says meanwhile.
  host.hold=true;host.holdAdmission=true;
@@ -195,7 +196,7 @@ test('a start that has not decided in 60 s shows Home as before, and the sign-in
  await expect(page.getByRole('main',{name:'Welcome to Alpha.',exact:true})).toBeVisible({timeout:30_000});
 });
 
-test('a cancelled check and a rejected own key keep the welcome page, with the rejection inside the own-key view',async({page},info)=>{
+test('own keys taken over from a held readiness check and rejected keep the welcome page, with the rejection inside the own-key form',async({page},info)=>{
  test.setTimeout(90_000);
  const AI_KEY='synthetic-browser-own-cerebras-key',VOICE_KEY='synthetic-browser-own-cartesia-key';
  const host=await hosts(page);host.holdStatus=true;
@@ -203,30 +204,25 @@ test('a cancelled check and a rejected own key keep the welcome page, with the r
  await page.goto(origin+'/');
  const welcome=page.getByRole('main',{name:'Welcome to Alpha.',exact:true});
  await expect(welcome).toBeVisible({timeout:60_000});
- // The readiness check is held; after 4 s the owner cancels it, so no sign-in view is active.
- // While it runs, its Cancel stays in view: the switch to own keys waits for it.
- await expect(welcome.getByRole('button',{name:'Cancel sign-in',exact:true})).toBeEnabled({timeout:10_000});
- await expect(welcome.getByRole('button',{name:'Use your own API keys',exact:true})).toBeDisabled();
- await welcome.getByRole('button',{name:'Cancel sign-in',exact:true}).click({timeout:10_000});
- await expect(welcome.getByRole('button',{name:'Retry sign-in',exact:true})).toBeVisible();
- await welcome.getByRole('button',{name:'Use your own API keys',exact:true}).click();
- const own=welcome.getByRole('region',{name:'Own API keys',exact:true});
+ // The readiness check is held. It is not an attempt the owner started: own keys stay available
+ // and saving them ends the check first.
+ await expect(welcome.getByRole('button',{name:'Use my own API keys',exact:true})).toBeEnabled({timeout:10_000});
+ await welcome.getByRole('button',{name:'Use my own API keys',exact:true}).click();
+ const own=welcome.getByRole('form',{name:'Own API keys'});
  await own.getByLabel('Cerebras API key',{exact:true}).fill(AI_KEY);
  await own.getByLabel('Cartesia API key (optional)',{exact:true}).fill(VOICE_KEY);
  await own.getByRole('button',{name:'Save and use own keys',exact:true}).click();
- // The rejection says what failed, inside the own-key view on the same page, as on Android.
+ // The rejection says what failed, inside the own-key form on the same page, as on Android.
  await expect(own.getByRole('alert')).toHaveText('Own API keys could not be set up. Check the keys and try again.');
  expect(host.operations.filter(operation=>operation==='residentOwn')).toHaveLength(1);
- await expect(own.getByLabel('Cerebras API key',{exact:true})).toHaveValue('');
- await expect(own.getByLabel('Cartesia API key (optional)',{exact:true})).toHaveValue('');
  await expect(page.locator('.alpha-auth-page')).toHaveCount(1);await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
  await expect(page.getByRole('dialog',{name:'Your agent',exact:true})).toHaveCount(0);
- await page.keyboard.press('Escape');await expect(own).toBeVisible();
  await shot(page,info,'own-key-rejected-after-cancelled-check');
  // Cloud sign-in never shows the key rejection as its own.
- await own.getByRole('button',{name:'Sign in with Cloud instead',exact:true}).click();
- await expect(welcome.getByRole('button',{name:'Retry sign-in',exact:true})).toBeVisible();
- await expect(welcome.getByRole('alert')).toHaveCount(0);
+ await own.getByRole('button',{name:'Back',exact:true}).click();
+ await expect(own).toHaveCount(0);
+ await expect(welcome.getByRole('button',{name:'Use my own API keys',exact:true})).toBeVisible();
+ await expect(welcome.getByRole('alert')).toHaveCount(0);await expect(welcome).not.toContainText('could not be set up');
  const seen=await page.evaluate(()=>[...Object.values(localStorage),...Object.values(sessionStorage),document.body.innerText].join('\n'));
  for(const key of [AI_KEY,VOICE_KEY]){expect(seen).not.toContain(key);expect(logs.join('\n')).not.toContain(key);}
  host.releaseStatus?.();

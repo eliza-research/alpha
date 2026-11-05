@@ -85,10 +85,11 @@ async function firstRun(page: Page, overrides: Partial<StubAccount> = {}, ownedL
 }
 /** No key was kept or bound, and the resident is running without AI (P-43). `untouched`: the sign-in
  * never stored a key, so the resident kept running throughout (never stopped, never restarted). */
-async function nothingLeft(page: Page, welcome: ReturnType<Page['getByRole']>, untouched = false) {
+async function nothingLeft(page: Page, welcome: ReturnType<Page['getByRole']>, untouched = false, codeKept = false) {
   await expect.poll(()=>harness(page,f=>f.calls.filter((call:string)=>call==='Agent.start').length)).toBeGreaterThan(0);
   await expect(welcome).toBeVisible();
-  await expect(welcome.getByRole('button', { name: 'Email me a code', exact: true })).toBeEnabled();
+  // An expired code keeps the address on screen with a new code one tap away.
+  await expect(welcome.getByRole('button', { name: codeKept ? 'Resend code' : 'Email me a code', exact: true })).toBeEnabled();
   expect(await harness(page, f => f.slots['cloud:production'] ?? null)).toBeNull();
   expect(await stub(page, s => s.order.some((entry: string) => entry.startsWith('configureCloudProvider')))).toBe(false);
   if (untouched) {
@@ -187,7 +188,7 @@ test('first run: Cancel while verifying the email code keeps no key and the resi
   await enterNativeEmailCode(page);
   await expect(page.getByText(WAITING, { exact: true })).toBeVisible();
   await expect.poll(() => stub(page, s => s.order.includes('native sign-in verifyEmail'))).toBe(true);
-  await page.getByRole('button', { name: 'Cancel sign-in', exact: true }).click();
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
   const polls = await stub(page, s => s.polls);
   await page.waitForTimeout(2000);
   expect(await stub(page, s => s.polls)).toBe(polls);
@@ -201,7 +202,7 @@ test('first run: an expired sign-in session keeps no key and the resident runs w
   await setStub(page, { login: 'expired' });
   await enterNativeEmailCode(page);
   await expect(page.getByRole('alert')).toContainText('expired');
-  await nothingLeft(page, welcome, true);
+  await nothingLeft(page, welcome, true, true);
 });
 
 test('first run: Cloud refusing the new key (401 on the account read) removes it and the resident runs without AI', async ({ page }) => {
