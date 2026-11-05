@@ -1,5 +1,5 @@
 .alpha-startup-permissions{box-sizing:border-box;width:100%;max-width:none;height:100dvh;max-height:none;inset:0;margin:0;padding:max(env(safe-area-inset-top),32px) max(env(safe-area-inset-right),24px) max(env(safe-area-inset-bottom),32px) max(env(safe-area-inset-left),24px);border:0;border-radius:0;background:var(--connection-bg,#fff);color:var(--connection-fg,#000);font:16px/1.5 'Public Sans',system-ui,sans-serif;overflow:auto;overscroll-behavior:contain;outline:none}
-.alpha-startup-permissions[open]{display:flex;align-items:center;justify-content:center}
+.alpha-startup-permissions[open]{display:grid;grid-template-columns:minmax(0,1fr);align-content:safe center;justify-items:center}
 .alpha-startup-permissions::backdrop{background:var(--connection-bg,#fff)}
 .alpha-permission-content{display:flex;flex-direction:column;align-items:center;width:100%;max-width:360px;text-align:center}
 .alpha-permission-icon{display:flex;align-items:center;justify-content:center;width:80px;height:80px;border-radius:50%;background:var(--connection-s2,#f3f3f3);color:var(--connection-fg,#000);margin-bottom:28px}
