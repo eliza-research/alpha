@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "baseCommit": "2ce38dac93ffed01c2d633f373c223a9876a0f85",
+  "baseCommit": "7ddca47f705f9a9396eee2b9291b4f60f1978e06",
   "patches": [
     {
       "file": "google-browser-sign-in.patch",
