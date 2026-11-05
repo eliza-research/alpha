@@ -85,7 +85,7 @@ the operator's index of build, provisioning, release and support material is the
 
 ## Product boundaries
 
-Current local developer source: SDK `bde96e24db`. Current browser evidence and pending Android preparation are separate from the historical acceptance below; these local fixes are unmerged and unpublished.
+Current Alpha integration source: SDK `951197ae39`. The SDK is published for review. Android packaging and live Cloud voice validation remain pending.
 
 Historical source projection:
 
