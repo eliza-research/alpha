@@ -5681,7 +5681,8 @@ class Component extends DCLogic {
       onKey: function (e) { if (e.key === "Enter") { e.preventDefault(); self.send(); } },
       sendNow: function () { self.send(); },
       openSheet: function () { if (self.swallowed()) return; self.setState({ chat: "sheet" }); },
-      toInput: function () { self.setState({ chat: "input" }); },
+      /* Android raises the keyboard only for a focused field, so the Type button focuses the composer it reveals. */
+      toInput: function () { self.setState({ chat: "input" }, function () { document.querySelector("[data-alpha-input-bar] textarea[data-alpha-composer]")?.focus(); }); },
       closeChat: function () { if (assistantOnly && !self.S().view) return self.closeAssistant(); self.setState({ chat: self.rest() }); },
       scrimTap: function () { if (assistantOnly && !self.S().view) return self.closeAssistant(); self.setState({ chat: self.rest() }); },
       grabTap: function () { if (self.swallowed()) return; self.setState({ chat: self.S().chat === "full" ? "sheet" : "full" }); },

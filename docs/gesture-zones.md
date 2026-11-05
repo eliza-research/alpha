@@ -56,7 +56,7 @@ of these hold:
 
 On a phone the WebView may take a vertical drag for scrolling before the page sees it. A Home
 whose content fits the screen is marked `data-alpha-home-fits="true"` and gives vertical drags to
-the page (`touch-action: pan-x pinch-zoom`). A Home that overflows (launcher landscape, large
+the page (`touch-action: pan-x pinch-zoom`). A Home that overflows (large
 text or display size) scrolls normally; only at its top, where it cannot scroll further down, does
 Alpha take a clearly downward drag on empty Home from the WebView (a non-passive `touchmove` that
 calls `preventDefault`, `overflowPullDecision` in `system-shade.ts`), so that pull reaches Alpha
