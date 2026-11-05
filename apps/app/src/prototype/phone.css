@@ -19,6 +19,10 @@ html,body,#root{margin:0;width:100%;height:100%;overflow:hidden;overscroll-behav
 [data-alpha-toast] > * { flex-shrink:0; }
 .alpha-chat-notices { max-height:30%; overflow:auto; flex-shrink:0; }
 .alpha-chat-notices:empty { display:none; }
+/* Full-screen chat on the launcher is drawn under Android's status bar. Its header starts 16
+ * screen pixels below the bar and has no Resize chat grabber, so nothing of Alpha's competes
+ * with the top-edge band where Android opens its shade. */
+.alpha-phone{--alpha-chat-full-top:max(60px,calc((max(var(--native-top-inset,0px),env(safe-area-inset-top,0px)) + 16px) / var(--phone-scale,1)))}
 .voice-overlay{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.2);font-family:'Public Sans',sans-serif;display:flex;align-items:end}
 .voice-overlay .dialog-backdrop{width:100%}
 .voice-overlay .dialog{background:var(--alpha-white);color:var(--alpha-black);border-radius:30px 30px 0 0;padding:24px;max-height:85dvh;overflow:auto}
@@ -32,20 +36,12 @@ html,body,#root{margin:0;width:100%;height:100%;overflow:hidden;overscroll-behav
 .alpha-phone [data-alpha-layer="conversation"]>.scr{min-height:0}
 
 /* Real event titles share the card with their date and time; empty copy stays large. */
-/* Launcher Home's Notifications button asks Android to open its own shade (docs/gesture-zones.md,
- * #416, #417). It is a 44px target below Android's status bar, so a pull that starts on it never
- * starts in the system's top-edge gesture zone. touch-action:none hands the pull to the page
- * instead of scrolling Home. */
-.alpha-shade-row { display:flex; justify-content:center; flex-shrink:0; padding:0 24px 12px; }
-.alpha-shade-handle { display:flex; align-items:center; gap:8px; min-height:44px; min-width:120px; max-width:100%; box-sizing:border-box; padding:6px 16px; border-radius:22px; background:var(--s2); color:var(--fg); font-size:13px; font-weight:500; line-height:1.25; touch-action:none; }
-.alpha-shade-handle .i { width:16px; height:16px; flex-shrink:0; color:var(--mut); }
-.alpha-shade-handle:focus-visible { outline:2px solid var(--acct); outline-offset:2px; }
 /* A launcher Home whose content fits has nothing to scroll vertically: vertical drags go to the
  * page as pointer events, so a pull down on empty Home reaches Alpha instead of the WebView's
  * overscroll (#417). Home that overflows (large text) scrolls as usual. Set by markHomeFits(). */
 html:not(.standalone-app) [data-alpha-layer="home"][data-alpha-home-fits="true"] { touch-action:pan-x pinch-zoom; }
 /* The launcher draws under Android's status bar. The design reserves 44px for it; a taller bar
- * (a display cutout) pushes Home down so the handle stays clear of the bar. The inset is in
+ * (a display cutout) pushes Home down so Home stays clear of the bar. The inset is in
  * screen pixels and Home is laid out on the 412px canvas, which is scaled to the screen
  * (--phone-scale, main.tsx): the inset and its 12px margin are divided by that scale, so the
  * handle starts 12 screen pixels below the bar on a narrow phone as well as on a 412px one. */
@@ -226,6 +222,9 @@ html:not(.standalone-app) [data-alpha-layer="home"][data-alpha-home-fits="true"]
 [data-alpha-message-text][role="button"]:focus-visible, [data-alpha-message-actions] [role="menuitem"]:focus-visible { outline: 2px solid var(--acct); outline-offset: 3px; }
 
 .alpha-compute-mark{display:inline-block;width:1em;height:1em;flex-shrink:0;background:currentColor;mask:url('/logo-mark.svg') center/contain no-repeat;-webkit-mask:url('/logo-mark.svg') center/contain no-repeat}
+/* The mark overscans its circle so the rays run off the rim instead of sitting inside a blue ring. */
+.alpha-mark-fill{overflow:hidden}
+.alpha-mark-fill .alpha-compute-mark{width:118%;height:118%}
 /* Before startup decides between sign-in, access setup and Home: the mark alone, after a pause (main.tsx). */
 .alpha-startup-loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;font-size:56px;animation:fade .7s .3s both}
 
@@ -342,6 +341,10 @@ html:not(.alpha-landscape) .alpha-phone [data-screen]:not([data-alpha-chat-half=
 
 /* Existing inline app dialogs own focus above a nonblocking half sheet too. */
 [data-screen][data-alpha-chat-half="true"]:has([data-alpha-layer="app"] [role="dialog"]) [data-alpha-layer="conversation"] { visibility:hidden; }
+/* The sheet is hidden behind that dialog, and in landscape it docks beside the app: neither covers
+ * anything, so a touch outside it stays the app's. */
+[data-screen][data-alpha-chat-half="true"]:has([data-alpha-layer="app"] [role="dialog"]) [data-alpha-chat-scrim],
+.alpha-landscape .alpha-phone [data-alpha-chat-scrim] { pointer-events:none!important; }
 
 /* Assistant owns only its conversation surface. */
 .alpha-assistant-surface .alpha-phone :is([data-alpha-layer="home"],[data-alpha-layer="drawer"]){display:none!important}

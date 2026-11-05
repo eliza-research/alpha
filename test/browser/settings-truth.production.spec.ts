@@ -150,16 +150,14 @@ test('launcher Home asks Android for its own shade and draws no Alpha shade, til
  await expect(alphaShade(page)).toHaveCount(0);
  for(const name of ['Wi-Fi','Bluetooth','Do not disturb','Agent can listen','Airplane mode','Flashlight','Display settings','Clear all'])
   await expect(page.getByRole('button',{name:new RegExp('^'+name+'(, |$)')}),name).toHaveCount(0);
- const button=page.getByRole('button',{name:'Open notifications',exact:true});
- await expect(button).toBeVisible();
- await expect(button).not.toHaveAttribute('aria-controls',/.*/);
- // Android accepted the request: no message, nothing else drawn.
- await button.click();
+ await expect(page.getByRole('button',{name:'Open notifications',exact:true})).toHaveCount(0);
+ // A pull down on empty Home asks Android. It accepted: no message, nothing else drawn.
+ await drag(page,{x:206,y:420},240);
  await expect.poll(()=>shadeRequests(page)).toBe(1);
  await expect(alphaShade(page)).toHaveCount(0);
  await expect(page.getByText(/Swipe down from the top edge/)).toHaveCount(0);
  await expect(page.locator('html')).toHaveAttribute('data-active-view','home');
- // A pull down on empty Home asks the same way.
+ // Asking again asks the same way.
  await drag(page,{x:206,y:420},240);
  await expect.poll(()=>shadeRequests(page)).toBe(2);
  // A pull with the composer focused (keyboard up) does not.
@@ -178,7 +176,7 @@ test('launcher Home asks Android for its own shade and draws no Alpha shade, til
  for(const [outcome,text] of Object.entries(fallback)){
   await set(page,{shadeOutcome:outcome});
   const before=await shadeRequests(page);
-  await button.click();
+  await drag(page,{x:206,y:420},240);
   await expect.poll(()=>shadeRequests(page)).toBe(before+1);
   await expect(page.getByText(text,{exact:true}).last()).toBeVisible();
   await expect(alphaShade(page)).toHaveCount(0);

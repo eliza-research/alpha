@@ -5347,7 +5347,7 @@ class Component extends DCLogic {
     this.setState({ shade: true, heads: false });
   }
   /**
-   * Launcher Home's Notifications button and a pull on empty Home. Android's shade is the one
+   * A pull on launcher's empty Home. Android's shade is the one
    * notification and quick-settings surface: on Android this asks Android to expand it
    * (installSystemShade); the browser development build opens its stand-in; anything else
    * says how to reach Android's notifications instead of drawing a second panel.
@@ -5361,7 +5361,7 @@ class Component extends DCLogic {
     if (this.simulatedShade()) return this.openShade();
     this.toast(shadeFallback("unsupported"));
   }
-  /** Home is inert while the panel covers it: focus moves into the panel, and back to the handle when it closes. */
+  /** Home is inert while the panel covers it: focus moves into the panel while it is open. */
   syncShadeFocus() {
     var S = this.S(), open = S.screen === "home" && !!S.shade;
     if (open === !!this.shadeFocusOpen) return;
@@ -5372,22 +5372,18 @@ class Component extends DCLogic {
       if (close && !(active && active.closest && active.closest('[data-alpha-layer="shade"]'))) close.focus({ preventScroll: true });
       return;
     }
-    // Only when nothing else took focus: opening a notice or Settings from the panel moves on.
-    var handle = document.querySelector("[data-alpha-shade-handle]");
-    var lost = !active || active === document.body || !!(active.closest && active.closest('[data-alpha-layer="shade"]'));
-    if (handle && lost && !handle.closest("[inert]")) handle.focus({ preventScroll: true });
   }
 
   /* ---- gestures ---- */
   scale(el) { var sc = el && el.closest ? el.closest("[data-screen]") : null; var r = (sc || el).getBoundingClientRect(); return { r: r, s: r.width / 412 || 1 }; }
-  gDown(e) { if (e.target.closest?.("[data-alpha-transcript]")) { this.g = null; return; } var o = this.scale(e.currentTarget); this.g = { x: (e.clientX - o.r.left) / o.s, y: (e.clientY - o.r.top) / o.s, cx: e.clientX, cy: e.clientY, s: o.s, handle: !!e.target.closest?.("[data-alpha-shade-handle]"), pull: pullStart(e.target) }; }
+  gDown(e) { if (e.target.closest?.("[data-alpha-transcript]")) { this.g = null; return; } var o = this.scale(e.currentTarget); this.g = { x: (e.clientX - o.r.left) / o.s, y: (e.clientY - o.r.top) / o.s, cx: e.clientX, cy: e.clientY, s: o.s, pull: pullStart(e.target) }; }
   gUp(e) { var g = this.g; this.g = null; if (!g || window.getSelection()?.isCollapsed === false) return; this.swipe(g, (e.clientX - g.cx) / g.s, (e.clientY - g.cy) / g.s); }
   swipe(g, dx, dy) {
     // Gesture zones (docs/gesture-zones.md) are the shared shell's (resolveMobileShellSwipe). The top
-    // edge belongs to Android; on launcher Home a pull down that starts on the Notifications button
-    // or on empty Home asks Android for its shade (#417, @elizaos/capacitor-system/shade).
+    // edge belongs to Android; on launcher Home a pull down that starts
+    // on empty Home asks Android for its shade (#417, @elizaos/capacitor-system/shade).
     var self = this, S = this.S();
-    var action = resolveMobileShellSwipe({ screen: S.screen, shade: !!S.shade, view: S.view, chat: S.chat, launcher: this.props.systemShell !== false }, { x: g.x, y: g.y, onShadeControl: !!g.handle }, dx, dy, {
+    var action = resolveMobileShellSwipe({ screen: S.screen, shade: !!S.shade, view: S.view, chat: S.chat, launcher: this.props.systemShell !== false }, { x: g.x, y: g.y, onShadeControl: false }, dx, dy, {
       pullOpensShade: function (px, py, threshold) { return emptyHomeShadePull(self.pullContext(), g.pull, g.y, px, py, threshold); },
     });
     if (action === "unlock") return this.unlock();
@@ -5661,9 +5657,8 @@ class Component extends DCLogic {
       goFlows: function () { self.openView("workflows", copy("shell").homeWorkflow || null); },
       goSettings: function () { self.openView("settings"); },
       tiles: tiles, bright: S.bright, brightHandoff: true, brightSlider: false, onBright: function () { self.openView("settings", { page: "display" }); }, shadeN: shadeN, shadeY: isOn && S.shade && this.simulatedShade() ? "0" : "-100%",
-      // Android owns the shade (#416): only the development build renders its stand-in, and only
-      // launcher Home offers the Notifications button that asks Android for its shade (#417).
-      simulatedShade: this.simulatedShade(), showShadeButton: P.systemShell !== false && !P.assistantSurface,
+      // Android owns the shade (#416): only the development build renders its stand-in.
+      simulatedShade: this.simulatedShade(),
       closeShade: function () { self.setState({ shade: false }); }, openSystemShade: function () { self.openSystemShade(); },
       shadeKey: function (event) { if (event.key === "Escape" && !event.defaultPrevented) { event.preventDefault(); self.setState({ shade: false }); } }, clearAll: function () { self.setState({ nGone: NOTIFS.map(function (n) { return n.id; }), shade: false }); },
       // Policy P-23: on Android the system Keyguard owns the secure camera; Alpha never
@@ -5674,9 +5669,9 @@ class Component extends DCLogic {
       msgs: msgs, typing: S.typing && !S.turnStatus, turnStatus: S.typing ? S.turnStatus || "" : "", sugg: sugg, showSugg: panelOpen && !S.draft && !S.typing && !voiceOn,
       panelComposer: panelOpen && !voiceOn,
       panelH: !isOn ? 0 : (S.chat === "full" ? 915 : (S.chat === "sheet" ? 560 : 0)), panelR: S.chat === "full" ? "0px" : "30px 30px 0 0",
-      panelOp: panelOpen ? 1 : 0, panelPE: panelOpen ? "auto" : "none", panelTop: S.chat === "full" && this.props.systemShell !== false ? 40 : 4,
+      panelOp: panelOpen ? 1 : 0, panelPE: panelOpen ? "auto" : "none", panelTop: S.chat === "full" && this.props.systemShell !== false ? "var(--alpha-chat-full-top,60px)" : "4px",
       scrimOp: 0, scrimPE: "none",
-      sizeIcon: S.chat === "full" ? IC.shrink : IC.expand, sizeLabel: S.chat === "full" ? "Shrink chat" : "Expand chat",
+      showGrabber: S.chat !== "full", sizeIcon: S.chat === "full" ? IC.shrink : IC.expand, sizeLabel: S.chat === "full" ? "Shrink chat" : "Expand chat",
       showComposer: showComposer, showPill: showPill, cmpBottom: 28,
       cmpPlaceholder: (mod && mod.placeholder) ? mod.placeholder : "Ask " + name,
       draft: S.draft, hasDraft: !!S.draft, noDraft: !S.draft,
