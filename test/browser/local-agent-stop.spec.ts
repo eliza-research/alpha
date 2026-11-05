@@ -13,7 +13,7 @@ for (const scenario of ['confirmed', 'incomplete-timeout'] as const) {
       const store = new Map();
       w.stopFixture = { starts: 0, stops: 0, polls: 0, status: { state: 'stopping', serviceActive: true, socketListening: true }, unexpected: [] as string[] };
       const methods = (names: string[]) => names.map(name => ({ name, rtype: 'promise' }));
-      const agent = w.residentAgent = w.createResidentAgentPlugin({ owner: () => 'fixture-owner', agentId: 'fixture-agent', providerStatus: { provider: 'elizacloud', configured: false } });
+      const agent = w.residentAgent = w.createResidentAgentPlugin({ owner: () => 'fixture-owner', agentId: 'fixture-agent', providerStatus: {provider: 'elizacloud', configured: false} });
       w.Capacitor = {
         PluginHeaders: [
     {name:'AlphaNotifications',methods:methods(['status','crossAppStatus','addListener','removeListener'])},
