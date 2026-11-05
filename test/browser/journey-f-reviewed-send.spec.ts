@@ -134,6 +134,9 @@ const editedStatus = 'This email was edited after this review, so the review was
 test.beforeEach(async ({page}) => {
   // Nothing in this file may leave the machine.
   await page.route(/^https?:\/\/(?!127\.0\.0\.1:|localhost:)/, route => route.abort());
+  // A signed-in fixture account models an installation that already finished access setup; with
+  // setup pending the startup walkthrough would cover Inbox once the swapped snapshot re-renders.
+  await page.addInitScript(() => localStorage.setItem('alpha:startup-permission-walkthrough:v1', JSON.stringify({version: 1, status: 'completed', step: 4})));
 });
 
 test('F-5: the send review shows From, To, Cc, Bcc, subject, body and the attachment, and the dispatched request is the reviewed one byte for byte', async ({page}) => {

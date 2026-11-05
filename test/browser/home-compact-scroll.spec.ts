@@ -25,7 +25,10 @@ async function homeOrder(page:Page){
   return {names:controls.map(row=>row.name),under,backwards,composerBelow:composer.top>=lowest-1,scrollable:layer.scrollHeight>layer.clientHeight};
  });
 }
-test('Home at 200% text fills the screen and its last app row scrolls above the composer',async({page})=>{
+// The standalone app's Home (three columns, four rows) fits the screen at 200% text since the shared
+// mobile shell Home (38fe6354b, #775); only the launcher Home must scroll there (accessibility-resilience).
+// Whether it scrolls or not, its last app row stays clear of the composer.
+test('Home at 200% text fills the screen and its last app row stays above the composer',async({page})=>{
  await page.setViewportSize({width:412,height:915});
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
  await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).waitFor();
@@ -35,7 +38,6 @@ test('Home at 200% text fills the screen and its last app row scrolls above the 
  for(const at of ['top','bottom'] as const){
   await layer.evaluate((el,at)=>{el.scrollTop=at==='top'?0:el.scrollHeight;},at);await page.waitForTimeout(100);
   const order=await homeOrder(page);
-  expect(order.scrollable,'200% Home scrolls').toBe(true);
   if(at==='bottom')expect(order.under,at+': under the composer').toEqual([]);
   expect(order.backwards,at+': reading order goes back up').toEqual([]);
   if(at==='bottom')expect(order.composerBelow,at+': the composer is below every visible Home control').toBe(true);

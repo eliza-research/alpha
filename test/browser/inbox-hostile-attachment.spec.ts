@@ -39,6 +39,10 @@ async function expectInert(page:Page,seen:Awaited<ReturnType<typeof watch>>){
  expect(await page.evaluate(()=>document.querySelectorAll('a#a, input[name="password"], img[src*="attacker"], svg image, foreignObject').length)).toBe(0);
 }
 async function setup(page:Page,parts:Part[],options:{opaque?:boolean;agent?:boolean}={}){
+ // The fixture models an installation that already finished access setup; a signed-in account with
+ // pending setup is owed the startup walkthrough, which would otherwise cover Home once the swapped
+ // snapshot re-renders (startup-permissions-walkthrough.spec.ts owns that flow).
+ await page.addInitScript(()=>localStorage.setItem('alpha:startup-permission-walkthrough:v1',JSON.stringify({version:1,status:'completed',step:4})));
  await page.goto('/');
  await page.evaluate(async({parts,options})=>{
   const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');
