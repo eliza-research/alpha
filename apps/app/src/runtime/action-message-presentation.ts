@@ -89,9 +89,9 @@ export const UPSTREAM_MODEL_UNAVAILABLE_NOTICE = 'Eliza cannot respond yet. Conf
 export const UPSTREAM_RUNTIME_ERROR_NOTICE = 'Eliza needs attention. Check the connected host\'s diagnostics before trying again.';
 const UPSTREAM_COMBINED_NOTICE = `${UPSTREAM_MODEL_UNAVAILABLE_NOTICE}\n---\n${UPSTREAM_RUNTIME_ERROR_NOTICE}`;
 
-/** A runtime-error notice that arrived while the owner's latest message was unanswered. */
 /** A model-unavailable notice in Alpha's words: the owner's own recovery step. */
 export const MODEL_UNAVAILABLE_NOTICE = 'Your agent cannot reply yet. Choose an AI provider in Settings, then send your message again.';
+/** A runtime-error notice that arrived while the owner's latest message was unanswered. */
 export const RUNTIME_ERROR_NOTICE = 'Part of your agent stopped working, so this reply may not arrive. Nothing was resent. Send your message again in a moment.';
 /** A runtime-error notice that arrived with nothing waiting (a service failing at start, for example). */
 export const RUNTIME_ERROR_BACKGROUND_NOTICE = 'Part of your agent stopped working. Chat can still answer, but some features may not work until it recovers.';
