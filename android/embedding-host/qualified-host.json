@@ -1,6 +1,6 @@
 {
-  "pin": "c95a37be8d56fb672825df7e9e9a742b59567bbb",
-  "forkPin": "0d9fd4b9db239bbf851068f98c99f4263f8c05c5",
+  "pin": "d38e4ec7fad5952fdf4f40d4c809240d639792ac",
+  "forkPin": "cc8c979157e1f577448d8b8c6ff598b7cfc3d661",
   "identity": "ai.elizaresearch.alphaphone",
   "abi": "arm64-v8a",
   "model": {
@@ -11,14 +11,14 @@
   "libraries": [
     {
       "name": "libelizainference.so",
-      "sha256": "c1679c25c28f1ba5a7757aa821265135f3c8f09657a16804ae744761f262eb1e",
-      "bytes": 8066120,
+      "sha256": "bc575c8267dfff9041d9607ce84e8cce37a3db799c6a9f4628c4359418b8bdba",
+      "bytes": 10002168,
       "alignment16KiB": true
     },
     {
       "name": "libelizavoicejni.so",
-      "sha256": "49f59561bf022650f813d79cf0ab0be84f53f37f908c679e05d80ce4e444a491",
-      "bytes": 1190824,
+      "sha256": "4244312b8c63988b606f8d120c53335dce28b27b0d339128670afa684e9cc59e",
+      "bytes": 1234768,
       "alignment16KiB": true
     },
     {
@@ -28,13 +28,13 @@
       "alignment16KiB": true
     }
   ],
-  "qualificationReceiptSha256": "78d598438eb62947532b02251565181e7c8f505fe453488deec605b10a65f20a",
+  "qualificationReceiptSha256": "feaa7710254e08518b90dee29d7b99c3efde8a17db456bc89136231e510a5412",
   "jniIdentityRelocated": true,
   "inputs": [
     {
       "path": "packages/app/scripts/stage-elizavoice-lib.ts",
-      "sourceSha256": "b1203497834b883d19b638ace5e791a1c608bd0c65e9d8b38315db76730c2fdf",
-      "generatedSha256": "b1203497834b883d19b638ace5e791a1c608bd0c65e9d8b38315db76730c2fdf"
+      "sourceSha256": "7c36788b0886de46bde06f84a50c54a3ace7f2aa59468f811864e47134be4309",
+      "generatedSha256": "7c36788b0886de46bde06f84a50c54a3ace7f2aa59468f811864e47134be4309"
     },
     {
       "path": "packages/app/scripts/build-helpers/arm64-simd.ts",
@@ -53,25 +53,72 @@
     },
     {
       "path": "packages/app/platforms/android/app/src/main/elizavoice-jni/elizavoice-jni.cpp",
-      "sourceSha256": "cacf867e01c7867d0d5c35e8a60f68584deeb0a95d6f49e22e4a751ace0b69eb",
-      "generatedSha256": "cacf867e01c7867d0d5c35e8a60f68584deeb0a95d6f49e22e4a751ace0b69eb"
+      "sourceSha256": "128c4e7306479ecf80130028a79d3537552fbc93c2ab13a821cf0b5213efd94f",
+      "generatedSha256": "128c4e7306479ecf80130028a79d3537552fbc93c2ab13a821cf0b5213efd94f"
     },
     {
       "path": "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
-      "sourceSha256": "53a0c6edaeb4b43b0e673996ec9539b4e10c43fa6db2d018f59b00a91a8d5551",
-      "generatedSha256": "8667be638eaee77b24ec285b3119f27d19fbdcb27719c900fe85b9ea1b088f1f"
+      "sourceSha256": "328c96c067aabdae17adcc6534b41abfb6befd9d598a1d44b30ffc20a5157c87",
+      "generatedSha256": "b22b27587e71352266c7ba200f70d65f571c11a6015e4c43f979622ff0fccfea"
+    }
+  ],
+  "producerInputs": [
+    {
+      "path": "package.json",
+      "sha256": "fd04e2ad8574cd0055627138466b8eec77404863e2bc546a866bace10c6d732b"
+    },
+    {
+      "path": "packages/agent/package.json",
+      "sha256": "1082dc34ec6894e19a43003528fd5701ebe53621f77c37d1bec37662bd822554"
+    },
+    {
+      "path": "packages/app/package.json",
+      "sha256": "1ee43697b88c28dd2e95a64c7113c936fe13dc923482305a904f073e52bfe23a"
+    },
+    {
+      "path": "packages/app/scripts/aosp/compile-libllama-paths.ts",
+      "sha256": "c484bd46cb7f8cf308f449840f491f1e8d380c1c66a75b2a57a02867a09a8a3c"
+    },
+    {
+      "path": "packages/app/scripts/aosp/compile-libllama.ts",
+      "sha256": "81de4affc63f07f662679d34a01cea7f4f720fc705ef1ac5c5b501021070e1fd"
+    },
+    {
+      "path": "packages/app/scripts/aosp/compile-shim.ts",
+      "sha256": "c7765557fafa6cc39090590c3e52a3b8bc1f03e6cedb7170492512a45bcbe15b"
+    },
+    {
+      "path": "packages/app/scripts/aosp/vulkan-source-contract.ts",
+      "sha256": "8b1d173b222ab7017b1cc7d18d4125392cafda022ac6c49cfc6c38f31549a73b"
+    },
+    {
+      "path": "packages/app/scripts/aosp/zig-toolchain.ts",
+      "sha256": "5d7ad034f9fbbce9fc241c7d7ba64b4bfece2b0aa6c7a699c761df8c8ac36959"
+    },
+    {
+      "path": "packages/app/scripts/build-helpers/arm64-simd.ts",
+      "sha256": "b5291bb3c31f2b284691ff7c465de31c7564ea1c1c22e726309661e64a47aee2"
+    },
+    {
+      "path": "packages/app/scripts/build-helpers/omnivoice-merged.ts",
+      "sha256": "4192c42fd54940ff0039bbb452aadb6e39cb286b732baaaf76513411c7adc4fe"
+    },
+    {
+      "path": "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
+      "sha256": "a7706e5f2526e20a7685825b19e9bdd7115f61d2791d921ba55af4fe3e73baa1"
+    },
+    {
+      "path": "packages/app/scripts/lib/repo-root.ts",
+      "sha256": "9e75776f57d7fa219993cb454d33102fe80a9276c576d299b42a0b284f2980ba"
+    },
+    {
+      "path": "packages/app/scripts/stage-elizavoice-lib.ts",
+      "sha256": "7c36788b0886de46bde06f84a50c54a3ace7f2aa59468f811864e47134be4309"
     }
   ],
   "jniBinding": {
     "mode": "registered",
     "className": "ai/elizaresearch/alphaphone/ElizaVoiceNative",
     "subset": "full"
-  },
-  "requalification": {
-    "required": true,
-    "atPin": "35e0a605b3d560eedec664e79693d5ecc0b5ece3",
-    "reason": "elizaOS/eliza develop fbc2d23d4b moves the native engine gitlink plugins/plugin-local-inference/native/llama.cpp from 0d9fd4b9 to 13d0ccbf and changes stage-elizavoice-lib.ts and the elizavoice JNI sources, so the reviewed libelizainference, libelizavoicejni and libc++ bytes built at fork 0d9fd4b9 are not admitted. A fresh embedding host build from the pinned sources and a new qualification receipt are required; nothing was built or run at this pin. The pin then moved to 9af104a1c7 (the head of the open draft elizaOS/eliza #38251), which moves the same gitlink again to 6973dc6c and changes the stage-elizavoice-lib.ts and elizavoice JNI inputs further, so the earlier statement still holds: nothing was built or run at this pin. The pin then moved to 89714cd4b8, which moves the engine gitlink again to d960f633 with no further embedding build input change, so the earlier statement still holds: nothing was built or run at this pin. The pin then moved to 641c179ce8, which keeps the engine gitlink at d960f633 with no further embedding build input change, so the earlier statement still holds: nothing was built or run at this pin. The pin then moved to 6cd75d6820, which keeps the engine gitlink at d960f633 with no further embedding build input change, so the earlier statement still holds: nothing was built or run at this pin. The pin then moved to 4573a187b0, which keeps the engine gitlink at d960f633 with all listed embedding, JNI, engine and model build inputs unchanged from 6cd75d6820. The source-only comparison is recorded in docs/evidence/sdk-4573a187b0-build-input-admission-20261101.json. Only the native-agent consumer changes, to verify the optional Cartesia credential after persistence. The existing fresh engine build and qualification requirement remains; no build, runtime or device acceptance is established by this comparison. The pin then moved to 9ba8ec5673, which moves the engine gitlink from d960f633 to b3eb2bf6 and changes elizavoice-jni.cpp and ElizaVoiceNative.java (elizaOS/eliza #38470, libelizainference ABI 21), so the earlier statement still holds: nothing was built or run at this pin. The pin then moved to 7e8b5d3eb1, which keeps the engine gitlink at b3eb2bf6 with no further embedding build input change, so the earlier statement still holds: nothing was built or run at this pin. Source-only comparison from 7e8b5d3eb1 to the corrected reconciled SDK 5e0feca4ee (draft elizaOS/eliza #38516). Listed native sources, patch targets, mobile UUID builder and bun.lock are unchanged. This does not admit recorded artifacts or transfer historical qualification. Normal checks, fresh native builds and device qualification remain pending; none ran for this proposal. Source-only repin from published SDK 5e0feca4ee to its direct child 9950213832: a ProviderCacheEntry type marker, test property guard and formatting correction. No native inputs changed. The earlier native requalification requirement remains; no runtime or build acceptance transfers. The current application source now selects SDK35e0a605. This updates only the active requalification blocker: the recorded compiled source pin, native fork, libraries, model, input hashes and prior evidence remain historical and unchanged. No new native build, source-input equivalence, runtime or device qualification is asserted; fresh normal qualification remains required before distribution.",
-    "evidence": "docs/evidence/develop-fbc2d23d-build-input-admission-20261029.json",
-    "comparisonEvidence": "docs/evidence/sdk-9950213832-build-input-admission-20261101.json"
   }
 }

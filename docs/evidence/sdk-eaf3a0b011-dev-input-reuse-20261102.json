@@ -1,0 +1,14 @@
+{
+  "state": "SOURCE_INPUT_EQUIVALENCE_NOT_NATIVE_QUALIFICATION",
+  "fromSDK": "3638818e3aa97c0a0f926c4a54c7c140fce8f0ca",
+  "toSDK": "eaf3a0b011e2f58437573ddde72b01f8ebf879ad",
+  "exactChangedPaths": [
+    "plugins/plugin-assistant/src/services/message.side-effect-claim.test.ts",
+    "plugins/plugin-assistant/src/services/message/side-effect-claims.ts"
+  ],
+  "proof": "Genuine one-parent GitHub comparison contains only the listed runtime/test paths. No package, lockfile, native, Android bridge or build-producer changes.",
+  "nativeArtifactsAdmitted": false,
+  "freshNativeBuildOrDeviceQualification": false,
+  "change": "the reviewed public-news acknowledgment grammar fix, with Calendar fixes retained",
+  "desktopCPUReuse": "Requires originalCPUstamp/library/model hashes and canonical CPU --check in separately reviewed adoption operator."
+}

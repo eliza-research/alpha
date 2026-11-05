@@ -6,10 +6,10 @@ import os from 'node:os';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {verifyEmbeddingHost, verifyEmbeddingInputs} from '../scripts/stage-embedding-host.mjs';
-import {nativeInputPaths, nativeBinding, nativeInputs, nativeGenerated} from '../scripts/embedding-native-contract.mjs';
+import {embeddingProducerInputPaths,nativeInputPaths, nativeBinding, nativeInputs, nativeGenerated} from '../scripts/embedding-native-contract.mjs';
 const root=path.resolve(import.meta.dirname,'..');
 const git=(directory,...args)=>execFileSync('git',['-C',directory,...args],{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
-const committed=JSON.parse(fs.readFileSync(path.join(root,'android/embedding-host/qualified-host.json'),'utf8'));
+const committed=JSON.parse(execFileSync('git',['show','HEAD:android/embedding-host/qualified-host.json'],{cwd:root,encoding:'utf8'}));
 // The admission rules are tested on a qualification shaped like the committed record but made for the
 // pinned source: native build inputs and engine gitlink read from vendor/eliza at upstream.lock.json,
 // and the built pin left as recorded (a reviewed build is never relabelled). The committed record's own
@@ -18,7 +18,7 @@ const lockCommit=JSON.parse(fs.readFileSync(path.join(root,'upstream.lock.json')
 const appId=JSON.parse(fs.readFileSync(path.join(root,'app.config.json'),'utf8')).appId;
 const sha=value=>createHash('sha256').update(value).digest('hex');
 const qualified=(()=>{
- const record=structuredClone(committed);delete record.requalification;
+ const record=structuredClone(committed);delete record.requalification;delete record.producerInputs;
  record.forkPin=git(path.join(root,'vendor/eliza'),'ls-tree',lockCommit,'plugins/plugin-local-inference/native/llama.cpp').match(/^160000 commit ([a-f0-9]{40})\t/)[1];
  // The build inputs come from the shared native contract at the pin (registered JNI: the Java class too).
  const show=file=>execFileSync('git',['-C',path.join(root,'vendor/eliza'),'show',lockCommit+':'+file]);
@@ -30,31 +30,32 @@ const qualified=(()=>{
  });
  return record;
 })();
-function fixture({currentOnly=false}={}){
+function fixture({currentOnly=false,producerInputs=false}={}){
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-embed-admission-'));
  for(const name of ['upstream.lock.json','app.config.json','android/embedding-host/qualified-host.json']){fs.mkdirSync(path.dirname(path.join(dir,name)),{recursive:true});fs.copyFileSync(path.join(root,name),path.join(dir,name));}
  const vendor=path.join(dir,'vendor/eliza');fs.mkdirSync(path.dirname(vendor),{recursive:true});
  if(currentOnly){
   fs.mkdirSync(vendor);git(vendor,'init');
-  for(const row of qualified.inputs){const file=path.join(vendor,row.path);fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,execFileSync('git',['-C',path.join(root,'vendor/eliza'),'show','HEAD:'+row.path]));}
+  for(const name of new Set([...qualified.inputs.map(row=>row.path),...embeddingProducerInputPaths])){const file=path.join(vendor,name);fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,execFileSync('git',['-C',path.join(root,'vendor/eliza'),'show','HEAD:'+name]));}
  }else{
   fs.mkdirSync(vendor);git(vendor,'init');
   // Borrow only the checked-out objects; cloning a partial source can fetch unrelated history.
   const objects=git(path.join(root,'vendor/eliza'),'rev-parse','--path-format=absolute','--git-path','objects');
   fs.writeFileSync(path.join(vendor,'.git/objects/info/alternates'),objects+'\n');
   git(vendor,'sparse-checkout','init','--no-cone');
-  git(vendor,'sparse-checkout','set','--no-cone',...qualified.inputs.map(row=>'/'+row.path),'/plugins/plugin-local-inference/native/llama.cpp');
+  git(vendor,'sparse-checkout','set','--no-cone',...qualified.inputs.map(row=>'/'+row.path),...embeddingProducerInputPaths.map(name=>'/'+name),'/plugins/plugin-local-inference/native/llama.cpp');
   git(vendor,'checkout','--detach',JSON.parse(fs.readFileSync(path.join(dir,'upstream.lock.json'),'utf8')).commit);
  }
  git(vendor,'config','user.name','Embedding fixture');git(vendor,'config','user.email','embedding-fixture@example.invalid');
  if(currentOnly){
   fs.mkdirSync(path.join(vendor,'plugins/plugin-local-inference/native/llama.cpp'),{recursive:true});
-  git(vendor,'add',...qualified.inputs.map(row=>row.path));git(vendor,'update-index','--add','--cacheinfo','160000,'+qualified.forkPin+',plugins/plugin-local-inference/native/llama.cpp');git(vendor,'commit','-m','Current native input fixture');
+  git(vendor,'add',...new Set([...qualified.inputs.map(row=>row.path),...embeddingProducerInputPaths]));git(vendor,'update-index','--add','--cacheinfo','160000,'+qualified.forkPin+',plugins/plugin-local-inference/native/llama.cpp');git(vendor,'commit','-m','Current native input fixture');
   const commit=git(vendor,'rev-parse','HEAD'),file=path.join(dir,'upstream.lock.json'),lock=JSON.parse(fs.readFileSync(file,'utf8'));lock.commit=commit;fs.writeFileSync(file,JSON.stringify(lock));fs.writeFileSync(path.join(vendor,'.git/shallow'),commit+'\n');
  }
  // Tiny content fixtures retain the production manifest shape; the known BGE hash is checked last.
  for(const row of qualified.libraries){const file=path.join(dir,'android/app/src/main/jniLibs/arm64-v8a',row.name);fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,'fixture-'+row.name);}
  const manifest=structuredClone(qualified);for(const row of manifest.libraries){row.sha256=createHash('sha256').update('fixture-'+row.name).digest('hex');row.bytes=Buffer.byteLength('fixture-'+row.name);}
+ if(producerInputs)manifest.producerInputs=embeddingProducerInputPaths.map(name=>({path:name,sha256:sha(execFileSync('git',['-C',vendor,'show','HEAD:'+name]))}));
  fs.writeFileSync(path.join(dir,'android/embedding-host/qualified-host.json'),JSON.stringify(manifest));
  return {dir,vendor,manifest,lock(commit){const file=path.join(dir,'upstream.lock.json'),lock=JSON.parse(fs.readFileSync(file,'utf8'));lock.commit=commit;fs.writeFileSync(file,JSON.stringify(lock));},write(){fs.writeFileSync(path.join(dir,'android/embedding-host/qualified-host.json'),JSON.stringify(manifest));},close(){fs.rmSync(dir,{recursive:true,force:true});}};
 }
@@ -81,10 +82,11 @@ test('text-only pin change reuses exact reviewed native bytes without relabeling
  }finally{f.close();}
 });
 test('every changed committed native build input is refused even when the runtime lock matches',()=>{
- for(const input of qualified.inputs){
-  const f=fixture();try{
+ for(const producerInputs of [false,true])for(const input of qualified.inputs){
+  const f=fixture({producerInputs});try{
    fs.appendFileSync(path.join(f.vendor,input.path),'\n// changed native build input\n');git(f.vendor,'add',input.path);git(f.vendor,'commit','-m','Change native input');f.lock(git(f.vendor,'rev-parse','HEAD'));
-   assert.throws(()=>verifyEmbeddingHost(f.dir),/Native build input changed/);
+   const prefix=producerInputs&&embeddingProducerInputPaths.includes(input.path)?'Embedding producer input changed: ':'Native build input changed: ';
+   assert.throws(()=>verifyEmbeddingHost(f.dir),error=>error.message.includes(prefix+input.path));
   }finally{f.close();}
  }
 });
@@ -105,10 +107,10 @@ test('missing, incomplete or altered native qualification cannot admit a new sou
 });
 
 test('current-only shallow native inputs admit reviewed bytes without fetching the historical build pin',()=>{
- const f=fixture({currentOnly:true});try{
+ const f=fixture({currentOnly:true,producerInputs:true});try{
   assert.equal(git(f.vendor,'rev-parse','--is-shallow-repository'),'true');
   assert.throws(()=>git(f.vendor,'cat-file','-e',qualified.pin));
-  assert.doesNotThrow(()=>verifyEmbeddingInputs(f.dir,qualified));
+  assert.doesNotThrow(()=>verifyEmbeddingInputs(f.dir,f.manifest,{requireProducerInputs:true}));
  }finally{f.close();}
 });
 
@@ -134,8 +136,38 @@ test('the committed record is admissible at the pin, or names why it must be req
  assert.ok(typeof note.reason==='string'&&note.reason.length>20);
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-embed-requalify-'));
  try{
-  for(const name of ['upstream.lock.json','app.config.json','android/embedding-host/qualified-host.json']){fs.mkdirSync(path.dirname(path.join(dir,name)),{recursive:true});fs.copyFileSync(path.join(root,name),path.join(dir,name));}
+  for(const name of ['upstream.lock.json','app.config.json','android/embedding-host/qualified-host.json']){fs.mkdirSync(path.dirname(path.join(dir,name)),{recursive:true});if(name==='android/embedding-host/qualified-host.json')fs.writeFileSync(path.join(dir,name),JSON.stringify(committed));else fs.copyFileSync(path.join(root,name),path.join(dir,name));}
   assert.throws(()=>verifyEmbeddingHost(dir),/requalification required/,'distribution admission names the requalification first');
   assert.deepEqual(verifyEmbeddingHost(dir,{allowAbsentRuntime:true}),{status:'not-packaged',distributable:false},'an unpackaged developer build is unaffected');
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});
+
+
+test('complete producer closure is required for new embedding-capable admission and preserves the built pin',()=>{
+ const legacy=fixture();try{assert.throws(()=>verifyEmbeddingInputs(legacy.dir,legacy.manifest,{requireProducerInputs:true}),/producer input qualification missing/);}finally{legacy.close();}
+ const f=fixture({producerInputs:true});try{
+  const built=f.manifest.pin;assert.doesNotThrow(()=>verifyEmbeddingInputs(f.dir,f.manifest,{requireProducerInputs:true}));assert.equal(f.manifest.pin,built);
+ }finally{f.close();}
+});
+test('missing, duplicated or changed producer records cannot qualify embeddings',()=>{
+ for(const mutate of [r=>r.producerInputs.pop(),r=>r.producerInputs.push(r.producerInputs[0]),r=>r.producerInputs[0].sha256='0'.repeat(64)]){
+  const f=fixture({producerInputs:true});try{mutate(f.manifest);assert.throws(()=>verifyEmbeddingInputs(f.dir,f.manifest,{requireProducerInputs:true}),/producer input/);}finally{f.close();}
+ }
+});
+test('producer helper drift is rejected both dirty and after a committed source change',()=>{
+ const f=fixture({producerInputs:true});try{
+  const helper='packages/app/scripts/aosp/compile-libllama.ts';fs.appendFileSync(path.join(f.vendor,helper),'\n// changed producer helper\n');
+  assert.throws(()=>verifyEmbeddingInputs(f.dir,f.manifest,{requireProducerInputs:true}),/source admission changed/);
+  git(f.vendor,'add',helper);git(f.vendor,'commit','-m','Change producer helper');f.lock(git(f.vendor,'rev-parse','HEAD'));
+  assert.throws(()=>verifyEmbeddingInputs(f.dir,f.manifest,{requireProducerInputs:true}),/Embedding producer input changed/);
+ }finally{f.close();}
+});
+
+test('staging serializes the original producer receipt inputs without replacing its built pin',()=>{
+ const stage=fs.readFileSync(new URL('../scripts/stage-embedding-host.mjs',import.meta.url),'utf8');
+ const literal=stage.match(/const manifest=(\{pin:receipt\.pin[^\n]+);/)[1];
+ const make=new Function('receipt','identity','model','libraries','hash','args','return '+literal);
+ const receipt={pin:'1'.repeat(40),forkPin:'2'.repeat(40),abi:'arm64-v8a',inputs:[],producerInputs:[{path:'packages/app/scripts/stage-elizavoice-lib.ts',sha256:'3'.repeat(64)}]};
+ const manifest=JSON.parse(JSON.stringify(make(receipt,'test.app',{},[],()=> '4'.repeat(64),['--receipt','fixture.json'])));
+ assert.deepEqual(manifest.producerInputs,receipt.producerInputs);assert.equal(manifest.pin,receipt.pin);
 });

@@ -17,11 +17,19 @@ export function browserFullReload():Plugin {
    // Compare bytes, not event timestamps, so real edits with preserved mtimes still work.
    snapshot(path.join(realpathSync(server.config.root),'src'));
    snapshot(sharedRoot);
- },handleHotUpdate(context){
-   const file=realpathSync(context.file),relative=path.relative(realpathSync(context.server.config.root),file).split(path.sep).join('/');
+ },hotUpdate(context){
+   if(this.environment.name!=='client'||context.type==='delete')return;
+   let file:string;
+   try{file=realpathSync(context.file);}catch(error){if((error as NodeJS.ErrnoException).code==='ENOENT')return [];throw error;}
+   const relative=path.relative(realpathSync(context.server.config.root),file).split(path.sep).join('/');
    const shared=path.relative(sharedRoot,file);
    if(!relative.startsWith('src/')&&(shared.startsWith('..'+path.sep)||path.isAbsolute(shared)))return;
-   const current=fingerprint(file);if(fingerprints.get(file)===current)return [];fingerprints.set(file,current);
+   const previous=fingerprints.get(file);
+   // Let Vite handle truly new modules. A create notice for a known path is
+   // an atomic replacement and must share the normal content-based deduplication.
+   if(context.type==='create'&&previous===undefined)return;
+   const current=fingerprint(file);if(previous===current)return [];fingerprints.set(file,current);
+   if(context.type==='create')this.environment.moduleGraph.onFileChange(context.file);
    if(!relative.endsWith('.css')){context.server.ws.send({type:'full-reload',path:'*'});return [];}
  }};
 }

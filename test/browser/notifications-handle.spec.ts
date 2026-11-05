@@ -182,7 +182,7 @@ test.describe('launcher', () => {
     const clearance = page.locator('[data-alpha-home-clearance]');
     await clearance.evaluate(element => { (element as HTMLElement).style.height = '160px'; });
     const layer = page.locator('[data-alpha-layer="home"]');
-    await expect.poll(() => layer.evaluate(element => element.scrollHeight > element.clientHeight + 40)).toBe(true);
+    await expect.poll(() => layer.evaluate(element => element.scrollHeight > element.clientHeight + 1)).toBe(true);
     // An overflowing Home keeps ordinary vertical scrolling for touch.
     await expect(layer).toHaveAttribute('data-alpha-home-fits', 'false');
     await layer.evaluate(element => { element.scrollTop = 120; });

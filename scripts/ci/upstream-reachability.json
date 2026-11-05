@@ -2,14 +2,14 @@
   "schema": 1,
   "repository": "elizaOS/eliza",
   "base": "develop",
-  "baseCommit": "b2dbeff3ab689a69f7e518deb7d608d1c4607790",
-  "head": "35e0a605b3d560eedec664e79693d5ecc0b5ece3",
-  "recordedAt": "2026-11-02",
-  "command": "gh api repos/elizaOS/eliza/compare/b2dbeff3ab689a69f7e518deb7d608d1c4607790...35e0a605b3d560eedec664e79693d5ecc0b5ece3",
-  "status": "diverged",
-  "aheadBy": 12,
-  "behindBy": 24,
-  "mergeBase": "7e8b5d3eb1c05ee6ea72a1a2d5ce5b966c404e9c",
+  "baseCommit": "4e0153cb7ca5b10a0258569b2d6d449848496220",
+  "head": "951197ae394aa1d5f3b5e8c8aa6b2caf037768b2",
+  "recordedAt": "2026-11-05",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...951197ae394aa1d5f3b5e8c8aa6b2caf037768b2",
+  "status": "ahead",
+  "aheadBy": 60,
+  "behindBy": 0,
+  "mergeBase": "4e0153cb7ca5b10a0258569b2d6d449848496220",
   "pinOnlyCommits": [
     {
       "sha": "05290f673c034a3b42d0e2db58e4205007f5c928",
@@ -58,390 +58,183 @@
     {
       "sha": "35e0a605b3d560eedec664e79693d5ecc0b5ece3",
       "subject": "fix(assistant): guide missed-reply repeats through validated source quotes"
+    },
+    {
+      "sha": "4e2bc0e6074eb78bab841ca83b93e09fe2705919",
+      "subject": "fix(alpha): compose reviewed Notes, web acknowledgements and Metal cache support"
+    },
+    {
+      "sha": "61f2b9a62672533b086619bd5a21c1345399ec68",
+      "subject": "fix(assistant): retain safe natural model acknowledgments"
+    },
+    {
+      "sha": "3638818e3aa97c0a0f926c4a54c7c140fce8f0ca",
+      "subject": "fix(alpha): join reviewed Calendar evidence and model acknowledgments"
+    },
+    {
+      "sha": "eaf3a0b011e2f58437573ddde72b01f8ebf879ad",
+      "subject": "fix(assistant): allow safe public news acknowledgments"
+    },
+    {
+      "sha": "c2692eb40731d178c1bfd98923570084cc57d11a",
+      "subject": "fix(assistant): guide concise spoken replies in voice context"
+    },
+    {
+      "sha": "5113e59025664fc39a6542338d076b7f49ead4d7",
+      "subject": "fix(assistant): join spoken reply and fresh-read guidance"
+    },
+    {
+      "sha": "1cb0f104e22d9001a4b8da1b8777a1d88f28b977",
+      "subject": "fix(assistant): align voice authoring with safe progress and brief replies"
+    },
+    {
+      "sha": "ac5d57f8ec6eb95b3efae6f2e4c20a1ffae3249c",
+      "subject": "fix(voice): join final response policy and reviewed diagnostics"
+    },
+    {
+      "sha": "c42c779a789667629b2ce9adb8dbf153c63108b7",
+      "subject": "fix(assistant): bind voice style to final generation field"
+    },
+    {
+      "sha": "77ef61e737d4d848b64e901145ed6e7f38c42705",
+      "subject": "fix(native): select local embeddings for direct provider in cloud profile"
+    },
+    {
+      "sha": "d38e4ec7fad5952fdf4f40d4c809240d639792ac",
+      "subject": "fix: repair Calendar coverage and acknowledgments; bound native speech build"
+    },
+    {
+      "sha": "c3442ded79de62b883cf0a84d2614734596ac9ad",
+      "subject": "fix(app): authorize paired sessions for inference warm-up"
+    },
+    {
+      "sha": "47982b8f49d16d520990e14e07cdeb5c6931df81",
+      "subject": "fix(calendar): bind implicit read windows to the owner request"
+    },
+    {
+      "sha": "8eb42061f30651bc995a01800b8540da4396d627",
+      "subject": "fix(voice): preserve quiet refusal across host and SDK consumers while retaining Calendar fixes"
+    },
+    {
+      "sha": "17debabcff07ae645e3e906904238cdb6b875945",
+      "subject": "fix(voice): retain Calendar and refusal fixes with literal replies and timing"
+    },
+    {
+      "sha": "2b59804325be4e0f1e0d2b347fe4479e5fc97121",
+      "subject": "fix(voice): record bounded cancellation causes for active timing rows"
+    },
+    {
+      "sha": "4aaddeb5da2e5f428cd3262c80b0405ad3692925",
+      "subject": "fix(calendar): preserve bounded lookup prerequisites for pending mutations"
+    },
+    {
+      "sha": "01134b45e430ca9857694d5285c057fb951671eb",
+      "subject": "test(calendar): resolve declared workspace source exports in normal config"
+    },
+    {
+      "sha": "b60a34b62025a1736e1a09723002feed2d8114fe",
+      "subject": "test(calendar): preserve source exports across SSR resolver conditions"
+    },
+    {
+      "sha": "96eaeec64595a83ba3c8b3c321fb2b8204390b13",
+      "subject": "fix(assistant): clarify planned view acknowledgment authoring"
+    },
+    {
+      "sha": "d743194c67b57c0331426031715c84de13465c10",
+      "subject": "test(assistant): pin planned view stage one call budget"
+    },
+    {
+      "sha": "be80749b4ef0505d7b65bebdd073e26585901623",
+      "subject": "fix(assistant): gate whole context-read acknowledgment before delivery"
+    },
+    {
+      "sha": "11e2746b29cd87209eb4470f054d107b9abd307e",
+      "subject": "test(assistant): preserve owning source exports on both SSR routes"
+    },
+    {
+      "sha": "815ea82301dfbbe25b5cb98b9a8e708fd827c7ea",
+      "subject": "test(assistant): make direct delivery control timeless and pin generic authoring contract"
+    },
+    {
+      "sha": "c63cfb6b7bfd87eb8125c0791952cb4836b423ef",
+      "subject": "fix(assistant): reject incomplete latest acknowledgement exception"
+    },
+    {
+      "sha": "dba60b3583d24be32e8982282e9ef48c6a0ea3f4",
+      "subject": "fix: distinguish unsuccessful voice turns from completed replies"
+    },
+    {
+      "sha": "e2325d2d58c2fb6616fdb21eabe029bac2983928",
+      "subject": "test(ui): include realtime voice refusal owning suite"
+    },
+    {
+      "sha": "ff04a558747ed426d9d871a319f7b3946f7660e6",
+      "subject": "fix(assistant): compose canonical context ordinals with reviewed voice source"
+    },
+    {
+      "sha": "79275fe6973291c5c10c19a88a17ef508065634f",
+      "subject": "fix(assistant): encode history ordinal unions for Cerebras"
+    },
+    {
+      "sha": "b22227cee47866e36773e89f16a12a372f99251b",
+      "subject": "fix(assistant): avoid misleading multi-category activity labels"
+    },
+    {
+      "sha": "15258c12666f1bf363fd1f1ef0d5d908ebcadab4",
+      "subject": "fix(assistant): keep prepared navigation prospective during reply recovery"
+    },
+    {
+      "sha": "51759882bfb64acc40365f65cff85ace35b1a94b",
+      "subject": "fix(assistant): retain selected note evidence for reply recovery"
+    },
+    {
+      "sha": "2ce38dac93ffed01c2d633f373c223a9876a0f85",
+      "subject": "fix(assistant): distinguish prospective navigation from completed changes"
+    },
+    {
+      "sha": "7ddca47f705f9a9396eee2b9291b4f60f1978e06",
+      "subject": "fix(calendar): bind quoted literal titles within verified source quotations"
+    },
+    {
+      "sha": "3713536f70792520b3e78b0cd9792d3ecaa9bd23",
+      "subject": "fix(calendar): normalize verified title evidence for read coverage"
+    },
+    {
+      "sha": "faf15ad06d33315d4d9bde24a703879dfdba3887",
+      "subject": "fix: read the exact current canonical Calendar selection"
+    },
+    {
+      "sha": "bde96e24db7aab264aaf3b112240b1b50ddcfe35",
+      "subject": "fix: preserve the realtime timing document format literal"
+    },
+    {
+      "sha": "fb24fa1292545c4e5e30b65aaf7be15a84a796ef",
+      "subject": "fix(cloud): verify speech retirement and preserve bounded renewal"
+    },
+    {
+      "sha": "8ac9c4eaf0e10895cc240604acbbb4bac287596b",
+      "subject": "fix(cloud): await durable funded speech settlement proof"
+    },
+    {
+      "sha": "7cf0bed77554f3e4bd7e2f8cd842f30a9c070885",
+      "subject": "fix(cloud): prepare a recoverable speech session before mint"
+    },
+    {
+      "sha": "febf653098c333ff18995cd1014f89634f88efa5",
+      "subject": "fix(voice): recover durable Cloud speech state before opening again"
+    },
+    {
+      "sha": "11acbbffdea4c01733937e3cd3641cf1b319901d",
+      "subject": "fix(voice): satisfy host lint for speech retirement"
+    },
+    {
+      "sha": "2560eb3bb3d14d80b363d30714d56957d8b5e210",
+      "subject": "fix(voice): qualify the retained SDK voice source with host lint"
+    },
+    {
+      "sha": "951197ae394aa1d5f3b5e8c8aa6b2caf037768b2",
+      "subject": "fix(assistant): complete selected Calendar and ordinal types"
     }
   ],
-  "pullRequests": [
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37059",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37305",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37307",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37313",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37306",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37309",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37310",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37311",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37312",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37315",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37318",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37324",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37325",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37327",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37329",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37330",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37321",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37322",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37326",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37331",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37332",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37275",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37893",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37895",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37899",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37900",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37901",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37902",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37903",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37904",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37905",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37906",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37907",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37908",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37909",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37911",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37912",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37910",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37913",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37914",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37915",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37920",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37928",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37929",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37930",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37933",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37958",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37936",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37966",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37967",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37968",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37969",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37971",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37970",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37993",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/38069",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/38103",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/38100",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/38101",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/38104",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/38105",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/38138",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/38140",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/38141",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/38142",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/38143",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/38146",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/38149",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/38150",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/38151",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/38153",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/38155",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/38157",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/38158",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/38159",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/38160",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/38161",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/38162",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/38163",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/38164",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/38166",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/38168",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/38251",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/38277",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/38305",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/38317",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/38325",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/38382",
-      "status": "merged",
-      "draft": false,
-      "merged": true
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/38443",
-      "status": "merged",
-      "draft": false,
-      "merged": true
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/38445",
-      "status": "merged",
-      "draft": false,
-      "merged": true
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/38447",
-      "status": "merged",
-      "draft": false,
-      "merged": true
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/38449",
-      "status": "merged",
-      "draft": false,
-      "merged": true
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/38516",
-      "status": "open draft"
-    }
-  ]
+  "pullRequests": []
 }

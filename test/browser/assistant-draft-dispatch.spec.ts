@@ -95,7 +95,9 @@ test('without a connection the chooser opens and the message returns to the comp
   await expect(chooser).toBeVisible();
   await chooser.getByRole('button', { name: 'Close connection settings', exact: true }).click();
   await expect(composer(page)).toHaveValue('Keep this unsent message');
-  await expect(page.getByText('Not sent. Your message is back in the composer.', { exact: true })).toBeVisible();
+  // The text simply comes back: no line under the composer and no toast (owner, 2026-11-03).
+  await expect(page.getByText('Your message is back in the composer')).toHaveCount(0);
+  await expect(page.getByRole('status', { name: 'Assistant draft status', exact: true })).toHaveCount(0);
   // The unsent bubble is removed; the durable draft was never cleared.
   expect(await page.evaluate(text => [...document.querySelectorAll('[data-alpha-layer="conversation"] div')].filter(d => !d.querySelector('textarea') && d.textContent === text).length, 'Keep this unsent message')).toBe(0);
   expect(await savedDraft(page)).toBe('Keep this unsent message');

@@ -34,11 +34,16 @@ export function runtimeStagingSelection(source,parentEnv=process.env){
  return {bunTarget,targetAbis,env:preparedSourceEnv(parentEnv,extra)};
 }
 
+export function runtimeProfileSelection(args){
+ if(args.some(arg=>!['--runtime-profile=cloud','--local-embeddings'].includes(arg)))throw Error('Unknown runtime profile');
+ const runtimeProfile=args.includes('--runtime-profile=cloud')?'cloud':'native',localEmbeddings=args.includes('--local-embeddings');
+ if(localEmbeddings&&runtimeProfile!=='cloud')throw Error('--local-embeddings requires the Cloud profile');
+ return {runtimeProfile,localEmbeddings};
+}
+
 function stageLocalAgentRuntime(){
 
-const profile=process.argv.slice(2);
-if(profile.some(arg=>arg!=='--runtime-profile=cloud'))throw Error('Unknown runtime profile');
-const runtimeProfile=profile.includes('--runtime-profile=cloud')?'cloud':'native';
+const {runtimeProfile,localEmbeddings}=runtimeProfileSelection(process.argv.slice(2));
 const source=sourceDirectory(root);
 if(!fs.existsSync(path.join(source,'.alpha-runtime-source.json')))throw Error('Run npm run agent:prepare first.');
 execFileSync(process.execPath,[path.join(root,'scripts/prepare-local-agent.mjs'),'--source-only'],{cwd:root,stdio:'inherit'});
@@ -63,15 +68,16 @@ fs.copyFileSync(path.join(source,'.alpha-runtime-source.json'),path.join(root,'a
 fs.copyFileSync(nativeViewPolicyPath,path.join(root,'android/app/src/main/assets/agent/native-view-declarations.json'));
 execFileSync(process.execPath,[path.join(root,'scripts/stage-workflow-worker.mjs')],{cwd:root,env:process.env,stdio:'inherit'});
 const omittedLocalModels=[];
-if(runtimeProfile==='cloud'){
+if(runtimeProfile==='cloud'&&!localEmbeddings){
  const relative='assets/agent/models/bge-small-en-v1.5-f16.gguf',file=path.join(root,'android/app/src/main',relative);
  const sha256=createHash('sha256').update(fs.readFileSync(file)).digest('hex');
  if(sha256!=='f0b2fef971e8366438bfd2d9aefea1b0115919389448806d290237f638bae999')throw Error('Cloud projection refuses unrecognized local model');
  omittedLocalModels.push({path:relative,sha256});fs.unlinkSync(file);
 }
+// Staging declares the requested capability. Build admission verifies the qualified host after its receipt is staged.
 // The original producer provenance remains unchanged; this explicit consumer projection
 // records the exact local-only model deliberately omitted from the Cloud APK.
-fs.writeFileSync(path.join(root,'android/app/src/main/assets/agent/alpha-runtime-profile.json'),JSON.stringify({version:1,runtimeProfile,...(runtimeProfile==='cloud'?{omittedLocalModels}:{})},null,2)+'\n');
+fs.writeFileSync(path.join(root,'android/app/src/main/assets/agent/alpha-runtime-profile.json'),JSON.stringify({version:1,runtimeProfile,...(runtimeProfile==='cloud'?{omittedLocalModels,...(localEmbeddings?{localEmbeddings:true}:{})}:{})},null,2)+'\n');
 console.log(`Android runtime payload staged for ${selection.targetAbis} with ${selection.bunTarget}. This is not device execution evidence.`);
 
 }

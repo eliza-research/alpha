@@ -1,3 +1,4 @@
+import {openCloudPlanFromSettings} from './helpers/cloud-plan-settings';
 import { cloudStorageSlot } from '../../apps/app/src/runtime/cloud-deployment.generated';
 import {seedCompletedAccessSetup} from './flag-off-android';
 import { test, expect, type Page, type Route } from '@playwright/test';
@@ -240,7 +241,7 @@ for (const mode of ['revoked', 'unsupported', 'failed', 'refused-in-body', 'not-
     await expect(page.getByRole('button', { name: 'Notes', exact: true })).toBeVisible();
     await expect.poll(async () => (await nativeCalls(page)).filter(call => call.plugin === 'Agent').map(call => call.method)).toContain('start');
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
-    await page.getByRole('button', { name: 'Eliza Cloud account & plan',exact:true }).click();
+    await openCloudPlanFromSettings(page);
     await expect(page.getByRole('button', { name: 'Sign out of Eliza Cloud', exact: true })).toBeVisible();
     const before = (await nativeCalls(page)).length;
     if (mode === 'cancelled') await page.evaluate(() => { (window as any).holdStop = true; });
@@ -486,7 +487,7 @@ test('passive deletion failures stay quiet; known pending failures preserve sett
   await page.evaluate(()=>{Object.assign((window as any).deletionNoticeFixture,{known:false,checks:0});window.dispatchEvent(new Event('alpha:deletions-changed'));});
   await expect(notice).toContainText('Pending deletion status is unavailable');
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.getByRole('button', { name: 'Eliza Cloud account & plan',exact:true }).click();
+  await openCloudPlanFromSettings(page);
   const signout = page.getByRole('button', { name: 'Sign out of Eliza Cloud', exact: true });
   // Force geometric overlap without forcing the click: informational text must not consume it.
   await signout.evaluate(button => {

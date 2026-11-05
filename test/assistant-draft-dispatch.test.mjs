@@ -8,7 +8,7 @@ test('Alpha binds its draft controller name to the shared implementation',()=>{
 });
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 const record=(text,revision='1')=>({version:1,binding:'test',revision,text});
-function fixture(){let text='',saved=null;const store={async read(){return saved;},async save(expected,value){assert.deepEqual(expected,saved);return saved=record(value,String(Number(saved?.revision||0)+1));}};const c=new AssistantDraftController(async()=>store,()=>text,value=>{text=value;},()=>{});return {c,store,set:value=>{text=value;c.edit(value);},get:()=>text,saved:()=>saved,external:value=>{saved=record(value,'external');}};}
+function fixture(messages){let text='',saved=null;const store={async read(){return saved;},async save(expected,value){assert.deepEqual(expected,saved);return saved=record(value,String(Number(saved?.revision||0)+1));}};const c=new AssistantDraftController(async()=>store,()=>text,value=>{text=value;},()=>{},messages);return {c,store,set:value=>{text=value;c.edit(value);},get:()=>text,saved:()=>saved,external:value=>{saved=record(value,'external');}};}
 test('opening quietly retries a transient read without losing restored draft text',async()=>{
  const f=fixture();f.external('Keep these words');const read=f.store.read;let attempts=0;
  f.store.read=async()=>{if(++attempts===1)throw Error('Storage opening');return read();};
@@ -41,6 +41,25 @@ test('a pre-dispatch failure returns the text to the composer and keeps it saved
  const f=fixture();f.external('Not yet sent');await f.c.open('one');await f.c.hold('Not yet sent');f.set('');await tick();
  f.c.release();await tick();
  assert.equal(f.get(),'Not yet sent');assert.equal(f.saved().text,'Not yet sent');assert.match(f.c.state.message,/back in the composer/);
+});
+// Owner, 2026-11-03: Alpha's composer is built with {notSent:''}. A refused send's text comes back
+// with no line under the composer; the shared default above stays for other hosts.
+const alphaComposer=(()=>{const adapter=readFileSync(new URL('../apps/app/src/prototype/agent-adapter.ts',import.meta.url),'utf8'),start=adapter.indexOf('this.composerDraft=new AssistantDraftController(');return adapter.slice(start,adapter.indexOf('\n',start));})();
+test('Alpha\'s composer puts a refused send back with no line under it, and the next Send dispatches it once',async()=>{
+ assert.match(alphaComposer,/,\(\)=>\{if\(this\.live\)this\.setState\(\{\}\);\},\{notSent:''\}\);$/);
+ const f=fixture({notSent:''});f.external('Refused while offline');await f.c.open('one');await f.c.hold('Refused while offline');f.set('');await tick();
+ f.c.release();await tick();
+ assert.equal(f.get(),'Refused while offline');assert.equal(f.saved().text,'Refused while offline');assert.notEqual(f.saved().sending,true);
+ assert.equal(f.c.state.message,'');assert.equal(f.c.holding,false,'nothing is left waiting to send by itself');
+ await f.c.hold('Refused while offline');f.set('');await tick();await f.c.commit();
+ assert.equal(f.saved().text,'');assert.equal(f.c.state.message,'');
+});
+test('Alpha\'s composer keeps every other draft status',async()=>{
+ const f=fixture({notSent:''});f.external('Unsent words');await f.c.open('one');await f.c.hold('Unsent words');f.set('');await tick();
+ f.c.retire();f.set('');f.c.release();await tick();
+ assert.match(f.c.state.message,/kept as a draft in its own conversation/);
+ const g=fixture({notSent:''});g.store.read=async()=>{throw Error('Unavailable');};g.set('Unsent words');await g.c.open('one');
+ assert.match(g.c.state.message,/could not be read/);
 });
 test('typing during the send is kept after the restored text and after a commit',async()=>{
  const f=fixture();f.external('First');await f.c.open('one');await f.c.hold('First');f.set('');f.set('Second');await tick();

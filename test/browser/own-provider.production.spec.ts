@@ -1,3 +1,4 @@
+import {openCloudPlanFromSettings} from './helpers/cloud-plan-settings';
 import {expect, test, type Page} from '@playwright/test';
 import {completeAccessSetup, expectNoDevelopmentSurface, fenceNetwork, flagOffAndroid, residentHome} from './flag-off-android';
 
@@ -176,7 +177,7 @@ test('a signed-in Cloud subscription remains accessible with own Cerebras keys s
  await dialog(page).getByRole('button',{name:'Save and use own keys',exact:true}).click();
  await expect(dialog(page)).toHaveCount(0);
  await expect(page.getByRole('button',{name:'AI provider',exact:true})).toContainText('Own API keys');
- await page.getByRole('button',{name:'Eliza Cloud account & plan',exact:true}).click();
+ await openCloudPlanFromSettings(page);
  await page.getByRole('region',{name:'Settings',exact:true}).getByRole('button',{name:'Redeem code',exact:true}).click();
  const account=page.getByRole('dialog',{name:'Eliza Cloud account & plan',exact:true});
  const subscription=account.getByRole('region',{name:'Subscription',exact:true});

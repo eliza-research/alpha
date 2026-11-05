@@ -4,14 +4,16 @@ const upstreamPin=JSON.parse(readFileSync(new URL('../../upstream.lock.json',imp
 
 // Real rendered Settings; only the Android IPC boundary is synthetic. These prove the renderer's
 // contract (what it reads, shows and sends). Emulator readback lives in SettingsRolesInstrumentedTest.
-type Options={launcher?:boolean;decline?:number};
+// updates: AlphaDevice.checkForUpdate's answers in order: a manifest, null for a 404 (nothing published), or 'fail'.
+type Options={launcher?:boolean;decline?:number;updates?:Array<object|null|'fail'>};
 async function nativeStub(page:Page,options:Options={}){
- await page.addInitScript(({launcher,decline,upstreamPin})=>{
+ await page.addInitScript(({launcher,decline,updates,upstreamPin})=>{
   const w=window as any;w.androidBridge={};
   try{localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));}catch{/* covered elsewhere */}
   const now=Date.now(),store=new Map<string,string>();
   const roles:Record<string,{held:boolean;holders:string[]}>={home:{held:false,holders:['com.android.launcher3']},assistant:{held:false,holders:[]},dialer:{held:false,holders:[]},sms:{held:false,holders:[]}};
   let declines=decline;
+  const answers=[...updates];
   const listeners:Array<{plugin:string;event:string;callback:(value:unknown)=>void}>=[];
   // Native events (appResumed) arrive through Capacitor's callback channel.
   w.settingsFixture={calls:[] as any[],shared:[] as string[],resume:()=>listeners.filter(l=>l.plugin==='DailyApps'&&l.event==='appResumed').forEach(l=>l.callback({}))};
@@ -23,7 +25,7 @@ async function nativeStub(page:Page,options:Options={}){
     {name:'Agent',methods:methods(['getStatus'])},
     {name:'AlphaConnection',methods:methods(['secureRead','secureWrite','secureCompareExchange','secureRemove','addListener','removeListener'])},
     {name:'ElizaSystem',methods:methods(['getStatus','requestRole','getDeviceSettings','getBuildInfo'])},
-    {name:'AlphaDevice',methods:methods(['snapshot','crashLog','clearCrashLog','recordRendererFailure','diagnosticsFacts','shareDiagnostics','openSettings'])},
+    {name:'AlphaDevice',methods:methods(['snapshot','crashLog','clearCrashLog','recordRendererFailure','diagnosticsFacts','shareDiagnostics','openSettings','checkForUpdate','installUpdate'])},
     {name:'DailyApps',methods:[{name:'addListener',rtype:'callback'},{name:'removeListener',rtype:'callback'}]},
    ],
    nativeCallback:(plugin:string,method:string,options:any,callback:(value:unknown)=>void)=>{if(method==='addListener'){listeners.push({plugin,event:options?.eventName,callback});return String(listeners.length);}return '0';},
@@ -46,7 +48,10 @@ async function nativeStub(page:Page,options:Options={}){
      if(method==='getDeviceSettings')return {volumes:[]};
     }
     if(plugin==='AlphaDevice'){
-     if(method==='snapshot')return {readAt:now,model:'Fixture phone',manufacturer:'Fixture',appVersion:'0.1.0',androidRelease:'16',build:'fixture',securityPatch:'2026-09-05',permissions:{Microphone:true,Location:false,Camera:false,Calendar:true},locationAccess:'denied',batteryPercent:64,charging:false,powerSave:false,wifiActive:true,cellularActive:false};
+     if(method==='snapshot')return {readAt:now,model:'Fixture phone',manufacturer:'Fixture',appVersion:'0.1.0',androidRelease:'16',build:'fixture',securityPatch:'2026-09-05',permissions:{Microphone:true,Location:false,Camera:false,Calendar:true},locationAccess:'denied',batteryPercent:64,charging:false,powerSave:false,wifiActive:true,cellularActive:false,...(updates.length?{appVersionCode:7,appSigner:'5c'.repeat(32)}:{})};
+     // Each check settles after 300 ms, so a second start or resume can arrive while it runs.
+     if(method==='checkForUpdate'){const next=answers.shift();await new Promise(settle=>setTimeout(settle,300));if(next===undefined||next==='fail')throw Error('Update unavailable');return next===null?{}:{manifest:JSON.stringify(next)};}
+     if(method==='installUpdate')return undefined;
      if(method==='crashLog')return {exitHistory:true,entries:[{at:now-60_000,source:'uncaught',errorClass:'java.lang.IllegalStateException',thread:'main',process:'main'},{at:now-30_000,source:'exit',reason:'anr',process:'main'},{at:now-10_000,source:'exit',reason:'crash',process:'main',description:'Fixture note text should not appear'}]};
      if(method==='diagnosticsFacts')return {appVersion:'0.1.0',versionCode:1,variant:launcher?'launcher':'standalone',buildType:'release',testMocks:false,sdkInt:36,androidRelease:'16',securityPatch:'2026-09-05',upstreamPin,runtimeHashes:{'agent/alpha-source.json':'c'.repeat(64)},apiKey:'csk-synthetic-provider-key'};
      if(method==='shareDiagnostics'){f.shared.push(input.text);return {status:'opened'};}
@@ -56,7 +61,7 @@ async function nativeStub(page:Page,options:Options={}){
     throw Error('Unexpected native operation '+plugin+'.'+method);
    },
   };
- },{launcher:options.launcher??true,decline:options.decline??0,upstreamPin});
+ },{launcher:options.launcher??true,decline:options.decline??0,updates:options.updates??[],upstreamPin});
 }
 const settings=async(page:Page,query='')=>{await page.goto(`/${query}`);await page.getByRole('button',{name:'Settings',exact:true}).click();await expect(page.locator('html')).toHaveAttribute('data-active-view','settings');};
 const app=(page:Page)=>page.locator('[data-alpha-layer="app"]');
@@ -128,4 +133,76 @@ test('Privacy shows Calendar and no Contacts, Developer has no NPU or uptime, an
  expect(report.roles.find((r:any)=>r.role==='home')).toEqual({role:'home',held:false,available:true});
  expect(report.crashes.count).toBe(3);
  for(const leak of ['csk-synthetic','Fixture note text','com.android.launcher3','holders','Fixture phone'])expect(shared).not.toContain(leak);
+});
+
+// Software update: what the app start, resume and owner taps send to AlphaDevice, and the rows they leave.
+const update={schema:'alpha-update/v1',versionCode:8,versionName:'0.1.1',variant:'launcher',signerSha256:'5c'.repeat(32),apkUrl:'https://github.com/eliza-research/alphaphone/releases/download/app-8/alpha-phone-8.apk',sha256:'0a'.repeat(32),sizeBytes:400_000_000,notes:'Faster Home'};
+const saved=(page:Page)=>page.evaluate(()=>localStorage.getItem('alpha.app-update.v1'));
+
+test('a failed update check stays due, one check runs at a time, and Install update sends the offered APK',async({page})=>{
+ await nativeStub(page,{updates:['fail',update]});
+ await settings(page);
+ const install=app(page).getByRole('button',{name:'Install update',exact:true});
+ // The check at app start fails quietly: nothing is offered or recorded, so the next resume checks again.
+ await expect.poll(()=>calls(page,'AlphaDevice','checkForUpdate')).toBe(1);
+ await page.waitForTimeout(500);
+ expect(await saved(page)).toBeNull();
+ await expect(install).toHaveCount(0);
+ await expect(app(page).getByRole('button',{name:'Check for updates',exact:true})).toBeVisible();
+ // Two resumes while that check runs share it.
+ await page.evaluate(()=>{const f=(window as any).settingsFixture;f.resume();f.resume();});
+ await expect(install).toBeVisible();
+ await expect(app(page).getByText('0.1.1 (8)',{exact:true})).toBeVisible();
+ await expect(app(page).getByText('Faster Home',{exact:true})).toBeVisible();
+ expect(await calls(page,'AlphaDevice','checkForUpdate')).toBe(2);
+ // Answered: later resumes that day do not check again.
+ await page.evaluate(()=>(window as any).settingsFixture.resume());
+ await page.waitForTimeout(500);
+ expect(await calls(page,'AlphaDevice','checkForUpdate')).toBe(2);
+ await install.click();
+ await expect.poll(()=>calls(page,'AlphaDevice','installUpdate')).toBe(1);
+ // Only what the native download reads: not versionName or notes.
+ const {apkUrl,sha256,sizeBytes,versionCode}=update;
+ expect(await page.evaluate(()=>(window as any).settingsFixture.calls.find((c:any)=>c.method==='installUpdate').input)).toEqual({apkUrl,sha256,sizeBytes,versionCode});
+ // A restart offers the kept answer without checking again.
+ await settings(page);
+ await expect(install).toBeVisible();
+ await page.waitForTimeout(500);
+ expect(await calls(page,'AlphaDevice','checkForUpdate')).toBe(0);
+ expect(await page.locator('body').innerText()).not.toMatch(/Up to date|Update failed|Update unavailable/);
+});
+
+test('an update whose versionName cannot be shown is still offered, under its versionCode',async({page})=>{
+ await nativeStub(page,{updates:[{...update,versionName:'x'.repeat(65)}]});
+ await settings(page);
+ const row=app(page).getByRole('button',{name:'Install update',exact:true});
+ await expect(row).toBeVisible();
+ await expect(app(page).getByText('8',{exact:true})).toBeVisible();
+ expect(await page.locator('body').innerText()).not.toContain('x'.repeat(65));
+ await row.click();
+ await expect.poll(()=>calls(page,'AlphaDevice','installUpdate')).toBe(1);
+});
+
+test('Install update appears only for a newer build of this flavor and signer, and a withdrawn release removes it',async({page})=>{
+ await nativeStub(page,{updates:[{...update,versionCode:7},{...update,variant:'standalone'},{...update,signerSha256:'6d'.repeat(32)},update,null]});
+ await settings(page);
+ const install=app(page).getByRole('button',{name:'Install update',exact:true}),check=app(page).getByRole('button',{name:'Check for updates',exact:true});
+ await expect.poll(()=>calls(page,'AlphaDevice','checkForUpdate')).toBe(1);
+ for(const [count,offered] of [[2,false],[3,false],[4,true],[5,false]] as const){
+  await check.click();
+  await expect.poll(()=>calls(page,'AlphaDevice','checkForUpdate')).toBe(count);
+  await expect(check).toBeVisible();
+  await expect(install).toHaveCount(offered?1:0);
+ }
+ // The 404 is an answer: it is kept, so the withdrawn offer does not come back on restart.
+ expect(JSON.parse((await saved(page))!).manifest).toBeNull();
+ expect(await calls(page,'AlphaDevice','installUpdate')).toBe(0);
+});
+
+test('a browser build never checks for updates',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();
+ await expect(page.locator('html')).toHaveAttribute('data-active-view','settings');
+ await page.waitForTimeout(500);
+ expect(await saved(page)).toBeNull();
+ await expect(app(page).getByRole('button',{name:'Check for updates',exact:true})).toHaveCount(0);
 });

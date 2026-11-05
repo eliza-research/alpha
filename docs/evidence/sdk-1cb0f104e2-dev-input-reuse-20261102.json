@@ -1,0 +1,15 @@
+{
+  "state": "SOURCE_INPUT_EQUIVALENCE_NOT_NATIVE_QUALIFICATION",
+  "fromSDK": "5113e59025664fc39a6542338d076b7f49ead4d7",
+  "toSDK": "1cb0f104e22d9001a4b8da1b8777a1d88f28b977",
+  "exactChangedPaths": [
+    "plugins/plugin-assistant/src/prompts/acknowledgment.ts",
+    "plugins/plugin-assistant/src/services/message/context-assembly.ts",
+    "plugins/plugin-assistant/src/services/message/phone-capability-context.test.ts"
+  ],
+  "proof": "Genuine ancestor-bounded GitHub comparison contains only the listed runtime/test paths. No package, lockfile, native, Android bridge or build-producer changes.",
+  "nativeArtifactsAdmitted": false,
+  "freshNativeBuildOrDeviceQualification": false,
+  "change": "the reviewed acknowledgment-authoring alignment and stronger short spoken-response guidance",
+  "desktopCPUReuse": "Requires originalCPUstamp/library/model hashes and canonical CPU --check in separately reviewed adoption operator."
+}

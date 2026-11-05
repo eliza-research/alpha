@@ -19,7 +19,7 @@ test('the shared guard refuses work for a stopped, shut-down or full worker with
 const plugins={
  AlphaActionJournalPlugin:['worker()'],
  AlphaConnectionPlugin:['workers'],
- AlphaDevicePlugin:['diagnosticsWorker'],
+ AlphaDevicePlugin:['diagnosticsWorker','updateWorker'],
  AlphaFilesPlugin:['worker'],
  AlphaHostedResultsPlugin:['io'],
  AlphaLocalAgentPlugin:['workers','voiceWorkers','rendererWorkers'],

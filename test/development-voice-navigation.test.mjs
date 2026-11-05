@@ -1,4 +1,5 @@
 import {validateUuid} from '../vendor/eliza/packages/core/src/utils/uuid.ts';
+import {createRealtimeVoiceTiming} from '../.eliza/client-features/packages/voice/src/realtime-voice-timing.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -10,16 +11,16 @@ import {applyServerEvent,INITIAL_VOICE_SESSION_STATE} from '../vendor/eliza/pack
 const source=fs.readFileSync(new URL('../apps/app/src/runtime/development-cartesia-conversation.ts',import.meta.url),'utf8');
 const js=stripTypeScriptTypes(source.replace(/^import .*;\n/gm,'').replace(/^export \{.*\} from .*;\n/gm,'').replace(/import\.meta\.env\.DEV===true&&devSurfacesEnabled&&!Capacitor\.isNativePlatform\(\)&&import\.meta\.env\.VITE_ALPHA_DEV_CARTESIA==='1'/,'true').replace("await import('@elizaos/ui/voice/voice-session-client')",'({createVoiceSessionClient:fixtureClient})').replace(/export /g,''),{mode:'transform'});
 class RendererSocket{static latest;constructor(){RendererSocket.latest=this;queueMicrotask(()=>this.onopen?.());}close(){}}
-const factory=new Function('connectionController','fixtureClient','WebSocket','location','setTimeout','clearTimeout','developmentCloudRealtimeVoiceEnabled','developmentCartesiaVoiceEnabled','readDevicePreferences','window','validateUuid',js+'\nreturn developmentCartesiaConversation;');
+const factory=new Function('connectionController','fixtureClient','WebSocket','location','setTimeout','clearTimeout','developmentCloudRealtimeVoiceEnabled','developmentCartesiaVoiceEnabled','readDevicePreferences','window','validateUuid','beginRealtimeVoiceTiming',js+'\nreturn developmentCartesiaConversation;');
 const flush=async()=>{for(let i=0;i<30;i++)await Promise.resolve();};
 // Like the pinned SDK client, reduce each frame into accepted state before the raw callback.
 const sdkOptions=options=>{let state={...INITIAL_VOICE_SESSION_STATE,phase:'listening'};return options&&{...options,onServerEvent(event){if(event.t!=='speaking_end'){state=applyServerEvent(state,event);options.onState(state);}options.onServerEvent(event);}};};
-function harness(ask=true){
+function harness(ask=true,turnTerminal=true){
  let options,sdk,current=true,refreshes=0,hold,release;const errors=[],navigations=[],transcripts=[],actions=[];let view='home';
- const binding={conversationId:'room',session:{agentId:'agent'}},agent={request:async path=>path.includes('/health')?{ready:true,conversationId:'room',agentId:'agent'}:path==='/api/views/voice-channel'?{wsUrl:'ws://localhost/__alpha-local-renderer/ws?sessionId=fixture',expiresAt:Date.now()+120000}:{}};
+ const binding={conversationId:'room',session:{agentId:'agent'}},agent={request:async path=>path.includes('/health')?{ready:true,turnTerminal,conversationId:'room',agentId:'agent'}:path==='/api/views/voice-channel'?{wsUrl:'ws://localhost/__alpha-local-renderer/ws?sessionId=fixture',expiresAt:Date.now()+120000}:{}};
  const controller={getSnapshot:()=>({residentInference:"cloud"}),performVoiceRequestedActions:async(_binding,_message,_signal,operation)=>{actions.push((operation||'general')+':'+view);return view==='camera'?[{summary:'Photo saved'}]:[];},getBrowserSpeechAgent:()=>agent,voiceRendererClientId:()=>'11111111-1111-4111-8111-111111111111',voiceConversationCurrent:()=>current,refreshDeveloperVoiceHistory:async()=>{refreshes++;if(hold)await new Promise(resolve=>release=resolve);}};
  const createVoiceSessionClient=value=>{options=value;sdk=sdkOptions(value);return {start:async()=>{},stop:async()=>{},setMicrophoneMuted:()=>{}};};
- return {create:()=>factory(controller,createVoiceSessionClient,RendererSocket,{host:'localhost'},()=>1,()=>{},false,true,async()=>({askBeforeAgentActions:ask}),new EventTarget(),validateUuid)({binding,assertCurrent:()=>{if(!current)throw Error('changed');},onState:()=>{},onTranscript:text=>transcripts.push(text),onError:error=>errors.push(error.message),getUiContext:()=>({uiViewPath:'/notes',uiBrowserSurface:'native'}),onNavigate:async event=>{navigations.push(event);view=event.viewId;}}),renderer:event=>RendererSocket.latest.onmessage({data:JSON.stringify(event)}),get options(){return sdk;},get refreshes(){return refreshes;},errors,navigations,transcripts,actions,setCurrent:value=>current=value,hold:()=>hold=true,release:()=>{hold=false;release?.();}};
+ return {create:()=>factory(controller,createVoiceSessionClient,RendererSocket,{host:'localhost'},()=>1,()=>{},false,true,async()=>({askBeforeAgentActions:ask}),new EventTarget(),validateUuid,()=>createRealtimeVoiceTiming({storageKey:"fixture",storage:()=>undefined}).start("direct-cartesia"))({binding,assertCurrent:()=>{if(!current)throw Error('changed');},onState:()=>{},onTranscript:text=>transcripts.push(text),onError:error=>errors.push(error.message),getUiContext:()=>({uiViewPath:'/notes',uiBrowserSurface:'native'}),onNavigate:async event=>{navigations.push(event);view=event.viewId;}}),renderer:event=>RendererSocket.latest.onmessage({data:JSON.stringify(event)}),get options(){return sdk;},get refreshes(){return refreshes;},errors,navigations,transcripts,actions,setCurrent:value=>current=value,hold:()=>hold=true,release:()=>{hold=false;release?.();}};
 }
 test('authoritative progress refreshes canonical history with one in-flight loader and one coalesced followup',async()=>{
  const f=harness();await f.create();f.hold();for(const t of ['ready','stt_final','speaking_start','reply_complete','usage'])f.options.onServerEvent({t,text:'hello',traceId:'turn'});await flush();assert.equal(f.refreshes,1);f.release();await flush();assert.equal(f.refreshes,2);assert.deepEqual(f.transcripts,['hello']);assert.deepEqual(f.errors,[]);
@@ -104,3 +105,5 @@ test('camera continuation ignores an interrupted request and respects ask-first'
 test('direct voice action completion refuses malformed message identities',async()=>{
  for(const userMessageId of ['invalid-message',cameraMessage+'-extra',' '+cameraMessage]){const f=harness(false);await f.create();f.options.onServerEvent({t:'stt_final',traceId:'turn',text:'take a photo'});f.options.onServerEvent({t:'reply_complete',traceId:'turn',userMessageId});await flush();assert.deepEqual(f.actions,[]);}
 });
+
+test('a health response without terminal protocol support cannot start the synthetic voice transport',async()=>{const h=harness(true,false);await assert.rejects(h.create(),/selected developer speech service is unavailable/);assert.equal(h.options,undefined);});

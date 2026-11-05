@@ -9,6 +9,7 @@ import {setupLiveAssistant} from './voice-assistant-fixture';
 // capture recovery (two cases); interruptSpeech accounting (the busy hold closes capture on submission; interrupting reopens it) is retained separately.
 // Dictation's public component API is retained but there is no chat dictation button.
 // Override only the source build-flags module to exercise local/native branches; no shipped hooks.
+// The stub must export every build flag: updateChannelCheckEnabled joined the module in f4ebce3b3 (#713).
 test.beforeEach(async({page})=>{await page.route('**/src/build-flags.ts*',route=>route.fulfill({contentType:'application/javascript',body:'export const testMocksEnabled=false;export const devSurfacesEnabled=false;export const cloudRuntimeEnabled=false;export const privateLocalPreviewEnabled=false;export const updateChannelCheckEnabled=false;'}));});
 async function captureApi(page:Page){
  await page.evaluate(async()=>{const {Component}=await import('/src/prototype/model.js'),{connectionController:c}=await import('/src/runtime/connection-ui.tsx');const render=Component.prototype.renderVals;Component.prototype.renderVals=function(){(window as any).dictationApiFixture=this;return render.call(this);};c.close();});
@@ -76,6 +77,7 @@ test('API dictation and assistant stay distinct: draft editing never sends, voic
  await button(page,'Talk').click();
  await expect(voice(page)).toHaveAttribute('data-voice-state','listening');
  expect(await live(page,f=>f.captures.map((c:any)=>c.echoCancel))).toEqual([false,true]);
+ // 5f669f286 (#745) shortened the assistant status to 'Listening…'; interruption stays behavioural (mic open while speaking).
  await expect(voice(page)).toContainText('Listening…');
  await say(page,'What is on my calendar today');
  await expect.poll(()=>posts(page)).toEqual(['What is on my calendar today']);
@@ -126,8 +128,9 @@ test('API dictation recovery: without an echo canceller, speech during playback 
  const stopped=await live(page,f=>f.stopped);
  // Busy hold (shared session at the #780 pin 35e0a605b3): submission closed the capture, so the
  // reply's own audio (heard without an echo canceller) has no open microphone to reach.
- expect(await live(page,f=>f.active)).toBeNull();const routed=await live(page,f=>f.routes.length);
+ expect(await live(page,f=>f.active)).toBeNull();
  expect(await live(page,f=>f.sharedVoiceSession.getSnapshot().inputHeld)).toBe(true);
+ const routed=await live(page,f=>f.routes.length);
  await page.evaluate(()=>{const f=(window as any).live,t=Date.now();f.frames([t-64,t-32,t],[{type:'speech-start',timestampMs:t-64}]);});
  await page.waitForTimeout(150);
  await page.evaluate(()=>{const f=(window as any).live,t=Date.now();f.frames([t],[{type:'speech-end',timestampMs:t}]);});

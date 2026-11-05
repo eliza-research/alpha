@@ -251,8 +251,11 @@ test('an offline failure before the message is posted keeps the text and a later
   await typeDraft(page, 'Keep this while offline');
   const key = await bindingKey(page);
   await composer(page).press('Enter');
-  await expect(page.getByText('Not sent. Your message is back in the composer.', { exact: true }).first()).toBeVisible();
+  await expect.poll(() => fixture(page, f => f.creates)).toBe(1);
   await expect(composer(page)).toHaveValue('Keep this while offline');
+  // The text simply comes back: no line under the composer and no toast (owner, 2026-11-03).
+  await expect(page.getByText('Your message is back in the composer')).toHaveCount(0);
+  await expect(page.getByRole('status', { name: 'Assistant draft status', exact: true })).toHaveCount(0);
   // Nothing carrying the message left the phone, so no unknown-outcome claim and no reconciliation.
   await expect(page.getByText(UNKNOWN, { exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /^Check saved conversation/ })).toHaveCount(0);

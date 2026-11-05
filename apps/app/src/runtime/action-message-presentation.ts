@@ -1,3 +1,4 @@
+import {systemNoticeText} from '../../../../.eliza/client-features/packages/core/src/types/system-notice.ts';
 /** Display only. Stored messages, proposals and journal receipts are never rewritten. */
 type Message = Record<string, any>;
 const REVIEW_TEXT = 'Review this request on your phone before it can run.';
@@ -85,12 +86,13 @@ export type SystemNoticeKind = 'model-unavailable' | 'runtime-error' | 'model-an
 /** Byte-equal to pinned upstream `systemNoticeText()` (test/system-notice-collapse.test.mjs). These
  * recognise stored notice rows only; they are never shown, since they name the shared runtime and
  * a host operator's step. */
-export const UPSTREAM_MODEL_UNAVAILABLE_NOTICE = 'Eliza cannot respond yet. Configure a model provider on the connected host in Settings.';
-export const UPSTREAM_RUNTIME_ERROR_NOTICE = 'Eliza needs attention. Check the connected host\'s diagnostics before trying again.';
+export const UPSTREAM_MODEL_UNAVAILABLE_NOTICE = systemNoticeText('model-unavailable');
+export const UPSTREAM_RUNTIME_ERROR_NOTICE = systemNoticeText('runtime-error');
 const UPSTREAM_COMBINED_NOTICE = `${UPSTREAM_MODEL_UNAVAILABLE_NOTICE}\n---\n${UPSTREAM_RUNTIME_ERROR_NOTICE}`;
 
 /** A model-unavailable notice in Alpha's words: the owner's own recovery step. */
 export const MODEL_UNAVAILABLE_NOTICE = 'Your agent cannot reply yet. Choose an AI provider in Settings, then send your message again.';
+
 /** A runtime-error notice that arrived while the owner's latest message was unanswered. */
 export const RUNTIME_ERROR_NOTICE = 'Part of your agent stopped working, so this reply may not arrive. Nothing was resent. Send your message again in a moment.';
 /** A runtime-error notice that arrived with nothing waiting (a service failing at start, for example). */

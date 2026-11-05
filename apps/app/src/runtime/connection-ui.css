@@ -27,6 +27,8 @@
 
 /* Plan notice beside the running agent: never modal, never covers the whole phone. */
 .alpha-plan-notice{position:fixed;left:12px;right:12px;top:calc(var(--phone-top,0px) + max(calc(48px * var(--phone-scale,1)),calc((var(--alpha-header-clearance,0px) + 8px) * var(--phone-scale,1)),calc(max(var(--native-top-inset,0px),env(safe-area-inset-top,0px)) + 12px)));z-index:9000;max-width:480px;max-height:min(calc(var(--alpha-visible-height,100vh) * .3),max(0px,calc((var(--phone-height,100vh) - var(--alpha-dock-clearance,102px)) * var(--phone-scale,1) - max(calc(48px * var(--phone-scale,1)),calc((var(--alpha-header-clearance,0px) + 8px) * var(--phone-scale,1)),calc(max(var(--native-top-inset,0px),env(safe-area-inset-top,0px)) + 12px)) - 12px)));overflow:auto;margin:0 auto;box-sizing:border-box;padding:12px 14px;border-radius:18px;background:var(--s2,#f3f3f3);color:var(--fg,#000);box-shadow:0 4px 20px rgba(0,0,0,.14);font:14px/1.4 'Public Sans',system-ui,sans-serif}
+/* Settings already exposes plan actions and must remain reachable under the notice. */
+body:has([data-alpha-layer="app"]:not([inert]) [data-settings-page]) .alpha-plan-notice{display:none}
 .alpha-plan-notice p{margin:0 0 8px;overflow-wrap:anywhere}
 .alpha-plan-notice-actions{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .alpha-plan-notice-actions button{min-height:44px;padding:8px 13px;border-radius:22px;font:inherit;font-weight:500;color:var(--acct,#0000ff)}
@@ -86,8 +88,27 @@
 .alpha-own-keys-note{font-size:13px}
 .alpha-own-keys .alpha-form-actions{margin-top:8px}
 .alpha-connection .alpha-auth-notice{border-top:1px solid var(--connection-line,#dedede);padding-top:16px;margin-top:28px;font-size:12px;line-height:1.6;color:var(--connection-mut,#666);background:none;border-radius:0}
+.alpha-cloud-sign-in>.alpha-connection-actions:last-child{margin-top:20px}
+.alpha-connection.alpha-cloud-sign-in .alpha-connection-actions>.alpha-connection-cancel{background:none;border:0;box-shadow:none;color:var(--connection-mut,#666)}
+.alpha-cloud-sign-in .alpha-auth-submit[aria-busy=true]{opacity:1;cursor:progress}
+.alpha-cloud-sign-in-code>button[type=button]{min-height:44px;font-size:14px;font-variant-numeric:tabular-nums}
+/* Provider selection follows its current choice, not the generic first-action emphasis. */
+.alpha-connection [aria-label="AI provider"] .alpha-connection-actions button[aria-pressed="false"]{background:transparent;color:var(--connection-acc,#0000ff)}
+.alpha-connection [aria-label="AI provider"] .alpha-connection-actions button[aria-pressed="true"]{background:var(--connection-fg,#000);color:var(--connection-bg,#fff)}
+
+/* Provider settings share Alpha's content-sized sheet and phone bounds. */
+.alpha-connection-scrim[data-alpha-provider-overlay]{inset:auto;left:var(--phone-left,0px);top:var(--phone-top,0px);width:var(--phone-width,100vw);height:var(--phone-height,100dvh);transform:scale(var(--phone-scale,1));transform-origin:top left;align-items:flex-end;padding:max(12px,var(--native-top-inset,0px),env(safe-area-inset-top,0px)) max(0px,env(safe-area-inset-right,0px)) 0 max(0px,env(safe-area-inset-left,0px))}
+.alpha-connection-scrim .alpha-provider-panel{align-self:flex-end;flex:0 1 420px;max-width:100%;max-height:100%;min-height:0;padding:12px 26px max(28px,calc(20px + var(--native-bottom-inset,0px)),env(safe-area-inset-bottom,0px));border-radius:28px 28px 0 0;overflow-y:auto;overflow-wrap:anywhere;box-shadow:0 -4px 24px #00000012}
+.alpha-provider-handle{width:32px;height:4px;border-radius:4px;background:var(--connection-line,#d7d7d7);margin:0 auto 16px}
+.alpha-provider-panel header{gap:12px;margin-bottom:12px}
+.alpha-provider-panel header h1{min-width:0;margin:0;font-size:30px;line-height:1.1;letter-spacing:-.03em;font-weight:400}
+.alpha-provider-panel header>button{flex:none;width:48px;height:48px;padding:12px;color:var(--connection-fg,#111)}
+.alpha-provider-panel button{min-height:max(48px,calc(48px / var(--phone-scale,1)))}
+.alpha-provider-panel form>button{display:block;width:100%;margin-top:10px}
+.alpha-provider-panel form>button[type="button"]{background:var(--connection-s2,#f1f1f1);color:var(--connection-fg,#111)}
+
 .alpha-large-text .alpha-auth-brand{margin-bottom:16px}
-@media(max-height:620px){.alpha-auth-page .alpha-auth-content{padding-top:calc(env(safe-area-inset-top) + 24px)}.alpha-auth-brand{margin-bottom:16px}.alpha-auth-page h1{margin-bottom:20px}}
+@media(max-height:620px){.alpha-auth-page .alpha-auth-content{justify-content:flex-start;padding-top:calc(env(safe-area-inset-top) + 24px)}.alpha-auth-body{margin-block:0}.alpha-auth-brand{margin-bottom:16px}.alpha-auth-page h1{margin-bottom:20px}}
 
 /* Settings › AI provider: a two-segment choice; the selected segment is filled. */
 .alpha-provider-dialog header h1{margin:0;min-width:0;overflow-wrap:anywhere}
@@ -101,7 +122,7 @@
 .alpha-provider label{margin:0}
 .alpha-provider .alpha-own-keys{gap:var(--alpha-gap)}
 .alpha-segmented{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:var(--alpha-btn-radius,14px);background:var(--connection-s2,#f3f3f3)}
-.alpha-connection .alpha-segmented button{min-height:44px;border-radius:10px;padding:8px 12px;text-align:center;color:var(--connection-fg,#000);background:transparent;line-height:1.25}
+.alpha-connection .alpha-segmented button{min-height:max(48px,calc(48px / var(--phone-scale,1)));border-radius:10px;padding:8px 12px;text-align:center;color:var(--connection-fg,#000);background:transparent;line-height:1.25}
 .alpha-connection .alpha-segmented button[aria-pressed=true]{background:var(--connection-fg,#000);color:var(--connection-bg,#fff)}
 .alpha-provider-confirm{display:flex;flex-direction:column;gap:0}
 .alpha-provider-confirm .alpha-form-actions{margin-top:12px}
