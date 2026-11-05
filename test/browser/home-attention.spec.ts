@@ -48,7 +48,7 @@ test('a failed Agent Calendar read shows the retry state and recovers only after
   await refreshHomeCalendar(page,{fail:true});
   await expect(card).toHaveAttribute('aria-label', 'Open Agent Calendar');
   await expect(card).toContainText('Calendar unavailable');
-  await expect(card).not.toContainText(/No upcoming/);
+  await expect(card).not.toContainText(/Nothing planned|No upcoming/);
   await expect(card).toHaveAttribute('aria-description','Calendar service unavailable. Open Calendar to retry.');
   await expect(card).not.toContainText(/from this browser/);
   await page.evaluate(()=>(window as any).homeCalendarFixture.fail=false);

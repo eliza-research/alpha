@@ -292,8 +292,9 @@ test('journey A: a spoken request is transcribed, sent once, answered once and r
  await expect(talk).toHaveCount(1);
  await talk.click();
  await expect(voice).toHaveAttribute('data-voice-state','listening',{timeout:30_000});
- // The listening caption is the short 'Listening…' since 5f669f286 (#745).
+ // Speech routing is disclosed in Settings > Voice; the live composer stays quiet (#745).
  await expect(voice).toContainText('Listening…');
+ await expect(voice).not.toContainText('Eliza Cloud');
  // Silence: the microphone is open and nothing is transcribed or sent.
  await page.waitForTimeout(2500);
  expect(await cloud()).toEqual({transcriptions:0,speech:[]});
