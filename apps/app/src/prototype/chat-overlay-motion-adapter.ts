@@ -3,12 +3,63 @@ import {
 	OVERLAY_EASE,
 } from "../../../../.eliza/client-features/packages/ui/src/components/shell/chat-overlay-motion.ts";
 import { resolveChatPanelLayout } from "../../../../.eliza/client-features/packages/ui/src/components/shell/chat-panel-layout.ts";
-import { TAP_SLOP } from "../../../../.eliza/client-features/packages/ui/src/gestures/constants";
+import {
+	DEFAULT_PULL_DISTANCE,
+	TAP_SLOP,
+} from "../../../../.eliza/client-features/packages/ui/src/gestures/constants";
 import { visibleDocks } from "../runtime/dock-clearance";
 
 const PANEL_TRANSITION = `height .42s cubic-bezier(${OVERLAY_EASE.join(",")}), border-radius .42s, opacity .2s`;
 type Shell = any;
+// chat-release:begin (dependency-free; exercised by test/chat-release.test.mjs)
 type Mode = "hidden" | "input" | "sheet" | "full";
+type Sample = { y: number; t: number };
+/** How close to the collapsed form or the top a release must land to snap there, in canvas pixels. */
+export const CHAT_SNAP_ZONE = 120;
+/** Finger speed at release, in canvas pixels per millisecond, that makes a drag a flick. */
+export const CHAT_FLICK_VELOCITY = 1;
+/** Only this much of the end of a drag counts toward its release speed. */
+const FLICK_WINDOW_MS = 100;
+/** A finger held still this long before lifting has not flicked, however fast it got there. */
+const FLICK_HOLD_MS = 80;
+
+/** Upward speed at release in pixels per millisecond; zero when the finger had stopped. */
+export function releaseVelocity(track: Sample[], time: number): number {
+	const last = track[track.length - 1];
+	if (!last || time - last.t > FLICK_HOLD_MS) return 0;
+	const first = track.find((sample) => last.t - sample.t <= FLICK_WINDOW_MS);
+	return first && last.t > first.t
+		? (first.y - last.y) / (last.t - first.t)
+		: 0;
+}
+
+/**
+ * Where a released chat goes. An open chat stays at the released height unless it is near the
+ * collapsed form or the top; a flick jumps. From the collapsed form a pull down dismisses, and a
+ * pull up opens at the released height, or at the remembered one (no height) if it is still low.
+ */
+export function chatRelease(options: {
+	mode: Mode;
+	direction: "up" | "down";
+	height: number;
+	floor: number;
+	full: number;
+	flick: boolean;
+}): { chat: "hidden" | "sheet" | "full"; height?: number } {
+	const { mode, direction, height, floor, full, flick } = options;
+	const zone = Math.min(CHAT_SNAP_ZONE, (full - floor) / 3);
+	const nearTop = height >= full - zone,
+		nearFloor = height <= floor + zone;
+	if (mode === "sheet" || mode === "full") {
+		if (flick) return { chat: direction === "up" ? "full" : "hidden" };
+		if (nearFloor) return { chat: "hidden" };
+		return nearTop ? { chat: "full" } : { chat: "sheet", height };
+	}
+	if (direction === "down") return { chat: "hidden" };
+	if (nearTop) return { chat: "full" };
+	return flick || nearFloor ? { chat: "sheet" } : { chat: "sheet", height };
+}
+// chat-release:end
 type Drag = {
 	id: number;
 	owner: HTMLElement;
@@ -22,6 +73,9 @@ type Drag = {
 	height: number;
 	full: number;
 	half: number;
+	floor: number;
+	track: Sample[];
+	flick: boolean;
 	moved: boolean;
 	tap?: () => void;
 };
@@ -70,6 +124,12 @@ export function installChatOverlayMotion(Component: Shell) {
 			scale: screen ? screen.getBoundingClientRect().height / viewportH : 1,
 		};
 	}
+	/** The open sheet's resting height: where the person last left it, else the default. */
+	function sheetHeight(shell: Shell, geometry: ReturnType<typeof bounds>) {
+		return shell.chatSheetShare
+			? Math.min(geometry.full, Math.round(shell.chatSheetShare * geometry.full))
+			: geometry.half;
+	}
 	function retire(shell: Shell, redraw = true) {
 		const drag: Drag | undefined = shell.chatMotion;
 		shell.chatMotion = undefined;
@@ -85,7 +145,7 @@ export function installChatOverlayMotion(Component: Shell) {
 				geometry = bounds(),
 				mode = shell.S().chat;
 			if (panel) {
-				panel.style.height = `${mode === "full" ? geometry.full : mode === "sheet" ? geometry.half : 0}px`;
+				panel.style.height = `${mode === "full" ? geometry.full : mode === "sheet" ? sheetHeight(shell, geometry) : 0}px`;
 				panel.style.transition = PANEL_TRANSITION;
 			}
 			const input = document.querySelector<HTMLElement>(
@@ -187,26 +247,32 @@ export function installChatOverlayMotion(Component: Shell) {
 		}
 		if (firstMove) shell.setState({});
 	};
-	p.settleChatMotion = function (direction: "up" | "down") {
+	p.settleChatMotion = function (direction: "up" | "down", free = false) {
 		const d: Drag | undefined = this.chatMotion;
 		if (!d) return;
-		if (Math.abs(d.offset / d.scale) < TAP_SLOP) {
+		const travel = Math.abs(d.offset / d.scale),
+			collapsed = d.mode === "input" || d.mode === "hidden",
+			reach = d.mode === "input" ? 24 : DEFAULT_PULL_DISTANCE;
+		if (travel < TAP_SLOP || (free && collapsed && travel < reach)) {
 			retire(this);
 			return;
 		}
-		const next =
-			direction === "up"
-				? d.mode === "sheet" || d.height > (d.half + d.full) / 2
-					? "full"
-					: "sheet"
-				: d.mode === "full" &&
-						d.height > d.half / 2 &&
-						-d.offset / d.scale <= d.half
-					? "sheet"
-					: "hidden";
+		const next = chatRelease({
+			mode: d.mode,
+			direction,
+			height: d.height,
+			floor: d.floor,
+			full: d.full,
+			flick: d.flick,
+		});
+		if (next.height !== undefined)
+			this.chatSheetShare = next.height / Math.max(1, d.full);
 		retire(this, false);
 		this.swallow = Date.now();
-		this.setState({ chat: next });
+		// An open chat collapses to its resting form; only the bar itself dismisses to the pill.
+		this.setState({
+			chat: next.chat === "hidden" && !collapsed ? this.rest() : next.chat,
+		});
 	};
 	p.renderVals = function () {
 		const out = render.call(this),
@@ -219,7 +285,7 @@ export function installChatOverlayMotion(Component: Shell) {
 			(s.chat === "full"
 				? geometry.full
 				: s.chat === "sheet"
-					? geometry.half
+					? sheetHeight(shell, geometry)
 					: 0);
 		out.panelTransition = drag?.moved ? "none" : PANEL_TRANSITION;
 		// As in OG's scroll clearance, reserve the resting sheet's footprint and
@@ -311,6 +377,10 @@ export function installChatOverlayMotion(Component: Shell) {
 				if (emptyInput) event.preventDefault();
 				const g = bounds(),
 					mode = shell.S().chat as Mode,
+					rest = sheetHeight(shell, g),
+					floor =
+						(document.querySelector<HTMLElement>("[data-alpha-input-bar]")
+							?.clientHeight || 62) + 28,
 					owner = event.currentTarget as HTMLElement,
 					label = (event.target as Element)
 						?.closest("button")
@@ -340,30 +410,26 @@ export function installChatOverlayMotion(Component: Shell) {
 						mode === "full"
 							? g.full
 							: mode === "sheet"
-								? g.half
-								: Math.min(
-										mode === "input"
-											? (document.querySelector<HTMLElement>(
-													"[data-alpha-input-bar]",
-												)?.clientHeight || 62) + 28
-											: 80,
-										g.half,
-									),
-					height: mode === "full" ? g.full : mode === "sheet" ? g.half : 0,
+								? rest
+								: Math.min(mode === "input" ? floor : 80, g.half),
+					height: mode === "full" ? g.full : mode === "sheet" ? rest : 0,
 					full: g.full,
 					half: g.half,
+					floor,
+					track: [{ y: event.clientY, t: event.timeStamp }],
+					flick: false,
 					moved: false,
 					tap,
 				} satisfies Drag;
-				shell.props.configureChatPull({
-					input: mode === "input",
-					scale: g.scale || 1,
-				});
+				shell.props.configureChatPull({ scale: g.scale || 1 });
 				binding.onPointerDown(event);
 			},
 			move(event: PointerEvent) {
-				if (shell.chatMotion?.id !== event.pointerId) return;
+				const d: Drag | undefined = shell.chatMotion;
+				if (d?.id !== event.pointerId) return;
 				event.stopPropagation();
+				d.track.push({ y: event.clientY, t: event.timeStamp });
+				if (d.track.length > 32) d.track.shift();
 				binding.onPointerMove(event);
 			},
 			up(event: PointerEvent) {
@@ -373,6 +439,11 @@ export function installChatOverlayMotion(Component: Shell) {
 				// final paint; the shared hook still owns release intent and settlement.
 				const d: Drag = shell.chatMotion;
 				if (!d.moved) shell.paintChatMotion(d.y - event.clientY);
+				// A touch release can report a stale position; only a mouse's is a real sample.
+				if (event.pointerType !== "touch")
+					d.track.push({ y: event.clientY, t: event.timeStamp });
+				const speed = releaseVelocity(d.track, event.timeStamp) / d.scale;
+				d.flick = Math.abs(speed) >= CHAT_FLICK_VELOCITY;
 				binding.onPointerUp(event);
 			},
 			cancel(event: PointerEvent) {
@@ -411,14 +482,69 @@ export function installChatOverlayMotion(Component: Shell) {
 			const toolbar=event.currentTarget instanceof HTMLElement&&event.currentTarget.hasAttribute('data-alpha-chat-size');
 			if (event.detail === 0 || toolbar&&Date.now()-(shell.chatDraggedAt||0)>350) {
 				retire(shell, false);
-				shell.setState({ chat: shell.S().chat === "full" ? "sheet" : "full" });
+				const next = shell.S().chat === "full" ? "sheet" : "full";
+				shell.setState({ chat: next }, () => {
+					// Full screen removes the grabber: keyboard focus moves to the size control.
+					if (next === "full" && document.activeElement === document.body)
+						document
+							.querySelector<HTMLElement>("[data-alpha-chat-size]")
+							?.focus();
+				});
 			} else grabTap(event);
 		};
 		out.closeChat = () => {
 			retire(shell, false);
-			shell.setState({ chat: "hidden" });
+			// A voice session in the chat keeps its controls on the pill.
+			shell.setState({
+				chat: document.querySelector("[data-alpha-chat-recorder]")
+					? "hidden"
+					: shell.rest(),
+			});
 		};
 		out.scrimTap = out.closeChat;
+		// Any touch outside the open sheet collapses it and reaches nothing underneath. A tap
+		// collapses on its click, so no compatibility click can land on what the sheet uncovers;
+		// a drag has no click, so it collapses on release. Assistive technology activates
+		// controls directly and keeps reaching the app.
+		out.scrimPE =
+			s.chat === "sheet" && s.voice === "off" && !shell.props.assistantSurface
+				? "auto"
+				: "none";
+		out.scrimSw = {
+			down(event: PointerEvent) {
+				event.stopPropagation();
+				if (event.isPrimary === false) return;
+				shell.chatScrimPress = {
+					id: event.pointerId,
+					x: event.clientX,
+					y: event.clientY,
+					moved: false,
+				};
+			},
+			// Captured only once it is a drag: a captured press never produces the tap's click,
+			// and a drag may end over the sheet.
+			move(event: PointerEvent) {
+				const press = shell.chatScrimPress;
+				if (
+					press?.id !== event.pointerId ||
+					press.moved ||
+					Math.hypot(event.clientX - press.x, event.clientY - press.y) <
+						TAP_SLOP * geometry.scale
+				)
+					return;
+				press.moved = true;
+				(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+			},
+			up(event: PointerEvent) {
+				event.stopPropagation();
+				const press = shell.chatScrimPress;
+				shell.chatScrimPress = undefined;
+				if (press?.id === event.pointerId && press.moved) out.scrimTap();
+			},
+			cancel() {
+				shell.chatScrimPress = undefined;
+			},
+		};
 		return out;
 	};
 }

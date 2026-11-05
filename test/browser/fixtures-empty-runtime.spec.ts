@@ -47,7 +47,7 @@ test('notification shade has no seeded notices, no Enclave lock tile and neutral
   const { errors } = await withEmptyFixtures(page);
   await page.goto('/?shell=launcher');
   await expect(page.getByRole('button', { name: 'Inbox', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Open notifications', exact: true }).click();
+  const box=(await page.locator('[data-screen]').boundingBox())!,scale=box.width/412;await page.mouse.move(box.x+206*scale,box.y+420*scale);await page.mouse.down();await page.mouse.move(box.x+206*scale,box.y+660*scale,{steps:10});await page.mouse.up();
   const shade = page.locator('[data-alpha-layer="shade"]');
   await expect(shade).toHaveAttribute('aria-hidden', 'false');
   await expect(shade.getByRole('status').filter({ hasText: 'No notifications' })).toBeVisible();

@@ -15,25 +15,24 @@ test('Android\'s shade is the only shade: the swipe handler asks Android, never 
   assert.ok(swipe.length > 200 && swipe.length < 6000, 'swipe() located');
   // The zones are the shared shell's (resolveMobileShellSwipe, tested upstream); its one opener asks
   // for Android's shade: a pull on launcher Home's button or one the shared empty-Home pull accepts.
-  assert.match(swipe, /resolveMobileShellSwipe\(\{ screen: S\.screen, shade: !!S\.shade, view: S\.view, chat: S\.chat, launcher: this\.props\.systemShell !== false \}, \{ x: g\.x, y: g\.y, onShadeControl: !!g\.handle \}, dx, dy,/);
+  assert.match(swipe, /resolveMobileShellSwipe\(\{ screen: S\.screen, shade: !!S\.shade, view: S\.view, chat: S\.chat, launcher: this\.props\.systemShell !== false \}, \{ x: g\.x, y: g\.y, onShadeControl: false \}, dx, dy,/);
   assert.match(swipe, /pullOpensShade: function \(px, py, threshold\) \{ return emptyHomeShadePull\(self\.pullContext\(\), g\.pull, g\.y, px, py, threshold\); \}/);
   assert.match(swipe, /if \(action === "open-system-shade"\) return this\.openSystemShade\(\);/);
   assert.doesNotMatch(swipe, /shade: true/, 'no swipe sets a panel open directly');
   assert.doesNotMatch(swipe, /this\.openShade\(\)/, 'no swipe opens the development stand-in directly');
   assert.doesNotMatch(swipe, /g\.y < 90/, 'the top-edge band is not a gesture zone of Alpha');
-  assert.match(model, /handle: !!e\.target\.closest\?\.\("\[data-alpha-shade-handle\]"\), pull: pullStart\(e\.target\)/);
+  assert.match(model, /pull: pullStart\(e\.target\)/);
   // The development stand-in opens only in a build that has it.
   assert.match(model, /openShade\(\) \{\s*var S = this\.S\(\);\s*if \(!this\.simulatedShade\(\) \|\| S\.screen !== "home" \|\| S\.shade\) return;/);
   const template = read('apps/app/src/prototype/template.html');
-  assert.match(template, /<button type="button" class="alpha-shade-handle" data-alpha-shade-handle aria-label="Open notifications"[^>]*onClick="\{\{openSystemShade\}\}"/);
+  assert.doesNotMatch(template, /data-alpha-shade-handle|Open notifications/, 'Home has no notifications control');
   assert.match(template, /<sc-if value="\{\{simulatedShade\}\}">\s*<sc-if value="\{\{isOn\}\}">\s*<div data-alpha-layer="shade" id="alpha-notifications"/);
 });
 
-test('the launcher handle\'s margin below the status bar is measured in screen pixels', () => {
+test('launcher Home\'s margin below the status bar is measured in screen pixels', () => {
   const css = read('apps/app/src/prototype/phone.css');
   // The inset is in screen pixels and Home is on the scaled 412px canvas: divide by the canvas scale.
   assert.match(css, /\[data-alpha-home-layout\] \{ padding-top:max\(20px,calc\(\(var\(--native-top-inset,0px\) \+ 12px\) \/ var\(--phone-scale,1\) - 44px\)\)!important; \}/);
-  assert.match(css, /\.alpha-shade-handle \{[^}]*min-height:44px;[^}]*touch-action:none/);
 });
 
 test('no instrumented test opens the panel with the removed swipe', () => {
@@ -42,7 +41,6 @@ test('no instrumented test opens the panel with the removed swipe', () => {
     // The synthetic top-edge swipe the product no longer answers (a pointer pair from y=50 to y=200).
     assert.doesNotMatch(source, /\['pointerdown',\s*50\]/, `${name} synthesizes the removed top-edge swipe`);
   }
-  assert.match(read(path.join(ANDROID_TESTS, 'AppNavigation.java')), /static String openNotifications\(\)[^\n]*data-alpha-shade-handle[^\n]*handle\.click\(\)/);
   // Notices are opened in Android's own shade; no instrumented test looks for an Alpha panel.
   for (const name of ['NotificationsInstrumentedTest.java', 'NotificationChannelsInstrumentedTest.java', 'AccessibilityInstrumentedTest.java']) {
     const source = read(path.join(ANDROID_TESTS, name));
