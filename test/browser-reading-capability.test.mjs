@@ -94,7 +94,7 @@ test("the renderer asks on Android only, says so before any speech route or exce
   const read = adapter.slice(adapter.indexOf("async function readPage()"), adapter.indexOf("async function askPage()"));
   const ask = adapter.slice(adapter.indexOf("async function askPage()"), adapter.indexOf("function hide()"));
   assert.ok(read.indexOf("if(await readingUnsupported())return;") > 0 && read.indexOf("if(await readingUnsupported())return;") < read.indexOf("createNativeReadingVoice()"), "Read aloud refuses before a speech route is asked for");
-  assert.ok(ask.indexOf("if(await readingUnsupported())return;") > 0 && ask.indexOf("if(await readingUnsupported())return;") < ask.indexOf("Preparing page excerpt"), "Ask about page refuses before it says it is preparing an excerpt");
+  assert.ok(ask.indexOf("if(await readingUnsupported())return;") > 0 && ask.indexOf("if(await readingUnsupported())return;") < ask.indexOf("Browser.reviewQuestion"), "Ask about page refuses before preparing an excerpt");
   assert.match(adapter, /report\(new Error\(READING_UNSUPPORTED_MESSAGE\)\)/);
   assert.match(adapter, /readingUnavailable:readingSupport\?\.state==='unavailable',readingNote:READING_UNSUPPORTED_MESSAGE,/);
   assert.match(template, /<sc-if value="\{\{browser\.readingUnavailable\}\}"><p role="note" aria-label="Page reading unavailable" data-alpha-reading-unavailable [^>]*>\{\{browser\.readingNote\}\}<\/p><\/sc-if>/);

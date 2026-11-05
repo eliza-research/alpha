@@ -550,7 +550,6 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
     messages = messages.map(update); recountUnread();
     if (thread) thread = { ...thread, messages: thread.messages.map(row => row.message.id === message.id ? { ...row, message: update(row.message), historyId: outcome.historyId ?? row.historyId } : row) };
     if (body?.message.id === message.id) body = { ...body, message: update(body.message), historyId: outcome.historyId ?? body.historyId };
-    if (notice) api?.toast(notice);
     publish();
   }
   /** Swipe left routes to the same reviewed archive flow as the message view. */

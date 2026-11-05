@@ -104,7 +104,7 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
   function stopReading() { const active=reading; reading=undefined; active?.abort(); void Browser.cancelReading({session}).catch(()=>{}); }
   const unsubscribeReading = connectionController.subscribe(()=>{ if(reading && (connectionController.getSnapshot().open || document.hidden)) stopReading(); });
   async function readPage() {
-    if(reading){stopReading();shell?.toast('Reading stopped');return;}
+    if(reading){stopReading();return;}
     const id=state()?.cur, info=tabInfo(id), revision=tabs.revision(id);
     if(!Capacitor.isNativePlatform()){
       // The refusal is not left behind an open menu (the same rule as Ask about page).
@@ -128,8 +128,7 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
       shell.vset('browser',{menu:false});await new Promise(resolve=>setTimeout(resolve,150));valid();lastGeometry='';await update();
       if(!await voice.ready(controller.signal))throw new Error('The selected agent is not ready for speech.');valid();
       const result=await Browser.reviewReading({session,id,url:info.url,navigation:info.navigation,...binding});valid();
-      shell.toast('Preparing reviewed page speech');
-      await voice.speak(result.readingToken,controller.signal);valid();shell.toast('Reading finished');
+      await voice.speak(result.readingToken,controller.signal);valid();
     }catch(error){if(!controller.signal.aborted)report(error);}finally{unsubscribe();if(reading===controller){reading=undefined;void Browser.cancelReading({session}).catch(()=>{});}}
   }
   async function askPage() {
@@ -142,7 +141,7 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
     const controller=new AbortController();reading=controller;
     const current=()=>!controller.signal.aborted&&!disposed&&!document.hidden&&!document.documentElement.hasAttribute('data-dev-background')&&shell.S().screen==='home'&&shell.S().view==='browser'&&state()?.cur===id&&tabs.revision(id)===revision&&!connectionController.getSnapshot().open;
     try{
-      shell.vset('browser',{menu:false});shell.toast('Preparing page excerpt…');
+      shell.vset('browser',{menu:false});
       let text='';
       if(Capacitor.isNativePlatform()){
         await new Promise(resolve=>setTimeout(resolve,150));if(!current())return;lastGeometry='';await update();
