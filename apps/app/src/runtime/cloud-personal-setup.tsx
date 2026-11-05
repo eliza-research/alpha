@@ -3,7 +3,7 @@ import type { PersonalView } from './cloud-personal-protocol';
 export interface PersonalSetupState { view: PersonalView | null; blocked: boolean; declined: boolean }
 export {personalIntent,savePersonalIntent,clearPersonalIntent} from './cloud-personal-intent';
 const money=(value:number)=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:4}).format(value);
-export function CloudPersonalSetup({setup,busy,onAccept,onDecline,onPoll,onFinalize,onConnect,serviceName='Cloud'}:{setup:PersonalSetupState;busy:boolean;serviceName?:string;onAccept:()=>void;onDecline:()=>void;onPoll:()=>void;onFinalize:()=>void;onConnect:()=>void}) {
+export function CloudPersonalSetup({setup,busy,serviceName='Cloud',onAccept,onDecline,onPoll,onFinalize,onConnect}:{setup:PersonalSetupState;busy:boolean;serviceName?:string;onAccept:()=>void;onDecline:()=>void;onPoll:()=>void;onFinalize:()=>void;onConnect:()=>void}) {
  const view=setup.view;
  if(setup.declined)return <p role="status">Cloud account connected. Dedicated setup was not started.</p>;
  if(!view)return setup.blocked?<p role="status">Setup could not be confirmed. Check status before taking another action.</p>:null;

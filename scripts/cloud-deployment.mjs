@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import {createHash} from 'node:crypto';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {CLOUD_SDK_BASES,cloudSdkBases} from './cloud-sdk-authority.mjs';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 /** Deployment-owned public authorities, never credentials or values supplied by a login response. */
@@ -43,12 +44,15 @@ export function deploymentOutputs(config){
   'export function cloudStorageSlot(name:string):string { return name.startsWith("cloud:") || name.startsWith("cloud-signin:") || name === "local-agent-provider:v1" ? cloudStorageNamespace + name : name; }');
  return {'apps/app/src/runtime/cloud-deployment.generated.ts':ts.join('\n')+'\n','android/app/src/main/java/ai/elizaresearch/alphaphone/CloudDeployment.java':java.join('\n')+'\n'};
 }
-export function checkCloudDeployment(directory=root){
- const outputs=deploymentOutputs(JSON.parse(fs.readFileSync(path.join(directory,'config/cloud-deployment.json'),'utf8')));
+export function checkCloudDeployment(directory=root,sdkBases=CLOUD_SDK_BASES){
+ const config=JSON.parse(fs.readFileSync(path.join(directory,'config/cloud-deployment.json'),'utf8'));
+ const outputs=deploymentOutputs(config);
  for(const [name,contents] of Object.entries(outputs)){
   const file=path.join(directory,name);
   if(!fs.existsSync(file)||fs.readFileSync(file,'utf8')!==contents)throw Error('Stale Cloud deployment output: '+name+'; run node scripts/cloud-deployment.mjs');
  }
+ // The resident agent's inference base (ELIZAOS_CLOUD_BASE_URL) must be the configured API, never a second authority.
+ if(JSON.stringify(sdkBases)!==JSON.stringify(cloudSdkBases(config)))throw Error('Cloud SDK bases (scripts/cloud-sdk-authority.mjs) disagree with config/cloud-deployment.json');
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  if(process.argv.includes('--check'))checkCloudDeployment();

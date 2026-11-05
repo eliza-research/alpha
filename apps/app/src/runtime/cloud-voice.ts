@@ -107,7 +107,7 @@ export function createCloudVoice(readAloudRoute:'cloud'|'direct'='cloud') {
     async getRecordingMetrics(recordingId:string){check();const value=await native.getRecordingMetrics({recordingId});check();if(value.recordingId!==recordingId||!Number.isFinite(value.peak)||value.peak<0||value.peak>1||(value.rms!==undefined&&(!Number.isFinite(value.rms)||value.rms<0||value.rms>1)))throw Error('Recording metrics were not verified.');return value;},
     async stopRecording() { check(); const result = await native.stopRecording(); check(); return result; },
     async transcribeRecording(input: { recordingId: string; requestId: string }) {
-      check(); const result = await (nativeOwn?native.transcribeOwnRecording({...input,providerRevision:revision!}):developmentCloudVoiceEnabled?native.transcribeDevelopmentCloudRecording({...input,...(own?{route:'direct' as const}:{})}):native.transcribeRecording({ ...input, environment:environment!, credentialId:credentialId! })).catch(noteLimit); check();
+      check(); const result = await (nativeOwn?native.transcribeOwnRecording({...input,providerRevision:revision!}):developerSpeech?native.transcribeDevelopmentCloudRecording({...input,...(own?{route:'direct' as const}:{})}):native.transcribeRecording({ ...input, environment:environment!, credentialId:credentialId! })).catch(noteLimit); check();
       if (typeof result.text !== 'string' || result.local !== false) throw new Error(`${own?'Cartesia':'Cloud'} returned no usable transcript.`);
       // An empty transcript is silence, not a microphone, account or connection failure.
       if (!result.text.trim()) throw Object.assign(new Error(`${own?'Cartesia':'Cloud'} heard no speech in this recording.`), { code: 'no-speech' });
