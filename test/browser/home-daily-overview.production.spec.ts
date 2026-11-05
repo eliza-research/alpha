@@ -24,7 +24,8 @@ test('fresh Home shows unverified Agent Calendar state, no brief card, no fixtur
  await expect(calendar).toHaveAttribute('data-alpha-home-calendar-overdue','false');
  await expect(home.locator('[data-alpha-home-brief]')).toHaveCount(0);
  const inbox=home.locator('[data-alpha-home-inbox]');
- await expect(inbox).toHaveAccessibleName('Inbox: set up email in Connections');
+ await expect(inbox).toHaveAccessibleName('Connect email');
+ await expect(inbox).toContainText('Connect email');
  await expect(inbox).not.toContainText(/unread|Read \d/);
  await expect(home).not.toContainText(/Morning brief|Design review|7:02 AM|No brief yet/);
  await expect(home.getByText(/^(MC|JP|PN|\+2)$/)).toHaveCount(0);

@@ -35,6 +35,11 @@ test('Home at 200% text fills the screen and its last app row stays above the co
  await setTextScale(page,2);
  await expect.poll(()=>page.locator('[data-alpha-home-apps] > button').evaluateAll(list=>new Set(list.map(el=>Math.round(el.getBoundingClientRect().left))).size)).toBe(3);
  const layer=page.locator('[data-alpha-layer="home"]');
+ // Large text alone is not an overflow guarantee: the current Home adapts its layout and can fit at
+ // 200%. Model the bounded dock/content clearance the Home fit observer watches (as notifications-handle
+ // does) so the scroll path, reading order and composer clearance are still exercised.
+ const clearance=page.locator('[data-alpha-home-clearance]');
+ await layer.evaluate(el=>{const c=el.querySelector<HTMLElement>('[data-alpha-home-clearance]')!;c.style.height=Math.max(160,el.clientHeight-el.scrollHeight+160)+'px';});
  for(const at of ['top','bottom'] as const){
   await layer.evaluate((el,at)=>{el.scrollTop=at==='top'?0:el.scrollHeight;},at);await page.waitForTimeout(100);
   const order=await homeOrder(page);
@@ -43,6 +48,7 @@ test('Home at 200% text fills the screen and its last app row stays above the co
   if(at==='bottom')expect(order.composerBelow,at+': the composer is below every visible Home control').toBe(true);
   if(at==='bottom')expect(order.names).toContain('All apps');
  }
+ await clearance.evaluate(element=>{(element as HTMLElement).style.removeProperty('height');});
  // The Home scroller fills the phone instead of clipping labels above the assistant.
  const edges=await page.evaluate(()=>({home:document.querySelector('[data-alpha-layer="home"]')!.getBoundingClientRect().bottom,screen:document.querySelector('[data-screen]')!.getBoundingClientRect().bottom}));
  expect(Math.abs(edges.home-edges.screen)).toBeLessThanOrEqual(1);

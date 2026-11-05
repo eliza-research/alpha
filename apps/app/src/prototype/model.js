@@ -5680,7 +5680,7 @@ class Component extends DCLogic {
       showComposer: showComposer, showPill: showPill, cmpBottom: 28,
       cmpPlaceholder: (mod && mod.placeholder) ? mod.placeholder : "Ask " + name,
       draft: S.draft, hasDraft: !!S.draft, noDraft: !S.draft,
-      // The composer template binds these; the agent adapter refines them for a live turn.
+      // Composer button visibility; the live agent adapter overrides these for a pending turn. The fixture shell runs without it.
       sendVisible: !!S.draft && !S.typing, talkVisible: !S.draft && !S.typing, replyIdle: !S.typing,
       onDraft: function (e) { self.setState(e.target.value ? { draft: e.target.value } : { draft: "", editCard: null }); },
       onKey: function (e) { if (e.key === "Enter") { e.preventDefault(); self.send(); } },

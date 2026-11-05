@@ -24,6 +24,8 @@ for(const scenario of ['supported','legacy','unsupported','malformed','lost','re
     if(plugin==='AlphaVoiceCloud')return {microphone:'granted'};
     if(plugin==='Agent'){
      if(method==='getStatus')return {packaged:true,state:'ready'};
+     // Read-only provider choice the resident start consults (unconfigured Cloud: no keys, no inference).
+     if(method==='providerStatus')return {provider:'elizacloud',configured:false};
      if(method==='start')return {state:'ready'};
      // The real Agent plugin always exposes the Android resident renderer feed.
      if(method==='subscribeViewEvents')return {subscriptionId:input.subscriptionId};

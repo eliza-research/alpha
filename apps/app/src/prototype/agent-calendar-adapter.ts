@@ -202,7 +202,8 @@ export function installAgentCalendarAdapter(Component:any,views:Bag,preservation
   const target=port(),model=target?.current()&&controller?.state.ownerKey===calendarOwnerKey(target)?controller.state:undefined;
   const home=homeCalendarSelection(model,zone(),hidden,new Date(now)),event=home.event;
   // Shared daily-overview states for the agent calendar feed: reading, not connected, failed, stale and fresh.
-  // Only a current complete feed may supply an item or a real empty state.
+  // Only a current complete feed may supply an item or a real empty state. A shown agent event names its
+  // source quietly (no read time), as the shared ready feed does, so it is never unattributed.
   const failed=model?.status==='error'||model?.status==='unavailable',unverified=model?.status==='partial';
   // A verified event names its source on the card and on an overdue reminder's Next line; the quiet
   // read claims no read time, and an empty or unverified card names no source.
