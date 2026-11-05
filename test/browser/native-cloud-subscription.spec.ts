@@ -1,3 +1,4 @@
+import {openCloudPlanFromSettings} from './helpers/cloud-plan-settings';
 import {seedCompletedAccessSetup} from './flag-off-android';
 import {test,expect,type Page} from '@playwright/test';
 import {installResidentAgentPlugin} from './helpers/resident-agent-plugin';
@@ -773,7 +774,7 @@ test.describe('explicit membership code entry',()=>{
  test('Settings Redeem code opens the existing field directly',async({page})=>{
   await boot(page,{...await entitlements(),plan:'none',cashBalance:5,holdProvider:false,fullApp:true});await started(page);await idle(page);
   await page.getByRole('button',{name:'Settings',exact:true}).click();
-  await page.getByRole('button',{name:'Eliza Cloud account & plan',exact:true}).click();
+  await openCloudPlanFromSettings(page);
   await page.getByRole('region',{name:'Settings',exact:true}).getByRole('button',{name:'Redeem code',exact:true}).click();
   const input=sheet(page).getByRole('textbox',{name:'Membership code',exact:true});await expect(input).toBeVisible();await expect(input).toBeFocused();await noEffects(page);
  });

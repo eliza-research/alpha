@@ -1,3 +1,4 @@
+import {openCloudPlanFromSettings} from './helpers/cloud-plan-settings';
 import {seedCompletedAccessSetup} from './flag-off-android';
 import {completeAccessSetup, openYourAgent} from './flag-off-android';
 import { test, expect, type Page } from '@playwright/test';
@@ -406,7 +407,8 @@ for (const mode of ['signed-out','empty','credits','unavailable','funded','repla
    if(mode==='replaced')await expect(page.locator('[role="main"].alpha-cloud-sign-in')).toHaveCount(0);
    await expect(page.getByRole('dialog')).toHaveCount(0);
    await page.getByRole('button',{name:'Settings',exact:true}).click();
-   await page.getByRole('button',{name:mode==='replaced'?'Agent connection':'Eliza Cloud account & plan',exact:true}).click();
+   if(mode==='replaced')await page.getByRole('button',{name:'Agent connection',exact:true}).click();
+   else await openCloudPlanFromSettings(page);
   }
   await expect(dialog).toBeVisible();
   if(mode==='unpackaged'){

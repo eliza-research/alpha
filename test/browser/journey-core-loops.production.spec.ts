@@ -1,3 +1,4 @@
+import {openCloudPlanFromSettings} from './helpers/cloud-plan-settings';
 import {installNativeNavigationFixture} from './helpers/native-navigation-protocol';
 import {selectCalendarSource} from './helpers/browser-calendar';
 import {selectLegacyNotes} from './helpers/legacy-notes';
@@ -319,7 +320,7 @@ test('loop A on Android: the resident agent answers, the conversation follows ac
   await expect(account).toContainText('Running on this device');
   await expect(account.getByText('Eliza Cloud',{exact:true})).toBeVisible();
   await account.getByRole('button',{name:'Back to Settings',exact:true}).click();
-  await page.getByRole('button',{name:'Eliza Cloud account & plan',exact:true}).click();
+  await openCloudPlanFromSettings(page);
   await expect(page.getByRole('button',{name:'Sign out of Eliza Cloud',exact:true})).toBeVisible();
   expect(await page.locator('body').innerText()).not.toContain('synthetic-cloud-key');
   await expectNoDevelopmentSurface(page);
