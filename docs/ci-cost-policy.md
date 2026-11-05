@@ -23,7 +23,7 @@ Markdown that `test/docs-links.test.mjs` scans) select Repository verification o
 | Individual workflow | Yes | Its automatic lane | Its automatic lane | Its automatic lane |
 
 Existing browser-spec-only edits select exact changed spec paths. Up to three
-development spec files use one shard; larger edits use four parallel shards. Production-only specs run just the production project; development-only
+development spec files use one shard; larger edits use six parallel shards, because the heaviest of four reached the 60-minute job limit. Production-only specs run just the production project; development-only
 specs skip production and unrelated speech-profile qualification. Shared helpers,
 deleted or renamed specs, application code, dependencies and unavailable diffs keep
 the full inventory. File selectors are validated and escaped, then passed as process
@@ -34,7 +34,7 @@ The production browser server audits the exact freshly built flag-off bundle bef
 serving it. CI no longer builds a second unused flag-off bundle in that job. The
 separate test-mocks bundle still receives its own audit.
 
-Repository verification runs once in parallel with Chromium's four shards and
+Repository verification runs once in parallel with Chromium's six shards and
 Android, instead of four times per event. Browser shards remain parallel; a failing matrix cancels siblings to limit wasted minutes.
 On October 8 the owner requested removal of all smoke tests and checks. The aggregate
 smoke runners, their emulator CI jobs, the provider diagnostic job and smoke-only APK bundles

@@ -26,7 +26,7 @@ for(const outcome of ['saved','failed','left'])test(`Describe preserves pending 
  await page.evaluate(async()=>(window as any).releaseDraft());
  if(outcome==='saved'){await expect(page.getByRole('textbox',{name:'Workflow name',exact:true})).toHaveValue('Retain pending private draft');await expect.poll(async()=>JSON.parse((await savedDraft(page))!).spec.name).toBe('Retain pending private draft');await expect(page.getByRole('textbox',{name:'Message Alpha',exact:true})).toHaveCount(0);}
  else if(outcome==='failed'){await expect(page.getByRole('textbox',{name:'Workflow name',exact:true})).toHaveValue('Retain pending private draft');await expect(page.getByText('Synthetic draft storage failure',{exact:true}).first()).toBeVisible();}
- else{await expect.poll(async()=>JSON.parse((await savedDraft(page))!).spec.name).toBe('Retain pending private draft');await expect(page.getByRole('textbox',{name:'Message Alpha',exact:true})).toHaveCount(0);await expect(page.getByRole('region',{name:'Home',exact:true})).toBeVisible();await page.getByRole('button',{name:'Type',exact:true}).click();await expect(page.getByRole('textbox',{name:'Ask Alpha',exact:true})).toHaveValue('');}
+ else{await expect.poll(async()=>JSON.parse((await savedDraft(page))!).spec.name).toBe('Retain pending private draft');await expect(page.getByRole('textbox',{name:'Message Alpha',exact:true})).toHaveCount(0);await expect(page.getByRole('region',{name:'Home',exact:true})).toBeVisible();await expect(page.getByRole('textbox',{name:'Ask Alpha',exact:true})).toHaveValue('');}
 });
 test('separate tabs cannot both replace the same workflow draft',async({page,context})=>{
  await setup(page);await returnToApps(page);

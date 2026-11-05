@@ -101,7 +101,7 @@ for(const inset of [0,52])test(`full chat header clears the status bar with no g
 
 // Outside the open sheet the first touch only collapses the chat; the next one is ordinary.
 const activeView=(page:Page)=>page.locator('html').getAttribute('data-active-view');
-const card=(page:Page)=>page.getByRole('button',{name:'Open your calendar',exact:true});
+const card=(page:Page)=>page.getByRole('button',{name:'Open Agent Calendar',exact:true});
 test('the first click outside collapses and is captured; the next one reaches the app',async({page})=>{
  await sheet(page);
  const box=(await card(page).boundingBox())!,x=box.x+box.width/2,y=box.y+box.height/2;
