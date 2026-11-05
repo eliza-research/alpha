@@ -105,7 +105,7 @@ test('transcript keeps the older reading anchor and follows only bottom or a new
 });
 test('Home shows clean Calendar and Workflows tiles with Inbox last',async({page},info)=>{
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));await page.goto('/?mode=dev');await installHomeCalendar(page);
- const home=page.getByRole('region',{name:'Home',exact:true});await expect(home.getByRole('button',{name:'Open Agent Calendar',exact:true})).toContainText(/No upcoming events in this window/);
+ const home=page.getByRole('region',{name:'Home',exact:true});await expect(home.getByRole('button',{name:'Open Agent Calendar',exact:true})).toContainText(/Nothing planned/);
  await expect(home.getByRole('button',{name:'Open workflows',exact:true})).toBeVisible();
  const tiles=home.locator('[data-alpha-home-layout] > .scr').first().getByRole('button');await expect(tiles.nth(1)).toHaveAttribute('aria-label','Open workflows');await expect(tiles.nth(2)).toHaveAttribute('aria-label',/^Open Inbox(?:$|:)/);
  await page.screenshot({path:info.outputPath('home-clean-tiles.png'),animations:'disabled'});

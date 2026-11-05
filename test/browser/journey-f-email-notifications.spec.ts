@@ -101,6 +101,9 @@ const setProvider = (page: Page, patch: Record<string, boolean>) => page.evaluat
 async function openProviderInbox(page: Page, reload = false) {
   await guardCalendarFixture(page.context());
   await page.addInitScript(() => localStorage.setItem('alpha.connection.selection.v1', JSON.stringify({kind: 'offline'})));
+  // A signed-in fixture account models an installation that already finished access setup; with
+  // setup pending the startup walkthrough would cover Inbox once the swapped snapshot re-renders.
+  await page.addInitScript(() => localStorage.setItem('alpha:startup-permission-walkthrough:v1', JSON.stringify({version: 1, status: 'completed', step: 4})));
   await page.route(/^https?:\/\/(?!127\.0\.0\.1:|localhost:)/, route => route.abort());
   // Provider initialization and rendered Inbox controls below establish readiness.
   // Loading unrelated resources is not part of the mail operation contract.
