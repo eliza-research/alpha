@@ -1,4 +1,3 @@
-import {touchOutsideChat} from './helpers/chat-sheet';
 import {openCloudPlanFromSettings} from './helpers/cloud-plan-settings';
 import {expect, test, type Page} from '@playwright/test';
 import {completeAccessSetup, expectNoDevelopmentSurface, fenceNetwork, flagOffAndroid, residentHome} from './flag-off-android';
@@ -103,6 +102,8 @@ test('Cloud is the default; explicit own-key save and return to Cloud preserve e
  await expect(dialog(page)).toHaveCount(0);await expect(toast(page)).toContainText('Own keys saved.');
  await expect(page.locator('dialog.alpha-startup-permissions')).toHaveCount(0);
  await expect(page.getByRole('button',{name:'AI provider',exact:true})).toContainText('Own API keys');
+ // A touch outside the open chat only collapses it, so collapse it before reopening the provider.
+ const minimize=page.getByRole('button',{name:'Minimize chat',exact:true});if(await minimize.isVisible())await minimize.click();
  await page.getByRole('button',{name:'AI provider',exact:true}).click();
  await expect(dialog(page).getByRole('button',{name:'Own API keys',exact:true})).toHaveAttribute('aria-pressed','true');
  await expect(dialog(page).getByText('Cerebras · Voice: Cartesia',{exact:true})).toBeVisible();
@@ -139,7 +140,6 @@ test('opening AI provider during a reply stops it as a sensitive screen; the swi
  await composer.fill('Reply while I open AI provider');await composer.press('Enter');
  await expect.poll(()=>page.evaluate(()=>(window as any).ownProvider.replyHeld)).toBe(true);
  await expect(page.getByRole('button',{name:'Stop reply',exact:true})).toBeVisible();
- await touchOutsideChat(page);
  await page.getByRole('button',{name:'AI provider',exact:true}).click();
  await expect(dialog(page)).toBeVisible();
  await expect(page.getByText('The agent may still finish this reply. Alpha Phone will check once and show it here if it does.',{exact:true})).toHaveCount(1);

@@ -14,8 +14,8 @@ import org.junit.runner.RunWith;
 
 /**
  * Rotate on Home and with a composer draft: the active view and the draft survive and
- * the visible primary actions stay inside the viewport. Requires the landscape layout;
- * a portrait-locked build fails the orientation assertion rather than passing trivially.
+ * the visible primary actions stay inside the viewport. The standalone app requires the
+ * landscape layout; the launcher is portrait only, so there the same steps assert it stays put.
  * A flag-off build signed out of Eliza Cloud rotates its required sign-in page instead (P-43);
  * AccessibilityLifecycleInstrumentedTest rotates every retained view at 200% font.
  * Emulator evidence only.
@@ -45,6 +45,12 @@ public final class RotationInstrumentedTest {
  }
 
  private static void rotateAndCheck(UiDevice device,String view,String extra)throws Exception{
+  if(BuildConfig.IS_LAUNCHER){
+   device.setOrientationLeft();SystemClock.sleep(1500);
+   assertEquals("The launcher stays portrait",Configuration.ORIENTATION_PORTRAIT,orientation());
+   device.setOrientationNatural();until(AppNavigation.selected(view));if(extra!=null)until(extra);
+   return;
+  }
   device.setOrientationLeft();awaitOrientation(Configuration.ORIENTATION_LANDSCAPE);
   until(AppNavigation.selected(view));if(extra!=null)until(extra);
   assertEquals("Primary actions clipped in landscape "+view,"[]",clipped());
@@ -84,8 +90,9 @@ public final class RotationInstrumentedTest {
    AppNavigation.liveMode();
    until(page);
    for(int turn=0;turn<2;turn++){
-    device.setOrientationLeft();awaitOrientation(Configuration.ORIENTATION_LANDSCAPE);until(page);
-    assertEquals("Sign-in controls clipped in landscape","[]",clipped());
+    device.setOrientationLeft();
+    if(BuildConfig.IS_LAUNCHER){SystemClock.sleep(1500);assertEquals("The launcher stays portrait",Configuration.ORIENTATION_PORTRAIT,orientation());until(page);}
+    else{awaitOrientation(Configuration.ORIENTATION_LANDSCAPE);until(page);assertEquals("Sign-in controls clipped in landscape","[]",clipped());}
     device.setOrientationNatural();awaitOrientation(Configuration.ORIENTATION_PORTRAIT);until(page);
     assertEquals("Sign-in controls clipped after returning to portrait","[]",clipped());
    }

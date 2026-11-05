@@ -143,7 +143,7 @@ public final class AccessibilityLifecycleInstrumentedTest {
     start();
     for (String view : AccessibilityViewsInstrumentedTest.VIEWS) {
      open(view);
-     for (boolean landscape : new boolean[]{true, false}) {
+     for (boolean landscape : BuildConfig.IS_LAUNCHER ? new boolean[]{false} : new boolean[]{true, false}) {
       String side = landscape ? "landscape" : "portrait";
       if (landscape) device.setOrientationLeft(); else device.setOrientationNatural();
       try { RotationInstrumentedTest.awaitOrientation(landscape ? Configuration.ORIENTATION_LANDSCAPE : Configuration.ORIENTATION_PORTRAIT); }
