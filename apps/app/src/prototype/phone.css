@@ -203,6 +203,9 @@ html:not(.standalone-app) [data-alpha-layer="home"][data-alpha-home-fits="true"]
 [data-alpha-message-text][role="button"]:focus-visible, [data-alpha-message-actions] [role="menuitem"]:focus-visible { outline: 2px solid var(--acct); outline-offset: 3px; }
 
 .alpha-compute-mark{display:inline-block;width:1em;height:1em;flex-shrink:0;background:currentColor;mask:url('/logo-mark.svg') center/contain no-repeat;-webkit-mask:url('/logo-mark.svg') center/contain no-repeat}
+/* The mark overscans its circle so the rays run off the rim instead of sitting inside a blue ring. */
+.alpha-mark-fill{overflow:hidden}
+.alpha-mark-fill .alpha-compute-mark{width:118%;height:118%}
 /* Before startup decides between sign-in, access setup and Home: the mark alone, after a pause (main.tsx). */
 .alpha-startup-loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;font-size:56px;animation:fade .7s .3s both}
 
