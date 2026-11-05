@@ -1,3 +1,4 @@
+import {touchOutsideChat} from './helpers/chat-sheet';
 import {openCloudPlanFromSettings} from './helpers/cloud-plan-settings';
 import {expect, test, type Page} from '@playwright/test';
 import {completeAccessSetup, expectNoDevelopmentSurface, fenceNetwork, flagOffAndroid, residentHome} from './flag-off-android';
@@ -138,6 +139,7 @@ test('opening AI provider during a reply stops it as a sensitive screen; the swi
  await composer.fill('Reply while I open AI provider');await composer.press('Enter');
  await expect.poll(()=>page.evaluate(()=>(window as any).ownProvider.replyHeld)).toBe(true);
  await expect(page.getByRole('button',{name:'Stop reply',exact:true})).toBeVisible();
+ await touchOutsideChat(page);
  await page.getByRole('button',{name:'AI provider',exact:true}).click();
  await expect(dialog(page)).toBeVisible();
  await expect(page.getByText('The agent may still finish this reply. Alpha Phone will check once and show it here if it does.',{exact:true})).toHaveCount(1);

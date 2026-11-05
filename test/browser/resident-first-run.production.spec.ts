@@ -1,3 +1,4 @@
+import {touchOutsideChat} from './helpers/chat-sheet';
 // Flag-off Android renderer: explicit native email sign-in, permission setup, resident binding,
 // cancellation, expiry and refusal. Synthetic native outcomes do not establish real authentication.
 import { test, expect, type Page } from '@playwright/test';
@@ -167,6 +168,7 @@ test('first run: native email sign-in, credits, provider binding, then the resid
   await ask.fill('First request after sign-in'); await ask.press('Enter');
   await expect(page.getByRole('button', { name: 'Message actions: Resident reply 1', exact: true })).toHaveCount(1);
   expect(await harness(page, f => f.streams)).toBe(1);
+  await touchOutsideChat(page);
   const settings=await openYourAgent(page);
   await expect(settings.getByRole('button',{name:'Reconnect agent',exact:true})).toBeVisible();
   await expect(settings.getByText('Conversation history',{exact:true})).toBeVisible();
