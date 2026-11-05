@@ -418,6 +418,9 @@ export async function residentHome(page: Page) {
 export async function openYourAgent(page: Page) {
   const gate = page.locator('[role="main"].alpha-cloud-sign-in');
   if (await gate.isVisible()) return gate;
+  // A touch outside the open chat only collapses it, so collapse it before going to Settings.
+  const minimize = page.getByRole('button', { name: 'Minimize chat', exact: true });
+  if (await minimize.isVisible()) await minimize.click();
   await button(page, 'Settings').click();
   await page.getByRole('button', { name: 'Agent connection', exact: true }).click();
   const panel = page.getByRole('region', { name: 'Settings', exact: true });

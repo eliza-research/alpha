@@ -76,6 +76,8 @@ test('offline and fenced, speech still captures, transcribes and reads aloud on 
  await expect(voice(page)).toHaveAttribute('data-voice-state','error');await expect(voiceError(page)).toHaveCount(0);await expect.poll(()=>retainedVoiceTranscript(page)).toEqual({state:'error',transcript:'Local spoken request',failure:'Voice stopped. Check your connection and conversation history before trying again.'});
  expect(await page.evaluate(()=>{const f=(window as any).nativeSpeech;return {starts:f.starts,transcripts:f.transcripts,spoken:f.spoken,posts:(window as any).flagOff.posts.length};})).toEqual({starts:1,transcripts:1,spoken:[],posts:0});
  await button(page,'Stop voice conversation').click();await expect(voice(page)).toHaveCount(0);
+ // A touch outside the open chat only collapses it, so collapse it before going to Notes.
+ await page.getByRole('button',{name:'Minimize chat',exact:true}).click();
  await openRetainedNativeNotes(page);await button(page,'New note').click();await page.getByRole('textbox',{name:'Title',exact:true}).fill('Offline');await page.getByRole('textbox',{name:'Note',exact:true}).fill('Still speaks.');await button(page,'Read aloud').click();
  await expect.poll(()=>page.evaluate(()=>(window as any).nativeSpeech.spoken)).toEqual(['Offline. Still speaks.']);
  expect(await page.evaluate(()=>(window as any).nativeSpeech.turns)).toEqual([undefined]);
