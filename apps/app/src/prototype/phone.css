@@ -525,7 +525,6 @@ button[aria-label$=" on or off"][aria-pressed]::before { content:""; position:ab
 .alpha-wide:not(.alpha-landscape) .alpha-chat-composer { width:calc(100% - 24px); max-width:560px; margin-inline:auto; }
 .alpha-voice-input { position:relative; flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center; gap:4px; }
 .alpha-voice-input > .alpha-voice-connecting { position:absolute; inset:0; display:flex; align-items:center; }
-.alpha-voice-composer[data-voice-state="starting"] .alpha-voice-waveform,.alpha-voice-composer[data-voice-state="connecting"] .alpha-voice-waveform { visibility:hidden; }
 .alpha-voice-connecting { font-size:14px; line-height:1.4; color:var(--fg); overflow-wrap:anywhere; }
 .alpha-voice-status-hidden,.alpha-message-action-announcement { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
 .alpha-voice-error { flex-shrink:0; margin:-22px 24px 24px; font-size:13px; line-height:1.4; max-height:100px; overflow:auto; overflow-wrap:anywhere; }

@@ -223,3 +223,17 @@ test('SDK17 renewal forwards one exact predecessor UUID while malformed or extra
   assert.equal((await f.call({...mint(),ownerId:randomUUID(),body:JSON.stringify(body)})).status,409);assert.equal(f.calls.filter(c=>new URL(c.url).pathname===BASE).length,1);
  }finally{await f.close();}
 });
+
+
+test('current terminal protocol attestation passes the paired bridge without weakening strict fields',async()=>{
+ const attestation={speechRoute:'direct',turnTerminal:true},f=await fixture(true,false,attestation);
+ try{
+  const health=await f.call({path:BASE+'/health?conversationId='+conversation,method:'GET'});assert.equal(health.status,200);assert.equal(JSON.parse(health.data.body).turnTerminal,true);
+  const request={...mint(),body:JSON.stringify({...JSON.parse(mint().body),turnTerminal:true})};
+  f.mintMetadata(()=>({turnTerminal:true}));const minted=await f.call(request);assert.equal(minted.status,200);assert.equal(JSON.parse(minted.data.body).turnTerminal,true);assert.equal(JSON.parse(f.calls.findLast(c=>new URL(c.url).pathname===BASE).input.body).turnTerminal,true);
+  for(const value of [false,'true',1,null]){const before=f.calls.length;assert.equal((await f.call({...request,body:JSON.stringify({...JSON.parse(request.body),turnTerminal:value})})).status,400);assert.equal(f.calls.length,before);}
+  f.mintMetadata(()=>({}));assert.equal((await f.call(request)).status,503,'an explicitly negotiated terminal protocol cannot silently fall back');
+  f.mintMetadata(()=>({turnTerminal:false}));assert.equal((await f.call(request)).status,503);
+  attestation.turnTerminal=false;assert.equal((await f.call({path:BASE+'/health?conversationId='+conversation,method:'GET'})).status,503);
+ }finally{await f.close();}
+});
