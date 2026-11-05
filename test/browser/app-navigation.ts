@@ -16,7 +16,6 @@ export async function returnToApps(page: Page) {
     if (await home.isVisible()) await home.press('Enter');
   } else {
   const back = page.getByRole('button', {name: 'Back to apps', exact: true}).filter({visible:true});
-  // Activated directly, as assistive technology does: a touch would only collapse an open sheet.
   if (await back.count()) await back.first().press('Enter');
   else {
     if (!await home.isVisible()) await page.getByRole('button', {name: 'Open conversation', exact: true}).click();

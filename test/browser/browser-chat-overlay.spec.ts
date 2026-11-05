@@ -35,9 +35,9 @@ async function openSite(page:Page){
  return {site,geometry,settled,loads:()=>loads};
 }
 const nextFrame=(page:Page)=>page.evaluate(()=>new Promise(requestAnimationFrame));
-const layerAt=(page:Page,point:'inside')=>page.evaluate(point=>{
+const layerAt=(page:Page,point:'above'|'inside')=>page.evaluate(point=>{
  const frame=document.querySelector('[data-browser-surface] iframe')!.getBoundingClientRect(),sheet=document.querySelector('[data-alpha-layer="conversation"]')!.getBoundingClientRect();
- const hit=document.elementFromPoint(frame.left+frame.width/2,sheet.top+80);
+ const hit=document.elementFromPoint(frame.left+frame.width/2,point==='above'?sheet.top-24:sheet.top+80);
  return hit?.tagName==='IFRAME'?'website':hit?.closest('[data-alpha-layer]')?.getAttribute('data-alpha-layer');
 },point);
 
@@ -64,17 +64,10 @@ test('pulling, opening and expanding the chat sheet leaves the website under it 
  await expect(screen).toHaveAttribute('data-alpha-chat-half','true');
  await page.waitForTimeout(600);
  expect(await geometry()).toEqual(settled);
- // The resting sheet is drawn over the page, which stays visible above it. The first touch there
- // only collapses the chat (f21e9a6e4); the next one reaches the page.
+ // The resting sheet is drawn over the page. The page above it stays visible, and a touch there
+ // only collapses the sheet; the next touch reaches the page.
  expect(await layerAt(page,'inside')).toBe('conversation');
- const tap=page.frameLocator('iframe[title="Website"]').getByRole('button',{name:'Tap'}),spot=(await tap.boundingBox())!;
- await page.mouse.click(spot.x+spot.width/2,spot.y+spot.height/2);
- await expect(screen).toHaveAttribute('data-alpha-chat-half','false');
- await expect(tap).toBeVisible();
- await tap.click();
- await expect(page.frameLocator('iframe[title="Website"]').getByRole('button',{name:'Tapped'})).toBeVisible();
- await page.getByRole('button',{name:'Open conversation',exact:true}).click();
- await expect(screen).toHaveAttribute('data-alpha-chat-half','true');
+ expect(await layerAt(page,'above')).toBeUndefined();
 
  // Full chat covers the page and retires it from focus with the app, without hiding or resizing it.
  await page.getByRole('button',{name:'Expand chat',exact:true}).click();
@@ -82,7 +75,7 @@ test('pulling, opening and expanding the chat sheet leaves the website under it 
  await page.waitForTimeout(600);
  expect(await geometry()).toEqual(settled);
 
- // Closing returns the pill, not the composer: the page reserve is the same for both.
+ // Closing returns the view's resting form: the page reserve is the same for pill and composer.
  await page.getByRole('button',{name:'Minimize chat',exact:true}).click();
  await expect(screen).toHaveAttribute('data-alpha-chat-half','false');
  await expect(page.locator('[data-alpha-browser-surfaces]')).not.toHaveAttribute('inert','');
@@ -90,6 +83,8 @@ test('pulling, opening and expanding the chat sheet leaves the website under it 
  expect(await geometry()).toEqual(settled);
  expect(await site.evaluate(()=>scrollY)).toBe(600);
  expect(loads()).toBe(1);
+ await page.frameLocator('iframe[title="Website"]').getByRole('button',{name:'Tap'}).click();
+ await expect(page.frameLocator('iframe[title="Website"]').getByRole('button',{name:'Tapped'})).toBeVisible();
 });
 
 test('a website is not reloaded or scrolled when Browser is left and opened again',async({page})=>{
