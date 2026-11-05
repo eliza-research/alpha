@@ -35,7 +35,9 @@ android:build:inputs` lists every input and who supplies it (see the README). On
 uses only the libelizainference voice host ([fused speech](fused-speech.md), decision P-42); an
 APK without a voice bundle is valid. `npm run android:build` checks all of
 these first (`scripts/android-build-preflight.mjs`) and exits 2 with the command to run instead
-of failing inside Gradle. `npm run android:build -- --allow-unpackaged-runtime` is the developer
+of failing inside Gradle. It also refuses an upstream pin that is not `origin/main`'s pin or a
+descendant of it, so a stale branch cannot build an older agent onto a device (README; only a
+reviewed rollback passes `--allow-older-upstream-pin`). `npm run android:build -- --allow-unpackaged-runtime` is the developer
 path: it needs only `agent:prepare` and records release APKs without the payload as
 `distributable: false`.
 
