@@ -16,6 +16,14 @@ async function open(page:Page,deny=false,theme='light'){
 }
 for(const viewport of [{width:412,height:915,theme:'light'},{width:1280,height:800,theme:'light'},{width:842,height:390,theme:'dark'}])test(`recovered original required design/order and Ready ${viewport.width}`,async({page},info)=>{
  await page.setViewportSize({width:viewport.width,height:viewport.height});await open(page,false,viewport.theme);const panel=page.locator('dialog.alpha-startup-permissions');await page.evaluate(()=>document.fonts.ready);
+ await expect(panel.locator('[data-alpha-dialog-toast]')).toHaveCount(1);
+ const layout=await panel.evaluate(dialog=>{
+  const content=dialog.querySelector('.alpha-permission-content')!.getBoundingClientRect();
+  const center=dialog.getBoundingClientRect().left+dialog.clientWidth/2;
+  return {offset:Math.abs(content.left+content.width/2-center),overflow:dialog.scrollWidth-dialog.clientWidth};
+ });
+ expect(layout.offset).toBeLessThanOrEqual(1);
+ expect(layout.overflow).toBe(0);
  await expect(panel.getByRole('heading',{name:'Notifications',exact:true})).toBeVisible();await expect(panel.getByRole('button')).toHaveCount(1);const contrast=await panel.locator('.alpha-permission-primary').evaluate(el=>{const style=getComputedStyle(el),rgb=(value:string)=>value.match(/[\d.]+/g)!.slice(0,3).map(Number),luma=(value:number[])=>value.map(x=>{const s=x/255;return s<=.04045?s/12.92:((s+.055)/1.055)**2.4;}).reduce((sum,x,i)=>sum+x*[.2126,.7152,.0722][i],0),a=luma(rgb(style.color)),b=luma(rgb(style.backgroundColor));return (Math.max(a,b)+.05)/(Math.min(a,b)+.05);});expect(contrast).toBeGreaterThanOrEqual(4.5);expect(await page.evaluate(()=>(window as any).requiredProof.requests)).toEqual([]);
  if(!process.env.REQUIRED_NO_SCREENSHOTS)await page.screenshot({path:info.outputPath(`original-notifications-${viewport.width}.png`),animations:'disabled'});
  await page.keyboard.press('Escape');await expect(panel).toBeVisible();await page.evaluate(()=>window.dispatchEvent(new Event('alpha-back',{cancelable:true})));await expect(panel.getByRole('heading',{name:'Notifications',exact:true})).toBeVisible();
