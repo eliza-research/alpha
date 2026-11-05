@@ -90,8 +90,9 @@ public final class RotationInstrumentedTest {
    AppNavigation.liveMode();
    until(page);
    for(int turn=0;turn<2;turn++){
-    device.setOrientationLeft();awaitOrientation(Configuration.ORIENTATION_LANDSCAPE);until(page);
-    assertEquals("Sign-in controls clipped in landscape","[]",clipped());
+    device.setOrientationLeft();
+    if(BuildConfig.IS_LAUNCHER){SystemClock.sleep(1500);assertEquals("The launcher stays portrait",Configuration.ORIENTATION_PORTRAIT,orientation());until(page);}
+    else{awaitOrientation(Configuration.ORIENTATION_LANDSCAPE);until(page);assertEquals("Sign-in controls clipped in landscape","[]",clipped());}
     device.setOrientationNatural();awaitOrientation(Configuration.ORIENTATION_PORTRAIT);until(page);
     assertEquals("Sign-in controls clipped after returning to portrait","[]",clipped());
    }
