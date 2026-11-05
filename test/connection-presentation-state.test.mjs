@@ -421,14 +421,14 @@ test('a fresh start, restart, rebind, redeem or sign-in retires a waiting networ
 // public refreshProviderStatus and update (Root, #743). One that changes the provider class retires
 // a waiting network return, so A→B→A seen by such reads alone never spends it; a same-class read (a
 // failed one under Cloud included), a busy or render update and an optional Cloud detach keep it. A
-// bound Cloud key reads as selected; read(null) is a failed read, which is not the own provider.
+// bound Cloud key reads as selected. A failed read retains the confirmed provider and marks it unavailable.
 function statusReads(box) {
   Object.assign(box, {isAndroid: false, testMocksEnabled: false, developmentPageSuspended: false, listeners: new Set(), flushConversationEvents() {}, providerStatusGeneration: 0});
   vm.runInContext(stripTypeScriptTypes(section('function update(', '// P-43: where') + `Object.assign(connectionController,{${section('  async refreshProviderStatus(', '  /** Stops the running agent')}});`, {mode: 'transform'}), box);
   return status => { box.localProviderStatus = async () => { if (!status) throw Error('unavailable'); return status; }; return box.connectionController.refreshProviderStatus(); };
 }
 test('a provider class changed and changed back by status reads alone while a network return waits does not spend it', async () => {
-  for (const [name, a, b] of [['own provider, Cloud, own provider', ownProvider, {selected: false}], ['Cloud, own provider, Cloud', {configured: true, provider: 'elizacloud', selected: true}, ownProvider], ['own provider, failed read, own provider', ownProvider, null]]) for (const [how, wait] of Object.entries(waits)) {
+  for (const [name, a, b] of [['own provider, Cloud, own provider', ownProvider, {selected: false}], ['Cloud, own provider, Cloud', {configured: true, provider: 'elizacloud', selected: true}, ownProvider]]) for (const [how, wait] of Object.entries(waits)) {
     const box = returnFixture(), read = statusReads(box), row = `${name}, ${how}`;
     box.state.providerStatus = a;
     wait.hold(box); await read(b); await read({...a}); assert.deepEqual(box.state.providerStatus, a, row); wait.release(box);
@@ -438,8 +438,8 @@ test('a provider class changed and changed back by status reads alone while a ne
 });
 test('same-class status reads, busy or render updates and an optional Cloud detach keep a waiting network return', async () => {
   for (const [name, provider, keep] of [
-    ['own provider read again', ownProvider, async read => { await read({...ownProvider}); await read({...ownProvider}); }],
-    ['Cloud read again, then a failed read', {selected: false}, async (read, box) => { await read({selected: false}); await read(null); assert.equal(box.state.providerStatus, null); }],
+    ['own provider read again, then a failed read', ownProvider, async (read, box) => { await read({...ownProvider}); await read(null); assert.deepEqual(box.state.providerStatus, ownProvider); assert.equal(box.state.providerStatusError, true); }],
+    ['Cloud read again, then a failed read', {selected: false}, async (read, box) => { await read({selected: false}); await read(null); assert.deepEqual(box.state.providerStatus, {selected: false}); assert.equal(box.state.providerStatusError, true); }],
     ['busy and render updates', undefined, (read, box) => { box.update({busy: true}); box.update({message: 'Render update', open: true}); box.update({busy: false}); }],
     ['Cloud detached with its own provider', ownProvider, (read, box) => { box.update({cloudAccount: null}); }],
   ]) for (const [how, wait] of Object.entries(waits)) {

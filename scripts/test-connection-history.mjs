@@ -134,11 +134,9 @@ const selectionSource = stripTypeScriptTypes(await readFile(new URL('../apps/app
   .replace(/^import .*;\n/gm, '').replace(/export /g, '');
 vm.runInNewContext(selectionSource + '\nglobalThis.selectionApi = { captureConversationChoice, selectConversation };', selectionSandbox);
 Object.assign(sandbox, selectionSandbox.selectionApi);
-// The real escalation-notice classifier restoredMessages() uses.
-const noticesSource = stripTypeScriptTypes(await readFile(new URL('../apps/app/src/runtime/action-message-presentation.ts', import.meta.url), 'utf8'), { mode: 'transform' }).replace(/export /g, '');
-const noticesSandbox = {};
-vm.runInNewContext(noticesSource + '\nglobalThis.noticesApi = { systemNoticeKind, systemNoticeDisplayText, collapseSystemNotices };', noticesSandbox);
-Object.assign(sandbox, noticesSandbox.noticesApi);
+// The real escalation-notice projection restoredMessages() uses.
+const {systemNoticeKind,systemNoticeDisplayText,collapseSystemNotices}=await import('../apps/app/src/runtime/action-message-presentation.ts');
+Object.assign(sandbox,{systemNoticeKind,systemNoticeDisplayText,collapseSystemNotices});
 let source = (await readFile(new URL('../apps/app/src/runtime/connection-ui.tsx', import.meta.url), 'utf8')).split('export function ConnectionChooser()')[0].replace(/\nfunction ResidentRecoveryPanel\([\s\S]*?\n}\n(?=export function productionCloudSignInRequired)/, '\n');
 source = source.replace(/^import .*;\n/gm, '').replace(/export /g, '').replaceAll('import.meta.env','fixtureViteEnv');
 source += '\nglobalThis.controller = connectionController;';

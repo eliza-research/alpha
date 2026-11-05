@@ -31,12 +31,10 @@ function defineResidentAgentPlugin() {
     const state = {subscriptions: [] as string[], unsubscribed: [] as string[], unexpected: options.unexpected ?? [] as string[]};
     const protocol = (window as any).createNativeNavigationFixture(options.owner, options.agentId, state);
     let nextCallback = 0;
-    let specProviderStatus = false;
     return {
       state,
       /** Agent header: the spec's own promise methods plus the plugin's listener, view-event and provider-status methods. */
       methods(names: string[]) {
-        specProviderStatus = names.includes('providerStatus');
         return [
           ...[...names, 'subscribeViewEvents', 'unsubscribeViewEvents', ...(options.providerStatus && !names.includes('providerStatus') ? ['providerStatus'] : [])].map(name => ({name, rtype: 'promise'})),
           {name: 'addListener', rtype: 'callback'},
@@ -68,8 +66,6 @@ function defineResidentAgentPlugin() {
           return {subscriptionId: input.subscriptionId};
         }
         if (method === 'unsubscribeViewEvents') { state.unsubscribed.push(input?.subscriptionId); return {}; }
-        // Nothing saved: the native store reports no provider configured (Cloud remains the default).
-        if (method === 'providerStatus' && !specProviderStatus) return {provider: 'elizacloud', configured: false};
         if (method !== 'request') return undefined;
         const headers = input.headers ?? {};
         // Observe (never answer) registration so the context read reports the enrolled identity.
