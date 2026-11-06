@@ -25,16 +25,16 @@ const storage = registerPlugin<{
   storageList(input: {path: string; volume?: string}): Promise<Result & {entries?: StorageEntry[]; truncated?: boolean}>;
   storageCategory(input: {category: FilesCategory}): Promise<Result & {entries?: StorageEntry[]}>;
   storageQuery(input: {text?: string; mimePrefix?: string; folder?: string; from?: number; to?: number}): Promise<Result & {entries?: StorageEntry[]}>;
-  storageTransfer(input: {paths: string[]; dest: string; copy: boolean}): Promise<Result & {outcomes?: Outcome[]}>;
-  storageRename(input: {path: string; name: string}): Promise<Result & {path?: string}>;
-  storageCreateFolder(input: {parent: string; name: string}): Promise<Result & {path?: string}>;
-  storageTrash(input: {paths: string[]}): Promise<Result & {outcomes?: Outcome[]}>;
-  storageTrashList(): Promise<Result & {items?: TrashEntry[]}>;
-  storageRestore(input: {ids: string[]}): Promise<Result & {outcomes?: Outcome[]}>;
-  storageEmptyTrash(input: {ids?: string[]; confirmed: boolean}): Promise<Result & {count?: number}>;
-  storageShare(input: {paths: string[]}): Promise<Result>;
-  storageSelect(input: {path: string}): Promise<NativeResult>;
-  storageWatch(input: {path?: string; category?: string}): Promise<Result>;
+  storageTransfer(input: {paths: string[]; dest: string; copy: boolean; volume?: string}): Promise<Result & {outcomes?: Outcome[]}>;
+  storageRename(input: {path: string; name: string; volume?: string}): Promise<Result & {path?: string}>;
+  storageCreateFolder(input: {parent: string; name: string; volume?: string}): Promise<Result & {path?: string}>;
+  storageTrash(input: {paths: string[]; volume?: string}): Promise<Result & {outcomes?: Outcome[]}>;
+  storageTrashList(input?: {volume?: string}): Promise<Result & {items?: TrashEntry[]}>;
+  storageRestore(input: {ids: string[]; volume?: string}): Promise<Result & {outcomes?: Outcome[]}>;
+  storageEmptyTrash(input: {ids?: string[]; confirmed: boolean; volume?: string}): Promise<Result & {count?: number}>;
+  storageShare(input: {paths: string[]; volume?: string}): Promise<Result>;
+  storageSelect(input: {path: string; volume?: string}): Promise<NativeResult>;
+  storageWatch(input: {path?: string; category?: string; volume?: string}): Promise<Result>;
   storageUnwatch(): Promise<Result>;
   addListener(event: 'storageChanged', listener: () => void): Promise<{remove(): Promise<void>}>;
 }>('AlphaFiles');
@@ -56,12 +56,16 @@ const shortDate = (time: number) => {
 };
 const countLabel = (n: number) => n === 1 ? '1 item' : n + ' items';
 
-type Place = {kind: 'browse'} | {kind: 'category'; category: FilesCategory} | {kind: 'folder'; path: string} | {kind: 'trash'};
+type Place = {kind: 'browse'} | {kind: 'category'; category: FilesCategory} | {kind: 'folder'; path: string; volume?: string} | {kind: 'trash'};
+/** Trash rows from every mounted volume; restore and delete go back to the row's volume. */
+type TrashRow = TrashEntry & {volume?: string};
+/** The storage* argument naming a non-primary volume (the primary needs none). */
+const onVolume = (volume?: string) => volume ? {volume} : {};
 type Dialog =
-  | {kind: 'dest'; op: 'move' | 'copy'; paths: string[]; at: string; folders: StorageEntry[]}
-  | {kind: 'name'; op: 'create' | 'rename'; path: string; value: string}
+  | {kind: 'dest'; op: 'move' | 'copy'; paths: string[]; at: string; folders: StorageEntry[]; volume?: string}
+  | {kind: 'name'; op: 'create' | 'rename'; path: string; value: string; volume?: string}
   | {kind: 'empty'}
-  | {kind: 'trashItem'; item: TrashEntry; confirmDelete: boolean};
+  | {kind: 'trashItem'; item: TrashRow; confirmDelete: boolean};
 export const FILES_PLACE_EVENT = 'alpha-files-place';
 
 /** Installs the Files browser over the files view. accept() opens a selected file in the
@@ -70,9 +74,9 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
   const module = views.files, render = module.render, back = module.back, leave = module.onLeave;
   let api: Bag | undefined, place: Place = {kind: 'browse'};
   let access = 'unknown', volumes: StorageVolume[] = [], counts: Partial<Record<FilesCategory, number>> = {}, trashCount = 0;
-  let entries: StorageEntry[] = [], trashItems: TrashEntry[] = [], loaded = false, busy = false, error = '';
+  let entries: StorageEntry[] = [], trashItems: TrashRow[] = [], loaded = false, busy = false, error = '';
   let selection: Set<string> | null = null, filter: FilesFilter | null = null, filterRows: StorageEntry[] = [];
-  let dialog: Dialog | undefined, dialogTrigger: HTMLElement | null = null, opened: {path: string; selectionId?: string} | undefined;
+  let dialog: Dialog | undefined, dialogTrigger: HTMLElement | null = null, opened: {path: string; volume?: string; selectionId?: string} | undefined;
   let generation = 0, revision = 0, watching = '', active = false, pressTimer: ReturnType<typeof setTimeout> | undefined, pressed = '';
   const repaint = () => api?.set({filesBrowserRevision: ++revision});
   const modal = createInlineModal(() => { if (!busy) { dialog = undefined; repaint(); } }, () => dialogTrigger?.isConnected ? dialogTrigger : document.querySelector<HTMLElement>('[data-alpha-subview="files-folder"] button[aria-label="Sort and more"]'));
@@ -87,15 +91,26 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
     try {
       const state = await storage.storageState();
       access = state.access || 'denied';
-      volumes = state.volumes || [];
+      volumes = [...(state.volumes || [])].sort((a, b) => Number(b.primary) - Number(a.primary));
     } catch { access = 'unavailable'; volumes = []; }
   }
+  const extraVolumes = () => volumes.filter(volume => !volume.primary).map(volume => volume.id);
+  /** Trash across the primary and every extra volume. A volume that cannot be read adds nothing. */
+  async function trashAcross(): Promise<TrashRow[] | null> {
+    const lists = await Promise.all([undefined, ...extraVolumes()].map(async volume => {
+      try { const value = await storage.storageTrashList(onVolume(volume)); return value.status === 'ready' ? (value.items || []).map(item => ({...item, ...onVolume(volume)})) : volume ? [] : null; }
+      catch { return volume ? [] : null; }
+    }));
+    return lists[0] === null ? null : lists.flatMap(list => list || []).sort((a, b) => b.deletedAt - a.deletedAt);
+  }
+  const volumeLabel = (volume?: string) => volume ? volumes.find(v => v.id === volume)?.name || 'Storage' : volumes.find(v => v.primary)?.name || 'Internal storage';
+  const here = () => place.kind === 'folder' ? onVolume(place.volume) : {};
   async function loadCounts(ticket: number) {
     if (access !== 'granted') return;
     const next: Partial<Record<FilesCategory, number>> = {};
     await Promise.all(CATEGORIES.map(async ({id}) => { try { const value = await storage.storageCategory({category: id}); if (value.status === 'ready') next[id] = value.entries?.length ?? 0; } catch { /* Count stays blank. */ } }));
     let trash = 0;
-    try { const value = await storage.storageTrashList(); if (value.status === 'ready') trash = value.items?.length ?? 0; } catch { /* Count stays blank. */ }
+    const rows = await trashAcross(); if (rows) trash = rows.length;
     if (ticket === generation) { counts = next; trashCount = trash; }
   }
   /** Reload what is on screen (spec Refresh): the same place, rows that still exist, a selection
@@ -107,9 +122,9 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
       await refreshState();
       if (access !== 'granted') { entries = []; trashItems = []; loaded = true; return; }
       if (at.kind === 'browse') await loadCounts(ticket);
-      else if (at.kind === 'trash') { const value = await storage.storageTrashList(); if (ticket !== generation) return; if (!failed(value)) trashItems = value.items || []; }
+      else if (at.kind === 'trash') { const rows = await trashAcross(); if (ticket !== generation) return; if (rows) trashItems = rows; else toast('Trash could not be read.'); }
       else {
-        const value = at.kind === 'category' ? await storage.storageCategory({category: at.category}) : await storage.storageList({path: at.path});
+        const value = at.kind === 'category' ? await storage.storageCategory({category: at.category}) : await storage.storageList({path: at.path, ...onVolume(at.volume)});
         if (ticket !== generation) return;
         if (value.status === 'missing' && at.kind === 'folder') { up(); return; }
         if (!failed(value)) { entries = value.entries || []; error = ''; } else entries = [];
@@ -122,10 +137,10 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
     finally { if (ticket === generation) { busy = false; repaint(); } }
   }
   async function watch() {
-    const key = place.kind === 'folder' ? 'p:' + place.path : place.kind === 'category' ? 'c:' + place.category : 'b';
+    const key = place.kind === 'folder' ? 'p:' + (place.volume || '') + ':' + place.path : place.kind === 'category' ? 'c:' + place.category : 'b';
     if (!active || key === watching) return;
     watching = key;
-    try { await storage.storageWatch(place.kind === 'folder' ? {path: place.path} : place.kind === 'category' ? {category: place.category} : {}); } catch { watching = ''; }
+    try { await storage.storageWatch(place.kind === 'folder' ? {path: place.path, ...onVolume(place.volume)} : place.kind === 'category' ? {category: place.category} : {}); } catch { watching = ''; }
   }
   let listening: Promise<{remove(): Promise<void>}> | undefined, changeTimer: ReturnType<typeof setTimeout> | undefined;
   const changed = () => { if (!active) return; clearTimeout(changeTimer); changeTimer = setTimeout(() => { if (active && !busy) void reload(); else if (active) changed(); }, 150); };
@@ -145,7 +160,7 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
   }
 
   /** Back from a folder walks up to where the folder was entered (Browse or a category). */
-  let base: {from: Place; path: string} = {from: {kind: 'browse'}, path: ''};
+  let base: {from: Place; path: string; volume?: string} = {from: {kind: 'browse'}, path: ''};
   function show(next: Place) {
     place = next; selection = null; dialog = undefined; entries = []; loaded = false; error = '';
     api?.set({menu: false, folder: next.kind === 'browse' ? null : '__files_browser'});
@@ -153,11 +168,11 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
   }
   function go(next: Place) {
     if (busy && dialog) return;
-    if (next.kind === 'folder' && place.kind !== 'folder') base = {from: place, path: next.path};
+    if (next.kind === 'folder' && (place.kind !== 'folder' || place.volume !== next.volume)) base = {from: place, path: next.path, ...onVolume(next.volume)};
     show(next);
   }
   function up() {
-    if (place.kind === 'folder' && place.path && place.path !== base.path) show({kind: 'folder', path: parentOf(place.path)});
+    if (place.kind === 'folder' && place.path && place.path !== base.path) show({kind: 'folder', path: parentOf(place.path), ...onVolume(place.volume)});
     else show(place.kind === 'folder' ? base.from : {kind: 'browse'});
   }
 
@@ -165,18 +180,19 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
     if (busy || !api) return;
     busy = true; repaint();
     try {
-      const value = await storage.storageSelect({path: entry.path});
+      const volume = place.kind === 'folder' ? place.volume : undefined;
+      const value = await storage.storageSelect({path: entry.path, ...onVolume(volume)});
       if (value.status !== 'selected') { failed(value as Result); return; }
       if (!api.isActive()) { if (value.selectionId) await DailyApps.forgetSelected({selectionId: value.selectionId}).catch(() => {}); return; }
-      opened = {path: entry.path, selectionId: value.selectionId};
+      opened = {path: entry.path, ...onVolume(volume), selectionId: value.selectionId};
       await accept('files', value, api, false);
     } catch { toast('This file could not open.'); }
     finally { busy = false; repaint(); }
   }
-  async function share(paths: string[]) {
+  async function share(paths: string[], volume?: string) {
     if (busy || !paths.length) return;
     busy = true; repaint();
-    try { const value = await storage.storageShare({paths}); if (value.status !== 'cancelled') failed(value); }
+    try { const value = await storage.storageShare({paths, ...onVolume(volume)}); if (value.status !== 'cancelled') failed(value); }
     catch (failure) { if (!(failure instanceof DOMException && failure.name === 'AbortError')) toast('Sharing could not open.'); }
     finally { busy = false; repaint(); }
   }
@@ -185,10 +201,10 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
     if (ok === outcomes.length) toast(`${verb} ${countLabel(ok)}` + (renamed ? ` · ${renamed} renamed` : ''));
     else toast(`${verb} ${ok} of ${outcomes.length}`);
   };
-  async function transfer(paths: string[], dest: string, copy: boolean) {
+  async function transfer(paths: string[], dest: string, copy: boolean, volume?: string) {
     busy = true; repaint();
     try {
-      const value = await storage.storageTransfer({paths, dest, copy});
+      const value = await storage.storageTransfer({paths, dest, copy, ...onVolume(volume)});
       if (failed(value)) return false;
       summarize(value.outcomes || [], copy ? 'copied' : 'moved', copy ? 'Copied' : 'Moved');
       if (!copy && opened && (value.outcomes || []).some(o => o.path === opened!.path && o.status === 'moved')) closePreview();
@@ -196,28 +212,32 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
     } catch { toast('The operation could not be confirmed.'); return false; }
     finally { busy = false; selection = null; dialog = undefined; void reload(); }
   }
-  async function trash(paths: string[]) {
+  async function trash(paths: string[], volume?: string) {
     if (busy || !paths.length) return;
     busy = true; repaint();
     try {
-      const value = await storage.storageTrash({paths});
+      const value = await storage.storageTrash({paths, ...onVolume(volume)});
       if (failed(value)) return;
       const outcomes = value.outcomes || [], ids = outcomes.filter(o => o.status === 'trashed' && o.to).map(o => o.to!);
       if (opened && outcomes.some(o => o.path === opened!.path && o.status === 'trashed')) closePreview();
-      if (ids.length) api?.toast(ids.length === outcomes.length ? `${countLabel(ids.length)} moved to Trash` : `${ids.length} of ${outcomes.length} moved to Trash`, {undo: () => void restore(ids)});
+      if (ids.length) api?.toast(ids.length === outcomes.length ? `${countLabel(ids.length)} moved to Trash` : `${ids.length} of ${outcomes.length} moved to Trash`, {undo: () => void restore(ids, volume)});
       else toast('Nothing was moved to Trash.');
     } catch { toast('The operation could not be confirmed.'); }
     finally { busy = false; selection = null; void reload(); }
   }
-  async function restore(ids: string[]) {
+  async function restore(ids: string[], volume?: string) {
     busy = true; repaint();
-    try { const value = await storage.storageRestore({ids}); if (!failed(value)) summarize(value.outcomes || [], 'restored', 'Restored'); }
+    try { const value = await storage.storageRestore({ids, ...onVolume(volume)}); if (!failed(value)) summarize(value.outcomes || [], 'restored', 'Restored'); }
     catch { toast('The operation could not be confirmed.'); }
     finally { busy = false; dialog = undefined; void reload(); }
   }
-  async function emptyTrash(ids?: string[]) {
+  /** Permanent deletion of one row, or of Trash on every volume (only after the owner confirmed). */
+  async function emptyTrash(item?: TrashRow) {
     busy = true; repaint();
-    try { const value = await storage.storageEmptyTrash({...(ids ? {ids} : {}), confirmed: true}); failed(value); }
+    try {
+      if (item) failed(await storage.storageEmptyTrash({ids: [item.id], confirmed: true, ...onVolume(item.volume)}));
+      else for (const volume of [undefined, ...new Set(trashItems.map(row => row.volume).filter(Boolean))]) if (failed(await storage.storageEmptyTrash({confirmed: true, ...onVolume(volume)}))) break;
+    }
     catch { toast('The operation could not be confirmed.'); }
     finally { busy = false; dialog = undefined; void reload(); }
   }
@@ -226,7 +246,7 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
     if (!d || d.kind !== 'name' || busy) return;
     busy = true; repaint();
     try {
-      const value = d.op === 'create' ? await storage.storageCreateFolder({parent: d.path, name: d.value}) : await storage.storageRename({path: d.path, name: d.value});
+      const value = d.op === 'create' ? await storage.storageCreateFolder({parent: d.path, name: d.value, ...onVolume(d.volume)}) : await storage.storageRename({path: d.path, name: d.value, ...onVolume(d.volume)});
       if (value.status === 'exists' || value.status === 'invalid') { toast(value.message || 'Choose another name.'); return; }
       if (failed(value)) return;
       if (d.op === 'rename' && opened?.path === d.path) closePreview();
@@ -238,17 +258,17 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
     const d = dialog;
     if (!d || d.kind !== 'dest') return;
     try {
-      const value = await storage.storageList({path: at});
+      const value = await storage.storageList({path: at, ...onVolume(d.volume)});
       if (dialog !== d) return;
       if (failed(value)) return;
       dialog = {...d, at, folders: sortEntries((value.entries || []).filter(e => e.directory), 'name')};
     } catch { toast('This folder could not be read.'); }
     repaint();
   }
-  function beginDest(op: 'move' | 'copy', paths: string[], trigger?: EventTarget | null) {
+  function beginDest(op: 'move' | 'copy', paths: string[], trigger?: EventTarget | null, volume?: string) {
     if (busy || !paths.length) return;
     dialogTrigger = trigger instanceof HTMLElement ? trigger : null;
-    dialog = {kind: 'dest', op, paths, at: '', folders: []};
+    dialog = {kind: 'dest', op, paths, at: '', folders: [], ...onVolume(volume)};
     api?.set({menu: false});
     void destination('');
   }
@@ -317,7 +337,7 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
       tap: () => {
         if (pressed === entry.path) { pressed = ''; return; }
         if (selection) { toggle(entry.path); return; }
-        if (entry.directory) go({kind: 'folder', path: entry.path}); else void openFile(entry);
+        if (entry.directory) go({kind: 'folder', path: entry.path, ...here()}); else void openFile(entry);
       },
     };
   };
@@ -338,7 +358,7 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
       ready: granted && !filter, denied: access === 'denied', unavailable: access === 'unavailable' || access === 'unsupported',
       grant: async () => { try { const value = await storage.storageRequestAccess(); access = value.access || access; } catch { /* Read back below. */ } void reload(); },
       cats: CATEGORIES.map(({id, label}) => ({name: label, d: ICONS[id], count: counts[id] === undefined ? '' : String(counts[id]), label, go: () => go({kind: 'category', category: id})})),
-      vols: volumes.map(volume => ({name: volume.name, free: formatFree(volume), barW: volume.total > 0 ? Math.round(100 * (volume.total - volume.free) / volume.total) + '%' : '0%', hasBar: volume.total > 0, d: ICONS.storage, label: volume.name, go: () => go({kind: 'folder', path: ''})})),
+      vols: volumes.map(volume => ({name: volume.name, free: formatFree(volume), barW: volume.total > 0 ? Math.round(100 * (volume.total - volume.free) / volume.total) + '%' : '0%', hasBar: volume.total > 0, d: ICONS.storage, label: volume.name, go: () => go({kind: 'folder', path: '', ...onVolume(volume.primary ? undefined : volume.id)})})),
       trashCount: trashCount ? String(trashCount) : '', trashD: ICONS.trash, openTrash: () => go({kind: 'trash'}),
     };
     out.chip = filter ? {label: filterLabel(filter) + ' · ' + filterRows.length, clear: () => { filter = null; filterRows = []; repaint(); }} : null;
@@ -353,11 +373,12 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
     out.nativeTreeStatus = error;
     if (place.kind !== 'browse') {
       const at = place;
-      const title = at.kind === 'trash' ? 'Trash' : at.kind === 'category' ? CATEGORIES.find(c => c.id === at.category)!.label : at.path ? baseName(at.path) : primary?.name || 'Internal storage';
+      const volumeName = at.kind === 'folder' && at.volume ? volumes.find(v => v.id === at.volume)?.name || 'Storage' : primary?.name || 'Internal storage';
+      const title = at.kind === 'trash' ? 'Trash' : at.kind === 'category' ? CATEGORIES.find(c => c.id === at.category)!.label : at.path ? baseName(at.path) : volumeName;
       let items: Bag[] = [];
       if (at.kind === 'trash') {
         items = trashItems.map(item => ({
-          id: item.id, name: item.name, sub: [item.directory ? '' : formatSize(item.size), (item.origin || 'Internal storage').split('/').join(' › ')].filter(Boolean).join(' · '), count: trashDaysLeft(item.deletedAt, Date.now()) + 'd',
+          id: item.id, name: item.name, sub: [item.directory ? '' : formatSize(item.size), [volumeLabel(item.volume), ...(item.origin || '').split('/').filter(Boolean)].join(' › ')].filter(Boolean).join(' · '), count: trashDaysLeft(item.deletedAt, Date.now()) + 'd',
           d: iconFor(item), isFolder: false, isFile: true, selOn: false, selOff: false, rowCss: '', label: item.name,
           down: () => {}, up: () => {}, cancel: () => {}, context: () => {},
           tap: (event: Event) => { if (busy) return; dialogTrigger = event?.currentTarget instanceof HTMLElement ? event.currentTarget : null; dialog = {kind: 'trashItem', item, confirmDelete: false}; repaint(); },
@@ -373,14 +394,14 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
       const paths = () => [...(selection || [])];
       out.fd = {
         name: title, items, empty: loaded && !busy && items.length === 0 && !error, emptyD: at.kind === 'trash' ? ICONS.trash : at.kind === 'category' ? ICONS[at.category] : ICONS.folder,
-        close: () => up(), crumbs: at.kind === 'folder' ? breadcrumbs(at.path, primary?.name || 'Internal storage').map((crumb, index, all) => ({label: crumb.label, last: index === all.length - 1, notLast: index < all.length - 1, go: () => { if (crumb.path !== at.path) go({kind: 'folder', path: crumb.path}); }})) : [],
+        close: () => up(), crumbs: at.kind === 'folder' ? breadcrumbs(at.path, volumeName).map((crumb, index, all) => ({label: crumb.label, last: index === all.length - 1, notLast: index < all.length - 1, go: () => { if (crumb.path !== at.path) go({kind: 'folder', path: crumb.path, ...onVolume(at.volume)}); }})) : [],
         hasCrumbs: at.kind === 'folder', isTrash: at.kind === 'trash', canEmpty: at.kind === 'trash' && trashItems.length > 0 && !busy,
         empty_: () => { if (busy) return; dialog = {kind: 'empty'}; repaint(); },
         hasMenu: at.kind !== 'trash', openMenu: () => currentApi.set({menu: true}), moreD: ICONS.more,
         menuRows: [
           ...(['name', 'date', 'size'] as SortMode[]).map(mode => ({label: 'Sort by ' + SORT_LABELS[mode].toLowerCase(), d: ICONS.sort, on: sort === mode, go: () => currentApi.set({menu: false, sort: mode})})),
           {label: state.grid ? 'List' : 'Grid', d: state.grid ? ICONS.rows : ICONS.grid, on: false, go: () => currentApi.set({menu: false, grid: !state.grid})},
-          ...(at.kind === 'folder' ? [{label: 'New folder', d: ICONS.folder, on: false, go: (event: Event) => { dialogTrigger = null; void event; dialog = {kind: 'name', op: 'create', path: at.path, value: ''}; currentApi.set({menu: false}); }}] : []),
+          ...(at.kind === 'folder' ? [{label: 'New folder', d: ICONS.folder, on: false, go: (event: Event) => { dialogTrigger = null; void event; dialog = {kind: 'name', op: 'create', path: at.path, value: '', ...onVolume(at.volume)}; currentApi.set({menu: false}); }}] : []),
           ...(listed && items.length ? [{label: 'Select', d: ICONS.check, on: false, go: () => { selection = new Set(); currentApi.set({menu: false}); }}] : []),
         ],
       };
@@ -388,11 +409,12 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
       out.selectionBusy = busy; out.selectionDisabled = busy || !selection?.size; out.selOp = selection?.size ? '1' : '.4';
       out.exitSel = () => { if (!busy) { selection = null; repaint(); } };
       out.selAll = () => { if (busy) return; const all = entries.map(e => e.path); selection = new Set(selection?.size === all.length ? [] : all); repaint(); };
-      out.selShare = () => void share(paths().filter(path => !entries.find(e => e.path === path)?.directory));
-      out.selMove = (event: Event) => beginDest('move', paths(), event?.currentTarget);
-      out.selCopy = (event: Event) => beginDest('copy', paths(), event?.currentTarget);
-      out.selDel = () => void trash(paths());
-      out.selRename = (event: Event) => { const only = paths(); if (only.length !== 1 || busy) return; dialogTrigger = event?.currentTarget instanceof HTMLElement ? event.currentTarget : null; dialog = {kind: 'name', op: 'rename', path: only[0], value: baseName(only[0])}; repaint(); };
+      const volumeHere = at.kind === 'folder' ? at.volume : undefined;
+      out.selShare = () => void share(paths().filter(path => !entries.find(e => e.path === path)?.directory), volumeHere);
+      out.selMove = (event: Event) => beginDest('move', paths(), event?.currentTarget, volumeHere);
+      out.selCopy = (event: Event) => beginDest('copy', paths(), event?.currentTarget, volumeHere);
+      out.selDel = () => void trash(paths(), volumeHere);
+      out.selRename = (event: Event) => { const only = paths(); if (only.length !== 1 || busy) return; dialogTrigger = event?.currentTarget instanceof HTMLElement ? event.currentTarget : null; dialog = {kind: 'name', op: 'rename', path: only[0], ...onVolume(volumeHere), value: baseName(only[0])}; repaint(); };
       out.canRename = selection?.size === 1;
       out.icons = ICONS;
       out.menuOpen = !!state.menu; out.closeMenu = () => currentApi.set({menu: false});
@@ -401,12 +423,13 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
     // The document preview opened from this browser acts on the same path.
     if (opened && out.isPreview && out.pv && state.open === '__native_selected_document') {
       const path = opened.path;
-      out.pv.share = () => void share([path]);
-      out.pv.move = (event: Event) => beginDest('move', [path], event?.currentTarget);
-      out.pv.del = () => void trash([path]);
-      out.pv.startRename = (event: Event) => { dialogTrigger = event?.currentTarget instanceof HTMLElement ? event.currentTarget : null; dialog = {kind: 'name', op: 'rename', path, value: baseName(path)}; repaint(); };
+      const volume = opened.volume;
+      out.pv.share = () => void share([path], volume);
+      out.pv.move = (event: Event) => beginDest('move', [path], event?.currentTarget, volume);
+      out.pv.del = () => void trash([path], volume);
+      out.pv.startRename = (event: Event) => { dialogTrigger = event?.currentTarget instanceof HTMLElement ? event.currentTarget : null; dialog = {kind: 'name', op: 'rename', path, value: baseName(path), ...onVolume(volume)}; repaint(); };
       out.pv.canForget = false;
-      out.pv.meta = [out.pv.meta, ['Internal storage', ...parentOf(path).split('/').filter(Boolean)].join(' › ')].filter(Boolean).join(' · ');
+      out.pv.meta = [out.pv.meta, [volumeLabel(volume), ...parentOf(path).split('/').filter(Boolean)].join(' › ')].filter(Boolean).join(' · ');
     } else if (!out.isPreview) opened = undefined;
 
     const d = dialog;
@@ -414,22 +437,22 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
     out.dlg = d ? {
       modalRef: modal.ref, busy, isDest: d.kind === 'dest', isName: d.kind === 'name', isEmpty: d.kind === 'empty', isTrashItem: d.kind === 'trashItem',
       title: d.kind === 'dest' ? (d.op === 'move' ? 'Move to' : 'Copy to') : d.kind === 'name' ? (d.op === 'create' ? 'New folder' : 'Rename') : d.kind === 'empty' ? 'Empty Trash?' : d.item.name,
-      message: d.kind === 'empty' ? `${countLabel(trashItems.length)} will be deleted permanently.` : d.kind === 'trashItem' ? (d.confirmDelete ? 'Delete permanently?' : (d.item.origin || 'Internal storage').split('/').join(' › ')) : '',
-      at: d.kind === 'dest' ? breadcrumbs(d.at, primary?.name || 'Internal storage').map(c => c.label).join(' › ') : '',
+      message: d.kind === 'empty' ? `${countLabel(trashItems.length)} will be deleted permanently.` : d.kind === 'trashItem' ? (d.confirmDelete ? 'Delete permanently?' : [volumeLabel(d.item.volume), ...(d.item.origin || '').split('/').filter(Boolean)].join(' › ')) : '',
+      at: d.kind === 'dest' ? breadcrumbs(d.at, d.volume ? volumes.find(v => v.id === d.volume)?.name || 'Storage' : primary?.name || 'Internal storage').map(c => c.label).join(' › ') : '',
       canUp: d.kind === 'dest' && d.at !== '', up: () => { if (d.kind === 'dest') void destination(parentOf(d.at)); },
       folders: d.kind === 'dest' ? d.folders.filter(f => !d.paths.some(p => f.path === p || f.path.startsWith(p + '/'))).map(f => ({name: f.name, label: 'Open ' + f.name, d: ICONS.folder, go: () => void destination(f.path)})) : [],
       confirmLabel: d.kind === 'dest' ? (d.op === 'move' ? 'Move here' : 'Copy here') : d.kind === 'name' ? (d.op === 'create' ? 'Create' : 'Rename') : d.kind === 'empty' ? 'Empty' : '',
       confirmDisabled: busy || d.kind === 'dest' && d.op === 'move' && d.paths.every(p => parentOf(p) === d.at) || d.kind === 'name' && !d.value.trim(),
       confirm: () => {
         if (busy) return;
-        if (d.kind === 'dest') void transfer(d.paths, d.at, d.op === 'copy');
+        if (d.kind === 'dest') void transfer(d.paths, d.at, d.op === 'copy', d.volume);
         else if (d.kind === 'name') void nameDialog();
         else if (d.kind === 'empty') void emptyTrash();
       },
       value: d.kind === 'name' ? d.value : '', onValue: (event: Event) => { if (dialog?.kind === 'name') { dialog.value = (event.target as HTMLInputElement).value; repaint(); } },
       onKey: (event: KeyboardEvent) => { if (event.key === 'Enter') { event.preventDefault(); void nameDialog(); } },
-      restore: () => { if (d.kind === 'trashItem') void restore([d.item.id]); },
-      deleteNow: () => { if (d.kind !== 'trashItem' || busy) return; if (!d.confirmDelete) { dialog = {...d, confirmDelete: true}; repaint(); return; } void emptyTrash([d.item.id]); },
+      restore: () => { if (d.kind === 'trashItem') void restore([d.item.id], d.item.volume); },
+      deleteNow: () => { if (d.kind !== 'trashItem' || busy) return; if (!d.confirmDelete) { dialog = {...d, confirmDelete: true}; repaint(); return; } void emptyTrash(d.item); },
       deleteLabel: d.kind === 'trashItem' && d.confirmDelete ? 'Delete permanently' : 'Delete now',
       cancel: () => { if (!busy) { dialog = undefined; repaint(); } },
     } : null;

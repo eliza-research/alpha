@@ -236,6 +236,8 @@ export class BrowserStorageVolume {
 
   /** The storage* plugin surface (same names and results as AlphaFilesPlugin). */
   async run(method: string, input: Record<string, any>): Promise<Record<string, unknown>> {
+    // The browser has one volume. Like Android, a volume that is not mounted is refused.
+    if (input.volume !== undefined && input.volume !== 'primary') return {status: 'unavailable', message: 'This storage is not mounted.'};
     try {
       switch (method) {
         case 'storageState': return {status: 'ready', access: 'granted', volumes: [await this.volume()]};

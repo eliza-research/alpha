@@ -111,6 +111,12 @@ test('trash items expire after 30 days; folder moves into themselves are refused
  assert.equal((await v.run('storageList',{path:TRASH_FOLDER+'/x'})).status,'missing');
 });
 
+test('only the primary volume exists in the browser; another volume is refused like an unmounted one',async()=>{
+ const v=await fresh();
+ const state=await v.run('storageState',{});assert.deepEqual(state.volumes.map(x=>[x.id,x.primary]),[['primary',true]]);
+ for(const [method,input] of [['storageList',{path:''}],['storageTrash',{paths:['Download/a.pdf']}],['storageTrashList',{}],['storageEmptyTrash',{confirmed:true}]])assert.equal((await v.run(method,{...input,volume:'1234-ABCD'})).status,'unavailable',method);
+ assert.equal((await v.run('storageList',{path:'',volume:'primary'})).status,'ready');
+});
 test('sort is folders first, then name, date or size; breadcrumbs follow the path',()=>{
  const rows=[{name:'b.pdf',directory:false,modified:3,size:10},{name:'Zed',directory:true,modified:9,size:0},{name:'a.pdf',directory:false,modified:1,size:30},{name:'file10.pdf',directory:false,modified:2,size:20}];
  assert.deepEqual(storage.sortEntries(rows,'name').map(r=>r.name),['Zed','a.pdf','b.pdf','file10.pdf']);
