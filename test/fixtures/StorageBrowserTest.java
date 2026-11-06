@@ -51,6 +51,16 @@ public final class StorageBrowserTest {
    check(b.transfer(Arrays.asList("Documents"),"Documents/Sub",false).get(0).status.equals("invalid"),"no move into itself");
    check(b.createFolder("Documents","Sub").equals("Documents/Sub (1)"),"new folder keeps both");
    try{b.rename("Documents/Sub (1)","Sub");check(false,"rename refuses a clash");}catch(IllegalStateException expected){}
+   // The Downloads category: files directly in Download/, newest first; no folders, no hidden entries.
+   File download=new File(root,"Download");
+   for(File f:download.listFiles())StorageBrowser.deleteRecursive(f);
+   StorageBrowser.write(new File(download,"old.pdf"),"o");StorageBrowser.write(new File(download,"new.txt"),"n");StorageBrowser.write(new File(download,".hidden"),"h");
+   new File(download,"Folder").mkdirs();StorageBrowser.write(new File(download,"Folder/inner.txt"),"i");
+   new File(download,"old.pdf").setLastModified(1_700_000_000_000L);new File(download,"new.txt").setLastModified(1_800_000_000_000L);
+   List<StorageBrowser.Row> downloads=b.files("Download",2000);
+   check(downloads.size()==2&&downloads.get(0).path.equals("Download/new.txt")&&downloads.get(1).path.equals("Download/old.pdf"),"downloads lists Download/ files newest first");
+   check(b.files("Download",1).size()==1,"downloads is bounded");
+   check(new StorageBrowser(Files.createTempDirectory("alpha-empty").toFile()).files("Download",2000).isEmpty(),"no Download folder is an empty category");
    System.out.println("PASS storage browser");
   }finally{StorageBrowser.deleteRecursive(root);}
  }

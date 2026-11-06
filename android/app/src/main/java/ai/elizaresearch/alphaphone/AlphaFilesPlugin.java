@@ -108,7 +108,9 @@ public class AlphaFilesPlugin extends Plugin {
   for(StorageBrowser.Row r:rows){if(n++>=StorageBrowser.LIST_MAX)break;entries.put(row(r));}
   JSObject out=new JSObject();out.put("entries",entries);out.put("truncated",rows.size()>StorageBrowser.LIST_MAX);return out;
  });}
- @PluginMethod public void storageCategory(PluginCall call){storage(call,b->{JSObject out=new JSObject();out.put("entries",StorageCatalog.category(resolver(),call.getString("category","")));return out;});}
+ @PluginMethod public void storageCategory(PluginCall call){storage(call,b->{JSObject out=new JSObject();out.put("entries",StorageCatalog.category(resolver(),primaryBrowser(),call.getString("category","")));return out;});}
+ /** Categories are on the primary volume whichever volume the call named. */
+ private StorageBrowser primaryBrowser(){StorageCatalog.Volume v=StorageCatalog.volume(getContext(),"primary");return new StorageBrowser(v==null?android.os.Environment.getExternalStorageDirectory():v.directory);}
  /** Candidates for the agent's read-only filter; the renderer applies the exact rules. */
  @PluginMethod public void storageQuery(PluginCall call){storage(call,b->{
   Double from=call.getDouble("from"),to=call.getDouble("to");

@@ -77,6 +77,14 @@ final class StorageBrowser {
   }
   return out;
  }
+ /** The files directly in `path`, newest first (the Downloads category); a missing folder has none. */
+ List<Row> files(String path,int max)throws IOException{
+  List<Row> rows,out=new ArrayList<>();
+  try{rows=list(path);}catch(java.io.FileNotFoundException missing){return out;}
+  rows.sort((a,b)->Long.compare(b.modified,a.modified));
+  for(Row r:rows){if(out.size()>=max)break;if(!r.directory)out.add(r);}
+  return out;
+ }
  static String mime(String name){
   int dot=name.lastIndexOf('.');String ext=dot>0?name.substring(dot+1).toLowerCase(Locale.ROOT):"";
   String type=ext.isEmpty()?null:android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext);

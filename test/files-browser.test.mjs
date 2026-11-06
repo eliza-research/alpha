@@ -162,6 +162,19 @@ test('Files shows no picker tiles, search box, Recents or instruction subtitles'
 test('native StorageBrowser on a host JVM: clashes keep both, trash restores to origin, retention, no escape',{skip:jsonJarSkip},()=>{
  assert.match(runJvm([nativeSource('StorageBrowser.java'),fixture('android-stubs/android/webkit/MimeTypeMap.java'),fixture('StorageBrowserTest.java')],'ai.elizaresearch.alphaphone.StorageBrowserTest',{json:true}),/^PASS storage browser/);
 });
+test('every Browse category id has a native answer on Android; Downloads is the Download folder',()=>{
+ const catalog=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/StorageCatalog.java','utf8');
+ const ids=JSON.parse('['+catalog.match(/static final String\[\] CATEGORY_IDS=\{([^}]*)\};/)[1]+']');
+ assert.deepEqual(ids,storage.CATEGORIES.map(c=>c.id),'StorageCatalog.CATEGORY_IDS names exactly the renderer\'s categories');
+ assert.equal(catalog.match(/static final String DOWNLOAD_FOLDER="([^"]+)";/)[1],storage.DOWNLOAD_FOLDER);
+ assert.match(catalog,/if\(!"downloads"\.equals\(category\)\)return category\(resolver,category\);/);
+ assert.match(catalog,/browser\.files\(DOWNLOAD_FOLDER,CATEGORY_MAX\)/);
+ for(const id of ids.filter(id=>id!=='downloads'))assert.ok(catalog.includes(`"${id}"`),`MediaStore category ${id}`);
+ const plugin=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaFilesPlugin.java','utf8');
+ assert.match(plugin,/StorageCatalog\.category\(resolver\(\),primaryBrowser\(\),call\.getString\("category",""\)\)/);
+ const instrumented=readFileSync('android/app/src/androidTest/java/ai/elizaresearch/alphaphone/StorageCategoriesInstrumentedTest.java','utf8');
+ assert.match(instrumented,/for\(String id:StorageCatalog\.CATEGORY_IDS\)/,'the device test answers every category id');
+});
 test('each mounted volume is its own Storage row and tree; Trash spans volumes and acts on the row\'s volume',()=>{
  const adapter=readFileSync('apps/app/src/prototype/files-browser-adapter.ts','utf8');
  assert.match(adapter,/vols: volumes\.map\(volume => \(\{[^\n]*go: \(\) => go\(\{kind: 'folder', path: '', \.\.\.onVolume\(volume\.primary \? undefined : volume\.id\)\}\)/);

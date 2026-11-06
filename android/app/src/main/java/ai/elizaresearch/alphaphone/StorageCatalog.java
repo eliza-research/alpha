@@ -16,10 +16,14 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Storage volumes and the Images/Videos/Audio/Documents category queries over MediaStore
- * (primary volume). Category listings are queries, never the system picker's Recent view. */
+/** Storage volumes and the Browse categories (primary volume): Downloads is the Download folder;
+ * Images/Videos/Audio/Documents are queries over MediaStore. Category listings are never the
+ * system picker's Recent view. */
 final class StorageCatalog {
  static final int CATEGORY_MAX=2000,QUERY_MAX=500;
+ /** Every Browse category id, as the renderer's CATEGORIES (runtime/files-storage.ts) names them. */
+ static final String[] CATEGORY_IDS={"downloads","images","videos","audio","documents"};
+ static final String DOWNLOAD_FOLDER="Download";
  static final String[] DOCUMENT_TYPES={"application/pdf","application/msword","application/rtf","text/plain","text/csv","text/markdown",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document","application/vnd.ms-excel","application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "application/vnd.ms-powerpoint","application/vnd.openxmlformats-officedocument.presentationml.presentation",
@@ -64,7 +68,16 @@ final class StorageCatalog {
   }
  }
  private static final String[] COLUMNS={MediaStore.MediaColumns.RELATIVE_PATH,MediaStore.MediaColumns.DISPLAY_NAME,MediaStore.MediaColumns.MIME_TYPE,MediaStore.MediaColumns.SIZE,MediaStore.MediaColumns.DATE_MODIFIED};
- /** One category over the primary volume, newest first. Trash and pending rows are excluded by MediaStore. */
+ /** One Browse category on the primary volume (`browser`): the files directly in Download/, or a
+  * MediaStore query. A missing Download folder is an empty category. */
+ static JSArray category(ContentResolver resolver,StorageBrowser browser,String category)throws java.io.IOException{
+  if(!"downloads".equals(category))return category(resolver,category);
+  JSArray out=new JSArray();
+  for(StorageBrowser.Row r:browser.files(DOWNLOAD_FOLDER,CATEGORY_MAX)){
+   JSObject row=new JSObject();row.put("path",r.path);row.put("name",r.name);row.put("directory",false);row.put("mimeType",r.mime);row.put("size",r.size);row.put("modified",r.modified);out.put(row);}
+  return out;
+ }
+ /** One MediaStore category over the primary volume, newest first. Trash and pending rows are excluded by MediaStore. */
  static JSArray category(ContentResolver resolver,String category){
   String selection=null;String[] args=null;
   if("documents".equals(category)){StringBuilder in=new StringBuilder();for(int i=0;i<DOCUMENT_TYPES.length;i++)in.append(i==0?"?":",?");selection=MediaStore.MediaColumns.MIME_TYPE+" IN ("+in+")";args=DOCUMENT_TYPES;}
