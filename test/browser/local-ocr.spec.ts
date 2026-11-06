@@ -61,7 +61,7 @@ test('Camera Scan reviews real OCR and commits only corrected text to durable No
     };
   });
   await page.goto('/');await openLegacyNotes(page);await returnToApps(page);await page.getByRole('button',{name:'Camera',exact:true}).click();
-  const video=page.locator('[aria-label^="Viewfinder."] video');await expect.poll(()=>video.evaluate((v:HTMLVideoElement)=>v.readyState)).toBeGreaterThanOrEqual(2);
+  const video=page.locator('[data-alpha-camera="viewfinder"] video');await expect.poll(()=>video.evaluate((v:HTMLVideoElement)=>v.readyState)).toBeGreaterThanOrEqual(2);
   await page.getByRole('button',{name:'Scan mode',exact:true}).click();await page.getByRole('button',{name:'Scan text',exact:true}).click();
   const dialog=page.getByRole('dialog',{name:'Review scanned text'});await expect(dialog).toBeVisible();
   const text=dialog.getByRole('textbox',{name:'Scanned text'});await expect(text).toHaveValue(/Alpha local scan/,{timeout:60000});

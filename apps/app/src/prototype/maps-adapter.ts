@@ -40,7 +40,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
   let api: Bag | undefined, disposed=false, renders=0;
   let planeBasemap:MapBasemap|undefined, plane: MapPlane | undefined, planeElement: HTMLElement | undefined;
   let mapGeneration=0,mapFailed=false,mapObserver:MutationObserver|undefined,planeView:MapsScreenView['map']|undefined;
-  let pendingHandoff: {query:string}|undefined;
+  let pendingHandoff: {query:string}|undefined, mapsController: MapsController|undefined;
   const active=()=>!disposed&&!document.hidden&&!!api?.isActive();
   const dropPlane=()=>{++mapGeneration;mapObserver?.disconnect();mapObserver=undefined;mapFailed=false;plane?.destroy();plane=undefined;planeElement=undefined;planeBasemap=undefined;};
   const navigationVoice=new NavigationVoice(error=>screen.notify((error instanceof Error?error.message+' ':'')+'Voice guidance paused. Tap Enable voice guidance to retry.'));
@@ -58,7 +58,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       return cloud&&{name:cloud.regions.map(item=>item.name).join(', '),mapRestricted:false,contains:point=>insideCloudCoverage(cloud,point)};
     },
     attribution: () => regionalMap()?.attribution || cloudMapsCoverage()?.attribution || '',
-    createController: (config, provider) => new MapsController(config, provider),
+    createController: (config, provider) => (mapsController = new MapsController(config, provider)),
     navigationLocation: new NativeMapsLocation(),
     agentLocation: new NativeMapsLocation(),
     locationGranted: locationPermissionGranted,
@@ -132,6 +132,11 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     bind(data, view, st, currentApi);
     return data;
   };
+  function cloudCredit(directionsOpen: boolean) {
+    const route = directionsOpen ? mapsController?.snapshot().route : undefined;
+    const text = (route?.phase === 'ready' && route.value?.attribution) || cloudMapsCoverage()?.attribution || '';
+    return text.length > 200 ? `${text.slice(0, 199)}…` : text;
+  }
   function bind(data: Bag, view: MapsScreenView, st: Bag, currentApi: Bag) {
     const status = view.status, region = regionalMap(), basemap = region || globalBasemap, globalMap = !region;
     const directionsOpen = view.mode === 'directions' || view.mode === 'origin' || view.mode === 'navigation';
@@ -140,6 +145,8 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       rootRef:(element:HTMLElement)=>{if(element)element.dataset.mapDiagnostics=JSON.stringify({...view.diagnostics,agentNavigation:{offered:agentNavigation.registered(),relay:residentMapsNavigationPort.relay}});},
       // Who receives search text and route points, from the connected Cloud provider.
       searchDisclosure:region?'':describeMapsDisclosure(cloudMapsCoverage()?.disclosure),
+      // The Cloud provider's required credit while its results, a place or a route are on screen.
+      cloudCredit:region||!(isResults||isPlace||directionsOpen)?'':cloudCredit(directionsOpen),
       notNative:false, hasNativeMap:true,globalBasemap:globalMap,regionalBasemap:!globalMap,mapLabel:globalMap?'World map':'Regional map',mapAttribution:globalMap?globalBasemap.attribution:(region?.attribution||''),attributionBottom:directionsOpen?310:isPlace?410:130,
       mapRef:(element:HTMLElement)=>{
         if(!element||!basemap)return;

@@ -51,7 +51,7 @@ async function scanPoster(page:Page){
 }
 async function openScanMode(page:Page){
  await page.getByRole('button',{name:'Camera',exact:true}).click();
- const video=page.locator('[aria-label^="Viewfinder."] video');
+ const video=page.locator('[data-alpha-camera="viewfinder"] video');
  await expect.poll(()=>video.evaluate((v:HTMLVideoElement)=>v.readyState),{timeout:60_000}).toBeGreaterThanOrEqual(2);
  await page.getByRole('button',{name:'Scan mode',exact:true}).click();
 }

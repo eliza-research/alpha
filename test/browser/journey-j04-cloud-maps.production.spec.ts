@@ -102,6 +102,8 @@ test('an event location is searched once in Cloud Maps, routed from an explicit 
     await expect(search).toHaveValue(LOCATION);
     await expect(page.getByRole('button', { name: /^Port Hercule fuel dock/ }).first()).toBeVisible();
     await expect(page.getByRole('button', { name: /^Port Hercule,|^Port Hercule$|^Port Hercule Quai/ }).first()).toBeVisible();
+    // The Cloud provider's own credit sits beside its results.
+    await expect(page.locator('.alpha-map-credits [data-maps-cloud-credit]')).toHaveText(' · © OpenStreetMap contributors (ODbL). Search: Nominatim. Routing: GraphHopper.');
     // Two candidates: nothing is selected or routed until the user chooses.
     await expect(button(page, 'Directions')).toHaveCount(0);
     expect(await mapsRequests(page)).toEqual([{ route: 'capabilities', body: null }, { route: 'places/search', body: { query: LOCATION } }]);

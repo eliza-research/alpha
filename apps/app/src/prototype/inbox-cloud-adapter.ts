@@ -555,7 +555,7 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
   /** Swipe left routes to the same reviewed archive flow as the message view. */
   async function swipeArchive(message: GmailMessage) {
     const caps = provider.capabilities();
-    if (!caps || !gmailInboxAllows(caps, 'archive')) { api?.toast('Enable Gmail changes in Settings → Connections to archive. Nothing was changed.'); return; }
+    if (!caps || !gmailInboxAllows(caps, 'archive')) { api?.toast('This Gmail account doesn’t allow archiving. See Settings → Connections → Manage Google accounts. Nothing was changed.'); return; }
     if (!caps.threads) { api?.toast('Open the message to archive it. Nothing was changed.'); return; }
     const accountId = selected; let historyId: string | null = null;
     await work('Preparing archive review…', async ({ client }, signal, valid) => {

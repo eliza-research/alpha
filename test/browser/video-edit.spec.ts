@@ -11,7 +11,7 @@ test.beforeEach(async({page},info)=>{
    const stream=canvas.captureStream(20);state.streams.push(stream);return stream;
   }}});
  });
- await page.goto('/');await page.getByRole('button',{name:'Camera',exact:true}).click();await expect.poll(()=>page.locator('[aria-label^="Viewfinder."] video').evaluate((v:HTMLVideoElement)=>v.readyState)).toBeGreaterThanOrEqual(2);
+ await page.goto('/');await page.getByRole('button',{name:'Camera',exact:true}).click();await expect.poll(()=>page.locator('[data-alpha-camera="viewfinder"] video').evaluate((v:HTMLVideoElement)=>v.readyState)).toBeGreaterThanOrEqual(2);
 });
 async function record(page:any){return page.evaluate(async()=>{const {browserCamera,browserPhotoLibrary}=await import('/src/prototype/browser-camera.ts');await browserCamera.startRecording({audio:true,maxDuration:1.5,maxFileSize:1000000});await new Promise(r=>setTimeout(r,1700));await browserCamera.stopRecording();return (await browserPhotoLibrary.list()).items[0];});}
 test('trimmed rotated copy retains audio, original bytes and exactly one receipt after reload',async({page})=>{
