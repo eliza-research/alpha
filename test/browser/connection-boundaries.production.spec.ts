@@ -1,9 +1,9 @@
 import {openCloudPlanFromSettings} from './helpers/cloud-plan-settings';
 import { cloudStorageSlot } from '../../apps/app/src/runtime/cloud-deployment.generated';
 import {seedCompletedAccessSetup} from './flag-off-android';
-import { test, expect, type Page, type Route } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import {installResidentAgentPlugin} from './helpers/resident-agent-plugin';
-import { openYourAgent, completeAccessSetup } from './flag-off-android';
+import { openYourAgent, completeAccessSetup, fenceNetwork } from './flag-off-android';
 // Flag-off production bundle only. Android cases stub the Capacitor bridge in a desktop browser and
 // saved remote selections must never reconnect. Nothing here contacts
 // Eliza Cloud, a deployed agent, an Android device or the native AlphaConnection plugin; those
@@ -13,20 +13,6 @@ const SELECTION = 'alpha.connection.selection.v1', CLOUD_SERVICE = 'alpha.connec
 const origin = 'https://agent.example.test';
 const owner = '0f1b6c2e-8f43-4c8a-9a52-5b7e0e1a1f11', agent = '7d4e0c1a-2b3c-4d5e-8f60-718293a4b5c6';
 const token = 'synthetic-machine-session';
-
-test.beforeEach(({}, testInfo) => { test.skip(testInfo.project.name !== 'production', 'Production bundle only'); });
-
-/** Aborts and records every request that leaves the preview server. */
-async function fenceNetwork(page: Page, serve?: (route: Route) => Promise<unknown> | unknown) {
-  const foreign: string[] = [];
-  await page.route('**/*', route => {
-    const url = new URL(route.request().url());
-    if (url.hostname === '127.0.0.1') return route.continue();
-    if (serve && url.origin === origin) return serve(route);
-    foreign.push(`${route.request().method()} ${url.origin}${url.pathname}`); return route.abort();
-  });
-  return foreign;
-}
 
 type RevokeMode = 'revoked' | 'unsupported' | 'failed' | 'refused-in-body' | 'not-revoked-status' | 'no-content' | 'unauthorized' | 'server-error' | 'cancelled';
 interface NativeCall { plugin: string; method: string; slot?: string; url?: string; http?: string; authorization?: string; path?: string }

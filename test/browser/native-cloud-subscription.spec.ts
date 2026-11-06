@@ -2,7 +2,6 @@ import {openCloudPlanFromSettings} from './helpers/cloud-plan-settings';
 import {seedCompletedAccessSetup} from './flag-off-android';
 import {test,expect,type Page} from '@playwright/test';
 import {installResidentAgentPlugin} from './helpers/resident-agent-plugin';
-import {completeAccessSetup} from './flag-off-android';
 import {createServer,type ViteDevServer} from 'vite';
 import {resolve} from 'node:path';
 import {webcrypto} from 'node:crypto';
@@ -172,9 +171,6 @@ async function needsPlan(page:Page){
  const notice=page.getByRole('region',{name:'Eliza Cloud plan notice'});
  await expect(notice).toContainText('AI replies aren’t available right now');await expect(accountPanel(page)).toHaveCount(0);
  await expect(notice.getByRole('button',{name:'Choose a plan',exact:true})).toBeVisible();
- // A fresh phone's startup access panel (a modal) is declined first; the notice stays beside the agent.
- const startup=page.locator('dialog.alpha-startup-permissions');
- if(await startup.isVisible().catch(()=>false))await completeAccessSetup(page);
  await notice.getByRole('button',{name:'Redeem code',exact:true}).click();
  const panel=page.getByRole('dialog',{name:'Eliza Cloud account & plan',exact:true});await expect(panel).toBeVisible();return panel;
 }
@@ -744,7 +740,6 @@ test.beforeEach(async({page})=>seedCompletedAccessSetup(page));
 test.describe('explicit membership code entry',()=>{
  async function notice(page:Page){
   await boot(page,{...await entitlements(),plan:'none',cashBalance:5,holdProvider:false});await started(page);await idle(page);
-  const startup=page.locator('dialog.alpha-startup-permissions');if(await startup.isVisible().catch(()=>false))await completeAccessSetup(page);
   const notice=page.getByRole('region',{name:'Eliza Cloud plan notice'});await expect(notice).toBeVisible();return notice;
  }
  // On the phone's own agent the plan action opens the resident account & plan panel, which carries

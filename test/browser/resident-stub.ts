@@ -78,6 +78,8 @@ export async function residentStub(page: Page, options: ResidentStubOptions = {}
       ...kept,
       // Per page load: the stream mode and a held reply do not survive a restart.
       stream: null as any, release: null as null | (() => void), recoveries: [] as string[], capabilities: '',
+      // Off by default: holdNextChunk() opens the next reply's stream and holds its chunk until releaseChunk().
+      chunkHeld: false, heldChunk: null as null | (() => void),
       // Cloud's answer to the next code redemption: 'ok' grants Plus; 'invalid' is Cloud's one answer
       // for unknown, expired, disabled and used-up codes (400 invalid_subscription_code).
       redeem: 'ok' as 'ok' | 'invalid', redeemed: [] as Array<{ code: string; idempotencyKey: string }>,
@@ -85,6 +87,9 @@ export async function residentStub(page: Page, options: ResidentStubOptions = {}
     };
     const persist = () => sessionStorage.setItem('resident-stub', JSON.stringify({ order: s.order, cloud: s.cloud, bodies: s.bodies, opened: s.opened, accounts: s.accounts, login: s.login, nextToken: s.nextToken, polls: s.polls, start: s.start, held: s.held }));
     s.persist = persist; persist();
+    s.holdNextChunk = () => { s.chunkHeld = true; };
+    // Emits the held chunk even after the owner pressed Stop, as a late chunk from the agent.
+    s.releaseChunk = () => { const next = s.heldChunk; s.heldChunk = null; next?.(); };
     const emit = (streamId: string, event: unknown) => f.emit('Agent', 'alphaAgentStream', { streamId, event });
     const data = (streamId: string, value: unknown) => emit(streamId, { type: 'chunk', dataBase64: btoa('data: ' + JSON.stringify(value) + '\n\n') });
     // This stub keeps the resident agent's conversations itself (the harness's store is private to it),
@@ -224,7 +229,8 @@ export async function residentStub(page: Page, options: ResidentStubOptions = {}
           const reply = f.replies.shift() ?? (mode === 'hold' ? 'Held reply ' : 'Resident reply ') + f.streams;
           const finish = () => { s.release = null; s.held = null; persist(); record(conversation, { id: crypto.randomUUID(), role: 'assistant', text: reply, timestamp: Date.now() + 1 }); data(streamId, { type: 'token', text: reply }); data(streamId, { type: 'done', fullText: reply, agentName: 'Alpha' }); emit(streamId, { type: 'complete' }); };
           if (mode === 'hold') { s.held = { conversation, reply }; persist(); }
-          setTimeout(() => { emit(streamId, { type: 'response', status: 200, headers: { 'content-type': 'text/event-stream' } }); if (mode === 'hold') s.release = finish; else finish(); }, 0);
+          const holdChunk = !mode && s.chunkHeld; if (holdChunk) s.chunkHeld = false;
+          setTimeout(() => { emit(streamId, { type: 'response', status: 200, headers: { 'content-type': 'text/event-stream' } }); if (mode === 'hold') s.release = finish; else if (holdChunk) s.heldChunk = finish; else finish(); }, 0);
           return { streamId };
         }
         if (mode === 'busy' || mode === 'expired') { setTimeout(() => { emit(streamId, { type: 'response', status: mode === 'busy' ? 429 : 401, headers: { 'content-type': 'application/json' } }); emit(streamId, { type: 'complete' }); }, 0); return { streamId }; }

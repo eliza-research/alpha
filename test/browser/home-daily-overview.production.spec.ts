@@ -1,13 +1,12 @@
 import {test,expect} from '@playwright/test';
+import {fenceNetwork} from './flag-off-android';
 // Production lane (flag-off build, mocks unset): the daily overview on a fresh profile with no
 // account. The calendar card reports its unverified source, no brief card or fixture content is
 // present, and loading Home makes no request beyond the app's own origin.
-test.beforeEach(({}, info) => { test.skip(info.project.name !== 'production', 'Runs against the flag-off production build only'); });
 
 test('fresh Home shows unverified Agent Calendar state, no brief card, no fixture content and no outside request',async({page},info)=>{
- const errors:string[]=[],outside:string[]=[];
+ const errors:string[]=[],outside=await fenceNetwork(page);
  page.on('pageerror',error=>errors.push(error.message));
- page.on('request',request=>{const url=new URL(request.url());if(['http:','https:','ws:','wss:'].includes(url.protocol)&&!['127.0.0.1','localhost'].includes(url.hostname))outside.push(request.url());});
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
  await page.goto('/');
  await expect(page.locator('html')).toHaveAttribute('data-connection-mode','live');
