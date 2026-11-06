@@ -38,7 +38,8 @@ const srcDirectory = fileURLToPath(new URL('./apps/app/src/', import.meta.url));
 
 /** Production CSP. Dev serve stays relaxed for HMR and the local agent bridge. */
 export function productionContentSecurityPolicy(testMocks: boolean): string {
-  const connect = ["'self'", 'https:', ...(testMocks ? ['http://10.0.2.2:*', 'http://127.0.0.1:*', 'http://localhost:*'] : [])];
+  // data: and blob: only resolve bytes already in the renderer (saved photos, captures).
+  const connect = ["'self'", 'data:', 'blob:', 'https:', ...(testMocks ? ['http://10.0.2.2:*', 'http://127.0.0.1:*', 'http://localhost:*'] : [])];
   return [
     "default-src 'self'",
     "script-src 'self' 'wasm-unsafe-eval'",
