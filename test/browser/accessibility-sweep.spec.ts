@@ -173,6 +173,48 @@ test('launcher All apps keeps scroll clearance when a late draft status arrives'
   expect(errors).toEqual([]);
 });
 
+// setTextScale emulates WebView text zoom, which a real renderer applies before any script measures.
+// In the launcher at 200% the late draft status above can arrive after the size is set; the dock's
+// clearance published at that row's mutation checkpoint has to be the scaled footprint, or an audit
+// that runs before the next frame finds Home's last row under the composer (CI on PR #803).
+test('200% text: a row added to the launcher composer is in the published clearance at once', async ({ page }) => {
+  await LAUNCHER_STATES.find(state => state.name === 'launcher Home')!.open(page, 'light');
+  await setTextScale(page, 2);
+  const result = await page.evaluate(() => new Promise<{ published: string; measured: number }>(resolve => {
+    const dock = document.querySelector<HTMLElement>('[data-alpha-layer="composer"]')!;
+    const screen = document.querySelector<HTMLElement>('[data-screen]')!;
+    const covered = () => {
+      let top = 0;
+      let node: HTMLElement | null = dock;
+      for (; node && node !== screen; node = node.offsetParent as HTMLElement | null) top += node.offsetTop;
+      return screen.clientHeight - top;
+    };
+    // Created after the app's observers and the text-zoom emulation, so it sees what they left.
+    const checkpoint = new MutationObserver(() => {
+      checkpoint.disconnect();
+      resolve({ published: getComputedStyle(document.documentElement).getPropertyValue('--alpha-dock-clearance').trim(), measured: Math.ceil(covered()) });
+    });
+    checkpoint.observe(document.body, { childList: true, subtree: true, attributes: true });
+    // A status row declared in pixels, as the composer's draft status is.
+    const row = document.createElement('div');
+    row.setAttribute('role', 'status');
+    row.style.cssText = 'font-size:12px;line-height:1.5;padding:6px 16px';
+    row.textContent = 'Local draft could not be read. Your current text is retained.';
+    dock.prepend(row);
+  }));
+  expect(result.published).toBe(`${result.measured}px`);
+});
+
+// The browser build re-applies its stored text size whenever its device settings load or change
+// (browser/device.ts). That can land after setTextScale, and must not undo the emulated system size.
+test('200% text survives the browser build re-applying its stored text size', async ({ page }) => {
+  await page.goto('/?mode=mock&start=maps:route');
+  await setTextScale(page, 2);
+  await page.evaluate(() => window.dispatchEvent(new Event('alpha:device-settings')));
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--alpha-text-scale').trim())).toBe('2');
+});
+
 // Shared Home tiles (@elizaos/ui/mobile-shell MobileHomeScreen): every tile in the grid is one named
 // button whose accessible name is its visible label; the glyph id it carries for audits
 // (data-mobile-shell-tile-icon) never changes that name.
