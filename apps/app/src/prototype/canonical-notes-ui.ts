@@ -1,5 +1,5 @@
 import {parseNoteFormat} from '../../../../.eliza/client-features/plugins/plugin-notes/src/note-format.ts';
-import {projectNoteForModel,type StickyNote} from '../../../../.eliza/client-features/plugins/plugin-notes/src/types.ts';
+import {projectNoteForModel,type NoteJson,type StickyNote} from '../../../../.eliza/client-features/plugins/plugin-notes/src/types.ts';
 import {noteScheduleDraft,type NoteScheduleKind} from '../../../../.eliza/client-features/plugins/plugin-notes/src/client/note-schedule-draft.ts';
 import type {AppRecordPort} from '../runtime/app-record-route-policy';
 import {agentPendingText,agentAvailabilityNotice} from '../runtime/connection-ui';
@@ -118,11 +118,16 @@ export class CanonicalNotesUi {
  private resolve(id:string):string{const draft=this.editor.draft;return draft&&id==='draft-'+draft.token?draft.id??id:id;}
  /** Opens one record (or closes the editor) after the current draft is saved. */
  select(id:string|null):void{void this.leave(id).catch(()=>this.needsReview());}
- async create(kind:'text'|'list'='text'):Promise<boolean>{
+ /** A new note; one created while a folder is selected starts in that folder (format data folderId). */
+ async create(kind:'text'|'list'='text',folderId:string|null=null):Promise<boolean>{
   try{
    if(!await this.leave(null))return false;
    if(this.controller.revision===null)await this.controller.refresh();
-   this.editor.begin(kind);if(kind==='list')this.editor.edit({format:{kind:'list',data:{items:[],pinned:false}}});return true;}
+   this.editor.begin(kind);
+   const folder:Record<string,string>=folderId?{folderId}:{};
+   if(kind==='list')this.editor.edit({format:{kind:'list',data:{items:[],pinned:false,...folder}}});
+   else if(folderId)this.editor.edit({format:{kind:'text',data:folder}});
+   return true;}
   catch{if(this.controller.current)this.needsReview();return false;}
  }
  async update(id:string,patch:Bag|((record:Bag)=>Bag)):Promise<boolean>{
@@ -145,8 +150,22 @@ export class CanonicalNotesUi {
   if(this.editor.draft&&!this.editor.draft.id&&id===this.open){this.editor.close();return true;}
   const title=this.list.find(row=>row.id===id)?.title||'Note';
   const removed=await this.editor.remove(id);
-  if(removed&&this.controller.current)api.toast(`${title} moved to Trash`,{undo:()=>void this.editor.restore(id)});
+  if(removed&&this.controller.current)api.toast('Moved to Recently deleted',{undo:()=>void this.editor.restore(id)});
   return removed;
+ }
+ /**
+  * A finished Notes recording as an agent voice note: its transcript and length, in the selected
+  * folder. Agent notes keep no audio (as dictation), so the recording itself is not stored.
+  */
+ async saveVoice(transcript:string,durationMs:number,folderId:string|null):Promise<boolean>{
+  try{
+   if(!await this.leave(null))return false;
+   if(this.controller.revision===null)await this.controller.refresh();
+   this.editor.begin('voice');
+   const data:Record<string,NoteJson>={lines:transcript?[{s:'me',at:0,t:transcript}]:[],summary:[],actions:[],dur:Math.round(durationMs)/1000,...(folderId?{folderId}:{})};
+   this.editor.edit({title:'Voice note',body:transcript,format:parseNoteFormat({kind:'voice',data})});
+   return await this.editor.save();
+  }catch{if(this.controller.current)this.needsReview();return false;}
  }
  async saveCard(content:string,api:Bag):Promise<boolean>{
   try{const result=await this.controller.interact('create-note',{content});if(!this.controller.current||!result.target)return false;this.hooks.committed?.(result.target.id);return true;}
@@ -183,21 +202,21 @@ export class CanonicalNotesUi {
    await this.update(id,{body});
   }catch{api.toast('Speech recognition is unavailable.');}
  }
- /** The header waveform: a new note, then the editor's dictation into its body. It saves like typing after +
-  * (create, then expectedRevision updates), so it is an ordinary agent note; no audio is kept. */
- private async dictateNew(api:Bag):Promise<void>{
-  if(!await this.create('text'))return;
-  const id=this.open;if(id)await this.dictate(id,api);
- }
- /** Canonical behaviour on top of Alpha's Notes view: restore-only Trash under the list, review and reload, dictation instead of device recording. */
+ /** Canonical behaviour on top of Alpha's Notes view: the restore-only Trash as the Recently deleted
+  * folder, review and reload, and the Notes recorder saving the transcript (agent notes keep no audio). */
  decorate(view:Bag,api:Bag,state:Bag):Bag{
   const rows=this.controller.current?this.trashValue:[],ready=this.controller.revision!==null,busy=this.controller.pending,open=this.open,saved=!!open&&this.controller.hasViewNote(open);
-  const out:Bag={...view,none:ready&&this.phase!=='review'&&view.none,canRecord:false,canDictateNew:true,dictateNew:()=>void this.dictateNew(api),canImportText:false,browserRecovery:false,audioDeletionUnknown:false,createDisabled:!ready,
+  const trashOpen=state.folder==='deleted'&&rows.length>0;
+  if(state.folder==='deleted'&&!rows.length&&ready)queueMicrotask(()=>{if(api.get('notes').folder==='deleted')api.set({folder:null,trashAsk:null});});
+  const ask=state.trashAsk as Bag|null,asked=ask&&trashOpen?rows.find(row=>row.id===ask.id):undefined;
+  const restore=(id:string)=>{api.set({trashAsk:null});void this.editor.restore(id);};
+  const out:Bag={...view,none:ready&&this.phase!=='review'&&view.none,canRecord:true,canImportText:false,browserRecovery:false,audioDeletionUnknown:false,createDisabled:!ready,
    canonicalReview:this.phase==='review',canonicalReviewLabel:this.editor.draft?.version?'Discard draft and reload':'Reload Notes',canonicalReviewAction:()=>void this.discardDraftAndReload(),
-   trashAvailable:false,trashInList:true,trashOpen:!!state.trashOpen,trashCanErase:false,trashRetentionText:'Deleted notes are kept here for recovery.',trashLabel:rows.length?`Trash, ${rows.length} item${rows.length===1?'':'s'}`:'Trash',trashNone:ready&&this.phase!=='review'&&rows.length===0,trashError:'',trashBusy:busy,trashEmptyDisabled:true,trashConfirmOpen:false,trashFullOpen:false,
-   trashRows:rows.map(row=>({id:row.id,title:row.title||'Untitled',kind:row.kind==='list'?'Checklist':row.kind==='voice'?'Voice note':row.kind==='link'?'Link':'Note',left:'Recoverable',restoreLabel:`Restore ${row.title||'note'}`,disabled:busy,restore:()=>void this.editor.restore(row.id)})),
-   openTrash:()=>{void this.leave(null).then(left=>{if(left&&this.controller.current){api.set({trashOpen:true,sheet:null,q:null});void this.controller.refresh().catch(()=>{});}});},
-   closeTrash:()=>api.set({trashOpen:false}),emptyTrash:()=>{},trashConfirmGo:()=>{},trashCancel:()=>api.set({trashConfirm:null,trashFull:null})};
+   trashAvailable:false,hasDeleted:rows.length>0,trashOpen,trashCanErase:false,trashError:'',trashBusy:busy,trashEmptyDisabled:true,trashConfirmOpen:false,trashFullOpen:false,
+   trashRows:rows.map(row=>{const title=row.title||'Untitled';return {id:row.id,title,label:title,preview:'',left:'',disabled:busy,restore:()=>restore(row.id),ask:()=>api.set({trashAsk:{id:row.id,title}})};}),
+   trashAskOpen:!!asked,trashAskTitle:asked?ask!.title:'',trashAskClose:()=>api.set({trashAsk:null}),trashAskRecover:()=>{if(asked)restore(asked.id);},trashAskDelete:()=>{},
+   openTrash:()=>{void this.leave(null).then(left=>{if(left&&this.controller.current){api.set({folder:'deleted',filter:null,folderSheet:null,sheet:null,q:null});void this.controller.refresh().catch(()=>{});}});},
+   closeTrash:()=>api.set({folder:null,trashAsk:null}),emptyTrash:()=>{},trashConfirmGo:()=>{},trashCancel:()=>api.set({trashConfirm:null,trashFull:null})};
   if(out.ed&&open){out.ed={...out.ed,dictate:()=>void this.dictate(open,api),...(saved?{draftReminder:()=>void this.scheduleDraft(open,'reminder',api),draftEvent:()=>void this.scheduleDraft(open,'event',api)}:{})};}
   if(out.vo&&open){out.vo={...out.vo,hasPlayback:false,play:()=>api.toast('No audio is available for this note.'),
    toCal:()=>void this.scheduleDraft(open,'reminder',api),calLabel:'Review reminder draft',calText:'Review reminder',calIcon:api.ic?.cal??out.vo.calIcon,
@@ -208,7 +227,8 @@ export class CanonicalNotesUi {
  api(original:Bag):Bag{
   return {...original,canonicalNotes:this,notesSourceMode:'canonical',notesTrash:undefined,moveNoteToTrash:undefined,storageReady:()=>this.controller.current&&this.controller.revision!==null&&!this.controller.pending,
    set:(patch:Bag)=>{
-    if(patch.record===true||patch.rec){original.toast('Recording is not available in agent Notes. Nothing was recorded.');return false;}
+    // `record` opens the Notes recorder (voice-adapter.ts); the old simulated recorder state is refused.
+    if(patch.rec){original.toast('Recording is not available in agent Notes. Nothing was recorded.');return false;}
     const rest={...patch};
     if(Object.hasOwn(rest,'open')){this.select(rest.open??null);delete rest.open;}
     if(rest.compose){void this.create('text');rest.compose=false;}

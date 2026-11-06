@@ -69,6 +69,8 @@
  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
  <!-- Turn-by-turn guidance keeps running with the screen off only while the user navigates. -->
  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+ <!-- A Notes recording keeps running with the screen off only while it is open. -->
+ <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
  <!-- Already merged from the location plugin; declared here so the location service type is checked against them. -->
  <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
  <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
@@ -83,6 +85,7 @@
    <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE"/></intent-filter>
    <meta-data android:name="android.service.quicksettings.TOGGLEABLE_TILE" android:value="false"/>
   </service>
+  <service android:name=".AlphaNoteRecordingService" android:exported="false" android:foregroundServiceType="microphone" />
   <activity android:name=".AlphaMailPdfActivity" android:exported="false" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:label="PDF attachment" />
   <service android:name=".IsolatedPdfService" android:exported="false" android:isolatedProcess="true" android:process=":isolated_pdf" android:stopWithTask="true" />
   <!-- Release-build data integrity export for pilot updates: per-file HMAC digests only, read-only,

@@ -7,6 +7,7 @@ import {namedTargetValidators,validateForegroundReviewResult,type ForegroundRevi
 import type {SecureNotesStore} from '../runtime/notes-secure-store';
 import type {NoteRecord} from '../runtime/notes-store';
 import {reviewNamedNote,reviewNoteTitles,reviewNotesQuery} from './notes-query-review';
+import {noteMatchesText} from '../runtime/notes-view';
 type Store=Pick<SecureNotesStore,'raw'|'list'|'assertCurrent'|'target'|'execute'>;
 /** Resolve locally, confirm one record, then reuse the existing exact selected read. */
 export async function executeNotesQuery(store:Store,operation:NativeNotesQueryOperation,operationId:string,signal:AbortSignal,current:()=>void,choose=reviewNotesQuery){
@@ -23,10 +24,10 @@ export async function executeNotesQuery(store:Store,operation:NativeNotesQueryOp
 }
 const fold=(value:string)=>value.normalize('NFKC').toLowerCase();
 const instant=(note:NoteRecord)=>{const value=note.modifiedAt??note.updatedAt??note.createdAt;const at=typeof value==='number'?value:typeof value==='string'?Date.parse(value):NaN;return Number.isFinite(at)?at:-1;};
-/** Local content matches: title or text body contains the search text. Bodies stay on the phone. */
+/** Local content matches: the title, body, checklist items or voice transcript contains the search
+ * text (runtime/notes-view noteSearchText). Note text stays on the phone. */
 export function matchNotesContent(records:readonly NoteRecord[],text:string):NoteRecord[]{
- const needle=fold(text).trim();
- return records.filter(note=>fold(note.title).includes(needle)||typeof note.body==='string'&&fold(note.body).includes(needle));
+ return records.filter(note=>noteMatchesText(note,text));
 }
 /** Name matches for a name-targeted edit: titles containing the spoken name. */
 export function matchNotesName(records:readonly NoteRecord[],name:string):NoteRecord[]{

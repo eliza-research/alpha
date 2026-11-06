@@ -263,8 +263,8 @@ test('a permanent deletion that fails inside the process that started it is neve
  await page.getByRole('textbox',{name:'Title',exact:true}).fill('Filler');
  await page.getByRole('button',{name:'Back to notes',exact:true}).click();
  await page.getByRole('button',{name:'Open Filler',exact:true}).click();
- await page.getByRole('button',{name:'Delete note',exact:true}).click();
- await expect(page.getByText('Filler moved to Trash',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
+ await expect(page.getByText('Moved to Recently deleted',{exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Open Late memo',exact:true}).click();
  // The tombstone commit reports a failure to this process but is not lost: it can still land later.
  await page.evaluate(async()=>{
@@ -278,8 +278,8 @@ test('a permanent deletion that fails inside the process that started it is neve
    throw Error('Notes reply lost');
   };
  });
- await page.getByRole('button',{name:'Delete note',exact:true}).click();
- await page.getByRole('dialog',{name:'Trash is full'}).getByRole('button',{name:'Delete forever without Trash',exact:true}).click();
+ await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
+ await page.getByRole('dialog',{name:'Recently deleted is full'}).getByRole('button',{name:'Delete permanently',exact:true}).click();
  await expect(page.getByText(/Deletion is unconfirmed/).first()).toBeVisible();
  const before=await pendingDeletions(page);
  expect(before.map(row=>[row.note.id,row.audioId,row.permanent,row.audioRequested])).toEqual([['late-voice','late-audio',true,undefined]]);

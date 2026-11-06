@@ -99,15 +99,15 @@ test('a new browser tab shows no find bar until find is opened', async ({ page }
   await expect(page.getByRole('button', { name: 'Close find in page', exact: true })).toHaveCount(0);
 });
 
-test('the note editor keeps Delete on screen beside the other header actions', async ({ page }) => {
+test('the note editor keeps More (Pin, Move to, Delete) on screen beside the other header actions', async ({ page }) => {
   const {foreign,errors}=await canonicalNotesFixture(page);
   await openCanonicalNotes(page);
   await page.getByRole('button', { name: 'New note', exact: true }).click();
-  // Alpha's note editor header holds Back and every note action, Share and Delete included, in one row.
-  for (const name of ['Back to notes', 'Pin', 'Share note', 'Delete note']) await reachable(page, page.getByRole('button', { name, exact: true }));
+  // Back · Checklist · Share · ⋯ in one row; Pin, Move to and Delete are in ⋯.
+  for (const name of ['Back to notes', 'Share note', 'More']) await reachable(page, page.getByRole('button', { name, exact: true }));
   const sizes = await page.locator('[data-alpha-subview="notes-editor"] [data-alpha-app-header="detail"] button').evaluateAll(list => list.map(el => el.getBoundingClientRect().width));
   for (const width of sizes) expect(width).toBeGreaterThanOrEqual(43.5);
-  expect(sizes.length).toBeGreaterThanOrEqual(6);
+  expect(sizes.length).toBeGreaterThanOrEqual(4);
   expect(foreign).toEqual([]);
   expect(errors).toEqual([]);
 });
@@ -115,7 +115,7 @@ test('the note editor keeps Delete on screen beside the other header actions', a
 test.describe('200% text keeps the way out on screen', () => {
   // Large-text layouts re-measure every rule after the text grows: explicit, as other sweeps run beside them.
   test.describe.configure({ timeout: 60_000 });
-  for (const [start, open, field] of [['inbox', 'Search email', 'Search mail'], ['photos', 'Search photos', 'Search photos'], ['notes', 'Search notes', 'Search notes']] as const) {
+  for (const [start, open, field] of [['inbox', 'Search email', 'Search mail'], ['photos', 'Search photos', 'Search photos']] as const) {
     test(`${start} search: the field shrinks and Close search stays reachable`, async ({ page }) => {
       await page.goto(`/?mode=mock&start=${start}`);
       await page.getByRole('button', { name: open, exact: true }).click();

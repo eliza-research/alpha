@@ -22,6 +22,39 @@ export class BrowserVoice extends WebPlugin {
  });
  private speechRequests=new Map<SpeechRequestKind,{controller:AbortController;requestId?:string}>();
  private capture=new BrowserAudioCapture(event=>{void this.notifyListeners('recordingStopped',event);});
+ // Notes recording: its own capture, unlimited and paused only by the user. Leaving the page
+ // does not end it. In the browser its one segment is the whole recording, ready at Stop.
+ private noteCapture=new BrowserAudioCapture(event=>{const note=this.note;if(note&&event.recordingId===note.recordingId&&note.state!=='stopped'){note.state='stopped';note.stopReason='error';this.noteChanged();}});
+ private note?:{recordingId:string;state:'recording'|'paused'|'stopped';stopReason?:string;durationMs:number;segments:{segmentId:string;durationMs:number;text?:string}[]};
+ private clip(id:string){return this.capture.get(id)??this.noteCapture.get(id);}
+ private noteChanged(){void this.notifyListeners('noteRecordingChanged',this.noteStatus());}
+ private noteStatus(){
+  const note=this.note;if(!note)return {state:'idle'};
+  const live=note.state!=='stopped';
+  let peak=0;if(note.state==='recording')try{peak=this.noteCapture.metrics(note.recordingId).peak;}catch{/* Not sampled yet. */}
+  return {state:note.state,recordingId:note.recordingId,recovered:false,...(note.stopReason?{stopReason:note.stopReason}:{}),durationMs:live?this.noteCapture.elapsed(note.recordingId):note.durationMs,segments:note.segments.map(segment=>({...segment})),peak};
+ }
+ private ownedNote(recordingId:string){const note=this.note;if(!note||note.recordingId!==recordingId)throw Error('Recording changed.');return note;}
+ async startNoteRecording(){
+  if(this.note)throw Error('A recording is already open.');
+  const started=await this.noteCapture.start({unlimited:true});
+  this.note={recordingId:started.recordingId,state:'recording',durationMs:0,segments:[]};this.noteChanged();return this.noteStatus();
+ }
+ async noteRecordingStatus(){return this.noteStatus();}
+ async pauseNoteRecording(input:{recordingId:string}){const note=this.ownedNote(input.recordingId);if(note.state==='recording'){this.noteCapture.pause();note.state='paused';this.noteChanged();}return this.noteStatus();}
+ async resumeNoteRecording(input:{recordingId:string}){const note=this.ownedNote(input.recordingId);if(note.state==='paused'){this.noteCapture.resume();note.state='recording';this.noteChanged();}else if(note.state==='stopped')throw Error('This recording has ended.');return this.noteStatus();}
+ async stopNoteRecording(input:{recordingId:string}){
+  const note=this.ownedNote(input.recordingId);
+  if(note.state!=='stopped'){const clip=await this.noteCapture.stop();if(this.note!==note)throw Error('Recording changed.');note.durationMs=clip.durationMs;note.segments=[{segmentId:clip.recordingId,durationMs:clip.durationMs}];note.state='stopped';note.stopReason='user';this.noteChanged();}
+  return this.noteStatus();
+ }
+ async discardNoteRecording(input:{recordingId?:string}){if(this.note&&(!input.recordingId||this.note.recordingId===input.recordingId)){this.noteCapture.cancel();this.note=undefined;this.noteChanged();}return this.noteStatus();}
+ async setNoteSegmentText(input:{recordingId:string;segmentId:string;text:string}){const segment=this.ownedNote(input.recordingId).segments.find(s=>s.segmentId===input.segmentId);if(!segment||typeof input.text!=='string')throw Error('Recording changed.');segment.text=input.text;}
+ async saveNoteRecording(input:{recordingId:string;noteId:string;transcript:string}){
+  const note=this.ownedNote(input.recordingId);if(note.state!=='stopped'||!note.segments.length)throw Error('Stop the recording first.');
+  // Repeatable until discarded: the renderer discards once the note itself is saved.
+  return this.saveRecording({recordingId:note.recordingId,noteId:input.noteId,transcript:input.transcript});
+ }
  private speech=new Map<string,{text:string;requestId?:string}>();
  private agentAudio=new PreparedAudio();
  private audio?:HTMLAudioElement;
@@ -54,7 +87,7 @@ export class BrowserVoice extends WebPlugin {
  async cancelRecording(){this.capture.cancel();}
  async transcribeLocalRecording(input:{recordingId:string;requestId?:string}){
   const requestId=input.requestId;
-  const clip=this.capture.get(input.recordingId);if(!clip)throw Error('Record a clip first.');
+  const clip=this.clip(input.recordingId);if(!clip)throw Error('Record a clip first.');
   return this.withAgentSpeech('stt',async signal=>{
    const connectionController=await this.connection;signal.throwIfAborted();
    // No silent fallback to Cloud or to an in-browser engine; the recording stays in this app.
@@ -73,7 +106,7 @@ export class BrowserVoice extends WebPlugin {
  async transcribeRecording(input:{recordingId:string;requestId:string;environment:string;credentialId:string}){
   if(!devSurfacesEnabled)throw Error('Cloud voice requires the native app or a development host.');
   return this.withAgentSpeech('stt',async signal=>{
-   const binding=await this.cloudBinding(input),clip=this.capture.get(input.recordingId);if(!clip)throw Error('Record a clip first.');
+   const binding=await this.cloudBinding(input),clip=this.clip(input.recordingId);if(!clip)throw Error('Record a clip first.');
    const response=await browserCloudVoice(input,'stt',clip.blob,signal),result=await response.json();signal.throwIfAborted();binding.current();
    if(result.local!==false||typeof result.text!=='string'||!result.text.trim())throw Error('Cloud returned no usable transcript.');
    return {text:result.text,local:false};
@@ -91,7 +124,7 @@ export class BrowserVoice extends WebPlugin {
   },input.requestId);
  }
  async transcribeDevelopmentCloudRecording(input:{recordingId:string;requestId:string;route?:'cloud'|'direct'}){
-  const clip=this.capture.get(input.recordingId);if(!clip)throw Error('Record a clip first.');
+  const clip=this.clip(input.recordingId);if(!clip)throw Error('Record a clip first.');
   return this.withAgentSpeech('stt',async signal=>{const connection=await this.connection,agent=connection.getBrowserSpeechAgent(),snapshot=connection.getSnapshot(),route=input.route??'cloud',session=agent?.session,revision=snapshot.providerStatus?.revision;
    if(!agent||!session)throw Error('Connect the resident agent first.');
    const current=()=>{signal.throwIfAborted();const now=connection.getSnapshot();if(agent!==connection.getBrowserSpeechAgent()||agent.session!==session||(route==='direct'?(now.residentInference!=='direct'||now.providerStatus?.voiceConfigured!==true||now.providerStatus?.revision!==revision):now.residentInference==='direct'))throw new DOMException('Voice selection changed','AbortError');};
@@ -201,7 +234,7 @@ export class BrowserVoice extends WebPlugin {
  async state(){return {playing:!!this.audio&&!this.audio.paused&&!this.audio.ended,audioId:this.audioId,positionMs:(this.audio?.currentTime||0)*1000};}
  async saveRecording(input:{recordingId:string;noteId:string;transcript:string}){
   if(!input.recordingId||input.recordingId.length>128||!input.noteId||input.noteId.length>128||typeof input.transcript!=='string')throw Error('Invalid recording destination.');
-  const saved=await retainAudio(input.recordingId,input.noteId,input.transcript,this.capture.get(input.recordingId));
+  const saved=await retainAudio(input.recordingId,input.noteId,input.transcript,this.clip(input.recordingId));
   return {audioId:saved.audioId,noteId:saved.noteId,durationMs:saved.durationMs,transcript:input.transcript};
  }
  async describe(input:{audioId:string}){return audioMetadata(await audioRecord(input.audioId,true));}

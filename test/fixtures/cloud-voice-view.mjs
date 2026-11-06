@@ -48,6 +48,10 @@ export function cloudVoiceViewFixture(options={}){
   if(start<0||end<0)throw Error('Missing actual batch progress helper source');
   return source.slice(start,end);
  });
+ // The Notes recorder (note-recorder.ts has no imports); its native driver is idle here.
+ load('prototype/note-recorder.ts',box,['NoteRecorderSession','formatRecordingClock'],source=>source.replaceAll('export class','class'));
+ box.createNoteRecorderDriver=()=>({status:async()=>({state:'idle'}),listen:async()=>({remove(){}}),start:async()=>{throw Error('No Notes recording in this fixture');}});
+ box.noteSegmentTranscriber=async()=>null;box.setNotesRecorderControl=()=>{};box.openNativeLiveStream=async()=>{throw Error('No live stream in this fixture');};
  load('prototype/voice-adapter.ts',box,['installPrototypeVoiceAdapter'],options.adapterSourceTransform);
  const icons={check:'check',mic:'official-mic-path',stop:'stop',play:'play',x:'close',cloud:'cloud',user:'account'};
  class Shell{

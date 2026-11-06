@@ -6,7 +6,7 @@ import {
   IMG, PEOPLE, PN_REC, PN_VM, PN_SCRIPT, PN_SCREEN, PN_REPLIES, MSG_PHOTOS, MSG_SEED, MSG_UNREAD,
   MSG_SMART, MSG_BOT, INBOX_ACCTS, INBOX_SEED, CAL_SEED, CAL_PREP, BR_START, BR_PAGES, BR_ME,
   PH_SEED, PH_DESC, PH_SHARE, MAPS_PLACES, MAPS_FAR, MAPS_MATCH, MAPS_SAVED, NOTES_SEED,
-  NOTES_LIVE, NOTES_DICT, CT_SEED, FILES_FOLDERS_EXTRA, FILES_SEED, WAL_CARDS, WAL_TRIPS,
+  CT_SEED, FILES_FOLDERS_EXTRA, FILES_SEED, WAL_CARDS, WAL_TRIPS,
   WAL_MERCH, WAL_PASSES, WF_SEED, ST_ACCOUNTS, ST_NETS, ST_BT, ST_PERM0, ST_MODELS, ST_LOG,
   ST_DEVLOG, ST_DEVICE, ST_ABOUT, NOTIF, LOCK_SUM, QUICK_SETTINGS, QUICK_TILES, HEADS, VOICE, COPY,
   ATTENTION_ROWS, HOME_DEFAULTS
@@ -18,6 +18,7 @@ import { emptyHomeShadePull, pullStart, shadeFallback } from "./system-shade";
 import React from "react";
 import { DCLogic } from "./dc-lite.js";
 import { calendarDayColumns, calendarDayCount, calendarReturnDay, markVisibleWeek, visibleCalendarDays } from "./calendar-days";
+import { filterNotes, sortNotes, notePreview, noteDateLabel, notesFilterLabel } from "../runtime/notes-view";
 import { WEEKDAYS, MONTHS, formatTime, formatClock, formatHours, formatHoursRange, formatHour, weekdayName, formatShortDate, formatLongDate, formatMonthDay, formatMonthTitle } from "./locale-time";
 
 
@@ -2849,11 +2850,12 @@ IC.notesPin = IC.notesPin || "M9 3h6l-1 6 4 4H6l4-4zM12 13v8";
 IC.notesList = IC.notesList || "M10 6h10M10 12h10M10 18h10M4 6l1.5 1.5L8 5M4 12l1.5 1.5L8 11M4 18l1.5 1.5L8 17";
 IC.notesBox = IC.notesBox || "M5 5h14v14H5z";
 IC.notesRecDot = IC.notesRecDot || "M12 7.5a4.5 4.5 0 1 1 0 9a4.5 4.5 0 1 1 0-9zM12 10a2 2 0 1 1 0 4a2 2 0 1 1 0-4z";
+IC.notesFolder = IC.notesFolder || "M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z";
 IC.notesWave = IC.notesWave || "M3 12h2M7 8v8M11 5v14M15 9v6M19 11v2M21 12h0";
 var NOTES_RED = "var(--alpha-notes-red)";
 
 var NOTES_WAVE = []; (function () { for (var i = 0; i < 56; i++) NOTES_WAVE.push(Math.round(8 + 26 * Math.abs(Math.sin(i * 0.9) * Math.cos(i * 0.37)) + (i % 3) * 3)); })();
-var NT = { pend: false, recI: null, playI: null, dicI: null, dIdx: 0, undoT: null };
+var NT = { pend: false, playI: null, undoT: null, holdT: null, held: null };
 
 function notesFmt(sec) { if (!Number.isFinite(sec)) return ""; sec = Math.max(0, Math.floor(sec)); return Math.floor(sec / 60) + ":" + pad2(sec % 60); }
 function notesNowLabel(d) { return formatTime(d); }
@@ -2873,7 +2875,7 @@ function notesEmpty(n) {
   if (n.kind === "list") return !String(n.title || "").trim() && !(n.items || []).some(function (i) { return String(i.t).trim(); });
   return false;
 }
-function notesStopTimers() { clearInterval(NT.playI); clearInterval(NT.dicI); NT.playI = null; NT.dicI = null; }
+function notesStopTimers() { clearInterval(NT.playI); NT.playI = null; }
 function notesClose(api) {
   api.set(notesLeave(api, null));
 }
@@ -2883,7 +2885,7 @@ function notesLeave(api, next) {
   if (api.canonicalNotes) { void api.canonicalNotes.leave(next); return {}; }
   var s = api.get("notes"); notesStopTimers();
   var n = s.open !== next && s.open === s.blankCreationId ? notesFind(s.list, s.open) : null;
-  var patch = { open: next, sheet: null, playing: false, dict: false, newItem: "", blankCreationId: next === s.open ? s.blankCreationId : null };
+  var patch = { open: next, sheet: null, playing: false, newItem: "", blankCreationId: next === s.open ? s.blankCreationId : null };
   if (n && notesEmpty(n)) patch.list = s.list.filter(function (x) { return x.id !== n.id; });
   return patch;
 }
@@ -2898,52 +2900,77 @@ async function notesDelete(api, id) {
   var note = s.list[idx];
   // Live Notes move the note to the durable Trash (and offer Undo); fixtures keep the in-memory undo.
   if (api.moveNoteToTrash) { await api.moveNoteToTrash(note, idx); return; }
-  if(await api.set({ list: s.list.filter(function (n) { return n.id !== id; }), open: null, sheet: null, playing: false, dict: false })===false)return;
+  if(await api.set({ list: s.list.filter(function (n) { return n.id !== id; }), open: null, sheet: null, playing: false })===false)return;
   notesUndoable(api, note, idx, (note.title || "Note") + " deleted");
 }
+/** The folder a note shows in: its folderId while that folder exists, else none (specs/notes-view FolderRefsValid). */
+function notesFolderOf(n, folders) { return n && typeof n.folderId === "string" && (folders || []).some(function (f) { return f.id === n.folderId; }) ? n.folderId : null; }
+/** Moves a note by the owner's own tap: folderId set, or removed for "No folder". */
+async function notesMove(api, id, folderId, name) {
+  if (api.canonicalNotes) {
+    api.set({ menu: null });
+    if (!await api.canonicalNotes.update(id, { folderId: folderId || null })) return;
+    api.toast(folderId ? "Moved to " + name : "Removed from folder");
+    return;
+  }
+  var s = api.get("notes");
+  var list = s.list.map(function (n) { if (n.id !== id) return n; var x = Object.assign({}, n); if (folderId) x.folderId = folderId; else delete x.folderId; return x; });
+  api.set({ list: list, menu: null });
+  api.toast(folderId ? "Moved to " + name : "Removed from folder");
+}
+/** Live Notes keep folders in their own encrypted slot (api.notesFolders); fixtures keep them in view state. */
+async function notesCreateFolder(api) {
+  var sheet = api.get("notes").folderSheet, name = sheet && sheet.kind === "new" ? String(sheet.name || "").replace(/\s+/g, " ").trim() : "";
+  if (!name) return;
+  if (name.length > 40) { api.toast("Use a shorter name."); return; }
+  var folders = api.get("notes").folders || [];
+  var existing = folders.filter(function (f) { return f.name.toLowerCase() === name.toLowerCase(); })[0];
+  if (existing) { api.set({ folderSheet: null, folder: existing.id, filter: null }); return; }
+  var created = api.notesFolders ? await api.notesFolders.create(name) : { id: "f-" + Date.now(), name: name, createdAt: Date.now() };
+  if (!created) return;
+  var patch = { folderSheet: null, folder: created.id, filter: null };
+  if (!api.notesFolders) patch.folders = folders.concat([created]);
+  api.set(patch);
+}
+/** Renaming keeps the folder's id, so every note stays in it. A name another folder uses is refused. */
+async function notesRenameFolder(api, id) {
+  var st = api.get("notes"), sheet = st.folderSheet, name = sheet && sheet.kind === "rename" && sheet.id === id ? String(sheet.name || "").replace(/\s+/g, " ").trim() : "";
+  if (!name) return;
+  if (name.length > 40) { api.toast("Use a shorter name."); return; }
+  var folders = st.folders || [], folder = folders.filter(function (f) { return f.id === id; })[0];
+  if (!folder) { api.set({ folderSheet: null }); return; }
+  if (folder.name === name) { api.set({ folderSheet: null }); return; }
+  if (folders.some(function (f) { return f.id !== id && f.name.toLowerCase() === name.toLowerCase(); })) { api.toast("A folder with that name exists."); return; }
+  if (api.notesFolders) { if (!await api.notesFolders.rename(id, name)) return; }
+  else api.set({ folders: folders.map(function (f) { return f.id === id ? Object.assign({}, f, { name: name }) : f; }) });
+  api.set({ folderSheet: null });
+}
+/** Long-press (or a context-menu click) on a folder chip opens its options. */
+function notesChipHold(api, id) {
+  return {
+    down: function () { clearTimeout(NT.holdT); NT.held = null; NT.holdT = setTimeout(function () { NT.holdT = null; NT.held = id; api.set({ folderSheet: { kind: "options", id: id } }); }, 450); },
+    up: function () { clearTimeout(NT.holdT); NT.holdT = null; },
+    context: function (e) { if (e && e.preventDefault) e.preventDefault(); clearTimeout(NT.holdT); NT.holdT = null; NT.held = id; api.set({ folderSheet: { kind: "options", id: id } }); }
+  };
+}
+/** Deleting a folder moves its notes to no folder; it never deletes a note. */
+async function notesDeleteFolder(api, id) {
+  if (api.notesFolders) { if (!await api.notesFolders.remove(id)) return; }
+  else {
+    var s = api.get("notes");
+    api.set({ folders: (s.folders || []).filter(function (f) { return f.id !== id; }), list: s.list.map(function (n) { if (n.folderId !== id) return n; var x = Object.assign({}, n); delete x.folderId; return x; }) });
+  }
+  var cur = api.get("notes");
+  api.set({ folderSheet: null, folder: cur.folder === id ? null : cur.folder });
+}
 function notesNew(api, kind) {
-  if (api.canonicalNotes) { void api.canonicalNotes.create(kind); api.set({ compose: false, q: null }); return; }
-  var id = "n" + Date.now();
+  var id = "n" + Date.now(), st0 = api.get("notes");
+  var inFolder = notesFolderOf({ folderId: st0.folder }, st0.folders);
+  if (api.canonicalNotes) { void api.canonicalNotes.create(kind, inFolder); api.set({ compose: false, q: null }); return; }
   var n = kind === "list" ? { id: id, kind: "list", title: "", items: [], pinned: false, when: "Now" } : { id: id, kind: "text", title: "", body: "", pinned: false, when: "Now" };
+  if (inFolder) n.folderId = inFolder;
   var leave = notesLeave(api, id);
   api.set(Object.assign(leave, { list: [n].concat(leave.list || api.get("notes").list), blankCreationId: id, compose: false, q: null }));
-}
-function notesStartRec(api) {
-  notesStopTimers();
-  api.set({ record: false, open: null, sheet: null, q: null, rec: { tick: 0, paused: false, levels: [] } });
-  api.stopBg();
-  NT.recI = api.everyBg(function () {
-    var s = api.get("notes"); var r = s.rec; if (!r || r.paused) return;
-    var t = r.tick + 1;
-    var speaking = t >= NOTES_T0 && ((t - NOTES_T0) % NOTES_STEP) < 9 && notesLiveCount(t) <= NOTES_LIVE.length && t < NOTES_T0 + NOTES_LIVE.length * NOTES_STEP;
-    var lv = speaking ? 0.3 + 0.7 * Math.abs(Math.sin(t * 1.7) * Math.cos(t * 0.53)) : 0.08 + 0.1 * Math.abs(Math.sin(t));
-    api.set({ rec: Object.assign({}, r, { tick: t, levels: r.levels.concat([lv]).slice(-44) }) });
-  }, 250);
-}
-var NOTES_T0 = 2, NOTES_STEP = 12;
-function notesLiveCount(tick) { return Math.max(0, Math.min(NOTES_LIVE.length, Math.floor((tick - NOTES_T0) / NOTES_STEP) + 1)); }
-function notesBuildRec(api, r) {
-  var n = notesLiveCount(r.tick); var got = NOTES_LIVE.slice(0, n);
-  var sum = [], acts = [];
-  got.forEach(function (l) { if (l.sum) sum.push(l.sum); if (l.act) acts.push({ t: l.act, done: false }); });
-  if (!sum.length && got.length) sum.push("Short check-in, nothing decided yet");
-  return { id: "r" + Date.now(), kind: "voice", title: got.length ? "Standup" : "Recording", when: "Today · " + notesNowLabel(api.now), dur: Math.round(r.tick / 4), pinned: false,
-    lines: got.map(function (l, i) { return { s: l.s, t: l.t, at: Math.round((NOTES_T0 + i * NOTES_STEP) / 4) }; }), summary: sum, actions: acts, fresh: true };
-}
-function notesStopRec(api, quiet) {
-  api.stopBg(); NT.recI = null;
-  var s = api.get("notes"); if (!s.rec) return;
-  var note = notesBuildRec(api, s.rec);
-  api.set({ rec: null, list: [note].concat(s.list), open: quiet ? null : note.id, proc: quiet ? null : note.id, pos: 0, playing: false });
-  if (quiet) api.toast("Recording saved to Notes");
-  else api.later(function () { api.set({ proc: null }); }, 1500);
-}
-function notesDiscardRec(api) {
-  api.stopBg(); NT.recI = null;
-  var s = api.get("notes"); if (!s.rec) return;
-  var note = notesBuildRec(api, s.rec);
-  api.set({ rec: null });
-  notesUndoable(api, note, 0, "Recording discarded");
 }
 function notesLast(list) { for (var i = 0; i < list.length; i++) if (list[i].kind === "voice") return list[i]; return null; }
 function notesShare(api, n, via) {
@@ -2963,25 +2990,26 @@ function notesShare(api, n, via) {
 registerView("notes", {
   title: "Notes", icon: "notes", aliases: ["note", "recorder", "memos"],
   chat: "hidden",
-  state: { list: NOTES_SEED, open: null, blankCreationId: null, q: null, rec: null, record: false, compose: false, proc: null, sheet: null, pos: 0, playing: false, dict: false, newItem: "" },
+  state: { list: NOTES_SEED, open: null, blankCreationId: null, folders: [], folder: null, filter: null, menu: null, folderSheet: null, record: false, compose: false, proc: null, sheet: null, pos: 0, playing: false, newItem: "" },
   persist: ["list"],
-  jumps: [[null, "Notes"], ["editor", "Note editor"], ["rec", "Recording"], ["voice", "Voice note"]],
+  jumps: [[null, "Notes"], ["editor", "Note editor"], ["voice", "Voice note"]],
   preset: function (sub) {
     var pr = copy("notes").presets || {};
     if (sub === "editor") return pr.editor ? { open: pr.editor } : { compose: true };
+    // notes:rec opens the Notes recorder (voice-adapter) where it is installed.
     if (sub === "rec") return { record: true };
     if (sub === "voice") return pr.voice ? { open: pr.voice } : null;
   },
-  immersive: function (st) { return st.rec || st.record || st.sheet ? { noPill: true } : null; },
+  immersive: function (st) { return st.sheet ? { noPill: true } : null; },
   back: function (st, api) {
-    if (st.rec) { notesStopRec(api); return true; }
     if (st.sheet) { api.set({ sheet: null }); return true; }
+    if (st.menu) { api.set({ menu: null }); return true; }
     if (st.open) { notesClose(api); return true; }
-    if (st.q !== null && st.q !== undefined) { api.set({ q: null }); return true; }
+    if (st.folderSheet) { api.set({ folderSheet: null }); return true; }
+    if (st.filter) { api.set({ filter: null }); return true; }
     return false;
   },
   onLeave: function (api) { var s = api.get("notes"); if (s.blankCreationId) api.set(notesLeave(api, null)); else notesStopTimers(); },
-  ongoing: function (st) { return st.rec ? { label: notesFmt(st.rec.tick / 4), icon: "notesRecDot", color: NOTES_RED } : null; },
   suggestions: function (st, api) {
     var n = st.open ? notesFind(st.list, st.open) : null;
     if (n && n.kind === "voice") {
@@ -3023,10 +3051,10 @@ registerView("notes", {
       var term = fm[1].trim().replace(/[?.!]$/, ""); var tl = term.toLowerCase();
       var hits = st.list.filter(function (n) { return [n.title, n.body, (n.items || []).map(function (i) { return i.t; }).join(" "), (n.lines || []).map(function (l) { return l.t; }).join(" "), (n.summary || []).join(" ")].join(" ").toLowerCase().indexOf(tl) >= 0; });
       if (!hits.length) return { text: "No notes mention \u201c" + term + "\u201d." };
-      return { text: hits.length === 1 ? "One note: " + (hits[0].title || "Untitled") + "." : hits.length + " notes mention \u201c" + term + "\u201d.", nav: { view: "notes", patch: hits.length === 1 ? { open: hits[0].id, q: null } : { q: term, open: null } } };
+      return { text: hits.length === 1 ? "One note: " + (hits[0].title || "Untitled") + "." : hits.length + " notes mention \u201c" + term + "\u201d.", nav: { view: "notes", patch: hits.length === 1 ? { open: hits[0].id, filter: null } : { filter: { text: term }, folder: null, open: null } } };
     }
     if (/(start|begin)\s+(a\s+)?(recording|transcri)|record (this|the) (meeting|call)|^record$|^transcribe/.test(t)) {
-      return { text: "Recording. I'll transcribe as we go and summarize when you stop.", nav: { view: "notes", patch: { record: true } } };
+      return { text: "Recording.", nav: { view: "notes", patch: { record: true } } };
     }
     var digest = copy("notes").digest;
     if (digest && digest.re.test(t) && /decide|decision|agree|summar|what/.test(t)) {
@@ -3058,29 +3086,42 @@ registerView("notes", {
   render: function (st, api) {
     if (!NT.pend && (st.record || st.compose)) {
       NT.pend = true;
-      setTimeout(function () { NT.pend = false; var s = api.get("notes"); if (s.record) notesStartRec(api); else if (s.compose) notesNew(api, "text"); }, 0);
+      // The Notes recorder is installed by the voice adapter, which consumes `record` first; only a
+      // fixture preview without it gets here.
+      setTimeout(function () { NT.pend = false; var s = api.get("notes"); if (s.record) { api.set({ record: false }); api.toast("Recording isn’t available in this preview."); } else if (s.compose) notesNew(api, "text"); }, 0);
     }
     var list = st.list || [];
-    var q = st.q == null ? null : String(st.q).toLowerCase().trim();
-    var shown = list.filter(function (n) {
-      if (!q) return true;
-      var hay = [n.title, n.body, n.domain, (n.items || []).map(function (i) { return i.t; }).join(" "), (n.lines || []).map(function (l) { return l.t; }).join(" "), (n.summary || []).join(" ")].join(" ").toLowerCase();
-      return hay.indexOf(q) >= 0;
-    });
-    shown = shown.filter(function (n) { return n.pinned; }).concat(shown.filter(function (n) { return !n.pinned; }));
-    var cards = shown.map(function (n, order) {
-      var items = (n.items || []).slice(0, 5).map(function (i) { return { t: i.t, css: i.done ? "text-decoration: line-through; color: var(--mut)" : "", box: i.done ? "background: var(--fg); box-shadow: none" : "box-shadow: inset 0 0 0 1.5px var(--mut)", done: i.done }; });
-      var more = (n.items || []).length - items.length;
-      var bars = NOTES_WAVE.slice(0, 22);
+    /* One-column list (PLAN.md section 3, decision N3): the selected folder chip, then the agent's
+       read-only filter, pinned notes first. A note whose folder was deleted shows under All only. */
+    var folders = Array.isArray(st.folders) ? st.folders : [];
+    var folder = st.folder && st.folder !== "deleted" && folders.some(function (f) { return f.id === st.folder; }) ? st.folder : null;
+    var filter = st.filter && typeof st.filter === "object" ? st.filter : null;
+    var shown = sortNotes(filterNotes(filterNotes(list, folder ? { folder: folder } : null, folders), filter, folders));
+    var now = Date.now();
+    var rows = shown.map(function (n) {
+      var voiceDur = n.kind === "voice" ? (typeof n.dur === "number" ? n.dur : n.audio && typeof n.audio.durationMs === "number" ? n.audio.durationMs / 1000 : null) : null;
+      var preview = notePreview(n) || (n.audio && typeof n.audio.transcript === "string" ? n.audio.transcript.trim().slice(0, 240) : "");
       return {
-        id: n.id, title: n.title || "Untitled", hasTitle: true, body: n.kind === "text" ? String(n.body || "").slice(0, 180) : "", hasBody: n.kind === "text" && !!String(n.body || "").trim(),
-        isList: n.kind === "list", isVoice: n.kind === "voice", isLink: n.kind === "link", items: items, more: more > 0 ? "+" + more : "", hasMore: more > 0,
-        bars: bars, dur: n.kind === "voice" ? [notesFmt(n.dur), n.actions && n.actions.length ? n.actions.length + " to-dos" : ""].filter(Boolean).join(" · ") : "", domain: n.domain || "",
-        pinned: !!n.pinned, current: st.open === n.id ? "true" : "false", order: order, open: function () { api.set(Object.assign(notesLeave(api, n.id), { pos: 0 })); }
+        id: n.id, title: n.title || "Untitled", date: noteDateLabel(n, now) || (typeof n.when === "string" ? n.when : ""),
+        preview: (voiceDur != null ? notesFmt(voiceDur) + (preview ? " · " : "") : "") + preview,
+        isVoice: n.kind === "voice", isLink: n.kind === "link", pinned: !!n.pinned,
+        current: st.open === n.id ? "true" : "false", open: function () { api.set(Object.assign(notesLeave(api, n.id), { pos: 0, menu: null })); }
       };
     });
-    var colL = [], colR = [];
-    cards.forEach(function (c, i) { (i % 2 ? colR : colL).push(c); });
+    var pinnedRows = rows.filter(function (r) { return r.pinned; }), otherRows = rows.filter(function (r) { return !r.pinned; });
+    var folderChips = folders.map(function (f) {
+      var on = folder === f.id, hold = notesChipHold(api, f.id);
+      return { id: f.id, name: f.name, pressed: on ? "true" : "false", label: on ? f.name + ", folder options" : f.name,
+        down: hold.down, up: hold.up, context: hold.context,
+        select: function () {
+          // The click that ends a long-press only opened the options.
+          if (NT.held === f.id) { NT.held = null; return; }
+          if (api.get("notes").folder === f.id) api.set({ folderSheet: { kind: "options", id: f.id } }); else api.set({ folder: f.id, filter: null, folderSheet: null });
+        } };
+    });
+    var sheet = st.folderSheet && typeof st.folderSheet === "object" ? st.folderSheet : null;
+    var sheetFolder = sheet && (sheet.kind === "options" || sheet.kind === "rename") ? folders.filter(function (f) { return f.id === sheet.id; })[0] || null : null;
+    var renaming = !!sheetFolder && sheet.kind === "rename";
 
     /* open note */
     var n = st.open ? notesFind(list, st.open) : null;
@@ -3089,9 +3130,18 @@ registerView("notes", {
     var common = n ? {
       close: function () { notesClose(api); },
       pinIcon: IC.notesPin, pinCss: n.pinned ? "color: var(--acct)" : "", pinLabel: n.pinned ? "Unpin" : "Pin",
-      pin: async function () { await notesUpd(api, n.id, { pinned: !n.pinned }); },
-      share: function () { api.set({ sheet: "share" }); },
-      del: function () { notesDelete(api, n.id); },
+      pin: async function () { api.set({ menu: null }); await notesUpd(api, n.id, { pinned: !n.pinned }); },
+      share: function () { api.set({ sheet: "share", menu: null }); },
+      del: function () { api.set({ menu: null }); notesDelete(api, n.id); },
+      /* ⋯ menu: Pin, Move to…, Delete (PLAN.md section 3). */
+      menuOpen: st.menu === "main", moveOpen: st.menu === "move", menuShown: !!st.menu,
+      more: function () { api.set({ menu: api.get("notes").menu ? null : "main" }); },
+      closeMenu: function () { api.set({ menu: null }); },
+      moveTo: function () { api.set({ menu: "move" }); },
+      moveRows: [{ id: null, name: "No folder" }].concat(folders).map(function (f) {
+        var on = (notesFolderOf(n, folders) || null) === f.id;
+        return { name: f.name, checked: on ? "true" : "false", mark: on ? "✓" : "", pick: function () { notesMove(api, n.id, f.id, f.name); } };
+      }),
       title: n.title || "",
       onTitle: function (e) { notesUpd(api, n.id, { title: e.target.value }); }
     } : null;
@@ -3119,30 +3169,6 @@ registerView("notes", {
         onNew: function (e) { api.set({ newItem: e.target.value }); },
         addItem: function () { var v = String(api.get("notes").newItem || "").trim(); if (!v) return; notesUpd(api, n.id, function (x) { return { items: (x.items || []).concat([{ t: v, done: false }]) }; }); api.set({ newItem: "" }); },
         newKey: function (e) { if (e.key === "Enter") { e.preventDefault(); var v = String(api.get("notes").newItem || "").trim(); if (!v) return; notesUpd(api, n.id, function (x) { return { items: (x.items || []).concat([{ t: v, done: false }]) }; }); api.set({ newItem: "" }); } },
-        dict: !!st.dict, notDict: !st.dict,
-        dictLabel: st.dict ? "Stop dictation" : "Dictate", dictCss: st.dict ? "background: var(--acc); color: var(--alpha-white)" : "",
-        dictate: function () {
-          if (api.get("notes").dict) { clearInterval(NT.dicI); NT.dicI = null; api.set({ dict: false }); return; }
-          if (!NOTES_DICT.length) { api.toast("Dictation is not connected"); return; }
-          var phrase = NOTES_DICT[NT.dIdx++ % NOTES_DICT.length]; var i = 0; var id = n.id;
-          api.set({ dict: true });
-          clearInterval(NT.dicI);
-          NT.dicI = api.every(function () {
-            var cur = notesFind(api.get("notes").list, id); if (!cur) { clearInterval(NT.dicI); return; }
-            i++;
-            var ch = phrase.charAt(i - 1);
-            if (cur.kind === "list") {
-              var its = (cur.items || []).slice();
-              if (i === 1) its.push({ t: ch, done: false }); else { var L = its.length - 1; its[L] = Object.assign({}, its[L], { t: its[L].t + ch }); }
-              notesUpd(api, id, { items: its });
-            } else {
-              var b = String(cur.body || "");
-              if (i === 1 && b && !/\s$/.test(b)) b += /[.!?]$/.test(b) ? " " : "\n";
-              notesUpd(api, id, { body: b + ch });
-            }
-            if (i >= phrase.length) { clearInterval(NT.dicI); NT.dicI = null; api.later(function () { api.set({ dict: false }); }, 400); }
-          }, 38);
-        }
       });
     }
     if (n && n.kind === "voice") {
@@ -3196,47 +3222,31 @@ registerView("notes", {
       });
     }
 
-    /* recorder */
-    var r = st.rec;
-    var rec = null;
-    if (r) {
-      var cnt = notesLiveCount(r.tick);
-      var within = r.tick - NOTES_T0 - (cnt - 1) * NOTES_STEP;
-      var lines = NOTES_LIVE.slice(0, cnt).map(function (l, i) {
-        var p = l.s === "me" ? null : api.person(l.s);
-        var tx = i === cnt - 1 && within < 9 ? l.t.slice(0, Math.max(1, Math.round(l.t.length * (within + 1) / 9))) : l.t;
-        return { ini: p ? p.ini : "You", t: tx, chip: l.s === "me" ? "background: var(--acc); color: var(--alpha-white)" : "background: var(--s3); color: var(--fg)", css: i === cnt - 1 ? "" : "color: var(--mut)" };
-      }).reverse();
-      var lv = r.levels.slice(); while (lv.length < 44) lv.unshift(0.06);
-      rec = {
-        clock: notesFmt(r.tick / 4), paused: r.paused, live: !r.paused,
-        primaryLabel: "Stop and save", primaryIcon: IC.stop,
-        clockCss: r.paused ? "opacity: .4" : "",
-        levels: lv.map(function (v) { return { h: Math.round(4 + v * 64) }; }),
-        lines: lines, dotCss: r.paused ? "background: var(--mut)" : "background: " + NOTES_RED,
-        pauseIcon: r.paused ? IC.mic : IC.pause, pauseLabel: r.paused ? "Resume" : "Pause",
-        toggle: function () { var s = api.get("notes"); if (s.rec) api.set({ rec: Object.assign({}, s.rec, { paused: !s.rec.paused }) }); },
-        stop: function () { notesStopRec(api); },
-        discard: function () { notesDiscardRec(api); }
-      };
-    }
-
     var shareSheet = st.sheet === "share" && !!n;
     return {
       notesTitle: "Notes", primaryNotes: true, canRecord: true, canCreate: true,
-      searching: st.q !== null && st.q !== undefined, notSearching: st.q === null || st.q === undefined,
-      q: st.q || "",
-      onQ: function (e) { api.set({ q: e.target.value }); },
-      search: function () { api.set({ q: "" }); },
-      endSearch: function () { api.set({ q: null }); },
       newNote: function () { notesNew(api, "text"); },
-      record: function () { notesStartRec(api); },
-      colL: colL, colR: colR, none: cards.length === 0,
-      emptyText: q ? "No matches" : "No notes yet. Create a note to get started.",
-      askQ: "Ask " + api.name + ": “" + String(st.q || "").trim() + "”", hasQ: !!q,
-      askSearch: function () { var qq = String(api.get("notes").q || "").trim(); api.set({ q: null }); api.send("Find my notes about " + qq); },
+      // The Notes recorder (voice-adapter, note-recorder.ts) handles Record; `record` is its deep-link flag.
+      record: function () { api.set({ record: true }); },
+      pinnedRows: pinnedRows, otherRows: otherRows, hasPinned: pinnedRows.length > 0, notesHead: pinnedRows.length > 0 && otherRows.length > 0,
+      allPressed: folder ? "false" : "true", selectAll: function () { api.set({ folder: null, filter: null, folderSheet: null }); },
+      folderChips: folderChips,
+      newFolder: function () { api.set({ folderSheet: { kind: "new", name: "" } }); },
+      filterOn: !!filter, filterLabel: filter ? notesFilterLabel(filter, folders) + " · " + shown.length : "",
+      clearFilter: function () { api.set({ filter: null }); },
+      folderSheetOpen: !!sheet && (sheet.kind === "new" || !!sheetFolder),
+      folderNew: !!sheet && sheet.kind === "new" || renaming, folderOptions: !!sheetFolder && !renaming,
+      folderName: sheet && (sheet.kind === "new" || renaming) ? String(sheet.name || "") : "", folderOptionsTitle: sheetFolder ? sheetFolder.name : "",
+      folderSheetTitle: sheet && sheet.kind === "new" ? "New folder" : renaming ? "Rename folder" : sheetFolder ? sheetFolder.name : "",
+      folderSubmitLabel: renaming ? "Save" : "Create",
+      onFolderName: function (e) { var cur = api.get("notes").folderSheet; if (cur && (cur.kind === "new" || cur.kind === "rename")) api.set({ folderSheet: Object.assign({}, cur, { name: e.target.value }) }); },
+      folderNameKey: function (e) { if (e.key === "Enter") { e.preventDefault(); var cur = api.get("notes").folderSheet; if (cur && cur.kind === "rename") notesRenameFolder(api, cur.id); else notesCreateFolder(api); } },
+      createFolder: function () { var cur = api.get("notes").folderSheet; if (cur && cur.kind === "rename") notesRenameFolder(api, cur.id); else notesCreateFolder(api); },
+      folderSaveDisabled: !(sheet && (sheet.kind === "new" || renaming) && String(sheet.name || "").trim()),
+      renameFolder: function () { if (sheetFolder) api.set({ folderSheet: { kind: "rename", id: sheetFolder.id, name: sheetFolder.name } }); },
+      deleteFolder: function () { if (sheetFolder) notesDeleteFolder(api, sheetFolder.id); },
+      closeFolderSheet: function () { api.set({ folderSheet: null }); },
       isEdit: isEdit, ed: ed, isVoice: !!vo, vo: vo, isLink: !!lk, lk: lk,
-      recording: !!rec, rec: rec,
       shareSheet: shareSheet,
       closeSheet: function () { api.set({ sheet: null }); },
       shareMsg: function () { notesShare(api, n, "msg"); },
