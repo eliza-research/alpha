@@ -267,3 +267,91 @@ test('the live stream follows pause and resume, is not reopened after it is lost
   assert.equal(none.displayTranscript(), '');
   none.close();
 });
+
+test('agent notes (no audio kept): Done never deletes the audio while the transcript is missing or partial', async () => {
+  // No transcription route: nothing can be transcribed, so nothing may be discarded.
+  const none = fakeDriver(), persisted = [];
+  const quiet = new NoteRecorderSession(none, async () => null, () => {}, {pollMs: 60_000});
+  await quiet.begin();
+  none.segment(); none.segment();
+  assert.equal(await quiet.finish(async (_audio, transcript) => { persisted.push(transcript); return true; }, false), false);
+  assert.deepEqual(persisted, [], 'no transcript-only note is saved');
+  assert.equal(none.state.discarded, 0, 'the only audio stays');
+  assert.equal(quiet.phase, 'stopped');
+  assert.equal(quiet.error, 'Transcription stopped. The audio is kept.');
+  quiet.close();
+  // A segment fails: the transcript covers only part of the audio.
+  const partial = fakeDriver();
+  const s = session(partial, async segmentId => { if (segmentId.endsWith('-s1')) throw new Error('route down'); return 'first'; });
+  await s.begin();
+  partial.segment(); partial.segment();
+  await settle();
+  assert.equal(await s.finish(async () => true, false), false);
+  assert.equal(partial.state.discarded, 0);
+  assert.equal(s.phase, 'stopped');
+  // Notes hidden while Done runs: the pump does not transcribe, so Done waits.
+  const hidden = fakeDriver();
+  let visible = true;
+  const h = new NoteRecorderSession(hidden, async () => async () => 'words', () => {}, {pollMs: 60_000, visible: () => visible});
+  await h.begin();
+  visible = false; hidden.segment();
+  assert.equal(await h.finish(async () => true, false), false);
+  assert.equal(hidden.state.discarded, 0);
+  // Every segment transcribed: the note is saved and only then the segments go.
+  visible = true;
+  const saved = [];
+  assert.equal(await h.finish(async (_audio, transcript) => { saved.push(transcript); return true; }, false), true);
+  assert.deepEqual(saved, ['words']);
+  await settle();
+  assert.equal(hidden.state.discarded, 1);
+});
+
+test('a retried Done after a restart saves into the note the stored audio already belongs to', async () => {
+  const driver = fakeDriver(), owners = new Map();
+  driver.save = async input => {
+    // RecordingStore.retain refuses a recording already owned by another note.
+    if (owners.has(input.recordingId) && owners.get(input.recordingId) !== input.noteId) throw new Error('owner mismatch');
+    owners.set(input.recordingId, input.noteId);
+    return {audioId: input.recordingId, noteId: input.noteId, durationMs: driver.state.status.durationMs, transcript: input.transcript};
+  };
+  const first = session(driver);
+  await first.begin();
+  driver.segment();
+  assert.equal(await first.finish(async () => false), false, 'the audio is retained but the note is not saved');
+  first.leave();
+  // The process restarts: a new session adopts the stopped recording.
+  const again = session(driver);
+  assert.equal(await again.adopt(), true);
+  assert.equal(await again.finish(async () => true), true);
+  assert.equal(driver.state.discarded, 1);
+});
+
+test('Discard while the microphone is still starting also discards the recording it starts', async () => {
+  const driver = fakeDriver();
+  let release;
+  const start = driver.start;
+  driver.start = () => new Promise(resolve => { release = () => resolve(start()); });
+  const s = session(driver);
+  const begun = s.begin();
+  await settle();
+  assert.equal(s.phase, 'starting');
+  await s.discard();
+  assert.equal(s.phase, 'closed');
+  release();
+  await begun;
+  await settle();
+  assert.equal(driver.state.discarded, 1, 'no recording is left running behind the list');
+  assert.equal(driver.state.status.state, 'idle');
+  // Leaving Notes while starting keeps the recording for the next visit.
+  const kept = fakeDriver();
+  let go;
+  const startKept = kept.start;
+  kept.start = () => new Promise(resolve => { go = () => resolve(startKept()); });
+  const k = session(kept);
+  const pending = k.begin();
+  await settle();
+  k.leave();
+  go(); await pending; await settle();
+  assert.equal(kept.state.discarded, 0);
+  assert.equal(kept.state.status.state, 'recording');
+});

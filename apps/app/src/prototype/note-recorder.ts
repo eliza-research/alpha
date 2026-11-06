@@ -88,8 +88,8 @@ export class NoteRecorderSession {
   private handle?: { remove(): Promise<void> | void };
   private poll?: ReturnType<typeof setTimeout>;
   private epoch = 0;
-  /** The voice note this recording saves into; kept across a retried Done. */
-  private noteId?: string;
+  /** The epoch a Discard ended while the microphone was still starting. */
+  private abandoned = -1;
   /** Live utterances (display only), tagged with the recording time their speech started. */
   private liveFinals: { text: string; at: number }[] = [];
   private liveInterim = '';
@@ -176,7 +176,10 @@ export class NoteRecorderSession {
       await this.attach(epoch);
       const existing = await this.driver.status();
       if (epoch !== this.epoch) return;
-      this.apply(existing.state === 'idle' ? await this.driver.start() : existing);
+      const status = existing.state === 'idle' ? await this.driver.start() : existing;
+      // Discarded while starting: the recording the microphone just began goes too.
+      if (epoch !== this.epoch) { if (this.abandoned === epoch && existing.state === 'idle' && status.recordingId) await this.driver.discard(status.recordingId).catch(() => {}); return; }
+      this.apply(status);
       // Say at once when transcription needs the user (Cloud sign-in); recording goes on regardless.
       void this.transcriber().then(() => {}, error => {
         if (epoch !== this.epoch || (error as { code?: string })?.code !== 'sign-in') return;
@@ -297,9 +300,10 @@ export class NoteRecorderSession {
   async togglePause() { if (this.phase === 'failed') await this.begin().catch(() => {}); else if (this.phase === 'recording') await this.pause(); else await this.resume(); }
   /**
    * Done: stop, let the transcript catch up with the audio, and save both as one voice note
-   * through `persist` (with `keepAudio` false, only the transcript and length: the segments are
-   * discarded once the note is saved). The recording closes only after `persist` confirms the note; saving the
-   * same recording again returns the audio already saved, so Done can be retried.
+   * through `persist` (with `keepAudio` false, only the transcript and length, and only once every
+   * segment is transcribed: the segments are discarded once the note is saved). The recording
+   * closes only after `persist` confirms the note; saving the same recording again returns the
+   * audio already saved into the same note, so Done can be retried.
    */
   async finish(persist: (saved: SavedNoteAudio, transcript: string) => Promise<boolean>, keepAudio = true): Promise<boolean> {
     const id = this.recordingId;
@@ -312,8 +316,15 @@ export class NoteRecorderSession {
       await this.pump(true);
       if (epoch !== this.epoch) return false;
       if (!this.segments.length) throw Error('No audio');
+      // A destination that keeps no audio saves only a transcript of every segment; until then
+      // the recording stays, so Done never leaves a note without the words or the audio.
+      if (!keepAudio && (this.transcriptionFailed || this.segments.some(s => !this.texts.has(s.segmentId)))) {
+        this.phase = 'stopped'; if (!this.transcriptionFailed || !this.error) this.error = noteRecorderError('transcription'); this.changed(); return false;
+      }
       const transcript = this.transcript();
-      const noteId = this.noteId ??= crypto.randomUUID();
+      // The note is named by its recording, so a retried Done (also after a restart) saves into
+      // the note the stored audio already belongs to.
+      const noteId = id;
       // A destination that keeps no audio (agent notes) gets the transcript and length only.
       const saved = keepAudio ? await this.driver.save({ recordingId: id, noteId, transcript }) : { audioId: id, noteId, durationMs: this.durationMs, transcript };
       if (epoch !== this.epoch) return false;
@@ -333,6 +344,7 @@ export class NoteRecorderSession {
     if (!this.open) return;
     if (!confirmed && this.durationMs >= 1000 && this.phase !== 'starting') { this.confirmingDiscard = true; this.changed(); return; }
     const id = this.recordingId;
+    if (this.phase === 'starting') this.abandoned = this.epoch;
     this.close();
     if (id) await this.driver.discard(id);
   }
@@ -340,7 +352,7 @@ export class NoteRecorderSession {
   /** Detach the view; the recorder keeps the recording (and its segments) until Done or Discard. */
   close() {
     ++this.epoch; this.detach();
-    this.phase = 'closed'; this.recordingId = undefined; this.noteId = undefined; this.durationMs = 0; this.segments = []; this.levels = [];
+    this.phase = 'closed'; this.recordingId = undefined; this.durationMs = 0; this.segments = []; this.levels = [];
     this.texts.clear(); this.transcriptionFailed = false; this.confirmingDiscard = false; this.error = '';
     this.liveFinals = []; this.liveInterim = ''; this.liveLost = false;
     this.changed();
@@ -353,7 +365,7 @@ export class NoteRecorderSession {
   leave(pause = false) {
     if (!this.open) return;
     const id = this.recordingId, recording = this.phase === 'recording';
-    ++this.epoch; this.detach(); this.phase = 'closed'; this.recordingId = undefined; this.noteId = undefined; this.segments = []; this.texts.clear(); this.levels = []; this.error = ''; this.confirmingDiscard = false; this.transcriptionFailed = false; this.liveFinals = []; this.liveInterim = ''; this.liveLost = false;
+    ++this.epoch; this.detach(); this.phase = 'closed'; this.recordingId = undefined; this.segments = []; this.texts.clear(); this.levels = []; this.error = ''; this.confirmingDiscard = false; this.transcriptionFailed = false; this.liveFinals = []; this.liveInterim = ''; this.liveLost = false;
     if (pause && recording && id) void this.driver.pause(id).catch(() => { /* Closed already. */ });
   }
 }
