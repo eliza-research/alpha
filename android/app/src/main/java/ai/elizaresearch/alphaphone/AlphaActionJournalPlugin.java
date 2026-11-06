@@ -96,7 +96,7 @@ public final class AlphaActionJournalPlugin extends ActionJournalPlugin {
     }
     // "reviewing" sends nothing. One whose dialog closed with its surface or process is offered again.
     if(!ClockAgentReview.claim(this,key)){call.resolve(clockReply(clock,approved.getString("action")));return;}
-    if(clock==null){entry.put("clockReview",clockMarker(entry,"reviewing"));store.update(scope,id,previous->entry);}
+    if(clock==null)try{entry.put("clockReview",clockMarker(entry,"reviewing"));store.update(scope,id,previous->entry);}catch(Exception unsaved){ClockAgentReview.release(this,key);throw unsaved;}
    }
    try{clockUi(()->{
     ClockAgentReview.show(getActivity(),this,key,approved,accepted->{if(destroyed())return;PluginWorkers.submit(worker(),()->{if(destroyed())return;try{synchronized(store.lock()){JSONObject entry=clockEntry(store,scope,id,operationId),clock=entry.getJSONObject("clockReview");

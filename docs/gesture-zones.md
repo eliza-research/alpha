@@ -9,8 +9,8 @@ Browser tests are Chromium on a development or production build. They are not em
 TalkBack, AOSP-image or device evidence. The instrumented classes named at the end, except
 `NotificationChannelsInstrumentedTest`, ran at `69a4be6c` on an API 35 Google APIs emulator on
 2026-10-14 (class E, developer APKs, [verification](verification.md#emulator-results-at-69a4be6c-2026-10-14-system-shade-416-417)).
-That run tested a Home **Open notifications** button that has since been removed; the current
-pull-only bodies of those tests have no recorded emulator run. None of this is AOSP-image,
+There `AccessibilityInstrumentedTest` tested a Home **Open notifications** button that has since
+been removed; its current pull-only body has no recorded emulator run. None of this is AOSP-image,
 Pixel 10a, TalkBack, Switch Access or device acceptance.
 
 ## The rule
