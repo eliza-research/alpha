@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 // Notes folders, Recently deleted folder rules and the list/filter helpers (PLAN.md section 3,
 // specs/notes-view Design.cfg). Pure modules only; the view wiring is covered by browser specs.
 const folders=await import('../apps/app/src/runtime/notes-folders-model.ts');
@@ -88,6 +89,16 @@ test('the filter is read-only and combines text, kind and folder',()=>{
  assert.equal(view.notesFilterLabel({},f),'All notes');
 });
 
+test('a device note with no time sorts by its stored place, never below an older timed note',()=>{
+ const now=Date.UTC(2026,10,6,15);
+ // Stored newest first: a voice note recorded today (no time, older build) above a weeks-old agent note.
+ const list=[{id:'today',kind:'voice',title:'Voice note'},{id:'agent',kind:'text',createdAt:now-21*864e5},{id:'older',kind:'text'},{id:'oldest',kind:'text',modifiedAt:now-60*864e5}];
+ assert.deepEqual(view.sortNotes(list).map(n=>n.id),['today','agent','older','oldest']);
+ const model=readFileSync('apps/app/src/prototype/model.js','utf8');
+ assert.match(model,/when: "Now", createdAt: now, modifiedAt: now \}/,'a new device note is stamped');
+ assert.match(model,/if \(\["title", "body", "items", "lines"\]\.some\(function \(k\) \{ return next\[k\] !== n\[k\]; \}\)\) next\.modifiedAt = Date\.now\(\);/,'a content edit is stamped');
+ assert.match(readFileSync('apps/app/src/prototype/voice-adapter.ts','utf8'),/when: 'Now', createdAt: Date\.now\(\), modifiedAt: Date\.now\(\)/,'a new voice note is stamped');
+});
 test('list rows: pinned first, newest first, two-line previews and short dates',()=>{
  const now=Date.UTC(2026,10,6,15);
  const list=[{id:'old',kind:'text',title:'Old',modifiedAt:now-40*864e5},{id:'new',kind:'text',title:'New',modifiedAt:now-1000},{id:'pin',kind:'text',title:'Pin',pinned:true,modifiedAt:now-90*864e5},{id:'x',kind:'text',title:'Unknown'}];
