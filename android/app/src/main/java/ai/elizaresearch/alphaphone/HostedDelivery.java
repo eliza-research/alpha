@@ -15,9 +15,16 @@ final class HostedDelivery {
  private HostedDelivery(Context context){this.context=context.getApplicationContext();AlphaCredentialStore storage=new AlphaCredentialStore(this.context);store=new HostedInbox.Store(){public String read(String key)throws Exception{try{return storage.readCredentialSlot(key);}catch(Exception e){throw new HostedStorageFault(e);}}public void write(String key,String value)throws Exception{try{storage.writeCredentialSlot(key,value);}catch(Exception e){throw new HostedStorageFault(e);}}public void remove(String key)throws Exception{try{storage.removeCredentialSlot(key);}catch(Exception e){throw new HostedStorageFault(e);}}};notices=new HostedResultNotices(new HostedResultNotices.Storage(){public String read(String key)throws Exception{return store.read(key);}public void write(String key,String value)throws Exception{store.write(key,value);}},new HostedNoticePoster(this.context));inbox=new HostedInbox(store,gate,notices);}
  private HostedInbox.DeliveryTransport openTransport(JSONObject binding,HostedTransport.Guard guard)throws Exception {
   if(!"resident".equals(binding.getString("mode")))return new HostedTransport(store,binding,guard);
+  String generation=binding.getString("generation");
   return ResidentResultSession.open(store,binding,new ResidentResultSession.Runtime(){
-   public String rootToken(){return ElizaAgentService.localAgentToken();}
+   public String rootToken(){return ElizaAgentService.localAgentToken(context);}
    public JSONObject exchange(JSONObject request)throws Exception{return new JSONObject(ElizaAgentService.requestLocalAgent(request.toString()));}
+   // Keeps the generation so scheduled workers stay valid across a resident restart.
+   public String adopt(String previous,String replacement)throws Exception{synchronized(gate){
+    check(generation);JSONObject a=active();String slot=binding.getString("credentialSlot"),raw=store.read(slot);
+    if(replacement!=null&&previous.equals(a.getString("credentialDigest"))&&raw!=null&&previous.equals(HostedResultNotices.hash(raw))){store.write(slot,replacement);a.put("credentialDigest",HostedResultNotices.hash(replacement));store.write(ACTIVE,a.toString());}
+    return a.getString("credentialDigest");
+   }}
   },guard::check);
  }
  interface NativeSourceWork {JSONObject run(JSONObject binding,NativeDigestSources.Guard guard)throws Exception;}
@@ -49,7 +56,7 @@ final class HostedDelivery {
   }
   String auth=store.read(credentialSlot),device=store.read(deviceSlot);if(auth==null||device==null)throw new SecurityException("Reconnect required");JSONObject d=new JSONObject(device);if(!d.getString("key").matches("[a-f0-9]{64}")||!d.getString("installationId").matches("[a-f0-9-]{36}"))throw new SecurityException("Invalid device binding");HostedInbox.id(d.getString("enrollmentId"));b.put("credentialSlot",credentialSlot).put("credentialDigest",HostedResultNotices.hash(auth)).put("deviceSlot",deviceSlot).put("deviceDigest",HostedResultNotices.hash(d.toString()));
   synchronized(gate){if(!reserved.equals(active().optString("generation")))throw new SecurityException("Binding cancelled");store.write(ACTIVE,b.toString());}
-  String generation=b.getString("generation");try(HostedInbox.DeliveryTransport t=openTransport(b,()->check(generation))){t.verify();synchronized(gate){check(generation);b.put("status","waiting");store.write(ACTIVE,b.toString());}synchronized(gate){check(generation);if(b.optBoolean("polling"))HostedDeliveryWorker.schedule(context,generation,"resident".equals(b.optString("mode")));}return new JSONObject().put("generation",generation).put("scope",scope);}catch(Exception failure){mark(generation,"reconnect-required");throw failure;}
+  String generation=b.getString("generation");try(HostedInbox.DeliveryTransport t=openTransport(b,()->check(generation))){t.verify();synchronized(gate){check(generation);store.write(ACTIVE,active().put("status","waiting").toString());}synchronized(gate){check(generation);if(b.optBoolean("polling"))HostedDeliveryWorker.schedule(context,generation,"resident".equals(b.optString("mode")));}return new JSONObject().put("generation",generation).put("scope",scope);}catch(Exception failure){mark(generation,"reconnect-required");throw failure;}
  }
  private void mark(String generation,String status)throws Exception {synchronized(gate){JSONObject b=active();if(generation.equals(b.optString("generation"))){b.put("status",status);if(status.equals("reconnect-required")||status.equals("storage-error"))b.put("enabled",false);store.write(ACTIVE,b.toString());}}}
  JSONArray sync(String generation)throws Exception{return sync(generation,false);}

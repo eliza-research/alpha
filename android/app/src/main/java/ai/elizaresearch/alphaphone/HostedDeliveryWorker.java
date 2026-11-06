@@ -16,7 +16,7 @@ public final class HostedDeliveryWorker extends Worker {
  static void cancel(Context context){WorkManager manager=WorkManager.getInstance(context);manager.cancelUniqueWork(PERIODIC);manager.cancelUniqueWork(CATCHUP);}
  @NonNull @Override public Result doWork(){
   String renewal=getInputData().getString("renewalSource");
-  if(renewal!=null){try{SourceRenewalHost.get(getApplicationContext()).post(HostedResultNotices.sourceId(renewal),System.currentTimeMillis());}catch(Exception ignored){/* A denied channel or stale source posts nothing. */}return Result.success();}
+  if(renewal!=null){try{SourceRenewalHost.get(getApplicationContext()).post(HostedResultNotices.sourceId(renewal),System.currentTimeMillis());}catch(SourceRenewalNotices.RenewalUnverifiable unknown){/* Resident not ready: back off while the source is still valid. */return getInputData().getLong("expiresAt",0)>System.currentTimeMillis()?Result.retry():Result.success();}catch(Exception ignored){/* A denied channel or stale source posts nothing. */}return Result.success();}
   if(generation==null)return Result.failure();try{HostedDelivery.get(getApplicationContext()).syncBackground(generation);return Result.success();}catch(SecurityException disabled){return Result.success();}catch(Exception unavailable){return Result.retry();}}
  @Override public void onStopped(){if(generation!=null)HostedDelivery.get(getApplicationContext()).stop(generation);}
 }

@@ -3,17 +3,20 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import org.json.*;
 public final class ResidentResultTransportTest {
+ static final long EXPIRES=System.currentTimeMillis()+600000;
  static void require(boolean value){if(!value)throw new AssertionError();}
  interface Task {void run()throws Exception;}
+ static void retries(Task task)throws Exception {try{task.run();}catch(java.io.IOException expected){return;}throw new AssertionError("expected a retryable failure");}
+ static void revokes(Task task)throws Exception {try{task.run();}catch(SecurityException expected){return;}throw new AssertionError("expected a revocation");}
  static void rejects(Task task)throws Exception {try{task.run();}catch(Exception expected){return;}throw new AssertionError("accepted forbidden request");}
  static final class Channel implements ResidentResultTransport.Channel {
-  final List<String> paths=new ArrayList<>();boolean cancelled,acknowledged,loseAck;String owner="owner",agent="agent",token="session";int status=200;AtomicLong clock=new AtomicLong();
+  final List<String> paths=new ArrayList<>();boolean cancelled,acknowledged,loseAck;String owner="owner",agent="agent",token="session",agentStatus="running";int status=200;AtomicLong clock=new AtomicLong();
   Runnable beforeAck=()->{};boolean cancelResult,oversized,expire;
   public void check(){if(cancelled)throw new SecurityException("cancelled");}
   public JSONObject exchange(String path,String method,JSONObject body,int timeout)throws Exception {
    require(timeout>0&&timeout<=15000);paths.add(method+" "+path);JSONObject value;
-   if(path.equals("/api/auth/me"))value=new JSONObject().put("identity",new JSONObject().put("id",owner).put("kind","owner")).put("access",new JSONObject().put("role","OWNER").put("mode","session")).put("session",new JSONObject().put("kind","machine").put("id",token).put("expiresAt",expire?1:System.currentTimeMillis()+60000));
-   else if(path.equals("/api/agents"))value=new JSONObject().put("agents",new JSONArray().put(new JSONObject().put("id",agent).put("status","running")));
+   if(path.equals("/api/auth/me"))value=new JSONObject().put("identity",new JSONObject().put("id",owner).put("kind","owner")).put("access",new JSONObject().put("role","OWNER").put("mode","session")).put("session",new JSONObject().put("kind","machine").put("id",token).put("expiresAt",expire?1:EXPIRES));
+   else if(path.equals("/api/agents"))value=new JSONObject().put("agents",new JSONArray().put(new JSONObject().put("id",agent).put("status",agentStatus)));
    else if(path.equals("/api/workflow/status"))value=new JSONObject().put("hostedDigestProtocol",1);
    else if(path.startsWith("/api/workflow/hosted/results?")){value=new JSONObject().put("entries",acknowledged?new JSONArray():new JSONArray().put(result()));if(cancelResult)cancelled=true;}
    else if(path.equals("/api/workflow/hosted/results/ack")){require(method.equals("POST"));beforeAck.run();if(loseAck){loseAck=false;throw new java.io.IOException("lost ack");}acknowledged=true;value=new JSONObject();}
@@ -48,22 +51,39 @@ public final class ResidentResultTransportTest {
   rejects(()->inbox.sync(binding,recovery.transport(),()->{}));String original=store.read(slot+":run-one");require(original!=null&&!recovery.acknowledged);
   require(inbox.sync(binding,recovery.transport(),()->{}).length()==1);require(recovery.acknowledged&&original.equals(store.read(slot+":run-one")));
   Store credentials=new Store();String root="native-runtime-root";
-  JSONObject snapshot=ResidentResultSession.snapshot("owner","session",System.currentTimeMillis()+60000,root);
+  JSONObject snapshot=ResidentResultSession.snapshot("owner","session",EXPIRES,root);
   credentials.write("resident",snapshot.toString());JSONObject device=new JSONObject().put("installationId","11111111-1111-1111-1111-111111111111").put("key","a".repeat(64)).put("enrollmentId","enrollment");credentials.write("device",device.toString());
   JSONObject pinned=new JSONObject().put("ownerId","owner").put("agentId","agent").put("credentialSlot","resident").put("credentialDigest",HostedResultNotices.hash(snapshot.toString())).put("deviceSlot","device").put("deviceDigest",HostedResultNotices.hash(device.toString()));
-  Channel service=new Channel();String[] currentRoot={root};boolean[] current={true};
-  ResidentResultSession.Runtime runtime=new ResidentResultSession.Runtime(){public String rootToken(){return currentRoot[0];}public JSONObject exchange(JSONObject request)throws Exception{
+  Channel service=new Channel();String[] currentRoot={root},activeDigest={HostedResultNotices.hash(snapshot.toString())};boolean[] current={true};
+  ResidentResultSession.Runtime runtime=new ResidentResultSession.Runtime(){public String rootToken(){return currentRoot[0];}
+  public String adopt(String previous,String replacement)throws Exception{if(!current[0])throw new SecurityException("Binding retired");if(replacement!=null&&previous.equals(activeDigest[0])){credentials.write("resident",replacement);activeDigest[0]=HostedResultNotices.hash(replacement);}return activeDigest[0];}
+  public JSONObject exchange(JSONObject request)throws Exception{
    require(request.getJSONObject("headers").getString("Authorization").equals("Bearer session"));String path=request.getString("path");
    if(path.startsWith("/api/workflow/"))require(request.getJSONObject("headers").getString("X-Eliza-Device-Key").equals("a".repeat(64)));
    return service.exchange(path,request.getString("method"),request.has("body")?new JSONObject(request.getString("body")):null,request.getInt("timeoutMs"));
   }};
   ResidentResultSession.Guard guard=()->{if(!current[0])throw new SecurityException("Binding retired");};
   ResidentResultTransport bound=ResidentResultSession.open(credentials,pinned,runtime,guard);bound.verify();int verifiedCalls=service.paths.size();
-  currentRoot[0]="replacement-runtime";rejects(bound::verify);require(service.paths.size()==verifiedCalls);currentRoot[0]=root;
   current[0]=false;rejects(bound::verify);require(service.paths.size()==verifiedCalls);current[0]=true;
   credentials.write("resident",new JSONObject(snapshot.toString()).put("token","rotated").toString());rejects(bound::verify);require(service.paths.size()==verifiedCalls);credentials.write("resident",snapshot.toString());
   credentials.write("device",new JSONObject(device.toString()).put("enrollmentId","replaced").toString());rejects(bound::verify);require(service.paths.size()==verifiedCalls);credentials.write("device",device.toString());
   credentials.remove("resident");rejects(bound::verify);require(service.paths.size()==verifiedCalls);
+  // A resident restart mints a new root; the same machine session on the same agent is adopted.
+  credentials.write("resident",snapshot.toString());service.paths.clear();currentRoot[0]="restarted-runtime";
+  ResidentResultTransport restarted=ResidentResultSession.open(credentials,pinned,runtime,guard);restarted.verify();
+  require(service.paths.subList(0,2).equals(List.of("GET /api/auth/me","GET /api/agents")));
+  require(new JSONObject(credentials.read("resident")).getString("runtimeDigest").equals(HostedResultNotices.hash("restarted-runtime")));
+  require(new JSONObject(credentials.read("resident")).getString("token").equals("session")&&!activeDigest[0].equals(pinned.getString("credentialDigest")));
+  ResidentResultSession.open(credentials,pinned,runtime,guard).verify();
+  String adopted=credentials.read("resident");
+  currentRoot[0]=null;retries(()->ResidentResultSession.open(credentials,pinned,runtime,guard));currentRoot[0]="";retries(restarted::verify);
+  currentRoot[0]="starting-runtime";service.agentStatus="starting";retries(()->ResidentResultSession.open(credentials,pinned,runtime,guard));require(credentials.read("resident").equals(adopted));
+  service.agentStatus="running";service.agent="00000000-0000-0000-0000-000000000000";retries(()->ResidentResultSession.open(credentials,pinned,runtime,guard));require(credentials.read("resident").equals(adopted));
+  service.agent="other-agent";revokes(()->ResidentResultSession.open(credentials,pinned,runtime,guard));require(credentials.read("resident").equals(adopted));service.agent="agent";
+  service.token="other-session";revokes(()->ResidentResultSession.open(credentials,pinned,runtime,guard));require(credentials.read("resident").equals(adopted));service.token="session";
+  service.status=401;revokes(()->ResidentResultSession.open(credentials,pinned,runtime,guard));require(credentials.read("resident").equals(adopted));service.status=200;
+  current[0]=false;revokes(()->ResidentResultSession.open(credentials,pinned,runtime,guard));require(credentials.read("resident").equals(adopted));current[0]=true;
+  ResidentResultSession.open(credentials,pinned,runtime,guard).verify();require(!credentials.read("resident").equals(adopted));
   rejects(()->ResidentResultSession.snapshot("owner","session",1,root));
   System.out.println("PASS resident owner/session/agent checks, bounded IPC, route denial, cancellation, commit-before-ack and lost-ack recovery");
  }

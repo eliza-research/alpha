@@ -19,6 +19,8 @@ final class NativeDigestSources {
  NativeDigestSources(Storage storage,Object lock){this(storage,lock,System::currentTimeMillis);}
  NativeDigestSources(Storage storage,Object lock,java.util.function.LongSupplier clock){this.storage=storage;this.lock=lock;this.clock=clock;}
  /** Reviewed consent lasts at most 7 days; renewal reviews a new source. */
+ /** The reviewed grant is gone or no longer matches; a renewal notice for it is stale, not unverifiable. */
+ static final class SourceChanged extends SecurityException {SourceChanged(String message){super(message);}}
  static final long MAXIMUM_EXPIRY_MS=7L*86400000;
  /** Morning: the owner day plus open reminders due by its end (overdue included). Evening adds reminders completed during the owner day. */
  static final java.util.Set<String> TEMPLATES=java.util.Set.of("morning","evening");
@@ -49,10 +51,10 @@ final class NativeDigestSources {
  }
  void revoke(JSONObject binding,String sourceId,Guard guard)throws Exception {synchronized(lock){guard.check();String key=slot(binding,sourceId),raw=storage.read(key);if(raw==null)return;JSONObject grant=new JSONObject(raw);grant.put("revoked",true);storage.write(key,grant.toString());}}
  JSONObject current(JSONObject binding,String sourceId,String revision,long now,Guard guard)throws Exception {
-  guard.check();String raw=storage.read(slot(binding,sourceId));if(raw==null)throw new SecurityException("Native source consent missing");JSONObject grant=new JSONObject(raw);
-  if(grant.getInt("version")!=1||grant.getBoolean("revoked")||!revision.equals(grant.getString("revision"))||Instant.parse(grant.getString("expiresAt")).toEpochMilli()<=now)throw new SecurityException("Native source consent expired or revoked");
-  for(String field:new String[]{"ownerId","agentId","installationId","enrollmentId"})if(!binding.getString(field).equals(grant.getString(field)))throw new SecurityException("Native source owner changed");
-  scope(grant.getJSONObject("scope"));JSONObject original=new JSONObject(grant.toString());original.remove("revision");original.remove("revoked");if(!revision.equals(HostedResultNotices.hash(original.toString())))throw new SecurityException("Native source grant integrity changed");return grant;
+  guard.check();String raw=storage.read(slot(binding,sourceId));if(raw==null)throw new SourceChanged("Native source consent missing");JSONObject grant=new JSONObject(raw);
+  if(grant.getInt("version")!=1||grant.getBoolean("revoked")||!revision.equals(grant.getString("revision"))||Instant.parse(grant.getString("expiresAt")).toEpochMilli()<=now)throw new SourceChanged("Native source consent expired or revoked");
+  for(String field:new String[]{"ownerId","agentId","installationId","enrollmentId"})if(!binding.getString(field).equals(grant.getString(field)))throw new SourceChanged("Native source owner changed");
+  scope(grant.getJSONObject("scope"));JSONObject original=new JSONObject(grant.toString());original.remove("revision");original.remove("revoked");if(!revision.equals(HostedResultNotices.hash(original.toString())))throw new SourceChanged("Native source grant integrity changed");return grant;
  }
  JSONObject read(JSONObject binding,String sourceId,String revision,long occurrence,long now,Reader reader,Guard guard)throws Exception {return read(binding,sourceId,revision,occurrence,now,"morning",reader,guard);}
  private static long millis(JSONObject row,String key)throws Exception {Object value=row.get(key);return value instanceof Number?((Number)value).longValue():Instant.parse(String.valueOf(value)).toEpochMilli();}
