@@ -16,11 +16,19 @@
 <sc-if value="{{isOn}}">
 <sc-if value="{{showAppBack}}"><button data-alpha-app-back-fallback aria-label="Back to apps" onClick="{{backToApps}}" style="position:absolute;top:0;left:12px;z-index:44;min-height:44px;display:flex;align-items:center;gap:6px;padding:0 8px;color:var(--fg);font-size:14px"><svg class="i" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="{{ic.back}}"></path></svg>Apps</button></sc-if>
 
-<!-- Home, its app grid and All apps come from the shared mobile shell (prototype/home-shell.ts,
-     @elizaos/ui/mobile-shell); this template fills its notice and card slots. -->
+<!-- Home and its app grid come from the shared mobile shell, the Apps drawer from Alpha
+     (prototype/home-shell.ts, apps-drawer.tsx); this template fills Home's notice and card slots
+     and Home edit mode's bar and Add sheet. -->
+{{homeEditStyle}}
 <sc-element value="{{homeShell}}">
 <sc-slot name="header">
 <sc-if value="{{storageAccessWarning}}"><p role="alert" class="storage-access-warning">{{storageAccessWarning}}</p></sc-if>
+<sc-if value="{{homeEdit.on}}">
+  <div data-alpha-home-edit style="display: flex; justify-content: space-between; align-items: center; padding: 0 16px 12px">
+    <button class="ib" data-alpha-home-add onClick="{{homeEdit.add}}" disabled="{{homeEdit.noAdd}}" aria-label="Add to Home" aria-haspopup="dialog" style="background: var(--s2)"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.plus}}"></path></svg></button>
+    <button data-alpha-home-done onClick="{{homeEdit.done}}" style="min-height: 44px; padding: 0 18px; border-radius: 22px; background: var(--fg); color: var(--bg); font-size: 14px">Done</button>
+  </div>
+</sc-if>
 </sc-slot>
 <sc-slot name="cards">
     {{homeAgendaCard}}
@@ -36,6 +44,19 @@
 </sc-slot>
 </sc-element>
 <sc-if value="{{drawerOpen}}">{{allAppsDrawer}}</sc-if>
+<sc-if value="{{homeEdit.adding}}">
+  <div data-alpha-layer="home-add" style="position: absolute; inset: 0; z-index: 31">
+    <button aria-label="Close" tabindex="-1" onClick="{{homeEdit.closeAdd}}" style="position: absolute; inset: 0; background: rgba(0,0,0,.25)"></button>
+    <div role="dialog" aria-modal="true" aria-label="Add to Home" style="position: absolute; left: 0; right: 0; bottom: 0; background: var(--bg); color: var(--fg); border-radius: 28px 28px 0 0; padding: 20px 16px calc(24px + var(--alpha-dock-reserve, 0px)); display: flex; flex-direction: column; gap: 4px">
+      <h2 style="margin: 0 4px 8px; font-size: 18px; font-weight: 600">Add to Home</h2>
+      <sc-for list="{{homeEdit.hidden}}" as="h">
+        <button data-alpha-home-restore="{{h.key}}" onClick="{{h.add}}" style="display: flex; align-items: center; gap: 14px; min-height: 52px; padding: 4px 8px; border-radius: 16px; text-align: left; font-size: 16px">
+          <span style="width: 40px; height: 40px; border-radius: 14px; background: var(--s2); display: flex; align-items: center; justify-content: center; flex-shrink: 0"><span aria-hidden="true" style="display: block; width: 24px; height: 24px; background-color: currentColor; {{h.glyph}}"></span></span>{{h.label}}
+        </button>
+      </sc-for>
+    </div>
+  </div>
+</sc-if>
 </sc-if>
 
 

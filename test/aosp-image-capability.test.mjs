@@ -122,9 +122,18 @@ test("no Alpha Java lists or launches apps: installed apps and default hand-offs
   // The password-provider hand-off opens one verified-publisher app by package; it is not the
   // launcher inventory. Nothing else in Alpha may list or launch apps.
   const handoffs = new Set(["PasswordProviderSupport.java"]);
+  // App info (the Apps drawer's long-press menu) resolves one listed entry exactly as a launch
+  // would, so a stale one is refused alike, and then opens only Android's App details for it.
+  const system = read(`${JAVA}/AlphaSystemPlugin.java`);
+  const info = system.slice(system.indexOf("@PluginMethod public void openAppInfo("));
+  assert.ok(info.length < system.length, "AlphaSystemPlugin.openAppInfo exists");
+  assert.equal((system.match(/SystemLauncherApps\.resolve\(/g) || []).length, 1);
+  assert.match(info, /^@PluginMethod public void openAppInfo\(PluginCall call\)\{[\s\S]*?SystemLauncherApps\.resolve\(/);
+  assert.match(info, /startAppDetailsActivity\(target\.component,target\.user,null,null\)/);
+  assert.match(info, /Settings\.ACTION_APPLICATION_DETAILS_SETTINGS/);
   for (const name of fs.readdirSync(JAVA).filter(file => file.endsWith(".java") && !handoffs.has(file))) {
-    const source = read(`${JAVA}/${name}`);
-    assert.doesNotMatch(source, /SystemLauncherApps\.(list|launchIntent|resolve)\(|getLaunchIntentForPackage|startMainActivity|CATEGORY_LAUNCHER/, `${name} lists or launches no app`);
+    const source = read(`${JAVA}/${name}`), checked = name === "AlphaSystemPlugin.java" ? source.replace("SystemLauncherApps.resolve(", "") : source;
+    assert.doesNotMatch(checked, /SystemLauncherApps\.(list|launchIntent|resolve)\(|getLaunchIntentForPackage|startMainActivity|CATEGORY_LAUNCHER/, `${name} lists or launches no app`);
   }
 });
 

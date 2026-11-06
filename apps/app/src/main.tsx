@@ -55,7 +55,7 @@ import { installPrototypeNativeAdapters } from './prototype/native-adapter';
 import { installSelectedDocumentAdapter } from './prototype/selection-adapter';
 import { installPrototypeCameraAdapter } from './prototype/camera-adapter';
 import { installPrototypeHomeBindings, installPrototypeDataAdapter, setHomeSources, HOME_SOURCES_CHANGED } from './prototype/data-adapter';
-import { isAndroid, DeviceApps, System, launcherBridge, launcherListens } from './native';
+import { isAndroid, DeviceApps, System, launcherBridge, launcherListens, openAppInfo } from './native';
 import { DailyApps } from './daily';
 import { installPrototypeVoiceAdapter } from './prototype/voice-adapter';
 import { installPrototypeBrowserAdapter } from './prototype/browser-adapter';
@@ -167,10 +167,10 @@ installSystemShade(Component,{native:isAndroid});
 // The shared agenda, mail and brief cards render the final Home values of every adapter above.
 installHomeOverviewCards(Component);
 installClockAdapter(Component, VIEWS, { simulated: testMocksEnabled && fixture, browser: !isAndroid });
-// Home, app grid and All apps from the shared mobile shell. Installed apps come from ElizaSystem
-// (Android, or the browser device's app list) through the shared launcher bridge; outermost so Home
-// composes with every binding above.
-installHomeShell(Component, VIEWS, launcherBridge, { icons: isAndroid, follow: launcherListens,
+// Home and its app grid from the shared mobile shell, and Alpha's Apps drawer. Installed apps come
+// from ElizaSystem (Android, or the browser device's app list) through the shared launcher bridge;
+// outermost so Home composes with every binding above. App info exists on Android only.
+installHomeShell(Component, VIEWS, launcherBridge, { icons: isAndroid, follow: launcherListens, appInfo: isAndroid ? openAppInfo : undefined,
   aliases: isAndroid ? undefined : Object.fromEntries(browserApps.flatMap(app => { const view = alphaViews.find(app.view); return view ? [[app.packageName, alphaViews.launcherKey(view)]] : []; })),
 });
 /** A browser cannot read or change radios and sensors; show that instead of fixture toggles. */
