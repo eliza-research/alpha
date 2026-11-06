@@ -17,6 +17,11 @@ test('noncritical slot commits keep lifecycle before vault, exact owner/CAS, and
  const store=readFileSync(nativeSource('AlphaCredentialStore.java'),'utf8');
  const host=readFileSync(nativeSource('AlphaLocalAgentPlugin.java'),'utf8');
  const access=method(host,'static <T> T withCredentialSlotMutation(');
+ const order=method(host,'private static void requireLockOrder(');
+ const credentialLock=method(host,'static Object credentialLock(');
+ // The installed Gmail binding's lock, as MailBackgroundDelivery holds it around every slot access.
+ const gmailLock=readFileSync(nativeSource('GmailBackground.java'),'utf8').match(/public Object lock\(\)\{return ([^;]+);\}/)?.[1];
+ assert.ok(gmailLock,'Gmail host lock located');
  const start=store.indexOf('  if(!"cloud:production".equals(name)'),end=store.indexOf('  return AlphaLocalAgentPlugin.mutateCredentials(',start);
  assert.ok(start>=0&&end>start,'actual noncritical branch located');
  const branch=store.slice(start,end);
@@ -31,8 +36,11 @@ import java.util.concurrent.atomic.*;
 final class AlphaLocalAgentPlugin{
  static final Object lifecycleLock=new Object();
  static int invocationInvalidations,credentialIntents,processStops;
+ ${credentialLock}
+ ${order}
  ${access}
 }
+final class GmailHost{Object lock(){return ${gmailLock};}}
 final class LocalAgentProviderAdmission{static final String PROVIDER_SLOT="local-agent-provider:v1";}
 final class CloudDeployment{static String storageSlot(String n){return "deployment:"+n;}}
 final class Store{
@@ -71,6 +79,16 @@ public class SlotLockHarness{
   check(error.get() instanceof SecurityException,"stale owner rejected inside protected commit");
   check(store.slots.read(CloudDeployment.storageSlot("cloud-signin:v1:ack:production"))==null,"late stale write absent");
   check(AlphaLocalAgentPlugin.invocationInvalidations==0&&AlphaLocalAgentPlugin.credentialIntents==0&&AlphaLocalAgentPlugin.processStops==0,"draft/cache and request authority unchanged");
+  // Background Gmail (withdraw/accept under its host lock) against a lifecycle-first writer: no BLOCKED pair.
+  GmailHost gmail=new GmailHost();Store open=new Store(()->{});AtomicReference<Throwable> raced=new AtomicReference<>();
+  Thread mail=new Thread(()->{try{for(int i=0;i<2000;i++)synchronized(gmail.lock()){open.mutate("gmail-background:v1",null,i%2==0?"{}":null,false);}}catch(Throwable e){raced.set(e);}});
+  Thread notes=new Thread(()->{try{for(int i=0;i<2000;i++)open.mutate("notes-draft:v1:device",null,"draft"+i,false);}catch(Throwable e){raced.set(e);}});
+  mail.setDaemon(true);notes.setDaemon(true);mail.start();notes.start();mail.join(20000);notes.join(20000);
+  check(!mail.isAlive()&&!notes.isAlive(),"Gmail host and lifecycle-first writer both finish");
+  check(raced.get()==null,"no lock-order failure: "+raced.get());
+  // Vault before lifecycle is refused before it can wait on lifecycle.
+  try{synchronized(JsonCredentialSlots.LOCK){open.mutate("notes-draft:v1:device",null,"late",false);}throw new AssertionError("vault-first write admitted");}
+  catch(IllegalStateException expected){check("lock order".equals(expected.getMessage()),"lock-order guard");}
   System.out.println("PASS actual noncritical slot branch: L-before-vault, ack/pending/draft/cache, owner/CAS/namespace, no authority invalidation");
  }
 }`)];

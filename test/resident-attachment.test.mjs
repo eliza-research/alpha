@@ -34,7 +34,7 @@ test('the plugin start path attaches before it would retire shared work, and att
  for(const forbidden of ['++lifecycleEpoch','clearEnrollment()','invalidateCalls()','ElizaAgentService.start','startRequestId=','startOwnsLaunch='])
   assert.ok(!admission.includes(forbidden),`attach admission must not ${forbidden}`);
  // The attach worker verifies the runtime and the existing enrollment; it has no pairing call.
- const worker=start.slice(start.indexOf('if(attached){'),start.indexOf('long deadline=android.os.SystemClock.elapsedRealtime()+90000'));
+ const worker=start.slice(start.indexOf('if(attached){'),start.indexOf('long launched=android.os.SystemClock.elapsedRealtime(),deadline=launched+START_DEADLINE_MS'));
  assert.ok(worker.includes('authenticatedStatus(epoch,root)')&&worker.includes('attachUnverified=true'));
  assert.ok(!worker.includes('enroll(')&&!worker.includes('ElizaAgentService.start')&&!worker.includes('clearEnrollment'));
  // attachLocked supersedes only the calling surface's own work.
