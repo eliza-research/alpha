@@ -25,11 +25,12 @@ test('the recognized texts are byte-equal to the pinned upstream systemNoticeTex
 
 test('the runtime-error copy names an owner step, not the host operator diagnostics',()=>{
  for(const copy of [RUNTIME_ERROR_NOTICE,RUNTIME_ERROR_BACKGROUND_NOTICE])assert.doesNotMatch(copy,/host|diagnostics|—/);
- assert.match(RUNTIME_ERROR_NOTICE,/Nothing was resent/);
+ assert.match(RUNTIME_ERROR_NOTICE,/Send your message again/);
  assert.doesNotMatch(RUNTIME_ERROR_BACKGROUND_NOTICE,/may not arrive|resent/,'nothing was waiting, so nothing is said about a reply');
  assert.equal(systemNoticeDisplayText('runtime-error'),RUNTIME_ERROR_BACKGROUND_NOTICE);
  assert.equal(systemNoticeDisplayText('runtime-error',true),RUNTIME_ERROR_NOTICE);
  assert.equal(systemNoticeDisplayText('model-and-runtime-error'),`${MODEL_UNAVAILABLE_NOTICE}\n${RUNTIME_ERROR_BACKGROUND_NOTICE}`,'a combined notice keeps both halves');
+ for(const waiting of [false,true])assert.equal(systemNoticeDisplayText('model-and-runtime-error',waiting).match(/send your message again/gi).length,1,'a combined notice gives one send-again step');
 });
 
 test('model-unavailable display is product-neutral while raw protocol recognition and stored bytes remain intact',()=>{

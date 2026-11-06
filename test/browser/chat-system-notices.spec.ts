@@ -6,8 +6,10 @@ import { test, expect, type Page } from '@playwright/test';
 // emulator or device acceptance.
 const REMOTE = 'https://agent.example.test';
 const UPSTREAM_RUNTIME = 'Eliza needs attention. Check the connected host\'s diagnostics before trying again.';
-const ALPHA_RUNTIME = 'Part of your agent stopped working, so this reply may not arrive. Nothing was resent. Send your message again in a moment.';
-const ALPHA_BACKGROUND = 'Part of your agent stopped working. Chat can still answer, but some features may not work until it recovers.';
+const UPSTREAM_MODEL = 'Eliza cannot respond yet. Configure a model provider on the connected host in Settings.';
+const ALPHA_MODEL = 'Your agent cannot reply yet. Choose an AI provider in Settings, then send your message again.';
+const ALPHA_RUNTIME = 'Part of your agent stopped working. Send your message again in a moment.';
+const ALPHA_BACKGROUND = 'Part of your agent stopped working. Some features may not work until it recovers.';
 type Row = { role: 'user' | 'assistant'; text: string };
 
 async function remoteAgent(page: Page, rows: Row[]) {
@@ -108,4 +110,14 @@ test('notices after an unanswered message collapse to one owner-facing notice, w
   await fixture(page, f => f.release('Here now.'));
   await expect(conversation(page).getByText('Here now.', { exact: true })).toHaveCount(1, { timeout: 15_000 });
   await expect(conversation(page).getByText(ALPHA_RUNTIME, { exact: true })).toHaveCount(0);
+});
+
+test('a combined notice after an unanswered message gives one send-again step', async ({ page }) => {
+  test.setTimeout(90_000);
+  await connected(page, [{ role: 'user', text: 'Hello agent' }, { role: 'assistant', text: `${UPSTREAM_MODEL}\n---\n${UPSTREAM_RUNTIME}` }]);
+  await expect(conversation(page).getByText('Hello agent', { exact: true })).toHaveCount(1, { timeout: 20_000 });
+  await expect(conversation(page)).toContainText(ALPHA_MODEL);
+  await expect(conversation(page)).toContainText(ALPHA_BACKGROUND);
+  await expect(conversation(page)).not.toContainText(ALPHA_RUNTIME);
+  expect((await conversation(page).innerText()).match(/send your message again/gi)?.length).toBe(1);
 });
