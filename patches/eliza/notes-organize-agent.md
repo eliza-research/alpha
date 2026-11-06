@@ -6,7 +6,9 @@ admits no TypeScript patch to these files. It takes effect only after it is merg
 and the pin in `upstream.lock.json` is bumped. Until then the phone code that uses it
 (`apps/app/src/runtime/notes-organize-contract.ts`, `prototype/notes-organize-executor.ts`,
 the `isNotesOrganizeOperation` branch in `prototype/agent-adapter.ts`) is inert: the shared
-coordinator rejects an operation type it does not know.
+coordinator rejects an operation type it does not know, so `runtime/connection-ui.tsx` does not
+yet offer `notes.organize.v1`; add it to the negotiated list (and to `config/alpha-product.json`
+`features.capabilities`) in the pin bump that brings this patch.
 
 Base: elizaOS/eliza `0594fc72da4450a84a986ad12e730e3faa902018` (the pin in
 `upstream.lock.json`). Apply from the eliza repo root with `git apply`. The patch was first

@@ -5,7 +5,6 @@ import ai.eliza.voice.CartesiaSpeech;
 import ai.eliza.voice.LocalSpeechBridgePlugin;
 import ai.eliza.voice.RecordingPcm;
 import ai.eliza.voice.SpeechRequestGate;
-import ai.eliza.voice.SpeechAudioFocusPolicy;
 import ai.eliza.voice.CloudSpeechTimings;
 import ai.eliza.voice.SpeechStreamBridgePlugin;
 import com.getcapacitor.*;
@@ -60,6 +59,8 @@ public final class AlphaVoiceCloudPlugin extends LocalSpeechBridgePlugin {
  // recording going with the screen off. Segments are transcribed through the same recordingId
  // lookups as a draft: LocalVoiceRecording.selectAlso (patches/eliza/notes-recording-segments.patch).
  private volatile boolean noteForeground=true;
+ /** The shared bridge's refusal code for an active call, so the renderer shows its one call line. */
+ private static final String CALL_ACTIVE_CODE="call-active";
  @Override public void load(){super.load();recording().selectAlso(id->AlphaNoteRecorder.get(getContext()).segment(id));}
  @Override protected void handleOnResume(){noteForeground=true;super.handleOnResume();}
  @Override protected void handleOnPause(){noteForeground=false;super.handleOnPause();}
@@ -68,7 +69,7 @@ public final class AlphaVoiceCloudPlugin extends LocalSpeechBridgePlugin {
  private AlphaNoteRecorder noteRecorder(){AlphaNoteRecorder recorder=AlphaNoteRecorder.get(getContext());recorder.setListener(noteRecorderEvents);return recorder;}
  private static String noteRecordingId(PluginCall call){String value=call.getString("recordingId");if(value==null||!value.matches(AlphaNoteRecorder.ID))throw new IllegalArgumentException();return value;}
  @PluginMethod public void startNoteRecording(PluginCall call){
-  if(callActive()){call.reject(CALL_MESSAGE,SpeechAudioFocusPolicy.CALL_ACTIVE);return;}
+  if(callActive()){call.reject(CALL_MESSAGE,CALL_ACTIVE_CODE);return;}
   if(getPermissionState("microphone")!=PermissionState.GRANTED){LateLaunch.ask(call,()->requestPermissionForAlias("microphone",call,"noteMicrophonePermission"));return;}
   startNote(call);
  }
@@ -82,7 +83,7 @@ public final class AlphaVoiceCloudPlugin extends LocalSpeechBridgePlugin {
  @PluginMethod public void noteRecordingStatus(PluginCall call){mainHandler().post(()->call.resolve(noteRecorder().status()));}
  @PluginMethod public void pauseNoteRecording(PluginCall call){mainHandler().post(()->{try{call.resolve(noteRecorder().pause(noteRecordingId(call)));}catch(RuntimeException error){call.reject("Recording changed");}});}
  @PluginMethod public void resumeNoteRecording(PluginCall call){
-  if(callActive()){call.reject(CALL_MESSAGE,SpeechAudioFocusPolicy.CALL_ACTIVE);return;}
+  if(callActive()){call.reject(CALL_MESSAGE,CALL_ACTIVE_CODE);return;}
   mainHandler().post(()->{try{String id=noteRecordingId(call);JSObject status=noteRecorder().resume(id);AlphaNoteRecordingService.start(getContext(),id);call.resolve(status);}
   catch(IOException error){call.reject("storage".equals(error.getMessage())?"Storage is full":"Microphone could not start","storage".equals(error.getMessage())?"storage":"capture");}
   catch(RuntimeException error){call.reject("Recording changed");}});
