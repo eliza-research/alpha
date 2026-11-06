@@ -113,8 +113,11 @@ public class AlphaFilesPlugin extends Plugin {
  private StorageBrowser primaryBrowser(){StorageCatalog.Volume v=StorageCatalog.volume(getContext(),"primary");return new StorageBrowser(v==null?android.os.Environment.getExternalStorageDirectory():v.directory);}
  /** Candidates for the agent's read-only filter; the renderer applies the exact rules. */
  @PluginMethod public void storageQuery(PluginCall call){storage(call,b->{
-  Double from=call.getDouble("from"),to=call.getDouble("to");
-  JSObject out=new JSObject();out.put("entries",StorageCatalog.query(resolver(),call.getString("text"),call.getString("mimePrefix"),call.getString("folder"),from==null?0:from.longValue(),to==null?0:to.longValue()));return out;
+  Double from=call.getDouble("from"),to=call.getDouble("to");long since=from==null?0:from.longValue(),until=to==null?0:to.longValue();
+  JSObject out=new JSObject();
+  // MediaStore has no folder rows to query, so the folder kind walks the tree.
+  if(Boolean.TRUE.equals(call.getBoolean("folders",false))){JSArray rows=new JSArray();for(StorageBrowser.Row r:primaryBrowser().folders(call.getString("folder",""),call.getString("text"),since,until,StorageCatalog.QUERY_MAX,StorageBrowser.WALK_MAX))rows.put(row(r));out.put("entries",rows);return out;}
+  out.put("entries",StorageCatalog.query(resolver(),call.getString("text"),call.getString("mimePrefix"),Boolean.TRUE.equals(call.getBoolean("documents",false)),call.getString("folder"),since,until));return out;
  });}
  @PluginMethod public void storageTransfer(PluginCall call){storage(call,b->{
   List<String> paths=strings(call,"paths",StorageBrowser.BATCH_MAX);boolean copy=Boolean.TRUE.equals(call.getBoolean("copy",false));

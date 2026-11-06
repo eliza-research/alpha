@@ -85,8 +85,10 @@ final class StorageCatalog {
   return rows(resolver,collection(category),selection,args,CATEGORY_MAX);
  }
  /** Candidates for the agent's read-only filter; the renderer applies the exact filter rules. */
- static JSArray query(ContentResolver resolver,String text,String mimePrefix,String folder,long from,long to){
+ static JSArray query(ContentResolver resolver,String text,String mimePrefix,boolean documents,String folder,long from,long to){
   List<String> clauses=new ArrayList<>(),args=new ArrayList<>();
+  // Documents are a set of types, so the newest rows of other types never crowd them out.
+  if(documents){StringBuilder in=new StringBuilder();for(int i=0;i<DOCUMENT_TYPES.length;i++){in.append(i==0?"?":",?");args.add(DOCUMENT_TYPES[i]);}clauses.add(MediaStore.MediaColumns.MIME_TYPE+" IN ("+in+")");}
   if(text!=null)for(String word:text.toLowerCase(java.util.Locale.ROOT).split("[^\\p{L}\\p{N}]+"))if(!word.isEmpty()){clauses.add("LOWER("+MediaStore.MediaColumns.DISPLAY_NAME+") LIKE ? ESCAPE '\\'");args.add("%"+word.replace("\\","\\\\").replace("%","\\%").replace("_","\\_")+"%");}
   if(mimePrefix!=null&&!mimePrefix.isEmpty()){clauses.add(MediaStore.MediaColumns.MIME_TYPE+" LIKE ?");args.add(mimePrefix.replace("%","")+"%");}
   if(folder!=null&&!folder.isEmpty()){clauses.add(MediaStore.MediaColumns.RELATIVE_PATH+" LIKE ? ESCAPE '\\'");args.add(folder.replace("\\","\\\\").replace("%","\\%").replace("_","\\_")+"/%");}

@@ -24,7 +24,7 @@ const storage = registerPlugin<{
   storageRequestAccess(): Promise<Result>;
   storageList(input: {path: string; volume?: string}): Promise<Result & {entries?: StorageEntry[]; truncated?: boolean}>;
   storageCategory(input: {category: FilesCategory}): Promise<Result & {entries?: StorageEntry[]}>;
-  storageQuery(input: {text?: string; mimePrefix?: string; folder?: string; from?: number; to?: number}): Promise<Result & {entries?: StorageEntry[]}>;
+  storageQuery(input: {text?: string; mimePrefix?: string; documents?: boolean; folders?: boolean; folder?: string; from?: number; to?: number}): Promise<Result & {entries?: StorageEntry[]}>;
   storageTransfer(input: {paths: string[]; dest: string; copy: boolean; volume?: string}): Promise<Result & {outcomes?: Outcome[]}>;
   storageRename(input: {path: string; name: string; volume?: string}): Promise<Result & {path?: string}>;
   storageCreateFolder(input: {parent: string; name: string; volume?: string}): Promise<Result & {path?: string}>;
@@ -281,6 +281,8 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
       const query = await storage.storageQuery({
         ...(value.text ? {text: value.text} : {}), ...(value.folder ? {folder: value.folder} : {}),
         ...(value.kind && value.kind !== 'folder' && value.kind !== 'document' && value.kind !== 'pdf' ? {mimePrefix: value.kind + '/'} : value.kind === 'pdf' ? {mimePrefix: 'application/pdf'} : {}),
+        // Documents are queried as their set of types, folders by a walk (MediaStore has no folder rows).
+        ...(value.kind === 'document' ? {documents: true} : value.kind === 'folder' ? {folders: true} : {}),
         ...(value.from ? {from: Date.parse(value.from)} : {}), ...(value.to ? {to: Date.parse(value.to) + (value.to.length === 10 ? 86399999 : 0)} : {}),
       });
       if (ticket !== filterGeneration) return;

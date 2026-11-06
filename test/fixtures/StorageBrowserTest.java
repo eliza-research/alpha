@@ -61,6 +61,14 @@ public final class StorageBrowserTest {
    check(downloads.size()==2&&downloads.get(0).path.equals("Download/new.txt")&&downloads.get(1).path.equals("Download/old.pdf"),"downloads lists Download/ files newest first");
    check(b.files("Download",1).size()==1,"downloads is bounded");
    check(new StorageBrowser(Files.createTempDirectory("alpha-empty").toFile()).files("Download",2000).isEmpty(),"no Download folder is an empty category");
+   // The agent's folder filter walks the tree: hidden folders and the trash are skipped.
+   new File(root,"Documents/Bank statements/2025").mkdirs();new File(root,".hidden/Bank").mkdirs();
+   new File(root,"Documents/Bank statements").setLastModified(1_750_000_000_000L);
+   List<StorageBrowser.Row> found=b.folders("","bank",0,0,500,20000);
+   check(found.size()==1&&found.get(0).path.equals("Documents/Bank statements")&&found.get(0).directory&&found.get(0).children==1,"folder filter finds visible folders by name");
+   check(b.folders("Download","bank",0,0,500,20000).isEmpty(),"folder filter stays under the folder");
+   check(b.folders("","bank",1_760_000_000_000L,0,500,20000).isEmpty(),"folder filter applies the date range");
+   check(b.folders("","",0,0,500,20000).stream().noneMatch(r->r.path.startsWith(".")||r.path.contains("/.")),"no hidden folders");
    System.out.println("PASS storage browser");
   }finally{StorageBrowser.deleteRecursive(root);}
  }

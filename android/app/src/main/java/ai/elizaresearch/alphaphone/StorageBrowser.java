@@ -26,7 +26,7 @@ import org.json.JSONObject;
 final class StorageBrowser {
  static final long RETENTION_MS=30L*86400000L;
  static final String TRASH=".Trash-alpha";
- static final int BATCH_MAX=500,LIST_MAX=5000;
+ static final int BATCH_MAX=500,LIST_MAX=5000,WALK_MAX=20000;
  final File root;
  StorageBrowser(File root){this.root=root;}
 
@@ -84,6 +84,27 @@ final class StorageBrowser {
   rows.sort((a,b)->Long.compare(b.modified,a.modified));
   for(Row r:rows){if(out.size()>=max)break;if(!r.directory)out.add(r);}
   return out;
+ }
+ /** Folders for the agent's folder filter: a bounded walk under `under` (hidden folders and the
+  * trash skipped) for folders whose name holds every word and whose time is in range, newest first. */
+ List<Row> folders(String under,String text,long from,long to,int max,int visitMax)throws IOException{
+  File start=resolve(under==null?"":under,true);List<Row> out=new ArrayList<>();if(!start.isDirectory())return out;
+  List<String> words=new ArrayList<>();if(text!=null)for(String w:text.toLowerCase(Locale.ROOT).split("[^\\p{L}\\p{N}]+"))if(!w.isEmpty())words.add(w);
+  java.util.ArrayDeque<File> queue=new java.util.ArrayDeque<>();queue.add(start);int visited=0;
+  while(!queue.isEmpty()&&visited++<visitMax){
+   File[] kids=queue.removeFirst().listFiles();if(kids==null)continue;
+   for(File kid:kids){
+    String name=kid.getName();if(name.startsWith(".")||!kid.isDirectory())continue;
+    queue.add(kid);
+    long modified=kid.lastModified();String lower=name.toLowerCase(Locale.ROOT);boolean match=(from<=0||modified>=from)&&(to<=0||modified<=to);
+    for(String w:words)if(!lower.contains(w)){match=false;break;}
+    if(!match)continue;
+    int children=0;String[] list=kid.list();if(list!=null)for(String k:list)if(!k.startsWith("."))children++;
+    out.add(new Row(relative(kid),name,true,"",0,modified,children));
+   }
+  }
+  out.sort((a,b)->Long.compare(b.modified,a.modified));
+  return out.size()>max?new ArrayList<>(out.subList(0,max)):out;
  }
  static String mime(String name){
   int dot=name.lastIndexOf('.');String ext=dot>0?name.substring(dot+1).toLowerCase(Locale.ROOT):"";
