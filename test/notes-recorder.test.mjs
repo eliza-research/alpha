@@ -376,3 +376,13 @@ test('the native recorder has a device test for segments, pause accounting, cras
   assert.match(device, /next\.joined\(crashedId\)/);
   assert.match(device, /player\.prepare\(\)/, 'the joined file plays');
 });
+
+test('the recording notification follows pause: "Paused" with Resume, and its chronometer is the recording length', () => {
+  const service = native('AlphaNoteRecordingService.java');
+  assert.match(service, /setContentTitle\(paused\?"Paused":"Recording"\)/);
+  assert.match(service, /paused\?"Resume":"Pause"/);
+  assert.match(service, /setWhen\(System\.currentTimeMillis\(\)-Math\.max\(0,status\.optLong\("durationMs",0\)\)\)/);
+  assert.match(service, /ACTION_PAUSE\.equals\(action\)\|\|ACTION_RESUME\.equals\(action\)[\s\S]*?refresh\(this\);/, 'a notification action shows the new state');
+  assert.match(native('AlphaVoiceCloudPlugin.java'), /AlphaNoteRecordingService\.refresh\(getContext\(\)\)/, 'a pause in Alpha updates the notification');
+  assert.match(read('android/app/src/androidTest/java/ai/elizaresearch/alphaphone/NoteRecorderInstrumentedTest.java'), /theNotificationShowsPausedWithResumeAndTheRecordingLength/);
+});

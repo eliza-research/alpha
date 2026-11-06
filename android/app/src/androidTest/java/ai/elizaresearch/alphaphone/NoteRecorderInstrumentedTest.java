@@ -40,6 +40,20 @@ public class NoteRecorderInstrumentedTest {
  private static void copyTree(File from,File to)throws Exception{if(from.isDirectory()){assertTrue(to.mkdirs());for(File kid:from.listFiles())copyTree(kid,new File(to,kid.getName()));}else Files.copy(from.toPath(),to.toPath());}
  private static long mediaMs(File file)throws Exception{MediaExtractor e=new MediaExtractor();try{e.setDataSource(file.getAbsolutePath());for(int t=0;t<e.getTrackCount();t++){MediaFormat f=e.getTrackFormat(t);if(f.getString(MediaFormat.KEY_MIME).startsWith("audio/"))return f.getLong(MediaFormat.KEY_DURATION)/1000;}return -1;}finally{e.release();}}
 
+ @Test public void theNotificationShowsPausedWithResumeAndTheRecordingLength()throws Exception{
+  JSObject paused=new JSObject();paused.put("state","paused");paused.put("recordingId",UUID.randomUUID().toString());paused.put("durationMs",90_000);
+  android.app.Notification p=AlphaNoteRecordingService.notification(context(),paused);
+  assertEquals("Paused",p.extras.getCharSequence(android.app.Notification.EXTRA_TITLE).toString());
+  assertEquals("Resume",p.actions[0].title.toString());
+  assertFalse("no running chronometer while paused",p.extras.getBoolean(android.app.Notification.EXTRA_SHOW_CHRONOMETER));
+  JSObject recording=new JSObject();recording.put("state","recording");recording.put("recordingId",paused.getString("recordingId"));recording.put("durationMs",90_000);
+  long now=System.currentTimeMillis();android.app.Notification r=AlphaNoteRecordingService.notification(context(),recording);
+  assertEquals("Recording",r.extras.getCharSequence(android.app.Notification.EXTRA_TITLE).toString());
+  assertEquals("Pause",r.actions[0].title.toString());
+  assertTrue(r.extras.getBoolean(android.app.Notification.EXTRA_SHOW_CHRONOMETER));
+  assertEquals("the chronometer counts the recording's length, not the time since resume",now-90_000,r.when,2000);
+ }
+
  @Test public void segmentsSurviveACrashAndJoinIntoOnePlayableRecording()throws Exception{
   InstrumentationRegistry.getInstrumentation().getUiAutomation().grantRuntimePermission(context().getPackageName(),Manifest.permission.RECORD_AUDIO);
   AlphaNoteRecorder recorder=AlphaNoteRecorder.get(context());
