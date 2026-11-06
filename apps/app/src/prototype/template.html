@@ -2555,7 +2555,7 @@
       </sc-if>
       <div style="display: flex; align-items: center; justify-content: center; gap: 40px; padding: 20px 0 56px; flex-shrink: 0">
         <button class="ib" aria-label="Discard" onClick="{{notes.noteRecorder.discard}}" style="width: 60px; height: 60px; border-radius: 30px; background: var(--s2)"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.trash}}"></path></svg></button>
-        <button aria-label="{{notes.noteRecorder.pauseLabel}}" disabled="{{notes.noteRecorder.pauseDisabled}}" onClick="{{notes.noteRecorder.toggle}}" style="width: 84px; height: 84px; border-radius: 42px; background: var(--acc); color: #fff; display: flex; align-items: center; justify-content: center"><svg class="i" viewBox="0 0 24 24" style="width: 28px; height: 28px"><path d="{{notes.noteRecorder.pauseIcon}}"></path></svg></button>
+        <button aria-label="{{notes.noteRecorder.pauseLabel}}" disabled="{{notes.noteRecorder.pauseDisabled}}" onClick="{{notes.noteRecorder.toggle}}" style="width: 84px; height: 84px; border-radius: 42px; background: var(--acc); color: var(--alpha-white); display: flex; align-items: center; justify-content: center"><svg class="i" viewBox="0 0 24 24" style="width: 28px; height: 28px"><path d="{{notes.noteRecorder.pauseIcon}}"></path></svg></button>
         <button class="ib" aria-label="Done" disabled="{{notes.noteRecorder.doneDisabled}}" onClick="{{notes.noteRecorder.done}}" style="width: 60px; height: 60px; border-radius: 30px; background: var(--fg); color: var(--bg)"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.check}}"></path></svg></button>
       </div>
     </div>

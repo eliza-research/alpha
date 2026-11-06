@@ -1117,42 +1117,14 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     const owned=()=>token===generation&&chatDestination===chat&&(!chat||chatCurrent());
     const seconds = stage === 'recording' ? (Date.now() - started) / 1000 : (clip?.durationMs || 0) / 1000;
     const labels: Bag = { ready: 'Start recording', starting: 'Starting microphone', recording: 'Stop recording', recorded: onDeviceReady ? 'Transcribe on this phone' : pairedAsrReady ? 'Transcribe with agent Whisper' : deviceOnly ? 'Review recording' : cloudMode ? `Transcribe with ${voiceServiceName()}` : 'Transcribe locally', transcribing: 'Cancel transcription', review: 'Use in conversation' };
-    const messages: Bag = { ready: deviceOnly ? 'Record up to 59 seconds in this app. You can add a transcript manually and save without signing in. Nothing is uploaded.' : cloudMode ? `Record up to 59 seconds. Audio stays in this app until you choose Transcribe with ${voiceServiceName()}; uploads use ${connectionController.getSnapshot().residentInference==='direct'?'your own Cartesia allowance':'your Cloud plan allowance'}.` : 'Development voice: record up to 59 seconds. Audio goes to this computer only after you choose Transcribe locally.', starting: 'Waiting for microphone access.', recording: 'Recording. Waveform levels are unavailable. Stop does not upload audio.', recorded: deviceOnly ? 'Microphone is off. Review the recording and enter a transcript manually. Cloud transcription is not connected; nothing is uploaded.' : cloudMode ? `Microphone is off. Choose Transcribe with ${voiceServiceName()} to upload this recording to your selected provider.` : 'Microphone is off. Choose Transcribe locally to process this clip on the connected development computer.', transcribing: cloudMode ? `Transcribing with ${voiceServiceName()}. Nothing has been saved.` : 'Transcribing on the local computer. Nothing has been saved.', review: deviceOnly ? 'Enter a transcript manually, then save it with this recording in this app. Nothing is uploaded or sent to an agent.' : chatDestination ? 'Review the transcript, then use it in the conversation. Press Send there to send it to your agent.' : 'Review and edit the transcript, then save the recording and transcript in this app. Nothing is sent to the agent.' };
-    if (pairedAsrReady) { messages.ready = 'Record up to 59 seconds. English transcription uses your selected agent. Audio stays in this app until you choose Transcribe with agent Whisper.'; messages.recorded = 'Microphone is off. Transcribe with agent Whisper uploads this recording to your selected agent for English speech recognition.'; messages.transcribing = 'Transcribing with your selected agent. Nothing has been saved.'; messages.review = chatDestination ? 'Review the agent transcript, then use it in the conversation. Press Send there to send the message.' : 'Review and edit the agent transcript, then save it with the recording in this app. Nothing is sent as a chat message.'; }
-    if (onDeviceReady) {
-      messages.ready = 'Record up to 29 seconds. English transcription runs on this phone. Nothing is uploaded.';
-      messages.recorded = 'Microphone is off. Transcribe on this phone processes this recording without uploading audio.';
-      messages.transcribing = 'Transcribing on this phone. Nothing has been saved or uploaded.';
-      messages.review = chatDestination ? 'Review the transcript, then use it in the conversation. Press Send there to send it to your agent.' : 'Review and edit the transcript, then save it in this app. Nothing is uploaded.';
-      if (stage === 'review') messages.review += ' Listen also runs on this phone. Unfamiliar English names are spelled; numbers are read digit by digit. Unsupported symbols require editing.';
-    }
-    if (pairedReady && stage === 'review') messages.review = playing ? 'Playing selected-agent audio. Tap Stop audio to stop. Your recording remains in this app.' : 'Save keeps this recording and transcript in this app. Listen to transcript sends only this text to your selected agent for audio playback.';
-    if (cloudMode && stage === 'review') messages.review += playing ? ` Playing ${voiceServiceName()} audio. Tap Stop audio to stop.` : ` Listen to transcript sends this text to ${voiceServiceName()} for audio playback.`;
+    // No status or privacy narration: the recorder shows one short line, only for an error.
     if (selectedRoute === 'device' && !onDeviceReady && !preparingLocal && stage === 'ready') labels.ready = 'On-device speech unavailable';
-    if (preparingPaired && stage === 'ready') { labels.ready = 'Checking selected agent voice'; messages.ready = 'Checking transcription and playback on your selected agent. No audio is uploaded.'; }
-    if (preparingLocal && stage === 'ready') { labels.ready = 'Preparing on-device speech'; messages.ready = 'Loading and checking speech models on this phone. Nothing is uploaded.'; }
-    if(!Capacitor.isNativePlatform() && !cloudMode) {
-      // The browser has no speech engine of its own: on-device speech here means the local
-      // agent on this computer (libelizainference), worded in the block below.
-      if (!onDeviceReady) {
-        labels.recorded='Review transcript';
-        messages.recording='Recording. Stop to review the audio.';
-        messages.ready='Record audio in this app. You can add a transcript manually and save without signing in.';
-        messages.recorded='Microphone is off. Enter the transcript to save with this recording.';
-        messages.transcribing='Review the recording transcript.';
-        messages.review='Edit the transcript, listen, or save the recording in this app.';
-      }
-    }
-    if(browserDevProfile && selectedRoute==='agent' && !cloudMode&&!onDeviceReady){messages.ready='Browser transcription is unavailable. Record audio and enter a transcript, or explicitly select a development agent.';messages.recorded='Microphone is off. Enter a transcript for this recording.';labels.recorded='Review transcript';}
-    if(onDeviceReady&&connectionController.getBrowserSpeechAgent()){
-      labels.recorded='Transcribe on this computer';
-      messages.ready='Record in this app. English transcription runs on the local agent on this computer when you choose Transcribe.';
-      messages.recorded='Microphone is off. Transcribe on this computer sends this recording to your local development agent.';
-      messages.transcribing='Transcribing on this computer. Nothing has been saved.';
-      messages.review='Review the transcript, listen using the local agent on this computer, or save it with the recording. No chat message has been sent.';
-    }
-    if(chatDestination?.mode==='dictation'){labels.review='Use in draft';messages.recording='Recording on this device. Stop to transcribe into editable text. Nothing is sent to your agent.';messages.review='Edit the transcript, then add it to your draft. Only Send submits the message.';}
-    if(liveDictation){messages.ready='Starting transcription on this device. No message is sent.';messages.recording='Your agent on this phone transcribes as you speak. Stop when you finish; speech after Stop is not used. No message is sent.';messages.transcribing='Finishing the transcript on this phone. No message is sent.';messages.review='Edit the transcript, then add it to your draft. Only Send submits the message.';}
+    if (preparingPaired && stage === 'ready') labels.ready = 'Checking selected agent voice';
+    if (preparingLocal && stage === 'ready') labels.ready = 'Preparing on-device speech';
+    if (!Capacitor.isNativePlatform() && !cloudMode && !onDeviceReady) labels.recorded = 'Review transcript';
+    if (browserDevProfile && selectedRoute === 'agent' && !cloudMode && !onDeviceReady) labels.recorded = 'Review transcript';
+    if (onDeviceReady && connectionController.getBrowserSpeechAgent()) labels.recorded = 'Transcribe on this computer';
+    if (chatDestination?.mode === 'dictation') labels.review = 'Use in draft';
     // The Cloud route offers no typing choice (P-39 keeps the conversation spoken; the keyboard stays a separate entry), so its failure wording names none.
     const canType = !cloudMode && stage === 'recorded' && !!clip && !busy && (failure === 'no-speech' || failure === 'local-agent' || failure === 'recognition');
     // A refused microphone uses the route slot for its recovery: Android's app settings for Alpha.
