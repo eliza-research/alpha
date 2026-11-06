@@ -2,7 +2,6 @@ package ai.elizaresearch.alphaphone;
 
 import ai.eliza.plugins.notifications.MailBackgroundDelivery;
 import ai.eliza.plugins.notifications.MailNoticePoster;
-import ai.eliza.plugins.securestore.nativeonly.JsonCredentialSlots;
 import android.content.Context;
 import org.json.JSONObject;
 
@@ -18,7 +17,7 @@ final class GmailBackground {
   if(delivery!=null)return delivery;
   Context app=context.getApplicationContext();AlphaCredentialStore store=new AlphaCredentialStore(app);
   delivery=new MailBackgroundDelivery(new MailBackgroundDelivery.Host(){
-   public Object lock(){return JsonCredentialSlots.LOCK;}
+   public Object lock(){return AlphaLocalAgentPlugin.credentialLifecycleLock();}
    public String readState()throws Exception{return store.readCredentialSlot(SLOT);}
    public void writeState(String value)throws Exception{store.writeCredentialSlot(SLOT,value);}
    public void removeState()throws Exception{store.removeCredentialSlot(SLOT);}

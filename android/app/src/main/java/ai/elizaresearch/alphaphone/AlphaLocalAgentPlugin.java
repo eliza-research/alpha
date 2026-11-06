@@ -58,6 +58,8 @@ private static final class ResidentAttachDiagnostic {
  private final CredentialRequestFence providerConfigurations=new CredentialRequestFence(lifecycleLock,credentialIntents);
  private static long powerAuthorizationMutationEpoch;
  static long credentialAuthorityEpoch(){synchronized(lifecycleLock){return powerAuthorizationMutationEpoch;}}
+ /** Compound credential-slot operations must enter before acquiring the vault lock. */
+ static Object credentialLifecycleLock(){return lifecycleLock;}
  /** Revalidate an async operation against semantic credential changes, using the existing lock order. */
  static <T> T withCredentialAuthority(long owner,java.util.concurrent.Callable<T> action)throws Exception{
   synchronized(lifecycleLock){
