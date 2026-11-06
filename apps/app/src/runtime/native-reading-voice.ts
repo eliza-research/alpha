@@ -6,7 +6,8 @@ import {createPairedVoice} from './paired-voice';
 import {connectionController} from './connection-ui';
 const native=registerPlugin<any>('AlphaVoiceCloud');
 /** Approved page text stays native; the renderer passes only its one-use token.
- * Resident reading needs Paradee-8M playback only, not recognition, so it gates on playbackReady. */
+ * Resident reading plays with Paradee-8M; it gates on playbackReady, which today waits for full speech readiness
+ * because native prepares recognition and playback together. */
 export function createNativeReadingVoice(){
  const resident=connectionController.getResidentReadingBinding();
  if(resident){
