@@ -17,12 +17,9 @@ test('a camera capture is searchable and Ask Alpha reviews it locally without th
  await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-connection-mode','live');
  await page.getByRole('button',{name:'Camera',exact:true}).click();
  await expect.poll(()=>page.locator('[aria-label^="Viewfinder."] video').evaluate((v:HTMLVideoElement)=>v.readyState)).toBeGreaterThanOrEqual(2);
- // Camera frame question: an unsaved frame, reviewed text only.
- await page.getByRole('button',{name:'Ask Alpha about this',exact:true}).click();
- const review=page.getByRole('dialog',{name:'Ask about selected content'});
- await expect(review.getByRole('img',{name:'Image for question review'})).toBeVisible();
- await expect(review.getByRole('button',{name:'Extract text locally'})).toBeEnabled();
- await review.getByRole('button',{name:'Cancel',exact:true}).click();await expect(review).toHaveCount(0);
+ // The header is Back and Flash only: no title, image import, scan or ask button.
+ for(const name of ['Ask Alpha about this','Choose image','Scan document','Scan mode'])await expect(page.getByRole('button',{name,exact:true})).toHaveCount(0);
+ await expect(page.locator('[data-alpha-camera-root] [data-alpha-app-title]')).toHaveCount(0);
  await page.getByRole('button',{name:'Take photo',exact:true}).click();
  await expect(page.getByRole('button',{name:'Open last photo',exact:true})).toBeVisible();
 
@@ -38,7 +35,7 @@ test('a camera capture is searchable and Ask Alpha reviews it locally without th
  await search.fill(new Date().toLocaleDateString('en-US',{weekday:'long'}));
  await page.getByRole('button',{name:/^Captured photo /}).click();
 
- await page.getByRole('button',{name:'Ask Alpha about this photo',exact:true}).click();
+ await page.getByRole('button',{name:'Ask Alpha about this photo',exact:true}).click();const review=page.getByRole('dialog',{name:'Ask about selected content'});
  await expect(review.getByRole('img',{name:'Image for question review'})).toBeVisible();
  await expect(page.getByText('image analysis is not connected')).toHaveCount(0);
  await review.getByRole('textbox',{name:'Content excerpt'}).fill('A white page that says ALPHA');

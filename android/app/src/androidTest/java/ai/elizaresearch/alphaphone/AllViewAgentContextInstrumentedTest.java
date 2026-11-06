@@ -44,8 +44,9 @@ public class AllViewAgentContextInstrumentedTest {
   WebViewTestDriver.evaluate(AppNavigation.request("Camera"));until(AppNavigation.selected("Camera"),30000);
   until("document.querySelector('[data-alpha-camera-screen]')",30000);click("Video");label("Start recording");
   until("document.querySelector('button[aria-label=\"Stop recording\"]')",30000);SystemClock.sleep(2500);label("Stop recording");
-  until("document.body.innerText.includes('Video saved to Android Photos.')",30000);
-  Set<Uri> created=ownedVideos();created.removeAll(before);
+  // Camera shows no status line for a saved video: wait for the finalized MediaStore row.
+  Set<Uri> created=new HashSet<>();
+  for(int i=0;i<300&&created.isEmpty();i++){created=ownedVideos();created.removeAll(before);if(created.isEmpty())SystemClock.sleep(100);}
   assertEquals("Exactly one finalized owned asset; ambiguous concurrent captures are never deleted",1,created.size());capturedVideo=created.iterator().next();
   String revision;
   try(Cursor c=target().getContentResolver().query(capturedVideo,new String[]{MediaStore.MediaColumns.DATE_ADDED,MediaStore.MediaColumns.SIZE},null,null,null)){
@@ -56,7 +57,7 @@ public class AllViewAgentContextInstrumentedTest {
   String id="native-camera-v:"+ContentUris.parseId(capturedVideo);
   JSONObject expected=new JSONObject().put("marker",marker).put("kind","video").put("id",id).put("revision",revision).put("decoded",true);
   try(java.io.OutputStream output=target().openFileOutput("agent-context-video.json",Context.MODE_PRIVATE)){output.write(expected.toString().getBytes(StandardCharsets.UTF_8));}
-  label("Open last photo");until(AppNavigation.selected("Photos"),30000);label("Play video");
+  label("Open last video");until(AppNavigation.selected("Photos"),30000);label("Play video");
   until("(()=>{const v=document.querySelector('video[data-alpha-captured-video]');return v&&v.dataset.alphaCapturedVideo==="+JSONObject.quote(id)+"&&v.videoWidth>0&&v.currentTime>0.2})()",30000);label("Pause video");
  }
  private void until(String expression,long timeout)throws Exception{
@@ -70,12 +71,8 @@ public class AllViewAgentContextInstrumentedTest {
  }
  private void send(String marker,int base,int index,boolean blocked)throws Exception{
   if(index>0&&requestIntervalMs>0)SystemClock.sleep(requestIntervalMs);
-  // Camera is immersive: the prototype exposes its real top-bar Alpha button
-  // instead of the general Type pill. Exercise that existing product control.
-  if("\"camera\"".equals(WebViewTestDriver.evaluate("document.documentElement.dataset.activeView"))){
-   String ask="document.querySelector('button[aria-label=\"Ask Alpha about this\"]')";
-   until(ask+" && !("+ask+").disabled",15000);WebViewTestDriver.evaluate("("+ask+").click()");
-  }else if("true".equals(WebViewTestDriver.evaluate("document.documentElement.dataset.activeView==='photos'&&!!document.querySelector('button[aria-label=\"Ask Alpha about this photo\"]')"))){
+  // Camera shows the general assistant pill (hidden only while recording).
+  if("true".equals(WebViewTestDriver.evaluate("document.documentElement.dataset.activeView==='photos'&&!!document.querySelector('button[aria-label=\"Ask Alpha about this photo\"]')"))){
    label("Ask Alpha about this photo");
   }else WebViewTestDriver.evaluate(AppNavigation.type());
   until(AppNavigation.composer(),15000);

@@ -43,6 +43,16 @@ public class CameraFlowInstrumentedTest {
   String selector="[...document.querySelectorAll('dialog button,[data-alpha-camera-access] button')].find(b=>b.textContent.trim()==="+JSONObject.quote(text)+"&&!b.disabled)";
   until(s,selector);eval(s,"("+selector+").click()");
  }
+ /** Camera's assistant pill opens the composer; a scan request is answered on this phone. */
+ private void askAlpha(BoundedActivityScenario<MainActivity>s,String text)throws Exception{
+  eval(s,AppNavigation.type());until(s,AppNavigation.composer());
+  eval(s,"(()=>{const e=("+AppNavigation.composer()+");Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(e,"+JSONObject.quote(text)+");e.dispatchEvent(new Event('input',{bubbles:true}));})()");
+  click(s,"Send");
+ }
+ private void closeScan(BoundedActivityScenario<MainActivity>s)throws Exception{
+  String selector="[...document.querySelectorAll('dialog button')].find(b=>['Cancel scan','Close scan'].includes(b.textContent.trim()))";
+  until(s,selector);eval(s,"("+selector+").click()");
+ }
  private void navigate(BoundedActivityScenario<MainActivity>s,String label)throws Exception{
   until(s,"document.documentElement.dataset.activeView");eval(s,AppNavigation.request(label));until(s,AppNavigation.selected(label));
  }
@@ -66,14 +76,15 @@ public class CameraFlowInstrumentedTest {
   Set<Uri> before=ownedImages(),created=new HashSet<>();
   try(BoundedActivityScenario<MainActivity>s=BoundedActivityScenario.launch(MainActivity.class)){
    navigate(s,"Camera");until(s,"document.querySelector('[data-alpha-camera-screen]')");nativePreview(s,true);
-   // Production Ask Alpha reviews an unsaved frame locally; only reviewed text can reach the draft.
-   Set<Uri> beforeQuestion=ownedImages();
-   click(s,"Ask Alpha about this");
-   until(s,"document.querySelector('dialog[aria-label=\"Ask about selected content\"] img[alt=\"Image for question review\"]')?.naturalWidth>0");
-   assertEquals("Question frame is not published to Photos",beforeQuestion,ownedImages());
-   clickText(s,"Cancel");until(s,"!document.querySelector('dialog[aria-label=\"Ask about selected content\"]')");nativePreview(s,true);
-   click(s,"Take photo");until(s,"document.body.innerText.includes('Photo saved to Android Photos.')");
-   created.addAll(ownedImages());created.removeAll(before);assertEquals("Exactly one owned image published",1,created.size());
+   // Asking Alpha to scan in Camera reviews one unsaved frame locally; nothing reaches Photos unless kept.
+   Set<Uri> beforeScan=ownedImages();
+   askAlpha(s,"Scan this");
+   until(s,"document.querySelector('dialog[aria-label=\"Review scanned text\"]')");
+   assertEquals("Scan frame is not published to Photos",beforeScan,ownedImages());
+   closeScan(s);until(s,"!document.querySelector('dialog[aria-label=\"Review scanned text\"]')");nativePreview(s,true);
+   click(s,"Take photo");
+   for(int i=0;i<100&&created.isEmpty();i++){created.addAll(ownedImages());created.removeAll(before);if(created.isEmpty())SystemClock.sleep(100);}
+   assertEquals("Exactly one owned image published",1,created.size());
    Uri uri=created.iterator().next();byte[] bytes;
    try(java.io.InputStream input=context().getContentResolver().openInputStream(uri)){assertNotNull(input);bytes=input.readAllBytes();}
    assertTrue("JPEG has real bytes",bytes.length>1000);assertEquals(255,bytes[0]&255);assertEquals(216,bytes[1]&255);
@@ -126,8 +137,8 @@ public class CameraFlowInstrumentedTest {
   shell("pm set-permission-flags "+pkg+" "+Manifest.permission.CAMERA+" user-set user-fixed");
   try(BoundedActivityScenario<MainActivity>s=BoundedActivityScenario.launch(MainActivity.class)){
    navigate(s,"Camera");
-   until(s,"document.querySelector('[role=alert][aria-label=\"Camera access is off\"]')?.textContent.includes('Android settings')");nativePreview(s,false);
-   clickText(s,"Open Android settings");
+   until(s,"document.querySelector('[role=alert][aria-label=\"Camera access is off\"]')?.textContent.includes('Open settings')");nativePreview(s,false);
+   clickText(s,"Open settings");
    long end=SystemClock.elapsedRealtime()+15000;while(SystemClock.elapsedRealtime()<end&&!resumed().contains("settings"))SystemClock.sleep(100);
    assertTrue("Application details settings is foreground: "+resumed(),resumed().contains("settings"));
    shell("pm clear-permission-flags "+pkg+" "+Manifest.permission.CAMERA+" user-set user-fixed");
@@ -142,14 +153,13 @@ public class CameraFlowInstrumentedTest {
   assertEquals("Revoke CAMERA before this instrumentation run",PackageManager.PERMISSION_DENIED,context().checkSelfPermission(Manifest.permission.CAMERA));
   try(BoundedActivityScenario<MainActivity>s=BoundedActivityScenario.launch(MainActivity.class)){
    navigate(s,"Camera");permissionButton(":id/permission_deny_button");
-   until(s,"document.body.innerText.includes('Tap the shutter to retry')");nativePreview(s,false);
-   until(s,"document.querySelector('[role=alert][aria-label=\"Camera access is off\"]')");
+   until(s,"document.querySelector('[role=alert][aria-label=\"Camera access is off\"]')");nativePreview(s,false);
    // Closing Android's dialog resumes the app. A denial must not be answered with a second dialog:
    // Alpha stays in front, still denied, until the owner retries.
    long quiet=SystemClock.elapsedRealtime()+4000;
    while(SystemClock.elapsedRealtime()<quiet){assertTrue("No permission dialog reopens after Don't allow: "+resumed(),resumed().contains(context().getPackageName()+"/")&&!resumed().contains("permissioncontroller"));SystemClock.sleep(250);}
    assertEquals(PackageManager.PERMISSION_DENIED,context().checkSelfPermission(Manifest.permission.CAMERA));
-   until(s,"document.body.innerText.includes('Tap the shutter to retry')&&document.querySelector('[role=alert][aria-label=\"Camera access is off\"]')");
+   until(s,"document.querySelector('[role=alert][aria-label=\"Camera access is off\"]')");
    click(s,"Take photo");permissionButton(":id/permission_allow_foreground_only_button");
    until(s,"document.querySelector('[data-alpha-camera-screen]')");nativePreview(s,true);
    assertEquals(PackageManager.PERMISSION_GRANTED,context().checkSelfPermission(Manifest.permission.CAMERA));

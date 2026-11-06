@@ -211,12 +211,9 @@ export function installPrototypeNativeAdapters(
       if (key === 'copyLink') return async () => { try { const value = currentUrl(st); if (!value || value === 'newtab') throw new Error(); await navigator.clipboard.writeText(value); notify(api, 'Link copied'); } catch { notify(api, 'Clipboard unavailable'); } };
     }
     if (module === 'camera') {
-      if (['vfDown', 'vfUp', 'vfLeave'].includes(key)) return () => {}; // No synthetic long-press analysis timer.
+      if (key === 'vfUp') return () => {}; // The camera adapter supplies real tap-to-focus.
       if (key === 'openLast') return native('photos');
       if (key === 'shutter') return native('camera');
-      if (key === 'saveFiles') return native('files');
-      if (key === 'addEvent') return native('calendar');
-      if (key === 'openLink') return unavailable(api, 'Scan a real document in the camera app first.');
       if (['flip', 'toggleFlash'].includes(key)) return native('camera');
     }
     if (module === 'photos') {

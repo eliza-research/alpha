@@ -58,10 +58,7 @@ const legacyNotes = (name: string, steps: string[], shows?: string): State => ({
   },
 });
 /** Fixture screens that finish arriving on a timer: the control that marks them complete. */
-const ARRIVES: Record<string, string> = {
-  // The scan fixture finds its page after about a second; the result actions are the state.
-  'camera:scan': 'Add event',
-};
+const ARRIVES: Record<string, string> = {};
 const mock = (start: string, steps: string[] = [], shows?: string): State => ({
   name: `mock ${[start, ...steps].join(' > ')}`, shows,
   open: async (page, theme) => {
@@ -136,7 +133,7 @@ export const MOCK_STATES: State[] = [
   'inbox', 'inbox:mail', 'inbox:compose',
   'calendar', 'calendar:event', 'calendar:invite', 'calendar:month', 'calendar:add', 'calendar:new',
   'browser', 'browser:book', 'browser:tabs',
-  'camera', 'camera:video', 'camera:scan',
+  'camera', 'camera:video',
   'photos', 'photos:viewer', 'photos:albums', 'photos:search',
   'maps', 'maps:search', 'maps:place', 'maps:route', 'maps:nav',
   'notes', 'notes:editor', 'notes:rec', 'notes:voice',

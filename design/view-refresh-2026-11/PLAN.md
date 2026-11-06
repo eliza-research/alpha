@@ -34,7 +34,7 @@ Principles applied to every view:
 | Video hint "Stops and saves when you leave. Maximum 5 minutes or 100 MB." | Removed. The timer shows during recording; the limit appears only when reached |
 | ".5" chip shown on every lens | Zoom chips come from the bound lens's real zoom range |
 | Status pill "Starting camera…" | Removed. The viewfinder fades in on the first real frame |
-| Modes: Video · Photo · Scan | Unchanged (decision C1: keep Scan as a mode or remove it) |
+| Modes: Video · Photo · Scan | Video · Photo (decision C1: Scan removed as a mode; ask Alpha to scan what Camera sees) |
 
 "Ask Alpha about this" stays reachable through the chat pill. When Camera is open, the
 agent already has `camera_capture_photo` and ask-about-frame, so it doesn't need a button.
@@ -81,7 +81,8 @@ before numbers are captured on-device in phase 0. This review doesn't claim them
   gestures promised by its aria-label.
 
 ### TLA+: `tla/camera-session/Spec.tla`
-- **Variables:** `view∈{away,camera}`, `vis∈{fg,bg}`, `chat∈{closed,open}`,
+- **Variables:** `view∈{away,camera}`, `vis∈{fg,bg}`, `chat∈{closed,open}` (modelled since the
+  port: the chat keeps the session for a grace period, then releases it),
   `phase∈{off,starting,ready,error}`, `perm∈{unknown,granted,denied}`,
   `mode∈{photo,video,scan}`, `lens`, `zoom`, `flash`, `capture∈{idle,photo,recStarting,recording,finalizing}`,
   `focusBusy`, `pendingAgentCapture`, `epoch`, `media` (a set of committed items), `thumb`.
@@ -305,14 +306,15 @@ Answered 2026-11-06:
 - **N2:** Recently deleted keeps notes for 30 days, matching Apple Notes.
 - **C2:** New captures go to `DCIM/Camera`, the Android standard.
 
-Still open, taken as recommended unless you say otherwise:
-- **C1:** Keep Scan as a camera mode? *(rec: keep)*
-- **P1:** Photo grid edge-to-edge (iOS/Google standard) or inset rounded? *(rec: edge-to-edge)*
-- **P2:** Remove the photo search box entirely in favour of Ask Alpha? *(rec: yes)*
-- **N1:** Folders (Apple) or labels (Keep, multi-tag)? *(rec: folders)*
-- **N3:** Notes list or 2-column grid? *(rec: list)*
-- **F2:** Drop Recents entirely? *(rec: yes)*
-- **A1:** Apps drawer: icon grid or list? *(rec: grid)*
+Final:
+- **C1:** Scan is removed as a camera mode. Scanning goes through the agent: asking Alpha to scan
+  while Camera is open captures one frame into scan review.
+- **P1:** Photo grid edge-to-edge.
+- **P2:** No photo search box; agent filter tools.
+- **N1:** Folders.
+- **N3:** One-column notes list.
+- **F2:** No Recents.
+- **A1:** Apps drawer is a 4-column icon grid.
 
 ## TLA+ models (written and checked 2026-11-06)
 Specs are in `design/view-refresh-2026-11/tla/{camera-session,photos-library,notes-view,files-browser}`,

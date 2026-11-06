@@ -403,7 +403,8 @@ html.alpha-text-xl:not(.alpha-landscape) [data-alpha-camera="modes"] button{heig
 /* The camera's message stops at the capture rail in landscape instead of lying across it. */
 .alpha-landscape [data-alpha-camera="said"],
 .alpha-landscape [data-alpha-camera-access]{right:calc(var(--alpha-camera-rail) + 16px)!important}
-.alpha-landscape [data-alpha-camera="viewfinder"]{top:0!important;bottom:0!important;height:auto!important;right:var(--alpha-camera-rail)!important}
+/* The assistant pill floats at the bottom in landscape; the viewfinder ends above it. */
+.alpha-landscape [data-alpha-camera="viewfinder"]{top:0!important;bottom:var(--alpha-dock-clearance,0px)!important;height:auto!important;right:var(--alpha-camera-rail)!important}
 .alpha-landscape [data-alpha-camera="capture"]{left:auto!important;right:0!important;top:var(--alpha-camera-top)!important;bottom:0!important;width:var(--alpha-camera-rail)!important;height:auto!important;flex-direction:column-reverse!important;padding:8px 0!important;box-sizing:border-box}
 .alpha-landscape [data-alpha-camera="modes"]{top:auto!important;bottom:8px!important;right:var(--alpha-camera-rail)!important;z-index:2}
 .alpha-landscape [data-alpha-camera="modes"] button{background:rgba(0,0,0,.62);border-radius:22px}

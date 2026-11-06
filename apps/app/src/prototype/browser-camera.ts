@@ -3,13 +3,14 @@ import {applyPhotoFilter} from '../browser/photo-filter';
 import {renderVideoEdit,validateVideoEdit,type VideoEdit} from '../browser/video-edit';
 import {BrowserCameraFocus} from '../browser/camera-focus';
 import {browserDevProfile} from '../browser/dev-profile';
-import type {ImportedCameraImage} from './browser-image-import';
+/** A browser image chosen for Photos or kept from scan review, re-encoded as JPEG. */
+export type ImportedCameraImage={original:File;image:string;width:number;height:number};
 import {drawCameraFrame} from '../browser/camera-frame';
 import {BrowserVideoCapture} from '../browser/video-capture';
 import {albumDocument} from '../browser/preference-documents';
 
 type Row={id:string;kind:'image'|'video';path?:string;duration?:number;operationId?:string;image:string;width:number;height:number;date:number;revision:string;mutationRevision:string;favorite:boolean;trashed:boolean};
-const finder='[aria-label="Viewfinder. Tap to focus, hold to ask Alpha, swipe to change mode"]';
+const finder='[data-alpha-camera="viewfinder"]';
 const revision=()=>crypto.randomUUID();
 let database:Promise<IDBDatabase>|undefined;
 function db(){return database??=new Promise<IDBDatabase>((resolve,reject)=>{
@@ -186,7 +187,7 @@ async function saveVideoCopy(input:{id:string;revision:string;operationId:string
 export const browserPhotoLibrary={
  saveVideoCopy,
  beginEdit:beginPhotoEdit,previewEdit:previewPhotoEdit,saveEdit:savePhotoEdit,editResult:resultPhotoEdit,cancelEdit:cancelPhotoEdit,
- async list(options:{before?:string;trashed?:boolean;album?:string}={}){const result=await rows(options);return {items:result.slice(0,40),next:result.length>40?pageCursor(result[39]):''};},
+ async list(options:{before?:string;trashed?:boolean;album?:string;limit?:number}={}){const result=await rows(options),page=Math.max(1,Math.min(40,Math.floor(options.limit??40)||40));return {items:result.slice(0,page),next:result.length>page?pageCursor(result[page-1]):''};},
  async read(input:{id:string}){return read(input.id);},
  async summary(){const all=await rows({},true);return {favorites:all.filter(r=>!r.trashed&&r.favorite).length,videos:all.filter(r=>!r.trashed&&r.kind==='video').length,trash:all.filter(r=>r.trashed).length,canFavorite:true};},
  async albums(){const live=new Set((await rows({},true)).filter(row=>!row.trashed).map(row=>row.id));return {items:(await albumDocument.read<Album[]>(()=>[])).map(album=>({...album,count:album.memberIds.filter(id=>live.has(id)).length}))};},
@@ -281,7 +282,7 @@ export const browserCamera={
    });
    controller.signal.throwIfAborted();
    ownStream.getVideoTracks()[0].addEventListener('ended',()=>{if(token===generation){clearScreenLight();cameraFocus.clear();}},{once:true});
-   const settings=ownStream.getVideoTracks()[0].getSettings();return {width:ownVideo.videoWidth,height:ownVideo.videoHeight,deviceId:settings.deviceId??''};
+   const settings=ownStream.getVideoTracks()[0].getSettings();return {width:ownVideo.videoWidth,height:ownVideo.videoHeight,deviceId:settings.deviceId??'',minZoom:1,maxZoom:options.direction==='front'?1:8,hasFlash:browserCamera.flashAvailable()};
   }catch(error){release(ownVideo,ownStream);if(preview===ownVideo){preview=null;stream=null;}throw error;}
   finally{if(starting===controller)starting=undefined;}
  },
