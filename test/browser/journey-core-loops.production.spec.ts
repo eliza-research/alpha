@@ -17,7 +17,7 @@ import {seedCompletedAccessSetup} from './flag-off-android';
 // says the shipped renderer takes the real path or shows an honest unavailable state; it never
 // says the native side of that path works. See docs/core-loop-audit.md.
 import { test, expect, type Page } from '@playwright/test';
-import {completeAccessSetup} from './flag-off-android';
+import {completeAccessSetup,expectNoDevelopmentSurface,fenceNetwork} from './flag-off-android';
 
 test.beforeEach(({}, testInfo) => { test.skip(testInfo.project.name !== 'production', 'Production bundle only'); });
 
@@ -26,26 +26,6 @@ const offline = () => localStorage.setItem('alpha.connection.selection.v1', JSON
 const button = (page: Page, name: string) => name==='Inbox'
   ? page.getByRole('button', { name, exact: true }).and(page.locator('[data-mobile-shell-tile]'))
   : page.getByRole('button', { name, exact: true });
-/** No mock, fixture or development surface, whatever the loop. */
-async function expectNoDevelopmentSurface(page: Page) {
-  await expect(page.locator('.mock-mode-banner')).toHaveCount(0);
-  await expect(page.locator('.alpha-dev-tools')).toHaveCount(0);
-  await expect(button(page, 'Device controls')).toHaveCount(0);
-  await expect(page.getByText(/Development (connections|device actions|reply|provider)/)).toHaveCount(0);
-}
-/** Aborts and records every request that leaves the preview server (test-owned hosts excepted). */
-async function fenceNetwork(page: Page, allowed: string[] = []) {
-  const foreign: string[] = [];
-  await page.route('**/*', route => {
-    const url = new URL(route.request().url());
-    // Closed public-imagery fixture: never allow a real external request or coordinate leak.
-    if(route.request().method()==='GET'&&url.href==='https://tiles.openfreemap.org/styles/bright')return route.fulfill({json:{version:8,sources:{},layers:[{id:'background',type:'background',paint:{'background-color':'#e7ebed'}}]}});
-    if (url.hostname === '127.0.0.1' || ['data:', 'blob:'].includes(url.protocol) || allowed.includes(url.hostname)) return route.fallback();
-    foreign.push(`${route.request().method()} ${url.origin}${url.pathname}`); return route.abort();
-  });
-  return foreign;
-}
-
 /** Production Android as the renderer sees it: funded Cloud account, packaged resident agent that
  * keeps its conversations across a page reload, an intercepted Clock handoff and a native browser
  * whose pages are synthetic (no WebView loads anything). `voice` adds the native recorder whose

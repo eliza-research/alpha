@@ -372,14 +372,14 @@ export const button = (page: Page, name: string) => name==='Inbox'
   ? page.getByRole('button', { name, exact: true }).and(page.locator('[data-mobile-shell-tile]'))
   : page.getByRole('button', { name, exact: true });
 
-/** Aborts and records every request that leaves the preview server. */
-export async function fenceNetwork(page: Page) {
+/** Aborts and records every request that leaves the preview server (test-owned `allowed` hosts excepted). */
+export async function fenceNetwork(page: Page, allowed: string[] = []) {
   const foreign: string[] = [];
   await page.route('**/*', route => {
     const url = new URL(route.request().url());
     // Closed public-imagery fixture: never allow a real external request or coordinate leak.
     if(route.request().method()==='GET'&&url.href==='https://tiles.openfreemap.org/styles/bright')return route.fulfill({json:{version:8,sources:{},layers:[{id:'background',type:'background',paint:{'background-color':'#e7ebed'}}]}});
-    if (url.hostname === '127.0.0.1' || ['data:', 'blob:'].includes(url.protocol)) return route.fallback();
+    if (url.hostname === '127.0.0.1' || ['data:', 'blob:'].includes(url.protocol) || allowed.includes(url.hostname)) return route.fallback();
     foreign.push(`${route.request().method()} ${url.origin}${url.pathname}`); return route.abort();
   });
   return foreign;
