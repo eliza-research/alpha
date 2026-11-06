@@ -27,3 +27,8 @@ Run: `design/view-refresh-2026-11/tla/check.sh <tla2tools.jar>` (writes <area>/r
 notes-view models folder names (`Names`, `RenameFolder`, `FolderNamesUnique`,
 `RenameKeepsMembership`). Design uses two names, so a rename needs a freed name; `Rename`
 checks renames with three names and smaller recorder bounds (MaxSeg 1, Budget 1).
+
+Mainline port (2026-11-06, branch claude/vrm-notes): `notes-view/Spec.tla` gained a header note
+only (agent notes save the recorder's transcript without audio; a deleted folder's stored
+reference in agent notes reads as None). No transition changed. Design re-run with TLC
+(`-workers 4`): no error, 34,306,860 states generated, 4,199,034 distinct (unchanged).

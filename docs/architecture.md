@@ -525,10 +525,17 @@ Both Notes sources render through Alpha's own Notes view. Agent notes use the sh
 `plugin-notes/src/client` controller and editor (canonical records, `expectedRevision`, restore-only
 Trash, review and reload) bound by `canonical-notes-ui.ts`; the device-local Older notes collection
 keeps its own store, Trash and recorder. The shared `NotesWorkspace` component is not rendered.
-Agent Notes keep the template's header, waveform and + (owner decision, 2026-10-30): the waveform
-(`notes-dictate-new`) opens a new note and runs the editor's dictation into it, speech to text through
-the platform's recognizer with no audio kept, saved like typing after +. Their Trash (`notes-trash`) and
-Previous notes (`notes-source-legacy`) are quiet text actions under the list, not filled pills.
+Both sources share the view refresh layout (design/view-refresh-2026-11/PLAN.md section 3): a header
+with Record (`notes-record`) and New note only, a folder chip row (All, folders, +, and Recently deleted
+while it has items), a one-column list with a Pinned section, and Back · Checklist · Share · ⋯ on a note.
+Folders are one device slot (`notes-folders:v1:device`, `runtime/notes-folders.ts`); a note names its
+folder by `folderId` (agent notes in their format data), and a reference to a deleted folder reads as no
+folder. Record opens the unlimited Notes recorder (`prototype/note-recorder.ts` over
+`AlphaNoteRecorder`, segments transcribed while recording). In Older notes Done saves the audio and
+transcript; in agent notes it saves the transcript and length only, since agent notes keep no audio
+(owner decision, 2026-10-30). Record replaces agent notes' earlier dictate-new waveform. Agent notes'
+restore-only Trash is their Recently deleted folder; Older notes keep 30 days (decision N2) with Delete
+now and Empty. Previous notes (`notes-source-legacy`) stays a quiet text action under the list.
 Notes ports are shared too: `plugin-notes/src/client` owns the document port and its browser
 implementation (`note-documents.ts`; Alpha's `runtime/browser-note-documents.ts` only registers
 it as `AlphaNoteDocuments` with the `Alpha scan` PDF file name), the deletion-receipt rule that
