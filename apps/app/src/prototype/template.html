@@ -786,12 +786,6 @@
   <sc-if value="{{calendar.reminderDeleteUnknown}}"><div role="status" style="padding:12px;color:var(--mut)">{{calendar.reminderDeleteUnknown}} reminder action(s) await confirmation.<button class="tap" aria-label="Check reminder action status" onClick="{{calendar.checkReminderDeletions}}" style="padding:8px;color:var(--acc)">Check action status</button></div></sc-if>
 
   <sc-if value="{{calendar.editDraftAvailable}}"><button aria-label="Resume unsaved calendar edits" onClick="{{calendar.resumeEditDraft}}" style="margin:0 16px 8px;padding:12px;min-height:44px;border-radius:12px;background:var(--s2);color:var(--fg)">Resume unsaved changes</button><button aria-label="Discard retained calendar edits" onClick="{{calendar.discardEditDraft}}" style="margin:0 16px 8px;padding:12px;min-height:44px;border-radius:12px;background:var(--s2);color:var(--fg)">Discard retained edits</button></sc-if>
-  <sc-if value="{{calendar.formDraftAvailable}}">
-    <div role="group" aria-label="Unsaved event draft" style="display:flex;gap:8px;flex-wrap:wrap;margin:0 16px 8px">
-      <button class="tap" aria-label="Resume event draft" disabled="{{calendar.formDraftBusy}}" onClick="{{calendar.resumeFormDraft}}" style="min-height:44px;padding:12px;border-radius:12px;background:var(--s2);color:var(--fg)">Resume draft</button>
-      <button class="tap" aria-label="Discard event draft" disabled="{{calendar.formDraftBusy}}" onClick="{{calendar.discardFormDraft}}" style="min-height:44px;padding:12px;border-radius:12px;background:var(--s2);color:var(--fg)">Discard draft</button>
-    </div>
-  </sc-if>
   <sc-if value="{{calendar.formDraftListError}}"><div role="status" style="padding:12px 24px">Form storage needs review. Current edits are retained.<button onClick="{{calendar.retryFormDraft}}" style="padding:12px">Retry form storage</button><button onClick="{{calendar.recoverFormDraft}}" style="padding:12px">Recover saved form</button></div></sc-if>
   <sc-if value="{{calendar.editDraftListError}}"><div role="status" style="padding:12px 24px">Form storage needs review. Current edits are retained.<button onClick="{{calendar.retryEditDraft}}" style="padding:12px">Retry edit storage</button><button onClick="{{calendar.recoverEditDraft}}" style="padding:12px">Recover saved edits</button></div></sc-if>
   <sc-if value="{{calendar.browserRecovery}}"><button aria-label="Recover browser calendar" onClick="{{calendar.openBrowserRecovery}}" style="margin:0 16px 8px;padding:12px;border-radius:12px;background:var(--s2);color:var(--fg)">Calendar recovery</button></sc-if>
