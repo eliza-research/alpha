@@ -15,7 +15,7 @@ navigation, process death and full storage on hardware remain device acceptance 
 | `test/browser/accessibility-audit.spec.ts` | `npm run test:browser` | Each rule fires on a seeded defect and stays quiet on corrected markup |
 | `test/browser/accessibility-resilience.spec.ts` | `npm run test:browser` | Behaviour behind the defects the sweep found |
 | `test/browser/accessibility-lifecycle.spec.ts` | `npm run test:browser` | Every retained view through repeated HOME (with menus, sheets and dialogs open), rotation, a reload, camera permission withdrawn while away and the network going away mid-session, at 100% and 200% text: focus, names, reading order and the composer draft (AP-15) |
-| `test/browser/view-focus.spec.ts` | `npm run test:browser` | Focus moved by a screen change, HOME, All apps or a rotation lands on the new screen's name; focus somewhere real stays |
+| `test/browser/view-focus.spec.ts` | `npm run test:browser` | Focus moved by a screen change, HOME, Apps or a rotation lands on the new screen's name; focus somewhere real stays |
 | `test/browser/accessibility-sign-in.production.spec.ts` | `npm run test:browser:production` | The required Eliza Cloud sign-in page of a signed-out production phone (P-43) at 100% and 200% text and in landscape; nothing is entered or sent |
 | `test/browser/large-text-overlap.spec.ts` | `npm run test:browser` | Home, the app library and the tile grids at 100%, 150% and 200% text, measured from bounding boxes (round 8, after the round-7 emulator run showed the Home card title printed over its neighbours at 200% font) |
 | `test/browser/notifications-handle.spec.ts` | `npm run test:browser` | A pull on launcher's empty Home that asks for Android's shade, and the gesture zones ([gesture zones](gesture-zones.md)) |
@@ -87,7 +87,7 @@ browser page stayed in the order and Tab sequence under the address suggestions 
 it (it is now inert while the address is edited); and HOME left the browser build's alarm
 settings dialog open over Home.
 
-Opening an app, HOME, Back and All apps retire the layer that held focus, and the browser
+Opening an app, HOME, Back and Apps retire the layer that held focus, and the browser
 then drops focus to the page body, where TalkBack (which follows input focus in WebView)
 announces nothing. `runtime/view-focus.ts` moves focus a screen change dropped to what is
 now in front: an inline modal surface by its label, else the app's visible title, its
@@ -199,7 +199,7 @@ text scale, so its last line is no longer cut by the clamp at 200%.
   dialogs and flows that need a permission are covered by their own accessibility specs. These
   states run on the development server only, so the flag-off production sweep does not include
   them. The fixture lock screen, the `photos-empty` viewer state and the launcher presentation
-  of Home, All apps, the conversation and every retained app view are swept at 100% and 200%,
+  of Home, Apps, the conversation and every retained app view are swept at 100% and 200%,
   and the launcher states at 300% too (`FIXTURE_STATES` and `LAUNCHER_STATES` in
   `accessibility-states.ts`).
 - The dock rules judge the composer bar, the pill and the resting sheet. Only Home and the

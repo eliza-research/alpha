@@ -209,6 +209,9 @@ test('Home edit mode removes and rearranges icons, "+" restores hidden views, an
   // Apps is not offered while editing; each icon is named for its removal.
   await expect(page.getByRole('button', { name: 'Apps', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Remove Calendar from Home', exact: true })).toHaveCount(1);
+  // The "−" sits on the icon's corner and icons wiggle (Alpha's edit-mode stylesheet is applied).
+  expect(await page.locator('[data-alpha-home-key="alpha:calendar"] [data-alpha-home-remove]').evaluate(el => getComputedStyle(el).position)).toBe('absolute');
+  expect(await page.locator('[data-alpha-home-key="alpha:calendar"]').evaluate(el => getComputedStyle(el).animationName)).toBe('alpha-wiggle');
   // A tap on an icon itself opens nothing and removes nothing; its "−" removes it.
   await page.getByRole('button', { name: 'Remove Calendar from Home', exact: true }).click();
   await expect.poll(() => homeOrder(page)).toEqual(start);
