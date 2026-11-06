@@ -3,7 +3,6 @@ package ai.elizaresearch.alphaphone;
 import android.content.Context;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
-import com.getcapacitor.JSArray;
 import java.io.File;
 import java.io.FileOutputStream;
 import org.json.JSONObject;
@@ -24,7 +23,7 @@ public class StorageCategoriesInstrumentedTest {
  @Test public void everyCategoryIdIsAnswered()throws Exception{
   Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();
   StorageBrowser browser=new StorageBrowser(tempRoot(context));
-  for(String id:StorageCatalog.CATEGORY_IDS)assertNotNull(id,StorageCatalog.category(context.getContentResolver(),browser,id));
+  for(String id:StorageCatalog.CATEGORY_IDS){JSONObject out=StorageCatalog.category(context.getContentResolver(),browser,id);assertNotNull(id,out.getJSONArray("entries"));assertTrue(id,out.getInt("count")>=out.getJSONArray("entries").length());assertTrue(id,out.has("truncated"));}
   try{StorageCatalog.category(context.getContentResolver(),browser,"recent");fail("an unknown category is refused");}catch(IllegalArgumentException expected){}
  }
 
@@ -32,13 +31,15 @@ public class StorageCategoriesInstrumentedTest {
   Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();
   File root=tempRoot(context),download=new File(root,StorageCatalog.DOWNLOAD_FOLDER);
   StorageBrowser browser=new StorageBrowser(root);
-  assertEquals("no Download folder is an empty category",0,StorageCatalog.category(context.getContentResolver(),browser,"downloads").length());
+  assertEquals("no Download folder is an empty category",0,StorageCatalog.category(context.getContentResolver(),browser,"downloads").getInt("count"));
   assertTrue(download.mkdirs());
   File older=new File(download,"lease.pdf"),newer=new File(download,"notes.txt");
   file(older,"pdf");file(newer,"text");file(new File(download,".hidden"),"x");
   assertTrue(new File(download,"Folder").mkdir());file(new File(download,"Folder/inner.txt"),"x");
   assertTrue(older.setLastModified(1_700_000_000_000L));assertTrue(newer.setLastModified(1_800_000_000_000L));
-  JSArray rows=StorageCatalog.category(context.getContentResolver(),browser,"downloads");
+  JSONObject category=StorageCatalog.category(context.getContentResolver(),browser,"downloads");
+  assertEquals(2,category.getInt("count"));assertFalse(category.getBoolean("truncated"));
+  org.json.JSONArray rows=category.getJSONArray("entries");
   assertEquals("only files directly in Download/, no folders or hidden entries",2,rows.length());
   JSONObject first=rows.getJSONObject(0),second=rows.getJSONObject(1);
   assertEquals("Download/notes.txt",first.getString("path"));

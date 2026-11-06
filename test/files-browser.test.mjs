@@ -168,13 +168,27 @@ test('Files shows no picker tiles, search box, Recents or instruction subtitles'
 test('native StorageBrowser on a host JVM: clashes keep both, trash restores to origin, retention, no escape',{skip:jsonJarSkip},()=>{
  assert.match(runJvm([nativeSource('StorageBrowser.java'),fixture('android-stubs/android/webkit/MimeTypeMap.java'),fixture('StorageBrowserTest.java')],'ai.elizaresearch.alphaphone.StorageBrowserTest',{json:true}),/^PASS storage browser/);
 });
+test('category counts and folder groups cover the whole category, not only the listed newest rows',()=>{
+ const row=(path,modified)=>({path,name:storage.baseName(path),directory:false,mimeType:'image/jpeg',size:1,modified});
+ const listed=[row('DCIM/Camera/a.jpg',3),row('DCIM/Camera/b.jpg',2)];
+ // Android lists the newest rows and counts every file per folder, including folders with no listed row.
+ const counted=[{folder:'DCIM/Camera',count:1850,latest:listed[0]},{folder:'Pictures/Old',count:150,latest:row('Pictures/Old/z.jpg',1)}];
+ assert.deepEqual(storage.groupByFolder(listed,counted).map(g=>[g.name,g.count]),[['Camera',1850],['Old',150]]);
+ assert.deepEqual(storage.groupByFolder(listed).map(g=>[g.name,g.count]),[['Camera',2]],'without counts the listed rows are grouped');
+ const adapter=readFileSync('apps/app/src/prototype/files-browser-adapter.ts','utf8');
+ assert.match(adapter,/next\[id\] = value\.count \?\? value\.entries\?\.length \?\? 0/);
+ assert.match(adapter,/groupByFolder\(entries, categoryFolders\)/);
+ const catalog=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/StorageCatalog.java','utf8');
+ assert.match(catalog,/while\(cursor\.moveToNext\(\)&&\(tally!=null\|\|out\.length\(\)<limit\)\)/,'a category reads every row to count it');
+ assert.match(catalog,/out\.put\("count",tally\.count\);out\.put\("truncated",tally\.count>entries\.length\(\)\)/);
+});
 test('every Browse category id has a native answer on Android; Downloads is the Download folder',()=>{
  const catalog=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/StorageCatalog.java','utf8');
  const ids=JSON.parse('['+catalog.match(/static final String\[\] CATEGORY_IDS=\{([^}]*)\};/)[1]+']');
  assert.deepEqual(ids,storage.CATEGORIES.map(c=>c.id),'StorageCatalog.CATEGORY_IDS names exactly the renderer\'s categories');
  assert.equal(catalog.match(/static final String DOWNLOAD_FOLDER="([^"]+)";/)[1],storage.DOWNLOAD_FOLDER);
  assert.match(catalog,/if\(!"downloads"\.equals\(category\)\)return category\(resolver,category\);/);
- assert.match(catalog,/browser\.files\(DOWNLOAD_FOLDER,CATEGORY_MAX\)/);
+ assert.match(catalog,/browser\.files\(DOWNLOAD_FOLDER,Integer\.MAX_VALUE\)/);
  for(const id of ids.filter(id=>id!=='downloads'))assert.ok(catalog.includes(`"${id}"`),`MediaStore category ${id}`);
  const plugin=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaFilesPlugin.java','utf8');
  assert.match(plugin,/StorageCatalog\.category\(resolver\(\),primaryBrowser\(\),call\.getString\("category",""\)\)/);

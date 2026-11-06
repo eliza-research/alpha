@@ -69,21 +69,31 @@ final class StorageCatalog {
  }
  private static final String[] COLUMNS={MediaStore.MediaColumns.RELATIVE_PATH,MediaStore.MediaColumns.DISPLAY_NAME,MediaStore.MediaColumns.MIME_TYPE,MediaStore.MediaColumns.SIZE,MediaStore.MediaColumns.DATE_MODIFIED};
  /** One Browse category on the primary volume (`browser`): the files directly in Download/, or a
-  * MediaStore query. A missing Download folder is an empty category. */
- static JSArray category(ContentResolver resolver,StorageBrowser browser,String category)throws java.io.IOException{
+  * MediaStore query. A missing Download folder is an empty category. `entries` holds at most
+  * CATEGORY_MAX rows, newest first; `count` is every file in the category and `truncated` says
+  * rows were left out; `folders` groups every file by its folder (count and newest row). */
+ static JSObject category(ContentResolver resolver,StorageBrowser browser,String category)throws java.io.IOException{
   if(!"downloads".equals(category))return category(resolver,category);
-  JSArray out=new JSArray();
-  for(StorageBrowser.Row r:browser.files(DOWNLOAD_FOLDER,CATEGORY_MAX)){
-   JSObject row=new JSObject();row.put("path",r.path);row.put("name",r.name);row.put("directory",false);row.put("mimeType",r.mime);row.put("size",r.size);row.put("modified",r.modified);out.put(row);}
+  JSArray entries=new JSArray();List<StorageBrowser.Row> files=browser.files(DOWNLOAD_FOLDER,Integer.MAX_VALUE);
+  for(StorageBrowser.Row r:files){if(entries.length()>=CATEGORY_MAX)break;
+   JSObject row=new JSObject();row.put("path",r.path);row.put("name",r.name);row.put("directory",false);row.put("mimeType",r.mime);row.put("size",r.size);row.put("modified",r.modified);entries.put(row);}
+  JSObject out=new JSObject();out.put("entries",entries);out.put("count",files.size());out.put("truncated",files.size()>entries.length());
   return out;
  }
  /** One MediaStore category over the primary volume, newest first. Trash and pending rows are excluded by MediaStore. */
- static JSArray category(ContentResolver resolver,String category){
+ static JSObject category(ContentResolver resolver,String category){
   String selection=null;String[] args=null;
   if("documents".equals(category)){StringBuilder in=new StringBuilder();for(int i=0;i<DOCUMENT_TYPES.length;i++)in.append(i==0?"?":",?");selection=MediaStore.MediaColumns.MIME_TYPE+" IN ("+in+")";args=DOCUMENT_TYPES;}
   else if(!"images".equals(category)&&!"videos".equals(category)&&!"audio".equals(category))throw new IllegalArgumentException("Unknown category");
-  return rows(resolver,collection(category),selection,args,CATEGORY_MAX);
+  Tally tally=new Tally();JSArray entries=rows(resolver,collection(category),selection,args,CATEGORY_MAX,tally);
+  JSObject out=new JSObject();out.put("entries",entries);out.put("count",tally.count);out.put("truncated",tally.count>entries.length());
+  JSArray folders=new JSArray();
+  for(java.util.Map.Entry<String,Object[]> e:tally.folders.entrySet()){JSObject f=new JSObject();f.put("folder",e.getKey());f.put("count",(int)e.getValue()[0]);f.put("latest",e.getValue()[1]);folders.put(f);}
+  out.put("folders",folders);
+  return out;
  }
+ /** Every visible row of a category, counted, and grouped by folder (newest row first seen). */
+ static final class Tally{int count;final java.util.LinkedHashMap<String,Object[]> folders=new java.util.LinkedHashMap<>();}
  /** Candidates for the agent's read-only filter; the renderer applies the exact filter rules. */
  static JSArray query(ContentResolver resolver,String text,String mimePrefix,boolean documents,String folder,long from,long to){
   List<String> clauses=new ArrayList<>(),args=new ArrayList<>();
@@ -95,20 +105,26 @@ final class StorageCatalog {
   if(from>0){clauses.add(MediaStore.MediaColumns.DATE_MODIFIED+" >= ?");args.add(String.valueOf(from/1000));}
   if(to>0){clauses.add(MediaStore.MediaColumns.DATE_MODIFIED+" <= ?");args.add(String.valueOf(to/1000));}
   clauses.add(MediaStore.MediaColumns.MIME_TYPE+" IS NOT NULL");
-  return rows(resolver,MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY),String.join(" AND ",clauses),args.toArray(new String[0]),QUERY_MAX);
+  return rows(resolver,MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY),String.join(" AND ",clauses),args.toArray(new String[0]),QUERY_MAX,null);
  }
- private static JSArray rows(ContentResolver resolver,Uri uri,String selection,String[] args,int limit){
+ /** Rows newest first, at most `limit`; with a tally every row is read so counts are not capped. */
+ private static JSArray rows(ContentResolver resolver,Uri uri,String selection,String[] args,int limit,Tally tally){
   JSArray out=new JSArray();
   try(Cursor cursor=resolver.query(uri,COLUMNS,selection,args,MediaStore.MediaColumns.DATE_MODIFIED+" DESC")){
    if(cursor==null)return out;
-   while(cursor.moveToNext()&&out.length()<limit){
+   while(cursor.moveToNext()&&(tally!=null||out.length()<limit)){
     String relative=cursor.getString(0),name=cursor.getString(1);if(relative==null||name==null)continue;
     String folder=relative.replaceAll("/+$","");
     // Hidden folders (the trash included) are not shown in categories.
     if(name.startsWith(".")||("/"+folder).contains("/."))continue;
+    Object[] group=null;
+    if(tally!=null){tally.count++;group=tally.folders.get(folder);if(group!=null)group[0]=(int)group[0]+1;}
+    boolean listed=out.length()<limit,first=tally!=null&&group==null;
+    if(!listed&&!first)continue;
     JSObject row=new JSObject();row.put("path",folder.isEmpty()?name:folder+"/"+name);row.put("name",name);row.put("directory",false);
     row.put("mimeType",cursor.isNull(2)?"application/octet-stream":cursor.getString(2));row.put("size",cursor.isNull(3)?0:cursor.getLong(3));row.put("modified",cursor.isNull(4)?0:cursor.getLong(4)*1000);
-    out.put(row);
+    if(listed)out.put(row);
+    if(first)tally.folders.put(folder,new Object[]{1,row});
    }
   }
   return out;

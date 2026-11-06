@@ -4,7 +4,7 @@ import {DailyApps, type NativeResult} from '../daily';
 import {
   CATEGORIES, DOWNLOAD_FOLDER, SORT_LABELS, baseName, breadcrumbs, filterLabel, filterMatches, formatFree, formatSize, groupByFolder,
   parentOf, sortEntries, trashDaysLeft, validateFilesFilter,
-  type FilesCategory, type FilesFilter, type SortMode, type StorageEntry, type StorageVolume, type TrashEntry,
+  type CategoryFolder, type FilesCategory, type FilesFilter, type SortMode, type StorageEntry, type StorageVolume, type TrashEntry,
 } from '../runtime/files-storage';
 import {filesFilterOf, registerFilesAgent, type FilesAgentOperation} from '../runtime/files-agent-contract';
 
@@ -23,7 +23,8 @@ const storage = registerPlugin<{
   storageState(): Promise<Result & {volumes?: StorageVolume[]}>;
   storageRequestAccess(): Promise<Result>;
   storageList(input: {path: string; volume?: string}): Promise<Result & {entries?: StorageEntry[]; truncated?: boolean}>;
-  storageCategory(input: {category: FilesCategory}): Promise<Result & {entries?: StorageEntry[]}>;
+  /** `count` and `folders` cover the whole category; `entries` may be its newest part (`truncated`). */
+  storageCategory(input: {category: FilesCategory}): Promise<Result & {entries?: StorageEntry[]; count?: number; truncated?: boolean; folders?: CategoryFolder[]}>;
   storageQuery(input: {text?: string; mimePrefix?: string; documents?: boolean; folders?: boolean; folder?: string; from?: number; to?: number}): Promise<Result & {entries?: StorageEntry[]}>;
   storageTransfer(input: {paths: string[]; dest: string; copy: boolean; volume?: string}): Promise<Result & {outcomes?: Outcome[]}>;
   storageRename(input: {path: string; name: string; volume?: string}): Promise<Result & {path?: string}>;
@@ -77,7 +78,7 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
   const module = views.files, render = module.render, back = module.back, leave = module.onLeave;
   let api: Bag | undefined, place: Place = {kind: 'browse'};
   let access = 'unknown', volumes: StorageVolume[] = [], counts: Partial<Record<FilesCategory, number>> = {}, trashCount = 0;
-  let entries: StorageEntry[] = [], trashItems: TrashRow[] = [], loaded = false, busy = false, error = '';
+  let entries: StorageEntry[] = [], categoryFolders: CategoryFolder[] | undefined, trashItems: TrashRow[] = [], loaded = false, busy = false, error = '';
   let selection: Set<string> | null = null, filter: FilesFilter | null = null, filterRows: StorageEntry[] = [];
   let dialog: Dialog | undefined, dialogTrigger: HTMLElement | null = null, opened: {path: string; volume?: string; selectionId?: string} | undefined;
   let generation = 0, filterGeneration = 0, revision = 0, watching = '', active = false, pressTimer: ReturnType<typeof setTimeout> | undefined, pressed = '';
@@ -111,7 +112,7 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
   async function loadCounts(ticket: number) {
     if (access !== 'granted') return;
     const next: Partial<Record<FilesCategory, number>> = {};
-    await Promise.all(CATEGORIES.map(async ({id}) => { try { const value = await storage.storageCategory({category: id}); if (value.status === 'ready') next[id] = value.entries?.length ?? 0; } catch { /* Count stays blank. */ } }));
+    await Promise.all(CATEGORIES.map(async ({id}) => { try { const value = await storage.storageCategory({category: id}); if (value.status === 'ready') next[id] = value.count ?? value.entries?.length ?? 0; } catch { /* Count stays blank. */ } }));
     let trash = 0;
     const rows = await trashAcross(); if (rows) trash = rows.length;
     if (ticket === generation) { counts = next; trashCount = trash; }
@@ -130,7 +131,7 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
         const value = at.kind === 'category' ? await storage.storageCategory({category: at.category}) : await storage.storageList({path: at.path, ...onVolume(at.volume)});
         if (ticket !== generation) return;
         if (value.status === 'missing' && at.kind === 'folder') { up(); return; }
-        if (!failed(value)) { entries = value.entries || []; error = ''; } else entries = [];
+        if (!failed(value)) { entries = value.entries || []; categoryFolders = 'folders' in value && Array.isArray(value.folders) ? value.folders : undefined; error = ''; } else { entries = []; categoryFolders = undefined; }
       }
       if (filter) await runFilter(filter);
       if (selection) { const listed = new Set(entries.map(e => e.path)); selection = new Set([...selection].filter(path => listed.has(path))); }
@@ -165,7 +166,7 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
   /** Back from a folder walks up to where the folder was entered (Browse or a category). */
   let base: {from: Place; path: string; volume?: string} = {from: {kind: 'browse'}, path: ''};
   function show(next: Place) {
-    place = next; selection = null; dialog = undefined; entries = []; loaded = false; error = '';
+    place = next; selection = null; dialog = undefined; entries = []; categoryFolders = undefined; loaded = false; error = '';
     api?.set({menu: false, folder: next.kind === 'browse' ? null : '__files_browser'});
     void reload();
   }
@@ -393,7 +394,7 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
           tap: (event: Event) => { if (busy) return; dialogTrigger = event?.currentTarget instanceof HTMLElement ? event.currentTarget : null; dialog = {kind: 'trashItem', item, confirmDelete: false}; repaint(); },
         }));
       } else if (at.kind === 'category' && (at.category === 'images' || at.category === 'videos')) {
-        items = groupByFolder(entries).map(group => ({
+        items = groupByFolder(entries, categoryFolders).map(group => ({
           id: group.folder, name: group.name, sub: group.folder || 'Internal storage', count: String(group.count), d: iconFor(group.latest), isFolder: true, isFile: false,
           selOn: false, selOff: false, rowCss: '', label: 'Open ' + group.name, down: () => {}, up: () => {}, cancel: () => {}, context: () => {},
           tap: () => go({kind: 'folder', path: group.folder}),
