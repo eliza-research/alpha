@@ -154,3 +154,18 @@ test('unsupported peers retain other context and the actual local protocol seria
  await local.send('conversation',authored,{metadata:{clientDevice:{context:phoneContextMessage(authored,without).context}}});
  assert.equal(wire.metadata.clientDevice.context.calendarDay,undefined);assert.deepEqual(wire.metadata.clientDevice.context.selectedObject,original.selectedObject);
 });
+
+test('early-morning timeline hours use the device 24-hour format of the base rows',async()=>{
+ const [{presentCalendarIntervals},{setLocalePreferences,formatHour}]=await loadBrowserModule(['apps/app/src/prototype/calendar-interval-presentation.ts','apps/app/src/prototype/locale-time.ts']);
+ setLocalePreferences({locale:'en-GB',hourCycle:'h23'});
+ try{
+  const now=new Date(2026,9,29,9,0).getTime();
+  const at=(h,m)=>new Date(2026,9,29,h,m).getTime();
+  const event={id:'e1',title:'Early run',calendarInterval:true,allDay:false,off:0,calendarIntervalData:{begin:at(5,30),end:at(6,15)}};
+  const base=()=>({hours:Array.from({length:17},(_,i)=>({top:i*56+8,lt:i*56,label:formatHour(7+i)})),nowTop:0,week:[],mdays:[],events:[]});
+  const out=presentCalendarIntervals(()=>({events:[]}),{events:[event],day:0},{now,set(){}},base(),true);
+  const labels=out.hours.map(h=>h.label);
+  assert.deepEqual(labels.slice(0,3),['05','06','07']);
+  assert.ok(labels.every(label=>/^\d{2}$/.test(label)),labels.join(','));
+ }finally{setLocalePreferences({});}
+});
