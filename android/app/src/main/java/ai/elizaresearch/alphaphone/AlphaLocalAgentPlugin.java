@@ -447,7 +447,10 @@ public final class AlphaLocalAgentPlugin extends Plugin {
   catch(java.io.FileNotFoundException absent) { /* Older payloads do not contain a workflow worker. */ }
   if(workerIndex!=null){
    String root=env.get("AGENT_ROOT");if(root==null){workerIndex.close();throw new java.io.IOException("Agent resource directory unavailable");}
-   java.io.File worker=WorkflowWorkerAssets.install(new java.io.File(root),workerIndex,path->context.getAssets().open("agent/workflow-worker/"+path));
+   String packageStamp;
+   try{packageStamp=BuildConfig.VERSION_CODE+"/"+context.getPackageManager().getPackageInfo(context.getPackageName(),0).lastUpdateTime;}
+   catch(android.content.pm.PackageManager.NameNotFoundException unknown){packageStamp=null;}
+   java.io.File worker=WorkflowWorkerAssets.install(new java.io.File(root),workerIndex,path->context.getAssets().open("agent/workflow-worker/"+path),packageStamp);
    WorkflowWorkerAssets.configureEnvironment(worker,env);
    nativeHostResources=worker;
   }
