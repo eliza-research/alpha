@@ -125,7 +125,8 @@ export interface AssistantPorts {
   shouldRespond?(text: string, context: { recentAgentReply: string; replyAgeMs: number; agentSpeaking: boolean }): boolean;
   /** Turn signal metadata for the agent (upstream buildVoiceTurnSignal). */
   turnSignal?(text: string): unknown;
-  send(input: { turnId: string; text: string; voiceTurnSignal: unknown; signal: AbortSignal }): Promise<AssistantReply>;
+  /** `onText` receives the reply text accumulated so far while it streams, when the transport streams. */
+  send(input: { turnId: string; text: string; voiceTurnSignal: unknown; signal: AbortSignal; onText?: (text: string) => void }): Promise<AssistantReply>;
   /** Text the speaker can say ('' to stay silent). */
   speakable?(text: string): string;
   /** Plays one sentence; settles after its playback ended (or rejects when aborted/failed). */
@@ -152,7 +153,9 @@ export interface AssistantTiming {
  * The endpoint deadline covers the IPC round trip and one scorer pass; short gap plus deadline
  * (900 ms) stays well under the long gap, which submits regardless.
  */
-export const ASSISTANT_TIMING_DEFAULTS: AssistantTiming = Object.freeze({ shortGapMs: 300, longGapMs: 1200, endpointDeadlineMs: 600, bargeInConfirmMs: 700 });
+// With hosted text the resident has no local scorer, so the long gap usually decides; 800 ms after the
+// VAD speech-end (itself about 0.5 s after the last word) keeps replies prompt without cutting short pauses.
+export const ASSISTANT_TIMING_DEFAULTS: AssistantTiming = Object.freeze({ shortGapMs: 250, longGapMs: 800, endpointDeadlineMs: 500, bargeInConfirmMs: 700 });
 export interface AssistantClock {
   now(): number;
   setTimer(callback: () => void, ms: number): unknown;
@@ -557,6 +560,25 @@ export class VoiceAssistantSession {
     this.inflight = run.catch(() => {});
   }
 
+  /** Plays one sentence of a reply and counts it as heard once its playback ended. */
+  private async playSentence(session: number, turn: number, response: Response, sentence: string, guard: () => void) {
+    guard();
+    const playback = this.ports.speak({
+      turnId: response.turnId, replyId: response.replyId ?? '', text: sentence, signal: response.controller.signal,
+      onStarted: () => {
+        if (!this.owned(session, turn, response) || response.started) return;
+        response.started = true;
+        this.ports.onTurn?.('first-audio', response.turnId);
+        this.publish({ phase: 'speaking', replyId: response.replyId ?? '' });
+      },
+    });
+    this.speech.add(playback);
+    void playback.catch(() => {}).finally(() => this.speech.delete(playback));
+    await playback;
+    guard();
+    response.played++;
+  }
+
   private owned(session: number, turn: number, response: Response) {
     return this.current(session) && this.turn === turn && this.response === response && !response.controller.signal.aborted;
   }
@@ -567,7 +589,26 @@ export class VoiceAssistantSession {
       // One request at a time: an interrupted request settles before the next turn is sent.
       await previous;
       guard();
-      let reply = await this.ports.send({ turnId: response.turnId, text, voiceTurnSignal: this.ports.turnSignal?.(text), signal: response.controller.signal });
+      // Speak each sentence as soon as the streamed reply completes it, one at a time, so the first
+      // sentence plays while the rest is still being generated.
+      const queued: string[] = [];
+      let chain: Promise<void> = Promise.resolve();
+      let failure: unknown;
+      const speakable = (value: string) => this.ports.speakable ? this.ports.speakable(value) : value;
+      const enqueue = (sentence: string) => {
+        queued.push(sentence);
+        chain = chain.then(() => failure ? undefined : this.playSentence(session, turn, response, sentence, guard)).catch(error => { failure ??= error; });
+      };
+      const onText = (partial: string) => {
+        if (!this.owned(session, turn, response) || typeof partial !== 'string') return;
+        const parts = splitSpokenSentences(speakable(partial));
+        // The last piece may still be growing; only the ones before it are complete.
+        for (let i = queued.length; i < parts.length - 1; i++) {
+          if (queued.length && !parts.slice(0, queued.length).every((part, index) => part === queued[index])) return;
+          enqueue(parts[i]);
+        }
+      };
+      let reply = await this.ports.send({ turnId: response.turnId, text, voiceTurnSignal: this.ports.turnSignal?.(text), signal: response.controller.signal, onText });
       guard();
       if (!reply || reply.requestId !== response.turnId || reply.conversationId !== this.ports.conversationId || !reply.userMessageId?.trim() || !reply.assistantMessageId?.trim() || reply.interrupted || typeof reply.text !== 'string')
         throw new VoiceAssistantError('reply', 'The voice reply was not confirmed for this turn.');
@@ -595,26 +636,15 @@ export class VoiceAssistantSession {
       // Proposals need explicit review in the conversation: voice never approves them.
       if (reply.complete !== true) throw new VoiceAssistantError('reply', 'The voice reply was not confirmed for this turn.');
       response.replyId = reply.assistantMessageId;
-      const spoken = this.ports.speakable ? this.ports.speakable(reply.text) : reply.text;
-      response.sentences = splitSpokenSentences(spoken);
+      const final = splitSpokenSentences(speakable(reply.text));
+      // Streamed sentences already queued stay; the confirmed reply supplies the rest.
+      const prefix = queued.length <= final.length && queued.every((part, index) => part === final[index]);
+      response.sentences = prefix ? final : [...queued, ...final.slice(queued.length)];
+      for (const sentence of response.sentences.slice(queued.length)) enqueue(sentence);
+      await chain;
+      if (failure) throw failure;
+      guard();
       if (!response.sentences.length) { this.finishResponse(response); return; }
-      for (const sentence of response.sentences) {
-        guard();
-        const playback = this.ports.speak({
-          turnId: response.turnId, replyId: reply.assistantMessageId, text: sentence, signal: response.controller.signal,
-          onStarted: () => {
-            if (!this.owned(session, turn, response) || response.started) return;
-            response.started = true;
-            this.ports.onTurn?.('first-audio', response.turnId);
-            this.publish({ phase: 'speaking', replyId: reply.assistantMessageId });
-          },
-        });
-        this.speech.add(playback);
-        void playback.catch(() => {}).finally(() => this.speech.delete(playback));
-        await playback;
-        guard();
-        response.played++;
-      }
       this.lastSpoken = { text: response.sentences.join(' '), at: this.clock.now() };
       this.ports.onHeard?.({ turnId: response.turnId, replyId: reply.assistantMessageId, heard: response.sentences.join(' '), unheard: '', interrupted: false });
       this.finishResponse(response);

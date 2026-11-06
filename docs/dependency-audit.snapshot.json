@@ -1,7 +1,7 @@
 {
   "description": "Normalised `npm audit --json` for the package-lock.json with this SHA-256. Regenerate with: node scripts/dependency-audit.mjs --write. Dispositions live in docs/dependency-audit.dispositions.json.",
-  "auditedOn": "2026-10-21",
-  "lockSha256": "316cd0ddcec8549ee7148e58e1bd9b46955dd7151ad1af7a68b0d9c3e8488085",
+  "auditedOn": "2026-11-06",
+  "lockSha256": "31ea77942a6cc977d33d80dcd6580aee3e596b82b22ae15f7d38b93fe55a5e81",
   "counts": {
     "info": 0,
     "low": 0,
@@ -14,7 +14,7 @@
       "package": "@capacitor/cli",
       "severity": "moderate",
       "direct": true,
-      "affectedRange": "8.5.0 - 9.0.0-alpha.8",
+      "affectedRange": "8.5.0 - 8.5.3 || 8.6.1-nightly-20261029T150938.0 - 9.0.0-alpha.8",
       "via": [
         "xcode"
       ],
@@ -38,7 +38,7 @@
           ]
         }
       ],
-      "fixAvailable": "@capacitor/cli@8.4.3 (outside the declared range)"
+      "fixAvailable": "@capacitor/cli@8.6.0"
     },
     {
       "package": "uuid",
@@ -68,7 +68,7 @@
           ]
         }
       ],
-      "fixAvailable": "@capacitor/cli@8.4.3 (outside the declared range)"
+      "fixAvailable": "@capacitor/cli@8.6.0"
     },
     {
       "package": "xcode",
@@ -98,7 +98,7 @@
           ]
         }
       ],
-      "fixAvailable": "@capacitor/cli@8.4.3 (outside the declared range)"
+      "fixAvailable": "@capacitor/cli@8.6.0"
     }
   ],
   "resident": {

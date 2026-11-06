@@ -238,7 +238,7 @@ test('semantic endpoint races: resumed speech aborts the call and drops a late c
   assert.equal(h.log.sends.length, 0, 'a superseded call is ignored');
   await h.clock.advance(longGapMs);
   assert.deepEqual(h.log.sends.map(send => send.text), ['set a timer for ten minutes']);
-  assert.deepEqual(h.log.endpoints, [{by: 'gap', semantic: 'incomplete', latencyMs: 300}], 'no reported latency: the client round trip');
+  assert.deepEqual(h.log.endpoints, [{by: 'gap', semantic: 'incomplete', latencyMs: shortGapMs}], 'no reported latency: the client round trip');
 });
 
 test('barge-in during inference cancels the request, drops its late reply and sends the new speech as the next turn after the first settles', async () => {
@@ -600,4 +600,46 @@ test('the capture source policy picks the echo-cancelled source only for full du
   const capture = fs.readFileSync(new URL('../android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLiveVoiceCapture.java', import.meta.url), 'utf8');
   assert.match(capture, /LiveCaptureSource\.select\(echoCancel,AcousticEchoCanceler\.isAvailable\(\)/);
   assert.match(capture, /if\(frames\.length\(\)>0\|\|edges\.length\(\)>0\)sink\.frames/, 'the stop flushes the last frames read before it');
+});
+
+test('streamed reply: the first complete sentence plays before the reply finishes; the confirmed reply supplies the rest once', async () => {
+  const h = harness();
+  await h.session.start();
+  await h.say('what should I cook tonight');
+  await h.clock.advance(ASSISTANT_TIMING_DEFAULTS.longGapMs);
+  assert.equal(h.log.sends.length, 1);
+  const {input} = h.replies[0];
+  input.onText('How about a simple pasta');
+  await flush();
+  assert.equal(h.speeches.length, 0, 'an unfinished sentence is not spoken');
+  input.onText('How about a simple pasta with garlic and lemon? It takes twenty');
+  await flush();
+  assert.deepEqual(h.speeches.map(s => s.input.text), ['How about a simple pasta with garlic and lemon?'], 'the first sentence starts while the reply streams');
+  h.speeches[0].input.onStarted();
+  h.speeches[0].done.resolve();
+  await flush();
+  h.answer(0, 'How about a simple pasta with garlic and lemon? It takes twenty minutes and uses pantry staples.');
+  await flush();
+  assert.deepEqual(h.speeches.map(s => s.input.text), ['How about a simple pasta with garlic and lemon?', 'It takes twenty minutes and uses pantry staples.'], 'each sentence plays once');
+  h.speeches[1].done.resolve();
+  await flush();
+  assert.equal(h.phase(), 'listening');
+});
+
+test('streamed reply that the confirmed text contradicts: spoken sentences stay counted, the rest follows the confirmed reply', async () => {
+  const h = harness();
+  await h.session.start();
+  await h.say('tell me something');
+  await h.clock.advance(ASSISTANT_TIMING_DEFAULTS.longGapMs);
+  const {input} = h.replies[0];
+  input.onText('Here is a first thought for you. And more');
+  await flush();
+  h.speeches[0].done.resolve();
+  await flush();
+  h.answer(0, 'Something else entirely, said differently. Then a second sentence here.');
+  await flush();
+  assert.deepEqual(h.speeches.map(s => s.input.text), ['Here is a first thought for you.', 'Then a second sentence here.']);
+  h.speeches[1].done.resolve();
+  await flush();
+  assert.equal(h.phase(), 'listening');
 });

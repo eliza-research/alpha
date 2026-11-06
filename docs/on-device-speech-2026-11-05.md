@@ -65,6 +65,21 @@ turns: VAD 536 ms, endpoint to submit 998 ms, request to first token 8,310 ms, f
 170 ms, TTS start to ready 284 ms, ready to audible 192 ms. One turn is not a distribution; its record
 was not retained.
 
+## November 6: pin 5d1af326e5, qualification, live turns
+
+- elizaOS/eliza#38821 merged; the pin moved to `5d1af326e5`. Engine bytes are unchanged (`b3eb2bf63b`), so
+  the voice record keeps its hashes. The resident now reports `ready:true, streaming:true` without any
+  local patch, and the in-app decoder and developer bundle are gone.
+- Upstream qualify app on the Pixel (arm64): ASR WER 1.94% over 101 utterances (limit 6%), empty
+  transcript for silence; Paradee round trip WER 4.77% over 230 sentences (limit 8%). ASR RTF 0.043,
+  TTS RTF 0.055. Reports: `evidence/on-device-speech-2026-11-05/qualify/`. Not run at this engine: x86_64.
+- Physical microphone, live route, Cloud LLM, Paradee playback: one passed `live-voice` turn, last
+  speech to audible reply 4,460 ms: endpoint to final transcript 1,002 ms (end-of-turn gap, not decode),
+  request to first token 65 ms, first token to audible 2,862 ms. Four other turns were superseded by
+  people talking in the room, so testing stopped. The 2.9 s wait for a complete first sentence of LLM
+  text and the 1.0 s end-of-turn gap are now the main costs; speech engines are not.
+- No same-day Cloud speech run: it needs reinstalling a `cloud` build over v35 and a quiet room.
+
 ## Latency
 
 Last user sample to first audible reply sample, harness `harness-no-inference` (no language
