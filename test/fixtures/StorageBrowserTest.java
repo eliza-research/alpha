@@ -16,7 +16,7 @@ public final class StorageBrowserTest {
    new File(root,"Download").mkdirs();new File(root,"Documents").mkdirs();
    StorageBrowser.write(new File(root,"Download/a.pdf"),"download");
    StorageBrowser.write(new File(root,"Documents/a.pdf"),"document");
-   check(b.trashList(0L).isEmpty()&&b.emptyTrash(null)==0&&!new File(root,StorageBrowser.TRASH).exists(),"reading Trash does not create it");
+   check(b.trashList(0L).isEmpty()&&b.emptyTrash(Arrays.asList())==0&&!new File(root,StorageBrowser.TRASH).exists(),"reading Trash does not create it");
    // NoOverwriteWithoutConfirm: a clash keeps both.
    List<StorageBrowser.Outcome> moved=b.transfer(Arrays.asList("Download/a.pdf"),"Documents",false);
    check(moved.get(0).status.equals("moved")&&moved.get(0).to.equals("Documents/a (1).pdf"),"move keeps both: "+moved.get(0).to);
@@ -42,7 +42,9 @@ public final class StorageBrowserTest {
    check(b.trashList(StorageBrowser.RETENTION_MS).stream().noneMatch(r->r.id.equals(old)),"expired after 30 days");
    // Empty deletes only what is in trash.
    b.trash(Arrays.asList("Documents/a.pdf"),5000L);
-   check(b.emptyTrash(null)==1&&b.trashList(5000L).isEmpty()&&new File(root,"Documents/a (1).pdf").exists(),"empty");
+   try{b.emptyTrash(null);check(false,"Empty names the confirmed items");}catch(IllegalArgumentException expected){}
+   List<String> confirmed=new java.util.ArrayList<>();for(StorageBrowser.TrashRow r:b.trashList(5000L))confirmed.add(r.id);
+   check(b.emptyTrash(confirmed)==1&&b.trashList(5000L).isEmpty()&&new File(root,"Documents/a (1).pdf").exists(),"empty");
    // Paths cannot leave the volume or name the trash; a folder cannot move into itself.
    for(String bad:new String[]{"../x","Documents/../../x",".Trash-alpha","a//b"}){
     try{b.resolve(bad,false);check(false,"refused "+bad);}catch(IllegalArgumentException expected){}

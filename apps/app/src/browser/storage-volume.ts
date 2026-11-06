@@ -203,6 +203,8 @@ export class BrowserStorageVolume {
   /** Permanent deletion, only after the owner confirmed it. */
   async emptyTrash(ids: string[] | undefined, confirmed: boolean): Promise<Status & {count?: number}> {
     if (!confirmed) return {status: 'confirmation-required', message: 'Confirm before deleting permanently.'};
+    // Only the confirmed items: something trashed after the confirmation is not deleted.
+    if (!Array.isArray(ids) || !ids.length) return {status: 'invalid', message: 'Invalid name or path.'};
     const trashId = await this.existingTrashId(), records = this.records();
     let count = 0;
     for (const row of trashId ? await this.children(trashId) : []) {

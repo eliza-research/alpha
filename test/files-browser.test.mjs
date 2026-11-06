@@ -93,10 +93,15 @@ test('trash keeps the origin; restore goes back there, recreating the folder, an
  await v.trash(['Documents/Taxes/2025.pdf']);
  assert.equal((await v.emptyTrash(undefined,false)).status,'confirmation-required','Empty needs the owner confirmation');
  assert.equal((await v.trashList()).items.length,1);
- assert.equal((await v.emptyTrash(undefined,true)).count,1,'only a confirmed Empty deletes permanently');
- assert.equal((await v.trashList()).items.length,0);
+ const shown=(await v.trashList()).items.map(t=>t.id);
+ assert.equal((await v.emptyTrash(undefined,true)).status,'invalid','Empty names the items the owner confirmed');
+ // An item trashed after the confirmation was shown is not deleted.
+ await v.add('Documents','late.pdf');await v.trash(['Documents/late.pdf']);
+ assert.equal((await v.emptyTrash(shown,true)).count,1,'only a confirmed Empty deletes permanently');
+ assert.deepEqual((await v.trashList()).items.map(t=>t.name),['late.pdf'],'the later item stays in Trash');
+ await v.emptyTrash((await v.trashList()).items.map(t=>t.id),true);
  await v.createFolder('','Work');await v.add('Work','w.txt');await v.trash(['Work']);
- assert.equal((await v.emptyTrash(undefined,true)).count,1,'a trashed folder is deleted with its contents');
+ assert.equal((await v.emptyTrash((await v.trashList()).items.map(t=>t.id),true)).count,1,'a trashed folder is deleted with its contents');
 });
 
 test('trash items expire after 30 days; folder moves into themselves are refused; paths cannot escape the volume',async()=>{
@@ -191,7 +196,11 @@ test('each mounted volume is its own Storage row and tree; Trash spans volumes a
  assert.match(adapter,/vols: volumes\.map\(volume => \(\{[^\n]*go: \(\) => go\(\{kind: 'folder', path: '', \.\.\.onVolume\(volume\.primary \? undefined : volume\.id\)\}\)/);
  assert.match(adapter,/storageList\(\{path: at\.path, \.\.\.onVolume\(at\.volume\)\}\)/);
  assert.match(adapter,/\[undefined, \.\.\.extraVolumes\(\)\]\.map\(async volume =>/);
- assert.match(adapter,/storageEmptyTrash\(\{ids: \[item\.id\], confirmed: true, \.\.\.onVolume\(item\.volume\)\}\)/);
+ assert.match(adapter,/storageEmptyTrash\(\{ids: ids\.slice\(at, at \+ EMPTY_BATCH\), confirmed: true, \.\.\.onVolume\(volume\)\}\)/);
+ assert.match(adapter,/dialog = \{kind: 'empty', items: \[\.\.\.trashItems\]\}/,'Empty deletes the rows the owner was shown');
+ assert.match(adapter,/void emptyTrash\(d\.items\)/);
+ assert.equal(Number(adapter.match(/const EMPTY_BATCH = (\d+);/)[1]),Number(readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/StorageBrowser.java','utf8').match(/BATCH_MAX=(\d+)/)[1]));
+ assert.match(readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaFilesPlugin.java','utf8'),/b\.emptyTrash\(strings\(call,"ids",StorageBrowser\.BATCH_MAX\)\)/,'native refuses an Empty without ids');
  assert.match(adapter,/void restore\(\[d\.item\.id\], d\.item\.volume\)/);
  const catalog=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/StorageCatalog.java','utf8');
  assert.match(catalog,/for\(StorageVolume volume:manager\.getStorageVolumes\(\)\)/);

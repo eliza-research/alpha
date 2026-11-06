@@ -204,12 +204,11 @@ final class StorageBrowser {
   }
   return out;
  }
- /** Permanent deletion, only after the owner confirmed Empty (or Delete now) in the UI. */
+ /** Permanent deletion of the items the owner confirmed (Empty or Delete now) in the UI. */
  int emptyTrash(List<String> ids)throws IOException{
+  if(ids==null)throw new IllegalArgumentException("Name the confirmed items");
   File trash=existingTrash();int count=0;if(trash==null)return 0;
-  List<String> targets=new ArrayList<>();
-  if(ids==null){File[] infos=new File(trash,"info").listFiles();if(infos!=null)for(File f:infos)targets.add(f.getName().replaceAll("\\.json$",""));}else targets.addAll(ids);
-  for(String id:targets){if(id==null||!id.matches("[a-f0-9-]{36}"))continue;File data=new File(trash,"files/"+id);if(data.exists()&&!deleteRecursive(data))continue;new File(trash,"info/"+id+".json").delete();count++;}
+  for(String id:ids){if(id==null||!id.matches("[a-f0-9-]{36}"))continue;File data=new File(trash,"files/"+id);if(data.exists()&&!deleteRecursive(data))continue;new File(trash,"info/"+id+".json").delete();count++;}
   return count;
  }
 

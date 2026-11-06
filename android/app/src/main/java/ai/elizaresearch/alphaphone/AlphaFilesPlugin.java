@@ -146,8 +146,8 @@ public class AlphaFilesPlugin extends Plugin {
  /** Permanent deletion. The renderer sends confirmed only after the owner confirmed it. */
  @PluginMethod public void storageEmptyTrash(PluginCall call){storage(call,b->{
   if(!Boolean.TRUE.equals(call.getBoolean("confirmed",false)))return result("confirmation-required","Confirm before deleting permanently.");
-  JSArray ids=call.getArray("ids");List<String> list=null;if(ids!=null){list=strings(call,"ids",StorageBrowser.BATCH_MAX);}
-  JSObject out=new JSObject();out.put("count",b.emptyTrash(list));return out;
+  // Only the ids the owner confirmed: an item trashed after the confirmation is never deleted.
+  JSObject out=new JSObject();out.put("count",b.emptyTrash(strings(call,"ids",StorageBrowser.BATCH_MAX)));return out;
  });}
  private Uri contentUri(java.io.File file){return androidx.core.content.FileProvider.getUriForFile(getContext(),getContext().getPackageName()+".storage",file);}
  /** One share sheet for the listed files. Nothing is sent until the owner picks an app. */

@@ -64,9 +64,12 @@ const onVolume = (volume?: string) => volume ? {volume} : {};
 type Dialog =
   | {kind: 'dest'; op: 'move' | 'copy'; paths: string[]; at: string; folders: StorageEntry[]; volume?: string}
   | {kind: 'name'; op: 'create' | 'rename'; path: string; value: string; volume?: string}
-  | {kind: 'empty'}
+  /** The rows the owner is shown and confirms; Empty deletes only these. */
+  | {kind: 'empty'; items: TrashRow[]}
   | {kind: 'trashItem'; item: TrashRow; confirmDelete: boolean};
 export const FILES_PLACE_EVENT = 'alpha-files-place';
+/** StorageBrowser.BATCH_MAX: ids per storageEmptyTrash call. */
+const EMPTY_BATCH = 500;
 
 /** Installs the Files browser over the files view. accept() opens a selected file in the
  * existing document preview; clearSelected() closes it. */
@@ -231,12 +234,14 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
     catch { toast('The operation could not be confirmed.'); }
     finally { busy = false; dialog = undefined; void reload(); }
   }
-  /** Permanent deletion of one row, or of Trash on every volume (only after the owner confirmed). */
-  async function emptyTrash(item?: TrashRow) {
+  /** Permanent deletion of the rows the owner confirmed, on each row's volume. Items that reached
+   * Trash after the confirmation was shown are not deleted. */
+  async function emptyTrash(items: TrashRow[]) {
     busy = true; repaint();
     try {
-      if (item) failed(await storage.storageEmptyTrash({ids: [item.id], confirmed: true, ...onVolume(item.volume)}));
-      else for (const volume of [undefined, ...new Set(trashItems.map(row => row.volume).filter(Boolean))]) if (failed(await storage.storageEmptyTrash({confirmed: true, ...onVolume(volume)}))) break;
+      const byVolume = new Map<string | undefined, string[]>();
+      for (const row of items) byVolume.set(row.volume, [...(byVolume.get(row.volume) ?? []), row.id]);
+      empty: for (const [volume, ids] of byVolume) for (let at = 0; at < ids.length; at += EMPTY_BATCH) if (failed(await storage.storageEmptyTrash({ids: ids.slice(at, at + EMPTY_BATCH), confirmed: true, ...onVolume(volume)}))) break empty;
     }
     catch { toast('The operation could not be confirmed.'); }
     finally { busy = false; dialog = undefined; void reload(); }
@@ -400,7 +405,7 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
         name: title, items, empty: loaded && !busy && items.length === 0 && !error, emptyD: at.kind === 'trash' ? ICONS.trash : at.kind === 'category' ? ICONS[at.category] : ICONS.folder,
         close: () => up(), crumbs: at.kind === 'folder' ? breadcrumbs(at.path, volumeName).map((crumb, index, all) => ({label: crumb.label, last: index === all.length - 1, notLast: index < all.length - 1, go: () => { if (crumb.path !== at.path) go({kind: 'folder', path: crumb.path, ...onVolume(at.volume)}); }})) : [],
         hasCrumbs: at.kind === 'folder', isTrash: at.kind === 'trash', canEmpty: at.kind === 'trash' && trashItems.length > 0 && !busy,
-        empty_: () => { if (busy) return; dialog = {kind: 'empty'}; repaint(); },
+        empty_: () => { if (busy || !trashItems.length) return; dialog = {kind: 'empty', items: [...trashItems]}; repaint(); },
         hasMenu: at.kind !== 'trash', openMenu: () => currentApi.set({menu: true}), moreD: ICONS.more,
         menuRows: [
           ...(['name', 'date', 'size'] as SortMode[]).map(mode => ({label: 'Sort by ' + SORT_LABELS[mode].toLowerCase(), d: ICONS.sort, on: sort === mode, go: () => currentApi.set({menu: false, sort: mode})})),
@@ -441,7 +446,7 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
     out.dlg = d ? {
       modalRef: modal.ref, busy, isDest: d.kind === 'dest', isName: d.kind === 'name', isEmpty: d.kind === 'empty', isTrashItem: d.kind === 'trashItem',
       title: d.kind === 'dest' ? (d.op === 'move' ? 'Move to' : 'Copy to') : d.kind === 'name' ? (d.op === 'create' ? 'New folder' : 'Rename') : d.kind === 'empty' ? 'Empty Trash?' : d.item.name,
-      message: d.kind === 'empty' ? `${countLabel(trashItems.length)} will be deleted permanently.` : d.kind === 'trashItem' ? (d.confirmDelete ? 'Delete permanently?' : [volumeLabel(d.item.volume), ...(d.item.origin || '').split('/').filter(Boolean)].join(' › ')) : '',
+      message: d.kind === 'empty' ? `${countLabel(d.items.length)} will be deleted permanently.` : d.kind === 'trashItem' ? (d.confirmDelete ? 'Delete permanently?' : [volumeLabel(d.item.volume), ...(d.item.origin || '').split('/').filter(Boolean)].join(' › ')) : '',
       at: d.kind === 'dest' ? breadcrumbs(d.at, d.volume ? volumes.find(v => v.id === d.volume)?.name || 'Storage' : primary?.name || 'Internal storage').map(c => c.label).join(' › ') : '',
       canUp: d.kind === 'dest' && d.at !== '', up: () => { if (d.kind === 'dest') void destination(parentOf(d.at)); },
       folders: d.kind === 'dest' ? d.folders.filter(f => !d.paths.some(p => f.path === p || f.path.startsWith(p + '/'))).map(f => ({name: f.name, label: 'Open ' + f.name, d: ICONS.folder, go: () => void destination(f.path)})) : [],
@@ -451,12 +456,12 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
         if (busy) return;
         if (d.kind === 'dest') void transfer(d.paths, d.at, d.op === 'copy', d.volume);
         else if (d.kind === 'name') void nameDialog();
-        else if (d.kind === 'empty') void emptyTrash();
+        else if (d.kind === 'empty') void emptyTrash(d.items);
       },
       value: d.kind === 'name' ? d.value : '', onValue: (event: Event) => { if (dialog?.kind === 'name') { dialog.value = (event.target as HTMLInputElement).value; repaint(); } },
       onKey: (event: KeyboardEvent) => { if (event.key === 'Enter') { event.preventDefault(); void nameDialog(); } },
       restore: () => { if (d.kind === 'trashItem') void restore([d.item.id], d.item.volume); },
-      deleteNow: () => { if (d.kind !== 'trashItem' || busy) return; if (!d.confirmDelete) { dialog = {...d, confirmDelete: true}; repaint(); return; } void emptyTrash(d.item); },
+      deleteNow: () => { if (d.kind !== 'trashItem' || busy) return; if (!d.confirmDelete) { dialog = {...d, confirmDelete: true}; repaint(); return; } void emptyTrash([d.item]); },
       deleteLabel: d.kind === 'trashItem' && d.confirmDelete ? 'Delete permanently' : 'Delete now',
       cancel: () => { if (!busy) { dialog = undefined; repaint(); } },
     } : null;
