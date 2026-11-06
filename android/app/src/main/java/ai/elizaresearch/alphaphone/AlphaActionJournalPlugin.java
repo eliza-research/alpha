@@ -85,19 +85,27 @@ public final class AlphaActionJournalPlugin extends ActionJournalPlugin {
  @PluginMethod public void reviewClock(PluginCall call){
   clockWork(call,()->{try{
    String scope=field(call.getString("scope"),"[a-f0-9]{64}"),id=field(call.getString("proposalId"),"[A-Za-z0-9_-]{1,128}"),operationId=field(call.getString("operationId"),"[A-Za-z0-9_-]{1,128}");
-   ActionJournal store=journal();JSONObject approved;
-   synchronized(store.lock()){JSONObject entry=clockEntry(store,scope,id,operationId);approved=entry.getJSONObject("record").getJSONObject("operation");if(!sameJson(approved,call.getObject("operation")))throw new IllegalStateException();
-    if(entry.has("clockReview")){call.resolve(clockReply(entry.getJSONObject("clockReview"),approved.getString("action")));return;}
-    entry.put("clockReview",clockMarker(entry,"reviewing"));store.update(scope,id,previous->entry);
+   ActionJournal store=journal();JSONObject approved;String key=scope+":"+id;
+   synchronized(store.lock()){JSONObject entry=clockEntry(store,scope,id,operationId),clock=entry.optJSONObject("clockReview");approved=entry.getJSONObject("record").getJSONObject("operation");if(!sameJson(approved,call.getObject("operation")))throw new IllegalStateException();
+    if(clock!=null&&!"reviewing".equals(clock.getString("phase"))){call.resolve(clockReply(clock,approved.getString("action")));return;}
+    if("show".equals(approved.getString("action"))){
+     // Opening Clock changes no alarm: the approved card is the owner's review. confirmClock still
+     // checks foreground and keyguard and starts only an external Clock.
+     String token=java.util.UUID.randomUUID().toString();entry.put("clockReview",clockMarker(entry,"approved").put("reviewToken",token));store.update(scope,id,previous->entry);
+     JSObject reply=new JSObject();reply.put("reviewToken",token);call.resolve(reply);return;
+    }
+    // "reviewing" sends nothing. One whose dialog closed with its surface or process is offered again.
+    if(!ClockAgentReview.claim(this,key)){call.resolve(clockReply(clock,approved.getString("action")));return;}
+    if(clock==null){entry.put("clockReview",clockMarker(entry,"reviewing"));store.update(scope,id,previous->entry);}
    }
-   clockUi(()->{
-    ClockAgentReview.show(getActivity(),scope+":"+id,approved,accepted->{if(destroyed())return;PluginWorkers.submit(worker(),()->{if(destroyed())return;try{synchronized(store.lock()){JSONObject entry=clockEntry(store,scope,id,operationId),clock=entry.getJSONObject("clockReview");
+   try{clockUi(()->{
+    ClockAgentReview.show(getActivity(),this,key,approved,accepted->{if(destroyed())return;PluginWorkers.submit(worker(),()->{if(destroyed())return;try{synchronized(store.lock()){JSONObject entry=clockEntry(store,scope,id,operationId),clock=entry.getJSONObject("clockReview");
       if(!"reviewing".equals(clock.getString("phase"))){call.resolve(clockReply(clock,approved.getString("action")));return;}
       JSObject reply=new JSObject();if(accepted){String token=java.util.UUID.randomUUID().toString();clock.put("phase","approved").put("reviewToken",token);reply.put("reviewToken",token);}else{clock.put("phase","cancelled").put("result",ClockAgentReview.result(approved.getString("action"),"failed"));reply=clockReply(clock,approved.getString("action"));}
       store.update(scope,id,previous->entry);call.resolve(reply);
      }}catch(Exception refusal){if(!destroyed())call.reject("Clock review expired or was retired");}},()->call.reject("Clock review retired"));});
     return null;
-   });
+   });}catch(Exception closed){ClockAgentReview.release(this,key);throw closed;}
   }catch(Exception refusal){call.reject("Exact approved Clock review unavailable");}});
  }
  @PluginMethod public void cancelClock(PluginCall call){work(call,true,(store,scope,id)->{synchronized(store.lock()){
@@ -123,5 +131,5 @@ public final class AlphaActionJournalPlugin extends ActionJournalPlugin {
    JSObject result=clockUi(()->{if(expiresAt<=System.currentTimeMillis())return ClockAgentReview.result(operation.getString("action"),"failed");return ClockAgentReview.dispatch(getActivity(),operation);});clock.put("phase","finished").put("result",result);store.update(scope,id,previous->entry);call.resolve(clockReply(clock,operation.getString("action")));
   }}catch(Exception uncertain){call.reject("Clock handoff result is unconfirmed; do not repeat it");}});
  }
- @Override protected void handleOnDestroy(){super.handleOnDestroy();ClockAgentReview.abandon();}
+ @Override protected void handleOnDestroy(){super.handleOnDestroy();ClockAgentReview.abandon(this);}
 }

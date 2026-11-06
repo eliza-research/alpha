@@ -16,8 +16,9 @@ import org.json.JSONObject;
 
 /** Agent requests are owner-reviewed handoffs. Targetless dismiss/snooze never mutate alarms. */
 final class ClockAgentReview {
- private static final Map<String,AlertDialog> dialogs=new HashMap<>();
- private static final Map<String,Decision> pending=new HashMap<>();
+ /** One open review per journal entry, owned by the plugin instance that claimed it. */
+ private static final class Open {final Object owner;AlertDialog dialog;Decision decision;Open(Object owner){this.owner=owner;}}
+ private static final Map<String,Open> open=new HashMap<>();
  interface Decision {void selected(boolean accepted);}
  private ClockAgentReview(){}
  static JSObject result(String action,String status){JSObject value=new JSObject();value.put("kind","clock-handoff");value.put("action",action);value.put("status",status);return value;}
@@ -60,17 +61,27 @@ final class ClockAgentReview {
   // Open Clock instead: the owner selects the actual alarm and completes either action there.
   return new Intent(AlarmClock.ACTION_SHOW_ALARMS);
  }
- static void show(Activity activity,String id,JSONObject operation,Decision decision)throws Exception{
+ /** Reserve the review before its journal marker is written; false while another review of it is open. */
+ static synchronized boolean claim(Object owner,String id){if(open.containsKey(id))return false;open.put(id,new Open(owner));return true;}
+ static synchronized void release(Object owner,String id){Open review=open.get(id);if(review!=null&&review.owner==owner)open.remove(id);}
+ private static synchronized Decision settle(String id){Open review=open.remove(id);return review==null?null:review.decision;}
+ static void show(Activity activity,Object owner,String id,JSONObject operation,Decision decision)throws Exception{
   validate(operation);foreground(activity);zone(operation);String action=operation.getString("action");String text;
-  if("set".equals(action))text=String.format(java.util.Locale.ROOT,"Send %02d:%02d (%s)%s, label “%s”, to Clock? Clock may create this alarm immediately. Alpha cannot confirm creation or ringing.",operation.getInt("hour"),operation.getInt("minute"),operation.getString("timeZone"),repeatText(operation),operation.getString("label"));
-  else if("show".equals(action))text="Open Clock to review your alarms. No alarm change is requested.";
-  else text="Open Clock and choose the intended alarm yourself to "+action+" it. Alpha will not "+action+" any alarm. "+("snooze".equals(action)?"Choose the duration in Clock; the requested "+operation.getInt("snoozeMinutes")+" minutes is not applied automatically. ":"")+"Completion remains manual and unverified.";
-  AlertDialog dialog=new AlertDialog.Builder(activity).setTitle("Review agent Clock handoff").setMessage(text).setPositiveButton("Continue to Clock",(d,w)->{dialogs.remove(id);pending.remove(id);decision.selected(true);}).setNegativeButton("Cancel",(d,w)->{dialogs.remove(id);pending.remove(id);decision.selected(false);}).setOnCancelListener(d->{dialogs.remove(id);pending.remove(id);decision.selected(false);}).create();
-  dialogs.put(id,dialog);pending.put(id,decision);dialog.show();
+  // Opening Clock changes no alarm, so the page sends show straight to confirmClock without this dialog.
+  if("show".equals(action))throw new IllegalArgumentException();
+  if("set".equals(action))text=String.format(java.util.Locale.ROOT,"Send %02d:%02d (%s)%s, label “%s”, to Clock? Clock may set this right away. Alpha can’t confirm the alarm.",operation.getInt("hour"),operation.getInt("minute"),operation.getString("timeZone"),repeatText(operation),operation.getString("label"));
+  else text="Open Clock and choose the intended alarm yourself to "+action+" it. Alpha will not "+action+" any alarm."+("snooze".equals(action)?" Choose the duration in Clock; the requested "+operation.getInt("snoozeMinutes")+" minutes is not applied automatically.":"");
+  AlertDialog dialog=new AlertDialog.Builder(activity).setTitle("Open Clock?").setMessage(text).setPositiveButton("Continue to Clock",(d,w)->{if(settle(id)!=null)decision.selected(true);}).setNegativeButton("Cancel",(d,w)->{if(settle(id)!=null)decision.selected(false);}).setOnCancelListener(d->{if(settle(id)!=null)decision.selected(false);}).create();
+  synchronized(ClockAgentReview.class){Open review=open.get(id);if(review==null||review.owner!=owner)throw new IllegalStateException();review.dialog=dialog;review.decision=decision;}
+  dialog.show();
  }
  private static String repeatText(JSONObject operation){java.util.List<Integer> days=ClockDays.agent(operation.opt("days"));return days==null?(operation.has("days")?", one time":""):", repeating "+ClockDays.names(days);}
- static void abandon(){for(AlertDialog dialog:dialogs.values())dialog.dismiss();dialogs.clear();pending.clear();}
- static void dismiss(String id){AlertDialog dialog=dialogs.remove(id);Decision decision=pending.remove(id);if(dialog!=null)dialog.dismiss();if(decision!=null)decision.selected(false);}
+ /** Closes only this owner's reviews. Their entries stay "reviewing" with nothing sent, and are offered again. */
+ static void abandon(Object owner){java.util.List<AlertDialog> closing=new java.util.ArrayList<>();
+  synchronized(ClockAgentReview.class){java.util.Iterator<Open> reviews=open.values().iterator();while(reviews.hasNext()){Open review=reviews.next();if(review.owner!=owner)continue;reviews.remove();if(review.dialog!=null)closing.add(review.dialog);}}
+  for(AlertDialog dialog:closing)dialog.dismiss();
+ }
+ static void dismiss(String id){Open review;synchronized(ClockAgentReview.class){review=open.remove(id);}if(review==null)return;if(review.dialog!=null)review.dialog.dismiss();if(review.decision!=null)review.decision.selected(false);}
  static JSObject dispatch(Activity activity,JSONObject operation){String action=operation.optString("action");Intent intent;
   try{foreground(activity);zone(operation);intent=intent(operation);}catch(Exception refused){return result(action,"failed");}
   try{

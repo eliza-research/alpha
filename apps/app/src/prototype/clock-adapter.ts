@@ -32,8 +32,8 @@ export function installClockAdapter(Component:any,views:Bag,options:{simulated:b
   try {
    const saved=await history.read();if(token!==historyGeneration||view!==generation)return;
    snapshot=saved;const last=saved.record;
-   message=last?(last.status==='opening'||last.status==='unknown'?'Previous Clock result is unknown. Check Clock before repeating a request.':'Previous request was a handoff. Check Clock for its result.'):'';
-  }catch {if(token===historyGeneration&&view===generation)message='Clock handoff history could not be read. Check Clock before repeating a request.';}
+   message=last?(last.status==='opening'||last.status==='unknown'?'Previous Clock result is unknown. Check Clock before repeating a request.':'Check Clock for the result of your last request.'):'';
+  }catch {if(token===historyGeneration&&view===generation)message='Alpha couldn’t read your past Clock requests. Check Clock before repeating one.';}
   finally{if(token===historyGeneration){loading=false;if(view===generation)publish();}}
  };
  const close=()=>{if(!busy){open=false;review=null;publish();}};
@@ -58,12 +58,12 @@ export function installClockAdapter(Component:any,views:Bag,options:{simulated:b
   if(testMocksEnabled&&simulated()){message='Mock mode: Clock request simulated. No alarm was changed and no app was opened.';review=null;publish();return;}
   if(blocked()){message='Clock is unavailable without a live connection. No alarm was changed and no app was opened.';review=null;publish();return;}
   if(request.action==='set'&&request.timeZone!==currentClockTimeZone()){message='Phone time zone changed. Review the Clock request again.';review=null;publish();return;}
-  if(!snapshot||loading){message='Clock request was not sent because its handoff history is unavailable. Close and reopen Clock to retry.';publish();return;}
+  if(!snapshot||loading){message='Can’t reach Clock. Reopen it and try again.';publish();return;}
   const id=crypto.randomUUID(),token=generation,expected=snapshot;
   busy=true;review=null;message='Saving Clock request…';publish();
   let retained:ClockHandoffSnapshot;
   try {retained=await history.save(expected,{id,action:request.action,status:'opening',at:new Date().toISOString()});}
-  catch {busy=false;snapshot=null;if(token===generation){message='Clock request was not sent because its handoff record could not be saved. Close and reopen Clock to retry.';publish();}return;}
+  catch {busy=false;snapshot=null;if(token===generation){message='Can’t reach Clock. Reopen it and try again.';publish();}return;}
   // Admission is asynchronous. A retired review must never dispatch after it completes.
   let cancelled=token!==generation||document.hidden||simulated();
   try{if(request.action==='set'&&request.timeZone!==currentClockTimeZone())cancelled=true;}catch{cancelled=true;}
@@ -76,7 +76,7 @@ export function installClockAdapter(Component:any,views:Bag,options:{simulated:b
   }
   // Only this exact admitted record can be completed; never replay a handoff.
   try {snapshot=await history.save(retained,{id,action:request.action,status:result.status,at:new Date().toISOString()});}
-  catch {snapshot=null;result={...result,message:cancelled?'Clock request was not sent, but its cancelled record could not be saved. Check Clock before trying again.':'Clock may have opened, but its handoff record could not be saved. Check Clock before trying again.'};}
+  catch {snapshot=null;result={...result,message:'Check Clock before trying again.'};}
   busy=false;
   if(token===generation){message=result.message;publish();}
   else if(open&&!document.hidden)void restore();
