@@ -86,9 +86,9 @@ test('development vault locks when leaving and reports autofill selection only a
   await devVault(page);
   await expect(page.getByText('None selected', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Set as autofill service', exact: true }).click();
-  await expect(page.getByText('Confirm Alpha Phone passwords in Android, then return here.', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Refresh autofill status', exact: true }).click();
   await expect(page.getByText('Alpha Phone passwords', { exact: true }).last()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Set as autofill service', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Unlock passwords', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Open Example sign-in', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Back to Settings', exact: true }).click();
@@ -161,7 +161,7 @@ test('native vault: Android unlock, app bindings, copy and autofill picker with 
   await bank.click();
   await expect(page.getByText('App · verified publisher', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Copy password', exact: true }).click();
-  await expect(page.getByText('Copied. We try to clear it after 45 s, or when you return to the app.', { exact: true })).toBeVisible();
+  await expect(page.getByText('Copied. Alpha tries to clear it in 45 s.', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Back to Password manager', exact: true }).click();
   await page.getByRole('button', { name: 'Set as autofill service', exact: true }).click();
   // Opening Android's confirmation is not a selection; only the readback changes the status.
