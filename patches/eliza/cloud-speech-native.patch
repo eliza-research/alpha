@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechStreamBridgePlugin.java
-@@ -0,0 +1,221 @@
+@@ -0,0 +1,231 @@
 +package ai.eliza.voice;
 +
 +import android.Manifest;
@@ -145,14 +145,24 @@
 +  try{own.send(new JSONObject().put("t","cancel").put("id",value.id));}catch(Exception ignored){}
 +  main.post(()->{if(session==null||session==own)focus.release();});return value;
 + }
++ private static String preReadyError(JSONObject row)throws IOException{
++  Object code=row.opt("code");boolean hasReason=row.has("reason");
++  boolean known="unauthorized".equals(code)||"protocol".equals(code)||"unavailable".equals(code)||"closed".equals(code);
++  if(!known||row.length()!=(hasReason?3:2)||
++    hasReason&&(!"unavailable".equals(code)||!"insufficient_credits".equals(row.opt("reason"))))throw new IOException("Invalid speech startup error");
++  return hasReason?"insufficient_credits":(String)code;
++ }
 + private final class RelayListener extends WebSocketListener {
 +  final Session own;RelayListener(Session own){this.own=own;}
 +  @Override public void onOpen(WebSocket socket,Response response){try{own.socket=socket;own.check();mark(own,"ws-open");own.send(new JSONObject().put("t","hello").put("token",own.wireToken).put("errorReasons",true));own.wireToken=null;}catch(Exception error){fail(own,"connect");}}
 +  @Override public void onMessage(WebSocket socket,String text){
 +   try{own.check();if(text.getBytes(StandardCharsets.UTF_8).length>8192)throw new IOException("Oversized speech control");JSONObject row=new JSONObject(text);String type=row.getString("t");
 +    if("ready".equals(type)){if(own.ready||row.getInt("version")!=1||row.getInt("sampleRate")!=16000||row.getInt("channels")!=1)throw new IOException("Invalid speech format");own.ready=true;mark(own,"ready");main.postDelayed(()->retire(own,"expired"),Math.max(1,own.expiresAt-System.currentTimeMillis()));return;}
-+    if(!own.ready)throw new IOException("Speech is not ready");
-+    if("stt".equals(type)){JSONObject data=row.getJSONObject("event");String event=data.getString("type");if("connected".equals(event)){if(own.providerReady)throw new IOException("Duplicate provider readiness");own.providerReady=true;mark(own,"stt-connected");submit(media,()->{try{own.startCapture();main.removeCallbacks(own.deadline);}catch(Exception failed){fail(own,"capture");}},()->fail(own,"closed"));return;}String transcript=data.optString("transcript","");if(transcript.length()>16384)throw new IOException("Transcript too large");
++    if(!own.ready){
++     if("error".equals(type)){fail(own,preReadyError(row));return;}
++     throw new IOException("Speech is not ready");
++    }
++    if("stt".equals(type)){JSONObject data=row.getJSONObject("event");String event=data.getString("type");if("connected".equals(event)){if(own.providerReady)return;own.providerReady=true;mark(own,"stt-connected");submit(media,()->{try{own.startCapture();main.removeCallbacks(own.deadline);}catch(Exception failed){fail(own,"capture");}},()->fail(own,"closed"));return;}String transcript=data.optString("transcript","");if(transcript.length()>16384)throw new IOException("Transcript too large");
 +     if("start-of-turn".equals(event)||"turn-resumed".equals(event)){mark(own,"speech-start");emit(own,"speech-start",new JSObject());}
 +     else if("end-of-turn".equals(event)){mark(own,"asr-final");emit(own,"speech-end",new JSObject().put("text",transcript).put("final",true));}
 +     else if("transcript-update".equals(event)||"eager-end-of-turn".equals(event))emit(own,"transcript",new JSObject().put("text",transcript).put("final",false));
