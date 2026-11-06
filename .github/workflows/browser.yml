@@ -109,11 +109,13 @@ jobs:
           ELIZA_DEV_ALLOW_TEST_MOCKS: '1'
           ALPHA_CI_BROWSER_SPECS: ${{ needs.changes.outputs.browser_specs }}
         run: node scripts/ci/run-browser.mjs --shard=${{ matrix.shard }}/${{ needs.changes.outputs.browser_total }}
+      # Every case in these files needs the local-agent bridge profile. The bridge answers the
+      # reminder spec's storage route itself, so the unreachable synthetic agent origin is enough.
       - name: Exercise synthetic local-agent speech profile
         if: matrix.shard == 1 && needs.changes.outputs.browser_speech == 'true'
         run: |
           node --input-type=module -e "import fs from 'node:fs'; fs.writeFileSync(process.env.RUNNER_TEMP + '/alpha-synthetic-owner-token', 'a'.repeat(64), {mode: 0o600});"
-          PLAYWRIGHT_HTML_OUTPUT_DIR=test-results/browser-agent-profile-report ELIZA_DEV_ALLOW_TEST_MOCKS=1 VITE_LOCAL_AGENT=1 ALPHA_LOCAL_AGENT_TOKEN_FILE="$RUNNER_TEMP/alpha-synthetic-owner-token" ALPHA_LOCAL_AGENT_ORIGIN=http://127.0.0.1:1 npm run test:browser -- test/browser/browser-agent-tts.spec.ts test/browser/browser-host-disclosure.spec.ts --grep 'local agent TTS|prepared agent audio|connected browser host' --output=test-results/browser-agent-profile
+          PLAYWRIGHT_HTML_OUTPUT_DIR=test-results/browser-agent-profile-report ELIZA_DEV_ALLOW_TEST_MOCKS=1 VITE_LOCAL_AGENT=1 ALPHA_LOCAL_AGENT_TOKEN_FILE="$RUNNER_TEMP/alpha-synthetic-owner-token" ALPHA_LOCAL_AGENT_ORIGIN=http://127.0.0.1:1 npm run test:browser -- test/browser/browser-agent-tts.spec.ts test/browser/browser-host-disclosure.spec.ts test/browser/host-reminder-recovery.spec.ts --output=test-results/browser-agent-profile
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:

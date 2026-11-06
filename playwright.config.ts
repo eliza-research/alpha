@@ -7,6 +7,9 @@ const port=Number(process.env.ALPHA_BROWSER_TEST_PORT||5317);
 const productionPort=port+1;
 // The production lane runs production-surface.spec.ts and every <name>.production.spec.ts.
 const productionSpec=/(production-surface|\.production)\.spec\.ts$/;
+// Live specs need a running local agent and real providers; only the live project runs them
+// (npm run test:browser:live, docs/live-browser-qa.md).
+const liveSpec=/\.local\.spec\.ts$/;
 
 // The top-level webServer list is not per-project. Start only the servers that the
 // selected projects use, so the default lane never builds and the production lane
@@ -19,6 +22,8 @@ const selected=(()=>{
   }
   return names;
 })();
+// A file with a fake-audio capture for the live voice specs; without it they need a physical microphone.
+const fakeAudio=process.env.ALPHA_LIVE_FAKE_AUDIO;
 const needsProduction=!selected.length||selected.includes('production');
 const needsDevelopment=!selected.length||selected.some(name=>name!=='production');
 // Specs that start their own in-process Vite server (dev-hosted-journey, dev-reload,
@@ -43,6 +48,8 @@ const production={
 
 export default defineConfig({
   testDir: './test/browser',
+  // A committed test.only would turn a shard green while skipping the rest.
+  forbidOnly: true,
   // Loads the app once on the development server before the workers start (see the file).
   globalSetup: needsDevelopment ? './test/browser/warm-dev-server.ts' : undefined,
   timeout: 30_000,
@@ -55,10 +62,11 @@ export default defineConfig({
   // a spec that needs it opts in with test.use({contextOptions:{reducedMotion:'reduce'}}).
   use: { baseURL: `http://127.0.0.1:${port}`, viewport: { width: 412, height: 915 }, screenshot: 'only-on-failure', trace: 'retain-on-failure' },
   projects: [
-    { name: 'chromium', testIgnore: productionSpec },
+    { name: 'chromium', testIgnore: [productionSpec, liveSpec] },
     { name: 'production', testMatch: productionSpec, use: { baseURL: `http://127.0.0.1:${productionPort}` } },
     { name: 'firefox', testMatch: storageSpecPattern, use: { ...devices['Desktop Firefox'], baseURL: `http://127.0.0.1:${port}`, viewport: { width: 412, height: 915 } } },
     { name: 'webkit', testMatch: storageSpecPattern, use: { ...devices['Desktop Safari'], baseURL: `http://127.0.0.1:${port}`, viewport: { width: 412, height: 915 } } },
+    ...(selected.includes('live')?[{ name: 'live', testMatch: liveSpec, use: { permissions: ['microphone'], launchOptions: { args: fakeAudio?['--use-fake-ui-for-media-stream','--use-fake-device-for-media-stream',`--use-file-for-fake-audio-capture=${fakeAudio}`]:[] } } }]:[]),
   ],
   webServer: [...(needsDevelopment?[development]:[]),...(needsProduction?[production]:[])],
 });

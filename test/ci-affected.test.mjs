@@ -40,6 +40,9 @@ test('CI selection follows changed files, renames, missing history and manual di
   assert.equal(result.browser_production,false);assert.equal(result.browser_speech,false);
   base=git('rev-parse','HEAD');put('test/browser/production-surface.spec.ts','changed\n');commit('test');
   result=select(pr());assert.equal(result.browser_development,false);assert.equal(result.browser_production,true);
+  // The local-agent profile step runs the reminder recovery spec as well as the speech specs.
+  base=git('rev-parse','HEAD');put('test/browser/host-reminder-recovery.spec.ts','changed\n');commit('test');
+  result=select(pr());assert.deepEqual(result.browser_specs,['test/browser/host-reminder-recovery.spec.ts']);assert.equal(result.browser_speech,true);
   base=git('rev-parse','HEAD');git('mv','apps/app/source.ts','docs/reference.ts');commit('.');
   result=select(pr());assert.deepEqual(lanes(result),[true,true,true,false]);assert.deepEqual(result.browser_specs,[]);
   base=git('rev-parse','HEAD');git('rm','test/browser/notes.spec.ts');commit('.');
