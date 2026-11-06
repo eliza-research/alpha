@@ -69,7 +69,7 @@ test('a distribution build assembles the four APKs and instrumentation, lints an
  assert.deepEqual(f.seen[0].apks, ['launcher-debug.apk', 'launcher-release-unsigned.apk', 'standalone-debug.apk', 'standalone-release-unsigned.apk']);
  const {createdAt, ...record} = f.seen[0].record;
  assert.ok(!Number.isNaN(Date.parse(createdAt)));
- assert.deepEqual(record, {testMocks: false, runtimeProfile: 'native', mapsConfigured: false, signingRequested: false, versionOverride: {code: null, name: null}});
+ assert.deepEqual(record, {testMocks: false, runtimeProfile: 'native', mapsProvider: 'cloud', signingRequested: false, versionOverride: {code: null, name: null}});
  assert.deepEqual(f.result.files.map(file => path.basename(file)), ['standalone-debug.apk', 'standalone-release-unsigned.apk', 'launcher-debug.apk', 'launcher-release-unsigned.apk']);
 });
 
@@ -84,6 +84,9 @@ test('a test-mocks build keeps its instrumentation beside its APKs, skips lint a
  assert.equal(fs.existsSync(path.join(f.output, 'instrumentation')), false);
  assert.deepEqual(f.calls.filter(call => call.command === 'node').map(call => call.args), [['scripts/verify-apks.mjs', '--test-mocks']]);
  assert.equal(f.seen[0].record.testMocks, true);
+ assert.equal(f.seen[0].record.mapsProvider, 'cloud');
+ const regional = build(t, ['--test-mocks'], {environment: {VITE_MAPS_BASE_URL: 'http://127.0.0.1:8787'}});
+ assert.equal(regional.seen[0].record.mapsProvider, 'regional-gateway');
 });
 
 test('Cloud, unpackaged and skipped-instrumentation builds carry their selection to Gradle, the record and the verifier', t => {
@@ -91,7 +94,8 @@ test('Cloud, unpackaged and skipped-instrumentation builds carry their selection
  assert.deepEqual(gradleCalls(cloud.calls)[0].args.slice(0, 4), ['--no-daemon', '-PELIZA_RUNTIME_PROFILE=cloud', '-PELIZA_DEV_ALLOW_TEST_MOCKS=0', '-PELIZA_ALLOW_UNPACKAGED_RUNTIME=0']);
  assert.deepEqual(cloud.calls.filter(call => call.command === 'node').map(call => call.args), [['scripts/verify-apks.mjs', '--runtime-profile=cloud']]);
  assert.equal(cloud.seen[0].record.runtimeProfile, 'cloud');
- assert.equal(cloud.seen[0].record.mapsConfigured, true);
+ // The regional gateway variable is read only by test-mocks renderers.
+ assert.equal(cloud.seen[0].record.mapsProvider, 'cloud');
  assert.deepEqual(cloud.seen[0].record.versionOverride, {code: '41', name: '1.4.1'});
  const developer = build(t, ['--allow-unpackaged-runtime', '--skip-instrumentation']);
  const args = gradleCalls(developer.calls)[0].args;

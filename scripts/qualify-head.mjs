@@ -255,7 +255,7 @@ function main() {
       fs.copyFileSync("artifacts/apk-manifest.json", path.join(directory, "apk-manifest.json"));
       result.androidBuild.testMocks = manifest.testMocks;
       result.androidBuild.demoEntryPoints = manifest.demoEntryPoints;
-      result.androidBuild.mapsConfigured = manifest.mapsConfigured;
+      result.androidBuild.mapsProvider = manifest.mapsProvider;
       result.androidBuild.version = manifest.version;
       result.androidBuild.signing = manifest.signing;
       result.androidBuild.apks = manifest.results.map(row => ({
