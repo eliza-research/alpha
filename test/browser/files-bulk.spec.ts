@@ -62,7 +62,10 @@ for(const mode of ['supported','unsupported','cancelled'])test('sharing a select
   const {registerPlugin}=await import('/src/platform-plugins.ts');await registerPlugin<any>('AlphaFiles').importFile(new File(['Café\n'],'one.txt',{type:'text/plain'}));
  },mode);
  await openStorage(page);await startSelect(page);await page.getByRole('button',{name:'Select one.txt',exact:true}).click();
- await page.getByRole('toolbar',{name:'Selection actions'}).getByRole('button',{name:'Share',exact:true}).click();await page.getByRole('dialog',{name:'Share',exact:true}).getByRole('button',{name:'Share externally',exact:true}).click();
+ await page.getByRole('toolbar',{name:'Selection actions'}).getByRole('button',{name:'Share',exact:true}).click();
+ // Files' share panel has no unavailable-email row and no explanatory text.
+ const panel=page.getByRole('dialog',{name:'Share',exact:true});await expect(panel.getByRole('button',{name:'Share to email',exact:true})).toHaveCount(0);await expect(panel.getByText(/unavailable/i)).toHaveCount(0);
+ await panel.getByRole('button',{name:'Share externally',exact:true}).click();
  if(mode==='unsupported')await expect(page.getByText('Sharing is unavailable in this browser.',{exact:true})).toBeVisible();
  else await expect.poll(()=>page.evaluate(()=>(window as any).bulkShareCalls.length)).toBe(1);
  expect(downloads).toEqual([]);await expect(page.getByRole('button',{name:'Deselect one.txt',exact:true})).toBeVisible();

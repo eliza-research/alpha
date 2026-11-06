@@ -162,3 +162,14 @@ test('Files shows no picker tiles, search box, Recents or instruction subtitles'
 test('native StorageBrowser on a host JVM: clashes keep both, trash restores to origin, retention, no escape',{skip:jsonJarSkip},()=>{
  assert.match(runJvm([nativeSource('StorageBrowser.java'),fixture('android-stubs/android/webkit/MimeTypeMap.java'),fixture('StorageBrowserTest.java')],'ai.elizaresearch.alphaphone.StorageBrowserTest',{json:true}),/^PASS storage browser/);
 });
+test('each mounted volume is its own Storage row and tree; Trash spans volumes and acts on the row\'s volume',()=>{
+ const adapter=readFileSync('apps/app/src/prototype/files-browser-adapter.ts','utf8');
+ assert.match(adapter,/vols: volumes\.map\(volume => \(\{[^\n]*go: \(\) => go\(\{kind: 'folder', path: '', \.\.\.onVolume\(volume\.primary \? undefined : volume\.id\)\}\)/);
+ assert.match(adapter,/storageList\(\{path: at\.path, \.\.\.onVolume\(at\.volume\)\}\)/);
+ assert.match(adapter,/\[undefined, \.\.\.extraVolumes\(\)\]\.map\(async volume =>/);
+ assert.match(adapter,/storageEmptyTrash\(\{ids: \[item\.id\], confirmed: true, \.\.\.onVolume\(item\.volume\)\}\)/);
+ assert.match(adapter,/void restore\(\[d\.item\.id\], d\.item\.volume\)/);
+ const catalog=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/StorageCatalog.java','utf8');
+ assert.match(catalog,/for\(StorageVolume volume:manager\.getStorageVolumes\(\)\)/);
+ assert.match(catalog,/if\(!primary&&\(uuid==null\|\|!uuid\.matches\("\[A-Za-z0-9-\]\{1,64\}"\)\)\)continue;/);
+});
