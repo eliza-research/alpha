@@ -140,7 +140,8 @@ runtime, follow [local agent setup](local-agent-development.md).
 
 `bun run backend/test-runtime.ts` is separate live acceptance: it uses a private
 fixture for real model turns, new-process history, cancellation and proposal-only
-actions. Note and reminder review is a simulation: it never writes a note or schedules a notification. View navigation can open only a registered local view after review. `scripts/test-dev-agent.mjs` exercises the host protocol and checks that proposals are marked simulated. Neither proves Android UI execution. Local ASR's
+navigation and reminder actions. It no longer checks a note proposal: its development
+`create_note` action is not in the resident. Note and reminder review is a simulation: it never writes a note or schedules a notification. View navigation can open only a registered local view after review. `scripts/test-dev-agent.mjs` exercises the host protocol and checks that proposals are marked simulated. Neither proves Android UI execution. Local ASR's
 host-only and HTTP checks were in the retired `test-local-asr.mjs` (Whisper era, deleted on
 2026-10-14); the current ASR route contract is checked against the pinned upstream workers.
 

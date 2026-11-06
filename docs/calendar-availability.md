@@ -106,7 +106,8 @@ the renderer rejects any provider row that has a field other than `start`, `end`
   each reply until it expires. The notices are not de-duplicated.
 - The other foreground reviews (`notes_search`, `notes_named`, `calendar_named`,
   `reminder_named`) are not negotiated by the phone. Their results would also need a
-  journal bound of their own before they are.
+  journal bound of their own before they are. Alpha has no executor for `notes_search`
+  or `notes_named`; the unused ones were removed.
 - No real agent has produced or consumed an availability receipt against this build.
 - The provider read lives in the Alpha app because the pinned shared calendar readers do
   not return availability. Moving it into the shared calendar plugin needs an upstream
