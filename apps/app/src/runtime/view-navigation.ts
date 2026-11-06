@@ -46,6 +46,7 @@ export class ViewNavigationClient {
 		private readonly context: () => ContextEnvelope | null,
     private readonly subscribe?: (clientId:string,listener:(frame:unknown)=>void,ended:()=>void)=>{ready:Promise<void>;close:()=>void},
     private readonly executeView?: (view:string,capability:string,params:unknown,signal:AbortSignal,current:()=>void)=>Promise<unknown>,
+    private readonly reviewFirst?: (signal:AbortSignal)=>Promise<boolean>,
 	) {
     if(subscribe){document.addEventListener?.('visibilitychange',this.rendererVisibility);this.connectRenderer();}
 		this.state = createCompletedActionNavigationState(() =>
@@ -103,7 +104,16 @@ export class ViewNavigationClient {
         binding = preparedBinding;
         current();
         claimAttempted = true;
-        const claimed = object(await this.request('/api/views/interact-claim', binding, controller.signal));
+        // Supersession never aborts a claim in flight: the host may already hold it,
+        // and only a returned claimId can settle it. The claim keeps its own deadline.
+        const claim = new AbortController();
+        const claimDeadline = setTimeout(() => claim.abort(), 5000);
+        let claimed: Record<string, unknown>;
+        try {
+          claimed = object(await this.request('/api/views/interact-claim', binding, claim.signal));
+        } finally {
+          clearTimeout(claimDeadline);
+        }
         if (typeof claimed.claimId !== 'string' || !claimed.claimId) throw Error('Committed navigation claim missing');
         claimId = claimed.claimId;
         current();
@@ -228,6 +238,8 @@ export class ViewNavigationClient {
     try{
       current();const claim=object(await this.request('/api/views/interact-claim',identity,controller.signal));
       if(typeof claim.claimId!=='string')return;claimId=claim.claimId;current();
+      // 'Review phone actions first' covers agent commands in a view; an unreadable choice counts as on.
+      if(this.reviewFirst){const review=await this.reviewFirst(controller.signal).catch(()=>true);current();if(review){error='review-required: the owner reviews phone actions first';return;}}
       result=await this.executeView(frame.viewId,frame.capability,frame.params,controller.signal,current);success=true;
     }catch{error='Native view command failed or its outcome is unknown; it was not repeated';}
     finally{
@@ -307,6 +319,10 @@ export class ViewNavigationClient {
 		);
 		if (typeof claimed.claimId !== "string" || !claimed.claimId)
 			throw Error("Navigation claim was not verified");
+		// Every exit after a claim settles it: an unsettled claim holds the host's
+		// navigation slot (409) until its two-minute preparation timeout.
+		let acknowledged = false;
+		try {
 		attempt.current();
 		if (!attempt.fence())
 			throw new AlphaClientError(
@@ -354,6 +370,7 @@ export class ViewNavigationClient {
 			this.context()?.view === target &&
 			!this.context()?.sensitive &&
 			!document.hidden;
+		acknowledged = true;
 		const accepted = object(
 			await this.request(
 				"/api/views/interact-result",
@@ -392,5 +409,18 @@ export class ViewNavigationClient {
 		}
     return { status: "unknown" };
     } finally { this.delivering = false; }
+		} finally {
+			if (!acknowledged && !this.disposed && this.currentSession()) {
+				try {
+					await this.request(
+						"/api/views/interact-result",
+						{ ...binding, claimId: claimed.claimId, success: false, result: { switched: false } },
+						AbortSignal.timeout(5000),
+					);
+				} catch {
+					// A lost negative acknowledgment stays unknown; it is never replayed.
+				}
+			}
+		}
 	}
 }
