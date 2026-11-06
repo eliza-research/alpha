@@ -2535,11 +2535,11 @@
   </sc-if>
 
   <sc-if value="{{notes.noteRecorder}}">
-    <div ref="{{notes.recorderFocus}}" data-alpha-subview="notes-recorder" data-recorder-state="{{notes.noteRecorder.phase}}" class="enter" style="position: absolute; inset: 0; z-index: 10; background: var(--bg); display: flex; flex-direction: column; padding: 0 24px; box-sizing: border-box">
+    <div ref="{{notes.recorderFocus}}" data-alpha-subview="notes-recorder" data-recorder-state="{{notes.noteRecorder.phase}}" class="enter" style="position: absolute; inset: 0; z-index: 10; container-type: inline-size; background: var(--bg); display: flex; flex-direction: column; padding: 0 24px; box-sizing: border-box">
       <div style="display: flex; align-items: center; height: 56px; margin: 0 -16px 8px">
         <button class="ib" aria-label="Discard recording" onClick="{{notes.noteRecorder.discard}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.x}}"></path></svg></button>
       </div>
-      <span class="serif" role="timer" style="font-size: 72px; line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums">{{notes.noteRecorder.clock}}</span>
+      <span class="serif" role="timer" style="font-size: min(calc(72px * var(--browser-text-scale, 1)), 20cqw); line-height: 1; white-space: nowrap; letter-spacing: -.02em; font-variant-numeric: tabular-nums">{{notes.noteRecorder.clock}}</span>
       <div role="img" aria-label="Microphone levels" style="display: flex; align-items: center; gap: 3px; height: 96px; margin-top: 26px">
         <sc-for list="{{notes.noteRecorder.levels}}" as="b"><span style="flex: 1 1 0; height: {{b.h}}px; opacity: {{b.o}}; border-radius: 2px; background: var(--acct); transition: height .12s"></span></sc-for>
       </div>
