@@ -1,4 +1,5 @@
 import {expect,type Page} from '@playwright/test';
+import {preloadPageModules} from './page-modules';
 
 /** Closed fixture for the one merged Calendar: the agent's CalendarService feed (built-in Eliza Calendar plus
  * the Google calendars the owner shows in Google) and the Cloud Google connection behind Settings. Nothing
@@ -10,6 +11,8 @@ export async function installOneCalendar(page:Page,{googleInFeed,google=true}:{g
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
  await page.goto('/');
  await expect(page.getByRole('button',{name:'Calendar',exact:true})).toBeVisible();
+ // Loaded first: an evaluate left awaiting a cold module import can be collected (page-modules.ts).
+ await preloadPageModules(page,['/src/runtime/connection-ui.tsx']);
  await page.evaluate(async({googleInFeed,google})=>{
   const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');
   const identity={ownerId:'one-calendar-owner',agentId:'one-calendar-agent',sessionId:'one-calendar-session',origin:location.origin};
