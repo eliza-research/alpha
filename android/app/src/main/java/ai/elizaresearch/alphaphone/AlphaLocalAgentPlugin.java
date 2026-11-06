@@ -749,7 +749,7 @@ public final class AlphaLocalAgentPlugin extends Plugin {
    }}
    public void cancelInFlight(){cancelled.set(true);ai.eliza.voice.BufferedStreamExchange.Handle handle=active.get();if(handle!=null)handle.cancel();}
    public JSONObject post(JSONObject body)throws Exception{
-    JSONObject headers=new JSONObject().put("Authorization","Bearer "+token).put("Content-Type","application/json").put("Accept","application/json");
+    JSONObject headers=new JSONObject().put("Authorization","Bearer "+routeToken("/api/asr/local-inference/live",token)).put("Content-Type","application/json").put("Accept","application/json");
     JSONObject input=new JSONObject().put("path","/api/asr/local-inference/live").put("method","POST").put("body",body.toString()).put("headers",headers).put("timeoutMs",8000);
     return ai.eliza.voice.BufferedStreamExchange.exchange(port,input,active,()->{check();if(cancelled.get()&&!body.optBoolean("close"))throw new IllegalStateException("Voice capture cancelled");},8000);
    }
@@ -881,9 +881,15 @@ public final class AlphaLocalAgentPlugin extends Plugin {
   JSONObject input=new JSONObject().put("streams",new org.json.JSONArray().put("notification"));
   ElizaAgentService.subscribeLocalAgentEvents(input.toString(),event->{try{checkNotificationSession(expected);events.accept(event);}catch(Exception changed){handle.cancel();}},handle);
  }
+ /**
+  * The resident's local speech routes (/api/asr/local-inference/*) accept only its per-boot token,
+  * not the owner session: the owner token gets 401, and a 401 clears the enrollment. Callers have
+  * already admitted the owner; the per-boot token never leaves native code.
+  */
+ static String routeToken(String path,String session){return path.startsWith("/api/asr/local-inference/")?ElizaAgentService.localAgentToken():session;}
  private static JSONObject raw(String path,String method,String body,String token,JSONObject supplied,int timeoutMs) throws Exception {
   JSONObject headers=new JSONObject();headers.put("Accept","application/json");headers.put("Content-Type","application/json");
-  if(token!=null)headers.put("Authorization","Bearer "+token);
+  if(token!=null)headers.put("Authorization","Bearer "+routeToken(path,token));
   if(supplied!=null)for(String key:new String[]{"X-Eliza-Device-Id","X-Eliza-Device-Key","X-Eliza-Device-Capabilities","X-ElizaOS-Client-Id"}){
    if(supplied.has(key)){String value=supplied.getString(key);if(value.length()>2048||value.contains("\r")||value.contains("\n")||("X-ElizaOS-Client-Id".equals(key)&&!value.matches("[A-Za-z0-9._-]{1,128}")))throw new IllegalArgumentException();headers.put(key,value);}
   }
