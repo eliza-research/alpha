@@ -40,11 +40,14 @@ test('Android foundation runs on main and develop pushes and both workflows end 
   assert.match(android, /^on:\n(?:.*\n)*?  push:\n    branches: \[main, develop\]\n/m);
   assert.match(android, /cancel-in-progress: \$\{\{ github\.event_name != 'push' \}\}/);
   // A shared group would still cancel a pending main run when another push arrives.
-  for (const [name, text] of [['android', android], ['browser', read('.github/workflows/browser.yml')]])
-    assert.match(text, new RegExp(`group: ${name}-\\$\\{\\{ github\\.event_name == 'push' && github\\.sha \\|\\| github\\.ref \\}\\}`), name);
+  assert.match(android, /group: android-\$\{\{ github\.event_name == 'push' && github\.sha \|\| github\.ref \}\}/);
+  const browser = read('.github/workflows/browser.yml');
+  // The event name also keeps a dispatch on main from cancelling the daily scheduled run.
+  assert.ok(browser.includes("group: browser-${{ github.event_name }}-${{ github.event_name == 'push' && github.sha || github.ref }}\n"));
+  assert.match(browser, /^on:\n(?:.*\n)*?  schedule:\n    - cron: '[^']+'\n/m);
+  assert.match(browser, /- run: npm run verify\n        env:\n(?:.*\n)*?          ALPHA_REQUIRE_PREPARED_SDK: '1'\n/);
   assert.match(android, /name: Android foundation result\n    needs: \[changes, build\]\n    if: always\(\)/);
   assert.match(android, /artifacts\/mapping\/\*\.txt/);
-  const browser = read('.github/workflows/browser.yml');
   assert.match(browser, /name: Browser MVP result\n    needs: \[changes, verify, browser, production\]\n    if: always\(\)/);
   assert.match(browser, /name: Repository verification\n/);
   assert.match(browser, /node scripts\/verify-upstream\.mjs/);

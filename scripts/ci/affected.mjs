@@ -82,7 +82,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const event = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
   let result;
   let paths = [];
-  if (process.env.GITHUB_EVENT_NAME === 'workflow_dispatch') {
+  // Manual and scheduled runs have no diff; they select every lane.
+  if (['workflow_dispatch', 'schedule'].includes(process.env.GITHUB_EVENT_NAME)) {
     result = { verify: true, browser: true, android: true, prepare: true };
   } else {
     try {
@@ -101,5 +102,5 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   }
   Object.assign(result, browserPlan(paths));
   for (const [key, value] of Object.entries(result)) appendFileSync(process.env.GITHUB_OUTPUT, `${key}=${value}\n`);
-  appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### Change selection\n\n${paths.length} changed paths. Missing diff or manual run selects all lanes.\n\n\`\`\`json\n${JSON.stringify(result, null, 2)}\n\`\`\`\n`);
+  appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### Change selection\n\n${paths.length} changed paths. Missing diff, manual or scheduled run selects all lanes.\n\n\`\`\`json\n${JSON.stringify(result, null, 2)}\n\`\`\`\n`);
 }

@@ -124,6 +124,17 @@ npm run verify
 npm run dev
 ```
 
+`npm run verify` needs a JDK (`JAVA_HOME` or `javac` on `PATH`) for the host contract tests.
+The tests that load the real SDK need Bun 1.4.2 and the prepared SDK; without them they
+skip. To run them, as CI's Repository verification does:
+
+```sh
+export ALPHA_BUN="$(command -v bun)"   # must report 1.4.2
+node scripts/prepare-local-agent.mjs
+export ALPHA_CLOUD_COLLECTOR_SOURCE="$(node --input-type=module -e "import {sourceDirectory} from './scripts/local-agent-source.mjs'; process.stdout.write(sourceDirectory(process.cwd()))")"
+ALPHA_REQUIRE_PREPARED_SDK=1 npm run verify   # fails instead of skipping when preparation is missing
+```
+
 ## Build-time test-mock switch
 
 One build-time switch, the upstream elizaOS name `ELIZA_DEV_ALLOW_TEST_MOCKS`, controls

@@ -3,6 +3,10 @@ on:
   push:
     branches: [main, develop]
   pull_request:
+  # Daily full chromium and production run of main, so a red baseline has a dated first
+  # failure. Main pushes still skip the browser lanes (docs/ci-cost-policy.md).
+  schedule:
+    - cron: '23 7 * * *'
   workflow_dispatch:
     inputs:
       cross_browser:
@@ -13,7 +17,8 @@ permissions:
   contents: read
 concurrency:
   # Superseded PR runs are cancelled; each main push keeps its own run (see android.yml).
-  group: browser-${{ github.event_name == 'push' && github.sha || github.ref }}
+  # The event name keeps a dispatch on main from cancelling the scheduled run.
+  group: browser-${{ github.event_name }}-${{ github.event_name == 'push' && github.sha || github.ref }}
   cancel-in-progress: ${{ github.event_name != 'push' }}
 jobs:
   changes:
@@ -53,6 +58,9 @@ jobs:
           echo "ALPHA_BUN=$ALPHA_BUN" >> "$GITHUB_ENV"
           echo "ALPHA_CLOUD_COLLECTOR_SOURCE=$prepared_source" >> "$GITHUB_ENV"
       - run: npm run verify
+        env:
+          # Prepared-SDK tests fail here instead of skipping when the preparation is missing.
+          ALPHA_REQUIRE_PREPARED_SDK: '1'
       # Reuses the product dependencies and client projection prepared by npm run verify.
       - name: Build the connected browser proof renderer
         env:
@@ -155,9 +163,9 @@ jobs:
             test-results/browser/
             test-results/browser-report/
           retention-days: 3
-  # Stable required check for the dynamically named shard matrix. The ruleset in
-  # docs/ci-cost-policy.md requires this job and Repository verification. Pushes
-  # to main deliberately skip the browser lanes (they already ran on the PR).
+  # Stable aggregate for the dynamically named shard matrix. docs/ci-cost-policy.md
+  # proposes requiring it; no ruleset is installed (P-57). Pushes to main skip the
+  # browser lanes (they already ran on the PR); the daily schedule runs them on main.
   result:
     name: Browser MVP result
     needs: [changes, verify, browser, production]

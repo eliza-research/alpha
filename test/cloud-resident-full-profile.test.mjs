@@ -86,7 +86,12 @@ test('full mode refuses an unset saved assistant choice without rewriting the pr
   } finally { await fs.rm(profile, {recursive: true, force: true}); }
 });
 
-test('actual pinned SDK collector retains the full host assistant and preserves lean/store exclusions', async () => {
+// The actual collector needs the verified prepared SDK and the pinned Bun (npm run agent:prepare).
+// Without them it skips, unless ALPHA_REQUIRE_PREPARED_SDK=1 makes the missing preparation fail.
+const skipUnprepared = (!process.env.ALPHA_CLOUD_COLLECTOR_SOURCE || !process.env.ALPHA_BUN) && process.env.ALPHA_REQUIRE_PREPARED_SDK !== '1' ? 'Set ALPHA_CLOUD_COLLECTOR_SOURCE and ALPHA_BUN to the prepared SDK and pinned Bun' : false;
+test('actual pinned SDK collector retains the full host assistant and preserves lean/store exclusions', {skip: skipUnprepared}, async () => {
+  assert.ok(process.env.ALPHA_CLOUD_COLLECTOR_SOURCE, 'a verified prepared SDK is required');
+  assert.ok(process.env.ALPHA_BUN, 'the pinned Bun must be supplied');
   const {spawnSync} = await import('node:child_process');
   const profile = await fs.mkdtemp(join(tmpdir(), 'alpha-cloud-collector-'));
   const launches = [];
@@ -96,7 +101,7 @@ test('actual pinned SDK collector retains the full host assistant and preserves 
     const config = JSON.parse(await fs.readFile(join(profile, 'eliza.json'), 'utf8'));
     const actualEnvironment = launches[0].env;
     function collect(extra = {}) {
-      const run = spawnSync(process.env.ALPHA_BUN || 'bun', ['--no-install', '--conditions=eliza-source', 'test/fixtures/cloud-plugin-selection.mjs'], {cwd: process.cwd(), env: {...actualEnvironment, ...extra, ...(process.env.ALPHA_CLOUD_COLLECTOR_SOURCE ? {ALPHA_CLOUD_COLLECTOR_SOURCE: process.env.ALPHA_CLOUD_COLLECTOR_SOURCE} : {}), GIT_NO_LAZY_FETCH: '1', GIT_NO_REPLACE_OBJECTS: '1', GIT_OPTIONAL_LOCKS: '0'}, input: JSON.stringify({config}), encoding: 'utf8', timeout: 20000});
+      const run = spawnSync(process.env.ALPHA_BUN, ['--no-install', '--conditions=eliza-source', 'test/fixtures/cloud-plugin-selection.mjs'], {cwd: process.cwd(), env: {...actualEnvironment, ...extra, ALPHA_CLOUD_COLLECTOR_SOURCE: process.env.ALPHA_CLOUD_COLLECTOR_SOURCE, GIT_NO_LAZY_FETCH: '1', GIT_NO_REPLACE_OBJECTS: '1', GIT_OPTIONAL_LOCKS: '0'}, input: JSON.stringify({config}), encoding: 'utf8', timeout: 20000});
       assert.equal(run.status, 0, run.stderr);
       const line = run.stdout.split('\n').find(row => row.startsWith('SDK_PLUGIN_SELECTION='));
       assert.ok(line, 'the actual collector must return its selection');
