@@ -60,7 +60,7 @@ Other findings that change how the campaigns are run:
    passes `--home-role`, so `LauncherHome`, `SettingsRoles` and `AccessibilityHomeRole` are local
    owned-emulator only; 28 of the 31 listed classes have no hosted job at all.
 7. The `apkVariants` gate in `android/aosp/pixel10a-qualification-gates.json` cites
-   `https://github.com/AlphaCompute/alphaphone/actions/runs/39918054977`; the same run ID is the
+   `https://github.com/eliza-research/alphaphone/actions/runs/39918054977`; the same run ID is the
    `eliza-research/alphaphone` run above. AlphaCompute is now a fork, so that link may stop resolving.
 
 ## Dispatch runbook (prepared, not executed)

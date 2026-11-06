@@ -21,7 +21,7 @@
       "status": "passed",
       "evidence": [
         {
-          "ref": "https://github.com/AlphaCompute/alphaphone/actions/runs/39918054977",
+          "ref": "https://github.com/eliza-research/alphaphone/actions/runs/39918054977",
           "level": "release",
           "summary": "Alpha 3f25885d / Eliza f931082e: standalone and launcher, debug and unsigned release, verified by verify-apks with the packaged Cloud runtime."
         }

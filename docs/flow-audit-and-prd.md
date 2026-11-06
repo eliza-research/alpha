@@ -2,7 +2,7 @@
 
 Date: 2026-09-29. Target correction: Pixel 10 or similar **phone**, not tablet. (Superseded by decision P-15: the hardware target is Pixel 10a, codename stallion, on Android 17.) The available Pixel 9 emulator profile is a development approximation; it does not establish physical Pixel 10 support or acceptance. Scope: Alpha Phone only, its fourteen designed built-in experiences, shared launcher/assistant flows, and the requested reminders, notification, credential, and transcription journeys. This is a requirements and source-audit document, not evidence that those experiences are implemented or have passed acceptance. Native/API/vendor research accompanies this document separately.
 
-> October 12 scope update: approved [#402](https://github.com/AlphaCompute/alphaphone/issues/402)
+> October 12 scope update: approved [#402](https://github.com/eliza-research/alphaphone/issues/402)
 > defers passkeys outside MVP. Historical F09 passkey requirements below belong to
 > a separate system-provider/browser/image qualification follow-up. Password
 > unlock, save, fill, wrong-origin refusal and cancellation remain MVP gates.

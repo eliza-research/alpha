@@ -1,6 +1,6 @@
 # 09 — Distribution, partners and unit economics
 
-Product baseline, from [android-and-aosp.md](../android-and-aosp.md), [native-app-distribution.md](../native-app-distribution.md) and [enclave-candidate-validation.md](https://github.com/AlphaCompute/alphaphone/blob/d0a9db7829f7546668af46752bac57c6a339c7dd/docs/enclave-candidate-validation.md). Alpha Phone today is:
+Product baseline, from [android-and-aosp.md](../android-and-aosp.md), [native-app-distribution.md](../native-app-distribution.md) and [enclave-candidate-validation.md](https://github.com/eliza-research/alphaphone/blob/d0a9db7829f7546668af46752bac57c6a339c7dd/docs/enclave-candidate-validation.md). Alpha Phone today is:
 
 - an Android app in two flavors, standalone and HOME launcher (`ai.elizaresearch.alphaphone`);
 - a generated, non-privileged AOSP vendor add-on that has not been booted as a full signed image on a physical Pixel;
@@ -227,7 +227,7 @@ Prices are $0.99/M in and $1.49/M out ([Cerebras docs](https://inference-docs.ce
 | Deployment | Instance | Price | Per-user cost | Source |
 | --- | --- | --- | --- | --- |
 | Shared multi-tenant enclave (50 active users per instance, 2× for high availability) | m7i.xlarge (4 vCPU, 16 GiB) | $0.202/h on demand = **$147/month** | **$5.90** on demand; **$3.88** reserved at $0.133/h (est.) | [Vantage](https://instances.vantage.sh/aws/ec2/m7i.xlarge) |
-| Dedicated enclave per owner (the pairing model binds an "instance ID"; see [enclave-candidate-validation.md](https://github.com/AlphaCompute/alphaphone/blob/d0a9db7829f7546668af46752bac57c6a339c7dd/docs/enclave-candidate-validation.md)) | m7i.xlarge. Single-core instances cannot run an enclave | **$97–147/month per user** | same | [Nitro FAQ](https://aws.amazon.com/ec2/nitro/nitro-enclaves/faqs/) |
+| Dedicated enclave per owner (the pairing model binds an "instance ID"; see [enclave-candidate-validation.md](https://github.com/eliza-research/alphaphone/blob/d0a9db7829f7546668af46752bac57c6a339c7dd/docs/enclave-candidate-validation.md)) | m7i.xlarge. Single-core instances cannot run an enclave | **$97–147/month per user** | same | [Nitro FAQ](https://aws.amazon.com/ec2/nitro/nitro-enclaves/faqs/) |
 | Compute-optimized alternative | c7i.2xlarge (8 vCPU, 16 GiB) | $0.357/h on demand; $0.236/h 1-year reserved | — | [Vantage](https://instances.vantage.sh/aws/ec2/c7i.2xlarge) |
 
 **Reserved pricing.** Vantage has shown two different 1-year reserved rates for m7i.xlarge, $0.091/h and $0.133/h; this report uses the more conservative $0.133/h. GovCloud typically carries a premium over commercial regions (est.).
