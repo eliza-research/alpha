@@ -32,7 +32,7 @@ public class ReminderAgentInstrumentedTest {
    JSONObject receipt=ReminderTestAccess.operationReceipt(c,fixture.getString("op",null),binding,new JSONObject(fixture.getString("operation",null)));
    assertEquals(fixture.getString("result",null),receipt.toString());assertEquals(receipt.getJSONObject("result").getLong("at"),ReminderTestAccess.read(c,fixture.getString("id",null)).getLong("at"));
   }else if(phase.equals("cleanup")){
-   String id=fixture.getString("id",null),op=fixture.getString("op",null);if(id!=null){assertTrue(id.startsWith("agent_process_"));ReminderTestAccess.cancel(c,id);synchronized(ReminderTestAccess.class){ReminderTestAccess.Envelope store=new ReminderTestAccess.Envelope(c);store.value.getJSONObject("records").remove(id);if(op!=null)store.value.getJSONObject("operations").remove(op);store.save();}}
+   String id=fixture.getString("id",null),op=fixture.getString("op",null);if(id!=null){assertTrue(id.startsWith("agent_process_"));ReminderTestAccess.cancel(c,id);ReminderTestAccess.removeFixture(c,java.util.Collections.singletonList(id),op==null?java.util.Collections.<String>emptyList():java.util.Collections.singletonList(op));}
    assertTrue(fixture.edit().clear().commit());
   }else fail("Unknown reminder process phase");
  }
@@ -45,10 +45,10 @@ public class ReminderAgentInstrumentedTest {
   try {
    assertTrue(legacy.edit().putString(id,raw).putString("damaged","broken-json").putInt("wrong_type",7).commit());
    JSONObject one=ReminderTestAccess.read(c,id),two=ReminderTestAccess.read(c,id);assertEquals(one.toString(),two.toString());assertTrue(one.getString("occurrenceId").startsWith("legacy_"));
-   ReminderTestAccess.Envelope envelope=new ReminderTestAccess.Envelope(c);assertEquals(raw,envelope.value.getJSONObject("legacyArchive").getString(id));assertEquals(raw,envelope.value.getJSONObject("records").getString(id));assertEquals("broken-json",envelope.value.getJSONObject("records").getString("damaged"));assertEquals(7,envelope.value.getJSONObject("records").getInt("wrong_type"));
+   JSONObject envelope=new ReminderTestAccess.Envelope(c).snapshot();assertEquals(raw,envelope.getJSONObject("legacyArchive").getString(id));assertEquals(raw,envelope.getJSONObject("records").getString(id));assertEquals("broken-json",envelope.getJSONObject("records").getString("damaged"));assertEquals(7,envelope.getJSONObject("records").getInt("wrong_type"));
    JSONObject op=new JSONObject().put("type","reminder_read_selected").put("target",ReminderTestAccess.selected(c,id));
    JSONObject result=ReminderTestAccess.operate(c,"migration_read",ReminderTestAccess.digest("synthetic migration owner"),op);assertEquals("succeeded",result.getString("status"));
-   assertEquals(1,ReminderTestAccess.list(c).length());assertEquals(3,new ReminderTestAccess.Envelope(c).value.getJSONObject("records").length());assertEquals(1,new ReminderTestAccess.Envelope(c).value.getJSONObject("operations").length());assertEquals(raw,legacy.getString(id,null));
+   assertEquals(1,ReminderTestAccess.list(c).length());assertEquals(3,new ReminderTestAccess.Envelope(c).snapshot().getJSONObject("records").length());assertEquals(1,new ReminderTestAccess.Envelope(c).snapshot().getJSONObject("operations").length());assertEquals(raw,legacy.getString(id,null));
   }finally{ReminderTestAccess.release(c);assertTrue(legacy.edit().clear().commit());assertTrue(c.getSharedPreferences("alpha-reminder-envelope-v1",0).edit().clear().commit());}
  }
  @Test public void selectedCrudPersistsExactReceiptsAndRejectsChangedBindings()throws Exception {
@@ -100,16 +100,16 @@ public class ReminderAgentInstrumentedTest {
    JSONObject cancel=new JSONObject().put("type","reminder_cancel").put("target",ReminderTestAccess.selected(c,id));String cancelId=UUID.randomUUID().toString();operations.add(cancelId);
    assertEquals("cancelled",ReminderTestAccess.operate(c,cancelId,binding,cancel).getJSONObject("result").getString("status"));
    assertEquals("cancelled",ReminderTestAccess.read(c,id).getString("status"));
-   String cancelledSnapshot=ReminderTestAccess.read(c,id).toString();int receiptCount=new ReminderTestAccess.Envelope(c).value.getJSONObject("operations").length();
+   String cancelledSnapshot=ReminderTestAccess.read(c,id).toString();int receiptCount=new ReminderTestAccess.Envelope(c).snapshot().getJSONObject("operations").length();
    for(boolean scheduleUpdate:new boolean[]{false,true}){
     JSONObject fields=new JSONObject().put("title","Must not revive cancellation").put("body","");if(scheduleUpdate)fields.put("schedule",new JSONObject().put("at",reviewedAt+3600000).put("recurrence",JSONObject.NULL));
     JSONObject cancelledUpdate=new JSONObject().put("type","reminder_update").put("target",ReminderTestAccess.selected(c,id)).put("fields",fields);String rejectedId=UUID.randomUUID().toString();operations.add(rejectedId);
     try{ReminderTestAccess.operate(c,rejectedId,binding,cancelledUpdate);fail("Cancelled reminder edit accepted");}catch(IllegalArgumentException expected){}
-    assertEquals("unknown",ReminderTestAccess.operationReceipt(c,rejectedId,binding,cancelledUpdate).getString("status"));assertEquals(cancelledSnapshot,ReminderTestAccess.read(c,id).toString());assertEquals(receiptCount,new ReminderTestAccess.Envelope(c).value.getJSONObject("operations").length());
+    assertEquals("unknown",ReminderTestAccess.operationReceipt(c,rejectedId,binding,cancelledUpdate).getString("status"));assertEquals(cancelledSnapshot,ReminderTestAccess.read(c,id).toString());assertEquals(receiptCount,new ReminderTestAccess.Envelope(c).snapshot().getJSONObject("operations").length());
    }
   } finally {
    ReminderTestAccess.cancel(c,id);
-   synchronized(ReminderTestAccess.class){ReminderTestAccess.Envelope store=new ReminderTestAccess.Envelope(c);store.value.getJSONObject("records").remove(id);for(String op:operations)store.value.getJSONObject("operations").remove(op);store.save();}
+   ReminderTestAccess.removeFixture(c,java.util.Collections.singletonList(id),operations);
    assertNull(ReminderTestAccess.read(c,id));
   }
  }
