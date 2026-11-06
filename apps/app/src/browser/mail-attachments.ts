@@ -11,7 +11,8 @@ export class BrowserMailAttachments extends WebPlugin {
  private url?:string;
  private cleanup?:()=>void;
  constructor(private files:BrowserFiles){super();window.addEventListener('pagehide',()=>this.clear());document.addEventListener('visibilitychange',()=>{if(document.hidden)this.clear();});}
- async readSelected(input:{selectionId:string}){const generation=this.generation,file=await this.files.attachment(input),review=await reviewMailAttachment(file);if(generation!==this.generation)throw new DOMException('Cancelled','AbortError');return {...file,...review,sourceReferenceVersion:1 as const};}
+ /** Rejects with code `too-large` past 5 MiB, as the native plugin does. */
+ async readSelected(input:{selectionId:string}){const generation=this.generation,file=await this.files.attachment(input).catch(error=>{throw /up to 5 MiB/.test(String(error?.message))?Object.assign(error,{code:'too-large'}):error;}),review=await reviewMailAttachment(file);if(generation!==this.generation)throw new DOMException('Cancelled','AbortError');return {...file,...review,sourceReferenceVersion:1 as const};}
  async retainSourceReference(input:{selectionId:string;sha256:string}){const file=await this.readSelected(input);if(file.sha256!==input.sha256)throw Error('Source changed.');return {reference:await this.files.sourceReference(input)};}
  async openSourceReference(input:{reference:string;sha256:string;size:number;mimeType:string}){
   const generation=this.generation,selected=await this.files.selectSourceReference(input.reference);
