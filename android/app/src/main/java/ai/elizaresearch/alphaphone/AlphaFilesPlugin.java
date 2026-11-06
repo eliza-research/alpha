@@ -179,12 +179,16 @@ public class AlphaFilesPlugin extends Plugin {
   activity.runOnUiThread(()->{try{activity.startActivity(intent);opened[0]=true;}catch(RuntimeException e){opened[0]=false;}finally{started.countDown();}});
   return started.await(5,TimeUnit.SECONDS)&&opened[0];
  }
- /** Watches the folder (or MediaStore for a category) on screen; a change emits storageChanged once per burst. */
+ /** Watches what is on screen; a change emits storageChanged once per burst. A folder (and the
+  * Downloads category, which is the Download folder) is watched with inotify and MediaStore:
+  * MediaProvider and DownloadProvider write on the lower filesystem, which may raise no inotify
+  * event on the FUSE path. */
  @PluginMethod public void storageWatch(PluginCall call){storage(call,b->{
   stopWatching();String path=call.getString("path");String category=call.getString("category");
-  if(path!=null){java.io.File folder=b.resolve(path,true);
+  java.io.File folder=path!=null?b.resolve(path,true):"downloads".equals(category)?new java.io.File(primaryBrowser().root,StorageCatalog.DOWNLOAD_FOLDER):null;
+  if(folder!=null&&folder.isDirectory()){
    observer=new FileObserver(folder,FileObserver.CREATE|FileObserver.DELETE|FileObserver.MOVED_FROM|FileObserver.MOVED_TO|FileObserver.CLOSE_WRITE|FileObserver.DELETE_SELF|FileObserver.MOVE_SELF){@Override public void onEvent(int event,String name){burst();}};observer.startWatching();}
-  if(category!=null||path==null){mediaObserver=new android.database.ContentObserver(main){@Override public void onChange(boolean self){burst();}};resolver().registerContentObserver(android.provider.MediaStore.Files.getContentUri(android.provider.MediaStore.VOLUME_EXTERNAL),true,mediaObserver);}
+  mediaObserver=new android.database.ContentObserver(main){@Override public void onChange(boolean self){burst();}};resolver().registerContentObserver(android.provider.MediaStore.Files.getContentUri(android.provider.MediaStore.VOLUME_EXTERNAL),true,mediaObserver);
   return new JSObject();
  });}
  @PluginMethod public void storageUnwatch(PluginCall call){stopWatching();call.resolve(new JSObject());}
