@@ -11,7 +11,7 @@ import { stripTypeScriptTypes } from 'node:module';
 const source = async () => {
   let text = await readFile(new URL('../apps/app/src/prototype/use-in-email-review.ts', import.meta.url), 'utf8');
   text = text.replace(/^import .*;\n/gm, '').replace(/^export (?=function |const )/gm, '');
-  return '{' + stripTypeScriptTypes(text, { mode: 'transform' }) + '\nglobalThis.installUseInEmailReview=installUseInEmailReview;globalThis.describeEmailTarget=describeEmailTarget;globalThis.USE_IN_EMAIL_ATTACHMENT_POLICY=USE_IN_EMAIL_ATTACHMENT_POLICY;}';
+  return '{' + stripTypeScriptTypes(text, { mode: 'strip' }) + '\nglobalThis.installUseInEmailReview=installUseInEmailReview;globalThis.describeEmailTarget=describeEmailTarget;globalThis.USE_IN_EMAIL_ATTACHMENT_POLICY=USE_IN_EMAIL_ATTACHMENT_POLICY;}';
 };
 const plain = value => JSON.parse(JSON.stringify(value));
 

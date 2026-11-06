@@ -5,7 +5,7 @@ import {stripTypeScriptTypes} from 'node:module';
 import {createRequire} from 'node:module';
 const require=createRequire(import.meta.url);
 const {JSDOM}=require('jsdom');
-const source=stripTypeScriptTypes(fs.readFileSync(new URL('../apps/app/src/runtime/calendar-sync-settings.ts',import.meta.url),'utf8'),{mode:'transform'}).replace(/^import .*;\n/gm,'').replace('export function openCalendarSyncSettings','function openCalendarSyncSettings');
+const source=stripTypeScriptTypes(fs.readFileSync(new URL('../apps/app/src/runtime/calendar-sync-settings.ts',import.meta.url),'utf8'),{mode:'strip'}).replace(/^import .*;\n/gm,'').replace('export function openCalendarSyncSettings','function openCalendarSyncSettings');
 const settle=async()=>{await Promise.resolve();await Promise.resolve();await Promise.resolve();};
 function fixture(state={status:'Sync is off.',enabled:false,running:false},review=async()=>{throw Error('Choose a Google calendar in Google accounts first.');}){
  const env=new JSDOM('<div class="os"></div><button id="prior">Calendar settings</button>',{pretendToBeVisual:true});

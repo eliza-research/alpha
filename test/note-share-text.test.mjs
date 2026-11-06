@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {stripTypeScriptTypes} from 'node:module';
 const source=fs.readFileSync('apps/app/src/runtime/note-share-text.ts','utf8');
-const compiled=stripTypeScriptTypes(source,{mode:'transform'});
+const compiled=stripTypeScriptTypes(source,{mode:'strip'});
 const {noteShareText}=await import('data:text/javascript;base64,'+Buffer.from(compiled).toString('base64'));
 test('selected text and checklist export preserves complete lines and completion state',()=>{
  assert.equal(noteShareText({kind:'text',title:'Draft',body:'one\n\ntwo'}).text,'Draft\n\none\n\ntwo');

@@ -5296,6 +5296,8 @@ class Component extends DCLogic {
     if (S.voice !== "off") return this.stopVoice();
     if (S.chat === "full") return this.setState({ chat: "sheet" });
     if (S.chat === "sheet") return this.setState({ chat: this.rest() });
+    // A bar raised from the pill lowers before Back leaves the view: one level at a time.
+    if (S.chat === "input" && this.rest() === "hidden") return this.setState({ chat: "hidden" });
     if (S.view) {
       var m = this.mod(S.view);
       if (m.back && m.back(this.vget(S.view), this.api(S.view))) return;
@@ -5360,10 +5362,9 @@ class Component extends DCLogic {
       // shade (#417); a pull on editable or scrollable content, or with the keyboard up, does not.
       if (dy > T && emptyHomeShadePull(this.pullContext(), g.pull, g.y, dx, dy, T)) return this.openSystemShade();
       if (this.props.systemShell !== false && dy < -T && g.y > 872) return this.goHome();
+      // Only the dock opens the chat (its own drag handlers, chat-overlay-motion-adapter.ts): a
+      // vertical drag anywhere else on Home scrolls or does nothing (docs/ui-refresh-2026-11).
       if (S.chat === "sheet" && dy > T) return this.setState({ chat: this.rest() });
-      if (!S.view && S.chat !== "sheet" && S.chat !== "full") {
-        if (dy < -T) return this.setState({ chat: "sheet" });
-      }
     } else {
       if ((g.x < 30 && dx > T) || (g.x > 382 && dx < -T)) return this.back();
     }
@@ -5650,7 +5651,7 @@ class Component extends DCLogic {
       panelOp: panelOpen ? 1 : 0, panelPE: panelOpen ? "auto" : "none", panelTop: S.chat === "full" && this.props.systemShell !== false ? "var(--alpha-chat-full-top,60px)" : "4px",
       scrimOp: 0, scrimPE: "none",
       showGrabber: S.chat !== "full", sizeIcon: S.chat === "full" ? IC.shrink : IC.expand, sizeLabel: S.chat === "full" ? "Shrink chat" : "Expand chat",
-      showComposer: showComposer, showPill: showPill, cmpBottom: 28,
+      showComposer: showComposer, showPill: showPill, cmpBottom: 28, dockGuardPE: "none", dockGuardSw: {}, dockGuardTap: null, dockGuardMenu: null,
       cmpPlaceholder: (mod && mod.placeholder) ? mod.placeholder : "Ask " + name,
       draft: S.draft, hasDraft: !!S.draft, noDraft: !S.draft,
       onDraft: function (e) { self.setState(e.target.value ? { draft: e.target.value } : { draft: "", editCard: null }); },

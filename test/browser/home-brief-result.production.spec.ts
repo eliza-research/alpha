@@ -159,6 +159,9 @@ test('with only occurrences that did not run, Home shows no brief card', async (
 // ---- Device calendar name on the Home calendar card ----
 const calendarCard = (page: Page) => page.locator('[data-alpha-home-calendar]');
 const origin = (page: Page) => calendarCard(page).locator('[data-alpha-home-calendar-origin]');
+// The calendar's name is no longer drawn on the card (docs/ui-refresh-2026-11); it leads the accessible description.
+const named = (page: Page, name: string) => expect(calendarCard(page)).toHaveAttribute('aria-description', new RegExp(`^${name}\\. Read `));
+const dateLine = (page: Page) => page.locator('[data-alpha-home-date]');
 const soon = () => { const begin = Date.now() + 3_600_000; return { begin, end: begin + 1_800_000 }; };
 /** The phone leaves and returns to the app; Calendar reads the provider again. */
 async function resume(page: Page) {
@@ -174,8 +177,8 @@ test('the Home calendar card names the device calendar its event was read from, 
   await residentHome(page);
   const card = calendarCard(page);
   await expect(card).toContainText('Quay inspection', { timeout: 20_000 });
-  await expect(origin(page)).toHaveText('Harbour team');
-  // The card's visible row names only the calendar; when it was read is in the accessible description.
+  await expect(origin(page)).toHaveCount(0);
+  await named(page, 'Harbour team');
   await expect(card.locator('[data-alpha-home-calendar-source]')).toHaveCount(0);
   await expect(card).toHaveAttribute('aria-description', /^Harbour team\. Read \d{1,2}:\d{2}.* from calendars on this device$/);
   await page.screenshot({ path: info.outputPath('home-calendar-name.png'), animations: 'disabled' });
@@ -183,8 +186,7 @@ test('the Home calendar card names the device calendar its event was read from, 
   // Renamed in Android Calendar: the next read carries the new name; the old one is gone.
   await harness(page, f => { f.calendar.calendars[0].name = 'Harbour crew'; });
   await resume(page);
-  await expect(origin(page)).toHaveText('Harbour crew');
-  await expect(card).toHaveAttribute('aria-description', /^Harbour crew\. Read /);
+  await named(page, 'Harbour crew');
   await expect(card).not.toContainText('Harbour team');
 
   // Unknown calendar: the event's calendar is not among the calendars the read returned (for
@@ -192,7 +194,6 @@ test('the Home calendar card names the device calendar its event was read from, 
   await harness(page, f => { f.calendar.calendars = f.calendar.calendars.filter((row: any) => row.id !== '7'); });
   await resume(page);
   // No calendar name is borrowed or invented for an event whose calendar the read did not return.
-  await expect(origin(page)).toHaveText('');
   await expect(card).toContainText('Quay inspection');
   await expect(card).toHaveAttribute('aria-description', /^Read \d{1,2}:\d{2}.* from calendars on this device$/);
   await expect(card).not.toContainText(/Harbour|Family/);
@@ -200,15 +201,14 @@ test('the Home calendar card names the device calendar its event was read from, 
   // A calendar the provider reports without a display name is named as unnamed, not guessed.
   await harness(page, f => { f.calendar.calendars.push({ id: '7', account: 'owner@example.invalid' }); });
   await resume(page);
-  await expect(origin(page)).toHaveText('Unnamed calendar');
+  await named(page, 'Unnamed calendar');
 
-  // Permission revoked in Android settings: the event, the name and the read time all go.
+  // Permission revoked in Android settings: nothing left to show, so no card; the date line returns.
   await harness(page, f => { f.calendar.access = 'not-granted'; });
   await resume(page);
-  await expect(card).toContainText('Connect your calendar');
-  await expect(card).not.toContainText(/Quay inspection|Unnamed calendar|Harbour|Read \d/);
-  await expect(origin(page)).toHaveText('');
-  await expect(card).not.toHaveAttribute('aria-description', /Read|Harbour/);
+  await expect(card).toHaveCount(0);
+  await expect(dateLine(page)).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Home', exact: true })).not.toContainText(/Quay inspection|Unnamed calendar|Harbour/);
   await expectNoDevelopmentSurface(page);
   expect(await harness(page, f => f.unexpected)).toEqual([]);
   expect(foreign).toEqual([]);
@@ -221,29 +221,29 @@ test('calendar permission denied: Home says access is off and shows no event, ca
   await flagOffAndroid(page, { calendar: { access: 'not-granted', request: 'denied', calendars: [{ id: '7', name: 'Harbour team', account: 'owner@example.invalid' }], events: [{ id: '42', calendarId: '7', title: 'Quay inspection', ...soon() }] } });
   await residentHome(page);
   const card = calendarCard(page);
-  // Before any request the card asks to connect; nothing was requested on the user's behalf.
-  await expect(card).toContainText('Connect your calendar', { timeout: 20_000 });
+  // Before any request there is nothing to show: no card, and nothing was requested on the user's behalf.
+  await expect(dateLine(page)).toBeVisible({ timeout: 20_000 });
+  await expect(card).toHaveCount(0);
   expect(await harness(page, f => f.calendar.requests)).toBe(0);
   await button(page, 'Settings').click();
-  await button(page, 'Calendar').click();
-  await button(page, 'Connect or refresh device calendars').click();
+  await button(page, 'Calendars').click();
+  await button(page, 'Refresh calendars').click();
   await expect.poll(() => harness(page, f => f.calendar.requests)).toBe(1);
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
   await expect(page.locator('html')).toHaveAttribute('data-active-view', 'home');
-  await expect(card).toContainText('Calendar access is off');
-  await expect(card).not.toContainText(/Quay inspection|Harbour team|Read \d/);
-  await expect(origin(page)).toHaveText('');
-  await expect(card).not.toHaveAttribute('aria-description', /Read|Harbour/);
+  // Refused: still nothing to show on Home.
+  await expect(card).toHaveCount(0);
+  await expect(page.getByRole('region', { name: 'Home', exact: true })).not.toContainText(/Quay inspection|Harbour team/);
 
   // Granting it later (the user allows the request) shows the event with its calendar's name.
   await harness(page, f => { f.calendar.request = 'granted'; });
   await button(page, 'Settings').click();
-  await button(page, 'Calendar').click();
-  await button(page, 'Connect or refresh device calendars').click();
+  await button(page, 'Calendars').click();
+  await button(page, 'Refresh calendars').click();
   await expect.poll(() => harness(page, f => f.calendar.requests)).toBe(2);
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
   await expect(card).toContainText('Quay inspection', { timeout: 20_000 });
-  await expect(origin(page)).toHaveText('Harbour team');
+  await named(page, 'Harbour team');
   expect(await harness(page, f => f.unexpected)).toEqual([]);
 });
 

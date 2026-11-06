@@ -3,7 +3,7 @@ import test from 'node:test';import assert from 'node:assert/strict';import {rea
 const source=readFileSync('apps/app/src/prototype/settings-adapter.ts','utf8');
 const region=source.slice(source.indexOf('// settings-facts:begin'),source.indexOf('// settings-facts:end'));
 assert.ok(region.length>100,'settings-facts region is present');
-const m=await import('data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(region,{mode:'transform'})).toString('base64'));
+const m=await import('data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(region,{mode:'strip'})).toString('base64'));
 const java=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java','utf8');
 
 test('the version row shows only what the build and Android report',()=>{
@@ -12,12 +12,9 @@ test('the version row shows only what the build and Android report',()=>{
  for(const code of [0,-1,1.5,'7',null,NaN])assert.equal(m.versionLabel('0.1.0',code),'0.1.0');
  for(const version of ['',undefined,null,7])assert.equal(m.versionLabel(version,7),'Unavailable');
 });
-test('updates are never reported as checked, available or current',()=>{
- const format=at=>'day '+at;
- assert.deepEqual(m.updateRows(1760000000000,format),[['Installed or last updated','day 1760000000000'],['Updates','Alpha does not check for updates']]);
- for(const at of [undefined,null,0,-5,'1760000000000',1.5])assert.deepEqual(m.updateRows(at,format),[['Updates','Alpha does not check for updates']]);
- // Neither the adapter nor the native plugin carries an update-check claim.
- assert.doesNotMatch(source,/Up to date|Update available|Check for updates/);
+test('no update claim is shown or made',()=>{
+ // Alpha has no update check; neither the adapter nor the native plugin says otherwise.
+ assert.doesNotMatch(source,/Up to date|Update available|Check for updates|does not check for updates/);
  assert.doesNotMatch(java,/Up to date|Update available/);
 });
 test('prototype-only sheets (memory wipe, Wi-Fi password, forget network) never reach the renderer',()=>{
@@ -36,16 +33,10 @@ test('native system facts are read without new permissions and are omitted when 
  for(const permission of ['ACCESS_WIFI_STATE','CHANGE_WIFI_STATE','BLUETOOTH_CONNECT','READ_PHONE_STATE','WRITE_SECURE_SETTINGS','ACCESS_NOTIFICATION_POLICY'])assert.doesNotMatch(manifest,new RegExp(`<uses-permission[^>]*android\\.permission\\.${permission}"(?![^>]*tools:node="remove")`),permission);
 });
 
-test('Cloud privacy facts describe AI and speech without model-navigation claims',()=>{
- assert.deepEqual(m.cloudPrivacyRow('Leaves this device'),['Shared with Cloud','Messages and selected content when you use AI']);
- assert.deepEqual(m.cloudPrivacyRow('On-device model'),['Voice','Recordings for transcription and text for playback, when used']);
- assert.equal(m.cloudPrivacyRow('Manage Alpha permissions'),null);
-});
-
 test('Cloud privacy hero includes speech while retaining native and offline/startup truth',async()=>{
  const nativeSource=readFileSync('apps/app/src/prototype/native-adapter.ts','utf8');
  const wording=nativeSource.slice(nativeSource.indexOf('export function egressPrivacy('),nativeSource.indexOf('/** Only a verified resident session'));
- const load=async cloud=>import('data:text/javascript;base64,'+Buffer.from(`const cloudRuntimeEnabled=${cloud};const testMocksEnabled=false;const Capacitor={isNativePlatform:()=>true};const cloudServiceName=environment=>environment==='staging'?'Nebula':'Cloud Test';`+stripTypeScriptTypes(wording,{mode:'transform'})).toString('base64'));
+ const load=async cloud=>import('data:text/javascript;base64,'+Buffer.from(`const cloudRuntimeEnabled=${cloud};const testMocksEnabled=false;const Capacitor={isNativePlatform:()=>true};const cloudServiceName=environment=>environment==='staging'?'Nebula':'Cloud Test';`+stripTypeScriptTypes(wording,{mode:'strip'})).toString('base64'));
  const cloud=await load(true),native=await load(false);
  const connected={kind:'resident',session:{sessionId:'qa'},cloudAccount:{environment:'staging'}};
  for(const isNative of [true,false]){
@@ -57,18 +48,22 @@ test('Cloud privacy hero includes speech while retaining native and offline/star
  for(const [kind,label]of [['starting','Agent starting'],['recovering','Agent not running'],['none','Offline']])assert.equal(cloud.egressPrivacy({kind,session:null,cloudAccount:null},true).big,label);
 });
 
-// Exercise the policy used by the real adapter for both stale routes and navigation rows.
-test('production Settings refuses Developer routes and preserves real About diagnostics',()=>{
- const rows=[{label:'Models'},{label:'Developer'},{label:'About'}, {lbl:'Developer'}];
- assert.deepEqual(m.settingsNavigationRows(rows,false),[{label:'Models'},{label:'About'}]);
- assert.equal(rows.length,4,'filtering must not mutate the reference model');
- assert.equal(m.settingsPage('developer',false),null);
- for(const page of ['about','problems','licenses','models',null,undefined])assert.equal(m.settingsPage(page,false),page);
- assert.match(source,/page: settingsPage\(state\.page, devSurfacesEnabled\)/);
- assert.match(source,/rows: settingsNavigationRows\(group\.rows, devSurfacesEnabled\)/);
-});
-test('explicit developer surfaces retain Developer navigation and route',()=>{
- const rows=[{label:'Developer'},{label:'About'}];
- assert.equal(m.settingsNavigationRows(rows,true),rows);
+// Pages that only repeated Android facts or another flow are gone (docs/ui-refresh-2026-11).
+test('stale or removed Settings routes open the top level; Developer only with developer surfaces',()=>{
+ for(const page of ['wifi','bluetooth','mobile','battery','sound','display','models','privacy','character','accounts','connections','photos','notifications','developer','nonsense',null,undefined])assert.equal(m.settingsPage(page,false),null,String(page));
+ for(const page of ['account','agent-connection','history','listening','calendar','password-provider','password-entry','cross','about','problems','licenses'])assert.equal(m.settingsPage(page,false),page);
+ assert.equal(m.settingsPage('cloud-plan',false),'account');
  assert.equal(m.settingsPage('developer',true),'developer');
+ assert.match(source,/const current = settingsPage\(state\.page, devSurfacesEnabled\)/);
+});
+test('Settings rows are controls: no device facts Alpha cannot change',()=>{
+ const body=source.slice(source.indexOf('definition.render = (state: Bag, api: Bag) => {'));
+ for(const gone of ["'Wi-Fi'","'Bluetooth'","'Mobile data'","'Battery'","'Sound & vibration'","'Models'","'Privacy & data'","'Inference model'","'Security patch'","'Do Not Disturb'","'Delivery timing'","'Personality settings'","'Home app'","'Assistant app'"])assert.ok(!body.includes(gone),gone);
+ assert.match(body,/row\('Android settings', manage\('system'\)\)/);
+ assert.match(java,/case "system":return new String\[\]\{Settings\.ACTION_SETTINGS\}/);
+});
+test('permission summary counts only reported grants',()=>{
+ assert.equal(m.permissionSummary({Microphone:true,Camera:true}),'All allowed');
+ assert.equal(m.permissionSummary({Microphone:false,Camera:true,Location:false}),'2 not allowed');
+ assert.equal(m.permissionSummary({}),'');assert.equal(m.permissionSummary(null),'');assert.equal(m.permissionSummary({Camera:'yes'}),'');
 });

@@ -139,7 +139,7 @@ test('a chat turn without Cloud inference gets an honest answer with the plan ac
   assert.match(adapter, /if\(card\.planAction\)\{\n\s+if\(card\.planAction==='plan'\)connectionController\.openPlan\(\);/);
   assert.doesNotMatch(adapter, /title:'Set up AI'|connectionSetup/);
   const cards=adapter.slice(adapter.indexOf('function selectedCloudName('),adapter.indexOf('/** Context notices for proposals'));
-  const renderCard=new Function('cloudServiceName','connectionController',stripTypeScriptTypes(cards,{mode:'transform'})+';return planActionCard;')(
+  const renderCard=new Function('cloudServiceName','connectionController',stripTypeScriptTypes(cards,{mode:'strip'})+';return planActionCard;')(
     environment=>environment==='staging'?'Nebula':'Other service',
     {getCloudEnvironment:()=>null,getSnapshot:()=>({signIn:{environment:'staging'}})});
   assert.equal(renderCard('sign-in').title,'Sign in with Nebula');

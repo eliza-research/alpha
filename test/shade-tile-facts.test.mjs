@@ -3,7 +3,7 @@ import test from 'node:test';import assert from 'node:assert/strict';import {rea
 const source=readFileSync('apps/app/src/prototype/native-adapter.ts','utf8');
 const region=source.slice(source.indexOf('// tile-facts:begin'),source.indexOf('// tile-facts:end'));
 assert.ok(region.length>100,'tile-facts region is present');
-const m=await import('data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(region,{mode:'transform'})).toString('base64'));
+const m=await import('data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(region,{mode:'strip'})).toString('base64'));
 const labels=['Wi-Fi','Bluetooth','Do not disturb','Agent can listen','Location','Airplane mode','Enclave lock','Flashlight'];
 // Model tiles may carry stale prototype state; only native facts may become on/off.
 const modelTiles=()=>labels.map(label=>({label,on:true,css:'background:var(--acc);color:#fff',toggle:()=>{}}));
@@ -64,8 +64,10 @@ test('every tile with a switch opens its own Android page, and the native allowl
  const body=java.slice(java.indexOf('static String[] settingsActions(String page)'),java.indexOf('@PluginMethod public void openSettings'));
  const pages=Object.fromEntries([...body.matchAll(/case "([a-z-]+)":return new String\[\]\{([^}]*)\}/g)].map(match=>[match[1],match[2].split(',')]));
  for(const page of Object.values(m.tileSettingsPages))assert.ok(pages[page]?.length,`${page} is allowlisted natively`);
- // No page resolves to the generic Settings home, and each first choice is distinct.
- for(const [page,actions] of Object.entries(pages))for(const action of actions)assert.notEqual(action.trim(),'Settings.ACTION_SETTINGS',page);
+ // Only the explicit "Android settings" row (page system) opens the generic Settings home;
+ // every other page resolves to its own screen, and each first choice is distinct.
+ assert.deepEqual(pages.system?.map(a=>a.trim()),['Settings.ACTION_SETTINGS']);
+ for(const [page,actions] of Object.entries(pages))if(page!=='system')for(const action of actions)assert.notEqual(action.trim(),'Settings.ACTION_SETTINGS',page);
  const first=Object.values(pages).map(actions=>actions[0]);assert.equal(new Set(first).size,first.length);
  assert.deepEqual([pages.airplane[0],pages.location[0],pages.mobile[0]],['Settings.ACTION_AIRPLANE_MODE_SETTINGS','Settings.ACTION_LOCATION_SOURCE_SETTINGS','Settings.ACTION_DATA_ROAMING_SETTINGS']);
 });

@@ -15,7 +15,7 @@ import {encodeInboxUnsaved, readInboxUnsaved} from '../apps/app/src/runtime/inbo
 const strip = async (file, name) => {
   let source = await readFile(new URL(`../apps/app/src/prototype/${file}`, import.meta.url), 'utf8');
   source = source.replace(/^import .*;\n/gm, '').replace(/^export (?=(?:async )?function |const |let |interface |type )/gm, '') + `\nglobalThis.${name}=${name};`;
-  return '{' + stripTypeScriptTypes(source, {mode: 'transform'}) + '}';
+  return '{' + stripTypeScriptTypes(source, {mode: 'strip'}) + '}';
 };
 const sources = [await strip('inbox-provider-controls.ts', 'inboxProviderControls'), await strip('inbox-drafts.ts', 'inboxDrafts')];
 const digest = async text => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))), b => b.toString(16).padStart(2, '0')).join('');

@@ -63,10 +63,13 @@ test('every subview of a retained view is opened by a state that asserts it is t
     assert.ok(asserted.has(id), `a state opens and asserts the ${id} subview`);
   }
   // Menus, search fields, sheets and the Undo toast are states of their own.
-  for (const step of ["['New automation', 'Edit When step']", "['Add Read step']", "['Connections', 'Slack']", "['Browser', 'Menu']", "['Photos', 'Search photos']", "['Notes', 'Search notes']", "['Files', 'Search files']", "['Search email']", "['Menu', 'Share']", "['Share photo']", "['View and sort']", "['Move file']", "['Delete file']"])
+  for (const step of ["['New automation', 'Edit When step']", "['Add Read step']", "['Browser', 'Menu']", "['Photos', 'Search photos']", "['Notes', 'Search notes']", "['Files', 'Search files']", "['Search email']", "['Menu', 'Share']", "['Share photo']", "['View and sort']", "['Move file']", "['Delete file']"])
     assert.ok(states.includes(step), `${step} is swept`);
-  for (const page of ['Character', 'Accounts', 'Connections', 'Notifications', 'Calendar', 'Password manager', 'Models', 'Display', 'Privacy & data', 'About', 'Scheduled digests', 'Agent connection'])
+  // The Settings pages and sheets the browser build reaches (docs/ui-refresh-2026-11).
+  for (const page of ['About', 'Scheduled digests', 'Agent', 'Eliza Cloud', 'Google', 'In-app alerts', 'Calendars'])
     assert.ok(states.includes(`['Settings', '${page}']`), `Settings > ${page} is swept`);
+  for (const page of ['Problem log', 'Open source licenses'])
+    assert.ok(states.includes(`['Settings', 'About', '${page}']`), `Settings > About > ${page} is swept`);
 });
 
 test('the sweep applies every dimension and cannot be narrowed silently', () => {
@@ -98,7 +101,7 @@ test('the sweep applies every dimension and cannot be narrowed silently', () => 
   // The fixture lock screen and photos-empty viewer and the launcher presentation run at 100%
   // and 200% with names, focus, contrast and the dock rules (provider-connected states are in STATES).
   assert.match(sweep, /for \(const state of \[\.\.\.FIXTURE_STATES, \.\.\.LAUNCHER_STATES\]\) \{\s*for \(const scale of \[1, 2\]\)/);
-  for (const name of ["mock('lock')", "shows: 'photos-empty'", "launcher('Home')", "launcher('All apps'", "connected('Inbox'", "connected('Settings connections'", "name: 'connected Calendar with events'", "CONNECTED_STATES.push(calendarWithEvents)"])
+  for (const name of ["mock('lock')", "shows: 'photos-empty'", "launcher('Home')", "launcher('All apps'", "connected('Inbox'", "connected('Settings Google'", "name: 'connected Calendar with events'", "CONNECTED_STATES.push(calendarWithEvents)"])
     assert.ok(states.includes(name), `${name} is swept`);
   // No state is skipped, marked fixme or exempted from a dimension.
   assert.doesNotMatch(sweep, /test\.skip|test\.fixme|\.only\(/);
@@ -110,7 +113,7 @@ test('the sweep applies every dimension and cannot be narrowed silently', () => 
 
 test('provider-connected screens are swept, against a synthetic mailbox only', () => {
   const block = states.slice(states.indexOf('export const CONNECTED_STATES'), states.indexOf('export const DEVELOPMENT_STATES'));
-  for (const state of ["connected('Home'", "connected('Inbox')", "connected('Inbox sent (empty)'", "connected('Inbox search'", "connected('Inbox message'", "connected('Inbox long subject'", "connected('Inbox compose'", "connected('Settings',", "connected('Settings accounts'", "connected('Settings connections'"])
+  for (const state of ["connected('Home'", "connected('Inbox')", "connected('Inbox sent (empty)'", "connected('Inbox search'", "connected('Inbox message'", "connected('Inbox long subject'", "connected('Inbox compose'", "connected('Settings',", "connected('Settings Google'"])
     assert.ok(block.includes(state), `${state} is swept`);
   assert.doesNotMatch(block, /fixme|skip/);
   // The provider boundary is replaced in the page; nothing is fetched and no real address is used.
@@ -128,7 +131,8 @@ test('the dock, title and toast fixes the sweep depends on stay in the source', 
   assert.match(css, /--alpha-dock-reserve:max\(108px,calc\(var\(--alpha-dock-clearance,102px\) \+ 6px\)\)/);
   assert.match(css, /html:not\(\.alpha-landscape\) \.alpha-phone \[data-alpha-layer="home"\] \{ bottom:0!important; scroll-padding-bottom:var\(--alpha-dock-reserve\)!important;/);
   assert.match(css, /html:not\(\.alpha-landscape\) \.alpha-phone \[data-alpha-layer="drawer"\] \{ padding-bottom:0!important; \}/);
-  assert.match(css, /\[data-alpha-home-layout\] \{ padding-bottom:var\(--alpha-dock-reserve\)!important; min-height:calc\(100% \+ var\(--alpha-dock-reserve\) - var\(--alpha-dock-rest-reserve\)\)!important; \}/);
+  // Home's grid sits on a reserve computed from the insets alone, never the measured dock (tla/HomeLayout.tla).
+  assert.match(css, /\[data-alpha-home-layout\] \{ padding-bottom:calc\(var\(--alpha-home-clearance\) \+ 86px\)!important; min-height:max\(100%,calc\(var\(--alpha-home-height,100%\) - 44px\)\)!important; \}/);
   assert.match(css, /:is\(\[data-alpha-app-scroll\],\.calendar-timeline,\.calendar-draft-fields\) \{ scroll-padding-bottom:calc\(var\(--alpha-dock-clearance,102px\) \+ 16px\); \}/);
   assert.match(css, /\.inbox-compose-fields \{[^}]*padding-bottom:max\(64px,calc\(var\(--alpha-dock-clearance,102px\) \+ 8px\)\)!important/);
   assert.match(main, /installDockClearance\(\)/);

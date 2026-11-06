@@ -5,7 +5,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-if (!process.execArgv.includes('--experimental-transform-types')) process.exit(spawnSync(process.execPath, ['--experimental-transform-types', process.argv[1]], { stdio: 'inherit', env: process.env }).status ?? 1);
+if (!process.execArgv.some(arg => arg === '--import=tsx' || arg === 'tsx')) process.exit(spawnSync(process.execPath, ['--import=tsx', process.argv[1]], { stdio: 'inherit', env: process.env }).status ?? 1);
 const { DeviceActions, actionScope } = await import('../apps/app/src/runtime/device-actions.ts');
 const origin = process.env.ALPHA_DEVICE_ORIGIN || 'http://127.0.0.1:47840';
 const parsed = new URL(origin);

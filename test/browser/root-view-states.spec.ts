@@ -18,7 +18,8 @@ const EMPTY: Record<View, RegExp> = {
   Notes: /No notes yet/,
   Files: /No recent files/,
   Workflows: /Connect your remote agent in Settings\. Reminders on this phone stay available/,
-  Settings: /Not signed in/,
+  // The account row names the Cloud service and offers sign-in.
+  Settings: /\bSign in\b/,
   Reminders: /No visible events or reminders/,
   Notifications: /No notifications/,
 };

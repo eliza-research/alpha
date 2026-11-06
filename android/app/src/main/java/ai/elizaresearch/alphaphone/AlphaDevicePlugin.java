@@ -136,6 +136,8 @@ public final class AlphaDevicePlugin extends Plugin {
  /** Android pages tried in order for one allowlisted name; the first that opens wins. */
  static String[] settingsActions(String page){
   switch(page){
+   // Android's own Settings home: radios, sound, battery and display live there, not in Alpha.
+   case "system":return new String[]{Settings.ACTION_SETTINGS};
    case "accounts":return new String[]{Settings.ACTION_SYNC_SETTINGS};
    case "wifi":return new String[]{Settings.ACTION_WIFI_SETTINGS};
    case "bluetooth":return new String[]{Settings.ACTION_BLUETOOTH_SETTINGS};

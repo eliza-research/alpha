@@ -101,9 +101,22 @@ for(const inset of [0,52])test(`full chat header clears the status bar with no g
 
 // Outside the open sheet the first touch only collapses the chat; the next one is ordinary.
 const activeView=(page:Page)=>page.locator('html').getAttribute('data-active-view');
-const card=(page:Page)=>page.getByRole('button',{name:'Open your calendar',exact:true});
+// Home draws its calendar card only with an event (docs/ui-refresh-2026-11), so one is saved first;
+// the card is the control above the sheet.
+const card=(page:Page)=>page.getByRole('button',{name:/^Open calendar event: Synthetic outside target/});
+async function eventSheet(page:Page){
+ await page.setViewportSize({width:412,height:915});
+ await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
+ await page.goto('/?shell=launcher&tools=1');
+ await page.evaluate(async()=>{const {BrowserCalendar}=await import('/src/browser/calendar.ts'),date=new Date(Date.now()+2*86400000);date.setHours(9,30,0,0);await new BrowserCalendar().save({calendarId:'local',title:'Synthetic outside target',begin:date.getTime(),end:date.getTime()+1800000,allDay:false,creationId:crypto.randomUUID()});});
+ await page.reload();
+ await expect(card(page)).toBeVisible();
+ await page.getByRole('button',{name:'Open conversation',exact:true}).click();
+ await expect(grabber(page)).toBeVisible();
+ await panel(page).evaluate(element=>Promise.all(element.ownerDocument.getAnimations().map(animation=>animation.finished.catch(()=>{}))));
+}
 test('the first click outside collapses and is captured; the next one reaches the app',async({page})=>{
- await sheet(page);
+ await eventSheet(page);
  const box=(await card(page).boundingBox())!,x=box.x+box.width/2,y=box.y+box.height/2;
  await page.mouse.click(x,y);
  await expect(grabber(page)).toHaveCount(0);
@@ -137,7 +150,7 @@ test('a tap inside the sheet does not collapse it, and full screen has nothing o
 test.describe('touch outside',()=>{
  test.use({hasTouch:true});
  test('the first tap collapses and is captured; the next tap reaches the app',async({page})=>{
-  await sheet(page);
+  await eventSheet(page);
   const box=(await card(page).boundingBox())!,x=box.x+box.width/2,y=box.y+box.height/2;
   await page.touchscreen.tap(x,y);
   await expect(grabber(page)).toHaveCount(0);
@@ -156,5 +169,70 @@ test.describe('landscape',()=>{
   await page.getByRole('button',{name:'Open conversation',exact:true}).click();
   await expect(grabber(page)).toBeVisible();
   await expect(page.locator('[data-alpha-chat-scrim]')).toHaveCSS('pointer-events','none');
+ });
+});
+
+// One rule for every raised dock (docs/ui-refresh-2026-11, tla/ChatInput.tla).
+test.describe('raised dock',()=>{
+ const open=async(page:Page)=>{await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));await page.goto('/?shell=launcher&tools=1');};
+ test('the bar raised from the pill lowers on the first outside tap, which reaches nothing; Back lowers it before leaving',async({page})=>{
+  await open(page);
+  await page.getByRole('button',{name:'Notes',exact:true}).click();
+  await expect(page.locator('html')).toHaveAttribute('data-active-view','notes');
+  const pill=page.locator('[data-alpha-layer="pill"]');
+  await pill.getByRole('button',{name:'Type',exact:true}).click();
+  const composer=page.locator('[data-alpha-layer="composer"] textarea[data-alpha-composer]');
+  await expect(composer).toBeFocused();
+  await composer.fill('keep this draft');
+  const before=await page.evaluate(()=>location.href+document.querySelector('[data-alpha-layer="app"]')?.innerHTML.length);
+  await page.mouse.click(206,300);
+  await expect(pill).toBeVisible();
+  await expect(page.locator('[data-alpha-layer="composer"]')).toHaveCount(0);
+  await expect(page.locator('html')).toHaveAttribute('data-active-view','notes');
+  expect(await page.evaluate(()=>location.href+document.querySelector('[data-alpha-layer="app"]')?.innerHTML.length)).toBe(before);
+  // The draft survives lowering.
+  await pill.getByRole('button',{name:'Type',exact:true}).click();
+  await expect(composer).toHaveValue('keep this draft');
+  await composer.blur();
+  await page.evaluate(()=>window.dispatchEvent(new Event('alpha-back',{cancelable:true})));
+  await expect(pill).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('data-active-view','notes');
+ });
+ test('with the keyboard up on Home the first tap only closes it; the next opens the app',async({page})=>{
+  await open(page);
+  const composer=page.locator('[data-alpha-layer="composer"] textarea[data-alpha-composer]');
+  await composer.click();
+  await expect(composer).toBeFocused();
+  const icon=(await page.getByRole('button',{name:'Calendar',exact:true}).boundingBox())!;
+  await page.mouse.click(icon.x+icon.width/2,icon.y+icon.height/2);
+  await expect(composer).not.toBeFocused();
+  await page.waitForTimeout(300);
+  await expect(page.locator('html')).toHaveAttribute('data-active-view','home');
+  await page.mouse.click(icon.x+icon.width/2,icon.y+icon.height/2);
+  await expect(page.locator('html')).toHaveAttribute('data-active-view','calendar');
+ });
+ test('when the keyboard closes by itself the composer lets go and Home taps work again',async({page})=>{
+  await open(page);
+  const composer=page.locator('[data-alpha-layer="composer"] textarea[data-alpha-composer]');
+  await composer.click();
+  await expect(page.locator('[data-alpha-dock-guard]')).toHaveCSS('pointer-events','auto');
+  // adjustResize: the window shrinks with the keyboard and grows back when it closes.
+  const size=page.viewportSize()!;
+  await page.setViewportSize({width:size.width,height:size.height-320});await page.waitForTimeout(300);
+  await page.setViewportSize(size);
+  await expect(composer).not.toBeFocused();
+  await expect(page.locator('[data-alpha-dock-guard]')).toHaveCSS('pointer-events','none');
+  await page.getByRole('button',{name:'Calendar',exact:true}).click();
+  await expect(page.locator('html')).toHaveAttribute('data-active-view','calendar');
+ });
+ test('an upward drag on Home content opens nothing; a drag up from the bar opens the chat',async({page})=>{
+  await open(page);
+  const conversation=page.locator('[data-alpha-layer="conversation"]');
+  await page.mouse.move(206,520);await page.mouse.down();await page.mouse.move(206,240,{steps:8});await page.mouse.up();
+  await page.waitForTimeout(300);
+  await expect(conversation).toHaveAttribute('aria-hidden','true');
+  const bar=(await page.locator('[data-alpha-input-bar]').boundingBox())!;
+  await page.mouse.move(bar.x+bar.width/2,bar.y+bar.height/2);await page.mouse.down();await page.mouse.move(bar.x+bar.width/2,bar.y-300,{steps:10});await page.mouse.up();
+  await expect(conversation).toHaveAttribute('aria-hidden','false');
  });
 });

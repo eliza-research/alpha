@@ -12,7 +12,7 @@ function fixture(permission=false){
  const camera={startPreview:async()=>{calls.starts++;if(failed)throw {permission};}};
  const context=vm.createContext({window:env.window,document:env.window.document,console,camera,mediaAccessDenied:error=>error.permission?'camera':undefined,mask:enable=>calls.masked=enable,active:()=>true,Capacitor:{isPluginAvailable:()=>true}});
  const prelude=`let accessPanel,denied,disposed=false,recordingStarting=false,finalizing=false,phase='off',epoch=0,direction='back',flash=false,controlBusy=false,capturing=false,recording=false;const browserMode=true,stopping=Promise.resolve();const finder='[aria-label="Viewfinder. Tap to focus, hold to ask Alpha, swipe to change mode"]';let state={said:''};const api={set:patch=>Object.assign(state,patch),get:()=>state};`;
- vm.runInContext(stripTypeScriptTypes(prelude+ui+lifecycle+`;globalThis.testCamera={start,control,state:()=>({phase,denied,said:state.said})};`,{mode:'transform'}),context);
+ vm.runInContext(stripTypeScriptTypes(prelude+ui+lifecycle+`;globalThis.testCamera={start,control,state:()=>({phase,denied,said:state.said})};`,{mode:'strip'}),context);
  return {env,timers,calls,api:context.testCamera,recover:()=>failed=false};
 }
 {

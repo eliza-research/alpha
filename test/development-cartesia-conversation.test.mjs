@@ -1,6 +1,6 @@
 import {validateUuid} from '../vendor/eliza/packages/core/src/utils/uuid.ts';
 import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from 'node:module';import vm from 'node:vm';
-const source=stripTypeScriptTypes((readFileSync('apps/app/src/runtime/development-cartesia-flag.ts','utf8')+readFileSync('apps/app/src/runtime/development-cartesia-conversation.ts','utf8')).replace(/^import .*;\n/gm,'').replace(/^export \{.*\} from .*;\n/gm,'').replace("await import('@elizaos/ui/voice/voice-session-client')","await loadClient()").replace(/^export /gm,''),{mode:'transform'});
+const source=stripTypeScriptTypes((readFileSync('apps/app/src/runtime/development-cartesia-flag.ts','utf8')+readFileSync('apps/app/src/runtime/development-cartesia-conversation.ts','utf8')).replace(/^import .*;\n/gm,'').replace(/^export \{.*\} from .*;\n/gm,'').replace("await import('@elizaos/ui/voice/voice-session-client')","await loadClient()").replace(/^export /gm,''),{mode:'strip'});
 const binding={conversationId:'conversation',session:{agentId:'agent'}};
 async function setup({revoked=true,alreadyRetired=false,cloudRealtime=false,attestation={},askBefore=true}={}){
  let current=true,options,stops=0,history=0;const calls=[],errors=[],performed=[];const preferenceWindow=new EventTarget();

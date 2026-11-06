@@ -660,8 +660,8 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
     // The loaded page was dropped (an account change or disconnect elsewhere) after a real read:
     // the card says when it last updated, with the last count only in the accessible name.
     const stale=binding&&!cached&&!homeFailure&&!pending&&attention.state==='stale'&&attention.updatedAt?presentHomeAttention({state:'stale',unread:attention.unread,...(attention.source?{source:attention.source}:{}),updatedAt:attention.updatedAt},Date.now()):null;
-    if(stale)return {...out,homeAttentionLabel:stale.label,homeInboxCount:'',homeInboxRows:[],homeInboxHasRows:false,homeInboxTitle:'Inbox',homeInboxStatus:stale.text,homeInboxDescription:stale.text};
-    return {...out,homeAttentionLabel:count?`Open Inbox: ${count} email${unread.length===1?'':'s'}`:disconnected?'Connect email':'Open Inbox',
+    if(stale)return {...out,homeGoogleConnected:!binding?undefined:disconnected?false:connected?true:undefined,homeAttentionLabel:stale.label,homeInboxCount:'',homeInboxRows:[],homeInboxHasRows:false,homeInboxTitle:'Inbox',homeInboxStatus:stale.text,homeInboxDescription:stale.text};
+    return {...out,homeGoogleConnected:!binding?undefined:disconnected?false:connected?true:undefined,homeAttentionLabel:count?`Open Inbox: ${count} email${unread.length===1?'':'s'}`:disconnected?'Connect email':'Open Inbox',
       homeInboxCount:count,homeInboxRows:unread.slice(0,2).map(m=>({subject:m.subject||'(no subject)',from:m.from})),homeInboxHasRows:unread.length>0,
       homeInboxTitle:unread.length?'':homeFailure==='revoked'?'Reconnect email':homeFailure?'Email unavailable':pending?'Loading email…':cached&&!cached.more?'No unread email':disconnected?'Connect email':'Inbox',
       homeInboxStatus,homeInboxDescription:homeInboxStatus};

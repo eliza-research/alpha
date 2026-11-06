@@ -161,7 +161,10 @@ test.describe('menus and sheets over a scrim own focus', () => {
     ['files:preview', ['Move file'], 'Move to', 'Close move', 'Move file'],
     ['files:preview', ['Share file'], 'Share file', 'Close share', 'Share file'],
     ['workflows:new', ['Add Read step'], 'Step editor', 'Close', null],
-    ['settings', ['Connections', 'Slack'], 'Slack', 'Close sheet', 'Slack'],
+    // Settings > Google (live: the panel is not mounted in mock mode). The Google accounts panel
+    // has no scrim button; its Close button is the pointer dismissal, and Escape returns focus to
+    // the Google row.
+    ['live', ['Settings', 'Google'], 'Google accounts', 'Close Google accounts', 'Google'],
   ] as const;
   for (const [start, steps, name, scrim, opener] of POPUPS) {
     test(`${start} > ${steps.join(' > ')}: focus enters, stays, and returns on Escape`, async ({ page }) => {

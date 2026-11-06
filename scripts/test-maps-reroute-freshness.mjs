@@ -13,7 +13,7 @@ import { atStep, guidanceView } from '../apps/app/src/maps/guidance.ts';
 const ORIGIN = {latitude: 43.73, longitude: 7.42};
 const END = {latitude: 43.74, longitude: 7.42};
 const OFF_ROUTE = {latitude: 43.735, longitude: 7.43};
-const source = stripTypeScriptTypes(fs.readFileSync(new URL('../apps/app/src/prototype/maps-adapter.ts', import.meta.url), 'utf8').replace(/^import .*;\n/gm, '').replace('export function installPrototypeMapsAdapter', 'function installPrototypeMapsAdapter'), {mode: 'transform'});
+const source = stripTypeScriptTypes(fs.readFileSync(new URL('../apps/app/src/prototype/maps-adapter.ts', import.meta.url), 'utf8').replace(/^import .*;\n/gm, '').replace('export function installPrototypeMapsAdapter', 'function installPrototypeMapsAdapter'), {mode: 'strip'});
 
 // Execute the actual adapter/render callbacks with the real shared controller. Only device,
 // DOM and provider boundaries are fixtures: this does not establish physical GPS acceptance.

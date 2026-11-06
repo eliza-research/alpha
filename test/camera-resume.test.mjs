@@ -3,7 +3,7 @@ import test from 'node:test';import assert from 'node:assert/strict';import {rea
 const source=readFileSync('apps/app/src/prototype/camera-adapter.ts','utf8');
 const region=source.slice(source.indexOf('// camera-resume:begin'),source.indexOf('// camera-resume:end'));
 assert.ok(region.length>100,'camera-resume region is present');
-const {restartAfterResume}=await import('data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(region,{mode:'transform'})).toString('base64'));
+const {restartAfterResume}=await import('data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(region,{mode:'strip'})).toString('base64'));
 const stopped=()=>({denied:'camera',phase:'error',disposed:false});
 
 test('a resume after "Don\'t allow" does not ask for the camera again',async()=>{

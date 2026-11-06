@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import {stripTypeScriptTypes} from 'node:module';
-const source=stripTypeScriptTypes(fs.readFileSync('apps/app/src/prototype/files-tree-adapter.ts','utf8').replace(/^import .*;\n/gm,'').replace('export function','function'),{mode:'transform'});
+const source=stripTypeScriptTypes(fs.readFileSync('apps/app/src/prototype/files-tree-adapter.ts','utf8').replace(/^import .*;\n/gm,'').replace('export function','function'),{mode:'strip'});
 function harness(){
  let resolve,active=true;const doc={hidden:false},toasts=[];let failForget=false;const result=new Promise(done=>{resolve=done;}),accepted=[],forgotten=[],state={};
  const api={ic:{folder:'fixture-folder'},get:()=>state,set:patch=>Object.assign(state,patch),isActive:()=>active,toast(message){toasts.push(message);}};

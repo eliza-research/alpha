@@ -1,0 +1,38 @@
+{
+  "ChatInput": {
+    "constants": {},
+    "invariants": [
+      "NoLeak",
+      "NoStrayOpen",
+      "BackInOrder",
+      "DraftKept",
+      "FocusNeedsComposer",
+      "OneTouchDown"
+    ],
+    "properties": []
+  },
+  "HomeLayout": {
+    "constants": {},
+    "invariants": [
+      "GridStable",
+      "CardsHaveContent",
+      "NoLoadingCards",
+      "TopNeverBlank",
+      "SetupOnlyWhenNeeded"
+    ],
+    "properties": []
+  },
+  "SettingsNav": {
+    "constants": {},
+    "invariants": [
+      "NoInfoRows",
+      "AtMostOneStatus",
+      "NoMirrorPages",
+      "NoEmptyPages",
+      "SingleEntry",
+      "ConfirmBeforeDestroy",
+      "Shallow"
+    ],
+    "properties": []
+  }
+}

@@ -16,7 +16,7 @@ function between(source,start,end){
 test('each sign-in opening refreshes methods, including after a previously unavailable host',async()=>{
  const source=read('apps/app/src/runtime/connection-ui.tsx');
  const method=between(source,'async function inAppSignInMethods(','/** A failed or cancelled step');
- const code=stripTypeScriptTypes(method,{mode:'transform'});
+ const code=stripTypeScriptTypes(method,{mode:'strip'});
  const calls=[];let available=false;
  const port={status:async input=>{calls.push(input);return available?{inApp:true,email:true,google:true,phone:true}:{inApp:false,methodsKnown:false};}};
  const discover=new Function('cloudSignIn','signInReadiness','SIGN_IN_READINESS_WAIT_MS',code+';return inAppSignInMethods;')(port,signInReadiness,1000);

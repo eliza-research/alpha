@@ -237,17 +237,10 @@ test('a wake-phrase invocation starts the on-device voice assistant only when un
 
 test('Settings shows the listener status and offers only Pause, Turn off and the listener settings',()=>{
  const settings=read('apps/app/src/prototype/settings-adapter.ts');
- assert.match(settings,/info\('Always-on listening'/);
- assert.match(settings,/action\('Pause listening'/);
- assert.match(settings,/status\.consented && status\.state !== 'OFF' \? \[action\('Turn off listening'/);
- assert.match(settings,/action\('Listening settings'/);
+ // One Listening row, present only where the AOSP listener exists; its page holds the controls.
+ assert.match(settings,/listener\.available \? row\('Listening', go\('listening'\)/);
+ assert.match(settings,/status\.listening \|\| status\.microphoneOpen \? row\('Pause'/);
+ assert.match(settings,/status\.consented && status\.state !== 'OFF' \? row\('Turn off'/);
+ assert.match(settings,/row\('Listener settings'/);
  assert.doesNotMatch(settings,/Resume listening|Turn on listening|resumeListener/,'Alpha cannot turn listening on or resume it');
- const speechStart=settings.indexOf('    const speechRows =');
- const speechEnd=settings.indexOf('    const action =',speechStart);
- assert(speechStart>=0&&speechEnd>speechStart);
- const speech=stripTypeScriptTypes(settings.slice(speechStart,speechEnd),{mode:'strip'});
- const readSpeech=(cloudRuntimeEnabled,testMocksEnabled)=>vm.runInNewContext(`(()=>{${speech};return speechRows();})()`,{developmentCartesiaVoiceEnabled:false,cloudRuntimeEnabled,testMocksEnabled,serviceName:'Nebula',info:(label,value)=>({label,value})})[0].value;
- assert.equal(readSpeech(false,false),'On this device','production native speech remains local');
- assert.equal(readSpeech(true,false),'Nebula · Cartesia output (uses your plan)');
- assert.equal(readSpeech(false,true),'Nebula (counts toward your plan)');
 });

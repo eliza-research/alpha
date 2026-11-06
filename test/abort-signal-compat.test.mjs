@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {stripTypeScriptTypes} from 'node:module';
 const source=readFileSync('apps/app/src/runtime/abort-signal.ts','utf8');
-const {anyAbortSignal}=await import('data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(source,{mode:'transform'})).toString('base64'));
+const {anyAbortSignal}=await import('data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(source,{mode:'strip'})).toString('base64'));
 test('WebView113 without AbortSignal.any preserves first cancellation and removes every source listener',()=>{
  const original=Object.getOwnPropertyDescriptor(AbortSignal,'any');
  Object.defineProperty(AbortSignal,'any',{configurable:true,value:undefined});
@@ -24,7 +24,7 @@ test('WebView113 without AbortSignal.any preserves first cancellation and remove
 });
 test('authenticated Maps relay still sends and retires its offer without the WebView any API',async()=>{
  const source=readFileSync('.eliza/client-features/plugins/plugin-maps/src/client/navigation-relay.ts','utf8');
- const {withMapsNavigationRelay}=await import('data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(source,{mode:'transform'})).toString('base64'));
+ const {withMapsNavigationRelay}=await import('data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(source,{mode:'strip'})).toString('base64'));
  const original=Object.getOwnPropertyDescriptor(AbortSignal,'any');
  Object.defineProperty(AbortSignal,'any',{configurable:true,value:undefined});
  try{

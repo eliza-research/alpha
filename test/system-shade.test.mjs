@@ -10,7 +10,7 @@ const read = file => readFileSync(file, 'utf8');
 const source = read('apps/app/src/prototype/system-shade.ts');
 const region = source.slice(source.indexOf('// system-shade:begin'), source.indexOf('// system-shade:end'));
 assert.ok(region.length > 200, 'system-shade region is present');
-const m = await import('data:text/javascript;base64,' + Buffer.from(stripTypeScriptTypes(region, { mode: 'transform' })).toString('base64'));
+const m = await import('data:text/javascript;base64,' + Buffer.from(stripTypeScriptTypes(region, { mode: 'strip' })).toString('base64'));
 
 const home = { launcher: true, assistant: false, screen: 'home', view: null, chat: 'input', voice: 'off', drawer: false, secure: false, shade: false };
 const empty = { home: true, editable: false, keyboard: false, scrolled: false };

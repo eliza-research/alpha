@@ -8,10 +8,10 @@ import vm from 'node:vm';
 // No browser, credentials, provider requests, or local Calendar writes.
 const model=readFileSync('apps/app/src/prototype/model.js','utf8');
 const calendar=model.slice(model.indexOf('/* ===== module: calendar ===== */'),model.indexOf('/* ===== module: browser ===== */'));
-const source=stripTypeScriptTypes(readFileSync('apps/app/src/prototype/google-calendar-view-adapter.ts','utf8').replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'transform'});
+const source=stripTypeScriptTypes(readFileSync('apps/app/src/prototype/google-calendar-view-adapter.ts','utf8').replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'strip'});
 // Day columns: one day, as on a phone, unless a test asks for more.
-const calendarDays=stripTypeScriptTypes('const currentSurfaceLayout=()=>({split:false,calendarDays:globalThis.calendarDayColumnsUnderTest||1});\n'+readFileSync('apps/app/src/prototype/calendar-days.ts','utf8').replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'transform'});
-const nativeSource=stripTypeScriptTypes(readFileSync('apps/app/src/prototype/calendar-adapter.ts','utf8').replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'transform'});
+const calendarDays=stripTypeScriptTypes('const currentSurfaceLayout=()=>({split:false,calendarDays:globalThis.calendarDayColumnsUnderTest||1});\n'+readFileSync('apps/app/src/prototype/calendar-days.ts','utf8').replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'strip'});
+const nativeSource=stripTypeScriptTypes(readFileSync('apps/app/src/prototype/calendar-adapter.ts','utf8').replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'strip'});
 const at=(day,hour)=>new Date(2026,9,day,hour).getTime();
 const instant=at(13,12);
 class FixedDate extends Date {constructor(...args){super(...(args.length?args:[instant]));}static now(){return instant;}}

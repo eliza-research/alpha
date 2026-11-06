@@ -8,8 +8,8 @@ import { readFile } from 'node:fs/promises';
 import { stripTypeScriptTypes } from 'node:module';
 import { spawnSync } from 'node:child_process';
 const cloudSignInModule = await import('../apps/app/src/runtime/cloud-sign-in.ts');
-if (!process.execArgv.includes('--experimental-transform-types')) {
-  process.exit(spawnSync(process.execPath, ['--experimental-transform-types', process.argv[1]], { stdio: 'inherit' }).status ?? 1);
+if (!process.execArgv.some(arg => arg === '--import=tsx' || arg === 'tsx')) {
+  process.exit(spawnSync(process.execPath, ['--import=tsx', process.argv[1]], { stdio: 'inherit' }).status ?? 1);
 }
 const { cloudServiceName, CloudProtocol, CloudProvisionAcceptedError } = await import('../apps/app/src/runtime/cloud-protocol.ts');
 const { PersonalProtocolError } = await import('../apps/app/src/runtime/cloud-personal-protocol.ts');
@@ -114,14 +114,14 @@ const sandbox = { browserCloudResidentEnabled:false,browserCloudResidentEnvironm
 };
 // Exercise the real installed string-map adapter alongside the controller fixture.
 const selectionSandbox = { ...sandbox, Capacitor: { getPlatform: () => 'android' } };
-const selectionSource = stripTypeScriptTypes(await readFile(new URL('../apps/app/src/runtime/conversation-selection.ts', import.meta.url), 'utf8'), { mode: 'transform' })
+const selectionSource = stripTypeScriptTypes(await readFile(new URL('../apps/app/src/runtime/conversation-selection.ts', import.meta.url), 'utf8'), { mode: 'strip' })
   .replace(/^import .*;\n/gm, '').replace(/export /g, '');
 vm.runInNewContext(selectionSource + '\nglobalThis.selectionApi = { captureConversationChoice, selectConversation };', selectionSandbox);
 Object.assign(sandbox, selectionSandbox.selectionApi);
 let source = (await readFile(new URL('../apps/app/src/runtime/connection-ui.tsx', import.meta.url), 'utf8')).split('export function ConnectionChooser()')[0].replace(/\nfunction ResidentRecoveryPanel\([\s\S]*?\n}\n(?=export function productionCloudSignInRequired)/, '\n');
 source = source.replace(/^import .*;\n/gm, '').replace(/export /g, '').replaceAll('import.meta.env','fixtureViteEnv');
 source += '\nglobalThis.controller = connectionController;';
-vm.runInNewContext(stripTypeScriptTypes(source, { mode: 'transform' }), sandbox);
+vm.runInNewContext(stripTypeScriptTypes(source, { mode: 'strip' }), sandbox);
 const controller = sandbox.controller;
 try {
   await controller.cloudList('production');

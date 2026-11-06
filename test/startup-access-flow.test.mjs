@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {stripTypeScriptTypes} from 'node:module';
 const source=readFileSync('apps/app/src/startup-permission-flow.ts','utf8');
-const flow=await import('data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(source,{mode:'transform'})).toString('base64'));
+const flow=await import('data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(source,{mode:'strip'})).toString('base64'));
 test('photo grant description preserves selected/partial scope and rejects locked or malformed native results',()=>{
  assert.match(flow.startupPhotoAccess({scope:'selected',locked:false}).description,/Selected/);
  assert.match(flow.startupPhotoAccess({scope:'partial',locked:false}).description,/Limited/);

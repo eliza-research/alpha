@@ -65,7 +65,8 @@ export const LIVE_STATES: State[] = [
   live('Inbox (not connected)', ['Inbox']),
   live('Calendar', ['Calendar']),
   live('Calendar new event', ['Calendar', 'New event']),
-  live('Calendar month', ['Calendar', 'Month view']),
+  live('Calendar views menu', ['Calendar', 'Calendar views']),
+  live('Calendar search', ['Calendar', 'Search']),
   live('Browser', ['Browser']),
   live('Browser tabs', ['Browser', 'Tabs']),
   live('Camera (unavailable)', ['Camera']),
@@ -77,19 +78,17 @@ export const LIVE_STATES: State[] = [
   live('Files', ['Files']),
   live('Workflows', ['Workflows']),
   live('Settings', ['Settings']),
-  live('Settings models', ['Settings', 'Models']),
-  live('Settings display', ['Settings', 'Display']),
-  live('Settings privacy', ['Settings', 'Privacy & data']),
+  // Settings pages and sheets the browser build reaches (docs/ui-refresh-2026-11 Settings structure).
   live('Settings about', ['Settings', 'About']),
+  live('Settings problem log', ['Settings', 'About', 'Problem log']),
+  live('Settings licenses', ['Settings', 'About', 'Open source licenses']),
   live('Settings scheduled digests', ['Settings', 'Scheduled digests']),
-  live('Settings agent connection', ['Settings', 'Agent connection']),
+  live('Settings agent', ['Settings', 'Agent']),
+  live('Settings Eliza Cloud', ['Settings', 'Eliza Cloud']),
+  live('Settings Google', ['Settings', 'Google']),
+  live('Settings in-app alerts', ['Settings', 'In-app alerts']),
   // The remaining Settings pages, and each app's open menu, search field and editor.
-  live('Settings character', ['Settings', 'Character']),
-  live('Settings accounts', ['Settings', 'Accounts']),
-  live('Settings connections', ['Settings', 'Connections']),
-  live('Settings notifications', ['Settings', 'Notifications']),
-  live('Settings calendar', ['Settings', 'Calendar']),
-  live('Settings password manager', ['Settings', 'Password manager']),
+  live('Settings calendars', ['Settings', 'Calendars']),
   live('Browser menu', ['Browser', 'Menu']),
   live('Browser address', ['Browser', 'Edit address']),
   live('Calendar alarms', ['Calendar', 'Clock alarms']),
@@ -152,12 +151,11 @@ export const MOCK_STATES: State[] = [
   // Deleting a fixture file shows the toast with Undo over the folder.
   mock('files:preview', ['Delete file']),
   mock('workflows:flow', ['Change'], 'workflows-builder'),
-  // The builder's trigger and step sheets, and the Settings connection sheet.
+  // The builder's trigger and step sheets. (Settings' Connections page and its per-service sheets
+  // were removed; the Google accounts panel is swept live as 'Settings Google'.)
   mock('workflows', ['New automation', 'Edit When step'], 'workflows-builder'),
   mock('workflows:new', ['Add Read step'], 'workflows-builder'),
-  mock('settings', ['Connections', 'Slack']),
   mock('settings', ['Character']),
-  mock('settings', ['Connections']),
   mock('settings', ['Notifications']),
   mock('settings:accounts', ['you@gmail.example']),
 ]);
@@ -230,8 +228,7 @@ export const CONNECTED_STATES: State[] = [
   connected('Inbox long subject', [/^Unread, Synthetic Sender C/], { shows: 'inbox-detail' }),
   connected('Inbox compose', ['Compose'], { shows: 'inbox-composing' }),
   connected('Settings', ['Settings'], { home: true }),
-  connected('Settings accounts', ['Settings', 'Accounts'], { home: true }),
-  connected('Settings connections', ['Settings', 'Connections'], { home: true }),
+  connected('Settings Google', ['Settings', 'Google'], { home: true }),
 ];
 
 /** Live states that exist only on the development server (developer surfaces). */

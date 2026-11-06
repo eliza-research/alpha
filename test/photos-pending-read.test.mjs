@@ -14,7 +14,7 @@ function fixture(){
   libraryEpoch:0,captures:[],albumRows:[],trash:[],albumNext:'',trashNext:'',albumKey:'',counts:undefined,countsEpoch:0,countsBusy:false,albumsEpoch:0,albumsBusy:false,albumsLoaded:false,customAlbums:[],albumEpoch:0,trashEpoch:0,selection:undefined,next:'',loaded:false};
  vm.createContext(sandbox);
  const code=[declaration('const retirePhotoRead='),declaration('async function openSaved('),declaration('function invalidateLibrary(')].join('\n')+'\nglobalThis.openSaved=openSaved;globalThis.invalidateLibrary=invalidateLibrary;';
- vm.runInContext(stripTypeScriptTypes(code,{mode:'transform'}),sandbox);
+ vm.runInContext(stripTypeScriptTypes(code,{mode:'strip'}),sandbox);
  return {sandbox,state,requests,toasts,api};
 }
 for(const late of ['resolve','reject'])test(`catalog invalidation permits reopening; late ${late} cannot affect newer same-photo read`,async()=>{

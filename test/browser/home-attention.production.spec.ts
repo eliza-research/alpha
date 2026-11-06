@@ -7,7 +7,7 @@ import { test, expect } from '@playwright/test';
 test.beforeEach(({}, info) => { test.skip(info.project.name !== 'production', 'Runs against the flag-off production build only'); });
 const offline = () => localStorage.setItem('alpha.connection.selection.v1', JSON.stringify({ kind: 'offline' }));
 
-test('not connected: the attention card offers Gmail setup and opens Connections', async ({ page }, info) => {
+test('not connected: the attention card offers Gmail setup and opens Settings at the Google row', async ({ page }, info) => {
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
   await page.addInitScript(offline);
   await page.goto('/');
@@ -19,7 +19,8 @@ test('not connected: the attention card offers Gmail setup and opens Connections
   await page.screenshot({ path: info.outputPath('home-not-connected.png') });
   await card.click();
   await expect(page.locator('html')).toHaveAttribute('data-active-view', 'settings');
-  await expect(page.getByRole('heading', { name: 'Connections', exact: true })).toBeVisible();
+  // Settings has no Connections page any more; Google accounts are reached from the Google row.
+  await expect(page.getByRole('button', { name: 'Google', exact: true })).toBeVisible();
   expect(errors).toEqual([]);
 });
 

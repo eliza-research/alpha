@@ -1,5 +1,5 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from 'node:module';
-const code=stripTypeScriptTypes(readFileSync('apps/app/src/prototype/assistant-draft-controller.ts','utf8'),{mode:'transform'});
+import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from './support/strip-types.mjs';
+const code=stripTypeScriptTypes(readFileSync('apps/app/src/prototype/assistant-draft-controller.ts','utf8'),{mode:'strip'});
 const {AssistantDraftController}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 const record=(text,revision='1')=>({version:1,binding:'test',revision,text});

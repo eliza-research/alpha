@@ -2454,6 +2454,11 @@ export function ConnectionChooser() {
   // The plan notice beside the running agent can be dismissed until the notice changes.
   const [dismissedNotice,setDismissedNotice]=useState<string|null>(null);
   const panel = useRef<HTMLDivElement>(null);
+  // The control that opened the dialog. Kept across re-runs while it stays open (busy or purpose
+  // changes), which would otherwise capture a control inside the dialog and lose the return focus.
+  const opener = useRef<HTMLElement | null>(null);
+  // Read before this render commits: a field in the dialog may take focus as it mounts.
+  if (visible && !opener.current && document.activeElement instanceof HTMLElement && !panel.current?.contains(document.activeElement) && document.activeElement !== document.body) opener.current = document.activeElement;
   const remoteOrigin = useRef<HTMLInputElement>(null), remoteCode = useRef<HTMLInputElement>(null);
   const localOrigin = useRef<HTMLInputElement>(null), localCode = useRef<HTMLInputElement>(null);
   const environment = useRef<HTMLSelectElement>(null);
@@ -2503,8 +2508,7 @@ export function ConnectionChooser() {
     };
   },[]);
   useEffect(() => {
-    if (!visible) return;
-    const previous = document.activeElement as HTMLElement | null;
+    if (!visible) { const target = opener.current; opener.current = null; if (target?.isConnected) target.focus(); return; }
     const phone = document.querySelector<HTMLElement>('.os');
     const releaseInert = holdPhoneInert(phone);
 
@@ -2530,7 +2534,7 @@ export function ConnectionChooser() {
       }
     };
     document.addEventListener('keydown', key);
-    return () => { document.removeEventListener('keydown', key); window.removeEventListener('alpha-back', back, true); releaseInert(); previous?.focus(); };
+    return () => { document.removeEventListener('keydown', key); window.removeEventListener('alpha-back', back, true); releaseInert(); };
   }, [visible, snapshot.busy,snapshot.purpose]);
   const env = (): CloudEnvironment => resolveCloudEnvironment(cloudEnvironmentPolicy, environment.current?.value ?? snapshot.signIn?.environment ?? cloud.environment);
   const serviceName=cloudServiceName(env());

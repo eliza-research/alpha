@@ -2,7 +2,7 @@ import test from 'node:test';import assert from 'node:assert/strict';import {rea
 const source=readFileSync('apps/app/src/runtime/notes-secure-store.ts','utf8');
 const region=source.slice(source.indexOf('// notes-draft-changes:begin'),source.indexOf('// notes-draft-changes:end'));
 assert.ok(region.length>100);
-const {notesDraftChanges,applyNotesDraft,notesDraftConflicts,mergeNotesDrafts}=await import('data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(region,{mode:'transform'})).toString('base64'));
+const {notesDraftChanges,applyNotesDraft,notesDraftConflicts,mergeNotesDrafts}=await import('data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(region,{mode:'strip'})).toString('base64'));
 const note=(id,body)=>({id,kind:'text',title:id,body,pinned:false});
 const saved=[note('a','A'),note('b','B'),note('c','C')];
 test('a draft records only edits, creations and removals',()=>{

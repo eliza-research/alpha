@@ -12,7 +12,7 @@ const functions=[
  section('async function refreshActionReview(', 'function boundNavigation('),
  section('function boundNavigation(', '/*\n * DEVELOPMENT INFRASTRUCTURE'),
 ].join('\n');
-const code=stripTypeScriptTypes(functions,{mode:'transform'});
+const code=stripTypeScriptTypes(functions,{mode:'strip'});
 function fixture({android=true,dev=false,account={expiresAt:Date.now()+60000},purpose='agent',open=false}={}){
  const entries=[{id:'review-1',state:'reconciliation_required'}];let release;
  const selected={request(){},actions:{}};

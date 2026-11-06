@@ -14,7 +14,7 @@ function cameraFixture(browser=false){
  const api={S:{chat:'hidden'},isActive:()=>true,set(){},setView(){throw Error('An agent capture must not change views')}};
  const context=vm.createContext({camera,api,validateCameraCaptureResult,nativeId:id=>id.replace('native-camera-',''),browserMode:browser,disposed:false,captures:[],loaded:true,capturing:false,controlBusy:false,recording:false,recordingStarting:false,finalizing:false,phase:'ready',requestedCaptureActive:false,document:{hidden:false,querySelector:()=>({})},finder:'#camera',schedule(){},message(){},Date});
  const visibility=source.match(/  const cameraViewVisible[^\n]+\n  const active[^\n]+/)[0];
- vm.runInContext(stripTypeScriptTypes(visibility+'\n'+save+request+';globalThis.capture=takeRequestedPhoto;',{mode:'transform'}),context);
+ vm.runInContext(stripTypeScriptTypes(visibility+'\n'+save+request+';globalThis.capture=takeRequestedPhoto;',{mode:'strip'}),context);
  return {capture:context.capture,context,get calls(){return calls},setMode:value=>{mode=value},release:()=>release?.()};
 }
 function flow(camera){
@@ -49,7 +49,7 @@ function continuationFixture(){
  const session={sessionId:'session'},selected={actions},attempt={controller:new AbortController()};
  const state={session},pending={messageId:'message-one',selected,session,generation:7,conversationId:'conversation',client:{deliveredContext:()=>context},attempt,expiresAt:Date.now()+30000};
  const scope=vm.createContext({requestedCameraContinuation:pending,navigationContext:()=>context,document:{hidden:false},epoch:7,active:selected,state,conversationMemory:new Map([['key','conversation']]),conversationKey:()=> 'key',readDevicePreferences:async()=>({askBeforeAgentActions:false}),Date});
- vm.runInContext(stripTypeScriptTypes('globalThis.controller={'+controllerSource.slice(start,end)+'};',{mode:'transform'}),scope);
+ vm.runInContext(stripTypeScriptTypes('globalThis.controller={'+controllerSource.slice(start,end)+'};',{mode:'strip'}),scope);
  return {scope,context,pending,session,state,attempt,camera,run:(message='message-one')=>scope.controller.continueRequestedCamera(message,signal())};
 }
 const continued=continuationFixture();assert.equal((await continued.run())[0].status,'succeeded');assert.equal(continued.camera.calls,1);assert.equal((await continued.run()).length,0);assert.equal(continued.camera.calls,1);

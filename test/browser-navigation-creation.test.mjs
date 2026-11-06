@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from 'node:module';import vm from 'node:vm';
 const source=readFileSync('apps/app/src/prototype/browser-adapter.ts','utf8');
-const region=stripTypeScriptTypes(source.slice(source.indexOf('  async function navigate('),source.indexOf('  async function command(')),{mode:'transform'});
+const region=stripTypeScriptTypes(source.slice(source.indexOf('  async function navigate('),source.indexOf('  async function command(')),{mode:'strip'});
 function harness(){let release;const pending=new Promise(resolve=>release=resolve),state={cur:'owned',tabs:[{id:'owned'},{id:'other'}],editing:true,tabsOpen:true,menu:true},navigations=[],patches=[],closed=[];const created=new Map([['owned',pending]]);
  const context={URL,Error,session:"owned-session",disposed:false,state:()=>state,isPrivate:()=>false,newTabId:()=> 'owned',restored:new Map(),metadata:new Map(),created,documentRevisions:new Map(),restoreAttempts:new Map(),ensure:()=>pending,shell:{vset(_key,patch){patches.push(patch);Object.assign(state,patch);}},Browser:{async navigate(input){navigations.push(input);},async close(input){closed.push(input);}},refresh(){},report(){}};
  const navigate=vm.runInNewContext(region+';navigate',context);return {state,created,navigations,patches,closed,release,navigate};}

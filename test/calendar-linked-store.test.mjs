@@ -1,10 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { stripTypeScriptTypes } from "node:module";
+import { stripTypeScriptTypes } from "./support/strip-types.mjs";
 const code = stripTypeScriptTypes(
 	readFileSync("apps/app/src/runtime/calendar-linked-store.ts", "utf8"),
-	{ mode: "transform" },
+	{ mode: "strip" },
 );
 const { CalendarLinkedStore } = await import(
 	"data:text/javascript;base64," + Buffer.from(code).toString("base64")
@@ -14,7 +14,7 @@ const engineCode = stripTypeScriptTypes(
 		".eliza/client-features/packages/contracts/src/calendar-linked-sync.ts",
 		"utf8",
 	),
-	{ mode: "transform" },
+	{ mode: "strip" },
 );
 const { LinkedCalendarReconciler } = await import(
 	"data:text/javascript;base64," + Buffer.from(engineCode).toString("base64")

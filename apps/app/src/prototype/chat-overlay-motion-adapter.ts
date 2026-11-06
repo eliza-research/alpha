@@ -177,11 +177,46 @@ export function installChatOverlayMotion(Component: Shell) {
 		window.addEventListener("blur", this.cancelChatMotion);
 		window.addEventListener("pagehide", this.cancelChatMotion);
 		document.addEventListener("visibilitychange", this.chatMotionVisibility);
+		// Android can close the keyboard itself (its hide key, Back) and leave the composer
+		// focused. Keyboard up and composer focus are one state here, so the composer lets go.
+		// MainActivity uses adjustResize, so the WebView itself shrinks with the keyboard: compare
+		// against the tallest height seen at this width (as keyboardFreeHeight does), not innerHeight.
+		// The baseline is taken now, before any keyboard can have shrunk the window.
+		let keyboardOpen = false, base = { width: window.innerWidth, height: Math.min(window.innerHeight, window.visualViewport?.height ?? window.innerHeight) };
+		this.dockKeyboardWatch = () => {
+			const width = window.innerWidth,
+				height = Math.min(window.innerHeight, window.visualViewport?.height ?? window.innerHeight);
+			if (width !== base.width || height > base.height) base = { width, height: Math.max(height, width === base.width ? base.height : 0) };
+			const covered = base.height - height > 150;
+			if (keyboardOpen && !covered && this.dockComposerFocused) {
+				const active = document.activeElement;
+				if (active instanceof HTMLElement && active.matches("[data-alpha-composer]"))
+					active.blur();
+			}
+			keyboardOpen = covered;
+		};
+		window.visualViewport?.addEventListener("resize", this.dockKeyboardWatch);
+		window.addEventListener("resize", this.dockKeyboardWatch);
+		// Leaving the app ends typing: the keyboard is gone when it returns.
+		this.dockHiddenWatch = () => {
+			if (!document.hidden) return;
+			const active = document.activeElement;
+			if (active instanceof HTMLElement && active.matches("[data-alpha-composer]")) active.blur();
+			this.dockComposerFocused = false;
+			this.dockGuardPress = undefined;
+		};
+		document.addEventListener("visibilitychange", this.dockHiddenWatch);
 	};
 	p.componentDidUpdate = function (...args: Shell[]) {
 		update?.apply(this, args);
 		const drag: Drag | undefined = this.chatMotion,
 			s = this.S();
+		// The bar's composer unmounts without a blur event: its focus ends with it.
+		const previousView = args[1]?.view;
+		if ((s.chat !== "input" || (args[1] && previousView !== s.view)) && (this.dockComposerFocused || this.dockGuardPress)) {
+			this.dockComposerFocused = false;
+			this.dockGuardPress = undefined;
+		}
 		if (
 			drag &&
 			(s.view !== drag.view ||
@@ -197,6 +232,9 @@ export function installChatOverlayMotion(Component: Shell) {
 		window.removeEventListener("blur", this.cancelChatMotion);
 		window.removeEventListener("pagehide", this.cancelChatMotion);
 		document.removeEventListener("visibilitychange", this.chatMotionVisibility);
+		window.visualViewport?.removeEventListener("resize", this.dockKeyboardWatch);
+		window.removeEventListener("resize", this.dockKeyboardWatch);
+		document.removeEventListener("visibilitychange", this.dockHiddenWatch);
 		unmount?.call(this);
 	};
 
@@ -508,6 +546,84 @@ export function installChatOverlayMotion(Component: Shell) {
 			});
 		};
 		out.scrimTap = out.closeChat;
+		// One rule for every raised dock (docs/ui-refresh-2026-11, tla/ChatInput.tla): the bar
+		// above a pill view's resting form, or any composer bar with the keyboard up, takes the
+		// first touch outside it. That touch lowers the dock to its resting form, closes the
+		// keyboard and reaches nothing underneath; the next touch is ordinary. The draft stays.
+		const raisedBar =
+			s.chat === "input" &&
+			!!out.showComposer &&
+			s.voice === "off" &&
+			!shell.props.assistantSurface &&
+			(shell.rest() === "hidden" || !!shell.dockComposerFocused);
+		out.dockGuardPE = raisedBar ? "auto" : "none";
+		out.dockComposerFocus = () => {
+			if (shell.dockComposerFocused) return;
+			shell.dockComposerFocused = true;
+			shell.setState({});
+		};
+		out.dockComposerBlur = () => {
+			// A press on the guard keeps the dock raised until its click lowers it, so the
+			// click cannot fall through to what the guard covers.
+			if (shell.dockGuardPress || !shell.dockComposerFocused) return;
+			shell.dockComposerFocused = false;
+			shell.setState({});
+		};
+		const lowerDock = () => {
+			shell.dockGuardPress = undefined;
+			shell.dockComposerFocused = false;
+			const active = document.activeElement;
+			if (active instanceof HTMLElement && active.matches("[data-alpha-composer]"))
+				active.blur();
+			retire(shell, false);
+			shell.setState({ chat: shell.rest() });
+		};
+		out.dockGuardMenu = (event: MouseEvent) => {
+			event.preventDefault();
+			event.stopPropagation();
+			lowerDock();
+		};
+		out.dockGuardTap = (event: MouseEvent) => {
+			event.stopPropagation();
+			lowerDock();
+		};
+		out.dockGuardSw = {
+			down(event: PointerEvent) {
+				event.stopPropagation();
+				// No focus change and no compatibility mouse events: the click alone lowers.
+				event.preventDefault();
+				if (event.isPrimary === false) return;
+				shell.dockGuardPress = {
+					id: event.pointerId,
+					x: event.clientX,
+					y: event.clientY,
+					moved: false,
+				};
+			},
+			move(event: PointerEvent) {
+				const press = shell.dockGuardPress;
+				if (
+					press?.id !== event.pointerId ||
+					press.moved ||
+					Math.hypot(event.clientX - press.x, event.clientY - press.y) <
+						TAP_SLOP * geometry.scale
+				)
+					return;
+				press.moved = true;
+				(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+			},
+			up(event: PointerEvent) {
+				event.stopPropagation();
+				const press = shell.dockGuardPress;
+				// A drag has no click: it lowers on release.
+				if (press?.id === event.pointerId && press.moved) lowerDock();
+				// A tap lowers on its click; a press that sends no click (long-press) lowers here instead.
+				else if (press?.id === event.pointerId) setTimeout(() => { if (shell.dockGuardPress === press) lowerDock(); }, 0);
+			},
+			cancel() {
+				shell.dockGuardPress = undefined;
+			},
+		};
 		// Any touch outside the open sheet collapses it and reaches nothing underneath. A tap
 		// collapses on its click, so no compatibility click can land on what the sheet uncovers;
 		// a drag has no click, so it collapses on release. Assistive technology activates

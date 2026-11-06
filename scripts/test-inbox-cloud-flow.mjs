@@ -41,7 +41,7 @@ const listeners=new Set();
 const controller={getCloudClient:()=>session?{client,sessionId:session}:null,getSnapshot:()=>({session:{sessionId:agent},cloudAccount:session?{environment:'production',userId:'fixture-owner',sessionId:session}:null}),subscribe:fn=>{listeners.add(fn);return()=>listeners.delete(fn);},rejectCloudSession:()=>false,open:()=>{}};
 class Shell{renderVals(){return {};}constructor(){this.st={q:null,compose:null};}componentDidMount(){}componentWillUnmount(){}vset(_,p){Object.assign(this.st,p);}}
 const views={inbox:{state:{}}};
-const strip=async(file,name)=>{let source=await readFile(new URL(`../apps/app/src/prototype/${file}`,import.meta.url),'utf8');source=source.replace(/^import .*;\n/gm,'').replace(/^export (?=(?:async )?function |const |let |interface |type )/gm,'')+`\n${[].concat(name).map(n=>`globalThis.${n}=${n};`).join('')}`;return '{'+stripTypeScriptTypes(source,{mode:'transform'})+'}';};
+const strip=async(file,name)=>{let source=await readFile(new URL(`../apps/app/src/prototype/${file}`,import.meta.url),'utf8');source=source.replace(/^import .*;\n/gm,'').replace(/^export (?=(?:async )?function |const |let |interface |type )/gm,'')+`\n${[].concat(name).map(n=>`globalThis.${n}=${n};`).join('')}`;return '{'+stripTypeScriptTypes(source,{mode:'strip'})+'}';};
 const windowFixture={addEventListener:(name,fn)=>events.push({name,fn}),removeEventListener:()=>{},dispatchEvent:event=>{events.push({dispatched:event.type,detail:event.detail});return true;},confirm:()=>confirmAnswer};
 class CustomEvent{constructor(type,init){this.type=type;this.detail=init?.detail;}}
 let latestDraftEdit=null;

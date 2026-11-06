@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alpha UI refresh · current vs proposed</title>
+<style>
+:root{--bg:#fff;--s1:#fafafa;--s2:#f3f3f3;--s3:#e6e6e6;--line:#e3e3e3;--fg:#000;--mut:#6b6b6b;--acc:#0000ff;--bad:#c4001d;--ok:#08703a}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.45 "Public Sans",system-ui,sans-serif;color:var(--fg);background:#ececf0}
+header{padding:28px 32px 8px}
+h1{font:400 34px/1.1 Georgia,"Times New Roman",serif;margin:0 0 6px}
+h2{font:400 26px/1.15 Georgia,serif;margin:0 0 4px}
+.serif{font-family:Georgia,"Times New Roman",serif}
+nav.tabs{display:flex;gap:8px;padding:8px 32px 0}
+nav.tabs button{border:0;border-radius:20px;padding:9px 16px;background:#fff;font:600 14px system-ui;cursor:pointer}
+nav.tabs button[aria-selected=true]{background:var(--acc);color:#fff}
+section.demo{display:none;padding:16px 32px 40px}
+section.demo.on{display:block}
+.lead{color:#333;max-width:980px;margin:0 0 14px}
+.row{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap}
+.col{display:flex;flex-direction:column;gap:10px;align-items:center}
+.col h3{margin:0;font:700 13px system-ui;letter-spacing:.06em;text-transform:uppercase}
+.col h3.cur{color:var(--bad)} .col h3.pro{color:var(--ok)}
+.phone{position:relative;width:330px;height:680px;border-radius:38px;background:var(--bg);overflow:hidden;box-shadow:0 0 0 9px #111,0 20px 50px #0004;user-select:none;touch-action:none}
+.status{height:32px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;font:600 12px system-ui}
+.controls{display:flex;flex-wrap:wrap;gap:6px;max-width:330px;justify-content:center}
+.controls button,.ctl button{border:1px solid #ccc;background:#fff;border-radius:16px;padding:6px 11px;font:13px system-ui;cursor:pointer}
+.controls button.on,.ctl button.on{background:#000;color:#fff;border-color:#000}
+.log{width:330px;height:150px;overflow:auto;background:#fff;border-radius:12px;padding:8px 10px;font:12px/1.5 ui-monospace,monospace}
+.log .bad{color:var(--bad);font-weight:700}.log .ok{color:var(--ok)}
+.side{max-width:330px;font-size:13.5px;color:#222}
+.side ol,.side ul{padding-left:18px;margin:6px 0}
+.pill{display:inline-block;border-radius:10px;padding:1px 8px;font:600 11.5px system-ui}
+.pill.bad{background:#ffe3e6;color:var(--bad)}.pill.ok{background:#dcf5e6;color:var(--ok)}
+/* phone UI */
+.apps{position:absolute;left:14px;right:14px;display:grid;grid-template-columns:repeat(4,1fr);row-gap:16px;transition:top .25s}
+.app{display:flex;flex-direction:column;align-items:center;gap:5px;font-size:10.5px;color:var(--mut);cursor:pointer}
+.app i{width:52px;height:52px;border-radius:18px;background:var(--s2);display:flex;align-items:center;justify-content:center;font-style:normal;font-size:20px;color:#000}
+.cards{position:absolute;top:44px;left:0;right:0;display:flex;gap:9px;padding:0 18px;overflow:hidden}
+.card{flex-shrink:0;border-radius:24px;background:var(--s2);padding:16px;width:150px;display:flex;flex-direction:column;justify-content:space-between}
+.card.cal{background:var(--acc);color:#fff;width:220px}
+.card .t{font:400 21px/1.1 Georgia,serif}
+.card .m{font-size:10.5px;color:var(--mut)} .card.cal .m{color:#fffc}
+.dateline{position:absolute;top:44px;left:22px;right:22px;display:flex;flex-direction:column;justify-content:flex-end}
+.dateline .d{font:400 34px/1.05 Georgia,serif}
+.dateline button{align-self:flex-start;margin-top:12px;border:0;border-radius:18px;background:var(--s2);padding:9px 14px;font:600 13px system-ui}
+.gridmark{position:absolute;left:0;right:0;height:0;border-top:2px dashed var(--bad);z-index:5;pointer-events:none}
+.gridmark span{position:absolute;right:6px;top:-18px;background:var(--bad);color:#fff;font:600 10px system-ui;border-radius:6px;padding:1px 6px}
+.dock{position:absolute;left:12px;right:12px;z-index:20;transition:bottom .2s}
+.bar{display:flex;align-items:center;gap:6px;min-height:52px;padding:5px 7px;border-radius:26px;background:var(--s2);box-shadow:0 10px 30px #0002}
+.alpha{width:38px;height:38px;border-radius:19px;background:var(--acc);color:#fff;display:flex;align-items:center;justify-content:center;font:italic 22px Georgia,serif;cursor:pointer;flex-shrink:0}
+.bar .ph{flex:1;color:#999;font-size:14px;padding-left:4px;cursor:text}
+.bar .ph.focus{color:#000}
+.bar .ph.focus::after{content:"|";animation:blink 1s steps(1) infinite;color:var(--acc);margin-left:1px}
+@keyframes blink{50%{opacity:0}}
+.ib{width:36px;height:36px;border-radius:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px}
+.pillw{display:flex;justify-content:center}
+.pillb{display:flex;gap:2px;padding:4px;border-radius:26px;background:var(--s2);box-shadow:0 10px 30px #0002}
+.kbd{position:absolute;left:0;right:0;bottom:0;height:220px;background:#d4d6dc;z-index:15;display:grid;grid-template-columns:repeat(10,1fr);gap:5px;padding:10px 5px 30px}
+.kbd span{background:#fff;border-radius:5px;box-shadow:0 1px 0 #999}
+.scrim{position:absolute;inset:0;background:#0000002e;z-index:18}
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:19;background:var(--s1);border-radius:24px 24px 0 0;box-shadow:0 -10px 40px #0002;padding:10px 16px;display:flex;flex-direction:column;transition:height .3s}
+.sheet .grab{align-self:center;width:36px;height:4px;border-radius:2px;background:#bbb;margin-bottom:8px;cursor:ns-resize}
+.sheet .msg{background:#fff;border-radius:16px;padding:10px 12px;font-size:13px;margin:4px 0;max-width:80%}
+.sheet .msg.me{align-self:flex-end;background:var(--acc);color:#fff}
+.appview{position:absolute;inset:32px 0 0;background:var(--bg);z-index:8;padding:12px 18px}
+.appview h4{font:400 26px Georgia,serif;margin:6px 0 10px}
+.note{border-radius:16px;background:var(--s2);padding:12px;margin-bottom:8px;font-size:13px;cursor:pointer}
+.flash{animation:flash .5s}
+@keyframes flash{0%{background:#ffd54a}100%{}}
+/* settings */
+.st{position:absolute;inset:32px 0 0;overflow:auto;padding-bottom:30px}
+.st .hd{display:flex;align-items:center;gap:6px;padding:6px 14px 10px}
+.st .hd h4{margin:0;font:400 26px Georgia,serif;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.st .back{width:32px;height:32px;border-radius:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px}
+.st .cap{padding:8px 26px 4px;font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.05em}
+.st .grp{margin:0 12px 10px;border-radius:20px;background:var(--s2);overflow:hidden}
+.st .r{display:flex;align-items:center;gap:8px;padding:10px 14px;min-height:44px;font-size:13.5px;border-bottom:1px solid #0000000a}
+.st .r:last-child{border-bottom:0}
+.st .r .l{flex:1;min-width:0}
+.st .r .s{display:block;font-size:11px;color:var(--mut);margin-top:1px}
+.st .r .v{font-size:12px;color:var(--mut);text-align:right;max-width:46%}
+.st .r.nav,.st .r.dest,.st .r.ext,.st .r.act,.st .r.danger{cursor:pointer}
+.st .r.info{background:#fff3f4}
+.st .r.info .l::before{content:"info ";font:700 9px system-ui;color:var(--bad);letter-spacing:.04em}
+.st .r.dup{box-shadow:inset 3px 0 0 #ff9800}
+.st .r.danger .l{font-weight:600}
+.sw{width:38px;height:22px;border-radius:11px;background:var(--s3);position:relative;flex-shrink:0;cursor:pointer}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:9px;background:#fff;box-shadow:0 1px 2px #0003;transition:transform .2s}
+.sw.on{background:var(--acc)}.sw.on::after{transform:translateX(16px)}
+.seg{display:flex;gap:2px;padding:2px;border-radius:16px;background:#fff}
+.seg span{padding:5px 9px;border-radius:14px;font:600 11.5px system-ui;color:var(--mut);cursor:pointer}
+.seg span.on{background:var(--acc);color:#fff}
+.chev{color:var(--mut)}
+.ext::after{content:"↗";color:var(--mut);font-size:12px}
+.stats{font-size:13px;width:330px;background:#fff;border-radius:12px;padding:8px 12px}
+.confirm{position:absolute;inset:0;background:#0003;z-index:30;display:flex;align-items:flex-end}
+.confirm div{background:#fff;width:100%;border-radius:22px 22px 0 0;padding:18px}
+.confirm button{border:0;border-radius:20px;padding:10px 16px;margin:10px 6px 0 0;font:600 14px system-ui}
+.legend{font-size:12.5px;color:#333;margin:6px 0 12px}
+.toast{position:absolute;left:14px;right:14px;top:40px;z-index:40;background:#000;color:#fff;border-radius:14px;padding:8px 12px;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Alpha UI refresh — current vs proposed</h1>
+  <div class="lead">Each tab runs two phones from the same state machines as the TLA+ models in <code>../tla</code>. The left phone follows the code at <code>ef9fbf7cd7</code>; the right one follows <code>../README.md</code>. Interact with both: the logs mark every rule a step breaks.</div>
+</header>
+<nav class="tabs" role="tablist">
+  <button role="tab" aria-selected="true" data-tab="chat">Chat dock</button>
+  <button role="tab" aria-selected="false" data-tab="home">Home cards &amp; grid</button>
+  <button role="tab" aria-selected="false" data-tab="settings">Settings</button>
+</nav>
+
+<!-- ================================================================ CHAT -->
+<section class="demo on" id="chat">
+  <p class="lead">Try: open <b>Notes</b>, tap the keyboard button on the pill, then tap a note above the bar. Or drag upward on empty Home (press, move up 60px, release). Or raise the bar in Notes and press Back.</p>
+  <div class="row">
+    <div class="col"><h3 class="cur">Current</h3><div class="phone" id="chat-cur"></div><div class="controls" data-for="chat-cur"></div><div class="log" id="chat-cur-log"></div></div>
+    <div class="col"><h3 class="pro">Proposed</h3><div class="phone" id="chat-pro"></div><div class="controls" data-for="chat-pro"></div><div class="log" id="chat-pro-log"></div></div>
+    <div class="side">
+      <b>Rules (proposed)</b>
+      <ol>
+        <li><b>Raised</b> = the sheet, the bar in a pill view, or the keyboard up.</li>
+        <li>While raised, the first touch outside lowers it to the view's resting form and reaches nothing.</li>
+        <li>Only the dock opens the chat: tap the Alpha mark, or drag up from the bar or pill.</li>
+        <li>Back unwinds one level: keyboard → full → sheet → raised bar → the view.</li>
+        <li>Lowering never discards a draft.</li>
+      </ol>
+      <b>TLC</b>: current fails <span class="pill bad">NoLeak</span> <span class="pill bad">NoStrayOpen</span> <span class="pill bad">BackInOrder</span> <span class="pill bad">OneTouchDown</span>; proposed holds all six.
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================ HOME -->
+<section class="demo" id="home">
+  <p class="lead">The dashed line is where the app grid was first drawn; its label shows how far it has moved since. Start with <b>Deliver Android insets</b> (what happens about a second after boot on a phone with three-button navigation), then change the sources or raise the keyboard.</p>
+  <div class="ctl controls" id="home-ctl" style="max-width:980px;justify-content:flex-start;margin-bottom:14px"></div>
+  <div class="row">
+    <div class="col"><h3 class="cur">Current</h3><div class="phone" id="home-cur"></div><div class="stats" id="home-cur-stats"></div></div>
+    <div class="col"><h3 class="pro">Proposed</h3><div class="phone" id="home-pro"></div><div class="stats" id="home-pro-stats"></div></div>
+    <div class="side">
+      <b>Card rules (proposed)</b>
+      <ul>
+        <li>Calendar: only with a next event or overdue reminder.</li>
+        <li>Workflows: only with an enabled workflow.</li>
+        <li>Inbox: only with Gmail connected and unread mail.</li>
+        <li>Latest brief: only when one exists (unchanged).</li>
+        <li>None: a date line; plus <b>Connect Google</b> while Google is not connected.</li>
+      </ul>
+      <b>Grid</b>: anchored to a bottom reserve computed from the insets in CSS; insets applied before the first paint; the card row has one fixed height.<br><br>
+      <b>TLC</b>: current fails <span class="pill bad">GridStable</span> <span class="pill bad">CardsHaveContent</span> <span class="pill bad">NoLoadingCards</span>.
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================ SETTINGS -->
+<section class="demo" id="settings">
+  <p class="lead">Browse both. Pink rows (<b>info</b>) are facts Alpha cannot change; an orange edge marks a destination reachable from more than one row; <span class="ext"></span> opens an Android screen. Destructive rows show what happens on tap.</p>
+  <div class="row">
+    <div class="col"><h3 class="cur">Current (launcher, production)</h3><div class="phone" id="st-cur"></div><div class="stats" id="st-cur-stats"></div></div>
+    <div class="col"><h3 class="pro">Proposed</h3><div class="phone" id="st-pro"></div><div class="stats" id="st-pro-stats"></div></div>
+    <div class="side">
+      <b>Removed</b>: Wi-Fi, Bluetooth, Mobile data, Battery, Sound pages (one <i>Android settings</i> row instead); Brightness; Models; Privacy &amp; data; Character; Accounts and Connections (merged into Eliza Cloud and Google); role facts; About's Android/build/runtime facts; per-channel notification list; explanatory subtitles.<br><br>
+      <b>Added</b>: confirmation for Cloud sign-out; <i>Finish setup</i> only when a startup permission is missing.<br><br>
+      <b>TLC</b>: current fails <span class="pill bad">NoInfoRows</span> <span class="pill bad">NoMirrorPages</span> <span class="pill bad">SingleEntry</span> <span class="pill bad">ConfirmBeforeDestroy</span>.
+    </div>
+  </div>
+</section>
+
+<script>
+/* ---------------------------------------------------------------- tabs */
+document.querySelectorAll('nav.tabs button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('nav.tabs button').forEach(x=>x.setAttribute('aria-selected',x===b));
+  document.querySelectorAll('section.demo').forEach(s=>s.classList.toggle('on',s.id===b.dataset.tab));
+});
+const h=(tag,attrs={},...kids)=>{const e=document.createElement(tag);for(const[k,v]of Object.entries(attrs)){if(k.startsWith('on'))e.addEventListener(k.slice(2),v);else if(k==='style')e.style.cssText=v;else e.setAttribute(k,v);}for(const k of kids.flat())if(k!=null&&k!==false)e.append(k.nodeType?k:document.createTextNode(k));return e;};
+
+/* ================================================================ CHAT */
+/* Same transitions as ChatInput.tla. */
+function chatMachine(design){
+  const Rest=v=>v==='home'?'input':'hidden';
+  const s={view:'home',mode:'input',focus:false,draft:''};
+  const raised=()=>s.mode==='sheet'||(s.mode==='input'&&(Rest(s.view)==='hidden'||s.focus));
+  const guarded=()=>design==='current'?s.mode==='sheet':raised();
+  return {s,Rest,raised,guarded,
+    tapAlpha(){if(['hidden','input'].includes(s.mode)){s.mode='sheet';s.focus=false;return ['Alpha mark → sheet','ok'];}},
+    tapType(){if(s.mode==='hidden'){s.mode='input';s.focus=true;return ['Keyboard button → bar raised, keyboard up','ok'];}},
+    focusComposer(){if(!s.focus&&s.mode!=='hidden'){s.focus=true;return ['Composer focused, keyboard up','ok'];}},
+    outside(what){
+      if(s.mode==='full')return;
+      if(guarded()){const from=s.mode+(s.focus?'+keyboard':'');s.mode=Rest(s.view);s.focus=false;return [`Outside touch on ${what}: lowered ${from} → ${s.mode}; nothing underneath activated`,'ok'];}
+      const wasRaised=raised();s.focus=false;
+      if(s.view==='home'){s.view='notes';s.mode=Rest('notes');return [`Outside touch opened ${what}`+(wasRaised?' WHILE the chat was raised (leak)':''),wasRaised?'bad':''];}
+      return [`Outside touch activated ${what}`+(wasRaised?' WHILE the bar was raised; bar stays up (leak)':''),wasRaised?'bad':''];
+    },
+    swipe(origin){
+      if(!['hidden','input'].includes(s.mode))return;
+      if(origin==='dock'){s.mode='sheet';s.focus=false;return ['Drag up from the dock → sheet','ok'];}
+      if(design==='current'&&s.view==='home'){s.mode='sheet';s.focus=false;return ['Drag up on Home content opened the chat (stray open)','bad'];}
+      return ['Drag on content: scrolls, chat unchanged','ok'];
+    },
+    grabUp(){if(s.mode==='sheet'){s.mode='full';return ['Grabber up → full','ok'];}},
+    grabDown(){if(s.mode==='full'){s.mode='sheet';return ['Shrink → sheet','ok'];}if(s.mode==='sheet'){s.mode=Rest(s.view);s.focus=false;return ['Grabber down → '+s.mode,'ok'];}},
+    type(){if(s.focus){s.draft+='hi ';return ['Typed into the draft',''];}},
+    send(){if(s.draft&&s.mode!=='hidden'){s.draft='';s.mode=s.mode==='full'?'full':'sheet';return ['Sent','ok'];}},
+    back(){
+      if(s.focus){s.focus=false;return ['Back: keyboard closed','ok'];}
+      if(s.mode==='full'){s.mode='sheet';return ['Back: full → sheet','ok'];}
+      if(s.mode==='sheet'){s.mode=Rest(s.view);return ['Back: sheet → '+s.mode,'ok'];}
+      if(design==='proposed'&&s.mode==='input'&&Rest(s.view)==='hidden'){s.mode='hidden';return ['Back: raised bar → pill','ok'];}
+      if(s.view!=='home'){const r=raised();s.view='home';s.mode='input';return ['Back left Notes'+(r?' while the bar was still raised (skipped a level)':''),r?'bad':''];}
+      return ['Back on Home: nothing to do',''];
+    },
+    home(){s.view='home';s.mode='input';s.focus=false;return ['Android Home gesture → Home',''];},
+  };
+}
+function chatPhone(id,design){
+  const root=document.getElementById(id),log=document.getElementById(id+'-log'),m=chatMachine(design),s=m.s;
+  const say=r=>{if(!r)return;const[t,c]=r;log.prepend(h('div',{class:c||''},(c==='bad'?'✗ ':c==='ok'?'✓ ':'· ')+t));};
+  let drag=null;
+  const draw=()=>{
+    root.innerHTML='';
+    root.append(h('div',{class:'status'},'9:41',h('span',{},'▮▮▮ ◔')));
+    const content=h('div',{style:'position:absolute;inset:32px 0 0'});
+    if(s.view==='home'){
+      content.append(h('div',{class:'card cal',style:'position:absolute;top:12px;left:18px;height:150px'},h('div',{class:'m'},'Fri, Nov 6'),h('div',{class:'t'},'Design review 3:00 PM')));
+      const grid=h('div',{class:'apps',style:'top:330px'});
+      for(const[n,ic]of[['Inbox','✉'],['Calendar','▦'],['Browser','◍'],['Camera','◉'],['Photos','▣'],['Maps','⌖'],['Notes','▤'],['Files','▭']])grid.append(h('div',{class:'app',onclick:e=>{e.stopPropagation();say(m.outside(n));draw();}},h('i',{},ic),n));
+      content.append(grid);
+    }else{
+      const v=h('div',{class:'appview'},h('h4',{},'Notes'));
+      for(const n of ['Groceries','Trip ideas','Meeting notes','Reading list'])v.append(h('div',{class:'note',onclick:e=>{e.stopPropagation();e.currentTarget.classList.add('flash');say(m.outside('note “'+n+'”'));setTimeout(draw,350);}},n));
+      content.append(v);
+    }
+    // drags on content
+    content.addEventListener('pointerdown',e=>{drag={y:e.clientY,src:'content'};});
+    root.append(content);
+    if(s.focus)root.append(h('div',{class:'kbd',onclick:()=>{say(m.type());draw();}},...Array.from({length:30},()=>h('span'))));
+    if(s.mode==='sheet'||s.mode==='full'){
+      const scrim=h('div',{class:'scrim',onclick:()=>{say(m.outside('the dimmed screen'));draw();}});
+      if(s.mode==='sheet')root.append(scrim);
+      const sh=h('div',{class:'sheet',style:`height:${s.mode==='full'?648:380}px`},
+        h('div',{class:'grab',title:'Resize chat',onclick:()=>{say(s.mode==='sheet'?m.grabUp():m.grabDown());draw();}}),
+        h('div',{class:'msg'},'How can I help?'),
+        h('div',{style:'flex:1'}),
+        h('div',{class:'bar'},h('div',{class:'ph'+(s.focus?' focus':''),onclick:()=>{say(m.focusComposer());draw();}},s.draft||'Ask Alpha'),s.draft?h('div',{class:'ib',onclick:()=>{say(m.send());draw();}},'➤'):null));
+      if(s.mode==='full')sh.prepend(h('div',{style:'align-self:flex-end;font-size:12px;cursor:pointer;color:var(--acc)',onclick:()=>{say(m.grabDown());draw();}},'Shrink'));
+      root.append(sh);
+    }
+    const bottom=s.focus?228:20;
+    if(s.mode==='input'){
+      const d=h('div',{class:'dock',style:`bottom:${bottom}px`},h('div',{class:'bar'},
+        h('div',{class:'alpha',onclick:()=>{say(m.tapAlpha());draw();}},'α'),
+        h('div',{class:'ph'+(s.focus?' focus':''),onclick:()=>{say(m.focusComposer());draw();}},s.draft||'Ask Alpha'),
+        s.draft?h('div',{class:'ib',onclick:()=>{say(m.send());draw();}},'➤'):h('div',{class:'ib'},'🎙')));
+      d.addEventListener('pointerdown',e=>{e.stopPropagation();drag={y:e.clientY,src:'dock'};});
+      root.append(d);
+    }
+    if(s.mode==='hidden'){
+      const d=h('div',{class:'dock pillw',style:'bottom:20px'},h('div',{class:'pillb'},
+        h('div',{class:'alpha',onclick:()=>{say(m.tapAlpha());draw();}},'α'),
+        h('div',{class:'ib',title:'Type',onclick:()=>{say(m.tapType());draw();}},'⌨'),
+        h('div',{class:'ib'},'🎙')));
+      d.addEventListener('pointerdown',e=>{e.stopPropagation();drag={y:e.clientY,src:'dock'};});
+      root.append(d);
+    }
+  };
+  root.addEventListener('pointerup',e=>{if(!drag)return;const dy=e.clientY-drag.y,src=drag.src;drag=null;if(dy<-46){say(m.swipe(src));draw();}});
+  const ctl=document.querySelector(`.controls[data-for="${id}"]`);
+  ctl.append(h('button',{onclick:()=>{say(m.back());draw();}},'◁ Back'),h('button',{onclick:()=>{say(m.home());draw();}},'Home gesture'),h('button',{onclick:()=>{s.view='notes';s.mode='hidden';s.focus=false;say(['Opened Notes','']);draw();}},'Open Notes'),h('button',{onclick:()=>{say(m.swipe('content'));draw();}},'Drag up on content'),h('button',{onclick:()=>{say(m.swipe('dock'));draw();}},'Drag up on dock'));
+  draw();
+}
+chatPhone('chat-cur','current');chatPhone('chat-pro','proposed');
+
+/* ================================================================ HOME */
+/* Same geometry as HomeLayout.tla, scaled 330/412. */
+const K=330/412;
+const home={cal:'loading',flows:'loading',mail:'loading',brief:false,insets:'pending',dock:'bar'};
+const homeTop0={};
+function homeGeom(design){
+  const H=871,G=370,pad=20,clear=home.insets==='pending'?28:60;
+  if(design==='proposed')return {row:212,top:H-(60+62+24)-G}; // insets known before first paint
+  const rest=home.insets==='pending'?102:(home.dock==='pill'?clear+54:home.dock==='bar'?clear+62:clear+62+280);
+  const reserve=Math.max(108,rest+6);
+  const row=(home.cal==='event'||home.mail==='unread'||['active','paused'].includes(home.flows))?236:196;
+  return {row,top:pad+row+Math.floor((H-reserve-pad-row-G)/2)};
+}
+function homeCards(design){
+  const c=[];
+  const calCopy={loading:'Loading events…',none:'No upcoming events',event:'Design review',error:'Calendar unavailable',denied:'Calendar access is off'}[home.cal];
+  const flowCopy={loading:['Loading workflows…',''],none:['No workflows yet',''],paused:['Morning brief','Paused'],active:['Morning brief','Enabled'],failed:['Couldn’t load workflows','Tap to retry'],noagent:['Connect your agent','Tap to connect']}[home.flows];
+  const mailCopy={unconnected:['Set up Gmail','—'],loading:['Loading email…',''],none:['No unread email',''],unread:['Lunch Thursday?','2 unread'],error:['Email unavailable','Open to retry']}[home.mail];
+  if(design==='current'||home.cal==='event')c.push(['cal',calCopy,home.cal==='event'?'3:00 – 3:30 PM':'Fri, Nov 6']);
+  if(design==='current'||home.flows==='active')c.push(['flow',flowCopy[0],design==='current'?(flowCopy[1]||'Open to view')+' · Loaded 10:02 AM':flowCopy[1]]);
+  if(design==='current'||home.mail==='unread')c.push(['mail',mailCopy[0],design==='current'?mailCopy[1]+(home.mail==='unread'?' · Updated 10:01 AM':''):mailCopy[1]]);
+  if(home.brief)c.push(['brief','Your day: 3 meetings, 1 reminder','Ran 7:00 AM']);
+  return c;
+}
+function drawHome(design){
+  const root=document.getElementById('home-'+(design==='current'?'cur':'pro'));
+  const g=homeGeom(design);
+  if(!(design in homeTop0))homeTop0[design]=g.top;
+  root.innerHTML='';
+  root.append(h('div',{class:'status'},'9:41',h('span',{},'▮▮▮ ◔')));
+  const cards=homeCards(design);
+  if(cards.length){
+    const row=h('div',{class:'cards',style:`height:${g.row*K}px`});
+    for(const[k,t,m]of cards)row.append(h('div',{class:'card'+(k==='cal'?' cal':''),style:`height:${g.row*K}px`},h('div',{class:'m'},k==='cal'?'Fri, Nov 6':k==='mail'?'✉':k==='flow'?'⟳':'✦'),h('div',{class:'t'},t),h('div',{class:'m'},m)));
+    root.append(row);
+  }else{
+    root.append(h('div',{class:'dateline',style:`height:${g.row*K}px`},h('div',{class:'d'},'Friday,',h('br'),'November 6'),home.mail==='unconnected'?h('button',{},'Connect Google'):null));
+  }
+  const grid=h('div',{class:'apps',style:`top:${(44+g.top)*K}px`});
+  for(const[n,ic]of[['Inbox','✉'],['Calendar','▦'],['Browser','◍'],['Camera','◉'],['Photos','▣'],['Maps','⌖'],['Notes','▤'],['Files','▭'],['Workflows','⟳'],['Settings','⚙'],['All apps','▦']])grid.append(h('div',{class:'app'},h('i',{},ic),n));
+  root.append(grid);
+  const moved=Math.round((g.top-homeTop0[design])*K*10)/10;
+  root.append(h('div',{class:'gridmark',style:`top:${(44+homeTop0[design])*K}px`},h('span',{},moved?`grid moved ${moved>0?'+':''}${moved}px`:'grid at first position')));
+  const clear=design==='proposed'?60:home.insets==='pending'?28:60;
+  const kb=home.dock==='keyboard';
+  if(kb)root.append(h('div',{class:'kbd'},...Array.from({length:30},()=>h('span'))));
+  root.append(h('div',{class:'dock',style:`bottom:${(kb?clear+280:clear)*K}px`},home.dock==='pill'?h('div',{class:'pillw'},h('div',{class:'pillb'},h('div',{class:'alpha'},'α'),h('div',{class:'ib'},'⌨'),h('div',{class:'ib'},'🎙'))):h('div',{class:'bar'},h('div',{class:'alpha'},'α'),h('div',{class:'ph'+(kb?' focus':'')},'Ask Alpha'),h('div',{class:'ib'},'🎙'))));
+  const placeholders=design==='current'?cards.filter(([k])=>(k==='cal'&&home.cal!=='event')||(k==='flow'&&home.flows!=='active')||(k==='mail'&&home.mail!=='unread')).length:0;
+  document.getElementById('home-'+(design==='current'?'cur':'pro')+'-stats').innerHTML=`Grid offset from first paint: <b style="color:${moved?'var(--bad)':'var(--ok)'}">${moved}px</b><br>Cards shown: ${cards.length} · placeholder cards: <b style="color:${placeholders?'var(--bad)':'var(--ok)'}">${placeholders}</b>`;
+}
+function homeCtl(){
+  const ctl=document.getElementById('home-ctl');ctl.innerHTML='';
+  const group=(label,key,vals)=>{ctl.append(h('span',{style:'font:600 12px system-ui;align-self:center;margin-left:8px'},label));for(const v of vals)ctl.append(h('button',{class:home[key]===v?'on':'',onclick:()=>{home[key]=v;homeCtl();drawHome('current');drawHome('proposed');}},String(v)));};
+  ctl.append(h('button',{class:home.insets==='native'?'on':'',onclick:()=>{home.insets='native';homeCtl();drawHome('current');drawHome('proposed');}},'Deliver Android insets'));
+  group('Calendar','cal',['loading','none','event','error']);
+  group('Workflows','flows',['loading','noagent','none','paused','active']);
+  group('Inbox','mail',['unconnected','loading','none','unread']);
+  group('Brief','brief',[false,true]);
+  group('Dock','dock',['bar','keyboard','pill']);
+  ctl.append(h('button',{style:'margin-left:12px',onclick:()=>{Object.assign(home,{cal:'loading',flows:'loading',mail:'loading',brief:false,insets:'pending',dock:'bar'});delete homeTop0.current;delete homeTop0.proposed;homeCtl();drawHome('current');drawHome('proposed');}},'Reset (boot)'));
+}
+homeCtl();drawHome('current');drawHome('proposed');
+
+/* ================================================================ SETTINGS */
+/* Inventories match SettingsNav.tla. [label, kind, target, value] */
+const CUR={
+ top:{title:'Settings',groups:[
+  [['Agent name','name','','Alpha'],['Voice and agent settings','nav','character']],
+  [['Accounts','nav','accounts','Eliza Cloud connected'],['Connections','nav','connections','Gmail authorized'],['Privacy & data','nav','privacy'],['Set up Alpha access','act','startup']],
+  [['Wi-Fi','nav','wifi','On · connected'],['Bluetooth','nav','bluetooth','Manage in Android'],['Mobile data','nav','mobile','On']],
+  [['Display','nav','display','Light'],['Sound & vibration','nav','sound','Android settings'],['Notifications','nav','notifications','App notifications allowed'],['Battery','nav','battery','85%']],
+  [['Models','nav','models','Running on this device'],['About','nav','about','0.1.0']],
+  [['Photos','nav','photos']],[['Calendar','nav','calendar']],
+  [['Ask before agent actions','tog','ask','','Off: carry out simple local requests. On: review them first. Sends, deletions and calendar or reminder changes still require review.']],
+  [['Password manager','nav','passwords']],
+  [['Home app','info','','Alpha Phone'],['Assistant app','info','','Not Alpha Phone'],['Default apps in Android','ext','android:default-apps']],
+  [['Scheduled digests','dest','digests']],
+  [['Eliza Cloud account & plan','nav','cloudplan','Pro']],
+  [['Agent connection','nav','agent','Alpha']],
+  [['Reset Alpha data','danger','confirm','','Erase local Alpha data · device unlock required']]]},
+ character:{title:'',groups:[[['Speech','info','','On this device'],['Always-on listening','info','','Not available'],['Listening settings','ext','android:listener'],['Scheduled digests','dest','digests','Supported by selected agent'],['Personality settings','info','','Managed by your agent']]]},
+ accounts:{title:'Accounts',groups:[[['Eliza Cloud','info','','me@example.com'],['Manage Cloud account','dest','cloud-account'],['Google accounts','dest','google'],['Device accounts in Android','ext','android:accounts']]]},
+ connections:{title:'Connections',groups:[[['Manage Google accounts','dest','google'],['Gmail','info','','Gmail authorized for 1 account'],['me@gmail.com','info','','Read and send'],['Open Inbox','dest','inbox'],['Disconnect Google account me@gmail.com','danger','confirm'],['Check Gmail connection','act','gmail-check'],['Other connectors','info','','Not available in this version']],[['Automatically load email images','tog','mail-images','','Load remote images when you open an email.']]]},
+ privacy:{title:'Privacy & data',groups:[[['Shared with Cloud','info','','Messages and selected content when you use AI'],['Voice','info','','Recordings for transcription and text for playback, when used']],[['Microphone','info','','Allowed for Alpha'],['Location','info','','Precise location allowed'],['Camera','info','','Allowed for Alpha'],['Calendar','info','','Not allowed']],[['Activity','nav','activity','0 today'],['Workflow runs','dest','workflows']],[['Memory','info','','Unavailable']],[['Device location','info','','On'],['Location in Android','ext','android:location'],['Manage Alpha permissions','ext','android:app']]]},
+ activity:{title:'Activity',groups:[[['Workflow runs','dest','workflows']]]},
+ wifi:{title:'Wi-Fi',groups:[[['On · connected','info','','Wi-Fi transport · network names stay in Android settings']],[['Manage Wi-Fi networks','ext','android:wifi']]]},
+ bluetooth:{title:'Bluetooth',groups:[[['Bluetooth','info','','On'],['Device connections','info','','Manage in Android'],['Pair or manage devices','ext','android:bluetooth']]]},
+ mobile:{title:'Mobile data',groups:[[['Mobile connection','info','','Not active'],['Mobile data','info','','On'],['Airplane mode','info','','Off'],['Manage mobile networks','ext','android:mobile'],['Airplane mode in Android','ext','android:airplane']]]},
+ display:{title:'Display',groups:[[['Theme','seg','theme']],[['Manage brightness in Android','ext','android:display','Adaptive brightness on'],['Text size','slider','text-size','100%']]]},
+ sound:{title:'Sound & vibration',groups:[[['Media','info','','60%'],['Ring','info','','80%'],['Alarm','info','','70%']],[['Do Not Disturb','info','','No DND suppression reported'],['Do Not Disturb in Android','ext','android:dnd'],['Manage sound in Android','ext','android:sound']]]},
+ notifications:{title:'Notifications',groups:[[['Alpha notifications','info','','App notifications allowed'],['Do Not Disturb','info','','No DND suppression reported'],['Delivery timing','info','','Android battery policies may delay alerts'],['Manage Alpha notifications','ext','android:notifications']],[['Workflow results','info','','Channel allowed'],['Manage Workflow results','ext','android:channel']],[['Reminders','info','','Channel allowed'],['Manage Reminders','ext','android:channel2']],[['Other apps','info','','Collection off'],['Notification privacy','info','','Android grants broad access. Alpha reads only selected apps; previews and history are separate choices.'],['Agent access','info','','Notification content is not sent to your agent'],['Enable selected-app collection','act','cross-collect'],['Manage notification access in Android','ext','android:listener-access'],['Choose notification apps','act','cross-apps'],['Local metadata history','info','','Off'],['Enable local metadata history','act','cross-history'],['View local metadata history','act','cross-view'],['Clear local metadata history','danger','confirm']]]},
+ battery:{title:'Battery',groups:[[['85% · On battery','info','']],[['Battery saver','info','','Off'],['Manage battery in Android','ext','android:battery']]]},
+ models:{title:'Models',groups:[[['Alpha','info','','Conversation uses the selected agent. Voice runs on this device.']],[['Connection','info','','On this device'],['Inference provider','info','','Eliza Cloud'],['Inference model','info','','Not reported by agent'],['Voice','info','','On this device'],['Eliza Cloud account','dest','cloud-account']]]},
+ about:{title:'About',groups:[[['Alpha Phone','info','','0.1.0 (12)'],['Installed or last updated','info','','Nov 5, 2026'],['Updates','info','','Alpha does not check for updates'],['Android','info','','17'],['Build','info','','AP4A.250105'],['Security patch','info','','2026-10-05'],['Runtime','info','','Android app'],['Agent execution','info','','On this device'],['Agent','info','','Alpha'],['Inference model','info','','Not reported by agent']],[['Problem log','nav','problems','None recorded'],['Export diagnostics','act','diagnostics']],[['Android device information','ext','android:about']],[['Open source licenses','nav','licenses']]]},
+ problems:{title:'Problem log',groups:[[['Kept on this device','info','','Failure classes only, 30 days, no content']],[['No problems recorded','info','']],[['Export diagnostics','act','diagnostics']]]},
+ licenses:{title:'Open source licenses',groups:[[['react','content','','19.2 · MIT'],['…','content','','']]]},
+ photos:{title:'Photos',groups:[[['Library access','info','','Selected photos and videos'],['Choose photo access','act','photo-access'],['Android photo permissions','ext','android:app2']]]},
+ calendar:{title:'Calendar',groups:[[['Display only','info','','Agent access is reviewed separately'],['Device calendars','info','','Connected'],['Connect or refresh device calendars','act','calendar-refresh'],['Personal','info','','me@gmail.com'],['Calendar visibility','info','','Managed in Android Calendar']],[['Google Calendar sync','dest','calendar-sync','','Review the destination and enable linked event sync']]]},
+ passwords:{title:'Password manager',groups:[[['Alpha vault','content','','3 passwords']],[['Proton Pass','info','','Installed · publisher verified'],['Selection','info','','Proton Pass selected'],['Autofill','info','','Available on this device'],['Vault','info','','Confirm unlock, saved passwords and filling in your provider.'],['Compatibility','info','','Proton may show a browser warning. Check the website address before filling.'],['Choose password provider in Android','ext','android:autofill'],['Open Proton Pass','ext','proton'],['Refresh password provider status','act','pw-refresh']]]},
+ cloudplan:{title:'Eliza Cloud account & plan',groups:[[['Account','info','','me@example.com'],['Plan','info','','Pro'],['Agent execution','info','','On this device'],['AI replies','info','','Ready'],['Plan runs until','info','','Dec 6, 2026'],['Sign-in expires','info','','Feb 1, 2027']],[['Manage plan','dest','manage-plan'],['Sign out of Eliza Cloud','danger','direct']]]},
+ agent:{title:'Agent connection',groups:[[['Agent','info','','Running on this device'],['AI','info','','Eliza Cloud'],['Reconnect agent','act','agent-restart']],[['Conversation history','info','','Load from this agent only. Restoring replaces the visible chat and draft; it does not run past actions.'],['New conversation','act','new-conversation'],['Load conversations','act','load-history']],[['Refresh actions','act','actions-refresh'],['Sync recorded receipts','act','actions-sync']]]},
+};
+const PRO={
+ top:{title:'Settings',groups:[
+  [['Agent name','name','','Alpha']],
+  ['Account',['Eliza Cloud','nav','account','Pro'],['Google','dest','google','1 account']],
+  ['Assistant',['Ask before acting','tog','ask'],['Agent','nav','agent','Running'],['Scheduled digests','dest','digests']],
+  ['Apps',['Calendars','nav','calendar'],['Passwords','nav','passwords'],['Photos access','act','photo-access','Selected'],['Load images in email','tog','mail-images']],
+  ['Appearance',['Theme','seg','theme'],['Text size','slider','text-size','100%']],
+  ['Notifications',['Notifications','ext','android:notifications','Allowed'],['Notifications from other apps','nav','cross','Off']],
+  ['Privacy',['App permissions','ext','android:app','1 not allowed'],['Finish setup','act','startup']],
+  ['System',['Android settings','ext','android:settings'],['About','nav','about','0.1.0']],
+  [['Reset Alpha data','danger','confirm']]]},
+ account:{title:'Eliza Cloud',groups:[[['Pro · renews Dec 6','status','','me@example.com']],[['Manage plan','dest','manage-plan'],['Sign out','danger','confirm']]]},
+ agent:{title:'Agent',groups:[[['Running on this device','status','','AI: Eliza Cloud']],[['Restart agent','act','agent-restart'],['New conversation','act','new-conversation'],['Earlier conversations','nav','history']]]},
+ history:{title:'Earlier conversations',groups:[[['Trip planning','act','restore','Nov 4'],['Groceries','act','restore2','Nov 2']]]},
+ calendar:{title:'Calendars',groups:[[['Refresh calendars','act','calendar-refresh'],['Google Calendar sync','dest','calendar-sync','Off']]]},
+ passwords:{title:'Passwords',groups:[[['Alpha vault','nav','vault','3 passwords']],['Other providers',['Password provider','ext','android:autofill','Proton Pass'],['Open Proton Pass','ext','proton']]]},
+ vault:{title:'Alpha vault',groups:[[['example.com','content','','me@example.com'],['bank.example','content','','me']],[['Add password','act','pw-add']]]},
+ cross:{title:'Other apps',groups:[[['Collect from selected apps','tog','cross-collect']],['Apps',['Signal','tog','cross-app'],['Show previews','tog','cross-preview'],['Add apps','act','cross-apps']],['History',['Keep history','tog','cross-history'],['Clear history','danger','confirm']],[['Notification access','ext','android:listener-access']]]},
+ about:{title:'About',groups:[[['Alpha Phone 0.1.0 (12)','status','']],[['Problem log','nav','problems','None'],['Export diagnostics','act','diagnostics'],['Open source licenses','nav','licenses']]]},
+ problems:{title:'Problem log',groups:[[['No problems recorded','content','']],[['Clear problem log','danger','confirm']]]},
+ licenses:{title:'Open source licenses',groups:[[['react','content','','19.2 · MIT'],['…','content','','']]]},
+};
+function settingsPhone(id,data){
+  const root=document.getElementById(id),stack=['top'],toggles={};let confirm=null,toast='';
+  const rowsOf=p=>data[p].groups.flatMap(g=>typeof g[0]==='string'?g.slice(1):g);
+  const all=Object.keys(data).flatMap(rowsOf);
+  const targets={};for(const r of all)if(r[2]&&!['name','info','content','tog','seg','slider','status'].includes(r[1])&&r[2]!=='confirm'&&r[2]!=='direct')targets[r[2]]=(targets[r[2]]||0)+1;
+  const show=t=>{toast=t;draw();setTimeout(()=>{if(toast===t){toast='';draw();}},1600);};
+  const draw=()=>{
+    root.innerHTML='';root.append(h('div',{class:'status'},'9:41',h('span',{},'▮▮▮ ◔')));
+    const page=data[stack[stack.length-1]],st=h('div',{class:'st'});
+    st.append(h('div',{class:'hd'},stack.length>1?h('div',{class:'back',onclick:()=>{stack.pop();draw();}},'←'):null,h('h4',{},page.title||' ')));
+    for(const g of page.groups){
+      const cap=typeof g[0]==='string'?g[0]:null,rows=cap?g.slice(1):g;
+      if(cap)st.append(h('div',{class:'cap'},cap));
+      const grp=h('div',{class:'grp'});
+      for(const[l,k,t,v,sub]of rows){
+        const cls={nav:'nav',dest:'dest',ext:'ext',act:'act',danger:'danger',info:'info'}[k]||'';
+        const dup=t&&targets[t]>1?' dup':'';
+        let right=null;
+        if(k==='tog'){right=h('div',{class:'sw'+(toggles[t]?' on':''),onclick:()=>{toggles[t]=!toggles[t];draw();}});}
+        else if(k==='seg'){right=h('div',{class:'seg'},...['System','Light','Dark'].map(x=>h('span',{class:(toggles.theme||'Light')===x?'on':'',onclick:()=>{toggles.theme=x;draw();}},x)));}
+        else if(k==='slider'){right=h('input',{type:'range',style:'width:120px'});}
+        else if(k==='name'){right=null;}
+        const r=h('div',{class:'r '+cls+dup,onclick:()=>{
+          if(k==='nav'&&data[t]){stack.push(t);draw();}
+          else if(k==='dest')show('Opens '+l+' (owned elsewhere)');
+          else if(k==='ext')show('Opens Android: '+t.replace('android:',''));
+          else if(k==='act')show(l+'…');
+          else if(k==='danger'){if(t==='confirm'){confirm=l;draw();}else show(l+' — happened immediately, no confirmation');}
+        }},
+          k==='name'?h('div',{class:'l serif',style:'font-size:24px'},v):h('div',{class:'l'},l,sub?h('span',{class:'s'},sub):null),
+          v&&k!=='name'?h('div',{class:'v'},v):null,right,k==='nav'?h('span',{class:'chev'},'›'):null);
+        grp.append(r);
+      }
+      st.append(grp);
+    }
+    root.append(st);
+    if(confirm)root.append(h('div',{class:'confirm',onclick:()=>{confirm=null;draw();}},h('div',{onclick:e=>e.stopPropagation()},h('div',{class:'serif',style:'font-size:20px'},confirm+'?'),h('button',{style:'background:var(--s2)',onclick:()=>{confirm=null;draw();}},'Cancel'),h('button',{style:'background:var(--acc);color:#fff',onclick:()=>{const c=confirm;confirm=null;show(c+' — confirmed');}},'Confirm'))));
+    if(toast)root.append(h('div',{class:'toast'},toast));
+  };
+  const top=rowsOf('top'),info=all.filter(r=>r[1]==='info').length,dups=Object.values(targets).filter(n=>n>1).length,mirrors=Object.keys(data).filter(p=>{const c=rowsOf(p).filter(r=>!['info','status','content'].includes(r[1]));return p!=='top'&&c.length&&c.every(r=>r[1]==='ext');}).length,subs=all.filter(r=>r[4]).length;
+  document.getElementById(id+'-stats').innerHTML=`Top-level rows: <b>${top.length}</b> · pages: <b>${Object.keys(data).length}</b><br>Info-only rows: <b>${info}</b> · duplicate destinations: <b>${dups}</b> · Android-relay pages: <b>${mirrors}</b> · explanatory subtitles: <b>${subs}</b>`;
+  draw();
+}
+settingsPhone('st-cur',CUR);settingsPhone('st-pro',PRO);
+</script>
+</body>
+</html>

@@ -409,8 +409,9 @@ export async function openYourAgent(page: Page) {
   const gate = page.getByRole('main', { name: 'Sign in', exact: true });
   if (await gate.isVisible()) return gate;
   await button(page, 'Settings').click();
-  await page.getByRole('button', { name: 'Agent connection', exact: true }).click();
+  // Settings › Assistant › Agent (docs/ui-refresh-2026-11).
+  await page.getByRole('button', { name: 'Agent', exact: true }).click();
   const panel = page.getByRole('region', { name: 'Settings', exact: true });
-  await expect(panel.getByRole('heading', {name:'Agent connection',exact:true})).toBeVisible();
+  await expect(panel.getByRole('heading', {name:'Agent',exact:true})).toBeVisible();
   return panel;
 }

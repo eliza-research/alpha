@@ -158,7 +158,9 @@ test('next item: an overdue reminder does not hide the next event, which keeps i
   assert.deepEqual(H.presentHomeNext({title: '  ', begin: at(17), allDay: false, now, provenance: reminder}),
     {text: 'Next: Untitled event 5:00 PM', source: 'Reminder', description: 'Next: Untitled event, 5:00 PM. Reminder saved on this browser, read 2:50 PM'});
   const template = readFileSync(new URL('../apps/app/src/prototype/template.html', import.meta.url), 'utf8');
-  assert.match(template, /data-alpha-home-calendar-next-line>.*\{\{homeCalendarNext\}\}.*\{\{homeCalendarNextSource\}\}/);
+  // Where and when the next item was read is in the card's accessible description, not drawn.
+  assert.match(template, /data-alpha-home-calendar-next-line>.*\{\{homeCalendarNext\}\}/);
+  assert.doesNotMatch(template, /\{\{homeCalendarNextSource\}\}/);
 });
 test('inbox status: readable freshness and every non-ready state', () => {
   const base = {failure: false, pending: false, cached: null, connected: false, unchecked: false, now};
@@ -181,12 +183,13 @@ test('workflow freshness: a load time only after a list was actually loaded', ()
 test('Home template renders source, freshness and the brief card only from live values', () => {
   const template = readFileSync(new URL('../apps/app/src/prototype/template.html', import.meta.url), 'utf8');
   const home = template.slice(template.indexOf('data-alpha-home-layout'), template.indexOf('{{apps}}'));
-  assert.match(home, /data-alpha-home-calendar-source>\{\{homeCalendarSource\}\}</);
-  assert.match(home, /data-alpha-home-calendar-origin>\{\{homeCalendarOrigin\}\}</);
+  // Source and freshness are accessible descriptions only (docs/ui-refresh-2026-11): no visible line.
+  assert.doesNotMatch(home, /\{\{homeCalendarSource\}\}|\{\{homeCalendarOrigin\}\}|\{\{homeWorkflowFreshness\}\}|\{\{homeInboxStatus\}\}/);
+  // Each card is drawn only when it has something to show; otherwise the date line.
+  for (const flag of ['homeShowCalendar', 'homeShowWorkflows', 'homeShowInbox', 'homeShowDate']) assert.match(home, new RegExp(`<sc-if value="\\{\\{${flag}\\}\\}">`), flag);
   assert.match(home, /aria-description="\{\{homeCalendarDescription\}\}"/);
   assert.match(home, /aria-description="\{\{homeInboxDescription\}\}"/);
   assert.match(home, /aria-description="\{\{homeWorkflowDescription\}\}"/);
-  assert.match(home, /<sc-if value="\{\{homeWorkflowFreshness\}\}"><span data-alpha-home-workflow-freshness>/);
   assert.match(home, /<sc-if value="\{\{homeBriefHas\}\}"><button[^>]*data-alpha-home-brief[^>]*aria-label="\{\{homeBriefLabel\}\}"/, 'no brief card without a retained brief');
   assert.doesNotMatch(home, /Morning brief|Design review|7:02 AM/, 'no fixture brief or agenda text in the template');
   const adapter = readFileSync(new URL('../apps/app/src/prototype/data-adapter.ts', import.meta.url), 'utf8');

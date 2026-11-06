@@ -58,13 +58,10 @@ for(const theme of ['light','dark']) test(`Scheduled digests respects ${theme} a
 test('Connection dialog follows a live theme change and remains keyboard accessible',async({page},info)=>{
   await page.goto('/');
   await page.getByRole('button',{name:'Settings',exact:true}).click();
-  await page.getByRole('button',{name:'Display',exact:true}).click();
+  // Theme sits on Settings' top level (docs/ui-refresh-2026-11).
   await page.getByRole('button',{name:'Theme: Dark',exact:true}).click();
-  // Use the same native Back event as the application shell.
-  await page.evaluate(()=>window.dispatchEvent(new Event('alpha-back',{cancelable:true})));
-  await page.getByRole('button',{name:'Accounts',exact:true}).click();
   // Open by keyboard: WebKit intentionally does not focus buttons on a pointer click.
-  const opener=page.getByRole('button',{name:'Manage Cloud account',exact:true});await opener.focus();await opener.press('Enter');
+  const opener=page.getByRole('button',{name:'Eliza Cloud',exact:true});await opener.focus();await opener.press('Enter');
   const dialog=page.getByRole('dialog',{name:'Eliza Cloud',exact:true});
   await expect(dialog).toHaveCSS('background-color','rgb(0, 0, 0)');
   await page.setViewportSize({width:412,height:300});
@@ -73,6 +70,6 @@ test('Connection dialog follows a live theme change and remains keyboard accessi
   await signIn.focus();await expect(signIn).toBeInViewport();
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
-  await expect(page.getByRole('button',{name:'Manage Cloud account',exact:true})).toBeFocused();
+  await expect(page.getByRole('button',{name:'Eliza Cloud',exact:true})).toBeFocused();
   await page.screenshot({path:info.outputPath('focus-restored.png')});
 });

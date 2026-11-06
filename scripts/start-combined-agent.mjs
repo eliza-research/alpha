@@ -11,7 +11,7 @@ import {sourceManifest,sha} from './combined-agent-source.mjs';
 import {AGENT_MODEL,agentModelEnvironment} from './agent-model.mjs';
 const nodeBin=process.env.ALPHA_NODE_BIN,bunBin=process.env.ALPHA_BUN;
 if(!nodeBin||!bunBin||!path.isAbsolute(nodeBin)||!path.isAbsolute(bunBin)||path.basename(nodeBin)!=='node')throw Error('Explicit absolute ALPHA_NODE_BIN (named node) and ALPHA_BUN required');
-if(execFileSync(nodeBin,['--version'],{encoding:'utf8'}).trim()!=='v24.15.0'||execFileSync(bunBin,['--version'],{encoding:'utf8'}).trim()!=='1.4.2')throw Error('Combined runtime requires Node24.15.0 and Bun1.4.2');
+if(execFileSync(nodeBin,['--version'],{encoding:'utf8'}).trim()!=='v26.13.0'||execFileSync(bunBin,['--version'],{encoding:'utf8'}).trim()!=='1.4.2')throw Error('Combined runtime requires Node24.15.0 and Bun1.4.2');
 const runtimePath=path.dirname(nodeBin)+path.delimiter+(process.env.PATH||'');
 const source=process.env.ALPHA_COMBINED_SOURCE,manifestPath=process.env.ALPHA_COMBINED_SOURCE_MANIFEST;
 if(!source||!manifestPath||!path.isAbsolute(source)||!path.isAbsolute(manifestPath))throw Error('Explicit absolute ALPHA_COMBINED_SOURCE and ALPHA_COMBINED_SOURCE_MANIFEST required');
@@ -41,5 +41,5 @@ const logPath=path.join(profile,'server.log');if(fs.existsSync(logPath))privateP
 const base=Object.fromEntries(['PATH','TMPDIR','LANG','SHELL','USER','LOGNAME','HOME'].filter(k=>process.env[k]).map(k=>[k,process.env[k]]));
 const env={...base,PATH:runtimePath,...voice,ELIZA_HEADLESS:'1',ELIZA_REQUIRE_LOCAL_AUTH:'1',ELIZA_API_BIND:'127.0.0.1',ELIZA_ALLOWED_HOSTS:'10.0.2.2',ELIZA_API_PORT:String(port),ELIZA_API_EXPOSE_PORT:'1',ELIZA_STATE_DIR:profile,ELIZA_CONFIG_PATH:config,ELIZA_API_TOKEN:token,CEREBRAS_API_KEY:key,...modelEnvironment,ELIZAOS_CLOUD_USE_INFERENCE:'false'};
 const child=spawn(bunBin,['--conditions=eliza-source','--tsconfig-override',path.join(realSource,'tsconfig.json'),entry],{cwd:profile,env,stdio:['ignore',log,log]});
-const metadata={pid:child.pid,port,nodeVersion:'24.15.0',bunVersion:'1.4.2',nodeBinarySha256:sha(fs.readFileSync(nodeBin)),bunBinarySha256:sha(fs.readFileSync(bunBin)),source:realSource,revision:actual.revision,contentSha256:actual.contentSha256,startedAt:new Date().toISOString()};fs.writeFileSync(path.join(profile,'process.json'),JSON.stringify(metadata,null,2),{mode:0o600});console.log(JSON.stringify(metadata));
+const metadata={pid:child.pid,port,nodeVersion:'26.13.0',bunVersion:'1.4.2',nodeBinarySha256:sha(fs.readFileSync(nodeBin)),bunBinarySha256:sha(fs.readFileSync(bunBin)),source:realSource,revision:actual.revision,contentSha256:actual.contentSha256,startedAt:new Date().toISOString()};fs.writeFileSync(path.join(profile,'process.json'),JSON.stringify(metadata,null,2),{mode:0o600});console.log(JSON.stringify(metadata));
 for(const signal of ['SIGINT','SIGTERM'])process.on(signal,()=>child.kill(signal));child.on('error',()=>{console.error('Combined runtime launch failed; inspect owner-only log');process.exitCode=1;});child.on('exit',code=>{fs.closeSync(log);process.exitCode=code??1;});

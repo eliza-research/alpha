@@ -19,35 +19,34 @@
 <div data-alpha-layer="home" onFocusCapture="{{focusAppContent}}" role="region" aria-label="Home" aria-hidden="{{homeHidden}}" inert="{{homeHidden}}" style="position: absolute; inset: 44px 0 0; z-index: 10; box-sizing: border-box; overflow-y:auto; overflow-x:hidden; scroll-padding-bottom:110px">
 <div data-alpha-home-layout style="min-height:100%;display:flex;flex-direction:column;padding:20px 0 108px;box-sizing:border-box">
 <sc-if value="{{storageAccessWarning}}"><p role="alert" class="storage-access-warning">{{storageAccessWarning}}</p></sc-if>
-  <div class="scr" style="display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 0 24px; scroll-padding-left: 24px; touch-action: pan-x; flex-shrink: 0">
-    <button class="home-calendar-card" data-alpha-home-calendar data-alpha-home-calendar-event="{{homeCalendarHasEvent}}" data-alpha-home-calendar-meta="{{homeCalendarHasMeta}}" data-alpha-home-calendar-overdue="{{homeCalendarOverdue}}" data-alpha-home-calendar-next="{{homeCalendarHasNext}}" onClick="{{goCalendar}}" aria-label="{{homeCalendarLabel}}" aria-description="{{homeCalendarDescription}}" style="flex-shrink: 0; scroll-snap-align: start; border-radius: 30px; background: var(--acc); color: #ffffff; padding: 22px; box-sizing: border-box">
+  <sc-if value="{{homeShowDate}}"><div class="home-date-line" data-alpha-home-date><span class="serif home-date-text">{{homeDateLabel}}</span><sc-if value="{{homeShowSetup}}"><button class="tap home-date-setup" onClick="{{connectGoogle}}">Connect Google</button></sc-if></div></sc-if>
+  <div class="scr home-card-row" data-alpha-home-cards="{{homeShowDate}}" style="display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 0 24px; scroll-padding-left: 24px; touch-action: pan-x; flex-shrink: 0">
+    <sc-if value="{{homeShowCalendar}}"><button class="home-calendar-card" data-alpha-home-calendar data-alpha-home-calendar-event="{{homeCalendarHasEvent}}" data-alpha-home-calendar-meta="{{homeCalendarHasMeta}}" data-alpha-home-calendar-overdue="{{homeCalendarOverdue}}" data-alpha-home-calendar-next="{{homeCalendarHasNext}}" onClick="{{goCalendar}}" aria-label="{{homeCalendarLabel}}" aria-description="{{homeCalendarDescription}}" style="flex-shrink: 0; scroll-snap-align: start; border-radius: 30px; background: var(--acc); color: #ffffff; padding: 22px; box-sizing: border-box">
       <div class="home-calendar-head">
         <span class="home-calendar-time">{{homeCalendarTime}}</span>
-        <span class="home-calendar-origin" data-alpha-home-calendar-origin>{{homeCalendarOrigin}}</span>
         <span aria-hidden="true" style="display:block;flex-shrink:0;width:24px;height:24px;background:#ffffff;mask:url('/icons/lucide/calendar.svg') center/contain no-repeat;-webkit-mask:url('/icons/lucide/calendar.svg') center/contain no-repeat"></span>
       </div>
       <sc-if value="{{homeCalendarVideo}}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24"><path d="{{ic.video}}"></path></svg></sc-if>
       <div class="serif home-calendar-title">{{homeCalendarTitle}}</div>
-      <sc-if value="{{homeCalendarHasMeta}}"><span class="home-calendar-meta"><sc-if value="{{homeCalendarHasEvent}}"><span class="home-calendar-footer">{{homeCalendarFooter}}</span></sc-if><sc-if value="{{homeCalendarSource}}"><span class="home-calendar-source" data-alpha-home-calendar-source>{{homeCalendarSource}}</span></sc-if></span></sc-if>
-      <sc-if value="{{homeCalendarHasNext}}"><span class="home-calendar-meta home-calendar-next" data-alpha-home-calendar-next-line><span class="home-calendar-next-text">{{homeCalendarNext}}</span><sc-if value="{{homeCalendarNextSource}}"><span class="home-calendar-source" data-alpha-home-calendar-next-source>{{homeCalendarNextSource}}</span></sc-if></span></sc-if>
-    </button>
-    <button data-alpha-home-workflows onClick="{{goFlows}}" aria-label="{{homeWorkflowLabel}}" aria-description="{{homeWorkflowDescription}}" class="home-card" style="flex-shrink: 0; scroll-snap-align: start; width: max-content; min-width: 172px; max-width: calc(100% - 48px); border-radius: 30px; background: var(--s2); padding: 22px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between">
+      <sc-if value="{{homeCalendarHasMeta}}"><span class="home-calendar-meta"><sc-if value="{{homeCalendarHasEvent}}"><span class="home-calendar-footer">{{homeCalendarFooter}}</span></sc-if></span></sc-if>
+      <sc-if value="{{homeCalendarHasNext}}"><span class="home-calendar-meta home-calendar-next" data-alpha-home-calendar-next-line><span class="home-calendar-next-text">{{homeCalendarNext}}</span></span></sc-if>
+    </button></sc-if>
+    <sc-if value="{{homeShowWorkflows}}"><button data-alpha-home-workflows onClick="{{goFlows}}" aria-label="{{homeWorkflowLabel}}" aria-description="{{homeWorkflowDescription}}" class="home-card" style="flex-shrink: 0; scroll-snap-align: start; width: max-content; min-width: 172px; max-width: calc(100% - 48px); border-radius: 30px; background: var(--s2); padding: 22px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between">
       <div style="display:flex;justify-content:flex-end;width:100%"><span aria-hidden="true" style="display:block;flex-shrink:0;width:24px;height:24px;background:var(--acct);mask:url('/icons/lucide/workflow.svg') center/contain no-repeat;-webkit-mask:url('/icons/lucide/workflow.svg') center/contain no-repeat"></span></div>
       <sc-if value="{{homeWorkflowHasRows}}"><div style="display:flex;flex-direction:column;gap:10px;max-width:260px;min-width:0;text-align:left"><sc-for list="{{homeWorkflowRows}}" as="flow"><div style="min-width:0"><div style="font-size:18px;font-weight:600;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{flow.name}}</div><div style="font-size:12px;line-height:1.4;color:var(--mut)">{{flow.status}}</div></div></sc-for></div></sc-if>
       <sc-if value="{{homeWorkflowTitle}}"><span class="serif" style="font-size:26px;line-height:1.1;min-width:0;max-width:260px;text-align:left;overflow-wrap:anywhere">{{homeWorkflowTitle}}</span></sc-if>
-      <span style="display:flex;flex-direction:column;align-items:flex-start;min-width:0;font-size:12px;line-height:1.4;color:var(--mut);text-align:left"><span>{{homeWorkflowTime}}</span><sc-if value="{{homeWorkflowFreshness}}"><span data-alpha-home-workflow-freshness>{{homeWorkflowFreshness}}</span></sc-if></span>
-    </button>
-    <button data-alpha-home-inbox onClick="{{goTriage}}" aria-label="{{homeAttentionLabel}}" aria-description="{{homeInboxDescription}}" class="home-card" style="flex-shrink: 0; scroll-snap-align: start; width: max-content; min-width:172px; max-width:calc(100% - 48px); border-radius: 30px; background: var(--s2); padding: 22px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between">
+      <span style="display:flex;flex-direction:column;align-items:flex-start;min-width:0;font-size:12px;line-height:1.4;color:var(--mut);text-align:left"><span>{{homeWorkflowTime}}</span></span>
+    </button></sc-if>
+    <sc-if value="{{homeShowInbox}}"><button data-alpha-home-inbox onClick="{{goTriage}}" aria-label="{{homeAttentionLabel}}" aria-description="{{homeInboxDescription}}" class="home-card" style="flex-shrink: 0; scroll-snap-align: start; width: max-content; min-width:172px; max-width:calc(100% - 48px); border-radius: 30px; background: var(--s2); padding: 22px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between">
       <div style="display:flex;justify-content:space-between;align-items:center;width:100%"><span style="font-size:14px;font-weight:600;text-align:left">{{homeInboxCount}}</span><span aria-hidden="true" style="display:block;flex-shrink:0;width:24px;height:24px;background:var(--acct);mask:url('/icons/lucide/inbox.svg') center/contain no-repeat;-webkit-mask:url('/icons/lucide/inbox.svg') center/contain no-repeat"></span></div>
       <sc-if value="{{homeInboxHasRows}}"><div data-alpha-home-inbox-subjects style="display:flex;flex-direction:column;gap:10px;max-width:260px;min-width:0;text-align:left"><sc-for list="{{homeInboxRows}}" as="mail"><div style="min-width:0"><div style="font-size:18px;font-weight:600;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{mail.subject}}</div><div style="font-size:12px;line-height:1.4;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{mail.from}}</div></div></sc-for></div></sc-if>
       <sc-if value="{{homeInboxTitle}}"><span class="serif" style="font-size:26px;line-height:1.1;min-width:0;max-width:260px;text-align:left;overflow-wrap:anywhere">{{homeInboxTitle}}</span></sc-if>
-      <span style="font-size:12px;line-height:1.4;min-height:17px;color:var(--mut);text-align:left">{{homeInboxStatus}}</span>
       <sc-if value="{{homeAttentionPeople.length}}"><div style="display: flex; gap: 2px; visibility: {{homePeopleVisibility}}">
         <sc-for list="{{homeAttentionPeople}}" as="person">
           <span style="width: 28px; height: 28px; border-radius: 14px; background: var(--s3); font-size: 9.5px; font-weight: 700; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2px var(--s2); white-space: nowrap">{{person.ini}}</span>
         </sc-for>
       </div></sc-if>
-    </button>
+    </button></sc-if>
     <sc-if value="{{homeBriefHas}}"><button class="home-brief-card" data-alpha-home-brief data-alpha-home-brief-failed="{{homeBriefFailed}}" onClick="{{goBrief}}" aria-label="{{homeBriefLabel}}" aria-haspopup="dialog">
       <div class="home-brief-head"><span>Latest brief</span><span aria-hidden="true" style="display:block;flex-shrink:0;width:24px;height:24px;background:var(--acct);mask:url('/icons/lucide/sparkles.svg') center/contain no-repeat;-webkit-mask:url('/icons/lucide/sparkles.svg') center/contain no-repeat"></span></div>
       <span class="home-brief-title">{{homeBriefTitle}}</span>
@@ -78,8 +77,6 @@
       </button>
     </sc-if>
   </div>
-
-  <div style="flex-grow: 1; min-height: 16px"></div>
 </div>
 <div data-alpha-home-clearance aria-hidden="true"></div>
 </div>
@@ -3788,11 +3785,6 @@
               </div>
               <input aria-label="Agent name" placeholder="Alpha" value="{{settings.charVal}}" onChange="{{settings.onName}}" style="flex-grow: 1; min-width: 0; background: transparent; border: 0; border-bottom: 1px solid var(--line); color: var(--fg); font-family: Denton, Fraunces, Georgia, serif; font-weight: 300; font-size: 32px; padding: 2px 0 6px; outline: none">
             </div>
-            <button class="tap" aria-label="Character" onClick="{{settings.openChar}}" style="margin-top: 14px; width: 100%; min-height: 48px; border-radius: 24px; background: var(--bg); display: flex; align-items: center; gap: 12px; padding: 0 14px 0 16px; box-sizing: border-box">
-              <svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px; color: var(--acct)"><path d="{{ic.wave}}"></path></svg>
-              <span style="flex-grow: 1; text-align: left; font-size: 14.5px">{{settings.persona}}</span>
-              <svg class="i" viewBox="0 0 24 24" style="width: 16px; height: 16px; color: var(--mut)"><path d="{{ic.right}}"></path></svg>
-            </button>
           </div>
         </sc-if>
 
@@ -4191,6 +4183,9 @@
 </sc-if>
 
 
+<!-- A raised dock (the bar above a pill view's rest, or the composer with the keyboard up) takes
+     the first touch outside it: that touch lowers the dock and reaches nothing underneath. -->
+<div data-alpha-dock-guard aria-hidden="true" onPointerDown="{{dockGuardSw.down}}" onPointerMove="{{dockGuardSw.move}}" onPointerUp="{{dockGuardSw.up}}" onPointerCancel="{{dockGuardSw.cancel}}" onClick="{{dockGuardTap}}" onContextMenu="{{dockGuardMenu}}" style="position: absolute; inset: 0; z-index: 39; pointer-events: {{dockGuardPE}}; touch-action: none"></div>
 <sc-if value="{{showComposer}}">
 <div data-alpha-draft-notice aria-hidden="{{dockHidden}}" inert="{{dockHidden}}">
   <sc-if value="{{draftStatus}}"><div style="max-height:24dvh;overflow:auto;padding:6px 16px;background:var(--bg);color:var(--fg);border-radius:16px;font-size:12px"><p role="status" aria-label="Assistant status" style="margin:0">{{draftStatus}}</p></div></sc-if>
@@ -4201,7 +4196,7 @@
   <div data-alpha-input-bar class="enter" onPointerDown="{{inputSw.down}}" onPointerMove="{{inputSw.move}}" onPointerUp="{{inputSw.up}}" onPointerCancel="{{inputSw.cancel}}" onLostPointerCapture="{{inputSw.lost}}" style="{{inputDragStyle}}; position:relative; display: flex; align-items: center; gap: 4px; min-height: 62px; padding: 6px 8px 6px 9px; border-radius: 31px; background: var(--s2); box-shadow: 0 14px 40px var(--shc); touch-action: pan-y">
     <span data-alpha-input-drag-background aria-hidden="true" style="position:absolute;inset:0;z-index:0;border-radius:inherit;touch-action:none"></span>
     <button data-alpha-input-drag-alpha class="alpha-mark-fill" aria-label="Open conversation" onClick="{{openSheet}}" style="position:relative;z-index:1;touch-action:none;width: 44px; height: 44px; border-radius: 22px; background: var(--acc); color: #fff; display: flex; align-items: center; justify-content: center; font-family: Denton, Fraunces, Georgia, serif; font-style: italic; font-size: 24px; flex-shrink: 0"><span class="alpha-compute-mark" aria-hidden="true"></span></button>
-    <textarea onPointerDown="{{inputComposerPointer}}" data-alpha-composer="true" rows="1" aria-label="{{cmpPlaceholder}}" placeholder="{{cmpPlaceholder}}" value="{{draft}}" onChange="{{onDraft}}" onKeyDown="{{onKey}}" style="position:relative;z-index:1;touch-action:{{inputComposerTouchAction}};flex-grow: 1; min-width: 0; height: 44px; min-height:44px; max-height:min(168px,28dvh); resize:none; overflow-y:auto; font-family:inherit; line-height:22px; padding-top:11px; padding-bottom:11px; box-sizing:border-box; border: 0; outline: 0; background: transparent; color: var(--fg); font-size: 16px; padding-left: 8px"></textarea>
+    <textarea onPointerDown="{{inputComposerPointer}}" onFocus="{{dockComposerFocus}}" onBlur="{{dockComposerBlur}}" data-alpha-composer="true" rows="1" aria-label="{{cmpPlaceholder}}" placeholder="{{cmpPlaceholder}}" value="{{draft}}" onChange="{{onDraft}}" onKeyDown="{{onKey}}" style="position:relative;z-index:1;touch-action:{{inputComposerTouchAction}};flex-grow: 1; min-width: 0; height: 44px; min-height:44px; max-height:min(168px,28dvh); resize:none; overflow-y:auto; font-family:inherit; line-height:22px; padding-top:11px; padding-bottom:11px; box-sizing:border-box; border: 0; outline: 0; background: transparent; color: var(--fg); font-size: 16px; padding-left: 8px"></textarea>
     <sc-if value="{{hasDraft}}"><button aria-label="Send" onClick="{{sendNow}}" style="position:relative;z-index:1;width: 44px; height: 44px; border-radius: 22px; background: var(--acc); color: #fff; display: flex; align-items: center; justify-content: center"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.send}}"></path></svg></button></sc-if>
     <sc-if value="{{noDraft}}"><button class="ib" style="position:relative;z-index:1" title="Voice assistant" aria-label="Talk" onPointerDown="{{chatControlPointer}}" onClick="{{startVoice}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.mic}}"></path></svg></button></sc-if>
   </div>

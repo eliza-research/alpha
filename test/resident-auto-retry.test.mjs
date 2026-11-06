@@ -7,7 +7,7 @@ import {stripTypeScriptTypes} from 'node:module';
 const source=fs.readFileSync('apps/app/src/runtime/connection-ui.tsx','utf8');
 const begin=source.indexOf('const RESIDENT_AUTO_RETRY_MS'),end=source.indexOf('\n/** Start (or restart) the resident.',begin);
 assert.ok(begin>0&&end>begin,'auto-retry policy located');
-const code=stripTypeScriptTypes(source.slice(begin,end),{mode:'transform'});
+const code=stripTypeScriptTypes(source.slice(begin,end),{mode:'strip'});
 function harness(overrides={}){
  const timers=[],starts=[];
  const context=vm.createContext({active:null,residentAlwaysPresent:true,isAndroid:true,testMocksEnabled:false,operation:null,state:{kind:'recovering'},

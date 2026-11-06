@@ -13,6 +13,12 @@ const installed = new WeakSet<object>();
 export function installPrototypeDataAdapter(Component: any, views: Record<string, Bag>) {
   if (installed.has(views)) return;
   installed.add(views);
+  // Home draws no card for a failed calendar read, so opening Calendar by any route reads it again.
+  const openView = Component.prototype.openView;
+  Component.prototype.openView = function (key: string, ...args: any[]) {
+    if (key === 'calendar') { const source = views.calendar?.displaySources?.(); if (source?.error) source.retry?.(); }
+    return openView.call(this, key, ...args);
+  };
   const empty: Record<string, Bag> = {
     photos: { list: [], trash: [], albums: [], open: null, album: null, edit: null, sheet: null, filter: null, seq: null, sel: null },
     files: { files: [], folder: null, open: null, asked: {}, asking: null, sel: null, sheet: null },
@@ -177,6 +183,24 @@ export function setHomeSources(next: Partial<typeof homeSources>) {
   if (next.attention) homeSources.attention = safe(next.attention);
   if (next.brief) homeSources.brief = safe(next.brief);
   window.dispatchEvent(new Event(HOME_SOURCES_CHANGED));
+}
+
+/** Which Home cards are drawn (docs/ui-refresh-2026-11, tla/HomeLayout.tla). A card is drawn only
+ * when it has something to show: the next event or an overdue reminder, an enabled workflow,
+ * unread mail from a connected account, a retained brief. With none, Home shows the date, and a
+ * Connect Google button while Google is known to be disconnected. Installed outermost, after
+ * every adapter that writes the card values. */
+export function installHomeCardVisibility(Component: any, openGoogle: () => void) {
+  const p = Component.prototype, render = p.renderVals;
+  p.renderVals = function () {
+    const out = render.call(this);
+    const calendar = !!out.homeCalendarHasEvent, workflows = !!out.homeWorkflowHasRows, inbox = !!out.homeInboxHasRows, brief = !!out.homeBriefHas;
+    const none = !calendar && !workflows && !inbox && !brief;
+    return {...out, homeShowCalendar: calendar, homeShowWorkflows: workflows, homeShowInbox: inbox, homeShowDate: none,
+      homeShowSetup: none && out.homeGoogleConnected === false,
+      homeDateLabel: new Date().toLocaleDateString([], {weekday: 'long', month: 'long', day: 'numeric'}),
+      connectGoogle: openGoogle};
+  };
 }
 
 /** Neutral Home card values used when no fixture defaults are bundled. */

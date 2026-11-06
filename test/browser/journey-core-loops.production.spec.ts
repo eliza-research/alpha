@@ -301,14 +301,16 @@ test('loop A on Android: the resident agent answers, the conversation follows ac
   // The connection names the agent and where it runs, and no credential is rendered anywhere.
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
   await button(page, 'Settings').click();
-  await expect(page.getByRole('button', { name: 'Agent connection', exact: true })).toContainText('Alpha');
-  await page.getByRole('button', { name: 'Agent connection', exact: true }).click();
+  // Settings › Assistant › Agent shows where the agent runs and which AI it uses (docs/ui-refresh-2026-11).
+  await expect(page.getByRole('button', { name: 'Agent', exact: true })).toContainText('Running');
+  await page.getByRole('button', { name: 'Agent', exact: true }).click();
   const account = page.getByRole('region', { name: 'Settings',exact:true });
   await expect(account).toContainText('Running on this device');
-  await expect(account.getByText('Eliza Cloud',{exact:true})).toBeVisible();
+  await expect(account).toContainText('AI: Eliza Cloud');
   await account.getByRole('button',{name:'Back to Settings',exact:true}).click();
-  await page.getByRole('button',{name:'Eliza Cloud account & plan',exact:true}).click();
-  await expect(page.getByRole('button',{name:'Sign out of Eliza Cloud',exact:true})).toBeVisible();
+  // Settings › Account › Eliza Cloud is a page; its Sign out is confirmed before it acts.
+  await account.getByRole('button',{name:'Eliza Cloud',exact:true}).click();
+  await expect(account.getByRole('button',{name:'Sign out',exact:true})).toBeVisible();
   expect(await page.locator('body').innerText()).not.toContain('synthetic-cloud-key');
   await expectNoDevelopmentSurface(page);
   expect(await native(page, f => f.unexpected)).toEqual([]);
@@ -785,9 +787,9 @@ test('loop J05 on Android: a page navigation closes the open review, and an agen
   // The resident agent is reconnected (a new verified session) before the answer is saved.
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
   await button(page, 'Settings').click();
-  await button(page, 'Agent connection').click();
+  await button(page, 'Agent').click();
   const account = page.getByRole('region', { name: 'Settings',exact:true });
-  await account.getByRole('button', { name: 'Reconnect agent', exact: true }).click();
+  await account.getByRole('button', { name: 'Restart agent', exact: true }).click();
   await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0, { timeout: 30_000 });
   expect(await native(page, f => f.calls.filter((call: string) => call === 'Agent.start').length)).toBe(2);
   await button(page, 'Open conversation').click();

@@ -4,7 +4,7 @@ import {resolve} from 'node:path';
 import {stripTypeScriptTypes} from 'node:module';
 // Local review dialogs for name-targeted Notes edits and the titles-only listing.
 const root=resolve(import.meta.dirname,'../..');
-const compile=(path:string)=>stripTypeScriptTypes(readFileSync(resolve(root,path),'utf8'),{mode:'transform'});
+const compile=(path:string)=>stripTypeScriptTypes(readFileSync(resolve(root,path),'utf8'),{mode:'strip'});
 const inert=compile('apps/app/src/runtime/modal-inert.ts');
 const review=compile('apps/app/src/prototype/notes-query-review.ts').replace(/import\s*\{\s*holdPhoneInert\s*\}\s*from\s*['"]\.\.\/runtime\/modal-inert['"];/,'');
 const css=readFileSync(resolve(root,'apps/app/src/prototype/phone.css'),'utf8');
