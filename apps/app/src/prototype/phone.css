@@ -633,3 +633,12 @@ button[aria-label$=" on or off"][aria-pressed]::before { content:""; position:ab
  * the viewfinder and the capture row, and scrolls sideways instead of pushing a mode off screen. */
 .alpha-text-xl:not(.alpha-landscape) [data-alpha-camera="modes"]{top:648px!important;height:auto!important;min-height:44px;overflow-x:auto;overflow-y:hidden;justify-content:safe center!important;padding:0 8px;box-sizing:border-box;touch-action:pan-x}
 .alpha-text-xl [data-alpha-camera="modes"] button{line-height:1.1;gap:2px!important;padding:0 10px!important}
+
+/* Agent Maps cards in chat (maps-chat-adapter.ts): text only; links are shown, never opened. */
+.maps-chat-card { background:var(--s2);padding:16px;border-radius:16px;display:flex;flex-direction:column;gap:6px;overflow-wrap:anywhere; }
+.maps-chat-card strong { font-size:15px;line-height:1.4; }
+.maps-chat-card p { margin:0;font-size:14px;line-height:1.4; }
+.maps-chat-card small { color:var(--mut);font-size:12px;line-height:1.4; }
+.maps-chat-choice { display:flex;flex-wrap:wrap;gap:8px; }
+.maps-chat-choice button { min-height:44px;padding:8px 16px;border-radius:22px;background:var(--s2);color:var(--fg);font:inherit;font-weight:600; }
+.maps-chat-choice button:first-child { background:var(--acc);color:var(--alpha-white,#fff); }
