@@ -153,7 +153,7 @@ test('destructive and share actions are reviewed against exact revisions and exp
  for(const action of m.DESTRUCTIVE_LIBRARY_ACTIONS)assert.ok(m.REVIEWED_LIBRARY_ACTIONS.includes(action));
  assert.ok(m.REVIEWED_LIBRARY_ACTIONS.includes('share'));
  // The adapter calls native change/share only from the confirmed review, never from a tap.
- const confirm=adapter.slice(adapter.indexOf('async function confirmReview'),adapter.indexOf('function attach'));
+ const confirm=adapter.slice(adapter.indexOf('async function confirmReview'),adapter.indexOf('const visibleHost'));
  assert.match(confirm,/port\.share\(\{ items: pending\.items \}\)/);assert.match(confirm,/port\.requestChange\(\{ operation: pending\.action, items: pending\.items \}\)/);
  assert.equal((adapter.match(/port\.(share|requestChange)\(/g)||[]).length,2,'no other native change path');
 });
@@ -168,32 +168,12 @@ test('agent operations: search/inspect/select read locally; every change or shar
  assert.throws(()=>m.validateLibraryOperation({type:'photo_library_review',action:'trash',items:[{id:'lib:i:1:1',revision:'1:2:3'}]}),/Invalid reviewed item/);
  assert.throws(()=>m.validateLibraryOperation({type:'photo_library_review',action:'restore',items:[{id:'lib:i:1:1',revision:'rev-ab12-3'}]}),/Unsupported/);
  assert.equal(m.REVIEWED_LIBRARY_ACTIONS.includes('restore'),false,'restore is not offered: trashed rows are never paged');
- assert.match(m.describeLibraryOperation({type:'photo_library_review',action:'delete',items:[{id:'lib:i:1:1',revision:'rev-ab12-3'}]}).description,/You confirm it in Photos, then in Android/);
+ assert.match(m.describeLibraryOperation({type:'photo_library_review',action:'delete',items:[{id:'lib:i:1:1',revision:'rev-ab12-3'}]}).description,/You confirm it there and then in Android/);
  // Results: exact shape, opaque revisions only.
  const search={type:'photo_library_search',limit:2};
  assert.throws(()=>m.validateLibraryResult(search,{kind:'photo_library_search',scope:'full',more:false,items:[{id:'lib:i:1:1',revision:'1:2:3',kind:'image',takenAt:1,width:1,height:1}]}),/Invalid library result item/);
  assert.throws(()=>m.validateLibraryResult(search,{kind:'photo_library_search',scope:'full',more:false,items:[{id:'lib:i:1:1',revision:'rev-a-1',kind:'image',takenAt:1,width:1,height:1,name:'x'}]}),/Unexpected/);
  assert.throws(()=>m.validateLibraryResult({type:'photo_library_select',ids:['lib:i:1:1']},{kind:'photo_library_select',selected:2,missing:0}));
-});
-
-test('photos_filter is read-only and bounded; photos_album_create is a reviewed album request',()=>{
- assert.equal(m.isLibraryOperation({type:'photos_filter'}),true);assert.equal(m.isLibraryOperation({type:'photos_album_create'}),true);
- assert.deepEqual(m.validateLibraryOperation({type:'photos_filter',from:1,to:2,kind:'video',favorite:true,album:'camera',text:'weekend'}),{type:'photos_filter',from:1,to:2,kind:'video',favorite:true,album:'camera',text:'weekend'});
- assert.deepEqual(m.validateLibraryOperation({type:'photos_filter'}),{type:'photos_filter'},'an empty filter shows everything');
- assert.deepEqual(m.validateLibraryOperation({type:'photos_filter',album:'custom:abc-1'}),{type:'photos_filter',album:'custom:abc-1'});
- for(const bad of [{type:'photos_filter',from:5,to:1},{type:'photos_filter',kind:'all'},{type:'photos_filter',album:'Trip'},{type:'photos_filter',text:'x'.repeat(81)},{type:'photos_filter',text:'a\u0000b'},{type:'photos_filter',ids:['lib:i:1:1']},{type:'photos_filter',favorite:'yes'}])assert.throws(()=>m.validateLibraryOperation(bad),JSON.stringify(bad));
- assert.deepEqual(m.validateLibraryOperation({type:'photos_album_create',name:'  Big Sur ',ids:['lib:i:1:1','m:external_primary:v:9']}),{type:'photos_album_create',name:'Big Sur',ids:['lib:i:1:1','m:external_primary:v:9']});
- for(const bad of [{type:'photos_album_create',name:'',ids:['lib:i:1:1']},{type:'photos_album_create',name:'x'.repeat(81),ids:['lib:i:1:1']},{type:'photos_album_create',name:'A',ids:[]},{type:'photos_album_create',name:'A',ids:['lib:i:1:1','lib:i:1:1']},{type:'photos_album_create',name:'A',ids:['/sdcard/a.jpg']}])assert.throws(()=>m.validateLibraryOperation(bad),JSON.stringify(bad));
- // The selection is no longer capped at 20 for the agent either (bounded by validation batches).
- assert.equal(m.validateLibraryOperation({type:'photo_library_select',ids:Array.from({length:150},(_,i)=>`lib:i:${i+1}:1`)}).ids.length,150);
- assert.match(m.describeLibraryOperation({type:'photos_filter'}).description,/Nothing is changed or shared/);
- assert.equal(m.describeLibraryOperation({type:'photos_album_create',name:'Trip',ids:['lib:i:1:1']}).title,'Create album “Trip”');
- const filter={type:'photos_filter'};
- assert.deepEqual(m.validateLibraryResult(filter,{kind:'photos_filter',shown:3,more:true}),{kind:'photos_filter',shown:3,more:true});
- assert.throws(()=>m.validateLibraryResult(filter,{kind:'photos_filter',shown:3,more:true,ids:['lib:i:1:1']}),/Unexpected/,'the filter result carries no item identities');
- const album={type:'photos_album_create',name:'Trip',ids:['lib:i:1:1','lib:i:2:1']};
- assert.deepEqual(m.validateLibraryResult(album,{kind:'photos_album_create',status:'review_opened',count:1,missing:1}),{kind:'photos_album_create',status:'review_opened',count:1,missing:1});
- assert.throws(()=>m.validateLibraryResult(album,{kind:'photos_album_create',status:'created',count:2,missing:0}),/Invalid album review/,'the agent never learns of a creation it did not review');
 });
 
 test('opaque model revisions resolve locally and change when the item changes',()=>{
@@ -217,11 +197,10 @@ test('selected outbound model context carries no names, album names, sizes, modi
  assert.doesNotMatch(wire,/PRIVATE_NAME|PRIVATE_ALBUM|base64|image\/jpeg|987654|1699999999|1700000000:/);
  assert.deepEqual(result.items[0],{id:'lib:i:7:70',revision:'rev-s1-1',kind:'image',takenAt:parsed.items[0].takenAt,width:4000,height:3000,favorite:true});
  assert.equal(result.items[1].duration,12);
- // The assistant's selected object is one item's identity and a local counter revision.
- assert.match(adapter,/if \(selection\.size !== 1 \|\| !visible\(\)\) return null;/);
- assert.match(adapter,/revisions\(\{ kind: item\.kind, id: item\.id, revision: item\.revision \}\)/);
+ // There is no separate Device library album: select and reviews act on the main Library host.
+ assert.doesNotMatch(adapter,/'device'|tile\(|album\(/);
  const agent=readFileSync('apps/app/src/prototype/agent-adapter.ts','utf8');
- assert.match(agent,/state\.album === 'device' && !state\.open && state\.nativeLibrarySelection\) providerSelection = state\.nativeLibrarySelection;/);
+ assert.doesNotMatch(agent,/nativeLibrarySelection/);
 });
 
 test('agent album observes only while open and falls back to a bounded fresh catalog',()=>{
@@ -236,12 +215,13 @@ test('agent album observes only while open and falls back to a bounded fresh cat
  assert.match(camera,/watchLibrary\(!disposed&&!document\.hidden&&!!photosApi\?\.isActive\(\)&&permittedLibrary\(\)\)/);
  // The shared catalog registers its MediaStore observer only while some view watches (tested upstream).
  assert.match(java,/out\.put\("reset",true\)/);
- assert.match(adapter,/watch\(!!scope && scope.scope !== 'denied' && !scope.locked\)/);
+ // The agent bridge never registers its own observer: the Photos grid watches the shared catalog.
+ assert.doesNotMatch(adapter,/watch\(|addListener\(/);
  const agent=adapter.slice(adapter.indexOf('const agent: LibraryAgent'),adapter.indexOf('mountedAgent = agent;'));
  assert.doesNotMatch(agent,/query/);
 });
 
-test('adapter: new items and widened grants reload a fresh first page; agent reads are identity-only',()=>{
+test('adapter: agent reads are identity-only; select, view requests and reviews act on the main Library',()=>{
  const root=resolve(import.meta.dirname,'..');
  assert.match(execFileSync(process.execPath,['--import=tsx',join(root,'test/fixtures/photo-library-adapter.mjs')],{cwd:root,encoding:'utf8',timeout:120000}),/PASS photo library adapter/);
 });
@@ -259,7 +239,7 @@ test('library operations are registered in Alpha device actions: Photos-only, ne
  const out=JSON.parse(execFileSync(process.execPath,['--import=tsx','--input-type=module','-e',script],{cwd:root,encoding:'utf8',timeout:120000}));
  assert.deepEqual(out.search,{type:'photo_library_search',limit:5});
  assert.equal(out.query,'refused');
- assert.equal(out.home,'Open Photos to review this action.');
+ assert.equal(out.home,'Open Photos > Device library to review this action.');
  assert.equal(out.locked,'Unlock the phone to review this action.');
  assert.equal(out.photos,null);
  const {DeviceActions}=await import('./fixtures/device-action-policy.mjs');
@@ -273,9 +253,7 @@ test('library operations are registered in Alpha device actions: Photos-only, ne
  const executor=readFileSync('apps/app/src/prototype/agent-adapter.ts','utf8');
  assert.match(executor,/if\(isLibraryOperation\(operation\)\)\{[\s\S]*deviceLibraryAgent\(\)[\s\S]*expectedContext\.view!=='photos'/);
  const journal=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaActionJournal.java','utf8');
- assert.match(journal,/"photo_library_search","photo_library_inspect","photo_library_select","photo_library_review","photos_filter","photos_album_create"\)\.contains\(type\)\)\{/);
- assert.match(actions,/directTypes[^\n]*'photos_filter'/,'the read-only filter needs no separate approval');
- assert.doesNotMatch(actions.match(/const directTypes[^\n]*/)[0],/photos_album_create/,'album creation is reviewed');
+ assert.match(journal,/"photo_library_search","photo_library_inspect","photo_library_select","photo_library_review"\)\.contains\(type\)\)\{/);
 });
 
 test('volume-qualified media identities and provider revisions survive the agent contract',()=>{

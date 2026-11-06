@@ -1,0 +1,1076 @@
+--- a/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/OwnedMediaLibrary.java
++++ b/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/OwnedMediaLibrary.java
+@@ -150,9 +150,22 @@
+       result[11] = MediaStore.MediaColumns.GENERATION_ADDED;
+     }
+     result[result.length - 1] = MediaStore.MediaColumns.DATE_MODIFIED;
++    // Folder and capture time, read by name: Camera/Screenshots albums, day headers and Info.
++    result = Arrays.copyOf(result, result.length + 2);
++    result[result.length - 2] = MediaStore.MediaColumns.RELATIVE_PATH;
++    result[result.length - 1] = MediaStore.MediaColumns.DATE_TAKEN;
+     return result;
+   }
+ 
++  /** Adds {@code folder} (relative path) and {@code taken} (capture time, ms) when known. */
++  static void putPlace(JSObject item, Cursor row) {
++    int folder = row.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH);
++    int taken = row.getColumnIndex(MediaStore.MediaColumns.DATE_TAKEN);
++    if (folder >= 0 && !row.isNull(folder)) item.put("folder", row.getString(folder));
++    if (taken >= 0 && !row.isNull(taken) && row.getLong(taken) > 0)
++      item.put("taken", row.getLong(taken));
++  }
++
+   /**
+    * The item's content as of this read: modified time, byte size and (API 30+) MediaStore's
+    * modification generation. Unlike the mutation revision it changes when another writer rewrites
+@@ -194,6 +207,8 @@
+     item.put("width", row.getInt(1));
+     item.put("height", row.getInt(2));
+     item.put("date", row.getLong(3) * 1000);
++    item.put("size", row.getLong(4));
++    putPlace(item, row);
+     String base = row.getLong(3) + ":" + row.getLong(4);
+     String marker = versions.getString(key, "");
+     item.put(
+@@ -262,10 +277,16 @@
+   }
+ 
+   /**
+-   * One page of owned items, newest first. {@code album} is {@code ""}, {@code "favorites"} or
+-   * {@code "videos"}; trash has no albums.
++   * One page of owned items, newest first. {@code album} is {@code ""}, {@code "favorites"},
++   * {@code "videos"}, {@code "camera"} or {@code "screenshots"}; trash has no albums.
+    */
+   public JSObject list(String before, boolean trashed, String album) throws Exception {
++    return list(before, trashed, album, PAGE);
++  }
++
++  /** As {@link #list(String, boolean, String)}, with at most {@code limit} (1 to PAGE) items. */
++  public JSObject list(String before, boolean trashed, String album, int limit) throws Exception {
++    if (limit < 1 || limit > PAGE) throw new IllegalArgumentException("Invalid page size");
+     if (trashed && Build.VERSION.SDK_INT < 30)
+       throw new UnsupportedOperationException("Android trash requires Android 11 or later");
+     long cursor = OwnedMediaSelection.cursor(before);
+@@ -280,7 +301,7 @@
+         ContentResolver.QUERY_ARG_SORT_COLUMNS, new String[] {MediaStore.Images.Media._ID});
+     query.putInt(
+         ContentResolver.QUERY_ARG_SORT_DIRECTION, ContentResolver.QUERY_SORT_DIRECTION_DESCENDING);
+-    query.putInt(ContentResolver.QUERY_ARG_LIMIT, PAGE + 1);
++    query.putInt(ContentResolver.QUERY_ARG_LIMIT, limit + 1);
+     if (Build.VERSION.SDK_INT >= 30)
+       query.putInt(
+           MediaStore.QUERY_ARG_MATCH_TRASHED,
+@@ -291,7 +312,7 @@
+     try (Cursor rows = context.getContentResolver().query(CATALOG, fields(), query, null)) {
+       if (rows == null) throw new IllegalStateException();
+       while (rows.moveToNext()) {
+-        if (items.length() == PAGE) {
++        if (items.length() == limit) {
+           next = Long.toString(last);
+           break;
+         }
+@@ -450,15 +471,15 @@
+   }
+ 
+   /**
+-   * A bounded per-item batch of {@code favorite}, {@code trash} or {@code restore} over 1–20
++   * A bounded per-item batch of {@code favorite}, {@code unfavorite}, {@code trash} or {@code
++   * restore} over 1–20
+    * distinct owned items. The whole request is validated before the first write; each item then
+    * reports its own outcome, so the result is {@code complete} or {@code partial}, never an
+    * all-or-nothing promise. {@code closed} stops further writes when the host goes away.
+    */
+   public JSObject changeMany(String operation, JSONArray items, BooleanSupplier closed)
+       throws Exception {
+-    if (!"favorite".equals(operation) && !"trash".equals(operation) && !"restore".equals(operation))
+-      throw new IllegalArgumentException();
++    boolean[] change = PhotoLibraryAccess.batchChange(operation);
+     if (items == null || items.length() < 1 || items.length() > BATCH)
+       throw new IllegalArgumentException();
+     Set<String> seen = new HashSet<>();
+@@ -480,8 +501,8 @@
+             changeFlag(
+                 item.getString("id"),
+                 item.getString("revision"),
+-                operation.equals("favorite"),
+-                !operation.equals("restore"));
++                change[0],
++                change[1]);
+         outcome.put("status", result.getString("status"));
+         outcome.put("item", result);
+         verified++;
+@@ -498,7 +519,7 @@
+     return result;
+   }
+ 
+-  /** Counts of owned favorites, videos and trash. */
++  /** Counts of owned favorites, videos, Camera and Screenshots folder items, and trash. */
+   public JSObject summary() throws Exception {
+     Bundle query = new Bundle();
+     query.putString(
+@@ -507,9 +528,10 @@
+     query.putStringArray(ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS, new String[] {owner()});
+     if (Build.VERSION.SDK_INT >= 30)
+       query.putInt(MediaStore.QUERY_ARG_MATCH_TRASHED, MediaStore.MATCH_INCLUDE);
+-    int favorite = 0, videos = 0, trash = 0;
++    int favorite = 0, videos = 0, trash = 0, camera = 0, screenshots = 0;
+     try (Cursor rows = context.getContentResolver().query(CATALOG, fields(), query, null)) {
+       if (rows == null) throw new IllegalStateException();
++      int folder = rows.getColumnIndexOrThrow(MediaStore.MediaColumns.RELATIVE_PATH);
+       while (rows.moveToNext()) {
+         if (Build.VERSION.SDK_INT >= 30 && rows.getInt(7) == 1) {
+           trash++;
+@@ -517,11 +539,16 @@
+         }
+         if (rows.getInt(5) == 3) videos++;
+         if (Build.VERSION.SDK_INT >= 30 && rows.getInt(10) == 1) favorite++;
++        String album = OwnedMediaSelection.folderAlbum(rows.getString(folder));
++        if (album.equals("camera")) camera++;
++        else if (album.equals("screenshots")) screenshots++;
+       }
+     }
+     JSObject result = new JSObject();
+     result.put("favorites", favorite);
+     result.put("videos", videos);
++    result.put("camera", camera);
++    result.put("screenshots", screenshots);
+     result.put("trash", trash);
+     result.put("canFavorite", Build.VERSION.SDK_INT >= 30);
+     return result;
+--- a/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/OwnedMediaSelection.java
++++ b/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/OwnedMediaSelection.java
+@@ -12,7 +12,10 @@
+     return "owner_package_name=? AND is_pending=0"
+         + (sdk >= 30 ? " AND is_trashed=" + (trashed ? 1 : 0) : "");
+   }
+-  /** Owned images and videos in the Files catalog, newest first by id, before a cursor. */
++  /**
++   * Owned images and videos in the Files catalog, newest first by id, before a cursor. {@code
++   * album} is {@code ""}, {@code videos}, {@code favorites}, {@code camera} or {@code screenshots}.
++   */
+   public static String page(int sdk, boolean trashed, String album) {
+     String filter;
+     switch (album == null ? "" : album) {
+@@ -27,6 +30,10 @@
+           throw new IllegalArgumentException("Favorites require Android 11 or later");
+         filter = " AND is_favorite=1";
+         break;
++      case "camera":
++      case "screenshots":
++        filter = folderSelection(album);
++        break;
+       default:
+         throw new IllegalArgumentException("Unknown album");
+     }
+@@ -34,6 +41,34 @@
+       throw new IllegalArgumentException("Trash has no albums");
+     return owned(sdk, trashed) + " AND media_type IN (1,3)" + filter + " AND _id<?";
+   }
++  /**
++   * The MediaStore folder condition of a folder album: {@code camera} is the camera's
++   * {@code DCIM/Camera/} folder and {@code screenshots} any {@code Screenshots/} folder (Android
++   * keeps them under Pictures/ or DCIM/). Empty for every other name. The values are constants,
++   * never caller text.
++   */
++  public static String folderSelection(String album) {
++    switch (album == null ? "" : album) {
++      case "camera":
++        return " AND relative_path LIKE 'DCIM/Camera/%'";
++      case "screenshots":
++        return " AND relative_path LIKE '%Screenshots/%'";
++      default:
++        return "";
++    }
++  }
++  /**
++   * The folder album, {@code camera} or {@code screenshots}, a MediaStore relative path is in; the
++   * same rule as {@link #folderSelection}, whose LIKE ignores ASCII case.
++   */
++  public static String folderAlbum(String relativePath) {
++    String path = relativePath == null ? "" : relativePath.toLowerCase(java.util.Locale.ROOT);
++    if (path.startsWith("dcim/camera/"))
++      return "camera";
++    if (path.contains("screenshots/"))
++      return "screenshots";
++    return "";
++  }
+   /** Revision of one row: date added, size and, on API 30+, generation and trash state. */
+   public static String revision(
+       int sdk, long dateAdded, long size, long generationModified, int trashed) {
+--- a/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/OwnedPhotoEdits.java
++++ b/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/OwnedPhotoEdits.java
+@@ -4,6 +4,8 @@
+ import android.graphics.*;
+ import android.net.Uri;
+ import android.os.Build;
++import android.os.Environment;
++import android.os.SystemClock;
+ import android.provider.MediaStore;
+ import android.util.Base64;
+ import com.getcapacitor.JSObject;
+@@ -12,9 +14,10 @@
+ import org.json.JSONObject;
+ 
+ /**
+- * Serial-worker edit sessions over the host's own published still photos. No arbitrary URIs,
+- * uploads or original writes: an edit is a new owned PNG copy with a crash-safe receipt journal.
+- * The host supplies storage namespace and MediaStore placement through {@link OwnedMediaConfig}.
++ * Serial-worker edit sessions over the host's own published still photos. No arbitrary URIs or
++ * uploads: an edit is a new owned PNG copy with a crash-safe receipt journal, or, only when the
++ * person chose Replace, the same edit written over the reviewed original ({@link #replace}). The
++ * host supplies storage namespace and MediaStore placement through {@link OwnedMediaConfig}.
+  */
+ public final class OwnedPhotoEdits {
+   private final Context context;
+@@ -30,12 +33,37 @@
+   private final SourceAccess sourceAccess;
+   private volatile Session active;
+   private static final int MAX_EDGE = 2048;
++  /** A replaced original keeps up to this many pixels (16 MP); larger originals are reduced. */
++  private static final long REPLACE_PIXELS = 16L * 1024 * 1024;
++  /** Capture metadata a replaced JPEG keeps. Orientation is not copied: the pixels are upright. */
++  private static final String[] KEPT_EXIF = {android.media.ExifInterface.TAG_DATETIME,
++      android.media.ExifInterface.TAG_DATETIME_ORIGINAL,
++      android.media.ExifInterface.TAG_DATETIME_DIGITIZED,
++      android.media.ExifInterface.TAG_OFFSET_TIME,
++      android.media.ExifInterface.TAG_OFFSET_TIME_ORIGINAL,
++      android.media.ExifInterface.TAG_OFFSET_TIME_DIGITIZED,
++      android.media.ExifInterface.TAG_SUBSEC_TIME,
++      android.media.ExifInterface.TAG_SUBSEC_TIME_ORIGINAL,
++      android.media.ExifInterface.TAG_SUBSEC_TIME_DIGITIZED, android.media.ExifInterface.TAG_MAKE,
++      android.media.ExifInterface.TAG_MODEL, android.media.ExifInterface.TAG_F_NUMBER,
++      android.media.ExifInterface.TAG_EXPOSURE_TIME,
++      android.media.ExifInterface.TAG_ISO_SPEED_RATINGS,
++      android.media.ExifInterface.TAG_FOCAL_LENGTH, android.media.ExifInterface.TAG_FLASH,
++      android.media.ExifInterface.TAG_WHITE_BALANCE, android.media.ExifInterface.TAG_GPS_LATITUDE,
++      android.media.ExifInterface.TAG_GPS_LATITUDE_REF,
++      android.media.ExifInterface.TAG_GPS_LONGITUDE,
++      android.media.ExifInterface.TAG_GPS_LONGITUDE_REF,
++      android.media.ExifInterface.TAG_GPS_ALTITUDE,
++      android.media.ExifInterface.TAG_GPS_ALTITUDE_REF,
++      android.media.ExifInterface.TAG_GPS_TIMESTAMP, android.media.ExifInterface.TAG_GPS_DATESTAMP,
++      android.media.ExifInterface.TAG_IMAGE_DESCRIPTION, android.media.ExifInterface.TAG_ARTIST,
++      android.media.ExifInterface.TAG_COPYRIGHT};
+   private static final class Session {
+-    String token, id, revision;
++    String token, id, revision, mime;
+     byte[] digest;
+     Bitmap pixels;
+     volatile boolean cancelled;
+-    boolean reduced;
++    boolean reduced, owned;
+   }
+   public OwnedPhotoEdits(Context c, OwnedMediaConfig config) {
+     this(c, config, null);
+@@ -134,8 +162,11 @@
+     s.pixels = pixels;
+     active = s;
+     try {
++      describe(s);
+       current(s);
+-      return preview(s.token, 0, false, "none");
++      JSObject value = preview(s.token, 0, false, "none");
++      value.put("canReplace", canReplace(s));
++      return value;
+     } catch (Exception error) {
+       close();
+       throw error;
+@@ -148,32 +179,35 @@
+     current(s);
+     return s;
+   }
+-  private Bitmap geometry(Session s, int rotation, boolean crop) {
++  private Bitmap geometry(Bitmap pixels, int rotation, boolean crop) {
+     if (rotation != 0 && rotation != 90 && rotation != 180 && rotation != 270)
+       throw new IllegalArgumentException("Use a quarter-turn rotation");
+     Matrix matrix = new Matrix();
+     matrix.postRotate(rotation);
+-    Bitmap rotated = Bitmap.createBitmap(
+-        s.pixels, 0, 0, s.pixels.getWidth(), s.pixels.getHeight(), matrix, false);
++    Bitmap rotated =
++        Bitmap.createBitmap(pixels, 0, 0, pixels.getWidth(), pixels.getHeight(), matrix, false);
+     if (!crop)
+       return rotated;
+     int width = Math.max(1, (int) Math.floor(rotated.getWidth() / 1.3)),
+         height = Math.max(1, (int) Math.floor(rotated.getHeight() / 1.3));
+     Bitmap result = Bitmap.createBitmap(rotated, (rotated.getWidth() - width) / 2,
+         (rotated.getHeight() - height) / 2, width, height);
+-    if (rotated != s.pixels && rotated != result)
++    if (rotated != pixels && rotated != result)
+       rotated.recycle();
+     return result;
+   }
+   private Bitmap transform(Session s, int rotation, boolean crop, String filter) {
+-    Bitmap geometry = geometry(s, rotation, crop);
++    return transform(s, s.pixels, rotation, crop, filter);
++  }
++  private Bitmap transform(Session s, Bitmap pixels, int rotation, boolean crop, String filter) {
++    Bitmap geometry = geometry(pixels, rotation, crop);
+     try {
+       Bitmap output = PhotoFilter.apply(geometry, filter, () -> s.cancelled);
+-      if (output != geometry && geometry != s.pixels)
++      if (output != geometry && geometry != pixels)
+         geometry.recycle();
+       return output;
+     } catch (RuntimeException e) {
+-      if (geometry != s.pixels)
++      if (geometry != pixels)
+         geometry.recycle();
+       throw e;
+     }
+@@ -226,6 +260,8 @@
+     if (record == null)
+       return receipt("not-started", token, null);
+     JSONObject saved = new JSONObject(record);
++    if (saved.optBoolean("replace"))
++      return replaceResult(token, saved);
+     boolean published = saved.optString("status").equals("saved");
+     String savedId = saved.optString("id", null);
+     if (published && savedId != null)
+@@ -272,7 +308,8 @@
+     String existing = journal.getString(token, null);
+     if (existing != null) {
+       JSONObject previous = new JSONObject(existing);
+-      if (previous.getInt("rotation") != rotation || previous.getBoolean("crop") != crop
++      if (previous.optBoolean("replace") || previous.getInt("rotation") != rotation
++          || previous.getBoolean("crop") != crop
+           || !previous.optString("filter", "none").equals(filter))
+         throw new IllegalArgumentException("This save identity already has a different edit");
+       return result(token);
+@@ -329,6 +366,268 @@
+         bitmap.recycle();
+     }
+   }
++  /** Owner package and type of the session's original, for {@link #canReplace}. */
++  private void describe(Session s) throws Exception {
++    try (Cursor row = resolver.query(source(s.id),
++             new String[] {"owner_package_name", MediaStore.MediaColumns.MIME_TYPE}, null, null,
++             null)) {
++      if (row == null || !row.moveToFirst())
++        throw new IllegalArgumentException("Photo no longer available. Reload Photos.");
++      s.owned = context.getPackageName().equals(row.getString(0));
++      s.mime = row.getString(1);
++    }
++  }
++  /**
++   * Whether Replace can write this original: a still JPEG, PNG or WebP (formats Android can encode
++   * again), owned by this app or on Android 11+, where MediaStore can ask for write consent.
++   */
++  private static boolean canReplace(Session s) {
++    return s.mime != null && s.mime.matches("image/(jpeg|png|webp)")
++        && (s.owned || Build.VERSION.SDK_INT >= 30);
++  }
++  /** The open session named {@code token}, without the content check {@link #session} adds. */
++  private Session open(String token) {
++    Session s = active;
++    if (s == null || !s.token.equals(token) || s.cancelled)
++      throw new IllegalArgumentException("Photo edit session expired");
++    return s;
++  }
++  /** Whether the original still has the revision and bytes the editor opened. */
++  private boolean unchanged(Session s) {
++    try {
++      return s.revision.equals(revision(s.id)) && java.util.Arrays.equals(s.digest, digest(s.id));
++    } catch (Exception changedOrGone) {
++      return false;
++    }
++  }
++  /**
++   * The item a Replace overwrites, as {@code {id, revision}}, when Android must grant write access
++   * first (another app's photo, without all-files access); null when this app may write it directly
++   * or {@link #replace} answers without writing (a recorded result or a changed original).
++   */
++  public String[] replaceConsent(String token) throws Exception {
++    name(token);
++    if (journal.getString(token, null) != null)
++      return null;
++    Session s = open(token);
++    if (!canReplace(s))
++      throw new IllegalArgumentException("This photo can only be saved as a copy");
++    if (s.owned || !unchanged(s)
++        || Build.VERSION.SDK_INT >= 30 && Environment.isExternalStorageManager())
++      return null;
++    return new String[] {s.id, s.revision};
++  }
++  /**
++   * Writes the edit over the original the editor opened, never over newer bytes: the original's
++   * revision and SHA-256 must still be the reviewed ones before decoding and again just before the
++   * write, else the answer is {@code stale} and nothing is written. The edit is applied to the
++   * full-resolution original (up to {@link #REPLACE_PIXELS}), encoded in its own format to a
++   * private file, and only then copied over the original with a truncating write. JPEG capture
++   * metadata is kept; orientation is normal because the rotation is in the pixels. The receipt is
++   * {@code {status: "saved", id, replaced: true, revision?}} with the original's id and, once
++   * MediaStore has rescanned it, its new revision. The journal records the phases, so a later
++   * {@link #result} reports {@code failed} (nothing written), {@code stale}, {@code unknown} (the
++   * write began but was not confirmed) or {@code saved}. Android's consent, when needed, is the
++   * caller's ({@link #replaceConsent}).
++   */
++  public JSObject replace(String token, int rotation, boolean crop, String filter)
++      throws Exception {
++    PhotoFilter.validate(filter);
++    name(token);
++    String existing = journal.getString(token, null);
++    if (existing != null) {
++      JSONObject previous = new JSONObject(existing);
++      if (!previous.optBoolean("replace") || previous.getInt("rotation") != rotation
++          || previous.getBoolean("crop") != crop
++          || !previous.optString("filter", "none").equals(filter))
++        throw new IllegalArgumentException("This save identity already has a different edit");
++      return result(token);
++    }
++    Session s = open(token);
++    if (!canReplace(s))
++      throw new IllegalArgumentException("This photo can only be saved as a copy");
++    if (rotation == 0 && !crop && filter.equals("none"))
++      return receipt("unchanged", token, null);
++    if (!unchanged(s))
++      return receipt("stale", token, null);
++    JSONObject record = new JSONObject()
++                            .put("status", "incomplete")
++                            .put("replace", true)
++                            .put("id", s.id)
++                            .put("createdAt", System.currentTimeMillis())
++                            .put("rotation", rotation)
++                            .put("crop", crop)
++                            .put("filter", filter);
++    if (!journal.edit().putString(token, record.toString()).commit())
++      throw new IOException("Save receipt could not be reserved");
++    Bitmap full = null, edited = null;
++    File staged = null;
++    boolean opened = false;
++    try {
++      byte[] snapshot = bytes(s.id);
++      if (!java.util.Arrays.equals(
++              s.digest, java.security.MessageDigest.getInstance("SHA-256").digest(snapshot))
++          || !s.revision.equals(revision(s.id)))
++        return replaceStale(token, record);
++      full = decodeFull(snapshot);
++      edited = transform(s, full, rotation, crop, filter);
++      staged = stage(edited, s.mime, snapshot);
++      snapshot = null;
++      if (s.cancelled || active != s)
++        throw new IllegalArgumentException("Photo editor closed");
++      if (!unchanged(s))
++        return replaceStale(token, record);
++      record.put("status", "writing");
++      if (!journal.edit().putString(token, record.toString()).commit())
++        throw new IOException("Save receipt could not be persisted");
++      Uri target = source(s.id);
++      try (InputStream input = new FileInputStream(staged);
++          OutputStream output = resolver.openOutputStream(target, "wt")) {
++        if (output == null)
++          throw new IOException("Original could not be opened for writing");
++        opened = true;
++        byte[] chunk = new byte[65536];
++        int n;
++        while ((n = input.read(chunk)) != -1) output.write(chunk, 0, n);
++        output.flush();
++        if (output instanceof FileOutputStream)
++          ((FileOutputStream) output).getFD().sync();
++      }
++      // The original is written; a receipt write failure must not turn that into a failure.
++      record.put("status", "saved");
++      journal.edit().putString(token, record.toString()).commit();
++      String revision = settled(s);
++      if (revision != null) {
++        record.put("revision", revision);
++        journal.edit().putString(token, record.toString()).commit();
++      }
++      if (active == s)
++        close();
++      return replaced(token, s.id, revision);
++    } catch (Exception failure) {
++      // Before the original was opened for writing nothing was written to it.
++      if (!opened && !"stale".equals(record.optString("status"))) {
++        record.put("status", "failed");
++        journal.edit().putString(token, record.toString()).commit();
++      }
++      throw failure;
++    } finally {
++      if (edited != null && edited != full)
++        edited.recycle();
++      if (full != null)
++        full.recycle();
++      if (staged != null)
++        staged.delete();
++    }
++  }
++  private JSObject replaceStale(String token, JSONObject record) throws Exception {
++    record.put("status", "stale");
++    journal.edit().putString(token, record.toString()).commit();
++    return receipt("stale", token, null);
++  }
++  private JSObject replaced(String token, String id, String revision) {
++    JSObject out = new JSObject();
++    out.put("status", "saved");
++    out.put("operationId", token);
++    out.put("id", id);
++    out.put("replaced", true);
++    if (revision != null)
++      out.put("revision", revision);
++    return out;
++  }
++  private JSObject replaceResult(String token, JSONObject record) throws Exception {
++    switch (record.optString("status")) {
++      case "saved":
++        return replaced(token, record.getString("id"), record.optString("revision", null));
++      case "stale":
++        return receipt("stale", token, null);
++      case "writing": {
++        JSObject unknown = receipt("unknown", token, null);
++        unknown.put("message", "Replacing the original was not confirmed. Inspect Photos.");
++        return unknown;
++      }
++      default:
++        if (!"failed".equals(record.optString("status"))) {
++          record.put("status", "failed");
++          if (!journal.edit().putString(token, record.toString()).commit())
++            throw new IOException();
++        }
++        return receipt("failed", token, null);
++    }
++  }
++  /** The original decoded upright in sRGB, reduced only above {@link #REPLACE_PIXELS}. */
++  private static Bitmap decodeFull(byte[] snapshot) throws IOException {
++    return ImageDecoder.decodeBitmap(
++        ImageDecoder.createSource(java.nio.ByteBuffer.wrap(snapshot)), (decoder, info, src) -> {
++          if (info.isAnimated())
++            throw new IllegalArgumentException("Animated images cannot be edited here");
++          int width = info.getSize().getWidth(), height = info.getSize().getHeight();
++          double scale = Math.min(1d, Math.sqrt(REPLACE_PIXELS / ((double) width * height)));
++          decoder.setTargetSize(Math.max(1, (int) Math.floor(width * scale)),
++              Math.max(1, (int) Math.floor(height * scale)));
++          decoder.setAllocator(ImageDecoder.ALLOCATOR_SOFTWARE);
++          decoder.setTargetColorSpace(ColorSpace.get(ColorSpace.Named.SRGB));
++        });
++  }
++  /** The edited pixels encoded in the original's format in a private file. */
++  @SuppressWarnings("deprecation")
++  private File stage(Bitmap pixels, String mime, byte[] original) throws IOException {
++    Bitmap.CompressFormat format = mime.equals("image/png") ? Bitmap.CompressFormat.PNG
++        : mime.equals("image/webp")
++        ? (Build.VERSION.SDK_INT >= 30 ? Bitmap.CompressFormat.WEBP_LOSSY
++                                       : Bitmap.CompressFormat.WEBP)
++        : Bitmap.CompressFormat.JPEG;
++    File file = File.createTempFile("replace-", ".tmp", context.getCacheDir());
++    try {
++      try (FileOutputStream output = new FileOutputStream(file)) {
++        if (!pixels.compress(format, format == Bitmap.CompressFormat.PNG ? 100 : 95, output))
++          throw new IOException("Edited photo could not be encoded");
++        output.getFD().sync();
++      }
++      if (format == Bitmap.CompressFormat.JPEG) {
++        android.media.ExifInterface before =
++            new android.media.ExifInterface(new ByteArrayInputStream(original));
++        android.media.ExifInterface after =
++            new android.media.ExifInterface(file.getAbsolutePath());
++        for (String tag : KEPT_EXIF) {
++          String value = before.getAttribute(tag);
++          if (value != null)
++            after.setAttribute(tag, value);
++        }
++        after.setAttribute(android.media.ExifInterface.TAG_ORIENTATION,
++            Integer.toString(android.media.ExifInterface.ORIENTATION_NORMAL));
++        after.saveAttributes();
++      }
++      return file;
++    } catch (IOException | RuntimeException failure) {
++      file.delete();
++      throw failure;
++    }
++  }
++  /**
++   * The original's revision once MediaStore has rescanned the written file, waiting up to three
++   * seconds; null when it has not changed by then (the bytes are written either way).
++   */
++  private String settled(Session s) {
++    long until = SystemClock.elapsedRealtime() + 3000;
++    while (true) {
++      try {
++        String now = revision(s.id);
++        if (!now.equals(s.revision))
++          return now;
++      } catch (Exception rescanning) {
++        // A permitted read refuses while the library generation moves; ask again.
++      }
++      if (SystemClock.elapsedRealtime() > until)
++        return null;
++      try {
++        Thread.sleep(100);
++      } catch (InterruptedException stopped) {
++        Thread.currentThread().interrupt();
++        return null;
++      }
++    }
++  }
+   public void cancel(String token) {
+     Session s = active;
+     if (s != null && (token == null || s.token.equals(token)))
+--- a/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PermittedMediaCatalog.java
++++ b/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PermittedMediaCatalog.java
+@@ -71,6 +71,7 @@
+   };
+   private static final class Page {
+     final String snapshot, query, kind;
++    /** Index of the volume the next page continues in. */
+     final int bucket;
+     final long before, until;
+     Page(String snapshot, String query, String kind, int bucket, long before) {
+@@ -246,6 +247,9 @@
+         Build.VERSION.SDK_INT >= 30 ? FIELDS : java.util.Arrays.copyOf(FIELDS, 8)));
+     if (video)
+       result.add(MediaStore.Video.VideoColumns.DURATION);
++    // Folder and capture time, read by name: Camera/Screenshots albums, day headers and Info.
++    result.add(MediaStore.MediaColumns.RELATIVE_PATH);
++    result.add(MediaStore.MediaColumns.DATE_TAKEN);
+     return result.toArray(new String[0]);
+   }
+   private String revision(Cursor row, String volume) {
+@@ -277,6 +281,7 @@
+     result.put("identity",
+         version(volume) + ":" + row.getLong(3)
+             + (Build.VERSION.SDK_INT >= 30 ? ":" + row.getLong(8) : ""));
++    OwnedMediaLibrary.putPlace(result, row);
+     return result;
+   }
+   public Uri uri(MediaLibraryKey key) {
+@@ -351,8 +356,8 @@
+       long from, long to, int limit) throws Exception {
+     if (from < 0 || to < from || limit < 1 || limit > PAGE_SIZE)
+       throw new IllegalArgumentException("Invalid bounded media query");
+-    if (filter == null || !filter.matches("all|favorites|trash")
+-        || (Build.VERSION.SDK_INT < 30 && !filter.equals("all")))
++    if (filter == null || !filter.matches("all|favorites|trash|camera|screenshots")
++        || (Build.VERSION.SDK_INT < 30 && !filter.matches("all|camera|screenshots")))
+       throw new IllegalArgumentException("Unsupported media filter");
+     String pageKind = kind + ":" + filter + ":" + from + ":" + to + ":" + limit;
+     if (search == null || search.length() > 128 || search.indexOf('\0') >= 0 || kind == null
+@@ -360,15 +365,10 @@
+       throw new IllegalArgumentException("Invalid photo query");
+     List<String> volumes = volumes();
+     String snapshot = snapshot(volumes);
+-    int bucketIndex = 0;
++    int volumeIndex = 0;
+     long before = Long.MAX_VALUE;
+-    List<MediaLibraryKey> buckets = new ArrayList<>();
+-    for (String volume : volumes) {
+-      if (readable(false) && !kind.equals("video"))
+-        buckets.add(new MediaLibraryKey(volume, 1, false));
+-      if (readable(true) && !kind.equals("image"))
+-        buckets.add(new MediaLibraryKey(volume, 1, true));
+-    }
++    boolean images = readable(false) && !kind.equals("video");
++    boolean videos = readable(true) && !kind.equals("image");
+     if (cursor != null && !cursor.isEmpty()) {
+       Page page;
+       synchronized (pages) {
+@@ -378,70 +378,83 @@
+           || !page.snapshot.equals(snapshot) || !page.query.equals(search)
+           || !page.kind.equals(pageKind))
+         throw new IllegalStateException("Photo page expired; refresh Photos");
+-      bucketIndex = page.bucket;
++      volumeIndex = page.bucket;
+       before = page.before;
+     }
+     JSArray items = new JSArray();
+     String next = "";
+     long thumbnailUntil = SystemClock.elapsedRealtime() + 3000;
++    // One newest-first catalog: images and videos share a volume's _id sequence, so both typed
++    // collections are read below the same cursor and merged, instead of every image before any
++    // video. The cursor is (volume, last _id), so favorite or restore never reorders a page.
+   outer:
+-    for (; bucketIndex < buckets.size(); bucketIndex++, before = Long.MAX_VALUE) {
+-      MediaLibraryKey bucket = buckets.get(bucketIndex);
+-      String volume = bucket.volume;
+-      Bundle args = new Bundle();
+-      List<String> values = new ArrayList<>();
+-      values.add(Long.toString(before));
+-      String where = "is_pending=0 AND _id<?"
+-          + (Build.VERSION.SDK_INT >= 30 ? " AND is_trashed=" + (filter.equals("trash") ? "1" : "0")
+-                                         : "")
+-          + (filter.equals("favorites") ? " AND is_favorite=1" : "");
+-      if (Build.VERSION.SDK_INT >= 30)
+-        args.putInt(MediaStore.QUERY_ARG_MATCH_TRASHED,
+-            filter.equals("trash") ? MediaStore.MATCH_ONLY : MediaStore.MATCH_EXCLUDE);
+-      if (from > 0) {
+-        where += " AND date_added>=?";
+-        values.add(Long.toString(from / 1000 + (from % 1000 == 0 ? 0 : 1)));
+-      }
+-      if (to < Long.MAX_VALUE) {
+-        where += " AND date_added<=?";
+-        values.add(Long.toString(to / 1000));
+-      }
+-      if (!search.isBlank()) {
+-        where += " AND instr(lower(" + MediaStore.MediaColumns.DISPLAY_NAME + "),lower(?))>0";
+-        values.add(search.trim());
++    for (; volumeIndex < volumes.size(); volumeIndex++, before = Long.MAX_VALUE) {
++      String volume = volumes.get(volumeIndex);
++      int want = limit + 1 - items.length();
++      List<Object[]> merged = new ArrayList<>();
++      for (boolean video : new boolean[] {false, true}) {
++        if (video ? !videos : !images)
++          continue;
++        Bundle args = new Bundle();
++        List<String> values = new ArrayList<>();
++        values.add(Long.toString(before));
++        String where = "is_pending=0 AND _id<?"
++            + (Build.VERSION.SDK_INT >= 30
++                    ? " AND is_trashed=" + (filter.equals("trash") ? "1" : "0")
++                    : "")
++            + (filter.equals("favorites") ? " AND is_favorite=1" : "")
++            + OwnedMediaSelection.folderSelection(filter);
++        if (Build.VERSION.SDK_INT >= 30)
++          args.putInt(MediaStore.QUERY_ARG_MATCH_TRASHED,
++              filter.equals("trash") ? MediaStore.MATCH_ONLY : MediaStore.MATCH_EXCLUDE);
++        if (from > 0) {
++          where += " AND date_added>=?";
++          values.add(Long.toString(from / 1000 + (from % 1000 == 0 ? 0 : 1)));
++        }
++        if (to < Long.MAX_VALUE) {
++          where += " AND date_added<=?";
++          values.add(Long.toString(to / 1000));
++        }
++        if (!search.isBlank()) {
++          where += " AND instr(lower(" + MediaStore.MediaColumns.DISPLAY_NAME + "),lower(?))>0";
++          values.add(search.trim());
++        }
++        args.putString(ContentResolver.QUERY_ARG_SQL_SELECTION, where);
++        args.putStringArray(
++            ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS, values.toArray(new String[0]));
++        args.putStringArray(ContentResolver.QUERY_ARG_SORT_COLUMNS, new String[] {"_id"});
++        args.putInt(ContentResolver.QUERY_ARG_SORT_DIRECTION,
++            ContentResolver.QUERY_SORT_DIRECTION_DESCENDING);
++        args.putInt(ContentResolver.QUERY_ARG_LIMIT, want);
++        try (Cursor rows = query(volume, video, args)) {
++          if (rows == null)
++            throw new IllegalStateException("Media provider unavailable");
++          while (rows.moveToNext())
++            merged.add(new Object[] {rows.getLong(0), metadata(rows, volume, video)});
++        }
+       }
+-      args.putString(ContentResolver.QUERY_ARG_SQL_SELECTION, where);
+-      args.putStringArray(
+-          ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS, values.toArray(new String[0]));
+-      args.putStringArray(ContentResolver.QUERY_ARG_SORT_COLUMNS, new String[] {"_id"});
+-      args.putInt(ContentResolver.QUERY_ARG_SORT_DIRECTION,
+-          ContentResolver.QUERY_SORT_DIRECTION_DESCENDING);
+-      args.putInt(ContentResolver.QUERY_ARG_LIMIT, limit + 1 - items.length());
+-      try (Cursor rows = query(volume, bucket.video, args)) {
+-        if (rows == null)
+-          throw new IllegalStateException("Media provider unavailable");
+-        while (rows.moveToNext()) {
+-          if (items.length() == limit) {
+-            next = UUID.randomUUID().toString();
+-            synchronized (pages) {
+-              pages.entrySet().removeIf(
+-                  entry -> entry.getValue().until < SystemClock.elapsedRealtime());
+-              while (pages.size() >= 32) pages.remove(pages.keySet().iterator().next());
+-              pages.put(next, new Page(snapshot, search, pageKind, bucketIndex, before));
+-            }
+-            break outer;
++      merged.sort((a, b) -> Long.compare((Long) b[0], (Long) a[0]));
++      for (Object[] row : merged) {
++        if (items.length() == limit) {
++          next = UUID.randomUUID().toString();
++          synchronized (pages) {
++            pages.entrySet().removeIf(
++                entry -> entry.getValue().until < SystemClock.elapsedRealtime());
++            while (pages.size() >= 32) pages.remove(pages.keySet().iterator().next());
++            pages.put(next, new Page(snapshot, search, pageKind, volumeIndex, before));
+           }
+-          JSObject item = metadata(rows, volume, bucket.video);
+-          before = rows.getLong(0);
+-          if (thumbnails && SystemClock.elapsedRealtime() < thumbnailUntil) {
+-            try {
+-              item.put("image", thumbnail(MediaLibraryKey.parse(item.getString("id")), 240));
+-            } catch (Exception unavailable) {
+-              item.put("image", "");
+-            }
++          break outer;
++        }
++        JSObject item = (JSObject) row[1];
++        before = (Long) row[0];
++        if (thumbnails && SystemClock.elapsedRealtime() < thumbnailUntil) {
++          try {
++            item.put("image", thumbnail(MediaLibraryKey.parse(item.getString("id")), 240));
++          } catch (Exception unavailable) {
++            item.put("image", "");
+           }
+-          items.put(item);
+         }
++        items.put(item);
+       }
+     }
+     current(snapshot, volumes);
+@@ -564,7 +577,7 @@
+     List<String> volumes = volumes();
+     String snapshot = snapshot(volumes);
+     long until = SystemClock.elapsedRealtime() + 3000;
+-    int favorites = 0, videos = 0, trash = 0;
++    int favorites = 0, videos = 0, trash = 0, camera = 0, screenshots = 0;
+     for (String volume : volumes)
+       for (boolean video : new boolean[] {false, true}) {
+         if (!readable(video))
+@@ -574,8 +587,8 @@
+         if (Build.VERSION.SDK_INT >= 30)
+           args.putInt(MediaStore.QUERY_ARG_MATCH_TRASHED, MediaStore.MATCH_INCLUDE);
+         String[] projection = Build.VERSION.SDK_INT >= 30
+-            ? new String[] {"is_favorite", "is_trashed"}
+-            : new String[] {"_id"};
++            ? new String[] {"is_favorite", "is_trashed", MediaStore.MediaColumns.RELATIVE_PATH}
++            : new String[] {"_id", MediaStore.MediaColumns.RELATIVE_PATH};
+         try (Cursor rows = query(volume, video, args, projection)) {
+           if (rows == null)
+             throw new IllegalStateException("Media provider unavailable");
+@@ -590,6 +603,11 @@
+               videos++;
+             if (Build.VERSION.SDK_INT >= 30 && rows.getInt(0) == 1)
+               favorites++;
++            String album = OwnedMediaSelection.folderAlbum(rows.getString(projection.length - 1));
++            if (album.equals("camera"))
++              camera++;
++            else if (album.equals("screenshots"))
++              screenshots++;
+           }
+         }
+       }
+@@ -597,6 +615,8 @@
+     JSObject result = new JSObject();
+     result.put("favorites", favorites);
+     result.put("videos", videos);
++    result.put("camera", camera);
++    result.put("screenshots", screenshots);
+     result.put("trash", trash);
+     result.put("canFavorite", Build.VERSION.SDK_INT >= 30);
+     return result;
+--- a/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PermittedMediaReview.java
++++ b/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PermittedMediaReview.java
+@@ -18,7 +18,9 @@
+  * Native, one-shot review of a favorite, Recently deleted or permanent-removal change to 1–20
+  * permitted library items. The owner confirms a native dialog naming every item, then Android's own
+  * MediaStore write request; the change is applied only to the reviewed revisions after the activity
+- * resumes. Activity recreation discards authority; it never replays a write.
++ * resumes. Activity recreation discards authority; it never replays a write. The same launcher
++ * carries Android's write consent for a photo edit that replaces one permitted original
++ * ({@link #requestWrite}).
+  */
+ public final class PermittedMediaReview implements AutoCloseable {
+   /** Launches an activity request. False, after rejecting the call, when the launcher is gone. */
+@@ -51,9 +53,16 @@
+     final PluginCall call;
+     final List<String> ids, revisions;
+     final boolean favorite, desired, batch, permanent;
++    /** A write grant's continuation, run on the worker instead of a flag change; else null. */
++    final Runnable granted;
+     final long until = SystemClock.elapsedRealtime() + 120000;
+     Request(PluginCall call, List<String> ids, List<String> revisions, boolean favorite,
+         boolean desired, boolean batch, boolean permanent) {
++      this(call, ids, revisions, favorite, desired, batch, permanent, null);
++    }
++    Request(PluginCall call, List<String> ids, List<String> revisions, boolean favorite,
++        boolean desired, boolean batch, boolean permanent, Runnable granted) {
++      this.granted = granted;
+       this.call = call;
+       this.ids = List.copyOf(ids);
+       this.revisions = List.copyOf(revisions);
+@@ -117,7 +126,7 @@
+   }
+   private void dispatch(Request request) {
+     try {
+-      worker.execute(() -> apply(request));
++      worker.execute(request.granted != null ? request.granted : () -> apply(request));
+     } catch (RuntimeException unavailable) {
+       request.call.reject("Photos closed before dispatch. Review the selection again.");
+     }
+@@ -201,6 +210,47 @@
+     }
+   }
+   /**
++   * Android's own write consent for one permitted still photo whose reviewed edit replaces the
++   * original. The editor's Replace control is the owner's review of this change, so Android's
++   * MediaStore write request is the only dialog. {@code granted} runs on the worker once, after the
++   * activity resumes; it must recheck the item's revision before writing and answer {@code call}.
++   * Declined, expired or closed requests are rejected with {@link #DECLINED} and write nothing.
++   */
++  public void requestWrite(PluginCall call, String id, String revision, Runnable granted) {
++    Request request =
++        new Request(call, List.of(id), List.of(revision), false, false, false, false, granted);
++    if (closed || Build.VERSION.SDK_INT < 30 || granted == null) {
++      call.reject("Replacing other apps' photos requires Android 11 or later.");
++      return;
++    }
++    if (!pending.compareAndSet(null, request)) {
++      call.reject("Finish the current photo review first.", "LIBRARY_BUSY");
++      return;
++    }
++    try {
++      JSObject row = catalog.mutationSource(id, revision);
++      MediaLibraryKey key = MediaLibraryKey.parse(id);
++      if (key.video || Boolean.TRUE.equals(row.getBoolean("trashed")))
++        throw new IllegalStateException();
++      android.app.PendingIntent grant = MediaStore.createWriteRequest(
++          bridge.getContext().getContentResolver(), List.of(catalog.uri(key)));
++      bridge.getActivity().runOnUiThread(() -> {
++        if (closed || pending.get() != request || !bridge.getActivity().hasWindowFocus()
++            || request.until < SystemClock.elapsedRealtime()) {
++          cancel(request, "Return to Photos to replace this photo.", DECLINED);
++          return;
++        }
++        if (!gate.ask(call,
++                ()
++                    -> launcher.launch(
++                        new IntentSenderRequest.Builder(grant.getIntentSender()).build())))
++          pending.compareAndSet(request, null);
++      });
++    } catch (Exception unavailable) {
++      cancel(request, "Photo changed or is unavailable. Nothing was replaced.", STALE);
++    }
++  }
++  /**
+    * Error codes: nothing was dispatched because the owner or Android declined, or because a
+    * selected revision changed.
+    */
+--- a/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotoLibraryAccess.java
++++ b/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotoLibraryAccess.java
+@@ -26,8 +26,10 @@
+   public static final int PAGE = 24;
+   /** Validation reads at most this many named items in one call. */
+   public static final int VALIDATE = 200;
+-  /** Reviewed changes, shares and permanent removals name at most this many items. */
++  /** Reviewed changes and permanent removals name at most this many items. */
+   public static final int REVIEWED = 20;
++  /** One share names at most this many items; it changes nothing, so its bound is wider. */
++  public static final int SHARE = 100;
+ 
+   private PhotoLibraryAccess() {}
+ 
+@@ -80,17 +82,17 @@
+ 
+   /**
+    * Which permitted listing the Photos grid's {@code album} parameter reads, as
+-   * {@code {kind, filter}}: the whole library, favorites, videos, or Recently deleted. A custom
+-   * album ({@code custom:<id>}) is the host album store's, not a catalog listing; any other name is
+-   * refused.
++   * {@code {kind, filter}}: the whole library, favorites, videos, the Camera or Screenshots folder,
++   * or Recently deleted. A custom album ({@code custom:<id>}) is the host album store's, not a
++   * catalog listing; any other name is refused.
+    */
+   public static String[] permittedListing(String album, boolean trashed) {
+     String name = album == null ? "" : album;
+-    if (!name.isEmpty() && !name.equals("favorites") && !name.equals("videos"))
++    if (!name.isEmpty() && !name.matches("favorites|videos|camera|screenshots"))
+       throw new IllegalArgumentException("Unknown album");
+     return new String[] {
+       name.equals("videos") ? "video" : "all",
+-      trashed ? "trash" : name.equals("favorites") ? "favorites" : "all"
++      trashed ? "trash" : name.matches("favorites|camera|screenshots") ? name : "all"
+     };
+   }
+ 
+@@ -153,14 +155,16 @@
+   }
+ 
+   /**
+-   * A Photos batch operation ({@code favorite}, {@code trash}, {@code restore}) as
+-   * {@code {favorite, desired}} for a permitted review: favorite sets the favorite flag, trash moves
+-   * to Recently deleted and restore takes it back out.
++   * A Photos batch operation ({@code favorite}, {@code unfavorite}, {@code trash}, {@code restore})
++   * as {@code {favorite, desired}} for a permitted review: favorite sets the favorite flag,
++   * unfavorite clears it, trash moves to Recently deleted and restore takes it back out.
+    */
+   public static boolean[] batchChange(String operation) {
+     switch (operation == null ? "" : operation) {
+       case "favorite":
+         return new boolean[] {true, true};
++      case "unfavorite":
++        return new boolean[] {true, false};
+       case "trash":
+         return new boolean[] {false, true};
+       case "restore":
+--- a/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotosPlugin.java
++++ b/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotosPlugin.java
+@@ -313,18 +313,51 @@
+     });
+   }
+ 
++  /**
++   * Saves the edit as a new copy, or with {@code replace: true} (offered when {@code beginEdit}
++   * answered {@code canReplace}) over the reviewed original. Replacing another app's photo first
++   * asks Android's write consent; the write then rechecks the reviewed revision.
++   */
+   @PluginMethod
+   public void saveEdit(PluginCall call) {
++    boolean replace = Boolean.TRUE.equals(call.getBoolean("replace", false));
+     submit(call, () -> {
+       try {
+-        call.resolve(edits.save(call.getString("sessionId"), call.getInt("rotation", 0),
+-            call.getBoolean("crop", false), call.getString("filter", "none")));
++        String token = call.getString("sessionId");
++        int rotation = call.getInt("rotation", 0);
++        boolean crop = call.getBoolean("crop", false);
++        String filter = call.getString("filter", "none");
++        if (!replace) {
++          call.resolve(edits.save(token, rotation, crop, filter));
++          return;
++        }
++        String[] consent = edits.replaceConsent(token);
++        if (consent == null) {
++          call.resolve(replaceEdit(token, rotation, crop, filter));
++          return;
++        }
++        mediaReview.requestWrite(call, consent[0], consent[1], () -> {
++          try {
++            call.resolve(replaceEdit(token, rotation, crop, filter));
++          } catch (Exception e) {
++            call.reject(e.getMessage() == null
++                ? "Replace outcome unknown; inspect Photos before retrying" : e.getMessage());
++          }
++        });
+       } catch (Exception e) {
+         call.reject(e.getMessage() == null ? "Save outcome unknown; inspect Photos before retrying" : e.getMessage());
+       }
+     });
+   }
+ 
++  private JSObject replaceEdit(String token, int rotation, boolean crop, String filter)
++      throws Exception {
++    JSObject receipt = edits.replace(token, rotation, crop, filter);
++    // A replaced original has new bytes: open pages and read tickets of the old ones end here.
++    if ("saved".equals(receipt.getString("status"))) permitted.invalidate();
++    return receipt;
++  }
++
+   @PluginMethod
+   public void editResult(PluginCall call) {
+     if (VideoCopyEdits.isVideoOperation(call.getString("operationId"))) {
+@@ -451,16 +484,19 @@
+           call.resolve(albums.list(album.substring(7), call.getString("before", "")));
+           return;
+         }
++        // A caller that needs fewer rows (Camera's last-capture tile reads one) asks for a smaller page.
++        int limit = Math.max(1, Math.min(OwnedMediaLibrary.PAGE, call.getInt("limit", OwnedMediaLibrary.PAGE)));
+         String[] listing = PhotoLibraryAccess.permittedListing(album, trashed);
+         if (PhotoLibraryAccess.readable(permitted.access())) {
+-          call.resolve(permitted.list(call.getString("before", ""), "", listing[0], true, listing[1]));
++          call.resolve(permitted.list(call.getString("before", ""), "", listing[0], true, listing[1],
++              0, Long.MAX_VALUE, limit));
+           return;
+         }
+         if (album.equals("favorites") && Build.VERSION.SDK_INT < PhotoLibraryAccess.TRASH_SDK) {
+           call.reject("Favorites require Android 11 or later");
+           return;
+         }
+-        call.resolve(owned.list(call.getString("before", ""), trashed, album));
++        call.resolve(owned.list(call.getString("before", ""), trashed, album, limit));
+       } catch (Exception failure) {
+         call.reject("Saved media could not be loaded");
+       }
+@@ -545,7 +581,7 @@
+     submit(call, () -> {
+       try {
+         JSArray items = call.getArray("items");
+-        if (items == null || items.length() < 1 || items.length() > OwnedMediaLibrary.BATCH)
++        if (items == null || items.length() < 1 || items.length() > PhotoLibraryAccess.SHARE)
+           throw new IllegalArgumentException();
+         ArrayList<Uri> uris = new ArrayList<>();
+         Set<String> unique = new HashSet<>();

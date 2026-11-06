@@ -89,3 +89,35 @@ test('the Photos view carries no search box, scope narration or 20-item cap',()=
  assert.doesNotMatch(adapter,/slice\(-240\)|deviceLibrary\.tile\(/);
  assert.match(photos,/Allow access to all photos/);assert.match(photos,/Save copy/);assert.match(photos,/Add to album/);
 });
+
+test('virtualised grid: only on-screen rows render; spacers keep the total height and sections keep their headers',()=>{
+ // 4 columns over 398px with 2px gaps: 98px tiles, a 100px row pitch; 40px headers.
+ const base={columns:4,width:398,gap:2,header:40,overscan:0,viewport:500};
+ const sizes=[8,400,30];
+ const total=sizes.reduce((sum,n)=>sum+40+Math.ceil(n/4)*100-2,0);
+ const top=v.virtualGrid(sizes,{...base,scrollTop:0});
+ assert.equal(top.total,total);assert.equal(top.before,0);
+ assert.deepEqual(top.sections.map(s=>s.index),[0,1],'the first two sections touch the first screen');
+ assert.deepEqual([top.sections[0].from,top.sections[0].to,top.sections[0].padTop,top.sections[0].padBottom],[0,8,0,0]);
+ const rendered=top.sections.reduce((n,s)=>n+s.to-s.from,0);
+ assert.ok(rendered<=4*7,'about one screen of tiles, not 438');
+ // Heights add up exactly: spacers + headers + rendered rows + paddings == total.
+ const height=r=>r.before+r.after+r.sections.reduce((h,s)=>{const rows=Math.ceil((s.to-s.from)/4);return h+40+s.padTop+s.padBottom+(rows?rows*100-2:0);},0);
+ for(const scrollTop of [0,137,2000,5000,9999,20000]){const r=v.virtualGrid(sizes,{...base,scrollTop});assert.equal(height(r),total,`height at ${scrollTop}`);assert.ok(r.sections.reduce((n,s)=>n+s.to-s.from,0)<=4*7,`bounded at ${scrollTop}`);}
+ // Deep in the long section: rows before become top padding inside that section, so its sticky header stays.
+ const mid=v.virtualGrid(sizes,{...base,scrollTop:5000});
+ assert.equal(mid.sections.length,1);assert.equal(mid.sections[0].index,1);assert.ok(mid.sections[0].padTop>0&&mid.sections[0].padBottom>0);
+ assert.equal(mid.before,40+2*100-2,'the first section is one spacer');
+ assert.equal(mid.sections[0].from%4,0,'rows start at a column boundary');
+ // Overscan renders extra rows each way; pinch to 3 or 5 columns changes the layout, not the rule.
+ assert.ok(v.virtualGrid(sizes,{...base,scrollTop:5000,overscan:3}).sections[0].to-v.virtualGrid(sizes,{...base,scrollTop:5000,overscan:3}).sections[0].from>mid.sections[0].to-mid.sections[0].from);
+ for(const columns of [3,5]){const r=v.virtualGrid(sizes,{...base,columns,scrollTop:3000});assert.equal(r.sections[0].from%columns,0);}
+ assert.deepEqual(v.virtualGrid([],{...base,scrollTop:0}),{before:0,after:0,sections:[],total:0});
+});
+
+test('the Library grid is virtualised: rendered tiles come from virtualGrid windows with spacers',()=>{
+ const camera=readFileSync('apps/app/src/prototype/camera-adapter.ts','utf8'),template=readFileSync('apps/app/src/prototype/template.html','utf8');
+ assert.match(camera,/virtualGrid\(grouped\.map\(group => group\.items\.length\), gridMetrics\(\)\)/);
+ assert.match(camera,/tiles\(group\.items\.slice\(part\.from, part\.to\)/);
+ assert.match(template,/style="\{\{photos\.gridBefore\}\}"[\s\S]*\{\{g\.pad\}\}[\s\S]*style="\{\{photos\.gridAfter\}\}"/);
+});

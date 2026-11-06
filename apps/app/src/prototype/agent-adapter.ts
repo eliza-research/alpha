@@ -43,7 +43,7 @@ import {isClockOperation,assertClockTimeZone,currentClockTimeZone,validateClockR
 import { Capacitor } from '@capacitor/core';
 import { isMapsOperation } from '../runtime/maps-contract';
 import { readMapsSelection } from '../maps/agent-context';
-import { isLibraryOperation } from '../runtime/photo-library';
+import { isLibraryOperation, type LibraryAgentResult } from '../runtime/photo-library';
 import { isPhotosViewOperation } from '../runtime/photos-view-contract';
 import { deviceLibraryAgent, LibraryAgentRefusal } from './photo-library-adapter';
 import {isReminderOperation,validateReminderResult} from '../../../../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/reminder-contract.ts';
@@ -524,8 +524,6 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     if (view === 'photos') {
       const state = shell.vget('photos');
       if (state.open === state.nativePhotoSelection?.id) providerSelection = state.nativePhotoSelection;
-      // Device library: exactly one owner-selected item, by identity and a local revision only.
-      else if (state.album === 'device' && !state.open && state.nativeLibrarySelection) providerSelection = state.nativeLibrarySelection;
     }
     if (view === 'inbox') {
       const state = shell.vget('inbox');
@@ -818,7 +816,9 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         signal.throwIfAborted();context(this);
         const summary=photosViewResult.kind==='photos_filter'?`Photos shows ${photosViewResult.shown}${photosViewResult.more?'+':''} ${photosViewResult.shown===1?'item':'items'}. Nothing was changed or shared.`:photosViewResult.kind==='photos_open'?(photosViewResult.opened?'Opened the item in Photos. Nothing was changed or shared.':'That item is not in Photos. Nothing was changed or shared.'):photosViewResult.kind==='photos_album_create'?'Opened the album review in Photos. Nothing changes until you confirm there.':'Opened the share review in Photos. Nothing is shared until you confirm there and pick an app.';
         if(photosViewResult.kind==='photos_open'&&!photosViewResult.opened)return {status:'failed',summary};
-        return {status:'succeeded',summary,photosViewResult};
+        // photos-view-agent.patch widens photoLibraryResult to LibraryAgentResult|PhotosViewResult; until the
+        // pin carries it the shared type names only the photo_library_* results (and never reaches here).
+        return {status:'succeeded',summary,photoLibraryResult:photosViewResult as unknown as LibraryAgentResult};
       }
       if(isLibraryOperation(operation)){
         // Device library (issue 408): reads stay local and return identity-only rows; select and

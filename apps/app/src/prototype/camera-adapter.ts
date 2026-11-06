@@ -112,7 +112,7 @@ const library=browserMode?browserLibrary as unknown as typeof nativeLibrary:nati
 const libraryAvailable=()=>browserMode||Capacitor.isPluginAvailable('AlphaPhotos');
 /** canReplace: the native edit pipeline can overwrite this original (owned, or Android allows a write request). */
 type EditPreview={sessionId:string;operationId:string;image:string;width:number;height:number;reduced:boolean;maxEdge:number;filter:string;canReplace?:boolean};
-type EditReceipt={status:string;operationId:string;id?:string;replaced?:boolean};
+type EditReceipt={status:string;operationId:string;id?:string;replaced?:boolean;revision?:string;message?:string};
 type OwnedAlbum = {id:string;name:string;revision:string;count:number;memberIds:string[]};
 const finder = '[data-alpha-camera="viewfinder"]';
 /** Zoom chips offered when the bound lens's range covers them. A lens with only 1× shows none. */
@@ -266,7 +266,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     // A late/duplicate outcome may only retire its own persisted operation.
     // It cannot consume a new save or cancel/navigate a newer editor/selection.
     if(value.operationId!==ticket.token||!ticket.intent)throw Error('Saved-copy receipt identity changed');
-    const terminal=(value.status==='saved'&&!!value.id)||['failed','unchanged','not-started'].includes(value.status);if(!terminal)return false;
+    const terminal=(value.status==='saved'&&!!value.id)||['failed','unchanged','not-started','stale'].includes(value.status);if(!terminal)return false;
     await acknowledgeMediaCopyIntent(ticket.intent);
     // A library notification can arrive while acknowledgement yields too.
     const pendingCopy=pendingNativeVideoCopy;
@@ -277,7 +277,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     if(videoEditSource&&videoEditSource===ticket.source&&closeVideoEdit){const close=closeVideoEdit;closeVideoEdit=undefined;close();}
     if(value.status==='saved'&&value.id&&value.replaced){owner.toast('Saved');retirePhotoRead();preview=undefined;invalidateLibrary();await openSaved('native-camera-'+value.id,owner);}
     else if(value.status==='saved'&&value.id){owner.toast('Copy saved');void refresh();await openSaved('native-camera-'+value.id,owner);}
-    else{owner.toast(value.status==='failed'?(ticket.replace?'Not saved. Try again.':'Copy not saved. Try again.'):'No changes to save');owner.set({nativeEditRevision:Date.now()});}return true;
+    else{owner.toast(value.status==='stale'?'Photo changed. Nothing was replaced.':value.status==='failed'?(ticket.replace?'Not saved. Try again.':'Copy not saved. Try again.'):'No changes to save');owner.set({nativeEditRevision:Date.now()});}return true;
   }
   let recoveringEdit=false,automaticEditRecovery='';
   async function recoverEdit(owner:Bag,original?:EditCompletion){
@@ -1077,6 +1077,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   /** The agent asked to filter, select or create an album: it acts on the Library the owner sees. */
   const host={
     visible:()=>!disposed&&!document.hidden&&!!photosApi?.isActive(),
+    reviewOpen:()=>!!albumReview||!!shareReview,
     reviewChanged:()=>{photosApi?.set({nativeAgentReview:Date.now()});const note=deviceLibrary.takeStatus();if(note&&photosApi?.isActive())photosApi.toast(note);},
     trashed:(ids:string[])=>{const owner=photosApi;if(!owner||!ids.length)return;void (async()=>{await loadTrash(owner);await refresh();const rows=trash.filter(row=>ids.includes(nativeId(row.id)));if(owner.isActive())owner.toast(`${ids.length} moved to Recently deleted`,rows.length?{undo:()=>{void changeSelection(owner,'restore',rows);}}:undefined);})();},
     async run(operation:HostOperation,signal:AbortSignal):Promise<LibraryAgentResult|PhotosViewResult>{
@@ -1277,7 +1278,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     return data;
   };
   if (views.photos) views.photos.back = (st: Bag, currentApi: Bag) => { if(edit){cancelEdit();currentApi.set({nativeEditRevision:Date.now()});return true;}if(selection){cancelPhotoSelection(currentApi);return true;}if(st.sheet==='owned-album'){manager=undefined;currentApi.set({sheet:null});return true;}if(st.sheet==='empty'){cancelPermanent(currentApi);return true;}if(st.sheet)return photosBack?.(st,currentApi); if (preview?.id === st.open || captures.some(c => c.id === st.open) || albumRows.some(c => c.id === st.open)) { retirePhotoRead();currentApi.set({ open: null, nativePhotoSelection: null }); preview = undefined; closeVideo(); return true; } return photosBack?.(st, currentApi); };
-  if(views.photos)views.photos.onLeave=(owner:Bag)=>{retirePhotoRead();deviceLibrary.leave();owner.set({nativeLibrarySelection:null});closeQuestion?.();closeQuestion=undefined;void photoAttachments.cancelPhotoSelected().catch(()=>{});cancelEdit();editRecoveryChecked=false;automaticEditRecovery='';selection=undefined;selectionTab=undefined;swallowedTap='';endHold();manager=undefined;const old=prepared;prepared=undefined;if(old)void library.cancelDeleteTrash({confirmation:old.confirmation}).catch(()=>{});owner.set({sheet:null});photosLeave?.(owner);};
+  if(views.photos)views.photos.onLeave=(owner:Bag)=>{retirePhotoRead();deviceLibrary.leave();closeQuestion?.();closeQuestion=undefined;void photoAttachments.cancelPhotoSelected().catch(()=>{});cancelEdit();editRecoveryChecked=false;automaticEditRecovery='';selection=undefined;selectionTab=undefined;swallowedTap='';endHold();manager=undefined;const old=prepared;prepared=undefined;if(old)void library.cancelDeleteTrash({confirmation:old.confirmation}).catch(()=>{});owner.set({sheet:null});photosLeave?.(owner);};
   async function playVideo(selected: SavedPhoto, owner: Bag) {
     if (selected.kind !== 'video') return;
     try {

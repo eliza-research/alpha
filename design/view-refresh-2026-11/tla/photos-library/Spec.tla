@@ -8,6 +8,10 @@
 (* Proposal: design/view-refresh-2026-11/PLAN.md section 2.                *)
 (*                                                                         *)
 (* Item ids are ordered by capture date: a larger id is newer.             *)
+(* Port (2026-11-06): agent photos_open (AgentOpen), reviewed photos_share  *)
+(* (AgentShareReview; applying shares and changes no item) and the editor's *)
+(* Replace (EditReplace: overwrites the open item, a new revision). Album   *)
+(* creation changes no modelled item state and is not modelled.            *)
 (* Fix* = FALSE is the code as written; TRUE is the proposed design.       *)
 (***************************************************************************)
 EXTENDS Naturals, FiniteSets
@@ -27,7 +31,7 @@ VARIABLES exists, trashed, fav, rev,   \* the store
           selecting,
           viewer,     \* 0 = closed, else the open id
           filter,     \* "none" | "fav"  (set only by the agent, read-only)
-          review,     \* pending agent review: [ids, revs]; NoReview when none
+          review,     \* pending agent review: [ids, revs, act]; NoReview when none
           budget,
           lostSel,    \* ghost: an unrelated store event cleared the selection
           favStuck,   \* ghost: Favorite on an all-favourite selection did nothing
@@ -38,7 +42,7 @@ vars == <<exists, trashed, fav, rev, tab, sel, selecting, viewer, filter, review
           budget, lostSel, favStuck, capHit, purgedLive>>
 
 MaxRev == 2
-NoReview == [ids |-> {}, revs |-> [i \in {} |-> 0]]
+NoReview == [ids |-> {}, revs |-> [i \in {} |-> 0], act |-> "none"]
 Live    == {i \in Ids : exists[i] /\ ~trashed[i]}
 InTrash == {i \in Ids : exists[i] /\ trashed[i]}
 Matches(i) == filter = "none" \/ fav[i]
@@ -182,17 +186,42 @@ AgentFilter(f) ==
 
 AgentReview ==
   /\ review.ids = {} /\ selecting /\ sel # {} /\ tab = "lib"
-  /\ review' = [ids |-> sel, revs |-> [i \in sel |-> rev[i]]]
+  /\ review' = [ids |-> sel, revs |-> [i \in sel |-> rev[i]], act |-> "trash"]
   /\ UNCHANGED <<exists, trashed, fav, rev, tab, sel, selecting, viewer, filter, budget>> /\ UNCHANGED Ghosts
 
 ReviewCurrent == review.ids # {} /\ \A i \in review.ids : exists[i] /\ ~trashed[i] /\ rev[i] = review.revs[i]
 
-AgentApply ==   \* user approved: move the reviewed items to Recently deleted
+\* photos_share: the agent names loaded Library items (unfiltered); the owner confirms over the grid.
+AgentShareReview ==
+  /\ review.ids = {}
+  /\ \E S \in SUBSET Take(Live, W, FixWindow) :
+       /\ S # {}
+       /\ review' = [ids |-> S, revs |-> [i \in S |-> rev[i]], act |-> "share"]
+  /\ UNCHANGED <<exists, trashed, fav, rev, tab, sel, selecting, viewer, filter, budget>> /\ UNCHANGED Ghosts
+
+AgentApply ==   \* user approved: trash moves the items to Recently deleted; share hands them to Android
   /\ review.ids # {} /\ ReviewCurrent
-  /\ trashed' = [i \in Ids |-> trashed[i] \/ i \in review.ids]
-  /\ rev' = [i \in Ids |-> IF i \in review.ids /\ rev[i] < MaxRev THEN rev[i] + 1 ELSE rev[i]]
-  /\ review' = NoReview /\ sel' = sel \ review.ids
+  /\ IF review.act = "trash"
+       THEN /\ trashed' = [i \in Ids |-> trashed[i] \/ i \in review.ids]
+            /\ rev' = [i \in Ids |-> IF i \in review.ids /\ rev[i] < MaxRev THEN rev[i] + 1 ELSE rev[i]]
+            /\ sel' = sel \ review.ids
+       ELSE UNCHANGED <<trashed, rev, sel>>
+  /\ review' = NoReview
   /\ UNCHANGED <<exists, fav, tab, selecting, viewer, filter, budget>> /\ UNCHANGED Ghosts
+
+\* photos_open: navigation only. The code clears the selection and the filter and shows the
+\* item from the loaded Library window; it is refused while a review waits.
+AgentOpen(i) ==
+  /\ review.ids = {} /\ i \in Take(Live, W, FixWindow)
+  /\ viewer' = i /\ tab' = "lib" /\ filter' = "none" /\ sel' = {} /\ selecting' = FALSE
+  /\ UNCHANGED <<exists, trashed, fav, rev, review, budget>> /\ UNCHANGED Ghosts
+
+\* Editor Save > Replace on the open Library item: its pixels are overwritten (a new revision);
+\* the viewer stays on it. A review that captured the old revision can no longer apply.
+EditReplace ==
+  /\ viewer # 0 /\ tab = "lib" /\ exists[viewer] /\ ~trashed[viewer] /\ ~selecting
+  /\ Bump(viewer)
+  /\ UNCHANGED <<exists, trashed, fav, tab, sel, selecting, viewer, filter, review, budget>> /\ UNCHANGED Ghosts
 
 AgentReject ==  \* user cancelled, or the reviewed revisions are stale
   /\ review.ids # {} /\ review' = NoReview
@@ -204,6 +233,7 @@ Next ==
   \/ BatchFavorite \/ BatchTrash \/ BatchRestore \/ DeleteForever
   \/ ViewerTrash \/ CloseViewer
   \/ AgentFilter("none") \/ AgentFilter("fav") \/ AgentReview \/ AgentApply \/ AgentReject
+  \/ AgentShareReview \/ EditReplace \/ \E i \in Ids : AgentOpen(i)
 
 Spec == Init /\ [][Next]_vars /\ WF_vars(AgentApply \/ AgentReject)
 
@@ -221,5 +251,8 @@ NoActionOnStaleRev ==
 \* The agent's filter never changes library contents.
 FilterIsReadOnly ==
   [][(filter' # filter) => UNCHANGED <<exists, trashed, fav, rev>>]_vars
+\* Sharing never changes library contents.
+ShareChangesNothing ==
+  [][(AgentApply /\ review.act = "share") => UNCHANGED <<exists, trashed, fav, rev>>]_vars
 ReviewSettles == (review.ids # {}) ~> (review.ids = {})
 ====

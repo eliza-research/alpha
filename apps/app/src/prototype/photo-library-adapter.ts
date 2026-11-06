@@ -49,6 +49,8 @@ export const deviceLibraryAgent = () => mountedAgent;
 export type HostOperation = Extract<LibraryAgentOperation, { type: 'photo_library_select' }> | PhotosViewOperation;
 export type MainLibraryHost = {
   visible(): boolean;
+  /** The host's own album or share review is waiting for the owner. */
+  reviewOpen(): boolean;
   run(operation: HostOperation, signal: AbortSignal): Promise<LibraryAgentResult | PhotosViewResult>;
   /** Re-render after the review card opens, changes or closes. */
   reviewChanged(): void;
@@ -141,7 +143,8 @@ export function createDeviceLibrary(port: PhotoLibraryPort = nativePort, availab
         return { kind: operation.type, item: modelItem(row, modelRevisions) };
       }
       const host = visibleHost();
-      if (acting || review) throw new LibraryAgentRefusal('Finish the open review first.');
+      // One review at a time over the Library (specs/photos-library: a single pending review).
+      if (acting || review || host.reviewOpen()) throw new LibraryAgentRefusal('Finish the open review first.');
       if (operation.type === 'photo_library_select') return host.run(operation, signal) as Promise<LibraryAgentResult>;
       const items = operation.items.map(entry => ({ id: entry.id, revision: modelRevisions.native(entry.id, entry.revision) ?? '' }));
       if (items.some(entry => !entry.revision)) throw new LibraryAgentRefusal('An item changed since the assistant read it. Nothing changed; ask again.');
