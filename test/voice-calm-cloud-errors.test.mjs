@@ -8,6 +8,7 @@ import {build} from 'esbuild';
 import {JSDOM} from 'jsdom';
 import {cloudVoiceViewFixture} from './fixtures/cloud-voice-view.mjs';
 import {voiceFakeClock} from './fixtures/shared-batch-voice.mjs';
+import {voiceFailure} from '../apps/app/src/runtime/voice-states.ts';
 
 // The actual voice adapter, production template and DCLogic renderer with closed ports only:
 // a Cloud voice 429/503 is waited out quietly, a terminal failure is said once and plainly.
@@ -141,6 +142,27 @@ test('a denied microphone at start keeps its honest settings message, said once'
  assert.match(shown.model.lines[0].t,/microphone|settings/i);assert.doesNotMatch(shown.text,/Last transcript/);
  assert.equal(shown.doc.querySelector('[role="status"][aria-label="Voice conversation status"]').textContent,'');
  assert.equal(runs.length,1);
+});
+
+test('a stopped conversation says what happened once and leaves recovery to its control',async t=>{
+ for(const [error,expected] of [[{code:'capture'},'The microphone stopped.'],[{code:'live-asr'},'Transcription stopped.'],[{reason:'call-active'},'Voice paused for a phone call.']]){
+  await t.test(expected,async t=>{
+   const {view,fail}=await voice(t);
+   await fail(Object.assign(Error('PRIVATE'),error));
+   const shown=view();
+   assert.equal(shown.model.state,'error');assert.equal(shown.model.lines.length,1);assert.equal(shown.model.lines[0].t,expected);
+   assert.equal(typeof shown.model.recover,'function','recovery is the conversation\'s own control');
+  });
+ }
+});
+
+test('a kept recording that failed to transcribe says so without reciting its controls',()=>{
+ const shown=[
+  voiceFailure({code:'no-speech'},{transcribing:true,browser:false,cloud:true,serviceName:'Eliza Cloud'}),
+  voiceFailure({code:'local-agent-starting'},{transcribing:true,browser:false}),
+  voiceFailure({code:'recognition-failed'},{transcribing:true,browser:false}),
+ ].map(failure=>failure.message);
+ assert.deepEqual(shown,['Eliza Cloud heard no speech. Your recording is kept.','Your agent is starting. Try again soon. Your recording is kept.','Transcription failed. Your recording is kept.']);
 });
 
 test('a normal voice turn is unchanged',async t=>{

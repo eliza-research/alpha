@@ -61,7 +61,7 @@ test('Cloud Notes transcript stays reviewable and saves edited text with Cloud p
 test('empty Cloud transcript says no speech was heard, retains the recording and offers no typing fallback',async({page})=>{
  await cloudNotesVoiceFixture(page);await page.evaluate(()=>(window as any).cloudNotesVoice.empty=true);await openNotesRecorder(page);await recordClosedClip(page);await notesRecorder(page).getByRole('button',{name:'Transcribe with Eliza Cloud',exact:true}).click();
  // Silence is not a microphone, account or connection failure, and the wording names only controls that are rendered.
- await expect(notesRecorder(page)).toContainText('Eliza Cloud heard no speech in this recording. Your recording is kept. Choose Transcribe with Eliza Cloud to try again, or Record again.');
+ await expect(notesRecorder(page)).toContainText('Eliza Cloud heard no speech. Your recording is kept.');
  await expect(notesRecorder(page)).not.toContainText(/microphone access|connection|type the transcript/i);
  await expect(notesRecorder(page).getByRole('button',{name:'Transcribe with Eliza Cloud',exact:true})).toBeEnabled();await expect(notesRecorder(page).getByRole('button',{name:'Record again',exact:true})).toBeVisible();
  await expect(notesRecorder(page).getByRole('textbox',{name:'Review transcript'})).toHaveCount(0);await expect(page.getByRole('button',{name:'Type transcript instead',exact:true})).toHaveCount(0);

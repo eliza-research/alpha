@@ -18,19 +18,18 @@ export function voiceFailure(reason: unknown, context: { transcribing: boolean; 
       : 'Microphone access is off. Choose Open app settings and allow the microphone for Alpha in Android settings, then choose Start recording again, or use the keyboard instead. Nothing was recorded.' };
   if (!context.transcribing && (name === 'NotFoundError' || name === 'OverconstrainedError' || name === 'NotReadableError'))
     return { kind: 'no-microphone', message: 'No usable microphone was found. Connect or enable a microphone, then choose Start recording again.' };
-  // The Cloud route renders no typing choice (P-39 keeps the conversation spoken; the keyboard stays a separate entry), so its
-  // wording offers only what is on screen: the kept clip, Transcribe again and Record again.
+  // Transcribe again and Record again sit beside this text, so it says only what they cannot: the clip is kept.
   if (code === 'no-speech' && context.cloud)
-    return { kind: 'no-speech', message: `${context.serviceName ?? 'Cloud'} heard no speech in this recording. Your recording is kept. Choose Transcribe with ${context.serviceName ?? 'Cloud'} to try again, or Record again.` };
+    return { kind: 'no-speech', message: `${context.serviceName ?? 'Cloud'} heard no speech. Your recording is kept.` };
   if (code === 'no-speech')
     return { kind: 'no-speech', message: 'No speech was detected in this recording. Record again, or type the transcript instead.' };
   // The web build has no in-browser recognizer; local speech needs the local agent (libelizainference).
   if (code === 'local-agent-required')
     return { kind: 'local-agent', message: 'Local transcription needs the local agent on this computer. Connect it and choose Transcribe again, or type the transcript instead. Your recording is kept.' };
   if (code === 'local-agent-starting')
-    return { kind: 'local-agent', message: 'Your agent is starting. Speech is available once it is running; choose Transcribe again then, or type the transcript instead. Your recording is kept.' };
+    return { kind: 'local-agent', message: 'Your agent is starting. Try again soon. Your recording is kept.' };
   if (code === 'recognition-failed')
-    return { kind: 'recognition', message: 'Speech recognition failed for this recording. Choose Transcribe again, or type the transcript instead. Your recording is kept.' };
+    return { kind: 'recognition', message: 'Transcription failed. Your recording is kept.' };
   return null;
 }
 
