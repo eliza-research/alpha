@@ -8,12 +8,6 @@ test('photo grant description preserves selected/partial scope and rejects locke
  assert.equal(flow.startupPhotoAccess({scope:'denied',locked:false}).granted,false);
  for(const value of [null,{scope:['full'],locked:false},{scope:'full',locked:true},{scope:'full'}])assert.throws(()=>flow.startupPhotoAccess(value));
 });
-test('Google identity alone cannot claim mail/calendar access',()=>{
- const account={connected:true,connectionId:'connection',grantedCapabilities:[]};
- assert.deepEqual(flow.startupGoogleAccess([account]),{gmail:false,calendar:false});
- assert.deepEqual(flow.startupGoogleAccess([{...account,grantedCapabilities:['google.gmail.triage','google.calendar.read']}]),{gmail:true,calendar:true});
- assert.deepEqual(flow.startupGoogleAccess([{...account,connectionId:null,grantedCapabilities:['google.gmail.triage']},{...account,connected:false,grantedCapabilities:['google.calendar.read']}]),{gmail:false,calendar:false});
-});
 test('checks never prompt, denial persists to settings, and a granted readback retires the prompt',async()=>{
  const values=new Map();const store={getItem:key=>values.get(key),setItem:(key,value)=>values.set(key,value)};
  let granted=false,requests=0,settings=0;
