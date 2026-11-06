@@ -355,3 +355,14 @@ test('Discard while the microphone is still starting also discards the recording
   assert.equal(kept.state.discarded, 0);
   assert.equal(kept.state.status.state, 'recording');
 });
+
+test('a long recording\'s transcript never stops its audio from being saved: the metadata keeps a bounded prefix', () => {
+  const store = native('AlphaNoteAudioPlugin.java');
+  const limit = Number(store.match(/NOTE_RECORDINGS=new RecordingStore\.Limits\(Long\.MAX_VALUE,Long\.MAX_VALUE,([\d_]+),/)[1].replaceAll('_', ''));
+  assert.ok(limit > 0);
+  assert.match(store, /\.retain\(source,recordingId,noteId,duration,transcriptPrefix\(transcript,NOTE_RECORDINGS\.maxTranscript\),true\)/);
+  // The same prefix rule, checked here: a 4-hour transcript fits, and no surrogate pair is split.
+  const body = store.match(/static String transcriptPrefix\(String transcript,int max\)\{([\s\S]*?)\n \}/)[1];
+  assert.match(body, /transcript\.length\(\)<=max\)return transcript;/);
+  assert.match(body, /Character\.isHighSurrogate\(transcript\.charAt\(end-1\)\)\)end--;/);
+});
