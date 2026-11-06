@@ -115,7 +115,7 @@ test('stopping voice during the quiet wait cancels the retry',async t=>{
 
 test('terminal failures keep one honest line without the transcript tail or a duplicated status',async t=>{
  for(const [error,expected] of [
-  [Object.assign(Error('PRIVATE'),{code:'voice-http-401'}),/^Sign in to Cloud again in Settings, then retry voice\.$/],
+  [Object.assign(Error('PRIVATE'),{code:'voice-http-401'}),/^Eliza Cloud sign-in expired\. Sign in again in Settings, then retry voice\.$/],
   [limited({limitCode:'allowance_exhausted'}),/voice allowance is used up/],
  ]){
   await t.test(String(error.code)+' '+(error.data?.limitCode||''),async t=>{

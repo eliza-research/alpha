@@ -48,3 +48,13 @@ export async function playOwnedSpeech(voice:any,signal:AbortSignal,prepare:(requ
  try{await speakChunk(voice,Capacitor.isNativePlatform(),'',controller.signal,()=>{check();onStarted?.();},queue,{assertCurrent:check},prepare,strictDrain);check();}
  finally{clearTimeout(timer);signal.removeEventListener('abort',cancel);}
 }
+
+/** Waits for the previous speaker's retirement. A cleanup that was never confirmed gets one native
+ * stop; only a confirmed stop admits new speech, and a second refusal asks for a restart. */
+export async function confirmSpeechRetirement(previous:Promise<void>){
+ try{await previous;}catch(error){
+  if((error as {code?:string})?.code!=='speech-cleanup-unconfirmed')throw error;
+  try{await registerPlugin<any>('AlphaVoiceCloud').stopPlayback();}
+  catch(cause){throw Object.assign(Error('Speech could not be stopped. Restart Alpha.'),{code:'speech-cleanup-unconfirmed',cause});}
+ }
+}

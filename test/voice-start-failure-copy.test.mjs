@@ -24,11 +24,14 @@ test('unknown startup failures never render raw technical or private details',()
  assert.match(catchBody,/if\(token!==generation\|\|controller\.signal\.aborted\)return;/,'stale or cancelled starts still do not publish an error');
 });
 test('known auth, provider, rate-limit and microphone recovery stays actionable',()=>{
- assert.match(message({code:'voice-http-401',message:'secret'}),/Sign in to Cloud again in Settings/);
- assert.match(message({code:'voice-http-403'}),/Sign in to Cloud again in Settings/);
+ assert.equal(message({code:'voice-http-401',message:'secret'}),'Cloud sign-in expired. Sign in again in Settings, then retry voice.');
+ assert.equal(message({code:'voice-http-403'}),'Cloud refused voice for this account. Check your account in Settings.');
  assert.match(message({code:'voice-http-429'}),/request limit.*2 minutes/);
- assert.match(message({code:'voice-stt-upload'}),/recording is kept.*Check your connection/);
- assert.match(message({code:'voice-stt-response'}),/no usable transcript/);
+ // A chat voice turn keeps no recording: the spoken message is gone and must be said again.
+ assert.equal(message({code:'voice-stt-upload'}),'The recording upload could not be confirmed. Check your connection. Your message was not sent. Say it again.');
+ assert.equal(message({code:'voice-stt-response'}),'Cloud voice returned no usable transcript. Your message was not sent. Say it again.');
+ assert.equal(message({code:'voice-stt-connect'}),'Cloud voice could not use your saved account. Sign in again in Settings. Your message was not sent. Say it again.');
+ for(const code of ['voice-stt-connect','voice-stt-upload','voice-stt-response'])assert.doesNotMatch(message({code}),/recording is kept/);
  assert.match(message({code:'permission-denied'}),/Open app settings/);
  assert.match(message({name:'NotAllowedError'},false),/browser’s site settings/);
  assert.match(message({name:'NotFoundError'}),/No usable microphone/);
@@ -37,7 +40,7 @@ test('known auth, provider, rate-limit and microphone recovery stays actionable'
 test('own-provider HTTP failures name Cartesia and never request a Cloud plan or expose provider text',()=>{
  for(const code of ['voice-http-401','voice-http-403','voice-http-429','voice-http-503']){
   const text=render({code,message:'PRIVATE_PROVIDER_TEXT'},makeCloudMapper(true),voiceFailure,{isNativePlatform:()=>true},{});
-  assert.match(text,/Cartesia.*Check your own key or provider allowance/);
-  assert.doesNotMatch(text,/Sign in to Cloud|plan|PRIVATE_PROVIDER_TEXT/);
+  assert.equal(text,code==='voice-http-503'?'Cartesia isn’t responding. Try again later.':'Cartesia refused voice. Check your key and Cartesia plan.');
+  assert.doesNotMatch(text,/Cloud|[0-9]|PRIVATE_PROVIDER_TEXT/);
  }
 });
