@@ -17,8 +17,8 @@ test('actual execution template keeps result visible and technical IDs/history i
  const {executionMarkup}=await import('./fixtures/workflow-execution-markup.mjs');const {JSDOM}=await import('jsdom');
  const f=await executionFixture();try{const r=await f.openRun(),html=await executionMarkup(r),doc=new JSDOM(html).window.document;
  assert.match(doc.querySelector('h1').textContent,/manual text workflow/);assert.match(doc.body.textContent,/supplied text reached the saved draft/);
- const details=doc.querySelector('details[aria-label="Workflow execution details"]');assert.ok(details);assert.equal(details.hasAttribute('open'),false);assert.match(details.textContent,new RegExp(f.run.id));assert.match(details.textContent,/typed-steps/);assert.match(details.textContent,/Terminal execution reported by agent/);
- assert.equal(doc.querySelector('[aria-label="Workflow phone steps"]'),null);assert.equal(doc.querySelector('[aria-label="Refresh execution receipt"]'),null);assert.ok(doc.querySelector('button[aria-label="Back to workflow"]'));
+ const details=doc.querySelector('details[aria-label="Workflow execution details"]');assert.ok(details);assert.equal(details.hasAttribute('open'),false);assert.match(details.textContent,new RegExp(f.run.id));assert.match(details.textContent,/typed-steps/);assert.match(details.textContent,/Status\s*Finished/);
+ assert.equal(doc.querySelector('[aria-label="Workflow phone steps"]'),null);assert.equal(doc.querySelector('[aria-label="Refresh"]'),null);assert.ok(doc.querySelector('button[aria-label="Back to workflow"]'));
  for(const node of doc.querySelectorAll('dd'))assert.equal(node.closest('details'),details);
  }finally{f.close();}
 });
