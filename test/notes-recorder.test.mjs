@@ -366,3 +366,13 @@ test('a long recording\'s transcript never stops its audio from being saved: the
   assert.match(body, /transcript\.length\(\)<=max\)return transcript;/);
   assert.match(body, /Character\.isHighSurrogate\(transcript\.charAt\(end-1\)\)\)end--;/);
 });
+
+test('the native recorder has a device test for segments, pause accounting, crash recovery and the joined file', () => {
+  const device = read('android/app/src/androidTest/java/ai/elizaresearch/alphaphone/NoteRecorderInstrumentedTest.java');
+  assert.match(device, /segments\(status\)<3/, 'records past two segment rollovers');
+  assert.match(device, /paused time does not count/);
+  assert.match(device, /AlphaNoteRecorder next=fresh\(\)/, 'a new recorder recovers the crashed recording');
+  assert.match(device, /the partial segment is dropped/);
+  assert.match(device, /next\.joined\(crashedId\)/);
+  assert.match(device, /player\.prepare\(\)/, 'the joined file plays');
+});
