@@ -1,0 +1,856 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Alpha Phone · view refresh · before / after</title>
+<style>
+@font-face{font-family:'Public Sans';src:url(/apps/app/public/fonts/5ed4d31c988e73b25889.woff2) format('woff2');font-weight:100 900}
+@font-face{font-family:'Denton';src:url(/apps/app/public/denton-300.woff2) format('woff2');font-weight:100 900}
+:root{--bg:#fff;--s1:#FAFAFA;--s2:#F3F3F3;--s3:#E9E9E9;--line:#E3E3E3;--fg:#000;--mut:#6B6B6B;--acc:#0000FF;--page:#ECECEA;--ok:#0a7a2f;--warn:#b3261e}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--page);color:var(--fg);font-family:'Public Sans',system-ui,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;cursor:pointer;text-align:inherit}
+input,textarea{font:inherit}
+.serif{font-family:'Denton',Georgia,serif;font-weight:300}
+svg.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;display:block;flex-shrink:0}
+svg.i.sm{width:18px;height:18px}
+/* page chrome */
+.top{position:sticky;top:0;z-index:50;background:rgba(236,236,234,.92);backdrop-filter:blur(8px);border-bottom:1px solid #d6d6d2;display:flex;align-items:center;gap:18px;padding:12px 28px}
+.top h1{font-size:22px;margin:0;font-weight:300;white-space:nowrap}
+.tabs{display:flex;gap:4px;flex-wrap:wrap}
+.tabs button{padding:8px 14px;border-radius:999px;font-weight:500;color:#444}
+.tabs button[aria-selected=true]{background:#000;color:#fff}
+.top .sp{flex:1}
+.pill-btn{padding:9px 16px;border-radius:999px;background:var(--acc);color:#fff;font-weight:600;white-space:nowrap}
+.pill-btn.ghost{background:#fff;color:#000;border:1px solid #ccc}
+main{padding:24px 28px 80px}
+.view{display:none}.view.on{display:block}
+.intro{max-width:1180px;margin:0 0 18px;color:#333;line-height:1.5}
+.pair{display:grid;grid-template-columns:auto auto minmax(340px,1fr);gap:28px;align-items:start}
+@media (max-width:1250px){.pair{grid-template-columns:auto auto}.pair aside{grid-column:1/-1}}
+figure{margin:0}
+figcaption{display:flex;align-items:center;gap:8px;margin:0 0 10px;font-weight:600;font-size:13px;letter-spacing:.06em;text-transform:uppercase}
+figcaption .tag{font-size:11px;padding:3px 8px;border-radius:999px;background:#fff;border:1px solid #ccc;font-weight:600}
+figcaption .tag.after{background:var(--acc);color:#fff;border-color:var(--acc)}
+.shots{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;max-width:360px}
+.shots button{font-size:12px;padding:5px 10px;border-radius:999px;background:#fff;border:1px solid #ccc}
+.shots button[aria-pressed=true]{background:#000;color:#fff;border-color:#000}
+/* phone */
+.phone{width:360px;height:800px;border-radius:46px;border:10px solid #111;background:#fff;position:relative;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.18);isolation:isolate}
+.phone.before img{width:100%;height:100%;object-fit:cover;object-position:top;display:block}
+.mk{position:absolute;transform:translate(-50%,-50%);width:24px;height:24px;border-radius:50%;background:#e0002a;color:#fff;font-size:12px;font-weight:700;display:grid;place-items:center;box-shadow:0 0 0 3px rgba(224,0,42,.25);pointer-events:none;z-index:2}
+.scr{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--bg);color:var(--fg);overflow:hidden}
+.sb{height:30px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 22px;font-size:12px;font-weight:600}
+.dark .sb,.sb.dark{color:#fff}
+.hdr{height:52px;flex-shrink:0;display:flex;align-items:center;gap:6px;padding:0 10px 0 6px}
+.hdr .t{font-size:20px;font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ib{width:44px;height:44px;display:grid;place-items:center;border-radius:22px}
+.ib:hover{background:var(--s2)}
+.dark .ib:hover{background:rgba(255,255,255,.12)}
+.tbtn{height:36px;padding:0 12px;border-radius:18px;font-weight:600;font-size:15px}
+.tbtn:hover{background:var(--s2)}
+.body{flex:1;overflow-y:auto;overflow-x:hidden;position:relative;scrollbar-width:none}
+.body::-webkit-scrollbar{display:none}
+/* agent pill */
+.apill{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);display:flex;align-items:center;gap:6px;background:var(--s2);border-radius:30px;padding:5px 12px 5px 5px;box-shadow:0 6px 20px rgba(0,0,0,.08);z-index:20}
+.apill .orb{width:40px;height:40px;border-radius:50%;background:radial-gradient(circle at 50% 50%,#0000ff 0 30%,#3c3cff 31% 45%,#9a9aff 46% 60%,#0000ff 61% 100%)}
+.apill .lbl{color:var(--mut);font-size:14px;padding:0 6px}
+.dark .apill{background:rgba(40,40,40,.92);color:#fff}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:24px 24px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.18);z-index:40;padding:10px 16px 22px;color:#000;animation:up .2s ease}
+@keyframes up{from{transform:translateY(30px);opacity:0}}
+.sheet .grab{width:36px;height:4px;border-radius:2px;background:#ccc;margin:0 auto 12px}
+.sheet h3{margin:4px 4px 10px;font-size:15px}
+.sug{display:block;width:100%;padding:12px 14px;border-radius:14px;background:var(--s2);margin-top:8px;font-size:14px}
+.sug:hover{background:var(--s3)}
+.sug small{display:block;color:var(--mut);font-size:12px;margin-top:2px}
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.25);z-index:35}
+.toast{position:absolute;left:16px;right:16px;bottom:78px;background:#111;color:#fff;border-radius:14px;padding:12px 14px;z-index:45;display:flex;align-items:center;gap:10px;font-size:13.5px;animation:up .2s ease}
+.toast .act{margin-left:auto;color:#9db2ff;font-weight:600}
+.reply{position:absolute;left:12px;right:12px;bottom:78px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:12px 14px;z-index:45;box-shadow:0 8px 24px rgba(0,0,0,.12);font-size:13.5px;display:flex;gap:10px;align-items:flex-start;animation:up .2s ease;color:#000}
+.reply .o{width:22px;height:22px;border-radius:50%;background:var(--acc);flex-shrink:0}
+.review{position:absolute;left:12px;right:12px;bottom:78px;background:#fff;border-radius:20px;padding:16px;z-index:46;box-shadow:0 10px 30px rgba(0,0,0,.2);color:#000}
+.review b{display:block;margin-bottom:4px;font-size:15px}
+.review .row{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+.review .row button{padding:9px 16px;border-radius:18px;font-weight:600}
+.review .row .pri{background:var(--acc);color:#fff}
+.review .row .sec{background:var(--s2)}
+.chip{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 6px 0 12px;border-radius:16px;background:#E6E6FF;color:#00008a;font-weight:600;font-size:13px}
+.chip button{width:24px;height:24px;border-radius:12px;display:grid;place-items:center}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:4px 16px 10px;scrollbar-width:none;flex-shrink:0}
+.chips::-webkit-scrollbar{display:none}
+.fchip{height:34px;padding:0 14px;border-radius:17px;background:var(--s2);font-weight:500;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;flex-shrink:0}
+.fchip[aria-pressed=true]{background:#000;color:#fff}
+/* segmented */
+.seg{display:flex;gap:22px;padding:0 18px 8px;flex-shrink:0}
+.seg button{font-size:15px;font-weight:600;color:var(--mut);padding:6px 0;border-bottom:2px solid transparent}
+.seg button[aria-selected=true]{color:#000;border-color:#000}
+/* photos */
+.dayh{position:sticky;top:0;z-index:3;background:rgba(255,255,255,.94);backdrop-filter:blur(6px);padding:14px 16px 8px;font-weight:600;font-size:15px;display:flex;justify-content:space-between;align-items:baseline}
+.dayh small{font-weight:400;color:var(--mut);font-size:12.5px}
+.grid{display:grid;gap:2px}
+.grid.inset{padding:0 12px;gap:4px}
+.grid.inset .tile{border-radius:6px}
+.tile{position:relative;aspect-ratio:1;overflow:hidden;background:var(--s3);cursor:pointer;user-select:none}
+.tile img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;transition:transform .12s}
+.tile .dur{position:absolute;right:5px;bottom:4px;color:#fff;font-size:11px;font-weight:700;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+.tile .fav{position:absolute;left:5px;bottom:4px;color:#fff;filter:drop-shadow(0 1px 2px rgba(0,0,0,.6))}
+.tile .left{position:absolute;left:5px;bottom:4px;color:#fff;font-size:11px;font-weight:700;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+.tile .ck{position:absolute;right:5px;top:5px;width:22px;height:22px;border-radius:50%;border:2px solid #fff;background:rgba(0,0,0,.15);box-shadow:0 0 3px rgba(0,0,0,.3)}
+.tile.sel img{transform:scale(.86);border-radius:6px}
+.tile.sel{background:#dfe3ff}
+.tile.sel .ck{background:var(--acc);border-color:#fff;display:grid;place-items:center}
+.tile.sel .ck::after{content:'';width:9px;height:5px;border-left:2px solid #fff;border-bottom:2px solid #fff;transform:rotate(-45deg) translate(1px,-1px)}
+.abar{position:absolute;left:0;right:0;bottom:0;height:78px;background:#fff;border-top:1px solid var(--line);display:flex;justify-content:space-around;align-items:center;padding-bottom:8px;z-index:22}
+.abar button{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#000;padding:6px 10px;border-radius:12px}
+.abar button:hover{background:var(--s2)}
+.abar button[disabled]{opacity:.35}
+.albums{display:grid;grid-template-columns:1fr 1fr;gap:16px 12px;padding:4px 16px 16px}
+.alb .cv{aspect-ratio:1;border-radius:14px;overflow:hidden;background:var(--s2);display:grid;place-items:center;color:var(--mut)}
+.alb .cv img{width:100%;height:100%;object-fit:cover}
+.alb b{display:block;margin-top:8px;font-size:14px}
+.alb span{color:var(--mut);font-size:12.5px}
+.row{display:flex;align-items:center;gap:14px;padding:12px 16px;width:100%;text-align:left}
+.row:hover{background:var(--s1)}
+.row .ic{width:40px;height:40px;border-radius:12px;background:var(--s2);display:grid;place-items:center;flex-shrink:0;overflow:hidden}
+.row .ic img{width:100%;height:100%;object-fit:cover}
+.row .tx{flex:1;min-width:0}
+.row .tx b{display:block;font-weight:500;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .tx span{display:block;color:var(--mut);font-size:12.5px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .ct{color:var(--mut);font-size:13px}
+.row.sel{background:#E6E6FF}
+.sect{padding:16px 16px 4px;font-size:12px;color:var(--mut);font-weight:600;letter-spacing:.08em;text-transform:uppercase}
+.viewer{position:absolute;inset:0;background:#000;color:#fff;z-index:30;display:flex;flex-direction:column}
+.viewer .img{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer}
+.viewer .img img{max-width:100%;max-height:100%}
+.viewer .chrome{transition:opacity .15s}
+.viewer.hide .chrome{opacity:0;pointer-events:none}
+.viewer .vt{flex:1;text-align:center;line-height:1.15}
+.viewer .vt b{display:block;font-size:15px}
+.viewer .vt span{font-size:12px;color:#bbb}
+.viewer .vbar{height:72px;display:flex;justify-content:space-around;align-items:center;padding-bottom:10px}
+.nav{position:absolute;top:50%;width:44px;height:64px;transform:translateY(-50%);display:grid;place-items:center;color:#fff;opacity:.6}
+.nav:hover{opacity:1}
+.info{background:#fff;color:#000}
+.info dl{display:grid;grid-template-columns:auto 1fr;gap:8px 16px;margin:0 4px}
+.info dt{color:var(--mut)}
+.info dd{margin:0}
+/* camera */
+.cam{background:#000;color:#fff}
+.vf{position:relative;flex:1;margin:0;overflow:hidden;background:#000}
+.vf img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:opacity .25s, transform .3s}
+.vf .flashfx{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+.vf .flashfx.go{animation:fl .25s ease}
+@keyframes fl{0%{opacity:.9}100%{opacity:0}}
+.zoom{position:absolute;left:0;right:0;bottom:14px;display:flex;justify-content:center;gap:8px}
+.zoom button{width:36px;height:36px;border-radius:18px;background:rgba(0,0,0,.45);font-size:12px;font-weight:700;color:#fff}
+.zoom button[aria-pressed=true]{background:#fff;color:#000;width:42px;height:42px;margin-top:-3px}
+.modes{display:flex;justify-content:center;gap:26px;padding:14px 0 6px;font-weight:600;font-size:14px}
+.modes button{color:#999;position:relative}
+.modes button[aria-pressed=true]{color:#fff}
+.modes button[aria-pressed=true]::after{content:'';position:absolute;left:50%;bottom:-7px;width:4px;height:4px;border-radius:2px;background:#fff;transform:translateX(-50%)}
+.ctl{height:118px;display:flex;align-items:center;justify-content:space-between;padding:0 34px 18px}
+.shutter{width:76px;height:76px;border-radius:50%;border:4px solid #fff;display:grid;place-items:center}
+.shutter i{width:60px;height:60px;border-radius:50%;background:#fff;transition:all .15s}
+.shutter.vid i{background:#e5262a}
+.shutter.rec i{width:26px;height:26px;border-radius:6px;background:#e5262a}
+.thumb{width:52px;height:52px;border-radius:12px;overflow:hidden;border:2px solid #aaa;background:#222}
+.thumb img{width:100%;height:100%;object-fit:cover}
+.flip{width:52px;height:52px;border-radius:26px;background:rgba(255,255,255,.14);display:grid;place-items:center}
+.recchip{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:#e5262a;color:#fff;padding:4px 10px;border-radius:8px;font-weight:700;font-variant-numeric:tabular-nums;font-size:13px;z-index:3}
+.docframe{position:absolute;inset:16% 12% 22%;border:2px solid #ffd60a;border-radius:8px;box-shadow:0 0 0 2000px rgba(0,0,0,.25)}
+/* notes */
+.nlist .row{align-items:flex-start;padding:12px 16px;border-bottom:1px solid var(--s3)}
+.nlist .row .tx span{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.ngrid{columns:2;column-gap:10px;padding:4px 12px}
+.ncard{break-inside:avoid;display:block;width:100%;background:var(--s2);border-radius:16px;padding:12px 14px;margin-bottom:10px;text-align:left}
+.ncard b{display:block;font-weight:600;margin-bottom:4px}
+.ncard span{color:#333;font-size:13px;white-space:pre-line;display:block}
+.ncard em{display:block;color:var(--mut);font-size:12px;font-style:normal;margin-top:8px}
+.edit{padding:4px 20px}
+.edit h2{font-size:24px;margin:6px 0 4px;outline:none;font-weight:600}
+.edit .meta{color:var(--mut);font-size:12.5px;margin-bottom:12px}
+.edit .tb{outline:none;line-height:1.55;white-space:pre-wrap;font-size:15.5px;min-height:200px}
+.check{display:flex;gap:10px;align-items:center;padding:6px 0;font-size:15.5px}
+.check i{width:20px;height:20px;border-radius:6px;border:2px solid #000;flex-shrink:0}
+.check.done{color:var(--mut);text-decoration:line-through}
+.check.done i{background:#000}
+.menu{position:absolute;right:10px;top:84px;background:#fff;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.2);z-index:41;min-width:200px;padding:6px;color:#000}
+.menu button{display:flex;gap:12px;align-items:center;width:100%;padding:10px 12px;border-radius:10px}
+.menu button:hover{background:var(--s2)}
+.menu hr{border:0;border-top:1px solid var(--line);margin:4px 0}
+.rec{display:flex;flex-direction:column;align-items:center;flex:1;padding:20px}
+.rec .timer{font-size:72px;font-variant-numeric:tabular-nums;margin-top:40px}
+.wave{display:flex;align-items:center;gap:3px;height:120px;margin:30px 0 10px;width:100%;justify-content:center}
+.wave i{width:4px;border-radius:2px;background:var(--acc);transition:height .1s}
+.rec .live{color:var(--mut);font-size:14px;text-align:center;line-height:1.5;min-height:66px;padding:0 10px}
+.rec .btns{margin-top:auto;display:flex;align-items:center;gap:34px;padding-bottom:30px}
+.rbtn{width:56px;height:56px;border-radius:28px;background:var(--s2);display:grid;place-items:center}
+.rbig{width:78px;height:78px;border-radius:39px;background:#e5262a;color:#fff;display:grid;place-items:center}
+.player{display:flex;align-items:center;gap:12px;background:var(--s2);border-radius:16px;padding:10px 14px;margin:6px 0 14px}
+.player .pw{flex:1;display:flex;gap:2px;align-items:center;height:28px}
+.player .pw i{width:3px;border-radius:2px;background:#999}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--acc);border-radius:50%;animation:sp 1s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+/* files */
+.crumb{padding:0 18px 8px;color:var(--mut);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0}
+.crumb button{color:var(--mut)}
+.crumb button:hover{color:#000;text-decoration:underline}
+.store{padding:0 16px 6px 70px;margin-top:-6px}
+.bar{height:6px;border-radius:3px;background:var(--s3);overflow:hidden}
+.bar i{display:block;height:100%;background:#000}
+.preview{position:absolute;inset:0;background:#fff;z-index:30;display:flex;flex-direction:column}
+.preview .pv{flex:1;display:grid;place-items:center;background:var(--s1);margin:0 12px 12px;border-radius:16px;overflow:hidden}
+.preview .pv img{max-width:100%;max-height:100%}
+.doc{width:180px;height:240px;background:#fff;border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.12);padding:22px 18px;display:flex;flex-direction:column;gap:8px}
+.doc i{display:block;height:6px;border-radius:3px;background:var(--s3)}
+/* apps */
+.home{padding:10px 18px}
+.hcards{display:flex;gap:12px;margin:6px 0 40px}
+.hcard{width:270px;height:170px;border-radius:24px;background:var(--acc);color:#fff;padding:18px 20px;flex-shrink:0}
+.hcard .serif{font-size:30px;line-height:1.05;margin-top:28px}
+.hcard2{flex:1;border-radius:24px;background:var(--s2)}
+.hgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px 6px}
+.happ{display:flex;flex-direction:column;align-items:center;gap:7px;font-size:12px;color:#555}
+.happ .ic{width:60px;height:60px;border-radius:20px;background:var(--s2);display:grid;place-items:center;color:#000}
+.happ.hl .ic{box-shadow:0 0 0 3px var(--acc)}
+.drawer{position:absolute;inset:30px 0 0;background:#fff;z-index:30;display:flex;flex-direction:column}
+.drawer h2{font-size:34px;margin:0;flex:1}
+.search{margin:4px 16px 12px;height:46px;border-radius:23px;background:var(--s2);display:flex;align-items:center;gap:10px;padding:0 16px;color:var(--mut)}
+.search input{border:0;background:none;outline:none;flex:1;font-size:15px;color:#000}
+.agrid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px 4px;padding:6px 10px 100px}
+.aapp{display:flex;flex-direction:column;align-items:center;gap:7px;font-size:12px;color:#222;position:relative}
+.aapp .ai{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;color:#fff}
+.aapp .ai svg{width:26px;height:26px}
+.ctx{position:absolute;z-index:41;background:#fff;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.2);padding:6px;min-width:170px;color:#000}
+.ctx button{display:flex;gap:10px;align-items:center;width:100%;padding:9px 10px;border-radius:9px;font-size:13.5px}
+.ctx button:hover{background:var(--s2)}
+.edithome .happ .ic{animation:wig .3s ease-in-out infinite alternate}
+@keyframes wig{from{transform:rotate(-1.5deg)}to{transform:rotate(1.5deg)}}
+.happ .rm{position:absolute;margin:-6px 0 0 44px;width:22px;height:22px;border-radius:11px;background:#000;color:#fff;display:grid;place-items:center;font-size:14px;line-height:1;z-index:2}
+/* aside */
+aside{background:#fff;border-radius:20px;padding:20px 22px;box-shadow:0 2px 10px rgba(0,0,0,.05);line-height:1.5;min-width:0}
+aside h3{margin:0 0 8px;font-size:15px}
+aside h4{margin:18px 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#555}
+aside ol,aside ul{margin:0;padding-left:20px}
+aside li{margin:4px 0}
+aside code{font-size:12px;background:#f2f2f0;padding:1px 5px;border-radius:5px}
+.chg{list-style:none;padding:0;margin:0}
+.chg li{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid #f0f0ee;margin:0}
+.chg input{margin-top:3px;width:16px;height:16px;accent-color:var(--ok);flex-shrink:0}
+.chg .n{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:#e0002a;color:#fff;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px}
+.chg .n.add{background:var(--acc)}
+.dec{border:1px solid #e3e3e0;border-radius:14px;padding:12px 14px;margin:10px 0}
+.dec b{display:block;margin-bottom:6px}
+.dec label{display:flex;gap:8px;align-items:flex-start;margin:5px 0;cursor:pointer}
+.dec label input{margin-top:4px;accent-color:var(--acc)}
+.dec .rec{color:var(--ok);font-weight:600;font-size:12px}
+textarea.cm{width:100%;min-height:70px;border:1px solid #ddd;border-radius:12px;padding:10px 12px;resize:vertical;margin-top:6px}
+details{margin-top:12px;border-top:1px solid #eee;padding-top:10px}
+summary{cursor:pointer;font-weight:600}
+.sim{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
+.sim button{padding:6px 11px;border-radius:999px;background:#f2f2f0;font-size:12.5px;border:1px solid #e3e3e0}
+.sim button[aria-pressed=true]{background:#000;color:#fff;border-color:#000}
+.steps{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:6px}
+.steps ol{font-size:12.5px;padding-left:18px}
+.steps .bad li::marker{color:#b3261e}
+.steps .good li::marker{color:var(--ok)}
+.muted{color:#666}
+.planwrap{max-width:1000px;background:#fff;border-radius:20px;padding:24px 30px;line-height:1.55}
+.planwrap table{border-collapse:collapse;width:100%;font-size:13px;margin:8px 0 16px}
+.planwrap td,.planwrap th{border:1px solid #e6e6e3;padding:6px 8px;vertical-align:top;text-align:left}
+.out{white-space:pre-wrap;font-family:ui-monospace,monospace;font-size:12px;background:#f6f6f4;border-radius:12px;padding:14px;max-height:360px;overflow:auto}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--mut);padding:80px 20px;gap:10px}
+</style>
+</head>
+<body>
+<div class="top">
+  <h1 class="serif">View refresh · before / after</h1>
+  <div class="tabs" role="tablist" id="tabs"></div>
+  <div class="sp"></div>
+  <button class="pill-btn ghost" id="resetBtn" title="Reset the mock device to its initial data">Reset data</button>
+  <button class="pill-btn" id="copyBtn">Copy my review</button>
+</div>
+<main id="main"></main>
+
+<script>
+/* ------------------------------------------------------------------ icons */
+const P={
+ back:'M15 18l-6-6 6-6',x:'M18 6L6 18M6 6l12 12',check:'M20 6L9 17l-5-5',
+ flash:'M13 2L3 14h9l-1 8 10-12h-9l1-8z',flashOff:'M13 2L3 14h9l-1 8 10-12h-9l1-8z M2 2l20 20',
+ flip:'M20 7h-3l-2-3H9L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z M9 13a3 3 0 0 1 5-2.2 M15 13a3 3 0 0 1-5 2.2 M14 9v2h-2 M10 17v-2h2',
+ share:'M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7 M16 6l-4-4-4 4 M12 2v13',
+ heart:'M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z',
+ trash:'M3 6h18 M8 6V4h8v2 M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6 M10 11v6 M14 11v6',
+ album:'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M12 11v6 M9 14h6',
+ edit:'M4 21h4L19 10l-4-4L4 17z M14 7l4 4',sliders:'M4 21v-7 M4 10V3 M12 21v-9 M12 8V3 M20 21v-5 M20 12V3 M1 14h6 M9 8h6 M17 16h6',
+ info:'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M12 16v-4 M12 8h.01',
+ mic:'M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z M19 10v2a7 7 0 0 1-14 0v-2 M12 19v3',
+ kb:'M3 6h18v12H3z M7 10h.01 M11 10h.01 M15 10h.01 M7 14h10',
+ compose:'M12 20h9 M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z',
+ more:'M12 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2z M19 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2z M5 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2z',
+ list:'M9 6h11 M9 12h11 M9 18h11 M4 6l1 1 2-2 M4 12l1 1 2-2 M4 18l1 1 2-2',
+ pin:'M12 17v5 M9 10.8V4h6v6.8l3 3.2v2H6v-2z',folder:'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
+ plus:'M12 5v14 M5 12h14',pause:'M7 5h3v14H7z M14 5h3v14h-3z',play:'M7 4l13 8-13 8z',stop:'M6 6h12v12H6z',
+ wave:'M2 12h2 M6 8v8 M10 4v16 M14 7v10 M18 10v4 M22 12h-2',
+ dl:'M12 3v12 M7 10l5 5 5-5 M5 21h14',img:'M3 5h18v14H3z M8.5 10a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z M21 15l-5-5L5 21',
+ vid:'M3 6h13v12H3z M16 10l5-3v10l-5-3',aud:'M9 18V5l12-2v13 M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M18 19a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
+ docs:'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M8 13h8 M8 17h8',
+ phoneS:'M5 2h14v20H5z M11 18h2',hdd:'M22 12H2 M5.5 5h13L22 12v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z M6 16h.01 M10 16h.01',
+ sort:'M3 6h18 M6 12h12 M10 18h4',move:'M5 12h14 M13 6l6 6-6 6',copy:'M9 9h11v11H9z M5 15H4V4h11v1',
+ rename:'M4 20h16 M6 16l9-9 3 3-9 9H6z',search:'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z M21 21l-4.3-4.3',
+ grid4:'M4 4h6v6H4z M14 4h6v6h-6z M4 14h6v6H4z M14 14h6v6h-6z',
+ restore:'M3 12a9 9 0 1 0 3-6.7L3 8 M3 3v5h5',calc:'M5 2h14v20H5z M8 6h8v4H8z M8 14h.01 M12 14h.01 M16 14h.01 M8 18h.01 M12 18h.01 M16 18h.01',
+ clock:'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M12 6v6l4 2',user:'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
+ cal:'M3 5h18v16H3z M16 3v4 M8 3v4 M3 10h18',cam:'M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z M12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
+ msg:'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',music:'M9 18V5l12-2v13 M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M18 19a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
+ phone:'M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z',
+ gear:'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z',
+ mail:'M4 4h16v16H4z M22 6l-10 7L2 6',globe:'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M2 12h20 M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20',
+ map:'M12 22s-7-6.2-7-12a7 7 0 0 1 14 0c0 5.8-7 12-7 12z M12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z',
+ note:'M15 3H5v18h14V7z M15 3v4h4',flow:'M4 4h6v6H4z M14 14h6v6h-6z M7 10v4a2 2 0 0 0 2 2h5',wallet:'M3 7h18v13H3z M3 7l14-4v4 M16 14h.01',
+ starO:'M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z',bell:'M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9 M13.7 21a2 2 0 0 1-3.4 0',
+};
+const ic=(n,c='')=>`<svg class="i ${c}" viewBox="0 0 24 24" aria-hidden="true"><path d="${P[n]}"/></svg>`;
+const icFill=(n,c='')=>`<svg class="i ${c}" viewBox="0 0 24 24" aria-hidden="true" style="fill:currentColor"><path d="${P[n]}"/></svg>`;
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const IMG=n=>`/apps/app/src/prototype/fixtures/img/${n}.webp`;
+const NOW=new Date('2026-11-06T09:41:00');
+const day=(d,h=12,m=0)=>{const x=new Date(NOW);x.setDate(x.getDate()-d);x.setHours(h,m,0,0);return x};
+const fmtDay=d=>{const diff=Math.round((new Date(NOW.toDateString())-new Date(d.toDateString()))/864e5);if(diff===0)return'Today';if(diff===1)return'Yesterday';if(diff<7)return d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});if(d.getFullYear()===NOW.getFullYear())return d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});return d.toLocaleDateString('en-US',{month:'long',year:'numeric'})};
+const fmtTime=d=>d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+const fmtShort=d=>{const s=fmtDay(d);return s==='Today'?fmtTime(d):s.replace(/^\w+, /,'')};
+const pad=n=>String(n).padStart(2,'0');
+const ymd=d=>`${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}`;
+
+/* ------------------------------------------------------------- mock device */
+let DB;
+function seed(){
+ const ph=[];let k=0;
+ const plan=[[0,[1,2,3,4,5]],[1,[6,7,8,9,10,11]],[6,[12,13,14,15,16,17,18,19,20]],[5,[21,22,23,24,25,26]],[19,[27,28,29,30,31,32]]];
+ for(const [d,ns] of plan){ns.forEach((n,i)=>{const id='p'+pad(n);const date=day(d,d===0?8-i:17-i,10+i*3);ph.push({id,src:IMG(id),date,kind:[8,15,24].includes(n)?'video':'image',dur:[8,15,24].includes(n)?['0:14','1:02','0:38'][[8,15,24].indexOf(n)]:'',fav:[3,12,22].includes(n),trashed:null,albums:[...(d===6||d===5?['Big Sur']:[]),...(n===30?['Screenshots']:[])],folder:n===30?'Pictures/Screenshots':'DCIM/Camera',name:(n===30?'Screenshot_':[8,15,24].includes(n)?'VID_':'IMG_')+ymd(date)+'_'+pad(9+i)+pad(10+k++)+'00'+([8,15,24].includes(n)?'.mp4':n===30?'.png':'.jpg'),size:(2+((n*7)%30)/10).toFixed(1)+' MB'})})}
+ ph.push({id:'cam_poster',src:IMG('cam_poster'),date:day(9,15),kind:'image',dur:'',fav:false,trashed:day(2),albums:[],folder:'DCIM/Camera',name:'IMG_20261028_150000.jpg',size:'2.2 MB'});
+ const notes=[
+  {id:'n1',title:'Term sheet questions',body:'Ask about the liquidation preference.\nPro-rata rights for the seed round?\nBoard composition after Series A.',folder:'Work',kind:'text',updated:day(0,8,20),pinned:true},
+  {id:'n2',title:'Groceries',kind:'list',items:[['Oat milk',true],['Lemons',false],['Sourdough',false],['Coffee beans',false]],folder:'Personal',updated:day(1,18),pinned:false},
+  {id:'n3',title:'Voice note',kind:'voice',dur:'4:12',body:'Okay, quick recap of the design review. Camera header loses the extra buttons, photos gets day headers, and files needs a real folder tree instead of the picker…',folder:'Work',updated:day(1,11,5),pinned:false},
+  {id:'n4',title:'Big Sur trip',body:'Kirk Creek campsite booked Oct 31.\nBring: headlamps, the good stove, layers.\nStop at Nepenthe on the way back.',folder:'Personal',kind:'text',updated:day(8,21),pinned:false},
+  {id:'n5',title:'Ideas for the onboarding',body:'Let the first conversation set up accounts instead of a wizard.\nShow one card at a time.',folder:'Ideas',kind:'text',updated:day(12,9),pinned:false},
+  {id:'n6',title:'Wifi password for the studio',body:'Network: studio-5g',folder:null,kind:'text',updated:day(20,14),pinned:false},
+  {id:'n7',title:'Old meeting notes',body:'Moved to the shared doc.',folder:'Work',kind:'text',updated:day(25,10),pinned:false,deleted:day(1)},
+ ];
+ const fs={name:'Internal storage',kids:{
+  'Alarms':{kids:{}},
+  'DCIM':{kids:{'Camera':{kids:{}}}},
+  'Documents':{kids:{'Scans':{kids:{'Scan 2026-11-04.pdf':{mime:'application/pdf',size:'640 KB',date:day(2,16)}}},'Lease renewal.pdf':{mime:'application/pdf',size:'1.2 MB',date:day(14,10)},'Q4 budget.xlsx':{mime:'application/vnd.ms-excel',size:'88 KB',date:day(4,9)}}},
+  'Download':{kids:{'term-sheet-v3.pdf':{mime:'application/pdf',size:'312 KB',date:day(0,8)},'boarding-pass.pdf':{mime:'application/pdf',size:'96 KB',date:day(3,19)},'invoice-1042.pdf':{mime:'application/pdf',size:'54 KB',date:day(5,12)},'wallpaper.png':{mime:'image/png',size:'4.8 MB',date:day(9,22),src:IMG('p31')}}},
+  'Movies':{kids:{}},'Music':{kids:{}},
+  'Pictures':{kids:{'Screenshots':{kids:{}}}},
+  'Recordings':{kids:{'Interview 2026-11-03.m4a':{mime:'audio/mp4',size:'7.9 MB',date:day(3,15)}}},
+  'Ringtones':{kids:{}},
+ }};
+ // media files live in the tree too
+ for(const p of ph){if(p.trashed)continue;const parts=p.folder.split('/');let n=fs;for(const s of parts)n=n.kids[s];n.kids[p.name]={mime:p.kind==='video'?'video/mp4':p.name.endsWith('.png')?'image/png':'image/jpeg',size:p.size,date:p.date,src:p.src,photo:p.id}}
+ const ftrash=[{name:'old-draft.docx',mime:'application/msword',size:'40 KB',date:day(3),from:'Documents',deleted:day(3)}];
+ return {photos:ph,notes,folders:['Personal','Work','Ideas'],fs,ftrash,captures:0,home:['phone','messages','inbox','calendar','browser','camera','photos','maps','notes','contacts','files','wallet','workflows','settings'],hidden:[],homeAndroid:[]};
+}
+function load(){try{const s=localStorage.getItem('vr.db');if(s){DB=JSON.parse(s,(k,v)=>typeof v==='string'&&/^\d{4}-\d\d-\d\dT/.test(v)?new Date(v):v);return}}catch{}DB=seed()}
+function save(){try{localStorage.setItem('vr.db',JSON.stringify(DB))}catch{}}
+load();
+
+/* ------------------------------------------------------------- review state */
+let REV={};try{REV=JSON.parse(localStorage.getItem('vr.review')||'{}')}catch{}
+const saveRev=()=>localStorage.setItem('vr.review',JSON.stringify(REV));
+
+/* ------------------------------------------------------------ view configs */
+const VIEWS=[
+ {key:'camera',label:'Camera',intro:'The header keeps only Back and Flash. The viewfinder appears on the first real frame, with no status pill. Capture writes straight to MediaStore and returns a thumbnail. Try the shutter, the Video mode, Flip and the zoom chips; then tap the thumbnail. Photos you take here appear in <b>Photos › Today</b> and in <b>Files › Images › Camera</b>.',
+  shots:[{f:'camera-after-capture',l:'Viewfinder',m:[[65.5,2.8,1],[78.6,2.8,2],[91.7,2.8,3],[24,2.8,4],[34,66.3,5]]},{f:'camera',l:'Blocked camera',m:[[65.5,2.8,1],[78.6,2.8,2],[91.7,2.8,3]]}],
+  changes:[
+   ['−','“Choose image” header button removed (1)'],['−','“Scan document” header button removed (2)'],['−','“Ask Alpha about this” alpha button removed (3). Asking about the frame still works through the chat pill, which can capture a frame'],['−','“Camera” title removed (4); the header is Back + Flash, like system camera apps'],
+   ['±','Zoom chips (5) come from the bound lens’s real range: no “.5” on lenses without ultra-wide, and only 1× on the front camera'],['−','Video hint “Stops and saves when you leave. Maximum 5 minutes or 100 MB.” removed; the limit appears only when reached'],['−','“Starting camera…” / “Saving photo…” pills removed; the first frame fades in and the shutter flashes'],
+   ['+','Faster start: prewarm CameraX, bind Preview + ImageCapture only, resolve on the first frame, restore settings in parallel'],['+','Faster shutter: write straight to MediaStore and return a small thumbnail instead of base64 of the full JPEG'],['+','Fixes: focus no longer blocks the shutter; leaving mid-capture can’t wedge the shutter; flip with flash on works; an agent capture during start is queued'],
+  ],
+  decisions:[{id:'C1',q:'Keep Scan as a camera mode?',o:['Keep Video · Photo · Scan (recommended)','Remove Scan; Video · Photo only'],r:0},{id:'C2',q:'Where should new captures be saved?',o:['DCIM/Camera, the Android standard (chosen)','Keep Pictures/ (current)'],r:0}],
+  tla:{file:'specs/camera-session/Spec.tla',vars:'view, vis, chat, phase∈{off,starting,ready,error}, perm, mode, lens, zoom, flash, capture∈{idle,photo,recStarting,recording,finalizing}, focusBusy, pendingAgentCapture, epoch, media, thumb',acts:'Open, Leave, Background, Resume, ChatOpen/Close, PermissionResult, FirstFrame, StartFail, Shutter, CaptureDone/Fail, RecStart/Stop/Limit, Flip, Zoom, Flash, Focus, FocusDone, AgentCapture, ProcessDeath',inv:'NoLostShutter · NoStuckCapture · SavedIsShown · NoOrphanRecording · LensSettingsValid · StaleEpochIgnored; liveness: OpenReachesPreviewOrError, AgentCaptureSettles, RecordingFinalizes'}},
+ {key:'photos',label:'Photos',intro:'Day headers and a denser 4-column grid replace the “Captured on this device” label and the lone flush tile. The search box is gone: tap <b>Ask Alpha</b> in the pill and pick a request, and the grid filters with a chip you can clear. Select via the <b>Select</b> button or a long press (hold a tile). Open a photo and use the arrows or ← → keys; tap the photo to hide the controls.',
+  shots:[{f:'photos',l:'Library',m:[[57.6,2.8,1],[78.6,2.8,2],[91.7,2.8,3],[23.7,8.1,4],[16.5,17.3,5]]},{f:'photos-select',l:'Select',m:[[22,2.8,6],[50,86.2,7]]}],
+  changes:[
+   ['±','Icon-only Library/Albums toggle (1) becomes text tabs “Library · Albums”'],['−','Search icon and box (2) removed; Ask Alpha filters the grid and shows a clearable chip'],['±','Select check icon (3) becomes a “Select” text button; a long press also selects'],
+   ['−','“Captured on this device” / “Permitted library · up to 240 loaded items” / “N matches so far” (4) removed; day headers instead'],['±','Grid (5): 4 columns (pinch for 3/5), 2 px gaps, sticky day headers, top inset. Edge-to-edge as in iOS and Google Photos (inset variant to compare)'],
+   ['±','Select mode (6): “N selected”, Select all, no 20-item cap, drag to extend'],['±','Selection bar (7): Share · Favorite (toggles) · Add to album · Delete, in place of the chat pill'],
+   ['±','Viewer: the title is the date and time instead of “Captured photo · W × H · saved to Android Photos”; swipe and tap now work; Info shows file, size, dimensions, album'],
+   ['−','Editor status “Saves a new copy · original unchanged · reduced to N px…” removed'],['±','Albums: Favorites, Videos, Screenshots, Camera, then yours with covers. “Device library (Full access)” removed; Recently deleted sits at the bottom'],
+   ['−','Access strip “Only photos and videos saved by Alpha” replaced by one “Allow access to all photos” row, shown only when access is partial'],
+   ['+','One catalog: newest-first paging (fixes the newest photos falling off at 240); external changes no longer clear your selection or close the viewer'],
+  ],
+  decisions:[{id:'P1',q:'Grid presentation',o:['Edge-to-edge, 2 px gaps, as in iOS and Google Photos (recommended)','Inset with rounded tiles'],r:0,sim:'grid'},{id:'P2',q:'Search',o:['No search box; Ask Alpha filters (recommended)','Keep a search icon that opens Ask Alpha prefilled'],r:0}],
+  tla:{file:'specs/photos-library/Spec.tla',vars:'items(id→{trashed,fav,albums,rev}), window, tab, selection, viewer, filter, pending, access∈{none,partial,full}, storeEvents',acts:'Load/Page, StoreInsert/Delete/Update, EnterSelect, Toggle, DragSelect, SelectAll, Share, FavoriteToggle, Trash/Undo, Restore, DeleteForever, AgentFilter/Clear, AgentSelect, AgentReviewApply, OpenViewer, Swipe, AccessChange, Background',inv:'SelectionSubsetOfVisible · NoActionOnStaleRev · TrashReversibleUntilExpiry · DeleteForeverOnlyConfirmed · NewestNeverDropped · ViewerShowsExistingItem · FilterIsReadOnly; liveness: pending ops settle, selection survives unrelated store events'}},
+ {key:'notes',label:'Notes',intro:'Folders are chips across the top; <b>Recently deleted</b> is the last folder and appears only when it has something in it. The trash icon, the import icon and the Search pill are gone. Tap the mic: the recorder counts up with no limit, has a live waveform and Pause, and carries no instructions (use “+10 min” in the panel to jump ahead). Open a note and use ⋯ for Pin, Move and Delete.',
+  shots:[{f:'notes',l:'List',m:[[52.4,2.8,1],[65.5,2.8,2],[78.6,2.8,3],[50,9.2,4],[50,30.2,5]]},{f:'notes-record',l:'Recorder',m:[[50,21.6,6],[48,79.5,7]]},{f:'notes-trash',l:'Trash',m:[[50,8.7,8]]}],
+  changes:[
+   ['±','Record (1) stays as a mic icon next to New note'],['−','Import text note icon (2) removed from the header (it’s test-build only)'],['±','Trash icon (3) removed; “Recently deleted” becomes the last folder chip'],
+   ['−','Search pill (4) removed; Ask Alpha finds notes and shows a clearable chip'],['−','“No notes yet. Create a note to get started.” (5) removed'],
+   ['±','Recorder: flat dotted line / “Waveform levels are unavailable” (6) replaced by a live waveform from native mic peaks'],
+   ['−','“Record up to 29 seconds…” and ~25 route-specific privacy lines (7) removed. No length limit: native recording streams to file and ASR transcribes in segments'],
+   ['−','“Deleted notes stay here for 3 days, then they are deleted permanently.” (8) removed; each row shows days left. Retention goes to 30 days'],
+   ['+','Folders: All · Personal · Work · Ideas · +. Move a note via ⋯ → Move to'],['±','List: one column with title, date and two-line preview; pinned notes first'],
+   ['±','Editor toolbar: Checklist · Share · ⋯ (Pin, Move to, Delete). Read aloud and Dictate go through Alpha'],
+  ],
+  decisions:[{id:'N1',q:'Organisation',o:['Folders, one per note, as in Apple Notes (recommended)','Labels, many per note, as in Google Keep'],r:0},{id:'N2',q:'Recently deleted retention',o:['30 days (chosen)','7 days','Keep 3 days'],r:0},{id:'N3',q:'List layout',o:['One-column list (recommended)','Two-column cards'],r:0,sim:'nlayout'}],
+  tla:{file:'specs/notes-view/Spec.tla (extends notes-merge)',vars:'folders, noteFolder, rec∈{idle,recording,paused,finalizing}, audioBytes, asrCommitted, asrPending, filter, screen∈{list,editor,recorder,deleted}',acts:'Record, Pause, Resume, Stop, Discard, ChunkCommit, AsrPartial, AsrFinal, ProcessDeath, ScreenOff, MoveToFolder, DeleteFolder, Trash, Restore, Expire, AgentFilter, AgentMove(reviewed), AgentRecord',inv:'NoLengthLimit · CrashKeepsAudio · TranscriptPrefixOfAudio · FolderDeleteKeepsNotes · TrashedNotInFolders · RestoreReturnsToFolder · AgentMoveOnlyReviewed; liveness: RecordingFinalizes, AsrSettles, ExpiredPurged'}},
+ {key:'files',label:'Files',intro:'<b>Root cause:</b> today none of the tiles lists a folder. Each opens the system picker with only a MIME filter, so the picker shows its own Recent view and a camera photo shows up under “Downloads”. After: categories are real queries and Internal storage is a real tree. Take a photo in the Camera tab, then check that it’s in Images › Camera and DCIM › Camera, but not in Downloads.',
+  shots:[{f:'files',l:'Files',m:[[25,16.7,1],[26,28.4,2],[26,45,3],[73.7,44,4],[26,56.6,5],[73.7,58.5,6],[48,68.6,7],[91.7,2.8,8]]},{f:'files-downloads',l:'After tapping Downloads',m:[]}],
+  changes:[
+   ['−','Instruction subtitles (“Choose any file · open the Downloads folder in the picker”…) removed (1)'],['−','Receipts tile removed (2); it was a fixture concept with no real data'],['−','Photos tile (“Choose a photo”) removed (3); Images is a category'],['−','App files and Import folder removed (4, 5); they’re browser/dev only'],
+   ['±','Storage tile (6) becomes the Internal storage row with free space, which opens the real folder tree'],['−','“No recent files…” (7) removed; no Recents section'],['−','Search icon (8) removed; Ask Alpha finds files'],
+   ['+','Categories: Downloads (the Download/ folder only), Images, Videos, Audio, Documents, each a real query'],['+','Folder view: breadcrumbs, sort, long press to select; Share, Move, Copy, Delete to Trash'],['+','Trash with restore (MediaStore trash)'],
+  ],
+  decisions:[{id:'F1',q:'Storage access for a real file browser',o:['All-files access: pre-granted to the launcher on the AOSP image; the standalone APK asks during startup setup (chosen)','MediaStore only: other apps’ downloads and documents invisible','SAF grant per root: system picker per root; can’t reach Download/ on Android 11+'],r:0},{id:'F2',q:'Recents',o:['Drop Recents entirely (recommended)','Keep a small Recent row on Browse'],r:0}],
+  tla:{file:'specs/files-browser/Spec.tla',vars:'fs(path→{kind,mime,trashed}), cwd, root∈{category,storage,trash}, selection, op, filter, access',acts:'Navigate, Up, OpenCategory, Select, Move, Copy, Rename, Trash, Restore, EmptyTrash, ExternalCreate/Delete, AgentFilter, AgentMove(reviewed), AccessRevoke',inv:'CategoryIsQuery (a camera JPEG is never in Downloads) · DownloadsIsFolder · MoveConservesFiles · NoOverwriteWithoutConfirm · TrashReversible · SelectionExists · FilterIsReadOnly; liveness: listings converge after external change'}},
+ {key:'apps',label:'Apps',intro:'“All apps” becomes <b>Apps</b> and lists only installed Android apps (the AOSP set on the image plus anything you install). The product views are already on Home, so they’re no longer listed. Home layout moves to Home itself: long-press a Home icon to remove it, or long-press an app in Apps to add it to Home. The app list here is illustrative; the real one comes from the device.',
+  shots:[{f:'home',l:'Home',m:[[61.5,72.3,1]]},{f:'all-apps',l:'All apps',m:[[17,3.7,2],[76.5,3.7,3],[81.3,20,4],[24,40,5]]}],
+  changes:[
+   ['±','Home tile “All apps” (1) becomes “Apps”'],['±','Drawer title “All apps” (2) becomes “Apps”'],['−','Count “14 APPS” (3) removed'],['−','Up/down/star controls on every row (4) removed'],
+   ['−','Product views (5) removed from the drawer, since they’re already on Home'],['+','Installed Android apps as a 4-column icon grid, alphabetical, with search'],['+','Long-press an app: Add to Home, App info. Long-press Home: rearrange or remove; “+” restores hidden views'],
+  ],
+  decisions:[{id:'A1',q:'Drawer layout',o:['4-column icon grid, standard launcher (recommended)','Single-column list'],r:0,sim:'alayout'}],
+  tla:null},
+];
+
+/* ------------------------------------------------------------ page shell */
+const main=document.getElementById('main'),tabs=document.getElementById('tabs');
+let current=localStorage.getItem('vr.tab')||'camera';
+function buildPage(){
+ tabs.innerHTML=[...VIEWS.map(v=>v.key),'plan'].map(k=>`<button role="tab" data-k="${k}" aria-selected="${k===current}">${k==='plan'?'Plan & decisions':VIEWS.find(v=>v.key===k).label}</button>`).join('');
+ main.innerHTML=VIEWS.map(v=>`<section class="view" id="v-${v.key}">
+  <p class="intro">${v.intro}</p>
+  <div class="pair">
+   <figure><figcaption><span class="tag">Before</span> current build</figcaption>
+    <div class="phone before" id="b-${v.key}"></div>
+    <div class="shots" id="bs-${v.key}"></div></figure>
+   <figure><figcaption><span class="tag after">After</span> interactive</figcaption>
+    <div class="phone" id="a-${v.key}"></div>
+    <div class="shots" id="as-${v.key}"></div></figure>
+   <aside id="x-${v.key}"></aside>
+  </div></section>`).join('')+`<section class="view" id="v-plan"></section>`;
+ tabs.onclick=e=>{const b=e.target.closest('button');if(!b)return;current=b.dataset.k;localStorage.setItem('vr.tab',current);show()};
+ VIEWS.forEach(v=>{renderBefore(v,0);renderAside(v)});
+ renderPlan();
+ show();
+}
+function show(){[...tabs.children].forEach(b=>b.setAttribute('aria-selected',b.dataset.k===current));document.querySelectorAll('.view').forEach(s=>s.classList.toggle('on',s.id==='v-'+current));if(R[current])R[current]()}
+function renderBefore(v,i){
+ const s=v.shots[i],el=document.getElementById('b-'+v.key);
+ el.innerHTML=`<img src="before/${s.f}.png" alt="Before: ${esc(v.label)} ${esc(s.l)}">`+s.m.map(([x,y,n])=>`<span class="mk" style="left:${x}%;top:${y}%">${n}</span>`).join('');
+ document.getElementById('bs-'+v.key).innerHTML=v.shots.map((s,j)=>`<button aria-pressed="${i===j}" data-j="${j}">${esc(s.l)}</button>`).join('');
+ document.getElementById('bs-'+v.key).onclick=e=>{const b=e.target.closest('button');if(b)renderBefore(v,+b.dataset.j)};
+}
+function renderAside(v){
+ const r=REV[v.key]||(REV[v.key]={ok:{},dec:{},cm:''});
+ const x=document.getElementById('x-'+v.key);
+ const kind={'−':'Removed','+':'Added','±':'Changed'};
+ x.innerHTML=`<h3>${v.label}: what changes</h3><p class="muted" style="margin:0 0 6px;font-size:12.5px">Red numbers match the markers on the before screenshot. Tick each change you approve.</p>
+ <ul class="chg">${v.changes.map(([k,t],i)=>{const n=(t.match(/\((\d)(?:, (\d))?\)/)||[]);return `<li><input type="checkbox" data-i="${i}" ${r.ok[i]?'checked':''} aria-label="Approve change ${i+1}"><span class="n ${k==='−'?'':'add'}" title="${kind[k]}">${k}</span><span>${t}</span></li>`}).join('')}</ul>
+ <h4>Decisions</h4>${v.decisions.map(d=>`<div class="dec"><b>${d.id} · ${d.q}</b>${d.o.map((o,j)=>`<label><input type="radio" name="${d.id}" value="${j}" ${(r.dec[d.id]??d.r)==j?'checked':''}><span>${o}</span></label>`).join('')}</div>`).join('')}
+ ${v.key==='camera'?camSteps():''}
+ ${v.key==='photos'?`<h4>Simulate</h4><div class="sim" id="sim-photos"><span class="muted" style="align-self:center">Pinch:</span>${[3,4,5].map(c=>`<button data-cols="${c}" aria-pressed="${PH.cols===c}">${c} columns</button>`).join('')}</div>`:''}
+ ${v.key==='notes'?`<h4>Simulate</h4><div class="sim" id="sim-notes"><button data-jump="1">Recorder: +10 min</button></div>`:''}
+ ${v.tla?`<details><summary>TLA+ model · <code>${v.tla.file}</code></summary><p><b>State:</b> ${v.tla.vars}</p><p><b>Actions:</b> ${v.tla.acts}</p><p><b>Checked properties:</b> ${v.tla.inv}</p><p class="muted">Each spec first runs the as-built configuration to reproduce the bugs listed above, then runs the fixed design. Implementation follows the checked design.</p></details>`:`<details><summary>Model</summary><p>The drawer is a pure projection of <code>DeviceApps.list</code> minus <code>alpha:</code> keys, so a unit test covers it; it needs no TLA+ spec. Home edit mode is covered by the existing launcher tests plus new ones.</p></details>`}
+ <h4>Comments</h4><textarea class="cm" placeholder="Anything to change before implementation?">${esc(r.cm||'')}</textarea>`;
+ x.onchange=e=>{const t=e.target;if(t.type==='checkbox')r.ok[t.dataset.i]=t.checked;if(t.type==='radio'){r.dec[t.name]=+t.value;const d=v.decisions.find(d=>d.id===t.name);if(d.sim==='grid'){PH.style=t.value==='1'?'inset':'edge';R.photos()}if(d.sim==='nlayout'){NT.layout=t.value==='1'?'grid':'list';R.notes()}if(d.sim==='alayout'){AP.layout=t.value==='1'?'list':'grid';R.apps()}}saveRev()};
+ x.oninput=e=>{if(e.target.classList.contains('cm')){r.cm=e.target.value;saveRev()}};
+ x.onclick=e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.cols){PH.cols=+b.dataset.cols;x.querySelectorAll('[data-cols]').forEach(y=>y.setAttribute('aria-pressed',y===b));R.photos()}if(b.dataset.jump){NT.recT+=600;if(NT.screen!=='recorder'){NT.screen='recorder';NT.recT=600;NT.paused=false;startRec()}R.notes()}};
+}
+function camSteps(){return `<h4>Start sequence (native)</h4><div class="steps"><div class="bad"><b style="font-size:12.5px">Today, sequential</b><ol><li>render → rAF → <code>sync()</code></li><li>await previous stop</li><li>bridge → stop again → permission</li><li><code>ProcessCameraProvider</code> cold init</li><li>bind Preview + ImageCapture(max quality) + VideoCapture</li><li>restore WB → exposure → EV → zoom → flash → focus, one after another</li><li>JS <code>mask()</code> DOM walk; viewfinder black until here</li><li>40 base64 thumbnails over the bridge for one tile</li></ol></div><div class="good"><b style="font-size:12.5px">Proposed</b><ol><li>CameraX provider prewarmed at app start</li><li>bind Preview + ImageCapture (min latency); Video binds on mode switch</li><li>resolve on first frame; settings restore in parallel, defaults skipped</li><li>unmask on first frame</li><li>last thumbnail: <code>limit:1</code>, after ready</li><li>chat sheet &lt; 10 s keeps the session</li></ol></div></div><p class="muted" style="font-size:12.5px">Targets to measure on the Pixel 10a: cold first frame &lt; 400 ms, warm &lt; 200 ms, shutter → thumbnail &lt; 250 ms. Today’s numbers are measured in phase 0; this review doesn’t claim any.</p>`}
+
+/* --------------------------------------------------------- phone helpers */
+const sb=(dark)=>`<div class="sb ${dark?'dark':''}"><span>9:41</span><span style="display:flex;gap:6px;align-items:center">${'<svg width="16" height="11" viewBox="0 0 16 11"><path d="M1 10h2V7H1zM5 10h2V5H5zM9 10h2V3H9zM13 10h2V1h-2z" fill="currentColor"/></svg>'}<svg width="22" height="11" viewBox="0 0 22 11"><rect x=".5" y=".5" width="18" height="10" rx="3" fill="none" stroke="currentColor" opacity=".5"/><rect x="2" y="2" width="13" height="7" rx="1.5" fill="currentColor"/></svg></span></div>`;
+const pill=()=>`<div class="apill"><span class="orb"></span><button class="ib" data-a="ask" aria-label="Ask Alpha (type)" style="width:40px;height:40px">${ic('kb')}</button><button class="ib" data-a="ask" aria-label="Ask Alpha (voice)" style="width:40px;height:40px">${ic('mic')}</button></div>`;
+function overlays(S){
+ let h='';
+ if(S.ask)h+=`<div class="scrim" data-a="closeask"></div><div class="sheet"><div class="grab"></div><h3>Ask Alpha</h3>${S.ask.map((s,i)=>`<button class="sug" data-a="sug" data-i="${i}">“${esc(s.t)}”${s.d?`<small>${esc(s.d)}</small>`:''}</button>`).join('')}</div>`;
+ if(S.reply)h+=`<div class="reply"><span class="o"></span><div>${S.reply}</div></div>`;
+ if(S.review)h+=`<div class="scrim"></div><div class="review"><b>${esc(S.review.t)}</b><div class="muted" style="font-size:13px">${esc(S.review.d||'')}</div><div class="row"><button class="sec" data-a="rvno">Cancel</button><button class="pri" data-a="rvok">${esc(S.review.ok||'Confirm')}</button></div></div>`;
+ if(S.toast)h+=`<div class="toast"><span>${esc(S.toast.t)}</span>${S.toast.undo?`<button class="act" data-a="undo">Undo</button>`:''}</div>`;
+ return h;
+}
+function flash(S,key,msg,ms=2600){S[key]=msg;R[S.k]();clearTimeout(S['_'+key]);S['_'+key]=setTimeout(()=>{S[key]=null;R[S.k]()},ms)}
+function bindPhone(el,S,handlers){
+ el.onclick=e=>{const b=e.target.closest('[data-a]');if(!b||!el.contains(b))return;const a=b.dataset.a;
+  if(a==='ask'){S.ask=S.suggest();S.reply=null;R[S.k]();return}
+  if(a==='closeask'){S.ask=null;R[S.k]();return}
+  if(a==='sug'){const s=S.ask[+b.dataset.i];S.ask=null;s.run();return}
+  if(a==='rvno'){S.review=null;R[S.k]();return}
+  if(a==='rvok'){const f=S.review.run;S.review=null;f();return}
+  if(a==='undo'){const f=S.toast&&S.toast.undo;S.toast=null;if(f)f();R[S.k]();return}
+  handlers[a]&&handlers[a](b,e)};
+}
+function longPress(el,sel,fn){let t=null,fired=false;el.addEventListener('pointerdown',e=>{const n=e.target.closest(sel);if(!n)return;fired=false;t=setTimeout(()=>{fired=true;fn(n,e)},450)});['pointerup','pointerleave','pointercancel'].forEach(ev=>el.addEventListener(ev,()=>clearTimeout(t)));el.addEventListener('click',e=>{if(fired){e.stopPropagation();e.preventDefault();fired=false}},true)}
+const R={};
+
+/* ================================================================ CAMERA */
+const CM={k:'camera',mode:'photo',lens:'back',zoom:'1',flash:false,rec:false,recT:0,fx:false,ready:false,cold:true};
+let camTimer=null;
+R.camera=()=>{
+ const el=document.getElementById('a-camera');const S=CM;
+ const last=DB.photos.filter(p=>!p.trashed).sort((a,b)=>b.date-a.date)[0];
+ const lensImg=S.lens==='back'?IMG('cam_park'):IMG('cam_selfie');
+ const scale={'.5':1,'1':1.0,'2':1.5,'5':2.4}[S.zoom]||1;
+ const zooms=S.lens==='back'?['.5','1','2','5']:['1'];
+ if(S.view==='viewer'){el.innerHTML=`<div class="scr cam">${photoViewerHTML(S.vi,true)}${overlays(S)}</div>`;bindViewer(el,S,()=>{S.view=null;R.camera()});return}
+ el.innerHTML=`<div class="scr cam dark">${sb(true)}
+  <div class="hdr" style="height:56px"><button class="ib" aria-label="Back to apps">${ic('back')}</button><span style="flex:1"></span>${S.mode!=='scan'?`<button class="ib" data-a="flash" aria-label="Flash ${S.flash?'on':'off'}" aria-pressed="${S.flash}" style="${S.flash?'color:#ffd60a':''}">${ic(S.flash?'flash':'flashOff')}</button>`:''}</div>
+  <div class="vf">${S.rec?`<span class="recchip">● ${Math.floor(S.recT/60)}:${pad(S.recT%60)}</span>`:''}
+   <img src="${lensImg}" alt="Viewfinder" style="opacity:${S.ready?1:0};transform:scale(${S.lens==='back'?scale:1})">
+   ${S.mode==='scan'?'<div class="docframe"></div>':''}
+   <div class="flashfx ${S.fx?'go':''}"></div>
+   ${S.mode!=='scan'&&!S.rec?`<div class="zoom">${zooms.map(z=>`<button data-a="zoom" data-z="${z}" aria-pressed="${S.zoom===z}">${z==='1'?'1×':z}</button>`).join('')}</div>`:''}
+  </div>
+  <div class="modes">${S.rec?'<span style="height:19px"></span>':['video','photo','scan'].filter(m=>m!=='scan'||(REV.camera?.dec?.C1??0)==0).map(m=>`<button data-a="mode" data-m="${m}" aria-pressed="${S.mode===m}">${m[0].toUpperCase()+m.slice(1)}</button>`).join('')}</div>
+  <div class="ctl"><button class="thumb" data-a="thumb" aria-label="Open last photo">${last?`<img src="${last.src}" alt="">`:''}</button>
+   <button class="shutter ${S.mode==='video'?'vid':''} ${S.rec?'rec':''}" data-a="shutter" aria-label="${S.mode==='video'?(S.rec?'Stop recording':'Start recording'):S.mode==='scan'?'Scan':'Take photo'}"><i></i></button>
+   ${S.rec||S.mode==='scan'?'<span style="width:52px"></span>':`<button class="flip" data-a="flip" aria-label="Switch camera">${ic('restore')}</button>`}</div>
+ </div>${overlays(S)}`;
+ if(!S.ready){setTimeout(()=>{S.ready=true;R.camera()},S.cold?380:160);S.cold=false}
+ bindPhone(el,S,{
+  flash:()=>{S.flash=!S.flash;R.camera()},
+  zoom:b=>{S.zoom=b.dataset.z;R.camera()},
+  mode:b=>{if(S.mode===b.dataset.m)return;S.mode=b.dataset.m;R.camera()},
+  flip:()=>{S.lens=S.lens==='back'?'front':'back';S.zoom='1';S.ready=false;R.camera()},
+  thumb:()=>{const l=DB.photos.filter(p=>!p.trashed).sort((a,b)=>b.date-a.date);if(!l.length)return;S.view='viewer';S.list=l;S.vi=0;S.hide=false;R.camera()},
+  shutter:()=>{
+   if(S.mode==='video'){if(!S.rec){S.rec=true;S.recT=0;camTimer=setInterval(()=>{S.recT++;R.camera()},1000);R.camera()}else{clearInterval(camTimer);S.rec=false;addCapture('video',`0:${pad(Math.min(S.recT,59))}`);R.camera()}return}
+   if(S.mode==='scan'){S.fx=true;R.camera();setTimeout(()=>{S.fx=false;flash(S,'reply','Scanned 1 page. Want it saved as a PDF in Documents › Scans, or turned into a note?',3600)},260);return}
+   S.fx=true;addCapture('image');R.camera();setTimeout(()=>{S.fx=false},300)},
+ });
+ S.suggest=()=>[
+  {t:'What am I looking at?',d:'Captures one frame and asks about it (replaces the alpha header button)',run:()=>flash(S,'reply','A city park on a hill with palm trees and the downtown skyline behind it. Want me to save a photo?',4200)},
+  {t:'Take a photo',d:'camera_capture_photo, the existing agent action',run:()=>{S.fx=true;addCapture('image');R.camera();setTimeout(()=>{S.fx=false;flash(S,'reply','Took a photo. It’s in Photos.')},300)}},
+  {t:'Scan this receipt',d:'Switches to Scan mode',run:()=>{S.mode='scan';R.camera();flash(S,'reply','Scan mode. Hold the receipt inside the frame and tap the shutter.')}},
+ ];
+};
+function addCapture(kind,dur=''){
+ DB.captures++;const now=new Date(NOW.getTime()+DB.captures*60000);
+ const src=CM.lens==='back'?IMG('cam_park'):IMG('cam_selfie');
+ const name=(kind==='video'?'VID_':'IMG_')+ymd(now)+'_'+pad(now.getHours())+pad(now.getMinutes())+pad(DB.captures)+(kind==='video'?'.mp4':'.jpg');
+ const id='cap'+DB.captures;
+ DB.photos.push({id,src,date:now,kind,dur,fav:false,trashed:null,albums:[],folder:'DCIM/Camera',name,size:kind==='video'?'18.4 MB':'3.4 MB',fresh:true});
+ DB.fs.kids.DCIM.kids.Camera.kids[name]={mime:kind==='video'?'video/mp4':'image/jpeg',size:kind==='video'?'18.4 MB':'3.4 MB',date:now,src,photo:id};
+ save();
+}
+
+/* ================================================================ PHOTOS */
+const PH={k:'photos',tab:'lib',cols:4,style:'edge',sel:null,filter:null,album:null,view:null,info:false,hide:false};
+function visiblePhotos(){
+ let l=DB.photos.filter(p=>!p.trashed);
+ if(PH.album==='Favorites')l=l.filter(p=>p.fav);else if(PH.album==='Videos')l=l.filter(p=>p.kind==='video');else if(PH.album==='Camera')l=l.filter(p=>p.folder==='DCIM/Camera');else if(PH.album&&PH.album!=='__deleted')l=l.filter(p=>p.albums.includes(PH.album));
+ if(PH.album==='__deleted')l=DB.photos.filter(p=>p.trashed);
+ if(PH.filter)l=l.filter(PH.filter.fn);
+ return l.sort((a,b)=>b.date-a.date);
+}
+function groupByDay(l){const g=[];for(const p of l){const k=fmtDay(p.date);let x=g[g.length-1];if(!x||x.k!==k)g.push(x={k,items:[]});x.items.push(p)}return g}
+function tileHTML(p,i,sel){const left=p.trashed?30-Math.round((NOW-p.trashed)/864e5):null;return `<div class="tile ${sel&&sel.has(p.id)?'sel':''}" data-a="tile" data-id="${p.id}" role="button" aria-label="${p.kind==='video'?'Video':'Photo'}, ${fmtDay(p.date)} ${fmtTime(p.date)}"><img src="${p.src}" alt="" loading="lazy">${p.dur?`<span class="dur">${p.dur}</span>`:''}${p.fav&&!p.trashed?`<span class="fav">${icFill('heart','sm')}</span>`:''}${left!==null?`<span class="left">${left}d</span>`:''}${sel?'<span class="ck"></span>':''}</div>`}
+R.photos=()=>{
+ const S=PH,el=document.getElementById('a-photos');
+ if(S.view){el.innerHTML=`<div class="scr">${photoViewerHTML(S.vi,false)}${S.info?infoSheet():''}${overlays(S)}</div>`;bindViewer(el,S,()=>{S.view=null;S.info=false;R.photos()});return}
+ const selecting=!!S.sel;
+ let head,body;
+ const gridCls=`grid ${S.style==='inset'?'inset':''}`;
+ const gs=`grid-template-columns:repeat(${S.cols},1fr)`;
+ if(S.tab==='lib'||S.album){
+  const l=visiblePhotos();
+  const title=selecting?(S.sel.size?`${S.sel.size} selected`:'Select items'):S.album?(S.album==='__deleted'?'Recently deleted':S.album):'Photos';
+  head=selecting?`<div class="hdr"><button class="ib" data-a="selx" aria-label="Cancel selection">${ic('x')}</button><span class="t">${title}</span><button class="tbtn" data-a="selall">${S.sel.size===l.length&&l.length?'Deselect all':'Select all'}</button></div>`
+   :`<div class="hdr">${S.album?`<button class="ib" data-a="albback" aria-label="Back to albums">${ic('back')}</button>`:`<button class="ib" aria-label="Back to apps">${ic('back')}</button>`}<span class="t">${esc(title)}</span>${S.album==='__deleted'&&l.length?`<button class="tbtn" data-a="selstart">Select</button>`:l.length?`<button class="tbtn" data-a="selstart">Select</button>`:''}</div>`
+   +(S.album?'':`<div class="seg" role="tablist"><button role="tab" data-a="tab" data-t="lib" aria-selected="true">Library</button><button role="tab" data-a="tab" data-t="alb" aria-selected="false">Albums</button></div>`);
+  const chip=S.filter?`<div class="chips"><span class="chip">${ic('search','sm')} ${esc(S.filter.label)} · ${l.length}<button data-a="clearf" aria-label="Clear filter">${ic('x','sm')}</button></span></div>`:'';
+  body=chip+(l.length?(S.album==='__deleted'?`<div style="height:8px"></div><div class="${gridCls}" style="${gs}">${l.map((p,i)=>tileHTML(p,i,S.sel)).join('')}</div>`:groupByDay(l).map(g=>`<div class="dayh">${g.k}<small>${g.items.length}</small></div><div class="${gridCls}" style="${gs}">${g.items.map((p,i)=>tileHTML(p,i,S.sel)).join('')}</div>`).join(''))+'<div style="height:110px"></div>'
+   :`<div class="empty">${ic(S.album==='__deleted'?'trash':'img')}<span>${S.filter?'No matches':S.album==='__deleted'?'Nothing here':'No photos'}</span></div>`);
+ }else{
+  const act=DB.photos.filter(p=>!p.trashed),cover=f=>{const x=act.filter(f).sort((a,b)=>b.date-a.date)[0];return x?`<img src="${x.src}" alt="">`:ic('img')};
+  const custom=[...new Set(act.flatMap(p=>p.albums))].filter(a=>a!=='Screenshots');
+  const albs=[['Favorites',p=>p.fav],['Videos',p=>p.kind==='video'],['Camera',p=>p.folder==='DCIM/Camera'],['Screenshots',p=>p.albums.includes('Screenshots')],...custom.map(a=>[a,p=>p.albums.includes(a)])].map(([n,f])=>({n,f,c:act.filter(f).length})).filter(a=>a.c||a.n==='Favorites');
+  const del=DB.photos.filter(p=>p.trashed).length;
+  head=`<div class="hdr"><button class="ib" aria-label="Back to apps">${ic('back')}</button><span class="t">Albums</span><button class="ib" data-a="newalb" aria-label="New album">${ic('plus')}</button></div><div class="seg" role="tablist"><button role="tab" data-a="tab" data-t="lib" aria-selected="false">Library</button><button role="tab" data-a="tab" data-t="alb" aria-selected="true">Albums</button></div>`;
+  body=`<div class="albums">${albs.map(a=>`<button class="alb" data-a="openalb" data-n="${esc(a.n)}"><div class="cv">${cover(a.f)}</div><b>${esc(a.n)}</b><span>${a.c}</span></button>`).join('')}</div>
+   <button class="row" data-a="openalb" data-n="__deleted"><span class="ic">${ic('trash')}</span><span class="tx"><b>Recently deleted</b></span><span class="ct">${del}</span></button><div style="height:110px"></div>`;
+ }
+ const bar=selecting?(S.album==='__deleted'
+  ?`<div class="abar"><button data-a="srestore" ${S.sel.size?'':'disabled'}>${ic('restore')}Recover</button><button data-a="sdelforever" ${S.sel.size?'':'disabled'}>${ic('trash')}Delete</button></div>`
+  :`<div class="abar"><button data-a="sshare" ${S.sel.size?'':'disabled'}>${ic('share')}Share</button><button data-a="sfav" ${S.sel.size?'':'disabled'}>${ic('heart')}Favorite</button><button data-a="salb" ${S.sel.size?'':'disabled'}>${ic('album')}Add to album</button><button data-a="strash" ${S.sel.size?'':'disabled'}>${ic('trash')}Delete</button></div>`):pill();
+ el.innerHTML=`<div class="scr">${sb()}${head}<div class="body" id="phbody">${body}</div>${bar}${overlays(S)}</div>`;
+ const pb=el.querySelector('#phbody');if(S.scroll)pb.scrollTop=S.scroll;pb.onscroll=()=>S.scroll=pb.scrollTop;
+ if(!el._lp){el._lp=1;longPress(el,'.tile',n=>{if(!PH.sel)PH.sel=new Set();PH.sel.add(n.dataset.id);R.photos()})}
+ const ids=()=>[...S.sel];
+ bindPhone(el,S,{
+  tab:b=>{S.tab=b.dataset.t;S.album=null;S.sel=null;S.scroll=0;R.photos()},
+  openalb:b=>{S.album=b.dataset.n;S.scroll=0;R.photos()},albback:()=>{S.album=null;S.sel=null;R.photos()},
+  newalb:()=>flash(S,'reply','Select photos in Library, then tap Add to album, or ask me: “make an album of the Big Sur photos”.',3800),
+  selstart:()=>{S.sel=new Set();R.photos()},selx:()=>{S.sel=null;R.photos()},
+  selall:()=>{const l=visiblePhotos();S.sel=S.sel.size===l.length?new Set():new Set(l.map(p=>p.id));R.photos()},
+  clearf:()=>{S.filter=null;R.photos()},
+  tile:b=>{const id=b.dataset.id;if(S.sel){S.sel.has(id)?S.sel.delete(id):S.sel.add(id);R.photos();return}S.list=visiblePhotos();S.vi=S.list.findIndex(p=>p.id===id);S.view=true;S.hide=false;R.photos()},
+  sshare:()=>{flash(S,'toast',{t:`Share sheet opened for ${S.sel.size} item${S.sel.size>1?'s':''}`});S.sel=null;R.photos()},
+  sfav:()=>{const ps=DB.photos.filter(p=>S.sel.has(p.id));const all=ps.every(p=>p.fav);ps.forEach(p=>p.fav=!all);save();S.sel=null;flash(S,'toast',{t:all?'Removed from Favorites':'Added to Favorites'})},
+  salb:()=>{S.ask=[...new Set(DB.photos.flatMap(p=>p.albums))].filter(a=>a!=='Screenshots').concat(['New album…']).map(a=>({t:a==='New album…'?a:`Add to “${a}”`,run:()=>{const name=a==='New album…'?'Weekend':a;DB.photos.filter(p=>S.sel.has(p.id)).forEach(p=>{if(!p.albums.includes(name))p.albums.push(name)});save();const n=S.sel.size;S.sel=null;flash(S,'toast',{t:`Added ${n} to “${name}”`})}}));R.photos()},
+  strash:()=>{const set=new Set(S.sel);DB.photos.filter(p=>set.has(p.id)).forEach(p=>p.trashed=NOW);save();S.sel=null;flash(S,'toast',{t:`${set.size} moved to Recently deleted`,undo:()=>{DB.photos.filter(p=>set.has(p.id)).forEach(p=>p.trashed=null);save()}},4000)},
+  srestore:()=>{DB.photos.filter(p=>S.sel.has(p.id)).forEach(p=>p.trashed=null);save();const n=S.sel.size;S.sel=null;flash(S,'toast',{t:`${n} recovered`})},
+  sdelforever:()=>{const set=new Set(S.sel);S.review={t:`Delete ${set.size} item${set.size>1?'s':''}?`,d:'They’ll be removed from this phone.',ok:'Delete',run:()=>{DB.photos=DB.photos.filter(p=>!set.has(p.id));save();S.sel=null;R.photos()}};R.photos()},
+ });
+ S.suggest=()=>[
+  {t:'Show photos from last weekend',d:'photos_filter{from:Oct 31, to:Nov 1}. Read-only, shows a chip',run:()=>{S.tab='lib';S.album=null;S.filter={label:'Last weekend',fn:p=>p.date>=day(6,0)&&p.date<day(4,0)};S.scroll=0;flash(S,'reply','Here are 15 photos from Oct 31 to Nov 1.')}},
+  {t:'Just my videos from this week',d:'photos_filter{kind:video, from:Mon}',run:()=>{S.tab='lib';S.album=null;S.filter={label:'Videos this week',fn:p=>p.kind==='video'&&p.date>=day(4,0)};S.scroll=0;R.photos()}},
+  {t:'Favorites',d:'photos_filter{favorite:true}',run:()=>{S.tab='lib';S.album=null;S.filter={label:'Favorites',fn:p=>p.fav};S.scroll=0;R.photos()}},
+  {t:'Select the photos from yesterday',d:'photo_library_select{ids}. Selection only, nothing changes',run:()=>{S.tab='lib';S.album=null;S.filter=null;S.sel=new Set(DB.photos.filter(p=>!p.trashed&&fmtDay(p.date)==='Yesterday').map(p=>p.id));flash(S,'reply','Selected 6 photos from yesterday. Use the bar below, or tell me what to do with them.')}},
+  {t:'Make an album “Big Sur 2026” from last weekend',d:'photos_album_create. Reviewed before it runs',run:()=>{S.review={t:'Create album “Big Sur 2026”?',d:'15 photos from Oct 31 – Nov 1',ok:'Create',run:()=>{DB.photos.filter(p=>!p.trashed&&p.date>=day(6,0)&&p.date<day(4,0)).forEach(p=>{if(!p.albums.includes('Big Sur 2026'))p.albums.push('Big Sur 2026')});save();S.tab='alb';S.album=null;flash(S,'toast',{t:'Created “Big Sur 2026”'})}};R.photos()}},
+ ];
+};
+function photoViewerHTML(i,dark){
+ const S=current==='camera'?CM:PH;const p=S.list[i];if(!p)return'';
+ return `<div class="viewer ${S.hide?'hide':''}">${sb(true)}<div class="hdr chrome"><button class="ib" data-a="vback" aria-label="Back">${ic('back')}</button><div class="vt"><b>${fmtDay(p.date)}</b><span>${fmtTime(p.date)}</span></div><span style="width:44px"></span></div>
+ <div class="img" data-a="vtap">${p.kind==='video'?`<div style="position:relative"><img src="${p.src}" alt=""><span style="position:absolute;inset:0;display:grid;place-items:center">${icFill('play')}</span></div>`:`<img src="${p.src}" alt="">`}</div>
+ ${i>0?`<button class="nav chrome" style="left:0" data-a="vprev" aria-label="Previous">${ic('back')}</button>`:''}${i<S.list.length-1?`<button class="nav chrome" style="right:0;transform:translateY(-50%) scaleX(-1)" data-a="vnext" aria-label="Next">${ic('back')}</button>`:''}
+ <div class="vbar chrome">${p.trashed?`<button class="ib" data-a="vrestore" aria-label="Recover">${ic('restore')}</button><button class="ib" data-a="vtrash" aria-label="Delete">${ic('trash')}</button>`:`<button class="ib" data-a="vshare" aria-label="Share">${ic('share')}</button><button class="ib" data-a="vfav" aria-label="${p.fav?'Unfavorite':'Favorite'}">${p.fav?icFill('heart'):ic('heart')}</button><button class="ib" data-a="vedit" aria-label="Edit">${ic('sliders')}</button><button class="ib" data-a="vinfo" aria-label="Info">${ic('info')}</button><button class="ib" data-a="vtrash" aria-label="Delete">${ic('trash')}</button>`}</div></div>`;
+}
+function infoSheet(){const p=PH.list[PH.vi];return `<div class="scrim" data-a="vinfo"></div><div class="sheet info"><div class="grab"></div><h3>${fmtDay(p.date)} · ${fmtTime(p.date)}</h3><dl><dt>File</dt><dd>${esc(p.name)}</dd><dt>Size</dt><dd>${p.size}</dd><dt>Dimensions</dt><dd>${p.kind==='video'?'1920 × 1080':'4032 × 3024'}</dd><dt>Folder</dt><dd>${p.folder}</dd>${p.albums.length?`<dt>Albums</dt><dd>${esc(p.albums.join(', '))}</dd>`:''}</dl></div>`}
+function bindViewer(el,S,close){
+ const go=d=>{const n=S.vi+d;if(n>=0&&n<S.list.length){S.vi=n;R[S.k]()}};
+ S._key=e=>{if(!S.view)return;if(e.key==='ArrowLeft')go(-1);if(e.key==='ArrowRight')go(1);if(e.key==='Escape')close()};
+ document.onkeydown=S._key;
+ bindPhone(el,S,{vback:close,vprev:()=>go(-1),vnext:()=>go(1),vtap:()=>{S.hide=!S.hide;R[S.k]()},
+  vfav:()=>{const p=S.list[S.vi];p.fav=!p.fav;save();R[S.k]()},vinfo:()=>{S.info=!S.info;R[S.k]()},
+  vshare:()=>flash(S,'toast',{t:'Share sheet opened'}),vedit:()=>flash(S,'toast',{t:'Editor opens. Save asks “Save copy” or “Replace”.'}),
+  vrestore:()=>{const p=S.list[S.vi];p.trashed=null;save();close();flash(S,'toast',{t:'Recovered'})},
+  vtrash:()=>{const p=S.list[S.vi];if(p.trashed){S.review={t:'Delete this photo?',d:'It’ll be removed from this phone.',ok:'Delete',run:()=>{DB.photos=DB.photos.filter(x=>x!==p);save();close()}};R[S.k]();return}p.trashed=NOW;save();S.list.splice(S.vi,1);if(!S.list.length){close()}else{S.vi=Math.min(S.vi,S.list.length-1)}flash(S,'toast',{t:'Moved to Recently deleted',undo:()=>{p.trashed=null;save()}},4000)}});
+ S.suggest=()=>[{t:'What is this?',d:'Asks about the open photo',run:()=>flash(S,'reply','Looks like a coastal trail with cypress trees, probably Big Sur from the date and album.',4000)},{t:'Send this to Maya',d:'Opens a reviewed message draft',run:()=>flash(S,'reply','Draft to Maya ready in Messages with this photo attached. Review and send there.')}];
+}
+
+/* ================================================================= NOTES */
+const NT={k:'notes',folder:'All',screen:'list',layout:'list',edit:null,menu:false,filter:null,recT:0,paused:false,levels:[]};
+let recTimer=null;
+function startRec(){clearInterval(recTimer);recTimer=setInterval(()=>{if(NT.screen!=='recorder'){clearInterval(recTimer);return}if(!NT.paused)NT.recT++;if(current==='notes')R.notes()},1000)}
+const fmtDur=t=>t>=3600?`${Math.floor(t/3600)}:${pad(Math.floor(t%3600/60))}:${pad(t%60)}`:`${Math.floor(t/60)}:${pad(t%60)}`;
+const LIVE=['Okay, starting the notes for the hardware sync.','The camera module samples look good,','but we still need the thermal numbers from the lab.','Action item: ask Priya for the battery curves by Friday.','Second thing, the AOSP image boots in under twenty seconds now.'];
+R.notes=()=>{
+ const S=NT,el=document.getElementById('a-notes');
+ const live=DB.notes.filter(n=>!n.deleted),deleted=DB.notes.filter(n=>n.deleted);
+ if(S.folder==='__deleted'&&!deleted.length)S.folder='All';
+ let html;
+ if(S.screen==='recorder'){
+  const bars=Array.from({length:40},(_,i)=>S.paused?4:6+Math.abs(Math.sin((S.recT*3+i)*0.7)*Math.cos(i*1.3+S.recT))*90*(0.4+Math.random()*0.6));
+  const lines=LIVE.slice(0,Math.min(LIVE.length,Math.floor(S.recT/3)));
+  html=`<div class="scr">${sb()}<div class="hdr"><button class="ib" data-a="recdiscard" aria-label="Discard recording">${ic('x')}</button><span class="t"></span></div>
+  <div class="rec"><div class="timer serif">${fmtDur(S.recT)}</div><div class="wave">${bars.map(h=>`<i style="height:${h}px;opacity:${S.paused?.35:1}"></i>`).join('')}</div>
+  <div class="live">${lines.slice(-3).map(esc).join(' ')}</div>
+  <div class="btns"><button class="rbtn" data-a="recdiscard" aria-label="Discard">${ic('trash')}</button><button class="rbig" data-a="recpause" aria-label="${S.paused?'Resume':'Pause'}">${S.paused?icFill('mic'):icFill('pause')}</button><button class="rbtn" data-a="recdone" aria-label="Done" style="background:#000;color:#fff">${ic('check')}</button></div></div>${overlays(S)}</div>`;
+ }else if(S.screen==='editor'){
+  const n=DB.notes.find(x=>x.id===S.edit);
+  const body=n.kind==='list'?n.items.map(([t,d],i)=>`<div class="check ${d?'done':''}" data-a="tick" data-i="${i}"><i></i>${esc(t)}</div>`).join(''):n.kind==='voice'?`<div class="player"><button class="ib" aria-label="Play" style="width:36px;height:36px;background:#000;color:#fff">${icFill('play','sm')}</button><span class="pw">${Array.from({length:46},(_,i)=>`<i style="height:${4+Math.abs(Math.sin(i*1.7)*Math.cos(i*.6))*22}px"></i>`).join('')}</span><span class="muted" style="font-size:12.5px">${n.dur}</span></div><div class="tb">${n.transcribing?'<span class="spin"></span><span class="muted">Transcribing…</span>':esc(n.body)}</div>`:`<div class="tb" contenteditable="true" data-f="body">${esc(n.body)}</div>`;
+  html=`<div class="scr">${sb()}<div class="hdr"><button class="ib" data-a="edback" aria-label="Back to notes">${ic('back')}</button><span class="t"></span>${n.kind!=='voice'?`<button class="ib" data-a="edlist" aria-label="Checklist">${ic('list')}</button>`:''}<button class="ib" data-a="edshare" aria-label="Share">${ic('share')}</button><button class="ib" data-a="edmenu" aria-label="More">${ic('more')}</button></div>
+  <div class="body"><div class="edit"><h2 contenteditable="${n.kind!=='voice'}" data-f="title">${esc(n.title)}</h2><div class="meta">${fmtDay(n.updated)} · ${fmtTime(n.updated)}${n.folder?` · ${esc(n.folder)}`:''}${n.pinned?' · Pinned':''}</div>${body}</div><div style="height:110px"></div></div>
+  ${S.menu?`<div class="scrim" data-a="edmenu" style="background:transparent"></div><div class="menu">${S.menu==='move'?`<button data-a="edmenu" style="color:var(--mut)">${ic('back','sm')}Move to</button><hr>${['None',...DB.folders].map(f=>`<button data-a="movef" data-f="${f}">${ic('folder','sm')}${f==='None'?'No folder':esc(f)}${(n.folder||'None')===f?' ✓':''}</button>`).join('')}`:`<button data-a="edpin">${ic('pin','sm')}${n.pinned?'Unpin':'Pin'}</button><button data-a="edmove">${ic('folder','sm')}Move to…</button><hr><button data-a="eddel" style="color:var(--warn)">${ic('trash','sm')}Delete</button>`}</div>`:''}
+  ${pill()}${overlays(S)}</div>`;
+ }else{
+  const inDel=S.folder==='__deleted';
+  let l=inDel?deleted:live.filter(n=>S.folder==='All'||n.folder===S.folder);
+  if(S.filter&&!inDel)l=l.filter(S.filter.fn);
+  l=l.sort((a,b)=>(b.pinned-a.pinned)||(b.updated-a.updated));
+  const chips=`<div class="chips">${['All',...DB.folders].map(f=>`<button class="fchip" data-a="folder" data-f="${esc(f)}" aria-pressed="${S.folder===f}">${esc(f)}</button>`).join('')}<button class="fchip" data-a="newfolder" aria-label="New folder">${ic('plus','sm')}</button>${deleted.length?`<button class="fchip" data-a="folder" data-f="__deleted" aria-pressed="${inDel}">${ic('trash','sm')}Recently deleted</button>`:''}</div>`;
+  const chip=S.filter&&!inDel?`<div class="chips" style="padding-top:0"><span class="chip">${ic('search','sm')} ${esc(S.filter.label)} · ${l.length}<button data-a="clearf" aria-label="Clear filter">${ic('x','sm')}</button></span></div>`:'';
+  const prev=n=>n.kind==='list'?n.items.map(i=>(i[1]?'☑ ':'☐ ')+i[0]).join('\n'):n.body;
+  const left=n=>Math.max(0,30-Math.round((NOW-n.deleted)/864e5));
+  const rows=inDel?l.map(n=>`<button class="row" data-a="delrow" data-id="${n.id}"><span class="tx"><b>${esc(n.title)}</b><span>${esc(prev(n))}</span></span><span class="ct">${left(n)}d</span></button>`).join('')
+   :S.layout==='grid'?`<div class="ngrid">${l.map(n=>`<button class="ncard" data-a="open" data-id="${n.id}"><b>${n.pinned?'📌 ':''}${esc(n.title)}</b><span>${n.kind==='voice'?'🎙 '+n.dur+' · ':''}${esc(prev(n)).slice(0,140)}</span><em>${fmtShort(n.updated)}</em></button>`).join('')}</div>`
+   :l.map((n,i)=>`${i===0&&n.pinned?'<div class="sect">Pinned</div>':''}${i>0&&!n.pinned&&l[i-1].pinned?'<div class="sect">Notes</div>':''}<button class="row" data-a="open" data-id="${n.id}">${n.kind==='voice'?`<span class="ic">${ic('wave')}</span>`:''}<span class="tx"><b>${esc(n.title)}</b><span><span style="color:#000">${fmtShort(n.updated)}</span>&nbsp; ${n.kind==='voice'?n.dur+' · ':''}${esc(prev(n))}</span></span></button>`).join('');
+  html=`<div class="scr">${sb()}<div class="hdr">${inDel?`<button class="ib" data-a="folder" data-f="All" aria-label="Back to notes">${ic('back')}</button><span class="t">Recently deleted</span><button class="tbtn" data-a="emptytrash" style="color:var(--warn)">Empty</button>`:`<button class="ib" aria-label="Back to apps">${ic('back')}</button><span class="t">Notes</span><button class="ib" data-a="record" aria-label="Record voice note">${ic('mic')}</button><button class="ib" data-a="new" aria-label="New note">${ic('compose')}</button>`}</div>
+  ${inDel?'':chips}${chip}<div class="body nlist">${l.length?rows:`<div class="empty">${ic(inDel?'trash':'note')}</div>`}<div style="height:110px"></div></div>${pill()}${overlays(S)}</div>`;
+ }
+ el.innerHTML=html;
+ el.querySelectorAll('[contenteditable=true]').forEach(c=>c.oninput=()=>{const n=DB.notes.find(x=>x.id===S.edit);n[c.dataset.f]=c.innerText;n.updated=new Date(NOW);save()});
+ bindPhone(el,S,{
+  folder:b=>{S.folder=b.dataset.f;S.filter=null;R.notes()},
+  newfolder:()=>{const name=prompt('Folder name','Travel');if(name&&!DB.folders.includes(name)){DB.folders.push(name);save();S.folder=name;R.notes()}},
+  clearf:()=>{S.filter=null;R.notes()},
+  new:()=>{const n={id:'n'+Date.now(),title:'New note',body:'',folder:['All','__deleted'].includes(S.folder)?null:S.folder,kind:'text',updated:new Date(NOW),pinned:false};DB.notes.push(n);save();S.edit=n.id;S.screen='editor';R.notes()},
+  open:b=>{S.edit=b.dataset.id;S.screen='editor';S.menu=false;R.notes()},
+  record:()=>{S.screen='recorder';S.recT=0;S.paused=false;startRec();R.notes()},
+  recpause:()=>{S.paused=!S.paused;R.notes()},
+  recdiscard:()=>{S.review={t:'Discard this recording?',d:fmtDur(S.recT)+' of audio will be deleted.',ok:'Discard',run:()=>{S.screen='list';clearInterval(recTimer);R.notes()}};R.notes()},
+  recdone:()=>{clearInterval(recTimer);const n={id:'n'+Date.now(),title:'Voice note',kind:'voice',dur:fmtDur(S.recT),body:LIVE.join(' '),folder:['All','__deleted'].includes(S.folder)?null:S.folder,updated:new Date(NOW),pinned:false,transcribing:true};DB.notes.push(n);save();S.edit=n.id;S.screen='editor';R.notes();setTimeout(()=>{n.transcribing=false;n.title='Hardware sync';save();if(S.edit===n.id)R.notes()},1600)},
+  edback:()=>{S.screen='list';S.menu=false;R.notes()},
+  edmenu:()=>{S.menu=S.menu?false:'main';R.notes()},edmove:()=>{S.menu='move';R.notes()},
+  movef:b=>{const n=DB.notes.find(x=>x.id===S.edit);n.folder=b.dataset.f==='None'?null:b.dataset.f;save();S.menu=false;flash(S,'toast',{t:n.folder?`Moved to ${n.folder}`:'Removed from folder'})},
+  edpin:()=>{const n=DB.notes.find(x=>x.id===S.edit);n.pinned=!n.pinned;save();S.menu=false;R.notes()},
+  eddel:()=>{const n=DB.notes.find(x=>x.id===S.edit);n.deleted=new Date(NOW);save();S.menu=false;S.screen='list';flash(S,'toast',{t:'Moved to Recently deleted',undo:()=>{delete n.deleted;save()}},4000)},
+  edlist:()=>{const n=DB.notes.find(x=>x.id===S.edit);if(n.kind==='text'){n.kind='list';n.items=(n.body||'').split('\n').filter(Boolean).map(t=>[t,false]);if(!n.items.length)n.items=[['',false]]}else{n.kind='text';n.body=n.items.map(i=>i[0]).join('\n')}save();R.notes()},
+  tick:b=>{const n=DB.notes.find(x=>x.id===S.edit);n.items[+b.dataset.i][1]=!n.items[+b.dataset.i][1];save();R.notes()},
+  edshare:()=>flash(S,'toast',{t:'Share sheet opened'}),
+  delrow:b=>{const n=DB.notes.find(x=>x.id===b.dataset.id);S.ask=[{t:'Recover',d:n.folder?`Returns to ${n.folder}`:'Returns to All',run:()=>{delete n.deleted;save();flash(S,'toast',{t:'Recovered'})}},{t:'Delete now',d:'Can’t be undone',run:()=>{S.review={t:`Delete “${n.title}”?`,ok:'Delete',run:()=>{DB.notes=DB.notes.filter(x=>x!==n);save();R.notes()}};R.notes()}}];R.notes()},
+  emptytrash:()=>{S.review={t:'Delete all recently deleted notes?',d:'This can’t be undone.',ok:'Delete all',run:()=>{DB.notes=DB.notes.filter(n=>!n.deleted);save();S.folder='All';R.notes()}};R.notes()},
+ });
+ S.suggest=()=>S.screen==='editor'?[
+  {t:'Move this to Work',d:'notes_move. Reviewed before it runs',run:()=>{const n=DB.notes.find(x=>x.id===S.edit);S.review={t:`Move “${n.title}” to Work?`,ok:'Move',run:()=>{n.folder='Work';save();flash(S,'toast',{t:'Moved to Work'})}};R.notes()}},
+  {t:'Read this to me',d:'Replaces the Read aloud toolbar button',run:()=>flash(S,'reply','Reading “'+esc(DB.notes.find(x=>x.id===S.edit).title)+'”…')},
+  {t:'Turn this into a checklist',d:'notes_update. Reviewed',run:()=>{const n=DB.notes.find(x=>x.id===S.edit);if(n.kind!=='text'){flash(S,'reply','This note is already a checklist or a recording.');return}S.review={t:'Turn into a checklist?',d:'Each line becomes an item.',ok:'Convert',run:()=>{n.kind='list';n.items=n.body.split('\n').filter(Boolean).map(t=>[t,false]);save();R.notes()}};R.notes()}},
+ ]:[
+  {t:'Find my note about the term sheet',d:'notes_filter{text}. Read-only, shows a chip',run:()=>{S.folder='All';S.screen='list';S.filter={label:'“term sheet”',fn:n=>/term sheet|liquidation/i.test(n.title+n.body)};R.notes()}},
+  {t:'Show my voice notes',d:'notes_filter{kind:voice}',run:()=>{S.folder='All';S.filter={label:'Voice notes',fn:n=>n.kind==='voice'};R.notes()}},
+  {t:'Start a voice note',d:'notes_record{start}',run:()=>{S.screen='recorder';S.recT=0;S.paused=false;startRec();R.notes()}},
+  {t:'Create a folder called Travel and move the Big Sur note there',d:'notes_folder_create + notes_move. Reviewed',run:()=>{S.review={t:'Create “Travel” and move 1 note?',d:'“Big Sur trip” → Travel',ok:'Do it',run:()=>{if(!DB.folders.includes('Travel'))DB.folders.push('Travel');DB.notes.find(n=>n.id==='n4').folder='Travel';save();S.folder='Travel';S.filter=null;R.notes()}};R.notes()}},
+ ];
+};
+
+/* ================================================================= FILES */
+const FL={k:'files',path:null,root:null,sel:null,sort:'date',menu:false,filter:null,prev:null};
+function nodeAt(path){let n=DB.fs;for(const s of path)n=n.kids[s];return n}
+function walk(n,path=[],out=[]){for(const [k,v] of Object.entries(n.kids||{})){if(v.kids)walk(v,[...path,k],out);else out.push({name:k,path:[...path,k],...v})}return out}
+const CATS={Downloads:{icon:'dl',q:f=>f.path[0]==='Download'},Images:{icon:'img',q:f=>/^image\//.test(f.mime)},Videos:{icon:'vid',q:f=>/^video\//.test(f.mime)},Audio:{icon:'aud',q:f=>/^audio\//.test(f.mime)},Documents:{icon:'docs',q:f=>/pdf|word|excel|sheet|text|msword/.test(f.mime)}};
+const fIcon=f=>f.src?`<img src="${f.src}" alt="">`:ic(/^audio/.test(f.mime)?'aud':/^video/.test(f.mime)?'vid':/^image/.test(f.mime)?'img':'docs');
+const fmeta=f=>`${f.size} · ${fmtShort(f.date)}`;
+function sorted(l){return l.sort(FL.sort==='name'?(a,b)=>a.name.localeCompare(b.name):FL.sort==='size'?(a,b)=>parseFloat(b.size)*(/MB/.test(b.size)?1024:1)-parseFloat(a.size)*(/MB/.test(a.size)?1024:1):(a,b)=>b.date-a.date)}
+R.files=()=>{
+ const S=FL,el=document.getElementById('a-files');const all=walk(DB.fs);
+ let head,body,crumb='';
+ const rowF=f=>`<button class="row ${S.sel&&S.sel.has(f.path.join('/'))?'sel':''}" data-a="file" data-p="${esc(f.path.join('/'))}"><span class="ic">${fIcon(f)}</span><span class="tx"><b>${esc(f.name)}</b><span>${fmeta(f)}</span></span></button>`;
+ const rowD=(name,path,count)=>`<button class="row" data-a="dir" data-p="${esc(path.join('/'))}"><span class="ic">${ic('folder')}</span><span class="tx"><b>${esc(name)}</b></span><span class="ct">${count}</span></button>`;
+ const selHead=()=>`<div class="hdr"><button class="ib" data-a="selx" aria-label="Cancel selection">${ic('x')}</button><span class="t">${S.sel.size} selected</span></div>`;
+ if(S.root==='trash'){
+  head=`<div class="hdr"><button class="ib" data-a="home" aria-label="Back">${ic('back')}</button><span class="t">Trash</span>${DB.ftrash.length?`<button class="tbtn" data-a="emptyt" style="color:var(--warn)">Empty</button>`:''}</div>`;
+  body=DB.ftrash.length?DB.ftrash.map((f,i)=>`<button class="row" data-a="trow" data-i="${i}"><span class="ic">${fIcon(f)}</span><span class="tx"><b>${esc(f.name)}</b><span>${f.size} · from ${esc(f.from)}</span></span><span class="ct">${30-Math.round((NOW-f.deleted)/864e5)}d</span></button>`).join(''):`<div class="empty">${ic('trash')}</div>`;
+ }else if(S.root==='cat'){
+  const c=CATS[S.cat];let l=all.filter(c.q);
+  head=S.sel?selHead():`<div class="hdr"><button class="ib" data-a="home" aria-label="Back">${ic('back')}</button><span class="t">${S.cat}</span><button class="ib" data-a="sortm" aria-label="Sort">${ic('sort')}</button></div>`;
+  if(S.cat==='Images'||S.cat==='Videos'){
+   const groups={};for(const f of l){const k=f.path.slice(0,-1).join('/');(groups[k]=groups[k]||[]).push(f)}
+   body=Object.entries(groups).sort((a,b)=>Math.max(...b[1].map(f=>f.date))-Math.max(...a[1].map(f=>f.date))).map(([k,fs])=>`<button class="row" data-a="dir" data-p="${esc(k)}"><span class="ic">${fIcon(sorted(fs)[0])}</span><span class="tx"><b>${esc(k.split('/').pop())}</b><span>${esc(k)}</span></span><span class="ct">${fs.length}</span></button>`).join('')||`<div class="empty">${ic(c.icon)}</div>`;
+  }else body=sorted(l).map(rowF).join('')||`<div class="empty">${ic(c.icon)}</div>`;
+ }else if(S.root==='dir'){
+  const n=nodeAt(S.path);const dirs=Object.entries(n.kids).filter(([,v])=>v.kids),files=Object.entries(n.kids).filter(([,v])=>!v.kids).map(([k,v])=>({name:k,path:[...S.path,k],...v}));
+  head=S.sel?selHead():`<div class="hdr"><button class="ib" data-a="up" aria-label="Back">${ic('back')}</button><span class="t">${esc(S.path.length?S.path[S.path.length-1]:'Internal storage')}</span><button class="ib" data-a="sortm" aria-label="Sort and more">${ic('more')}</button></div>`;
+  crumb=`<div class="crumb"><button data-a="crumb" data-n="0">Internal storage</button>${S.path.map((p,i)=>` › <button data-a="crumb" data-n="${i+1}">${esc(p)}</button>`).join('')}</div>`;
+  body=dirs.sort((a,b)=>a[0].localeCompare(b[0])).map(([k,v])=>rowD(k,[...S.path,k],Object.keys(v.kids).length||'')).join('')+sorted(files).map(rowF).join('');
+  if(!dirs.length&&!files.length)body=`<div class="empty">${ic('folder')}</div>`;
+ }else{
+  const cnt=k=>all.filter(CATS[k].q).length;
+  head=`<div class="hdr"><button class="ib" aria-label="Back to apps">${ic('back')}</button><span class="t">Files</span></div>`;
+  body=`${Object.keys(CATS).map(k=>`<button class="row" data-a="cat" data-c="${k}"><span class="ic">${ic(CATS[k].icon)}</span><span class="tx"><b>${k}</b></span><span class="ct">${cnt(k)}</span></button>`).join('')}
+  <div class="sect">Storage</div><button class="row" data-a="dir" data-p=""><span class="ic">${ic('phoneS')}</span><span class="tx"><b>Internal storage</b><span>38.2 GB free of 128 GB</span></span></button><div class="store"><div class="bar"><i style="width:70%"></i></div></div>
+  <button class="row" data-a="trash"><span class="ic">${ic('trash')}</span><span class="tx"><b>Trash</b></span><span class="ct">${DB.ftrash.length||''}</span></button>`;
+ }
+ const chip=S.filter?`<div class="chips"><span class="chip">${ic('search','sm')} ${esc(S.filter.label)} · ${all.filter(S.filter.fn).length}<button data-a="clearf" aria-label="Clear">${ic('x','sm')}</button></span></div>`:'';
+ if(S.filter)body=sorted(all.filter(S.filter.fn)).map(rowF).join('');
+ const bar=S.sel?`<div class="abar"><button data-a="fshare">${ic('share')}Share</button><button data-a="fmove">${ic('move')}Move</button><button data-a="fcopy">${ic('copy')}Copy</button><button data-a="fdel">${ic('trash')}Delete</button></div>`:pill();
+ let pv='';
+ if(S.prev){const f=walk(DB.fs).find(x=>x.path.join('/')===S.prev);if(f)pv=`<div class="preview">${sb()}<div class="hdr"><button class="ib" data-a="pvx" aria-label="Close">${ic('back')}</button><span class="t" style="font-size:16px">${esc(f.name)}</span><button class="ib" data-a="pvshare" aria-label="Share">${ic('share')}</button><button class="ib" data-a="pvdel" aria-label="Delete">${ic('trash')}</button></div><div class="crumb">${esc(['Internal storage',...f.path.slice(0,-1)].join(' › '))} · ${f.size}</div><div class="pv">${f.src?`<img src="${f.src}" alt="">`:/audio/.test(f.mime)?`<div style="text-align:center">${ic('aud')}<div class="muted" style="margin-top:8px">${esc(f.name)}</div></div>`:`<div class="doc"><b style="font-size:12px">${esc(f.name)}</b>${'<i></i>'.repeat(9)}</div>`}</div></div>`}
+ const menu=S.menu?`<div class="scrim" data-a="sortm" style="background:transparent"></div><div class="menu" style="top:84px">${['date','name','size'].map(s=>`<button data-a="sortby" data-s="${s}">${ic('sort','sm')}Sort by ${s}${S.sort===s?' ✓':''}</button>`).join('')}${S.root==='dir'?`<hr><button data-a="newdir">${ic('folder','sm')}New folder</button><button data-a="selstart">${ic('check','sm')}Select</button>`:''}</div>`:'';
+ el.innerHTML=`<div class="scr">${sb()}${head}${crumb}${chip}<div class="body" id="flbody">${body}<div style="height:110px"></div></div>${bar}${menu}${pv}${overlays(S)}</div>`;
+ if(!el._lp){el._lp=1;longPress(el,'[data-a=file]',n=>{if(!FL.sel)FL.sel=new Set();FL.sel.add(n.dataset.p);R.files()})}
+ const selFiles=()=>walk(DB.fs).filter(f=>S.sel.has(f.path.join('/')));
+ const rm=f=>{const parent=nodeAt(f.path.slice(0,-1));const v=parent.kids[f.name];delete parent.kids[f.name];return v};
+ const pickDest=(verb,fn)=>{S.ask=[['Download'],['Documents'],['Documents','Scans'],['Pictures'],['DCIM','Camera']].map(p=>({t:`${verb} to ${p.join(' › ')}`,run:()=>fn(p)}));R.files()};
+ bindPhone(el,S,{
+  home:()=>{Object.assign(S,{root:null,path:null,sel:null,filter:null});R.files()},
+  cat:b=>{S.root='cat';S.cat=b.dataset.c;R.files()},
+  dir:b=>{S.root='dir';S.path=b.dataset.p?b.dataset.p.split('/'):[];S.sel=null;S.filter=null;R.files()},
+  up:()=>{if(!S.path.length){S.root=null;R.files();return}S.path=S.path.slice(0,-1);R.files()},
+  crumb:b=>{S.path=S.path.slice(0,+b.dataset.n);R.files()},
+  trash:()=>{S.root='trash';R.files()},
+  file:b=>{if(S.sel){const p=b.dataset.p;S.sel.has(p)?S.sel.delete(p):S.sel.add(p);if(!S.sel.size)S.sel=null;R.files();return}S.prev=b.dataset.p;R.files()},
+  pvx:()=>{S.prev=null;R.files()},pvshare:()=>flash(S,'toast',{t:'Share sheet opened'}),
+  pvdel:()=>{const f=walk(DB.fs).find(x=>x.path.join('/')===S.prev);const v=rm(f);DB.ftrash.push({...v,name:f.name,from:f.path.slice(0,-1).join('/'),deleted:new Date(NOW)});if(v.photo){const p=DB.photos.find(x=>x.id===v.photo);if(p)p.trashed=NOW}save();S.prev=null;flash(S,'toast',{t:'Moved to Trash'})},
+  selx:()=>{S.sel=null;R.files()},selstart:()=>{S.menu=false;S.sel=new Set();R.files()},
+  sortm:()=>{S.menu=!S.menu;R.files()},sortby:b=>{S.sort=b.dataset.s;S.menu=false;R.files()},
+  newdir:()=>{S.menu=false;const name=prompt('New folder','Taxes');if(name){nodeAt(S.path).kids[name]={kids:{}};save()}R.files()},
+  clearf:()=>{S.filter=null;R.files()},
+  fshare:()=>{flash(S,'toast',{t:`Share sheet opened for ${S.sel.size}`});S.sel=null;R.files()},
+  fdel:()=>{const fs=selFiles();fs.forEach(f=>{const v=rm(f);DB.ftrash.push({...v,name:f.name,from:f.path.slice(0,-1).join('/'),deleted:new Date(NOW)});if(v.photo){const p=DB.photos.find(x=>x.id===v.photo);if(p)p.trashed=NOW}});save();S.sel=null;flash(S,'toast',{t:`${fs.length} moved to Trash`})},
+  fmove:()=>pickDest('Move',dest=>{const fs=selFiles();const d=nodeAt(dest);fs.forEach(f=>{const v=rm(f);d.kids[f.name]=v});save();S.sel=null;flash(S,'toast',{t:`Moved ${fs.length} to ${dest[dest.length-1]}`})}),
+  fcopy:()=>pickDest('Copy',dest=>{const fs=selFiles();const d=nodeAt(dest);fs.forEach(f=>{let n=f.name;while(d.kids[n])n=n.replace(/(\.\w+)?$/,' (copy)$1');d.kids[n]={...nodeAt(f.path.slice(0,-1)).kids[f.name],photo:undefined}});save();S.sel=null;flash(S,'toast',{t:`Copied ${fs.length}`})}),
+  trow:b=>{const f=DB.ftrash[+b.dataset.i];S.ask=[{t:'Restore',d:`Back to ${f.from}`,run:()=>{let n=DB.fs;for(const s of f.from.split('/'))n=n.kids[s]=n.kids[s]||{kids:{}};const {from,deleted,name,...v}=f;n.kids[name]=v;DB.ftrash.splice(DB.ftrash.indexOf(f),1);if(v.photo){const p=DB.photos.find(x=>x.id===v.photo);if(p)p.trashed=null}save();flash(S,'toast',{t:'Restored'})}},{t:'Delete now',d:'Can’t be undone',run:()=>{DB.ftrash.splice(DB.ftrash.indexOf(f),1);save();R.files()}}];R.files()},
+  emptyt:()=>{S.review={t:'Empty Trash?',d:`${DB.ftrash.length} item(s) will be removed from this phone.`,ok:'Empty',run:()=>{DB.ftrash=[];save();R.files()}};R.files()},
+ });
+ S.suggest=()=>[
+  {t:'Find my boarding pass',d:'files_filter{text}. Read-only, shows a chip',run:()=>{Object.assign(S,{root:null,sel:null,filter:{label:'“boarding pass”',fn:f=>/boarding/i.test(f.name)}});R.files()}},
+  {t:'PDFs from this week',d:'files_filter{kind:pdf, from:Mon}',run:()=>{Object.assign(S,{root:null,sel:null,filter:{label:'PDFs this week',fn:f=>/pdf/.test(f.mime)&&f.date>=day(4,0)}});R.files()}},
+  {t:'Move the invoice to Documents',d:'files_move. Reviewed before it runs',run:()=>{const f=walk(DB.fs).find(x=>/invoice/.test(x.name));if(!f){flash(S,'reply','I can’t find an invoice.');return}S.review={t:`Move “${f.name}”?`,d:`${f.path.slice(0,-1).join(' › ')} → Documents`,ok:'Move',run:()=>{const v=rm(f);DB.fs.kids.Documents.kids[f.name]=v;save();Object.assign(S,{root:'dir',path:['Documents'],filter:null});flash(S,'toast',{t:'Moved to Documents'})}};R.files()}},
+  {t:'What’s taking up space?',d:'Read-only summary',run:()=>flash(S,'reply','DCIM › Camera is the largest folder. Videos are most of it. Want me to show videos over 100 MB?',4000)},
+ ];
+};
+
+/* ================================================================== APPS */
+const ANDROID=[['Calculator','calc','#5b5b5b'],['Calendar','cal','#1a73e8'],['Camera','cam','#444'],['Clock','clock','#3d5afe'],['Contacts','user','#0b8043'],['Files','folder','#1565c0'],['Gallery','img','#e65100'],['Messaging','msg','#00897b'],['Music','music','#c2185b'],['Phone','phone','#2e7d32'],['Settings','gear','#546e7a'],['Sound Recorder','mic','#d84315'],['WebView Shell','globe','#6a1b9a']];
+const PRODUCT={phone:['Phone','phone'],messages:['Messages','msg'],inbox:['Inbox','mail'],calendar:['Calendar','cal'],browser:['Browser','globe'],camera:['Camera','cam'],photos:['Photos','img'],maps:['Maps','map'],notes:['Notes','note'],contacts:['Contacts','user'],files:['Files','folder'],wallet:['Wallet','wallet'],workflows:['Workflows','flow'],settings:['Settings','gear']};
+const AP={k:'apps',drawer:false,q:'',layout:'grid',ctx:null,edit:false,add:false};
+R.apps=()=>{
+ const S=AP,el=document.getElementById('a-apps');
+ const homeTiles=[...DB.home.map(k=>({k,l:PRODUCT[k][0],i:ic(PRODUCT[k][1]),prod:true})),...DB.homeAndroid.map(n=>{const a=ANDROID.find(x=>x[0]===n);return{k:'and:'+n,l:n,i:`<span class="ai" style="width:60px;height:60px;border-radius:20px;background:${a[2]};display:grid;place-items:center;color:#fff">${ic(a[1])}</span>`,raw:true}})];
+ const homeHTML=`<div class="scr">${sb()}<div class="body home ${S.edit?'edithome':''}">${S.edit?`<div style="display:flex;justify-content:space-between;align-items:center;margin:0 0 10px"><button class="tbtn" data-a="addback" ${DB.hidden.length?'':'disabled'} style="${DB.hidden.length?'':'opacity:.35'}">${ic('plus','sm')}</button><button class="tbtn" data-a="editdone" style="background:#000;color:#fff">Done</button></div>`:''}<div class="hcards"><div class="hcard"><div style="font-size:13px;font-weight:600">Fri, Nov 6</div><div class="serif">No upcoming events</div></div><div class="hcard2"></div></div>
+  <div class="hgrid">${homeTiles.map(t=>`<button class="happ" data-a="hopen" data-k="${t.k}">${S.edit?`<span class="rm" data-a="hrm" data-k="${t.k}" aria-label="Remove ${t.l} from Home">−</span>`:''}${t.raw?t.i:`<span class="ic">${t.i}</span>`}<span>${esc(t.l)}</span></button>`).join('')}<button class="happ hl" data-a="drawer"><span class="ic">${ic('grid4')}</span><span>Apps</span></button></div></div>
+  ${S.add?`<div class="scrim" data-a="addx"></div><div class="sheet"><div class="grab"></div><h3>Add to Home</h3>${DB.hidden.map(k=>`<button class="sug" data-a="readd" data-k="${k}">${PRODUCT[k][0]}</button>`).join('')}</div>`:''}
+  ${S.drawer?'':`<div class="apill" style="padding-right:18px"><span class="orb"></span><span class="lbl" style="width:170px">Ask Alpha</span>${ic('mic')}</div>`}</div>`;
+ const q=S.q.trim().toLowerCase();
+ const apps=ANDROID.filter(a=>!q||a[0].toLowerCase().includes(q));
+ const drawer=S.drawer?`<div class="drawer"><div style="display:flex;align-items:center;padding:6px 10px 6px 20px"><h2 class="serif">Apps</h2><button class="ib" data-a="dclose" aria-label="Close apps">${ic('x')}</button></div>
+  <label class="search">${ic('search','sm')}<input id="aq" placeholder="Search apps" value="${esc(S.q)}" autocomplete="off"></label>
+  <div class="body">${apps.length?(S.layout==='grid'?`<div class="agrid">${apps.map(a=>`<button class="aapp" data-a="app" data-n="${a[0]}"><span class="ai" style="background:${a[2]}">${ic(a[1])}</span><span>${a[0]}</span></button>`).join('')}</div>`:apps.map(a=>`<button class="row" data-a="app" data-n="${a[0]}"><span class="ai" style="width:40px;height:40px;border-radius:50%;background:${a[2]};display:grid;place-items:center;color:#fff">${ic(a[1],'sm')}</span><span class="tx"><b>${a[0]}</b></span></button>`).join('')+'<div style="height:100px"></div>'):`<div class="empty">No apps</div>`}</div>
+  ${S.ctx?`<div class="scrim" data-a="ctxx" style="background:transparent"></div><div class="ctx" style="left:${S.ctx.x}px;top:${S.ctx.y}px"><button data-a="addhome">${ic('plus','sm')}${DB.homeAndroid.includes(S.ctx.n)?'On Home':'Add to Home'}</button><button data-a="appinfo">${ic('info','sm')}App info</button></div>`:''}</div>`:'';
+ el.innerHTML=homeHTML.replace(/<\/div>$/,'')+drawer+overlays(S)+'</div>';
+ const inp=el.querySelector('#aq');if(inp){inp.oninput=()=>{S.q=inp.value;const pos=inp.selectionStart;R.apps();const n=el.querySelector('#aq');n.focus();n.setSelectionRange(pos,pos)}}
+ if(!el._lp){el._lp=1;longPress(el,'[data-a=app],[data-a=hopen]',(n,e)=>{if(n.dataset.a==='hopen'){AP.edit=true;R.apps();return}const r=el.getBoundingClientRect(),b=n.getBoundingClientRect();AP.ctx={n:n.dataset.n,x:Math.min(b.left-r.left,170),y:b.bottom-r.top-6};R.apps()})}
+ bindPhone(el,S,{
+  drawer:()=>{if(S.edit)return;S.drawer=true;S.q='';R.apps()},dclose:()=>{S.drawer=false;R.apps()},
+  app:b=>flash(S,'toast',{t:`Opens ${b.dataset.n} (Android activity)`}),
+  hopen:b=>{if(S.edit)return;flash(S,'toast',{t:`Opens ${(PRODUCT[b.dataset.k]||[b.dataset.k.slice(4)])[0]}`})},
+  ctxx:()=>{S.ctx=null;R.apps()},
+  addhome:()=>{const n=S.ctx.n;if(!DB.homeAndroid.includes(n))DB.homeAndroid.push(n);save();S.ctx=null;S.drawer=false;flash(S,'toast',{t:`Added ${n} to Home`})},
+  appinfo:()=>{const n=S.ctx.n;S.ctx=null;flash(S,'toast',{t:`Opens Android App info for ${n}`})},
+  hrm:(b,e)=>{e.stopPropagation();const k=b.dataset.k;if(k.startsWith('and:'))DB.homeAndroid=DB.homeAndroid.filter(x=>x!==k.slice(4));else{DB.home=DB.home.filter(x=>x!==k);DB.hidden.push(k)}save();R.apps()},
+  editdone:()=>{S.edit=false;R.apps()},addback:()=>{if(DB.hidden.length){S.add=true;R.apps()}},addx:()=>{S.add=false;R.apps()},
+  readd:b=>{const k=b.dataset.k;DB.hidden=DB.hidden.filter(x=>x!==k);DB.home.push(k);save();S.add=DB.hidden.length>0;R.apps()},
+ });
+ S.suggest=()=>[];
+};
+
+/* ============================================================ PLAN + REVIEW */
+function renderPlan(){
+ document.getElementById('v-plan').innerHTML=`<div class="planwrap">
+ <h2 class="serif" style="font-size:30px;margin:0 0 8px">Plan & decisions</h2>
+ <p>The full written plan, with file references, native changes and TLA+ outlines, is in <code>design/view-refresh-2026-11/PLAN.md</code>. Nothing is implemented yet. Tick changes and pick decisions on each tab, add comments, then press <b>Copy my review</b> and paste the result back into the chat.</p>
+ <h3>Cross-cutting</h3><ul>
+ <li><b>No narration text.</b> Explanatory and privacy-narration lines are removed everywhere. One short line remains only for an error you need to act on.</li>
+ <li><b>Search moves to the agent.</b> Photos, Notes and Files lose their search inputs. New read-only <code>*_filter</code> tools show a clearable chip in the view. Anything that changes data (move, album, delete) goes through the existing review card.</li>
+ <li><b>One spec per flow,</b> next to the existing specs in <code>design/view-refresh-2026-11/tla/</code>. The as-built config reproduces today’s bugs; the fixed config gates implementation.</li></ul>
+ <h3>Review findings that drive the changes</h3>
+ <table><tr><th>View</th><th>Finding</th><th>Source</th></tr>
+ <tr><td>Files</td><td>No tile lists a folder. Each opens <code>ACTION_OPEN_DOCUMENT</code> with only a MIME filter and no initial URI, so every location shows the picker’s Recent list</td><td><code>files-tree-adapter.ts:15-20,145</code>, <code>DailyAppsPlugin.java:132-136</code></td></tr>
+ <tr><td>Notes</td><td>The 29 s cap is a leftover; the current ASR (Parakeet-TDT) has no 30 s window, and live dictation already streams</td><td><code>voice-adapter.ts:289,510</code>, <code>AlphaVoiceCloudPlugin.java:82,483</code></td></tr>
+ <tr><td>Notes</td><td>Native mic peaks exist, yet the recorder says “Waveform levels are unavailable”</td><td><code>AlphaVoiceCloudPlugin.java:502</code>, <code>voice-adapter.ts:1110</code></td></tr>
+ <tr><td>Photos</td><td><code>slice(-240)</code> keeps the oldest items, so the newest fall off; MediaStore changes clear the selection and close the viewer</td><td><code>camera-adapter.ts:303,402,465,961-988</code></td></tr>
+ <tr><td>Photos</td><td>The viewer’s swipe and tap handlers are empty; Info opens the album manager</td><td><code>camera-adapter.ts:899,852</code></td></tr>
+ <tr><td>Camera</td><td>Tap-to-focus holds <code>controlBusy</code> for up to ~10 s, and the shutter is silently dropped meanwhile</td><td><code>camera-adapter.ts:668,811</code></td></tr>
+ <tr><td>Camera</td><td>The viewfinder stays black until a sequential native settings-restore chain finishes; 40 base64 thumbnails load for one tile</td><td><code>CameraPlugin.kt:1140-1195</code>, <code>camera-adapter.ts:298,518</code></td></tr>
+ <tr><td>Apps</td><td>The drawer’s Favorites are the Home tiles, so product views appear twice</td><td><code>home-launcher.ts:173,318-348</code></td></tr></table>
+ <h3>Phases after approval</h3><ol>
+ <li>Measure camera cold and warm first frame and shutter latency on the Pixel 10a (the before numbers).</li>
+ <li>Write the TLA+ specs, run as-built (reproduce the bugs), then the fixed design.</li>
+ <li>Camera: header cleanup and native start and shutter work (<code>patches/eliza</code>), then re-measure.</li>
+ <li>Photos, 5. Notes, 6. Files, 7. Apps.</li>
+ <li value="8">Run <code>npm run verify</code> and <code>npm run android:build:local</code> (both distribution variants), then an emulator HOME-role run and a Pixel 10a device run, each reported separately.</li></ol>
+ <h3>Your review so far</h3><div class="out" id="out"></div></div>`;
+}
+function reviewText(){
+ let s='# View refresh review\n';
+ for(const v of VIEWS){const r=REV[v.key]||{ok:{},dec:{},cm:''};s+=`\n## ${v.label}\n`;
+  v.changes.forEach(([k,t],i)=>{s+=`- [${r.ok[i]?'x':' '}] ${k} ${t.replace(/<[^>]+>/g,'')}\n`});
+  v.decisions.forEach(d=>{s+=`- ${d.id} ${d.q}: ${d.o[r.dec[d.id]??d.r]}\n`});
+  if(r.cm)s+=`- Comments: ${r.cm}\n`;}
+ return s;
+}
+document.getElementById('copyBtn').onclick=async()=>{const t=reviewText();try{await navigator.clipboard.writeText(t);}catch{}current='plan';localStorage.setItem('vr.tab','plan');show();document.getElementById('out').textContent=t;const b=document.getElementById('copyBtn');b.textContent='Copied';setTimeout(()=>b.textContent='Copy my review',1600)};
+document.getElementById('resetBtn').onclick=()=>{DB=seed();save();Object.assign(PH,{sel:null,filter:null,album:null,view:null});Object.assign(NT,{folder:'All',screen:'list',filter:null});Object.assign(FL,{root:null,path:null,sel:null,filter:null,prev:null});Object.assign(AP,{drawer:false,edit:false});show()};
+R.plan=()=>{const o=document.getElementById('out');if(o)o.textContent=reviewText()};
+buildPage();
+</script>
+</body>
+</html>
