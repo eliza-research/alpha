@@ -136,15 +136,13 @@ test('Journey B: recorded note is read aloud, summarized, and becomes an event a
  await expect.poll(async()=>(await notes(page)).filter(n=>n.kind==='voice'&&n.title==='Venue meeting'&&n.body===transcript&&!!n.audio?.audioId).length).toBe(1);
  await page.evaluate(async()=>{const {ctx,osc}=(window as any).fixture;osc.stop();await ctx.close();});
 
- // ---- 2. Reload, reopen, read aloud ----
+ // ---- 2. Reload, reopen ----
  await page.reload();await ready(page,true);
  await localBrowserVoice(page);
  await openSavedRecording(page);
  await expect(page.getByText(transcript,{exact:true}).first()).toBeVisible();
- // P-43: no Web Speech fallback. Without agent speech nothing is spoken and Read aloud stays available.
- await page.getByRole('button',{name:'Read aloud',exact:true}).click();
- await expect(page.getByRole('button',{name:'Read aloud',exact:true})).toBeVisible();
- await expect(page.getByRole('button',{name:'Stop reading',exact:true})).toHaveCount(0);
+ // Reading aloud is asked of Alpha; the voice note toolbar has no Read aloud button (PLAN.md section 3).
+ await expect(page.getByRole('button',{name:'Read aloud',exact:true})).toHaveCount(0);
  expect(await page.evaluate(()=>(window as any).voiceFixture.spoken as string[])).toEqual([]);
  const recorded=(await notes(page))[0];
 

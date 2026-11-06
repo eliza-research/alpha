@@ -118,11 +118,16 @@ export class CanonicalNotesUi {
  private resolve(id:string):string{const draft=this.editor.draft;return draft&&id==='draft-'+draft.token?draft.id??id:id;}
  /** Opens one record (or closes the editor) after the current draft is saved. */
  select(id:string|null):void{void this.leave(id).catch(()=>this.needsReview());}
- async create(kind:'text'|'list'='text'):Promise<boolean>{
+ /** A new note; one created while a folder is selected starts in that folder (format data folderId). */
+ async create(kind:'text'|'list'='text',folderId:string|null=null):Promise<boolean>{
   try{
    if(!await this.leave(null))return false;
    if(this.controller.revision===null)await this.controller.refresh();
-   this.editor.begin(kind);if(kind==='list')this.editor.edit({format:{kind:'list',data:{items:[],pinned:false}}});return true;}
+   this.editor.begin(kind);
+   const folder:Record<string,string>=folderId?{folderId}:{};
+   if(kind==='list')this.editor.edit({format:{kind:'list',data:{items:[],pinned:false,...folder}}});
+   else if(folderId)this.editor.edit({format:{kind:'text',data:folder}});
+   return true;}
   catch{if(this.controller.current)this.needsReview();return false;}
  }
  async update(id:string,patch:Bag|((record:Bag)=>Bag)):Promise<boolean>{

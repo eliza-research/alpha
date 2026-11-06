@@ -896,7 +896,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
           if(!active())return;
           // Leased: the Android native passes leave a row this renderer is working on alone (MVP-15).
           row=leasedDeletionRow({id:crypto.randomUUID(),target,note:reviewed as AudioDeletion['note'],audioId:reviewed.audio.audioId,...(permanent?{permanent:true as const}:{})},Date.now());
-          // Write-ahead Trash copy: the note text and its recording stay restorable for three days.
+          // Write-ahead Trash copy: the note text and its recording stay restorable for 30 days.
           // Maintenance drops it again if the deletion below never commits.
           const index=Math.max(0,(current.get('notes').list||[]).findIndex((n:Bag)=>n.id===reviewed.id));
           if(!permanent)try{await editNotesTrash(doc=>addNotesTrashEntry(doc,{id:row!.id,note:reviewed as NotesTrashEntry['note'],target,index,deletedAt:Date.now(),audio:{audioId:reviewed.audio.audioId}}));}
@@ -939,7 +939,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
           if(active())current.set({open:null});
           window.dispatchEvent(new Event('alpha:notes-trash-changed'));
           if(permanent)current.toast(`${reviewed.title||'Voice note'} and its recording deleted forever`);
-          else current.toast('Voice note moved to Trash', {undo:()=>void restoreDeletion(row!,current,index)});
+          else current.toast('Moved to Recently deleted', {undo:()=>void restoreDeletion(row!,current,index)});
         });} catch {current.toast(refusedFull?'Could not show the Trash choices. Nothing was deleted.':'Deletion is unconfirmed. Check deletion status; no deletion will be repeated.');}
         finally{
           deletionBusy=false;

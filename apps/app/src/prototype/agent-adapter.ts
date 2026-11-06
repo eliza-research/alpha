@@ -21,6 +21,9 @@ import type {ConversationMessageTarget} from '../runtime/alpha-client';
 import {formatDeviceRecordDateTime} from "../../../../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/device-record-presentation.ts";
 import {isNativeNotesQuery} from '../../../../.eliza/client-features/packages/contracts/src/native-notes-query.ts';
 import {executeNotesQuery} from './notes-query-executor';
+import {executeNotesOrganize,notesOrganizeShellHost} from './notes-organize-executor';
+import {isNotesOrganizeOperation} from '../runtime/notes-organize-contract';
+import {readNotesFolders,editNotesFolders} from '../runtime/notes-folders';
 import {executeCalendarAvailability,type AvailabilityProvider} from '../runtime/calendar-availability';
 import {availabilityReview} from './calendar-availability-review';
 import {presentDeviceRecordOperation} from '../runtime/device-record-presentation';
@@ -839,6 +842,12 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         const current=()=>{signal.throwIfAborted();context(this);if(!ownerSession||connectionController.getSnapshot().session!==ownerSession||JSON.stringify(connectionController.getWorkflowDeviceTarget())!==ownerTarget||!this.live||this.notesPending||this.notesStorageFailed||document.hidden||expectedContext.sensitive||!['home','notes'].includes(expectedContext.view)||JSON.stringify(alphaClient.getState().context)!==JSON.stringify(expectedContext))throw Error('Notes query or connection changed');};
         try{return await executeNotesQuery(this.notesStore,operation,operationId,signal,current);
         }catch{return {status:'failed',summary:'Notes changed or sharing became unavailable. Review the query again; nothing was shared.'};}
+      }
+      if(isNotesOrganizeOperation(operation)){
+        // Folders, the read-only list filter and Recently deleted restore (runtime/notes-organize-contract).
+        const current=()=>{signal.throwIfAborted();context(this);if(!this.live||document.hidden||expectedContext.sensitive||!['home','notes'].includes(expectedContext.view)||JSON.stringify(alphaClient.getState().context)!==JSON.stringify(expectedContext))throw Error('Notes context changed');};
+        try{return await executeNotesOrganize(notesOrganizeShellHost(this,{read:readNotesFolders,edit:editNotesFolders}),operation,current);}
+        catch{return {status:'failed',summary:'Notes changed or became unavailable. Nothing was changed.'};}
       }
       if(isNotesOperation(operation)){
         try{

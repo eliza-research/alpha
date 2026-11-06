@@ -66,6 +66,7 @@ import { protectedPowerLaunchState } from './runtime/power-launch-state';
 import { installListenerInvocation, stopWakeListenerForChatOnly } from './runtime/always-on-listener';
 import {GoogleConnectionsPanel} from './runtime/google-connection-ui';
 import { installNotesTrashAdapter } from './prototype/notes-trash-adapter';
+import { installNotesFoldersAdapter } from './prototype/notes-folders-adapter';
 import { installInboxCloudAdapter, inboxAttention, subscribeInboxAttention } from './prototype/inbox-cloud-adapter';
 import { installHomeOverviewCards } from './prototype/home-overview-cards';
 import { installUseInEmailReview } from './prototype/use-in-email-review';
@@ -135,6 +136,7 @@ if (!fixture) {
   installNotesDocumentAdapter(Component, VIEWS);
   installNotesShareAdapter(VIEWS);
   installNotesTrashAdapter(Component, VIEWS);
+  installNotesFoldersAdapter(Component, VIEWS);
   installCanonicalNotesView(Component,VIEWS);
   installNoteSourceAdapter(VIEWS);
   installNoteWebSourceAdapter(VIEWS);

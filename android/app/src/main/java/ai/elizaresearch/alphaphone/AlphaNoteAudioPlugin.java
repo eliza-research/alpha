@@ -51,8 +51,10 @@ public class AlphaNoteAudioPlugin extends Plugin {
   try{sweepExpiredTrash(getContext(),System.currentTimeMillis());}catch(Exception retained){/* The renderer and the periodic sweep retry. */}
  }
 
- /** Product Trash retention, matching notes-trash-policy.ts: three days after deletion. */
- static final long NOTES_TRASH_RETENTION_MS=3L*24*60*60*1000;
+ /** Product Trash retention, matching notes-trash-policy.ts: thirty days after deletion. */
+ static final long NOTES_TRASH_RETENTION_MS=30L*24*60*60*1000;
+ /** Orphan-recording backstop: twice Trash retention, so the Trash rules (live references, review) always decide first. */
+ static final long AUDIO_BACKSTOP_MS=2*NOTES_TRASH_RETENTION_MS;
  static final String NOTES_TRASH_SLOT="notes-trash:v1:device",NOTES_SLOT="notes-records:v1:device",PENDING_AUDIO_SLOT="notes-audio-deletions:v1:device";
  private static final String TRASH_PREFIX="{\"version\":1,\"entries\":[",TRASH_SUFFIX="]}";
  private static final String TRASH_WORK="alpha-notes-trash-backstop";
@@ -76,7 +78,7 @@ public class AlphaNoteAudioPlugin extends Plugin {
  }
 
  /**
-  * Native backstop for Notes Trash. Erases the recording of each Trash entry whose three days
+  * Native backstop for Notes Trash. Erases the recording of each Trash entry whose thirty days
   * have elapsed, then removes those entries from the encrypted Trash slot, under the same rules
   * as the renderer's maintenance: a note that is saved again, a recording that any saved note
   * still references, and a deletion still under review are never touched. Any unreadable or

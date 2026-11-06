@@ -1,14 +1,14 @@
 import assert from 'node:assert/strict';
 import {NotesStore} from '../apps/app/src/runtime/notes-store';
 import {
- NOTES_TRASH_RETENTION_MS,addNotesTrashEntry,emptyNotesTrash,notesTrashDaysLabel,notesTrashDaysLeft,notesTrashExpired,
+ NOTES_TRASH_RETENTION_MS,addNotesTrashEntry,emptyNotesTrash,notesTrashDaysLabel,notesTrashDaysShort,notesTrashDaysLeft,notesTrashExpired,
  planNotesTrash,removeNotesTrashEntries,restoreNotesTrashEntry,sortedNotesTrash,validateNotesTrash,type NotesTrashDocument,type NotesTrashEntry,
  NOTES_TRASH_FULL_CODE,NOTES_TRASH_MAX_BYTES,NOTES_TRASH_MAX_ENTRIES,NotesTrashFull,notesTrashOverflows,
 } from '../apps/app/src/runtime/notes-trash-policy';
 import {createNotesTrashPolicy} from '../.eliza/client-features/plugins/plugin-notes/src/client/notes-trash-policy.ts';
 
-const DAY=24*60*60*1000,t0=Date.UTC(2026,9,7,12);
-assert.equal(NOTES_TRASH_RETENTION_MS,3*DAY);
+const DAY=24*60*60*1000,R=30,t0=Date.UTC(2026,9,7,12);
+assert.equal(NOTES_TRASH_RETENTION_MS,R*DAY);
 const memory=()=>{const values=new Map<string,string>();return {getItem:(k:string)=>values.get(k)??null,setItem:(k:string,v:string)=>{values.set(k,v);}};};
 const text={id:'text-1',kind:'text',title:'Groceries',body:'Milk',pinned:false,createdAt:t0-DAY,modifiedAt:t0-DAY,custom:{kept:'verbatim'}};
 const list={id:'list-1',kind:'list',title:'Packing',items:[{t:'Passport',done:true}],pinned:true};
@@ -44,35 +44,36 @@ assert.deepEqual(JSON.parse(JSON.stringify(doc)),doc,'stored as plain JSON');
 // Clock injection: the 3-day boundary is exact.
 const row=entry(text,'op-1',t0);
 assert.equal(notesTrashExpired(row,t0),false);
-assert.equal(notesTrashExpired(row,t0+3*DAY-1),false);
-assert.equal(notesTrashExpired(row,t0+3*DAY),true);
-assert.equal(notesTrashExpired(row,t0+30*DAY),true);
-assert.deepEqual([0,1,DAY-1,DAY,DAY+1,2*DAY,2*DAY+1,3*DAY-1,3*DAY,4*DAY].map(d=>notesTrashDaysLeft(row,t0+d)),[3,3,3,2,2,1,1,1,0,0]);
-assert.equal(notesTrashDaysLabel(row,t0),'3 days left');
-assert.equal(notesTrashDaysLabel(row,t0+2*DAY+1),'1 day left');
-assert.equal(notesTrashDaysLabel(row,t0+3*DAY),'Deleting permanently');
-// A clock moved backwards never shows more than 3 days and never purges early; the purge waits for the wall clock.
-assert.equal(notesTrashDaysLeft(row,t0-10*DAY),3);
+assert.equal(notesTrashExpired(row,t0+R*DAY-1),false);
+assert.equal(notesTrashExpired(row,t0+R*DAY),true);
+assert.equal(notesTrashExpired(row,t0+90*DAY),true);
+assert.deepEqual([0,1,DAY-1,DAY,DAY+1,2*DAY,2*DAY+1,(R-1)*DAY+1,R*DAY-1,R*DAY,(R+1)*DAY].map(d=>notesTrashDaysLeft(row,t0+d)),[30,30,30,29,29,28,28,1,1,0,0]);
+assert.equal(notesTrashDaysLabel(row,t0),'30 days left');
+assert.equal(notesTrashDaysShort(row,t0+DAY),'29d');
+assert.equal(notesTrashDaysLabel(row,t0+(R-1)*DAY+1),'1 day left');
+assert.equal(notesTrashDaysLabel(row,t0+R*DAY),'Deleting permanently');
+// A clock moved backwards never shows more than 30 days and never purges early; the purge waits for the wall clock.
+assert.equal(notesTrashDaysLeft(row,t0-10*DAY),30);
 assert.equal(notesTrashExpired(row,t0-10*DAY),false);
 assert.deepEqual(planNotesTrash({version:1,entries:[row]},new Set(),t0-10*DAY).kept.map(e=>e.id),['op-1']);
 
-// Planning: live notes are stale rows (undo, restore, uncommitted deletion); absent notes expire at 3 days.
+// Planning: live notes are stale rows (undo, restore, uncommitted deletion); absent notes expire at 30 days.
 const live=new Set(['list-1']);
-let plan=planNotesTrash(doc,live,t0+3*DAY-1);
+let plan=planNotesTrash(doc,live,t0+R*DAY-1);
 assert.deepEqual(plan.stale.map(e=>e.id),['op-2']);
 assert.deepEqual(plan.expired.map(e=>e.id),[]);
 assert.deepEqual(plan.kept.map(e=>e.id),['op-3','op-1']);
-plan=planNotesTrash(doc,live,t0+3*DAY);
+plan=planNotesTrash(doc,live,t0+R*DAY);
 assert.deepEqual(plan.expired.map(e=>e.id),['op-1']);
-plan=planNotesTrash(doc,live,t0+3*DAY+2000);
+plan=planNotesTrash(doc,live,t0+R*DAY+2000);
 assert.deepEqual(plan.expired.map(e=>e.id),['op-3','op-1']);
 // Idempotent: applying a plan and planning again leaves nothing to do, however often it runs.
 let applied=removeNotesTrashEntries(doc,[...plan.stale,...plan.expired].map(e=>e.id));
-for(let run=0;run<3;run++){const next=planNotesTrash(applied,live,t0+3*DAY+2000);assert.equal(next.stale.length+next.expired.length,0);applied=removeNotesTrashEntries(applied,[]);}
+for(let run=0;run<3;run++){const next=planNotesTrash(applied,live,t0+R*DAY+2000);assert.equal(next.stale.length+next.expired.length,0);applied=removeNotesTrashEntries(applied,[]);}
 assert.deepEqual(applied.entries,[]);
 // A failed recording purge is retained (not dropped) and simply planned again on the next run.
 const retained=removeNotesTrashEntries(doc,['op-1','op-2']);
-assert.deepEqual(planNotesTrash(retained,live,t0+4*DAY).expired.map(e=>e.id),['op-3']);
+assert.deepEqual(planNotesTrash(retained,live,t0+(R+1)*DAY).expired.map(e=>e.id),['op-3']);
 
 // Restore: exact record, original position (clamped), refuses to replace a live note with the same identity.
 assert.deepEqual(restoreNotesTrashEntry([list],entry(text,'op',t0,0)),[text,list]);
@@ -136,7 +137,7 @@ assert.throws(()=>restoreNotesTrashEntry([text],entry(text,'op',t0)),/already ex
  assert.throws(()=>addNotesTrashEntry(over,small(NOTES_TRASH_MAX_ENTRIES+2)),NotesTrashFull);
  const reducedOver=removeNotesTrashEntries(over,['op-0']);
  assert.equal(reducedOver.entries.length,NOTES_TRASH_MAX_ENTRIES+1,'a reduction that is still above the limit is accepted');
- const expiredPlan=planNotesTrash(over,new Set(['n1']),t0+3*DAY+5);
+ const expiredPlan=planNotesTrash(over,new Set(['n1']),t0+R*DAY+5);
  assert.deepEqual([expiredPlan.stale.map(e=>e.id),expiredPlan.expired.length,expiredPlan.kept.length],[['op-1'],5,NOTES_TRASH_MAX_ENTRIES+2-6],'expiry is planned above the limit');
  const purged=removeNotesTrashEntries(over,[...expiredPlan.stale,...expiredPlan.expired].map(e=>e.id));
  assert.equal(purged.entries.length,NOTES_TRASH_MAX_ENTRIES-4);
@@ -167,7 +168,7 @@ assert.throws(()=>restoreNotesTrashEntry([text],entry(text,'op',t0)),/already ex
  let reduced=smaller.remove(reread,['big-4']);
  assert.equal(reduced.entries.length,4);
  assert.ok(new TextEncoder().encode(JSON.stringify(reduced)).length>512,'still above the lowered byte limit after one removal');
- const due=smaller.plan(reduced,new Set(),t0+3*DAY+1000);
+ const due=smaller.plan(reduced,new Set(),t0+R*DAY+1000);
  assert.deepEqual(due.expired.map(e=>e.id),['big-1','big-0']);
  reduced=smaller.remove(reduced,due.expired.map(e=>e.id));
  assert.deepEqual(reduced.entries.map(e=>e.id),['big-3','big-2']);
