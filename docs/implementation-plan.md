@@ -28,7 +28,8 @@ Approval is not implementation or acceptance. [Verification](verification.md) an
   Gmail integration, optional Google Calendar APIs and shared Maps APIs. Cloud services do not host the agent.
 - In the default `native` profile, STT/TTS run on device through the Android bridge to Eliza's native
   inference/llama.cpp build. Dictation inserts editable text on Stop; voice
-  assistant auto-submits at semantic/long-gap endpoints and supports barge-in.
+  assistant auto-submits at semantic/long-gap endpoints. Speech does not interrupt a busy
+  turn or its spoken reply; Stop voice conversation ends it.
 - Pixel 10a / Android 17 is the target. Standalone APK and Alpha AOSP image are
   distinct delivery surfaces; both standalone/launcher packaging variants remain
   qualified. A launcher APK installed elsewhere is not automatically Alpha AOSP.
@@ -117,6 +118,8 @@ or bypass server enforcement to meet latency.
 
 Use available width **and height**, keyboard and system insets, large text and focus.
 Keep comfortable reading widths and touch targets; orientation alone is not a layout.
+The launcher flavor, and so the Alpha AOSP image, is portrait only (P-27 amendment): the
+landscape entries below apply to the standalone app.
 
 | Surface | Adapt | Preserve / do not stretch |
 | --- | --- | --- |
@@ -124,14 +127,14 @@ Keep comfortable reading widths and touch targets; orientation alone is not a la
 | Chat/assistant | Widen within a readable maximum, use side-by-side context only when space allows; short screens use full conversation | Draft, caret, selection, scroll anchor, recording and response generation; no duplicate composer |
 | Inbox/Notes/Files/Contacts | Wide list-detail split, narrow single-pane stack; editor keeps readable line length | Unsaved edits and source selection; Contacts only on AOSP |
 | Calendar | More visible time/day columns if readable; keep agenda fallback at large text | Event identity, selected date, recurrence scope and time-zone; no shrunken seven-column layout on short screens |
-| Maps | Map fills available space; move route/turn panel to side in landscape | Route/GPS state, attribution, large guidance controls and local speech; no restarting navigation |
+| Maps | Map fills available space; move route/turn panel to side in landscape (standalone) | Route/GPS state, attribution, large guidance controls and local speech; no restarting navigation |
 | Photos/video | Fit or deliberately crop media with explicit controls; move thumbnails/tools | Aspect ratio, selection, zoom and playback; never distort images to fill layout |
 | Camera/scan | Rotate chrome and respect native sensor/capture geometry | Capture session, orientation metadata and preview aspect ratio; no stretched WebView camera simulation |
 | Reviews/settings | Center bounded-width dialogs or use full-height sheets on short screens; scroll content above fixed actions | Readable exact recipients/amounts/files, keyboard access and visible confirm/cancel; no hidden action row |
 | Voice/listening | Compact accessible native/renderer controls with continuous indicator | No stop/start, auto-submit or lost mic indicator due to rotation |
 | System shade/secure camera/Clock/dialer | Use native image/system layouts and verify return/insets | Never replace secure/native surfaces with responsive web replicas; emergency routing stays system-owned |
 
-Qualify both APK variants and the image at small portrait/landscape, keyboard open,
+Qualify both APK variants and the image at small portrait (landscape: standalone only), keyboard open,
 150%+ text, TalkBack, split/window resizing where available and process recreation.
 Visual checks include the system shade and always-on listening lock/AOD indicator.
 

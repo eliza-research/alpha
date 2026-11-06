@@ -59,7 +59,7 @@ Decided by the product owner on 2026-10-13 (P-54) and 2026-10-14 (P-55), recorde
 ## October 14 Maps allowance clarification
 
 Decided by the owner in chat on 2026-10-14 (2026-10-15 UTC), while reviewing
-[#410](https://github.com/AlphaCompute/alphaphone/issues/410). This clarifies P-26
+[#410](https://github.com/eliza-research/alphaphone/issues/410). This clarifies P-26
 and P-28; it does not establish implementation, deployment or acceptance.
 
 - **P-56** Maps has a **separate Maps request allowance, with no per-request charge**.
@@ -79,106 +79,106 @@ issues are now implementation TODOs, not unanswered decision requests. The polic
 below controls over older PRD/plan wording and source defaults. Acceptance remains
 open. In particular Wallet is removed from MVP, superseding the October 11 expansion.
 
-- **P-10 — A-09 ([#394](https://github.com/AlphaCompute/alphaphone/issues/394)):** Schedules run only while the phone is powered on; the agent is local. Remove powered-off hosted-loop acceptance. Record missed occurrences once; do not automatically replay overdue effects. Offer an explicit Run now action where useful. **Amended by P-75 (2026-10-29):** the missed-run window is 30 minutes and Run now keeps its implemented scope (typed scheduled workflows and morning digests).
+- **P-10 — A-09 ([#394](https://github.com/eliza-research/alphaphone/issues/394)):** Schedules run only while the phone is powered on; the agent is local. Remove powered-off hosted-loop acceptance. Record missed occurrences once; do not automatically replay overdue effects. Offer an explicit Run now action where useful. **Amended by P-75 (2026-10-29):** the missed-run window is 30 minutes and Run now keeps its implemented scope (typed scheduled workflows and morning digests).
 
-- **P-11 — A-10 ([#395](https://github.com/AlphaCompute/alphaphone/issues/395)):** Voice-assistant latency is the elapsed time from the last user speech audio sample to the first audible response sample. Include end-of-turn detection, final STT, inference, TTS and playback buffering. Do not subtract silence detection or report a sum of selected stages as the end-to-end result. Dictation reports stop-to-editable-text separately; manual user think time is not a voice-assistant benchmark.
+- **P-11 — A-10 ([#395](https://github.com/eliza-research/alphaphone/issues/395)):** Voice-assistant latency is the elapsed time from the last user speech audio sample to the first audible response sample. Include end-of-turn detection, final STT, inference, TTS and playback buffering. Do not subtract silence detection or report a sum of selected stages as the end-to-end result. Dictation reports stop-to-editable-text separately; manual user think time is not a voice-assistant benchmark.
 
-- **P-12 — A-02 ([#396](https://github.com/AlphaCompute/alphaphone/issues/396)):** Eliza Cloud is the managed account, inference, subscription and Maps service endpoint. Agent orchestration, state, scheduling and approvals remain on the phone. No Cloud/hosted agent exists as a product connection, upgrade or fallback.
+- **P-12 — A-02 ([#396](https://github.com/eliza-research/alphaphone/issues/396)):** Eliza Cloud is the managed account, inference, subscription and Maps service endpoint. Agent orchestration, state, scheduling and approvals remain on the phone. No Cloud/hosted agent exists as a product connection, upgrade or fallback.
 
-- **P-13 — A-04 ([#397](https://github.com/AlphaCompute/alphaphone/issues/397)):** All speech recognition and synthesis run locally on the device, always. Replace Cloud/paired-host speech policy. Use the Android native bridge to the reviewed Eliza llama.cpp/libelizainference build, extending shared upstream speech support where necessary. Research candidate models on Hugging Face and select by measured device speed and quality, not advertised desktop throughput. **Amended by P-60 (2026-10-29):** STT and TTS stay local by default; Settings offers a local vs cloud switch for each.
+- **P-13 — A-04 ([#397](https://github.com/eliza-research/alphaphone/issues/397)):** All speech recognition and synthesis run locally on the device, always. Replace Cloud/paired-host speech policy. Use the Android native bridge to the reviewed Eliza llama.cpp/libelizainference build, extending shared upstream speech support where necessary. Research candidate models on Hugging Face and select by measured device speed and quality, not advertised desktop throughput. **Amended by P-60 (2026-10-29):** STT and TTS stay local by default; Settings offers a local vs cloud switch for each.
 
-- **P-14 — A-05 ([#398](https://github.com/AlphaCompute/alphaphone/issues/398)):** Use periodic background work and immediate reconciliation at resume/start. Doze delays are honest; a permanent connection solely for mail is not required. Stable event identities prevent duplicate user-visible alerts.
+- **P-14 — A-05 ([#398](https://github.com/eliza-research/alphaphone/issues/398)):** Use periodic background work and immediate reconciliation at resume/start. Doze delays are honest; a permanent connection solely for mail is not required. Stable event identities prevent duplicate user-visible alerts.
 
-- **P-15 — A-01 ([#399](https://github.com/AlphaCompute/alphaphone/issues/399)):** Target Pixel 10a on Android 17. Ship standalone APK and Alpha AOSP image/launcher; Cuttlefish is the image integration test target. Other Pixels are not alternate promised hardware.
+- **P-15 — A-01 ([#399](https://github.com/eliza-research/alphaphone/issues/399)):** Target Pixel 10a on Android 17. Ship standalone APK and Alpha AOSP image/launcher; Cuttlefish is the image integration test target. Other Pixels are not alternate promised hardware.
 
-- **P-16 — A-06 ([#400](https://github.com/AlphaCompute/alphaphone/issues/400)):** Alpha Compute controls signing and update authority; Shaw is the accountable release/support/rollback owner. Use managed or hardware-backed release signing, distinct from developer keys. **Amended by P-58 (2026-10-29):** release keys are held as GitHub Actions secrets for a CI signing job, an owner-accepted departure from managed or hardware-backed signing; they stay distinct from developer keys.
+- **P-16 — A-06 ([#400](https://github.com/eliza-research/alphaphone/issues/400)):** Alpha Compute controls signing and update authority; Shaw is the accountable release/support/rollback owner. Use managed or hardware-backed release signing, distinct from developer keys. **Amended by P-58 (2026-10-29):** release keys are held as GitHub Actions secrets for a CI signing job, an owner-accepted departure from managed or hardware-backed signing; they stay distinct from developer keys.
 
-- **P-17 — A-11 ([#401](https://github.com/AlphaCompute/alphaphone/issues/401)):** Android Clock owns alarms, conditional on a usable integration in the app and AOSP image. Alpha owns reminders. A dispatch receipt may state that Clock opened, not that an alarm was created.
+- **P-17 — A-11 ([#401](https://github.com/eliza-research/alphaphone/issues/401)):** Android Clock owns alarms, conditional on a usable integration in the app and AOSP image. Alpha owns reminders. A dispatch receipt may state that Clock opened, not that an alarm was created.
 
-- **P-18 — A-12 ([#402](https://github.com/AlphaCompute/alphaphone/issues/402)):** Passkeys are outside MVP acceptance. Integrated passwords remain in scope. A later release may use the system credential provider after actual browser/image qualification; Alpha is not a new passkey provider now.
+- **P-18 — A-12 ([#402](https://github.com/eliza-research/alphaphone/issues/402)):** Passkeys are outside MVP acceptance. Integrated passwords remain in scope. A later release may use the system credential provider after actual browser/image qualification; Alpha is not a new passkey provider now.
 
-- **P-19 — A-13 ([#403](https://github.com/AlphaCompute/alphaphone/issues/403)):** Third-party cookies are allowed in normal browsing. Persistent first-party sign-ins remain. Private tabs remain ephemeral and strict; browser storage stays separate from the privileged app WebView.
+- **P-19 — A-13 ([#403](https://github.com/eliza-research/alphaphone/issues/403)):** Third-party cookies are allowed in normal browsing. Persistent first-party sign-ins remain. Private tabs remain ephemeral and strict; browser storage stays separate from the privileged app WebView.
 
-- **P-20 — A-14 ([#404](https://github.com/AlphaCompute/alphaphone/issues/404)):** Every eligible login surface in Alpha should support password-manager fill. The isolated Browser is currently the website-login surface; future Alpha-owned login forms must also be covered. This is not blanket trust of arbitrary external browsers and does not expose passwords to the agent.
+- **P-20 — A-14 ([#404](https://github.com/eliza-research/alphaphone/issues/404)):** Every eligible login surface in Alpha should support password-manager fill. The isolated Browser is currently the website-login surface; future Alpha-owned login forms must also be covered. This is not blanket trust of arbitrary external browsers and does not expose passwords to the agent.
 
-- **P-21 — A-15 ([#405](https://github.com/AlphaCompute/alphaphone/issues/405)):** Include reading, read/unread, archive, drafts, reply/forward, reviewed send, opening/saving attachments and user-selected outbound attachments. Defer custom label management.
+- **P-21 — A-15 ([#405](https://github.com/eliza-research/alphaphone/issues/405)):** Include reading, read/unread, archive, drafts, reply/forward, reviewed send, opening/saving attachments and user-selected outbound attachments. Defer custom label management.
 
-- **P-22 — A-16 ([#406](https://github.com/AlphaCompute/alphaphone/issues/406)):** Only the local resident agent is supported. No hosted agent, dedicated-agent purchase, remote pairing or Cloud-agent fallback is a product option, now or as an advanced setting.
+- **P-22 — A-16 ([#406](https://github.com/eliza-research/alphaphone/issues/406)):** Only the local resident agent is supported. No hosted agent, dedicated-agent purchase, remote pairing or Cloud-agent fallback is a product option, now or as an advanced setting.
 
-- **P-23 — A-17 ([#407](https://github.com/AlphaCompute/alphaphone/issues/407)):** Use the system secure camera and its AOSP lock-screen gesture. Alpha does not implement its own secure camera; agent/library/account access stays behind unlock.
+- **P-23 — A-17 ([#407](https://github.com/eliza-research/alphaphone/issues/407)):** Use the system secure camera and its AOSP lock-screen gesture. Alpha does not implement its own secure camera; agent/library/account access stays behind unlock.
 
-- **P-24 — A-18 ([#408](https://github.com/AlphaCompute/alphaphone/issues/408)):** Provide full device photo/video library access to the local agent where Android permits and the user grants it, rather than limiting the product to owned captures or picker selections. Handle partial/denied access honestly. Full local access does not imply automatic upload of the entire library.
+- **P-24 — A-18 ([#408](https://github.com/eliza-research/alphaphone/issues/408)):** Provide full device photo/video library access to the local agent where Android permits and the user grants it, rather than limiting the product to owned captures or picker selections. Handle partial/denied access honestly. Full local access does not imply automatic upload of the entire library.
 
-- **P-25 — A-19 ([#409](https://github.com/AlphaCompute/alphaphone/issues/409)):** No app-data import/export, backup or device-transfer product workflow. Provide a confirmed Reset Alpha data option. Keep Android backup disabled. Ordinary Files opening/saving and Gmail attachments are separate daily-tool operations, not app-data migration.
+- **P-25 — A-19 ([#409](https://github.com/eliza-research/alphaphone/issues/409)):** No app-data import/export, backup or device-transfer product workflow. Provide a confirmed Reset Alpha data option. Keep Android backup disabled. Ordinary Files opening/saving and Gmail attachments are separate daily-tool operations, not app-data migration.
 
-- **P-26 — A-20 ([#410](https://github.com/AlphaCompute/alphaphone/issues/410)):** Use subscription billing with reasonable rate limits rather than a user-facing credit top-up/per-token meter. Billing checks must not add a billing-service round trip to each assistant turn. Local speech and local tools do not depend on an online billing check. **Amended by P-59 and P-62 (2026-10-29):** the "Membership & credits" sheet shows organization credit in the October 16 credit mode (P-59), and catalog v1 and its per-minute limits are confirmed (P-62).
+- **P-26 — A-20 ([#410](https://github.com/eliza-research/alphaphone/issues/410)):** Use subscription billing with reasonable rate limits rather than a user-facing credit top-up/per-token meter. Billing checks must not add a billing-service round trip to each assistant turn. Local speech and local tools do not depend on an online billing check. **Amended by P-59 and P-62 (2026-10-29):** the "Membership & credits" sheet shows organization credit in the October 16 credit mode (P-59), and catalog v1 and its per-minute limits are confirmed (P-62).
 
-- **P-27 — A-22 ([#411](https://github.com/AlphaCompute/alphaphone/issues/411)):** Support portrait and landscape, adapting each surface by its purpose. Do not stretch every panel or change sensitive/native UI ownership. Preserve drafts, scroll, selection, task and capture state.
+- **P-27 — A-22 ([#411](https://github.com/eliza-research/alphaphone/issues/411)):** Support portrait and landscape, adapting each surface by its purpose. Do not stretch every panel or change sensitive/native UI ownership. Preserve drafts, scroll, selection, task and capture state. **Amended 2026-11-05 (622a9d5e1f, pending the owner's confirmation of this wording):** the launcher flavor is portrait only, so the Alpha AOSP image does not rotate; the standalone app keeps rotating and adapts each surface as above. A-22 stays TODO in the index.
 
-- **P-28 — A-23 ([#412](https://github.com/AlphaCompute/alphaphone/issues/412)):** Maps belongs in Eliza Cloud as a reusable managed service for agents, with full supported search, place, route and navigation control from Alpha’s local agent. The regional development gateway is a prototype adapter, not the production coverage promise. No hosted agent is introduced. **Amended by P-64 (2026-10-29):** the production provider is Google Maps Platform through Eliza Cloud, with Google's coverage.
+- **P-28 — A-23 ([#412](https://github.com/eliza-research/alphaphone/issues/412)):** Maps belongs in Eliza Cloud as a reusable managed service for agents, with full supported search, place, route and navigation control from Alpha’s local agent. The regional development gateway is a prototype adapter, not the production coverage promise. No hosted agent is introduced. **Amended by P-64 (2026-10-29):** the production provider is Google Maps Platform through Eliza Cloud, with Google's coverage.
 
-- **P-29 — A-24 ([#413](https://github.com/AlphaCompute/alphaphone/issues/413)):** On-device STT and TTS are mandatory for every production speech entrypoint, including signed-out and offline use. No Cloud speech fallback. A failed local engine must surface recovery and typing, not switch routes. **Amended by P-60 (2026-10-29):** on-device STT and TTS are the default; cloud STT and cloud TTS are explicit Settings choices, never an automatic fallback.
+- **P-29 — A-24 ([#413](https://github.com/eliza-research/alphaphone/issues/413)):** On-device STT and TTS are mandatory for every production speech entrypoint, including signed-out and offline use. No Cloud speech fallback. A failed local engine must surface recovery and typing, not switch routes. **Amended by P-60 (2026-10-29):** on-device STT and TTS are the default; cloud STT and cloud TTS are explicit Settings choices, never an automatic fallback.
 
-- **P-30 — A-25 ([#414](https://github.com/AlphaCompute/alphaphone/issues/414)):** Use a short durable Undo window and one review step for events and reminders. Initial engineering value: ten seconds. Delay provider deletion until expiry when possible; never call a recreated invitation a lossless restore. Suspend pending-deletion reminder delivery immediately.
+- **P-30 — A-25 ([#414](https://github.com/eliza-research/alphaphone/issues/414)):** Use a short durable Undo window and one review step for events and reminders. Initial engineering value: ten seconds. Delay provider deletion until expiry when possible; never call a recreated invitation a lossless restore. Suspend pending-deletion reminder delivery immediately.
 
-- **P-31 — A-26 ([#415](https://github.com/AlphaCompute/alphaphone/issues/415)):** No Cloud-agent host is admitted. The resident agent uses the local native bridge. Cloud inference, subscription, Gmail and Maps are managed services, not agent hosts.
+- **P-31 — A-26 ([#415](https://github.com/eliza-research/alphaphone/issues/415)):** No Cloud-agent host is admitted. The resident agent uses the local native bridge. Cloud inference, subscription, Gmail and Maps are managed services, not agent hosts.
 
-- **P-32 — A-32 ([#416](https://github.com/AlphaCompute/alphaphone/issues/416)):** Use Android’s shade as the single notification/quick-settings surface if it integrates correctly and matches the product design. Keep workflow history in Alpha; remove the competing imitation shade. Use normal notifications/tiles before custom SystemUI changes.
+- **P-32 — A-32 ([#416](https://github.com/eliza-research/alphaphone/issues/416)):** Use Android’s shade as the single notification/quick-settings surface if it integrates correctly and matches the product design. Keep workflow history in Alpha; remove the competing imitation shade. Use normal notifications/tiles before custom SystemUI changes.
 
-- **P-33 — A-33 ([#417](https://github.com/AlphaCompute/alphaphone/issues/417)):** A downward swipe on empty launcher Home opens Android’s shade. Preserve top-edge Android behavior and content/conversation scrolling. Standalone follows ordinary app behavior.
+- **P-33 — A-33 ([#417](https://github.com/eliza-research/alphaphone/issues/417)):** A downward swipe on empty launcher Home opens Android’s shade. Preserve top-edge Android behavior and content/conversation scrolling. Standalone follows ordinary app behavior.
 
-- **P-34 — A-34 ([#418](https://github.com/AlphaCompute/alphaphone/issues/418)):** Free, cancelled and declined entries are not busy. Offer owner-selected free/busy-only calendars without exposing details. Tentative/unanswered blocking entries count conservatively; unavailable/stale reads are unknown, never free.
+- **P-34 — A-34 ([#418](https://github.com/eliza-research/alphaphone/issues/418)):** Free, cancelled and declined entries are not busy. Offer owner-selected free/busy-only calendars without exposing details. Tentative/unanswered blocking entries count conservatively; unavailable/stale reads are unknown, never free.
 
-- **P-35 — A-35 ([#419](https://github.com/AlphaCompute/alphaphone/issues/419)):** A reviewed Use in email suggestion may attach items selected in Files or Photos. Context selection is not itself permission to attach. Insert into a draft; final Send is separate.
+- **P-35 — A-35 ([#419](https://github.com/eliza-research/alphaphone/issues/419)):** A reviewed Use in email suggestion may attach items selected in Files or Photos. Context selection is not itself permission to attach. Insert into a draft; final Send is separate.
 
-- **P-36 — A-03 ([#420](https://github.com/AlphaCompute/alphaphone/issues/420)):** Phone, Contacts and SMS are included only in the AOSP fork. Hide and capability-gate them in standalone APKs and other non-AOSP product installs. The launcher flavor alone is not proof of an Alpha image. Wallet is outside MVP.
+- **P-36 — A-03 ([#420](https://github.com/eliza-research/alphaphone/issues/420)):** Phone, Contacts and SMS are included only in the AOSP fork. Hide and capability-gate them in standalone APKs and other non-AOSP product installs. The launcher flavor alone is not proof of an Alpha image. Wallet is outside MVP.
 
-- **P-37 — A-07 ([#421](https://github.com/AlphaCompute/alphaphone/issues/421)):** Communication providers are Gmail and text messaging. Gmail is available in both product distributions; SMS/MMS is device/SIM based and only exposed on the Alpha AOSP image. Telegram, Discord and additional mail providers stay deferred. Device Calendar/Contacts sources remain separate native permissions.
+- **P-37 — A-07 ([#421](https://github.com/eliza-research/alphaphone/issues/421)):** Communication providers are Gmail and text messaging. Gmail is available in both product distributions; SMS/MMS is device/SIM based and only exposed on the Alpha AOSP image. Telegram, Discord and additional mail providers stay deferred. Device Calendar/Contacts sources remain separate native permissions.
 
-- **P-38 — A-08 ([#422](https://github.com/AlphaCompute/alphaphone/issues/422)):** Wallet is removed from the MVP plan. No custody, payment, pass-wallet, NFC payment integration or wallet-provider activation is required for MVP. Preserve unrelated user data; do not activate prototype transfers.
+- **P-38 — A-08 ([#422](https://github.com/eliza-research/alphaphone/issues/422)):** Wallet is removed from the MVP plan. No custody, payment, pass-wallet, NFC payment integration or wallet-provider activation is required for MVP. Preserve unrelated user data; do not activate prototype transfers.
 
-- **P-39 — MVP-01 ([#423](https://github.com/AlphaCompute/alphaphone/issues/423)):** Transcribe records locally and on Stop inserts editable text; the user sends it. Voice assistant listens and submits automatically: after a short gap evaluate semantic turn completion with Clef; after a longer gap submit. Resumed speech cancels pending submit or the in-flight response/playback and continues the utterance/conversation. All STT/TTS remains local. **Amended by P-60 (2026-10-29):** Clef end-of-turn detection runs in Eliza Cloud on Cloudflare, and STT/TTS are local by default with Settings switches for cloud.
+- **P-39 — MVP-01 ([#423](https://github.com/eliza-research/alphaphone/issues/423)):** Transcribe records locally and on Stop inserts editable text; the user sends it. Voice assistant listens and submits automatically: after a short gap evaluate semantic turn completion with Clef; after a longer gap submit. Resumed speech cancels pending submit or the in-flight response/playback and continues the utterance/conversation. All STT/TTS remains local. **Amended by P-60 (2026-10-29):** Clef end-of-turn detection runs in Eliza Cloud on Cloudflare, and STT/TTS are local by default with Settings switches for cloud.
 
-- **P-40 — MVP-52 ([#424](https://github.com/AlphaCompute/alphaphone/issues/424)):** Always-on listening and supported hardware-key invocation are required in the AOSP MVP, not a later milestone. Use a narrowly privileged isolated listener only; the ordinary Alpha app remains nonprivileged. Listening is off until consent, local, visibly indicated and immediately stoppable. **Amended by P-61 and P-75 (2026-10-29):** the dedicated `alpha_sense_app` SELinux domain (G7) is required before MVP (P-61); an unattended-update client is a second narrowly privileged component (P-75).
+- **P-40 — MVP-52 ([#424](https://github.com/eliza-research/alphaphone/issues/424)):** Always-on listening and supported hardware-key invocation are required in the AOSP MVP, not a later milestone. Use a narrowly privileged isolated listener only; the ordinary Alpha app remains nonprivileged. Listening is off until consent, local, visibly indicated and immediately stoppable. **Amended by P-61 and P-75 (2026-10-29):** the dedicated `alpha_sense_app` SELinux domain (G7) is required before MVP (P-61); an unattended-update client is a second narrowly privileged component (P-75).
 
-- **P-41 — OWNER-NOTICE ([#425](https://github.com/AlphaCompute/alphaphone/issues/425)):** Withdraw owner-specific approval notices on owner change. Repost quietly when the original owner returns only if the approval remains pending, valid and unexpired. Keep workflow state; revalidate the target and create a fresh tap binding. Apply the same privacy boundary to owner-specific result notices.
+- **P-41 — OWNER-NOTICE ([#425](https://github.com/eliza-research/alphaphone/issues/425)):** Withdraw owner-specific approval notices on owner change. Repost quietly when the original owner returns only if the approval remains pending, valid and unexpired. Keep workflow state; revalidate the target and create a fresh tap binding. Apply the same privacy boundary to owner-specific result notices.
 
 ## Resolved decision index
 
 | ID | Policy | Implementation | State |
 | --- | --- | --- | --- |
-| A-09 | P-10 | [#394](https://github.com/AlphaCompute/alphaphone/issues/394) | TODO |
-| A-10 | P-11 | [#395](https://github.com/AlphaCompute/alphaphone/issues/395) | TODO |
-| A-02 | P-12 | [#396](https://github.com/AlphaCompute/alphaphone/issues/396) | TODO |
-| A-04 | P-13 | [#397](https://github.com/AlphaCompute/alphaphone/issues/397) | TODO |
-| A-05 | P-14 | [#398](https://github.com/AlphaCompute/alphaphone/issues/398) | TODO |
-| A-01 | P-15 | [#399](https://github.com/AlphaCompute/alphaphone/issues/399) | TODO |
-| A-06 | P-16 | [#400](https://github.com/AlphaCompute/alphaphone/issues/400) | TODO |
-| A-11 | P-17 | [#401](https://github.com/AlphaCompute/alphaphone/issues/401) | TODO |
-| A-12 | P-18 | [#402](https://github.com/AlphaCompute/alphaphone/issues/402) | TODO |
-| A-13 | P-19 | [#403](https://github.com/AlphaCompute/alphaphone/issues/403) | TODO |
-| A-14 | P-20 | [#404](https://github.com/AlphaCompute/alphaphone/issues/404) | TODO |
-| A-15 | P-21 | [#405](https://github.com/AlphaCompute/alphaphone/issues/405) | TODO |
-| A-16 | P-22 | [#406](https://github.com/AlphaCompute/alphaphone/issues/406) | TODO |
-| A-17 | P-23 | [#407](https://github.com/AlphaCompute/alphaphone/issues/407) | TODO |
-| A-18 | P-24 | [#408](https://github.com/AlphaCompute/alphaphone/issues/408) | TODO |
-| A-19 | P-25 | [#409](https://github.com/AlphaCompute/alphaphone/issues/409) | TODO |
-| A-20 | P-26 | [#410](https://github.com/AlphaCompute/alphaphone/issues/410) | TODO |
-| A-22 | P-27 | [#411](https://github.com/AlphaCompute/alphaphone/issues/411) | TODO |
-| A-23 | P-28 | [#412](https://github.com/AlphaCompute/alphaphone/issues/412) | TODO |
-| A-24 | P-29 | [#413](https://github.com/AlphaCompute/alphaphone/issues/413) | TODO |
-| A-25 | P-30 | [#414](https://github.com/AlphaCompute/alphaphone/issues/414) | TODO |
-| A-26 | P-31 | [#415](https://github.com/AlphaCompute/alphaphone/issues/415) | TODO |
-| A-32 | P-32 | [#416](https://github.com/AlphaCompute/alphaphone/issues/416) | TODO |
-| A-33 | P-33 | [#417](https://github.com/AlphaCompute/alphaphone/issues/417) | TODO |
-| A-34 | P-34 | [#418](https://github.com/AlphaCompute/alphaphone/issues/418) | TODO |
-| A-35 | P-35 | [#419](https://github.com/AlphaCompute/alphaphone/issues/419) | TODO |
-| A-03 | P-36 | [#420](https://github.com/AlphaCompute/alphaphone/issues/420) | TODO |
-| A-07 | P-37 | [#421](https://github.com/AlphaCompute/alphaphone/issues/421) | TODO |
-| A-08 | P-38 | [#422](https://github.com/AlphaCompute/alphaphone/issues/422) | TODO |
-| MVP-01 | P-39 | [#423](https://github.com/AlphaCompute/alphaphone/issues/423) | TODO |
-| MVP-52 | P-40 | [#424](https://github.com/AlphaCompute/alphaphone/issues/424) | TODO |
-| OWNER-NOTICE | P-41 | [#425](https://github.com/AlphaCompute/alphaphone/issues/425) | TODO |
+| A-09 | P-10 | [#394](https://github.com/eliza-research/alphaphone/issues/394) | TODO |
+| A-10 | P-11 | [#395](https://github.com/eliza-research/alphaphone/issues/395) | TODO |
+| A-02 | P-12 | [#396](https://github.com/eliza-research/alphaphone/issues/396) | TODO |
+| A-04 | P-13 | [#397](https://github.com/eliza-research/alphaphone/issues/397) | TODO |
+| A-05 | P-14 | [#398](https://github.com/eliza-research/alphaphone/issues/398) | TODO |
+| A-01 | P-15 | [#399](https://github.com/eliza-research/alphaphone/issues/399) | TODO |
+| A-06 | P-16 | [#400](https://github.com/eliza-research/alphaphone/issues/400) | TODO |
+| A-11 | P-17 | [#401](https://github.com/eliza-research/alphaphone/issues/401) | TODO |
+| A-12 | P-18 | [#402](https://github.com/eliza-research/alphaphone/issues/402) | TODO |
+| A-13 | P-19 | [#403](https://github.com/eliza-research/alphaphone/issues/403) | TODO |
+| A-14 | P-20 | [#404](https://github.com/eliza-research/alphaphone/issues/404) | TODO |
+| A-15 | P-21 | [#405](https://github.com/eliza-research/alphaphone/issues/405) | TODO |
+| A-16 | P-22 | [#406](https://github.com/eliza-research/alphaphone/issues/406) | TODO |
+| A-17 | P-23 | [#407](https://github.com/eliza-research/alphaphone/issues/407) | TODO |
+| A-18 | P-24 | [#408](https://github.com/eliza-research/alphaphone/issues/408) | TODO |
+| A-19 | P-25 | [#409](https://github.com/eliza-research/alphaphone/issues/409) | TODO |
+| A-20 | P-26 | [#410](https://github.com/eliza-research/alphaphone/issues/410) | TODO |
+| A-22 | P-27 | [#411](https://github.com/eliza-research/alphaphone/issues/411) | TODO |
+| A-23 | P-28 | [#412](https://github.com/eliza-research/alphaphone/issues/412) | TODO |
+| A-24 | P-29 | [#413](https://github.com/eliza-research/alphaphone/issues/413) | TODO |
+| A-25 | P-30 | [#414](https://github.com/eliza-research/alphaphone/issues/414) | TODO |
+| A-26 | P-31 | [#415](https://github.com/eliza-research/alphaphone/issues/415) | TODO |
+| A-32 | P-32 | [#416](https://github.com/eliza-research/alphaphone/issues/416) | TODO |
+| A-33 | P-33 | [#417](https://github.com/eliza-research/alphaphone/issues/417) | TODO |
+| A-34 | P-34 | [#418](https://github.com/eliza-research/alphaphone/issues/418) | TODO |
+| A-35 | P-35 | [#419](https://github.com/eliza-research/alphaphone/issues/419) | TODO |
+| A-03 | P-36 | [#420](https://github.com/eliza-research/alphaphone/issues/420) | TODO |
+| A-07 | P-37 | [#421](https://github.com/eliza-research/alphaphone/issues/421) | TODO |
+| A-08 | P-38 | [#422](https://github.com/eliza-research/alphaphone/issues/422) | TODO |
+| MVP-01 | P-39 | [#423](https://github.com/eliza-research/alphaphone/issues/423) | TODO |
+| MVP-52 | P-40 | [#424](https://github.com/eliza-research/alphaphone/issues/424) | TODO |
+| OWNER-NOTICE | P-41 | [#425](https://github.com/eliza-research/alphaphone/issues/425) | TODO |
 | A-21 | P-09 | Closed: licensed; the owner holds the licence outside the repository (P-09); no licence document, name, number, scope or terms has been seen or recorded | Policy closed |
 
 ## Open decisions

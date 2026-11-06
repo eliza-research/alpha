@@ -193,8 +193,10 @@ async function touchDrag(page: Page, x: number, y: number, dy: number) {
   await cdp.detach();
 }
 
-test.describe('launcher Home taller than the screen (landscape)', () => {
-  test.use({ hasTouch: true, isMobile: true, viewport: { width: 915, height: 412 } });
+// The launcher is portrait only (docs/decisions.md P-27). A short portrait window, as on a short
+// phone with large text, is the geometry in which its Home overflows.
+test.describe('launcher Home taller than a short portrait screen', () => {
+  test.use({ hasTouch: true, isMobile: true, viewport: { width: 412, height: 560 } });
 
   test('a downward touch pull at the top of an overflowing Home opens the shade; upward still scrolls', async ({ page }) => {
     await home(page);
@@ -211,19 +213,21 @@ test.describe('launcher Home taller than the screen (landscape)', () => {
       return null;
     });
     expect(start).not.toBeNull();
-    const icons = (await page.getByRole('button', { name: 'Browser', exact: true }).boundingBox())!;
+    // The first app row is on screen; the lower rows may sit under the dock.
+    const icons = (await page.locator('[data-alpha-home-apps] button').first().boundingBox())!;
     // An upward drag on the app row is ordinary scrolling: Home moves, no shade.
     await touchDrag(page, icons.x + icons.width / 2, icons.y + icons.height / 2, -160);
     await expect.poll(() => layer.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
     await closed(page, 'upward scroll');
     // Scrolled away from its top, a downward drag scrolls Home back instead of opening the shade.
+    // Drag on empty Home: the cards keep vertical drags for themselves.
     const scrolled = await layer.evaluate(element => element.scrollTop);
-    await touchDrag(page, icons.x + icons.width / 2, 200, 120);
+    await touchDrag(page, start!.x, start!.y, 120);
     await expect.poll(() => layer.evaluate(element => element.scrollTop)).toBeLessThan(scrolled);
     await closed(page, 'scrolled Home scrolls back');
     await layer.evaluate(element => { element.scrollTop = 0; });
     // At the top, a downward pull on empty Home reaches Alpha and opens the shade.
-    await touchDrag(page, start!.x, start!.y, 280);
+    await touchDrag(page, start!.x, start!.y, 160);
     await expect(shade(page)).toHaveAttribute('aria-hidden', 'false');
   });
 });
