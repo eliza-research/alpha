@@ -191,6 +191,11 @@ test("exact native verify/connect/token/ack chain keeps failures explicit and cu
       " @PluginMethod public void cancel(",
       " /** Post-authentication consent",
     ).replace("@PluginMethod ", ""),
+    ACTUAL_START_CODE: between(
+      plugin,
+      " @PluginMethod public void startEmail(",
+      " /** Check registration and tenant SMS policy",
+    ).replaceAll("@PluginMethod ", ""),
     ACTUAL_CALLBACK: between(
       plugin,
       " private boolean captureCallback(",
@@ -249,7 +254,7 @@ test("exact native verify/connect/token/ack chain keeps failures explicit and cu
         [...pure, ...support, file],
         "ai.eliza.auth.cloud.CloudSignInChainTest",
       ),
-      /^PASS native sign-in chain \(38 scenarios; no browser facilities\)/,
+      /^PASS native sign-in chain \(49 scenarios; no browser facilities\)/,
     );
   } finally {
     rmSync(directory, { recursive: true, force: true });

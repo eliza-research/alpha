@@ -9,7 +9,11 @@ import org.json.JSONObject;
 public class CloudSignInChainTest {
  final Object lock=new Object(); boolean destroyed,defer; Attempt attempt; String mode="valid";
  final ArrayDeque<Runnable> queued=new ArrayDeque<>();
- String issuedState, issuedChallenge; int requests; long intent, reserved;
+ String issuedState, issuedChallenge, cancelledBrowserState; int requests, reservedAtSend=-1; long intent, reserved, lastEmailSendAt, emailSendAllowedAt;
+ static final long BROWSER_RETURN_GRACE_MS=1500; static final long[] REVOCATION_RETRY_MS={5000,25000};
+ final Handler main=new Handler();
+ /** Delayed main-thread work runs only when a scenario drains it. */
+ static class Handler { final ArrayDeque<Runnable> queue=new ArrayDeque<>();final List<Long> delays=new ArrayList<>(); void postDelayed(Runnable task,long delay){delays.add(delay);queue.add(task);} void drain(){while(!queue.isEmpty())queue.remove().run();} }
  static final String ID="00000000-0000-4000-8000-000000000001";
  static final String NEW="eliza_mobile_"+"a".repeat(64), OLD="eliza_mobile_"+"b".repeat(64);
  static final Map<String,String> slots=new HashMap<>();
@@ -35,12 +39,14 @@ public class CloudSignInChainTest {
  }
  static class Attempt {
   final CloudSignInEnvironment environment=TestRegistration.PRODUCTION;
-  final String id=UUID.randomUUID().toString();final String requestId;Runnable credentialGuard=()->{};Attempt(){this(null);}Attempt(String requestId){this.requestId=requestId;}String email="owner@example.invalid",emailVerifier=CloudSignInFlow.newVerifier(),mfaType,mfaChallenge,phone;
-  long expiresAt=System.currentTimeMillis()+60000;boolean google,busy,cancelled,callbackReceived,browserLaunched;String browserState;int failedVerifies;PluginCall waiting;
+  final String id=UUID.randomUUID().toString();final String requestId;Runnable credentialGuard=()->{};Attempt(){this(null);}Attempt(String requestId){this.requestId=requestId;}
+  Attempt(CloudSignInEnvironment environment,boolean google,String requestId,Runnable credentialGuard){this.requestId=requestId;this.google=google;this.credentialGuard=credentialGuard;expiresAt=0;}String email="owner@example.invalid",emailVerifier=CloudSignInFlow.newVerifier(),mfaType,mfaChallenge,phone;
+  long expiresAt=System.currentTimeMillis()+60000,resendAt;boolean google,busy,cancelled,callbackReceived,browserLaunched,returnHint;String browserState;int failedVerifies;PluginCall waiting;
   void cancel(){cancelled=true;}
  }
- static class Response { final int status;final JSONObject data;Response(int s,JSONObject d){status=s;data=d;} }
- static class CloudKeyRevocation { static boolean revoke(CloudSignInConfig config,CloudSignInEnvironment environment,String token){events.add("revoke");return true;} }
+ static class Response { final int status;final JSONObject data;final String retryAfter=null;Response(int s,JSONObject d){status=s;data=d;} }
+ static boolean revocationConfirmed=true;
+ static class CloudKeyRevocation { static boolean revoke(CloudSignInConfig config,CloudSignInEnvironment environment,String token){check(OLD.equals(token),"only the replaced key is revoked");events.add("revoke");return revocationConfirmed;} }
  CloudSignInConfig config(){return TestRegistration.PRODUCT;}
  <T> T withCredentialRead(java.util.concurrent.Callable<T> read)throws Exception{synchronized(slots){return read.call();}}
  CloudCredentialSlots credentials(Runnable guard){
@@ -55,6 +61,7 @@ public class CloudSignInChainTest {
  CloudCredentialSlots store(){return credentials(()->{if(destroyed)throw new IllegalStateException("closed");});}
  void run(Runnable task){if(defer)queued.add(task);else task.run();}
  void refused(CloudSignInEnvironment environment,String code){}
+ void requirePhoneAvailable(Attempt current)throws Exception{}
  void requireAuthorization(Attempt current)throws Exception{events.add("authorization");}
  void notifyListeners(String event,JSObject value,boolean retained){check(("signInCompleted".equals(event)||"signInMfaRequired".equals(event)||"signInIncomplete".equals(event))&&retained,"only retained auth outcome expected");events.add(event);notifications.add(value);}
 
@@ -63,12 +70,20 @@ public class CloudSignInChainTest {
  }
  Response post(Attempt current,CloudSignInEnvironment environment,String path,JSONObject body,String bearer)throws Exception{
   requests++;
+  if(path.equals(CloudEmailCode.SEND_PATH)||path.equals(CloudSmsCode.SEND_PATH)){
+   reservedAtSend=(int)reserved;
+   boolean unguarded=false;try{current.credentialGuard.run();}catch(IllegalStateException unsent){unguarded=true;}
+   check(unguarded,"an unsent code holds no credential intent");
+   if(mode.equals("send-refused"))return new Response(429,new JSONObject());
+   if(mode.equals("send-offline"))throw new java.io.IOException("synthetic transport failure");
+   return new Response(202,new JSONObject().put("expiresAt",System.currentTimeMillis()+600000));
+  }
   if(path.equals("/steward/auth/oauth/exchange")){
    check(!slots.containsKey(config().pendingSlot),"pending consumed before legacy exchange");
    if (mode.equals("browser-mfa")) return new Response(200,new JSONObject().put("mfaRequired",true).put("mfa",new JSONObject().put("type","totp").put("challengeId","fixture").put("expiresAt",System.currentTimeMillis()+30000)));
    return new Response(200,new JSONObject().put("token","synthetic-steward-token-for-fixture"));
   }
-  if(path.equals(CloudEmailCode.VERIFY_PATH)||path.startsWith("/steward/auth/mfa/")){
+  if(path.equals(CloudEmailCode.VERIFY_PATH)||path.equals(CloudSmsCode.VERIFY_PATH)||path.startsWith("/steward/auth/mfa/")){
    if(mode.equals("bad-code")||mode.equals("mfa-denied"))return new Response(401,new JSONObject());
    if(mode.equals("invalid-mfa"))return new Response(200,new JSONObject().put("mfaRequired",true).put("mfa",new JSONObject().put("type","unknown").put("challengeId","fixture").put("expiresAt",System.currentTimeMillis()+60000)));
    return new Response(200,new JSONObject().put("token","synthetic-steward-token-for-fixture"));
@@ -112,6 +127,7 @@ public class CloudSignInChainTest {
  /* ACTUAL_CREDENTIAL_IDENTITY */
  /* ACTUAL_CALLER_REQUEST */
  /* ACTUAL_CANCEL */
+ /* ACTUAL_START_CODE */
  /* ACTUAL_CALLBACK */
  /* ACTUAL_BURN */
  /* ACTUAL_VERIFY */
@@ -261,6 +277,72 @@ public class CloudSignInChainTest {
   PluginCall expired=new PluginCall();expired.input.put("environment","production");host.credentialIdentity(expired);
   check(expired.result.opt("credentialId")==JSONObject.NULL,"expired identity not active");
  }
+ /** A resend that fails keeps the code already sent; one that succeeds retires it and only then takes the credential intent. */
+ static void resend(String mode,boolean phone)throws Exception{
+  slots.clear();events.clear();notifications.clear();
+  CloudSignInChainTest host=new CloudSignInChainTest();host.mode=mode;
+  slots.put(host.config().pendingSlot,"superseded-google-pending");
+  Attempt sent=new Attempt(REQUEST);sent.credentialGuard=host.reserveCredentialCommit();host.attempt=sent;
+  if(phone){sent.phone="+15555550100";sent.email=null;}
+  PluginCall resend=new PluginCall();resend.input.put("environment","production");
+  if(phone){resend.input.put("phone","+15555550100");host.startPhone(resend);}else{resend.input.put("email","owner@example.invalid");host.startEmail(resend);}
+  check(host.reservedAtSend==1,"the new code's credential intent is not reserved before the send: "+mode);
+  boolean ok=mode.equals("send-ok");
+  check(ok?resend.result!=null:resend.error!=null,"send outcome explicit: "+mode);
+  check(slots.containsKey(host.config().pendingSlot)!=ok,"a sent code burns a superseded Google record; a failed send keeps it: "+mode);
+  check(host.reserved==(ok?2:1),"credential intent reserved only after a successful send: "+mode);
+  check(sent.cancelled==ok&&(host.attempt==sent)!=ok,"the code already sent stays live only when the resend fails: "+mode);
+  PluginCall old=new PluginCall();old.input.put("attemptId",sent.id);old.input.put("code","123456");
+  host.verify(old,false,phone);
+  if(!ok){check(old.result!=null&&"authenticated".equals(old.result.optString("status")),"the first code still verifies after a failed resend: "+mode);return;}
+  check("expired".equals(old.error),"the replaced code no longer verifies");
+  PluginCall fresh=new PluginCall();fresh.input.put("attemptId",resend.result.getString("attemptId"));fresh.input.put("code","123456");
+  host.verify(fresh,false,phone);
+  check(fresh.result!=null&&"authenticated".equals(fresh.result.optString("status"))&&NEW.equals(new JSONObject(slots.get("cloud:production")).getString("token")),"the new code verifies and commits");
+ }
+ /** A parameterless RETURN is only a hint: a SUCCESS within the grace still exchanges; alone it ends the step without burning. */
+ static void returnHint(boolean success)throws Exception{
+  slots.clear();events.clear();notifications.clear();CloudSignInChainTest host=new CloudSignInChainTest();
+  CloudSignInFlow.Pending pending=CloudSignInFlow.Pending.create(TestRegistration.PRODUCTION,System.currentTimeMillis());
+  slots.put(host.config().pendingSlot,pending.serialize());
+  Attempt owner=new Attempt(REQUEST);owner.google=true;owner.browserLaunched=true;owner.browserState=pending.state;owner.credentialGuard=host.reserveCredentialCommit();host.attempt=owner;
+  PluginCall call=new PluginCall();owner.waiting=call;
+  check(host.captureCallback(new Intent(TestRegistration.PRODUCTION.callback())),"parameterless return consumed");
+  check(host.attempt==owner&&!owner.cancelled&&!owner.callbackReceived&&call.error==null&&host.requests==0,"a return alone does not end the attempt");
+  check(host.main.queue.size()==1&&host.main.delays.get(0)==BROWSER_RETURN_GRACE_MS,"the return waits out the grace");
+  if(success)host.captureCallback(new Intent(TestRegistration.PRODUCTION.callback()+"#code=fixture-code&state="+pending.state));
+  host.main.drain();
+  if(success)check(call.result!=null&&"authenticated".equals(call.result.optString("status")),"a SUCCESS after a return still exchanges");
+  else check("app-link-unverified".equals(call.error)&&host.attempt==null&&slots.containsKey(host.config().pendingSlot)&&host.requests==0,"a lone return ends after the grace and burns nothing");
+ }
+ /** A return already queued when its owner cancels says nothing afterwards. */
+ static void queuedBehindCancel(boolean success)throws Exception{
+  slots.clear();events.clear();notifications.clear();CloudSignInChainTest host=new CloudSignInChainTest();host.defer=true;
+  CloudSignInFlow.Pending pending=CloudSignInFlow.Pending.create(TestRegistration.PRODUCTION,System.currentTimeMillis());
+  slots.put(host.config().pendingSlot,pending.serialize());
+  Attempt owner=new Attempt(REQUEST);owner.google=true;owner.browserLaunched=true;owner.browserState=pending.state;owner.credentialGuard=host.reserveCredentialCommit();host.attempt=owner;owner.waiting=new PluginCall();
+  host.captureCallback(new Intent(TestRegistration.PRODUCTION.callback()+(success?"#code=fixture-code&state="+pending.state:"")));
+  PluginCall cancel=new PluginCall();cancel.input.put("requestId",REQUEST);host.cancel(cancel);
+  while(!host.queued.isEmpty())host.queued.remove().run();
+  check(notifications.isEmpty()&&host.requests==0&&!slots.containsKey(host.config().pendingSlot),"a capture queued behind a cancel emits nothing");
+ }
+ /** An unconfirmed revocation of the replaced key is retried twice in memory; a newer credential action drops the rest. */
+ static void revocationRetry(boolean superseded)throws Exception{
+  slots.clear();events.clear();notifications.clear();revocationConfirmed=false;
+  try{
+   slots.put("cloud:production",new JSONObject().put("token",OLD).toString());
+   CloudSignInChainTest host=new CloudSignInChainTest();
+   Attempt request=new Attempt(REQUEST);request.credentialGuard=host.reserveCredentialCommit();host.attempt=request;
+   PluginCall call=new PluginCall();call.input.put("attemptId",request.id);call.input.put("code","123456");host.verify(call,false);
+   check(call.result!=null&&"unconfirmed".equals(call.result.getString("previousSignIn")),"completion is not held for the retries");
+   check(Collections.frequency(events,"revoke")==1&&host.main.queue.size()==1,"one inline try, then a scheduled retry");
+   if(superseded)host.intent++;
+   host.main.drain();
+   check(Collections.frequency(events,"revoke")==(superseded?1:3),"retried twice unless superseded");
+   check(superseded||host.main.delays.equals(List.of(5000L,25000L)),"retries after 5 s and 30 s");
+   for(String value:slots.values())check(!value.contains(OLD),"the replaced key is never written to storage");
+  }finally{revocationConfirmed=true;}
+ }
  public static void main(String[] args)throws Exception{
   changedAfterCommit("intent-after-commit");changedAfterCommit("replacement-after-commit");credentialIdentityReads();
   scenario("valid",true,true);
@@ -278,6 +360,10 @@ public class CloudSignInChainTest {
   browserCallbackRaces();
   callbackOwner("live");callbackOwner("cold-after-signout");callbackOwner("live-after-signout");
   for(String mode:List.of("stale","malformed","matching","legacy","queued","queued-completed"))scopedCancel(mode);
-  System.out.println("PASS native sign-in chain (38 scenarios; no browser facilities)");
+  for(String mode:List.of("send-refused","send-offline","send-ok"))resend(mode,false);
+  resend("send-refused",true);resend("send-ok",true);
+  returnHint(true);returnHint(false);queuedBehindCancel(true);queuedBehindCancel(false);
+  revocationRetry(false);revocationRetry(true);
+  System.out.println("PASS native sign-in chain (49 scenarios; no browser facilities)");
  }
 }

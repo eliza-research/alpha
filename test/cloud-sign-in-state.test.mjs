@@ -169,6 +169,18 @@ test('actual controller keeps wrong-code challenge and prevents duplicate verifi
   assert.equal(f.state.signIn.attemptId,'old');assert.equal(f.state.error,'invalid-code');
 });
 
+test('a failed resend keeps the code step and the code already sent',async()=>{
+  for(const failure of ['rate-limited','offline']){
+    const f=controllerFixture();f.state.signIn={...f.state.signIn,resendAt:0,expiresAt:Date.now()+600000};
+    f.client.startEmailSignIn=async()=>{throw new f.CloudSignInError(failure);};
+    await f.connectionController.resendSignInCode();
+    assert.equal(f.state.signIn.step,'code');assert.equal(f.state.signIn.attemptId,'old','the first code can still be verified');
+    assert.equal(f.state.error,failure);assert.equal(f.state.busy,false);
+    let verified;f.client.verifyEmailSignIn=async attemptId=>{verified=attemptId;return {status:'authenticated'};};
+    await f.connectionController.verifySignInCode('123456');assert.equal(verified,'old');
+  }
+});
+
 test('an expired or exhausted code keeps the address with a new code ready; other refusals return with it filled in',async()=>{
   for(const failure of ['expired','attempts-exhausted']){
     const f=controllerFixture();f.state.signIn={...f.state.signIn,resendAt:Date.now()+60000};
