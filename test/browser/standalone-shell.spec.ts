@@ -262,3 +262,28 @@ test('an open sheet dragged down keeps its composer above the screen edge and ha
  await page.waitForTimeout(200);await page.mouse.up();
  await expect(grab).toHaveCount(0);await expect(bar).toHaveCSS('opacity','1');expect(Math.abs((await bar.boundingBox())!.y-rest.y)).toBeLessThan(1);
 });
+// Samples the bar, the sheet and its header every frame for `ms` after `act`. Each sample is read after that
+// frame's callbacks, including the app's own per-frame updates, so it sees what was painted.
+async function frames(page:import('@playwright/test').Page,act:()=>Promise<void>,ms=650){
+ await act();await page.evaluate(ms=>{(window as any).chatFrames=[];const t0=performance.now();const tick=()=>{const p=document.querySelector<HTMLElement>('[data-alpha-layer="conversation"]')!,r=p.getBoundingClientRect(),h=document.querySelector('[data-alpha-chat-header]')!,c=p.querySelector('.alpha-chat-composer'),b=document.querySelector('[data-alpha-input-bar]');const bs=b&&getComputedStyle(b);(window as any).chatFrames.push({panel:r.height,panelOpacity:Number(getComputedStyle(p).opacity),headerClipped:h.getBoundingClientRect().top<r.top-0.5&&Number(getComputedStyle(h).opacity)>0.01,composerBottom:c?c.getBoundingClientRect().bottom:null,bar:b?{opacity:Number(bs!.opacity),transform:bs!.transform,bottom:b.getBoundingClientRect().bottom}:null});if(performance.now()-t0<ms)requestAnimationFrame(()=>setTimeout(tick));};requestAnimationFrame(()=>setTimeout(tick));},ms);
+ await page.waitForTimeout(ms+150);return page.evaluate(()=>(window as any).chatFrames as {panel:number,panelOpacity:number,headerClipped:boolean,composerBottom:number|null,bar:{opacity:number,transform:string,bottom:number}|null}[]);
+}
+test('tapping between the bar and the sheet keeps the composer in the bar\'s place and never shows a clipped header',async({page})=>{
+ await page.goto('/');await expect(page.getByRole('textbox',{name:'Ask Alpha',exact:true})).toBeVisible();await expect(page.locator('[data-alpha-input-bar]')).toHaveCSS('transform',/^(none|matrix\(1, 0, 0, 1, 0, 0\))$/);
+ const rest=(await page.locator('[data-alpha-input-bar]').boundingBox())!,bottom=rest.y+rest.height;
+ const opening=await frames(page,()=>page.locator('[data-alpha-input-bar]').getByRole('button',{name:'Open conversation',exact:true}).click());
+ const sheet=opening.filter(f=>!f.bar);expect(sheet.length).toBeGreaterThan(0);
+ for(const f of sheet){expect(f.panelOpacity).toBe(1);expect(f.headerClipped).toBe(false);expect(Math.abs(f.composerBottom!-bottom)).toBeLessThan(4);}
+ const closing=await frames(page,()=>page.getByRole('button',{name:'Minimize chat',exact:true}).click());
+ for(const f of closing){expect(f.headerClipped).toBe(false);if(f.composerBottom!==null&&f.panelOpacity>0.01)expect(Math.abs(f.composerBottom-bottom)).toBeLessThan(4);if(f.bar){expect(f.bar.transform).toMatch(/^(none|matrix\(1, 0, 0, 1, 0, 0\))$/);expect(Math.abs(f.bar.bottom-bottom)).toBeLessThan(1);}}
+ expect(closing.at(-1)!.bar!.opacity).toBe(1);await expect(page.getByRole('button',{name:'Resize chat',exact:true})).toHaveCount(0);
+});
+test('releasing a drag that collapses the sheet leaves the bar in place without replaying its entrance',async({page})=>{
+ await page.goto('/');await expect(page.getByRole('textbox',{name:'Ask Alpha',exact:true})).toBeVisible();await expect(page.locator('[data-alpha-input-bar]')).toHaveCSS('transform',/^(none|matrix\(1, 0, 0, 1, 0, 0\))$/);
+ const rest=(await page.locator('[data-alpha-input-bar]').boundingBox())!;
+ await page.locator('[data-alpha-input-bar]').getByRole('button',{name:'Open conversation',exact:true}).click();const grab=page.getByRole('button',{name:'Resize chat',exact:true});await expect(grab).toBeVisible();
+ await expect.poll(async()=>{const a=(await grab.boundingBox())!.y;await page.waitForTimeout(120);return Math.abs((await grab.boundingBox())!.y-a);}).toBeLessThan(0.5);
+ const g=(await grab.boundingBox())!;await page.mouse.move(g.x+g.width/2,g.y+10);await page.mouse.down();await page.mouse.move(g.x+g.width/2,page.viewportSize()!.height-30,{steps:16});await page.waitForTimeout(200);
+ const released=await frames(page,()=>page.mouse.up());await expect(grab).toHaveCount(0);
+ for(const f of released){expect(f.headerClipped).toBe(false);expect(f.bar!.opacity).toBe(1);expect(f.bar!.transform).toMatch(/^(none|matrix\(1, 0, 0, 1, 0, 0\))$/);expect(Math.abs(f.bar!.bottom-(rest.y+rest.height))).toBeLessThan(1);}
+});
