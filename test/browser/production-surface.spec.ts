@@ -1,3 +1,4 @@
+import {openCameraTools} from './camera-tools';
 import {openCloudPlanFromSettings} from './helpers/cloud-plan-settings';
 import {seedCompletedAccessSetup} from './flag-off-android';
 import {completeAccessSetup, openYourAgent} from './flag-off-android';
@@ -246,7 +247,7 @@ test('the CSP admits Home, Notes, Maps, Scan and PDF without violations', async 
     const blob = await new Promise<Blob>(resolve => canvas.toBlob(value => resolve(value!), 'image/png'));
     return Array.from(new Uint8Array(await blob.arrayBuffer()));
   });
-  await page.getByRole('button', { name: 'Scan document', exact: true }).click();
+  await openCameraTools(page);await page.getByRole('button', { name: 'Scan document', exact: true }).click();
   const chooser = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: 'Add page', exact: true }).click();
   await (await chooser).setFiles({ name: 'page.png', mimeType: 'image/png', buffer: Buffer.from(png) });
@@ -255,7 +256,7 @@ test('the CSP admits Home, Notes, Maps, Scan and PDF without violations', async 
   await page.getByRole('button', { name: 'Download document PDF', exact: true }).click();
   expect((await imagePdf).suggestedFilename()).toMatch(/\.pdf$/);
   await page.getByRole('button', { name: 'Close scan', exact: true }).or(page.getByRole('button', { name: /^Close/ }).last()).click();
-  await page.getByRole('button', { name: 'Scan document', exact: true }).click();
+  await openCameraTools(page);await page.getByRole('button', { name: 'Scan document', exact: true }).click();
   const second = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: 'Add page', exact: true }).click();
   await (await second).setFiles({ name: 'page.png', mimeType: 'image/png', buffer: Buffer.from(png) });
