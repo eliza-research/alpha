@@ -15,6 +15,10 @@ import type {VoiceTimingLive,VoiceTimingEndpoint} from './voice-timing.ts';
  * labels and build/model hashes only; it never carries audio, transcripts or replies.
  */
 export const DIAGNOSTICS_FORMAT='alpha-diagnostics/v1';
+const VOICE_STARTUP_STAGES=['conversation-selection','draft-binding','agent-attach','media-retirement'] as const;
+const VOICE_STARTUP_OUTCOMES=['pending','prepared','timeout','cancelled','failed'] as const;
+export type VoiceStartupStage=typeof VOICE_STARTUP_STAGES[number];
+export type VoiceStartupTiming={stage:VoiceStartupStage;outcome:typeof VOICE_STARTUP_OUTCOMES[number];elapsedMs:number};
 export const RUNTIME_ASSETS=['agent/alpha-source.json','agent/agent-bundle.js','agent/workflow-worker/manifest.json','agent/workflow-worker/files.sha256'] as const;
 const PERMISSIONS=['Microphone','Location','Camera','Calendar','Notifications'] as const;
 const ROLES=['home','assistant','dialer','sms'] as const;
@@ -56,6 +60,8 @@ export type DiagnosticsInput={
  cloudPlan?:{view?:unknown;source?:unknown;status?:unknown;admission?:unknown;reason?:unknown};
  /** Parsed exportVoiceTiming() output. */
  voiceTiming?:unknown;
+ /** Last production native Cloud renderer preparation; prepared does not prove native dispatch. */
+ voiceStartup?:unknown;
  /** Raw bounded realtime document; sanitizer parses it only after size checks. */
  realtimeVoiceTiming?:unknown;
  /** AlphaVoiceCloud.nativeVoiceTiming() output (alpha-native-voice-timing-v3). */
@@ -84,6 +90,7 @@ export type DiagnosticsReport={
  crashes:{count:number;recent:CrashEntry[]};
  /** A complete alpha-voice-timing-v1 document, readable by scripts/aggregate-voice-latency.mjs. */
  voiceTiming:{format:typeof VOICE_TIMING_FORMAT;marks:string[];records:VoiceTimingRow[]};
+ voiceStartup?:VoiceStartupTiming;
  /** A complete alpha-native-voice-timing-v3 document, readable by scripts/aggregate-voice-latency.mjs. */
  nativeVoiceTiming:{format:typeof NATIVE_VOICE_TIMING_FORMAT;clock:'CLOCK_MONOTONIC';units:'ms';marks:string[];dropped:number;records:NativeVoiceTimingRow[]};
  nativeCloudStreamTiming?:{format:typeof NATIVE_CLOUD_STREAM_TIMING_FORMAT;records:NativeCloudStreamTimingRow[]};
@@ -214,6 +221,12 @@ export function buildDiagnostics(input:DiagnosticsInput,now=Date.now()):Diagnost
   nativeVoiceTiming:{format:NATIVE_VOICE_TIMING_FORMAT,clock:'CLOCK_MONOTONIC',units:'ms',marks:[...NATIVE_MARKS],...nativeVoiceRows(input.nativeVoiceTiming)},
  };
  if(input.realtimeVoiceTiming!==undefined)report.realtimeVoiceTiming=sanitizeRealtimeTiming(input.realtimeVoiceTiming);
+ const startup=input.voiceStartup;
+ if(startup&&typeof startup==='object'){
+  const value=startup as Partial<VoiceStartupTiming>,stage=one(value.stage,VOICE_STARTUP_STAGES),outcome=one(value.outcome,VOICE_STARTUP_OUTCOMES);
+  const elapsedMs=value.elapsedMs;
+  if(stage&&outcome&&typeof elapsedMs==='number'&&Number.isSafeInteger(elapsedMs)&&elapsedMs>=0&&elapsedMs<=120000)report.voiceStartup={stage,outcome,elapsedMs};
+ }
  if(report.platform==='android'){
   const cloudTiming=nativeCloudStreamTiming(input.nativeCloudStreamTiming);
   if(cloudTiming)report.nativeCloudStreamTiming=cloudTiming;

@@ -25,7 +25,7 @@ import { gmailGrantLabel, googleAccountAccessLabel } from '../runtime/gmail-gran
 import { clearCrashLog, describeCrashEntry, readCrashLog, recordCloudInferenceFailure, type CrashLog } from '../runtime/crash-log';
 import { buildDiagnostics, diagnosticsFileName, diagnosticsText } from '../runtime/diagnostics-export';
 import {planAdmission} from '../runtime/subscription-entitlement';
-import { exportVoiceTiming, exportRealtimeVoiceTiming } from '../runtime/voice-timing';
+import { exportVoiceTiming, exportRealtimeVoiceTiming, voiceStartupTiming } from '../runtime/voice-timing';
 import { readNativeCloudStreamTiming, readNativeVoiceTiming } from '../runtime/native-voice-turn';
 import { listenerStatus, openListenerSettings, pauseListener, turnOffListener, wakeListeningStopUnconfirmed, type ListenerStatus } from '../runtime/always-on-listener';
 import { reviewDataReset, type DataResetPlugin } from '@elizaos/capacitor-system/reset';
@@ -358,6 +358,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         } : undefined,
         // Per-turn voice latency kept on this device; buildDiagnostics copies timing fields only.
         realtimeVoiceTiming: exportRealtimeVoiceTiming(),
+        voiceStartup: voiceStartupTiming(),
         voiceTiming: (() => { try { return JSON.parse(exportVoiceTiming()); } catch { return null; } })(),
         // Native audio-clock voice latency (issue #395): timings, turn ids and hashes only.
         nativeVoiceTiming: nativeTiming.status === 'fulfilled' ? nativeTiming.value : null,

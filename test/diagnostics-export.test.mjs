@@ -78,6 +78,14 @@ test('crash entries keep classes only, are bounded and expire after 30 days',()=
  assert.deepEqual(describeCrashEntry({at:now,source:'uncaught',errorClass:'java.lang.IllegalStateException',rootClass:'java.io.IOException',thread:'main'}),{title:'App crashed',detail:'java.lang.IllegalStateException · caused by java.io.IOException · main thread'});
 });
 
+test('renderer voice startup exports only the bounded phase, outcome and elapsed time',()=>{
+ const diagnostic={stage:'draft-binding',outcome:'timeout',elapsedMs:12000};
+ const report=buildDiagnostics({voiceStartup:{...diagnostic,account:secrets[3],message:secrets[0]}},now);
+ assert.deepEqual(report.voiceStartup,diagnostic);
+ assert.doesNotMatch(diagnosticsText(report),/acct_|Buy milk/);
+ assert.equal(buildDiagnostics({voiceStartup:{...diagnostic,stage:secrets[0]}},now).voiceStartup,undefined);
+ assert.equal(buildDiagnostics({voiceStartup:{...diagnostic,elapsedMs:Infinity}},now).voiceStartup,undefined);
+});
 test('Cloud startup diagnostics keep bounded stages and status without carrying content or raw ids',()=>{
  const secret=secrets[2],rawSession=7194538;
  const row={session:rawSession,stage:'consent-headers',elapsedMs:45,httpStatus:503,clock:'monotonic-observed',sentFrames:0,sentBytes:0,receivedFrames:0,receivedBytes:0,token:secret,transcript:secrets[0]};
