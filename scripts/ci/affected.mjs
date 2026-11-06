@@ -61,7 +61,7 @@ export function browserPlan(paths, exists = existsSync) {
   const narrow = changed.length > 0 && changed.every(path => selectableSpec.test(path) && exists(path));
   const specs = narrow ? [...new Set(changed)].sort() : [];
   const development = specs.filter(path => !productionSpec.test(path));
-  const shards = narrow && development.length <= 3 ? [1] : [1, 2, 3, 4];
+  const shards = narrow && development.length <= 3 ? [1] : [1, 2, 3, 4, 5, 6];
   return {
     browser_specs: JSON.stringify(development),
     browser_shards: JSON.stringify(shards),

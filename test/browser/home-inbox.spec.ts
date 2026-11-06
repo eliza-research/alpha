@@ -1,12 +1,14 @@
 import {seedCompletedAccessSetup} from './flag-off-android';
 import {test,expect,type Page} from '@playwright/test';
 import {returnToApps} from './app-navigation';
+import {preloadPageModules} from './helpers/page-modules';
 
 const tile=(page:Page)=>page.getByRole('region',{name:'Home',exact:true}).locator('[data-alpha-home-inbox]');
 async function fixture(page:Page,theme='light'){
 // Model an existing configured account; permission onboarding has its own acceptance tests.
  await page.addInitScript(()=>{localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));localStorage.setItem('alpha.startup-permissions.v1',JSON.stringify({dismissed:true,attempted:{}}));});
  await page.goto('/?theme='+theme);
+ await preloadPageModules(page,['/src/runtime/connection-ui.tsx','/src/runtime/native-connection.ts']);
  await page.evaluate(async()=>{
   const {connectionController:c}=await import('/src/runtime/connection-ui.tsx'),{secureConnectionStore:s}=await import('/src/runtime/native-connection.ts');
   s.read=async()=>null;
@@ -102,7 +104,9 @@ for(const scenario of ['recent','expired','owner-change-during-restore'] as cons
 // This Inbox fixture owns an existing installation, not fresh permission prompts.
 test.beforeEach(async({page})=>seedCompletedAccessSetup(page));
 
-const notifyHomeOwner=(page:Page)=>page.evaluate(async()=>{(await import('/src/runtime/connection-ui.tsx')).connectionController.close();});
+// Synchronous on purpose: a dynamic import settles in a later task even for a loaded module, and the
+// inspector holds an awaited evaluate's promise weakly, so CI collected it (helpers/page-modules.ts).
+const notifyHomeOwner=(page:Page)=>page.evaluate(()=>{(window as any).__alphaModules['/src/runtime/connection-ui.tsx'].connectionController.close();});
 
 test('Home loads one current Inbox header summary before Inbox is opened, without bodies or rerender reads',async({page})=>{
  await fixture(page);await notifyHomeOwner(page);

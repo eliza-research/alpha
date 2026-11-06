@@ -1,0 +1,829 @@
+{
+  "format": "alpha-native-voice-timing-v3",
+  "clock": "CLOCK_MONOTONIC",
+  "units": "ms",
+  "marks": [
+    "last-user-audio",
+    "endpoint",
+    "asr-final",
+    "request",
+    "first-token",
+    "tts-start",
+    "tts-ready",
+    "first-pcm",
+    "audible-playback"
+  ],
+  "dropped": 0,
+  "records": [
+    {
+      "id": "a9d5a512abb3-2df1016bc6d-1",
+      "turnId": "2afcccd9-7ac6-4f7e-a938-f369429ad45e",
+      "pipeline": "harness-no-inference",
+      "clock": "native-monotonic-ms",
+      "captureClock": "synthetic-feed",
+      "cold": true,
+      "outcome": "passed",
+      "identity": {
+        "sourceCommit": "a9d5a512abb329db368a759c5754441060918c0b",
+        "sourceDirty": true,
+        "engineSha256": "4a0b0aee70359b69a2ca649ead4f36a618484e232e86ac4409ffc35f4d0d64a4",
+        "modelSha256": "eebf459f988f4f3b6b0eaa4b25666f9fe54bf1184fd4777299a42ecdbcb81c7e",
+        "models": {
+          "asr": "c0f6ad42f0a5b481904416077dde0a1a78e5b8642295fdf2356ace822588c3df",
+          "tts": "4b2819180a9e3b096fb71a93d6a719794246ee230f7faa857edcc0bee2a1529e",
+          "vad": "d348cd6d87ea53dcd3e6680698c88be326082e27dae899adef653d090bee4995"
+        },
+        "device": "Google Alpha Phone Pixel 10a",
+        "environment": "device",
+        "abi": "arm64-v8a",
+        "sdk": 37,
+        "build": "launcher-debug"
+      },
+      "marks": {
+        "last-user-audio": 3167272.100133,
+        "endpoint": 3167790.743693,
+        "asr-final": 3167865.267985,
+        "tts-start": 3167865.422729,
+        "tts-ready": 3168026.994629,
+        "first-pcm": 3168062.391927,
+        "audible-playback": 3168584.779949
+      },
+      "coldReason": "process-first-turn",
+      "audibleClock": "audiotrack-timestamp",
+      "network": "wifi",
+      "thermal": "none",
+      "thermalHeadroom": 0.5336368083953857
+    },
+    {
+      "id": "a9d5a512abb3-2df1016bc6d-2",
+      "turnId": "1c4208ef-2af1-40c5-8ac8-b215250201bd",
+      "pipeline": "harness-no-inference",
+      "clock": "native-monotonic-ms",
+      "captureClock": "synthetic-feed",
+      "cold": false,
+      "outcome": "passed",
+      "identity": {
+        "sourceCommit": "a9d5a512abb329db368a759c5754441060918c0b",
+        "sourceDirty": true,
+        "engineSha256": "4a0b0aee70359b69a2ca649ead4f36a618484e232e86ac4409ffc35f4d0d64a4",
+        "modelSha256": "eebf459f988f4f3b6b0eaa4b25666f9fe54bf1184fd4777299a42ecdbcb81c7e",
+        "models": {
+          "asr": "c0f6ad42f0a5b481904416077dde0a1a78e5b8642295fdf2356ace822588c3df",
+          "tts": "4b2819180a9e3b096fb71a93d6a719794246ee230f7faa857edcc0bee2a1529e",
+          "vad": "d348cd6d87ea53dcd3e6680698c88be326082e27dae899adef653d090bee4995"
+        },
+        "device": "Google Alpha Phone Pixel 10a",
+        "environment": "device",
+        "abi": "arm64-v8a",
+        "sdk": 37,
+        "build": "launcher-debug"
+      },
+      "marks": {
+        "last-user-audio": 3176296.100133,
+        "endpoint": 3176814.267623,
+        "asr-final": 3176879.238937,
+        "tts-start": 3176879.32463,
+        "tts-ready": 3177011.52214,
+        "first-pcm": 3177042.51034,
+        "audible-playback": 3177579.182948
+      },
+      "audibleClock": "audiotrack-timestamp",
+      "network": "wifi",
+      "thermal": "none",
+      "thermalHeadroom": 0.5286110043525696
+    },
+    {
+      "id": "a9d5a512abb3-2df1016bc6d-3",
+      "turnId": "255b51e8-5c99-43eb-b526-e055fab9db7f",
+      "pipeline": "harness-no-inference",
+      "clock": "native-monotonic-ms",
+      "captureClock": "synthetic-feed",
+      "cold": false,
+      "outcome": "passed",
+      "identity": {
+        "sourceCommit": "a9d5a512abb329db368a759c5754441060918c0b",
+        "sourceDirty": true,
+        "engineSha256": "4a0b0aee70359b69a2ca649ead4f36a618484e232e86ac4409ffc35f4d0d64a4",
+        "modelSha256": "eebf459f988f4f3b6b0eaa4b25666f9fe54bf1184fd4777299a42ecdbcb81c7e",
+        "models": {
+          "asr": "c0f6ad42f0a5b481904416077dde0a1a78e5b8642295fdf2356ace822588c3df",
+          "tts": "4b2819180a9e3b096fb71a93d6a719794246ee230f7faa857edcc0bee2a1529e",
+          "vad": "d348cd6d87ea53dcd3e6680698c88be326082e27dae899adef653d090bee4995"
+        },
+        "device": "Google Alpha Phone Pixel 10a",
+        "environment": "device",
+        "abi": "arm64-v8a",
+        "sdk": 37,
+        "build": "launcher-debug"
+      },
+      "marks": {
+        "last-user-audio": 3188264.100133,
+        "endpoint": 3188782.77182,
+        "asr-final": 3188855.980113,
+        "tts-start": 3188856.108042,
+        "tts-ready": 3188997.247813,
+        "first-pcm": 3189020.142385,
+        "audible-playback": 3189557.948416
+      },
+      "audibleClock": "audiotrack-timestamp",
+      "network": "wifi",
+      "thermal": "none",
+      "thermalHeadroom": 0.4982703626155853
+    },
+    {
+      "id": "a9d5a512abb3-2df1016bc6d-4",
+      "turnId": "92096ec6-c216-4c51-ac5a-da58631296f5",
+      "pipeline": "harness-no-inference",
+      "clock": "native-monotonic-ms",
+      "captureClock": "synthetic-feed",
+      "cold": false,
+      "outcome": "passed",
+      "identity": {
+        "sourceCommit": "a9d5a512abb329db368a759c5754441060918c0b",
+        "sourceDirty": true,
+        "engineSha256": "4a0b0aee70359b69a2ca649ead4f36a618484e232e86ac4409ffc35f4d0d64a4",
+        "modelSha256": "eebf459f988f4f3b6b0eaa4b25666f9fe54bf1184fd4777299a42ecdbcb81c7e",
+        "models": {
+          "asr": "c0f6ad42f0a5b481904416077dde0a1a78e5b8642295fdf2356ace822588c3df",
+          "tts": "4b2819180a9e3b096fb71a93d6a719794246ee230f7faa857edcc0bee2a1529e",
+          "vad": "d348cd6d87ea53dcd3e6680698c88be326082e27dae899adef653d090bee4995"
+        },
+        "device": "Google Alpha Phone Pixel 10a",
+        "environment": "device",
+        "abi": "arm64-v8a",
+        "sdk": 37,
+        "build": "launcher-debug"
+      },
+      "marks": {
+        "last-user-audio": 3204264.100133,
+        "endpoint": 3204782.640806,
+        "asr-final": 3204896.341733,
+        "tts-start": 3204896.473813,
+        "tts-ready": 3205059.719134,
+        "first-pcm": 3205093.230446,
+        "audible-playback": 3205614.259174
+      },
+      "audibleClock": "audiotrack-timestamp",
+      "network": "wifi",
+      "thermal": "none",
+      "thermalHeadroom": 0.5101286172866821
+    },
+    {
+      "id": "a9d5a512abb3-2df1016bc6d-5",
+      "turnId": "08bd35d1-6316-4713-8534-d5c8e4285161",
+      "pipeline": "harness-no-inference",
+      "clock": "native-monotonic-ms",
+      "captureClock": "synthetic-feed",
+      "cold": false,
+      "outcome": "passed",
+      "identity": {
+        "sourceCommit": "a9d5a512abb329db368a759c5754441060918c0b",
+        "sourceDirty": true,
+        "engineSha256": "4a0b0aee70359b69a2ca649ead4f36a618484e232e86ac4409ffc35f4d0d64a4",
+        "modelSha256": "eebf459f988f4f3b6b0eaa4b25666f9fe54bf1184fd4777299a42ecdbcb81c7e",
+        "models": {
+          "asr": "c0f6ad42f0a5b481904416077dde0a1a78e5b8642295fdf2356ace822588c3df",
+          "tts": "4b2819180a9e3b096fb71a93d6a719794246ee230f7faa857edcc0bee2a1529e",
+          "vad": "d348cd6d87ea53dcd3e6680698c88be326082e27dae899adef653d090bee4995"
+        },
+        "device": "Google Alpha Phone Pixel 10a",
+        "environment": "device",
+        "abi": "arm64-v8a",
+        "sdk": 37,
+        "build": "launcher-debug"
+      },
+      "marks": {
+        "last-user-audio": 3213256.100133,
+        "endpoint": 3213774.750755,
+        "asr-final": 3213841.818178,
+        "tts-start": 3213841.893007,
+        "tts-ready": 3213970.386131,
+        "first-pcm": 3214005.763003,
+        "audible-playback": 3214537.836001
+      },
+      "audibleClock": "audiotrack-timestamp",
+      "network": "wifi",
+      "thermal": "none",
+      "thermalHeadroom": 0.5152517557144165
+    },
+    {
+      "id": "a9d5a512abb3-2df1016bc6d-6",
+      "turnId": "980ae9ae-0fe3-44cf-a2ae-263f5b7666cb",
+      "pipeline": "harness-no-inference",
+      "clock": "native-monotonic-ms",
+      "captureClock": "synthetic-feed",
+      "cold": false,
+      "outcome": "passed",
+      "identity": {
+        "sourceCommit": "a9d5a512abb329db368a759c5754441060918c0b",
+        "sourceDirty": true,
+        "engineSha256": "4a0b0aee70359b69a2ca649ead4f36a618484e232e86ac4409ffc35f4d0d64a4",
+        "modelSha256": "eebf459f988f4f3b6b0eaa4b25666f9fe54bf1184fd4777299a42ecdbcb81c7e",
+        "models": {
+          "asr": "c0f6ad42f0a5b481904416077dde0a1a78e5b8642295fdf2356ace822588c3df",
+          "tts": "4b2819180a9e3b096fb71a93d6a719794246ee230f7faa857edcc0bee2a1529e",
+          "vad": "d348cd6d87ea53dcd3e6680698c88be326082e27dae899adef653d090bee4995"
+        },
+        "device": "Google Alpha Phone Pixel 10a",
+        "environment": "device",
+        "abi": "arm64-v8a",
+        "sdk": 37,
+        "build": "launcher-debug"
+      },
+      "marks": {
+        "last-user-audio": 3225256.100133,
+        "endpoint": 3225774.709623,
+        "asr-final": 3225842.05557,
+        "tts-start": 3225842.170805,
+        "tts-ready": 3225990.144071,
+        "first-pcm": 3226030.306018,
+        "audible-playback": 3226560.799874
+      },
+      "audibleClock": "audiotrack-timestamp",
+      "network": "wifi",
+      "thermal": "none",
+      "thermalHeadroom": 0.5186915993690491
+    },
+    {
+      "id": "a9d5a512abb3-2df1016bc6d-7",
+      "turnId": "1ffbca7d-75d1-46f9-992f-697dd3aa10f7",
+      "pipeline": "harness-no-inference",
+      "clock": "native-monotonic-ms",
+      "captureClock": "synthetic-feed",
+      "cold": true,
+      "outcome": "passed",
+      "identity": {
+        "sourceCommit": "a9d5a512abb329db368a759c5754441060918c0b",
+        "sourceDirty": true,
+        "engineSha256": "4a0b0aee70359b69a2ca649ead4f36a618484e232e86ac4409ffc35f4d0d64a4",
+        "modelSha256": "eebf459f988f4f3b6b0eaa4b25666f9fe54bf1184fd4777299a42ecdbcb81c7e",
+        "models": {
+          "asr": "c0f6ad42f0a5b481904416077dde0a1a78e5b8642295fdf2356ace822588c3df",
+          "tts": "4b2819180a9e3b096fb71a93d6a719794246ee230f7faa857edcc0bee2a1529e",
+          "vad": "d348cd6d87ea53dcd3e6680698c88be326082e27dae899adef653d090bee4995"
+        },
+        "device": "Google Alpha Phone Pixel 10a",
+        "environment": "device",
+        "abi": "arm64-v8a",
+        "sdk": 37,
+        "build": "launcher-debug"
+      },
+      "marks": {
+        "last-user-audio": 3241256.100133,
+        "endpoint": 3241774.740555,
+        "asr-final": 3241831.78153,
+        "tts-start": 3241831.935705,
+        "tts-ready": 3241980.60579,
+        "first-pcm": 3242013.579585,
+        "audible-playback": 3242562.345699
+      },
+      "coldReason": "asr-reload+tts-load",
+      "audibleClock": "audiotrack-timestamp",
+      "network": "wifi",
+      "thermal": "none",
+      "thermalHeadroom": 0.5183245539665222
+    },
+    {
+      "id": "a9d5a512abb3-2df1016bc6d-8",
+      "turnId": "a5a62ea7-6d82-480c-b755-50802ed5e28b",
+      "pipeline": "harness-no-inference",
+      "clock": "native-monotonic-ms",
+      "captureClock": "synthetic-feed",
+      "cold": false,
+      "outcome": "passed",
+      "identity": {
+        "sourceCommit": "a9d5a512abb329db368a759c5754441060918c0b",
+        "sourceDirty": true,
+        "engineSha256": "4a0b0aee70359b69a2ca649ead4f36a618484e232e86ac4409ffc35f4d0d64a4",
+        "modelSha256": "eebf459f988f4f3b6b0eaa4b25666f9fe54bf1184fd4777299a42ecdbcb81c7e",
+        "models": {
+          "asr": "c0f6ad42f0a5b481904416077dde0a1a78e5b8642295fdf2356ace822588c3df",
+          "tts": "4b2819180a9e3b096fb71a93d6a719794246ee230f7faa857edcc0bee2a1529e",
+          "vad": "d348cd6d87ea53dcd3e6680698c88be326082e27dae899adef653d090bee4995"
+        },
+        "device": "Google Alpha Phone Pixel 10a",
+        "environment": "device",
+        "abi": "arm64-v8a",
+        "sdk": 37,
+        "build": "launcher-debug"
+      },
+      "marks": {
+        "last-user-audio": 3250312.100133,
+        "endpoint": 3250830.782674,
+        "asr-final": 3250929.655517,
+        "tts-start": 3250929.760009,
+        "tts-ready": 3251070.296631,
+        "first-pcm": 3251088.869181,
+        "audible-playback": 3251624.531983
+      },
+      "audibleClock": "audiotrack-timestamp",
+      "network": "wifi",
+      "thermal": "none",
+      "thermalHeadroom": 0.5230792164802551
+    },
+    {
+      "id": "a9d5a512abb3-2df1016bc6d-9",
+      "turnId": "5dee5ebc-8bc6-4768-b433-78a34e2d6525",
+      "pipeline": "harness-no-inference",
+      "clock": "native-monotonic-ms",
+      "captureClock": "synthetic-feed",
+      "cold": false,
+      "outcome": "passed",
+      "identity": {
+        "sourceCommit": "a9d5a512abb329db368a759c5754441060918c0b",
+        "sourceDirty": true,
+        "engineSha256": "4a0b0aee70359b69a2ca649ead4f36a618484e232e86ac4409ffc35f4d0d64a4",
+        "modelSha256": "eebf459f988f4f3b6b0eaa4b25666f9fe54bf1184fd4777299a42ecdbcb81c7e",
+        "models": {
+          "asr": "c0f6ad42f0a5b481904416077dde0a1a78e5b8642295fdf2356ace822588c3df",
+          "tts": "4b2819180a9e3b096fb71a93d6a719794246ee230f7faa857edcc0bee2a1529e",
+          "vad": "d348cd6d87ea53dcd3e6680698c88be326082e27dae899adef653d090bee4995"
+        },
+        "device": "Google Alpha Phone Pixel 10a",
+        "environment": "device",
+        "abi": "arm64-v8a",
+        "sdk": 37,
+        "build": "launcher-debug"
+      },
+      "marks": {
+        "last-user-audio": 3262248.100133,
+        "endpoint": 3262766.686448,
+        "asr-final": 3262836.580002,
+        "tts-start": 3262836.700974,
+        "tts-ready": 3262981.809372,
+        "first-pcm": 3263016.157029,
+        "audible-playback": 3263541.418219
+      },
+      "audibleClock": "audiotrack-timestamp",
+      "network": "wifi",
+      "thermal": "none",
+      "thermalHeadroom": 0.5259886980056763
+    },
+    {
+      "id": "a9d5a512abb3-2df1016bc6d-10",
+      "turnId": "55f12694-3737-49fa-bbfa-8e919f686936",
+      "pipeline": "harness-no-inference",
+      "clock": "native-monotonic-ms",
+      "captureClock": "synthetic-feed",
+      "cold": false,
+      "outcome": "passed",
+      "identity": {
+        "sourceCommit": "a9d5a512abb329db368a759c5754441060918c0b",
+        "sourceDirty": true,
+        "engineSha256": "4a0b0aee70359b69a2ca649ead4f36a618484e232e86ac4409ffc35f4d0d64a4",
+        "modelSha256": "eebf459f988f4f3b6b0eaa4b25666f9fe54bf1184fd4777299a42ecdbcb81c7e",
+        "models": {
+          "asr": "c0f6ad42f0a5b481904416077dde0a1a78e5b8642295fdf2356ace822588c3df",
+          "tts": "4b2819180a9e3b096fb71a93d6a719794246ee230f7faa857edcc0bee2a1529e",
+          "vad": "d348cd6d87ea53dcd3e6680698c88be326082e27dae899adef653d090bee4995"
+        },
+        "device": "Google Alpha Phone Pixel 10a",
+        "environment": "device",
+        "abi": "arm64-v8a",
+        "sdk": 37,
+        "build": "launcher-debug"
+      },
+      "marks": {
+        "last-user-audio": 3278280.100133,
+        "endpoint": 3278798.662041,
+        "asr-final": 3278885.530653,
+        "tts-start": 3278885.657565,
+        "tts-ready": 3279041.745456,
+        "first-pcm": 3279076.790907,
+        "audible-playback": 3279614.64955
+      },
+      "audibleClock": "audiotrack-timestamp",
+      "network": "wifi",
+      "thermal": "none",
+      "thermalHeadroom": 0.5282217860221863
+    },
+    {
+      "id": "a9d5a512abb3-2df1016bc6d-11",
+      "turnId": "efb88a23-6906-4c66-b47b-e62bf352df3f",
+      "pipeline": "harness-no-inference",
+      "clock": "native-monotonic-ms",
+      "captureClock": "synthetic-feed",
+      "cold": false,
+      "outcome": "passed",
+      "identity": {
+        "sourceCommit": "a9d5a512abb329db368a759c5754441060918c0b",
+        "sourceDirty": true,
+        "engineSha256": "4a0b0aee70359b69a2ca649ead4f36a618484e232e86ac4409ffc35f4d0d64a4",
+        "modelSha256": "eebf459f988f4f3b6b0eaa4b25666f9fe54bf1184fd4777299a42ecdbcb81c7e",
+        "models": {
+          "asr": "c0f6ad42f0a5b481904416077dde0a1a78e5b8642295fdf2356ace822588c3df",
+          "tts": "4b2819180a9e3b096fb71a93d6a719794246ee230f7faa857edcc0bee2a1529e",
+          "vad": "d348cd6d87ea53dcd3e6680698c88be326082e27dae899adef653d090bee4995"
+        },
+        "device": "Google Alpha Phone Pixel 10a",
+        "environment": "device",
+        "abi": "arm64-v8a",
+        "sdk": 37,
+        "build": "launcher-debug"
+      },
+      "marks": {
+        "last-user-audio": 3287304.100133,
+        "endpoint": 3287822.789406,
+        "asr-final": 3287889.640195,
+        "tts-start": 3287889.712054,
+        "tts-ready": 3288018.276833,
+        "first-pcm": 3288039.945615,
+        "audible-playback": 3288566.237079
+      },
+      "audibleClock": "audiotrack-timestamp",
+      "network": "wifi",
+      "thermal": "none",
+      "thermalHeadroom": 0.5286141037940979
+    },
+    {
+      "id": "a9d5a512abb3-2df1016bc6d-12",
+      "turnId": "347bd31f-1ee2-4183-89b6-f8a0de7b625b",
+      "pipeline": "harness-no-inference",
+      "clock": "native-monotonic-ms",
+      "captureClock": "synthetic-feed",
+      "cold": false,
+      "outcome": "passed",
+      "identity": {
+        "sourceCommit": "a9d5a512abb329db368a759c5754441060918c0b",
+        "sourceDirty": true,
+        "engineSha256": "4a0b0aee70359b69a2ca649ead4f36a618484e232e86ac4409ffc35f4d0d64a4",
+        "modelSha256": "eebf459f988f4f3b6b0eaa4b25666f9fe54bf1184fd4777299a42ecdbcb81c7e",
+        "models": {
+          "asr": "c0f6ad42f0a5b481904416077dde0a1a78e5b8642295fdf2356ace822588c3df",
+          "tts": "4b2819180a9e3b096fb71a93d6a719794246ee230f7faa857edcc0bee2a1529e",
+          "vad": "d348cd6d87ea53dcd3e6680698c88be326082e27dae899adef653d090bee4995"
+        },
+        "device": "Google Alpha Phone Pixel 10a",
+        "environment": "device",
+        "abi": "arm64-v8a",
+        "sdk": 37,
+        "build": "launcher-debug"
+      },
+      "marks": {
+        "last-user-audio": 3299272.100133,
+        "endpoint": 3299791.278385,
+        "asr-final": 3299894.584944,
+        "tts-start": 3299894.705549,
+        "tts-ready": 3300037.735782,
+        "first-pcm": 3300058.574324,
+        "audible-playback": 3300586.213648
+      },
+      "audibleClock": "audiotrack-timestamp",
+      "network": "wifi",
+      "thermal": "none",
+      "thermalHeadroom": 0.5346609950065613
+    },
+    {
+      "id": "a9d5a512abb3-2df1016bc6d-13",
+      "turnId": "c7442a52-b589-4626-b550-07a2f9452be1",
+      "pipeline": "harness-no-inference",
+      "clock": "native-monotonic-ms",
+      "captureClock": "synthetic-feed",
+      "cold": true,
+      "outcome": "passed",
+      "identity": {
+        "sourceCommit": "a9d5a512abb329db368a759c5754441060918c0b",
+        "sourceDirty": true,
+        "engineSha256": "4a0b0aee70359b69a2ca649ead4f36a618484e232e86ac4409ffc35f4d0d64a4",
+        "modelSha256": "eebf459f988f4f3b6b0eaa4b25666f9fe54bf1184fd4777299a42ecdbcb81c7e",
+        "models": {
+          "asr": "c0f6ad42f0a5b481904416077dde0a1a78e5b8642295fdf2356ace822588c3df",
+          "tts": "4b2819180a9e3b096fb71a93d6a719794246ee230f7faa857edcc0bee2a1529e",
+          "vad": "d348cd6d87ea53dcd3e6680698c88be326082e27dae899adef653d090bee4995"
+        },
+        "device": "Google Alpha Phone Pixel 10a",
+        "environment": "device",
+        "abi": "arm64-v8a",
+        "sdk": 37,
+        "build": "launcher-debug"
+      },
+      "marks": {
+        "last-user-audio": 3315272.100133,
+        "endpoint": 3315790.570466,
+        "asr-final": 3315845.822297,
+        "tts-start": 3315845.950878,
+        "tts-ready": 3316008.535798,
+        "first-pcm": 3316039.550853,
+        "audible-playback": 3316576.158195
+      },
+      "coldReason": "asr-reload+tts-load",
+      "audibleClock": "audiotrack-timestamp",
+      "network": "wifi",
+      "thermal": "none",
+      "thermalHeadroom": 0.5360806584358215
+    },
+    {
+      "id": "a9d5a512abb3-2df1016bc6d-14",
+      "turnId": "3c7078df-1308-42f7-bfbe-1cafa4c77547",
+      "pipeline": "harness-no-inference",
+      "clock": "native-monotonic-ms",
+      "captureClock": "synthetic-feed",
+      "cold": false,
+      "outcome": "passed",
+      "identity": {
+        "sourceCommit": "a9d5a512abb329db368a759c5754441060918c0b",
+        "sourceDirty": true,
+        "engineSha256": "4a0b0aee70359b69a2ca649ead4f36a618484e232e86ac4409ffc35f4d0d64a4",
+        "modelSha256": "eebf459f988f4f3b6b0eaa4b25666f9fe54bf1184fd4777299a42ecdbcb81c7e",
+        "models": {
+          "asr": "c0f6ad42f0a5b481904416077dde0a1a78e5b8642295fdf2356ace822588c3df",
+          "tts": "4b2819180a9e3b096fb71a93d6a719794246ee230f7faa857edcc0bee2a1529e",
+          "vad": "d348cd6d87ea53dcd3e6680698c88be326082e27dae899adef653d090bee4995"
+        },
+        "device": "Google Alpha Phone Pixel 10a",
+        "environment": "device",
+        "abi": "arm64-v8a",
+        "sdk": 37,
+        "build": "launcher-debug"
+      },
+      "marks": {
+        "last-user-audio": 3324296.100133,
+        "endpoint": 3324814.582352,
+        "asr-final": 3324884.244909,
+        "tts-start": 3324884.359207,
+        "tts-ready": 3325022.562902,
+        "first-pcm": 3325046.484207,
+        "audible-playback": 3325589.801713
+      },
+      "audibleClock": "audiotrack-timestamp",
+      "network": "wifi",
+      "thermal": "none",
+      "thermalHeadroom": 0.5415359735488892
+    },
+    {
+      "id": "a9d5a512abb3-2df1016bc6d-15",
+      "turnId": "35a550cf-29af-4b9a-ba93-1f2fe55da7e9",
+      "pipeline": "harness-no-inference",
+      "clock": "native-monotonic-ms",
+      "captureClock": "synthetic-feed",
+      "cold": false,
+      "outcome": "passed",
+      "identity": {
+        "sourceCommit": "a9d5a512abb329db368a759c5754441060918c0b",
+        "sourceDirty": true,
+        "engineSha256": "4a0b0aee70359b69a2ca649ead4f36a618484e232e86ac4409ffc35f4d0d64a4",
+        "modelSha256": "eebf459f988f4f3b6b0eaa4b25666f9fe54bf1184fd4777299a42ecdbcb81c7e",
+        "models": {
+          "asr": "c0f6ad42f0a5b481904416077dde0a1a78e5b8642295fdf2356ace822588c3df",
+          "tts": "4b2819180a9e3b096fb71a93d6a719794246ee230f7faa857edcc0bee2a1529e",
+          "vad": "d348cd6d87ea53dcd3e6680698c88be326082e27dae899adef653d090bee4995"
+        },
+        "device": "Google Alpha Phone Pixel 10a",
+        "environment": "device",
+        "abi": "arm64-v8a",
+        "sdk": 37,
+        "build": "launcher-debug"
+      },
+      "marks": {
+        "last-user-audio": 3336264.100133,
+        "endpoint": 3336782.63851,
+        "asr-final": 3336852.141236,
+        "tts-start": 3336852.264894,
+        "tts-ready": 3336993.763103,
+        "first-pcm": 3337025.934327,
+        "audible-playback": 3337550.938519
+      },
+      "audibleClock": "audiotrack-timestamp",
+      "network": "wifi",
+      "thermal": "none",
+      "thermalHeadroom": 0.5399962663650513
+    },
+    {
+      "id": "a9d5a512abb3-2df1016bc6d-16",
+      "turnId": "da41e1a4-c6ec-4275-b4dc-c342293f243e",
+      "pipeline": "harness-no-inference",
+      "clock": "native-monotonic-ms",
+      "captureClock": "synthetic-feed",
+      "cold": false,
+      "outcome": "passed",
+      "identity": {
+        "sourceCommit": "a9d5a512abb329db368a759c5754441060918c0b",
+        "sourceDirty": true,
+        "engineSha256": "4a0b0aee70359b69a2ca649ead4f36a618484e232e86ac4409ffc35f4d0d64a4",
+        "modelSha256": "eebf459f988f4f3b6b0eaa4b25666f9fe54bf1184fd4777299a42ecdbcb81c7e",
+        "models": {
+          "asr": "c0f6ad42f0a5b481904416077dde0a1a78e5b8642295fdf2356ace822588c3df",
+          "tts": "4b2819180a9e3b096fb71a93d6a719794246ee230f7faa857edcc0bee2a1529e",
+          "vad": "d348cd6d87ea53dcd3e6680698c88be326082e27dae899adef653d090bee4995"
+        },
+        "device": "Google Alpha Phone Pixel 10a",
+        "environment": "device",
+        "abi": "arm64-v8a",
+        "sdk": 37,
+        "build": "launcher-debug"
+      },
+      "marks": {
+        "last-user-audio": 3352264.100133,
+        "endpoint": 3352782.727751,
+        "asr-final": 3353302.409596,
+        "tts-start": 3353302.467782,
+        "tts-ready": 3353579.121103,
+        "first-pcm": 3353599.881438,
+        "audible-playback": 3354123.889943
+      },
+      "audibleClock": "audiotrack-timestamp",
+      "network": "wifi",
+      "thermal": "none",
+      "thermalHeadroom": 0.5435816049575806
+    },
+    {
+      "id": "a9d5a512abb3-2df1016bc6d-17",
+      "turnId": "62c225db-fc7d-4600-aabd-9dcbc0f8a533",
+      "pipeline": "harness-no-inference",
+      "clock": "native-monotonic-ms",
+      "captureClock": "synthetic-feed",
+      "cold": false,
+      "outcome": "passed",
+      "identity": {
+        "sourceCommit": "a9d5a512abb329db368a759c5754441060918c0b",
+        "sourceDirty": true,
+        "engineSha256": "4a0b0aee70359b69a2ca649ead4f36a618484e232e86ac4409ffc35f4d0d64a4",
+        "modelSha256": "eebf459f988f4f3b6b0eaa4b25666f9fe54bf1184fd4777299a42ecdbcb81c7e",
+        "models": {
+          "asr": "c0f6ad42f0a5b481904416077dde0a1a78e5b8642295fdf2356ace822588c3df",
+          "tts": "4b2819180a9e3b096fb71a93d6a719794246ee230f7faa857edcc0bee2a1529e",
+          "vad": "d348cd6d87ea53dcd3e6680698c88be326082e27dae899adef653d090bee4995"
+        },
+        "device": "Google Alpha Phone Pixel 10a",
+        "environment": "device",
+        "abi": "arm64-v8a",
+        "sdk": 37,
+        "build": "launcher-debug"
+      },
+      "marks": {
+        "last-user-audio": 3361256.100133,
+        "endpoint": 3361774.850355,
+        "asr-final": 3361839.229994,
+        "tts-start": 3361839.296278,
+        "tts-ready": 3361964.798068,
+        "first-pcm": 3361993.963718,
+        "audible-playback": 3362539.362115
+      },
+      "audibleClock": "audiotrack-timestamp",
+      "network": "wifi",
+      "thermal": "none",
+      "thermalHeadroom": 0.5468870401382446
+    },
+    {
+      "id": "a9d5a512abb3-2df1016bc6d-18",
+      "turnId": "e95c1602-f4cc-47e3-8b69-9b78e3935630",
+      "pipeline": "harness-no-inference",
+      "clock": "native-monotonic-ms",
+      "captureClock": "synthetic-feed",
+      "cold": false,
+      "outcome": "passed",
+      "identity": {
+        "sourceCommit": "a9d5a512abb329db368a759c5754441060918c0b",
+        "sourceDirty": true,
+        "engineSha256": "4a0b0aee70359b69a2ca649ead4f36a618484e232e86ac4409ffc35f4d0d64a4",
+        "modelSha256": "eebf459f988f4f3b6b0eaa4b25666f9fe54bf1184fd4777299a42ecdbcb81c7e",
+        "models": {
+          "asr": "c0f6ad42f0a5b481904416077dde0a1a78e5b8642295fdf2356ace822588c3df",
+          "tts": "4b2819180a9e3b096fb71a93d6a719794246ee230f7faa857edcc0bee2a1529e",
+          "vad": "d348cd6d87ea53dcd3e6680698c88be326082e27dae899adef653d090bee4995"
+        },
+        "device": "Google Alpha Phone Pixel 10a",
+        "environment": "device",
+        "abi": "arm64-v8a",
+        "sdk": 37,
+        "build": "launcher-debug"
+      },
+      "marks": {
+        "last-user-audio": 3373256.100133,
+        "endpoint": 3373774.218037,
+        "asr-final": 3373849.76479,
+        "tts-start": 3373849.904357,
+        "tts-ready": 3374003.951517,
+        "first-pcm": 3374035.501443,
+        "audible-playback": 3374554.900004
+      },
+      "audibleClock": "audiotrack-timestamp",
+      "network": "wifi",
+      "thermal": "none",
+      "thermalHeadroom": 0.5513022541999817
+    }
+  ],
+  "harness": {
+    "pipeline": "harness-no-inference",
+    "source": "synthetic-feed",
+    "description": "AlphaLiveVoiceCapture (AudioRecord + Silero VAD) -> Phonon-2 streaming ASR in the app process -> fixed reply (no language model) -> Paradee-8M -> MediaPlayer; not device latency when environment is emulator",
+    "trialsRequested": 18,
+    "coldEvery": 6,
+    "complete": true,
+    "skippedSegments": 0,
+    "captureBatches": 2306,
+    "maxPeak": 0.23797607421875,
+    "captureError": null,
+    "elapsedMs": 220206,
+    "turns": [
+      {
+        "sequence": 1,
+        "transcribed": true,
+        "reply": "It is sunny and about seventy degrees right now.",
+        "outcome": "passed"
+      },
+      {
+        "sequence": 2,
+        "transcribed": true,
+        "reply": "Okay, I set a timer for five minutes.",
+        "outcome": "passed"
+      },
+      {
+        "sequence": 3,
+        "transcribed": true,
+        "reply": "Your next meeting starts at three this afternoon.",
+        "outcome": "passed"
+      },
+      {
+        "sequence": 4,
+        "transcribed": true,
+        "reply": "It is sunny and about seventy degrees right now.",
+        "outcome": "passed"
+      },
+      {
+        "sequence": 5,
+        "transcribed": true,
+        "reply": "Okay, I set a timer for five minutes.",
+        "outcome": "passed"
+      },
+      {
+        "sequence": 6,
+        "transcribed": true,
+        "reply": "Your next meeting starts at three this afternoon.",
+        "outcome": "passed"
+      },
+      {
+        "sequence": 7,
+        "transcribed": true,
+        "reply": "It is sunny and about seventy degrees right now.",
+        "outcome": "passed"
+      },
+      {
+        "sequence": 8,
+        "transcribed": true,
+        "reply": "Okay, I set a timer for five minutes.",
+        "outcome": "passed"
+      },
+      {
+        "sequence": 9,
+        "transcribed": true,
+        "reply": "Your next meeting starts at three this afternoon.",
+        "outcome": "passed"
+      },
+      {
+        "sequence": 10,
+        "transcribed": true,
+        "reply": "It is sunny and about seventy degrees right now.",
+        "outcome": "passed"
+      },
+      {
+        "sequence": 11,
+        "transcribed": true,
+        "reply": "Okay, I set a timer for five minutes.",
+        "outcome": "passed"
+      },
+      {
+        "sequence": 12,
+        "transcribed": true,
+        "reply": "Your next meeting starts at three this afternoon.",
+        "outcome": "passed"
+      },
+      {
+        "sequence": 13,
+        "transcribed": true,
+        "reply": "It is sunny and about seventy degrees right now.",
+        "outcome": "passed"
+      },
+      {
+        "sequence": 14,
+        "transcribed": true,
+        "reply": "Okay, I set a timer for five minutes.",
+        "outcome": "passed"
+      },
+      {
+        "sequence": 15,
+        "transcribed": true,
+        "reply": "Your next meeting starts at three this afternoon.",
+        "outcome": "passed"
+      },
+      {
+        "sequence": 16,
+        "transcribed": true,
+        "reply": "It is sunny and about seventy degrees right now.",
+        "outcome": "passed"
+      },
+      {
+        "sequence": 17,
+        "transcribed": true,
+        "reply": "Okay, I set a timer for five minutes.",
+        "outcome": "passed"
+      },
+      {
+        "sequence": 18,
+        "transcribed": true,
+        "reply": "Your next meeting starts at three this afternoon.",
+        "outcome": "passed"
+      }
+    ]
+  }
+}

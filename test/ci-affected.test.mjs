@@ -43,7 +43,7 @@ test('CI selection follows changed files, renames, missing history and manual di
   base=git('rev-parse','HEAD');git('mv','apps/app/source.ts','docs/reference.ts');commit('.');
   result=select(pr());assert.deepEqual(lanes(result),[true,true,true,false]);assert.deepEqual(result.browser_specs,[]);
   base=git('rev-parse','HEAD');git('rm','test/browser/notes.spec.ts');commit('.');
-  result=select(pr());assert.deepEqual(result.browser_shards,[1,2,3,4]);assert.equal(result.browser_production,true);
+  result=select(pr());assert.deepEqual(result.browser_shards,[1,2,3,4,5,6]);assert.equal(result.browser_production,true);
   base=git('rev-parse','HEAD');put('unknown-build-input');commit('unknown-build-input');
   assert.deepEqual(lanes(select({before:base},'push')),[true,true,true,true]);
   assert.deepEqual(lanes(select({before:'0'.repeat(40)},'push')),[true,true,true,true]);

@@ -58,7 +58,8 @@ test('web reading stays unavailable for blank, loading, stopped and external-onl
  };
  await page.getByRole('button',{name:'Browser',exact:true}).click();
  await page.getByRole('button',{name:'Menu',exact:true}).click();await unavailable();
- await page.getByRole('button',{name:'Close menu',exact:true}).click();
+ // The backdrop fills the screen under the menu; tap it outside the menu, as browser-signins does.
+ await page.getByRole('button',{name:'Close menu',exact:true}).click({position:{x:8,y:8}});
  await page.getByRole('button',{name:'Search or type address',exact:true}).click();
  await page.getByRole('textbox',{name:'Address',exact:true}).fill('https://reading.example/article');
  await page.getByRole('textbox',{name:'Address',exact:true}).press('Enter');await expect.poll(()=>requests).toBe(1);

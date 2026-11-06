@@ -477,9 +477,9 @@
   },
   {
     "name": "elizaOS",
-    "version": "2.0.4 (951197ae394aa1d5f3b5e8c8aa6b2caf037768b2)",
+    "version": "2.0.4 (0594fc72da4450a84a986ad12e730e3faa902018)",
     "license": "MIT",
-    "source": "https://github.com/elizaOS/eliza/tree/951197ae394aa1d5f3b5e8c8aa6b2caf037768b2",
+    "source": "https://github.com/elizaOS/eliza/tree/0594fc72da4450a84a986ad12e730e3faa902018",
     "text": "MIT License\n\nCopyright (c) 2026 Shaw Walters and elizaOS Contributors\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.",
     "flags": []
   },

@@ -85,7 +85,7 @@ the operator's index of build, provisioning, release and support material is the
 
 ## Product boundaries
 
-Current Alpha integration source: SDK `951197ae39`. The SDK is published for review. Android packaging and live Cloud voice validation remain pending.
+Current Alpha integration source: SDK `0594fc72da`, the recorded elizaOS/eliza `develop` head as of 2026-11-06 (`scripts/ci/upstream-reachability.json`). It is 8 commits past `018a2b9537`, with native build inputs unchanged (`docs/evidence/sdk-5d1af326e5-build-input-admission-20261106.json`, `docs/evidence/sdk-0594fc72da-build-input-admission-20261106.json`). elizaOS/eliza #38761 carried the former pin `951197ae39` onto `develop` and returned the native engine gitlink to the fork main tip `b3eb2bf6`, so the reviewed ARM64 embedding host needs a new receipt before a distribution build (`docs/evidence/sdk-018a2b9537-build-input-admission-20261105.json`). Android packaging and live Cloud voice validation remain pending.
 
 Historical source projection:
 
