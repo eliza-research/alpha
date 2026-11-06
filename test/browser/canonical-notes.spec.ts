@@ -18,17 +18,21 @@ test('canonical Notes UI creates, edits, trashes and restores the same committed
  await page.getByRole('button',{name:'Back to notes',exact:true}).click();
  await expect.poll(()=>snapshot(page).then((s:any)=>s.notes.find((n:any)=>n.id===before.id)?.body)).toBe('\nUpdated exact text.');
  await page.getByRole('button',{name:'Open Canonical browser note',exact:true}).click();
- await page.getByRole('button',{name:'Delete note',exact:true}).click();
+ await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
  await expect.poll(()=>snapshot(page).then((s:any)=>s.notes.length)).toBe(0);
- await expect(page.getByText('Canonical browser note moved to Trash',{exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Open Trash',exact:true}).click();
+ await expect(page.getByText('Moved to Recently deleted',{exact:true})).toBeVisible();
+ // The agent's restore-only Trash is the Recently deleted folder: no retention line, no Empty, no Delete now.
+ await page.getByRole('button',{name:'Recently deleted',exact:true}).click();
  const trash=page.locator('[data-alpha-subview="notes-trash"]');
- await expect(trash.getByText('Deleted notes are kept here for recovery.',{exact:true})).toBeVisible();
- await expect(trash.getByRole('button',{name:'Empty Trash',exact:true})).toHaveCount(0);
- await trash.getByRole('button',{name:'Restore Canonical browser note',exact:true}).click();
+ await expect(trash.getByRole('button',{name:'Empty Recently deleted',exact:true})).toHaveCount(0);
+ await trash.getByRole('button',{name:'Canonical browser note',exact:true}).click();
+ const ask=page.getByRole('dialog',{name:'Canonical browser note'});
+ await expect(ask.getByRole('button',{name:'Delete now',exact:true})).toHaveCount(0);
+ await ask.getByRole('button',{name:'Recover',exact:true}).click();
  await expect.poll(()=>snapshot(page).then((s:any)=>s.notes.length)).toBe(1);
  const after=(await snapshot(page)).notes[0];expect(after.id).toBe(before.id);expect(after.body).toBe('\nUpdated exact text.');expect((await snapshot(page)).trash).toEqual([]);
- await trash.getByRole('button',{name:'Close Trash',exact:true}).click();
+ // The last item recovered: the folder closes and the chip goes.
+ await expect(trash).toHaveCount(0);await expect(page.getByRole('button',{name:'Recently deleted',exact:true})).toHaveCount(0);
  await page.getByRole('button',{name:'Open Canonical browser note',exact:true}).click();
  await expect(page.getByRole('textbox',{name:'Note',exact:true})).toHaveValue('Updated exact text.');
  const requests=await page.evaluate(()=>(window as any).canonicalNotesFixture.requests);
@@ -39,41 +43,25 @@ test('canonical Notes UI creates, edits, trashes and restores the same committed
  expect(foreign).toEqual([]);expect(errors).toEqual([]);
 });
 
-// The header waveform is mock mode's, in live mode a new agent note dictated into: speech to text
-// through the editor's dictation, saved like typing after + (create, then expectedRevision updates).
-test('the header waveform starts one canonical note and dictates into it like typing',async({page})=>{
+// Agent Notes have the redesign's header: Record and New note (PLAN.md section 3). Record opens the
+// Notes recorder; Done saves an agent voice note with the transcript and length, and no audio.
+test('Record in agent Notes saves a voice note without audio',async({page})=>{
  const {foreign,errors}=await canonicalNotesFixture(page);await openCanonicalNotes(page);
- const requests=()=>page.evaluate(()=>(window as any).canonicalNotesFixture.requests.filter((r:any)=>r.path==='/api/views/notes/interact'));
- await page.evaluate(()=>(window as any).canonicalNotesFixture.dictation=['Call the landlord Friday','Bedroom radiator clanks all night.']);
- await page.getByRole('button',{name:'Dictate new note',exact:true}).click();
- // The transcript is the new note's first save: one create-note, the same one typing after + makes.
- await expect.poll(()=>snapshot(page).then((s:any)=>s.notes.map((n:any)=>[n.title,n.body]))).toEqual([['Call the landlord Friday','']]);
- const title=page.getByRole('textbox',{name:'Title',exact:true}),body=page.getByRole('textbox',{name:'Note',exact:true});
- await expect(title).toHaveValue('Call the landlord Friday');
- const created=await requests();expect(created.map((r:any)=>r.body.capability)).toEqual(['create-note']);
- expect(created[0].body.params).toEqual({forceNew:true,content:'Call the landlord Friday',color:'yellow'});
- // Dictating again into the open note is an edit of that record against the revision it was made from.
- await page.getByRole('button',{name:'Dictate',exact:true}).click();
- await expect.poll(()=>snapshot(page).then((s:any)=>s.notes.map((n:any)=>[n.title,n.body]))).toEqual([['Call the landlord Friday','\nBedroom radiator clanks all night.']]);
- await expect(body).toHaveValue('Bedroom radiator clanks all night.');
- const [first,second]=await requests();const id=(await snapshot(page)).notes[0].id;
- expect(second.body).toMatchObject({capability:'update-note',params:{id,expectedRevision:1,content:'Call the landlord Friday\nBedroom radiator clanks all night.'}});
- expect(first.body.params.expectedRevision).toBeUndefined();
- expect(await page.evaluate(()=>(window as any).canonicalNotesFixture.heard)).toBe(2);
- // An ordinary agent note: no recording, no audio handle, nothing device-local.
- expect((await snapshot(page)).notes[0].format).toBeUndefined();expect(JSON.stringify(await requests())).not.toMatch(/audio/i);
- await page.getByRole('button',{name:'Back to notes',exact:true}).click();
- await expect(page.getByRole('button',{name:'Open Call the landlord Friday',exact:true})).toContainText('Bedroom radiator clanks all night.');
- expect((await snapshot(page)).notes).toHaveLength(1);
- // Without speech recognition (this browser build, or a denied microphone) the waveform still opens
- // the new note and shows the editor's own message; an untouched note is dropped on Back.
- await page.evaluate(()=>(window as any).canonicalNotesFixture.dictation=undefined);
- await page.getByRole('button',{name:'Dictate new note',exact:true}).click();
- await expect(title).toHaveValue('');await expect(body).toHaveValue('');
- await expect(page.getByText('Speech recognition is unavailable.',{exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Back to notes',exact:true}).click();
- await expect(page.getByRole('button',{name:'Dictate new note',exact:true})).toBeVisible();
- expect((await requests()).length).toBe(2);expect((await snapshot(page)).notes).toHaveLength(1);
+ const header=page.locator('[data-alpha-subview="notes-list"] [data-alpha-app-header="main"]');
+ expect(await header.getByRole('button').evaluateAll(list=>list.map(el=>el.getAttribute('aria-label')))).toEqual(['Back to apps','Record and transcribe','New note']);
+ await page.evaluate(()=>{const ctx=new AudioContext(),osc=ctx.createOscillator(),sink=ctx.createMediaStreamDestination();osc.connect(sink);osc.start();Object.defineProperty(navigator.mediaDevices,'getUserMedia',{configurable:true,value:async()=>sink.stream});(window as any).micContext=ctx;});
+ await page.getByRole('button',{name:'Record and transcribe',exact:true}).click();
+ const recorder=page.locator('[data-alpha-subview="notes-recorder"]');
+ await expect(recorder).toHaveAttribute('data-recorder-state','recording');
+ await page.waitForTimeout(1200);
+ await recorder.getByRole('button',{name:'Done',exact:true}).click();
+ await expect(recorder).toHaveCount(0);
+ await expect.poll(()=>snapshot(page).then((s:any)=>s.notes.map((n:any)=>[n.title,n.format?.kind]))).toEqual([['Voice note','voice']]);
+ const saved=(await snapshot(page)).notes[0];
+ expect(saved.format.data.dur).toBeGreaterThan(0);expect(JSON.stringify(saved)).not.toMatch(/audio/i);
+ const requests=await page.evaluate(()=>(window as any).canonicalNotesFixture.requests.filter((r:any)=>r.path==='/api/views/notes/interact'));
+ expect(JSON.stringify(requests)).not.toMatch(/audioId/);
+ await page.evaluate(()=>(window as any).micContext.close());
  expect(foreign).toEqual([]);expect(errors).toEqual([]);
 });
 
@@ -106,15 +94,14 @@ test('a checklist, pin and Back leave Alpha cards in the same canonical record',
  await page.getByRole('textbox',{name:'Note',exact:true}).fill('Oat milk\nLemons');
  await page.getByRole('button',{name:'Turn into checklist',exact:true}).click();
  await page.getByRole('button',{name:'Check Oat milk',exact:true}).click();
- await page.getByRole('button',{name:'Pin',exact:true}).click();
+ await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Pin',exact:true}).click();
  await page.getByRole('button',{name:'Back to notes',exact:true}).click();
  await expect.poll(()=>snapshot(page).then((s:any)=>s.notes[0]?.format)).toEqual({kind:'list',data:{items:[{t:'Oat milk',done:true},{t:'Lemons',done:false}],pinned:true}});
  const card=page.getByRole('button',{name:'Open Groceries',exact:true});
  await expect(card).toBeVisible();
- // The checklist card: a checked item is struck through, the pin is shown.
- await expect(card.getByText('Oat milk',{exact:true})).toHaveCSS('text-decoration-line','line-through');
- await expect(card.getByText('Lemons',{exact:true})).not.toHaveCSS('text-decoration-line','line-through');
- await expect(card.locator('[data-alpha-icon]')).toHaveCount(1);
+ // The checklist row: its items in the two-line preview, under Pinned.
+ await expect(card).toContainText('☑ Oat milk');await expect(card).toContainText('☐ Lemons');
+ await expect(page.locator('.notes-section',{hasText:'Pinned'})).toBeVisible();
  expect(foreign).toEqual([]);expect(errors).toEqual([]);
 });
 
@@ -123,7 +110,7 @@ test('Delete on a new note that was never saved closes it without a Notes reques
  const before=await page.evaluate(()=>(window as any).canonicalNotesFixture.requests.filter((r:any)=>r.method==='POST').length);
  await page.getByRole('button',{name:'New note',exact:true}).click();
  await expect(page.getByRole('textbox',{name:'Title',exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Delete note',exact:true}).click();
+ await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
  await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveCount(0);
  await expect(page.getByRole('button',{name:'New note',exact:true})).toBeVisible();
  expect(await page.evaluate(()=>(window as any).canonicalNotesFixture.requests.filter((r:any)=>r.method==='POST').length)).toBe(before);
@@ -144,7 +131,7 @@ test('slow saves: typing during a new note\'s first save makes one record, and D
  // Delete while the first save of a new note is still in flight: it waits, then trashes that record.
  await page.getByRole('button',{name:'New note',exact:true}).click();
  await title.fill('Fresh');
- await page.getByRole('button',{name:'Delete note',exact:true}).click();
+ await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
  await expect.poll(()=>snapshot(page).then((s:any)=>s.trash.map((entry:any)=>entry.note.title)),{timeout:10_000}).toEqual(['Fresh']);
  await expect(title).toHaveCount(0);
  await expect(review).toHaveCount(0);
@@ -152,7 +139,7 @@ test('slow saves: typing during a new note\'s first save makes one record, and D
  expect(foreign).toEqual([]);expect(errors).toEqual([]);
 });
 
-test('an agent append refreshes the open note and its card, search reads it, and a stale owner edit is kept for review',async({page})=>{
+test('an agent append refreshes the open note and its row, and a stale owner edit is kept for review',async({page})=>{
  const at='2026-10-30T09:00:00.000Z';
  const {foreign,errors}=await canonicalNotesFixture(page,{notes:[
   {id:'launch',title:'Launch plan',body:'\nConfirm attestation flow',color:'yellow',createdAt:at,updatedAt:at},
@@ -178,12 +165,7 @@ test('an agent append refreshes the open note and its card, search reads it, and
  await page.getByRole('button',{name:'Back to notes',exact:true}).click();
  await expect(page.getByRole('button',{name:'Open Launch plan',exact:true})).toContainText('Owner line');
  await agentEdit('groceries');
- await expect(page.getByRole('button',{name:'Open Groceries',exact:true}).getByText('Agent item',{exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Search notes',exact:true}).click();
- await page.getByRole('textbox',{name:'Search notes',exact:true}).fill('agent item');
- await expect(page.getByRole('button',{name:'Open Groceries',exact:true})).toBeVisible();
- await expect(page.getByRole('button',{name:'Open Launch plan',exact:true})).toHaveCount(0);
- await page.getByRole('button',{name:'Close search',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Open Groceries',exact:true})).toContainText('Agent item');
  // An agent change the view has not heard about yet: the owner's edit names an older revision, so
  // it is refused, the owner's text stays in the editor and nothing overwrites the agent's change.
  await page.getByRole('button',{name:'Open Launch plan',exact:true}).click();
@@ -208,8 +190,8 @@ test('older device notes stay a separate explicit recovery source and are not op
  });
  await openCanonicalNotes(page);
  await expect(page.getByRole('button',{name:'Open Previous local note',exact:true})).toHaveCount(0);
- // Recording stays with the device-local collection.
- await expect(page.getByRole('button',{name:'Record and transcribe',exact:true})).toHaveCount(0);
+ // Record is in both sources (agent notes keep its transcript only).
+ await expect(page.getByRole('button',{name:'Record and transcribe',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Previous notes',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Older notes',exact:true})).toBeVisible();
  await expect(page.getByRole('button',{name:'Open Previous local note',exact:true})).toBeVisible();
@@ -265,7 +247,7 @@ test('an initial Notes read failure stays read-only and a successful refresh cle
  await refreshCanonicalRead(page);
  await expect(page.getByText(readWarning,{exact:true})).toHaveCount(0);
  await expect(page.getByRole('button',{name:'Reload Notes',exact:true})).toHaveCount(0);
- await expect(page.getByText('No notes yet. Create a note to get started.',{exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'New note',exact:true})).toBeEnabled();
  const requests=await page.evaluate(()=>(window as any).canonicalNotesFixture.requests);
  expect(requests.filter((r:any)=>r.method==='POST')).toEqual([]);
  expect(foreign).toEqual([]);expect(errors).toEqual([]);
@@ -325,11 +307,11 @@ test('read recovery cannot replace a no-draft uncertain interaction with a read-
   f.state.trash=[{note:{id:'restore-uncertain',title:'Uncertain restore',body:'\nExact recoverable body',color:'yellow',createdAt:'2026-10-31T10:00:00.000Z',updatedAt:'2026-10-31T10:00:00.000Z'},deletedAt:'2026-10-31T10:01:00.000Z'}];
  });
  await refreshCanonicalRead(page);
- await page.getByRole('button',{name:'Open Trash',exact:true}).click();
- const restore=page.getByRole('button',{name:'Restore Uncertain restore',exact:true});
+ await page.getByRole('button',{name:'Recently deleted',exact:true}).click();
+ const restore=page.locator('[data-alpha-subview="notes-trash"]').getByRole('button',{name:'Uncertain restore',exact:true});
  await expect(restore).toBeVisible();
  await page.evaluate(()=>(window as any).canonicalNotesFixture.failAfterApplied=true);
- await restore.click();
+ await restore.click();await page.getByRole('dialog',{name:'Uncertain restore'}).getByRole('button',{name:'Recover',exact:true}).click();
  const changeWarning='That change could not be confirmed. Reload Notes to see what was saved.';
  await expect(page.getByText(changeWarning,{exact:true})).toBeVisible();
  await expect(page.getByRole('button',{name:'Discard draft and reload',exact:true})).toHaveCount(0);

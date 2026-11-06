@@ -150,7 +150,7 @@ export class CanonicalNotesUi {
   if(this.editor.draft&&!this.editor.draft.id&&id===this.open){this.editor.close();return true;}
   const title=this.list.find(row=>row.id===id)?.title||'Note';
   const removed=await this.editor.remove(id);
-  if(removed&&this.controller.current)api.toast(`${title} moved to Trash`,{undo:()=>void this.editor.restore(id)});
+  if(removed&&this.controller.current)api.toast('Moved to Recently deleted',{undo:()=>void this.editor.restore(id)});
   return removed;
  }
  /**
