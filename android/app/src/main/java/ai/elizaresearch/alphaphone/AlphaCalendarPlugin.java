@@ -24,8 +24,13 @@ import ai.eliza.plugins.calendar.write.CalendarOptionCreationStore;
 /** Keep installed calendar/journal identity stable while sharing provider behavior. */
 @CapacitorPlugin(name="AlphaCalendar", permissions={@Permission(alias="calendar",strings={Manifest.permission.READ_CALENDAR,Manifest.permission.WRITE_CALENDAR}),@Permission(alias="workflowCalendarRead",strings={Manifest.permission.READ_CALENDAR})})
 public final class AlphaCalendarPlugin extends CalendarPlugin {
+ /**
+  * The shared list reads at most 2,000 instances per range and reports truncated when the
+  * provider held more (docs/calendar-range-and-text-size.md). The bound is read policy, not
+  * journal identity.
+  */
  static final CalendarConfiguration CONFIGURATION=new CalendarConfiguration(
-  "Alpha Phone","alpha-phone-local","On this phone","alpha-calendar-creations-v1","alphaphone://calendar-creation/",0xff0000ff);
+  "Alpha Phone","alpha-phone-local","On this phone","alpha-calendar-creations-v1","alphaphone://calendar-creation/",0xff0000ff,2000);
  /** Patch 0041: all-day, zoned and recurring direct saves use their own creation journal. */
  static final CalendarOptionCreationStore OPTION_CREATIONS=new CalendarOptionCreationStore(CONFIGURATION);
  public AlphaCalendarPlugin(){super(CONFIGURATION);}
@@ -85,24 +90,6 @@ public final class AlphaCalendarPlugin extends CalendarPlugin {
  @Override @PluginMethod public void requestWorkflowReadAccess(PluginCall call){LateLaunch.ask(call,()->super.requestWorkflowReadAccess(call));}
  private static JSObject status(String value){JSObject out=new JSObject();out.put("status",value);return out;}
  private boolean foreground(){return getActivity()!=null&&!getActivity().isFinishing()&&!getActivity().isDestroyed()&&getActivity().hasWindowFocus();}
- /**
-  * The Calendar view's range read. The shared plugin's list returns every instance and always
-  * reports truncated:false; this product keeps its documented bound of
-  * CalendarRangeReader.MAXIMUM_EVENTS per read and reports when the provider held more.
-  * Statuses: ready, permission-required.
-  */
- @Override @PluginMethod public void list(PluginCall c){
-  if(!granted()){c.resolve(status("permission-required"));return;}
-  Long begin=c.getLong("begin"),end=c.getLong("end");
-  if(begin==null||end==null||begin<0||end<=begin||end-begin>CalendarRangeReader.MAXIMUM_RANGE){c.reject("A valid calendar range of at most 370 days is required");return;}
-  try{
-   android.content.ContentResolver resolver=getContext().getContentResolver();
-   org.json.JSONObject read=CalendarRangeReader.read(resolver,begin,end);
-   JSObject value=status("ready");value.put("calendars",new ai.eliza.plugins.calendar.read.CalendarReadAccess(resolver).calendars());
-   value.put("events",read.getJSONArray("events"));value.put("truncated",read.getBoolean("truncated"));c.resolve(value);
-  }catch(Exception unavailable){c.reject("Calendar provider could not be read");}
- }
-
  /** Both journals: timed creations and option creations. Never retries. */
  @Override @PluginMethod public void pendingCreations(PluginCall c){
   if(!granted()){c.resolve(status("permission-required"));return;}

@@ -3,7 +3,7 @@
   "reference": "ELIZA_MOBILE_PRODUCT",
   "ceiling": {
     "differences": 17,
-    "modules": 545
+    "modules": 544
   },
   "differences": {
     "view:clock:only-b": "Eliza offers Clock; Alpha hands alarms and timers to the Android clock (clock.handoff) without a Clock view.",
@@ -72,7 +72,6 @@
     "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarAvailabilityJournalResult.java",
     "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarCreationStore.java",
     "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarDeletionIdentity.java",
-    "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarRangeReader.java",
     "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarScopedDeletionReview.java",
     "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncBridge.java",
     "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncConsent.java",
