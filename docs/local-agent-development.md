@@ -23,6 +23,8 @@ Before starting, configure `CEREBRAS_API_KEY` in the host environment or the own
 
 `bun run dev` starts the agent on this computer in the background together with the development server (`npm run dev:local` is the same command). Open `http://127.0.0.1:5317`: the app always connects to that local agent in the background (P-43: there is no offline mode); if it is not running Home shows a recovering state, and **Settings › Agent connection › Try again** reconnects. The connection sheet is the product **Alpha connection** sheet; `ALPHA_DEV_CONNECTION_TOOLS=1 bun run dev` restores the development connection sheet (development profiles, mock mode, subscription gate QA, development Cloud and pairing tools), where **Start local agent** reconnects. Extra arguments go to Vite, for example `bun run dev --port 5199` for the Alpha comparison preview. The default port is 5317. Conversation history comes from the agent's local database. Use `npm run dev:ui` for a renderer-only development server with no agent.
 
+To regenerate the bundled icons after changing `apps/app/src/icon-catalog.json`, run `node scripts/vendor-lucide-icons.mjs <installed lucide-react package directory>`; the package must match the catalog's pinned version.
+
 `bun run dev` owns the host and Vite child processes and stops them on Ctrl-C. It refuses an occupied agent port or a live process already using its profile. Its default profile is `~/.local/share/alphaphone/browser-agent`, with owner-only credentials, logs and browser action journal. `ALPHA_REMOTE_PROFILE` and `ALPHA_REMOTE_PORT` permit a separate profile/port. `ALPHA_ELIZA_SOURCE` is an explicit development override; evidence for one source snapshot does not qualify another.
 
 The bridge accepts same-origin requests from the loopback development page only. It allows the conversation, device-action and workflow APIs, injects a host-owned machine session, and removes the upstream session ID because that ID is itself a bearer token. Credentials are not embedded in the web bundle. Device enrollment keys and durable action receipts are kept in the private development profile. Browser development uses the available browser-backed Notes, Calendar and Reminders adapters. These are local browser stores and development capabilities, not access to Android providers or native permissions. Supported actions tied to the owner's freshly submitted request can run directly when **Ask before agent actions** is off. Turning it on requires review; recovered proposals, workflows, selected-object/source checks and OS/provider permission gates retain their own boundaries. A successful Notes test does not prove Gmail authority, Calendar sync or camera capture.
@@ -105,16 +107,6 @@ on 2026-10-14 (they could not qualify Paradee or Phonon-2); their historical evi
 describes the retired engines.
 
 Notes recording uses the selected Cloud account. The retired local-agent Notes UI journeys are removed; real browser capture, reviewed saves, cancellation and playback remain covered by the Cloud-bound recording E2E fixtures. Those fixtures use synthetic transport and do not qualify a live Cloud provider. The explicit local-host playback check above remains available for development speech. Native Android speech and physical-device acceptance remain separate.
-
-For a real arithmetic-only workflow check against a disposable local host, provide an owner-only paired session JSON file and run:
-
-```sh
-ALPHA_WORKFLOW_ORIGIN=http://127.0.0.1:47859 \
-ALPHA_DEVICE_SESSION_FILE=/private/path/to/session.json \
-node scripts/test-real-workflow.mjs
-```
-
-The helper loads TypeScript through the installed `tsx` loader, accepts only an exact IPv4 loopback HTTP origin, creates a paused synthetic workflow, executes it once, and leaves it paused. It requires one persisted output row for the matching run and task with value `56`, then checks that a second receipt read returns the same result. A finished status without that output fails qualification. It exercises the actual local workflow engine without model inference, tools or communications. Run it against an isolated test profile; it does not qualify native triggers or real-provider workflows.
 
 ## Qualified browser host checkpoint — October 5
 

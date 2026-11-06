@@ -159,8 +159,8 @@ Native arithmetic workflow acceptance (`WorkflowInstrumentedTest`, opt-in argume
 other aggregate smoke runners were removed on October 8 at the owner's request, so
 there is no current repository runner for this case. A re-run needs an owned
 disposable emulator, a matching archived app/test APK pair, an OWNER session from
-ordinary pairing and the exact inactive arithmetic-only fixture created and inspected
-with `scripts/test-real-workflow.mjs`. The class no longer exists, so a re-run first needs a new instrumented test. A direct run does not repeat the wrapper's host-side
+ordinary pairing and an inactive arithmetic-only fixture. The class and its fixture
+helper no longer exist, so a re-run first needs a new instrumented test. A direct run does not repeat the wrapper's host-side
 list/detail and source checks, so record it as a different result from the archived
 runs. Keep the fixture free from concurrent edits. Never pass session credentials as
 arguments, and never reuse a historical workflow UUID as proof of current admission.
