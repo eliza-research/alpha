@@ -359,7 +359,6 @@ html:not(.alpha-landscape) .alpha-phone [data-screen]:not([data-alpha-chat-half=
 .alpha-landscape .alpha-phone [data-alpha-layer="conversation"]{left:auto!important;width:var(--alpha-dock-width);height:100%!important;border-radius:0!important;box-shadow:-1px 0 0 var(--line),-20px 0 60px var(--shc)!important}
 .alpha-landscape .alpha-phone>[data-screen]{width:var(--phone-width,412px)!important}
 /* App library: a favorite at either end cannot move further. */
-.alpha-app-drawer button.ib:disabled{opacity:.3}
 
 /* Accessibility and resilience (MVP-48). Large text arrives as WebView text zoom, which CSS cannot
  * read, so these are layout rules: text either fits, wraps or is hidden whole; it is never cut. */

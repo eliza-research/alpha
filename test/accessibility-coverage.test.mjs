@@ -254,7 +254,9 @@ test('the layout fixes the sweep depends on stay in the stylesheet and template'
   // which Alpha maps to the measured text size.
   assert.match(read('.eliza/client-features/packages/ui/src/mobile-shell/MobileHomeScreen.tsx'), /\[data-mobile-shell-apps\]\{display:grid;grid-template-columns:repeat\(auto-fill,[^}]*var\(--mobile-shell-grid-columns,4\)[^}]*var\(--mobile-shell-grid-min,62px\) \* var\(--mobile-shell-text-scale,1\)/);
   assert.match(css, /\[data-alpha-layer="home"\] \{ --mobile-shell-text-scale:var\(--alpha-text-scale,1\); \}/);
-  assert.match(read('apps/app/src/prototype/home-shell.ts'), /gridProps: \{'data-alpha-home-apps': ''\}/);
+  assert.match(read('apps/app/src/prototype/home-shell.ts'), /const gridProps: Bag = \{\s*'data-alpha-home-apps': ''/);
+  // The Apps drawer's icon grid is four columns of at least 62px times the text scale too.
+  assert.match(read('apps/app/src/prototype/apps-drawer.tsx'), /className="alpha-fit-grid" data-alpha-apps-grid="" style=\{\{'--fit-columns': 4, '--fit-min': '62px'/);
   assert.doesNotMatch(template, /data-alpha-home-(calendar|workflows|inbox)\b[^>]*height: 196px/);
   assert.match(read('apps/app/src/main.tsx'), /installTextScale\(\)/);
   assert.match(read('apps/app/src/runtime/text-scale.ts'), /font-size:100px;line-height:1/);

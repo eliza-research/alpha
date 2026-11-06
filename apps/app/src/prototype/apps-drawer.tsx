@@ -93,7 +93,7 @@ export function AppsDrawer({launcher, builtinPrefix, query, onQuery, onClose, me
       {snapshot.launchError ? <p role="alert" style={{margin: '4px 20px', fontSize: 14}}>{snapshot.launchError}</p> : null}
       {menu ? <button type="button" aria-label="Close menu" tabIndex={-1} onClick={() => onMenu(null)} style={{position: 'absolute', inset: 0, zIndex: 1, border: 0, background: 'transparent'}} /> : null}
       <div className="scr" data-installed-apps-scroll="" aria-busy={loading || undefined} style={{flexGrow: 1, minHeight: 0, overflowY: 'auto', padding: '4px 8px', touchAction: 'pan-y'}}>
-        <div data-alpha-apps-grid="" style={{display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', rowGap: 20, padding: '6px 2px'}}>
+        <div className="alpha-fit-grid" data-alpha-apps-grid="" style={{'--fit-columns': 4, '--fit-min': '62px', rowGap: 20, padding: '6px 2px'} as CSSProperties}>
           {entries.map(({key, app, target, dial, detail}) => {
             const name = detail.length ? `${app.label} (${detail.join(', ')})` : app.label;
             const aria = dial ? (snapshot.dial?.label ? `Open Phone (${snapshot.dial.label})` : 'Open Phone') : `Open ${name}`;

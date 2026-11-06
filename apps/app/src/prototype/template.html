@@ -45,7 +45,7 @@
 </sc-element>
 <sc-if value="{{drawerOpen}}">{{allAppsDrawer}}</sc-if>
 <sc-if value="{{homeEdit.adding}}">
-  <div data-alpha-layer="home-add" style="position: absolute; inset: 0; z-index: 31">
+  <div ref="{{homeEdit.sheetRef}}" data-alpha-layer="home-add" style="position: absolute; inset: 0; z-index: 31">
     <button aria-label="Close" tabindex="-1" onClick="{{homeEdit.closeAdd}}" style="position: absolute; inset: 0; background: rgba(0,0,0,.25)"></button>
     <div role="dialog" aria-modal="true" aria-label="Add to Home" style="position: absolute; left: 0; right: 0; bottom: 0; background: var(--bg); color: var(--fg); border-radius: 28px 28px 0 0; padding: 20px 16px calc(24px + var(--alpha-dock-reserve, 0px)); display: flex; flex-direction: column; gap: 4px">
       <h2 style="margin: 0 4px 8px; font-size: 18px; font-weight: 600">Add to Home</h2>

@@ -62,7 +62,7 @@ test('Home lists the favorites with an Apps tile; Apps lists installed apps only
   // Installed apps only, alphabetical, no product views, no count, no favorite or move controls.
   assert.deepEqual([...drawer.matchAll(/aria-label="Open ([^"]+)"/g)].map(m=>m[1]),['Caméra','Settings']);
   assert.doesNotMatch(drawer,/Inbox|Workflows|favorites|earlier|later|\d+ apps?</);
-  assert.match(drawer,/grid-template-columns:repeat\(4, minmax\(0, 1fr\)\)/,'a 4-column icon grid');
+  assert.match(drawer,/class="alpha-fit-grid" data-alpha-apps-grid="" style="--fit-columns:4;--fit-min:62px/,'a 4-column icon grid');
   const find=key=>shell.launcher.snapshot().apps.find(app=>(app.packageName+(app.activityName?'/'+app.activityName:''))===key);
   await shell.launcher.launch(find('alpha:automations'));
   await shell.launcher.launch(find('alpha:settings'));

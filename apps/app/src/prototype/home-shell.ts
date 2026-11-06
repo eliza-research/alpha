@@ -4,6 +4,7 @@ import {appKey} from '@elizaos/capacitor-system/launcher';
 import {createMobileShellLauncher, mobileShellIconUrl, MobileHomeScreen, type MobileHomeEntry, type MobileHomeTile} from '@elizaos/ui/mobile-shell';
 import {ALPHA_PRODUCT, alphaViews} from '../product/alpha-product';
 import {AppsDrawer, HOLD_MS, SLOP} from './apps-drawer';
+import {createInlineModal} from '../runtime/inline-modal';
 type Bag = Record<string, any>;
 
 /** Opens Android's App info for exactly one listed entry (and profile). */
@@ -58,6 +59,8 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
   const grid = icon(ALPHA_PRODUCT.icons.allApps);
   const glyphs = {app: grid, phone: icon('phone'), search: icon('search'), close: icon('x'), plus: icon('plus'), info: icon('info')};
   const rerender = () => owner?.setState({launcherRevision: Date.now()});
+  // The Add to Home sheet owns focus while open; Escape and Back close it.
+  const addSheet = createInlineModal(() => owner?.setState({homeAdd: false}));
   const installedApp = (key: string) => launcher.snapshot().apps.find(app => appKey(app) === key);
 
   // Home long press and edit-mode drag. The tap that ends a long press or a drag is swallowed.
@@ -235,7 +238,7 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
       on: editing, noAdd: !hidden.length,
       add: () => { if (hidden.length) self.setState({homeAdd: true}); },
       done: () => { endDrag(); self.setState({homeEdit: false, homeAdd: false}); },
-      adding: editing && !!S.homeAdd && hidden.length > 0, hidden, closeAdd: () => self.setState({homeAdd: false}),
+      adding: editing && !!S.homeAdd && hidden.length > 0, hidden, closeAdd: () => self.setState({homeAdd: false}), sheetRef: addSheet.ref,
     }};
   };
   return shell;
