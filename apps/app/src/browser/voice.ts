@@ -13,6 +13,8 @@ import { WebPlugin } from '@capacitor/core';
 // explicit local/development route owns processing; provider credentials stay off-page.
 // There is no in-browser speech engine: local recognition and Paradee-8M playback run on the
 // private local agent, which uses the native llama.cpp-based libelizainference stack.
+/** Recorded time per Notes segment in the browser, as the native recorder bounds its segments. */
+const NOTE_SEGMENT_MS=25_000;
 export class BrowserVoice extends WebPlugin {
  private connection=Promise.resolve(connectionController).then(connectionController=>{
   const selected=()=>JSON.stringify([connectionController.getSnapshot().session?.sessionId,connectionController.getCloudEnvironment(),connectionController.getCloudClient()?.sessionId,connectionController.getCloudClient()?.credentialId,connectionController.getSnapshot().residentInference,connectionController.getSnapshot().providerStatus?.revision]);
@@ -23,10 +25,13 @@ export class BrowserVoice extends WebPlugin {
  private speechRequests=new Map<SpeechRequestKind,{controller:AbortController;requestId?:string}>();
  private capture=new BrowserAudioCapture(event=>{void this.notifyListeners('recordingStopped',event);});
  // Notes recording: its own capture, unlimited and paused only by the user. Leaving the page
- // does not end it. In the browser its one segment is the whole recording, ready at Stop.
+ // does not end it. Like the native recorder it finishes a segment of at most 25 s of recorded
+ // time as it goes (each fits every transcription request bound); the whole recording is kept
+ // for the saved note.
  private noteCapture=new BrowserAudioCapture(event=>{const note=this.note;if(note&&event.recordingId===note.recordingId&&note.state!=='stopped'){note.state='stopped';note.stopReason='error';this.noteChanged();}});
  private note?:{recordingId:string;state:'recording'|'paused'|'stopped';stopReason?:string;durationMs:number;segments:{segmentId:string;durationMs:number;text?:string}[]};
- private clip(id:string){return this.capture.get(id)??this.noteCapture.get(id);}
+ private noteSegments=new Map<string,{blob:Blob;durationMs:number}>();
+ private clip(id:string){return this.capture.get(id)??this.noteCapture.get(id)??this.noteSegments.get(id);}
  private noteChanged(){void this.notifyListeners('noteRecordingChanged',this.noteStatus());}
  private noteStatus(){
   const note=this.note;if(!note)return {state:'idle'};
@@ -37,7 +42,14 @@ export class BrowserVoice extends WebPlugin {
  private ownedNote(recordingId:string){const note=this.note;if(!note||note.recordingId!==recordingId)throw Error('Recording changed.');return note;}
  async startNoteRecording(){
   if(this.note)throw Error('A recording is already open.');
-  const started=await this.noteCapture.start({unlimited:true});
+  this.noteSegments.clear();
+  let recordingId='';
+  const started=await this.noteCapture.start({unlimited:true,segmentMs:NOTE_SEGMENT_MS,onSegment:segment=>{
+   const note=this.note;if(!note||note.recordingId!==recordingId)return;
+   const segmentId=`${recordingId}-s${segment.index}`;this.noteSegments.set(segmentId,{blob:segment.blob,durationMs:segment.durationMs});
+   note.segments.push({segmentId,durationMs:segment.durationMs});if(note.state!=='stopped')this.noteChanged();
+  }});
+  recordingId=started.recordingId;
   this.note={recordingId:started.recordingId,state:'recording',durationMs:0,segments:[]};this.noteChanged();return this.noteStatus();
  }
  async noteRecordingStatus(){return this.noteStatus();}
@@ -45,10 +57,10 @@ export class BrowserVoice extends WebPlugin {
  async resumeNoteRecording(input:{recordingId:string}){const note=this.ownedNote(input.recordingId);if(note.state==='paused'){this.noteCapture.resume();note.state='recording';this.noteChanged();}else if(note.state==='stopped')throw Error('This recording has ended.');return this.noteStatus();}
  async stopNoteRecording(input:{recordingId:string}){
   const note=this.ownedNote(input.recordingId);
-  if(note.state!=='stopped'){const clip=await this.noteCapture.stop();if(this.note!==note)throw Error('Recording changed.');note.durationMs=clip.durationMs;note.segments=[{segmentId:clip.recordingId,durationMs:clip.durationMs}];note.state='stopped';note.stopReason='user';this.noteChanged();}
+  if(note.state!=='stopped'){const clip=await this.noteCapture.stop();if(this.note!==note)throw Error('Recording changed.');note.durationMs=clip.durationMs;if(!note.segments.length)note.segments=[{segmentId:clip.recordingId,durationMs:clip.durationMs}];note.state='stopped';note.stopReason='user';this.noteChanged();}
   return this.noteStatus();
  }
- async discardNoteRecording(input:{recordingId?:string}){if(this.note&&(!input.recordingId||this.note.recordingId===input.recordingId)){this.noteCapture.cancel();this.note=undefined;this.noteChanged();}return this.noteStatus();}
+ async discardNoteRecording(input:{recordingId?:string}){if(this.note&&(!input.recordingId||this.note.recordingId===input.recordingId)){this.noteCapture.cancel();this.noteSegments.clear();this.note=undefined;this.noteChanged();}return this.noteStatus();}
  async setNoteSegmentText(input:{recordingId:string;segmentId:string;text:string}){const segment=this.ownedNote(input.recordingId).segments.find(s=>s.segmentId===input.segmentId);if(!segment||typeof input.text!=='string')throw Error('Recording changed.');segment.text=input.text;}
  async saveNoteRecording(input:{recordingId:string;noteId:string;transcript:string}){
   const note=this.ownedNote(input.recordingId);if(note.state!=='stopped'||!note.segments.length)throw Error('Stop the recording first.');

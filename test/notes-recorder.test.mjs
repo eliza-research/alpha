@@ -386,3 +386,12 @@ test('the recording notification follows pause: "Paused" with Resume, and its ch
   assert.match(native('AlphaVoiceCloudPlugin.java'), /AlphaNoteRecordingService\.refresh\(getContext\(\)\)/, 'a pause in Alpha updates the notification');
   assert.match(read('android/app/src/androidTest/java/ai/elizaresearch/alphaphone/NoteRecorderInstrumentedTest.java'), /theNotificationShowsPausedWithResumeAndTheRecordingLength/);
 });
+
+test('the browser recorder finishes bounded segments as it records, as the native one does', () => {
+  const voice = read('apps/app/src/browser/voice.ts');
+  const segmentMs = Number(voice.match(/const NOTE_SEGMENT_MS=([\d_]+);/)[1].replaceAll('_', ''));
+  assert.ok(segmentMs <= 30_000, 'every browser segment fits the on-device window and the 60 s request bound');
+  assert.match(voice, /this\.noteCapture\.start\(\{unlimited:true,segmentMs:NOTE_SEGMENT_MS,onSegment:/);
+  assert.match(voice, /if\(!note\.segments\.length\)note\.segments=\[\{segmentId:clip\.recordingId/, 'the whole clip is one segment only when no segment was written');
+  assert.match(read('apps/app/src/browser/audio-capture.ts'), /if\(part\)await Promise\.race\(\[part\.flushed,/, 'the last segment arrives before stop resolves');
+});
