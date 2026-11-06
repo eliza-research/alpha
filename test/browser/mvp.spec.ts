@@ -53,7 +53,7 @@ test('Notes create, edit, reload and delete to Recently deleted', async ({ page 
   await page.getByRole('button', { name: 'Recently deleted', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Browser audit note, 30 days left', exact: true })).toBeVisible();
 });
-test('Notes folders: create, move via ⋯, filter by chip, persist, and delete without losing notes', async ({ page }) => {
+test('Notes folders: create, move via ⋯, filter by chip, persist, rename by long-press, and delete without losing notes', async ({ page }) => {
   await page.goto('/');
   await openLegacyNotes(page);
   await page.getByRole('button', { name: 'New note', exact: true }).click();
@@ -80,10 +80,25 @@ test('Notes folders: create, move via ⋯, filter by chip, persist, and delete w
   await openLegacyNotes(page);
   await page.getByRole('button', { name: 'Work', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Open Browser audit note', exact: true })).toBeVisible();
-  // Deleting the folder keeps its note, now under no folder.
-  await page.getByRole('button', { name: 'Work, folder options', exact: true }).click();
-  await page.getByRole('dialog', { name: 'Work' }).getByRole('button', { name: 'Delete folder', exact: true }).click();
+  // Long-press a folder chip: Rename keeps the folder's notes and persists in the folder slot.
+  await page.getByRole('button', { name: 'All', exact: true }).click();
+  const chip = page.getByRole('button', { name: 'Work', exact: true });
+  await chip.hover();await page.mouse.down();await page.waitForTimeout(700);await page.mouse.up();
+  await page.getByRole('dialog', { name: 'Work' }).getByRole('button', { name: 'Rename', exact: true }).click();
+  await expect(page.getByRole('textbox', { name: 'Folder name', exact: true })).toHaveValue('Work');
+  await page.getByRole('textbox', { name: 'Folder name', exact: true }).fill('Office');
+  await page.getByRole('dialog', { name: 'Rename folder' }).getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'All', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.reload();
+  await page.getByRole('button', { name: 'Notes', exact: true }).click();
   await expect(page.getByRole('button', { name: /^Work/ })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Office', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Open Browser audit note', exact: true })).toBeVisible();
+  // Deleting the folder keeps its note, now under no folder.
+  await page.getByRole('button', { name: 'Office, folder options', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Office' }).getByRole('button', { name: 'Delete folder', exact: true }).click();
+  await expect(page.getByRole('button', { name: /^Office/ })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Open Browser audit note', exact: true })).toBeVisible();
   expect(await page.evaluate(async () => JSON.parse(await (await import('/src/runtime/browser-notes-document.ts')).readBrowserNotesRaw()).records[0].folderId)).toBeUndefined();
 });
@@ -137,17 +152,18 @@ test('Scheduled digests traps focus, closes on native Back, and restores the tri
   await expect(dialog).toHaveCount(0);await expect(trigger).toBeFocused();
   await expect(page.locator('html')).toHaveAttribute('data-active-view','settings');
 });
-test('Unsigned recorder offers Cloud sign-in before any recording',async({page})=>{
+test('Unsigned recorder opens without a sign-in step and a refused microphone shows one line',async({page})=>{
   await page.addInitScript(()=>{localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));(window as any).microphoneRequests=0;Object.defineProperty(navigator,'mediaDevices',{configurable:true,value:{getUserMedia:async()=>{(window as any).microphoneRequests++;throw Error('Unexpected microphone request');}}});});
   await page.goto('/');await openLegacyNotes(page);
   await page.getByRole('button',{name:'Record and transcribe',exact:true}).click();
-  await expect(page.getByRole('button',{name:'Connect Eliza Cloud',exact:true})).toBeEnabled();
-  await expect(page.getByRole('button',{name:'Record without transcription',exact:true})).toHaveCount(0);
-  await expect(page.getByRole('button',{name:'Start recording',exact:true})).toHaveCount(0);
-  await expect(page.getByText('Sign in to Eliza Cloud to use voice.',{exact:true})).toBeVisible();
-  expect(await page.evaluate(()=>(window as any).microphoneRequests)).toBe(0);
-  await page.getByRole('button',{name:'Discard recording',exact:true}).click();
-  await expect(page.getByRole('button',{name:'Start recording',exact:true})).toHaveCount(0);
+  const recorder=page.locator('[data-alpha-subview="notes-recorder"]');
+  await expect(recorder).toHaveAttribute('data-recorder-state','failed');
+  await expect(recorder.getByRole('alert')).toHaveText('The microphone isn’t available.');
+  await expect(recorder.getByRole('button',{name:'Done',exact:true})).toBeDisabled();
+  await expect(page.getByRole('button',{name:/Connect Eliza Cloud|Record without transcription|Start recording/})).toHaveCount(0);
+  expect(await page.evaluate(()=>(window as any).microphoneRequests)).toBe(1);
+  await recorder.getByRole('button',{name:'Discard recording',exact:true}).click();
+  await expect(recorder).toHaveCount(0);
 });
 test('Display theme survives reload and mock preview does not overwrite it',async({page})=>{
   await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();
@@ -218,4 +234,10 @@ test('MVP Notes sharing keeps email and export without a deferred SMS dead end',
   await expect(page.getByRole('button',{name:'Share in Messages',exact:true})).toHaveCount(0);
   await page.getByRole('button',{name:'Cancel',exact:true}).click();
   await expect(page.getByRole('textbox',{name:'Note',exact:true})).toHaveValue('Local test note');
+});
+test('the notes:rec deep link no longer opens the old simulated clip recorder', async ({ page }) => {
+  await page.goto('/?mode=mock&start=notes:rec');
+  await expect(page.getByText('Recording isn’t available in this preview.', { exact: true })).toBeVisible();
+  await expect(page.locator('[data-alpha-subview="notes-recording"]')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Stop and save', exact: true })).toHaveCount(0);
 });

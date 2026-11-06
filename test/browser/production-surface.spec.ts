@@ -280,9 +280,9 @@ test('production ignores the development render-failure hook', async ({ page }) 
   await expect(page.getByRole('button', { name: 'Agent connection', exact: true })).toBeVisible();
 });
 
-// Production speech is device-only (owner rule): the browser build has no on-device engine, so a
-// signed-out user is told to retry local speech or type, and no Cloud or network voice route is offered.
-test('production signed-out voice stays on-device with no capture, upload or Cloud route under the shipped CSP', async ({ page }) => {
+// Production speech is device-only (owner rule): the browser build has no on-device engine, so the
+// Notes recorder records audio only, and no Cloud or network voice route is offered.
+test('production signed-out voice stays on-device with no upload, engine or Cloud route under the shipped CSP', async ({ page }) => {
   const violations = await trackCsp(page);
   const foreign: string[] = [], uploads: string[] = [], engines: string[] = [];
   // Stop a regression before it can contact a provider or upload anything.
@@ -315,15 +315,15 @@ test('production signed-out voice stays on-device with no capture, upload or Clo
   await page.goto('/');
   await openLegacyNotes(page);
   await page.getByRole('button', { name: 'Record and transcribe', exact: true }).click();
-  // A browser production build has no local agent here: local speech is unavailable, never Cloud.
-  await expect(page.getByText('Local speech needs the local agent on this computer. Connect it, or use the keyboard.',{exact:true})).toBeVisible();
-  await expect(page.getByRole('button',{name:'On-device speech unavailable',exact:true})).toBeDisabled();
-  await expect(page.getByRole('button',{name:'Cancel recording',exact:true})).toBeEnabled();
+  // The recorder asks for the microphone at once (refused here) and shows one line; no route choice exists.
+  const recorder=page.locator('[data-alpha-subview="notes-recorder"]');
+  await expect(recorder).toHaveAttribute('data-recorder-state','failed');
+  await expect(recorder.getByRole('alert')).toHaveText('The microphone isn’t available.');
   for(const name of ['Connect Eliza Cloud','Transcribe with Eliza Cloud','Start recording','Record without transcription','Use development voice','Use browser voice','Use on-device voice','Transcribe on this device','Type transcript instead'])await expect(page.getByRole('button',{name,exact:true})).toHaveCount(0);
-  await expect(page.getByText('Sign in to Eliza Cloud to use voice.',{exact:true})).toHaveCount(0);
-  await page.getByRole('button',{name:'Cancel recording',exact:true}).click();
-  await expect(page.getByRole('button',{name:'On-device speech unavailable',exact:true})).toHaveCount(0);
-  expect(await page.evaluate(()=>(window as any).voiceGate)).toEqual({microphone:0,recorders:0,audio:0,workers:0,playback:0});
+  await expect(page.getByText(/Sign in to|Record up to|Nothing is uploaded/)).toHaveCount(0);
+  await recorder.getByRole('button',{name:'Discard recording',exact:true}).click();
+  await expect(recorder).toHaveCount(0);
+  expect(await page.evaluate(()=>(window as any).voiceGate)).toEqual({microphone:1,recorders:0,audio:0,workers:0,playback:0});
   expect(uploads).toEqual([]);expect(engines).toEqual([]);expect(foreign).toEqual([]);
   expect(await violations()).toEqual([]);
 });

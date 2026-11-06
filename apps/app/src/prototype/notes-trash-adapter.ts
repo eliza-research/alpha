@@ -247,7 +247,7 @@ export function installNotesTrashAdapter(Component:Shell,views:Record<string,Bag
   view.trashFullOpen=!!full;
   view.trashConfirmOpen=!!full||(!!confirm&&view.trashOpen);
   view.trashConfirmTitle=full?'Recently deleted is full':confirm?.id==='all'?'Delete all recently deleted notes?':`Delete “${confirm?.title||'this note'}”?`;
-  view.trashConfirmText=full?`“${full.title}” was not deleted.`:'This can’t be undone.';
+  view.trashConfirmText=full?'':'This can’t be undone.';
   view.trashConfirmLabel=full?'Delete permanently':confirm?.id==='all'?'Delete all':'Delete';
   view.trashConfirmText2=full?'Delete permanently':confirm?.id==='all'?'Delete all':'Delete';
   view.trashCancel=()=>{if(full)trash.forget();api.set({trashConfirm:null,trashFull:null});};

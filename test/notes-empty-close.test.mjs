@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 const source=readFileSync('apps/app/src/prototype/model.js','utf8');
-const region=source.slice(source.indexOf('function notesFind('),source.indexOf('function notesStartRec('));
+const region=source.slice(source.indexOf('function notesFind('),source.indexOf('function notesLast('));
 const notesView=source.slice(source.indexOf('registerView("notes",'),source.indexOf('registerView("notes",')+2600);
 const leave=notesView.match(/onLeave: function\s*\(([^)]*)\)\s*\{([^}]*)\}/);
 function harness(list=[]){

@@ -14,17 +14,25 @@ test('organize operations validate strictly; only the filter is read-only and ne
  assert.deepEqual(contract.validateNotesOrganizeOperation({type:'notes_folder_create',name:'  Big  Sur '}),{type:'notes_folder_create',name:'Big Sur'});
  assert.deepEqual(contract.validateNotesOrganizeOperation({type:'notes_restore',noteId:'n-1'}),{type:'notes_restore',noteId:'n-1'});
  for(const bad of [{type:'notes_filter'},{type:'notes_filter',kind:'photo'},{type:'notes_filter',text:'x',extra:1},{type:'notes_move',target:target('n')},
-  {type:'notes_folder_create',name:''},{type:'notes_folder_create',name:'x'.repeat(41)},{type:'notes_restore',noteId:'../x'},{type:'notes_rename'}])
+  {type:'notes_folder_create',name:''},{type:'notes_record'},{type:'notes_record',action:'pause'},{type:'notes_record',action:'start',noteId:'n'},{type:'notes_folder_create',name:'x'.repeat(41)},{type:'notes_restore',noteId:'../x'},{type:'notes_rename'}])
   assert.throws(()=>contract.validateNotesOrganizeOperation(bad),undefined,JSON.stringify(bad));
  assert.equal(contract.isNotesOrganizeOperation({type:'notes_update'}),false);
+ assert.deepEqual(contract.validateNotesOrganizeOperation({type:'notes_record',action:'start'}),{type:'notes_record',action:'start'});
+ assert.deepEqual(contract.validateNotesOrganizeOperation({type:'notes_record',action:'stop'}),{type:'notes_record',action:'stop'});
+ assert.deepEqual(contract.describeNotesOrganizeOperation({type:'notes_record',action:'start'}),{title:'Record voice note',description:'In Notes'});
+ // Recording runs only with Notes open; the other tools are reviewable from Home too.
+ assert.equal(contract.notesOrganizeContextAllowed({view:'home'},'notes_record'),false);
+ assert.equal(contract.notesOrganizeContextAllowed({view:'notes'},'notes_record'),true);
+ assert.equal(contract.notesOrganizeContextAllowed({view:'notes',sensitive:true},'notes_record'),false);
+ assert.equal(contract.notesOrganizeContextAllowed({view:'home'},'notes_move'),true);
  assert.deepEqual(contract.describeNotesOrganizeOperation({type:'notes_move',target:target('n'),folder:'Work'}),{title:'Move note',description:'To Work'});
  assert.equal(contract.notesOrganizeContextAllowed({view:'notes'}),true);
  assert.equal(contract.notesOrganizeContextAllowed({view:'photos'}),false);
  assert.equal(contract.notesOrganizeContextAllowed({view:'notes',sensitive:true}),false);
 });
 
-function host({notes=[],folders=[],revision='a'.repeat(64),restore='restored'}={}){
- const state={notes:structuredClone(notes),folders:{version:1,folders:structuredClone(folders)},filter:null,commits:0,shown:null};
+function host({notes=[],folders=[],revision='a'.repeat(64),restore='restored',start='started',stop='saved'}={}){
+ const state={notes:structuredClone(notes),folders:{version:1,folders:structuredClone(folders)},filter:null,commits:0,shown:null,recorder:[]};
  return {state,host:{
   ready:()=>true,list:()=>state.notes,
   target:async id=>{if(!state.notes.some(n=>n.id===id))throw Error('missing');return target(id,revision);},
@@ -34,6 +42,8 @@ function host({notes=[],folders=[],revision='a'.repeat(64),restore='restored'}={
   showFolders:doc=>{state.shown=doc;},
   showFilter:filter=>{state.filter=filter;},
   restore:async()=>restore,
+  recordStart:async()=>{state.recorder.push('start');return start;},
+  recordStop:async()=>{state.recorder.push('stop');return stop;},
  }};
 }
 
@@ -82,6 +92,19 @@ test('notes_restore reports the Trash restore outcome',async()=>{
   const {host:h}=host({restore:outcome});
   assert.equal((await executeNotesOrganize(h,{type:'notes_restore',noteId:'n'},()=>{})).status,status,outcome);
  }
+});
+
+test('notes_record starts and saves through the Notes recorder and never touches the notes list itself',async()=>{
+ let {state,host:h}=host({notes:[{id:'a',kind:'text',title:'A'}]});
+ assert.deepEqual(await executeNotesOrganize(h,{type:'notes_record',action:'start'},()=>{}),{status:'succeeded',summary:'Recording a voice note in Notes.'});
+ assert.deepEqual(await executeNotesOrganize(h,{type:'notes_record',action:'stop'},()=>{}),{status:'succeeded',summary:'Saved the voice note.'});
+ assert.deepEqual(state.recorder,['start','stop']);assert.equal(state.commits,0);
+ for(const [start,status] of [['already','succeeded'],['failed','failed']]){({host:h}=host({start}));assert.equal((await executeNotesOrganize(h,{type:'notes_record',action:'start'},()=>{})).status,status,start);}
+ for(const [stop,status] of [['none','failed'],['failed','unknown']]){({host:h}=host({stop}));assert.equal((await executeNotesOrganize(h,{type:'notes_record',action:'stop'},()=>{})).status,status,stop);}
+ // A context change before it runs: nothing starts.
+ ({state,host:h}=host());
+ await assert.rejects(executeNotesOrganize(h,{type:'notes_record',action:'start'},()=>{throw Error('context changed');}));
+ assert.deepEqual(state.recorder,[]);
 });
 
 test('content search also matches a saved recording transcript',()=>{

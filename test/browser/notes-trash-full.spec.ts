@@ -146,7 +146,7 @@ test('a deletion that would push Trash past its byte limit is refused: the note 
  await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
  const dialog=page.getByRole('dialog',{name:'Recently deleted is full'});
  await expect(dialog).toBeVisible();
- await expect(dialog).toContainText('was not deleted.');
+ await expect(dialog.getByRole('button',{name:'Delete permanently',exact:true})).toBeVisible();await expect(dialog).not.toContainText('was not deleted');
  await expect(page.getByText('Moved to Recently deleted',{exact:true})).toHaveCount(0);
  expect(await savedRecords(page)).toEqual(saved);
  expect(await trashEntries(page)).toEqual(full);

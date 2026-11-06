@@ -45,6 +45,17 @@ export function addNotesFolder(doc:NotesFoldersDocument,folder:NotesFolder):Note
  if(current.folders.length>=NOTES_FOLDER_LIMIT)throw Error('Folder limit reached');
  return validateNotesFolders({version:1,folders:[...current.folders,{id:folder.id,name,createdAt:folder.createdAt}]});
 }
+/**
+ * Renames a folder in place. The id is kept, so every note in the folder stays in it
+ * (specs/notes-view RenameFolder). A name another folder already uses is refused.
+ */
+export function renameNotesFolder(doc:NotesFoldersDocument,id:string,name:string):NotesFoldersDocument{
+ const current=validateNotesFolders(doc),next=notesFolderName(name);
+ if(!current.folders.some(folder=>folder.id===id))throw Error('Folder not found');
+ const other=findNotesFolderByName(current,next);
+ if(other&&other.id!==id)throw Error('Folder name in use');
+ return validateNotesFolders({version:1,folders:current.folders.map(folder=>folder.id===id?{...folder,name:next}:folder)});
+}
 export function removeNotesFolder(doc:NotesFoldersDocument,id:string):NotesFoldersDocument{
  const current=validateNotesFolders(doc);return {version:1,folders:current.folders.filter(folder=>folder.id!==id)};
 }

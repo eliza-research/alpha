@@ -39,6 +39,20 @@ test('deleting a folder moves its notes to no folder and never removes a note (F
  const same={id:'x',folderId:'f-2'};assert.equal(folders.withNoteFolder(same,'f-2'),same);
 });
 
+test('renaming a folder keeps its id, so its notes stay in it (RenameKeepsMembership, FolderNamesUnique)',()=>{
+ const before=doc('Work','Personal'),list=[{id:'a',folderId:'f-1'},{id:'b',folderId:'f-2'},{id:'c'}];
+ const renamed=folders.renameNotesFolder(before,'f-1','  Office  Stuff ');
+ assert.deepEqual(renamed.folders.map(f=>[f.id,f.name,f.createdAt]),[['f-1','Office Stuff',0],['f-2','Personal',1]]);
+ for(const note of list)assert.equal(folders.noteFolderOf(note,renamed.folders),folders.noteFolderOf(note,before.folders));
+ assert.equal(folders.findNotesFolderByName(renamed,'office stuff').id,'f-1');
+ assert.equal(folders.findNotesFolderByName(renamed,'Work'),undefined);
+ assert.deepEqual(folders.renameNotesFolder(before,'f-1','WORK').folders[0].name,'WORK','a folder may change the case of its own name');
+ assert.throws(()=>folders.renameNotesFolder(before,'f-1','personal'),/in use/);
+ assert.throws(()=>folders.renameNotesFolder(before,'f-9','New'),/not found/);
+ assert.throws(()=>folders.renameNotesFolder(before,'f-1','  '));
+ assert.throws(()=>folders.renameNotesFolder(before,'f-1','x'.repeat(41)));
+});
+
 test('restore returns a note to its folder, or to no folder when the folder was deleted (RestoreReturnsToFolder)',()=>{
  const note={id:'n',kind:'text',title:'N',folderId:'f-1'};
  assert.equal(folders.restoredNoteFolder(note,[{id:'f-1'}]),note);

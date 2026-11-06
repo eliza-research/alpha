@@ -83,7 +83,7 @@ test('Trash written under a larger limit stays readable, restorable and purgeabl
  await page.getByRole('button',{name:'Open Delta',exact:true}).click();
  await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
  const full=page.getByRole('dialog',{name:'Recently deleted is full'});
- await expect(full).toContainText('“Delta” was not deleted.');
+ await expect(full.getByRole('button',{name:'Delete permanently',exact:true})).toBeVisible();await expect(full).not.toContainText('was not deleted');
  // The editor under the dialog cannot be operated or read by assistive technology while the choice is open
  // (the inline modal holds every background sibling inert), and focus returns to the control that opened it.
  const editor=page.locator('[data-alpha-subview="notes-editor"]');
@@ -205,7 +205,7 @@ test('a voice note refused by a full Trash is erased with its own recording only
  await page.getByRole('button',{name:'Open Full memo',exact:true}).click();
  await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
  const full=page.getByRole('dialog',{name:'Recently deleted is full'});
- await expect(full).toContainText('was not deleted.');
+ await expect(full.getByRole('button',{name:'Delete permanently',exact:true})).toBeVisible();await expect(full).not.toContainText('was not deleted');
  // Refused before any effect: note saved, recording untouched, no recovery row, Trash unchanged.
  expect((await savedRecords(page)).some((n:any)=>n.id==='full-voice')).toBe(true);
  const untouched=await describeAudio(page,'full-audio');
@@ -256,7 +256,7 @@ test('a stale Trash row of a note that is then deleted permanently is dropped, s
 
  await page.getByRole('button',{name:'Open Stale memo',exact:true}).click();
  await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
- await expect(full).toContainText('was not deleted.');
+ await expect(full.getByRole('button',{name:'Delete permanently',exact:true})).toBeVisible();await expect(full).not.toContainText('was not deleted');
  await full.getByRole('button',{name:'Delete permanently',exact:true}).click();
  await expect(page.getByText('Stale memo and its recording deleted forever',{exact:true})).toBeVisible();
  // Neither deleted note is offered for restore, and the unrelated entry is exactly as it was.

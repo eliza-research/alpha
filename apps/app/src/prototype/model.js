@@ -6,7 +6,7 @@ import {
   IMG, PEOPLE, PN_REC, PN_VM, PN_SCRIPT, PN_SCREEN, PN_REPLIES, MSG_PHOTOS, MSG_SEED, MSG_UNREAD,
   MSG_SMART, MSG_BOT, INBOX_ACCTS, INBOX_SEED, CAL_SEED, CAL_PREP, BR_START, BR_PAGES, BR_ME,
   PH_SEED, PH_DESC, PH_SHARE, MAPS_PLACES, MAPS_FAR, MAPS_MATCH, MAPS_SAVED, NOTES_SEED,
-  NOTES_LIVE, NOTES_DICT, CT_SEED, FILES_FOLDERS_EXTRA, FILES_SEED, WAL_CARDS, WAL_TRIPS,
+  CT_SEED, FILES_FOLDERS_EXTRA, FILES_SEED, WAL_CARDS, WAL_TRIPS,
   WAL_MERCH, WAL_PASSES, WF_SEED, ST_ACCOUNTS, ST_NETS, ST_BT, ST_PERM0, ST_MODELS, ST_LOG,
   ST_DEVLOG, ST_DEVICE, ST_ABOUT, NOTIF, LOCK_SUM, QUICK_SETTINGS, QUICK_TILES, HEADS, VOICE, COPY,
   ATTENTION_ROWS, HOME_DEFAULTS
@@ -2904,7 +2904,7 @@ IC.notesWave = IC.notesWave || "M3 12h2M7 8v8M11 5v14M15 9v6M19 11v2M21 12h0";
 var NOTES_RED = "var(--alpha-notes-red)";
 
 var NOTES_WAVE = []; (function () { for (var i = 0; i < 56; i++) NOTES_WAVE.push(Math.round(8 + 26 * Math.abs(Math.sin(i * 0.9) * Math.cos(i * 0.37)) + (i % 3) * 3)); })();
-var NT = { pend: false, recI: null, playI: null, dicI: null, dIdx: 0, undoT: null };
+var NT = { pend: false, playI: null, undoT: null, holdT: null, held: null };
 
 function notesFmt(sec) { if (!Number.isFinite(sec)) return ""; sec = Math.max(0, Math.floor(sec)); return Math.floor(sec / 60) + ":" + pad2(sec % 60); }
 function notesNowLabel(d) { return formatTime(d); }
@@ -2924,7 +2924,7 @@ function notesEmpty(n) {
   if (n.kind === "list") return !String(n.title || "").trim() && !(n.items || []).some(function (i) { return String(i.t).trim(); });
   return false;
 }
-function notesStopTimers() { clearInterval(NT.playI); clearInterval(NT.dicI); NT.playI = null; NT.dicI = null; }
+function notesStopTimers() { clearInterval(NT.playI); NT.playI = null; }
 function notesClose(api) {
   api.set(notesLeave(api, null));
 }
@@ -2934,7 +2934,7 @@ function notesLeave(api, next) {
   if (api.canonicalNotes) { void api.canonicalNotes.leave(next); return {}; }
   var s = api.get("notes"); notesStopTimers();
   var n = s.open !== next && s.open === s.blankCreationId ? notesFind(s.list, s.open) : null;
-  var patch = { open: next, sheet: null, playing: false, dict: false, newItem: "", blankCreationId: next === s.open ? s.blankCreationId : null };
+  var patch = { open: next, sheet: null, playing: false, newItem: "", blankCreationId: next === s.open ? s.blankCreationId : null };
   if (n && notesEmpty(n)) patch.list = s.list.filter(function (x) { return x.id !== n.id; });
   return patch;
 }
@@ -2949,7 +2949,7 @@ async function notesDelete(api, id) {
   var note = s.list[idx];
   // Live Notes move the note to the durable Trash (and offer Undo); fixtures keep the in-memory undo.
   if (api.moveNoteToTrash) { await api.moveNoteToTrash(note, idx); return; }
-  if(await api.set({ list: s.list.filter(function (n) { return n.id !== id; }), open: null, sheet: null, playing: false, dict: false })===false)return;
+  if(await api.set({ list: s.list.filter(function (n) { return n.id !== id; }), open: null, sheet: null, playing: false })===false)return;
   notesUndoable(api, note, idx, (note.title || "Note") + " deleted");
 }
 /** The folder a note shows in: its folderId while that folder exists, else none (specs/notes-view FolderRefsValid). */
@@ -2981,6 +2981,27 @@ async function notesCreateFolder(api) {
   if (!api.notesFolders) patch.folders = folders.concat([created]);
   api.set(patch);
 }
+/** Renaming keeps the folder's id, so every note stays in it. A name another folder uses is refused. */
+async function notesRenameFolder(api, id) {
+  var st = api.get("notes"), sheet = st.folderSheet, name = sheet && sheet.kind === "rename" && sheet.id === id ? String(sheet.name || "").replace(/\s+/g, " ").trim() : "";
+  if (!name) return;
+  if (name.length > 40) { api.toast("Use a shorter name."); return; }
+  var folders = st.folders || [], folder = folders.filter(function (f) { return f.id === id; })[0];
+  if (!folder) { api.set({ folderSheet: null }); return; }
+  if (folder.name === name) { api.set({ folderSheet: null }); return; }
+  if (folders.some(function (f) { return f.id !== id && f.name.toLowerCase() === name.toLowerCase(); })) { api.toast("A folder with that name exists."); return; }
+  if (api.notesFolders) { if (!await api.notesFolders.rename(id, name)) return; }
+  else api.set({ folders: folders.map(function (f) { return f.id === id ? Object.assign({}, f, { name: name }) : f; }) });
+  api.set({ folderSheet: null });
+}
+/** Long-press (or a context-menu click) on a folder chip opens its options. */
+function notesChipHold(api, id) {
+  return {
+    down: function () { clearTimeout(NT.holdT); NT.held = null; NT.holdT = setTimeout(function () { NT.holdT = null; NT.held = id; api.set({ folderSheet: { kind: "options", id: id } }); }, 450); },
+    up: function () { clearTimeout(NT.holdT); NT.holdT = null; },
+    context: function (e) { if (e && e.preventDefault) e.preventDefault(); clearTimeout(NT.holdT); NT.holdT = null; NT.held = id; api.set({ folderSheet: { kind: "options", id: id } }); }
+  };
+}
 /** Deleting a folder moves its notes to no folder; it never deletes a note. */
 async function notesDeleteFolder(api, id) {
   if (api.notesFolders) { if (!await api.notesFolders.remove(id)) return; }
@@ -3000,43 +3021,6 @@ function notesNew(api, kind) {
   var leave = notesLeave(api, id);
   api.set(Object.assign(leave, { list: [n].concat(leave.list || api.get("notes").list), blankCreationId: id, compose: false, q: null }));
 }
-function notesStartRec(api) {
-  notesStopTimers();
-  api.set({ record: false, open: null, sheet: null, q: null, rec: { tick: 0, paused: false, levels: [] } });
-  api.stopBg();
-  NT.recI = api.everyBg(function () {
-    var s = api.get("notes"); var r = s.rec; if (!r || r.paused) return;
-    var t = r.tick + 1;
-    var speaking = t >= NOTES_T0 && ((t - NOTES_T0) % NOTES_STEP) < 9 && notesLiveCount(t) <= NOTES_LIVE.length && t < NOTES_T0 + NOTES_LIVE.length * NOTES_STEP;
-    var lv = speaking ? 0.3 + 0.7 * Math.abs(Math.sin(t * 1.7) * Math.cos(t * 0.53)) : 0.08 + 0.1 * Math.abs(Math.sin(t));
-    api.set({ rec: Object.assign({}, r, { tick: t, levels: r.levels.concat([lv]).slice(-44) }) });
-  }, 250);
-}
-var NOTES_T0 = 2, NOTES_STEP = 12;
-function notesLiveCount(tick) { return Math.max(0, Math.min(NOTES_LIVE.length, Math.floor((tick - NOTES_T0) / NOTES_STEP) + 1)); }
-function notesBuildRec(api, r) {
-  var n = notesLiveCount(r.tick); var got = NOTES_LIVE.slice(0, n);
-  var sum = [], acts = [];
-  got.forEach(function (l) { if (l.sum) sum.push(l.sum); if (l.act) acts.push({ t: l.act, done: false }); });
-  if (!sum.length && got.length) sum.push("Short check-in, nothing decided yet");
-  return { id: "r" + Date.now(), kind: "voice", title: got.length ? "Standup" : "Recording", when: "Today · " + notesNowLabel(api.now), dur: Math.round(r.tick / 4), pinned: false,
-    lines: got.map(function (l, i) { return { s: l.s, t: l.t, at: Math.round((NOTES_T0 + i * NOTES_STEP) / 4) }; }), summary: sum, actions: acts, fresh: true };
-}
-function notesStopRec(api, quiet) {
-  api.stopBg(); NT.recI = null;
-  var s = api.get("notes"); if (!s.rec) return;
-  var note = notesBuildRec(api, s.rec);
-  api.set({ rec: null, list: [note].concat(s.list), open: quiet ? null : note.id, proc: quiet ? null : note.id, pos: 0, playing: false });
-  if (quiet) api.toast("Recording saved to Notes");
-  else api.later(function () { api.set({ proc: null }); }, 1500);
-}
-function notesDiscardRec(api) {
-  api.stopBg(); NT.recI = null;
-  var s = api.get("notes"); if (!s.rec) return;
-  var note = notesBuildRec(api, s.rec);
-  api.set({ rec: null });
-  notesUndoable(api, note, 0, "Recording discarded");
-}
 function notesLast(list) { for (var i = 0; i < list.length; i++) if (list[i].kind === "voice") return list[i]; return null; }
 function notesShare(api, n, via) {
   var parts = n.kind === "voice" ? n.summary.concat(n.actions.map(function (a) { return "Next: " + a.t; }))
@@ -3055,18 +3039,18 @@ function notesShare(api, n, via) {
 registerView("notes", {
   title: "Notes", icon: "notes", aliases: ["note", "recorder", "memos"],
   chat: "hidden",
-  state: { list: NOTES_SEED, open: null, blankCreationId: null, folders: [], folder: null, filter: null, menu: null, folderSheet: null, rec: null, record: false, compose: false, proc: null, sheet: null, pos: 0, playing: false, dict: false, newItem: "" },
+  state: { list: NOTES_SEED, open: null, blankCreationId: null, folders: [], folder: null, filter: null, menu: null, folderSheet: null, record: false, compose: false, proc: null, sheet: null, pos: 0, playing: false, newItem: "" },
   persist: ["list"],
-  jumps: [[null, "Notes"], ["editor", "Note editor"], ["rec", "Recording"], ["voice", "Voice note"]],
+  jumps: [[null, "Notes"], ["editor", "Note editor"], ["voice", "Voice note"]],
   preset: function (sub) {
     var pr = copy("notes").presets || {};
     if (sub === "editor") return pr.editor ? { open: pr.editor } : { compose: true };
+    // notes:rec opens the Notes recorder (voice-adapter) where it is installed.
     if (sub === "rec") return { record: true };
     if (sub === "voice") return pr.voice ? { open: pr.voice } : null;
   },
-  immersive: function (st) { return st.rec || st.record || st.sheet ? { noPill: true } : null; },
+  immersive: function (st) { return st.sheet ? { noPill: true } : null; },
   back: function (st, api) {
-    if (st.rec) { notesStopRec(api); return true; }
     if (st.sheet) { api.set({ sheet: null }); return true; }
     if (st.menu) { api.set({ menu: null }); return true; }
     if (st.open) { notesClose(api); return true; }
@@ -3075,7 +3059,6 @@ registerView("notes", {
     return false;
   },
   onLeave: function (api) { var s = api.get("notes"); if (s.blankCreationId) api.set(notesLeave(api, null)); else notesStopTimers(); },
-  ongoing: function (st) { return st.rec ? { label: notesFmt(st.rec.tick / 4), icon: "notesRecDot", color: NOTES_RED } : null; },
   suggestions: function (st, api) {
     var n = st.open ? notesFind(st.list, st.open) : null;
     if (n && n.kind === "voice") {
@@ -3120,7 +3103,7 @@ registerView("notes", {
       return { text: hits.length === 1 ? "One note: " + (hits[0].title || "Untitled") + "." : hits.length + " notes mention \u201c" + term + "\u201d.", nav: { view: "notes", patch: hits.length === 1 ? { open: hits[0].id, filter: null } : { filter: { text: term }, folder: null, open: null } } };
     }
     if (/(start|begin)\s+(a\s+)?(recording|transcri)|record (this|the) (meeting|call)|^record$|^transcribe/.test(t)) {
-      return { text: "Recording. I'll transcribe as we go and summarize when you stop.", nav: { view: "notes", patch: { record: true } } };
+      return { text: "Recording.", nav: { view: "notes", patch: { record: true } } };
     }
     var digest = copy("notes").digest;
     if (digest && digest.re.test(t) && /decide|decision|agree|summar|what/.test(t)) {
@@ -3152,7 +3135,9 @@ registerView("notes", {
   render: function (st, api) {
     if (!NT.pend && (st.record || st.compose)) {
       NT.pend = true;
-      setTimeout(function () { NT.pend = false; var s = api.get("notes"); if (s.record) notesStartRec(api); else if (s.compose) notesNew(api, "text"); }, 0);
+      // The Notes recorder is installed by the voice adapter, which consumes `record` first; only a
+      // fixture preview without it gets here.
+      setTimeout(function () { NT.pend = false; var s = api.get("notes"); if (s.record) { api.set({ record: false }); api.toast("Recording isn’t available in this preview."); } else if (s.compose) notesNew(api, "text"); }, 0);
     }
     var list = st.list || [];
     /* One-column list (PLAN.md section 3, decision N3): the selected folder chip, then the agent's
@@ -3174,12 +3159,18 @@ registerView("notes", {
     });
     var pinnedRows = rows.filter(function (r) { return r.pinned; }), otherRows = rows.filter(function (r) { return !r.pinned; });
     var folderChips = folders.map(function (f) {
-      var on = folder === f.id;
+      var on = folder === f.id, hold = notesChipHold(api, f.id);
       return { id: f.id, name: f.name, pressed: on ? "true" : "false", label: on ? f.name + ", folder options" : f.name,
-        select: function () { if (api.get("notes").folder === f.id) api.set({ folderSheet: { kind: "options", id: f.id } }); else api.set({ folder: f.id, filter: null, folderSheet: null }); } };
+        down: hold.down, up: hold.up, context: hold.context,
+        select: function () {
+          // The click that ends a long-press only opened the options.
+          if (NT.held === f.id) { NT.held = null; return; }
+          if (api.get("notes").folder === f.id) api.set({ folderSheet: { kind: "options", id: f.id } }); else api.set({ folder: f.id, filter: null, folderSheet: null });
+        } };
     });
     var sheet = st.folderSheet && typeof st.folderSheet === "object" ? st.folderSheet : null;
-    var sheetFolder = sheet && sheet.kind === "options" ? folders.filter(function (f) { return f.id === sheet.id; })[0] || null : null;
+    var sheetFolder = sheet && (sheet.kind === "options" || sheet.kind === "rename") ? folders.filter(function (f) { return f.id === sheet.id; })[0] || null : null;
+    var renaming = !!sheetFolder && sheet.kind === "rename";
 
     /* open note */
     var n = st.open ? notesFind(list, st.open) : null;
@@ -3227,30 +3218,6 @@ registerView("notes", {
         onNew: function (e) { api.set({ newItem: e.target.value }); },
         addItem: function () { var v = String(api.get("notes").newItem || "").trim(); if (!v) return; notesUpd(api, n.id, function (x) { return { items: (x.items || []).concat([{ t: v, done: false }]) }; }); api.set({ newItem: "" }); },
         newKey: function (e) { if (e.key === "Enter") { e.preventDefault(); var v = String(api.get("notes").newItem || "").trim(); if (!v) return; notesUpd(api, n.id, function (x) { return { items: (x.items || []).concat([{ t: v, done: false }]) }; }); api.set({ newItem: "" }); } },
-        dict: !!st.dict, notDict: !st.dict,
-        dictLabel: st.dict ? "Stop dictation" : "Dictate", dictCss: st.dict ? "background: var(--acc); color: var(--alpha-white)" : "",
-        dictate: function () {
-          if (api.get("notes").dict) { clearInterval(NT.dicI); NT.dicI = null; api.set({ dict: false }); return; }
-          if (!NOTES_DICT.length) { api.toast("Dictation is not connected"); return; }
-          var phrase = NOTES_DICT[NT.dIdx++ % NOTES_DICT.length]; var i = 0; var id = n.id;
-          api.set({ dict: true });
-          clearInterval(NT.dicI);
-          NT.dicI = api.every(function () {
-            var cur = notesFind(api.get("notes").list, id); if (!cur) { clearInterval(NT.dicI); return; }
-            i++;
-            var ch = phrase.charAt(i - 1);
-            if (cur.kind === "list") {
-              var its = (cur.items || []).slice();
-              if (i === 1) its.push({ t: ch, done: false }); else { var L = its.length - 1; its[L] = Object.assign({}, its[L], { t: its[L].t + ch }); }
-              notesUpd(api, id, { items: its });
-            } else {
-              var b = String(cur.body || "");
-              if (i === 1 && b && !/\s$/.test(b)) b += /[.!?]$/.test(b) ? " " : "\n";
-              notesUpd(api, id, { body: b + ch });
-            }
-            if (i >= phrase.length) { clearInterval(NT.dicI); NT.dicI = null; api.later(function () { api.set({ dict: false }); }, 400); }
-          }, 38);
-        }
       });
     }
     if (n && n.kind === "voice") {
@@ -3304,36 +3271,12 @@ registerView("notes", {
       });
     }
 
-    /* recorder */
-    var r = st.rec;
-    var rec = null;
-    if (r) {
-      var cnt = notesLiveCount(r.tick);
-      var within = r.tick - NOTES_T0 - (cnt - 1) * NOTES_STEP;
-      var lines = NOTES_LIVE.slice(0, cnt).map(function (l, i) {
-        var p = l.s === "me" ? null : api.person(l.s);
-        var tx = i === cnt - 1 && within < 9 ? l.t.slice(0, Math.max(1, Math.round(l.t.length * (within + 1) / 9))) : l.t;
-        return { ini: p ? p.ini : "You", t: tx, chip: l.s === "me" ? "background: var(--acc); color: var(--alpha-white)" : "background: var(--s3); color: var(--fg)", css: i === cnt - 1 ? "" : "color: var(--mut)" };
-      }).reverse();
-      var lv = r.levels.slice(); while (lv.length < 44) lv.unshift(0.06);
-      rec = {
-        clock: notesFmt(r.tick / 4), paused: r.paused, live: !r.paused,
-        primaryLabel: "Stop and save", primaryIcon: IC.stop,
-        clockCss: r.paused ? "opacity: .4" : "",
-        levels: lv.map(function (v) { return { h: Math.round(4 + v * 64) }; }),
-        lines: lines, dotCss: r.paused ? "background: var(--mut)" : "background: " + NOTES_RED,
-        pauseIcon: r.paused ? IC.mic : IC.pause, pauseLabel: r.paused ? "Resume" : "Pause",
-        toggle: function () { var s = api.get("notes"); if (s.rec) api.set({ rec: Object.assign({}, s.rec, { paused: !s.rec.paused }) }); },
-        stop: function () { notesStopRec(api); },
-        discard: function () { notesDiscardRec(api); }
-      };
-    }
-
     var shareSheet = st.sheet === "share" && !!n;
     return {
       notesTitle: "Notes", primaryNotes: true, canRecord: true, canCreate: true,
       newNote: function () { notesNew(api, "text"); },
-      record: function () { notesStartRec(api); },
+      // The Notes recorder (voice-adapter, note-recorder.ts) handles Record; `record` is its deep-link flag.
+      record: function () { api.set({ record: true }); },
       pinnedRows: pinnedRows, otherRows: otherRows, hasPinned: pinnedRows.length > 0, notesHead: pinnedRows.length > 0 && otherRows.length > 0,
       allPressed: folder ? "false" : "true", selectAll: function () { api.set({ folder: null, filter: null, folderSheet: null }); },
       folderChips: folderChips,
@@ -3341,17 +3284,18 @@ registerView("notes", {
       filterOn: !!filter, filterLabel: filter ? notesFilterLabel(filter, folders) + " · " + shown.length : "",
       clearFilter: function () { api.set({ filter: null }); },
       folderSheetOpen: !!sheet && (sheet.kind === "new" || !!sheetFolder),
-      folderNew: !!sheet && sheet.kind === "new", folderOptions: !!sheetFolder,
-      folderName: sheet && sheet.kind === "new" ? String(sheet.name || "") : "", folderOptionsTitle: sheetFolder ? sheetFolder.name : "",
-      folderSheetTitle: sheet && sheet.kind === "new" ? "New folder" : sheetFolder ? sheetFolder.name : "",
-      onFolderName: function (e) { var cur = api.get("notes").folderSheet; if (cur && cur.kind === "new") api.set({ folderSheet: { kind: "new", name: e.target.value } }); },
-      folderNameKey: function (e) { if (e.key === "Enter") { e.preventDefault(); notesCreateFolder(api); } },
-      createFolder: function () { notesCreateFolder(api); },
-      createDisabled: !(sheet && sheet.kind === "new" && String(sheet.name || "").trim()),
+      folderNew: !!sheet && sheet.kind === "new" || renaming, folderOptions: !!sheetFolder && !renaming,
+      folderName: sheet && (sheet.kind === "new" || renaming) ? String(sheet.name || "") : "", folderOptionsTitle: sheetFolder ? sheetFolder.name : "",
+      folderSheetTitle: sheet && sheet.kind === "new" ? "New folder" : renaming ? "Rename folder" : sheetFolder ? sheetFolder.name : "",
+      folderSubmitLabel: renaming ? "Save" : "Create",
+      onFolderName: function (e) { var cur = api.get("notes").folderSheet; if (cur && (cur.kind === "new" || cur.kind === "rename")) api.set({ folderSheet: Object.assign({}, cur, { name: e.target.value }) }); },
+      folderNameKey: function (e) { if (e.key === "Enter") { e.preventDefault(); var cur = api.get("notes").folderSheet; if (cur && cur.kind === "rename") notesRenameFolder(api, cur.id); else notesCreateFolder(api); } },
+      createFolder: function () { var cur = api.get("notes").folderSheet; if (cur && cur.kind === "rename") notesRenameFolder(api, cur.id); else notesCreateFolder(api); },
+      createDisabled: !(sheet && (sheet.kind === "new" || renaming) && String(sheet.name || "").trim()),
+      renameFolder: function () { if (sheetFolder) api.set({ folderSheet: { kind: "rename", id: sheetFolder.id, name: sheetFolder.name } }); },
       deleteFolder: function () { if (sheetFolder) notesDeleteFolder(api, sheetFolder.id); },
       closeFolderSheet: function () { api.set({ folderSheet: null }); },
       isEdit: isEdit, ed: ed, isVoice: !!vo, vo: vo, isLink: !!lk, lk: lk,
-      recording: !!rec, rec: rec,
       shareSheet: shareSheet,
       closeSheet: function () { api.set({ sheet: null }); },
       shareMsg: function () { notesShare(api, n, "msg"); },

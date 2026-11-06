@@ -2,6 +2,7 @@ import type {NotesTarget} from '../runtime/notes-contract';
 import type {NotesOrganizeOperation} from '../runtime/notes-organize-contract';
 import {addNotesFolder,findNotesFolderByName,newNotesFolderId,withNoteFolder,type NotesFoldersDocument} from '../runtime/notes-folders-model.ts';
 import type {NotesFilter} from '../runtime/notes-view';
+import {notesRecorderControl,type NotesRecordStart,type NotesRecordStop} from './notes-recorder-control.ts';
 
 type Note={id:string;folderId?:unknown;[key:string]:unknown};
 export type NotesRestoreOutcome='restored'|'live'|'gone'|'expired'|'failed'|'busy'|'missing';
@@ -19,6 +20,10 @@ export interface NotesOrganizeHost {
  showFilter(filter:NotesFilter):void;
  /** Restores the newest Recently deleted copy of the note through the Trash restore path. */
  restore(noteId:string):Promise<NotesRestoreOutcome>;
+ /** Starts the Notes recorder; `already` when a recording is open. */
+ recordStart():Promise<NotesRecordStart>;
+ /** Stops and saves the open recording as one voice note (NoteRecorderSession.finish). */
+ recordStop():Promise<NotesRecordStop>;
 }
 export interface NotesOrganizeReceipt {status:'succeeded'|'failed'|'unknown';summary:string}
 
@@ -41,6 +46,14 @@ export async function executeNotesOrganize(host:NotesOrganizeHost,operation:Note
   return {status:'succeeded',summary:'Filtered the Notes list on this phone. No note content was shared.'};
  }
  if(!host.ready())return {status:'failed',summary:'Notes storage is unavailable. Nothing was changed.'};
+ if(operation.type==='notes_record'){
+  if(operation.action==='start'){
+   const started=await host.recordStart().catch(():NotesRecordStart=>'failed');
+   return started==='started'?{status:'succeeded',summary:'Recording a voice note in Notes.'}:started==='already'?{status:'succeeded',summary:'A voice note is already recording.'}:{status:'failed',summary:'The microphone did not start. Nothing was recorded.'};
+  }
+  const stopped=await host.recordStop().catch(():NotesRecordStop=>'failed');
+  return stopped==='saved'?{status:'succeeded',summary:'Saved the voice note.'}:stopped==='none'?{status:'failed',summary:'No voice note is recording.'}:{status:'unknown',summary:'The voice note could not be saved. The recording is kept in Notes.'};
+ }
  if(operation.type==='notes_folder_create'){
   const before=await host.readFolders();current();
   if(findNotesFolderByName(before,operation.name))return {status:'succeeded',summary:`The folder “${operation.name}” already exists.`};
@@ -100,5 +113,7 @@ export function notesOrganizeShellHost(shell:any,folders:{read():Promise<NotesFo
    const entry=await trash.entryFor(noteId);
    return entry?await trash.restore(entry.id):'missing';
   },
+  recordStart:async()=>{const control=notesRecorderControl();return control?control.start():'failed';},
+  recordStop:async()=>{const control=notesRecorderControl();return control?control.stop():'none';},
  };
 }

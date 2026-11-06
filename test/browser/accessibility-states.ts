@@ -116,7 +116,7 @@ export const LIVE_STATES: State[] = [
   live('Photos search', ['Photos', 'Search photos']),
   legacyNotes('Notes note menu', ['New note', 'More']),
   {name:'live Notes source document',open:async(page,theme)=>{await page.addInitScript(offline);await page.goto(theme ? `/?theme=${theme}` : '/');await openLegacyAttachment(page);await settle(page);}},
-  legacyNotes('Notes recording', ['Record and transcribe'], 'notes-recording'),
+  legacyNotes('Notes recorder', ['Record and transcribe'], 'notes-recorder'),
   live('Files search', ['Files', 'Search files']),
   live('Workflows new automation', ['Workflows', 'New automation'], 'automations-detail'),
 ];
@@ -127,7 +127,7 @@ const SUBVIEW: Record<string, string> = {
   'calendar:event': 'calendar-detail', 'calendar:invite': 'calendar-detail', 'calendar:add': 'calendar-detail', 'calendar:new': 'calendar-form',
   'browser:tabs': 'browser-tabs',
   'photos:viewer': 'photos-viewer',
-  'notes:editor': 'notes-editor', 'notes:rec': 'notes-recording', 'notes:voice': 'notes-voice',
+  'notes:editor': 'notes-editor', 'notes:voice': 'notes-voice',
   'files:folder': 'files-folder', 'files:preview': 'files-preview',
   'workflows:flow': 'workflows-detail', 'workflows:run': 'workflows-runOpen', 'workflows:failed': 'workflows-runOpen', 'workflows:new': 'workflows-builder',
 };
@@ -141,7 +141,7 @@ export const MOCK_STATES: State[] = [
   'camera', 'camera:video', 'camera:scan',
   'photos', 'photos:viewer', 'photos:albums', 'photos:search',
   'maps', 'maps:search', 'maps:place', 'maps:route', 'maps:nav',
-  'notes', 'notes:editor', 'notes:rec', 'notes:voice',
+  'notes', 'notes:editor', 'notes:voice',
   'files', 'files:folder', 'files:preview',
   'workflows', 'workflows:flow', 'workflows:run', 'workflows:failed', 'workflows:new',
   'settings', 'settings:accounts', 'settings:adding', 'settings:privacy',

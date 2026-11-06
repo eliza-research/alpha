@@ -26,13 +26,22 @@ public class AlphaNoteAudioPlugin extends Plugin {
   * Keystore-backed slot store under note-audio-metadata:v1:, owned by noteId. These names predate
   * the shared store and stay fixed so existing recordings and receipts keep resolving.
   */
- static RecordingStore recordings(android.content.Context context){
+ static RecordingStore recordings(android.content.Context context){return recordings(context,CLIPS);}
+ /**
+  * Both bounds keep the orphan-recording backstop (AUDIO_BACKSTOP_MS, twice Recently deleted
+  * retention), so a recording a restorable note still uses is never erased first. Clips keep the
+  * shared clip bounds; a Notes recording (AlphaNoteRecorder) has no length limit and its
+  * transcript fits the 512 KiB metadata slot. Requires patches/eliza/notes-recording-store.patch.
+  */
+ static final RecordingStore.Limits CLIPS=new RecordingStore.Limits(RecordingStore.MAX_BYTES,RecordingStore.MAX_DURATION_MS,RecordingStore.MAX_TRANSCRIPT,AlphaNoteAudioPlugin.AUDIO_BACKSTOP_MS);
+ static final RecordingStore.Limits NOTE_RECORDINGS=new RecordingStore.Limits(Long.MAX_VALUE,Long.MAX_VALUE,150_000,AlphaNoteAudioPlugin.AUDIO_BACKSTOP_MS);
+ private static RecordingStore recordings(android.content.Context context,RecordingStore.Limits limits){
   AlphaCredentialStore store=new AlphaCredentialStore(context);
   return new RecordingStore(new File(context.getNoBackupFilesDir(),"note-audio"),"note-audio-metadata:v1:","noteId",new RecordingStore.Slots(){
    @Override public String read(String slot)throws Exception{return store.readCredentialSlot(slot);}
    @Override public void write(String slot,String value)throws Exception{store.writeCredentialSlot(slot,value);}
    @Override public void remove(String slot)throws Exception{store.removeCredentialSlot(slot);}
-  });
+  },limits);
  }
  private RecordingStore recordings(){return recordings(getContext());}
  @Override public void load(){
@@ -223,6 +232,18 @@ public class AlphaNoteAudioPlugin extends Plugin {
 
  /** Only native recorders can import a stopped clip; the renderer cannot nominate a path. */
  JSObject retain(File source,String recordingId,String noteId,long duration,String transcript)throws Exception {return JSObject.fromJSONObject(recordings().retain(source,recordingId,noteId,duration,transcript));}
+ /**
+  * Joins a Notes recording's segments and keeps them for the note, on this plugin's worker (after
+  * the startup metadata pass). The renderer discards the segments once the note itself is saved.
+  */
+ void saveNoteRecording(PluginCall call,AlphaNoteRecorder recorder,String id){
+  PluginWorkers.submit(migrationWorker,()->{
+   try{File joined=recorder.joined(id);call.resolve(retainNoteRecording(joined,id,call.getString("noteId"),recorder.totalMs(),call.getString("transcript")));}
+   catch(Exception error){call.reject("The recording could not be saved.");}
+  },()->call.reject("The recording could not be saved."));
+ }
+ /** A Notes recording has no length limit: the joined file is moved into place, not copied. */
+ JSObject retainNoteRecording(File source,String recordingId,String noteId,long duration,String transcript)throws Exception {return JSObject.fromJSONObject(recordings(getContext(),NOTE_RECORDINGS).retain(source,recordingId,noteId,duration,transcript,true));}
  @PluginMethod public void describe(PluginCall call){try{call.resolve(JSObject.fromJSONObject(recordings().describe(call.getString("audioId"))));}catch(Exception error){call.reject("Saved recording is unavailable");}}
  @PluginMethod public void play(PluginCall call){main.post(()->{try{
   String key=RecordingStore.id(call.getString("audioId"));File file=recordings().playable(key);stop();
