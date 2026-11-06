@@ -1,4 +1,4 @@
-import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import path from 'node:path';import vm from 'node:vm';import {transformSync} from 'esbuild';
+import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import path from 'node:path';import vm from 'node:vm';import {transformSync} from 'esbuild';import {stripTypeScriptTypes} from 'node:module';
 // The staged canonical client, controller and snapshot state run with
 // WebView113's static AbortSignal surface. Only the resident transport is a fixture.
 function fixture({wait=false}={}){
@@ -30,3 +30,31 @@ test('retired or rebound Notes controllers cannot attach invalidation listeners'
  }
 });
 test('the affected app-record, automation and reminder paths use the same fallback',()=>{const source=fs.readFileSync('apps/app/src/runtime/connection-ui.tsx','utf8');assert.doesNotMatch(source,/AbortSignal\.any\(/);assert.match(source,/bounded=anyAbortSignal\(\[signal,controller\.signal\]\)/);for(const file of ['agent-calendar-client.ts','owner-reminder-notification-port.ts'])assert.doesNotMatch(fs.readFileSync('apps/app/src/runtime/'+file,'utf8'),/AbortSignal\.any\(/);});
+// Alpha's Notes binding over stub controller and editor ports: what retire and Undo do with them.
+function notesUi(){
+ const code=stripTypeScriptTypes(fs.readFileSync('apps/app/src/prototype/canonical-notes-ui.ts','utf8').replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'transform'});
+ const calls=[],dropped=[],toasts=[];
+ class Controller{current=true;pending=false;revision=1;snapshot={notes:[{id:'n'}],trash:[],revision:1};constructor(_port,hooks){this.hooks=hooks;}listen(){}retire(){this.current=false;}hasViewNote(){return true;}}
+ class Editor{draft=null;constructor(controller){this.controller=controller;}close(){this.draft=null;}async remove(id){calls.push('remove:'+id);return true;}async restore(id){calls.push('restore:'+id);return true;}}
+ const {CanonicalNotesUi}=new Function('parseNoteFormat','projectNoteForModel','noteScheduleDraft','agentPendingText','agentAvailabilityNotice','DailyApps','CanonicalNotesController','CanonicalNotesEditor','window',code+';return {CanonicalNotesUi};')(x=>x,()=>({title:'',body:''}),async()=>({}),(_s,text)=>text,(_s,text)=>text,{},Controller,Editor,{});
+ const ui=new CanonicalNotesUi({},{paint(){},review(){calls.push('review');},dropped:title=>dropped.push(title)});
+ return {ui,calls,dropped,toasts,api:{toast:(text,options)=>toasts.push({text,undo:options?.undo})}};
+}
+test('a connection change with an unsaved edit tells the owner the edit was dropped',()=>{
+ for(const [draft,expected] of [[{token:'t',id:'n',version:2,title:'Groceries'},['Groceries']],[{token:'t',id:'n',version:0,title:'Clean'},[]],[null,[]]]){
+  const f=notesUi();f.ui.editor.draft=draft;f.ui.retire();
+  assert.deepEqual(f.dropped,expected);assert.equal(f.ui.editor.draft,null);assert.equal(f.ui.current,false);
+ }
+});
+test('Undo waits for the current save and never restores over it into review',async()=>{
+ const f=notesUi();
+ assert.equal(await f.ui.remove('n',f.api),true);assert.equal(f.toasts.length,1);
+ // A save is in flight and its queued follow-up keeps the controller pending.
+ f.ui.controller.pending=true;const undone=f.toasts[0].undo();
+ for(let i=0;i<20;i++){f.ui.controller.hooks.phase('ready');await new Promise(resolve=>setTimeout(resolve,0));}
+ await undone;
+ assert.deepEqual(f.calls,['remove:n']);assert.equal(f.toasts.at(-1).text,'Wait for the current save, then restore it from Trash.');
+ // Once the save settles, Undo restores as before.
+ f.ui.controller.pending=false;f.toasts[0].undo();await new Promise(resolve=>setTimeout(resolve,0));
+ assert.deepEqual(f.calls,['remove:n','restore:n']);
+});

@@ -18,7 +18,7 @@ import {createNotesRecordingEffects,type NotesRecordingEffects} from '../../../.
 import {addNotesTrashEntry,editNotesTrash,isNotesTrashFull,notesTrashExpired,readNotesTrash,removeNotesTrashEntries,savedNotes,type NotesTrashEntry} from '../runtime/notes-trash';
 import type {NotesTarget} from '../runtime/notes-contract';
 import {sameDeletionRow,leasedDeletionRow,claimDeletion,releaseDeletionClaim,deletionClaimedElsewhere} from '../runtime/permanent-voice-deletion';
-import { installLocalSpeechPlayback, stopLocalSpeechPlayback, currentNoteReading, stopSpeaking, speakNote, noteVoiceDraft } from './local-speech-playback';
+import { installLocalSpeechPlayback, stopLocalSpeechPlayback, currentNoteReading, stopSpeaking, readNoteAloud, noteVoiceDraft } from './local-speech-playback';
 import { registerPlugin } from '../platform-plugins';
 import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
 import { createOnDeviceVoice } from '../runtime/local-voice';
@@ -1005,14 +1005,14 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
         const note=reviewed();if(!note)return;
         const actionText=(note.actions||[]).filter((a:Bag)=>!a.done).map((a:Bag)=>String(a.t||'')).join('\n');
         if(!actionText.trim()){current.toast('No open action items. Review the transcript with Alpha first.');return;}
-        if(actionText.length>4000){current.toast(kind==='event'?'Shorten the action items before creating an event. Nothing was added to your calendar.':'Shorten the action items before creating a reminder. Nothing scheduled.');return;}
+        if(actionText.length>4000){current.toast('Shorten the action items first.');return;}
         noteHandoffBusy=true;
         try{
           const origin=noteOriginFor(note,await recordingRevision(note));
           if(!reviewed())return;
           const shared={id:null,title:'',off:1,t:9,d:1,where:'',video:false,who:[],repeat:'none',notes:actionText,...(origin?{origin}:{})};
           current.open('calendar',{calendarAuthority:current.get('calendar').calendarAuthority,form:kind==='event'?{...shared,creationId:crypto.randomUUID(),separateCreation:false,cal:'native:local',alert:null}:{...shared,cal:'alpha-reminders',alert:0},open:null,month:null,day:1},'hidden');
-          current.toast(kind==='event'?'Choose one action and review its time, then Save. Nothing is on your calendar yet.':'Choose one action and review its time, then Save. Nothing scheduled yet.');
+          current.toast('Choose one action, then Save.');
         }finally{noteHandoffBusy=false;}
       };
       vo.toCal=()=>void draftFromNote('reminder');
@@ -1027,10 +1027,10 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
       vo.stopReading = voReading ? () => stopSpeaking() : undefined;
       vo.readAloud = voText && !voReading ? () => {
         stopSaved();
-        void speakNote(voText, { noteId: selected.id }).then(outcome => {
+        void readNoteAloud(voText, { noteId: selected.id }).then(({ outcome, message }) => {
           if (outcome === 'unavailable') current.toast(cloudRuntimeEnabled?`${voiceServiceName()} speech is unavailable. Check your account and connection. The note is unchanged.`:'On-device speech is unavailable. The note is unchanged.');
           else if (outcome === 'unsupported') current.toast('This note has text that cannot be read aloud. Nothing was read.');
-          else if (outcome === 'failed') current.toast('Reading stopped before the end. The note is unchanged.');
+          else if (outcome === 'failed') current.toast(message);
         });
       } : undefined;
       vo.playLabel = savedPlaying ? 'Stop recording playback' : 'Play recording';
@@ -1074,10 +1074,10 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
       ed.readAloud = ed.readAvailable && !live ? () => {
         if (!note || !text) return;
         if (currentNoteReading()?.noteId === note.id) { stopSpeaking(); return; }
-        void speakNote(text, { noteId: note.id }).then(outcome => {
+        void readNoteAloud(text, { noteId: note.id }).then(({ outcome, message }) => {
           if (outcome === 'unavailable') current.toast(cloudRuntimeEnabled?`${voiceServiceName()} speech is unavailable. Check your account and connection. The note is unchanged.`:'On-device speech is unavailable. The note is unchanged.');
           else if (outcome === 'unsupported') current.toast('This note has text that cannot be read aloud. Nothing was read.');
-          else if (outcome === 'failed') current.toast('Reading stopped before the end. The note is unchanged.');
+          else if (outcome === 'failed') current.toast(message);
         });
       } : undefined;
     }

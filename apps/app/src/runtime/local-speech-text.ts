@@ -1,8 +1,14 @@
-/** Plan an entire explicit local read before any native audio request. */
-export function planLocalSpeech(input: string): string[] {
-  if (typeof input !== 'string' || !input.trim() || input.length > 16000) throw new Error('Local listening supports a complete English message up to 16,000 characters. Copy a shorter passage into a note to listen.');
+/** The refusal every read-aloud route applies before any audio request: a bounded
+ * passage with no link, email address, code, credential or card number. */
+export function screenSpeechText(input: string): void {
+  if (typeof input !== 'string' || !input.trim() || input.length > 16000) throw new Error('Listening supports a message up to 16,000 characters. Copy a shorter passage into a note to listen.');
   if (/(?:https?:\/\/|www\.|mailto:)|[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(input)) throw new Error('This message contains a link or email address. Edit a copy in Notes before listening; nothing has been read.');
   if (/`|-----BEGIN|\b(?:csk-|sk[-_]|gh[pousr]_|xox[baprs]-|AKIA|ASIA)[A-Za-z0-9_-]{8,}|\b(?:password|passphrase|api[_ -]?key|access[_ -]?token|secret|recovery[_ -]?(?:code|phrase)|seed phrase)\s*(?::|=|is\b)|\b[A-Za-z0-9_-]{32,}\b|(?:\d[ -]?){12,19}/i.test(input)) throw new Error('This message contains code or credential-like content. Edit a copy in Notes before listening; nothing has been read.');
+}
+
+/** Plan an entire explicit local read before any native audio request. */
+export function planLocalSpeech(input: string): string[] {
+  screenSpeechText(input);
   let text = input.normalize('NFC')
     .replace(/[‘’]/g, "'").replace(/[“”"]/g, '').replace(/…/g, '...')
     .replace(/[—–]/g, '; ').replace(/−/g, '-')
