@@ -1,0 +1,630 @@
+diff --git a/plugins/plugin-assistant/src/services/device-actions/action.ts b/plugins/plugin-assistant/src/services/device-actions/action.ts
+index 522bfb9..f2470cd 100644
+--- a/plugins/plugin-assistant/src/services/device-actions/action.ts
++++ b/plugins/plugin-assistant/src/services/device-actions/action.ts
+@@ -35,6 +35,12 @@ import {
+   validateDevicePayload,
+ } from "./contract.ts";
+ import { formatDeviceRecordDateTime } from "./device-record-presentation.ts";
++import {
++  FILES_CAPABILITY,
++  FILES_GUIDANCE,
++  FILES_OPERATION_SCHEMAS,
++  isFilesOperation,
++} from "./files-browser-contract.ts";
+ import {
+   DEVICE_APPROVAL_REVIEW_TEXT,
+   deviceActionEffectReceipts,
+@@ -595,6 +601,8 @@ export const proposeDeviceAction: Action = {
+     " " +
+     FOREGROUND_REVIEW_GUIDANCE +
+     " " +
++    FILES_GUIDANCE +
++    " " +
+     CLOCK_ALARM_GUIDANCE +
+     " " +
+     CLOCK_PROPOSAL_GUIDANCE,
+@@ -665,6 +673,7 @@ export const proposeDeviceAction: Action = {
+               },
+             },
+           },
++          ...FILES_OPERATION_SCHEMAS,
+           ...calendarSchemas,
+           calendarAvailabilitySchema,
+           ...notesSchemas,
+@@ -1200,6 +1209,7 @@ export function deviceActionForCapabilities(
+ ): Action {
+   if (action.name !== "PROPOSE_DEVICE_ACTION") return action;
+   const navigation = usesCompletedActionNavigation(messageMetadata);
++  const files = capabilities?.includes(FILES_CAPABILITY) === true;
+   return {
+     ...action,
+     description:
+@@ -1212,7 +1222,8 @@ export function deviceActionForCapabilities(
+           : action.description.replace(CLOCK_ALARM_GUIDANCE, "")
+         : capabilities?.includes(CLOCK_ALARMS_CAPABILITY)
+           ? `This connection supports only the Eliza-owned Clock alarm operations in this schema. ${CLOCK_ALARM_GUIDANCE}`
+-          : `This connection supports only the Clock handoff operations in this schema. Current app navigation uses its registered view tools, not a native phone proposal. ${CLOCK_PROPOSAL_GUIDANCE}`),
++          : `This connection supports only the Clock handoff operations in this schema. Current app navigation uses its registered view tools, not a native phone proposal. ${CLOCK_PROPOSAL_GUIDANCE}`
++      ).replace(files ? "" : ` ${FILES_GUIDANCE}`, ""),
+     parameters: action.parameters?.map((parameter) => {
+       if (parameter.name !== "operation") return parameter;
+       const schema = structuredClone(parameter.schema);
+@@ -1274,6 +1285,7 @@ export function deviceActionForCapabilities(
+             typeof type === "string" &&
+             (capabilities === undefined
+               ? type !== "camera_capture_photo" &&
++                !isFilesOperation({ type }) &&
+                 type !== "sms_send" &&
+                 type !== "phone_dial" &&
+                 type !== "clock_alarm" &&
+diff --git a/plugins/plugin-assistant/src/services/device-actions/client-coordinator.ts b/plugins/plugin-assistant/src/services/device-actions/client-coordinator.ts
+index 6a6f778..98eb3bb 100644
+--- a/plugins/plugin-assistant/src/services/device-actions/client-coordinator.ts
++++ b/plugins/plugin-assistant/src/services/device-actions/client-coordinator.ts
+@@ -126,6 +126,15 @@ import {
+   validateLibraryOperation,
+   validateLibraryResult,
+ } from "./photo-library-contract.ts";
++import {
++  describeFilesOperation,
++  FILES_CAPABILITY,
++  FILES_DIRECT_TYPES,
++  type FilesAgentOperation,
++  filesContextAllowed,
++  isFilesOperation,
++  validateFilesOperation,
++} from "./files-browser-contract.ts";
+ import {
+   isReminderOperation,
+   type ReminderOperation,
+@@ -223,6 +232,7 @@ export type DeviceOperation =
+   | ClockHandoffOperation
+   | MapsOperation
+   | LibraryAgentOperation
++  | FilesAgentOperation
+   | ReminderOperation
+   | NotesOperation
+   | NativeNotesQueryOperation
+@@ -494,6 +504,7 @@ export function validateDeviceOperation(
+   if (isClockHandoffOperation(p)) return validateClockHandoffDispatch(p);
+   if (isMapsOperation(p)) return validateMapsOperation(p);
+   if (isLibraryOperation(p)) return validateLibraryOperation(p);
++  if (isFilesOperation(p)) return validateFilesOperation(p);
+   if (isReminderOperation(p)) return validateReminderOperation(p);
+   if (isNotesOperation(p)) return validateNotesOperation(p);
+   if (isCalendarOperation(p)) return validateCalendarOperation(p);
+@@ -774,6 +785,12 @@ export function assertProposalContext<C extends DeviceContextEnvelope>(
+     assertClockHandoffTimeZone(operation, context.timeZone);
+   if (isMapsOperation(operation)) assertMapsContext(operation, context, ports);
+   if (isLibraryOperation(operation)) assertLibraryContext(context);
++  if (isFilesOperation(operation) && !filesContextAllowed(operation, context))
++    throw new ContextNotice(
++      context.sensitive
++        ? "Unlock the phone to review this action."
++        : "Open Files to review this action.",
++    );
+   if (isReminderOperation(operation)) assertReminderContext(operation, context);
+   if (isNativeNotesQuery(operation)) assertNotesQueryContext(context);
+   if (isNotesOperation(operation)) assertNotesContext(operation, context);
+@@ -1232,6 +1249,8 @@ export class DeviceActionCoordinator<
+       throw Error("Notes discovery was not negotiated with this agent");
+     if (isLibraryOperation(op) && !this.capability(PHOTO_LIBRARY_CAPABILITY))
+       throw Error("Device library access was not negotiated with this agent");
++    if (isFilesOperation(op) && !this.capability(FILES_CAPABILITY))
++      throw Error("Files access was not negotiated with this agent");
+     if (
+       isForegroundReviewOperation(op) &&
+       (!foregroundReviewOperationAvailable(op, this.credential.capabilities) ||
+@@ -1407,6 +1426,7 @@ export class DeviceActionCoordinator<
+       };
+     if (isLibraryOperation(op))
+       return { ...base, ...describeLibraryOperation(op, this.profile.appName) };
++    if (isFilesOperation(op)) return { ...base, ...describeFilesOperation(op) };
+     const notesDestination =
+       (op.type === "notes_delete" || op.type === "notes_update") &&
+       !context.sensitive &&
+@@ -1576,6 +1596,7 @@ export class DeviceActionCoordinator<
+       "browser_navigate",
+       "camera_capture_photo",
+       "photo_library_select",
++      ...FILES_DIRECT_TYPES,
+     ];
+     const results: DeviceOperationReceipt[] = [];
+     for (const [proposalId, entry] of [...this.proposals]) {
+diff --git a/plugins/plugin-assistant/src/services/device-actions/contract.ts b/plugins/plugin-assistant/src/services/device-actions/contract.ts
+index 7f26cf0..64d4ce6 100644
+--- a/plugins/plugin-assistant/src/services/device-actions/contract.ts
++++ b/plugins/plugin-assistant/src/services/device-actions/contract.ts
+@@ -53,6 +53,12 @@ import {
+   type SmsSendOperation,
+   validateSmsSend,
+ } from "./sms-contract.ts";
++import {
++  FILES_CAPABILITY,
++  type FilesAgentOperation,
++  isFilesOperation,
++  validateFilesOperation,
++} from "./files-browser-contract.ts";
+ import {
+   validateWorkflowBinding,
+   validateWorkflowReadOperation,
+@@ -93,6 +99,7 @@ export type DeviceOperation =
+   | ReminderCreateOperation
+   | ClockOperation
+   | MapsOperation
++  | FilesAgentOperation
+   | ReminderOperation
+   | NotesOperation
+   | NativeNotesQueryOperation
+@@ -121,6 +128,8 @@ export function deviceOperationSupportedByCapabilities(
+     return capabilities?.includes(CALENDAR_CREATE_CAPABILITY) === true;
+   if (type === "calendar_read_next")
+     return capabilities?.includes(CALENDAR_NEXT_CAPABILITY) === true;
++  if (isFilesOperation({ type }))
++    return capabilities?.includes(FILES_CAPABILITY) === true;
+   if (isForegroundReviewType(type))
+     return foregroundReviewCapabilityAvailable(type, capabilities);
+   if (type === "notes_query")
+@@ -283,6 +292,19 @@ export function validateDeviceOperation(value: unknown): DeviceOperation {
+           "Invalid dial operation. Use target {kind: number, number: digits with optional leading +} or {kind: contact, query: the contact name}.",
+         );
+       }
++    case "files_filter":
++    case "files_open":
++    case "files_share":
++    case "files_move":
++    case "files_trash":
++    case "files_folder_create":
++      try {
++        return validateFilesOperation(p);
++      } catch (error) {
++        throw new DeviceActionError(
++          `Invalid Files operation: ${(error as Error).message}. Use paths on Internal storage such as "Download/lease.pdf".`,
++        );
++      }
+     case "post_notification":
+       exactKeys(p, ["type", "title", "body"]);
+       return {
+diff --git a/plugins/plugin-assistant/src/services/device-actions/files-browser-contract.test.ts b/plugins/plugin-assistant/src/services/device-actions/files-browser-contract.test.ts
+new file mode 100644
+index 0000000..5cdcdf0
+--- /dev/null
++++ b/plugins/plugin-assistant/src/services/device-actions/files-browser-contract.test.ts
+@@ -0,0 +1,84 @@
++import { describe, expect, it } from "vitest";
++import { deviceOperationSupportedByCapabilities } from "./contract.ts";
++import {
++  describeFilesOperation,
++  FILES_CAPABILITY,
++  FILES_DIRECT_TYPES,
++  FILES_OPERATION_SCHEMAS,
++  FILES_OPERATION_TYPES,
++  filesContextAllowed,
++  isFilesOperation,
++  validateFilesOperation,
++} from "./files-browser-contract.ts";
++
++describe("files.browser.v1 operations", () => {
++  it("validates one flat shape that validates again unchanged", () => {
++    for (const op of [
++      { type: "files_filter", text: "lease", kind: "pdf", folder: "Download" },
++      { type: "files_filter", from: "2026-10-01", to: "2026-10-31" },
++      { type: "files_open", path: "Download/lease.pdf" },
++      { type: "files_share", paths: ["Download/a.pdf", "DCIM/Camera/b.jpg"] },
++      { type: "files_move", paths: ["Download/a.pdf"], dest: "" },
++      { type: "files_trash", paths: ["Download/a.pdf"] },
++      { type: "files_folder_create", parent: "Documents", name: "Taxes" },
++    ]) {
++      const valid = validateFilesOperation(op);
++      expect(valid).toEqual(op);
++      expect(validateFilesOperation(valid)).toEqual(valid);
++    }
++  });
++  it("rejects escapes, duplicates, hidden folders, empty filters and extra fields", () => {
++    for (const bad of [
++      { type: "files_trash", paths: ["../etc/passwd"] },
++      { type: "files_open", path: "/storage/emulated/0/a" },
++      { type: "files_move", paths: [], dest: "x" },
++      { type: "files_move", paths: ["a", "a"], dest: "x" },
++      { type: "files_folder_create", parent: "", name: ".hidden" },
++      { type: "files_filter" },
++      { type: "files_filter", from: "2026-11-02", to: "2026-11-01" },
++      { type: "files_open", path: "a", extra: 1 },
++      { type: "files_delete", paths: ["a"] },
++    ])
++      expect(() => validateFilesOperation(bad)).toThrow();
++  });
++  it("runs only filter and open directly; changes need Files on the unlocked screen", () => {
++    expect([...FILES_DIRECT_TYPES]).toEqual(["files_filter", "files_open"]);
++    expect(
++      filesContextAllowed({ type: "files_trash", paths: ["a"] }, { view: "home" }),
++    ).toBe(false);
++    expect(
++      filesContextAllowed({ type: "files_trash", paths: ["a"] }, { view: "files" }),
++    ).toBe(true);
++    expect(
++      filesContextAllowed(
++        { type: "files_filter", text: "a" },
++        { view: "files", sensitive: true },
++      ),
++    ).toBe(false);
++    expect(
++      describeFilesOperation({
++        type: "files_move",
++        paths: ["Download/a.pdf"],
++        dest: "Documents/Taxes",
++      }),
++    ).toEqual({ title: "Move 1 item", description: "a.pdf → Documents › Taxes" });
++  });
++  it("is advertised only to a phone that negotiated files.browser.v1", () => {
++    for (const type of FILES_OPERATION_TYPES) {
++      expect(isFilesOperation({ type })).toBe(true);
++      expect(deviceOperationSupportedByCapabilities(type, [FILES_CAPABILITY])).toBe(true);
++      expect(deviceOperationSupportedByCapabilities(type, ["camera.capture-photo.v1"])).toBe(false);
++      expect(deviceOperationSupportedByCapabilities(type, undefined)).toBe(false);
++    }
++    expect(
++      FILES_OPERATION_SCHEMAS.flatMap((schema) => schema.properties.type.enum),
++    ).toEqual([
++      "files_filter",
++      "files_open",
++      "files_share",
++      "files_trash",
++      "files_move",
++      "files_folder_create",
++    ]);
++  });
++});
+diff --git a/plugins/plugin-assistant/src/services/device-actions/files-browser-contract.ts b/plugins/plugin-assistant/src/services/device-actions/files-browser-contract.ts
+new file mode 100644
+index 0000000..6229771
+--- /dev/null
++++ b/plugins/plugin-assistant/src/services/device-actions/files-browser-contract.ts
+@@ -0,0 +1,326 @@
++/**
++ * Files browser device operations (`files.browser.v1`).
++ *
++ * The phone's Files view browses shared storage with all-files access. Paths
++ * are relative to the primary storage volume ("Download/lease.pdf"); "" is the
++ * volume root. A path is never absolute and never leaves the volume.
++ *
++ * - `files_filter` narrows what Files shows (a dismissible chip). It reads
++ *   names, kinds, folders and dates only and changes nothing.
++ * - `files_open` shows one file in Files. It changes nothing.
++ * - `files_share`, `files_move`, `files_trash` and `files_folder_create` are
++ *   proposals the owner reviews with Files on screen before anything changes or
++ *   leaves the phone. A move keeps both files when the name is taken; trash is
++ *   undoable from Files > Trash. A file that is no longer where the owner
++ *   reviewed it is left alone.
++ *
++ * Operations keep one flat shape, so a validated operation validates again
++ * unchanged (journal recovery re-reads it).
++ */
++export const FILES_CAPABILITY = "files.browser.v1";
++export const FILES_OPERATION_TYPES = [
++  "files_filter",
++  "files_open",
++  "files_share",
++  "files_move",
++  "files_trash",
++  "files_folder_create",
++] as const;
++/** View-only operations: they change nothing, so they run without a separate review. */
++export const FILES_DIRECT_TYPES = ["files_filter", "files_open"] as const;
++export const FILES_PATHS_MAX = 50;
++export const FILES_FILTER_KINDS = [
++  "image",
++  "video",
++  "audio",
++  "document",
++  "pdf",
++  "folder",
++] as const;
++
++export type FilesFilterKind = (typeof FILES_FILTER_KINDS)[number];
++export type FilesFilterOperation = {
++  type: "files_filter";
++  text?: string;
++  kind?: FilesFilterKind;
++  folder?: string;
++  from?: string;
++  to?: string;
++};
++export type FilesAgentOperation =
++  | FilesFilterOperation
++  | { type: "files_open"; path: string }
++  | { type: "files_share"; paths: string[] }
++  | { type: "files_move"; paths: string[]; dest: string }
++  | { type: "files_trash"; paths: string[] }
++  | { type: "files_folder_create"; parent: string; name: string };
++
++type Row = Record<string, unknown>;
++function row(value: unknown): Row {
++  if (!value || typeof value !== "object" || Array.isArray(value))
++    throw Error("Invalid files operation");
++  return value as Row;
++}
++function exact(value: Row, keys: readonly string[]) {
++  if (Object.keys(value).some((key) => !keys.includes(key)))
++    throw Error("Unexpected files operation field");
++}
++/** One file or folder name: no separators, no control characters, not "." or "..". */
++export function validFilesName(value: unknown): string {
++  if (typeof value !== "string") throw Error("Invalid name");
++  const name = value.trim();
++  if (
++    !name ||
++    name.length > 255 ||
++    name === "." ||
++    name === ".." ||
++    // biome-ignore lint/suspicious/noControlCharactersInRegex: names exclude control characters
++    /[/\\\u0000-\u001f\u007f]/.test(name)
++  )
++    throw Error("Invalid name");
++  return name;
++}
++/** A volume-relative path; "" (the volume root) only where a folder is allowed. */
++export function validFilesPath(value: unknown, allowRoot = false): string {
++  if (typeof value !== "string" || value.length > 1024)
++    throw Error("Invalid path");
++  const path = value.replace(/^\/+|\/+$/g, "");
++  if (!path) {
++    if (allowRoot) return "";
++    throw Error("Invalid path");
++  }
++  for (const part of path.split("/"))
++    if (validFilesName(part) !== part) throw Error("Invalid path");
++  return path;
++}
++function paths(value: unknown): string[] {
++  if (!Array.isArray(value) || !value.length || value.length > FILES_PATHS_MAX)
++    throw Error("Select 1-50 files");
++  const out = value.map((item) => validFilesPath(item));
++  if (new Set(out).size !== out.length) throw Error("Duplicate files");
++  return out;
++}
++function isoDate(value: unknown): string {
++  if (
++    typeof value !== "string" ||
++    value.length > 40 ||
++    !/^\d{4}-\d\d-\d\d(?:T[\d:.]+(?:Z|[+-]\d\d:\d\d))?$/.test(value) ||
++    !Number.isFinite(Date.parse(value))
++  )
++    throw Error("Invalid date");
++  return value;
++}
++
++export function isFilesOperation(
++  value: unknown,
++): value is FilesAgentOperation {
++  return (
++    !!value &&
++    typeof value === "object" &&
++    (FILES_OPERATION_TYPES as readonly string[]).includes(
++      String((value as Row).type),
++    )
++  );
++}
++export function isFilesDirectType(type: string): boolean {
++  return (FILES_DIRECT_TYPES as readonly string[]).includes(type);
++}
++
++export function validateFilesOperation(value: unknown): FilesAgentOperation {
++  const op = row(value);
++  switch (op.type) {
++    case "files_filter": {
++      exact(op, ["type", "text", "kind", "folder", "from", "to"]);
++      const out: FilesFilterOperation = { type: "files_filter" };
++      if (op.text !== undefined) {
++        if (
++          typeof op.text !== "string" ||
++          !op.text.trim() ||
++          op.text.length > 120 ||
++          // biome-ignore lint/suspicious/noControlCharactersInRegex: filter text excludes control characters
++          /[\u0000-\u001f]/.test(op.text)
++        )
++          throw Error("Invalid filter text");
++        out.text = op.text.trim();
++      }
++      if (op.kind !== undefined) {
++        if (!(FILES_FILTER_KINDS as readonly string[]).includes(String(op.kind)))
++          throw Error("Invalid filter kind");
++        out.kind = op.kind as FilesFilterKind;
++      }
++      if (op.folder !== undefined) out.folder = validFilesPath(op.folder, true);
++      if (op.from !== undefined) out.from = isoDate(op.from);
++      if (op.to !== undefined) out.to = isoDate(op.to);
++      if (out.from && out.to && Date.parse(out.from) > Date.parse(out.to))
++        throw Error("Invalid date range");
++      if (Object.keys(out).length === 1) throw Error("Empty filter");
++      return out;
++    }
++    case "files_open":
++      exact(op, ["type", "path"]);
++      return { type: "files_open", path: validFilesPath(op.path) };
++    case "files_share":
++      exact(op, ["type", "paths"]);
++      return { type: "files_share", paths: paths(op.paths) };
++    case "files_trash":
++      exact(op, ["type", "paths"]);
++      return { type: "files_trash", paths: paths(op.paths) };
++    case "files_move":
++      exact(op, ["type", "paths", "dest"]);
++      return {
++        type: "files_move",
++        paths: paths(op.paths),
++        dest: validFilesPath(op.dest, true),
++      };
++    case "files_folder_create": {
++      exact(op, ["type", "parent", "name"]);
++      const name = validFilesName(op.name);
++      if (name.startsWith(".")) throw Error("Invalid name");
++      return {
++        type: "files_folder_create",
++        parent: validFilesPath(op.parent, true),
++        name,
++      };
++    }
++  }
++  throw Error("Unsupported files operation");
++}
++
++const baseName = (path: string) => path.slice(path.lastIndexOf("/") + 1);
++const place = (path: string) =>
++  path ? path.split("/").join(" › ") : "Internal storage";
++const listed = (list: readonly string[]) =>
++  list.length <= 3
++    ? list.map(baseName).join(", ")
++    : `${list.slice(0, 2).map(baseName).join(", ")} and ${list.length - 2} more`;
++const count = (n: number) => (n === 1 ? "1 item" : `${n} items`);
++const KIND_LABELS: Record<FilesFilterKind, string> = {
++  image: "Images",
++  video: "Videos",
++  audio: "Audio",
++  document: "Documents",
++  pdf: "PDFs",
++  folder: "Folders",
++};
++/** The chip a filter shows, for example `“lease” · PDFs · in Download`. */
++export function filesFilterLabel(op: Omit<FilesFilterOperation, "type">): string {
++  return [
++    op.text ? `“${op.text}”` : "",
++    op.kind ? KIND_LABELS[op.kind] : "",
++    op.folder !== undefined
++      ? `in ${baseName(op.folder) || "Internal storage"}`
++      : "",
++    op.from || op.to
++      ? [op.from?.slice(0, 10), op.to?.slice(0, 10)].filter(Boolean).join(" – ")
++      : "",
++  ]
++    .filter(Boolean)
++    .join(" · ");
++}
++/** Owner-facing title and the exact effect of a proposal. */
++export function describeFilesOperation(op: FilesAgentOperation): {
++  title: string;
++  description: string;
++} {
++  switch (op.type) {
++    case "files_filter":
++      return { title: "Show files", description: filesFilterLabel(op) };
++    case "files_open":
++      return { title: "Open file", description: place(op.path) };
++    case "files_share":
++      return {
++        title: `Share ${count(op.paths.length)}`,
++        description: listed(op.paths),
++      };
++    case "files_trash":
++      return {
++        title: `Move ${count(op.paths.length)} to Trash`,
++        description: listed(op.paths),
++      };
++    case "files_move":
++      return {
++        title: `Move ${count(op.paths.length)}`,
++        description: `${listed(op.paths)} → ${place(op.dest)}`,
++      };
++    case "files_folder_create":
++      return {
++        title: "New folder",
++        description: place(op.parent ? `${op.parent}/${op.name}` : op.name),
++      };
++  }
++}
++/** Changes are reviewed only where the owner sees Files on the unlocked phone;
++ * filter and open may start from any unlocked screen and bring Files forward. */
++export function filesContextAllowed(
++  op: FilesAgentOperation,
++  context: { view: string; sensitive?: boolean },
++): boolean {
++  if (context.sensitive) return false;
++  return isFilesDirectType(op.type) || context.view === "files";
++}
++
++const filesPath = {
++  type: "string",
++  description: 'Path on Internal storage, for example "Download/lease.pdf"',
++} as const;
++const filesPaths = {
++  type: "array",
++  items: filesPath,
++  description: "1-50 paths on Internal storage",
++} as const;
++/** Tool schema branches (one per operation, disjoint by `type`). */
++export const FILES_OPERATION_SCHEMAS = [
++  {
++    type: "object",
++    additionalProperties: false,
++    required: ["type"],
++    properties: {
++      type: { type: "string", enum: ["files_filter"] },
++      text: { type: "string", description: "Words in the file name" },
++      kind: { type: "string", enum: [...FILES_FILTER_KINDS] },
++      folder: {
++        type: "string",
++        description: 'Folder path, for example "Download"; "" is Internal storage',
++      },
++      from: { type: "string", description: "Modified on or after, YYYY-MM-DD" },
++      to: { type: "string", description: "Modified on or before, YYYY-MM-DD" },
++    },
++  },
++  {
++    type: "object",
++    additionalProperties: false,
++    required: ["type", "path"],
++    properties: {
++      type: { type: "string", enum: ["files_open"] },
++      path: filesPath,
++    },
++  },
++  ...(["files_share", "files_trash"] as const).map((type) => ({
++    type: "object",
++    additionalProperties: false,
++    required: ["type", "paths"],
++    properties: { type: { type: "string", enum: [type] }, paths: filesPaths },
++  })),
++  {
++    type: "object",
++    additionalProperties: false,
++    required: ["type", "paths", "dest"],
++    properties: {
++      type: { type: "string", enum: ["files_move"] },
++      paths: filesPaths,
++      dest: { ...filesPath, description: 'Destination folder; "" is Internal storage' },
++    },
++  },
++  {
++    type: "object",
++    additionalProperties: false,
++    required: ["type", "parent", "name"],
++    properties: {
++      type: { type: "string", enum: ["files_folder_create"] },
++      parent: { ...filesPath, description: 'Parent folder; "" is Internal storage' },
++      name: { type: "string" },
++    },
++  },
++];
++export const FILES_GUIDANCE =
++  "Phone Files (requires files.browser.v1): to find files, use files_filter with name words, a kind, a folder or a modified date range; it only narrows what Files shows and returns a count, never file contents. files_open shows one file. files_share, files_move, files_trash and files_folder_create are reviewed with Files on screen; a move never replaces a file with the same name, and Trash is restorable for 30 days. Use only paths the owner named or Files showed; never invent paths.";
+diff --git a/plugins/plugin-assistant/src/services/device-actions/service.ts b/plugins/plugin-assistant/src/services/device-actions/service.ts
+index 599af5d..d55a7af 100644
+--- a/plugins/plugin-assistant/src/services/device-actions/service.ts
++++ b/plugins/plugin-assistant/src/services/device-actions/service.ts
+@@ -87,6 +87,7 @@ import {
+   isClockOperation,
+   validateClockResult,
+ } from "./clock-contract.ts";
++import { FILES_OPERATION_TYPES } from "./files-browser-contract.ts";
+ import {
+   DeviceActionError,
+   type DeviceActionPayload,
+@@ -2053,6 +2054,7 @@ export class DeviceActionService {
+         "clock_alarm",
+         "create_note",
+         "maps_read_selected",
++        ...FILES_OPERATION_TYPES,
+         "notes_read_selected",
+         "notes_query",
+         "notes_update",

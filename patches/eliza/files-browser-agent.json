@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "baseCommit": "0594fc72da4450a84a986ad12e730e3faa902018",
+  "status": "proposed-upstream",
+  "purpose": "files.browser.v1 device operations (files_filter, files_open, reviewed files_share/files_move/files_trash/files_folder_create): shared contract, agent tool schema and capability gating, service admission and the phone-side coordinator. Not applied by any build until it lands as a reviewed upstream commit and the pin moves.",
+  "patches": [
+    {
+      "file": "files-browser-agent.patch",
+      "sha256": "ad13d7b44c30b3908b84a6b98c26fe8a89127b912078b3bcab4cd088bca9eca8",
+      "targets": [
+        {
+          "path": "plugins/plugin-assistant/src/services/device-actions/action.ts",
+          "beforeSha256": "7c2cfdca2a9bf12ea154302d7ec0cc1dc3b1c2dd70fe8464afbbd313ea2884f4",
+          "afterSha256": "ae15113fdd143979eefee68490a6d0e5602070269f7fa7208eaefc235c8b9569"
+        },
+        {
+          "path": "plugins/plugin-assistant/src/services/device-actions/client-coordinator.ts",
+          "beforeSha256": "742edde5d9c3f08276ba78f5ede90387c26ca41f57a88d612aa75ac9248e0cbb",
+          "afterSha256": "c115b907b433dcc17f621fc54737158cc4a5be8e0de0bb05f607000b57c59ede"
+        },
+        {
+          "path": "plugins/plugin-assistant/src/services/device-actions/contract.ts",
+          "beforeSha256": "fa3be6f37798be6b04488df03b779676a38e08143212c0d41aec84edb5c6e691",
+          "afterSha256": "d6d5c80b3ab2ea4bc75cc8f78fef355b77e414578c89e4db416a8d706428ae1e"
+        },
+        {
+          "path": "plugins/plugin-assistant/src/services/device-actions/service.ts",
+          "beforeSha256": "9fda4505a2703ba304167ac90771008ffc688157069bd911deeed306b1e8994f",
+          "afterSha256": "df002f6063f0d81544aae95025c4f3f032a4b244c5916a8766127250b622df90"
+        },
+        {
+          "path": "plugins/plugin-assistant/src/services/device-actions/files-browser-contract.ts",
+          "beforeSha256": null,
+          "afterSha256": "f460d552021aab750a5dab8756066bc7b7ab3daa5f0de0245e771eca57c61b1a"
+        },
+        {
+          "path": "plugins/plugin-assistant/src/services/device-actions/files-browser-contract.test.ts",
+          "beforeSha256": null,
+          "afterSha256": "a555978e9b988c122836ce6b880ee96c24fa9a589f55eead100aa46a39f99364"
+        }
+      ]
+    }
+  ]
+}

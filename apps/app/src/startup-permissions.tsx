@@ -3,7 +3,7 @@ import React, {useEffect, useLayoutEffect, useRef, useState, useSyncExternalStor
 import {registerPlugin} from './platform-plugins';
 import {connectionController} from './runtime/connection-ui';
 import {googleConnectionController} from './runtime/google-connection-ui';
-import {readStartupPermissionMemory,writeStartupPermissionMemory,startupPhotoAccess,startupLocationAccess,STARTUP_PERMISSIONS_REOPEN} from './startup-permission-flow';
+import {readStartupPermissionMemory,writeStartupPermissionMemory,startupPhotoAccess,startupLocationAccess,startupFilesAccess,STARTUP_PERMISSIONS_REOPEN} from './startup-permission-flow';
 import {iconStyle} from './icon-style';
 import {browserStartupPermission} from './startup-browser-permissions';
 import {createStartupPermissionFlow, startupPermissionKeys, nativeStartupPermissionKeys, type NativeStartupPermissionKey as PermissionKey, type StartupPermissionState} from './startup-permission-flow';
@@ -22,6 +22,7 @@ const location = registerPlugin<{checkPermissions(): Promise<{location: string}>
 const photos = registerPlugin<{scope():Promise<unknown>;requestAccess():Promise<unknown>}>('AlphaPhotoLibrary');
 const calendar = registerPlugin<{checkPermissions(): Promise<{calendar: string}>; requestAccess(): Promise<{status: string}>}>('AlphaCalendar');
 const device = registerPlugin<{openSettings(options: {page: 'notifications' | 'privacy'}): Promise<unknown>}>('AlphaDevice');
+const files = registerPlugin<{storageState(): Promise<{access?: string}>; storageRequestAccess(): Promise<{access?: string}>}>('AlphaFiles');
 const details = {
   notifications: {title: 'Notifications', icon: 'bell'},
   microphone: {title: 'Microphone', icon: 'mic'},
@@ -29,6 +30,7 @@ const details = {
   photos: {title: 'Photos', icon: 'images'},
   calendar: {title: 'Calendar', icon: 'calendar'},
   location: {title: 'Location', icon: 'map-pin'},
+  files: {title: 'Files', icon: 'folder'},
 };
 const progressKey = 'alpha:startup-permission-progress:v1';
 const dismissedKey = 'alpha:startup-permissions-dismissed:v1';
@@ -67,6 +69,8 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
       camera: {status: async () => permissionAccess((await permissions.checkPermissions()).camera), request: () => permissions.requestPermissions({permissions: ['camera']}), openSettings: () => device.openSettings({page: 'privacy'})},
       photos: {status: async () => {const access=startupPhotoAccess(await photos.scope());photoDescription.current=access.description;return access;},request: () => photos.requestAccess(),openSettings: () => device.openSettings({page:'privacy'})},
       calendar: {status: async () => permissionAccess((await calendar.checkPermissions()).calendar), request: () => calendar.requestAccess(), openSettings: () => device.openSettings({page: 'privacy'})},
+      // Android's "All files access" page returns to Alpha; the flow reads access back then.
+      files: {status: async () => startupFilesAccess(await files.storageState()), request: () => files.storageRequestAccess(), openSettings: () => files.storageRequestAccess()},
       location: {status: async () => {const raw=await location.checkPermissions();const access=startupLocationAccess(raw);locationDescription.current=access.description;return {...access,requestable:raw.location!=='denied'};}, request: () => location.requestPermissions(), openSettings: () => device.openSettings({page: 'privacy'})},
     } as const;
     return Object.fromEntries(keys.map(key => [key, createStartupPermissionFlow(native ? nativeBridges[key] : browserStartupPermission(key as typeof startupPermissionKeys[number], {permissions: navigator.permissions, media: navigator.mediaDevices, geolocation: navigator.geolocation, notifications: typeof Notification === 'undefined' ? undefined : Notification}), {key: native ? key : 'browser'+key})])) as Record<PermissionKey, ReturnType<typeof createStartupPermissionFlow>>;
@@ -77,7 +81,7 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
   // A Settings reopen of completed setup is a review: it can be left at once and never rewrites the durable marker.
   const [review, setReview] = useState(false);
   const progressRef = useRef(progress), targetRef = useRef<PermissionKey | null>(null), reviewRef = useRef(false);
-  const [states, setStates] = useState<Record<PermissionKey, StartupPermissionState>>({notifications: 'checking', microphone: 'checking', camera: 'checking', location: 'checking', calendar: 'checking', photos: 'checking'});
+  const [states, setStates] = useState<Record<PermissionKey, StartupPermissionState>>({notifications: 'checking', microphone: 'checking', camera: 'checking', location: 'checking', calendar: 'checking', photos: 'checking', files: 'checking'});
   const [busy, setBusy] = useState(false);
   const [progressError, setProgressError] = useState(false);
   const [canSkip, setCanSkip] = useState(false);
@@ -89,7 +93,7 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
   const visible = (active || ready) && (enabled || reopened) && !connection.open && !googleOpen;
   const writeProgress = (value: Progress | null, choices = value?.choices ?? []) => {
     if (!reviewRef.current) try {
-      writeStartupPermissionProgress(localStorage, {version: native ? 3 : 1, status: value ? 'pending' : 'completed', step: value?.step ?? keys.length, ...(choices.includes('skipped') ? {choices} : {})}, native);
+      writeStartupPermissionProgress(localStorage, {version: native ? 4 : 1, status: value ? 'pending' : 'completed', step: value?.step ?? keys.length, ...(choices.includes('skipped') ? {choices} : {})}, native);
       setProgressError(false);
     } catch { setProgressError(true); }
     // Browser storage may be blocked. Keep the current session usable without
@@ -187,7 +191,7 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
     const ticket = sequence.current;
     try {
       let value: StartupPermissionState | null;
-      if (target && native && state === 'ready') {await device.openSettings({page: key === 'notifications' ? 'notifications' : 'privacy'}); value = await flows[key].refresh();}
+      if (target && native && state === 'ready') {await (key === 'files' ? files.storageRequestAccess() : device.openSettings({page: key === 'notifications' ? 'notifications' : 'privacy'})); value = await flows[key].refresh();}
       else value = state === 'unavailable' || (!native && state === 'settings') ? await flows[key].refresh() : await flows[key].enable();
       if (alive.current && ticket === sequence.current && value !== null) {
         setStates(previous => ({...previous, [key]: value})); changed();

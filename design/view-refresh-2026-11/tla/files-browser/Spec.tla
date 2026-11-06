@@ -75,8 +75,10 @@ Init ==
 ----------------------------------------------------------------------------
 Navigate(d) == cwd # d /\ cwd' = d /\ sel' = {} /\ UNCHANGED <<loc, origin, name, stale, review, budget, lost>>
 
+\* The renderer cannot know about an external change before Android reports it, so actions
+\* are not guarded by ~stale. A selected file that is gone is skipped ("missing" outcome).
 Toggle(f) ==
-  /\ f \in Listing(cwd) /\ ~stale
+  /\ f \in Listing(cwd)
   /\ sel' = IF f \in sel THEN sel \ {f} ELSE sel \cup {f}
   /\ UNCHANGED <<loc, origin, name, cwd, stale, review, budget, lost>>
 
@@ -97,15 +99,16 @@ MoveOne(f, d) ==
   /\ origin' = [origin EXCEPT ![f] = d]
 
 MoveSel(d) ==
-  /\ Cardinality(sel) = 1 /\ d # cwd /\ ~stale
-  /\ \E f \in sel : MoveOne(f, d)
+  /\ Cardinality(sel) = 1 /\ d # cwd
+  /\ \E f \in sel : IF loc[f] = cwd THEN MoveOne(f, d)
+                      ELSE UNCHANGED <<loc, origin, name, lost>>   \* gone: "missing", nothing moves
   /\ sel' = {}
   /\ UNCHANGED <<cwd, stale, review, budget>>
 
 TrashSel ==
-  /\ sel # {} /\ ~stale
-  /\ loc' = [f \in FilesSet |-> IF f \in sel THEN Trash ELSE loc[f]]
-  /\ origin' = [f \in FilesSet |-> IF f \in sel THEN loc[f] ELSE origin[f]]
+  /\ sel # {}
+  /\ loc' = [f \in FilesSet |-> IF f \in sel /\ loc[f] = cwd THEN Trash ELSE loc[f]]
+  /\ origin' = [f \in FilesSet |-> IF f \in sel /\ loc[f] = cwd THEN loc[f] ELSE origin[f]]
   /\ sel' = {}
   /\ UNCHANGED <<name, cwd, stale, review, budget, lost>>
 
@@ -130,10 +133,11 @@ External(f) ==
         /\ name' = IF Clash(f, origin[f]) THEN [name EXCEPT ![f] = FreeName(f, origin[f])] ELSE name
      \/ /\ loc[f] \in Dirs /\ loc' = [loc EXCEPT ![f] = Gone] /\ UNCHANGED name
   /\ stale' = TRUE
-  /\ sel' = sel \ {g \in FilesSet : loc'[g] # cwd}
-  /\ UNCHANGED <<origin, cwd, review, lost>>
+  /\ UNCHANGED <<sel, origin, cwd, review, lost>>   \* the listing learns of it at Refresh
 
-Refresh == stale /\ stale' = FALSE /\ UNCHANGED <<loc, origin, name, sel, cwd, review, budget, lost>>
+\* Reload on Android's change event: the listing and the selection catch up (stale rows pruned).
+Refresh == stale /\ stale' = FALSE /\ sel' = sel \cap Listing(cwd)
+           /\ UNCHANGED <<loc, origin, name, cwd, review, budget, lost>>
 
 AgentPropose(f, d) ==
   /\ review = NoReview /\ loc[f] \in Dirs /\ loc[f] # d
@@ -165,7 +169,10 @@ CategoryIsQuery ==
   /\ Category("Downloads") = {f \in Present : loc[f] = "Download"}
   /\ \A c \in Categories \ {"Downloads"} : Category(c) \subseteq Present
 NoOverwriteWithoutConfirm == ~lost
-SelectionExists == sel \subseteq Listing(cwd)
+\* Once the listing has caught up, every selected row exists in the open folder.
+SelectionExists == ~stale => sel \subseteq Listing(cwd)
+\* Selection actions touch only files that are really in the open folder.
+SelectionActsOnlyOnPresent == [][TrashSel => \A f \in FilesSet : (loc'[f] = Trash /\ loc[f] # Trash) => loc[f] = cwd]_vars
 TrashReversible == \A f \in FilesSet : loc[f] = Trash => origin[f] \in Dirs
 \* An approved agent move applies only to the file where the user saw it.
 AgentMoveOnlyReviewed == [][AgentApply => loc[review.f] = review.from]_vars

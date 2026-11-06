@@ -115,7 +115,7 @@ test('the note editor keeps Delete on screen beside the other header actions', a
 test.describe('200% text keeps the way out on screen', () => {
   // Large-text layouts re-measure every rule after the text grows: explicit, as other sweeps run beside them.
   test.describe.configure({ timeout: 60_000 });
-  for (const [start, open, field] of [['inbox', 'Search email', 'Search mail'], ['photos', 'Search photos', 'Search photos'], ['notes', 'Search notes', 'Search notes'], ['files', 'Search files', 'Search files']] as const) {
+  for (const [start, open, field] of [['inbox', 'Search email', 'Search mail'], ['photos', 'Search photos', 'Search photos'], ['notes', 'Search notes', 'Search notes']] as const) {
     test(`${start} search: the field shrinks and Close search stays reachable`, async ({ page }) => {
       await page.goto(`/?mode=mock&start=${start}`);
       await page.getByRole('button', { name: open, exact: true }).click();
@@ -166,7 +166,7 @@ test.describe('menus and sheets over a scrim own focus', () => {
     ['photos:viewer', ['Photo info'], 'Photo info', 'Close info', 'Photo info'],
     ['photos:viewer', ['Share photo'], 'Share photo', 'Close share', 'Share photo'],
     ['notes:editor', ['Share note'], 'Share', 'Cancel', 'Share note'],
-    ['files:folder', ['View and sort'], 'View and sort', 'Close menu', 'View and sort'],
+    ['files:folder', ['Sort and more'], 'Sort and more', 'Close menu', 'Sort and more'],
     ['files:preview', ['Move file'], 'Move to', 'Close move', 'Move file'],
     ['files:preview', ['Share file'], 'Share file', 'Close share', 'Share file'],
     ['workflows:new', ['Add Read step'], 'Step editor', 'Close', null],

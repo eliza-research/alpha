@@ -586,11 +586,16 @@ test('loop J03 in the web build: a chosen document can be reviewed for a questio
   test.setTimeout(120_000);
   const foreign = await fenceNetwork(page);
   await page.addInitScript(offline);
+  // A document already saved in the browser's file library (as a saved attachment would be).
+  await page.addInitScript(() => {
+    const open = indexedDB.open('alpha.browser.files.v1', 2);
+    open.onupgradeneeded = () => { if (!open.result.objectStoreNames.contains('entries')) open.result.createObjectStore('entries', { keyPath: 'id' }); if (!open.result.objectStoreNames.contains('workflowReceipts')) open.result.createObjectStore('workflowReceipts', { keyPath: 'id' }); };
+    open.onsuccess = () => { const bytes = new TextEncoder().encode('Public fact: twelve raised beds.').buffer; open.result.transaction('entries', 'readwrite').objectStore('entries').put({ id: '0b6f8f2e-4a8e-4c11-9d1e-5f4b1d2a7c30', parentId: 'root', name: 'garden-report.txt', mimeType: 'text/plain', directory: false, size: bytes.byteLength, revision: 'a'.repeat(64), bytes }); open.result.close(); };
+  });
   await page.goto('/');
   await button(page, 'Files').click();
-  const chooser = page.waitForEvent('filechooser');
   await button(page, 'Documents').click();
-  await (await chooser).setFiles({ name: 'garden-report.txt', mimeType: 'text/plain', buffer: Buffer.from('Public fact: twelve raised beds.') });
+  await button(page, 'Open garden-report.txt').click();
   await button(page, 'Ask Alpha').click();
   const question = page.getByRole('dialog', { name: 'Ask about selected content' });
   await expect(question.getByRole('textbox', { name: 'Content excerpt' })).toHaveValue('Public fact: twelve raised beds.');
