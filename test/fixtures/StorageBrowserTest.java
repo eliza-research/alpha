@@ -53,6 +53,8 @@ public final class StorageBrowserTest {
    check(b.transfer(Arrays.asList("Documents"),"Documents/Sub",false).get(0).status.equals("invalid"),"no move into itself");
    check(b.createFolder("Documents","Sub").equals("Documents/Sub (1)"),"new folder keeps both");
    try{b.rename("Documents/Sub (1)","Sub");check(false,"rename refuses a clash");}catch(IllegalStateException expected){}
+   for(String hidden:new String[]{".Sub",".Trash-alpha"}){try{b.rename("Documents/Sub (1)",hidden);check(false,"rename refuses "+hidden);}catch(IllegalArgumentException expected){}}
+   check(new File(root,"Documents/Sub (1)").isDirectory(),"a refused rename changes nothing");
    // The Downloads category: files directly in Download/, newest first; no folders, no hidden entries.
    File download=new File(root,"Download");
    for(File f:download.listFiles())StorageBrowser.deleteRecursive(f);

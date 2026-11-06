@@ -72,6 +72,7 @@ test('a move into a folder with the same name keeps both as "name (1)" and never
  assert.equal((await v.transfer(['Download/gone.pdf'],'Documents',false)).outcomes[0].status,'missing','a file no longer where it was reviewed is left alone');
  assert.equal(storage.freeName('Taxes',['taxes'],true),'Taxes (1)','folders and case-insensitive names');
  assert.equal((await v.run('storageRename',{path:'Documents/a.pdf',name:'a (1).pdf'})).status,'exists','rename refuses an existing name');
+ for(const hidden of ['.a.pdf','.Trash-alpha'])assert.equal((await v.run('storageRename',{path:'Documents/a.pdf',name:hidden})).status,'invalid','rename refuses a hidden name no listing would show');
  assert.equal((await v.createFolder('Documents','Taxes')).path,'Documents/Taxes');
  assert.equal((await v.createFolder('Documents','Taxes')).path,'Documents/Taxes (1)');
  assert.ok(v.changes.length>0,'open listings are told to refresh');

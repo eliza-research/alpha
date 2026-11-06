@@ -88,7 +88,9 @@ export class BrowserStorageVolume {
     return {path: joinPath(folder, free)};
   }
   async rename(path: string, name: string): Promise<{path: string}> {
-    const from = validPath(path), clean = validName(name), row = await this.entry(from);
+    const from = validPath(path), clean = validName(name);
+    if (clean.startsWith('.')) throw Error('Invalid name');
+    const row = await this.entry(from);
     if (!row) throw new Missing();
     if (clean === row.name) return {path: from};
     if ((await this.children(row.parentId)).some(e => e.id !== row.id && e.name.toLowerCase() === clean.toLowerCase())) throw new Exists();

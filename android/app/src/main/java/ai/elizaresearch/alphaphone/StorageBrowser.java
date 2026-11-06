@@ -131,9 +131,10 @@ final class StorageBrowser {
   }
   return out;
  }
- /** Rename refuses an existing name instead of replacing it. */
+ /** Rename refuses an existing name instead of replacing it, and a hidden (dot) name, which no
+  * listing shows and which could name the trash. */
  String rename(String path,String name)throws IOException{
-  File source=resolve(path,false);validName(name);if(!source.exists())throw new java.io.FileNotFoundException();
+  File source=resolve(path,false);validName(name);if(name.startsWith("."))throw new IllegalArgumentException("Invalid name");if(!source.exists())throw new java.io.FileNotFoundException();
   File destination=new File(source.getParentFile(),name);
   if(destination.exists()&&!destination.getCanonicalPath().equals(source.getCanonicalPath())&&!name.equalsIgnoreCase(source.getName()))throw new IllegalStateException("exists");
   if(!source.renameTo(destination))throw new IOException("Rename failed");
