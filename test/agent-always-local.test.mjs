@@ -178,6 +178,32 @@ test('a chat turn without Cloud inference gets an honest answer with the plan ac
   assert.match(adapter, /const planCard=planActionCard\(\(e as \{planAction\?:unknown\}\)\.planAction\);/);
 });
 
+test('a plan or billing refusal in chat is one agent bubble carrying one Manage card', () => {
+  const adapter = read('apps/app/src/prototype/agent-adapter.ts');
+  // Run the adapter's own failure branch with a recorded state; nothing else is posted afterwards.
+  const branch = between(adapter, '          const planCard=planActionCard((e as {planAction?:unknown}).planAction);', '        }\n        else if(this.live&&reconciling)');
+  const run = (failure, {streamed = false, kind = 'resident', planCard} = {}) => {
+    const state = {chat: 'closed', msgs: streamed ? [{id: 'streamed', from: 'agent', text: 'Partial', streaming: true}] : []};
+    const self = {setState: update => Object.assign(state, typeof update === 'function' ? update(state) : update), agentSay: () => { throw new Error('a second bubble'); }};
+    new Function('e', 'message', 'streamed', 'streamedId', 'planActionCard', 'connectionController', 'selectedCloudName', 'crypto',
+      stripTypeScriptTypes(branch, {mode: 'transform'})).call(self, failure, 'Refusal text.', streamed, 'streamed', () => planCard,
+      {getSnapshot: () => ({kind})}, () => 'Nebula', {randomUUID: () => 'bubble'});
+    return state.msgs;
+  };
+  const [bubble, ...rest] = run({serviceLimit: 'allowance-exhausted'});
+  assert.equal(rest.length, 0);
+  assert.equal(bubble.text, 'Refusal text.');assert.equal(bubble.interrupted, true);
+  assert.deepEqual(bubble.card, {type: 'generic', icon: 'info', title: 'Manage billing in Nebula', sub: 'Opens Nebula billing in your browser. Nothing is sent or purchased.', managePlan: true});
+  const [streamedBubble, ...more] = run({serviceLimit: 'subscription-required'}, {streamed: true});
+  assert.equal(more.length, 0);assert.equal(streamedBubble.interrupted, true);assert.equal(streamedBubble.streaming, false);
+  assert.equal(streamedBubble.text, 'Partial\n\nRefusal text.');assert.equal(streamedBubble.card.title, 'Manage plan in Nebula');
+  // A plan action card already on the refusal is the only card; other connections and failures get none.
+  const planCard = {title: 'Check subscription or enter a membership code', planAction: 'funding'};
+  assert.equal(run({serviceLimit: 'billing-refused'}, {planCard})[0].card, planCard);
+  assert.equal(run({serviceLimit: 'billing-refused'}, {kind: 'remote'})[0].card, null);
+  assert.equal(run({serviceLimit: 'rate-limited'})[0].card, null);
+});
+
 test('the plan surface is a notice beside the running agent, not a gate', () => {
   const chooser = ui.slice(ui.indexOf('export function ConnectionChooser'));
   assert.match(chooser, /if \(!visible\) \{\n\s+\/\/ Never a gate: the agent is running\./);
