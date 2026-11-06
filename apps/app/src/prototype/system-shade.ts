@@ -80,6 +80,16 @@ export function installSystemShade(Component: any, options: { native: boolean })
         if (clearance) self.alphaHomeObserver.observe(clearance);
       } else markHomeFits();
     }
+    // The overflow pull's non-passive touch listeners run on every touch, so they exist only while
+    // Home is showing; an app or the lock screen scrolls without them.
+    const context = self.pullContext() as PullContext, showing = context.screen === 'home' && !context.view;
+    if (showing && !self.alphaOverflowPull) {
+      // Same rule as the pull itself (emptyHomeShadePull), checked before the drag is known.
+      self.alphaOverflowPull = installOverflowPull(() => emptyHomePullEligible(self.pullContext() as PullContext), HOME);
+    } else if (!showing && self.alphaOverflowPull) {
+      self.alphaOverflowPull();
+      self.alphaOverflowPull = undefined;
+    }
   };
   p.componentDidMount = function () {
     mount?.call(this);
@@ -87,12 +97,9 @@ export function installSystemShade(Component: any, options: { native: boolean })
     document.fonts?.addEventListener('loadingdone', this.alphaHomeFits);
     window.addEventListener('resize', this.alphaHomeFits);
     watch(this);
-    // Same rule as the pull itself (emptyHomeShadePull), checked before the drag is known.
-    const self = this;
-    this.alphaOverflowPull = installOverflowPull(() => emptyHomePullEligible(self.pullContext() as PullContext), HOME);
   };
   p.componentDidUpdate = function (...args: unknown[]) { update?.apply(this, args); watch(this); scheduleFit(this); };
-  p.componentWillUnmount = function () { window.removeEventListener('resize', this.alphaHomeFits); document.fonts?.removeEventListener('loadingdone', this.alphaHomeFits); if (this.alphaHomeFitFrame != null) cancelAnimationFrame(this.alphaHomeFitFrame); this.alphaHomeObserver?.disconnect(); this.alphaOverflowPull?.(); unmount?.call(this); };
+  p.componentWillUnmount = function () { window.removeEventListener('resize', this.alphaHomeFits); document.fonts?.removeEventListener('loadingdone', this.alphaHomeFits); if (this.alphaHomeFitFrame != null) cancelAnimationFrame(this.alphaHomeFitFrame); this.alphaHomeObserver?.disconnect(); this.alphaOverflowPull?.(); this.alphaOverflowPull = undefined; unmount?.call(this); };
   if (!options.native) return;
   p.expandAndroidShade = async function () {
     if (this.alphaShadeAsking) return;
