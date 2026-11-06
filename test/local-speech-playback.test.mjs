@@ -84,7 +84,7 @@ test('Listen refuses a message with a link on both routes, before audio and with
     for (let i = 0; i < 5; i++) await tick();
     assert.deepEqual(f.spoken, [], cloud ? 'Cloud' : 'device');
     assert.equal(f.prepared, 0, 'nothing is prepared for refused text');
-    assert.equal(f.shell.renderVals().msgs[0].localSpeechMessage, 'This message contains a link or email address. Edit a copy in Notes before listening; nothing has been read.');
+    assert.equal(f.shell.renderVals().msgs[0].localSpeechMessage, 'This message has a link or email address, so it can\'t be read aloud.');
   }
 });
 

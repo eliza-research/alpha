@@ -81,9 +81,18 @@ test('own-provider voice availability follows the selected optional Cartesia key
  }
 });
 
-test('explicit own keys choose the resident network voice route without a Cloud account',()=>{
+test('own keys with a Cartesia key choose the resident network voice route without a Cloud account',()=>{
  const v=load(storage(),{direct:true,voice:true,account:false});
  assert.equal(v.selectVoiceRoute('default'),'cloud');assert.equal(v.selectVoiceRoute('agent'),'cloud');assert.equal(v.selectVoiceRoute('device'),'device');
  assert.equal(v.cloudVoiceAvailable(),true);assert.match(v.cloudSpeechDisclosure(),/own API key/);assert.doesNotMatch(v.cloudSpeechDisclosure(),/Cloud account/);
- const off=load(storage(),{direct:true,voice:false,account:false});assert.equal(off.cloudVoiceAvailable(),false);assert.equal(off.selectVoiceRoute('default'),'cloud');
+ const off=load(storage(),{direct:true,voice:false,account:false});assert.equal(off.cloudVoiceAvailable(),false);
+});
+
+test('own keys without a Cartesia key keep voice on this phone',()=>{
+ for(const account of [true,false]){
+  const v=load(storage(),{direct:true,voice:false,account});
+  for(const requested of ['default','agent','device'])assert.equal(v.selectVoiceRoute(requested),'device');
+ }
+ const cloud=load(storage(),{direct:true,voice:false,account:true,cloud:true});
+ assert.equal(cloud.selectVoiceRoute('default'),'cloud','a Cloud-runtime build has no on-device route to fall back to');
 });

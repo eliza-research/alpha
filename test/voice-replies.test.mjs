@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import {stripTypeScriptTypes} from 'node:module';
+import {cloudVoiceViewFixture} from './fixtures/cloud-voice-view.mjs';
 
 // Real playback, selection and timing sources; the speech engine boundary is a fixture.
 function load(file, name, box) {
@@ -163,4 +164,49 @@ test('starting another reading or message playback stops note read-aloud', async
   await tick(); await tick();
   f.box.stopLocalSpeechPlayback();
   assert.equal(await second, 'stopped');
+});
+
+// The actual voice adapter on the on-device clip loop. The engine stub plans with the real
+// planner in the mode the adapter asks for, as local-voice.ts does.
+async function onDeviceConversation(t, {own = false} = {}) {
+  const f = cloudVoiceViewFixture({});
+  const box = {};
+  load('runtime/local-speech-text.ts', 'planLocalSpeech', box);
+  f.spoken = [];
+  f.box.createOnDeviceVoice = () => ({ready: async () => true, playbackReady: async () => true, speak: async (text, _signal, started, _strict, options) => {
+    f.spoken.push(...box.planLocalSpeech(text, {mode: options?.conversation ? 'conversation' : 'listen'})); started?.();
+  }});
+  f.box.createCloudVoice = () => { throw Error('own keys without Cartesia must not reach provider speech'); };
+  if (own) { const snapshot = f.box.connectionController.getSnapshot; f.box.connectionController.getSnapshot = () => ({...snapshot(), residentInference: 'direct', providerStatus: {voiceConfigured: false}}); }
+  f.box.nativeLiveVoiceReady = async () => false;
+  f.box.React = {createElement: () => 'activity'}; f.box.VoiceActivity = () => null;
+  f.box.BatchVoiceConversation = class { constructor(options) { f.batch = options; } async start() { f.batch.onState({phase: 'listening'}); } async stop() {} recheck() {} };
+  t.after(() => f.close());
+  await f.shell.startVoice(); for (let i = 0; i < 10; i++) await f.tick();
+  return f;
+}
+const reply = text => ({turnId: 'turn-1', replyId: 'reply-1', text, signal: new AbortController().signal, onStarted() {}});
+
+test('an accented or slashed reply is spoken in the voice conversation and the session keeps listening', async t => {
+  const f = await onDeviceConversation(t);
+  assert.equal(f.renderChat().state, 'listening');
+  await f.batch.speak(reply('Café Luna opens at 9:30, and/or www.cafe.example takes bookings.'));
+  assert.deepEqual(f.spoken, ['Cafe Luna opens at 9 30, and or cafe.example takes bookings.']);
+  assert.equal(f.renderChat().state, 'listening');
+});
+
+test('a reply that looks like a password stops voice with the refusal, not a connection problem', async t => {
+  const f = await onDeviceConversation(t);
+  const failure = await f.batch.speak(reply('Your wifi password is: hunter2')).then(() => null, error => error);
+  assert.equal(failure?.code, 'speech-refused');
+  assert.deepEqual(f.spoken, [], 'nothing of the reply is spoken');
+  f.batch.onState({phase: 'error', error: failure}); await f.tick();
+  assert.equal(f.renderChat().lines[0].t, "This reply may contain a password or code, so it wasn't read aloud. It's in the chat.");
+});
+
+test('own keys without a Cartesia key keep the voice conversation on this phone', async t => {
+  const f = await onDeviceConversation(t, {own: true});
+  assert.equal(f.renderChat().state, 'listening', 'voice is not turned off for a missing Cartesia key');
+  await f.batch.speak(reply('Done.'));
+  assert.deepEqual(f.spoken, ['Done.']);
 });
