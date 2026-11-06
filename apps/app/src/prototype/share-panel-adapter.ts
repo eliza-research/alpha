@@ -19,7 +19,7 @@ export function installSharePanelAdapter(Component:any,views:Record<string,Bag>)
    };
   };
   if(values.browser){const view=values.browser;bind('browser',view,'openShare',{title:'Current page',email:typeof view.shareEmail==='function'?view.shareEmail:undefined,copy:typeof view.copyLink==='function'?view.copyLink:undefined});}
-  if(values.photos){const view=values.photos;if(view.v)bind('photos',view.v,'share',{title:view.v.shareLabel||'Selected photo',email:view.v.canEmail?view.v.email:undefined,save:view.v.saveLocally});bind('photos',view,'selShare',{title:'Selected photos',save:view.selSaveLocally});if(view.alb?.dev)bind('photos',view.alb.dev,'share',{title:'Selected library items'});}
+  if(values.photos){const view=values.photos;if(view.v)bind('photos',view.v,'share',{title:view.v.shareLabel||'Selected photo',email:view.v.canEmail?view.v.email:undefined,save:view.v.saveLocally});bind('photos',view,'selShare',{title:'Selected photos',save:view.selSaveLocally});}
   if(values.files){const view=values.files;if(view.pv)bind('files',view.pv,'share',{title:view.pv.name||'Selected file',email:view.pv.canEmail?view.pv.email:undefined});bind('files',view,'selShare',{title:'Selected files',save:view.selSaveLocally});}
   if(values.calendar?.ev){const event=values.calendar.ev;const text=[event.title,event.day,event.when,event.where,event.notes].filter(value=>typeof value==='string'&&value).join('\n\n');
    event.share=()=>{const api=shell.api('calendar'),before=JSON.stringify(shell.vget('calendar')),current=()=>shell.S().view==='calendar'&&before===JSON.stringify(shell.vget('calendar'));

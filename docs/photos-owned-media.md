@@ -18,8 +18,10 @@ The new catalog queries the current user's MediaStore in 24-item pages. Keys inc
 the storage volume, media kind and row ID; revisions also bind the provider version
 and available generation columns. Filename queries run against the provider,
 not only loaded thumbnails. Cursors expire after two minutes and are invalidated
-by library changes or app backgrounding. At most 240 thumbnails remain in the
-renderer; library access does not create a cloud upload or background pixel index.
+by library changes or app backgrounding. Images and videos of a volume are merged
+below one `_id` cursor, so the grid is newest first across both kinds. The renderer
+keeps the newest 2000 rows (a reload re-reads at most 240) and groups them by day;
+library access does not create a cloud upload or background pixel index.
 Selected reads recheck permission, lock state and revision. A reviewed native-source
 patch lets the existing copy editor read a host-validated permitted still image;
 saved copies remain owned PNGs with the existing operation receipt journal.
@@ -184,8 +186,10 @@ volume-qualified identities, provider-version/generation revisions and exact
 conditional mutations. There is no second media index. The observer is registered
 only while the main Photos grid or this album is open (each watches under its own
 name), and both refresh bounded pages on provider changes. The two owner surfaces
-(the main grid and this album) still both exist; consolidating them into one view is
-a product decision left open.
+were consolidated in the 2026-11 view refresh: the album tile is gone, and agent
+select, filter, album-create and review requests act on the main Library grid
+(`setMainLibraryHost`). Reviews validate the reviewed revisions with the provider
+before they open and again before Android is asked.
 
 Search supports kind, dates and favorites. Names remain local to owner searches;
 the agent search accepts no text and its results omit filenames, albums, byte sizes,
@@ -202,8 +206,9 @@ Sharing opens Android's chooser for the exact selected revisions; it is not a
 receipt that anything was sent.
 
 The Alpha action path supports `photo_library_search`, `photo_library_inspect`,
-`photo_library_select` and `photo_library_review` behind `photos.library.v1` and a
-Photos context check. Upstream Eliza still must emit those operations and negotiate
+`photo_library_select`, `photo_library_review`, the read-only `photos_filter` (a
+clearable chip over the grid) and the reviewed `photos_album_create` behind
+`photos.library.v1` and a Photos context check. Upstream Eliza still must emit those operations and negotiate
 that capability, so source registration does not establish live agent acceptance.
 
 The host tests exercise the renderer contract, opaque outbound revisions, selection,

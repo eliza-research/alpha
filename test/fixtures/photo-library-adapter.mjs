@@ -1,7 +1,7 @@
 // Run with `node --import=tsx` from test/photo-library.test.mjs. Drives the Photos device
 // library adapter against an in-memory port: no Android, no MediaStore, no device.
 import assert from 'node:assert/strict';
-const {createDeviceLibrary,deviceLibraryAgent,LibraryAgentRefusal}=await import('../../apps/app/src/prototype/photo-library-adapter.ts');
+const {createDeviceLibrary,deviceLibraryAgent,LibraryAgentRefusal,setMainLibraryHost}=await import('../../apps/app/src/prototype/photo-library-adapter.ts');
 const lib=await import('../../apps/app/src/runtime/photo-library.ts');
 
 const tick=async(n=6)=>{for(let i=0;i<n;i++)await new Promise(resolve=>setTimeout(resolve,0));};
@@ -91,7 +91,7 @@ const fakeApi=()=>{const store={photos:{album:'device'}};return {store,api:{get:
  assert.deepEqual(selected,{kind:'photo_library_select',selected:1,missing:1});
  // Select and review need the owner-visible album.
  store.photos={album:null};
- await assert.rejects(library.agent.run({type:'photo_library_select',ids:['lib:i:3:30']},signal),/Open Photos > Device library/);
+ await assert.rejects(library.agent.run({type:'photo_library_select',ids:['lib:i:3:30']},signal),/Open Photos, then ask again/);
  // Denied scope refuses everything.
  state.scope='denied';
  await assert.rejects(library.agent.run({type:'photo_library_search'},signal),/not allowed/);
@@ -161,5 +161,43 @@ for (const operation of ['changes', 'validate']) {
  reject(Object.assign(Error('old grant denied'),{code:'LIBRARY_DENIED'}));await tick();
  assert.deepEqual(library.album({},api).items.map(row=>row.nativeMediaId),state.rows.map(row=>item(row).id),'an old denial must not clear a fresh catalog');
  library.dispose();
+}
+// 6. With the main Photos Library mounted, select/filter/album requests act on it and reviews open over it.
+{
+ const {state,port}=fakePort(),{api}=fakeApi(),library=createDeviceLibrary(port,()=>true);
+ const calls=[];let visible=true,changes=0;const trashed=[];
+ const release=setMainLibraryHost({visible:()=>visible,reviewChanged:()=>{changes++;},trashed:ids=>trashed.push(...ids),async run(operation){calls.push(operation.type);return operation.type==='photos_filter'?{kind:'photos_filter',shown:2,more:false}:operation.type==='photo_library_select'?{kind:'photo_library_select',selected:operation.ids.length,missing:0}:{kind:'photos_album_create',status:'review_opened',count:operation.ids.length,missing:0};}});
+ const signal=new AbortController().signal;
+ // The filter is read-only and needs no device library at all, even without scope.
+ state.scope='denied';
+ assert.deepEqual(await library.agent.run({type:'photos_filter',kind:'video'},signal),{kind:'photos_filter',shown:2,more:false});
+ assert.equal(state.changes.requested,undefined,'a filter requests no change');
+ state.scope='full';
+ assert.deepEqual(await library.agent.run({type:'photo_library_select',ids:['lib:i:3:30']},signal),{kind:'photo_library_select',selected:1,missing:0});
+ assert.deepEqual(await library.agent.run({type:'photos_album_create',name:'Trip',ids:['lib:i:3:30']},signal),{kind:'photos_album_create',status:'review_opened',count:1,missing:0});
+ assert.deepEqual(calls,['photos_filter','photo_library_select','photos_album_create']);
+ // A review binds the revisions the assistant read; the provider confirms they are current before it opens.
+ const search=await library.agent.run({type:'photo_library_search',limit:3},signal);
+ const review=lib.validateLibraryOperation({type:'photo_library_review',action:'trash',items:[{id:'lib:i:3:30',revision:search.items[0].revision}]});
+ assert.deepEqual(await library.agent.run(review,signal),{kind:'photo_library_review',status:'review_opened',action:'trash',count:1});
+ assert.equal(library.reviewCard().title,'Move 1 item to trash?');assert.ok(changes>0,'the host re-renders');
+ await assert.rejects(library.agent.run({type:'photo_library_select',ids:['lib:i:3:30']},signal),/Finish the open review/);
+ // Approving: Android confirms, then the host offers Undo for exactly the trashed items.
+ state.change=()=>({status:'complete',outcomes:[{id:'lib:i:3:30',status:'trashed'}]});
+ library.reviewCard().confirm();await tick(10);
+ assert.equal(state.changes.requested,1);assert.deepEqual(trashed,['lib:i:3:30']);assert.equal(library.reviewCard(),undefined);
+ // Stale before approval (NoActionOnStaleRev): an item changed after review applies nothing.
+ const again=await library.agent.run(lib.validateLibraryOperation({type:'photo_library_review',action:'favorite',items:[{id:'lib:i:2:20',revision:search.items[1].revision}]}),signal);
+ assert.equal(again.status,'review_opened');
+ state.rows=state.rows.filter(row=>row!==2);
+ library.reviewCard().confirm();await tick(10);
+ assert.equal(state.changes.requested,1,'no Android request for a stale review');assert.equal(library.reviewCard(),undefined);
+ // A review the provider no longer validates never opens.
+ await assert.rejects(library.agent.run(lib.validateLibraryOperation({type:'photo_library_review',action:'trash',items:[{id:'lib:i:2:20',revision:search.items[1].revision}]}),signal),LibraryAgentRefusal);
+ // Photos not showing: everything is refused.
+ visible=false;
+ await assert.rejects(library.agent.run({type:'photos_filter'},signal),/Open Photos/);
+ await assert.rejects(library.agent.run({type:'photo_library_select',ids:['lib:i:1:10']},signal),/Open Photos/);
+ release();library.dispose();
 }
 console.log('PASS photo library adapter');

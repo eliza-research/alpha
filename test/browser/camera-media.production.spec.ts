@@ -24,16 +24,11 @@ test('a camera capture is searchable and Ask Alpha reviews it locally without th
  await expect(page.getByRole('button',{name:'Open last photo',exact:true})).toBeVisible();
 
  await page.goto('/');await page.getByRole('button',{name:'Photos',exact:true}).click();
- await expect(page.getByRole('button',{name:/^Captured photo /})).toHaveCount(1);
- await page.getByRole('button',{name:'Search photos',exact:true}).click();
- const search=page.getByRole('textbox',{name:'Search photos'});
- await search.fill('today photo');
- await expect(page.getByText('Captured on this device · 1 match',{exact:true})).toBeVisible();
- await expect(page.getByRole('button',{name:/^Captured photo /})).toHaveCount(1);
- await search.fill('video');
- await expect(page.getByRole('button',{name:/^Captured photo /})).toHaveCount(0);
- await search.fill(new Date().toLocaleDateString('en-US',{weekday:'long'}));
- await page.getByRole('button',{name:/^Captured photo /}).click();
+ await expect(page.getByRole('button',{name:/^Photo, /})).toHaveCount(1);
+ // No search box: the agent filters Photos. The capture opens from the day-grouped grid.
+ await expect(page.getByRole('button',{name:'Search photos',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('heading',{name:'Today',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:/^Photo, /}).click();
 
  await page.getByRole('button',{name:'Ask Alpha about this photo',exact:true}).click();const review=page.getByRole('dialog',{name:'Ask about selected content'});
  await expect(review.getByRole('img',{name:'Image for question review'})).toBeVisible();

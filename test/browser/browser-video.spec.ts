@@ -65,7 +65,7 @@ test('rendered Video mode saves on Home and restores playable media in Photos',a
  await page.evaluate(()=>window.dispatchEvent(new Event('launcher-home')));
  await expect.poll(()=>page.evaluate(async()=>{const {browserPhotoLibrary}=await import('/src/prototype/browser-camera.ts');return (await browserPhotoLibrary.list()).items.filter(r=>r.kind==='video').length;})).toBe(1);
  await expect.poll(()=>page.evaluate(()=>(window as any).videoTest.streams.every((s:MediaStream)=>s.getTracks().every(t=>t.readyState==='ended')))).toBe(true);
- await page.reload();await page.getByRole('button',{name:'Photos',exact:true}).click();await page.getByRole('button',{name:/Captured video/}).click();await page.getByRole('button',{name:'Play video',exact:true}).click();
+ await page.reload();await page.getByRole('button',{name:'Photos',exact:true}).click();await page.getByRole('button',{name:/^Video, /}).click();await page.getByRole('button',{name:'Play video',exact:true}).click();
  await expect.poll(()=>page.locator('video').evaluate((v:HTMLVideoElement)=>v.readyState)).toBeGreaterThanOrEqual(2);
 });
 

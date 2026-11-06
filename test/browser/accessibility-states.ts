@@ -109,7 +109,6 @@ export const LIVE_STATES: State[] = [
   live('Browser menu', ['Browser', 'Menu']),
   live('Browser address', ['Browser', 'Edit address']),
   live('Calendar alarms', ['Calendar', 'Clock alarms']),
-  live('Photos search', ['Photos', 'Search photos']),
   legacyNotes('Notes search', ['Search notes']),
   {name:'live Notes source document',open:async(page,theme)=>{await page.addInitScript(offline);await page.goto(theme ? `/?theme=${theme}` : '/');await openLegacyAttachment(page);await settle(page);}},
   legacyNotes('Notes recording', ['Record and transcribe'], 'notes-recording'),

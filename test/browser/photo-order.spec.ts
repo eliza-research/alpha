@@ -25,10 +25,12 @@ test('migrated mixed media pages use capture date and stable identity ties witho
  expect(result.ids).toEqual(expected);expect(result.sizes).toEqual([40,40,40]);expect(new Set(result.ids).size).toBe(120);expect(result.summary).toMatchObject({favorites:60,videos:60,trash:5});
  await page.getByRole('button',{name:'Photos',exact:true}).click();
  const tiles=page.locator('button[data-owned-media-id^="native-camera-"]');await expect(tiles).toHaveCount(40);
- await page.getByRole('button',{name:'Load more photos',exact:true}).click();await expect(tiles).toHaveCount(80);
- await page.getByRole('button',{name:'Load more photos',exact:true}).click();await expect(tiles).toHaveCount(120);
+ // Newest-first paging continues as the end of the grid scrolls into view; there is no Load more button.
+ const grid=page.locator('[data-alpha-app-scroll="photos"]');
+ await grid.evaluate(el=>el.scrollTo(0,el.scrollHeight));await expect(tiles).toHaveCount(80);
+ await grid.evaluate(el=>el.scrollTo(0,el.scrollHeight));await expect(tiles).toHaveCount(120);
  expect(await tiles.evaluateAll(nodes=>nodes.map(node=>node.getAttribute('data-owned-media-id')!.replace('native-camera-','')))).toEqual(expected);
- await expect(page.getByRole('button',{name:'Load more photos',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:/Load more/})).toHaveCount(0);
  await page.reload();expect(await page.evaluate(async()=>{const {browserPhotoLibrary:p}=await import('/src/prototype/browser-camera.ts');return (await p.list()).items[0].id;})).toBe(expected[0]);
 });
 

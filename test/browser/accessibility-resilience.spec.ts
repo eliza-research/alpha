@@ -115,7 +115,7 @@ test('the note editor keeps Delete on screen beside the other header actions', a
 test.describe('200% text keeps the way out on screen', () => {
   // Large-text layouts re-measure every rule after the text grows: explicit, as other sweeps run beside them.
   test.describe.configure({ timeout: 60_000 });
-  for (const [start, open, field] of [['inbox', 'Search email', 'Search mail'], ['photos', 'Search photos', 'Search photos'], ['notes', 'Search notes', 'Search notes'], ['files', 'Search files', 'Search files']] as const) {
+  for (const [start, open, field] of [['inbox', 'Search email', 'Search mail'], ['notes', 'Search notes', 'Search notes'], ['files', 'Search files', 'Search files']] as const) {
     test(`${start} search: the field shrinks and Close search stays reachable`, async ({ page }) => {
       await page.goto(`/?mode=mock&start=${start}`);
       await page.getByRole('button', { name: open, exact: true }).click();
@@ -207,8 +207,7 @@ test.describe('menus and sheets over a scrim own focus', () => {
           .filter(el => el.getClientRects().length && !el.closest('[inert],[aria-hidden="true"]') && !el.closest('[data-alpha-popup],[role="dialog"]')).map(el => el.getAttribute('aria-label') || el.textContent));
         expect(exposed).toEqual([]);
       }
-      if(ownedInfo){const scrim=page.locator('button[aria-label="Close album management"]');await expect(scrim).toHaveAttribute('aria-hidden','true');await expect(scrim).toHaveAttribute('tabindex','-1');}
-      await expect(page.getByRole('button', { name: ownedInfo?'Close dialog':scrim, exact: true })).toHaveCount(1);
+      await expect(page.getByRole('button', { name: scrim, exact: true })).toHaveCount(1);
       const stops = await dialog.locator('button:not(:disabled), input, textarea, select').count();
       for (let step = 0; step < stops + 2; step++) { await page.keyboard.press('Tab'); expect(await inside()).toBe(true); }
       for (let step = 0; step < 2; step++) { await page.keyboard.press('Shift+Tab'); expect(await inside()).toBe(true); }
@@ -284,7 +283,7 @@ test.describe('photo editor in landscape', () => {
     const mono = page.getByRole('button', { name: 'Mono filter', exact: true });
     await mono.focus(); await page.keyboard.press('Enter');
     await expect(mono).toHaveAttribute('aria-pressed', 'true');
-    await reachable(page, page.getByRole('button', { name: 'Save edit', exact: true }));
+    await reachable(page, page.getByRole('button', { name: 'Save copy', exact: true }));
   });
 });
 
