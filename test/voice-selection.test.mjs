@@ -39,6 +39,7 @@ test('legacy preference persistence detects dropped or unavailable storage', () 
   for(const store of [{getItem:()=>null,setItem(){}},{getItem(){throw Error('blocked');},setItem(){throw Error('blocked');}}]) {
     const v=load(store);assert.equal(v.chooseVoiceRoute('cloud',{disclosed:'cloud-speech-uses-plan'}),false);assert.equal(v.selectVoiceRoute(),'device');
   }
+});
 
 test('the voice send policy defaults to auto-send and only test-mocks builds can exercise review', () => {
   const production = load(storage());
@@ -51,8 +52,6 @@ test('the voice send policy defaults to auto-send and only test-mocks builds can
   assert.equal(mocks.voiceSendPolicy(), 'review');
   assert.equal(mocks.setVoiceSendPolicyForTests('anything'), true);
   assert.equal(mocks.voiceSendPolicy(), 'auto-send', 'an unknown policy falls back to the constant');
-});
-
 });
 
 test('spoken replies have no preference: only the route is stored, and an old Read replies aloud value is not read', () => {
