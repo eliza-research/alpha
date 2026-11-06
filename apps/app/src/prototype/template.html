@@ -2248,7 +2248,6 @@
       <sc-if value="{{notes.returnToNotesAction}}"><button class="ib" aria-label="Return to Notes" onClick="{{notes.returnToNotesAction}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button></sc-if>
     <h1 data-alpha-app-title class="serif" style="margin: 0; font-size: 32px; flex-grow: 1; letter-spacing: -.01em">{{notes.notesTitle}}</h1>
     <sc-if value="{{notes.canRecord}}"><button class="ib" data-agent-id="notes-record" aria-label="Record and transcribe" onClick="{{notes.record}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.mic}}"></path></svg></button></sc-if>
-      <sc-if value="{{notes.canDictateNew}}"><button class="ib" data-agent-id="notes-dictate-new" aria-label="Dictate new note" disabled="{{notes.createDisabled}}" onClick="{{notes.dictateNew}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.notesWave}}"></path></svg></button></sc-if>
       <sc-if value="{{notes.canCreate}}"><button class="ib" data-agent-id="notes-new" aria-label="New note" disabled="{{notes.createDisabled}}" onClick="{{notes.newNote}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.plus}}"></path></svg></button></sc-if>
   </div>
   <div class="scr notes-folders" role="group" aria-label="Folders" style="display: flex; gap: 8px; overflow-x: auto; padding: 4px 16px 10px; flex-shrink: 0; touch-action: pan-x">
@@ -2507,7 +2506,7 @@
         <input aria-label="Folder name" placeholder="Name" maxlength="40" value="{{notes.folderName}}" onChange="{{notes.onFolderName}}" onKeyDown="{{notes.folderNameKey}}" style="width: 100%; box-sizing: border-box; height: 52px; margin-top: 18px; padding: 0 16px; border: 0; outline: 0; border-radius: 16px; background: var(--s2); color: var(--fg); font-size: 17px">
         <div style="display: flex; gap: 10px; margin-top: 18px">
           <button onClick="{{notes.closeFolderSheet}}" style="flex: 1; height: 52px; border-radius: 26px; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; background: var(--s2)">Cancel</button>
-          <button disabled="{{notes.createDisabled}}" onClick="{{notes.createFolder}}" style="flex: 1; height: 52px; border-radius: 26px; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; background: var(--fg); color: var(--bg)">{{notes.folderSubmitLabel}}</button>
+          <button disabled="{{notes.folderSaveDisabled}}" onClick="{{notes.createFolder}}" style="flex: 1; height: 52px; border-radius: 26px; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; background: var(--fg); color: var(--bg)">{{notes.folderSubmitLabel}}</button>
         </div>
       </sc-if>
       <sc-if value="{{notes.folderOptions}}">

@@ -91,7 +91,7 @@ test('Notes folders: create, move via ⋯, filter by chip, persist, rename by lo
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'All', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await page.reload();
-  await page.getByRole('button', { name: 'Notes', exact: true }).click();
+  await openLegacyNotes(page);
   await expect(page.getByRole('button', { name: /^Work/ })).toHaveCount(0);
   await page.getByRole('button', { name: 'Office', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Open Browser audit note', exact: true })).toBeVisible();
