@@ -480,15 +480,36 @@ CONNECTED_STATES.push(
   developmentAgent('Conversation', true),
 );
 
-/** Large text as the renderer sees it: every declared pixel size multiplied, as WebView text zoom does. */
+/**
+ * Large text as the renderer sees it: every declared pixel size multiplied, as WebView text zoom does.
+ *
+ * WebView text zoom (Alpha's size times the system font scale) is applied by the renderer before
+ * any script can measure, and the app never writes it. The emulation here differs in two ways that
+ * it has to cancel out:
+ * - It rewrites declared sizes in a MutationObserver (browser/display.ts). Observers run in the order
+ *   they were created, so a dock publisher created at startup would measure a status row added to
+ *   the composer before the row's text was scaled, and publish a clearance that only the next
+ *   frame's resize corrects. The publisher is restarted once, after the rewriting observer exists,
+ *   so it measures scaled content as it would under real text zoom.
+ * - The browser build applies its own stored text size to `--browser-text-scale` when its device
+ *   settings load or change, which can land after this call. The emulated size is held by an
+ *   !important rule, which the app's inline value does not override.
+ */
 export async function setTextScale(page: Page, scale: number) {
-  await page.evaluate(async () => {
-    const display = await import('/src/browser/display.ts' as string);
-    display.installBrowserDisplay();
-  });
-  // System font scale in this fixture must survive the browser's asynchronous
-  // restoration of the separate in-app text preference.
-  await page.addStyleTag({ content: `:root { --browser-text-scale: ${scale} !important; }` });
+  await page.evaluate(async value => {
+    const harness = window as unknown as { __alphaTextZoom?: HTMLStyleElement };
+    if (!harness.__alphaTextZoom) {
+      const display = await import('/src/browser/display.ts' as string);
+      display.installBrowserDisplay();
+      const { installDockClearance } = await import('/src/runtime/dock-clearance.ts' as string);
+      installDockClearance()();
+      installDockClearance();
+      harness.__alphaTextZoom = document.createElement('style');
+      harness.__alphaTextZoom.dataset.alphaTestTextZoom = '';
+      document.head.append(harness.__alphaTextZoom);
+    }
+    harness.__alphaTextZoom.textContent = `:root{--browser-text-scale:${value}!important}`;
+  }, scale);
   // The renderer's own probe (runtime/text-scale.ts) has measured the new size and published it, so
   // the layout rules that read it have applied; then any reflow motion settles.
   // The probe reports on its next layout; a starved renderer can take seconds to lay out a frame.
