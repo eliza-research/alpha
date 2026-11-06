@@ -11,6 +11,8 @@ type Bag = Record<string, any>;
  * id>`); the shell migrates their older view ids once before the launcher first reads them. */
 export function installHomeShell(Component: any, views: Record<string, Bag>, bridge: LauncherBridge, options: {
   icons?: boolean;
+  /** Installed apps exist on Android, or through the explicitly enabled browser fixture. */
+  appInventory?: 'android' | 'simulated';
   /** Replaces the installed favorites record (tests only). */
   favorites?: FavoritesStore;
   /** Exact browser device mirrors only; never inferred from labels. */
@@ -29,19 +31,26 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
     changed: () => owner?.setState({launcherRevision: Date.now()}),
   });
   const grid = mobileShellIconUrl(ALPHA_PRODUCT, ALPHA_PRODUCT.icons.allApps);
+  const inventory = options.appInventory;
+  const installedOnly = inventory === 'android';
+  const drawerTitle = installedOnly ? 'Apps' : 'All apps';
   let stop: (() => void) | undefined;
   p.componentDidMount = function (...args: any[]) {
     owner = this;
-    stop = shell.observe({follow: options.follow});
+    if (inventory) stop = shell.observe({follow: options.follow});
     const result = mount?.apply(this, args);
-    shell.prepareHome();
+    if (inventory) shell.prepareHome();
     return result;
   };
   p.componentWillUnmount = function (...args: any[]) {
     stop?.(); shell.launcher.cancelPending(); stop = undefined; if (owner === this) owner = null;
     return unmount?.apply(this, args);
   };
-  p.openAllApps = function () { this.setState(this.shellNavigate({type: 'drawer', open: true})); void shell.launcher.load(); };
+  p.openAllApps = function () {
+    if (!inventory || this.props?.assistantSurface) return;
+    this.setState(this.shellNavigate({type: 'drawer', open: true}));
+    void shell.launcher.load();
+  };
   p.renderVals = function () {
     const out = render.call(this), S = this.S(), self = this;
     shell.syncViews();
@@ -51,22 +60,24 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
       const badge = typeof definition.badge === 'function' && ['phone', 'messages', 'inbox'].includes(key) ? !!definition.badge(self.vget(key)) : false;
       return {key: entry.key, label: entry.view.label, glyphUrl: alphaViews.iconUrl(entry.view), iconId: ALPHA_PRODUCT.icons.views[entry.view.id], badge, onOpen: () => self.openView(key)};
     };
+    const showDrawer = !!inventory && !out.assistantSurface;
     const homeShell = createElement(MobileHomeScreen, {
       tiles: out.assistantSurface ? [] : shell.homeEntries().map(tile),
-      onOpenAllApps: () => self.openAllApps(), allAppsGlyphUrl: grid, allAppsIconId: ALPHA_PRODUCT.icons.allApps, covered: !!out.homeHidden,
+      onOpenAllApps: showDrawer ? () => self.openAllApps() : undefined, allAppsLabel: drawerTitle, allAppsGlyphUrl: grid, allAppsIconId: ALPHA_PRODUCT.icons.allApps, covered: !!out.homeHidden,
       onFocusCapture: out.focusAppContent, 'data-alpha-layer': 'home',
       style: {inset: '44px 0 0', zIndex: 10, scrollPaddingBottom: 110},
       layoutProps: {'data-alpha-home-layout': ''}, cardsProps: {className: 'scr'}, gridProps: {'data-alpha-home-apps': ''}, clearanceProps: {'data-alpha-home-clearance': ''},
     });
-    const allAppsDrawer = createElement(MobileAllAppsDrawer, {
+    const allAppsDrawer = showDrawer ? createElement(MobileAllAppsDrawer, {
+      title: drawerTitle, installedOnly,
       shellLauncher: shell, registry: alphaViews, query: String(S.drawerQ || ''),
       onQuery: query => self.setState(self.shellNavigate({type: 'drawer-query', query})),
       onClose: () => self.setState(self.shellNavigate({type: 'drawer', open: false})),
       'data-alpha-layer': 'drawer', className: 'alpha-app-drawer fadein',
       style: {inset: '44px 0 0', zIndex: 30, padding: '12px 0 108px'},
       inventoryStyle: {'--launcher-title-weight': '300'} as CSSProperties,
-    });
-    return {...out, homeShell, allAppsDrawer, drawerOpen: !!S.drawer && !!out.isOn && !out.isView};
+    }) : null;
+    return {...out, homeShell, allAppsDrawer, drawerOpen: showDrawer && !!S.drawer && !!out.isOn && !out.isView};
   };
   return shell;
 }
