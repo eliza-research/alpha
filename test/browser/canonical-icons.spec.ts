@@ -36,7 +36,7 @@ for(const theme of ['light','dark'])test(`canonical launcher, dock and Files ass
   expect(await tileGlyph(name).evaluate(el=>getComputedStyle(el).maskImage)).toMatch(new RegExp('/icons/lucide/'+asset+'\\.svg"?\\)$'));
  }
  // Every shared Home tile names the published glyph it draws (data-mobile-shell-tile-icon); its
- // accessible name stays the label. The count covers every product tile and All apps.
+ // accessible name stays the label. The count covers every product tile and Apps.
  const record=JSON.parse(readFileSync(new URL('../../config/alpha-product.json',import.meta.url),'utf8'));
  const homeTiles=await page.getByRole('region',{name:'Home',exact:true}).locator('[data-mobile-shell-tile]').evaluateAll(tiles=>tiles.map(tile=>({name:tile.getAttribute('aria-label'),icon:tile.getAttribute('data-mobile-shell-tile-icon'),mask:getComputedStyle(tile.querySelector('[data-mobile-shell-tile-face] > span[aria-hidden="true"]')||tile).maskImage,image:!!tile.querySelector('img')})));
  expect(homeTiles.length,'shared Home tiles').toBeGreaterThan(1);
@@ -46,7 +46,7 @@ for(const theme of ['light','dark'])test(`canonical launcher, dock and Files ass
   expect(glyphs.has(tile.icon),tile.name+' names a published glyph: '+tile.icon).toBe(true);
   expect(tile.mask,tile.name+' draws the glyph it names').toMatch(new RegExp('/icons/lucide/'+tile.icon+'\\.svg"?\\)$'));
  }
- expect(homeTiles.find(tile=>tile.name==='All apps')?.icon).toBe(record.icons.allApps);
+ expect(homeTiles.find(tile=>tile.name==='Apps')?.icon).toBe(record.icons.allApps);
  await expect(camera.first()).toBeVisible();
  await page.screenshot({animations:'disabled',path:info.outputPath('launcher-'+theme+'.png')});
  await page.getByRole('button',{name:'Files',exact:true}).click();

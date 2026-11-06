@@ -95,7 +95,7 @@ test('standalone Home scrolls to the screen edge without a simulated status-bar 
   const composer=page.locator('[data-alpha-layer="composer"] [data-alpha-input-bar]');
   expect(bounds!.y+bounds!.height).toBeCloseTo(usable!.y+usable!.height,1);
   await home.evaluate(node=>{node.scrollTop=node.scrollHeight;});
-  const lastApp=home.getByRole('button',{name:'All apps',exact:true});
+  const lastApp=home.getByRole('button',{name:'Apps',exact:true});
   await expect.poll(async()=>{const dock=await composer.boundingBox(),last=await lastApp.boundingBox();return dock!.y-(last!.y+last!.height);}).toBeGreaterThanOrEqual(6);
   await home.evaluate(node=>{node.scrollTop=0;});
   expect((await home.boundingBox())!.height).toBeGreaterThan(usable!.height-140);

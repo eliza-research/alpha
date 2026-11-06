@@ -86,16 +86,16 @@ test('rotation that rebuilds the focused layer gives focus back to the screen na
 
 test('an inline modal surface opening over dropped focus takes it, and HOME gives it back to Home', async ({ page }) => {
   await load(page);
-  // Opening All apps retires Home's tiles behind its own inline modal surface (no native <dialog>).
+  // Opening Apps retires Home's tiles behind its own inline modal surface (no native <dialog>).
   await page.getByRole('button', { name: 'Settings', exact: true }).focus();
   await page.evaluate(() => {
     const home = document.querySelector<HTMLElement>('[data-alpha-layer="home"]')!;
     home.inert = true; home.setAttribute('aria-hidden', 'true');
     const drawer = Object.assign(document.createElement('div'), { innerHTML: '<input type="search" aria-label="Search apps"><button>Open Clock</button>' });
-    drawer.setAttribute('data-alpha-layer', 'drawer'); drawer.setAttribute('role', 'dialog'); drawer.setAttribute('aria-modal', 'true'); drawer.setAttribute('aria-label', 'All apps');
+    drawer.setAttribute('data-alpha-layer', 'drawer'); drawer.setAttribute('role', 'dialog'); drawer.setAttribute('aria-modal', 'true'); drawer.setAttribute('aria-label', 'Apps');
     document.querySelector('[data-screen]')!.append(drawer);
   });
-  await expect.poll(() => focused(page)).toBe('All apps');
+  await expect.poll(() => focused(page)).toBe('Apps');
   // Named by its label, never by typing into it: the search field (and the keyboard) stay closed.
   await expect(page.getByRole('searchbox', { name: 'Search apps', exact: true })).not.toBeFocused();
   // HOME closes it with focus inside.

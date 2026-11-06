@@ -438,7 +438,7 @@ for (const shell of HOME_SHELLS) for (const scale of [1, 1.5, 2, 3]) {
       expect(format(await auditPage(page,{dock:true}))).toEqual([]);
       if(position===1){expect(at.under,at.under.join(', ')).toEqual([]);expect(await readingOrderProblems(page)).toEqual([]);}
     }
-    const last = home.getByRole('button', { name: 'All apps', exact: true });
+    const last = home.getByRole('button', { name: 'Apps', exact: true });
     await expect(last).toBeInViewport({ ratio: 1 });
     const tile = (await last.boundingBox())!, bar = (await page.locator('[data-alpha-input-bar]').boundingBox())!;
     expect(tile.y + tile.height).toBeLessThanOrEqual(bar.y);
@@ -460,7 +460,7 @@ test('Home keeps enough scroll clearance when Android raises the dock and when t
  await expect.poll(()=>homeHasClearance(page)).toBe(true);
  await page.getByRole('textbox',{name:'Ask Alpha',exact:true}).fill('one\ntwo\nthree\nfour\nfive');
  await expect.poll(()=>homeHasClearance(page)).toBe(true);expect((await home.boundingBox())!.height).toBe(height);
- await home.evaluate(el=>{el.scrollTop=el.scrollHeight;});expect((await homeUnderDock(page)).under).toEqual([]);await expect(home.getByRole('button',{name:'All apps',exact:true})).toBeInViewport({ratio:1});
+ await home.evaluate(el=>{el.scrollTop=el.scrollHeight;});expect((await homeUnderDock(page)).under).toEqual([]);await expect(home.getByRole('button',{name:'Apps',exact:true})).toBeInViewport({ratio:1});
 });
 test('a status line on the composer adds Home scroll clearance without moving its rows',async({page})=>{
  await openHome(page,'/',1);const home=page.locator('[data-alpha-layer="home"]'),tile=home.getByRole('button',{name:'Inbox',exact:true}).and(page.locator('[data-mobile-shell-tile]'));
@@ -487,7 +487,7 @@ test.describe('landscape Home', () => {
     // Beside the dock, Home keeps the full height of the screen.
     expect(home.y + home.height).toBeGreaterThanOrEqual(bar.y + bar.height);
     await page.locator('[data-alpha-layer="home"]').evaluate(el => { el.scrollTop = el.scrollHeight; });
-    await expect(page.getByRole('button', { name: 'All apps', exact: true })).toBeInViewport({ ratio: 1 });
+    await expect(page.getByRole('button', { name: 'Apps', exact: true })).toBeInViewport({ ratio: 1 });
     const found = format([...await auditPage(page, { dock: true, clipping: true, overlap: true }), ...await auditTabOrder(page)]).filter(line => !line.startsWith('text-truncated:'));
     expect(found, found.join('\n')).toEqual([]);
   });

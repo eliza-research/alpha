@@ -146,8 +146,8 @@ test('the Home calendar card shows its whole title at 200% and widens to the row
 for (const scale of [1, 2]) {
   test(`the app library at ${scale * 100}% text: rows, favorites and the header do not overlap`, async ({ page }) => {
     await home(page);
-    await page.getByRole('button', { name: 'All apps', exact: true }).click();
-    const drawer = page.getByRole('dialog', { name: 'All apps' });
+    await page.getByRole('button', { name: 'Apps', exact: true }).click();
+    const drawer = page.getByRole('dialog', { name: 'Apps' });
     await expect(drawer).toBeVisible();
     await drawer.getByRole('button', { name: 'Remove Files from favorites', exact: true }).click();
     await expect(drawer.locator('[data-launcher-app]')).not.toHaveCount(0);

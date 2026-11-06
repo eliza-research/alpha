@@ -33,7 +33,7 @@ test('every retained MVP view has a live state and a populated state in the swee
     assert.match(mockBlock, new RegExp(`'${view}'`), `fixture state opens ${view}`);
     assert.match(mockBlock, new RegExp(`'${view}:[a-z]+'`), `fixture state opens a ${view} subview`);
   }
-  for (const surface of ["live('Home')", "live('All apps'", "live('Conversation'", "'shade'", "'sheet'", "'full'"])
+  for (const surface of ["live('Home')", "live('Apps'", "live('Conversation'", "'shade'", "'sheet'", "'full'"])
     assert.ok(states.includes(surface), `${surface} is swept`);
   assert.match(states, /name: 'render failure recovery'/);
   assert.match(states, /name: 'startup failure recovery'/);
@@ -107,7 +107,7 @@ test('the sweep applies every dimension and cannot be narrowed silently', () => 
   // The fixture lock screen and photos-empty viewer and the launcher presentation run at 100%
   // and 200% with names, focus, contrast and the dock rules (provider-connected states are in STATES).
   assert.match(sweep, /for \(const state of \[\.\.\.FIXTURE_STATES, \.\.\.LAUNCHER_STATES\]\) \{\s*for \(const scale of \[1, 2\]\)/);
-  for (const name of ["mock('lock')", "shows: 'photos-empty'", "launcher('Home')", "launcher('All apps'", "connected('Inbox'", "connected('Settings connections'", "name: 'connected Calendar with events'", "CONNECTED_STATES.push(calendarWithEvents)"])
+  for (const name of ["mock('lock')", "shows: 'photos-empty'", "launcher('Home')", "launcher('Apps'", "connected('Inbox'", "connected('Settings connections'", "name: 'connected Calendar with events'", "CONNECTED_STATES.push(calendarWithEvents)"])
     assert.ok(states.includes(name), `${name} is swept`);
   // Above 200%: the largest in-app size with the largest system font (300%), over every live and
   // launcher state, with the clipping, overlap, dock, name, tab-order and reading-order rules.

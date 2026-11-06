@@ -113,7 +113,7 @@ public class LauncherHomeInstrumentedTest {
    String settingsRow = "[...document.querySelectorAll('[data-alpha-layer=\"drawer\"] [data-launcher-app]')].map(r=>[r.getAttribute('data-launcher-app'),r.querySelector('button')])"
     + ".filter(([key,b])=>{const id=key.split('#')[0];return (id===" + JSONObject.quote(settings.getPackageName() + "/" + settings.getClassName()) + "||id===" + JSONObject.quote(settings.getPackageName()) + ")"
     + "&&b&&b.getClientRects().length&&!b.disabled&&!b.closest('[inert]')}).map(([,b])=>b)[0]";
-   tap("All apps");
+   tap("Apps");
    until(DRAWER + "&&" + settingsRow, "Installed apps listed, including Android Settings by its launch component");
    assertFalse("Alpha never lists itself", "true".equals(eval("[...document.querySelectorAll('[data-alpha-layer=\"drawer\"] button')].some(b=>b.getAttribute('aria-label')==='Open Alpha Phone')")));
    assertEquals("Icons are rendered from the device", "true", eval("!!document.querySelector('[data-alpha-layer=\"drawer\"] img[src^=\"data:image/png;base64,\"]')"));
@@ -135,14 +135,14 @@ public class LauncherHomeInstrumentedTest {
    AppNavigation.liveMode();
    eval(AppNavigation.request("Home"));
    until(AppNavigation.selected("Home") + "&&!document.querySelector('.os')?.inert", "Home ready");
-   tap("All apps");
+   tap("Apps");
    until(DRAWER + "&&" + APPS + ".length>=3", "The drawer lists at least three installed apps");
    org.json.JSONArray labels = new org.json.JSONArray((String) new org.json.JSONTokener(eval("JSON.stringify([...new Set(" + APPS + ".map(b=>b.getAttribute('aria-label')))].slice(0,3))")).nextValue());
    assertEquals("Three distinct installed apps", 3, labels.length());
    java.util.Set<String> opened = new java.util.LinkedHashSet<>();
    for (int i = 0; i < labels.length(); i++) {
     String label = labels.getString(i);
-    if (!"true".equals(eval("!!" + DRAWER))) tap("All apps");
+    if (!"true".equals(eval("!!" + DRAWER))) tap("Apps");
     String entry = APPS + ".find(b=>b.getAttribute('aria-label')===" + JSONObject.quote(label) + ")";
     until(DRAWER + "&&" + entry, "The drawer still lists " + label);
     eval("(" + entry + ").click()");
@@ -238,8 +238,8 @@ public class LauncherHomeInstrumentedTest {
    AppNavigation.liveMode();
    eval(AppNavigation.request("Home"));
    until(AppNavigation.selected("Home") + "&&!document.querySelector('.os')?.inert", "Home ready");
-   // Tap 1: All apps. Tap 2: Phone (the resolved ACTION_DIAL handler, not Alpha's deferred Phone view).
-   tap("All apps");
+   // Tap 1: Apps. Tap 2: Phone (the resolved ACTION_DIAL handler, not Alpha's deferred Phone view).
+   tap("Apps");
    String phone = "[...document.querySelectorAll('[data-alpha-layer=\"drawer\"] button')].find(b=>/^Open Phone/.test(b.getAttribute('aria-label')||'')&&!b.disabled)";
    until(phone, "The drawer offers the resolved Phone shortcut");
    eval("(" + phone + ").click()");
