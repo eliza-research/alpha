@@ -40,7 +40,7 @@ const adapterCases = Object.freeze([
   'chat dictation keeps the device route even when private Cartesia conversation is eligible',
   'actual adapter fences explicit device conversation from private Cartesia',
   'actual adapter fences explicit manual conversation from private Cartesia',
-  'Cloud conversation keeps concise phases and accessible route details',
+  'Cloud conversation keeps the composer focused on the current voice phase',
   'Cloud startup bounds a stalled draft and fences its late completion',
   'Cloud startup timeout keeps the media retirement fence',
   'Cloud preparation records success separately from bridge startup',
@@ -103,8 +103,6 @@ adapterTest('actual adapter starts existing Cartesia route without local preflig
   assert.equal(h.directOptions.binding.conversationId,h.conversation);
   assert.equal(h.directOptions.getUiContext().uiViewPath,'/chat');
   assert.equal(h.renderChat().lines[0].t,'Listening…');
-  assert.match(h.renderChat().cloudDisclosureText,/Cartesia.*direct Cerebras/);
-  assert.doesNotMatch(h.renderChat().cloudDisclosureText,/Cloud account|plan allowance/);
   assert.equal(h.renderChat().voiceDetails,false);
   h.directOptions.onState('transcribing');
   assert.equal(h.renderChat().lines[0].t,'Transcribing…');
@@ -149,7 +147,7 @@ for(const preference of ['device','manual'])adapterTest(`actual adapter fences e
   await h.shell.startVoice();
   assert.equal(h.directFactories,undefined);assert.ok(h.localFactories>0);
   assert.doesNotMatch(JSON.stringify(h.renderChat().lines),/Cartesia/);
-  assert.equal(h.renderChat().cloudDisclosure,false);
+  assert.equal(h.renderChat().cloudDisclosureText,undefined);
   h.localConversationOptions.onState({phase:'transcribing'});
   const caption=JSON.stringify(h.renderChat().lines);
   assert.equal(h.renderChat().lines[0].t,'Transcribing…');
@@ -215,7 +213,7 @@ adapterTest('Cloud preparation records success separately from bridge startup',a
   assert.deepEqual(JSON.parse(JSON.stringify(h.box.voiceStartupTiming())),{stage:'media-retirement',outcome:'prepared',elapsedMs:0});
   assert.equal(h.starts,0,'preparation success does not claim microphone capture');
 });
-adapterTest('Cloud conversation keeps concise phases and accessible route details',async t=>{
+adapterTest('Cloud conversation keeps the composer focused on the current voice phase',async t=>{
   const h=cloudFixture();t.after(()=>h.close());
   h.box.BatchVoiceConversation=class {
     constructor(options){h.batchOptions=options;}
@@ -225,12 +223,11 @@ adapterTest('Cloud conversation keeps concise phases and accessible route detail
   };
   await h.shell.startVoice();
   assert.equal(h.initialView.state,'starting');assert.equal(h.initialView.voiceDetails,false);
-  assert.match(h.initialView.cloudDisclosureText,/uploads recordings.*plan allowance/);
   for(const [phase,caption] of [['listening','Listening…'],['transcribing','Transcribing…'],['thinking','Thinking…'],['preparing-speech','Thinking…'],['speaking','Speaking…']]){
     h.batchOptions.onState({phase});const view=h.renderChat();
     assert.equal(view.lines[0].t,caption);
+    assert.equal(view.cloudDisclosureText,undefined);
     assert.equal(view.voiceDetails,false);
-    assert.match(view.cloudDisclosureText,/uploads recordings and reply text.*account.*plan allowance.*Cartesia/);
     assert.equal(typeof view.stop,'function');assert.equal(typeof view.keyboard,'function');
   }
   // The loop's own idle is shown once its retire settles (a failure it is about to report replaces it).

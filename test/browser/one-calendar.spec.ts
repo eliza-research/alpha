@@ -66,7 +66,7 @@ test('without a connected Google account Calendar and Home show the local calend
  const card=page.locator('[data-alpha-home-calendar]');
  await expect(card).toContainText('Dentist');
  await card.click();await expect(page.locator('html')).toHaveAttribute('data-active-view','calendar');
- await expect(page.getByText('Some Calendar sources could not be verified',{exact:false})).toHaveCount(0);
+ await expect(page.getByText('Refresh Calendar',{exact:true})).toHaveCount(0);
  await page.evaluate(()=>window.dispatchEvent(new Event('alpha-back',{cancelable:true})));
  await expect(page.getByText('Dentist',{exact:true}).first()).toBeVisible();
  await expect(page.getByText('Team standup',{exact:true})).toHaveCount(0);
