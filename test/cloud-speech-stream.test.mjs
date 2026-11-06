@@ -26,6 +26,84 @@ test('native Cloud streaming keeps credentials native and feeds PCM before provi
  assert.match(source,/u\.playback\.offer\(null,true\)/);
  assert.doesNotMatch(source,/MediaPlayer|FileOutputStream|android\.util\.Log/);
 });
+test('validated mint gets a separate relay window within the native startup and lease bounds',()=>{
+ const source=fs.readFileSync(sharedSpeechSource('SpeechStreamBridgePlugin.java'),'utf8');
+ const budgets=source.match(/^ private static final long HTTP_STARTUP_MS=.*$/m)?.[0];
+ const start=source.indexOf('  final long startupStartedMs=');
+ const end=source.indexOf('  Session(String id',start);
+ const ownership=source.match(/^  void check\(\)throws IOException.*$/m)?.[0];
+ assert.ok(budgets&&ownership&&start>=0&&end>start);
+ assert.match(source,/mark\(own,"start"\);own\.scheduleStartupDeadline\(\)/);
+ assert.match(source,/Invalid speech token"\);\s*own\.armRelayStartup\(\);own\.check\(\);mark\(own,"relay-start"\);\s*WebSocket socket=http\.newWebSocket/);
+ assert.match(source,/own\.socket=socket;if\(own\.closed\.get\(\)\)socket\.cancel\(\)/);
+ assert.match(runSpeechFragment('CloudSpeechStartupBudgetTest',`import java.io.IOException;
+import java.net.SocketTimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
+public final class CloudSpeechStartupBudgetTest {
+ ${budgets}
+ static final class SystemClock {static long now;static long elapsedRealtime(){return now;}}
+ static final class System {static long currentTimeMillis(){return 1_000_000L+SystemClock.now;}}
+ static final class Handler {
+  long when;
+  Runnable pending;
+  void postDelayed(Runnable task,long delay){pending=task;when=SystemClock.now+delay;}
+  void removeCallbacks(Runnable task){if(pending==task)pending=null;}
+ }
+ static final Handler main=new Handler();
+ static Session session;
+ static boolean destroyed,foreground=true;
+ static long authority=1;
+ static long authorityEpoch(){return authority;}
+ static void fail(Session own,String code){own.failure=code;own.closed.set(true);main.removeCallbacks(own.deadline);}
+ static final class Session {
+  final long epoch=authority;
+  final AtomicBoolean closed=new AtomicBoolean(),startSettled=new AtomicBoolean();
+  long expiresAt;
+  String failure;
+  ${source.slice(start,end)}
+  ${ownership}
+ }
+ static Session start(){
+  SystemClock.now=0;authority=1;main.pending=null;
+  session=new Session();session.scheduleStartupDeadline();
+  if(main.when!=12_000)throw new AssertionError("credential and HTTP bound changed");
+  return session;
+ }
+ static void mint(Session own,long at,long leaseMs)throws Exception{
+  SystemClock.now=at;own.expiresAt=System.currentTimeMillis()+leaseMs;own.armRelayStartup();
+ }
+ static void refused(Session own,long at,long leaseMs)throws Exception{
+  try{mint(own,at,leaseMs);throw new AssertionError("unexpected relay admission");}
+  catch(IOException expected){}
+ }
+ public static void main(String[] args)throws Exception {
+  Session delayed=start();Runnable oldDeadline=main.pending;
+  mint(delayed,9474,60_000);
+  if(main.when!=17_474)throw new AssertionError("slow mint took time away from the relay");
+  SystemClock.now=12_000;oldDeadline.run();
+  if(delayed.closed.get()||main.when!=17_474)throw new AssertionError("the old deadline won");
+  SystemClock.now=13_474;delayed.check();delayed.startSettled.set(true);
+  SystemClock.now=17_474;oldDeadline.run();
+  if(delayed.closed.get())throw new AssertionError("the startup deadline killed a ready capture");
+
+  Session neverReady=start();mint(neverReady,11_999,60_000);
+  if(main.when!=19_999)throw new AssertionError("the relay escaped the whole-start bound");
+  SystemClock.now=19_999;main.pending.run();
+  if(!"startup-timeout".equals(neverReady.failure))throw new AssertionError("unbounded relay startup");
+
+  Session shortLease=start();mint(shortLease,9474,500);
+  if(main.when!=9974)throw new AssertionError("the relay escaped the minted expiry");
+  SystemClock.now=9974;
+  try{shortLease.check();throw new AssertionError("a late handler admitted expired startup");}
+  catch(SocketTimeoutException expected){}
+  refused(start(),12_000,60_000);
+  refused(start(),9474,0);
+  Session stopped=start();stopped.closed.set(true);refused(stopped,9474,60_000);
+  Session changed=start();authority++;refused(changed,9474,60_000);
+  java.lang.System.out.println("PASS separately bounded relay startup");
+ }
+}`),/^PASS separately bounded relay startup/);
+});
 test('duplicate STT readiness cannot restart capture or fail the live session',()=>{
  const source=fs.readFileSync(sharedSpeechSource('SpeechStreamBridgePlugin.java'),'utf8');
  const start=source.indexOf('if("connected".equals(event))');

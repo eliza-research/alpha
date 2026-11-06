@@ -41,7 +41,7 @@ export const NATIVE_CLOUD_STREAM_TIMING_FORMAT='alpha-cloud-stream-timing-v1';
 const NATIVE_CLOUD_STREAM_LIMIT=100;
 const NATIVE_CLOUD_STREAM_STAGES=[
  'start','consent-start','consent-headers','consent-body','consent',
- 'session-start','session-headers','session-body','mint','ws-open','ready','stt-connected',
+ 'session-start','session-headers','session-body','mint','relay-start','ws-open','ready','stt-connected',
  'speech-start','asr-final','tts-request','first-pcm','first-audible','audio-end','error','stop',
 ] as const;
 const NATIVE_CLOUD_STREAM_CLOCKS=['monotonic-observed','audiotrack-timestamp','audiotrack-head-position'] as const;

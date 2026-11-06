@@ -89,12 +89,13 @@ test('renderer voice startup exports only the bounded phase, outcome and elapsed
 test('Cloud startup diagnostics keep bounded stages and status without carrying content or raw ids',()=>{
  const secret=secrets[2],rawSession=7194538;
  const row={session:rawSession,stage:'consent-headers',elapsedMs:45,httpStatus:503,clock:'monotonic-observed',sentFrames:0,sentBytes:0,receivedFrames:0,receivedBytes:0,token:secret,transcript:secrets[0]};
- const records=[...Array.from({length:100},()=>row),{...row,stage:'error',httpStatus:999,receivedBytes:-1},
+ const records=[...Array.from({length:99},()=>row),{...row,stage:'relay-start',elapsedMs:9474},{...row,stage:'error',httpStatus:999,receivedBytes:-1},
   {...row,session:secrets[4]},{...row,stage:secret},{...row,elapsedMs:Infinity}];
  const report=buildDiagnostics({platform:'android',nativeCloudStreamTiming:{format:'alpha-cloud-stream-timing-v1',records,accountId:secrets[3]}},now);
  const timing=report.nativeCloudStreamTiming;
  assert.equal(timing.records.length,97,'only the last 100 input rows are scanned and invalid rows are discarded');
  assert.deepEqual(timing.records[0],{session:1,stage:'consent-headers',elapsedMs:45,clock:'monotonic-observed',httpStatus:503,sentFrames:0,sentBytes:0,receivedFrames:0,receivedBytes:0});
+ assert.equal(timing.records.at(-2).stage,'relay-start');
  assert.equal(timing.records.at(-1).stage,'error');
  assert.equal(Object.hasOwn(timing.records.at(-1),'httpStatus'),false);
  assert.equal(Object.hasOwn(timing.records.at(-1),'receivedBytes'),false);
