@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { calendarEditorReady } from './calendar-draft-readiness';
 
 // Renderer geometry with a synthetic visual viewport. Native keyboard/IME and
 // device screen-reader acceptance remain separate from this regression.
@@ -16,6 +17,7 @@ for (const editor of [false, true]) test(`${editor ? 'Calendar draft' : 'operati
   }, editor);
   const dialog = page.getByRole('dialog', { name: editor ? 'Edit calendar event' : 'Review selected files', exact: true });
   if (editor) {
+    await calendarEditorReady(dialog);
     await dialog.getByLabel('Event title', { exact: true }).fill('Draft survives keyboard');
     await dialog.getByLabel('Event title', { exact: true }).evaluate((input: HTMLInputElement) => input.setSelectionRange(6, 14));
   }

@@ -482,11 +482,13 @@ CONNECTED_STATES.push(
 
 /** Large text as the renderer sees it: every declared pixel size multiplied, as WebView text zoom does. */
 export async function setTextScale(page: Page, scale: number) {
-  await page.evaluate(async value => {
+  await page.evaluate(async () => {
     const display = await import('/src/browser/display.ts' as string);
     display.installBrowserDisplay();
-    document.documentElement.style.setProperty('--browser-text-scale', String(value));
-  }, scale);
+  });
+  // System font scale in this fixture must survive the browser's asynchronous
+  // restoration of the separate in-app text preference.
+  await page.addStyleTag({ content: `:root { --browser-text-scale: ${scale} !important; }` });
   // The renderer's own probe (runtime/text-scale.ts) has measured the new size and published it, so
   // the layout rules that read it have applied; then any reflow motion settles.
   // The probe reports on its next layout; a starved renderer can take seconds to lay out a frame.

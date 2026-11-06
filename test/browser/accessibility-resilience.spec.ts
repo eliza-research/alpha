@@ -423,7 +423,7 @@ async function openHome(page: Page, url: string, scale: number) {
   await settled(page);
 }
 
-for (const shell of HOME_SHELLS) for (const scale of [1, 1.5, 2]) {
+for (const shell of HOME_SHELLS) for (const scale of [1, 1.5, 2, 3]) {
   test(`${shell.name} Home at ${scale * 100}% text fills the screen and scrolls every app above the composer`, async ({ page }) => {
     test.setTimeout(60_000);
     await openHome(page, shell.url, scale);
@@ -442,7 +442,11 @@ for (const shell of HOME_SHELLS) for (const scale of [1, 1.5, 2]) {
     await expect(last).toBeInViewport({ ratio: 1 });
     const tile = (await last.boundingBox())!, bar = (await page.locator('[data-alpha-input-bar]').boundingBox())!;
     expect(tile.y + tile.height).toBeLessThanOrEqual(bar.y);
-    // Whether Home scrolls or fits at this text size, the checks above hold every app above the bar.
+    // Three columns, four rows fit the screen at 200% in both shells, since f21e9a6e4 took the
+    // Notifications row off the launcher's Home. At 300% (the largest in-app size with the largest
+    // system font) Home has to scroll: the case the emulator caught at 200%, where the checks above
+    // hold the last row above the dock.
+    if (scale >= 2) expect(top.scrolls).toBe(scale === 3);
     // The rule the sweep runs agrees.
     const found = format(await auditPage(page, { dock: true, clipping: true, overlap: true })).filter(line => !line.startsWith('text-truncated:'));
     expect(found, found.join('\n')).toEqual([]);

@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { auditPage, auditReadingOrder, auditTabOrder, auditTree, format } from './accessibility-audit';
 import { CONNECTED_STATES, DEVELOPMENT_STATES, FAILURE_STATES, FIXTURE_STATES, LAUNCHER_STATES, LIVE_STATES, MOCK_STATES, setTextScale } from './accessibility-states';
+import { settled } from './helpers/settled';
 
 // MVP-48, renderer part. Every retained primary view, subview and failure screen is checked for
 // accessible names and roles, keyboard reachability, focus order and traps, contrast, pointer
@@ -126,6 +127,12 @@ for (const state of [...FIXTURE_STATES, ...LAUNCHER_STATES]) {
       test.setTimeout(LARGE_TEXT_TIMEOUT);
       await state.open(page, 'light');
       if (scale !== 1) await setTextScale(page, scale);
+      if (state.name === 'launcher Home' && scale === 2) {
+        // This bridge has no draft storage. Audit the 200% Home after its
+        // delayed draft status and floating dock have finished laying out.
+        await expect(page.getByRole('status', { name: 'Assistant draft status' })).toBeVisible();
+        await settled(page);
+      }
       const found = blocking(format([
         ...await auditTree(page),
         ...await auditPage(page, scale === 1 ? { contrast: true, targetSize: 24, clipping: true, overlap: true, dock: true } : { clipping: true, overlap: true, dock: true }),

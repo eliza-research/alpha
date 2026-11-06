@@ -16,7 +16,9 @@ test('pinned recovery and lifecycle sources match the reviewed upstream repair',
  // completed commit and abandons it when nothing was written (a shutdown Retry abandons at dispatch);
  // an uncertain commit keeps starts fenced until a later credential change or app restart.
  // android/consumer-host.json compiles the lease helper.
- ['ElizaAgentService','f8b1d2a3f6ee898e9afbb51584d7fd42d961d67fe0d49769c56ecf35c648afe1'],
+ // elizaOS/eliza#38821 adds only ELIZA_ANDROID_VOICE_BUNDLE_DIR to the agent's environment, from the
+ // VoiceBundleAssets.bundleRoot the service already calls, which reads the manifest and writes nothing.
+ ['ElizaAgentService','1cb89a4c1283fcd90f19d739ef3cf23d556ee9da184516583c41a128bb49e984'],
  // PR37979/37981: verify directory timestamps after recovery publication.
  ['IpcStartupRecovery','c51152d8b6403622171e4baed30f55cb540cad2c3fd49a8be1171a4b2c015c27'],
  ['WorkflowSurvivorInventory','3270bebe7e125705eda25e91ba9996f99cb80fbcb7e534c0d1ea47672a0fc42b'],
