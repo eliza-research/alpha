@@ -144,7 +144,7 @@ export function installNotesTrashAdapter(Component:Shell,views:Record<string,Bag
   if(busy)return;busy=true;shell.vset('notes',{trashBusy:true,trashConfirm:null});
   try{
    const outcome=await actionsFor(shell).erase(ids);
-   shell.toast(outcome.status==='unconfirmed'?'Permanent deletion is unconfirmed. Reopen Recently deleted to check.':outcome.failed?`${outcome.failed} item(s) could not be deleted yet. They stay in Recently deleted.`:ids==='all'?'Recently deleted emptied':outcome.erased?'Deleted forever':'This note is no longer in Recently deleted.');
+   shell.toast(outcome.status==='unconfirmed'?'Permanent deletion is unconfirmed. Reopen Recently deleted to check.':outcome.failed?`${outcome.failed} item(s) could not be deleted yet. They stay in Recently deleted.`:ids==='all'?'Recently deleted emptied':outcome.erased?'Deleted':'This note is no longer in Recently deleted.');
   }finally{busy=false;if(shell.live)shell.vset('notes',{trashBusy:false});await load(shell);}
  }
 
