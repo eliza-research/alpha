@@ -73,7 +73,7 @@ test('Trash written under a larger limit stays readable, restorable and purgeabl
  await page.getByRole('button',{name:'Open Delta',exact:true}).click();
  await page.getByRole('button',{name:'Delete note',exact:true}).click();
  const full=page.getByRole('dialog',{name:'Trash is full'});
- await expect(full).toContainText('“Delta” was not deleted because Trash has no room');
+ await expect(full).toContainText('Trash is full, so “Delta” wasn\'t deleted.');
  await expect(full).toContainText('Permanent deletion skips Trash and cannot be undone.');
  // The editor under the dialog cannot be operated or read by assistive technology while the choice is open
  // (the inline modal holds every background sibling inert), and focus returns to the control that opened it.

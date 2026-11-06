@@ -2,7 +2,10 @@
 // Maps "Back to event" identity. Pure rules; the rendered flows are in test/browser.
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {addNoteOrigin, findNoteOrigin, noteOriginFor, noteOriginTitle, noteOriginIndex, noteOriginKey, noteOriginLimit, noteOriginOf, removeNoteOrigin, resolveNoteOrigin} from '../apps/app/src/runtime/note-origin.ts';
+import {readFileSync} from 'node:fs';
+import {stripTypeScriptTypes} from 'node:module';
+import {addNoteOrigin, findNoteOrigin, noteOriginFor, noteOriginTitle, noteOriginIndex, noteOriginKey, noteOriginLimit, noteOriginOf, recordNoteRevision, removeNoteOrigin, resolveNoteLink, resolveNoteOrigin, voiceNoteChanged, voiceNoteContentRevision} from '../apps/app/src/runtime/note-origin.ts';
+import {recordingRevision} from '../apps/app/src/prototype/summary-source.ts';
 import {mapsEventOriginFor, mapsEventOriginOf, mapsEventReturnOffered, mapsEventStillThere} from '../apps/app/src/runtime/maps-event-return.ts';
 import {encodeCalendarForm, decodeCalendarForm, calendarEditFields, snapshotCalendarForm} from '../apps/app/src/runtime/calendar-form-draft.ts';
 
@@ -113,4 +116,48 @@ test('Maps offers "Back to event" only for the event it was opened from, while C
   assert.equal(mapsEventStillThere(from, undefined), false);
   assert.equal(mapsEventStillThere({...from, id: 71}, [{id: 71, begin: 1000}]), false);
   assert.equal(mapsEventStillThere(mapsEventOriginFor({...row, alphaCalendarId: 71, nativeEvent: {id: 71, begin: 1000}}, 2), [{id: 71, begin: 1000}]), true, 'numeric provider ids compare by value');
+});
+
+test('a voice-note link reports an edit only when the note content changed', async () => {
+  const voice = {...note, lines: [{s: 'me', at: 0, t: 'Transcript'}], summary: ['Venue booked'], actions: [{t: 'Book the venue', done: false}], pinned: false};
+  const revision = await voiceNoteContentRevision(voice);
+  assert.match(revision, /^[a-f0-9]{64}$/);
+  assert.ok(noteOriginFor(voice, revision), 'a content revision is a valid link revision');
+  for (const flags of [{pinned: true}, {onCal: true}, {actions: [{t: 'Book the venue', done: true}]}, {when: 'Yesterday'}])
+    assert.equal(await voiceNoteChanged({...voice, ...flags}, revision), false, JSON.stringify(flags));
+  for (const edit of [{lines: [{s: 'me', at: 0, t: 'Edited transcript'}]}, {body: 'Edited'}, {title: 'Renamed'}, {summary: ['Venue cancelled']}, {actions: [{t: 'Cancel the venue', done: false}]}, {audio: {audioId: 'audio-1', transcript: 'Other'}}])
+    assert.equal(await voiceNoteChanged({...voice, ...edit}, revision), true, JSON.stringify(edit));
+  // A link made before content revisions hashed the whole record: unchanged stays unchanged, any change may be an edit.
+  const whole = await recordingRevision(voice);
+  assert.equal(await voiceNoteChanged(voice, whole), false);
+  assert.equal(await voiceNoteChanged({...voice, pinned: true}, whole), true);
+});
+
+test('an event link to an agent note opens it while Previous notes is selected', async () => {
+  const source = readFileSync('apps/app/src/prototype/note-origin-adapter.ts', 'utf8');
+  const start = source.indexOf(' /** A canonical Notes record link'), end = source.lastIndexOf('\n}');
+  const linked = {id: 'agent-1', title: 'Venue plan', body: 'Book it', format: null};
+  const link = {version: 2, noteId: 'agent-1', revision: await recordNoteRevision(linked)};
+  const run = async ({refuse = false, port = true} = {}) => {
+    const toasts = [], opened = [], selected = [];
+    const binding = {current: true, notes: () => [linked], select: id => selected.push(id)};
+    const shell = {notesSourceMode: 'legacy', canonicalNotesUi: null, notesReady: undefined,
+      api: () => ({notesSourceOptions: [{id: 'canonical', choose() { if (refuse) return; shell.notesSourceMode = 'canonical'; shell.notesReady = Promise.resolve().then(() => { if (port) shell.canonicalNotesUi = binding; }); }}]})};
+    const api = {isActive: () => true, get: () => ({open: 'e1'}), toast: text => toasts.push(text), open: (...args) => opened.push(args)};
+    const canonicalOrigin = new Function('shell', 'resolveNoteLink', 'noteOriginTitle', 'recordNoteRevision', 'document',
+      'let opening=false;' + stripTypeScriptTypes(source.slice(start, end), {mode: 'transform'}) + ';return canonicalOrigin;')(shell, resolveNoteLink, noteOriginTitle, recordNoteRevision, {hidden: false});
+    const out = canonicalOrigin({ev: {}}, link, api, 'e1');
+    assert.equal(out.ev.originLabel, 'From a note in Notes');
+    await out.ev.openOrigin();
+    return {toasts, opened, selected, shell};
+  };
+  const ok = await run();
+  assert.equal(ok.shell.notesSourceMode, 'canonical', 'Notes is chosen first, as the Older notes path does');
+  assert.deepEqual(ok.opened, [['notes', {}]]);
+  assert.deepEqual(ok.selected, ['agent-1']);
+  assert.deepEqual(ok.toasts, []);
+  const refused = await run({refuse: true});
+  assert.deepEqual([refused.opened, refused.toasts], [[], []], 'a refused switch already said why and opens nothing');
+  const missing = await run({port: false});
+  assert.deepEqual(missing.toasts, ['Notes is unavailable for this agent connection. Nothing was opened.'], 'a real missing binding still says so');
 });

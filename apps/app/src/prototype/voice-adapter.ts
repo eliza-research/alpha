@@ -9,7 +9,7 @@ import {cloudRuntimeEnabled,testMocksEnabled} from '../build-flags';
 import {developmentCartesiaConversation,developmentCartesiaVoiceEnabled} from '../runtime/development-cartesia-conversation';
 import {BatchVoiceConversation,type BatchVoiceState} from '@elizaos/ui/voice/batch-conversation';
 import {recordingRevision} from './summary-source';
-import {noteOriginFor} from '../runtime/note-origin';
+import {noteOriginFor,voiceNoteContentRevision} from '../runtime/note-origin';
 import {reviewContentQuestion} from '../browser/content-question';
 import {recordingLevels} from '../browser/audio-levels';
 import {browserDevProfile} from '../browser/dev-profile';
@@ -1008,7 +1008,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
         if(actionText.length>4000){current.toast(kind==='event'?'Shorten the action items before creating an event. Nothing was added to your calendar.':'Shorten the action items before creating a reminder. Nothing scheduled.');return;}
         noteHandoffBusy=true;
         try{
-          const origin=noteOriginFor(note,await recordingRevision(note));
+          const origin=noteOriginFor(note,await voiceNoteContentRevision(note));
           if(!reviewed())return;
           const shared={id:null,title:'',off:1,t:9,d:1,where:'',video:false,who:[],repeat:'none',notes:actionText,...(origin?{origin}:{})};
           current.open('calendar',{calendarAuthority:current.get('calendar').calendarAuthority,form:kind==='event'?{...shared,creationId:crypto.randomUUID(),separateCreation:false,cal:'native:local',alert:null}:{...shared,cal:'alpha-reminders',alert:0},open:null,month:null,day:1},'hidden');

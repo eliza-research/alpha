@@ -31,6 +31,9 @@ export async function releaseUnusedSourceReferences(notes:readonly unknown[]):Pr
  await attachments.releaseSourceReferences({keep});
 }
 export const sourceOf=documentSourceOf;
+/** What the source review shows. The SHA-256 stays the match identity but is not shown. */
+const typeLabel:Record<string,string>={'text/plain':'Text file','application/pdf':'PDF','image/png':'PNG image','image/jpeg':'JPEG image','image/webp':'WebP image'};
+export const sizeLabel=(bytes:number)=>bytes<1024*1024?`${Math.max(1,Math.round(bytes/1024))} KB`:`${(bytes/(1024*1024)).toFixed(1).replace(/\.0$/,'')} MB`;
 /** Alpha's cross-app source review. Notes owns persistence; existing file ports
  * own picker grants and exact-byte validation. Never persist temporary grants. */
 export function installNoteSourceAdapter(views:Bag){
@@ -51,7 +54,7 @@ export function installNoteSourceAdapter(views:Bag){
    const heading=document.createElement('h2');heading.textContent='Source document';
    const content=document.createElement('div');content.className='note-source-content';content.tabIndex=0;content.setAttribute('role','region');content.setAttribute('aria-label','Source details');
    const name=document.createElement('p'),detail=document.createElement('p');
-   const description=document.createElement('p');description.textContent='Link a PDF, image or text file (up to 5 MiB). Saved library links can reopen directly while access remains available. Otherwise choose the file again. Its bytes must match the linked source. Opening shares only that selected copy with the viewer.';
+   const description=document.createElement('p');description.textContent='Link a PDF, image or text file up to 5 MB. If it won\'t reopen, choose the same file again. Opening shares only that copy with the viewer.';
    const status=document.createElement('p');status.setAttribute('role','status');
    const actions=document.createElement('div');actions.className='note-source-options';const footer=document.createElement('footer');
    const button=(label:string)=>{const el=document.createElement('button');el.type='button';el.textContent=label;return el;};
@@ -59,7 +62,7 @@ export function installNoteSourceAdapter(views:Bag){
    const current=()=>!closed&&api.isActive()&&api.get('notes').open===note.id&&JSON.stringify(api.get('notes').list.find((n:Bag)=>n.id===note.id))===expected;
    const close=()=>{if(closed)return;closed=true;pickerAbort.abort();if(opened)void attachments.cancel().catch(()=>{});dialog.remove();window.removeEventListener('alpha-back',back,true);window.removeEventListener('pagehide',close);if(closeCurrent===close)closeCurrent=undefined;if(previous instanceof HTMLElement&&previous.isConnected)previous.focus();};
    const back=(event:Event)=>{if([...document.querySelectorAll('dialog[open]')].at(-1)!==dialog)return;event.preventDefault();event.stopImmediatePropagation();close();};
-   const paint=()=>{linked.hidden=!source?.reference;name.textContent=source?.name||'No source linked';detail.textContent=source?`${source.mimeType} · ${source.size} bytes · SHA-256 ${source.sha256}`:'';link.textContent=source?'Replace source file':'Link file';open.hidden=remove.hidden=!source;for(const el of [linked,link,open,remove])el.disabled=busy;};
+   const paint=()=>{linked.hidden=!source?.reference;name.textContent=source?.name||'No source linked';detail.textContent=source?`${typeLabel[source.mimeType]??'File'} · ${sizeLabel(source.size)}`:'';link.textContent=source?'Replace source file':'Link file';open.hidden=remove.hidden=!source;for(const el of [linked,link,open,remove])el.disabled=busy;};
    const save=async(next:Source|undefined)=>{
     if(!current())throw Error('Note changed. Close this review and reopen the note.');
     const state=api.get('notes'),record={...state.list.find((n:Bag)=>n.id===note.id)};
@@ -83,7 +86,7 @@ export function installNoteSourceAdapter(views:Bag){
      }else{
       const selected=await runFilePicker(async signal=>{
        const owned=anyAbortSignal([signal,pickerAbort.signal]),files=await inputFiles(owned);owned.throwIfAborted();
-       if(!files.length)return null;const chosen=files[0];if(chosen.size>5*1024*1024)throw Error('Choose a source up to 5 MiB.');
+       if(!files.length)return null;const chosen=files[0];if(chosen.size>5*1024*1024)throw Error('Choose a file up to 5 MB.');
        const bytes=new Uint8Array(await chosen.arrayBuffer());owned.throwIfAborted();let binary='';for(let i=0;i<bytes.length;i+=8192)binary+=String.fromCharCode(...bytes.subarray(i,i+8192));
        const value={name:chosen.name,mimeType:chosen.type,dataBase64:btoa(binary)};return {...value,...await reviewMailAttachment(value)};
       },null);
@@ -94,9 +97,9 @@ export function installNoteSourceAdapter(views:Bag){
      if(checked.sha256!==file.sha256||checked.size!==file.size)throw Error('Selected file changed. Choose it again.');
      if(mode==='link'){
       const reference=selectionId&&file.sourceReferenceVersion===1?(await attachments.retainSourceReference({selectionId,sha256:checked.sha256})).reference:undefined;if(!current())return;const next=sourceOf({version:1,name:file.name,mimeType:file.mimeType,sha256:checked.sha256,size:checked.size,...(reference?{reference}:{})});if(!next)throw Error('This file cannot be linked.');
-      await save(next);if(!closed)status.textContent='Source linked. File contents were not added to the note or sent to an agent.';
+      await save(next);if(!closed)status.textContent='Source linked.';
      }else{
-      if(!source||checked.sha256!==source.sha256||checked.size!==source.size||file.mimeType!==source.mimeType)throw Error('This file does not match the linked source. Nothing opened; the source link is unchanged.');
+      if(!source||checked.sha256!==source.sha256||checked.size!==source.size||file.mimeType!==source.mimeType)throw Error('This file doesn\'t match the linked source.');
       opened=true;await attachments.openReviewed({...file,reviewed:true});if(!closed)status.textContent='Matching source opened.';
      }
     }catch(error){if(!closed)status.textContent=error instanceof Error?error.message:'Source unavailable.';}

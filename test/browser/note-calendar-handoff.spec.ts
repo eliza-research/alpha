@@ -154,7 +154,7 @@ test('a reminder from a note carries the same link; an unrelated event and remin
  expect(await links(page)).toEqual({});
 });
 
-test('the open-note action fails closed when the note was deleted or replaced, and says when it was edited',async({page})=>{
+test('the open-note action fails closed when the note was deleted or replaced, and says when its content was edited',async({page})=>{
  await setup(page);
  await openRecording(page,'Venue meeting');
  await button(page,'Review calendar event draft').click();
@@ -162,14 +162,14 @@ test('the open-note action fails closed when the note was deleted or replaced, a
  const event=(await events(page))[0];
  const openEvent=async()=>{await openCalendarItem(page,'Venue walkthrough');await expect(page.getByRole('heading',{name:'Venue walkthrough',level:1})).toBeVisible();};
 
- // Edited after the hand-off (an action ticked): still the same note, opened with a notice.
+ // An action ticked after the hand-off is not a content edit: the note opens without a notice.
  await openRecording(page,'Venue meeting');
  await button(page,/Book the venue/).first().click();
  await expect.poll(async()=>(await notes(page)).find(n=>n.title==='Venue meeting').actions[0].done).toBe(true);
  await openEvent();
  await button(page,'Open note Venue meeting').click();
- await expect(page.getByText('This note was edited after this was created from it.',{exact:true})).toBeVisible();
  await expect(page.locator('input[aria-label="Title"]:visible').last()).toHaveValue('Venue meeting');
+ await expect(page.getByText('This note may have changed since this was created from it.',{exact:true})).toHaveCount(0);
 
  // Renamed after the hand-off: the link shows the note's current title, never the old one, and no
  // title is kept with the link.
@@ -185,6 +185,7 @@ test('the open-note action fails closed when the note was deleted or replaced, a
  expect(JSON.stringify(await stored(page))).not.toMatch(/Private debrief|Venue meeting/);
  await button(page,'Open note Private debrief').click();
  await expect(page.locator('input[aria-label="Title"]:visible').last()).toHaveValue('Private debrief');
+ await expect(page.getByText('This note may have changed since this was created from it.',{exact:true})).toBeVisible();
  await page.evaluate(async raw=>{const port=await import('/src/runtime/browser-notes-document.ts');await port.browserNotesPort.compareExchange((await port.browserNotesPort.read())!,raw);},beforeRename);
  await page.reload({waitUntil:'domcontentloaded'});
 

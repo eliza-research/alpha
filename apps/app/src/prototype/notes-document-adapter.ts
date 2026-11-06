@@ -18,7 +18,7 @@ export function installNotesDocumentAdapter(Component:any,views:Record<string,Ba
   const view=render(state,api);
   /** The outcome of a document operation, a failure included, shown once the document is visible and only in the Notes view it belongs to. */
   const receipt=(message:string)=>{const token=epoch;void whenVisible().then(()=>{if(token===epoch&&api.isActive())api.toast(message);});};
-  const perform=async(task:()=>Promise<any>,apply:(value:any)=>void|Promise<void>)=>{if(busy){api.toast('Finish the current document selection first.');return;}const token=epoch;busy=true;api.set({noteDocumentBusy:true});try{const value=await task();if(token!==epoch||!api.isActive())return;await apply(value);}catch{if(token===epoch)receipt('Document operation failed. No completed export or import is confirmed.');}finally{busy=false;api.set({noteDocumentBusy:false});}};
+  const perform=async(task:()=>Promise<any>,apply:(value:any)=>void|Promise<void>)=>{if(busy){api.toast('Finish the current document selection first.');return;}const token=epoch;busy=true;api.set({noteDocumentBusy:true});try{const value=await task();if(token!==epoch||!api.isActive())return;await apply(value);}catch{if(token===epoch)receipt('That didn\'t finish. Check your file and try again.');}finally{busy=false;api.set({noteDocumentBusy:false});}};
   view.importText=()=>{if(!testMocksEnabled)return;void perform(()=>documents.importText(),async value=>{
    if(value.status!=='read'||typeof value.text!=='string'){receipt(value.message);return;}
    const current=api.get('notes'),id=crypto.randomUUID();if(current.list.length>=10000){receipt('Notes is full. Nothing imported.');return;}

@@ -5,6 +5,7 @@ import {join} from 'node:path';
 import {createHash} from 'node:crypto';
 import {DocumentNotesStore,NotesDocumentConflict} from '../.eliza/client-features/plugins/plugin-notes/src/client/notes-document-store.ts';
 import {executeNamedNotes,executeNotesQuery,executeNotesSearch} from '../apps/app/src/prototype/notes-query-executor.ts';
+import {shareable} from '../apps/app/src/prototype/notes-query-review.ts';
 import {addNotesTrashEntry,emptyNotesTrash,restoreNotesTrashEntry,validateNotesTrash} from '../apps/app/src/runtime/notes-trash-policy.ts';
 import {DeviceActions} from '../apps/app/src/runtime/device-actions.ts';
 const directory=mkdtempSync(join(tmpdir(),'alpha-notes-query-')),signal=()=>new AbortController().signal;
@@ -26,6 +27,13 @@ try{
  const race=await make('race',records);await assert.rejects(executeNotesQuery(race.store,operation,'race',signal(),()=>{},async()=>{const external=await DocumentNotesStore.open(race.port);await external.replace([...external.list,{id:'newest',kind:'text',title:'New insertion',body:'Not approved',createdAt:400}]);return 'newer';}),/changed/i);
  let owner='owner';const guard=()=>{if(owner!=='owner')throw Error('Owner changed');};await assert.rejects(executeNotesQuery(first.store,operation,'owner',signal(),guard,async()=>{owner='other';return 'newer';}),/Owner changed/);owner='owner';
  const cancelled=await executeNotesQuery(first.store,operation,'cancelled',signal(),guard,async()=>null);assert.equal(cancelled.status,'failed');assert.ok(!('notesResult' in cancelled));
+ // A text note turned into a checklist keeps an empty body and its items elsewhere: it is never shared as an empty note.
+ const converted=await make('converted',[{id:'list',kind:'list',title:'Packing',body:'',items:[{t:'Passport',done:false}],createdAt:500,modifiedAt:500}]);
+ const convertedBefore=readFileSync(converted.file,'utf8');
+ assert.equal(shareable({id:'list',kind:'list',title:'Packing',body:''}),false);assert.equal(shareable({id:'blank',kind:'text',title:'Blank',body:'  '}),false);assert.equal(shareable(records[1]),true);
+ await assert.rejects(executeNotesQuery(converted.store,operation,'converted',signal(),()=>{},async()=> 'list'),/no text to share/);
+ await assert.rejects(executeNotesSearch(converted.store,{type:'notes_search',query:{kind:'content',text:'packing'}} as any,'converted-search',signal(),()=>{},async()=> 'list'),/no text to share/);
+ assert.equal(readFileSync(converted.file,'utf8'),convertedBefore);
  const session={ownerId:'owner',agentId:'agent',origin:'https://fixture.invalid',sessionId:'session'},credential={installationId:'device',enrollmentId:'enrollment',key:'a'.repeat(64),capabilities:['notes.local-record.v1','notes.query.v1']};let state='pending',attemptId='',reads=0,receiptDown=true;
  const journalFile=join(directory,'journal.json'),load=()=>existsSync(journalFile)?JSON.parse(readFileSync(journalFile,'utf8')):null;
  const journal={reserve:async(input:any)=>{const existing=load();if(existing)return {created:false,entry:existing};const entry={...input,phase:'reserved'};writeFileSync(journalFile,JSON.stringify(entry));return {created:true,entry};},markApplying:async(input:any)=>{writeFileSync(journalFile,JSON.stringify({...load(),...input,phase:'applying'}));},finish:async(input:any)=>{writeFileSync(journalFile,JSON.stringify({...load(),...input,phase:'terminal'}));},get:async()=>({entry:load()}),list:async()=>({entries:load()?[load()]:[]})};
