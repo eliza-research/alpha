@@ -1,10 +1,12 @@
 import {test,expect} from '@playwright/test';
+import {deviceAppsStub} from './device-apps-stub';
 for(const height of [600,915])test(`Apps fills the screen and its last control clears the chat bar at ${height}px`,async({page})=>{
  await page.setViewportSize({width:412,height});
- await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
+ await deviceAppsStub(page);
  await page.goto('/');await page.getByRole('button',{name:'Apps',exact:true}).click();
  const list=page.locator('[data-installed-apps-scroll]');
  await expect(list).toBeVisible();
+ await expect(list.getByRole('button',{name:'Open App 39'})).toBeAttached();
  expect(await list.evaluate(el=>Math.abs(el.getBoundingClientRect().bottom-document.querySelector('[data-screen]')!.getBoundingClientRect().bottom))).toBeLessThanOrEqual(1);
  for(const raised of [false,true]){
   if(raised)await page.evaluate(()=>{document.documentElement.classList.add('native-phone');document.documentElement.style.setProperty('--native-bottom-inset','72px');});
