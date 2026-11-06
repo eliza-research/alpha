@@ -233,6 +233,7 @@ export const CAMPAIGN_RUNNERS = [
  * gained a registry entry or a campaign, and for any new class that has neither.
  */
 export const NOT_RUN_BY_A_RUNNER = {
+  LocalServerSocketRelease: "platform probe for an upstream resident defect (docs/on-device-speech-2026-11-05.md, defect 4): it measures Android, not Alpha, and is run by hand when that defect is revisited",
   ResetExternalFixture: "requires an external host controller, disposable non-owner user, synthetic device credential and separate companion/media sentinels; reset kills instrumentation, so phases cannot run as a single generic campaign (see docs/evidence/reset-native-2026-10-12.json)",
   AllViewAgentContext: "needs a real local agent with inference and a forwarding observer on the host (agentContext=true); its runner was removed with the smoke suites in 49b1bf4c",
   CombinedAgent: "needs the combined host runtime with a provider key at 10.0.2.2:47859 (scripts/start-combined-agent.mjs); no Android runner starts or pairs it",
