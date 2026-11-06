@@ -6,7 +6,7 @@ import {
   parentOf, sortEntries, trashDaysLeft, validateFilesFilter,
   type FilesCategory, type FilesFilter, type SortMode, type StorageEntry, type StorageVolume, type TrashEntry,
 } from '../runtime/files-storage';
-import {registerFilesAgent, type FilesAgentOperation} from '../runtime/files-agent-contract';
+import {filesFilterOf, registerFilesAgent, type FilesAgentOperation} from '../runtime/files-agent-contract';
 
 /**
  * Files (design/view-refresh-2026-11/PLAN.md section 4; checked model
@@ -280,7 +280,7 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
       if (!api.isActive?.()) api.open?.('files');
       await refreshState();
       if (access !== 'granted') return {status: 'failed', summary: 'Files needs all-files access. Nothing was changed.'};
-      if (op.type === 'files_filter') { const n = await showFilter(validateFilesFilter(op.filter)); return {status: 'succeeded', summary: `Showing ${countLabel(n)} in Files.`}; }
+      if (op.type === 'files_filter') { const n = await showFilter(validateFilesFilter(filesFilterOf(op))); return {status: 'succeeded', summary: `Showing ${countLabel(n)} in Files.`}; }
       if (op.type === 'files_open') {
         const value = await storage.storageSelect({path: op.path});
         if (value.status !== 'selected') return {status: 'failed', summary: 'That file is not there. Nothing was opened.'};

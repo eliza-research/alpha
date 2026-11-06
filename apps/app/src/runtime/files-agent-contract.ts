@@ -6,9 +6,14 @@ import {validateFilesFilter, validName, validPath, filterLabel, baseName, type F
  * Share, move, trash and folder creation are proposals the owner reviews in Alpha before
  * anything changes or leaves the phone (AgentMoveOnlyReviewed: a move applies only while the
  * file is still where the owner reviewed it). Paths are volume-relative ("Download/a.pdf").
+ *
+ * The same contract, the agent tool schema and the phone-side coordinator wiring are the
+ * proposed upstream change patches/eliza/files-browser-agent.patch (plugin-assistant
+ * files-browser-contract.ts). Operations keep one flat shape so a validated operation
+ * validates again unchanged; test/files-agent-patch.test.mjs keeps both in step.
  */
 export type FilesAgentOperation =
-  | {type: 'files_filter'; filter: FilesFilter}
+  | ({type: 'files_filter'} & FilesFilter)
   | {type: 'files_open'; path: string}
   | {type: 'files_share'; paths: string[]}
   | {type: 'files_move'; paths: string[]; dest: string}
@@ -38,7 +43,7 @@ export function validateFilesOperation(value: unknown): FilesAgentOperation {
     case 'files_filter': {
       allowed(['type', 'text', 'kind', 'folder', 'from', 'to']);
       const {type: _type, ...filter} = op;
-      return {type: 'files_filter', filter: validateFilesFilter(filter)};
+      return {type: 'files_filter', ...validateFilesFilter(filter)};
     }
     case 'files_open': allowed(['type', 'path']); return {type: 'files_open', path: validPath(op.path)};
     case 'files_share': allowed(['type', 'paths']); return {type: 'files_share', paths: paths(op.paths)};
@@ -53,13 +58,18 @@ export function validateFilesOperation(value: unknown): FilesAgentOperation {
   }
   throw Error('Unsupported files operation');
 }
+/** The filter fields of a files_filter operation. */
+export function filesFilterOf(op: {type: 'files_filter'} & FilesFilter): FilesFilter {
+  const {type: _type, ...filter} = op;
+  return filter;
+}
 const place = (path: string) => path ? path.split('/').join(' › ') : 'Internal storage';
 const listed = (list: string[]) => list.length <= 3 ? list.map(baseName).join(', ') : `${list.slice(0, 2).map(baseName).join(', ')} and ${list.length - 2} more`;
 const count = (n: number) => n === 1 ? '1 item' : `${n} items`;
 /** Owner-facing title and the exact effect of a proposal. */
 export function describeFilesOperation(op: FilesAgentOperation): {title: string; description: string} {
   switch (op.type) {
-    case 'files_filter': return {title: 'Show files', description: filterLabel(op.filter)};
+    case 'files_filter': return {title: 'Show files', description: filterLabel(filesFilterOf(op))};
     case 'files_open': return {title: 'Open file', description: place(op.path)};
     case 'files_share': return {title: `Share ${count(op.paths.length)}`, description: listed(op.paths)};
     case 'files_trash': return {title: `Move ${count(op.paths.length)} to Trash`, description: listed(op.paths)};

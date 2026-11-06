@@ -132,7 +132,7 @@ test('the agent filter is read-only, validated, and matches names, kinds, folder
 });
 
 test('Files agent tools: filter and open are direct; share, move, trash and folder creation are reviewed proposals',()=>{
- assert.deepEqual(contract.validateFilesOperation({type:'files_filter',text:'lease'}),{type:'files_filter',filter:{text:'lease'}});
+ assert.deepEqual(contract.validateFilesOperation({type:'files_filter',text:'lease'}),{type:'files_filter',text:'lease'});
  assert.deepEqual(contract.validateFilesOperation({type:'files_move',paths:['Download/a.pdf'],dest:'Documents'}),{type:'files_move',paths:['Download/a.pdf'],dest:'Documents'});
  assert.deepEqual(contract.validateFilesOperation({type:'files_folder_create',parent:'',name:'Taxes'}),{type:'files_folder_create',parent:'',name:'Taxes'});
  for(const bad of [{type:'files_move',paths:[],dest:'x'},{type:'files_move',paths:['a','a'],dest:'x'},{type:'files_trash',paths:['../etc']},{type:'files_folder_create',parent:'',name:'.hidden'},{type:'files_open',path:'a',extra:1},{type:'files_delete',paths:['a']}])assert.throws(()=>contract.validateFilesOperation(bad));
@@ -140,8 +140,8 @@ test('Files agent tools: filter and open are direct; share, move, trash and fold
  for(const type of ['files_share','files_move','files_trash','files_folder_create'])assert.equal(contract.FILES_DIRECT_TYPES.includes(type),false);
  assert.deepEqual(contract.describeFilesOperation({type:'files_move',paths:['Download/a.pdf'],dest:'Documents/Taxes'}),{title:'Move 1 item',description:'a.pdf → Documents › Taxes'});
  assert.equal(contract.filesContextAllowed({type:'files_trash',paths:['a']},{view:'home'}),false,'changes are reviewed only with Files on screen');
- assert.equal(contract.filesContextAllowed({type:'files_filter',filter:{text:'a'}},{view:'home'}),true);
- assert.equal(contract.filesContextAllowed({type:'files_filter',filter:{text:'a'}},{view:'files',sensitive:true}),false);
+ assert.equal(contract.filesContextAllowed({type:'files_filter',text:'a'},{view:'home'}),true);
+ assert.equal(contract.filesContextAllowed({type:'files_filter',text:'a'},{view:'files',sensitive:true}),false);
 });
 
 test('Files shows no picker tiles, search box, Recents or instruction subtitles',()=>{
