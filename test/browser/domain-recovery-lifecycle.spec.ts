@@ -16,7 +16,8 @@ for(const name of ['calendar','reminders'] as const)for(const event of ['alpha:d
   await expect.poll(()=>page.evaluate(()=>Boolean((window as any).recoverySignal))).toBe(true);
   await page.evaluate(event=>window.dispatchEvent(new Event(event)),event);
   expect(await page.evaluate(()=>(window as any).recoverySignal.aborted)).toBe(true);
-  await page.evaluate(()=>(window as any).releaseRecovery());
+  // The retired read settles; two frames later a dialog it reopened would be on screen.
+  await page.evaluate(()=>{(window as any).releaseRecovery();return new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));});
   await expect(page.getByRole('dialog',{name:'Recovery lifecycle'})).toHaveCount(0);
   // A retired read must not reopen its dialog or prevent another recovery session.
   await page.evaluate(async()=>{const {openCalendarRecovery}=await import('/src/browser/calendar-recovery.ts');openCalendarRecovery();});

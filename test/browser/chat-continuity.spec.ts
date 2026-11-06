@@ -302,6 +302,7 @@ test('Stop says the agent may still finish, discards the late reply and reconcil
   await expect.poll(() => savedDraft(page, key)).toBe('');
   // The agent answers on the closed request and persists the reply: the late transport reply is discarded.
   await fixture(page, f => { f.release('Finished after Stop'); f.finish('Finished after Stop'); });
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   await expect(conversation(page).getByText('Finished after Stop', { exact: true })).toHaveCount(0);
   expect(await fixture(page, f => f.historyReads)).toBe(0);
   // One reconciliation read later shows it exactly once.
@@ -562,7 +563,8 @@ test('Stop is offered while an agent has not produced its first chunk, and a lat
   await expect(stop(page)).toBeVisible({ timeout: 5_000 });
   await stop(page).click();
   await expect(stop(page)).toHaveCount(0);
-  await page.evaluate(() => (window as any).silent.emit('Late first chunk'));
+  // The late chunk is delivered; two frames later it would have rendered.
+  await page.evaluate(() => { (window as any).silent.emit('Late first chunk'); return new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))); });
   await expect(conversation(page).getByText('Late first chunk', { exact: true })).toHaveCount(0);
   // This transport is attached below the shell's dispatch tracking, so only Stop itself is asserted here;
   // the outcome after Stop is covered by the connection-backed tests above.

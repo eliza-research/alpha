@@ -112,9 +112,14 @@ test('without an echo canceller, speech during playback never interrupts',async(
  await say(page,'When does the library close');
  await expect(voice(page)).toHaveAttribute('data-voice-state','speaking');
  const stopped=await live(page,f=>f.stopped);
+ // Busy hold: submission closed the capture, so the reply's own audio (heard without an echo
+ // canceller) has no open microphone to reach, and nothing new is routed.
+ expect(await live(page,f=>f.active)).toBeNull();
+ const routed=await live(page,f=>f.routes.length);
  await say(page,'closes at six tonight');
  await page.waitForTimeout(1600);
  expect(await live(page,f=>f.stopped)).toBe(stopped);
+ expect(await live(page,f=>f.routes.length)).toBe(routed);
  await expect(voice(page)).toHaveAttribute('data-voice-state','speaking');
  expect(await posts(page)).toEqual(['When does the library close']);
  await button(page,'Stop voice conversation').click();

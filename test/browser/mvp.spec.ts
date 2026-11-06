@@ -11,6 +11,8 @@ for (const theme of ['light', 'dark']) {
       page.on('pageerror', error => errors.push(error.message));
       for (const name of views) {
         await page.goto(`/?theme=${theme}`);
+        // The Home grid is drawn first, so a deferred tile would already be there.
+        await expect(page.getByRole('button', { name, exact: true })).toBeVisible();
         for (const deferred of ['Phone', 'Messages', 'Contacts', 'Wallet']) await expect(page.getByRole('button', {name: deferred, exact: true})).toHaveCount(0);
         await page.getByRole('button', { name, exact: true }).click();
         await expect(page.locator('html')).toHaveAttribute('data-active-view', name.toLowerCase());

@@ -3,16 +3,16 @@
 // and survives HOME, Back, a keyboard-sized resize and a restart; a reply in flight survives Back
 // from full to sheet and HOME on Home; a message in flight when the app stops is offered for review
 // after the restart, never restored as a draft; the transcript keeps its reading position through
-// the same steps. Nothing is ever sent twice.
+// the same steps. Nothing is ever sent twice. Stop on a resident reply says the agent may still
+// finish, discards the late reply and checks once; a new message, a new conversation or another
+// connection operation retires or overtakes that check, and says so.
 //
 // Evidence boundary: source/test evidence for the flag-off renderer only. The Capacitor bridge is
 // the stub in flag-off-android.ts plus resident-stub.ts; viewport changes stand in for the soft
 // keyboard. This is not the native Agent plugin, a real IME, Android Back/HOME or a device.
 import { test, expect, type Page } from '@playwright/test';
-import { flagOffAndroid, harness, button, fenceNetwork, expectNoDevelopmentSurface, residentHome } from './flag-off-android';
+import { flagOffAndroid, harness, button, fenceNetwork, expectNoDevelopmentSurface, residentHome, openYourAgent } from './flag-off-android';
 import { residentStub, stub, setStub } from './resident-stub';
-
-test.beforeEach(({}, testInfo) => { test.skip(testInfo.project.name !== 'production', 'Production bundle only'); });
 
 const owner = { token: 'synthetic-cloud-key', userId: '9f1dc45a-4011-4e44-947a-30d999d24fa5', email: 'owner@example.invalid', balance: 5 };
 const composer = (page: Page) => page.locator('[data-alpha-layer="composer"][aria-hidden="false"], [data-alpha-layer="conversation"][aria-hidden="false"]').getByRole('textbox').first();
@@ -21,10 +21,12 @@ const UNKNOWN = 'Sorry, I couldn’t finish that reply.';
 const home = (page: Page) => page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
 const back = (page: Page) => page.evaluate(() => window.dispatchEvent(new Event('alpha-back', { cancelable: true })));
 
-async function connected(page: Page) {
+async function connected(page: Page, options: { clock?: boolean; abortRoute?: boolean } = {}) {
   const foreign = await fenceNetwork(page);
   await flagOffAndroid(page);
-  await residentStub(page, { accounts: [owner] });
+  await residentStub(page, { accounts: [owner], abortRoute: options.abortRoute });
+  // The page clock flows normally; a test moves it past the stop check's 15 s timer with runFor.
+  if (options.clock) await page.clock.install();
   await residentHome(page);
   return foreign;
 }
@@ -42,8 +44,10 @@ const settle = async (page: Page) => {
   await conversation(page).evaluate(element => Promise.all(element.getAnimations({ subtree: true }).filter(animation => animation.timeline === document.timeline && Number.isFinite(animation.effect?.getTiming().iterations)).map(animation => animation.finished.catch(() => {}))));
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 };
+/** Two animation frames: a late result already delivered has rendered by then. */
+const frames = (page: Page) => page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 async function noResend(page: Page, foreign: string[], streams: number) {
-  await page.waitForTimeout(1_000);
+  await frames(page);
   expect(await harness(page, f => f.streams)).toBe(streams);
   expect(await stub(page, s => s.recoveries)).toEqual([]);
   expect(await harness(page, f => f.unexpected)).toEqual([]);
@@ -286,4 +290,179 @@ test('the transcript keeps its reading position through a keyboard resize, Back 
   for (const [name, step] of steps) { await step(); expect(await fromBottom(), name).toBeLessThan(2); }
   // The restart restored history by reading it; no turn was streamed again.
   await noResend(page, foreign, 0);
+});
+
+const MAY_FINISH = 'The agent may still finish this reply. Alpha Phone will check once and show it here if it does.';
+const NOT_CHECKED = /The stopped reply was not checked because another message was sent\./;
+const LOAD_TO_SEE = 'Load this conversation from Agent connection to see whether the stopped reply finished.';
+/** Past the single stop check's 15 s timer (STOPPED_REPLY_CHECK_MS in connection-ui.tsx). */
+const pastStopCheck = (page: Page) => page.clock.runFor(16_000);
+/** Sends a message whose reply the resident holds until `release()`. */
+async function heldSend(page: Page, text: string) {
+  await setStub(page, { stream: 'hold' });
+  await composer(page).fill(text);
+  await composer(page).press('Enter');
+  await expect.poll(() => stub(page, s => typeof s.release), { timeout: 15_000 }).toBe('function');
+}
+/** The agent finishes the held reply anyway: it records it and writes it to the stream the phone closed. */
+async function finishAfterStop(page: Page) {
+  await stub(page, s => s.release());
+  await expect.poll(() => stub(page, s => s.release === null && s.held === null)).toBe(true);
+  await frames(page);
+}
+/** Waits for the cancel attempt Stop makes (it reads the conversation list for the turn's room). */
+async function stopReply(page: Page) {
+  const lists = await stub(page, s => s.lists);
+  await button(page, 'Stop reply').click();
+  await expect(conversation(page).getByText(MAY_FINISH, { exact: true })).toBeVisible();
+  await expect(button(page, 'Stop reply')).toHaveCount(0);
+  await expect.poll(() => stub(page, s => s.lists)).toBeGreaterThan(lists);
+}
+const conversationCount = (page: Page) => page.evaluate(() => JSON.parse(sessionStorage.getItem('resident-stub-agent') || 'null')?.conversations.length ?? 0);
+
+test('Stop says the agent may still finish, discards the late reply and reconciles once without resending', async ({ page }) => {
+  test.setTimeout(120_000);
+  const foreign = await connected(page, { clock: true });
+  const asked = 'Please finish anyway';
+  await heldSend(page, asked);
+  const reads = await stub(page, s => s.reads);
+  await stopReply(page);
+  await expect(page.getByText(UNKNOWN, { exact: true })).toHaveCount(0);
+  await expect(composer(page)).toHaveValue('');
+  await expect.poll(() => savedDrafts(page)).toEqual(['']);
+  // The late reply on the closed stream is discarded, and nothing is read before the check is due.
+  await finishAfterStop(page);
+  await expect(conversation(page).getByText('Held reply 1', { exact: true })).toHaveCount(0);
+  expect(await stub(page, s => s.reads)).toBe(reads);
+  // The one check shows the reply the agent kept, exactly once.
+  await pastStopCheck(page);
+  await expect(conversation(page).getByText('Held reply 1', { exact: true })).toHaveCount(1);
+  await expect(conversation(page).getByText(MAY_FINISH, { exact: true })).toHaveCount(0);
+  await expect(conversation(page).getByText(asked, { exact: true })).toHaveCount(1);
+  expect(await stub(page, s => s.reads)).toBe(reads + 1);
+  expect(await harness(page, f => f.posts)).toEqual([asked]);
+  await noResend(page, foreign, 1);
+});
+
+test('pressing Send twice dispatches one message', async ({ page }) => {
+  test.setTimeout(90_000);
+  const foreign = await connected(page);
+  const asked = 'Only once please';
+  await setStub(page, { stream: 'hold' });
+  await composer(page).fill(asked);
+  await expect.poll(() => savedDrafts(page), { timeout: 15_000 }).toEqual([asked]);
+  await composer(page).focus();
+  // Two key presses with no wait between them, as a fast double tap delivers them.
+  await Promise.all([page.keyboard.press('Enter'), page.keyboard.press('Enter')]);
+  await expect.poll(() => stub(page, s => typeof s.release), { timeout: 15_000 }).toBe('function');
+  await expect(page.getByText('Review local draft storage before sending.', { exact: true })).toHaveCount(0);
+  await stub(page, s => s.release());
+  await expect(conversation(page).getByText('Held reply 1', { exact: true })).toHaveCount(1);
+  await expect(conversation(page).getByText(asked, { exact: true })).toHaveCount(1);
+  expect(await harness(page, f => f.posts)).toEqual([asked]);
+  await noResend(page, foreign, 1);
+});
+
+test('a new message after Stop retires the pending check and says so; nothing is resent', async ({ page }) => {
+  test.setTimeout(120_000);
+  const foreign = await connected(page, { clock: true });
+  await heldSend(page, 'First question');
+  const reads = await stub(page, s => s.reads);
+  await stopReply(page);
+  await setStub(page, { stream: null });
+  await composer(page).fill('Second question');
+  await composer(page).press('Enter');
+  await expect(conversation(page).getByText('Resident reply 2', { exact: true })).toHaveCount(1, { timeout: 30_000 });
+  await expect(conversation(page).getByText(MAY_FINISH, { exact: true })).toHaveCount(0);
+  await expect(conversation(page).getByText(NOT_CHECKED)).toHaveCount(1);
+  // The retired check never reads, even once its time has passed.
+  await pastStopCheck(page);
+  await frames(page);
+  expect(await stub(page, s => s.reads)).toBe(reads);
+  await expect(conversation(page).getByText('First question', { exact: true })).toHaveCount(1);
+  // Two messages the person sent, two distinct identities.
+  expect(await harness(page, f => f.posts)).toEqual(['First question', 'Second question']);
+  const ids = await stub(page, s => (s.bodies as any[]).map(body => body.clientMessageId));
+  expect(new Set(ids).size).toBe(2);
+  await noResend(page, foreign, 2);
+});
+
+test('a new conversation after Stop retires the check; the stopped reply never replaces the new chat', async ({ page }) => {
+  test.setTimeout(120_000);
+  const foreign = await connected(page, { clock: true });
+  const asked = 'Asked in the first conversation';
+  await heldSend(page, asked);
+  const reads = await stub(page, s => s.reads);
+  await stopReply(page);
+  const panel = await openYourAgent(page);
+  await panel.getByRole('button', { name: 'New conversation', exact: true }).click();
+  await expect.poll(() => conversationCount(page), { timeout: 15_000 }).toBe(2);
+  // The first conversation's reply lands on the agent; the retired check never reads it.
+  await finishAfterStop(page);
+  await pastStopCheck(page);
+  await frames(page);
+  expect(await stub(page, s => s.reads)).toBe(reads);
+  await home(page);
+  await button(page, 'Open conversation').click();
+  await expect(conversation(page)).not.toHaveAttribute('aria-hidden', 'true');
+  await frames(page);
+  for (const text of ['Held reply 1', asked, MAY_FINISH]) await expect(conversation(page).getByText(text, { exact: true })).toHaveCount(0);
+  expect(await harness(page, f => f.posts)).toEqual([asked]);
+  await noResend(page, foreign, 1);
+});
+
+// HOME while another app is current changes the screen the turn was asked from, which is an explicit
+// Stop with its one cancel attempt and one check (AlphaClient.setViewContext aborts the foreground
+// request when the view context's revision moves; docs/decisions.md keeps this an open question).
+test('HOME from another app during a reply is a Stop: one cancel, the reconciliation statement, and no resend', async ({ page }) => {
+  test.setTimeout(120_000);
+  const foreign = await connected(page, { clock: true, abortRoute: true });
+  await button(page, 'Notes').click();
+  await expect(page.locator('html')).toHaveAttribute('data-active-view', 'notes');
+  if (!await composer(page).isVisible()) await button(page, 'Open conversation').click();
+  const asked = 'Asked from Notes';
+  await heldSend(page, asked);
+  const reads = await stub(page, s => s.reads);
+  await home(page);
+  await expect(page.locator('html')).toHaveAttribute('data-active-view', 'home');
+  await button(page, 'Open conversation').click();
+  await expect(conversation(page).getByText(MAY_FINISH, { exact: true })).toBeVisible();
+  await expect(button(page, 'Stop reply')).toHaveCount(0);
+  await expect.poll(() => stub(page, s => s.aborts)).toBe(1);
+  await finishAfterStop(page);
+  await expect(conversation(page).getByText('Held reply 1', { exact: true })).toHaveCount(0);
+  expect(await stub(page, s => s.reads)).toBe(reads);
+  await pastStopCheck(page);
+  await expect(conversation(page).getByText('Held reply 1', { exact: true })).toHaveCount(1);
+  await expect(conversation(page).getByText(asked, { exact: true })).toHaveCount(1);
+  expect(await stub(page, s => ({ reads: s.reads, aborts: s.aborts }))).toEqual({ reads: reads + 1, aborts: 1 });
+  expect(await harness(page, f => f.posts)).toEqual([asked]);
+  await noResend(page, foreign, 1);
+});
+
+test('a check overtaken by another connection operation says so instead of promising a check forever', async ({ page }) => {
+  test.setTimeout(120_000);
+  const foreign = await connected(page, { clock: true });
+  await heldSend(page, 'Overtaken check');
+  const reads = await stub(page, s => s.reads);
+  await stopReply(page);
+  // The single check's read is held when it is due.
+  await setStub(page, { holdReads: true });
+  await pastStopCheck(page);
+  await expect.poll(() => stub(page, s => s.reads), { timeout: 15_000 }).toBe(reads + 1);
+  // The person loads the conversation list while that read is still in flight.
+  const lists = await stub(page, s => s.lists);
+  const panel = await openYourAgent(page);
+  await panel.getByRole('button', { name: 'Load conversations', exact: true }).click();
+  await expect.poll(() => stub(page, s => s.lists), { timeout: 15_000 }).toBeGreaterThan(lists);
+  await stub(page, s => { s.holdReads = false; s.heldRead(); });
+  await frames(page);
+  await stub(page, s => s.heldList?.());
+  await home(page);
+  await button(page, 'Open conversation').click();
+  await expect(conversation(page).getByText(LOAD_TO_SEE, { exact: true })).toHaveCount(1, { timeout: 15_000 });
+  await expect(conversation(page).getByText(MAY_FINISH, { exact: true })).toHaveCount(0);
+  expect(await stub(page, s => s.reads)).toBe(reads + 1);
+  expect(await harness(page, f => f.posts)).toEqual(['Overtaken check']);
+  await noResend(page, foreign, 1);
 });
