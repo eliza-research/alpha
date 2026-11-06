@@ -125,7 +125,7 @@ final class StorageBrowser {
    if(source.isDirectory()&&(targetPath.equals(sourcePath)||targetPath.startsWith(sourcePath+File.separator))){out.add(new Outcome(path,"invalid",null));continue;}
    File destination=freeTarget(target,source.getName(),source.isDirectory());
    try{
-    if(copy)copyRecursive(source,destination);else moveFile(source,destination);
+    if(copy)copyFresh(source,destination);else moveFile(source,destination);
     out.add(new Outcome(path,copy?"copied":"moved",relative(destination)));
    }catch(IOException e){out.add(new Outcome(path,"failed",null));}
   }
@@ -216,9 +216,15 @@ final class StorageBrowser {
  static void moveFile(File source,File destination)throws IOException{
   if(destination.exists())throw new IOException("Destination exists");
   if(source.renameTo(destination))return;
-  // Another volume or mount: copy, check, then remove the source.
-  copyRecursive(source,destination);
+  // Another volume or mount: copy, check, then remove the source. A failed copy leaves nothing
+  // behind; once the copy is complete it is kept, since removing the source may have begun.
+  copyFresh(source,destination);
   if(!deleteRecursive(source))throw new IOException("Source not removed");
+ }
+ /** A copy into a new destination that is removed again if the copy fails part way. */
+ static void copyFresh(File source,File destination)throws IOException{
+  if(destination.exists())throw new IOException("Destination exists");
+  try{copyRecursive(source,destination);}catch(IOException e){deleteRecursive(destination);throw e;}
  }
  static void copyRecursive(File source,File destination)throws IOException{
   if(destination.exists())throw new IOException("Destination exists");

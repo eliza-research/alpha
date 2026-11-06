@@ -65,6 +65,14 @@ public final class StorageBrowserTest {
    check(downloads.size()==2&&downloads.get(0).path.equals("Download/new.txt")&&downloads.get(1).path.equals("Download/old.pdf"),"downloads lists Download/ files newest first");
    check(b.files("Download",1).size()==1,"downloads is bounded");
    check(new StorageBrowser(Files.createTempDirectory("alpha-empty").toFile()).files("Download",2000).isEmpty(),"no Download folder is an empty category");
+   // A copy that fails part way leaves no partial "Folder (1)" behind.
+   File tree=new File(root,"Tree");new File(tree,"a").mkdirs();StorageBrowser.write(new File(tree,"a/one.txt"),"1");StorageBrowser.write(new File(tree,"b.txt"),"2");
+   File unreadable=new File(tree,"zz.txt");StorageBrowser.write(unreadable,"3");
+   if(unreadable.setReadable(false,false)&&!unreadable.canRead()){
+    List<StorageBrowser.Outcome> partial=b.transfer(Arrays.asList("Tree"),"Documents",true);
+    check(partial.get(0).status.equals("failed")&&!new File(root,"Documents/Tree").exists(),"a failed copy leaves nothing: "+Arrays.toString(new File(root,"Documents").list()));
+    unreadable.setReadable(true,false);
+   }
    // The agent's folder filter walks the tree: hidden folders and the trash are skipped.
    new File(root,"Documents/Bank statements/2025").mkdirs();new File(root,".hidden/Bank").mkdirs();
    new File(root,"Documents/Bank statements").setLastModified(1_750_000_000_000L);
