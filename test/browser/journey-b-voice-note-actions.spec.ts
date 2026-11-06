@@ -32,7 +32,7 @@ import {openBrowserCalendar} from './helpers/browser-calendar';
  * Native-only / not provable here:
  *  - A physically spoken note, real speech recognition quality and audible playback/read-aloud.
  *  - OS notification delivery, snooze from the notification and reboot survival of the reminder
- *    (the browser reports "Scheduled · approximate delivery").
+ *    (the browser reports "Scheduled. Alerts may arrive a few minutes late.").
  *  - Android Calendar provider accounts, attendees and provider-side read-back.
  *  - A real agent deciding to propose these actions.
  *
