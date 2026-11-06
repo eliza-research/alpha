@@ -26,7 +26,7 @@ public class NoteRecordingSaveInstrumentedTest {
  @Test public void transcriptPrefixIsBoundedAndKeepsSurrogatePairs(){
   assertEquals("short",AlphaNoteAudioPlugin.transcriptPrefix("short",10));
   assertEquals("ab",AlphaNoteAudioPlugin.transcriptPrefix("abc",2));
-  assertEquals("a","a😀".length()==3?AlphaNoteAudioPlugin.transcriptPrefix("a😀",2):"");
+  assertEquals("a pair is never split","a",AlphaNoteAudioPlugin.transcriptPrefix("a\uD83D\uDE00",2));
  }
 
  @Test public void aFourHourTranscriptStillSavesTheAudioAndDoneCanBeRetried()throws Exception{
