@@ -956,11 +956,15 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
   const persistNoteRecording = async (saved: SavedNoteAudio, transcript: string) => {
     const owner = api;
     if (!owner || owner.storageReady?.() === false) return false;
+    // A new voice note starts in the selected folder, as a typed one does.
+    const st = owner.get('notes'), folderId = typeof st.folder === 'string' && (st.folders || []).some((f: Bag) => f.id === st.folder) ? st.folder as string : null;
+    // Agent notes: a voice note with the transcript; no audio is kept.
+    if (owner.canonicalNotes) return await owner.canonicalNotes.saveVoice(transcript, saved.durationMs, folderId);
     const latest = owner.get('notes').list || [];
     // A retried Done after a lost save response: the note is already there with this audio.
     const existing = latest.find((n: Bag) => n.id === saved.noteId);
     if (existing) return existing.audio?.audioId === saved.audioId;
-    const note = { id: saved.noteId, kind: 'voice', title: 'Voice note', body: transcript, audio: saved, transcription: transcript ? noteProvenance ?? { route: 'manual' } : { route: 'manual' }, dur: saved.durationMs / 1000, summary: [], actions: [], lines: [{ s: 'me', at: 0, t: transcript }], pinned: false, when: 'Now' };
+    const note = { id: saved.noteId, kind: 'voice', title: 'Voice note', body: transcript, audio: saved, transcription: transcript ? noteProvenance ?? { route: 'manual' } : { route: 'manual' }, dur: saved.durationMs / 1000, summary: [], actions: [], lines: [{ s: 'me', at: 0, t: transcript }], pinned: false, when: 'Now', ...(folderId ? { folderId } : {}) };
     return await owner.saveVoiceNote({ list: [note, ...latest], open: saved.noteId }) === true;
   };
   // The agent's notes_record (notes-organize-executor) starts and saves through the same recorder.
@@ -973,7 +977,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     },
     stop: async () => {
       if (!noteRecorder.recordingId || !['recording', 'paused', 'stopped'].includes(noteRecorder.phase)) return 'none';
-      return await noteRecorder.finish(persistNoteRecording) ? 'saved' : 'failed';
+      return await noteRecorder.finish(persistNoteRecording, !api?.canonicalNotes) ? 'saved' : 'failed';
     },
   });
   const noteRecorderVisibility = () => { if (noteRecorder.open) noteRecorder.visibilityChanged(); };
@@ -997,7 +1001,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
       pauseDisabled: finishing,
       toggle: () => { void r.togglePause(); },
       doneDisabled: finishing || !r.recordingId,
-      done: () => { void r.finish(persistNoteRecording).then(saved => { if (saved) { markVoiceTiming('send'); finishVoiceTurn(); } }); },
+      done: () => { void r.finish(persistNoteRecording, !api?.canonicalNotes).then(saved => { if (saved) { markVoiceTiming('send'); finishVoiceTurn(); } }); },
     };
   }
   const startNoteRecorder = () => { if (stage !== 'closed') cleanup(); stopLocalSpeechPlayback(); stopSaved(); void noteRecorder.begin().catch(() => { /* The recorder shows the error line. */ }); };

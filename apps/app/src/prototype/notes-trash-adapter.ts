@@ -208,7 +208,7 @@ export function installNotesTrashAdapter(Component:Shell,views:Record<string,Bag
  };
  notes.render=(state:Bag,api:Bag)=>{
   const view=render(state,api),trash=api.notesTrash as Bag|undefined;
-  view.trashAvailable=!!trash;view.trashCanErase=true;view.trashRetentionText='Deleted notes stay here for 3 days, then they are deleted permanently.';
+  view.trashAvailable=!!trash;view.trashCanErase=true;
   if(!trash)return view;
   // Notes opened: purge due entries. Navigation resets this flag, so every open checks again.
   if(!state.trashChecked){queueMicrotask(()=>{api.set({trashChecked:true});void trash.maintain();});}
@@ -222,7 +222,7 @@ export function installNotesTrashAdapter(Component:Shell,views:Record<string,Bag
   view.hasDeleted=rows.length>0;
   view.trashRows=rows.map(entry=>{
    const title=entry.note.title||kindLabel[entry.note.kind]||'Untitled';
-   return {id:entry.id,title,kind:kindLabel[entry.note.kind]||'Note',preview:notePreview(entry.note),left:notesTrashDaysShort(entry,now),leftLabel:notesTrashDaysLabel(entry,now),
+   return {id:entry.id,title,kind:kindLabel[entry.note.kind]||'Note',preview:notePreview(entry.note),left:notesTrashDaysShort(entry,now),label:`${title}, ${notesTrashDaysLabel(entry,now)}`,
     restoreLabel:`Recover ${title}`,deleteLabel:`Delete ${title} now`,disabled,
     restore:()=>void trash.restore(entry.id),
     erase:()=>api.set({trashConfirm:{id:entry.id,title}}),

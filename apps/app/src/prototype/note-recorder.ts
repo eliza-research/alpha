@@ -297,10 +297,11 @@ export class NoteRecorderSession {
   async togglePause() { if (this.phase === 'failed') await this.begin().catch(() => {}); else if (this.phase === 'recording') await this.pause(); else await this.resume(); }
   /**
    * Done: stop, let the transcript catch up with the audio, and save both as one voice note
-   * through `persist`. The recording closes only after `persist` confirms the note; saving the
+   * through `persist` (with `keepAudio` false, only the transcript and length: the segments are
+   * discarded once the note is saved). The recording closes only after `persist` confirms the note; saving the
    * same recording again returns the audio already saved, so Done can be retried.
    */
-  async finish(persist: (saved: SavedNoteAudio, transcript: string) => Promise<boolean>): Promise<boolean> {
+  async finish(persist: (saved: SavedNoteAudio, transcript: string) => Promise<boolean>, keepAudio = true): Promise<boolean> {
     const id = this.recordingId;
     if (!id || !['recording', 'paused', 'stopped'].includes(this.phase)) return false;
     const epoch = this.epoch;
@@ -313,7 +314,8 @@ export class NoteRecorderSession {
       if (!this.segments.length) throw Error('No audio');
       const transcript = this.transcript();
       const noteId = this.noteId ??= crypto.randomUUID();
-      const saved = await this.driver.save({ recordingId: id, noteId, transcript });
+      // A destination that keeps no audio (agent notes) gets the transcript and length only.
+      const saved = keepAudio ? await this.driver.save({ recordingId: id, noteId, transcript }) : { audioId: id, noteId, durationMs: this.durationMs, transcript };
       if (epoch !== this.epoch) return false;
       if (saved.noteId !== noteId || saved.audioId !== id || !Number.isFinite(saved.durationMs)) throw Error('Invalid saved recording');
       if (!await persist(saved, transcript)) throw Error('Note not saved');
