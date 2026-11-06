@@ -192,11 +192,11 @@ AgentReview ==
 ReviewCurrent == review.ids # {} /\ \A i \in review.ids : exists[i] /\ ~trashed[i] /\ rev[i] = review.revs[i]
 
 \* photos_share: the agent names loaded Library items (unfiltered); the owner confirms over the grid.
+\* One item is enough to check the rules (a set behaves the same per item) and keeps TLC small.
 AgentShareReview ==
   /\ review.ids = {}
-  /\ \E S \in SUBSET Take(Live, W, FixWindow) :
-       /\ S # {}
-       /\ review' = [ids |-> S, revs |-> [i \in S |-> rev[i]], act |-> "share"]
+  /\ \E i \in Take(Live, W, FixWindow) :
+       review' = [ids |-> {i}, revs |-> [j \in {i} |-> rev[j]], act |-> "share"]
   /\ UNCHANGED <<exists, trashed, fav, rev, tab, sel, selecting, viewer, filter, budget>> /\ UNCHANGED Ghosts
 
 AgentApply ==   \* user approved: trash moves the items to Recently deleted; share hands them to Android

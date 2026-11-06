@@ -134,3 +134,20 @@ test('a late pending-request read cannot open an editor after Home',async({page}
  await page.getByRole('button',{name:'Edit photo',exact:true}).click();await expect.poll(()=>page.evaluate(()=>typeof(window as any).releaseCopyRead)).toBe('function');await returnToApps(page);await page.evaluate(()=>(window as any).releaseCopyRead());await expect(page.getByRole('button',{name:'Save copy',exact:true})).toHaveCount(0);
  await page.getByRole('button',{name:'Photos',exact:true}).click();await expect(page.getByRole('button',{name:'Save copy',exact:true})).toHaveCount(0);
 });
+test('Replace overwrites the original in place: same id and date, new revisions, no copy',async({page})=>{
+ const original=await seed(page);await openEditor(page);
+ await expect(page.getByRole('button',{name:'Replace original',exact:true})).toBeEnabled();
+ await page.getByRole('button',{name:'Rotate',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Replace original',exact:true})).toBeEnabled();
+ await page.getByRole('button',{name:'Replace original',exact:true}).click();
+ await expect(page.getByText('Saved',{exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Edit photo',exact:true})).toBeVisible();
+ const result=await page.evaluate(async()=>{const {browserPhotoLibrary:library}=await import('/src/prototype/browser-camera.ts');const rows=(await library.list()).items;return {ids:rows.map(row=>row.id),row:await library.read({id:'1000'})};});
+ expect(result.ids).toEqual(['1000']);
+ expect(result.row.date).toBe(original.date);
+ expect([result.row.width,result.row.height]).toEqual([original.height,original.width]);
+ expect(result.row.revision).not.toBe(original.revision);expect(result.row.mutationRevision).not.toBe(original.mutationRevision);
+ // A save that names the old revision can no longer apply (the reviewed revision is gone).
+ const stale=await page.evaluate(async()=>{const {browserPhotoLibrary:library}=await import('/src/prototype/browser-camera.ts');try{await library.beginEdit({id:'1000',revision:'original-metadata'});return 'opened';}catch(error){return String((error as Error).message);}});
+ expect(stale).toMatch(/changed/);
+});
