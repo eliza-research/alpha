@@ -246,14 +246,14 @@ No account, key, code or subscription was used or changed.
 - `GET /api/v1/subscription/entitlement` without a key returns `401 authentication_required`.
 - `GET /api/v1/subscriptions/plans` returns catalog `v1`: Plus USD 30/month with a USD 25 period
   allowance, Pro USD 100/month with USD 90; no rollover; completions/embeddings/standard/strict
-  per-minute limits 120/200/60/10 (Plus) and 300/600/120/30 (Pro). These are server-published
-  values, not an owner decision recorded here and not evidence of the cost/pilot basis. The
-  catalog has no Maps request allowance field, so P-56's separate Maps allowance is not visible
-  in it.
+  per-minute limits 120/200/60/10 (Plus) and 300/600/120/30 (Pro). These match the values the
+  owner confirmed in P-62 (docs/decisions.md); the observation is not evidence of the cost/pilot
+  basis. The catalog has no Maps request allowance field, so the P-56/P-62 Maps allowance (Plus
+  1,000 and Pro 5,000 requests a day) is not visible in it and is not verified here.
 - Sequential p50/p95 from one desktop client (30 samples each): entitlement keys 43/145 ms,
   unauthenticated entitlement 47/122 ms, plan catalog 63/2299 ms (first request 4.1 s). The phone
   does not read the plan catalog; it caches signing keys for an hour.
-- The public subscription routes share a Redis-backed budget of 100 requests per client window
+- The public subscription routes share a budget of 100 requests per client window
   (`x-ratelimit-limit: 100`, `Retry-After` on 429); the entitlement route reports 600. A probe
   of more than about 100 requests is refused; the script stays inside it.
 
@@ -272,9 +272,9 @@ expired, revoked or billing-outage latency, and not Android audio.
   (elizaOS/eliza `packages/cloud/scripts/plan-admission-deployed-latency.ts`): a person prepares one
   account per condition, names its keys by environment variable and runs it with
   `--confirm-real-requests`; normal-condition requests are real and billed or counted.
-- Cloud publishes catalog `v1` prices, allowances and per-minute limits (above), but the numeric
-  burst and sustained limits, the allowance and the price are not selected for Alpha. They must
-  be proposed from measured provider cost and pilot traffic, and the owner decides them.
+- Catalog `v1` prices, allowances and per-minute limits and the Maps request allowance are set by
+  P-62 and production publishes the catalog values (above). Whether the deployed plan request
+  limits and Maps allowance are applied per environment (staging first) is not verified here.
 - Live resident rate-limit waits are supported at the current pin. Allowance reset timestamps
   on that reply path still need an upstream contract; direct HTTP reset times are supported.
 - No real Cloud account, Android device or AOSP image was used for acceptance.
