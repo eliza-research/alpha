@@ -28,7 +28,7 @@ function readOnlyDigestWorkflow(workflow:RemoteWorkflow|null|undefined):boolean{
  if(!spec||typeof spec!=='object'||!Array.isArray(spec.steps)||!spec.steps.length||(spec.trigger?.kind!=='manual'&&spec.trigger?.kind!=='time'))return false;
  return spec.steps.every(step=>!!step&&typeof step==='object'&&READ_ONLY_PHONE_OPERATIONS.has(String((step as {operation?:unknown}).operation)));
 }
-/** A typed phone workflow has a manual trigger only: it starts when the owner chooses Run now and has no schedule. Hosted digests are the only scheduled kind and are managed in Scheduled digests. */
+/** A typed phone workflow with a manual trigger: it starts only when the owner chooses Run now. A typed workflow may instead have a reviewed local-time trigger (scheduledPhoneTrigger); hosted digests are managed in Scheduled digests. */
 function manualPhoneWorkflow(workflow:RemoteWorkflow|null|undefined):boolean{
  if(!workflow||workflow.hostedDigest)return false;
  const spec=workflow.phoneSpec as {trigger?:{kind?:unknown}}|undefined;
