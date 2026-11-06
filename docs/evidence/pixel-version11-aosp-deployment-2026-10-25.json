@@ -1,0 +1,112 @@
+{
+  "date": "2026-10-25",
+  "hardware": "Pixel 10a (stallion)",
+  "sourceCommit": "e76a61d765cab1c5f3db48ad0c2cbbc6873d7fcf",
+  "runtimePin": "ff9c8264550efd64fd0119c6ff50f99eb8561977",
+  "versionCode": 11,
+  "deploymentReceipt": "docs/evidence/pixel-version11-deployment-2026-10-24.json",
+  "imageBuildDirectory": "/home/shaw/Android/pixel10a-preparation/latest-v11-20261024",
+  "integration": {
+    "appCommit": "e76a61d765cab1c5f3db48ad0c2cbbc6873d7fcf",
+    "runtimePin": "ff9c8264550efd64fd0119c6ff50f99eb8561977",
+    "aospSourceVerified": true,
+    "systemuiPatchUnchanged": true,
+    "listenerUnchanged": true,
+    "versionCode": 11,
+    "imageBuilt": true,
+    "imageFlashed": true
+  },
+  "floorStoppedAttempt": {
+    "startedAtEpoch": 1792900267.9326813,
+    "minimumFreeBytes": 12656627712,
+    "imageBuilt": false,
+    "imageFlashed": false,
+    "stoppedReason": "Free space below 12 GiB reserve",
+    "exitCode": -15,
+    "finishedAtEpoch": 1792902214.1768322
+  },
+  "build": {
+    "startedAtEpoch": 1792904938.0607753,
+    "minimumFreeBytes": 42457821184,
+    "imageBuilt": true,
+    "imageFlashed": false,
+    "exitCode": 0,
+    "finishedAtEpoch": 1792905572.1870537
+  },
+  "imageVerification": {
+    "archiveSha256": "053dcde1cfdea6c8a305fd0c0eec1f6ef02276a27d607c9275e9973fb79d401e",
+    "avbVerified": true,
+    "launcherSha256": "9a3d59a597b82ac2ce2ee6e743e716aa8ea704302c85655703126fb8cd66e373",
+    "launcherSignerSha256": "2242994d2d237f98d01927999157067df4e2495a8f980451ac3de5d40642584a",
+    "launcherVersionCode": 11,
+    "providerSha256": "b28e284061e6eaff1458e93a35dbedeb702ce6ba1c41537e3160bcf42a8baa58",
+    "temporaryBootDiagnosticsAbsent": true,
+    "passed": true
+  },
+  "avbKey": "AOSP test key (external/avb/test/data/testkey_rsa4096.pem)",
+  "deviceBeforeFlash": {
+    "ro.build.fingerprint": "Alpha/alpha_stallion_phone/stallion:17/CP2A.260605.016/eng.shaw:userdebug/test-keys",
+    "ro.build.date.utc": "1792826311",
+    "sys.boot_completed": "1",
+    "ro.boot.slot_suffix": "_a",
+    "ro.boot.flash.locked": "0",
+    "observedAtEpoch": 1792916198.8639462,
+    "alphaInstalled": {
+      "codePath": "/data (UPDATED_SYSTEM_APP)",
+      "versionCode": 11,
+      "baseApkSha256": "9a3d59a597b82ac2ce2ee6e743e716aa8ea704302c85655703126fb8cd66e373"
+    }
+  },
+  "flash": {
+    "startedAtEpoch": 1792916218.705153,
+    "archiveSha256": "053dcde1cfdea6c8a305fd0c0eec1f6ef02276a27d607c9275e9973fb79d401e",
+    "wipe": false,
+    "relock": false,
+    "bootVerified": true,
+    "exitCode": 0,
+    "finishedAtEpoch": 1792916490.4502907
+  },
+  "postboot": {
+    "observedAtEpoch": 1792916636.902027,
+    "properties": {
+      "sys.boot_completed": "1",
+      "ro.build.fingerprint": "Alpha/alpha_stallion_phone/stallion:17/CP2A.260605.016/eng.shaw:userdebug/test-keys",
+      "ro.build.date.utc": "1792826311",
+      "ro.boot.slot_suffix": "_a",
+      "ro.boot.flash.locked": "0",
+      "ro.boot.verifiedbootstate": "orange",
+      "ro.boot.vbmeta.digest": "532cddf8935fdf587997517d94ea7307e44884f949294b355c9b6555700018f9"
+    },
+    "imageArchiveSha256": "053dcde1cfdea6c8a305fd0c0eec1f6ef02276a27d607c9275e9973fb79d401e",
+    "vbmetaDigestMatchesBuiltImage": true,
+    "homeRoleHolder": "ai.elizaresearch.alphaphone",
+    "selinux": "Enforcing",
+    "productLauncherSha256": "9a3d59a597b82ac2ce2ee6e743e716aa8ea704302c85655703126fb8cd66e373",
+    "runningCodePath": "/data update (UPDATED_SYSTEM_APP), byte-identical to /product launcher 9a3d59a5",
+    "residentAgent": {
+      "running": false,
+      "reason": "ipc-recovery-retention-limit (8 ipc-recovery-* directories retained; no bun child)",
+      "recoveryReviewPerformed": false
+    },
+    "notes": "Development userdebug test-keys image, unlocked (orange), no wipe/relock. Boot evidence only; not release, OTA, recovery, speech or user acceptance. Build fingerprint/date are pinned by the build and unchanged from v9; identity is established by vbmeta digest and /product launcher hash."
+  },
+  "imageArchiveSha256": "053dcde1cfdea6c8a305fd0c0eec1f6ef02276a27d607c9275e9973fb79d401e",
+  "imageBootVerified": true,
+  "residentAgentRunningAfterBoot": false,
+  "appDataCleared": false,
+  "emulatorHomeTestRun": false,
+  "cuttlefishBootVerified": false,
+  "realIntegrationsVerified": false,
+  "physicalSpeechAcceptanceVerified": false,
+  "signedOtaOrRecoveryDrill": false,
+  "productionSigning": false,
+  "productionQualified": false,
+  "deviceAcceptanceVerified": false,
+  "notes": [
+    "First attempt was stopped by the 12 GiB free-space reserve; the retry built successfully.",
+    "Development userdebug image signed with AOSP test keys; bootloader unlocked (orange), no userdata wipe or relock.",
+    "Build fingerprint and date are unchanged from v9 because the incremental base was reused; image identity is the vbmeta digest, the archive SHA-256 and the /product launcher hash.",
+    "The resident agent was not running after boot: the device retains 8 ipc-recovery-* startup records from earlier development runs, so the runtime fails closed until the user completes Settings > Agent connection > Review recovery. No recovery review was performed.",
+    "Boot evidence only. It is not Cuttlefish validation, release signing, OTA/recovery drills, speech acceptance or user acceptance."
+  ]
+}
