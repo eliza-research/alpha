@@ -3965,7 +3965,7 @@
 
 <sc-if value="{{isOn}}">
 <div data-alpha-chat-scrim aria-hidden="true" onPointerDown="{{scrimSw.down}}" onPointerMove="{{scrimSw.move}}" onPointerUp="{{scrimSw.up}}" onPointerCancel="{{scrimSw.cancel}}" onClick="{{scrimTap}}" style="position: absolute; inset: 0; z-index: 45; background: var(--scrim); opacity: {{scrimOp}}; pointer-events: {{scrimPE}}; touch-action: none; transition: opacity .45s"></div>
-<div data-alpha-layer="conversation" aria-hidden="{{conversationHidden}}" inert="{{conversationHidden}}" style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 50; height: {{panelH}}px; border-radius: {{panelR}}; background: var(--s1); overflow: hidden; display: flex; flex-direction: column; opacity: {{panelOp}}; pointer-events: {{panelPE}}; box-shadow: 0 -1px 0 var(--line), 0 -20px 60px var(--shc); transition: {{panelTransition}}">
+<div data-alpha-layer="conversation" aria-hidden="{{conversationHidden}}" inert="{{conversationHidden}}" style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 50; height: {{panelH}}px; border-radius: {{panelR}}; background: var(--s1); overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; opacity: {{panelOp}}; pointer-events: {{panelPE}}; box-shadow: 0 -1px 0 var(--line), 0 -20px 60px var(--shc); transition: {{panelTransition}}">
   <div data-alpha-chat-top style="height: {{panelTop}}; flex-shrink: 0; transition: height .4s"></div>
   <div data-alpha-chat-header style="display:grid;grid-template-columns:minmax(0,1fr) 44px minmax(0,1fr);align-items:center;padding:0 12px 4px;gap:0;flex-shrink:0">
     <button class="tap" data-alpha-chat-home aria-label="Go Home" onPointerDown="{{chatControlPointer}}" onClick="{{backToApps}}" style="display:flex;align-items:center;gap:12px;min-width:0;min-height:44px;text-align:left;border-radius:12px">
@@ -4146,7 +4146,7 @@
     </sc-if>
   </div>
   <sc-if value="{{showSugg}}">
-    <div class="scr" style="display: flex; gap: 8px; overflow-x: auto; padding: 2px 16px 10px; flex-shrink: 0; touch-action: pan-x">
+    <div class="scr" data-alpha-chat-suggestions style="display: flex; gap: 8px; overflow-x: auto; padding: 2px 16px 10px; flex-shrink: 0; touch-action: pan-x">
       <sc-for list="{{sugg}}" as="s">
         <button onClick="{{s.go}}" style="flex-shrink: 0; min-height: 48px; max-width: 100%; box-sizing: border-box; padding: 6px 16px; border-radius: 24px; background: var(--s2); font-size: 14px; line-height: 1.25; text-align: center; overflow-wrap: anywhere">{{s.label}}</button>
       </sc-for>
