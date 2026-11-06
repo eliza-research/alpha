@@ -77,7 +77,7 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
   let entries: StorageEntry[] = [], trashItems: TrashRow[] = [], loaded = false, busy = false, error = '';
   let selection: Set<string> | null = null, filter: FilesFilter | null = null, filterRows: StorageEntry[] = [];
   let dialog: Dialog | undefined, dialogTrigger: HTMLElement | null = null, opened: {path: string; volume?: string; selectionId?: string} | undefined;
-  let generation = 0, revision = 0, watching = '', active = false, pressTimer: ReturnType<typeof setTimeout> | undefined, pressed = '';
+  let generation = 0, filterGeneration = 0, revision = 0, watching = '', active = false, pressTimer: ReturnType<typeof setTimeout> | undefined, pressed = '';
   const repaint = () => api?.set({filesBrowserRevision: ++revision});
   const modal = createInlineModal(() => { if (!busy) { dialog = undefined; repaint(); } }, () => dialogTrigger?.isConnected ? dialogTrigger : document.querySelector<HTMLElement>('[data-alpha-subview="files-folder"] button[aria-label="Sort and more"]'));
   const toast = (text: string) => { if (text) api?.toast(text); };
@@ -129,7 +129,7 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
         if (value.status === 'missing' && at.kind === 'folder') { up(); return; }
         if (!failed(value)) { entries = value.entries || []; error = ''; } else entries = [];
       }
-      if (filter) await runFilter(filter, ticket);
+      if (filter) await runFilter(filter);
       if (selection) { const listed = new Set(entries.map(e => e.path)); selection = new Set([...selection].filter(path => listed.has(path))); }
       loaded = true;
       void watch();
@@ -274,14 +274,16 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
   }
   function closePreview() { clearSelected(); opened = undefined; api?.set({open: null}); }
 
-  async function runFilter(value: FilesFilter, ticket = ++generation) {
+  /** Its own counter: a filter never takes a reload's ticket, so the reload still clears `busy`. */
+  async function runFilter(value: FilesFilter) {
+    const ticket = ++filterGeneration;
     try {
       const query = await storage.storageQuery({
         ...(value.text ? {text: value.text} : {}), ...(value.folder ? {folder: value.folder} : {}),
         ...(value.kind && value.kind !== 'folder' && value.kind !== 'document' && value.kind !== 'pdf' ? {mimePrefix: value.kind + '/'} : value.kind === 'pdf' ? {mimePrefix: 'application/pdf'} : {}),
         ...(value.from ? {from: Date.parse(value.from)} : {}), ...(value.to ? {to: Date.parse(value.to) + (value.to.length === 10 ? 86399999 : 0)} : {}),
       });
-      if (ticket !== generation) return;
+      if (ticket !== filterGeneration) return;
       filterRows = query.status === 'ready' ? sortEntries((query.entries || []).filter(entry => filterMatches(value, entry)), 'date') : [];
     } catch { filterRows = []; }
   }
