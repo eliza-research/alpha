@@ -6,6 +6,15 @@ import {nativeAssistantDraftRecovery} from '../runtime/native-assistant-draft-re
 import {encodeInboxUnsaved,readInboxUnsaved,inboxUnsavedLimit,type InboxUnsaved} from '../runtime/inbox-unsaved-record';
 import {openDomainRecovery} from '../browser/domain-recovery';
 import {browserDevProfile} from '../browser/dev-profile';
+/** Status copy for retained email edits; the shared defaults are written for chat messages. */
+const retainedMessages={
+ unsettled:'This email may already have been sent. Check Sent before sending it again.',
+ reviewUnsettled:'This email may already have been sent. Check Sent before sending another.',
+ storageUnavailable:'Local draft storage is unavailable. Check it before sending.',
+ tooLarge:'Current email edits are too large to retain. Shorten them before closing.',
+ clearFailed:'Email sent, but its retained edits could not be cleared. Review them before sending again.',
+ preparing:'Clearing retained edits…',
+};
 /** Account-scoped recovery copies remain separate from the explicitly saved local draft. */
 export function inboxUnsaved(owner:string,publish:()=>void,restore:(value:InboxUnsaved)=>void){
  let text='',alive=true,applying=false,invalid=false,recoveryAbort:AbortController|undefined;
@@ -21,7 +30,7 @@ export function inboxUnsaved(owner:string,publish:()=>void,restore:(value:InboxU
    read:async()=>check(native?await secureConnectionStore.read(slot):await domain!.readJson()),
    save:async(expected:AssistantDraft|null,nextText:string)=>{const value={version:1 as const,binding,revision:crypto.randomUUID(),text:nextText};check(value);if(new TextEncoder().encode(JSON.stringify(value)).length>8*1024*1024)throw Error('Retained email is too large.');if(native){const receipt=await secureConnectionStore.compareExchange(slot,expected,value);if(receipt.status!=='saved')throw Error('Retained email changed.');}else await domain!.editJson(actual=>{check(actual);if(JSON.stringify(actual)!==JSON.stringify(expected))throw Error('Retained email changed.');return value;});return value;},
   };
- },()=>text,value=>{text=value;if(applying&&value)restore(readInboxUnsaved(value,owner));},()=>{if(alive)publish();});
+ },()=>text,value=>{text=value;if(applying&&value)restore(readInboxUnsaved(value,owner));},()=>{if(alive)publish();},retainedMessages);
  return {
   ready:controller.open(binding),
   get available(){return !!text;},
@@ -29,7 +38,7 @@ export function inboxUnsaved(owner:string,publish:()=>void,restore:(value:InboxU
   peek():InboxUnsaved|null{try{return text?readInboxUnsaved(text,owner):null;}catch{return null;}},
   get conflict(){return controller.state.conflict;},
   get error(){return controller.state.error;},
-  get status(){return invalid?'Current email edits are too large to retain. Shorten them before closing.':controller.state.message.replaceAll('sending','provider review').replace('Preparing draft to send','Clearing retained edits');},
+  get status(){return invalid?'Current email edits are too large to retain. Shorten them before closing.':controller.state.message;},
   edit(value:InboxUnsaved){try{text=encodeInboxUnsaved(value);invalid=false;controller.edit(text);}catch{invalid=true;}publish();},
   resume(){if(controller.state.conflict){applying=true;try{controller.restoreSaved();}finally{applying=false;}}else if(text)restore(readInboxUnsaved(text,owner));},
   replace(){controller.keepCurrent();},
