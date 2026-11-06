@@ -2,9 +2,9 @@ import { test } from 'node:test';
 import { execFileSync } from 'node:child_process';
 // Actual product adapters, bounded HTTP/native fixtures. No provider writes or Android builds.
 for (const script of [
-  'test-calendar-crud-review.mjs', 'test-calendar-query-race.mjs',
+  'test-calendar-crud-review.mjs', 'test-calendar-query-race.mjs', 'test-google-calendar-protocol.mjs',
   'test-reminder-time-flow.mjs', 'test-clock-handoff-flow.mjs',
-  'test-cloud-protocol.mjs', 'test-cloud-subscription.mjs', 'test-cloud-personal-flow.mjs', 'test-cloud-voice-flow.mjs', 'test-inbox-cloud-flow.mjs', 'test-inbox-sent-cleanup.mjs', 'test-inbox-grant-withdrawal.mjs', 'test-gmail-mailbox.mjs', 'test-cloud-maps.mjs', 'test-maps-device-navigation.mjs',
+  'test-cloud-protocol.mjs', 'test-cloud-subscription.mjs', 'test-cloud-personal-flow.mjs', 'test-cloud-voice-flow.mjs', 'test-cloud-voice-cancellation-flow.mjs', 'test-inbox-cloud-flow.mjs', 'test-inbox-sent-cleanup.mjs', 'test-inbox-grant-withdrawal.mjs', 'test-gmail-mailbox.mjs', 'test-cloud-maps.mjs', 'test-maps-device-navigation.mjs',
   'test-device-actions.mjs', 'test-workflow-protocol.mjs',
   'test-workflow-ui-flow.mjs', 'test-workflow-approval-ui-flow.mjs',
   'test-workflow-lifecycle-ui-flow.mjs', 'test-workflow-metadata-ui-flow.mjs',

@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import {cloudVoiceViewFixture} from '../test/fixtures/cloud-voice-view.mjs';
 import {voiceFakeClock} from '../test/fixtures/shared-batch-voice.mjs';
-async function owned(run){const clock=voiceFakeClock(),f=cloudVoiceViewFixture({clock,holdPlayback:true});try{await run(f,clock);}finally{f.holdPlaybackCleanup=false;f.releasePlaybackCleanup?.();f.close();await clock.flush();}}
+async function owned(run){const clock=voiceFakeClock(),f=cloudVoiceViewFixture({clock,holdPlayback:true});f.box.testMocksEnabled=true;f.box.React={createElement:()=>null};f.box.VoiceActivity=()=>null;f.shell.openView('notes');try{await run(f,clock);}finally{f.holdPlaybackCleanup=false;f.releasePlaybackCleanup?.();f.close();await clock.flush();}}
 await owned(async(f,clock)=>{
  const render=f.render;
  render().record();assert.equal(render().rec.manualChoice,false);assert.equal(render().rec.routeChoice,false);
@@ -27,7 +27,9 @@ await owned(async(f,clock)=>{
 });
 await owned(async(f,clock)=>{
  const original=f.driver.synthesize;let release;f.driver.synthesize=()=>new Promise(resolve=>release=resolve);
- const voice=f.box.createCloudVoice(),abort=new AbortController();const speaking=voice.speak('Late synthesis fixture',abort.signal);void speaking.catch(()=>{});await clock.flush();abort.abort();await assert.rejects(speaking);
- release({playbackId:'late-old-audio'});await clock.flush();assert.equal(f.activePlayback,null,'Cancelled synthesis cannot admit late playback');f.driver.synthesize=original;
+ const voice=f.box.createCloudVoice(),abort=new AbortController();let settled=false;const speaking=voice.speak('Late synthesis fixture',abort.signal).finally(()=>{settled=true;});void speaking.catch(()=>{});await clock.flush();abort.abort();await clock.flush();
+ // Cloud speech drains strictly: cancellation settles only after the held synthesis returns.
+ assert.equal(settled,false,'Cancelled speech waits for its synthesis to drain');release({playbackId:'late-old-audio'});await assert.rejects(speaking);await clock.flush();
+ assert.equal(f.activePlayback,null,'Cancelled synthesis cannot admit late playback');assert.ok(f.stopPlaybackInputs.some(input=>input.playbackId==='late-old-audio'),'Late playback is stopped by identity');f.driver.synthesize=original;
 });
 console.log('PASS: actual Notes renderer/Cloud driver retain pending exact cleanup; new capture waits for confirmed retirement; stale-owner, held-listener and late-synthesis callbacks cannot admit playback. Closed fake ports only.');
