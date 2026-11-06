@@ -49,7 +49,7 @@ no build containing it has run on a device.
 2026-11-01: the race recurred on v18 and v19 (`Resident stop identity unproven` after returning
 from the billing page; the agent was left "Not running" with AI off while the account showed an
 active Plus plan). Until the pin includes these unreviewed upstream fix commits, `scripts/stage-local-agent-sources.mjs`
-applies it, plus `a757a9bf57` (an exited, unreaped process's empty argv refused the stop the same way, seen on v20), through `scripts/upstream-native-repairs.mjs`: bound to the pinned file's hash, it must
+applies it, plus `a757a9bf57` (an exited, unreaped process's empty argv refused the stop the same way, seen on v20), through the repair script `upstream-native-repairs.mjs` (on branch `claude/finish-open-issues` only; main consumes the shared resident binding instead): bound to the pinned file's hash, it must
 reproduce the upstream commit's file byte for byte, and it is recorded as `upstreamRepairs` in the
 generated source manifest (the resident stays `patches: []`). The renderer now also restarts a
 resident left recovering by itself (bounded backoff; recovery review excluded).
