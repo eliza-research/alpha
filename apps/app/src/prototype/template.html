@@ -1525,37 +1525,23 @@
 
 <sc-if value="{{is.camera}}">
 <div data-alpha-camera-root style="display: flex; flex-direction: column; height: 100%; position: relative; background: var(--alpha-black); color: var(--alpha-white); overflow: hidden">
-  <button data-alpha-camera="viewfinder" aria-label="Viewfinder. Tap to focus, hold to ask Alpha, swipe to change mode" onPointerDown="{{camera.vfDown}}" onPointerUp="{{camera.vfUp}}" onPointerLeave="{{camera.vfLeave}}" style="position: absolute; left: 0; right: 0; top: 96px; height: 549px; overflow: hidden; display: block; background: {{camera.vfBg}}">
-    <span style="position: absolute; left: -4%; width: 108%; top: 50%; aspect-ratio: 3 / 4; display: block; transition: transform 2s ease-in-out; {{camera.drift}}">
-      <span style="position: absolute; inset: 0; display: block; background: {{camera.bg}}; transition: transform .35s cubic-bezier(.2,.8,.2,1), filter .26s; {{camera.zoomCss}}">
-        <sc-if value="{{camera.scanFound}}">
-          <span class="fadein" style="position: absolute; left: 15%; top: 10%; width: 70%; height: 80%; display: block; background: rgba(0,0,255,.06); box-shadow: 0 0 0 2px rgba(90,100,255,.9)"></span>
-          <span class="fadein" style="position: absolute; left: calc(15% - 6px); top: calc(10% - 6px); width: 26px; height: 26px; border-left: 4px solid var(--alpha-white); border-top: 4px solid var(--alpha-white); border-radius: 6px 0 0 0; display: block"></span>
-          <span class="fadein" style="position: absolute; right: calc(15% - 6px); top: calc(10% - 6px); width: 26px; height: 26px; border-right: 4px solid var(--alpha-white); border-top: 4px solid var(--alpha-white); border-radius: 0 6px 0 0; display: block"></span>
-          <span class="fadein" style="position: absolute; left: calc(15% - 6px); bottom: calc(10% - 6px); width: 26px; height: 26px; border-left: 4px solid var(--alpha-white); border-bottom: 4px solid var(--alpha-white); border-radius: 0 0 0 6px; display: block"></span>
-          <span class="fadein" style="position: absolute; right: calc(15% - 6px); bottom: calc(10% - 6px); width: 26px; height: 26px; border-right: 4px solid var(--alpha-white); border-bottom: 4px solid var(--alpha-white); border-radius: 0 0 6px 0; display: block"></span>
-        </sc-if>
-      </span>
+  <button data-alpha-camera="viewfinder" aria-label="Viewfinder. Tap to focus" onPointerUp="{{camera.vfUp}}" style="position: absolute; left: 0; right: 0; top: 96px; height: 549px; overflow: hidden; display: block; background: {{camera.vfBg}}; transition: background-color .25s ease-out">
+    <span data-alpha-camera="frame" style="position: absolute; left: -4%; width: 108%; top: 50%; aspect-ratio: 3 / 4; display: block; transform: translateY(-50%); opacity: {{camera.vfOp}}; transition: opacity .2s ease-out">
+      <span style="position: absolute; inset: 0; display: block; background: {{camera.bg}}; transition: transform .35s cubic-bezier(.2,.8,.2,1); {{camera.zoomCss}}"></span>
     </span>
-    <sc-if value="{{camera.hasFocus}}">
-      <span class="fadein" style="position: absolute; width: 68px; height: 68px; border-radius: 34px; box-shadow: inset 0 0 0 1.5px var(--alpha-white); display: block; {{camera.focus}}"></span>
-    </sc-if>
-    <span style="position: absolute; inset: 0; display: block; background: var(--alpha-white); pointer-events: none; opacity: {{camera.flOp}}; transition: {{camera.flTr}}"></span>
+    <span data-alpha-camera="shutter-flash" style="position: absolute; inset: 0; display: block; background: var(--alpha-white); pointer-events: none; opacity: {{camera.flOp}}; transition: {{camera.flTr}}"></span>
   </button>
 
   <div data-alpha-app-header="main" data-alpha-app-header-overlay style="position: absolute; left: 0; right: 0; top: 44px; height: 52px; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; z-index: 2">
-    <sc-if value="{{showAppBack}}"><button class="app-header-back" aria-label="Back to apps" onClick="{{backToApps}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button></sc-if><span data-alpha-app-title class="app-header-context">Camera</span>
-    <sc-if value="{{camera.flashAvailable}}"><button class="ib" aria-label="{{camera.flashLabel}}" onClick="{{camera.toggleFlash}}"><svg class="i" viewBox="0 0 24 24"><path d="{{camera.flashIcon}}"></path></svg></button></sc-if>
-    <sc-if value="{{camera.importAvailable}}"><button data-alpha-header-icon-action aria-label="Choose image" onClick="{{camera.importImage}}" style="min-height:44px;padding:0 16px;border-radius:22px;background:rgba(255,255,255,.16);color:var(--alpha-white);font:inherit"><span class="app-header-action-label">Choose image</span><svg class="i app-header-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.photo}}"></path></svg></button><button data-alpha-header-icon-action aria-label="Scan document" onClick="{{camera.scanDocument}}" style="min-height:44px;padding:0 12px;border-radius:22px;background:rgba(255,255,255,.16);color:var(--alpha-white);font:inherit"><span class="app-header-action-label">Scan document</span><svg class="i app-header-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.camScan}}"></path></svg></button></sc-if>
+    <sc-if value="{{showAppBack}}"><button class="app-header-back" aria-label="Back to apps" onClick="{{backToApps}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button></sc-if><span style="flex: 1"></span>
     <sc-if value="{{camera.rec}}">
       <span role="timer" aria-label="Recording" style="display:flex;align-items:center;gap:8px;height:30px;padding:0 12px;border-radius:15px;background:rgba(0,0,0,.75);color:var(--alpha-white);font-size:14px;font-weight:600;font-variant-numeric:tabular-nums"><span class="dot" aria-hidden="true" style="width:7px;height:7px;border-radius:4px;background:var(--alpha-record-dot)"></span>{{camera.recTime}}</span>
     </sc-if>
-    <button class="ib" data-alpha-header-icon-action aria-label="Ask Alpha about this" onClick="{{camera.ask}}" style="border-radius:22px;background:rgba(255,255,255,.16);color:var(--alpha-white)"><span class="alpha-compute-mark" aria-hidden="true" style="width:24px;height:24px"></span></button>
+    <sc-if value="{{camera.flashAvailable}}"><button class="ib" aria-label="{{camera.flashLabel}}" onClick="{{camera.toggleFlash}}"><svg class="i" viewBox="0 0 24 24"><path d="{{camera.flashIcon}}"></path></svg></button></sc-if>
   </div>
 
   <sc-if value="{{camera.hasSaid}}">
-    <button class="drop" data-alpha-camera="said" aria-label="Dismiss camera message" onClick="{{camera.clearSaid}}" style="position: absolute; left: 16px; right: 16px; top: 108px; z-index: 3; display: flex; gap: 12px; align-items: center; padding: 14px 16px; border-radius: 22px; background: rgba(0,0,0,.62); color: var(--alpha-white); text-align: left">
-      <span class="alpha-mark-fill" style="width: 26px; height: 26px; border-radius: 13px; background: var(--acc); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-family: Denton, Fraunces, Georgia, serif; font-style: italic; font-size: 16px"><span class="alpha-compute-mark" aria-hidden="true"></span></span>
+    <button class="drop" data-alpha-camera="said" aria-label="Dismiss camera message" onClick="{{camera.clearSaid}}" style="position: absolute; left: 16px; right: 16px; top: 108px; z-index: 3; display: flex; align-items: center; padding: 12px 16px; border-radius: 22px; background: rgba(0,0,0,.62); color: var(--alpha-white); text-align: left">
       <span style="font-size: 14.5px; line-height: 1.4">{{camera.said}}</span>
     </button>
   </sc-if>
@@ -1567,38 +1553,16 @@
     </div>
   </sc-if>
 
-  <sc-if value="{{camera.scanning}}">
-    <div data-alpha-camera="status" style="position: absolute; left: 0; right: 0; top: 590px; display: flex; justify-content: center; z-index: 2; pointer-events: none">
-      <span style="display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px; border-radius: 17px; background: rgba(0,0,0,.65); font-size: 13.5px"><span class="dot" style="width: 7px; height: 7px; border-radius: 4px; background: var(--alpha-white)"></span>Looking for a page</span>
+  <sc-if value="{{camera.showModes}}">
+    <div data-alpha-camera="modes" style="position: absolute; left: 0; right: 0; top: 656px; height: 44px; display: flex; align-items: center; justify-content: center; gap: 8px">
+      <sc-for list="{{camera.modes}}" as="m">
+        <button onClick="{{m.pick}}" aria-label="{{m.label}} mode" style="min-height: 44px; flex-shrink: 0; padding: 0 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; font-size: 14.5px; font-weight: 600; transition: color .2s; {{m.css}}">
+          {{m.label}}
+          <span style="width: 4px; height: 4px; border-radius: 2px; background: var(--alpha-white); opacity: {{m.dot}}"></span>
+        </button>
+      </sc-for>
     </div>
   </sc-if>
-  <sc-if value="{{camera.scanFound}}">
-    <div class="drop" data-alpha-camera="status" style="position: absolute; left: 0; right: 0; top: 548px; display: flex; flex-direction: column; align-items: center; gap: 10px; z-index: 2">
-      <span style="display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px 0 4px; border-radius: 15px; background: rgba(0,0,0,.65); font-size: 13px"><span class="alpha-mark-fill" style="width: 22px; height: 22px; border-radius: 11px; background: var(--acc); display: flex; align-items: center; justify-content: center; font-family: Denton, Fraunces, Georgia, serif; font-style: italic; font-size: 14px"><span class="alpha-compute-mark" aria-hidden="true"></span></span>Open Studio · {{camera.posterDay}}</span>
-      <div style="display: flex; gap: 8px">
-        <button aria-label="Add event" onClick="{{camera.addEvent}}" style="min-height: 40px; padding: 0 14px 0 12px; border-radius: 20px; background: var(--alpha-white); color: var(--alpha-black); display: flex; align-items: center; gap: 7px; font-size: 13.5px; font-weight: 600"><svg class="i" viewBox="0 0 24 24" style="width: 17px; height: 17px"><path d="{{ic.cal}}"></path></svg>Add event</button>
-        <button aria-label="Save to Files" onClick="{{camera.saveFiles}}" style="min-height: 40px; padding: 0 14px 0 12px; border-radius: 20px; background: rgba(0,0,0,.65); color: var(--alpha-white); display: flex; align-items: center; gap: 7px; font-size: 13.5px; font-weight: 600"><svg class="i" viewBox="0 0 24 24" style="width: 17px; height: 17px"><path d="{{ic.folder}}"></path></svg>Save to Files</button>
-        <button aria-label="Open link" onClick="{{camera.openLink}}" style="width: 40px; height: 40px; border-radius: 20px; background: rgba(0,0,0,.65); color: var(--alpha-white); display: flex; align-items: center; justify-content: center"><svg class="i" viewBox="0 0 24 24" style="width: 17px; height: 17px"><path d="{{ic.link}}"></path></svg></button>
-      </div>
-    </div>
-  </sc-if>
-
-  <sc-if value="{{camera.scanPages}}">
-    <div role="group" aria-label="Scan pages" data-alpha-camera="status" style="position: absolute; left: 0; right: 0; top: 604px; display: flex; justify-content: center; gap: 8px; z-index: 2">
-      <span role="status" style="display: flex; align-items: center; height: 40px; padding: 0 12px; border-radius: 20px; background: rgba(0,0,0,.65); color: var(--alpha-white); font-size: 13px">{{camera.scanPages.label}}</span>
-      <sc-if value="{{camera.scanPages.addPage}}"><button aria-label="Add page" onClick="{{camera.scanPages.addPage}}" style="min-height: 40px; padding: 0 14px; border-radius: 20px; background: var(--alpha-white); color: var(--alpha-black); font-size: 13.5px; font-weight: 600">Add page</button></sc-if>
-      <sc-if value="{{camera.scanPages.reorder}}"><button aria-label="Reorder pages" onClick="{{camera.scanPages.reorder}}" style="min-height: 40px; padding: 0 14px; border-radius: 20px; background: rgba(0,0,0,.65); color: var(--alpha-white); font-size: 13.5px; font-weight: 600">Reorder pages</button></sc-if>
-    </div>
-  </sc-if>
-
-  <div data-alpha-camera="modes" style="position: absolute; left: 0; right: 0; top: 656px; height: 44px; display: flex; align-items: center; justify-content: center; gap: 8px">
-    <sc-for list="{{camera.modes}}" as="m">
-      <button onClick="{{m.pick}}" aria-label="{{m.label}} mode" style="min-height: 44px; flex-shrink: 0; padding: 0 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; font-size: 14.5px; font-weight: 600; transition: color .2s; {{m.css}}">
-        {{m.label}}
-        <span style="width: 4px; height: 4px; border-radius: 2px; background: var(--alpha-white); opacity: {{m.dot}}"></span>
-      </button>
-    </sc-for>
-  </div>
 
   <div data-alpha-camera="capture" style="position: absolute; left: 0; right: 0; top: 712px; height: 90px; display: flex; align-items: center; justify-content: space-between; padding: 0 44px">
     <sc-if value="{{camera.hasLast}}">
@@ -1607,10 +1571,8 @@
       </button>
     </sc-if>
     <sc-if value="{{camera.noLast}}"><span style="width: 52px; height: 52px"></span></sc-if>
-    <button aria-label="{{camera.shutterLabel}}" aria-description="{{camera.shutterHint}}" onClick="{{camera.shutter}}" style="width: 80px; height: 80px; border-radius: 40px; box-shadow: inset 0 0 0 4px var(--alpha-white); display: flex; align-items: center; justify-content: center">
-      <span style="display: flex; align-items: center; justify-content: center; color: var(--alpha-black); transition: all .25s cubic-bezier(.2,.8,.2,1); {{camera.innerCss}}">
-        <sc-if value="{{camera.scanGlyph}}"><svg class="i" viewBox="0 0 24 24" style="width: 26px; height: 26px"><path d="{{ic.camScan}}"></path></svg></sc-if>
-      </span>
+    <button aria-label="{{camera.shutterLabel}}" onClick="{{camera.shutter}}" style="width: 80px; height: 80px; border-radius: 40px; box-shadow: inset 0 0 0 4px var(--alpha-white); display: flex; align-items: center; justify-content: center">
+      <span style="display: flex; align-items: center; justify-content: center; color: var(--alpha-black); transition: all .25s cubic-bezier(.2,.8,.2,1); {{camera.innerCss}}"></span>
     </button>
     <sc-if value="{{camera.showFlip}}">
       <button aria-label="Switch camera" onClick="{{camera.flip}}" style="width: 52px; height: 52px; border-radius: 26px; background: rgba(255,255,255,.14); display: flex; align-items: center; justify-content: center"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.camFlip}}"></path></svg></button>

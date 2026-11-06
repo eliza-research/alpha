@@ -555,8 +555,8 @@ test('loop J01 in the web build: a scanned event remains in review without an au
   await button(page, 'Camera').click();
   const video = page.locator('[aria-label^="Viewfinder."] video');
   await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.readyState), { timeout: 60_000 }).toBeGreaterThanOrEqual(2);
-  await button(page, 'Scan mode').click();
-  await button(page, 'Scan text').click();
+  // Scanning is not a camera mode: asking Alpha to scan opens review on one frame.
+  await page.getByRole('button',{name:'Type',exact:true}).click();{const input=page.locator('[data-alpha-layer="composer"][aria-hidden="false"], [data-alpha-layer="conversation"][aria-hidden="false"]').getByRole('textbox').first();await input.fill('Scan this');await input.press('Enter');}
   const dialog = page.getByRole('dialog', { name: 'Review scanned text' }), text = dialog.getByRole('textbox', { name: 'Scanned text' });
   await expect(text).toBeEnabled({ timeout: 120_000 });
   await expect(text).toHaveValue(/October 10, 2026/);

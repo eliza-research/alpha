@@ -18,7 +18,7 @@ test('browser camera persists a real encoded frame, releases capture and restore
  await page.evaluate(()=>{(window as any).cameraTracks=(document.querySelector('[aria-label^="Viewfinder."] video') as HTMLVideoElement).srcObject;});
  await page.evaluate(()=>{const add=IDBObjectStore.prototype.add;(window as any).restorePhotoWrites=()=>{IDBObjectStore.prototype.add=add;};IDBObjectStore.prototype.add=function(value,key){if(this.name==='photos')throw new DOMException('Synthetic full storage','QuotaExceededError');return add.call(this,value,key);};});
  await page.getByRole('button',{name:'Take photo',exact:true}).click();
- await expect(page.getByText('Photo could not be saved. No successful capture was confirmed.',{exact:true})).toBeVisible();
+ await expect(page.getByText('Photo not saved. Try again.',{exact:true})).toBeVisible();
  expect(await page.evaluate(async()=>{const {browserPhotoLibrary}=await import('/src/prototype/browser-camera.ts');return (await browserPhotoLibrary.list()).items.length;})).toBe(0);
  await page.evaluate(()=>(window as any).restorePhotoWrites());
  await page.getByRole('button',{name:'Take photo',exact:true}).click();
@@ -70,8 +70,8 @@ test('browser camera permission denial retries explicitly without a saved photo'
  await expect(recovery).toBeVisible();
  await expect(page.locator('[data-alpha-camera="said"]')).toHaveCount(0);
  expect(await page.evaluate(()=>(window as any).cameraAttempts)).toBe(1);
- await expect(recovery).toContainText('Allow camera access for this site in your browser settings');
- await expect(recovery.getByRole('button',{name:'Open Android settings'})).toHaveCount(0);
+ await expect(recovery).toHaveText('Camera access is offTry again');
+ await expect(recovery.getByRole('button',{name:'Open settings'})).toHaveCount(0);
  await page.getByRole('button',{name:'Take photo',exact:true}).click();
  await expect.poll(()=>page.evaluate(()=>(window as any).cameraAttempts)).toBe(2);
  await recovery.getByRole('button',{name:'Try again',exact:true}).click();

@@ -1,0 +1,1272 @@
+--- a/plugins/plugin-native-camera/android/src/main/java/ai/eliza/plugins/camera/CameraPlugin.kt
++++ b/plugins/plugin-native-camera/android/src/main/java/ai/eliza/plugins/camera/CameraPlugin.kt
+@@ -67,6 +67,15 @@
+ )
+ class CameraPlugin : Plugin() {
+ 
++    private companion object {
++        const val FIRST_FRAME_TRACE = "alpha.camera.firstFrame"
++        const val FIRST_FRAME_TIMEOUT_MS = 5000L
++        // Safety net only: CameraX normally reports every unbound capture itself.
++        const val CAPTURE_SETTLE_TIMEOUT_MS = 15000L
++        const val THUMBNAIL_EDGE = 256
++    }
++
++    private var cameraProviderFuture: ListenableFuture<ProcessCameraProvider>? = null
+     private var cameraProvider: ProcessCameraProvider? = null
+     private var preview: Preview? = null
+     private var imageCapture: ImageCapture? = null
+@@ -125,6 +134,35 @@
+     private val frameDelivery = Handler(Looper.getMainLooper())
+     private var previewEpoch = 0L
+     private var lastFrameEventNanos = 0L
++    private var firstFrameEpoch = -1L
++    private var firstFrameReady: (() -> Unit)? = null
++    private var firstFrameTraceCookie = 0
++
++    // "photo" binds Preview + ImageCapture; "video" also binds VideoCapture.
++    private var captureMode = "photo"
++    private data class VideoConfig(val quality: Quality, val bitrate: Int?, val frameRate: Int?)
++    private var boundVideoConfig: VideoConfig? = null
++
++    // Every capturePhoto call settles exactly once, including after the preview stops.
++    private inner class CaptureTicket(val call: PluginCall, val executor: ExecutorService) {
++        private val settled = java.util.concurrent.atomic.AtomicBoolean(false)
++        @Volatile var cancelled = false
++        @Volatile var delivered = false
++        fun resolve(result: JSObject) {
++            if (!settled.compareAndSet(false, true)) return
++            call.resolve(result)
++            captureSettled(this)
++        }
++        fun reject(message: String?, code: String, error: Exception? = null, data: JSObject? = null) {
++            if (!settled.compareAndSet(false, true)) return
++            call.reject(message, code, error, data)
++            captureSettled(this)
++        }
++    }
++    private val captureLock = Any()
++    private val inflightCaptures = mutableSetOf<CaptureTicket>()
++    private val retiredExecutors = mutableSetOf<ExecutorService>()
++    private val captureDelivery = Handler(Looper.getMainLooper())
+ 
+     // Track current preview resolution for reference.
+     private var currentPreviewWidth = 1920
+@@ -139,6 +177,12 @@
+         "whiteBalance" to "auto"
+     ))
+ 
++    override fun load() {
++        super.load()
++        // Prewarm CameraX so the first startPreview does not pay provider initialization.
++        cameraProviderFuture = runCatching { ProcessCameraProvider.getInstance(context) }.getOrNull()
++    }
++
+     // ---- Device Enumeration ----
+ 
+     @PluginMethod
+@@ -191,6 +235,9 @@
+             }
+             stopPreviewInternal()
+             pendingPreviewCall = call
++            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
++                android.os.Trace.beginAsyncSection(FIRST_FRAME_TRACE, ++firstFrameTraceCookie)
++            }
+             if (!hasRequiredPermissions()) {
+                 requestPermissionForAlias("camera", call, "handleCameraPermissionResult")
+             } else {
+@@ -216,27 +263,53 @@
+         return getPermissionState("camera") == com.getcapacitor.PermissionState.GRANTED
+     }
+ 
++    // Resolves on the first completed camera capture after settings restoration, not on bind.
+     private fun startPreviewInternal(call: PluginCall) {
+         val direction = call.getString("direction") ?: "back"
+         val resObj = call.getObject("resolution")
+         val width = resObj?.getInteger("width") ?: 1920
+         val height = resObj?.getInteger("height") ?: 1080
+         val mirror = call.getBoolean("mirror") ?: (direction == "front")
++        val epoch = previewEpoch
++        val traceCookie = firstFrameTraceCookie
+ 
+         currentPreviewWidth = width
+         currentPreviewHeight = height
+ 
++        var frameSeen = false
++        var restored = false
++        val timeout = Runnable {
++            if (pendingPreviewCall === call && previewEpoch == epoch && !frameSeen) {
++                failPreview(call, IllegalStateException("No camera frame arrived within ${FIRST_FRAME_TIMEOUT_MS} ms"),
++                    "CAMERA_START_TIMEOUT", "Camera did not deliver a frame in time")
++            }
++        }
++        fun settle() {
++            if (!frameSeen || !restored || pendingPreviewCall !== call || previewEpoch != epoch) return
++            val owner = camera ?: return
++            pendingPreviewCall = null
++            call.resolve(cameraReceipt(owner, width, height, if (direction == "front") "front" else "back"))
++        }
++
+         try {
+             require(direction == "front" || direction == "back") { "Camera direction must be front or back" }
+             require(width > 0 && height > 0) { "Preview dimensions must be positive" }
+             cameraExecutor = Executors.newSingleThreadExecutor()
++            frameDelivery.postDelayed(timeout, FIRST_FRAME_TIMEOUT_MS)
+ 
+-            val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
++            // Reuse the provider future started in load(); a failed future is replaced on the next start.
++            val providerFuture = cameraProviderFuture
++                ?: ProcessCameraProvider.getInstance(context).also { cameraProviderFuture = it }
+ 
+-            cameraProviderFuture.addListener({
++            providerFuture.addListener({
+                 if (pendingPreviewCall !== call || destroyed) return@addListener
+                 try {
+-                    val provider = cameraProviderFuture.get()
++                    val provider = try {
++                        providerFuture.get()
++                    } catch (error: Exception) {
++                        if (cameraProviderFuture === providerFuture) cameraProviderFuture = null
++                        throw error
++                    }
+                     cameraProvider = provider
+ 
+                     previewView = androidx.camera.view.PreviewView(context).apply {
+@@ -274,43 +347,36 @@
+                     }
+ 
+                     val previewBuilder = Preview.Builder().setResolutionSelector(resolutionSelector)
+-                    observeCameraFrames(previewBuilder, previewEpoch)
++                    observeCameraFrames(previewBuilder, epoch)
+                     preview = previewBuilder.build()
+                         .also {
+                             it.setSurfaceProvider(previewView?.surfaceProvider)
+                         }
+ 
+-                    // Build ImageCapture with flash mode from current settings.
++                    // Shutter latency matters more than multi-frame quality processing.
+                     imageCapture = ImageCapture.Builder()
+-                        .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
++                        .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                         .setResolutionSelector(resolutionSelector)
+                         .setFlashMode(flashModeFromSetting(currentSettings["flash"] as? String ?: "off"))
+                         .build()
+ 
+-                    val recorder = Recorder.Builder()
+-                        .setQualitySelector(QualitySelector.from(Quality.HIGHEST))
+-                        .build()
+-                    videoCapture = VideoCapture.withOutput(recorder)
++                    // A started preview is always in photo mode; setCaptureMode adds VideoCapture.
++                    captureMode = "photo"
++                    firstFrameEpoch = epoch
++                    firstFrameReady = {
++                        frameDelivery.removeCallbacks(timeout)
++                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
++                            android.os.Trace.endAsyncSection(FIRST_FRAME_TRACE, traceCookie)
++                        }
++                        frameSeen = true
++                        settle()
++                    }
+ 
+-                    provider.unbindAll()
++                    val owner = bindUseCases(provider)
+ 
+-                    camera = provider.bindToLifecycle(
+-                        activity as LifecycleOwner,
+-                        currentCameraSelector,
+-                        preview,
+-                        imageCapture,
+-                        videoCapture
+-                    )
+-
+-                    restoreCameraSettings(requireNotNull(camera), {
+-                        if (pendingPreviewCall === call) {
+-                            pendingPreviewCall = null
+-                            call.resolve(JSObject().apply {
+-                                put("width", width)
+-                                put("height", height)
+-                                put("deviceId", if (direction == "front") "front" else "back")
+-                            })
+-                        }
++                    restoreCameraSettings(owner, {
++                        restored = true
++                        settle()
+                     }, { error -> failPreview(call, error) })
+                 } catch (error: Exception) {
+                     // error-policy:J1 asynchronous preview failures settle the owning bridge call.
+@@ -323,15 +389,119 @@
+         }
+     }
+ 
+-    private fun failPreview(call: PluginCall, error: Exception) {
++    private fun cameraReceipt(owner: Camera, width: Int, height: Int, deviceId: String): JSObject {
++        val info = owner.cameraInfo
++        val bounds = info.zoomState.value
++        val hasFlash = info.hasFlashUnit()
++        val flash = currentSettings["flash"] as? String ?: "off"
++        return JSObject().apply {
++            put("width", width)
++            put("height", height)
++            put("deviceId", deviceId)
++            put("minZoom", (bounds?.minZoomRatio ?: 1f).toDouble())
++            put("maxZoom", (bounds?.maxZoomRatio ?: 1f).toDouble())
++            put("zoom", ((currentSettings["zoom"] as? Number)?.toFloat() ?: 1f).toDouble())
++            put("hasFlash", hasFlash)
++            put("flash", if (hasFlash && flash != "off") "on" else "off")
++        }
++    }
++
++    // Binds Preview + ImageCapture, plus VideoCapture only in video mode.
++    private fun bindUseCases(provider: ProcessCameraProvider): Camera {
++        if (captureMode == "video") {
++            if (videoCapture == null) {
++                val config = VideoConfig(Quality.HIGHEST, null, null)
++                videoCapture = buildVideoCapture(config)
++                boundVideoConfig = config
++            }
++        } else {
++            videoCapture = null
++            boundVideoConfig = null
++        }
++        provider.unbindAll()
++        val owner = activity as LifecycleOwner
++        val video = videoCapture
++        val bound = if (video == null) {
++            provider.bindToLifecycle(owner, currentCameraSelector, requireNotNull(preview), requireNotNull(imageCapture))
++        } else {
++            provider.bindToLifecycle(owner, currentCameraSelector, requireNotNull(preview), requireNotNull(imageCapture), video)
++        }
++        camera = bound
++        return bound
++    }
++
++    private fun buildVideoCapture(config: VideoConfig): VideoCapture<Recorder> {
++        val selector = if (config.quality == Quality.HIGHEST) QualitySelector.from(config.quality)
++            else QualitySelector.from(config.quality, FallbackStrategy.lowerQualityOrHigherThan(config.quality))
++        val recorder = Recorder.Builder().setQualitySelector(selector)
++        config.bitrate?.let { recorder.setTargetVideoEncodingBitRate(it) }
++        val captureBuilder = VideoCapture.Builder(recorder.build())
++        config.frameRate?.let { captureBuilder.setTargetFrameRate(Range(it, it)) }
++        return captureBuilder.build()
++    }
++
++    @PluginMethod
++    fun setCaptureMode(call: PluginCall) {
++        val mode = (call.data.opt("mode") as? String)?.takeIf { it == "photo" || it == "video" }
++        if (mode == null) {
++            call.reject("mode must be photo or video", "INVALID_ARGUMENT")
++            return
++        }
++        activity.runOnUiThread {
++            val provider = cameraProvider
++            if (destroyed) {
++                call.reject("Camera plugin was destroyed", "CAMERA_DESTROYED")
++            } else if (recordingSession != null || recordingPermissionCalls.isNotEmpty()) {
++                call.reject("Stop the recording before changing capture mode", "RECORDING_BUSY")
++            } else if (pendingPreviewCall != null || switchingCamera) {
++                call.reject("Camera settings are being restored", "CAMERA_NOT_READY")
++            } else if (provider == null || camera == null) {
++                call.reject("Camera preview is not active", "CAMERA_INACTIVE")
++            } else if (mode == captureMode) {
++                call.resolve()
++            } else {
++                // Shares the switch gate so camera switches, recordings and settings wait for the rebind.
++                switchingCamera = true
++                val previous = captureMode
++                try {
++                    captureMode = mode
++                    val owner = bindUseCases(provider)
++                    restoreCameraSettings(owner, {
++                        call.resolve()
++                        finishCameraSwitch()
++                    }, { error ->
++                        call.reject("Failed to restore camera settings", "CAPTURE_MODE_ERROR", error)
++                        finishCameraSwitch()
++                    })
++                } catch (error: Exception) {
++                    // error-policy:J1 an unsupported use-case combination restores the previous mode.
++                    captureMode = previous
++                    val recovered = try {
++                        bindUseCases(provider)
++                    } catch (ignored: Exception) {
++                        null
++                    }
++                    call.reject("Failed to change capture mode: ${error.message}", "CAPTURE_MODE_ERROR", error)
++                    if (recovered == null) {
++                        stopPreviewInternal()
++                        finishCameraSwitch()
++                    } else {
++                        restoreCameraSettings(recovered, { finishCameraSwitch() }, { finishCameraSwitch() })
++                    }
++                }
++            }
++        }
++    }
++
++    private fun failPreview(call: PluginCall, error: Exception, code: String = "PREVIEW_ERROR", message: String = "Failed to start preview") {
+         if (pendingPreviewCall !== call) return
+         pendingPreviewCall = null
+         stopPreviewInternal()
+         notifyListeners("error", JSObject().apply {
+-            put("code", "PREVIEW_ERROR")
+-            put("message", "Failed to start preview: ${error.message}")
++            put("code", code)
++            put("message", "$message: ${error.message}")
+         })
+-        call.reject("Failed to start preview", "PREVIEW_ERROR", error)
++        call.reject(message, code, error)
+     }
+ 
+     @PluginMethod
+@@ -350,6 +520,8 @@
+         pendingPreviewCall = null
+         previewEpoch++
+         frameDelivery.removeCallbacksAndMessages(null)
++        firstFrameEpoch = -1L
++        firstFrameReady = null
+         lastFrameEventNanos = 0L
+         observedFocus = null
+         observedSensor = null
+@@ -369,15 +541,48 @@
+         }
+         previewView = null
+ 
+-        cameraExecutor?.shutdown()
++        // In-flight captures keep their executor until CameraX reports them.
++        cameraExecutor?.let { retireExecutor(it) }
+         cameraExecutor = null
+ 
+         preview = null
+         imageCapture = null
+         videoCapture = null
++        boundVideoConfig = null
+         camera = null
+     }
+ 
++    private fun retireExecutor(executor: ExecutorService) {
++        val pending = synchronized(captureLock) {
++            val tickets = inflightCaptures.filter { it.executor === executor }
++            if (tickets.isNotEmpty()) retiredExecutors.add(executor)
++            tickets
++        }
++        if (pending.isEmpty()) {
++            executor.shutdown()
++            return
++        }
++        pending.forEach { it.cancelled = true }
++        captureDelivery.postDelayed({
++            // A delivered capture is already settling on its executor.
++            pending.filter { !it.delivered }.forEach {
++                it.reject("Camera stopped before the photo was delivered", "CAPTURE_CANCELLED")
++            }
++        }, CAPTURE_SETTLE_TIMEOUT_MS)
++    }
++
++    private fun captureSettled(ticket: CaptureTicket) {
++        val retired = synchronized(captureLock) {
++            inflightCaptures.remove(ticket)
++            val executor = ticket.executor
++            if (executor in retiredExecutors && inflightCaptures.none { it.executor === executor }) {
++                retiredExecutors.remove(executor)
++                executor
++            } else null
++        }
++        retired?.shutdown()
++    }
++
+     // ---- Switch Camera ----
+ 
+     @PluginMethod
+@@ -436,31 +641,23 @@
+                 if (targetInfo.exposureState.isExposureCompensationSupported || requestedExposureEv != 0.0) {
+                     planExposure(targetInfo, requestedExposureEv)
+                 }
+-                validateZoom(targetInfo, (currentSettings["zoom"] as? Number)?.toFloat() ?: 1.0f)
+-                validateFlash(targetInfo, currentSettings["flash"] as? String ?: "off")
++                // Flash and zoom belong to the old lens; a switch always starts the new lens
++                // at flash off and 1x, so they are never validated against it.
+                 preflightFocus(targetInfo)
+                 confirmedSensor?.let { validateSensorExposure(targetInfo, it) }
++                currentSettings["flash"] = "off"
++                currentSettings["zoom"] = 1.0f
++                imageCapture?.flashMode = ImageCapture.FLASH_MODE_OFF
+                 currentDirection = direction
+                 currentCameraSelector = targetSelector
+ 
+                 previewView?.scaleX = if (mirror) -1f else 1f
+ 
+-                provider.unbindAll()
++                // Keeps the current capture mode (photo or video).
++                val owner = bindUseCases(provider)
+ 
+-                camera = provider.bindToLifecycle(
+-                    activity as LifecycleOwner,
+-                    currentCameraSelector,
+-                    preview,
+-                    imageCapture,
+-                    videoCapture
+-                )
+-
+-                restoreCameraSettings(requireNotNull(camera), {
+-                    call.resolve(JSObject().apply {
+-                        put("width", currentPreviewWidth)
+-                        put("height", currentPreviewHeight)
+-                        put("deviceId", direction)
+-                    })
++                restoreCameraSettings(owner, {
++                    call.resolve(cameraReceipt(owner, currentPreviewWidth, currentPreviewHeight, direction))
+                     finishCameraSwitch()
+                 }, { error ->
+                     call.reject("Failed to restore camera settings", "SWITCH_CAMERA_ERROR", error)
+@@ -487,11 +684,129 @@
+             call.reject(optionError, "INVALID_ARGUMENT")
+             return
+         }
+-        val imgCapture = this.imageCapture ?: run {
++        val saveToGallery = call.getBoolean("saveToGallery") ?: false
++        if (saveToGallery && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
++            getPermissionState("storage") != com.getcapacitor.PermissionState.GRANTED) {
++            activity.runOnUiThread { requestPermissionForAlias("storage", call, "handlePhotoStoragePermission") }
++            return
++        }
++        // Admission runs on the UI thread so it is ordered with stopPreview and rebinds.
++        activity.runOnUiThread { startPhotoCapture(call) }
++    }
++
++    // Capture never consults focus or settings gates: a tap-to-focus action in flight does not
++    // delay or reject it, and CAPTURE_MODE_MINIMIZE_LATENCY does not run an AF trigger.
++    private fun startPhotoCapture(call: PluginCall) {
++        val imgCapture = imageCapture
++        val executor = cameraExecutor
++        if (destroyed || imgCapture == null || executor == null) {
+             call.reject("Camera not ready", "CAMERA_INACTIVE")
+             return
+         }
++        val ticket = CaptureTicket(call, executor)
++        synchronized(captureLock) { inflightCaptures.add(ticket) }
++        try {
++            // Apply flash mode for this capture.
++            imgCapture.flashMode = flashModeFromSetting(currentSettings["flash"] as? String ?: "off")
++            if (call.getBoolean("thumbnailOnly") ?: false) {
++                captureToGallery(imgCapture, ticket, call.getBoolean("exifOrientation") ?: false)
++            } else {
++                captureProcessed(imgCapture, ticket)
++            }
++        } catch (e: Exception) {
++            // error-policy:J1 synchronous capture admission failures settle the owning call.
++            ticket.reject("Photo capture failed: ${e.message}", "CAPTURE_ERROR", e)
++        }
++    }
++
++    private fun captureFailed(ticket: CaptureTicket, exception: ImageCaptureException) {
++        if (ticket.cancelled) {
++            ticket.reject("Camera stopped before the photo was captured", "CAPTURE_CANCELLED", exception)
++            return
++        }
++        notifyListeners("error", JSObject().apply {
++            put("code", "CAPTURE_ERROR")
++            put("message", "Photo capture failed: ${exception.message}")
++        })
++        ticket.reject("Photo capture failed: ${exception.message}", "CAPTURE_ERROR", exception)
++    }
++
++    // thumbnailOnly: CameraX writes the JPEG straight into MediaStore (DCIM/Camera); only a
++    // small oriented thumbnail crosses the bridge.
++    private fun captureToGallery(imgCapture: ImageCapture, ticket: CaptureTicket, includeExif: Boolean) {
++        val resolver = context.contentResolver
++        val stamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(Date())
++        val values = galleryMediaValues("IMG_$stamp.jpg", "image/jpeg", pending = false)
++        val options = ImageCapture.OutputFileOptions.Builder(resolver, MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values).build()
++        imgCapture.takePicture(options, ticket.executor, object : ImageCapture.OnImageSavedCallback {
++            override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
++                ticket.delivered = true
++                val uri = outputFileResults.savedUri
++                try {
++                    val saved = requireNotNull(uri) { "CameraX did not report the gallery URI" }
++                    ticket.resolve(galleryPhotoReceipt(saved, includeExif))
++                } catch (e: Exception) {
++                    // error-policy:J1 the photo is in the gallery; report its URI with the failure.
++                    ticket.reject("Photo processing failed: ${e.message}", "PHOTO_PROCESSING_FAILED", e, JSObject().apply {
++                        uri?.let { put("path", it.toString()) }
++                    })
++                }
++            }
++
++            override fun onError(exception: ImageCaptureException) {
++                ticket.delivered = true
++                captureFailed(ticket, exception)
++            }
++        })
++    }
++
++    private fun galleryPhotoReceipt(uri: Uri, includeExif: Boolean): JSObject {
++        val resolver = context.contentResolver
++        val exif = resolver.openInputStream(uri)?.use { ExifInterface(it) }
++            ?: throw IllegalStateException("Saved photo is not readable")
++        val orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
++        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
++        resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
++        val sourceWidth = bounds.outWidth
++        val sourceHeight = bounds.outHeight
++        require(sourceWidth > 0 && sourceHeight > 0) { "Saved photo has no readable dimensions" }
++        val swapped = orientation == ExifInterface.ORIENTATION_ROTATE_90 ||
++            orientation == ExifInterface.ORIENTATION_ROTATE_270 ||
++            orientation == ExifInterface.ORIENTATION_TRANSPOSE ||
++            orientation == ExifInterface.ORIENTATION_TRANSVERSE
++        var sample = 1
++        while (maxOf(sourceWidth, sourceHeight) / (sample * 2) >= THUMBNAIL_EDGE) sample *= 2
++        val decodeOptions = BitmapFactory.Options().apply { inSampleSize = sample }
++        var bitmap: Bitmap = resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, decodeOptions) }
++            ?: throw IllegalStateException("Failed to decode saved photo")
++        try {
++            val longest = maxOf(bitmap.width, bitmap.height)
++            if (longest > THUMBNAIL_EDGE) {
++                val scale = THUMBNAIL_EDGE.toFloat() / longest
++                val scaled = Bitmap.createScaledBitmap(bitmap,
++                    maxOf(1, (bitmap.width * scale).roundToInt()), maxOf(1, (bitmap.height * scale).roundToInt()), true)
++                if (scaled !== bitmap) bitmap.recycle()
++                bitmap = scaled
++            }
++            bitmap = rotateBitmapByExif(bitmap, orientation)
++            val output = ByteArrayOutputStream()
++            check(bitmap.compress(Bitmap.CompressFormat.JPEG, 80, output)) { "Thumbnail encoder did not produce output" }
++            return JSObject().apply {
++                put("path", uri.toString())
++                put("format", "jpeg")
++                put("width", if (swapped) sourceHeight else sourceWidth)
++                put("height", if (swapped) sourceWidth else sourceHeight)
++                put("thumbnail", Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP))
++                if (includeExif) put("exif", extractExifData(exif))
++            }
++        } finally {
++            bitmap.recycle()
++        }
++    }
+ 
++    // Default path: decode, optionally resize, re-encode and return base64 (plus an optional gallery copy).
++    private fun captureProcessed(imgCapture: ImageCapture, ticket: CaptureTicket) {
++        val call = ticket.call
+         val quality = call.getFloat("quality") ?: 90f
+         val format = call.getString("format") ?: "jpeg"
+         val saveToGallery = call.getBoolean("saveToGallery") ?: false
+@@ -499,25 +814,16 @@
+         val targetHeight = call.getInt("height")
+         val includeExif = call.getBoolean("exifOrientation") ?: false
+ 
+-        if (saveToGallery && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
+-            getPermissionState("storage") != com.getcapacitor.PermissionState.GRANTED) {
+-            activity.runOnUiThread { requestPermissionForAlias("storage", call, "handlePhotoStoragePermission") }
+-            return
+-        }
+-
+-        // Apply flash mode for this capture.
+-        val flashSetting = currentSettings["flash"] as? String ?: "off"
+-        imgCapture.flashMode = flashModeFromSetting(flashSetting)
+-
+         // Use file-based capture for EXIF support (matches classic CameraCaptureManager pattern).
+         val tempFile = File.createTempFile("eliza-snap-", ".jpg", context.cacheDir)
+         val outputOptions = ImageCapture.OutputFileOptions.Builder(tempFile).build()
+ 
+         imgCapture.takePicture(
+             outputOptions,
+-            cameraExecutor ?: Executors.newSingleThreadExecutor(),
++            ticket.executor,
+             object : ImageCapture.OnImageSavedCallback {
+                 override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
++                    ticket.delivered = true
+                     var bitmap: Bitmap? = null
+                     try {
+                         // Extract EXIF orientation before decoding.
+@@ -573,24 +879,22 @@
+                         // Finish fallible metadata work before publishing the external effect.
+                         val galleryPath = if (saveToGallery) saveImageToGallery(outputBytes, format) else null
+ 
+-                        activity.runOnUiThread {
+-                            call.resolve(JSObject().apply {
+-                                put("base64", base64)
+-                                put("format", format)
+-                                put("width", finalWidth)
+-                                put("height", finalHeight)
+-                                galleryPath?.let { put("path", it) }
+-                                exifData?.let { put("exif", it) }
+-                            })
+-                        }
++                        ticket.resolve(JSObject().apply {
++                            put("base64", base64)
++                            put("format", format)
++                            put("width", finalWidth)
++                            put("height", finalHeight)
++                            galleryPath?.let { put("path", it) }
++                            exifData?.let { put("exif", it) }
++                        })
+                     } catch (e: GalleryImageWriteException) {
+-                        call.reject(e.message, "GALLERY_WRITE_FAILED", e, JSObject().apply {
++                        ticket.reject(e.message, "GALLERY_WRITE_FAILED", e, JSObject().apply {
+                             e.uri?.let { put("path", it.toString()) }
+                             put("cleanupFailed", e.cleanupFailed)
+                         })
+                     } catch (e: Exception) {
+                         // error-policy:J1 capture/encoding failures reject the bridge call.
+-                        call.reject("Photo processing failed: ${e.message}", "PHOTO_PROCESSING_FAILED", e)
++                        ticket.reject("Photo processing failed: ${e.message}", "PHOTO_PROCESSING_FAILED", e)
+                     } finally {
+                         bitmap?.recycle()
+                         tempFile.delete()
+@@ -598,12 +902,9 @@
+                 }
+ 
+                 override fun onError(exception: ImageCaptureException) {
++                    ticket.delivered = true
+                     tempFile.delete()
+-                    notifyListeners("error", JSObject().apply {
+-                        put("code", "CAPTURE_ERROR")
+-                        put("message", "Photo capture failed: ${exception.message}")
+-                    })
+-                    call.reject("Photo capture failed: ${exception.message}", "CAPTURE_ERROR", exception)
++                    captureFailed(ticket, exception)
+                 }
+             }
+         )
+@@ -618,11 +919,17 @@
+                 "width", "height" -> value is Number && value.toDouble().isFinite() &&
+                     value.toDouble() >= 1.0 && value.toDouble() <= Int.MAX_VALUE.toDouble() &&
+                     value.toDouble() == kotlin.math.floor(value.toDouble())
+-                "saveToGallery", "exifOrientation" -> value is Boolean
++                "saveToGallery", "exifOrientation", "thumbnailOnly" -> value is Boolean
+                 else -> return "Unknown photo option: $key"
+             }
+             if (!valid) return "Invalid photo option: $key"
+         }
++        if (options.opt("thumbnailOnly") == true) {
++            if (options.opt("saveToGallery") != true) return "thumbnailOnly requires saveToGallery: true"
++            if (options.has("width") || options.has("height")) return "thumbnailOnly cannot be combined with width or height"
++            if (options.has("format") && options.opt("format") != "jpeg") return "thumbnailOnly saves JPEG only"
++            if (options.has("quality")) return "thumbnailOnly uses the camera JPEG quality; quality is not supported"
++        }
+         val width = (options.opt("width") as? Number)?.toLong() ?: 1L
+         val height = (options.opt("height") as? Number)?.toLong() ?: 1L
+         if (width * height > Int.MAX_VALUE / 4) return "Requested image exceeds Android bitmap byte capacity"
+@@ -685,25 +992,9 @@
+         } else capturePhoto(call)
+     }
+ 
+-    private fun saveImageToGallery(bytes: ByteArray, format: String): String {
+-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+-            return GalleryImageWriter(context.contentResolver).save(bytes, format).toString()
+-        }
+-        @Suppress("DEPRECATION")
+-        val picturesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
+-        val file = File(picturesDir, "IMG_${UUID.randomUUID()}.$format")
+-        try {
+-            if (!picturesDir.isDirectory && !picturesDir.mkdirs()) throw java.io.IOException("Cannot create the pictures directory")
+-            file.writeBytes(bytes)
+-            return Uri.fromFile(file).toString()
+-        } catch (error: Exception) {
+-            val cleanupFailed = try { file.exists() && !file.delete() } catch (cleanupError: Exception) {
+-                error.addSuppressed(cleanupError)
+-                true
+-            }
+-            throw GalleryImageWriteException("Gallery image save failed: ${error.message}", error, Uri.fromFile(file), cleanupFailed)
+-        }
+-    }
++    // Every API level writes through MediaStore into DCIM/Camera and returns a content:// URI.
++    private fun saveImageToGallery(bytes: ByteArray, format: String): String =
++        GalleryImageWriter(context.contentResolver).save(bytes, format).toString()
+ 
+     // ---- Video Recording ----
+ 
+@@ -716,18 +1007,32 @@
+                 call.reject("Camera settings are being restored", "CAMERA_NOT_READY")
+             } else if (recordingSession != null || recordingPermissionCalls.isNotEmpty()) {
+                 call.reject("A recording is already starting, recording or finalizing", "RECORDING_BUSY")
+-            } else if (videoCapture == null) {
++            } else if (camera == null || cameraProvider == null) {
+                 call.reject("Camera not ready", "CAMERA_NOT_READY")
+             } else if ((call.getBoolean("audio") ?: true) &&
+                 getPermissionState("microphone") != com.getcapacitor.PermissionState.GRANTED) {
+                 recordingPermissionCalls.add(call)
+                 requestPermissionForAlias("microphone", call, "handleMicPermissionForRecording")
+             } else {
+-                startRecordingInternal(call)
++                continueRecordingAdmission(call)
+             }
+         }
+     }
+ 
++    private fun needsRecordingStorage(call: PluginCall): Boolean =
++        (call.getBoolean("saveToGallery") ?: false) && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
++            getPermissionState("storage") != com.getcapacitor.PermissionState.GRANTED
++
++    // Android 9 and older need storage permission to publish a gallery recording in DCIM/Camera.
++    private fun continueRecordingAdmission(call: PluginCall) {
++        if (needsRecordingStorage(call)) {
++            recordingPermissionCalls.add(call)
++            requestPermissionForAlias("storage", call, "handleStoragePermissionForRecording")
++        } else {
++            startRecordingInternal(call)
++        }
++    }
++
+     @PermissionCallback
+     private fun handleMicPermissionForRecording(call: PluginCall) {
+         activity.runOnUiThread {
+@@ -735,6 +1040,18 @@
+             if (getPermissionState("microphone") != com.getcapacitor.PermissionState.GRANTED) {
+                 call.reject("Microphone permission denied for the requested audio recording", "MICROPHONE_DENIED")
+             } else {
++                continueRecordingAdmission(call)
++            }
++        }
++    }
++
++    @PermissionCallback
++    private fun handleStoragePermissionForRecording(call: PluginCall) {
++        activity.runOnUiThread {
++            if (!recordingPermissionCalls.remove(call)) return@runOnUiThread
++            if (getPermissionState("storage") != com.getcapacitor.PermissionState.GRANTED) {
++                call.reject("Storage permission is required for gallery recordings on this Android version", "PERMISSION_DENIED")
++            } else {
+                 startRecordingInternal(call)
+             }
+         }
+@@ -746,7 +1063,7 @@
+             call.reject("Camera settings are being restored", "CAMERA_NOT_READY")
+             return
+         }
+-        if (destroyed || videoCapture == null) {
++        if (destroyed || camera == null || cameraProvider == null) {
+             call.reject("Camera is no longer available", "CAMERA_NOT_READY")
+             return
+         }
+@@ -777,8 +1094,9 @@
+             return
+         }
+         val saveToGallery = call.getBoolean("saveToGallery") ?: false
+-        if (saveToGallery && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+-            call.reject("Gallery recording requires Android 10 or newer", "GALLERY_UNAVAILABLE")
++        if (saveToGallery && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
++            getPermissionState("storage") != com.getcapacitor.PermissionState.GRANTED) {
++            call.reject("Storage permission is required for gallery recordings on this Android version", "PERMISSION_DENIED")
+             return
+         }
+         val fileName = "VID_${UUID.randomUUID()}.mp4"
+@@ -787,92 +1105,100 @@
+         recordingSession = session
+         completedRecording = null
+         completedRecordingError = null
++
++        fun begin(capture: VideoCapture<Recorder>) {
++            check(recordingSession === session && !session.stopping) { "Recording was cancelled before native settings completed" }
++            val pending = if (saveToGallery) {
++                // DCIM/Camera on every API level; Android 9 and older get an explicit public path.
++                val builder = MediaStoreOutputOptions.Builder(context.contentResolver, MediaStore.Video.Media.EXTERNAL_CONTENT_URI)
++                    .setContentValues(galleryMediaValues(fileName, "video/mp4", pending = false))
++                if (maxDuration != null) builder.setDurationLimitMillis((maxDuration * 1000).toLong().coerceAtLeast(1))
++                if (maxFileSize != null) builder.setFileSizeLimit(maxFileSize.toLong())
++                capture.output.prepareRecording(context, builder.build())
++            } else {
++                val builder = FileOutputOptions.Builder(requireNotNull(file))
++                if (maxDuration != null) builder.setDurationLimitMillis((maxDuration * 1000).toLong().coerceAtLeast(1))
++                if (maxFileSize != null) builder.setFileSizeLimit(maxFileSize.toLong())
++                capture.output.prepareRecording(context, builder.build())
++            }
++            if (call.getBoolean("audio") ?: true) pending.withAudioEnabled()
++            session.recording = pending.start(ContextCompat.getMainExecutor(context)) { event ->
++                if (recordingSession !== session) return@start
++                session.duration = event.recordingStats.recordedDurationNanos / 1_000_000_000.0
++                session.fileSize = event.recordingStats.numBytesRecorded
++                when (event) {
++                    is VideoRecordEvent.Start -> {
++                        session.started = true
++                        session.startSettled = true
++                        call.resolve()
++                    }
++                    is VideoRecordEvent.Finalize -> {
++                        val acceptableLimit = event.error == VideoRecordEvent.Finalize.ERROR_DURATION_LIMIT_REACHED ||
++                            event.error == VideoRecordEvent.Finalize.ERROR_FILE_SIZE_LIMIT_REACHED
++                        try {
++                            if (event.hasError() && !acceptableLimit) {
++                                throw IllegalStateException("CameraX could not finalize recording (code ${event.error})", event.cause)
++                            }
++                            val outputUri = event.outputResults.outputUri
++                            val uri = if (outputUri != Uri.EMPTY) outputUri else Uri.fromFile(requireNotNull(session.file))
++                            val outputBytes = session.file?.length()
++                                ?: context.contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize }
++                                ?: throw IllegalStateException("Finalized video is not readable")
++                            val metadata = MediaMetadataRetriever()
++                            val result = try {
++                                metadata.setDataSource(context, uri)
++                                val width = metadata.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull()
++                                val height = metadata.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull()
++                                require(width != null && width > 0 && height != null && height > 0) { "Finalized video has no readable dimensions" }
++                                require(outputBytes > 0 && session.duration > 0) { "Finalized video contains no recorded media" }
++                                JSObject().apply {
++                                    put("path", session.file?.absolutePath ?: uri.toString())
++                                    put("duration", session.duration)
++                                    put("width", width)
++                                    put("height", height)
++                                    put("fileSize", outputBytes)
++                                    put("mimeType", "video/mp4")
++                                }
++                            } finally {
++                                metadata.release()
++                            }
++                            finishRecording(session, result, null)
++                        } catch (error: Exception) {
++                            // error-policy:J1 CameraX/output failures become explicit bridge failures.
++                            finishRecording(session, null, error)
++                        }
++                    }
++                }
++                notifyListeners("recordingState", JSObject().apply {
++                    put("isRecording", recordingSession === session && session.started && !session.stopping)
++                    put("duration", session.duration)
++                    put("fileSize", session.fileSize)
++                })
++            }
++        }
++
++        val requested = VideoConfig(quality, bitrate?.toInt(), frameRate?.toInt())
++        val bound = videoCapture
++        if (bound != null && boundVideoConfig == requested) {
++            // Video mode already bound a matching VideoCapture: start without a rebind.
++            try {
++                begin(bound)
++            } catch (error: Exception) {
++                // error-policy:J1 output admission errors settle the owning call; the preview stays bound.
++                finishRecording(session, null, error)
++            }
++            return
++        }
+         try {
+-            val selector = if (quality == Quality.HIGHEST) QualitySelector.from(quality)
+-                else QualitySelector.from(quality, FallbackStrategy.lowerQualityOrHigherThan(quality))
+-            val recorder = Recorder.Builder().setQualitySelector(selector)
+-            if (bitrate != null) recorder.setTargetVideoEncodingBitRate(bitrate.toInt())
+-            val captureBuilder = VideoCapture.Builder(recorder.build())
+-            if (frameRate != null) captureBuilder.setTargetFrameRate(Range(frameRate.toInt(), frameRate.toInt()))
+-            val capture = captureBuilder.build()
++            val capture = buildVideoCapture(requested)
+             val provider = requireNotNull(cameraProvider) { "Camera provider is unavailable" }
+             provider.unbindAll()
+             videoCapture = capture
++            boundVideoConfig = requested
+             camera = provider.bindToLifecycle(activity as LifecycleOwner, currentCameraSelector,
+                 requireNotNull(preview), requireNotNull(imageCapture), capture)
+             restoreCameraSettings(requireNotNull(camera), {
+-                check(recordingSession === session && !session.stopping) { "Recording was cancelled before native settings completed" }
+-                val pending = if (saveToGallery) {
+-                    val values = ContentValues().apply {
+-                        put(MediaStore.Video.Media.DISPLAY_NAME, fileName)
+-                        put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
+-                        put(MediaStore.Video.Media.RELATIVE_PATH, Environment.DIRECTORY_MOVIES)
+-                    }
+-                    val builder = MediaStoreOutputOptions.Builder(context.contentResolver, MediaStore.Video.Media.EXTERNAL_CONTENT_URI)
+-                        .setContentValues(values)
+-                    if (maxDuration != null) builder.setDurationLimitMillis((maxDuration * 1000).toLong().coerceAtLeast(1))
+-                    if (maxFileSize != null) builder.setFileSizeLimit(maxFileSize.toLong())
+-                    capture.output.prepareRecording(context, builder.build())
+-                } else {
+-                    val builder = FileOutputOptions.Builder(requireNotNull(file))
+-                    if (maxDuration != null) builder.setDurationLimitMillis((maxDuration * 1000).toLong().coerceAtLeast(1))
+-                    if (maxFileSize != null) builder.setFileSizeLimit(maxFileSize.toLong())
+-                    capture.output.prepareRecording(context, builder.build())
+-                }
+-                if (call.getBoolean("audio") ?: true) pending.withAudioEnabled()
+-                session.recording = pending.start(ContextCompat.getMainExecutor(context)) { event ->
+-                    if (recordingSession !== session) return@start
+-                    session.duration = event.recordingStats.recordedDurationNanos / 1_000_000_000.0
+-                    session.fileSize = event.recordingStats.numBytesRecorded
+-                    when (event) {
+-                        is VideoRecordEvent.Start -> {
+-                            session.started = true
+-                            session.startSettled = true
+-                            call.resolve()
+-                        }
+-                        is VideoRecordEvent.Finalize -> {
+-                            val acceptableLimit = event.error == VideoRecordEvent.Finalize.ERROR_DURATION_LIMIT_REACHED ||
+-                                event.error == VideoRecordEvent.Finalize.ERROR_FILE_SIZE_LIMIT_REACHED
+-                            try {
+-                                if (event.hasError() && !acceptableLimit) {
+-                                    throw IllegalStateException("CameraX could not finalize recording (code ${event.error})", event.cause)
+-                                }
+-                                val outputUri = event.outputResults.outputUri
+-                                val uri = if (outputUri != Uri.EMPTY) outputUri else Uri.fromFile(requireNotNull(session.file))
+-                                val outputBytes = session.file?.length()
+-                                    ?: context.contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize }
+-                                    ?: throw IllegalStateException("Finalized video is not readable")
+-                                val metadata = MediaMetadataRetriever()
+-                                val result = try {
+-                                    metadata.setDataSource(context, uri)
+-                                    val width = metadata.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull()
+-                                    val height = metadata.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull()
+-                                    require(width != null && width > 0 && height != null && height > 0) { "Finalized video has no readable dimensions" }
+-                                    require(outputBytes > 0 && session.duration > 0) { "Finalized video contains no recorded media" }
+-                                    JSObject().apply {
+-                                        put("path", session.file?.absolutePath ?: uri.toString())
+-                                        put("duration", session.duration)
+-                                        put("width", width)
+-                                        put("height", height)
+-                                        put("fileSize", outputBytes)
+-                                        put("mimeType", "video/mp4")
+-                                    }
+-                                } finally {
+-                                    metadata.release()
+-                                }
+-                                finishRecording(session, result, null)
+-                            } catch (error: Exception) {
+-                                // error-policy:J1 CameraX/output failures become explicit bridge failures.
+-                                finishRecording(session, null, error)
+-                            }
+-                        }
+-                    }
+-                    notifyListeners("recordingState", JSObject().apply {
+-                        put("isRecording", recordingSession === session && session.started && !session.stopping)
+-                        put("duration", session.duration)
+-                        put("fileSize", session.fileSize)
+-                    })
+-                }
++                begin(capture)
+             }, { error ->
+                 if (recordingSession === session) {
+                     finishRecording(session, null, error)
+@@ -1136,12 +1462,149 @@
+     }
+ 
+     // Rebinding CameraX use cases must restore confirmed white balance, EV, zoom and flash before the
+-    // owning preview/switch/recording operation can report success.
++    // owning preview/switch/recording operation can report success. Values already at the camera's
++    // default are skipped. Zoom and torch run in parallel with the Camera2 interop chain; the interop
++    // steps stay sequential because each interop update cancels a pending one.
++    @androidx.annotation.OptIn(markerClass = [ExperimentalCamera2Interop::class])
+     private fun restoreCameraSettings(owner: Camera, ready: () -> Unit, failed: (Exception) -> Unit) {
+         val epoch = previewEpoch
++        val info = owner.cameraInfo
++        val interop = Camera2CameraControl.from(owner.cameraControl)
+         val preset = currentSettings["whiteBalance"] as? String ?: "auto"
++        val zoom = (currentSettings["zoom"] as? Number)?.toFloat() ?: 1.0f
++        val flash = currentSettings["flash"] as? String ?: "off"
+         fun stillOwnsCamera() = !destroyed && camera === owner && previewEpoch == epoch
+-        fun apply(allowRebindRetry: Boolean) {
++
++        var remaining = 3
++        var settled = false
++        fun branchFailed(error: Exception) {
++            if (settled) return
++            settled = true
++            failed(error)
++        }
++        fun branchDone() {
++            if (settled) return
++            remaining--
++            if (remaining > 0) return
++            settled = true
++            try {
++                ready()
++            } catch (error: Exception) {
++                failed(error)
++            }
++        }
++
++        val focus: FocusSetting
++        val skipFocus: Boolean
++        val releaseSensor: Boolean
++        val skipEv: Boolean
++        val sensor = confirmedSensor?.takeIf { it.preset != "continuous" }
++        val confirmFlashPolicy = flash == "on" || flash == "auto"
++        try {
++            validateFlash(info, flash)
++            requireNotNull(imageCapture) { "Camera capture is not ready" }.flashMode = flashModeFromSetting(flash)
++            if (zoom != 1.0f) validateZoom(info, zoom)
++            val current = interop.captureRequestOptions
++            focus = restoredFocus(info)
++            val afOverride = current.getCaptureRequestOption(CaptureRequest.CONTROL_AF_MODE)
++            skipFocus = (afOverride == null || afOverride == focus.mode) &&
++                (confirmedFocus == null || (focus.preset != "manual" && focus.mode == defaultFocus(info).mode))
++            // A cancelled manual/locked request can leave Camera2 AE overrides alive across unbind/rebind.
++            releaseSensor = current.getCaptureRequestOption(CaptureRequest.CONTROL_AE_MODE) != null ||
++                current.getCaptureRequestOption(CaptureRequest.CONTROL_AE_LOCK) == true ||
++                current.getCaptureRequestOption(CaptureRequest.SENSOR_SENSITIVITY) != null ||
++                current.getCaptureRequestOption(CaptureRequest.SENSOR_EXPOSURE_TIME) != null
++            skipEv = confirmedSensor?.preset == "manual" ||
++                (requestedExposureEv == 0.0 && info.exposureState.exposureCompensationIndex == 0)
++            val awbOverride = current.getCaptureRequestOption(CaptureRequest.CONTROL_AWB_MODE)
++            val skipWhiteBalance = preset == "auto" && (awbOverride == null || awbOverride == CaptureRequest.CONTROL_AWB_MODE_AUTO)
++            val chainNeeded = !skipWhiteBalance || releaseSensor || !skipEv || confirmFlashPolicy || !skipFocus || sensor != null
++            if (!chainNeeded) {
++                if (confirmedFocus != null) confirmFocus(info, focus)
++                currentSettings["focusMode"] = focus.preset
++                if (confirmedSensor?.preset != "manual") currentSettings["exposureCompensation"] = 0.0
++            }
++
++            // Branch 1: zoom.
++            val zoomState = info.zoomState.value
++            if (zoom == 1.0f && (zoomState == null || zoomState.zoomRatio == 1.0f)) branchDone()
++            else awaitRestoredControl(owner, epoch, { owner.cameraControl.setZoomRatio(zoom) }, { branchDone() }, { branchFailed(it) })
++
++            // Branch 2: torch.
++            val torchOn = info.hasFlashUnit() && info.torchState.value == TorchState.ON
++            if (flash != "torch" && !torchOn) branchDone()
++            else awaitRestoredControl(owner, epoch, { owner.cameraControl.enableTorch(flash == "torch") }, { branchDone() }, { branchFailed(it) })
++
++            // Branch 3: the sequential interop chain, skipped entirely when everything is at its default.
++            if (!chainNeeded) {
++                branchDone()
++                return
++            }
++        } catch (error: Exception) {
++            branchFailed(error)
++            return
++        }
++
++        fun restoreSensor() {
++            try {
++                if (sensor == null) branchDone()
++                else applySensorExposure(owner, epoch, sensor, { applied ->
++                    confirmSensorExposure(applied, sensor)
++                    branchDone()
++                }, { branchFailed(it) })
++            } catch (error: Exception) {
++                branchFailed(error)
++            }
++        }
++        fun restoreFocus() {
++            try {
++                if (skipFocus) {
++                    if (confirmedFocus != null) confirmFocus(info, focus)
++                    currentSettings["focusMode"] = focus.preset
++                    restoreSensor()
++                } else applyFocus(owner, epoch, focus, {
++                    if (confirmedFocus != null) confirmFocus(info, focus)
++                    currentSettings["focusMode"] = focus.preset
++                    restoreSensor()
++                }, { branchFailed(it) })
++            } catch (error: Exception) {
++                branchFailed(error)
++            }
++        }
++        fun restoreFlashPolicy() {
++            // ImageCapture's flash policy setter has no public future. A subsequent
++            // Camera2 options update completes only after its session tag reaches a
++            // capture, including the flash policy queued before it. Empty options
++            // preserve existing interop settings such as white balance.
++            try {
++                if (!confirmFlashPolicy) restoreFocus()
++                else awaitCameraControl(owner, epoch, interop.addCaptureRequestOptions(CaptureRequestOptions.Builder().build()),
++                    { restoreFocus() }, { branchFailed(it) })
++            } catch (error: Exception) {
++                branchFailed(error)
++            }
++        }
++        fun restoreEv() {
++            try {
++                if (skipEv) {
++                    if (confirmedSensor?.preset != "manual") currentSettings["exposureCompensation"] = 0.0
++                    restoreFlashPolicy()
++                } else restoreExposure(owner, epoch, { restoreFlashPolicy() }, { branchFailed(it) })
++            } catch (error: Exception) {
++                branchFailed(error)
++            }
++        }
++        fun releaseSensorOverrides() {
++            try {
++                if (!releaseSensor) restoreEv()
++                else applySensorExposure(owner, epoch, SensorExposure("continuous"), { _ -> restoreEv() }, { branchFailed(it) })
++            } catch (error: Exception) {
++                branchFailed(error)
++            }
++        }
++        // White balance always leads a needed chain (even for "auto"): its retry absorbs the
++        // inactive transition CameraX queues during unbind/rebind before later interop steps run.
++        fun restoreWhiteBalance(allowRebindRetry: Boolean) {
+             try {
+                 val future = whiteBalanceFuture(owner, preset)
+                 val requestId = whiteBalanceRequestId
+@@ -1149,49 +1612,57 @@
+                     try {
+                         future.get()
+                         check(stillOwnsCamera()) { "Camera changed during white balance restoration" }
+-                        // A cancelled manual request can leave Camera2 overrides
+-                        // alive across unbind/rebind. Release them before CameraX
+-                        // waits for an automatic AE state during EV restoration.
+-                        applySensorExposure(owner, epoch, SensorExposure("continuous"), { _ ->
+-                            restoreExposure(owner, epoch, {
+-                                val zoom = (currentSettings["zoom"] as? Number)?.toFloat() ?: 1.0f
+-                                validateZoom(owner.cameraInfo, zoom)
+-                                awaitCameraControl(owner, epoch, owner.cameraControl.setZoomRatio(zoom), {
+-                                    applyFlash(owner, epoch, currentSettings["flash"] as? String ?: "off", {
+-                                        val focus = restoredFocus(owner.cameraInfo)
+-                                        applyFocus(owner, epoch, focus, {
+-                                            if (confirmedFocus != null) confirmFocus(owner.cameraInfo, focus)
+-                                            currentSettings["focusMode"] = focus.preset
+-                                            val sensor = confirmedSensor
+-                                            if (sensor == null) ready()
+-                                            else applySensorExposure(owner, epoch, sensor, { applied ->
+-                                                confirmSensorExposure(applied, sensor)
+-                                                ready()
+-                                            }, failed)
+-                                        }, failed)
+-                                    }, failed)
+-                                }, failed)
+-                            }, failed)
+-                        }, failed)
+                     } catch (error: Exception) {
+-                        // Unbind/rebind queues an inactive transition on CameraX's
+-                        // executor. Re-submit once after that transition, only if
+-                        // this request still owns the foreground camera. A newer
+-                        // preset, stop or switch must never be overwritten.
++                        // Re-submit once after that transition, only if this request still owns
++                        // the foreground camera. A newer preset, stop or switch must never be overwritten.
+                         val cause = (error as? java.util.concurrent.ExecutionException)?.cause
+-                        val foreground = (activity as? LifecycleOwner)?.lifecycle?.currentState
+-                            ?.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED) == true
+                         if (allowRebindRetry && cause is CameraControl.OperationCanceledException &&
+-                            stillOwnsCamera() && whiteBalanceRequestId == requestId && foreground) {
+-                            apply(false)
+-                        } else failed(error)
++                            stillOwnsCamera() && whiteBalanceRequestId == requestId && isForeground()) {
++                            restoreWhiteBalance(false)
++                        } else branchFailed(error)
++                        return@addListener
+                     }
++                    releaseSensorOverrides()
+                 }, ContextCompat.getMainExecutor(context))
+             } catch (error: Exception) {
+-                failed(error)
++                branchFailed(error)
+             }
+         }
+-        apply(true)
++        restoreWhiteBalance(true)
++    }
++
++    private fun isForeground(): Boolean = (activity as? LifecycleOwner)?.lifecycle?.currentState
++        ?.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED) == true
++
++    // Like awaitCameraControl, but re-submits once when the control was cancelled by the
++    // inactive transition CameraX queues during unbind/rebind.
++    private fun awaitRestoredControl(owner: Camera, epoch: Long, submit: () -> ListenableFuture<*>, ready: () -> Unit,
++                                     failed: (Exception) -> Unit, allowRetry: Boolean = true) {
++        val future = submit()
++        future.addListener({
++            val error = try {
++                future.get()
++                null
++            } catch (failure: Exception) {
++                failure
++            }
++            val owns = !destroyed && camera === owner && previewEpoch == epoch
++            if (error == null) {
++                if (!owns) failed(IllegalStateException("Camera changed before control completed"))
++                else try {
++                    ready()
++                } catch (failure: Exception) {
++                    failed(failure)
++                }
++            } else if (allowRetry && owns && isForeground() &&
++                (error as? java.util.concurrent.ExecutionException)?.cause is CameraControl.OperationCanceledException) {
++                try {
++                    awaitRestoredControl(owner, epoch, submit, ready, failed, false)
++                } catch (failure: Exception) {
++                    failed(failure)
++                }
++            } else failed(error)
++        }, ContextCompat.getMainExecutor(context))
+     }
+ 
+     @androidx.annotation.OptIn(markerClass = [ExperimentalCamera2Interop::class])
+@@ -1635,6 +2106,15 @@
+                     if (epoch != previewEpoch || destroyed) return@post
+                     val owner = camera ?: return@post
+                     if (Camera2CameraInfo.from(owner.cameraInfo).cameraId != session.device.id) return@post
++                    // The first completed capture of this preview epoch settles startPreview.
++                    if (firstFrameEpoch == epoch) {
++                        firstFrameEpoch = -1L
++                        val notify = firstFrameReady
++                        firstFrameReady = null
++                        notify?.invoke()
++                    }
++                    // startPreview's resolve may have stopped or replaced this preview.
++                    if (epoch != previewEpoch || destroyed || camera !== owner) return@post
+                     result.get(CaptureResult.LENS_FOCUS_DISTANCE)?.let { distance ->
+                         if (distance.isFinite()) observedFocus = FocusObservation(session.device.id, distance)
+                     }
+--- a/plugins/plugin-native-camera/android/src/main/java/ai/eliza/plugins/camera/GalleryImageWriter.kt
++++ b/plugins/plugin-native-camera/android/src/main/java/ai/eliza/plugins/camera/GalleryImageWriter.kt
+@@ -3,8 +3,10 @@
+ import android.content.ContentResolver
+ import android.content.ContentValues
+ import android.net.Uri
++import android.os.Build
+ import android.os.Environment
+ import android.provider.MediaStore
++import java.io.File
+ import java.io.IOException
+ import java.util.UUID
+ 
+@@ -15,7 +17,34 @@
+     val cleanupFailed: Boolean = false
+ ) : IOException(message, cause)
+ 
+-/** Owns one scoped MediaStore insertion until it is published or removed. */
++/**
++ * MediaStore columns that place one new item in the public DCIM/Camera album.
++ * Android 10+ uses RELATIVE_PATH; older releases need an explicit public file
++ * path, so every caller still receives a content:// MediaStore URI.
++ */
++@Suppress("DEPRECATION")
++internal fun galleryMediaValues(displayName: String, mimeType: String, pending: Boolean): ContentValues {
++    val values = ContentValues()
++    values.put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
++    values.put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
++    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
++        values.put(MediaStore.MediaColumns.RELATIVE_PATH, "DCIM/Camera")
++        if (pending) values.put(MediaStore.MediaColumns.IS_PENDING, 1)
++    } else {
++        val album = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM), "Camera")
++        if (!album.isDirectory && !album.mkdirs()) throw IOException("Cannot create the DCIM/Camera directory")
++        val dot = displayName.lastIndexOf('.')
++        val stem = if (dot > 0) displayName.substring(0, dot) else displayName
++        val extension = if (dot > 0) displayName.substring(dot) else ""
++        var file = File(album, displayName)
++        var suffix = 1
++        while (file.exists()) file = File(album, "${stem}_${suffix++}$extension")
++        values.put(MediaStore.MediaColumns.DATA, file.absolutePath)
++    }
++    return values
++}
++
++/** Owns one MediaStore insertion until it is published or removed. */
+ internal class GalleryImageWriter(
+     private val resolver: ContentResolver,
+     private val collection: Uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+@@ -23,22 +52,19 @@
+     fun save(bytes: ByteArray, format: String): Uri {
+         var uri: Uri? = null
+         try {
+-            val values = ContentValues().apply {
+-                put(MediaStore.Images.Media.DISPLAY_NAME, "IMG_${UUID.randomUUID()}.$format")
+-                put(MediaStore.Images.Media.MIME_TYPE, "image/$format")
+-                put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
+-                put(MediaStore.Images.Media.IS_PENDING, 1)
+-            }
++            val values = galleryMediaValues("IMG_${UUID.randomUUID()}.$format", "image/$format", pending = true)
+             val created = resolver.insert(collection, values)
+                 ?: throw IOException("Gallery provider did not create an image entry")
+             uri = created
+             val output = resolver.openOutputStream(created)
+                 ?: throw IOException("Gallery provider did not open an image stream")
+             output.use { it.write(bytes) }
+-            val published = resolver.update(created, ContentValues().apply {
+-                put(MediaStore.Images.Media.IS_PENDING, 0)
+-            }, null, null)
+-            if (published != 1) throw IOException("Gallery provider did not publish the image entry")
++            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
++                val published = resolver.update(created, ContentValues().apply {
++                    put(MediaStore.MediaColumns.IS_PENDING, 0)
++                }, null, null)
++                if (published != 1) throw IOException("Gallery provider did not publish the image entry")
++            }
+             return created
+         } catch (error: Exception) {
+             var cleanupError: Exception? = null

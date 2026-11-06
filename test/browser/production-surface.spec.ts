@@ -225,6 +225,13 @@ test('the CSP admits Home, Notes, Maps, Scan and PDF without violations', async 
   test.setTimeout(120_000);
   const violations = await trackCsp(page);
   await page.addInitScript(offline);
+  await page.addInitScript(() => {
+    // Synthetic camera: a canvas stream with one line of text. Capture, scan review, OCR and PDF are the shipped code.
+    const canvas = document.createElement('canvas'); canvas.width = 1200; canvas.height = 600; const context = canvas.getContext('2d')!;
+    const paint = () => { context.fillStyle = 'white'; context.fillRect(0, 0, 1200, 600); context.fillStyle = 'black'; context.font = '60px Arial'; context.fillText('Alpha searchable document', 50, 120); };
+    paint(); setInterval(paint, 50);
+    const devices = navigator.mediaDevices; devices.getUserMedia = async () => canvas.captureStream(20); Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: devices });
+  });
   await page.goto('/?tools=1');
   await expect(page.getByRole('button', { name: 'Notes', exact: true })).toBeVisible();
   await openLegacyNotes(page);
@@ -239,26 +246,22 @@ test('the CSP admits Home, Notes, Maps, Scan and PDF without violations', async 
   await page.waitForTimeout(1000);
   await page.getByRole('button', { name: 'Back to apps', exact: true }).click();
   await page.getByRole('button', { name: 'Camera', exact: true }).click();
-  const png = await page.evaluate(async () => {
-    const canvas = document.createElement('canvas'); canvas.width = 1200; canvas.height = 600;
-    const context = canvas.getContext('2d')!; context.fillStyle = 'white'; context.fillRect(0, 0, 1200, 600);
-    context.fillStyle = 'black'; context.font = '60px Arial'; context.fillText('Alpha searchable document', 50, 120);
-    const blob = await new Promise<Blob>(resolve => canvas.toBlob(value => resolve(value!), 'image/png'));
-    return Array.from(new Uint8Array(await blob.arrayBuffer()));
-  });
-  await page.getByRole('button', { name: 'Scan document', exact: true }).click();
-  const chooser = page.waitForEvent('filechooser');
-  await page.getByRole('button', { name: 'Add page', exact: true }).click();
-  await (await chooser).setFiles({ name: 'page.png', mimeType: 'image/png', buffer: Buffer.from(png) });
-  await expect(page.getByRole('img', { name: 'Document page 1', exact: true })).toBeVisible();
+  await expect.poll(() => page.locator('[aria-label^="Viewfinder."] video').evaluate((v: HTMLVideoElement) => v.readyState), { timeout: 60_000 }).toBeGreaterThanOrEqual(2);
+  // Scanning is reached by asking Alpha in Camera: one frame opens scan review, which builds the PDF.
+  const scan = async () => {
+    await page.getByRole('button', { name: 'Type', exact: true }).click();
+    const input = page.locator('[data-alpha-layer="composer"][aria-hidden="false"], [data-alpha-layer="conversation"][aria-hidden="false"]').getByRole('textbox').first();
+    await input.fill('Scan this'); await input.press('Enter');
+    await page.getByRole('button', { name: 'Build multi-page PDF', exact: true }).click();
+    await expect(page.getByRole('img', { name: 'Document page 1', exact: true })).toBeVisible();
+  };
+  await scan();
   const imagePdf = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download document PDF', exact: true }).click();
   expect((await imagePdf).suggestedFilename()).toMatch(/\.pdf$/);
   await page.getByRole('button', { name: 'Close scan', exact: true }).or(page.getByRole('button', { name: /^Close/ }).last()).click();
-  await page.getByRole('button', { name: 'Scan document', exact: true }).click();
-  const second = page.waitForEvent('filechooser');
-  await page.getByRole('button', { name: 'Add page', exact: true }).click();
-  await (await second).setFiles({ name: 'page.png', mimeType: 'image/png', buffer: Buffer.from(png) });
+  await page.getByRole('button', { name: 'Cancel scan', exact: true }).click();
+  await scan();
   await page.getByRole('button', { name: 'Download searchable PDF', exact: true }).click();
   const review = page.getByRole('dialog', { name: 'Review searchable PDF' });
   // Local OCR runs in a worker with WebAssembly: the policy must admit both.
