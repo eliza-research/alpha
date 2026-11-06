@@ -23,7 +23,8 @@ test('Alpha reset is the shared native review, coordinator and recovery under Al
   put('com/getcapacitor/annotation/ActivityCallback.java','package com.getcapacitor.annotation; @java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy.RUNTIME) public @interface ActivityCallback {}');
   put('androidx/activity/result/ActivityResult.java','package androidx.activity.result; public class ActivityResult { public int getResultCode(){return 0;} }');
   put('ai/elizaresearch/alphaphone/AlphaCloudSignInPlugin.java','package ai.elizaresearch.alphaphone; final class AlphaCloudSignInPlugin {static ai.eliza.auth.cloud.CloudSignInConfig REGISTRATION;}');
-  put('ai/elizaresearch/alphaphone/AlphaCredentialStore.java','package ai.elizaresearch.alphaphone; final class AlphaCredentialStore {static String readSlotBeforeAttach(android.content.Context c,String n)throws Exception{return null;}}');
+  put('ai/elizaresearch/alphaphone/AlphaCredentialStore.java','package ai.elizaresearch.alphaphone; final class AlphaCredentialStore {static String readSlotBeforeAttach(android.content.Context c,String n)throws Exception{return null;}static String readLegacySlotBeforeAttach(android.content.Context c,String n)throws Exception{return null;}}');
+  put('ai/elizaresearch/alphaphone/AlphaCalendarPlugin.java','package ai.elizaresearch.alphaphone; final class AlphaCalendarPlugin {static ai.eliza.plugins.calendar.CalendarConfiguration CONFIGURATION;}');
   put('ai/elizaresearch/alphaphone/WiringCheck.java',`package ai.elizaresearch.alphaphone;
 import ai.eliza.plugins.system.reset.*;
 public final class WiringCheck {
@@ -36,8 +37,11 @@ public final class WiringCheck {
   DataResetCopy copy=AlphaDataReset.COPY;
   check(copy.reviewTitle.equals("Reset Alpha data?")&&copy.continueLabel.equals("Continue to unlock"),"review text");
   check(copy.disclosure.contains("There is no backup or undo")&&copy.disclosure.contains("not deleted or cancelled")&&copy.disclosure.contains("Other apps are not reset"),"disclosure scope");
+  check(copy.disclosure.contains("asks Cloud to revoke this phone's sign-in"),"disclosure names the Cloud revocation");
+  check(copy.disclosure.contains("\\"On this phone\\" calendar and events are deleted"),"disclosure names Alpha's calendar");
+  check(!copy.disclosure.contains("unlock"),"the button and credential prompt explain the unlock");
   check(copy.credentialDescription.equals("Unlock to permanently erase Alpha's local data."),"credential prompt");
-  check(copy.progressMessage.startsWith("Signing out of Cloud"),"progress covers the Cloud revocation window");
+  check(copy.progressMessage.contains("Alpha closes")&&!copy.progressMessage.contains("Cloud"),"progress makes no Cloud claim without a sign-in");
   for(DataReset.Outcome last:new DataReset.Outcome[]{null,DataReset.Outcome.ANDROID_REFUSED,DataReset.Outcome.LISTENER_UNACKNOWLEDGED})for(boolean installed:new boolean[]{false,true})for(boolean controllable:new boolean[]{false,true}){
    String body=copy.recoveryBody(last,installed,controllable);
    check(body.contains("Alpha's local data has not been deleted yet. (Alpha may already have asked Cloud to revoke this phone's sign-in.)"),"recovery never claims deletion");
@@ -50,7 +54,8 @@ public final class WiringCheck {
   // The real shared Cloud reset step: Alpha's binding must compile against its exact signature.
   const authDir=resolve(root,'vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud');
   const auth=readdirSync(authDir).filter(name=>name.endsWith('.java')&&!['CloudSignInPlugin.java','NativeGoogleCredential.java'].includes(name)).map(name=>join(authDir,name));
-  execFileSync(bin('javac'),['--release','17','-proc:none','-cp',sdk,'-d',join(dir,'classes'),...files,...shared,...auth,...['AlphaDataReset','AlphaResetPlugin','ResetRecoveryActivity'].map(alpha)],{timeout:120000});
+  const calendar=resolve(root,'vendor/eliza/plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/CalendarConfiguration.java');
+  execFileSync(bin('javac'),['--release','17','-proc:none','-cp',sdk,'-d',join(dir,'classes'),...files,...shared,...auth,calendar,...['AlphaDataReset','ResetBeforeDispatch','AlphaResetPlugin','ResetRecoveryActivity'].map(alpha)],{timeout:120000});
   assert.match(execFileSync(bin('java'),['-cp',`${join(dir,'classes')}:${sdk}`,'ai.elizaresearch.alphaphone.WiringCheck'],{encoding:'utf8',timeout:30000}),/PASS Alpha reset wiring/);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });

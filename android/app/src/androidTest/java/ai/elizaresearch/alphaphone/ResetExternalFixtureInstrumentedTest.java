@@ -5,6 +5,7 @@ import android.app.job.*;
 import android.content.*;
 import android.net.Uri;
 import android.os.Bundle;
+import android.provider.CalendarContract;
 import android.provider.MediaStore;
 import android.security.keystore.*;
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -60,6 +61,21 @@ public final class ResetExternalFixtureInstrumentedTest {
   }
  }
  private static PendingIntent alarm(Context context,String run,int flags){return PendingIntent.getBroadcast(context,0,new Intent(context,ReminderReceiver.class).setAction("ai.elizaresearch.alphaphone.RESET_FIXTURE_ALARM."+run).setData(Uri.parse("alpha-reset-fixture:"+run)),flags|PendingIntent.FLAG_IMMUTABLE);}
+ // Alpha's own "On this phone" calendar lives in the system Calendar provider, outside the package
+ // clear; reset deletes it before dispatch. The runner grants Calendar again after the clear.
+ private static void requireCalendar(Context c,String why){
+  for(String permission:new String[]{android.Manifest.permission.READ_CALENDAR,android.Manifest.permission.WRITE_CALENDAR})assertEquals(why,android.content.pm.PackageManager.PERMISSION_GRANTED,c.checkSelfPermission(permission));
+ }
+ private static int calendarEvents(Context c,String title){
+  try(android.database.Cursor rows=c.getContentResolver().query(CalendarContract.Events.CONTENT_URI,new String[]{CalendarContract.Events._ID},CalendarContract.Events.TITLE+"=? AND "+CalendarContract.Events.ACCOUNT_NAME+"=? AND "+CalendarContract.Events.ACCOUNT_TYPE+"=?",new String[]{title,AlphaCalendarPlugin.CONFIGURATION.accountName,CalendarContract.ACCOUNT_TYPE_LOCAL},null)){
+   assertNotNull("Calendar provider query",rows);return rows.getCount();
+  }
+ }
+ private static int alphaCalendars(Context c){
+  try(android.database.Cursor rows=c.getContentResolver().query(CalendarContract.Calendars.CONTENT_URI,new String[]{CalendarContract.Calendars._ID},CalendarContract.Calendars.ACCOUNT_NAME+"=? AND "+CalendarContract.Calendars.ACCOUNT_TYPE+"=? AND "+CalendarContract.Calendars.NAME+"=?",new String[]{AlphaCalendarPlugin.CONFIGURATION.accountName,CalendarContract.ACCOUNT_TYPE_LOCAL,AlphaCalendarPlugin.CONFIGURATION.localCalendarName},null)){
+   assertNotNull("Calendar provider query",rows);return rows.getCount();
+  }
+ }
  private static KeyStore keys()throws Exception{KeyStore keys=KeyStore.getInstance("AndroidKeyStore");keys.load(null);return keys;}
  @Test public void externalFixturePhase()throws Exception{
   Bundle args=InstrumentationRegistry.getArguments();String phase=args.getString("resetFixturePhase"),run=args.getString("resetFixtureRun");
@@ -78,6 +94,7 @@ public final class ResetExternalFixtureInstrumentedTest {
    assertNull("Only fresh synthetic Notes",store.readCredentialSlot(AlphaCredentialStore.NOTES_RECORDS));
    assertNull("Only fresh synthetic draft",store.readCredentialSlot(AlphaCredentialStore.NOTES_DRAFT));assertNull(store.readCredentialSlot(SLOT));
    assertFalse(pendingJob(jobs,run));assertNull("No existing fixture alarm",alarm(c,run,PendingIntent.FLAG_NO_CREATE));
+   requireCalendar(c,"Calendar permission must be granted by disposable runner");assertEquals("No existing fixture event",0,calendarEvents(c,name));
    write(file,bytes(run));write(cache,bytes(run));assertTrue(c.getSharedPreferences(name,0).edit().putString("value",run).commit());
    store.writeCredentialSlot(AlphaCredentialStore.NOTES_RECORDS,notes(run));store.writeCredentialSlot(AlphaCredentialStore.NOTES_DRAFT,draft(run));store.writeCredentialSlot(SLOT,payload);
    KeyGenerator generator=KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES,"AndroidKeyStore");generator.init(new KeyGenParameterSpec.Builder(alias,KeyProperties.PURPOSE_ENCRYPT|KeyProperties.PURPOSE_DECRYPT).setBlockModes(KeyProperties.BLOCK_MODE_GCM).setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE).build());generator.generateKey();assertTrue(keys().containsAlias(alias));
@@ -97,6 +114,9 @@ public final class ResetExternalFixtureInstrumentedTest {
    long noticeDeadline=android.os.SystemClock.elapsedRealtime()+5000;
    while(java.util.Arrays.stream(notices.getActiveNotifications()).noneMatch(n->n.getId()==NOTICE)&&android.os.SystemClock.elapsedRealtime()<noticeDeadline)android.os.SystemClock.sleep(100);
    assertTrue("Posted reset sentinel becomes visible within five seconds",java.util.Arrays.stream(notices.getActiveNotifications()).anyMatch(n->n.getId()==NOTICE));
+   ContentValues event=new ContentValues();event.put(CalendarContract.Events.CALENDAR_ID,ai.eliza.plugins.calendar.write.CalendarDestinations.local(c.getContentResolver(),AlphaCalendarPlugin.CONFIGURATION));
+   event.put(CalendarContract.Events.TITLE,name);event.put(CalendarContract.Events.DTSTART,System.currentTimeMillis()+86400000L);event.put(CalendarContract.Events.DTEND,System.currentTimeMillis()+90000000L);event.put(CalendarContract.Events.EVENT_TIMEZONE,"UTC");
+   assertNotNull("Owned calendar event inserted",c.getContentResolver().insert(CalendarContract.Events.CONTENT_URI,event));assertEquals("Owned calendar event exists",1,calendarEvents(c,name));
    ContentValues media=new ContentValues();media.put(MediaStore.Downloads.DISPLAY_NAME,name+".txt");media.put(MediaStore.Downloads.MIME_TYPE,"text/plain");media.put(MediaStore.Downloads.RELATIVE_PATH,"Download/");
    Uri uri=c.getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI,media);assertNotNull(uri);
    try(OutputStream out=c.getContentResolver().openOutputStream(uri)){assertNotNull(out);out.write(bytes(run));}
@@ -111,11 +131,13 @@ public final class ResetExternalFixtureInstrumentedTest {
    else{assertEquals("Saved and drafted Notes retained after normal startup recovery",recoveredNotes(run),saved);assertTrue("Recovered draft is either retained exactly or cleared after saving",keptDraft==null||draft(run).equals(keptDraft));}
    assertEquals("Runtime fixture retained",payload,store.readCredentialSlot(SLOT));
    assertTrue("UID key retained",keys().containsAlias(alias));assertTrue("Owned job retained",pendingJob(jobs,run));assertTrue("Owned alarm remains scheduled",scheduledAlarm(run));assertTrue("Notification retained",java.util.Arrays.stream(notices.getActiveNotifications()).anyMatch(n->n.getId()==NOTICE));assertFalse("No reset authority recorded",AlphaDataReset.RESET.pending(c));
+   requireCalendar(c,"Calendar permission retained without a reset");assertEquals("Owned calendar event retained",1,calendarEvents(c,name));
   }else if("verify".equals(phase)){
    assertFalse("Private file erased",file.exists());assertFalse("Cache erased",cache.exists());assertFalse("Preferences erased",c.getSharedPreferences(name,0).contains("value"));
    assertNull("Notes erased",store.readCredentialSlot(AlphaCredentialStore.NOTES_RECORDS));assertNull("Draft erased",store.readCredentialSlot(AlphaCredentialStore.NOTES_DRAFT));assertNull("Runtime fixture erased",store.readCredentialSlot(SLOT));
    assertFalse("UID Keystore fixture erased",keys().containsAlias(alias));assertFalse("Owned job cancelled",pendingJob(jobs,run));long alarmDeadline=android.os.SystemClock.elapsedRealtime()+10000;while(scheduledAlarm(run)&&android.os.SystemClock.elapsedRealtime()<alarmDeadline)android.os.SystemClock.sleep(100);assertFalse("Owned scheduled alarm cancelled",scheduledAlarm(run));assertTrue("Owned WorkManager record erased",androidx.work.WorkManager.getInstance(c).getWorkInfosByTag(name).get(10,java.util.concurrent.TimeUnit.SECONDS).isEmpty());
    assertFalse("Owned notification cancelled",java.util.Arrays.stream(notices.getActiveNotifications()).anyMatch(n->n.getId()==NOTICE));assertFalse("Reset marker erased",AlphaDataReset.RESET.pending(c));
+   requireCalendar(c,"Runner must grant Calendar again after the clear");assertEquals("Owned calendar event deleted",0,calendarEvents(c,name));assertEquals("Alpha's local calendar deleted",0,alphaCalendars(c));
    // Shared-media permissions may be revoked by reset. The external runner owns
    // URI/name/hash verification and cleanup; never infer deletion from denied access.
    assertTrue("External media oracle identifier must survive outside app data",args.getString("resetFixtureMediaId", "").matches("[1-9][0-9]*"));

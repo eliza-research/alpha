@@ -36,8 +36,7 @@ class NativeDigestHost {NativeDigestHost(android.content.Context c){NativeSource
 class NativeOwnerReminderHost {NativeOwnerReminderHost(android.content.Context c){NativeSourceHost.started++;}void read(){}}
 class NativeSourceHost {static int started;static void configure(Runnable r){started++;}static void configureOwnerReminderContext(Runnable r){started++;}}
 class NativeDeletionCoordinator {static NativeDeletionCoordinator get(android.content.Context c){return new NativeDeletionCoordinator();}void start(){NativeSourceHost.started++;}}
-class AlphaCloudSignInPlugin {static ai.eliza.auth.cloud.CloudSignInConfig REGISTRATION=new ai.eliza.auth.cloud.CloudSignInConfig();}
-class AlphaCredentialStore {static String readSlotBeforeAttach(android.content.Context c,String slot)throws Exception{throw new AssertionError("the stand-in step reads no slot");}}
+class ResetBeforeDispatch {static final ai.eliza.plugins.system.reset.DataReset.BeforeDispatch STEP=ai.eliza.auth.cloud.CloudKeyRevocation.<android.content.Context>resetStep(()->null,(c,slot)->{throw new AssertionError("the stand-in step reads no slot");})::run;}
 class AlphaNoteAudioPlugin {static void scheduleTrashBackstop(android.content.Context c){NativeSourceHost.started++;}}
 class AlphaLocalAgentPlugin {static String invocationOwner(android.content.Context c){return "no-provider";}}
 final class BuildConfig {static final String ELIZA_SOURCE_COMMIT="fixture",FLAVOR="launcher",BUILD_TYPE="debug";static final boolean ELIZA_SOURCE_DIRTY=false;}
