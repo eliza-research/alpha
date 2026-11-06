@@ -9,7 +9,7 @@ import {tmpdir} from 'node:os';
 import {DEVELOPMENT_PROPOSAL_VIEWS} from '../apps/app/src/runtime/development-view-contract.ts';
 
 test('real loopback development request advertises only supported routes and rejects injected deferred proposals', {timeout:120000}, async(t)=>{
- try{await fs.access(new URL('../backend/node_modules',import.meta.url));}catch{t.skip('Run npm ci --prefix backend before the canonical development host integration.');return;}
+ try{await fs.access(new URL('../backend/node_modules',import.meta.url));}catch{const reason='Run npm ci --prefix backend before the canonical development host integration.';assert.ok(!process.env.CI,reason);t.skip(reason);return;}
  const state=await fs.mkdtemp(join(tmpdir(),'alpha-diagnostic-state-'));
  const child=fork(fileURLToPath(new URL('../scripts/dev-agent.mjs',import.meta.url)),[],{execPath:process.env.ALPHA_BUN||'bun',execArgv:['--preload',fileURLToPath(new URL('./fixtures/development-scope-provider.mjs',import.meta.url))],env:{...process.env,ELIZA_DEV_ALLOW_TEST_MOCKS:'1',CEREBRAS_API_KEY:'synthetic-test-only',CEREBRAS_BASE_URL:'https://provider.invalid',ALPHA_DEV_MODEL:'synthetic-model',ALPHA_AGENT_BACKEND:'direct-diagnostic',ALPHA_ELIZA_DATA_DIR:state},stdio:['ignore','pipe','pipe','ipc']});
  let ready,port,schemas=[],output='',error='';

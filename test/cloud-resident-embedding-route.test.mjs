@@ -7,6 +7,10 @@ import {spawnSync} from 'node:child_process';
 import {createCloudResidentHost} from './fixtures/product-character-host.mjs';
 import {CLOUD_MODEL} from '../scripts/cloud-resident-host.mjs';
 
+// npm test runs without the prepared SDK and skips. browser.yml's verify job prepares it, exports
+// ALPHA_CLOUD_COLLECTOR_SOURCE and ALPHA_BUN, and sets ALPHA_REQUIRE_PREPARED_SDK=1 so a missing SDK fails there.
+const skipUnprepared=!(process.env.ALPHA_CLOUD_COLLECTOR_SOURCE&&process.env.ALPHA_BUN)&&process.env.ALPHA_REQUIRE_PREPARED_SDK!=='1'?'Prepared SDK unavailable; run npm run agent:prepare and export ALPHA_CLOUD_COLLECTOR_SOURCE and ALPHA_BUN (browser.yml verify)':false;
+
 function recordingLauncher(launches) {
  return async options=>{launches.push(options);let finish;return {completion:new Promise(done=>{finish=done;}),async stop(){finish({code:0});}};};
 }
@@ -14,8 +18,7 @@ function recordingLauncher(launches) {
 // Exercise the real SDK's routing normalization, runtime projection and dispatch
 // capability gate. No runtime or registered provider is instantiated or called.
 function selectEmbeddingRoute(config,env) {
- assert.ok(process.env.ALPHA_CLOUD_COLLECTOR_SOURCE,'a verified prepared SDK is required');
- assert.ok(process.env.ALPHA_BUN,'the pinned Bun must be supplied');
+ assert.ok(process.env.ALPHA_CLOUD_COLLECTOR_SOURCE&&process.env.ALPHA_BUN,'ALPHA_REQUIRE_PREPARED_SDK=1 needs ALPHA_CLOUD_COLLECTOR_SOURCE and ALPHA_BUN');
  const code=`import {readFileSync} from 'node:fs';import {join} from 'node:path';import {pathToFileURL} from 'node:url';
  const {config,env}=JSON.parse(readFileSync(0,'utf8')),source=process.env.ALPHA_CLOUD_COLLECTOR_SOURCE;
  const load=p=>import(pathToFileURL(join(source,p)).href);
@@ -32,7 +35,7 @@ function selectEmbeddingRoute(config,env) {
  return JSON.parse(line.slice('EMBEDDING_ROUTE='.length));
 }
 
-for(const profileMode of ['lean','full'])test(`fresh ${profileMode} host explicitly enables canonical Cloud embeddings without persisting credentials`,async()=>{
+for(const profileMode of ['lean','full'])test(`fresh ${profileMode} host explicitly enables canonical Cloud embeddings without persisting credentials`,{skip:skipUnprepared},async()=>{
  const profile=await fs.mkdtemp(join(tmpdir(),'alpha-cloud-embedding-fresh-')),launches=[];
  const host=await createCloudResidentHost({source:resolve('vendor/eliza'),profile,port:47869,profileMode,launch:recordingLauncher(launches),inherited:{PATH:process.env.PATH}});
  try {
@@ -51,7 +54,7 @@ for(const profileMode of ['lean','full'])test(`fresh ${profileMode} host explici
  } finally {await host.close();await fs.rm(profile,{recursive:true,force:true});}
 });
 
-for(const choice of ['omitted','disabled','explicit'])for(const profileMode of ['lean','full'])test(`saved ${profileMode} ${choice} embedding route remains byte-for-byte owner configuration`,async()=>{
+for(const choice of ['omitted','disabled','explicit'])for(const profileMode of ['lean','full'])test(`saved ${profileMode} ${choice} embedding route remains byte-for-byte owner configuration`,{skip:skipUnprepared},async()=>{
  const profile=await fs.mkdtemp(join(tmpdir(),'alpha-cloud-embedding-saved-')),launches=[],file=join(profile,'eliza.json');
  const embeddings=choice==='omitted'?{}:{embeddings:choice==='disabled'?null:{backend:'elizacloud',transport:'cloud-proxy'}};
  const saved=' \n'+JSON.stringify({cloud:{enabled:true},serviceRouting:{llmText:{backend:'elizacloud',transport:'cloud-proxy',smallModel:CLOUD_MODEL,largeModel:CLOUD_MODEL},...embeddings},plugins:{entries:{'personal-assistant':{enabled:profileMode==='full'}}}},null,3)+'\n';
