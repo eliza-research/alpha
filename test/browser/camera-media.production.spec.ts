@@ -47,26 +47,20 @@ test('a camera capture is searchable and Ask Alpha reviews it locally without th
  expect(errors).toEqual([]);
 });
 
-test('a selected document is listed in Recent, found by search and reopened from Recent',async({page})=>{
+test('Files browses real storage: categories, Internal storage and Trash, with no picker, search or Recents',async({page})=>{
  const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
  await page.addInitScript(offline);await page.goto('/');
  await page.getByRole('button',{name:'Files',exact:true}).click();
+ for(const name of ['Downloads','Images','Videos','Audio','Documents','Internal storage','Trash'])await expect(page.getByRole('button',{name,exact:true})).toBeVisible();
+ for(const gone of ['Search files','Receipts','Photos','App files','Import folder'])await expect(page.getByRole('button',{name:gone,exact:true})).toHaveCount(0);
+ await expect(page.locator('[data-screen]')).not.toContainText('No recent files');
  const documents=page.getByRole('button',{name:'Documents',exact:true});
- await expect(documents).toContainText('Choose a document · PDF or Office');await expect(documents).not.toContainText('items');
- const chooser=page.waitForEvent('filechooser');await documents.click();
- await (await chooser).setFiles({name:'Trip plan.txt',mimeType:'text/plain',buffer:Buffer.from('Pack the blue folder\nTrain at 9')});
- await expect(page.locator('[data-screen]')).toContainText('Pack the blue folder');
+ let chooser=false;page.on('filechooser',()=>{chooser=true;});
+ await documents.click();await expect(page.getByRole('heading',{name:'Documents',exact:true})).toBeVisible();expect(chooser).toBe(false);
  await page.getByRole('button',{name:'Back',exact:true}).click();
- const recent=page.getByRole('button',{name:'Open Trip plan.txt',exact:true});
- await expect(recent).toBeVisible();await expect(recent).toContainText('Text · selected on this device');
- await page.getByRole('button',{name:'Search files',exact:true}).click();
- await page.getByRole('textbox',{name:'Search files'}).fill('trip');
- await expect(page.getByRole('button',{name:'Open Trip plan.txt',exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Close search',exact:true}).click();
- await page.getByRole('button',{name:'Open Trip plan.txt',exact:true}).click();
- await expect(page.locator('[data-screen]')).toContainText('Train at 9');
- // Forget releases the selection and removes the Recent row.
- await page.getByRole('button',{name:'Forget selected file',exact:true}).click();
- await expect(page.getByRole('button',{name:'Open Trip plan.txt',exact:true})).toHaveCount(0);
+ await page.getByRole('button',{name:'Internal storage',exact:true}).click();
+ await page.getByRole('button',{name:'Sort and more',exact:true}).click();await page.getByText('New folder',{exact:true}).click();
+ await page.getByRole('textbox',{name:'Name'}).fill('Taxes');await page.getByRole('button',{name:'Create',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Open Taxes',exact:true})).toBeVisible();
  expect(errors).toEqual([]);
 });

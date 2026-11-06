@@ -5,7 +5,7 @@ import type {Source} from './note-source-adapter';
 const sourceFiles=registerPlugin<{readSelected(input:{selectionId:string}):Promise<MailAttachment & {sha256:string;size:number;sourceReferenceVersion?:1}>;retainSourceReference(input:{selectionId:string;sha256:string}):Promise<{reference?:string}>}>('AlphaMailAttachments');
 import {reviewContentQuestion} from '../browser/content-question';
 import {sensitiveReadingText} from '../../../../.eliza/client-features/plugins/plugin-native-browser-surface/src/page-reading.ts';
-import { installFilesTreeAdapter } from './files-tree-adapter';
+import { installFilesBrowserAdapter } from './files-browser-adapter';
 import { Capacitor } from '@capacitor/core';
 import { DailyApps, type NativeResult } from '../daily';
 import { filesIndex } from './files-index';
@@ -183,6 +183,6 @@ export function installSelectedDocumentAdapter(_Component: unknown, views: Recor
       current = { ...current, text: undefined, status: 'Could not read this document. Select it again or open in Android.' }; refresh();
     }
   }
-  installFilesTreeAdapter(views,accept,clear);
+  installFilesBrowserAdapter(views,accept,clear);
   return accept;
 }

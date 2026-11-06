@@ -17,9 +17,8 @@ for(const [app,open,close] of [['Calendar','New event','Back to calendar'],['Bro
 });
 test('Files returns through nested preview and folder without exposing covered controls',async({page})=>{
  await page.goto('/?mode=dev');await page.evaluate(async()=>{const{registerPlugin}=await import('/src/platform-plugins.ts');await registerPlugin<any>('AlphaFiles').importFile(new File(['Focus remains with the selected file.'],'focus.txt',{type:'text/plain'}));});
- await page.getByRole('button',{name:'Files',exact:true}).click();const folder=page.getByRole('button',{name:'App files',exact:true}).last();const folderText=(await folder.textContent())!;await folder.click();
+ await page.getByRole('button',{name:'Files',exact:true}).click();const folder=page.getByRole('button',{name:'Internal storage',exact:true});const folderText=(await folder.textContent())!;await folder.click();
  const file=page.getByRole('button',{name:'Open focus.txt',exact:true});await file.click();
- await expect(page.getByRole('button',{name:'Back to files',exact:true})).toHaveCount(0);
  await page.getByRole('button',{name:'Back',exact:true}).click();await expect(file).toBeFocused();
- await page.getByRole('button',{name:'Back to files',exact:true}).click();await expect(page.getByRole('button',{name:'App files',exact:true}).filter({hasText:folderText})).toBeFocused();
+ await page.getByRole('button',{name:'Back',exact:true}).click();await expect(page.getByRole('button',{name:'Internal storage',exact:true}).filter({hasText:folderText})).toBeFocused();
 });

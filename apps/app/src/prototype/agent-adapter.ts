@@ -44,6 +44,7 @@ import { Capacitor } from '@capacitor/core';
 import { isMapsOperation } from '../runtime/maps-contract';
 import { readMapsSelection } from '../maps/agent-context';
 import { isLibraryOperation } from '../runtime/photo-library';
+import { isFilesOperation, filesAgent, filesContextAllowed } from '../runtime/files-agent-contract';
 import { deviceLibraryAgent, LibraryAgentRefusal } from './photo-library-adapter';
 import {isReminderOperation,validateReminderResult} from '../../../../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/reminder-contract.ts';
 import { SecureNotesStore, notesDraftBase, applyNotesDraft, notesDraftConflicts, NotesStorageFull, SECURE_NOTES_SLOT, SECURE_NOTES_DRAFT_SLOT, type NotesDraft, type NotesDraftReason } from '../runtime/notes-secure-store';
@@ -804,6 +805,14 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         const mapsResult=readMapsSelection(operation);signal.throwIfAborted();context(this);
         if(JSON.stringify(alphaClient.getState().context)!==JSON.stringify(expectedContext))throw Error('Maps context changed');
         return {status:'succeeded',summary:'Shared the exact selected Maps snapshot with approval. Navigation was not started.',mapsResult};
+      }
+      if(isFilesOperation(operation)){
+        // Files tools (PLAN section 4): filter/open only change what Files shows; every other
+        // tool reached here after the owner approved its proposal card.
+        const files=filesAgent();
+        if(!files||!filesContextAllowed(operation,expectedContext)||document.hidden)return {status:'failed',summary:'Open Files on the unlocked phone. Nothing was changed.'};
+        signal.throwIfAborted();
+        return await files.run(operation,signal);
       }
       if(isLibraryOperation(operation)){
         // Device library (issue 408): reads stay local and return identity-only rows; select and

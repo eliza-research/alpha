@@ -20,8 +20,10 @@ const page=(rows,next='',extra={})=>({...scope(extra),items:rows.map(row=>typeof
 test('manifest declares the media permissions Android needs per API level, legacy read capped at API 32',()=>{
  assert.match(manifest,/<uses-permission android:name="android\.permission\.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" \/>/);
  for(const name of ['READ_MEDIA_IMAGES','READ_MEDIA_VIDEO','READ_MEDIA_VISUAL_USER_SELECTED'])assert.match(manifest,new RegExp(`<uses-permission android:name="android\\.permission\\.${name}" />`));
- // No write-all or manage-all storage shortcut.
- assert.doesNotMatch(manifest,/MANAGE_EXTERNAL_STORAGE|ACCESS_MEDIA_LOCATION/);
+ // No write-all storage shortcut. All-files access belongs to Files (PLAN F1); the photo library never relies on it.
+ assert.doesNotMatch(manifest,/ACCESS_MEDIA_LOCATION/);
+ assert.equal(manifest.match(/MANAGE_EXTERNAL_STORAGE/g)?.length,1);
+ assert.doesNotMatch(readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPhotoLibraryPlugin.java','utf8'),/MANAGE_EXTERNAL_STORAGE|isExternalStorageManager/);
  assert.match(manifest,/WRITE_EXTERNAL_STORAGE" tools:node="remove"/);
  assert.match(readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/MainActivity.java','utf8'),/registerPlugin\(AlphaPhotoLibraryPlugin\.class\);/);
 });

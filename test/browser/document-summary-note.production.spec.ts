@@ -33,15 +33,15 @@ const savedNotes = (page: Page) => harness(page, f => { const slot = f.slots['no
 /** What the user sent: each turn's text after the current-screen context the renderer adds. */
 const sent = (page: Page) => harness(page, f => f.posts.map((post: string) => post.split('[USER MESSAGE]\n').pop())) as Promise<string[]>;
 
-/** Files > Documents > the picked document > Ask Alpha, trimmed to the public line, and sent. */
+/** Files > Documents > the document > Ask Alpha, trimmed to the public line, and sent. */
 async function askAboutDocument(page: Page) {
   await page.evaluate(text => { (window as any).flagOff.replies.push(text); }, answer);
   await button(page, 'Files').click();
   await button(page, 'Documents').click();
+  await button(page, 'Open garden-report.txt').click();
   await expect(page.getByText('PRIVATE OMIT: do not send this line.', { exact: true })).toBeVisible();
-  // The picker was narrowed to documents; reading showed the text, and nothing was sent.
-  expect(await harness(page, f => f.documents.picks.map((pick: any) => pick.action))).toEqual(['files']);
-  expect(await harness(page, f => f.documents.picks[0].mime)).toContain('text/plain');
+  // Documents lists the file from storage; opening it selected that one path, and nothing was sent.
+  expect(await harness(page, f => f.documents.picks)).toEqual([{ action: 'files', path: 'Documents/garden-report.txt' }]);
   await button(page, 'Ask Alpha').click();
   const question = page.getByRole('dialog', { name: 'Ask about selected content' });
   await expect(question.getByRole('textbox', { name: 'Content excerpt' })).toHaveValue(contents);

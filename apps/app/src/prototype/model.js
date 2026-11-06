@@ -3544,7 +3544,6 @@ IC.filesZip = IC.filesZip || "M6 3h12v18H6zM12 3v2M12 7v2M12 11v2M10.5 15h3v3h-3
 var FILES_FOLDERS = [
   { id: "Downloads", icon: "filesDown" },
   { id: "Documents", icon: "folder" },
-  { id: "Receipts", icon: "filesReceipt" },
   { id: "Recordings", icon: "wave" }
 ].concat(FILES_FOLDERS_EXTRA);
 var FILES_TYPES = {
@@ -3606,52 +3605,8 @@ registerView("files", {
     return false;
   },
   onLeave: function () { clearInterval(FL.playI); },
-  suggestions: function (st) {
-    var sg = copy("files").suggestions || {};
-    if (st.open) return sg.open || ["Summarize this file"];
-    if (st.folder === "Receipts") return sg.receipts || ["Show my receipts"];
-    return sg.root || ["Show my receipts"];
-  },
+  suggestions: function (st) { return st.open ? ["Summarize this file"] : []; },
   voicePhrase: copy("files").voicePhrase,
-  reply: function (t, raw, api) {
-    var st = api.get("files");
-    var cur = api.active && st.open ? filesFind(st.files, st.open) : null;
-    var fs = copy("files").findShortcut;
-    if (fs && fs.re.test(t) && /\b(find|where|open|show|pull up|get)\b/.test(t) && !/summar/.test(t)) {
-      var ts = filesFind(st.files, fs.id);
-      if (ts) return { text: "In " + ts.folder + fs.from, card: { type: "generic", icon: "filesDoc", title: ts.name, sub: ts.folder + " · " + ts.size, go: { view: "files", patch: { open: fs.id } } }, nav: { view: "files", patch: { open: fs.id } } };
-    }
-    var ff = raw.match(/^\s*(?:find|where(?:'s| is))\s+(?:the\s+|my\s+)?(?:file\s+)?(.+?)\s*(?:file)?\??$/i);
-    if (ff && !/\bnotes?\b/i.test(raw)) {
-      var nq = filesNorm(ff[1].replace(/^(named|called)\s+/i, ""));
-      var hit = nq.length > 2 ? st.files.filter(function (x) { return filesNorm(x.name).indexOf(nq) >= 0 || nq.indexOf(filesNorm(filesSplit(x.name)[0])) >= 0; })[0] : null;
-      if (hit) return { text: "In " + hit.folder + ".", card: { type: "generic", icon: "filesDoc", title: hit.name, sub: hit.folder + " · " + hit.size, go: { view: "files", patch: { open: hit.id } } }, nav: { view: "files", patch: { open: hit.id, q: null } } };
-    }
-    if (/receipts?/.test(t) && /\b(show|find|open|my|where|total)\b/.test(t)) {
-      var rs = st.files.filter(function (f) { return f.folder === "Receipts"; });
-      var rc = copy("files").receipts;
-      if (!rc) return { text: rs.length ? rs.length + (rs.length === 1 ? " receipt" : " receipts") + " in Files. Totals are not calculated." : "No receipts in Files.", nav: { view: "files", patch: { folder: "Receipts", open: null } } };
-      return { text: /total/.test(t) ? rc.total + " across " + rs.length + " receipts this month." : rs.length + " receipts: " + rc.list + ".", card: { type: "generic", icon: "filesReceipt", title: "Receipts", sub: rs.length + " files · " + rc.total, go: { view: "files", patch: { folder: "Receipts" } } }, nav: { view: "files", patch: { folder: "Receipts", open: null } } };
-    }
-    if (/summar|what'?s in|tl;?dr|key points/.test(t) && (cur || /\b(pdf|file|document|doc|term sheet|receipt)\b/.test(t))) {
-      var sd = copy("files").summaryDefaults || {};
-      var f = cur || (/receipt/.test(t) ? filesFind(st.files, sd.receipt) : /term sheet/.test(t) || /pdf/.test(t) ? filesFind(st.files, sd.pdf) : null);
-      if (f && f.sum) return { text: f.name, card: { type: "summary", title: filesSplit(f.name)[0] + " · summary", bullets: f.sum, act: VIEWS.notes ? { mod: "notes", fn: "save" } : null },
-        then: function () { var a = Object.assign({}, api.get("files").asked); a[f.id] = true; api.set({ asked: a }); } };
-    }
-    var storage = copy("files").storage;
-    if (storage && /taking up space|storage|free up/.test(t)) {
-      return { text: storage.text, card: { type: "generic", icon: "filesDisk", title: storage.title, sub: storage.sub, go: { view: "files", patch: { folder: "Downloads" } } } };
-    }
-    if (cur && /send (this|it)|share (this|it)/.test(t)) {
-      var shareTo = copy("files").shareTo || {};
-      var pid = (shareTo.match || []).filter(function (x) { return x[0].test(t); }).map(function (x) { return x[1]; })[0] || cur.from || shareTo.fallback;
-      var p = pid ? api.person(pid) : null;
-      if (!p) return { text: "Choose who to send " + cur.name + " to.", then: function () { api.set({ sheet: "share", sel: null }); } };
-      return { text: "Draft to " + p.name.split(" ")[0] + " with " + cur.name + " attached.", card: { type: "draft", to: p.name, pid: pid, body: "Here's " + filesSplit(cur.name)[0] + ". Let me know if anything's off.", act: VIEWS.messages && VIEWS.messages.actions && VIEWS.messages.actions.sendDraft ? { mod: "messages", fn: "sendDraft" } : null } };
-    }
-    return null;
-  },
 
   render: function (st, api) {
     var files = st.files || [];
@@ -3686,7 +3641,6 @@ registerView("files", {
       var n = filesCount(files, d.id);
       return { name: d.id, d: IC[d.icon], sub: n === 1 ? "1 item" : n + " items", go: function () { api.set({ folder: d.id, q: null }); } };
     });
-    locs.push({ name: "Photos", d: IC.photo, sub: copy("files").photosSub || "Photo library", go: function () { if (VIEWS.photos) api.open("photos"); else api.toast("Opening Photos"); } });
     var q = st.q == null ? null : String(st.q).toLowerCase().trim();
     var results = q ? files.filter(function (f) { return filesNorm(f.name + " " + f.folder + " " + (FILES_TYPES[f.type] || {}).label).indexOf(filesNorm(q)) >= 0; }).map(row) : [];
 
@@ -3700,7 +3654,7 @@ registerView("files", {
         close: function () { var d = null; FILES_FOLDERS.forEach(function (x) { if (x.id === st.folder) d = x; }); api.set({ folder: d && d.parent ? d.parent : null, sel: null }); },
         viewIcon: st.grid ? IC.filesRows : IC.grid, viewLabel: st.grid ? "Show as list" : "Show as grid",
         toggleView: function () { api.set({ grid: !st.grid }); },
-        openMenu: function () { api.set({ menu: true }); },
+        hasMenu: true, hasCrumbs: false, openMenu: function () { api.set({ menu: true }); },
         menuRows: [["list", IC.filesRows, "List", !st.grid, { grid: false }], ["grid", IC.grid, "Grid", !!st.grid, { grid: true }], ["recent", IC.clock, "Newest first", st.sort !== "name", { sort: "recent" }], ["name", IC.filesSort, "Name", st.sort === "name", { sort: "name" }]].map(function (m) {
           return { label: m[2], d: m[1], on: m[3], go: function () { api.set(Object.assign({ menu: false }, m[4])); } };
         }),
@@ -3797,7 +3751,9 @@ registerView("files", {
       top: !st.folder, searching: st.q !== null && st.q !== undefined, notSearching: st.q === null || st.q === undefined,
       q: st.q || "", onQ: function (e) { api.set({ q: e.target.value }); }, search: function () { api.set({ q: "" }); }, endSearch: function () { api.set({ q: null }); },
       hasQuery: !!q, noQuery: !q, results: results, noResults: !!q && results.length === 0,
-      locs: locs, recent: files.slice(0, 5).map(row), noRecent: files.length === 0, recentEmptyText: "No recent files. Files you open here or save from scans appear here.",
+      locs: locs, recent: [], noRecent: false,
+      // Fixture browse (mock mode only): the fixture folders stand in for categories; Trash is an empty folder.
+      browse: { ready: true, cats: locs.map(function (l) { return { name: l.name, d: l.d, count: l.sub.split(" ")[0], label: l.name, go: l.go }; }), vols: [], trashD: IC.trash, trashCount: "", openTrash: function () { api.set({ folder: "Trash", q: null }); } },
       storageText: copy("files").storageText || "Storage usage unavailable",
       storageW: copy("files").storageW || "0%",
       inFolder: !!fd, fd: fd,

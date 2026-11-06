@@ -17,7 +17,7 @@ const EMPTY: Record<View, RegExp> = {
   Maps: /Add a location/,
   // Agent Notes waiting for a connection (canonical-notes-ui.ts), as in production-surface.spec.ts.
   Notes: /Notes is unavailable for this agent connection\. Check Settings › Agent connection\./,
-  Files: /No recent files/,
+  Files: /Internal storage|Storage is unavailable/,
   Workflows: /Connect your remote agent in Settings\. Reminders on this phone stay available/,
   Settings: /Not signed in/,
   Reminders: /Connect to view Agent Calendar\./,

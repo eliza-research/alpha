@@ -116,7 +116,6 @@ export const LIVE_STATES: State[] = [
   legacyNotes('Notes search', ['Search notes']),
   {name:'live Notes source document',open:async(page,theme)=>{await page.addInitScript(offline);await page.goto(theme ? `/?theme=${theme}` : '/');await openLegacyAttachment(page);await settle(page);}},
   legacyNotes('Notes recording', ['Record and transcribe'], 'notes-recording'),
-  live('Files search', ['Files', 'Search files']),
   live('Workflows new automation', ['Workflows', 'New automation'], 'automations-detail'),
 ];
 
@@ -162,9 +161,7 @@ export const MOCK_STATES: State[] = [
   mock('notes', ['Search notes']),
   mock('notes', ['Open The case for on-device agents'], 'notes-link'),
   mock('notes:editor', ['Share note']),
-  mock('files', ['Search files']),
-  mock('files:folder', ['View and sort']),
-  mock('files:folder', ['Select files']),
+  mock('files:folder', ['Sort and more']),
   mock('files:preview', ['Rename']),
   mock('files:preview', ['Move file']),
   mock('files:preview', ['Share file']),

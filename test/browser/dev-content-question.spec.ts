@@ -3,7 +3,7 @@ import {test,expect} from '@playwright/test';
 test('selected file question reviews exact text and composes without sending',async({page})=>{
  await page.goto('/?mode=dev');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent connection',exact:true}).click();await page.getByRole('button',{name:'Connect development profile'}).click();await returnToApps(page);
  await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');await registerPlugin<any>('AlphaFiles').importFile(new File(['Public excerpt\nPRIVATE OMIT'],'review.txt',{type:'text/plain'}));});
- await page.getByRole('button',{name:'Files',exact:true}).click();await page.getByText('App files',{exact:true}).first().click();await page.getByRole('button',{name:'Open review.txt',exact:true}).click();
+ await page.getByRole('button',{name:'Files',exact:true}).click();await page.getByRole('button',{name:'Internal storage',exact:true}).click();await page.getByRole('button',{name:'Open review.txt',exact:true}).click();
  await expect(page.getByText('PRIVATE OMIT',{exact:true})).toBeVisible();await page.getByRole('button',{name:'Ask Alpha',exact:true}).click();
  const review=page.getByRole('dialog',{name:'Ask about selected content'});await expect(review.getByRole('textbox',{name:'Content excerpt'})).toHaveValue('Public excerpt\nPRIVATE OMIT');
  await review.getByRole('button',{name:'Cancel',exact:true}).click();await expect(review).toHaveCount(0);

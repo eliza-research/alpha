@@ -1,0 +1,57 @@
+package ai.elizaresearch.alphaphone;
+
+import java.io.File;
+import java.nio.file.Files;
+import java.util.Arrays;
+import java.util.List;
+
+/** Host-JVM check of StorageBrowser over a temporary folder (spec files-browser, Design.cfg). */
+public final class StorageBrowserTest {
+ static void check(boolean ok,String what){if(!ok)throw new AssertionError(what);}
+ static String text(File f)throws Exception{return new String(Files.readAllBytes(f.toPath()),"UTF-8");}
+ public static void main(String[] args)throws Exception{
+  File root=Files.createTempDirectory("alpha-storage").toFile();
+  try{
+   StorageBrowser b=new StorageBrowser(root);
+   new File(root,"Download").mkdirs();new File(root,"Documents").mkdirs();
+   StorageBrowser.write(new File(root,"Download/a.pdf"),"download");
+   StorageBrowser.write(new File(root,"Documents/a.pdf"),"document");
+   check(b.trashList(0L).isEmpty()&&b.emptyTrash(null)==0&&!new File(root,StorageBrowser.TRASH).exists(),"reading Trash does not create it");
+   // NoOverwriteWithoutConfirm: a clash keeps both.
+   List<StorageBrowser.Outcome> moved=b.transfer(Arrays.asList("Download/a.pdf"),"Documents",false);
+   check(moved.get(0).status.equals("moved")&&moved.get(0).to.equals("Documents/a (1).pdf"),"move keeps both: "+moved.get(0).to);
+   check(text(new File(root,"Documents/a.pdf")).equals("document")&&text(new File(root,"Documents/a (1).pdf")).equals("download"),"nothing overwritten");
+   check(!new File(root,"Download/a.pdf").exists(),"moved, not duplicated");
+   // A selection row that is gone is skipped, not invented.
+   check(b.transfer(Arrays.asList("Download/a.pdf"),"Documents",false).get(0).status.equals("missing"),"missing skipped");
+   // Copy keeps the source.
+   check(b.transfer(Arrays.asList("Documents/a.pdf"),"Download",true).get(0).to.equals("Download/a.pdf"),"copy");
+   check(new File(root,"Documents/a.pdf").exists(),"copy keeps source");
+   // TrashReversible: restore to origin; the folder is recreated; a clash keeps both.
+   String id=b.trash(Arrays.asList("Documents/a.pdf"),1000L).get(0).to;
+   check(b.list("").stream().noneMatch(r->r.name.startsWith(".")),"trash is hidden from listings");
+   check(b.trashList(1000L).size()==1&&b.trashList(1000L).get(0).origin.equals("Documents"),"origin recorded");
+   StorageBrowser.write(new File(root,"Documents/a.pdf"),"new");
+   List<StorageBrowser.Outcome> back=b.restore(Arrays.asList(id));
+   check(back.get(0).status.equals("restored")&&back.get(0).to.equals("Documents/a (2).pdf"),"restore keeps both: "+back.get(0).to);
+   check(text(new File(root,"Documents/a.pdf")).equals("new"),"restore does not overwrite");
+   String gone=b.trash(Arrays.asList("Documents"),1000L).get(0).to;
+   check(b.restore(Arrays.asList(gone)).get(0).to.equals("Documents"),"folder restored");
+   // Retention: 30 days, then removed at the next listing.
+   String old=b.trash(Arrays.asList("Download/a.pdf"),0L).get(0).to;
+   check(b.trashList(StorageBrowser.RETENTION_MS).stream().noneMatch(r->r.id.equals(old)),"expired after 30 days");
+   // Empty deletes only what is in trash.
+   b.trash(Arrays.asList("Documents/a.pdf"),5000L);
+   check(b.emptyTrash(null)==1&&b.trashList(5000L).isEmpty()&&new File(root,"Documents/a (1).pdf").exists(),"empty");
+   // Paths cannot leave the volume or name the trash; a folder cannot move into itself.
+   for(String bad:new String[]{"../x","Documents/../../x",".Trash-alpha","a//b"}){
+    try{b.resolve(bad,false);check(false,"refused "+bad);}catch(IllegalArgumentException expected){}
+   }
+   new File(root,"Documents/Sub").mkdirs();
+   check(b.transfer(Arrays.asList("Documents"),"Documents/Sub",false).get(0).status.equals("invalid"),"no move into itself");
+   check(b.createFolder("Documents","Sub").equals("Documents/Sub (1)"),"new folder keeps both");
+   try{b.rename("Documents/Sub (1)","Sub");check(false,"rename refuses a clash");}catch(IllegalStateException expected){}
+   System.out.println("PASS storage browser");
+  }finally{StorageBrowser.deleteRecursive(root);}
+ }
+}
