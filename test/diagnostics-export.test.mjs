@@ -78,6 +78,42 @@ test('crash entries keep classes only, are bounded and expire after 30 days',()=
  assert.deepEqual(describeCrashEntry({at:now,source:'uncaught',errorClass:'java.lang.IllegalStateException',rootClass:'java.io.IOException',thread:'main'}),{title:'App crashed',detail:'java.lang.IllegalStateException · caused by java.io.IOException · main thread'});
 });
 
+test('Cloud startup diagnostics keep bounded stages and status without carrying content or raw ids',()=>{
+ const secret=secrets[2],rawSession=7194538;
+ const row={session:rawSession,stage:'consent-headers',elapsedMs:45,httpStatus:503,clock:'monotonic-observed',sentFrames:0,sentBytes:0,receivedFrames:0,receivedBytes:0,token:secret,transcript:secrets[0]};
+ const records=[...Array.from({length:100},()=>row),{...row,stage:'error',httpStatus:999,receivedBytes:-1},
+  {...row,session:secrets[4]},{...row,stage:secret},{...row,elapsedMs:Infinity}];
+ const report=buildDiagnostics({platform:'android',nativeCloudStreamTiming:{format:'alpha-cloud-stream-timing-v1',records,accountId:secrets[3]}},now);
+ const timing=report.nativeCloudStreamTiming;
+ assert.equal(timing.records.length,97,'only the last 100 input rows are scanned and invalid rows are discarded');
+ assert.deepEqual(timing.records[0],{session:1,stage:'consent-headers',elapsedMs:45,clock:'monotonic-observed',httpStatus:503,sentFrames:0,sentBytes:0,receivedFrames:0,receivedBytes:0});
+ assert.equal(timing.records.at(-1).stage,'error');
+ assert.equal(Object.hasOwn(timing.records.at(-1),'httpStatus'),false);
+ assert.equal(Object.hasOwn(timing.records.at(-1),'receivedBytes'),false);
+ const json=diagnosticsText(report);
+ for(const value of [...secrets,String(rawSession)])assert.equal(json.includes(value),false);
+ assert.equal(buildDiagnostics({platform:'android',nativeCloudStreamTiming:null},now).nativeCloudStreamTiming,undefined);
+ assert.equal(buildDiagnostics({platform:'web',nativeCloudStreamTiming:{format:'alpha-cloud-stream-timing-v1',records:[row]}},now).nativeCloudStreamTiming,undefined);
+});
+
+test('Cloud startup diagnostics tolerate absent, outdated, and stalled native bridges',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const {stripTypeScriptTypes}=await import('node:module');
+ const vm=await import('node:vm');
+ const source=readFileSync(new URL('../apps/app/src/runtime/native-voice-turn.ts',import.meta.url),'utf8');
+ const fn=source.slice(source.indexOf('export async function readNativeCloudStreamTiming')).trim().replace(/^export /,'');
+ const read=(present,stream)=>vm.runInNewContext(`(${stripTypeScriptTypes(fn)})`,{
+  Capacitor:{isNativePlatform:()=>true,isPluginAvailable:()=>present},
+  registerPlugin:name=>{assert.equal(name,'AlphaCloudSpeechStream');return stream;},
+  setTimeout,clearTimeout,
+ });
+ const payload={format:'alpha-cloud-stream-timing-v1',records:[]};
+ assert.equal(await read(true,{cloudStreamTiming:async()=>payload})(),payload);
+ assert.equal(await read(false,{cloudStreamTiming:()=>assert.fail('unavailable bridge called')})(),null);
+ assert.equal(await read(true,{})(),null);
+ assert.equal(await read(true,{cloudStreamTiming:()=>new Promise(()=>{})})(1),null);
+});
+
 test('plan diagnostics distinguish signed inactive plans from organization-credit presentation without exporting authority',()=>{
  const inactive=buildDiagnostics({cloudPlan:{view:'inactive',source:'entitlement',status:'none',admission:'needs-plan',entitlement:secrets[2],planName:secrets[0],userId:secrets[3],organizationId:secrets[4],balance:42}},now);
  assert.deepEqual(inactive.cloudPlan,{view:'inactive',source:'entitlement',status:'none',admission:'needs-plan'});
@@ -168,8 +204,9 @@ test('native voice timing (#395): linked monotonic trials, hashes and labels onl
  // The renderer calls the native export on Settings > Export diagnostics.
  const {readFileSync}=await import('node:fs');
  const settings=readFileSync(new URL('../apps/app/src/prototype/settings-adapter.ts',import.meta.url),'utf8');
- assert.match(settings,/readNativeVoiceTiming\(\)\]\);/);
+ assert.match(settings,/readNativeVoiceTiming\(\), readNativeCloudStreamTiming\(\)\]\);/);
  assert.match(settings,/nativeVoiceTiming: nativeTiming\.status === 'fulfilled' \? nativeTiming\.value : null/);
+ assert.match(settings,/nativeCloudStreamTiming: nativeCloudTiming\.status === 'fulfilled' \? nativeCloudTiming\.value : null/);
  assert.match(readFileSync(new URL('../apps/app/src/runtime/native-voice-turn.ts',import.meta.url),'utf8'),/return readBridgeTiming\(plugin\(\), timeoutMs\)/);assert.match(readFileSync(new URL('../vendor/eliza/packages/voice/src/native-live-voice.ts',import.meta.url),'utf8'),/port\.nativeVoiceTiming\(\)/);
 });
 

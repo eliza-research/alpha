@@ -26,7 +26,7 @@ import { clearCrashLog, describeCrashEntry, readCrashLog, recordCloudInferenceFa
 import { buildDiagnostics, diagnosticsFileName, diagnosticsText } from '../runtime/diagnostics-export';
 import {planAdmission} from '../runtime/subscription-entitlement';
 import { exportVoiceTiming, exportRealtimeVoiceTiming } from '../runtime/voice-timing';
-import { readNativeVoiceTiming } from '../runtime/native-voice-turn';
+import { readNativeCloudStreamTiming, readNativeVoiceTiming } from '../runtime/native-voice-turn';
 import { listenerStatus, openListenerSettings, pauseListener, turnOffListener, wakeListeningStopUnconfirmed, type ListenerStatus } from '../runtime/always-on-listener';
 import { reviewDataReset, type DataResetPlugin } from '@elizaos/capacitor-system/reset';
 import { androidRoleLabel, parseRoleStatuses } from '@elizaos/capacitor-system/settings';
@@ -337,7 +337,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     const instance = owner, native = Capacitor.isNativePlatform(); diagnosticsBusy = true; changed();
     try {
       await refreshInferenceFailure();
-      const [buildFacts, problems, roleState, nativeTiming] = await Promise.allSettled([native ? device.diagnosticsFacts() : Promise.resolve({}), readCrashLog(), native ? system.getStatus() : Promise.resolve({ roles: [] }), readNativeVoiceTiming()]);
+      const [buildFacts, problems, roleState, nativeTiming, nativeCloudTiming] = await Promise.allSettled([native ? device.diagnosticsFacts() : Promise.resolve({}), readCrashLog(), native ? system.getStatus() : Promise.resolve({ roles: [] }), readNativeVoiceTiming(), readNativeCloudStreamTiming()]);
       const value: Bag = buildFacts.status === 'fulfilled' ? buildFacts.value : {};
       const connection = connectionController.getSnapshot();
       const subscription = connection.residentSubscription;
@@ -361,6 +361,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         voiceTiming: (() => { try { return JSON.parse(exportVoiceTiming()); } catch { return null; } })(),
         // Native audio-clock voice latency (issue #395): timings, turn ids and hashes only.
         nativeVoiceTiming: nativeTiming.status === 'fulfilled' ? nativeTiming.value : null,
+        nativeCloudStreamTiming: nativeCloudTiming.status === 'fulfilled' ? nativeCloudTiming.value : null,
       });
       const text = diagnosticsText(report);
       if (native) {
