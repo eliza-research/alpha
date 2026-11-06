@@ -60,6 +60,40 @@
           "afterSha256": "1ea0e5b147169d7548290d24122edb287e65b29c8682531db314f35b3292945e"
         }
       ]
+    },
+    {
+      "file": "camera-capture-latency.patch",
+      "sha256": "ba408805662fc6ef2d44bd2df1f10327ca1f8e78d2fc4afbb9fa6b8c844e5b39",
+      "module": "plugins/plugin-native-camera/android",
+      "targets": [
+        {
+          "path": "plugins/plugin-native-camera/android/src/main/java/ai/eliza/plugins/camera/CameraPlugin.kt",
+          "beforeSha256": "0d6dec5115f050cfac2f6f32b22f68e4a36e6d4ec2b10e815fa74303ec2d4c53",
+          "afterSha256": "a91a945d4028662684d56f82f1c5398c15102850540eaef688e1cab3e99f8900"
+        },
+        {
+          "path": "plugins/plugin-native-camera/android/src/main/java/ai/eliza/plugins/camera/GalleryImageWriter.kt",
+          "beforeSha256": "a41a4fe0bd2dfcd910529b420ffae72f51399066d991cbdd2c562e6cec284d30",
+          "afterSha256": "3da76a1466457bc3acbd0d5ba1fc4b248624c4a4daac714baf77a6f62b053d37"
+        }
+      ]
+    },
+    {
+      "file": "photos-list-limit.patch",
+      "sha256": "1e3fef2823acdf6a659a31765fbd703b5b3b8f4052ef73cb38ad736a31bafc36",
+      "module": "plugins/plugin-native-media/android",
+      "targets": [
+        {
+          "path": "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/OwnedMediaLibrary.java",
+          "beforeSha256": "c9e797b91f47bb36ed2d6f503ecb9b26c7da5bf18411a49c86ae7d559c9eda0c",
+          "afterSha256": "81f59f1355010a3a48d6237824476a839d985003ed7485655d0a3d6d2b8c952f"
+        },
+        {
+          "path": "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotosPlugin.java",
+          "beforeSha256": "62e8269a02b73c580824c0c946f6a12123d88db3fc9e525b5439cb7af969d92b",
+          "afterSha256": "e55703a1ac4db7c7c324c0f81c49f30313cba94d0245b179bcff850ba59a82cc"
+        }
+      ]
     }
   ],
   "modules": [
@@ -67,6 +101,7 @@
     "plugins/plugin-local-inference/native/android",
     "plugins/plugin-native-action-journal/android",
     "plugins/plugin-native-calendar/android",
+    "plugins/plugin-native-camera/android",
     "plugins/plugin-native-media/android",
     "plugins/plugin-native-notifications/android",
     "plugins/plugin-native-reminders/android",
