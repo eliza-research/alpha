@@ -253,7 +253,7 @@ test('library operations are registered in Alpha device actions: Photos-only, ne
  const executor=readFileSync('apps/app/src/prototype/agent-adapter.ts','utf8');
  assert.match(executor,/if\(isLibraryOperation\(operation\)\)\{[\s\S]*deviceLibraryAgent\(\)[\s\S]*expectedContext\.view!=='photos'/);
  const journal=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaActionJournal.java','utf8');
- assert.match(journal,/"photo_library_search","photo_library_inspect","photo_library_select","photo_library_review"\)\.contains\(type\)\)\{/);
+ assert.match(journal,/"photo_library_search","photo_library_inspect","photo_library_select","photo_library_review","photos_filter","photos_open","photos_album_create","photos_share"\)\.contains\(type\)\)\{/);
 });
 
 test('volume-qualified media identities and provider revisions survive the agent contract',()=>{
