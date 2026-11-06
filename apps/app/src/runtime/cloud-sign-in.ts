@@ -18,7 +18,7 @@ import type { CloudEnvironment } from './cloud-protocol';
  */
 export type CloudSignInFailureCode =
   | 'cancelled' | 'login-active' | 'invalid-phone' | 'invalid-email' | 'invalid-code' | 'cooldown' | 'expired' | 'rate-limited'
-  | 'offline' | 'unavailable' | 'account-check' | 'state-mismatch' | 'browser-closed' | 'browser-unavailable'
+  | 'offline' | 'dns' | 'timeout' | 'secure-connection' | 'unavailable' | 'account-check' | 'state-mismatch' | 'browser-closed' | 'browser-unavailable'
   | 'provider-refused' | 'mfa-browser' | 'mfa-unsupported' | 'activation-pending' | 'storage' | 'rejected' | 'invalid-request'
   | 'app-link-unverified' | 'attempts-exhausted';
 export interface CloudSignInAuthenticated {
@@ -49,13 +49,13 @@ export interface CloudSignInPort {
   cancel(): Promise<void>;
   /** Which methods this host offers and whether Cloud is ready for in-app sign-in on this phone
    * (`inApp`, from the host's cached readiness probe). Hosts without Google (the browser bridge) say so. */
-  status?(input?: { environment: CloudEnvironment }): Promise<unknown>;
+  status?(input?: { environment: CloudEnvironment; refresh?: boolean }): Promise<unknown>;
   /** `signInCompleted`: a Google return that completed after Alpha restarted (no waiting call).
    * `signInIncomplete`: a return without a sign-in result arrived with no waiting call.
    * `signInMfaRequired`: a retained hint that must be revalidated through resumeMfa. */
   addListener?(event: 'signInCompleted' | 'signInIncomplete' | 'signInMfaRequired', listener: (outcome: unknown) => void): Promise<unknown>;
 }
-const CODES = new Set<string>(['cancelled', 'login-active', 'invalid-phone', 'invalid-email', 'invalid-code', 'cooldown', 'expired', 'rate-limited', 'offline', 'unavailable', 'account-check', 'state-mismatch', 'browser-closed', 'browser-unavailable', 'provider-refused', 'mfa-browser', 'mfa-unsupported', 'activation-pending', 'storage', 'rejected', 'invalid-request', 'app-link-unverified', 'attempts-exhausted']);
+const CODES = new Set<string>(['cancelled', 'login-active', 'invalid-phone', 'invalid-email', 'invalid-code', 'cooldown', 'expired', 'rate-limited', 'offline', 'dns', 'timeout', 'secure-connection', 'unavailable', 'account-check', 'state-mismatch', 'browser-closed', 'browser-unavailable', 'provider-refused', 'mfa-browser', 'mfa-unsupported', 'activation-pending', 'storage', 'rejected', 'invalid-request', 'app-link-unverified', 'attempts-exhausted']);
 export class CloudSignInError extends Error {
   readonly code: CloudSignInFailureCode;
   constructor(code: CloudSignInFailureCode) { super(`Cloud sign-in ${code}`); this.code = code; this.name = 'CloudSignInError'; }
@@ -77,6 +77,9 @@ export function signInFailureMessage(code: CloudSignInFailureCode, serviceName: 
     case 'expired': return 'This sign-in expired. Start again.';
     case 'rate-limited': return 'Too many attempts. Wait a few minutes, then try again.';
     case 'offline': return `Alpha could not reach ${serviceName}. Check your connection and try again.`;
+    case 'dns': return `Could not find ${serviceName}. Try another network or retry.`;
+    case 'timeout': return `${serviceName} took too long to respond. Try again.`;
+    case 'secure-connection': return `Could not securely connect to ${serviceName}. Check the phone’s date and time, then retry.`;
     case 'account-check': return `This account needs an extra check that Alpha cannot complete. Use account recovery or contact ${serviceName} support.`;
     case 'state-mismatch': return 'That sign-in return did not match this phone’s request. Start again.';
     case 'browser-closed': return 'Google sign-in was closed before it finished. Start again when you are ready.';

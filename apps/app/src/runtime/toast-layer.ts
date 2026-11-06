@@ -1,5 +1,5 @@
 /**
- * Toasts over a top-layer dialog.
+ * Feedback inside a top-layer dialog.
  *
  * The phone's toast region lives in the page. A modal `<dialog>` is drawn in the browser's top
  * layer and makes everything outside itself inert, so a toast raised while one is open ("Saved",
@@ -8,8 +8,8 @@
  *
  * While a modal dialog is open it is given a live region of its own, marked like the page's
  * (aria-live, no role, so a dialog's own role="status" line stays the only status in it): an element inside the
- * dialog (so it is not inert and belongs to what assistive technology reads), shown as a manual
- * popover (so it is drawn above the dialog, in the top layer, and is never clipped by it). The
+ * dialog (so it is not inert and belongs to what assistive technology reads), in the dialog's
+ * normal flow above its content so it cannot cover a field or action. The
  * region is present and empty from the moment the dialog opens, because a live region that
  * arrives together with its text is not announced reliably. A toast is then copied into the
  * region of the topmost modal dialog; its Undo runs the page's own Undo. The page's region is
@@ -31,21 +31,9 @@ export function installToastLayer(): () => void {
     region.setAttribute(HOST, '');
     region.setAttribute('aria-live', 'polite');
     region.setAttribute('aria-atomic', 'true');
-    region.setAttribute('popover', 'manual');
-    // Reset the popover defaults; the region itself takes no pointer events, only the toast in it does.
-    region.style.cssText = 'position:fixed;inset:auto;margin:0;padding:0;border:0;background:transparent;color:inherit;overflow:visible;display:flex;justify-content:center;pointer-events:none;box-sizing:border-box;z-index:2147483647';
-    dialog.append(region);
+    region.style.cssText = 'order:-1;flex-shrink:0;margin:0;padding:0;border:0;background:transparent;color:inherit;display:flex;align-items:flex-start;justify-content:center;box-sizing:border-box;width:100%;max-height:calc(var(--alpha-visible-height,100dvh) * .3);overflow:auto';
+    dialog.prepend(region);
     return region;
-  };
-  const place = (region: HTMLElement) => {
-    const screen = document.querySelector<HTMLElement>('[data-screen]');
-    const box = screen?.getBoundingClientRect() ?? new DOMRect(0, 0, window.innerWidth, window.innerHeight);
-    const scale = screen && screen.offsetWidth ? box.width / screen.offsetWidth : 1;
-    region.style.left = `${Math.max(0, box.left) + 16 * scale}px`;
-    region.style.width = `${Math.max(0, Math.min(window.innerWidth, box.right) - Math.max(0, box.left) - 32 * scale)}px`;
-    region.style.bottom = `${Math.max(0, window.innerHeight - box.bottom) + 40 * scale}px`;
-    // A popover is display:none until shown; an older engine without popovers draws it as placed.
-    try { if (typeof region.showPopover === 'function' && !region.matches(':popover-open')) region.showPopover(); } catch { /* not connected yet, or already open */ }
   };
   const sync = () => {
     frame = 0;
@@ -53,7 +41,6 @@ export function installToastLayer(): () => void {
     for (const stale of document.querySelectorAll<HTMLElement>(`[${HOST}]`)) if (!open.includes(stale.parentElement as HTMLDialogElement)) stale.remove();
     if (!topmost) { undo = null; return; }
     const regions = open.map(host);
-    for (const region of regions) place(region);
     const source = document.querySelector<HTMLElement>(SOURCE), shown = source?.firstElementChild as HTMLElement | null;
     const text = (shown?.querySelector('span')?.textContent ?? '').trim();
     undo = shown?.querySelector('button') ?? null;
@@ -66,7 +53,7 @@ export function installToastLayer(): () => void {
       if (!wanted || !shown) continue;
       const paint = getComputedStyle(shown);
       const body = document.createElement('div');
-      body.style.cssText = 'pointer-events:auto;min-height:48px;max-width:100%;box-sizing:border-box;border-radius:24px;font:600 14px/1.35 "Public Sans",system-ui,sans-serif;display:flex;gap:14px;align-items:center;box-shadow:0 8px 24px rgba(0,0,0,.28)';
+      body.style.cssText = 'flex-shrink:0;pointer-events:auto;min-height:48px;max-width:100%;box-sizing:border-box;border-radius:24px;font:600 14px/1.35 "Public Sans",system-ui,sans-serif;display:flex;gap:14px;align-items:center;box-shadow:0 8px 24px rgba(0,0,0,.28)';
       body.style.background = paint.backgroundColor; body.style.color = paint.color;
       body.style.padding = undo ? '0 4px 0 18px' : '0 18px';
       const message = document.createElement('span');

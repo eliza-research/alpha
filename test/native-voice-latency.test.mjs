@@ -162,7 +162,7 @@ test('the Android collector times capture from AudioRecord and playback from the
   assert.match(plugin, /@PluginMethod public void markVoiceTurn\(PluginCall call\)\{\n  long at=System\.nanoTime\(\);/);
   assert.equal(probe.includes('Log.'), false, 'the collector logs nothing');
   assert.match(capture, /TRIALS\.speechEnded\(lastSpeechNs,System\.nanoTime\(\)/);
-  assert.match(plugin, /p\.start\(\);if\(playbackLocalReply\)AlphaVoiceLatencyProbe\.playbackStarted\(/);
+  assert.match(plugin, /p\.start\(\);cloudTimings\.mark\(playbackTiming,"playback-start"\);if\(playbackLocalReply\)AlphaVoiceLatencyProbe\.playbackStarted\(/);
   // The trial carries numbers and labels only: no text reaches the collector.
   for (const source of [probe, read('VoiceLatencyTrials.java')]) assert.doesNotMatch(source.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, ''), /transcript|\btext\b/i);
 });

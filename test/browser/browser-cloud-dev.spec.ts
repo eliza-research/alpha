@@ -72,7 +72,7 @@ test('browser restores an existing host Cloud account, uses canonical voice and 
   // This test-mocks host's account button retains the diagnostic browser route. Exercise the
   // shared in-app entry explicitly before that handoff; native production uses this entry.
   await page.evaluate(async()=>(await import('/src/runtime/connection-ui.tsx')).connectionController.beginSignIn('production'));
-  const signIn=page.getByRole('dialog',{name:'Sign in to Eliza Cloud',exact:true});
+  const signIn=page.getByRole('dialog',{name:'Sign in',exact:true});
   await expect(signIn.getByRole('form',{name:'Sign in with email'})).toBeVisible();
   await expect(signIn.getByRole('button',{name:'Continue with Google',exact:true})).toHaveCount(0);
   await signIn.getByRole('button',{name:'Browser sign-in (diagnostic)',exact:true}).click();

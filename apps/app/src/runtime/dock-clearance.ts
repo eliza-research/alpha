@@ -1,6 +1,6 @@
 /**
- * How much of the bottom of the phone the floating dock takes (the composer bar with whatever is
- * stacked on it, or the pill), measured, in the phone canvas's own pixels.
+ * How much of the bottom of the phone the composer or pill takes, including an expanded chat's
+ * text/voice composer, measured in the phone canvas's own pixels.
  *
  * The dock floats over the page. Home used to scroll underneath it with a fixed 108px of padding,
  * which stopped being enough as soon as Home needed to scroll: at 200% text the last row of apps
@@ -17,12 +17,14 @@
  * covers now. `--alpha-dock-rest` is the bar alone. Home uses their difference
  * to extend its scroll content when a status appears, preserving app positions.
  *
- * While no dock is on screen (the shade, a voice session, the lock screen) the last footprint is
+ * Top notices also use this footprint so a long notice cannot cover a multiline draft.
+ * While no dock is on screen (the shade or lock screen) the last footprint is
  * kept, so Home does not jump when the dock returns.
  */
 export const DOCK_CLEARANCE_PROPERTY = '--alpha-dock-clearance';
 export const DOCK_REST_PROPERTY = '--alpha-dock-rest';
-const DOCK = '[data-alpha-layer="composer"],[data-alpha-layer="pill"] > *';
+const HEADER_CLEARANCE_PROPERTY = '--alpha-header-clearance';
+const DOCK = '[data-alpha-layer="composer"],[data-alpha-layer="pill"] > *,.alpha-chat-composer';
 
 /** The dock elements on screen now: rendered, and not retired behind the shade or a voice session. */
 export function visibleDocks(root: ParentNode = document): HTMLElement[] {
@@ -33,20 +35,30 @@ let installed: (() => void) | null = null;
 /** Installed once per document; a second call returns the same uninstaller. */
 export function installDockClearance(): () => void {
   if (installed) return installed;
-  let published = '', frame = 0, watched: HTMLElement[] = [];
+  let published = '', publishedHeader = '', frame = 0, watched: HTMLElement[] = [];
   const sizes = new ResizeObserver(() => readNow());
   const read = () => {
     frame = 0;
     const screen = document.querySelector<HTMLElement>('[data-screen]');
     if (!screen || !screen.offsetWidth) return;
+    const frameBox = screen.getBoundingClientRect(), scale = frameBox.width / screen.offsetWidth || 1;
+    const conversation = screen.querySelector<HTMLElement>('[data-alpha-layer="conversation"]:not([inert])');
+    const headerRoot = conversation && screen.dataset.alphaChatHalf !== 'true' ? conversation : screen;
+    const headers = Array.from(headerRoot.querySelectorAll<HTMLElement>(conversation && headerRoot === conversation ? '[data-alpha-chat-header]' : '[data-alpha-app-header]'))
+      .filter(header => header.getClientRects().length > 0 && !header.closest('[inert]'));
+    const headerClearance = `${Math.max(0, ...headers.map(header => Math.ceil((header.getBoundingClientRect().bottom - frameBox.top) / scale)))}px`;
+    if (headerClearance !== publishedHeader) {
+      publishedHeader = headerClearance;
+      document.documentElement.style.setProperty(HEADER_CLEARANCE_PROPERTY, headerClearance);
+    }
     const docks = visibleDocks(screen);
-    if (docks.length !== watched.length || docks.some((dock, index) => dock !== watched[index])) {
-      sizes.disconnect(); sizes.observe(screen); for (const dock of docks) sizes.observe(dock);
-      watched = docks;
+    const measured = [...docks, ...headers];
+    if (measured.length !== watched.length || measured.some((element, index) => element !== watched[index])) {
+      sizes.disconnect(); sizes.observe(screen); for (const element of measured) sizes.observe(element);
+      watched = measured;
     }
     if (!docks.length) return;
     // The canvas is drawn scaled to the screen (--phone-scale); lengths in CSS are canvas pixels.
-    const frameBox = screen.getBoundingClientRect(), scale = frameBox.width / screen.offsetWidth || 1;
     const above = (element: Element) => (frameBox.bottom - element.getBoundingClientRect().top) / scale;
     const clearance = Math.ceil(Math.max(...docks.map(above)));
     // The bar is the composer's last row; the pill is its own bar.
@@ -85,6 +97,7 @@ export function installDockClearance(): () => void {
     if (frame) cancelAnimationFrame(frame);
     document.documentElement.style.removeProperty(DOCK_CLEARANCE_PROPERTY);
     document.documentElement.style.removeProperty(DOCK_REST_PROPERTY);
+    document.documentElement.style.removeProperty(HEADER_CLEARANCE_PROPERTY);
   };
   return installed;
 }

@@ -176,7 +176,9 @@ function walkFiles(directory, base = directory, out = []) {
 function residentRuntimeComponents(root) {
   if (!packagedRuntimePresent(root)) throw new Error('--packaged-runtime: no resident runtime is staged. Run: npm run agent:build-workflow-worker && npm run agent:stage-android');
   const out = [];
-  const embedding = exists(root, EMBEDDING_HOST) ? readJson(root, EMBEDDING_HOST) : null;
+  const record = exists(root, EMBEDDING_HOST) ? readJson(root, EMBEDDING_HOST) : null;
+  // While requalification is pending the record names superseded bytes; the staged files are listed as they are.
+  const embedding = record?.requalification?.required === true ? null : record;
   for (const [base, kind] of [[AGENT_ASSETS, 'asset'], [JNI_LIBS, 'native library']])
     for (const rel of exists(root, base) ? walkFiles(path.join(root, base)) : []) {
       const file = `${base}/${rel}`;

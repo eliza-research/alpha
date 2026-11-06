@@ -30,9 +30,12 @@ test('Cloud profile keeps native speech and embeddings guards as default',()=>{
  const gradle=fs.readFileSync('android/app/build.gradle','utf8');
  assert.match(gradle,/ELIZA_RUNTIME_PROFILE.*native/);
  assert.match(gradle,/runtimeProfile == 'cloud'.*runtime-profile.mjs/);
- assert.match(fs.readFileSync('android/local-speech/build.gradle','utf8'),/unpackaged \|\| cloudProfile/);
- const host=fs.readFileSync('backend/native-cloud-runtime-config.ts','utf8');
- assert.match(host,/ELIZA_RUNTIME_PROFILE==='cloud'\?\{embeddings:/);
+ assert.match(fs.readFileSync('android/local-speech/build.gradle','utf8'),/cloudProfile \|\| \(unpackaged && !nativeOutput\.exists\(\)\)/);
+ // Cloud embeddings for the Cloud profile are routed by upstream's native runtime profile; the
+ // product host only declares its deployment and never writes routing itself.
+ assert.match(fs.readFileSync('vendor/eliza/packages/app/src/runtime/native-runtime-profile.ts','utf8'),/cloud: Object.freeze\(\{\s*id: "cloud",\s*textInference: "elizacloud",\s*embeddings: "elizacloud"/);
+ const host=fs.readFileSync('backend/native-google-agent-host.ts','utf8');
+ assert.match(host,/export \{nativeCloudRuntime\} from '\.\/native-cloud-runtime-config\.ts';/);assert.doesNotMatch(host,/prepareNativeCloudRuntime|saveElizaConfig/);
 });
 
 // Exercise the real admission path with an authenticated tiny source tree. The

@@ -69,7 +69,7 @@ test('voice projection refuses an unreviewed pin by default',()=>fixture(({root}
 }));
 test('actual pinned host projections authenticate source/output hashes and exclude dashboard transport',()=>{
  const source=prepareClientFeatures(),stamp=JSON.parse(fs.readFileSync(path.join(source,'.source.json')));
-assert.equal(stamp.baseCommit,'ff9c8264550efd64fd0119c6ff50f99eb8561977');assert.equal(stamp.projectionVersion,7);
+assert.equal(stamp.baseCommit,'5d1af326e596fea5893d095db882bdb858a4a774');assert.equal(stamp.projectionVersion,7);
  const relayPath='plugins/plugin-maps/src/client/navigation-relay.ts';
  // The WebView signal shim is upstream (elizaOS/eliza#37315); the relay is carried unchanged.
  assert.equal(stamp.sourceFiles[relayPath],stamp.files[relayPath]);
@@ -82,7 +82,10 @@ assert.equal(stamp.baseCommit,'ff9c8264550efd64fd0119c6ff50f99eb8561977');assert
  const calendarBundle=buildSync({entryPoints:[path.join(source,calendarPath)],bundle:true,write:false,platform:'browser',format:'esm',metafile:true});
  assert.equal(Object.keys(calendarBundle.metafile.inputs).length,1,'shared Calendar reconciliation has no Node, SQL, or runtime dependency');
  const client='packages/ui/src/voice/voice-session-client.ts',text=fs.readFileSync(path.join(source,client),'utf8');
- assert.match(text,/requires an injected session fetch/);assert.doesNotMatch(text,/import\("\.\/voice-session-fetch"\)/);
+ // The app entry's dashboard-transport fallback is dropped; upstream's core client requires the host fetch.
+ assert.equal(text,'export * from "./voice-session-client-core";\n');
+ const core=fs.readFileSync(path.join(source,'packages/ui/src/voice/voice-session-client-core.ts'),'utf8');
+ assert.match(core,/\n  fetch: \(url: string, init\?: RequestInit\) => Promise<Response>;/);assert.doesNotMatch(core,/voice-session-fetch/);
  assert.notEqual(stamp.sourceFiles[client],stamp.files[client]);
  assert.ok(stamp.sourceFiles['packages/core/src/logger.ts']);assert.equal(stamp.files['packages/core/src/logger.ts'],undefined);
  assert.equal(fs.existsSync(path.join(source,'packages/ui/src/voice/voice-session-fetch.ts')),false);
@@ -90,6 +93,10 @@ assert.equal(stamp.baseCommit,'ff9c8264550efd64fd0119c6ff50f99eb8561977');assert
   '@elizaos/host/protocol':path.join(source,'packages/host/src/voice.ts'),
   '@elizaos/core/protocol':path.join(source,'alpha-voice-core-protocol.ts'),
   '@elizaos/core':path.join(source,'alpha-voice-core-types.ts'),
+  '@elizaos/core/logging':path.join(source,'packages/core/src/logging.ts'),
+  '@elizaos/core/view-interaction':path.join(source,'packages/core/src/view-interaction.ts'),
+  '@elizaos/core/speech':path.join(source,'packages/core/src/speech.ts'),
+  '@elizaos/host/voice/ui-context':path.join(source,'packages/host/src/voice/ui-context.ts'),
  }});
  assert.ok(bundle.outputFiles[0].contents.length>10000);
  assert.equal(Object.keys(bundle.metafile.inputs).some(file=>/csrf-client|steward|persistence|core\/src\/logger|api\//.test(file)),false);

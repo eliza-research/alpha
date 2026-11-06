@@ -120,7 +120,7 @@ test('required denied notification remains pending after cold start without repe
  await nativeStub(page,{notifications:{permissionGranted:false,appEnabled:false},microphone:'granted'});
  await page.goto('/');const panel=page.locator('dialog.alpha-startup-permissions');await expect(panel).toHaveCount(0);
  await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Set up Alpha access',exact:true}).click();
- await expect(panel.getByRole('heading',{name:'Stay in the loop.',exact:true})).toBeVisible();await panel.getByRole('button',{name:'Allow',exact:true}).click();
+ await expect(panel.getByRole('heading',{name:'Notifications',exact:true})).toBeVisible();await panel.getByRole('button',{name:'Allow',exact:true}).click();
  await expect.poll(()=>calls(page,'DailyApps','requestPermissions')).toEqual([{permissions:['notifications']}]);
  await expect(panel.getByRole('button',{name:'Open Android settings',exact:true})).toBeVisible();
  await expect(panel.getByRole('button',{name:/Skip|Not now|Back/})).toHaveCount(0);

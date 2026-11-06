@@ -699,7 +699,7 @@ public final class AlphaLocalAgentPlugin extends Plugin {
    }}
    public void cancelInFlight(){cancelled.set(true);NativeVoiceIpc.Handle handle=active.get();if(handle!=null)handle.cancel();}
    public JSONObject post(JSONObject body)throws Exception{
-    JSONObject headers=new JSONObject().put("Authorization","Bearer "+token).put("Content-Type","application/json").put("Accept","application/json");
+    JSONObject headers=new JSONObject().put("Authorization","Bearer "+routeToken("/api/asr/local-inference/live",token)).put("Content-Type","application/json").put("Accept","application/json");
     JSONObject input=new JSONObject().put("path","/api/asr/local-inference/live").put("method","POST").put("body",body.toString()).put("headers",headers).put("timeoutMs",8000);
     return NativeVoiceIpc.exchange(port,input,active,()->{check();if(cancelled.get()&&!body.optBoolean("close"))throw new IllegalStateException("Voice capture cancelled");},8000);
    }
@@ -728,9 +728,11 @@ public final class AlphaLocalAgentPlugin extends Plugin {
   if(!captureReminderOwnerSession().toString().equals(expected.toString()))throw new SecurityException("Native owner session changed");
   return result;
  }
+ /** The local ASR routes accept only the resident's per-boot bearer, not the owner session; callers have already admitted the owner. */
+ static String routeToken(String path,String session){return path.startsWith("/api/asr/local-inference/")?ElizaAgentService.localAgentToken():session;}
  private static JSONObject raw(String path,String method,String body,String token,JSONObject supplied,int timeoutMs) throws Exception {
   JSONObject headers=new JSONObject();headers.put("Accept","application/json");headers.put("Content-Type","application/json");
-  if(token!=null)headers.put("Authorization","Bearer "+token);
+  if(token!=null)headers.put("Authorization","Bearer "+routeToken(path,token));
   if(supplied!=null)for(String key:new String[]{"X-Eliza-Device-Id","X-Eliza-Device-Key","X-Eliza-Device-Capabilities"}){
    if(supplied.has(key)){String value=supplied.getString(key);if(value.length()>2048||value.contains("\r")||value.contains("\n"))throw new IllegalArgumentException();headers.put(key,value);}
   }

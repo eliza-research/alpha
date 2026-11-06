@@ -15,7 +15,7 @@ const cmake='ELIZA_VOICE_JNI_CLASS ELIZA_VOICE_JNI_SUBSET';
 const java='package ai.elizaos.app; class ElizaVoiceNative {\nstatic native float[] nativeEmbed(long handle, String input, int pooling);\nstatic native float[] nativeEmbedUtf8(long handle, byte[] input, int pooling);\nstatic native float[] nativeEmbedWithOptionsUtf8(long handle, byte[] input, int pooling, boolean parseSpecial);\n}';
 test('legacy exported JNI keeps the exact existing identity transformation and symbols',()=>{
  const binding=nativeBinding('Java_ai_elizaos_app_ElizaVoiceNative_nativeEmbed; ai/elizaos/app/ElizaVoiceNative','',identity);
- assert.equal(nativeInputs(binding).length,5);assert.deepEqual(nativeCmakeOptions(binding),[]);
+ assert.equal(nativeInputs(binding).length,15);assert.deepEqual(nativeCmakeOptions(binding),[]);
  assert.equal(nativeGenerated('jni.cpp','Java_ai_elizaos_app_ElizaVoiceNative_nativeEmbed; ai/elizaos/app/ElizaVoiceNative',identity,binding),'Java_ai_elizaresearch_alphaphone_ElizaVoiceNative_nativeEmbed; ai/elizaresearch/alphaphone/ElizaVoiceNative');
  assert.doesNotThrow(()=>verifyNativeSymbols(['nativeEmbed','nativeEmbedUtf8','nativeEmbedWithOptionsUtf8'].map(name=>'000 T Java_ai_elizaresearch_alphaphone_ElizaVoiceNative_'+name).join('\n'),binding));
  assert.throws(()=>verifyNativeSymbols('000 T JNI_OnLoad',binding),/missing/);

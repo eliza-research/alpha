@@ -15,7 +15,7 @@ navigation, process death and full storage on hardware remain device acceptance 
 | `test/browser/accessibility-audit.spec.ts` | `npm run test:browser` | Each rule fires on a seeded defect and stays quiet on corrected markup |
 | `test/browser/accessibility-resilience.spec.ts` | `npm run test:browser` | Behaviour behind the defects the sweep found |
 | `test/browser/large-text-overlap.spec.ts` | `npm run test:browser` | Home, the app library and the tile grids at 100%, 150% and 200% text, measured from bounding boxes (round 8, after the round-7 emulator run showed the Home card title printed over its neighbours at 200% font) |
-| `test/browser/notifications-handle.spec.ts` | `npm run test:browser` | Launcher Home's Notifications button and empty-Home pull that ask for Android's shade, and the gesture zones ([gesture zones](gesture-zones.md)) |
+| `test/browser/notifications-handle.spec.ts` | `npm run test:browser` | A pull on launcher's empty Home that asks for Android's shade, and the gesture zones ([gesture zones](gesture-zones.md)) |
 
 The checks live in `test/browser/accessibility-audit.ts` and need no added dependency.
 Names, roles and focusability are read from desktop Chromium's accessibility tree. Android

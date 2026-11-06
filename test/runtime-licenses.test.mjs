@@ -5,7 +5,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { agentBundlePackageDirs, BUN_ENTRY, collectNotices, finishEntry, loadTemplates, packagedRuntimePresent, runtimeEntries, ROOT, shippedPackagedRuntime, UNKNOWN, UNVERIFIED } from '../scripts/generate-licenses.mjs';
+import { createHash } from 'node:crypto';
+import { agentBundleDependencyDirs, agentBundlePackageDirs, BUN_ENTRY, collectNotices, finishEntry, loadTemplates, packagedRuntimePresent, runtimeEntries, ROOT, shippedPackagedRuntime, UNKNOWN, UNVERIFIED } from '../scripts/generate-licenses.mjs';
 import { licenceFlagLines } from '../scripts/licence-policy.mjs';
 
 const canonicalTexts = { MIT: 'MIT terms', ISC: 'ISC terms', 'Apache-2.0': 'Apache terms', 'BSD-3-Clause': 'BSD terms' };
@@ -45,6 +46,29 @@ test('bundle path comments name each contributing npm package once, never worksp
     '// ../../node_modules/.bun/a@1.0.0/node_modules/a/x.js', '// ../../node_modules/.bun/a@1.0.0/node_modules/a/y.js',
     '// node_modules/.bun/@s+b@2.0.0/node_modules/@s/b/z.js', '// ../../plugins/plugin-sql/src/index.ts', 'var s = "// ../../node_modules/fake/x.js";',
   ].join('\n')), ['node_modules/.bun/@s+b@2.0.0/node_modules/@s/b', 'node_modules/.bun/a@1.0.0/node_modules/a']);
+});
+
+test('a minified bundle names its packages from build metadata bound to the staged bundle bytes', t => {
+  const agent = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-bundle-inventory-'));
+  t.after(() => fs.rmSync(agent, { recursive: true, force: true }));
+  const bundle = Buffer.from('var a=1;'), sha = createHash('sha256').update(bundle).digest('hex');
+  const write = value => fs.writeFileSync(path.join(agent, 'plugins-manifest.json'), JSON.stringify({ bundleDependencies: value }));
+  const packages = [{ directory: 'node_modules/.bun/b@2.0.0/node_modules/b' }, { directory: 'node_modules/.bun/a@1.0.0/node_modules/a' }, { directory: 'node_modules/.bun/a@1.0.0/node_modules/a' }];
+  let errors = [];
+  write({ version: 1, bundleSha256: sha, packages });
+  assert.deepEqual(agentBundleDependencyDirs(agent, bundle, errors), ['node_modules/.bun/a@1.0.0/node_modules/a', 'node_modules/.bun/b@2.0.0/node_modules/b']);
+  assert.deepEqual(errors, []);
+  // Metadata for other bundle bytes is broken input, never a silently short inventory.
+  write({ version: 1, bundleSha256: 'f'.repeat(64), packages });
+  assert.deepEqual(agentBundleDependencyDirs(agent, bundle, errors), []);
+  assert.match(errors[0], /does not describe the staged agent-bundle\.js/);
+  errors = [];
+  write({ version: 1, bundleSha256: sha, packages: [{ directory: 'node_modules/../../etc' }, { directory: '/abs' }] });
+  assert.deepEqual(agentBundleDependencyDirs(agent, bundle, errors), []);
+  assert.equal(errors.length, 2);
+  // An older unminified bundle without recorded metadata keeps its path-comment inventory.
+  fs.rmSync(path.join(agent, 'plugins-manifest.json'));
+  assert.deepEqual(agentBundleDependencyDirs(agent, Buffer.from('// ../../node_modules/.bun/c@3.0.0/node_modules/c/x.js\n'), []), ['node_modules/.bun/c@3.0.0/node_modules/c']);
 });
 
 test('a PACKAGED runtime lists Bun with its LGPL notice and every bundled agent and worker package', t => {

@@ -296,7 +296,7 @@ test('speech candidate check refuses an APK whose voice bundle or x86_64 engine 
  const apk=(change=()=>{},withAsr=false)=>{
   const listed=host.models.filter(entry=>withAsr||!entry.path.startsWith('asr/'));
   const files={'lib/x86_64/libelizainference.so':engine,'lib/x86_64/libparadeevoicejni.so':Buffer.from('jni'),
-   'assets/paradee-voice/v1/manifest.json':Buffer.from(JSON.stringify({format:'eliza-paradee-voice-v1',files:listed.map(({path:file,sha256,bytes})=>({path:file,sha256,bytes}))}))};
+   'assets/paradee-voice/v1/manifest.json':Buffer.from(JSON.stringify({format:'eliza-paradee-voice-v2',files:listed.map(({path:file,sha256,bytes})=>({path:file,sha256,bytes}))}))};
   for(const entry of listed)files[`assets/paradee-voice/v1/${entry.path}`]={'tts/paradee/paradee-8m-v1_0.gguf':model,'tts/paradee/misaki-en-us.lex':lexicon,'vad/silero-vad-v5.gguf':vad,'asr/phonon-2-fv5.gguf':asr}[entry.path];
   change(files);return {names:Object.keys(files),read:entry=>files[entry]??null};
  };

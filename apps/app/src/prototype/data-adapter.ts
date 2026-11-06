@@ -64,13 +64,6 @@ export function installPrototypeDataAdapter(Component: any, views: Record<string
   const renderVals = p.renderVals;
   p.renderVals = function () {
     const out = renderVals.call(this);
-    // Offer only connected operations. Reference suggestions name fictional
-    // people and imply image analysis/mail/workflows that are not available yet.
-    const view = this.S().view;
-    const first = view === 'camera' ? 'Open Photos' : view === 'photos' ? 'Open Camera'
-      : view === 'files' || view === 'browser' || view === 'inbox' ? 'Open Notes'
-      : view === 'phone' || view === 'messages' ? 'Open Contacts' : 'Open Calendar';
-    const suggestions = ['Create a note', 'Set a reminder', first];
     const now = Date.now();
     const calendarSource = views.calendar.displaySources?.();
     const calendarState = this.vget('calendar');
@@ -133,7 +126,8 @@ export function installPrototypeDataAdapter(Component: any, views: Record<string
     const eventTime=agenda?overdue?overdueDueLabel(agenda.begin,now):agenda.event.nativeEvent?.allDay?'All day':timeLabel(agenda.begin)+(Number.isFinite(agenda.end)&&agenda.end>agenda.begin?` – ${endLabel}`:''):'';
     return {
       ...out, shadeN: [],
-      sugg: suggestions.map(label => ({ label, go: () => this.send(label) })),
+      // No suggestion chips: the owner types or speaks their own request.
+      sugg: [], showSugg: false,
       homeCalendarHasEvent:!!agenda,homeCalendarFooter:eventTime,
       homeCalendarLabel: agenda ? overdue ? `Open overdue reminder: ${eventTitle}, ${eventTime}` : `Open calendar event: ${eventTitle}, ${dateLabel}, ${eventTime}` : 'Open your calendar',
       homeCalendarTime: homeAgendaHeader(dateLabel, overdue ? overdueRows.length : 0),

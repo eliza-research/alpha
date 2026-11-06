@@ -22,8 +22,8 @@ final class AndroidShade {
   * The flags of the caller's UiAutomation connection. Instrumentation.getUiAutomation(flags) drops and
   * reconnects the shared connection whenever the flags differ, and a connection without
   * FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES suspends every accessibility service. A test that holds
-  * a flagged connection (AccessibilityInstrumentedTest and its stand-in screen reader) sets its flags
-  * here for as long as it holds it, so observing the shade never unbinds that service.
+  * a flagged connection (AccessibilityInstrumentedTest) sets its flags
+  * here for as long as it holds it, so observing the shade never unbinds a service.
   */
  private static volatile int automationFlags = 0;
  static void useAutomationFlags(int flags) { automationFlags = flags; }

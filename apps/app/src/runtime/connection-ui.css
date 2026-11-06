@@ -34,7 +34,7 @@
 .alpha-google-calendar-option small{display:block;color:var(--connection-mut,#6b6b6b);font-size:12px;margin-top:2px}
 
 /* Plan notice beside the running agent: never modal, never covers the whole phone. */
-.alpha-plan-notice{position:fixed;left:12px;right:12px;top:calc(max(env(safe-area-inset-top),12px) + 28px);z-index:9000;max-width:480px;margin:0 auto;box-sizing:border-box;padding:12px 14px;border-radius:18px;background:var(--s2,#f3f3f3);color:var(--fg,#000);box-shadow:0 4px 20px rgba(0,0,0,.14);font:14px/1.4 'Public Sans',system-ui,sans-serif}
+.alpha-plan-notice{position:fixed;left:12px;right:12px;top:calc(var(--phone-top,0px) + max(calc(48px * var(--phone-scale,1)),calc((var(--alpha-header-clearance,0px) + 8px) * var(--phone-scale,1)),calc(max(var(--native-top-inset,0px),env(safe-area-inset-top,0px)) + 12px)));z-index:9000;max-width:480px;max-height:min(calc(var(--alpha-visible-height,100vh) * .3),max(0px,calc((var(--phone-height,100vh) - var(--alpha-dock-clearance,102px)) * var(--phone-scale,1) - max(calc(48px * var(--phone-scale,1)),calc((var(--alpha-header-clearance,0px) + 8px) * var(--phone-scale,1)),calc(max(var(--native-top-inset,0px),env(safe-area-inset-top,0px)) + 12px)) - 12px)));overflow:auto;margin:0 auto;box-sizing:border-box;padding:12px 14px;border-radius:18px;background:var(--s2,#f3f3f3);color:var(--fg,#000);box-shadow:0 4px 20px rgba(0,0,0,.14);font:14px/1.4 'Public Sans',system-ui,sans-serif}
 .alpha-plan-notice p{margin:0 0 8px;overflow-wrap:anywhere}
 .alpha-plan-notice-actions{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .alpha-plan-notice-actions button{min-height:44px;padding:8px 13px;border-radius:22px;font:inherit;font-weight:500;color:var(--acct,#0000ff)}

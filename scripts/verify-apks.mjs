@@ -21,7 +21,7 @@
  * UNRESOLVED_FONT_LICENCE_BLOCKS_DISTRIBUTION (scripts/licence-policy.mjs) is true.
  * It never fails verification of a developer build.
  * App Links: each row records `appLinks` ({present, hosts}), the https autoVerify filters in
- * the packaged manifest. A default build has none; ELIZAOS_APP_LINK_HOST adds one.
+ * the packaged manifest. Every build must include the configured Cloud sign-in return.
  * --test-mocks: the separate artifacts/test-mocks/ build, which is never
  * distributable. This is APK-build evidence only; it does not install or run
  * anything.
@@ -39,7 +39,7 @@ import { BUN_ENTRY } from "./generate-licenses.mjs";
 import { fontLicenceCheck, fontLicenceLine } from "./font-license-blockers.mjs";
 import { licenceFlagLines, licenceFlagRecords } from "./licence-policy.mjs";
 import { packagedGzipProblems } from "./android-gzip-assets.mjs";
-import { appLinkFilters } from "./render-assetlinks.mjs";
+import { appLinkFilters, signInAppLinkProblems } from "./render-assetlinks.mjs";
 import { readVoiceHost, VOICE_BUNDLE_ASSETS, VOICE_BUNDLE_FORMAT } from "./voice-host.mjs";
 import { apkPermissions, checkListenerPermissions, checkListenerSpeechBundle, listenerPackage } from "./aosp-listener.mjs";
 import { listenerApkRow, listenerManifestSection, readListenerRecord } from "./listener-qualification.mjs";
@@ -120,6 +120,9 @@ for (const variant of ["standalone", "launcher"])
     if (d.debuggable !== (mode === "debug"))
       throw new Error(`Wrong debug flag: ${file}`);
     const { facts, problems } = distributionProblems(d, { mode, testMocks });
+    const cloudDeployment = JSON.parse(fs.readFileSync("config/cloud-deployment.json", "utf8"));
+    problems.push(...signInAppLinkProblems(d.xml, [new URL(cloudDeployment.production.web).hostname,
+      ...(testMocks ? [new URL(cloudDeployment.staging.web).hostname] : [])]));
     // Shared web bundle audit on the exact packaged payload.
     const payload = extractWebPayload(file);
     let flags;

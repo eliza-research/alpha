@@ -21,10 +21,16 @@ test('repeated connection notifications wait for the same pending draft read',as
  await tick();assert.equal(secondFinished,false);finish(record('Saved words'));await Promise.all([first,second]);
  assert.equal(f.get(),'Saved words');assert.equal(f.c.state.opening,false);
 });
-test('persistent read failure remains actionable and cannot send or overwrite a draft',async()=>{
+test('persistent read failure stays actionable, never overwrites a draft and never blocks sending',async()=>{
  const f=fixture();f.store.read=async()=>{throw Error('Unavailable');};f.set('Unsent words');await f.c.open('one');
  assert.equal(f.get(),'Unsent words');assert.equal(f.saved(),null);assert.equal(f.c.state.error,true);
- await assert.rejects(f.c.hold('Unsent words'),/Review local draft storage/);
+ assert.equal(await f.c.hold('Unsent words'),true);f.set('');f.set('Newer');f.c.release();
+ assert.equal(f.get(),'Unsent words\nNewer','text held only in memory always returns to the composer');assert.equal(f.saved(),null);
+ assert.equal(await f.c.hold('Unsent words\nNewer'),true);f.set('');await f.c.commit();assert.equal(f.saved(),null);
+});
+test('a failed draft write never blocks sending',async()=>{
+ const f=fixture();await f.c.open('one');f.store.save=async()=>{throw Error('Write failed');};f.set('Send anyway');
+ assert.equal(await f.c.hold('Send anyway'),true);f.set('');await f.c.commit();assert.equal(f.get(),'');
 });
 test('the saved draft keeps the text while a send is in flight and clears only after dispatch',async()=>{
  const f=fixture();f.external('Hello agent');await f.c.open('one');assert.equal(f.get(),'Hello agent');
@@ -43,10 +49,10 @@ test('typing during the send is kept after the restored text and after a commit'
  await f.c.hold('First\nSecond');f.set('');f.set('Third');await tick();await f.c.commit();await tick();
  assert.equal(f.saved().text,'Third');assert.equal(f.get(),'Third');
 });
-test('holding refuses a changed draft and a second concurrent send',async()=>{
+test('holding quietly declines an edited or stale send and refuses a second concurrent send',async()=>{
  const f=fixture();f.external('Draft');await f.c.open('one');
- await assert.rejects(f.c.hold('Other text'),/draft changed/);await assert.rejects(f.c.hold('Draft',()=>false),/draft changed/);
- await f.c.hold('Draft');await assert.rejects(f.c.hold('Draft'),/Review local draft storage/);
+ assert.equal(await f.c.hold('Other text'),false);assert.equal(await f.c.hold('Draft',()=>false),false);assert.equal(f.c.holding,false);assert.equal(f.c.state.message,'');
+ assert.equal(await f.c.hold('Draft'),true);await assert.rejects(f.c.hold('Draft'),/already being sent/);
  f.c.release();assert.equal(f.saved().text,'Draft');
 });
 test('a reopened binding for the same conversation never offers the in-flight text again',async()=>{

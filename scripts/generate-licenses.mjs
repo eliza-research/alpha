@@ -688,6 +688,25 @@ export function agentBundlePackageDirs(bundleText) {
   return [...dirs].sort();
 }
 
+/** The minified bundle's package inventory is the build's emitted-input metadata, bound to the
+ * staged bundle bytes. Older unminified bundles carry it as module path comments instead. */
+export function agentBundleDependencyDirs(agentDir, bundleBytes, errors) {
+  const manifestFile = path.join(agentDir, 'plugins-manifest.json');
+  const recorded = fs.existsSync(manifestFile) ? JSON.parse(fs.readFileSync(manifestFile, 'utf8')).bundleDependencies : undefined;
+  if (!recorded) return agentBundlePackageDirs(bundleBytes.toString('utf8'));
+  if (recorded.version !== 1 || !Array.isArray(recorded.packages) || recorded.bundleSha256 !== createHash('sha256').update(bundleBytes).digest('hex')) {
+    errors.push('agent bundle: plugins-manifest.json bundleDependencies does not describe the staged agent-bundle.js; run npm run agent:stage-android');
+    return [];
+  }
+  const dirs = new Set();
+  for (const entry of recorded.packages) {
+    const dir = entry?.directory;
+    if (typeof dir !== 'string' || !dir.startsWith('node_modules/') || dir.split('/').some(part => !part || part === '.' || part === '..')) { errors.push('agent bundle: invalid recorded package directory'); continue; }
+    dirs.add(dir);
+  }
+  return [...dirs].sort();
+}
+
 function runtimePackageEntry(dir, bundle, templates, errors) {
   if (!fs.existsSync(path.join(dir, 'package.json'))) { errors.push(`${bundle}: ${dir} is not in the prepared runtime source; run npm run agent:prepare`); return null; }
   const manifest = readManifest(dir, `${bundle}: ${dir}`, errors);
@@ -735,7 +754,8 @@ export function runtimeEntries(root, templates, errors, {agentDir = path.join(ro
     if (existing) existing._bundles = [...new Set([...existing._bundles, ...entry._bundles])];
     else byId.set(key, entry);
   };
-  for (const dir of agentBundlePackageDirs(fs.readFileSync(path.join(agentDir, 'agent-bundle.js'), 'utf8')))
+  const bundleBytes = fs.readFileSync(path.join(agentDir, 'agent-bundle.js'));
+  for (const dir of agentBundleDependencyDirs(agentDir, bundleBytes, errors))
     add(runtimePackageEntry(path.join(sourceDir, dir), 'agent bundle', templates, errors));
   const workerDir = path.join(agentDir, 'workflow-worker');
   if (fs.existsSync(path.join(workerDir, 'dependencies.json'))) {

@@ -133,7 +133,7 @@ test("the privileged listener is pinned by a reviewed descriptor and must carry 
   const voiceHost = JSON.parse(fs.readFileSync(path.join(root, "android/voice-host/qualified-voice-host.json"), "utf8"));
   const arm = voiceHost.abis.find(row => row.abi === "arm64-v8a");
   const entries = ["AndroidManifest.xml", "classes.dex", "assets/paradee-voice/v1/manifest.json", "lib/arm64-v8a/libparadeevoicejni.so", ...arm.libraries.map(lib => `lib/arm64-v8a/${lib.name}`)];
-  const manifest = paths => JSON.stringify({ format: "eliza-paradee-voice-v1", files: paths.map(file => ({ path: file })) });
+  const manifest = paths => JSON.stringify({ format: "eliza-paradee-voice-v2", files: paths.map(file => ({ path: file })) });
   const full = () => manifest([...voiceHost.models.map(row => row.path)]);
   assert.deepEqual(checkListenerSpeechBundle(entries, voiceHost, full), ["arm64-v8a"]);
   assert.throws(() => checkListenerSpeechBundle(entries.filter(name => !name.startsWith("assets/")), voiceHost, full), /no assets\/paradee-voice\/v1\/manifest\.json/, "an APK without the bundle can never listen");

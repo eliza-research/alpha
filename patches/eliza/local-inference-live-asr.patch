@@ -1,0 +1,154 @@
+--- a/plugins/plugin-local-inference/src/services/runtime-services.ts
++++ b/plugins/plugin-local-inference/src/services/runtime-services.ts
+@@ -37,6 +37,8 @@
+ 		mmprojPath?: string;
+ 		prompt?: string;
+ 	}) => Promise<string>;
++	createStreamingTranscriber?(opts: never): unknown;
++	asrStreamSupported?(): Promise<boolean>;
+ }
+ 
+ /** Service instance that delegates the runtime lifecycle to one selected backend. */
+@@ -54,6 +56,8 @@
+ 	readonly transcribe?: RuntimeLocalInferenceLoader["transcribe"];
+ 	readonly synthesize?: RuntimeLocalInferenceLoader["synthesize"];
+ 	readonly describeImage?: RuntimeLocalInferenceLoader["describeImage"];
++	readonly createStreamingTranscriber?: RuntimeLocalInferenceLoader["createStreamingTranscriber"];
++	readonly asrStreamSupported?: RuntimeLocalInferenceLoader["asrStreamSupported"];
+ 
+ 	constructor(
+ 		runtime: IAgentRuntime,
+@@ -74,6 +78,14 @@
+ 		if (loader.describeImage) {
+ 			this.describeImage = loader.describeImage.bind(loader);
+ 		}
++		// The live ASR route reads these from the service, not the backend.
++		if (loader.createStreamingTranscriber) {
++			this.createStreamingTranscriber =
++				loader.createStreamingTranscriber.bind(loader);
++		}
++		if (loader.asrStreamSupported) {
++			this.asrStreamSupported = loader.asrStreamSupported.bind(loader);
++		}
+ 	}
+ 
+ 	async loadModel(args: LocalInferenceLoadArgs): Promise<void> {
+--- a/plugins/plugin-local-inference/src/services/runtime-services.test.ts
++++ b/plugins/plugin-local-inference/src/services/runtime-services.test.ts
+@@ -76,3 +76,41 @@
+ 		}
+ 	});
+ });
++
++describe("LocalInferenceLoaderRuntimeService live ASR surface", () => {
++	it("forwards streaming transcription bound to the backend", async () => {
++		const backend = {
++			loadModel: async () => {},
++			unloadModel: async () => {},
++			currentModelPath: () => null,
++			streaming: true,
++			createStreamingTranscriber(this: { streaming: boolean }) {
++				return this.streaming;
++			},
++			async asrStreamSupported(this: { streaming: boolean }) {
++				return this.streaming;
++			},
++		};
++		const service = new LocalInferenceLoaderRuntimeService(
++			{} as never,
++			backend,
++			async () => {},
++		);
++		expect(service.createStreamingTranscriber?.(undefined as never)).toBe(true);
++		await expect(service.asrStreamSupported?.()).resolves.toBe(true);
++	});
++
++	it("leaves the surface absent for a backend without it", () => {
++		const service = new LocalInferenceLoaderRuntimeService(
++			{} as never,
++			{
++				loadModel: async () => {},
++				unloadModel: async () => {},
++				currentModelPath: () => null,
++			},
++			async () => {},
++		);
++		expect(service.createStreamingTranscriber).toBeUndefined();
++		expect(service.asrStreamSupported).toBeUndefined();
++	});
++});
+--- a/plugins/plugin-local-inference/src/services/bionic-host-loader.ts
++++ b/plugins/plugin-local-inference/src/services/bionic-host-loader.ts
+@@ -168,9 +168,18 @@
+ 	}
+ 	return "";
+ }
++/**
++ * The app's installed voice bundle. Speech must not wait for a text model: a
++ * phone with hosted text inference never calls loadModel.
++ */
++function installedVoiceBundleDir(): string {
++	const dataDir = process.env.ELIZA_ANDROID_APP_DATA_DIR?.trim();
++	return dataDir ? path.join(dataDir, "files", "paradee-voice-v1") : "";
++}
++
+ export class BionicHostLoader implements LocalInferenceLoader {
+ 	private modelPath: string | null = null;
+-	private bundleDir = "";
++	private bundleDir = installedVoiceBundleDir();
+ 	private embeddingModelPath: string | null = null;
+ 	private embeddingBundleDir = "";
+ 	/** @param socketName abstract-namespace socket name (no leading NUL). */
+--- a/plugins/plugin-local-inference/src/services/bionic-host-loader.test.ts
++++ b/plugins/plugin-local-inference/src/services/bionic-host-loader.test.ts
+@@ -813,3 +813,22 @@
+ 		);
+ 	});
+ });
++
++describe("BionicHostLoader voice bundle", () => {
++	const key = "ELIZA_ANDROID_APP_DATA_DIR";
++	const saved = process.env[key];
++	afterEach(() => {
++		if (saved === undefined) delete process.env[key];
++		else process.env[key] = saved;
++	});
++	it("uses the installed voice bundle before any text model loads", () => {
++		process.env[key] = "/data/data/example.app";
++		const loader = new BionicHostLoader("sock") as unknown as { bundleDir: string };
++		expect(loader.bundleDir).toBe("/data/data/example.app/files/paradee-voice-v1");
++	});
++	it("has no bundle outside an Android app", () => {
++		delete process.env[key];
++		const loader = new BionicHostLoader("sock") as unknown as { bundleDir: string };
++		expect(loader.bundleDir).toBe("");
++	});
++});
+--- a/packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaBionicInferenceServer.java
++++ b/packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaBionicInferenceServer.java
+@@ -296,6 +296,13 @@
+         LocalServerSocket s = serverSocket;
+         serverSocket = null;
+         if (s != null) {
++            // close() alone leaves accept() blocked and the abstract address bound,
++            // so a same-process restart would fail with "Address already in use".
++            try {
++                android.system.Os.shutdown(s.getFileDescriptor(), android.system.OsConstants.SHUT_RDWR);
++            } catch (android.system.ErrnoException ignored) {
++                // Already closed by the peer; close() below still runs.
++            }
+             try {
+                 s.close();
+             } catch (IOException ignored) {
+--- a/packages/app/platforms/android/app/src/main/java/ai/elizaos/app/AgentSecureStore.java
++++ b/packages/app/platforms/android/app/src/main/java/ai/elizaos/app/AgentSecureStore.java
+@@ -167,6 +167,9 @@
+         try { if (active != null) active.close(); } catch (IOException error) {
+             Log.w("ElizaSecureStore", "Could not close secure-store client");
+         }
++        // close() alone leaves accept() blocked and the abstract address bound.
++        try { android.system.Os.shutdown(server.getFileDescriptor(), android.system.OsConstants.SHUT_RDWR); }
++        catch (android.system.ErrnoException ignored) { /* Already closed; close() below still runs. */ }
+         try { server.close(); } catch (IOException error) {
+             Log.w("ElizaSecureStore", "Could not close secure-store listener");
+         }

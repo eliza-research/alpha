@@ -66,5 +66,10 @@
     "mode": "registered",
     "className": "ai/elizaresearch/alphaphone/ElizaVoiceNative",
     "subset": "full"
+  },
+  "requalification": {
+    "required": true,
+    "atPin": "5d1af326e596fea5893d095db882bdb858a4a774",
+    "reason": "Upstream changed the native llama.cpp fork from 0d9fd4b9 to b3eb2bf6. The recorded libraries remain historical; rebuild and qualify new libraries without relabeling these bytes. The Cloud profile packages no local engine and is unaffected."
   }
 }

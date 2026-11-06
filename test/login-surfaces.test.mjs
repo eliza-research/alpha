@@ -205,7 +205,7 @@ test('Google sign-in and Google account authorization leave Alpha for the user\'
       returns.push(`${manifest.split(path.sep).join('/')}:${match[1]}`);
     }
   }
-  assert.deepEqual(returns.sort(), ['android/app/src/testMocks/AndroidManifest.xml:${stagingCloudWebHost}'], 'the production return comes only from the ELIZAOS_APP_LINK_HOST overlay (android/app/build.gradle); the staging return exists only in the test-mocks overlay');
+  assert.deepEqual(returns.sort(), ['android/app/src/testMocks/AndroidManifest.xml:${stagingCloudWebHost}'], 'the production return comes from the configured deployment overlay (android/app/build.gradle); the staging return exists only in the test-mocks overlay');
   assert.match(read('android/app/build.gradle'), /android:host="\\\$\{appLinkHost\}" android:path="\/alphaphone\/auth\/callback"\/><\/intent-filter>/, 'the build-gated sign-in return is one exact path');
   const signIn = read('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCloudSignInPlugin.java');
   assert.match(signIn, /CustomTabsIntent tab = new CustomTabsIntent\.Builder\(\)/, 'Google consent opens in a Custom Tab');

@@ -31,6 +31,15 @@ const bun=process.env.ALPHA_BUN||(scriptRunner&&/^bun(?:\.exe)?$/.test(path.base
 // Postinstall/turbo spawn `bun` by name: keep them on the selected toolchain too.
 // A bare command must retain PATH lookup, never add dirname('bun') == '.'.
 const installEnv=path.isAbsolute(bun)?{PATH:[path.dirname(bun),process.env.PATH].filter(Boolean).join(path.delimiter)}:{};
-if(!process.argv.includes('--source-only'))run(bun,['install','--frozen-lockfile'],directory,installEnv);
+if(!process.argv.includes('--source-only')){
+ const declared=JSON.parse(fs.readFileSync(path.join(directory,'package.json'),'utf8')).packageManager;
+ const expected=/^bun@(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)$/.exec(declared||'')?.[1];
+ if(!expected)throw Error('Prepared runtime packageManager must declare an exact Bun version.');
+ let actual;
+ try{actual=execFileSync(bun,['--version'],{cwd:directory,encoding:'utf8',env:preparedSourceEnv(process.env,installEnv)}).trim();}
+ catch{throw Error(`Cannot run selected Bun ${JSON.stringify(bun)}. This source requires Bun ${expected}. Install that version and set ALPHA_BUN to its absolute executable, or put it on PATH.`);}
+ if(actual!==expected)throw Error(`Selected Bun ${JSON.stringify(bun)} is ${actual}; this source requires Bun ${expected}. Set ALPHA_BUN to the absolute Bun ${expected} executable, or put that version on PATH.`);
+ run(bun,['install','--frozen-lockfile'],directory,installEnv);
+}
 verifySource(directory,lock.commit);
 console.log(`Prepared local runtime: ${directory}`);

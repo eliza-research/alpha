@@ -14,8 +14,8 @@ import org.junit.runner.RunWith;
 
 /**
  * Rotate on Home and with a composer draft: the active view and the draft survive and
- * the visible primary actions stay inside the viewport. Requires the landscape layout;
- * a portrait-locked build fails the orientation assertion rather than passing trivially.
+ * the visible primary actions stay inside the viewport. The standalone app requires the
+ * landscape layout; the launcher is portrait only, so there the same steps assert it stays put.
  * Emulator evidence only.
  */
 @RunWith(AndroidJUnit4.class)
@@ -42,6 +42,12 @@ public final class RotationInstrumentedTest {
  }
 
  private static void rotateAndCheck(UiDevice device,String view,String extra)throws Exception{
+  if(BuildConfig.IS_LAUNCHER){
+   device.setOrientationLeft();SystemClock.sleep(1500);
+   assertEquals("The launcher stays portrait",Configuration.ORIENTATION_PORTRAIT,orientation());
+   device.setOrientationNatural();until(AppNavigation.selected(view));if(extra!=null)until(extra);
+   return;
+  }
   device.setOrientationLeft();awaitOrientation(Configuration.ORIENTATION_LANDSCAPE);
   until(AppNavigation.selected(view));if(extra!=null)until(extra);
   assertEquals("Primary actions clipped in landscape "+view,"[]",clipped());

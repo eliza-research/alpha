@@ -38,6 +38,21 @@
       "@elizaos/ui/voice/voice-session-client": [
         "./.eliza/client-features/packages/ui/src/voice/voice-session-client.ts"
       ],
+      "@elizaos/core/logging": [
+        "./.eliza/client-features/packages/core/src/logging.ts"
+      ],
+      "@elizaos/core/view-interaction": [
+        "./.eliza/client-features/packages/core/src/view-interaction.ts"
+      ],
+      "@elizaos/host/voice/ui-context": [
+        "./.eliza/client-features/packages/host/src/voice/ui-context.ts"
+      ],
+      "@elizaos/contracts/sms-send": [
+        "./.eliza/client-features/packages/contracts/src/sms-send.ts"
+      ],
+      "@elizaos/contracts/device-action-execution": [
+        "./vendor/eliza/packages/contracts/src/device-action-execution.ts"
+      ],
       "@elizaos/host/protocol": [
         "./.eliza/client-features/packages/host/src/voice.ts"
       ],

@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {stripTypeScriptTypes} from 'node:module';
 import vm from 'node:vm';
 
-const source=readFileSync('.eliza/client-features/packages/ui/src/voice/voice-session-client.ts','utf8');
+const source=readFileSync('.eliza/client-features/packages/ui/src/voice/voice-session-client-core.ts','utf8');
 const start=source.indexOf('  function sendUplinkAudio('),end=source.indexOf('  function handleServerFrame(',start);
 assert(start>0&&end>start);
 const body=stripTypeScriptTypes(source.slice(start,end),{mode:'transform'});

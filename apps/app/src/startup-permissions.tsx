@@ -2,7 +2,6 @@ import {Capacitor, type PluginListenerHandle} from '@capacitor/core';
 import React, {useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore} from 'react';
 import {registerPlugin} from './platform-plugins';
 import {connectionController} from './runtime/connection-ui';
-import {cloudServiceName} from './runtime/cloud-protocol';
 import {googleConnectionController} from './runtime/google-connection-ui';
 import {readStartupPermissionMemory,writeStartupPermissionMemory,startupPhotoAccess,startupLocationAccess,STARTUP_PERMISSIONS_REOPEN} from './startup-permission-flow';
 import {iconStyle} from './icon-style';
@@ -23,12 +22,12 @@ const photos = registerPlugin<{scope():Promise<unknown>;requestAccess():Promise<
 const calendar = registerPlugin<{checkPermissions(): Promise<{calendar: string}>; requestAccess(): Promise<{status: string}>}>('AlphaCalendar');
 const device = registerPlugin<{openSettings(options: {page: 'notifications' | 'privacy'}): Promise<unknown>}>('AlphaDevice');
 const details = {
-  notifications: {title: 'Stay in the loop.', icon: 'bell', description: 'Allow notifications for reminders and task updates.', browser: 'Show reminders and task alerts while Alpha is open.'},
-  microphone: {title: 'Talk to Alpha.', icon: 'mic', description: 'Allow the microphone for voice conversations.', browser: 'Use your voice to talk with Alpha.'},
-  camera: {title: 'Capture a moment.', icon: 'camera', description: 'Allow the camera when you want to take a photo.', browser: 'Take photos and scan documents.'},
-  photos: {title: 'Your photos, here.', icon: 'images', description: 'Choose which photos and videos Alpha can use.', browser: ''},
-  calendar: {title: 'Plan your day.', icon: 'calendar', description: 'Allow calendar access to view and save events.', browser: ''},
-  location: {title: 'Find your way.', icon: 'map-pin', description: 'Allow location for Maps. Approximate location is enough.', browser: 'Use your location in Maps.'},
+  notifications: {title: 'Notifications', icon: 'bell'},
+  microphone: {title: 'Microphone', icon: 'mic'},
+  camera: {title: 'Camera', icon: 'camera'},
+  photos: {title: 'Photos', icon: 'images'},
+  calendar: {title: 'Calendar', icon: 'calendar'},
+  location: {title: 'Location', icon: 'map-pin'},
 };
 const progressKey = 'alpha:startup-permission-progress:v1';
 const dismissedKey = 'alpha:startup-permissions-dismissed:v1';
@@ -202,24 +201,22 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
   if (!visible) return null;
   if(ready)return <dialog ref={dialog} className="alpha-startup-permissions" aria-label="You’re all set" onCancel={event=>event.preventDefault()}><div className="alpha-permission-content">
     <span className="alpha-permission-icon" aria-hidden="true"><span style={iconStyle('check')}/></span><h2 className="serif" tabIndex={-1}>You’re all set</h2>
-    <p>Your choices are saved.</p>
     {connection.residentInference&&connection.residentInference!=='cloud'&&<p role="status" className="alpha-permission-status">{connection.residentPlanNotice==='needs-plan'?'AI needs an active Cloud plan. Manage it in Settings.':'AI is not ready yet. Check your connection in Settings.'}</p>}
     {connection.error&&<p role="alert" className="alpha-permission-status">{connection.error}</p>}
     {connection.message?.includes('did not confirm revoking')&&<p role="status" className="alpha-permission-status">{connection.message}</p>}
-    {connection.accountCreated&&<p role="status" className="alpha-permission-status">This sign-in created a new {cloudServiceName(connection.cloudAccount?.environment ?? 'production')} account{connection.cloudAccount?.email?` (${connection.cloudAccount.email})`:''}.</p>}
+    {connection.accountCreated&&<p role="status" className="alpha-permission-status">Account created.</p>}
     {progressError&&<p role="alert" className="alpha-permission-status">Setup progress could not be saved. Try again.</p>}
     <div className="alpha-permission-actions"><button type="button" className="alpha-permission-primary" disabled={busy} onClick={()=>void finish()}>{busy?'Checking…':'Go to Alpha'}</button></div>
   </div></dialog>;
   const info = details[key];
   const primary = busy ? 'Checking…' : target && native && (state === 'ready' || state === 'settings') ? 'Open Android settings' : target && !native && state === 'ready' ? 'Done' : state === 'ready' ? 'Continue' : state === 'settings' ? native ? 'Open Android settings' : 'Check access' : state === 'unavailable' ? 'Try again' : 'Allow';
-  return <dialog ref={dialog} className="alpha-startup-permissions" aria-labelledby="alpha-permission-title" aria-describedby="alpha-permission-description" onCancel={event => event.preventDefault()}>
+  return <dialog ref={dialog} className="alpha-startup-permissions" aria-labelledby="alpha-permission-title" onCancel={event => event.preventDefault()}>
     <div className="alpha-permission-content" key={key}>
       <span className="alpha-permission-icon" aria-hidden="true"><span style={iconStyle(info.icon)}/></span>
       <h2 id="alpha-permission-title" className="serif" tabIndex={-1}>{info.title}</h2>
-      <p id="alpha-permission-description">{native ? info.description : info.browser}</p>
-      {state === 'ready' && <p className="alpha-permission-status" role="status">{native&&key==='location'?locationDescription.current:native&&key==='photos'?photoDescription.current:'Access is allowed.'}{target && !native ? ' Change it using the site controls in the address bar.' : ''}</p>}
-      {state === 'settings' && <p className="alpha-permission-status" role="status">{native ? 'Access is off. You can change it in Android settings.' : 'Review access using the site controls in the address bar.'}</p>}
-      {state === 'unavailable' && <p className="alpha-permission-status" role="status">Access could not be confirmed. {native ? 'Check Android app settings.' : 'Check the site controls in the address bar.'}</p>}
+      {state === 'ready' && native && (key === 'location' || key === 'photos') && <p className="alpha-permission-status" role="status">{key === 'location' ? locationDescription.current : photoDescription.current}</p>}
+      {state === 'settings' && <p className="alpha-permission-status" role="status">{native ? 'Access is off. Open Android settings.' : 'Allow access in your browser’s site settings.'}</p>}
+      {state === 'unavailable' && <p className="alpha-permission-status" role="status">Access could not be confirmed. {native ? 'Check Android app settings.' : 'Check your browser’s site settings.'}</p>}
       {progressError && <p className="alpha-permission-status" role="alert">Setup progress could not be saved. Try again.</p>}
       {/* Nubs removed Skip from full onboarding; the previous optional flow remains in Git. */}
       <div className="alpha-permission-actions"><button className="alpha-permission-primary" type="button" disabled={busy || state === 'checking'} onClick={() => void allow()}>{state === 'checking' ? 'Checking…' : primary}</button>{target && !( !native && state === 'ready') && <button className="alpha-permission-skip" type="button" disabled={busy} onClick={() => advance('continued')}>Done</button>}</div>

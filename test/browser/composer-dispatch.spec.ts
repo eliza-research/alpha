@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 
-// Real composer, draft store and connection controller. Only the Android IPC boundary and a
+// Real composer and connection controller. Only the Android IPC boundary and a
 // remote agent are synthetic, in-page fixtures; nothing leaves the page.
 const REMOTE = 'https://agent.example.test';
 type Mode = 'expires' | 'post-fails';
@@ -61,34 +61,19 @@ async function remoteAgent(page: Page, mode: Mode) {
 }
 // The home composer and the conversation sheet each render one visible composer textbox.
 const composer = (page: Page) => page.locator('[data-alpha-layer="composer"][aria-hidden="false"], [data-alpha-layer="conversation"][aria-hidden="false"]').getByRole('textbox').first();
-const bindingKey = (page: Page) => page.evaluate(async () => {
-  const { connectionController } = await import('/src/runtime/connection-ui.tsx');
-  return connectionController.assistantDraftBinding(new AbortController().signal);
-});
-async function savedDraft(page: Page, key?: string) {
-  const binding = key ?? await bindingKey(page);
-  return page.evaluate(async binding => {
-    const { assistantDraftStore } = await import('/src/runtime/assistant-draft-store.ts');
-    return (await (await assistantDraftStore(binding)).read())?.text ?? null;
-  }, binding);
-}
 
 test('without a connection the chooser opens and the message returns to the composer', async ({ page }) => {
   await page.addInitScript(() => { if (!sessionStorage.getItem('seeded')) { sessionStorage.setItem('seeded', '1'); localStorage.setItem('alpha.connection.selection.v1', JSON.stringify({ kind: 'offline' })); } });
   await page.goto('/');
   await composer(page).fill('Keep this unsent message');
-  await expect.poll(() => savedDraft(page), { timeout: 15_000 }).toBe('Keep this unsent message');
   await composer(page).press('Enter');
   const chooser = page.locator('.alpha-connection');
   await expect(chooser).toBeVisible();
   await chooser.getByRole('button', { name: 'Close connection settings', exact: true }).click();
   await expect(composer(page)).toHaveValue('Keep this unsent message');
   await expect(page.getByText('Not sent. Your message is back in the composer.', { exact: true })).toBeVisible();
-  // The unsent bubble is removed; the durable draft was never cleared.
+  // The unsent bubble is removed.
   expect(await page.evaluate(text => [...document.querySelectorAll('[data-alpha-layer="conversation"] div')].filter(d => !d.querySelector('textarea') && d.textContent === text).length, 'Keep this unsent message')).toBe(0);
-  expect(await savedDraft(page)).toBe('Keep this unsent message');
-  await page.reload();
-  await expect(composer(page)).toHaveValue('Keep this unsent message');
 });
 
 test('a transport refusal before dispatch returns the text and sends nothing', async ({ page }) => {
@@ -98,16 +83,13 @@ test('a transport refusal before dispatch returns the text and sends nothing', a
   await expect.poll(() => page.evaluate(() => (window as any).dispatchFixture.ready), { timeout: 30_000 }).toBe(true);
   await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0, { timeout: 20_000 });
   await composer(page).fill('Do not lose this');
-  await expect.poll(() => savedDraft(page), { timeout: 15_000 }).toBe('Do not lose this');
   // Let the paired session lapse: the transport refuses before it creates or posts anything.
   await page.waitForFunction(() => Date.now() > (window as any).dispatchFixture.expiresAt + 250, undefined, { timeout: 30_000 });
-  const key = await bindingKey(page);
   await composer(page).press('Enter');
   // The expired session is retired and the chooser opens; the message never left the phone.
   await expect(page.locator('.alpha-connection')).toBeVisible();
   await page.getByRole('button', { name: 'Close connection settings', exact: true }).first().click();
   await expect(composer(page)).toHaveValue('Do not lose this');
-  expect(await savedDraft(page, key)).toBe('Do not lose this');
   expect(await page.evaluate(() => { const f = (window as any).dispatchFixture; return { posts: f.posts, created: f.created }; })).toEqual({ posts: 0, created: false });
 });
 
@@ -116,15 +98,12 @@ test('a failure after dispatch offers Check for reply and never resends', async 
   await page.goto('/');
   await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0, { timeout: 20_000 });
   await composer(page).fill('Was this delivered?');
-  await expect.poll(() => savedDraft(page), { timeout: 15_000 }).toBe('Was this delivered?');
-  const key = await bindingKey(page);
   await composer(page).press('Enter');
   const check = page.getByRole('button', { name: /^Check for reply/ });
   await expect(check).toBeVisible();
   await expect(page.getByText('Your message may have reached the agent. Check before sending it again.', { exact: true })).toBeVisible();
   // The message may have been received, so it is not offered again as a draft.
   await expect(composer(page)).toHaveValue('');
-  await expect.poll(() => savedDraft(page, key)).toBe('');
   // One logical send: the transport may reconcile a dropped response once by repeating the identical
   // request under the same clientMessageId, which the agent deduplicates. It never sends a new message.
   const sent = await page.evaluate(() => { const f = (window as any).dispatchFixture; return { posts: f.posts, ids: [...new Set(f.messageIds)], bodies: [...new Set(f.bodies)] }; });

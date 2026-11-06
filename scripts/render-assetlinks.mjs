@@ -10,7 +10,7 @@
  * certificate: every debug row's signerSha256 in artifacts/apk-manifest.json and each
  * --debug-fingerprint given. Writes artifacts/assetlinks.json by default. The file holds no secret;
  * publishing it is the release owner's step (docs/mvp-owner-actions.md action 6). The https
- * autoVerify filter itself is emitted only by a build with ELIZAOS_APP_LINK_HOST set
+ * autoVerify filter is generated from the configured Cloud web host
  * (android/app/build.gradle); appLinkFilters() reads it back from an APK manifest dump.
  */
 import fs from "node:fs";
@@ -102,6 +102,24 @@ export function appLinkFilters(xmltree) {
   return { present: hosts.size > 0, hosts: [...hosts].sort() };
 }
 
+/** Require a complete sign-in return filter for each configured host in the packaged manifest. */
+export function signInAppLinkProblems(xmltree, expectedHosts) {
+  const lines = String(xmltree ?? "").split("\n"), returns = new Set();
+  for (let i = 0; i < lines.length; i++) {
+    const start = /^(\s*)E: intent-filter\b/.exec(lines[i]);
+    if (!start) continue;
+    let end = i + 1;
+    while (end < lines.length && (!lines[end].trim() || /^(\s*)/.exec(lines[end])[1].length > start[1].length)) end++;
+    const block = lines.slice(i, end).join("\n");
+    if (!/android:autoVerify\([^)]*\)=(?:\(type 0x12\)0xffffffff|true)/.test(block)
+      || !/android:scheme\([^)]*\)="https"/.test(block)
+      || !/android:path\([^)]*\)="\/alphaphone\/auth\/callback"/.test(block)
+      || !['android.intent.action.VIEW', 'android.intent.category.DEFAULT', 'android.intent.category.BROWSABLE'].every(value => block.includes(`="${value}"`))) continue;
+    for (const host of block.matchAll(/android:host\([^)]*\)="([^"]+)"/g)) returns.add(host[1]);
+  }
+  return expectedHosts.filter(host => !returns.has(host)).map(host => `Missing verified sign-in return for https://${host}/alphaphone/auth/callback`);
+}
+
 function main(argv) {
   const out = argv.includes("--out") ? argv[argv.indexOf("--out") + 1] : DEFAULT_OUTPUT;
   const debugFingerprints = argv.flatMap((arg, index) => arg === "--debug-fingerprint" ? [argv[index + 1]] : []);
@@ -119,7 +137,7 @@ function main(argv) {
     });
     fs.mkdirSync(path.dirname(path.resolve(out)), { recursive: true });
     fs.writeFileSync(out, text);
-    console.log(`Wrote ${out}. Publish it at https://<ELIZAOS_APP_LINK_HOST>/.well-known/assetlinks.json before building with that host.`);
+    console.log(`Wrote ${out}. Publish it at the configured Cloud web host's /.well-known/assetlinks.json.`);
     return 0;
   } catch (error) {
     console.error(error.message);

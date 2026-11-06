@@ -379,7 +379,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
       if(manager===current&&owner.isActive()&&owner.get('photos').sheet==='owned-album'){
         manager=undefined;
         owner.set({sheet:null,...(operation==='delete'?{album:null,open:null,nativePhotoSelection:null}:{}),nativeAlbumsError:''});
-        owner.toast(operation==='delete'?'Album deleted. Its media was kept.':operation==='remove'?'Removed from album. Its media was kept.':'Album saved');
+        if(operation==='delete'||operation==='remove')owner.toast(operation==='delete'?'Album deleted. Its media was kept.':'Removed from album. Its media was kept.');
       }
       await loadCustomAlbums(owner);
     }catch(error){if(!disposed){if(manager===current&&owner.isActive())owner.toast(error instanceof Error?error.message:'Album could not be saved.');void loadCustomAlbums(owner);}}
@@ -415,7 +415,6 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
       const stillSelected = owner.isActive() && owner.get('photos').open === row.id;
       if (stillSelected) preview = updated;
       owner.set({...(stillSelected ? {nativePhotoSelection:captureSelection(updated)} : {}),nativeCaptureRevision:Date.now()});
-      owner.toast(updated.favorite?'Added to favorites':'Removed from favorites');
       albumKey='';++albumEpoch;void loadCounts(owner);
     } catch (error) { if (!disposed) owner.toast(error instanceof Error?error.message:'Favorite could not be changed.'); }
     finally { mutating = false; if(!disposed)owner.set({nativePhotoMutation:Date.now()}); }

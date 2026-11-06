@@ -153,9 +153,62 @@ any `UNSET` descriptor or channel value, a target-files hash that differs from t
 record, a missing key file, or a platform certificate, OTA certificate or AVB public key that
 differs from the reviewed digests in the product descriptor and
 `android/aosp/pixel10a-ota-channel.json`. `--dry-run` prints the exact commands and every
-problem and runs nothing. HSM-backed signing helpers (`--signing_helper_with_files`,
-`--payload_signer`) are not wired, and none of this has run against a real stallion
-target-files or real APEXes.
+problem and runs nothing. None of this has run against a real stallion target-files or real
+APEXes. The chained partitions in `avb.chainedPartitions` must be ones `sign_target_files_apks`
+can re-sign (`boot`, `dtbo`, `init_boot`, `recovery`, `system`, `system_other`,
+`vbmeta_system`, `vbmeta_vendor`, `vendor`); any other is refused before signing.
+
+### Managed (hardware-backed) signing
+
+Decision P-16 calls for managed or hardware-backed release signing. With the four managed
+options the job keeps every private key in a PKCS#11 token (an HSM, or a managed key service's
+PKCS#11 library) and the key directory holds only public material:
+
+```sh
+node scripts/sign-aosp-release.mjs ...the options above... \
+  --pkcs11-config /absolute/sunpkcs11.cfg --avb-signing-helper /absolute/avb-helper \
+  --payload-signer /absolute/payload-signer [--payload-signer-arg ARG ...] \
+  --payload-signer-signature-size 512
+```
+
+The options are given together or not at all; private key files and token keys are never
+mixed. The key directory then holds every `<name>.x509.pem`, `avb_pkmd.bin`, and for re-signed
+APEXes `apex.x509.pem` and `apex_payload.avbpubkey`, with `avb.pem` and `apex_payload.pem` as
+**public** keys (`-----BEGIN PUBLIC KEY-----`). Any `.pk8` file in it, or a non-public `avb.pem`
+or `apex_payload.pem`, is refused. The same location, permission and reviewed-digest checks
+apply, and the same post-signing `apksigner` check refuses an APK or APEX whose signature does
+not verify against a release certificate, so a token key that does not match its certificate
+stops the job before any OTA is built.
+
+- **APK, APEX container and OTA package keys**: signapk loads them from the token through
+  SunPKCS11 (`--extra_signapk_args "-providerClass sun.security.pkcs11.SunPKCS11 -providerArg
+  CONFIG -loadPrivateKeysFromKeyStore PKCS11"`, with `--java_args` adding the
+  `jdk.crypto.cryptoki/sun.security.pkcs11` export a JDK 9+ needs). signapk looks each key up
+  by the private-key path it would otherwise read, so the token's key labels are
+  `<key-dir real path>/<name>.pk8` (for example `/run/alpha-release-keys/platform.pk8`): use a
+  stable key-directory path. `--dry-run` prints every label as `tokenLabels`.
+- **AVB (vbmeta, each chained partition, APEX payloads)**: avbtool calls
+  `--avb-signing-helper` through `--signing_helper_with_files` as
+  `HELPER ALGORITHM PUBLIC_KEY_PATH FILE`. The helper must sign the padded hash in `FILE` with
+  the token key for that public key and **overwrite `FILE` in place**: avbtool rereads the file
+  it already has open, so a helper that replaces the file (`mv`) leaves the hash unsigned and
+  the image fails verification.
+- **OTA payload**: `ota_from_target_files --payload_signer` runs
+  `SIGNER ARGS... -in HASH_FILE -out SIGNATURE_FILE`; the arguments name the token key.
+  `--payload-signer-signature-size` is the signature size in bytes (512 for RSA-4096).
+
+Paths and signer arguments must be plain words (no spaces, quotes or shell characters), because
+the releasetools split them with `shlex`. A token PIN or service credential belongs in the
+token's own configuration or environment, never on a command line, where any local user can
+read it. `release-record.json` records `inputs.signingMode` as `managed` or `key-files`.
+
+These argument vectors were parsed by the AOSP 17 (`android-17.0.0_r1`)
+`sign_target_files_apks` and `ota_from_target_files` option parsers. On 2026-10-25, the built
+stallion-tree `avbtool` signed a vbmeta image and a hash-footer image through a
+`--signing_helper_with_files` helper with only a public key on disk, and both verified. The
+built `signapk.jar` loaded SunPKCS11 with these arguments and looked up `<key-dir>/platform.pk8`
+in the token. No signing ran with a real token or managed service, and no stallion
+target-files was signed.
 
 `android/aosp/pixel10a-ota-channel.json` is the one signed update channel: authority, release
 owner, the OTA certificate and AVB key digests, `downgradeAllowed: false`, the stock factory
@@ -165,5 +218,5 @@ compatible-rollback or stock-recovery drill is not `passed`; the script prints t
 `NOT DISTRIBUTABLE`. Drill results are recorded from executed drills, never by software.
 
 `node --test test/aosp-release-signing.test.mjs` exercises these refusals, the command lines
-and the record with mocked releasetools and throwaway certificates. It is not a signed image,
+(key-file and managed) and the record with mocked releasetools and throwaway certificates. It is not a signed image,
 an image boot, an applied OTA, or a rollback or recovery drill.

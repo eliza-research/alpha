@@ -3,6 +3,17 @@ export const nativeInputPaths = [
  'packages/app/scripts/stage-elizavoice-lib.ts',
  'packages/app/scripts/build-helpers/arm64-simd.ts',
  'packages/app/scripts/build-helpers/verify-fused-symbols.ts',
+ 'packages/app/scripts/build-helpers/omnivoice-merged.ts',
+ 'packages/app/scripts/aosp/compile-libllama.ts',
+ 'packages/app/scripts/aosp/compile-libllama-paths.ts',
+ 'packages/app/scripts/aosp/compile-shim.ts',
+ 'packages/app/scripts/aosp/vulkan-source-contract.ts',
+ 'packages/app/scripts/aosp/zig-toolchain.ts',
+ 'packages/app/scripts/lib/repo-root.ts',
+ // resolveRepoRoot needs these monorepo markers.
+ 'package.json',
+ 'packages/app/package.json',
+ 'packages/agent/package.json',
  'packages/app/platforms/android/app/src/main/elizavoice-jni/CMakeLists.txt',
  'packages/app/platforms/android/app/src/main/elizavoice-jni/elizavoice-jni.cpp',
 ];

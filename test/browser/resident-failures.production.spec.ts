@@ -119,36 +119,6 @@ for (const frame of ['done', 'error'] as const) test(`a provider-less turn witho
   expect(foreign).toEqual([]);
 });
 
-test('without a network the resident says AI needs a connection, sends nothing, and clears the notice when back online', async ({ page, context }) => {
-  test.setTimeout(120_000);
-  await connected(page);
-  const notice = page.getByText('Your agent is running; AI needs a connection. Nothing is sent until this phone is back online.', { exact: true });
-  await expect(notice).toHaveCount(0);
-  await context.setOffline(true);
-  await expect(notice).toBeVisible();
-  await send(page, 'Sent while offline');
-  await expect(page.getByText(NOT_SENT, { exact: true }).first()).toBeVisible();
-  await expect(composer(page)).toHaveValue('Sent while offline');
-  expect(await harness(page, f => f.streams)).toBe(0);
-  // Local apps keep working: Notes opens and the notice stays beside the composer.
-  await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
-  await button(page, 'Notes').click();
-  await expect(page.locator('html')).toHaveAttribute('data-active-view', 'notes');
-  await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
-  // Readiness is retracted while offline.
-  await button(page, 'Settings').click();
-  await page.getByRole('button', { name: 'Agent connection', exact: true }).click();
-  await expect(page.getByRole('region',{name:'Settings',exact:true})).not.toContainText('Connected');
-  await page.getByRole('button', { name: 'Back to Settings', exact: true }).click();
-  await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
-  await context.setOffline(false);
-  await expect(notice).toHaveCount(0);
-  // Only the owner's own Send posts it, once.
-  await composer(page).fill('Sent when back online'); await composer(page).press('Enter');
-  await expect(bubble(page, 'Resident reply 1')).toHaveCount(1);
-  expect(await harness(page, f => f.posts)).toHaveLength(1);
-});
-
 for (const mode of ['reject', 'busy'] as const) {
   test(`a resident stream ${mode === 'reject' ? 'refused by native IPC' : 'refused with HTTP 429'} keeps the text, and a second Send posts once`, async ({ page }) => {
     test.setTimeout(120_000);

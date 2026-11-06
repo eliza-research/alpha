@@ -192,7 +192,7 @@ export const setStub = (page: Page, patch: Record<string, unknown>) => page.eval
 
 /** Complete the visible synthetic native email form after the product sign-in button is clicked. */
 export async function enterNativeEmailCode(page: Page, email='owner@example.invalid') {
-  const panel=page.getByRole('main',{name:'Sign in to Eliza Cloud',exact:true}).or(page.getByRole('dialog',{name:'Sign in to Eliza Cloud',exact:true}));
+  const panel=page.getByRole('main',{name:'Sign in',exact:true}).or(page.getByRole('dialog',{name:'Sign in',exact:true}));
   await expect(panel).toBeVisible();
   await panel.getByRole('textbox',{name:'Email',exact:true}).fill(email);
   await panel.getByRole('button',{name:'Email me a code',exact:true}).click();

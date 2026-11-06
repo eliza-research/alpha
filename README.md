@@ -81,6 +81,8 @@ Select it explicitly with `--runtime-profile=cloud` for runtime staging and Andr
 builds (`agent:stage-android` and `android:build`). Renderer, native and packaged
 runtime admission must agree on the profile; test mocks and unpackaged runtimes
 are rejected. The default remains `native` with its existing qualification gates.
+Use the default `native` profile for on-device speech with Cloud text inference
+([measurements](docs/on-device-speech-2026-11-05.md)).
 Cloud QA builds do not establish offline/native-speech, AOSP or release acceptance;
 real account, inference, microphone and playback evidence is still required.
 
@@ -209,7 +211,13 @@ file flows, dialog accessibility, disclosed adapter fixtures and reference desig
 states. Reports/screenshots are in `test-results/browser-report` and
 `test-results/browser`. Browser CI runs independently of Android qualification.
 
-Use Node 24.15.0 and JDK 21. Native builds require Android SDK platform 36 and
+Use Node 24.15.0, the prepared source's pinned Bun version (currently 1.4.2), and JDK 21.
+`agent:prepare` checks Bun against the upstream `packageManager` before installing dependencies,
+and `agent:stage-android` refuses to bundle with any other Bun (Bun 1.3.14 dropped modules from
+the mobile bundle, so every chat turn failed).
+Put that Bun version first on `PATH` for the build scripts; `ALPHA_BUN` may also select
+its absolute executable for preparation and nested tools.
+Native builds require Android SDK platform 36 and
 build-tools 36.0.0. Set `JAVA_HOME` and `ANDROID_HOME` on Linux; the scripts also
 recognize the usual macOS Homebrew JDK/Android SDK locations. The Gradle 8.13
 wrapper is hash-pinned. No Eliza root dependency installation or package

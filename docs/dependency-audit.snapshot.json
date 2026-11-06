@@ -103,16 +103,16 @@
   ],
   "resident": {
     "description": "Advisories for the resident runtime's npm packages at the pinned upstream commit, from the npm bulk advisory endpoint. Regenerate with: node scripts/dependency-audit.mjs --resident --write. Dispositions live in docs/dependency-audit.dispositions.json under \"resident\".",
-    "upstreamCommit": "ff9c8264550efd64fd0119c6ff50f99eb8561977",
+    "upstreamCommit": "5d1af326e596fea5893d095db882bdb858a4a774",
     "input": "vendor/eliza/bun.lock",
-    "auditedOn": "2026-10-25",
-    "inputSha256": "db4abd2f41fe9ce438617059d44becec4eefb01ec560a4208a77f16aaf4122d8",
-    "packages": 3694,
+    "auditedOn": "2026-11-06",
+    "inputSha256": "7c9d7bd390a29fac9da3c16af0fdc4d0998ce7eaf6fb2b82020bc9055ee9e11e",
+    "packages": 3677,
     "counts": {
       "info": 0,
-      "low": 17,
-      "moderate": 53,
-      "high": 53,
+      "low": 21,
+      "moderate": 66,
+      "high": 65,
       "critical": 1
     },
     "findings": [
@@ -142,6 +142,20 @@
           "vulnerableRange": ">=1.0.0 <3.2.1",
           "title": "@fastify/busboy vulnerable to Denial of Service via prototype-named multipart part header",
           "url": "https://github.com/advisories/GHSA-x8mw-p69m-v3mx"
+        }
+      },
+      {
+        "package": "@hono/node-server",
+        "versions": [
+          "2.0.10"
+        ],
+        "severity": "moderate",
+        "advisory": {
+          "id": "GHSA-rmxm-3fg6-px4f",
+          "severity": "moderate",
+          "vulnerableRange": ">=1.19.10 <2.1.3",
+          "title": "@hono/node-server: `serveStatic` decodes the request path a second time, leading to bypass of middleware on static paths",
+          "url": "https://github.com/advisories/GHSA-rmxm-3fg6-px4f"
         }
       },
       {
@@ -593,20 +607,6 @@
         }
       },
       {
-        "package": "compression",
-        "versions": [
-          "1.8.1"
-        ],
-        "severity": "high",
-        "advisory": {
-          "id": "GHSA-vc2v-76pw-4v95",
-          "severity": "high",
-          "vulnerableRange": "<1.8.2",
-          "title": "compression vulnerable to Denial of Service via memory leak on premature response close",
-          "url": "https://github.com/advisories/GHSA-vc2v-76pw-4v95"
-        }
-      },
-      {
         "package": "cookie",
         "versions": [
           "0.4.2"
@@ -621,17 +621,17 @@
         }
       },
       {
-        "package": "decode-uri-component",
+        "package": "deepmerge",
         "versions": [
-          "0.2.2"
+          "4.3.1"
         ],
-        "severity": "moderate",
+        "severity": "low",
         "advisory": {
-          "id": "GHSA-vcc3-ghjq-m6fr",
-          "severity": "moderate",
-          "vulnerableRange": "<=0.4.2",
-          "title": "decode-uri-component: Denial of service via exponential decoding of malformed percent-encoded input",
-          "url": "https://github.com/advisories/GHSA-vcc3-ghjq-m6fr"
+          "id": "GHSA-gcqx-w48m-w2h4",
+          "severity": "low",
+          "vulnerableRange": ">=4.2.0 <=4.3.1",
+          "title": "deepmerge mergeObject() allows prototype poisoning of returned objects",
+          "url": "https://github.com/advisories/GHSA-gcqx-w48m-w2h4"
         }
       },
       {
@@ -809,6 +809,20 @@
         ],
         "severity": "high",
         "advisory": {
+          "id": "GHSA-mrwp-f3q8-3g9p",
+          "severity": "high",
+          "vulnerableRange": ">=1.16.0 <=1.16.1",
+          "title": "follow-redirects: Cross-realm sensitiveHeaders arrays are discarded and custom credentials can follow redirects",
+          "url": "https://github.com/advisories/GHSA-mrwp-f3q8-3g9p"
+        }
+      },
+      {
+        "package": "follow-redirects",
+        "versions": [
+          "1.16.0"
+        ],
+        "severity": "high",
+        "advisory": {
           "id": "GHSA-q3jh-wrc6-jgq8",
           "severity": "high",
           "vulnerableRange": ">=1.16.0 <1.16.1",
@@ -817,17 +831,18 @@
         }
       },
       {
-        "package": "http-cache-semantics",
+        "package": "glob",
         "versions": [
-          "4.2.0"
+          "10.5.0",
+          "13.0.6"
         ],
-        "severity": "high",
+        "severity": "moderate",
         "advisory": {
-          "id": "GHSA-ch52-4w7c-c8xp",
-          "severity": "high",
-          "vulnerableRange": "<=4.2.0",
-          "title": "http-cache-semantics max-stale handling can disclose cross-user cached responses",
-          "url": "https://github.com/advisories/GHSA-ch52-4w7c-c8xp"
+          "id": "GHSA-3g3m-2fjr-6pw4",
+          "severity": "moderate",
+          "vulnerableRange": ">=9.0.0 <=14.0.1",
+          "title": "Glob: AbortSignal cancellation bypass allows post-timeout filesystem traversal",
+          "url": "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
         }
       },
       {
@@ -888,6 +903,120 @@
         }
       },
       {
+        "package": "minimatch",
+        "versions": [
+          "10.2.5",
+          "10.2.6",
+          "9.0.9"
+        ],
+        "severity": "moderate",
+        "advisory": {
+          "id": "GHSA-g3hv-75wg-m249",
+          "severity": "moderate",
+          "vulnerableRange": ">=7.0.0 <11.0.1",
+          "title": "minimatch has potential denial of service via globparts amplification",
+          "url": "https://github.com/advisories/GHSA-g3hv-75wg-m249"
+        }
+      },
+      {
+        "package": "node-forge",
+        "versions": [
+          "1.4.0"
+        ],
+        "severity": "low",
+        "advisory": {
+          "id": "GHSA-4487-j8r4-4g2f",
+          "severity": "low",
+          "vulnerableRange": "<=1.4.0",
+          "title": "Forge: verifyCertificateChain() removes trusted CA certificates with the same subject from the CA store",
+          "url": "https://github.com/advisories/GHSA-4487-j8r4-4g2f"
+        }
+      },
+      {
+        "package": "node-forge",
+        "versions": [
+          "1.4.0"
+        ],
+        "severity": "low",
+        "advisory": {
+          "id": "GHSA-4642-5mcj-2rqw",
+          "severity": "low",
+          "vulnerableRange": "<=1.4.0",
+          "title": "Forge: ASN.1 OID first arc truncation in asn1.oidToDer",
+          "url": "https://github.com/advisories/GHSA-4642-5mcj-2rqw"
+        }
+      },
+      {
+        "package": "node-forge",
+        "versions": [
+          "1.4.0"
+        ],
+        "severity": "moderate",
+        "advisory": {
+          "id": "GHSA-525v-9gp9-w22h",
+          "severity": "moderate",
+          "vulnerableRange": "<=1.4.0",
+          "title": "Forge: TLS client crash when the server sends no certificate",
+          "url": "https://github.com/advisories/GHSA-525v-9gp9-w22h"
+        }
+      },
+      {
+        "package": "node-forge",
+        "versions": [
+          "1.4.0"
+        ],
+        "severity": "moderate",
+        "advisory": {
+          "id": "GHSA-5cwg-6vw7-rj6p",
+          "severity": "moderate",
+          "vulnerableRange": "<=1.4.0",
+          "title": "Forge: AES-GCM authentication bypass via unvalidated tagLength option",
+          "url": "https://github.com/advisories/GHSA-5cwg-6vw7-rj6p"
+        }
+      },
+      {
+        "package": "node-forge",
+        "versions": [
+          "1.4.0"
+        ],
+        "severity": "high",
+        "advisory": {
+          "id": "GHSA-5x38-2vff-x55p",
+          "severity": "high",
+          "vulnerableRange": "<=1.4.0",
+          "title": "Forge: X.509 basicConstraints bypass in verifyCertificateChain() via deprecated extension OIDs 2.5.29.10 and 2.5.29.13",
+          "url": "https://github.com/advisories/GHSA-5x38-2vff-x55p"
+        }
+      },
+      {
+        "package": "node-forge",
+        "versions": [
+          "1.4.0"
+        ],
+        "severity": "moderate",
+        "advisory": {
+          "id": "GHSA-6wvx-3r32-xmcg",
+          "severity": "moderate",
+          "vulnerableRange": "<=1.4.0",
+          "title": "Forge: Prototype Pollution in forge.http cookie handling via a malicious Set-Cookie",
+          "url": "https://github.com/advisories/GHSA-6wvx-3r32-xmcg"
+        }
+      },
+      {
+        "package": "node-forge",
+        "versions": [
+          "1.4.0"
+        ],
+        "severity": "high",
+        "advisory": {
+          "id": "GHSA-7wch-p9px-956x",
+          "severity": "high",
+          "vulnerableRange": "<=1.4.0",
+          "title": "Forge: Regular expression denial of service in PEM decoding (pem.decode)",
+          "url": "https://github.com/advisories/GHSA-7wch-p9px-956x"
+        }
+      },
+      {
         "package": "node-forge",
         "versions": [
           "1.4.0"
@@ -899,6 +1028,76 @@
           "vulnerableRange": "<=1.4.0",
           "title": "node-forge RSA PKCS#1 v1.5 signature verification accepts extra nested DigestAlgorithm elements",
           "url": "https://github.com/advisories/GHSA-86w9-cpqp-85rv"
+        }
+      },
+      {
+        "package": "node-forge",
+        "versions": [
+          "1.4.0"
+        ],
+        "severity": "high",
+        "advisory": {
+          "id": "GHSA-8hrf-8g6f-7xwp",
+          "severity": "high",
+          "vulnerableRange": "<=1.4.0",
+          "title": "Forge: Denial of service in TLS record processing via a record interleaved with a fragmented handshake message",
+          "url": "https://github.com/advisories/GHSA-8hrf-8g6f-7xwp"
+        }
+      },
+      {
+        "package": "node-forge",
+        "versions": [
+          "1.4.0"
+        ],
+        "severity": "low",
+        "advisory": {
+          "id": "GHSA-h6cr-wjv9-3cpp",
+          "severity": "low",
+          "vulnerableRange": "<=1.4.0",
+          "title": "Forge: Denial of Service via infinite loop in BigInteger.modInverse() with negative input (incomplete fix of CVE-2026-33891)",
+          "url": "https://github.com/advisories/GHSA-h6cr-wjv9-3cpp"
+        }
+      },
+      {
+        "package": "node-forge",
+        "versions": [
+          "1.4.0"
+        ],
+        "severity": "high",
+        "advisory": {
+          "id": "GHSA-hqq3-7jhf-c5jx",
+          "severity": "high",
+          "vulnerableRange": "<=1.4.0",
+          "title": "Forge: Denial of service in TLS record processing via call stack exhaustion",
+          "url": "https://github.com/advisories/GHSA-hqq3-7jhf-c5jx"
+        }
+      },
+      {
+        "package": "node-forge",
+        "versions": [
+          "1.4.0"
+        ],
+        "severity": "high",
+        "advisory": {
+          "id": "GHSA-jc66-7q78-782g",
+          "severity": "high",
+          "vulnerableRange": "<=1.4.0",
+          "title": "Forge: PKCS#12 MAC forgery and constant-key PBE via zero iteration count",
+          "url": "https://github.com/advisories/GHSA-jc66-7q78-782g"
+        }
+      },
+      {
+        "package": "nodemailer",
+        "versions": [
+          "10.0.12"
+        ],
+        "severity": "moderate",
+        "advisory": {
+          "id": "GHSA-4ffr-jq9g-5ffx",
+          "severity": "moderate",
+          "vulnerableRange": ">=3.0.0 <=10.0.12",
+          "title": "Nodemailer: Quadratic backtracking in SMTP AUTH mechanism detection regexes allows pre-auth remote denial of service",
+          "url": "https://github.com/advisories/GHSA-4ffr-jq9g-5ffx"
         }
       },
       {
@@ -936,6 +1135,20 @@
         ],
         "severity": "moderate",
         "advisory": {
+          "id": "GHSA-g73g-hqqh-jr95",
+          "severity": "moderate",
+          "vulnerableRange": ">=3.0.0 <=10.0.12",
+          "title": "Nodemailer: RFC 5322 comment inside an angle-bracket address is never stripped",
+          "url": "https://github.com/advisories/GHSA-g73g-hqqh-jr95"
+        }
+      },
+      {
+        "package": "nodemailer",
+        "versions": [
+          "10.0.12"
+        ],
+        "severity": "moderate",
+        "advisory": {
           "id": "GHSA-m943-m63m-w62w",
           "severity": "moderate",
           "vulnerableRange": ">=3.0.0 <10.1.4",
@@ -955,6 +1168,20 @@
           "vulnerableRange": "<=3.1.6",
           "title": "pbkdf2 rehashes long passwords on every iteration, enabling denial of service",
           "url": "https://github.com/advisories/GHSA-477h-4r7f-fvrx"
+        }
+      },
+      {
+        "package": "qs",
+        "versions": [
+          "6.16.0"
+        ],
+        "severity": "moderate",
+        "advisory": {
+          "id": "GHSA-6pq8-jhm2-2vcw",
+          "severity": "moderate",
+          "vulnerableRange": ">=6.7.0 <=6.16.0",
+          "title": "qs : qs.stringify with arrayFormat 'comma' throws an uncaught TypeError on array elements carrying a non-callable own toString (DoS)",
+          "url": "https://github.com/advisories/GHSA-6pq8-jhm2-2vcw"
         }
       },
       {
@@ -1227,6 +1454,51 @@
       {
         "package": "undici",
         "versions": [
+          "8.10.0",
+          "8.11.2"
+        ],
+        "severity": "high",
+        "advisory": {
+          "id": "GHSA-2m5v-pch6-74hx",
+          "severity": "high",
+          "vulnerableRange": ">=8.0.0 <8.12.2",
+          "title": "undici vulnerable to TLS certificate validation bypass via dropped tls options in Agent",
+          "url": "https://github.com/advisories/GHSA-2m5v-pch6-74hx"
+        }
+      },
+      {
+        "package": "undici",
+        "versions": [
+          "7.28.0",
+          "7.29.1"
+        ],
+        "severity": "high",
+        "advisory": {
+          "id": "GHSA-2m5v-pch6-74hx",
+          "severity": "high",
+          "vulnerableRange": ">=7.0.0 <7.30.1",
+          "title": "undici vulnerable to TLS certificate validation bypass via dropped tls options in Agent",
+          "url": "https://github.com/advisories/GHSA-2m5v-pch6-74hx"
+        }
+      },
+      {
+        "package": "undici",
+        "versions": [
+          "5.29.0",
+          "6.28.1"
+        ],
+        "severity": "high",
+        "advisory": {
+          "id": "GHSA-2m5v-pch6-74hx",
+          "severity": "high",
+          "vulnerableRange": ">=4.0.0 <6.29.1",
+          "title": "undici vulnerable to TLS certificate validation bypass via dropped tls options in Agent",
+          "url": "https://github.com/advisories/GHSA-2m5v-pch6-74hx"
+        }
+      },
+      {
+        "package": "undici",
+        "versions": [
           "5.29.0"
         ],
         "severity": "moderate",
@@ -1340,7 +1612,6 @@
         "package": "undici",
         "versions": [
           "8.10.0",
-          "8.10.2",
           "8.11.2"
         ],
         "severity": "moderate",
@@ -1379,6 +1650,66 @@
           "vulnerableRange": ">=6.5.0 <6.29.1",
           "title": "undici vulnerable to Denial of Service via unbounded memory in the EventSource parser",
           "url": "https://github.com/advisories/GHSA-4qv8-2p9j-2685"
+        }
+      },
+      {
+        "package": "undici",
+        "versions": [
+          "8.10.0",
+          "8.11.2"
+        ],
+        "severity": "high",
+        "advisory": {
+          "id": "GHSA-4w7w-5xrc-9h26",
+          "severity": "high",
+          "vulnerableRange": ">=8.0.0 <8.12.2",
+          "title": "undici vulnerable to cache poisoning and cross-user disclosure via cross-origin redirects",
+          "url": "https://github.com/advisories/GHSA-4w7w-5xrc-9h26"
+        }
+      },
+      {
+        "package": "undici",
+        "versions": [
+          "7.28.0",
+          "7.29.1"
+        ],
+        "severity": "high",
+        "advisory": {
+          "id": "GHSA-4w7w-5xrc-9h26",
+          "severity": "high",
+          "vulnerableRange": ">=7.0.0 <7.30.1",
+          "title": "undici vulnerable to cache poisoning and cross-user disclosure via cross-origin redirects",
+          "url": "https://github.com/advisories/GHSA-4w7w-5xrc-9h26"
+        }
+      },
+      {
+        "package": "undici",
+        "versions": [
+          "8.10.0",
+          "8.11.2"
+        ],
+        "severity": "moderate",
+        "advisory": {
+          "id": "GHSA-55wc-3pg8-jfw6",
+          "severity": "moderate",
+          "vulnerableRange": ">=8.0.0 <8.12.2",
+          "title": "undici vulnerable to Denial of Service via unhandled exception in the decompress interceptor",
+          "url": "https://github.com/advisories/GHSA-55wc-3pg8-jfw6"
+        }
+      },
+      {
+        "package": "undici",
+        "versions": [
+          "7.28.0",
+          "7.29.1"
+        ],
+        "severity": "moderate",
+        "advisory": {
+          "id": "GHSA-55wc-3pg8-jfw6",
+          "severity": "moderate",
+          "vulnerableRange": ">=7.15.0 <7.30.1",
+          "title": "undici vulnerable to Denial of Service via unhandled exception in the decompress interceptor",
+          "url": "https://github.com/advisories/GHSA-55wc-3pg8-jfw6"
         }
       },
       {
@@ -1441,7 +1772,51 @@
         "package": "undici",
         "versions": [
           "8.10.0",
-          "8.10.2",
+          "8.11.2"
+        ],
+        "severity": "moderate",
+        "advisory": {
+          "id": "GHSA-9fm3-97px-rjf6",
+          "severity": "moderate",
+          "vulnerableRange": ">=8.0.0 <8.12.2",
+          "title": "undici WebSocket client vulnerable to Denial of Service via unbounded automatic PONG buffering",
+          "url": "https://github.com/advisories/GHSA-9fm3-97px-rjf6"
+        }
+      },
+      {
+        "package": "undici",
+        "versions": [
+          "7.28.0",
+          "7.29.1"
+        ],
+        "severity": "moderate",
+        "advisory": {
+          "id": "GHSA-9fm3-97px-rjf6",
+          "severity": "moderate",
+          "vulnerableRange": ">=7.0.0 <7.30.1",
+          "title": "undici WebSocket client vulnerable to Denial of Service via unbounded automatic PONG buffering",
+          "url": "https://github.com/advisories/GHSA-9fm3-97px-rjf6"
+        }
+      },
+      {
+        "package": "undici",
+        "versions": [
+          "5.29.0",
+          "6.28.1"
+        ],
+        "severity": "moderate",
+        "advisory": {
+          "id": "GHSA-9fm3-97px-rjf6",
+          "severity": "moderate",
+          "vulnerableRange": ">=5.15.0 <6.29.1",
+          "title": "undici WebSocket client vulnerable to Denial of Service via unbounded automatic PONG buffering",
+          "url": "https://github.com/advisories/GHSA-9fm3-97px-rjf6"
+        }
+      },
+      {
+        "package": "undici",
+        "versions": [
+          "8.10.0",
           "8.11.2"
         ],
         "severity": "moderate",
@@ -1578,6 +1953,51 @@
           "vulnerableRange": ">=7.11.0 <7.29.1",
           "title": "undici vulnerable to Denial of Service via orphaned RetryHandler response body",
           "url": "https://github.com/advisories/GHSA-pmjh-fq2x-6v4x"
+        }
+      },
+      {
+        "package": "undici",
+        "versions": [
+          "8.10.0",
+          "8.11.2"
+        ],
+        "severity": "high",
+        "advisory": {
+          "id": "GHSA-qrxm-fqhp-jwvm",
+          "severity": "high",
+          "vulnerableRange": ">=8.0.0 <8.12.2",
+          "title": "undici vulnerable to Denial of Service via TLS 1.2 certificate-changing renegotiation",
+          "url": "https://github.com/advisories/GHSA-qrxm-fqhp-jwvm"
+        }
+      },
+      {
+        "package": "undici",
+        "versions": [
+          "7.28.0",
+          "7.29.1"
+        ],
+        "severity": "high",
+        "advisory": {
+          "id": "GHSA-qrxm-fqhp-jwvm",
+          "severity": "high",
+          "vulnerableRange": ">=7.0.0 <7.30.1",
+          "title": "undici vulnerable to Denial of Service via TLS 1.2 certificate-changing renegotiation",
+          "url": "https://github.com/advisories/GHSA-qrxm-fqhp-jwvm"
+        }
+      },
+      {
+        "package": "undici",
+        "versions": [
+          "5.29.0",
+          "6.28.1"
+        ],
+        "severity": "high",
+        "advisory": {
+          "id": "GHSA-qrxm-fqhp-jwvm",
+          "severity": "high",
+          "vulnerableRange": ">=4.2.1 <6.29.1",
+          "title": "undici vulnerable to Denial of Service via TLS 1.2 certificate-changing renegotiation",
+          "url": "https://github.com/advisories/GHSA-qrxm-fqhp-jwvm"
         }
       },
       {
@@ -1794,7 +2214,6 @@
         "package": "undici",
         "versions": [
           "8.10.0",
-          "8.10.2",
           "8.11.2"
         ],
         "severity": "high",
@@ -1856,8 +2275,7 @@
         "versions": [
           "3.22.4",
           "3.25.76",
-          "4.4.3",
-          "4.6.5"
+          "4.4.3"
         ],
         "severity": "high",
         "advisory": {

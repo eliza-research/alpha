@@ -161,10 +161,9 @@ export function installPrototypeNativeAdapters(
       const result = await DailyApps.perform({ action, ...payload });
       if (result.status === 'selected') {
         options.onSelection?.(module, result, api);
-        notify(api, result.name ? 'Selected ' + result.name : 'Selection received');
-      } else if (result.status === 'opened') {
-        if(Capacitor.isNativePlatform()) notify(api, 'Opened the Android app. Review and complete the action there.');
-      } else notify(api, result.message || (result.status === 'cancelled' ? 'Cancelled. Nothing changed.' : 'No installed app can complete this action.'));
+      } else if (result.status !== 'opened' && result.status !== 'cancelled') {
+        notify(api, result.message || 'No installed app can complete this action.');
+      }
     } catch {
       notify(api, 'Native action unavailable. Use the installed Android app.');
     } finally { busy.delete(module); }

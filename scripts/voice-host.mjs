@@ -15,7 +15,7 @@ import {ASR_BACKEND_ROLES, PARADEE_NATIVE, PARADEE_SOURCE, asrSlotFiles, verifyP
 export const VOICE_HOST_MANIFEST = 'android/voice-host/qualified-voice-host.json';
 export const VOICE_ASR_SLOT = 'android/paradee-voice/asr-inputs.json';
 export const VOICE_ASSET_ROOT = PARADEE_NATIVE;
-export const VOICE_BUNDLE_FORMAT = 'eliza-paradee-voice-v1';
+export const VOICE_BUNDLE_FORMAT = 'eliza-paradee-voice-v2';
 export const VOICE_BUNDLE_ASSETS = 'assets/paradee-voice/v1';
 export const VOICE_ABIS = Object.freeze(['arm64-v8a', 'x86_64']);
 export const VOICE_LIBRARIES = Object.freeze(['libelizainference.so', 'libc++_shared.so']);

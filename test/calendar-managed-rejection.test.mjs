@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtempSync,mkdirSync,copyFileSync,readFileSync,realpathSync,writeFileSync,rmSync} from 'node:fs';
 import {join,resolve,dirname} from 'node:path';
+import {createRequire} from 'node:module';
+import {sourceDirectory} from '../scripts/local-agent-source.mjs';
 import {tmpdir} from 'node:os';
 import {execFileSync} from 'node:child_process';
 import {build} from 'esbuild';
@@ -19,12 +21,15 @@ test('explicit Calendar rejection survives the private transport; uncertain repl
   const buildPort=contents=>build({stdin:{contents:`export {createManagedCalendarMutationPort} from ${JSON.stringify(entry)};export {CalendarMutationNotAcceptedError} from ${JSON.stringify(join(dirname(original),'types.ts'))};`,resolveDir:process.cwd(),loader:'ts'},bundle:true,platform:'node',format:'esm',write:false,plugins:[{name:'upstream-patch-source',setup(b){
    b.onLoad({filter:/managed\.ts$/},args=>args.path===realpathSync(entry)?{contents,loader:'ts',resolveDir:dirname(original)}:undefined);
    b.onResolve({filter:/^@elizaos\/core$/},()=>({path:'core',namespace:'port'}));
+   // The read transport's only runtime contract import; zod comes from the prepared source at the same pin.
+   b.onResolve({filter:/^@elizaos\/contracts$/},()=>({path:join(upstream,'packages/contracts/src/calendar.ts')}));
+   b.onResolve({filter:/^zod$/},()=>({path:createRequire(join(sourceDirectory(process.cwd()),'package.json')).resolve('zod')}));
    b.onResolve({filter:/^\.\/ledger\.js$/},()=>({path:'ledger',namespace:'port'}));
    b.onLoad({filter:/.*/,namespace:'port'},args=>({loader:'js',contents:args.path==='core'?'export class ElizaError extends Error{}':'export const calendarMutationApprovalSha256=()=>"hash";export const calendarMutationOperationKey=()=>"stable-key";'}));
   }}]});
   const bundle=await buildPort(readFileSync(entry,'utf8'));
   const {createManagedCalendarMutationPort,CalendarMutationNotAcceptedError}=await import('data:text/javascript;base64,'+Buffer.from(bundle.outputFiles[0].text).toString('base64'));
-  const source='alpha-google:'+'a'.repeat(64),caps={grantId:source,calendarId:'calendar',accountId:'account',read:true,write:true,idempotentCreate:true,conditionalWrites:true,providerExactlyOnce:false};
+  const source='alpha-google:'+'a'.repeat(64),caps={version:1,grantId:source,calendarId:'calendar',accountId:'account',read:true,write:true,idempotentCreate:true,conditionalWrites:true,providerExactlyOnce:false};
   const approval={payload:{action:'schedule_event',side:'owner',grantId:source,calendarId:'calendar'}};
   for(const kind of ['not_accepted','precondition_failed','wrong-account','unknown','generic-http','timeout']){
    let mutations=0;

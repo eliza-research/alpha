@@ -61,7 +61,7 @@ test('journey A: boot, connect, converse across apps, stop a reply, reload and r
 
  // 1b. Composer draft around a failed send: with no agent nothing is sent and the text returns to the composer.
  await ask.fill('Journey A unsent draft');await ask.press('Enter');
- await expect(page.getByRole('status',{name:'Assistant draft status'})).toHaveText('Not sent. Your message is back in the composer.');
+ await expect(page.getByText('Not sent. Your message is back in the composer.',{exact:true}).first()).toBeVisible();
  await expect(message).toHaveValue('Journey A unsent draft');
  await expect(bubble(page,'Journey A unsent draft')).toHaveCount(0);
  expect(await agentDocument(page)).toBeNull();

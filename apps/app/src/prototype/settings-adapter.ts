@@ -176,7 +176,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
   let recovery: RecoveryDomain[] = [];
   let capabilityAbort: AbortController | null = null;
   let inferenceAbort:AbortController|null=null;
-  let gmailAccounts: GmailAccount[] = [], gmailBusy = '', gmailNotice = '', settingsApi: Bag | undefined;
+  let gmailAccounts: GmailAccount[] = [], gmailBusy = '', gmailNotice = '';
   let roles: Record<string, RoleRow> | null = null, launcher: boolean | null = null, roleBusy = false, roleNotice = '';
   let crashLog: CrashLog | null = null, crashBusy = false, diagnosticsBusy = false;
   let gmail = 'Not checked', digests = 'Not checked';
@@ -273,7 +273,6 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       if (result.accounts) { gmailAccounts = result.accounts; gmail = gmailGrantLabel(result.accounts); }
       else gmail = 'Authorization not verified';
       gmailNotice = googleDisconnectMessage(result.outcome, account.label,cloudServiceName(cloud.client.environment));
-      settingsApi?.toast(gmailNotice);
       window.dispatchEvent(new CustomEvent(GMAIL_ACCOUNTS_CHANGED, { detail: { source: 'settings' } }));
       window.dispatchEvent(new Event(GOOGLE_ACCOUNTS_CHANGED));
     } catch { if (owner === instance) { gmailNotice = disconnectMessage('unconfirmed', account.label); gmail = 'Authorization not verified'; } }
@@ -289,7 +288,6 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       if (owner !== instance) return;
       roles = next;
       roleNotice = next.home?.held ? 'Alpha Phone is your Home app' : 'Home app not changed';
-      api.toast(roleNotice);
     } catch { if (owner === instance) { roleNotice = 'Home app change is unconfirmed'; api.toast('Android did not confirm a Home app change.'); } }
     finally { roleBusy = false; if (owner === instance) { changed(); void refresh(); } }
   }
@@ -341,7 +339,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     if (crashBusy || !window.confirm('Clear the local problem log?')) return;
     inferenceAbort?.abort();inferenceAbort=null;
     const instance = owner; crashBusy = true; changed();
-    try { await clearCrashLog(); crashLog = await readCrashLog(); if (owner === instance) api.toast('Problem log cleared'); }
+    try { await clearCrashLog(); crashLog = await readCrashLog(); }
     catch { if (owner === instance) api.toast('The problem log could not be cleared.'); }
     finally { crashBusy = false; if (owner === instance) changed(); }
   }
@@ -428,7 +426,6 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     return result;
   };
   definition.render = (state: Bag, api: Bag) => {
-    settingsApi = api;
     const out = render({ ...state, page: settingsPage(state.page, devSurfacesEnabled), acct: null, adding: false, sheet: ['conn', 'voice', 'wipe', 'wifiPw', 'forget'].includes(state.sheet?.kind) ? null : state.sheet }, api);
     // Prototype personality values are mock-only until the agent reports them.
     out.persona = 'Voice and agent settings';

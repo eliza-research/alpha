@@ -6,27 +6,23 @@ import {preparePatchedNative} from '../scripts/prepare-patched-native.mjs';
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 test('pinned recovery and lifecycle sources match the reviewed upstream repair',()=>{
  for(const [name,expected] of [
- ['ElizaAgentService','f2377edd144e45365479783ad61acf47077519c6604ad0bf0c11862ad2a988a4'],
- ['IpcStartupRecovery','d77ea0883554991622a5a0b044a7cf373686eec15c5a705abbd69aaf5b94e80f'],
- ['WorkflowSurvivorInventory','72568e8f859c0453606100d0f94d26c4cec4c3b7811ad62b0eaea8ea76a66820'],
+ ['ElizaAgentService','1cb89a4c1283fcd90f19d739ef3cf23d556ee9da184516583c41a128bb49e984'],
+ ['IpcStartupRecovery','c51152d8b6403622171e4baed30f55cb540cad2c3fd49a8be1171a4b2c015c27'],
+ ['WorkflowSurvivorInventory','3270bebe7e125705eda25e91ba9996f99cb80fbcb7e534c0d1ea47672a0fc42b'],
  ])assert.equal(sha(fs.readFileSync(`vendor/eliza/packages/app/platforms/android/app/src/main/java/ai/elizaos/app/${name}.java`)),expected);
 });
 test('obsolete resident patch slot is refused rather than reapplied',()=>{
  assert.throws(()=>preparePatchedNative({manifestFile:'resident-native-manifest.json'}),/Unknown native patch slot/);
  assert.equal(fs.existsSync('patches/eliza/resident-ipc-recovery.patch'),false);
 });
-test('the resident stop-race repair reproduces its reviewed upstream file and refuses drift',async()=>{
+test('the pinned resident stop inventory skips vanished processes without a consumer repair',async()=>{
  const {UPSTREAM_REPAIRS,applyUpstreamRepair}=await import('../scripts/upstream-native-repairs.mjs');
- const [repair]=UPSTREAM_REPAIRS;
- const pinned=fs.readFileSync(`vendor/eliza/${repair.path}`,'utf8');
- const {value,repair:recorded}=applyUpstreamRepair(repair.path,pinned);
- assert.equal(sha(value),repair.repairedSha256);
- assert.equal(recorded.commit,repair.commit);
+ assert.deepEqual(UPSTREAM_REPAIRS,[]);
+ const pinned=fs.readFileSync('vendor/eliza/packages/app/platforms/android/app/src/main/java/ai/elizaos/app/WorkflowSurvivorInventory.java','utf8');
  // processes() reads each identity through the absence proof; a vanished process no longer refuses the stop.
- assert.match(value,/Identity identity=observePresent\(pid,\(\)->processIdentity\(pid,deadline\)\);if\(identity==null\)continue;/);
- assert.doesNotMatch(value,/result\.put\(pid,processIdentity\(pid,deadline\)\)/);
- // An exited, unreaped process's empty argv goes through the same proof instead of refusing the stop.
- assert.match(value,/observePresent\(pid,\(\)->presentArguments\(bounded\(new File\(entry,"cmdline"\),65536\)\)\)/);
- assert.throws(()=>applyUpstreamRepair(repair.path,pinned+' '),/no longer matches/);
+ assert.match(pinned,/Identity identity=observePresent\(pid,\(\)->processIdentity\(pid,deadline,observation\)\);if\(identity==null\)continue;/);
+ assert.doesNotMatch(pinned,/result\.put\(pid,processIdentity\(pid,deadline\)\)/);
+ // An exiting process's empty argv is validated inside the same proof instead of refusing the stop.
+ assert.match(pinned,/cmdline may be readable but empty while a process exits/);
  assert.deepEqual(applyUpstreamRepair('other.java','x'),{value:'x',repair:null});
 });

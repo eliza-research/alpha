@@ -21,8 +21,9 @@ canonical HTTPS origins on the default port, without base paths or credentials.
 Alpha retains its own package/client ID and `/alphaphone/auth/callback` return
 path. The configured deployment must register that client, approve its callback
 and publish the app's signing certificate in its web host's assetlinks document.
-`ELIZAOS_APP_LINK_HOST`, when enabled, must equal the configured production web
-host. The staging return uses the configured staging web host in test-mocks
+Android builds declare the configured production web host by default.
+`ELIZAOS_APP_LINK_HOST`, when supplied, must equal that host. APK verification
+requires the exact sign-in return filter. The staging return uses the configured staging web host in test-mocks
 builds only. Changing the backend does not import another product's identity.
 
 Cloud credentials, pending sign-in state, acknowledgments and the local agent's
@@ -136,6 +137,18 @@ the current account. The `native` default and its native/AOSP qualification gate
 remain unchanged. This configuration does not prove native speech or release acceptance.
 See the [profile selection notes](../README.md#explicit-cloud-qa-profile--october-18).
 
+## Chat controls and notices
+
+Chat controls use the remaining native system-bar inset, converted into the scaled
+renderer canvas, with space above the navigation buttons. Standalone Android fits
+its WebView inside the bars and supplies zero remaining inset. Floating controls,
+expanded text input and voice controls share the same clearance; their measured
+height bounds top notices, including when a draft grows or the keyboard opens.
+Routine saves, toggles and draft restoration stay quiet. Draft conflicts and voice
+recovery appear at the top of the chat, while transient errors and Undo appear at
+the top of the phone. Modal feedback takes space above the form instead of floating
+over its fields. Cloud voice retains its pre-start upload and plan disclosure.
+
 ## Build surfaces
 
 The web build (`npm run build` → `web-dist/`) is a development and preview surface and
@@ -185,8 +198,9 @@ There is no automatic Eliza Cloud website sign-in fallback.
   - `GET /steward/auth/providers` offers email without a captcha for `email_otp`, and the email code
     route exists (an empty-object POST is refused as invalid, not as unknown; no email is sent).
   Google is offered on top only when Steward offers it and Android reports the return host verified
-  for this package. A refusal from Cloud during an in-app sign-in clears the cache so the next
-  attempt re-checks. The renderer waits at most 6 seconds, then offers email alone. A late result cannot
+  for this package. Opening or retrying sign-in explicitly refreshes readiness rather than
+  retaining a failed network probe for ten minutes; concurrent probes are coalesced.
+  The renderer waits at most 6 seconds, then offers email alone. A late result cannot
   change the already opened attempt.
 - **Native (`AlphaCloudSignInPlugin`, `CloudSignInFlow`, `CloudEmailCode`)** holds the Steward
   session, codes and PKCE verifiers and makes every sign-in request, using fixed URLs on the Cloud API
@@ -234,13 +248,19 @@ There is no automatic Eliza Cloud website sign-in fallback.
   - For in-app sign-in, Cloud must register `ai.elizaresearch.alphaphone` in
     `ELIZA_MOBILE_APP_AUTH_CLIENTS_JSON`, allowlist the return URL for tenant `elizacloud`, serve
     `/.well-known/assetlinks.json` on `eliza.app` with the release certificate
-    (`scripts/render-assetlinks.mjs`), and deploy the email code routes. The APK must be built with
-    `ELIZAOS_APP_LINK_HOST=eliza.app` so it declares the return App Link. `staging.eliza.app`
+    (`scripts/render-assetlinks.mjs`), and deploy the email code routes. The APK automatically
+    declares the configured return App Link (`eliza.app` by default). `staging.eliza.app`
     serves the same with the debug certificate added.
   - The callback fallback page (`/alphaphone/auth/callback` when Android did not hand the link to
     Alpha) forwards no code: it only brings Alpha forward without parameters.
 - **Test-mocks only:** the staging return host (`src/testMocks/AndroidManifest.xml`), the
   development Cloud bridge's email sign-in, and the diagnostic button.
+
+The production signed-out page opens the method choices directly. Setup keeps form labels,
+verification destinations and actionable errors; it has no explanatory or collapsible sections.
+Native transport failures distinguish DNS, connection, timeout and TLS without exposing
+exception text or credentials. See [the October 31 diagnosis](login-setup-troubleshooting.md)
+for the installed-build mismatch and the remaining real-service checks.
 
 Third-party web content runs in an isolated native browser surface; it must not
 receive the application's Capacitor bridge. Origin, context revision, consent,

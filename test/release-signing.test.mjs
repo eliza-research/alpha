@@ -6,7 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { auditWebBundle } from "../scripts/audit-production-bundle.mjs";
-import { appLinkFilters, assetLinksProblems, fingerprint, PLACEHOLDER, renderAssetLinks, TEMPLATE } from "../scripts/render-assetlinks.mjs";
+import { appLinkFilters, signInAppLinkProblems, assetLinksProblems, fingerprint, PLACEHOLDER, renderAssetLinks, TEMPLATE } from "../scripts/render-assetlinks.mjs";
 import { partialSigningProblem, readReleaseSigner, releaseAdmission, signingRequested, validateReleaseSigner } from "../scripts/build-android.mjs";
 
 const ALL = { ELIZAOS_KEYSTORE_PATH: "/k", ELIZAOS_KEYSTORE_PASSWORD: "p", ELIZAOS_KEY_ALIAS: "a", ELIZAOS_KEY_PASSWORD: "q" };
@@ -109,12 +109,14 @@ test("the bundle audit fails an assetlinks.json with a placeholder or debug fing
   assert.equal(auditWebBundle(dir, { debugFingerprints: [SIGNER] }).ok, false);
 });
 
-test("the https autoVerify filter is build-gated by ELIZAOS_APP_LINK_HOST and read back from the APK manifest", () => {
+test("the https autoVerify filter defaults to the configured Cloud host and is read back from the APK manifest", () => {
   const gradle = fs.readFileSync("android/app/build.gradle", "utf8");
   const manifest = fs.readFileSync("android/app/src/main/AndroidManifest.xml", "utf8");
-  // Default build: the main manifest has no https autoVerify filter at all; only the property adds the overlay.
+  // The main manifest uses a generated overlay so changing the deployment changes its return host.
   assert.doesNotMatch(manifest.replace(/<!--[\s\S]*?-->/g, ""), /autoVerify/);
   assert.match(gradle, /project\.findProperty\('ELIZAOS_APP_LINK_HOST'\) \?: envValue\('ELIZAOS_APP_LINK_HOST'\)/);
+  assert.match(gradle, /def appLinkHost = .*\? cloudWebHost :/);
+  assert.match(gradle, /appLinkHost != cloudWebHost/,'a mismatched override is still rejected');
   assert.ok(gradle.includes('<activity android:name="${identity.appId}.MainActivity" android:exported="true">'), 'the generated App Link activity explicitly exports its external return intent');
   assert.match(gradle, /manifestPlaceholders = \[appOrientation: identity\.orientation, appLinkHost: appLinkHost\]/);
   assert.match(gradle, /if \(appLinkHost\) androidComponents \{ onVariants\(selector\(\)\.all\(\)\) \{ variant -> variant\.sources\.manifests\.addStaticManifestFile\(appLinksManifest\) \} \}/);
@@ -134,7 +136,32 @@ test("the https autoVerify filter is build-gated by ELIZAOS_APP_LINK_HOST and re
     "          A: http://schemas.android.com/apk/res/android:scheme(0x01010027)=\"alphaphone\" (Raw: \"alphaphone\")",
     "          A: http://schemas.android.com/apk/res/android:host(0x01010028)=\"cloud-delegation\" (Raw: \"cloud-delegation\")"];
   assert.deepEqual(appLinkFilters([...custom, ...filter("https"), "    E: activity (line=50)"].join("\n")), { present: true, hosts: ["links.example.com"] });
-  assert.deepEqual(appLinkFilters(custom.join("\n")), { present: false, hosts: [] }, "the default build: custom scheme only");
+  assert.deepEqual(appLinkFilters(custom.join("\n")), { present: false, hosts: [] }, "custom-scheme filters alone do not establish a verified return");
   assert.deepEqual(appLinkFilters(filter("http").join("\n")), { present: false, hosts: [] });
   assert.match(fs.readFileSync("scripts/verify-apks.mjs", "utf8"), /appLinks: appLinkFilters\(xml\),/);
+});
+
+test('APK admission requires the exact sign-in return for the configured deployment', () => {
+  const filter = (host, pathAttribute = 'path', path = '/alphaphone/auth/callback') => `
+      E: intent-filter (line=40)
+        A: android:autoVerify(0x010104ee)=(type 0x12)0xffffffff
+        E: action (line=41)
+          A: android:name(0x01010003)="android.intent.action.VIEW"
+        E: category (line=42)
+          A: android:name(0x01010003)="android.intent.category.DEFAULT"
+        E: category (line=43)
+          A: android:name(0x01010003)="android.intent.category.BROWSABLE"
+        E: data (line=44)
+          A: android:scheme(0x01010027)="https"
+          A: android:host(0x01010028)="${host}"
+          A: android:${pathAttribute}(0x0101002a)="${path}"
+      E: activity (line=50)`;
+  assert.deepEqual(signInAppLinkProblems(filter('eliza.app'), ['eliza.app']), []);
+  for (const xml of ['', filter('alphacompute.ai'), filter('eliza.app','pathPrefix'), filter('eliza.app','path','/alphaphone/cloud-delegation'),
+    filter('eliza.app').replace('android.intent.category.BROWSABLE','android.intent.category.DEFAULT'),
+    filter('eliza.app').replace('0xffffffff','0x0')]) {
+    assert.equal(signInAppLinkProblems(xml, ['eliza.app']).length, 1);
+  }
+  assert.equal(signInAppLinkProblems(filter('eliza.app'), ['eliza.app','staging.eliza.app']).length, 1);
+  assert.deepEqual(signInAppLinkProblems(filter('eliza.app')+filter('staging.eliza.app'), ['eliza.app','staging.eliza.app']), []);
 });

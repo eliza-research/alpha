@@ -105,7 +105,7 @@ export function stageVoiceModels(productRoot, {from, unrecordedEngine = false}) 
   }
   const inputs = JSON.parse(fs.readFileSync(path.join(productRoot, PARADEE_SOURCE, 'inputs.json'), 'utf8'));
   const bundleFiles = rows.filter(row => row.bundlePath).map(row => ({path: row.bundlePath, bytes: row.bytes, sha256: row.sha256})).sort((a, b) => a.path.localeCompare(b.path));
-  const manifest = {format: VOICE_BUNDLE_FORMAT, model: inputs.paradee.path, lexicon: inputs.lexicon.path, espeakDir: 'tts/paradee', files: bundleFiles};
+  const manifest = {format: VOICE_BUNDLE_FORMAT, model: inputs.paradee.path, lexicon: inputs.lexicon.path, espeakDir: 'tts/paradee', ...(inputs.spanish?.enabled ? {voices: {[inputs.spanish.language]: inputs.spanish.path}} : {}), files: bundleFiles};
   const manifestText = `${JSON.stringify(manifest, null, 2)}\n`, manifestFile = path.join(output, VOICE_BUNDLE_ASSETS, 'manifest.json');
   if (fs.existsSync(manifestFile) && fs.readFileSync(manifestFile, 'utf8') !== manifestText) throw Error(`${path.relative(productRoot, manifestFile)} already exists with other content; review before replacing`);
   fs.writeFileSync(manifestFile, manifestText);

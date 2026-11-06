@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {stripTypeScriptTypes} from 'node:module';
 import vm from 'node:vm';
 
-const source=readFileSync('.eliza/client-features/packages/ui/src/voice/voice-session-client.ts','utf8');
+const source=readFileSync('.eliza/client-features/packages/ui/src/voice/voice-session-client-core.ts','utf8');
 const start=source.indexOf('  function handleServerFrame('),end=source.indexOf('  async function startCapture(',start);
 assert(start>0&&end>start);
 const terminal=source.match(/const NON_RECOVERABLE_SERVER_ERROR_CODES[\s\S]*?\n\]\);/)?.[0];

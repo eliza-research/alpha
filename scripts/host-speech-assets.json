@@ -1,9 +1,9 @@
 {
   "tts": [
     {
-      "path": "paradee-8m-v1_1.gguf",
-      "sha256": "f205ab055f0120d571aa6fda2deadde1e6fbc88e8d8bd56a592917fd0e50892e",
-      "bytes": 31275232
+      "path": "paradee-8m-v1_2.gguf",
+      "sha256": "4b2819180a9e3b096fb71a93d6a719794246ee230f7faa857edcc0bee2a1529e",
+      "bytes": 31276064
     },
     {
       "path": "misaki-en-us.lex",
@@ -46,6 +46,16 @@
       "path": "espeak-ng-data/lang/gmw/en-US",
       "sha256": "41534c2a22df5dd4f1052ff9e1a33a3ea7bff5a26b5c02bdad5ba8ddb7524704",
       "bytes": 257
+    },
+    {
+      "path": "espeak-ng-data/es_dict",
+      "sha256": "e7c6347e407d5c14f283eeada18b86c6d560b03b62f53659473109bbff096757",
+      "bytes": 49285
+    },
+    {
+      "path": "espeak-ng-data/lang/roa/es",
+      "sha256": "966aa015ea5646d79f0ca4807cf5da7339aabd3782b55cfa5eb0d8c3fc8fc588",
+      "bytes": 63
     }
   ],
   "asr": [

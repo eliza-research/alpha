@@ -173,7 +173,7 @@ public final class AlphaCloudSignInPlugin extends Plugin {
   final CloudSignInFlow.Environment environment;
   try { environment = CloudSignInFlow.environment(call.getString("environment", "production"), testMocks()); }
   catch (Exception invalid) { call.reject("Unsupported Cloud environment", "invalid-request"); return; }
-  probe(environment, call);
+  probe(environment, call, Boolean.TRUE.equals(call.getBoolean("refresh", false)));
  }
  private JSObject statusOutcome(CloudSignInReadiness.Result result) {
   synchronized (lock) {
@@ -182,16 +182,21 @@ public final class AlphaCloudSignInPlugin extends Plugin {
    return out.put("methodsKnown", result.methodsKnown).put("inApp", result.inApp).put("email", result.email).put("phone", result.phone).put("google", result.google);
   }
  }
- /** Answers from the cache when fresh; otherwise one probe per environment runs and answers every waiting call. */
+ /** Startup may reuse a fresh answer; opening sign-in explicitly refreshes provider availability. */
  private void probe(CloudSignInFlow.Environment environment, PluginCall call) {
+  probe(environment, call, false);
+ }
+ /** One probe per environment answers every waiting call, including refreshes during an active probe. */
+ private void probe(CloudSignInFlow.Environment environment, PluginCall call, boolean refresh) {
   long now = System.currentTimeMillis();
   CloudSignInReadiness.Result cached;
   synchronized (lock) {
-   cached = readiness.get(environment);
-   if (cached == null) { cached = storedReadiness(environment); if (cached != null) readiness.put(environment, cached); }
-   if (cached != null && cached.fresh(now)) { if (call != null) call.resolve(statusOutcome(cached)); return; }
    List<PluginCall> waiting = probing.get(environment);
    if (waiting != null) { if (call != null) waiting.add(call); return; }
+   if (refresh) forgetReadiness(environment);
+   cached = refresh ? null : readiness.get(environment);
+   if (cached == null && !refresh) { cached = storedReadiness(environment); if (cached != null) readiness.put(environment, cached); }
+   if (cached != null && cached.fresh(now)) { if (call != null) call.resolve(statusOutcome(cached)); return; }
    waiting = new ArrayList<>(); if (call != null) waiting.add(call); probing.put(environment, waiting);
   }
   try {
@@ -587,7 +592,7 @@ public final class AlphaCloudSignInPlugin extends Plugin {
     try {
      shown[0] = new AlertDialog.Builder(getActivity())
       .setTitle("Authorize Alpha Phone")
-      .setMessage("Allow Alpha Phone to access your account with " + service + " and use its services on this device? You can sign out in Settings.")
+      .setMessage("Allow Alpha Phone to use your " + service + " account?")
       .setPositiveButton("Authorize", (dialog, which) -> {
        synchronized (lock) {
         if (attempt == current && !current.cancelled && !destroyed && System.currentTimeMillis() < current.expiresAt) current.authorized = true;
@@ -814,10 +819,8 @@ public final class AlphaCloudSignInPlugin extends Plugin {
    try (InputStream input = status >= 400 ? connection.getErrorStream() : connection.getInputStream()) { bytes = readBounded(input); }
    if (current != null && current.cancelled) throw new SignInFailure("cancelled");
    return new Fetched(status, new String(bytes, StandardCharsets.UTF_8), null);
-  } catch (java.net.UnknownHostException | java.net.ConnectException | java.net.NoRouteToHostException offline) {
-   throw new SignInFailure(current != null && current.cancelled ? "cancelled" : "offline");
   } catch (java.io.IOException transport) {
-   throw new SignInFailure(current != null && current.cancelled ? "cancelled" : "unavailable");
+   throw new SignInFailure(CloudSignInFlow.failureForTransport(transport, current != null && current.cancelled));
   } finally {
    if (connection != null) connection.disconnect();
    if (current != null) current.connection = null;

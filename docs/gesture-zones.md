@@ -29,13 +29,14 @@ SystemUI, because a browser has none; it is a developer surface (`simulatedShade
 | Zone | Owner | What happens |
 | --- | --- | --- |
 | A downward swipe from the top edge of the screen (the status bar) | Android | Android opens its own shade, in both flavors. Alpha does not answer it. |
-| Launcher Home: the "Notifications" button | Alpha asks Android | Asks Android to expand its shade (`AlphaDevice.openNotificationShade`). |
-| Launcher Home: a downward pull that starts on empty Home | Alpha asks Android | The same request. See "Empty Home" below for what is not empty Home. |
-| Standalone app: any downward pull on Home | Nobody in Alpha | An ordinary app: Android's top-edge swipe is the way in. No button. |
+| Launcher Home: a downward pull that starts on empty Home | Alpha asks Android | Asks Android to expand its shade (`AlphaDevice.openNotificationShade`). See "Empty Home" below for what is not empty Home. |
+| Standalone app: any downward pull on Home | Nobody in Alpha | An ordinary app: Android's top-edge swipe is the way in. |
 | A swipe in from the left or right edge | Android (gesture navigation) | Android delivers Back. In the browser build the same swipe within 30px of an edge goes Back. |
 | A swipe up from the bottom edge | Android (gesture navigation) | Android delivers HOME; the launcher flavor shows Alpha Home. |
 | A swipe up on Alpha Home, away from the bottom edge | Alpha | Opens the conversation sheet. |
-| Full-screen chat (launcher): the Resize chat grabber | Alpha | A drag down shrinks the chat. The header starts 16 screen pixels below Android's status bar (`--alpha-chat-full-top`, at least 60px of canvas), so the drag never starts in Android's top-edge band. |
+| The open chat sheet: the Resize chat grabber | Alpha | The sheet follows the finger and rests where it is released. A release within 120 canvas pixels of the collapsed form collapses it, within 120 of the top goes full screen, and a flick (at least 1 canvas pixel per millisecond at release) jumps to either end (`chatRelease` in `chat-overlay-motion-adapter.ts`). |
+| Outside the open chat sheet (portrait) | Alpha | Any touch, tap or drag, collapses the chat and reaches nothing underneath; the next touch is ordinary. Assistive technology activates controls directly. In landscape the chat docks beside the app, which stays live. |
+| Full-screen chat | Alpha | No grabber: nothing of Alpha's competes with Android's top-edge band. The header starts 16 screen pixels below Android's status bar on the launcher (`--alpha-chat-full-top`, at least 60px of canvas). Shrink chat returns to the last resting height, Minimize chat collapses. |
 
 ## Empty Home
 
@@ -62,18 +63,6 @@ too. Upward drags, sideways drags and drags on a Home scrolled away from its top
 WebView's. Chromium's touch pipeline is covered by the landscape case in
 `notifications-handle.spec.ts`; whether the AOSP image's WebView delivers either path is not
 measured.
-
-## The Notifications button
-
-- Launcher Home only. A button labelled "Notifications" with a bell, centred at the top of Home.
-  Its accessible name is "Open notifications" and its description says it opens Android's
-  notifications and quick settings. It controls no Alpha region.
-- Target size: at least 44 by 44 pixels of the 412px canvas at every supported text size, below
-  Android's status bar. When Android reports a taller bar (`--native-top-inset`, set by
-  `MainActivity`), Home's top padding grows so the button starts at least 12 screen pixels
-  below it, measured in screen pixels on the scaled canvas.
-- Ways to activate: tap or click, Enter or Space, the accessibility click action (TalkBack's
-  double tap, Switch Access), or a pull down that starts on it.
 
 ## Asking Android
 

@@ -8,7 +8,7 @@
   },
   "model": "Phonon-2 (Parakeet-TDT 0.6B, five-value weights), the upstream mobile-voice@1.1.0 default ASR (elizaOS/eliza#36212, d06a1aa9c9)",
   "license": "CC-BY-4.0",
-  "attribution": "Phonon-2 by Fermion Research, CC-BY-4.0, derived from NVIDIA parakeet-tdt-0.6b-v3 (CC-BY-4.0). Fermion's NOTICE ships in the bundle (notices/Phonon-2-NOTICE.txt) and in the app's third-party notices; the GGUF also carries it as parakeet.notice.",
+  "attribution": "Phonon-2 by Fermion Research, CC-BY-4.0, derived from NVIDIA parakeet-tdt-0.6b-v3 (CC-BY-4.0). Fermion's NOTICE ships in the bundle (notices/phonon-2/NOTICE) and in the app's third-party notices; the GGUF also carries it as parakeet.notice.",
   "licenseFlags": [
     "Training audio listed in the Phonon-2 NOTICE includes CHiME-6 (CC-BY-SA-4.0) and SPGISpeech (Kensho terms). Flagged for review, not a build blocker."
   ],

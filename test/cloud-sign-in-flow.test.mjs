@@ -54,12 +54,13 @@ test('shared callback contract vectors (fixture shared with elizaOS/eliza) throu
  }finally{rmSync(temporary,{recursive:true,force:true});}
 });
 
-test('the sign-in App Link is build-gated with the delegation return; staging lives in the test-mocks overlay',()=>{
+test('the sign-in App Link follows the configured deployment; staging lives in the test-mocks overlay',()=>{
  const strip=text=>text.replace(/<!--[\s\S]*?-->/g,'');
  const main=strip(read('android/app/src/main/AndroidManifest.xml')),mocks=strip(read('android/app/src/testMocks/AndroidManifest.xml')),gradle=read('android/app/build.gradle');
  const filter=host=>`<intent-filter android:autoVerify="true"><action android:name="android.intent.action.VIEW"/><category android:name="android.intent.category.DEFAULT"/><category android:name="android.intent.category.BROWSABLE"/><data android:scheme="https" android:host="${host}" android:path="/alphaphone/auth/callback"/></intent-filter>`;
- assert.ok(!main.includes('autoVerify'),'a default build declares no https App Link');
- assert.ok(gradle.includes(filter('\\${appLinkHost}')),'ELIZAOS_APP_LINK_HOST adds the sign-in return beside the delegation return');
+ assert.ok(!main.includes('autoVerify'),'the configured host is generated rather than hard-coded in the main manifest');
+ assert.match(gradle,/def appLinkHost = .*\? cloudWebHost :/,'ordinary builds declare the configured Cloud return host');
+ assert.ok(gradle.includes(filter('\\${appLinkHost}')),'the generated overlay adds the sign-in return beside the delegation return');
  assert.ok(!main.includes('staging.eliza.app'),'no staging host in a product manifest');
  assert.ok(between(main,'<activity android:name=".MainActivity"','</activity>').includes('<data android:scheme="alphaphone" android:host="cloud-delegation"/>'),'the delegation return is unchanged');
  assert.ok(main.includes('<intent><action android:name="android.support.customtabs.action.CustomTabsService"/></intent>'),'Custom Tabs providers are visible');
@@ -138,9 +139,9 @@ test('native sign-in never falls back to hosted login when readiness fails',asyn
  const compiled=transformSync('const controller={'+method+'};',{loader:'ts'}).code;
  for(const methods of [null,{google:false},{google:true}]) {
   const updates=[];let ensured=false,checking='';
-  const run=new Function('operation','cloudEnvironmentAllowed','work','inAppSignInMethods','cloudSignIn','CloudSignInError','cloud','residentCloudFlow','state','update','ensureResident','cloudServiceName',
-   'let inAppGoogle=false,inAppPhone=false,inAppEmail=true;'+compiled+';return controller.beginSignIn("production");');
-  await run(false,()=>true,async(message,action)=>{checking=message;return action(new AbortController().signal);},async()=>methods,{},Error,{environment:'production',cancelLogin(){}},()=>true,{purpose:'agent'},v=>updates.push(v),async()=>{ensured=true;},()=> 'Independent Service');
+  const run=new Function('operation','cloudEnvironmentAllowed','work','inAppSignInMethods','cloudSignIn','CloudSignInError','cloud','residentCloudFlow','state','update','ensureResident','cloudServiceName','RESIDENT_UNPACKAGED',
+   'let inAppGoogle=false,inAppPhone=false,inAppEmail=true,inAppMethodsUnconfirmed=true,inAppReturnToStart=false;'+compiled+';return controller.beginSignIn("production");');
+  await run(false,()=>true,async(message,action)=>{checking=message;return action(new AbortController().signal);},async()=>methods,{},Error,{environment:'production',cancelLogin(){}},()=>true,{purpose:'agent'},v=>updates.push(v),async()=>{ensured=true;},()=> 'Independent Service','Runtime unavailable');
   assert.equal(updates.at(-1).signIn.step,'choose');assert.equal(ensured,true);assert.equal(checking,'Checking Independent Service sign-in…');
  }
  const plugin=read(native+'AlphaCloudSignInPlugin.java');

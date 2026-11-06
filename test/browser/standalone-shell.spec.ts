@@ -44,19 +44,18 @@ test('chat handle captures an upward and downward drag outside its bounds', asyn
   await page.getByRole('button',{name:'Shrink chat',exact:true}).press('Enter');
   await expect(page.getByRole('button',{name:'Expand chat',exact:true})).toBeVisible();
   await handle.click({trial:true});
-  let box=(await handle.boundingBox())!;
+  const box=(await handle.boundingBox())!;
   await page.mouse.move(box.x+box.width/2,box.y+box.height/2);
   await page.mouse.down();
-  await page.mouse.move(box.x+box.width/2,box.y-200,{steps:12});
+  await page.mouse.move(box.x+box.width/2,20,{steps:12});
   await page.mouse.up();
   await expect(page.getByRole('button',{name:'Shrink chat',exact:true})).toBeVisible();
   await expect(panel).toHaveCSS('height','915px');
-  await handle.click({trial:true});
-  box=(await handle.boundingBox())!;
-  await page.mouse.move(box.x+box.width/2,box.y+box.height/2);
-  await page.mouse.down();
-  await page.mouse.move(box.x+box.width/2,box.y+220,{steps:12});
-  await page.mouse.up();
+  // Full screen has no grabber; Shrink chat is the way back.
+  await expect(handle).toHaveCount(0);
+  // Toolbar taps are ignored for 350ms after a drag, as a compatibility click may follow one.
+  await page.waitForTimeout(400);
+  await page.getByRole('button',{name:'Shrink chat',exact:true}).click();
   await expect(page.getByRole('button',{name:'Expand chat',exact:true})).toBeVisible();
   await expect.poll(()=>panel.evaluate(el=>parseFloat(getComputedStyle(el).height))).toBe(await page.evaluate(()=>{const h=document.querySelector<HTMLElement>('[data-screen]')!.clientHeight;return Math.min(h,Math.max(200,h-72),Math.max(200,Math.round(h*.6)));}));
 });
@@ -131,8 +130,8 @@ test('a non-overflowing Files list has no edge fade',async({page})=>{
  await page.setViewportSize({width:412,height:1400});await page.goto('/');await page.getByRole('button',{name:'Files',exact:true}).click();const scroll=page.locator('[data-alpha-app-scroll="files"]');await expect(scroll).toBeVisible();expect(await scroll.evaluate(el=>el.scrollHeight-el.clientHeight)).toBeLessThanOrEqual(1);await expect.poll(()=>scroll.evaluate(el=>({top:parseFloat(getComputedStyle(el).getPropertyValue('--calendar-scroll-fade-top')),bottom:parseFloat(getComputedStyle(el).getPropertyValue('--calendar-scroll-fade-bottom'))}))).toEqual({top:0,bottom:0});
 });
 
-test('small sheet follows the mouse down continuously and settles directly to pill',async({page},info)=>{
- await page.goto('/');await page.getByRole('button',{name:'Open conversation',exact:true}).click();await expect.poll(()=>page.locator('[data-alpha-layer=conversation]').evaluate(el=>parseFloat(getComputedStyle(el).height))).toBe(await page.evaluate(()=>{const h=document.querySelector<HTMLElement>('[data-screen]')!.clientHeight;return Math.min(h,Math.max(200,h-72),Math.max(200,Math.round(h*.60)));}));await page.getByRole('button',{name:'Resize chat',exact:true}).click({trial:true});const handle=page.getByRole('button',{name:'Resize chat',exact:true}),panel=page.locator('[data-alpha-layer="conversation"]');const before=await panel.evaluate(el=>parseFloat(getComputedStyle(el).height)),box=(await handle.boundingBox())!;await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();await page.mouse.move(box.x+box.width/2,box.y+box.height/2+80,{steps:8});await expect(panel).toHaveCSS('transition-property','none');const during=await panel.evaluate(el=>parseFloat(getComputedStyle(el).height));expect(during).toBeLessThan(before-60);expect(during).toBeGreaterThan(0);await page.screenshot({path:info.outputPath('chat-follow-finger.png'),animations:'disabled'});await page.mouse.up();await expect(page.getByRole('button',{name:'Open conversation',exact:true})).toBeVisible();await expect(page.getByRole('textbox',{name:'Message Alpha',exact:true})).toHaveCount(0);await expect(panel).toHaveCSS('height','0px');
+test('small sheet follows the mouse down continuously and collapses near the bottom',async({page},info)=>{
+ await page.goto('/');await page.getByRole('button',{name:'Open conversation',exact:true}).click();await expect.poll(()=>page.locator('[data-alpha-layer=conversation]').evaluate(el=>parseFloat(getComputedStyle(el).height))).toBe(await page.evaluate(()=>{const h=document.querySelector<HTMLElement>('[data-screen]')!.clientHeight;return Math.min(h,Math.max(200,h-72),Math.max(200,Math.round(h*.60)));}));await page.getByRole('button',{name:'Resize chat',exact:true}).click({trial:true});const handle=page.getByRole('button',{name:'Resize chat',exact:true}),panel=page.locator('[data-alpha-layer="conversation"]');const before=await panel.evaluate(el=>parseFloat(getComputedStyle(el).height)),box=(await handle.boundingBox())!;await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();await page.mouse.move(box.x+box.width/2,box.y+box.height/2+before-150,{steps:8});await expect(panel).toHaveCSS('transition-property','none');const during=await panel.evaluate(el=>parseFloat(getComputedStyle(el).height));expect(during).toBeLessThan(before-60);expect(during).toBeGreaterThan(0);await page.screenshot({path:info.outputPath('chat-follow-finger.png'),animations:'disabled'});await page.mouse.up();await expect(page.getByRole('button',{name:'Open conversation',exact:true})).toBeVisible();await expect(page.getByRole('textbox',{name:'Message Alpha',exact:true})).toHaveCount(0);await expect(panel).toHaveCSS('height','0px');
 });
 
 test('touch capture can close the small sheet and pull the same pill into a sheet',async({page})=>{
@@ -143,12 +142,21 @@ test('touch cancellation restores the prior detent without a click; keyboard con
  await page.goto('/');await page.getByRole('button',{name:'Open conversation',exact:true}).click();await expect.poll(()=>page.locator('[data-alpha-layer=conversation]').evaluate(el=>parseFloat(getComputedStyle(el).height))).toBe(await page.evaluate(()=>{const h=document.querySelector<HTMLElement>('[data-screen]')!.clientHeight;return Math.min(h,Math.max(200,h-72),Math.max(200,Math.round(h*.60)));}));await page.getByRole('button',{name:'Resize chat',exact:true}).click({trial:true});const panel=page.locator('[data-alpha-layer="conversation"]'),before=await panel.evaluate(el=>getComputedStyle(el).height),handle=page.getByRole('button',{name:'Resize chat',exact:true}),box=(await handle.boundingBox())!,cdp=await page.context().newCDPSession(page),x=box.x+box.width/2,y=box.y+box.height/2;await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y,id:1}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:y+60,id:1}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});await expect(panel).toHaveCSS('height',before);await expect(page.getByRole('button',{name:'Expand chat',exact:true})).toBeVisible();await cdp.detach();await page.getByRole('button',{name:'Expand chat',exact:true}).press('Enter');await expect(page.getByRole('button',{name:'Shrink chat',exact:true})).toBeVisible();
 });
 
+for(const pointer of ['mouse','touch'] as const)test(`the pill's Type button focuses the composer so Android raises the keyboard: ${pointer}`,async({page,browser})=>{
+ const context=pointer==='touch'?await browser.newContext({hasTouch:true,viewport:{width:412,height:915}}):page.context(),tab=pointer==='touch'?await context.newPage():page;
+ await tab.goto('/');const bar=(await tab.locator('[data-alpha-input-bar]').boundingBox())!;await tab.mouse.move(bar.x+3,bar.y+bar.height/2);await tab.mouse.down();await tab.mouse.move(bar.x+3,bar.y+bar.height/2+64,{steps:8});await tab.mouse.up();
+ const type=tab.getByRole('button',{name:'Type',exact:true});await expect(type).toBeVisible();await tab.waitForTimeout(400);const box=(await type.boundingBox())!;
+ if(pointer==='touch')await tab.touchscreen.tap(box.x+box.width/2,box.y+box.height/2);else await type.click();
+ await expect(tab.getByRole('textbox',{name:'Ask Alpha',exact:true})).toBeFocused();
+ if(pointer==='touch')await context.close();
+});
+
 test('a tiny pill pointer wobble keeps the Type click and never opens a sheet',async({page})=>{
- await page.goto('/');await page.getByRole('button',{name:'Open conversation',exact:true}).click();await page.getByRole('button',{name:'Minimize chat',exact:true}).click();const type=page.getByRole('button',{name:'Type',exact:true});await type.click({trial:true});const box=(await type.boundingBox())!;await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();await page.mouse.move(box.x+box.width/2+1,box.y+box.height/2-2);await page.mouse.up();await expect(page.getByRole('textbox',{name:'Ask Alpha',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Resize chat',exact:true})).toHaveCount(0);
+ await page.goto('/');const bar=(await page.locator('[data-alpha-input-bar]').boundingBox())!;await page.mouse.move(bar.x+3,bar.y+bar.height/2);await page.mouse.down();await page.mouse.move(bar.x+3,bar.y+bar.height/2+64,{steps:8});await page.mouse.up();const type=page.getByRole('button',{name:'Type',exact:true});await type.click({trial:true});const box=(await type.boundingBox())!;await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();await page.mouse.move(box.x+box.width/2+1,box.y+box.height/2-2);await page.mouse.up();await expect(page.getByRole('textbox',{name:'Ask Alpha',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Resize chat',exact:true})).toHaveCount(0);
 });
 
 test('short viewports keep the resized panel and grabber within the screen',async({page})=>{
- await page.setViewportSize({width:412,height:300});await page.goto('/');await page.getByRole('button',{name:'Open conversation',exact:true}).click();const panel=page.locator('[data-alpha-layer="conversation"]'),handle=page.getByRole('button',{name:'Resize chat',exact:true});await expect(handle).toBeInViewport();expect((await panel.boundingBox())!.height).toBeLessThanOrEqual(300);await page.getByRole('button',{name:'Expand chat',exact:true}).focus();await page.keyboard.press('Enter');await expect(page.getByRole('button',{name:'Shrink chat',exact:true})).toBeVisible();await expect(handle).toBeInViewport();await page.getByRole('button',{name:'Shrink chat',exact:true}).press('Enter');await expect(page.getByRole('button',{name:'Expand chat',exact:true})).toBeVisible();await page.getByRole('button',{name:'Minimize chat',exact:true}).press('Enter');await expect(page.getByRole('button',{name:'Open conversation',exact:true})).toBeVisible();
+ await page.setViewportSize({width:412,height:300});await page.goto('/');await page.getByRole('button',{name:'Open conversation',exact:true}).click();const panel=page.locator('[data-alpha-layer="conversation"]'),handle=page.getByRole('button',{name:'Resize chat',exact:true});await expect(handle).toBeInViewport();expect((await panel.boundingBox())!.height).toBeLessThanOrEqual(300);await page.getByRole('button',{name:'Expand chat',exact:true}).focus();await page.keyboard.press('Enter');await expect(page.getByRole('button',{name:'Shrink chat',exact:true})).toBeVisible();await expect(handle).toHaveCount(0);await page.getByRole('button',{name:'Shrink chat',exact:true}).press('Enter');await expect(page.getByRole('button',{name:'Expand chat',exact:true})).toBeVisible();await expect(handle).toBeInViewport();await page.getByRole('button',{name:'Minimize chat',exact:true}).press('Enter');await expect(page.getByRole('button',{name:'Open conversation',exact:true})).toBeVisible();
 });
 
 test('an incoming view change retires a captured drag without reopening chat on release',async({page})=>{
@@ -197,12 +205,12 @@ for(const viewport of [{width:412,height:915},{width:1440,height:500}])for(const
  await pull(true);await expect(page.getByRole('button',{name:'Resize chat',exact:true})).toBeVisible();await expect(page.getByRole('textbox',{name:'Message Alpha',exact:true})).toHaveValue('');await page.screenshot({animations:'disabled',path:test.info().outputPath(`empty-placeholder-${pointer}.png`)});await cdp?.detach();
 });
 
-for(const view of ['Settings','Notes','Files'])test(`${view} Back works directly beside nonblocking half chat while full chat isolates the app`,async({page},info)=>{
+for(const view of ['Settings','Notes','Files'])test(`${view} Back beside the half chat collapses it first, then works, while full chat isolates the app`,async({page},info)=>{
  await page.setViewportSize({width:412,height:915});await page.goto('/');await page.getByRole('button',{name:view,exact:true}).click();
  const app=page.locator('[data-alpha-layer="app"]'),back=app.locator('button[aria-label="Back to apps"]');
  await page.getByRole('button',{name:'Open conversation',exact:true}).click();await page.getByRole('textbox',{name:'Message Alpha',exact:true}).fill('Keep this unsent draft');await page.locator('[data-alpha-layer=conversation]').evaluate(el=>Promise.all(el.getAnimations().map(animation=>animation.finished.catch(()=>{}))));
- await expect(back).toBeVisible();await expect(app).not.toHaveAttribute('inert','');await expect(app).toHaveAttribute('aria-hidden','false');await back.click({trial:true});expect((await back.boundingBox())!.height).toBeGreaterThanOrEqual(44);
- await page.screenshot({path:info.outputPath('header-live-beside-sheet.png'),animations:'disabled'});await back.click();await expect(page.locator('html')).toHaveAttribute('data-active-view','home');await expect(page.getByRole('textbox',{name:'Ask Alpha',exact:true})).toHaveValue('Keep this unsent draft');
+ await expect(back).toBeVisible();await expect(app).not.toHaveAttribute('inert','');await expect(app).toHaveAttribute('aria-hidden','false');expect((await back.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+ await page.screenshot({path:info.outputPath('header-live-beside-sheet.png'),animations:'disabled'});await page.mouse.click(((await back.boundingBox())!).x+22,((await back.boundingBox())!).y+22);await expect(page.getByRole('button',{name:'Resize chat',exact:true})).toHaveCount(0);await expect(page.locator('html')).toHaveAttribute('data-active-view',view.toLowerCase());await back.click();await expect(page.locator('html')).toHaveAttribute('data-active-view','home');await expect(page.getByRole('textbox',{name:'Ask Alpha',exact:true})).toHaveValue('Keep this unsent draft');
  await page.getByRole('button',{name:view,exact:true}).click();await page.getByRole('button',{name:'Open conversation',exact:true}).click();await page.getByRole('button',{name:'Expand chat',exact:true}).click();
  await expect(app).toHaveAttribute('inert','');await expect(app).toHaveAttribute('aria-hidden','true');await expect(app.getByRole('button',{name:'Back to apps',exact:true})).toHaveCount(0);
  for(let i=0;i<8;i++){await page.keyboard.press('Tab');expect(await page.evaluate(()=>!!document.activeElement?.closest('[inert]'))).toBe(false);}

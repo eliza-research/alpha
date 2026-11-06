@@ -1,8 +1,9 @@
 // Register browser implementations before any runtime module claims plugin identity.
 import './browser/register';
 import {installCalendarApprovalAdapter} from './prototype/calendar-approval-adapter';
+import {installMapsChatAdapter} from './prototype/maps-chat-adapter';
 import {bindBrowserDeletionOwner} from './runtime/deletion-owner';
-import {DEFAULT_PULL_DISTANCE,DEFAULT_PULL_VELOCITY} from "../../../.eliza/client-features/packages/ui/src/gestures/constants";
+import {DEFAULT_PULL_VELOCITY} from "../../../.eliza/client-features/packages/ui/src/gestures/constants";
 import {usePullGesture} from "../../../.eliza/client-features/packages/ui/src/components/shell/use-pull-gesture";
 import {installChatOverlayMotion} from './prototype/chat-overlay-motion-adapter';
 import {installSubviewAccessibility,keepFocusOnScreen} from './prototype/subview-accessibility';
@@ -119,6 +120,7 @@ if (!fixture) {
   installContextSelection(Component);
   installPrototypeVoiceAdapter(Component, VIEWS);
   installCalendarApprovalAdapter(Component);
+  installMapsChatAdapter(Component);
   installNotesDocumentAdapter(Component, VIEWS);
   installNotesShareAdapter(VIEWS);
   installNotesTrashAdapter(Component, VIEWS);
@@ -174,15 +176,15 @@ let launcherPresentation = false;
 let assistantSurface = false;
 const closeAssistant = () => { void DailyApps.closeAssistant().catch(() => {}); };
 function Phone() {
-  const [pullSurface,setPullSurface]=useState({input:true,scale:1});
+  const [pullScale,setPullScale]=useState(1);
   const chatPullBinding=usePullGesture({
     swipeEnabled:false,
     preventTouchCompatibilityEvents:true,
-    distanceThreshold:(pullSurface.input?24:DEFAULT_PULL_DISTANCE)*pullSurface.scale,
-    velocityThreshold:DEFAULT_PULL_VELOCITY*pullSurface.scale,
+    velocityThreshold:DEFAULT_PULL_VELOCITY*pullScale,
     onDrag:offset=>shell?.paintChatMotion(offset),
     onPullUp:()=>shell?.settleChatMotion('up'),
     onPullDown:()=>shell?.settleChatMotion('down'),
+    onSettleFree:direction=>shell?.settleChatMotion(direction,true),
     onDragReset:()=>{if(shell?.chatMotion?.moved)shell.cancelChatMotion();},
     onTap:()=>shell?.tapChatMotion(),
     onCancel:()=>shell?.cancelChatMotion(),
@@ -257,7 +259,7 @@ function Phone() {
     else if(action==='background'){shell.leave();shell.setState({screen:'off',voice:'off',chat:'input',shade:false});document.documentElement.dataset.devBackground='true';window.dispatchEvent(new Event('blur'));}
     else if(action==='resume'){delete document.documentElement.dataset.devBackground;shell.unlock();window.dispatchEvent(new Event('focus'));}
     if(['power','unlock','boot','background','resume'].includes(action))window.dispatchEvent(new Event('alpha:device-state'));
-  }}/>}{testMocksEnabled && mock && <div className="mock-mode-banner" role="status"><span>Mock mode · simulated data and actions</span><button onClick={() => { void connectionController.offline().then(() => { const url = new URL(location.href); url.searchParams.delete('mode'); url.searchParams.delete('start'); location.assign(url.href); }); }}>Exit mock mode</button></div>}<Component configureChatPull={(surface:{input:boolean;scale:number})=>setPullSurface(current=>current.input===surface.input&&current.scale===surface.scale?current:surface)} chatPullBinding={chatPullBinding} phoneSurface assistantSurface={assistantSurface} onCloseAssistant={closeAssistant} onReopenStartupAccess={!fixture && !assistantSurface ? reopenStartupPermissions : undefined} systemShell={launcherPresentation} systemShade={systemShade} nativeSystemChrome={isAndroid || !launcherPresentation} initial={testMocksEnabled && fixture ? query.get('start') || 'home' : 'home'} theme={initialTheme} ref={(value: any) => { shell = value; }} />
+  }}/>}{testMocksEnabled && mock && <div className="mock-mode-banner" role="status"><span>Mock mode · simulated data and actions</span><button onClick={() => { void connectionController.offline().then(() => { const url = new URL(location.href); url.searchParams.delete('mode'); url.searchParams.delete('start'); location.assign(url.href); }); }}>Exit mock mode</button></div>}<Component configureChatPull={(surface:{scale:number})=>setPullScale(surface.scale)} chatPullBinding={chatPullBinding} phoneSurface assistantSurface={assistantSurface} onCloseAssistant={closeAssistant} onReopenStartupAccess={!fixture && !assistantSurface ? reopenStartupPermissions : undefined} systemShell={launcherPresentation} systemShade={systemShade} nativeSystemChrome={isAndroid || !launcherPresentation} initial={testMocksEnabled && fixture ? query.get('start') || 'home' : 'home'} theme={initialTheme} ref={(value: any) => { shell = value; }} />
 {!fixture && <><ConnectionChooser /><GoogleConnectionsPanel />{!assistantSurface && <><HostedDigestPanel canComposeQuestion={questionTarget} composeQuestion={(draft,sessionId)=>{if(!questionTarget(sessionId))return false;shell.api(shell.S().view).composeContentQuestion(draft);return true;}} /><StartupPermissions active={!!connection.cloudAccount && !connection.busy && !connection.signIn} /></>}</>}</>;
 }
 /** Android's locale and 24-hour setting; WebView Intl alone does not follow the latter. */
@@ -291,7 +293,7 @@ async function mountPhone() {
   installTextScale();
   // The floating dock's footprint is measured too: Home ends above it (runtime/dock-clearance.ts).
   installDockClearance();
-  // A toast raised under a top-layer dialog is shown and announced inside that dialog (runtime/toast-layer.ts).
+  // Dialog feedback is announced in its own flow above the form (runtime/toast-layer.ts).
   installToastLayer();
   if (testMocksEnabled && mock && isAndroid) {
     const { pauseLiveActivityForMock } = await import('./runtime/mock-admission');

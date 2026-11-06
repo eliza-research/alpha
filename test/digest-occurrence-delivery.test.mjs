@@ -116,30 +116,32 @@ const tick=(l,time)=>{const found=o.scheduledOccurrence(l,at(time));if(!found)re
 test('development digest admission uses the pinned agent threshold, order and record text',async()=>{
  const {readFileSync}=await import('node:fs');
  const agent=readFileSync(resolve(root,'vendor/eliza/plugins/plugin-workflow/src/services/hosted-digest.ts'),'utf8');
+ const policy=readFileSync(resolve(root,'vendor/eliza/plugins/plugin-workflow/src/services/hosted-digest-policy.ts'),'utf8');
  const out=run(occurrencePrelude+`
 out.window=o.DIGEST_RUN_WINDOW_MS;out.missed=o.DIGEST_MISSED_TEXT;out.unavailable=o.DIGEST_UNAVAILABLE_TEXT;
 out.states=[[false,'2026-10-08T00:00:00.000Z'],[false,'2026-10-07T08:00:00.000Z'],[false,'2026-10-07T07:59:59.999Z'],[true,'2026-10-08T00:00:00.000Z'],[true,'2026-10-01T00:00:00.000Z']].map(([revoked,expiresAt])=>o.digestSourceState({revoked,expiresAt},at('2026-10-07T08:00:00.000Z')));
 console.log(JSON.stringify(out));`);
- // Threshold: the agent records missed only when more than 120 seconds late.
- assert.match(agent,/if \(checkWindow && now - scheduledAt > 120000\)/);
- assert.equal(out.window,120000);
- for(const text of [out.missed,out.unavailable.expired,out.unavailable.revoked])assert.ok(agent.includes(`'${text}'`),`pinned agent writes: ${text}`);
+ // Threshold: the agent records missed only outside its shared thirty-minute run window.
+ assert.match(agent,/if \(checkWindow && digestOccurrenceMissed\(scheduledAt, now\)\)/);
+ assert.match(policy,/export const DIGEST_RUN_WINDOW_MS = 30 \* 60_000;/);assert.match(policy,/return now - scheduledAt > DIGEST_RUN_WINDOW_MS;/);
+ assert.equal(out.window,30*60000);
+ for(const text of [out.missed,out.unavailable.expired,out.unavailable.revoked])assert.ok(policy.includes(`'${text}'`),`pinned agent policy writes: ${text}`);
  // Order: the source state is decided before lateness, so a late occurrence of a lapsed source is unavailable, not missed.
  const admission=agent.slice(agent.indexOf('export async function digestAdmission('));
  assert.ok(admission.indexOf("status: 'unavailable'")>0&&admission.indexOf("status: 'unavailable'")<admission.indexOf("status: 'missed'"));
  assert.match(admission,/sourceState,\s*paused: true,/);
  // digestSourceState: revoked wins; expiry is inclusive of the expiry instant.
- assert.match(agent,/if \(source\.revoked\) return 'revoked';\s*return Date\.parse\(source\.expiresAt\) <= now \? 'expired' : 'current';/);
+ assert.match(policy,/if \(source\.revoked\) return 'revoked';\s*return Date\.parse\(source\.expiresAt\) <= now \? 'expired' : 'current';/);
  assert.deepEqual(out.states,['current','expired','expired','revoked','revoked']);
 });
 
-test('a development occurrence runs up to 120 seconds late, is missed after that, and settles once',()=>{
+test('a development occurrence runs up to thirty minutes late, is missed after that, and settles once',()=>{
  const out=run(occurrencePrelude+`
 const ticks=(created,times)=>{const l=loop(created);return times.map(time=>tick(l,time));};
 out.exact=ticks('2026-10-03T07:00:00Z',['2026-10-03T07:59:59.999Z','2026-10-03T08:00:00Z','2026-10-03T08:00:15Z','2026-10-03T08:01:00Z']);
-out.late119=ticks('2026-10-03T07:00:00Z',['2026-10-03T08:01:59.999Z','2026-10-03T08:02:30Z']);
-out.late120=ticks('2026-10-03T07:00:00Z',['2026-10-03T08:02:00Z']);
-out.late121=ticks('2026-10-03T07:00:00Z',['2026-10-03T08:02:00.001Z','2026-10-03T08:02:15Z','2026-10-03T12:00:00Z']);
+out.late119=ticks('2026-10-03T07:00:00Z',['2026-10-03T08:29:59.999Z','2026-10-03T08:30:30Z']);
+out.late120=ticks('2026-10-03T07:00:00Z',['2026-10-03T08:30:00Z']);
+out.late121=ticks('2026-10-03T07:00:00Z',['2026-10-03T08:30:00.001Z','2026-10-03T08:30:15Z','2026-10-03T12:00:00Z']);
 // Three days closed: one record for the most recent occurrence, no backlog, then the next day runs.
 out.absence=ticks('2026-10-03T07:00:00Z',['2026-10-06T09:30:00Z','2026-10-06T09:30:15Z','2026-10-07T08:00:20Z']);
 // Created after today's time: nothing until tomorrow. Paused, removed or source-paused: nothing.
@@ -167,12 +169,12 @@ out.settled=l.settledOccurrences;out.mark=l.lastOccurrence;
 const again=loop('2026-10-03T07:00:00Z');
 out.again=['2026-10-03T08:00:05Z','2026-10-03T07:58:00Z','2026-10-03T08:00:30Z','2026-10-03T08:01:59Z'].map(time=>tick(again,time));
 // Back behind the jump but past today's time: never a late run, and the occurrence does not pass without a
-// record. It is recorded once as missed, like any other occurrence found more than 120 seconds late.
+// record. It is recorded once as missed, like any other occurrence found outside the run window.
 const late=loop('2026-10-03T07:00:00Z');
 out.late=['2026-10-05T08:00:00Z','2026-10-04T09:30:00Z','2026-10-04T23:00:00Z','2026-10-05T08:00:00Z','2026-10-06T08:00:00Z'].map(time=>tick(late,time));
 // The round-4 case: the clock jumps two days ahead and is corrected, then the tab sleeps through the real time.
 const asleep=loop('2026-10-03T07:00:00Z');
-out.asleep=['2026-10-05T08:00:10Z','2026-10-03T07:40:00Z','2026-10-03T08:10:00Z','2026-10-03T08:10:30Z','2026-10-04T08:20:00Z','2026-10-05T08:00:00Z','2026-10-06T08:00:00Z'].map(time=>tick(asleep,time));
+out.asleep=['2026-10-05T08:00:10Z','2026-10-03T07:40:00Z','2026-10-03T08:40:00Z','2026-10-03T08:40:30Z','2026-10-04T08:50:00Z','2026-10-05T08:00:00Z','2026-10-06T08:00:00Z'].map(time=>tick(asleep,time));
 // A clock set back onto a day a long absence skipped: one truthful record for that day, never a backlog or a run.
 const absent=loop('2026-10-01T07:00:00Z');
 out.absent=['2026-10-06T09:30:00Z','2026-10-03T09:00:00Z','2026-10-03T09:00:30Z','2026-10-03T23:00:00Z'].map(time=>tick(absent,time));out.absentSettled=absent.settledOccurrences;
@@ -232,14 +234,15 @@ test('development admission matches the pinned agent across a table of clock sce
  const directory=mkdtempSync(resolve(tmpdir(),'digest-parity-'));
  try{
   writeFileSync(resolve(directory,'trigger-scheduling.ts'),show('packages/core/src/services/trigger-scheduling.ts'));
+  writeFileSync(resolve(directory,'hosted-digest-policy.ts'),show('plugins/plugin-workflow/src/services/hosted-digest-policy.ts'));
   writeFileSync(resolve(directory,'agent.ts'),`import {computeNextCronRunAtMs} from './trigger-scheduling.ts';
+import {DIGEST_MISSED_TEXT,DIGEST_PAUSED_TEXT,DIGEST_SOURCE_UNAVAILABLE_TEXT,digestOccurrenceMissed,digestSourceState,isDigestNotRunStatus} from './hosted-digest-policy.ts';
 class WorkflowApiError extends Error{constructor(message:string,readonly status:number){super(message);}}
 // Stubs for the database read and the reviewed-definition integrity check, which these scenarios hold fixed.
 let current:any;const digestSource=async(..._args:unknown[])=>current;const validateDigestSpec=(value:any)=>value;
 const digestPhoneSpec=(..._args:unknown[])=>null;const phoneDraftDefinition=(_spec:unknown)=>({source:'reviewed-definition'});
 ${constant('HOSTED_SPEC')}
 ${constant('HOSTED_TEMPLATE_VERSION')}
-${extract('export function digestSourceState(')}
 ${extract('export function digestCron(')}
 ${extract('export async function digestAdmission(')}
 export {computeNextCronRunAtMs};export const useSource=(source:unknown)=>{current=source;};
@@ -262,8 +265,8 @@ const devSide=(row)=>{const loop={active:true,removed:false,createdAt:at(row.cre
  return found.missed?{...base,status:'missed',text:o.DIGEST_MISSED_TEXT}:{...base,status:'ready',text:''};};
 const later='2027-01-01T00:00:00.000Z';
 const rows=[
- ['on time','UTC','08:00','2026-10-03T08:00:00.000Z'],['119.999 s late','UTC','08:00','2026-10-03T08:01:59.999Z'],['120 s late','UTC','08:00','2026-10-03T08:02:00.000Z'],
- ['120.001 s late','UTC','08:00','2026-10-03T08:02:00.001Z'],['three days absent','UTC','08:00','2026-10-06T09:30:00.000Z'],
+ ['on time','UTC','08:00','2026-10-03T08:00:00.000Z'],['120.001 s late','UTC','08:00','2026-10-03T08:02:00.001Z'],['29:59.999 late','UTC','08:00','2026-10-03T08:29:59.999Z'],
+ ['30 min late','UTC','08:00','2026-10-03T08:30:00.000Z'],['30 min 1 ms late','UTC','08:00','2026-10-03T08:30:00.001Z'],['three days absent','UTC','08:00','2026-10-06T09:30:00.000Z'],
  ['expired, on time','UTC','08:00','2026-10-03T08:00:30.000Z',{expiresAt:'2026-10-03T08:00:00.000Z'}],
  ['expires at this instant','UTC','08:00','2026-10-03T08:00:00.000Z',{expiresAt:'2026-10-03T08:00:00.000Z'}],
  ['expired and late','UTC','08:00','2026-10-03T11:00:00.000Z',{expiresAt:'2026-10-03T09:00:00.000Z'}],
@@ -295,9 +298,9 @@ console.log(JSON.stringify(out));`);
   if(process.env.DIGEST_PARITY_DEBUG)console.log(JSON.stringify(out,null,1));
   for(const row of out.rows)assert.deepEqual(row.dev,row.agent,`${row.name}: development and agent admission agree`);
   // The table exercises every status, not only the happy path.
-  assert.deepEqual([...new Set(out.rows.map(row=>row.agent?.status??'none'))].sort(),['missed','none','ready','unavailable']);
-  // A skipped civil time has no occurrence that day on either side.
-  assert.equal(out.rows.find(row=>row.name==='spring-forward day, skipped time').agent,null);
+  assert.deepEqual([...new Set(out.rows.map(row=>row.agent?.status??'none'))].sort(),['missed','ready','unavailable']);
+  // A civil time the zone skips runs one gap later that day on both sides: 02:30 EST is 03:30 EDT.
+  assert.equal(out.rows.find(row=>row.name==='spring-forward day, skipped time').agent.scheduledAt,'2026-03-08T07:30:00.000Z');
   assert.ok(out.rows.some(row=>row.agent?.sourceState==='expired')&&out.rows.some(row=>row.agent?.sourceState==='revoked'));
   assert.equal(out.pausedNext,null);
   for(const week of out.weeks)assert.deepEqual(week.dev,week.agent,`${week.zone} ${week.localTime}: the same occurrence instants`);

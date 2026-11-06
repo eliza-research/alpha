@@ -15,7 +15,7 @@ const digest=value=>createHash('sha256').update(value).digest('hex');
 const runtimeSource=sourceDirectory(root);
 if(!fs.existsSync(path.join(runtimeSource,'.alpha-runtime-source.json')))throw Error(`Prepared runtime source ${path.relative(root,runtimeSource)} is missing. Run npm run android:build:local (distributable APKs) or npm run agent:prepare first.`);
 verifySource(runtimeSource,pin);
-const classes=['SecureStoreFrameInput','AgentSecureStore','DeviceRamTierPolicy','ElizaAgentService','IpcStartupRecovery','WorkflowSurvivorInventory','ElizaAgentWatchdogPolicy','ElizaAssetExtractionPolicy','ElizaBionicInferenceServer','NativeSourceHost','ElizaStartupTrace','ElizaWorkScheduler','ElizaTasksWorker','InferenceMemoryPolicy','RuntimeInstallationIdentity','BionicDecodeLoop','BionicAsrStreams','ElizaAsrNativeEnv','ElizaVoiceNative','BgeEmbeddingSession'];
+const classes=['SecureStoreFrameInput','AgentSecureStore','DeviceRamTierPolicy','ElizaAgentService','IpcStartupRecovery','WorkflowSurvivorInventory','ElizaAgentWatchdogPolicy','ElizaAssetExtractionPolicy','ElizaBionicInferenceServer','NativeSourceHost','ElizaStartupTrace','ElizaWorkScheduler','ElizaTasksWorker','InferenceMemoryPolicy','RuntimeInstallationIdentity','BionicDecodeLoop','BionicAsrStreams','ElizaAsrNativeEnv','ElizaVoiceNative','BgeEmbeddingSession','AndroidBunTarget'];
 const output=path.join(root,'android/app/build/generated/local-agent/java');
 fs.rmSync(output,{recursive:true,force:true});
 const target=path.join(output,...identity.split('.'));fs.mkdirSync(target,{recursive:true});
@@ -31,7 +31,7 @@ for(const name of classes){
   if(name==='ElizaAgentService'){
     const anchor='agentEnv.put("ELIZA_LOCAL_AGENT_SOCKET_PATH",privateSocketPath);';
     if(value.split(anchor).length!==2)throw Error('Native runtime environment insertion point changed');
-    value=value.replace(anchor,anchor+`\n            agentEnv.put("ELIZA_ANDROID_SECURE_STORE_SOCKET", "${identity}.secure-store");\n            try { AlphaLocalAgentPlugin.configureEnvironment(this, agentEnv); } catch (java.io.IOException unavailable) { currentStatus = "provider-unavailable"; updateNotification(); return; }`);
+    value=value.replace(anchor,anchor+`\n            agentEnv.put("ELIZA_ANDROID_SECURE_STORE_SOCKET", "${identity}.secure-store");\n            try { AlphaLocalAgentPlugin.configureEnvironment(this, agentEnv); } catch (java.io.IOException unavailable) { currentStatus = "provider-unavailable"; updateNotification(); return false; }`);
   }
   fs.writeFileSync(path.join(target,name+'.java'),value);
   manifest.files.push({path:relative,generatedPath:path.relative(root,path.join(target,name+'.java')),sourceSha256:digest(input),sha256:digest(input),generatedSha256:createHash('sha256').update(value).digest('hex')});
@@ -40,6 +40,7 @@ for(const name of classes){
 // Record the same source provenance as the service adapters above.
 for(const relative of [
  'plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/NativeProcessSupervisor.java',
+ 'plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/CredentialShutdownLease.java',
  // JsonCredentialSlots is compiled from the :elizaos-capacitor-secure-store module (patched
  // source, byte-identical for that file); staging a second copy would duplicate the class.
 ]){

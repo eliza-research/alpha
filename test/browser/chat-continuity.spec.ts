@@ -105,13 +105,6 @@ const bindingKey = (page: Page) => page.evaluate(async () => {
   const { connectionController } = await import('/src/runtime/connection-ui.tsx');
   return connectionController.assistantDraftBinding(new AbortController().signal);
 });
-async function savedDraft(page: Page, key?: string) {
-  const binding = key ?? await bindingKey(page);
-  return page.evaluate(async binding => {
-    const { assistantDraftStore } = await import('/src/runtime/assistant-draft-store.ts');
-    return (await (await assistantDraftStore(binding)).read())?.text ?? null;
-  }, binding);
-}
 async function connected(page: Page, options: Options = {}) {
   await remoteAgent(page, options);
   await page.goto('/');
@@ -120,7 +113,7 @@ async function connected(page: Page, options: Options = {}) {
 }
 async function typeDraft(page: Page, text: string) {
   await composer(page).fill(text);
-  await expect.poll(() => savedDraft(page), { timeout: 15_000 }).toBe(text);
+  await expect(composer(page)).toHaveValue(text);
 }
 const MAY_FINISH = 'The agent may still finish this reply. Alpha Phone will check once and show it here if it does.';
 const UNKNOWN = 'Your message may have reached the agent. Check before sending it again.';
@@ -129,7 +122,6 @@ test('an offline failure before the message is posted keeps the text and a later
   test.setTimeout(90_000);
   await connected(page, { createFails: true });
   await typeDraft(page, 'Keep this while offline');
-  const key = await bindingKey(page);
   await composer(page).press('Enter');
   await expect(page.getByText('Not sent. Your message is back in the composer.', { exact: true }).first()).toBeVisible();
   await expect(composer(page)).toHaveValue('Keep this while offline');
@@ -137,7 +129,6 @@ test('an offline failure before the message is posted keeps the text and a later
   await expect(page.getByText(UNKNOWN, { exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /^Check for reply/ })).toHaveCount(0);
   expect(await fixture(page, f => ({ posts: f.posts, creates: f.creates, reads: f.historyReads }))).toEqual({ posts: 0, creates: 1, reads: 0 });
-  expect(await savedDraft(page, key)).toBe('Keep this while offline');
   // Back online: only the person's own second Send posts the message, exactly once.
   await fixture(page, f => { f.createFails = false; });
   await expect(stop(page)).toHaveCount(0);
@@ -160,14 +151,12 @@ test('Stop before the message is posted returns the text and never contacts the 
   await expect(page.getByText(MAY_FINISH, { exact: true })).toHaveCount(0);
   await expect(page.getByText(UNKNOWN, { exact: true })).toHaveCount(0);
   expect(await fixture(page, f => ({ posts: f.posts, aborts: f.aborts }))).toEqual({ posts: 0, aborts: 0 });
-  expect(await savedDraft(page)).toBe('Stopped before sending');
 });
 
 test('Stop says the agent may still finish, discards the late reply and reconciles once without resending', async ({ page }) => {
   test.setTimeout(120_000);
   await connected(page);
   await typeDraft(page, 'Please finish anyway');
-  const key = await bindingKey(page);
   await composer(page).press('Enter');
   await expect.poll(() => fixture(page, f => f.posts), { timeout: 15_000 }).toBe(1);
   await stop(page).click();
@@ -176,7 +165,6 @@ test('Stop says the agent may still finish, discards the late reply and reconcil
   await expect(stop(page)).toHaveCount(0);
   await expect(page.getByText(UNKNOWN, { exact: true })).toHaveCount(0);
   await expect(composer(page)).toHaveValue('');
-  await expect.poll(() => savedDraft(page, key)).toBe('');
   // The agent answers on the closed request and persists the reply: the late transport reply is discarded.
   await fixture(page, f => { f.release('Finished after Stop'); f.finish('Finished after Stop'); });
   await expect(conversation(page).getByText('Finished after Stop', { exact: true })).toHaveCount(0);
@@ -313,10 +301,10 @@ test('reconnecting restores the saved remote conversation with older pages; the 
   await expect(composer(page)).toHaveValue('Unsent across navigation');
   await expect(composer(page)).toBeInViewport();
   await page.setViewportSize({ width: 412, height: 915 });
-  expect(await savedDraft(page, key)).toBe('Unsent across navigation');
   await page.reload();
   await expect.poll(() => fixture(page, f => f.ready), { timeout: 30_000 }).toBe(true);
-  await expect(composer(page)).toHaveValue('Unsent across navigation', { timeout: 30_000 });
+  // Unsent text is not kept across a reload.
+  await expect(composer(page)).toHaveValue('', { timeout: 30_000 });
   // Nothing was sent by restoring, navigating, resizing or reloading.
   expect(await fixture(page, f => f.posts)).toBe(0);
   await expect.poll(restored, { timeout: 30_000 }).toMatchObject({ count: 232, conversation: 'fixture-chat' });
@@ -335,7 +323,6 @@ test('a rate limit before the message is posted keeps the text instead of report
   await expect(page.getByText(UNKNOWN, { exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /^Check for reply/ })).toHaveCount(0);
   expect(await fixture(page, f => ({ posts: f.posts, creates: f.creates }))).toEqual({ posts: 0, creates: 1 });
-  expect(await savedDraft(page)).toBe('Rate limited before sending');
 });
 
 test('Stop is offered before the first reply chunk of a later message in the same conversation', async ({ page }) => {
@@ -508,26 +495,3 @@ test('typing during initial identity verification survives Minimize and admissio
 });
 
 
-for(const edit of [false,true])test(`initial identity admission never transfers a restored offline draft${edit?' with edits':''}`,async({page})=>{
- await remoteAgent(page,{holdIdentity:true});await page.goto('/');await expect.poll(()=>fixture(page,f=>!!f.heldIdentity)).toBe(true);
- await page.evaluate(async()=>{const {assistantDraftStore}=await import('/src/runtime/assistant-draft-store.ts');const store=await assistantDraftStore(JSON.stringify(['offline']));await store.save(await store.read(),'Earlier offline private words');});
- await page.reload();await expect.poll(()=>fixture(page,f=>!!f.heldIdentity)).toBe(true);await expect(composer(page)).toHaveValue('Earlier offline private words');if(edit)await composer(page).fill('Earlier offline private words with new edits');
- await fixture(page,f=>f.heldIdentity());await expect.poll(()=>fixture(page,f=>f.ready)).toBe(true);await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);await expect(composer(page)).toHaveValue('');
- expect(await savedDraft(page,JSON.stringify(['offline']))).toContain('Earlier offline private words');expect(await savedDraft(page)).toBeNull();expect(await fixture(page,f=>f.posts)).toBe(0);
-});
-
-test('fresh startup typing never overwrites the verified owner saved draft',async({page})=>{
- await remoteAgent(page,{holdIdentity:true});await page.goto('/');await expect.poll(()=>fixture(page,f=>!!f.heldIdentity)).toBe(true);
- const key=JSON.stringify([REMOTE,'fixture-owner','6f1d3c3e-8c55-4c1b-9d1f-2b6f0b0d3a11',null]);await page.evaluate(async key=>{const {assistantDraftStore}=await import('/src/runtime/assistant-draft-store.ts');const store=await assistantDraftStore(key);await store.save(await store.read(),'Existing verified-owner draft');},key);
- await composer(page).fill('Fresh words while connecting');await fixture(page,f=>f.heldIdentity());await expect.poll(()=>fixture(page,f=>f.ready)).toBe(true);await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
- await expect(composer(page)).toHaveValue('Fresh words while connecting');await expect(page.getByRole('status',{name:'Assistant draft status',exact:true})).toContainText('A saved draft is available');expect(await savedDraft(page,key)).toBe('Existing verified-owner draft');expect(await fixture(page,f=>f.posts)).toBe(0);
-});
-
-
-test('fresh startup draft stays with owner A after a verified switch to owner B',async({page})=>{
- await remoteAgent(page,{holdIdentity:true});await page.goto('/');await expect.poll(()=>fixture(page,f=>!!f.heldIdentity)).toBe(true);
- await composer(page).fill('Fresh startup words for owner A');await fixture(page,f=>f.heldIdentity());await expect.poll(()=>fixture(page,f=>f.ready)).toBe(true);await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);await expect(composer(page)).toHaveValue('Fresh startup words for owner A');
- const ownerA=await bindingKey(page);await expect.poll(()=>savedDraft(page,ownerA)).toBe('Fresh startup words for owner A');
- await page.evaluate(async remote=>{const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');await c.disconnect();(window as any).continuity.ownerId='fixture-owner-b';await(window as any).Capacitor.nativePromise('AlphaConnection','secureWrite',{slot:'remote:'+remote,value:JSON.stringify({origin:remote,token:'remote-session-token',identityId:'fixture-owner-b',sessionId:'remote-session-token',expiresAt:Date.now()+86_400_000})});await c.pair('remote',remote,'');},REMOTE);
- await expect.poll(()=>page.evaluate(async()=>{const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');return c.getSnapshot().session?.ownerId;})).toBe('fixture-owner-b');await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);await expect(composer(page)).toHaveValue('');expect(await bindingKey(page)).not.toBe(ownerA);expect(await savedDraft(page,ownerA)).toBe('Fresh startup words for owner A');expect(await savedDraft(page)).toBeNull();expect(await fixture(page,f=>f.posts)).toBe(0);
-});

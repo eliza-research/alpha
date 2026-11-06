@@ -1,4 +1,3 @@
-import {parseCloudServiceInfo} from './cloud-service-info';
 import {productionCloud, stagingCloud} from './cloud-deployment.generated.ts';
 import {browserCloudResidentEnabled,browserCloudResidentEnvironment} from './browser-cloud-resident';
 import {CAMERA_CAPTURE_CAPABILITY} from '../../../../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/camera-contract.ts';
@@ -397,10 +396,6 @@ async function personalWork(message:string,action:(binding:NonNullable<typeof pe
 function detachCloudTarget() { if (testMocksEnabled && active?.kind === 'cloud') retire(); }
 // Only the Android transport admits Cloud's self-revocation DELETE; elsewhere sign-out reports a local removal.
 // Product builds construct only the managed-services adapter; the hosted-agent fixture exists only with test mocks.
-async function loadSignInService(environment: CloudEnvironment) {
- if (!cloudSignIn?.serviceInfo) throw new Error('Service information unavailable');
- return parseCloudServiceInfo(await cloudSignIn.serviceInfo({environment}));
-}
 function makeCloud(environment: CloudEnvironment): CloudProtocol { return testMocksEnabled ? new DevelopmentCloudAgentProtocol(environment, nativeCloudRequest, cloudCredentialStore, openConnectionBrowser, { deleteRequests: cloudSelfRevocationSupported, signIn: cloudSignIn }) : new CloudProtocol(environment, nativeCloudRequest, cloudCredentialStore, openConnectionBrowser, { deleteRequests: cloudSelfRevocationSupported, signIn: cloudSignIn }); }
 /** The client for an in-app sign-in in this environment; replaced when the environment changes. */
 function signInClient(environment: CloudEnvironment): CloudProtocol {
@@ -421,7 +416,9 @@ function prepareSignInReplacement() {
 /** How long sign-in waits for optional Google readiness before offering email alone. */
 const SIGN_IN_READINESS_WAIT_MS = 6000;
 /** Whether the last ready host offered Google (it needs this phone's verified App Link return). */
-let inAppGoogle = false, inAppPhone = false, inAppEmail = true;
+let inAppGoogle = false, inAppPhone = false, inAppEmail = true, inAppMethodsUnconfirmed = true;
+/** Explicit sign-in from a recovery screen can return without losing its controls. */
+let inAppReturnToStart = false;
 /**
  * The verified optional sign-in methods, or null when the readiness probe is unavailable. The host
  * (AlphaCloudSignInPlugin) runs a cheap, cached readiness probe: the native client registration,
@@ -437,7 +434,8 @@ async function inAppSignInMethods(environment: CloudEnvironment, signal: AbortSi
   try {
     signal.throwIfAborted();
     const cancelled = new Promise<null>(resolve => { abort = () => resolve(null); signal.addEventListener('abort', abort, { once: true }); });
-    const value = await Promise.race([port.status({ environment }), cancelled, new Promise<null>(resolve => { timer = setTimeout(() => resolve(null), SIGN_IN_READINESS_WAIT_MS); })]);
+    // A fresh attempt must recover immediately after connectivity or App Link verification changes.
+    const value = await Promise.race([port.status({ environment, refresh: true }), cancelled, new Promise<null>(resolve => { timer = setTimeout(() => resolve(null), SIGN_IN_READINESS_WAIT_MS); })]);
     return signInReadiness(value);
   } catch { return null; }
   finally { clearTimeout(timer); if (abort) signal.removeEventListener('abort', abort); }
@@ -449,7 +447,7 @@ function signInFailed(environment: CloudEnvironment, keepStep = false) {
 /** The provider authenticated only the first factor; keep the credential and agent unchanged. */
 function showGoogleMfa(outcome: Extract<CloudSignInGoogleOutcome, { status: 'mfa' }>) {
   update({ open: true, signIn: { step: 'mfa', environment: outcome.environment, attemptId: outcome.attemptId, method: outcome.method, expiresAt: outcome.expiresAt },
-    message: outcome.method === 'totp' ? 'Enter the six-digit code from your authenticator app.' : outcome.method === 'sms' ? 'Enter the six-digit code sent to your phone.' : '',
+    message: '',
     error: outcome.method === 'passkey' ? signInFailureMessage('mfa-unsupported') : '' });
 }
 /** A verified interactive sign-in finishes through setup, not the account/plan modal underneath it. */
@@ -1134,8 +1132,6 @@ function pairingError(error: unknown, withCode: boolean): unknown {
 const AI_OFF_MESSAGE = 'Your agent is running. Sign in to Cloud to turn AI back on.';
 const PAIRING_RETIRED = 'Pairing is unavailable. Your agent runs on this device; sign in to Cloud for inference.';
 const RESIDENT_SIGN_IN_EXPIRED = 'Your Cloud sign-in has expired. Sign in with Cloud again.';
-/** Shown beside the composer while the resident is connected and the phone has no network. */
-export const INFERENCE_OFFLINE_NOTICE = 'Your agent is running; AI needs a connection. Nothing is sent until this phone is back online.';
 const RATE_LIMITED = 'The agent provider is rate-limiting requests. Wait before sending again. Alpha Phone did not retry your message.';
 /** Owner-facing states for upstream's CHAT_FAILURE_KINDS (pinned contracts `chat.ts`). Each says
  * what happened and what to do next; none retries the message. Unlisted kinds keep the generic text. */
@@ -1738,8 +1734,7 @@ export const connectionController = {
   },
   // A recovering resident keeps its start failure visible beside Retry.
   open() { update({ open: true, automaticRestore:false, purpose:'agent', error: state.kind === 'recovering' ? state.error : '' }); },
-  /** Window online/offline events. Offline retracts readiness and refuses sends to the resident;
-   * local apps are untouched. Coming back online clears only the notice. */
+  /** Window online/offline events. Offline retracts readiness; local apps are untouched. */
   networkChanged(online: boolean) {
     if (online === !state.inferenceOffline) return;
     update({ inferenceOffline: !online });
@@ -1770,10 +1765,10 @@ export const connectionController = {
     const inference=!state.session&&account&&planAdmission(view)!=='needs-plan'?(state.kind==='recovering'?'Unavailable · agent not running':'Starting…'):state.residentInference==='unknown'?'Status unconfirmed':state.residentInference==='cloud'?serviceName:state.residentPlanNotice==='offline'?'Unavailable · Cloud unreachable':state.residentInference==='unavailable'?(account?(view?.kind==='inactive'?'Unavailable · check Cloud account':'Unavailable · Cloud status unconfirmed'):'Unavailable · sign in'):'Starting…';
     if(state.residentPlanNotice==='offline'&&!account){const recent=readPlanAdmission();return {signedIn:false,offline:true,offerRedeem:false,account:null,plan:recent?`${recent.planName} · offline`:'Offline',status:recent?.status??null,endsAt:state.planEndsAt??null,keyExpiresAt:null,keyExpiring:false,inference};}
     return {signedIn:!!account,offline:false,inference,account:account?(account.email||`Account ${account.userId.slice(0,8)}`):null,
-      // A code is offered as the way to get a plan; an account Cloud admitted is not asked for one.
-      offerRedeem:!!account&&planAdmission(view)!=='admit'&&view?.kind!=='credits',
       plan:plan?.headline??(account?'Checking plan…':'Not signed in'),
       status:view?.kind==='active'?view.status:view?.kind==='inactive'?view.status:null,
+      // A code is offered as the way to get a plan; an account Cloud admitted is not asked for one.
+      offerRedeem:!!account&&planAdmission(view)!=='admit'&&view?.kind!=='credits',
       endsAt:state.planEndsAt??null,keyExpiresAt:expiresAt,keyExpiring:expiresAt!==null&&expiresAt-Date.now()<=CLOUD_KEY_EXPIRY_WARNING_MS};
   },
   // P-43: the resident always exists, so the dialog closes; a start in progress keeps running in the
@@ -1948,6 +1943,7 @@ export const connectionController = {
    * enters an email; no Eliza Cloud web page is opened. */
   async beginSignIn(environment: CloudEnvironment = residentCloudFlow() ? residentEnvironment() : cloud.environment) {
     if (operation || !cloudEnvironmentAllowed(environment)) return;
+    if (!state.signIn) inAppReturnToStart = !!(state.residentRecoveryReason || state.residentSavedCredential || state.error === RESIDENT_UNPACKAGED);
     // Readiness may take six seconds on a fresh install. Keep that wait cancellable and prevent
     // repeated taps from starting competing probes or opening a browser after the owner cancelled.
     await work(`Checking ${cloudServiceName(environment)} sign-in…`, async signal => {
@@ -1956,6 +1952,7 @@ export const connectionController = {
       // Email stays inside Alpha even when readiness is unavailable. Its native request
       // reports the actual failure; missing Google/App Link setup never opens hosted login.
       if (!cloudSignIn) throw new CloudSignInError('unavailable');
+      inAppMethodsUnconfirmed = methods === null;
       inAppGoogle = methods?.google === true;
       inAppPhone = methods?.phone === true;
       inAppEmail = methods === null || methods.email !== false;
@@ -1969,12 +1966,12 @@ export const connectionController = {
   cancelSignIn() {
     if (operation) { connectionController.cancel(); return; }
     cloud.cancelLogin();
-    update({ signIn: null, message: '', error: '' });
+    update({ signIn: productionCloudSignInRequired(state) && !inAppReturnToStart ? {step: 'choose', environment: state.signIn?.environment ?? residentEnvironment()} : null, message: '', error: '' });
   },
   /** Google's consent in a Custom Tab, returning to Alpha through a verified App Link. */
   async signInGoogle() {
     const view = state.signIn; if (!view) return;
-    await work('Continue in the Google window. Alpha finishes signing in when you return.', async signal => {
+    await work('Continue in Google.', async signal => {
       update({ signIn: { step: 'google', environment: view.environment } });
       const client = signInClient(view.environment);
       let outcome: CloudSignInGoogleOutcome;
@@ -1993,7 +1990,7 @@ export const connectionController = {
     if (!validSignInEmail(address)) { update({ error: signInFailureMessage('invalid-email') }); return; }
     await work('Sending your code…', async signal => {
       const started = await signInClient(view.environment).startEmailSignIn(address, signal);
-      update({ signIn: { step: 'code', environment: view.environment, email: address, ...started }, message: `We sent a six-digit code to ${address}. Enter it here.` });
+      update({ signIn: { step: 'code', environment: view.environment, email: address, ...started }, message: '' });
     });
     if (state.error && state.signIn?.step !== 'code') update({ signIn: { step: 'choose', environment: view.environment } });
   },
@@ -2003,7 +2000,7 @@ export const connectionController = {
     if (!validSignInPhone(number)) { update({ error: signInFailureMessage('invalid-phone') }); return; }
     await work('Sending your code…', async signal => {
       const started = await signInClient(view.environment).startPhoneSignIn(number, signal);
-      update({ signIn: { step: 'code', environment: view.environment, email: '', phone: number, ...started }, message: `We sent a six-digit code to ${number}. Enter it here.` });
+      update({ signIn: { step: 'code', environment: view.environment, email: '', phone: number, ...started }, message: '' });
     });
     if (state.error && state.signIn?.step !== 'code') update({ signIn: { step: 'choose', environment: view.environment } });
   },
@@ -2023,7 +2020,7 @@ export const connectionController = {
           if (codeOutcome.status === 'mfa') {
             signInFailed(view.environment, true);
             update({ signIn: { step: 'mfa', environment: view.environment, email: view.email, attemptId: view.attemptId, method: codeOutcome.method, expiresAt: codeOutcome.expiresAt },
-              message: codeOutcome.method === 'totp' ? 'Enter the six-digit code from your authenticator app.' : codeOutcome.method === 'sms' ? 'Enter the six-digit code sent to your phone.' : '' });
+              message: '' });
             if (codeOutcome.method === 'passkey') throw new CloudSignInError('mfa-unsupported');
             return;
           }
@@ -2306,8 +2303,6 @@ export const connectionController = {
     cancelStoppedReply();
     try {
       requestSignal.throwIfAborted();
-      // Hosted inference needs the network. Nothing leaves the phone while it reports none.
-      if (selected.kind === 'resident' && isAndroid && (state.inferenceOffline || navigator.onLine === false)) throw new Error(INFERENCE_OFFLINE_NOTICE);
       if (selected.kind === 'remote' || selected.kind === 'local') {
         if (!selected.remote.session || selected.remote.session.expiresAt <= Date.now()) throw Object.assign(new Error('Your session has expired. Pair again.'), { code: 'session_expired' });
       }
@@ -2433,6 +2428,14 @@ export function ConnectionChooser() {
   // Only the explicit test-mocks build retains developer bypass behavior.
   const productionSignInRequired=productionCloudSignInRequired(snapshot);
   const visible=connectionChooserVisible(snapshot);
+  const initialSignInStarted=useRef(false);
+  useEffect(()=>{
+    if(!productionSignInRequired){initialSignInStarted.current=false;return;}
+    // Keep saved-session retry and startup/recovery errors visible before a new sign-in.
+    if(initialSignInStarted.current||!snapshot.startupResolved||snapshot.busy||snapshot.signIn||snapshot.residentRecoveryReason||snapshot.residentSavedCredential||snapshot.error)return;
+    initialSignInStarted.current=true;
+    void connectionController.beginSignIn(residentEnvironment());
+  },[productionSignInRequired,snapshot.startupResolved,snapshot.busy,snapshot.signIn,snapshot.residentRecoveryReason,snapshot.residentSavedCredential,snapshot.error]);
   const [developmentAction,setDevelopmentAction]=useState('{"type":"create_note","title":"Development note","body":"Reviewed local action"}');
   const [developmentProfile,setDevelopmentProfile]=useState<DevelopmentProfile>('local'),[reply,setReply]=useState(''),[developmentError,setDevelopmentError]=useState('');
   const [replyReady,setReplyReady]=useState(false),[developmentAccountRevision,setDevelopmentAccountRevision]=useState(0);
@@ -2555,14 +2558,13 @@ export function ConnectionChooser() {
     </aside>;
   }
   if (snapshot.signIn) return <div className={productionSignInRequired?'alpha-auth-page':'alpha-connection-scrim'}><div className={`alpha-connection alpha-connection-native alpha-cloud-sign-in${productionSignInRequired?' alpha-auth-content':''}`} role={productionSignInRequired?'main':'dialog'} aria-modal={productionSignInRequired?undefined:true} aria-labelledby="cloud-sign-in-title" aria-busy={snapshot.busy||undefined} tabIndex={-1} ref={panel}>
-    <CloudSignInPanel serviceLoader={loadSignInService} view={snapshot.signIn} busy={snapshot.busy} google={inAppGoogle} phone={cloudSignInPhone && inAppPhone} emailEnabled={inAppEmail} message={snapshot.message} error={snapshot.error}
-      actions={{phone:number=>void connectionController.signInPhone(number),google:()=>void connectionController.signInGoogle(),email:address=>void connectionController.signInEmail(address),verify:code=>void connectionController.verifySignInCode(code),resend:()=>void connectionController.resendSignInCode(),cancel:()=>connectionController.cancelSignIn()}}
+    <CloudSignInPanel methodsUnconfirmed={inAppMethodsUnconfirmed} canGoBack={!productionSignInRequired || inAppReturnToStart} view={snapshot.signIn} busy={snapshot.busy} google={inAppGoogle} phone={cloudSignInPhone && inAppPhone} emailEnabled={inAppEmail} message={snapshot.message} error={snapshot.error}
+      actions={{retry:()=>void connectionController.beginSignIn(snapshot.signIn!.environment),phone:number=>void connectionController.signInPhone(number),google:()=>void connectionController.signInGoogle(),email:address=>void connectionController.signInEmail(address),verify:code=>void connectionController.verifySignInCode(code),resend:()=>void connectionController.resendSignInCode(),cancel:()=>connectionController.cancelSignIn()}}
       extra={browserCloudResidentEnabled?<button disabled={snapshot.busy} onClick={()=>void connectionController.signInBrowser()}>Sign in with browser</button>:testMocksEnabled?<button disabled={snapshot.busy} onClick={()=>void connectionController.signInBrowser()}>Browser sign-in (diagnostic)</button>:undefined}/>
   </div></div>;
   if(productionSignInRequired)return <div className="alpha-auth-page"><div className="alpha-connection alpha-auth-content" role="main" aria-labelledby="alpha-auth-title" aria-busy={snapshot.busy||undefined} tabIndex={-1} ref={panel}>
     <div className="alpha-auth-body">
       <h1 id="alpha-auth-title" className="serif">Sign in</h1>
-      <p>Sign in to {serviceName} to use Alpha Phone.</p>
       <div className="alpha-connection-actions"><button disabled={snapshot.busy} onClick={()=>void connectionController.residentCloudLogin()}>Sign in with {serviceName}</button></div>
       {snapshot.busy&&<><p role="status">{snapshot.message||'Please wait…'}</p><button className="alpha-connection-cancel" onClick={()=>connectionController.cancel()}>Cancel</button></>}
       {!snapshot.busy&&snapshot.message&&snapshot.message!=='Connected'&&<p role="status">{snapshot.message}</p>}

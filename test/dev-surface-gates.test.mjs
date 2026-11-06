@@ -16,7 +16,7 @@ async function server(flag){
  // Vite exposes VITE_* from the process environment when the server starts.
  if(flag)process.env.VITE_ELIZA_DEV_ALLOW_TEST_MOCKS='1';else delete process.env.VITE_ELIZA_DEV_ALLOW_TEST_MOCKS;
  // Static SSR fixtures never reload; watching also scans large generated runtime trees.
- try{return await createServer({configFile:false,plugins:[{name:'model-without-dom-renderer',enforce:'pre',resolveId(id){if(id.endsWith('/dc-lite.js'))return '\0policy-test-renderer';},load(id){if(id==='\0policy-test-renderer')return 'export class DCLogic {}';}}],resolve:{alias:{"@elizaos/contracts/native-notes-query":fileURLToPath(new URL(".eliza/client-features/packages/contracts/src/native-notes-query.ts",root))}},root:root.pathname,logLevel:'silent',appType:'custom',server:{middlewareMode:true,hmr:false,ws:false,watch:null},optimizeDeps:{noDiscovery:true,include:[]}});}
+ try{return await createServer({configFile:false,plugins:[{name:'model-without-dom-renderer',enforce:'pre',resolveId(id){if(id.endsWith('/dc-lite.js'))return '\0policy-test-renderer';},load(id){if(id==='\0policy-test-renderer')return 'export class DCLogic {}';}}],resolve:{alias:{"@elizaos/contracts/native-notes-query":fileURLToPath(new URL(".eliza/client-features/packages/contracts/src/native-notes-query.ts",root)),"@elizaos/contracts/sms-send":fileURLToPath(new URL(".eliza/client-features/packages/contracts/src/sms-send.ts",root))}},root:root.pathname,logLevel:'silent',appType:'custom',server:{middlewareMode:true,hmr:false,ws:false,watch:null},optimizeDeps:{noDiscovery:true,include:[]}});}
  finally{delete process.env.VITE_ELIZA_DEV_ALLOW_TEST_MOCKS;}
 }
 before(async()=>{servers.on=await server(true);servers.off=await server(false);});

@@ -212,3 +212,11 @@ Cloud permission consent does not enable sync by itself. Settings reviews the ex
 The owner requested use of the existing funded Cloud account. The native provider uses the standard Cloud API key and /api/v1 endpoint. The current API admits organization-credit requests through its normal credential, quota and credit-reservation checks. A billing snapshot with subscription.status=not_applicable and reason=no_organization_subscription is not an inference refusal.
 
 This supersedes P-43's plan-only assumption for that explicit legacy billing mode while the signed entitlement route is absent. Alpha binds only the verified account and credential reference, shows Cloud credits rather than an active plan, and keeps bounded background refresh. Signed plan validation, account changes, expiry, revocation, quotas and server refusals keep their existing checks. Alpha does not create a plan, grant funds, buy anything, make per-turn balance checks or retry a failed turn.
+
+## November 5: on-device speech default and acceleration
+
+Decided by the product owner on 2026-11-05. Same rules as above: policy, not evidence.
+
+- **P-57** On-device speech replaces Cartesia as the default: Phonon-2 and Paradee on libelizainference, in the `native` profile, with Eliza Cloud text inference. The `cloud` profile remains an explicit QA selection.
+- **P-58** Accelerators are used only when they are faster on the path that ships. Measured on the Pixel 10a (Tensor G4), Phonon-2's streaming finish takes 45 to 54 ms on the CPU, and a best-case TPU pass cannot go below about 59 ms for 5 s of audio, so Phonon-2 stays on the CPU. P-42 therefore stands. See [on-device speech](on-device-speech-2026-11-05.md). A faster future chip or model reopens this.
+- **P-59** The Delibes-8M-esES Spanish voice ships under its open-source licence (Apache-2.0 for the model files), with its notices in the bundle and the generated third-party notices. This is the owner's Alpha decision on the upstream `spanish.release_override`.

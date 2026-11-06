@@ -73,12 +73,10 @@ test('product builds draw no Alpha shade; the template gates the development sta
   assert.ok(layer > 0);
   // The last gate opened before the layer is the simulated-shade gate.
   assert.match(template.slice(0, layer), /<sc-if value="\{\{simulatedShade\}\}">\s*<sc-if value="\{\{isOn\}\}">\s*<div $/);
-  // The Notifications button exists on launcher Home only, asks for Android's shade, and controls no Alpha region.
-  assert.match(template, /<sc-if value="\{\{showShadeButton\}\}"><div class="alpha-shade-row"><button class="alpha-shade-handle" data-alpha-shade-handle aria-label="Open notifications"[^>]*onClick="\{\{openSystemShade\}\}"/);
-  assert.doesNotMatch(template, /aria-controls="alpha-notifications"/);
+  // Home has no notifications control: a pull on empty Home and Android's own swipe are the ways in.
+  assert.doesNotMatch(template, /showShadeButton|data-alpha-shade-handle|aria-controls="alpha-notifications"/);
   const model = read('apps/app/src/prototype/model.js');
   assert.match(model, /shadeY: isOn && S\.shade && this\.simulatedShade\(\) \? "0" : "-100%"/);
-  assert.match(model, /showShadeButton: P\.systemShell !== false && !P\.assistantSurface/);
   assert.match(model, /simulatedShade\(\) \{ return this\.props\.systemShade === "simulated"; \}/);
   const main = read('apps/app/src/main.tsx');
   assert.match(main, /const systemShade=shadeSurface\(\{native:isAndroid,simulated:devSurfacesEnabled\}\);/);

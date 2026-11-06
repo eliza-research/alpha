@@ -22,16 +22,23 @@ async function boot(page: Page, mode: Mode) {
     const id = '9f1dc45a-4011-4e44-947a-30d999d24fa5';
     // The state an older build's restart leaves: local apps chosen, and a sign-in still in the keystore.
     if (!sessionStorage.getItem('saved-signin-fixture')) { sessionStorage.setItem('saved-signin-fixture', '1'); localStorage.setItem('alpha.connection.selection.v1', JSON.stringify({ kind: 'offline', localApps: true })); }
-    const values: Record<string, string> = { 'cloud:production': JSON.stringify({ token: 'synthetic-cloud-key', credentialId: id, expiresAt: Date.now() + 600000 }) };
+    const values: Record<string, string> = w.savedSignInSlots = { 'cloud:production': JSON.stringify({ token: 'synthetic-cloud-key', credentialId: id, expiresAt: Date.now() + 600000 }) };
     const methods = (names: string[]) => names.map(name => ({ name, rtype: 'promise' }));
     w.Capacitor = { PluginHeaders: [
       { name: 'DeviceApps', methods: methods(['buildInfo']) },
       { name: 'Agent', methods: methods(['getStatus', 'start', 'stop', 'configureCloudProvider', 'clearProvider', 'providerStatus', 'request']) },
       { name: 'AlphaConnection', methods: methods(['secureRead', 'secureWrite', 'secureRemove', 'secureCompareExchange', 'request', 'cancel', 'openExternal']) },
+      { name: 'AlphaCloudSignIn', methods: methods(['status', 'startEmail', 'verifyEmail', 'cancel', 'addListener', 'removeListener']) },
       { name: 'AlphaNotifications', methods: methods(['status', 'crossAppStatus', 'addListener', 'removeListener']) },
       { name: 'AlphaVoiceCloud', methods: methods(['checkPermissions']) },
     ], nativePromise: async (plugin: string, method: string, input: any) => {
       w.residentCalls.push({ plugin, method, path: input?.path, url: input?.url });
+      if (plugin === 'AlphaCloudSignIn') {
+        if (method === 'status') return { active: false, inApp: true, email: true, google: false };
+        if (method === 'startEmail') return { attemptId: '33333333-3333-4333-8333-333333333333', expiresAt: Date.now() + 600000, resendAt: Date.now() + 60000 };
+        if (method === 'verifyEmail') throw Error('This fixture never completes sign-in');
+        return {};
+      }
       if (plugin === 'DeviceApps') return { launcher: false, version: 'saved-signin-fixture' };
       if (plugin === 'AlphaNotifications') return { permissionGranted: true, appEnabled: true };
       if (plugin === 'AlphaVoiceCloud') return { microphone: 'granted' };
@@ -90,11 +97,34 @@ test('an unreachable saved sign-in remains on the mandatory page and can be retr
   expect(await selection(page)).toEqual({kind:'resident'});
 });
 
+test('saved connection retry stays reachable after backing out of sign-in or cancelling a code',async({page})=>{
+  await page.route('https://**',route=>route.abort());
+  await boot(page,'offline');
+  const gate=page.getByRole('main',{name:'Sign in',exact:true});
+  const key=await page.evaluate(()=>(window as any).savedSignInSlots['cloud:production']);
+  await gate.getByRole('button',{name:'Sign in with Eliza Cloud',exact:true}).click();
+  await expect(gate.getByRole('form',{name:'Sign in with email'})).toBeVisible();
+  await gate.getByRole('button',{name:'Back',exact:true}).click();
+  await expect(gate.getByRole('button',{name:'Retry saved connection',exact:true})).toBeVisible();
+  await expect(gate.getByRole('form',{name:'Sign in with email'})).toHaveCount(0);
+
+  await gate.getByRole('button',{name:'Sign in with Eliza Cloud',exact:true}).click();
+  await gate.getByLabel('Email',{exact:true}).fill('return@example.invalid');
+  await gate.getByRole('button',{name:'Email me a code',exact:true}).click();
+  await expect(gate.getByRole('form',{name:'Enter your email code'})).toBeVisible();
+  await gate.getByRole('button',{name:'Cancel sign-in',exact:true}).click();
+  await expect(gate.getByRole('button',{name:'Retry saved connection',exact:true})).toBeVisible();
+  await expect(gate.getByRole('form',{name:'Enter your email code'})).toHaveCount(0);
+  expect(await page.evaluate(()=>(window as any).savedSignInSlots['cloud:production'])).toBe(key);
+  expect(await agentCalls(page)).not.toContain('configureCloudProvider');
+  expect((await calls(page)).filter(call=>call.plugin==='AlphaCloudSignIn'&&call.method==='verifyEmail')).toEqual([]);
+});
+
 test('a kept sign-in Cloud rejects is reported as no longer valid in the sign-in dialog that opens by itself; the agent keeps running', async ({ page }) => {
   await boot(page, 'rejected');
   // Every Alpha Phone needs an Eliza Cloud account: the sign-in dialog opens and cannot be dismissed.
   const dialog = page.getByRole('main', { name: 'Sign in',exact:true });
-  await expect(dialog.getByText('Your Eliza Cloud sign-in has expired. Sign in with Eliza Cloud again.', { exact: true })).toBeVisible();
+  await expect(dialog.getByText('Your Cloud sign-in has expired. Sign in with Cloud again.', { exact: true })).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'Retry saved connection', exact: true })).toHaveCount(0);
   await expect(dialog.getByRole('button', { name: 'Sign in with Eliza Cloud', exact: true })).toBeEnabled();
   await expect(dialog.getByRole('button', { name: 'Close connection settings', exact: true })).toHaveCount(0);

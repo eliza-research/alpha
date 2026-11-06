@@ -51,7 +51,7 @@ async function entitlements(overrides:Record<string,unknown>={}){
 }
 
 
-type SignInMode='ok'|'created'|'mfa'|'hold'|'offline'|'readiness-hold'|'not-ready';
+type SignInMode='ok'|'created'|'mfa'|'hold'|'offline'|'dns'|'timeout'|'secure-connection'|'readiness-hold'|'not-ready';
 async function boot(page:Page,initial:{signIn?:SignInMode;tokens?:Record<string,string>;keys?:unknown[];serviceName?:string;legalParagraphs?:string[];keyLifetimeMs?:number;methods?:{email:boolean;phone:boolean;google:boolean}}={}){
  page.on('pageerror',(error:Error)=>console.error('Composition page error:',error.message));
  await page.route('https://**',route=>route.abort());
@@ -74,7 +74,7 @@ async function boot(page:Page,initial:{signIn?:SignInMode;tokens?:Record<string,
     if(method==='status'&&f.methods)return {active:false,inApp:Object.values(f.methods).some(Boolean),methodsKnown:true,...f.methods};
     if(method==='status')return f.signIn==='not-ready'?{active:false,inApp:false,google:false,email:false}:{active:false,inApp:true,google:true,email:true,phone:true};
     if(method==='startGoogle'){if(f.signIn==='hold')return new Promise((_,reject)=>{f.release=reject;});return store();}
-    if(method==='startEmail'||method==='startPhone'){if(f.signIn==='offline')throw fail('offline');return {attemptId:'33333333-3333-4333-8333-333333333333',expiresAt:Date.now()+600000,resendAt:Date.now()+60000};}
+    if(method==='startEmail'||method==='startPhone'){if(['offline','dns','timeout','secure-connection'].includes(f.signIn))throw fail(f.signIn);return {attemptId:'33333333-3333-4333-8333-333333333333',expiresAt:Date.now()+600000,resendAt:Date.now()+60000};}
     if(method==='verifyEmail'||method==='verifyPhone'){if(input.code!=='123456')throw fail('invalid-code');if(f.signIn==='mfa')return {status:'mfa',method:'totp',expiresAt:Date.now()+300000};return store();}
     if(method==='verifyMfa'){if(input.code!=='654321')throw fail('invalid-code');return store();}
    }
@@ -131,14 +131,13 @@ async function noHandOff(page:Page){
  expect(all.filter(c=>c.method==='openExternal')).toEqual([]);
  expect(all.filter(c=>c.path?.startsWith('/api/auth/cli-session')||c.path?.startsWith('/steward/')||c.path?.startsWith('/api/v1/app-auth/'))).toEqual([]);
 }
-const signInDialog=(page:Page)=>page.getByRole('main',{name:'Sign in to Eliza Cloud',exact:true}).or(page.getByRole('dialog',{name:'Sign in to Eliza Cloud',exact:true}));
+const signInDialog=(page:Page)=>page.getByRole('main',{name:'Sign in',exact:true}).or(page.getByRole('dialog',{name:'Sign in',exact:true}));
 
 test.describe('in-app Eliza Cloud sign-in on the production Android composition',()=>{
  test('email code sign-in stays in Alpha, retries a wrong code, waits out resend and binds Cloud AI',async({page},info)=>{
   await boot(page,await entitlements());
   await expect(page.getByRole('main',{name:'Sign in',exact:true})).toBeVisible();
   await agent(page,'unavailable');
-  await page.getByRole('button',{name:'Sign in with Eliza Cloud',exact:true}).click();
   const dialog=signInDialog(page);await expect(dialog).toBeVisible();
   await expect(dialog.getByRole('button',{name:'Continue with Google',exact:true})).toBeVisible();
   await expect(dialog.getByText(/in your browser/)).toHaveCount(0);
@@ -169,7 +168,6 @@ test.describe('in-app Eliza Cloud sign-in on the production Android composition'
   await page.clock.install();
   await boot(page,await entitlements());
   await agent(page,'unavailable');
-  await page.getByRole('button',{name:'Sign in with Eliza Cloud',exact:true}).click();
   const dialog=signInDialog(page);
   // Change wall time without a timer tick: the host's new cooldown must not use panel-mount time.
   const later=await page.evaluate(()=>Date.now()+120000);
@@ -187,7 +185,6 @@ test.describe('in-app Eliza Cloud sign-in on the production Android composition'
   await agent(page,'unavailable');
   const welcome=page.getByRole('main',{name:'Sign in',exact:true});
   const start=welcome.getByRole('button',{name:'Sign in with Eliza Cloud',exact:true});
-  await start.click();
   await expect(start).toBeDisabled({timeout:2000});
   await expect(welcome.getByText('Checking Eliza Cloud sign-in…',{exact:true})).toBeVisible();
   await welcome.getByRole('button',{name:'Cancel',exact:true}).click();
@@ -195,7 +192,7 @@ test.describe('in-app Eliza Cloud sign-in on the production Android composition'
   // A readiness result arriving after Cancel must not open a form or the Cloud browser hand-off.
   await page.evaluate(()=>(window as any).signInFixture.releaseReadiness());
   await expect(start).toBeEnabled();
-  await expect(signInDialog(page)).toHaveCount(0);
+  await expect(signInDialog(page).getByRole('form')).toHaveCount(0);
   await expect(welcome.getByText('Connection cancelled.',{exact:true})).toBeVisible();
   expect((await calls(page)).filter(c=>c.method==='status'&&c.plugin==='AlphaCloudSignIn')).toHaveLength(1);
   await noHandOff(page);
@@ -205,7 +202,6 @@ test.describe('in-app Eliza Cloud sign-in on the production Android composition'
  test('a plan ending during readiness still rebinds inference and keeps the requested sign-in screen',async({page})=>{
   await boot(page,{...await entitlements(),keyLifetimeMs:3600000});
   await agent(page,'unavailable');
-  await page.getByRole('button',{name:'Sign in with Eliza Cloud',exact:true}).click();
   await signInDialog(page).getByRole('button',{name:'Continue with Google',exact:true}).click();
   await agent(page,'cloud');
   await page.evaluate(()=>{(window as any).signInFixture.signIn='readiness-hold';(window as any).planController.openPlan();});
@@ -228,14 +224,14 @@ test.describe('in-app Eliza Cloud sign-in on the production Android composition'
    if(mode==='readiness-hold')await page.clock.install();
    await boot(page,{...await entitlements(),signIn:mode});
    await agent(page,'unavailable');
-   await page.getByRole('button',{name:'Sign in with Eliza Cloud',exact:true}).click();
-   if(mode==='readiness-hold'){
+    if(mode==='readiness-hold'){
     await expect(page.getByText('Checking Eliza Cloud sign-in…',{exact:true})).toBeVisible();
     await page.clock.runFor(6000);
    }
    const dialog=signInDialog(page);
    await expect(dialog).toBeVisible();
    await expect(dialog.getByRole('button',{name:'Continue with Google',exact:true})).toHaveCount(0);
+   await expect(dialog.getByRole('button',{name:'Retry',exact:true})).toBeEnabled();
    expect(await fixture(page)).toMatchObject({saved:false,bound:false,running:true});
    if(mode==='readiness-hold')await page.evaluate(()=>(window as any).signInFixture.releaseReadiness());
    // A late readiness answer cannot add Google to an already opened attempt.
@@ -253,10 +249,9 @@ test.describe('in-app Eliza Cloud sign-in on the production Android composition'
  test('Continue with Google returns through the native host and an unexpected new account is said out loud',async({page},info)=>{
   await boot(page,{...await entitlements(),signIn:'created'});
   await agent(page,'unavailable');
-  await page.getByRole('button',{name:'Sign in with Eliza Cloud',exact:true}).click();
   await signInDialog(page).getByRole('button',{name:'Continue with Google',exact:true}).click();
   await agent(page,'cloud');
-  await expect(page.getByText(/This sign-in created a new Eliza Cloud account \(synthetic-signin@example\.invalid\)/)).toBeVisible();
+  await expect(page.getByText('Account created.',{exact:true})).toBeVisible();
   expect((await calls(page)).filter(c=>c.method==='startGoogle').map(c=>c.environment)).toEqual(['production']);
   await noHandOff(page);
   await page.evaluate(()=>document.fonts.ready);await page.screenshot({path:info.outputPath('sign-in-account-created.png'),animations:'disabled'});
@@ -265,30 +260,28 @@ test.describe('in-app Eliza Cloud sign-in on the production Android composition'
  test('cancelling a Google sign-in burns the pending attempt, stores nothing and keeps the agent running',async({page})=>{
   await boot(page,{...await entitlements(),signIn:'hold'});
   await agent(page,'unavailable');
-  await page.getByRole('button',{name:'Sign in with Eliza Cloud',exact:true}).click();
   const dialog=signInDialog(page);
   await dialog.getByRole('button',{name:'Continue with Google',exact:true}).click();
-  await expect(dialog.getByText(/Choose your Google account in the window that opened/)).toBeVisible();
+  await expect(dialog.getByText(/Continue in Google/)).toBeVisible();
   await dialog.getByRole('button',{name:'Cancel sign-in',exact:true}).click();
   await expect.poll(async()=>(await calls(page)).some(c=>c.plugin==='AlphaCloudSignIn'&&c.method==='cancel')).toBe(true);
   await expect(dialog.getByRole('button',{name:'Continue with Google',exact:true})).toBeEnabled();
   expect(await fixture(page)).toMatchObject({saved:false,bound:false});
   await agent(page,'unavailable');
-  // Back leaves the sign-in screen for the sign-in gate, which still cannot be dismissed.
-  await dialog.getByRole('button',{name:'Back',exact:true}).click();
-  await expect(page.getByRole('main',{name:'Sign in',exact:true})).toBeVisible();
+  // Required sign-in stays on the method choices after cancellation.
+  await expect(dialog.getByRole('button',{name:'Back',exact:true})).toHaveCount(0);
+  await expect(dialog.getByRole('form',{name:'Sign in with email'})).toBeVisible();
   await noHandOff(page);
  });
 
  test('a second verification step is completed in Alpha',async({page})=>{
   await boot(page,{...await entitlements(),signIn:'mfa'});
   await agent(page,'unavailable');
-  await page.getByRole('button',{name:'Sign in with Eliza Cloud',exact:true}).click();
   const dialog=signInDialog(page);
   await dialog.getByRole('textbox',{name:'Email',exact:true}).fill('synthetic-signin@example.invalid');await dialog.getByRole('button',{name:'Email me a code',exact:true}).click();
   await dialog.getByLabel('Six-digit code').fill('123456');await dialog.getByRole('button',{name:'Verify',exact:true}).click();
   await expect(dialog.getByRole('form',{name:'Enter your verification code'})).toBeVisible();
-  await expect(dialog.getByText('This account uses an authenticator app. Enter its six-digit code.',{exact:true})).toBeVisible();
+  await expect(dialog.getByText('Enter your authenticator code.',{exact:true})).toBeVisible();
   expect((await fixture(page)).saved).toBe(false);
   await dialog.getByLabel('Six-digit code').fill('654321');await dialog.getByRole('button',{name:'Verify',exact:true}).click();
   await agent(page,'cloud');
@@ -298,7 +291,6 @@ test.describe('in-app Eliza Cloud sign-in on the production Android composition'
  test('offline sign-in explains itself and stores nothing',async({page})=>{
   await boot(page,{...await entitlements(),signIn:'offline'});
   await agent(page,'unavailable');
-  await page.getByRole('button',{name:'Sign in with Eliza Cloud',exact:true}).click();
   const dialog=signInDialog(page);
   await dialog.getByRole('textbox',{name:'Email',exact:true}).fill('synthetic-signin@example.invalid');await dialog.getByRole('button',{name:'Email me a code',exact:true}).click();
   await expect(dialog.getByRole('alert')).toContainText('Alpha could not reach Eliza Cloud');
@@ -313,7 +305,6 @@ test.beforeEach(async({page})=>seedCompletedAccessSetup(page));
 for (const mode of ['ok','mfa'] as const) test(`phone code stays inside Alpha through ${mode === 'mfa' ? 'MFA' : 'verification'}`,async({page})=>{
  await boot(page,{...await entitlements(),signIn:mode});
  await agent(page,'unavailable');
- await page.getByRole('button',{name:'Sign in with Eliza Cloud',exact:true}).click();
  const dialog=signInDialog(page);
  await dialog.getByLabel('Phone number with country code').fill('+14155550100');
  await dialog.getByRole('button',{name:'Text me a code',exact:true}).click();
@@ -336,78 +327,114 @@ for (const mode of ['ok','mfa'] as const) test(`phone code stays inside Alpha th
 
 test('phone code cancellation discards the in-app step without a credential',async({page})=>{
  await boot(page,await entitlements());await agent(page,'unavailable');
- await page.getByRole('button',{name:'Sign in with Eliza Cloud',exact:true}).click();
  const dialog=signInDialog(page);
  await dialog.getByLabel('Phone number with country code').fill('+14155550100');
  await dialog.getByRole('button',{name:'Text me a code',exact:true}).click();
  await expect(dialog.getByRole('form',{name:'Enter your phone code'})).toBeVisible();
  await dialog.getByRole('button',{name:'Cancel sign-in',exact:true}).click();
- await expect(dialog).toHaveCount(0);expect((await fixture(page)).saved).toBe(false);
+ await expect(dialog.getByRole('form',{name:'Sign in with phone'})).toBeVisible();expect((await fixture(page)).saved).toBe(false);
  expect((await calls(page)).some(c=>c.plugin==='AlphaCloudSignIn'&&c.method==='cancel')).toBe(true);
  await noHandOff(page);
 });
 
 for(const phone of [true,false]) test(`tenant method discovery ${phone?'offers phone without email':'hides all disabled methods'}`,async({page})=>{
  await boot(page,{...await entitlements(),methods:{phone,email:false,google:false}});await agent(page,'unavailable');
- await page.getByRole('button',{name:'Sign in with Eliza Cloud',exact:true}).click();
  const dialog=signInDialog(page);await expect(dialog).toBeVisible();
  await expect(dialog.getByRole('button',{name:'Email me a code',exact:true})).toHaveCount(0);
  await expect(dialog.getByRole('button',{name:'Continue with Google',exact:true})).toHaveCount(0);
  await expect(dialog.getByRole('button',{name:'Text me a code',exact:true})).toHaveCount(phone?1:0);
- if(!phone)await expect(dialog.getByText('This service offers no sign-in method supported by this app. Contact the service administrator.',{exact:true})).toBeVisible();
+ if(phone)await expect(dialog.getByLabel('Phone number with country code')).toBeFocused();
+ else await expect(dialog.getByText('Sign-in is unavailable. Try again later.',{exact:true})).toBeVisible();
  expect((await calls(page)).filter(c=>['startPhone','startEmail','startGoogle'].includes(c.method))).toEqual([]);
  await noHandOff(page);
 });
 
-test('provider legal text stays inside Alpha and returning preserves phone entry and the code attempt',async({page},info)=>{
+test('sign-in keeps Google, email and text actions without explainer or expandable sections',async({page},info)=>{
  await page.setViewportSize({width:390,height:844});
  await boot(page,await entitlements());await agent(page,'unavailable');
- await page.getByRole('button',{name:'Sign in with Eliza Cloud',exact:true}).click();
  const dialog=signInDialog(page);
- await dialog.getByLabel('Phone number with country code').fill('+14155550100');
- await dialog.getByRole('button',{name:'Terms of Service',exact:true}).click();
- await expect(dialog.getByRole('heading',{name:'Terms of Service',exact:true})).toBeFocused();
- await expect(dialog.getByText('<img src=x onerror=alert(1)> is plain text.',{exact:true})).toBeVisible();
- await expect(dialog.locator('.alpha-cloud-legal img')).toHaveCount(0);
- await page.screenshot({path:info.outputPath('native-legal-mobile.png'),animations:'disabled'});
- await dialog.getByRole('button',{name:'Back to sign-in',exact:true}).click();
- await expect(dialog.getByRole('button',{name:'Terms of Service',exact:true})).toBeFocused();
- await expect(dialog.getByLabel('Phone number with country code')).toHaveValue('+14155550100');
- await dialog.getByRole('button',{name:'Text me a code',exact:true}).click();
- await dialog.getByLabel('Six-digit code').fill('123');
- await dialog.getByRole('button',{name:'Privacy Policy',exact:true}).click();
- await expect(dialog.getByRole('heading',{name:'Privacy Policy',exact:true})).toBeVisible();
- await dialog.getByRole('button',{name:'Back to sign-in',exact:true}).click();
- await expect(dialog.getByLabel('Six-digit code')).toHaveValue('123');
- expect((await calls(page)).filter(c=>c.method==='startPhone')).toHaveLength(1);
- expect((await calls(page)).filter(c=>c.method==='verifyPhone')).toHaveLength(0);
+ await expect(dialog.getByRole('heading',{name:'Sign in',exact:true})).toBeVisible();
+ for(const name of ['Continue with Google','Email me a code','Text me a code'])await expect(dialog.getByRole('button',{name,exact:true})).toBeVisible();
+ await expect(dialog.locator('details,summary,[role="note"],.alpha-cloud-legal')).toHaveCount(0);
+ await expect(dialog.getByText(/Your agent|review access|Service documents|Sign in to verify/)).toHaveCount(0);
+ await expect(dialog.getByRole('button',{name:/Terms of Service|Privacy Policy/})).toHaveCount(0);
+ await page.screenshot({path:info.outputPath('native-sign-in-minimal.png'),animations:'disabled'});
+ expect((await calls(page)).filter(c=>['startEmail','startPhone','startGoogle','serviceInfo'].includes(c.method))).toEqual([]);
  await noHandOff(page);
 });
 
-test('configured provider name is shown in the app-owned sign-in view',async({page})=>{
- await boot(page,{...await entitlements(),serviceName:'Example Service'});await agent(page,'unavailable');
- await page.getByRole('button',{name:'Sign in with Eliza Cloud',exact:true}).click();
- await expect(page.getByRole('heading',{name:'Sign in to Example Service',exact:true})).toBeVisible();
- await noHandOff(page);
-});
-
-
-test('long provider documents scroll to the end and return to an unfinished sign-in on a small phone',async({page})=>{
- await page.setViewportSize({width:320,height:568});
- const paragraphs=Array.from({length:40},(_,i)=>`Section ${i+1}. ${'Provider document text with readable wrapping. '.repeat(12)}`);
- paragraphs.push('End of the provider document.');
- await boot(page,{...await entitlements(),legalParagraphs:paragraphs});await agent(page,'unavailable');
- await page.getByRole('button',{name:'Sign in with Eliza Cloud',exact:true}).click();
+for(const viewport of [{width:320,height:568},{width:568,height:320}])test(`compact sign-in controls remain reachable at ${viewport.width} by ${viewport.height}`,async({page})=>{
+ await page.setViewportSize(viewport);
+ await boot(page,await entitlements());await agent(page,'unavailable');
  const dialog=signInDialog(page);
+ for(const name of ['Continue with Google','Email me a code','Text me a code']){
+  const action=dialog.getByRole('button',{name,exact:true});await action.scrollIntoViewIfNeeded();await expect(action).toBeInViewport();
+  const box=await action.boundingBox();expect(box!.height).toBeGreaterThanOrEqual(44);expect(box!.x).toBeGreaterThanOrEqual(0);expect(box!.x+box!.width).toBeLessThanOrEqual(viewport.width);
+ }
  await dialog.getByLabel('Email',{exact:true}).fill('unfinished@example.invalid');
- await dialog.getByRole('button',{name:'Terms of Service',exact:true}).click();
- await expect(dialog.getByRole('heading',{name:'Terms of Service',exact:true})).toBeInViewport();
- const end=dialog.getByText('End of the provider document.',{exact:true});
- await end.scrollIntoViewIfNeeded();await expect(end).toBeInViewport();
- const back=dialog.getByRole('button',{name:'Return to sign-in',exact:true});
- await back.scrollIntoViewIfNeeded();await expect(back).toBeInViewport();await back.click();
- await expect(dialog.getByRole('button',{name:'Terms of Service',exact:true})).toBeFocused();
+ await dialog.getByLabel('Phone number with country code').fill('+14155550100');
+ await page.setViewportSize({width:390,height:844});
  await expect(dialog.getByLabel('Email',{exact:true})).toHaveValue('unfinished@example.invalid');
+ await expect(dialog.getByLabel('Phone number with country code')).toHaveValue('+14155550100');
+ expect((await calls(page)).filter(c=>['startEmail','startPhone','startGoogle'].includes(c.method))).toEqual([]);
+ await noHandOff(page);
+});
+
+test('Retry refreshes unavailable sign-in methods without sending a code',async({page})=>{
+ await boot(page,{...await entitlements(),methods:{phone:false,email:false,google:false}});await agent(page,'unavailable');
+ const dialog=signInDialog(page);
+ await expect(dialog.getByText('Sign-in is unavailable. Try again later.',{exact:true})).toBeVisible();
+ await page.evaluate(()=>(window as any).signInFixture.methods={phone:true,email:true,google:true});
+ await dialog.getByRole('button',{name:'Retry',exact:true}).click();
+ for(const name of ['Continue with Google','Email me a code','Text me a code'])await expect(dialog.getByRole('button',{name,exact:true})).toBeEnabled();
+ await expect(dialog.getByLabel('Email',{exact:true})).toBeFocused();
+ await expect(dialog.getByRole('button',{name:'Retry',exact:true})).toHaveCount(0);
+ expect((await calls(page)).filter(c=>c.method==='status'&&c.plugin==='AlphaCloudSignIn')).toHaveLength(2);
+ expect((await calls(page)).filter(c=>['startEmail','startPhone','startGoogle'].includes(c.method))).toEqual([]);
+ await noHandOff(page);
+});
+
+test('Retry recovers an offline sign-in without sending another code',async({page})=>{
+ await boot(page,{...await entitlements(),signIn:'offline'});await agent(page,'unavailable');
+ const dialog=signInDialog(page);
+ await dialog.getByLabel('Email',{exact:true}).fill('synthetic-signin@example.invalid');
+ await dialog.getByRole('button',{name:'Email me a code',exact:true}).click();
+ await expect(dialog.getByRole('alert')).toContainText('Alpha could not reach Eliza Cloud');
+ await page.evaluate(()=>(window as any).signInFixture.signIn='ok');
+ await dialog.getByRole('button',{name:'Retry',exact:true}).click();
+ await expect(dialog.getByRole('alert')).toHaveCount(0);
+ await expect(dialog.getByRole('button',{name:'Continue with Google',exact:true})).toBeEnabled();
+ expect((await calls(page)).filter(c=>c.method==='startEmail')).toHaveLength(1);
+ expect((await calls(page)).filter(c=>c.method==='status'&&c.plugin==='AlphaCloudSignIn')).toHaveLength(2);
+ await noHandOff(page);
+});
+
+for(const [failure,message] of [
+ ['dns','Could not find Eliza Cloud. Try another network or retry.'],
+ ['timeout','Eliza Cloud took too long to respond. Try again.'],
+ ['secure-connection','Could not securely connect to Eliza Cloud. Check the phone’s date and time, then retry.'],
+] as const)test(`${failure} keeps an actionable error and Retry on the sign-in screen`,async({page})=>{
+ await boot(page,{...await entitlements(),signIn:failure});await agent(page,'unavailable');
+ const dialog=signInDialog(page);
+ await dialog.getByLabel('Email',{exact:true}).fill('synthetic-signin@example.invalid');
+ await dialog.getByRole('button',{name:'Email me a code',exact:true}).click();
+ await expect(dialog.getByRole('alert')).toHaveText(message);
+ await expect(dialog.getByRole('button',{name:'Retry',exact:true})).toBeEnabled();
+ await expect(dialog.getByRole('form',{name:'Sign in with email'})).toBeVisible();
+ expect(await fixture(page)).toMatchObject({saved:false,bound:false});
+ await noHandOff(page);
+});
+
+test('Retry restores Google and text after unknown readiness without sending a code',async({page})=>{
+ await boot(page,{...await entitlements(),signIn:'not-ready'});await agent(page,'unavailable');
+ const dialog=signInDialog(page);
+ await expect(dialog.getByRole('form',{name:'Sign in with email'})).toBeVisible();
+ await expect(dialog.getByRole('button',{name:'Continue with Google',exact:true})).toHaveCount(0);
+ await page.evaluate(()=>(window as any).signInFixture.signIn='ok');
+ await dialog.getByRole('button',{name:'Retry',exact:true}).click();
+ for(const name of ['Continue with Google','Email me a code','Text me a code'])await expect(dialog.getByRole('button',{name,exact:true})).toBeEnabled();
+ await expect(dialog.getByRole('button',{name:'Retry',exact:true})).toHaveCount(0);
+ expect((await calls(page)).filter(c=>c.method==='status'&&c.plugin==='AlphaCloudSignIn')).toHaveLength(2);
  expect((await calls(page)).filter(c=>['startEmail','startPhone','startGoogle'].includes(c.method))).toEqual([]);
  await noHandOff(page);
 });

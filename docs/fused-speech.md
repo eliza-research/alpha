@@ -24,6 +24,11 @@ and no source rewrite (`scripts/embedding-native-contract.mjs`). The paradee-voi
 the app's engine instead of packaging a second copy, so the two must be byte-identical
 (`node scripts/paradee-runtime.mjs --app-linkage`, Gradle `:app:verifyParadeeAppLinkage`).
 
+## November 5 device measurements
+
+The bundle and engine moved to the pin `36236fc059` (engine `b3eb2bf63b`, `eliza-paradee-voice-v2`, Paradee v1.2).
+Device latency, TPU and GPU findings are in [on-device speech](on-device-speech-2026-11-05.md); bundle sizes below are historical.
+
 ## October 24 source update
 
 Current consumer pin `c95a37be8d56` uses native engine `0d9fd4b9db23`.

@@ -536,7 +536,7 @@ registerView("messages", {
     if (sub === "new") return { compose: true };
   },
   badge: function (st) { var u = st.unread || {}; return Object.keys(u).some(function (k) { return u[k] > 0; }); },
-  immersive: function (st) { return (st.thread || typeof st.compose === "string") ? { noPill: true, toastBottom: 104 } : null; },
+  immersive: function (st) { return (st.thread || typeof st.compose === "string") ? { noPill: true } : null; },
   back: function (st, api) {
     if (st.tray) { api.set({ tray: false }); return true; }
     // Opened from this app's list: back to the list. Deep-linked (contacts, shade, chat, share): hand back to the shell's stack.
@@ -1801,11 +1801,11 @@ registerView("browser", {
       sugg: sugg,
       menu: st.menu, toggleMenu: function () { set({ menu: !api.get("browser").menu, editing: false }); }, closeMenu: function () { set({ menu: false }); },
       markIcon: IC.star, markFill: marked ? "currentColor" : "none", markLabel: marked ? "Bookmarked" : "Bookmark",
-      toggleMark: function () { var s = api.get("browser"); var on = s.marks.indexOf(url) >= 0; if (!pg.host) return; set({ marks: on ? s.marks.filter(function (x) { return x !== url; }) : [url].concat(s.marks), menu: false }); api.toast(on ? "Bookmark removed" : "Bookmarked"); },
+      toggleMark: function () { var s = api.get("browser"); var on = s.marks.indexOf(url) >= 0; if (!pg.host) return; set({ marks: on ? s.marks.filter(function (x) { return x !== url; }) : [url].concat(s.marks), menu: false }); },
       openLib: function () { set({ lib: "bookmarks", menu: false }); }, lib: !!st.lib, closeLib: function () { set({ lib: null }); },
       libMarks: function () { set({ lib: "bookmarks" }); }, libHist: function () { set({ lib: "history" }); },
       libMarksCss: st.lib !== "history" ? "background:var(--acc);color:#fff" : "color:var(--mut)", libHistCss: st.lib === "history" ? "background:var(--acc);color:#fff" : "color:var(--mut)",
-      libRows: libRows, libEmpty: !libRows.length, libIsHist: st.lib === "history" && libRows.length > 0, clearHist: function () { set({ visits: [] }); api.toast("History cleared"); },
+      libRows: libRows, libEmpty: !libRows.length, libIsHist: st.lib === "history" && libRows.length > 0, clearHist: function () { set({ visits: [] }); },
       openShare: function () { set({ share: true, menu: false }); }, share: st.share, closeShare: function () { set({ share: false }); }, people: people,
       copyLink: function () { set({ share: false }); api.toast("Link copied"); },
       readAloud: function () { set({ menu: false }); api.toast("Reading aloud · " + (pg.host || "page")); },
@@ -2469,7 +2469,7 @@ registerView("photos", {
       selDim: nSel === 0 ? "opacity:.35;pointer-events:none" : "",
       selCancel: function () { api.set({ sel: null }); },
       selShare: function () { var s = api.get("photos"); if (s.sel && s.sel.length) api.set({ sheet: "share", shareIds: s.sel }); },
-      selFav: function () { var s = api.get("photos"); var ids = s.sel || []; var all = s.list.filter(function (it) { return ids.indexOf(it.id) >= 0; }).every(function (it) { return it.fav; }); api.set({ sel: null, list: s.list.map(function (it) { return ids.indexOf(it.id) >= 0 ? Object.assign({}, it, { fav: !all }) : it; }) }); api.toast(all ? "Removed from favorites" : "Added to favorites"); },
+      selFav: function () { var s = api.get("photos"); var ids = s.sel || []; var all = s.list.filter(function (it) { return ids.indexOf(it.id) >= 0; }).every(function (it) { return it.fav; }); api.set({ sel: null, list: s.list.map(function (it) { return ids.indexOf(it.id) >= 0 ? Object.assign({}, it, { fav: !all }) : it; }) }); },
       selDel: function () { var s = api.get("photos"); if (s.sel && s.sel.length) phDelete(s.sel, api); },
       viewing: !!vw, v: vw, editing: !!(vw && vw.ed), viewEmpty: !!st.open && !cur,
       trashAsk: function () { api.set({ sheet: "empty" }); }, emptyOpen: st.sheet === "empty", trashCount: (st.trash || []).length === 1 ? "1 item" : (st.trash || []).length + " items",
@@ -2810,7 +2810,6 @@ registerView("maps", {
           var l = (st.saved || []).slice(); var i = l.indexOf(place.id);
           api.set({ saved: i >= 0 ? l.filter(function (x) { return x !== place.id; }) : l.concat([place.id]) });
           if (i >= 0) api.toast(place.name + " removed from saved", { undo: function () { var cur = api.get("maps").saved || []; if (cur.indexOf(place.id) < 0) api.set({ saved: cur.concat([place.id]) }); } });
-          else api.toast(place.name + " saved");
         },
         share: function () { api.open("messages", { compose: true, text: place.name + ", " + place.addr }); },
         web: function () { api.open("browser", { url: place.web, newTab: true }); }
@@ -2852,7 +2851,7 @@ registerView("maps", {
           left: arrived ? "Arrived" : mapsFmtMin(left),
           meta: arrived ? dst.addr : mapsDist(dst.mi * (1 - (st.prog || 0))) + " · " + mapsEta(api, left),
           voiceD: st.voice ? IC.mapsVol : IC.mapsMute, voiceLabel: st.voice ? "Mute voice guidance" : "Turn on voice guidance",
-          voice: function () { var v = !api.get("maps").voice; api.set({ voice: v }); api.toast(v ? "Voice guidance on" : "Voice guidance off"); },
+          voice: function () { var v = !api.get("maps").voice; api.set({ voice: v }); },
           ask: function () { api.chat(""); },
           end: function () { mapsEndNav(api); }
         };
@@ -3121,7 +3120,7 @@ registerView("notes", {
     var common = n ? {
       close: function () { notesClose(api); },
       pinIcon: IC.notesPin, pinCss: n.pinned ? "color: var(--acct)" : "", pinLabel: n.pinned ? "Unpin" : "Pin",
-      pin: async function () { if(await notesUpd(api, n.id, { pinned: !n.pinned })!==false) api.toast(n.pinned ? "Unpinned" : "Pinned"); },
+      pin: async function () { await notesUpd(api, n.id, { pinned: !n.pinned }); },
       share: function () { api.set({ sheet: "share" }); },
       del: function () { notesDelete(api, n.id); },
       title: n.title || "",
@@ -3687,7 +3686,7 @@ registerView("files", {
           return { label: m[2], d: m[1], on: m[3], go: function () { api.set(Object.assign({ menu: false }, m[4])); } };
         }),
         sortLabel: st.sort === "name" ? "Sort by date" : "Sort by name", sortCss: st.sort === "name" ? "color: var(--acct)" : "",
-        toggleSort: function () { var nx = st.sort === "name" ? "recent" : "name"; api.set({ sort: nx }); api.toast(nx === "name" ? "Sorted by name" : "Sorted by date"); },
+        toggleSort: function () { var nx = st.sort === "name" ? "recent" : "name"; api.set({ sort: nx }); },
         select: function () { api.set({ sel: [] }); }
       };
     }
@@ -4303,7 +4302,6 @@ registerView("workflows", {
       if (!wfAllowed(card.flow)) return wfDeferred(api);
       var f = Object.assign({}, card.flow, { id: Date.now(), on: true, runs: [] });
       api.set({ flows: wfMerge(api, wfFlows(api).concat([f])) });
-      api.toast(f.name + " is on");
     }
   },
   reply: function (t, raw, api) {
@@ -4358,7 +4356,7 @@ registerView("workflows", {
     var list = (st.flows || WF_SEED).filter(wfAllowed);
     var set = function (p) { if (p.flows) p = Object.assign({}, p, { flows: wfMerge(api, p.flows) }); api.set(p); };
     var setFlow = function (id, p) { set({ flows: list.map(function (x) { return x.id === id ? Object.assign({}, x, p) : x; }) }); };
-    var toggle = function (f) { return function () { if (!wfAllowed(f)) return wfDeferred(api); setFlow(f.id, { on: !f.on }); api.toast(f.name + (f.on ? " is off" : " is on")); }; };
+    var toggle = function (f) { return function () { if (!wfAllowed(f)) return wfDeferred(api); setFlow(f.id, { on: !f.on }); }; };
     var chipsOf = function (f) { return wfApps(f).map(function (a) { return { name: a, d: IC[WF_APP_IC[a]] || IC.grid }; }); };
 
     var cards = list.map(function (f) {
@@ -4472,8 +4470,8 @@ registerView("workflows", {
           var name = (b.name || "").trim() || (b.steps[b.steps.length - 1].k === "Write" ? cap(wfLc(b.steps[b.steps.length - 1].t)) : wfTrigText(b.trig, api));
           var nf = { name: name, trig: b.trig, steps: b.steps };
           nf.summary = wfSummary(nf, api); nf.short = wfShort(nf, api);
-          if (b.id) { set({ flows: list.map(function (x) { return x.id === b.id ? Object.assign({}, x, nf) : x; }), build: null, sheet: null }); api.toast("Saved"); }
-          else { var id = Date.now(); set({ flows: list.concat([Object.assign(nf, { id: id, on: true, runs: [] })]), build: null, sheet: null, open: id }); api.toast(name + " is on"); }
+          if (b.id) { set({ flows: list.map(function (x) { return x.id === b.id ? Object.assign({}, x, nf) : x; }), build: null, sheet: null }); }
+          else { var id = Date.now(); set({ flows: list.concat([Object.assign(nf, { id: id, on: true, runs: [] })]), build: null, sheet: null, open: id }); }
         },
         sheetOn: !!sheet, closeSheet: function () { set({ sheet: null }); },
         isTrig: !!sheet && sheet.type === "trig", isStep: !!sheet && sheet.type === "step"
@@ -5259,9 +5257,7 @@ class Component extends DCLogic {
     this.setState({ screen: "lock", shade: false, heads: false, voice: "off" });
   }
   homeHint() {
-    if (this.hintDone) return; this.hintDone = true; var self = this;
-    this.later(function () { self.setState({ hint: true }); }, 700, "hint");
-    this.later(function () { self.setState({ hint: false }); }, 3600, "hint");
+    this.hintDone = true;
   }
   goHome(chat) {
     this.clear("hint"); this.leave();
@@ -5320,7 +5316,7 @@ class Component extends DCLogic {
     this.setState({ shade: true, heads: false });
   }
   /**
-   * Launcher Home's Notifications button and a pull on empty Home. Android's shade is the one
+   * A pull on launcher's empty Home. Android's shade is the one
    * notification and quick-settings surface: on Android this asks Android to expand it
    * (installSystemShade); the browser development build opens its stand-in; anything else
    * says how to reach Android's notifications instead of drawing a second panel.
@@ -5334,7 +5330,7 @@ class Component extends DCLogic {
     if (this.simulatedShade()) return this.openShade();
     this.toast(shadeFallback("unsupported"));
   }
-  /** Home is inert while the panel covers it: focus moves into the panel, and back to the handle when it closes. */
+  /** Home is inert while the panel covers it: focus moves into the panel while it is open. */
   syncShadeFocus() {
     var S = this.S(), open = S.screen === "home" && !!S.shade;
     if (open === !!this.shadeFocusOpen) return;
@@ -5345,15 +5341,11 @@ class Component extends DCLogic {
       if (close && !(active && active.closest && active.closest('[data-alpha-layer="shade"]'))) close.focus({ preventScroll: true });
       return;
     }
-    // Only when nothing else took focus: opening a notice or Settings from the panel moves on.
-    var handle = document.querySelector("[data-alpha-shade-handle]");
-    var lost = !active || active === document.body || !!(active.closest && active.closest('[data-alpha-layer="shade"]'));
-    if (handle && lost && !handle.closest("[inert]")) handle.focus({ preventScroll: true });
   }
 
   /* ---- gestures ---- */
   scale(el) { var sc = el && el.closest ? el.closest("[data-screen]") : null; var r = (sc || el).getBoundingClientRect(); return { r: r, s: r.width / 412 || 1 }; }
-  gDown(e) { if (e.target.closest?.("[data-alpha-transcript]")) { this.g = null; return; } var o = this.scale(e.currentTarget); this.g = { x: (e.clientX - o.r.left) / o.s, y: (e.clientY - o.r.top) / o.s, cx: e.clientX, cy: e.clientY, s: o.s, handle: !!e.target.closest?.("[data-alpha-shade-handle]"), pull: pullStart(e.target) }; }
+  gDown(e) { if (e.target.closest?.("[data-alpha-transcript]")) { this.g = null; return; } var o = this.scale(e.currentTarget); this.g = { x: (e.clientX - o.r.left) / o.s, y: (e.clientY - o.r.top) / o.s, cx: e.clientX, cy: e.clientY, s: o.s, pull: pullStart(e.target) }; }
   gUp(e) { var g = this.g; this.g = null; if (!g || window.getSelection()?.isCollapsed === false) return; this.swipe(g, (e.clientX - g.cx) / g.s, (e.clientY - g.cy) / g.s); }
   swipe(g, dx, dy) {
     var S = this.S(); var T = 46; var ax = Math.abs(dx), ay = Math.abs(dy);
@@ -5364,9 +5356,9 @@ class Component extends DCLogic {
     if (ay > ax) {
       // Gesture zones (docs/gesture-zones.md). The top edge of the screen belongs to Android: a swipe
       // from there opens Android's own shade, and Alpha does not answer it. On launcher Home a pull
-      // down that starts on the Notifications button or on empty Home asks Android for the same
+      // down that starts on empty Home asks Android for the same
       // shade (#417); a pull on editable or scrollable content, or with the keyboard up, does not.
-      if (dy > T && ((g.handle && this.props.systemShell !== false) || emptyHomeShadePull(this.pullContext(), g.pull, g.y, dx, dy, T))) return this.openSystemShade();
+      if (dy > T && emptyHomeShadePull(this.pullContext(), g.pull, g.y, dx, dy, T)) return this.openSystemShade();
       if (this.props.systemShell !== false && dy < -T && g.y > 872) return this.goHome();
       if (S.chat === "sheet" && dy > T) return this.setState({ chat: this.rest() });
       if (!S.view && S.chat !== "sheet" && S.chat !== "full") {
@@ -5570,7 +5562,7 @@ class Component extends DCLogic {
     var msgs = S.msgs.map(function (m) {
       var c = m.card || {}; var t = c.type;
       return {
-        id: m.id, text: m.text, displayText: m.text, hasCalendarText: true, calendarReviews: [], isUser: m.from === "user", isAgent: m.from === "agent", c: c,
+        id: m.id, text: m.text, displayText: m.text, hasCalendarText: true, calendarReviews: [], mapsCards: [], hasMapsChoice: false, mapsChoices: [], isUser: m.from === "user", isAgent: m.from === "agent", c: c,
         cAgenda: t === "agenda", cEvent: t === "event", cDigest: t === "digest", cNote: t === "note", cFlow: t === "flow", cSummary: t === "summary", cDraft: t === "draft", cCall: t === "call", cGeneric: t === "generic",
         gIcon: IC[c.icon] || IC.spark, evIcon: c.act && !c.done ? IC.plus : IC.check, callIni: c.ini || ((c.who || "").split(" ").map(function (w) { return w.charAt(0); }).join("").slice(0, 2)),
         sumSave: t === "summary" && !c.done && !!c.act, sumOpen: t === "summary" && !c.act && !!c.go,
@@ -5636,7 +5628,7 @@ class Component extends DCLogic {
       showStatus: !P.nativeSystemChrome && S.screen !== "boot" && S.screen !== "off" && !imm.noStatus, micLive: S.voice === "listening",
       showIndicator: !P.nativeSystemChrome && (isOn || S.screen === "lock") && !(isOn && !S.view && !S.drawer && !S.shade && S.chat !== "sheet" && S.chat !== "full"),
       toast: S.toast, toastOn: !!S.toast, toastUndo: !!S.toastUndo, toastPadR: S.toastUndo ? 5 : 18, doUndo: function () { var f = self.undoFn; self.undoFn = null; self.clear("t"); self.setState({ toast: "", toastUndo: false }); if (f) f(); },
-      hasOngoing: !!ongoing && isOn, ongoing: ongoing || {}, sbWifi: S.q.wifi, sbPlane: S.q.plane, apps: assistantOnly ? [] : apps, toastBottom: imm.toastBottom || ((isOn && (S.chat === "input" || (S.chat === "hidden" && !imm.noPill))) ? 104 : 40),
+      hasOngoing: !!ongoing && isOn, ongoing: ongoing || {}, sbWifi: S.q.wifi, sbPlane: S.q.plane, apps: assistantOnly ? [] : apps,
       goCalendar: function () { self.openView("calendar", copy("shell").homeCalendar || null); },
       goTriage: function () { self.send("What needs me?"); },
       goFlows: function () { self.openView("workflows", copy("shell").homeWorkflow || null); },
@@ -5644,7 +5636,7 @@ class Component extends DCLogic {
       tiles: tiles, bright: S.bright, brightHandoff: true, brightSlider: false, onBright: function () { self.openView("settings", { page: "display" }); }, shadeN: shadeN, shadeY: isOn && S.shade && this.simulatedShade() ? "0" : "-100%",
       // Android owns the shade (#416): only the development build renders its stand-in, and only
       // launcher Home offers the Notifications button that asks Android for its shade (#417).
-      simulatedShade: this.simulatedShade(), showShadeButton: P.systemShell !== false && !P.assistantSurface,
+      simulatedShade: this.simulatedShade(),
       closeShade: function () { self.setState({ shade: false }); }, openSystemShade: function () { self.openSystemShade(); },
       shadeKey: function (event) { if (event.key === "Escape" && !event.defaultPrevented) { event.preventDefault(); self.setState({ shade: false }); } }, clearAll: function () { self.setState({ nGone: NOTIFS.map(function (n) { return n.id; }), shade: false }); },
       // Policy P-23: on Android the system Keyguard owns the secure camera; Alpha never
@@ -5657,7 +5649,7 @@ class Component extends DCLogic {
       panelH: !isOn ? 0 : (S.chat === "full" ? 915 : (S.chat === "sheet" ? 560 : 0)), panelR: S.chat === "full" ? "0px" : "30px 30px 0 0",
       panelOp: panelOpen ? 1 : 0, panelPE: panelOpen ? "auto" : "none", panelTop: S.chat === "full" && this.props.systemShell !== false ? "var(--alpha-chat-full-top,60px)" : "4px",
       scrimOp: 0, scrimPE: "none",
-      sizeIcon: S.chat === "full" ? IC.shrink : IC.expand, sizeLabel: S.chat === "full" ? "Shrink chat" : "Expand chat",
+      showGrabber: S.chat !== "full", sizeIcon: S.chat === "full" ? IC.shrink : IC.expand, sizeLabel: S.chat === "full" ? "Shrink chat" : "Expand chat",
       showComposer: showComposer, showPill: showPill, cmpBottom: 28,
       cmpPlaceholder: (mod && mod.placeholder) ? mod.placeholder : "Ask " + name,
       draft: S.draft, hasDraft: !!S.draft, noDraft: !S.draft,
@@ -5665,7 +5657,8 @@ class Component extends DCLogic {
       onKey: function (e) { if (e.key === "Enter") { e.preventDefault(); self.send(); } },
       sendNow: function () { self.send(); },
       openSheet: function () { if (self.swallowed()) return; self.setState({ chat: "sheet" }); },
-      toInput: function () { self.setState({ chat: "input" }); },
+      /* Android raises the keyboard only for a focused field, so the Type button focuses the composer it reveals. */
+      toInput: function () { self.setState({ chat: "input" }, function () { document.querySelector("[data-alpha-input-bar] textarea[data-alpha-composer]")?.focus(); }); },
       closeChat: function () { if (assistantOnly && !self.S().view) return self.closeAssistant(); self.setState({ chat: self.rest() }); },
       scrimTap: function () { if (assistantOnly && !self.S().view) return self.closeAssistant(); self.setState({ chat: self.rest() }); },
       grabTap: function () { if (self.swallowed()) return; self.setState({ chat: self.S().chat === "full" ? "sheet" : "full" }); },
@@ -5696,7 +5689,6 @@ class Component extends DCLogic {
       bootMark: S.bootStep >= 1 ? 1 : 0, bootMarkY: S.bootStep >= 1 ? 0 : 12, bootTag: S.bootStep >= 2 ? 1 : 0,
       jumps: jumps, subJumps: subJumps, hasSubJumps: subJumps.length > 0, modes: modes, legend: legend,
       fs: fs, notFs: !fs, rootJustify: fs ? "center" : "flex-start",
-      showHint: P.systemShell !== false && isOn && S.hint && !S.shade && S.chat !== "sheet" && S.chat !== "full",
       homeBar: function () { if (self.swallowed()) return; var S2 = self.S(); if (S2.screen === "lock") return self.unlock(); if (S2.screen === "home") self.goHome(); },
       toggleFs: function () {
         var next = !fs; self.setState({ fs: next });

@@ -9,7 +9,7 @@ import {execFileSync} from 'node:child_process';
 
 const root = path.resolve(import.meta.dirname, '..');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
-const ndkVersion = source => source.match(/^\s*ndkVersion\s+['"]([^'"]+)['"]/m)?.[1];
+const ndkVersion = source => source.match(/\bndkVersion\s+['"]([^'"]+)['"]/)?.[1];
 const version = ndkVersion(read('android/sense/build.gradle'));
 
 test('Sense packaging selects the same explicit NDK as the pinned voice consumer', () => {

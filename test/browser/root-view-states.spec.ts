@@ -37,14 +37,14 @@ async function blockStorage(page: Page) {
 async function open(page: Page, view: View, theme: 'light' | 'dark'): Promise<Locator> {
   if(view==='Maps')await page.route('https://tiles.openfreemap.org/**',route=>route.fulfill({json:{version:8,sources:{},layers:[{id:'background',type:'background',paint:{'background-color':'#e7ebed'}}]}}));
   // Android's shade is the notification surface (#416). This development build stands in for it,
-  // opened from launcher Home's Notifications button (docs/gesture-zones.md); the standalone app has none.
+  // opened by a pull on launcher's empty Home (docs/gesture-zones.md); the standalone app has none.
   const launcher = view === 'Notifications' ? (theme === 'dark' ? '&shell=launcher' : '?shell=launcher') : '';
   await page.goto((theme === 'dark' ? '/?theme=dark' : '/') + launcher);
   // Home shortcuts cannot be restored when storage is blocked. All apps must
   // remain usable in that state, so exercise its actual built-in navigation.
   await page.getByRole('button', { name: 'All apps', exact: true }).waitFor({ state: 'visible' });
   if (view === 'Notifications') {
-    await page.getByRole('button', { name: 'Open notifications', exact: true }).click();
+    const box=(await page.locator('[data-screen]').boundingBox())!,scale=box.width/412;await page.mouse.move(box.x+206*scale,box.y+420*scale);await page.mouse.down();await page.mouse.move(box.x+206*scale,box.y+660*scale,{steps:10});await page.mouse.up();
     const shade = page.locator('[data-alpha-layer="shade"]');
     await expect(shade).toHaveAttribute('aria-hidden', 'false');
     return shade;

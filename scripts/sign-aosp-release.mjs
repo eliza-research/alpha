@@ -9,6 +9,8 @@
  *     --keys-dir /dev/shm/keys --releasetools /abs/otatools/bin --out /abs/new-release-dir \
  *     [--apksigner /abs/apksigner] [--map-key SOURCE=NAME ...] [--apk-manifest /abs/apk-manifest.json]
  *     [--incremental-from /abs/previous-signed-target_files.zip] [--dry-run]
+ *     [--pkcs11-config /abs/sunpkcs11.cfg --avb-signing-helper /abs/helper
+ *      --payload-signer /abs/signer [--payload-signer-arg ARG ...] --payload-signer-signature-size BYTES]
  *
  * It follows the upstream key layout and signing job (vendor/eliza/packages/os/android/signing).
  * Before anything runs it reads the unsigned target-files' META/misc_info.txt, apkcerts.txt and
@@ -26,6 +28,13 @@
  * reads public certificates and avb_pkmd.bin to compare them with the reviewed digests in
  * android/aosp/pixel10a-product.json and android/aosp/pixel10a-ota-channel.json, and refuses on
  * any UNSET or mismatching value. --dry-run prints the plan and every problem and runs nothing.
+ *
+ * Managed (hardware-backed) signing keeps every private key in a PKCS#11 token: the four managed
+ * options are given together and the key directory then holds only certificates and public keys.
+ * signapk loads the APK, APEX container and OTA package keys from the token (SunPKCS11, labels
+ * `<key-dir>/<name>.pk8`), avbtool signs vbmeta, chained partitions and APEX payloads through
+ * `--signing_helper_with_files`, and the OTA payload is signed by `--payload_signer`. PINs and
+ * credentials stay with the token's own configuration, never on a command line.
  * A signed output is not an image boot, an applied update, a rollback or recovery drill, or
  * release qualification.
  */
@@ -52,6 +61,22 @@ const KEY_NAME = /^[a-z][a-z0-9_]*$/;
 const PRESIGNED = new Set(["PRESIGNED", "EXTERNAL"]);
 const HEX64 = /^[0-9a-f]{64}$/;
 const sha256 = bytes => createHash("sha256").update(bytes).digest("hex");
+/**
+ * Chained partitions AOSP 17 sign_target_files_apks accepts --avb_<partition>_key, _algorithm and
+ * _extra_args for (vbmeta is always signed); any other chained partition cannot be re-signed by it.
+ */
+export const AVB_SIGNABLE_PARTITIONS = Object.freeze(["boot", "dtbo", "init_boot", "recovery", "system", "system_other", "vbmeta_system", "vbmeta_vendor", "vendor"]);
+/** signapk loads private keys from this JCA provider and keystore type for managed signing. */
+export const PKCS11 = Object.freeze({ providerClass: "sun.security.pkcs11.SunPKCS11", keyStore: "PKCS11" });
+/**
+ * JVM arguments for signapk under managed signing: the releasetools default heap, plus the module
+ * export without which a JDK 9+ signapk cannot instantiate SunPKCS11 from -providerClass.
+ */
+export const PKCS11_JAVA_ARGS = Object.freeze(["-Xmx4096m", "--add-exports=jdk.crypto.cryptoki/sun.security.pkcs11=ALL-UNNAMED"]);
+const MANAGED_OPTIONS = Object.freeze({ pkcs11Config: "--pkcs11-config", avbSigningHelper: "--avb-signing-helper", payloadSigner: "--payload-signer", payloadSignerSignatureSize: "--payload-signer-signature-size" });
+/** Values the releasetools split with shlex: plain words only, so nothing is re-split or quoted. */
+const SHLEX_WORD = /^[A-Za-z0-9_@%+=:,./-]+$/;
+const PUBLIC_PEM = "-----BEGIN PUBLIC KEY-----";
 
 /** Channel fields that must be reviewed before signing. A first release has no known-good predecessor, and drills follow signing. */
 export function channelSigningProblems(channel, product, file = "android/aosp/pixel10a-ota-channel.json") {
@@ -108,6 +133,48 @@ export function isWithin(parent, child) {
   return !(relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative));
 }
 
+/** True when any managed-signing option is given; the job then needs all of them. */
+export function isManaged(options = {}) {
+  return Object.keys(MANAGED_OPTIONS).some(name => options[name] !== undefined) || (options.payloadSignerArgs ?? []).length > 0;
+}
+
+/** Managed-signing option problems: all given together, absolute shlex-safe paths, executables and a signature size. */
+export function managedSigningProblems(options = {}) {
+  if (!isManaged(options)) return [];
+  const problems = [];
+  const missing = Object.entries(MANAGED_OPTIONS).filter(([name]) => options[name] === undefined).map(([, flag]) => flag);
+  if (missing.length) problems.push(`managed signing needs ${Object.values(MANAGED_OPTIONS).join(", ")} together; missing ${missing.join(", ")} (private key files and token keys are never mixed)`);
+  for (const [name, executable] of [["pkcs11Config", false], ["avbSigningHelper", true], ["payloadSigner", true]]) {
+    const value = options[name], flag = MANAGED_OPTIONS[name];
+    if (value === undefined) continue;
+    if (!path.isAbsolute(value)) { problems.push(`${flag} must be an absolute path`); continue; }
+    if (!SHLEX_WORD.test(value)) { problems.push(`${flag} must be a path without spaces, quotes or shell characters`); continue; }
+    let stat = null;
+    try { stat = fs.statSync(value); } catch { stat = null; }
+    if (!stat?.isFile()) { problems.push(`${flag} ${value} is not a regular file`); continue; }
+    if (executable) try { fs.accessSync(value, fs.constants.X_OK); } catch { problems.push(`${flag} ${value} is not executable`); }
+  }
+  if (options.payloadSignerSignatureSize !== undefined && !/^[1-9][0-9]*$/.test(String(options.payloadSignerSignatureSize)))
+    problems.push(`${MANAGED_OPTIONS.payloadSignerSignatureSize} must be the signer's maximum signature size in bytes (512 for RSA-4096)`);
+  for (const arg of options.payloadSignerArgs ?? [])
+    if (!SHLEX_WORD.test(arg)) problems.push(`--payload-signer-arg ${JSON.stringify(arg)} must be a plain word without spaces, quotes or shell characters`);
+  return problems;
+}
+
+/** The PKCS#11 labels signapk looks up for each release key name (the private-key path it would otherwise read). */
+export function tokenKeyLabels(keysDir, names) {
+  return Object.fromEntries(names.map(name => [name, path.join(keysDir, `${name}.pk8`)]));
+}
+
+/** First bytes of a key file, enough to tell a public PEM from anything else without reading a private key. */
+function keyFileHead(file) {
+  const fd = fs.openSync(file, "r");
+  try {
+    const head = Buffer.alloc(PUBLIC_PEM.length);
+    return head.subarray(0, fs.readSync(fd, head, 0, head.length, 0)).toString("latin1");
+  } finally { fs.closeSync(fd); }
+}
+
 /** The source key (path without .x509.pem) an apkcerts/apexkeys row names, or null when presigned. */
 function sourceKey(certificate) {
   if (!certificate || PRESIGNED.has(certificate)) return null;
@@ -140,12 +207,14 @@ function signedApexes(apexkeys) {
 }
 
 /** Every key file the job passes to the releasetools, for these target-files. */
-export function requiredKeyFiles({ product, keyMap = {}, inspection = null }) {
+export function requiredKeyFiles({ product, keyMap = {}, inspection = null, managed = false }) {
   const names = new Set([...Object.values(DEFAULT_KEY_MAP), ...EXPLICIT_KEYS, "releasekey", ...Object.values(keyMap)]);
-  const files = [...names].flatMap(name => [`${name}.pk8`, `${name}.x509.pem`]);
+  // Managed signing keeps the private halves in the token: only certificates and public keys are files.
+  const pair = name => managed ? [`${name}.x509.pem`] : [`${name}.pk8`, `${name}.x509.pem`];
+  const files = [...names].flatMap(pair);
   files.push(product?.avb?.vbmetaKey ?? "avb.pem", product?.avb?.publicKeyMetadata ?? "avb_pkmd.bin");
   if (inspection && signedApexes(inspection.apexkeys).length)
-    files.push(`${APEX_KEYS.container}.pk8`, `${APEX_KEYS.container}.x509.pem`, `${APEX_KEYS.payload}.pem`, `${APEX_KEYS.payload}.avbpubkey`);
+    files.push(...pair(APEX_KEYS.container), `${APEX_KEYS.payload}.pem`, `${APEX_KEYS.payload}.avbpubkey`);
   return [...new Set(files)];
 }
 
@@ -171,7 +240,7 @@ export function targetFilesProblems(inspection, { product, keyMap = {} }) {
 }
 
 /** Runtime key directory checks: location, permissions, every required file and public digests. Never opens a private key. */
-export function keyDirectoryProblems(keysDir, { product, channel, root = process.cwd(), keyMap = {}, inspection = null, runGit } = {}) {
+export function keyDirectoryProblems(keysDir, { product, channel, root = process.cwd(), keyMap = {}, inspection = null, runGit, managed = false } = {}) {
   if (!keysDir) return ["--keys-dir is required: the decrypted release key directory, supplied at signing time"];
   if (!path.isAbsolute(keysDir)) return ["--keys-dir must be an absolute path"];
   if (!fs.existsSync(keysDir) || !fs.statSync(keysDir).isDirectory()) return [`--keys-dir ${keysDir} is not a directory`];
@@ -182,14 +251,23 @@ export function keyDirectoryProblems(keysDir, { product, channel, root = process
   if (git) problems.push(git);
   if (fs.statSync(real).mode & 0o077) problems.push("--keys-dir must not be readable or writable by group or others (mode 0700)");
   const missing = [];
-  for (const name of requiredKeyFiles({ product, keyMap, inspection })) {
+  for (const name of requiredKeyFiles({ product, keyMap, inspection, managed })) {
     let stat;
     try { stat = fs.lstatSync(path.join(real, name)); } catch { missing.push(name); continue; }
     if (stat.isSymbolicLink()) problems.push(`--keys-dir ${name} is a symbolic link; key files must be regular files in the key directory`);
     else if (!stat.isFile()) problems.push(`--keys-dir ${name} is not a regular file`);
     else if (stat.mode & 0o077) problems.push(`--keys-dir ${name} must not be readable or writable by group or others (mode 0600)`);
   }
-  if (missing.length) problems.push(`--keys-dir lacks ${missing.join(", ")} (decrypt the release key bundle first; .enc files are not read)`);
+  if (missing.length) problems.push(managed ? `--keys-dir lacks ${missing.join(", ")} (managed signing needs every release certificate and public key)` : `--keys-dir lacks ${missing.join(", ")} (decrypt the release key bundle first; .enc files are not read)`);
+  if (managed) {
+    for (const name of fs.readdirSync(real).filter(item => item.endsWith(".pk8")))
+      problems.push(`--keys-dir holds ${name}; managed signing keeps private keys in the PKCS#11 token, never in the key directory`);
+    for (const name of [product?.avb?.vbmetaKey ?? "avb.pem", ...(inspection && signedApexes(inspection.apexkeys).length ? [`${APEX_KEYS.payload}.pem`] : [])]) {
+      const file = path.join(real, name);
+      if (fs.existsSync(file) && fs.lstatSync(file).isFile() && keyFileHead(file) !== PUBLIC_PEM)
+        problems.push(`--keys-dir ${name} must be the public key (${PUBLIC_PEM}) when managed signing holds the private key`);
+    }
+  }
   const certs = keyCertificates(real, ["platform", "releasekey"]);
   if (certs.platform && certs.platform !== product?.signer?.platformCertificateSha256) problems.push(`platform.x509.pem is ${certs.platform}, not the product's signer.platformCertificateSha256`);
   if (certs.releasekey && certs.releasekey !== channel?.otaCertificateSha256) problems.push(`releasekey.x509.pem is ${certs.releasekey}, not the channel's otaCertificateSha256`);
@@ -212,20 +290,27 @@ export function keyDirectoryProblems(keysDir, { product, channel, root = process
  * The exact releasetools invocations. `keysDir` must already be the key directory's realpath.
  * Key paths are arguments only; their contents are never read here.
  */
-export function signingCommands({ targetFiles, keysDir, releasetools, out, product, incrementalFrom = null, keyMap = {}, inspection = { apexkeys: [] } }) {
+export function signingCommands({ targetFiles, keysDir, releasetools, out, product, incrementalFrom = null, keyMap = {}, inspection = { apexkeys: [] }, managed = null }) {
   const keys = keysDir, tools = path.resolve(releasetools);
   const algorithm = product.avb.algorithm, avbKey = path.join(keys, product.avb.vbmetaKey);
   const signed = path.join(out, "signed-target_files.zip"), ota = path.join(out, incrementalFrom ? "incremental-ota.zip" : "ota.zip");
   const explicit = [...EXPLICIT_KEYS.map(name => [`${DEV_KEY_DIRS[0]}/${name}`, name]), ...Object.entries(keyMap)]
     .flatMap(([source, name]) => ["-k", `${source}=${path.join(keys, name)}`]);
   const apex = signedApexes(inspection.apexkeys).flatMap(row => ["--extra_apex_payload_key", `${row.name}=${path.join(keys, `${APEX_KEYS.payload}.pem`)}`, "--extra_apks", `${row.name}=${path.join(keys, APEX_KEYS.container)}`]);
-  const avb = ["--avb_vbmeta_key", avbKey, "--avb_vbmeta_algorithm", algorithm,
-    ...product.avb.chainedPartitions.flatMap(partition => [`--avb_${partition}_key`, avbKey, `--avb_${partition}_algorithm`, algorithm])];
+  // Managed signing: avbtool calls the helper for every AVB signature, signapk takes its keys from the token.
+  const helper = partition => managed ? [`--avb_${partition}_extra_args`, `--signing_helper_with_files ${managed.avbSigningHelper}`] : [];
+  const avb = ["--avb_vbmeta_key", avbKey, "--avb_vbmeta_algorithm", algorithm, ...helper("vbmeta"),
+    ...product.avb.chainedPartitions.flatMap(partition => [`--avb_${partition}_key`, avbKey, `--avb_${partition}_algorithm`, algorithm, ...helper(partition)])];
+  const token = managed ? ["--java_args", PKCS11_JAVA_ARGS.join(" "),
+    "--extra_signapk_args", `-providerClass ${PKCS11.providerClass} -providerArg ${managed.pkcs11Config} -loadPrivateKeysFromKeyStore ${PKCS11.keyStore}`] : [];
+  const apexHelper = managed && apex.length ? helper("apex") : [];
+  const payload = managed ? ["--payload_signer", managed.payloadSigner, ...((managed.payloadSignerArgs ?? []).length ? ["--payload_signer_args", managed.payloadSignerArgs.join(" ")] : []),
+    "--payload_signer_maximum_signature_size", String(managed.payloadSignerSignatureSize)] : [];
   return {
     signed, ota,
     commands: [
-      { tool: path.join(tools, "sign_target_files_apks"), args: ["-p", path.dirname(tools), "-o", "-d", keys, ...explicit, ...apex, ...avb, path.resolve(targetFiles), signed] },
-      { tool: path.join(tools, "ota_from_target_files"), args: ["-p", path.dirname(tools), "-k", path.join(keys, "releasekey"), ...(incrementalFrom ? ["-i", path.resolve(incrementalFrom)] : []), signed, ota] },
+      { tool: path.join(tools, "sign_target_files_apks"), args: ["-p", path.dirname(tools), ...token, "-o", "-d", keys, ...explicit, ...apex, ...apexHelper, ...avb, path.resolve(targetFiles), signed] },
+      { tool: path.join(tools, "ota_from_target_files"), args: ["-p", path.dirname(tools), ...token, "-k", path.join(keys, "releasekey"), ...payload, ...(incrementalFrom ? ["-i", path.resolve(incrementalFrom)] : []), signed, ota] },
     ],
   };
 }
@@ -284,11 +369,13 @@ function apksignerPath(options) {
 }
 
 /** Every reason the signing job would refuse, without running anything. */
-export async function signingProblems({ root = process.cwd(), targetFiles, targetFilesSha256, keysDir, releasetools, apksigner, out, incrementalFrom, product, channel, keyMap = {}, runGit }) {
+export async function signingProblems({ root = process.cwd(), targetFiles, targetFilesSha256, keysDir, releasetools, apksigner, out, incrementalFrom, product, channel, keyMap = {}, runGit, ...managedOptions }) {
   const problems = [...pixel10aProductProblems(root)];
   if (!HEX64.test(product?.avb?.publicKeySha256 ?? "")) problems.push(`${PIXEL10A_PRODUCT}: avb.publicKeySha256 must be a SHA-256`);
   if (!/^SHA(256|512)_RSA(4096|8192)$/.test(product?.avb?.algorithm ?? "")) problems.push(`${PIXEL10A_PRODUCT}: avb.algorithm must be an RSA-4096/8192 AVB algorithm`);
   if (!Array.isArray(product?.avb?.chainedPartitions)) problems.push(`${PIXEL10A_PRODUCT}: avb.chainedPartitions must list the chained vbmeta partitions`);
+  else for (const partition of product.avb.chainedPartitions)
+    if (!AVB_SIGNABLE_PARTITIONS.includes(partition)) problems.push(`${PIXEL10A_PRODUCT}: chained partition ${partition} has no --avb_${partition}_key in sign_target_files_apks (supported: ${AVB_SIGNABLE_PARTITIONS.join(", ")})`);
   problems.push(...channelSigningProblems(channel, product, product?.ota?.channel));
   for (const [source, name] of Object.entries(keyMap)) if (!KEY_NAME.test(name) || !source || source.includes("=")) problems.push(`--map-key ${source}=${name} must map a source key path to a key name`);
   let inspection = null;
@@ -308,7 +395,8 @@ export async function signingProblems({ root = process.cwd(), targetFiles, targe
   try { fs.accessSync(verifier ?? "", fs.constants.X_OK); } catch { problems.push("an executable apksigner is required to verify the signed target-files (--apksigner, or apksigner in --releasetools)"); }
   if (!out) problems.push("--out is required: a new output directory");
   else if (fs.existsSync(out)) problems.push(`--out ${out} already exists`);
-  problems.push(...keyDirectoryProblems(keysDir, { product, channel, root, keyMap, inspection, runGit }));
+  problems.push(...managedSigningProblems(managedOptions));
+  problems.push(...keyDirectoryProblems(keysDir, { product, channel, root, keyMap, inspection, runGit, managed: isManaged(managedOptions) }));
   return { problems: [...new Set(problems)], inspection };
 }
 
@@ -321,9 +409,12 @@ export async function signRelease(options) {
   const keyMap = options.keyMap ?? {};
   const { problems, inspection } = await signingProblems({ ...options, root, product, channel, keyMap });
   const keysDir = options.keysDir && path.isAbsolute(options.keysDir) && fs.existsSync(options.keysDir) ? fs.realpathSync(options.keysDir) : options.keysDir;
+  const managed = isManaged(options) ? { pkcs11Config: options.pkcs11Config, avbSigningHelper: options.avbSigningHelper, payloadSigner: options.payloadSigner, payloadSignerArgs: options.payloadSignerArgs ?? [], payloadSignerSignatureSize: options.payloadSignerSignatureSize } : null;
   const plan = Array.isArray(product.avb?.chainedPartitions) && options.targetFiles && keysDir && options.releasetools && options.out
-    ? signingCommands({ ...options, keysDir, product, keyMap, inspection: inspection ?? { apexkeys: [] } }) : null;
-  if (options.dryRun) return { dryRun: true, problems, commands: plan?.commands ?? [], ran: false };
+    ? signingCommands({ ...options, keysDir, product, keyMap, inspection: inspection ?? { apexkeys: [] }, managed }) : null;
+  const signedApexCount = inspection ? signedApexes(inspection.apexkeys).length : 0;
+  const tokenLabels = managed && keysDir ? tokenKeyLabels(keysDir, [...new Set([...Object.values(DEFAULT_KEY_MAP), ...EXPLICIT_KEYS, "releasekey", ...Object.values(keyMap), ...(signedApexCount ? [APEX_KEYS.container] : [])])]) : null;
+  if (options.dryRun) return { dryRun: true, problems, commands: plan?.commands ?? [], ran: false, signingMode: managed ? "managed" : "key-files", tokenLabels };
   if (problems.length) throw new Error(`Refusing to sign the release:\n${problems.map(item => `  - ${item}`).join("\n")}`);
   fs.mkdirSync(options.out, { mode: 0o700 });
   const env = { ...process.env, PATH: `${path.resolve(options.releasetools)}${path.delimiter}${process.env.PATH ?? ""}` };
@@ -341,17 +432,18 @@ export async function signRelease(options) {
     signedTargetFiles: plan.signed, ota: plan.ota, product, channel, apkManifest, certificates,
     avbPublicKeySha256: sha256(fs.readFileSync(pkmd)),
     incrementalFrom: await incrementalSource(options.incrementalFrom),
-    inputs: { unsignedTargetFilesSha256: options.targetFilesSha256, productDescriptorSha256: sha256(fs.readFileSync(path.join(root, PIXEL10A_PRODUCT))), sourceLockSha256: product.sourceLock.sha256 },
+    inputs: { unsignedTargetFilesSha256: options.targetFilesSha256, productDescriptorSha256: sha256(fs.readFileSync(path.join(root, PIXEL10A_PRODUCT))), sourceLockSha256: product.sourceLock.sha256, signingMode: managed ? "managed" : "key-files" },
   });
   const recordFile = path.join(options.out, "release-record.json");
   writeRecord(recordFile, record);
   if (record.problems.length) throw new Error(`Signed outputs are inconsistent; see ${recordFile}:\n${record.problems.map(item => `  - ${item}`).join("\n")}`);
-  return { dryRun: false, problems: [], commands: plan.commands, ran: true, record: recordFile, distributionProblems: channelDistributionProblems(channel, product.ota.channel) };
+  return { dryRun: false, problems: [], commands: plan.commands, ran: true, record: recordFile, signingMode: managed ? "managed" : "key-files", distributionProblems: channelDistributionProblems(channel, product.ota.channel) };
 }
 
 export function parseSigningArgs(args) {
-  const names = { "--target-files": "targetFiles", "--target-files-sha256": "targetFilesSha256", "--keys-dir": "keysDir", "--releasetools": "releasetools", "--apksigner": "apksigner", "--out": "out", "--apk-manifest": "apkManifest", "--incremental-from": "incrementalFrom" };
-  const usage = "Use --target-files ZIP --target-files-sha256 HEX --keys-dir DIR --releasetools DIR --out NEW_DIR [--apksigner FILE] [--map-key SOURCE=NAME ...] [--apk-manifest FILE] [--incremental-from ZIP] [--dry-run]";
+  const names = { "--target-files": "targetFiles", "--target-files-sha256": "targetFilesSha256", "--keys-dir": "keysDir", "--releasetools": "releasetools", "--apksigner": "apksigner", "--out": "out", "--apk-manifest": "apkManifest", "--incremental-from": "incrementalFrom",
+    ...Object.fromEntries(Object.entries(MANAGED_OPTIONS).map(([name, flag]) => [flag, name])) };
+  const usage = "Use --target-files ZIP --target-files-sha256 HEX --keys-dir DIR --releasetools DIR --out NEW_DIR [--apksigner FILE] [--map-key SOURCE=NAME ...] [--apk-manifest FILE] [--incremental-from ZIP] [--dry-run] [--pkcs11-config FILE --avb-signing-helper FILE --payload-signer FILE [--payload-signer-arg ARG ...] --payload-signer-signature-size BYTES]";
   const options = { dryRun: false };
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--dry-run") { options.dryRun = true; continue; }
@@ -360,6 +452,12 @@ export function parseSigningArgs(args) {
       if (at <= 0 || value.startsWith("--")) throw new Error(usage);
       options.keyMap = { ...(options.keyMap ?? {}), [value.slice(0, at)]: value.slice(at + 1) };
       i++;
+      continue;
+    }
+    // A signer argument may itself start with "-" or "--"; it is always the next word.
+    if (args[i] === "--payload-signer-arg") {
+      if (i + 1 >= args.length) throw new Error(usage);
+      options.payloadSignerArgs = [...(options.payloadSignerArgs ?? []), args[++i]];
       continue;
     }
     const key = names[args[i]];
@@ -372,7 +470,7 @@ export function parseSigningArgs(args) {
 async function main(args) {
   const result = await signRelease(parseSigningArgs(args));
   if (result.dryRun) {
-    console.log(JSON.stringify({ dryRun: true, ran: false, commands: result.commands.map(({ tool, args }) => [tool, ...args]), problems: result.problems }, null, 2));
+    console.log(JSON.stringify({ dryRun: true, ran: false, signingMode: result.signingMode, ...(result.tokenLabels ? { tokenLabels: result.tokenLabels } : {}), commands: result.commands.map(({ tool, args }) => [tool, ...args]), problems: result.problems }, null, 2));
     if (result.problems.length) console.warn(`Signing would be refused (${result.problems.length} problem${result.problems.length === 1 ? "" : "s"}).`);
     return;
   }

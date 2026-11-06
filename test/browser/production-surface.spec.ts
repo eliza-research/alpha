@@ -335,11 +335,13 @@ for (const mode of ['signed-out','empty','credits','unavailable','funded','repla
     {name:'DeviceApps',methods:methods(['buildInfo'])},
     {name:'Agent',methods:methods(['getStatus','start','stop','configureCloudProvider','clearProvider','providerStatus','request'])},
     {name:'AlphaConnection',methods:methods(['secureRead','secureWrite','secureRemove','secureCompareExchange','request','cancel','openExternal'])},
+    {name:'AlphaCloudSignIn',methods:methods(['status','cancel','startEmail','verifyEmail','verifyMfa'])},
     {name:'AlphaNotifications',methods:methods(['status','crossAppStatus','addListener','removeListener'])},
     {name:'AlphaVoiceCloud',methods:methods(['checkPermissions'])},
    ],nativePromise:async(plugin:string,method:string,input:any)=>{
     w.residentCalls.push({plugin,method,path:input?.path,url:input?.url});
     if(plugin==='DeviceApps')return{launcher:false,version:'billing-fixture'};
+    if(plugin==='AlphaCloudSignIn')return method==='status'?{inApp:true,methodsKnown:true,email:true,google:false,phone:false}:{};
     if(plugin==='AlphaNotifications')return{permissionGranted:true,appEnabled:true};
     if(plugin==='AlphaVoiceCloud')return{microphone:'granted'};
     if(plugin==='Agent'){
@@ -400,8 +402,10 @@ for (const mode of ['signed-out','empty','credits','unavailable','funded','repla
    await expect(dialog.getByRole('alert')).toHaveText('This developer build does not include the on-device agent.');
   }else if(!signedOut&&mode!=='replaced')await expect(dialog.getByText(needsPlan?'Running on this device':'On this device',{exact:true})).toBeVisible();
   if(signedOut){
-   await expect(dialog.getByText('Sign in to Eliza Cloud to use Alpha Phone.',{exact:true})).toBeVisible();
-   await expect(dialog.getByRole('button',{name:'Sign in with Eliza Cloud',exact:true})).toBeVisible();
+   if(mode!=='unpackaged'){
+    await expect(dialog.getByRole('form',{name:'Sign in with email'})).toBeVisible();
+    await expect(dialog.getByRole('button',{name:'Email me a code',exact:true})).toBeVisible();
+   }
    await expect(dialog.getByRole('button',{name:'Close connection settings',exact:true})).toHaveCount(0);
    await page.keyboard.press('Escape');await expect(dialog).toBeVisible();
   }

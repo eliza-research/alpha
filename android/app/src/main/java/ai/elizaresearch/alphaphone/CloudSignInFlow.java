@@ -184,6 +184,16 @@ final class CloudSignInFlow {
  static boolean validStewardToken(String value) { return value != null && value.length() >= 20 && value.length() <= 16384 && value.matches("[\\x21-\\x7e]+"); }
  static boolean validUuid(String value) { return value != null && value.matches("(?i)[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"); }
 
+ /** Safe transport categories, without URLs, exception messages or response bodies. */
+ static String failureForTransport(java.io.IOException failure, boolean cancelled) {
+  if (cancelled) return "cancelled";
+  if (failure instanceof java.net.UnknownHostException) return "dns";
+  if (failure instanceof java.net.SocketTimeoutException) return "timeout";
+  if (failure instanceof javax.net.ssl.SSLException) return "secure-connection";
+  if (failure instanceof java.net.ConnectException || failure instanceof java.net.NoRouteToHostException) return "offline";
+  return "unavailable";
+ }
+
  /** Stable, non-secret failure codes shown to the renderer. Never derived from a response body. */
  static String failureForStatus(String stage, int status) {
   if (status == 429) return "rate-limited";

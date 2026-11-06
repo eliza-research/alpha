@@ -11,7 +11,7 @@ import path from "node:path";
 import { createHash } from "node:crypto";
 import { execFileSync, spawnSync } from "node:child_process";
 import { PIXEL10A_PRODUCT, pixel10aOptions, pixel10aProductProblems } from "../scripts/aosp-pixel10a.mjs";
-import { channelDistributionProblems, channelSigningProblems, gitWorkTreeProblem, isWithin, parseSigningArgs, signingCommands, signRelease, X509_KEYS } from "../scripts/sign-aosp-release.mjs";
+import { AVB_SIGNABLE_PARTITIONS, channelDistributionProblems, channelSigningProblems, gitWorkTreeProblem, isWithin, parseSigningArgs, PKCS11_JAVA_ARGS, signingCommands, signRelease, X509_KEYS } from "../scripts/sign-aosp-release.mjs";
 import { chainedPartitionsFromMiscInfo, compatibilityRecord, parseProperties } from "../scripts/aosp-release-record.mjs";
 import { releaseBlockers } from "../scripts/release-blockers.mjs";
 
@@ -540,4 +540,92 @@ test("an incremental OTA records its predecessor by file and SHA-256 on the sign
   assert.deepEqual(JSON.parse(fs.readFileSync(file, "utf8")).artifacts.ota.incrementalFrom, record.artifacts.ota.incrementalFrom);
   const loose = await compatibilityRecord({ signedTargetFiles: path.join(fixture.out, "signed-target_files.zip"), ota: path.join(fixture.out, "incremental-ota.zip"), product: read(PIXEL10A_PRODUCT), channel: read(CHANNEL), incrementalFrom: "signed-target_files.zip" });
   assert.ok(loose.problems.some(problem => /incrementalFrom must identify the previous signed target-files by file and SHA-256/.test(problem)));
+});
+
+/**
+ * Managed (hardware-backed) signing: the key directory holds only certificates and public keys, and
+ * the token, AVB helper and payload signer are throwaway files. These establish the releasetools
+ * arguments and refusals, not that any real token, HSM or managed service signed anything.
+ */
+function managedSetup(t, tf = {}) {
+  const fixture = setup(t, {}, tf);
+  const { keys } = fixture.key;
+  for (const name of fs.readdirSync(keys).filter(name => name.endsWith(".pk8"))) fs.rmSync(path.join(keys, name));
+  for (const name of ["avb.pem", "apex_payload.pem"]) {
+    fs.writeFileSync(path.join(keys, name), "-----BEGIN PUBLIC KEY-----\nTEST-ONLY-PUBLIC-MARKER\n-----END PUBLIC KEY-----\n");
+    fs.chmodSync(path.join(keys, name), 0o600);
+  }
+  const tools = temporary(t, "alpha-managed-signing-");
+  const pkcs11Config = path.join(tools, "token.cfg"), avbSigningHelper = path.join(tools, "avb-helper"), payloadSigner = path.join(tools, "payload-signer");
+  fs.writeFileSync(pkcs11Config, "name = AlphaRelease\nlibrary = /usr/lib/pkcs11/token.so\n");
+  for (const file of [avbSigningHelper, payloadSigner]) { fs.writeFileSync(file, "#!/bin/sh\nexit 1\n"); fs.chmodSync(file, 0o755); }
+  const managed = { pkcs11Config, avbSigningHelper, payloadSigner, payloadSignerArgs: ["-key", "alpha-release-ota"], payloadSignerSignatureSize: "512" };
+  return { ...fixture, managed, options: { ...fixture.options, ...managed } };
+}
+
+test("managed signing keeps private keys in the token and passes the helper, keystore and payload signer to the releasetools", async t => {
+  const fixture = managedSetup(t);
+  const { keys } = fixture.key, { managed } = fixture;
+  const dry = await signRelease({ ...fixture.options, dryRun: true });
+  assert.deepEqual(dry.problems, []);
+  assert.equal(dry.signingMode, "managed");
+  assert.equal(dry.tokenLabels.platform, path.join(keys, "platform.pk8"), "signapk looks up the private-key path as the token label");
+  assert.equal(dry.tokenLabels.apex, path.join(keys, "apex.pk8"));
+  const result = await signRelease(fixture.options);
+  const [sign, ota] = fixture.ota.calls();
+  const value = (call, flag) => call[call.indexOf(flag) + 1];
+  const keystore = `-providerClass sun.security.pkcs11.SunPKCS11 -providerArg ${managed.pkcs11Config} -loadPrivateKeysFromKeyStore PKCS11`;
+  for (const call of [sign, ota]) {
+    assert.equal(value(call, "--extra_signapk_args"), keystore);
+    assert.equal(value(call, "--java_args"), PKCS11_JAVA_ARGS.join(" "));
+  }
+  for (const partition of ["vbmeta", ...fixture.repo.product.avb.chainedPartitions, "apex"])
+    assert.equal(value(sign, `--avb_${partition}_extra_args`), `--signing_helper_with_files ${managed.avbSigningHelper}`, partition);
+  assert.equal(value(sign, "--avb_vbmeta_key"), path.join(keys, "avb.pem"), "avbtool receives the public key; the helper signs");
+  assert.equal(value(ota, "-k"), path.join(keys, "releasekey"));
+  assert.equal(value(ota, "--payload_signer"), managed.payloadSigner);
+  assert.equal(value(ota, "--payload_signer_args"), "-key alpha-release-ota");
+  assert.equal(value(ota, "--payload_signer_maximum_signature_size"), "512");
+  const text = fs.readFileSync(result.record, "utf8");
+  assert.equal(JSON.parse(text).inputs.signingMode, "managed");
+  assert.doesNotMatch(text, /TEST-ONLY/);
+  // The default job passes none of it, and records key-file signing.
+  const plain = setup(t);
+  const record = JSON.parse(fs.readFileSync((await signRelease(plain.options)).record, "utf8"));
+  assert.equal(record.inputs.signingMode, "key-files");
+  assert.ok(!plain.ota.calls().flat().some(arg => /signing_helper|payload_signer|extra_signapk_args|java_args/.test(arg)));
+});
+
+test("managed signing refuses mixed or unsafe inputs before any tool runs", async t => {
+  const refuse = async (change, pattern) => {
+    const fixture = managedSetup(t);
+    await refusedBeforeSigning(fixture, change(fixture) ?? fixture.options, pattern);
+  };
+  await refuse(({ options }) => ({ ...options, payloadSigner: undefined }), /managed signing needs .* together; missing --payload-signer/);
+  await refuse(({ options }) => ({ ...options, payloadSignerSignatureSize: undefined }), /missing --payload-signer-signature-size/);
+  await refuse(({ key }) => { fs.writeFileSync(path.join(key.keys, "platform.pk8"), "TEST-ONLY-PRIVATE-MARKER"); fs.chmodSync(path.join(key.keys, "platform.pk8"), 0o600); }, /holds platform\.pk8; managed signing keeps private keys in the PKCS#11 token/);
+  await refuse(({ key }) => { fs.writeFileSync(path.join(key.keys, "avb.pem"), "TEST-ONLY-PRIVATE-MARKER"); }, /avb\.pem must be the public key/);
+  await refuse(({ key }) => { fs.writeFileSync(path.join(key.keys, "apex_payload.pem"), "-----BEGIN PRIVATE KEY-----\n"); }, /apex_payload\.pem must be the public key/);
+  await refuse(({ key }) => { fs.rmSync(path.join(key.keys, "media.x509.pem")); }, /lacks media\.x509\.pem \(managed signing needs every release certificate and public key\)/);
+  await refuse(({ options }) => ({ ...options, pkcs11Config: "token.cfg" }), /--pkcs11-config must be an absolute path/);
+  await refuse(({ options }) => { const spaced = path.join(path.dirname(options.avbSigningHelper), "avb helper"); fs.copyFileSync(options.avbSigningHelper, spaced); fs.chmodSync(spaced, 0o755); return { ...options, avbSigningHelper: spaced }; }, /--avb-signing-helper must be a path without spaces/);
+  await refuse(({ options }) => { fs.chmodSync(options.payloadSigner, 0o644); }, /--payload-signer .* is not executable/);
+  await refuse(({ options }) => ({ ...options, pkcs11Config: path.join(path.dirname(options.pkcs11Config), "absent.cfg") }), /--pkcs11-config .* is not a regular file/);
+  await refuse(({ options }) => ({ ...options, payloadSignerSignatureSize: "0" }), /maximum signature size in bytes/);
+  await refuse(({ options }) => ({ ...options, payloadSignerArgs: ["-pin", "1234 5678"] }), /--payload-signer-arg "1234 5678" must be a plain word/);
+});
+
+test("only chained partitions sign_target_files_apks can re-sign are admitted", async t => {
+  assert.deepEqual([...AVB_SIGNABLE_PARTITIONS].sort(), ["boot", "dtbo", "init_boot", "recovery", "system", "system_other", "vbmeta_system", "vbmeta_vendor", "vendor"]);
+  const fixture = setup(t, {}, { misc: [...MISC_INFO, "avb_vendor_boot_key_path=external/avb/test/data/testkey_rsa4096.pem"] });
+  const product = JSON.parse(fs.readFileSync(path.join(fixture.repo.dir, PIXEL10A_PRODUCT), "utf8"));
+  fixture.repo.write(PIXEL10A_PRODUCT, { ...product, avb: { ...product.avb, chainedPartitions: [...product.avb.chainedPartitions, "vendor_boot"] } });
+  await refusedBeforeSigning(fixture, fixture.options, /chained partition vendor_boot has no --avb_vendor_boot_key in sign_target_files_apks/);
+});
+
+test("managed signing options parse from the command line; a signer argument may start with dashes", () => {
+  assert.deepEqual(parseSigningArgs(["--pkcs11-config", "/t.cfg", "--avb-signing-helper", "/h", "--payload-signer", "/s", "--payload-signer-arg", "--key", "--payload-signer-arg", "ota", "--payload-signer-signature-size", "512"]),
+    { dryRun: false, pkcs11Config: "/t.cfg", avbSigningHelper: "/h", payloadSigner: "/s", payloadSignerArgs: ["--key", "ota"], payloadSignerSignatureSize: "512" });
+  assert.throws(() => parseSigningArgs(["--payload-signer-arg"]), /Use --target-files/);
+  assert.throws(() => parseSigningArgs(["--pkcs11-config", "/a", "--pkcs11-config", "/b"]), /Use --target-files/);
 });
