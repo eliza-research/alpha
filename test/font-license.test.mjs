@@ -176,7 +176,7 @@ test('verify-apks records licence flags and the font check, and only an unresolv
   assert.match(source, /fontCheck = fontLicenceCheck\(payload\.public\);/);
   assert.match(source, /const licenceBlockers = fontCheck\.blockers;/);
   assert.match(source, /fontLicenceCheck: \{ check: fontCheck\.check, status: fontCheck\.status, blocksDistribution: fontCheck\.blocksDistribution, items: fontCheck\.items, resolved: fontCheck\.resolved \},/);
-  assert.match(source, /row\.runtimeNotices === true &&\n\s+row\.voiceHost\.packaged === true && row\.voiceHost\.qualified === true &&\n\s+row\.licenceBlockers\.length === 0;/);
+  assert.match(source, /row\.runtimeNotices === true &&\n\s+row\.voiceHost\.packaged === true && row\.voiceHost\.asr === true && row\.voiceHost\.qualified === true &&\n\s+row\.licenceBlockers\.length === 0;/);
   // Flags are recorded per APK and printed; they are not part of the distributable expression or of any failure.
   assert.match(source, /licenceFlags = licenceFlagRecords\(entries\);/);
   assert.match(source, /for \(const line of flagLines\) console\.warn\(line\);/);

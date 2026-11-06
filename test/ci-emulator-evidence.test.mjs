@@ -287,14 +287,14 @@ test('speech suite: networking is proven off before the speech classes, and only
 const sha=file=>createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 const bytesSha=bytes=>createHash('sha256').update(bytes).digest('hex');
 test('speech candidate check refuses an APK whose voice bundle or x86_64 engine is not the recorded bytes',()=>{
- const model=Buffer.from('paradee'),lexicon=Buffer.from('misaki'),vad=Buffer.from('silero'),engine=Buffer.from('engine'),asr=Buffer.from('asr');
+ const model=Buffer.from('paradee'),lexicon=Buffer.from('misaki'),vad=Buffer.from('silero'),engine=Buffer.from('engine'),stl=Buffer.from('libc++'),asr=Buffer.from('asr');
  const row=(file,role,bytes)=>({path:file,role,sha256:bytesSha(bytes),bytes:bytes.length});
  const host={models:[row('tts/paradee/paradee-8m-v1_0.gguf','tts-model',model),row('tts/paradee/misaki-en-us.lex','g2p-lexicon',lexicon),row('vad/silero-vad-v5.gguf','vad-model',vad),
   row('asr/phonon-2-fv5.gguf','asr-model',asr)],
-  abis:[{abi:'x86_64',libraries:[{name:'libelizainference.so',sha256:bytesSha(engine),bytes:engine.length}]}]};
+  abis:[{abi:'x86_64',libraries:[{name:'libelizainference.so',sha256:bytesSha(engine),bytes:engine.length},{name:'libc++_shared.so',sha256:bytesSha(stl),bytes:stl.length}]}]};
  const apk=(change=()=>{},withAsr=false)=>{
   const listed=host.models.filter(entry=>withAsr||!entry.path.startsWith('asr/'));
-  const files={'lib/x86_64/libelizainference.so':engine,'lib/x86_64/libparadeevoicejni.so':Buffer.from('jni'),
+  const files={'lib/x86_64/libelizainference.so':engine,'lib/x86_64/libc++_shared.so':stl,'lib/x86_64/libparadeevoicejni.so':Buffer.from('jni'),
    'assets/paradee-voice/v1/manifest.json':Buffer.from(JSON.stringify({format:'eliza-paradee-voice-v1',files:listed.map(({path:file,sha256,bytes})=>({path:file,sha256,bytes}))}))};
   for(const entry of listed)files[`assets/paradee-voice/v1/${entry.path}`]={'tts/paradee/paradee-8m-v1_0.gguf':model,'tts/paradee/misaki-en-us.lex':lexicon,'vad/silero-vad-v5.gguf':vad,'asr/phonon-2-fv5.gguf':asr}[entry.path];
   change(files);return {names:Object.keys(files),read:entry=>files[entry]??null};
@@ -306,7 +306,11 @@ test('speech candidate check refuses an APK whose voice bundle or x86_64 engine 
  assert.equal(asrPackaged(apk(()=>{},true)),true);
  assert.equal(asrPackaged(apk(files=>{files['assets/paradee-voice/v1/manifest.json']=Buffer.from('not json');})),false);
  const cases=[[files=>{delete files['assets/paradee-voice/v1/manifest.json'];},/carries no on-device voice bundle/],[files=>{files['assets/paradee-voice/v1/vad/silero-vad-v5.gguf']=Buffer.from('other');},/vad\/silero-vad-v5\.gguf is not a recorded voice file/],
-  [files=>{files['lib/x86_64/libelizainference.so']=Buffer.from('rebuilt');},/lib\/x86_64\/libelizainference\.so differs from the recorded engine/],[files=>{delete files['lib/x86_64/libparadeevoicejni.so'];},/libparadeevoicejni\.so is not packaged/]];
+  [files=>{files['lib/x86_64/libelizainference.so']=Buffer.from('rebuilt');},/lib\/x86_64\/libelizainference\.so differs from the recorded engine/],[files=>{delete files['lib/x86_64/libparadeevoicejni.so'];},/libparadeevoicejni\.so is not packaged/],
+  [files=>{files['lib/x86_64/libc++_shared.so']=Buffer.from('other');},/lib\/x86_64\/libc\+\+_shared\.so differs from the recorded library/],
+  // A manifest listing a subset (here without the VAD model) or nothing at all is refused; only the ASR slot may be absent.
+  [files=>{const manifest=JSON.parse(files['assets/paradee-voice/v1/manifest.json']);manifest.files=manifest.files.filter(row=>!row.path.startsWith('vad/'));delete files['assets/paradee-voice/v1/vad/silero-vad-v5.gguf'];files['assets/paradee-voice/v1/manifest.json']=Buffer.from(JSON.stringify(manifest));},/vad\/silero-vad-v5\.gguf is recorded but not packaged/],
+  [files=>{files['assets/paradee-voice/v1/manifest.json']=Buffer.from(JSON.stringify({format:'eliza-paradee-voice-v1',files:[]}));},/tts\/paradee\/paradee-8m-v1_0\.gguf is recorded but not packaged/]];
  for(const [change,expected] of cases)assert.match(candidateProblems(apk(change),host).join('; '),expected);
  assert.match(candidateProblems(apk(),{...host,abis:[]}).join('; '),/x86_64 has no recorded engine/);
  // The committed record is not qualified, so a passing emulator run never qualifies it by itself.
