@@ -30,10 +30,35 @@ test('Cloud Talk streams endpointed speech into the resident without batch STT o
   await f.shell.startVoice();await f.clock.flush();const h=f.getHandlers();assert.ok(h);
   assert.equal(f.starts,0);assert.equal(f.uploads,0);
   h.onSpeechStart(0);h.onSpeechEnd(20);h.onSegment('A completed Cloud utterance.');
-  await f.clock.advance(0);await f.clock.flush();
+  await f.clock.advance(399);assert.equal(f.sends,0);
+  await f.clock.advance(1);await f.clock.flush();
   assert.equal(f.sends,1);assert.equal(f.uploads,0);assert.equal(f.cloudSpeech,0);
   assert.deepEqual(f.spoken,['Synthetic matching reply.']);
   assert.equal(f.localFactories,0);
+ }finally{f.close();await f.clock.flush();}
+});
+
+test('Cloud Talk joins a continuation starting 230 ms after a provider final before closing capture',async()=>{
+ const f=fixture();
+ try{
+  await f.shell.startVoice();await f.clock.flush();const h=f.getHandlers();
+  h.onSpeechStart(0);h.onSpeechEnd(0);h.onSegment("What's twelve plus eight?");
+  await f.clock.advance(230);assert.equal(f.sends,0,'first clause remains open for a short continuation');
+  h.onSpeechStart(230);await f.clock.advance(1000);assert.equal(f.sends,0);
+  h.onSpeechEnd(1230);h.onSegment('Just the number please.');
+  await f.clock.advance(399);assert.equal(f.sends,0);
+  await f.clock.advance(1);await f.clock.flush();
+  assert.equal(f.sends,1);assert.equal(f.sendInputs[0].text,"What's twelve plus eight? Just the number please.");
+ }finally{f.close();await f.clock.flush();}
+});
+
+test('Stop during the Cloud continuation window never submits the pending words',async()=>{
+ const f=fixture();
+ try{
+  await f.shell.startVoice();await f.clock.flush();const h=f.getHandlers();
+  h.onSpeechStart(0);h.onSpeechEnd(0);h.onSegment('Yes');
+  await f.clock.advance(230);await f.shell.stopVoiceConversation();await f.clock.advance(1000);
+  assert.equal(f.sends,0);assert.deepEqual(f.spoken,[]);
  }finally{f.close();await f.clock.flush();}
 });
 

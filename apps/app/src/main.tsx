@@ -167,11 +167,11 @@ installSystemShade(Component,{native:isAndroid});
 // The shared agenda, mail and brief cards render the final Home values of every adapter above.
 installHomeOverviewCards(Component);
 installClockAdapter(Component, VIEWS, { simulated: testMocksEnabled && fixture, browser: !isAndroid });
-// Home, app grid and All apps from the shared mobile shell. Installed apps come from ElizaSystem
-// (Android, or the browser device's app list) through the shared launcher bridge; outermost so Home
-// composes with every binding above.
-installHomeShell(Component, VIEWS, launcherBridge, { icons: isAndroid, follow: launcherListens,
-  aliases: isAndroid ? undefined : Object.fromEntries(browserApps.flatMap(app => { const view = alphaViews.find(app.view); return view ? [[app.packageName, alphaViews.launcherKey(view)]] : []; })),
+// Home uses the shared mobile shell. Apps reads ElizaSystem on Android. The browser device
+// inventory remains available in test-mocks builds.
+const appInventory = isAndroid ? 'android' : testMocksEnabled ? 'simulated' : undefined;
+installHomeShell(Component, VIEWS, launcherBridge, { appInventory, icons: isAndroid, follow: launcherListens,
+  aliases: appInventory === 'simulated' ? Object.fromEntries(browserApps.flatMap(app => { const view = alphaViews.find(app.view); return view ? [[app.packageName, alphaViews.launcherKey(view)]] : []; })) : undefined,
 });
 /** A browser cannot read or change radios and sensors; show that instead of fixture toggles. */
 function installBrowserCapabilityTiles(Component:any){

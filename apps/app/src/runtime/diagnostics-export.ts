@@ -15,6 +15,10 @@ import type {VoiceTimingLive,VoiceTimingEndpoint} from './voice-timing.ts';
  * labels and build/model hashes only; it never carries audio, transcripts or replies.
  */
 export const DIAGNOSTICS_FORMAT='alpha-diagnostics/v1';
+const VOICE_STARTUP_STAGES=['conversation-selection','draft-binding','agent-attach','media-retirement'] as const;
+const VOICE_STARTUP_OUTCOMES=['pending','prepared','timeout','cancelled','failed'] as const;
+export type VoiceStartupStage=typeof VOICE_STARTUP_STAGES[number];
+export type VoiceStartupTiming={stage:VoiceStartupStage;outcome:typeof VOICE_STARTUP_OUTCOMES[number];elapsedMs:number};
 export const RUNTIME_ASSETS=['agent/alpha-source.json','agent/agent-bundle.js','agent/workflow-worker/manifest.json','agent/workflow-worker/files.sha256'] as const;
 const PERMISSIONS=['Microphone','Location','Camera','Calendar','Notifications'] as const;
 const ROLES=['home','assistant','dialer','sms'] as const;
@@ -33,6 +37,14 @@ const turnId=/^[0-9a-f-]{36}$/;
 export const NATIVE_VOICE_TIMING_FORMAT='alpha-native-voice-timing-v3';
 const NATIVE_MARKS=['last-user-audio','endpoint','asr-final','request','first-token','tts-start','tts-ready','first-pcm','audible-playback'] as const;
 const NATIVE_LIMIT=512;
+export const NATIVE_CLOUD_STREAM_TIMING_FORMAT='alpha-cloud-stream-timing-v1';
+const NATIVE_CLOUD_STREAM_LIMIT=100;
+const NATIVE_CLOUD_STREAM_STAGES=[
+ 'start','consent-start','consent-headers','consent-body','consent',
+ 'session-start','session-headers','session-body','mint','relay-start','ws-open','ready','stt-connected',
+ 'speech-start','asr-final','tts-request','first-pcm','first-audible','audio-end','error','stop',
+] as const;
+const NATIVE_CLOUD_STREAM_CLOCKS=['monotonic-observed','audiotrack-timestamp','audiotrack-head-position'] as const;
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const nativeId=/^[0-9a-f]{0,40}-[0-9a-f]{1,16}-[0-9]{1,10}$/;
 const fixedLabel=/^[A-Za-z0-9+-]{1,80}$/;
@@ -48,13 +60,18 @@ export type DiagnosticsInput={
  cloudPlan?:{view?:unknown;source?:unknown;status?:unknown;admission?:unknown;reason?:unknown};
  /** Parsed exportVoiceTiming() output. */
  voiceTiming?:unknown;
+ /** Last production native Cloud renderer preparation; prepared does not prove native dispatch. */
+ voiceStartup?:unknown;
  /** Raw bounded realtime document; sanitizer parses it only after size checks. */
  realtimeVoiceTiming?:unknown;
  /** AlphaVoiceCloud.nativeVoiceTiming() output (alpha-native-voice-timing-v3). */
  nativeVoiceTiming?:unknown;
+ /** AlphaCloudSpeechStream.cloudStreamTiming() output, absent on older builds. */
+ nativeCloudStreamTiming?:unknown;
 };
 type NativeVoiceTimingIdentity={sourceCommit:string;sourceDirty:boolean;engineSha256:string;modelSha256:string;models?:Record<string,string>;device:string;environment:'device'|'emulator';abi:'arm64-v8a'|'x86_64';sdk?:number;build:string};
 type NativeVoiceTimingRow={id:string;turnId:string;pipeline:string;clock:'native-monotonic-ms';captureClock:string;cold:boolean;coldReason?:string;outcome:string;reason?:string;audibleClock?:string;network?:string;thermal?:string;thermalHeadroom?:number;identity:NativeVoiceTimingIdentity;marks:Record<string,number>};
+type NativeCloudStreamTimingRow={session:number;stage:typeof NATIVE_CLOUD_STREAM_STAGES[number];elapsedMs:number;clock?:typeof NATIVE_CLOUD_STREAM_CLOCKS[number];httpStatus?:number;utteranceElapsedMs?:number;sentFrames?:number;sentBytes?:number;receivedFrames?:number;receivedBytes?:number};
 type VoiceTimingRow={version:1;id:string;recordedAt:number;route:string;cold:boolean;entry?:'conversation'|'notes';policy?:'auto-send'|'review';marks:Record<string,number>;live?:VoiceTimingLive;endpoint?:VoiceTimingEndpoint;heard?:string;nativeTurn?:string;outcome?:'abandoned';
  /** Conversation path, derived from the copied enums: 'live' (the echo-cancelled voice assistant: it
   * records endpointing, or streaming ASR) or 'batch' (the recorded-clip loop, live mode 'batch'). */
@@ -73,12 +90,39 @@ export type DiagnosticsReport={
  crashes:{count:number;recent:CrashEntry[]};
  /** A complete alpha-voice-timing-v1 document, readable by scripts/aggregate-voice-latency.mjs. */
  voiceTiming:{format:typeof VOICE_TIMING_FORMAT;marks:string[];records:VoiceTimingRow[]};
+ voiceStartup?:VoiceStartupTiming;
  /** A complete alpha-native-voice-timing-v3 document, readable by scripts/aggregate-voice-latency.mjs. */
  nativeVoiceTiming:{format:typeof NATIVE_VOICE_TIMING_FORMAT;clock:'CLOCK_MONOTONIC';units:'ms';marks:string[];dropped:number;records:NativeVoiceTimingRow[]};
+ nativeCloudStreamTiming?:{format:typeof NATIVE_CLOUD_STREAM_TIMING_FORMAT;records:NativeCloudStreamTimingRow[]};
 };
 
 const text=(value:unknown,pattern:RegExp)=>typeof value==='string'&&pattern.test(value)?value:undefined;
 const one=<T extends string>(value:unknown,allowed:readonly T[]):T|undefined=>allowed.includes(value as T)?value as T:undefined;
+
+function nativeCloudStreamTiming(input:unknown):DiagnosticsReport['nativeCloudStreamTiming']{
+ if(!input||typeof input!=='object'||Array.isArray(input))return undefined;
+ const document=input as Record<string,unknown>;
+ if(document.format!==NATIVE_CLOUD_STREAM_TIMING_FORMAT||!Array.isArray(document.records))return undefined;
+ const bounded=(value:unknown,min:number,max:number):value is number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=min&&value<=max;
+ const sessions=new Map<number,number>(),records:NativeCloudStreamTimingRow[]=[];
+ for(const value of document.records.slice(-NATIVE_CLOUD_STREAM_LIMIT)){
+  if(!value||typeof value!=='object'||Array.isArray(value))continue;
+  const row=value as Record<string,unknown>,stage=one(row.stage,NATIVE_CLOUD_STREAM_STAGES);
+  if(!stage||!bounded(row.session,1,Number.MAX_SAFE_INTEGER)||!bounded(row.elapsedMs,0,3_600_000))continue;
+  // Keep grouping within this export without copying any raw identifier.
+  const session=sessions.get(row.session)??sessions.size+1;
+  sessions.set(row.session,session);
+  const out:NativeCloudStreamTimingRow={session,stage,elapsedMs:row.elapsedMs};
+  const clock=one(row.clock,NATIVE_CLOUD_STREAM_CLOCKS);if(clock)out.clock=clock;
+  if(bounded(row.httpStatus,100,599))out.httpStatus=row.httpStatus;
+  if(bounded(row.utteranceElapsedMs,0,3_600_000))out.utteranceElapsedMs=row.utteranceElapsedMs;
+  for(const field of ['sentFrames','receivedFrames','sentBytes','receivedBytes'] as const){
+   const count=row[field];if(bounded(count,0,128*1024*1024))out[field]=count;
+  }
+  records.push(out);
+ }
+ return {format:NATIVE_CLOUD_STREAM_TIMING_FORMAT,records};
+}
 
 /** Copies the timing fields of each record only: route, entry, policy, cold, a random turn id,
  * the record time and millisecond marks. Any other field (transcript or reply text, accounts)
@@ -177,6 +221,16 @@ export function buildDiagnostics(input:DiagnosticsInput,now=Date.now()):Diagnost
   nativeVoiceTiming:{format:NATIVE_VOICE_TIMING_FORMAT,clock:'CLOCK_MONOTONIC',units:'ms',marks:[...NATIVE_MARKS],...nativeVoiceRows(input.nativeVoiceTiming)},
  };
  if(input.realtimeVoiceTiming!==undefined)report.realtimeVoiceTiming=sanitizeRealtimeTiming(input.realtimeVoiceTiming);
+ const startup=input.voiceStartup;
+ if(startup&&typeof startup==='object'){
+  const value=startup as Partial<VoiceStartupTiming>,stage=one(value.stage,VOICE_STARTUP_STAGES),outcome=one(value.outcome,VOICE_STARTUP_OUTCOMES);
+  const elapsedMs=value.elapsedMs;
+  if(stage&&outcome&&typeof elapsedMs==='number'&&Number.isSafeInteger(elapsedMs)&&elapsedMs>=0&&elapsedMs<=120000)report.voiceStartup={stage,outcome,elapsedMs};
+ }
+ if(report.platform==='android'){
+  const cloudTiming=nativeCloudStreamTiming(input.nativeCloudStreamTiming);
+  if(cloudTiming)report.nativeCloudStreamTiming=cloudTiming;
+ }
  if(Number.isSafeInteger(app.versionCode)&&(app.versionCode as number)>=0)report.app.versionCode=app.versionCode as number;
  const variant=one(app.variant,['launcher','standalone'] as const);if(variant)report.app.variant=variant;
  const buildType=one(app.buildType,['debug','release'] as const);if(buildType)report.app.buildType=buildType;

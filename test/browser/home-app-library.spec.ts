@@ -84,14 +84,14 @@ const CLOCK: App = { packageName: 'com.android.deskclock', activityName: 'com.an
 const ALL = [SETTINGS, NOTES_A, NOTES_B, SUITE_MAIL, SUITE_CAL, WORK_NOTES, CLOCK];
 
 async function openDrawer(page: Page) {
-  await page.getByRole('button', { name: 'All apps', exact: true }).click();
-  const drawer = page.getByRole('dialog', { name: 'All apps', exact: true });
+  await page.getByRole('button', { name: 'Apps', exact: true }).click();
+  const drawer = page.getByRole('dialog', { name: 'Apps', exact: true });
   await expect(drawer).toBeVisible();
   return drawer;
 }
 const names = (list: ReturnType<Page['locator']>) => list.evaluateAll(nodes => nodes.map(node => node.getAttribute('aria-label')));
 
-test('fresh Alpha Home shows core apps and loads installed apps only in All apps', async ({ page }) => {
+test('fresh Alpha Home shows core apps and loads installed apps only in Apps', async ({ page }) => {
   await nativeStub(page, ALL, {}, false);
   await page.goto('/');
   for (const name of ['Inbox', 'Calendar', 'Camera', 'Photos', 'Notes', 'Settings'])
@@ -100,15 +100,15 @@ test('fresh Alpha Home shows core apps and loads installed apps only in All apps
   expect(await calls(page, 'list')).toHaveLength(0);
   const drawer = await openDrawer(page);
   await expect(drawer.getByRole('button', {name: 'Open Clock', exact: true})).toHaveCount(1);
-  await expect(drawer.getByRole('button', {name: 'Open Settings (com.android.settings)', exact: true})).toHaveCount(1);
-  const alphaSettings = drawer.getByRole('button', {name: 'Open Settings (Alpha Phone)', exact: true});
-  await expect(alphaSettings).toBeVisible();
-  await expect(alphaSettings.getByText('Alpha Phone', {exact: true})).toBeVisible();
+  await expect(drawer.getByRole('button', {name: 'Open Settings', exact: true})).toHaveCount(1);
+  await expect(drawer.getByRole('button', {name: 'Open Settings (Alpha Phone)', exact: true})).toHaveCount(0);
+  await expect(drawer.getByRole('button', {name: 'Open Calendar', exact: true})).toHaveCount(0);
   await expect(drawer.getByRole('button', {name: 'Open Settings (alpha:settings)', exact: true})).toHaveCount(0);
   expect(await calls(page, 'list')).toHaveLength(1);
   await drawer.getByRole('button', {name: 'Open Clock', exact: true}).click();
   await expect.poll(() => calls(page, 'launch')).toEqual([{packageName: CLOCK.packageName, activityName: CLOCK.activityName}]);
-  await alphaSettings.click();
+  await drawer.getByRole('button', {name: 'Close Apps', exact: true}).click();
+  await page.getByRole('button', {name: 'Settings', exact: true}).click();
   await expect(page.locator('html')).toHaveAttribute('data-active-view', 'settings');
   expect(await calls(page, 'launch')).toEqual([{packageName: CLOCK.packageName, activityName: CLOCK.activityName}]);
 });
@@ -118,16 +118,17 @@ test('same-label apps are separate entries and each opens exactly its own compon
   await nativeStub(page, ALL, { 'com.vendor.notes/com.vendor.notes.Launch#10': { message: 'Work apps are paused or locked. Turn on work apps in Android, then try again.', code: 'profile-locked' } });
   await page.goto('/');
   const drawer = await openDrawer(page);
-  await expect(drawer.getByRole('status').first()).toHaveText('17 apps');
+  await expect(drawer.getByRole('status').first()).toHaveText('7 apps');
   // Two different packages, two activities of one package and a work copy all share labels.
-  for (const name of ['Open Notes (org.example.notes)', 'Open Notes (com.vendor.notes)', 'Open Notes (Work · locked)', 'Open Suite (MailActivity)', 'Open Suite (CalendarActivity)', 'Open Settings (com.android.settings)', 'Open Clock'])
+  for (const name of ['Open Notes (org.example.notes)', 'Open Notes (com.vendor.notes)', 'Open Notes (Work · locked)', 'Open Suite (MailActivity)', 'Open Suite (CalendarActivity)', 'Open Settings', 'Open Clock'])
     await expect(drawer.getByRole('button', { name, exact: true })).toHaveCount(1);
   await expect(drawer.getByRole('button', { name: 'Open Notes', exact: true })).toHaveCount(0);
   // Each row shows its own icon, not one chosen by label.
   await expect(drawer.getByRole('button', { name: 'Open Notes (org.example.notes)', exact: true }).locator('img')).toHaveAttribute('src', PNG);
   await expect(drawer.getByRole('button', { name: 'Open Notes (com.vendor.notes)', exact: true }).locator('img')).toHaveAttribute('src', PNG2);
   await expect(drawer.getByRole('button', { name: 'Open Suite (MailActivity)', exact: true }).locator('img')).toHaveCount(0);
-  await page.screenshot({ path: info.outputPath('duplicate-labels.png') });
+  await expect(drawer).toHaveCSS('opacity','1');
+  await page.screenshot({ path: info.outputPath('duplicate-labels.png'), animations:'disabled' });
 
   await drawer.getByRole('button', { name: 'Open Notes (com.vendor.notes)', exact: true }).click();
   await drawer.getByRole('button', { name: 'Open Suite (CalendarActivity)', exact: true }).click();
@@ -149,24 +150,24 @@ test('favorites and their order persist across a cold start and follow the exact
   await page.goto('/');
   let drawer = await openDrawer(page);
   await expect(drawer.getByRole('region', { name: 'Favorites', exact: true })).toHaveCount(0);
-  for (const name of ['Settings (com.android.settings)', 'Notes (com.vendor.notes)', 'Clock']) {
+  for (const name of ['Settings', 'Notes (com.vendor.notes)', 'Clock']) {
     const star = drawer.getByRole('button', { name: `Add ${name} to favorites`, exact: true });
     await expect(star).toHaveAttribute('aria-pressed', 'false');
     await star.click();
   }
   const favorites = drawer.getByRole('region', { name: 'Favorites', exact: true });
   const order = () => names(favorites.getByRole('button', { name: /^Open / }));
-  await expect.poll(order).toEqual(['Open Settings (com.android.settings)', 'Open Notes (com.vendor.notes)', 'Open Clock']);
+  await expect.poll(order).toEqual(['Open Settings', 'Open Notes (com.vendor.notes)', 'Open Clock']);
   // The other Notes and the work copy are not favorites.
   await expect(drawer.getByRole('button', { name: 'Add Notes (org.example.notes) to favorites', exact: true })).toHaveAttribute('aria-pressed', 'false');
   await expect(drawer.getByRole('button', { name: 'Add Notes (Work · locked) to favorites', exact: true })).toHaveCount(1);
-  await expect(favorites.getByRole('button', { name: 'Move Settings (com.android.settings) earlier', exact: true })).toBeDisabled();
+  await expect(favorites.getByRole('button', { name: 'Move Settings earlier', exact: true })).toBeDisabled();
   await expect(favorites.getByRole('button', { name: 'Move Clock later', exact: true })).toBeDisabled();
   await favorites.getByRole('button', { name: 'Move Clock earlier', exact: true }).click();
   await favorites.getByRole('button', { name: 'Move Clock earlier', exact: true }).click();
-  await expect.poll(order).toEqual(['Open Clock', 'Open Settings (com.android.settings)', 'Open Notes (com.vendor.notes)']);
-  await favorites.getByRole('button', { name: 'Move Settings (com.android.settings) later', exact: true }).click();
-  await expect.poll(order).toEqual(['Open Clock', 'Open Notes (com.vendor.notes)', 'Open Settings (com.android.settings)']);
+  await expect.poll(order).toEqual(['Open Clock', 'Open Settings', 'Open Notes (com.vendor.notes)']);
+  await favorites.getByRole('button', { name: 'Move Settings later', exact: true }).click();
+  await expect.poll(order).toEqual(['Open Clock', 'Open Notes (com.vendor.notes)', 'Open Settings']);
   await page.screenshot({ path: info.outputPath('favorites.png') });
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('alpha.launcher.favorites.v1') || 'null'))).toEqual({ version: 2, defaultPolicy: 'alpha-apps', keys: [
     'com.android.deskclock/com.android.deskclock.DeskClock', 'com.vendor.notes/com.vendor.notes.Launch', 'com.android.settings/com.android.settings.Settings' ] });
@@ -178,36 +179,37 @@ test('favorites and their order persist across a cold start and follow the exact
   // Cold start: same favorites, same order, and a favorite opens its exact component.
   await page.reload();
   drawer = await openDrawer(page);
-  await expect.poll(order).toEqual(['Open Clock', 'Open Notes (com.vendor.notes)', 'Open Settings (com.android.settings)']);
+  await expect.poll(order).toEqual(['Open Clock', 'Open Notes (com.vendor.notes)', 'Open Settings']);
   await favorites.getByRole('button', { name: 'Open Notes (com.vendor.notes)', exact: true }).click();
   await expect.poll(() => calls(page, 'launch')).toEqual([{ packageName: 'com.vendor.notes', activityName: 'com.vendor.notes.Launch' }]);
   await favorites.getByRole('button', { name: 'Remove Clock from favorites', exact: true }).click();
-  await expect.poll(order).toEqual(['Open Notes (com.vendor.notes)', 'Open Settings (com.android.settings)']);
+  await expect.poll(order).toEqual(['Open Notes (com.vendor.notes)', 'Open Settings']);
   await page.reload();
   drawer = await openDrawer(page);
-  await expect.poll(order).toEqual(['Open Notes (com.vendor.notes)', 'Open Settings (com.android.settings)']);
+  await expect.poll(order).toEqual(['Open Notes (com.vendor.notes)', 'Open Settings']);
 });
 
 test('an open drawer follows installs and removals, and a removed favorite is not shown', async ({ page }) => {
   await nativeStub(page, [SETTINGS, NOTES_A, CLOCK]);
   await page.goto('/');
   const drawer = await openDrawer(page);
-  await expect(drawer.getByRole('status').first()).toHaveText('13 apps');
+  await expect(drawer.getByRole('status').first()).toHaveText('3 apps');
   await expect.poll(() => page.evaluate(() => (window as any).deviceListening())).toBe(true);
   await drawer.getByRole('button', { name: 'Add Clock to favorites', exact: true }).click();
-  await drawer.getByRole('button', { name: 'Add Settings (com.android.settings) to favorites', exact: true }).click();
+  await drawer.getByRole('button', { name: 'Add Settings to favorites', exact: true }).click();
   const favorites = drawer.getByRole('region', { name: 'Favorites', exact: true });
   await expect(favorites.getByRole('button', { name: /^Open / })).toHaveCount(2);
   // The Favorites region holds only favorites; the full list has its own heading after it.
   await expect(favorites.getByRole('heading')).toHaveText(['Favorites']);
-  await expect(drawer.getByRole('heading', { name: 'All apps', exact: true })).toHaveCount(2);
+  await expect(drawer.getByRole('heading', { name: 'Apps', exact: true })).toHaveCount(1);
+  await expect(drawer.getByRole('heading', { name: 'All apps', exact: true })).toHaveCount(1);
 
   // Android reports a removal: the entry and its favorite leave without reopening the drawer,
   // and without a loading state replacing the list.
   await page.evaluate(([settings, notes]) => (window as any).deviceChange([settings, notes], true), [SETTINGS, NOTES_A]);
   await expect(drawer.getByRole('button', { name: 'Open Clock', exact: true })).toHaveCount(0);
-  await expect(drawer.getByRole('status').first()).toHaveText('12 apps');
-  await expect.poll(() => names(favorites.getByRole('button', { name: /^Open / }))).toEqual(['Open Settings (com.android.settings)']);
+  await expect(drawer.getByRole('status').first()).toHaveText('2 apps');
+  await expect.poll(() => names(favorites.getByRole('button', { name: /^Open / }))).toEqual(['Open Settings']);
   await expect(drawer.getByText('Reading installed apps…', { exact: true })).toHaveCount(0);
 
   // An install appears; a second app with an existing label becomes distinguishable at once.
@@ -218,23 +220,23 @@ test('an open drawer follows installs and removals, and a removed favorite is no
   await expect(drawer.getByRole('button', { name: 'Open Notes (org.example.notes)', exact: true })).toBeVisible();
   expect((await calls(page, 'list')).length).toBe(readsBefore + 1);
   // The reinstalled favorite returns to its saved place.
-  await expect.poll(() => names(favorites.getByRole('button', { name: /^Open / }))).toEqual(['Open Clock', 'Open Settings (com.android.settings)']);
+  await expect.poll(() => names(favorites.getByRole('button', { name: /^Open / }))).toEqual(['Open Clock', 'Open Settings']);
 
   // A change Android did not announce is picked up when Alpha returns to the foreground.
   await page.evaluate(apps => (window as any).deviceChange(apps, false), [SETTINGS]);
-  await expect(drawer.getByRole('status').first()).toHaveText('14 apps');
+  await expect(drawer.getByRole('status').first()).toHaveText('4 apps');
   await page.evaluate(() => document.dispatchEvent(new Event('resume')));
-  await expect(drawer.getByRole('status').first()).toHaveText('11 apps');
+  await expect(drawer.getByRole('status').first()).toHaveText('1 app');
 
   // Saved native shortcuts also follow inventory changes while the drawer is closed.
-  await drawer.getByRole('button', { name: 'Close all apps', exact: true }).click();
+  await drawer.getByRole('button', { name: 'Close Apps', exact: true }).click();
   const reads = (await calls(page, 'list')).length;
   await page.evaluate(apps => (window as any).deviceChange(apps, true), [SETTINGS, CLOCK]);
   await expect.poll(async () => (await calls(page, 'list')).length).toBe(reads + 1);
   await openDrawer(page);
   // Clock returns to Favorites without a duplicate in the inventory list.
   await expect(drawer.getByRole('button', { name: 'Open Clock', exact: true })).toHaveCount(1);
-  await expect(drawer.getByRole('status').first()).toHaveText('12 apps');
+  await expect(drawer.getByRole('status').first()).toHaveText('2 apps');
 });
 
 test('an app removed or disabled behind a stale row reports why and leaves the list', async ({ page }) => {
@@ -244,11 +246,11 @@ test('an app removed or disabled behind a stale row reports why and leaves the l
   });
   await page.goto('/');
   const drawer = await openDrawer(page);
-  await drawer.getByRole('button', { name: 'Open Notes (org.example.notes)', exact: true }).click();
+  await drawer.getByRole('button', { name: 'Open Notes', exact: true }).click();
   await expect(drawer.getByRole('alert')).toHaveText('Notes could not be opened. This app is no longer installed.');
   // The stale row is gone after the refusal; the reason stays visible and nothing else was opened.
-  await expect(drawer.getByRole('button', { name: 'Open Notes (org.example.notes)', exact: true })).toHaveCount(0);
-  await expect(drawer.getByRole('status').first()).toHaveText('12 apps');
+  await expect(drawer.getByRole('button', { name: 'Open Notes', exact: true })).toHaveCount(0);
+  await expect(drawer.getByRole('status').first()).toHaveText('2 apps');
   await drawer.getByRole('button', { name: 'Open Clock', exact: true }).click();
   await expect(drawer.getByRole('alert')).toHaveText('Clock could not be opened. This app is disabled. Enable it in Android settings to open it.');
   await expect(drawer.getByRole('button', { name: 'Open Clock', exact: true })).toHaveCount(0);
@@ -265,23 +267,23 @@ test('a failed refresh clears the list instead of leaving a stale one, and HOME 
   await nativeStub(page, [SETTINGS, CLOCK]);
   await page.goto('/');
   const drawer = await openDrawer(page);
-  await expect(drawer.getByRole('status').first()).toHaveText('12 apps');
+  await expect(drawer.getByRole('status').first()).toHaveText('2 apps');
   await page.evaluate(() => { (window as any).device.failList = true; (window as any).deviceChange((window as any).device.apps, true); });
   await expect(drawer.getByText('Installed apps could not be read.', { exact: true })).toBeVisible();
-  // Alpha's own apps remain usable when only the native inventory fails.
-  await expect(drawer.getByRole('button', { name: /^Open / })).toHaveCount(10);
+  // The failed native inventory leaves no stale app entries in Apps.
+  await expect(drawer.getByRole('button', { name: /^Open / })).toHaveCount(0);
   await page.evaluate(() => { (window as any).device.failList = false; });
   await drawer.getByRole('button', { name: 'Try again', exact: true }).click();
-  await expect(drawer.getByRole('button', { name: 'Open Settings (com.android.settings)', exact: true })).toBeVisible();
+  await expect(drawer.getByRole('button', { name: 'Open Settings', exact: true })).toBeVisible();
 
   // Returning with HOME after opening an app lands on Home with the drawer closed and the search cleared.
   await drawer.getByRole('searchbox', { name: 'Search apps', exact: true }).fill('set');
-  await drawer.getByRole('button', { name: 'Open Settings (com.android.settings)', exact: true }).click();
+  await drawer.getByRole('button', { name: 'Open Settings', exact: true }).click();
   await expect.poll(() => calls(page, 'launch')).toHaveLength(1);
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
   await expect(drawer).toHaveCount(0);
   await expect(page.locator('html')).toHaveAttribute('data-active-view', 'home');
   await openDrawer(page);
   await expect(drawer.getByRole('searchbox', { name: 'Search apps', exact: true })).toHaveValue('');
-  await expect(drawer.getByRole('status').first()).toHaveText('12 apps');
+  await expect(drawer.getByRole('status').first()).toHaveText('2 apps');
 });

@@ -5,6 +5,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {tsImport} from 'tsx/esm/api';
 import {renderToStaticMarkup} from 'react-dom/server';
+import {cloneElement,createElement} from 'react';
 const {installHomeShell}=await tsImport('../apps/app/src/prototype/home-shell.ts',import.meta.url);
 const {navigateMobileShell}=await tsImport('../.eliza/client-features/packages/ui/src/mobile-shell/navigation.ts',import.meta.url);
 const icon='data:image/png;base64,iVBORw0KGgo=';
@@ -33,7 +34,7 @@ test('Home and All apps list the same favorites; product views open in Alpha, in
   let saved=null;const opened=[],nativeCalls=[];
   const Shell=shellClass(opened);
   const shell=installHomeShell(Shell,{inbox:{badge:()=>true}},{list:async()=>({apps}),launch:async target=>{nativeCalls.push(target);}},
-    {favorites:{read:()=>saved,write:keys=>{saved=[...keys];}}});
+    {appInventory:'simulated',favorites:{read:()=>saved,write:keys=>{saved=[...keys];}}});
   const home=new Shell();
   let rendered=home.renderVals();
   home.componentDidMount();
@@ -77,7 +78,7 @@ test('default Alpha Home performs no installed-app scan until the drawer opens',
   let reads=0,saved=null;
   const Shell=shellClass([]);
   try {
-    const shell=installHomeShell(Shell,{},{list:async()=>{reads++;return {apps};},launch:async()=>{}},{favorites:{read:()=>saved,write:keys=>{saved=[...keys];}}});
+    const shell=installHomeShell(Shell,{},{list:async()=>{reads++;return {apps};},launch:async()=>{}},{appInventory:'simulated',favorites:{read:()=>saved,write:keys=>{saved=[...keys];}}});
     const home=new Shell();home.renderVals();home.componentDidMount();
     await new Promise(setImmediate);assert.equal(reads,0);
     home.openAllApps();await new Promise(setImmediate);assert.equal(reads,1);
@@ -97,4 +98,34 @@ test('installed favorites with older Alpha view ids are migrated to canonical id
   assert.deepEqual(installHomeShell(shellClass([]),{},{list:async()=>({apps}),launch:async()=>{}},{storage}).migration,{status:'unchanged'});
   shell.launcher.toggleFavorite({packageName:'alpha:notes',label:'Notes'});
   assert.deepEqual(JSON.parse(store.get('alpha.launcher.favorites.v1')),{version:2,keys:['com.android.settings','alpha:automations'],defaultPolicy:'alpha-apps'});
+});
+
+test('Home has its built-in tiles without an installed app inventory', () => {
+  const Shell = shellClass([]);
+  let reads = 0;
+  installHomeShell(Shell, {}, {list: async () => {reads++;return {apps};}, launch: async () => {}},
+    {favorites: {read: () => null, write: () => {}}});
+  const home = new Shell();
+  const {homeShell, allAppsDrawer, drawerOpen} = home.renderVals();
+  assert.ok(tiles(renderToStaticMarkup(homeShell)).includes('Calendar'));
+  assert.ok(!tiles(renderToStaticMarkup(homeShell)).some(label => /^(All )?[Aa]pps$/.test(label)));
+  assert.equal(allAppsDrawer, null);
+  assert.equal(drawerOpen, false);
+  home.openAllApps();
+  assert.equal(reads, 0);
+  assert.equal(home.state.drawer, false);
+});
+
+test('the empty Home card row is hidden without hiding app tiles', () => {
+  const Shell = shellClass([]);
+  const render = Shell.prototype.renderVals;
+  Shell.prototype.renderVals = function () {
+    return {...render.call(this), homeHasOverviewCards: false};
+  };
+  installHomeShell(Shell, {}, {list: async () => ({apps: []}), launch: async () => {}},
+    {favorites: {read: () => null, write: () => {}}});
+  const {homeShell} = new Shell().renderVals();
+  const markup = renderToStaticMarkup(cloneElement(homeShell, {cards: createElement('div')}));
+  assert.match(markup, /<div class="scr" hidden="" style="display:none" data-mobile-shell-cards=""/);
+  assert.ok(tiles(markup).includes('Calendar'));
 });

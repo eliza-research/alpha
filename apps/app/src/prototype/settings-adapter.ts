@@ -25,8 +25,9 @@ import { gmailGrantLabel, googleAccountAccessLabel } from '../runtime/gmail-gran
 import { clearCrashLog, describeCrashEntry, readCrashLog, recordCloudInferenceFailure, type CrashLog } from '../runtime/crash-log';
 import { buildDiagnostics, diagnosticsFileName, diagnosticsText } from '../runtime/diagnostics-export';
 import {planAdmission} from '../runtime/subscription-entitlement';
-import { exportVoiceTiming, exportRealtimeVoiceTiming } from '../runtime/voice-timing';
+import { exportVoiceTiming, exportRealtimeVoiceTiming, voiceStartupTiming } from '../runtime/voice-timing';
 import { readNativeVoiceTiming } from '../runtime/native-voice-turn';
+import { readNativeCloudStreamTiming } from '../runtime/cloud-voice';
 import { listenerStatus, openListenerSettings, pauseListener, turnOffListener, wakeListeningStopUnconfirmed, type ListenerStatus } from '../runtime/always-on-listener';
 import { reviewDataReset, type DataResetPlugin } from '@elizaos/capacitor-system/reset';
 import { androidRoleLabel, parseRoleStatuses } from '@elizaos/capacitor-system/settings';
@@ -337,7 +338,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     const instance = owner, native = Capacitor.isNativePlatform(); diagnosticsBusy = true; changed();
     try {
       await refreshInferenceFailure();
-      const [buildFacts, problems, roleState, nativeTiming] = await Promise.allSettled([native ? device.diagnosticsFacts() : Promise.resolve({}), readCrashLog(), native ? system.getStatus() : Promise.resolve({ roles: [] }), readNativeVoiceTiming()]);
+      const [buildFacts, problems, roleState, nativeTiming, nativeCloudTiming] = await Promise.allSettled([native ? device.diagnosticsFacts() : Promise.resolve({}), readCrashLog(), native ? system.getStatus() : Promise.resolve({ roles: [] }), readNativeVoiceTiming(), readNativeCloudStreamTiming()]);
       const value: Bag = buildFacts.status === 'fulfilled' ? buildFacts.value : {};
       const connection = connectionController.getSnapshot();
       const subscription = connection.residentSubscription;
@@ -358,9 +359,11 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         } : undefined,
         // Per-turn voice latency kept on this device; buildDiagnostics copies timing fields only.
         realtimeVoiceTiming: exportRealtimeVoiceTiming(),
+        voiceStartup: voiceStartupTiming(),
         voiceTiming: (() => { try { return JSON.parse(exportVoiceTiming()); } catch { return null; } })(),
         // Native audio-clock voice latency (issue #395): timings, turn ids and hashes only.
         nativeVoiceTiming: nativeTiming.status === 'fulfilled' ? nativeTiming.value : null,
+        nativeCloudStreamTiming: nativeCloudTiming.status === 'fulfilled' ? nativeCloudTiming.value : null,
       });
       const text = diagnosticsText(report);
       if (native) {
@@ -492,7 +495,13 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     const nav = (label: string, page: string): Bag => ({ kNav: true, label, lbl: label, chev: true, noAB: true, go: manage(page) });
     const group = (rows: Bag[]) => ({ css: 'background:var(--s2);padding:4px 0', rows });
     // Speech follows the explicit production runtime profile; developer routes stay separate.
-    const speechRows = (): Bag[] => [info('Speech', connection.residentInference==='direct'?(connection.providerStatus?.voiceConfigured?'Cartesia · own API key':'Off · add a Cartesia key'):developmentCartesiaVoiceEnabled?'Cartesia · development':cloudRuntimeEnabled?`${serviceName} · Cartesia output (uses your plan)`:testMocksEnabled?`${serviceName} (counts toward your plan)`:'On this device'), ...(wakeListeningStopUnconfirmed() ? [note('Wake listening', 'Could not confirm listening is off. Turn it off in Android settings.')] : [])];
+    const speechRows = (): Bag[] => [
+      info('Speech', connection.residentInference==='direct'?(connection.providerStatus?.voiceConfigured?'Cartesia · own API key':'Off · add a Cartesia key'):developmentCartesiaVoiceEnabled?'Cartesia · development':cloudRuntimeEnabled?`${serviceName} · Cartesia output (uses your plan)`:testMocksEnabled?`${serviceName} (counts toward your plan)`:'On this device'),
+      ...(cloudRuntimeEnabled&&!developmentCartesiaVoiceEnabled&&connection.residentInference!=='direct'
+        ? [note('Voice privacy', `Microphone audio and reply text go to ${serviceName}.`)]
+        : []),
+      ...(wakeListeningStopUnconfirmed() ? [note('Wake listening', 'Could not confirm listening is off. Turn it off in Android settings.')] : []),
+    ];
     const action = (label: string, go: () => void): Bag => ({ kNav:true, label, lbl:label, chev:true, noAB:true, go });
     const listenerRows = (): Bag[] => {
       if (!externalVoiceInvocationEnabled) return [];
@@ -775,7 +784,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
           nav('Manage mobile networks', 'mobile'), ...(Capacitor.isNativePlatform() ? [nav('Airplane mode in Android', 'airplane')] : [])])];
       } else if (page.title === 'Models') {
         const native=Capacitor.isNativePlatform();
-        page.hero = { ...page.hero, big: target, sub: native&&connection.residentInference==='direct'?'Cerebras · own key':cloudRuntimeEnabled?`Conversation uses ${serviceName}. Speech uploads recordings and reply text to your Cloud account and uses your plan allowance.`:native?'Conversation uses the selected agent. Voice runs on this device.':developmentCartesiaVoiceEnabled?'Direct Cerebras and Cartesia · development':`Conversation uses the selected agent. Voice uses ${serviceName}.` };
+        page.hero = { ...page.hero, big: target, sub: native&&connection.residentInference==='direct'?'Cerebras · own key':cloudRuntimeEnabled?'':native?'Conversation uses the selected agent. Voice runs on this device.':developmentCartesiaVoiceEnabled?'Direct Cerebras and Cartesia · development':`Conversation uses the selected agent. Voice uses ${serviceName}.` };
         page.groups = [group([info('Connection', runtimeLocation), ...(native?[info('Inference provider',residentProvider?residentProvider.configured?(residentProvider.provider==='elizacloud'?serviceName:'Cerebras'):'Not configured':'Status unavailable')]:browserLocalAgentEnabled ? [info('Inference provider', inferenceProvider)] : []), info('Inference model', inferenceModel), info('Voice', native&&connection.residentInference==='direct'?(connection.providerStatus?.voiceConfigured?'Cartesia · own API key':'Off · add a Cartesia key'):cloudRuntimeEnabled?(account?`${serviceName} · Cartesia output`:'Cloud sign-in required'):native?'On this device':developmentCartesiaVoiceEnabled?'Cartesia · development':account ? serviceName : 'Sign-in required'), { kNav:true, label:`${serviceName} account`, lbl:`${serviceName} account`, chev:true, noAB:true, go:()=>connectionController.openCloudAccount() }])];
       } else if (page.title === 'Developer') {
         page.groups = [group([info('App version', facts.appVersion || buildVersion), info('Agent memory', connection.session?'Usage not reported by agent':'Not connected')]), group([problemsRow(), diagnosticsRow()]), group([nav('Android developer settings', 'developer')])];

@@ -34,14 +34,9 @@ test('calendar card keeps source and time accessible without generic app labels'
  test.slow(); // Chooses the browser calendar in Calendar after every load.
  await page.addInitScript(offline);await page.goto('/');await browserCalendarHome(page);
  const card=calendarCard(page);
- await expect(card).toContainText('No upcoming events');
+ await expect(card).toHaveCount(0);
  const source=card.locator('[data-alpha-home-calendar-source]');
- const times=await nearNow(page);
  const origin=card.locator('[data-alpha-home-calendar-origin]');
- await expect(origin).toHaveText('');
- await expect(source).toHaveCount(0);
- expect(times.map(time=>`Read ${time} from the calendar saved in this app`)).toContain(await card.getAttribute('aria-description'));
- await expect(card).toHaveAttribute('data-alpha-home-calendar-overdue','false');
  const expected=await page.evaluate(async()=>{
   const {BrowserCalendar}=await import('/src/browser/calendar.ts'),date=new Date(Date.now()+2*86400000);date.setHours(9,30,0,0);
   await new BrowserCalendar().save({calendarId:'local',title:'Synthetic overview event',begin:date.getTime(),end:date.getTime()+1800000,allDay:false,creationId:crypto.randomUUID()});
@@ -64,7 +59,7 @@ test('events of an app calendar hidden in Calendar stay off Home until it is sho
  test.slow(); // Chooses the browser calendar in Calendar after every load.
  await page.addInitScript(offline);await page.goto('/');await browserCalendarHome(page);
  const card=calendarCard(page);
- await expect(card).toContainText('No upcoming events');
+ await expect(card).toHaveCount(0);
  const toggle=()=>page.evaluate(async()=>{const {BrowserCalendar}=await import('/src/browser/calendar.ts');await new BrowserCalendar().changePreferences({action:'visibility'});});
  await page.evaluate(async()=>{
   const {BrowserCalendar}=await import('/src/browser/calendar.ts'),date=new Date(Date.now()+2*86400000);date.setHours(9,30,0,0);
@@ -111,9 +106,8 @@ test('a failed calendar read shows the failure with no read time, and opening Ca
  await expect(page.locator('html')).toHaveAttribute('data-active-view','calendar');
  await expect.poll(()=>page.evaluate(()=>(window as any).__calendarReads)).toBeGreaterThan(0);
  await returnToApps(page);
- await expect(card).toContainText('No upcoming events');
+ await expect(card).toHaveCount(0);
  await expect(source).toHaveCount(0);
- await expect(card.locator('[data-alpha-home-calendar-origin]')).toHaveText('');
 });
 
 test('an overdue reminder stays on Home, marked overdue with its own source, and opens in Calendar',async({page,context},info)=>{
@@ -199,7 +193,7 @@ test('an upcoming reminder is attributed to the reminder store, not to a calenda
 
 test('calendar card shows the verified Agent Calendar event and its source without browser fallback',async({page},info)=>{
  await page.addInitScript(offline);await page.goto('/');await installHomeCalendar(page);
- const card=calendarCard(page);await expect(card).toContainText('Nothing planned');
+ const card=calendarCard(page);await expect(card).toHaveCount(0);
  const event=await page.evaluate(()=>{const date=new Date(Date.now()+2*86400000);date.setHours(9,30,0,0);const end=new Date(date.getTime()+1800000),time=(d:Date)=>d.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});return{title:'Synthetic overview event',startAt:date.toISOString(),endAt:end.toISOString(),day:date.toLocaleDateString([],{weekday:'short',month:'short',day:'numeric'}),footer:time(date)+' – '+time(end)};});
  await installHomeCalendar(page,event);await page.reload();await installHomeCalendar(page,event);
  // The shared overview card names the event, its day and time; its source stays visible on the card.
@@ -216,7 +210,7 @@ test('events excluded by the Agent Calendar feed stay off Home until included ag
  await page.addInitScript(offline);await page.goto('/');
  const event={title:'Synthetic hidden event',startAt:new Date(Date.now()+86400000).toISOString(),endAt:new Date(Date.now()+90000000).toISOString()};
  await installHomeCalendar(page,event);const card=calendarCard(page);await expect(card).toContainText(event.title);
- await refreshHomeCalendar(page,{include:false});await expect(card).toContainText('Nothing planned');await expect(card).not.toContainText(event.title);await expect(card).toHaveAccessibleName('Open Agent Calendar');await expect(card).toHaveAttribute('data-alpha-home-calendar-event','false');
+ await refreshHomeCalendar(page,{include:false});await expect(card).toHaveCount(0);
  expect(await page.evaluate(()=>(window as any).homeCalendarFixture.event.title)).toBe(event.title);
  await refreshHomeCalendar(page,{include:true});await expect(card).toContainText(event.title);
 });
@@ -228,7 +222,7 @@ test('a failed Agent Calendar read stays honest until an explicit Calendar retry
  await page.evaluate(()=>{(window as any).homeCalendarFixture.fail=false;});await page.getByRole('textbox',{name:'Ask Alpha',exact:true}).fill('Unsent rerender');await page.waitForTimeout(500);
  expect(await page.evaluate(()=>(window as any).homeCalendarFixture.requests.length)).toBe(before);await expect(card).toHaveAttribute('aria-description','Calendar service unavailable. Open Calendar to retry.');
  // Opening Calendar from the failed card is the explicit retry: it reads the agent calendar again.
- await card.click();await expect(page.locator('html')).toHaveAttribute('data-active-view','calendar');await returnToApps(page);await expect(card).toContainText('Nothing planned');
+ await card.click();await expect(page.locator('html')).toHaveAttribute('data-active-view','calendar');await returnToApps(page);await expect(card).toHaveCount(0);
  expect(await page.evaluate(()=>(window as any).homeCalendarFixture.requests.length)).toBeGreaterThan(before);
 });
 
@@ -388,13 +382,15 @@ test('the latest retained brief appears with its agent and run time, reports fai
  await expect(briefCard(page)).toHaveCount(0);
  await expect(home(page)).not.toContainText('The scheduled time was missed');
  // A newer failed run replaces it and says it failed.
- await page.evaluate(async()=>{
+ const failedAt=await page.evaluate(async()=>{
+  const at=new Date(Date.now()-60000);
   const {rememberRetainedDigests}=await import('/src/runtime/hosted-digests.ts');
-  rememberRetainedDigests([{cursor:4,runId:'run-failed',completedAt:new Date(Date.now()-60000).toISOString(),status:'failed',error:'Synthetic source expired'}] as any,'Synthetic agent');
+  rememberRetainedDigests([{cursor:4,runId:'run-failed',completedAt:at.toISOString(),status:'failed',error:'Synthetic source expired'}] as any,'Synthetic agent');
+  const {whenLabel}=await import('/src/prototype/home-cards.ts');return whenLabel(at.getTime(),Date.now());
  });
  await expect(card).toHaveAttribute('data-alpha-home-brief-failed','true');
  await expect(card).toContainText('Synthetic source expired');
- await expect(card).toContainText(/Synthetic agent · Failed \d{1,2}:\d{2}/);
+ await expect(card).toContainText(`Synthetic agent · Failed ${failedAt}`);
  // Opening it shows the retained results list; nothing is run.
  await card.click();
  await expect(page.getByRole('dialog').getByRole('heading',{name:'Scheduled digests',exact:true})).toBeVisible();

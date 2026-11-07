@@ -37,7 +37,7 @@ for(const theme of ['light','dark'])test(`Home Inbox uses cached unread subjects
 
 test('Home Inbox distinguishes complete empty results from partial loaded results',async({page})=>{
  await fixture(page);await page.evaluate(()=>{const f=(window as any).homeInboxFixture;f.rows=[];f.more=true;});await page.getByRole('button',{name:'Inbox',exact:true}).click();await expect(page.getByText('Your Inbox is empty',{exact:true})).toBeVisible();await returnToApps(page);await expect(tile(page)).toContainText('Recent email');await expect(tile(page)).not.toContainText('No unread');
- await page.evaluate(()=>{(window as any).homeInboxFixture.more=false;});await page.getByRole('button',{name:'Inbox',exact:true}).click();await page.getByRole('button',{name:'Refresh inbox',exact:true}).click();await expect(page.getByText('Your Inbox is empty',{exact:true})).toBeVisible();await returnToApps(page);await expect(tile(page)).toContainText('No unread email');await expect(tile(page).locator('[data-alpha-home-inbox-subjects]')).toHaveCount(0);
+ await page.evaluate(()=>{(window as any).homeInboxFixture.more=false;});await page.getByRole('button',{name:'Inbox',exact:true}).click();await page.getByRole('button',{name:'Refresh inbox',exact:true}).click();await expect(page.getByText('Your Inbox is empty',{exact:true})).toBeVisible();await returnToApps(page);await expect(tile(page)).toHaveCount(0);await expect(page.getByRole('button',{name:'Inbox',exact:true})).toBeVisible();
 });
 
 test('Home Inbox points to Connections before a connection and never reads mail',async({page})=>{

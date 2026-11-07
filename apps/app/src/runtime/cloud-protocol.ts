@@ -9,6 +9,7 @@ import { gmailCapabilitiesFor, gmailConsentCapabilities, type GmailGrantRequest 
 import { ManagedGmailMailboxClient } from '../../../../.eliza/client-features/plugins/plugin-inbox/src/mailbox/managed-gmail-client.ts';
 import type { GmailAccount, GmailDraftContent, GmailDraftSummary, GmailInboxCapabilities, GmailInboxReceipt, GmailReadResult, GmailSearchPage, GmailThreadPage, GoogleConnection } from '../../../../.eliza/client-features/plugins/plugin-inbox/src/mailbox/types.ts';
 import type { CloudMapsRoute } from '../maps/cloud-provider.ts';
+import {mapsTilePath} from './managed-service-routes.ts';
 import { authenticated as signInAuthenticated, googleOutcome, type CloudSignInGoogleOutcome, CloudSignInError, emailStarted, verified as signInVerified, type CloudSignInAuthenticated, type CloudSignInEmailStarted, type CloudSignInMfaRequired, type CloudSignInPort } from './cloud-sign-in.ts';
 import type { EntitlementSource, FallbackPlan, OrganizationCreditBalance, RedeemResult } from './subscription-entitlement.ts';
 import { CloudAccountBillingClient, CloudBillingError, type CloudBillingRequest, type CloudBillingResponse } from '../../../../.eliza/client-features/packages/cloud/sdk/src/cloud-account-billing.ts';
@@ -532,8 +533,16 @@ export class CloudProtocol {
   /** Eliza Cloud Maps data (#412) on the exact reviewed routes. Queries and coordinates
    * travel only in the JSON body; capabilities is a bare read. GPS and navigation stay on the phone. */
   async mapsRequest(route:CloudMapsRoute,signal:AbortSignal,body?:Record<string,unknown>):Promise<Record<string,unknown>> {
-    if(!['capabilities','geocode','reverse','places/search','places/details','routes'].includes(route)||(route==='capabilities')!==(body===undefined))throw new CloudProtocolError('invalid-response');
+    if(!['capabilities','geocode','reverse','places/search','places/details','routes','tiles/viewport'].includes(route)||(route==='capabilities')!==(body===undefined))throw new CloudProtocolError('invalid-response');
     return object(await this.accountRequest(`/api/v1/maps/${route}`,signal,body,body===undefined?{}:{headers:{'Idempotency-Key':crypto.randomUUID()}}));
+  }
+  async mapsTile(z:number,x:number,y:number,signal:AbortSignal):Promise<ArrayBuffer> {
+    const path=`/api/v1/maps/tiles/${z}/${x}/${y}`;
+    if(!mapsTilePath(path))throw new CloudProtocolError('invalid-response');
+    const response=object(await this.accountRequest(path,signal,undefined,{headers:{'Idempotency-Key':crypto.randomUUID()}}));
+    if(response.encoding!=='base64'||!['image/png','image/jpeg','image/webp'].includes(String(response.contentType))||typeof response.data!=='string'||!response.data.length||response.data.length>1398104||response.data.length%4!==0||!/^[A-Za-z0-9+/]*={0,2}$/.test(response.data))throw new CloudProtocolError('invalid-response');
+    let binary:string;try{binary=atob(response.data);}catch{throw new CloudProtocolError('invalid-response');}if(binary.length>1024*1024||btoa(binary)!==response.data)throw new CloudProtocolError('invalid-response');
+    return Uint8Array.from(binary,char=>char.charCodeAt(0)).buffer;
   }
   async googleCalendarSync(input:CalendarSyncRequest,signal:AbortSignal):Promise<unknown> {
     const request=calendarSyncHttp(input);

@@ -1,3 +1,4 @@
+import type {VoiceStartupStage} from '../runtime/diagnostics-export';
 import type {RealtimeCancellationCause} from '../../../../.eliza/client-features/packages/voice/src/realtime-voice-timing.ts';
 import { cloudServiceName } from '../runtime/cloud-protocol';
 import {createBatchProgressAcknowledgment} from '../runtime/local-agent-stream';
@@ -27,7 +28,7 @@ import { createPairedVoice } from '../runtime/paired-voice';
 import { createCloudVoice, cloudVoiceFailure, cloudVoiceServiceLimit, createCloudStreamingSpeech, nativeCloudStreamingAvailable } from '../runtime/cloud-voice';
 import { speakCloudSpeechChunks } from '../../../../.eliza/client-features/packages/voice/src/cloud-speech-chunks.ts';
 import { clefEndpointStage, selectVoiceRoute, voiceSendPolicy, type VoicePreference } from '../runtime/voice-selection';
-import { beginVoiceTurn, markVoiceTiming, abandonVoiceTurn, finishVoiceTurn, sendVoiceEntry, recordLiveVoiceTiming, recordEndpointVoiceTiming, recordHeardVoiceTiming, activeVoiceTurn } from '../runtime/voice-timing';
+import { beginVoiceTurn, markVoiceTiming, abandonVoiceTurn, finishVoiceTurn, sendVoiceEntry, recordLiveVoiceTiming, recordEndpointVoiceTiming, recordHeardVoiceTiming, activeVoiceTurn, runVoiceStartupPreparation } from '../runtime/voice-timing';
 import { residentEndpoint, createHeardReporter, createEndpointChain } from '../runtime/voice-turn-routes';
 import { createNativeLiveDictation, nativeAssistantListener, nativeLiveVoiceReady, type NativeLiveDictation } from '../runtime/native-live-voice';
 import { installNativeVoiceTurnMarks } from '../runtime/native-voice-turn';
@@ -545,8 +546,27 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     const controller=new AbortController();readiness=controller;conversationReviewRequired=false;conversationState={phase:'starting'};error='';refresh();
     const current=()=>{controller.signal.throwIfAborted();if(token!==generation||chatDestination!==chat||!chatCurrent())throw new DOMException('Voice conversation changed','AbortError');};
     try{
-      current();const prepared=await chat.shell.prepareVoiceConversation(controller.signal);current();conversationPrepared=prepared;current();
-      const previous=conversationVoice;conversationVoice=undefined;await stopping;await previous?.stop();current();
+      const nativeCloudStartup=cloudRuntimeEnabled&&provider.residentInference!=='direct'&&connectionController.getCloudEnvironment()==='production'&&nativeCloudStreamingAvailable();
+      const prepare=async(mark?:(stage:VoiceStartupStage)=>void)=>{
+        current();const binding=await chat.shell.prepareVoiceConversation(controller.signal,mark);current();conversationPrepared=binding;current();
+        mark?.('media-retirement');
+        const previous=conversationVoice;conversationVoice=undefined;
+        if(nativeCloudStartup){
+          // A timed-out caller must not clear this fence or admit another capture.
+          stopping=stopping.then(async()=>{await previous?.stop();});
+          await stopping;
+        }else{await stopping;await previous?.stop();}
+        current();return binding;
+      };
+      const prepared=nativeCloudStartup?await runVoiceStartupPreparation(controller,prepare).catch(failure=>{
+        if((failure as {code?:unknown})?.code!=='voice-preparation-timeout')throw failure;
+        if(token===generation&&chatDestination===chat){
+          conversationState={phase:'error',error:failure};error='Voice setup is taking too long. Try again, or use the keyboard.';refresh();
+        }
+        return null;
+      }):await prepare();
+      if(!prepared)return;
+      current();
       if(ownBrowserVoiceActive()||developmentCloudRealtimeVoiceEnabled||(cloudMode&&developmentCartesiaVoiceEnabled&&!developmentCloudVoiceEnabled)){
         const direct=await developmentCartesiaConversation({binding:prepared.binding,assertCurrent:current,getUiContext:()=>{current();const context=chat.shell.voiceConversationContext(prepared.binding);const metadata=connectionController.voiceRendererMetadata(context);if(metadata.viewDelivery!=='completed-action')throw Error('The voice renderer is not bound to completed-action navigation.');return {viewDelivery:metadata.viewDelivery,uiViewPath:alphaViewPath(context.view),uiBrowserSurface:'native' as const,uiTimeZone:Intl.DateTimeFormat().resolvedOptions().timeZone};},onNavigate:async event=>{current();chat.shell.voiceSendTurnId=event.traceId;try{await chat.shell.applyRealtimeVoiceNavigation({...event,binding:prepared.binding,assertCurrent:current,navigation:navigationContinuation(chat,token,event.traceId)});current();}finally{if(chat.shell.voiceSendTurnId===event.traceId)chat.shell.voiceSendTurnId=undefined;}},onState:(phase,progressText='')=>{if(token!==generation)return;if(phase==='idle'&&['starting','error'].includes(conversationState.phase))return;if(phase==='listening')conversationInterim='';conversationState={phase:['connecting','ready'].includes(phase)?'starting':['complete','interrupted'].includes(phase)?'listening':['listening','transcribing','thinking','speaking'].includes(phase)?phase as 'listening'|'transcribing'|'thinking'|'speaking':'idle',progressText};refresh();},onPlaybackUnlockChange:()=>{if(token===generation)refresh();},onActionResult:summary=>{if(token===generation)chat.shell.toast(summary);},onTranscript:text=>{if(token===generation){if(!conversationInterim)conversationInterimKnownMessages=new Set((chat.shell.S().msgs||[]).map((m:Bag)=>String(m.id)));conversationLastTranscript=text;conversationInterim=text;refresh();}},onError:failure=>{if(token===generation){error=failure.message;conversationState={phase:'error',error:failure};refresh();}}});
         current();conversationVoice=direct;await direct.start();current();return;
@@ -716,7 +736,10 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
             if(value.phase==='error')error=voiceStopped(value as BatchVoiceState);
             stopClock();if(value.phase==='listening'||value.phase==='speaking')tick=setInterval(refresh,250);refresh();
           },
-        },streamingCloud?{timing:{shortGapMs:0,longGapMs:0}}:undefined);
+        // Keep capture open briefly after a provider final so a buffered next
+        // onset can continue the same utterance before the reply hold mutes it.
+        // This adds at most 400 ms after the final, only on Cloud streaming.
+        },streamingCloud?{timing:{shortGapMs:0,longGapMs:400}}:undefined);
         conversationLive=assistant;conversationVoice=assistant;conversationInterim='';conversationLevels=[];started=Date.now();
         try{await assistant.start();current();return;}
         catch(failure){
@@ -1177,11 +1200,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     out.voiceInterim=recorder?.interimTranscript&&!out.msgs?.some((message:Bag)=>message.isUser&&message.text===recorder.interimTranscript&&(!(ownBrowserVoiceActive()||developmentCloudRealtimeVoiceEnabled||(developmentCartesiaVoiceEnabled&&!developmentCloudVoiceEnabled))||!conversationInterimKnownMessages.has(String(message.id))))?recorder.interimTranscript:'';
     if(recorder){recorder.connecting=['starting','connecting'].includes(recorder.state);// A voice planning label shares the transcript's shimmer line above the composer, as typed chat does.
       if(recorder.progressText)out.turnStatus=recorder.progressText;
-      const phase=recorder.muted==='true'&&!recorder.muteAutomatically?'paused':recorder.state==='starting'?'connecting':recorder.state==='preparing-speech'?'thinking':recorder.state==='awaiting-user-input'?'paused':recorder.state==='stopping'?'interrupting':recorder.state;recorder.problem=recorder.state==='error'||recorder.failed===true;recorder.statusClass=recorder.connecting?'alpha-voice-connecting':'alpha-voice-status-hidden';recorder.statusLines=recorder.problem?[]:recorder.lines;if(recorder.problem){recorder.recoveryLabel='';recorder.progressText='';}recorder.activity=recorder.problem?null:React.createElement(VoiceActivity,{phase,theme:this.S().theme==='dark'?'dark':'light'});
-      const directSpeech=chatDestination?.mode!=='dictation'&&(connectionController.getSnapshot().residentInference==='direct'||cloudMode&&developmentCartesiaVoiceEnabled&&!developmentCloudVoiceEnabled);
-      recorder.cloudDisclosure=cloudRuntimeEnabled||directSpeech||developmentCloudRealtimeVoiceEnabled;
-      recorder.cloudDisclosureText=directSpeech?'Voice sends recordings and reply text to Cartesia. Your agent runs on this device and uses your direct Cerebras provider.':developmentCloudRealtimeVoiceEnabled?`Voice sends recordings and reply text to ${voiceServiceName()} through the connected developer agent. Your agent runs on this computer.`:`Voice uploads recordings and reply text to your ${voiceServiceName()} account, uses your plan allowance, and plays replies with Cartesia.`;
-      // Speech routing is disclosed in Settings > Voice; the live voice composer only opens details for an error.
+      const phase=recorder.muted==='true'&&!recorder.muteAutomatically?'paused':recorder.state==='starting'?'connecting':recorder.state==='preparing-speech'?'thinking':recorder.state==='awaiting-user-input'?'paused':recorder.state==='stopping'?'interrupting':recorder.state;recorder.problem=recorder.state==='error'||recorder.failed===true;recorder.statusClass='alpha-voice-status-hidden';recorder.statusLines=recorder.problem?[]:recorder.lines;if(recorder.problem){recorder.recoveryLabel='';recorder.progressText='';}recorder.activity=recorder.problem?null:React.createElement(VoiceActivity,{phase,theme:this.S().theme==='dark'?'dark':'light'});
       recorder.voiceDetails=false; // Voice failures stay internal; Settings owns service diagnostics.
       recorder.muteAsset=recorder.muted==='true'?'/icons/lucide/mic-off.svg':'/icons/lucide/mic.svg';}
     const pillVoice=active&&this.S().chat==='hidden'&&(retiring?retirement?.panelChat==='hidden':chatDestination?.chat==='hidden')&&!out.legacyChatRecorder;

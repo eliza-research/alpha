@@ -15,6 +15,7 @@ import { PIXEL10A_PRODUCT, PIXEL10A_RELEASE, pixel10aOptions, pixel10aProductPro
 import { channelDistributionProblems, channelSigningProblems, signRelease, X509_KEYS } from "../scripts/sign-aosp-release.mjs";
 import { RECORD_KIND } from "../scripts/aosp-release-record.mjs";
 import { releaseBlockers } from "../scripts/release-blockers.mjs";
+import { cloudVoiceAdmission } from "../vendor/eliza/packages/os/scripts/android/apk-release-record.mjs";
 import { clockActions, clockProductRequirement, verifyAospClockHandlers } from "../scripts/aosp-clock-contract.mjs";
 import * as sharedClock from "../vendor/eliza/packages/os/scripts/android/aosp-clock-handlers.mjs";
 
@@ -234,4 +235,16 @@ test("the Clock contract is the shared system Clock requirement and handler admi
   assert.equal(clockProductRequirement, sharedClock.clockProductRequirement);
   assert.deepEqual(clockActions, ["SET_ALARM", "SHOW_ALARMS", "SNOOZE_ALARM", "DISMISS_ALARM"]);
   assert.match(clockProductRequirement, /^PRODUCT_PACKAGES \+= DeskClock$/m);
+});
+
+test("Alpha Cloud release evidence does not replace the signer or native-profile gate", () => {
+  const apkSha256 = "a".repeat(64);
+  const evidence = {format:"alpha-cloud-voice-qualification-v1",results:[{apkSha256,provider:"cartesia",outcome:"passed",checks:{consent:true,session:true,acousticInput:true,blueBar:true,transcript:true,audibleSpeakerReply:true,mute:true,unmute:true,stopReleased:true}}]};
+  const candidate = {mode:"release",runtimeProfile:"cloud",sha256:apkSha256,testMocks:false,bundleAudit:"passed",signed:true,signerSha256:"d".repeat(64),versionCode:2,runtime:"PACKAGED",runtimeNotices:true,distributable:true,licenceBlockers:[],releaseAdmission:{failures:[],blockers:[],signerMatches:true},voiceHost:{packaged:false,differences:[]},cloudVoice:cloudVoiceAdmission(apkSha256,evidence,"b".repeat(64))};
+  assert.deepEqual(releaseBlockers(candidate),[]);
+  assert.match(releaseBlockers({...candidate,cloudVoice:undefined}).join("\n"),/Cloud voice qualification evidence is missing/);
+  evidence.results[0].outcome="failed";
+  assert.match(releaseBlockers({...candidate,cloudVoice:cloudVoiceAdmission(apkSha256,evidence,"c".repeat(64))}).join("\n"),/Cloud voice qualification did not pass/);
+  assert.match(releaseBlockers({...candidate,runtimeProfile:"native"}).join("\n"),/no on-device voice/);
+  assert.match(releaseBlockers(candidate,{releaseSigner:{schema:1,signerSha256:"unset",lastRelease:{versionCode:null}}}).join("\n"),/release signer is unset/);
 });

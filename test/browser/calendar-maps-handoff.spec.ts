@@ -30,8 +30,8 @@ test('event address searches once, preserves result choice and returns to the sa
  await expect(page.getByText('Return to this exact event',{exact:true})).toBeVisible();
  await page.getByRole('button',{name:address,exact:true}).click();await expect(page.getByRole('button',{name:/^East entrance/}).first()).toBeVisible();expect(await page.evaluate(()=>(window as any).travelQueries)).toEqual([address,address]);
 });
-test('missing Maps provider retains the event address without inventing a destination',async({page})=>{
- await event(page,false);await expect(page.getByRole('textbox',{name:'Search places',exact:true})).toHaveValue(address);await expect(page.getByText(/Maps provider not connected|Connect a Maps provider/).first()).toBeVisible();await expect(page.getByRole('button',{name:'Directions',exact:true})).toHaveCount(0);await back(page);await expect(page.locator('html')).toHaveAttribute('data-active-view','calendar');await expect(page.getByText('Return to this exact event',{exact:true})).toBeVisible();
+test('signed-out Maps retains the event address without inventing a destination',async({page})=>{
+ await event(page,false);await expect(page.getByRole('textbox',{name:'Search places',exact:true})).toHaveValue(address);await expect(page.getByRole('status').filter({hasText:'The Maps account changed. Search again after signing in.'})).toBeVisible();await expect(page.getByRole('button',{name:'Directions',exact:true})).toHaveCount(0);await back(page);await expect(page.locator('html')).toHaveAttribute('data-active-view','calendar');await expect(page.getByText('Return to this exact event',{exact:true})).toBeVisible();
 });
 
 test('a late event-address response cannot replace a newer Maps search',async({page})=>{

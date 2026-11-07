@@ -5,7 +5,7 @@ import {Capacitor} from '@capacitor/core';
 import {registerPlugin} from '../platform-plugins';
 import {resolveWorkflowTap,type WorkflowTapNative} from '../runtime/workflow-notice-taps';
 import { createWorkflowAuthoring } from './workflow-authoring';
-import { presentHomeWorkflowFreshness } from './home-cards';
+import { homeReadIsStale, presentHomeWorkflowFreshness } from './home-cards';
 import { alphaClient, type ActionProposal } from '../runtime/alpha-client';
 import { workflowApprovalNotice, type WorkflowPhoneReview } from '../runtime/workflow-device-contract';
 import type { WorkflowNoticeRoute } from '../runtime/device-actions';
@@ -157,6 +157,7 @@ export function installWorkflowAdapter(Component:any,views:Bag){
   const out=values.call(this),binding=connectionController.getWorkflowClient(),current=binding?.sessionId===listSession&&listPhase==='ready',saved=current?flows.filter(flow=>!flow.removed):[],rows=saved.slice(0,2);
   const loaded=presentHomeWorkflowFreshness({loadedAt:current?listReadAt:null,now:Date.now(),unified:false});
   return {...out,homeWorkflowFreshness:loaded.visible,homeWorkflowDescription:loaded.description,homeWorkflowRows:rows.map(flow=>({name:flow.name,status:flow.active?'Enabled':'Paused'})),homeWorkflowHasRows:rows.length>0,
+   homeWorkflowConfirmedEmpty:current&&!removedList&&saved.length===0&&listReadAt!=null&&listReadAt>0&&listReadAt<=Date.now()&&!homeReadIsStale(listReadAt,Date.now()),
    homeWorkflowTitle:rows.length?'':!binding?'Connect your agent':listPhase==='failed'?'Couldn’t load workflows':listPhase==='ready'?'No workflows yet':'Loading workflows…',
    homeWorkflowTime:!binding?'Tap to connect':listPhase==='failed'?'Tap to retry':listPhase!=='ready'?'':saved.length>2?`+${saved.length-2} more`:saved.length?'View '+(saved.length===1?'workflow':'workflows'):'',
    homeWorkflowLabel:!binding?'Connect agent for workflows':listPhase==='failed'?'Retry workflows':'Open workflows',

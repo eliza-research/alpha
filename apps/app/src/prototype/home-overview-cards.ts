@@ -7,7 +7,8 @@ const maskIcon = (name: string, color: string) => createElement('span', {style: 
   mask: `url('/icons/lucide/${name}.svg') center/contain no-repeat`, WebkitMask: `url('/icons/lucide/${name}.svg') center/contain no-repeat`}});
 
 /** The Home agenda card: the shared upstream card with Alpha's classes and installed selectors. */
-export function homeAgendaCard(out: Bag): ReactElement {
+export function homeAgendaCard(out: Bag): ReactElement | null {
+  if (out.homeCalendarConfirmedEmpty === true) return null;
   const next = out.homeCalendarHasNext ? {text: String(out.homeCalendarNext || ''), source: String(out.homeCalendarNextSource || '')} : null;
   return createElement(OverviewAgendaCard, {
     heading: String(out.homeCalendarTime ?? ''), origin: String(out.homeCalendarOrigin ?? ''), title: String(out.homeCalendarTitle ?? ''),
@@ -38,7 +39,8 @@ const INBOX_STATES = new Set(['not-connected', 'idle', 'loading', 'ready', 'stal
  * computed from the page the user loaded (presentHomeInboxCard), Alpha's styles and its installed
  * selectors. It shows no message body and reads no mail.
  */
-export function homeAttentionCard(out: Bag): ReactElement {
+export function homeAttentionCard(out: Bag): ReactElement | null {
+  if (out.homeInboxConfirmedEmpty === true) return null;
   const rows = Array.isArray(out.homeInboxRows) && out.homeInboxHasRows !== false
     ? out.homeInboxRows.map((row: Bag) => ({title: String(row?.subject ?? ''), detail: String(row?.from ?? '')})) : [];
   const people = Array.isArray(out.homeAttentionPeople) ? out.homeAttentionPeople.map((person: Bag) => String(person?.ini ?? '')) : [];
@@ -90,6 +92,9 @@ export function installHomeOverviewCards(Component: any) {
   const p = Component.prototype, render = p.renderVals;
   p.renderVals = function () {
     const out = render.call(this);
-    return {...out, homeAgendaCard: homeAgendaCard(out), homeAttentionCard: homeAttentionCard(out), homeBriefCard: homeBriefCard(out)};
+    const agenda = homeAgendaCard(out), attention = homeAttentionCard(out), brief = homeBriefCard(out);
+    const showWorkflow = out.homeWorkflowConfirmedEmpty !== true;
+    return {...out, homeAgendaCard: agenda, homeAttentionCard: attention, homeBriefCard: brief, homeShowWorkflow: showWorkflow,
+      homeHasOverviewCards: !!(agenda || attention || brief || showWorkflow)};
   };
 }
