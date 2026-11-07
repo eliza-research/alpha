@@ -39,6 +39,8 @@ if (!paradee.isDirectory()) {
  } else {
   ext.elizaParadeeSourceDir = paradee
   ext.elizaParadeeNativeDir = nativeOutput
+  // The nested engine header is authenticated by verifySpeechInputs, outside the patched Java tree.
+  ext.elizaParadeeFfiIncludeDir = file('../../vendor/eliza/plugins/plugin-local-inference/native/llama.cpp/tools/omnivoice/include')
   ext.elizaParadeePackageInference = false
   apply from: new File(paradee, 'consumer.gradle')
  }

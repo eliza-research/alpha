@@ -121,3 +121,25 @@ test('handoff tiles are buttons named with their reported state; only the flashl
  assert.equal(m.honestTiles(modelTiles(),{torch:false},{flashlight:true,act:()=>{}}).at(-1).pressed,false);
  for(const tile of [...tiles,...unknown])assert.doesNotMatch(tile.aria,/toggle|switch|pressed/i);
 });
+
+
+test('the explicit Android settings row opens Settings home without weakening specific-page handoffs',()=>{
+ const java=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java','utf8');
+ const begin=java.indexOf('@PluginMethod public void openSettings(PluginCall call)');
+ const end=java.indexOf('private final java.util.concurrent.ExecutorService diagnosticsWorker',begin);
+ const method=java.slice(begin,end);
+ const home=method.slice(method.indexOf('if("system".equals(page))'),method.indexOf('if(SystemSettingsPages.actions(page)==null)'));
+ assert.ok(home.length>0,'the explicit system action is handled before the specific-page allowlist');
+ assert.match(home,/android\.app\.Activity activity=getActivity\(\);/);
+ assert.match(home,/if\(activity==null\)\{call\.reject\(/);
+ assert.match(home,/activity\.runOnUiThread\(\(\)->\{/);
+ assert.match(home,/try\{activity\.startActivity\(new Intent\(Settings\.ACTION_SETTINGS\)\);\}/);
+ assert.match(home,/catch\(RuntimeException unavailable\)\{call\.reject\([^;]+;return;\}/);
+ assert.match(home,/out\.put\("status","opened"\)/);
+ assert.match(home,/out\.put\("specific",true\)/);
+ assert.match(home,/call\.resolve\(out\);[\s\S]*return;/);
+ const specific=method.slice(method.indexOf('if(SystemSettingsPages.actions(page)==null)'));
+ assert.match(specific,/call\.reject\("Unsupported settings page"\)/);
+ assert.match(specific,/SystemSettingsPages\.open\(page,getContext\(\)\.getPackageName\(\),/);
+ assert.doesNotMatch(specific,/ACTION_SETTINGS/);
+});

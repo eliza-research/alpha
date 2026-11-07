@@ -285,7 +285,9 @@ function Phone() {
       // instead of Home laying itself out again in the smaller canvas (specs/quint/legacy/HomeLayout.qnt).
       if (!input.editing) {
         document.documentElement.style.setProperty('--alpha-home-height', `${geometry.height}px`);
-        document.documentElement.style.setProperty('--alpha-home-bottom-inset', document.documentElement.style.getPropertyValue('--native-bottom-inset') || '0px');
+        const bottomInset = document.documentElement.style.getPropertyValue('--native-bottom-inset');
+        if (bottomInset) document.documentElement.style.setProperty('--alpha-home-bottom-inset', bottomInset);
+        else document.documentElement.style.removeProperty('--alpha-home-bottom-inset');
       }
       document.documentElement.style.setProperty('--phone-left', `${geometry.left}px`);
       document.documentElement.style.setProperty('--phone-top', `${geometry.top}px`);

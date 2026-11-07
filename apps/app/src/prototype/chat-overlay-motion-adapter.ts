@@ -7,6 +7,7 @@ import {
 	DEFAULT_PULL_DISTANCE,
 	TAP_SLOP,
 } from "../../../../.eliza/client-features/packages/ui/src/gestures/constants";
+import { isEditing, keyboardFreeHeight } from "../runtime/canvas-geometry";
 import { visibleDocks } from "../runtime/dock-clearance";
 
 const SHEET_EASE = `cubic-bezier(${OVERLAY_EASE.join(",")})`;
@@ -323,17 +324,30 @@ export function installChatOverlayMotion(Component: Shell) {
 		window.addEventListener("blur", this.cancelChatMotion);
 		window.addEventListener("pagehide", this.cancelChatMotion);
 		document.addEventListener("visibilitychange", this.chatMotionVisibility);
-		// Android can close the keyboard itself (its hide key, Back) and leave the composer
+		// Android can close the keyboard by itself (its hide key, Back) and leave the composer
 		// focused. Keyboard up and composer focus are one state here, so the composer lets go.
 		// MainActivity uses adjustResize, so the WebView itself shrinks with the keyboard: compare
-		// against the tallest height seen at this width (as keyboardFreeHeight does), not innerHeight.
-		// The baseline is taken now, before any keyboard can have shrunk the window.
-		let keyboardOpen = false, base = { width: window.innerWidth, height: Math.min(window.innerHeight, window.visualViewport?.height ?? window.innerHeight) };
+		// against the keyboard-free height for this width (the shared helper main.tsx also uses),
+		// seeded now, before any keyboard can have shrunk the window.
+		const free = keyboardFreeHeight();
+		const visible = () => {
+			const width = document.documentElement.clientWidth || window.innerWidth,
+				layout = document.documentElement.clientHeight || window.innerHeight;
+			return {
+				width,
+				layout,
+				height: Math.min(layout, window.visualViewport?.height || layout),
+			};
+		};
+		const seed = visible();
+		free(seed.width, seed.layout, false);
+		let keyboardOpen = false;
 		this.dockKeyboardWatch = () => {
-			const width = window.innerWidth,
-				height = Math.min(window.innerHeight, window.visualViewport?.height ?? window.innerHeight);
-			if (width !== base.width || height > base.height) base = { width, height: Math.max(height, width === base.width ? base.height : 0) };
-			const covered = base.height - height > 150;
+			const now = visible(),
+				covered =
+					free(now.width, now.layout, isEditing(document.activeElement)) -
+						now.height >
+					150;
 			if (keyboardOpen && !covered && this.dockComposerFocused) {
 				const active = document.activeElement;
 				if (active instanceof HTMLElement && active.matches("[data-alpha-composer]"))
@@ -782,6 +796,7 @@ export function installChatOverlayMotion(Component: Shell) {
 					moved: false,
 				};
 			},
+			// Captured only once it is a drag, as on the scrim above.
 			move(event: PointerEvent) {
 				const press = shell.dockGuardPress;
 				if (
@@ -797,13 +812,21 @@ export function installChatOverlayMotion(Component: Shell) {
 			up(event: PointerEvent) {
 				event.stopPropagation();
 				const press = shell.dockGuardPress;
+				if (press?.id !== event.pointerId) return;
 				// A drag has no click: it lowers on release.
-				if (press?.id === event.pointerId && press.moved) lowerDock();
-				// A tap lowers on its click; a press that sends no click (long-press) lowers here instead.
-				else if (press?.id === event.pointerId) setTimeout(() => { if (shell.dockGuardPress === press) lowerDock(); }, 0);
+				if (press.moved) lowerDock();
+				// A tap lowers on its click; a press that sends no click (a long press) lowers
+				// here instead, so the press is never left stuck.
+				else
+					setTimeout(() => {
+						if (shell.dockGuardPress === press) lowerDock();
+					}, 0);
 			},
-			cancel() {
-				shell.dockGuardPress = undefined;
+			cancel(event: PointerEvent) {
+				// A cancelled press (the system took the touch) still lowers: the dock is never
+				// left raised with its guard holding a stale press.
+				const press = shell.dockGuardPress;
+				if (press?.id === event.pointerId) lowerDock();
 			},
 		};
 		// Any touch outside the open sheet collapses it and reaches nothing underneath. A tap
