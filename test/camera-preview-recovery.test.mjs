@@ -30,13 +30,13 @@ function fixture({permission=false,failing=true,receipt={width:1280,height:720,d
   setZoom:async()=>{},setSettings:async()=>{},setCaptureMode:async o=>{if(globalThis.__modeImpl)return globalThis.__modeImpl(o);},
   startRecording:async()=>{calls.recordings++;},stopRecording:async()=>({path:'content://media/external/video/media/9',duration:1,width:1,height:1,fileSize:1}),
  };
- const library={list:async options=>{calls.list.push(options);return {items:[]};},read:async({id})=>({id,image:'',width:1,height:1,date:0,revision:'r'})};
+ const rows={camera:[]};const library={list:async options=>{calls.list.push(options);return {items:options.album==='camera'?rows.camera:[]};},read:async({id})=>({id,image:'',width:1,height:1,date:0,revision:'r'})};
  let view={chat:'hidden',active:true};
  context=vm.createContext({window:env.window,document:env.window.document,console,camera,library,Date:{now:()=>clock.now},Uint8Array,atob,Blob:env.window.Blob,
   mask:enable=>calls.masked=enable,Capacitor:{isPluginAvailable:()=>true},validateCameraCaptureResult:value=>value,systemPickerActive:()=>false,device:{openSettings:async()=>({status:'opened'})},
   openScanReview:()=>{calls.scans++;return ()=>{};},reviewContentQuestion:input=>{calls.questions.push(input);return ()=>{};},createScanCapture:()=>({keep:async()=>undefined,close(){}}),ScanKeepError:Error,importBrowserPhoto:async()=>({}),browserCamera:{flashAvailable:()=>false},view:()=>view});
  const prelude=`let accessPanel,disposed=false,direction='back',flash=false,duration=0,loaded=true,captures=[],closeQuestion,closeScan,scanRequest;
-  let frameQuestion;let lens={minZoom:1,maxZoom:1,hasFlash:false,zoom:1,flash:false},zoomRatio=1,lastCapture;let requestedPhoto;
+  let frameQuestion;let lens={minZoom:1,maxZoom:1,hasFlash:false,zoom:1,flash:false},zoomRatio=1,lastCapture;let requestedPhoto;let lastEpoch=0;function setLast(item){++lastEpoch;lastCapture=item;}
   const browserMode=false,libraryAvailable=()=>true,normalize=row=>({...row,id:'native-camera-'+row.id}),nativeId=id=>id.replace(/^native-camera-/,''),cancelScan=()=>{};function schedule(){}
   const finder='[data-alpha-camera="viewfinder"]';let state={said:'',mode:'photo'};
   const api={S:{get chat(){return view().chat;}},isActive:()=>view().active,set:patch=>Object.assign(state,patch),get:()=>state,setView:()=>{},shell:patch=>{view().chat=patch.chat;}};`;
@@ -45,7 +45,7 @@ function fixture({permission=false,failing=true,receipt={width:1280,height:720,d
   setFlash:on=>{flash=on;},setZoom:z=>{zoomRatio=z;},mode:m=>{state.mode=m;},
   state:()=>({phase:session.phase,denied:session.denied,said:state.said,capturing:session.capturing,recording:session.recording,flash,zoomRatio,lens,last:lastCapture,fl:state.fl})};
   globalThis.flashNow=()=>flash;globalThis.zoomNow=()=>zoomRatio;`,{mode:'transform'}),context);
- return {env,timers,calls,gates,clock,api:context.testCamera,recover:()=>failed=false,setView:v=>Object.assign(view,v)};
+ return {env,timers,calls,gates,clock,rows,api:context.testCamera,recover:()=>failed=false,setView:v=>Object.assign(view,v)};
 }
 // Video mode pre-binds VideoCapture for the quality every recording asks for, so starting one does not rebind;
 // when native could bind neither mode it released the preview, which shows as unavailable.
@@ -90,6 +90,16 @@ function fixture({permission=false,failing=true,receipt={width:1280,height:720,d
  assert.equal(f.calls.captures.length,3,'A pending shot is not taken after switching to Video');assert.equal(f.calls.recordings,0);
  f.env.window.close();
 }
+// SavedIsShown: the last-capture tile is the Camera album's newest row each time the preview is ready, so a
+// photo trashed or deleted since (in Photos or by another app) is no longer shown.
+{
+ const f=fixture({failing:false});f.rows.camera=[{id:'7',image:'data:image/jpeg;base64,BBBB',width:1,height:1,date:1,revision:'r'}];
+ await f.api.start();await settle();assert.equal(f.api.state().last.id,'native-camera-7');
+ await f.api.capture();await settle();assert.equal(f.api.state().last.id,'native-camera-42','A capture made here is shown at once');
+ await f.api.stop();f.rows.camera=[];await f.api.start();await settle();
+ assert.equal(f.api.state().last,undefined,'The trashed capture is not shown after Camera is ready again');
+ f.env.window.close();
+}
 // Preview failure, permission denial and recovery.
 {
  const f=fixture();await f.api.start();assert.equal(f.api.state().phase,'error');assert.equal(f.api.state().denied,undefined,'A hardware/start failure is not a permission denial');assert.equal(f.timers.size,0,'Unavailable panel cannot disappear with transient toast timer');
@@ -109,7 +119,7 @@ function fixture({permission=false,failing=true,receipt={width:1280,height:720,d
 {
  const f=fixture({failing:false});await f.api.start();await settle();
  assert.deepEqual(JSON.parse(JSON.stringify(f.api.state().lens)),{minZoom:0.5,maxZoom:10,hasFlash:true,zoom:1,flash:false});
- assert.deepEqual(JSON.parse(JSON.stringify(f.calls.list)),[{limit:1}],'The last-capture tile reads one library row after ready');
+ assert.deepEqual(JSON.parse(JSON.stringify(f.calls.list)),[{album:'camera',limit:1}],'The last-capture tile reads one Camera album row after ready');
  assert.deepEqual(JSON.parse(JSON.stringify(f.api.zoomStops({minZoom:0.5,maxZoom:10}))).map(s=>s[1]),['.5','1×','2','5']);
  assert.deepEqual(JSON.parse(JSON.stringify(f.api.zoomStops({minZoom:1,maxZoom:4}))).map(s=>s[1]),['1×','2']);
  assert.deepEqual(JSON.parse(JSON.stringify(f.api.zoomStops({minZoom:1,maxZoom:1}))),[],'A fixed lens shows no chips');

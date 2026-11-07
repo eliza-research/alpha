@@ -200,6 +200,11 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   let lens: Lens = { minZoom: 1, maxZoom: 1, hasFlash: false, zoom: 1, flash: false }, zoomRatio = 1;
   /** The last-capture tile: this session's newest capture, or one library row read after the preview is ready. */
   let lastCapture: SavedPhoto | undefined;
+  /** Bumped by every change to the last-capture tile, so an older library read never overwrites a newer one. */
+  let lastEpoch=0;
+  function setLast(item:SavedPhoto|undefined){++lastEpoch;lastCapture=item;}
+  /** The library changed (here, by another app, or a trash): the tile is read again, or dropped until Camera is ready. */
+  function staleLast(){if(session.phase==='ready'&&!document.hidden)void loadLast(session.token());else setLast(undefined);}
   let accessPanel: HTMLElement | undefined;
   let duration = 0;
   let video: HTMLVideoElement | undefined, videoId = '';
@@ -443,6 +448,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
       captures=insertRows(patchRows(captures,verified,row=>!row.trashed),operation==='restore'?live:[]);
       trash=insertRows(patchRows(trash,verified,row=>!!row.trashed),operation==='trash'?gone:[]);
       albumRows=patchRows(albumRows,verified,row=>!row.trashed);
+      if(changed.length)staleLast();
       if(owner.isActive()){
         selection=undefined;selectionTab=undefined;
         owner.set({nativeMultiSelection:Date.now(),nativeCaptureRevision:Date.now()});
@@ -606,6 +612,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
       ++libraryEpoch; ++trashEpoch; const updated = { ...row, ...result };
       captures = insertRows(captures.filter(item => item.id !== row.id), desired ? [] : [updated]); albumRows = albumRows.filter(item => item.id !== row.id);
       trash = insertRows(trash.filter(item => item.id !== row.id), desired ? [updated] : []);
+      staleLast();
       preview = undefined; retirePhotoRead();
       owner.set({ open: null, nativePhotoSelection: null, sheet: null, sel: null, nativeCaptureRevision: Date.now() });
       // Delete in the viewer moves on to the neighbouring item.
@@ -779,15 +786,18 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   /** The shutter flash: the only feedback a capture gives while it is written. */
   function shutterFlash(owner:Bag){owner.set({fl:1});window.setTimeout(()=>{if(!disposed)owner.set({fl:0});},90);}
   function adoptLens(receipt:unknown){lens=lensFromReceipt(receipt);zoomRatio=lens.zoom;flash=lens.flash;}
-  /** The last-capture tile: one library row, read once the preview is ready. */
+  /** The last-capture tile: the newest row of the Camera album, read again each time the preview is
+   * ready and whenever the library changes; a capture made here replaces it directly. */
   async function loadLast(token:number){
-    if(lastCapture||!libraryAvailable())return;
+    const epoch=++lastEpoch;
+    if(!libraryAvailable())return;
     try{
-      const result=await library.list({limit:1});
-      if(disposed||token!==session.token()||lastCapture)return;
-      const row=result.items[0];if(!row)return;
-      lastCapture=normalize(row);api?.set({nativeCaptureRevision:lastCapture.id});
-    }catch{/* The tile stays empty; Photos reports library errors. */}
+      const result=await library.list({album:'camera',limit:1});
+      if(disposed||token!==session.token()||epoch!==lastEpoch)return;
+      const row=result.items[0],next=row?normalize(row):undefined;
+      if(next?.id===lastCapture?.id&&next?.image===lastCapture?.image)return;
+      lastCapture=next;api?.set({nativeCaptureRevision:next?.id??Date.now()});
+    }catch{/* The tile keeps what it showed; Photos reports library errors. */}
   }
   function bindMode(mode:string){
     if(session.phase!=='ready')return;
@@ -828,7 +838,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     if (!id || !/^\d+$/.test(id)) throw new Error('Missing video identity');
     const item = normalize(await library.read({ id: 'v:' + id }));
     if (disposed) return;
-    captures = [item, ...captures.filter(row => row.id !== item.id)]; loaded = false; lastCapture = item;
+    captures = [item, ...captures.filter(row => row.id !== item.id)]; loaded = false; setLast(item);
     api?.setView('photos', { nativeCaptureRevision: item.id });
     message(limitReached?'Maximum length reached. Video saved.':'');
   }
@@ -859,7 +869,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     const mediaId = path ? path.split('/').pop() : '';
     const item: SavedPhoto = { id: mediaId ? 'native-camera-' + mediaId : '', image: 'data:image/jpeg;base64,' + preview, width: photo.width, height: photo.height, date: Date.now(), revision: 'captured' };
     if (disposed) return item;
-    lastCapture = item;
+    setLast(item);
     if (item.id) captures = [item, ...captures.filter(row => row.id !== item.id)];
     loaded = false;
     if(showSaved)owner.setView('photos', { nativeCaptureRevision: item.id || Date.now() });
@@ -934,7 +944,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     if(!photo.base64)return {status:'failed',message:'Photo was not kept.'};
     if(browserMode){
       const row=await importBrowserPhoto({original:new File([],'scan.jpg',{type:'image/jpeg'}),image:'data:image/jpeg;base64,'+photo.base64,width:photo.width,height:photo.height},signal);
-      captures=[normalize(row),...captures.filter(item=>nativeId(item.id)!==row.id)];loaded=false;lastCapture=normalize(row);owner.setView('photos',{nativeCaptureRevision:row.id});
+      captures=[normalize(row),...captures.filter(item=>nativeId(item.id)!==row.id)];loaded=false;setLast(normalize(row));owner.setView('photos',{nativeCaptureRevision:row.id});
       return {status:'saved',id:row.id,message:'Kept in Photos.'};
     }
     const result=await library.keepCapture({dataBase64:photo.base64,operationId});
@@ -1357,12 +1367,13 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   // not from observing every DOM mutation in the document.
   const removePresence = installViewPresence(_Component, schedule);
   const resize = () => { if (session.phase === 'ready') mask(true); schedule(); };
-  const visibility = () => { if (document.hidden) { retirePhotoRead();watchLibrary(false);cancelEdit();closeVideo();if(permittedLibrary()){++libraryEpoch;captures=[];albumRows=[];trash=[];albumNext='';trashNext='';albumKey='';counts=undefined;++countsEpoch;countsBusy=false;++albumsEpoch;albumsBusy=false;albumsLoaded=false;customAlbums=[];++albumEpoch;++trashEpoch;preview=undefined;selection=undefined;next='';loaded=false;photosApi?.set({open:null,nativePhotoSelection:null,nativeCaptureRevision:Date.now()});}void stop(); } else { loaded = false; if (photosApi?.isActive()) void refresh(); schedule(); } };
+  const visibility = () => { if (document.hidden) { retirePhotoRead();watchLibrary(false);cancelEdit();closeVideo();if(permittedLibrary()){++libraryEpoch;captures=[];albumRows=[];trash=[];albumNext='';trashNext='';albumKey='';counts=undefined;++countsEpoch;countsBusy=false;++albumsEpoch;albumsBusy=false;albumsLoaded=false;customAlbums=[];++albumEpoch;++trashEpoch;preview=undefined;setLast(undefined);selection=undefined;next='';loaded=false;photosApi?.set({open:null,nativePhotoSelection:null,nativeCaptureRevision:Date.now()});}void stop(); } else { loaded = false; if (photosApi?.isActive()) void refresh(); schedule(); } };
   let libraryChangeHandle:{remove():Promise<void>}|undefined;
   /** A MediaStore change: re-read what is loaded and patch it (FixPatch). The selection keeps rows that
    * still exist and the viewer stays open unless its item is gone. `hard` (the edited source changed
    * under a pending copy) also closes the editor and the viewer. */
   function invalidateLibrary(hard=false){
+    staleLast();
     counts=undefined;++countsEpoch;countsBusy=false;albumsLoaded=false;albumsBusy=false;++albumsEpoch;
     if(hard){retirePhotoRead();preview=undefined;cancelEdit();closeVideo();photosApi?.set({open:null,nativePhotoSelection:null,nativeCaptureRevision:Date.now()});}
     const owner=photosApi;
