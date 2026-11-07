@@ -1,29 +1,25 @@
-/** Photos > Device library: the full permitted MediaStore library (issue 408, policy P-24).
- * Native reads go through AlphaPhotoLibrary; rules live in runtime/photo-library.ts.
- * The library is paged only while this album is open; nothing is copied or uploaded. */
-import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
+/** Photos' agent bridge for the full permitted MediaStore library (issue 408, policy P-24).
+ * Native reads go through AlphaPhotoLibrary; rules live in runtime/photo-library.ts. Reads return
+ * identity-only rows; select, filter, open, album and share requests and every review act on the
+ * main Photos Library the owner sees (camera-adapter registers it with setMainLibraryHost).
+ * Nothing is copied or uploaded. */
+import { Capacitor } from '@capacitor/core';
 import { registerPlugin } from '../platform-plugins';
-import { createCaptureRevisions } from './context-selection';
 import {
-  LibraryCatalog, LibraryRevisions, LibrarySelection, parsePage, parseScope, parseValidation, parseItem, prepareReview, reviewCurrent, scopePresentation,
-  modelItem, modelSearchResult, LIBRARY_LIMITS, type LibraryAction, type LibraryReview, type LibraryScopeState, type LibraryItem, type LibraryChange,
-  type LibraryAgentOperation, type LibraryAgentResult,
+  LibraryRevisions, parsePage, parseScope, parseValidation, parseItem, prepareReview, modelItem, modelSearchResult, LIBRARY_LIMITS,
+  type LibraryReview, type LibraryScopeState, type LibraryItem, type LibraryChange, type LibraryAgentOperation, type LibraryAgentResult,
 } from '../runtime/photo-library';
+import type { PhotosViewOperation, PhotosViewResult } from '../runtime/photos-view-contract';
 
 type Bag = Record<string, any>;
 type Items = { items: { id: string; revision: string }[] };
 export type PhotoLibraryPort = {
   scope(): Promise<unknown>;
-  requestAccess(): Promise<unknown>;
   page(options: { before?: string; limit?: number; thumbnails?: boolean; thumbnailSize?: number; kind?: string; from?: number; to?: number; favorites?: boolean }): Promise<unknown>;
   inspect(options: { id: string; size?: number; pixels?: boolean }): Promise<unknown>;
   validate(options: Items): Promise<unknown>;
-  changes(options: { version: string; generation: number }): Promise<Bag>;
   requestChange(options: Items & { operation: LibraryChange }): Promise<{ status: string; operation?: string; outcomes?: { id: string; status: string }[] }>;
   share(options: Items): Promise<{ status: string; count: number }>;
-  /** Native MediaStore observer, registered only while the device library album is open. */
-  watch(options: { active: boolean }): Promise<unknown>;
-  addListener(event: 'libraryChanged' | 'scopeChanged', listener: (value: Bag) => void): Promise<PluginListenerHandle>;
 };
 const nativePort = registerPlugin<PhotoLibraryPort>('AlphaPhotoLibrary');
 const CHANGED_OUTCOMES = ['favorited', 'unfavorited', 'trashed', 'restored', 'unchanged'];
@@ -32,172 +28,100 @@ export function describeLibraryChange(result: { status: string; outcomes?: { id:
   const outcomes = Array.isArray(result.outcomes) ? result.outcomes : [];
   const verified = outcomes.filter(row => CHANGED_OUTCOMES.includes(row.status)).length, stale = outcomes.filter(row => row.status === 'stale').length;
   if (result.status === 'complete' && verified === requested) return `${verified} ${verified === 1 ? 'item' : 'items'} changed and verified.`;
-  return `${verified} of ${requested} changes verified${stale ? `; ${stale} changed elsewhere and ${stale === 1 ? 'was' : 'were'} skipped` : ''}. Reload to see the current library.`;
+  return `${verified} of ${requested} changes verified${stale ? `; ${stale} changed elsewhere and ${stale === 1 ? 'was' : 'were'} skipped` : ''}.`;
 }
-const device = registerPlugin<{ openSettings(options: { page: 'privacy' }): Promise<{ status: string }> }>('AlphaDevice');
 export const deviceLibraryAvailable = () => Capacitor.isNativePlatform() && Capacitor.isPluginAvailable('AlphaPhotoLibrary');
-
-const PAGE = LIBRARY_LIMITS.thumbnailRows - 6;
-const background = (item: LibraryItem) => item.image ? `url("${item.image}") center / cover no-repeat` : 'var(--s2)';
-const duration = (seconds: number) => seconds ? `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}` : '';
 const revisionSession = () => { try { return Array.from(crypto.getRandomValues(new Uint8Array(6)), byte => byte.toString(36).padStart(2, '0')).join('').slice(0, 12); } catch { return Date.now().toString(36).slice(-8); } };
 
 /** A refusal the agent executor reports as a failed action with this owner-facing text. */
 export class LibraryAgentRefusal extends Error { override readonly name = 'LibraryAgentRefusal'; }
-type LibraryAgent = { run(operation: LibraryAgentOperation, signal: AbortSignal): Promise<LibraryAgentResult> };
+type LibraryAgent = {
+  run(operation: LibraryAgentOperation, signal: AbortSignal): Promise<LibraryAgentResult>;
+  /** photos_filter / photos_open / photos_album_create / photos_share (photos.view.v1). */
+  runView(operation: PhotosViewOperation, signal: AbortSignal): Promise<PhotosViewResult>;
+};
 let mountedAgent: LibraryAgent | undefined;
-/** The mounted Photos device library, for approved agent operations; undefined when Photos is not installed. */
+/** The mounted Photos agent bridge, for approved agent operations; undefined when Photos is not installed. */
 export const deviceLibraryAgent = () => mountedAgent;
+
+/** The main Photos Library (camera-adapter) once it is mounted: select, filter, open, album and share
+ * requests act on the grid the owner sees, and reviews open over it. */
+export type HostOperation = Extract<LibraryAgentOperation, { type: 'photo_library_select' }> | PhotosViewOperation;
+export type MainLibraryHost = {
+  visible(): boolean;
+  /** The host's own album or share review is waiting for the owner. */
+  reviewOpen(): boolean;
+  run(operation: HostOperation, signal: AbortSignal): Promise<LibraryAgentResult | PhotosViewResult>;
+  /** Re-render after the review card opens, changes or closes. */
+  reviewChanged(): void;
+  /** Items moved to Recently deleted by a confirmed review; the host offers Undo. */
+  trashed(ids: string[]): void;
+};
+let mainHost: MainLibraryHost | undefined;
+export function setMainLibraryHost(host: MainLibraryHost | undefined) { mainHost = host; return () => { if (mainHost === host) mainHost = undefined; }; }
 
 /** One instance per Photos module mount. */
 export function createDeviceLibrary(port: PhotoLibraryPort = nativePort, available = deviceLibraryAvailable) {
-  const catalog = new LibraryCatalog(), selection = new LibrarySelection(), revisions = createCaptureRevisions(), modelRevisions = new LibraryRevisions(revisionSession());
-  let scope: LibraryScopeState | undefined, scopeRequested = false, loadRequested = false, busy = false, error = '', status = '', review: LibraryReview | undefined, acting = false, epoch = 0, disposed = false;
-  /** Set when the next visit must start from a fresh first page: Photos was left, or Android access changed. */
-  let reloadOnOpen = false, watching = false;
-  let api: Bag | undefined;
-  const listeners: Promise<PluginListenerHandle>[] = [];
-  const visible = () => !!api && api.isActive?.() !== false && api.get?.('photos')?.album === 'device';
-  const refresh = () => { if (api && !disposed) api.set({ nativeLibraryRevision: Date.now(), nativeLibrarySelection: focused() }); };
-  /** Exactly one selected item becomes the assistant's selected object: identity only. */
-  const focused = () => {
-    if (selection.size !== 1 || !visible()) return null;
-    const [chosen] = selection.items(), item = catalog.items.find(row => row.id === chosen.id);
-    return item ? revisions({ kind: item.kind, id: item.id, revision: item.revision }) : null;
-  };
+  const modelRevisions = new LibraryRevisions(revisionSession());
+  let status = '', review: LibraryReview | undefined, acting = false, epoch = 0, disposed = false;
 
   async function readScope(): Promise<LibraryScopeState | undefined> {
     const token = epoch;
-    if (!available()) { scope = undefined; return undefined; }
-    try { const fresh = parseScope(await port.scope()); if (token !== epoch || disposed) return undefined; scope = fresh; if (catalog.observeScope(scope)) selection.clear(); }
-    catch { if (token !== epoch || disposed) return undefined; error = 'Library access could not be read.'; }
-    return scope;
+    if (!available()) return undefined;
+    try { const fresh = parseScope(await port.scope()); return token !== epoch || disposed ? undefined : fresh; }
+    catch { return undefined; }
   }
 
-  async function load(more = false) {
-    if (busy || disposed || !available()) return;
-    const token = ++epoch; busy = true; error = ''; refresh();
-    try {
-      const current = await readScope();
-      if (token !== epoch) return;
-      if (!current || current.scope === 'denied' || current.locked) { catalog.reset(); selection.clear(); return; }
-      const page = parsePage(await port.page({ before: more ? catalog.next : '', limit: PAGE, thumbnails: true, thumbnailSize: 240 }));
-      if (token !== epoch) return;
-      scope = page.scope; catalog.apply(page, !more); if (!more) reloadOnOpen = false;
-      const dropped = selection.reconcile(catalog);
-      if (dropped.dropped || dropped.changed) status = 'Some selected items changed or left the library and were unselected.';
-    } catch (failure) {
-      if (token !== epoch) return;
-      error = (failure as { code?: string })?.code === 'LIBRARY_DENIED' ? '' : 'The device library could not be loaded. Try again.';
-      if ((failure as { code?: string })?.code === 'LIBRARY_DENIED') { catalog.reset(); selection.clear(); await readScope(); }
-    } finally { if (token === epoch) { busy = false; refresh(); } }
-  }
-
-  /** External edits, deletes, reboots and grant changes: revalidate what is loaded. */
-  async function revalidate() {
-    if (busy || disposed || !available() || !catalog.loaded) return;
-    const token = epoch;
-    try {
-      const before = scope?.scope, current = await readScope();
-      if (token !== epoch) return;
-      if (!current || current.scope !== before || !catalog.loaded) { await load(); return; }
-      if (catalog.version && current.version !== catalog.version) { await load(); return; }
-      let changes: Bag | undefined;
-      if (catalog.generation) changes = await port.changes({ version: catalog.version, generation: catalog.generation });
-      if (token !== epoch) return;
-      if (changes && changes.reset !== true && Array.isArray(changes.items)) {
-        const rows = changes.items.map((row: unknown) => ({ ...parseItem(row), trashed: (row as Bag).trashed === true }));
-        const result = catalog.applyChanges(rows, Number(changes.generation) || 0);
-        // New items belong at the top of a newest-first catalog: start again from a fresh first page.
-        if (result.added) { status = `${result.added} new ${result.added === 1 ? 'item' : 'items'} in the library.`; await load(); return; }
-      }
-      if (changes?.reset === true) { await load(); return; }
-      // Deletions are not reported by generation; revalidate loaded identities directly.
-      for (let offset = 0; offset < catalog.items.length && token === epoch; offset += LIBRARY_LIMITS.validate) {
-        const batch = catalog.validationBatch(offset);
-        if (!batch.length) break;
-        const validation = parseValidation(await port.validate({ items: batch }));
-        if (token !== epoch) return;
-        const result = catalog.reconcile(validation);
-        if (result.removed.length) offset -= result.removed.length;
-      }
-      const dropped = selection.reconcile(catalog);
-      if (dropped.dropped || dropped.changed) status = 'Some selected items changed or left the library and were unselected.';
-      if (review && !reviewCurrent(review, catalog)) { review = undefined; status = 'The reviewed items changed. Review them again.'; }
-    } catch { if (token === epoch) error = 'Library changes could not be checked. Reload the library.'; }
-    finally { refresh(); }
-  }
-
-  async function requestAccess() {
-    if (!scope || acting) return;
-    const presentation = scopePresentation(scope);
-    if (presentation.actionKind === 'settings') {
-      try { await device.openSettings({ page: 'privacy' }); status = 'Change Photos and videos access in Android Settings, then return to Alpha.'; }
-      catch { status = 'Open Android Settings > Apps > Alpha Phone > Permissions to change access.'; }
-      refresh(); return;
+  /** Every reviewed item still exists, untrashed, at the reviewed revision (NoActionOnStaleRev). */
+  async function validCurrent(items: { id: string; revision: string }[]): Promise<boolean> {
+    for (let at = 0; at < items.length; at += LIBRARY_LIMITS.validate) {
+      const batch = items.slice(at, at + LIBRARY_LIMITS.validate), rows = parseValidation(await port.validate({ items: batch }));
+      if (rows.length !== batch.length || rows.some(row => row.status !== 'current')) return false;
     }
-    acting = true; refresh();
-    try { await port.requestAccess(); scope = parseScope(await port.scope()); if (catalog.observeScope(scope)) selection.clear(); }
-    catch { error = 'Android did not open the access dialog.'; }
-    finally { acting = false; }
-    await load();
+    return true;
   }
-
-  function startReview(action: LibraryAction) {
-    if (acting || !selection.size) return;
-    try { review = prepareReview(action, selection.items()); status = ''; }
-    catch (failure) { status = (failure as Error).message; }
-    refresh();
-  }
+  const changed = () => { if (!disposed) mainHost?.reviewChanged(); };
 
   /** Runs only from the owner's in-app confirmation, then Android's own dialog or chooser. */
   async function confirmReview() {
     const pending = review;
     if (!pending || acting) return;
-    if (!reviewCurrent(pending, catalog)) { review = undefined; status = 'The reviewed items changed. Review them again.'; refresh(); return; }
-    acting = true; review = undefined; refresh();
+    let current = false;
+    try { current = await validCurrent(pending.items); } catch { current = false; }
+    if (review !== pending) return;
+    if (!current) { review = undefined; status = 'The reviewed items changed. Review them again.'; changed(); return; }
+    acting = true; review = undefined; changed();
     try {
       if (pending.action === 'share') {
         const result = await port.share({ items: pending.items });
-        status = result.status === 'opened' ? `Android share sheet opened for ${result.count} ${result.count === 1 ? 'item' : 'items'}. Nothing is sent until you pick an app.` : 'Sharing did not open.';
+        status = result.status === 'opened' ? '' : 'Sharing did not open.';
       } else {
         // Native (PermittedMediaReview) resolves only after Android approved: {status:'complete'|'partial',
         // outcomes:[{status:'favorited'|'unfavorited'|'trashed'|'restored'|'unchanged'|'stale'|'unverified'}]}.
         // A cancelled review rejects with LIBRARY_DECLINED and a revision changed before review with LIBRARY_STALE.
         const result = await port.requestChange({ operation: pending.action, items: pending.items });
-        status = describeLibraryChange(result, pending.items.length);
-        selection.clear(); await revalidate();
+        const trashed = (result.outcomes || []).filter(row => row.status === 'trashed').map(row => row.id);
+        // A confirmed trash is reported by the host's Undo toast; anything else gets one line.
+        status = pending.action === 'trash' && trashed.length === pending.items.length ? '' : describeLibraryChange(result, pending.items.length);
+        if (pending.action === 'trash') mainHost?.trashed(trashed);
       }
     } catch (failure) {
       const code = (failure as { code?: string })?.code;
-      if (code === 'LIBRARY_DECLINED') status = 'Android review was cancelled. Nothing changed.';
-      else if (code === 'LIBRARY_STALE') { status = 'An item changed before Android review. Nothing changed; review again.'; try { await revalidate(); } catch { /* status already asks for a new review */ } }
-      else status = 'The action could not be completed. Reload the library before retrying.';
-    } finally { acting = false; refresh(); }
+      if (code === 'LIBRARY_DECLINED') status = 'Nothing changed.';
+      else if (code === 'LIBRARY_STALE') status = 'An item changed. Nothing changed; review again.';
+      else status = 'The action could not be completed.';
+    } finally { acting = false; changed(); }
   }
 
-  /** The native observer runs only while the device library album is visible and readable. */
-  function watch(active: boolean) {
-    if (!available() || watching === active) return;
-    watching = active;
-    void port.watch({ active }).catch(() => { watching = false; });
-  }
-
-  function attach() {
-    if (!available() || listeners.length) return;
-    listeners.push(port.addListener('libraryChanged', () => { if (visible()) void revalidate(); }));
-    listeners.push(port.addListener('scopeChanged', value => {
-      // Retire reads begun under the previous grant before clearing or loading the catalog.
-      epoch++; busy = false;
-      try { scope = parseScope(value); if (catalog.observeScope(scope)) { selection.clear(); review = undefined; status = 'Library access changed in Android.'; } } catch { /* read again on next render */ }
-      // Any change, including a widened grant, needs a fresh first page; a narrowing already cleared the catalog.
-      reloadOnOpen = true;
-      if (visible()) void load(); else refresh();
-    }));
-  }
+  /** The host the agent may act on: Photos is open and showing. */
+  const visibleHost = () => {
+    const host = mainHost;
+    if (!host || disposed || !host.visible()) throw new LibraryAgentRefusal('Open Photos, then ask again.');
+    return host;
+  };
 
   /** Approved agent operations (issue 408). Reads stay local and return identity-only rows with
-   * opaque revisions; select and review act only on the owner-visible device library. */
+   * opaque revisions; select, view requests and reviews act only on the owner-visible Library. */
   const agent: LibraryAgent = {
     async run(operation, signal) {
       if (!available() || disposed) throw new LibraryAgentRefusal('The device library is available only in the Android app.');
@@ -218,75 +142,38 @@ export function createDeviceLibrary(port: PhotoLibraryPort = nativePort, availab
         signal.throwIfAborted();
         return { kind: operation.type, item: modelItem(row, modelRevisions) };
       }
-      // Selection and review act on what the owner sees in Photos > Device library.
-      if (!visible()) throw new LibraryAgentRefusal('Open Photos > Device library to review this action.');
-      if (operation.type === 'photo_library_select') {
-        if (acting || review) throw new LibraryAgentRefusal('Finish the open library review first.');
-        selection.clear();
-        let selected = 0;
-        for (const id of operation.ids) { const item = catalog.items.find(row => row.id === id); if (item) { selection.toggle(item); selected++; } }
-        status = selected ? `The assistant selected ${selected} ${selected === 1 ? 'item' : 'items'}. Nothing was changed or shared.` : '';
-        refresh();
-        return { kind: operation.type, selected, missing: operation.ids.length - selected };
-      }
-      if (acting || review) throw new LibraryAgentRefusal('Finish the open library review first.');
+      const host = visibleHost();
+      // One review at a time over the Library (specs/photos-library: a single pending review).
+      if (acting || review || host.reviewOpen()) throw new LibraryAgentRefusal('Finish the open review first.');
+      if (operation.type === 'photo_library_select') return host.run(operation, signal) as Promise<LibraryAgentResult>;
       const items = operation.items.map(entry => ({ id: entry.id, revision: modelRevisions.native(entry.id, entry.revision) ?? '' }));
       if (items.some(entry => !entry.revision)) throw new LibraryAgentRefusal('An item changed since the assistant read it. Nothing changed; ask again.');
       const prepared = prepareReview(operation.action, items);
-      if (!reviewCurrent(prepared, catalog)) throw new LibraryAgentRefusal('An item changed or is not loaded in Photos > Device library. Nothing changed; reload and ask again.');
-      review = prepared; status = 'The assistant asked for this review. Nothing changes until you confirm here and in Android.';
-      refresh();
-      return { kind: operation.type, status: 'review_opened', action: operation.action, count: items.length };
+      // The review binds the exact revisions the assistant read; the provider confirms they are still current.
+      if (!await validCurrent(prepared.items)) throw new LibraryAgentRefusal('An item changed or left the library. Nothing changed; ask again.');
+      signal.throwIfAborted();
+      review = prepared; status = ''; host.reviewChanged();
+      return { kind: 'photo_library_review', status: 'review_opened', action: operation.action, count: items.length };
+    },
+    async runView(operation, signal) {
+      const host = visibleHost();
+      // The filter is read-only and works on whatever Photos shows, including Alpha's own captures.
+      if (operation.type !== 'photos_filter' && (acting || review)) throw new LibraryAgentRefusal('Finish the open review first.');
+      return host.run(operation, signal) as Promise<PhotosViewResult>;
     },
   };
   mountedAgent = agent;
 
   return {
-    /** The album tile for Photos' album row. */
-    tile(currentApi: Bag) {
-      api = currentApi;
-      if (!available()) return undefined;
-      // One automatic scope read per Photos entry; a failure shows its error instead of retrying every render.
-      if (!scope && !scopeRequested) { scopeRequested = true; queueMicrotask(() => { void readScope().then(refresh); }); }
-      attach();
-      return {
-        name: 'Device library', count: scope ? scopePresentation(scope).label : '…', bg: catalog.items[0]?.image ? background(catalog.items[0]) : 'var(--s2)', tf: '', flt: '',
-        open: () => { currentApi.set({ album: 'device', open: null, nativePhotoSelection: null }); void (catalog.loaded && !reloadOnOpen ? revalidate() : load()); },
-      };
+    /** The agent's open review, shown over the main Library grid. */
+    reviewCard() {
+      if (!review) return undefined;
+      return { title: review.title, detail: review.detail, busy: acting, confirm: () => { void confirmReview(); }, cancel: () => { review = undefined; status = ''; changed(); } };
     },
-    /** The album view data when Photos shows the device library. */
-    album(st: Bag, currentApi: Bag) {
-      api = currentApi;
-      if ((!catalog.loaded || reloadOnOpen) && !loadRequested) { loadRequested = true; queueMicrotask(() => { void load(); }); }
-      watch(!!scope && scope.scope !== 'denied' && !scope.locked);
-      const presentation = scopePresentation(scope);
-      const message = [error, status, presentation.detail, selection.size ? `${selection.size} selected${selection.size === 1 ? ' · the assistant can see this item\'s identity only' : ''}` : ''].filter(Boolean).join(' ');
-      const reviewOpen = !!review;
-      return {
-        title: 'Device library', isTrash: false, notTrash: true, isCustom: false, isDevice: true, count: presentation.label,
-        empty: catalog.loaded && !catalog.items.length && !busy, close: () => { selection.clear(); review = undefined; watch(false); currentApi.set({ album: null, nativeLibrarySelection: null }); },
-        status: busy && !catalog.items.length ? 'Loading…' : message,
-        more: !!catalog.next || !!error || catalog.loaded, moreLabel: error ? 'Retry' : busy ? 'Loading…' : catalog.next ? 'Load more' : 'Reload', loadMore: () => { void load(!error && !!catalog.next); },
-        dev: {
-          accessLabel: presentation.action, hasAccess: presentation.actionKind !== 'none' && !acting, access: () => { void requestAccess(); },
-          canAct: selection.size > 0 && !acting && !reviewOpen, canEdit: selection.size > 0 && !acting && !reviewOpen && !!scope?.canEditOthers,
-          share: () => startReview('share'), favorite: () => startReview('favorite'), trash: () => startReview('trash'),
-          clear: () => { selection.clear(); refresh(); },
-          reviewing: reviewOpen, reviewTitle: review?.title || '', reviewDetail: review?.detail || '',
-          confirm: () => { void confirmReview(); }, cancel: () => { review = undefined; status = 'Review cancelled. Nothing changed.'; refresh(); },
-        },
-        items: catalog.items.map(item => ({
-          nativeMediaId: item.id, bg: background(item), tf: '', flt: '', vid: item.kind === 'video', dur: duration(item.duration), dim: acting ? 'opacity:.35;pointer-events:none' : '',
-          selecting: true, on: selection.has(item.id), selCss: selection.has(item.id) ? 'background:var(--acc);box-shadow:0 0 0 2px #ffffff' : 'background:rgba(0,0,0,.7);box-shadow:inset 0 0 0 2px #ffffff',
-          alt: `${selection.has(item.id) ? 'Unselect' : 'Select'} ${item.kind === 'video' ? 'video' : 'photo'} from ${new Date(item.takenAt).toLocaleDateString()}`,
-          tap: () => { if (acting || review) return; try { selection.toggle(item); status = ''; } catch (failure) { status = (failure as Error).message; } refresh(); },
-          pd: () => {}, pu: () => {},
-        })),
-      };
-    },
-    selected: focused,
+    /** One short line after a confirmed review, for the host's toast. */
+    takeStatus() { const value = status; status = ''; return value; },
     agent,
-    leave() { selection.clear(); review = undefined; status = ''; error = ''; epoch++; busy = false; scopeRequested = false; loadRequested = false; reloadOnOpen = true; watch(false); },
-    dispose() { disposed = true; epoch++; watch(false); if (mountedAgent === agent) mountedAgent = undefined; for (const handle of listeners.splice(0)) void handle.then(value => value.remove()).catch(() => {}); },
+    leave() { review = undefined; status = ''; epoch++; },
+    dispose() { disposed = true; epoch++; if (mountedAgent === agent) mountedAgent = undefined; },
   };
 }

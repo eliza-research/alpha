@@ -95,7 +95,7 @@ test('standalone Home scrolls to the screen edge without a simulated status-bar 
   const composer=page.locator('[data-alpha-layer="composer"] [data-alpha-input-bar]');
   expect(bounds!.y+bounds!.height).toBeCloseTo(usable!.y+usable!.height,1);
   await home.evaluate(node=>{node.scrollTop=node.scrollHeight;});
-  const lastApp=home.getByRole('button',{name:'All apps',exact:true});
+  const lastApp=home.getByRole('button',{name:'Apps',exact:true});
   await expect.poll(async()=>{const dock=await composer.boundingBox(),last=await lastApp.boundingBox();return dock!.y-(last!.y+last!.height);}).toBeGreaterThanOrEqual(6);
   await home.evaluate(node=>{node.scrollTop=0;});
   expect((await home.boundingBox())!.height).toBeGreaterThan(usable!.height-140);
@@ -113,7 +113,8 @@ for(const view of ['Files','Notes','Calendar','Workflows','Inbox','Browser','Pho
 });
 
 for(const theme of ['light','dark'])for(const view of ['Files','Notes'])test(`${view} content edges fade without duplicating or fading its header: ${theme}`,async({page},info)=>{
- await page.setViewportSize({width:360,height:600});await page.goto('/?theme='+theme);
+ // The Files browse list is short (five categories, storage, Trash): a shorter screen makes it scroll.
+ await page.setViewportSize({width:360,height:view==='Files'?440:600});await page.goto('/?theme='+theme);
  if(view==='Notes')await page.evaluate(async()=>{const {openBrowserNotes}=await import('/src/runtime/browser-notes-document.ts');const store=await openBrowserNotes();await store.replace(Array.from({length:12},(_,n)=>({id:`scroll-${n}`,kind:'text',title:`Scroll note ${n}`,body:`Scroll note ${n}\n`+'Readable body\n'.repeat(8)})));});
  if(view==='Notes'){await page.reload();}
  if(view==='Notes')await openLegacyNotes(page);else await page.getByRole('button',{name:view,exact:true}).click();const scroll=page.locator(`[data-alpha-app-scroll="${view.toLowerCase()}"]`),back=page.getByRole('button',{name:view==='Notes'?'Return to Notes':'Back to apps',exact:true}),header=back.locator('xpath=ancestor::*[@data-alpha-app-header][1]');await expect(scroll).toBeVisible();await scroll.evaluate(el=>el.scrollTop=0);await expect.poll(()=>scroll.evaluate(el=>parseFloat(getComputedStyle(el).getPropertyValue('--calendar-scroll-fade-top')))).toBe(0);await page.screenshot({path:info.outputPath('content-start.png'),animations:'disabled'});
@@ -125,7 +126,7 @@ test('standalone Calendar draft keeps its own Back and Save row; launcher header
 });
 
 for(const viewport of [{width:412,height:915},{width:1440,height:500}])test(`Files compact row remains aligned at ${viewport.width}x${viewport.height}`,async({page},info)=>{
- await page.setViewportSize(viewport);await page.goto('/');await page.getByRole('button',{name:'Files',exact:true}).click();const back=page.getByRole('button',{name:'Back to apps',exact:true}),title=page.getByRole('heading',{name:'Files',exact:true}),search=page.getByRole('button',{name:'Search files',exact:true});await back.click({trial:true});const a=(await back.boundingBox())!,b=(await title.boundingBox())!,c=(await search.boundingBox())!;expect(Math.abs(a.y+a.height/2-b.y-b.height/2)).toBeLessThanOrEqual(1);expect(Math.abs(a.y+a.height/2-c.y-c.height/2)).toBeLessThanOrEqual(1);if(viewport.width<=600)expect(c.height).toBeGreaterThanOrEqual(44);else expect(await search.evaluate(el=>getComputedStyle(el).height)).toBe('52px');expect(await title.evaluate(el=>getComputedStyle(el).fontSize)).toBe('20px');await page.screenshot({path:info.outputPath('files-compact-row.png'),animations:'disabled'});
+ await page.setViewportSize(viewport);await page.goto('/');await page.getByRole('button',{name:'Files',exact:true}).click();const back=page.getByRole('button',{name:'Back to apps',exact:true}),title=page.getByRole('heading',{name:'Files',exact:true});await back.click({trial:true});const a=(await back.boundingBox())!,b=(await title.boundingBox())!;expect(Math.abs(a.y+a.height/2-b.y-b.height/2)).toBeLessThanOrEqual(1);if(viewport.width<=600)expect(a.height).toBeGreaterThanOrEqual(44);await expect(page.getByRole('button',{name:'Search files',exact:true})).toHaveCount(0);expect(await title.evaluate(el=>getComputedStyle(el).fontSize)).toBe('20px');await page.screenshot({path:info.outputPath('files-compact-row.png'),animations:'disabled'});
 });
 
 test('a non-overflowing Files list has no edge fade',async({page})=>{

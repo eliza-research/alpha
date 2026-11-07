@@ -72,7 +72,7 @@ test('text printed over text, stacked or cut controls and labels split mid-word 
       <span style="display:block;font-size:14px;line-height:1.1">Room 4</span>
     </div>
     <button style="position:absolute;left:0;top:140px;width:130px;padding:0;border:0;font-size:24px;overflow-wrap:anywhere">Calendar</button>
-    <button style="position:absolute;left:140px;top:140px;width:60px;padding:0;border:0;font-size:16px">All apps</button>
+    <button style="position:absolute;left:140px;top:140px;width:60px;padding:0;border:0;font-size:16px">Apps</button>
     <button style="position:absolute;left:210px;top:140px;width:90px;padding:0;border:0;font-size:14px;overflow-wrap:anywhere">https://a-very-long-host.example/path</button>
     <button style="position:absolute;left:220px;top:0;width:80px;height:44px">Left</button>
     <button style="position:absolute;left:300px;top:0;width:80px;height:44px">Right</button>

@@ -1,5 +1,5 @@
 import {test,expect} from '@playwright/test';
-import {cloudNotesVoiceFixture,notesRecorder,openNotesRecorder,recordClosedClip,noPhysicalOrLocalVoice} from './cloud-notes-voice-fixture';
+import {cloudNotesVoiceFixture,notesRecorder,openNotesRecorder,recordAndFinish,savedVoiceNotes,noPhysicalOrLocalVoice} from './cloud-notes-voice-fixture';
 // Default Notes UI is Cloud-only. The browser has no speech engine of its own: local speech
 // runs on the local agent (native libelizainference), and without one it is unavailable.
 
@@ -51,66 +51,47 @@ test('with a local agent, transcription sends a 16 kHz mono WAV to the agent and
  expect(result.transcript).toEqual({text:'Agent transcript',local:true,execution:'browser',route:'local-agent',language:'en'});
  expect(result.requests).toEqual([{},{bytes:44+16000*2,rate:16000,channels:1,riff:'RIFF'}]);
 });
-test('unsigned Notes voice offers Cloud sign-in before any capture or local preparation',async({page})=>{
- const f=await cloudNotesVoiceFixture(page,false);await openNotesRecorder(page);await expect(notesRecorder(page).getByRole('button',{name:'Connect Eliza Cloud',exact:true})).toBeEnabled();await expect(page.getByRole('button',{name:/Start recording|Record without transcription|Use browser voice|Use development voice/})).toHaveCount(0);await noPhysicalOrLocalVoice(page);expect(f.foreign).toEqual([]);
+test('unsigned Notes voice records, asks for sign-in once and saves the audio without uploading',async({page})=>{
+ const f=await cloudNotesVoiceFixture(page,false);await openNotesRecorder(page);const panel=notesRecorder(page);
+ await expect(panel).toHaveAttribute('data-recorder-state','recording');
+ await expect(panel.getByRole('alert')).toHaveText('Sign in to transcribe. The audio is kept.');
+ await panel.getByRole('button',{name:'Done',exact:true}).click();await expect(page.getByRole('button',{name:'Play recording',exact:true})).toBeVisible();
+ const [saved]=await savedVoiceNotes(page);expect(saved.body).toBe('');expect(saved.transcription).toEqual({route:'manual'});
+ expect(await page.evaluate(()=>(window as any).cloudNotesVoice.uploads)).toBe(0);await noPhysicalOrLocalVoice(page);expect(f.foreign).toEqual([]);
 });
-test('Cloud Notes transcript stays reviewable and saves edited text with Cloud provenance',async({page})=>{
- const f=await cloudNotesVoiceFixture(page);await openNotesRecorder(page);await recordClosedClip(page);expect(await page.evaluate(()=>(window as any).cloudNotesVoice.uploads)).toBe(0);await notesRecorder(page).getByRole('button',{name:'Transcribe with Eliza Cloud',exact:true}).click();const review=notesRecorder(page).getByRole('textbox',{name:'Review transcript',exact:true});await expect(review).toHaveValue('Closed Cloud transcript');await review.fill('Reviewed Cloud transcript.');await notesRecorder(page).getByRole('button',{name:'Save note',exact:true}).click();await expect(page.getByRole('button',{name:'Play recording',exact:true})).toBeVisible();
- const saved=await page.evaluate(async()=>JSON.parse((await(await import('/src/runtime/browser-notes-document.ts')).readBrowserNotesRaw())!).records.find((n:any)=>n.kind==='voice'));expect(saved.body).toBe('Reviewed Cloud transcript.');expect(saved.transcription).toMatchObject({route:'eliza-cloud',edited:true});await noPhysicalOrLocalVoice(page);expect(f.foreign).toEqual([]);
+test('Cloud Notes recording is transcribed by segment and saved as one voice note with Cloud provenance',async({page})=>{
+ const f=await cloudNotesVoiceFixture(page);await openNotesRecorder(page);const panel=notesRecorder(page);
+ // No instructions, privacy narration or duration limit: a timer, levels and three controls.
+ await expect(panel.getByRole('timer')).toHaveText('0:01');await expect(panel.getByRole('alert')).toHaveCount(0);
+ for(const name of ['Discard recording','Discard','Pause','Done'])await expect(panel.getByRole('button',{name,exact:true})).toBeVisible();
+ await recordAndFinish(page);await expect(page.getByRole('button',{name:'Play recording',exact:true})).toBeVisible();
+ const [saved]=await savedVoiceNotes(page);expect(saved.body).toBe('Closed Cloud transcript');expect(saved.audio.audioId).toBe(await page.evaluate(()=>(window as any).cloudNotesVoice.clip));expect(saved.transcription).toEqual({route:'eliza-cloud'});
+ expect(await page.evaluate(()=>{const f=(window as any).cloudNotesVoice;return {uploads:f.uploads,same:f.requests[0].recordingId===f.clip};})).toEqual({uploads:1,same:true});await noPhysicalOrLocalVoice(page);expect(f.foreign).toEqual([]);
 });
-test('empty Cloud transcript says no speech was heard, retains the recording and offers no typing fallback',async({page})=>{
- await cloudNotesVoiceFixture(page);await page.evaluate(()=>(window as any).cloudNotesVoice.empty=true);await openNotesRecorder(page);await recordClosedClip(page);await notesRecorder(page).getByRole('button',{name:'Transcribe with Eliza Cloud',exact:true}).click();
- // Silence is not a microphone, account or connection failure, and the wording names only controls that are rendered.
- await expect(notesRecorder(page)).toContainText('Eliza Cloud heard no speech in this recording. Your recording is kept. Choose Transcribe with Eliza Cloud to try again, or Record again.');
- await expect(notesRecorder(page)).not.toContainText(/microphone access|connection|type the transcript/i);
- await expect(notesRecorder(page).getByRole('button',{name:'Transcribe with Eliza Cloud',exact:true})).toBeEnabled();await expect(notesRecorder(page).getByRole('button',{name:'Record again',exact:true})).toBeVisible();
- await expect(notesRecorder(page).getByRole('textbox',{name:'Review transcript'})).toHaveCount(0);await expect(page.getByRole('button',{name:'Type transcript instead',exact:true})).toHaveCount(0);
- // The kept clip is the one an explicit retry uploads again.
- await page.evaluate(()=>(window as any).cloudNotesVoice.empty=false);await notesRecorder(page).getByRole('button',{name:'Transcribe with Eliza Cloud',exact:true}).click();await expect(notesRecorder(page).getByRole('textbox',{name:'Review transcript',exact:true})).toHaveValue('Closed Cloud transcript');
- expect(await page.evaluate(()=>{const f=(window as any).cloudNotesVoice;return {uploads:f.uploads,same:f.requests[0].recordingId===f.requests[1].recordingId&&f.requests[0].recordingId===f.clip};})).toEqual({uploads:2,same:true});await noPhysicalOrLocalVoice(page);
+test('a silent Cloud segment saves the recording with an empty transcript and no error',async({page})=>{
+ await cloudNotesVoiceFixture(page);await page.evaluate(()=>(window as any).cloudNotesVoice.empty=true);await openNotesRecorder(page);await recordAndFinish(page);
+ await expect(page.getByRole('button',{name:'Play recording',exact:true})).toBeVisible();const [saved]=await savedVoiceNotes(page);expect(saved.body).toBe('');await noPhysicalOrLocalVoice(page);
 });
-test('microphone denial is visible without a transcription or provider fallback',async({page})=>{
- await cloudNotesVoiceFixture(page);await page.evaluate(()=>(window as any).cloudNotesVoice.denied=true);await openNotesRecorder(page);await notesRecorder(page).getByRole('button',{name:'Start recording',exact:true}).click();await expect(notesRecorder(page)).toContainText(/microphone/i);expect(await page.evaluate(()=>(window as any).cloudNotesVoice.uploads)).toBe(0);await noPhysicalOrLocalVoice(page);
+test('microphone denial keeps the recorder open with one line and no transcription or provider fallback',async({page})=>{
+ await cloudNotesVoiceFixture(page);await page.evaluate(()=>(window as any).cloudNotesVoice.denied=true);await openNotesRecorder(page);const panel=notesRecorder(page);
+ await expect(panel).toHaveAttribute('data-recorder-state','failed');await expect(panel.getByRole('alert')).toHaveText('Allow the microphone in Settings.');await expect(panel.getByRole('button',{name:'Done',exact:true})).toBeDisabled();
+ await page.evaluate(()=>(window as any).cloudNotesVoice.denied=false);await panel.getByRole('button',{name:'Record',exact:true}).click();await expect(panel).toHaveAttribute('data-recorder-state','recording');
+ expect(await page.evaluate(()=>(window as any).cloudNotesVoice.uploads)).toBe(0);await noPhysicalOrLocalVoice(page);
 });
-test('Cloud billing refusal retains the clip and an explicit retry uses the same Cloud route',async({page})=>{
- await cloudNotesVoiceFixture(page);await page.evaluate(()=>(window as any).cloudNotesVoice.billing=true);await openNotesRecorder(page);await recordClosedClip(page);await notesRecorder(page).getByRole('button',{name:'Transcribe with Eliza Cloud',exact:true}).click();await expect(notesRecorder(page)).toContainText('Cloud declined cloud voice for your account\'s billing');await expect(page.getByRole('button',{name:/Type transcript instead|Use browser voice|Use development voice/})).toHaveCount(0);await page.evaluate(()=>(window as any).cloudNotesVoice.billing=false);await notesRecorder(page).getByRole('button',{name:'Transcribe with Eliza Cloud',exact:true}).click();await expect(notesRecorder(page).getByRole('textbox',{name:'Review transcript',exact:true})).toHaveValue('Closed Cloud transcript');expect(await page.evaluate(()=>(window as any).cloudNotesVoice.uploads)).toBe(2);await noPhysicalOrLocalVoice(page);
+for(const code of ['voice-http-402','voice-stt-decode','voice-stt-connect','voice-stt-upload','voice-stt-response','voice-http-429'] as const)test(`${code} keeps the audio with one line, and Done retries the same segment`,async({page})=>{
+ const f=await cloudNotesVoiceFixture(page);await page.evaluate(code=>(window as any).cloudNotesVoice.failureCode=code,code);await openNotesRecorder(page);const panel=notesRecorder(page);
+ await panel.getByRole('button',{name:'Done',exact:true}).click();
+ // Done saves the audio with the transcript up to the failed segment; nothing private is shown.
+ await expect(page.getByRole('button',{name:'Play recording',exact:true})).toBeVisible();await expect(page.getByText('PRIVATE_TRANSCRIPTION_SENTINEL')).toHaveCount(0);
+ const [saved]=await savedVoiceNotes(page);expect(saved.body).toBe('');expect(await page.evaluate(()=>(window as any).cloudNotesVoice.uploads)).toBe(1);await noPhysicalOrLocalVoice(page);expect(f.foreign).toEqual([]);
 });
-for(const [code,message] of [
- ['voice-stt-decode','This recording could not be prepared for transcription. Choose Record again.'],
- ['voice-stt-connect','Cloud voice could not use your saved account. Sign in again in Settings. Your recording is kept.'],
- ['voice-stt-upload','The recording upload could not be confirmed. Your recording is kept. Check your connection before trying again.'],
- ['voice-stt-response','Cloud voice returned no usable transcript. Your recording is kept. Try again later.'],
- ['voice-http-400','Cloud voice could not complete this request (400). Try again later.'],
- ['voice-http-429',"Eliza Cloud voice reached your plan's request limit. Wait a moment, then try again. Your recording is kept."],
- ['voice-http-503','Cloud voice could not complete this request (503). Try again later.'],
-] as const)test(`${code} retains the recording and allows only an explicit retry`,async({page})=>{
- const f=await cloudNotesVoiceFixture(page);await page.evaluate(code=>(window as any).cloudNotesVoice.failureCode=code,code);await openNotesRecorder(page);await recordClosedClip(page);
- await notesRecorder(page).getByRole('button',{name:'Transcribe with Eliza Cloud',exact:true}).click();await expect(notesRecorder(page)).toContainText(message);await expect(notesRecorder(page)).not.toContainText('PRIVATE_TRANSCRIPTION_SENTINEL');
- await expect(notesRecorder(page).getByRole('button',{name:'Transcribe with Eliza Cloud',exact:true})).toBeEnabled();await expect(notesRecorder(page).getByRole('button',{name:'Record again',exact:true})).toBeVisible();expect(await page.evaluate(()=>(window as any).cloudNotesVoice.uploads)).toBe(1);
- await page.evaluate(()=>(window as any).cloudNotesVoice.failureCode=null);await notesRecorder(page).getByRole('button',{name:'Transcribe with Eliza Cloud',exact:true}).click();await expect(notesRecorder(page).getByRole('textbox',{name:'Review transcript',exact:true})).toHaveValue('Closed Cloud transcript');
- expect(await page.evaluate(()=>{const f=(window as any).cloudNotesVoice;return {uploads:f.uploads,same:f.requests[0].recordingId===f.requests[1].recordingId&&f.requests[0].recordingId===f.clip};})).toEqual({uploads:2,same:true});await noPhysicalOrLocalVoice(page);expect(f.foreign).toEqual([]);
-});
-
-test('a Cloud speech 429 keeps the clip, shows the retry time and records the account limit',async({page})=>{
- const f=await cloudNotesVoiceFixture(page);
- await page.evaluate(async()=>{const v=(window as any).cloudNotesVoice;v.failureCode='voice-http-429';v.failureData={retryAfterSeconds:42,limitCode:'rate_limited',message:'PRIVATE_PROVIDER_BODY_SENTINEL'};v.limits=[];
-  const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');c.noteCloudServiceLimit=(limit:any,sessionId:any)=>{v.limits.push({kind:limit?.kind,retryAfterMs:limit?.retryAfterMs,sessionId});return true;};});
- await openNotesRecorder(page);await recordClosedClip(page);
- await notesRecorder(page).getByRole('button',{name:'Transcribe with Eliza Cloud',exact:true}).click();
- await expect(notesRecorder(page)).toContainText("Eliza Cloud voice reached your plan's request limit. Try again in about 42 seconds. Your recording is kept.");
- await expect(notesRecorder(page)).not.toContainText('PRIVATE_PROVIDER_BODY_SENTINEL');await expect(notesRecorder(page)).not.toContainText('PRIVATE_TRANSCRIPTION_SENTINEL');
- await expect(notesRecorder(page).getByRole('button',{name:'Transcribe with Eliza Cloud',exact:true})).toBeEnabled();
- expect(await page.evaluate(()=>(window as any).cloudNotesVoice.limits)).toEqual([{kind:'rate-limited',retryAfterMs:42_000,sessionId:'fixture-account-a'}]);
- // The kept clip is the one an explicit retry uploads.
- await page.evaluate(()=>{const v=(window as any).cloudNotesVoice;v.failureCode=null;v.failureData=null;});await notesRecorder(page).getByRole('button',{name:'Transcribe with Eliza Cloud',exact:true}).click();
- await expect(notesRecorder(page).getByRole('textbox',{name:'Review transcript',exact:true})).toHaveValue('Closed Cloud transcript');
- expect(await page.evaluate(()=>{const v=(window as any).cloudNotesVoice;return {uploads:v.uploads,same:v.requests[0].recordingId===v.requests[1].recordingId&&v.requests[0].recordingId===v.clip};})).toEqual({uploads:2,same:true});
- await noPhysicalOrLocalVoice(page);expect(f.foreign).toEqual([]);
-});
-
-for(const exit of ['cancel','background','account'] as const)test(`${exit} during Cloud transcription retires late words without saving`,async({page})=>{
- await cloudNotesVoiceFixture(page);await page.evaluate(()=>(window as any).cloudNotesVoice.hold=true);await openNotesRecorder(page);await recordClosedClip(page);await notesRecorder(page).getByRole('button',{name:'Transcribe with Eliza Cloud',exact:true}).click();await expect.poll(()=>page.evaluate(()=>typeof(window as any).cloudNotesVoice.release)).toBe('function');
- if(exit==='cancel')await notesRecorder(page).getByRole('button',{name:'Cancel transcription',exact:true}).click();
- else await page.evaluate(async exit=>{if(exit==='background'){Object.defineProperty(document,'hidden',{configurable:true,get:()=>true});document.dispatchEvent(new Event('visibilitychange'));}else{(window as any).cloudNotesVoice.owner='b';(await import('/src/runtime/connection-ui.tsx')).connectionController.close();}},exit);
- await page.evaluate(()=>(window as any).cloudNotesVoice.release());await expect(notesRecorder(page).getByRole('textbox',{name:'Review transcript',exact:true})).toHaveCount(0);expect(await page.evaluate(async()=>JSON.parse((await(await import('/src/runtime/browser-notes-document.ts')).readBrowserNotesRaw())||'{"records":[]}').records.length)).toBe(0);await noPhysicalOrLocalVoice(page);
+for(const exit of ['discard','account'] as const)test(`${exit} during Cloud transcription retires late words without saving`,async({page})=>{
+ await cloudNotesVoiceFixture(page);await page.evaluate(()=>(window as any).cloudNotesVoice.hold=true);await openNotesRecorder(page);const panel=notesRecorder(page);
+ await panel.getByRole('button',{name:'Done',exact:true}).click();await expect.poll(()=>page.evaluate(()=>typeof(window as any).cloudNotesVoice.release)).toBe('function');
+ if(exit==='discard'){await panel.getByRole('button',{name:'Discard recording',exact:true}).click();await panel.getByRole('group',{name:'Discard this recording?'}).getByRole('button',{name:'Discard',exact:true}).click();}
+ else await page.evaluate(async()=>{(window as any).cloudNotesVoice.owner='b';(await import('/src/runtime/connection-ui.tsx')).connectionController.close();});
+ await page.evaluate(()=>(window as any).cloudNotesVoice.release());await page.waitForTimeout(300);
+ if(exit==='discard'){await expect(panel).toHaveCount(0);expect(await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');return (await registerPlugin<any>('AlphaVoiceCloud').noteRecordingStatus()).state;})).toBe('idle');}
+ // Late words from a discarded or changed route never reach a note.
+ expect((await savedVoiceNotes(page)).filter((n:any)=>n.body.includes('Closed Cloud transcript'))).toEqual([]);if(exit==='discard')expect(await savedVoiceNotes(page)).toEqual([]);await noPhysicalOrLocalVoice(page);
 });

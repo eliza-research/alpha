@@ -17,7 +17,7 @@ const EMPTY: Record<View, RegExp> = {
   Maps: /Add a location/,
   // Agent Notes waiting for a connection (canonical-notes-ui.ts), as in production-surface.spec.ts.
   Notes: /Notes is unavailable for this agent connection\. Check Settings › Agent connection\./,
-  Files: /App files/,
+  Files: /Internal storage|Storage is unavailable/,
   Workflows: /Connect your remote agent in Settings\. Reminders on this phone stay available/,
   Settings: /Not signed in/,
   Reminders: /Connect to view Agent Calendar\./,
@@ -41,9 +41,9 @@ async function open(page: Page, view: View, theme: 'light' | 'dark'): Promise<Lo
   // opened by a pull on launcher's empty Home (docs/gesture-zones.md); the standalone app has none.
   const launcher = view === 'Notifications' ? (theme === 'dark' ? '&shell=launcher' : '?shell=launcher') : '';
   await page.goto((theme === 'dark' ? '/?theme=dark' : '/') + launcher);
-  // Home shortcuts cannot be restored when storage is blocked. All apps must
+  // Home shortcuts cannot be restored when storage is blocked. Apps must
   // remain usable in that state, so exercise its actual built-in navigation.
-  await page.getByRole('button', { name: 'All apps', exact: true }).waitFor({ state: 'visible' });
+  await page.getByRole('button', { name: 'Apps', exact: true }).waitFor({ state: 'visible' });
   if (view === 'Notifications') {
     const box=(await page.locator('[data-screen]').boundingBox())!,scale=box.width/412;await page.mouse.move(box.x+206*scale,box.y+420*scale);await page.mouse.down();await page.mouse.move(box.x+206*scale,box.y+660*scale,{steps:10});await page.mouse.up();
     const shade = page.locator('[data-alpha-layer="shade"]');
@@ -53,7 +53,7 @@ async function open(page: Page, view: View, theme: 'light' | 'dark'): Promise<Lo
   const target=view === 'Reminders' ? 'Calendar' : view;
   const shortcut=page.getByRole('button',{name:target,exact:true});
   if(await shortcut.isVisible())await shortcut.click();
-  else{await page.getByRole('button',{name:'All apps',exact:true}).click();await page.getByRole('dialog',{name:'All apps',exact:true}).getByRole('button',{name:`Open ${target}`,exact:true}).click();}
+  else{await page.getByRole('button',{name:'Apps',exact:true}).click();await page.getByRole('dialog',{name:'Apps',exact:true}).getByRole('button',{name:`Open ${target}`,exact:true}).click();}
   await expect(page.locator('html')).toHaveAttribute('data-active-view', view === 'Reminders' ? 'calendar' : view.toLowerCase());
   const app = page.locator('[data-alpha-layer="app"]');
   await expect(app).toHaveAttribute('aria-hidden', 'false');

@@ -109,7 +109,7 @@ async function android(page: Page, options: { clock?: 'opened' | 'unavailable' |
         { name: 'AlphaConnection', methods: promise(['secureRead', 'secureWrite', 'secureRemove', 'secureCompareExchange', 'request', 'cancel', 'openExternal']) },
         { name: 'AlphaActionJournal', methods: promise(['list', 'get']) },
         { name: 'AlphaNotifications', methods: promise(['status', 'crossAppStatus']) },
-        { name: 'AlphaVoiceCloud', methods: options.voice || options.signedOut ? withListeners(['checkPermissions', 'startRecording', 'stopRecording', 'getRecordingMetrics', 'cancelRecording', 'transcribeRecording', 'localSpeechStatus', 'transcribeLocalRecording', 'saveRecording', 'cancel', 'synthesize', 'play', 'stopPlayback']) : promise(['checkPermissions']) },
+        { name: 'AlphaVoiceCloud', methods: options.voice || options.signedOut ? withListeners(['checkPermissions', 'startRecording', 'stopRecording', 'getRecordingMetrics', 'cancelRecording', 'transcribeRecording', 'localSpeechStatus', 'transcribeLocalRecording', 'saveRecording', 'cancel', 'synthesize', 'play', 'stopPlayback', 'startNoteRecording', 'noteRecordingStatus', 'pauseNoteRecording', 'resumeNoteRecording', 'stopNoteRecording', 'discardNoteRecording', 'setNoteSegmentText', 'saveNoteRecording']) : promise(['checkPermissions']) },
         ...(options.voice ? [{ name: 'AlphaNoteAudio', methods: promise(['play', 'stop', 'state', 'describe']) },
           { name: 'AlphaCalendar', methods: withListeners(['list', 'requestAccess', 'pendingCreations', 'listAlerts', 'save', 'acknowledgeCreation']) }] : []),
         { name: 'AlphaBrowser', methods: withListeners(['create', 'navigate', 'present', 'close', 'command', 'bookmarks', 'setBookmark', 'browsingState', 'saveBrowsingState', 'cancelReading', 'reviewQuestion']) },
@@ -132,6 +132,16 @@ async function android(page: Page, options: { clock?: 'opened' | 'unavailable' |
           if (method === 'transcribeLocalRecording') { v.transcriptions.push(structuredClone(input)); return { text: options.voice, local: true, execution: 'device', provider: 'fused-paradee-asr' }; }
           if (method === 'saveRecording') { const audio = { audioId: input.recordingId, noteId: input.noteId, durationMs: 3000, transcript: input.transcript }; v.saved.push(audio); return audio; }
           if (['cancelRecording', 'cancel', 'stopPlayback'].includes(method)) return {};
+          // The native Notes recorder (AlphaNoteRecorder): one finished segment, then stopped.
+          const rid = '00000000-0000-4000-8000-000000000001';
+          if (method === 'noteRecordingStatus') return structuredClone(v.note ?? { state: 'idle' });
+          if (method === 'startNoteRecording') { v.starts++; v.note = { state: 'recording', recordingId: rid, binding: {ownerDigest:input.ownerDigest,folderId:input.folderId}, durationMs: 3000, peak: 0.4, segments: [{ segmentId: rid + '-s0', durationMs: 3000 }] }; return structuredClone(v.note); }
+          if (method === 'pauseNoteRecording') { v.note.state = 'paused'; return structuredClone(v.note); }
+          if (method === 'resumeNoteRecording') { v.note.state = 'recording'; return structuredClone(v.note); }
+          if (method === 'stopNoteRecording') { v.stops++; v.note.state = 'stopped'; v.note.stopReason = 'user'; return structuredClone(v.note); }
+          if (method === 'setNoteSegmentText') { v.note.segments[0].text = input.text; return {}; }
+          if (method === 'discardNoteRecording') { v.note = undefined; return { state: 'idle' }; }
+          if (method === 'saveNoteRecording') { const audio = { audioId: input.recordingId, noteId: input.noteId, durationMs: 3000, transcript: input.transcript }; v.saved.push(audio); return audio; }
         }
         if (plugin === 'AlphaNoteAudio') {
           if (method === 'describe') return f.voice.saved.find((audio: any) => audio.audioId === input.audioId) ?? { audioId: input.audioId, noteId: '', durationMs: 3000, transcript: '' };
@@ -555,8 +565,8 @@ test('loop J01 in the web build: a scanned event remains in review without an au
   await button(page, 'Camera').click();
   const video = page.locator('[aria-label^="Viewfinder."] video');
   await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.readyState), { timeout: 60_000 }).toBeGreaterThanOrEqual(2);
-  await button(page, 'Scan mode').click();
-  await button(page, 'Scan text').click();
+  // Scanning is not a camera mode: asking Alpha to scan opens review on one frame.
+  await page.getByRole('button',{name:'Type',exact:true}).click();{const input=page.locator('[data-alpha-layer="composer"][aria-hidden="false"], [data-alpha-layer="conversation"][aria-hidden="false"]').getByRole('textbox').first();await input.fill('Scan this');await input.press('Enter');}
   const dialog = page.getByRole('dialog', { name: 'Review scanned text' }), text = dialog.getByRole('textbox', { name: 'Scanned text' });
   await expect(text).toBeEnabled({ timeout: 120_000 });
   await expect(text).toHaveValue(/October 10, 2026/);
@@ -586,11 +596,16 @@ test('loop J03 in the web build: a chosen document can be reviewed for a questio
   test.setTimeout(120_000);
   const foreign = await fenceNetwork(page);
   await page.addInitScript(offline);
+  // A document already saved in the browser's file library (as a saved attachment would be).
+  await page.addInitScript(() => {
+    const open = indexedDB.open('alpha.browser.files.v1', 2);
+    open.onupgradeneeded = () => { if (!open.result.objectStoreNames.contains('entries')) open.result.createObjectStore('entries', { keyPath: 'id' }); if (!open.result.objectStoreNames.contains('workflowReceipts')) open.result.createObjectStore('workflowReceipts', { keyPath: 'id' }); };
+    open.onsuccess = () => { const bytes = new TextEncoder().encode('Public fact: twelve raised beds.').buffer; open.result.transaction('entries', 'readwrite').objectStore('entries').put({ id: '0b6f8f2e-4a8e-4c11-9d1e-5f4b1d2a7c30', parentId: 'root', name: 'garden-report.txt', mimeType: 'text/plain', directory: false, size: bytes.byteLength, revision: 'a'.repeat(64), bytes }); open.result.close(); };
+  });
   await page.goto('/');
   await button(page, 'Files').click();
-  const chooser = page.waitForEvent('filechooser');
   await button(page, 'Documents').click();
-  await (await chooser).setFiles({ name: 'garden-report.txt', mimeType: 'text/plain', buffer: Buffer.from('Public fact: twelve raised beds.') });
+  await button(page, 'Open garden-report.txt').click();
   await button(page, 'Ask Alpha').click();
   const question = page.getByRole('dialog', { name: 'Ask about selected content' });
   await expect(question.getByRole('textbox', { name: 'Content excerpt' })).toHaveValue('Public fact: twelve raised beds.');
@@ -816,21 +831,16 @@ test('loop B / J02 on Android: a recorded note, a resident summary and reviewed 
   await residentHome(page);
   const writes = () => native(page, f => ({ reminders: f.writes.reminders.length, events: f.writes.events.length }));
 
-  // 1. Record with the native recorder, transcribe on the phone (on-device voice host), review and save the note.
+  // 1. Record with the native recorder, transcribed on the phone (on-device voice host); Done saves the note.
   await openAndroidCalendar(page);
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
   await openRetainedNativeNotes(page);
   await button(page, 'Record and transcribe').click();
-  await button(page, 'Start recording').click();
-  await expect(button(page, 'Stop recording')).toBeVisible();
-  await button(page, 'Stop recording').click();
-  await button(page, 'Transcribe on this phone').click();
-  await expect(page.getByRole('textbox', { name: 'Review transcript', exact: true })).toHaveValue(TRANSCRIPT);
-  // One on-device transcription of this recording, no Cloud upload; nothing is saved before Save note.
-  expect(await native(page, f => f.voice.transcriptions.map((row: any) => row.recordingId))).toEqual(['recording-1']);
+  // The recorder starts at once; its finished segment is transcribed on the phone while it records.
+  await expect.poll(() => native(page, f => f.voice.transcriptions.map((row: any) => row.recordingId))).toEqual(['00000000-0000-4000-8000-000000000001-s0']);
   expect(await native(page, f => f.calls.filter((call: string) => call === 'AlphaVoiceCloud.transcribeRecording'))).toEqual([]);
   expect(await savedNotes(page)).toEqual([]);
-  await button(page, 'Save note').click();
+  await button(page, 'Done').click();
   await expect(button(page, 'Play recording')).toBeVisible();
   await page.getByRole('textbox', { name: 'Title', exact: true }).fill('Venue meeting');
   await expect.poll(async () => (await savedNotes(page)).filter(n => n.kind === 'voice' && n.title === 'Venue meeting' && n.body === TRANSCRIPT && !!n.audio?.audioId).length).toBe(1);

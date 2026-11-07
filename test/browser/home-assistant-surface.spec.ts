@@ -10,9 +10,9 @@ test('the assistant surface shows chat and Close only: no app grid, digests or s
   const close = page.getByRole('button', { name: 'Close assistant', exact: true });
   await expect(close).toBeVisible();
   await expect(page.getByRole('button', { name: 'Minimize chat', exact: true })).toHaveCount(0);
-  // Home's app grid and All apps drawer are not part of the assistant surface.
+  // Home's app grid and Apps drawer are not part of the assistant surface.
   await expect(page.locator('[data-alpha-layer="home"]')).toBeHidden();
-  await expect(page.getByRole('button', { name: 'All apps', exact: true })).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Apps', exact: true })).toBeHidden();
   await expect(page.getByRole('button', { name: 'Settings', exact: true })).toBeHidden();
   await expect(page.locator('.alpha-startup-permissions')).toHaveCount(0);
   await expect(page.getByRole('dialog', { name: /scheduled digests/i })).toHaveCount(0);
@@ -23,6 +23,6 @@ test('the assistant surface shows chat and Close only: no app grid, digests or s
 test('without the assistant entry Home keeps its app grid and minimize control', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('html')).not.toHaveClass(/alpha-assistant-surface/);
-  await expect(page.getByRole('button', { name: 'All apps', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Apps', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Close assistant', exact: true })).toHaveCount(0);
 });

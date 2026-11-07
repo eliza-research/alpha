@@ -18,7 +18,7 @@ test('browser camera persists a real encoded frame, releases capture and restore
  await page.evaluate(()=>{(window as any).cameraTracks=(document.querySelector('[aria-label^="Viewfinder."] video') as HTMLVideoElement).srcObject;});
  await page.evaluate(()=>{const add=IDBObjectStore.prototype.add;(window as any).restorePhotoWrites=()=>{IDBObjectStore.prototype.add=add;};IDBObjectStore.prototype.add=function(value,key){if(this.name==='photos')throw new DOMException('Synthetic full storage','QuotaExceededError');return add.call(this,value,key);};});
  await page.getByRole('button',{name:'Take photo',exact:true}).click();
- await expect(page.getByText('Photo could not be saved. No successful capture was confirmed.',{exact:true})).toBeVisible();
+ await expect(page.getByText('Photo not saved. Try again.',{exact:true})).toBeVisible();
  expect(await page.evaluate(async()=>{const {browserPhotoLibrary}=await import('/src/prototype/browser-camera.ts');return (await browserPhotoLibrary.list()).items.length;})).toBe(0);
  await page.evaluate(()=>(window as any).restorePhotoWrites());
  await page.getByRole('button',{name:'Take photo',exact:true}).click();
@@ -27,8 +27,8 @@ test('browser camera persists a real encoded frame, releases capture and restore
  await page.evaluate(()=>window.dispatchEvent(new Event('alpha-back',{cancelable:true})));
  await expect.poll(()=>page.evaluate(()=>(window as any).cameraTracks.getTracks().every((t:MediaStreamTrack)=>t.readyState==='ended'))).toBe(true);
  await page.reload();await page.getByRole('button',{name:'Photos',exact:true}).click();
- const saved=page.getByRole('button',{name:/Captured photo/});await expect(saved).toHaveCount(1);await saved.click();
- await expect(page.getByText(/saved in this app/)).toBeVisible();
+ const saved=page.getByRole('button',{name:/^Photo, /});await expect(saved).toHaveCount(1);await saved.click();
+ await expect(page.locator('[data-alpha-subview="photos-viewer"]').getByRole('heading',{name:'Today',exact:true})).toBeVisible();
  const download=page.waitForEvent('download');await page.getByRole('button',{name:'Share photo',exact:true}).click();await page.getByRole('dialog',{name:'Share',exact:true}).getByRole('button',{name:'Save locally',exact:true}).click();
  expect((await download).suggestedFilename()).toMatch(/^Alpha-photo-\d+\.jpg$/);
  await page.getByRole('button',{name:'Favorite',exact:true}).click();
@@ -38,7 +38,7 @@ test('browser camera persists a real encoded frame, releases capture and restore
  await expect(page.getByText('Moved to Recently deleted',{exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Albums',exact:true}).click();
  await page.getByRole('button',{name:'Recently deleted',exact:true}).click();
- await page.getByRole('button',{name:/Deleted photo/}).click();
+ await page.getByRole('button',{name:/^Photo, /}).click();
  await expect(page.getByRole('button',{name:'Recover deleted item',exact:true})).toBeVisible();
  expect(await page.evaluate(async()=>{const {browserPhotoLibrary:library}=await import('/src/prototype/browser-camera.ts');return (await library.list({trashed:true})).items.length;})).toBe(1);
  await page.getByRole('button',{name:'Recover deleted item',exact:true}).click();
@@ -70,8 +70,8 @@ test('browser camera permission denial retries explicitly without a saved photo'
  await expect(recovery).toBeVisible();
  await expect(page.locator('[data-alpha-camera="said"]')).toHaveCount(0);
  expect(await page.evaluate(()=>(window as any).cameraAttempts)).toBe(1);
- await expect(recovery).toContainText('Allow camera access for this site in your browser settings');
- await expect(recovery.getByRole('button',{name:'Open Android settings'})).toHaveCount(0);
+ await expect(recovery).toHaveText('Camera access is offTry again');
+ await expect(recovery.getByRole('button',{name:'Open settings'})).toHaveCount(0);
  await page.getByRole('button',{name:'Take photo',exact:true}).click();
  await expect.poll(()=>page.evaluate(()=>(window as any).cameraAttempts)).toBe(2);
  await recovery.getByRole('button',{name:'Try again',exact:true}).click();
@@ -80,7 +80,7 @@ test('browser camera permission denial retries explicitly without a saved photo'
  await expect(page.locator('[aria-label^="Viewfinder."] video')).toHaveCount(0);
  await page.evaluate(()=>window.dispatchEvent(new Event('alpha-back',{cancelable:true})));
  await page.getByRole('button',{name:'Photos',exact:true}).click();
- await expect(page.getByRole('button',{name:/Captured photo/})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:/^Photo, /})).toHaveCount(0);
 });
 
 test('leaving Camera while permission is pending stops a late stream without reopening preview',async({page})=>{

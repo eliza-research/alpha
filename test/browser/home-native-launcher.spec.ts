@@ -65,7 +65,9 @@ test('Apps lists Android entries with icons and launches by package', async ({ p
   expect(await calls(page, 'ElizaSystem', 'listLauncherApps')).toEqual([{ icons: true }]);
   await expect(drawer.getByRole('button', { name: 'Open Bad icon', exact: true })).toHaveCount(0);
   await expect(drawer.getByRole('button', { name: 'Open Settings duplicate', exact: true })).toHaveCount(0);
-  await expect(drawer.getByRole('status').first()).toHaveText('2 apps');
+  // Installed apps only, without a count; Alpha's views are on Home.
+  await expect.poll(() => drawer.locator('[data-launcher-app] > button').evaluateAll(nodes => nodes.map(node => node.getAttribute('aria-label')))).toEqual(['Open Broken app', 'Open Settings']);
+  await expect(drawer.getByText(/\d+ apps?$/)).toHaveCount(0);
   await expect(drawer.getByRole('button', { name: 'Open Settings', exact: true }).locator('img')).toHaveAttribute('src', PNG);
 
   // Only Android's installed inventory appears, even when a default dialer was resolved.
@@ -92,10 +94,10 @@ test('an empty installed-app list says so and offers no Phone shortcut without a
   await page.goto('/');
   await page.getByRole('button', { name: 'Apps', exact: true }).click();
   const drawer = page.getByRole('dialog', { name: 'Apps', exact: true });
-  await expect(drawer.getByText('No other apps are installed.', { exact: true })).toBeVisible();
+  await expect(drawer.getByText('No apps', { exact: true })).toBeVisible();
   await expect(drawer.getByRole('button', { name: 'Open Calendar', exact: true })).toHaveCount(0);
   await expect(drawer.getByRole('button', { name: /^Open Phone/ })).toHaveCount(0);
-  await drawer.getByRole('button', { name: 'Close Apps', exact: true }).click();
+  await drawer.getByRole('button', { name: 'Close apps', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Calendar', exact: true })).toBeVisible();
 });
 
@@ -110,11 +112,12 @@ test('typing a search while the installed-app list is still loading still shows 
   await page.goto('/');
   await page.getByRole('button', { name: 'Apps', exact: true }).click();
   const drawer = page.getByRole('dialog', { name: 'Apps', exact: true });
-  await expect(drawer.getByText('Reading installed apps…', { exact: true })).toBeVisible();
+  const list = drawer.locator('[data-installed-apps-scroll]');
+  await expect(list).toHaveAttribute('aria-busy', 'true');
   await drawer.getByRole('searchbox', { name: 'Search apps', exact: true }).fill('chr');
   await page.evaluate(() => (window as any).releaseList());
   await expect(drawer.getByRole('button', { name: 'Open Chrome', exact: true })).toBeVisible();
-  await expect(drawer.getByText('Reading installed apps…', { exact: true })).toHaveCount(0);
+  await expect(list).not.toHaveAttribute('aria-busy', 'true');
 });
 
 test('required denied notification remains pending after cold start without repeating a prompt',async({page})=>{
@@ -129,7 +132,7 @@ test('required denied notification remains pending after cold start without repe
  await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Set up Alpha access',exact:true}).click();
  await expect(panel.getByRole('button',{name:'Open Android settings',exact:true})).toBeVisible();
  expect(await calls(page,'DailyApps','requestPermissions')).toEqual([]);
- expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('alpha:startup-permission-walkthrough:v1')!))).toEqual({version:3,status:'pending',step:0});
+ expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('alpha:startup-permission-walkthrough:v1')!))).toEqual({version:4,status:'pending',step:0});
 });
 
 test('an Activity opened with the alpha.assistant extra renders chat and Close only', async ({ page }) => {

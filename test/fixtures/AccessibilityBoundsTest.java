@@ -7,7 +7,7 @@ public final class AccessibilityBoundsTest {
   if(!Arrays.equals(copy,source))throw new AssertionError("Original bounds mutated");
  }
  public static void main(String[] args){
-  // Captured API35/WebView124 scene: the offscreen All apps label is below Home.
+  // Captured API35/WebView124 scene: the offscreen Apps label is below Home.
   check(new int[]{0,0,0,0},new int[]{372,2251,708,2339},new int[]{0,0,1080,2400},new int[]{0,136,1084,2047});
   // The visible sliver of its button stays included, rather than hiding partial clipping.
   check(new int[]{372,2036,708,2047},new int[]{372,2036,708,2301},new int[]{0,136,1084,2047});
