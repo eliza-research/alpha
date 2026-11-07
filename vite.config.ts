@@ -158,7 +158,6 @@ export default defineConfig({
     fileURLToPath(new URL('./apps/app', import.meta.url)),
     // Vite emits worklet URLs using real paths when this prepared tree is shared by a worktree.
     realpathSync(fileURLToPath(new URL('./.eliza/client-features', import.meta.url))),
-    fileURLToPath(new URL('./.eliza/patched', import.meta.url)),
     fileURLToPath(new URL('./node_modules', import.meta.url)),
     fileURLToPath(new URL('./config/owner-routes.json', import.meta.url)),
     fileURLToPath(new URL('./config/alpha-product.json', import.meta.url)),

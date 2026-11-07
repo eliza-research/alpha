@@ -139,18 +139,22 @@ Gmail attachments and PDF file creation remain available.
 | `android/sense` | Product identity wrappers for the upstream Sense listener; shared implementation and SystemUI policy live in `vendor/eliza/packages/app/platforms/android/sense` and `vendor/eliza/packages/os/android/sense` ([ADR 0001](adr/0001-privileged-listener.md)); never in the standalone or launcher APK |
 | `app.config.json` | Package ID, display name, version and orientation |
 | `config/alpha-product.json` | Versioned product record of the shared mobile shell (`@elizaos/ui/mobile-shell`, schema `elizaos.mobile-product` v1): identity, theme and stylesheet aliases, icons, view order and labels, older view ids migrated once, and installed storage names (the launcher favorites record with its `alpha:` prefix and `alpha-apps` default policy, and the other names the app keeps reading). Home, the app grid, All apps, the view registry and navigation state (open view, Back stack, drawer and the assistant's pill, composer, sheet or full detent) render from the upstream shell with this record; runtime code such as agent navigation reads the React-free `@elizaos/ui/mobile-shell/core` entry |
-| `backend` | Development runtime composition, character and permitted model/actions |
+| `backend` | Development runtime composition, character and permitted model/actions; `native-google-agent-host.ts` and its imports (`managed-google-*`, `native-cloud-runtime`, `native-google-cloud-port`) are the production native Google host, bundled as `google-host.mjs` |
 | `vendor/eliza` | Pinned shared platform source; never modified by consumer builds |
 | `scripts` | Consumer build orchestration and product acceptance scenarios |
 | `design` | Requirements and visual references, not executable instructions |
 
 Maps, Files and Notes implementations are copied from authenticated upstream
 source into a generated cache outside the submodule. Gradle includes the shared
-password manager directly from the reviewed pin. The secure store and notification ledger use explicit
-reviewed patches in `patches/eliza/native-manifest.json`: admission authenticates the pin,
-patch digest, target before/after hashes and complete staged module inventory. Gradle
-compiles the generated copy under `.eliza/patched-native`, never a modified submodule.
-No source patch is applied during client, worker or resident-runtime builds. Photo edits, capture publication, the opt-in notification mirror and the delivery-receipt
+password manager directly from the reviewed pin. `patches/eliza/native-manifest.json` lists the
+staged native modules and two reviewed patches: `google-browser-sign-in.patch` for
+`packages/auth/android` and `cloud-speech-native.patch` for
+`plugins/plugin-local-inference/native/android`. The other listed modules are copied unchanged.
+Admission authenticates the pin, patch digest, target before/after hashes and complete staged
+module inventory. Gradle compiles the generated copy under `.eliza/patched-native`, never a
+modified submodule. Client builds also add the files of `cloud-speech-client.patch`, listed in
+`patches/eliza/cloud-speech-client-manifest.json`, to the prepared copy of `packages/voice`.
+Worker and resident-runtime builds apply no source patch. Photo edits, capture publication, the opt-in notification mirror and the delivery-receipt
 ledger for Alpha's own workflow and approval notices (`NoticeDelivery`, configured by
 `WorkflowNoticeDelivery`) also use shared native modules. Alpha wrappers retain installed storage names, media paths and Android components.
 The workflow notice tap routes, tap capture, owner fence, approval coordination, journal recovery and poster are the
@@ -206,7 +210,8 @@ providers and stores rather than introducing competing implementations.
 [its provenance file](eliza-app-baseline-provenance.json). There is one product renderer
 in `apps/app`. The remaining `backend` files compose a development host from shared
 runtime packages; the product character, allowed views and proposal-only behavior
-stay here. Product build admission and acceptance campaigns also stay in `scripts`.
+stay here. `backend/native-google-agent-host.ts` is not development code: it is the
+production native Google host (see Build surfaces). Product build admission and acceptance campaigns also stay in `scripts`.
 Moving those directories intact would move product policy into the shared platform.
 
 ## October 18 explicit Cloud QA profile
@@ -270,6 +275,11 @@ on that field, not on `BuildConfig.DEBUG`. The switch is on for `npm run dev`,
 Playwright and explicit test-mocks builds, and off for `npm run build`,
 `npm run android:sync` and `npm run android:build`. No `ALPHA_*` switch or widened
 `ELIZA_` env prefix is used.
+
+The resident runtime carries the native Google host. `scripts/build-native-google-host.ts` bundles
+`backend/native-google-agent-host.ts` and its imports into `google-host.mjs`;
+`scripts/stage-local-agent-runtime.mjs` verifies and stages it with the resident runtime, and
+`AlphaLocalAgentPlugin` loads it through `ELIZA_NATIVE_GOOGLE_HOST_MODULE`.
 
 ## Runtime and permissions
 
@@ -430,7 +440,8 @@ capability is decided natively by the shared plugin-native-messages `ImageCapabi
 `AlphaImageCapability` feeds with Alpha's build flags and provisioning resource: the release
 launcher build without test mocks, installed from a system partition (`FLAG_SYSTEM`), with the `<package>.aosp_image`
 system feature that `scripts/stage-aosp.mjs` declares in the image product (see the release
-tooling paragraph below). The launcher
+tooling paragraph below). The provisioning resource comes from the overlay `stage-aosp.mjs` writes
+only for `--production`, so a development image never passes the capability. The launcher
 flavor, test mocks, URLs and saved state never establish it. Only then does `MainActivity`
 register `AlphaTelephonyPlugin` (read-only contacts through the shared `ContactsCatalog`, role
 and SIM status, dialer and SMS handoffs, SMS/MMS provider reads and reviewed native sends); the
