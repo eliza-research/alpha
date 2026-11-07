@@ -235,6 +235,10 @@ test('Home has its built-in tiles without an installed app inventory', () => {
   home.openAllApps();
   assert.equal(reads, 0);
   assert.equal(home.state.drawer, false);
+  home.state.homeEdit = true;
+  const staleEdit = renderToStaticMarkup(home.renderVals().homeShell);
+  assert.doesNotMatch(staleEdit, /data-alpha-home-editing|Remove Calendar from Home/);
+  assert.ok(tiles(staleEdit).includes('Calendar'));
 });
 
 test('the empty Home card row is hidden without hiding app tiles', () => {

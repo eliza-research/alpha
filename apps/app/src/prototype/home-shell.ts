@@ -131,7 +131,7 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
     const snapshot = launcher.snapshot();
     const showDrawer = !!inventory && !out.assistantSurface;
     const drawerOpen = showDrawer && !!S.drawer && !!out.isOn && !out.isView;
-    const editing = !!S.homeEdit && !!out.isOn && !out.isView && !drawerOpen && !out.assistantSurface;
+    const editing = !!inventory && !!S.homeEdit && !!out.isOn && !out.isView && !drawerOpen && !out.assistantSurface;
     const face = (key: string, tile: {image?: string; glyphUrl?: string; badge?: boolean}) => createElement('span', {'data-mobile-shell-tile-face': '', 'data-alpha-home-key': key},
       tile.image ? createElement('img', {alt: '', src: tile.image}) : tile.glyphUrl ? createElement('span', {'aria-hidden': 'true', style: glyph(tile.glyphUrl, 30)}) : null,
       tile.badge && !editing ? createElement('span', {'data-mobile-shell-tile-badge': ''}) : null,
@@ -155,7 +155,7 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
       onPointerDown: (event: PointerEvent) => {
         swallow = ''; endPress();
         const target = tileOf(event.target), key = keyOf(target);
-        if (!target || !key || event.button > 0) return;
+        if (!target || !key || event.button > 0 || !inventory) return;
         if (!editing) { press = {key, x: event.clientX, y: event.clientY, timer: setTimeout(() => { press = null; swallow = key; self.setState({homeEdit: true, homeAdd: false}); }, HOLD_MS)}; return; }
         // A press on the remove control never starts a drag.
         if ((event.target as Element).closest('[data-alpha-home-remove]')) return;
@@ -188,7 +188,7 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
       onPointerCancel: () => { endPress(); if (drag) { endDrag(); rerender(); } },
       onContextMenu: (event: MouseEvent) => {
         const key = keyOf(tileOf(event.target));
-        if (!key) return;
+        if (!key || !inventory) return;
         event.preventDefault(); endPress();
         if (!editing) { swallow = key; self.setState({homeEdit: true, homeAdd: false}); }
       },
