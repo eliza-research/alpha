@@ -209,6 +209,8 @@ export function installAgentCalendarAdapter(Component:any,views:Bag,preservation
   // read claims no read time, and an empty or unverified card names no source.
   const source=event&&home.verified?'Agent Calendar':'';
   const feed=failed||unverified?presentHomeAgendaFeed({status:model!.status,hasItem:!!event,feedState:model?.feed?.state??null,asOf:Date.parse(model?.feed?.syncedAt??'')||null,error:model?.error??null,now,source:'Agent Calendar',emptyLabel:home.emptyLabel}):{state:home.verified?'ready':'pending',read:source,description:source,stale:false,title:home.emptyLabel};
+  // A partial feed is still retryable, but Home need only show the Calendar entry.
+  if(unverified){feed.title=home.emptyLabel;feed.description=feed.read;}
   const provenance={origin:'',read:feed.read,description:feed.description};
   // The agent's next event as an agenda item; an all-day event starts at local midnight of its first day.
   const day=(at:string)=>{const d=new Date(at);return new Date(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()).getTime();};
