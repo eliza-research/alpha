@@ -39,6 +39,7 @@ public final class AlphaMailAttachmentsPlugin extends Plugin {
  private final Handler main=new Handler(Looper.getMainLooper());
  private final AtomicBoolean saving=new AtomicBoolean();
  private final Map<PluginCall,Integer> exports=new ConcurrentHashMap<>();
+ private final ReviewedCopies copies=new ReviewedCopies(file->handoff().revoke(file));
  /**
   * Runs attachment work off the bridge thread. Capacitor can deliver a call the page made just
   * before the activity was destroyed after handleOnDestroy has stopped the worker; the executor
@@ -91,11 +92,12 @@ public final class AlphaMailAttachmentsPlugin extends Plugin {
  @PluginMethod public void cancelPhotoSelected(PluginCall call){cancelPhotoReads();call.resolve();}
  private void cancelPhotoReads(){photoGeneration.incrementAndGet();for(InputStream stream:photoStreams){try{stream.close();}catch(IOException ignored){}}photoStreams.clear();}
  @Override protected void handleOnPause(){cancelPhotoReads();super.handleOnPause();}
- private void revoke(File file){handoff().revoke(file);}
- private void cleanup(){handoff().cleanup();}
+ private void revoke(File file){copies.revoke(file);}
+ /** Removes only this instance's copies: the other surface's viewer may still be reading its own. */
+ private void cleanup(){copies.clear();}
  @PluginMethod public void cancel(PluginCall call){generation.incrementAndGet();cancelPhotoReads();cleanup();call.resolve();}
  @PluginMethod public void openReviewed(PluginCall call){openReviewedAt(call,generation.get());}
- private void openReviewedAt(PluginCall call,int token){work(call,()->{File file=null;try{String encoded=call.getString("dataBase64");if(encoded==null||encoded.length()>7*1024*1024||!Boolean.TRUE.equals(call.getBoolean("reviewed")))throw new IllegalArgumentException();byte[] data=android.util.Base64.decode(encoded,android.util.Base64.NO_WRAP);String name=call.getString("name"),mime=call.getString("mimeType");validate(name,mime,data);if(!hash(data).equals(call.getString("sha256")))throw new SecurityException();if(token!=generation.get())throw new CancellationException();file=handoff().write(name,data);File ready=file;main.post(()->{try{if(token!=generation.get()||getActivity()==null||!getActivity().hasWindowFocus())throw new CancellationException();Uri uri=handoff().uri(ready);Intent intent=new Intent(Intent.ACTION_VIEW).setDataAndType(uri,mime).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);intent.setClipData(ClipData.newRawUri("Reviewed attachment",uri));try{getActivity().startActivity(intent);}catch(ActivityNotFoundException missing){if(!"application/pdf".equals(mime))throw missing;Intent fallback=new Intent(getActivity(),AlphaMailPdfActivity.class).setData(uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);getActivity().startActivity(fallback);}main.postDelayed(()->revoke(ready),15*60*1000);JSObject result=new JSObject();result.put("status","opened");result.put("message","Sent a temporary read-only copy to the viewer. Viewing is not confirmed.");call.resolve(result);}catch(Exception error){revoke(ready);call.reject("No viewer available, or the review was cancelled. No completed viewing is claimed.");}});}catch(Exception error){if(file!=null)revoke(file);call.reject("Attachment bytes, review or file type invalid.");}});}
+ private void openReviewedAt(PluginCall call,int token){work(call,()->{File file=null;try{String encoded=call.getString("dataBase64");if(encoded==null||encoded.length()>7*1024*1024||!Boolean.TRUE.equals(call.getBoolean("reviewed")))throw new IllegalArgumentException();byte[] data=android.util.Base64.decode(encoded,android.util.Base64.NO_WRAP);String name=call.getString("name"),mime=call.getString("mimeType");validate(name,mime,data);if(!hash(data).equals(call.getString("sha256")))throw new SecurityException();if(token!=generation.get())throw new CancellationException();file=copies.add(handoff().write(name,data));File ready=file;main.post(()->{try{if(token!=generation.get()||getActivity()==null||!getActivity().hasWindowFocus())throw new CancellationException();Uri uri=handoff().uri(ready);Intent intent=new Intent(Intent.ACTION_VIEW).setDataAndType(uri,mime).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);intent.setClipData(ClipData.newRawUri("Reviewed attachment",uri));try{getActivity().startActivity(intent);}catch(ActivityNotFoundException missing){if(!"application/pdf".equals(mime))throw missing;Intent fallback=new Intent(getActivity(),AlphaMailPdfActivity.class).setData(uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);getActivity().startActivity(fallback);}main.postDelayed(()->revoke(ready),15*60*1000);JSObject result=new JSObject();result.put("status","opened");result.put("message","Sent a temporary read-only copy to the viewer. Viewing is not confirmed.");call.resolve(result);}catch(Exception error){revoke(ready);call.reject("No viewer available, or the review was cancelled.");}});}catch(Exception error){if(file!=null)revoke(file);call.reject("Attachment bytes, review or file type invalid.");}});}
  private byte[] sourceBytes(Uri uri)throws Exception{try(InputStream in=getContext().getContentResolver().openInputStream(uri)){if(in==null)throw new IOException();return read(in);}}
  @PluginMethod public void retainSourceReference(PluginCall call){int token=generation.get();work(call,()->{try{
   Uri uri=SelectedDocumentAccess.resolve(call.getString("selectionId"));if(uri==null)throw new SecurityException();byte[] bytes=sourceBytes(uri);if(!hash(bytes).equals(call.getString("sha256"))||token!=generation.get())throw new SecurityException();JSObject result=new JSObject();
@@ -149,6 +151,10 @@ public final class AlphaMailAttachmentsPlugin extends Plugin {
    else call.resolve(saveResult("unverified",outcome==DocumentExport.Outcome.UNVERIFIED?"The destination may contain some or all bytes. Inspect it before retrying.":"Save not confirmed. Inspect the chosen destination before retrying."));
   }catch(Exception error){call.resolve(saveResult("unverified","Save not confirmed. Inspect the chosen destination before retrying."));}finally{saving.set(false);}},()->{saving.set(false);call.resolve(saveResult("unverified","Attachment service closed. Inspect the chosen destination."));});
  }
- @Override public void load(){cleanup();}
+ @Override public void load(){copies.sweep(new File(getContext().getCacheDir(),"mail-attachments"),System.currentTimeMillis());}
+ /** A pending save holds the whole file in its call data; Capacitor would copy that into the
+  * Activity's saved state, which Android rejects above about 1 MB and ends the process. A save is
+  * not resumed after process death. */
+ @Override protected Bundle saveInstanceState(){return null;}
  @Override protected void handleOnDestroy(){generation.incrementAndGet();cancelPhotoReads();main.removeCallbacksAndMessages(null);try{cleanup();}catch(RuntimeException unavailable){/* load() removes leftovers on the next start. */}worker.shutdown();super.handleOnDestroy();}
 }
