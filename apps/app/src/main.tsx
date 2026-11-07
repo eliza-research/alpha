@@ -50,6 +50,7 @@ import { Component, VIEWS, ORDER } from './prototype/model.js';
 import { installReminderAdapter } from './prototype/reminder-adapter';
 import { installNoteOriginAdapter } from './prototype/note-origin-adapter';
 import { installAgentAdapter } from './prototype/agent-adapter';
+import { installReplyAnnouncer } from './prototype/reply-announcer';
 import { installPrototypeNativeAdapters } from './prototype/native-adapter';
 import { installSelectedDocumentAdapter } from './prototype/selection-adapter';
 import { installPrototypeCameraAdapter } from './prototype/camera-adapter';
@@ -163,6 +164,8 @@ if(developmentAgentWorkflows){installWorkflowAdapter(Component,VIEWS);installAut
 installSubviewAccessibility(VIEWS);
 installCalendarMonthFocus(Component, VIEWS);
 installChatOverlayMotion(Component);
+// Replies, failures and the replying state are announced without moving focus (prototype/reply-announcer.ts).
+installReplyAnnouncer(Component);
 installSystemShade(Component,{native:isAndroid});
 // The shared agenda, mail and brief cards render the final Home values of every adapter above.
 installHomeOverviewCards(Component);
