@@ -87,7 +87,7 @@ public class CalendarCrudInstrumentedTest {
     click("Delete event");nativeWait("Delete calendar event?");
     ContentValues changed=new ContentValues();changed.put(CalendarContract.Events.DESCRIPTION,"Changed during delete review");resolver.update(ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI,created.get(0)),changed,null,null);
     nativeClick("Delete event");until("document.querySelector('[data-screen]').textContent.includes('Nothing was deleted')");assertEquals("Stale reviewed delete preserves row",1,ids(resolver,external).size());
-    click("Delete event");nativeWait("Delete calendar event?");nativeClick("Delete event");until("document.querySelector('[data-screen]').textContent.includes('Local event deleted and verified')");assertTrue(ids(resolver,external).isEmpty());
+    click("Delete event");nativeWait("Delete calendar event?");nativeClick("Delete event");until("document.querySelector('[data-screen]').textContent.includes('Event deleted.')");assertTrue(ids(resolver,external).isEmpty());
     scenario.recreate();until("document.documentElement.dataset.activeView==='home'");assertTrue("Deletion survives process UI recreation",ids(resolver,external).isEmpty());
    }
   } finally {for(String fixture:new String[]{title,updated,external})for(long id:ids(resolver,fixture))resolver.delete(ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI,id),null,null);}

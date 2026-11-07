@@ -41,7 +41,7 @@ import static org.junit.Assert.*;
  * is replaced with the exact poster text, as an owner corrects a scan, so the suggested fields do not
  * depend on recognition quality; that the OCR ran at all is asserted. The only destination an emulator
  * without accounts offers is "On this phone" (Alpha's own local calendar). Calendar's confirm prompts
- * (replacing a retained form) are accepted and recorded, as a person would. Every row this test
+ * (replacing a draft) are accepted and recorded, as a person would. Every row this test
  * creates is deleted by its unique title. Emulator evidence only; not a printed poster, a camera
  * capture, a synced account or device acceptance.
  *

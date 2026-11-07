@@ -13,6 +13,8 @@ import {reminderWallTime} from '../runtime/reminder-creations';
 type Bag = Record<string, any>;
 const calendar = registerPlugin<any>('AlphaCalendar');
 const DAY=86400000;
+// Resolves when Alpha is shown again after another app covered it.
+const afterReturn=()=>new Promise<void>(resolve=>{const shown=()=>{if(document.hidden)return;document.removeEventListener('visibilitychange',shown);resolve();};document.addEventListener('visibilitychange',shown);});
 const civilDay=(date:Date,utc=false)=>Date.UTC(utc?date.getUTCFullYear():date.getFullYear(),utc?date.getUTCMonth():date.getMonth(),utc?date.getUTCDate():date.getDate());
 
 /** Instant of a civil wall time in an IANA zone; undefined when it does not exist or occurs twice. */
@@ -96,7 +98,10 @@ export function installCalendarAdapter(Component: any, views: Bag, options:{acti
       loadedKey=range.key;truncated=!!result.truncated;calendars=result.calendars;status=result.truncated?'Calendar range limited to 2,000 events':Capacitor.isNativePlatform()?(calendars.length?'Device calendar access allowed':'No device calendars found'):'Local calendar ready';
       currentOwner.nativeCalendarRows=result.events.map(mapEvent);
       await currentOwner.refreshReminders();
-      if(request)currentOwner.calendarWriteUncertain=false;
+      // An unconfirmed write clears only once a read shows its outcome: the event gone after a delete,
+      // or present after an edit (the owner then sees its current state). It is never repeated.
+      const uncertain=currentOwner.calendarWriteUncertain;
+      if(uncertain&&(request||force)){const present=result.events.some((e:Bag)=>e.id===uncertain.eventId);if(uncertain.kind==='edit'?present:!present&&uncertain.begin>=range.begin&&uncertain.begin<range.end)currentOwner.calendarWriteUncertain=undefined;}
     }catch{if(owner===currentOwner&&token===generation){loadedKey='';loadFailed=true;status=Capacitor.isNativePlatform()?'Calendar range could not be loaded. Open device calendars to retry.':'App calendar could not be loaded. Retry or open Calendar recovery.';}}
     finally{if(runningToken===token){loading=false;if(token!==generation&&attemptedKey===range.key)attemptedKey='';}if(owner===currentOwner){currentOwner.vset('calendar',{nativeCalendarStatus:status,...(token===generation?{nativeCalendarReadAt:loadedKey===range.key?readAt:null}:{})});if(desired?.key!==attemptedKey)schedule();}}
   }
@@ -129,7 +134,20 @@ export function installCalendarAdapter(Component: any, views: Bag, options:{acti
       currentOwner.vset('calendar',{open:row.id,openDay:day,deepOpening:null,deepOpened:row.id});opened=true;
     }finally{if(!opened&&owner===currentOwner&&epoch===navigationEpoch)currentOwner.vset('calendar',{deepOpening:null});request.complete(opened);}})();
   };
-  const calendarCommitted=()=>{if(owner&&active(owner)){owner.vset('calendar',{open:null,openDay:null});void refresh(false,true);}};
+  // A commit closes the open detail only when it names that event (or names none); otherwise the
+  // detail and its agent selection stay through the refresh.
+  const calendarCommitted=(event:Event)=>{
+    const currentOwner=owner;if(!currentOwner||!active(currentOwner))return;
+    const id=(event as CustomEvent).detail?.eventId,state=currentOwner.vget('calendar');
+    const openRow=state.open?currentOwner.nativeCalendarRows?.find((row:Bag)=>row.id===state.open):undefined;
+    if(typeof id!=='string'||openRow?.alphaCalendarId===id){currentOwner.vset('calendar',{open:null,openDay:null});void refresh(false,true);return;}
+    const kept=agentSelection?.kind==='calendar-event'?{selection:agentSelection,key:agentSelectionKey}:undefined;
+    void refresh(false,true).then(()=>{
+      if(!kept||owner!==currentOwner||agentSelection||agentSelectionKey&&agentSelectionKey!==kept.key)return;
+      const open=currentOwner.vget('calendar').open,row=currentOwner.nativeCalendarRows?.find((row:Bag)=>row.id===open);
+      if(row&&open===kept.selection.open&&JSON.stringify([row.id,row.nativeEvent])===kept.key){agentSelection=kept.selection;agentSelectionKey=kept.key;}
+    });
+  };
   p.refreshAgentCalendar=function(){return refresh(false,true);};
   p.componentDidMount=function(){mount.call(this);owner=this;void refresh();window.addEventListener('alpha:calendar-committed',calendarCommitted);this.calendarPreferenceChanged=(event:Event)=>{if(event.type==='storage'){const e=event as StorageEvent;if(e.key!=='alpha.browser.calendar.v1')return;try{if(JSON.stringify(JSON.parse(e.oldValue||'{}').preferences)===JSON.stringify(JSON.parse(e.newValue||'{}').preferences))return;}catch{return;}}void refresh(false,true);};window.addEventListener('alpha:calendar-document-changed',this.calendarPreferenceChanged);if(!Capacitor.isNativePlatform()){window.addEventListener('alpha:calendar-open',openCalendarEvent);window.addEventListener('alpha:calendar-preferences',this.calendarPreferenceChanged);window.addEventListener('storage',this.calendarPreferenceChanged);}this.calendarResume=DailyApps.addListener('appResumed',()=>void refresh()).catch(()=>null);};
   p.componentWillUnmount=function(){if(owner===this){agentSelection=undefined;agentSelectionKey='';agentSelectionEpoch++;owner=null;++creationReadEpoch;creationPending=null;creationRecoveryFailed=false;loading=false;calendars=[];status='Not connected';desired=undefined;loadedKey='';attemptedKey='';++generation;}void this.calendarResume?.then((l:any)=>l?.remove());window.removeEventListener('alpha:calendar-committed',calendarCommitted);window.removeEventListener('alpha:calendar-document-changed',this.calendarPreferenceChanged);if(!Capacitor.isNativePlatform()){++navigationEpoch;window.removeEventListener('alpha:calendar-open',openCalendarEvent);window.removeEventListener('alpha:calendar-preferences',this.calendarPreferenceChanged);window.removeEventListener('storage',this.calendarPreferenceChanged);}unmount.call(this);};
@@ -169,7 +187,7 @@ export function installCalendarAdapter(Component: any, views: Bag, options:{acti
     };
     out.newEvent=()=>newEvent();
     out.creationRecovery=creationRecoveryFailed||Boolean(creationPending?.length);
-    out.creationRecoveryText=creationRecoveryFailed?'Calendar creation receipts could not be checked. Nothing was retried.':`${creationPending?.length||0} previous event creation(s) need review. Refresh never retries them.`;
+    out.creationRecoveryText=creationRecoveryFailed?'Couldn’t check earlier events.':`${creationPending?.length||0} earlier ${creationPending?.length===1?'event':'events'} may not have saved. Check Calendar.`;
     out.checkCreations=async()=>{
       const recoveryOwner=owner,recoveryForm=api.get('calendar').form,epoch=creationDraftEpoch;
       const current=()=>owner===recoveryOwner&&!document.hidden&&api.isActive()&&creationDraftEpoch===epoch&&api.get('calendar').form===recoveryForm;
@@ -177,13 +195,13 @@ export function installCalendarAdapter(Component: any, views: Bag, options:{acti
         const receipts=await readCreations();if(!current())return;const confirmed=receipts.filter(row=>row.status==='saved');
         for(const row of confirmed){if(!current())return;const result=await calendar.acknowledgeCreation({creationId:row.creationId});if(result.status!=='acknowledged')throw Error('Receipt acknowledgement unavailable');}
         if(!current())return;
-        if(confirmed.length)api.toast('Previous event creation confirmed. No event was recreated.');
+        if(confirmed.length)api.toast('Event found. Nothing to redo.');
         await refresh(false,true);
-        if(current()&&creationPending?.some(row=>row.status!=='saved'))api.toast('A previous event may exist. Check Calendar; it will not be retried.');
-      }catch{if(current()){creationRecoveryFailed=true;api.toast('Calendar creation recovery unavailable. Nothing was retried.');api.set({});}}
+        if(current()&&creationPending?.some(row=>row.status!=='saved'))api.toast('This event may already exist. Check Calendar.');
+      }catch{if(current()){creationRecoveryFailed=true;api.toast('Can’t check earlier events right now.');api.set({});}}
     };
     out.separateCreation=()=>{
-      if(!window.confirm('A previous event may already exist. Create a separate event with a new identity? The previous request will remain in recovery history.'))return;
+      if(!window.confirm('This event may already exist. Create another?'))return;
       return newEvent(true);
     };
     if(out.f&&state.form){
@@ -210,7 +228,7 @@ export function installCalendarAdapter(Component: any, views: Bag, options:{acti
         const guests=(current.who||[]).filter((who:unknown)=>typeof who==='string'&&/^[^\s@,;<>]+@[^\s@,;<>]+$/.test(who));
         try{
           const result=await calendar.insertHandoff({event:{...event,attendees:guests,alerts:current.alert!=null?[Number(current.alert)]:[]}});
-          if(result.status==='opened'){owner&&(owner.calendarHandoffPending=true);api.toast(result.alertsPrefilled===false?'Opened in Android Calendar. Add the alert there, then save. Alpha cannot confirm the event was saved.':'Opened in Android Calendar. Save it there; Alpha cannot confirm the event was saved.');}
+          if(result.status==='opened'){owner&&(owner.calendarHandoffPending=true);const message=result.alertsPrefilled===false?'Add the alert, then save in Android Calendar.':'Save it in Android Calendar.';const handoffOwner=owner;void afterReturn().then(()=>{if(owner===handoffOwner&&api.isActive())api.toast(message);});}
           else api.toast(result.status==='unavailable'?'No Android Calendar editor is installed. Nothing was saved.':'Android Calendar could not open this draft. Nothing was saved.');
         }catch{api.toast('Android Calendar could not open this draft. Nothing was saved.');}
       };
@@ -223,12 +241,12 @@ export function installCalendarAdapter(Component: any, views: Bag, options:{acti
         try{
           const permission=await calendar.requestAccess();if(!ownsForm())return;if(permission.status!=='granted'){api.toast('Calendar access was not granted. Nothing was saved.');return;}
           const previous=await readCreations();if(!ownsForm())return;
-          if(previous.length&&!current.separateCreation){api.toast('Check previous event creation receipts before saving, or explicitly create a separate event.');api.set({});return;}
+          if(previous.length&&!current.separateCreation){api.toast('An earlier event may already exist. Check Calendar first.');api.set({});return;}
           const creationId=current.creationId||crypto.randomUUID();
           if(!current.creationId){submittedForm={...current,creationId};api.set({form:submittedForm});}
           const result=await calendar.saveOptions({creationId,separateCreation:current.separateCreation===true,calendarId:current.cal.slice(7),event});
           if(!ownsForm())return;
-          if(result.status==='pending-creation'){await readCreations();api.toast('Another creation needs recovery. Nothing was retried.');api.set({});return;}
+          if(result.status==='pending-creation'){await readCreations();api.toast('Finish checking the earlier event first.');api.set({});return;}
           if(result.status==='read-only'){api.toast('This calendar is read-only. Choose another calendar. Nothing was saved.');return;}
           if(result.status!=='saved'||result.creationId!==creationId)throw Error('Unconfirmed calendar write');
           const readback=await calendar.readOptions({id:result.id});
@@ -241,13 +259,13 @@ export function installCalendarAdapter(Component: any, views: Bag, options:{acti
           desired=rangeFor({...currentOwner.vget('calendar'),day:targetDay,month:null});await refresh(false,true);
           const saved=currentOwner.nativeCalendarRows?.find((e:Bag)=>e.alphaCalendarId===result.id);
           if(saved&&owner===currentOwner&&!document.hidden&&api.isActive()&&!api.get('calendar').form)api.set({open:saved.id,day:saved.off,openDay:saved.off});
-          api.toast(event.allDay?'All-day event saved and verified in Android Calendar.':event.rrule?'Repeating event saved and verified in Android Calendar.':`Event saved in ${event.timeZone} and verified in Android Calendar.`);
-        }catch{try{await readCreations();}catch{if(owner===currentOwner&&creationDraftEpoch===epoch){creationPending=null;creationRecoveryFailed=true;}}if(owner===currentOwner&&!document.hidden&&api.isActive()&&creationDraftEpoch===epoch)api.toast('The calendar write was not confirmed. Check creation receipts before creating another event.');}
+          api.toast(!event.allDay&&event.timeZone!==deviceZone?`Event saved in ${event.timeZone}.`:'Event saved.');
+        }catch{try{await readCreations();}catch{if(owner===currentOwner&&creationDraftEpoch===epoch){creationPending=null;creationRecoveryFailed=true;}}if(owner===currentOwner&&!document.hidden&&api.isActive()&&creationDraftEpoch===epoch)api.toast('Save not confirmed. Check Calendar before creating another event.');}
         finally{currentOwner.calendarSaving=false;if(owner===currentOwner)api.set({});}
       };
       if(f.cal?.startsWith('native:'))out.f.save=async()=>{
         if(owner?.calendarSaving)return;
-        if(owner?.calendarWriteUncertain&&api.get('calendar').form?.alphaCalendarId){api.toast('Refresh device calendars and check the previous event before saving again.');return;}
+        if(owner?.calendarWriteUncertain&&owner.calendarWriteUncertain.eventId===api.get('calendar').form?.alphaCalendarId){api.toast('Couldn’t confirm the last change. Refresh to check.');return;}
         const current=api.get('calendar').form,currentOwner=owner;
         if(!current?.title?.trim()||!currentOwner)return;
         if(!Capacitor.isNativePlatform()&&current.allDay){api.toast('All-day events are saved in the Android app. Turn off All day and enter a start time to save here. Nothing was saved.');return;}
@@ -267,13 +285,13 @@ export function installCalendarAdapter(Component: any, views: Bag, options:{acti
           if(!current.alphaCalendarId){
             const previous=await readCreations();
             if(!ownsForm())return;
-            if(previous.length&&!current.separateCreation){api.toast('Check previous event creation receipts before saving, or explicitly create a separate event.');api.set({});return;}
+            if(previous.length&&!current.separateCreation){api.toast('An earlier event may already exist. Check Calendar first.');api.set({});return;}
             creationId=current.creationId||crypto.randomUUID();
             if(!current.creationId){submittedForm={...current,creationId};api.set({form:submittedForm});}
           }
           const result=await calendar.save({creationId,separateCreation:current.separateCreation===true,id:current.alphaCalendarId || '',expected:current.expected,calendarId:current.cal.slice(7),title:current.title.trim(),body:current.notes||'',location:current.where||'',begin:date.getTime(),end:end.getTime(),...(!Capacitor.isNativePlatform()?{repeat:current.repeat,who:current.who||[],video:!!current.video,alert:current.alert??null,timeZone:Intl.DateTimeFormat().resolvedOptions().timeZone}:{})});
           if(!ownsForm())return;
-          if(result.status==='pending-creation'){await readCreations();api.toast('Another creation needs recovery. Nothing was retried.');api.set({});return;}
+          if(result.status==='pending-creation'){await readCreations();api.toast('Finish checking the earlier event first.');api.set({});return;}
           if(result.status==='conflict'){api.toast('This event changed. Reload it before editing. Nothing was overwritten.');return;}
           if(result.status!=='saved')throw Error('Unconfirmed calendar write');
           if(creationId&&result.creationId!==creationId)throw Error('Mismatched creation receipt');
@@ -293,8 +311,8 @@ export function installCalendarAdapter(Component: any, views: Bag, options:{acti
           if(!ownsCompletion())return;
           const saved=currentOwner.nativeCalendarRows?.find((e:Bag)=>e.alphaCalendarId===result.id);
           if(saved)api.set({open:saved.id,day:saved.off,openDay:saved.off});
-          api.toast(Capacitor.isNativePlatform()?'Event saved and verified in Android Calendar.':'Event saved.');
-        }catch{if(current.alphaCalendarId)currentOwner.calendarWriteUncertain=true;else{try{await readCreations();}catch{if(owner===currentOwner&&creationDraftEpoch===epoch){creationPending=null;creationRecoveryFailed=true;}}}if(owner===currentOwner&&!document.hidden&&api.isActive()&&creationDraftEpoch===epoch)api.toast('The calendar write was not confirmed. Check creation receipts before creating another event.');}
+          api.toast('Event saved.');
+        }catch{if(current.alphaCalendarId)currentOwner.calendarWriteUncertain={eventId:current.alphaCalendarId,kind:'edit'};else{try{await readCreations();}catch{if(owner===currentOwner&&creationDraftEpoch===epoch){creationPending=null;creationRecoveryFailed=true;}}}if(owner===currentOwner&&!document.hidden&&api.isActive()&&creationDraftEpoch===epoch)api.toast(current.alphaCalendarId?'Couldn’t confirm the change. Check the event in Calendar.':'Save not confirmed. Check Calendar before creating another event.');}
         finally{currentOwner.calendarSaving=false;if(owner===currentOwner)api.set({});}
       };
     }
@@ -348,14 +366,17 @@ export function installCalendarAdapter(Component: any, views: Bag, options:{acti
       };
       if(!Capacitor.isNativePlatform()&&selected.nativeEvent.seriesId){
         out.ev.day+=' · Repeating event · edits and deletion apply to this occurrence';out.ev.browserSeries=true;
-        const seriesAction=async(remove:boolean)=>{try{const event=selected.nativeEvent;const result=await (remove?calendar.removeSeries({id:event.id,revision:event.revision}):calendar.editSeries({id:event.id,revision:event.revision,people:out.attendeeChoices||[]}));if(result.status==='queued'){api.set({open:null,openDay:null});refreshDeletionViews();api.toast('Deletion queued. Undo is available for 10 seconds.');}else if(result.status==='saved'||result.status==='deleted'){api.set({open:null,openDay:null});await refresh(false,true);}else if(result.status==='conflict')api.toast('This series changed. Refresh and try again.');}catch{api.toast('The series could not be changed. Refresh and try again.');}};
+        const seriesAction=async(remove:boolean)=>{try{const event=selected.nativeEvent;const result=await (remove?calendar.removeSeries({id:event.id,revision:event.revision}):calendar.editSeries({id:event.id,revision:event.revision,people:out.attendeeChoices||[]}));if(result.status==='queued'){api.set({open:null,openDay:null});refreshDeletionViews();}else if(result.status==='saved'||result.status==='deleted'){api.set({open:null,openDay:null});await refresh(false,true);}else if(result.status==='conflict')api.toast('This series changed. Refresh and try again.');}catch{api.toast('The series could not be changed. Refresh and try again.');}};
         out.ev.editSeries=()=>void seriesAction(false);out.ev.deleteSeries=()=>void seriesAction(true);
       }
       if(!Capacitor.isNativePlatform())out.ev.people=(out.ev.people||[]).map((person:Bag,index:number)=>{const event=selected.nativeEvent,id=event.who?.[index],labels:Record<string,string>={added:'Added',invited:'Invited',yes:'Going',maybe:'Maybe',no:'Declined'};return {...person,st:labels[event.responses?.[id]||'added'],canRespond:true,response:async()=>{try{const result=await calendar.editResponse({id:event.id,revision:event.revision,person:id,name:person.name});if(result.status==='saved')await refresh(false,true);}catch{api.toast('This guest list changed. Reopen the event.');}}};});
       if(!Capacitor.isNativePlatform()&&selected.nativeEvent.video)out.ev.join=()=>void calendar.joinMeeting({id:selected.nativeEvent.id,revision:selected.nativeEvent.revision,people:(out.ev.people||[]).map((person:Bag)=>person.name)}).catch(()=>api.toast('This meeting changed. Reopen the event.'));
-      out.ev.busy=Boolean(owner?.calendarSaving||owner?.calendarWriteUncertain);
+      // An unconfirmed write holds only its own event, until a refresh shows how it ended.
+      const uncertain=owner?.calendarWriteUncertain?.eventId===selected.alphaCalendarId;
+      out.ev.busy=Boolean(owner?.calendarSaving||uncertain);
+      out.ev.uncertain=uncertain;out.ev.checkUncertain=()=>{if(!loading)void refresh(true);};
       const deleteSelection=async(scope?:'series')=>{
-        if(!owner||owner.calendarSaving||owner.calendarWriteUncertain)return;
+        if(!owner||owner.calendarSaving||owner.calendarWriteUncertain?.eventId===selected.alphaCalendarId)return;
         const currentOwner=owner,event=selected.nativeEvent,expected={title:event.title||'',body:event.body||'',location:event.location||'',begin:event.begin,end:event.end};
         currentOwner.calendarSaving=true;api.set({});let dispatched=false;
         try{
@@ -366,21 +387,21 @@ export function installCalendarAdapter(Component: any, views: Bag, options:{acti
           dispatched=true;
           const result=await (Capacitor.isNativePlatform()?calendar.removeScoped({eventId:inspected.eventId,sourceId:inspected.sourceId,sourceRevision:inspected.sourceRevision,revision:inspected.revision}):calendar.remove({id:event.id,calendarId:event.calendarId,expected,revision:inspected.revision}));
           if(owner!==currentOwner)return;
-          if(result.status==='queued'){const current=api.get('calendar');if(!document.hidden&&api.isActive()&&current.open===selected.id&&!current.form){api.set({open:null,openDay:null});api.toast('Deletion queued. Undo is available for 10 seconds.');}refreshDeletionViews();}
+          if(result.status==='queued'){const current=api.get('calendar');if(!document.hidden&&api.isActive()&&current.open===selected.id&&!current.form){api.set({open:null,openDay:null});}refreshDeletionViews();}
           else if(result.status==='deleted'){
             const linked=Capacitor.isNativePlatform()?eventNoteOriginId(event):!event.seriesId&&!/:occ:-?\d+$/.test(String(event.id))?String(event.id):undefined;
             if(linked)void forgetNoteOrigin('event',linked);
             // The receipt belongs to the deleted event, not a newer detail or draft.
             const current=api.get('calendar');
             if(!document.hidden&&api.isActive()&&current.open===selected.id&&!current.form){
-              api.set({open:null,openDay:null});api.toast('Local event deleted and verified.');
+              api.set({open:null,openDay:null});api.toast('Event deleted.');
             }
             await refresh(false,true);
           }
           else if(result.status==='conflict'){api.toast('This event changed. Nothing was deleted.');await refresh(false,true);}
-          else if(result.status==='unknown'){currentOwner.calendarWriteUncertain=true;api.toast('Deletion could not be confirmed. Refresh and check before another change.');}
+          else if(result.status==='unknown'){currentOwner.calendarWriteUncertain={eventId:selected.alphaCalendarId,kind:'delete',begin:event.begin};api.toast('Deletion could not be confirmed. Refresh and check before another change.');}
           else if(result.status!=='cancelled')api.toast('Calendar deletion unavailable. Nothing was deleted.');
-        }catch{if(dispatched){currentOwner.calendarWriteUncertain=true;api.toast('Deletion could not be confirmed. Refresh and check before another change.');}else api.toast('Calendar review unavailable. Nothing was changed.');}
+        }catch{if(dispatched){currentOwner.calendarWriteUncertain={eventId:selected.alphaCalendarId,kind:'delete',begin:event.begin};api.toast('Deletion could not be confirmed. Refresh and check before another change.');}else api.toast('Calendar review unavailable. Nothing was changed.');}
         finally{currentOwner.calendarSaving=false;if(owner===currentOwner)api.set({});}
       };
       out.ev.del=()=>deleteSelection();
