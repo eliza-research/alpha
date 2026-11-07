@@ -50,7 +50,8 @@ export function GoogleConnectionsPanel(){
  // The Calendar intent waiting on the owner's Allow Calendar changes tap; rows are the readback to link, if any.
  const [choice,setChoice]=useState<{calendar:GoogleCalendarIntent;rows:GmailAccount[]|null}|null>(null);
  // The agent host reads the owner's Google switches; republish whenever device settings load or change.
- useEffect(()=>{const sync=()=>{setAccess(googleAgentAccess());void publishGoogleAgentAccess();};sync();window.addEventListener('alpha:device-settings',sync);return()=>window.removeEventListener('alpha:device-settings',sync);},[]);
+ // A failed save here leaves the phone host's previous file, or none (writes off); a toggle reports its own failure.
+ useEffect(()=>{const sync=()=>{setAccess(googleAgentAccess());void publishGoogleAgentAccess().catch(()=>{});};sync();window.addEventListener('alpha:device-settings',sync);return()=>window.removeEventListener('alpha:device-settings',sync);},[]);
  const returnedWorkspaceOwner=useRef<GoogleWorkspaceBinding|null>(null);
  const returnedWorkspace=useRef<{result:'connected'|'denied'|'failed';connectionId?:string}|null>(null);
  const returnWatch=useRef<ReturnType<typeof watchGoogleConnectionReturn>|null>(null);

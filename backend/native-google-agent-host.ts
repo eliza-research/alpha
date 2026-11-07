@@ -2,16 +2,29 @@
 export {nativeCloudRuntime} from './native-cloud-runtime.ts';
 import {createServer} from 'node:http';
 import {timingSafeEqual} from 'node:crypto';
+import {readFileSync} from 'node:fs';
 import {createManagedGoogleAgentHost,type ManagedGoogleAgentPort,type GoogleAgentAccess} from './managed-google-agent-host.ts';
 import {createManagedGoogleAgentBroker} from './managed-google-agent-broker.ts';
 import {createNativeGoogleCloudPort,type NativeGoogleBinding} from './native-google-cloud-port.ts';
+
+/** The owner's Settings switches, written by AlphaLocalAgentPlugin.setGoogleAgentAccess. Read before every
+ * agent write so a toggle applies without a restart; no file, or anything but version 1 booleans, is off. */
+export function savedGoogleAgentAccess(file=process.env.ALPHA_GOOGLE_AGENT_ACCESS_FILE):GoogleAgentAccess{
+ const off={gmailChanges:false,calendarEdits:false};
+ if(!file)return off;
+ try{
+  const saved=JSON.parse(readFileSync(file,'utf8'));
+  if(saved?.version!==1||typeof saved.gmailChanges!=='boolean'||typeof saved.calendarEdits!=='boolean')return off;
+  return {gmailChanges:saved.gmailChanges,calendarEdits:saved.calendarEdits};
+ }catch{return off;}
+}
 
 /** Signed in-process application host; no renderer, browser profile or credential writes. */
 export async function startNativeGoogleAgentHost(options:{binding:NativeGoogleBinding;apiToken:string;request?:typeof fetch;assertCurrent?:()=>void}) {
  if(!/^[A-Za-z0-9_-]{64}$/.test(options.apiToken))throw Error('Private native agent authentication is unavailable');
  const retired=new AbortController();
  const port=createNativeGoogleCloudPort(options.binding,()=>{retired.signal.throwIfAborted();options.assertCurrent?.();},options.request);
- const host=await startManagedGoogleAgentHost({port,apiToken:options.apiToken});
+ const host=await startManagedGoogleAgentHost({port,apiToken:options.apiToken,access:()=>savedGoogleAgentAccess()});
  return {port:host.port,async close(){if(!retired.signal.aborted)retired.abort();await host.close();}};
 }
 
