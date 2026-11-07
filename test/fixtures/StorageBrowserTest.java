@@ -2,6 +2,7 @@ package ai.eliza.plugins.filesystem.browser;
 
 import java.io.File;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 
@@ -82,7 +83,46 @@ public final class StorageBrowserTest {
    check(b.folders("Download","bank",0,0,500,20000).isEmpty(),"folder filter stays under the folder");
    check(b.folders("","bank",1_760_000_000_000L,0,500,20000).isEmpty(),"folder filter applies the date range");
    check(b.folders("","",0,0,500,20000).stream().noneMatch(r->r.path.startsWith(".")||r.path.contains("/.")),"no hidden folders");
+   verifyLinkedPaths(b,root);
    System.out.println("PASS storage browser");
   }finally{StorageBrowser.deleteRecursive(root);}
+ }
+ static void verifyLinkedPaths(StorageBrowser browser,File root)throws Exception{
+  Path outside=Files.createTempDirectory("alpha-outside-storage");
+  try{
+   Path sentinel=Files.writeString(outside.resolve("sentinel.txt"),"private");
+   Path volume=root.toPath();
+   Path tree=Files.createDirectory(volume.resolve("LinkedTree"));
+   Files.writeString(tree.resolve("ordinary.txt"),"local");
+   Files.createSymbolicLink(tree.resolve("escape"),outside);
+   Files.createSymbolicLink(volume.resolve("TrashAlias"),volume.resolve(TRASH));
+   try{browser.resolve("TrashAlias/info",false);check(false,"link to hidden trash refused");}catch(IllegalArgumentException expected){}
+   check(browser.list("LinkedTree").size()==1,"listing hides links");
+   check(browser.folders("","escape",0,0,500,20000).isEmpty(),"folder search skips linked folders");
+   check(browser.transfer(List.of("LinkedTree"),"Documents",true).get(0).status.equals("failed"),"recursive copy refuses linked children");
+   check(!Files.exists(volume.resolve("Documents/LinkedTree"))&&Files.exists(tree.resolve("ordinary.txt")),"failed copy rolls back only its new destination");
+   String expired=browser.trash(List.of("LinkedTree"),0L).get(0).to;
+   check(expired!=null,"renaming a tree to trash does not follow its child");
+   check(browser.trashList(StorageBrowser.RETENTION_MS).stream().noneMatch(row->row.id.equals(expired)),"retention removes the selected tree");
+   check(Files.readString(sentinel).equals("private"),"retention never follows linked children");
+   Path linkFolder=Files.createDirectory(volume.resolve("PermanentDelete"));
+   Files.createSymbolicLink(linkFolder.resolve("escape"),outside);
+   String id=browser.trash(List.of("PermanentDelete"),1L).get(0).to;
+   check(browser.emptyTrash(List.of(id))==1&&Files.readString(sentinel).equals("private"),"confirmed deletion never follows linked children");
+   Path trash=volume.resolve(TRASH);
+   Path info=trash.resolve("info"),movedInfo=trash.resolve("old-info");
+   Files.move(info,movedInfo);
+   Files.createSymbolicLink(info,outside);
+   try{browser.emptyTrash(List.of(id));check(false,"linked trash component refused");}catch(java.io.IOException expected){}
+   try{browser.trash(List.of("Documents/a (1).pdf"),2L);check(false,"no write through linked trash component");}catch(java.io.IOException expected){}
+   check(Files.readString(sentinel).equals("private")&&Files.exists(volume.resolve("Documents/a (1).pdf")),"failed Trash writes preserve both locations");
+   Files.delete(info);
+   Files.move(movedInfo,info);
+   Path otherRoot=Files.createDirectory(volume.resolve("OtherRoot"));
+   Files.createSymbolicLink(otherRoot.resolve(TRASH),outside);
+   try{new StorageBrowser(otherRoot.toFile(),TRASH).trashList(0L);check(false,"linked trash root refused");}catch(java.io.IOException expected){}
+   check(!StorageBrowser.deleteInside(root,otherRoot.resolve(TRASH).resolve("sentinel.txt").toFile()),"secure deletion refuses a linked parent");
+   check(Files.readString(sentinel).equals("private"),"outside sentinel survived every operation");
+  }finally{StorageBrowser.deleteRecursive(outside.toFile());}
  }
 }

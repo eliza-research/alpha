@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "baseCommit": "7ce87b1e8daca847bd4c6d983856d2416e9c59af",
+  "baseCommit": "6057ee3d9fb611252b7cbe2129d8ac9676f72c95",
   "patches": [
     {
       "file": "cloud-speech-client.patch",
