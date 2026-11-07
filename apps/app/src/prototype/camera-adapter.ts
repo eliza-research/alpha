@@ -1136,10 +1136,24 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     thumbTimer=window.setTimeout(()=>{thumbTimer=undefined;if(!disposed)void settleThumbnails(rows,from,to);},120);
   }
   async function settleThumbnails(rows:SavedPhoto[],from:number,to:number){
-    const token=libraryEpoch,live=new Map(captures.map(row=>[row.id,row] as const));
+    const live=new Map(captures.map(row=>[row.id,row] as const));
     const plan=thumbnailPlan(rows.map(row=>live.get(row.id)??row),from,to,LIBRARY_LIMITS.thumbnailsKept);
-    if(plan.drop.length){const drop=new Set(plan.drop);captures=captures.map(row=>drop.has(row.id)&&row.image?{...row,image:''}:row);}
-    for(const batch of batches(plan.fetch.filter(id=>!thumbFetching.has(id)),24)){
+    // Album covers keep their thumbnail wherever the grid is.
+    if(plan.drop.length){const drop=new Set(plan.drop.filter(id=>!coverIds.has(id)));captures=captures.map(row=>drop.has(row.id)&&row.image?{...row,image:''}:row);}
+    await fetchThumbnails(plan.fetch);
+  }
+  /** The rows Albums shows as covers: their thumbnails are never dropped, and one dropped before
+   * Albums opened is read again. */
+  let coverIds=new Set<string>();
+  function keepCovers(rows:(SavedPhoto|undefined)[]){
+    coverIds=new Set(rows.flatMap(row=>row?[row.id]:[]));
+    if(browserMode||typeof library.thumbnails!=='function')return;
+    const missing=rows.flatMap(row=>row&&!row.image&&!thumbFetching.has(row.id)?[row.id]:[]);
+    if(missing.length)queueMicrotask(()=>{if(!disposed)void fetchThumbnails(missing);});
+  }
+  async function fetchThumbnails(ids:string[]){
+    const token=libraryEpoch;
+    for(const batch of batches(ids.filter(id=>!thumbFetching.has(id)),24)){
       batch.forEach(id=>thumbFetching.add(id));
       try{
         const result=await library.thumbnails!({ids:batch.map(nativeId)});if(disposed)return;
@@ -1253,11 +1267,13 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     if(!albumsLoaded&&!albumsBusy)queueMicrotask(()=>{void loadCustomAlbums(currentApi);});
     data.trashN = counts ? String(counts.trash) : trashLoaded ? String(trash.length) + (trashNext ? '+' : '') : '';
     // Albums: Favorites, Videos, Camera, Screenshots, then custom albums with covers.
-    const cover=(rows:SavedPhoto[])=>rows[0]?.image?`url("${rows[0].image}") center / cover no-repeat`:'var(--s2)';
+    const covers:(SavedPhoto|undefined)[]=[];
+    const cover=(rows:SavedPhoto[])=>{covers.push(rows[0]);return rows[0]?.image?`url("${rows[0].image}") center / cover no-repeat`:'var(--s2)';};
     const openAlbum=(key:string)=>{currentApi.set({album:key,open:null,nativePhotoSelection:null});closeVideo();void loadAlbum(key,currentApi);};
     const builtIn:[string,string,string,number|undefined][]=[['fav','Favorites','favorites',counts?.favorites],['video','Videos','videos',counts?.videos],['camera','Camera','camera',counts?.camera],['shot','Screenshots','screenshots',counts?.screenshots]];
     data.tiles=builtIn.filter(([key,,,count])=>key==='fav'||count===undefined&&captures.some(row=>albumOf(row,ALBUM_KEYS[key]))||!!count).map(([key,name,album,count])=>({name,count:count??'',bg:cover(captures.filter(row=>albumOf(row,album))),tf:'',flt:'',open:()=>openAlbum(key)}));
     data.tiles.push(...customAlbums.map(album=>({name:album.name,count:album.count,bg:cover(captures.filter(row=>album.memberIds.includes(nativeId(row.id)))),tf:'',flt:'',open:()=>{openAlbum('custom:'+album.id);void loadCustomAlbums(currentApi);}})));
+    if(onAlbums)keepCovers(covers);
     data.hasPeople=false;
     data.albumsError=albumsRecovery?String(st.nativeAlbumsError||'Albums could not be read.'):'';data.albumsRecover=()=>{void import('../browser/preference-recovery').then(m=>m.openAlbumRecovery()).catch(()=>currentApi.toast('Album recovery could not open.'));};
     data.albumBackLabel='Back to albums';data.selectionBusy=mutating||sharing;
