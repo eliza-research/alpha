@@ -50,7 +50,10 @@ for(const scenario of ['decline','accepted-reload','lost-activation','quote-chan
   },scenario);
   await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent connection',exact:true}).click();await page.locator('summary').filter({hasText:/^Development Cloud agent infrastructure$/}).click();
   await preloadPageModules(page,setupModules);
-  await page.evaluate(async()=>{const {connectionController}=await import('/src/runtime/connection-ui.tsx');void connectionController.signInBrowser();});
+  await page.evaluate(()=>{
+   const {connectionController}=(window as any).__alphaModules['/src/runtime/connection-ui.tsx'];
+   void connectionController.signInBrowser();
+  });
   const review=page.getByRole('region',{name:'Dedicated hosting review'});
   // Section has an accessible name and is a region; display real reviewed price fields.
   await expect(review).toBeVisible();await expect(review).toContainText('$2.40/day');await expect(review).toContainText('Minimum charge per successful start: $0.50');
