@@ -15,8 +15,19 @@ export type SuggestionTarget=SharedSuggestionTarget;
 /** Local encrypted drafts (@elizaos/plugin-inbox/mailbox) on Alpha's encrypted slots, recovery copy and
  * native file picker. They remain separate from explicitly reviewed provider operations. */
 export function inboxDrafts(publish:()=>void,toast:(text:string)=>void, provider?:MailDraftsProvider) {
- return createMailDraftsController({publish,toast,provider,store:inboxLocalStore,retained:inboxUnsaved,reviewAttachment:reviewMailAttachment,
+ const copies=new Set<ReturnType<typeof inboxUnsaved>>();
+ const drafts=createMailDraftsController({publish,toast,provider,store:inboxLocalStore,retained:(owner,changed,restore)=>{
+  const copy=inboxUnsaved(owner,changed,restore);copies.add(copy);return copy;
+ },reviewAttachment:reviewMailAttachment,
   confirm:message=>window.confirm(message),
   identity:()=>({sessionId:connectionController.getCloudClient()?.sessionId,account:connectionController.getSnapshot().cloudAccount??null}),
   attachments:{select:()=>DailyApps.perform({action:'files'}),read:selectionId=>attachmentNative.readSelected({selectionId}),forget:selectionId=>DailyApps.forgetSelected({selectionId})}});
+ return Object.assign(drafts,{async flushForAppUpdate(current:()=>boolean){
+  const retained=new Set(copies);
+  const exact=()=>current()&&(!drafts.hasDraft||drafts.ready)&&[...copies].every(copy=>retained.has(copy));
+  if(!exact())throw Error('Email draft is still changing');
+  await Promise.all([...retained].map(copy=>copy.flushForAppUpdate(exact)));
+  if(!exact())throw Error('Email draft changed');
+  for(const copy of retained)if(copy.retired)copies.delete(copy);
+ }});
 }

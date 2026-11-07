@@ -244,6 +244,7 @@ export const CLIENT_FEATURE_PATHS = [
   'packages/ui/src/platform/browser-document-store.ts',
   'packages/ui/src/state/durable-draft.ts',
   'packages/ui/src/state/durable-draft-controller.ts',
+  'packages/ui/src/state/app-update-gate.ts',
   'packages/contracts/src/native-notes-query.ts',
   'packages/contracts/src/device-reviews.ts',
   'plugins/plugin-assistant/src/services/device-actions/contract.ts',

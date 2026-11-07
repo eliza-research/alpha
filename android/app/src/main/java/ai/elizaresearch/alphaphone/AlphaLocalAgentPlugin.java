@@ -592,6 +592,7 @@ private static final class ResidentAttachDiagnostic {
   String requestId=call.getString("requestId");
   if(requestId!=null&&!requestId.matches("[a-f0-9-]{36}")){call.reject("Invalid startup request");return;}
   try {
+   ai.eliza.plugins.agent.updater.RuntimeUpdatePause.beforeStart();
    if(!runtimePackaged()){call.reject("On-device agent is unavailable in this version.");return;}
    // No provider is required: without an admitted Eliza Cloud plan the agent runs unbound.
    final AlphaCredentialStore providerStore=new AlphaCredentialStore(getContext());
@@ -616,6 +617,7 @@ private static final class ResidentAttachDiagnostic {
      if(requestId!=null&&cancelledStarts.remove(requestId)){call.reject("Local startup cancelled");return;}
      if(observedEpoch!=lifecycleEpoch||continuationEpoch>=0&&!credentialIntents.isCurrent(continuationIntent)){if(continuationEpoch>=0){call.reject("Local agent connection changed; retry from the app.");return;}continue;}
      if(continuationEpoch>=0&&(getActivity()==null||!getActivity().hasWindowFocus())){call.reject("Return to the app before starting.");return;}
+     ai.eliza.plugins.agent.updater.RuntimeUpdatePause.beforeStart();
      if(disposed){call.reject("Local agent bridge is closed.");return;}
      if(credentialMutationEpoch>=0){call.reject("Local provider is changing; wait before starting.");return;}
      if(credentialShutdownRequest!=-1&&(credentialShutdownRequest<0||!ElizaAgentService.isCredentialShutdownConfirmed(credentialShutdownRequest))){call.reject("Provider shutdown is unconfirmed; check the local agent before starting.");return;}
@@ -746,6 +748,19 @@ private static final class ResidentAttachDiagnostic {
    call.reject("Local runtime changed while checking status; check again.");
   }catch(Exception error){call.reject("Local runtime status unavailable.");}
  }
+ /** Updater owns a service shutdown lease; no vault/lifecycle monitor is held during the wait. */
+ static long pauseForUpdate(Context context){
+  final long request;
+  synchronized(lifecycleLock){
+   if(credentialMutationEpoch>=0)throw new IllegalStateException("Provider mutation pending");
+   startRequestId=null;startOwnsLaunch=false;
+   AlphaCanonicalNotifications.forget(context);invalidateCalls();++lifecycleEpoch;accepting=false;stopping=true;clearEnrollment();
+   request=ElizaAgentService.reserveCredentialShutdown();
+  }
+  return request;
+ }
+ static boolean updateShutdownConfirmed(Context context,long request)throws Exception{return ElizaAgentService.isCredentialShutdownConfirmed(request)&&shutdownConfirmed(ElizaAgentService.getLocalAgentBootState(context));}
+ static void releaseUpdateShutdown(long request){ElizaAgentService.releaseCredentialShutdown(request);}
  @PluginMethod public void stop(PluginCall call) {
   synchronized(lifecycleLock){
    startRequestId=null;startOwnsLaunch=false;

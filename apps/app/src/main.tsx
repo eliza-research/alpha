@@ -5,6 +5,8 @@ import {installCanonicalNotesView} from './prototype/canonical-notes-ui';
 import {installCanonicalCalendarDrafts} from './prototype/canonical-calendar-drafts';
 import {installAgentCalendarAdapter,deviceCalendarScope} from './prototype/agent-calendar-adapter';
 import {Capacitor} from '@capacitor/core';
+import {registerPlugin} from './platform-plugins';
+import {holdAppUpdateStartup,supportsAppUpdateStartup,watchMountedAppUpdates} from '../../../.eliza/client-features/packages/ui/src/state/app-update-gate';
 import {ownerReminderNotifications} from './runtime/owner-reminder-notification-port';
 import {installCalendarApprovalAdapter} from './prototype/calendar-approval-adapter';
 import {bindBrowserDeletionOwner} from './runtime/deletion-owner';
@@ -300,7 +302,39 @@ async function applyDeviceLocale() {
   try { const info = await System.getLocaleInfo(); setLocalePreferences({ locale: info.locale, hourCycle: info.hour24 === true ? 'h23' : info.hour24 === false ? 'h12' : undefined }); }
   catch { /* Keep the WebView's default locale formatting. */ }
 }
+async function prepareMountedUpdate(activationCurrent: () => boolean) {
+  const owner = shell;
+  const current = () => activationCurrent() && shell === owner && owner?.live === true;
+  if (!current()) throw Error('App is still opening');
+  if (connectionController.getSnapshot().busy || document.querySelector('[data-alpha-chat-recorder],[data-alpha-subview="notes-recorder"]'))
+    throw Error('Finish the current activity before updating');
+  const reconnect = connectionController.captureAppUpdateReconnect();
+  const flush = [
+    owner.flushComposerForAppUpdate, owner.flushCalendarForAppUpdate,
+    owner.flushNotesForAppUpdate, owner.flushInboxForAppUpdate, owner.flushWorkflowsForAppUpdate,
+  ];
+  if (flush.some(draft => typeof draft !== 'function')) throw Error('A draft owner is unavailable');
+  await Promise.all(flush.map(draft => draft.call(owner, current)));
+  if (!current()) throw Error('App update changed');
+  return reconnect;
+}
+let nativeAppUpdateGate: Promise<void> | undefined;
+const appUpdatePresentation = {
+  dialogClass: 'alpha-update-startup', dialogLabel: 'App update',
+  pendingLabel: 'Updating Alpha…', continueLabel: 'Continue update',
+  navigationEvents: ['alpha-back', 'launcher-home'],
+};
 async function mountPhone() {
+  const capacitor = Capacitor as typeof Capacitor & {PluginHeaders?:unknown};
+  if (isAndroid && supportsAppUpdateStartup(capacitor.PluginHeaders, 'AlphaDevice')) {
+    nativeAppUpdateGate ??= (async () => {
+      const device = registerPlugin<Parameters<typeof watchMountedAppUpdates>[0]>('AlphaDevice');
+      await holdAppUpdateStartup(device, appUpdatePresentation);
+      // If subscription fails, Android still requires this WebView's receipt and refuses to commit.
+      await watchMountedAppUpdates(device, appUpdatePresentation, prepareMountedUpdate, () => shell?.toast('Finish your changes, then try updating again.')).catch(() => {});
+    })();
+    await nativeAppUpdateGate;
+  }
   // Android owns its system bars; browser defaults to the standalone app.
   launcherPresentation = isAndroid
     ? await System.getBuildInfo().then(info => info.launcher === true).catch(() => false)

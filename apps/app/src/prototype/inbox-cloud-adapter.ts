@@ -314,6 +314,12 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
   const publish = (patch: Bag = {}) => shell?.vset('inbox', { nativeMailTick: Date.now(), ...patch });
   const provider = inboxProviderControls(() => publish(), text => api?.toast(text));
   const drafts = inboxDrafts(() => publish(), text => api?.toast(text), provider);
+  p.flushInboxForAppUpdate=async function(current:()=>boolean){
+    const exact=()=>current()&&(!shell||shell===this)&&!pendingCompose&&!api?.get('inbox')?.compose&&
+      !provider.render().providerReview&&!contextReview&&!attachmentView;
+    if(!exact())throw Error('Inbox changes are still pending');
+    await drafts.flushForAppUpdate(exact);
+  };
   provider.setEditor((proposal,reference)=>drafts.editProvider(proposal,reference));
   provider.setComposer(()=>drafts.email());
   const readable = () => accounts.filter(gmailReadable);

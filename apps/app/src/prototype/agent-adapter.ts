@@ -120,20 +120,25 @@ async function firstSendReview(shell:Shell,key:string,signal:AbortSignal):Promis
  * yet" slot, by compare-and-exchange, so a later new chat does not offer it again. Unconfirmed,
  * both copies stay: nothing is lost and nothing is sent.
  */
-async function settleFirstSendSlot(slot:string,conversation:string,text:string,current:()=>boolean){
+function settleFirstSendSlot(shell:Shell,slot:string,conversation:string,text:string,current:()=>boolean){
   if(!text)return;// Replaced with an empty composer: the review itself cleared the slot.
-  try{
-    const from=await assistantDraftStore(slot),to=await assistantDraftStore(conversation);
-    for(const delay of [0,150,600,1500]){
-      if(delay)await new Promise(resolve=>setTimeout(resolve,delay));
-      if(!current())return;
-      if((await to.read())?.text!==text)continue;
-      const saved=await from.read();
-      if(!saved||saved.text!==text)return;
-      if(saved.sending===true)continue;
-      try{await from.save(saved,'');return;}catch{/* A newer write won; read it again. */}
-    }
-  }catch{/* Storage review stays with the slot's own recovery. */}
+  const writes:Set<Promise<void>>=shell.firstSendSlotWrites??=new Set();
+  const task=(async()=>{
+    try{
+      const from=await assistantDraftStore(slot),to=await assistantDraftStore(conversation);
+      for(const delay of [0,150,600,1500]){
+        if(delay)await new Promise(resolve=>setTimeout(resolve,delay));
+        if(!current())return;
+        if((await to.read())?.text!==text)continue;
+        const saved=await from.read();
+        if(!saved||saved.text!==text)return;
+        if(saved.sending===true)continue;
+        try{await from.save(saved,'');return;}catch{/* A newer write won; read it again. */}
+      }
+    }catch{/* Storage review stays with the slot's own recovery. */}
+  })();
+  writes.add(task);
+  void task.finally(()=>writes.delete(task));
 }
 /**
  * A new chat's first message is held in the owner and agent's "no conversation yet" slot, and its
@@ -158,7 +163,7 @@ function releaseComposerSend(shell:Shell,heldKey:string|undefined,heldText:strin
   shell.setState((previous:Shell)=>draft.binding!==key||String(previous.draft||'').trim()?null:{draft:heldText},()=>{
     if(!shell.live||draft.binding!==key||String(shell.S().draft||'')!==heldText)return;
     draft.edit(heldText);
-    void settleFirstSendSlot(heldKey,key,heldText,()=>shell.live&&draft.binding===key);
+    settleFirstSendSlot(shell,heldKey,key,heldText,()=>shell.live&&draft.binding===key);
   });
 }
 const preDispatchRefusals=new Set(['Finish the connection or history operation before sending.','Wait for the current reply before sending another message.',NO_AGENT_SEND,RESIDENT_STARTING_NOTICE,RESIDENT_RECOVERING_NOTICE]);
@@ -582,7 +587,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     this.dialogBackObserver.observe(document.body, {subtree:true, childList:true, attributes:true, attributeFilter:['open']});
     // A refused send puts its text back with no line under the composer (owner, 2026-11-03).
     this.composerDraft=new AssistantDraftController(assistantDraftStore,()=>String(this.S().draft||''),(text,expected,current)=>new Promise<void>(resolve=>{if(!this.live||current&&!current()){resolve();return;}this.setState((previous:Shell)=>{if(current&&!current()||expected!==undefined&&String(previous.draft||'')!==expected)return null;if(this.startupDraft!==null)this.startupDraft=undefined;this.reviewedSourceDraft=null;return {draft:text};},resolve);}),()=>{if(this.live)this.setState({});},{notSent:''});
-    this.refreshDraftBinding=()=>{this.draftBindingAbort?.abort();if(residentAlwaysPresent&&!connectionController.getSnapshot().session){this.draftBindingTask=Promise.resolve();return;}const controller=this.draftBindingAbort=new AbortController();this.draftBindingTask=connectionController.assistantDraftBinding(controller.signal).then(async key=>{if(!this.live||controller.signal.aborted)return;const review=await firstSendReview(this,key,controller.signal);if(!this.live||controller.signal.aborted)return;await this.composerDraft.open(review.open??key);if(review.moved&&this.composerDraft.binding===key)void settleFirstSendSlot(review.moved,key,String(this.S().draft||''),()=>this.live&&this.composerDraft.binding===key);}).catch(()=>{if(this.live&&!controller.signal.aborted)this.composerDraft.unavailable();});};
+    this.refreshDraftBinding=()=>{this.draftBindingAbort?.abort();if(residentAlwaysPresent&&!connectionController.getSnapshot().session){this.draftBindingTask=Promise.resolve();return;}const controller=this.draftBindingAbort=new AbortController();this.draftBindingTask=connectionController.assistantDraftBinding(controller.signal).then(async key=>{if(!this.live||controller.signal.aborted)return;const review=await firstSendReview(this,key,controller.signal);if(!this.live||controller.signal.aborted)return;await this.composerDraft.open(review.open??key);if(review.moved&&this.composerDraft.binding===key)settleFirstSendSlot(this,review.moved,key,String(this.S().draft||''),()=>this.live&&this.composerDraft.binding===key);}).catch(()=>{if(this.live&&!controller.signal.aborted)this.composerDraft.unavailable();});};
     this.refreshDraftBinding();
     this.connectionSession = connectionController.getSnapshot().session?.sessionId;
     // Only fresh typing before the first verified session can cross startup admission.
@@ -1024,6 +1029,30 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       } };
     });
     context(this);
+  };
+  p.flushComposerForAppUpdate = async function (current: () => boolean) {
+    const opening = this.draftBindingTask;
+    await opening;
+    const writes: Set<Promise<void>> = new Set(this.firstSendSlotWrites);
+    await Promise.all(writes);
+    const exact = () => current() && this.draftBindingTask === opening &&
+      [...(this.firstSendSlotWrites ?? [])].every(write => writes.has(write));
+    if (!exact()) throw Error('Composer draft changed');
+    await this.composerDraft.flush(exact);
+  };
+  p.flushNotesForAppUpdate = async function (current: () => boolean) {
+    const ready = this.notesReady;
+    const draft = this.notesDraftTask;
+    const canonical = this.canonicalNotesUi;
+    const store = this.notesStore;
+    const exact = () => current() && this.notesReady === ready && this.notesDraftTask === draft &&
+      this.canonicalNotesUi === canonical && this.notesStore === store && !this.notesPending &&
+      (this.notesSourceMode !== 'legacy' || !this.notesStorageFailed) &&
+      !canonical?.pending && !canonical?.dirty;
+    await Promise.all([ready, draft]);
+    if (!exact()) throw Error('Notes changes are still pending');
+    if (this.notesSourceMode === 'legacy' && store) await store.assertCurrent();
+    if (!exact()) throw Error('Notes changed');
   };
   p.componentDidUpdate = function (prev: Shell) { originalUpdate.call(this, prev); const notesView=this.S().view==='notes';if(notesView&&!this.wasCanonicalNotesView&&this.notesSourceMode==='canonical')void this.canonicalNotesUi?.refresh().catch(()=>{});this.wasCanonicalNotesView=notesView; context(this); void connectionController.observeCommittedView(); sizeComposer();this.composerDraft?.edit(String(this.S().draft||''));const shade=!!this.S().shade;if(shade&&!this.shadeWasOpen)this.refreshTileFacts();this.shadeWasOpen=shade;const chatOpen=this.S().chat==='sheet'||this.S().chat==='full',drafting=!!String(this.S().draft||'').trim();if((chatOpen&&!this.chatWasOpen)||(drafting&&!this.wasDrafting))connectionController.warmInference();this.chatWasOpen=chatOpen;this.wasDrafting=drafting;const selected=this.messageReplyTarget||this.messageEditTarget;if(selected&&(JSON.stringify(selected.session)!==JSON.stringify(connectionController.getSnapshot().session)||!this.S().msgs.some((m:Shell)=>m.id===selected.messageId&&m.text===selected.text))){cancelMessageContext(this);this.setState({});} };
   p.componentWillUnmount = function () {

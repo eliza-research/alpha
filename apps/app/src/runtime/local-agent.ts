@@ -57,6 +57,14 @@ export async function localAgentPackaged():Promise<boolean> {
   if(!Capacitor.isNativePlatform())return browserLocalAgentEnabled;
   try{return (await native.getStatus?.())?.packaged===true;}catch{return false;}
 }
+/** An updater cancellation may restart only after native confirms the resident stopped. */
+export async function localAgentStopped():Promise<boolean> {
+  if(!Capacitor.isNativePlatform()||!localAgentAvailable())return false;
+  try{
+    const status=await native.getStatus?.();
+    return status?.packaged===true&&status.state==='stopped';
+  }catch{return false;}
+}
 const unavailableBridge: LocalAgentBridge = {
   async start() { throw new Error('On-device agent is unavailable here. Connect to an agent or use Cloud.'); },
   async request() { throw new Error('On-device agent is unavailable here. Connect to an agent or use Cloud.'); },

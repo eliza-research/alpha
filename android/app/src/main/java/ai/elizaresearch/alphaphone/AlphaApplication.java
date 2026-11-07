@@ -8,6 +8,7 @@ public final class AlphaApplication extends android.app.Application {
   // The provider-free reset recovery process shows the unfinished reset and must not stop itself.
   // A pending reset revokes Cloud keys (bounded), retries and stops this process (shared DataReset).
   AlphaDataReset.RESET.admitBeforeStartup(base,getProcessName());
+  if(!android.os.Process.isIsolated()&&!AlphaDataReset.RESET.isRecoveryProcess(base,getProcessName()))AlphaDevicePlugin.UpdatePause.configure(base);
  }
  private boolean resetRecoveryProcess(){return AlphaDataReset.RESET.isRecoveryProcess(this,getProcessName());}
  @Override public void onCreate(){

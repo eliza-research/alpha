@@ -48,7 +48,7 @@ import { PersonalProtocolError, type CloudPersonalProtocol, type PersonalView, t
 import { holdPhoneInert } from './modal-inert';
 import { pauseHostedBackground } from './hosted-background';
 import {developmentDeviceStore,developmentActionJournal} from './local-agent-storage';
-import { reviewLocalRecovery,archiveLocalRecovery,stopLocalAgent, configureLocalProvider, bindResidentCloudProvider, LocalCloudProviderStopUnconfirmed, LocalAgentProtocol, localAgentPackaged, browserLocalAgentEnabled, localProviderStatus, clearLocalProvider, clearLocalProviderIfCurrent, providerStatusLabel, LOCAL_PROVIDER_MODEL, type LocalProviderStatus } from './local-agent';
+import { reviewLocalRecovery,archiveLocalRecovery,stopLocalAgent, configureLocalProvider, bindResidentCloudProvider, LocalCloudProviderStopUnconfirmed, LocalAgentProtocol, localAgentPackaged, localAgentStopped, browserLocalAgentEnabled, localProviderStatus, clearLocalProvider, clearLocalProviderIfCurrent, providerStatusLabel, LOCAL_PROVIDER_MODEL, type LocalProviderStatus } from './local-agent';
 import { presentDeviceRecordOperation } from './device-record-presentation';
 import {checkinDisplayText, succeededBrowserDestination, systemNoticeDisplayText, systemNoticeKind, type SystemNoticeKind } from './action-message-presentation';
 import type { MessagePage } from './remote-protocol';
@@ -1933,6 +1933,19 @@ async function restoreOptionalBrowserCloudAccount():Promise<boolean>{
 }
 
 export const connectionController = {
+  /** A canceled update may reopen only the resident this page prepared. */
+  captureAppUpdateReconnect(){
+    const before=active,session=state.session,generation=epoch,scope=planCheckScope(),provider=state.providerStatus?.revision;
+    const sameProvider=()=>planCheckScope()===scope&&state.providerStatus?.revision===provider;
+    const current=()=>before===active&&session===state.session&&generation===epoch&&!operation&&!sending&&sameProvider();
+    return async(stillSettled:()=>boolean)=>{
+      if(!residentAlwaysPresent||before?.kind!=='resident'||!current()||!stillSettled()||!await localAgentStopped()||!current()||!stillSettled())return;
+      const retirement=retire(),reconnectEpoch=epoch;
+      try{await retirement;}catch{return;}
+      if(reconnectEpoch!==epoch||active||operation||!sameProvider()||!stillSettled())return;
+      await ensureResident();
+    };
+  },
   subscribe(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener); }; },
   getSnapshot() { return state; },
   getSelectedConversationId(){return active&&state.session?conversationMemory.get(conversationKey(state.session)):undefined;},
