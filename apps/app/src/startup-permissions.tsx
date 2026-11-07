@@ -211,7 +211,7 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
     {/* A missing plan is known at admission. Setup does not wait for the agent to start, so this notice does not either. */}
     {(connection.residentPlanNotice==='needs-plan'||connection.residentInference&&connection.residentInference!=='cloud'&&connection.residentInference!=='direct')&&<p role="status" className="alpha-permission-status">{connection.residentPlanNotice==='needs-plan'?'AI needs an active Cloud plan. Manage it in Settings.':'AI is not ready yet. Check your connection in Settings.'}</p>}
     {connection.error&&<p role="alert" className="alpha-permission-status">{connection.error}</p>}
-    {connection.message?.includes('did not confirm revoking')&&<p role="status" className="alpha-permission-status">{connection.message}</p>}
+    {connection.previousSignInUnconfirmed&&connection.message&&<p role="status" className="alpha-permission-status">{connection.message}</p>}
     {connection.accountCreated&&<p role="status" className="alpha-permission-status">Account created{connection.cloudAccount?.email?`: ${connection.cloudAccount.email}`:''}.</p>}
     {progressError&&<p role="alert" className="alpha-permission-status">Setup progress could not be saved. Try again.</p>}
     <div className="alpha-permission-actions"><button type="button" className="alpha-permission-primary" disabled={busy} onClick={()=>void finish()}>{busy?'Checking…':'Go to Alpha'}</button></div>

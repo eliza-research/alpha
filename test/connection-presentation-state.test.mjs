@@ -89,6 +89,7 @@ test('expired and rejected restored sessions still require authentication; valid
 const preflightSource = [
   section('function residentSignInRequired()', '\n'),
   section('function fundingNeeded()', '\n'),
+  section('function releaseOperation(', '/** Start (or restart) the resident.'),
   'const preflightController = {',
   section('  close() {', '  cancel() {'),
   section('  async prepareVoiceConversation(', '  async send('),
@@ -111,6 +112,7 @@ function preflightFixture(balance, options = {}) {
     AlphaClientError: class AlphaClientError extends Error {constructor(code, message) {super(message); this.code = code;}},
     residentCloudFlow: () => true, residentAlwaysPresent: true,
     residentStartInBackground: false, pendingBillingReview: null,
+    runQueuedResidentRebind: () => {}, runQueuedSignInReturn: () => {},
     operation: null, requestedCameraContinuation: undefined, clientObservationSession: undefined,
     NO_AGENT_SEND: 'No selected session', NO_AGENT_VOICE: 'No selected session',
     noSessionError: () => Error('No selected session'),
@@ -240,8 +242,8 @@ test('the private local preview keeps a held composer send\'s refusal out of toa
   }
 });
 // Owner, 2026-11-03: Cloud being unreachable shows no banner; a plan that is needed still does.
-const planNoticeLine = section('    const notice=residentCloudFlow()&&snapshot.session', '\n');
-const planNotice = snapshot => vm.runInNewContext(`${planNoticeLine};notice`, {residentCloudFlow: () => true, snapshot});
+const planNoticeLine = section('  const planNotice=residentCloudFlow()&&snapshot.session', '\n');
+const planNotice = snapshot => vm.runInNewContext(`${planNoticeLine};planNotice`, {residentCloudFlow: () => true, snapshot});
 test('Cloud being unreachable shows no plan notice or text', () => {
   assert.equal(planNotice({session: {}, residentPlanNotice: 'offline', cloudAccount: null}), null);
   assert.equal(planNotice({session: {}, residentPlanNotice: 'offline', cloudAccount: {}}), null);
@@ -371,7 +373,7 @@ test('a network return held back by a reply, an edit or other work checks on the
 // still waiting, so an A→B→A change never spends it on a second plan read. An admission that runs
 // with no network records its own. Both run here from source up to their first Cloud or agent read,
 // which never settles; the provider read answers with the provider status shown.
-const admissionCode = stripTypeScriptTypes(section('async function residentSignedIn(', '/** The key is stored;') + section('async function connectResident(', 'async function connectCloud('), {mode: 'strip'});
+const admissionCode = stripTypeScriptTypes(section('async function readCloudCredential(', '/** Notice shown when Cloud inference') + section('async function residentSignedIn(', '/** The key is stored;') + section('async function connectResident(', 'async function connectCloud('), {mode: 'strip'});
 const signInAdmission = {binding: 'unbound'};
 function admissions(box) {
   vm.runInContext(admissionCode, box);
@@ -550,7 +552,7 @@ for (const [continuation, changes, run] of [
   ['Alpha hidden, then shown', classChanges, async (box, _, retire) => { await retire(); box.fire('visibilitychange', true); }],
   ['a render update', classChanges, async (box, _, retire) => { await retire(); box.update({message: 'Render update', open: true}); }],
   ['the optional Cloud account detached', classChanges.filter(([, , after]) => after === ownProvider), async (box, _, retire) => {
-    Object.assign(box, {retireReadReplies() {}, clearPersonalSetup() {}, appRequests: new Set(), membershipRead: null, pendingBillingReview: null});
+    Object.assign(box, {retireReadReplies() {}, clearPersonalSetup() {}, clearEntitlementKeyCache() {}, appRequests: new Set(), membershipRead: null, pendingBillingReview: null});
     vm.runInContext(stripTypeScriptTypes(section('function detachService()', '\n'), {mode: 'strip'}), box);
     await retire(); box.detachService(); assert.equal(box.state.cloudAccount, null);
   }],
@@ -594,11 +596,11 @@ test('a plan check that cannot reach Cloud admits nothing and reports no plan as
   })) {
     const account = {credentialId: 'credential-1'}, identityRow = {credentialId: 'credential-1', userId: 'user-1', organizationId: null}, calls = [], admitted = [], records = [];
     const client = {environment: 'production', entitlementSource: () => ({issuer: 'https://cloud.invalid', entitlement: plan, entitlementKeys: async () => [], fallbackPlan: async () => ({status: 'none', planName: null, periodEnd: null})})};
-    const box = {operation: null, planRecheck: null, signInReadinessOwner: null, state: {session: {}, open: false, cloudAccount: account, residentPlanNotice: null}, active: {kind: 'resident'}, residentBinding: 'unbound', cloud: client, service: null, AbortController, DOMException, Date, Error,
+    const box = {operation: null, planRecheck: null, networkLostUnder: null, lastPlanRecheck: 0, planCheckScope: () => 'scope', signInReadinessOwner: null, state: {session: {}, open: false, cloudAccount: account, residentPlanNotice: null}, active: {kind: 'resident'}, residentBinding: 'unbound', cloud: client, service: null, AbortController, DOMException, Date, Error,
       CloudProtocolError: class extends Error {}, EntitlementError: entitlement.EntitlementError, checkEntitlement: entitlement.checkEntitlement, planAdmission: entitlement.planAdmission, isEntitlementSignInFailure: entitlement.isEntitlementSignInFailure,
       CloudResidentBindingController: shared.CloudResidentBindingController, CloudResidentBindingError: shared.CloudResidentBindingError, recentResidentPlanAdmission: shared.recentResidentPlanAdmission,
       cloudCredentialStore: {read: async () => ({credentialId: 'credential-1'})}, cloudServiceName: () => 'Cloud',
-      verifyService: async () => { marked.push(box.operation !== null && box.operation === box.planRecheck); await identity(); box.service = {client, identity: identityRow}; },
+      verifyService: async () => { marked.push(box.operation === null && box.planRecheck !== null); await identity(); box.service = {client, identity: identityRow}; },
       readPlanAdmission: () => recent ? {version: 1, environment: 'production', ...identityRow, status: 'active', planName: 'Synthetic plan', verifiedAt: Date.now() - 1000, endsAt: null} : null, writePlanAdmission: record => records.push(record),
       ownProviderSelected: () => false, residentBindable: () => true, residentEnvironment: () => 'production', makeCloud: () => client, stopEntitlementRefresh() {}, update: patch => { Object.assign(box.state, patch); },
       detachService: () => calls.push('detach'), queueResidentRebind: () => calls.push('rebind'), residentRebinds: () => ({queue: () => calls.push('rebind')}), runQueuedResidentRebind() {}};
@@ -607,6 +609,7 @@ test('a plan check that cannot reach Cloud admits nothing and reports no plan as
     await box.recheckResidentPlan();
     assert.deepEqual({notice: box.state.residentPlanNotice, subscription: {...box.state.residentSubscription}, planEndsAt: box.state.planEndsAt, open: box.state.open, account: box.state.cloudAccount, operation: box.operation, calls, admitted, recorded: records.filter(Boolean)}, {notice, subscription, planEndsAt: null, open: false, account, operation: null, calls: [], admitted: [binding], recorded: []}, name);
   }
+  // The check runs under its own controller: a network return shares it, and it never holds the operation slot.
   assert.deepEqual(marked, [true, true, true, true], 'a network return shares this running check');
 });
 test('unknown balance does not bypass missing, expired or busy conversation guards', async () => {
@@ -779,7 +782,18 @@ test('retained credential with unreachable identity restores history without for
 });
 test('retained offline exception cannot bypass missing, expired or revoked sign-in',async()=>{
  for(const kind of ['missing','expired','revoked']){const f=await offlineRestoreFixture({kind});assert.equal(f.snapshot().cloudAccount,null);assert.equal(f.context.productionCloudSignInRequired(f.snapshot()),true);assert.equal(f.snapshot().open,true);assert.equal(f.context.admission.binding,'unbound');assert.equal(f.credentialWrites,0);}
- for(const patch of [{residentSavedCredential:false,residentPlanNotice:'offline'},{residentSavedCredential:true,residentPlanNotice:null},{residentSavedCredential:true,residentPlanNotice:'offline',error:'Sign-in expired'},{residentSavedCredential:true,residentPlanNotice:'offline',cloudAccount:{expiresAt:Date.now()-1000}}]){const f=fixture({account:null});f.update({startupResolved:true,...patch});assert.equal(f.context.productionCloudSignInRequired(f.snapshot()),true);}
+ for(const patch of [{residentSavedCredential:false,residentPlanNotice:'offline'},{residentSavedCredential:true,residentPlanNotice:null},{residentSavedCredential:true,residentPlanNotice:'offline',error:'Sign-in expired',errorKind:'sign-in-rejected'},{residentSavedCredential:true,residentPlanNotice:'offline',cloudAccount:{expiresAt:Date.now()-1000}}]){const f=fixture({account:null});f.update({startupResolved:true,...patch});assert.equal(f.context.productionCloudSignInRequired(f.snapshot()),true);}
+});
+test('offline with a saved sign-in: only a refused sign-in brings back the required page, not another error',async()=>{
+ for(const [patch,required] of [[{error:'Your agent stopped.'},false],[{error:'Cloud did not confirm revoking.',errorKind:null},false],[{error:'Signing in failed.',errorKind:'account-changed'},false],[{error:'Sign in again.',errorKind:'sign-in-rejected'},true]]){
+  const f=fixture({account:null});f.update({startupResolved:true,residentSavedCredential:true,residentPlanNotice:'offline',...patch});
+  assert.equal(f.context.productionCloudSignInRequired(f.snapshot()),required,JSON.stringify(patch));
+  assert.equal(f.snapshot().open,required);
+ }
+ // An error replaced or cleared drops its kind; the same text kept keeps it.
+ const f=fixture({account:null});f.update({error:'Sign in again.',errorKind:'sign-in-rejected'});f.update({error:'Sign in again.'});assert.equal(f.snapshot().errorKind,'sign-in-rejected');
+ f.update({error:'Your agent stopped.'});assert.equal(f.snapshot().errorKind,null);
+ f.update({error:'Sign in again.',errorKind:'sign-in-rejected'});f.update({error:''});assert.equal(f.snapshot().errorKind,null);
 });
 test('an account change before identity is verified never detaches a newer connection',async()=>{
  const newer={client:{environment:'production'},identity:{credentialId:'synthetic-newer-credential'}};

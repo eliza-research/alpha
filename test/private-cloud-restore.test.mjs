@@ -16,7 +16,7 @@ function fixture({values=[credential,credential],choice={kind:'resident'},attach
  context=vm.createContext({state,epoch:1,startup:null,operation:null,active:null,residentStartInBackground:false,privateLocalPreviewEnabled:true,
   browserDevProfile:profile,browserCloudResidentEnabled:cloudResident,isAndroid:android,testMocksEnabled:testMocks,
   update:patch=>Object.assign(state,patch),AbortController,DOMException,URLSearchParams,location:{search},residentRecoveryReason:()=>undefined,errorMessage:error=>error.message,expired:()=>false,
-  runQueuedResidentRebind(){},runQueuedSignInReturn(){},residentCloudFlow:()=>false,settleResidentAfterStartup(){},selection:()=>context.choice,choice,
+  runQueuedResidentRebind(){},runQueuedSignInReturn(){},planRecheck:null,errorKindOf:()=>null,residentCloudFlow:()=>false,settleResidentAfterStartup(){},selection:()=>context.choice,choice,
   connectResident:async()=>{calls.push('attach');if(attachFails)throw Error('Private owner unavailable');context.active={kind:'resident'};state.session={ownerId:'local-owner'};},
   cloudCredentialStore:{acceptsReferences:accepts,read:async environment=>{assert.equal(environment,'production');calls.push('read');if(readChoice)readChoice(context);return values[Math.min(calls.filter(x=>x==='read').length-1,values.length-1)]??null;},write(){throw Error('No credential write');},clear(){throw Error('No credential clear');}},
   makeCloud:environment=>({environment}),verifyService:async(client,_signal,expected)=>{calls.push('verify');assert.equal(client.environment,'production');assert.deepEqual({...expected},credential);context.service={identity:{credentialId:credential.credentialId}};state.cloudAccount={credentialId:credential.credentialId};},

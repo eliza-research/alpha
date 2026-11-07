@@ -14,12 +14,12 @@ test('automatic readiness retains existing and newer errors without restarting t
  const work=part('async function work(','/** Start (or restart) the resident.');
  const begin=part('  async beginSignIn(','  /** Leaves the sign-in screen');
  const compiled=transformSync(`function make(){
-  let operation=null,residentStartInBackground=false,epoch=0,signInReadinessOwner=null,googleSignInGeneration=0,inAppGoogle=false,inAppPhone=false,inAppEmail=true,release,starts=0;
+  let operation=null,planRecheck=null,residentStartInBackground=false,epoch=0,signInReadinessOwner=null,googleSignInGeneration=0,inAppGoogle=false,inAppPhone=false,inAppEmail=true,release,starts=0;
   const state={purpose:'agent',error:'Saved sign-in expired'},update=value=>Object.assign(state,value);
   const cloud={environment:'production',cancelLogin(){}},cloudSignIn={},cloudServiceName=()=> 'Eliza Cloud';
   const cloudEnvironmentAllowed=()=>true,residentCloudFlow=()=>true,residentEnvironment=()=> 'production';
   const inAppSignInMethods=()=>new Promise(resolve=>{release=()=>resolve({google:false,email:true});});
-  const runQueuedResidentRebind=()=>{},runQueuedSignInReturn=()=>{},ensureResident=async()=>{starts++;};
+  const runQueuedResidentRebind=()=>{},runQueuedSignInReturn=()=>{},errorKindOf=()=>null,ensureResident=async()=>{starts++;};
   ${work}
   const controller={${begin}};
   return {controller,state,release:()=>release(),starts:()=>starts};

@@ -148,12 +148,17 @@ test('a chat turn without Cloud inference gets an honest answer with the plan ac
   const failure = between(ui, 'function replyFailure(', '\n}\n');
   assert.match(failure, /if\(kind==='no_provider'&&selected\.kind==='resident'&&residentCloudFlow\(\)\)\{[\s\S]*inferenceUnavailableReply\(notice,signedIn\)[\s\S]*planAction:/);
   const reply = between(ui, 'export function inferenceUnavailableReply(', '\n}\n');
-  const renderReply = new Function('cloudServiceName', 'cloud',
+  const state = {residentSubscription: null};
+  const renderReply = new Function('cloudServiceName', 'cloud', 'state',
     reply.replace(/^export /, '').replace(/notice: ConnectionSnapshot\['residentPlanNotice'\], signedIn: boolean\): string/, 'notice, signedIn)')
-      + '\n}; return inferenceUnavailableReply;')(() => 'Nebula', {environment:'production'});
+      + '\n}; return inferenceUnavailableReply;')(() => 'Nebula', {environment:'production'}, state);
   const replies = [renderReply('offline', true), renderReply(null, false), renderReply(null, true)].join('\n');
-  for (const text of ['Check your Nebula account in Settings', "can't reach Nebula", 'Sign in with Nebula', 'Local apps keep working'])
+  for (const text of ["Nebula couldn't confirm your plan right now", "can't reach Nebula", 'Sign in with Nebula', 'Local apps keep working'])
     assert.ok(replies.includes(text), text);
+  // A verified account without a plan is told so; nothing claims a purchase either way.
+  state.residentSubscription = {kind: 'inactive'};
+  assert.equal(renderReply(null, true), "I'm running on this device, but AI replies need a Nebula plan. Local apps keep working.");
+  assert.doesNotMatch(replies, /Nothing was purchased/);
   assert.doesNotMatch(reply, /no agent|without AI|credit|top.?up|upgrade|needs? (?:an? )?Eliza Cloud (?:account with a )?plan|on-device speech|Nothing was sent to Cloud/i);
   // Workflow text generation fails honestly instead of using the plan answer as generated text.
   const client = read('apps/app/src/runtime/alpha-client.ts');
@@ -197,10 +202,12 @@ test('the plan surface is a notice beside the running agent, not a gate', () => 
   // Plan and the post-redemption screen keep the resident plan headline, needs-plan notice, Check plan
   // again and Approve this phone again (the panel carries the sheet's controls itself).
   assert.ok(chooser.includes("if((fundingRequired||snapshot.purpose==='plan'&&!residentCloudFlow())&&snapshot.cloudAccount)return <div className=\"alpha-connection-scrim\" data-alpha-billing-overlay=\"true\" data-alpha-membership-sheet=\"true\">"), 'the resident plan panel stays reachable');
-  for (const control of ['>Approve this phone again<', '>Check plan again<', '{residentPlan.headline}', '{NEEDS_PLAN_NOTICE}', '{residentMembershipVisible&&membershipControls}']) assert.ok(resident.includes(control), control);
+  for (const control of ['>Approve this phone again<', '>Check plan again<', '{residentPlan.headline}', '{residentMembershipVisible&&membershipControls}']) assert.ok(resident.includes(control), control);
   // The component owns plan presentation while it is visible; the host's summary and actions are suppressed.
   assert.match(resident, /!residentMembershipVisible&&<section aria-label=\{`\$\{serviceName\} plan`\}/);
-  assert.match(resident, /residentNeedsPlan&&!residentMembershipVisible&&<p role="status">\{NEEDS_PLAN_NOTICE\}/);
+  // Inside the panel the plan headline already states plan state; the closable notice is outside Settings only.
+  assert.doesNotMatch(resident, /\{NEEDS_PLAN_NOTICE\}/);
+  assert.ok(chooser.includes('<p role="status">{NEEDS_PLAN_NOTICE}</p>'));
   assert.doesNotMatch(resident, /cloneElement|planShownByHost/);
 });
 

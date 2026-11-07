@@ -339,7 +339,8 @@ try {
     const refused=await controller.send('Refused Calendar',{view:'home',revision:15,sensitive:false},'refused-calendar-'+code+transient+text,new AbortController().signal).then(()=>null,error=>error);
     assert.ok(refused instanceof AlphaClientError,'unknown/transient/empty Calendar failures still reject, never return a successful answer');
     assert.equal(refused.code,'transport-failed');
-    assert.equal(refused.message,'The agent request failed. Check connection and action history before sending another request.');
+    // Every known failure kind has its own owner copy and kind (replyFailure is total).
+    assert.equal(refused.message,'Your agent couldn’t write a reply this time. Nothing was resent.');assert.equal(refused.failureKind,'reply_generation_error');
     assert.doesNotMatch(refused.message,/UNKNOWN_CODE|CALENDAR_READ_RECEIPT_MISMATCH|Synthetic upstream text/,'failure copy does not expose upstream diagnostics');
     assert.equal(refused.userMessageId,remote.failureUserMessageId,'the recorded user row identity survives a failed reply');
     assert.equal(refused.messageBinding.conversationId,remoteConversation);

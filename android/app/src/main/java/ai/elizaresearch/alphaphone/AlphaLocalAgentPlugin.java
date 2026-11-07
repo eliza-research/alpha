@@ -367,9 +367,12 @@ public final class AlphaLocalAgentPlugin extends Plugin {
    String applied=bindCloudProvider(store,credentialId,model);store.assertCurrent();
    call.resolve(new JSObject().put("configured",true).put("bindingGuard",store.providerBindingGuard(applied)));
   }catch(Exception unavailable){
-   String code="NATIVE_CLOUD_ADMISSION_UNAVAILABLE";
-   if(unavailable instanceof LocalAgentProviderAdmission.CloudBindingFailure){LocalAgentProviderAdmission.CloudBindingFailure failure=(LocalAgentProviderAdmission.CloudBindingFailure)unavailable;code="NATIVE_CLOUD_ADMISSION_"+failure.stage.toUpperCase(java.util.Locale.ROOT).replace('-','_');android.util.Log.w("AlphaCloudAdmission",failure.diagnostic.toString());}
-   call.reject("Cloud account changed or is unavailable. Sign in again before starting the local agent.",code);
+   String code="NATIVE_CLOUD_ADMISSION_UNAVAILABLE";JSObject data=null;
+   if(unavailable instanceof LocalAgentProviderAdmission.CloudBindingFailure){LocalAgentProviderAdmission.CloudBindingFailure failure=(LocalAgentProviderAdmission.CloudBindingFailure)unavailable;code="NATIVE_CLOUD_ADMISSION_"+failure.stage.toUpperCase(java.util.Locale.ROOT).replace('-','_');android.util.Log.w("AlphaCloudAdmission",failure.diagnostic.toString());
+    // The renderer tells a transient identity read (0 = transport, 408, 429, 5xx) from a refused key.
+    if("identity-read".equals(failure.stage))data=new JSObject().put("stage","identity-read").put("httpStatus",failure.diagnostic.optInt("httpStatus",0));}
+   if(data!=null)call.reject("Cloud account changed or is unavailable. Sign in again before starting the local agent.",code,data);
+   else call.reject("Cloud account changed or is unavailable. Sign in again before starting the local agent.",code);
   }},()->{call.reject("Local agent bridge is closed.");});
  }
  /** Preserve the previous selection when admission loses its account, without replacing a newer selection. */

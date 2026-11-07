@@ -83,7 +83,7 @@ test('the subscription sheet leads with the plan and reports its allowance and l
   assert.match(none, /Choose a monthly plan or enter a membership code to ask Alpha\./);
   // After Cloud declined a turn for billing the sheet says so, above the same two actions.
   const refused = render({balance: 'funded', refused: true, plan: {kind: 'credits', source: 'billing-limits'}});
-  assert.match(refused, /Eliza Cloud declined your last AI request for billing\. Check your subscription or enter a membership code, then send again\./);
+  assert.match(refused, /Your last request was declined for billing\./);
   assert.match(refused, />Choose a monthly plan</);
   assert.match(refused, />Enter membership code</);
   // A lapsed limit is not shown.
