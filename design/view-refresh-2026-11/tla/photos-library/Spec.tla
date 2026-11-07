@@ -218,10 +218,12 @@ AgentOpen(i) ==
 
 \* Editor Save > Replace on the open Library item: its pixels are overwritten (a new revision);
 \* the viewer stays on it. A review that captured the old revision can no longer apply.
+\* Like an external edit it draws on the event budget, which bounds the revisions TLC explores.
 EditReplace ==
   /\ viewer # 0 /\ tab = "lib" /\ exists[viewer] /\ ~trashed[viewer] /\ ~selecting
+  /\ budget > 0 /\ budget' = budget - 1
   /\ Bump(viewer)
-  /\ UNCHANGED <<exists, trashed, fav, tab, sel, selecting, viewer, filter, review, budget>> /\ UNCHANGED Ghosts
+  /\ UNCHANGED <<exists, trashed, fav, tab, sel, selecting, viewer, filter, review>> /\ UNCHANGED Ghosts
 
 AgentReject ==  \* user cancelled, or the reviewed revisions are stale
   /\ review.ids # {} /\ review' = NoReview
