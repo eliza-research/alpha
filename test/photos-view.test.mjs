@@ -121,3 +121,15 @@ test('the Library grid is virtualised: rendered tiles come from virtualGrid wind
  assert.match(camera,/tiles\(group\.items\.slice\(part\.from, part\.to\)/);
  assert.match(template,/style="\{\{photos\.gridBefore\}\}"[\s\S]*\{\{g\.pad\}\}[\s\S]*style="\{\{photos\.gridAfter\}\}"/);
 });
+
+test('FixPatch: a reload re-reads every loaded row (up to the window), so rows paged in deep stay loaded',async()=>{
+ const all=Array.from({length:1000},(_,i)=>row('r'+i,now-i*60000)),pages=[];
+ const list=async({before}={})=>{pages.push(before||'');const at=before?all.findIndex(r=>r.id===before)+1:0,items=all.slice(at,at+24);return {items,next:at+24<all.length?items.at(-1).id:''};};
+ const reload=await v.readWindow(list,{more:false,cursor:'',loaded:800,limit:2000});
+ assert.ok(reload.rows.length>=800,'Row 800 is still loaded after a reload');assert.ok(reload.rows.some(r=>r.id==='r799'));
+ assert.equal((await v.readWindow(list,{more:false,cursor:'',loaded:3000,limit:500})).rows.length,504,'Bounded by the window (whole pages)');
+ pages.length=0;const page=await v.readWindow(list,{more:true,cursor:'r23',loaded:24,limit:2000});
+ assert.deepEqual(pages,['r23']);assert.equal(page.rows[0].id,'r24');
+ let live=true;const stale=await v.readWindow(async o=>{live=false;return list(o);},{more:false,cursor:'',loaded:100,limit:2000},()=>live);
+ assert.equal(stale,undefined,'A superseded reload returns nothing');
+});

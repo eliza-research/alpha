@@ -15,7 +15,7 @@ import {reviewContentQuestion} from '../browser/content-question';
 import {createCaptureRevisions,captureUnchanged} from './context-selection';
 import {createDeviceLibrary,setMainLibraryHost,LibraryAgentRefusal,type HostOperation} from './photo-library-adapter';
 import type {PhotosViewResult} from '../runtime/photos-view-contract';
-import {virtualGrid,newestFirst,mergeWindow,groupSections,patchRows,insertRows,patchSelection,favoriteTarget,batches,daysLeft,pinchColumns,dragRange,filterMatches,filterLabel,viewerTitle,formatBytes,shotAt,albumOf,GRID_COLUMNS,type PhotosFilter} from '../runtime/photos-view';
+import {virtualGrid,newestFirst,mergeWindow,readWindow,groupSections,patchRows,insertRows,patchSelection,favoriteTarget,batches,daysLeft,pinchColumns,dragRange,filterMatches,filterLabel,viewerTitle,formatBytes,shotAt,albumOf,GRID_COLUMNS,type PhotosFilter} from '../runtime/photos-view';
 import {LIBRARY_LIMITS,type LibraryAgentOperation,type LibraryAgentResult} from '../runtime/photo-library';
 import {openVideoEditReview} from './video-edit-review';
 import {openScanReview,ScanKeepError} from './scan-review';
@@ -212,8 +212,8 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   let captures: SavedPhoto[] = [];
   let photosApi: Bag | undefined, loaded = false, loading = false, next = '', libraryEpoch = 0;
   let libraryAccess:LibraryAccess|undefined,requestingLibraryAccess=false;
-  /** The newest rows Photos keeps loaded; a reload re-reads at most RELOAD_LIMIT of them. */
-  const WINDOW=LIBRARY_LIMITS.kept,RELOAD_LIMIT=240,BATCH=20,SHARE_BATCH=100;
+  /** The newest rows Photos keeps loaded; a reload re-reads as many as were loaded. */
+  const WINDOW=LIBRARY_LIMITS.kept,BATCH=20,SHARE_BATCH=100;
   /** The agent's read-only filter (photos_filter), shown as a clearable chip. */
   let photosFilter:(PhotosFilter&{label:string})|undefined;
   let gridColumns:number=GRID_COLUMNS.default;
@@ -352,8 +352,9 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
       if(!browserMode)libraryAccess=await nativeLibrary.libraryAccess();
       // One catalog: AlphaPhotos lists every permitted item, or Alpha's own captures without access.
       // A reload re-reads as many rows as were showing (bounded), so a change patches the window in place.
-      const want=more?1:Math.min(Math.max(captures.length,1),RELOAD_LIMIT),rows:SavedPhoto[]=[];let cursor=more?next:'';
-      do{const result=await library.list(cursor?{before:cursor}:{});if(disposed||token!==libraryEpoch)return;rows.push(...result.items.map(normalize));cursor=result.next;}while(cursor&&!more&&rows.length<want);
+      const read=await readWindow(async options=>{const result=await library.list(options);return {items:result.items.map(normalize),next:result.next};},{more,cursor:next,loaded:captures.length,limit:WINDOW},()=>!disposed&&token===libraryEpoch);
+      if(!read)return;
+      const rows=read.rows,cursor=read.next;
       captures = more ? mergeWindow(captures, rows, WINDOW) : newestFirst(rows).slice(0, WINDOW);
       next = cursor; loaded = true; loading = false;
       patchView();

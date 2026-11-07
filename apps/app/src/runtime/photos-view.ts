@@ -44,6 +44,24 @@ export function mergeWindow<T extends ViewRow>(kept: readonly T[], page: readonl
   return newestFirst([...byId.values()]).slice(0, Math.max(0, limit));
 }
 
+/** Reads the library window. Paging (`more`) reads one page after `cursor`; a reload re-reads from the
+ * top as many rows as were loaded (bounded by `limit`), so a row the owner scrolled to, selected or
+ * opened is still in the window after an unrelated library change (FixPatch). */
+export async function readWindow<T extends ViewRow>(
+  list: (options: { before?: string }) => Promise<{ items: T[]; next: string }>,
+  options: { more: boolean; cursor: string; loaded: number; limit: number },
+  current: () => boolean = () => true,
+): Promise<{ rows: T[]; next: string } | undefined> {
+  const want = options.more ? 1 : Math.min(Math.max(options.loaded, 1), options.limit), rows: T[] = [];
+  let cursor = options.more ? options.cursor : '';
+  do {
+    const result = await list(cursor ? { before: cursor } : {});
+    if (!current()) return undefined;
+    rows.push(...result.items); cursor = result.next;
+  } while (cursor && !options.more && rows.length < want);
+  return { rows, next: cursor };
+}
+
 /** Replace changed rows in place; a row that left this list (trashed/restored/deleted) is removed. Never reorders. */
 export function patchRows<T extends ViewRow>(rows: readonly T[], changed: readonly T[], keep: (row: T) => boolean): T[] {
   const byId = new Map(changed.map(row => [row.id, row] as const));
