@@ -230,17 +230,16 @@ Billing snapshots, signed entitlements and organization credits also have
 different expiry and refresh-failure behavior. The models now distinguish these
 source behaviors.
 
-### Reproduced current defect
+### Historical scan defect
 
-The scan flow can automatically save a draft, accept an explicit Save draft,
-then remove that draft after successful export because the automatic-save marker
-remains set. `ScanDocument` keeps the desired preservation predicate separate
-from current-behavior safety and contains an expected counterexample. The
-isolated source-conformance runner reproduces the sequence through
-`openScanDocument`. This migration records the defect without changing product
-runtime behavior.
+The initial migration source could automatically save a draft, accept an explicit
+Save draft, then remove that draft after successful export because its automatic-save
+marker remained set. That historical reproduction stays in the migration evidence.
+The current shared Scan document implementation clears the marker on explicit Save
+draft. The integrated `ScanDocument` model and source-conformance case now verify
+preservation after autosave, explicit save and confirmed export.
 
-### Final evidence
+### Historical baseline evidence
 
 The final inventory contains 58 model files and 396 registered scenarios. The
 application, service, native and legacy families contain 20, 14, 17 and seven
