@@ -36,6 +36,24 @@
       "fixedIn": "8.12.2",
       "change": "lockfile-only upgrade to 8.12.3 within jsdom 30.1.2 declared ^8.11.2 range",
       "fixedOn": "2026-10-27"
+    },
+    {
+      "advisory": "GHSA-3g3m-2fjr-6pw4",
+      "package": "glob",
+      "severity": "moderate",
+      "from": "13.0.6",
+      "fixedIn": "14.0.2",
+      "change": "lockfile-only upgrade to glob 14.0.4 through rimraf 6.1.4 (dev, under @capacitor/cli declared ^6 range)",
+      "fixedOn": "2026-11-06"
+    },
+    {
+      "advisory": "GHSA-g3hv-75wg-m249",
+      "package": "minimatch",
+      "severity": "moderate",
+      "from": "10.2.6",
+      "fixedIn": "11.0.1",
+      "change": "lockfile-only upgrade to minimatch 11.0.5 through glob 14.0.4 and rimraf 6.1.4 (dev, under @capacitor/cli)",
+      "fixedOn": "2026-11-06"
     }
   ],
   "exceptions": [

@@ -81,7 +81,7 @@ async function firstRun(page: Page, overrides: Partial<StubAccount> = {}, ownedL
   await expect(welcome.getByRole('button',{name:'Restart agent',exact:true})).toHaveCount(0);
   await expect(welcome.getByText('Your agent runs with AI off until you sign in to Eliza Cloud.',{exact:true})).toHaveCount(0);
   await expect(welcome.getByText('Phone action history',{exact:true})).toHaveCount(0);
-  await expect(welcome.getByText('Conversation history',{exact:true})).toHaveCount(0);
+  await expect(welcome.getByText('Earlier conversations',{exact:true})).toHaveCount(0);
   return { foreign, welcome };
 }
 /** No key was kept or bound, and the resident is running without AI (P-43). `untouched`: the sign-in
@@ -170,7 +170,7 @@ test('first run: native email sign-in, credits, provider binding, then the resid
   expect(await harness(page, f => f.streams)).toBe(1);
   const settings=await openYourAgent(page);
   await expect(settings.getByRole('button',{name:'Restart agent',exact:true})).toBeVisible();
-  await expect(settings.getByText('Conversation history',{exact:true})).toBeVisible();
+  await expect(settings.getByText('Earlier conversations',{exact:true})).toBeVisible();
   expect(await page.locator('body').innerText()).not.toContain(account.token);
   await expectNoDevelopmentSurface(page);
   const lifecycle=await page.evaluate(()=>(window as any).firstRunLifecycle) as Array<{path:string;method:string;ownerId:string;credentialId:string|null}>;
@@ -216,7 +216,7 @@ test('first run: Cloud refusing the new key (401 on the account read) removes it
   await nothingLeft(page, welcome);
   await expect(welcome.getByRole('alert')).toHaveText('Eliza Cloud refused this sign-in. Your agent keeps running; sign in again to turn AI on.');
   await expect(welcome.getByRole('button',{name:'Restart agent',exact:true})).toHaveCount(0);
-  await expect(welcome.getByText('Conversation history',{exact:true})).toHaveCount(0);
+  await expect(welcome.getByText('Earlier conversations',{exact:true})).toHaveCount(0);
 });
 
 // An account Cloud reports unable to use AI no longer blocks the resident agent: billing state never

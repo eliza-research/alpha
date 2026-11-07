@@ -2472,7 +2472,7 @@ export const connectionController = {
   async startDevelopment(profile:DevelopmentProfile){if(!devSurfacesEnabled)return;await work('Starting development agent…',signal=>connectDevelopment(profile,signal));},
   async saveDevelopment(profile:DevelopmentProfile,reply:string){if(!devSurfacesEnabled)return;await work('Saving development reply…',async signal=>{await saveDevelopmentReply(profile,reply,signal);update({message:'Development reply saved.'});});},
   async reviewRecovery() {
-    if(operation||state.residentRecoveryReason!=='ipc-recovery-retention-limit'||state.session)return;
+    if(operation||document.hidden||state.residentRecoveryReason!=='ipc-recovery-retention-limit'||state.session)return;
     await work('Checking recovery…',async signal=>{
       update({residentRecovery:{step:'reviewing'}});
       try{const review=await reviewLocalRecovery();signal.throwIfAborted();update({message:'',residentRecovery:review.status==='reviewable'?{step:'review',review}:{step:'unavailable'}});}
@@ -2489,7 +2489,7 @@ export const connectionController = {
   },
   cancelRecoveryReview(){if(!operation)update({residentRecovery:undefined});},
   async confirmRecovery() {
-    if(operation||state.residentRecoveryReason!=='ipc-recovery-retention-limit'||state.residentRecovery?.step!=='review'||state.session)return;
+    if(operation||document.hidden||state.residentRecoveryReason!=='ipc-recovery-retention-limit'||state.residentRecovery?.step!=='review'||state.session)return;
     const review=state.residentRecovery.review;let archived=false;
     await work('Restarting Alpha…',async signal=>{
       update({residentRecovery:{step:'archiving'}});

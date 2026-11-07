@@ -7,7 +7,7 @@ import {stripTypeScriptTypes} from './support/strip-types.mjs';
 // committed says the action went through instead of the generic failure.
 const ui=fs.readFileSync('apps/app/src/runtime/connection-ui.tsx','utf8'),adapter=fs.readFileSync('apps/app/src/prototype/agent-adapter.ts','utf8');
 const between=(source,start,end)=>{const a=source.indexOf(start),b=source.indexOf(end,a);assert.ok(a>=0&&b>a,start);return source.slice(a,b);};
-const ts=source=>stripTypeScriptTypes(source,{mode:'transform'});
+const ts=source=>stripTypeScriptTypes(source,{mode:'strip'});
 // The pinned receipt normalizer itself (its error class stubbed; the module resolves `.js` specifiers only under a bundler).
 const {normalizeEffectReceipts}=await import('data:text/javascript;base64,'+Buffer.from(ts(fs.readFileSync('.eliza/client-features/packages/core/src/types/effects.ts','utf8')).replace('import { ElizaError } from "../errors.js";','class ElizaError extends Error{}').replace('from "../utils/type-guards"','from '+JSON.stringify(new URL('../.eliza/client-features/packages/core/src/utils/type-guards.ts',import.meta.url).href))).toString('base64'));
 const effectApplied=new Function('normalizeEffectReceipts',ts(between(ui,'function effectAppliedBeforeFailure(','\n}\n')+'\n}')+';return effectAppliedBeforeFailure;')(normalizeEffectReceipts);

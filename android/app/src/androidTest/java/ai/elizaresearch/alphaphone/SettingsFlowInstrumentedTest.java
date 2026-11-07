@@ -16,7 +16,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import static org.junit.Assert.*;
 
-/** Actual battery service fixture -> native bridge -> reference UI -> settings -> resume. */
+/** Real Android Settings handoff and the saved theme, through the rendered Settings. */
 @RunWith(AndroidJUnit4.class)
 public class SettingsFlowInstrumentedTest {
  private String shell(String command)throws Exception{
@@ -48,15 +48,17 @@ public class SettingsFlowInstrumentedTest {
   }
   until("!document.querySelector('button[aria-label=\"Back to Settings\"]')");
  }
- private void aboutShowsThisDevice()throws Exception{
+ /** About shows the installed version and no prototype hardware or model claim (docs/ui-refresh-2026-11). */
+ private void aboutShowsTheInstalledVersion()throws Exception{
   click("About");
-  until("document.querySelector('[data-screen]').textContent.includes("+JSONObject.quote(Build.MODEL)+") && document.querySelector('[data-screen]').textContent.includes("+JSONObject.quote(Build.DISPLAY)+")");
+  until("document.querySelector('[data-screen]').textContent.includes("+JSONObject.quote(BuildConfig.VERSION_NAME)+")");
   assertEquals("No prototype hardware attestation", "false",WebViewTestDriver.evaluate("document.querySelector('[data-screen]').textContent.includes('4.2 · attested')"));
   assertEquals("No prototype local model", "false",WebViewTestDriver.evaluate("document.querySelector('[data-screen]').textContent.includes('Core 7B')"));
   tapBack();
  }
- @Test public void realBatteryAndDeviceInfoRefreshAfterNativeSettingsReturn()throws Exception{
-  assertTrue("Battery fixtures are confined to an emulator",Build.FINGERPRINT.contains("generic")||Build.MODEL.contains("sdk")||Build.HARDWARE.contains("ranchu"));
+ /** Settings has no battery, radio or sound pages: the launcher's one "Android settings" row opens
+  * Android's own Settings, and Back returns to Alpha's Settings with a fresh native read. */
+ @Test public void androidSettingsRowOpensAndroidsOwnSettingsAndReturns()throws Exception{
   Instrumentation instrumentation=InstrumentationRegistry.getInstrumentation();
   AtomicReference<String> action=new AtomicReference<>();
   Instrumentation.ActivityMonitor monitor=new Instrumentation.ActivityMonitor(){
@@ -64,32 +66,25 @@ public class SettingsFlowInstrumentedTest {
   };
   // Removing a monitor that was never added throws and would hide the first failure.
   boolean monitored=false;
-  try{
-   shell("dumpsys battery set level 37");
-   try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
-    until("document.documentElement.dataset.activeView");
-    WebViewTestDriver.evaluate(AppNavigation.request("Settings"));until(AppNavigation.selected("Settings"));AppNavigation.declineStartupAccess();
-    if(!BuildConfig.IS_LAUNCHER){
-     // The standalone app is not the phone's system shell: Settings lists no system-only rows
-     // (settings-adapter systemOnly), so the battery handoff exists in the launcher flavor only.
-     until("document.querySelector('button[aria-label=\"About\"]')");
-     for(String systemOnly:new String[]{"Wi-Fi","Bluetooth","Mobile data","Battery","Sound & vibration"})assertEquals("Standalone Settings omits "+systemOnly,"false",WebViewTestDriver.evaluate("Boolean(document.querySelector('button[aria-label='+"+JSONObject.quote(JSONObject.quote(systemOnly))+"+']'))"));
-     assertEquals("Standalone Settings shows no battery percentage","false",WebViewTestDriver.evaluate("document.querySelector('[data-screen]').textContent.includes('37%')"));
-     aboutShowsThisDevice();return;
-    }
-    click("Battery");until("document.querySelector('[data-screen]').textContent.includes('37%')");
-    assertEquals("No invented lifetime estimate", "false",WebViewTestDriver.evaluate("document.querySelector('[data-screen]').textContent.includes('About 1 day 6 hr')"));
-    instrumentation.addMonitor(monitor);monitored=true;
-    click("Manage battery in Android");
-    long end=SystemClock.elapsedRealtime()+15000;boolean foreground=false;
-    while(SystemClock.elapsedRealtime()<end){foreground=shell("dumpsys activity activities").lines().anyMatch(line->line.contains("topResumedActivity")&&line.contains("com.android.settings"));if(foreground)break;SystemClock.sleep(100);}
-    assertTrue("Real Android settings is foreground",foreground);assertEquals(Settings.ACTION_BATTERY_SAVER_SETTINGS,action.get());
-    shell("dumpsys battery set level 62");
-    instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
-    until("document.querySelector('[data-screen]').textContent.includes('62%') && !document.querySelector('[data-screen]').textContent.includes('37%')");
-    tapBack();aboutShowsThisDevice();
+  try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
+   until("document.documentElement.dataset.activeView");
+   WebViewTestDriver.evaluate(AppNavigation.request("Settings"));until(AppNavigation.selected("Settings"));AppNavigation.declineStartupAccess();
+   until("document.querySelector('button[aria-label=\"About\"]')");
+   for(String removed:new String[]{"Wi-Fi","Bluetooth","Mobile data","Battery","Sound & vibration","Display","Models","Privacy & data"})assertEquals("Settings omits "+removed,"false",WebViewTestDriver.evaluate("Boolean(document.querySelector('button[aria-label='+"+JSONObject.quote(JSONObject.quote(removed))+"+']'))"));
+   if(!BuildConfig.IS_LAUNCHER){
+    // The standalone app is not the phone's system shell: no Android settings row.
+    assertEquals("Standalone Settings has no Android settings row","false",WebViewTestDriver.evaluate("Boolean(document.querySelector('button[aria-label=\"Android settings\"]'))"));
+    aboutShowsTheInstalledVersion();return;
    }
-  }finally{if(monitored)instrumentation.removeMonitor(monitor);shell("dumpsys battery reset");}
+   instrumentation.addMonitor(monitor);monitored=true;
+   click("Android settings");
+   long end=SystemClock.elapsedRealtime()+15000;boolean foreground=false;
+   while(SystemClock.elapsedRealtime()<end){foreground=shell("dumpsys activity activities").lines().anyMatch(line->line.contains("topResumedActivity")&&line.contains("com.android.settings"));if(foreground)break;SystemClock.sleep(100);}
+   assertTrue("Real Android settings is foreground",foreground);assertEquals(Settings.ACTION_SETTINGS,action.get());
+   instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
+   until("document.querySelector('button[aria-label=\"Android settings\"]')");
+   aboutShowsTheInstalledVersion();
+  }finally{if(monitored)instrumentation.removeMonitor(monitor);}
  }
 
  /** A button by its accessible name: aria-label, else its trimmed text. */
@@ -101,7 +96,7 @@ public class SettingsFlowInstrumentedTest {
  private void chooseDarkTheme()throws Exception{
   AppNavigation.liveMode();
   WebViewTestDriver.evaluate(AppNavigation.request("Settings"));until(AppNavigation.selected("Settings"));
-  press("Display");press("Theme: Dark");
+  press("Theme: Dark");
   until(BG+"==='#000000'");
  }
  private void assertDark(String when)throws Exception{
@@ -110,7 +105,7 @@ public class SettingsFlowInstrumentedTest {
   assertEquals("The saved appearance is dark "+when,"\"dark\"",WebViewTestDriver.evaluate("localStorage.getItem('alpha.appearance.v1')"));
  }
 
- /** F18: Display > Theme: Dark applies at once and is still applied after the activity and its
+ /** F18: Settings > Theme: Dark applies at once and is still applied after the activity and its
   * renderer are recreated. The restart runner covers a new process (themeProcessRestartPhase). */
  @Test public void darkThemeChosenInSettingsSurvivesRecreation()throws Exception{
   try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
@@ -138,7 +133,7 @@ public class SettingsFlowInstrumentedTest {
    AppNavigation.liveMode();
    if("verify".equals(phase)){assertDark("in a new process");return;}
    WebViewTestDriver.evaluate(AppNavigation.request("Settings"));until(AppNavigation.selected("Settings"));
-   press("Display");press("Theme: Light");
+   press("Theme: Light");
    until(BG+"==='#FFFFFF'");
   }
  }

@@ -16,7 +16,7 @@ export async function executionFixture({status='finished',finished=true,device=f
  const localStorage=new Proxy({getItem:key=>storage[key]??null,setItem:(key,value)=>storage[key]=value,removeItem:key=>delete storage[key]},{ownKeys:()=>Object.keys(storage),getOwnPropertyDescriptor:()=>({configurable:true,enumerable:true})});
  class Shell{componentDidMount(){}componentWillUnmount(){}vset(){}S(){return {view:'workflows'}}}
  const views={workflows:{automationsManaged:true}},context=workflowRendererFixture({WorkflowAdmissionRejected,WorkflowMetadataRejected,WorkflowLifecycleRejected,connectionController:controller,localStorage,queueMicrotask,AbortController,Date,console});
- vm.runInNewContext(stripTypeScriptTypes(source,{mode:'transform'}),context);context.install(Shell,views);const shell=new Shell();shell.componentDidMount();const api={isActive:()=>true,track:()=>'',kx:()=>'',ic:{clock:'clock',check:'check'},toast:()=>{}};
+ vm.runInNewContext(stripTypeScriptTypes(source,{mode:'strip'}),context);context.install(Shell,views);const shell=new Shell();shell.componentDidMount();const api={isActive:()=>true,track:()=>'',kx:()=>'',ic:{clock:'clock',check:'check'},toast:()=>{}};
  const render=()=>views.workflows.render({},api);render().openWorkflow(workflowId);await settle(()=>render().detail&&!render().fd.isRunning);
  return {render,requests,storage,pendingKey,context,flow,run,close:()=>shell.componentWillUnmount(),async openRun(){render().fd.runs[0].open();await settle(()=>render().runOpen&&!render().r.againDisabled);return render().r;}};
 }

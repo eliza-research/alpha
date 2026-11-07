@@ -5,7 +5,7 @@ import {stripTypeScriptTypes} from './support/strip-types.mjs';
 const source=readFileSync(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
 const start=source.indexOf('  async configureLocal('),end=source.indexOf('  /** Stops the running agent',start);
 assert.ok(start>=0&&end>start);
-const methods=stripTypeScriptTypes('({'+source.slice(start,end)+'})',{mode:'transform'});
+const methods=stripTypeScriptTypes('({'+source.slice(start,end)+'})',{mode:'strip'});
 const deferred=()=>{let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve};};
 function fixture(){
  const reading=deferred(),release=deferred();

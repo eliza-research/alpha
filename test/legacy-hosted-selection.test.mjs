@@ -14,7 +14,7 @@ const code=stripTypeScriptTypes([
  slice('function save(selection: Selection)','\nfunction retire('),
  slice('function selection(): Selection | null {','\nfunction errorMessage('),
  slice('/** Saved selection kinds of the retired hosted and paired agents','/**\n * Every Alpha Phone signs in to Eliza Cloud'),
-].join('\n').replace(/export /g,''),{mode:'transform'});
+].join('\n').replace(/export /g,''),{mode:'strip'});
 const SELECTION='alpha.connection.selection.v1',LEGACY='alpha.connection.legacy-hosted-selection.v1';
 const CONVERSATIONS='alpha.connection.conversations.v1',CLOUD_SERVICE='alpha.connection.cloud-service.v1';
 function fixture(testMocksEnabled,seed){

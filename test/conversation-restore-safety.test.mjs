@@ -9,7 +9,7 @@ const code=stripTypeScriptTypes([
  part('async function createSelectedConversation(', '/** Only remove'),
  part('async function restoreConversationHistory(', '/** Restored chats'),
  part('async function restoreSavedHistory(', 'type HistoryEntry'),
-].join('\n'),{mode:'transform'});
+].join('\n'),{mode:'strip'});
 function fixture(){
  let choice={id:'gone',revision:'r1'},createCount=0;
  const state={session:{sessionId:'session'},history:{conversationId:'manual-visible',revision:4,messages:[]}},writes=[],memory=new Map();

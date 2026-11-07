@@ -10,7 +10,7 @@ const {alphaNavigation}=await tsImport('../apps/app/src/product/alpha-product.ts
 // Notes, Workflows and Camera are available; the product registry resolves ids, paths and Home.
 const views=alphaNavigation(view=>['notes','workflows','camera'].includes(view));
 const text=readFileSync('apps/app/src/runtime/view-navigation.ts','utf8');
-const ViewNavigationClient=new Function('NAVIGATE_VIEW_EVENT','createCompletedActionNavigationState','findViewActionHandoff','alphaCanonicalViewId','alphaViewKey','alphaViewPaths','AlphaClientError',stripTypeScriptTypes(text,{mode:'transform'}).replace(/^import[\s\S]*?;\n/gm,'').replace(/^export /gm,'')+';return ViewNavigationClient;')(NAVIGATE_VIEW_EVENT,createCompletedActionNavigationState,findViewActionHandoff,views.canonicalViewId,views.viewKey,views.viewPaths,class extends Error{});
+const ViewNavigationClient=new Function('NAVIGATE_VIEW_EVENT','createCompletedActionNavigationState','findViewActionHandoff','alphaCanonicalViewId','alphaViewKey','alphaViewPaths','AlphaClientError',stripTypeScriptTypes(text,{mode:'strip'}).replace(/^import[\s\S]*?;\n/gm,'').replace(/^export /gm,'')+';return ViewNavigationClient;')(NAVIGATE_VIEW_EVENT,createCompletedActionNavigationState,findViewActionHandoff,views.canonicalViewId,views.viewKey,views.viewPaths,class extends Error{});
 const source=readFileSync('apps/app/src/prototype/agent-adapter.ts','utf8');
 const helper=source.slice(source.indexOf('  function openInternalView('),source.indexOf('  function context(shell:',source.indexOf('  function openInternalView(')));
 const projection=source.slice(source.indexOf('  p.applyRealtimeVoiceNavigation = async function('),source.indexOf('  p.sendVoiceTurn = async function('));
@@ -26,7 +26,7 @@ function harness({claimFailure=false,retireAfterClaim=false,viewId="notes",local
  const controller={voiceConversationCurrent:()=>active,captureViewNavigation:value=>({client,attempt:capturedAttempt=client.capture(value)})};
  const p={};const alphaClient={getState:()=>({context})};
  const sync=shell=>{context={view:shell.state.view||'home',revision:context.revision+1,sensitive:false};};
- const code=stripTypeScriptTypes(helper+projection,{mode:'transform'});
+ const code=stripTypeScriptTypes(helper+projection,{mode:'strip'});
  new Function('p','connectionController','alphaClient','alphaViewKey','alphaViewPaths','views','context',code)(p,controller,alphaClient,views.viewKey,views.viewPaths,{notes:{},home:{},workflows:{},camera:{}},sync);
  const shell={live:true,state:{view:null,chat:'full'},S(){return this.state;},goHome(chat){this.state.view=null;this.state.chat=chat;},openView(view,_patch,chat){this.state.view=view;this.state.chat=chat;},setState(_patch,done){flushCommit=()=>{commits++;done?.();};},voiceConversationContext(){if(!active)throw Error('Owner changed');return context;},toast(){}};
  const id='11111111-1111-4111-8111-111111111111',binding={requestId:id,clientId:client.clientId,installationId:'33333333-3333-4333-8333-333333333333',viewId,viewType:'gui'};
