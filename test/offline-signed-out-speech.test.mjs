@@ -76,7 +76,7 @@ test('a call stopping speech surfaces an honest status', async () => {
   const network = offlineNetwork(), f = nativeSpeech();
   f.plugin.play = async ({playbackId}) => { setTimeout(() => { for (const callback of f.listeners.get('playbackStopped') ?? []) callback({playbackId, reason: 'call-active'}); }, 1); };
   const {speakLocalText} = playbackSource(f, network, undefined);
-  await assert.rejects(speakLocalText('Reply.', new AbortController().signal), /Speech stopped for a phone call\./);
+  await assert.rejects(speakLocalText('Reply.', new AbortController().signal), {message: /Speech stopped for a phone call\./, code: 'call-active', reason: 'call-active'});
   assert.deepEqual(network.attempts, []);
 });
 

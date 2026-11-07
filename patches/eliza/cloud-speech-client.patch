@@ -2,7 +2,7 @@ diff --git a/packages/voice/src/native-cloud-speech.ts b/packages/voice/src/nati
 new file mode 100644
 --- /dev/null
 +++ b/packages/voice/src/native-cloud-speech.ts
-@@ -0,0 +1,138 @@
+@@ -0,0 +1,139 @@
 +/** Native Cloud speech transport. The host supplies its credential-owning bridge;
 + * only text, levels, timing, and lifecycle events enter the renderer. No platform imports. */
 +import type {AssistantCapture, AssistantListenHandlers} from './voice-assistant-session.js';
@@ -16,6 +16,7 @@ new file mode 100644
 +  peak?: unknown;
 +  utteranceId?: unknown;
 +  code?: unknown;
++  data?: unknown;
 +}
 +export interface CloudStreamPort {
 +  startCloudSpeech(input:{sessionId:string;environment:string;credentialId:string}):Promise<{sessionId:string;sampleRate:number;echoCancelled:boolean}>;
@@ -60,7 +61,7 @@ new file mode 100644
 +    if(retired||event.sessionId!==sessionId)return;
 +    try{
 +      check();
-+      if(event.type==='error'){fail(Object.assign(Error('Cloud streaming speech is unavailable.'),{code:typeof event.code==='string'?event.code:'cloud-stream'}));return;}
++      if(event.type==='error'){fail(Object.assign(Error('Cloud streaming speech is unavailable.'),{code:typeof event.code==='string'?event.code:'cloud-stream'},event.data&&typeof event.data==='object'?{data:event.data}:{}));return;}
 +      if(event.type==='audio-start'||event.type==='audio-end'){
 +        if(typeof event.utteranceId!=='string')return;
 +        const pending=utterances.get(event.utteranceId);if(!pending)return;
@@ -112,16 +113,16 @@ new file mode 100644
 +        // An old provider turn can finish after the busy hold. Drain it while
 +        // still muted, so fresh user audio cannot be merged into that old turn.
 +        if(speechActive)await muteAndDrain();
-+        check();handlers.signal.throwIfAborted();++captureGeneration;listening=lifecycle=handlers;
++        check();handlers.signal.throwIfAborted();++captureGeneration;listening=lifecycle=handlers;speechActive=false;
 +        await open();check();handlers.signal.throwIfAborted();await port.setCloudSpeechMuted({sessionId,muted:false});check();
 +      }
 +      catch(error){await stop().catch(()=>{});throw error;}
 +      return {
 +        fullDuplex:echoCancelled,
 +        async close(){
-+          try{await muteAndDrain();}finally{if(listening===handlers)listening=undefined;}
++          try{await muteAndDrain();}finally{if(listening===handlers){listening=undefined;speechActive=false;}}
 +        },
-+        async cancel(){if(listening===handlers)listening=undefined;if(lifecycle===handlers)lifecycle=undefined;await stop();},
++        async cancel(){if(listening===handlers){listening=undefined;speechActive=false;}if(lifecycle===handlers)lifecycle=undefined;await stop();},
 +      };
 +    },
 +    async speak(text:string,signal:AbortSignal,onStarted:()=>void):Promise<void>{

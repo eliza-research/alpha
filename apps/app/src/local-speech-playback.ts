@@ -24,7 +24,7 @@ async function speakChunk(voice:any,native:boolean,text:string,signal:AbortSigna
  const wait=(prepared=false)=>Promise.race([new Promise<void>(resolve=>setTimeout(resolve,100)),interrupted,...(prepared?[finished.then(()=>{throw Error('Speech finished while waiting for playback.');})]:[])]);
  try{
   for(const event of ['playbackEnded','playbackFailed','playbackStopped']){
-   const pending=voice.addListener(event,(value:{playbackId:string;message?:string;reason?:string})=>{if(!active||!playbackId||value.playbackId!==playbackId)return;if(event==='playbackEnded')ended();else failed(Error(event==='playbackStopped'?(value.reason==='call-active'?'Speech stopped for a phone call.':'Speech was stopped before completion.'):(!native&&typeof value.message==='string'?value.message:'Speech playback failed.')));}).then((handle:{remove:()=>Promise<void>})=>{if(active)handles.add(handle);else void bounded(()=>handle.remove());});
+   const pending=voice.addListener(event,(value:{playbackId:string;message?:string;reason?:string})=>{if(!active||!playbackId||value.playbackId!==playbackId)return;if(event==='playbackEnded')ended();else if(event==='playbackStopped'&&value.reason==='call-active')failed(Object.assign(Error('Speech stopped for a phone call.'),{code:'call-active',reason:'call-active'}));else failed(Error(event==='playbackStopped'?'Speech was stopped before completion.':(!native&&typeof value.message==='string'?value.message:'Speech playback failed.')));}).then((handle:{remove:()=>Promise<void>})=>{if(active)handles.add(handle);else void bounded(()=>handle.remove());});
    await Promise.race([pending,interrupted]);signal.throwIfAborted();
   }
   for(;;){signal.throwIfAborted();requirements?.assertCurrent();try{

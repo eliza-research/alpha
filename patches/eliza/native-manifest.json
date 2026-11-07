@@ -41,13 +41,13 @@
     },
     {
       "file": "cloud-speech-native.patch",
-      "sha256": "a077ba1b56b6d658ca6b03155cb984db24fd95bef97744610be935795c40e6d5",
+      "sha256": "62dfd9e4798d9ae0d5eb1ec653060c8330c100d53e9a1e4df5c3352c5ca97280",
       "module": "plugins/plugin-local-inference/native/android",
       "targets": [
         {
           "path": "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechStreamBridgePlugin.java",
           "beforeSha256": null,
-          "afterSha256": "1ea1c873dbaabb1d85d7c78a46c8c0a357340e6c62b0d75bd74f9be394d2c026"
+          "afterSha256": "11c8963f7491cf5a09b9d7583aac1b0279b705c1ca16770e5b867ca3befe1597"
         },
         {
           "path": "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechTimings.java",
@@ -57,7 +57,7 @@
         {
           "path": "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechWire.java",
           "beforeSha256": null,
-          "afterSha256": "1ea0e5b147169d7548290d24122edb287e65b29c8682531db314f35b3292945e"
+          "afterSha256": "acdf3de5cc7061f6fe18c080066d88ba0aaccfb70fe5b04d90ab943872b90608"
         },
         {
           "path": "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/LocalSpeechBridgePlugin.java",

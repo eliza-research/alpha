@@ -1,7 +1,7 @@
 import {reviewContentQuestion} from '../browser/content-question';
 import {sensitiveReadingText} from '../../../../.eliza/client-features/plugins/plugin-native-browser-surface/src/page-reading.ts';
 import {noticeExcerpt,noticeReviewable} from './context-selection';
-import type {resolveWorkflowTap} from '../runtime/workflow-notice-taps';
+import type {resolveWorkflowTap} from '../runtime/workflow-device-contract';
 type Result=Awaited<ReturnType<typeof resolveWorkflowTap>>;
 /** An Android Ask action has only an opaque route; authenticated resolution supplies its own live excerpt. */
 export function reviewWorkflowNoticeQuestion(options:{result:Extract<Result,{kind:'ready'}>;current:()=>boolean;recheck:()=>Promise<Result>;consume:()=>Promise<void>;discard:()=>Promise<void>;compose:(draft:string)=>void;report:(message:string)=>void;closed:()=>void}):(()=>void)|undefined{

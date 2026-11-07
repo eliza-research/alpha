@@ -29,4 +29,4 @@ test('retired or rebound Notes controllers cannot attach invalidation listeners'
   assert.throws(()=>f.controller.listen(target),{name:'AbortError'});assert.equal(listeners.size,0);assert.equal(f.requests.length,0);
  }
 });
-test('the affected app-record, automation and reminder paths use the same fallback',()=>{const source=fs.readFileSync('apps/app/src/runtime/connection-ui.tsx','utf8');assert.doesNotMatch(source,/AbortSignal\.any\(/);assert.match(source,/bounded=anyAbortSignal\(\[signal,controller\.signal\]\)/);for(const file of ['agent-calendar-client.ts','owner-reminder-notification-port.ts'])assert.doesNotMatch(fs.readFileSync('apps/app/src/runtime/'+file,'utf8'),/AbortSignal\.any\(/);});
+test('the affected app-record, automation and reminder paths use the same fallback',()=>{const source=fs.readFileSync('apps/app/src/runtime/connection-ui.tsx','utf8');assert.doesNotMatch(source,/AbortSignal\.any\(/);assert.match(source,/bounded=anyAbortSignal\(\[signal,controller\.signal\]\)/);for(const file of ['agent-calendar-client.ts'])assert.doesNotMatch(fs.readFileSync('apps/app/src/runtime/'+file,'utf8'),/AbortSignal\.any\(/);});

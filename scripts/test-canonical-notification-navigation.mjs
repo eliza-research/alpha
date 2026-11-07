@@ -2,7 +2,19 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
 import {stripTypeScriptTypes} from '../test/support/strip-types.mjs';
-const source=(await readFile(new URL('../apps/app/src/prototype/notifications-adapter.ts',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replaceAll('export function','function')+'\nglobalThis.install=installNotificationsAdapter;';
+const read=path=>readFile(new URL('../'+path,import.meta.url),'utf8');
+const source=(await read('apps/app/src/prototype/notifications-adapter.ts')).replace(/^import .*;\n/gm,'').replaceAll('export function','function')+'\nglobalThis.install=installCanonicalNotificationTaps;';
+// main.tsx's own install statements, run with the real shade policy for each build shape.
+{
+ const shade=(await read('.eliza/client-features/plugins/plugin-native-system/src/client/shade.ts')).replace(/^export /gm,'');
+ const installs=(await read('apps/app/src/main.tsx')).split('\n').filter(line=>/install(?:CanonicalNotificationTaps|NotificationsAdapter)\(Component\)/.test(line)).join('\n');
+ assert.equal(installs.split('\n').length,2);
+ const decide=(isAndroid,devSurfacesEnabled)=>{const installed=[];vm.runInNewContext(stripTypeScriptTypes(shade,{mode:'transform'})+'\nconst systemShade=shadeSurface({native:isAndroid,simulated:devSurfacesEnabled});\n'+installs,{isAndroid,devSurfacesEnabled,Component:{},installCanonicalNotificationTaps:()=>installed.push('taps'),installNotificationsAdapter:()=>installed.push('notices')});return installed;};
+ assert.deepEqual(decide(true,false),['taps']);
+ assert.deepEqual(decide(true,true),['taps']);
+ assert.deepEqual(decide(false,true),['notices']);
+ assert.deepEqual(decide(false,false),[]);
+}
 const tick=async()=>{for(let n=0;n<20;n++)await Promise.resolve();};
 function fixture(){
  let pending={},restoreHook,commitHook,selectedConversation;const navigation={revision:0};const acknowledgments=[],restores=[],views=[];
@@ -12,7 +24,7 @@ function fixture(){
  const native={addListener:async()=>({remove:async()=>{}}),canonicalPending:async()=>({...pending}),acknowledgeCanonical:async({token})=>{if(token!==pending.token)throw Error('Changed tap');acknowledgments.push(token);pending={};return {ok:true};}};
  const controller={getSnapshot:()=>connection,getSelectedConversationId:()=>selectedConversation,subscribe:()=>()=>{},restoreHistory:async(id,canCommit)=>{restores.push(id);if(restoreHook)await restoreHook();if(canCommit()){selectedConversation=id;connection.history={conversationId:id,messages:[{id:'message'}]};}}};
  const sandbox={alphaClient:{getState:()=>({context:navigation})},connectionController:controller,registerPlugin:()=>native,Capacitor:{isNativePlatform:()=>true},queueMicrotask,window:{addEventListener(){},removeEventListener(){},setInterval:()=>1,clearInterval(){}},document:{hidden:false,addEventListener(){},removeEventListener(){}},reviewContentQuestion(){},sensitiveReadingText:()=>false,noticeCurrent:()=>true,noticeExcerpt:()=>'',noticeReviewable:()=>true};
- vm.createContext(sandbox);vm.runInContext(stripTypeScriptTypes(source,{mode:'strip'}),sandbox);
+ vm.createContext(sandbox);vm.runInContext(stripTypeScriptTypes(source,{mode:'transform'}),sandbox);
  class Component{};Component.prototype.renderVals=()=>({});sandbox.install(Component);
  const shell=new Component();shell.S=()=>state;shell.setState=(patch,done)=>{Object.assign(state,patch);commitHook?.();done?.();};shell.openView=view=>{views.push(view);state.view=view;};shell.componentDidMount();
  return {shell,state,connection,navigation,acknowledgments,restores,views,select:id=>{selectedConversation=id;},commit:fn=>{commitHook=fn;},setTap:(extra={})=>{pending={token:'tap-a',ownerId:'owner',agentId:'agent',view:'chat',conversationId:'conversation',messageId:'message',...extra};},hook:fn=>{restoreHook=fn;}};
@@ -54,4 +66,11 @@ for(const change of ['view','conversation','dialog']){
 {
  const f=fixture();await tick();f.setTap();f.commit(()=>{f.select('manual-conversation');f.connection.history={conversationId:'manual-conversation',messages:[]};});await f.shell.alphaCanonicalTap();assert.equal(f.acknowledgments.length,0);
 }
-console.log('PASS canonical notification navigation: current owner, restored message, no draft/voice interruption, supported routes, atomic token and next tap drain');
+{
+ // The notice adapter is not installed (Android's own shade): a pending tap still opens and acknowledges.
+ const f=fixture();await tick();f.setTap({view:'notes'});await f.shell.alphaCanonicalTap();await tick();assert.equal(f.shell.alphaNoticesLive,undefined);assert.deepEqual(f.views,['notes']);assert.deepEqual(f.acknowledgments,['tap-a']);
+}
+{
+ const f=fixture();await tick();f.shell.componentWillUnmount();f.setTap();await f.shell.alphaCanonicalTap();assert.equal(f.restores.length,0);assert.equal(f.acknowledgments.length,0);
+}
+console.log('PASS canonical notification navigation: installed on every Android build, current owner, restored message, no draft/voice interruption, supported routes, atomic token and next tap drain');

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {JSDOM} from 'jsdom';
 import {build} from 'esbuild';
 import {projectActionMessages} from '../apps/app/src/runtime/action-message-presentation.ts';
-import {calendarReviewText,calendarApprovalFromList,calendarApprovalPending,calendarApprovalStatus,calendarApprovalCommand} from '../apps/app/src/runtime/calendar-approval.ts';
+import {calendarReviewText,inboxChoiceText,calendarApprovalFromList,calendarApprovalPending,calendarApprovalStatus,calendarApprovalCommand} from '../apps/app/src/runtime/calendar-approval.ts';
 const id='11111111-2222-4333-8444-555555555555';
 const block=`[CHOICE:approval-${id} id=${id}]\napprove ${id}=Approve\nreject ${id}=Deny\n[/CHOICE]`;
 const dto=(extra={})=>({id,subjectUserId:'owner',state:'pending',action:'cancel_event',payload:{action:'cancel_event',side:'owner',calendarId:'owner@example.invalid',eventId:'exact-event'},reason:'Remove the disposable event.',expiresAt:'2099-01-01T00:00:00Z',updatedAt:'2026-10-15T00:00:00Z',...extra});
@@ -13,6 +13,18 @@ test('only complete, exact Calendar approval markup gets presentation metadata',
  const ordinary='  An indented reply.\n\n\tSecond paragraph.  \n';
  assert.deepEqual(calendarReviewText(ordinary),{displayText:ordinary,ids:[]});
  for(const text of [block.replace('id='+id,'id=other'),block.replace('reject '+id+'=Deny','other=Other'),block.replace('approve '+id+'=Approve','approve '+id+'X'),block.replace('approval-','example-')])assert.deepEqual(calendarReviewText(text),{displayText:text,ids:[]});
+});
+test('inbox queue choices show as prose only; malformed blocks stay literal',async()=>{
+ const {appendInboxTriageChoiceMarkers,appendInboxDraftChoiceMarker}=await import('data:text/javascript;base64,'+Buffer.from((await build({entryPoints:['vendor/eliza/plugins/plugin-inbox/src/actions/choice-markers.ts'],bundle:true,platform:'node',format:'esm',write:false})).outputFiles[0].text).toString('base64'));
+ const triage=appendInboxTriageChoiceMarkers('Two threads need you.',[{id:'t1',senderName:'Ada'},{id:'t2',channelName:'#ops'}]);
+ assert.match(triage,/\[CHOICE:inbox-thread-t1 id=t1\]/);
+ assert.equal(inboxChoiceText(triage),'Two threads need you.');
+ assert.equal(inboxChoiceText(appendInboxDraftChoiceMarker('Draft ready.','d1')),'Draft ready.');
+ const ordinary='  An indented reply.\n\n\tSecond paragraph.  \n';assert.equal(inboxChoiceText(ordinary),ordinary);
+ for(const text of ['[CHOICE:inbox-thread-t1 id=t2]\ninbox reply t1=Reply\n[/CHOICE]','[CHOICE:inbox-thread-t1 id=t1]\ninbox reply t2=Reply\n[/CHOICE]','[CHOICE:inbox-thread-t1 id=t1]\nno separator\n[/CHOICE]','[CHOICE:inbox-thread-t1 id=t1]\ninbox reply t1=Reply'])assert.equal(inboxChoiceText(text),text,text);
+ // An approval block alongside inbox choices still yields its review.
+ const both=calendarReviewText('Review the event.\n'+block+'\n[CHOICE:inbox-thread-t1 id=t1]\ninbox archive t1=Archive\n[/CHOICE]');
+ assert.deepEqual(both.ids,[id]);assert.equal(inboxChoiceText(both.displayText),'Review the event.');
 });
 test('foreign, duplicate, malformed and non-Calendar approvals do not authorize a review',()=>{
  const foreign=calendarApprovalFromList({approvals:[dto({subjectUserId:'another-owner'})]},id,'owner');assert.equal(foreign.ownerVerified,false);assert.equal(calendarApprovalPending(foreign),false);assert.throws(()=>calendarApprovalCommand(foreign,'approve'));
@@ -49,6 +61,11 @@ test('rendering restored markup does no requests or sends; explicit verified cho
  const cleanup=dom();let shell;try{const setup=adapterFixture();shell=setup.shell;const f=setup.fixture;for(let n=0;n<30;n++)shell.renderVals();assert.equal(f.reads,0);assert.equal(f.sent.length,0);let view=shell.renderVals();assert.equal(view.msgs[0].displayText,'Review the event.');assert.equal(shell.st.msgs[0].text,'Review the event.\n'+block,'stored source is unchanged');assert.equal(view.msgs[1].displayText,block,'literal user text stays literal');assert.equal(view.msgs[1].calendarReviews.length,0);
  view.msgs[0].calendarReviews[0].open();await tick();assert.equal(f.reads,1);assert.equal(f.sent.length,0);button('Approve').click();await tick();assert.equal(f.reads,2);assert.equal(f.sent.length,1);assert.equal(f.sent[0],calendarApprovalCommand(f.row,'approve'));assert.equal(f.sent[0].includes('do not create another request'),true);
  }finally{shell?.componentWillUnmount();delete globalThis.calendarReviewAdapterFixture;cleanup();}
+});
+test('an inbox triage reply renders prose only and offers no inbox commands',()=>{
+ const {shell}=adapterFixture();
+ try{const text='Two threads need you.\n[CHOICE:inbox-thread-t1 id=t1]\ninbox reply t1=Reply to Ada\ninbox snooze t1=Snooze\ninbox archive t1=Archive\n[/CHOICE]';shell.st.msgs=[{id:'triage',from:'agent',text}];const shown=shell.renderVals().msgs[0];assert.equal(shown.displayText,'Two threads need you.');assert.equal(shown.messageActionsLabel,'Message actions: Two threads need you.');assert.deepEqual(shown.calendarReviews,[]);assert.equal(shell.st.msgs[0].text,text,'stored source is unchanged');}
+ finally{shell.componentWillUnmount();delete globalThis.calendarReviewAdapterFixture;}
 });
 test('an existing chat draft is never replaced by a Calendar review',async()=>{
  const cleanup=dom();let shell;try{const setup=adapterFixture();shell=setup.shell;shell.st.draft='Keep my current words';shell.renderVals().msgs[0].calendarReviews[0].open();await tick();assert.equal(setup.fixture.reads,0);assert.equal(setup.fixture.sent.length,0);assert.equal(shell.st.draft,'Keep my current words');assert.equal(document.querySelector('dialog'),null);}finally{shell?.componentWillUnmount();delete globalThis.calendarReviewAdapterFixture;cleanup();}

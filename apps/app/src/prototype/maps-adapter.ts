@@ -285,8 +285,8 @@ export function installMapsChatAdapter(Component:Bag){
   const out=render.call(this),msgs=out.msgs||[],done=answers(this);
   out.msgs=msgs.map((message:Bag,index:number)=>{
    if(!message.isAgent)return message;
-   const parsed=mapsChatText(String(message.displayText??message.text??''));
-   if(!parsed.cards.length&&!parsed.choice)return message;
+   const source=String(message.displayText??message.text??''),parsed=mapsChatText(source);
+   if(!parsed.cards.length&&!parsed.choice&&parsed.displayText===source)return message;
    // Only the newest reply can still be answered; an old question is history.
    const choice=parsed.choice,id=choice?String(message.id)+':'+choice.id:'',open=!!choice&&index===msgs.length-1&&!done.has(id);
    return {...message,displayText:parsed.displayText,hasCalendarText:message.hasCalendarText!==false&&!!parsed.displayText,

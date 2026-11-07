@@ -400,7 +400,7 @@ test('disconnecting the agent mid-reply never shows the old reply or a recovery 
   // The interruption is stated once; the old turn's text, reply and recovery offer never appear under the new owner.
   await expect(conversation(page).getByText(/^Request cancelled\./)).toHaveCount(1);
   // The message was posted before the owner changed: the notice says it may have arrived, so it is not blindly resent.
-  await expect(conversation(page).getByText(/Your message may have reached the previous agent connection\. Check its saved conversations before sending it again\.$/)).toHaveCount(1);
+  await expect(conversation(page).getByText(/It may already have been sent, so check before sending it again\.$/)).toHaveCount(1);
   for (const text of ['Asked the first agent', 'Late reply for the old agent', UNKNOWN, MAY_FINISH]) await expect(conversation(page).getByText(text, { exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /^Check saved conversation/ })).toHaveCount(0);
   await expect(stop(page)).toHaveCount(0);
@@ -443,6 +443,27 @@ test('reconnecting restores the saved remote conversation with older pages; the 
   // Nothing was sent by restoring, navigating, resizing or reloading.
   expect(await fixture(page, f => f.posts)).toBe(0);
   await expect.poll(restored, { timeout: 30_000 }).toMatchObject({ count: 232, conversation: 'fixture-chat' });
+});
+
+test('a restored conversation longer than the chat window scrolls up to its first message', async ({ page }) => {
+  test.setTimeout(120_000);
+  await connected(page, { long: true });
+  await typeDraft(page, 'Newest question');
+  await composer(page).press('Enter');
+  await expect.poll(() => fixture(page, f => f.posts), { timeout: 15_000 }).toBe(1);
+  await fixture(page, f => { f.release('Newest answer'); f.finish('Newest answer'); });
+  await page.reload();
+  await expect.poll(() => fixture(page, f => ({ reads: f.historyReads, pages: f.pageReads })), { timeout: 30_000 }).toEqual({ reads: 1, pages: 1 });
+  const transcript = conversation(page).locator('[data-alpha-transcript]'), rows = transcript.locator('[data-alpha-message-id]');
+  // Closed, only the newest rows are rendered; open, a page of them; each scroll to the top adds a page.
+  await expect(rows.last()).toContainText('Newest answer', { timeout: 20_000 });
+  await expect(rows).toHaveCount(20);
+  await page.getByRole('button', { name: 'Open conversation', exact: true }).click();
+  await expect(rows).toHaveCount(100);
+  await expect.poll(async () => { await transcript.evaluate(element => { element.scrollTop = 0; }); return rows.first().textContent(); }, { timeout: 20_000 }).toContain('Synthetic message 0');
+  await expect(rows).toHaveCount(232);
+  await expect(transcript.getByText('Synthetic message 0', { exact: true })).toBeInViewport();
+  expect(await fixture(page, f => f.posts)).toBe(0);
 });
 
 const NOT_CHECKED = /The stopped reply was not checked because another message was sent\./;

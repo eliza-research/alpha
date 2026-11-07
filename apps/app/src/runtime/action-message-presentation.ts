@@ -195,6 +195,13 @@ function shareChoice(id:string,body:string):MapsShareChoice|null{
  return {id,options};
 }
 
+// Alpha has no form surface. The question the form asks is already in the prose before it
+// (plugin-maps missingInput), so a complete form block is dropped and nothing is lost.
+const FORM=/\[FORM\]\r?\n(\{[^\r\n]*\})\r?\n\[\/FORM\]/g;
+function formBlock(json:string){
+ try{const body=JSON.parse(json);return !!body&&typeof body==='object'&&typeof body.id==='string'&&Array.isArray(body.fields);}catch{return false;}
+}
+
 /** Replace valid Maps markup with presentation metadata. Malformed markup stays literal text. */
 export function mapsChatText(text:string){
  const cards:MapsChatCard[]=[];let choice:MapsShareChoice|null=null,rendered=text;
@@ -204,7 +211,9 @@ export function mapsChatText(text:string){
   // The question itself stays in the surrounding prose; only its answers become buttons.
   const parsed=choice?null:shareChoice(id,body);if(!parsed)return whole;choice=parsed;return '';
  });
+ let forms=false;
+ rendered=rendered.replace(FORM,(whole,json)=>formBlock(json)?(forms=true,''):whole);
  // Ordinary messages keep their exact text, including indentation and trailing paragraphs.
- const displayText=cards.length||choice?rendered.replace(/\n{3,}/g,'\n\n').trim():rendered;
+ const displayText=cards.length||choice||forms?rendered.replace(/\n{3,}/g,'\n\n').trim():rendered;
  return {displayText,cards,choice:choice as MapsShareChoice|null};
 }

@@ -182,7 +182,8 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     const value=originalApi.call(this,key);
     if(key==='camera')value.reviewScannedCalendarDraft=(draft:Bag)=>this.reviewScannedCalendarDraft?.(draft)??false;
     if(key==='camera')value.saveScannedNote=async(text:string,id:string)=>{
-      if(this.notesStorageFailed||this.notesPending||!this.notesStore)return false;
+      if(this.notesSourceMode!=='legacy'&&this.canonicalNotesUi?.current)return await this.canonicalNotesUi.saveCard(text,this.api('notes'));
+      if(this.notesSourceMode!=='legacy'||this.notesStorageFailed||this.notesPending||!this.notesStore){value.toast('Notes is unavailable. Nothing was saved.');return false;}
       const list=this.vget('notes').list||[];
       if(list.some((note:Bag)=>note.id===id))return false;
       return await this.vset('notes',{list:[{id,kind:'text',title:text.split('\n')[0].slice(0,100)||'Scanned text',body:text,when:'Now',pinned:false},...list]})===true;
@@ -1350,6 +1351,9 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
       }, fav: () => { void favorite(selected,currentApi); }, edit: () => {void beginEdit(selected,currentApi);}, del: () => { void changeTrash(selected, true, currentApi, (sequence[index + 1] || sequence[index - 1])?.id); }, info: () => { currentApi.set({ sheet: 'photo-info', chrome: true }); }, ask: () => { askCapture(selected,currentApi); } };
       data.v.saveLocally=browserMode?()=>{const token=photoReadEpoch;return saveBrowserMedia({items:[{id:nativeId(selected.id),revision:selected.mutationRevision||''}]},()=>!disposed&&!document.hidden&&photoReadEpoch===token&&currentApi.isActive()&&currentApi.get('photos').open===selected.id&&sameCapture(selected));}:undefined;
       data.v.isDeleted=!!selected.trashed;data.v.notDeleted=!selected.trashed;data.v.canDeleteForever=!!selected.trashed;data.v.recover=()=>void changeTrash(selected,false,currentApi);data.v.deleteForever=()=>void preparePermanent(currentApi,[selected]);if(selected.trashed){data.v.notSecure=false;const left=daysLeft(selected.expiresAt);data.v.sub=left===undefined?when.time:`${left} ${left===1?'day':'days'} left`;}
+      const shown=st.album==='trash'?trash:st.album?albumRows:shownCaptures,at=shown.findIndex(row=>row.id===selected.id);
+      const step=(row:SavedPhoto|undefined)=>()=>{if(row&&!edit&&!mutating&&!sharing)void openSaved(row.id,currentApi);};
+      data.v.hasPrevItem=at>0&&!edit;data.v.hasNextItem=at>=0&&at<shown.length-1&&!edit;data.v.prevItem=step(shown[at-1]);data.v.nextItem=step(shown[at+1]);
       data.v.viewerLabel=tileLabel(selected);data.v.askLabel=`Ask Alpha about this ${selected.kind==='video'?'video':'photo'}`;
       data.v.editLabel=selected.kind==='video'?'Edit video':'Edit photo';data.v.shareLabel=selected.kind==='video'?'Share video':'Share photo';data.v.infoLabel=selected.kind==='video'?'Video info':'Photo info';data.v.deleteLabel=selected.kind==='video'?'Delete video':'Delete photo';
       data.v.canEmail=!browserMode&&selected.kind!=='video'&&!selected.trashed&&nativeId(selected.id).startsWith('m:')&&!!selected.mutationRevision&&Capacitor.isPluginAvailable('AlphaMailAttachments')&&typeof views.inbox.fileEmailTarget==='function';

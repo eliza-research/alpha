@@ -179,7 +179,9 @@ console.log('PASS: Inbox auto-load, Refresh, provider paging, Sent folder, unrea
 
 // A new adapter instance represents a reload: restore only the current owner's retained inbox.
 // Deliberately cross local midnight: the retained timestamp is unchanged while its label includes the prior date.
-const restoreNow=new Date(2026,10,2,0,0,15).getTime(),cachedAt=restoreNow-30000,cachedReadLabel=whenLabel(cachedAt,restoreNow);
+// Today's 00:00:15 keeps the restored row inside the 30-day window later checks read on the real clock; yesterday's in the first 15 s of a day, so the row is never in the future.
+const restoreDay=new Date();if(Date.now()<new Date(restoreDay).setHours(0,0,15,0))restoreDay.setDate(restoreDay.getDate()-1);
+const restoreNow=restoreDay.setHours(0,0,15,0),cachedAt=restoreNow-30000,cachedReadLabel=whenLabel(cachedAt,restoreNow);
 assert.notEqual(cachedReadLabel,formatTime(new Date(cachedAt)),'prior-day label includes its date');
 const retainedMailbox={accounts:[{connectionId:'grant-a',label:'Fixture account',connected:true,grantedCapabilities:['google.gmail.triage']}],selected:'grant-a',spamTrashSearch:false,lists:[{key:'old-session-key',at:cachedAt,firstPageRevision:null,messages:[mail('retained-unread',{unread:true})],query:'in:inbox',cursor:null,revision:'old-revision',cursors:[],newerMail:false,status:'Retained inbox'}],bodies:[]};
 sandbox.serviceReadCache=async()=>({get:async key=>key==='gmail:mailbox'?{value:structuredClone(retainedMailbox)}:null,put:async()=>{},clear:async()=>{}});

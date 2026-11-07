@@ -84,3 +84,9 @@ test('an older question, a draft or a busy connection never sends an answer',asy
  const busy=fixture([{id:'a1',from:'agent',text:shareText}]);
  try{busy.f.snapshot.busy=true;busy.shell.renderVals().msgs[0].mapsChoices[1].choose();await tick();assert.equal(busy.f.sent.length,0);}finally{delete globalThis.mapsChatFixture;}
 });
+
+test('a form-only reply shows its prose and offers nothing to send',()=>{
+ const prompt='What place or address should I look up?';
+ const {f,shell}=fixture([{id:'a1',from:'agent',text:appendInteractionBlock(prompt,{kind:'form',id:'maps-search-m1',fields:[{name:'query',type:'text',label:'Place or address',required:true}]})}]);
+ try{const view=shell.renderVals().msgs[0];assert.equal(view.displayText,prompt);assert.deepEqual(view.mapsCards,[]);assert.equal(view.hasMapsChoice,false);assert.equal(f.sent.length,0);}finally{delete globalThis.mapsChatFixture;}
+});

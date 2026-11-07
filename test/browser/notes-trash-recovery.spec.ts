@@ -284,7 +284,7 @@ test('an interrupted permanent voice deletion keeps a recovery row and finishes 
  await page.evaluate(async()=>{const {BrowserVoice}=await import('/src/browser/voice.ts');(window as any).purgeCalls=0;BrowserVoice.prototype.purge=async function(){(window as any).purgeCalls++;throw Error('Process stopped before the erase');};});
  await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
  await page.getByRole('dialog',{name:'Recently deleted is full'}).getByRole('button',{name:'Delete permanently',exact:true}).click();
- await expect(page.getByText(/Deletion is unconfirmed/).first()).toBeVisible();
+ await expect(page.getByText(/Deletion not confirmed/).first()).toBeVisible();
  await expect.poll(()=>page.evaluate(()=>(window as any).purgeCalls)).toBeGreaterThan(0);
  // The tombstone committed and the recording is in the audio trash under this operation, not erased.
  const pending:any[]=await pendingDeletions(page);
@@ -454,7 +454,7 @@ test('two views: a second tab never settles a permanent deletion the first open 
   await first.getByRole('button',{name:'Open Held memo',exact:true}).click();
   await first.getByRole('button',{name:'More',exact:true}).click();await first.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
   await first.getByRole('dialog',{name:'Recently deleted is full'}).getByRole('button',{name:'Delete permanently',exact:true}).click();
-  await expect(first.getByText(/Deletion is unconfirmed/).first()).toBeVisible();
+  await expect(first.getByText(/Deletion not confirmed/).first()).toBeVisible();
   const held=await pendingDeletions(first);
   expect(held.map((row:any)=>[row.note.id,row.permanent])).toEqual([['held-voice',true]]);
   expect(held[0].lease.until).toBeGreaterThan(Date.now());

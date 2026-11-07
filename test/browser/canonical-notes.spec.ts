@@ -211,7 +211,7 @@ test('older device notes stay a separate explicit recovery source and are not op
  // Record is in both sources (agent notes keep its transcript only).
  await expect(page.getByRole('button',{name:'Record and transcribe',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Previous notes',exact:true}).click();
- await expect(page.getByRole('heading',{name:'Older notes',exact:true})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Previous notes',exact:true})).toBeVisible();
  await expect(page.getByRole('button',{name:'Open Previous local note',exact:true})).toBeVisible();
  expect(await page.evaluate(async()=>(await import('/src/runtime/browser-notes-document.ts')).readBrowserNotesRaw())).toBe(before);
  expect((await snapshot(page)).notes).toEqual([]);

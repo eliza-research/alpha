@@ -222,12 +222,12 @@ adapterTest('Cloud conversation keeps the composer focused on the current voice 
     recheck(){}
   };
   await h.shell.startVoice();
-  assert.equal(h.initialView.state,'starting');assert.equal(h.initialView.voiceDetails,false);
+  assert.equal(h.initialView.state,'starting');assert.ok(!h.initialView.voiceDetails);
   for(const [phase,caption] of [['listening','Listening…'],['transcribing','Transcribing…'],['thinking','Thinking…'],['preparing-speech','Thinking…'],['speaking','Speaking…']]){
     h.batchOptions.onState({phase});const view=h.renderChat();
     assert.equal(view.lines[0].t,caption);
     assert.equal(view.cloudDisclosureText,undefined);
-    assert.equal(view.voiceDetails,false);
+    assert.ok(!view.voiceDetails);
     assert.equal(typeof view.stop,'function');assert.equal(typeof view.keyboard,'function');
   }
   // The loop's own idle is shown once its retire settles (a failure it is about to report replaces it).
@@ -243,7 +243,7 @@ adapterTest('typed native 503 is waited out quietly, then voice ends with one ca
   await h.shell.startVoice();await clock.flush();
   for(let attempt=1;attempt<=2;attempt++){
     const view=h.renderChat();assert.equal(view.state,'starting');
-    assert.equal(view.errorDetail,'');assert.equal(view.voiceDetails,false);assert.ok(!view.recoveryLabel);
+    assert.ok(!view.errorDetail);assert.ok(!view.voiceDetails);assert.ok(!view.recoveryLabel);
     assert.doesNotMatch(JSON.stringify(view),/PRIVATE_PROVIDER_BODY|Voice is unavailable|Try voice again|503/);
     assert.equal(typeof view.stop,'function');assert.equal(typeof view.keyboard,'function');
     assert.equal(h.starts,attempt);await clock.advance(2_000);
@@ -259,7 +259,7 @@ adapterTest('typed native 503 is waited out quietly, then voice ends with one ca
 adapterTest('unknown native voice failures retain their existing recovery',async t=>{
   const h=cloudFixture({startError:Object.assign(new Error('Unknown voice failure remains'),{code:'voice-http-503-extra'})});t.after(()=>h.close());
   await h.shell.startVoice();await h.tick();const view=h.renderChat();
-  assert.equal(view.state,'error');assert.equal(view.errorDetail,'');
+  assert.equal(view.state,'error');assert.ok(!view.errorDetail);
   assert.doesNotMatch(view.lines[0].t,/Voice is unavailable right now/);
-  assert.equal(view.recoveryLabel,'');assert.equal(view.statusLines.length,0);assert.equal(view.voiceDetails,false);assert.equal(h.startError?.code,'voice-http-503-extra','underlying failure is retained');assert.deepEqual(h.shell.messages,[]);
+  assert.equal(view.recoveryLabel,'');assert.equal(view.statusLines.length,0);assert.ok(!view.voiceDetails);assert.equal(h.startError?.code,'voice-http-503-extra','underlying failure is retained');assert.deepEqual(h.shell.messages,[]);
 });

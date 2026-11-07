@@ -4,14 +4,12 @@ import './browser/register';
 import {installCanonicalNotesView} from './prototype/canonical-notes-ui';
 import {installCanonicalCalendarDrafts} from './prototype/canonical-calendar-drafts';
 import {installAgentCalendarAdapter,deviceCalendarScope} from './prototype/agent-calendar-adapter';
-import {Capacitor} from '@capacitor/core';
-import {ownerReminderNotifications} from './runtime/owner-reminder-notification-port';
 import {installCalendarApprovalAdapter} from './prototype/calendar-approval-adapter';
 import {bindBrowserDeletionOwner} from './runtime/deletion-owner';
 import {DEFAULT_PULL_VELOCITY} from "../../../.eliza/client-features/packages/ui/src/gestures/constants";
 import {usePullGesture} from "../../../.eliza/client-features/packages/ui/src/components/shell/use-pull-gesture";
 import {installChatOverlayMotion} from './prototype/chat-overlay-motion-adapter';
-import {installSubviewAccessibility,keepFocusOnScreen} from './prototype/subview-accessibility';
+import {installSubviewAccessibility,installReplyAnnouncer,keepFocusOnScreen} from './prototype/subview-accessibility';
 import {installCalendarMonthFocus} from './prototype/calendar-month-focus';
 import {installCalendarEditDraftAdapter} from './prototype/calendar-edit-draft-adapter';
 import {installCalendarFormDraftAdapter} from './prototype/calendar-form-draft-adapter';
@@ -38,14 +36,14 @@ import {installSharePanelAdapter} from './prototype/share-panel-adapter';
 import {installNotesShareAdapter} from './prototype/notes-share-adapter';
 import { installNotesDocumentAdapter } from './prototype/notes-document-adapter';
 import { installPrototypeMapsAdapter, installMapsChatAdapter } from './prototype/maps-adapter';
-import { installNotificationsAdapter } from './prototype/notifications-adapter';
+import { installCanonicalNotificationTaps, installNotificationsAdapter } from './prototype/notifications-adapter';
 import { installSystemShade, shadeSurface } from './prototype/system-shade';
 import { installContextSelection } from './prototype/context-selection';
 import { installWorkflowAdapter } from './prototype/workflow-adapter';
 import { installAutomationsAdapter } from './prototype/automations-adapter';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { StartupPermissions } from './startup-permissions';
-import { reopenStartupPermissions } from './startup-permission-flow';
+import { reopenStartupPermissions, startupPermissionsActive } from './startup-permission-flow';
 import { createRoot } from 'react-dom/client';
 import { Component, VIEWS, ORDER } from './prototype/model.js';
 import { installReminderAdapter } from './prototype/reminder-adapter';
@@ -83,8 +81,6 @@ import { installViewFocus } from './runtime/view-focus';
 import './prototype/prototype.css';
 import './prototype/phone.css';
 installGlobalErrorRecovery();
-// Registration has completed; this injected source cannot form a register→connection cycle.
-if(!Capacitor.isNativePlatform())ownerReminderNotifications.bind({binding:()=>connectionController.getOwnerReminderNotificationBinding(),subscribeBinding:listener=>connectionController.subscribe(listener)});
 // Developer surfaces are only reachable in an explicitly flagged development server.
 const browserDevProfile=devSurfacesEnabled&&devProfileQuery;
 const developmentAgentWorkflows=devSurfacesEnabled&&devAgentWorkflowsQuery;
@@ -128,6 +124,8 @@ if (!fixture) {
   installPrototypeDataAdapter(Component, VIEWS);
   installAgentCalendarAdapter(Component,VIEWS);
   installCanonicalCalendarDrafts(Component,VIEWS);
+  // Taps on Alpha's own Android notifications open their view whichever shade the build shows.
+  if(isAndroid)installCanonicalNotificationTaps(Component);
   // Notice rows feed only the development stand-in shade; product builds read no notice list (#416).
   if(systemShade==='simulated')installNotificationsAdapter(Component);
   installContextSelection(Component);
@@ -166,6 +164,8 @@ if(developmentAgentWorkflows){installWorkflowAdapter(Component,VIEWS);installAut
 installSubviewAccessibility(VIEWS);
 installCalendarMonthFocus(Component, VIEWS);
 installChatOverlayMotion(Component);
+// Replies, failures and the replying state are announced without moving focus (prototype/subview-accessibility.ts).
+installReplyAnnouncer(Component);
 installSystemShade(Component,{native:isAndroid});
 // Decide visibility from the final card values before rendering the cards and Home shell.
 installHomeCardVisibility(Component, () => googleConnectionController.open());
@@ -318,7 +318,7 @@ function Phone() {
     else if(action==='resume'){delete document.documentElement.dataset.devBackground;shell.unlock();window.dispatchEvent(new Event('focus'));}
     if(['power','unlock','boot','background','resume'].includes(action))window.dispatchEvent(new Event('alpha:device-state'));
   }}/>}{testMocksEnabled && mock && <div className="mock-mode-banner" role="status"><span>Mock mode · simulated data and actions</span><button onClick={() => { void connectionController.offline().then(() => { const url = new URL(location.href); url.searchParams.delete('mode'); url.searchParams.delete('start'); location.assign(url.href); }); }}>Exit mock mode</button></div>}{startupPending ? <div className="alpha-startup-loading" role="status" aria-label="Loading Alpha"><span className="alpha-compute-mark"/></div> : <Component configureChatPull={(surface:{scale:number})=>setPullScale(surface.scale)} chatPullBinding={chatPullBinding} phoneSurface assistantSurface={assistantSurface} onCloseAssistant={closeAssistant} onReopenStartupAccess={!fixture && !assistantSurface ? reopenStartupPermissions : undefined} systemShell={launcherPresentation} systemShade={systemShade} nativeSystemChrome={isAndroid || !launcherPresentation} initial={testMocksEnabled && fixture ? query.get('start') || 'home' : 'home'} theme={initialTheme} ref={(value: any) => { shell = value; if (value && pendingNotice) queueMicrotask(() => { if (shell === value && value.live && pendingNotice) { value.toast(pendingNotice); pendingNotice = undefined; } }); }} />}
-{!fixture && <><ConnectionChooser /><GoogleConnectionsPanel />{!assistantSurface && <><HostedDigestPanel canComposeQuestion={questionTarget} composeQuestion={(draft,sessionId)=>{if(!questionTarget(sessionId))return false;shell.api(shell.S().view).composeContentQuestion(draft);return true;}} /><StartupPermissions active={(!!connection.cloudAccount || (!!connection.setupRevision && connection.providerStatus?.selected === true && connection.providerStatus.provider === 'cerebras')) && !(connection.busy && !connection.residentStarting) && !connection.signIn} /></>}</>}</>;
+{!fixture && <><ConnectionChooser /><GoogleConnectionsPanel />{!assistantSurface && <><HostedDigestPanel canComposeQuestion={questionTarget} composeQuestion={(draft,sessionId)=>{if(!questionTarget(sessionId))return false;shell.api(shell.S().view).composeContentQuestion(draft);return true;}} /><StartupPermissions active={startupPermissionsActive(connection)} /></>}</>}</>;
 }
 /** Android's locale and 24-hour setting; WebView Intl alone does not follow the latter. */
 async function applyDeviceLocale() {
@@ -326,24 +326,22 @@ async function applyDeviceLocale() {
   catch { /* Keep the WebView's default locale formatting. */ }
 }
 async function mountPhone() {
-  // Android owns its system bars; browser defaults to the standalone app.
-  launcherPresentation = isAndroid
-    ? await System.getBuildInfo().then(info => info.launcher === true).catch(() => false)
-    : devSurfacesEnabled && query.get('shell') === 'launcher';
   if (isAndroid) {
-    // AlphaAssistActivity (surfaceInfo) or an Activity opened with the 'alpha.assistant' extra.
-    const [surface, launch] = await Promise.all([
-      DailyApps.surfaceInfo().then(info => info.assistant === true).catch(() => false),
-      System.getLaunchInfo().then(info => info.assistant === true).catch(() => false),
-    ]);
-    assistantSurface = surface || launch;
     const refreshImage=async()=>{const image=await DeviceApps.platformCapabilities().catch(()=>({aospImage:false,contacts:false}));const admitted=image.aospImage===true&&image.contacts===true;admitImageContacts(admitted);const index=ORDER.indexOf('contacts');if(admitted&&index<0)ORDER.push('contacts');else if(!admitted&&index>=0)ORDER.splice(index,1);if(!admitted&&shell?.S().view==='contacts')shell.goHome();};
-    await refreshImage();
-    await applyDeviceLocale();
+    // One round of independent host reads before the first render. The assistant surface is
+    // AlphaAssistActivity only (surfaceInfo is class-gated natively), never a launch extra.
+    [launcherPresentation, assistantSurface] = await Promise.all([
+      System.getBuildInfo().then(info => info.launcher === true).catch(() => false),
+      DailyApps.surfaceInfo().then(info => info.assistant === true).catch(() => false),
+      refreshImage(),
+      applyDeviceLocale(),
+    ]);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) void refreshImage().then(()=>applyDeviceLocale()).then(() => shell?.setState({ localeRevision: Date.now() })); });
-  } else if (devSurfacesEnabled && query.get('surface') === 'assistant') {
+  } else {
+    // The browser defaults to the standalone app; Android reads its launcher role above.
+    launcherPresentation = devSurfacesEnabled && query.get('shell') === 'launcher';
     // Development server only: preview the ACTION_ASSIST surface without an Android host.
-    assistantSurface = true;
+    if (devSurfacesEnabled && query.get('surface') === 'assistant') assistantSurface = true;
   }
   document.documentElement.classList.toggle('alpha-assistant-surface', assistantSurface);
   document.documentElement.classList.toggle('standalone-app', !launcherPresentation);

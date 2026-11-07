@@ -20,6 +20,8 @@ test('strict shutdown retry requires exact current acknowledgment plus absence a
   const admissionStart=source.indexOf('synchronized(lifecycleLock){',retryStart)+'synchronized(lifecycleLock){'.length;
   const admissionEnd=source.indexOf('if(disposed||getActivity()',admissionStart);
   const actualAdmission=source.slice(admissionStart,admissionEnd);
+  const retryRequiredStart=source.indexOf(' static boolean shutdownRetryRequired(');
+  const retryRequired=source.slice(retryRequiredStart,source.indexOf('\n }\n',retryRequiredStart)+3).replace('static boolean','boolean');
   writeFileSync(join(temporary,'RetryGuardHarness.java'),`package ai.elizaresearch.alphaphone;
 import java.util.*;
 import ai.eliza.plugins.agent.runtime.CredentialIntentFence;
@@ -28,7 +30,8 @@ public class RetryGuardHarness {
  static class Superseded extends Exception {}
  static class PluginCall {int rejected;void reject(String message){rejected++;}}
  static class ElizaAgentService {static boolean confirmed;static boolean isCredentialShutdownConfirmed(long request){return confirmed;}}
- long credentialShutdownRequest=10;
+ long credentialShutdownRequest=10,uncertainCommitRequest=-1;
+ ${retryRequired}
  static class Activity {boolean focus=true;boolean hasWindowFocus(){return focus;}}
  boolean disposed,stopping;CredentialIntentFence credentialIntents=fenceAt(4);long lifecycleEpoch=8,credentialShutdownRetryEpoch=8,credentialMutationEpoch=-1;
  final Set<PluginCall> pending=new HashSet<>(); final Activity activity=new Activity(); Activity getActivity(){return activity;}
@@ -75,7 +78,7 @@ public class RetryTransitionHarness {
  static class Activity {boolean focus=true;boolean hasWindowFocus(){return focus;}}
  static class Context {}
  static final Object lifecycleLock=new Object(),workers=new Object();
- static long credentialShutdownRequest=1,credentialShutdownRetryEpoch=-1,lifecycleEpoch=0,credentialMutationEpoch=-1;static CredentialIntentFence credentialIntents=new CredentialIntentFence(lifecycleLock);
+ static long credentialShutdownRequest=1,credentialShutdownRetryEpoch=-1,lifecycleEpoch=0,credentialMutationEpoch=-1,uncertainCommitRequest=-1;static CredentialIntentFence credentialIntents=new CredentialIntentFence(lifecycleLock);
  static boolean accepting=false,stopping=true;static String startRequestId;static long startRequestEpoch;static boolean startOwnsLaunch;
  boolean disposed;int dispatched;Activity activity=new Activity();final Set<PluginCall> pending=new HashSet<>();final Set<String> cancelledStarts=new HashSet<>();
  Activity getActivity(){return activity;}Context getContext(){return new Context();}void invalidateCalls(){for(PluginCall c:pending)c.reject("superseded");pending.clear();}void clearEnrollment(){}
@@ -95,7 +98,7 @@ public class RetryTransitionHarness {
  synchronized(lifecycleLock){${continuationGuards}dispatched++;}
  }
  static void check(boolean value,String why){if(!value)throw new AssertionError(why);}
- static RetryTransitionHarness fresh(){credentialShutdownRequest=1;credentialShutdownRetryEpoch=-1;lifecycleEpoch=0;credentialIntents=new CredentialIntentFence(lifecycleLock);credentialMutationEpoch=-1;PluginWorkers.queue.clear();ElizaAgentService.epoch=1;ElizaAgentService.abandoned=-1;ElizaAgentService.stops=0;ElizaAgentService.probes=0;ElizaAgentService.confirmChecks=0;ElizaAgentService.confirmed=false;ElizaAgentService.absent=true;ElizaAgentService.failDispatch=false;ElizaAgentService.onProbe=()->{};ElizaAgentService.onFourthConfirmation=()->{};return new RetryTransitionHarness();}
+ static RetryTransitionHarness fresh(){uncertainCommitRequest=-1;credentialShutdownRequest=1;credentialShutdownRetryEpoch=-1;lifecycleEpoch=0;credentialIntents=new CredentialIntentFence(lifecycleLock);credentialMutationEpoch=-1;PluginWorkers.queue.clear();ElizaAgentService.epoch=1;ElizaAgentService.abandoned=-1;ElizaAgentService.stops=0;ElizaAgentService.probes=0;ElizaAgentService.confirmChecks=0;ElizaAgentService.confirmed=false;ElizaAgentService.absent=true;ElizaAgentService.failDispatch=false;ElizaAgentService.onProbe=()->{};ElizaAgentService.onFourthConfirmation=()->{};return new RetryTransitionHarness();}
  static void run(){PluginWorkers.queue.remove().run();}
  public static void main(String[] args){
  RetryTransitionHarness h=fresh();credentialShutdownRequest=-1;stopping=true;PluginCall ordinary=new PluginCall();check(h.retryCredentialShutdown(ordinary,"ordinary-stop"),"ordinary STOPPING must admit one explicit strict stop recheck");check(PluginWorkers.queue.size()==1&&h.dispatched==0,"ordinary retry queues no start before proof");ElizaAgentService.onProbe=()->ElizaAgentService.confirmed=true;run();check(h.dispatched==1&&ElizaAgentService.stops==1&&!stopping&&credentialShutdownRequest==-1,"fresh exact acknowledgment and absence settle ordinary stop before requested continuation");
@@ -111,8 +114,9 @@ public class RetryTransitionHarness {
  h=fresh();first=new PluginCall();h.retryCredentialShutdown(first,"cancel");ElizaAgentService.confirmed=true;ElizaAgentService.onProbe=()->lifecycleEpoch++;run();check(h.dispatched==0&&credentialShutdownRequest!=-1,"canceled observation cannot start");
  h=fresh();first=new PluginCall();h.retryCredentialShutdown(first,"account");ElizaAgentService.confirmed=true;ElizaAgentService.onFourthConfirmation=()->credentialIntents.reserve();run();check(h.dispatched==0,"account intent after proof is fenced by actual continuation guard");
  h=fresh();first=new PluginCall();h.retryCredentialShutdown(first,"focus");ElizaAgentService.confirmed=true;final RetryTransitionHarness focused=h;ElizaAgentService.onFourthConfirmation=()->focused.activity.focus=false;run();check(h.dispatched==0,"lost focus after proof cannot start");
+ h=fresh();credentialShutdownRequest=-1;stopping=false;uncertainCommitRequest=1;first=new PluginCall();check(h.retryCredentialShutdown(first,"uncertain"),"an uncertain commit sends a later start through Retry");ElizaAgentService.confirmed=true;ElizaAgentService.onProbe=()->{};run();check(h.dispatched==1&&uncertainCommitRequest==-1&&credentialShutdownRequest==-1,"a confirmed Retry stop clears the uncertain commit and starts");
  h=fresh();first=new PluginCall();h.retryCredentialShutdown(first,"dispatch");ElizaAgentService.failDispatch=true;run();check(h.dispatched==0&&first.rejected==1&&credentialShutdownRequest==ElizaAgentService.epoch&&ElizaAgentService.abandoned==ElizaAgentService.epoch,"dispatch failure abandons exactly its reserved no-commit request without starting");
- System.out.println("PASS actual retry transition: serial admission, strict stop count, unknown owner, transient recovery, cancel, post-proof account/focus, uncertain dispatch");
+ System.out.println("PASS actual retry transition: serial admission, strict stop count, unknown owner, transient recovery, cancel, post-proof account/focus, uncertain commit, uncertain dispatch");
  }
 }`);
   execFileSync(javaBinary('javac'),['-d',temporary,...intentFence,join(directory,'ResidentCredentialShutdownRetry.java'),join(temporary,'SystemClock.java'),join(temporary,'RetryTransitionHarness.java')]);

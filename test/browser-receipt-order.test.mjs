@@ -31,7 +31,7 @@ function harness({native=false,origin='notes',receiptFailure=false,dispatchFailu
  // The chat request that carried a direct-request action settles: alphaClient clears pending and emits.
  const settle=()=>{pending=false;for(const listener of [...listeners])listener();};
  const cancel=()=>vm.runInNewContext(cancelCode,{shell,document,connection,currentContext});
- const browserContext={URL,Error,parseBrowserAddressInput,document,Capacitor:{isNativePlatform:()=>native},session:'native-session',state:()=>state,tabs,shell,get disposed(){return disposed;},profileUnsupportedTab:undefined,newTabId:()=> 'new-tab',isPrivate:()=>false,restored:new Map(),restoreAttempts:new Map(),
+ const browserContext={URL,Error,MAX_TABS:8,parseBrowserAddressInput,document,Capacitor:{isNativePlatform:()=>native},session:'native-session',state:()=>state,tabs,shell,get disposed(){return disposed;},profileUnsupportedTab:undefined,newTabId:()=> 'new-tab',isPrivate:()=>false,restored:new Map(),restoreAttempts:new Map(),
  ensure(id){return tabs.creation(id)??tabs.ensure(id,false,()=>Promise.resolve());},
  Browser:{async navigate(){controller.signal.throwIfAborted();events.push('dispatch');if(dispatchFailure)throw Error('dispatch failed');afterDispatch?.({controller,changeTab:()=>{void tabs.ensure('foreign',false,()=>Promise.resolve());state.cur='foreign';},dispose:()=>disposed=true});},async close(){}},refresh(){},report(){}};
  const browserNavigateApproved=vm.runInNewContext('(function(){'+navigateCode+'\n'+browserCode+';return this.browserNavigateApproved;}).call({})',browserContext);
