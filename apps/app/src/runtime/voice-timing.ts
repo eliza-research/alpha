@@ -82,17 +82,22 @@ export const beginRealtimeVoiceTiming=(route:'direct-cartesia'|'cloud-cartesia')
 export const exportRealtimeVoiceTiming=()=>realtimeVoiceTiming.exportJson();
 
 // Startup and turn timings are distinct: preparation can fail before there is
-// audio or a turn. Keep only the most recent phase and a bounded duration.
-type VoiceStartupAttempt={stage:VoiceStartupStage;outcome:VoiceStartupTiming['outcome'];started:number;ended?:number};
+// audio or a turn. Keep one bounded renderer attempt with no correlation to a host turn.
+type VoiceStartupAttempt={stage:VoiceStartupStage;outcome:VoiceStartupTiming['outcome'];started:number;ended?:number;phaseStartedMs:number;phaseMs:NonNullable<VoiceStartupTiming['phaseMs']>};
 let startup:VoiceStartupAttempt|undefined;
 const voiceStartupClock=()=>typeof performance==='undefined'?Date.now():performance.now();
+function voiceStartupElapsed(attempt:VoiceStartupAttempt){
+ return Math.max(attempt.phaseStartedMs,Math.min(120000,Math.round((attempt.ended??voiceStartupClock())-attempt.started)));
+}
 export function voiceStartupTiming():VoiceStartupTiming|undefined {
  if(!startup)return;
- return {stage:startup.stage,outcome:startup.outcome,elapsedMs:Math.min(120000,Math.max(0,Math.round((startup.ended??voiceStartupClock())-startup.started)))};
+ const {stage,outcome,phaseStartedMs}=startup,elapsedMs=voiceStartupElapsed(startup);
+ const phaseMs={...startup.phaseMs,[stage]:(startup.phaseMs[stage]??0)+elapsedMs-phaseStartedMs};
+ return {stage,outcome,elapsedMs,phaseMs};
 }
 
 export async function runVoiceStartupPreparation<T>(controller:AbortController,prepare:(stage:(value:VoiceStartupStage)=>void)=>Promise<T>):Promise<T>{
- const signal=controller.signal,attempt:VoiceStartupAttempt={stage:'conversation-selection',outcome:'pending',started:voiceStartupClock()};
+ const signal=controller.signal,attempt:VoiceStartupAttempt={stage:'conversation-selection',outcome:'pending',started:voiceStartupClock(),phaseStartedMs:0,phaseMs:{}};
  startup=attempt;
  const timeout=Object.assign(new Error('Voice preparation timed out.'),{code:'voice-preparation-timeout'});
  let cancel=()=>{};
@@ -102,7 +107,13 @@ export async function runVoiceStartupPreparation<T>(controller:AbortController,p
  const deadline=setTimeout(()=>controller.abort(timeout),12000);
  const work=Promise.resolve().then(()=>{
   signal.throwIfAborted();
-  return prepare(value=>{if(attempt.outcome==='pending')attempt.stage=value;});
+  return prepare(value=>{
+   if(attempt.outcome!=='pending'||attempt.stage===value)return;
+   const elapsedMs=voiceStartupElapsed(attempt),previous=attempt.stage;
+   attempt.phaseMs[previous]=(attempt.phaseMs[previous]??0)+elapsedMs-attempt.phaseStartedMs;
+   attempt.phaseStartedMs=elapsedMs;
+   attempt.stage=value;
+  });
  });
  try{
   const result=await Promise.race([work,interrupted]);signal.throwIfAborted();

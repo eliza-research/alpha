@@ -18,7 +18,7 @@ export const DIAGNOSTICS_FORMAT='alpha-diagnostics/v1';
 const VOICE_STARTUP_STAGES=['conversation-selection','draft-binding','agent-attach','media-retirement'] as const;
 const VOICE_STARTUP_OUTCOMES=['pending','prepared','timeout','cancelled','failed'] as const;
 export type VoiceStartupStage=typeof VOICE_STARTUP_STAGES[number];
-export type VoiceStartupTiming={stage:VoiceStartupStage;outcome:typeof VOICE_STARTUP_OUTCOMES[number];elapsedMs:number};
+export type VoiceStartupTiming={stage:VoiceStartupStage;outcome:typeof VOICE_STARTUP_OUTCOMES[number];elapsedMs:number;phaseMs?:Partial<Record<VoiceStartupStage,number>>};
 export const RUNTIME_ASSETS=['agent/alpha-source.json','agent/agent-bundle.js','agent/workflow-worker/manifest.json','agent/workflow-worker/files.sha256'] as const;
 const PERMISSIONS=['Microphone','Location','Camera','Calendar','Notifications'] as const;
 const ROLES=['home','assistant','dialer','sms'] as const;
@@ -250,7 +250,17 @@ export function buildDiagnostics(input:DiagnosticsInput,now=Date.now()):Diagnost
  if(startup&&typeof startup==='object'){
   const value=startup as Partial<VoiceStartupTiming>,stage=one(value.stage,VOICE_STARTUP_STAGES),outcome=one(value.outcome,VOICE_STARTUP_OUTCOMES);
   const elapsedMs=value.elapsedMs;
-  if(stage&&outcome&&typeof elapsedMs==='number'&&Number.isSafeInteger(elapsedMs)&&elapsedMs>=0&&elapsedMs<=120000)report.voiceStartup={stage,outcome,elapsedMs};
+  if(stage&&outcome&&typeof elapsedMs==='number'&&Number.isSafeInteger(elapsedMs)&&elapsedMs>=0&&elapsedMs<=120000){
+   const phaseMs:NonNullable<VoiceStartupTiming['phaseMs']>={};
+   if(value.phaseMs&&typeof value.phaseMs==='object'&&!Array.isArray(value.phaseMs)){
+    for(const key of VOICE_STARTUP_STAGES){
+     const duration=value.phaseMs[key];
+     if(typeof duration==='number'&&Number.isSafeInteger(duration)&&duration>=0&&duration<=elapsedMs)phaseMs[key]=duration;
+    }
+   }
+   const complete=Object.hasOwn(phaseMs,stage)&&Object.values(phaseMs).reduce((sum,duration)=>sum+duration,0)===elapsedMs;
+   report.voiceStartup={stage,outcome,elapsedMs,...(complete?{phaseMs}:{})};
+  }
  }
  if(report.platform==='android'){
   const inference=sanitizeNativeInferenceTiming(input.nativeInferenceTiming);

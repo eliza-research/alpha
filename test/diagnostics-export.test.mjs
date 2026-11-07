@@ -98,6 +98,15 @@ test('renderer voice startup exports only the bounded phase, outcome and elapsed
  assert.equal(buildDiagnostics({voiceStartup:{...diagnostic,stage:secrets[0]}},now).voiceStartup,undefined);
  assert.equal(buildDiagnostics({voiceStartup:{...diagnostic,elapsedMs:Infinity}},now).voiceStartup,undefined);
 });
+test('renderer startup phase times retain only known stages and sum to the measured attempt',()=>{
+ const attempt={stage:'draft-binding',outcome:'timeout',elapsedMs:12000};
+ const phaseMs={'conversation-selection':120,'draft-binding':11880};
+ const report=buildDiagnostics({voiceStartup:{...attempt,phaseMs:{...phaseMs,[secrets[3]]:1}}},now);
+ assert.deepEqual(report.voiceStartup,{...attempt,phaseMs});
+ assert.ok(!diagnosticsText(report).includes(secrets[3]));
+ for(const invalid of [{...phaseMs,'draft-binding':11900},{...phaseMs,'draft-binding':-1},{'conversation-selection':12000}])
+  assert.deepEqual(buildDiagnostics({voiceStartup:{...attempt,phaseMs:invalid}},now).voiceStartup,attempt);
+});
 test('Cloud startup diagnostics keep bounded stages and status without carrying content or raw ids',()=>{
  const secret=secrets[2],rawSession=7194538;
  const row={session:rawSession,stage:'consent-headers',elapsedMs:45,httpStatus:503,clock:'monotonic-observed',sentFrames:0,sentBytes:0,receivedFrames:0,receivedBytes:0,token:secret,transcript:secrets[0]};

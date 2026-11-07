@@ -44,6 +44,7 @@ const adapterCases = Object.freeze([
   'Cloud startup bounds a stalled draft and fences its late completion',
   'Cloud startup timeout keeps the media retirement fence',
   'Cloud preparation records success separately from bridge startup',
+  'renderer preparation measures each phase once on the same clock',
   'typed native 503 is waited out quietly, then voice ends with one calm line',
   'unknown native voice failures retain their existing recovery',
 ]);
@@ -181,7 +182,7 @@ adapterTest('Cloud startup bounds a stalled draft and fences its late completion
     assert.equal(h.renderChat().lines[0].t,'Connecting to voice…');
     await clock.advance(12001);
     assert.match(h.renderChat().lines[0].t,/setup is taking too long/i);
-    assert.deepEqual(JSON.parse(JSON.stringify(h.box.voiceStartupTiming())),{stage:'draft-binding',outcome:'timeout',elapsedMs:12000});
+    assert.deepEqual(JSON.parse(JSON.stringify(h.box.voiceStartupTiming())),{stage:'draft-binding',outcome:'timeout',elapsedMs:12000,phaseMs:{'conversation-selection':0,'draft-binding':12000}});
     assert.equal(finished,true);
     release();release=undefined;await clock.flush();
     assert.equal(started,0,'timeout itself fences the late preparation');
@@ -201,7 +202,7 @@ adapterTest('Cloud startup timeout keeps the media retirement fence',async t=>{
   try{
     await clock.flush();assert.equal(typeof release,'function');
     await clock.advance(12001);await opening;
-    assert.deepEqual(JSON.parse(JSON.stringify(h.box.voiceStartupTiming())),{stage:'media-retirement',outcome:'timeout',elapsedMs:12000});
+    assert.deepEqual(JSON.parse(JSON.stringify(h.box.voiceStartupTiming())),{stage:'media-retirement',outcome:'timeout',elapsedMs:12000,phaseMs:{'conversation-selection':0,'media-retirement':12000}});
     const stop=Promise.resolve(h.shell.stopVoiceConversation()).then(()=>{stopped=true;});
     await clock.flush();assert.equal(stopped,false,'Stop waits for the original media retirement');
     release();await stop;
@@ -214,8 +215,25 @@ adapterTest('Cloud preparation records success separately from bridge startup',a
   h.box.nativeCloudStreamingAvailable=()=>true;
   h.box.createCloudStreamingSpeech=()=>{throw Error('Bridge unavailable before start');};
   await h.shell.startVoice();
-  assert.deepEqual(JSON.parse(JSON.stringify(h.box.voiceStartupTiming())),{stage:'media-retirement',outcome:'prepared',elapsedMs:0});
+  assert.deepEqual(JSON.parse(JSON.stringify(h.box.voiceStartupTiming())),{stage:'media-retirement',outcome:'prepared',elapsedMs:0,phaseMs:{'conversation-selection':0,'media-retirement':0}});
   assert.equal(h.starts,0,'preparation success does not claim microphone capture');
+});
+adapterTest('renderer preparation measures each phase once on the same clock',async t=>{
+  const clock=voiceFakeClock(),h=cloudFixture({clock});t.after(()=>h.close());
+  const prepared=await h.box.runVoiceStartupPreparation(new AbortController(),async mark=>{
+    await clock.advance(100);mark('draft-binding');
+    await clock.advance(40);mark('draft-binding');
+    await clock.advance(60);mark('agent-attach');
+    await clock.advance(30);mark('media-retirement');
+    await clock.advance(20);
+    return 'ready';
+  });
+  assert.equal(prepared,'ready');
+  await clock.advance(1000);
+  assert.deepEqual(JSON.parse(JSON.stringify(h.box.voiceStartupTiming())),{
+    stage:'media-retirement',outcome:'prepared',elapsedMs:250,
+    phaseMs:{'conversation-selection':100,'draft-binding':100,'agent-attach':30,'media-retirement':20},
+  });
 });
 adapterTest('Cloud conversation keeps the composer focused on the current voice phase',async t=>{
   const h=cloudFixture();t.after(()=>h.close());
