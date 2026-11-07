@@ -3,6 +3,7 @@ import test from 'node:test';
 import {AgentCalendar,calendarSourceKey,type CalendarPreservation} from '../apps/app/src/runtime/agent-calendar';
 import {assertAppRecordRequestAllowed} from '../apps/app/src/runtime/app-record-route-policy';
 import type {AppRecordPort} from '../apps/app/src/runtime/agent-calendar-client';
+import {canonicalCalendarRow,calendarFormMinutes,calendarFormPatch,type CanonicalCalendarForm} from '../apps/app/src/runtime/agent-calendar-view';
 
 function deferred<T>(){
  let resolve!:(value:T)=>void, reject!:(error:Error)=>void;
@@ -106,4 +107,25 @@ test('sync route exposure remains exact and rejects unowned bodies, query change
  for(const path of ['/api/lifeops/calendar/sync-control?grantId=other','/api/lifeops/calendar/sync-control/other','/api/lifeops/calendar/sync-control%2Fother'])assert.throws(()=>assertAppRecordRequestAllowed(path,'POST',{}));
  for(const method of ['PATCH','DELETE','PUT'])assert.throws(()=>assertAppRecordRequestAllowed('/api/lifeops/calendar/sync-control',method,undefined));
  assert.throws(()=>assertAppRecordRequestAllowed('/api/lifeops/calendar/sync-control','GET',{}));
+});
+
+// The editor copies a row's fractional hours into the form; every minute of the day must survive the round trip.
+const timed=(start:string,end:string)=>({id:'event',externalId:'event',agentId:'test-agent',provider:'google',side:'owner',grantId:'test-grant',connectorAccountId:'test-account',calendarId:'primary',title:'Synthetic',description:'',location:'',status:'confirmed',startAt:start,endAt:end,timezone:'UTC',isAllDay:false,htmlLink:null,conferenceLink:null,organizer:{self:true},attendees:[],metadata:{etag:'v1'}}) as never;
+const form=(row:{t:number;d:number},day:number):CanonicalCalendarForm=>({ownerKey:'owner',operationKey:'operation',sourceKey:'source',date:{year:2026,month:11,day},startMinutes:calendarFormMinutes(row.t),durationMinutes:calendarFormMinutes(row.d),timeZone:'UTC',title:'Synthetic',notes:'',location:''});
+test('every start minute of the day round-trips from an event row to whole form minutes',()=>{
+ const now=new Date('2026-11-07T00:00:00Z');
+ for(let minute=0;minute<1440;minute++){
+  const start=Date.UTC(2026,10,7,0,minute),row=canonicalCalendarRow(timed(new Date(start).toISOString(),new Date(start+3600000).toISOString()),'UTC',now);
+  assert.equal(calendarFormMinutes(row.t),minute);assert.equal(calendarFormMinutes(row.d),60);
+ }
+});
+test('moving an event that starts at an awkward minute to another day keeps its time',()=>{
+ const now=new Date('2026-11-07T00:00:00Z');
+ for(const [start,end] of [['16:20','17:35'],['08:05','09:05'],['17:02','17:47']]){
+  const row=canonicalCalendarRow(timed(`2026-11-07T${start}:00Z`,`2026-11-07T${end}:00Z`),'UTC',now),edit=form(row,8);
+  assert(Number.isInteger(edit.startMinutes)&&Number.isInteger(edit.durationMinutes));
+  const patch=calendarFormPatch(edit,timed(`2026-11-07T${start}:00Z`,`2026-11-07T${end}:00Z`),{timing:true});
+  assert.equal(Date.parse(patch.startAt as string),Date.parse(`2026-11-08T${start}:00Z`));assert.equal(Date.parse(patch.endAt as string),Date.parse(`2026-11-08T${end}:00Z`));
+ }
+ const row=canonicalCalendarRow(timed('2026-11-07T16:20:00Z','2026-11-07T17:35:00Z'),'UTC',now);assert.equal(calendarFormMinutes(row.d),75);
 });

@@ -154,3 +154,27 @@ test('unsupported peers retain other context and the actual local protocol seria
  await local.send('conversation',authored,{metadata:{clientDevice:{context:phoneContextMessage(authored,without).context}}});
  assert.equal(wire.metadata.clientDevice.context.calendarDay,undefined);assert.deepEqual(wire.metadata.clientDevice.context.selectedObject,original.selectedObject);
 });
+
+test('a Calendar re-read during a pending turn keeps the turn and its proposal',async()=>{
+ const [{AgentCalendar,calendarEventKey}]=await loadBrowserModule(['apps/app/src/runtime/agent-calendar.ts']);
+ const source={provider:'google',side:'owner',grantId:'grant',connectorAccountId:'account',calendarId:'primary',accessRole:'owner',includeInFeed:true,selectionVersion:1};
+ const event={id:'event',externalId:'event',agentId:'agent',provider:'google',side:'owner',grantId:'grant',connectorAccountId:'account',calendarId:'primary',title:'Dentist',startAt:'2999-01-01T15:00:00Z',endAt:'2999-01-01T16:00:00Z',isAllDay:false,metadata:{etag:'v1'}};
+ let reads=0;const api={getLifeOpsCalendarFeed:async()=>{reads++;return {state:'complete',events:[{...event}]};},getLifeOpsCalendars:async()=>({calendars:[source]}),getLifeOpsNextCalendarEventContext:async()=>({event:null,calendarFeedState:'complete',readScope:{timeMin:'2026-01-01',timeMax:'2999-01-02'}})};
+ const port={identity:{origin:'https://agent.example',ownerId:'owner',agentId:'agent'},sessionId:'session',scope:'owner',current:()=>true};
+ const calendar=new AgentCalendar(()=>port,{capture:async()=>({fingerprint:'same',present:false,readable:true,pending:false,records:[]}),retainedReadOnly:async()=>true},()=>api);
+ await calendar.refresh({});
+ const now=Date.parse('2026-10-28T12:00:00.000Z'),key=calendarEventKey(event),alpha=new AlphaClient();
+ // The same inputs the shell's view context reads: the visible day and the selected canonical event.
+ const sync=()=>{const s=calendar.state,calendarDay=calendarDayObservation({...surface(),ownerKey:s.ownerKey,expectedOwnerKey:s.ownerKey,status:s.status,mutating:s.mutating},zone,now),selectedObject=calendar.selection(key);alpha.setViewContext({view:'calendar',sensitive:false,timeZone:zone,...(calendarDay?{calendarDay}:{}),...(selectedObject?{selectedObject}:{})});};
+ calendar.subscribe(sync);sync();
+ const revision=alpha.getState().context.revision;assert.deepEqual(alpha.getState().context.calendarDay,day);assert.equal(alpha.getState().context.selectedObject.revision,'v1');
+ let finish,started,signal,executed=0;const entered=new Promise(resolve=>{started=resolve;});
+ alpha.attachVerifiedTransport({session:{origin:'https://agent.example',ownerId:'owner',agentId:'agent',sessionId:'session'},send:input=>{signal=input.signal;started();return new Promise(resolve=>{finish=()=>resolve({text:'Ready to move it',proposals:[{id:'proposal',title:'Move Dentist',description:'Move to 4 PM',expiresAt:Date.now()+600000,contextRevision:input.context.revision}]});});},execute:async input=>{executed++;return {proposalId:input.proposal.id,status:'succeeded',summary:'Synthetic fixture'};}});
+ const pending=alpha.send('Move my 3pm to 4');await entered;
+ await calendar.refresh({});assert.equal(reads,2);
+ assert.equal(signal.aborted,false,'a background re-read is not a view change');assert.equal(alpha.getState().context.revision,revision);
+ finish();const reply=await pending;assert.equal(reply.proposals.length,1);
+ await calendar.refresh({});assert.equal(alpha.getState().context.revision,revision);
+ assert.equal((await alpha.approve('proposal')).status,'succeeded');assert.equal(executed,1);
+ calendar.retire();
+});
