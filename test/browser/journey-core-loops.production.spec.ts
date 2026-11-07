@@ -336,7 +336,7 @@ for (const outcome of ['opened', 'unavailable'] as const) {
     await button(page, 'Calendar').click();
     await button(page, 'Clock alarms').click();
     const clock = page.getByRole('dialog', { name: 'Clock alarms', exact: true });
-    await expect(clock).toContainText('Alarms are managed by your installed Clock app. Check the result there after every request.');
+    await expect(clock).toContainText('Alarms are set in your Clock app. Check there to confirm.');
     // The browser build's own alarm list (Saved alarms, Save alarm, Ringing) does not exist on Android.
     await expect(clock.getByText('Saved alarms', { exact: true })).toHaveCount(0);
     await expect(clock.getByRole('button', { name: 'Save alarm', exact: true })).toHaveCount(0);
@@ -553,7 +553,7 @@ test('loop J01 in the web build: a scanned event remains in review without an au
   });
   await page.goto('/');
   await button(page, 'Camera').click();
-  const video = page.locator('[aria-label^="Viewfinder."] video');
+  const video = page.locator('[data-alpha-camera="viewfinder"] video');
   await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.readyState), { timeout: 60_000 }).toBeGreaterThanOrEqual(2);
   await button(page, 'Scan mode').click();
   await button(page, 'Scan text').click();

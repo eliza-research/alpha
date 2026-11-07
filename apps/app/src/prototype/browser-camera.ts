@@ -9,7 +9,7 @@ import {BrowserVideoCapture} from '../browser/video-capture';
 import {albumDocument} from '../browser/preference-documents';
 
 type Row={id:string;kind:'image'|'video';path?:string;duration?:number;operationId?:string;image:string;width:number;height:number;date:number;revision:string;mutationRevision:string;favorite:boolean;trashed:boolean};
-const finder='[aria-label="Viewfinder. Tap to focus, hold to ask Alpha, swipe to change mode"]';
+const finder='[data-alpha-camera="viewfinder"]';
 const revision=()=>crypto.randomUUID();
 let database:Promise<IDBDatabase>|undefined;
 function db(){return database??=new Promise<IDBDatabase>((resolve,reject)=>{

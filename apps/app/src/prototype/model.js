@@ -5633,7 +5633,8 @@ class Component extends DCLogic {
     });
     var baseSug = ["Plan my afternoon", "What needs me?", "Take a note: call the landlord Friday", "Every weekday at 6, wrap up my day"];
     var sugList = (mod && mod.suggestions) ? mod.suggestions(st, this.api(v)) : baseSug;
-    var sugg = sugList.filter(function (s) { return !deferredMvpPrompt(s); }).map(function (s) { return { label: s, go: function () { self.send(s); } }; });
+    // A suggestion is a prompt to send, or a { label, go } control that acts instead of sending.
+    var sugg = sugList.filter(function (s) { return typeof s !== "string" || !deferredMvpPrompt(s); }).map(function (s) { return typeof s === "string" ? { label: s, go: function () { self.send(s); } } : s; });
 
     var bars = []; for (var b = 0; b < 28; b++) bars.push({ h: 10 + ((b * 37) % 30), dl: ((b * 0.137) % 1).toFixed(2) });
     var vShow = S.voice === "speaking" ? S.vcap : (S.vtext || "…");

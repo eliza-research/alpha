@@ -4,6 +4,7 @@ import {mkdtempSync,writeFileSync,rmSync,readFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {execFileSync} from 'node:child_process';
+import {javaBinary} from './fixtures/jvm-tools.mjs';
 const root=resolve(import.meta.dirname,'..');
 const directory=join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone');
 test('native recovery confirmation is single-use and bound to the original owner scope',()=>{
@@ -25,9 +26,9 @@ public class RecoveryReviewTest {
   System.out.println("PASS original scope, single use, stale epoch, credential intent, token, invalidation and replacement");
  }
 }`);
-  const java=process.env.JAVA_HOME;assert.ok(java,'Use the canonical JDK environment');
-  execFileSync(join(java,'bin/javac'),['-d',temp,join(directory,'ResidentRecoveryReview.java'),join(temp,'RecoveryReviewTest.java')]);
-  assert.match(execFileSync(join(java,'bin/java'),['-cp',temp,'ai.elizaresearch.alphaphone.RecoveryReviewTest'],{encoding:'utf8'}),/PASS original scope/);
+  // JAVA_HOME when set, otherwise the JDK on PATH (test/fixtures/jvm-tools.mjs).
+  execFileSync(javaBinary('javac'),['-d',temp,join(directory,'ResidentRecoveryReview.java'),join(temp,'RecoveryReviewTest.java')],{timeout:120000});
+  assert.match(execFileSync(javaBinary('java'),['-cp',temp,'ai.elizaresearch.alphaphone.RecoveryReviewTest'],{encoding:'utf8',timeout:120000}),/PASS original scope/);
  }finally{rmSync(temp,{recursive:true,force:true});}
 });
 test('plugin binds actual native review within its authority and consumes scope before archive',()=>{

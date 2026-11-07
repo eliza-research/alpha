@@ -116,7 +116,7 @@ const libraryAvailable=()=>browserMode||Capacitor.isPluginAvailable('AlphaPhotos
 type EditPreview={sessionId:string;operationId:string;image:string;width:number;height:number;reduced:boolean;maxEdge:number;filter:string};
 type EditReceipt={status:string;operationId:string;id?:string};
 type OwnedAlbum = {id:string;name:string;revision:string;count:number;memberIds:string[]};
-const finder = '[aria-label="Viewfinder. Tap to focus, hold to ask Alpha, swipe to change mode"]';
+const finder = '[data-alpha-camera="viewfinder"]';
 
 /** Install after native/selection adapters. Reload app-owned captures from
  * MediaStore; other personal images remain behind the Android photo picker. */
@@ -838,6 +838,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     data.vfDown = () => {};
     data.vfUp = (event: PointerEvent) => { const bounds=browserMode?document.querySelector(finder)?.getBoundingClientRect():undefined;void control(() => camera.setFocusPoint({ x: Math.max(0, Math.min(1, (event.clientX-(bounds?.left??0)) / (bounds?.width||window.innerWidth))), y: Math.max(0, Math.min(1, (event.clientY-(bounds?.top??0)) / (bounds?.height||window.innerHeight))) }), () => message('')); };
     data.vfLeave = () => {};
+    data.vfClick = (event: MouseEvent) => { if (event.detail === 0) void control(() => camera.setFocusPoint({ x: 0.5, y: 0.5 }), () => message('')); }; // Keyboard and accessibility activation has no pointer: focus the centre.
     data.modes = (data.modes || []).map((m: Bag) => ({ ...m, pick: () => { if (session.recording || session.recordingStarting || session.finalizing || session.capturing) return; const mode = m.label.toLowerCase(); if (['photo','video','scan'].includes(mode)){cancelScan();currentApi.set({ mode, rec: false, found: false });if(mode==='scan')message('Hold text steady, then tap Scan text. English recognition runs locally.');} } }));
     data.ask = () => { if(!askCameraFrame(currentApi))message(session.phase==='ready'?'Finish the current capture, then ask again.':'Start the camera to ask about what it sees.'); };
     data.lastLabel=captures[0]?.kind==='video'?'Open last video':'Open last photo';

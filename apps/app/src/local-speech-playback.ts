@@ -19,7 +19,7 @@ async function speakChunk(voice:any,native:boolean,text:string,signal:AbortSigna
  let interrupt!:(reason:unknown)=>void,ended!:()=>void,failed!:(error:Error)=>void;
  const interrupted=new Promise<never>((_,reject)=>interrupt=reject),finished=new Promise<void>((resolve,reject)=>{ended=resolve;failed=reject;});void interrupted.catch(()=>{});void finished.catch(()=>{});
  const media=(run:()=>Promise<unknown>)=>strictDrain?Promise.resolve().then(run).catch(cause=>{throw Object.assign(Error('Owned speech cleanup could not be confirmed.'),{code:'speech-cleanup-unconfirmed',cause});}):bounded(run);
- const dispose=()=>{if(cleanup)return cleanup;active=false;cleanup=Promise.all([...(strictDrain&&preparation?[preparation]:[]),...Array.from(handles,h=>bounded(()=>h.remove())),media(()=>voice.cancel({requestId})),...(playbackId||native||prepare?[media(()=>voice.stopPlayback({playbackId,requestId}))]:[])]).then(()=>{});void cleanup.catch(()=>{});handles.clear();return cleanup;};
+ const dispose=()=>{if(cleanup)return cleanup;active=false;cleanup=Promise.all([...(preparation?[preparation]:[]),...Array.from(handles,h=>bounded(()=>h.remove())),media(()=>voice.cancel({requestId})),...(playbackId||native||prepare?[media(()=>voice.stopPlayback({playbackId,requestId}))]:[])]).then(()=>{});void cleanup.catch(()=>{});handles.clear();return cleanup;};
  const abort=()=>{interrupt(signal.reason??new DOMException('Speech cancelled','AbortError'));void dispose();};signal.addEventListener('abort',abort,{once:true});if(signal.aborted)abort();
  const wait=(prepared=false)=>Promise.race([new Promise<void>(resolve=>setTimeout(resolve,100)),interrupted,...(prepared?[finished.then(()=>{throw Error('Speech finished while waiting for playback.');})]:[])]);
  try{
@@ -28,9 +28,10 @@ async function speakChunk(voice:any,native:boolean,text:string,signal:AbortSigna
    await Promise.race([pending,interrupted]);signal.throwIfAborted();
   }
   for(;;){signal.throwIfAborted();requirements?.assertCurrent();try{
-   const pending:Promise<{playbackId:string;execution?:string}>=(prepare?prepare(requestId):voice.synthesizeLocal({text,requestId,...(queue&&native?{replace:false}:{}),...(voiceTurnId?{voiceTurnId}:{})})).then(async(result:{playbackId:string;execution?:string})=>{if(!active&&result.playbackId)await media(()=>voice.stopPlayback({playbackId:result.playbackId,requestId}));return result;});
-   // Native cancel is a request, not a synthesis-drained acknowledgement. A strict
-   // consumer must also await the original operation and any late handle cleanup.
+   const pending:Promise<{playbackId:string;execution?:string}>=(prepare?prepare(requestId):voice.synthesizeLocal({text,requestId,...(queue?{replace:false}:{}),...(voiceTurnId?{voiceTurnId}:{})})).then(async(result:{playbackId:string;execution?:string})=>{if(!active&&result.playbackId)await media(()=>voice.stopPlayback({playbackId:result.playbackId,requestId}));return result;});
+   // Native cancel is a request, not a synthesis-drained acknowledgement. Every consumer
+   // awaits the original operation (native settles it by its request deadline) so the next
+   // request is not refused while the cancelled one unwinds; strict ones also confirm cleanup.
    preparation=pending.then(()=>{},error=>{if(error?.code==='speech-cleanup-unconfirmed')throw error;});void preparation.catch(()=>{});
    const result=await Promise.race([pending,interrupted]);playbackId=result.playbackId;if(requirements?.execution&&result.execution!==requirements.execution)throw Error('Invalid local speech execution');requirements?.assertCurrent();if(typeof playbackId!=='string'||!playbackId)throw Error('Speech preparation returned no playback identity');break;
   }catch(error){if(!queue||(error as {code?:string}).code!=='playback-busy')throw error;await wait();}}

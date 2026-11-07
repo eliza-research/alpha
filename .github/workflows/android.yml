@@ -54,8 +54,25 @@ jobs:
       - name: Prepare normal host-test JSON
         timeout-minutes: 1
         run: bash scripts/ci/prepare-host-test-json.sh
+      # npm run verify's prepared-SDK tests need the pinned Bun and SDK, as in browser.yml.
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          bun-version: "1.4.2"
+      - name: Prepare pinned SDK for manual verification
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          export ALPHA_BUN="$(command -v bun)"
+          test "$("$ALPHA_BUN" --version)" = '1.4.2'
+          node scripts/prepare-local-agent.mjs
+          prepared_source=$(node --input-type=module -e "import {sourceDirectory,verifySource} from './scripts/local-agent-source.mjs'; import fs from 'node:fs'; const source=sourceDirectory(process.cwd()); verifySource(source,JSON.parse(fs.readFileSync('upstream.lock.json','utf8')).commit); process.stdout.write(source);")
+          echo "ALPHA_BUN=$ALPHA_BUN" >> "$GITHUB_ENV"
+          echo "ALPHA_CLOUD_COLLECTOR_SOURCE=$prepared_source" >> "$GITHUB_ENV"
       - name: Verify standalone manual qualification
         if: github.event_name == 'workflow_dispatch'
+        env:
+          ALPHA_REQUIRE_PREPARED_SDK: '1'
         run: npm run verify
       - run: node --test vendor/eliza/packages/os/scripts/__tests__/stage-launcher-overlay.node.test.ts
       # On-device speech is the shared paradee-voice library on libelizainference (llama.cpp/ggml):

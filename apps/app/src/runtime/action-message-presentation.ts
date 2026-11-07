@@ -94,9 +94,9 @@ const UPSTREAM_COMBINED_NOTICE = `${UPSTREAM_MODEL_UNAVAILABLE_NOTICE}\n---\n${U
 export const MODEL_UNAVAILABLE_NOTICE = 'Your agent cannot reply yet. Choose an AI provider in Settings, then send your message again.';
 
 /** A runtime-error notice that arrived while the owner's latest message was unanswered. */
-export const RUNTIME_ERROR_NOTICE = 'Part of your agent stopped working, so this reply may not arrive. Nothing was resent. Send your message again in a moment.';
+export const RUNTIME_ERROR_NOTICE = 'Part of your agent stopped working. Send your message again in a moment.';
 /** A runtime-error notice that arrived with nothing waiting (a service failing at start, for example). */
-export const RUNTIME_ERROR_BACKGROUND_NOTICE = 'Part of your agent stopped working. Chat can still answer, but some features may not work until it recovers.';
+export const RUNTIME_ERROR_BACKGROUND_NOTICE = 'Part of your agent stopped working. Some features may not work until it recovers.';
 
 /** The upstream notice a stored assistant text is, if any. */
 export function systemNoticeKind(text: unknown): SystemNoticeKind | undefined {
@@ -109,11 +109,11 @@ export function systemNoticeKind(text: unknown): SystemNoticeKind | undefined {
 }
 
 /** The owner-facing text of a stored notice row, always in Alpha's words;
- * the combined form keeps both halves. `waiting`: it arrived while the owner's message was unanswered. */
+ * the combined form keeps both halves with one send-again step. `waiting`: it arrived while the
+ * owner's message was unanswered. */
 export function systemNoticeDisplayText(kind: SystemNoticeKind, waiting = false): string {
-  const runtime = waiting ? RUNTIME_ERROR_NOTICE : RUNTIME_ERROR_BACKGROUND_NOTICE;
-  return kind === 'runtime-error' ? runtime
-    : kind === 'model-and-runtime-error' ? `${MODEL_UNAVAILABLE_NOTICE}\n${runtime}`
+  return kind === 'runtime-error' ? (waiting ? RUNTIME_ERROR_NOTICE : RUNTIME_ERROR_BACKGROUND_NOTICE)
+    : kind === 'model-and-runtime-error' ? `${MODEL_UNAVAILABLE_NOTICE}\n${RUNTIME_ERROR_BACKGROUND_NOTICE}`
     : MODEL_UNAVAILABLE_NOTICE;
 }
 

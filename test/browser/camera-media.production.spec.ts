@@ -19,7 +19,7 @@ test('a camera capture is searchable and Ask Alpha reviews it locally without th
  await page.addInitScript(recordViolations);await page.addInitScript(offline);await page.addInitScript(fakeCamera);
  await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-connection-mode','live');
  await page.getByRole('button',{name:'Camera',exact:true}).click();
- await expect.poll(()=>page.locator('[aria-label^="Viewfinder."] video').evaluate((v:HTMLVideoElement)=>v.readyState)).toBeGreaterThanOrEqual(2);
+ await expect.poll(()=>page.locator('[data-alpha-camera="viewfinder"] video').evaluate((v:HTMLVideoElement)=>v.readyState)).toBeGreaterThanOrEqual(2);
  // Camera frame question: an unsaved frame, reviewed text only.
  await page.getByRole('button',{name:'Ask Alpha about this',exact:true}).click();
  const review=page.getByRole('dialog',{name:'Ask about selected content'});

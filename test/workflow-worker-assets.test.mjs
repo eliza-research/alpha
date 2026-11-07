@@ -52,7 +52,7 @@ public class WorkerAssetTest {
  public static void main(String[] args)throws Exception{
   File assets=new File(args[0]),root=new File(args[1]);byte[] index=Files.readAllBytes(new File(assets,"files.sha256").toPath());
   WorkflowWorkerAssets.Source source=p->new FileInputStream(new File(assets,p));
-  File installed=WorkflowWorkerAssets.install(root,new ByteArrayInputStream(index),source);
+  File installed=WorkflowWorkerAssets.install(root,new ByteArrayInputStream(index),source,"1/100");
   java.util.Map<String,String> env=new java.util.HashMap<>();env.put("ELIZA_MOBILE_WORKFLOWS","stale");
   WorkflowWorkerAssets.configureEnvironment(installed,env);
   if(!installed.getCanonicalPath().equals(env.get("ELIZA_SMTHRS_RUNTIME_DIR")))throw new AssertionError("wrong resource path");
@@ -61,17 +61,26 @@ public class WorkerAssetTest {
   boolean compiler=new File(installed,"compiler/node_modules/typescript/lib/typescript.js").isFile()&&new File(installed,"compiler/node_modules/smthrs/package.json").isFile();
   if(compiler?!"1".equals(env.get("ELIZA_MOBILE_WORKFLOWS")):env.containsKey("ELIZA_MOBILE_WORKFLOWS"))throw new AssertionError("incorrect compiler enablement");
   byte[] prior=Files.readAllBytes(new File(installed,"manifest.json").toPath());
-  WorkflowWorkerAssets.install(root,new ByteArrayInputStream(index),source);
+  WorkflowWorkerAssets.Source unread=p->{throw new AssertionError("re-extracted an unchanged install");};
+  for(String leftover:new String[]{".workflow-worker-x",".workflow-worker-old-y"}){File stale=new File(root,leftover+"/lib");stale.mkdirs();Files.write(new File(stale,"worker.js").toPath(),new byte[]{1});}
+  if(!WorkflowWorkerAssets.install(root,new ByteArrayInputStream(index),unread,"1/100").equals(installed))throw new AssertionError("unchanged install moved");
+  for(File file:root.listFiles())if(file.getName().startsWith(".workflow-worker-"))throw new AssertionError("kept leftover staging "+file.getName());
+  int[] opened={0};WorkflowWorkerAssets.Source counted=p->{opened[0]++;return source.open(p);};
+  WorkflowWorkerAssets.install(root,new ByteArrayInputStream(index),counted,"2/200");
+  if(opened[0]==0)throw new AssertionError("package update did not re-extract");
+  opened[0]=0;WorkflowWorkerAssets.install(root,new ByteArrayInputStream(index),counted,null);
+  if(opened[0]==0)throw new AssertionError("unknown package identity skipped extraction");
+  WorkflowWorkerAssets.install(root,new ByteArrayInputStream(index),source,"2/200");
   WorkflowWorkerAssets.Source corrupt=p->p.equals("manifest.json")?new ByteArrayInputStream(new byte[]{1,2,3}):source.open(p);
-  try{WorkflowWorkerAssets.install(root,new ByteArrayInputStream(index),corrupt);throw new AssertionError("accepted corruption");}catch(IOException expected){}
+  try{WorkflowWorkerAssets.install(root,new ByteArrayInputStream(index),corrupt,"3/300");throw new AssertionError("accepted corruption");}catch(IOException expected){}
   if(!java.util.Arrays.equals(prior,Files.readAllBytes(new File(installed,"manifest.json").toPath())))throw new AssertionError("lost previous artifact");
   for(String bad:new String[]{new String(index,StandardCharsets.UTF_8)+"${'a'.repeat(64)}\\t../escape\\n",new String(index,StandardCharsets.UTF_8)+new String(index,StandardCharsets.UTF_8),""}){
-   try{WorkflowWorkerAssets.install(root,new ByteArrayInputStream(bad.getBytes(StandardCharsets.UTF_8)),source);throw new AssertionError("accepted invalid index");}catch(IOException expected){}
+   try{WorkflowWorkerAssets.install(root,new ByteArrayInputStream(bad.getBytes(StandardCharsets.UTF_8)),source,"2/200");throw new AssertionError("accepted invalid index");}catch(IOException expected){}
   }
-  try{WorkflowWorkerAssets.install(root,new ByteArrayInputStream(new byte[1024*1024+1]),source);throw new AssertionError("accepted oversized index");}catch(IOException expected){}
+  try{WorkflowWorkerAssets.install(root,new ByteArrayInputStream(new byte[1024*1024+1]),source,"2/200");throw new AssertionError("accepted oversized index");}catch(IOException expected){}
   if(new File(root.getParentFile(),"escape").exists())throw new AssertionError("path escaped");
   for(File file:root.listFiles())if(file.getName().startsWith(".workflow-worker-"))throw new AssertionError("left partial staging");
-  System.out.println("PASS extract, update, corruption, traversal, duplicate, missing, rollback");
+  System.out.println("PASS extract, skip unchanged, sweep, update, corruption, traversal, duplicate, missing, rollback");
  }
 }`;
   const harnessPath=path.join(temporary,'WorkerAssetTest.java');fs.writeFileSync(harnessPath,harness);

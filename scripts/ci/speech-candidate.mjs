@@ -9,9 +9,10 @@
  *   node scripts/ci/speech-candidate.mjs check <app.apk>
  *   node scripts/ci/speech-candidate.mjs package <results-directory> <new-output-directory>
  *
- * `check` refuses an APK whose voice bundle (assets/paradee-voice/v1) or x86_64 engine is not the
- * exact recorded bytes, or that carries no voice bundle at all (the emulator would only prove that
- * local speech is unavailable). A bundle without the ASR slot file is admitted for the TTS and
+ * `check` refuses an APK whose voice bundle (assets/paradee-voice/v1) or x86_64 engine libraries are
+ * not the exact recorded bytes, that lacks a recorded non-ASR file, or that carries no voice bundle
+ * at all (the emulator would only prove that local speech is unavailable). A bundle without the ASR
+ * slot file is admitted for the TTS and
  * cancellation classes; the packaged result then records asrPackaged:false with on-device
  * transcription under notEvidenceFor. `package` copies the instrumentation record, the raw class
  * logs and the exact APK pair into one folder and writes result.json. Nothing is inferred: a run
@@ -54,18 +55,24 @@ export function candidateProblems({ names, read }, host) {
   let bundle;
   try { bundle = JSON.parse(manifestBytes.toString("utf8")); } catch { return [`${BUNDLE}/manifest.json is not JSON`]; }
   const pinned = new Map(host.models.map(row => [row.path, row]));
-  for (const row of bundle.files ?? []) {
+  const files = Array.isArray(bundle.files) ? bundle.files : [];
+  for (const row of files) {
     const expected = pinned.get(row.path), bytes = read(`${BUNDLE}/${row.path}`);
     if (!expected || !bytes || bytes.length !== expected.bytes || sha(bytes) !== expected.sha256) problems.push(`${BUNDLE}/${row.path} is not a recorded voice file`);
   }
-  const engine = host.abis.find(row => row.abi === ABI)?.libraries.find(library => library.name === "libelizainference.so");
-  if (!engine) problems.push(`${ABI} has no recorded engine in android/voice-host/qualified-voice-host.json`);
-  else {
-    const bytes = read(`lib/${ABI}/libelizainference.so`);
-    if (!bytes || bytes.length !== engine.bytes || sha(bytes) !== engine.sha256) problems.push(`lib/${ABI}/libelizainference.so differs from the recorded engine`);
+  // No ASR slot is not a refusal: the run records asrPackaged:false and proves nothing about transcription.
+  // Every other recorded file must be there, and the ASR slot is all or nothing.
+  const listed = new Set(files.map(row => row.path));
+  const asr = host.models.filter(row => row.role === "asr-model" || row.role === "asr-mmproj");
+  for (const row of host.models) if (!asr.includes(row) && !listed.has(row.path)) problems.push(`${BUNDLE}/${row.path} is recorded but not packaged`);
+  if (asr.some(row => listed.has(row.path)) && !asr.every(row => listed.has(row.path))) problems.push(`${BUNDLE} carries an incomplete ASR slot`);
+  const libraries = host.abis.find(row => row.abi === ABI)?.libraries.filter(library => library.name === "libelizainference.so" || library.name === "libc++_shared.so") ?? [];
+  if (!libraries.some(library => library.name === "libelizainference.so")) problems.push(`${ABI} has no recorded engine in android/voice-host/qualified-voice-host.json`);
+  for (const library of libraries) {
+    const bytes = read(`lib/${ABI}/${library.name}`);
+    if (!bytes || bytes.length !== library.bytes || sha(bytes) !== library.sha256) problems.push(`lib/${ABI}/${library.name} differs from the recorded ${library.name === "libelizainference.so" ? "engine" : "library"}`);
   }
   if (!names.some(name => name === `lib/${ABI}/libparadeevoicejni.so`)) problems.push(`lib/${ABI}/libparadeevoicejni.so is not packaged`);
-  // No ASR pair is not a refusal: the run records asrPackaged:false and proves nothing about transcription.
   return problems;
 }
 

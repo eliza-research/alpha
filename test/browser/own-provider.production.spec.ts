@@ -78,7 +78,7 @@ async function noLeaks(page:Page,observed:Awaited<ReturnType<typeof fixture>>){
 /** First-run setup after own keys ends on "You’re all set" without a false AI warning (#772 regression). */
 async function ownKeySetupReady(page:Page){
  const setup=page.locator('dialog.alpha-startup-permissions');
- if(await setup.count())await expect(setup).not.toContainText('AI is not ready yet');
+ if(await setup.count())await expect(setup).not.toContainText('AI connection isn’t confirmed yet');
  await completeAccessSetup(page);
 }
 
@@ -353,7 +353,7 @@ test('own keys chosen on a fresh phone continue into first-run access setup',asy
  await expect(welcome).toHaveCount(0);
  // Setup used to require a Cloud account, so an owner who skipped Cloud never saw it.
  await expect(page.locator('dialog.alpha-startup-permissions')).toBeVisible({timeout:15_000});
- await expect(page.locator('dialog.alpha-startup-permissions')).not.toContainText('AI is not ready yet');
+ await expect(page.locator('dialog.alpha-startup-permissions')).not.toContainText('AI connection isn’t confirmed yet');
  await page.screenshot({path:info.outputPath('own-keys-access-setup.png'),animations:'disabled'});
  expect(observed.errors).toEqual([]);expect(observed.foreign).toEqual([]);
 });

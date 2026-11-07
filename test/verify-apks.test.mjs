@@ -7,6 +7,7 @@ import os from "node:os";
 import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import { archiveWebPayload, readBuildFlags, verifyOwnerRouteTable } from "../scripts/apk.mjs";
+import { voiceBundleAdmission } from "../scripts/voice-host.mjs";
 const root = path.resolve(import.meta.dirname, "..");
 /** Copy the committed AOSP product files into `dir` with every unset value filled, so production staging passes its lock check. */
 function completeAospLock(dir) {
@@ -269,3 +270,45 @@ test('archive rejects Cloud mocks and unsupported profile switches before creati
     assert.ok(!fs.existsSync(path.join(dir, 'test-results')));
   }
 });
+
+test("APK voice admission requires the complete recorded bundle and every recorded engine library", () => {
+  const sha = bytes => createHash("sha256").update(bytes).digest("hex");
+  const bytes = { "tts/paradee/paradee.gguf": "tts", "tts/paradee/misaki.lex": "lex", "vad/silero.gguf": "vad", "asr/phonon.gguf": "asr" };
+  const row = (file, role) => ({ path: file, role, sha256: sha(bytes[file]), bytes: bytes[file].length });
+  const library = (name, value) => ({ name, sha256: sha(value), bytes: value.length });
+  const host = {
+    qualified: true,
+    models: [row("tts/paradee/paradee.gguf", "tts-model"), row("tts/paradee/misaki.lex", "g2p-lexicon"), row("vad/silero.gguf", "vad-model"), row("asr/phonon.gguf", "asr-model")],
+    asrSlot: { paths: ["asr/phonon.gguf"] },
+    abis: [{ abi: "x86_64", libraries: [library("libelizainference.so", "engine"), library("libc++_shared.so", "stl")] }],
+  };
+  const apk = (change = () => {}, listed = Object.keys(bytes)) => {
+    const files = { "lib/x86_64/libparadeevoicejni.so": "jni", "lib/x86_64/libelizainference.so": "engine", "lib/x86_64/libc++_shared.so": "stl",
+      "assets/paradee-voice/v1/manifest.json": JSON.stringify({ format: "eliza-paradee-voice-v1", files: listed.map(file => ({ path: file })) }) };
+    for (const file of listed) files[`assets/paradee-voice/v1/${file}`] = bytes[file];
+    change(files);
+    return { names: Object.keys(files), read: entry => Buffer.from(files[entry]) };
+  };
+  assert.deepEqual(voiceBundleAdmission(apk(), host), { packaged: true, asr: true, differences: [], qualified: true });
+  assert.deepEqual(voiceBundleAdmission({ names: ["classes.dex"], read: () => null }, host), { packaged: false, asr: false, differences: [], qualified: false });
+  // Without the ASR slot the bundle is admitted, but asr:false keeps a release distributable:false (verify-apks).
+  const noAsr = voiceBundleAdmission(apk(undefined, Object.keys(bytes).filter(file => !file.startsWith("asr/"))), host);
+  assert.deepEqual(noAsr.differences, []);
+  assert.equal(noAsr.asr, false);
+  // A manifest that lists a subset of the non-ASR files, or none, is a difference.
+  assert.match(voiceBundleAdmission(apk(undefined, ["tts/paradee/paradee.gguf", "asr/phonon.gguf"]), host).differences.join(), /misaki\.lex: recorded voice file is not packaged.*silero\.gguf: recorded voice file is not packaged/);
+  const empty = voiceBundleAdmission(apk(files => { files["assets/paradee-voice/v1/manifest.json"] = JSON.stringify({ format: "eliza-paradee-voice-v1", files: [] }); }, []), host);
+  assert.equal(empty.differences.length, 3);
+  // A differing libc++_shared.so beside the pinned engine is reported, not only the engine.
+  assert.deepEqual(voiceBundleAdmission(apk(files => { files["lib/x86_64/libc++_shared.so"] = "other"; }), host).differences,
+    ["lib/x86_64/libc++_shared.so: differs from the recorded voice host library"]);
+  assert.match(voiceBundleAdmission(apk(files => { delete files["lib/x86_64/libc++_shared.so"]; }), host).differences.join(), /libc\+\+_shared\.so: differs/);
+  assert.match(voiceBundleAdmission(apk(files => { files["assets/paradee-voice/v1/vad/silero.gguf"] = "changed"; }), host).differences.join(), /silero\.gguf: differs from the recorded bytes/);
+  assert.match(voiceBundleAdmission(apk(files => { files["assets/paradee-voice/v1/extra.bin"] = "x"; }), host).differences.join(), /extra\.bin: unlisted voice entry/);
+  // A two-file ASR slot is all or nothing.
+  bytes["asr/mmproj.gguf"] = "mmproj";
+  const pair = { ...host, models: [...host.models, row("asr/mmproj.gguf", "asr-mmproj")], asrSlot: { paths: ["asr/phonon.gguf", "asr/mmproj.gguf"] } };
+  assert.match(voiceBundleAdmission(apk(undefined, ["tts/paradee/paradee.gguf", "tts/paradee/misaki.lex", "vad/silero.gguf", "asr/phonon.gguf"]), pair).differences.join(), /ASR slot is incomplete \(asr\/mmproj\.gguf missing\)/);
+  assert.equal(voiceBundleAdmission(apk(), pair).asr, true);
+});
+

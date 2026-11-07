@@ -19,6 +19,12 @@ local-hour conversion. Initial nonexistent civil times are rejected. See the
 [range and text-size contracts](calendar-range-and-text-size.md) for limits and
 native verification commands.
 
+On Android the Calendar view reads through the shared `list` with Alpha's configuration:
+at most 2,000 instances per range, `truncated` when the provider held more, and
+`creationId` on events this app saved through its timed creation journal. A "From note"
+link is keyed by that `creationId`; an event without one (another app's event, or an
+all-day, zoned or repeating save from the option journal) shows no note link.
+
 A late save or deletion must not close a newer event, a new unsaved form, or a
 screen reached through Home. Refreshing provider data remains independent of
 that navigation guard. Existing complex events use the explicit external-editor

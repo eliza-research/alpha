@@ -8,6 +8,7 @@ import {selectedAndroidAbis, abiArguments} from './android-abis.mjs';
  * may stage into .eliza/paradee-voice/native. Integrity only: `qualified` stays false until device
  * acceptance, and nothing here establishes emulator, device or user acceptance.
  */
+import {createHash} from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -94,6 +95,46 @@ export function readVoiceHost(root) {
     }
   }
   return record;
+}
+
+/**
+ * A packaged voice bundle (assets/paradee-voice/v1) and its engine libraries against the record.
+ * `names` lists the APK entries and `read(entry)` returns an entry's bytes. The bundle must list and
+ * carry every recorded non-ASR file; the ASR slot is all or nothing (`asr` says which). Each ABI
+ * that packages the voice JNI must carry every recorded library byte for byte. Records whether
+ * on-device voice is packaged; qualification is never inferred from bytes.
+ */
+export function voiceBundleAdmission({names, read}, host) {
+  const root = `${VOICE_BUNDLE_ASSETS}/`, manifestEntry = `${root}manifest.json`;
+  const bundle = names.filter(name => name.startsWith(root));
+  if (!bundle.length) return {packaged: false, asr: false, differences: [], qualified: false};
+  const differences = [];
+  const digest = bytes => createHash('sha256').update(bytes).digest('hex');
+  let manifest = null;
+  try { manifest = names.includes(manifestEntry) ? JSON.parse(read(manifestEntry).toString('utf8')) : null; } catch { /* reported below */ }
+  if (manifest?.format !== VOICE_BUNDLE_FORMAT) differences.push(`${manifestEntry} is missing or has another format`);
+  const listed = new Set((Array.isArray(manifest?.files) ? manifest.files : []).map(row => row?.path));
+  const pinned = new Map(host.models.map(row => [row.path, row]));
+  for (const file of listed) {
+    const entry = `${root}${file}`, expected = pinned.get(file);
+    if (!expected || !names.includes(entry)) { differences.push(`${entry}: not a recorded voice file`); continue; }
+    const bytes = read(entry);
+    if (bytes.length !== expected.bytes || digest(bytes) !== expected.sha256) differences.push(`${entry}: differs from the recorded bytes`);
+  }
+  const slot = host.asrSlot.paths;
+  for (const row of host.models) if (!slot.includes(row.path) && !listed.has(row.path)) differences.push(`${root}${row.path}: recorded voice file is not packaged`);
+  const asrListed = slot.filter(file => listed.has(file));
+  if (asrListed.length && asrListed.length !== slot.length) differences.push(`${root}: the ASR slot is incomplete (${slot.filter(file => !listed.has(file)).join(', ')} missing)`);
+  for (const name of bundle) if (name !== manifestEntry && !listed.has(name.slice(root.length))) differences.push(`${name}: unlisted voice entry`);
+  for (const abi of new Set(names.filter(name => /^lib\/[^/]+\/libparadeevoicejni\.so$/.test(name)).map(name => name.split('/')[1]))) {
+    const libraries = host.abis.find(row => row.abi === abi)?.libraries;
+    if (!libraries) { differences.push(`lib/${abi}: no voice host engine is recorded for this ABI`); continue; }
+    for (const library of libraries) {
+      const entry = `lib/${abi}/${library.name}`, bytes = names.includes(entry) ? read(entry) : null;
+      if (!bytes || bytes.length !== library.bytes || digest(bytes) !== library.sha256) differences.push(`${entry}: differs from the recorded voice host library`);
+    }
+  }
+  return {packaged: true, asr: slot.length > 0 && asrListed.length === slot.length, differences, qualified: host.qualified === true};
 }
 
 /** Metadata-only staging classification for the explicit unavailable lane.

@@ -204,7 +204,7 @@ const fakeCamera = () => {
 test('Camera keeps one capture session and an undistorted preview through rotation; Photos fits the capture', async ({ page }) => {
   await page.addInitScript(fakeCamera);
   await open(page, 'Camera');
-  const video = page.locator('[aria-label^="Viewfinder."] video');
+  const video = page.locator('[data-alpha-camera="viewfinder"] video');
   await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.readyState)).toBeGreaterThanOrEqual(2);
   const original = await video.elementHandle();
   const shutter = page.getByRole('button', { name: 'Take photo', exact: true });

@@ -7,7 +7,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { auditWebBundle } from "../scripts/audit-production-bundle.mjs";
 import { appLinkFilters, assetLinksProblems, fingerprint, PLACEHOLDER, renderAssetLinks, TEMPLATE } from "../scripts/render-assetlinks.mjs";
-import { partialSigningProblem, readReleaseSigner, releaseAdmission, SIGNING_ENV, signingRequested, validateReleaseSigner } from "../scripts/build-android.mjs";
+import { buildEnv, partialSigningProblem, readReleaseSigner, releaseAdmission, SIGNING_ENV, signingRequested, validateReleaseSigner } from "../scripts/build-android.mjs";
 
 const ALL = { ELIZAOS_KEYSTORE_PATH: "/k", ELIZAOS_KEYSTORE_PASSWORD: "p", ELIZAOS_KEY_ALIAS: "a", ELIZAOS_KEY_PASSWORD: "q" };
 const SIGNER = "a".repeat(64);
@@ -59,6 +59,25 @@ test("only a release signed by the recorded signer with an advancing versionCode
   const staleUnsigned = releaseAdmission({ signed: false, signerSha256: null, versionCode: 1 }, descriptor(SIGNER, 2));
   assert.deepEqual(staleUnsigned.failures, []);
   assert.match(staleUnsigned.blockers.join(), /not greater/);
+});
+
+test("a test-mocks build never receives the release-signing variables", () => {
+  const base = { ...ALL, PATH: "/bin" };
+  const mocks = buildEnv(base, { testMocks: true });
+  for (const name of SIGNING_ENV) assert.equal(name in mocks, false, name);
+  assert.equal(signingRequested(mocks), false);
+  assert.equal(mocks.PATH, "/bin");
+  assert.equal(mocks.ELIZA_DEV_ALLOW_TEST_MOCKS, "1");
+  assert.equal(signingRequested(buildEnv(base, { testMocks: false })), true);
+});
+
+test("a test-mocks release signed with the release key fails admission; other test-mocks problems only block", () => {
+  const signedByRelease = releaseAdmission({ signed: true, signerSha256: SIGNER, versionCode: 3 }, descriptor(SIGNER, 2), { testMocks: true });
+  assert.deepEqual(signedByRelease.failures, ["test-mocks APK signed with the release key"]);
+  const otherKey = releaseAdmission({ signed: true, signerSha256: "b".repeat(64), versionCode: 1 }, descriptor(SIGNER, 2), { testMocks: true });
+  assert.deepEqual(otherKey.failures, []);
+  assert.match(otherKey.blockers.join(), /does not match.*not greater/);
+  assert.deepEqual(releaseAdmission({ signed: false, signerSha256: null, versionCode: 3 }, descriptor(), { testMocks: true }).failures, []);
 });
 
 test("verify-apks requires signed:true and the descriptor match for distributable", () => {

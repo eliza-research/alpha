@@ -66,7 +66,7 @@ async function interrupt(page:Page,noteId:string,stage:Stage){
 async function expectNoReview(page:Page){
  await openNotes(page);
  await expect(page.getByRole('button',{name:'Check deletion status',exact:true})).toHaveCount(0);
- await expect(page.getByText('Voice note deletion needs review.',{exact:false})).toHaveCount(0);
+ await expect(page.getByText('Voice note deletion not confirmed.',{exact:false})).toHaveCount(0);
 }
 
 test('death after the tombstone commit, before the recording moved: explicit source activation finishes the erase for that recording only',async({page})=>{
@@ -221,7 +221,7 @@ test('source activation never erases a recording that a different or a restored 
  expect((await tombstones(page)).some(d=>d.id==='changed-voice')).toBe(false);
 
  // The started restore can still be completed from the review row: note and recording come back together.
- const review=page.getByRole('status').filter({hasText:'Voice note deletion needs review.'});
+ const review=page.getByRole('status').filter({hasText:'Voice note deletion not confirmed.'});
  await review.locator('div',{hasText:'Undone memo'}).getByRole('button',{name:'Restore note and recording',exact:true}).click();
  await expect(page.getByText('Voice note restored.',{exact:true})).toBeVisible();
  await expect.poll(async()=>(await pendingDeletions(page)).map(row=>row.id).sort()).toEqual([shared,edited,changed].sort());

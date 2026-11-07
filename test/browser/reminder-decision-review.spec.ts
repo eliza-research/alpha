@@ -23,21 +23,21 @@ for(const action of ['done','snooze'] as const)for(const mode of ['fresh','stale
  if(mode==='navigate'){await expect.poll(()=>page.evaluate(()=>typeof(window as any).releaseRetention)).toBe('function');await page.getByRole('button',{name:'Back to calendar',exact:true}).last().click();await page.evaluate(()=>(window as any).releaseRetention());await expect.poll(()=>page.evaluate(async()=>Object.keys(await (await import('/src/runtime/reminder-deletions.ts')).pendingReminderDeletions()).length)).toBe(0);expect(await page.evaluate(()=>(window as any).dispatches)).toBe(0);return;}
  if(mode==='stale'){await expect(page.getByText('This reminder changed. Review it again before changing it.',{exact:true})).toBeVisible();expect(await page.evaluate(()=>(window as any).dispatches)).toBe(0);const row=await page.evaluate(async ()=>JSON.parse((await (await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw())!).reminders[0]);expect(row.occurrenceId).toBe(original.occurrenceId);expect(row.status).toBe('scheduled');return;}
  if(mode==='unknown-same-target'){
-  await expect(page.getByText('Reminder action is unconfirmed. Check action status in Calendar; it will not be repeated.',{exact:true})).toBeVisible();await button.click();
+  await expect(page.getByText('Not confirmed. Check its status in Calendar.',{exact:true})).toBeVisible();await button.click();
   expect(await page.evaluate(()=>(window as any).dispatches)).toBe(1);
   const other=page.getByRole('button',{name:action==='done'?'Snooze reminder 10 minutes':'Complete reminder occurrence',exact:true});await other.click();expect(await page.evaluate(()=>(window as any).dispatches)).toBe(1);
   expect(await page.evaluate(async ()=>JSON.parse((await (await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw())!).reminders[0].status)).toBe('scheduled');expect(await page.evaluate(async()=>Object.keys(await (await import('/src/runtime/reminder-deletions.ts')).pendingReminderDeletions()).length)).toBe(1);return;
  }
  if(mode==='reload-loss'||mode==='late-stale'){
-  await expect(page.getByText('Reminder action is unconfirmed. Check action status in Calendar; it will not be repeated.',{exact:true})).toBeVisible();
+  await expect(page.getByText('Not confirmed. Check its status in Calendar.',{exact:true})).toBeVisible();
   if(mode==='reload-loss'){
    await page.getByRole('button',{name:'Back to calendar',exact:true}).last().click();await page.getByRole('button',{name:'Check reminder action status',exact:true}).click();expect(await page.evaluate(()=>(window as any).dispatches)).toBe(1);
    await expect(page.getByRole('button',{name:'Check reminder action status',exact:true})).toBeVisible();await page.reload();await page.getByRole('button',{name:'Calendar',exact:true}).click();await expect.poll(()=>page.evaluate(async()=>Object.keys(await (await import('/src/runtime/reminder-deletions.ts')).pendingReminderDeletions()).length)).toBe(0);
   }else{
    const retained=await page.evaluate(async()=>(await import('/src/runtime/reminder-deletions.ts')).pendingReminderDeletions());
-   await page.reload();await page.getByRole('button',{name:'Calendar',exact:true}).click();await page.getByRole('button',{name:/^Changed elsewhere,/}).click();await button.click();await expect(page.getByText(action==='done'?'Completed. No further alarm scheduled.':'Snoozed 10 minutes · approximate delivery',{exact:true})).toBeVisible();expect(await page.evaluate(async()=>(await import('/src/runtime/reminder-deletions.ts')).pendingReminderDeletions())).toEqual(retained);
+   await page.reload();await page.getByRole('button',{name:'Calendar',exact:true}).click();await page.getByRole('button',{name:/^Changed elsewhere,/}).click();await button.click();await expect(page.getByText(action==='done'?'Completed. No further alarm scheduled.':'Snoozed 10 minutes',{exact:true})).toBeVisible();expect(await page.evaluate(async()=>(await import('/src/runtime/reminder-deletions.ts')).pendingReminderDeletions())).toEqual(retained);
   }
- }else await expect(page.getByText(action==='done'?'Completed. No further alarm scheduled.':'Snoozed 10 minutes · approximate delivery',{exact:true})).toBeVisible();
+ }else await expect(page.getByText(action==='done'?'Completed. No further alarm scheduled.':'Snoozed 10 minutes',{exact:true})).toBeVisible();
  const data=await page.evaluate(async ()=>JSON.parse((await (await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw())!));expect(Object.keys(data.receipts)).toHaveLength(1);expect(data.reminders[0].status).toBe(action==='done'?'completed':'scheduled');if(action==='snooze'){expect(data.reminders[0].at).toBe(Date.parse('2027-03-13T00:10Z'));expect(data.reminders[0].occurrenceId).toBe(original.occurrenceId);}else expect(data.reminders[0].history).toHaveLength(1);
 });
 // Controlled provider-result boundary; Android notification permission/scheduler
@@ -47,7 +47,7 @@ for(const status of ['permission-denied','scheduling-failed','completed'] as con
  await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');await registerPlugin<any>('DailyApps').scheduleReminder({id:'outcome',title:'Outcome reminder',at:Date.parse('2027-03-13T14:00Z')});});await page.reload();await page.getByRole('button',{name:'Calendar',exact:true}).click();await page.getByRole('button',{name:/^Outcome reminder,/}).click();
  await page.evaluate(async status=>{const {BrowserDaily}=await import('/src/browser/daily.ts'),operate=BrowserDaily.prototype.operateReminder;BrowserDaily.prototype.operateReminder=async function(input){const result=await operate.call(this,input);return {...result,result:{...result.result,status}};};},status);
  await page.getByRole('button',{name:'Snooze reminder 10 minutes',exact:true}).click();
- await expect(page.getByText(status==='permission-denied'?'Saved, notifications disabled. Enable notifications then review this reminder again.':status==='scheduling-failed'?'Saved, scheduling failed. Review this reminder before retrying.':'Reminder action is unconfirmed. Check action status in Calendar; it will not be repeated.',{exact:true})).toBeVisible();
- await expect(page.getByText('Snoozed 10 minutes · approximate delivery',{exact:true})).toHaveCount(0);
+ await expect(page.getByText(status==='permission-denied'?"Saved. Notifications are off, so it won't alert.":status==='scheduling-failed'?"Saved, but the alert isn't set. Check this reminder.":'Not confirmed. Check its status in Calendar.',{exact:true})).toBeVisible();
+ await expect(page.getByText('Snoozed 10 minutes',{exact:true})).toHaveCount(0);
  expect(await page.evaluate(async()=>Object.keys(await (await import('/src/runtime/reminder-deletions.ts')).pendingReminderDeletions()).length)).toBe(status==='completed'?1:0);
 });

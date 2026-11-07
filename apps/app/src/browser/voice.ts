@@ -22,7 +22,6 @@ export class BrowserVoice extends WebPlugin {
  });
  private speechRequests=new Map<SpeechRequestKind,{controller:AbortController;requestId?:string}>();
  private capture=new BrowserAudioCapture(event=>{void this.notifyListeners('recordingStopped',event);});
- private speech=new Map<string,{text:string;requestId?:string}>();
  private agentAudio=new PreparedAudio();
  private audio?:HTMLAudioElement;
  private audioId?:string;
@@ -109,9 +108,10 @@ export class BrowserVoice extends WebPlugin {
    }catch(error){if(audio instanceof ReadableStream)void audio.cancel(error).catch(()=>{});throw error;}
    const playbackId=crypto.randomUUID();this.agentAudio.set(playbackId,{...(audio instanceof Blob?{blob:audio}:{stream:new StreamedSpeech(audio)}),requestId:input.requestId,agent,sessionId});while(this.agentAudio.size>8)this.agentAudio.delete(this.agentAudio.keys().next().value!);return {playbackId};},input.requestId);
  }
- async synthesizeLocal(input:{text:string;requestId?:string}){
+ async synthesizeLocal(input:{text:string;requestId?:string;replace?:boolean}){
   const {text,requestId}=input;
   if(typeof text!=='string'||!text.trim()||text.length>16000)throw Error('Choose text between 1 and 16000 characters.');
+  if(input.replace===false&&(this.activeSpeechId||this.audio||this.pendingAudioId||this.speechRequests.has('stt')||this.speechRequests.has('tts')))throw Object.assign(Error('Playback is busy.'),{code:'playback-busy'});
   return this.withAgentSpeech('tts',async signal=>{
   const connectionController=await this.connection;signal.throwIfAborted();
   const agent=connectionController.getBrowserSpeechAgent();
@@ -145,7 +145,7 @@ export class BrowserVoice extends WebPlugin {
   if(input.playbackId){
    this.activeSpeechId=input.playbackId;
    const prepared=this.agentAudio.get(input.playbackId);
-   this.activeSpeechRequestId=prepared?.requestId??this.speech.get(input.playbackId)?.requestId;
+   this.activeSpeechRequestId=prepared?.requestId;
    if(prepared){
     const connectionController=await this.connection;
     if(!current())throw new DOMException('Playback cancelled','AbortError');
@@ -186,13 +186,13 @@ export class BrowserVoice extends WebPlugin {
  }
  async stopPlayback(input?:{playbackId?:string;requestId?:string}){
   if(input?.playbackId&&this.activeSpeechId!==input.playbackId){
-   const prepared=this.agentAudio.get(input.playbackId)??this.speech.get(input.playbackId);
-   if(input.requestId!==undefined&&prepared?.requestId===input.requestId){this.agentAudio.delete(input.playbackId);this.speech.delete(input.playbackId);}
+   const prepared=this.agentAudio.get(input.playbackId);
+   if(input.requestId!==undefined&&prepared?.requestId===input.requestId)this.agentAudio.delete(input.playbackId);
    return;
   }
   if(input?.requestId!==undefined&&(!this.activeSpeechId||this.activeSpeechRequestId!==input.requestId))return;
   const stopped=this.activeSpeechId;this.activeSpeechId=undefined;this.activeSpeechRequestId=undefined;
-  if(stopped&&input?.requestId!==undefined){this.agentAudio.delete(stopped);this.speech.delete(stopped);}
+  if(stopped&&input?.requestId!==undefined)this.agentAudio.delete(stopped);
   ++this.playbackGeneration;this.pendingAudioId=undefined;this.playbackAbort?.abort();this.playbackAbort=undefined;
   if(this.audio)this.releaseAudio(this.audio);
   if(stopped)void this.notifyListeners('playbackStopped',{playbackId:stopped});
@@ -227,7 +227,6 @@ export class BrowserVoice extends WebPlugin {
    for(const [kind,request] of [...this.speechRequests])if(request.requestId===requestId)this.abortSpeech(kind,'cancelled');
    await this.stopPlayback({requestId});
    for(const [id,audio] of this.agentAudio)if(audio.requestId===requestId)this.agentAudio.delete(id);
-   for(const [id,speech] of this.speech)if(speech.requestId===requestId)this.speech.delete(id);
    return;
   }
   for(const kind of [...this.speechRequests.keys()])this.abortSpeech(kind,reason);this.capture.cancel();await this.stopPlayback();
@@ -235,7 +234,7 @@ export class BrowserVoice extends WebPlugin {
   // A Blob clip stays playable, as before streaming.
   for(const [id,audio] of this.agentAudio)if(audio.stream)this.agentAudio.delete(id);
  }
- async releaseLocalSpeech(){await this.cancel(undefined,'released');this.speech.clear();this.agentAudio.clear();this.capture.clear();}
+ async releaseLocalSpeech(){await this.cancel(undefined,'released');this.agentAudio.clear();this.capture.clear();}
 }
 /** Prepared speech by playback id. A streamed clip stops downloading when its entry leaves. */
 class PreparedAudio extends Map<string,{blob?:Blob;stream?:StreamedSpeech;requestId?:string;agent?:LocalAgentProtocol;sessionId:string;cloud?:{environment:string;credentialId:string}}> {

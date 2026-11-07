@@ -165,3 +165,56 @@ test('an instruction that changes while native navigation is starting is sent on
  assert.deepEqual(native.calls.filter(([kind]) => kind === 'update'), [['update', 'Turn left']]);
  await session.stop();
 });
+
+// Cloud Maps coverage read outside the Maps view (ctl-alphaphone-011). Runs the Alpha helper against the
+// pinned Cloud provider and agent binding, in a child because the shared sources need type transforms.
+test('the agent gets navigation before Maps is opened, and again after an account change', () => {
+  const script = `
+import assert from 'node:assert/strict';
+import { createCloudMaps } from './apps/app/src/maps/cloud-provider.ts';
+import { captureMapsSession } from './apps/app/src/maps/cloud-session.ts';
+import { bindAgentNavigation, createMapsNavigationPort, keepCloudMapsCoverage } from './apps/app/src/maps/agent-navigation.ts';
+const requests = [];
+const account = name => ({ sessionId: 'session-' + name, credentialId: 'credential-' + name, client: { async mapsRequest(route) {
+  requests.push([name, route]);
+  assert.equal(route, 'capabilities');
+  return { providerId: 'eliza-cloud', connectionId: 'conn_' + name.repeat(16), revision: 'r1', attribution: 'OSM',
+    regions: [{ id: 'monaco', name: 'Monaco', bounds: [7.409, 43.724, 7.449, 43.752] }],
+    capabilities: { search: true, placeDetails: true, traffic: 'none', transit: 'none', modes: ['drive', 'walk'] } };
+} } });
+let bound = null, ready = false, connection = { config: { status: 'unconfigured' } };
+const accountListeners = new Set(), mapsListeners = new Set();
+const changed = () => { for (const listener of [...accountListeners]) listener(); };
+const maps = createCloudMaps(() => captureMapsSession(() => bound), (config, provider) => { connection = { config, provider }; for (const listener of [...mapsListeners]) listener(); });
+// cloud-maps.ts: an account change retires coverage first.
+let previous = bound;
+accountListeners.add(() => { if (previous !== bound) { previous = bound; if (maps.cloudMapsDiagnostics().configured) maps.retireCloudMaps(); } });
+const stop = keepCloudMapsCoverage({ enabled: () => true, ready: () => ready, account: () => bound, initialize: () => maps.initializeCloudMaps(),
+  onChange: listener => { accountListeners.add(listener); return () => accountListeners.delete(listener); } });
+const port = createMapsNavigationPort();
+const surface = { present: async () => false, snapshot: () => undefined, showPlace: async () => {}, showDirections: async () => {}, locationGranted: async () => false,
+  locate: async () => { throw Error('no fix'); }, planFrom: async () => {}, guidance: () => null, reroute: async () => {}, stop: async () => {}, onRelease: () => () => {} };
+const agent = bindAgentNavigation({ enabled: () => true, installation: () => { const coverage = maps.cloudMapsCoverage(); return coverage && { providerId: coverage.providerId, attribution: coverage.attribution }; },
+  connection: () => connection, onChange: listener => { mapsListeners.add(listener); return () => mapsListeners.delete(listener); }, surface, port });
+const settle = () => new Promise(resolve => setTimeout(resolve, 0));
+assert.equal(agent.registered(), false);
+bound = account('a'); changed(); await settle();
+assert.deepEqual(requests, [], 'nothing is read before the resident is ready');
+ready = true; changed(); await settle();
+assert.equal(agent.registered(), true, 'Maps was never opened');
+const first = port.current;
+changed(); await settle();
+assert.equal(requests.length, 1, 'one read per account');
+bound = account('b'); changed();
+assert.equal(agent.registered(), false, 'the old account is retired');
+await settle();
+assert.equal(agent.registered(), true, 'the next account is covered again');
+assert.notEqual(port.current, first);
+assert.deepEqual(requests.map(([name]) => name), ['a', 'b']);
+bound = null; changed(); await settle();
+assert.equal(agent.registered(), false);
+assert.equal(requests.length, 2, 'signing out reads nothing');
+stop(); agent.dispose();
+`;
+  execFileSync(process.execPath, ['--experimental-transform-types', '--no-warnings', '--input-type=module', '-e', script], { cwd: path.resolve(import.meta.dirname, '..'), stdio: 'pipe', timeout: 60_000 });
+});

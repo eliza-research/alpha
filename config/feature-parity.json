@@ -72,7 +72,6 @@
     "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarAvailabilityJournalResult.java",
     "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarCreationStore.java",
     "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarDeletionIdentity.java",
-    "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarRangeReader.java",
     "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarScopedDeletionReview.java",
     "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncBridge.java",
     "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncConsent.java",

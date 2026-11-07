@@ -47,7 +47,7 @@
 <sc-if value="{{is.phone}}">
 <sc-if value="{{phone.nativeManaged}}">
  <div class="scr" style="height:100%;overflow-y:auto;padding:56px 20px 120px;box-sizing:border-box">
-  <h1>Phone</h1><p>Calls are placed in your phone app. Alpha opens it with the number filled in; it does not know whether a call connects.</p>
+  <h1>Phone</h1><p>Calls open in your phone app. Alpha can't tell whether a call connects.</p>
   <p role="status">{{phone.nativeStatus}}</p>
   <label>Phone number<input type="tel" disabled="{{phone.nativeBusy}}" aria-label="Phone number to dial" value="{{phone.nativeNumber}}" onChange="{{phone.nativeOnNumber}}" style="width:100%;min-height:44px;box-sizing:border-box" maxlength="40"></label>
   <button onClick="{{phone.nativeDial}}" disabled="{{phone.nativeBusy}}" style="min-height:44px">Open in phone app</button>
@@ -336,7 +336,7 @@
 <sc-if value="{{is.messages}}">
 <sc-if value="{{messages.nativeManaged}}">
  <div class="scr" style="height:100%;overflow-y:auto;padding:56px 20px 120px;box-sizing:border-box">
-  <h1>Text messages</h1><p>SMS and MMS text can be read here. Group messages and pictures are sent as one reviewed MMS; MMS attachments you receive open in your messaging app.</p>
+  <h1>Text messages</h1><p>Group texts and pictures send as one MMS. Received attachments open in your messaging app.</p>
   <p role="status">{{messages.nativeStatus}}</p>
   <button onClick="{{messages.nativeRead}}" style="min-height:44px">SMS read access</button>
   <button onClick="{{messages.nativeSendAccess}}" style="min-height:44px">SMS send access</button>
@@ -349,7 +349,7 @@
   <sc-if value="{{messages.nativeMmsAvailable}}"><button onClick="{{messages.nativeAttach}}" disabled="{{messages.nativeBusy}}" style="min-height:44px">Add pictures</button><sc-for list="{{messages.nativeAttachments}}" as="picture"><button aria-label="Remove {{picture.label}}" disabled="{{messages.nativeBusy}}" onClick="{{picture.remove}}" style="min-height:44px">{{picture.label}} ✕</button></sc-for><button onClick="{{messages.nativeSendMms}}" disabled="{{messages.nativeBusy}}" style="min-height:44px">Review MMS (group or pictures)</button></sc-if>
   <button onClick="{{messages.nativeSend}}" disabled="{{messages.nativeBusy}}" style="min-height:44px">Review SMS</button><button disabled="{{messages.nativeBusy}}" onClick="{{messages.nativeClear}}" style="min-height:44px">Clear draft</button>
   <button onClick="{{messages.nativeHandoff}}" disabled="{{messages.nativeBusy}}" style="min-height:44px">Review in messaging app (choose SIM there)</button><p role="status">{{messages.nativeNotice}}</p>
-  <h2>Recent Alpha send records</h2><sc-for list="{{messages.nativeReceipts}}" as="receipt"><p>{{receipt.label}}</p></sc-for>
+  <h2>Sent from Alpha</h2><sc-for list="{{messages.nativeReceipts}}" as="receipt"><p>{{receipt.label}}</p></sc-for>
   <h2>Device messages</h2><sc-if value="{{messages.nativeInThread}}"><button onClick="{{messages.nativeBack}}">All conversations</button></sc-if><sc-for list="{{messages.nativeThreads}}" as="thread"><button onClick="{{thread.open}}" style="display:block;width:100%;text-align:left;margin:8px 0"><strong>{{thread.label}}</strong><p>{{thread.snippet}}</p></button></sc-for><sc-for list="{{messages.nativeRows}}" as="row"><article style="border-top:1px solid var(--s2);padding:12px 0"><strong>{{row.address}}</strong><p>{{row.direction}} · {{row.when}} · Subscription {{row.subscriptionId}}</p><p style="white-space:pre-wrap;overflow-wrap:anywhere">{{row.body}}</p></article></sc-for>
   <sc-if value="{{messages.nativeMore}}"><button onClick="{{messages.nativeLoadMore}}" disabled="{{messages.nativeBusy}}" style="min-height:44px">Older messages</button></sc-if>
  </div>
@@ -696,7 +696,7 @@
           </div>
         </sc-if>
 
-        <sc-if value="{{inbox.c.showSendHint}}"><p style="font-size:12px;color:var(--mut);margin:8px 0">Enable Gmail changes in Settings to send. Your draft stays on this device.</p></sc-if>
+        <sc-if value="{{inbox.c.showSendHint}}"><p style="font-size:12px;color:var(--mut);margin:8px 0">Turn on Gmail changes in Settings → Connections → Manage Google accounts to send. Your draft stays on this device.</p></sc-if>
         <sc-if value="{{inbox.c.canSaveProvider}}"><button onClick="{{inbox.c.saveProvider}}" style="padding:12px 0;text-align:left;color:var(--acct)">Review save to Gmail drafts</button></sc-if>
         <sc-if value="{{inbox.c.local}}"><div role="status" style="font-size:12px;color:var(--mut);padding:8px 0">{{inbox.c.status}}</div></sc-if>
         <sc-if value="{{inbox.c.recoveryVisible}}"><div role="status" aria-label="Email edit recovery status" style="font-size:12px;color:var(--mut);padding:8px 0">{{inbox.c.retainedStatus}}</div></sc-if>
@@ -750,7 +750,7 @@
       <sc-if value="{{inbox.provider.canConfirm}}"><button disabled="{{inbox.provider.busy}}" onClick="{{inbox.provider.confirm}}" style="padding:14px;border-radius:24px;background:var(--acc);color:white">{{inbox.provider.confirmLabel}}</button></sc-if>
       <sc-if value="{{inbox.provider.canEditDraft}}"><button disabled="{{inbox.provider.busy}}" onClick="{{inbox.provider.editDraft}}" style="padding:14px">Edit this Gmail draft</button><button disabled="{{inbox.provider.busy}}" onClick="{{inbox.provider.deleteDraft}}" style="padding:14px">Review permanent draft deletion</button></sc-if>
       <sc-if value="{{inbox.provider.canUndo}}"><button disabled="{{inbox.provider.busy}}" onClick="{{inbox.provider.undo}}" style="padding:14px">Review undo mailbox change</button></sc-if>
-      <sc-if value="{{inbox.provider.replacementWarning}}"><p style="font-size:12px;color:var(--mut)">Another client can change this Gmail draft after review. Replacement cannot be guaranteed atomic.</p></sc-if><sc-if value="{{inbox.provider.deletionWarning}}"><p style="font-size:12px;color:var(--mut)">This permanently deletes the selected Gmail draft.</p></sc-if>
+      <sc-if value="{{inbox.provider.replacementWarning}}"><p style="font-size:12px;color:var(--mut)">This Gmail draft could change elsewhere before you save.</p></sc-if><sc-if value="{{inbox.provider.deletionWarning}}"><p style="font-size:12px;color:var(--mut)">This permanently deletes the selected Gmail draft.</p></sc-if>
       <sc-if value="{{inbox.provider.canRetry}}"><button disabled="{{inbox.provider.busy}}" onClick="{{inbox.provider.retry}}" style="padding:14px">{{inbox.provider.retryLabel}}</button></sc-if>
       <button disabled="{{inbox.provider.busy}}" onClick="{{inbox.provider.check}}" style="padding:14px">Check saved receipt</button>
       <sc-if value="{{inbox.provider.canReload}}"><button disabled="{{inbox.provider.busy}}" onClick="{{inbox.provider.reload}}" style="padding:14px">Reload exact review</button></sc-if>
@@ -792,8 +792,8 @@
       <button class="tap" aria-label="Discard event draft" disabled="{{calendar.formDraftBusy}}" onClick="{{calendar.discardFormDraft}}" style="min-height:44px;padding:12px;border-radius:12px;background:var(--s2);color:var(--fg)">Discard draft</button>
     </div>
   </sc-if>
-  <sc-if value="{{calendar.formDraftListError}}"><div role="status" style="padding:12px 24px">Form storage needs review. Current edits are retained.<button onClick="{{calendar.retryFormDraft}}" style="padding:12px">Retry form storage</button><button onClick="{{calendar.recoverFormDraft}}" style="padding:12px">Recover saved form</button></div></sc-if>
-  <sc-if value="{{calendar.editDraftListError}}"><div role="status" style="padding:12px 24px">Form storage needs review. Current edits are retained.<button onClick="{{calendar.retryEditDraft}}" style="padding:12px">Retry edit storage</button><button onClick="{{calendar.recoverEditDraft}}" style="padding:12px">Recover saved edits</button></div></sc-if>
+  <sc-if value="{{calendar.formDraftListError}}"><div role="status" style="padding:12px 24px">Couldn't save this form yet. Your edits are kept.<button onClick="{{calendar.retryFormDraft}}" style="padding:12px">Retry form storage</button><button onClick="{{calendar.recoverFormDraft}}" style="padding:12px">Recover saved form</button></div></sc-if>
+  <sc-if value="{{calendar.editDraftListError}}"><div role="status" style="padding:12px 24px">Couldn't save this form yet. Your edits are kept.<button onClick="{{calendar.retryEditDraft}}" style="padding:12px">Retry edit storage</button><button onClick="{{calendar.recoverEditDraft}}" style="padding:12px">Recover saved edits</button></div></sc-if>
   <sc-if value="{{calendar.browserRecovery}}"><button aria-label="Recover browser calendar" onClick="{{calendar.openBrowserRecovery}}" style="margin:0 16px 8px;padding:12px;border-radius:12px;background:var(--s2);color:var(--fg)">Calendar recovery</button></sc-if>
   <sc-if value="{{calendar.reminderRecovery}}"><button aria-label="Recover browser reminders" onClick="{{calendar.openReminderRecovery}}" style="margin:0 16px 8px;padding:12px;border-radius:12px;background:var(--s2);color:var(--fg)">Reminder recovery</button></sc-if>
   <sc-if value="{{calendar.reminderRecovery}}"><button aria-label="Recover browser reminder creation history" onClick="{{calendar.openReminderCreationRecovery}}" style="margin:0 16px 8px;padding:12px;border-radius:12px;background:var(--s2);color:var(--fg)">Reminder creation recovery</button></sc-if>
@@ -894,7 +894,7 @@
   <sc-if value="{{calendar.clock}}">
     <div ref="{{calendar.clock.modalRef}}" role="dialog" aria-modal="true" aria-label="Clock alarms" style="position:absolute;inset:0;z-index:35;background:var(--bg);display:flex;flex-direction:column;padding:{{calendar.clock.topPadding}} 24px 120px;overflow:auto;box-sizing:border-box">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px"><button class="ib" aria-label="Close Clock" aria-disabled="{{calendar.clock.busy}}" onClick="{{calendar.clock.close}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button><h2 class="serif" style="font-size:26px;margin:0">Alarms</h2></div>
-      <p style="font-size:14px;line-height:1.5;color:var(--mut);margin:0 0 18px">Alarms are managed by your installed Clock app. Check the result there after every request.</p>
+      <p style="font-size:14px;line-height:1.5;color:var(--mut);margin:0 0 18px">Alarms are set in your Clock app. Check there to confirm.</p>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:24px"><sc-for list="{{calendar.clock.actions}}" as="item"><button class="tap" onClick="{{item.pick}}" style="padding:14px;border-radius:18px;font-size:15px;font-weight:600;{{item.css}}">{{item.label}}</button></sc-for></div>
       <sc-if value="{{calendar.clock.isSet}}"><label style="font-size:14px;display:flex;flex-direction:column;gap:8px;margin-bottom:18px">Alarm time<input aria-label="Alarm time" type="time" value="{{calendar.clock.time}}" onChange="{{calendar.clock.onTime}}" style="font:inherit;font-size:28px;color:var(--fg);background:var(--s2);border:0;border-radius:16px;padding:14px"></label><label style="font-size:14px;display:flex;flex-direction:column;gap:8px;margin-bottom:14px">Label<input aria-label="Alarm label" maxlength="200" value="{{calendar.clock.label}}" onChange="{{calendar.clock.onLabel}}" style="font:inherit;color:var(--fg);background:var(--s2);border:0;border-radius:16px;padding:14px"></label><p style="font-size:13px;color:var(--mut)">Phone time zone: {{calendar.clock.zone}}</p></sc-if>
       <sc-if value="{{calendar.clock.isSnooze}}"><label style="font-size:14px;display:flex;flex-direction:column;gap:8px;margin-bottom:18px">Requested snooze minutes<input aria-label="Snooze minutes" type="number" min="1" max="60" value="{{calendar.clock.snooze}}" onChange="{{calendar.clock.onSnooze}}" style="font:inherit;color:var(--fg);background:var(--s2);border:0;border-radius:16px;padding:14px"></label></sc-if>
@@ -1528,7 +1528,7 @@
 
 <sc-if value="{{is.camera}}">
 <div data-alpha-camera-root style="display: flex; flex-direction: column; height: 100%; position: relative; background: var(--alpha-black); color: var(--alpha-white); overflow: hidden">
-  <button data-alpha-camera="viewfinder" aria-label="Viewfinder. Tap to focus, hold to ask Alpha, swipe to change mode" onPointerDown="{{camera.vfDown}}" onPointerUp="{{camera.vfUp}}" onPointerLeave="{{camera.vfLeave}}" style="position: absolute; left: 0; right: 0; top: 96px; height: 549px; overflow: hidden; display: block; background: {{camera.vfBg}}">
+  <button data-alpha-camera="viewfinder" aria-label="Camera preview" onClick="{{camera.vfClick}}" onPointerDown="{{camera.vfDown}}" onPointerUp="{{camera.vfUp}}" onPointerLeave="{{camera.vfLeave}}" style="position: absolute; left: 0; right: 0; top: 96px; height: 549px; overflow: hidden; display: block; background: {{camera.vfBg}}">
     <span style="position: absolute; left: -4%; width: 108%; top: 50%; aspect-ratio: 3 / 4; display: block; transition: transform 2s ease-in-out; {{camera.drift}}">
       <span style="position: absolute; inset: 0; display: block; background: {{camera.bg}}; transition: transform .35s cubic-bezier(.2,.8,.2,1), filter .26s; {{camera.zoomCss}}">
         <sc-if value="{{camera.scanFound}}">
@@ -2080,7 +2080,7 @@
   <sc-if value="{{maps.hasNativeMap}}"><div ref="{{maps.mapRef}}" data-alpha-map-plane aria-label="{{maps.mapLabel}}" style="position:absolute;inset:0;z-index:1"></div>
     <div class="alpha-map-credits" style="bottom:{{maps.attributionBottom}}px">
       <sc-if value="{{maps.globalBasemap}}">
-        <span class="alpha-map-credit-links"><a href="https://openfreemap.org/" target="_blank" rel="noopener noreferrer">OpenFreeMap</a> · <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener noreferrer">© OpenMapTiles</a> · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">Data from OpenStreetMap</a></span>
+        <span class="alpha-map-credit-links"><a href="https://openfreemap.org/" target="_blank" rel="noopener noreferrer">OpenFreeMap</a> · <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener noreferrer">© OpenMapTiles</a> · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">Data from OpenStreetMap</a><sc-if value="{{maps.cloudCredit}}"><span data-maps-cloud-credit> · {{maps.cloudCredit}}</span></sc-if></span>
 
       </sc-if>
       <sc-if value="{{maps.regionalBasemap}}"><span class="alpha-map-credit-links"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">{{maps.mapAttribution}}</a></span></sc-if>
@@ -2242,7 +2242,7 @@
 
 <sc-if value="{{is.notes}}">
 <div onFocusCapture="{{notes.captureSubviewFocus}}" class="notes-layout" style="display: flex; flex-direction: column; height: 100%; position: relative; padding-top: 44px; box-sizing: border-box">
-  <sc-if value="{{notes.audioDeletionUnknown}}"><div role="status" style="padding:8px 24px;font-size:13px">Voice note deletion needs review. No deletion will be repeated.<button class="tap" onClick="{{notes.checkAudioDeletion}}" style="display:block;min-height:44px;padding:0 4px;color:var(--acct);font-weight:600;text-align:left">Check deletion status</button><sc-for list="{{notes.audioDeletionPending}}" as="pending"><div>{{pending.title}} <button class="tap" onClick="{{pending.restore}}" style="min-height:44px;padding:0 4px;color:var(--acct);font-weight:600;text-align:left">Restore note and recording</button></div></sc-for></div></sc-if>
+  <sc-if value="{{notes.audioDeletionUnknown}}"><div role="status" style="padding:8px 24px;font-size:13px">Voice note deletion not confirmed. Check Notes. It won't be repeated.<button class="tap" onClick="{{notes.checkAudioDeletion}}" style="display:block;min-height:44px;padding:0 4px;color:var(--acct);font-weight:600;text-align:left">Check deletion status</button><sc-for list="{{notes.audioDeletionPending}}" as="pending"><div>{{pending.title}} <button class="tap" onClick="{{pending.restore}}" style="min-height:44px;padding:0 4px;color:var(--acct);font-weight:600;text-align:left">Restore note and recording</button></div></sc-for></div></sc-if>
   <sc-if value="{{notes.browserRecovery}}"><div style="display:flex;gap:8px;padding:0 24px 6px;flex-wrap:wrap"><button aria-label="Recover browser Notes" onClick="{{notes.openBrowserRecovery}}" style="min-height:44px;padding:10px;border-radius:12px;background:var(--s2);color:var(--fg)">Notes recovery</button><button aria-label="Recover note audio deletion history" onClick="{{notes.openAudioRecovery}}" style="min-height:44px;padding:10px;border-radius:12px;background:var(--s2);color:var(--fg)">Audio deletion recovery</button></div></sc-if>
   <sc-if value="{{notes.storageStatus}}"><div class="notes-storage-status" role="status" aria-live="polite" style="flex-shrink:0;padding:0 24px 6px;font-size:12px;line-height:1.34;color:var(--mut);overflow-wrap:anywhere">{{notes.storageStatus}}</div></sc-if>
   <sc-if value="{{notes.canonicalReview}}"><button class="tap" data-agent-id="notes-reload" onClick="{{notes.canonicalReviewAction}}" style="min-height:48px;margin:0 16px 8px;padding:0 16px;border-radius:22px;background:var(--s2);color:var(--fg)">{{notes.canonicalReviewLabel}}</button></sc-if>
