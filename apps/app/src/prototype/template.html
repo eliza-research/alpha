@@ -3841,7 +3841,7 @@
                     <div style="font-size: 16px">{{r.label}}</div>
                     <sc-if value="{{r.hasSub}}"><div style="font-size: 13px; color: var(--mut); margin-top: 2px">{{r.sub}}</div></sc-if>
                   </div>
-                  <button aria-label="{{r.aria}}" aria-pressed="{{r.on}}" onClick="{{r.toggle}}" style="position: relative; width: 52px; height: 32px; border-radius: 16px; flex-shrink: 0; transition: background .25s; {{r.track}}">
+                  <button aria-label="{{r.aria}}" aria-pressed="{{r.on}}" disabled="{{r.dis}}" onClick="{{r.toggle}}" style="position: relative; width: 52px; height: 32px; border-radius: 16px; flex-shrink: 0; transition: background .25s; {{r.track}}">
                     <span style="position: absolute; top: 3px; left: 3px; width: 26px; height: 26px; border-radius: 13px; background: var(--alpha-white); box-shadow: 0 1px 3px rgba(0,0,0,.2); transition: transform .25s cubic-bezier(.19,1,.22,1); transform: translateX({{r.kx}}px)"></span>
                   </button>
                 </div>

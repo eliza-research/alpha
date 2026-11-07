@@ -26,7 +26,7 @@ const rowsStart=settings.indexOf('          if(connection.residentRecoveryReason
 const rowsEnd=settings.indexOf('          if(connection.busy){',rowsStart);
 const rows=settings.slice(rowsStart,rowsEnd);
 function nativeFixture(connection=snapshot,page='agent-connection',developerTools=true){
- const actions=[];const context={native:true,testMocksEnabled:false,developerTools,state:{page},connection,agentRows:[],out:{stack:[]},residentRecoveryCopy,info:(label,value)=>({label,value}),action:(label,go)=>({label,go}),group:rows=>rows,api:{set:value=>actions.push(value)},connectionController:{restartRecovery:()=>actions.push('restart'),startLocal:()=>actions.push('start')}};
+ const actions=[];const context={native:true,testMocksEnabled:false,developerTools,state:{page},connection,agentRows:[],out:{stack:[]},residentRecoveryCopy,info:(label,value)=>({label,value}),action:(label,go)=>({label,go}),diagnosticsRow:()=>({label:'Export diagnostics'}),group:rows=>rows,api:{set:value=>actions.push(value)},connectionController:{restartRecovery:()=>actions.push('restart'),startLocal:()=>actions.push('start')}};
  vm.createContext(context);vm.runInContext(transformSync(page==='agent-connection'?rows:settings.slice(start,end),{loader:'ts'}).code,context);return {context,actions};
 }
 test('the product keeps the plain recovery status and Restart Alpha, with no raw Restart details',()=>{
@@ -34,7 +34,12 @@ test('the product keeps the plain recovery status and Restart Alpha, with no raw
  const f=nativeFixture(snapshot,'agent-connection',false);
  assert.deepEqual(Array.from(f.context.agentRows,r=>r.label),['Status','Restart Alpha']);
  assert.equal(f.context.agentRows[0].value,residentRecoveryCopy(snapshot.residentRecoveryReason,snapshot.residentRecovery));
- assert.deepEqual(Array.from(nativeFixture({...snapshot,residentRecoveryReason:'runtime-identity-unavailable',residentRecovery:undefined},'agent-connection',false).context.agentRows,r=>r.label),['Status']);
+ // Reasons Restart Alpha cannot clear say to restart the phone and offer diagnostics, never Retry.
+ for(const reason of ['runtime-identity-unavailable','ipc-recovery-required']){
+  const refused=nativeFixture({...snapshot,residentRecoveryReason:reason,residentRecovery:undefined},'agent-connection',false).context.agentRows;
+  assert.deepEqual(Array.from(refused,r=>r.label),['Status','Export diagnostics']);
+  assert.equal(refused[0].value,'Restart your phone to try again.');
+ }
  // A stale or direct selection of the details page renders nothing in the product.
  assert.deepEqual(nativeFixture(snapshot,'agent-recovery-details',false).context.out.stack,[]);
 });
@@ -44,10 +49,10 @@ test('behind the Developer gate, Settings navigates to details without starting 
  f.context.agentRows[2].go();assert.equal(f.actions[0].page,'agent-recovery-details');
  f.context.agentRows[1].go();assert.equal(f.actions[1],'restart');
  const details=nativeFixture(snapshot,'agent-recovery-details');const page=details.context.out.stack[0];
- assert.match(JSON.stringify(page),/Startup records to keep/);assert.doesNotMatch(JSON.stringify(page),new RegExp(token));page.back();assert.equal(details.actions[0].page,'agent-connection');
+ assert.match(JSON.stringify(page),/Saved items to keep/);assert.doesNotMatch(JSON.stringify(page),new RegExp(token));page.back();assert.equal(details.actions[0].page,'agent-connection');
 });
 test('native unknown and partial states never claim safe data; unsupported reasons cannot restart',()=>{
  for(const step of ['partial','unavailable']){const f=nativeFixture({...snapshot,residentRecovery:{step}});assert.doesNotMatch(JSON.stringify(f.context.agentRows),/Your data is safe/);}
- const f=nativeFixture({...snapshot,residentRecoveryReason:'runtime-identity-unavailable',residentRecovery:undefined});assert.deepEqual(Array.from(f.context.agentRows,r=>r.label),['Status','Details']);
+ const f=nativeFixture({...snapshot,residentRecoveryReason:'runtime-identity-unavailable',residentRecovery:undefined});assert.deepEqual(Array.from(f.context.agentRows,r=>r.label),['Status','Export diagnostics','Details']);
  const completed=nativeFixture({...snapshot,residentRecoveryReason:undefined,residentRecovery:undefined,session:{}},'agent-recovery-details');assert.match(JSON.stringify(completed.context.out.stack),/Alpha is running/);
 });

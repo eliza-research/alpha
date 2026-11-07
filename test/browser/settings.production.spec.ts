@@ -141,7 +141,9 @@ test('production Settings shows no fixture device facts and reports the model ho
  expect(text).not.toMatch(/\b100%|Charging|Active connection/);
  expect(text).not.toContain('Contacts');
  expect(text).toMatch(/Calendar/);
- expect(text).toMatch(/Inference model\s*Not reported by agent/);
+ expect(text).toMatch(/AI model\s*Not reported/);
+ expect(text).toMatch(/Inference model\s*Not reported/);
+ expect(text).not.toMatch(/Not reported by agent|Agent execution/);
  expect(text).toMatch(/Problem log/);
  expect(text).toMatch(/Export diagnostics/);
  // Browsers have no Android roles: no role rows, and the role API rejects.

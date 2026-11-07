@@ -8,7 +8,7 @@ Current-source corrections (October 8, from `runtime/device-actions.ts`, `runtim
 
 For remote/local and shared/dedicated Cloud chat, the current-turn observation is embedded explicitly as **untrusted client-reported data, not device permission**, followed by the unchanged user text. Metadata is also supplied; shared Cloud's runtime route ignores that metadata, so the text envelope is the common model-visible contract. An ID alone does not let the model read the corresponding object. User-entered message content is sent intentionally; the context exclusion does not redact text the user chooses to send.
 
-**Current operation set (October 8 source).** `validateDeviceOperation` in `runtime/device-actions.ts` admits these typed operations, each only after explicit approval bound to owner, agent, device, current context and proposal expiry, with a native journal reservation before the effect and a durable receipt after it:
+**Current operation set (October 8 source).** `validateDeviceOperation` in `runtime/device-actions.ts` admits these typed operations, each bound to owner, agent, device, current context and proposal expiry, with a native journal reservation before the effect and a durable receipt after it:
 
 - Legacy common operations: `create_note`, `create_reminder`, `open_view` and `browser_navigate` (exact HTTPS URL without user information).
 - Notes: the selected-note operations in `runtime/notes-contract.ts` and the local `notes_query` lookup (`notes.query.v1`), which shares only the note the user then chooses.
@@ -18,13 +18,15 @@ For remote/local and shared/dedicated Cloud chat, the current-turn observation i
 - Clock: a reviewed handoff to Android Clock (`clock.handoff.v1`, Android only); the handoff result is a dispatch receipt, not confirmed alarm state.
 - Workflow steps: `read_selected_notes` and `read_calendar_range` reads, plus `post_notification` and `speak_text` presentation, only inside a reviewed workflow execution.
 
+**Review (corrected November 6; see the engineering disposition of that date in `docs/decisions.md`).** With **Review phone actions first** off, an operation the owner asked for in the same message runs without a card when it is `browser_navigate`, `camera_capture_photo` or `photo_library_select` (`performRequested` in the upstream client coordinator). With the toggle on, or when the choice cannot be read, these wait for review. `create_note` and `open_view` are on the same upstream list, but production routes them elsewhere: ordinary Notes writes go through canonical Notes and in-app navigation goes through the view route; neither is reviewed and neither reads the toggle. Agent commands inside a view (Browser back, forward and reload) are refused while the toggle is on. Every other operation above needs explicit approval.
+
 A capability is used only when the connected runtime advertises it. Permitted `open_view` destinations are home, reminders (shown in Calendar) and the enabled MVP views: notes, browser, calendar, files, photos, camera, maps, inbox, workflows and settings. Phone, Messages, Contacts and Wallet are deferred MVP views, and `open_view` refuses them in every build, including development builds made with `ELIZA_DEV_ALLOW_TEST_MOCKS=1` (`runtime/device-actions.ts` admits only enabled MVP views); fixture use of those views is not product scope.
 
 **Connections.** Resident, remote and local connections negotiate verified phone actions during enrollment. A Cloud agent connection also enrolls this device and gets verified phone actions when the Cloud runtime advertises the device-action protocol and the owner identity matches. Otherwise it stays chat-only and shows that phone actions, workflows and paired speech are not enabled. UI buttons for native app operations are separate direct user actions, not extra model capabilities. No free-text response is parsed as a command.
 
 ## All fourteen app surfaces
 
-“Common actions” below means the bounded remote/local action set above, available only after explicit approval; it does not imply app-specific operations.
+“Common actions” below means the bounded remote/local action set above, reviewed as described there; it does not imply app-specific operations.
 
 | App / prototype substates | Actual view and selected identity source | Sensitive exclusion / contents | Real actions and missing pieces | Named existing evidence |
 | --- | --- | --- | --- | --- |

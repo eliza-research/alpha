@@ -8,7 +8,7 @@ const SYNTHETIC_KEY = 'synthetic-provider-key-7f3a9c0e5b';
 const REMOTE = 'https://agent.example.test';
 const REDACTION = {
   resident: 'Secret and contact identifiers are swapped before hosted inference; names and free text are not covered',
-  agent: 'Depends on the selected agent; not reported',
+  agent: 'Depends on your agent',
   offline: 'No remote agent connected; no hosted inference requests',
 };
 // Former fixture activity rows and claims must never be presented as this phone's history.
@@ -116,8 +116,8 @@ async function rendererDump(page: Page) {
 
 const cases: Array<{ scenario: Scenario; redaction: string; model: string }> = [
   { scenario: 'resident', redaction: REDACTION.resident, model: 'Cerebras · qwen-3.8-27b' },
-  { scenario: 'remote', redaction: REDACTION.agent, model: 'Not reported by agent' },
-  { scenario: 'offline', redaction: REDACTION.offline, model: 'Not reported by agent' },
+  { scenario: 'remote', redaction: REDACTION.agent, model: 'Not reported' },
+  { scenario: 'offline', redaction: REDACTION.offline, model: 'Not reported' },
 ];
 for (const { scenario, redaction, model } of cases) test(`Privacy, Models and About report the ${scenario} connection honestly`, async ({ page }) => {
   await nativeStub(page, scenario);

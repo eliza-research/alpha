@@ -114,6 +114,9 @@ async function run(name: string, task: (vault: PasswordsClient) => Promise<void>
   } finally { busy = ''; notify(); }
 }
 
+/** Leaving New or Edit password for the list forgets the typed password; the list stays unlocked. */
+export function leavePasswordEntry() { clearSecrets(); }
+
 /** Leaving the password pages, unmounting or backgrounding locks and forgets everything. */
 export function leavePasswordManager() {
   if (!active) return;
@@ -224,9 +227,8 @@ export function passwordManagerGroups(helpers: Helpers): Bag[] {
       helpers.info('Browser autofill', browserFillText()),
       helpers.info('Autofill service', status.autofill.supported === false ? 'Unavailable for this device or user' : selection),
       ...(status.autofill.supported === false ? [] : [nav(busy === 'autofill' ? 'Opening…' : 'Set as autofill service', () => void run('autofill', async v => {
-        const result = await v.openAutofillSettings();
-        helpers.toast(result.destination === 'autofill-picker' ? 'Confirm Alpha Phone passwords in Android, then return here.' : 'Opened Android settings. Search for autofill to choose a provider.');
-      }), { sub: 'Android asks you to confirm' })]),
+        await v.openAutofillSettings();
+      }), { sub: 'Confirm in Android, or search there for autofill' })]),
       nav('Refresh autofill status', () => void refresh()),
     ]));
   }
