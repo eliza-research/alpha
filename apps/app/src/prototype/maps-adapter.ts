@@ -109,7 +109,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
   }
   module.back = () => screen.back(); module.onLeave = () => screen.release(); module.ongoing = () => null;
   module.reply = () => null;
-  module.suggestions = () => mapsConnected() ? ['Help me with this place', 'Explain Maps coverage'] : ['Help me choose a Maps provider', 'Explain location permissions'];
+  module.suggestions = () => mapsConnected() ? ['Help me with this place', 'Explain Maps coverage'] : ['Help me with Maps', 'Explain location permissions'];
   module.render = (st: Bag, currentApi: Bag) => {
     api = currentApi;
     // Cross-app navigation carries a one-use search, not a selected destination.
@@ -132,6 +132,10 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
   };
   function bind(data: Bag, view: MapsScreenView, st: Bag, currentApi: Bag) {
     const status = view.status, region = regionalMap(), raster=cloudMapsBasemap(), basemap = region || raster || globalBasemap, globalMap = !region&&!raster;
+    // Alpha's Cloud provider is operator-owned. Translate only the generic setup
+    // prompt after a service-configuration refusal; preserve other recovery messages.
+    const statusText = !regionalMapsConfigured && cloudMapsDiagnostics().error === 'unconfigured' && status.text.startsWith('Connect a Maps provider')
+      ? 'Maps is unavailable right now. Try again later.' : status.text;
     const directionsOpen = view.mode === 'directions' || view.mode === 'origin' || view.mode === 'navigation';
     const isPlace = view.mode === 'place', isResults = view.mode === 'results' || view.mode === 'origin', isNav = view.mode === 'navigation';
     const sheetHeight = directionsOpen ? 300+(view.directions?.routes.length??0)*50 : isPlace ? 400 : 520;
@@ -153,7 +157,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
         }
         plane?.update(view.map.selected,view.map.route,view.map.overlay);
       },
-      native: true, nativeStatusVisible:status.visible, nativeStatus: status.text, nativeStatusTop: directionsOpen?232:isPlace ? 128 : view.mode==='results' ? 130 : 174,
+      native: true, nativeStatusVisible:status.visible, nativeStatus: statusText, nativeStatusTop: directionsOpen?232:isPlace ? 128 : view.mode==='results' ? 130 : 174,
       nativeSavedEmpty: !view.saved.length, nativeLocationBusy: status.locationBusy, nativeLocation: () => screen.locate(),
       nativeLocationState:status.location,nativeMapState:status.map,nativeMapStatus:status.mapText,
       nativeLocationLabel:status.locationLabel,nativeLocationDenied:status.locationDenied,nativeStatusControls:status.controls,

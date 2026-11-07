@@ -5,6 +5,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {tsImport} from 'tsx/esm/api';
 import {renderToStaticMarkup} from 'react-dom/server';
+import {cloneElement,createElement} from 'react';
 const {installHomeShell}=await tsImport('../apps/app/src/prototype/home-shell.ts',import.meta.url);
 const {navigateMobileShell}=await tsImport('../.eliza/client-features/packages/ui/src/mobile-shell/navigation.ts',import.meta.url);
 const icon='data:image/png;base64,iVBORw0KGgo=';
@@ -113,4 +114,18 @@ test('Home has its built-in tiles without an installed app inventory', () => {
   home.openAllApps();
   assert.equal(reads, 0);
   assert.equal(home.state.drawer, false);
+});
+
+test('the empty Home card row is hidden without hiding app tiles', () => {
+  const Shell = shellClass([]);
+  const render = Shell.prototype.renderVals;
+  Shell.prototype.renderVals = function () {
+    return {...render.call(this), homeHasOverviewCards: false};
+  };
+  installHomeShell(Shell, {}, {list: async () => ({apps: []}), launch: async () => {}},
+    {favorites: {read: () => null, write: () => {}}});
+  const {homeShell} = new Shell().renderVals();
+  const markup = renderToStaticMarkup(cloneElement(homeShell, {cards: createElement('div')}));
+  assert.match(markup, /<div class="scr" hidden="" style="display:none" data-mobile-shell-cards=""/);
+  assert.ok(tiles(markup).includes('Calendar'));
 });

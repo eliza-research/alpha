@@ -24,12 +24,14 @@
 </sc-slot>
 <sc-slot name="cards">
     {{homeAgendaCard}}
+    <sc-if value="{{homeShowWorkflow}}">
     <button data-alpha-home-workflows onClick="{{goFlows}}" aria-label="{{homeWorkflowLabel}}" aria-description="{{homeWorkflowDescription}}" class="home-card" style="flex-shrink: 0; scroll-snap-align: start; width: max-content; min-width: 172px; max-width: calc(100% - 48px); border-radius: 30px; background: var(--s2); padding: 22px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between">
       <div style="display:flex;justify-content:flex-end;width:100%"><span aria-hidden="true" style="display:block;flex-shrink:0;width:24px;height:24px;background:var(--acct);mask:url('/icons/lucide/workflow.svg') center/contain no-repeat;-webkit-mask:url('/icons/lucide/workflow.svg') center/contain no-repeat"></span></div>
       <sc-if value="{{homeWorkflowHasRows}}"><div style="display:flex;flex-direction:column;gap:10px;max-width:260px;min-width:0;text-align:left"><sc-for list="{{homeWorkflowRows}}" as="flow"><div style="min-width:0"><div style="font-size:18px;font-weight:600;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{flow.name}}</div><div style="font-size:12px;line-height:1.4;color:var(--mut)">{{flow.status}}</div></div></sc-for></div></sc-if>
       <sc-if value="{{homeWorkflowTitle}}"><span class="serif" style="font-size:26px;line-height:1.1;min-width:0;max-width:260px;text-align:left;overflow-wrap:anywhere">{{homeWorkflowTitle}}</span></sc-if>
       <span style="display:flex;flex-direction:column;align-items:flex-start;min-width:0;font-size:12px;line-height:1.4;color:var(--mut);text-align:left"><span>{{homeWorkflowTime}}</span><sc-if value="{{homeWorkflowFreshness}}"><span data-alpha-home-workflow-freshness>{{homeWorkflowFreshness}}</span></sc-if></span>
     </button>
+    </sc-if>
     {{homeAttentionCard}}
     <!-- Each card placeholder stays alone in its text node, so it renders as the shared card element. -->
     {{homeBriefCard}}
@@ -2765,9 +2767,6 @@
             <div style="min-width: 0; flex-grow: 1"><div style="font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.name}}</div><div style="font-size: 13px; color: var(--mut); margin-top: 2px">{{r.sub}}</div></div>
           </button>
         </sc-for>
-        <sc-if value="{{files.noRecent}}">
-          <div role="status" style="padding: 18px 8px; font-size: 14px; color: var(--mut)">{{files.recentEmptyText}}</div>
-        </sc-if>
       </div>
     </sc-if>
     <sc-if value="{{files.hasQuery}}">

@@ -29,7 +29,7 @@ test('empty Home opens unified metadata honestly and rerenders do not refetch it
  await setup(page);await connect(page);await expect(tile(page)).toContainText('Open to view');expect(await metadataReads(page)).toBe(0);
  await page.getByRole('textbox',{name:'Ask Alpha',exact:true}).fill('Unsent draft');expect(await metadataReads(page)).toBe(0);
  await tile(page).click();await expect(page.locator('[data-alpha-subview="workflows-list"]').getByText('No workflows yet',{exact:true})).toBeVisible();
- await back(page);await expect(tile(page)).toContainText('No automations yet');const calls=await metadataReads(page);expect(calls).toBe(1);
+ await back(page);await expect(tile(page)).toHaveCount(0);await expect(page.getByRole('button',{name:'Workflows',exact:true})).toBeVisible();const calls=await metadataReads(page);expect(calls).toBe(1);
  await page.getByRole('textbox',{name:'Ask Alpha',exact:true}).fill('Still unsent');expect(await metadataReads(page)).toBe(calls);
 });
 test('Home retains the unified snapshot and a new list visit refreshes changed names',async({page})=>{

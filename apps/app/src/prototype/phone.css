@@ -476,7 +476,7 @@ dialog:is(.alpha-operation-review,.alpha-calendar-editor,.alpha-calendar-meeting
 .alpha-wide .calendar-month-dialog { max-width:560px; margin-inline:auto; }
 /* Photos: the grid gains columns with width instead of growing each tile; never fewer than three
  * (two for albums), so portrait keeps its reference grid. Tiles stay square crops of the media. */
-.photo-grid { grid-template-columns:repeat(auto-fill,minmax(min(112px,calc((100% - 4px) / 3)),1fr))!important; }
+.photo-grid { margin-inline:12px; grid-template-columns:repeat(auto-fill,minmax(min(112px,calc((100% - 4px) / 3)),1fr))!important; }
 .photo-album-grid { grid-template-columns:repeat(auto-fill,minmax(min(168px,calc((100% - 12px) / 2)),1fr))!important; }
 /* The viewer fits the whole 3:4 frame in the space it has (letterboxed in landscape) rather than
  * cropping it to the screen's width, and shows the media inside without cropping either. */

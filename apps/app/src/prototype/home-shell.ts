@@ -61,12 +61,13 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
       return {key: entry.key, label: entry.view.label, glyphUrl: alphaViews.iconUrl(entry.view), iconId: ALPHA_PRODUCT.icons.views[entry.view.id], badge, onOpen: () => self.openView(key)};
     };
     const showDrawer = !!inventory && !out.assistantSurface;
+    const hideCards = out.homeHasOverviewCards === false;
     const homeShell = createElement(MobileHomeScreen, {
       tiles: out.assistantSurface ? [] : shell.homeEntries().map(tile),
       onOpenAllApps: showDrawer ? () => self.openAllApps() : undefined, allAppsLabel: drawerTitle, allAppsGlyphUrl: grid, allAppsIconId: ALPHA_PRODUCT.icons.allApps, covered: !!out.homeHidden,
       onFocusCapture: out.focusAppContent, 'data-alpha-layer': 'home',
       style: {inset: '44px 0 0', zIndex: 10, scrollPaddingBottom: 110},
-      layoutProps: {'data-alpha-home-layout': ''}, cardsProps: {className: 'scr'}, gridProps: {'data-alpha-home-apps': ''}, clearanceProps: {'data-alpha-home-clearance': ''},
+      layoutProps: {'data-alpha-home-layout': ''}, cardsProps: {className: 'scr', hidden: hideCards, style: hideCards ? {display: 'none'} : undefined}, gridProps: {'data-alpha-home-apps': ''}, clearanceProps: {'data-alpha-home-clearance': ''},
     });
     const allAppsDrawer = showDrawer ? createElement(MobileAllAppsDrawer, {
       title: drawerTitle, installedOnly,

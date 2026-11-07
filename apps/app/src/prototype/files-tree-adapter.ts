@@ -150,7 +150,7 @@ export function installFilesTreeAdapter(views:Bag,accept:(module:string,result:N
   const recentRow=(row:RecentFile)=>({id:'recent:'+row.key,name:row.name,chip:'',d:FILE,isFile:true,isFolder:false,selOn:false,selOff:false,rowCss:row.status==='revoked'?'opacity:.6':'',
    sub:row.status==='revoked'?'Access ended · Select again':row.kind==='scan-pdf'?'Saved scan PDF · '+relative(row.openedAt):typeLabel(row.mimeType)+' · '+(row.kind==='tree'?'from your folder':'selected on this device')+' · '+relative(row.openedAt),
    label:(row.status==='revoked'?'Select again ':row.kind==='scan-pdf'?'Find saved PDF ':'Open ')+row.name,tap:()=>void openRecent(row,currentApi)});
-  if(recentRows.length){out.recent=[...recentRows.map(recentRow),...(out.recent||[])].slice(0,12);out.noRecent=false;}
+  if(recentRows.length){out.recent=[...recentRows.map(recentRow),...(out.recent||[])].slice(0,12);}
   // Search: model rows plus Recent and the loaded entries of the chosen folder.
   const query=typeof state.q==='string'?state.q.trim():'';
   if(query){

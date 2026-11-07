@@ -17,7 +17,7 @@ const EMPTY: Record<View, RegExp> = {
   Maps: /Add a location/,
   // Agent Notes waiting for a connection (canonical-notes-ui.ts), as in production-surface.spec.ts.
   Notes: /Notes is unavailable for this agent connection\. Check Settings › Agent connection\./,
-  Files: /No recent files/,
+  Files: /App files/,
   Workflows: /Connect your remote agent in Settings\. Reminders on this phone stay available/,
   Settings: /Not signed in/,
   Reminders: /Connect to view Agent Calendar\./,
@@ -74,6 +74,7 @@ for (const theme of ['light', 'dark'] as const) for (const view of VIEWS) {
     // One fresh profile covers the same root's content, landmark and focus.
     if (view !== 'Camera') await themeIsApplied(surface, theme);
     await expect(surface.getByText(EMPTY[view]).filter({visible:true}).first()).toBeVisible();
+    if(view==='Files'){await expect(surface.getByText(/No recent files/)).toHaveCount(0);await expect(surface.getByRole('button',{name:/^Open /})).toHaveCount(0);}
     if (view === 'Camera') {
       const recovery = surface.getByRole('alert', { name: 'Camera unavailable', exact: true });
       await expect(recovery).toBeVisible();
