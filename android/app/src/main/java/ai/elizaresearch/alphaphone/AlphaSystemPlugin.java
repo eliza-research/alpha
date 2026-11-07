@@ -1,10 +1,14 @@
 package ai.elizaresearch.alphaphone;
 
 import android.Manifest;
+import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.LauncherApps;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Process;
+import android.os.UserHandle;
+import android.os.UserManager;
 import android.provider.Settings;
 import ai.eliza.plugins.system.SystemLauncherApps;
 import com.getcapacitor.PluginCall;
@@ -29,26 +33,30 @@ public final class AlphaSystemPlugin extends ai.eliza.plugins.system.SystemPlugi
  /** Only the launcher flavor drives Android's shade (#416, #417); the standalone app never asks. */
  @Override protected boolean canExpandNotificationShade(){return BuildConfig.IS_LAUNCHER;}
  /** Android's App info for exactly one listed launcher entry, in its profile (the Apps drawer's
-  * long-press menu). Only Settings opens; nothing about the app changes. The entry is resolved as a
-  * launch is, so a removed, disabled or locked one is refused with the same code and words. */
+  * long-press menu). Only Settings opens; nothing about the app changes. App info needs only the
+  * package in that profile: a disabled app, or one in a paused or locked work profile, still opens
+  * it (that is where it is enabled again); a removed app or profile is refused. */
  @PluginMethod public void openAppInfo(PluginCall call){
-  if(SystemLauncherApps.malformedText(call.getData(),"activityName")||SystemLauncherApps.malformedText(call.getData(),"user")){call.reject("Choose an installed app");return;}
+  if(SystemLauncherApps.malformedText(call.getData(),"packageName")||SystemLauncherApps.malformedText(call.getData(),"activityName")||SystemLauncherApps.malformedText(call.getData(),"user")){call.reject("Choose an installed app");return;}
   String name=call.getString("packageName"),activity=call.getString("activityName"),user=call.getString("user");
+  if(name==null||name.isEmpty()||name.equals(getContext().getPackageName())){call.reject("Choose an installed app");return;}
   try{
-   if(activity!=null){
-    SystemLauncherApps.Target target=SystemLauncherApps.resolve(getContext(),name,activity,user);
-    if(target.user!=null){getContext().getSystemService(LauncherApps.class).startAppDetailsActivity(target.component,target.user,null,null);call.resolve();return;}
-    name=target.component.getPackageName();
-   }else{
-    if(user!=null||name==null||name.isEmpty()||name.equals(getContext().getPackageName())){call.reject("Choose an installed app");return;}
-    try{getContext().getPackageManager().getApplicationInfo(name,0);}
+   if(user==null){
+    try{getContext().getPackageManager().getApplicationInfo(name,PackageManager.MATCH_DISABLED_COMPONENTS);}
     catch(PackageManager.NameNotFoundException gone){call.reject("This app is no longer installed.",SystemLauncherApps.NOT_INSTALLED);return;}
+    getContext().startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,Uri.fromParts("package",name,null)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+    call.resolve();return;
    }
-   getContext().startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,Uri.fromParts("package",name,null)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+   long serial;try{serial=Long.parseLong(user);}catch(NumberFormatException invalid){call.reject("Choose an installed app");return;}
+   LauncherApps launcher=getContext().getSystemService(LauncherApps.class);UserManager users=getContext().getSystemService(UserManager.class);
+   UserHandle handle=users==null?null:users.getUserForSerialNumber(serial);
+   if(launcher==null||handle==null||handle.equals(Process.myUserHandle())||!launcher.getProfiles().contains(handle)){call.reject("This profile is no longer on the phone.",SystemLauncherApps.PROFILE_UNAVAILABLE);return;}
+   try{launcher.getApplicationInfo(name,PackageManager.MATCH_DISABLED_COMPONENTS,handle);}
+   catch(PackageManager.NameNotFoundException gone){call.reject("This app is no longer available in that profile.",SystemLauncherApps.NOT_INSTALLED);return;}
+   launcher.startAppDetailsActivity(new ComponentName(name,activity==null||activity.isEmpty()?name:activity),handle,null,null);
    call.resolve();
   }
   catch(IllegalArgumentException invalid){call.reject("Choose an installed app");}
-  catch(SystemLauncherApps.Refusal refusal){call.reject(refusal.getMessage(),refusal.code);}
   catch(RuntimeException error){call.reject("App info could not be opened",SystemLauncherApps.FAILED,error);}
  }
 }
