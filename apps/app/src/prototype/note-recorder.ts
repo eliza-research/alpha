@@ -217,9 +217,9 @@ export class NoteRecorderSession {
   }
   /** A status from the recorder (a poll answer or an event). */
   apply(status: NoteRecordingStatus) {
+    if (status.state !== 'idle' && this.recordingId && status.recordingId !== this.recordingId) return;
     if (!this.open || this.phase === 'finishing' && status.state !== 'idle') { if (this.phase === 'finishing') this.absorb(status); return; }
     if (status.state === 'idle') { if (this.phase !== 'starting') this.close(); return; }
-    if (this.recordingId && status.recordingId !== this.recordingId) return;
     this.recordingId = status.recordingId;
     this.absorb(status);
     const previous = this.phase;
@@ -292,11 +292,26 @@ export class NoteRecorderSession {
     const tracked = this.pumping;
     return tracked;
   }
-  async pause() { if (this.phase === 'recording' && this.recordingId) this.apply(await this.driver.pause(this.recordingId)); }
+  async pause() {
+    const id = this.recordingId;
+    if (this.phase !== 'recording' || !id) return;
+    const epoch = this.epoch;
+    const status = await this.driver.pause(id);
+    if (epoch === this.epoch) this.apply(status);
+  }
   async resume() {
-    if (!this.recordingId || !['paused', 'stopped'].includes(this.phase)) return;
-    try { this.error = this.transcriptionFailed ? this.error : ''; this.apply(await this.driver.resume(this.recordingId)); }
-    catch (error) { this.error = noteRecorderError(startFailure(error)); this.changed(); }
+    const id = this.recordingId;
+    if (!id || !['paused', 'stopped'].includes(this.phase)) return;
+    const epoch = this.epoch;
+    try {
+      this.error = this.transcriptionFailed ? this.error : '';
+      const status = await this.driver.resume(id);
+      if (epoch === this.epoch) this.apply(status);
+    } catch (error) {
+      if (epoch !== this.epoch) return;
+      this.error = noteRecorderError(startFailure(error));
+      this.changed();
+    }
   }
   async togglePause() { if (this.phase === 'failed') await this.begin().catch(() => {}); else if (this.phase === 'recording') await this.pause(); else await this.resume(); }
   /**
@@ -312,8 +327,10 @@ export class NoteRecorderSession {
     const epoch = this.epoch;
     this.phase = 'finishing'; this.confirmingDiscard = false; if (this.poll) clearTimeout(this.poll); this.poll = undefined; this.closeLive(); this.changed();
     try {
-      this.absorb(await this.driver.stop(id));
+      const stopped = await this.driver.stop(id);
       if (epoch !== this.epoch) return false;
+      if (stopped.recordingId !== id || stopped.state !== 'stopped') throw Error('Recording changed');
+      this.absorb(stopped);
       await this.pump(true);
       if (epoch !== this.epoch) return false;
       if (!this.segments.length) throw Error('No audio');

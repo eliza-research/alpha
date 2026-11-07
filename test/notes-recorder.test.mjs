@@ -96,6 +96,37 @@ test('pause and resume keep the same recording; the waveform follows native peak
   s.close();
 });
 
+test('a late pause cannot change the recorder after the view reopens', async t => {
+  const driver = fakeDriver(), s = session(driver);
+  t.after(() => s.close());
+  await s.begin();
+  let release;
+  driver.pause = () => new Promise(resolve => { release = resolve; });
+  const pending = s.pause();
+  s.leave();
+  assert.equal(await s.adopt(), true);
+  release({state: 'paused', recordingId: driver.id, durationMs: 1});
+  await pending;
+  assert.equal(s.phase, 'recording');
+});
+
+test('a late stop cannot replace the reopened recorder or save its audio', async t => {
+  const driver = fakeDriver(), s = session(driver);
+  t.after(() => s.close());
+  await s.begin();
+  driver.segment();
+  let release;
+  driver.stop = () => new Promise(resolve => { release = resolve; });
+  const pending = s.finish(async () => assert.fail('Retired save ran'));
+  s.leave();
+  assert.equal(await s.adopt(), true);
+  release({state: 'stopped', recordingId: driver.id, durationMs: 30_000, segments: []});
+  assert.equal(await pending, false);
+  assert.equal(s.durationMs, 25_000);
+  assert.equal(s.segments.length, 1);
+  assert.equal(driver.state.discarded, 0);
+});
+
 test('Done stops, catches the transcript up, saves one voice note and only then discards the segments', async () => {
   const driver = fakeDriver(), s = session(driver), persisted = [];
   await s.begin();
