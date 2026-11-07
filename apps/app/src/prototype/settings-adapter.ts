@@ -120,7 +120,7 @@ export function versionLabel(version: unknown, code: unknown): string {
   const name = typeof version === 'string' && version ? version : 'Unavailable';
   return Number.isSafeInteger(code) && (code as number) > 0 && name !== 'Unavailable' ? `${name} (${code})` : name;
 }
-/** Settings pages (docs/ui-refresh-2026-11, tla/SettingsNav.tla). Pages that only repeated Android
+/** Settings pages (docs/ui-refresh-2026-11, specs/quint/legacy/SettingsNav.qnt). Pages that only repeated Android
  * facts or another flow are gone; a stale or direct route to one opens the top level. */
 export const SETTINGS_PAGES: readonly string[] = ['account', 'agent-connection', 'history', 'listening', 'calendar', 'password-provider', 'password-entry', 'cross', 'about', 'problems', 'licenses'];
 export function settingsPage(page: string | null | undefined, developerSurfaces: boolean): string | null {
@@ -380,7 +380,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     if (key === 'settings') { void refresh(); void refreshCapabilities(true); }
     return result;
   };
-  // Android Back pops one level, the same parent as each page's on-screen back (tla/SettingsNav.tla).
+  // Android Back pops one level, the same parent as each page's on-screen back (specs/quint/legacy/SettingsNav.qnt).
   const SETTINGS_PARENT: Record<string, string> = { history: 'agent-connection', problems: 'about', licenses: 'about', 'password-entry': 'password-provider' };
   const back = definition.back;
   definition.back = (state: Bag, api: Bag) => {

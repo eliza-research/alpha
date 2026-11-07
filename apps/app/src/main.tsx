@@ -171,7 +171,7 @@ function installBrowserCapabilityTiles(Component:any){
   };
 }
 /** Android's bar insets arrive from the bridge after the first paint. The last ones are kept and
- * applied before it, so Home's grid and the dock start where they will stay (tla/HomeLayout.tla). */
+ * applied before it, so Home's grid and the dock start where they will stay (specs/quint/legacy/HomeLayout.qnt). */
 const INSETS_KEY = 'alpha.surface-insets.v1';
 function rememberInsets(top: unknown, bottom: unknown) {
   if (!Number.isFinite(top) || !Number.isFinite(bottom)) return;
@@ -250,7 +250,7 @@ function Phone() {
       document.documentElement.style.setProperty('--phone-width', geometry.width);
       document.documentElement.style.setProperty('--phone-height', `${geometry.height}px`);
       // Home keeps its keyboard-free layout while text is edited: the keyboard covers its bottom
-      // instead of Home laying itself out again in the smaller canvas (tla/HomeLayout.tla).
+      // instead of Home laying itself out again in the smaller canvas (specs/quint/legacy/HomeLayout.qnt).
       if (!input.editing) {
         document.documentElement.style.setProperty('--alpha-home-height', `${geometry.height}px`);
         document.documentElement.style.setProperty('--alpha-home-bottom-inset', document.documentElement.style.getPropertyValue('--native-bottom-inset') || '0px');

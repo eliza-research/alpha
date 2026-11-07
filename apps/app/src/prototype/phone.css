@@ -342,7 +342,7 @@ html:not(.standalone-app) [data-alpha-layer="home"][data-alpha-home-fits="true"]
 html:not(.alpha-landscape) .alpha-phone [data-alpha-layer="home"] { bottom:0!important; scroll-padding-bottom:var(--alpha-dock-reserve)!important; }
 /* The grid is anchored to a reserve computed from Android's insets alone: the bar's resting
  * place (--alpha-bottom-clearance), its 62px height and a 24px gap. Never a measurement of the
- * dock, which moves with its entry animation, a status line or the keyboard (tla/HomeLayout.tla). */
+ * dock, which moves with its entry animation, a status line or the keyboard (specs/quint/legacy/HomeLayout.qnt). */
 .alpha-phone { --alpha-home-clearance:max(28px,calc((max(var(--alpha-home-bottom-inset,var(--native-bottom-inset,0px)),env(safe-area-inset-bottom,0px)) + 12px) / var(--phone-scale,1))); }
 html:not(.alpha-landscape) .alpha-phone [data-alpha-home-layout] { padding-bottom:calc(var(--alpha-home-clearance) + 86px)!important; min-height:max(100%,calc(var(--alpha-home-height,100%) - 44px))!important; }
 /* The app library fills the screen behind the floating dock. Its final row can
