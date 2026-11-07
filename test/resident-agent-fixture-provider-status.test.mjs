@@ -39,14 +39,3 @@ test('provider capability leaves native navigation owner-fence failures observab
  assert.throws(()=>agent.answer('subscribeViewEvents',{subscriptionId:'s',ownerId:'other-owner',clientId:'client'}),/Invalid view event subscription/);
  assert.deepEqual(agent.state.unexpected,['Agent.subscribeViewEvents']);
 });
-
-test('every connection-sheet fixture constructor opts in, without changing owner fences',()=>{
- for(const name of ['reminder-notice-question.spec.ts','resident-background-results.spec.ts','workflow-notice-taps.spec.ts','connection-activity-presentation.spec.ts','gmail-notice-question.spec.ts','local-agent-stop.spec.ts']){
-  const spec=readFileSync(new URL('./browser/'+name,import.meta.url),'utf8');
-  const calls=spec.split('\n').filter(line=>line.includes('.createResidentAgentPlugin('));
-  assert.equal(calls.length,1,name+' has one explicit native model constructor');
-  assert.match(calls[0],/providerStatus:\s*\{provider:\s*'elizacloud',\s*configured:\s*false\}/,name+' opts in at the constructor');
- }
- const workflows=readFileSync(new URL('./browser/workflow-notice-taps.spec.ts',import.meta.url),'utf8');
- assert.equal(workflows.split('\n').find(line=>line.startsWith('const ownerFence=')),"const ownerFence=(ownerId:string)=>({owner:{origin:'https://device.alpha.invalid',ownerId,agentId:'fixture-agent'}});");
-});

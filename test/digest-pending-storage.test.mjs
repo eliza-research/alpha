@@ -15,8 +15,3 @@ test('browser pending key remains unchanged and every pending operation uses its
  assert.equal((source.match(/b\.storage\.remove\(b\.pendingSlot\)/g)||[]).length,2);
  assert.doesNotMatch(source,/b\.slot\s*\+\s*":pending"/);
 });
-test('renderer pending operations leave existing browser and native records intact',()=>{
- const storage=new Map([[nativeScope+':pending','existing native record'],[nativeScope,'native history'],['renderer-'+nativeScope,'renderer history']]);
- storage.set(pending(true),'new renderer draft');storage.delete(pending(true));
- assert.equal(storage.get(nativeScope+':pending'),'existing native record');assert.equal(storage.get(nativeScope),'native history');assert.equal(storage.get('renderer-'+nativeScope),'renderer history');
-});

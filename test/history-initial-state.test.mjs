@@ -10,8 +10,8 @@ const slice=(source,start,end)=>{const a=source.indexOf(start),b=source.indexOf(
 const base=slice(model,'var BASE = {','class Component extends DCLogic');
 const component=slice(model,'class Component extends DCLogic {','  componentDidMount()')+'}';
 const dcConstructor=slice(dc,'    constructor(p)','    render()');
-const callback=stripTypeScriptTypes('(function(){const session=connectionController.getSnapshot().session?.sessionId;'+slice(adapter,'      const history = connectionController.getSnapshot().history;','      syncStoppedReplyNotice(')+'})',{mode:'transform'});
-const merge=stripTypeScriptTypes(slice(connection,'export function mergeConversationDelivery','const actionReceipts =').replace('export ',''),{mode:'transform'});
+const callback=stripTypeScriptTypes('(function(){const session=connectionController.getSnapshot().session?.sessionId;'+slice(adapter,'      const history = connectionController.getSnapshot().history;','      syncStoppedReplyNotice(')+'})',{mode:'strip'});
+const merge=stripTypeScriptTypes(slice(connection,'export function mergeConversationDelivery','const actionReceipts =').replace('export ',''),{mode:'strip'});
 function fixture(){
  let snapshot={session:{sessionId:'owner-a'},history:null,conversationDelivery:null};const pending=[];
  const box={systemNoticeKind,collapseSystemNotices,structuredClone,QUICK_SETTINGS:{wifi:false},ALPHA_PRODUCT:{identity:{characterName:'Alpha'}},Date,connectionController:{getSnapshot:()=>snapshot,getSelectedConversationId:()=> 'room'},alphaClient:{disconnect(){}},cancelMessageContext(){}};
@@ -22,7 +22,6 @@ function fixture(){
 }
 const history=(messages=[{id:'saved',text:'Saved reply'}])=>({sessionId:'owner-a',conversationId:'room',messages,automatic:true,deliveryRevisionAtStart:1});
 test('cold shell owns complete raw state before mount or a history subscription',()=>{const f=fixture();assert.ok(Array.isArray(f.shell.state.msgs));assert.equal(f.shell.state.draft,'');f.setSnapshot({...f.snapshot,history:history()});f.changed();f.flush();assert.equal(f.shell.state.msgs[0].id,'saved');});
-test('cold automatic history restores saved messages before the first shell update',()=>{const f=fixture();f.setSnapshot({...f.snapshot,history:history()});f.changed();f.flush();assert.equal(f.shell.state.msgs[0].id,'saved');});
 test('automatic history keeps a newer concurrent delivery and the current draft',()=>{const f=fixture();f.shell.state.msgs=[];f.shell.state.draft='Unsent';f.setSnapshot({...f.snapshot,history:history()});f.changed();f.shell.state.msgs.push({id:'new',conversationDeliveryRevision:2,messageBinding:{conversationId:'room'}});f.flush();assert.deepEqual(Array.from(f.shell.state.msgs,m=>m.id),['saved','new']);assert.equal(f.shell.state.draft,'Unsent');});
 test('queued history cannot apply after the selected history changes',()=>{const f=fixture();f.shell.state.msgs=[{id:'current'}];f.setSnapshot({...f.snapshot,history:history()});f.changed();f.setSnapshot({...f.snapshot,history:null});f.flush();assert.equal(f.shell.state.msgs[0].id,'current');});
 test('owner change retires queued history before it can install old messages',()=>{const f=fixture();f.shell.state.msgs=[{id:'current'}];f.setSnapshot({...f.snapshot,history:history()});f.changed();f.setSnapshot({session:{sessionId:'owner-b'},history:null,conversationDelivery:null});f.flush();assert.equal(f.shell.state.msgs[0].id,'current');});

@@ -37,8 +37,6 @@ test("an outcome status line between a method's start and end changes no count",
     { started: 2, passed: 1, failed: [], ignored: ["delayedSameOriginAndReloadReadyCannotAdoptOldDocument"] });
 });
 
-
-
 test("JUnit ignored tests without a start are reported as skipped, including mixed classes", () => {
   const cls = C("Shell");
   const ignored = record(cls, "ignored", -3);

@@ -90,13 +90,19 @@ test('every open owner choice maps to an implementation issue and its plan secti
   assert.match(pending, /No reviewed/);
   assert.equal(pending.split('\n').filter(line => /^\| A-\d\d \|/.test(line)).length, 0);
   const resolved = table(decisions, 'Resolved decision index');
-  const active = resolved.filter(row => row.State === 'TODO');
-  assert.equal(new Set(active.map(row => row.ID)).size, active.length, 'each decision has one row');
+  assert.equal(new Set(resolved.map(row => row.ID)).size, resolved.length, 'each decision has one row');
+  // The State column is the owner's tracker; any value is accepted here.
+  for (const row of resolved) {
+    assert.match(row.Policy, /^P-\d\d$/, `${row.ID} maps to a P- policy`);
+    assert.ok(row.State, `${row.ID} has a state`);
+  }
+  const implemented = resolved.filter(row => /#\d+/.test(row.Implementation));
+  const issues = implemented.map(row => Number(row.Implementation.match(/#(\d+)/)[1])).sort((a, b) => a - b);
+  assert.deepEqual(issues, Array.from({length: 32}, (_, index) => 394 + index), 'the October 12 decisions are issues #394 to #425');
   const plan = read('docs/owner-approved-mvp-plan-2026-10-12.md');
   const owner = section(decisions, 'October 12 owner decisions');
-  for (const row of active) {
-    const issue = row.Implementation.match(/#\d+/)?.[0];
-    assert.ok(issue, `${row.ID} names its implementation issue`);
+  for (const row of implemented) {
+    const issue = row.Implementation.match(/#\d+/)[0];
     assert.ok(owner.includes(`**${row.Policy} — ${row.ID}`), `${row.ID} is an October 12 owner decision`);
     assert.ok(plan.includes(`## ${issue} — ${row.ID}:`), `${row.ID} has a plan section for ${issue}`);
   }

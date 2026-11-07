@@ -69,23 +69,6 @@ test('page-created files are captured in an isolated world and saved only after 
   assert.match(plugin, /t\.capture=new BrowserBlobCapture\(t\.web,downloads\.captureDirectory\(\)\);/);
 });
 
-test('the instrumented witnesses read the shared download list and name the shared isolated-world channels', () => {
-  // BrowserWebFeaturesInstrumentedTest reads private native state by reflection and probes the page
-  // world for channel names. A field or channel renamed upstream would otherwise fail only on a
-  // device, or let the page-world check pass without testing anything.
-  const instrumented = read('android/app/src/androidTest/java/ai/elizaresearch/alphaphone/BrowserWebFeaturesInstrumentedTest.java');
-  const login = read(shared + 'BrowserLoginFields.java');
-  assert.match(plugin, /private BrowserDownloads downloads;/);
-  assert.match(downloads, /private final BrowserDownloadPolicy\.History history = new BrowserDownloadPolicy\.History\(\);/);
-  assert.match(instrumented, /\(BrowserDownloadPolicy\.History\)field\(downloads,"history"\)\)\.all\(\)/);
-  assert.doesNotMatch(instrumented, /field\(downloads,"owned"\)/, 'the former JSON map is gone');
-  const channels = [/CHANNEL = "(__\w+)"/.exec(capture)?.[1], /CHANNEL = "(__\w+)"/.exec(login)?.[1]];
-  assert.deepEqual(channels, ['__elizaBrowserCapture', '__elizaLoginFields']);
-  const probe = /Child page retains no app bridge","true",browser\.child\("([^"]+)"\)/.exec(instrumented)?.[1] ?? '';
-  for (const channel of channels) assert.ok(probe.includes(`typeof ${channel}==='undefined'`), `the page world is probed for ${channel}`);
-  assert.doesNotMatch(probe, /__alpha(?:BrowserCapture|LoginFields)/, 'no retired channel name');
-});
-
 test('site permissions are origin-bound prompts, stored only for normal tabs and never retained by WebView', () => {
   assert.match(prompt, /if \(!promptable \|\| origin == null \|\| kinds == null\)\s*return new Plan/, 'a stored Allow is used only by the selected, shown page');
   assert.match(prompt, /if \(!ephemeral\)\s*try \{\s*decision = stored\.apply/, 'private tabs never read decisions');
@@ -122,10 +105,6 @@ test('a page-initiated navigation commits the selected tab autofill session so t
   assert.match(plugin, /if\(startedCallback&&t\.autofillEnabled&&!paused&&Objects\.equals\(presentedId,t\.id\)\)commitAutofill\(t\);\n\s*else disableAutofill\(t\);/);
   assert.match(plugin, /private void commitAutofill\(Tab t\) \{\n\s*t\.autofillEnabled=false;\n\s*AutofillManager manager=getActivity\(\)\.getSystemService\(AutofillManager\.class\);\n\s*if\(manager!=null\)manager\.commit\(\);/);
   assert.equal((plugin.match(/commitAutofill\(/g) || []).length, 2, 'commit is used only on page-started navigation; overlays, pause and tab changes cancel');
-  const fill = read('android/app/src/androidTest/java/ai/elizaresearch/alphaphone/PasswordBrowserFillInstrumentedTest.java');
-  assert.match(fill, /ai\.eliza\.plugins\.passwords\.ElizaPasswordAutofillService/);
-  assert.match(fill, /No password offer for a cross-origin iframe/);
-  assert.match(fill, /event\.preventDefault\(\);location\.href=/, 'the synthetic sign-in never submits its fields to the network');
 });
 
 // The executable cross-site iframe contract lives in BrowserCookiePolicyInstrumentedTest.

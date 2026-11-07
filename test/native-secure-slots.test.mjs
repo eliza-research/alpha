@@ -11,10 +11,10 @@ import {root,nativeSource} from './fixtures/jvm-tools.mjs';
 
 const source=readFileSync(nativeSource('AlphaConnectionPlugin.java'),'utf8');
 const credentialStore=readFileSync(nativeSource('AlphaCredentialStore.java'),'utf8');
-const slotsJava=readFileSync(nativeSource('RendererCredentialSlots.java'),'utf8');
+const rendererSlotsJava=readFileSync(nativeSource('RendererCredentialSlots.java'),'utf8');
 
 /** The compare-exchange allow-list: Alpha's slot patterns, applied by the shared SecureSlotPolicy. */
-function nativeAllowList(){
+function nativeAllowList(slotsJava=rendererSlotsJava){
  const method=source.slice(source.indexOf('@PluginMethod public void secureCompareExchange('),source.indexOf('@PluginMethod public void secureRemove('));
  assert.match(method,/if\(!RendererCredentialSlots\.compareExchangeAllowed\(name\)\|\|!call\.getData\(\)\.has\("expectedValue"\)/,'secureCompareExchange admits through the one shared allow-list');
  const list=slotsJava.match(/COMPARE_EXCHANGE = \{([\s\S]*?)\};/);assert.ok(list,'RendererCredentialSlots keeps one COMPARE_EXCHANGE list');
@@ -29,7 +29,7 @@ function nativeAllowList(){
  return {rules,admits:slot=>rules.some(rule=>rule.kind==='exact'?slot===rule.value:rule.value.test(slot))};
 }
 function nativeOnlyNamespaces(){
- const list=slotsJava.match(/NATIVE_NAMESPACES = \{([\s\S]*?)\};/);assert.ok(list);
+ const list=rendererSlotsJava.match(/NATIVE_NAMESPACES = \{([\s\S]*?)\};/);assert.ok(list);
  return [...list[1].matchAll(/"([^"]+)"/g)].map(match=>match[1]);
 }
 
@@ -39,7 +39,7 @@ const exported=new Map();
 for(const file of files)for(const match of readFileSync(file,'utf8').matchAll(/export const (\w+)\s*=\s*(['"])([^'"]+)\2/g))exported.set(match[1],match[3]);
 
 // A dynamic part (a SHA-256 hex digest, an owner or a scope) is sampled as 64 hex digits, which every
-// renderer derivation produces or the native prefix rule admits.
+// renderer derivation produces or a native pattern admits.
 const SAMPLE='a'.repeat(64);
 function evaluate(expression,text,depth=0){
  expression=expression.trim().replace(/^await\s+/,'');
@@ -128,13 +128,17 @@ function rendererSlots(){
  return found;
 }
 
-test('every renderer compare-exchange slot is admitted by the native allow-list and is not native-only',()=>{
- const {admits}=nativeAllowList(),namespaces=nativeOnlyNamespaces(),slots=rendererSlots();
+function assertRendererSlotsAdmitted(slotsJava){
+ const {admits}=nativeAllowList(slotsJava),namespaces=nativeOnlyNamespaces(),slots=rendererSlots();
  assert.ok(slots.length>=12,'the scan found the renderer call sites');
  for(const {slot,where} of slots){
   assert.ok(admits(slot),`${where}: ${slot} is admitted by AlphaConnectionPlugin.secureCompareExchange`);
   for(const namespace of namespaces)assert.ok(slot!==namespace&&!slot.startsWith(namespace+':'),`${where}: ${slot} is not in native-only namespace ${namespace}`);
  }
+}
+
+test('every renderer compare-exchange slot is admitted by the native allow-list and is not native-only',()=>{
+ assertRendererSlotsAdmitted();
 });
 
 test('the Notes draft and note-origin slots are named, used by the renderer and admitted natively',()=>{
@@ -151,12 +155,11 @@ test('the Notes draft and note-origin slots are named, used by the renderer and 
  assert.match(agent,/\[SECURE_NOTES_SLOT,captured\.saved\]:\[SECURE_NOTES_DRAFT_SLOT,captured\.draft\]/,'the recovery reset');
 });
 
-test('the parser fails closed: removing a slot from the allow-list is detected',()=>{
- const {rules}=nativeAllowList();
+test('the parser fails closed: removing a slot from the Java allow-list is detected',()=>{
  for(const slot of ['notes-draft:v1:device','note-origins:v1:device']){
-  const without=rules.filter(rule=>!(rule.kind==='exact'&&rule.value===slot));
-  const admits=value=>without.some(rule=>rule.kind==='exact'?value===rule.value:rule.kind==='prefix'?value.startsWith(rule.value):rule.value.test(value));
-  assert.equal(admits(slot),false,`without its rule ${slot} would be refused`);
+  const mutated=rendererSlotsJava.replace(new RegExp(`"${slot}",\\s*`),'');
+  assert.notEqual(mutated,rendererSlotsJava,`${slot} is listed in RendererCredentialSlots.COMPARE_EXCHANGE`);
+  assert.throws(()=>assertRendererSlotsAdmitted(mutated),{name:'AssertionError'},`without its rule ${slot} would be refused`);
  }
 });
 
