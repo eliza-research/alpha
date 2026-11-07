@@ -12,7 +12,9 @@ const cache=join(homedir(),'.gradle/caches/modules-2/files-2.1/org.json/json/202
 const cached=existsSync(cache)?readdirSync(cache).flatMap(hash=>readdirSync(join(cache,hash)).filter(name=>name==='json-20250517.jar').map(name=>join(cache,hash,name)))[0]:undefined;
 const jsonJar=process.env.ALPHA_JSON_JAR||cached;
 const sqlite=(()=>{try{execFileSync('sqlite3',['-version'],{stdio:'pipe',timeout:20000});return true;}catch{return false;}})();
-test('Android free/busy reader: chosen calendars only, provider availability, civil all-day dates, bounds',{skip:!jsonJar?'Pinned JVM JSON dependency unavailable':!sqlite?'sqlite3 shell unavailable':false},()=>{
+// On CI a missing tool fails the test rather than skipping it: this is the only run of the reader's SQL.
+const skip=process.env.CI?false:!jsonJar?'Pinned JVM JSON dependency unavailable':!sqlite?'sqlite3 shell unavailable':false;
+test('Android free/busy reader: chosen calendars only, provider availability, civil all-day dates, bounds',{skip},()=>{
  const root=resolve(import.meta.dirname,'..'),temporary=mkdtempSync(join(tmpdir(),'calendar-availability-reader-'));
  const java=process.env.JAVA_HOME||(process.platform==='darwin'?'/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home':'');const binary=name=>java?join(java,'bin',name):name;
  const shared=name=>join(root,'vendor/eliza/plugins/plugin-native-calendar',name);
@@ -21,7 +23,7 @@ test('Android free/busy reader: chosen calendars only, provider availability, ci
    join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarZones.java'),join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncFreshness.java'),join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarAvailabilityJournalResult.java'),
    shared('android/src/main/java/ai/eliza/plugins/calendar/read/CalendarSourceIdentity.java'),shared('android/src/main/java/ai/eliza/plugins/calendar/read/SelectedCalendarReader.java'),
    ...['content/ContentResolver.java','content/ContentUris.java','content/ContentValues.java','database/Cursor.java','net/Uri.java'].map(name=>shared('test/jvm/android/'+name)),
-   join(root,'test/fixtures/calendar-provider-jvm/android/provider/CalendarContract.java'),join(root,'test/fixtures/CalendarAvailabilityReaderTest.java')],{timeout:180000,stdio:'pipe'});
+   join(root,'test/fixtures/calendar-provider-jvm/android/provider/CalendarContract.java'),join(root,'test/fixtures/SqliteCalendarProvider.java'),join(root,'test/fixtures/CalendarAvailabilityReaderTest.java')],{timeout:180000,stdio:'pipe'});
   const output=execFileSync(binary('java'),['-cp',temporary+':'+jsonJar,'ai.elizaresearch.alphaphone.CalendarAvailabilityReaderTest'],{encoding:'utf8',timeout:300000,stdio:'pipe',maxBuffer:16*1024*1024});
   const [verdict,cases]=output.split('\n');
   assert.equal(verdict,'PASS calendar availability reader');

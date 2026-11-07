@@ -60,7 +60,7 @@ the renderer rejects any provider row that has a field other than `start`, `end`
 | --- | --- |
 | Executor and provider boundary | `apps/app/src/runtime/calendar-availability.ts` |
 | Review dialogs | `apps/app/src/prototype/calendar-availability-review.ts` |
-| Android provider read | Upstream `SelectedCalendarReader.availabilitySources` and `readAvailability` (`vendor/eliza/plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/read/SelectedCalendarReader.java`, elizaOS/eliza#35911, at the pin); the time-zone check is Alpha's `CalendarZones.java`, and Alpha's `CalendarSyncFreshness.java` refuses a selection with any non-`LOCAL` calendar before the upstream read |
+| Android provider read | Upstream `SelectedCalendarReader.availabilitySources` and `readAvailability` (`vendor/eliza/plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/read/SelectedCalendarReader.java`, elizaOS/eliza#35911, at the pin); the time-zone check is Alpha's `CalendarZones.java`, and Alpha's `CalendarSyncFreshness.java` refuses a selection with any non-`LOCAL` calendar before the upstream read. `CalendarSyncFreshness.readAvailability` is that whole provider read, in order; the plugin and the JVM test both call it |
 | Android bridge methods | `availabilitySources` and `readAvailability` in `AlphaCalendarPlugin.java` |
 | Android journal policy | `CalendarAvailabilityJournalResult.java`, called from `AlphaActionJournal.java` |
 | Browser provider read | `apps/app/src/browser/calendar.ts` |
@@ -75,7 +75,8 @@ the renderer rejects any provider row that has a field other than `start`, `end`
 - `test/calendar-availability-reader.test.mjs` compiles the pinned upstream reader
   (`SelectedCalendarReader`), Alpha's `CalendarZones`, `CalendarSyncFreshness` and the journal policy for the JVM and
   runs `test/fixtures/CalendarAvailabilityReaderTest.java`. The reader's exact projection,
-  selection and sort order are executed by the `sqlite3` shell over tables that use
+  selection and sort order are executed by the `sqlite3` shell (the shared
+  `test/fixtures/SqliteCalendarProvider.java`) over tables that use
   CalendarProvider's column names, in five time zones from UTC-11 to UTC+14. The rows
   then go through the renderer parser and the shared contract computation
   (`scripts/test-calendar-availability-provider-rows.ts`). This checks the reader's SQL

@@ -4,6 +4,7 @@ import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.database.Cursor;
 import android.provider.CalendarContract;
+import ai.eliza.plugins.calendar.read.SelectedCalendarReader;
 import org.json.JSONArray;
 
 /**
@@ -29,5 +30,17 @@ final class CalendarSyncFreshness {
     if(source==null||!source.moveToFirst()||!CalendarContract.ACCOUNT_TYPE_LOCAL.equals(source.getString(0))||source.moveToNext())throw new FreshnessUnknown();
    }
   }
+ }
+
+ /**
+  * AlphaCalendarPlugin.readAvailability's provider read, in the order it depends on: a changed
+  * source is reported as changed before freshness is judged, and an unknown-freshness source
+  * refuses the whole read before any instance is queried. Permission, foreground, unlock and
+  * zone checks stay in the plugin.
+  */
+ static JSONArray readAvailability(ContentResolver resolver,JSONArray selected,String start,String end,java.time.ZoneId zone)throws Exception {
+  if(selected!=null)SelectedCalendarReader.assertSourceIdentities(resolver,selected);
+  requireLocal(resolver,selected);
+  return SelectedCalendarReader.readAvailability(resolver,selected,start,end,zone);
  }
 }
