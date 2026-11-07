@@ -205,8 +205,9 @@ export function installLocalSpeechPlayback(Component: Shell) {
     const directReadAloud=developmentCartesiaVoiceEnabled;
     const cloud = selectVoiceRoute() === 'cloud'||directReadAloud;
     const available = cloud || createOnDeviceVoice() !== null;
+    const byId = new Map<unknown, Shell>(source.map((entry: Shell) => [entry.id, entry]));
     out.msgs = (out.msgs || []).map((message: Shell) => {
-      const entry = source.find((entry: Shell) => entry.id === message.id);
+      const entry = byId.get(message.id);
       if (!entry || entry.streaming || entry.interrupted || !entry.text || entry.text !== message.text || typeof entry.id !== 'string') return message;
       const visibleText = typeof message.displayText === 'string' ? message.displayText : entry.text;
       const selected = state?.id === entry.id;

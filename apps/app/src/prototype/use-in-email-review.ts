@@ -49,8 +49,10 @@ export function installUseInEmailReview(Component: Shell, views: Record<string, 
     let review = reviews.get(this);
     // Leaving Inbox or the conversation, locking the phone, or losing the reply ends the review without inserting.
     if (review && (!inInbox || !unlocked(state) || !['sheet', 'full'].includes(state.chat) || !source.some((row: Shell) => row.id === review!.id && row.text === review!.text))) { reviews.delete(this); review = undefined; }
-    out.msgs = (out.msgs || []).map((message: Shell, index: number) => {
-      const entry = source[index];
+    // Rendered rows are the newest window of the source, so match them by id, not position.
+    const byId = new Map<unknown, Shell>(source.map((row: Shell) => [row.id, row]));
+    out.msgs = (out.msgs || []).map((message: Shell) => {
+      const entry = byId.get(message.id);
       if (!inInbox || !message.messageActionsRole || !eligible(entry) || entry.text !== message.text) return message;
       // The actions menu closes as the review opens; closing the review returns focus to the reply.
       return { ...message, canUseInEmail: true, useInEmail: () => { message.closeMessageActions?.({ detail: 1 }); open(this, entry); } };

@@ -5095,6 +5095,9 @@ var BASE = {
   charName: ALPHA_PRODUCT.identity.characterName, vs: {}, secure: false, stack: [], toastUndo: false, drawer: false, drawerQ: "",
   msgs: []
 };
+// A long conversation renders only its newest rows: enough for the closed bar, a page once chat
+// opens, and another page each time the owner scrolls to the top of what is shown.
+var CHAT_CLOSED_ROWS = 20, CHAT_PAGE_ROWS = 100;
 
 class Component extends DCLogic {
   constructor(props) {
@@ -5107,17 +5110,42 @@ class Component extends DCLogic {
     this.G = {}; this.I = {};
     var self = this;
     this.clock = setInterval(function () { self.setState({ now: Date.now() }); }, 15000);
+    this.chatWindowScroll = function (event) { self.growChatWindow(event.target); };
+    document.addEventListener("scroll", this.chatWindowScroll, true);
+    this.chatWindowCommitted = this.chatWindowRows;
     this.preset(this.props.initial || "boot");
+  }
+  transcriptWindow(msgs, open) {
+    var key = msgs.length ? msgs[0].id : null;
+    if (key !== this.chatWindowKey) { this.chatWindowKey = key; this.chatWindowSize = CHAT_PAGE_ROWS; }
+    var size = open ? this.chatWindowSize || CHAT_PAGE_ROWS : CHAT_CLOSED_ROWS;
+    this.chatWindowRows = Math.min(size, msgs.length);
+    return msgs.length > size ? msgs.slice(-size) : msgs;
+  }
+  growChatWindow(list) {
+    if (!list || !list.matches || !list.matches("[data-alpha-transcript]") || list.scrollTop > 40) return;
+    var S = this.S(), rows = this.chatWindowRows || 0;
+    // Grow once per page: until the larger window renders, rows stays below the size.
+    if (!["sheet", "full"].includes(S.chat) || rows < (this.chatWindowSize || CHAT_PAGE_ROWS) || S.msgs.length <= rows) return;
+    this.chatWindowSize = rows + CHAT_PAGE_ROWS;
+    this.setState({});
   }
   getSnapshotBeforeUpdate(_props, previous) {
     var list = document.querySelector("[data-alpha-transcript]");
     if (!list) { this.chatScrollSnapshot = null; return null; }
-    var state = this.S(), rows = Array.from(list.querySelectorAll("[data-alpha-message-id]"));
+    var state = this.S();
+    var wasOpen = ["sheet", "full"].includes(previous.chat), isOpen = ["sheet", "full"].includes(state.chat);
+    // A closed chat is not being read: skip measuring rows. When a drag opens the window, keep
+    // the newest row where it was.
+    if (!wasOpen && !isOpen) {
+      this.chatScrollSnapshot = this.chatWindowRows !== this.chatWindowCommitted ? { list: list, fromBottom: list.scrollHeight - list.scrollTop } : null;
+      return null;
+    }
+    var rows = Array.from(list.querySelectorAll("[data-alpha-message-id]"));
     var bounds = list.getBoundingClientRect(), scale = bounds.height / list.clientHeight || 1;
     var anchor = rows.find(function (row) { return row.getBoundingClientRect().bottom >= bounds.top; });
     var oldUser = (previous.msgs || []).filter(function (m) { return m.from === "user"; }).at(-1);
     var newUser = state.msgs.filter(function (m) { return m.from === "user"; }).at(-1);
-    var wasOpen = ["sheet", "full"].includes(previous.chat), isOpen = ["sheet", "full"].includes(state.chat);
     var newTurn = state.typing && newUser && newUser.id !== oldUser?.id;
     var atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 80 && window.getSelection()?.isCollapsed !== false;
     var reading = { anchor: anchor?.getAttribute("data-alpha-message-id"), offset: anchor ? (anchor.getBoundingClientRect().top - bounds.top) / scale : 0 };
@@ -5134,6 +5162,8 @@ class Component extends DCLogic {
     if (prev && prev.initial !== this.props.initial) this.preset(this.props.initial || "boot");
     this.syncShadeFocus();
     var list = document.querySelector("[data-alpha-transcript]"), saved = this.chatScrollSnapshot;
+    this.chatWindowCommitted = this.chatWindowRows;
+    if (list && saved && saved.list === list && saved.fromBottom !== undefined) list.scrollTop = list.scrollHeight - saved.fromBottom;
     if (!list || !["sheet", "full"].includes(this.S().chat)) return;
     if (this.chatScrollElement !== list && typeof ResizeObserver !== "undefined") {
       this.chatScrollObserver?.disconnect(); this.chatScrollElement = list;
@@ -5157,6 +5187,7 @@ class Component extends DCLogic {
   }
   componentWillUnmount() {
     this.chatScrollObserver?.disconnect();
+    document.removeEventListener("scroll", this.chatWindowScroll, true);
     clearInterval(this.clock); clearInterval(this.vI);
     var G = this.G || {}; Object.keys(G).forEach(function (k) { G[k].forEach(clearTimeout); });
     var I = this.I || {}; Object.keys(I).forEach(function (k) { I[k].forEach(clearInterval); });
@@ -5584,7 +5615,8 @@ class Component extends DCLogic {
       } };
     });
 
-    var msgs = S.msgs.map(function (m) {
+    // A drag from the bar or pill is opening chat, so it gets the open window too.
+    var msgs = this.transcriptWindow(S.msgs, panelOpen || (isOn && !!this.chatMotion)).map(function (m) {
       var c = m.card || {}; var t = c.type;
       return {
         id: m.id, text: m.text, displayText: m.text, hasCalendarText: true, calendarReviews: [], mapsCards: [], hasMapsChoice: false, mapsChoices: [], isUser: m.from === "user", isAgent: m.from === "agent", c: c,
