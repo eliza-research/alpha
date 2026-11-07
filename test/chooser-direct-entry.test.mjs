@@ -84,7 +84,7 @@ async function inDom(run){
  const {createRoot}=await import('react-dom/client');const root=createRoot(dom.window.document.getElementById('root'));
  const document=dom.window.document,button=name=>[...document.querySelectorAll('button')].find(item=>item.textContent===name);
  const cancelled=[];
- const [OwnKeyForm,OwnProviderChoice]=new Function('React','useRef','useState','useEffect','Capacitor','browserCloudResidentEnabled','connectionController','OWN_KEY_CHECKING',ownSource+';return [OwnKeyForm,OwnProviderChoice];')(React,React.useRef,React.useState,React.useEffect,{isNativePlatform:()=>true},false,{cancel(){cancelled.push('cancel check');}},'Checking key…');
+ const [OwnKeyForm,OwnProviderChoice]=new Function('React','useRef','useState','useEffect','Capacitor','browserCloudResidentEnabled','connectionController','OWN_KEY_CHECKING','ownVoiceOnPhone',ownSource+';return [OwnKeyForm,OwnProviderChoice];')(React,React.useRef,React.useState,React.useEffect,{isNativePlatform:()=>true},false,{cancel(){cancelled.push('cancel check');}},'Checking key…',()=>true);
  try{await run({document,window:dom.window,root,button,OwnKeyForm,OwnProviderChoice,cancelled});}
  finally{await act(()=>root.unmount());dom.window.close();for(const [key,value] of Object.entries(previous)){if(value)Object.defineProperty(globalThis,key,value);else delete globalThis[key];}}
 }

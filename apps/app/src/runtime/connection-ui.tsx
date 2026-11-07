@@ -38,7 +38,7 @@ import {developmentCloudKey} from '../browser/development-cloud';
 import {DevelopmentCloudSetup} from '../browser/development-cloud-ui';
 import {developmentCredential,developmentJournal,authorDevelopmentAction} from '../browser/development-actions';
 import {browserDevProfile as devProfileQuery} from '../browser/dev-profile';
-import {testMocksEnabled,devSurfacesEnabled,privateLocalPreviewEnabled} from '../build-flags';
+import {cloudRuntimeEnabled,testMocksEnabled,devSurfacesEnabled,privateLocalPreviewEnabled} from '../build-flags';
 import {developmentBridge,developmentName,developmentReply,saveDevelopmentReply} from '../browser/development-connection';
 import {Capacitor} from '@capacitor/core';
 import {personalIntentDocument,type PersonalIntent} from './cloud-personal-intent';
@@ -1535,6 +1535,8 @@ const aiOffMessage = () => `Your agent is running. Sign in to ${cloudServiceName
 /** Provider-change outcomes are short receipts shown by the phone's toast, never left as a status. */
 function connectionToast(message: string) { window.dispatchEvent(new CustomEvent('alpha:connection-toast', { detail: message })); }
 export const OWN_KEY_CHECKING = 'Checking key…';
+/** Own keys without a Cartesia key keep voice on this phone; the Cloud variant and test-mocks builds have no on-device route, so voice is off. */
+const ownVoiceOnPhone = () => !cloudRuntimeEnabled && !testMocksEnabled;
 const OWN_KEY_BUSY = 'Alpha is busy. Try again in a moment.';
 const signInProbeMessage = (environment: CloudEnvironment) => `Checking ${cloudServiceName(environment)} sign-in…`;
 const pairingRetired = () => `Pairing is unavailable. Your agent runs on this device; sign in to ${cloudServiceName(cloud.environment)} for inference.`;
@@ -3688,7 +3690,7 @@ function OwnKeyForm({busy,replying=false,saving,error,onSave,onCancel,idleCancel
  return <form className="alpha-own-keys" aria-label="Own API keys" onSubmit={event=>{event.preventDefault();const key=ai.current?.value||'',voice=speech.current?.value||'';void onSave(key,voice||undefined);}}>
   <label>Cerebras API key<input ref={ai} type="password" autoComplete="off" autoCapitalize="none" spellCheck={false} required disabled={busy} aria-invalid={(!!error&&!voiceError)||undefined} aria-describedby={error&&!voiceError?'own-keys-error':undefined}/></label>
   <label>Cartesia API key (optional)<input ref={speech} type="password" autoComplete="off" autoCapitalize="none" spellCheck={false} disabled={busy} aria-invalid={voiceError||undefined} aria-describedby={voiceError?'own-keys-error':undefined}/></label>
-  <p className="alpha-own-keys-note">Cerebras receives your prompts. Cartesia, if added, is used for voice and receives recordings and reply text; without it voice stays on this phone.{native?'':' Keys last for this session only.'}</p>
+  <p className="alpha-own-keys-note">Cerebras receives your prompts. Cartesia, if added, is used for voice and receives recordings and reply text; without it voice {ownVoiceOnPhone()?'stays on this phone':'is off'}.{native?'':' Keys last for this session only.'}</p>
   {error&&<p id="own-keys-error" role="alert" className="alpha-connection-error">{error}</p>}
   <div className="alpha-form-actions">
    <button className="alpha-btn alpha-btn--primary" disabled={busy||replying} aria-busy={saving||undefined}>{saving?OWN_KEY_CHECKING:'Save and use own keys'}</button>
@@ -3716,7 +3718,7 @@ function OwnProviderChoice({heading,busy,replying=false,saving,status,statusUnav
    <button type="button" disabled={busy} aria-pressed={!switching&&(own||editing)} onClick={()=>{setSwitching(false);if(!own){onDismissError();setEditing(true);}}}>Own API keys</button>
   </div>
   {switching&&<div className="alpha-provider-confirm"><p>{signedIn?'Switch to Cloud? Your own keys will be removed.':'Switch to Cloud? Your keys will be removed and you’ll sign in next.'}</p><div className="alpha-form-actions"><button type="button" className="alpha-btn alpha-btn--primary" disabled={busy||replying} onClick={()=>{setSwitching(false);void onCloud();}}>Switch to Cloud</button><button type="button" className="alpha-btn alpha-btn--text alpha-btn--quiet" disabled={busy} onClick={()=>setSwitching(false)}>Cancel</button></div></div>}
-  {own&&!editing&&!switching&&<div className="alpha-provider-own"><p>{status.voiceConfigured?'Cerebras · Voice: Cartesia':'Cerebras · Voice on this phone'}</p><button type="button" className="alpha-btn alpha-btn--secondary" disabled={busy} onClick={()=>{onDismissError();setEditing(true);}}>Change keys</button></div>}
+  {own&&!editing&&!switching&&<div className="alpha-provider-own"><p>{status.voiceConfigured?'Cerebras · Voice: Cartesia':ownVoiceOnPhone()?'Cerebras · Voice on this phone':'Cerebras · Voice off'}</p><button type="button" className="alpha-btn alpha-btn--secondary" disabled={busy} onClick={()=>{onDismissError();setEditing(true);}}>Change keys</button></div>}
   {editing&&<OwnKeyForm busy={busy} replying={replying} saving={saving} error={error} onSave={onSave} onCancel={()=>{setEditing(false);onDismissError();}}/>}
   {!editing&&error&&<p role="alert" className="alpha-connection-error">{error}</p>}
  </section>;
