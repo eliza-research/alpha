@@ -45,11 +45,13 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
   const dropPlane=()=>{++mapGeneration;mapObserver?.disconnect();mapObserver=undefined;mapFailed=false;plane?.destroy();plane=undefined;planeElement=undefined;planeBasemap=undefined;};
   const navigationVoice=new NavigationVoice(error=>screen.notify((error instanceof Error?error.message+' ':'')+'Voice guidance paused. Tap Enable voice guidance to retry.'));
   const background=new BackgroundNavigation(registerPlugin<NavigationBridge>('AlphaMapsTransport'),()=>Capacitor.isNativePlatform());
+  // A Cloud read already made or under way for this account is not repeated: a second read would
+  // uninstall the provider an open Maps search is using. An account change retires it first (cloud-maps.ts).
+  const readCloudMaps = () => { const read = cloudMapsDiagnostics(); return read.configured && !read.error ? Promise.resolve() : initializeCloudMaps(); };
   const screen: MapsScreenController = new MapsScreenController({
     connection: mapsConnection,
     onConnectionChange: onMapsConnectionChange,
-    // A Cloud read already made or under way for this account (keepCloudMapsCoverage below) is not repeated.
-    initialize: () => { if (regionalMapsConfigured) return initializeRegionalMaps(); const read = cloudMapsDiagnostics(); return read.configured && !read.error ? Promise.resolve() : initializeCloudMaps(); },
+    initialize: () => regionalMapsConfigured ? initializeRegionalMaps() : readCloudMaps(),
     diagnostics: () => regionalMapsConfigured ? regionalDiagnostics() : cloudMapsDiagnostics(),
     coverage: () => {
       const region=regionalMap();
@@ -274,7 +276,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     enabled:()=>!regionalMapsConfigured&&!shell?.props?.assistantSurface&&!document.documentElement.classList.contains('alpha-assistant-surface'),
     ready:()=>!!connectionController.getSnapshot().session,
     account:()=>connectionController.getCloudClient(),
-    initialize:()=>initializeCloudMaps(),
+    initialize:readCloudMaps,
     onChange:listener=>connectionController.subscribe(listener),
   });
   // Screen-off navigation keeps its voice; everything else retires shared and spoken output.
