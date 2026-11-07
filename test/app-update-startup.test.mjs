@@ -1,15 +1,16 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {supportsAppUpdateStartup,waitForAppUpdateStartup} from '../apps/app/src/runtime/app-update-startup.ts';
+import {supportsAppUpdateStartup,waitForAppUpdateStartup} from '../.eliza/client-features/packages/ui/src/state/app-update-gate.ts';
 
 const activationId = '11111111-2222-4333-8444-555555555555';
 const bridgeId = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
 const other = '99999999-2222-4333-8444-555555555555';
 
 test('startup probes the journal only for hosts that advertise the bridge method', () => {
-  assert.equal(supportsAppUpdateStartup(undefined), false);
-  assert.equal(supportsAppUpdateStartup([{name:'AlphaDevice',methods:[{name:'installUpdate'}]}]), false);
-  assert.equal(supportsAppUpdateStartup([{name:'AlphaDevice',methods:[{name:'updateState'}]}]), true);
+  assert.equal(supportsAppUpdateStartup(undefined,'AlphaDevice'), false);
+  assert.equal(supportsAppUpdateStartup([{name:'AlphaDevice',methods:[{name:'installUpdate'}]}],'AlphaDevice'), false);
+  assert.equal(supportsAppUpdateStartup([{name:'OtherDevice',methods:[{name:'updateState'}]}],'AlphaDevice'), false);
+  assert.equal(supportsAppUpdateStartup([{name:'AlphaDevice',methods:[{name:'updateState'}]}],'AlphaDevice'), true);
 });
 
 test('an unmounted WebView acknowledges its own preparation and waits through uncertain status', async () => {

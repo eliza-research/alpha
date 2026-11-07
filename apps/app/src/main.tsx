@@ -6,7 +6,7 @@ import {installCanonicalCalendarDrafts} from './prototype/canonical-calendar-dra
 import {installAgentCalendarAdapter,deviceCalendarScope} from './prototype/agent-calendar-adapter';
 import {Capacitor} from '@capacitor/core';
 import {registerPlugin} from './platform-plugins';
-import {holdAppUpdateStartup,supportsAppUpdateStartup,watchMountedAppUpdates} from './runtime/app-update-startup';
+import {holdAppUpdateStartup,supportsAppUpdateStartup,watchMountedAppUpdates} from '../../../.eliza/client-features/packages/ui/src/state/app-update-gate';
 import {ownerReminderNotifications} from './runtime/owner-reminder-notification-port';
 import {installCalendarApprovalAdapter} from './prototype/calendar-approval-adapter';
 import {bindBrowserDeletionOwner} from './runtime/deletion-owner';
@@ -317,14 +317,19 @@ async function prepareMountedUpdate(activationCurrent: () => boolean) {
   return reconnect;
 }
 let nativeAppUpdateGate: Promise<void> | undefined;
+const appUpdatePresentation = {
+  dialogClass: 'alpha-update-startup', dialogLabel: 'App update',
+  pendingLabel: 'Updating Alpha…', continueLabel: 'Continue update',
+  navigationEvents: ['alpha-back', 'launcher-home'],
+};
 async function mountPhone() {
   const capacitor = Capacitor as typeof Capacitor & {PluginHeaders?:unknown};
-  if (isAndroid && supportsAppUpdateStartup(capacitor.PluginHeaders)) {
+  if (isAndroid && supportsAppUpdateStartup(capacitor.PluginHeaders, 'AlphaDevice')) {
     nativeAppUpdateGate ??= (async () => {
       const device = registerPlugin<Parameters<typeof watchMountedAppUpdates>[0]>('AlphaDevice');
-      await holdAppUpdateStartup(device);
+      await holdAppUpdateStartup(device, appUpdatePresentation);
       // If subscription fails, Android still requires this WebView's receipt and refuses to commit.
-      await watchMountedAppUpdates(device, prepareMountedUpdate, () => shell?.toast('Finish your changes, then try updating again.')).catch(() => {});
+      await watchMountedAppUpdates(device, appUpdatePresentation, prepareMountedUpdate, () => shell?.toast('Finish your changes, then try updating again.')).catch(() => {});
     })();
     await nativeAppUpdateGate;
   }
