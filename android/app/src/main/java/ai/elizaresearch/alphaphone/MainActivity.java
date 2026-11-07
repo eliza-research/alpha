@@ -56,7 +56,8 @@ public class MainActivity extends BridgeActivity {
   return RendererRecoveryBudget.currentHome(held, resolved, getPackageName(), startedAsHome);
  }
  /**
-  * The native escape view after the recovery budget is used up while Alpha is HOME. Built in code:
+  * The native escape view while Alpha is HOME, after the recovery budget is used up or when the
+  * System WebView cannot start. Built in code:
   * it needs no page, no bridge and no layout resource. Each Settings button opens a stock Settings
   * activity, never one of Alpha's own.
   */
@@ -80,7 +81,7 @@ public class MainActivity extends BridgeActivity {
   if (settings != null) addEscapeButton(panel, "Open Android Settings", () -> openSettings(settings));
   if (home != null) addEscapeButton(panel, "Choose Home app", () -> openSettings(home));
   setContentView(panel);
-  android.util.Log.w("AlphaRenderer", "Renderer recovery budget used up while HOME; showing the native escape view");
+  android.util.Log.w("AlphaRenderer", "No working renderer while HOME; showing the native escape view");
  }
  private void addEscapeButton(android.widget.LinearLayout panel, String label, Runnable action) {
   android.widget.Button button = new android.widget.Button(this);
@@ -320,9 +321,11 @@ public class MainActivity extends BridgeActivity {
   AlphaCanonicalNotifications.captureTap(this,getIntent());
   super.onCreate(state);
   // Capacitor displays its no-WebView fallback without creating a bridge when
-  // the system provider cannot initialize. Preserve that screen and lifecycle.
+  // the system provider cannot initialize. Preserve that screen and lifecycle, except while Alpha is
+  // HOME: that fallback has no way out, and the native escape view needs no WebView.
   if (getBridge() == null) {
-   android.util.Log.e("AlphaRenderer", "System WebView unavailable; retaining Capacitor fallback");
+   android.util.Log.e("AlphaRenderer", "System WebView unavailable");
+   if (showsHome()) showRendererEscape();
    return;
   }
   getBridge().addWebViewListener(rendererRecovery);
