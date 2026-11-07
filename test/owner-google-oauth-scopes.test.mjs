@@ -86,7 +86,7 @@ test("read state is unavailable unless inbox-v1/capabilities advertises readStat
   const sites = [...adapter.matchAll(/setRead\(/g)].length;
   const gated = [...adapter.matchAll(/capabilities\(\)\?\.readState/g)].length;
   assert.ok(sites >= 3 && gated >= 4, `expected the readState gate at each setRead entry point (setRead ${sites}, gates ${gated})`);
-  assert.match(adapter, /!provider\.capabilities\(\)\?\.readState\) \{ if \(explicit\) api\?\.toast\('This account cannot change read state here\. Nothing was changed\.'\); return; \}/);
+  assert.match(adapter, /!provider\.capabilities\(\)\?\.readState\) \{ if \(explicit\) api\?\.toast\("Can't change read state for this account\."\); return; \}/);
   assert.match(adapter, /canToggleRead: !!provider\.capabilities\(\)\?\.readState&&/);
 });
 
