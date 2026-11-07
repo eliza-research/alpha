@@ -4,8 +4,9 @@
  *
  * The recording has no length limit. The native recorder (AlphaNoteRecorder) writes it as
  * finished segments of under 30 s, so a crash keeps every finished segment
- * (CrashKeepsAudio). Each finished segment is transcribed in order while recording goes on
- * (TranscriptKeepsUp), with whichever route is selected; every route accepts a segment, since
+ * (CrashKeepsAudio). Each finished segment is transcribed in order while recording goes on and
+ * Notes is shown (TranscriptKeepsUp); segments recorded while it is hidden (screen off, another
+ * view) are transcribed when it is shown again, or at Done. Any route the user selected is used; every route accepts a segment, since
  * each is under the on-device window and the 60 s request bound of the paired and Cloud
  * routes. The transcript is always a prefix of the audio (TranscriptPrefixOfAudio). Only
  * Done, Discard, low storage or a microphone error end a recording (NoLengthLimit).

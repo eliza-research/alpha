@@ -180,7 +180,9 @@ before numbers are captured on-device in phase 0. This review doesn't claim them
 - Paired and Cloud routes upload in 55 s chunks, since those servers cap one request at
   60 s. There's no user-visible limit on any route.
 - Recording continues with the screen off, in a foreground service with a notification,
-  as Recorder apps do.
+  as Recorder apps do. As built, segments are transcribed while Notes is shown; segments
+  recorded with Notes hidden are transcribed when it is shown again, or at Done (spec
+  notes-view `shown`, AsrWhileHidden = FALSE). Native background transcription is open work.
 
 ### Data model
 - Add `folderId` to the note record. Folders are a new `notes-folders:v1:device` slot.
