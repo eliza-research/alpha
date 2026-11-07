@@ -20,6 +20,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * selected-document capabilities. */
 @CapacitorPlugin(name="AlphaFiles", permissions={@Permission(alias="legacyStorage",strings={android.Manifest.permission.READ_EXTERNAL_STORAGE,android.Manifest.permission.WRITE_EXTERNAL_STORAGE})})
 public class AlphaFilesPlugin extends Plugin {
+ @Override @PluginMethod public void requestPermissions(PluginCall call) { LateLaunch.ask(call, () -> super.requestPermissions(call)); }
  /** Installed name of the preference that records the chosen tree. */
  static final String PREF="alpha-files-tree";
  private final ExecutorService worker=Executors.newSingleThreadExecutor();
