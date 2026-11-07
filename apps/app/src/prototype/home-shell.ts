@@ -3,7 +3,7 @@ import type {FavoritesStore, InstalledApp, LauncherBridge} from '@elizaos/capaci
 import {appKey} from '@elizaos/capacitor-system/launcher';
 import {createMobileShellLauncher, mobileShellIconUrl, MobileHomeScreen, type MobileHomeEntry, type MobileHomeTile} from '@elizaos/ui/mobile-shell';
 import {ALPHA_PRODUCT, alphaViews} from '../product/alpha-product';
-import {AppsDrawer, HOLD_MS, SLOP, appsDrawerEntries} from './apps-drawer';
+import {InstalledAppsGridDrawer, HOLD_MS, SLOP, appsDrawerEntries} from '../../../../.eliza/client-features/packages/ui/src/mobile-shell/InstalledAppsGridDrawer';
 import {createInlineModal} from '../runtime/inline-modal';
 type Bag = Record<string, any>;
 
@@ -219,8 +219,11 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
     });
     const homeEditStyle = createElement('style', null, HOME_EDIT_CSS);
     const appInfo = options.appInfo;
-    const allAppsDrawer = showDrawer ? createElement(AppsDrawer, {
+    const allAppsDrawer = showDrawer ? createElement(InstalledAppsGridDrawer, {
       launcher, builtinPrefix: prefix, query: String(S.drawerQ || ''), glyphs,
+      classes: {title: 'serif', iconButton: 'ib', scroller: 'scr', grid: 'alpha-fit-grid'},
+      gridAttributes: {'data-alpha-apps-grid': ''},
+      'data-alpha-apps-drawer': '',
       onQuery: query => self.setState({...self.shellNavigate({type: 'drawer-query', query}), drawerMenu: null}),
       onClose: () => self.setState({...self.shellNavigate({type: 'drawer', open: false}), drawerMenu: null}),
       menu: drawerOpen ? openMenu(S) : null,

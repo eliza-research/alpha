@@ -100,6 +100,7 @@ export const CLIENT_FEATURE_PATHS = [
   'packages/ui/src/app-shell-pages.ts',
   'packages/ui/src/registry-host.ts',
   'packages/ui/src/mobile-shell/index.ts',
+  'packages/ui/src/mobile-shell/InstalledAppsGridDrawer.tsx',
   'packages/ui/src/mobile-shell/photos-view.ts',
   'plugins/plugin-files/src/browser/storage-model.ts',
   'plugins/plugin-files/src/browser/storage-volume.ts',
