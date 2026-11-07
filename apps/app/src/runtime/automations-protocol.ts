@@ -1,8 +1,9 @@
+import {reminderDeliveryLabel,reminderDue} from "../../../../.eliza/client-features/packages/ui/src/utils/reminder-presentation";
 import {formatSchedule} from '../../../../.eliza/client-features/packages/ui/src/utils/cron-format.ts';
 /** Alpha presentation over OG's canonical automation, ScheduledTask and LifeOps contracts.
  * No runner, mirroring, task storage or automatic execution lives in this client. */
-export type AutomationMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
-export type AutomationRequest = (path:string,method:AutomationMethod,body:unknown|undefined,signal:AbortSignal)=>Promise<unknown>;
+import type {AutomationsMethod} from './automations-route-policy.ts';
+export type AutomationRequest = (path:string,method:AutomationsMethod,body:unknown|undefined,signal:AbortSignal)=>Promise<unknown>;
 export type AutomationKind = 'workflow'|'prompt'|'schedule'|'reminder'|'device-reminder';
 type ObjectValue = Record<string,any>;
 export interface AutomationRow {
@@ -19,6 +20,11 @@ const text=(value:unknown):string=>typeof value==='string'?value:'';
 export function automationId(value:unknown):string {const id=text(value);if(!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$/.test(id)||id.includes('..'))throw Error('Automation identity is unavailable.');return id;}
 const list=(value:unknown):unknown[]=>{if(!Array.isArray(value))throw Error('Invalid automation list.');return value;};
 export class AutomationOutcomeError extends Error {readonly outcomeKnown=true;}
+// Since elizaOS/eliza #trigger-routes (pin 4557621650) the agent refuses PUT that enables a paused
+// trigger with 429 once its active-trigger limit is reached, before changing anything. A 429 alone
+// stays an unknown outcome (a proxy may answer 429 after the agent applied the write), so enable
+// re-reads the trigger: still paused means a known refusal, enabled means the write landed.
+export const AUTOMATION_LIMIT_MESSAGE='This automation was not enabled. The agent is at its limit of active automations or is busy; pause another automation or try again later.';
 /** Native datetime-local controls use the browser's zone; stored instants keep their zone. */
 export function automationLocalDateInput(stamp:string|number):string{const date=new Date(stamp);return Number.isFinite(date.getTime())?new Date(date.getTime()-date.getTimezoneOffset()*60000).toISOString().slice(0,16):'';}
 function localDate(value:string):Date{
@@ -28,10 +34,11 @@ function localDate(value:string):Date{
  if(expected.some((part,index)=>part!==actual[index])||date.getMilliseconds()!==Number((fields[7]||'').padEnd(3,'0')))throw Error('This local time does not exist. Choose another time.');
  return date;
 }
-const at=(value:unknown)=>{const stamp=Date.parse(text(value));return Number.isFinite(stamp)?new Date(stamp).toLocaleString():'';};
+/** One instant label for every list row ("Oct 29, 2026, 6:00 PM"), in the record's zone when it names a valid one. */
+export function automationWhen(stamp:string|number,zone?:string):string{const date=new Date(stamp);if(!Number.isFinite(date.getTime()))return '';const options:Intl.DateTimeFormatOptions={year:'numeric',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'};try{return date.toLocaleString(undefined,{...options,...(zone?{timeZone:zone}:{})});}catch{return date.toLocaleString(undefined,options);}}
 function schedule(value:unknown):string {
  const t=object(value);switch(t.triggerType??t.kind){
-  case 'once':return at(t.scheduledAtIso??t.atIso??t.dueAt)||'Once';
+  case 'once':return automationWhen(Date.parse(text(t.scheduledAtIso??t.atIso??t.dueAt)),text(t.timezone??t.tz).trim()||undefined)||'Once';
   case 'cron': {
    const expression=text(t.cronExpression??t.expression).trim(),description=expression?formatSchedule(expression):'';
    let zone=text(t.timezone??t.tz).trim();
@@ -61,7 +68,8 @@ function scheduled(value:unknown):AutomationRow {
 }
 function reminder(value:unknown):AutomationRow {
  const row=object(value),definition=object(row.definition),id=automationId(definition.id),occurrence=row.occurrence?object(row.occurrence):null;
- return {key:'reminder:'+id,id,kind:'reminder',title:text(definition.title)||'Reminder',description:text(definition.description),status:text(definition.status),enabled:definition.status==='active',source:'Agent reminder',schedule:schedule(definition.cadence),record:row,...(occurrence?{occurrenceId:automationId(occurrence.id)}:{})};
+ const presentation={definition:row.definition,occurrence:row.occurrence??null,latestAttempt:row.latestAttempt??null},due=reminderDue(presentation);
+ return {key:'reminder:'+id,id,kind:'reminder',title:text(definition.title)||'Reminder',description:text(definition.description),status:reminderDeliveryLabel(presentation),enabled:definition.status==='active',source:'Agent reminder',schedule:due?automationWhen(due,text(definition.timezone)||undefined):'No upcoming occurrence',record:row,...(occurrence?{occurrenceId:automationId(occurrence.id)}:{})};
 }
 export function automationIssue(source:AutomationIssue['source'],error:unknown):AutomationIssue {
  const status=error&&typeof error==='object'&&'status' in error?Number(error.status):0;
@@ -95,7 +103,17 @@ export class AutomationsProtocol {
   const result=object(await this.request(id?'/api/triggers/'+automationId(id):'/api/triggers',id?'PUT':'POST',request,signal)),trigger=object(result.trigger);automationId(trigger.id);
   if((id&&trigger.id!==id)||trigger.displayName!==title||trigger.instructions!==instructions||(!id&&trigger.enabled!==false))throw Error('Prompt save was not confirmed. Check this agent before saving again.');
  }
- async setPromptEnabled(id:string,enabled:boolean,signal:AbortSignal){const result=object(await this.request('/api/triggers/'+automationId(id),'PUT',{enabled},signal)),trigger=object(result.trigger);if(trigger.id!==id||trigger.enabled!==enabled)throw Error('Prompt state was not confirmed.');}
+ async setPromptEnabled(id:string,enabled:boolean,signal:AbortSignal){
+  let response:unknown;
+  try{response=await this.request('/api/triggers/'+automationId(id),'PUT',{enabled},signal);}
+  catch(error){
+   if(!enabled||!error||typeof error!=='object'||!('status' in error)||Number(error.status)!==429)throw error;
+   let current:ObjectValue;try{current=await this.prompt(id,signal);}catch{throw error;}
+   if(current.id===id&&current.enabled===true)return;
+   if(current.id===id&&current.enabled===false)throw new AutomationOutcomeError(AUTOMATION_LIMIT_MESSAGE);
+   throw error;
+  }
+  const result=object(response),trigger=object(result.trigger);if(trigger.id!==id||trigger.enabled!==enabled)throw Error('Prompt state was not confirmed.');}
  async deletePrompt(id:string,signal:AbortSignal){if(object(await this.request('/api/triggers/'+automationId(id),'DELETE',undefined,signal)).ok!==true)throw Error('Prompt deletion was not confirmed.');}
  async runPrompt(id:string,signal:AbortSignal){const result=object(await this.request('/api/triggers/'+automationId(id)+'/execute','POST',{},signal)),run=object(result.result);if(result.ok!==true||!['success','error','skipped'].includes(run.status))throw Error('Prompt execution was not confirmed.');if(run.status!=='success')throw new AutomationOutcomeError(text(run.error)||'The prompt did not run. Check its execution history.');return result;}
  async scheduledVerb(id:string,verb:ScheduledVerb,signal:AbortSignal):Promise<unknown>{
@@ -111,7 +129,7 @@ export class AutomationsProtocol {
  }
  async editReminder(row:AutomationRow,message:string,due:string,signal:AbortSignal){
   if(row.kind!=='reminder'||!message.trim())throw Error('Add a reminder message.');const definition=object(row.record.definition),payload:ObjectValue=definition.cadence?.kind==='once'&&definition.metadata?.ownerSurface==='OWNER_REMINDERS'&&text(definition.description).trim()?{description:message.trim()}:{title:message.trim()};
-  if(definition.cadence?.kind==='once'&&due&&due!==automationLocalDateInput(definition.cadence.dueAt)){const date=localDate(due);if(date.getTime()<=Date.now())throw Error('Choose a future time.');payload.cadence={...definition.cadence,dueAt:date.toISOString()};}
+  if(definition.cadence?.kind==='once'&&due&&due!==automationLocalDateInput(reminderDue({definition:row.record.definition,occurrence:row.record.occurrence??null,latestAttempt:row.record.latestAttempt??null})||definition.cadence.dueAt)){const date=localDate(due);if(date.getTime()<=Date.now())throw Error('Choose a future time.');payload.cadence={...definition.cadence,dueAt:date.toISOString()};}
   const result=object(await this.request('/api/lifeops/definitions/'+automationId(row.id),'PUT',payload,signal)),saved=object(result.definition);if(saved.id!==row.id||Object.entries(payload).some(([field,value])=>field!=='cadence'&&saved[field]!==value)||(payload.cadence&&saved.cadence?.dueAt!==payload.cadence.dueAt))throw Error('Reminder edit was not confirmed.');
  }
  async cancelReminder(id:string,signal:AbortSignal){const definition=object(object(await this.request('/api/lifeops/definitions/'+automationId(id),'PUT',{status:'archived'},signal)).definition);if(definition.id!==id||definition.status!=='archived')throw Error('Reminder cancellation was not confirmed.');}

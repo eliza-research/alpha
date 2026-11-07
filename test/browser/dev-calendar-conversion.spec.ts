@@ -1,3 +1,4 @@
+import {calendarEditorReady} from './calendar-draft-readiness';
 import {test,expect,type Page} from '@playwright/test';
 async function edit(page:Page,allDay=false){
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
@@ -33,7 +34,7 @@ test('cancelling a save waiting for the Calendar lock leaves the event unchanged
  const dialog=await edit(page);const before=await saved(page);
  await page.evaluate(()=>{(window as any).holdingCalendar=navigator.locks.request(JSON.stringify(['browser-document','alpha.browser.documents.v1','alpha.browser.calendar.v1']),()=>new Promise<void>(resolve=>{(window as any).releaseCalendar=resolve;}));});
  await expect.poll(()=>page.evaluate(()=>typeof (window as any).releaseCalendar)).toBe('function');
- await dialog.getByLabel('Event title',{exact:true}).fill('Must not save');await dialog.getByRole('button',{name:'Save event',exact:true}).click();await expect(dialog.getByRole('button',{name:'Save event',exact:true})).toBeDisabled();
+ await calendarEditorReady(dialog);await dialog.getByLabel('Event title',{exact:true}).fill('Must not save');await dialog.getByRole('button',{name:'Save event',exact:true}).click();await expect(dialog.getByRole('button',{name:'Save event',exact:true})).toBeDisabled();
  await dialog.getByRole('button',{name:'Cancel',exact:true}).click();expect(await page.evaluate(()=>(window as any).calendarEdit)).toEqual({status:'cancelled'});
  await page.evaluate(async()=>{(window as any).releaseCalendar();await (window as any).holdingCalendar;await navigator.locks.request(JSON.stringify(['browser-document','alpha.browser.documents.v1','alpha.browser.calendar.v1']),()=>{});});expect(await saved(page)).toEqual(before);
 });

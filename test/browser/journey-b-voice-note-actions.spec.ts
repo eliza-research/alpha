@@ -1,9 +1,11 @@
+import {openLegacyNotes} from './helpers/legacy-notes';
+import {openBrowserCalendar} from './helpers/browser-calendar';
 /*
  * Journey B / J02: Voice -> note -> calendar event and reminder, driven start to finish through
  * rendered controls in the browser build with the development agent profile.
  *
  * Loop covered in one test:
- *  1. Notes "Record and transcribe" -> Cloud transcript -> correct it -> "Save note".
+ *  1. Notes "Record and transcribe" -> Done -> Cloud transcript saved as a voice note.
  *  2. Reload, reopen the saved recording and "Read aloud" / "Stop reading".
  *  3. "Review transcript with Alpha" -> Send -> "Review summary note" -> "Save recording summary".
  *  4. Hand-offs from the note: "Review reminder draft" -> Calendar form -> Save (a reminder), and
@@ -44,7 +46,6 @@ import {localBrowserVoice} from './voice-fixture';
 
 test.setTimeout(420_000);
 
-const heard='Meeting: we agreed to book the venu for Friday and email the caterer.';
 const transcript='Meeting: we agreed to book the venue for Friday and email the caterer.';
 const summary='The team agreed to book the venue.';
 const actionText='Book the venue\nEmail the caterer';
@@ -58,11 +59,11 @@ const phoneContext=(page:Page)=>page.evaluate(async()=>JSON.parse(JSON.stringify
 const liveReminders=async(page:Page)=>(await reminders(page)).filter(r=>r.status!=='cancelled').map(r=>r.title).sort();
 const eventTitles=async(page:Page)=>(await events(page)).map(e=>e.title).sort();
 
-const ready=(page:Page)=>expect(page.getByRole('button',{name:'Settings',exact:true})).toBeVisible({timeout:90_000});
+const ready=async(page:Page,withNotes=false)=>{await expect(page.getByRole('button',{name:'Settings',exact:true})).toBeVisible({timeout:90_000});if(withNotes){await openLegacyNotes(page);await returnToApps(page);}await openBrowserCalendar(page);await returnToApps(page);};
 async function openDeviceActions(page:Page){
  await returnToApps(page);
  await page.getByRole('button',{name:'Settings',exact:true}).click();
- await page.getByRole('button',{name:'Agent connection',exact:true}).click();
+ await page.getByRole('button',{name:'Agent',exact:true}).click();
  await page.getByText('Development device actions',{exact:true}).click();
 }
 async function queueAction(page:Page,operation:unknown){
@@ -74,16 +75,20 @@ async function queueAction(page:Page,operation:unknown){
  await returnToApps(page);
 }
 async function openSavedRecording(page:Page){
- await page.getByRole('button',{name:'Notes',exact:true}).click();
+ await openLegacyNotes(page);
  await page.getByRole('button',{name:'Open Venue meeting',exact:true}).click();
  await expect(page.getByRole('button',{name:'Play recording',exact:true})).toBeVisible();
 }
-/** The Home agenda card opens the next upcoming item; Back then shows that item's Calendar day. */
-async function openTomorrowInCalendar(page:Page,titles:string){
+/** The retained browser provider is selected explicitly; Home's agenda uses Agent Calendar. */
+async function openHandoffDayInCalendar(page:Page,titles:string){
  await returnToApps(page);
- await page.getByRole('button',{name:new RegExp(`^Open calendar event: (${titles}),`)}).click();
- await expect(page.getByRole('button',{name:'Edit event',exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Back to calendar',exact:true}).last().click();
+ await openBrowserCalendar(page);
+ const event=(await events(page)).find(row=>new RegExp(`^(${titles})$`).test(row.title));
+ expect(event).toBeTruthy();
+ const date=new Date(event.begin);
+ const label=date.toLocaleDateString('en-US',{weekday:'long'})+' '+date.toLocaleDateString('en-US',{month:'long'})+' '+date.getDate();
+ await page.getByRole('button',{name:'Month view',exact:true}).click();
+ await page.getByRole('dialog',{name:'Choose calendar date',exact:true}).getByRole('button',{name:label,exact:true}).click();
  await expect(page.getByRole('region',{name:'Calendar timeline'})).toBeVisible();
 }
 
@@ -92,18 +97,18 @@ test('Journey B: recorded note is read aloud, summarized, and becomes an event a
  page.on('dialog',d=>{dialogs.push(d.message());void d.accept();});
  // Keep retained-audio playback silent; playback itself is real.
  await page.addInitScript(()=>{const play=HTMLMediaElement.prototype.play;HTMLMediaElement.prototype.play=function(){this.muted=true;return play.call(this);};});
- await page.goto('/?mode=dev');await ready(page);
+ await page.goto('/?mode=dev');await ready(page,true);
 
  // Development agent profile with the summary answer the reviewed recording question will receive.
  await page.getByRole('button',{name:'Settings',exact:true}).click();
- await page.getByRole('button',{name:'Agent connection',exact:true}).click();
+ await page.getByRole('button',{name:'Agent',exact:true}).click();
  await page.getByRole('textbox',{name:'Scripted reply'}).fill(JSON.stringify({summary,actions:actionText.split('\n')}));
  await page.getByRole('button',{name:'Save development reply'}).click();
  await page.getByRole('button',{name:'Connect development profile'}).click();
- await returnToApps(page);
+ await returnToApps(page);await openBrowserCalendar(page);await returnToApps(page);
 
  // ---- 1. Record, transcribe, correct, save ----
- await installCloudVoiceFixture(page,heard);
+ await installCloudVoiceFixture(page,transcript);
  await page.bringToFront();
  await page.evaluate(()=>{
   const ctx=new AudioContext(),osc=ctx.createOscillator(),gain=ctx.createGain(),sink=ctx.createMediaStreamDestination();gain.gain.value=.1;osc.connect(gain);gain.connect(sink);osc.start();
@@ -112,33 +117,25 @@ test('Journey B: recorded note is read aloud, summarized, and becomes an event a
   window.MediaRecorder=class extends Original{constructor(stream:MediaStream,options?:MediaRecorderOptions){super(stream,options);this.addEventListener('dataavailable',event=>{(window as any).recordedBytes+=event.data.size;});}};
   Object.defineProperty(navigator,'mediaDevices',{value:{getUserMedia:async()=>sink.stream},configurable:true});(window as any).fixture={ctx,osc};
  });
- await page.getByRole('button',{name:'Notes',exact:true}).click();
+ await openLegacyNotes(page);
  await page.getByRole('button',{name:'Record and transcribe',exact:true}).click();
- await page.getByRole('button',{name:'Start recording',exact:true}).click();
- await expect(page.getByRole('button',{name:'Stop recording',exact:true})).toBeVisible();
+ // The recorder starts at once; Done transcribes and saves one voice note (corrections happen in the note).
+ const recorder=page.locator('[data-alpha-subview="notes-recorder"]');
+ await expect(recorder).toHaveAttribute('data-recorder-state','recording');
  await expect.poll(()=>page.evaluate(()=>(window as any).recordedBytes)).toBeGreaterThan(0);
- await page.getByRole('button',{name:'Stop recording',exact:true}).click();
- await page.getByRole('button',{name:'Transcribe with Eliza Cloud',exact:true}).click();
- const reviewTranscript=page.getByRole('textbox',{name:'Review transcript',exact:true});
- await expect(reviewTranscript).toHaveValue(heard);
- expect(await page.evaluate(()=>(window as any).cloudVoiceFixture.transcriptions.length)).toBe(1);
- expect(await notes(page)).toHaveLength(0);
- await reviewTranscript.fill(transcript);
- await page.getByRole('button',{name:'Save note',exact:true}).click();
+ await recorder.getByRole('button',{name:'Done',exact:true}).click();
  await expect(page.getByRole('button',{name:'Play recording',exact:true})).toBeVisible();
  await page.getByRole('textbox',{name:'Title',exact:true}).fill('Venue meeting');
  await expect.poll(async()=>(await notes(page)).filter(n=>n.kind==='voice'&&n.title==='Venue meeting'&&n.body===transcript&&!!n.audio?.audioId).length).toBe(1);
  await page.evaluate(async()=>{const {ctx,osc}=(window as any).fixture;osc.stop();await ctx.close();});
 
- // ---- 2. Reload, reopen, read aloud ----
- await page.reload();await ready(page);
+ // ---- 2. Reload, reopen ----
+ await page.reload();await ready(page,true);
  await localBrowserVoice(page);
  await openSavedRecording(page);
  await expect(page.getByText(transcript,{exact:true}).first()).toBeVisible();
- // P-43: no Web Speech fallback. Without agent speech nothing is spoken and Read aloud stays available.
- await page.getByRole('button',{name:'Read aloud',exact:true}).click();
- await expect(page.getByRole('button',{name:'Read aloud',exact:true})).toBeVisible();
- await expect(page.getByRole('button',{name:'Stop reading',exact:true})).toHaveCount(0);
+ // Reading aloud is asked of Alpha; the voice note toolbar has no Read aloud button (PLAN.md section 3).
+ await expect(page.getByRole('button',{name:'Read aloud',exact:true})).toHaveCount(0);
  expect(await page.evaluate(()=>(window as any).voiceFixture.spoken as string[])).toEqual([]);
  const recorded=(await notes(page))[0];
 
@@ -212,13 +209,14 @@ test('Journey B: recorded note is read aloud, summarized, and becomes an event a
  // Queued and shown, but nothing runs before approval.
  expect(await liveReminders(page)).toEqual(['Book the venue']);
  await approveReminder.click();
- await expect(page.getByRole('button',{name:/^Completed Created reminder “Email the caterer”/})).toBeVisible();
+ await expect.poll(async()=>(await actions(page)).proposals.filter((p:any)=>p.payload.operation.type==='create_reminder').map((p:any)=>[p.state,p.receipt?.outcome])).toEqual([['completed','applied']]);
+ await expect(page.getByRole('button',{name:/^Message actions: Created reminder “Email the caterer”/}).first()).toBeVisible();
  expect(await liveReminders(page)).toEqual(['Book the venue','Email the caterer']);
  expect((await reminders(page)).find(r=>r.title==='Email the caterer')).toMatchObject({at:Date.parse(dueAt),status:'scheduled'});
 
  // ---- 5b. Agent path: reviewed calendar-create against the selected Calendar source ----
  await returnToApps(page);
- await page.getByRole('button',{name:'Calendar',exact:true}).click();
+ await openBrowserCalendar(page);
  await page.getByRole('button',{name:'New event',exact:true}).click();
  await expect.poll(async()=>(await phoneContext(page)).selectedObject?.kind).toBe('calendar-source');
  const source=(await phoneContext(page));
@@ -227,7 +225,7 @@ test('Journey B: recorded note is read aloud, summarized, and becomes an event a
  const calendarCreate={type:'calendar_create',source:{sourceId:source.selectedObject.id,sourceRevision:source.selectedObject.revision},fields:{title:'Venue booking call',description:'From the venue meeting note',location:'Main hall',start:eventStart,end:eventEnd,timeZone:eventZone}};
  await page.getByRole('button',{name:'Back to calendar',exact:true}).last().click();
  await queueAction(page,calendarCreate);
- await page.getByRole('button',{name:'Calendar',exact:true}).click();
+ await openBrowserCalendar(page);
  await page.getByRole('button',{name:'New event',exact:true}).click();
  await expect.poll(async()=>(await phoneContext(page)).selectedObject?.revision).toBe(calendarCreate.source.sourceRevision);
  await page.getByRole('button',{name:'Open conversation',exact:true}).click();
@@ -256,11 +254,12 @@ test('Journey B: recorded note is read aloud, summarized, and becomes an event a
  ]);
  expect(await eventTitles(page)).toEqual(['Venue walkthrough']);
  await calendarReview.getByRole('button',{name:'Confirm',exact:true}).click();
- await expect(page.getByRole('button',{name:/^Completed Created event “Venue booking call”/})).toBeVisible();
+ await expect.poll(async()=>(await actions(page)).proposals.filter((p:any)=>p.payload.operation.type==='calendar_create').map((p:any)=>[p.state,p.receipt?.outcome])).toEqual([['completed','applied']]);
+ await expect(page.getByRole('button',{name:/^Message actions: Created event “Venue booking call”/}).first()).toBeVisible();
  expect(await eventTitles(page)).toEqual(['Venue booking call','Venue walkthrough']);
 
  // ---- 6. Reload: exactly once each, with receipts ----
- await page.reload();await ready(page);
+ await page.reload();await ready(page,true);
  expect(await eventTitles(page)).toEqual(['Venue booking call','Venue walkthrough']);
  expect(await liveReminders(page)).toEqual(['Book the venue','Email the caterer']);
  expect(await reminders(page)).toHaveLength(2);
@@ -280,7 +279,7 @@ test('Journey B: recorded note is read aloud, summarized, and becomes an event a
  await page.getByRole('button',{name:'Close connection settings'}).click();
 
  // ---- 7a. Edit the event and the reminder through Calendar controls ----
- await openTomorrowInCalendar(page,'Book the venue|Venue walkthrough');
+ await openHandoffDayInCalendar(page,'Book the venue|Venue walkthrough');
  await page.getByRole('button',{name:/^Venue walkthrough,/}).click();
  await page.getByRole('button',{name:'Edit event',exact:true}).click();
  await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveValue('Venue walkthrough');
@@ -293,7 +292,7 @@ test('Journey B: recorded note is read aloud, summarized, and becomes an event a
  await page.getByRole('button',{name:'Open note Venue meeting',exact:true}).click();
  await expect(page.getByRole('button',{name:'Play recording',exact:true})).toBeVisible();
  await expect(page.getByText(transcript,{exact:true}).first()).toBeVisible();
- await openTomorrowInCalendar(page,'Book the venue|Venue walkthrough edited');
+ await openHandoffDayInCalendar(page,'Book the venue|Venue walkthrough edited');
  await page.getByRole('button',{name:/^Book the venue,/}).click();
  await expect(page.getByText('From note: Venue meeting',{exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Edit event',exact:true}).click();
@@ -302,14 +301,14 @@ test('Journey B: recorded note is read aloud, summarized, and becomes an event a
  await page.getByRole('button',{name:'Start later',exact:true}).click();
  await page.getByRole('button',{name:'Save event',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Book the venue edited',level:1})).toBeVisible();
- await page.reload();await ready(page);
+ await page.reload();await ready(page,true);
  expect(await eventTitles(page)).toEqual(['Venue booking call','Venue walkthrough edited']);
  expect((await events(page)).find(e=>e.title==='Venue walkthrough edited')).toMatchObject({id:handoffEvent.id,location:'Main hall',body:actionText,begin:handoffEvent.begin,end:handoffEvent.end});
  expect(await liveReminders(page)).toEqual(['Book the venue edited','Email the caterer']);
  expect((await reminders(page)).find(r=>r.title==='Book the venue edited')).toMatchObject({body:actionText,at:handoffReminder.at+15*60_000,status:'scheduled'});
 
  // ---- 7b. Delete the event and the reminder through Calendar controls ----
- await openTomorrowInCalendar(page,'Book the venue edited|Venue walkthrough edited');
+ await openHandoffDayInCalendar(page,'Book the venue edited|Venue walkthrough edited');
  await page.getByRole('button',{name:/^Venue walkthrough edited,/}).click();
  // One review step names the event; Cancel deletes nothing.
  const deleteReview=page.getByRole('dialog',{name:'Delete calendar event?'});
@@ -327,7 +326,7 @@ test('Journey B: recorded note is read aloud, summarized, and becomes an event a
  await page.getByRole('dialog',{name:'Delete reminder?',exact:true}).getByRole('button',{name:'Delete reminder',exact:true}).click();
  await expect.poll(()=>liveReminders(page),{timeout:15000}).toEqual(['Email the caterer']);
  await expect(page.getByRole('button',{name:/^Book the venue edited,/})).toHaveCount(0);
- await page.reload();await ready(page);
+ await page.reload();await ready(page,true);
  expect(await eventTitles(page)).toEqual(['Venue booking call']);
  expect(await liveReminders(page)).toEqual(['Email the caterer']);
  // The browser reminder store keeps a cancelled record rather than erasing it.
@@ -344,14 +343,14 @@ test('Journey B: recorded note is read aloud, summarized, and becomes an event a
 test('Journey B: a calendar proposal for a changed source is refused, and leaving an open review saves nothing',async({page})=>{
  await page.goto('/?mode=dev');await ready(page);
  await page.getByRole('button',{name:'Settings',exact:true}).click();
- await page.getByRole('button',{name:'Agent connection',exact:true}).click();
+ await page.getByRole('button',{name:'Agent',exact:true}).click();
  await page.getByRole('button',{name:'Connect development profile'}).click();
- await returnToApps(page);
+ await returnToApps(page);await openBrowserCalendar(page);await returnToApps(page);
  const hour=Math.ceil(Date.now()/3_600_000)*3_600_000;
  const fields=(title:string,timeZone:string)=>({title,description:'',location:'',start:new Date(hour+48*3_600_000).toISOString(),end:new Date(hour+49*3_600_000).toISOString(),timeZone});
  const openSource=async()=>{
   await returnToApps(page);
-  await page.getByRole('button',{name:'Calendar',exact:true}).click();
+  await openBrowserCalendar(page);
   await page.getByRole('button',{name:'New event',exact:true}).click();
   await expect.poll(async()=>(await phoneContext(page)).selectedObject?.kind).toBe('calendar-source');
   return phoneContext(page);

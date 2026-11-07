@@ -25,6 +25,7 @@
  * 'unreviewed workspace build'. That record must never be committed; every model byte must still
  * match exactly, and the result is never distributable (the record stays qualified:false).
  */
+import {selectedAndroidAbis, abiArguments} from './android-abis.mjs';
 import {createHash} from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -64,8 +65,10 @@ function verifyEngineBuild(source, directories, record, actual) {
   if (rows.length !== 1 || rows[0].sha256 !== actual.sha256 || rows[0].bytes !== actual.bytes) throw Error('Rebuilt engine bytes do not match its source build record');
 }
 
-export function stageVoiceModels(productRoot, {from, unrecordedEngine = false}) {
+export function stageVoiceModels(productRoot, {from, unrecordedEngine = false, abis}) {
   const record = readVoiceHost(productRoot);
+  const selected = selectedAndroidAbis(abis);
+  const selectedRows = selected.map(abi => record.abis.find(row => row.abi === abi));
   const directories = from.map(directory => path.resolve(directory));
   const rows = [];
   for (const model of record.models) {
@@ -74,7 +77,7 @@ export function stageVoiceModels(productRoot, {from, unrecordedEngine = false}) 
     if (!source) throw Error(`Missing ${model.path} (${model.sourceFile ?? path.basename(model.path)}) in ${from.join(', ')}; pinned source: ${model.source}`);
     rows.push({target: `${VOICE_BUNDLE_ASSETS}/${model.path}`, bundlePath: model.path, sha256: model.sha256, bytes: model.bytes, source});
   }
-  for (const abi of record.abis) {
+  for (const abi of selectedRows) {
     const engine = abi.libraries.find(lib => lib.name === 'libelizainference.so');
     const source = locate(directories, engine, [`jniLibs/${abi.abi}/${engine.name}`, `${abi.abi}/${engine.name}`], {acceptOther: unrecordedEngine});
     if (!source) throw Error(`Missing ${abi.abi}/${engine.name} in ${from.join(', ')}`);
@@ -111,15 +114,15 @@ export function stageVoiceModels(productRoot, {from, unrecordedEngine = false}) 
   fs.writeFileSync(manifestFile, manifestText);
   const files = [{path: `${VOICE_BUNDLE_ASSETS}/manifest.json`, bytes: Buffer.byteLength(manifestText), sha256: createHash('sha256').update(manifestText).digest('hex')},
     ...rows.map(row => ({path: row.target, bytes: row.bytes, sha256: row.sha256}))].sort((a, b) => a.path.localeCompare(b.path));
-  fs.writeFileSync(path.join(output, 'build-record.json'), `${JSON.stringify({sourceCommit:record.pin, nativeCommit:record.forkPin, inputs, abis: record.abis.map(row => row.abi), files}, null, 2)}\n`);
+  fs.writeFileSync(path.join(output, 'build-record.json'), `${JSON.stringify({sourceCommit:record.pin, nativeCommit:record.forkPin, inputs, abis: selected, files}, null, 2)}\n`);
   return {staged: files.map(row => row.path), asr: bundleFiles.some(row => row.path.startsWith('asr/'))};
 }
 
 function main() {
-  const args = process.argv.slice(2);
+  const {rest: args, abis} = abiArguments(process.argv.slice(2));
   if (args.length === 1 && args[0] === '--plan') {
     const record = readVoiceHost(root);
-    for (const abi of record.abis) for (const lib of abi.libraries) console.log(`${abi.abi}/${lib.name}\t${lib.sha256}\t${lib.bytes}`);
+    for (const abi of record.abis.filter(row => abis.includes(row.abi))) for (const lib of abi.libraries) console.log(`${abi.abi}/${lib.name}\t${lib.sha256}\t${lib.bytes}`);
     for (const row of record.models) console.log(`${row.path}\t${row.sha256}\t${row.bytes}\t${row.source}`);
     return;
   }
@@ -130,8 +133,8 @@ function main() {
     throw Error('Usage: node scripts/android-stage-voice-models.mjs --from <directory> [--from <directory> ...] [--unrecorded-engine] | --plan');
   }
   if (!from.length) throw Error('--from <directory of pinned voice outputs and models> is required');
-  const result = stageVoiceModels(root, {from, unrecordedEngine});
-  const admission = verifyVoiceHost(root);
+  const result = stageVoiceModels(root, {from, unrecordedEngine, abis});
+  const admission = verifyVoiceHost(root, {abis});
   console.log(JSON.stringify({...result, admission: admission.status, qualified: admission.qualified, note: 'Integrity only: on-device qualification and device acceptance are still required.'}, null, 2));
 }
 

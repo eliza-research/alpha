@@ -37,8 +37,14 @@ test('the committed record satisfies the schema, model inventory and ASR slot', 
   assert.equal(record.models.some(row => row.role !== 'notice' && /kokoro|\.on{2}x|\.bin$/i.test(row.path)), false, 'no Kokoro, other-runtime model or voice preset');
 });
 
-test('the committed voice artifacts match the current product pin and shared inputs', () => {
-  readVoiceHost(ROOT);
+test('only a voice record for the current SDK can admit the native profile', () => {
+  const {commit}=JSON.parse(fs.readFileSync(path.join(ROOT,'upstream.lock.json'),'utf8'));
+  if (committed.pin===commit) {
+    readVoiceHost(ROOT);
+  } else {
+    assert.equal(committed.qualified,false,'a historical artifact cannot claim current qualification');
+    assert.throws(()=>readVoiceHost(ROOT),/upstream\.lock\.json pins/);
+  }
 });
 
 test('the schema rejects bad hashes, missing ABIs, non-GGUF models, an incomplete ASR slot and unearned qualification', () => {

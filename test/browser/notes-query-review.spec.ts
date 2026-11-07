@@ -5,7 +5,7 @@ import {stripTypeScriptTypes} from 'node:module';
 const root=resolve(import.meta.dirname,'../..');
 const compile=(path:string)=>stripTypeScriptTypes(readFileSync(resolve(root,path),'utf8'),{mode:'strip'});
 const inert=compile('apps/app/src/runtime/modal-inert.ts');
-const review=compile('apps/app/src/prototype/notes-query-review.ts').replace("import {holdPhoneInert} from '../runtime/modal-inert';",'').replace('import { holdPhoneInert } from \'../runtime/modal-inert\';','').replace('import { holdPhoneInert } from "../runtime/modal-inert";','');
+const review=[compile('apps/app/src/prototype/source-review-dialog.ts').replace(/import\s*\{\s*holdPhoneInert\s*\}\s*from\s*['"]\.\.\/runtime\/modal-inert['"];/,''),compile('apps/app/src/prototype/notes-query-review.ts').replace(/import\s*\{\s*openReview\s*\}\s*from\s*['"]\.\/source-review-dialog['"];/,'')].join('\n');
 const css=readFileSync(resolve(root,'apps/app/src/prototype/phone.css'),'utf8');
 for(const theme of ['light','dark'])test(`local Notes choice preserves ${theme} theme, exact long preview and modal ownership`,async({page})=>{
  await page.setViewportSize({width:360,height:740});await page.setContent(`<style>${css}</style><div class="os" style="--bg:${theme==='dark'?'#000000':'#FFFFFF'};--fg:${theme==='dark'?'#FFFFFF':'#000000'}"><button id="origin">Original focus</button></div>`);

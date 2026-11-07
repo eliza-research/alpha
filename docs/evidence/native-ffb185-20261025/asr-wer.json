@@ -1,0 +1,928 @@
+{
+  "device": {
+    "model": "sdk_gphone64_arm64",
+    "abi": "arm64-v8a",
+    "api": 34
+  },
+  "silenceHeard": "",
+  "utterances": 101,
+  "words": 2064,
+  "edits": 40,
+  "wer": 0.01937984496124031,
+  "maxWer": 0.06,
+  "silencePass": true,
+  "pass": true,
+  "audioSeconds": 759.5300000000003,
+  "asrRtf": 0.03601336545890221,
+  "rows": [
+    {
+      "id": "1089-134686-0000",
+      "set": "librispeech-test-clean",
+      "heard": "He hoped there would be stew for dinner, turnips and carrots and bruised potatoes, and fat mutton pieces to be ladled out in thick, peppered, flour fattened sauce,",
+      "edits": 0,
+      "words": 28,
+      "audioSeconds": 10.435,
+      "asrSeconds": 0.356044584
+    },
+    {
+      "id": "1089-134686-0026",
+      "set": "librispeech-test-clean",
+      "heard": "The rector did not ask for a catechism to hear the lesson from,",
+      "edits": 0,
+      "words": 13,
+      "audioSeconds": 4.01,
+      "asrSeconds": 0.122596375
+    },
+    {
+      "id": "1089-134691-0014",
+      "set": "librispeech-test-clean",
+      "heard": "The phrase and the day and the scene harmonized in a chord.",
+      "edits": 0,
+      "words": 12,
+      "audioSeconds": 4.755,
+      "asrSeconds": 0.132028959
+    },
+    {
+      "id": "1188-133604-0014",
+      "set": "librispeech-test-clean",
+      "heard": "Do not, therefore, think that the Gothic school is an easy one.",
+      "edits": 0,
+      "words": 12,
+      "audioSeconds": 4.39,
+      "asrSeconds": 0.13129125
+    },
+    {
+      "id": "1188-133604-0040",
+      "set": "librispeech-test-clean",
+      "heard": "The crampness and the poverty are all intended.",
+      "edits": 0,
+      "words": 8,
+      "audioSeconds": 3.23,
+      "asrSeconds": 0.101850708
+    },
+    {
+      "id": "121-123859-0002",
+      "set": "librispeech-test-clean",
+      "heard": "But reckoning time, whose millioned accidents Creep in twixt vows, And change decrees of kings, Tan's sacred beauty, blunt the sharpest intense, Diverts strong minds to the course of altering things Alas, why fearing of time's tyranny? Might I not then say, Now I love you best, When I was certain o'er in certainty, Crowning the present, doubting of the rest?",
+      "edits": 7,
+      "words": 60,
+      "audioSeconds": 30.04,
+      "asrSeconds": 1.061387958
+    },
+    {
+      "id": "121-127105-0023",
+      "set": "librispeech-test-clean",
+      "heard": "Let me say here distinctly to have done with it, that this narrative, from an exact transcript of my own made much later, is what I shall presently give.",
+      "edits": 0,
+      "words": 29,
+      "audioSeconds": 10.91,
+      "asrSeconds": 0.66743325
+    },
+    {
+      "id": "1221-135766-0012",
+      "set": "librispeech-test-clean",
+      "heard": "Brooding over all these matters, the mother felt like one who has evoked a spirit, but by some irregularity in the process of conjuration, has failed to win the master word that should control this new and incomprehensible intelligence.",
+      "edits": 0,
+      "words": 39,
+      "audioSeconds": 16.22,
+      "asrSeconds": 1.336754543
+    },
+    {
+      "id": "1221-135767-0022",
+      "set": "librispeech-test-clean",
+      "heard": "but the proprietor appeared already to have relinquished as hopeless the effort to perpetuate, on this side of the Atlantic, in a hard soil, and amid the close struggle for subsistence, the native English taste for ornamental gardening.",
+      "edits": 0,
+      "words": 38,
+      "audioSeconds": 14.395,
+      "asrSeconds": 1.046163959
+    },
+    {
+      "id": "1284-1180-0023",
+      "set": "librispeech-test-clean",
+      "heard": "You see, I've lived all my life with Unc Nunky, the silent one, and there was no one to tell me anything.",
+      "edits": 1,
+      "words": 22,
+      "audioSeconds": 5.61,
+      "asrSeconds": 0.42503
+    },
+    {
+      "id": "1284-1181-0017",
+      "set": "librispeech-test-clean",
+      "heard": "The wizard of Oz, who used to be a humbug and knew no magic at all, has been taking lessons of Glinda, and I'm told he is getting to be a pretty good wizard. But he is merely the assistant of the great sorceress.",
+      "edits": 0,
+      "words": 44,
+      "audioSeconds": 11.775,
+      "asrSeconds": 0.737729376
+    },
+    {
+      "id": "1320-122612-0013",
+      "set": "librispeech-test-clean",
+      "heard": "A circle of a few hundred feet in circumference was drawn, and each of the party took a segment for his portion.",
+      "edits": 0,
+      "words": 22,
+      "audioSeconds": 6.55,
+      "asrSeconds": 0.395947083
+    },
+    {
+      "id": "1320-122617-0022",
+      "set": "librispeech-test-clean",
+      "heard": "The Delawares are children of the tortoise, and they outstrip the deer.",
+      "edits": 0,
+      "words": 12,
+      "audioSeconds": 3.855,
+      "asrSeconds": 0.237825041
+    },
+    {
+      "id": "1580-141083-0006",
+      "set": "librispeech-test-clean",
+      "heard": "The only duplicate which existed, so far as I knew, was that which belonged to my servant, Bannister, a man who has looked after my room for ten years, and whose honesty is absolutely above suspicion.",
+      "edits": 0,
+      "words": 36,
+      "audioSeconds": 10.85,
+      "asrSeconds": 0.717033958
+    },
+    {
+      "id": "1580-141083-0032",
+      "set": "librispeech-test-clean",
+      "heard": "Watson, I have always done you an injustice. There are others.",
+      "edits": 0,
+      "words": 11,
+      "audioSeconds": 4.135,
+      "asrSeconds": 0.259419
+    },
+    {
+      "id": "1580-141084-0005",
+      "set": "librispeech-test-clean",
+      "heard": "That is very important, said Holmes.",
+      "edits": 0,
+      "words": 6,
+      "audioSeconds": 2.515,
+      "asrSeconds": 0.155510083
+    },
+    {
+      "id": "1580-141084-0031",
+      "set": "librispeech-test-clean",
+      "heard": "We want to know, mister Gilchrist, how you, an honorable man, ever came to commit such an action as that of yesterday.",
+      "edits": 1,
+      "words": 22,
+      "audioSeconds": 6.47,
+      "asrSeconds": 0.471028625
+    },
+    {
+      "id": "1995-1826-0006",
+      "set": "librispeech-test-clean",
+      "heard": "been looking up Tooms County.",
+      "edits": 0,
+      "words": 5,
+      "audioSeconds": 2.4550625,
+      "asrSeconds": 0.232580875
+    },
+    {
+      "id": "1995-1836-0005",
+      "set": "librispeech-test-clean",
+      "heard": "misses Gray had met southerners before, but not intimately, and she always had in mind vividly their cruelty to poor negroes, a subject she made a point of introducing forthwith,",
+      "edits": 2,
+      "words": 30,
+      "audioSeconds": 10.9,
+      "asrSeconds": 0.867230333
+    },
+    {
+      "id": "1995-1837-0016",
+      "set": "librispeech-test-clean",
+      "heard": "For one long moment he paused, stupid, agape, with utter amazement, then leaned dizzily against the tree.",
+      "edits": 1,
+      "words": 17,
+      "audioSeconds": 7.19,
+      "asrSeconds": 0.18383275
+    },
+    {
+      "id": "2094-142345-0013",
+      "set": "librispeech-test-clean",
+      "heard": "Her tongue was not less keen than her eye, and whenever a damsel came within earshot, seemed to take up an unfinished lecture, as a barrel organ takes up a tune precisely at the point where it had left off.",
+      "edits": 0,
+      "words": 40,
+      "audioSeconds": 14.25,
+      "asrSeconds": 0.4242
+    },
+    {
+      "id": "2094-142345-0039",
+      "set": "librispeech-test-clean",
+      "heard": "I have strong assurance that no evil will happen to you and my uncle and the children from anything I have done.",
+      "edits": 4,
+      "words": 20,
+      "audioSeconds": 6.28,
+      "asrSeconds": 0.171235792
+    },
+    {
+      "id": "2300-131720-0004",
+      "set": "librispeech-test-clean",
+      "heard": "Owing to his insistence on low pressure, direct current for use in densely populated districts as the only safe and truly universal, profitable way of delivering electrical energy to the consumers, Edison has been frequently spoken of as an opponent of the alternating current.",
+      "edits": 0,
+      "words": 44,
+      "audioSeconds": 19.91,
+      "asrSeconds": 0.537371959
+    },
+    {
+      "id": "2300-131720-0030",
+      "set": "librispeech-test-clean",
+      "heard": "The principle employed in the Edison electrolytic meter is that which exemplifies the power of electricity to decompose a chemical substance.",
+      "edits": 0,
+      "words": 21,
+      "audioSeconds": 9.98,
+      "asrSeconds": 0.275072
+    },
+    {
+      "id": "237-126133-0014",
+      "set": "librispeech-test-clean",
+      "heard": "asked Phronsie, in intense interest slipping down out of Polly's arms and crowding up close to Jasper's side.",
+      "edits": 0,
+      "words": 18,
+      "audioSeconds": 6.79,
+      "asrSeconds": 0.182166209
+    },
+    {
+      "id": "237-134493-0015",
+      "set": "librispeech-test-clean",
+      "heard": "There was something individual about the great farm, a most unusual trimmess and care for detail.",
+      "edits": 1,
+      "words": 16,
+      "audioSeconds": 6.55,
+      "asrSeconds": 0.171190584
+    },
+    {
+      "id": "237-134500-0022",
+      "set": "librispeech-test-clean",
+      "heard": "When she used to tell me about him, I always wondered whether she wasn't a little in love with him.",
+      "edits": 0,
+      "words": 20,
+      "audioSeconds": 5.165,
+      "asrSeconds": 0.143224167
+    },
+    {
+      "id": "260-123286-0005",
+      "set": "librispeech-test-clean",
+      "heard": "I am not complaining that the raid is slow, but that the sea is so wide.",
+      "edits": 1,
+      "words": 16,
+      "audioSeconds": 4.81,
+      "asrSeconds": 0.130730209
+    },
+    {
+      "id": "260-123286-0031",
+      "set": "librispeech-test-clean",
+      "heard": "As for the Iosaurus, has he returned to his submarine cavern?",
+      "edits": 1,
+      "words": 11,
+      "audioSeconds": 5.06,
+      "asrSeconds": 0.133851917
+    },
+    {
+      "id": "260-123288-0025",
+      "set": "librispeech-test-clean",
+      "heard": "Here it comes, there it glides. Now it is up the ragged stump of the mast, thence it lightly leaps on the provision bag, descends with a light bound, and just skims the powder magazine. Horrible",
+      "edits": 0,
+      "words": 36,
+      "audioSeconds": 13.445,
+      "asrSeconds": 0.410619
+    },
+    {
+      "id": "2830-3979-0002",
+      "set": "librispeech-test-clean",
+      "heard": "Let us begin with that his commentary on Galatians.",
+      "edits": 0,
+      "words": 9,
+      "audioSeconds": 4.315,
+      "asrSeconds": 0.124312125
+    },
+    {
+      "id": "2830-3980-0015",
+      "set": "librispeech-test-clean",
+      "heard": "For a person to possess knowledge is not enough.",
+      "edits": 0,
+      "words": 9,
+      "audioSeconds": 2.685,
+      "asrSeconds": 0.085780209
+    },
+    {
+      "id": "2830-3980-0041",
+      "set": "librispeech-test-clean",
+      "heard": "Grace involves the remission of sins, peace, and a happy conscience.",
+      "edits": 0,
+      "words": 11,
+      "audioSeconds": 4.89,
+      "asrSeconds": 0.131005458
+    },
+    {
+      "id": "2830-3980-0067",
+      "set": "librispeech-test-clean",
+      "heard": "This sentence also defines our sins as great, so great in fact, that the whole world could not make amends for a single sin.",
+      "edits": 0,
+      "words": 24,
+      "audioSeconds": 8.13,
+      "asrSeconds": 0.2167255
+    },
+    {
+      "id": "2961-960-0016",
+      "set": "librispeech-test-clean",
+      "heard": "But Plato has not the same mastery over his instrument which he exhibits in the Phaedrus or Symposium.",
+      "edits": 0,
+      "words": 18,
+      "audioSeconds": 7.76,
+      "asrSeconds": 0.2117655
+    },
+    {
+      "id": "2961-961-0020",
+      "set": "librispeech-test-clean",
+      "heard": "This is the explanation of the shallows which are found in that part of the Atlantic Ocean.",
+      "edits": 0,
+      "words": 17,
+      "audioSeconds": 6.125,
+      "asrSeconds": 0.176589875
+    },
+    {
+      "id": "3570-5695-0000",
+      "set": "librispeech-test-clean",
+      "heard": "In a general way, though not wholly nor consistently, these two groups coincide.",
+      "edits": 0,
+      "words": 13,
+      "audioSeconds": 4.83,
+      "asrSeconds": 0.121630833
+    },
+    {
+      "id": "3570-5696-0010",
+      "set": "librispeech-test-clean",
+      "heard": "an article may be useful and wasteful both, and its utility to the consumer may be made up of use and waste in the most varying proportions.",
+      "edits": 0,
+      "words": 27,
+      "audioSeconds": 7.57,
+      "asrSeconds": 0.206869666
+    },
+    {
+      "id": "3575-170457-0025",
+      "set": "librispeech-test-clean",
+      "heard": "Again, I thank you. This incident, I suppose, will be renewed no more. If I live to be an old woman, I shall remember it thirty years hence as a bright dream.",
+      "edits": 0,
+      "words": 32,
+      "audioSeconds": 9.205,
+      "asrSeconds": 0.2656185
+    },
+    {
+      "id": "3575-170457-0051",
+      "set": "librispeech-test-clean",
+      "heard": "At tea time they were sad and silent, and the meal went away untouched by any of the three.",
+      "edits": 0,
+      "words": 19,
+      "audioSeconds": 4.915,
+      "asrSeconds": 0.123081875
+    },
+    {
+      "id": "3729-6852-0021",
+      "set": "librispeech-test-clean",
+      "heard": "I thank him and take my leave.",
+      "edits": 0,
+      "words": 7,
+      "audioSeconds": 2.96,
+      "asrSeconds": 0.083735791
+    },
+    {
+      "id": "4077-13751-0000",
+      "set": "librispeech-test-clean",
+      "heard": "On the sixth of april, eighteen thirty, the Church of Jesus Christ of Latter day Saints was formally organized and thus took on a legal existence.",
+      "edits": 0,
+      "words": 25,
+      "audioSeconds": 9.56,
+      "asrSeconds": 0.266479334
+    },
+    {
+      "id": "4077-13754-0004",
+      "set": "librispeech-test-clean",
+      "heard": "Already a north and a south were talked of. Why not set up also a west?",
+      "edits": 0,
+      "words": 16,
+      "audioSeconds": 4.985,
+      "asrSeconds": 0.140236625
+    },
+    {
+      "id": "4446-2271-0013",
+      "set": "librispeech-test-clean",
+      "heard": "You know, I thought the dance had been conscious to night. For the first time.",
+      "edits": 3,
+      "words": 16,
+      "audioSeconds": 4.4,
+      "asrSeconds": 0.135291833
+    },
+    {
+      "id": "4446-2273-0014",
+      "set": "librispeech-test-clean",
+      "heard": "there are a few changes in the old quarter.",
+      "edits": 1,
+      "words": 8,
+      "audioSeconds": 2.39,
+      "asrSeconds": 0.070936959
+    },
+    {
+      "id": "4446-2275-0004",
+      "set": "librispeech-test-clean",
+      "heard": "Alexander did not sit down,",
+      "edits": 0,
+      "words": 5,
+      "audioSeconds": 2.11,
+      "asrSeconds": 0.064343667
+    },
+    {
+      "id": "4446-2275-0030",
+      "set": "librispeech-test-clean",
+      "heard": "Yes, Hilda, I know that, he said simply.",
+      "edits": 0,
+      "words": 8,
+      "audioSeconds": 2.665,
+      "asrSeconds": 0.078213416
+    },
+    {
+      "id": "4507-16021-0010",
+      "set": "librispeech-test-clean",
+      "heard": "We have always thought that it was sometimes a courageous act, and, at least, a simple and useful deed, worthy of the sympathetic attention which duty accepted and fulfilled merits,",
+      "edits": 0,
+      "words": 30,
+      "audioSeconds": 15.165,
+      "asrSeconds": 0.418084875
+    },
+    {
+      "id": "4507-16021-0036",
+      "set": "librispeech-test-clean",
+      "heard": "Facts form one of these, and ideas the other.",
+      "edits": 0,
+      "words": 9,
+      "audioSeconds": 5.435,
+      "asrSeconds": 0.143474959
+    },
+    {
+      "id": "4970-29093-0002",
+      "set": "librispeech-test-clean",
+      "heard": "He has no traditions to bind him or guide him, and his impulse is to break away from the occupation his father has followed, and make a new way for himself.",
+      "edits": 0,
+      "words": 31,
+      "audioSeconds": 10.73,
+      "asrSeconds": 0.291244125
+    },
+    {
+      "id": "4970-29095-0005",
+      "set": "librispeech-test-clean",
+      "heard": "Thy ways greatly try me, Ruth, and all thy relations.",
+      "edits": 0,
+      "words": 10,
+      "audioSeconds": 4.65,
+      "asrSeconds": 0.12532625
+    },
+    {
+      "id": "4970-29095-0031",
+      "set": "librispeech-test-clean",
+      "heard": "He doesn't say exactly what it is, said Ruth, a little dubiously. But it's something about land and railroads, and thee knows, father, that fortunes are made nobody knows exactly how, in a new country.",
+      "edits": 0,
+      "words": 35,
+      "audioSeconds": 15.05,
+      "asrSeconds": 0.432032
+    },
+    {
+      "id": "4992-23283-0018",
+      "set": "librispeech-test-clean",
+      "heard": "To relieve her from both, he laid his hand with force upon his heart and said, Do you believe me?",
+      "edits": 0,
+      "words": 20,
+      "audioSeconds": 6.575,
+      "asrSeconds": 0.171953542
+    },
+    {
+      "id": "4992-41806-0000",
+      "set": "librispeech-test-clean",
+      "heard": "Naddie Harmon tried the kitchen pump secretly several times during the evening, for the water had to run uphill all the way from the well to the kitchen sink, and he believed this to be a continual miracle that might give out at any moment.",
+      "edits": 3,
+      "words": 46,
+      "audioSeconds": 14.36,
+      "asrSeconds": 0.399746125
+    },
+    {
+      "id": "5105-28233-0008",
+      "set": "librispeech-test-clean",
+      "heard": "When a private in the eighth cavalry, he had been on the point of quitting the army at twenty eight years of age, but unexpectedly he had been appointed orderly to Captain Servadac.",
+      "edits": 0,
+      "words": 32,
+      "audioSeconds": 10.73,
+      "asrSeconds": 0.315867
+    },
+    {
+      "id": "5105-28240-0024",
+      "set": "librispeech-test-clean",
+      "heard": "Doubts now arose, and some discussion followed, whether or not it was desirable for Ben Zoof to accompany his master.",
+      "edits": 0,
+      "words": 20,
+      "audioSeconds": 8.2,
+      "asrSeconds": 0.346270751
+    },
+    {
+      "id": "5142-33396-0005",
+      "set": "librispeech-test-clean",
+      "heard": "But I stayed that spring and built me a boat,",
+      "edits": 0,
+      "words": 10,
+      "audioSeconds": 2.225,
+      "asrSeconds": 0.094772417
+    },
+    {
+      "id": "5142-33396-0031",
+      "set": "librispeech-test-clean",
+      "heard": "They set up a crane over the fire and hung the pot upon it, and we sat and watched it boil while we joked. At last the supper began.",
+      "edits": 0,
+      "words": 29,
+      "audioSeconds": 7.845,
+      "asrSeconds": 0.29737575
+    },
+    {
+      "id": "5142-33396-0057",
+      "set": "librispeech-test-clean",
+      "heard": "We sunk his ship and men, but him we brought to you.",
+      "edits": 0,
+      "words": 12,
+      "audioSeconds": 3.075,
+      "asrSeconds": 0.105135291
+    },
+    {
+      "id": "5142-36377-0014",
+      "set": "librispeech-test-clean",
+      "heard": "A pretty girl, and so far as I could judge by appearances, a good girl, too. Describing her generally, I may say that she had a small head, well carried, and well set on her shoulders, bright grey eyes that looked at you honestly and meant what they looked, a trim, slight little figure, too slight for our English notions of beauty, a strong American accent, and, a rare thing in America, a pleasantly toned voice which made the accent agreeable to English ears,",
+      "edits": 1,
+      "words": 84,
+      "audioSeconds": 25.415,
+      "asrSeconds": 0.921171292
+    },
+    {
+      "id": "5639-40744-0008",
+      "set": "librispeech-test-clean",
+      "heard": "Who touches me? Am I in bed?",
+      "edits": 0,
+      "words": 7,
+      "audioSeconds": 2.215,
+      "asrSeconds": 0.092061583
+    },
+    {
+      "id": "5639-40744-0034",
+      "set": "librispeech-test-clean",
+      "heard": "all rose to do her reverence, as if something from heaven had miraculously appeared before them. But gazing on her, entranced with admiration, not one of them was able to address a single word to her.",
+      "edits": 0,
+      "words": 36,
+      "audioSeconds": 13.055,
+      "asrSeconds": 0.419983959
+    },
+    {
+      "id": "5683-32866-0000",
+      "set": "librispeech-test-clean",
+      "heard": "Miss Lake declined the carriage to night.",
+      "edits": 0,
+      "words": 7,
+      "audioSeconds": 2.645,
+      "asrSeconds": 0.0854165
+    },
+    {
+      "id": "5683-32866-0026",
+      "set": "librispeech-test-clean",
+      "heard": "I boldly lighted my cheroot,",
+      "edits": 0,
+      "words": 5,
+      "audioSeconds": 2.34,
+      "asrSeconds": 0.073658166
+    },
+    {
+      "id": "5683-32879-0021",
+      "set": "librispeech-test-clean",
+      "heard": "Dorcas, in her strange way, was moved.",
+      "edits": 0,
+      "words": 7,
+      "audioSeconds": 4.09,
+      "asrSeconds": 0.128320583
+    },
+    {
+      "id": "61-70968-0022",
+      "set": "librispeech-test-clean",
+      "heard": "'Tis fine for you to talk, old man, answered the lean, sullen apprentice,",
+      "edits": 0,
+      "words": 13,
+      "audioSeconds": 4.67,
+      "asrSeconds": 0.1589075
+    },
+    {
+      "id": "61-70968-0048",
+      "set": "librispeech-test-clean",
+      "heard": "and Henry might return to England at any moment.",
+      "edits": 0,
+      "words": 9,
+      "audioSeconds": 3.02,
+      "asrSeconds": 0.099462208
+    },
+    {
+      "id": "61-70970-0011",
+      "set": "librispeech-test-clean",
+      "heard": "As any in England, I would say, said Gainwell proudly. That is, in his day.",
+      "edits": 1,
+      "words": 15,
+      "audioSeconds": 6.075,
+      "asrSeconds": 0.201717292
+    },
+    {
+      "id": "61-70970-0037",
+      "set": "librispeech-test-clean",
+      "heard": "His tones rang pleasantly on Warranton's ears, and forthwith a good fellowship was heralded between them.",
+      "edits": 1,
+      "words": 16,
+      "audioSeconds": 5.98,
+      "asrSeconds": 0.188446375
+    },
+    {
+      "id": "672-122797-0022",
+      "set": "librispeech-test-clean",
+      "heard": "The axe struck deep into the very pith. The tree fell to the earth with a sigh. He felt a pang. It was like a swoon. He could not think of happiness, for he was sorrowful at being separated from his home, from the place where he had sprung up.",
+      "edits": 0,
+      "words": 50,
+      "audioSeconds": 19.0049375,
+      "asrSeconds": 0.584981126
+    },
+    {
+      "id": "672-122797-0049",
+      "set": "librispeech-test-clean",
+      "heard": "Squeak squeak",
+      "edits": 0,
+      "words": 2,
+      "audioSeconds": 2.02,
+      "asrSeconds": 0.064056208
+    },
+    {
+      "id": "6829-68769-0000",
+      "set": "librispeech-test-clean",
+      "heard": "Kenneth and Beth refrained from telling the other girls or Uncle John of old Will Rogers' visit, but they got mister Watson in the library and questioned him closely about the penalty for forging a cheque.",
+      "edits": 2,
+      "words": 36,
+      "audioSeconds": 11.695,
+      "asrSeconds": 0.337669125
+    },
+    {
+      "id": "6829-68769-0026",
+      "set": "librispeech-test-clean",
+      "heard": "He spoke simply, but paced up and down the narrow cell in front of them.",
+      "edits": 0,
+      "words": 15,
+      "audioSeconds": 4.64,
+      "asrSeconds": 0.131019458
+    },
+    {
+      "id": "6829-68769-0052",
+      "set": "librispeech-test-clean",
+      "heard": "He might have had that forged check for the face of it, if he'd been sharp,",
+      "edits": 0,
+      "words": 16,
+      "audioSeconds": 4.6,
+      "asrSeconds": 0.145478
+    },
+    {
+      "id": "6829-68771-0024",
+      "set": "librispeech-test-clean",
+      "heard": "For the first time the maid seemed a little confused, and her gaze wandered from the face of her visitor.",
+      "edits": 0,
+      "words": 20,
+      "audioSeconds": 6.245,
+      "asrSeconds": 0.181761417
+    },
+    {
+      "id": "6930-75918-0014",
+      "set": "librispeech-test-clean",
+      "heard": "But, continued Rao, not interrupted by this movement of his friend, heaven be praised, the French, who are pronounced to be thoughtless and indiscreet, reckless even, are capable of bringing a calm and sound judgment to bear on matters of such high importance.",
+      "edits": 1,
+      "words": 43,
+      "audioSeconds": 16.84,
+      "asrSeconds": 0.488238542
+    },
+    {
+      "id": "6930-76324-0019",
+      "set": "librispeech-test-clean",
+      "heard": "Now let's dust the furniture and pictures.",
+      "edits": 0,
+      "words": 7,
+      "audioSeconds": 2.575,
+      "asrSeconds": 0.080638166
+    },
+    {
+      "id": "6930-81414-0016",
+      "set": "librispeech-test-clean",
+      "heard": "But that is Caffer's knife,",
+      "edits": 1,
+      "words": 5,
+      "audioSeconds": 2.16,
+      "asrSeconds": 0.065369666
+    },
+    {
+      "id": "7021-79740-0004",
+      "set": "librispeech-test-clean",
+      "heard": "You have come Andella Andella was the name of Jane's doll, to make Rosalie a visit.",
+      "edits": 0,
+      "words": 16,
+      "audioSeconds": 6.465,
+      "asrSeconds": 0.181259875
+    },
+    {
+      "id": "7021-85628-0009",
+      "set": "librispeech-test-clean",
+      "heard": "At the farther end of the largest hall a table was set, with golden cups and golden plates in long rows,",
+      "edits": 0,
+      "words": 21,
+      "audioSeconds": 8.54,
+      "asrSeconds": 0.241543917
+    },
+    {
+      "id": "7127-75946-0008",
+      "set": "librispeech-test-clean",
+      "heard": "Does your majesty, then, no longer believe the disloyal attempt?",
+      "edits": 0,
+      "words": 10,
+      "audioSeconds": 4.46,
+      "asrSeconds": 0.127542376
+    },
+    {
+      "id": "7127-75947-0004",
+      "set": "librispeech-test-clean",
+      "heard": "Explain yourself?",
+      "edits": 0,
+      "words": 2,
+      "audioSeconds": 1.905,
+      "asrSeconds": 0.056029
+    },
+    {
+      "id": "7127-75947-0030",
+      "set": "librispeech-test-clean",
+      "heard": "She was here just now, said the Count.",
+      "edits": 0,
+      "words": 8,
+      "audioSeconds": 2.76,
+      "asrSeconds": 0.0824655
+    },
+    {
+      "id": "7176-88083-0015",
+      "set": "librispeech-test-clean",
+      "heard": "Almost instantly he was forced to the top,",
+      "edits": 0,
+      "words": 8,
+      "audioSeconds": 2.335,
+      "asrSeconds": 0.071335958
+    },
+    {
+      "id": "7176-92135-0013",
+      "set": "librispeech-test-clean",
+      "heard": "We moderns, however, see the absurdity of it.",
+      "edits": 0,
+      "words": 8,
+      "audioSeconds": 3.15,
+      "asrSeconds": 0.091786667
+    },
+    {
+      "id": "7176-92135-0040",
+      "set": "librispeech-test-clean",
+      "heard": "Hostess replaces lump and inclines empty teapot over tray for a moment, then hands him a cup painted brown inside, thus deceiving the gentleman with the telescope in the upper circle.",
+      "edits": 0,
+      "words": 31,
+      "audioSeconds": 10.345,
+      "asrSeconds": 0.289715667
+    },
+    {
+      "id": "7729-102255-0020",
+      "set": "librispeech-test-clean",
+      "heard": "The incident was not violent, nor even dramatic, no posse was summoned, no further effort made, and reader, fearing personal violence, soon fled in disguise.",
+      "edits": 1,
+      "words": 25,
+      "audioSeconds": 10.975,
+      "asrSeconds": 0.335959875
+    },
+    {
+      "id": "7729-102255-0046",
+      "set": "librispeech-test-clean",
+      "heard": "In the early morning of the next day, may twenty ninth, a company of dragoons, with one empty saddle came down from the fort, and while the pro slavery men still slept, the prisoner and his escort were on their way across the prairies to Le Compton in the charge of officers of the United States Army.",
+      "edits": 2,
+      "words": 56,
+      "audioSeconds": 19.945,
+      "asrSeconds": 0.596411626
+    },
+    {
+      "id": "8224-274384-0007",
+      "set": "librispeech-test-clean",
+      "heard": "Have mercy, Lord, on me, I pray, for men would me devour.",
+      "edits": 0,
+      "words": 12,
+      "audioSeconds": 6.23,
+      "asrSeconds": 0.175263416
+    },
+    {
+      "id": "8230-279154-0019",
+      "set": "librispeech-test-clean",
+      "heard": "It would seem that only rather recent events can be placed at all accurately by means of feelings giving their temporal relation to the present. But it is clear that such feelings must play an essential part in the process of dating remembered events.",
+      "edits": 0,
+      "words": 44,
+      "audioSeconds": 18.145,
+      "asrSeconds": 0.553086334
+    },
+    {
+      "id": "8455-210777-0002",
+      "set": "librispeech-test-clean",
+      "heard": "On arriving at home at my own residence, I found that our salon was filled with a brilliant company.",
+      "edits": 0,
+      "words": 19,
+      "audioSeconds": 6.24,
+      "asrSeconds": 0.188029541
+    },
+    {
+      "id": "8455-210777-0028",
+      "set": "librispeech-test-clean",
+      "heard": "Jack would become Eva's happy husband, and would remain amidst the hurried duties of the eager world.",
+      "edits": 0,
+      "words": 17,
+      "audioSeconds": 7.735,
+      "asrSeconds": 0.246285292
+    },
+    {
+      "id": "8455-210777-0054",
+      "set": "librispeech-test-clean",
+      "heard": "The letter ran as follows",
+      "edits": 0,
+      "words": 5,
+      "audioSeconds": 2.52,
+      "asrSeconds": 0.089718208
+    },
+    {
+      "id": "8463-287645-0009",
+      "set": "librispeech-test-clean",
+      "heard": "I never knew of but one man who could ever please him.",
+      "edits": 0,
+      "words": 12,
+      "audioSeconds": 3.71,
+      "asrSeconds": 0.110462334
+    },
+    {
+      "id": "8463-294828-0000",
+      "set": "librispeech-test-clean",
+      "heard": "CHAPTER three AS Master Wishes",
+      "edits": 0,
+      "words": 5,
+      "audioSeconds": 3.615,
+      "asrSeconds": 0.147535167
+    },
+    {
+      "id": "8463-294828-0027",
+      "set": "librispeech-test-clean",
+      "heard": "I left instructions for shipping my containers of stuffed animals and dried plants to Paris, France.",
+      "edits": 0,
+      "words": 16,
+      "audioSeconds": 5.98,
+      "asrSeconds": 0.182712
+    },
+    {
+      "id": "8555-284447-0014",
+      "set": "librispeech-test-clean",
+      "heard": "The idea of patching Captain Bill to a goat was vastly amusing to him, and the more he thought of it, the more he roared with laughter.",
+      "edits": 1,
+      "words": 27,
+      "audioSeconds": 8.47,
+      "asrSeconds": 0.278775625
+    },
+    {
+      "id": "8555-284449-0015",
+      "set": "librispeech-test-clean",
+      "heard": "I'll not be wicked any more, sighed the old Booleroo. I'll reform.",
+      "edits": 1,
+      "words": 12,
+      "audioSeconds": 5.12,
+      "asrSeconds": 0.168084709
+    },
+    {
+      "id": "908-157963-0004",
+      "set": "librispeech-test-clean",
+      "heard": "Fell is like a watery bow and like a parting cloud, like a reflection in a glass, like shadows in the water, like dreams of infants, like a smile upon an infant's face.",
+      "edits": 2,
+      "words": 33,
+      "audioSeconds": 13.99,
+      "asrSeconds": 0.474633209
+    },
+    {
+      "id": "908-157963-0030",
+      "set": "librispeech-test-clean",
+      "heard": "Why an ear a whirlpool fierce to draw creations in?",
+      "edits": 0,
+      "words": 10,
+      "audioSeconds": 4.52,
+      "asrSeconds": 0.149744291
+    },
+    {
+      "id": "speech-fixture\/0.wav",
+      "set": "android-speech-fixture",
+      "heard": "After early nightfall the yellow lamps would light up here and there the squalid quarter of the brothels.",
+      "edits": 0,
+      "words": 18,
+      "audioSeconds": 6.625,
+      "asrSeconds": 0.204212916
+    }
+  ]
+}

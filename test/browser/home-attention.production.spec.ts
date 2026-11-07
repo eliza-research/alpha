@@ -7,38 +7,18 @@ import { test, expect } from '@playwright/test';
 test.beforeEach(({}, info) => { test.skip(info.project.name !== 'production', 'Runs against the flag-off production build only'); });
 const offline = () => localStorage.setItem('alpha.connection.selection.v1', JSON.stringify({ kind: 'offline' }));
 
-test('not connected: the attention card offers Gmail setup and opens Settings at the Google row', async ({ page }, info) => {
-  const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
-  await page.addInitScript(offline);
-  await page.goto('/');
-  await expect(page.locator('html')).toHaveAttribute('data-connection-mode', 'live');
-  const card = page.getByRole('button', { name: 'Connect email', exact: true });
-  await expect(card).toBeVisible();
-  await expect(card).toHaveAccessibleName('Connect email');
-  await expect(page.getByText('Accounts are not connected')).toHaveCount(0);
-  await page.screenshot({ path: info.outputPath('home-not-connected.png') });
-  await card.click();
-  await expect(page.locator('html')).toHaveAttribute('data-active-view', 'settings');
-  // Settings has no Connections page any more; Google accounts are reached from the Google row.
-  await expect(page.getByRole('button', { name: 'Google', exact: true })).toBeVisible();
-  expect(errors).toEqual([]);
+test('unconnected Home shows its date and keeps Google setup in Settings', async ({ page }, info) => {
+ const errors: string[]=[];page.on('pageerror',error=>errors.push(error.message));await page.addInitScript(offline);await page.goto('/');
+ const home=page.getByRole('region',{name:'Home',exact:true});await expect(home.locator('[data-alpha-home-date]')).toBeVisible();
+ await expect(home.locator('[data-alpha-home-inbox]')).toHaveCount(0);await expect(home).not.toContainText(/unread|Accounts are not connected/);
+ await page.screenshot({path:info.outputPath('home-not-connected.png')});
+ await page.getByRole('button',{name:'Settings',exact:true}).click();await expect(page.getByRole('button',{name:'Google',exact:true})).toBeVisible();expect(errors).toEqual([]);
 });
 
-test('unloaded workflow and empty calendar states do not fabricate results or avatars', async ({ page }) => {
-  await page.addInitScript(offline);
-  await page.goto('/');
-  const brief = page.getByRole('button', { name: 'Open workflows and automations', exact: true });
-  await expect(brief).toContainText('Workflows');
-  await expect(brief).toContainText('Open to view');
-  await brief.click();
-  await expect(page.locator('html')).toHaveAttribute('data-active-view', 'workflows');
-  await page.getByRole('button', { name: 'Back to apps', exact: true }).click();
-  // The browser calendar is read from this browser; an empty calendar says so instead of neutral copy.
-  const calendar = page.locator('[data-alpha-layer="home"] button[data-alpha-home-calendar]');
-  await expect(calendar).toHaveAttribute('aria-label', /^(Open your calendar|Open calendar event: .+)$/);
-  await expect(calendar).toContainText(/No upcoming events|Calendar/);
-  await expect(calendar).toHaveAttribute('data-alpha-home-calendar-event','false');
-  await expect(calendar).not.toContainText(/^(MC|JP|\+2)$/);
-  await expect(page.locator('[data-alpha-layer="home"]').getByText(/^(MC|JP|\+2)$/)).toHaveCount(0);
-  await expect(page.getByRole('img', { name: 'Has a meeting link' })).toHaveCount(0);
+test('unloaded workflows and calendar do not fabricate Home cards or avatars',async({page})=>{
+ await page.addInitScript(offline);await page.goto('/');const home=page.getByRole('region',{name:'Home',exact:true});
+ for(const selector of ['[data-alpha-home-workflows]','[data-alpha-home-calendar]'])await expect(home.locator(selector)).toHaveCount(0);
+ await expect(home.locator('[data-alpha-home-date]')).toBeVisible();await expect(home.getByText(/^(MC|JP|\+2)$/)).toHaveCount(0);
+ await page.getByRole('button',{name:'Workflows',exact:true}).click();await expect(page.locator('html')).toHaveAttribute('data-active-view','workflows');
+ await page.getByRole('button',{name:'Back to apps',exact:true}).click();await expect(home.locator('[data-alpha-home-date]')).toBeVisible();
 });

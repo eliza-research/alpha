@@ -6,48 +6,56 @@ import {
 	prepareCalendarSource,
 } from "../browser/calendar-store";
 import { browserCalendarSyncPort } from "../browser/calendar-linked-local";
+import { canonicalSyncRecurrence } from "../browser/calendar-sync-fields.ts";
+import { readGoogleCalendarSyncDestination } from "../../../../.eliza/client-features/plugins/plugin-calendar/src/linked-sync/google-sync-port.ts";
 import {
-	CalendarSyncController,
-	type CalendarSyncReview,
-	type CalendarSyncReport,
-} from "./calendar-sync-controller";
+	type CalendarSyncDeviceGate,
+	type CalendarSyncSettings,
+	type CalendarSyncSettingsStore,
+	type CalendarSyncTarget,
+	calendarSyncSettingsSlot,
+	createCalendarSyncHost,
+} from "../../../../.eliza/client-features/plugins/plugin-calendar/src/linked-sync/sync-host.ts";
 import { calendarLinkStorage } from "./calendar-linked-storage";
 import {
-	CalendarLinkedStore,
+	ALPHA_CALENDAR_SYNC_NAMESPACE,
 	type CalendarSyncBinding,
 } from "./calendar-linked-store";
 import { connectionController } from "./connection-ui";
 import { nativeCalendarSync } from "./native-calendar-sync";
-import { readGoogleCalendarSelection } from "./google-calendar-selection";
+import { createGoogleAccounts } from "./google-accounts";
+import {
+	type GoogleCalendarSelection,
+	readGoogleCalendarSelection,
+} from "./google-calendar-selection";
+
+export type {
+	CalendarSyncReport,
+	CalendarSyncReview,
+} from "../../../../.eliza/client-features/plugins/plugin-calendar/src/linked-sync/sync-controller.ts";
+
+const native = () => Capacitor.isNativePlatform();
+// Installed storage names: the browser document and the encrypted native slot keep these exact keys.
 const browserConfiguration = new BrowserJsonDomainDocument(
 	"alpha.browser.calendar-sync-config.v1",
 );
-// Native configuration uses the same encrypted CAS storage boundary as checkpoints.
-const nativeConfigurationSlot="calendar-linked-sync:v1:7d1f8a65cde513c690bb719ba9fb6e93372b9f0dc6e8a92b40c18245f3b71df9";
-const configuration={
- async readJson<T>():Promise<T|null>{return Capacitor.isNativePlatform()?await calendarLinkStorage.read(nativeConfigurationSlot) as T|null:browserConfiguration.readJson<T>();},
- async editJson<T>(edit:(value:T|null)=>T|null):Promise<void>{
-  if(!Capacitor.isNativePlatform()){await browserConfiguration.editJson<T>(edit);return;}
-  for(let attempt=0;attempt<8;attempt++){const before=await calendarLinkStorage.read(nativeConfigurationSlot),after=edit(before as T|null);const result=await calendarLinkStorage.compareExchange(nativeConfigurationSlot,before,after);if(result.status==='saved')return;}
-  throw Error('Calendar sync settings changed. Review them again.');
- },
+const nativeConfigurationSlot =
+	"calendar-linked-sync:v1:7d1f8a65cde513c690bb719ba9fb6e93372b9f0dc6e8a92b40c18245f3b71df9";
+const nativeConfiguration = calendarSyncSettingsSlot(
+	calendarLinkStorage,
+	nativeConfigurationSlot,
+);
+const configuration: CalendarSyncSettingsStore = {
+	read: () =>
+		native()
+			? nativeConfiguration.read()
+			: browserConfiguration.readJson<CalendarSyncSettings>(),
+	edit: (edit) =>
+		native()
+			? nativeConfiguration.edit(edit)
+			: browserConfiguration.editJson<CalendarSyncSettings>(edit),
 };
-type Configuration = {
-	version: 1;
-	scope: string;
-	binding: CalendarSyncBinding;
-	enabled: boolean;
-};
-let nativePermissionReview=false;
-let destination = { account: "", calendar: "" };
-let preparedBinding: CalendarSyncBinding | null = null,
-	status = "Sync is off.",
-	running = false,
-	enabled = false;
-const listeners = new Set<() => void>();
-const changed = () => {
-	for (const listener of listeners) listener();
-};
+
 function owner() {
 	const state = connectionController.getSnapshot(),
 		cloud = connectionController.getCloudClient(),
@@ -56,20 +64,33 @@ function owner() {
 		throw Error(
 			"Connect your Cloud account and agent before enabling Calendar sync.",
 		);
-	if(Capacitor.isNativePlatform()&&account.environment!=='production')throw Error('Device Calendar sync requires the production Cloud account; no other environment was used.');
+	if (native() && account.environment !== "production")
+		throw Error(
+			"Device Calendar sync requires the production Cloud account; no other environment was used.",
+		);
 	const selection = readGoogleCalendarSelection({
 		environment: account.environment,
 		userId: account.userId,
 		organizationId: account.organizationId,
 	});
-	if (!selection)
-		throw Error("Choose a Google calendar in Google accounts first.");
+	if (!selection) throw Error("Choose a Google calendar for sync first.");
 	return {
 		account,
 		cloud,
 		selection,
 		agentId: state.session.agentId,
 		agentSession: state.session.sessionId,
+	};
+}
+function target(): CalendarSyncTarget {
+	const { account, selection, agentId } = owner();
+	return {
+		environment: account.environment,
+		userId: account.userId,
+		organizationId: account.organizationId!,
+		connectionId: selection.connectionId,
+		calendarId: selection.providerCalendarId,
+		agentId,
 	};
 }
 function identity() {
@@ -89,83 +110,134 @@ function identity() {
 		return "";
 	}
 }
-async function saved() {
-	const value = await configuration.readJson<Configuration>();
-	if (
-		value !== null &&
-		(value.version !== 1 ||
-			typeof value.scope !== "string" ||
-			!value.binding ||
-			typeof value.enabled !== "boolean" ||
-			Object.keys(value).sort().join() !== "binding,enabled,scope,version")
-	)
-		throw Error(
-			"Calendar sync settings need recovery. Saved events are retained.",
-		);
-	return value;
+const foreground = () => !document.hidden;
+/** Android keeps its own per-calendar sync opt-in; provider writes need both. */
+const deviceGate: CalendarSyncDeviceGate = {
+	enabled: () => nativeCalendarSync.enabled(),
+	enable: async (current) => {
+		await nativeCalendarSync.enable(current);
+	},
+	pause: () => nativeCalendarSync.pause(),
+	cancel: () => nativeCalendarSync.cancel(),
+};
+/** Calendars device sync may write to: owned or writable calendars of the connected Google accounts that
+ * granted Calendar changes, each account's own calendar first. Review still verifies write access. */
+export async function googleCalendarSyncDestinations(
+	signal: AbortSignal,
+): Promise<GoogleCalendarSelection[]> {
+	const cloud = connectionController.getCloudClient();
+	if (!cloud)
+		throw Error("Connect your Cloud account before choosing a Google calendar.");
+	const accounts = (
+		await createGoogleAccounts(cloud, () =>
+			connectionController.getCloudClient(),
+		).list(signal)
+	).filter(
+		(account) =>
+			account.connected &&
+			account.connectionId &&
+			account.grantedCapabilities.includes("google.calendar.write"),
+	);
+	const destinations = await Promise.all(
+		accounts.map(async (account) => {
+			const connectionId = account.connectionId as string;
+			return (await cloud.client.googleCalendars(connectionId, signal))
+				.filter((calendar) => ["owner", "writer"].includes(calendar.accessRole))
+				.sort((a, b) => Number(b.primary) - Number(a.primary))
+				.map((calendar) => ({
+					connectionId,
+					sourceId: `google:${encodeURIComponent(connectionId)}:${encodeURIComponent(calendar.calendarId)}`,
+					providerCalendarId: calendar.calendarId,
+					name: calendar.summary,
+					account: account.label,
+				}));
+		}),
+	);
+	signal.throwIfAborted();
+	if (connectionController.getCloudClient()?.sessionId !== cloud.sessionId)
+		throw new DOMException("The Cloud account changed", "AbortError");
+	return destinations.flat();
 }
-const controller = new CalendarSyncController(
-	async (signal) => {
-		const selected=owner(),key=identity();
-		const current=()=>!signal.aborted&&!document.hidden&&identity()===key;
-		if(Capacitor.isNativePlatform()){
-			const source=await nativeCalendarSync.prepare({environment:selected.account.environment,connectionId:selected.selection.connectionId,calendarId:selected.selection.providerCalendarId},current,signal,nativePermissionReview),binding=source.binding;
-			if(binding.environment!==selected.account.environment||binding.userId!==selected.account.userId||binding.organizationId!==selected.account.organizationId||binding.agentId!==selected.agentId||binding.connectionId!==selected.selection.connectionId||binding.calendarId!==selected.selection.providerCalendarId)throw Error('Device and Google Calendar account bindings differ. Nothing was enabled.');
-			destination={...source.destination};preparedBinding={...binding};
-			const local=nativeCalendarSync.port(source,current,signal);
-			return {reviewIdentity:key,binding,client:selected.cloud.client,current,local,localDeletionUndone:local.deletionUndone,storage:calendarLinkStorage,events:()=>nativeCalendarSync.events(source,current,signal)};
+
+const nativeSelection = (value: CalendarSyncTarget) => ({
+	environment: value.environment,
+	connectionId: value.connectionId,
+	calendarId: value.calendarId,
+});
+
+/** Explicit local-first Google Calendar sync (@elizaos/plugin-calendar/linked-sync) on Alpha's
+ * installed settings, checkpoints and device Calendar bridge. */
+export const calendarSyncHost = createCalendarSyncHost({
+	async prepare(signal, { interactive }) {
+		const selected = owner(),
+			key = identity();
+		const current = () => !signal.aborted && foreground() && identity() === key;
+		if (native()) {
+			const source = await nativeCalendarSync.prepare(
+					{
+						environment: selected.account.environment,
+						connectionId: selected.selection.connectionId,
+						calendarId: selected.selection.providerCalendarId,
+					},
+					current,
+					signal,
+					interactive,
+				),
+				binding = source.binding;
+			if (
+				binding.environment !== selected.account.environment ||
+				binding.userId !== selected.account.userId ||
+				binding.organizationId !== selected.account.organizationId ||
+				binding.agentId !== selected.agentId ||
+				binding.connectionId !== selected.selection.connectionId ||
+				binding.calendarId !== selected.selection.providerCalendarId
+			)
+				throw Error(
+					"Device and Google Calendar account bindings differ. Nothing was enabled.",
+				);
+			const local = nativeCalendarSync.port(source, current, signal);
+			return {
+				reviewIdentity: key,
+				binding,
+				destination: { ...source.destination },
+				client: selected.cloud.client,
+				current,
+				local,
+				localDeletionUndone: local.deletionUndone,
+				storage: calendarLinkStorage,
+				events: () => nativeCalendarSync.events(source, current, signal),
+			};
 		}
-		const source=await prepareCalendarSource();
-		if(!current())throw new DOMException('Calendar sync context changed','AbortError');
-		const raw = (await selected.cloud.client.googleCalendarSync(
-			{
-				kind: "capabilities",
-				selection: {
-					grantId: selected.selection.connectionId,
-					calendarId: selected.selection.providerCalendarId,
-				},
-			},
-			signal,
-		)) as Record<string, unknown>;
+		const source = await prepareCalendarSource();
 		if (!current())
 			throw new DOMException("Calendar sync context changed", "AbortError");
-		if (
-			raw?.version !== 1 ||
-			raw.calendarId !== selected.selection.providerCalendarId ||
-			typeof raw.accountId !== "string" ||
-			!raw.accountId ||
-			raw.read !== true ||
-			raw.write !== true ||
-			raw.conditionalWrites !== true ||
-			raw.idempotentCreate !== true ||
-			raw.providerExactlyOnce !== false
-		)
-			throw Error("This Google calendar does not support safe sync.");
-		if (
-			typeof raw.accountEmail !== "string" ||
-			!/^[^\s@]+@[^\s@]+$/.test(raw.accountEmail) ||
-			typeof raw.calendarLabel !== "string" ||
-			!raw.calendarLabel.trim()
-		)
-			throw Error(
-				"Google account and calendar names could not be verified. Review the connection before syncing.",
-			);
-		destination = { account: raw.accountEmail, calendar: raw.calendarLabel };
+		const verified = await readGoogleCalendarSyncDestination(
+			selected.cloud.client,
+			{
+				grantId: selected.selection.connectionId,
+				calendarId: selected.selection.providerCalendarId,
+			},
+			current,
+			signal,
+		);
 		const binding: CalendarSyncBinding = {
 			environment: selected.account.environment,
 			userId: selected.account.userId,
 			organizationId: selected.account.organizationId!,
 			connectionId: selected.selection.connectionId,
-			providerAccountId: raw.accountId,
+			providerAccountId: verified.providerAccountId,
 			calendarId: selected.selection.providerCalendarId,
 			agentId: selected.agentId,
 			localSourceId: source.sourceId,
 			localSourceRevision: source.sourceRevision,
 		};
-		preparedBinding = binding;
 		return {
 			reviewIdentity: key,
 			binding,
+			destination: {
+				account: verified.accountEmail,
+				calendar: verified.calendarLabel,
+			},
 			client: selected.cloud.client,
 			current,
 			local: browserCalendarSyncPort(source.sourceRevision, current),
@@ -180,265 +252,94 @@ const controller = new CalendarSyncController(
 			},
 		};
 	},
-	{
-		read: async (scope) => {
-			const value = await saved();
-			enabled = value?.scope === scope && value.enabled === true && (!Capacitor.isNativePlatform()||await nativeCalendarSync.enabled());
-			return enabled;
-		},
-		write: async (scope, nextEnabled) => {
-			const binding = preparedBinding;
-			if (!binding) throw Error("Review the Calendar sync destination again.");
-			await configuration.editJson<Configuration>(() => ({
-				version: 1,
-				scope,
-				binding: { ...binding },
-				enabled: nextEnabled,
-			}));
-			window.dispatchEvent(new Event("alpha:calendar-sync-config-changed"));
-			enabled = nextEnabled;
-		},
-	},
-);
-function message(error: unknown) {
-	const e = error as { status?: number; name?: string; message?: string };
-	if (e?.status === 404)
-		return "Calendar sync is not available on this server yet. Check linked events before retrying.";
-	if (e?.name === "AbortError")
-		return "Sync paused or the selected account changed. Check linked events before retrying.";
-	return (
-		e?.message ||
-		"Sync stopped. Check the selected Google calendar before retrying."
-	);
-}
-async function work<T>(
-	action: () => Promise<T>,
-	success: (result: T) => string,
-	progress: string,
-) {
-	if (running) throw Error("Calendar sync is already running.");
-	running = true;
-	status = progress;
-	changed();
-	try {
-		const result = await action();
-		status = success(result);
-		return result;
-	} catch (error) {
-		status = message(error);
-		throw error;
-	} finally {
-		running = false;
-		changed();
-		window.dispatchEvent(new Event("alpha:calendar-sync-settled"));
-	}
-}
-function report(result: CalendarSyncReport) {
-	const warnings = result.conflicted + result.quarantined + result.dirty;
-	return warnings
-		? `Sync needs review: ${result.conflicted} conflicts, ${result.quarantined} unconfirmed changes, ${result.dirty} refused changes.`
-		: `Synced: ${result.pushed} sent to Google, ${result.pulled} received, ${result.clean} unchanged.${result.paused?` ${result.paused} links paused.`:""}`;
-}
-export const calendarSyncHost = {
-	subscribe(listener: () => void) {
-		listeners.add(listener);
-		return () => {
-			listeners.delete(listener);
-		};
-	},
-	snapshot: () => ({ status, running, enabled }),
-	async settings() {
-		const config = await saved();
-		try {
-			const target = owner(),
-				b = config?.binding;
-			enabled =
-				!!config?.enabled &&
-				b?.environment === target.account.environment &&
-				b?.userId === target.account.userId &&
-				b?.organizationId === target.account.organizationId &&
-				b?.connectionId === target.selection.connectionId &&
-				b?.calendarId === target.selection.providerCalendarId &&
-				b?.agentId === target.agentId;
-			if(enabled&&Capacitor.isNativePlatform()){
-				const key=identity(),native=await nativeCalendarSync.prepare({environment:target.account.environment,connectionId:target.selection.connectionId,calendarId:target.selection.providerCalendarId},()=>!document.hidden&&identity()===key,new AbortController().signal);
-				enabled=native.enabled&&native.binding.localSourceRevision===b?.localSourceRevision;
-				if(!enabled)status='Device sync needs a new review. Saved events are retained.';
-			}
-		} catch {
-			enabled = false;
+	settings: configuration,
+	target,
+	identity,
+	foreground,
+	async source(selected, current) {
+		if (native()) {
+			const source = await nativeCalendarSync.prepare(
+				nativeSelection(selected),
+				current,
+				new AbortController().signal,
+			);
+			return {
+				revision: source.binding.localSourceRevision,
+				deviceEnabled: source.enabled,
+			};
 		}
-		changed();
+		return { revision: (await prepareCalendarSource()).sourceRevision };
 	},
-	async linkedProviderEvents(): Promise<Set<string>> {
-		const config = await saved();
-		if (!config?.enabled) return new Set();
-		const target = owner(),
-			b = config.binding,
-			key = identity();
-		if (
-			b.environment !== target.account.environment ||
-			b.userId !== target.account.userId ||
-			b.organizationId !== target.account.organizationId ||
-			b.agentId !== target.agentId ||
-			b.connectionId !== target.selection.connectionId ||
-			b.calendarId !== target.selection.providerCalendarId
-		)
-			return new Set();
-		const source=Capacitor.isNativePlatform()?await nativeCalendarSync.prepare({environment:target.account.environment,connectionId:target.selection.connectionId,calendarId:target.selection.providerCalendarId},()=>!document.hidden&&identity()===key,new AbortController().signal):await prepareCalendarSource();
-		if(('binding' in source?source.binding.localSourceRevision:source.sourceRevision)!==b.localSourceRevision)return new Set();
-		const store = await CalendarLinkedStore.open(
-			b,
-			() => !document.hidden && identity() === key,
-			calendarLinkStorage,
-		);
-		return new Set(
-			(await store.list())
-				.filter(
-					(row) =>
-						row.providerEventId &&
-						(row.state === "clean" || row.state === "dirty"),
-				)
-				.map((row) => row.providerEventId!),
-		);
+	storage: calendarLinkStorage,
+	device: () => (native() ? deviceGate : undefined),
+	controller: {
+		idempotencyNamespace: ALPHA_CALENDAR_SYNC_NAMESPACE,
+		canonicalRecurrence: canonicalSyncRecurrence,
 	},
-	destination: () => ({ ...destination }),
-	review: () => work(async()=>{nativePermissionReview=true;try{return await controller.review();}finally{nativePermissionReview=false;}},review=>`Ready to link ${review.events.length} Alpha events.`,"Reviewing calendar…"),
-	enable: async (review: CalendarSyncReview) => {
-		await work(async()=>{
-			if(Capacitor.isNativePlatform()){
-				if(review.reviewIdentity!==identity())throw Error('Calendar account changed. Review sync again.');
-				await nativeCalendarSync.enable(()=>!document.hidden&&review.reviewIdentity===identity());
-				try{const refreshed=await controller.review();await controller.enable(refreshed);}catch(error){await nativeCalendarSync.pause();throw error;}
-			}else await controller.enable(review);
-		},()=>"Sync enabled.","Enabling sync…");
-		return calendarSyncHost.sync();
-	},
-	sync: () => work(() => controller.sync(), report,"Syncing…"),
-	pause: async () => {
-		controller.cancel();
-		if(Capacitor.isNativePlatform())await nativeCalendarSync.pause();
-		await configuration.editJson<Configuration>((value) =>
-			value ? { ...value, enabled: false } : null,
-		);
-		window.dispatchEvent(new Event("alpha:calendar-sync-config-changed"));
-		enabled = false;
-		status = "Sync is off. Saved events and links are retained.";
-		changed();
-	},
-	cancel: () => {controller.cancel();if(Capacitor.isNativePlatform())nativeCalendarSync.cancel();},
-	async resume() {
-		if (running || document.hidden) return;
-		try {
-			const config = await saved();
-			if (!config?.enabled) return;
-			const { account, selection, agentId } = owner(),
-				binding = config.binding;
-			if (
-				binding.environment !== account.environment ||
-				binding.userId !== account.userId ||
-				binding.organizationId !== account.organizationId ||
-				binding.connectionId !== selection.connectionId ||
-				binding.calendarId !== selection.providerCalendarId ||
-				binding.agentId !== agentId
-			)
-				return;
-			await calendarSyncHost.sync();
-		} catch (error) {
-			status = message(error);
-			changed();
-		}
-	},
-};
+	settingsWritten: () =>
+		window.dispatchEvent(new Event("alpha:calendar-sync-config-changed")),
+	reviewMessage: (count) => `Ready to link ${count} Alpha events.`,
+});
 
 /** Foreground only: local edits and returning to Calendar refresh retained links; no polling or inference. */
 export function startCalendarSyncHost() {
-	let nativeRetired=false;
-	const nativeObserver=Capacitor.isNativePlatform()?nativeCalendarSync.observe(()=>window.dispatchEvent(new Event("alpha:calendar-sync-source-changed"))):undefined;
-	void nativeObserver?.then(handle=>{if(nativeRetired)void handle.remove();}).catch(()=>{});
-	let pendingLocalChange = false;
-	let key = identity(),
-		timer: ReturnType<typeof setTimeout> | undefined;
-	const changedOwner = () => {
-		const next = identity();
-		if (next !== key) {
-			const changedExistingOwner=!!key;
-			key = next;
-			controller.cancel();
-			if(Capacitor.isNativePlatform()){nativeCalendarSync.cancel();if(changedExistingOwner){enabled=false;void nativeCalendarSync.pause().catch(()=>{status='Device sync pause could not be confirmed. Check pending deletions.';changed();});}}
-			status =
-				"Sync is off.";
-			changed();
-			void calendarSyncHost.resume();
-		}
-	};
-	const localChanged = () => {
-		if (!enabled || document.hidden) return;
-		if (running) {
-			pendingLocalChange = true;
-			return;
-		}
-		clearTimeout(timer);
-		timer = setTimeout(() => void calendarSyncHost.resume(), 400);
-	};
-	const settled = () => {
-		if (pendingLocalChange) {
-			pendingLocalChange = false;
-			localChanged();
-		}
-	};
-	const visible = () => {
-		if (document.hidden) {
-			clearTimeout(timer);
-			controller.cancel();
-			if(Capacitor.isNativePlatform())nativeCalendarSync.cancel();
-		} else void calendarSyncHost.resume();
-	};
+	let nativeRetired = false;
+	const nativeObserver = native()
+		? nativeCalendarSync.observe(() =>
+				window.dispatchEvent(new Event("alpha:calendar-sync-source-changed")),
+			)
+		: undefined;
+	void nativeObserver
+		?.then((handle) => {
+			if (nativeRetired) void handle.remove();
+		})
+		.catch(() => {});
+	const scheduler = calendarSyncHost.start();
 	const channel =
 		typeof BroadcastChannel === "undefined"
 			? null
 			: new BroadcastChannel("alpha.calendar-sync-config.v1");
-	if (channel)
-		channel.onmessage = () => {
-			controller.cancel();
-			if(Capacitor.isNativePlatform())nativeCalendarSync.cancel();
-			status = "Sync settings changed in another view.";
-			changed();
-		};
+	if (channel) channel.onmessage = () => scheduler.settingsChangedElsewhere();
 	const configChanged = () => channel?.postMessage({ changed: true });
-	const unsubscribe = connectionController.subscribe(changedOwner);
-	window.addEventListener("alpha:google-accounts-changed", changedOwner);
+	const unsubscribe = connectionController.subscribe(scheduler.ownerChanged);
+	window.addEventListener("alpha:google-accounts-changed", scheduler.ownerChanged);
 	window.addEventListener(
 		"alpha:google-calendar-selection-changed",
-		changedOwner,
+		scheduler.ownerChanged,
 	);
-	window.addEventListener("alpha:calendar-document-changed", localChanged);
-	window.addEventListener("alpha:calendar-sync-source-changed", localChanged);
-	window.addEventListener("alpha:calendar-sync-settled", settled);
+	window.addEventListener("alpha:calendar-document-changed", scheduler.localChanged);
+	window.addEventListener(
+		"alpha:calendar-sync-source-changed",
+		scheduler.localChanged,
+	);
 	window.addEventListener("alpha:calendar-sync-config-changed", configChanged);
-	document.addEventListener("visibilitychange", visible);
-	void calendarSyncHost.resume();
+	document.addEventListener("visibilitychange", scheduler.visibilityChanged);
 	return () => {
-		nativeRetired=true;void nativeObserver?.then(handle=>handle.remove()).catch(()=>{});if(Capacitor.isNativePlatform())nativeCalendarSync.cancel();
-		clearTimeout(timer);
-		controller.cancel();
+		nativeRetired = true;
+		void nativeObserver?.then((handle) => handle.remove()).catch(() => {});
+		scheduler.stop();
 		unsubscribe();
 		channel?.close();
-		window.removeEventListener("alpha:google-accounts-changed", changedOwner);
+		window.removeEventListener(
+			"alpha:google-accounts-changed",
+			scheduler.ownerChanged,
+		);
 		window.removeEventListener(
 			"alpha:google-calendar-selection-changed",
-			changedOwner,
+			scheduler.ownerChanged,
 		);
-		window.removeEventListener("alpha:calendar-document-changed", localChanged);
+		window.removeEventListener(
+			"alpha:calendar-document-changed",
+			scheduler.localChanged,
+		);
 		window.removeEventListener(
 			"alpha:calendar-sync-source-changed",
-			localChanged,
+			scheduler.localChanged,
 		);
-		window.removeEventListener("alpha:calendar-sync-settled", settled);
 		window.removeEventListener(
 			"alpha:calendar-sync-config-changed",
 			configChanged,
 		);
-		document.removeEventListener("visibilitychange", visible);
+		document.removeEventListener("visibilitychange", scheduler.visibilityChanged);
 	};
 }

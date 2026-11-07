@@ -122,15 +122,15 @@ public final class ConnectionRoutesTest {
   check(ConnectionRoutes.managedService("/api/v1/billing/limits",null,"GET",false,false),"billing snapshot read allowed");
   check(!ConnectionRoutes.managedService("/api/v1/billing/limits",null,"POST",true,false),"billing snapshot write refused");
   check(!ConnectionRoutes.managedService("/api/v1/credits/balance",null,"GET",false,false),"credit balance retired");
-  // Reset Alpha data revokes only the presented key, at the exact self-revocation route.
-  check(java.util.Arrays.equals(CloudKeyRevocation.environments(false),new String[]{"production"}),"flag-off reset revokes production only");
-  check(java.util.Arrays.equals(CloudKeyRevocation.environments(true),new String[]{"production","staging"}),"test mocks also revoke staging");
-  for(String environment:new String[]{"production","staging"}){java.net.URI target=java.net.URI.create(CloudKeyRevocation.endpoint(environment));check(revoke(target.getScheme(),target.getHost(),target.getPort(),target.getRawPath(),target.getRawQuery(),"DELETE",false,true),"reset revocation target "+environment);}
+  // The Cloud sign-in hand-off is a test-mocks diagnostic route; product sign-in is the native host.
+  check(!ConnectionRoutes.managedService("/api/auth/cli-session",null,"POST",true,false),"sign-in hand-off create refused flag-off");
+  check(!ConnectionRoutes.managedService("/api/auth/cli-session/b7a2c1d0-5e4f-4a3b-8c2d-1e0f9a8b7c6d",null,"GET",false,false),"sign-in hand-off poll refused flag-off");
+  check(ConnectionRoutes.managedService("/api/auth/cli-session",null,"POST",true,true),"sign-in hand-off kept in test-mocks builds");
+  // Reset Alpha data revokes only the presented key through the shared CloudKeyRevocation (tested with
+  // the sign-in library upstream); this transport admits exactly the same self-revocation DELETE.
+  check(revoke("https","api.eliza.app",-1,"/api/v1/api-keys/current",null,"DELETE",false,false),"production self-revocation target");
+  check(revoke("https","api-staging.eliza.app",-1,"/api/v1/api-keys/current",null,"DELETE",false,true),"staging self-revocation target in test-mocks builds");
   check(!revoke("https","api-staging.eliza.app",-1,"/api/v1/api-keys/current",null,"DELETE",false,false),"flag-off reset never targets staging");
-  try{CloudKeyRevocation.endpoint("other");throw new AssertionError("unknown environment");}catch(IllegalArgumentException expected){}
-  check(CloudKeyRevocation.bearer(null)==null&&CloudKeyRevocation.bearer("short")==null&&CloudKeyRevocation.bearer("token with space")==null&&CloudKeyRevocation.bearer("token\nline-break")==null,"only a printable bearer is sent");
-  check("eliza_synthetic_token".equals(CloudKeyRevocation.bearer("eliza_synthetic_token")),"printable bearer kept");
-  check(!CloudKeyRevocation.revoke("production",null,false)&&!CloudKeyRevocation.revoke("other","eliza_synthetic_token",false),"nothing is sent without a token or a known environment");
   check(ConnectionRoutes.managedService("/api/v1/subscription/entitlement",null,"GET",false,false)&&ConnectionRoutes.managedService("/api/v1/subscription/entitlement-keys",null,"GET",false,false),"subscription entitlement reads allowed");
   check(!ConnectionRoutes.managedService("/api/v1/subscription/entitlement",null,"POST",true,false)&&!ConnectionRoutes.managedService("/api/v1/subscription/checkout",null,"GET",false,false),"subscription writes and other subscription paths refused");
   check(ConnectionRoutes.managedService("/api/v1/eliza/google/gmail/inbox-v1/thread","grantId=owned", "GET",false,false),"owner Gmail route allowed");

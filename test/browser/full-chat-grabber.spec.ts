@@ -1,3 +1,4 @@
+import {installHomeCalendar} from './helpers/home-calendar';
 import {test,expect,type Page} from '@playwright/test';
 
 // The Resize chat grabber moves the open sheet: it rests where released, snaps only near the
@@ -108,8 +109,8 @@ async function eventSheet(page:Page){
  await page.setViewportSize({width:412,height:915});
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
  await page.goto('/?shell=launcher&tools=1');
- await page.evaluate(async()=>{const {BrowserCalendar}=await import('/src/browser/calendar.ts'),date=new Date(Date.now()+2*86400000);date.setHours(9,30,0,0);await new BrowserCalendar().save({calendarId:'local',title:'Synthetic outside target',begin:date.getTime(),end:date.getTime()+1800000,allDay:false,creationId:crypto.randomUUID()});});
- await page.reload();
+ const start=new Date(Date.now()+2*86400000);start.setHours(9,30,0,0);
+ await installHomeCalendar(page,{title:'Synthetic outside target',startAt:start.toISOString(),endAt:new Date(start.getTime()+1800000).toISOString()});
  await expect(card(page)).toBeVisible();
  await page.getByRole('button',{name:'Open conversation',exact:true}).click();
  await expect(grabber(page)).toBeVisible();

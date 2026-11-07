@@ -1,7 +1,18 @@
-import {test,expect} from '@playwright/test';
+import {test,expect as baseExpect} from '@playwright/test';
+// After a load the digest panel fills from IndexedDB and its first tick; under machine load that has taken longer
+// than the 5s default, so expectations wait up to 15s (as in home-daily-overview). What is expected is unchanged.
+const expect=baseExpect.configure({timeout:15_000});
+// Most tests here load the app more than once (a reload, a second tab or a restart). Each load of the development server
+// fetches its ~700 unbundled modules; with four workers on a loaded machine one load has taken 10-20s
+// (traces show single module responses of 10s), so the 30s default timed out mid-reload. The timeout
+// is explicit and per file; no step, wait or assertion changes.
+test.describe.configure({timeout:90_000});
+// Screen-entry motion is not under test here; waiting out its stability retries on every tap is what
+// ran these tests out of time under load (as in #700).
+test.use({contextOptions:{reducedMotion:'reduce'}});
 test('reviewed snapshot schedule delivers one retained result and survives reload',async({page})=>{
  await page.clock.install({time:new Date('2026-10-03T12:00:10Z')});
- await page.goto('/?mode=dev');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent connection',exact:true}).click();await page.getByRole('button',{name:'Connect development profile'}).click();
+ await page.goto('/?mode=dev');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent',exact:true}).click();await page.getByRole('button',{name:'Connect development profile'}).click();
  await page.evaluate(async()=>window.dispatchEvent(new Event('alpha:hosted-digests')));const panel=page.getByRole('dialog',{name:'Scheduled digests',exact:true});await panel.getByText('Share a snapshot',{exact:true}).click();await panel.getByLabel('Label',{exact:true}).fill('Daily source');await panel.getByLabel('Snapshot text',{exact:true}).fill('Reviewed snapshot content');await panel.getByRole('button',{name:'Review snapshot',exact:true}).click();await panel.getByRole('button',{name:'Confirm',exact:true}).click();
  await panel.getByRole('combobox',{name:'Reviewed source',exact:true}).selectOption({index:1});await panel.getByLabel('Time zone',{exact:true}).fill('UTC');await panel.getByLabel('Morning',{exact:true}).fill('12:01');await panel.getByRole('button',{name:'Review morning schedule',exact:true}).click();await panel.getByRole('button',{name:'Confirm',exact:true}).click();
  await panel.getByRole('button',{name:'Pause result checks',exact:true}).click();await page.clock.runFor(60000);await expect.poll(()=>page.evaluate(async()=>(await (await import('/src/browser/development-digest-document.ts')).readDevelopmentDigests((await import('/src/browser/development-identity.ts')).developmentIdentity('local'))).results.length)).toBe(1);await panel.getByRole('button',{name:'Refresh',exact:true}).click();await expect(panel.getByText('Development reply. Edit this response in Agent connection.',{exact:true})).toBeVisible();
@@ -15,10 +26,11 @@ test('digest mutation replay, lost acknowledgements, revocation and account reti
  localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'development',profile:'remote'}));let retired=false;try{await call('sources');}catch{retired=true;}
  return {replayed:JSON.stringify(saved)===JSON.stringify(again),changed,same:JSON.stringify(a)===JSON.stringify(b),one:a.entries.length,empty:empty.entries.length,retained:JSON.stringify(a)===JSON.stringify(after),stale,retired};});expect(result).toEqual({replayed:true,changed:true,same:true,one:1,empty:0,retained:true,stale:true,retired:true});
 });
-for(const scenario of [{name:'repeated clock time runs once at the earlier offset',start:'2026-11-01T05:29:00Z',time:'01:30',ticks:['2026-11-01T05:30:00Z','2026-11-01T06:30:00Z'],statuses:['completed']},{name:'skipped clock time and missed days do not replay',start:'2026-03-08T06:59:00Z',time:'02:30',ticks:['2026-03-08T07:30:00Z','2026-03-09T06:32:01Z'],statuses:['missed']}])test(scenario.name,async({page})=>{
+for(const scenario of [{name:'repeated clock time runs once at the earlier offset',start:'2026-11-01T05:29:00Z',time:'01:30',ticks:['2026-11-01T05:30:00Z','2026-11-01T06:30:00Z'],statuses:['completed']},{name:'skipped clock time runs one gap later and missed days do not replay',start:'2026-03-08T06:59:00Z',time:'02:30',ticks:['2026-03-08T07:30:00Z','2026-03-09T07:00:01Z'],statuses:['completed','missed']}])test(scenario.name,async({page})=>{
  await page.clock.install({time:new Date(scenario.start)});await page.goto('/?mode=dev');await page.evaluate(async time=>{const {developmentDigestRequest:request}=await import('/src/browser/development-digests.ts'),{developmentIdentity}=await import('/src/browser/development-identity.ts');localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'development',profile:'local'}));const i=developmentIdentity('local'),s:any=await request(i,'/api/workflow/hosted/sources',{id:crypto.randomUUID(),kind:'notes',label:'Clock source',text:'Clock text',observedAt:new Date().toISOString(),expiresAt:new Date(Date.now()+3*86400000).toISOString(),confirmed:true});await request(i,'/api/workflow/hosted/loops',{mutationId:crypto.randomUUID(),confirmed:true,spec:{version:1,template:'morning',sourceId:s.source.id,sourceRevision:s.source.revision,enabled:true,timeZone:'America/New_York',localTime:time}});},scenario.time);
- for(const time of scenario.ticks){await page.clock.setFixedTime(new Date(time));await page.evaluate(async()=>{const {developmentDigestRequest:request}=await import('/src/browser/development-digests.ts'),{developmentIdentity}=await import('/src/browser/development-identity.ts');await request(developmentIdentity('local'),'/api/workflow/hosted/tick',undefined);});}// The skipped 02:30 on March 8 has no occurrence at all. The March 9 occurrence passed more than 120 seconds
- // before the next tick (the agent's window): it is recorded once as missed and is never executed late.
+ for(const time of scenario.ticks){await page.clock.setFixedTime(new Date(time));await page.evaluate(async()=>{const {developmentDigestRequest:request}=await import('/src/browser/development-digests.ts'),{developmentIdentity}=await import('/src/browser/development-identity.ts');await request(developmentIdentity('local'),'/api/workflow/hosted/tick',undefined);});}// The skipped 02:30 on March 8 runs one gap later, at 03:30 EDT, as the agent's cron scan does. The March 9
+ // occurrence passed more than 30 minutes before the next tick (the agent's window, #680): it is recorded once as
+ // missed and is never executed late.
  expect(await page.evaluate(async()=>(await (await import('/src/browser/development-digest-document.ts')).readDevelopmentDigests((await import('/src/browser/development-identity.ts')).developmentIdentity('local'))).results.map(row=>row.status))).toEqual(scenario.statuses);
 });
 
@@ -51,7 +63,9 @@ test('a schedule whose time passed while the app was closed yields exactly one m
 });
 
 test('a clock set back, a paused schedule and a revoked source never settle an occurrence twice or late',async({page})=>{
- await page.clock.install({time:new Date('2026-10-03T07:59:30Z')});await page.goto('/?mode=dev');
+ // Held at 07:59:30 while the app loads and the schedule is seeded: with a running clock, a slow load or seed
+ // under machine load carried the creation itself past 08:00, so the first occurrence was never due.
+ await page.clock.install({time:new Date('2026-10-03T07:59:30Z')});await page.clock.setFixedTime(new Date('2026-10-03T07:59:30Z'));await page.goto('/?mode=dev');
  const [{loop,source}]=await seedLoops(page,[{template:'morning',localTime:'08:00',text:'Morning text'}]);
  await page.clock.setFixedTime(new Date('2026-10-03T08:00:05Z'));await digestCall(page,'tick');expect((await digestState(page)).results.map(row=>row.status)).toEqual(['completed']);
  // Clock moved back across the same occurrence, then forward again within the day.
@@ -72,7 +86,7 @@ test('a clock set back, a paused schedule and a revoked source never settle an o
 });
 
 // Parity with the pinned agent's digestAdmission (vendor/eliza plugin-workflow hosted-digest.ts): the
-// source state is decided before lateness, the run window is 120 seconds, and an occurrence settles once.
+// source state is decided before lateness, the run window is 30 minutes, and an occurrence settles once.
 test('an expired source yields one unavailable record, even when late, and a renewed schedule runs again',async({page})=>{
  await page.clock.install({time:new Date('2026-10-03T07:55:00Z')});await page.goto('/?mode=dev');
  const made=await digestCall(page,'sources',{id:crypto.randomUUID(),kind:'notes',label:'Short source',text:'Short text',observedAt:'2026-10-03T07:55:00.000Z',expiresAt:'2026-10-04T07:00:00.000Z',confirmed:true});
@@ -91,14 +105,14 @@ test('an expired source yields one unavailable record, even when late, and a ren
  expect((await digestState(page)).results.map(row=>[row.status,row.scheduledAt])).toEqual([['completed','2026-10-03T08:00:00.000Z'],['unavailable','2026-10-04T08:00:00.000Z'],['completed','2026-10-06T08:00:00.000Z']]);
 });
 
-test('an occurrence runs up to 120 seconds late and is missed after that',async({page})=>{
+test('an occurrence runs up to 30 minutes late and is missed after that',async({page})=>{
  await page.clock.install({time:new Date('2026-10-03T07:55:00Z')});await page.goto('/?mode=dev');
  await seedLoops(page,[{template:'morning',localTime:'08:00',text:'Morning text'}]);
- // Exactly 120 seconds late still runs, recorded against its scheduled time.
- await page.clock.setFixedTime(new Date('2026-10-03T08:02:00Z'));await digestCall(page,'tick');await digestCall(page,'tick');
+ // Exactly 30 minutes late still runs, recorded against its scheduled time.
+ await page.clock.setFixedTime(new Date('2026-10-03T08:30:00Z'));await digestCall(page,'tick');await digestCall(page,'tick');
  expect((await digestState(page)).results.map(row=>[row.status,row.scheduledAt])).toEqual([['completed','2026-10-03T08:00:00.000Z']]);
  // One second more is missed, once.
- await page.clock.setFixedTime(new Date('2026-10-04T08:02:01Z'));await digestCall(page,'tick');await digestCall(page,'tick');await page.clock.setFixedTime(new Date('2026-10-04T08:03:00Z'));await digestCall(page,'tick');
+ await page.clock.setFixedTime(new Date('2026-10-04T08:30:01Z'));await digestCall(page,'tick');await digestCall(page,'tick');await page.clock.setFixedTime(new Date('2026-10-04T08:31:00Z'));await digestCall(page,'tick');
  const state=await digestState(page);expect(state.results.map(row=>[row.status,row.scheduledAt])).toEqual([['completed','2026-10-03T08:00:00.000Z'],['missed','2026-10-04T08:00:00.000Z']]);
  expect(state.results[1].output).toEqual({status:'missed',text:'The scheduled time was missed. No backlog was executed.'});
 });
@@ -125,7 +139,8 @@ test('a clock jump forward then back still runs the real occurrence once and nev
 });
 
 test('morning and evening at the same minute produce distinct source-backed results, and an edited time runs once at its new time',async({page})=>{
- await page.clock.install({time:new Date('2026-10-03T17:58:00Z')});await page.goto('/?mode=dev');
+ // Held before 18:00 while the app loads and both schedules are seeded, whatever that takes.
+ await page.clock.install({time:new Date('2026-10-03T17:58:00Z')});await page.clock.setFixedTime(new Date('2026-10-03T17:58:00Z'));await page.goto('/?mode=dev');
  const [morning,evening]=await seedLoops(page,[{template:'morning',localTime:'18:00',text:'Morning source text'},{template:'evening',localTime:'18:00',text:'Evening source text'}]);
  await page.clock.setFixedTime(new Date('2026-10-03T18:00:10Z'));await Promise.all([digestCall(page,'tick'),digestCall(page,'tick')]);
  const both=(await digestState(page)).results;expect(both.map(row=>row.status)).toEqual(['completed','completed']);
@@ -142,7 +157,7 @@ test('morning and evening at the same minute produce distinct source-backed resu
 
 test('reopening after a missed time shows one honest missed record and one notice, never a late brief',async({page})=>{
  await page.clock.install({time:new Date('2026-10-03T12:00:10Z')});
- await page.goto('/?mode=dev');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent connection',exact:true}).click();await page.getByRole('button',{name:'Connect development profile'}).click();
+ await page.goto('/?mode=dev');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent',exact:true}).click();await page.getByRole('button',{name:'Connect development profile'}).click();
  await page.evaluate(async()=>window.dispatchEvent(new Event('alpha:hosted-digests')));const panel=page.getByRole('dialog',{name:'Scheduled digests',exact:true});
  await expect(panel).toContainText('Schedules run while this app is open. If scheduled times pass while it is not running, one is recorded below as missed and none is run later.');
  await panel.getByText('Share a snapshot',{exact:true}).click();await panel.getByLabel('Label',{exact:true}).fill('Daily source');await panel.getByLabel('Snapshot text',{exact:true}).fill('Reviewed snapshot content');await panel.getByRole('button',{name:'Review snapshot',exact:true}).click();await panel.getByRole('button',{name:'Confirm',exact:true}).click();
@@ -165,7 +180,7 @@ test.describe('device in another time zone',()=>{
  test.use({timezoneId:'Europe/Paris'});
  test('a schedule reviewed in one time zone says so when the device clock is in another',async({page})=>{
   await page.clock.install({time:new Date('2026-10-03T12:00:10Z')});
-  await page.goto('/?mode=dev');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent connection',exact:true}).click();await page.getByRole('button',{name:'Connect development profile'}).click();
+  await page.goto('/?mode=dev');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent',exact:true}).click();await page.getByRole('button',{name:'Connect development profile'}).click();
   await seedLoops(page,[{template:'morning',localTime:'08:00',text:'Morning text'}],'America/New_York');await seedLoops(page,[{template:'evening',localTime:'18:00',text:'Evening text'}],'Europe/Paris');
   await page.evaluate(async()=>window.dispatchEvent(new Event('alpha:hosted-digests')));const schedules=page.getByRole('dialog',{name:'Scheduled digests',exact:true}).getByRole('region',{name:'Digest schedules',exact:true});
   await expect(schedules.getByRole('listitem').filter({hasText:'Morning at 08:00 (America/New_York)'})).toContainText('Runs at 08:00 America/New_York time, not this device’s current time zone (Europe/Paris). Review the schedule to change it.');
@@ -187,7 +202,7 @@ test('two tabs ticking the same occurrence settle it once, run or missed, and a 
  expect(await statuses()).toEqual([['completed','2026-10-03T08:00:00.000Z'],['missed','2026-10-04T08:00:00.000Z']]);
  // Round-4 case: one tab's clock had jumped ahead and settled a later day; the real day is slept through.
  // It is recorded once as missed rather than passing without a record.
- await both('2026-10-07T08:00:05Z');await both('2026-10-06T08:30:00Z');await both('2026-10-06T08:31:00Z');
+ await both('2026-10-07T08:00:05Z');await both('2026-10-06T08:40:00Z');await both('2026-10-06T08:41:00Z');
  const jumped=[['completed','2026-10-03T08:00:00.000Z'],['missed','2026-10-04T08:00:00.000Z'],['completed','2026-10-07T08:00:00.000Z'],['missed','2026-10-06T08:00:00.000Z']];
  expect(await statuses()).toEqual(jumped);
  // The schedule moves to America/Los_Angeles, same local time. "2026-10-07T08:00" was settled in UTC, but in

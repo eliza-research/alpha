@@ -2,6 +2,7 @@ import { playOwnedSpeech } from '../local-speech-playback';
 import { registerPlugin } from '../platform-plugins';
 import { type PluginListenerHandle } from '@capacitor/core';
 import { connectionController } from './connection-ui';
+import { createNativeSpeechRequests } from '../../../../.eliza/client-features/packages/voice/src/native-speech-request.ts';
 type Binding = { origin: string; ownerId: string; expiresAt: number; sessionId: string };
 const native = registerPlugin<{
   pairedVoiceStatus(input: Binding & { requestId: string }): Promise<{ ready: boolean }>;
@@ -21,18 +22,17 @@ export function createPairedVoice() {
   const check = () => {
     if (JSON.stringify(connectionController.getPairedVoiceBinding()) !== JSON.stringify(binding) || connectionController.getSnapshot().open || document.hidden) throw new DOMException('Voice connection changed', 'AbortError');
   };
-  async function operation<T>(signal: AbortSignal, run: (requestId: string, interrupted: Promise<never>, ownedSignal:AbortSignal) => Promise<T>): Promise<T> {
-    check(); signal.throwIfAborted();
-    const requestId = crypto.randomUUID(),owned=new AbortController();
-    let reject!: (error: unknown) => void;
-    const interrupted = new Promise<never>((_, fail) => { reject = fail; }); void interrupted.catch(() => {});
-    const cancel = () => { void native.cancel({ requestId }).catch(() => {}); owned.abort(new DOMException('Playback cancelled', 'AbortError'));reject(owned.signal.reason); };
-    const unsubscribe = connectionController.subscribe(() => { try { check(); } catch { cancel(); } });
-    const visibility=()=>{if(document.hidden)cancel();};document.addEventListener('visibilitychange',visibility);
-    signal.addEventListener('abort', cancel, { once: true });
-    try { const result = await run(requestId, interrupted, owned.signal); check(); signal.throwIfAborted(); return result; }
-    finally { document.removeEventListener('visibilitychange',visibility);unsubscribe(); signal.removeEventListener('abort', cancel); }
-  }
+  // One owned bridge request per operation (shared `@elizaos/voice/native-speech`).
+  const operation = createNativeSpeechRequests({
+    check,
+    watch(onChange) {
+      const unsubscribe = connectionController.subscribe(onChange);
+      document.addEventListener('visibilitychange', onChange);
+      return () => { document.removeEventListener('visibilitychange', onChange); unsubscribe(); };
+    },
+    cancel: requestId => native.cancel({ requestId }),
+    cancelledMessage: 'Playback cancelled',
+  });
   return {
     async ready(signal: AbortSignal) { return operation(signal, async (requestId, interrupted) => { const pending = native.pairedVoiceStatus({ ...binding, requestId }); if (signal.aborted) void native.cancel({requestId}); return (await Promise.race([pending, interrupted])).ready === true; }); },
     async transcriptionReady(signal: AbortSignal) { return operation(signal, async (requestId, interrupted) => { const pending = native.pairedTranscriptionStatus({ ...binding, requestId }); if (signal.aborted) void native.cancel({requestId}); const result = await Promise.race([pending, interrupted]); return result.ready === true && result.provider === 'local-inference'; }); },

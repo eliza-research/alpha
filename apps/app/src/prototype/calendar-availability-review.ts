@@ -1,25 +1,7 @@
 import {formatDeviceRecordDateTime} from '../../../../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/device-record-presentation.ts';
 import {CALENDAR_AVAILABILITY_MAX_CALENDARS,type CalendarAvailabilityOperation,type CalendarAvailabilityResult} from '../../../../.eliza/client-features/packages/contracts/src/device-reviews.ts';
 import type {AvailabilityReview,AvailabilitySource} from '../runtime/calendar-availability';
-import {holdPhoneInert} from '../runtime/modal-inert';
-
-type Parts={content:HTMLElement;footer:HTMLElement;close:(value:unknown,error?:unknown)=>void};
-/** One modal review over an inert phone. Cancel, Back, abort, background and page hide all
- * resolve null, so leaving the review can never count as a choice. */
-function openReview<T>(label:string,region:string,signal:AbortSignal,build:(parts:Parts)=>HTMLElement|null):Promise<T|null>{
- return new Promise((resolve,reject)=>{
-  const previous=document.activeElement as HTMLElement|null,dialog=document.createElement('dialog');dialog.className='note-source-dialog';dialog.setAttribute('aria-label',label);
-  const theme=document.querySelector('.os');if(theme){const style=getComputedStyle(theme);for(const token of ['bg','fg'])dialog.style.setProperty('--source-'+token,style.getPropertyValue('--'+token));}
-  const content=document.createElement('div');content.className='note-source-content';content.tabIndex=0;content.setAttribute('role','region');content.setAttribute('aria-label',region);
-  const footer=document.createElement('footer');
-  let done=false;const release=holdPhoneInert(document.querySelector<HTMLElement>('.os'));
-  const close=(value:unknown,error?:unknown)=>{if(done)return;done=true;signal.removeEventListener('abort',abort);document.removeEventListener('visibilitychange',visibility);window.removeEventListener('pagehide',abort);window.removeEventListener('alpha-back',back,true);dialog.remove();release();if(previous?.isConnected)previous.focus();error?reject(error):resolve(value as T|null);};
-  const abort=()=>close(null),visibility=()=>{if(document.hidden)close(null);},back=(event:Event)=>{event.preventDefault();event.stopImmediatePropagation();close(null);};
-  dialog.oncancel=event=>{event.preventDefault();close(null);};dialog.onclose=()=>close(null);
-  signal.addEventListener('abort',abort,{once:true});document.addEventListener('visibilitychange',visibility);window.addEventListener('pagehide',abort);window.addEventListener('alpha-back',back,true);
-  try{const focus=build({content,footer,close});dialog.append(content,footer);document.body.append(dialog);dialog.showModal();(focus??content).focus();if(signal.aborted)close(null);}catch(error){close(null,error);}
- });
-}
+import {openReview} from './source-review-dialog';
 function element<K extends keyof HTMLElementTagNameMap>(tag:K,text?:string){const node=document.createElement(tag);if(text!==undefined)node.textContent=text;return node;}
 const windowText=(window:{start:string;end:string;timeZone:string})=>`${formatDeviceRecordDateTime(window.start,window.timeZone)} to ${formatDeviceRecordDateTime(window.end,window.timeZone)} (${window.timeZone})`;
 

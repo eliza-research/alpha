@@ -1,5 +1,7 @@
 package ai.elizaresearch.alphaphone;
 
+import ai.eliza.plugins.system.SystemShade;
+
 import static org.junit.Assert.*;
 import static org.junit.Assume.assumeTrue;
 

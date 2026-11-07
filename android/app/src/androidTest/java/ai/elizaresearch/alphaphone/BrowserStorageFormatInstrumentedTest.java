@@ -1,4 +1,5 @@
 package ai.elizaresearch.alphaphone;
+import ai.eliza.plugins.browsersurface.BrowserSessionStore;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -51,21 +52,21 @@ public final class BrowserStorageFormatInstrumentedTest {
   try{
    SecretKey bookmarkKey=create(BOOKMARKS+"-v1"),sessionKey=create(SESSION+"-v1");
    assertTrue(bookmarks.edit().putString("sealed",encode(bookmarkKey,new JSONArray().put(first).toString())).commit());
-   assertEquals(java.util.List.of(first),new BrowserBookmarks(context).read());
-   new BrowserBookmarks(context).change(second,true);
+   assertEquals(java.util.List.of(first),AlphaBrowserStores.bookmarks(context).read());
+   AlphaBrowserStores.bookmarks(context).change(second,true);
    JSONArray savedBookmarks=new JSONArray(decode(bookmarkKey,bookmarks.getString("sealed",null)));
    assertEquals(second,savedBookmarks.getString(0));assertEquals(first,savedBookmarks.getString(1));
    JSONObject state=new JSONObject().put("history",new JSONArray().put(first)).put("tabs",new JSONArray().put(new JSONObject().put("id","tab-one").put("url",first).put("title","Fixture"))).put("cur","tab-one");
    assertTrue(session.edit().putString("sealed",encode(sessionKey,state.toString())).putString("permissions",encode(sessionKey,new JSONObject().put(origin,new JSONObject().put("camera",true)).toString())).commit());
-   BrowserSessionStore store=new BrowserSessionStore(context);
+   BrowserSessionStore store=AlphaBrowserStores.session(context);
    assertEquals(first,store.read().getJSONArray("history").getString(0));
    assertEquals("tab-one",store.read().getString("cur"));assertEquals(Boolean.TRUE,store.permission(origin,"camera"));
    state.put("history",new JSONArray().put(second));store.write(state);store.setPermission(origin,"microphone",false);
    assertEquals(second,new JSONObject(decode(sessionKey,session.getString("sealed",null))).getJSONArray("history").getString(0));
    JSONObject permissions=new JSONObject(decode(sessionKey,session.getString("permissions",null))).getJSONObject(origin);
    assertTrue(permissions.getBoolean("camera"));assertFalse(permissions.getBoolean("microphone"));
-   assertEquals(second,new BrowserSessionStore(context).read().getJSONArray("history").getString(0));
-   assertEquals(java.util.List.of(second,first),new BrowserBookmarks(context).read());
+   assertEquals(second,AlphaBrowserStores.session(context).read().getJSONArray("history").getString(0));
+   assertEquals(java.util.List.of(second,first),AlphaBrowserStores.bookmarks(context).read());
   }finally{
    assertTrue(bookmarks.edit().clear().commit());assertTrue(session.edit().clear().commit());
    keys.deleteEntry(BOOKMARKS+"-v1");keys.deleteEntry(SESSION+"-v1");

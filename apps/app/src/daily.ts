@@ -79,6 +79,7 @@ export const DailyApps = registerPlugin<{
     callback: (result: { id: string; occurrenceId?: string }) => void,
   ): Promise<PluginListenerHandle>;
   restoreSelected(): Promise<NativeResult>;
+  describeSelected(options: { selectionId: string }): Promise<NativeResult>;
   renameSelected(options: { selectionId: string; name: string }): Promise<NativeResult>;
   pdfSelected(options: { selectionId: string; page: number }): Promise<{status:string; message?:string; page?:number; pageCount?:number; imageUri?:string; text?:string}>;
   readSelected(options: {
@@ -113,14 +114,12 @@ export const DailyApps = registerPlugin<{
   operateReminder(options:{operationId:string;bindingHash:string;operation:ReminderOperation|ReminderCreateOperation}):Promise<{status:string;result?:ReminderResult|ReminderCreateResult;message?:string}>;
   reminderOperationReceipt(options:{operationId:string;bindingHash:string;operation:ReminderOperation|ReminderCreateOperation}):Promise<{status:string;result?:ReminderResult|ReminderCreateResult;message?:string}>;
   reminderDecision(options:{id:string;occurrenceId:string;action:"done"|"snooze"}):Promise<{status:string;message?:string}>;
+  saveTodo(options:{id:string;title:string;body?:string}):Promise<{status:string;id:string;message?:string}>;
+  todoDecision(options:{target:NonNullable<Reminder['target']>;action:'done'|'reopen'|'cancel'}):Promise<{status:string;id:string}>;
   listReminders(): Promise<{
     reminders: Reminder[];
     notificationsEnabled: boolean;
   }>;
-  /** Compatibility alias; ID-only cancellation is refused. */
-  cancelReminder(options: {
-    id: string; target: ReminderTarget; operationId: string; bindingHash: string;
-  }): Promise<{ status: "cancelled" | "unknown"; id: string }>;
   capabilities(): Promise<{
     platform: string;
     actions: { action: Action; available: boolean; mode: string }[];
@@ -133,93 +132,7 @@ export const DailyApps = registerPlugin<{
     url?: string;
     startTime?: number;
     endTime?: number;
+    mime?: string[];
+    initialLocation?: "downloads";
   }): Promise<NativeResult>;
 }>("DailyApps");
-export type Note = {
-  id: string;
-  title: string;
-  body: string;
-  updatedAt: string;
-};
-export type Workflow = {
-  id: string;
-  title: string;
-  steps: {
-    view: string;
-    title: string;
-    state: "pending" | "opened" | "done";
-  }[];
-  createdAt: string;
-};
-export type Receipt = {
-  id: string;
-  action: string;
-  status: string;
-  message: string;
-  at: string;
-};
-export type LocalData = {
-  version: 1;
-  notes: Note[];
-  workflows: Workflow[];
-  receipts: Receipt[];
-};
-const KEY = "alphaphone:daily:v1";
-export const emptyData = (): LocalData => ({
-  version: 1,
-  notes: [],
-  workflows: [],
-  receipts: [],
-});
-export function loadData(): LocalData {
-  const raw = localStorage.getItem(KEY);
-  if (!raw) return emptyData();
-  const data = JSON.parse(raw);
-  const text = (v: unknown): v is string => typeof v === "string";
-  const record = (v: unknown): v is Record<string, unknown> =>
-    !!v && typeof v === "object";
-  const date = (v: unknown) => text(v) && Number.isFinite(Date.parse(v));
-  const note = (v: unknown) =>
-    record(v) &&
-    text(v.id) &&
-    text(v.title) &&
-    text(v.body) &&
-    date(v.updatedAt);
-  const step = (v: unknown) =>
-    record(v) &&
-    text(v.view) &&
-    ["Calendar", "Notes", "Reminders"].includes(v.view) &&
-    text(v.title) &&
-    ["pending", "opened", "done"].includes(String(v.state));
-  const workflow = (v: unknown) =>
-    record(v) &&
-    text(v.id) &&
-    text(v.title) &&
-    date(v.createdAt) &&
-    Array.isArray(v.steps) &&
-    v.steps.every(step);
-  const receipt = (v: unknown) =>
-    record(v) &&
-    text(v.id) &&
-    text(v.action) &&
-    text(v.status) &&
-    text(v.message) &&
-    date(v.at);
-  if (
-    !record(data) ||
-    data.version !== 1 ||
-    !Array.isArray(data.notes) ||
-    !data.notes.every(note) ||
-    !Array.isArray(data.workflows) ||
-    !data.workflows.every(workflow) ||
-    !Array.isArray(data.receipts) ||
-    !data.receipts.every(receipt)
-  )
-    throw new Error(
-      "Stored data cannot be read. Export it before clearing app storage.",
-    );
-  return data as unknown as LocalData;
-}
-export function saveData(data: LocalData) {
-  localStorage.setItem(KEY, JSON.stringify(data));
-}

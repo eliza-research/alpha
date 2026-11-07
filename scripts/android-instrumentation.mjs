@@ -84,7 +84,11 @@ export const CLASS_REGISTRY = {
   },
   RealClock: { args: { realClock: "1", clockExclusive: "1" }, requires: "--clock-exclusive", grantOther: { "com.android.deskclock": ["POST_NOTIFICATIONS"] },
     note: "fixture qualified for API 35 only (it asserts the SDK level); the runner grants AOSP Clock its notification permission, which the class requires for real firing evidence" },
-  Accessibility: {},
+  Accessibility: { note: "a flag-off build signed out of Eliza Cloud runs requiredCloudSignInAtDoubleFontScale (P-43's sign-in page); the test-mocks pair runs the Home, shade and Settings journey" },
+  // PRD AP-15 coverage across views; the views need the test-mocks pair (a flag-off emulator build is signed out, P-43).
+  AccessibilityViews: { requiresTestMocksBuild: true, note: "every retained view and Apps at 200% font: ATF, TalkBack order and focus after opening; not TalkBack itself or a device" },
+  AccessibilityLifecycle: { requiresTestMocksBuild: true, note: "repeated HOME with relaunch and rotation across every view at 200% font; processRestartPhase is skipped here; run node scripts/test-native-restart.mjs accessibility" },
+  AccessibilityHomeRole: { homeRole: "held", requiresTestMocksBuild: true, note: "launcher variant with Alpha selected as HOME by --home-role: HOME from every view at 200% font lands on an accessible Alpha Home; not boot-time HOME or device acceptance" },
   ContactsCatalog: { note: "Owned disposable-profile ContactsProvider fixture only; no image admission or contacts activity" },
   ImageCapabilities: { note: "ordinary APK denial only; no AOSP image or real telephony acceptance" },
   SettingsSystemFacts: { note: "read-only comparison with this image's settings; not device acceptance of the Settings handoffs" },
@@ -99,11 +103,15 @@ export const CLASS_REGISTRY = {
   // Added by the round-2 integration (PR 388); no recorded run.
   AssistantResidentReuse: { note: "synthetic runtime observation, enrollment and streams; not evidence that a live resident stream survives" },
   LauncherApps: { note: "upstream SystemLauncherApps through Alpha's identity; resolves against this image's package manager only; two methods skip when the image has no other launchable app" },
+  AppInfo: { note: "opens Android Settings for its installed package and checks invalid targets; returns with Back without changing settings" },
   NotesDocument: { note: "Production migration refusal and unchanged Notes; test-mocks builds exercise SAF migration. Restart phase requires the explicit notes development campaign." },
   NotesStorageDurability: { args: { notesStorage: "1" } },
+  NoteRecorder: { grant: ["RECORD_AUDIO"], note: "records microphone segments, checks recovery and joined-file playback readiness, then removes its recording; emulator results do not establish physical microphone quality" },
+  NoteRecordingSave: { note: "synthetic WAV and long transcript exercise local recording retention and retry without microphone or network use" },
   CloudDeploymentStorage: {},
   CloudSignInAuthorization: { note: "Actual native Authorize/Cancel gate with an isolated plugin and no session; not live authentication or remote key issuance" },
   DailyApps: {},
+  ReminderNoticeQuestion: { requiresTestMocksBuild: true, note: "own reminder notice's Ask Alpha action without a selected agent; the review method needs a selected agent (-e noticeQuestion 1) and skips here (MVP-13, #676)" },
   ReminderLifecycle: { note: "the re-post method skips unless notifications are enabled for the app" },
   ClockHandoff: { args: { clockHandoff: "1" }, note: "Clock intents are intercepted; not ringing evidence" },
   ClockRepeatDays: {},
@@ -126,7 +134,10 @@ export const CLASS_REGISTRY = {
   Notifications: { requiresTestMocksBuild: true, note: "opens Android's own shade with Android's global action on both flavors and taps the notice on its own row (Android 15 bundles two notices into a collapsed automatic group first); Alpha draws no shade (#416)" },
   SystemShade: { note: "homeAsksAndroidForItsShadeOnTheLauncherOnly needs --test-mocks (skipped otherwise). Launcher Home asks Android for its shade (EXPAND_STATUS_BAR); standalone never does (#416, #417). Not AOSP-image or device acceptance" },
   CameraScan: {},
+  CameraLatency: { args: { cameraLatency: "1" }, note: "cold/warm first frame (PreviewView STREAMING, also traced as alpha.camera.firstFrame) and shutter-to-thumbnail, reported as cameraLatency.* status; -e cameraLatencyAssert 1 fails on a missed Pixel 10a target; emulator numbers are not device evidence" },
   FilesTree: {},
+  StorageCategories: { note: "queries MediaStore category shapes and a temporary Downloads tree; temporary files remain inside the test package cache" },
+  FilesFolderQuestion: { note: "real DocumentsUI tree grant; the folder question reviews entry names only, and a delete or revoked grant during review adds nothing (MVP-13)" },
   // J05-2: native page excerpt -> reviewed question -> composer; a note's web source across recreation.
   BrowserPageQuestion: { args: { browserPageQuestion: "1" }, note: "offline: every page is served from memory to the tab's WebView (the first tab opens on https://reading.invalid/start, which never resolves); needs a WebView provider with isolated-world injection; the agent's answer and the summary-note save that follows it need a connected agent and are not covered" },
   // Mock mode and loopback fixtures exist only in a test-mocks app build.
@@ -227,7 +238,7 @@ export const CAMPAIGN_RUNNERS = [
  * gained a registry entry or a campaign, and for any new class that has neither.
  */
 export const NOT_RUN_BY_A_RUNNER = {
-  LocalServerSocketRelease: 'Platform socket behaviour behind the upstream listener restart fix; run by hand when that code changes.',
+  LocalServerSocketRelease: "platform probe for an upstream resident defect (docs/on-device-speech-2026-11-05.md, defect 4): it measures Android, not Alpha, and is run by hand when that defect is revisited",
   ResetExternalFixture: "requires an external host controller, disposable non-owner user, synthetic device credential and separate companion/media sentinels; reset kills instrumentation, so phases cannot run as a single generic campaign (see docs/evidence/reset-native-2026-10-12.json)",
   AllViewAgentContext: "needs a real local agent with inference and a forwarding observer on the host (agentContext=true); its runner was removed with the smoke suites in 49b1bf4c",
   CombinedAgent: "needs the combined host runtime with a provider key at 10.0.2.2:47859 (scripts/start-combined-agent.mjs); no Android runner starts or pairs it",
@@ -250,7 +261,7 @@ export const NOT_RUN_BY_A_RUNNER = {
 
 /**
  * What a run without --classes executes. Every one of these has at least one method that runs on a
- * flag-off build, so a default run can pass. BrowserDownload left the list in round 8: its only
+ * flag-off build, so a default run can pass. BrowserDownload is not listed: its only
  * method needs a test-mocks app build, so on the default build the class could only be recorded
  * "skipped", which fails the run. It runs with `--test-mocks --classes BrowserDownload`.
  */
@@ -552,7 +563,7 @@ export async function runLeased({ options, serial, adb, timing = {}, withSeconda
               failed: [...merged.failed, ...row.failed], ignored: [...merged.ignored, ...row.ignored],
               // A phase that did not run (missing) or only skipped fails the phased class. A class
               // without phases keeps its own status: one whose every method was skipped by its
-              // gate is "skipped", as documented, and was recorded as "failed" until round 7.
+              // gate is "skipped", as documented.
               status: merged.status !== "passed" ? merged.status : row.status === "passed" ? "passed" : spec.phases ? "failed" : row.status };
             if (row.status !== "passed") break; // Later phases depend on earlier ones.
           }

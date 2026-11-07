@@ -1,15 +1,14 @@
 import { testMocksEnabled } from '../build-flags';
 import { Component, type ErrorInfo, type ReactNode } from 'react';
-import { errorClassOf, recordRendererFailure } from './crash-log';
+import { errorClassOf, recordRendererFailure, type RendererFailureKind } from './crash-log';
 
 declare const __APP_VERSION__: string;
 
-export type FailureKind = 'render' | 'startup' | 'uncaught';
 /**
  * Diagnostics deliberately exclude error messages, stacks, URLs and storage: any of
  * them can carry note text, addresses or account data. Only the failure class is kept.
  */
-export function recoveryDiagnostics(kind: FailureKind, error: unknown): string {
+export function recoveryDiagnostics(kind: RendererFailureKind, error: unknown): string {
   const name = errorClassOf(error);
   const version = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'unknown';
   const platform = document.documentElement.classList.contains('native-phone') ? 'android' : 'web';
@@ -41,7 +40,7 @@ function takeOverFromOpenDialogs(): void {
 
 let shown = false;
 /** Plain DOM so recovery still works when React itself failed to mount. */
-export function showRecoveryScreen(kind: FailureKind, error: unknown): void {
+export function showRecoveryScreen(kind: RendererFailureKind, error: unknown): void {
   if (shown) return;
   shown = true;
   // The failure class survives the reload in the local problem log (Settings > About).

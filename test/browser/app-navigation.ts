@@ -16,15 +16,20 @@ export async function returnToApps(page: Page) {
     if (await home.isVisible()) await home.press('Enter');
   } else {
   const back = page.getByRole('button', {name: 'Back to apps', exact: true}).filter({visible:true});
-  if (await back.count()) await back.first().click();
+  if (await back.count()) await back.first().press('Enter');
   else {
     if (!await home.isVisible()) await page.getByRole('button', {name: 'Open conversation', exact: true}).click();
     await home.press('Enter');
   }
   }
   // Go Home deliberately preserves an open conversation. Minimize it through
-  // the visible control before interacting with Home underneath.
-  const minimize=page.getByRole('button',{name:'Minimize chat',exact:true});
-  if(await minimize.isVisible())await minimize.click();
+  // the visible control before interacting with Home underneath. The layer's
+  // own hidden state says whether it is open: the Minimize button is still
+  // rising with the sheet right after Go Home, so its visibility is not.
+  const conversation=page.locator('[data-alpha-layer="conversation"]');
+  if(await conversation.getAttribute('aria-hidden')==='false'){
+    await page.getByRole('button',{name:'Minimize chat',exact:true}).press('Enter');
+    await expect(conversation).toHaveAttribute('aria-hidden','true');
+  }
   await expect(settings).toBeVisible();
 }

@@ -1,0 +1,19 @@
+{
+  "evidenceClass": "host-runtime",
+  "notEvidenceFor": [
+    "Android",
+    "emulator",
+    "device",
+    "real inference"
+  ],
+  "upstreamCommit": "1f2a922f86e2a1f3d6cd62e097145492bd49ebfc",
+  "crashDuringInference": true,
+  "scope": "owned-process-group",
+  "preservedSameRun": true,
+  "unknownOutcomeNotReplayed": true,
+  "noFabricatedResult": true,
+  "overdueSkippedWithoutInference": true,
+  "missedReceiptSurvivesRestart": true,
+  "futureScheduleSurvivesRestart": true,
+  "modelAttempts": 1
+}

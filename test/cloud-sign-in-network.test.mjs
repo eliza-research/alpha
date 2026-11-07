@@ -1,40 +1,55 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync, writeFileSync, rmSync} from 'node:fs';
+import {mkdtempSync, readFileSync, writeFileSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {join, resolve} from 'node:path';
+import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {CloudSignInError, signInFailureMessage} from '../apps/app/src/runtime/cloud-sign-in.ts';
 
-test('native sign-in distinguishes DNS, connection, timeout and TLS without exposing exception text', () => {
+test('shared native sign-in classifies transport failures and cancellation without exception text', () => {
  const dir=mkdtempSync(join(tmpdir(),'alpha-signin-network-'));
- const source=resolve('android/app/src/main/java/ai/elizaresearch/alphaphone');
+ const source=readFileSync('vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java','utf8');
+ const start=source.indexOf('  } catch (java.net.UnknownHostException');
+ const end=source.indexOf('  } finally {',start);
+ assert.ok(start>=0&&end>start,'actual shared transport failure handlers are present');
+ const handlers=source.slice(start,end);
  const binary=name=>process.env.JAVA_HOME?join(process.env.JAVA_HOME,'bin',name):name;
  try {
-  writeFileSync(join(dir,'NetworkTest.java'),`package ai.elizaresearch.alphaphone;
-public class NetworkTest {
- static void check(java.io.IOException error, String expected) {
-  if (!expected.equals(CloudSignInFlow.failureForTransport(error, false))) throw new AssertionError(expected);
-  if (!"cancelled".equals(CloudSignInFlow.failureForTransport(error, true))) throw new AssertionError("cancelled");
+  writeFileSync(join(dir,'NetworkTest.java'),`public class NetworkTest {
+ static class Attempt { boolean cancelled; }
+ static class SignInFailure extends Exception { SignInFailure(String code) { super(code); } }
+ static void classify(java.io.IOException error, Attempt current) throws SignInFailure {
+  try { throw error;
+${handlers}
+  }
  }
- public static void main(String[] args) {
-  check(new java.net.UnknownHostException("private details"), "dns");
+ static void check(java.io.IOException error, String expected) throws Exception {
+  for (boolean cancelled : new boolean[]{false,true}) {
+   Attempt current = new Attempt(); current.cancelled = cancelled;
+   try { classify(error,current); throw new AssertionError("failure expected"); }
+   catch (SignInFailure failure) {
+    if (!(cancelled ? "cancelled" : expected).equals(failure.getMessage())) throw new AssertionError(failure.getMessage());
+   }
+  }
+ }
+ public static void main(String[] args) throws Exception {
+  check(new java.net.UnknownHostException("private details"), "offline");
   check(new java.net.ConnectException("private details"), "offline");
   check(new java.net.NoRouteToHostException("private details"), "offline");
-  check(new java.net.SocketTimeoutException("private details"), "timeout");
-  check(new javax.net.ssl.SSLHandshakeException("private details"), "secure-connection");
+  check(new java.net.SocketTimeoutException("private details"), "unavailable");
+  check(new javax.net.ssl.SSLHandshakeException("private details"), "unavailable");
   check(new java.io.IOException("private details"), "unavailable");
   System.out.println("PASS");
  }
 }`);
-  execFileSync(binary('javac'),['--release','11','-d',dir,join(source,'CloudDeployment.java'),join(source,'CloudSignInFlow.java'),join(dir,'NetworkTest.java')],{timeout:60000});
-  assert.equal(execFileSync(binary('java'),['-cp',dir,'ai.elizaresearch.alphaphone.NetworkTest'],{encoding:'utf8',timeout:60000}).trim(),'PASS');
+  execFileSync(binary('javac'),['--release','11','-d',dir,join(dir,'NetworkTest.java')],{timeout:60000});
+  assert.equal(execFileSync(binary('java'),['-cp',dir,'NetworkTest'],{encoding:'utf8',timeout:60000}).trim(),'PASS');
  } finally {rmSync(dir,{recursive:true,force:true});}
 });
 
-test('transport failures survive the native bridge and have distinct recovery instructions', () => {
+test('the renderer accepts shared transport codes and refuses unknown codes without displaying server text', () => {
  const messages=[];
- for(const code of ['dns','offline','timeout','secure-connection']) {
+ for(const code of ['offline','unavailable']) {
   const error=CloudSignInError.from({code,message:'private details'});
   assert.equal(error.code,code);
   const message=signInFailureMessage(error.code,'Eliza Cloud');
@@ -42,8 +57,10 @@ test('transport failures survive the native bridge and have distinct recovery in
   assert.ok(!message.includes('private details'));
   messages.push(message);
  }
- assert.equal(new Set(messages).size,4);
- assert.match(messages[0],/another network/);
- assert.match(messages[2],/too long/);
- assert.match(messages[3],/date and time/);
+ assert.equal(new Set(messages).size,2);
+ for(const code of ['dns','timeout','secure-connection','private details']) {
+  const error=CloudSignInError.from({code,message:'private details'});
+  assert.equal(error.code,'unavailable');
+  assert.equal(signInFailureMessage(error.code,'Eliza Cloud'),messages[1]);
+ }
 });

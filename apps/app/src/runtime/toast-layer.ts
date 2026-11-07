@@ -9,7 +9,8 @@
  * While a modal dialog is open it is given a live region of its own, marked like the page's
  * (aria-live, no role, so a dialog's own role="status" line stays the only status in it): an element inside the
  * dialog (so it is not inert and belongs to what assistive technology reads), in the dialog's
- * normal flow above its content so it cannot cover a field or action. The
+ * normal flow above its content so it cannot cover a field or action, and sticky at the top of a
+ * dialog that scrolls its own content so feedback raised while it is scrolled stays in view. The
  * region is present and empty from the moment the dialog opens, because a live region that
  * arrives together with its text is not announced reliably. A toast is then copied into the
  * region of the topmost modal dialog; its Undo runs the page's own Undo. The page's region is
@@ -31,7 +32,8 @@ export function installToastLayer(): () => void {
     region.setAttribute(HOST, '');
     region.setAttribute('aria-live', 'polite');
     region.setAttribute('aria-atomic', 'true');
-    region.style.cssText = 'order:-1;flex-shrink:0;margin:0;padding:0;border:0;background:transparent;color:inherit;display:flex;align-items:flex-start;justify-content:center;box-sizing:border-box;width:100%;max-height:calc(var(--alpha-visible-height,100dvh) * .3);overflow:auto';
+    // Sticky: a dialog that scrolls its own content keeps the feedback in view at its top edge.
+    region.style.cssText = 'position:sticky;top:0;z-index:1;order:-1;flex-shrink:0;margin:0;padding:0;border:0;background:transparent;color:inherit;display:flex;align-items:flex-start;justify-content:center;box-sizing:border-box;width:100%;max-height:calc(var(--alpha-visible-height,100dvh) * .3);overflow:auto';
     dialog.prepend(region);
     return region;
   };

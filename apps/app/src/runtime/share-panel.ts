@@ -1,4 +1,4 @@
-export type SharePanelOptions={title:string;current:()=>boolean;external:()=>unknown|Promise<unknown>;email?:()=>unknown|Promise<unknown>;emailUnavailable?:string;copy?:()=>unknown|Promise<unknown>;copyLabel?:string;save?:()=>unknown|Promise<unknown>};
+export type SharePanelOptions={title:string;current:()=>boolean;external:()=>unknown|Promise<unknown>;email?:()=>unknown|Promise<unknown>;/** Shown under a disabled email row; null leaves the row out. */emailUnavailable?:string|null;copy?:()=>unknown|Promise<unknown>;copyLabel?:string;save?:()=>unknown|Promise<unknown>};
 function destinationFailure(error:unknown){
  if(error instanceof DOMException&&error.name==='AbortError')return;
  const notice=document.createElement('p');notice.setAttribute('role','alert');notice.textContent='Sharing is unavailable. No completed handoff is confirmed.';Object.assign(notice.style,{position:'fixed',bottom:'24px',left:'16px',right:'16px',zIndex:'2147483647',padding:'16px',borderRadius:'16px',background:'#222',color:'#fff'});document.body.append(notice);setTimeout(()=>notice.remove(),6000);
@@ -31,7 +31,7 @@ export function openSharePanel(options:SharePanelOptions):Promise<void>{
    if(!run){button.disabled=true;button.style.opacity='.5';if(reason){const hint=document.createElement('p');hint.textContent=reason;hint.style.fontSize='13px';dialog.append(button,hint);return;}}
    button.onclick=()=>{if(document.hidden||!options.current()){status.textContent='The selection changed. Close and choose it again.';return;}finish();try{void Promise.resolve(run?.()).catch(destinationFailure);}catch(error){destinationFailure(error);}};dialog.append(button);
   };
-  dialog.append(heading,title);action('Share to email',options.email,options.emailUnavailable||'Email is unavailable for this selection.');action('Share externally',options.external);
+  dialog.append(heading,title);if(options.email||options.emailUnavailable!==null)action('Share to email',options.email,options.emailUnavailable||'Email is unavailable for this selection.');action('Share externally',options.external);
   if(options.copy)action(options.copyLabel||'Copy text',options.copy);
   if(options.save)action('Save locally',options.save);
   action('Cancel',()=>{});dialog.append(status);dialog.addEventListener('cancel',event=>{event.preventDefault();finish();});dialog.addEventListener('close',finish);

@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "recordedAt": "2026-10-25",
+  "recordedAtUTC": "2026-10-26T03:06:03.271178+00:00",
+  "product": "d7efacf0639ed81828fe35e3ee4c388a388d2c31",
+  "sdk": "0f4d375aaf9f5109e30923eff9992f67f50ee1a0",
+  "previousSDK": "737c4d578f69659a6881afe8ff06e3379cbc713c",
+  "sourceDelta": [
+    "plugins/plugin-assistant/src/services/message/recovery-grounding.contract.test.mjs",
+    "plugins/plugin-assistant/src/services/message/recovery-grounding.native-wire.test.mjs",
+    "plugins/plugin-assistant/src/services/message/recovery-grounding.ts"
+  ],
+  "dependencyInputIdentity": {
+    "previousSDK": "737c4d578f69659a6881afe8ff06e3379cbc713c",
+    "sdk": "0f4d375aaf9f5109e30923eff9992f67f50ee1a0",
+    "rawBytesIdentical": true,
+    "rawLockSHA256": "fc88bf9a5d718a932d72d48f2bb58caea32174e9f07d547e9c3dadd2f0901e91",
+    "normalizedInputIdentical": true,
+    "normalizedInputSHA256": "6db6e88363397fd2c73a561ea1f3a071dfc11b31378cbe0c193163ea1ecf70ff",
+    "packageVersions": 3694,
+    "newRegistryQuery": false
+  },
+  "scope": "SOURCE metadata only; metadata children do not restart or relabel the fixed d7/0f producer.",
+  "qualificationStatesChanged": false,
+  "registryQueryRepeated": false,
+  "exceptionDeadlinesRenewed": false,
+  "currentSourceArtifactQualified": false,
+  "newArtifactReviewPending": true,
+  "installedArtifact": {
+    "sha256": "5a89ba6d026d8f348dab9748760f3047e22d7aaff73d681f0e895a578764bf36",
+    "product": "c8801829f4f3ff9c1fed6f700473460852820a65",
+    "sdk": "737c4d578f69659a6881afe8ff06e3379cbc713c",
+    "scope": "Android owner lane, not physical Seeker acceptance",
+    "receiptChanged": false,
+    "acceptanceTransferred": false
+  },
+  "currentFailure": {
+    "messageId": "5b3a6c41-20cc-0ce9-9ebd-daa4d699be55",
+    "clientMessageId": "728c6af7-e694-4f22-9cb9-e6de3e248fcd",
+    "code": "REPLY_GROUNDING_REVIEW_FAILED",
+    "underlyingCause": "Unavailable in retained metadata",
+    "retryPerformedByThisLane": false
+  },
+  "reachability": {
+    "baseCommit": "04658de1b942510e0d37efc777c154530f5c0ef1",
+    "status": "diverged",
+    "aheadBy": 41,
+    "behindBy": 208,
+    "pinOnlyNonMergeCommits": 40,
+    "producer": "gh api repos/elizaOS/eliza/compare/develop...0f4d375aaf9f5109e30923eff9992f67f50ee1a0"
+  },
+  "pending": [
+    "Normal fixed-source artifact build and exact artifact review",
+    "Actual repaired Home/Notes/provider/voice/device acceptance with preserved user data",
+    "Same fresh Notes prompt performance comparison with per-stage tokens/timing and visible live read"
+  ],
+  "parallelScopeExcluded": "Consumer pin, native descriptors, client/notices and runtime changes are owned by Root and untouched."
+}

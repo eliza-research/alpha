@@ -1,4 +1,11 @@
-import {test,expect} from '@playwright/test';
+import {test,expect as baseExpect} from '@playwright/test';
+// Every test here loads the whole development app at least once (several reload it, open a second tab
+// or connect a profile), and the composer's saved draft is restored from IndexedDB after each load.
+// Under four workers on a loaded machine a load has taken 10-30s and a restore more than the 5s
+// default, so the timeouts are explicit: 90s per test, 15s per expectation. What is expected is
+// unchanged; only how long the page may take to get there.
+test.describe.configure({timeout:90_000});
+const expect=baseExpect.configure({timeout:15_000});
 for(const theme of ['light','dark'])for(const height of [915,420])test(`long assistant draft stays editable and bounded: ${theme} ${height}`,async({page},info)=>{
  await page.setViewportSize({width:412,height});await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));await page.goto('/?theme='+theme);
  const input=page.getByRole('textbox',{name:'Ask Alpha',exact:true});await expect(input).toHaveJSProperty('tagName','TEXTAREA');const text=Array.from({length:30},(_,i)=>`Line ${i+1}: review this before sending`).join('\n');await input.fill(text);await expect(input).toHaveValue(text);

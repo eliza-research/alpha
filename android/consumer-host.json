@@ -1,0 +1,199 @@
+{
+  "schema": 1,
+  "description": "Alpha's Android host descriptor. The upstream generator (vendor/eliza/packages/app/scripts/mobile/android/consumer-host.mjs) owns the Gradle setup, toolchain, variants, signing and version policy and writes the build files into android/ (node scripts/android-host.mjs). This file supplies only Alpha's identity inputs, modules, dependencies, admission and installed-data compatibility names. References use the consumer, upstream (vendor/eliza) and dependencies (node_modules) roots; patchedNative names the authenticated staging of patches/eliza/native-manifest.json.",
+  "profile": {
+    "schema": 1,
+    "sdk": { "min": 29, "target": 36, "compile": 36 },
+    "releaseMinify": true,
+    "kotlin": false,
+    "preserveRuntimeBytes": true,
+    "manifest": { "root": "consumer", "path": "android/app/src/main/AndroidManifest.xml" },
+    "flavors": [
+      {
+        "name": "standalone",
+        "manifest": { "root": "consumer", "path": "android/app/src/standalone/AndroidManifest.xml" },
+        "buildConfigFields": [{ "name": "IS_LAUNCHER", "type": "boolean", "value": false }]
+      },
+      {
+        "name": "launcher",
+        "manifest": { "root": "consumer", "path": "android/app/src/launcher/AndroidManifest.xml" },
+        "buildConfigFields": [{ "name": "IS_LAUNCHER", "type": "boolean", "value": true }]
+      }
+    ],
+    "modules": [
+      { "name": "capacitor-android", "source": { "root": "dependencies", "path": "@capacitor/android/capacitor" } },
+      { "name": "eliza-system", "source": { "root": "patchedNative", "path": "plugins/plugin-native-system/android" }, "relocateBuild": true },
+      { "name": "eliza-camera", "source": { "root": "patchedNative", "path": "plugins/plugin-native-camera/android" }, "relocateBuild": true },
+      { "name": "eliza-location", "source": { "root": "upstream", "path": "plugins/plugin-native-location/android" } },
+      { "name": "eliza-network-policy", "source": { "root": "upstream", "path": "plugins/plugin-native-network-policy/android" } },
+      { "name": "eliza-calendar", "source": { "root": "patchedNative", "path": "plugins/plugin-native-calendar/android" }, "relocateBuild": true },
+      { "name": "eliza-reminders", "source": { "root": "patchedNative", "path": "plugins/plugin-native-reminders/android" }, "relocateBuild": true },
+      { "name": "elizaos-capacitor-secure-store", "source": { "root": "patchedNative", "path": "plugins/plugin-native-secure-store/android" }, "relocateBuild": true },
+      { "name": "elizaos-capacitor-secure-store-nativeonly", "source": { "root": "patchedNative", "path": "plugins/plugin-native-secure-store/android-nativeonly" }, "relocateBuild": true },
+      { "name": "elizaos-capacitor-passwords", "source": { "root": "upstream", "path": "plugins/plugin-native-passwords/android" } },
+      { "name": "elizaos-capacitor-passwords-transfer", "source": { "root": "upstream", "path": "plugins/plugin-native-passwords/android-transfer" } },
+      { "name": "eliza-cloud-auth", "source": { "root": "patchedNative", "path": "packages/auth/android" }, "relocateBuild": true },
+      { "name": "eliza-notifications", "source": { "root": "patchedNative", "path": "plugins/plugin-native-notifications/android" }, "relocateBuild": true },
+      { "name": "eliza-owned-media", "source": { "root": "patchedNative", "path": "plugins/plugin-native-media/android" }, "relocateBuild": true },
+      { "name": "eliza-contacts", "source": { "root": "upstream", "path": "plugins/plugin-native-contacts/android" } },
+      { "name": "eliza-messages", "source": { "root": "upstream", "path": "plugins/plugin-native-messages/android" } },
+      { "name": "eliza-phone", "source": { "root": "upstream", "path": "plugins/plugin-native-phone/android" } },
+      { "name": "eliza-action-journal", "source": { "root": "patchedNative", "path": "plugins/plugin-native-action-journal/android" }, "relocateBuild": true },
+      { "name": "local-speech", "source": { "root": "consumer", "path": "android/local-speech" } },
+      { "name": "sense", "source": { "root": "consumer", "path": "android/sense" }, "appDependency": false },
+      { "name": "sense-speech", "source": { "root": "consumer", "path": "android/sense-speech" }, "appDependency": false },
+      { "name": "notification-fixture", "source": { "root": "consumer", "path": "android/notification-fixture" }, "appDependency": false },
+      { "name": "video-fixture", "source": { "root": "consumer", "path": "android/video-fixture" }, "appDependency": false }
+    ],
+    "dependencies": [
+      { "configuration": "implementation", "coordinate": "androidx.credentials:credentials:1.6.0" },
+      { "configuration": "implementation", "coordinate": "androidx.credentials:credentials-play-services-auth:1.6.0" },
+      { "configuration": "implementation", "coordinate": "com.google.android.libraries.identity.googleid:googleid:1.1.1" },
+      { "configuration": "implementation", "coordinate": "androidx.browser:browser:1.9.0" },
+      { "configuration": "implementation", "coordinate": "com.squareup.okhttp3:okhttp:5.3.2" },
+      { "configuration": "implementation", "coordinate": "androidx.media3:media3-transformer:1.11.1" },
+      { "configuration": "implementation", "coordinate": "androidx.media3:media3-effect:1.11.1" },
+      { "configuration": "implementation", "coordinate": "androidx.work:work-runtime:2.11.0" },
+      { "configuration": "implementation", "module": "androidx.webkit:webkit", "toolchainVersion": "androidxWebkitVersion" },
+      { "configuration": "implementation", "module": "androidx.appcompat:appcompat", "toolchainVersion": "androidxAppCompatVersion" },
+      { "configuration": "implementation", "module": "androidx.core:core-splashscreen", "toolchainVersion": "coreSplashScreenVersion" },
+      { "configuration": "androidTestImplementation", "coordinate": "androidx.test:runner:1.6.2" },
+      { "configuration": "androidTestImplementation", "coordinate": "androidx.test.ext:junit:1.3.0" },
+      { "configuration": "androidTestImplementation", "coordinate": "androidx.test.espresso:espresso-core:3.7.0" },
+      { "configuration": "androidTestImplementation", "coordinate": "androidx.test.espresso:espresso-accessibility:3.7.0" },
+      { "configuration": "androidTestImplementation", "coordinate": "androidx.test.uiautomator:uiautomator:2.3.0" }
+    ],
+    "androidResources": { "noCompress": ["gguf", "lex"] },
+    "buildConfigFields": [
+      { "name": "AOSP_BUILD", "type": "boolean", "value": false },
+      { "name": "ELIZA_CHROMIUM_PACKAGE_NAME", "type": "String", "value": "" },
+      { "name": "ELIZA_CHROMIUM_CERT_SHA256", "type": "String", "value": "" }
+    ],
+    "buildTypes": {
+      "release": {
+        "abiFilters": ["arm64-v8a"],
+        "shrinkResources": true,
+        "proguardFiles": [{ "root": "consumer", "path": "android/app/proguard-rules.pro" }]
+      }
+    },
+    "signing": {
+      "storeFile": "ELIZAOS_KEYSTORE_PATH",
+      "storePassword": "ELIZAOS_KEYSTORE_PASSWORD",
+      "keyAlias": "ELIZAOS_KEY_ALIAS",
+      "keyPassword": "ELIZAOS_KEY_PASSWORD"
+    },
+    "versionOverride": { "versionCode": "ELIZAOS_VERSION_CODE", "versionName": "ELIZAOS_VERSION_NAME" },
+    "testMocks": {
+      "property": "ELIZA_DEV_ALLOW_TEST_MOCKS",
+      "buildConfigField": "ELIZA_DEV_ALLOW_TEST_MOCKS",
+      "debug": {
+        "java": [{ "root": "consumer", "path": "android/app/src/testMocks/java" }],
+        "res": [{ "root": "consumer", "path": "android/app/src/testMocks/res" }],
+        "manifest": { "root": "consumer", "path": "android/app/src/testMocks/AndroidManifest.xml" }
+      },
+      "androidTest": { "java": [{ "root": "consumer", "path": "android/app/src/testMocks/androidTest/java" }] }
+    },
+    "settingsAdmission": [
+      { "command": ["node", "scripts/prepare-patched-native.mjs"], "directory": { "root": "consumer", "path": "." } }
+    ],
+    "admission": [
+      { "name": "stageLocalAgentSources", "command": ["node", "scripts/stage-local-agent-sources.mjs"], "directory": { "root": "consumer", "path": "." } },
+      { "name": "verifyCloudDeployment", "command": ["node", "scripts/cloud-deployment.mjs", "--check"], "directory": { "root": "consumer", "path": "." } }
+    ],
+    "generatedSources": [{ "sourceSet": "main", "kind": "java", "path": "generated/local-agent/java" }],
+    "assetFiles": [
+      { "source": { "root": "patchedNative", "path": ".source.json" }, "name": "native-patches.json" },
+      { "source": { "root": "consumer", "path": "config/owner-routes.json" }, "name": "owner-routes.json" }
+    ],
+    "appScripts": [{ "root": "consumer", "path": "android/app/product.gradle" }],
+    "generationInputs": [
+      { "root": "consumer", "path": "android/consumer-host.json" },
+      { "root": "consumer", "path": "app.config.json" },
+      { "root": "consumer", "path": "upstream.lock.json" },
+      { "root": "consumer", "path": "patches/eliza/native-manifest.json" },
+      { "root": "consumer", "path": "scripts/prepare-patched-native.mjs" },
+      { "root": "consumer", "path": "scripts/android-host.mjs" }
+    ]
+  },
+  "residentHost": {
+    "sockets": {
+      "agent": "ai.elizaresearch.alphaphone.agent.v1",
+      "inference": "ai.elizaresearch.alphaphone.inference.v1",
+      "secureStore": "ai.elizaresearch.alphaphone.secure-store"
+    },
+    "classes": [
+      "NativeNotificationInbox",
+      "NativeNotificationWire",
+      "NativeNotificationRoute",
+      "NativeNotificationChannels",
+      "NativeNotificationProjector"
+    ],
+    "notification": {
+      "smallIcon": "notification_icon",
+      "color": "0xff0000ff",
+      "channelLabel": "Alpha",
+      "strings": {
+        "channelName": "alpha_runtime_channel_name",
+        "channelDescription": "alpha_runtime_channel_description",
+        "title": "alpha_runtime_title",
+        "running": "alpha_runtime_running",
+        "starting": "alpha_runtime_starting",
+        "stopped": "alpha_runtime_stopped",
+        "assetError": "alpha_runtime_asset_error",
+        "missingFiles": "alpha_runtime_missing_files",
+        "spawnFailed": "alpha_runtime_spawn_failed",
+        "restartBlocked": "alpha_runtime_restart_blocked",
+        "runningDetail": "alpha_runtime_running_detail"
+      }
+    },
+    "environmentHook": { "className": "AlphaLocalAgentPlugin", "method": "configureEnvironment", "unavailableStatus": "provider-unavailable" },
+    "lifecycleHooks": {
+      "rootPublication": { "className": "AlphaLocalAgentPlugin", "method": "publishNotificationRoot" },
+      "ready": { "className": "AlphaCanonicalNotifications", "method": "resumeExisting" }
+    },
+    "helpers": [
+      "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/NativeProcessSupervisor.java",
+      "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/NativeProviderAdmission.java",
+      "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/NativeRuntimeEmbeddings.java",
+      "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/CredentialIntentFence.java",
+      "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/CredentialRequestFence.java",
+      "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/CredentialShutdownLease.java",
+      "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/NativeProviderSlot.java",
+      "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/ResidentAttachment.java",
+      "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/connection/OwnerRoutePolicy.java",
+      "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/connection/CloudConnectionPolicy.java",
+      "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/connection/ConnectionTransport.java",
+      "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/connection/DelegationCallback.java",
+      "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/connection/PendingRequests.java",
+      "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/connection/SecureSlotPolicy.java",
+      "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/ChromiumBrowserIdentity.java",
+      "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/ChromiumBrowserConnection.java",
+      "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserTabHostConfig.java",
+      "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserTabHostPlugin.java",
+      "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserProfilePolicy.java",
+      "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserReviewedReading.java",
+      "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserWebOrigin.java",
+      "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserDownloadPolicy.java",
+      "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserSessionPolicy.java",
+      "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserSitePermissions.java",
+      "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserExternalLinkPolicy.java",
+      "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserAutofillEligibility.java",
+      "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserAutofillExtras.java",
+      "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserFieldOrigin.java",
+      "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserLoginFields.java",
+      "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserHttpAuthOrigin.java",
+      "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserHttpAuthAutofill.java",
+      "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserBlobCapture.java",
+      "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserDownloads.java",
+      "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserPageReading.java",
+      "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserReadingWorld.java",
+      "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserSealedText.java",
+      "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserBookmarkStore.java",
+      "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserSessionStore.java",
+      "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserSitePermissionRecord.java",
+      "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserSitePrompt.java",
+      "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserExternalPage.java",
+      "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserExternalHandoff.java"
+    ]
+  }
+}

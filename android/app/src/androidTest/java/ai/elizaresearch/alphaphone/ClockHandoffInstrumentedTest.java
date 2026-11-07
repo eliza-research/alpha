@@ -40,7 +40,7 @@ public final class ClockHandoffInstrumentedTest {
  }
  @Test public void invalidIntentDoesNotBecomeAnotherAlarmRequest(){
   for(String action:new String[]{"set","snooze","show","dismiss","other"}){
-   try{ClockHandoff.intent(action,24,30,"invalid",0);fail("Rejected Clock input expected");}catch(IllegalArgumentException expected){}
+   try{ai.eliza.plugins.system.clock.ClockHandoff.intent(action,24,30,"invalid",0,null);fail("Rejected Clock input expected");}catch(IllegalArgumentException expected){}
   }
  }
 }

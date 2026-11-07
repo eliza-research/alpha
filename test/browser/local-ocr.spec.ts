@@ -1,3 +1,5 @@
+import {openLegacyNotes} from './helpers/legacy-notes';
+import {returnToApps} from './app-navigation';
 import {test,expect} from '@playwright/test';
 
 test('real local OCR recognizes an image without remote model requests',async({page})=>{
@@ -58,15 +60,15 @@ test('Camera Scan reviews real OCR and commits only corrected text to durable No
       const stream=canvas.captureStream(10);const timer=setInterval(draw,100);stream.getVideoTracks()[0].addEventListener('ended',()=>clearInterval(timer));return stream;
     };
   });
-  await page.goto('/');await page.getByRole('button',{name:'Camera',exact:true}).click();
+  await page.goto('/');await openLegacyNotes(page);await returnToApps(page);await page.getByRole('button',{name:'Camera',exact:true}).click();
   const video=page.locator('[aria-label^="Viewfinder."] video');await expect.poll(()=>video.evaluate((v:HTMLVideoElement)=>v.readyState)).toBeGreaterThanOrEqual(2);
-  await page.getByRole('button',{name:'Scan mode',exact:true}).click();await page.getByRole('button',{name:'Scan text',exact:true}).click();
+  await page.getByRole('button',{name:'Type',exact:true}).click();{const input=page.locator('[data-alpha-layer="composer"][aria-hidden="false"], [data-alpha-layer="conversation"][aria-hidden="false"]').getByRole('textbox').first();await input.fill('Scan this');await input.press('Enter');}
   const dialog=page.getByRole('dialog',{name:'Review scanned text'});await expect(dialog).toBeVisible();
   const text=dialog.getByRole('textbox',{name:'Scanned text'});await expect(text).toHaveValue(/Alpha local scan/,{timeout:60000});
   expect(await page.evaluate(async ()=>JSON.parse((await (await import('/src/runtime/browser-notes-document.ts')).readBrowserNotesRaw())||'{"records":[]}').records.filter((n:any)=>n.id.startsWith('scan-')).length)).toBe(0);
   await text.fill('Reviewed scan title\nCorrected by the user.');await dialog.getByRole('button',{name:'Save to Notes',exact:true}).click();await expect(dialog.getByRole('status',{name:'Scan status'})).toHaveText('Saved to Notes.');
   await page.screenshot({path:info.outputPath('scan-review.png'),animations:'disabled'});
-  await dialog.getByRole('button',{name:'Close scan',exact:true}).click();await page.reload();
+  await dialog.getByRole('button',{name:'Close scan',exact:true}).click();await page.reload();await openLegacyNotes(page);
   const saved=await page.evaluate(async ()=>JSON.parse((await (await import('/src/runtime/browser-notes-document.ts')).readBrowserNotesRaw())!).records.filter((n:any)=>n.id.startsWith('scan-')));
   expect(saved).toHaveLength(1);expect(saved[0].body).toBe('Reviewed scan title\nCorrected by the user.');
 });

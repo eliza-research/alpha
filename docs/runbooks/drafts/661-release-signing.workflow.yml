@@ -1,0 +1,234 @@
+# DRAFT, NOT ENABLED. Issue #661 (H-01 decided 2026-10-29: release keys live as GitHub Actions
+# secrets and a CI job signs). This file sits outside .github/workflows, so GitHub never runs it.
+# To enable it, the owner copies it to .github/workflows/release-signing.yml in a reviewed PR
+# AFTER the H-08 ceremony, the H-09 enrollment commit and the `gh secret set` upload in
+# docs/runbooks/661-release-key-custody-ceremony.md. It has never run. A green run would be
+# signing evidence only: not an install, an image boot, a device result or a release.
+#
+# Safety rules this draft keeps (test/owner-release-signing-readiness.test.mjs checks them):
+# - only workflow_dispatch, only from main, only in the `release` environment (required reviewer,
+#   deployment branch `main`); never pull_request or pull_request_target;
+# - top-level permissions are empty, each job asks for contents: read only;
+# - secrets are bound in the env of the one step that decrypts and signs, never at job level;
+# - nothing echoes, cats or uploads a secret, the passphrase file or the decrypted key directory;
+#   this repository is PUBLIC, so its workflow logs and artifacts are public too;
+# - every input file is pinned by a SHA-256 typed into the dispatch form, checked before any
+#   secret is touched;
+# - decrypted keys exist only in /dev/shm for one step and are shredded in the same step and
+#   again in an always() cleanup step;
+# - only actions already pinned by SHA elsewhere in this repository; no third-party action runs
+#   in a job that receives a key secret.
+name: Release signing (draft)
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: What to sign
+        type: choice
+        options: [apks, image]
+        required: true
+      input_url:
+        description: "HTTPS URL of the unsigned input tarball (apks: unsigned-release.tar; image: unsigned-image.tar)"
+        type: string
+        required: true
+      input_sha256:
+        description: SHA-256 of that tarball, computed on the build host
+        type: string
+        required: true
+      target_files_sha256:
+        description: "image only: SHA-256 of the unsigned target-files zip from the H-21 build record"
+        type: string
+        required: false
+permissions: {}
+concurrency:
+  group: release-signing
+  cancel-in-progress: false
+jobs:
+  sign-apks:
+    if: inputs.target == 'apks'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: release
+    permissions:
+      contents: read
+    steps:
+      - name: Refuse anything but main
+        run: test "$GITHUB_REF" = refs/heads/main || { echo "Release signing runs only from main." >&2; exit 1; }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: true
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Install apksigner from the runner's Android SDK
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'build-tools;36.0.0' > /dev/null
+      - name: Install dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts
+      - name: Require the H-09 enrollment
+        run: |
+          node -e 'const s=require("./android/release-signer.json").signerSha256; if(!/^[0-9a-f]{64}$/.test(s??"")){console.error("android/release-signer.json signerSha256 is unset; finish H-09 first.");process.exit(1)}'
+      - name: Fetch and pin the unsigned build
+        env:
+          INPUT_URL: ${{ inputs.input_url }}
+          INPUT_SHA256: ${{ inputs.input_sha256 }}
+        run: |
+          case "$INPUT_URL" in https://*) ;; *) echo "input_url must be https" >&2; exit 1 ;; esac
+          printf '%s' "$INPUT_SHA256" | grep -Eq '^[0-9a-f]{64}$' || { echo "input_sha256 must be 64 lowercase hex" >&2; exit 1; }
+          curl --fail --silent --show-error --location --proto '=https' --output "$RUNNER_TEMP/unsigned.tar" "$INPUT_URL"
+          echo "$INPUT_SHA256  $RUNNER_TEMP/unsigned.tar" | sha256sum --check --strict
+          mkdir -p "$RUNNER_TEMP/unsigned"
+          tar -xf "$RUNNER_TEMP/unsigned.tar" -C "$RUNNER_TEMP/unsigned" --no-same-owner --no-same-permissions
+          for f in standalone-release-unsigned.apk launcher-release-unsigned.apk build-config.json apk-manifest.json; do
+            test -f "$RUNNER_TEMP/unsigned/$f" || { echo "missing $f in the unsigned build" >&2; exit 1; }
+          done
+          mkdir -p artifacts
+          cp "$RUNNER_TEMP/unsigned/"{standalone-release-unsigned.apk,launcher-release-unsigned.apk,build-config.json,apk-manifest.json} artifacts/
+          if [ -f "$RUNNER_TEMP/unsigned/sense-listener-unsigned.apk" ]; then cp "$RUNNER_TEMP/unsigned/sense-listener-unsigned.apk" artifacts/; fi
+      - name: Decrypt the application key into tmpfs, sign, shred
+        env:
+          ALPHA_RELEASE_KEY_PASSPHRASE: ${{ secrets.ALPHA_RELEASE_KEY_PASSPHRASE }}
+          ALPHA_RELEASE_PUBLIC_BUNDLE: ${{ secrets.ALPHA_RELEASE_PUBLIC_BUNDLE }}
+          ALPHA_RELEASE_KEY_ALPHAPHONE_APP: ${{ secrets.ALPHA_RELEASE_KEY_ALPHAPHONE_APP }}
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+          in="$RUNNER_TEMP/release-keys-in"; keys=/dev/shm/alpha-release-keys; pass=/dev/shm/alpha-release-pass
+          trap 'find "$keys" "$in" -type f -exec shred -u {} + 2>/dev/null || true; shred -u "$pass" 2>/dev/null || true; rm -rf "$keys" "$in"' EXIT
+          mkdir -p "$in"
+          printf '%s' "$ALPHA_RELEASE_PUBLIC_BUNDLE" | base64 -d | tar -xzf - -C "$in" --no-same-owner
+          printf '%s' "$ALPHA_RELEASE_KEY_ALPHAPHONE_APP" | base64 -d > "$in/alphaphone_app.pk8.enc"
+          printf '%s\n' "$ALPHA_RELEASE_KEY_PASSPHRASE" > "$pass"
+          node vendor/eliza/packages/os/scripts/android/decrypt-release-keys.ts --input "$in" --output "$keys" --passphrase-file "$pass" --only alphaphone_app
+          shred -u "$pass"
+          # --no-verify: the signer check against android/release-signer.json still runs; verify-apks
+          # and the SBOM run on the build host after download, where the full build tree exists.
+          node scripts/sign-release-apks.mjs --keys-dir "$keys" --no-verify
+          if [ -f artifacts/sense-listener-unsigned.apk ]; then
+            node scripts/sign-release-apks.mjs --keys-dir "$keys" --apk artifacts/sense-listener-unsigned.apk --out artifacts/sense-listener-release.apk
+          fi
+      - name: Wipe key material
+        if: always()
+        run: |
+          find /dev/shm/alpha-release-keys "$RUNNER_TEMP/release-keys-in" -type f -exec shred -u {} + 2>/dev/null || true
+          shred -u /dev/shm/alpha-release-pass 2>/dev/null || true
+          rm -rf /dev/shm/alpha-release-keys "$RUNNER_TEMP/release-keys-in"
+      - name: Record signed digests
+        run: sha256sum artifacts/*-release.apk | tee "$RUNNER_TEMP/signed-sha256.txt"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: signed-release-apks-${{ github.run_id }}
+          path: |
+            artifacts/standalone-release.apk
+            artifacts/launcher-release.apk
+            artifacts/sense-listener-release.apk
+            ${{ runner.temp }}/signed-sha256.txt
+          if-no-files-found: warn
+          compression-level: 0
+          retention-days: 3
+
+  # Image and OTA signing (H-22). Drafted with the same shape; it needs a further review of disk
+  # space for the target-files zip and otatools on a hosted runner before it is enabled.
+  sign-image:
+    if: inputs.target == 'image'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    environment: release
+    permissions:
+      contents: read
+    steps:
+      - name: Refuse anything but main
+        run: test "$GITHUB_REF" = refs/heads/main || { echo "Release signing runs only from main." >&2; exit 1; }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: true
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Install apksigner from the runner's Android SDK
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'build-tools;36.0.0' > /dev/null
+      - name: Install dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts
+      - name: Fetch and pin the unsigned image inputs
+        env:
+          INPUT_URL: ${{ inputs.input_url }}
+          INPUT_SHA256: ${{ inputs.input_sha256 }}
+          TARGET_FILES_SHA256: ${{ inputs.target_files_sha256 }}
+        run: |
+          case "$INPUT_URL" in https://*) ;; *) echo "input_url must be https" >&2; exit 1 ;; esac
+          printf '%s' "$INPUT_SHA256" | grep -Eq '^[0-9a-f]{64}$' || { echo "input_sha256 must be 64 lowercase hex" >&2; exit 1; }
+          printf '%s' "$TARGET_FILES_SHA256" | grep -Eq '^[0-9a-f]{64}$' || { echo "target_files_sha256 is required for image signing" >&2; exit 1; }
+          curl --fail --silent --show-error --location --proto '=https' --output "$RUNNER_TEMP/unsigned-image.tar" "$INPUT_URL"
+          echo "$INPUT_SHA256  $RUNNER_TEMP/unsigned-image.tar" | sha256sum --check --strict
+          mkdir -p "$RUNNER_TEMP/image"
+          tar -xf "$RUNNER_TEMP/unsigned-image.tar" -C "$RUNNER_TEMP/image" --no-same-owner --no-same-permissions
+          rm "$RUNNER_TEMP/unsigned-image.tar"
+          test -f "$RUNNER_TEMP/image/unsigned-target_files.zip" && test -d "$RUNNER_TEMP/image/otatools/bin" || { echo "the tarball must hold unsigned-target_files.zip and otatools/bin" >&2; exit 1; }
+      - name: Decrypt the image keys into tmpfs, sign, shred
+        env:
+          TARGET_FILES_SHA256: ${{ inputs.target_files_sha256 }}
+          ALPHA_RELEASE_KEY_PASSPHRASE: ${{ secrets.ALPHA_RELEASE_KEY_PASSPHRASE }}
+          ALPHA_RELEASE_PUBLIC_BUNDLE: ${{ secrets.ALPHA_RELEASE_PUBLIC_BUNDLE }}
+          ALPHA_RELEASE_KEY_RELEASEKEY: ${{ secrets.ALPHA_RELEASE_KEY_RELEASEKEY }}
+          ALPHA_RELEASE_KEY_PLATFORM: ${{ secrets.ALPHA_RELEASE_KEY_PLATFORM }}
+          ALPHA_RELEASE_KEY_SHARED: ${{ secrets.ALPHA_RELEASE_KEY_SHARED }}
+          ALPHA_RELEASE_KEY_MEDIA: ${{ secrets.ALPHA_RELEASE_KEY_MEDIA }}
+          ALPHA_RELEASE_KEY_NETWORKSTACK: ${{ secrets.ALPHA_RELEASE_KEY_NETWORKSTACK }}
+          ALPHA_RELEASE_KEY_SDK_SANDBOX: ${{ secrets.ALPHA_RELEASE_KEY_SDK_SANDBOX }}
+          ALPHA_RELEASE_KEY_BLUETOOTH: ${{ secrets.ALPHA_RELEASE_KEY_BLUETOOTH }}
+          ALPHA_RELEASE_KEY_NFC: ${{ secrets.ALPHA_RELEASE_KEY_NFC }}
+          ALPHA_RELEASE_KEY_APEX: ${{ secrets.ALPHA_RELEASE_KEY_APEX }}
+          ALPHA_RELEASE_KEY_APEX_PAYLOAD: ${{ secrets.ALPHA_RELEASE_KEY_APEX_PAYLOAD }}
+          ALPHA_RELEASE_KEY_AVB: ${{ secrets.ALPHA_RELEASE_KEY_AVB }}
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+          in="$RUNNER_TEMP/release-keys-in"; keys=/dev/shm/alpha-release-keys; pass=/dev/shm/alpha-release-pass
+          trap 'find "$keys" "$in" -type f -exec shred -u {} + 2>/dev/null || true; shred -u "$pass" 2>/dev/null || true; rm -rf "$keys" "$in"' EXIT
+          mkdir -p "$in"
+          printf '%s' "$ALPHA_RELEASE_PUBLIC_BUNDLE" | base64 -d | tar -xzf - -C "$in" --no-same-owner
+          for name in releasekey platform shared media networkstack sdk_sandbox bluetooth nfc apex; do
+            var="ALPHA_RELEASE_KEY_$(printf '%s' "$name" | tr a-z A-Z)"
+            printf '%s' "${!var}" | base64 -d > "$in/$name.pk8.enc"
+          done
+          for name in apex_payload avb; do
+            var="ALPHA_RELEASE_KEY_$(printf '%s' "$name" | tr a-z A-Z)"
+            printf '%s' "${!var}" | base64 -d > "$in/$name.pem.enc"
+          done
+          printf '%s\n' "$ALPHA_RELEASE_KEY_PASSPHRASE" > "$pass"
+          node vendor/eliza/packages/os/scripts/android/decrypt-release-keys.ts --input "$in" --output "$keys" --passphrase-file "$pass" \
+            --only releasekey,platform,shared,media,networkstack,sdk_sandbox,bluetooth,nfc,apex,apex_payload,avb
+          shred -u "$pass"
+          # The shared signing job requires every file it reads in the key directory to be 0600.
+          chmod 600 "$keys"/*
+          manifest=(); if [ -f "$RUNNER_TEMP/image/apk-manifest.json" ]; then manifest=(--apk-manifest "$RUNNER_TEMP/image/apk-manifest.json"); fi
+          for mode in --dry-run ""; do
+            node scripts/sign-aosp-release.mjs \
+              --target-files "$RUNNER_TEMP/image/unsigned-target_files.zip" --target-files-sha256 "$TARGET_FILES_SHA256" \
+              --keys-dir "$keys" --releasetools "$RUNNER_TEMP/image/otatools/bin" "${manifest[@]}" \
+              --apksigner "$ANDROID_HOME/build-tools/36.0.0/apksigner" --out "$RUNNER_TEMP/signed-release" $mode
+          done
+      - name: Wipe key material
+        if: always()
+        run: |
+          find /dev/shm/alpha-release-keys "$RUNNER_TEMP/release-keys-in" -type f -exec shred -u {} + 2>/dev/null || true
+          shred -u /dev/shm/alpha-release-pass 2>/dev/null || true
+          rm -rf /dev/shm/alpha-release-keys "$RUNNER_TEMP/release-keys-in"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: signed-release-image-${{ github.run_id }}
+          path: ${{ runner.temp }}/signed-release/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 3

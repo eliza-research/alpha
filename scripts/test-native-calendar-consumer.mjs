@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {sourceDirectory,verifySource} from './local-agent-source.mjs';
+import {generateAlphaAndroidHost} from './android-host.mjs';
 const root=path.resolve(import.meta.dirname,'..');
 const flags=new Set(process.argv.slice(2));
 if([...flags].some(flag=>!['--build-only','--bridge','--workflow-permission'].includes(flag)))throw Error('Unknown Calendar consumer option');
@@ -17,6 +18,8 @@ for(let current=init;current!==root;current=path.dirname(current))if(fs.existsSy
 fs.mkdirSync(output,{recursive:true});
 fs.writeFileSync(init,"gradle.beforeProject { project -> project.layout.buildDirectory.set(new File(System.getenv('ALPHA_CALENDAR_BUILD_OUTPUT'), project.name)) }\n");
 const fixture=path.join(source,'plugins/plugin-native-calendar/test/android-consumer');
+// The generated host supplies the hash-pinned Gradle wrapper used for this separate project.
+generateAlphaAndroidHost(root);
 run(path.join(root,'android/gradlew'),['--no-daemon','--no-watch-fs','--project-cache-dir',path.join(output,'.gradle'),'--init-script',init,'-p',fixture,`-PcapacitorAndroidDir=${path.join(root,'node_modules/@capacitor/android/capacitor')}`,'assembleDebug','assembleDebugAndroidTest'],{...process.env,ANDROID_HOME:sdk,ALPHA_CALENDAR_BUILD_OUTPUT:output});
 verifySource(source,pin);
 const apk=path.join(output,'android-consumer/outputs/apk/debug/android-consumer-debug.apk'),testApk=path.join(output,'android-consumer/outputs/apk/androidTest/debug/android-consumer-debug-androidTest.apk');

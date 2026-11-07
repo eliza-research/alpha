@@ -6,7 +6,8 @@ import {openDomainRecovery} from '../browser/domain-recovery';
 import {browserDevProfile} from '../browser/dev-profile';
 type Bag=Record<string,any>;
 /** Retained existing-item forms use the existing transactional text-draft primitive. */
-export function installCalendarEditDraftAdapter(Component:any,views:Bag){
+export function installCalendarEditDraftAdapter(Component:any,views:Bag,options:{active?:(shell:any)=>boolean}={}){
+ const enabled=(shell:any)=>options.active?.(shell)??true;
  const p=Component.prototype,mount=p.componentDidMount,update=p.componentDidUpdate,unmount=p.componentWillUnmount,render=views.calendar.render;
  let owner:any;
  p.componentDidMount=function(){
@@ -15,10 +16,10 @@ export function installCalendarEditDraftAdapter(Component:any,views:Bag){
    this.calendarEditDraftText=text;
    if(this.calendarEditDraftRestore&&text){const restored=decodeCalendarEdit(text);this.calendarEditDraftAnchor=new Date();this.calendarEditDraftIdentity=calendarEditIdentity(restored.form);this.vset('calendar',{form:restored.form,open:null,month:null});if(restored.zone!==Intl.DateTimeFormat().resolvedOptions().timeZone)this.toast('Time zone changed. Review the restored date and time before saving.');}
   },()=>{if(this.live)this.vset('calendar',{});});
-  void this.calendarEditDraft.open(JSON.stringify(['calendar-inline-edit-form',browserDevProfile?'development':'app']));
+  if(enabled(this)){this.calendarEditDraftBound=true;void this.calendarEditDraft.open(JSON.stringify(['calendar-inline-edit-form',browserDevProfile?'development':'app']));}
  };
  p.componentDidUpdate=function(previous:Bag){
-  update.call(this,previous);const form=this.vget('calendar').form;
+  update.call(this,previous);if(!enabled(this))return;if(!this.calendarEditDraftBound){this.calendarEditDraftBound=true;void this.calendarEditDraft.open(JSON.stringify(['calendar-inline-edit-form',browserDevProfile?'development':'app']));}const form=this.vget('calendar').form;
   if(!form?.id||!form.alphaCalendarId&&!form.alphaReminderId)return;
   if(this.calendarEditDraftIdentity!==calendarEditIdentity(form)){this.calendarEditDraftIdentity=calendarEditIdentity(form);this.calendarEditDraftAnchor=new Date();}
   const today=new Date(),anchor=this.calendarEditDraftAnchor as Date;
@@ -37,6 +38,7 @@ export function installCalendarEditDraftAdapter(Component:any,views:Bag){
  p.calendarFormCommitted=function(form:Bag){if(form?.id)this.calendarEditFormCommitted(form);else creationCommitted?.call(this,form);};
  p.componentWillUnmount=function(){this.calendarEditDraft?.retire(false);this.calendarEditDraftRecovery?.abort();if(owner===this)owner=undefined;unmount.call(this);};
  views.calendar.render=function(state:Bag,api:Bag){
+  if(!owner||!enabled(owner))return render(state,api);
   const out=render(state,api),shell=owner,controller=shell?.calendarEditDraft,draft=controller?.state;
   if(!shell||!controller)return out;
   const active=!!state.form?.id&&!!(state.form.alphaCalendarId||state.form.alphaReminderId);

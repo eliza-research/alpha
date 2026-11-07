@@ -1,5 +1,5 @@
 import React from 'react';
-import {MailFolderPicker} from '../apps/app/src/prototype/mail-folder-picker.tsx';
+import {MailFolderPicker} from '../.eliza/client-features/plugins/plugin-inbox/src/components/mailbox/MailFolderPicker.tsx';
 import {mailSenderImage} from '../apps/app/src/runtime/mail-sender-image.ts';
 import {decodeMailPreview} from '../apps/app/src/runtime/mail-preview.ts';
 import {readGmailAccountChoice,saveGmailAccountChoice} from '../apps/app/src/runtime/gmail-account-selection.ts';
@@ -10,14 +10,18 @@ import {GmailReadAhead} from '../apps/app/src/runtime/gmail-read-ahead.ts';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from '../test/support/strip-types.mjs';
 import { InboxOperation, composerKind, composerContent, reviewBinding, reviewBindingRefusal, reviewOpaqueAttachment, checkOutgoingAttachments, outgoingAttachmentLimits, attachmentBytes } from '../apps/app/src/runtime/inbox-operation.ts';
 import { reviewMailAttachment } from '../apps/app/src/runtime/inbox-attachment.ts';
 import { reviewMailContext, validateMailContext } from '../apps/app/src/runtime/reviewed-mail-context.ts';
 import { cloudServiceName, safeMailLink } from '../apps/app/src/runtime/cloud-protocol.ts';
+import { linkifyMailText, linkTextMismatch } from '../.eliza/client-features/plugins/plugin-inbox/src/mailbox/links.ts';
 import * as mailbox from '../apps/app/src/runtime/gmail-mailbox.ts';
 import * as googleAccounts from '../apps/app/src/runtime/google-accounts.ts';
 import * as grants from '../apps/app/src/runtime/gmail-grants.ts';
+import {createMailReviewController} from '../.eliza/client-features/plugins/plugin-inbox/src/mailbox/review-controller.ts';
+import {createMailDraftsController} from '../.eliza/client-features/plugins/plugin-inbox/src/mailbox/drafts-controller.ts';
+import * as mailboxList from '../.eliza/client-features/plugins/plugin-inbox/src/mailbox/mailbox-list.ts';
 
 const strip=async(file,names)=>{let source=await readFile(new URL(`../apps/app/src/prototype/${file}`,import.meta.url),'utf8');source=source.replace(/^import .*;\n/gm,'').replace(/^export (?=(?:async )?function |const |let |interface |type )/gm,'')+`\n${[].concat(names).map(n=>`globalThis.${n}=${n};`).join('')}`;return '{'+stripTypeScriptTypes(source,{mode:'strip'})+'}';};
 const digest=async text=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text))),b=>b.toString(16).padStart(2,'0')).join('');
@@ -66,7 +70,10 @@ function scenario({caps={},accounts=null}={}){
  const windowFixture={addEventListener(){},removeEventListener(){},dispatchEvent(){return true;},confirm:text=>{confirms.push(text);return confirmAnswer;}};
  const inboxUnsaved=()=>({ready:Promise.resolve(),available:false,conflict:false,error:false,status:'',peek:()=>null,edit(){},clear:async()=>{},retire(){},resume(){}});
  const mailNotices={tap:null,withdrawals:0,consumed:[],listener:null,agent:null,review:null,released:0,drafts:[]};
- const sandbox={cloudServiceName,React,MailFolderPicker,mailSenderImage,serviceReadCache:async()=>null,decodeMailPreview,cachedDevicePreferences:()=>({autoLoadMailImages:true}),initializeDevicePreferences:()=>{},alphaClient:{getState:()=>({context:{sensitive:false}})},reviewOwnNoticeQuestion:options=>{mailNotices.review=options;return ()=>{};},releaseGmailQuestion:async()=>{mailNotices.released++;mailNotices.tap=null;},configureGmailBackground:async()=>{},withdrawGmailBackground:async()=>{mailNotices.withdrawals++;},pendingGmailNotice:async()=>mailNotices.tap,consumeGmailNotice:async token=>{mailNotices.consumed.push(token);mailNotices.tap=null;},onGmailNotice:async fn=>{mailNotices.listener=fn;return {remove:async()=>{}};},prepareMailHtml:()=>{throw Error("HTML uses the rendered browser test");},readGmailAccountChoice,saveGmailAccountChoice,GmailReadAhead,URL,Date:FixedDate,inboxUnsaved,InboxOperation,composerKind,composerContent,reviewBinding,reviewBindingRefusal,reviewMailAttachment,reviewOpaqueAttachment,checkOutgoingAttachments,outgoingAttachmentLimits, attachmentBytes,safeMailLink,reviewMailContext,validateMailContext,...mailbox,...googleAccounts,...grants,Event,googleConnectionController:{open(){throw Error('Explicit Google authorization not exercised by this read fixture');}},
+ // The imported cache lives outside the VM; supply the same fixture clock as the adapter.
+ // Otherwise its default real Date.now expires the fixed header page after thirty days.
+ class FixtureMailboxListCache extends mailboxList.MailboxListCache{get(key,now=clock){return super.get(key,now);}}
+ const sandbox={...mailboxList,MailboxListCache:FixtureMailboxListCache,createMailReviewController,createMailDraftsController,reviewMailAttachment,cloudServiceName,linkifyMailText,linkTextMismatch,React,MailFolderPicker,mailSenderImage,serviceReadCache:async()=>null,decodeMailPreview,cachedDevicePreferences:()=>({autoLoadMailImages:true}),initializeDevicePreferences:()=>{},alphaClient:{getState:()=>({context:{sensitive:false}})},reviewOwnNoticeQuestion:options=>{mailNotices.review=options;return ()=>{};},releaseGmailQuestion:async()=>{mailNotices.released++;mailNotices.tap=null;},configureGmailBackground:async()=>{},withdrawGmailBackground:async()=>{mailNotices.withdrawals++;},pendingGmailNotice:async()=>mailNotices.tap,consumeGmailNotice:async token=>{mailNotices.consumed.push(token);mailNotices.tap=null;},onGmailNotice:async fn=>{mailNotices.listener=fn;return {remove:async()=>{}};},prepareMailHtml:()=>{throw Error("HTML uses the rendered browser test");},readGmailAccountChoice,saveGmailAccountChoice,GmailReadAhead,URL,Date:FixedDate,inboxUnsaved,InboxOperation,composerKind,composerContent,reviewBinding,reviewBindingRefusal,reviewMailAttachment,reviewOpaqueAttachment,checkOutgoingAttachments,outgoingAttachmentLimits, attachmentBytes,safeMailLink,reviewMailContext,validateMailContext,...mailbox,...googleAccounts,...grants,Event,googleConnectionController:{open(){throw Error('Explicit Google authorization not exercised by this read fixture');}},
   registerPlugin:()=>native,crypto:globalThis.crypto,TextEncoder,structuredClone,
   secureConnectionStore:{read:async key=>structuredClone(slots.get(key)??null),compareExchange:async(key,prior,next)=>{if(JSON.stringify(slots.get(key)??null)!==JSON.stringify(prior))return {status:'conflict'};if(next===null)slots.delete(key);else slots.set(key,structuredClone(next));return {status:'saved'};}},
   connectionController:controller,
@@ -88,16 +95,16 @@ async function boot(options){
 }
 const searches=t=>t.calls.filter(c=>Array.isArray(c)&&c[0]==='search');
 
-// Home must not query mail at mount, resume, or when leaving Inbox.
+// Home reads one bounded header page at mount; resume within a minute and leaving Inbox do not query mail.
 {
  const t=await boot();
  t.mount();await t.tick();
- deq(searches(t),[],'Home does not fetch Gmail metadata');
- assert.equal(t.views.inbox.badge(),false);
+ deq(t.calls,['accounts',['search','in:inbox',25,null]],'Home reads accounts and one 25-header page, no bodies or drafts');
+ assert.equal(t.views.inbox.badge(),true,'the accepted header page sets the badge');
  for(const fn of t.resume)fn();await t.tick();
- deq(searches(t),[],'resume outside Inbox does not fetch mail');
+ deq(t.calls,['accounts',['search','in:inbox',25,null]],'resume within a minute outside Inbox does not read mail again');
  t.setActive(true);t.render();await t.tick();
- deq(searches(t),[['search','in:inbox',25,null]],'explicit Inbox open loads mail');
+ deq(searches(t),[['search','in:inbox',25,null]],'explicit Inbox open consumes the Home header page');assert.equal(t.calls.filter(c=>c==='accounts').length,1,'no second account discovery');
  assert.equal(t.attention().state,'ready');assert.equal(t.attention().unread,2);
  assert.equal(t.views.inbox.badge(),true);
  const rows=t.render().rows;assert.equal(rows[0].clip,true);assert.match(rows[0].label,/has attachments/);assert.equal(rows[1].clip,false);
@@ -322,7 +329,7 @@ deq(t.prepared.at(-1).attachments.map(a=>a.name),['c.txt','a.txt']);assert.equal
  assert.equal(t.prepared.length,0);assert.equal(t.dispatched.length,0);
  t.shell.componentWillUnmount();
 }
-console.log('PASS: Inbox attention (not-connected/ready/error/stale), no background mail fetch, openInbox, reviewed HTTPS links in Browser, clip/time rows, Archive/Trash/Drafts folders, provider draft editing, three-attachment add/remove, forwarded source attachments, opaque Save to Files, Use in email and its reviewed destination binding. Fixture only; zero dispatches.');
+console.log('PASS: Inbox attention (not-connected/ready/error/stale), one bounded Home header read, openInbox, reviewed HTTPS links in Browser, clip/time rows, Archive/Trash/Drafts folders, provider draft editing, three-attachment add/remove, forwarded source attachments, opaque Save to Files, Use in email and its reviewed destination binding. Fixture only; zero dispatches.');
 
 // Preparation remains read-only and cannot retain revoked content or run after hiding.
 const preparationFailures=[];

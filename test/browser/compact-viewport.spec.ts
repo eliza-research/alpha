@@ -1,10 +1,11 @@
+import {openLegacyNotes} from './helpers/legacy-notes';
 import { test, expect } from '@playwright/test';
 
 for (const viewport of [{width:320,height:568},{width:412,height:430},{width:915,height:412},{width:1440,height:500}]) {
   test(`Notes remains editable and navigable at ${viewport.width}x${viewport.height}`, async ({ page }, info) => {
     await page.setViewportSize(viewport);
     await page.goto('/');
-    await page.getByRole('button',{name:'Notes',exact:true}).click();
+    await openLegacyNotes(page);
     await page.getByRole('button',{name:'New note',exact:true}).click();
     const title=page.getByRole('textbox',{name:'Title',exact:true});
     const body=page.getByRole('textbox',{name:'Note',exact:true});
@@ -55,19 +56,28 @@ for(const theme of ['light','dark']) test(`Scheduled digests respects ${theme} a
   await page.screenshot({path:info.outputPath('dialog.png')});
 });
 
-test('Connection dialog follows a live theme change and remains keyboard accessible',async({page},info)=>{
+test('Sign-in dialog follows a live theme change and remains keyboard accessible',async({page},info)=>{
+  await page.route('**/__alpha-browser-cloud',async route=>{
+    if(route.request().postDataJSON()?.operation==='signInStatus'){
+      await route.fulfill({json:{active:false,inApp:true,google:false,email:true}});
+      return;
+    }
+    await route.fallback();
+  });
   await page.goto('/');
   await page.getByRole('button',{name:'Settings',exact:true}).click();
   // Theme sits on Settings' top level (docs/ui-refresh-2026-11).
   await page.getByRole('button',{name:'Theme: Dark',exact:true}).click();
   // Open by keyboard: WebKit intentionally does not focus buttons on a pointer click.
   const opener=page.getByRole('button',{name:'Eliza Cloud',exact:true});await opener.focus();await opener.press('Enter');
-  const dialog=page.getByRole('dialog',{name:'Eliza Cloud',exact:true});
+  const dialog=page.getByRole('dialog',{name:'Welcome to Alpha.',exact:true});
   await expect(dialog).toHaveCSS('background-color','rgb(0, 0, 0)');
   await page.setViewportSize({width:412,height:300});
   await expect(dialog.getByText('Remote agent',{exact:true})).toHaveCount(0);
-  const signIn=dialog.getByRole('button',{name:'Sign in with Eliza Cloud',exact:true});
-  await signIn.focus();await expect(signIn).toBeInViewport();
+  const signIn=dialog.getByRole('textbox',{name:'Email',exact:true});
+  // The email field may already hold focus from opening; move focus to the dialog first so focusing
+  // the field again must bring it into the compact viewport.
+  await expect(signIn).toBeEnabled();await dialog.focus();await signIn.focus();await expect(signIn).toBeFocused();await expect(signIn).toBeInViewport();
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
   await expect(page.getByRole('button',{name:'Eliza Cloud',exact:true})).toBeFocused();

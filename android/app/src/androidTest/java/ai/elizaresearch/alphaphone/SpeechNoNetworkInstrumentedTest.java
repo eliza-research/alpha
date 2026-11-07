@@ -1,5 +1,7 @@
 package ai.elizaresearch.alphaphone;
 
+import ai.eliza.voice.SessionSpeech;
+import ai.eliza.voice.LocalSpeechEngine;
 import static org.junit.Assert.*;
 
 import ai.eliza.voice.VoiceAssets;
@@ -37,8 +39,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 /**
- * Local speech performs no network egress (#413). The product's on-device path, AlphaLocalSpeechEngine
- * over AlphaParadeeSpeech (the engine AlphaVoiceCloudPlugin's submitLocal methods hold), installs the
+ * Local speech performs no network egress (#413). The product's on-device path, LocalSpeechEngine
+ * over SessionSpeech (the engine AlphaVoiceCloudPlugin's submitLocal methods hold), installs the
  * packaged voice bundle, opens libelizainference ASR and Paradee TTS, transcribes the human fixture and
  * synthesizes speech while networking is AVAILABLE, so an egress attempt would be observable.
  *
@@ -94,7 +96,7 @@ public final class SpeechNoNetworkInstrumentedTest {
   VoiceAssets.Bundle bundle=null;
   try{bundle=VoiceAssets.install(app);}catch(IOException unverified){Assume.assumeNoException("The packaged voice bundle does not verify; no egress claim is made",unverified);}
   Assume.assumeTrue("The packaged voice bundle has no ASR slot; recognition egress cannot be checked",new File(bundle.root,"asr").isDirectory());
-  float[] human;try(InputStream in=InstrumentationRegistry.getInstrumentation().getContext().getAssets().open("speech-fixture/0.wav")){human=AlphaLocalSpeechEngine.readMono16kWav(in);}
+  float[] human;try(InputStream in=InstrumentationRegistry.getInstrumentation().getContext().getAssets().open("speech-fixture/0.wav")){human=LocalSpeechEngine.readMono16kWav(in);}
   // An available network is what makes zero egress meaningful: with none, a connect() fails before
   // any byte is counted. The other speech classes run with networking off; this one must not.
   ConnectivityManager connectivity=app.getSystemService(ConnectivityManager.class);Network network=connectivity.getActiveNetwork();
@@ -123,7 +125,7 @@ public final class SpeechNoNetworkInstrumentedTest {
      .penaltyListener(listeners,(Violation v)->speech.violations.add("thread:"+v.getClass().getSimpleName())).build());
     JSONObject out=new JSONObject();
     try{
-     AlphaLocalSpeechEngine holder=new AlphaLocalSpeechEngine(()->new AlphaParadeeSpeech(app));
+     LocalSpeechEngine holder=new LocalSpeechEngine(()->new SessionSpeech(VoiceAssets.install(app).openInference(),true));
      try{
       // A developer APK without the native engine (or one built without ASR/Paradee) cannot load it:
       // that is "not packaged", a skip. A model load failure on a packaged engine is a real failure.
@@ -132,7 +134,7 @@ public final class SpeechNoNetworkInstrumentedTest {
       catch(IllegalStateException unavailable){if(!String.valueOf(unavailable.getMessage()).contains("built without"))throw unavailable;out.put("engineUnavailable",String.valueOf(unavailable));return out;}
       String transcript=holder.use(engine->engine.transcribe(human));
       out.put("transcript",transcript);
-      AlphaLocalSpeechEngine.Audio audio=holder.use(engine->engine.synthesize("Your calendar is ready. The quick brown fox jumps over the lazy dog.",()->false));
+      LocalSpeechEngine.Audio audio=holder.use(engine->engine.synthesize("Your calendar is ready. The quick brown fox jumps over the lazy dog.",()->false));
       out.put("ttsSamples",audio.samples.length).put("ttsRate",audio.sampleRate);
       // Release and reopen: a fresh model load is also part of the local path.
       holder.release();out.put("reopenedTranscript",holder.use(engine->engine.transcribe(human)));

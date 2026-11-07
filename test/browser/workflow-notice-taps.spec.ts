@@ -1,14 +1,18 @@
+import {newWorkflow} from './workflow-navigation';
+import {installResidentAgentPlugin} from './helpers/resident-agent-plugin';
 import {test,expect} from '@playwright/test';
 const ownerFence=(ownerId:string)=>({owner:{origin:'https://device.alpha.invalid',ownerId,agentId:'fixture-agent'}});
 // Production renderer and authenticated connection; controlled transport/native queue, no real notification.
 for(const scenario of ['lookup-unavailable','lookup-unavailable-navigation','ask','ask-cancel','ask-changed','ask-owner','ask-sensitive','two','other-owner','wrong-version','unconfirmed','navigation-race','owner-race','reconnect','owner-change','queue-changed','builder-race','new-tap-during-read'] as const){
  test('scoped native workflow tap '+scenario,async({page})=>{
  const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
+  await installResidentAgentPlugin(page);
   await page.addInitScript(scenario=>{
    const w=window as any;w.androidBridge={};
    localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));
    const store=new Map();
    const f=w.deliveryFixture={configured:0,cancelled:0,disabled:[] as string[],nativeSync:0,foregroundSync:0,polling:true,enabled:false,notifications:false,events:[] as string[],input:null as any,release:null as any,holdRetire:false,retireRelease:null as any,mockHold:false,mockReleases:{} as Record<string,()=>void>,removed:[] as string[]};
+   const agent=w.residentAgent=w.createResidentAgentPlugin({owner:()=>f.owner||'fixture-owner',agentId:'fixture-agent', providerStatus: {provider: 'elizacloud', configured: false}});
    if(scenario.startsWith('lookup-unavailable')){
     f.lookupUnavailable=true;f.lookupFailures=0;f.noticeToasts=[];
     new MutationObserver(()=>{const shown=document.body?.innerText.match(/Workflow notifications? (?:retained|could not be checked)[^\n]*/)?.[0];if(shown&&!f.noticeToasts.includes(shown))f.noticeToasts.push(shown);}).observe(document,{subtree:true,childList:true,characterData:true});
@@ -17,12 +21,12 @@ for(const scenario of ['lookup-unavailable','lookup-unavailable-navigation','ask
    w.Capacitor={PluginHeaders:[
     {name:'AlphaVoiceCloud',methods:methods(['checkPermissions'])},
     {name:'AlphaNotifications',methods:methods(['status','crossAppStatus','pendingWorkflowTap','consumeWorkflowTap','addListener','removeListener'])},
-    {name:'Agent',methods:methods(['getStatus','start','request'])},
+    {name:'Agent',methods:agent.methods(['getStatus','start','request'])},
     {name:'AlphaConnection',methods:methods(['secureRead','secureWrite','secureCompareExchange','secureRemove','cancel','addListener','removeListener','pauseNotificationCollection'])},
     {name:'AlphaActionJournal',methods:methods(['list'])},
-    {name:'DeviceApps',methods:methods(['buildInfo'])},
+    {name:'ElizaSystem',methods:methods(['getBuildInfo'])},
     {name:'AlphaHostedResults',methods:methods(['beginBackground','cancelBackground','configureBackground','disableBackground','inboxHistory','syncInbox','status','setBackgroundPolling','enable','pendingResult','withdrawOtherOwnerApprovalNotices','addListener','removeListener'])},
-   ],nativePromise:async(plugin:string,method:string,input:any)=>{
+   ],nativeCallback:agent.nativeCallback,nativePromise:async(plugin:string,method:string,input:any)=>{
     if(plugin==='AlphaVoiceCloud')return {microphone:'granted'};
     if(plugin==='AlphaNotifications'){
      if(method==='status'||method==='crossAppStatus')return {permissionGranted:true,appEnabled:true};
@@ -32,6 +36,7 @@ for(const scenario of ['lookup-unavailable','lookup-unavailable-navigation','ask
      return {};
     }
     if(plugin==='Agent'){
+     const owned=agent.answer(method,input);if(owned)return owned;
      if(method==='getStatus')return {packaged:true,state:'ready'};
      if(method==='start')return {state:'ready'};
      if(method==='request'){
@@ -65,7 +70,7 @@ for(const scenario of ['lookup-unavailable','lookup-unavailable-navigation','ask
      return {};
     }
     if(plugin==='AlphaActionJournal')return {entries:[]};
-    if(plugin==='DeviceApps')return {launcher:false,version:'fixture'};
+    if(plugin==='ElizaSystem'&&method==='getBuildInfo')return {launcher:false,version:'fixture'};
     if(plugin==='AlphaHostedResults'){
      if(method==='configureBackground'){
       f.configured++;f.input=input;
@@ -167,7 +172,7 @@ for(const scenario of ['lookup-unavailable','lookup-unavailable-navigation','ask
   await expect(page.getByText('Verified retained result run1',{exact:true})).toHaveCount(0);
  }else if(scenario==='builder-race'){
   await expect.poll(()=>page.evaluate(()=>Boolean((window as any).deliveryFixture.release))).toBe(true);
-  await page.getByRole('button',{name:'New automation',exact:true}).click();await page.getByRole('button',{name:/^Workflow Build reviewed steps/}).click();
+  await newWorkflow(page);
   await page.evaluate(()=>(window as any).deliveryFixture.release());
   await expect(page.getByText('Verified retained result run1',{exact:true})).toHaveCount(0);
   expect(await page.evaluate(()=>(window as any).deliveryFixture.consumed?.length||0)).toBe(0);
@@ -211,6 +216,6 @@ for(const scenario of ['lookup-unavailable','lookup-unavailable-navigation','ask
  if(scenario==='reconnect')transitions.push(ownerFence('fixture-owner'));
  if(scenario==='owner-change')transitions.push(ownerFence('next-owner'));
  await expect.poll(()=>page.evaluate(()=>(window as any).deliveryFixture.ownerWithdrawals||[])).toEqual(transitions);
- expect(errors).toEqual([]);
+ expect(await page.evaluate(()=>(window as any).residentAgent.state.unexpected)).toEqual([]);expect(errors).toEqual([]);
  });
 }

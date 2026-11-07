@@ -1,6 +1,7 @@
 import {BrowserDigestDelegation} from '../browser/digest-delegation-ui';
 import {browserDevProfile} from '../browser/dev-profile';
 import { CloudDelegationPanel } from "./cloud-delegation-ui";
+import { isAndroid } from '../native';
 import { useState } from "react";
 import type {
 	HostedDigestProtocol,
@@ -135,7 +136,7 @@ export function HostedLiveSourcePicker({
 	return (
 		<details>
 			<summary>Use live Google data</summary>
-            {scope && (browserDevProfile&&JSON.parse(localStorage.getItem('alpha.connection.selection.v1')||'null')?.kind==='development'?<BrowserDigestDelegation client={client} scope={scope} signal={signal} current={current} onConnected={()=>void loadAccounts()}/>:<CloudDelegationPanel client={client} scope={scope} signal={signal} current={current} onConnected={()=>void loadAccounts()}/>) }
+            {scope && (browserDevProfile&&JSON.parse(localStorage.getItem('alpha.connection.selection.v1')||'null')?.kind==='development'?<BrowserDigestDelegation client={client} scope={scope} signal={signal} current={current} onConnected={()=>void loadAccounts()}/>:isAndroid?<CloudDelegationPanel client={client} scope={scope} signal={signal} current={current} onConnected={()=>void loadAccounts()}/>:<p>Cloud read access for scheduled reads is connected from the Android app.</p>) }
 			<p>{message}</p>
 			<button disabled={busy || pending} onClick={() => void loadAccounts()}>
 				Refresh connected accounts

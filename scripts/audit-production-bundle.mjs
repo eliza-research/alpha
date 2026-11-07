@@ -15,6 +15,11 @@ export const RETIRED_NO_AGENT_TEXT = Object.freeze(['without AI', 'Continue offl
 /** Decision P-43 (#381): fallback copy that implied a remote agent. Production has none; the resident
  * runs on the phone. Test-mocks builds keep the remote development path and are not denied. */
 export const RETIRED_REMOTE_AGENT_TEXT = Object.freeze(['Connect your remote agent', 'No remote agent connected', 'Connect a remote agent']);
+/** AP-03: the remote pairing protocol and its owner copy. Saved remote credentials are left untouched;
+ * no product path reads or pairs them. */
+export const RETIRED_PAIRING_TEXT = Object.freeze(['pairing_identity_mismatch', 'This agent is not accepting pairing', 'The agent refused this pairing code']);
+/** AP-03/P-22: the Cloud sign-in hand-off (CloudProtocol.login). Product sign-in is the native in-app host. */
+export const RETIRED_SIGN_IN_HAND_OFF_TEXT = Object.freeze(['/api/auth/cli-session', '/auth/cli-login', 'Finish signing in to', 'Use the newly opened browser tab']);
 export const DENYLIST = Object.freeze([
   'Connect remote agent', 'Agent HTTPS address', 'Development Cloud agent infrastructure', 'Dedicated hosting requires a reviewed setup',
   'alpha:force-render-error', 'alpha:render-error-check', 'Forced render failure',
@@ -36,18 +41,27 @@ export const DENYLIST = Object.freeze([
   ...RETIRED_NO_AGENT_TEXT,
   // Subscription gate QA (test-mocks builds only, docs/cloud-subscription-qa.md).
   'gate QA', 'resident-qa.v1',
-  // Production uses managed Cloud inference; manual provider-key entry is a test fixture.
-  'Cerebras API key',
+  // Owner-provided keys are a product feature. The older developer-only dialog remains gated.
+  'A new key takes effect after the agent restarts.',
   // Hosted and paired agents (#406): the agent always runs on the phone. Remote pairing, Cloud agent
   // discovery, personal/Dedicated setup and the hosted phone protocol are development fixtures only.
   '/api/auth/pair', 'Pair this agent before connecting', 'Choose an endpoint serving one agent', 'Pair the agent again',
   '/api/v1/eliza/agents', 'personalElizaId', 'dedicated-always', 'personal Cloud agent', 'cloud-runtime:',
   'X-Eliza-Phone-Protocol', 'x-eliza-phone-protocol', 'Connect your own remote agent',
   ...RETIRED_REMOTE_AGENT_TEXT,
-  // In-app Eliza Cloud sign-in (owner directive 2026-10-14): the diagnostic button and the staging
-  // return host are test-mocks only. The Cloud sign-in hand-off stays in product builds as the
-  // fallback until the in-app readiness probe passes, so its routes are not denied here.
+  // Remote pairing (AP-03): RemoteProtocol.pair and its refusal copy are development-only.
+  ...RETIRED_PAIRING_TEXT,
+  // In-app Eliza Cloud sign-in (owner directive 2026-10-14): the native host is the one product
+  // sign-in path. The diagnostic button, the staging return host and the Cloud sign-in hand-off
+  // (cli-session, the hosted cli-login page and its browser waiting copy) are test-mocks only.
   'Browser sign-in (diagnostic)', 'staging.eliza.app/alphaphone',
+  ...RETIRED_SIGN_IN_HAND_OFF_TEXT,
+  'Browser calendar (development)',
+  // The read-only OS update-channel check is registered off; its About row is development only.
+  'Update channel (development)',
+  // Internal project scope is never user copy (owner decision 2026-10-30): unavailable apps and
+  // actions say they are not available on this phone yet.
+  'deferred from the MVP',
 ]);
 const TEXT = /\.(?:html?|js|mjs|cjs|css|json|txt|svg|xml|webmanifest)$/i;
 

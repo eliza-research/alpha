@@ -1,5 +1,5 @@
-.alpha-startup-permissions{box-sizing:border-box;width:100%;max-width:none;height:100dvh;max-height:none;inset:0;margin:0;padding:max(env(safe-area-inset-top),32px) 28px max(env(safe-area-inset-bottom),32px);border:0;border-radius:0;background:var(--connection-bg,#fff);color:var(--connection-fg,#000);font:16px/1.5 'Public Sans',system-ui,sans-serif;overflow:auto;overscroll-behavior:contain;outline:none}
-.alpha-startup-permissions[open]{display:flex;align-items:center;justify-content:center}
+.alpha-startup-permissions{box-sizing:border-box;width:100%;max-width:none;height:100dvh;max-height:none;inset:0;margin:0;padding:max(env(safe-area-inset-top),32px) max(env(safe-area-inset-right),24px) max(env(safe-area-inset-bottom),32px) max(env(safe-area-inset-left),24px);border:0;border-radius:0;background:var(--connection-bg,#fff);color:var(--connection-fg,#000);font:16px/1.5 'Public Sans',system-ui,sans-serif;overflow:auto;overscroll-behavior:contain;outline:none}
+.alpha-startup-permissions[open]{display:grid;grid-template-columns:minmax(0,1fr);align-content:safe center;justify-items:center}
 .alpha-startup-permissions::backdrop{background:var(--connection-bg,#fff)}
 .alpha-permission-content{display:flex;flex-direction:column;align-items:center;width:100%;max-width:360px;text-align:center}
 .alpha-permission-icon{display:flex;align-items:center;justify-content:center;width:80px;height:80px;border-radius:50%;background:var(--connection-s2,#f3f3f3);color:var(--connection-fg,#000);margin-bottom:28px}
@@ -7,9 +7,11 @@
 .alpha-startup-permissions h2{font-size:clamp(40px,7vw,56px);font-weight:300;line-height:1.05;letter-spacing:-.025em;text-wrap:balance;margin:0 0 20px;outline:none}
 .alpha-startup-permissions p{margin:0;max-width:30ch;color:var(--connection-mut,#6b6b6b);text-wrap:pretty}
 .alpha-startup-permissions .alpha-permission-status{font-size:14px;margin-top:20px;color:var(--connection-fg,#000)}
-.alpha-permission-actions{display:flex;flex-direction:column;align-items:center;gap:8px;width:100%;margin-top:36px}
+/* Room for the later 'Skip for now' is kept from the start, so the primary never moves under a thumb. */
+.alpha-permission-actions{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:8px;width:100%;margin-top:36px;min-height:108px}
 .alpha-permission-actions button{font:inherit;min-height:44px;cursor:pointer;border:0}
-.alpha-permission-primary{width:100%;min-height:56px!important;padding:15px 20px;border-radius:28px;background:var(--connection-acc,#0000ff);color:var(--connection-bg,#fff);font-weight:500!important;text-align:center}
+/* The same primary button as sign-in and own keys (connection-ui.css .alpha-btn). */
+.alpha-permission-primary{width:100%;min-height:52px!important;padding:12px 20px;border-radius:14px;font-size:16px!important;line-height:1.25;background:var(--connection-acc,#0000ff);color:var(--connection-bg,#fff);font-weight:500!important;text-align:center}
 .alpha-permission-primary:hover{filter:brightness(.94)}
 .alpha-permission-skip{background:transparent;color:var(--connection-mut,#6b6b6b);padding:8px 16px;font-size:14px!important}
 .alpha-permission-actions button:focus-visible{outline:2px solid var(--connection-acc,#0000ff);outline-offset:3px}

@@ -1,8 +1,21 @@
+import {openLegacyNotes} from './helpers/legacy-notes';
+import {returnToApps} from './app-navigation';
 import {test,expect,type Page} from '@playwright/test';
 import {cloudNotesVoiceFixture,noPhysicalOrLocalVoice} from './cloud-notes-voice-fixture';
 const voice=(page:Page)=>page.getByRole('region',{name:'Voice conversation',exact:true});
+async function restartVoice(page:Page){
+ await voice(page).getByRole('button',{name:'Stop voice conversation',exact:true}).click();
+ await expect(voice(page)).toHaveCount(0);
+ // The composer keeps its unsent draft and shows Send. Talk is available from
+ // the pill, a pull down from the bar, without editing the draft.
+ await page.getByRole('button',{name:'Minimize chat',exact:true}).click();
+ await page.evaluate(()=>(window as any).ownedVoiceNavigation.shell.setState({chat:'hidden'}));
+ await page.getByRole('button',{name:'Talk',exact:true}).click({timeout:5000});
+ await expect.poll(()=>page.evaluate(()=>(window as any).ownedVoiceNavigation.shell.swallowed())).toBe(false);
+ await page.locator('[data-alpha-pill-voice]').getByRole('button',{name:'Open conversation',exact:true}).press('Enter',{timeout:5000});
+}
 async function setup(page:Page,detent='sheet'){
- await cloudNotesVoiceFixture(page);
+ await cloudNotesVoiceFixture(page);await openLegacyNotes(page);await returnToApps(page);
  await page.evaluate(async detent=>{
   const {connectionController:c}=await import('/src/runtime/connection-ui.tsx'),{alphaClient}=await import('/src/runtime/alpha-client.ts'),{ViewNavigationClient}=await import('/src/runtime/view-navigation.ts'),{BrowserVoice}=await import('/src/browser/voice.ts'),{Component}=await import('/src/prototype/model.js');
   const w=window as any,f=w.ownedVoiceNavigation={room:crypto.randomUUID(),installationId:crypto.randomUUID(),session:{origin:'https://owned.invalid',ownerId:'synthetic-owner',agentId:'synthetic-agent',sessionId:'synthetic-session'},peak:0,target:'notes',claims:0,acks:0,inputs:[],requests:[],holdClaim:false,holdAck:false};
@@ -46,7 +59,7 @@ test('empty ASR stops without a turn and explicit restart sends the next spoken 
  await utterance(page);await expect(voice(page)).toHaveAttribute('data-voice-state','error');
  expect(await page.evaluate(()=>(window as any).cloudNotesVoice.active)).toBe(null);
  expect(await page.evaluate(()=>{const f=(window as any).ownedVoiceNavigation,c=(window as any).cloudNotesVoice;return {inputs:f.inputs.length,claims:f.claims,acks:f.acks,speech:c.syntheses,uploads:c.uploads};})).toEqual({inputs:0,claims:0,acks:0,speech:0,uploads:1});
- await page.evaluate(()=>(window as any).cloudNotesVoice.empty=false);await page.getByRole('button',{name:'Try voice again',exact:true}).click();
+ await page.evaluate(()=>(window as any).cloudNotesVoice.empty=false);await restartVoice(page);
  await expect(voice(page)).toHaveAttribute('data-voice-state','listening');
  expect(await page.evaluate(()=>(window as any).ownedVoiceNavigation.inputs.length)).toBe(0);
  await utterance(page,'calendar');
@@ -57,10 +70,11 @@ test('empty ASR stops without a turn and explicit restart sends the next spoken 
 
 test('billing failure requires explicit restart and does not replay the failed utterance',async({page})=>{
  await setup(page);await page.evaluate(()=>(window as any).cloudNotesVoice.billing=true);await utterance(page);
- await expect(voice(page)).toHaveAttribute('data-voice-state','error');await expect(voice(page)).toContainText('Eliza Cloud declined cloud voice for your account\'s billing');
+ await expect(voice(page)).toHaveAttribute('data-voice-state','error');// Failure text stays quiet; the explicit restart is what the owner gets.
+ await expect(voice(page)).not.toContainText('billing');await expect(voice(page).getByRole('button',{name:'Stop voice conversation',exact:true})).toBeEnabled();
  await page.waitForTimeout(1000);
  expect(await page.evaluate(()=>{const f=(window as any).ownedVoiceNavigation,c=(window as any).cloudNotesVoice;return {inputs:f.inputs.length,starts:c.starts,speech:c.syntheses,uploads:c.uploads,active:c.active};})).toEqual({inputs:0,starts:1,speech:0,uploads:1,active:null});
- await page.evaluate(()=>(window as any).cloudNotesVoice.billing=false);await page.getByRole('button',{name:'Try voice again',exact:true}).click();await expect(voice(page)).toHaveAttribute('data-voice-state','listening');
+ await page.evaluate(()=>(window as any).cloudNotesVoice.billing=false);await restartVoice(page);await expect(voice(page)).toHaveAttribute('data-voice-state','listening');
  expect(await page.evaluate(()=>(window as any).ownedVoiceNavigation.inputs.length)).toBe(0);
  await utterance(page,'notes');await expect(voice(page)).toHaveAttribute('data-voice-state','speaking');
  expect(await page.evaluate(()=>{const f=(window as any).ownedVoiceNavigation,c=(window as any).cloudNotesVoice;return {inputs:f.inputs.length,claims:f.claims,acks:f.acks,speech:c.syntheses,uploads:c.uploads};})).toEqual({inputs:1,claims:1,acks:1,speech:1,uploads:2});

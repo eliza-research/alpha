@@ -1,28 +1,23 @@
+import {walkthroughProgress, type WalkthroughChoice, type WalkthroughProgress} from '../../../.eliza/client-features/packages/ui/src/components/permissions/permission-walkthrough.ts';
 import {startupPermissionKeys, nativeStartupPermissionKeys} from './startup-permission-flow.ts';
 
+/**
+ * Alpha's installed walkthrough progress (shared resumable progress, packages/ui permissions).
+ * Versions: 1 the four-step list (browser and early native), 2 the historical five-step native
+ * list, 3 the six-step native list with Calendar and Photos, 4 the current native list with Files
+ * (all-files access, decision F1). Unfinished native setup resumes on version 4; completed
+ * historical installations stay completed.
+ */
 export const startupPermissionProgressKey = 'alpha:startup-permission-walkthrough:v1';
-export type StartupPermissionProgress = {version: 1 | 2 | 3; status: 'pending' | 'completed'; step: number};
-const first = (native: boolean): StartupPermissionProgress => ({version: native ? 3 : 1, status: 'pending', step: 0});
+export type StartupPermissionChoice = WalkthroughChoice;
+export type StartupPermissionProgress = WalkthroughProgress & {version: 1 | 2 | 3 | 4};
+const native = walkthroughProgress(startupPermissionProgressKey, {1: startupPermissionKeys.length, 2: 5, 3: 6, 4: nativeStartupPermissionKeys.length}, 4);
+const browser = walkthroughProgress(startupPermissionProgressKey, {1: startupPermissionKeys.length}, 1);
 /** Installation UI progress only. Neither this marker nor a previous choice grants platform access. */
-export function readStartupPermissionProgress(storage: Pick<Storage, 'getItem'>, native = false): StartupPermissionProgress {
-  const raw = storage.getItem(startupPermissionProgressKey);
-  if (raw === null) return first(native);
-  const value: unknown = JSON.parse(raw);
-  if (!value || typeof value !== 'object' || Object.keys(value).sort().join(',') !== 'status,step,version') throw Error('Setup progress is unavailable.');
-  const progress = value as StartupPermissionProgress;
-  const count = progress.version === 1 ? startupPermissionKeys.length : progress.version === 2 ? 5 : nativeStartupPermissionKeys.length;
-  if (!(progress.version === 1 || native && (progress.version === 2 || progress.version === 3)) || !Number.isInteger(progress.step) ||
-    progress.status === 'pending' && (progress.step < 0 || progress.step >= count) ||
-    progress.status === 'completed' && progress.step !== count ||
-    !['pending', 'completed'].includes(progress.status)) throw Error('Setup progress is unavailable.');
-  // Completed historical v1/v2 installations stay completed. Only unfinished native setup gains current Calendar/Photos.
-  return {...progress, version: native && progress.status === 'pending' ? 3 : progress.version};
+export function readStartupPermissionProgress(storage: Pick<Storage, 'getItem'>, isNative = false): StartupPermissionProgress {
+  return (isNative ? native : browser).read(storage) as StartupPermissionProgress;
 }
 /** Use the existing non-secret renderer preference store on WebView and web; await its write/readback before UI advances. */
-export function writeStartupPermissionProgress(storage: Pick<Storage, 'getItem' | 'setItem'>, progress: StartupPermissionProgress, native = false): void {
-  const raw = JSON.stringify(progress);
-  // Validate both shape and readback through the same reader; no secret/native credential slot is opened.
-  readStartupPermissionProgress({getItem: () => raw}, native);
-  storage.setItem(startupPermissionProgressKey, raw);
-  if (storage.getItem(startupPermissionProgressKey) !== raw) throw Error('Setup progress could not be saved.');
+export function writeStartupPermissionProgress(storage: Pick<Storage, 'getItem' | 'setItem'>, progress: StartupPermissionProgress, isNative = false): void {
+  (isNative ? native : browser).write(storage, progress);
 }

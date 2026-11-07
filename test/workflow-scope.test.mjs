@@ -4,8 +4,9 @@ import assert from 'node:assert/strict';
 // before any generation request. The filter recognizes phrasings, so these tables pin the ones it must
 // catch and the supported requests it must not refuse. The typed catalog and compiler remain the bound
 // for wording the filter does not recognize.
-const S = await import('../apps/app/src/prototype/workflow-scope.ts');
-const operations = ['supplied_text', 'selected_notes', 'calendar_range', 'contains', 'compose_draft', 'model_draft', 'save_note', 'app_notification', 'read_aloud'];
+// The phrase-refusal scope is the shared @elizaos/contracts/workflow-scope, consumed through the pin.
+const S = await import('../.eliza/client-features/packages/contracts/src/workflow-scope.ts');
+const operations = ['supplied_text', 'selected_notes', 'selected_reminders', 'calendar_range', 'contains', 'compose_draft', 'model_draft', 'save_note', 'app_notification', 'read_aloud'];
 
 const baseRefused = {
   calls: ['Call Maya every morning with my agenda', 'call maya every morning', 'CALL MAYA', 'Call the dentist at 9', 'call a taxi when my meeting ends', 'Phone the office and read my agenda', 'Ring the school', 'dial 911', 'FaceTime Maya', 'make a phone call', 'Read my notes, then call Sam', 'When Maya calls, read my agenda', 'ca​ll Maya', 'Ｃall Maya'],
@@ -218,7 +219,7 @@ for (const [category, prompts] of Object.entries(refused)) {
       assert.match(result.message, /^Workflows can’t /);
       assert.match(result.message, /Nothing was sent to the agent\./);
       // The refusal names what a workflow here can do instead.
-      assert.match(result.message, /Read supplied text; Read selected Notes; Read a Calendar range/);
+      assert.match(result.message, /Read supplied text; Read selected Notes; Read today’s reminders; Read a Calendar range/);
     }
   });
 }

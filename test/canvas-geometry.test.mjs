@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 // Issue #411: the canvas arrangement follows measured window geometry, not screen orientation,
 // and the software keyboard is never mistaken for a rotation.
 import { readFileSync } from 'node:fs';
-import { stripTypeScriptTypes } from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
 const { canvasGeometry, keyboardFreeHeight, surfaceLayout, WIDE_CANVAS } = await import('../apps/app/src/runtime/canvas-geometry.ts');
 

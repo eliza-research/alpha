@@ -1,9 +1,10 @@
+import {openBrowserCalendar} from './helpers/browser-calendar';
 import { returnToApps } from './app-navigation';
 import {test,expect} from '@playwright/test';
 test.use({timezoneId:'UTC'});
 const unknown='Reminder creation is unconfirmed. Check new reminder status in Calendar; it will not be created again automatically.';
 for(const mode of ['fresh','double','response-loss','reload-loss','mismatch','missing','edit-during-retain','navigate-after-dispatch','persistence-failure','fresh-attempt','newer-draft','changed-repeat-save','missing-attempt','sibling-pending','recurring','history-navigate'] as const)test(`reminder creation ${mode}`,async({page})=>{
- await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));await page.clock.setFixedTime(new Date('2027-03-13T00:00Z'));await page.goto('/');await page.getByRole('button',{name:'Calendar',exact:true}).click();
+ await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));await page.clock.setFixedTime(new Date('2027-03-13T00:00Z'));await page.goto('/');await openBrowserCalendar(page);
  const newForm=async()=>{const replace=async(dialog:any)=>{expect(dialog.message()).toBe('Replace the retained unsaved form with a new event?');await dialog.accept();};page.on('dialog',replace);try{await page.getByRole('button',{name:'New event',exact:true}).click();}finally{page.off('dialog',replace);}await page.getByRole('textbox',{name:'Title',exact:true}).fill('Create boundary reminder');await page.getByRole('button',{name:'Reminders',exact:true}).click();};await newForm();
  if(mode==='recurring')await page.getByRole('button',{name:'Daily',exact:true}).click();
  await page.evaluate(async mode=>{
@@ -59,7 +60,7 @@ for(const mode of ['fresh','double','response-loss','reload-loss','mismatch','mi
    await newForm();const dismissed=new Promise<void>(resolve=>page.once('dialog',async d=>{expect(d.message()).toContain('may already exist');await d.dismiss();resolve();}));await save.click();await dismissed;await expect(save).toBeEnabled();expect(await page.evaluate(()=>(window as any).creates)).toBe(1);
    page.once('dialog',d=>void d.accept());await save.click();await expect.poll(()=>page.evaluate(()=>(window as any).creates)).toBe(2);expect(await page.evaluate(async()=>Object.keys(await (await import('/src/runtime/reminder-creations.ts')).reminderCreations()).length)).toBe(2);return;
   }
-  await page.getByRole('button',{name:'Check new reminder status',exact:true}).click();expect(await page.evaluate(()=>(window as any).creates)).toBe(1);await page.reload();await page.getByRole('button',{name:'Calendar',exact:true}).click();
+  await page.getByRole('button',{name:'Check new reminder status',exact:true}).click();expect(await page.evaluate(()=>(window as any).creates)).toBe(1);await page.reload();await openBrowserCalendar(page);
   if(mode==='missing')await expect(page.getByRole('button',{name:'Check new reminder status',exact:true})).toBeVisible();else await expect.poll(()=>page.evaluate(async()=>Object.values(await (await import('/src/runtime/reminder-creations.ts')).reminderCreations()).every(r=>r.state==='found'))).toBe(true);
  }else if(mode==='response-loss')await expect(page.getByText('The saved reminder was found. Delivery is not verified.',{exact:true})).toBeVisible();else if(mode==='navigate-after-dispatch'){await expect.poll(()=>page.evaluate(async ()=>JSON.parse((await (await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw())||'{"reminders":[]}').reminders.length)).toBe(1);await expect(page.locator('html')).toHaveAttribute('data-active-view','home');}else await expect(page.getByText('Reminder scheduled · approximate delivery',{exact:true})).toBeVisible();
  if(mode==='sibling-pending')expect(await page.evaluate(async()=>(await (await import('/src/runtime/reminder-creations.ts')).reminderCreations())['prior-owned'].state)).toBe('pending');

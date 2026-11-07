@@ -1,4 +1,5 @@
 import {test,expect} from '@playwright/test';
+import {openBrowserCalendar} from './helpers/browser-calendar';
 // Issue #411: wide Calendar day columns and the large-text agenda against the real browser calendar
 // provider. Viewport and text-size changes stand in for rotation and system font scaling only.
 test.use({hasTouch:true,isMobile:true,viewport:{width:1280,height:800},timezoneId:'UTC'});
@@ -11,7 +12,7 @@ test('Calendar leads with the previous day, opens overnight segments as the orig
   const {registerPlugin}=await import('/src/platform-plugins.ts');const calendar=registerPlugin<any>('AlphaCalendar');
   for(const [title,begin,end] of [['Previous source','2027-03-12T14:00Z','2027-03-12T15:00Z'],['Current source','2027-03-13T14:00Z','2027-03-13T15:00Z'],['Overnight source','2027-03-13T23:00Z','2027-03-14T01:00Z']]){const creationId=crypto.randomUUID();await calendar.save({creationId,separateCreation:true,calendarId:'local',title,begin:Date.parse(begin),end:Date.parse(end)});await calendar.acknowledgeCreation({creationId});}
  });
- await page.reload();await page.getByRole('button',{name:'Calendar',exact:true}).click();
+ await page.reload();await openBrowserCalendar(page);
  const columns=page.locator('[data-alpha-calendar-day]');
  await expect(columns).toHaveCount(5);
  await expect(columns.nth(1)).toHaveAttribute('aria-current','date');

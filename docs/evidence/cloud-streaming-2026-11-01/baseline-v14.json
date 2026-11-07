@@ -1,0 +1,402 @@
+{
+  "format": "alpha-cloud-voice-diagnostic-v1",
+  "collectedAt": "2026-11-01T07:51:30.630Z",
+  "installed": {
+    "versionName": "0.1.0-cloud-google-browser-v14",
+    "versionCode": 14,
+    "runtimeProfile": "cloud",
+    "testMocks": false
+  },
+  "currentProvider": {
+    "provider": "elizacloud",
+    "configured": true,
+    "voiceConfigured": false
+  },
+  "boundary": "Renderer recording-stop to playback-start; excludes speech endpoint silence and does not measure first physical audible sample.",
+  "turns": [
+    {
+      "route": "eliza-cloud",
+      "cold": true,
+      "entry": "conversation",
+      "marks": {
+        "recording-end": 0,
+        "transcript-ready": 3888,
+        "send": 3911,
+        "first-token": 5554,
+        "final-reply": 5656,
+        "first-audio": 13964
+      }
+    },
+    {
+      "route": "eliza-cloud",
+      "cold": false,
+      "entry": "conversation",
+      "marks": {
+        "recording-end": 0,
+        "transcript-ready": 2100,
+        "send": 2120,
+        "first-token": 3855,
+        "final-reply": 4952,
+        "first-audio": 8283
+      }
+    },
+    {
+      "route": "eliza-cloud",
+      "cold": false,
+      "entry": "conversation",
+      "marks": {
+        "recording-end": 0,
+        "transcript-ready": 4304,
+        "send": 4327,
+        "first-token": 6174,
+        "final-reply": 7393,
+        "first-audio": 14226
+      }
+    },
+    {
+      "route": "eliza-cloud",
+      "cold": false,
+      "entry": "conversation",
+      "marks": {
+        "recording-end": 0,
+        "transcript-ready": 8223,
+        "send": 8245,
+        "first-token": 9904,
+        "final-reply": 12714
+      }
+    },
+    {
+      "route": "eliza-cloud",
+      "cold": false,
+      "entry": "conversation",
+      "marks": {
+        "recording-end": 0,
+        "transcript-ready": 5049,
+        "send": 5076,
+        "first-token": 7723,
+        "final-reply": 7812,
+        "first-audio": 10042
+      }
+    },
+    {
+      "route": "eliza-cloud",
+      "cold": false,
+      "entry": "conversation",
+      "marks": {
+        "recording-end": 0,
+        "transcript-ready": 4838,
+        "send": 4859,
+        "first-token": 6689,
+        "final-reply": 6783,
+        "first-audio": 16697
+      }
+    },
+    {
+      "route": "eliza-cloud",
+      "cold": false,
+      "entry": "conversation",
+      "outcome": "abandoned",
+      "marks": {
+        "recording-end": 0,
+        "transcript-ready": 8936
+      }
+    },
+    {
+      "route": "eliza-cloud",
+      "cold": false,
+      "entry": "conversation",
+      "outcome": "abandoned",
+      "marks": {
+        "recording-end": 0,
+        "transcript-ready": 4349
+      }
+    },
+    {
+      "route": "eliza-cloud",
+      "cold": false,
+      "entry": "conversation",
+      "marks": {
+        "recording-end": 0,
+        "transcript-ready": 7802,
+        "send": 7827,
+        "first-token": 12189,
+        "final-reply": 12334,
+        "first-audio": 16260
+      }
+    },
+    {
+      "route": "eliza-cloud",
+      "cold": false,
+      "entry": "conversation",
+      "marks": {
+        "recording-end": 0,
+        "transcript-ready": 6307,
+        "send": 6331,
+        "first-token": 7972,
+        "final-reply": 13243,
+        "first-audio": 17992
+      }
+    },
+    {
+      "route": "eliza-cloud",
+      "cold": false,
+      "entry": "conversation",
+      "marks": {
+        "recording-end": 0,
+        "transcript-ready": 3789,
+        "send": 3810,
+        "first-token": 6156,
+        "final-reply": 6256,
+        "first-audio": 10901
+      }
+    },
+    {
+      "route": "eliza-cloud",
+      "cold": false,
+      "entry": "conversation",
+      "marks": {
+        "recording-end": 0,
+        "transcript-ready": 6765,
+        "send": 6790,
+        "first-token": 8421,
+        "final-reply": 8539,
+        "first-audio": 12063
+      }
+    },
+    {
+      "route": "eliza-cloud",
+      "cold": false,
+      "entry": "conversation",
+      "marks": {
+        "recording-end": 0,
+        "transcript-ready": 5185,
+        "send": 5210,
+        "first-token": 11034,
+        "final-reply": 11132,
+        "first-audio": 15032
+      }
+    },
+    {
+      "route": "eliza-cloud",
+      "cold": false,
+      "entry": "conversation",
+      "outcome": "abandoned",
+      "marks": {
+        "recording-end": 0,
+        "transcript-ready": 1869,
+        "send": 5462
+      }
+    },
+    {
+      "route": "eliza-cloud",
+      "cold": true,
+      "entry": "conversation",
+      "outcome": "abandoned",
+      "marks": {
+        "recording-end": 0
+      }
+    },
+    {
+      "route": "eliza-cloud",
+      "cold": false,
+      "entry": "conversation",
+      "outcome": "abandoned",
+      "marks": {
+        "recording-end": 0,
+        "transcript-ready": 7004,
+        "send": 7027
+      }
+    },
+    {
+      "route": "eliza-cloud",
+      "cold": false,
+      "entry": "conversation",
+      "outcome": "abandoned",
+      "marks": {
+        "recording-end": 0,
+        "transcript-ready": 2869,
+        "send": 2889
+      }
+    }
+  ],
+  "phases": [
+    {
+      "route": "eliza-cloud",
+      "cold": true,
+      "recordingStopToTranscriptMs": 3888,
+      "transcriptToSendMs": 23,
+      "sendToFirstTokenMs": 1643,
+      "sendToFinalReplyMs": 1745,
+      "finalReplyToPlaybackStartMs": 8308,
+      "recordingStopToPlaybackStartMs": 13964
+    },
+    {
+      "route": "eliza-cloud",
+      "cold": false,
+      "recordingStopToTranscriptMs": 2100,
+      "transcriptToSendMs": 20,
+      "sendToFirstTokenMs": 1735,
+      "sendToFinalReplyMs": 2832,
+      "finalReplyToPlaybackStartMs": 3331,
+      "recordingStopToPlaybackStartMs": 8283
+    },
+    {
+      "route": "eliza-cloud",
+      "cold": false,
+      "recordingStopToTranscriptMs": 4304,
+      "transcriptToSendMs": 23,
+      "sendToFirstTokenMs": 1847,
+      "sendToFinalReplyMs": 3066,
+      "finalReplyToPlaybackStartMs": 6833,
+      "recordingStopToPlaybackStartMs": 14226
+    },
+    {
+      "route": "eliza-cloud",
+      "cold": false,
+      "recordingStopToTranscriptMs": 8223,
+      "transcriptToSendMs": 22,
+      "sendToFirstTokenMs": 1659,
+      "sendToFinalReplyMs": 4469,
+      "finalReplyToPlaybackStartMs": null,
+      "recordingStopToPlaybackStartMs": null
+    },
+    {
+      "route": "eliza-cloud",
+      "cold": false,
+      "recordingStopToTranscriptMs": 5049,
+      "transcriptToSendMs": 27,
+      "sendToFirstTokenMs": 2647,
+      "sendToFinalReplyMs": 2736,
+      "finalReplyToPlaybackStartMs": 2230,
+      "recordingStopToPlaybackStartMs": 10042
+    },
+    {
+      "route": "eliza-cloud",
+      "cold": false,
+      "recordingStopToTranscriptMs": 4838,
+      "transcriptToSendMs": 21,
+      "sendToFirstTokenMs": 1830,
+      "sendToFinalReplyMs": 1924,
+      "finalReplyToPlaybackStartMs": 9914,
+      "recordingStopToPlaybackStartMs": 16697
+    },
+    {
+      "route": "eliza-cloud",
+      "cold": false,
+      "outcome": "abandoned",
+      "recordingStopToTranscriptMs": 8936,
+      "transcriptToSendMs": null,
+      "sendToFirstTokenMs": null,
+      "sendToFinalReplyMs": null,
+      "finalReplyToPlaybackStartMs": null,
+      "recordingStopToPlaybackStartMs": null
+    },
+    {
+      "route": "eliza-cloud",
+      "cold": false,
+      "outcome": "abandoned",
+      "recordingStopToTranscriptMs": 4349,
+      "transcriptToSendMs": null,
+      "sendToFirstTokenMs": null,
+      "sendToFinalReplyMs": null,
+      "finalReplyToPlaybackStartMs": null,
+      "recordingStopToPlaybackStartMs": null
+    },
+    {
+      "route": "eliza-cloud",
+      "cold": false,
+      "recordingStopToTranscriptMs": 7802,
+      "transcriptToSendMs": 25,
+      "sendToFirstTokenMs": 4362,
+      "sendToFinalReplyMs": 4507,
+      "finalReplyToPlaybackStartMs": 3926,
+      "recordingStopToPlaybackStartMs": 16260
+    },
+    {
+      "route": "eliza-cloud",
+      "cold": false,
+      "recordingStopToTranscriptMs": 6307,
+      "transcriptToSendMs": 24,
+      "sendToFirstTokenMs": 1641,
+      "sendToFinalReplyMs": 6912,
+      "finalReplyToPlaybackStartMs": 4749,
+      "recordingStopToPlaybackStartMs": 17992
+    },
+    {
+      "route": "eliza-cloud",
+      "cold": false,
+      "recordingStopToTranscriptMs": 3789,
+      "transcriptToSendMs": 21,
+      "sendToFirstTokenMs": 2346,
+      "sendToFinalReplyMs": 2446,
+      "finalReplyToPlaybackStartMs": 4645,
+      "recordingStopToPlaybackStartMs": 10901
+    },
+    {
+      "route": "eliza-cloud",
+      "cold": false,
+      "recordingStopToTranscriptMs": 6765,
+      "transcriptToSendMs": 25,
+      "sendToFirstTokenMs": 1631,
+      "sendToFinalReplyMs": 1749,
+      "finalReplyToPlaybackStartMs": 3524,
+      "recordingStopToPlaybackStartMs": 12063
+    },
+    {
+      "route": "eliza-cloud",
+      "cold": false,
+      "recordingStopToTranscriptMs": 5185,
+      "transcriptToSendMs": 25,
+      "sendToFirstTokenMs": 5824,
+      "sendToFinalReplyMs": 5922,
+      "finalReplyToPlaybackStartMs": 3900,
+      "recordingStopToPlaybackStartMs": 15032
+    },
+    {
+      "route": "eliza-cloud",
+      "cold": false,
+      "outcome": "abandoned",
+      "recordingStopToTranscriptMs": 1869,
+      "transcriptToSendMs": 3593,
+      "sendToFirstTokenMs": null,
+      "sendToFinalReplyMs": null,
+      "finalReplyToPlaybackStartMs": null,
+      "recordingStopToPlaybackStartMs": null
+    },
+    {
+      "route": "eliza-cloud",
+      "cold": true,
+      "outcome": "abandoned",
+      "recordingStopToTranscriptMs": null,
+      "transcriptToSendMs": null,
+      "sendToFirstTokenMs": null,
+      "sendToFinalReplyMs": null,
+      "finalReplyToPlaybackStartMs": null,
+      "recordingStopToPlaybackStartMs": null
+    },
+    {
+      "route": "eliza-cloud",
+      "cold": false,
+      "outcome": "abandoned",
+      "recordingStopToTranscriptMs": 7004,
+      "transcriptToSendMs": 23,
+      "sendToFirstTokenMs": null,
+      "sendToFinalReplyMs": null,
+      "finalReplyToPlaybackStartMs": null,
+      "recordingStopToPlaybackStartMs": null
+    },
+    {
+      "route": "eliza-cloud",
+      "cold": false,
+      "outcome": "abandoned",
+      "recordingStopToTranscriptMs": 2869,
+      "transcriptToSendMs": 20,
+      "sendToFirstTokenMs": null,
+      "sendToFinalReplyMs": null,
+      "finalReplyToPlaybackStartMs": null,
+      "recordingStopToPlaybackStartMs": null
+    }
+  ],
+  "native": null,
+  "streaming": null
+}

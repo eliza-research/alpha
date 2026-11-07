@@ -25,7 +25,7 @@ async function connect(page: Page, mode: Mode) {
       nativePromise: async (plugin: string, method: string, input: any) => {
         if (plugin === 'AlphaActionJournal') {
           fixture.journal.push(method);
-          if (method === 'reserve') { w.availabilityEntry = { ...structuredClone(input), phase: 'reserved' }; return { created: true }; }
+          if (method === 'reserve') { w.availabilityEntry = { ...structuredClone(input), phase: 'reserved' }; return { created: true, entry: structuredClone(w.availabilityEntry) }; }
           if (method === 'markApplying') { Object.assign(w.availabilityEntry, { phase: 'applying', attemptId: input.attemptId }); return {}; }
           if (method === 'get') return { entry: w.availabilityEntry ? structuredClone(w.availabilityEntry) : null };
           if (method === 'list') return { entries: w.availabilityEntry ? [structuredClone(w.availabilityEntry)] : [] };
@@ -72,7 +72,7 @@ async function connect(page: Page, mode: Mode) {
   }, mode);
   await page.goto('/');
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.getByRole('button', { name: 'Agent connection', exact: true }).click();
+  await page.getByRole('button', { name: 'Agent', exact: true }).click();
   await page.getByText('Local development agent', { exact: true }).click();
   const local = page.locator('.alpha-connection details').filter({ has: page.getByText('Local development agent', { exact: true }) });
   await local.getByLabel('Local agent address').fill('http://127.0.0.1:47842');

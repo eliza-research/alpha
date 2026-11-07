@@ -1,0 +1,7 @@
+{
+  "selected": "<H-04: true once the owner has recorded the numbers below in a dated P- entry>",
+  "plans": {
+    "plus_monthly": { "requests": "<H-04 Plus Maps requests per window, integer >= 0 (0 is a valid closed allowance)>", "windowSeconds": "<H-04 Plus window length in seconds, integer >= 1>" },
+    "pro_monthly": { "requests": "<H-04 Pro Maps requests per window, integer >= 0>", "windowSeconds": "<H-04 Pro window length in seconds, integer >= 1>" }
+  }
+}

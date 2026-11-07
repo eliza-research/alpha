@@ -1,4 +1,4 @@
-import {noteShareText} from '../runtime/note-share-text';
+import {noteShareText} from '../../../../.eliza/client-features/plugins/plugin-notes/src/client/note-share-text.ts';
 import {testMocksEnabled} from '../build-flags';
 import { registerPlugin } from '../platform-plugins';
 type Bag=Record<string,any>;

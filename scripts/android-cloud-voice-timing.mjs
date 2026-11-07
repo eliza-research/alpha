@@ -54,11 +54,28 @@ export function sanitizeNative(value) {
     if (!row || !['stt', 'tts'].includes(row.route) || !['active', 'completed', 'failed', 'cancelled'].includes(row.outcome)) return [];
     const clean = { route: row.route, outcome: row.outcome };
     if (['cartesia', 'unknown'].includes(row.provider)) clean.provider = row.provider;
+    if (['reviewed', 'approved-hit'].includes(row.moderation)) clean.moderation = row.moderation;
     if (Number.isInteger(row.status) && row.status >= 100 && row.status <= 599) clean.status = row.status;
-    for (const [key, fields] of [['marks', nativeMarks], ['phases', nativePhases], ['server', ['auth', 'admission', 'synthesis']]]) {
+    for (const [key, fields] of [['marks', nativeMarks], ['phases', nativePhases], ['server', ['auth', 'admission', 'moderation', 'synthesis']]]) {
       if (!row[key] || typeof row[key] !== 'object') continue;
       clean[key] = Object.fromEntries(fields.filter(field => finiteMs(row[key][field])).map(field => [field, row[key][field]]));
     }
+    return [clean];
+  }) };
+}
+
+const streamStages = ['start', 'consent-start', 'consent-headers', 'consent-body', 'mint-start', 'mint-headers', 'mint-body', 'ws-open', 'ready', 'stt-connected', 'speech-start', 'asr-final', 'tts-request', 'first-pcm', 'first-audible', 'audio-end', 'error', 'stop'];
+export function sanitizeStreaming(value) {
+  if (value?.format !== 'alpha-cloud-stream-timing-v1' || !Array.isArray(value.records)) return null;
+  return { format: value.format, records: value.records.slice(-200).flatMap(row => {
+    if (!row || !streamStages.includes(row.stage) || !finiteMs(row.elapsedMs)) return [];
+    const clean = { stage: row.stage, elapsedMs: row.elapsedMs };
+    if (['audiotrack-timestamp', 'audiotrack-head-position', 'monotonic-observed'].includes(row.clock)) clean.clock = row.clock;
+    if (finiteMs(row.utteranceElapsedMs)) clean.utteranceElapsedMs = row.utteranceElapsedMs;
+    for (const key of ['session', 'sentFrames', 'sentBytes', 'receivedFrames', 'receivedBytes']) {
+      if (Number.isSafeInteger(row[key]) && row[key] >= 0 && row[key] <= 100000000) clean[key] = row[key];
+    }
+    if (Number.isInteger(row.httpStatus) && row.httpStatus >= 100 && row.httpStatus <= 599) clean.httpStatus = row.httpStatus;
     return [clean];
   }) };
 }
@@ -96,7 +113,7 @@ export async function collectDevice({ serial } = {}) {
     const page = pages.find(item => item.type === 'page' && item.url === 'https://localhost/');
     if (!page?.webSocketDebuggerUrl?.startsWith(`ws://127.0.0.1:${port}/`)) throw Error('The expected Alpha app page is unavailable');
     const value = await evaluate(page.webSocketDebuggerUrl, `(async () => {
-      let build = null, native = null, provider = null, turns = [];
+      let build = null, native = null, streaming = null, provider = null, turns = [];
       try { turns = JSON.parse(localStorage.getItem('alphaphone:voice-timing:v1') || '[]'); } catch {}
       try { build = await (await fetch('/build-flags.json')).json(); } catch {}
       try { native = await Promise.race([window.Capacitor.Plugins.AlphaVoiceCloud.cloudVoiceTiming(), new Promise(resolve => setTimeout(() => resolve(null), 2000))]); } catch {}
@@ -105,7 +122,8 @@ export async function collectDevice({ serial } = {}) {
         provider = { provider: ['cerebras', 'elizacloud'].includes(status.provider) ? status.provider : null,
           configured: status.configured === true, voiceConfigured: status.voiceConfigured === true };
       } catch {}
-      return { build, native, provider, turns };
+      try { streaming = await window.Capacitor.Plugins.AlphaCloudSpeechStream.cloudStreamTiming(); } catch {}
+      return { build, native, streaming, provider, turns };
     })()`);
     const turns = sanitizeTurns(value?.turns);
     return { format: 'alpha-cloud-voice-diagnostic-v1', collectedAt: new Date().toISOString(),
@@ -116,7 +134,7 @@ export async function collectDevice({ serial } = {}) {
       currentProvider: value?.provider && ['cerebras', 'elizacloud'].includes(value.provider.provider)
         ? { provider: value.provider.provider, configured: value.provider.configured === true, voiceConfigured: value.provider.voiceConfigured === true } : null,
       boundary: 'Renderer recording-stop to playback-start; excludes speech endpoint silence and does not measure first physical audible sample.',
-      turns, phases: summarizeTurns(turns), native: sanitizeNative(value?.native) };
+      turns, phases: summarizeTurns(turns), native: sanitizeNative(value?.native), streaming: sanitizeStreaming(value?.streaming) };
   } finally { await adb('forward', '--remove', `tcp:${port}`).catch(() => {}); }
 }
 
@@ -132,6 +150,6 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     }
     const report = await collectDevice({ serial });
     if (output) await fs.writeFile(output, JSON.stringify(report, null, 2) + '\n', { flag: 'wx' });
-    console.log(JSON.stringify(output ? { output, installed: report.installed, currentProvider: report.currentProvider, phases: report.phases, native: report.native } : report, null, 2));
+    console.log(JSON.stringify(output ? { output, installed: report.installed, currentProvider: report.currentProvider, phases: report.phases, native: report.native, streaming: report.streaming } : report, null, 2));
   } catch (error) { console.error(error.message); process.exitCode = 1; }
 }

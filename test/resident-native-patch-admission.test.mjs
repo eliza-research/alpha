@@ -6,7 +6,20 @@ import {preparePatchedNative} from '../scripts/prepare-patched-native.mjs';
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 test('pinned recovery and lifecycle sources match the reviewed upstream repair',()=>{
  for(const [name,expected] of [
+ ['AndroidBunTarget','1ce791f9fbeeeea2a40bdf94b1b11e600df75c8fbee8649a5f47b3d919d7f675'],
+ // elizaOS/eliza#38281 moves the strict credential stop into the shared CredentialShutdownLease: its
+ // ACK proves absence but keeps starts fenced until the writer releases its exact request (commit) or
+ // abandons it (no write), and a superseded credential stop intent is ignored. #38291 adds an owner
+ // request epoch (read only by upstream's ElizaResidentCredentials, which Alpha does not compile) retired
+ // on every stop, start and restart and reopened only when startAgentProcess reports a resident. IPC
+ // recovery, adoption and teardown are unchanged. AlphaLocalAgentPlugin releases its request after a
+ // completed commit and abandons it when nothing was written (a shutdown Retry abandons at dispatch);
+ // an uncertain commit keeps starts fenced until a later credential change or app restart.
+ // android/consumer-host.json compiles the lease helper.
+ // elizaOS/eliza#38821 adds only ELIZA_ANDROID_VOICE_BUNDLE_DIR to the agent's environment, from the
+ // VoiceBundleAssets.bundleRoot the service already calls, which reads the manifest and writes nothing.
  ['ElizaAgentService','1cb89a4c1283fcd90f19d739ef3cf23d556ee9da184516583c41a128bb49e984'],
+ // PR37979/37981: verify directory timestamps after recovery publication.
  ['IpcStartupRecovery','c51152d8b6403622171e4baed30f55cb540cad2c3fd49a8be1171a4b2c015c27'],
  ['WorkflowSurvivorInventory','3270bebe7e125705eda25e91ba9996f99cb80fbcb7e534c0d1ea47672a0fc42b'],
  ])assert.equal(sha(fs.readFileSync(`vendor/eliza/packages/app/platforms/android/app/src/main/java/ai/elizaos/app/${name}.java`)),expected);
@@ -14,15 +27,4 @@ test('pinned recovery and lifecycle sources match the reviewed upstream repair',
 test('obsolete resident patch slot is refused rather than reapplied',()=>{
  assert.throws(()=>preparePatchedNative({manifestFile:'resident-native-manifest.json'}),/Unknown native patch slot/);
  assert.equal(fs.existsSync('patches/eliza/resident-ipc-recovery.patch'),false);
-});
-test('the pinned resident stop inventory skips vanished processes without a consumer repair',async()=>{
- const {UPSTREAM_REPAIRS,applyUpstreamRepair}=await import('../scripts/upstream-native-repairs.mjs');
- assert.deepEqual(UPSTREAM_REPAIRS,[]);
- const pinned=fs.readFileSync('vendor/eliza/packages/app/platforms/android/app/src/main/java/ai/elizaos/app/WorkflowSurvivorInventory.java','utf8');
- // processes() reads each identity through the absence proof; a vanished process no longer refuses the stop.
- assert.match(pinned,/Identity identity=observePresent\(pid,\(\)->processIdentity\(pid,deadline,observation\)\);if\(identity==null\)continue;/);
- assert.doesNotMatch(pinned,/result\.put\(pid,processIdentity\(pid,deadline\)\)/);
- // An exiting process's empty argv is validated inside the same proof instead of refusing the stop.
- assert.match(pinned,/cmdline may be readable but empty while a process exits/);
- assert.deepEqual(applyUpstreamRepair('other.java','x'),{value:'x',repair:null});
 });

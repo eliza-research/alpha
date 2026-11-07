@@ -1,3 +1,5 @@
+import {openRetainedNativeNotes} from './helpers/native-notes';
+import {returnToApps} from './app-navigation';
 // J03 on the FLAG-OFF bundle with an agent: a document chosen in Files, a reviewed question, the
 // resident agent's answer and an explicit, reviewed Save that keeps one note linked to its source.
 //
@@ -31,15 +33,15 @@ const savedNotes = (page: Page) => harness(page, f => { const slot = f.slots['no
 /** What the user sent: each turn's text after the current-screen context the renderer adds. */
 const sent = (page: Page) => harness(page, f => f.posts.map((post: string) => post.split('[USER MESSAGE]\n').pop())) as Promise<string[]>;
 
-/** Files > Documents > the picked document > Ask Alpha, trimmed to the public line, and sent. */
+/** Files > Documents > the document > Ask Alpha, trimmed to the public line, and sent. */
 async function askAboutDocument(page: Page) {
   await page.evaluate(text => { (window as any).flagOff.replies.push(text); }, answer);
   await button(page, 'Files').click();
   await button(page, 'Documents').click();
+  await button(page, 'Open garden-report.txt').click();
   await expect(page.getByText('PRIVATE OMIT: do not send this line.', { exact: true })).toBeVisible();
-  // The picker was narrowed to documents; reading showed the text, and nothing was sent.
-  expect(await harness(page, f => f.documents.picks.map((pick: any) => pick.action))).toEqual(['files']);
-  expect(await harness(page, f => f.documents.picks[0].mime)).toContain('text/plain');
+  // Documents lists the file from storage; opening it selected that one path, and nothing was sent.
+  expect(await harness(page, f => f.documents.picks)).toEqual([{ action: 'files', path: 'Documents/garden-report.txt' }]);
   await button(page, 'Ask Alpha').click();
   const question = page.getByRole('dialog', { name: 'Ask about selected content' });
   await expect(question.getByRole('textbox', { name: 'Content excerpt' })).toHaveValue(contents);
@@ -61,6 +63,8 @@ test('J03 on Android: a picked document, a trimmed question and the resident ans
   const foreign = await fenceNetwork(page);
   await flagOffAndroid(page, { document: garden });
   await residentHome(page);
+  await openRetainedNativeNotes(page);
+  await returnToApps(page);
   await askAboutDocument(page);
 
   // An answer alone saves nothing; the summary is reviewed first and Cancel is a real cancel.
@@ -91,10 +95,10 @@ test('J03 on Android: a picked document, a trimmed question and the resident ans
   await page.reload();
   await expect.poll(() => harness(page, f => f.calls.includes('Agent.start')), { timeout: 30_000 }).toBe(true);
   await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0, { timeout: 30_000 });
-  await button(page, 'Notes').click();
+  await openRetainedNativeNotes(page);
   await expect(page.getByRole('region', { name: 'Notes' }).getByRole('button', { name: /^Open (?!Trash$)/ })).toHaveCount(1);
   await button(page, 'Open Garden summary').click();
-  await button(page, 'Source document linked').click();
+  await button(page, 'Attachment').click();
   const source = page.getByRole('dialog', { name: 'Note source document' });
   await expect(source).toContainText('garden-report.txt');
   await expect(source).toContainText(sha256);
@@ -113,6 +117,8 @@ test('J03 on Android: a resident session that changes before Save withdraws the 
   const foreign = await fenceNetwork(page);
   await flagOffAndroid(page, { document: garden });
   await residentHome(page);
+  await openRetainedNativeNotes(page);
+  await returnToApps(page);
   await askAboutDocument(page);
   await expect(page.getByRole('button', { name: /^Review summary note/ })).toHaveCount(1);
   // The resident agent is reconnected from Settings: a new verified session.

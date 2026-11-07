@@ -26,7 +26,6 @@ if (!Capacitor.isNativePlatform()) {
   const device = new BrowserDevice();
   registerPlugin('AlphaDevice', { web: () => device });
   registerPlugin('ElizaSystem', { web: () => device });
-  registerPlugin('DeviceApps', { web: () => device });
   const files = new BrowserFiles();
   registerPlugin('AlphaFiles', { web: () => files });
   registerPlugin('AlphaMailAttachments', { web: () => new BrowserMailAttachments(files) });

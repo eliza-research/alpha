@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {calendarAgentWrite,CalendarAgentWriteRefused} from '../scripts/calendar-agent-write-host.ts';
+import {calendarAgentWrite as canonicalCalendarAgentWrite,CalendarAgentWriteRefused} from '../scripts/calendar-agent-write-host.ts';
+// Match Alpha's explicit source namespace at its managed provider boundary.
+const calendarAgentWrite=(...args)=>canonicalCalendarAgentWrite(...args,'alpha-google');
 const scope='a'.repeat(64),source=`alpha-google:${scope}`;
 const event={title:'Private test',description:'',location:'',startAt:'2026-10-14T18:00:00.000Z',endAt:'2026-10-14T18:02:00.000Z',timeZone:'UTC',isAllDay:false,attendees:[],recurrence:[]};
 const snapshot={eventId:'event-1',etag:'"version-1"',event};

@@ -1,3 +1,4 @@
+import {openBrowserCalendar} from './helpers/browser-calendar';
 import {localDraftRow} from './inbox-draft-navigation';
 // Journey F: Email + reconnect notifications, driven through rendered controls in the browser build.
 //
@@ -100,8 +101,13 @@ const setProvider = (page: Page, patch: Record<string, boolean>) => page.evaluat
 async function openProviderInbox(page: Page, reload = false) {
   await guardCalendarFixture(page.context());
   await page.addInitScript(() => localStorage.setItem('alpha.connection.selection.v1', JSON.stringify({kind: 'offline'})));
+  // A signed-in fixture account models an installation that already finished access setup; with
+  // setup pending the startup walkthrough would cover Inbox once the swapped snapshot re-renders.
+  await page.addInitScript(() => localStorage.setItem('alpha:startup-permission-walkthrough:v1', JSON.stringify({version: 1, status: 'completed', step: 4})));
   await page.route(/^https?:\/\/(?!127\.0\.0\.1:|localhost:)/, route => route.abort());
-  if (reload) await page.reload(); else await page.goto('/');
+  // Provider initialization and rendered Inbox controls below establish readiness.
+  // Loading unrelated resources is not part of the mail operation contract.
+  if (reload) await page.reload({waitUntil: 'domcontentloaded'}); else await page.goto('/', {waitUntil: 'domcontentloaded'});
   await installProvider(page);
   await button(page, 'Inbox').click();
   // A saved operation reopens its review over the list, so either surface proves the mailbox loaded.
@@ -322,7 +328,7 @@ test('a due reminder notice tapped after reload opens exactly its own event, onc
   const events = () => page.evaluate(async () => JSON.parse((await (await import('/src/browser/calendar-store.ts')).calendarDocument.readRaw()) || '{"events":[]}').events as {title: string; begin: number; alert: number}[]);
   const notices = () => page.evaluate(async () => { const {registerPlugin} = await import('/src/platform-plugins.ts'); return (await registerPlugin<any>('AlphaNotifications').list()).items.filter((n: any) => n.id.startsWith('calendar:')).map((n: any) => n.title as string); });
   await page.goto('/?mode=dev&tools=1');
-  await button(page, 'Calendar').click();
+  await openBrowserCalendar(page);
   for (const title of ['Harbour pickup', 'Dentist check']) {
     await button(page, 'New event').click();
     await page.getByRole('textbox', {name: 'Title', exact: true}).fill(title);
@@ -341,6 +347,8 @@ test('a due reminder notice tapped after reload opens exactly its own event, onc
   // Both reminders become due, then the app is reloaded before either notice is tapped.
   await page.clock.setFixedTime(new Date(Math.max(...rows.map(row => row.begin)) - 60_000));
   await page.reload();
+  await openBrowserCalendar(page);
+  await returnToApps(page);
   await expect.poll(async () => (await notices()).length).toBe(2);
   await button(page, 'Device controls').click();
   await button(page, 'Notifications').click();

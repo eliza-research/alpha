@@ -1,4 +1,4 @@
-import {expect,type Page} from '@playwright/test';
+import type {Page} from '@playwright/test';
 
 /** Synthetic silent microphone and local browser voice. Nothing past getUserMedia/speechSynthesis is mocked. */
 export async function silentMicrophone(page:Page){
@@ -24,17 +24,6 @@ export async function localBrowserVoice(page:Page){
  });
 }
 export const recorder=(page:Page)=>page.locator('[data-alpha-subview="notes-recording"]');
-/** Record a short silent clip; recognition then reports no speech, so the transcript is typed. */
-export async function typedTranscript(page:Page,text:string){
- await page.getByRole('button',{name:'Start recording',exact:true}).click();
- await expect(page.getByRole('button',{name:'Stop recording',exact:true})).toBeVisible();
- await page.waitForTimeout(1200);
- await page.getByRole('button',{name:'Stop recording',exact:true}).click();
- await page.getByRole('button',{name:'Transcribe in this browser',exact:true}).click();
- await expect(recorder(page)).toHaveAttribute('data-voice-state','no-speech');
- await page.getByRole('button',{name:'Type transcript instead',exact:true}).click();
- await page.getByRole('textbox',{name:'Review transcript',exact:true}).fill(text);
-}
 export function agentContext(page:Page){
  return page.evaluate(async()=>{const {alphaClient}=await import('/src/runtime/alpha-client.ts');return JSON.parse(JSON.stringify(alphaClient.getState().context));});
 }

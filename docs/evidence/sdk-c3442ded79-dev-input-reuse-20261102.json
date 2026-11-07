@@ -1,0 +1,15 @@
+{
+  "state": "SOURCE_INPUT_EQUIVALENCE_NOT_NATIVE_QUALIFICATION",
+  "fromSDK": "d38e4ec7fad5952fdf4f40d4c809240d639792ac",
+  "toSDK": "c3442ded79de62b883cf0a84d2614734596ac9ad",
+  "exactChangedPaths": [
+    "packages/app/src/api/route-auth-policy.ts",
+    "packages/app/src/api/route-auth-policy.warm-auth.test.ts",
+    "packages/app/src/api/route-auth-policy.warm.test.ts"
+  ],
+  "proof": "Genuine ancestor-bounded GitHub comparison contains only the listed runtime/test paths. No package, lockfile, native, Android bridge or build-producer changes.",
+  "nativeArtifactsAdmitted": false,
+  "freshNativeBuildOrDeviceQualification": false,
+  "change": "the reviewed paired-session protection for POST /api/cloud/warm; compiled native tuples remain unchanged",
+  "desktopCPUReuse": "Requires originalCPUstamp/library/model hashes and canonical CPU --check in separately reviewed adoption operator."
+}

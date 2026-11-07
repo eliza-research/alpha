@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {JSDOM} from 'jsdom';
 import {build} from 'esbuild';
+import {projectActionMessages} from '../apps/app/src/runtime/action-message-presentation.ts';
 import {calendarReviewText,calendarApprovalFromList,calendarApprovalPending,calendarApprovalStatus,calendarApprovalCommand} from '../apps/app/src/runtime/calendar-approval.ts';
 const id='11111111-2222-4333-8444-555555555555';
 const block=`[CHOICE:approval-${id} id=${id}]\napprove ${id}=Approve\nreject ${id}=Deny\n[/CHOICE]`;
@@ -41,8 +42,8 @@ test('a context change at the confirmation tap returns no approval',async()=>{
 });
 const adapterBundle=await build({entryPoints:['apps/app/src/prototype/calendar-approval-adapter.ts'],bundle:true,platform:'node',format:'esm',write:false,plugins:[{name:'review-controller-port',setup(b){b.onResolve({filter:/\/(connection-ui|alpha-client)$/},args=>({path:args.path.split('/').at(-1),namespace:'review-port'}));b.onLoad({filter:/.*/,namespace:'review-port'},args=>({loader:'js',contents:args.path==='connection-ui'?'export const connectionController={getSnapshot:()=>globalThis.calendarReviewAdapterFixture.snapshot,readCalendarApproval:async(id,signal)=>{signal.throwIfAborted();const f=globalThis.calendarReviewAdapterFixture;f.reads++;return f.row;}};':'export const alphaClient={getState:()=>({context:globalThis.calendarReviewAdapterFixture.context})};'}));}}]});
 const {installCalendarApprovalAdapter}=await import('data:text/javascript;base64,'+Buffer.from(adapterBundle.outputFiles[0].text).toString('base64'));
-function adapterFixture(){const fixture={snapshot:{session:{sessionId:'session',ownerId:'owner',agentId:'agent'},history:{conversationId:'conversation'},open:false,busy:false},context:{view:'home',revision:1,sensitive:false},row:row(),reads:0,sent:[],toasts:[]};globalThis.calendarReviewAdapterFixture=fixture;
- class Shell{live=true;st={msgs:[{id:'message',from:'agent',text:'Review the event.\n'+block},{id:'literal-user',from:'user',text:block}],draft:'',typing:false};S(){return this.st;}renderVals(){return {msgs:this.st.msgs.map(m=>({...m,isAgent:m.from==='agent',isUser:m.from==='user',displayText:m.text,calendarReviews:[],messageActionsLabel:'Message actions: '+m.text}))};}setState(p){Object.assign(this.st,p);}toast(text){fixture.toasts.push(text);}async send(text){fixture.sent.push(text);}componentWillUnmount(){}}
+function adapterFixture(project=rows=>rows){const fixture={snapshot:{session:{sessionId:'session',ownerId:'owner',agentId:'agent'},history:{conversationId:'conversation'},open:false,busy:false},context:{view:'home',revision:1,sensitive:false},row:row(),reads:0,sent:[],toasts:[]};globalThis.calendarReviewAdapterFixture=fixture;
+ class Shell{live=true;st={msgs:[{id:'message',from:'agent',text:'Review the event.\n'+block},{id:'literal-user',from:'user',text:block}],draft:'',typing:false};S(){return this.st;}renderVals(){return {msgs:project(this.st.msgs.map(m=>({...m,c:m.card,cGeneric:!!m.card,isAgent:m.from==='agent',isUser:m.from==='user',displayText:m.text,calendarReviews:[],messageActionsLabel:'Message actions: '+m.text})),this.st.msgs)};}setState(p){Object.assign(this.st,p);}toast(text){fixture.toasts.push(text);}async send(text){fixture.sent.push(text);}componentWillUnmount(){}}
  installCalendarApprovalAdapter(Shell);return {fixture,shell:new Shell()};}
 test('rendering restored markup does no requests or sends; explicit verified choice sends only its exact command',async()=>{
  const cleanup=dom();let shell;try{const setup=adapterFixture();shell=setup.shell;const f=setup.fixture;for(let n=0;n<30;n++)shell.renderVals();assert.equal(f.reads,0);assert.equal(f.sent.length,0);let view=shell.renderVals();assert.equal(view.msgs[0].displayText,'Review the event.');assert.equal(shell.st.msgs[0].text,'Review the event.\n'+block,'stored source is unchanged');assert.equal(view.msgs[1].displayText,block,'literal user text stays literal');assert.equal(view.msgs[1].calendarReviews.length,0);
@@ -55,4 +56,18 @@ test('an existing chat draft is never replaced by a Calendar review',async()=>{
 
 test('private content prevents status reads and decision messages',async()=>{
  const cleanup=dom();let shell;try{const setup=adapterFixture();shell=setup.shell;setup.fixture.context.sensitive=true;shell.renderVals().msgs[0].calendarReviews[0].open();await tick();assert.equal(setup.fixture.reads,0);assert.equal(setup.fixture.sent.length,0);assert.equal(document.querySelector('dialog'),null);}finally{shell?.componentWillUnmount();delete globalThis.calendarReviewAdapterFixture;cleanup();}
+});
+
+test('Calendar markup projection preserves completed device receipts and their accessible text',()=>{
+ const {shell}=adapterFixture(projectActionMessages);
+ try {
+  const summary='This action already has a device journal entry. Review action history; it was not repeated.';
+  shell.st.msgs=[{id:'request',from:'user',text:'Repeat this same request'}, {id:'review',from:'agent',text:'Ask Clock to set an alarm.',card:{proposalId:'clock-proposal',done:true,title:'Not completed',sub:summary}}, {id:'device-receipt:clock-proposal',from:'agent',text:summary,deviceReceipt:true}];
+  const stored=structuredClone(shell.st.msgs),shown=shell.renderVals().msgs;
+  assert.deepEqual(shown.map(message=>message.id),['request','review']);
+  assert.equal(shown[1].displayText,summary);
+  assert.equal(shown[1].messageActionsLabel,'Message actions: '+summary);
+  assert.deepEqual(shown[1].calendarReviews,[]);
+  assert.deepEqual(shell.st.msgs,stored);
+ }finally{shell.componentWillUnmount();delete globalThis.calendarReviewAdapterFixture;}
 });

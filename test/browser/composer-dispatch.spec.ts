@@ -1,6 +1,16 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect as baseExpect, type Page } from '@playwright/test';
+// Every test here loads the whole development app at least once (several reload it, open a second tab
+// or connect a profile), and the composer's saved draft is restored from IndexedDB after each load.
+// Under four workers on a loaded machine a load has taken 10-30s and a restore more than the 5s
+// default, so the timeouts are explicit: 90s per test, 15s per expectation. What is expected is
+// unchanged; only how long the page may take to get there.
+test.describe.configure({timeout:90_000});
+const expect=baseExpect.configure({timeout:15_000});
+// Screen-entry motion is not under test here; waiting out its stability retries on every tap is what
+// ran these tests out of time under load (as in #700).
+test.use({contextOptions:{reducedMotion:'reduce'}});
 
-// Real composer and connection controller. Only the Android IPC boundary and a
+// Real composer, draft store and connection controller. Only the Android IPC boundary and a
 // remote agent are synthetic, in-page fixtures; nothing leaves the page.
 const REMOTE = 'https://agent.example.test';
 type Mode = 'expires' | 'post-fails';
@@ -10,8 +20,10 @@ async function remoteAgent(page: Page, mode: Mode) {
     const w = window as any;
     w.androidBridge = {};
     const store = new Map<string, string>();
-    // An expiring session lets the composer refuse before any request carries the message.
-    const expiresAt = Date.now() + (mode === 'expires' ? 25_000 : 86_400_000);
+    // An expiring session lets the composer refuse before any request carries the message. It lapses
+    // only when the test moves the page clock past it (ten minutes on), never while a slow load is
+    // still connecting: a 25s wall-clock lifetime ran out before the first load finished under load.
+    const expiresAt = Date.now() + (mode === 'expires' ? 600_000 : 86_400_000);
     store.set('remote:' + remote, JSON.stringify({ origin: remote, token: 'remote-session-token', identityId: 'fixture-owner', sessionId: 'remote-session-token', expiresAt }));
     try { if (!sessionStorage.getItem('dispatch-seeded')) { sessionStorage.setItem('dispatch-seeded', '1'); localStorage.setItem('alpha.connection.selection.v1', JSON.stringify({ kind: 'remote', origin: remote })); } } catch { /* covered elsewhere */ }
     const f = w.dispatchFixture = { posts: 0, historyReads: 0, created: false, ready: false, expiresAt, store };
@@ -22,12 +34,12 @@ async function remoteAgent(page: Page, mode: Mode) {
         { name: 'AlphaActionJournal', methods: methods(['list', 'get']) },
         { name: 'AlphaNotifications', methods: methods(['status', 'crossAppStatus', 'addListener', 'removeListener']) },
         { name: 'AlphaVoiceCloud', methods: methods(['checkPermissions']) },
-        { name: 'DeviceApps', methods: methods(['buildInfo']) },
+        { name: 'ElizaSystem', methods: methods(['getBuildInfo']) },
       ],
       nativePromise: async (plugin: string, method: string, input: any) => {
         if (plugin === 'AlphaNotifications') return { permissionGranted: true, appEnabled: true };
         if (plugin === 'AlphaVoiceCloud') return { microphone: 'granted' };
-        if (plugin === 'DeviceApps') return { launcher: false, version: 'dispatch-fixture' };
+        if (plugin === 'ElizaSystem' && method === 'getBuildInfo') return { launcher: false, version: 'dispatch-fixture' };
         if (plugin === 'AlphaActionJournal') return method === 'list' ? { entries: [] } : { entry: null };
         if (plugin !== 'AlphaConnection') throw Error('Unexpected native operation');
         if (method === 'secureRead') return { value: store.get(input.slot) ?? null };
@@ -61,56 +73,84 @@ async function remoteAgent(page: Page, mode: Mode) {
 }
 // The home composer and the conversation sheet each render one visible composer textbox.
 const composer = (page: Page) => page.locator('[data-alpha-layer="composer"][aria-hidden="false"], [data-alpha-layer="conversation"][aria-hidden="false"]').getByRole('textbox').first();
+const bindingKey = (page: Page) => page.evaluate(async () => {
+  const { connectionController } = await import('/src/runtime/connection-ui.tsx');
+  return connectionController.assistantDraftBinding(new AbortController().signal);
+});
+async function savedDraft(page: Page, key?: string) {
+  const binding = key ?? await bindingKey(page);
+  return page.evaluate(async binding => {
+    const { assistantDraftStore } = await import('/src/runtime/assistant-draft-store.ts');
+    return (await (await assistantDraftStore(binding)).read())?.text ?? null;
+  }, binding);
+}
 
 test('without a connection the chooser opens and the message returns to the composer', async ({ page }) => {
   await page.addInitScript(() => { if (!sessionStorage.getItem('seeded')) { sessionStorage.setItem('seeded', '1'); localStorage.setItem('alpha.connection.selection.v1', JSON.stringify({ kind: 'offline' })); } });
   await page.goto('/');
   await composer(page).fill('Keep this unsent message');
+  await expect.poll(() => savedDraft(page), { timeout: 15_000 }).toBe('Keep this unsent message');
   await composer(page).press('Enter');
   const chooser = page.locator('.alpha-connection');
   await expect(chooser).toBeVisible();
   await chooser.getByRole('button', { name: 'Close connection settings', exact: true }).click();
   await expect(composer(page)).toHaveValue('Keep this unsent message');
-  await expect(page.getByText('Not sent. Your message is back in the composer.', { exact: true })).toBeVisible();
-  // The unsent bubble is removed.
+  // The text simply comes back: no line under the composer and no toast (owner, 2026-11-03).
+  await expect(page.getByText('Your message is back in the composer')).toHaveCount(0);
+  await expect(page.getByRole('status', { name: 'Assistant draft status', exact: true })).toHaveCount(0);
+  // The unsent bubble is removed; the durable draft was never cleared.
   expect(await page.evaluate(text => [...document.querySelectorAll('[data-alpha-layer="conversation"] div')].filter(d => !d.querySelector('textarea') && d.textContent === text).length, 'Keep this unsent message')).toBe(0);
+  expect(await savedDraft(page)).toBe('Keep this unsent message');
+  await page.reload();
+  await expect(composer(page)).toHaveValue('Keep this unsent message');
 });
 
-test('a transport refusal before dispatch returns the text and sends nothing', async ({ page }) => {
+// The lapsed session is retired, so the composer leaves that owner's binding before the refusal
+// settles: the text stays saved, unmarked, in its own conversation's slot (never moved into the next
+// binding, which may belong to another owner or agent) and nothing is sent.
+test('a transport refusal before dispatch keeps the text in its own conversation and sends nothing', async ({ page }) => {
   test.setTimeout(90_000);
+  await page.clock.install();
   await remoteAgent(page, 'expires');
   await page.goto('/');
   await expect.poll(() => page.evaluate(() => (window as any).dispatchFixture.ready), { timeout: 30_000 }).toBe(true);
   await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0, { timeout: 20_000 });
   await composer(page).fill('Do not lose this');
+  await expect.poll(() => savedDraft(page), { timeout: 15_000 }).toBe('Do not lose this');
   // Let the paired session lapse: the transport refuses before it creates or posts anything.
-  await page.waitForFunction(() => Date.now() > (window as any).dispatchFixture.expiresAt + 250, undefined, { timeout: 30_000 });
+  const left = await page.evaluate(() => (window as any).dispatchFixture.expiresAt + 250 - Date.now());
+  expect(left).toBeGreaterThan(0);
+  await page.clock.fastForward(left);
+  expect(await page.evaluate(() => Date.now() > (window as any).dispatchFixture.expiresAt + 250)).toBe(true);
+  const key = await bindingKey(page);
   await composer(page).press('Enter');
   // The expired session is retired and the chooser opens; the message never left the phone.
   await expect(page.locator('.alpha-connection')).toBeVisible();
+  await expect(page.getByText('Not sent. Your message was kept as a draft in its own conversation.', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Close connection settings', exact: true }).first().click();
-  await expect(composer(page)).toHaveValue('Do not lose this');
+  await expect(composer(page)).toHaveValue('');
+  expect(await savedDraft(page, key)).toBe('Do not lose this');
   expect(await page.evaluate(() => { const f = (window as any).dispatchFixture; return { posts: f.posts, created: f.created }; })).toEqual({ posts: 0, created: false });
 });
 
-test('a failure after dispatch offers Check for reply and never resends', async ({ page }) => {
+test('a failure after dispatch says the reply could not finish and never resends', async ({ page }) => {
   await remoteAgent(page, 'post-fails');
   await page.goto('/');
   await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0, { timeout: 20_000 });
   await composer(page).fill('Was this delivered?');
+  await expect.poll(() => savedDraft(page), { timeout: 15_000 }).toBe('Was this delivered?');
+  const key = await bindingKey(page);
   await composer(page).press('Enter');
-  const check = page.getByRole('button', { name: /^Check for reply/ });
-  await expect(check).toBeVisible();
-  await expect(page.getByText('Your message may have reached the agent. Check before sending it again.', { exact: true })).toBeVisible();
+  await expect(page.getByText('Sorry, I couldn’t finish that reply.', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Check saved conversation/ })).toHaveCount(0);
   // The message may have been received, so it is not offered again as a draft.
   await expect(composer(page)).toHaveValue('');
+  await expect.poll(() => savedDraft(page, key)).toBe('');
   // One logical send: the transport may reconcile a dropped response once by repeating the identical
   // request under the same clientMessageId, which the agent deduplicates. It never sends a new message.
   const sent = await page.evaluate(() => { const f = (window as any).dispatchFixture; return { posts: f.posts, ids: [...new Set(f.messageIds)], bodies: [...new Set(f.bodies)] }; });
   expect(sent.posts).toBeGreaterThanOrEqual(1); expect(sent.posts).toBeLessThanOrEqual(2);
   expect(sent.ids).toHaveLength(1); expect(typeof sent.ids[0]).toBe('string'); expect(sent.bodies).toHaveLength(1);
-  await check.click();
-  await expect(page.getByText('Yes, your message arrived. Here is the reply.', { exact: true })).toBeVisible();
-  // Check for reply only reads history; nothing is posted again.
-  expect(await page.evaluate(() => { const f = (window as any).dispatchFixture; return { posts: f.posts, historyReads: f.historyReads }; })).toEqual({ posts: sent.posts, historyReads: 1 });
+  // The Check saved conversation card and its history read were removed, so the click-to-check step
+  // that ended this test is gone with them.
 });

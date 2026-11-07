@@ -1,3 +1,4 @@
+import {openCloudPlanFromSettings} from './helpers/cloud-plan-settings';
 import {seedCompletedAccessSetup} from './flag-off-android';
 // Replacing one Eliza Cloud account with another on the flag-off Android renderer, and a second
 // sign-in over a saved key.
@@ -15,16 +16,10 @@ const A: StubAccount = { token: 'account-a-key', userId: '9f1dc45a-4011-4e44-947
 const B: StubAccount = { token: 'account-b-key', userId: '3c5e7a90-1b2d-4f6e-8a0c-2e4f6a8b0c1d', email: 'owner-b@example.invalid', balance: 7, inbox: 'mail-b@example.invalid' };
 const PERSONAL_A = 'alpha.cloud.personal-setup.v1:' + JSON.stringify(['production', A.userId, null]);
 const bubble = (page: Page, text: string) => page.getByRole('button', { name: 'Message actions: ' + text, exact: true });
-/** Settings › Accounts, which names the signed-in Eliza Cloud account. */
-async function accounts(page: Page) {
+async function cloudPlan(page: Page) {
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
   await button(page, 'Settings').click();
-  await page.getByRole('button', { name: /^Accounts/ }).click();
-}
-async function agentConnection(page: Page) {
-  await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
-  await button(page, 'Settings').click();
-  await page.getByRole('button', { name: 'Eliza Cloud account & plan', exact: true }).click();
+  await openCloudPlanFromSettings(page);
   return page.getByRole('region',{name:'Settings',exact:true});
 }
 
@@ -43,23 +38,23 @@ test('signing out of account A and into account B stops the resident before A is
   const ask = page.getByRole('textbox', { name: 'Ask Alpha', exact: true });
   await ask.fill('Asked while signed in as A'); await ask.press('Enter');
   await expect(bubble(page, 'Resident reply 1')).toHaveCount(1);
-  await accounts(page);
-  await expect(page.getByText(A.email, { exact: true })).toBeVisible();
+  let dialog = await cloudPlan(page);
+  await expect(dialog.getByText(A.email, { exact: true })).toBeVisible();
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
   await button(page, 'Inbox').click();
   // Inbox reads A's Gmail accounts with A's key (the account label is shown only beside a second account).
   await expect.poll(() => stub(page, s => s.cloud.filter((row: any) => row.path === '/api/v1/eliza/google/accounts' && row.auth === 'Bearer ' + 'account-a-key').length), { timeout: 30_000 }).toBeGreaterThan(0);
 
   // Sign out of A: the resident stops before A's key is revoked and removed.
-  let dialog = await agentConnection(page);
+  dialog = await cloudPlan(page);
   await dialog.getByRole('button', { name: 'Sign out of Eliza Cloud', exact: true }).click();
-  dialog=page.getByRole('main',{name:'Sign in',exact:true});
-  await expect(dialog.getByRole('button', { name: 'Sign in with Eliza Cloud', exact: true })).toBeEnabled({ timeout: 30_000 });
+  dialog=page.locator('[role="main"].alpha-cloud-sign-in');
+  await expect(dialog.getByRole('button', { name: 'Email me a code', exact: true })).toBeEnabled({ timeout: 30_000 });
   const signOut = await stub(page, s => s.order.length) as number;
   // Sign in as B.
   await setStub(page, { nextToken: B.token });
-  await dialog.getByRole('button', { name: 'Sign in with Eliza Cloud', exact: true }).click();await enterNativeEmailCode(page);
-  await expect(page.getByRole('main',{name:'Sign in',exact:true})).toHaveCount(0, { timeout: 30_000 });
+  await enterNativeEmailCode(page);
+  await expect(page.locator('[role="main"].alpha-cloud-sign-in')).toHaveCount(0, { timeout: 30_000 });
   await completeAccessSetup(page);
 
   const order = await stub(page, s => s.order) as string[];
@@ -72,7 +67,7 @@ test('signing out of account A and into account B stops the resident before A is
   expect(revokeA).toBeLessThan(removeA);
   expect(removeA).toBeLessThan(storeB);
   // P-43: after sign-out the resident runs with no provider, and it keeps running while the owner signs
-  // in as B in the browser; it is stopped only after B's key is stored, then restarted bound to B.
+  // in as B in the native form; it is stopped only after B's key is stored, then restarted bound to B.
   expect(order.slice(signOut, storeB)).not.toContain('Agent.stop');
   expect(order.slice(storeB, lastStart)).toContain('Agent.stop');
   // B's key binds the provider before the agent starts again, with B's plan read first.
@@ -83,10 +78,9 @@ test('signing out of account A and into account B stops the resident before A is
   expect(order.filter(entry => entry.startsWith('revoke'))).toEqual(['revoke Bearer ' + A.token]);
 
   // Account copy, plan status and the connected Inbox account are B's (subscription-entitlement.ts).
-  await accounts(page);
-  await expect(page.getByText(B.email, { exact: true })).toBeVisible();
-  await expect(page.getByText(A.email, { exact: true })).toHaveCount(0);
-  dialog = await agentConnection(page);
+  dialog = await cloudPlan(page);
+  await expect(dialog.getByText(B.email, { exact: true })).toBeVisible();
+  await expect(dialog.getByText(A.email, { exact: true })).toHaveCount(0);
   await expect(dialog).toContainText('Plus');
   await expect(dialog).not.toContainText(/Credits available|Add credits/);
   await dialog.getByRole('button', { name: 'Back to Settings', exact: true }).click();
@@ -128,8 +122,8 @@ test('a second sign-in over a saved key uses the native replacement result witho
   // P-43: the resident starts signed out; sign-in is offered from Settings › Agent connection.
   await expect.poll(() => harness(page, f => f.calls.includes('Agent.start')), { timeout: 30_000 }).toBe(true);
   let welcome = await openYourAgent(page);
-  await welcome.getByRole('button', { name: 'Sign in with Eliza Cloud', exact: true }).click();await enterNativeEmailCode(page);
-  await expect(page.getByRole('main',{name:'Sign in',exact:true})).toHaveCount(0, { timeout: 30_000 });
+  await enterNativeEmailCode(page);
+  await expect(page.locator('[role="main"].alpha-cloud-sign-in')).toHaveCount(0, { timeout: 30_000 });
   await completeAccessSetup(page);
   expect(await stub(page, s => s.order.filter((entry: string) => entry.startsWith('revoke')))).toEqual([]);
   // Eliza Cloud stops accepting A's key; the next start asks for a new sign-in.
@@ -138,10 +132,10 @@ test('a second sign-in over a saved key uses the native replacement result witho
   // The resident starts again with AI off; Your agent says the saved sign-in is no longer valid.
   await expect.poll(() => harness(page, f => f.calls.includes('Agent.start')), { timeout: 30_000 }).toBe(true);
   welcome = await openYourAgent(page);
-  await expect(welcome.getByText('Your Eliza Cloud sign-in has expired. Sign in with Eliza Cloud again.', { exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(welcome.getByText('Your Cloud sign-in has expired. Sign in with Cloud again.', { exact: true })).toBeVisible({ timeout: 30_000 });
   await expect(welcome).not.toContainText(/pair/i);
-  await welcome.getByRole('button', { name: 'Sign in with Eliza Cloud', exact: true }).click();await enterNativeEmailCode(page);
-  await expect(page.getByRole('main',{name:'Sign in',exact:true})).toHaveCount(0, { timeout: 30_000 });
+  await enterNativeEmailCode(page);
+  await expect(page.locator('[role="main"].alpha-cloud-sign-in')).toHaveCount(0, { timeout: 30_000 });
   await completeAccessSetup(page);
   const order = await stub(page, s => s.order) as string[];
   expect(order.filter(entry => entry.startsWith('revoke'))).toEqual(['revoke Bearer ' + A.token]);

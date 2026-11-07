@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 // P-43: a resident left recovering starts again by itself, bounded; a recovery review never loops.
 const source=fs.readFileSync('apps/app/src/runtime/connection-ui.tsx','utf8');
 const begin=source.indexOf('const RESIDENT_AUTO_RETRY_MS'),end=source.indexOf('\n/** Start (or restart) the resident.',begin);

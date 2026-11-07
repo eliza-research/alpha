@@ -1,0 +1,17 @@
+{
+  "state": "SOURCE_INPUT_EQUIVALENCE_NOT_NATIVE_QUALIFICATION",
+  "fromSDK": "ac5d57f8ec6eb95b3efae6f2e4c20a1ffae3249c",
+  "toSDK": "c42c779a789667629b2ce9adb8dbf153c63108b7",
+  "exactChangedPaths": [
+    "plugins/plugin-assistant/src/prompts/acknowledgment.ts",
+    "plugins/plugin-assistant/src/runtime/evaluator-voice-policy.test.ts",
+    "plugins/plugin-assistant/src/runtime/evaluator.ts",
+    "plugins/plugin-assistant/src/services/message.side-effect-claim.test.ts",
+    "plugins/plugin-assistant/src/services/message/side-effect-claims.ts"
+  ],
+  "proof": "Genuine ancestor-bounded GitHub comparison contains only the listed runtime/test paths. No package, lockfile, native, Android bridge or build-producer changes.",
+  "nativeArtifactsAdmitted": false,
+  "freshNativeBuildOrDeviceQualification": false,
+  "change": "the reviewed final speech generation-field policy and bounded acknowledgment grammar correction",
+  "desktopCPUReuse": "Requires originalCPUstamp/library/model hashes and canonical CPU --check in separately reviewed adoption operator."
+}

@@ -1,0 +1,17 @@
+<resources>
+    <string name="alpha_quick_settings_label">Alpha</string>
+    <string name="alpha_quick_settings_open">Open assistant</string>
+    <string name="alpha_quick_settings_locked">Unlock to open</string>
+    <string name="alpha_quick_settings_description">Open Alpha assistant. Tap Talk in Alpha to use the microphone.</string>
+    <string name="alpha_runtime_channel_name">Alpha assistant</string>
+    <string name="alpha_runtime_channel_description">Status of Alpha’s local agent. Cloud and microphone availability are checked separately.</string>
+    <string name="alpha_runtime_title">Alpha</string>
+    <string name="alpha_runtime_running">Alpha · Local agent running</string>
+    <string name="alpha_runtime_starting">Alpha · Starting</string>
+    <string name="alpha_runtime_stopped">Alpha · Stopped</string>
+    <string name="alpha_runtime_asset_error">Alpha · Runtime file error</string>
+    <string name="alpha_runtime_missing_files">Alpha · Missing runtime files</string>
+    <string name="alpha_runtime_spawn_failed">Alpha · Could not start</string>
+    <string name="alpha_runtime_restart_blocked">Alpha · Restart blocked</string>
+    <string name="alpha_runtime_running_detail">Local agent is running. Open Alpha to check its connection.</string>
+</resources>

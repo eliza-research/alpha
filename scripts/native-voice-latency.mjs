@@ -1,5 +1,5 @@
 // Native audio-clock evidence for issue #395: last captured user speech sample to the first audible
-// response sample, measured by the Android collector (AlphaVoiceLatencyProbe / VoiceLatencyTrials)
+// response sample, measured by the Android collector (shared ai.eliza.voice VoiceLatencyProbe / VoiceLatencyTrials)
 // on CLOCK_MONOTONIC. Renderer marks and stage sums cannot establish this boundary.
 //
 // Export (alpha-native-voice-timing-v3, AlphaVoiceCloudPlugin.nativeVoiceTiming, the renderer's

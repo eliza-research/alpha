@@ -1,6 +1,6 @@
 import {layoutBrowserDialog} from './dialog-layout';
-import {sensitiveReadingUrl,sensitiveReadingText} from './reading-sensitive';
-import {browserReadingSource} from './reading-source';
+import {sensitiveReadingUrl,sensitiveReadingText} from '../../../../.eliza/client-features/plugins/plugin-native-browser-surface/src/page-reading.ts';
+import {readPublicPageSource as browserReadingSource} from '../../../../.eliza/client-features/plugins/plugin-native-browser-surface/src/page-source.ts';
 import {speakLocalText} from '../local-speech-playback';
 
 /** Review public source text when accessible, or supply an excerpt; the frame stays isolated. */

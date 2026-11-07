@@ -4,18 +4,32 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import http from 'node:http';
 import {loadBrowserModule} from '../test/fixtures/browser-source.mjs';
-const [{createLocalAgentDevHandler},{readLocalAgentStream},{AlphaClient},{LocalAgentProtocol},{RemoteProtocol},{streamNativeAgent}]=await loadBrowserModule(['scripts/local-agent-dev-bridge.ts', 'apps/app/src/runtime/local-agent-stream.ts', 'apps/app/src/runtime/alpha-client.ts', 'apps/app/src/runtime/local-agent.ts', 'apps/app/src/runtime/remote-protocol.ts', 'apps/app/src/runtime/local-agent-native-stream.ts'],{testMocks:true});
+const [{createLocalAgentDevHandler},{readLocalAgentStream,localTurnStatus},{AlphaClient},{LocalAgentProtocol},{RemoteProtocol},{streamNativeAgent}]=await loadBrowserModule(['scripts/local-agent-dev-bridge.ts', 'apps/app/src/runtime/local-agent-stream.ts', 'apps/app/src/runtime/alpha-client.ts', 'apps/app/src/runtime/local-agent.ts', 'apps/app/src/runtime/remote-protocol.ts', 'apps/app/src/runtime/local-agent-native-stream.ts'],{testMocks:true});
 const encoder=new TextEncoder(),signal=new AbortController().signal;
 const event=value=>`data: ${JSON.stringify(value)}\n\n`;
 function response(text,size=1){const bytes=encoder.encode(text);return new Response(new ReadableStream({start(c){for(let i=0;i<bytes.length;i+=size)c.enqueue(bytes.slice(i,i+size));c.close();}}),{headers:{'content-type':'text/event-stream'}});}
 const progress=[];
 const terminal=await readLocalAgentStream(response(': heartbeat\r\n\r\n'+event({type:'token',text:'Hé'}).replaceAll('\n','\r\n')+event({type:'token',text:'llo'})+event({type:'token',fullText:'Hello revised'})+event({type:'tool',action:'execute',proposal:{id:'untrusted'}})+event({type:'done',fullText:'Final',agentName:'Fixture'})),signal,text=>progress.push(text));
-assert.deepEqual(progress,['Hé','Héllo','Hello revised']);assert.equal(terminal.text,'Final');assert.equal(terminal.proposals,undefined);
+assert.deepEqual(progress,['Hé','Héllo','Hello revised']);
+// A planning label is a transient display event: it never becomes reply text, and oversized or empty labels are dropped.
+const labels=[],onLabel=event=>labels.push(event.detail);localTurnStatus.addEventListener('label',onLabel);
+const labelled=await readLocalAgentStream(response(event({type:'status',kind:'thinking'})+event({type:'status',kind:'thinking',label:"  checking today's calendar  "})+event({type:'status',kind:'thinking',label:'x'.repeat(161)})+event({type:'token',text:'Done.'})+event({type:'done',fullText:'Done.',agentName:'Fixture'})),signal,()=>{});
+localTurnStatus.removeEventListener('label',onLabel);
+assert.deepEqual(labels,["checking today's calendar"]);assert.equal(labelled.text,'Done.');assert.equal(terminal.text,'Final');assert.equal(terminal.proposals,undefined);
+// A settled semantic refusal carries its diagnostic without a second display,
+// early navigation, a thrown transport error, or an invented retry.
+const calendarFailure={kind:'reply_generation_error',code:'CALENDAR_READ_RECEIPT_MISMATCH',transient:false,message:"I couldn't confirm that Calendar request."};
+const readiness=[];
+const calendarReply=await readLocalAgentStream(response(event({type:'done',fullText:calendarFailure.message,agentName:'Fixture',messageId:'calendar-reply',failureKind:calendarFailure.kind,terminalFailure:calendarFailure})),signal,()=>{throw Error('Unexpected extra prose frame');},value=>readiness.push(value));
+assert.equal(calendarReply.text,calendarFailure.message);assert.deepEqual(calendarReply.terminalFailure,calendarFailure);assert.equal(calendarReply.failureKind,calendarFailure.kind);assert.deepEqual(readiness,[undefined]);
+
 await assert.rejects(readLocalAgentStream(response(event({type:'token',text:'Partial'})),signal,()=>{}),/without a completed reply/);
 await assert.rejects(readLocalAgentStream(response(event({type:'error',message:'untrusted provider secret'})),signal,()=>{}),error=>!error.message.includes('secret')&&error.message.includes('interrupted'));
 await assert.rejects(readLocalAgentStream(response(event({type:'done',fullText:'not enough'})),signal,()=>{}),/Invalid terminal/);
 await assert.rejects(readLocalAgentStream(response(event({type:'token',text:'x'.repeat(200001)}),4096),signal,()=>{}),/display limit/);
 await assert.rejects(readLocalAgentStream(response('data: not-json\n\n'),signal,()=>{}));
+await assert.rejects(readLocalAgentStream(new Response(new ReadableStream({start(c){c.enqueue(new Uint8Array([0xc3,0x28]));c.close();}}),{headers:{'content-type':'text/event-stream'}}),signal,()=>{}),/Invalid stream encoding/);
+await assert.rejects(readLocalAgentStream(response(':'+ 'x'.repeat(2*1024*1024),4096),signal,()=>{}),/Local stream exceeds limit/);
 let cancelled=false;
 const aborted=new AbortController();const hanging=new Response(new ReadableStream({cancel(){cancelled=true;}}),{headers:{'content-type':'text/event-stream'}});
 const pending=readLocalAgentStream(hanging,aborted.signal,()=>{});aborted.abort();await assert.rejects(pending,error=>error.name==='AbortError');assert.equal(cancelled,true);
@@ -63,6 +77,15 @@ client.attachVerifiedTransport({session:{ownerId:'owner',agentId:'agent',session
 await client.send('Hello',text=>values.push(text));late('Late');assert.deepEqual(values,['Progress']);
 client.disconnect();client.attachVerifiedTransport({session:{ownerId:'owner',agentId:'agent',sessionId:'new',origin:'https://agent.example'},send:({onText})=>{late=onText;return new Promise(r=>{resolveSend=r;});},execute:async()=>{throw Error('No action');}});
 const stale=client.send('Cancel',text=>values.push(text));client.cancel();late('Stale');resolveSend({text:'Too late'});await assert.rejects(stale);assert.deepEqual(values,['Progress']);
+
+// Original authored bytes cross the verified transport unchanged; whitespace-only is not sent.
+{
+ const textClient=new AlphaClient(),sent=[];
+ textClient.attachVerifiedTransport({session:{ownerId:'owner',agentId:'agent',sessionId:'authored',origin:'https://agent.example'},send:async input=>{sent.push(input.text);return {text:'Done'};},execute:async()=>{throw Error('No action');}});
+ await assert.rejects(textClient.send(' \n\t  '),/Enter a message/);assert.equal(sent.length,0);
+ const authored='  Indented line.\n\nTrailing space.  \n';
+ await textClient.send(authored);assert.deepEqual(sent,[authored]);
+}
 
 // Dropped stream: exactly one non-streaming read of the persisted reply under the same clientMessageId.
 {

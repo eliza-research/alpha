@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 
 // Issue #397: speech is on-device with no network and no Eliza Cloud session. Real renderer sources
 // evaluated with synthetic ports: routing and the speech bridge protocol only, not JNI or audio.

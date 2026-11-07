@@ -1,21 +1,26 @@
 import {validateUuid} from '../vendor/eliza/packages/core/src/utils/uuid.ts';
+import {createRealtimeVoiceTiming} from '../.eliza/client-features/packages/voice/src/realtime-voice-timing.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
+import {tsImport} from 'tsx/esm/api';
+import {applyServerEvent,INITIAL_VOICE_SESSION_STATE} from '../vendor/eliza/packages/ui/src/voice/voice-session-state.ts';
 
 // Synthetic transport callbacks only; no socket, microphone, provider, or model calls.
 const source=fs.readFileSync(new URL('../apps/app/src/runtime/development-cartesia-conversation.ts',import.meta.url),'utf8');
-const js=stripTypeScriptTypes(source.replace(/^import .*;\n/gm,'').replace(/^export \{.*\} from .*;\n/gm,'').replace(/import\.meta\.env\.DEV===true&&devSurfacesEnabled&&!Capacitor\.isNativePlatform\(\)&&import\.meta\.env\.VITE_ALPHA_DEV_CARTESIA==='1'/,'true').replace("await import('@elizaos/ui/voice/voice-session-client')",'({createVoiceSessionClient:fixtureClient})').replace(/export /g,''),{mode:'strip'});
+const js=stripTypeScriptTypes(source.replace(/^import .*;\n/gm,'').replace(/^export \{.*\} from .*;\n/gm,'').replace(/import\.meta\.env\.DEV===true&&devSurfacesEnabled&&!Capacitor\.isNativePlatform\(\)&&import\.meta\.env\.VITE_ALPHA_DEV_CARTESIA==='1'/,'true').replace("await import('@elizaos/ui/voice/voice-session-client')",'({createVoiceSessionClient:fixtureClient})').replace(/export /g,''),{mode:'transform'});
 class RendererSocket{static latest;constructor(){RendererSocket.latest=this;queueMicrotask(()=>this.onopen?.());}close(){}}
-const factory=new Function('connectionController','fixtureClient','WebSocket','location','setTimeout','clearTimeout','developmentCloudRealtimeVoiceEnabled','developmentCartesiaVoiceEnabled','readDevicePreferences','window','validateUuid',js+'\nreturn developmentCartesiaConversation;');
+const factory=new Function('connectionController','fixtureClient','WebSocket','location','setTimeout','clearTimeout','developmentCloudRealtimeVoiceEnabled','developmentCartesiaVoiceEnabled','readDevicePreferences','window','validateUuid','beginRealtimeVoiceTiming',js+'\nreturn developmentCartesiaConversation;');
 const flush=async()=>{for(let i=0;i<30;i++)await Promise.resolve();};
-function harness(ask=true){
- let options,current=true,refreshes=0,hold,release;const errors=[],navigations=[],transcripts=[],actions=[];let view='home';
- const binding={conversationId:'room',session:{agentId:'agent'}},agent={request:async path=>path.includes('/health')?{ready:true,conversationId:'room',agentId:'agent'}:path==='/api/views/voice-channel'?{wsUrl:'ws://localhost/__alpha-local-renderer/ws?sessionId=fixture',expiresAt:Date.now()+120000}:{}};
- const controller={performVoiceRequestedActions:async(_binding,_message,_signal,operation)=>{actions.push((operation||'general')+':'+view);return view==='camera'?[{summary:'Photo saved'}]:[];},getBrowserSpeechAgent:()=>agent,voiceRendererClientId:()=>'11111111-1111-4111-8111-111111111111',voiceConversationCurrent:()=>current,refreshDeveloperVoiceHistory:async()=>{refreshes++;if(hold)await new Promise(resolve=>release=resolve);}};
- const createVoiceSessionClient=value=>{options=value;return {start:async()=>{},stop:async()=>{},setMicrophoneMuted:()=>{}};};
- return {create:()=>factory(controller,createVoiceSessionClient,RendererSocket,{host:'localhost'},()=>1,()=>{},false,true,async()=>({askBeforeAgentActions:ask}),new EventTarget(),validateUuid)({binding,assertCurrent:()=>{if(!current)throw Error('changed');},onState:()=>{},onTranscript:text=>transcripts.push(text),onError:error=>errors.push(error.message),getUiContext:()=>({uiViewPath:'/notes',uiBrowserSurface:'native'}),onNavigate:async event=>{navigations.push(event);view=event.viewId;}}),renderer:event=>RendererSocket.latest.onmessage({data:JSON.stringify(event)}),get options(){return options;},get refreshes(){return refreshes;},errors,navigations,transcripts,actions,setCurrent:value=>current=value,hold:()=>hold=true,release:()=>{hold=false;release?.();}};
+// Like the pinned SDK client, reduce each frame into accepted state before the raw callback.
+const sdkOptions=options=>{let state={...INITIAL_VOICE_SESSION_STATE,phase:'listening'};return options&&{...options,onServerEvent(event){if(event.t!=='speaking_end'){state=applyServerEvent(state,event);options.onState(state);}options.onServerEvent(event);}};};
+function harness(ask=true,turnTerminal=true){
+ let options,sdk,current=true,refreshes=0,hold,release;const errors=[],navigations=[],transcripts=[],actions=[];let view='home';
+ const binding={conversationId:'room',session:{agentId:'agent'}},agent={request:async path=>path.includes('/health')?{ready:true,turnTerminal,conversationId:'room',agentId:'agent'}:path==='/api/views/voice-channel'?{wsUrl:'ws://localhost/__alpha-local-renderer/ws?sessionId=fixture',expiresAt:Date.now()+120000}:{}};
+ const controller={getSnapshot:()=>({residentInference:"cloud"}),performVoiceRequestedActions:async(_binding,_message,_signal,operation)=>{actions.push((operation||'general')+':'+view);return view==='camera'?[{summary:'Photo saved'}]:[];},getBrowserSpeechAgent:()=>agent,voiceRendererClientId:()=>'11111111-1111-4111-8111-111111111111',voiceConversationCurrent:()=>current,refreshDeveloperVoiceHistory:async()=>{refreshes++;if(hold)await new Promise(resolve=>release=resolve);}};
+ const createVoiceSessionClient=value=>{options=value;sdk=sdkOptions(value);return {start:async()=>{},stop:async()=>{},setMicrophoneMuted:()=>{}};};
+ return {create:()=>factory(controller,createVoiceSessionClient,RendererSocket,{host:'localhost'},()=>1,()=>{},false,true,async()=>({askBeforeAgentActions:ask}),new EventTarget(),validateUuid,()=>createRealtimeVoiceTiming({storageKey:"fixture",storage:()=>undefined}).start("direct-cartesia"))({binding,assertCurrent:()=>{if(!current)throw Error('changed');},onState:()=>{},onTranscript:text=>transcripts.push(text),onError:error=>errors.push(error.message),getUiContext:()=>({uiViewPath:'/notes',uiBrowserSurface:'native'}),onNavigate:async event=>{navigations.push(event);view=event.viewId;}}),renderer:event=>RendererSocket.latest.onmessage({data:JSON.stringify(event)}),get options(){return sdk;},get refreshes(){return refreshes;},errors,navigations,transcripts,actions,setCurrent:value=>current=value,hold:()=>hold=true,release:()=>{hold=false;release?.();}};
 }
 test('authoritative progress refreshes canonical history with one in-flight loader and one coalesced followup',async()=>{
  const f=harness();await f.create();f.hold();for(const t of ['ready','stt_final','speaking_start','reply_complete','usage'])f.options.onServerEvent({t,text:'hello',traceId:'turn'});await flush();assert.equal(f.refreshes,1);f.release();await flush();assert.equal(f.refreshes,2);assert.deepEqual(f.transcripts,['hello']);assert.deepEqual(f.errors,[]);
@@ -32,11 +37,14 @@ test('a replaced owner/session rejects UI context and event delivery',async()=>{
 
 const adapterSource=fs.readFileSync(new URL('../apps/app/src/prototype/agent-adapter.ts',import.meta.url),'utf8');
 const projectionSource=adapterSource.slice(adapterSource.indexOf('  p.applyRealtimeVoiceNavigation = async function('),adapterSource.indexOf('  p.sendVoiceTurn = async function('));
-const projectionJs=stripTypeScriptTypes(projectionSource,{mode:'strip'});
+const projectionJs=stripTypeScriptTypes(projectionSource,{mode:'transform'});
+const {alphaNavigation}=await tsImport('../apps/app/src/product/alpha-product.ts',import.meta.url);
+// Notes, Calendar and Workflows are available; the product registry resolves every other id.
+const projectionViews=alphaNavigation(view=>['notes','calendar','workflows'].includes(view));
 function projectionHarness(){
  let active=true,hidden=false,commits=0;globalThis.document={get hidden(){return hidden;}};
  const state={view:null,chat:'full'},alphaClient={getState:()=>({context:{view:state.view||'home',revision:1,sensitive:false}})},p={};
- new Function('p','isMvpView','connectionController','context','openInternalView','alphaClient',projectionJs)(p,view=>['notes','calendar','workflows'].includes(view),{voiceConversationCurrent:()=>active},()=>{},(shell,view,chat)=>{commits++;state.view=view==='home'?null:view;state.chat=chat;return true;},alphaClient);
+ new Function('p','alphaViewKey','alphaViewPaths','connectionController','context','openInternalView','alphaClient',projectionJs)(p,projectionViews.viewKey,projectionViews.viewPaths,{voiceConversationCurrent:()=>active},()=>{},(shell,view,chat)=>{commits++;state.view=view==='home'?null:view;state.chat=chat;return true;},alphaClient);
  const shell={live:true,S:()=>state,setState:(_patch,done)=>done()},observed=[];
  const navigation={apply:async(view,current,commit)=>{current();return commit(state.chat,context=>observed.push(context));},finish:value=>observed.push(value)};
  return {apply:event=>p.applyRealtimeVoiceNavigation.call(shell,{...event,binding:{},assertCurrent:()=>{if(!active)throw Error('changed');},navigation}),state,observed,get commits(){return commits;},replace:()=>active=false,background:()=>hidden=true};
@@ -58,8 +66,11 @@ test('interrupted and superseded finalized turns cannot deliver a late screen ef
 
 test('direct adapter reports automatic playback mute separately from manual mute',async()=>{
  const f=harness(),voice=await f.create();assert.equal(voice.microphoneAutomaticallyMuted,false);
- f.options.onState({phase:'speaking'});assert.equal(voice.microphoneAutomaticallyMuted,true);
- f.options.onState({phase:'listening'});assert.equal(voice.microphoneAutomaticallyMuted,false);
+ // Playback pause follows the accepted speaking frame for its trace, not a bare phase.
+ // Raw speaking_end only closes input; the SDK's listening state after local drain releases it.
+ f.options.onServerEvent({t:'speaking_start',traceId:'turn'});assert.equal(voice.microphoneAutomaticallyMuted,true);
+ f.options.onServerEvent({t:'speaking_end',traceId:'turn'});assert.equal(voice.microphoneAutomaticallyMuted,true);
+ f.options.onState({...INITIAL_VOICE_SESSION_STATE,phase:'listening',traceId:'turn'});assert.equal(voice.microphoneAutomaticallyMuted,false);
 });
 
 test('targeted renderer delivery opens Notes even when the voice terminal suppresses its duplicate',async()=>{
@@ -94,3 +105,5 @@ test('camera continuation ignores an interrupted request and respects ask-first'
 test('direct voice action completion refuses malformed message identities',async()=>{
  for(const userMessageId of ['invalid-message',cameraMessage+'-extra',' '+cameraMessage]){const f=harness(false);await f.create();f.options.onServerEvent({t:'stt_final',traceId:'turn',text:'take a photo'});f.options.onServerEvent({t:'reply_complete',traceId:'turn',userMessageId});await flush();assert.deepEqual(f.actions,[]);}
 });
+
+test('a health response without terminal protocol support cannot start the synthetic voice transport',async()=>{const h=harness(true,false);await assert.rejects(h.create(),/selected developer speech service is unavailable/);assert.equal(h.options,undefined);});

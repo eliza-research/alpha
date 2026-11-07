@@ -1,0 +1,268 @@
+{
+  "schemaVersion": 1,
+  "recordedAtEpoch": 1793113169.615508,
+  "upstream": "fd5511ca1dacdccfadd93879bddff2038ebe8665",
+  "versionCode": 17,
+  "images": {
+    "pin": "fd5511ca1dacdccfadd93879bddff2038ebe8665",
+    "versionCode": 17,
+    "build": {
+      "cpuAffinity": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "target": "cuttlefish",
+      "startedAtEpoch": 1793109546.9084358,
+      "minimumFreeBytes": 47167549440,
+      "imageBuilt": true,
+      "imageFlashed": false,
+      "bootTested": false,
+      "exitCode": 0,
+      "finishedAtEpoch": 1793112595.4579043
+    },
+    "payloadsVerified": true,
+    "files": [
+      {
+        "file": "ramdisk.img",
+        "bytes": 3005824,
+        "sha256": "5107317af0434714358bc553384840a37862c25b2f82fa3cba1229cf6a618925"
+      },
+      {
+        "file": "product.img",
+        "bytes": 910651392,
+        "sha256": "8a20e1d24bfa61ea32a05f23ee8bae0296d4d77273af1aa6806ab174c0dec2d4"
+      },
+      {
+        "file": "dtb.img",
+        "bytes": 72,
+        "sha256": "4ee48e5ae650ede0b5a3548a1fd60e8aea0e71750ea43f8276ceafcd7cb091e0"
+      },
+      {
+        "file": "vendor-bootconfig.img",
+        "bytes": 117,
+        "sha256": "8a6852f900422d0dc9405d56f6088e2c6c4b46613cc375479d041c5022f41ed4"
+      },
+      {
+        "file": "system_ext.img",
+        "bytes": 526172160,
+        "sha256": "f268fd48c91ea84ead2e9bcaa9894387c7dad1b81e7c42acd232b0087ac27679"
+      },
+      {
+        "file": "system_dlkm.img",
+        "bytes": 8368128,
+        "sha256": "d2fb1bc66f5a27985f044e11a8861608343e931f6e9e42c0a1b8f7645b60099b"
+      },
+      {
+        "file": "vendor_dlkm.img",
+        "bytes": 1449984,
+        "sha256": "fe04c142c2d06823f167b7eec2f0d084b7438554c5567da6756c1f2802f4a3c8"
+      },
+      {
+        "file": "vbmeta_vendor_dlkm.img",
+        "bytes": 65536,
+        "sha256": "d7c76e59113e69a074e82f23f3d22b58ca2abf6931858c7d8dea71e4fe0c7af6"
+      },
+      {
+        "file": "init_boot.img",
+        "bytes": 8388608,
+        "sha256": "bb99992b43758d4be536120f0f871eba32f2d896ddfbfbfd65cd783914fb11de"
+      },
+      {
+        "file": "vendor_boot.img",
+        "bytes": 67108864,
+        "sha256": "df0d6af2b96d64051cdcf794657e49a028544ab96e6c6d32a12d741d76a93edf"
+      },
+      {
+        "file": "boot.img",
+        "bytes": 67108864,
+        "sha256": "91470330fdba42533d905668ee70f3d5400ff6b85ff8e21b59d590a6d7d5a6bc"
+      },
+      {
+        "file": "odm.img",
+        "bytes": 520192,
+        "sha256": "571c4372853bb08d664533d4a4204973d843c6c976457c63893c7f01248d7583"
+      },
+      {
+        "file": "system_other.img",
+        "bytes": 4763648,
+        "sha256": "0ddd4467dfdc2386d10e72844517ccbaa32bf1470e9a01d78f4a2e1bad61b472"
+      },
+      {
+        "file": "vbmeta_system.img",
+        "bytes": 65536,
+        "sha256": "da0c992213e4e6184463f6d829fee987db886fbc6a8e5da1e59854663aaa2769"
+      },
+      {
+        "file": "vbmeta_system_dlkm.img",
+        "bytes": 65536,
+        "sha256": "d301b3bd7614dbdde6ad70530f8533b9c01774fafa8018bf2ab7b0a4a40998fc"
+      },
+      {
+        "file": "vendor.img",
+        "bytes": 287932416,
+        "sha256": "24737cf749119bb0b54d294e0e0379f23a7d9f8b7167bdaa3ea23c567f9478fd"
+      },
+      {
+        "file": "odm_dlkm.img",
+        "bytes": 348160,
+        "sha256": "f4f7405e3b2e238edf647b4a77ab57660b82b3a658dcd1cabdd598e3eaf2ef64"
+      },
+      {
+        "file": "cuttlefish_example_custom.img",
+        "bytes": 1048576,
+        "sha256": "3d17578db83de489aafbd421d98d2596cf4d486639c2802f4df7e9ac9e231847"
+      },
+      {
+        "file": "vendor_boot-debug.img",
+        "bytes": 67108864,
+        "sha256": "0355e28638ed428602ac377c62def84819654e7796f26412fe07f9847b81b53e"
+      },
+      {
+        "file": "super_empty.img",
+        "bytes": 5488,
+        "sha256": "962248d123bee34452f053fe0cbabd1422fdb69efe425839580bcc077e26975d"
+      },
+      {
+        "file": "vbmeta.img",
+        "bytes": 65536,
+        "sha256": "751f958a3c1e6a3f20673ea4d97216fc629750df9e0bcd01ab6f4ca728dc005d"
+      },
+      {
+        "file": "vendor_boot-test-harness.img",
+        "bytes": 19378176,
+        "sha256": "dbc4e83892677b70cf465c5d2c3e97711dfd83a3ef5d3f3d06fbfd53313e20ab"
+      },
+      {
+        "file": "userdata.img",
+        "bytes": 2249012,
+        "sha256": "738a3c836e6aa19d22ef75a262c8d9b59673dc103167d47e50b3e5da69162eb9"
+      },
+      {
+        "file": "system.img",
+        "bytes": 955199488,
+        "sha256": "5950bfa456b9aaed954e286ad7879c139ab5bec6161e24817f71e837058b13c5"
+      },
+      {
+        "file": "super.img",
+        "bytes": 2682275320,
+        "sha256": "26cba89ac75fcf66a0e3753fa16e39a7f7e66d67b735277af5b435238a292765"
+      },
+      {
+        "file": "vendor_ramdisk-debug.img",
+        "bytes": 19366899,
+        "sha256": "b65606e15ca4ebb8591e174c15f352671f1229a9618fa762e2849fdd3959dd6e"
+      },
+      {
+        "file": "vendor_ramdisk.img",
+        "bytes": 19034349,
+        "sha256": "eb9b585b48ef3c29a2641d242de08d4fe77146ea604e0fb4b9a8c5a3c0023552"
+      },
+      {
+        "file": "vendor_ramdisk-test-harness.img",
+        "bytes": 19367284,
+        "sha256": "6bf4a93c3c113ffc63592ab216dcec03b30a8de90831ea507179420195b10d1f"
+      },
+      {
+        "file": "android-info.txt",
+        "bytes": 83,
+        "sha256": "9e65df4d6461e776a29250602980d7f9fbc3d4e12cf66af759dcc38df02b33ee"
+      },
+      {
+        "file": "kernel",
+        "bytes": 22897664,
+        "sha256": "b28decced5d617030d0f57735c1d351ba9e2f48286917641617474302359ffaa"
+      },
+      {
+        "file": "cvd-host_package.tar.gz",
+        "bytes": 898622036,
+        "sha256": "0671ca02152c7959d5e706a08561eb8aaeaf9501a0570693bcf19cec7293db31"
+      }
+    ],
+    "bootTested": false,
+    "flashed": false,
+    "releaseSigned": false,
+    "deviceAcceptance": false
+  },
+  "payloads": {
+    "imagePayloadsVerified": true,
+    "checks": [
+      {
+        "path": "/home/shaw/.codex/worktrees/integrate-pr621/alphaphone/artifacts/aosp-campaign-20261027/cuttlefish-final-extracted/product/app/AlphaPhone/AlphaPhone.apk",
+        "sha256": "a554c6f4a5999d3270dac8dab0803d5a6c5b644d191b536a5344312cd0c1e02b",
+        "mode": "0o644"
+      },
+      {
+        "path": "/home/shaw/.codex/worktrees/integrate-pr621/alphaphone/artifacts/aosp-campaign-20261027/cuttlefish-final-extracted/product/app/AlphaPhone/lib/x86_64/libc++_shared.so",
+        "sha256": "2e855857f80819737d25a663109fedf816a5e996a85423166806014a06593256",
+        "mode": "0o644"
+      },
+      {
+        "path": "/home/shaw/.codex/worktrees/integrate-pr621/alphaphone/artifacts/aosp-campaign-20261027/cuttlefish-final-extracted/product/app/AlphaPhone/lib/x86_64/libeliza_bun.so",
+        "sha256": "16b72935ffd7a503b978c186874539c92aade4e3515b70a5abf5db2581fdef7d",
+        "mode": "0o755"
+      },
+      {
+        "path": "/home/shaw/.codex/worktrees/integrate-pr621/alphaphone/artifacts/aosp-campaign-20261027/cuttlefish-final-extracted/product/app/AlphaPhone/lib/x86_64/libeliza_gcc_s.so",
+        "sha256": "2298274ad3316109d6e895083398e220f16fbdd12957c4afcc9af8849e734151",
+        "mode": "0o644"
+      },
+      {
+        "path": "/home/shaw/.codex/worktrees/integrate-pr621/alphaphone/artifacts/aosp-campaign-20261027/cuttlefish-final-extracted/product/app/AlphaPhone/lib/x86_64/libeliza_ld_musl_x86_64.so",
+        "sha256": "03e14ad9640d09622682bcc08ad331113d5feb3a50b4d578f13e5ef38f2774ed",
+        "mode": "0o755"
+      },
+      {
+        "path": "/home/shaw/.codex/worktrees/integrate-pr621/alphaphone/artifacts/aosp-campaign-20261027/cuttlefish-final-extracted/product/app/AlphaPhone/lib/x86_64/libeliza_ld_musl_x86_64_real.so",
+        "sha256": "2fb72c67f292827c8c4095067197af7880c234a3a4060136e1b5518d10de1eb9",
+        "mode": "0o755"
+      },
+      {
+        "path": "/home/shaw/.codex/worktrees/integrate-pr621/alphaphone/artifacts/aosp-campaign-20261027/cuttlefish-final-extracted/product/app/AlphaPhone/lib/x86_64/libeliza_stdcpp.so",
+        "sha256": "08d5c7eb7c1e210d0fb56a33af0b97ab86339f2d321ceb31fcd53c563f8803c9",
+        "mode": "0o644"
+      },
+      {
+        "path": "/home/shaw/.codex/worktrees/integrate-pr621/alphaphone/artifacts/aosp-campaign-20261027/cuttlefish-final-extracted/product/app/AlphaPhone/lib/x86_64/libelizainference.so",
+        "sha256": "fe1f563e5cd02b86ba547d2f6971822303a8338b11374818393432a002f80581",
+        "mode": "0o644"
+      },
+      {
+        "path": "/home/shaw/.codex/worktrees/integrate-pr621/alphaphone/artifacts/aosp-campaign-20261027/cuttlefish-final-extracted/product/app/AlphaPhone/lib/x86_64/libelizavoicejni.so",
+        "sha256": "8b55c7f0d3502e0d7b5750bd6664ae48bfcf037d27dd888ad2bb4c271a13ef08",
+        "mode": "0o644"
+      },
+      {
+        "path": "/home/shaw/.codex/worktrees/integrate-pr621/alphaphone/artifacts/aosp-campaign-20261027/cuttlefish-final-extracted/product/app/AlphaPhone/lib/x86_64/libimage_processing_util_jni.so",
+        "sha256": "f5d02c9c50c33a45c2125f63f4d6c954aec0e9b1a6ade25074f146ed92264efe",
+        "mode": "0o644"
+      },
+      {
+        "path": "/home/shaw/.codex/worktrees/integrate-pr621/alphaphone/artifacts/aosp-campaign-20261027/cuttlefish-final-extracted/product/app/AlphaPhone/lib/x86_64/libparadeevoicejni.so",
+        "sha256": "8448ab15b153570f3fb0b669b77c1955835bbbf92367c77229869ed9ea5567cf",
+        "mode": "0o644"
+      },
+      {
+        "path": "/home/shaw/.codex/worktrees/integrate-pr621/alphaphone/artifacts/aosp-campaign-20261027/cuttlefish-final-extracted/product/app/AlphaPhone/lib/x86_64/libsigsys-handler.so",
+        "sha256": "6939ae9fcac095ba8355641865dcc0594dc3af783de5fa29b84b8986dd76c548",
+        "mode": "0o644"
+      },
+      {
+        "path": "/home/shaw/.codex/worktrees/integrate-pr621/alphaphone/artifacts/aosp-campaign-20261027/cuttlefish-final-extracted/product/app/AlphaPhone/lib/x86_64/libsurface_util_jni.so",
+        "sha256": "84d8ca201f2160b2ca3a5bd2886994f7287ee7cd09fe73b081f5b236dda8496d",
+        "mode": "0o644"
+      },
+      {
+        "path": "/home/shaw/.codex/worktrees/integrate-pr621/alphaphone/artifacts/aosp-campaign-20261027/cuttlefish-final-extracted/system_ext/priv-app/AlphaSense/AlphaSense.apk",
+        "sha256": "6f95578d1a8246d87a923d6e43716a312090dec68e485d9cd88dc48675708310",
+        "mode": "0o644"
+      }
+    ],
+    "runtimeVerified": false,
+    "bootTested": false,
+    "deviceAcceptance": false
+  },
+  "artifactDirectory": "/home/shaw/.codex/worktrees/integrate-pr621/alphaphone/artifacts/aosp-campaign-20261027/cuttlefish-final-images",
+  "scope": "Completed Cuttlefish image build and extracted payload verification. This checkpoint does not establish image boot, native runtime execution, physical device or user acceptance."
+}

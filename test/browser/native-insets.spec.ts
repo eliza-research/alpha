@@ -114,6 +114,28 @@ test('native launcher keeps a long actionable notice scrollable above a multilin
  await expect(composer.locator('textarea')).toHaveValue('First line\nSecond line\nThird line\nFourth line\nFifth line\nSixth line\nSeventh line\nEighth line');
 });
 
+for(const width of [412,640])test(`a very short window with the keyboard open keeps an Undo notice visible and tappable at ${width}px`,async({page},testInfo)=>{
+ const frame=await nativeContent(page,testInfo.project.use.baseURL as string,{top:0,bottom:0,left:0,right:0},width,915,true,{top:24,bottom:0});
+ await frame.locator('html').evaluate(async()=>{
+  const {Component}=await import('/src/prototype/model.js');
+  const render=Component.prototype.renderVals;
+  Component.prototype.renderVals=function(){(window as any).noticeLayoutShell=this;return render.call(this);};
+ });
+ await expect.poll(()=>frame.locator('html').evaluate(()=>!!(window as any).noticeLayoutShell)).toBe(true);
+ // The floating dock is up; the soft keyboard then leaves only about 150px of window.
+ await page.locator('iframe').evaluate((node:any)=>node.style.height='150px');
+ await frame.locator('html').evaluate(()=>{(window as any).noticeUndoInvoked=false;(window as any).noticeLayoutShell.toast('Note deleted',{undo:()=>{(window as any).noticeUndoInvoked=true;}});});
+ const notice=frame.locator('[data-alpha-toast]'),undo=notice.getByRole('button',{name:'Undo',exact:true});
+ await expect(undo).toBeVisible();
+ await expect.poll(()=>notice.evaluate(node=>{
+  const button=node.querySelector('button')!.getBoundingClientRect(),hit=document.elementFromPoint(button.left+button.width/2,button.top+button.height/2);
+  return node.clientHeight>=40&&button.top>=0&&button.bottom<=innerHeight&&!!hit&&node.contains(hit);
+ })).toBe(true);
+ await page.screenshot({path:testInfo.outputPath(`short-keyboard-undo-notice-${width}.png`),animations:'disabled'});
+ await undo.click();
+ await expect.poll(()=>frame.locator('html').evaluate(()=>(window as any).noticeUndoInvoked)).toBe(true);
+});
+
 test('native cutout and keyboard-sized resizes preserve reachable large-text standalone navigation',async({page},testInfo)=>{
  const frame=await nativeContent(page,testInfo.project.use.baseURL as string,{top:28,bottom:48,left:0,right:0});
  await frame.getByRole('button',{name:'Notes',exact:true}).click();

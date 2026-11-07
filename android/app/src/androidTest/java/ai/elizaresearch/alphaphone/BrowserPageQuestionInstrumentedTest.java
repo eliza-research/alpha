@@ -1,5 +1,8 @@
 package ai.elizaresearch.alphaphone;
 
+import ai.eliza.plugins.browsersurface.BrowserPageReading;
+import ai.eliza.plugins.browsersurface.BrowserReadingWorld;
+
 import android.app.AlertDialog;
 import android.os.SystemClock;
 import android.view.View;
@@ -89,8 +92,8 @@ public final class BrowserPageQuestionInstrumentedTest {
   BoundedActivityScenario.main(() -> {
    try {
     Object plugin = resumedActivity().getBridge().getPlugin("AlphaBrowser").getInstance();
-    java.lang.reflect.Field reading = AlphaBrowserPlugin.class.getDeclaredField("reading"); reading.setAccessible(true);
-    java.lang.reflect.Field dialog = BrowserReading.class.getDeclaredField("dialog"); dialog.setAccessible(true);
+    java.lang.reflect.Field reading = ai.eliza.plugins.browsersurface.BrowserTabHostPlugin.class.getDeclaredField("reading"); reading.setAccessible(true);
+    java.lang.reflect.Field dialog = ai.eliza.plugins.browsersurface.BrowserReviewedReading.class.getDeclaredField("dialog"); dialog.setAccessible(true);
     AlertDialog value = (AlertDialog) dialog.get(reading.get(plugin));
     found.set(value != null && value.isShowing() ? value : null);
    } catch (Exception error) { throw new AssertionError(error); }
@@ -115,7 +118,7 @@ public final class BrowserPageQuestionInstrumentedTest {
   final AtomicInteger requests = new AtomicInteger();
   Pages(String tabId) throws Exception {
    Object plugin = resumedActivity().getBridge().getPlugin("AlphaBrowser").getInstance();
-   java.lang.reflect.Field tabs = AlphaBrowserPlugin.class.getDeclaredField("tabs"); tabs.setAccessible(true);
+   java.lang.reflect.Field tabs = ai.eliza.plugins.browsersurface.BrowserTabHostPlugin.class.getDeclaredField("tabs"); tabs.setAccessible(true);
    Object tab = ((Map<?, ?>) tabs.get(plugin)).get(tabId); assertNotNull("The visible tab exists", tab);
    java.lang.reflect.Field field = tab.getClass().getDeclaredField("web"); field.setAccessible(true);
    web = (android.webkit.WebView) field.get(tab); original = web.getWebViewClient(); assertNotNull(original);
@@ -282,7 +285,7 @@ public final class BrowserPageQuestionInstrumentedTest {
     pages = openBrowser();
     // The address alone is enough to refuse, before the document is read.
     for (String url : new String[]{BASE + "/?api_key=SYNTHETIC-ONLY", BASE + "/account/recovery"}) {
-     assertTrue(url, BrowserReading.sensitiveUrl(url));
+     assertTrue(url, BrowserPageReading.sensitiveUrl(url));
      pages.routes.put(url, page(ARTICLE, ""));
      open(url);
      JSONObject refused = call(REVIEW);
@@ -292,7 +295,7 @@ public final class BrowserPageQuestionInstrumentedTest {
     }
     // An ordinary address with credential-like content anywhere in the document is refused as a whole.
     String ordinary = BASE + "/gardening";
-    assertFalse(BrowserReading.sensitiveUrl(ordinary));
+    assertFalse(BrowserPageReading.sensitiveUrl(ordinary));
     String[] sensitive = {
      page(ARTICLE, "<p>Password: synthetic-only</p>"),
      "<html><body><aside>Recovery codes: synthetic-only</aside><article><p>" + ARTICLE + "</p></article></body></html>",
@@ -344,7 +347,7 @@ public final class BrowserPageQuestionInstrumentedTest {
  }
 
  /** Menu -> Ask about page -> native review -> question editor -> composer -> Send while inference is
-  * unavailable (decision P-43: the resident is present, starting or offline; nothing is dispatched).
+  * unavailable (decision P-43: the resident is running with no network; nothing is dispatched).
   * Shared with JourneyJ05InstrumentedTest. Returns the reviewed text that reached the composer. */
  String askAboutPageUpToSend(Pages pages, String garden) throws Exception {
     String reviewed = "Reviewed excerpt " + letters(UUID.randomUUID()) + ": twelve raised beds.";
@@ -374,11 +377,14 @@ public final class BrowserPageQuestionInstrumentedTest {
     // Before Send: neither the page text nor the reviewed draft has reached any agent, network or other native call.
     assertEquals("Nothing reaches an agent before Send: " + leaks(reviewed), 0, leaks(reviewed).length());
     assertEquals(0, leaks(ARTICLE).length());
-    // Send while inference is unavailable (the resident is starting, or running with no network): the
-    // refusal says so, no chooser opens, nothing is dispatched and the draft is kept.
+    // Send while inference is unavailable (the resident is running with no network): no
+    // line or toast says so (owner, 2026-11-03), no chooser opens, nothing is dispatched and the draft
+    // is kept. The send is seen settling in the composer's own saved copy: marked as sending, then unmarked.
     waitFor("document.querySelector('button[aria-label=Send]')&&!document.querySelector('button[aria-label=Send]').disabled");
+    int before = Integer.parseInt(js("window.__pageCalls.length"));
     js("document.querySelector('button[aria-label=Send]').click()");
-    waitFor("['Nothing is sent until this phone is back online','Nothing was sent'].some(t=>document.body.innerText.includes(t))");
+    waitFor("(m=>m.includes(true)&&m[m.length-1]===false)(window.__pageCalls.slice(" + before + ").filter(c=>{if(c.plugin!=='AlphaConnection'||c.method!=='secureCompareExchange')return false;try{const b=JSON.parse(c.body);return String(b.slot).startsWith('assistant-draft:v1:')&&!!b.value;}catch(e){return false;}}).map(c=>JSON.parse(JSON.parse(c.body).value).sending===true))");
+    assertEquals("No refusal text at the composer", "false", js("document.body.innerText.includes('Your message is back in the composer')"));
     assertEquals("No connection chooser opens", "false", js("!!document.querySelector('.alpha-connection-scrim')"));
     assertEquals("Not mock mode", "null", js("document.documentElement.dataset.connectionMode==='mock'?'mock':null"));
     assertEquals("Send while inference is unavailable dispatches nothing: " + leaks(reviewed), 0, leaks(reviewed).length());

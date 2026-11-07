@@ -1,0 +1,18 @@
+{
+  "productBase": "ecadca320273bf03cc8ffb77616dd93e00ae91d7",
+  "SDK": "b3867a4805626e39c268c13df452a797b69c6e6a",
+  "priorSDK": "a681dc583ffb7c7c6ecec9e6bcee944ea49f20b2",
+  "SDKTree": "f1e4db9a254a83c029ba0eb9e1ad0fd621cfc0e0",
+  "sourceChanges": "Historical timestamp presentation only + maxActionName in existing validation aggregate",
+  "qualification": {
+    "owningTemporal": 20,
+    "joinedPass": 65,
+    "joinedBaselineFailures": 2,
+    "baselineActionSameFailures": 2
+  },
+  "preserved": "Exact original dialogue/sourceSet/text hashes; same stable cache prefix/authority; package and Bun locks, models, engine and Bun bytes unchanged",
+  "nativeAcceptance": false,
+  "latencyGainClaimed": false,
+  "RootSourcePacket": "plugin-default-scope-a681-review/ROOT-REVIEW-PACKET-FINAL.json",
+  "retainedProductChanges": "Tile API and APK policy updates on current ecad base"
+}

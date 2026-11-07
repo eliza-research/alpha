@@ -1,5 +1,8 @@
+import {realpathSync} from 'node:fs';
 import {createServer} from 'node:http';
 import {test,expect,type Page} from '@playwright/test';
+// The shared public page-source reader, served from the prepared client features (vite fs.allow).
+const pageSourceModule='/@fs'+realpathSync('.eliza/client-features/plugins/plugin-native-browser-surface/src/page-source.ts');
 const address='https://reading.test/article';
 async function open(page:Page,url=address){await page.evaluate(async(url)=>{const {reviewBrowserReading}=await import('/src/browser/reading-review.ts');const w=window as any;w.readAbort=new AbortController();w.readDone=reviewBrowserReading(url,w.readAbort.signal,()=>w.readAbort.signal.throwIfAborted());},url);}
 const field=(page:Page)=>page.getByRole('textbox',{name:'Excerpt to read'});
@@ -17,7 +20,7 @@ test('closing extraction aborts work and cannot reopen the review',async({page})
 test('actual cross-origin server without CORS leaves paste usable',async({page})=>{const server=createServer((_request,response)=>{response.setHeader('Content-Type','text/html');response.end('<p>Not available across origins</p>');});await new Promise<void>(resolve=>server.listen(0,'127.0.0.1',resolve));try{const address=server.address();if(!address||typeof address==='string')throw Error('Missing server address');await open(page,`http://127.0.0.1:${address.port}/article`);await expect(page.getByRole('status',{name:'Reading status'})).toContainText('Paste up to');await expect(field(page)).toHaveValue('');await field(page).fill('Reviewed paste');await expect(field(page)).toHaveValue('Reviewed paste');}finally{await new Promise<void>(resolve=>server.close(()=>resolve()));}});
 
 test('streamed sources enforce the byte limit and reject invalid UTF-8',async({page})=>{
- const result=await page.evaluate(async()=>{const {browserReadingSource}=await import('/src/browser/reading-source.ts');const original=window.fetch;let cancelled=0;const values=[];try{for(const bytes of [new Uint8Array(262145).fill(97),new Uint8Array([0xff])]){window.fetch=async()=>new Response(new ReadableStream({start(controller){controller.enqueue(bytes);},cancel(){cancelled++;}}),{headers:{'Content-Type':'text/plain'}});values.push(await browserReadingSource('https://reading.test/article',new AbortController().signal));}return {values,cancelled};}finally{window.fetch=original;}});
+ const result=await page.evaluate(async(pageSourceModule)=>{const {readPublicPageSource:browserReadingSource}=await import(pageSourceModule);const original=window.fetch;let cancelled=0;const values=[];try{for(const bytes of [new Uint8Array(262145).fill(97),new Uint8Array([0xff])]){window.fetch=async()=>new Response(new ReadableStream({start(controller){controller.enqueue(bytes);},cancel(){cancelled++;}}),{headers:{'Content-Type':'text/plain'}});values.push(await browserReadingSource('https://reading.test/article',new AbortController().signal));}return {values,cancelled};}finally{window.fetch=original;}},pageSourceModule);
  expect(result.values).toEqual([{blocked:true},undefined]);expect(result.cancelled).toBe(2);
 });
 test('a source timeout leaves manual review available',async({page})=>{

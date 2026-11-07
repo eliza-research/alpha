@@ -1,8 +1,10 @@
 # On-device speech: measurements and decisions, 2026-11-05
 
 Device: Pixel 10a `stallion`, `ro.soc.model` Tensor G4, Alpha userdebug image. Engine
-`b3eb2bf63b`, measured at Eliza pin `36236fc059`. The pin is now `b25d8aef29` with engine `6337fd4c4b`
-(same model bytes); that engine's qualification is recorded separately in the voice record. Raw results are under
+`b3eb2bf63b`, measured at Eliza pin `36236fc059`. The branch measured `b25d8aef29` with engine `6337fd4c4b`
+(same model bytes). Integration uses `ae1a9dda6712`, the reviewed Node26 staging fix over `94c8ca497675`, which preserves the current Alpha source
+and the speech branch. The recorded device measurements remain bound to their original
+source and artifacts, and do not qualify a new APK at the integration pin. Raw results are under
 [evidence](evidence/on-device-speech-2026-11-05). Everything here is development evidence from
 a dirty tree and a debug APK: not release, AOSP image or user acceptance.
 
@@ -295,7 +297,7 @@ Earlier FC-only probes showed a slowdown above N=64 and 438 ms for the encoder. 
 of those probes and does not apply to the layered graph. One 604M-weight model at N=64 panicked the
 kernel (`system_is_deadlocked_on_memory`); 24 separate models did not.
 
-## TPU decision (P-58)
+## TPU decision (P-80)
 
 The owner's rule is to use the TPU only if it is faster on the shipped path. On that path, live voice
 streams Phonon-2 during speech, so the user waits only for the stream's finish after the endpoint:

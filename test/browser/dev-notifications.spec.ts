@@ -52,8 +52,8 @@ test('access and channel controls change actual delivery and notification taps o
 });
 test('notification sources and installed development apps share launch identities',async({page})=>{
  const requests:string[]=[];page.on('request',request=>{if(!request.url().startsWith('http://127.0.0.1:'))requests.push(request.url());});
- const sources=await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');return {sources:(await registerPlugin<any>('AlphaNotifications').notificationApps()).apps,installed:(await registerPlugin<any>('DeviceApps').list()).apps};});expect(sources.sources).toEqual(sources.installed);expect(sources.sources.some((app:any)=>app.packageName==='browser.messages')).toBe(true);
- for(const [packageName,view] of [['browser.mail','inbox'],['browser.messages','messages']]){await page.evaluate(async(packageName)=>{const {registerPlugin}=await import('/src/platform-plugins.ts');await registerPlugin<any>('DeviceApps').launch({packageName});},packageName);await expect(page.locator('html')).toHaveAttribute('data-active-view',view);}
+ const sources=await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');return {sources:(await registerPlugin<any>('AlphaNotifications').notificationApps()).apps,installed:(await registerPlugin<any>('ElizaSystem').listLauncherApps()).apps};});expect(sources.sources).toEqual(sources.installed);expect(sources.sources.some((app:any)=>app.packageName==='browser.messages')).toBe(true);
+ for(const [packageName,view] of [['browser.mail','inbox'],['browser.messages','messages']]){await page.evaluate(async(packageName)=>{const {registerPlugin}=await import('/src/platform-plugins.ts');await registerPlugin<any>('ElizaSystem').launchApp({packageName});},packageName);await expect(page.locator('html')).toHaveAttribute('data-active-view',view);}
  expect(requests).toEqual([]);
 });
 test('history can be inspected and cleared in Settings and Back dismisses access controls',async({page})=>{

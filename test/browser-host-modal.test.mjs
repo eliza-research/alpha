@@ -1,4 +1,4 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from 'node:module';
+import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from './support/strip-types.mjs';
 const source=readFileSync('apps/app/src/prototype/browser-adapter.ts','utf8');
 const region=source.slice(source.indexOf('// host-modal:begin'),source.indexOf('// host-modal:end'));
 assert.ok(region.length>100,'host-modal region is present');

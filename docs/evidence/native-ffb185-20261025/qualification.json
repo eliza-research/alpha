@@ -1,0 +1,173 @@
+{
+  "schemaVersion": 1,
+  "scope": "New ARM64 component qualification only; not oldhashreproduction, notphysicalaudio/fullappacceptance",
+  "nativeCommit": "6003a10368d8a6d5fb1f70fe9c63a70866e8bcff",
+  "producerCommit": "58dfddf87ee5adec414746a86a23dada124fbbae",
+  "engine": {
+    "sha256": "ffb1855a8478780fda444bea058f584ce8c4267dcb0db62d5ec34b5ca3154625",
+    "bytes": 8062696,
+    "abi": "arm64-v8a",
+    "ffiAbi": 19
+  },
+  "companions": [
+    {
+      "name": "libelizavoicejni.so",
+      "sha256": "49f59561bf022650f813d79cf0ab0be84f53f37f908c679e05d80ce4e444a491"
+    },
+    {
+      "name": "libc++_shared.so",
+      "sha256": "cd61762848882a16c8244c964a6f396c0caa0b440588a210ce9cc4ab0e6d9f0c"
+    }
+  ],
+  "models": [
+    {
+      "path": "tts/paradee/paradee-8m-v1_1.gguf",
+      "bytes": 31275232,
+      "sha256": "f205ab055f0120d571aa6fda2deadde1e6fbc88e8d8bd56a592917fd0e50892e"
+    },
+    {
+      "path": "tts/paradee/misaki-en-us.lex",
+      "bytes": 12947790,
+      "sha256": "fbf09090cff0a41f3f579bf03ab9fc42710b04d7284767b10467a5f182c23925"
+    },
+    {
+      "path": "tts/paradee/espeak-ng-data/phontab",
+      "bytes": 58652,
+      "sha256": "1b40690667e1e9aa1ba5e5234773c799e7e72ea751426e5150423d53c3f24fa2"
+    },
+    {
+      "path": "tts/paradee/espeak-ng-data/phonindex",
+      "bytes": 43316,
+      "sha256": "384e5fa6f714ba5356c58008249b78699c31c1ad044b243068d263fb806b7d73"
+    },
+    {
+      "path": "tts/paradee/espeak-ng-data/phondata",
+      "bytes": 554740,
+      "sha256": "a0b643b155cb6b12628d9e7865b57d9fca0d35844614f2594a5e009c80c80bb4"
+    },
+    {
+      "path": "tts/paradee/espeak-ng-data/intonations",
+      "bytes": 2312,
+      "sha256": "031a105bf6bb2ebcd73a2c579ccfb42469b27266db0078af65ae298fd3588b21"
+    },
+    {
+      "path": "tts/paradee/espeak-ng-data/en_dict",
+      "bytes": 168204,
+      "sha256": "1053f74a34af38abb6fbd64b7838dacbc655a687c48ce1bb663d364a127b05de"
+    },
+    {
+      "path": "tts/paradee/espeak-ng-data/lang/gmw/en",
+      "bytes": 140,
+      "sha256": "4605d5330801de3641c6e366d15f129ea1f5ffbce8722642aba01ace07ab9c83"
+    },
+    {
+      "path": "tts/paradee/espeak-ng-data/lang/gmw/en-US",
+      "bytes": 257,
+      "sha256": "41534c2a22df5dd4f1052ff9e1a33a3ea7bff5a26b5c02bdad5ba8ddb7524704"
+    },
+    {
+      "path": "asr/phonon-2-fv5.gguf",
+      "bytes": 330632256,
+      "sha256": "dc552eb786486167dde3ac80bbe49a6088c8ef39c03c257d5a090fc57b2c47b3"
+    },
+    {
+      "path": "vad/silero-vad-v5.gguf",
+      "bytes": 620736,
+      "sha256": "d348cd6d87ea53dcd3e6680698c88be326082e27dae899adef653d090bee4995"
+    },
+    {
+      "path": "notices/eSpeak-NG-NOTICE.txt",
+      "bytes": 1295,
+      "sha256": "46300c2f2b561c9d295bb73936da519f3718339a5b7b554599fa66ae8f227707"
+    },
+    {
+      "path": "notices/espeak-ng-COPYING",
+      "bytes": 35147,
+      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
+    },
+    {
+      "path": "notices/misaki-Apache-2.0.txt",
+      "bytes": 11357,
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    },
+    {
+      "path": "notices/misaki-NOTICE.txt",
+      "bytes": 961,
+      "sha256": "5322c2d07903ac2cc255d5b731343fa266e082cb281371bb6ee6656233f08320"
+    },
+    {
+      "path": "notices/spaCy-MIT.txt",
+      "bytes": 1128,
+      "sha256": "3f4378e67708fecacd3e27651c8bc0f977cf20789e19da0d81a2840e7cf573a2"
+    },
+    {
+      "path": "notices/Phonon-2-NOTICE.txt",
+      "bytes": 2741,
+      "sha256": "00624a5043e7ce74029317b024132ca5286116d6fbf3191d226374bc8273789f"
+    },
+    {
+      "path": "notices/Phonon-2-LICENSE-WEIGHTS-CC-BY-4.0.txt",
+      "bytes": 18657,
+      "sha256": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411"
+    }
+  ],
+  "toolchain": {
+    "host": "macOS arm64",
+    "ndk": "28.2.13676358",
+    "cmake": "cmake version 4.4.2",
+    "ninja": "1.13.2",
+    "compiler": "Android (13624864, +pgo, -bolt, +lto, -mlgo, based on r530567e) clang version 19.0.1 (https://android.googlesource.com/toolchain/llvm-project 97a699bf4812a18fb657c2779f5296a4ab2694d2)",
+    "cache": "GGML_CCACHE=OFF",
+    "jobs": 2,
+    "networkDuringBuild": "OS-denied",
+    "pathRemap": "# +-ffile-prefix-map=/Users/nubs/.local/state/eliza-five-lane-coordination/native-google-auth-implementation-20261025/engine-reproduction/source=/alphaphone-embedding-host +-ffile-prefix-map=/Users/nubs/.local/state/eliza-five-lane-coordination/native-google-auth-implementation-20261025/engine-reproduction/source/plugins/plugin-local-inference/native/llama.cpp=/alphaphone-embedding-host/plugins/plugin-local-inference/native/llama.cpp +-ffile-prefix-map=/Users/nubs/Library/Android/sdk=/work/android-sdk"
+  },
+  "sourceHelpers": [
+    {
+      "path": "packages/app/scripts/stage-elizavoice-lib.ts",
+      "sha256": "ef444509e10c30f8137f466d8eed6f0423bd0120dc96ce5101ffa8dfd9e6ef5d"
+    },
+    {
+      "path": "packages/app/scripts/build-helpers/arm64-simd.ts",
+      "sha256": "b5291bb3c31f2b284691ff7c465de31c7564ea1c1c22e726309661e64a47aee2"
+    },
+    {
+      "path": "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
+      "sha256": "a7706e5f2526e20a7685825b19e9bdd7115f61d2791d921ba55af4fe3e73baa1"
+    }
+  ],
+  "receipts": [
+    {
+      "path": "docs/evidence/native-ffb185-20261025/asr-wer.json",
+      "bytes": 31730,
+      "sha256": "dc1afc7efcc11ea95976f9904b56cd4a51967781aac46b6421294075b2be0f9a"
+    },
+    {
+      "path": "docs/evidence/native-ffb185-20261025/build-result.json",
+      "bytes": 452,
+      "sha256": "01a42e153c05c29e8f0c9a0f01ee906151ed5ecae9ca7c48218cbaeb0d5ca357"
+    },
+    {
+      "path": "docs/evidence/native-ffb185-20261025/component-result.json",
+      "bytes": 851,
+      "sha256": "2845f79966d96189b491ae3f8443850ba71078c58921d34fee4c64bc9ae044dc"
+    },
+    {
+      "path": "docs/evidence/native-ffb185-20261025/embedding.json",
+      "bytes": 754,
+      "sha256": "817db7951a16e5b640e07612a75c0d42dd9ebea0b3600e52d6aef79b699cb080"
+    },
+    {
+      "path": "docs/evidence/native-ffb185-20261025/paradee-roundtrip.json",
+      "bytes": 131012,
+      "sha256": "7f435455ba7b9d4adbe1516084da0796e35ab6d034f651fd28022ad00eb59d40"
+    }
+  ],
+  "qualifiedForPhysicalRelease": false,
+  "previousEngineSha256": "1aac36d40a2228f97c39baa629d1f3ad0c8388c39b18e0f2eacf3ec165669920",
+  "embeddingModel": {
+    "path": "android/app/src/main/assets/agent/models/bge-small-en-v1.5-f16.gguf",
+    "sha256": "f0b2fef971e8366438bfd2d9aefea1b0115919389448806d290237f638bae999",
+    "dimensions": 384
+  }
+}

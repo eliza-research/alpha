@@ -1,3 +1,4 @@
+import {calendarEditorReady} from './calendar-draft-readiness';
 import {holdCalendarTransactions} from './calendar-fixture';
 import {test,expect} from '@playwright/test';
 const key='alpha.browser.calendar.v1';
@@ -41,7 +42,7 @@ for(const kind of ['event','response'] as const)test(`${kind} dismissal aborts a
  await page.goto('/?mode=dev');
  const before=await page.evaluate(async kind=>{const {BrowserCalendar}=await import('/src/browser/calendar.ts');const calendar=new BrowserCalendar();await calendar.save({creationId:crypto.randomUUID(),calendarId:'local',title:'Original',begin:Date.now()+60000,end:Date.now()+120000,who:['maya']});const {calendarDocument}=await import('/src/browser/calendar-store.ts');const snapshot=await calendarDocument.capture(),row=JSON.parse(snapshot.raw!).events[0];(window as any).dismissedEdit=kind==='event'?calendar.edit({id:row.id,revision:row.revision}):calendar.editResponse({id:row.id,revision:row.revision,person:'maya',name:'Maya'});return snapshot.raw;},kind);
  const dialog=page.getByRole('dialog',{name:kind==='event'?'Edit calendar event':'Local guest response'});
- if(kind==='event')await dialog.getByLabel('Event title',{exact:true}).fill('Must roll back');else await dialog.getByLabel('Guest response',{exact:true}).selectOption('yes');
+ if(kind==='event'){await calendarEditorReady(dialog);await dialog.getByLabel('Event title',{exact:true}).fill('Must roll back');}else await dialog.getByLabel('Guest response',{exact:true}).selectOption('yes');
  await page.evaluate(kind=>{const put=IDBObjectStore.prototype.put;IDBObjectStore.prototype.put=function(value,key){const request=put.call(this,value,key);if(key==='alpha.browser.calendar.v1'&&(kind==='response'||JSON.stringify(value).includes('Must roll back'))){IDBObjectStore.prototype.put=put;this.transaction.addEventListener('abort',()=>(window as any).editAbortObserved=true);const cancel=[...document.querySelectorAll<HTMLButtonElement>('dialog button')].find(button=>button.textContent==='Cancel');if(!cancel)throw Error('No owned editor cancel action');cancel.click();}return request;};},kind);
  await dialog.getByRole('button',{name:kind==='event'?'Save event':'Save response',exact:true}).click();
  await expect(dialog).toHaveCount(0);expect(await page.evaluate(()=>(window as any).dismissedEdit)).toEqual({status:'cancelled'});

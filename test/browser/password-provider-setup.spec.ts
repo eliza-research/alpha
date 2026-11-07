@@ -14,7 +14,7 @@ async function nativeFixture(page:any,installation='installed',selection='none')
    {name:'AlphaConnection',methods:methods(['secureRead','addListener','removeListener'])},
    {name:'AlphaHostedResults',methods:methods(['status','pendingResult','addListener','removeListener'])},
    {name:'Agent',methods:methods(['getStatus'])},
-   {name:'DeviceApps',methods:methods(['buildInfo'])},
+   {name:'ElizaSystem',methods:methods(['getBuildInfo'])},
    {name:'DailyApps',methods:[...methods(['surfaceInfo','removeListener']),{name:'addListener',rtype:'callback'}]},
   ],nativeCallback:(plugin:string,method:string,input:any,callback:any)=>{f.listeners[input.eventName]??=[];f.listeners[input.eventName].push(callback);return 'fixture-listener';},nativePromise:async(plugin:string,method:string,input:any)=>{
    if(plugin==='AlphaNotifications')return {permissionGranted:true,appEnabled:true};
@@ -23,7 +23,7 @@ async function nativeFixture(page:any,installation='installed',selection='none')
    if(plugin==='AlphaDevice'&&method==='openPasswordProvider'){f.calls.push(input.action);if(f.fail)throw Error('no handler');return {status:f.unexpected?'unknown':'opened'};}
    if(method==='secureRead')return {value:null};
    if(plugin==='Agent')return {packaged:false,state:'unavailable'};
-   if(plugin==='DeviceApps')return {launcher:false,version:'fixture'};
+   if(plugin==='ElizaSystem'&&method==='getBuildInfo')return {launcher:false,version:'fixture'};
    return {};
   }};
  },{installation,selection});

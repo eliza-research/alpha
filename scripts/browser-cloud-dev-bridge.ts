@@ -1,9 +1,13 @@
+import {mapsTilePath} from '../apps/app/src/runtime/managed-service-routes.ts';
 import {productionCloud, stagingCloud, cloudStorageNamespace} from '../apps/app/src/runtime/cloud-deployment.generated.ts';
 import {createCloudResidentHost} from './cloud-resident-host.mjs';
-import {managedGoogleRequest,boundedServiceJson} from '../backend/managed-google-route-policy.ts';
-import {CLOUD_EMAIL_CODE,emailCodeExpiresAt,emailCodeSendBody,emailCodeVerifyBody} from './cloud-email-code.ts';
+import {startManagedGoogleAgentHost} from '../backend/native-google-agent-host.ts';
+import {managedGoogleRequest,boundedServiceJson,object} from '../backend/managed-google-route-policy.ts';
+import {CLOUD_EMAIL_CODE,emailCodeExpiresAt,emailCodeResendAt,emailCodeSendBody,emailCodeVerifyBody} from './cloud-email-code.ts';
+import {parseCloudServiceInfo} from '../apps/app/src/runtime/cloud-service-info.ts';
+import {readCloudVoiceLimit,type CloudVoiceLimitFacts} from '../apps/app/src/runtime/cloud-voice-limit.ts';
 import {randomUUID,createHash,randomBytes} from 'node:crypto';
-import {mkdir,readFile,writeFile,rename,lstat} from 'node:fs/promises';
+import {mkdir,readFile,writeFile,rename,lstat,unlink} from 'node:fs/promises';
 import path from 'node:path';
 import {homedir} from 'node:os';
 import type {IncomingMessage,ServerResponse} from 'node:http';
@@ -18,34 +22,38 @@ const publicCredential=(c:Credential)=>({credentialReference:c.credentialReferen
 function environment(value:unknown):Environment{if(value!=='production'&&value!=='staging')throw Error('Unsupported Cloud environment');return value;}
 function refusal(status:number,code:string){return Object.assign(Error(code),{status,code});}
 function requestId(value:unknown):string{if(typeof value!=='string'||!UUID.test(value))throw Error('Invalid request identity');return value;}
-function object(value:unknown):Record<string,any>{if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Invalid Cloud request');return value as Record<string,any>;}
 /** DEV transport only. Canonical Cloud owns login, identity, plan entitlement and speech authorization. */
-export function createBrowserCloudDevHandler(options:{profile:string;request?:typeof fetch;environment?:Environment;diagnostic?:(event:{environment:Environment;operation:string;status:number;code?:string})=>void;resident?:{bind:(credential:{token:string;credentialId:string;reference:string;expiresAt?:number})=>Promise<unknown>;clear:()=>Promise<unknown>;status:(id?:string)=>unknown;ready:(signal:AbortSignal)=>Promise<unknown>}}){
+export function createBrowserCloudDevHandler(options:{profile:string;request?:typeof fetch;environment?:Environment;diagnostic?:(event:{environment:Environment;operation:string;status:number;code?:string})=>void;resident?:{selectOwn?:(input:{apiKey:string;cartesiaKey?:string},signal?:AbortSignal)=>Promise<unknown>;selectCloud?:(signal?:AbortSignal)=>Promise<unknown>;bind:(credential:{token:string;credentialId:string;reference:string;expiresAt?:number})=>Promise<unknown>;clear:()=>Promise<unknown>;status:(id?:string)=>unknown;ready:(signal:AbortSignal)=>Promise<unknown>}}){
+ const agentEnvironment=options.environment??'production';
  const profile=path.resolve(options.profile,cloudStorageNamespace.replaceAll(':','-')),stateFile=path.join(profile,'credentials.json'),initialFile=path.join(profile,'initial-credential.json'),fetchCloud=options.request??fetch;
  let queue:Promise<unknown>=Promise.resolve();
  const pending=new Map<string,{environment:Environment;expiresAt:number;previousReference:string|null}>();
  const claims=new Map<string,{environment:Environment;previousReference:string|null;expiresAt:number;credential:Credential}>();
  const active=new Map<string,{controller:AbortController;environment:Environment;credentialId?:string}>();
+ // This host admits Calendar writes only after an explicit current-owner Sync intent.
+ // A resident/source restart requires a fresh intent; renderer load defaults never enable it.
+ let calendarGeneration=0,calendarAccess:{credentialId:string;reference:string;generation:number}|null=null;
+ const resetCalendarAccess=()=>{calendarAccess=null;return ++calendarGeneration;};
+ const calendarAllowed=(binding:{credentialId:string;reference:string},generation:number)=>calendarAccess?.credentialId===binding.credentialId&&calendarAccess.reference===binding.reference&&calendarAccess.generation===generation&&generation===calendarGeneration;
  async function privateFile(file:string){const st=await lstat(file);if(!st.isFile()||st.isSymbolicLink()||st.uid!==process.getuid?.()||(st.mode&0o077))throw Error('Private Cloud file required');return readFile(file,'utf8');}
  async function directory(){await mkdir(profile,{recursive:true,mode:0o700});const st=await lstat(profile);if(!st.isDirectory()||st.isSymbolicLink()||st.uid!==process.getuid?.()||(st.mode&0o077))throw Error('Private Cloud directory required');}
  async function load():Promise<Partial<Record<Environment,Credential>>>{
   await directory();try{return object(JSON.parse(await privateFile(stateFile)));}catch(error:any){if(error.code!=='ENOENT')throw error;}
   try{const seed=object(JSON.parse(await privateFile(initialFile))),env=environment(seed.environment);if(!REFERENCE.test(seed.credentialReference)||!UUID.test(seed.credentialId)||typeof seed.credentialFile!=='string'||!path.isAbsolute(seed.credentialFile)||typeof seed.credentialSha256!=='string'||!UUID.test(seed.userId)||!UUID.test(seed.organizationId))throw Error('Invalid initial Cloud binding');return {[env]:seed as Credential};}catch(error:any){if(error.code==='ENOENT')return {};throw error;}
  }
- async function save(value:Partial<Record<Environment,Credential>>){if(options.resident)await options.resident.clear();await directory();const tmp=stateFile+'.'+randomUUID();await writeFile(tmp,JSON.stringify(value)+'\n',{mode:0o600,flag:'wx'});await rename(tmp,stateFile);}
+ async function save(value:Partial<Record<Environment,Credential>>){resetCalendarAccess();if(options.resident)await options.resident.clear();await directory();const tmp=stateFile+'.'+randomUUID();await writeFile(tmp,JSON.stringify(value)+'\n',{mode:0o600,flag:'wx'});await rename(tmp,stateFile);}
  function serial<T>(run:()=>Promise<T>):Promise<T>{const result=queue.then(run,run);queue=result.catch(()=>{});return result;}
  async function keyFor(c:Credential){if(c.token)return c.token;if(!c.credentialFile||!c.credentialSha256)throw Error('Cloud credential unavailable');const token=(await privateFile(c.credentialFile)).trim();if(createHash('sha256').update(token).digest('hex')!==c.credentialSha256)throw Error('Cloud credential changed');return token;}
  async function admitted(env:Environment,reference:unknown,id?:unknown){const c=(await load())[env];if(!c)throw refusal(401,'credentials-missing');if(c.credentialReference!==reference||id!==undefined&&c.credentialId!==id)throw refusal(409,'account-changed');if(c.expiresAt!==undefined&&c.expiresAt<=Date.now())throw refusal(401,'expired');return c;}
  async function current(env:Environment,c:Credential,signal:AbortSignal){signal.throwIfAborted();await admitted(env,c.credentialReference,c.credentialId);await keyFor(c);signal.throwIfAborted();}
  function retire(env:Environment){for(const row of active.values())if(row.environment===env)row.controller.abort(new DOMException('Cloud account changed','AbortError'));for(const [id,login]of pending)if(login.environment===env)pending.delete(id);for(const [ref,claim]of claims)if(claim.environment===env)claims.delete(ref);}
  async function canonical(env:Environment,route:string,signal:AbortSignal,init:RequestInit={},credential?:Credential){const headers=new Headers(init.headers);headers.set('Accept','application/json');headers.set('User-Agent','AlphaPhone-Browser-Cloud/1');if(credential)headers.set('Authorization','Bearer '+await keyFor(credential));const result=await fetchCloud(authorities[env]+route,{...init,headers,redirect:'error',signal});signal.throwIfAborted();return result;}
- // In-app sign-in for the browser development host (email code only: Google needs the phone's App
- // Link). The same Steward and mobile App Auth contracts as AlphaCloudSignInPlugin; the Steward
+ // Browser-host sign-in: email stays in app; Google uses canonical hosted OAuth, not Android App Links. The same Steward and mobile App Auth contracts as AlphaCloudSignInPlugin; the Steward
  // session, PKCE material and the minted key stay in this process and the private profile file.
  type SignInAttempt={controller:AbortController;id:string;environment:Environment;email:string;verifier:string;expiresAt:number;resendAt:number;busy:boolean;failed:number;mfa?:{type:string;challengeId:string}};
  let signIn:SignInAttempt|null=null;
- // One code send a minute, whatever the address; five wrong codes end an attempt (as AlphaCloudSignInPlugin).
- let lastEmailSendAt=0;const MAX_VERIFY_ATTEMPTS=5;
+ // One code send per 30 seconds minimum, across addresses; honor longer server deadlines.
+ let lastEmailSendAt=0,emailSendAllowedAt=0;const MAX_VERIFY_ATTEMPTS=5;
  const SIGN_IN_CLIENT='ai.elizaresearch.alphaphone',SIGN_IN_CALLBACK={production:productionCloud.web+'/alphaphone/auth/callback',staging:stagingCloud.web+'/alphaphone/auth/callback'} as const;
  const signInFailure=(code:string)=>Object.assign(Error(code),{status:409,code});
  const signInStatus=(stage:string,status:number)=>status===429?'rate-limited':status===410?'expired':status===403?'account-check':(status===400||status===401)&&(stage==='verify'||stage==='mfa')?'invalid-code':status>=500?'unavailable':'rejected';
@@ -58,7 +66,7 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
   const codes=new Set(['invalid_client','binding_mismatch','invalid_request','authorization_code_expired','authorization_complete','credential_proof_invalid','invalid_authorization_code','invalid_code_verifier','server_configuration_error']);
   const code=codes.has(data.error)?data.error:codes.has(data.code)?data.code:undefined;
   options.diagnostic?.({environment:env,operation:route,status:response.status,...(code?{code}:{})});
-  return {status:response.status,data};
+  return {status:response.status,data,retryAfter:response.headers.get('Retry-After')};
  }
  const pkce=()=>{const verifier=randomBytes(48).toString('base64url');return {verifier,challenge:createHash('sha256').update(verifier).digest('base64url'),state:randomBytes(32).toString('base64url')};};
  async function signInComplete(attempt:SignInAttempt,session:Record<string,any>,signal:AbortSignal){
@@ -88,20 +96,104 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
    return {status:'authenticated',environment:env,expiresAt,accountCreated:typeof connected.data.accountCreated==='boolean'?connected.data.accountCreated:null};
   }finally{void signInCall(env,'/steward/auth/logout',typeof refresh==='string'?{refreshToken:refresh}:{},AbortSignal.timeout(10000),token).catch(()=>{});}
  }
+
+ async function createCliSession(env:Environment,signal:AbortSignal){const previous=(await load())[env]?.credentialReference??null;const response=await canonical(env,'/api/auth/cli-session',signal,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}),result=object(await response.json());if(response.ok){if(!UUID.test(result.sessionId)||!Number.isFinite(Date.parse(result.expiresAt)))throw Error('Invalid login session');signal.throwIfAborted();pending.set(result.sessionId,{environment:env,expiresAt:Date.parse(result.expiresAt),previousReference:previous});}return {status:response.status,data:result};}
+ async function pollCliSession(env:Environment,id:string,signal:AbortSignal){const login=pending.get(id);if(!login||login.environment!==env||login.expiresAt<=Date.now())throw refusal(410,'expired');if(((await load())[env]?.credentialReference??null)!==login.previousReference)throw Error('Cloud account changed');const response=await canonical(env,'/api/auth/cli-session/'+id,signal),result=object(await response.json());if(result.status==='authenticated'){
+      const token=['token','accessToken','stewardToken','sessionToken','apiKey'].map(k=>result[k]).find(v=>typeof v==='string'&&v.trim());if(!token){return {status:response.status,data:{status:'authenticated'}};}
+      const identityResponse=await canonical(env,'/api/v1/user',signal,{}, {token}as Credential),identity=object(await identityResponse.json()),who=object(identity.data??identity);if(!identityResponse.ok||!UUID.test(who.id)||!UUID.test(who.organization_id))throw Error('Cloud owner verification failed');
+      if(result.expiresAt&&(!Number.isFinite(Date.parse(result.expiresAt))||Date.parse(result.expiresAt)<=Date.now()))throw Error('Cloud credential expired');
+      const reference='browser-cloud-reference:'+randomUUID(),claimed:Credential={token,credentialReference:reference,credentialId:randomUUID(),userId:who.id,organizationId:who.organization_id,...(result.expiresAt?{expiresAt:Date.parse(result.expiresAt)}:{})};signal.throwIfAborted();if(login.expiresAt<=Date.now())throw refusal(410,'expired');if(pending.get(id)!==login||((await load())[env]?.credentialReference??null)!==login.previousReference)throw refusal(409,'account-changed');signal.throwIfAborted();claims.set(reference,{environment:env,previousReference:login.previousReference,expiresAt:login.expiresAt,credential:claimed});pending.delete(id);return {status:response.status,data:{status:'authenticated',credentialReference:reference,userId:who.id,organizationId:who.organization_id,...(result.expiresAt?{expiresAt:result.expiresAt}:{})}};
+     }return {status:response.status,data:result};}
+ type GoogleAttempt={id:string;environment:Environment;controller:AbortController;sessionId?:string;expiresAt:number;busy:boolean;phase:'preparing'|'committing'|'committed'|'failed';outcome?:{status:'authenticated';environment:Environment;expiresAt:number;accountCreated:null;attemptId:string;credentialId:string}};
+ let googleAttempt:GoogleAttempt|null=null;
+ async function cancelGoogleAttempt(expectedId?:string){
+  const attempt=googleAttempt;if(!attempt||expectedId!==undefined&&attempt.id!==expectedId)return {};
+  // Once rename is dispatched, cancellation cannot truthfully promise the old account.
+  // Wait for its serialized outcome instead of aborting and misreporting a committed login.
+  if(attempt.phase==='committing'||attempt.phase==='committed'){
+   await serial(async()=>{});return attempt.outcome??{status:'unavailable'};
+  }
+  googleAttempt=null;attempt.controller.abort();if(attempt.sessionId)pending.delete(attempt.sessionId);return {status:'cancelled'};
+ }
+ async function saveGoogleCredential(value:Partial<Record<Environment,Credential>>,attempt:GoogleAttempt,current:()=>void){
+  current();resetCalendarAccess();if(options.resident)await options.resident.clear();current();
+  await directory();current();const tmp=stateFile+'.'+randomUUID();
+  try{
+   await writeFile(tmp,JSON.stringify(value)+'\n',{mode:0o600,flag:'wx'});current();
+   // This synchronous phase transition and rename dispatch form the commit boundary.
+   attempt.phase='committing';await rename(tmp,stateFile);attempt.phase='committed';
+  }catch(error){attempt.phase='failed';throw error;}
+  finally{await unlink(tmp).catch(()=>{});}
+ }
+
+ async function browserGoogleAvailable(env:Environment,signal:AbortSignal){
+  const response=await canonical(env,'/steward/auth/providers?tenantId='+encodeURIComponent((env==='production'?productionCloud:stagingCloud).tenant),signal,{method:'GET'});
+  if(!response.ok){await response.body?.cancel();return false;}
+  const data=await boundedServiceJson(response);return data.google===true||Array.isArray(data.oauth)&&data.oauth.includes('google');
+ }
  async function signInOperation(data:Record<string,any>,signal:AbortSignal){
-  if(data.operation==='signInCancel'){signIn?.controller.abort();signIn=null;await serial(async()=>{});return {};}
-  if(data.operation==='signInStatus')return {active:!!signIn,inApp:true,google:false,email:true};
+  if(data.operation==='signInServiceInfo'){
+   if(Object.keys(data).some(key=>key!=='operation'&&key!=='environment'))throw signInFailure('invalid-request');
+   const env=environment(data.environment);if(options.environment&&env!==options.environment)throw signInFailure('invalid-request');
+   const bounded=AbortSignal.any([signal,AbortSignal.timeout(15000)]),response=await canonical(env,'/api/public/service',bounded,{method:'GET'});
+   if(response.status!==200){await response.body?.cancel();throw signInFailure('unavailable');}
+   const result=await boundedServiceJson(response);bounded.throwIfAborted();
+   return {success:true,version:1,service:parseCloudServiceInfo(result)};
+  }
+  if(data.operation==='signInCancel'){const google=await cancelGoogleAttempt();if('status'in google&&google.status==='authenticated')return google;signIn?.controller.abort();signIn=null;await serial(async()=>{});return {};}
+  if(data.operation==='signInStatus')return {active:!!signIn||!!googleAttempt,inApp:true,google:await browserGoogleAvailable(environment(data.environment??options.environment??'production'),AbortSignal.any([signal,AbortSignal.timeout(10000)])).catch(()=>false),email:true};
+  if(data.operation==='signInCancelGoogle'){return cancelGoogleAttempt(data.attemptId);}
+  if(data.operation==='signInStartGoogle'){
+   if(Object.keys(data).some(key=>!['operation','environment','attemptId'].includes(key)))throw signInFailure('invalid-request');
+   const env=environment(data.environment);if(options.environment&&env!==options.environment)throw signInFailure('invalid-request');
+   if(signIn||googleAttempt)throw signInFailure('login-active');
+   if(!UUID.test(data.attemptId))throw signInFailure('invalid-request');
+   const attempt:GoogleAttempt={id:data.attemptId,environment:env,controller:new AbortController(),expiresAt:Date.now()+120000,busy:false,phase:'preparing'};googleAttempt=attempt;
+   const current=()=>{signal.throwIfAborted();attempt.controller.signal.throwIfAborted();if(googleAttempt!==attempt)throw signInFailure('cancelled');};
+   try{
+    if(!await browserGoogleAvailable(env,AbortSignal.any([signal,attempt.controller.signal,AbortSignal.timeout(10000)])))throw signInFailure('unavailable');current();
+    const result=await createCliSession(env,AbortSignal.any([signal,attempt.controller.signal]));
+    if(result.status<200||result.status>=300)throw signInFailure(signInStatus('google',result.status));
+    attempt.sessionId=String(result.data.sessionId);attempt.expiresAt=Math.min(Date.parse(String(result.data.expiresAt)),Date.now()+600000);current();if(!(attempt.expiresAt>Date.now()))throw signInFailure('expired');
+    return {attemptId:attempt.id,expiresAt:attempt.expiresAt,browserUrl:(env==='production'?productionCloud.web:stagingCloud.web)+'/auth/cli-login?session='+encodeURIComponent(attempt.sessionId)+'&app=alpha&provider=google'};
+   }catch(error){if(googleAttempt===attempt)await cancelGoogleAttempt(attempt.id);throw error;}
+  }
+  if(data.operation==='signInPollGoogle'){
+   const attempt=googleAttempt;
+   if(!attempt||attempt.id!==data.attemptId||!attempt.sessionId||Date.now()>=attempt.expiresAt){if(attempt&&attempt.id===data.attemptId)await cancelGoogleAttempt(attempt.id);throw signInFailure('expired');}
+   if(attempt.busy)throw signInFailure('login-active');attempt.busy=true;
+   const current=()=>{signal.throwIfAborted();attempt.controller.signal.throwIfAborted();if(googleAttempt!==attempt)throw signInFailure('cancelled');};
+   try{
+    const result:{status:number;data:Record<string,any>}=await pollCliSession(attempt.environment,attempt.sessionId,AbortSignal.any([signal,attempt.controller.signal]));current();
+    if(result.status<200||result.status>=300)throw signInFailure(signInStatus('google',result.status));
+    if(result.data.status!=='authenticated')return {status:'pending'};
+    const reference=result.data.credentialReference;
+    await serial(async()=>{
+     current();const state=await load(),claim=typeof reference==='string'?claims.get(reference):undefined;
+     current();if(!claim||claim.environment!==attempt.environment||claim.expiresAt<=Date.now()||!claim.credential.expiresAt||claim.credential.expiresAt<=Date.now()||(state[attempt.environment]?.credentialReference??null)!==claim.previousReference)throw signInFailure('account-changed');
+     state[attempt.environment]=claim.credential;
+     await saveGoogleCredential(state,attempt,current);
+     attempt.outcome={status:'authenticated',environment:attempt.environment,expiresAt:claim.credential.expiresAt,accountCreated:null,attemptId:attempt.id,credentialId:claim.credential.credentialId};
+     retire(attempt.environment);claims.delete(reference as string);
+    });
+    // Do not recheck an aborted request after the durable commit: report what committed.
+    if(googleAttempt===attempt)googleAttempt=null;return attempt.outcome!;
+   }catch(error){if(googleAttempt===attempt)await cancelGoogleAttempt(attempt.id);throw error;}finally{attempt.busy=false;}
+  }
   if(data.operation==='signInStartEmail'){
+   if(googleAttempt)throw signInFailure('login-active');
    const env=environment(data.environment);if(options.environment&&env!==options.environment)throw Error('Cloud environment mismatch');const email=typeof data.email==='string'?data.email.trim().toLowerCase():'';
    if(email.length>320||!/^[^\s@\p{Cc}\p{Cf}]+@[^\s@\p{Cc}\p{Cf}]+\.[^\s@\p{Cc}\p{Cf}]+$/u.test(email))throw signInFailure('invalid-email');
    if(signIn?.busy)throw signInFailure('login-active');
-   if(Date.now()<lastEmailSendAt+60000)throw signInFailure('cooldown');
+   if(Date.now()<Math.max(lastEmailSendAt+30000,emailSendAllowedAt))throw signInFailure('cooldown');
    const attempt:SignInAttempt={controller:new AbortController(),id:randomUUID(),environment:env,email,verifier:randomBytes(48).toString('base64url'),expiresAt:0,resendAt:0,busy:true,failed:0};signIn=attempt;lastEmailSendAt=Date.now();signal=AbortSignal.any([signal,attempt.controller.signal]);
    try{
     const sent=await signInCall(env,CLOUD_EMAIL_CODE.sendPath,emailCodeSendBody(env,email,attempt.verifier),signal);
+    const reply=sent.data.data&&typeof sent.data.data==='object'?sent.data.data:sent.data;
+    emailSendAllowedAt=Math.max(emailSendAllowedAt,emailCodeResendAt(reply.resendAt,sent.retryAfter));
     if(sent.status!==200&&sent.status!==202)throw signInFailure(signInStatus('send',sent.status));
-    const reply=sent.data.data&&typeof sent.data.data==='object'?sent.data.data:sent.data,expiresAt=emailCodeExpiresAt(reply.expiresAt);
-    attempt.expiresAt=expiresAt;attempt.resendAt=lastEmailSendAt+60000;return {attemptId:attempt.id,expiresAt,resendAt:attempt.resendAt};
+    const expiresAt=emailCodeExpiresAt(reply.expiresAt);
+    attempt.expiresAt=expiresAt;attempt.resendAt=emailSendAllowedAt;return {attemptId:attempt.id,expiresAt,resendAt:attempt.resendAt};
    }catch(error){if(signIn===attempt)signIn=null;throw error;}finally{attempt.busy=false;}
   }
   if(data.operation==='signInVerifyEmail'||data.operation==='signInVerifyMfa'){
@@ -146,11 +238,21 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
     if(!options.resident||env!==(options.environment??'production')||audio)throw Error('Cloud resident host unavailable');
     if(data.operation==='residentStart'){send(res,200,await options.resident.ready(controller.signal));return;}
     const value=await serial(async()=>{
-     if(data.operation==='residentClear')return options.resident!.clear();
+     if(data.operation==='residentOwn'){if(!options.resident?.selectOwn||Object.keys(data).some(key=>!['operation','environment','apiKey','cartesiaKey'].includes(key)))throw Error('Own provider setup unavailable');controller.signal.throwIfAborted();return options.resident.selectOwn({apiKey:data.apiKey,...(data.cartesiaKey?{cartesiaKey:data.cartesiaKey}:{})},controller.signal);}
+     if(data.operation==='residentCloud'){if(!options.resident?.selectCloud)throw Error('Provider selection unavailable');controller.signal.throwIfAborted();return options.resident.selectCloud(controller.signal);}
+     if(data.operation==='residentClear'){resetCalendarAccess();return options.resident!.clear();}
      if(data.operation==='residentStatus')return options.resident!.status(typeof data.credentialId==='string'?data.credentialId:undefined);
+     if(data.operation==='residentGoogleCalendarAccess'){
+      if(env!==agentEnvironment||typeof data.calendarEdits!=='boolean'||!UUID.test(data.credentialId)||Object.keys(data).some(key=>!['operation','environment','credentialId','calendarEdits'].includes(key)))throw Error('Invalid Calendar access intent');
+      const c=(await load())[env];if(!c||c.credentialId!==data.credentialId)throw refusal(409,'account-changed');
+      const generation=calendarGeneration;await current(env,c,controller.signal);if(generation!==calendarGeneration)throw refusal(409,'calendar-owner-access-changed');
+      calendarAccess=data.calendarEdits?{credentialId:c.credentialId,reference:c.credentialReference,generation}:null;
+      return {calendarEdits:data.calendarEdits};
+     }
      if(data.operation!=='residentBind'||!UUID.test(data.credentialId))throw Error('Invalid resident operation');
      const c=(await load())[env];if(!c||c.credentialId!==data.credentialId)throw refusal(409,'account-changed');
      await admitted(env,c.credentialReference,data.credentialId);controller.signal.throwIfAborted();
+     resetCalendarAccess();
      const result=await options.resident!.bind({token:await keyFor(c),credentialId:c.credentialId,reference:c.credentialReference,expiresAt:c.expiresAt});
      try{await current(env,c,controller.signal);}catch(error){await options.resident!.clear();throw error;}
      return result;
@@ -174,19 +276,15 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
    if(data.operation==='request'){
     const input=object(data.input);if(typeof input.url!=='string'||input.url.length>12000||/[\\#\s]/.test(input.url))throw Error('Invalid Cloud URL');const rawPath=input.url.split('?')[0];if(rawPath.includes('%')||rawPath.includes('..'))throw Error('Invalid Cloud path');const url=new URL(input.url);if(url.origin!==authorities[env]||url.username||url.password||url.hash||url.port)throw Error('Unsupported Cloud authority');
     const route=url.pathname+url.search;const method=input.method;
-    const mapsPost=method==='POST'&&['/api/v1/maps/geocode','/api/v1/maps/reverse','/api/v1/maps/places/search','/api/v1/maps/places/details','/api/v1/maps/routes'].includes(route);
+    const mapsPost=method==='POST'&&['/api/v1/maps/geocode','/api/v1/maps/reverse','/api/v1/maps/places/search','/api/v1/maps/places/details','/api/v1/maps/routes','/api/v1/maps/tiles/viewport'].includes(route);
+    const mapsTile=method==='GET'&&input.body===undefined&&mapsTilePath(route);
     const headers=object(input.headers??{}),identityHeaders=Object.keys(headers).filter(k=>k.toLowerCase()==='idempotency-key');
-    if(Object.keys(headers).some(k=>!['accept','content-type',...(mapsPost?['idempotency-key']:[])].includes(k.toLowerCase())))throw Error('Unsupported Cloud request header');
+    if(Object.keys(headers).some(k=>!['accept','content-type',...((mapsPost||mapsTile)?['idempotency-key']:[])].includes(k.toLowerCase())))throw Error('Unsupported Cloud request header');
     let mapsRequestId:string|undefined;
-    if(mapsPost){mapsRequestId=headers[identityHeaders[0]];if(identityHeaders.length!==1||typeof mapsRequestId!=='string'||!/^[A-Za-z0-9_-]{1,128}$/.test(mapsRequestId)||typeof input.body!=='string'||Buffer.byteLength(input.body)>128*1024)throw Error('Invalid Maps request');object(JSON.parse(input.body));}
+    if(mapsPost||mapsTile){mapsRequestId=headers[identityHeaders[0]];if(identityHeaders.length!==1||typeof mapsRequestId!=='string'||!/^[A-Za-z0-9_-]{1,128}$/.test(mapsRequestId)||mapsPost&&(typeof input.body!=='string'||Buffer.byteLength(input.body)>128*1024))throw Error('Invalid Maps request');if(mapsPost)object(JSON.parse(input.body));}
     const create=method==='POST'&&route==='/api/auth/cli-session',poll=method==='GET'&&/^\/api\/auth\/cli-session\/[0-9a-f-]{36}$/i.test(route);
-    if(create){if(input.credentialReference||Object.keys(object(JSON.parse(input.body??'{}'))).length)throw Error('Invalid login creation');const previous=(await load())[env]?.credentialReference??null;const response=await canonical(env,route,controller.signal,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}),result=object(await response.json());if(response.ok){if(!UUID.test(result.sessionId)||!Number.isFinite(Date.parse(result.expiresAt)))throw Error('Invalid login session');controller.signal.throwIfAborted();pending.set(result.sessionId,{environment:env,expiresAt:Date.parse(result.expiresAt),previousReference:previous});}send(res,200,{status:response.status,data:result});return;}
-    if(poll){if(input.credentialReference||input.body!==undefined)throw Error('Invalid login poll');const id=route.split('/').at(-1)!,login=pending.get(id);if(!login||login.environment!==env||login.expiresAt<=Date.now())throw refusal(410,'expired');if(((await load())[env]?.credentialReference??null)!==login.previousReference)throw Error('Cloud account changed');const response=await canonical(env,route,controller.signal),result=object(await response.json());if(result.status==='authenticated'){
-      const token=['token','accessToken','stewardToken','sessionToken','apiKey'].map(k=>result[k]).find(v=>typeof v==='string'&&v.trim());if(!token){send(res,200,{status:response.status,data:{status:'authenticated'}});return;}
-      const identityResponse=await canonical(env,'/api/v1/user',controller.signal,{}, {token}as Credential),identity=object(await identityResponse.json()),who=object(identity.data??identity);if(!identityResponse.ok||!UUID.test(who.id)||!UUID.test(who.organization_id))throw Error('Cloud owner verification failed');
-      if(result.expiresAt&&(!Number.isFinite(Date.parse(result.expiresAt))||Date.parse(result.expiresAt)<=Date.now()))throw Error('Cloud credential expired');
-      const reference='browser-cloud-reference:'+randomUUID(),claimed:Credential={token,credentialReference:reference,credentialId:randomUUID(),userId:who.id,organizationId:who.organization_id,...(result.expiresAt?{expiresAt:Date.parse(result.expiresAt)}:{})};controller.signal.throwIfAborted();if(login.expiresAt<=Date.now())throw refusal(410,'expired');if(pending.get(id)!==login||((await load())[env]?.credentialReference??null)!==login.previousReference)throw refusal(409,'account-changed');controller.signal.throwIfAborted();claims.set(reference,{environment:env,previousReference:login.previousReference,expiresAt:login.expiresAt,credential:claimed});pending.delete(id);send(res,200,{status:response.status,data:{status:'authenticated',credentialReference:reference,userId:who.id,organizationId:who.organization_id,...(result.expiresAt?{expiresAt:result.expiresAt}:{})}});return;
-     }send(res,200,{status:response.status,data:result});return;}
+    if(create){if(input.credentialReference||Object.keys(object(JSON.parse(input.body??'{}'))).length)throw Error('Invalid login creation');send(res,200,await createCliSession(env,controller.signal));return;}
+    if(poll){if(input.credentialReference||input.body!==undefined)throw Error('Invalid login poll');send(res,200,await pollCliSession(env,route.split('/').at(-1)!,controller.signal));return;}
     // Public signing keys must work before/without account credentials. No bearer is attached.
     if(method==='GET'&&route==='/api/v1/subscription/entitlement-keys'&&input.body===undefined&&input.credentialReference===undefined){
      const response=await canonical(env,route,controller.signal),result=await boundedServiceJson(response);send(res,200,{status:response.status,data:result});return;
@@ -196,8 +294,8 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
     if(redeem){const body=object(JSON.parse(input.body??'null'));if(Object.keys(body).sort().join()!=='code,idempotencyKey'||typeof body.code!=='string'||body.code.length>128||typeof body.idempotencyKey!=='string'||!/^[A-Za-z0-9._:-]{8,128}$/.test(body.idempotencyKey))throw Error('Invalid subscription redemption');}
     const accountRead=method==='GET'&&input.body===undefined&&['/api/v1/user','/api/v1/billing/limits','/api/v1/subscription/entitlement','/api/v1/subscription/entitlement-keys','/api/v1/maps/capabilities'].includes(route);
     const selfRevoke=method==='DELETE'&&route==='/api/v1/api-keys/current'&&input.body===undefined;
-    if(!selfRevoke&&!redeem&&!accountRead&&!mapsPost&&!managedGoogleRequest(url,method,input.body))throw Error('Unsupported Cloud route');
-    const c=await admitted(env,input.credentialReference);active.get(ownedId)!.credentialId=c.credentialId;if(selfRevoke)await current(env,c,controller.signal);const response=await canonical(env,route,controller.signal,{method,...(input.body===undefined?{}:{headers:{'Content-Type':'application/json',...(mapsRequestId?{'Idempotency-Key':mapsRequestId}:{})},body:input.body})},c);if(selfRevoke)options.diagnostic?.({environment:env,operation:route,status:response.status});let result=await boundedServiceJson(response);await current(env,c,controller.signal);if(response.ok&&route==='/api/v1/user'&&result.success===true){const who=object(result.data);result={success:true,data:{id:who.id,organization_id:who.organization_id,...(typeof who.email==='string'?{email:who.email}:{})}};}if(selfRevoke)result={success:result.success,...(typeof result.status==='string'?{status:result.status}:{}),...(typeof result.credentialId==='string'?{credentialId:result.credentialId}:{}),...(typeof result.revokedAt==='string'?{revokedAt:result.revokedAt}:{})};send(res,200,{status:response.status,data:result});return;
+    if(!selfRevoke&&!redeem&&!accountRead&&!mapsPost&&!mapsTile&&!managedGoogleRequest(url,method,input.body))throw Error('Unsupported Cloud route');
+    const c=await admitted(env,input.credentialReference);active.get(ownedId)!.credentialId=c.credentialId;if(selfRevoke)await current(env,c,controller.signal);const response=await canonical(env,route,controller.signal,{method,headers:{...(input.body===undefined?{}:{'Content-Type':'application/json'}),...(mapsRequestId?{'Idempotency-Key':mapsRequestId}:{})},...(input.body===undefined?{}:{body:input.body})},c);if(selfRevoke)options.diagnostic?.({environment:env,operation:route,status:response.status});let result=await boundedServiceJson(response);await current(env,c,controller.signal);if(response.ok&&route==='/api/v1/user'&&result.success===true){const who=object(result.data);result={success:true,data:{id:who.id,organization_id:who.organization_id,...(typeof who.email==='string'?{email:who.email}:{})}};}if(selfRevoke)result={success:result.success,...(typeof result.status==='string'?{status:result.status}:{}),...(typeof result.credentialId==='string'?{credentialId:result.credentialId}:{}),...(typeof result.revokedAt==='string'?{revokedAt:result.revokedAt}:{})};send(res,200,{status:response.status,data:result});return;
    }
    if(data.operation==='stt'||data.operation==='tts'){
     const c=await admitted(env,data.credentialReference,data.credentialId);active.get(ownedId)!.credentialId=c.credentialId;
@@ -205,7 +303,12 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
     if(data.operation==='stt'){if(!audio)throw Error('Speech audio required');const form=new FormData();form.append('provider','cartesia');form.append('audio',audio,'recording.'+(audio.type.includes('ogg')?'ogg':audio.type.includes('mp4')?'mp4':audio.type.includes('wav')?'wav':'webm'));init={method:'POST',body:form};}
     else{if(audio||typeof data.text!=='string'||!data.text.trim()||data.text.length>5000)throw Error('Invalid speech text');init={method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:data.text,format:'mp3'})};}
     const response=await canonical(env,'/api/v1/voice/'+data.operation,controller.signal,init,c);
-    if(!response.ok){await response.body?.cancel();await current(env,c,controller.signal);send(res,response.status,{error:'Cloud voice request failed',code:'voice-http-'+response.status});return;}
+    if(!response.ok){
+     // A 429 keeps only its retry facts (cloud-voice-limit.ts); no Cloud or provider text crosses.
+     let limit:CloudVoiceLimitFacts|undefined;
+     if(response.status===429){let body:unknown=null;const reader=response.body?.getReader();try{if(reader){const chunks:Uint8Array[]=[];let size=0;for(;;){const part=await reader.read();if(part.done)break;size+=part.value.byteLength;if(size>16384)throw Error('Cloud limit body too large');chunks.push(part.value);}body=JSON.parse(Buffer.concat(chunks).toString('utf8'));}}catch{body=null;}finally{await reader?.cancel().catch(()=>{});}limit=readCloudVoiceLimit(response.headers.get('Retry-After'),body);}else await response.body?.cancel();
+     await current(env,c,controller.signal);send(res,response.status,{error:'Cloud voice request failed',code:'voice-http-'+response.status,...(limit?{limit}:{})});return;
+    }
     if(data.operation==='stt'){if(response.headers.get('X-Eliza-STT-Provider')!=='cartesia'){await response.body?.cancel();throw Error('Cloud transcription provider was not verified');}const result=object(await response.json());await current(env,c,controller.signal);if(typeof result.transcript!=='string'||!result.transcript.trim())throw Error('Cloud returned no transcript');send(res,200,{text:result.transcript,local:false});return;}
     const type=response.headers.get('content-type')?.split(';')[0];if(!['audio/mpeg','audio/wav','audio/mp3'].includes(type??'')){await response.body?.cancel();throw Error('Invalid Cloud speech response');}
     const reader=response.body?.getReader();if(!reader)throw Error('Empty Cloud speech');const output:Uint8Array[]=[];let total=0;try{for(;;){const value=await reader.read();if(value.done)break;total+=value.value.byteLength;if(total>8*1024*1024)throw Error('Cloud speech exceeded bounds');output.push(value.value);}}finally{await reader.cancel().catch(()=>{});}
@@ -219,23 +322,36 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
  // credential store and fences with the browser bridge; no bearer leaves it.
  const agentRead=async(input:{url:string;method:string;body?:unknown;credentialReference?:string;signal:AbortSignal})=>{
    const url=new URL(input.url);
-   if(url.origin!==authorities.production||url.username||url.password||url.hash||url.port||input.method!=='GET'||input.body!==undefined||!(url.pathname==='/api/v1/user'&&!url.search||['/api/v1/eliza/google/accounts','/api/v1/eliza/google/gmail/search','/api/v1/eliza/google/gmail/read','/api/v1/eliza/google/calendar/calendars','/api/v1/eliza/google/calendar/feed'].includes(url.pathname)&&managedGoogleRequest(url,'GET',undefined)))throw refusal(403,'agent-read-route-refused');
-   const c=await admitted('production',input.credentialReference);
-   const response=await canonical('production',url.pathname+url.search,input.signal,{},c);
-   const data=await boundedServiceJson(response);await current('production',c,input.signal);
+   if(url.origin!==authorities[agentEnvironment]||url.username||url.password||url.hash||url.port||input.method!=='GET'||input.body!==undefined||!(url.pathname==='/api/v1/user'&&!url.search||['/api/v1/eliza/google/accounts','/api/v1/eliza/google/gmail/search','/api/v1/eliza/google/gmail/read','/api/v1/eliza/google/calendar/calendars','/api/v1/eliza/google/calendar/feed'].includes(url.pathname)&&managedGoogleRequest(url,'GET',undefined)))throw refusal(403,'agent-read-route-refused');
+   const c=await admitted(agentEnvironment,input.credentialReference);
+   const response=await canonical(agentEnvironment,url.pathname+url.search,input.signal,{},c);
+   const data=await boundedServiceJson(response);await current(agentEnvironment,c,input.signal);
    return {status:response.status,data};
   };
- return Object.assign(handler,{
-  async agentCredential(){const c=(await load()).production;return c?publicCredential(c):null;},
-  agentRead,
-  async agentCalendarOperation(input:Parameters<typeof agentRead>[0]){
+ const agentCalendarOperation=async(input:Parameters<typeof agentRead>[0])=>{
    const url=new URL(input.url),body=input.body===undefined?undefined:JSON.stringify(input.body);
    if(!url.pathname.startsWith('/api/v1/eliza/google/calendar/sync-v1/'))return agentRead(input);
-   if(url.origin!==authorities.production||url.username||url.password||url.hash||url.port||!managedGoogleRequest(url,input.method,body))throw refusal(403,'agent-calendar-route-refused');
-   const c=await admitted('production',input.credentialReference);
-   const response=await canonical('production',url.pathname+url.search,input.signal,{method:input.method,...(body===undefined?{}:{headers:{'Content-Type':'application/json'},body})},c);
-   const data=await boundedServiceJson(response);await current('production',c,input.signal);return {status:response.status,data};
-  },
+   if(url.origin!==authorities[agentEnvironment]||url.username||url.password||url.hash||url.port||!managedGoogleRequest(url,input.method,body))throw refusal(403,'agent-calendar-route-refused');
+   const c=await admitted(agentEnvironment,input.credentialReference);
+   const response=await canonical(agentEnvironment,url.pathname+url.search,input.signal,{method:input.method,...(body===undefined?{}:{headers:{'Content-Type':'application/json'},body})},c);
+   const data=await boundedServiceJson(response);await current(agentEnvironment,c,input.signal);return {status:response.status,data};
+ };
+
+ async function startGoogleHost(apiToken:string,binding:{credentialId:string;reference:string}){
+  let retired=false;const generation=resetCalendarAccess();
+  const current=async()=>{if(retired||generation!==calendarGeneration)throw refusal(409,'account-changed');const c=(await load())[agentEnvironment];if(retired||generation!==calendarGeneration||!c||c.credentialId!==binding.credentialId||c.credentialReference!==binding.reference)throw refusal(409,'account-changed');await admitted(agentEnvironment,binding.reference,binding.credentialId);return publicCredential(c);};
+  const read=async(input:Parameters<typeof agentRead>[0])=>{await current();const result=await agentRead(input);await current();return result;};
+  const calendar=async(input:Parameters<typeof agentCalendarOperation>[0])=>{if(!new URL(input.url).pathname.startsWith('/api/v1/eliza/google/calendar/sync-v1/'))return read(input);await current();if(!calendarAllowed(binding,generation))throw refusal(403,'calendar-owner-access-disabled');const result=await agentCalendarOperation(input);await current();if(!calendarAllowed(binding,generation))throw refusal(409,'calendar-owner-access-changed');return result;};
+  const port={agentCredential:current,agentRead:read,agentGmailOperation:read,agentCalendarOperation:calendar};
+  await current();const host=await startManagedGoogleAgentHost({port,apiToken,environment:agentEnvironment,access:()=>({gmailChanges:false,calendarEdits:calendarAllowed(binding,generation)})});
+  return {port:host.port,close:()=>{retired=true;if(generation===calendarGeneration)resetCalendarAccess();return host.close();}};
+ }
+ return Object.assign(handler,{
+  startGoogleHost,
+
+  async agentCredential(){const c=(await load()).production;return c?publicCredential(c):null;},
+  agentRead,
+  agentCalendarOperation,
   async agentGmailOperation(input:Parameters<typeof agentRead>[0]){
    const url=new URL(input.url),route=url.pathname,body=input.body===undefined?undefined:JSON.stringify(input.body);
    const operation=/^\/api\/v1\/eliza\/google\/gmail\/inbox-v1\/operations(?:\/[A-Za-z0-9_-]{1,160}(?:\/dispatch)?)?$/.test(route);
@@ -251,12 +367,24 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
 export function browserCloudDevBridge():Plugin {
  return {name:'alpha-browser-cloud-dev-bridge',apply:'serve',async configureServer(server){
   const cloudResident=process.env.VITE_ALPHA_CLOUD_RESIDENT==='1';
-  if(process.env.ELIZA_DEV_ALLOW_TEST_MOCKS!=='1'&&!cloudResident)return;
+  const privatePreview=process.env.ALPHA_PRIVATE_LOCAL_PREVIEW==='1'&&process.env.VITE_ALPHA_PRIVATE_LOCAL_PREVIEW==='1'&&process.env.VITE_LOCAL_AGENT==='1'&&!!process.env.ALPHA_BROWSER_CLOUD_PROFILE;
+  if(process.env.ELIZA_DEV_ALLOW_TEST_MOCKS!=='1'&&!cloudResident&&!privatePreview)return;
   if(cloudResident&&(process.env.ELIZA_DEV_ALLOW_TEST_MOCKS==='1'||process.env.VITE_ELIZA_DEV_ALLOW_TEST_MOCKS==='1'||process.env.VITE_LOCAL_AGENT!=='1'||!process.env.ALPHA_ELIZA_SOURCE||!process.env.ALPHA_REMOTE_PROFILE))throw Error('Cloud resident requires real local source and mocks off');
   const profile=path.resolve(process.env.ALPHA_BROWSER_CLOUD_PROFILE??path.join(homedir(),'.local/share/alphaphone/browser-cloud'));
   const selected=environment(process.env.VITE_ALPHA_CLOUD_ENVIRONMENT??'production');
-  const resident=cloudResident?await createCloudResidentHost({source:path.resolve(process.env.ALPHA_ELIZA_SOURCE!),profile:path.resolve(process.env.ALPHA_REMOTE_PROFILE!),port:Number(process.env.ALPHA_REMOTE_PORT),environment:selected}):undefined;
+  let resident:Awaited<ReturnType<typeof createCloudResidentHost>>|undefined;
+  const currentResident=()=>{if(!resident)throw Error('Cloud resident host is unavailable');return resident;};
+  const residentPort=cloudResident?{selectOwn:(input:{apiKey:string;cartesiaKey?:string},signal?:AbortSignal)=>currentResident().selectOwn(input,signal),selectCloud:(signal?:AbortSignal)=>currentResident().selectCloud(signal),bind:(credential:Parameters<NonNullable<typeof resident>['bind']>[0])=>currentResident().bind(credential),clear:()=>currentResident().clear(),status:(id?:string)=>currentResident().status(id),ready:(signal:AbortSignal)=>currentResident().ready(signal)}:undefined;
+  const handler=createBrowserCloudDevHandler({profile,resident:residentPort,...(cloudResident?{environment:selected,diagnostic:(event:unknown)=>console.info('[alpha-cloud-auth]',JSON.stringify(event))}:{})});
+  if(cloudResident){
+   const profileMode=process.env.ALPHA_CLOUD_RESIDENT_PROFILE??'lean';
+   if(profileMode!=='lean'&&profileMode!=='full')throw Error('Invalid Cloud resident profile mode');
+   resident=await createCloudResidentHost({source:path.resolve(process.env.ALPHA_ELIZA_SOURCE!),profile:path.resolve(process.env.ALPHA_REMOTE_PROFILE!),port:Number(process.env.ALPHA_REMOTE_PORT),environment:selected,profileMode,cloudRealtimeVoice:process.env.ALPHA_DEV_CLOUD_REALTIME_VOICE==='1',
+    // Calendar writes require explicit current-owner intent plus the existing OAuth,
+    // canonical control and write-capability gates. Gmail remains read-only.
+    startGoogleHost:handler.startGoogleHost});
+  }
   if(resident)server.httpServer?.once('close',()=>{void resident.close();});
-  const handler=createBrowserCloudDevHandler({profile,resident,...(cloudResident?{environment:selected,diagnostic:(event:unknown)=>console.info('[alpha-cloud-auth]',JSON.stringify(event))}:{})});server.middlewares.use(BROWSER_CLOUD_BRIDGE_PATH,(req,res)=>{void handler(req,res);});
+  server.middlewares.use(BROWSER_CLOUD_BRIDGE_PATH,(req,res)=>{void handler(req,res);});
  }};
 }

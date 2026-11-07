@@ -1,9 +1,14 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from 'node:module';
-// The dependency-free tile region of the native adapter, evaluated without the renderer.
+import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from './support/strip-types.mjs';
+// The tile region of the native adapter (Alpha's labels and theme) over the shared truthful
+// presentation at the pin (@elizaos/capacitor-system/settings), evaluated without the renderer.
 const source=readFileSync('apps/app/src/prototype/native-adapter.ts','utf8');
 const region=source.slice(source.indexOf('// tile-facts:begin'),source.indexOf('// tile-facts:end'));
 assert.ok(region.length>100,'tile-facts region is present');
-const m=await import('data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(region,{mode:'strip'})).toString('base64'));
+const toModule=text=>'data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(text,{mode:'transform'})).toString('base64');
+const shared=toModule(readFileSync('vendor/eliza/plugins/plugin-native-system/src/settings.ts','utf8'));
+const imported=source.match(/^import \{[^}]*\} from '@elizaos\/capacitor-system\/settings';$/m);
+assert.ok(imported,'the adapter uses the shared presentation');
+const m=await import(toModule(imported[0].replace('@elizaos/capacitor-system/settings',shared)+'\n'+region));
 const labels=['Wi-Fi','Bluetooth','Do not disturb','Agent can listen','Location','Airplane mode','Enclave lock','Flashlight'];
 // Model tiles may carry stale prototype state; only native facts may become on/off.
 const modelTiles=()=>labels.map(label=>({label,on:true,css:'background:var(--acc);color:#fff',toggle:()=>{}}));
@@ -60,14 +65,14 @@ test('an unread switch is labelled as a handoff, never as off',()=>{
 });
 test('every tile with a switch opens its own Android page, and the native allowlist has each one',()=>{
  assert.deepEqual(m.tileSettingsPages,{wifi:'wifi',bt:'bluetooth',dnd:'dnd',plane:'airplane',loc:'location',mic:'privacy'});
- const java=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java','utf8');
- const body=java.slice(java.indexOf('static String[] settingsActions(String page)'),java.indexOf('@PluginMethod public void openSettings'));
- const pages=Object.fromEntries([...body.matchAll(/case "([a-z-]+)":return new String\[\]\{([^}]*)\}/g)].map(match=>[match[1],match[2].split(',')]));
+ // AlphaDevice.openSettings uses the shared allowlist at the pin (SystemSettingsPages).
+ assert.match(readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java','utf8'),/SystemSettingsPages\.open\(page,getContext\(\)\.getPackageName\(\),/);
+ const java=readFileSync('vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SystemSettingsPages.java','utf8');
+ const body=java.slice(java.indexOf('public static String[] actions(String page)'),java.indexOf('public interface Launcher'));
+ const pages=Object.fromEntries([...body.matchAll(/case "([a-z-]+)": return new String\[\] \{([^}]*)\}/g)].map(match=>[match[1],match[2].split(',').map(action=>action.trim())]));
  for(const page of Object.values(m.tileSettingsPages))assert.ok(pages[page]?.length,`${page} is allowlisted natively`);
- // Only the explicit "Android settings" row (page system) opens the generic Settings home;
- // every other page resolves to its own screen, and each first choice is distinct.
- assert.deepEqual(pages.system?.map(a=>a.trim()),['Settings.ACTION_SETTINGS']);
- for(const [page,actions] of Object.entries(pages))if(page!=='system')for(const action of actions)assert.notEqual(action.trim(),'Settings.ACTION_SETTINGS',page);
+ // No page resolves to the generic Settings home, and each first choice is distinct.
+ for(const [page,actions] of Object.entries(pages))for(const action of actions)assert.notEqual(action.trim(),'Settings.ACTION_SETTINGS',page);
  const first=Object.values(pages).map(actions=>actions[0]);assert.equal(new Set(first).size,first.length);
  assert.deepEqual([pages.airplane[0],pages.location[0],pages.mobile[0]],['Settings.ACTION_AIRPLANE_MODE_SETTINGS','Settings.ACTION_LOCATION_SOURCE_SETTINGS','Settings.ACTION_DATA_ROAMING_SETTINGS']);
 });
@@ -82,10 +87,10 @@ test('a broader Android page is named for what it is, and a specific page says n
  assert.doesNotMatch(m.broaderPageNotice('battery',broad),/network|priority/);
 });
 test('the Bluetooth fact is the radio state on Android 12 and later, not the stored switch',()=>{
- const java=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java','utf8');
- const read=java.slice(java.indexOf('fact(out,"bluetoothEnabled"'),java.indexOf('fact(out,"airplaneMode"'));
- assert.match(read,/SDK_INT<Build\.VERSION_CODES\.S\)return binarySwitch\(Settings\.Global\.getInt\(resolver,Settings\.Global\.BLUETOOTH_ON\)\)/);
- assert.match(read,/adapter==null\?null:adapterSwitch\(adapter\.getState\(\)\)/);
+ const java=readFileSync('vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SystemFacts.java','utf8');
+ const read=java.slice(java.indexOf('fact(out, "bluetoothEnabled"'),java.indexOf('fact(out, "airplaneMode"'));
+ assert.match(read,/SDK_INT < Build\.VERSION_CODES\.S\) return binarySwitch\(Settings\.Global\.getInt\(resolver, Settings\.Global\.BLUETOOTH_ON\)\)/);
+ assert.match(read,/adapter == null \? null : adapterSwitch\(adapter\.getState\(\)\)/);
 });
 test('closing Android\'s own shade reaches the tile watch through a native window-focus notice',()=>{
  // Measured on an API 36 emulator: while Android's shade holds window focus and after it returns,

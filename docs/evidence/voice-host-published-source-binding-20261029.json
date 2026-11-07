@@ -1,0 +1,66 @@
+{
+  "kind": "source-binding-not-native-admission",
+  "from": "7854f43ff93082452c8aca5c4bf56aff0e0015bf",
+  "to": "2a8a5928e881ecbfb777fc2a2655230b66fc422e",
+  "pathEntries": {
+    "packages/app/scripts/build-helpers/arm64-simd.ts": {
+      "before": "100644 blob 7c7a5ce7e11150ccc7bb3321d776f08cd511af62\tpackages/app/scripts/build-helpers/arm64-simd.ts",
+      "after": "100644 blob 7c7a5ce7e11150ccc7bb3321d776f08cd511af62\tpackages/app/scripts/build-helpers/arm64-simd.ts"
+    },
+    "packages/app/scripts/build-helpers/verify-fused-symbols.ts": {
+      "before": "100644 blob 3c6498f0cd87d1b33a63ff4317a8d7a066ffff48\tpackages/app/scripts/build-helpers/verify-fused-symbols.ts",
+      "after": "100644 blob 3c6498f0cd87d1b33a63ff4317a8d7a066ffff48\tpackages/app/scripts/build-helpers/verify-fused-symbols.ts"
+    },
+    "packages/app/scripts/lib/android-bun-artifacts.lock.json": {
+      "before": "100644 blob 83c8e91becc3a2c46902cc168fdc9b88fc038e5d\tpackages/app/scripts/lib/android-bun-artifacts.lock.json",
+      "after": "100644 blob 83c8e91becc3a2c46902cc168fdc9b88fc038e5d\tpackages/app/scripts/lib/android-bun-artifacts.lock.json"
+    },
+    "plugins/plugin-local-inference/native/llama.cpp": {
+      "before": "160000 commit 13d0ccbf55c2e48f1ad88fdd9a858fa3aa44e05d\tplugins/plugin-local-inference/native/llama.cpp",
+      "after": "160000 commit 6973dc6c705f63b9fbc018787799d43cb75ff786\tplugins/plugin-local-inference/native/llama.cpp"
+    },
+    "plugins/plugin-local-inference/native/android/inputs.json": {
+      "before": "100644 blob 63dd51b1270549f7f97bbc789a4d708d7da7e5d7\tplugins/plugin-local-inference/native/android/inputs.json",
+      "after": "100644 blob 63dd51b1270549f7f97bbc789a4d708d7da7e5d7\tplugins/plugin-local-inference/native/android/inputs.json"
+    },
+    "plugins/plugin-local-inference/native/android/consumer.gradle": {
+      "before": "100644 blob f07f2e232876054960a5bf2a2cd971a30d7330ea\tplugins/plugin-local-inference/native/android/consumer.gradle",
+      "after": "100644 blob f07f2e232876054960a5bf2a2cd971a30d7330ea\tplugins/plugin-local-inference/native/android/consumer.gradle"
+    },
+    "packages/app/scripts/paradee-voice/build-native.ts": {
+      "before": "100644 blob a72d83dbb63f2f7d782bdd7616dcf6b9a1771cb9\tpackages/app/scripts/paradee-voice/build-native.ts",
+      "after": "100644 blob a72d83dbb63f2f7d782bdd7616dcf6b9a1771cb9\tpackages/app/scripts/paradee-voice/build-native.ts"
+    },
+    "packages/app/scripts/stage-elizavoice-lib.ts": {
+      "before": "100644 blob 5fc80a6ddf8e5e0f266c6481996568025763f5a3\tpackages/app/scripts/stage-elizavoice-lib.ts",
+      "after": "100644 blob 5fc80a6ddf8e5e0f266c6481996568025763f5a3\tpackages/app/scripts/stage-elizavoice-lib.ts"
+    },
+    "packages/app/platforms/android/app/src/main/elizavoice-jni": {
+      "before": "040000 tree 4918776fc9b898a46390735527bb003d48c6bf54\tpackages/app/platforms/android/app/src/main/elizavoice-jni",
+      "after": "040000 tree 4918776fc9b898a46390735527bb003d48c6bf54\tpackages/app/platforms/android/app/src/main/elizavoice-jni"
+    },
+    "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java": {
+      "before": "100644 blob 386478a98d8182a0541779922894a4d77ea8f3e8\tpackages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+      "after": "100644 blob 386478a98d8182a0541779922894a4d77ea8f3e8\tpackages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java"
+    },
+    "plugins/plugin-local-inference/native": {
+      "before": "040000 tree acbac5317c956f83b8fde5cffefa889dec6936f7\tplugins/plugin-local-inference/native",
+      "after": "040000 tree 6ab16b4a9feca594eccb6197f451210a70e32b44\tplugins/plugin-local-inference/native"
+    },
+    "packages/app/scripts/paradee-voice": {
+      "before": "040000 tree 203bc324e2da09ac614fdde3e36152b23fe35971\tpackages/app/scripts/paradee-voice",
+      "after": "040000 tree 203bc324e2da09ac614fdde3e36152b23fe35971\tpackages/app/scripts/paradee-voice"
+    }
+  },
+  "changedFiles": [
+    "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/LocalSpeechBridgePlugin.java",
+    "plugins/plugin-local-inference/native/android/speech-bridge/test/failure-settlement.test.mjs",
+    "plugins/plugin-local-inference/native/llama.cpp"
+  ],
+  "qualified": false,
+  "admitted": false,
+  "requalificationRequired": true,
+  "gateUnchanged": true,
+  "nativeBinaryCompatibilityAsserted": false,
+  "guardContract": "CLI validates record source identity and model references even for --allow-absent; verifyVoiceHost admits only absent runtime for explicit Cloud/unpackaged profile. Present native artifacts retain full source/build/hash checks."
+}

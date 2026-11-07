@@ -45,10 +45,10 @@ test('each enabled view supplies its own context to the resident agent, and no s
     await composer(page).fill(text); await composer(page).press('Enter');
     await expect(page.getByRole('button', { name: `Message actions: Resident reply ${index + 1}`, exact: true })).toHaveCount(1, { timeout: 30_000 });
     const body = (await stub(page, s => s.bodies) as any[])[index];
-    // The structured context and the model-visible observation both name this view, unpaused.
+    // The structured context names this view, unpaused. A product build sends the authored text
+    // unchanged (no client-authored observation banner); the agent renders this metadata once.
     expect(body.metadata.clientDevice.context, name).toMatchObject({ view, sensitive: false });
-    expect(String(body.text), name).toContain(`"view":"${view}"`);
-    expect(String(body.text).endsWith(text), name).toBe(true);
+    expect(String(body.text), name).toBe(text);
     const wire = JSON.stringify(body);
     for (const secret of await secrets(page)) expect(wire.includes(secret), `${name} carries a stored secret`).toBe(false);
   }
@@ -83,5 +83,8 @@ for (const repeatDays of [true, false]) {
     const advertised = (await stub(page, s => s.capabilities) as string).split(',');
     expect(advertised).toEqual(expect.arrayContaining(['calendar.local-event.v1', 'notes.local-record.v1', 'notes.query.v1', 'clock.handoff.v1']));
     expect(advertised.includes('clock.handoff.v2')).toBe(repeatDays);
+    // Enrollment completed against the harness: no device route (such as the committed-enrollment
+    // read) was refused, which would leave the send without any device capabilities.
+    expect(await harness(page, f => f.unexpected)).toEqual([]);
   });
 }

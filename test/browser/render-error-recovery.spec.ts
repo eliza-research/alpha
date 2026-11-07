@@ -1,10 +1,11 @@
+import {openLegacyNotes} from './helpers/legacy-notes';
 import { test, expect } from '@playwright/test';
 const offline = () => localStorage.setItem('alpha.connection.selection.v1', JSON.stringify({kind:'offline'}));
 
 test('a render failure shows recovery without user content', async ({ page }) => {
   await page.addInitScript(offline);
   await page.goto('/');
-  await page.getByRole('button', { name: 'Notes', exact: true }).click();
+  await openLegacyNotes(page);
   await page.getByRole('button', { name: 'New note', exact: true }).click();
   await page.getByRole('textbox', { name: 'Title', exact: true }).fill('Private recovery title');
   await page.evaluate(() => window.dispatchEvent(new Event('alpha:force-render-error')));

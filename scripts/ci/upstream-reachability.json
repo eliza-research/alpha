@@ -2,103 +2,71 @@
   "schema": 1,
   "repository": "elizaOS/eliza",
   "base": "develop",
-  "baseCommit": "b25d8aef2916385c571f4367e099809254fde0bb",
-  "head": "b25d8aef2916385c571f4367e099809254fde0bb",
+  "baseCommit": "a744332dd2ad7437d0f0d38707c6e579d21a67f6",
+  "head": "ae1a9dda6712cd20fa249982afef1ef0abd28a3c",
   "recordedAt": "2026-11-07",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...b25d8aef2916385c571f4367e099809254fde0bb",
-  "status": "identical",
-  "aheadBy": 0,
-  "behindBy": 0,
-  "mergeBase": "b25d8aef2916385c571f4367e099809254fde0bb",
-  "pinOnlyCommits": [],
-  "pullRequests": [
+  "command": "gh api repos/elizaOS/eliza/compare/develop...ae1a9dda6712cd20fa249982afef1ef0abd28a3c",
+  "status": "diverged",
+  "aheadBy": 14,
+  "behindBy": 5,
+  "mergeBase": "175899288f829b1d19e98d2a05bc010ca5d1a8ea",
+  "pinOnlyCommits": [
     {
-      "url": "https://github.com/elizaOS/eliza/pull/37059",
-      "status": "merged"
+      "sha": "e8484a964435d672f9423972d13779bbf8b54dfe",
+      "subject": "Let mobile hosts show an installed-only Apps drawer"
     },
     {
-      "url": "https://github.com/elizaOS/eliza/pull/37305",
-      "status": "merged"
+      "sha": "4c651368721fe6ef6df7720329a5e35f132aef05",
+      "subject": "Admit explicit Cloud APK profiles only with exact voice evidence"
     },
     {
-      "url": "https://github.com/elizaOS/eliza/pull/37307",
-      "status": "merged"
+      "sha": "130821d04f69c30af48c753f615cc429a6b9eb09",
+      "subject": "Integrate reviewed Google raster client and scoped native tile routes"
     },
     {
-      "url": "https://github.com/elizaOS/eliza/pull/37313",
-      "status": "merged"
+      "sha": "3c76d07819b253b3c8f071f84ec7e6a5374a9a66",
+      "subject": "Keep voice reply drafting notes out of visible text"
     },
     {
-      "url": "https://github.com/elizaOS/eliza/pull/37306",
-      "status": "merged"
+      "sha": "267ca242df18c30ecef0710e26f8043d6cbb5658",
+      "subject": "Keep native Google reads bound to the admitted service key"
     },
     {
-      "url": "https://github.com/elizaOS/eliza/pull/37309",
-      "status": "merged"
+      "sha": "5ce65673c621a8554205f64d61006cb11007ccc2",
+      "subject": "Fix strict voice reply tools on the staging Cloud mobile route"
     },
     {
-      "url": "https://github.com/elizaOS/eliza/pull/37310",
-      "status": "merged"
+      "sha": "72004059deae7b03c850b4c48ccaa0d571ff47d9",
+      "subject": "Keep strict Cloud handler intents with Calendar evidence"
     },
     {
-      "url": "https://github.com/elizaOS/eliza/pull/37311",
-      "status": "merged"
+      "sha": "f7a7b56f8cff20bc64f2616ebcad902173d59e4c",
+      "subject": "Expose bounded availability in standalone Calendar"
     },
     {
-      "url": "https://github.com/elizaOS/eliza/pull/37312",
-      "status": "merged"
+      "sha": "923f5d0b82faf28d3a70688e06ee30f53abd6ae7",
+      "subject": "Recover the reply after a confirmed Notes create"
     },
     {
-      "url": "https://github.com/elizaOS/eliza/pull/37315",
-      "status": "merged"
+      "sha": "f72b44f03152577e403a426cad01deafb69cc5f0",
+      "subject": "Allow bounded larger managed Calendar feed responses"
     },
     {
-      "url": "https://github.com/elizaOS/eliza/pull/37318",
-      "status": "merged"
+      "sha": "3a2e43de288a5ec8a77212084772fede22577665",
+      "subject": "Verify restored Calendar bounds and settled Notes reply recovery"
     },
     {
-      "url": "https://github.com/elizaOS/eliza/pull/37324",
-      "status": "merged"
+      "sha": "475a8d59dc1811c2cde093613519906a5a3f6457",
+      "subject": "Keep Maps admission errors visible during place search"
     },
     {
-      "url": "https://github.com/elizaOS/eliza/pull/37325",
-      "status": "merged"
+      "sha": "94c8ca4976751f2ad0854943064fa39aa54a9d70",
+      "subject": "Integrate current develop while retaining reviewed Alpha runtime fixes"
     },
     {
-      "url": "https://github.com/elizaOS/eliza/pull/37327",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37329",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37330",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37321",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37322",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37326",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37331",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37332",
-      "status": "merged"
-    },
-    {
-      "url": "https://github.com/elizaOS/eliza/pull/37275",
-      "status": "merged"
+      "sha": "ae1a9dda6712cd20fa249982afef1ef0abd28a3c",
+      "subject": "Fix exclusive SystemUI overlay staging on Node 26"
     }
-  ]
+  ],
+  "pullRequests": []
 }

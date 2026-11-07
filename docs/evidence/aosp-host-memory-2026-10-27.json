@@ -1,0 +1,84 @@
+{
+  "schema": 1,
+  "patchManifest": "android/aosp/build-host/manifest.json",
+  "reason": "The earlier graph-generation service was terminated by systemd-oomd; its Soong child had no GOMEMLIMIT or GOGC environment because bootstrap clears the environment.",
+  "priorAttempt": {
+    "target": "cuttlefish",
+    "status": "oom-kill",
+    "source": "systemd journal for alphaphone-cuttlefish-20261027.service",
+    "startedAt": "2026-10-27T00:02:31-07:00",
+    "finishedAt": "2026-10-27T00:12:15-07:00",
+    "memoryPeakGiB": 21.5,
+    "swapPeakGiB": 30.9,
+    "reason": "Soong bootstrap cleared GOMEMLIMIT; systemd-oomd killed the service during graph generation",
+    "imageBuilt": false,
+    "imageFlashed": false,
+    "bootTested": false
+  },
+  "runtimeControls": {
+    "pid": 1905933,
+    "observedAtEpoch": 1793085797.2648702,
+    "controls": {
+      "GOGC": "50",
+      "GOMEMLIMIT": "18GiB"
+    },
+    "forwardingVerified": true,
+    "imageBuilt": false
+  },
+  "focusedTests": {
+    "passed": 15,
+    "failed": 0
+  },
+  "sourceEvidence": {
+    "schema": 1,
+    "target": "pixel10a",
+    "codename": "stallion",
+    "sourceLockSha256": "760a7184c62c93aeac40595cf5733f8089aa16ccd28eb7a5f5ce41d4dae741d3",
+    "manifestCommit": "5bc9a7ce1cd78dd53613bbfd0ebf506e1e4adb0f",
+    "factorySha256": "d1d2550268de9fd4bfdd4ff0910cc4471fec6ba361506278c25f34f312106675",
+    "projectsChecked": 1087,
+    "overridesChecked": 16,
+    "generatedFilesChecked": 6360,
+    "developmentOnly": false,
+    "appliedPatches": [
+      {
+        "name": "listener-systemui-chip",
+        "project": "frameworks/base",
+        "revision": "94b4c163b7dfe5ce3607f7bb8456f9573f7de57d",
+        "manifestSha256": "270cd07fd31c25e5b4d271dc184ecea83850851d9f4febc69b64a4e3d7d700a0",
+        "patchSha256": "dd8aaf6ef95ed1a6e09d6c1926c63849dd06bb7a0cd35e5ff34d44d1fd747419",
+        "filesChecked": 9
+      },
+      {
+        "name": "soong-memory",
+        "project": "build/soong",
+        "revision": "6722dd8833db7482df1a2543ca3fcf67ddf0f7b1",
+        "manifestSha256": "e814b110339fffcc05971568a8faeeafc6fd9a859ebc1d050e2996fbda0a1381",
+        "patchSha256": "07927a4a21056cfdd0070248c2e850b079926a8f824ea7947ac2e8327778907f",
+        "filesChecked": 1
+      }
+    ],
+    "imageBuilt": false,
+    "releaseQualified": false,
+    "deviceAcceptanceVerified": false
+  },
+  "imageBuilt": false,
+  "imageFlashed": false,
+  "graphGeneration": {
+    "status": "passed",
+    "reportedDuration": "14m39.05s",
+    "completedGraphSteps": 1,
+    "fullImageBuildComplete": false
+  },
+  "fullRepositoryVerification": {
+    "command": "npm run verify",
+    "tests": 2107,
+    "passed": 2101,
+    "skipped": 6,
+    "failed": 0,
+    "typecheck": "passed",
+    "productionBuild": "passed",
+    "productionBundleAudit": "passed"
+  },
+  "observationStage": "Graph generation passed; full image build still running"
+}

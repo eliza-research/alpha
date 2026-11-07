@@ -16,6 +16,9 @@
  <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
  <!-- Camera access is requested only on entry to the native camera view. -->
  <uses-permission android:name="android.permission.CAMERA" />
+ <!-- One-tap app update (AlphaDevicePlugin installUpdate): Android asks the owner to allow installs from Alpha and to
+      confirm each update, and installs only an APK of this package signed like Alpha. Not privileged or silent. -->
+ <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
  <uses-feature android:name="android.hardware.camera" android:required="false" />
  <uses-feature android:name="android.hardware.camera.any" android:required="false" />
  <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
@@ -27,6 +30,8 @@
  <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" tools:node="remove" />
  <!-- minSdk 29 uses scoped storage; the camera plugin requests this only below API 29. -->
  <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:node="remove" />
+ <!-- Files browses shared storage (decision F1): preinstalled on the Alpha AOSP image, granted once in the standalone APK through Android's "All files access" page. -->
+ <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:ignore="ScopedStorage" />
  <queries>
   <intent><action android:name="android.intent.action.INSERT"/><data android:mimeType="vnd.android.cursor.dir/contact"/></intent>
   <intent><action android:name="android.intent.action.EDIT"/><data android:mimeType="vnd.android.cursor.item/contact"/></intent>
@@ -64,6 +69,8 @@
  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
  <!-- Turn-by-turn guidance keeps running with the screen off only while the user navigates. -->
  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+ <!-- A Notes recording keeps running with the screen off only while it is open. -->
+ <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
  <!-- Already merged from the location plugin; declared here so the location service type is checked against them. -->
  <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
  <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
@@ -72,11 +79,19 @@
    <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="User-started local personal agent runtime" />
   </service>
   <service android:name=".AlphaNavigationService" android:exported="false" android:foregroundServiceType="location" />
+  <!-- Android alone binds this action tile. A locked-device tap requires unlocking; no capture
+       or connection authority comes from a tile being present in Quick Settings. -->
+  <service android:name=".AlphaQuickSettingsTile" android:label="@string/alpha_quick_settings_label" android:icon="@drawable/notification_icon" android:exported="true" android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+   <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE"/></intent-filter>
+   <meta-data android:name="android.service.quicksettings.TOGGLEABLE_TILE" android:value="false"/>
+  </service>
+  <service android:name=".AlphaNoteRecordingService" android:exported="false" android:foregroundServiceType="microphone" />
   <activity android:name=".AlphaMailPdfActivity" android:exported="false" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:label="PDF attachment" />
   <service android:name=".IsolatedPdfService" android:exported="false" android:isolatedProcess="true" android:process=":isolated_pdf" android:stopWithTask="true" />
   <!-- Release-build data integrity export for pilot updates: per-file HMAC digests only, read-only,
        in its own process, readable only with the platform DUMP permission (adb shell). -->
   <provider android:name=".release.DataIntegrityProvider" android:authorities="${applicationId}.integrity" android:exported="true" android:permission="android.permission.DUMP" android:process=":integrity" android:grantUriPermissions="false" />
+  <provider android:name=".AlphaStorageFileProvider" android:authorities="${applicationId}.storage" android:exported="false" android:grantUriPermissions="true"><meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/storage_paths"/></provider>
   <provider android:name=".AlphaMailFileProvider" android:authorities="${applicationId}.mailattachments" android:exported="false" android:grantUriPermissions="true"><meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/mail_attachment_paths"/></provider>
   <service android:name=".AlphaNotificationListener" android:label="Alpha Phone selected notifications" android:exported="true" android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
    <intent-filter><action android:name="android.service.notification.NotificationListenerService"/></intent-filter>
@@ -95,18 +110,23 @@
    <intent-filter><action android:name="android.intent.action.BOOT_COMPLETED"/><action android:name="android.intent.action.MY_PACKAGE_REPLACED"/><action android:name="android.intent.action.TIME_SET"/><action android:name="android.intent.action.TIMEZONE_CHANGED"/></intent-filter>
   </receiver>
   <!-- Explicit user-selected assistant. Separate task preserves the invoking app's back stack. -->
-  <activity android:name=".AlphaAssistActivity" android:exported="true" android:launchMode="singleTask" android:taskAffinity="${applicationId}.assistant" android:excludeFromRecents="true" android:screenOrientation="${appOrientation}" android:windowSoftInputMode="adjustResize" android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|density|navigation" android:theme="@style/AppTheme.Launch">
+  <activity android:name=".AlphaAssistActivity" android:enabled="false" android:exported="false" android:launchMode="singleTask" android:taskAffinity="${applicationId}.assistant" android:excludeFromRecents="true" android:screenOrientation="${appOrientation}" android:windowSoftInputMode="adjustResize" android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|density|navigation" android:theme="@style/AppTheme.Launch">
    <intent-filter><action android:name="android.intent.action.ASSIST"/><category android:name="android.intent.category.DEFAULT"/></intent-filter>
   </activity>
+  <!-- Explicit native Power entry; only existing platform STATUS_BAR_SERVICE holders may launch.
+       Cold entry is surface-only; no intent filter or extra can authorize microphone capture. -->
+  <activity android:name=".AlphaPowerVoiceActivity" android:enabled="false" android:exported="false" android:permission="android.permission.STATUS_BAR_SERVICE" android:launchMode="singleTask" android:taskAffinity="${applicationId}.assistant" android:excludeFromRecents="true" android:screenOrientation="${appOrientation}" android:windowSoftInputMode="adjustResize" android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|density|navigation" android:theme="@style/AppTheme.Launch" />
   <!-- Unfinished Reset Alpha data (#409). Own process: none of Alpha's providers or startup initializers run there. -->
   <activity android:name=".ResetRecoveryActivity" android:exported="false" android:process=":reset_recovery" android:taskAffinity="${applicationId}.reset" android:excludeFromRecents="true" android:launchMode="singleTask" android:theme="@android:style/Theme.DeviceDefault.DayNight" android:label="Reset Alpha data" />
   <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTask" android:screenOrientation="${appOrientation}" android:windowSoftInputMode="adjustResize" android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|density|navigation" android:theme="@style/AppTheme.Launch">
    <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
    <intent-filter><action android:name="android.intent.action.VIEW"/><category android:name="android.intent.category.DEFAULT"/><category android:name="android.intent.category.BROWSABLE"/><data android:scheme="alphaphone" android:host="cloud-delegation"/></intent-filter>
    <!-- Verified App Links are build-gated: with the Gradle property ELIZAOS_APP_LINK_HOST set,
-        android/app/build.gradle overlays https autoVerify filters for ${appLinkHost} with pathPrefix
-        /alphaphone/cloud-delegation and path /alphaphone/auth/callback (the in-app Eliza Cloud sign-in
-        return, AlphaCloudSignInPlugin). Unset (the default), no such filter exists. Set it only after
+        android/app/product.gradle overlays https autoVerify filters for ${appLinkHost} with pathPrefix
+        /alphaphone/cloud-delegation, path /alphaphone/auth/callback (the in-app Eliza Cloud sign-in
+        return, AlphaCloudSignInPlugin) and path /alphaphone/gmail/callback (the Google Workspace consent
+        return, GoogleWorkspaceReturn). Unset (the default), no such filter exists and the Workspace
+        return reports itself unsupported. Set it only after
         scripts/render-assetlinks.mjs output (release signer, never a debug or placeholder fingerprint)
         is published at /.well-known/assetlinks.json on that host. The in-app sign-in is offered only
         once its Cloud readiness probe sees this phone's App Link verified for the sign-in return

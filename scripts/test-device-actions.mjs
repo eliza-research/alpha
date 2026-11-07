@@ -59,19 +59,20 @@ async function reviewNoticesAndForeground(){
  listed=[make('note-delete',{type:'notes_delete',target}),make('open',{type:'open_view',view:'notes'}),
   {...make('foreign',{type:'open_view',view:'home'}),subjectUserId:'someone-else'},make('broken',{type:'not_a_device_operation'}),
   make('finished-broken',{type:'not_a_device_operation'},{state:'done'}),make('expired-broken',{type:'not_a_device_operation'},{expiresAt:new Date(Date.now()-1000).toISOString()})];
- const review=await client().pendingReview(home,signal());
- assert.deepEqual(review.filter(item=>item.proposal).map(item=>item.proposal.id),['open'],'one invalid proposal does not hide valid siblings');
+ const reviewClient=client();const review=await reviewClient.pendingReview(home,signal());
+ assert.deepEqual(review.filter(item=>item.proposal).map(item=>item.proposal.id),['note-delete','open'],'navigation-only review does not hide valid siblings');
  const notices=review.filter(item=>!item.proposal).map(item=>item.notice);
- assert.equal(notices.length,3,'mismatch plus two invalid pending proposals; completed or expired invalid history stays quiet');
- assert.match(notices[0],/Open the selected note to review this action\./);
- assert.ok(notices.slice(1).every(notice=>/could not be shown on this phone/.test(notice)));
+ assert.equal(notices.length,2,'two invalid pending proposals; completed or expired invalid history stays quiet');
+ assert.equal(review[0].proposal.reviewDestination,'notes');
+ const staleReview=await reviewClient.approve('note-delete',home,signal());assert.equal(staleReview.status,'unknown');assert.equal(posted.length,0,'navigation-only card cannot dispatch approval');
+ assert.ok(notices.every(notice=>/could not be shown on this phone/.test(notice)));
  assert.ok(!notices.join('\n').includes(target.noteId),'notices never expose record identities');
- assert.deepEqual((await client().pending(home,signal())).map(card=>card.id),['open']);
+ assert.deepEqual((await client().pending(home,signal())).map(card=>card.id),['note-delete','open']);
  // pending() still fails when nothing is reviewable and a proposal was invalid.
  listed=[{...make('foreign',{type:'open_view',view:'home'}),subjectUserId:'someone-else'}];
  await assert.rejects(client().pending(home,signal()),/another identity/);
  listed=[make('note-delete',{type:'notes_delete',target})];
- assert.deepEqual(await client().pending(home,signal()),[]);
+ assert.equal((await client().pending(home,signal()))[0].reviewDestination,'notes');
  assert.equal((await client().pendingReview({...home,sensitive:true},signal()))[0].notice,'Delete selected note: Unlock the phone to review this action.');
  // Foreground availability: Home or Calendar, after approval, outside workflow bindings.
  listed=[make('free-busy',tuesday),make('named',{type:'notes_named',action:'delete',name:'Groceries'}),make('search',{type:'notes_search',query:{kind:'content',text:'passport'}})];
@@ -110,6 +111,24 @@ async function reviewNoticesAndForeground(){
   assert.equal(items[0].proposal,null);assert.match(items[0].notice,/not negotiated/);
  }
 }
+async function executionIdentityAndRetirement(){
+ const localProposal={...proposal(),state:'pending',execution:null};
+ for(const field of ['scope','proposalId','operationId']){
+  let requests=0,ran=0;
+  const foreign={...journal,reserve:async input=>({created:true,entry:{...input,phase:'reserved',[field]:field==='scope'?'d'.repeat(64):'different'}})};
+  const actions=new DeviceActions(session,credential,'c'.repeat(64),async()=>{requests++;return {proposals:[localProposal]};},foreign,async()=>{ran++;return {status:'succeeded',summary:'Must not run'};});
+  await actions.pending(context,signal());const result=await actions.approve('proposal',context,signal());
+  assert.equal(result.status,'unknown');assert.equal(requests,1,'foreign reservation is rejected before decision');assert.equal(ran,0);
+ }
+ const stopped=new AbortController();let ran=0,posts=0;
+ const retiring={...journal,reserve:async input=>{stopped.abort();return {created:true,entry:{...input,phase:'reserved'}};}};
+ const stoppedActions=new DeviceActions(session,credential,'c'.repeat(64),async(_path,body)=>{if(body)posts++;return {proposals:[localProposal]};},retiring,async()=>{ran++;return {status:'succeeded',summary:'Must not run'};});
+ await stoppedActions.pending(context,signal());assert.equal((await stoppedActions.approve('proposal',context,stopped.signal)).status,'unknown');assert.equal(posts,0);assert.equal(ran,0);
+ records.clear();state='pending';attemptId=undefined;mode='ok';const afterDispatch=new AbortController(),before=effects;
+ const actions=new DeviceActions(session,credential,'c'.repeat(64),request,journal,async()=>{effects++;afterDispatch.abort();return {status:'succeeded',summary:'Known saved result'};});
+ await actions.pending(context,signal());const known=await actions.approve('proposal',context,afterDispatch.signal);
+ assert.equal(known.status,'succeeded');assert.match(known.summary,/Known saved result/);assert.equal(effects,before+1);assert.equal(records.get('proposal').phase,'terminal');assert.equal(records.get('proposal').status,'succeeded');
+}
 try {
  const client=make();const cards=await client.pending(context,signal());assert.equal(cards[0].title,'Create note');assert.equal(cards[0].description,'Create note\n“Fixture note”\nExplicit reviewed body');mode='receipt-outage';
  assert.equal((await client.approve('proposal',reordered,signal())).status,'succeeded');assert.equal(effects,1);assert.equal(state,'executing');
@@ -121,5 +140,6 @@ try {
  records.clear();state='pending';const stale=make();await stale.pending(context,signal());await assert.rejects(stale.approve('proposal',{...context,revision:3},signal()));assert.equal(records.size,0);
  await stale.reject('proposal',signal());assert.equal(state,'rejected');assert.equal(claims,2);
  await reviewNoticesAndForeground();
- console.log('PASS: device HTTP decision/claim/receipt, journal-before-effect, receipt recovery across client restart, no duplicate effect, lost-claim reconciliation, context property-order equality/stale rejection, explicit rejection; visible notices for context-mismatched proposals, per-proposal parse isolation, foreground availability/notes-search/named-target admission. Synthetic only.');
+ await executionIdentityAndRetirement();
+ console.log('PASS: device HTTP decision/claim/receipt, journal-before-effect, receipt recovery across client restart, no duplicate effect, lost-claim reconciliation, context property-order equality/stale rejection, explicit rejection; visible notices for context-mismatched proposals, per-proposal parse isolation, foreground availability/notes-search/named-target admission. Exact shared reservation identity rejects foreign scope/proposal/operation before decision; retirement prevents dispatch and preserves known durable results. Synthetic only.');
 } finally {server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}

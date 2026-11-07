@@ -73,3 +73,14 @@ test('voice build records must identify the exact Eliza and native source pins',
  f.record.sourceCommit=source;f.record.nativeCommit='0'.repeat(40);f.save();assert.throws(()=>verifyParadeeRuntime(root),/pinned source revisions/);
  f.record.nativeCommit=native;f.save();assert.deepEqual(verifyParadeeRuntime(root),{packaged:true,qualified:false});
 });
+
+import {selectedAndroidAbis,abiArguments} from '../scripts/android-abis.mjs';
+function arm64Only(root){const f=complete(root);f.record.abis=['arm64-v8a'];f.record.files=f.record.files.filter(row=>!row.path.startsWith('jniLibs/x86_64/'));fs.rmSync(path.join(f.native,'jniLibs/x86_64'),{recursive:true});f.save();return f;}
+test('default matrix still refuses missing x86',t=>{const root=fixture(t);arm64Only(root);assert.throws(()=>verifyParadeeRuntime(root),/missing a requested/);});
+test('explicit ARM64 admits exact complete ARM64 runtime',t=>{const root=fixture(t);arm64Only(root);assert.deepEqual(verifyParadeeRuntime(root,{abis:['arm64-v8a']}),{packaged:true,qualified:false});});
+test('explicit x86 refuses ARM64-only runtime',t=>{const root=fixture(t);arm64Only(root);assert.throws(()=>verifyParadeeRuntime(root,{abis:['x86_64']}),/missing a requested/);});
+test('ABI selection rejects unknown duplicate and explicit empty',()=>{for(const abis of [[],['riscv'],['arm64-v8a','arm64-v8a']])assert.throws(()=>selectedAndroidAbis(abis),/unique/);assert.throws(()=>abiArguments(['--abi']),/requires/);assert.deepEqual(abiArguments(['--abi','arm64-v8a','--verify']),{rest:['--verify'],abis:['arm64-v8a']});});
+test('selected engine hash mismatch still rejects',t=>{const root=fixture(t),f=arm64Only(root);fs.appendFileSync(path.join(f.native,'jniLibs/arm64-v8a/libelizainference.so'),'bad');assert.throws(()=>verifyParadeeRuntime(root,{abis:['arm64-v8a']}),/changed/);});
+test('selected ABI never omits required models',t=>{const root=fixture(t),f=arm64Only(root);fs.unlinkSync(path.join(f.native,'assets/paradee-voice/v1/tts/model.gguf'));assert.throws(()=>verifyParadeeRuntime(root,{abis:['arm64-v8a']}));});
+test('all recorded files verified even when other ABI not requested',t=>{const root=fixture(t),f=complete(root);fs.appendFileSync(path.join(f.native,'jniLibs/x86_64/libelizainference.so'),'bad');assert.throws(()=>verifyParadeeRuntime(root,{abis:['arm64-v8a']}),/changed/);});
+test('app linkage checks exactly requested ABI bytes',t=>{const root=fixture(t);arm64Only(root);write(root,'android/app/src/main/jniLibs/arm64-v8a/libelizainference.so','arm64-v8a');assert.deepEqual(verifyParadeeAppLinkage(root,{abis:['arm64-v8a']}),{packaged:true,qualified:false});});

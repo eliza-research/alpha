@@ -1,7 +1,7 @@
 import {test,expect} from '@playwright/test';
 for(const theme of ['light','dark'])for(const kind of ['snapshot','native'])test(`${kind} digest presents final summary with private details handled in ${theme}`,async({page})=>{
  await page.addInitScript(()=>{if(!localStorage.getItem('alpha.connection.selection.v1'))localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));});
- await page.goto('/?mode=dev&theme='+theme);await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent connection',exact:true}).click();await page.getByRole('button',{name:'Connect development profile'}).click();
+ await page.goto('/?mode=dev&theme='+theme);await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent',exact:true}).click();await page.getByRole('button',{name:'Connect development profile'}).click();
  const times=await page.evaluate(kind=>{const now=new Date().toISOString(),expiresAt=new Date(Date.now()+3600000).toISOString(),key='alpha.browser.digests.local.v1',state=JSON.parse(localStorage.getItem(key)||'{"sources":[],"loops":[],"receipts":[],"results":[],"cursor":0,"acks":{}}');state.results.push({cursor:++state.cursor,runId:'summary-run',workflowId:'workflow',workflowVersionId:'version',templateVersion:'hosted-digest-1',scheduledAt:now,source:{observedAt:now,expiresAt,...(kind==='native'?{type:'live_selected_native_read'}:{})},status:'finished',startedAt:now,completedAt:now,output:[{nodeId:'typed-steps',runId:'summary-run',text:'A readable summary.\nOne task is open.',steps:[{id:'source',text:'SYNTHETIC_RAW_SOURCE_123'}]}],error:null});localStorage.setItem(key,JSON.stringify(state));window.dispatchEvent(new Event('alpha:hosted-digests'));return {observedAt:now,expiresAt,expiryDisplay:new Date(expiresAt).toLocaleString()};},kind);
  const panel=page.getByRole('dialog',{name:'Scheduled digests',exact:true}),article=panel.locator('#hosted-result-summary-run'),summary=article.getByText('A readable summary.\nOne task is open.',{exact:true});
  await expect(summary).toBeVisible();
@@ -10,7 +10,9 @@ for(const theme of ['light','dark'])for(const kind of ['snapshot','native'])test
   await expect(article.getByText('Execution details',{exact:true})).toHaveCount(0);await expect(article.locator('details')).toHaveCount(0);await expect(article.getByText(/SYNTHETIC_RAW_SOURCE_123/)).toHaveCount(0);
   const text=await article.innerText();expect(text).not.toContain(times.observedAt);expect(text).not.toContain(times.expiresAt);expect(text).not.toContain('"nodeId"');
  }else{
-  const details=article.locator('details');await expect(details).not.toHaveAttribute('open');await expect(details.locator('pre')).toBeHidden();await article.getByText('Execution details',{exact:true}).click();await expect(details.locator('pre')).toContainText('SYNTHETIC_RAW_SOURCE_123');
+  const details=article.locator('details');await expect(details).not.toHaveAttribute('open');await expect(details.locator('pre')).toBeHidden();await article.getByText('Execution details',{exact:true}).click();await expect(details.locator('p')).toHaveText(/^Started .+\. Finished .+\.$/);
+  // The raw output is a development surface only (this lane); production shows the readable line alone.
+  await expect(details.locator('pre')).toContainText('SYNTHETIC_RAW_SOURCE_123');
  }
  await page.reload();await page.evaluate(()=>window.dispatchEvent(new Event('alpha:hosted-digests')));await expect(summary).toBeVisible();
  if(kind==='native'){await expect(article.locator('details')).toHaveCount(0);await expect(article).toContainText(times.expiryDisplay);await expect(article.getByText(/SYNTHETIC_RAW_SOURCE_123/)).toHaveCount(0);expect(await article.innerText()).not.toContain(times.expiresAt);}

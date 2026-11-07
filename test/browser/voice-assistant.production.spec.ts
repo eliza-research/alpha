@@ -16,7 +16,7 @@ test('production assistant has one Talk control and no dictation launcher',async
  const foreign=await setup(page);await expect(button(page,'Transcribe')).toHaveCount(0);await expect(button(page,'Talk')).toHaveAttribute('title','Voice assistant');await clean(page,foreign);
 });
 
-test('barge-in stops playback, keeps only the played sentence and sends the new speech once as the next turn',async({page})=>{
+test('explicit Stop drains playback, keeps only the played sentence and a restarted capture sends the next turn once',async({page})=>{
  const foreign=await setup(page);
  await page.evaluate(()=>{(window as any).flagOff.replies.push('You have two meetings today. The first one starts at nine with Priya.','Tomorrow is clear.');});
  await button(page,'Talk').click();
@@ -27,10 +27,32 @@ test('barge-in stops playback, keeps only the played sentence and sends the new 
  await page.evaluate(()=>(window as any).live.finishPlayback());
  await expect.poll(()=>live(page,f=>f.spoken.length)).toBe(2);
  await expect(button(page,'Stop voice conversation')).toBeVisible();await expect(button(page,'Stop speaking')).toHaveCount(0);
- const stoppedBefore=await live(page,f=>f.stopped);
- // The user talks over the second sentence.
- await say(page,'and tomorrow');
+ const stoppedBefore=await live(page,f=>f.stopped),capturesBefore=await live(page,f=>f.captures.length);
+ // Busy input is closed during reply playback. Stop is explicit; a deferred native cleanup
+ // proves the next capture cannot start before the previous playback has actually drained.
+ await page.evaluate(()=>{
+  const w=window as any,prior=w.Capacitor.nativePromise;
+  w.Capacitor.nativePromise=async(plugin:string,method:string,input:any)=>{
+   if(plugin!=='AlphaVoiceCloud'||method!=='stopPlayback')return prior(plugin,method,input);
+   // Disarm before the first await: concurrent cleanup calls must not acquire this gate twice.
+   w.Capacitor.nativePromise=prior;
+   const result=await prior(plugin,method,input);
+   await new Promise<void>(resolve=>w.live.releaseStoppedPlayback=resolve);
+   return result;
+  };
+ });
+ await button(page,'Stop voice conversation').click();
  await expect.poll(()=>live(page,f=>f.stopped)).toBeGreaterThan(stoppedBefore);
+ await expect(voice(page)).toHaveAttribute('data-voice-state','stopping');
+ expect(await live(page,f=>f.active)).toBeNull();
+ expect(await live(page,f=>f.captures.length)).toBe(capturesBefore);
+ expect(await posts(page)).toEqual(['What is on my calendar today']);
+ await page.evaluate(()=>{const f=(window as any).live;f.releaseStoppedPlayback();});
+ await expect(voice(page)).toHaveCount(0);
+ // No injected state/reply is used for the second request: reopen through the actual Talk UI.
+ await button(page,'Talk').click();await expect(voice(page)).toHaveAttribute('data-voice-state','listening');
+ await expect.poll(()=>live(page,f=>f.captures.length)).toBe(capturesBefore+1);
+ await say(page,'and tomorrow');
  await expect.poll(()=>posts(page)).toEqual(['What is on my calendar today','and tomorrow']);
  await expect(voice(page)).toHaveAttribute('data-voice-state','speaking');
  await page.evaluate(()=>(window as any).live.finishPlayback());
@@ -73,8 +95,12 @@ test('Mute controls capture and Stop retires playback without a separate interru
  await expect.poll(()=>live(page,f=>f.stopped)).toBeGreaterThan(0);
  await expect(page.getByText('(Interrupted before this reply was played.)')).toBeVisible();
  expect(await posts(page)).toEqual(['How is the weather']);
- // Nothing was heard: the route needs a non-empty prefix, so nothing is sent.
- expect(await live(page,f=>f.heard)).toEqual([]);
+ // Nothing was heard: the agent is told so explicitly ({ nothingHeard: true }, docs/fused-speech.md), never sent an empty prefix.
+ const heard=await live(page,f=>f.heard);
+ expect(heard.map((row:any)=>[row.path.split('/')[5],row.nothingHeard,row.heardText])).toEqual([['11111111-1111-4111-8111-111111111111',true,undefined]]);
+ expect(heard[0].ownerId).toBeTruthy();
+ const outcomes=await page.evaluate(()=>JSON.parse(localStorage.getItem('alphaphone:voice-timing:v1')||'[]').filter((row:any)=>row.endpoint).map((row:any)=>row.heard??null));
+ expect(outcomes).toEqual(['recorded']);
  await clean(page,foreign);
 });
 
@@ -129,7 +155,8 @@ test('semantic endpointing: a complete score submits after the short gap; an inc
  expect(await posts(page)).toEqual(['What is on my calendar today'],'not complete: no early submit');
  await expect.poll(()=>posts(page)).toEqual(['What is on my calendar today','and remind me to']);
  const endpoints=await page.evaluate(()=>JSON.parse(localStorage.getItem('alphaphone:voice-timing:v1')||'[]').filter((row:any)=>row.endpoint).map((row:any)=>row.endpoint));
- expect(endpoints).toEqual([{by:'semantic',semantic:'complete',latencyMs:18},{by:'gap',semantic:'incomplete',latencyMs:15}]);
+ // `path` names the chain stage that answered: the resident's fused scorer (Clef is off).
+ expect(endpoints).toEqual([{by:'semantic',semantic:'complete',latencyMs:18,path:'local'},{by:'gap',semantic:'incomplete',latencyMs:15,path:'local'}]);
  expect(JSON.stringify(endpoints)).not.toContain('calendar');
  // The reply was fully heard: no heard request.
  expect(await live(page,f=>f.heard)).toEqual([]);

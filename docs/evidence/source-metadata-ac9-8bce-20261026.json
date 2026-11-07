@@ -1,0 +1,9 @@
+{
+  "atUTC": "2026-10-26T23:02:33.815430+00:00",
+  "productBase": "ac9ded4e9012edc141693173727accf0cbb5b796",
+  "SDK": "8bce98d798e9e8f1f6b65820d70d2e2d05c83118",
+  "previousSDK": "da82a74e8bb1c45ae76beba64ee5bf0c1c2778e6",
+  "scope": "authenticated request principal binding only",
+  "tests": "real HTTP distinct principal/entity regression and scoped semantic passed",
+  "fullNativeAcceptance": false
+}

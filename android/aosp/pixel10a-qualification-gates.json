@@ -1,0 +1,68 @@
+{
+  "schema": 1,
+  "description": "Distinct Pixel 10a (stallion) Android 17 distribution gates for issue #399. Each gate is recorded separately: one gate's evidence never satisfies another, and development evidence never makes a gate passed. Statuses are 'not run', 'development', 'failed' or 'passed'; 'passed' needs at least one release-level evidence entry. Statuses are recorded from executed builds, boots, drills and user sessions, never by software. scripts/aosp-pixel10a.mjs pixel10aGateProblems checks this file against the source lock, product descriptor and update channel.",
+  "target": "pixel10a",
+  "product": "alpha_stallion_phone",
+  "gates": {
+    "sourceAdmission": {
+      "requirement": "Exact Pixel 10a SKU/codename and platform, kernel, vendor and firmware source and hash lock admitted for release.",
+      "status": "passed",
+      "evidence": [
+        {
+          "ref": "docs/pixel10a-source-verification-2026-10-25.json",
+          "level": "release",
+          "summary": "Admitted lock 760a7184 verified on 2026-10-26 UTC against the retained source and factory archive: 1,087 project revisions, 16 overrides, 6,360 generated vendor files, factory SHA-256, plus the exactly applied listening-chip patch."
+        }
+      ],
+      "scope": "Source inputs only. Not an image build, boot, signing or device result."
+    },
+    "apkVariants": {
+      "requirement": "Standalone and launcher, debug and release variants build and pass package verification, independently of image qualification.",
+      "status": "passed",
+      "evidence": [
+        {
+          "ref": "https://github.com/AlphaCompute/alphaphone/actions/runs/39918054977",
+          "level": "release",
+          "summary": "Alpha 3f25885d / Eliza f931082e: standalone and launcher, debug and unsigned release, verified by verify-apks with the packaged Cloud runtime."
+        }
+      ],
+      "scope": "Build and package contents only. Release APK signing (decision A-06) and installation are not part of this gate."
+    },
+    "cuttlefishBoot": {
+      "requirement": "A Cuttlefish image built from the release candidate boots and passes scripts/verify-cuttlefish-launcher.mjs (system Alpha APK, Alpha HOME, recovery HOME, enforcing SELinux).",
+      "status": "development",
+      "evidence": [
+        {
+          "ref": "docs/evidence/cuttlefish-observation-2026-10-25.json",
+          "level": "development",
+          "summary": "Read-only: a development CP2A.260605.016 userdebug test-keys alpha_cf_x86_64_phone image (Android 17) booted with enforcing SELinux, but Alpha runs from a /data/app override, so the launcher postboot verifier cannot pass."
+        }
+      ],
+      "scope": "Image integration on the virtual target. Not physical hardware."
+    },
+    "physicalDevice": {
+      "requirement": "The release image on a physical Pixel 10a completes the per-unit checks in docs/pilot-acceptance-runbook.md (Execute on every unit, Performance and stability).",
+      "status": "development",
+      "evidence": [
+        {
+          "ref": "docs/pixel10a-code6-boot-evidence.json",
+          "level": "development",
+          "summary": "October 19 unlocked, development-signed Cloud image at Alpha e240ddab: archive admission, flash and initial boot only."
+        }
+      ],
+      "scope": "Device functions only. Not update, recovery or user acceptance."
+    },
+    "signedUpdateRecovery": {
+      "requirement": "Release-signed image and OTA with every update and recovery drill in android/aosp/pixel10a-ota-channel.json passed.",
+      "status": "not run",
+      "evidence": [],
+      "scope": "Mirrors the channel drill record; it cannot pass while any channel drill or the known-good release is unset."
+    },
+    "userAcceptance": {
+      "requirement": "Pilot users accept the release on physical Pixel 10a devices following docs/pilot-acceptance-runbook.md.",
+      "status": "not run",
+      "evidence": [],
+      "scope": "User acceptance only. It follows, and does not replace, every other gate."
+    }
+  }
+}

@@ -8,4 +8,12 @@
  <uses-permission android:name="android.permission.READ_SMS" tools:node="remove" tools:ignore="PermissionImpliesUnsupportedChromeOsHardware" />
  <uses-permission android:name="android.permission.SEND_SMS" tools:node="remove" tools:ignore="PermissionImpliesUnsupportedChromeOsHardware" />
  <uses-permission android:name="android.permission.RECEIVE_SMS" tools:node="remove" tools:ignore="PermissionImpliesUnsupportedChromeOsHardware" />
+ <uses-permission android:name="android.permission.RECEIVE_MMS" tools:node="remove" tools:ignore="PermissionImpliesUnsupportedChromeOsHardware" />
+ <uses-permission android:name="android.permission.RECEIVE_WAP_PUSH" tools:node="remove" tools:ignore="PermissionImpliesUnsupportedChromeOsHardware" />
+ <!-- No dialer role in standalone APKs: the shared phone module's permissions are removed. -->
+ <uses-permission android:name="android.permission.CALL_PHONE" tools:node="remove" />
+ <uses-permission android:name="android.permission.READ_CALL_LOG" tools:node="remove" />
+ <uses-permission android:name="android.permission.WRITE_CALL_LOG" tools:node="remove" />
+ <uses-permission android:name="android.permission.MANAGE_OWN_CALLS" tools:node="remove" />
+ <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" tools:node="remove" />
 </manifest>

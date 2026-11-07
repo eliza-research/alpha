@@ -1,4 +1,7 @@
 import { test, expect } from '@playwright/test';
+import { returnToApps } from './app-navigation';
+import { openBrowserCalendar } from './helpers/browser-calendar';
+import { installHomeCalendar, refreshHomeCalendar } from './helpers/home-calendar';
 // Development lane. The development profile's inbox reports through the same attention summary a
 // mail provider adapter uses, which exercises the connected Home state; the calendar failure is a
 // real browser-calendar read failure. home-attention.production.spec.ts covers the flag-off build.
@@ -12,9 +15,14 @@ test('the explicit development fixture reports unread email and opens Inbox', as
 });
 
 test('a failed calendar read shows the retry state instead of neutral copy, then recovers', async ({ page }) => {
+  test.slow(); // Chooses the browser calendar in Calendar first.
   await page.goto('/');
-  const card = page.locator('[data-alpha-layer="home"] .scr > button').first();
-  await expect(card).toContainText('No upcoming events');
+  // Home's agenda reads the calendar chosen in Calendar (Agent Calendar by default); this case is
+  // about a device-calendar read failure, so it chooses the test-mocks browser calendar first.
+  await openBrowserCalendar(page);
+  await returnToApps(page);
+  const card = page.locator('[data-alpha-home-calendar]');
+  await expect(card).toHaveCount(0);
   await page.evaluate(async () => {
     const { BrowserCalendar } = await import('/src/browser/calendar.ts');
     const proto = BrowserCalendar.prototype as any;
@@ -30,7 +38,27 @@ test('a failed calendar read shows the retry state instead of neutral copy, then
     (BrowserCalendar.prototype as any).list = (window as any).__calendarList;
     window.dispatchEvent(new Event('alpha:calendar-preferences'));
   });
-  await expect(card).toContainText('No upcoming events');
+  await expect(card).toHaveCount(0);
+});
+
+test('a failed Agent Calendar read shows the retry state and recovers only after retry', async ({ page }) => {
+  await page.goto('/');await installHomeCalendar(page);
+  const card = page.locator('[data-alpha-home-calendar]');
+  await expect(card).toHaveCount(0);
+  await refreshHomeCalendar(page,{fail:true});
+  await expect(card).toHaveAttribute('aria-label', 'Open Agent Calendar');
+  await expect(card).toContainText('Calendar unavailable');
+  await expect(card).not.toContainText(/Nothing planned|No upcoming/);
+  await expect(card).toHaveAttribute('aria-description','Calendar service unavailable. Open Calendar to retry.');
+  await expect(card).not.toContainText(/from this browser/);
+  await page.evaluate(()=>(window as any).homeCalendarFixture.fail=false);
+  // Opening Calendar from the failed card is the explicit retry: it reads the agent calendar again.
+  const before = await page.evaluate(()=>(window as any).homeCalendarFixture.requests.length);
+  await card.click();
+  await expect(page.locator('html')).toHaveAttribute('data-active-view','calendar');
+  await expect.poll(()=>page.evaluate(()=>(window as any).homeCalendarFixture.requests.length)).toBeGreaterThan(before);
+  await returnToApps(page);
+  await expect(card).toHaveCount(0);
 });
 
 // A retained brief sits beside the attention items without replacing them; a record of an

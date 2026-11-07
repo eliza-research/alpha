@@ -1,4 +1,6 @@
 package ai.elizaresearch.alphaphone;
+import ai.eliza.plugins.actionjournal.deletion.DeferredDeletionCoordinator;
+import ai.eliza.plugins.actionjournal.deletion.DeletionDispatchClaim;
 
 import android.Manifest;
 import android.content.ContentValues;
@@ -41,13 +43,13 @@ public final class AlphaCalendarPlugin extends CalendarPlugin {
  @PluginMethod public void removeScoped(PluginCall call){scopedDeletion().review(call,null);}
  @Override protected boolean deferReviewedDeletion(){return true;}
  @Override protected JSObject enqueueReviewedDeletion(org.json.JSONObject target,String operationId)throws Exception{
-  NativeDeletionCoordinator coordinator=NativeDeletionCoordinator.get(getContext());DeleteOwner captured=operationId==null?null:deleteOwners.remove(operationId);
+  DeferredDeletionCoordinator coordinator=NativeDeletionCoordinator.get(getContext());DeleteOwner captured=operationId==null?null:deleteOwners.remove(operationId);
   if(operationId!=null&&(captured==null||captured.owner==null))throw new SecurityException("Agent deletion review expired");
   org.json.JSONObject owner=captured==null?coordinator.manualOwner():captured.owner;
   // Owner precondition before the permanent claim: a refusal leaves nothing claimed (reported as a conflict, nothing changed).
   if(!coordinator.stageAdmissible(owner))throw new SecurityException("Deletion owner changed during review");
   String id=operationId==null?java.util.UUID.randomUUID().toString():operationId;
-  if(captured!=null){NativeDeletionClaim.check(AlphaActionJournal.get(getContext()),captured.identity,operationId,captured.operation,owner,true);target.put("journalBinding",NativeDeletionClaim.binding(AlphaActionJournal.get(getContext()),captured.identity));}
+  if(captured!=null){DeletionDispatchClaim.check(AlphaActionJournal.get(getContext()),captured.identity,operationId,captured.operation,owner,true);target.put("journalBinding",DeletionDispatchClaim.binding(AlphaActionJournal.get(getContext()),captured.identity));}
   try{return JSObject.fromJSONObject(new org.json.JSONObject().put("status","queued").put("deletion",coordinator.stageCalendar(target,owner,id)));}
   catch(Exception failure){
    // A stage that persisted before failing (for example while scheduling expiry) is still pending: never report it as unchanged.
@@ -67,7 +69,7 @@ public final class AlphaCalendarPlugin extends CalendarPlugin {
   };
   try{deleteOwnerWorker.execute(()->{try{
    ticket.owner=NativeDeletionCoordinator.get(getContext()).agentOwner();ticket.identity=call.getObject("journalIdentity");ticket.operation=new org.json.JSONObject(operation.toString());
-   NativeDeletionClaim.check(AlphaActionJournal.get(getContext()),ticket.identity,id,ticket.operation,ticket.owner,false);
+   DeletionDispatchClaim.check(AlphaActionJournal.get(getContext()),ticket.identity,id,ticket.operation,ticket.owner,false);
    getActivity().runOnUiThread(()->{if(deletionRetired||deleteOwners.get(id)!=ticket||!foreground()){deleteOwners.remove(id,ticket);call.resolve(status("cancelled"));return;}if(operation.optJSONObject("target").optString("eventId").startsWith("delete2:"))scopedDeletion().review(owned,operation);else super.executeAgent(owned);});
   }catch(Exception unavailable){deleteOwners.remove(id,ticket);call.reject("Authenticated local agent is unavailable for deletion review.");}});}catch(java.util.concurrent.RejectedExecutionException retired){deleteOwners.remove(id,ticket);call.resolve(status("cancelled"));}
  }
@@ -101,26 +103,6 @@ public final class AlphaCalendarPlugin extends CalendarPlugin {
   }catch(Exception unavailable){c.reject("Calendar provider could not be read");}
  }
 
- /**
-  * Creates one all-day, explicitly zoned or simply recurring event on the local or a writable
-  * calendar, then reads every bound provider field back. Never edits an existing event and never
-  * replays an unknown creation. Statuses: saved, unknown, pending-creation, read-only, permission-required.
-  */
- @PluginMethod public synchronized void saveOptions(PluginCall c){
-  if(!granted()){c.resolve(status("permission-required"));return;}
-  try{
-   CalendarEventOptions options=CalendarEventOptions.parse(new org.json.JSONObject(c.getObject("event",new JSObject()).toString()));
-   String calendar=c.getString("calendarId","local");
-   long calendarId=calendar.equals("local")?CalendarDestinations.local(getContext().getContentResolver(),CONFIGURATION):Long.parseLong(calendar);
-   if(!CalendarDestinations.writable(getContext().getContentResolver(),calendarId)){c.resolve(status("read-only"));return;}
-   boolean separate=Boolean.TRUE.equals(c.getBoolean("separateCreation"));
-   // A timed-journal creation that is still unconfirmed blocks this one too, unless separate.
-   if(!separate&&CalendarCreationStore.pendingCreations(getContext()).getJSONArray("creations").length()>0){c.resolve(status("pending-creation"));return;}
-   ContentValues values=options.values(calendarId);
-   c.resolve(OPTION_CREATIONS.create(getContext(),c.getString("creationId"),values,separate));
-  }catch(IllegalArgumentException invalid){c.reject(invalid.getMessage()==null?"Invalid calendar event":invalid.getMessage());}
-  catch(Exception uncertain){c.reject("Calendar write could not be confirmed. Check creation receipts before retrying.");}
- }
  /** Both journals: timed creations and option creations. Never retries. */
  @Override @PluginMethod public void pendingCreations(PluginCall c){
   if(!granted()){c.resolve(status("permission-required"));return;}
@@ -130,11 +112,6 @@ public final class AlphaCalendarPlugin extends CalendarPlugin {
    for(int i=0;i<first.length();i++)all.put(first.get(i));for(int i=0;i<second.length();i++)all.put(second.get(i));
    JSObject out=status("ready");out.put("creations",all);c.resolve(out);
   }catch(Exception unavailable){c.reject("Calendar creation recovery unavailable. Nothing was retried.");}
- }
- @Override @PluginMethod public void acknowledgeCreation(PluginCall c){
-  if(!granted()){c.resolve(status("permission-required"));return;}
-  try{String id=c.getString("creationId");if(OPTION_CREATIONS.owns(getContext(),id))OPTION_CREATIONS.acknowledge(getContext(),id);else CalendarCreationStore.acknowledge(getContext(),id);c.resolve(status("acknowledged"));}
-  catch(Exception unavailable){c.reject("Calendar creation receipt could not be acknowledged.");}
  }
  /** Provider readback of an event's all-day, zone and repeat fields for display and tests. */
  @PluginMethod public void readOptions(PluginCall c){

@@ -1,30 +1,35 @@
 import { test, expect } from '@playwright/test';
+import { installResidentAgentPlugin } from './helpers/resident-agent-plugin';
 
 // Real rendered connection UI/controller; only the native IPC boundary is synthetic.
 // No runtime, provider key, model request or external account is used.
 // Decision P-43: Stop is replaced by Restart; the agent is never left stopped.
 for (const scenario of ['confirmed', 'incomplete-timeout'] as const) {
   test(`Restart local agent waits for native shutdown, then starts again: ${scenario}`, async ({ page }) => {
+    await installResidentAgentPlugin(page);
     await page.addInitScript(() => {
       const w = window as any;
       w.androidBridge = {};
       const store = new Map();
       w.stopFixture = { starts: 0, stops: 0, polls: 0, status: { state: 'stopping', serviceActive: true, socketListening: true }, unexpected: [] as string[] };
       const methods = (names: string[]) => names.map(name => ({ name, rtype: 'promise' }));
+      const agent = w.residentAgent = w.createResidentAgentPlugin({ owner: () => 'fixture-owner', agentId: 'fixture-agent', providerStatus: {provider: 'elizacloud', configured: false} });
       w.Capacitor = {
         PluginHeaders: [
     {name:'AlphaNotifications',methods:methods(['status','crossAppStatus','addListener','removeListener'])},
     {name:'AlphaVoiceCloud',methods:methods(['checkPermissions'])},
-          { name: 'Agent', methods: methods(['getStatus', 'start', 'stop', 'request']) },
+          { name: 'Agent', methods: agent.methods(['getStatus', 'start', 'stop', 'request']) },
           { name: 'AlphaConnection', methods: methods(['secureRead', 'secureWrite','secureCompareExchange', 'secureRemove', 'cancel', 'addListener', 'removeListener', 'pauseNotificationCollection']) },
           { name: 'AlphaActionJournal', methods: methods(['list']) },
-          { name: 'DeviceApps', methods: methods(['buildInfo']) },
+          { name: 'ElizaSystem', methods: methods(['getBuildInfo']) },
         ],
+        nativeCallback: agent.nativeCallback,
         nativePromise: async (plugin: string, method: string, input: any) => {
           const f = w.stopFixture;
           if(plugin==='AlphaNotifications')return {permissionGranted:true,appEnabled:true};
     if(plugin==='AlphaVoiceCloud')return {microphone:'granted'};
     if (plugin === 'Agent') {
+            const owned = agent.answer(method, input); if (owned) return owned;
             if (method === 'getStatus') {
               if (f.stops) { f.polls++; return { packaged: true, ...f.status }; }
               return { packaged: true, state: 'stopped', serviceActive: false, socketListening: false };
@@ -32,6 +37,9 @@ for (const scenario of ['confirmed', 'incomplete-timeout'] as const) {
             if (method === 'start') { f.starts++; return { state: 'ready' }; }
             if (method === 'stop') { f.stops++; return { state: 'stopping' }; }
             if (method === 'request') {
+              // Connected Notes and Calendar mount read-only source checks alongside the agent.
+              // This shutdown fixture supplies no source data and admits no write operation.
+              if (input.method === 'GET' && (input.path === '/api/notes/state' || /^\/api\/lifeops\/calendar\/(feed|calendars|next-context)\?/.test(input.path))) return { status: 503, body: '{}' };
               let body: any;
               if (input.path === '/api/auth/me') body = { identity: { kind: 'owner', id: 'fixture-owner' }, access: { role: 'OWNER', mode: 'session' } };
               else if (input.path === '/api/agents') body = { agents: [{ id: 'fixture-agent', name: 'Resident fixture', status: 'running' }] };
@@ -51,14 +59,14 @@ for (const scenario of ['confirmed', 'incomplete-timeout'] as const) {
             if (['cancel', 'addListener', 'removeListener', 'pauseNotificationCollection'].includes(method)) return {};
           }
           if (plugin === 'AlphaActionJournal' && method === 'list') return { entries: [] };
-          if (plugin === 'DeviceApps' && method === 'buildInfo') return { launcher: false, version: 'fixture' };
+          if (plugin === 'ElizaSystem' && method === 'getBuildInfo') return { launcher: false, version: 'fixture' };
           f.unexpected.push(plugin + '.' + method); throw Error('Unexpected native operation');
         },
       };
     });
     await page.goto('/');
     if (!await page.locator('.alpha-connection-scrim').isVisible())
-      await page.getByRole('button', { name: 'Agent connection', exact: true }).click();
+      await page.getByRole('button', { name: 'Agent', exact: true }).click();
     let chooser = page.locator('.alpha-connection');
     await chooser.getByRole('button', { name: 'Start local agent', exact: true }).click();
     await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
@@ -101,5 +109,6 @@ for (const scenario of ['confirmed', 'incomplete-timeout'] as const) {
     }
     const fixture = await page.evaluate(() => (window as any).stopFixture);
     expect(fixture.starts).toBe(scenario === 'confirmed' ? 2 : 1); expect(fixture.stops).toBe(1); expect(fixture.polls).toBeGreaterThan(1); expect(fixture.unexpected).toEqual([]);
+    expect(await page.evaluate(() => (window as any).residentAgent.state.unexpected)).toEqual([]);
   });
 }

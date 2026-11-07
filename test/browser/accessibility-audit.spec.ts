@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { auditPage, auditTabOrder, auditTree, format } from './accessibility-audit';
+import { auditPage, auditReadingOrder, auditTabOrder, auditTree, format } from './accessibility-audit';
 
 // The sweep is only as good as its checks. Each rule is shown here to fire on a seeded defect
 // and to stay quiet on the corrected markup, so a silent sweep means a clean page.
@@ -72,7 +72,7 @@ test('text printed over text, stacked or cut controls and labels split mid-word 
       <span style="display:block;font-size:14px;line-height:1.1">Room 4</span>
     </div>
     <button style="position:absolute;left:0;top:140px;width:130px;padding:0;border:0;font-size:24px;overflow-wrap:anywhere">Calendar</button>
-    <button style="position:absolute;left:140px;top:140px;width:60px;padding:0;border:0;font-size:16px">All apps</button>
+    <button style="position:absolute;left:140px;top:140px;width:60px;padding:0;border:0;font-size:16px">Apps</button>
     <button style="position:absolute;left:210px;top:140px;width:90px;padding:0;border:0;font-size:14px;overflow-wrap:anywhere">https://a-very-long-host.example/path</button>
     <button style="position:absolute;left:220px;top:0;width:80px;height:44px">Left</button>
     <button style="position:absolute;left:300px;top:0;width:80px;height:44px">Right</button>
@@ -272,4 +272,63 @@ test('closed message details are not painted under the dock; opening the same co
  expect(format(await auditPage(page,{dock:true}))).toEqual([]);
  await page.locator('details').evaluate(el=>(el as HTMLDetailsElement).open=true);
  expect(rules(format(await auditPage(page,{dock:true})))).toContain('obscured-by-dock');
+});
+
+// TalkBack's linear order (AccessibilityInstrumentedTest.talkBackOrder), read from the same
+// accessibility tree Android WebView is built from.
+const screen = (body: string) => `<div class="os" style="position:relative;width:400px;height:600px;overflow:hidden"><div data-screen="1" style="position:absolute;inset:0;overflow:hidden">${body}</div></div>`;
+const assistant = `<div role="group" aria-label="Assistant controls" style="position:absolute;left:16px;right:16px;bottom:28px;height:60px;display:flex;gap:8px"><button aria-label="Open conversation" style="width:44px;height:44px">A</button><textarea aria-label="Ask Alpha" rows="1"></textarea><button aria-label="Talk" style="width:44px;height:44px">M</button></div>`;
+const tiles = (count = 6) => `<div role="region" aria-label="Home" style="position:absolute;inset:44px 0 100px;overflow-y:auto"><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">${Array.from({ length: count }, (_, index) => `<button style="height:80px">App ${index + 1}</button>`).join('')}</div></div>`;
+
+test('reading order: content read after the assistant controls, or upward within a region, is reported', async ({ page }) => {
+  await page.setViewportSize({ width: 400, height: 600 });
+  // The ongoing-activity chip drawn at the top of the screen but placed after the assistant controls.
+  await load(page, screen(`${tiles()}${assistant}<button style="position:absolute;top:8px;left:84px;height:28px">Return to Maps</button>`));
+  const after = format(await auditReadingOrder(page));
+  expect(rules(after)).toEqual(['assistant-group-order']);
+  expect(after.join('\n')).toContain('Return to Maps');
+  // The same chip where it is drawn, before the content below it.
+  await load(page, screen(`<button style="position:absolute;top:8px;left:84px;height:28px">Return to Maps</button>${tiles()}${assistant}`));
+  expect(format(await auditReadingOrder(page))).toEqual([]);
+
+  // A bottom action row placed before the page it acts on: TalkBack reads Save, then goes back up to the title.
+  const bar = `<div style="position:absolute;left:0;right:0;bottom:0;height:64px;display:flex;justify-content:flex-end"><button style="height:48px">Save</button></div>`;
+  const body = `<div style="position:absolute;left:0;right:0;top:0"><h1 style="margin:0;font-size:28px">Draft</h1><p>The body of the draft, long enough to be a paragraph.</p></div>`;
+  await load(page, screen(bar + body));
+  const up = format(await auditReadingOrder(page));
+  expect(rules(up)).toEqual(['reading-order']);
+  expect(up.join('\n')).toMatch(/'Draft'.*goes up from .*'Save'/);
+  await load(page, screen(body + bar));
+  expect(format(await auditReadingOrder(page))).toEqual([]);
+
+  // A second column to the right starts higher up by design; a live region (a toast) is announced, not read on to.
+  await load(page, screen(`<div style="position:absolute;left:0;top:0;width:190px"><button style="display:block;width:100%;height:200px">Long list item</button><button style="display:block;width:100%;height:200px">Second item</button></div><div style="position:absolute;left:200px;top:0;width:190px"><p>Detail of the open item</p></div>${assistant}<div aria-live="polite" style="position:absolute;left:16px;right:16px;bottom:104px"><span>Saved</span><button>Undo</button></div>`));
+  expect(format(await auditReadingOrder(page))).toEqual([]);
+});
+
+test('reading order: one assistant group; hidden, inert, scrolled-away and off-phone content is not read', async ({ page }) => {
+  await page.setViewportSize({ width: 600, height: 600 });
+  await load(page, screen(`${tiles()}${assistant}${assistant}`));
+  expect(rules(format(await auditReadingOrder(page)))).toEqual(['assistant-group-duplicate']);
+  // A retired copy (inert, aria-hidden) is not exposed; neither is a row scrolled out of its list,
+  // nor the development rail beside the phone.
+  const retired = assistant.replace('aria-label="Assistant controls"', 'aria-label="Assistant controls" inert aria-hidden="true"');
+  await load(page, `${screen(`${tiles(30)}${assistant}<div inert aria-hidden="true" style="position:absolute;top:0;left:0;right:0"><button>Hidden layer</button></div>${retired}`)}<div style="position:absolute;left:420px;top:0"><button>Jump to Home</button></div>`);
+  expect(format(await auditReadingOrder(page))).toEqual([]);
+  await page.locator('[role=region]').evaluate(el => { el.scrollTop = el.scrollHeight; });
+  expect(format(await auditReadingOrder(page))).toEqual([]);
+  // The rule reads the tree, not the DOM's guesses: the same chip after the group is still found when everything else is clean.
+  await load(page, screen(`${tiles(30)}${assistant}${retired}<p style="position:absolute;top:8px;left:84px;margin:0">Recording · 0:12</p>`));
+  expect(rules(format(await auditReadingOrder(page)))).toEqual(['assistant-group-order']);
+});
+
+test('reading order: a bar of controls keeps its own order in every layout; the same order loose on the screen is reported', async ({ page }) => {
+  await page.setViewportSize({ width: 400, height: 600 });
+  // Large system font: the header's title takes a row of its own below its buttons, and is still
+  // read between the navigation and the actions, as an Android toolbar's title is.
+  const header = (hook: string) => `<div ${hook} style="position:absolute;top:0;left:0;right:0;display:flex;flex-wrap:wrap;align-items:center"><button aria-label="Back to apps" style="width:44px;height:44px">‹</button><h1 style="order:1;flex:1 0 100%;margin:0;font-size:40px">Inbox</h1><button aria-label="Search email" style="width:44px;height:44px;margin-left:auto">S</button></div><p style="position:absolute;top:120px;margin:0">First message</p>`;
+  await load(page, screen(header('data-alpha-app-header="main"')));
+  expect(format(await auditReadingOrder(page))).toEqual([]);
+  await load(page, screen(header('data-other-row')));
+  expect(rules(format(await auditReadingOrder(page)))).toEqual(['reading-order']);
 });

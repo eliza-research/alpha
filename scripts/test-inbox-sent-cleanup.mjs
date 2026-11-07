@@ -5,12 +5,14 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from '../test/support/strip-types.mjs';
 import {InboxOperation, checkOutgoingAttachments, outgoingAttachmentLimits, attachmentBytes, composerKind, composerContent, reviewBinding, reviewBindingRefusal} from '../apps/app/src/runtime/inbox-operation.ts';
 import {reviewMailAttachment} from '../apps/app/src/runtime/inbox-attachment.ts';
 import {classifyGmailFailure} from '../apps/app/src/runtime/gmail-mailbox.ts';
 import * as grants from '../apps/app/src/runtime/gmail-grants.ts';
 import {encodeInboxUnsaved, readInboxUnsaved} from '../apps/app/src/runtime/inbox-unsaved-record.ts';
+import {createMailReviewController} from '../.eliza/client-features/plugins/plugin-inbox/src/mailbox/review-controller.ts';
+import {createMailDraftsController} from '../.eliza/client-features/plugins/plugin-inbox/src/mailbox/drafts-controller.ts';
 
 const strip = async (file, name) => {
   let source = await readFile(new URL(`../apps/app/src/prototype/${file}`, import.meta.url), 'utf8');
@@ -82,7 +84,7 @@ function device() {
         retire() {}, replace() {}, retry: async () => {}, recover() {}};
     };
     const controller = {getCloudClient: () => ({client, sessionId: 'session-1'}), getSnapshot: () => ({cloudAccount: {environment: 'production', userId: 'owner-1', sessionId: 'session-1'}})};
-    const sandbox = {configureGmailBackground:async()=>{},withdrawGmailBackground:async()=>{},pendingGmailNotice:async()=>null,consumeGmailNotice:async()=>{},onGmailNotice:async()=>({remove:async()=>{}}),inboxUnsaved, InboxOperation, composerKind, composerContent, reviewBinding, reviewBindingRefusal, performance, queueMicrotask, checkOutgoingAttachments, outgoingAttachmentLimits,attachmentBytes, reviewMailAttachment, classifyGmailFailure, ...grants, crypto: globalThis.crypto, TextEncoder, structuredClone,
+    const sandbox = {createMailReviewController, createMailDraftsController, configureGmailBackground:async()=>{},withdrawGmailBackground:async()=>{},pendingGmailNotice:async()=>null,consumeGmailNotice:async()=>{},onGmailNotice:async()=>({remove:async()=>{}}),inboxUnsaved, InboxOperation, composerKind, composerContent, reviewBinding, reviewBindingRefusal, performance, queueMicrotask, checkOutgoingAttachments, outgoingAttachmentLimits,attachmentBytes, reviewMailAttachment, classifyGmailFailure, ...grants, crypto: globalThis.crypto, TextEncoder, structuredClone,
       secureConnectionStore: store, connectionController: controller, registerPlugin: () => ({}), DailyApps: {}, AbortController, DOMException, console, JSON, Promise, Set, Map, Error, Math, String, Array, Object,
       window: {confirm: text => { ui.prompts.push(text); return ui.answer; }}, document: {documentElement: {dataset: {connectionMode: 'live'}}}};
     sandbox.inboxLocalStore=sandbox.secureConnectionStore;vm.createContext(sandbox); for (const source of sources) vm.runInContext(source, sandbox);

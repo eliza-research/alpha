@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "recordedAtUTC": "2026-10-26T04:04:07.969369+00:00",
+  "product": "19bd44c31b97903212e1b00935c5c715d0a17602",
+  "sdk": "349235fd384f0c0694b8ad9b3f96fec493f33440",
+  "previousSDK": "0f4d375aaf9f5109e30923eff9992f67f50ee1a0",
+  "sourceDelta": [
+    "Shared planner prepared-handoff synthesis distinction",
+    "Existing strict held-navigation reply selection",
+    "Portable owning contract regression"
+  ],
+  "scope": "SOURCE metadata only; producer remains fixed19bd/349, installed877a is d7/0f.",
+  "dependencyInputIdentity": {
+    "rawLockSHA256": "fc88bf9a5d718a932d72d48f2bb58caea32174e9f07d547e9c3dadd2f0901e91",
+    "rawLockBytesIdentical": true,
+    "normalizedInputIdentical": true,
+    "newRegistryQuery": false
+  },
+  "preservedSemanticObjectSHA256": {
+    "requirements": "7c5c68af00e12c1b8fc01cca103380c9e640cd2a4d7f6c20c1235d3ced084e61",
+    "inventoryItems": "1f57954e1fb915824ddda018bfd7c443eb070b4fd4b53116fb6f96fd2681d491",
+    "residentFindings": "71ef8786ee542c7c385c5354c9566e1246b9e5f52a767c7938ded675b1104011",
+    "residentExceptions": "f3dd23cafb02c99aef3473a5a0311ff9daafbce905091417e6789d75374a388f",
+    "residentMaintenance": "3e349b56de66cf39fb4383bd6db1b754b802f47ff78749a0e2d00b625be242d8"
+  },
+  "qualificationStatesChanged": false,
+  "exceptionDeadlinesRenewed": false,
+  "currentSourceArtifactQualified": false,
+  "reachability": {
+    "status": "diverged",
+    "aheadBy": 42,
+    "behindBy": 208,
+    "producer": "gh api repos/elizaOS/eliza/compare/develop...349235fd384f0c0694b8ad9b3f96fec493f33440"
+  },
+  "pending": [
+    "Actual new artifact and native request acceptance",
+    "Direct source/performance gate",
+    "Remaining original requirements"
+  ],
+  "previousSourceRecord": "docs/evidence/source-metadata-d7-0f-20261025.json"
+}

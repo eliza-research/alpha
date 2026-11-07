@@ -13,21 +13,20 @@ const source=readFileSync(nativeSource('AlphaConnectionPlugin.java'),'utf8');
 const credentialStore=readFileSync(nativeSource('AlphaCredentialStore.java'),'utf8');
 const slotsJava=readFileSync(nativeSource('RendererCredentialSlots.java'),'utf8');
 
-/** The admission predicate parsed from secureCompareExchange: exact names, prefixes and patterns. */
+/** The compare-exchange allow-list: Alpha's slot patterns, applied by the shared SecureSlotPolicy. */
 function nativeAllowList(){
  const method=source.slice(source.indexOf('@PluginMethod public void secureCompareExchange('),source.indexOf('@PluginMethod public void secureRemove('));
- const condition=method.match(/if\(name==null\|\|!\((.*?)\)\|\|!call\.getData\(\)\.has\("expectedValue"\)/);
- assert.ok(condition,'secureCompareExchange keeps one allow-list expression');
- const constant=name=>{const found=credentialStore.match(new RegExp(`static final String ${name}="([^"]+)"`));assert.ok(found,`AlphaCredentialStore.${name} resolves`);return found[1];};
- const rules=condition[1].split('||').map(clause=>{
-  let match;
-  if((match=clause.match(/^name\.equals\("([^"]+)"\)$/)))return {kind:'exact',value:match[1]};
-  if((match=clause.match(/^name\.equals\(AlphaCredentialStore\.(\w+)\)$/)))return {kind:'exact',value:constant(match[1])};
-  if((match=clause.match(/^name\.startsWith\("([^"]+)"\)$/)))return {kind:'prefix',value:match[1]};
-  if((match=clause.match(/^name\.matches\("([^"]+)"\)$/)))return {kind:'pattern',value:new RegExp(`^(?:${match[1].replace(/\\\\/g,'\\')})$`)};
-  assert.fail(`unparsed allow-list clause: ${clause}`);
+ assert.match(method,/if\(!RendererCredentialSlots\.compareExchangeAllowed\(name\)\|\|!call\.getData\(\)\.has\("expectedValue"\)/,'secureCompareExchange admits through the one shared allow-list');
+ const list=slotsJava.match(/COMPARE_EXCHANGE = \{([\s\S]*?)\};/);assert.ok(list,'RendererCredentialSlots keeps one COMPARE_EXCHANGE list');
+ assert.match(slotsJava,/new SecureSlotPolicy\(Arrays\.asList\(NATIVE_NAMESPACES\), Arrays\.asList\(COMPARE_EXCHANGE\), Arrays\.asList\(CREDENTIAL_SLOTS\)\)/);
+ // SecureSlotPolicy full-matches each pattern; a pattern without metacharacters is an exact name.
+ const rules=[...list[1].matchAll(/"((?:[^"\\]|\\.)*)"/g)].map(match=>{
+  const pattern=match[1].replace(/\\\\/g,'\\');
+  return /[\\[\]{}()*+?.^$|]/.test(pattern)?{kind:'pattern',value:new RegExp(`^(?:${pattern})$`)}:{kind:'exact',value:pattern};
  });
- return {rules,admits:slot=>rules.some(rule=>rule.kind==='exact'?slot===rule.value:rule.kind==='prefix'?slot.startsWith(rule.value):rule.value.test(slot))};
+ const draft=credentialStore.match(/static final String NOTES_DRAFT="([^"]+)"/);assert.ok(draft,'AlphaCredentialStore.NOTES_DRAFT resolves');
+ assert.ok(rules.some(rule=>rule.kind==='exact'&&rule.value===draft[1]),'the native notes draft slot is admitted exactly');
+ return {rules,admits:slot=>rules.some(rule=>rule.kind==='exact'?slot===rule.value:rule.value.test(slot))};
 }
 function nativeOnlyNamespaces(){
  const list=slotsJava.match(/NATIVE_NAMESPACES = \{([\s\S]*?)\};/);assert.ok(list);
@@ -83,11 +82,16 @@ function rendererSlots(){
    // Pure cache CAS exchanges a whole document; the platform factory's hashed slot is checked separately.
    if(where.endsWith('runtime/service-read-cache.ts')&&receiver==='this.store')continue;
    if(browserOnly.has(receiver))continue;
+   // These typed canonical Notes adapters exchange a document revision; they do not name a secure slot.
+   if(where.endsWith('prototype/legacy-notes-access.ts')&&receiver==='port'){assert.match(text,/port:NotesDocumentPort/);assert.equal(match[2].trim(),'expected');continue;}
+   if(where.endsWith('prototype/legacy-notes-access.ts')&&receiver==='vault'){assert.match(text,/SecureNotesStore\.open\(guarded/);assert.equal(match[2].trim(),'key');continue;}
    assert.ok(nativeReceivers.has(receiver),`${where}: classify compareExchange receiver ${receiver}`);
    // The capacity wrapper passes its caller's key through; the shared store's slot is checked below.
    if(where.endsWith('runtime/notes-secure-store.ts')&&match[2].trim()==='key')continue;
    // The Inbox local store passes its caller's slot through; its callers' slots are checked.
    if(where.endsWith('runtime/inbox-local-store.ts')&&match[2].trim()==='slot')continue;
+   // The reminder journal binding passes its caller's slot through; its callers' slots are checked below.
+   if(where.endsWith('runtime/reminder-journal-store.ts')&&match[2].trim()==='slot')continue;
    if(where.endsWith('runtime/service-read-cache-store.ts')&&match[2].trim()==='slot'){found.push({slot:'connected-read-cache:v1:'+SAMPLE,where});assert.ok(text.includes("slot='connected-read-cache:v1:'+hash"));continue;}
    // The Calendar adapter accepts only this exact owner/source-derived namespace.
    if(where.endsWith('runtime/calendar-linked-storage.ts')&&match[2].trim()==='slot'){
@@ -107,6 +111,20 @@ function rendererSlots(){
  const notes=readFileSync(join(root,'apps/app/src/runtime/notes-secure-store.ts'),'utf8');
  assert.match(notes,/secureSlot:SECURE_NOTES_SLOT/);
  found.push({slot:exported.get('SECURE_NOTES_SLOT'),where:'apps/app/src/runtime/notes-secure-store.ts (shared store)'});
+ // The shared Notes draft slot writes Alpha's named draft slot through the vault above.
+ assert.equal([...notes.matchAll(/createNotesDraftSlot\(vault,SECURE_NOTES_DRAFT_SLOT\)/g)].length,3,'read, save and clear use the draft slot');
+ found.push({slot:exported.get('SECURE_NOTES_DRAFT_SLOT'),where:'apps/app/src/runtime/notes-secure-store.ts (shared draft slot)'});
+ // The shared reminder journals write the slots their Alpha bindings name.
+ for(const name of ['reminder-creations','reminder-deletions']){
+  const where=`apps/app/src/runtime/${name}.ts`,text=readFileSync(join(root,where),'utf8');
+  const bound=[...text.matchAll(/reminderJournalStore<\w+>\((['"])([^'"]+)\1,/g)].map(match=>match[2]);
+  assert.equal(bound.length,1,`${where} binds one reminder journal slot`);
+  found.push({slot:bound[0],where});
+ }
+ // The shared latest-Clock-handoff record writes the slot Alpha's binding names.
+ const clock=readFileSync(join(root,'apps/app/src/runtime/clock-handoff-history.ts'),'utf8');
+ assert.match(clock,/createSharedClockHandoffHistory\(\{storage,slot:clockHandoffSlot,legacy\}\)/);
+ found.push({slot:exported.get('clockHandoffSlot'),where:'apps/app/src/runtime/clock-handoff-history.ts (shared record)'});
  return found;
 }
 
@@ -128,7 +146,8 @@ test('the Notes draft and note-origin slots are named, used by the renderer and 
  }
  // saveDraft, clearDraft and the Notes recovery reset all use the draft slot.
  const notes=readFileSync(join(root,'apps/app/src/runtime/notes-secure-store.ts'),'utf8'),agent=readFileSync(join(root,'apps/app/src/prototype/agent-adapter.ts'),'utf8');
- assert.equal([...notes.matchAll(/vault\.compareExchange\(SECURE_NOTES_DRAFT_SLOT,/g)].length,2,'saveDraft and clearDraft');
+ // The shared plugin-notes draft slot performs the compare-and-exchange on the slot Alpha names.
+ assert.equal([...notes.matchAll(/createNotesDraftSlot\(vault,SECURE_NOTES_DRAFT_SLOT\)\.(save|clear)\(/g)].length,2,'saveDraft and clearDraft');
  assert.match(agent,/\[SECURE_NOTES_SLOT,captured\.saved\]:\[SECURE_NOTES_DRAFT_SLOT,captured\.draft\]/,'the recovery reset');
 });
 
@@ -141,11 +160,12 @@ test('the parser fails closed: removing a slot from the allow-list is detected',
  }
 });
 
-test('the note-origin slot has its own native size bound above the renderer 200-link limit',()=>{
+test('the note-origin slot has its own native size bound above the renderer 200-link limit',async()=>{
  assert.match(credentialStore,/static final String NOTE_ORIGINS="note-origins:v1:device";/);
  assert.match(credentialStore,/if\(NOTE_ORIGINS\.equals\(name\)\)return 512\*1024;/);
- const origin=readFileSync(join(root,'apps/app/src/runtime/note-origin.ts'),'utf8');
- assert.match(origin,/200/,'the renderer keeps its 200-link bound');
+ // The bound is the shared Notes client's NOTE_ORIGIN_LIMIT, re-exported under Alpha's name.
+ const {noteOriginLimit}=await import('../apps/app/src/runtime/note-origin.ts');
+ assert.equal(noteOriginLimit,200,'the renderer keeps its 200-link bound');
 });
 
 test('browser Cloud conditional cleanup is isolated from the native credential CAS namespace',()=>{
@@ -155,4 +175,38 @@ test('browser Cloud conditional cleanup is isolated from the native credential C
  const start=browser.indexOf('export async function clearBrowserCloudCredentialIfCurrent('),end=browser.indexOf('\n}',start);assert.ok(start>=0&&end>start);const cleanup=browser.slice(start,end);
  assert.match(cleanup,/host=new BrowserCloudConnection\(\)/);assert.match(cleanup,/host\.secureCompareExchange\(/);assert.doesNotMatch(cleanup,/secureConnectionStore|registerPlugin|nativePromise/);
  const {admits}=nativeAllowList();assert.equal(admits('cloud:production'),false);assert.equal(admits('cloud:staging'),false);
+});
+
+test('shared Inbox journal and Calendar checkpoint slots are admitted natively and not native-only',async()=>{
+ // These stores now come from the pinned shared mailbox and linked-sync modules; the renderer passes
+ // their slot names through inboxLocalStore and calendarLinkStorage unchanged.
+ const journal=readFileSync(join(root,'.eliza/client-features/plugins/plugin-inbox/src/mailbox/operation-journal.ts'),'utf8');
+ assert.match(journal,/return `inbox-operation:v1:\$\{await sha256Hex\(JSON\.stringify\(\[owner, grantId\]\)\)\}`;/);
+ assert.equal((journal.match(/inboxOperationKey\(/g)||[]).length,4,'load, save and discardUnsent all use the one key');
+ const checkpoints=readFileSync(join(root,'.eliza/client-features/plugins/plugin-calendar/src/linked-sync/linked-store.ts'),'utf8');
+ assert.match(checkpoints,/export const CALENDAR_LINK_SLOT_PREFIX = "calendar-linked-sync:v1:";/);
+ assert.match(checkpoints,/return CALENDAR_LINK_SLOT_PREFIX \+ this\.scope;/);
+ const {inboxOperationKey}=await import('../.eliza/client-features/plugins/plugin-inbox/src/mailbox/operation-journal.ts');
+ const {admits}=nativeAllowList(),namespaces=nativeOnlyNamespaces();
+ for(const slot of [await inboxOperationKey('["production","user","org"]','grant'),'calendar-linked-sync:v1:'+'a'.repeat(64)]){
+  assert.ok(admits(slot),`${slot} is admitted by AlphaConnectionPlugin.secureCompareExchange`);
+  for(const namespace of namespaces)assert.ok(slot!==namespace&&!slot.startsWith(namespace+':'),`${slot} is not native-only`);
+ }
+});
+
+test('an Inbox operation journal saved by the installed Alpha journal keeps its key and loads unchanged',async()=>{
+ const {InboxOperation,inboxOperationKey}=await import('../.eliza/client-features/plugins/plugin-inbox/src/mailbox/operation-journal.ts');
+ const owner='["production","user","org"]',grantId='grant';
+ // Literal key computed by Alpha's pre-migration journal: sha256(JSON.stringify([owner, grant])).
+ const key='inbox-operation:v1:f92ff3388bf353fa625474e332ea615ef6c85751cbbb36a3122af041d6b10edb';
+ assert.equal(await inboxOperationKey(owner,grantId),key);
+ // Record layout written by the installed journal before an uncertain dispatch.
+ const installed={version:1,owner,grantId,requestId:'4a0b8f0e-2f7c-4e43-9d0e-6b8f1c2a3d4e',proposal:{kind:'send',to:['a@example.test'],subject:'Hi',bodyText:'Hello'},phase:'dispatching',review:null,receipt:null,source:{draftId:'draft-1',savedRevision:'rev-1'}};
+ const slots=new Map([[key,structuredClone(installed)]]),writes=[];
+ const store={async read(slot){return structuredClone(slots.get(slot)??null);},async compareExchange(slot,expected,value){writes.push(slot);if(JSON.stringify(slots.get(slot)??null)!==JSON.stringify(expected))return{status:'conflict'};slots.set(slot,structuredClone(value));return{status:'saved'};}};
+ const operation=new InboxOperation({owner,grantId,active:()=>true,store,client:{}});
+ assert.deepEqual(await operation.load(),installed);
+ assert.deepEqual(writes,[],'loading an uncertain dispatch writes nothing and never re-dispatches');
+ assert.equal(await InboxOperation.discardUnsent(store,owner,grantId),false,'a dispatching record is never discarded');
+ assert.deepEqual(slots.get(key),installed);
 });

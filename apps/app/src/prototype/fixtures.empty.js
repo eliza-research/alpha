@@ -42,8 +42,6 @@ export const MAPS_MATCH = [];
 export const MAPS_SAVED = null;
 
 export const NOTES_SEED = [];
-export const NOTES_LIVE = [];
-export const NOTES_DICT = [];
 
 export const CT_SEED = [];
 

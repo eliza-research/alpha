@@ -5,16 +5,30 @@ must provide. The Cloud server work belongs to the Eliza Cloud repository and is
 No price, plan allowance, entitlement lifetime or burst/sustained limit is chosen in this file.
 Those values come from measured provider cost and pilot traffic, and the owner selects them.
 
-Alpha source: `apps/app/src/runtime/subscription-entitlement.ts`, `cloud-protocol.ts`
-(`subscriptionEntitlement`, `subscriptionEntitlementKeys`, `openSubscriptionManagement`) and
-`connection-ui.tsx` (`admitCloudResident`). Tests: `test/subscription-entitlement.test.mjs` and
+Client source: the shared `@elizaos/cloud-sdk/subscription-entitlement` (elizaOS/eliza
+`packages/cloud/sdk/src/subscription-entitlement.ts` and its tests), projected from the pin.
+Alpha binds its copy in `apps/app/src/runtime/subscription-entitlement.ts` and uses it from
+`cloud-protocol.ts` (`subscriptionEntitlement`, `subscriptionEntitlementKeys`,
+`openSubscriptionManagement`), `connection-ui.tsx` (`admitCloudResident`), the account section
+(`cloud-membership-ui.tsx`: the approved "Membership & credits" sheet, with the plan allowance and
+the latest limit's retry time added read-only from the shared summary; the limit line goes once it
+has passed) and the Settings plan page (`residentPlanSettings`, `settings-adapter.ts`: the same
+allowance and latest limit). Alpha tests: `test/subscription-entitlement.test.mjs` and
 `test/browser/native-cloud-subscription.spec.ts`.
 
 ## Principles (policy P-26)
 
 - Cloud billing uses subscription allowances or organization credits, with server-side admission.
-  Alpha supports the owner's credit-funded inference setup; the phone shows no balance, top-up
-  or per-token meter and never grants credits.
+  Alpha supports the owner's credit-funded inference setup and never grants credits or shows a
+  per-token meter. The account sheet is the approved "Membership & credits" design (product
+  decision recorded for the owner, NubsCarson 7a44d7038): the exact Cloud credit balance with
+  Refresh, the membership and its end, Add credits (which opens Cloud's own billing page only after
+  the account review) and Enter membership code. From the shared subscription summary it adds,
+  read-only, the plan allowance Cloud reports and the latest Cloud limit with its retry time.
+  Nothing is bought on the phone. The sheet opens by itself for a verified $0 account without a
+  membership (a send is refused before dispatch and offers it again) and after Cloud declines a turn
+  for billing (one answer in the chat, which offers it too); a redeemed code, credits that rose since
+  the refusal, or a turn Cloud admits end the refusal without a reload or a new sign-in.
 - An assistant turn never waits on a billing service. Cloud authorises each inference or Maps
   request from its own cached quota or token bucket.
 - Every Alpha Phone signs in to Eliza Cloud. Admission accepts a valid active/trialing plan or
@@ -152,7 +166,7 @@ buckets (elizaOS/eliza PR #36255).
 | Valid entitlement, plan `active` or `trialing` | Plan name and the Cloud allowance | yes |
 | Valid entitlement, plan `past_due` | Plan name, "Payment is past due" warning and "Manage plan in Eliza Cloud" | yes |
 | Valid entitlement, plan `canceled`, or `none` without explicit organization-credit mode | Non-blocking plan notice beside the running agent (Redeem code, Choose a plan); the plan panel shows "<plan> has ended" or "No active plan" with Check plan again | no |
-| Verified entitlement `none` plus authenticated snapshot `organization-credits` | Eliza Cloud credits; no plan or balance is invented, and the canonical snapshot refreshes periodically | yes, every request still checked by Cloud |
+| Verified entitlement `none` plus authenticated snapshot `organization-credits` | No active subscription; choose a monthly plan or redeem a code. The compatibility snapshot refreshes periodically, without a user-facing credit meter | yes, every request still checked by Cloud |
 | Route absent (404/405/501) | `GET /api/v1/billing/limits`, `data.v2.subscription`: `trialing`/`active` bind, `grace`/`past_due`/`unpaid` bind with the warning, `canceled`/`incomplete_expired` need a plan; `not_applicable` with reason `no_organization_subscription` uses credit mode (other reasons remain inactive) | as mapped |
 | Route absent and the billing snapshot is absent or reports no known state | Plan notice; "Plan status unavailable" with Check plan again, Redeem code and Choose a plan | no |
 | Billing outage (5xx, timeout) after identity succeeded | Bound when this sign-in had an admitting plan verified within the last 7 days ("Plan status unavailable"); otherwise the plan notice with a retry | as stated |
@@ -232,14 +246,14 @@ No account, key, code or subscription was used or changed.
 - `GET /api/v1/subscription/entitlement` without a key returns `401 authentication_required`.
 - `GET /api/v1/subscriptions/plans` returns catalog `v1`: Plus USD 30/month with a USD 25 period
   allowance, Pro USD 100/month with USD 90; no rollover; completions/embeddings/standard/strict
-  per-minute limits 120/200/60/10 (Plus) and 300/600/120/30 (Pro). These are server-published
-  values, not an owner decision recorded here and not evidence of the cost/pilot basis. The
-  catalog has no Maps request allowance field, so P-56's separate Maps allowance is not visible
-  in it.
+  per-minute limits 120/200/60/10 (Plus) and 300/600/120/30 (Pro). These match the values the
+  owner confirmed in P-62 (docs/decisions.md); the observation is not evidence of the cost/pilot
+  basis. The catalog has no Maps request allowance field, so the P-56/P-62 Maps allowance (Plus
+  1,000 and Pro 5,000 requests a day) is not visible in it and is not verified here.
 - Sequential p50/p95 from one desktop client (30 samples each): entitlement keys 43/145 ms,
   unauthenticated entitlement 47/122 ms, plan catalog 63/2299 ms (first request 4.1 s). The phone
   does not read the plan catalog; it caches signing keys for an hour.
-- The public subscription routes share a Redis-backed budget of 100 requests per client window
+- The public subscription routes share a budget of 100 requests per client window
   (`x-ratelimit-limit: 100`, `Retry-After` on 429); the entitlement route reports 600. A probe
   of more than about 100 requests is refused; the script stays inside it.
 
@@ -252,12 +266,15 @@ expired, revoked or billing-outage latency, and not Android audio.
   key rotation and the grant-code pepper are not verified here.
 - No real-account end-to-end run (sign-in, redeem a real staging code, plan gate, agent admission)
   has been made; docs/cloud-subscription-qa.md lists the commands.
-- Deployed p50/p95 is measured only for public routes (above). The normal, cache-miss, exhausted,
-  expired and billing-outage conditions need an authenticated account against the deployed Cloud;
-  the local lower bound is in [the 2026-10-15 audit](evidence/subscription-acceptance-audit-2026-10-15.md).
-- Cloud publishes catalog `v1` prices, allowances and per-minute limits (above), but no owner
-  decision recording them under P-26 and no measured provider-cost or pilot-traffic basis exists
-  here. The owner confirms or replaces them.
-- Live resident rate-limit waits and period-allowance reset times in chat terminal failures
-  (elizaOS/eliza#36549, in the current pin) are supported; neither has met a real refusal.
+- Deployed p50/p95 is measured only for the public, unauthenticated routes (above). No benchmark
+  has been run against a deployment under the normal, cache-miss, exhausted, expired and
+  billing-outage conditions. The harness exists
+  (elizaOS/eliza `packages/cloud/scripts/plan-admission-deployed-latency.ts`): a person prepares one
+  account per condition, names its keys by environment variable and runs it with
+  `--confirm-real-requests`; normal-condition requests are real and billed or counted.
+- Catalog `v1` prices, allowances and per-minute limits and the Maps request allowance are set by
+  P-62 and production publishes the catalog values (above). Whether the deployed plan request
+  limits and Maps allowance are applied per environment (staging first) is not verified here.
+- Live resident rate-limit waits are supported at the current pin. Allowance reset timestamps
+  on that reply path still need an upstream contract; direct HTTP reset times are supported.
 - No real Cloud account, Android device or AOSP image was used for acceptance.

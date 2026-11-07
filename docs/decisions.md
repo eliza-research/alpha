@@ -8,7 +8,7 @@ October 1 architecture change: the user has selected an **Android-resident agent
 2. Use a pinned Eliza source submodule while upstream consumer exports stabilize. Avoid publishing every workspace package before testing the actual dependency closure.
 3. Package the pinned Eliza runtime with the Capacitor shell and use native authenticated IPC for the resident agent. Browser development runs the real agent on a private local host. Cloud/remote adapters remain historical/development infrastructure only; October 12 policy prohibits every hosted-agent product connection. Connected chat reports the actual protocol outcome; starting, recovering or inference-unavailable states must not simulate a successful send (P-43: the resident agent is always present). See [current status](mvp-current-status.md) for the remaining integration and device acceptance.
 4. Use standalone and launcher product flavors with the same Alpha identity. Switching flavor replaces the installed Alpha app. Senior-care has a different identity and can coexist.
-5. Make AOSP installation additive, nonprivileged and certificate/hash verified. Device provisioning chooses default HOME. Keep system recovery paths available.
+5. Make AOSP installation additive, nonprivileged and certificate/hash verified. Device provisioning chooses default HOME. Keep system recovery paths available. **Amended by P-75 (2026-10-29):** image provisioning also preassigns Alpha as default dialer and SMS app, and unattended field updates add a narrowly privileged update client beside the listener.
 6. Preserve the prototype's brand and layout direction while labeling data and agent capabilities honestly. Do not port mocked transfers, account linking or generated success messages.
 7. October 2 confidentiality claim: hosted text inference stays on Qwen (`qwen-3.8-27b`) via Cerebras; `scripts/agent-model.mjs` holds the script default. Product, demo and sales wording follows the claims ladder in [the open-gap plan](market-research/15-open-gap-technical-plan.md). Today only rung L0 is earned: the agent runs on the phone; model requests carry prompts and selected context over TLS to Cerebras (US) running Qwen; no-retention is contractual, not technical. Never say sealed, attested, enclave-protected or "never leaves the device" until the named evidence exists. `test/browser/confidentiality-claims.spec.ts` enforces this for real and mock screens.
 8. October 2 platform scope: Alpha forks AOSP for its own signed image. Banking apps, Play Integrity and GMS are not requirements. Always-on listening follows [the AOSP listening spec](market-research/12-aosp-always-on-listening.md) and needs a new ADR superseding item 5's nonprivileged rule for the listener package only.
@@ -35,13 +35,13 @@ Decided by the product owner on 2026-10-10. Same rules as the entries above: thi
   2. Denton check: "flag only". The separately named check for proprietary fonts, `unresolved-font-licence`, is reported in the build output and in release records and does not make a release `distributable: false`. The constant `UNRESOLVED_FONT_LICENCE_BLOCKS_DISTRIBUTION` in `scripts/licence-policy.mjs` is therefore `false`; setting it to `true` makes a font with no licence record a release blocker again.
   3. Denton licence. The owner states that Alpha Compute owns the Denton font and that the licence is simply not in this repository. This closes A-21 as licensed, with the licence held by the owner outside the repository. What is recorded is that statement and nothing more (`licenses/font-licenses.json`, evidence `held-outside-repository`): no licence document, name, number, date, scope or terms is in the repository or was seen in this work. The font remains proprietary and is not open-source software; its notice and SBOM entries say so and stay flagged `proprietary-licence-held-outside-repo`. One follow-up would complete the record: a reference to the licence document (a reference only, never the document itself, and no secrets) in the record's `reference` field, when the owner supplies one.
 
-  What this entry does not claim. "Included and flagged" is not legal review. The obligations a flag names (corresponding source for GPL, AGPL and LGPL components, a replaceable library for LGPL, a source offer that extends to network use for AGPL) are stated, not shown to be met. The first statement covers open-source software: the resident runtime payload contains one package under non-commercial terms (`@metamask/sdk`, flagged `non-open-source-terms`; see the dependency audit), which none of the three statements addresses.
+  What this entry does not claim. "Included and flagged" is not legal review. The obligations a flag names (corresponding source for GPL, AGPL and LGPL components, a replaceable library for LGPL, a source offer that extends to network use for AGPL) are stated, not shown to be met. The first statement covers open-source software: the resident runtime payload contained one package under non-commercial terms (`@metamask/sdk`, flagged `non-open-source-terms`; see the dependency audit), which none of the three statements addresses. **Amended by P-71 (2026-10-29):** the owner accepted the `@metamask/sdk` licence and accepted the flagged copyleft obligations as fulfilled for the pilot, with legal review before any wider release. From the pin that carries the shared mobile wallet-connector exclusion, the Android resident bundle resolves wagmi, RainbowKit and `@metamask/*` to a stub, so the package is no longer expected in the payload; `test/wallet-disabled.test.mjs` checks a staged runtime inventory for it.
 
 ## October 12 owner product decision: one local inference engine
 
 Decided by the product owner on 2026-10-12 and recorded on 2026-10-13. Same rules as above: policy, not evidence. (It was first recorded as P-10 on a branch; P-10 is the schedules decision below, so this one is P-42.)
 
-- **P-42** One local inference engine (product owner): on-device and local speech and inference use only the native llama.cpp-based stack, libelizainference (ggml, mtmd, OmniVoice, Kokoro and Silero VAD from the elizaOS fused fork, GGUF models). The owner's reason: the earlier runtimes were too slow and too memory-inefficient. Consequences: the in-browser Whisper engine, its WebAssembly runtime and its model files are removed from the web build, and the Android Sherpa engine and its models are removed from the APKs; neither may return (`test/llama-cpp-only.test.mjs`, `scripts/audit-production-bundle.mjs`). A browser with no local agent has no local speech and says so (`local-agent-required`); it never falls back to Cloud on its own. P-13 and P-29 (all speech on the device, no Cloud speech fallback) are implemented on this engine: the local speech they require is libelizainference, and its acceptance must be run there (see [fused speech](fused-speech.md)). This records the policy; it is not evidence that the replacement is built, qualified or accepted.
+- **P-42** One local inference engine (product owner): on-device and local speech and inference use only the native llama.cpp-based stack, libelizainference (ggml, mtmd, OmniVoice, Kokoro and Silero VAD from the elizaOS fused fork, GGUF models). The owner's reason: the earlier runtimes were too slow and too memory-inefficient. Consequences: the in-browser Whisper engine, its WebAssembly runtime and its model files are removed from the web build, and the Android Sherpa engine and its models are removed from the APKs; neither may return (`test/llama-cpp-only.test.mjs`, `scripts/audit-production-bundle.mjs`). A browser with no local agent has no local speech and says so (`local-agent-required`); it never falls back to Cloud on its own. P-13 and P-29 (all speech on the device, no Cloud speech fallback) are implemented on this engine: the local speech they require is libelizainference, and its acceptance must be run there (see [fused speech](fused-speech.md)). This records the policy; it is not evidence that the replacement is built, qualified or accepted. **Amended by P-60 (2026-10-29):** local speech still uses only libelizainference; Cloud STT/TTS is now available as an explicit user setting, never as an automatic fallback.
 
 ## October 13 owner decision: the resident agent is always present
 
@@ -69,6 +69,8 @@ and P-28; it does not establish implementation, deployment or acceptance.
   Preserve revocation/expiry checks, idempotent accounting and local speech's
   independence from billing. Source, deployment and real-account acceptance remain
   open under #410.
+  **Amended by P-62 (2026-10-29):** the Maps allowance is Plus 1,000 and Pro 5,000
+  requests a day.
 
 ## October 12 owner decisions
 
@@ -77,19 +79,19 @@ issues are now implementation TODOs, not unanswered decision requests. The polic
 below controls over older PRD/plan wording and source defaults. Acceptance remains
 open. In particular Wallet is removed from MVP, superseding the October 11 expansion.
 
-- **P-10 — A-09 ([#394](https://github.com/AlphaCompute/alphaphone/issues/394)):** Schedules run only while the phone is powered on; the agent is local. Remove powered-off hosted-loop acceptance. Record missed occurrences once; do not automatically replay overdue effects. Offer an explicit Run now action where useful.
+- **P-10 — A-09 ([#394](https://github.com/AlphaCompute/alphaphone/issues/394)):** Schedules run only while the phone is powered on; the agent is local. Remove powered-off hosted-loop acceptance. Record missed occurrences once; do not automatically replay overdue effects. Offer an explicit Run now action where useful. **Amended by P-75 (2026-10-29):** the missed-run window is 30 minutes and Run now keeps its implemented scope (typed scheduled workflows and morning digests).
 
 - **P-11 — A-10 ([#395](https://github.com/AlphaCompute/alphaphone/issues/395)):** Voice-assistant latency is the elapsed time from the last user speech audio sample to the first audible response sample. Include end-of-turn detection, final STT, inference, TTS and playback buffering. Do not subtract silence detection or report a sum of selected stages as the end-to-end result. Dictation reports stop-to-editable-text separately; manual user think time is not a voice-assistant benchmark.
 
 - **P-12 — A-02 ([#396](https://github.com/AlphaCompute/alphaphone/issues/396)):** Eliza Cloud is the managed account, inference, subscription and Maps service endpoint. Agent orchestration, state, scheduling and approvals remain on the phone. No Cloud/hosted agent exists as a product connection, upgrade or fallback.
 
-- **P-13 — A-04 ([#397](https://github.com/AlphaCompute/alphaphone/issues/397)):** All speech recognition and synthesis run locally on the device, always. Replace Cloud/paired-host speech policy. Use the Android native bridge to the reviewed Eliza llama.cpp/libelizainference build, extending shared upstream speech support where necessary. Research candidate models on Hugging Face and select by measured device speed and quality, not advertised desktop throughput.
+- **P-13 — A-04 ([#397](https://github.com/AlphaCompute/alphaphone/issues/397)):** All speech recognition and synthesis run locally on the device, always. Replace Cloud/paired-host speech policy. Use the Android native bridge to the reviewed Eliza llama.cpp/libelizainference build, extending shared upstream speech support where necessary. Research candidate models on Hugging Face and select by measured device speed and quality, not advertised desktop throughput. **Amended by P-60 (2026-10-29):** STT and TTS stay local by default; Settings offers a local vs cloud switch for each.
 
 - **P-14 — A-05 ([#398](https://github.com/AlphaCompute/alphaphone/issues/398)):** Use periodic background work and immediate reconciliation at resume/start. Doze delays are honest; a permanent connection solely for mail is not required. Stable event identities prevent duplicate user-visible alerts.
 
 - **P-15 — A-01 ([#399](https://github.com/AlphaCompute/alphaphone/issues/399)):** Target Pixel 10a on Android 17. Ship standalone APK and Alpha AOSP image/launcher; Cuttlefish is the image integration test target. Other Pixels are not alternate promised hardware.
 
-- **P-16 — A-06 ([#400](https://github.com/AlphaCompute/alphaphone/issues/400)):** Alpha Compute controls signing and update authority; Shaw is the accountable release/support/rollback owner. Use managed or hardware-backed release signing, distinct from developer keys.
+- **P-16 — A-06 ([#400](https://github.com/AlphaCompute/alphaphone/issues/400)):** Alpha Compute controls signing and update authority; Shaw is the accountable release/support/rollback owner. Use managed or hardware-backed release signing, distinct from developer keys. **Amended by P-58 (2026-10-29):** release keys are held as GitHub Actions secrets for a CI signing job, an owner-accepted departure from managed or hardware-backed signing; they stay distinct from developer keys.
 
 - **P-17 — A-11 ([#401](https://github.com/AlphaCompute/alphaphone/issues/401)):** Android Clock owns alarms, conditional on a usable integration in the app and AOSP image. Alpha owns reminders. A dispatch receipt may state that Clock opened, not that an alarm was created.
 
@@ -109,13 +111,13 @@ open. In particular Wallet is removed from MVP, superseding the October 11 expan
 
 - **P-25 — A-19 ([#409](https://github.com/AlphaCompute/alphaphone/issues/409)):** No app-data import/export, backup or device-transfer product workflow. Provide a confirmed Reset Alpha data option. Keep Android backup disabled. Ordinary Files opening/saving and Gmail attachments are separate daily-tool operations, not app-data migration.
 
-- **P-26 — A-20 ([#410](https://github.com/AlphaCompute/alphaphone/issues/410)):** Use subscription billing with reasonable rate limits rather than a user-facing credit top-up/per-token meter. Billing checks must not add a billing-service round trip to each assistant turn. Local speech and local tools do not depend on an online billing check.
+- **P-26 — A-20 ([#410](https://github.com/AlphaCompute/alphaphone/issues/410)):** Use subscription billing with reasonable rate limits rather than a user-facing credit top-up/per-token meter. Billing checks must not add a billing-service round trip to each assistant turn. Local speech and local tools do not depend on an online billing check. **Amended by P-59 and P-62 (2026-10-29):** the "Membership & credits" sheet shows organization credit in the October 16 credit mode (P-59), and catalog v1 and its per-minute limits are confirmed (P-62).
 
 - **P-27 — A-22 ([#411](https://github.com/AlphaCompute/alphaphone/issues/411)):** Support portrait and landscape, adapting each surface by its purpose. Do not stretch every panel or change sensitive/native UI ownership. Preserve drafts, scroll, selection, task and capture state.
 
-- **P-28 — A-23 ([#412](https://github.com/AlphaCompute/alphaphone/issues/412)):** Maps belongs in Eliza Cloud as a reusable managed service for agents, with full supported search, place, route and navigation control from Alpha’s local agent. The regional development gateway is a prototype adapter, not the production coverage promise. No hosted agent is introduced.
+- **P-28 — A-23 ([#412](https://github.com/AlphaCompute/alphaphone/issues/412)):** Maps belongs in Eliza Cloud as a reusable managed service for agents, with full supported search, place, route and navigation control from Alpha’s local agent. The regional development gateway is a prototype adapter, not the production coverage promise. No hosted agent is introduced. **Amended by P-64 (2026-10-29):** the production provider is Google Maps Platform through Eliza Cloud, with Google's coverage.
 
-- **P-29 — A-24 ([#413](https://github.com/AlphaCompute/alphaphone/issues/413)):** On-device STT and TTS are mandatory for every production speech entrypoint, including signed-out and offline use. No Cloud speech fallback. A failed local engine must surface recovery and typing, not switch routes.
+- **P-29 — A-24 ([#413](https://github.com/AlphaCompute/alphaphone/issues/413)):** On-device STT and TTS are mandatory for every production speech entrypoint, including signed-out and offline use. No Cloud speech fallback. A failed local engine must surface recovery and typing, not switch routes. **Amended by P-60 (2026-10-29):** on-device STT and TTS are the default; cloud STT and cloud TTS are explicit Settings choices, never an automatic fallback.
 
 - **P-30 — A-25 ([#414](https://github.com/AlphaCompute/alphaphone/issues/414)):** Use a short durable Undo window and one review step for events and reminders. Initial engineering value: ten seconds. Delay provider deletion until expiry when possible; never call a recreated invitation a lossless restore. Suspend pending-deletion reminder delivery immediately.
 
@@ -135,9 +137,9 @@ open. In particular Wallet is removed from MVP, superseding the October 11 expan
 
 - **P-38 — A-08 ([#422](https://github.com/AlphaCompute/alphaphone/issues/422)):** Wallet is removed from the MVP plan. No custody, payment, pass-wallet, NFC payment integration or wallet-provider activation is required for MVP. Preserve unrelated user data; do not activate prototype transfers.
 
-- **P-39 — MVP-01 ([#423](https://github.com/AlphaCompute/alphaphone/issues/423)):** Transcribe records locally and on Stop inserts editable text; the user sends it. Voice assistant listens and submits automatically: after a short gap evaluate semantic turn completion with Clef; after a longer gap submit. Resumed speech cancels pending submit or the in-flight response/playback and continues the utterance/conversation. All STT/TTS remains local.
+- **P-39 — MVP-01 ([#423](https://github.com/AlphaCompute/alphaphone/issues/423)):** Transcribe records locally and on Stop inserts editable text; the user sends it. Voice assistant listens and submits automatically: after a short gap evaluate semantic turn completion with Clef; after a longer gap submit. Resumed speech cancels pending submit or the in-flight response/playback and continues the utterance/conversation. All STT/TTS remains local. **Amended by P-60 (2026-10-29):** Clef end-of-turn detection runs in Eliza Cloud on Cloudflare, and STT/TTS are local by default with Settings switches for cloud.
 
-- **P-40 — MVP-52 ([#424](https://github.com/AlphaCompute/alphaphone/issues/424)):** Always-on listening and supported hardware-key invocation are required in the AOSP MVP, not a later milestone. Use a narrowly privileged isolated listener only; the ordinary Alpha app remains nonprivileged. Listening is off until consent, local, visibly indicated and immediately stoppable.
+- **P-40 — MVP-52 ([#424](https://github.com/AlphaCompute/alphaphone/issues/424)):** Always-on listening and supported hardware-key invocation are required in the AOSP MVP, not a later milestone. Use a narrowly privileged isolated listener only; the ordinary Alpha app remains nonprivileged. Listening is off until consent, local, visibly indicated and immediately stoppable. **Amended by P-61 and P-75 (2026-10-29):** the dedicated `alpha_sense_app` SELinux domain (G7) is required before MVP (P-61); an unattended-update client is a second narrowly privileged component (P-75).
 
 - **P-41 — OWNER-NOTICE ([#425](https://github.com/AlphaCompute/alphaphone/issues/425)):** Withdraw owner-specific approval notices on owner change. Repost quietly when the original owner returns only if the approval remains pending, valid and unexpired. Keep workflow state; revalidate the target and create a fresh tap binding. Apply the same privacy boundary to owner-specific result notices.
 
@@ -186,6 +188,34 @@ measurement (speech candidate, Clef feasibility, subscription price/quotas, Clou
 provider coverage) are deliverables in their TODOs; they do not reopen the approved
 local-only agent/speech, subscription, AOSP scope or Wallet exclusion policies.
 
+The selections these policies leave to the owner are listed in order, each with the setting or
+record that waits for it, in [human actions](human-actions.md) H-01 to H-07: release key custody
+(P-16 names no service), confirming or replacing the server-published plan catalog (P-26), the
+plan request limits and the separate Maps allowance (P-56), Maps coverage (P-28), the
+`@metamask/sdk` terms that P-09 does not cover, and the pilot roles. Each is recorded here as a
+dated `P-` entry when made; none is chosen by software. On 2026-10-29 the owner made all seven
+selections: custody P-58, catalog, limits and Maps allowance P-62, Maps coverage P-64,
+`@metamask/sdk` P-71 and the pilot roles P-72 (see [October 29 owner decisions](#october-29-owner-decisions)).
+The steps that carry them out (the key ceremony, enrollment, Cloud settings and the pilot) remain
+open in [human actions](human-actions.md).
+
+### Open engineering question: a view change during a reply (2026-10-28)
+
+Current behaviour: a typed reply in flight is stopped when the screen it was asked from changes.
+`AlphaClient.setViewContext` (`apps/app/src/runtime/alpha-client.ts`) aborts the foreground request
+whenever the view context's revision moves, so HOME pressed while another app is in front, or
+opening another app, is an explicit Stop: one cancel through the agent's abort route where it has
+one, the "may still finish" notice, and one history read that shows the reply if it finished.
+Nothing is resent. Collapsing the chat (Back from full to sheet) and HOME while Home is already in
+front change no view, so the reply keeps arriving and is shown once.
+`test/browser/chat-continuity.spec.ts` pins both.
+
+The question for the owner: should a view change stop the reply, or should the reply keep
+arriving (as it does for Back and HOME on Home) while only actions and proposals bound to the old
+screen are refused (`contextRevision` already fences proposals)? Until it is decided the current
+behaviour stays and no software chooses otherwise. Tracked with the other open engineering
+choices in issue #680.
+
 ## Pending owner decisions
 
 No reviewed A-01–A-26/A-32–A-35/MVP-01/MVP-52/owner-notice item remains awaiting
@@ -213,10 +243,180 @@ The owner requested use of the existing funded Cloud account. The native provide
 
 This supersedes P-43's plan-only assumption for that explicit legacy billing mode while the signed entitlement route is absent. Alpha binds only the verified account and credential reference, shows Cloud credits rather than an active plan, and keeps bounded background refresh. Signed plan validation, account changes, expiry, revocation, quotas and server refusals keep their existing checks. Alpha does not create a plan, grant funds, buy anything, make per-turn balance checks or retry a failed turn.
 
+## October 29 owner decisions
+
+Decided by the product owner on 2026-10-29 in answer to the HUMAN issues #658 to #681. The
+owner's answers are posted on each issue as a comment headed "Owner decisions, 2026-10-29"; those
+comments are the source of these entries. Each entry names the [human actions](human-actions.md)
+step it settles. Same rules as above: policy, not evidence. None of these entries shows that a key
+exists, a release was signed, a service was deployed, a run passed or a device was accepted; every
+acceptance gate in [current status](mvp-current-status.md) still applies. Where an entry amends an
+earlier one, the earlier entry carries a dated "Amended by" note and keeps its original text.
+
+- **P-57** — H-36 ([#658](https://github.com/eliza-research/alphaphone/issues/658), [#679](https://github.com/eliza-research/alphaphone/issues/679)): No branch protection is added for now. The
+  no-force-push and signed-commit rulesets and the "Main required checks" ruleset (MVP-46) are not
+  installed yet; H-36 stays the owner's open choice. This changes nothing already enforced on the
+  default branch. The rest of the 2026-10-27 forged-commit response stays open under #658: secret
+  rotation, revoking the forged-commit author's access, machine checks and the audit-log review.
+- **P-58** — H-01, H-08, H-10 / A-06 ([#661](https://github.com/eliza-research/alphaphone/issues/661), [#662](https://github.com/eliza-research/alphaphone/issues/662), [#672](https://github.com/eliza-research/alphaphone/issues/672)): Release
+  keys are stored as **GitHub Actions secrets** and used by a CI signing job, for the release APKs
+  and for the Pixel 10a image and OTA. The owner knowingly accepts that this is weaker than HSM or
+  offline custody. **This departs from P-16's requirement of managed or hardware-backed release
+  signing and amends P-16**; the keys must still be distinct from developer keys. The owner runs
+  the key ceremony locally and uploads the keys with `gh secret set`; no agent generates, sees or
+  uploads a key, and no key material, passphrase or PIN is recorded in this repository. The
+  ceremony custodian and witness is the owner; a distinct witness is still recommended. The legal
+  entity in the release certificates is **Alpha Compute**. The first release has versionName
+  **0.1.0**, and its versionCode is the next integer above the last recorded release. With no
+  branch protection (P-57), keeping the secrets to the signing job is a matter of workflow review.
+- **P-59** — H-37 ([#660](https://github.com/eliza-research/alphaphone/issues/660), [#659](https://github.com/eliza-research/alphaphone/issues/659)): The two defaults taken on 2026-10-28 are
+  confirmed. (1) The Settings membership sheet stays **"Membership & credits"** (superseded
+  by the November 1 subscription presentation correction below), the
+  organization-credit mode of the October 16 Cloud credit billing entry. For that mode this is an
+  exception to P-26's "rather than a user-facing credit top-up" and **amends P-26**; subscription
+  plans keep P-26 as written, including no billing round trip per turn. On the phone's own agent the
+  "Eliza Cloud account & plan" panel is the correct surface; off it, the "Membership & credits"
+  sheet. The failing native Cloud-subscription cases are each fixed to boot the right flow, never
+  by loosening the `residentCloudFlow()` guard. (2) Notes are stored as **canonical Eliza records**
+  (#621); the older Notes-storage specifications are rewritten for canonical records, keeping their
+  Trash, recovery and deletion guarantees, not retired.
+- **P-60** — AP-06, H-18, H-19 / MVP-01 ([#663](https://github.com/eliza-research/alphaphone/issues/663)): **Clef end-of-turn detection and the
+  LLM run in Eliza Cloud on Cloudflare.** STT and TTS stay on the device by default, and Settings
+  gains a **local vs cloud switch for STT and a separate one for TTS**. This **amends P-13 and P-29**
+  ("all speech on the device, always", "no Cloud speech fallback"), **P-39** ("all STT/TTS remains
+  local", and Clef runs in Cloud rather than on the phone) and **P-42** (local speech still uses only
+  libelizainference; Cloud speech is now a user choice). Cloud speech is an explicit setting, not
+  an automatic route: a failed local engine still surfaces recovery and typing (P-29). The cloud path
+  needs an honest disclosure of what leaves the device (audio for cloud STT, text for cloud TTS, the
+  turn-detection input for Clef) within the claims ladder of foundation item 7, and a defined
+  fallback when offline or without a plan, before it ships. P-39's long-gap submission and P-11's
+  latency definition are unchanged. Eliza Cloud remains a managed service here, not an agent host
+  (P-12, P-31).
+- **P-61** — H-20 ([#664](https://github.com/eliza-research/alphaphone/issues/664)): **G7, the dedicated `alpha_sense_app` SELinux domain for the
+  always-on listener, is required before the MVP ships**, not deferred. This tightens P-40. The
+  reviewer is NubsCarson and the device operator is the owner. No G6 battery or thermal bar was
+  chosen; engineering proposes one in the [listener runbook](runbooks/664-listener-qualification.md)
+  for the owner to accept.
+- **P-62** — H-02, H-03, H-04 / A-20 ([#665](https://github.com/eliza-research/alphaphone/issues/665)): The published plan catalog **v1 is
+  confirmed**: Plus USD 30 a month with a USD 25 allowance, Pro USD 100 with USD 90, no rollover.
+  The plan request limits (`ELIZA_CLOUD_PLAN_RATE_LIMITS`) are **v1's per-minute limits**: Plus
+  completions 120, embeddings 200, standard 60, strict 10; Pro 300, 600, 120 and 30. The Maps
+  request allowance (`ELIZA_CLOUD_MAPS_REQUEST_ALLOWANCES`) is **Plus 1,000 requests a day and Pro
+  5,000 requests a day**, with no per-request charge. This sets the numbers P-26 left open and
+  **amends P-56** ("numeric prices and limits remain unset"); P-56's separate allowance, no
+  automatic overage and local speech's independence from billing are unchanged. The values are
+  applied per environment, staging first (H-15, H-16).
+- **P-63** — H-15 ([#666](https://github.com/eliza-research/alphaphone/issues/666)): The deployed admission-latency benchmark runs against
+  **staging**, with dedicated per-condition staging accounts. The billing outage is simulated with a
+  staging-only switch (a configuration flag or a blocked billing route), never in production. The
+  harness runs from an elizaOS develop checkout that contains it, not from the vendor pin. The
+  owner left the remaining details to engineering judgement.
+- **P-64** — H-05, H-16, H-35 / A-23 ([#667](https://github.com/eliza-research/alphaphone/issues/667)): Production Maps uses a **hosted provider,
+  Google Maps Platform**, through Eliza Cloud, not a self-hosted OpenStreetMap stack. Google's terms
+  (attribution and caching limits) replace the ODbL/OpenStreetMap attribution duties for production
+  results. A Google Maps Platform billing account and API key are provisioned in Eliza Cloud, never
+  on the phone. Coverage follows Google's. This chooses the provider and coverage that **P-28** left
+  open and amends it; the agent's Maps tools and the Maps allowance (P-56, P-62) are unchanged, and
+  the regional development gateway stays a prototype adapter.
+- **P-65** — H-17, H-27 / AP-09 ([#668](https://github.com/eliza-research/alphaphone/issues/668)): Gmail and Calendar use **Eliza Cloud's existing,
+  already-verified Google OAuth app**; no separate verification is submitted. Still to confirm:
+  that its verification covers the restricted Gmail scopes Alpha requests (the
+  [scope matrix](runbooks/668-google-capability-scope-matrix.md)). The live send acceptance (H-27)
+  goes from the owner's own Google account to the owner's own address, subject "Alpha pilot send
+  test", at the device pilot.
+- **P-66** — H-12 ([#669](https://github.com/eliza-research/alphaphone/issues/669)): Staging Steward supports native Google sign-in for test-mocks
+  builds. The pre-release Android OAuth clients are dropped: after enrollment
+  `STEWARD_GOOGLE_NATIVE_CLIENT_IDS` lists only the release-signed client.
+- **P-67** — H-13 ([#670](https://github.com/eliza-research/alphaphone/issues/670)): The production `assetlinks.json` on eliza.app lists the
+  **enrolled release certificate and keeps the two existing certificates** (this project's debug
+  signer `22:42:99:4D…` and the candidate resident-artifact signer `ED:BF:CA:CB…`). The owner
+  keeps them knowingly: the debug certificate keeps verified eliza.app callback handling.
+- **P-68** — H-30 ([#671](https://github.com/eliza-research/alphaphone/issues/671)): The Cerebras development key is provided to hosted CI as a
+  **GitHub Actions secret**, scoped to the workflows that need it. The owner adds it with
+  `gh secret set`, after or alongside the #658 secret rotation. It stays a development key:
+  production phones accept inference only through the signed-in Cloud plan (P-43), and no key
+  enters a product bundle.
+- **P-69** — H-21, H-22 / A-01 ([#672](https://github.com/eliza-research/alphaphone/issues/672)): The Pixel 10a production image is built on a
+  **cloud builder** the owner provisions (about 64 cores, 256 GB RAM, 1 TB disk). Its
+  cuttlefish-base and cuttlefish-user versions are pinned in `product.json`. Image and OTA signing
+  follow P-58.
+- **P-70** — H-24, H-25 ([#673](https://github.com/eliza-research/alphaphone/issues/673)): The Pixel 10a pilot units are **left bootloader-unlocked**
+  after `avb_custom_key` enrollment. Verified boot shows orange, so pilot results are not
+  production-representative and never stand in for a locked-bootloader release. Each unit owner's
+  consent is obtained before any flash or reset.
+- **P-71** — H-06, H-35 ([#674](https://github.com/eliza-research/alphaphone/issues/674)): The **`@metamask/sdk` 0.33.1 licence is accepted**, so the
+  resident runtime may ship it. Cycle 2 may still prune the `@metamask/sdk` and `wagmi` graph
+  where it is unreachable, disabled Wallet code; Wallet stays outside the MVP (P-38 unchanged).
+  The flagged copyleft obligations (ffmpeg-static, ua-parser-js, rpc-websockets, JavaScriptCore,
+  eSpeak NG) are **accepted as fulfilled today for the pilot**; a legal review is required before
+  any wider release. This **amends P-09**, whose statements did not cover `@metamask/sdk`. It is an
+  owner acceptance, not legal review. *Amended by P-77 (2026-10-29): AGPL dependencies are
+  accepted generally, not only for the pilot.*
+- **P-72** — H-07, H-26, H-27, H-29 ([#675](https://github.com/eliza-research/alphaphone/issues/675), [#677](https://github.com/eliza-research/alphaphone/issues/677)): The owner is the operator,
+  support owner, rollback owner, key custodian and witness. **NubsCarson is the independent
+  reviewer.** The pilot cohort is the internal team only (the owner, the reviewer and teammates),
+  names to follow. Pilot plans are **3-month grant codes**. The Gmail live send is owner to owner
+  (P-65). Proton Pass is skipped for the pilot; P-05's optional provider is not part of pilot
+  acceptance.
+- **P-73** — H-31 ([#676](https://github.com/eliza-research/alphaphone/issues/676)): The hosted CI campaigns are dispatched once on current main.
+  Dispatched on 2026-10-29 at `8f1737533`: resident-android native including recovery-ui
+  ([run](https://github.com/eliza-research/alphaphone/actions/runs/40822720344)),
+  android-emulator instrumentation
+  ([run](https://github.com/eliza-research/alphaphone/actions/runs/40822722622)),
+  android-emulator browser-reading
+  ([run](https://github.com/eliza-research/alphaphone/actions/runs/40822725753)) and digest-restart
+  ([run](https://github.com/eliza-research/alphaphone/actions/runs/40822728120)).
+  `ELIZA_RESIDENT_QUALIFICATION` stays unset, so these are dispatches, not qualification. The
+  resident native inference parts need the Cerebras Actions secret (P-68). Their results are
+  recorded separately.
+- **P-74** — H-38 ([#678](https://github.com/eliza-research/alphaphone/issues/678)): The owner's per-view QA review is **batched by surface**, one
+  batch per app.
+- **P-75** — AP-04, AP-08, AP-14 ([#680](https://github.com/eliza-research/alphaphone/issues/680)): (1) The missed-run window is **30 minutes**, up
+  from 120 s, for generic, typed and digest schedules alike; an occurrence that reaches the agent
+  later is recorded once as missed and not run late. (2) **Run now keeps its current scope**: typed
+  scheduled workflows and morning digests, behind the reviewed two-step confirmation. (3) The
+  emulator development host **is kept** as a test-mocks-only developer surface. (4) The AOSP image
+  **preassigns Alpha as the default dialer and SMS app**; HOME, assistant and Autofill stay
+  preassigned as today, and emergency routing stays with the system. (5) Field updates are
+  **unattended**. This **amends P-10** (the window and Run now scope), **foundation item 5** (image
+  provisioning now also assigns the dialer and SMS roles) and **P-40**: unattended updates need a
+  narrowly privileged on-device update client applying signed channel packages through
+  `update_engine`, a second privileged component beside the listener. The ordinary Alpha app
+  stays nonprivileged. The update drills (interrupted update, rollback, stock recovery) stay
+  required (H-25).
+- **P-76** — Eliza-side ([#681](https://github.com/eliza-research/alphaphone/issues/681)): Eliza's app **adopts all four shared components**: the
+  DataReset coordinator, the native Cloud sign-in (`CloudSignInPlugin`), the nonprivileged-launcher
+  profile for Eliza's images, and the Clock handoff policy, migrating existing `ElizaAlarms`.
+  **Eliza's SMS gateway must go through the reviewed send**; there are no unreviewed auto-replies.
+  These are elizaOS changes, recorded here for tracking. Alpha's own policy is unchanged, and the
+  two products keep separate UI and identity (foundation item 1).
+- **P-77** — H-35 ([#674](https://github.com/eliza-research/alphaphone/issues/674)): **AGPL-licensed dependencies may ship**, because the whole
+  project is open source; ua-parser-js (AGPL-3.0-or-later, through the RainbowKit wallet barrel) is
+  one example. AGPL is not a licence blocker. Every AGPL component that ships must still be
+  attributed in the licence notices, and the public eliza-research/alphaphone and elizaOS/eliza
+  repositories meet the source-availability obligation. This **amends P-71**, which accepted the
+  flagged copyleft obligations for the pilot only; AGPL dependencies are now accepted generally.
+  It is an owner acceptance, not legal review.
+
+- **P-78** — [#743](https://github.com/eliza-research/alphaphone/issues/743#issuecomment-6514832799): Voice is in-chat only; hardware invocation and wake listening are deferred. Chat microphone controls remain available. Hardware hold, assistant overlays, lock-screen voice and voice shortcuts do not start capture; their implementations stay dormant. Wake-listening Settings are hidden. Startup requests the canonical listener turn-off; an unconfirmed stop is reported without blocking chat. This supersedes earlier hardware/wake voice requirements for the Alpha/Mac lane.
+
+
+## November 1 subscription presentation correction
+
+The owner clarified: "we are showing credits but its supposed to be a monthly
+subscription." This supersedes P-59's credit-first presentation exception and restores
+P-26's subscription presentation. The account sheet is **Subscription**: show the
+verified plan, included usage and access window, with **Choose a monthly plan** or
+**Manage subscription** and code redemption. Do not present an organization balance
+or a credit top-up as the product's billing model. P-62's monthly catalog remains in
+force; prices and renewal terms come from Cloud's billing flow, never inferred by the
+phone. A temporary grant remains temporary access and is not described as a paid
+renewal. This changes presentation, not Cloud's existing account admission or charging.
+
 ## November 5: on-device speech default and acceleration
 
 Decided by the product owner on 2026-11-05. Same rules as above: policy, not evidence.
 
-- **P-57** On-device speech replaces Cartesia as the default: Phonon-2 and Paradee on libelizainference, in the `native` profile, with Eliza Cloud text inference. The `cloud` profile remains an explicit QA selection.
-- **P-58** Accelerators are used only when they are faster on the path that ships. Measured on the Pixel 10a (Tensor G4), Phonon-2's streaming finish takes 45 to 54 ms on the CPU, and a best-case TPU pass cannot go below about 59 ms for 5 s of audio, so Phonon-2 stays on the CPU. P-42 therefore stands. See [on-device speech](on-device-speech-2026-11-05.md). A faster future chip or model reopens this.
-- **P-59** The Delibes-8M-esES Spanish voice ships under its open-source licence (Apache-2.0 for the model files), with its notices in the bundle and the generated third-party notices. This is the owner's Alpha decision on the upstream `spanish.release_override`.
+- **P-79** On-device speech replaces Cartesia as the default: Phonon-2 and Paradee on libelizainference, in the `native` profile, with Eliza Cloud text inference. The `cloud` profile remains an explicit QA selection.
+- **P-80** Accelerators are used only when they are faster on the path that ships. Measured on the Pixel 10a (Tensor G4), Phonon-2's streaming finish takes 45 to 54 ms on the CPU, and a best-case TPU pass cannot go below about 59 ms for 5 s of audio, so Phonon-2 stays on the CPU. P-42 therefore stands. See [on-device speech](on-device-speech-2026-11-05.md). A faster future chip or model reopens this.
+- **P-81** The Delibes-8M-esES Spanish voice ships under its open-source licence (Apache-2.0 for the model files), with its notices in the bundle and the generated third-party notices. This is the owner's Alpha decision on the upstream `spanish.release_override`.

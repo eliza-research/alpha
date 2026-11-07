@@ -3,6 +3,7 @@ import { speakLocalText } from '../local-speech-playback';
 import { registerPlugin } from '../platform-plugins';
 import { Capacitor } from '@capacitor/core';
 import { connectionController } from './connection-ui';
+import { createNativeSpeechRequests } from '../../../../.eliza/client-features/packages/voice/src/native-speech-request.ts';
 const native = registerPlugin<{
   /** `ready` is recognition readiness; `playback`, when reported, is read-aloud readiness on its own. */
   localSpeechStatus(input: { requestId: string }): Promise<{ ready: boolean; playback?: boolean; execution: string }>;
@@ -37,19 +38,19 @@ export function createOnDeviceVoice() {
   const check = () => {
     if (document.hidden || document.documentElement.dataset.connectionMode === 'mock' || connectionController.getSnapshot().open || selected !== binding()) throw new DOMException('Voice selection changed', 'AbortError');
   };
-  async function operation<T>(signal: AbortSignal, run: (id: string, interrupted: Promise<never>, ownedSignal: AbortSignal) => Promise<T>): Promise<T> {
-    check(); signal.throwIfAborted();
-    const owned = new AbortController(); const id = crypto.randomUUID(); let reject!: (reason: unknown) => void;
-    const interrupted = new Promise<never>((_, fail) => { reject = fail; }); void interrupted.catch(() => {});
-    const cancel = () => { void native.cancel({ requestId: id }).catch(() => {}); owned.abort(new DOMException('Voice cancelled', 'AbortError')); reject(owned.signal.reason); };
-    const unsubscribe = connectionController.subscribe(() => { try { check(); } catch { cancel(); } });
-    const modeChanged = typeof MutationObserver === 'undefined' ? undefined : new MutationObserver(() => { try { check(); } catch { cancel(); } });
-    modeChanged?.observe(document.documentElement, { attributes: true, attributeFilter: ['data-connection-mode'] });
-    const visibility = () => { if (document.hidden) cancel(); };
-    signal.addEventListener('abort', cancel, { once: true }); document.addEventListener('visibilitychange', visibility);
-    try { const result = await run(id, interrupted, owned.signal); check(); signal.throwIfAborted(); return result; }
-    finally { modeChanged?.disconnect(); signal.removeEventListener('abort', cancel); document.removeEventListener('visibilitychange', visibility); unsubscribe(); }
-  }
+  // One owned bridge request per operation (shared `@elizaos/voice/native-speech`): a changed
+  // binding, mode or visibility cancels the native request and its result is never returned.
+  const operation = createNativeSpeechRequests({
+    check,
+    watch(onChange) {
+      const unsubscribe = connectionController.subscribe(onChange);
+      const modeChanged = typeof MutationObserver === 'undefined' ? undefined : new MutationObserver(onChange);
+      modeChanged?.observe(document.documentElement, { attributes: true, attributeFilter: ['data-connection-mode'] });
+      document.addEventListener('visibilitychange', onChange);
+      return () => { modeChanged?.disconnect(); document.removeEventListener('visibilitychange', onChange); unsubscribe(); };
+    },
+    cancel: requestId => native.cancel({ requestId }),
+  });
   return {
     /** Transcription readiness. */
     async ready(signal: AbortSignal) { return operation(signal, async (requestId, interrupted) => { const result = await Promise.race([native.localSpeechStatus({ requestId }), interrupted]); return result.ready === true && result.execution === (Capacitor.isNativePlatform()?'device':'browser'); }); },

@@ -142,3 +142,21 @@ test('a failed update from an old route cannot retire its replacement', async ()
  assert.deepEqual(heard, []);
  await session.stop();
 });
+
+test('an instruction that changes while native navigation is starting is sent once it has started', async () => {
+ const { BackgroundNavigation } = await import('../apps/app/src/maps/background-navigation.ts');
+ const native = bridge(), heard = [], session = new BackgroundNavigation(native, () => true);
+ let started = false, release;
+ native.startNavigation = input => new Promise(resolve => { release = () => { started = true; native.calls.push(['start', input.sessionId]); resolve(); }; });
+ native.updateNavigation = async input => { native.calls.push(['update', input.title]); return { active: started }; };
+ const running = session.start('Route', 'Waiting for location', reason => heard.push(reason));
+ while (!release) await new Promise(resolve => setImmediate(resolve));
+ session.update('Turn left', 'In 40 m');
+ release();
+ assert.equal(await running, true);
+ await new Promise(resolve => setImmediate(resolve));
+ assert.equal(session.active(), true);
+ assert.deepEqual(heard, []);
+ assert.deepEqual(native.calls.filter(([kind]) => kind === 'update'), [['update', 'Turn left']]);
+ await session.stop();
+});

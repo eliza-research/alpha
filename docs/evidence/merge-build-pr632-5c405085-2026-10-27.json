@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "recordedAtEpoch": 1793113303.668179,
+  "pullRequest": 632,
+  "reviewedPrHead": "a56d3e7b99c8923cbae57a7500e197a8e0fbba53",
+  "previousUpstream": "fd5511ca1dacdccfadd93879bddff2038ebe8665",
+  "reviewedPrUpstream": "41d99bb4c86cb61bfa07d5e49b07603dbbe1080b",
+  "currentUpstream": "5c4050856860750908a91b408a2786830e68e91a",
+  "review": [
+    "Calendar cache freshness is separate from retained data; refreshes are deferred across writes and remain bound to the owner, source and window.",
+    "Canonical sync explicitly selects a writable source and keeps retained device data separate. Unsupported recurrence stays in the draft until explicit owner removal.",
+    "Email remains visible beside Google. Membership state is account-keyed; retained redemption errors now expose their associated input.",
+    "Public service metadata uses the bounded same-origin bridge and strict public schema. Existing credential and authenticated-provider boundaries remain.",
+    "Shared source review covers effective planner failure verdicts, semantic Calendar boundary checks, voice-asset installation and explicit Android ABI selection.",
+    "Unused compatibility exports and duplicate helpers are removed; callback recovery, source markers and production mock exclusion remain."
+  ],
+  "validation": {
+    "typecheck": "passed",
+    "focusedTests": 180,
+    "focusedFailures": 0,
+    "initialFocusedFailures": 2,
+    "initialFinding": "The new collapsed membership entry hid the input associated with a retained redemption error; fixed in the component without weakening the tests.",
+    "currentApkVersion": 18,
+    "androidBuild": "pending",
+    "fullVerification": "pending",
+    "images": "pending"
+  },
+  "nativeSource": {
+    "engineModelJniAndBunPinUnchanged": true,
+    "javaAndGradleConsumersChanged": true,
+    "requiresFreshPackaging": true,
+    "deviceQualificationTransferred": false
+  },
+  "priorImages": {
+    "cuttlefishV17": "docs/evidence/merge-build-cuttlefish-v17-2026-10-27.json",
+    "pixelV17": "interrupted before completion; compiled objects retained"
+  },
+  "limits": [
+    "Current image boot, live provider integrations, physical-device and user acceptance are unverified.",
+    "Release signing and native speech qualification remain separate."
+  ]
+}

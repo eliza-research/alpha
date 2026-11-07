@@ -93,8 +93,7 @@ test('every action in the emulator evidence workflow is pinned to an exact commi
 });
 
 test('every action in every workflow is pinned to an exact commit, one commit per action',()=>{
- // A tag can be moved to other code after review; a commit cannot. Before round 8 four
- // third-party actions in the older workflows were referenced by their major tag.
+ // A tag can be moved to other code after review; a commit cannot.
  const pins=new Map(),files=fs.readdirSync('.github/workflows').filter(name=>/\.ya?ml$/.test(name)).sort();
  assert.ok(files.length>=7);
  for(const file of files){

@@ -7,23 +7,27 @@ selected-document adapters using
 The return value removes listeners, restores module methods and stops preview.
 
 The native dependency remains pinned at the commit in `upstream.lock.json`.
-No upstream checkout changes or patches are required for this initial adapter.
 The adapter registers only the Android wire subset as `ElizaCamera`; it does not
 pull an upstream workspace dependency graph into the renderer.
 
+The preview/capture/recording lifecycle is upstream's shared camera session
+(`plugin-native-camera/src/session.ts`, projected into
+`.eliza/client-features`), the same one `CameraPageView` drives. The adapter
+supplies only Alpha's presentation and destinations: the access panel and
+notices, the preview mask, preview and recording options, and the
+`recordingSaved` hook that reads a finished recording back from Photos. Epoch
+fencing, chained releases, the one-capture-at-a-time lock and single-flight
+recording finalization are not reimplemented here. Explicit-denial
+classification and resume recovery come from the shared host ports.
+
 ## Android wiring for the build owner
 
-In `android/settings.gradle`:
+The Gradle host is generated from `android/consumer-host.json` by the pinned upstream
+consumer-host generator (`npm run android:host`). The camera module is one of its
+`profile.modules` entries, linked into the app:
 
-```groovy
-include ':eliza-camera'
-project(':eliza-camera').projectDir = new File('../vendor/eliza/plugins/plugin-native-camera/android')
-```
-
-In `android/app/build.gradle` dependencies:
-
-```groovy
-implementation project(':eliza-camera')
+```json
+{ "name": "eliza-camera", "source": { "root": "upstream", "path": "plugins/plugin-native-camera/android" } }
 ```
 
 In `MainActivity.java`, alongside the existing plugin registration before
@@ -33,7 +37,8 @@ In `MainActivity.java`, alongside the existing plugin registration before
 registerPlugin(ai.eliza.plugins.camera.CameraPlugin.class);
 ```
 
-The current root build already declares Kotlin 2.2.20 and AGP 8.13.0. Upstream
+The generated root build declares Kotlin 2.2.20 and AGP 8.13.0 (the generator's
+reviewed toolchain). Upstream
 applies `org.jetbrains.kotlin.android`, targets Java/Kotlin 21 and declares
 CameraX 1.5.3 and ExifInterface 1.4.2. Its manifest merges CAMERA, RECORD_AUDIO
 and WRITE_EXTERNAL_STORAGE (maximum API 28). This adapter does not request

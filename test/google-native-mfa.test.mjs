@@ -40,19 +40,19 @@ test('Google controller shows the native MFA panel and does not bind an account 
  const compiled=transformSync('const controller={'+code+'};',{loader:'ts'}).code;
  for(const outcome of [required(),{status:'authenticated',environment:'production',expiresAt:Date.now()+60000,accountCreated:false}]){
   let shown=0,signed=0,ensured=0;
-  const run=new Function('state','work','update','signInClient','signInFailed','showGoogleMfa','signedIn','ensureResident',compiled+'return controller.signInGoogle();');
+  const run=new Function('state','work','update','signInClient','signInFailed','showGoogleMfa','signedIn','ensureResident','let googleSignInGeneration=0;'+compiled+'return controller.signInGoogle();');
   await run({signIn:{step:'choose',environment:'production'}},async(_,fn)=>fn(new AbortController().signal),()=>{},()=>({signInWithGoogle:async()=>outcome}),()=>{},value=>{assert.equal(value.attemptId,attemptId);shown++;},async()=>{signed++;},async()=>{ensured++;});
   assert.equal(shown,outcome.status==='mfa'?1:0);assert.equal(signed,outcome.status==='mfa'?0:1);assert.equal(ensured,1);
  }
 });
 
 test('native Google and email share MFA admission; callback state custody remains native',()=>{
- const source=read('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCloudSignInPlugin.java');
+ const source=read('vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java');
  const complete=method(source,' private void complete(Attempt current, JSONObject session)',' /** The saved key');
  assert.ok(complete.indexOf('session.opt("mfaRequired")')<complete.indexOf('session.optString("token"'),'MFA is handled before a token is required');
  assert.match(complete,/Math\.min\(current\.expiresAt, expiresAt\)/);
  assert.match(complete,/deadline <= System\.currentTimeMillis\(\)/);
- assert.match(complete,/if \(attempt != current \|\| current\.cancelled\)/);
+ assert.match(complete,/if \(destroyed \|\| attempt != current \|\| current\.cancelled\)/,'destroyed, replaced and cancelled attempts cannot publish MFA');
  assert.match(complete,/if \(current\.mfaType != null\)/,'a second challenge cannot replace an active challenge');
  assert.match(complete,/notifyListeners\("signInMfaRequired", required, true\)/,'cold Google return retains only its nonsecret outcome');
  const verify=method(source,' private void verify(PluginCall call, boolean mfa)',' private void release(');
@@ -75,7 +75,7 @@ test('Google MFA return revalidates retained events against the current native a
   const outcome=required();const queued=await fn(outcome);
   assert.equal(shown,!busy&&active?1:0);assert.equal(ensured,busy?0:1);assert.equal(checks,busy?0:1);assert.equal(queued,busy?outcome:null);
  }
- const native=read('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCloudSignInPlugin.java');
+ const native=read('vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java');
  const resume=method(native,' @PluginMethod public void resumeMfa(',' @PluginMethod public void cancel(');
  for(const guard of ['!attempt.cancelled','attempt.mfaType != null','attempt.id.equals(call.getString("attemptId"))','attempt.environment.name.equals(call.getString("environment"))','attempt.expiresAt > System.currentTimeMillis()'])assert.ok(resume.includes(guard),guard);
 });

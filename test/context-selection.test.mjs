@@ -88,9 +88,13 @@ test('only an unredacted own notification is reviewable, and only while that exa
  assert.equal(m.noticeReviewable({...own,title:'Alpha Phone',text:''}),false,'redacted while locked');
  assert.equal(m.noticeReviewable({...own,title:'',text:''}),false,'nothing shown');
  // Android withholds content with fixed wording instead of an empty row. That wording is not content.
+ // The shared host plugin (vendor/eliza) builds the hidden title from Alpha's appLabel().
+ const host=readFileSync('vendor/eliza/plugins/plugin-native-notifications/android/src/capacitor/java/ai/eliza/plugins/notifications/NotificationsHostPlugin.java','utf8');
  const java=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNotificationsPlugin.java','utf8');
- assert.ok(java.includes(`item.put("title",hidden?"${m.HIDDEN_NOTICE_TITLE}":`),'Android hidden title');
- assert.ok(java.includes(`item.put("text",hidden?(locked?"${m.HIDDEN_NOTICE_TEXTS[0]}":"${m.HIDDEN_NOTICE_TEXTS[1]}"):`),'Android hidden text');
+ const label=/protected String appLabel\(\)\{return "([^"]+)";\}/.exec(java)?.[1];
+ assert.equal(`${label} notification`,m.HIDDEN_NOTICE_TITLE,'Android hidden title');
+ assert.ok(host.includes('item.put("title",hidden?label+" notification":'),'Android hidden title');
+ assert.ok(host.includes(`item.put("text",hidden?(locked?"${m.HIDDEN_NOTICE_TEXTS[0]}":"${m.HIDDEN_NOTICE_TEXTS[1]}"):`),'Android hidden text');
  for(const text of m.HIDDEN_NOTICE_TEXTS){
   assert.equal(m.noticeReviewable({...own,title:m.HIDDEN_NOTICE_TITLE,text}),false,text);
   assert.equal(m.noticeHidden({...own,title:m.HIDDEN_NOTICE_TITLE,text}),true);
@@ -119,10 +123,18 @@ test('a capture question carries the exact open item; a library search is never 
 test('a saved capture identity is its id and a local counter, never the library revision',()=>{
  const captures=m.createCaptureRevisions();
  // Android's library revision is DATE_ADDED:SIZE, with "|generation" appended after a favorite,
- // trash or restore (AlphaPhotosPlugin.metadata). Neither the time nor the size is an identity,
- // and the wire contract refuses '|', which would fail every message sent while that item is open.
+ // trash or restore (the shared OwnedMediaLibrary.metadata Alpha's Photos plugin uses). Neither the
+ // time nor the size is an identity, and the wire contract refuses '|', which would fail every
+ // message sent while that item is open.
+ // AlphaPhotos registers the shared PhotosPlugin with Alpha's media names; the shared bridge builds the library.
  const java=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPhotosPlugin.java','utf8');
- assert.match(java,/item\.put\("revision",base\+\(Build\.VERSION\.SDK_INT>=30&&marker\.startsWith\(base\+"\|"\)\?"\|"\+row\.getLong\(9\):""\)\)/,'Android revision format');
+ assert.match(java,/public class AlphaPhotosPlugin extends PhotosPlugin \{/);
+ assert.match(java,/@Override protected OwnedMediaConfig mediaConfig\(\)\{return MEDIA_CONFIG;\}/);
+ const bridge=readFileSync(new URL('../vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotosPlugin.java',import.meta.url),'utf8');
+ assert.match(bridge,/owned = new OwnedMediaLibrary\(getContext\(\), config, playback::revoke\);/);
+ const library=readFileSync(new URL('../vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/OwnedMediaLibrary.java',import.meta.url),'utf8').replace(/\s+/g,' ');
+ assert.match(library,/String base = row\.getLong\(3\) \+ ":" \+ row\.getLong\(4\);/,'Android revision base');
+ assert.match(library,/"revision", base \+ \(Build\.VERSION\.SDK_INT >= 30 && marker\.startsWith\(base \+ "\|"\) \? "\|" \+ row\.getLong\(9\) : ""\)\);/,'Android revision format');
  const plain={kind:'image',id:'native-camera-42',revision:'1760000000:52344',mutationRevision:'1760000000:52344:916:0'};
  const flagged={...plain,revision:'1760000000:52344|917',mutationRevision:'1760000000:52344:917:0'};
  assert.throws(()=>sanitizePhoneContext({view:'photos',revision:1,sensitive:false,selectedObject:{kind:'photo',id:flagged.id,revision:flagged.revision}}));
@@ -151,7 +163,8 @@ test('a saved capture identity is its id and a local counter, never the library 
  for(const bad of [undefined,{},{id:'native-camera-1'},{id:'native-camera-1',revision:''},{id:'/storage/DCIM/1.jpg',revision:'1'},{id:'has space',revision:'1'},{id:'native-camera-1',revision:7}])assert.equal(captures(bad),null);
  const adapter=readFileSync('apps/app/src/prototype/camera-adapter.ts','utf8');
  assert.match(adapter,/const captureSelection=createCaptureRevisions\(\);/);
- assert.equal((adapter.match(/nativePhotoSelection: ?captureSelection\(/g)||[]).length,2);
+ // Opening, favoriting, and patching an open item after an external change publish its identity.
+ assert.equal((adapter.match(/nativePhotoSelection: ?captureSelection\(/g)||[]).length,3);
  assert.doesNotMatch(adapter,/nativePhotoSelection: ?\{/,'every published photo identity goes through the local mapping');
 });
 test('the native adapter passes an item identity, not a generic wrapper, to the capture question',()=>{
@@ -196,10 +209,10 @@ test('a photo another app rewrote in place is refused at send time',()=>{
  const revisions=m.createCaptureRevisions(),before=revisions({kind:'image',...reviewed}),after=revisions({kind:'image',...reviewed,contentRevision:'1700000500:2048:12'});
  assert.equal(before.id,after.id);assert.notEqual(before.revision,after.revision);
  // The native list and read report contentRevision from MediaStore DATE_MODIFIED, size and generation.
- const photos=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPhotosPlugin.java','utf8');
- assert.match(photos,/item\.put\("contentRevision",contentRevision\(row\)\);/);
- assert.match(photos,/private String contentRevision\(Cursor row\)\{return row\.getLong\(row\.getColumnIndexOrThrow\(MediaStore\.MediaColumns\.DATE_MODIFIED\)\)\+":"\+row\.getLong\(4\)\+\(Build\.VERSION\.SDK_INT>=30\?":"\+row\.getLong\(9\):""\);\}/);
- assert.match(photos,/result\[result\.length-1\]=MediaStore\.MediaColumns\.DATE_MODIFIED;/);
+ const photos=readFileSync(new URL('../vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/OwnedMediaLibrary.java',import.meta.url),'utf8').replace(/\s+/g,' ');
+ assert.match(photos,/item\.put\("contentRevision", contentRevision\(row\)\);/);
+ assert.match(photos,/private static String contentRevision\(Cursor row\) \{ return row\.getLong\(row\.getColumnIndexOrThrow\(MediaStore\.MediaColumns\.DATE_MODIFIED\)\) \+ ":" \+ row\.getLong\(4\) \+ \(Build\.VERSION\.SDK_INT >= 30 \? ":" \+ row\.getLong\(9\) : ""\); \}/);
+ assert.match(photos,/result\[result\.length - 1\] = MediaStore\.MediaColumns\.DATE_MODIFIED;/);
  const camera=readFileSync('apps/app/src/prototype/camera-adapter.ts','utf8');
  assert.match(camera,/const unchanged=\(row:SavedPhoto\)=>captureUnchanged\(selected,row\);/,'the send-time re-read uses the content check');
 });
@@ -212,9 +225,11 @@ test('hosted-result, digest and workflow notices are never reviewable; reminder 
  assert.equal(m.noticeReviewable({...own,id:'calendar:alert-1'}),true);assert.equal(m.noticeReviewable({...own}),true);
  assert.equal(m.noticeKind({id:'calendar:x'}),'calendar');assert.equal(m.noticeKind({id:'x',kind:'hosted-result'}),'hosted-result');
  // The native list returns a kind for every own row, from the posting channel.
+ const host=readFileSync('vendor/eliza/plugins/plugin-native-notifications/android/src/capacitor/java/ai/eliza/plugins/notifications/NotificationsHostPlugin.java','utf8');
+ assert.match(host,/item\.put\("source","own"\);item\.put\("kind",noticeKind\(n\.getChannelId\(\)\)\);/);
  const plugin=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNotificationsPlugin.java','utf8');
- assert.match(plugin,/item\.put\("source","own"\);item\.put\("kind",noticeKind\(n\.getChannelId\(\)\)\);/);
- const kinds=plugin.slice(plugin.indexOf('static String noticeKind('),plugin.indexOf('@PluginMethod public void list('));
+ assert.match(plugin,/@Override protected String noticeKind\(String channel\)\{return kind\(channel\);\}/);
+ const kinds=plugin.slice(plugin.indexOf('static String kind('),plugin.lastIndexOf('\n}'));
  assert.match(kinds,/AlphaHostedResultsPlugin\.CHANNEL\.equals\(channel\)\)return "hosted-result";/);
  assert.match(kinds,/WorkflowNoticePoster\.CHANNEL\.equals\(channel\)\|\|WorkflowNoticePoster\.APPROVAL_CHANNEL\.equals\(channel\)\)return "workflow";/);
  assert.match(kinds,/return "other";\n \}/,'an unknown channel is not reviewable');
@@ -239,4 +254,29 @@ test('a mail context switched, deleted or changed during its review cannot send 
  assert.match(adapter,/function mailContext\(\):MailContextSource \{if\(!body\|\|!selected\|\|!body\.historyId\)throw new Error\('Refresh this message before sharing'\);/);
  assert.match(adapter,/const text=await validateMailContext\(review,mailContext\(\),destination\);/);
  assert.match(adapter,/if \(body\?\.message\.id === id\) \{ body = null;/,'an archived or trashed open message is cleared');
+});
+
+
+test('calendar source discovery coalesces per owner, retries failures and fences old sources',async()=>{
+ const {stripTypeScriptTypes}=await import('./support/strip-types.mjs');const vm=await import('node:vm');
+ const core=readFileSync(new URL('../vendor/eliza/packages/core/src/runtime/single-flight-memo.ts',import.meta.url),'utf8').replace(/^export /gm,'');
+ const SingleFlightMemo=vm.runInNewContext(stripTypeScriptTypes(core,{mode:'transform'})+';SingleFlightMemo');
+ const ui=readFileSync(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
+ const source=ui.slice(ui.indexOf('type CalendarAgendaSourceObservation='),ui.indexOf('async function deviceCapabilities'));
+ const deferred=()=>{let resolve,reject;const promise=new Promise((yes,no)=>{resolve=yes;reject=no;});return {promise,resolve,reject};};
+ const window=new EventTarget();let calls=0;const queue=[];
+ const contract=readFileSync(new URL('../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/calendar-contract.ts',import.meta.url),'utf8').replace(/^export /gm,'');
+ const {calendarSource,calendarTarget}=vm.runInNewContext(stripTypeScriptTypes(contract,{mode:'transform'})+';({calendarSource,calendarTarget})');
+ const context=(id,revision)=>({view:'calendar',sensitive:false,revision:1,selectedObject:{kind:'calendar-source',id,revision,accountId:id,sourceRevision:revision}});
+ const one='1'.repeat(64),two='2'.repeat(64),oldRevision='3'.repeat(64),newRevision='4'.repeat(64),ownerRevision='5'.repeat(64);
+ const sandbox={SingleFlightMemo,calendarSource,calendarTarget,window,Capacitor:{isNativePlatform:()=>false},registerPlugin:()=>({prepareAgentSource(){calls++;return queue.shift();}})};
+ const {calendarAgendaObservation:read}=vm.runInNewContext(stripTypeScriptTypes(source,{mode:'transform'})+';({calendarAgendaObservation})',sandbox);
+ const owner={supportsCalendarAgenda:true},first=deferred();queue.push(first.promise);
+ const a=read(owner,context('local',one)),b=read(owner,context('local',one));await Promise.resolve();assert.equal(calls,1);first.resolve({sourceId:'local',sourceRevision:one});await Promise.all([a,b]);
+ queue.push(Promise.reject(Error('unavailable')));const failOwner={supportsCalendarAgenda:true};assert.equal(await read(failOwner,context('local',two)),undefined);
+ queue.push(Promise.resolve({sourceId:'local',sourceRevision:two}));assert.equal((await read(failOwner,context('local',two))).sourceId,'local');
+ const old=deferred();queue.push(old.promise);const changing={supportsCalendarAgenda:true};const pending=read(changing,context('local',oldRevision));await Promise.resolve();window.dispatchEvent(new Event('alpha:calendar-sync-source-changed'));old.resolve({sourceId:'local',sourceRevision:oldRevision});assert.equal(await pending,undefined);
+ queue.push(Promise.resolve({sourceId:'local',sourceRevision:newRevision}));assert.equal((await read(changing,context('local',newRevision))).sourceId,'local');
+ queue.push(Promise.resolve({sourceId:'local',sourceRevision:ownerRevision}));assert.equal((await read({supportsCalendarAgenda:true},context('local',ownerRevision))).sourceId,'local');
+ assert.equal(queue.length,0);
 });

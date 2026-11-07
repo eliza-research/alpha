@@ -4,10 +4,10 @@ import {buildSync} from 'esbuild';
 import {resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 
-// Actual projected client and microphone implementation; only the sensor, audio
+// Actual shared client and microphone implementation; only the sensor, audio
 // graph and server are synthetic. No microphone, provider or network is used.
-const root=resolve('.eliza/client-features'),entry=resolve(root,'packages/ui/src/voice/voice-session-client.ts');
-const bundle=buildSync({entryPoints:[entry],bundle:true,write:false,platform:'browser',format:'cjs',target:'es2022',define:{'import.meta.url':JSON.stringify(pathToFileURL(entry).href)},alias:{'@elizaos/host/protocol':resolve(root,'packages/host/src/voice.ts'),'@elizaos/core/protocol':resolve(root,'alpha-voice-core-protocol.ts'),'@elizaos/voice/turn':resolve(root,'packages/voice/src/turn.ts'),'@elizaos/core/speech':resolve(root,'packages/core/src/speech.ts')}}).outputFiles[0].text;
+const root=resolve('.eliza/client-features'),entry=resolve(root,'packages/ui/src/voice/voice-session-client-core.ts');
+const bundle=buildSync({entryPoints:[entry],bundle:true,write:false,platform:'browser',format:'cjs',target:'es2022',define:{'import.meta.url':JSON.stringify(pathToFileURL(entry).href)},alias:{'@elizaos/host/voice/ui-context':resolve(root,'packages/host/src/voice/ui-context.ts'),'@elizaos/core/view-interaction':resolve(root,'packages/core/src/view-interaction.ts'),'@elizaos/core/logging':resolve(root,'packages/core/src/logging.ts'),'@elizaos/voice/turn':resolve(root,'packages/voice/src/turn.ts'),'@elizaos/core/speech':resolve(root,'packages/core/src/speech.ts')}}).outputFiles[0].text;
 const module={exports:{}};new Function('module','exports',bundle)(module,module.exports);
 const {createVoiceSessionClient}=module.exports;
 const flush=async()=>{for(let n=0;n<40;n++)await Promise.resolve();};

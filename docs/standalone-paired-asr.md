@@ -77,7 +77,7 @@ production host or enclave acceptance is claimed.
 ## Android integration prepared for Build65
 
 The paired voice bridge now exposes a separate Whisper capability check and
-explicit clip upload. `AlphaVoicePcm` decodes only the app recorder's mono16kHz
+explicit clip upload. The shared `RecordingPcm` (`ai.eliza.voice`) decodes only the app recorder's mono16kHz
 AAC/M4A into bounded PCM16 WAV with MediaExtractor/MediaCodec. Unexpected channel,
 rate or PCM encoding is rejected rather than silently resampled. Conversion is
 cancellable and bounded20seconds/60seconds decoded audio; the draft remains

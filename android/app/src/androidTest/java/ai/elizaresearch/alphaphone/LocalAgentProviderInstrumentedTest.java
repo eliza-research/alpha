@@ -64,7 +64,7 @@ public class LocalAgentProviderInstrumentedTest {
  @Test public void removeDeletesTheSlotAndReadsBackUnconfigured() throws Exception {
   AlphaCredentialStore store = store();
   assertNull(AlphaLocalAgentPlugin.saveVerifiedProvider(store, "synthetic-provider-key", "qwen-3.8-27b", (key, model) -> null));
-  JSONObject cleared = AlphaLocalAgentPlugin.clearProviderSlot(store);
+  JSONObject cleared = AlphaLocalAgentPlugin.clearProviderSlot(store,false);
   assertFalse(cleared.getBoolean("configured"));
   assertNull(store.readCredentialSlot(SLOT));
   assertFalse(AlphaLocalAgentPlugin.providerIdentity(store.readCredentialSlot(SLOT)).getBoolean("configured"));

@@ -24,10 +24,15 @@ async function setup(page: import("@playwright/test").Page) {
 	// Native WebView and localhost are secure contexts; about:blank is not.
 	await page.route('**/__navigation-fixture',route=>route.fulfill({contentType:'text/html',body:'<main id="screen">Home</main>'}));
 	await page.goto('/__navigation-fixture');
+	// Targets resolve through Alpha's real product view registry, served by the dev server.
+	await page.evaluate(async () => {
+		const views = await import("/src/product/alpha-product.ts");
+		Object.assign(window, { alphaCanonicalViewId: views.alphaCanonicalViewId, alphaViewKey: views.alphaViewKey, alphaViewPaths: views.alphaViewPaths });
+	});
 	await page.addScriptTag({
 		type: "module",
 		content:
-			"const browserDevProfile=false; const Capacitor={getPlatform:()=>\"web\",PluginHeaders:[]};\n" +
+			"const browserDevProfile=false; const Capacitor={getPlatform:()=>\"web\",PluginHeaders:[]}; const TELEPHONY_PROFILE_METHOD=\"imageCapability\"; const detectTelephonyProfile=()=>false;\n" +
 			source +
 			"\nwindow.ViewNavigationClient=ViewNavigationClient;",
 	});

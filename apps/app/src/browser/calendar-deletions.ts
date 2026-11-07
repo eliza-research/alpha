@@ -1,4 +1,4 @@
-import {browserDeletionClock,claimDeletion,deletionDeadline,deletionWindow,type PendingDeletion} from '../runtime/deletion-window';
+import {rendererDeletionClock,claimDeletion,deletionDeadline,deletionWindow,type PendingDeletion} from '../../../../.eliza/client-features/packages/contracts/src/deletion-window';
 import {calendarRecord,deleteCalendarRecord,type CalendarRecord} from './calendar-records';
 import {revision} from './revision';
 export type CalendarDeletionTarget={sourceRevision:string;row:CalendarRecord;scope:'event'|'series'};
@@ -15,11 +15,11 @@ export function stageCalendarDeletion(data:CalendarDeletionState,row:CalendarRec
  const terminal=Object.values(data.deletions||{}).filter(e=>['deleted','undone','conflict'].includes(e.phase)).sort((a,b)=>a.deadline.createdElapsed-b.deadline.createdElapsed);
  for(const entry of terminal.slice(0,Math.max(0,terminal.length-127)))delete data.deletions![entry.id];
  if(Object.keys(data.deletions||{}).length>=500)throw Error('Pending deletion history requires review.');
- const entry:CalendarDeletion={version:1,id,owner,target:{sourceRevision:data.sourceRevision,row:structuredClone(row),scope},deadline:deletionDeadline(browserDeletionClock()),phase:'queued'};
+ const entry:CalendarDeletion={version:1,id,owner,target:{sourceRevision:data.sourceRevision,row:structuredClone(row),scope},deadline:deletionDeadline(rendererDeletionClock()),phase:'queued'};
  (data.deletions??={})[id]=entry;return structuredClone(entry);
 }
 export function settleCalendarDeletions(data:CalendarDeletionState,ownerCurrent:(owner:string)=>boolean){
- const clock=browserDeletionClock();
+ const clock=rendererDeletionClock();
  for(const entry of Object.values(data.deletions||{})){
   if(entry.phase!=='queued'||deletionWindow(entry.deadline,clock)!=='expired')continue;
   if(!ownerCurrent(entry.owner)){entry.phase='paused';entry.blocked='owner-changed';continue;}
@@ -33,7 +33,7 @@ export function settleCalendarDeletions(data:CalendarDeletionState,ownerCurrent:
 }
 export function undoCalendarDeletion(data:CalendarDeletionState,id:string,ownerCurrent:(owner:string)=>boolean){
  const entry=data.deletions?.[id];if(!entry||!ownerCurrent(entry.owner))throw Error('Deletion owner changed.');
- if(!claimDeletion(entry,entry.owner,browserDeletionClock(),'undo'))throw Error('Undo window ended or deletion already settled.');return structuredClone(entry);
+ if(!claimDeletion(entry,entry.owner,rendererDeletionClock(),'undo'))throw Error('Undo window ended or deletion already settled.');return structuredClone(entry);
 }
 /** All document writers share this check, including editor and recurrence operations. */
 export function guardPendingCalendarChanges(before:CalendarDeletionState,after:CalendarDeletionState){

@@ -12,11 +12,11 @@ for (const mode of ['checking', 'unavailable', 'available'] as const) {
       const methods = (names: string[]) => names.map(name => ({ name, rtype: 'promise' }));
       w.Capacitor = {
         PluginHeaders: [
-          { name: 'Agent', methods: methods(['getStatus', 'configureProvider', 'start']) },
+          { name: 'Agent', methods: methods(['getStatus', 'prepareProviderConfiguration', 'configureProvider', 'cancelProviderConfiguration', 'providerStatus', 'start']) },
           { name: 'AlphaConnection', methods: methods(['secureRead', 'secureWrite','secureCompareExchange', 'secureRemove', 'request', 'cancel', 'addListener', 'removeListener', 'pauseNotificationCollection']) },
           { name: 'AlphaHostedResults', methods: methods(['disableBackground','addListener','removeListener','pendingResult','status']) },
           { name: 'AlphaActionJournal', methods: methods(['list']) },
-          { name: 'DeviceApps', methods: methods(['buildInfo']) },
+          { name: 'ElizaSystem', methods: methods(['getBuildInfo']) },
         ],
         nativePromise: async (plugin: string, method: string, input: any) => {
           if (plugin === 'Agent') {
@@ -24,7 +24,10 @@ for (const mode of ['checking', 'unavailable', 'available'] as const) {
               if (mode === 'checking') return new Promise(resolve => { w.releasePackaging = resolve; });
               return { packaged: mode === 'available', state: 'stopped' };
             }
-            if (method === 'configureProvider') { w.packagingFixture.saved++; w.packagingFixture.keys.push(input.apiKey); return { configured: true }; }
+            if (method === 'prepareProviderConfiguration') return { requestId: 'packaging-lease' };
+            if (method === 'cancelProviderConfiguration') return {};
+            if (method === 'configureProvider') { if (input.requestId !== 'packaging-lease') throw Error('Unleased provider request'); w.packagingFixture.saved++; w.packagingFixture.keys.push(input.apiKey); return { configured: true }; }
+            if (method === 'providerStatus') return w.packagingFixture.saved ? { provider: 'cerebras', configured: true, model: 'qwen-3.8-27b' } : { provider: 'cerebras', configured: false };
             if (method === 'start') { w.packagingFixture.started++; throw Error('Runtime start is outside this fixture'); }
           }
           if (plugin === 'AlphaConnection') {
@@ -37,7 +40,7 @@ for (const mode of ['checking', 'unavailable', 'available'] as const) {
           }
           if (plugin === 'AlphaHostedResults' && ['disableBackground','addListener','removeListener','pendingResult','status'].includes(method)) return {};
           if (plugin === 'AlphaActionJournal' && method === 'list') return { entries: [] };
-          if (plugin === 'DeviceApps' && method === 'buildInfo') return { launcher: false, version: 'fixture' };
+          if (plugin === 'ElizaSystem' && method === 'getBuildInfo') return { launcher: false, version: 'fixture' };
           throw Error('Unexpected native operation: ' + plugin + '.' + method);
         },
       };
@@ -45,7 +48,7 @@ for (const mode of ['checking', 'unavailable', 'available'] as const) {
     await page.goto('/');
     // Initial native launch may open automatically; otherwise use the product control.
     if (!await page.locator('.alpha-connection-scrim').isVisible())
-      await page.getByRole('button', { name: 'Agent connection', exact: true }).click();
+      await page.getByRole('button', { name: 'Agent', exact: true }).click();
     await expect(page.locator('.alpha-connection-scrim')).toBeVisible();
     const chooser = page.locator('.alpha-connection');
     const start = chooser.getByRole('button', { name: 'Start local agent', exact: true });
@@ -62,16 +65,23 @@ for (const mode of ['checking', 'unavailable', 'available'] as const) {
       await chooser.locator('summary').filter({ hasText: /^Model provider$/ }).click();
       await chooser.getByLabel('Cerebras API key').fill('synthetic-e2e-key');
       await chooser.getByRole('button', { name: 'Save provider', exact: true }).click();
-      await expect(chooser.getByText('Provider saved. Start or restart the local agent to use it.')).toBeVisible();
-      await expect(chooser.getByLabel('Cerebras API key')).toHaveValue('');
+      // A verified key is selected and the agent restarts with it at once; this fixture refuses the start.
+      const provider = page.getByRole('dialog', { name: 'AI provider', exact: true });
+      await expect(provider.getByRole('alert')).toHaveText('Runtime start is outside this fixture');
+      await expect(chooser.getByText('Cerebras key verified and saved in Android Keystore. Own API keys selected.')).toHaveCount(0);
+      await provider.getByRole('button', { name: 'Change keys', exact: true }).click();
+      await expect(provider.getByLabel('Cerebras API key')).toHaveValue('');
+      await provider.getByRole('button', { name: 'Close AI provider settings', exact: true }).click();
+      await page.getByRole('button', { name: 'Settings', exact: true }).click();
+      await page.getByRole('button', { name: 'Agent', exact: true }).click({ timeout: 5000 });
     }
     await chooser.locator('summary').filter({ hasText: /^Remote agent$/ }).click();
     await expect(chooser.getByLabel('Agent HTTPS address')).toBeEditable();
     await expect(chooser.getByRole('button', { name: 'Connect remote agent', exact: true })).toBeEnabled();
     await chooser.locator('summary').filter({ hasText: /^Development Cloud agent infrastructure$/ }).click();
-    await expect(chooser.getByRole('button', { name: 'Sign in with Eliza Cloud', exact: true })).toBeEnabled();
+    await expect(chooser.getByRole('button', { name: 'Sign in', exact: true })).toBeEnabled();
     expect(await page.evaluate(() => (window as any).packagingFixture)).toEqual({
-      saved: mode === 'available' ? 1 : 0, started: 0, requests: 0,
+      saved: mode === 'available' ? 1 : 0, started: mode === 'available' ? 1 : 0, requests: 0,
       keys: mode === 'available' ? ['synthetic-e2e-key'] : [],
     });
     await chooser.locator('summary').filter({ hasText: /^Mock mode$/ }).click();

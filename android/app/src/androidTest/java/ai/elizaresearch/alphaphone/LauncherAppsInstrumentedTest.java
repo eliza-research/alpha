@@ -13,8 +13,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import static org.junit.Assert.*;
 
-/** Alpha's use of upstream {@link SystemLauncherApps} (elizaOS/eliza#35909) against the device's
- * own package manager, under Alpha's package-visibility queries and identity. Resolves only:
+/** Alpha's use of upstream {@link SystemLauncherApps} (elizaOS/eliza#35909), which ElizaSystem
+ * (AlphaSystemPlugin) lists and launches through, against the device's own package manager, under
+ * Alpha's package-visibility queries and identity. Resolves only:
  * nothing is launched, installed, removed or re-roled. Listing rules for synthetic candidates,
  * profile kinds and locked-profile wording are upstream's SystemLauncherAppsInstrumentedTest. A
  * device with a work profile, a paused profile and real add/remove is separate acceptance. */
@@ -67,10 +68,10 @@ public class LauncherAppsInstrumentedTest {
 
  @Test public void packageOnlyRefusalsUseUpstreamCodes() {
   PackageManager packages = context().getPackageManager();
-  assertEquals(SystemLauncherApps.NOT_INSTALLED, DeviceAppsPlugin.explain(packages, "org.example.alpha.not.installed")[0]);
+  assertEquals(SystemLauncherApps.NOT_INSTALLED, SystemLauncherApps.explain(packages, "org.example.alpha.not.installed").code);
   // Alpha is installed and enabled; asked about as a launch target it simply has no entry here.
-  assertEquals(SystemLauncherApps.NO_LAUNCHER, DeviceAppsPlugin.explain(packages, context().getPackageName())[0]);
-  assertEquals("Alpha's own failure code is distinct from every upstream refusal", "failed", DeviceAppsPlugin.FAILED);
+  assertEquals(SystemLauncherApps.NO_LAUNCHER, SystemLauncherApps.explain(packages, context().getPackageName()).code);
+  assertEquals("The shared failure code is distinct from every refusal", "failed", SystemLauncherApps.FAILED);
   try { SystemLauncherApps.launchIntent(context(), context().getPackageName()); fail("Alpha never launches itself by package"); }
   catch (IllegalArgumentException expected) { assertEquals("Choose an installed app", expected.getMessage()); }
  }
@@ -78,15 +79,15 @@ public class LauncherAppsInstrumentedTest {
  @Test public void aComponentOrProfileThatIsNotTextIsMalformedNotAbsent() throws Exception {
   com.getcapacitor.JSObject request = new com.getcapacitor.JSObject();
   request.put("packageName", "org.example.one"); request.put("activityName", "org.example.one.Main"); request.put("user", 10);
-  assertTrue("A numeric profile must not be read as the current user", DeviceAppsPlugin.malformed(request, "user"));
-  assertFalse(DeviceAppsPlugin.malformed(request, "activityName"));
+  assertTrue("A numeric profile must not be read as the current user", SystemLauncherApps.malformedText(request, "user"));
+  assertFalse(SystemLauncherApps.malformedText(request, "activityName"));
   request.put("user", "10"); request.put("activityName", true);
-  assertFalse(DeviceAppsPlugin.malformed(request, "user"));
-  assertTrue("A non-text activity must not fall back to the package default", DeviceAppsPlugin.malformed(request, "activityName"));
+  assertFalse(SystemLauncherApps.malformedText(request, "user"));
+  assertTrue("A non-text activity must not fall back to the package default", SystemLauncherApps.malformedText(request, "activityName"));
   com.getcapacitor.JSObject legacy = new com.getcapacitor.JSObject();
   legacy.put("packageName", "org.example.one"); legacy.put("user", org.json.JSONObject.NULL);
-  assertFalse("A package-only request stays valid", DeviceAppsPlugin.malformed(legacy, "activityName"));
-  assertFalse(DeviceAppsPlugin.malformed(legacy, "user"));
-  assertFalse(DeviceAppsPlugin.malformed(null, "user"));
+  assertFalse("A package-only request stays valid", SystemLauncherApps.malformedText(legacy, "activityName"));
+  assertFalse(SystemLauncherApps.malformedText(legacy, "user"));
+  assertFalse(SystemLauncherApps.malformedText(null, "user"));
  }
 }

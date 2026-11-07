@@ -1,4 +1,4 @@
-import {calendarInstant} from './calendar-editor';
+import {calendarInstant} from './calendar-time';
 import {calendarRange,type CalendarRecord} from './calendar-records';
 export type CalendarAlert={id:string;eventId:string;revision:string;receipt:string;title:string;text:string;at:number};
 /** Catch up foreground alerts from the last day; future notices stay invisible. */

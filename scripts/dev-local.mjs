@@ -33,10 +33,17 @@ function stop(signal='SIGTERM'){if(stopping)return;stopping=true;for(const child
 function run(command,args,childEnv){const child=spawn(command,args,{stdio:'inherit',env:childEnv});children.add(child);child.on('error',error=>{console.error(error.message);process.exitCode=1;stop();});child.on('exit',code=>{children.delete(child);if(!stopping){process.exitCode=code||0;stop();}});return child;}
 process.on('SIGINT',()=>stop('SIGINT'));process.on('SIGTERM',()=>stop());
 run(process.execPath,['scripts/start-local-remote.mjs'],env);
-// Development server: explicitly opts into test mocks and developer surfaces.
+// Development server: explicitly opts into test mocks and developer surfaces. Its connection
+// sheet is the product one ("Alpha connection": connected, connecting or couldn't connect, Try
+// again, conversation history) and startup attaches to the agent in the background, so loading
+// the page while the agent restarts does not open the sheet. ALPHA_DEV_CONNECTION_TOOLS=1 restores
+// the development connection sheet: ?mode=dev profiles, mock mode, subscription gate QA,
+// development Cloud and pairing. build-flags.ts admits the flag on the development server only.
+const developmentConnectionTools=env.ALPHA_DEV_CONNECTION_TOOLS==='1';
 // Extra arguments (for example `npm run dev -- --port 5400`) go to Vite; the default port is 5317.
 const portArgs=viteArgs.some(arg=>arg==='--port'||arg.startsWith('--port='))?[]:['--port','5317'];
 console.log(`Starting the local agent on 127.0.0.1:${port} (profile ${profile}) and the development server.`);
+console.log(developmentConnectionTools?'Connection sheet: development tools (ALPHA_DEV_CONNECTION_TOOLS=1).':'Connection sheet: Alpha connection. Set ALPHA_DEV_CONNECTION_TOOLS=1 for development profiles, mock mode and subscription gate QA.');
 run(process.execPath,['node_modules/vite/bin/vite.js','--host','127.0.0.1',...portArgs,'--strictPort',...viteArgs],{
-  ...env,ELIZA_DEV_ALLOW_TEST_MOCKS:'1',VITE_LOCAL_AGENT:'1',VITE_ALPHA_DEV_CARTESIA:env.ALPHA_DEV_CARTESIA==='1'?'1':'',ALPHA_LOCAL_AGENT_ORIGIN:`http://127.0.0.1:${port}`,ALPHA_LOCAL_AGENT_TOKEN_FILE:join(profile,'owner-token'),
+  ...env,ELIZA_DEV_ALLOW_TEST_MOCKS:'1',VITE_LOCAL_AGENT:'1',VITE_ALPHA_PRIVATE_LOCAL_PREVIEW:developmentConnectionTools?'':'1',VITE_ALPHA_DEV_CARTESIA:env.ALPHA_DEV_CARTESIA==='1'?'1':'',ALPHA_LOCAL_AGENT_ORIGIN:`http://127.0.0.1:${port}`,ALPHA_LOCAL_AGENT_TOKEN_FILE:join(profile,'owner-token'),
 });

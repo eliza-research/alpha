@@ -1,0 +1,142 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-10-27",
+  "alphaCommit": "913e5945b72567a74c06a5770c0b707360e86361",
+  "upstreamCommit": "6497825b38cbe41b3677c0a445341fec900f0dd2",
+  "commands": {
+    "verify": {
+      "command": "npm run verify",
+      "status": "passed",
+      "tests": 2080,
+      "passed": 2077,
+      "skipped": 3,
+      "failed": 0,
+      "logSha256": "46b8be6bbfa60d8bc214231249c56d4342c159ab4441dc906e1e87cd28ba827c"
+    },
+    "android": {
+      "command": "npm run android:build:local",
+      "status": "passed",
+      "logSha256": "1e4e325098c0df9072924e5504d22c39cc811175b101df5f80f2c67999863c53"
+    },
+    "upstream": {
+      "command": "bun run verify",
+      "status": "passed",
+      "taskChecks": 317,
+      "logSha256": "c88d1fcfc17eb89a4b41913b351934c42cfe81b35acb207e2a765b044564466c"
+    },
+    "sense": {
+      "command": "./gradlew --no-daemon --max-workers=1 :sense:assembleDebug :sense:assembleRelease",
+      "status": "passed",
+      "logSha256": "0918fe8b251c118eca57a29c21b3e1247486d7432cf2fdc791f23f92af4549dd"
+    },
+    "combinedApkInspection": {
+      "command": "node scripts/verify-apks.mjs",
+      "status": "passed",
+      "appApks": 4,
+      "senseApks": 2,
+      "logSha256": "ffd3b977f6388871472ef6158ad6b2195861abafa1e1523a714201b682b28947"
+    }
+  },
+  "testMocks": false,
+  "allowUnpackagedRuntime": false,
+  "runtimeProfile": "native",
+  "apkManifestSha256": "00628e5814c4e94745d071220864517e953c8e89d7cdbf5ae9f0b8097e9f2d6f",
+  "apks": [
+    {
+      "file": "artifacts/standalone-debug.apk",
+      "sha256": "49e1dcfbd93bab4402ed1b00de63a5cf5d11a6edd96792dfa7ac78bf5857bb86",
+      "variant": "standalone",
+      "signed": true
+    },
+    {
+      "file": "artifacts/standalone-release-unsigned.apk",
+      "sha256": "6ceaeb6912cbe8af6a92ee01d9d1a9a5a6f10aa3cac1cd5cb5a860e63b9355d7",
+      "variant": "standalone",
+      "signed": false
+    },
+    {
+      "file": "artifacts/launcher-debug.apk",
+      "sha256": "a59849a0b6abae32ee569822898512cf4e410313acd80f590486bbea9258ef53",
+      "variant": "launcher",
+      "signed": true
+    },
+    {
+      "file": "artifacts/launcher-release-unsigned.apk",
+      "sha256": "adf8f9ed61f732a5592919c2d60634d2fa217e1d905b5db5db31cdb85e1a3644",
+      "variant": "launcher",
+      "signed": false
+    }
+  ],
+  "evidenceDirectory": "artifacts/unification-checkpoints/6497825b/",
+  "scope": "Four app APKs, both instrumentation APK builds, lint, package inspection, source tests and production renderer audit. No installation, emulator HOME-role test, AOSP image boot, real-provider or physical-device acceptance.",
+  "pending": [
+    "Unsigned release APKs",
+    "On-device voice model qualification remains false",
+    "Common shell, capture and native owner admission remain incomplete",
+    "Listener device and SystemUI indicator lease gates remain open"
+  ],
+  "combinedApkManifestSha256": "c147e9b0832615f6329e8492b15cea62c3c5b4fe4db12efddcaf2fc96dbc1a44",
+  "senseApks": [
+    {
+      "file": "artifacts/sense-debug.apk",
+      "mode": "debug",
+      "sha256": "22780d3582b2eeb66766a104960967ee2911a53efeabee414344fe941a68c456",
+      "packageName": "ai.elizaresearch.alphaphone.sense",
+      "signed": true,
+      "signerSha256": "2242994d2d237f98d01927999157067df4e2495a8f980451ac3de5d40642584a",
+      "requestedPermissions": [
+        "android.permission.CAPTURE_AUDIO_HOTWORD",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MICROPHONE",
+        "android.permission.HIDE_OVERLAY_WINDOWS",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.START_ACTIVITIES_FROM_BACKGROUND"
+      ],
+      "networkPermission": false,
+      "voiceBundle": {
+        "packaged": true,
+        "abis": [
+          "arm64-v8a",
+          "x86_64"
+        ]
+      },
+      "evidence": "apk-build",
+      "problems": [],
+      "record": "android/sense/qualified-listener.json",
+      "qualified": false,
+      "indicatorLeaseQualified": false,
+      "distributable": false
+    },
+    {
+      "file": "artifacts/sense-release-unsigned.apk",
+      "mode": "release",
+      "sha256": "c3ddf7ef480e6ba916e50f9e8ccf6cc09fbedef0082c91f1b1a8a851d5671e53",
+      "packageName": "ai.elizaresearch.alphaphone.sense",
+      "signed": false,
+      "signerSha256": null,
+      "requestedPermissions": [
+        "android.permission.CAPTURE_AUDIO_HOTWORD",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MICROPHONE",
+        "android.permission.HIDE_OVERLAY_WINDOWS",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.START_ACTIVITIES_FROM_BACKGROUND"
+      ],
+      "networkPermission": false,
+      "voiceBundle": {
+        "packaged": true,
+        "abis": [
+          "arm64-v8a"
+        ]
+      },
+      "evidence": "apk-build",
+      "problems": [],
+      "record": "android/sense/qualified-listener.json",
+      "qualified": false,
+      "indicatorLeaseQualified": false,
+      "distributable": false
+    }
+  ]
+}

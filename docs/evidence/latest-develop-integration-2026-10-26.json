@@ -1,0 +1,114 @@
+{
+  "schema": 1,
+  "observedOn": "2026-10-26",
+  "source": "06139e4a8903a39b3ad998562b5db3f2f41e7f84",
+  "upstreamCommit": "04658de1b942510e0d37efc777c154530f5c0ef1",
+  "scope": "Integration, source verification and APK construction. No emulator, full AOSP boot, real provider, physical device or user acceptance is claimed.",
+  "mergedPullRequests": [
+    {
+      "number": 619,
+      "target": "codex/native-auth-endpoints",
+      "mergeCommit": "522c4d106cc3094c3051772a621d9b84d79fbb99"
+    },
+    {
+      "number": 618,
+      "target": "codex/latest-develop-rebuild-20261024",
+      "mergeCommit": "354037227e46ddfd1eb27b6cac1119c1c0948631"
+    }
+  ],
+  "verification": {
+    "command": "npm run verify",
+    "testedCommit": "ff5f1ff71ef48706fec8c5ba73f0cd55f6a89851",
+    "sourceDifference": "Only README.md differs from the APK build source.",
+    "tests": 1837,
+    "passed": 1831,
+    "skipped": 6,
+    "failed": 0,
+    "notesQueryFlow": "passed",
+    "productionBundleAudit": "passed",
+    "environment": "JDK21; executable tmpfs scratch directory avoids host disk I/O contention.",
+    "finalCheckoutRun": {
+      "testedCommit": "06139e4a8903a39b3ad998562b5db3f2f41e7f84",
+      "tests": 1837,
+      "passed": 1831,
+      "skipped": 5,
+      "failed": 1,
+      "failure": "javac exceeded unchanged 30000ms timeout in compiled image admission test",
+      "focusedRerun": {
+        "file": "test/aosp-capabilities.test.mjs",
+        "tests": 2,
+        "passed": 2,
+        "failed": 0,
+        "timeoutChanged": false
+      }
+    }
+  },
+  "browserVerification": {
+    "developmentCases": 83,
+    "passed": 83,
+    "initialTimeouts": 3,
+    "timeoutReruns": "All three passed at unchanged timeouts with one worker.",
+    "productionCases": 10,
+    "productionPassed": 10,
+    "testedCommit": "574730fdfeeca9a8bba36851b53a517197e4fa42",
+    "pinScope": "Browser cases ran before develop pin propagation; full repository verification subsequently passed at the new pin."
+  },
+  "otherPullRequestChecks": [
+    {
+      "number": 620,
+      "tests": 9,
+      "passed": 9
+    },
+    {
+      "number": 622,
+      "tests": 25,
+      "passed": 25
+    },
+    {
+      "number": 623,
+      "tests": 34,
+      "passed": 34
+    },
+    {
+      "number": 621,
+      "tests": 35,
+      "passed": 35,
+      "scope": "Pin audit, inventory, requirements and reachability metadata; latest checked upstream efc7fa578eb2c62da6a6f56117176f106b574841."
+    },
+    {
+      "number": 621,
+      "commit": "cceff5c29",
+      "scope": "Voice-reply renderer fixture retains message IDs; voice reply and action message presentation checks",
+      "tests": 16,
+      "passed": 16
+    }
+  ],
+  "packagedAudit": {
+    "packageVersions": 573,
+    "findings": {
+      "moderate": 1,
+      "high": 0,
+      "critical": 0
+    },
+    "advisory": "GHSA-w5hq-g745-h8pq",
+    "disposition": "Existing unexpired reviewed disposition; no new exception."
+  },
+  "androidBuild": {
+    "status": "passed",
+    "commands": [
+      "npm run android:build:local",
+      "npm run android:build"
+    ],
+    "recovery": "Initialized pinned nested FFI source; selected Bun1.4.2/JDK21/CMake4.0.3; installed checkout-local npm dependencies; preserved incomplete worker output; staged exact committed x86_64 library hashes before resuming the final APK step.",
+    "manifest": "docs/evidence/develop-pin-apks-2026-10-26.json",
+    "releaseSigning": "Unsigned release APKs; no release signer configured.",
+    "variants": [
+      "standaloneDebug",
+      "standaloneRelease",
+      "launcherDebug",
+      "launcherRelease"
+    ]
+  },
+  "mainMerge": "GitHub rejected authorized administrator overrides: new changes require approval from someone other than the last pusher.",
+  "upstreamAdvanceAfterBuild": "Develop advanced to 4b928290d388e8f9866b6c404a1b186c7bfe7f70 after this build; that revision is not represented by these APKs."
+}

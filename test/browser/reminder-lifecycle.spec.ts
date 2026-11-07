@@ -74,11 +74,12 @@ test.describe('reminder lifecycle',()=>{
    const {buildClockRequest,validateClockOperation,describeClockHandoff}=await import('/src/runtime/clock-contract.ts');
    const once=buildClockRequest({action:'set',time:'07:30',label:'Run',snooze:'10',days:[]},'UTC');
    const weekdays=buildClockRequest({action:'set',time:'07:30',label:'Run',snooze:'10',days:[6,2,4,3,5]},'UTC');
-   let invalid=0;for(const days of [[0],[8],[2,2],[1.5],[]])try{validateClockOperation({type:'clock_handoff',action:'set',hour:7,minute:30,label:'Run',timeZone:'UTC',days});}catch{invalid++;}
+   let invalid=0;for(const days of [[0],[8],[2,2],[1.5]])try{validateClockOperation({type:'clock_handoff',action:'set',hour:7,minute:30,label:'Run',timeZone:'UTC',days});}catch{invalid++;}
+   const explicitOnce=validateClockOperation({type:'clock_handoff',action:'set',hour:7,minute:30,label:'Run',timeZone:'UTC',days:[]});
    const op=validateClockOperation({type:'clock_handoff',action:'set',hour:7,minute:30,label:'Run',timeZone:'UTC',days:[1,7]});
-   return {once:'days' in once,weekdays:(weekdays as any).days,invalid,described:describeClockHandoff(op)};
+   return {once:'days' in once,explicitOnce:'days' in explicitOnce,weekdays:(weekdays as any).days,invalid,described:describeClockHandoff(op)};
   });
-  expect(result.once).toBe(false);expect(result.weekdays).toEqual([2,3,4,5,6]);expect(result.invalid).toBe(5);expect(result.described).toContain('repeating weekends');
+  expect(result.once).toBe(false);expect(result.explicitOnce).toBe(false);expect(result.weekdays).toEqual([2,3,4,5,6]);expect(result.invalid).toBe(4);expect(result.described).toContain('repeating weekends');
  });
 });
 

@@ -9,7 +9,13 @@ import {
 } from "../../../../.eliza/client-features/packages/ui/src/gestures/constants";
 import { visibleDocks } from "../runtime/dock-clearance";
 
-const PANEL_TRANSITION = `height .42s cubic-bezier(${OVERLAY_EASE.join(",")}), border-radius .42s, opacity .2s`;
+const SHEET_EASE = `cubic-bezier(${OVERLAY_EASE.join(",")})`;
+const PANEL_TRANSITION = `height .42s ${SHEET_EASE}, border-radius .42s, opacity .2s`;
+/** A tap opening or closing from the bar changes height only; the sheet is opaque throughout. */
+const RESIZE_TRANSITION = `height .42s ${SHEET_EASE}, border-radius .42s, opacity .12s linear`;
+/** How long a tap close keeps the sheet's composer, then fades it to show the bar in its place. */
+const CLOSE_MS = 400;
+const CLOSE_FADE_MS = 120;
 type Shell = any;
 // chat-release:begin (dependency-free; exercised by test/chat-release.test.mjs)
 type Mode = "hidden" | "input" | "sheet" | "full";
@@ -85,8 +91,100 @@ type Drag = {
 	track: Sample[];
 	flick?: "up" | "down";
 	moved: boolean;
+	/** The sheet opacity last rendered, which a direct paint must be restored to. */
+	renderedOpacity?: string;
 	tap?: () => void;
 };
+/** The sheet never paints shorter than its composer, which stays where the bar rests. */
+function paintedHeight(d: Drag): number {
+	return d.height > 0 ? Math.max(d.height, d.floor) : 0;
+}
+/**
+ * How far an open chat dragged toward its collapsed form has handed over to it, 0 to 1. It
+ * runs across the release's snap zone, so any visible bar or pill means release collapses.
+ */
+function collapseShare(d: Drag): number {
+	if (d.mode !== "sheet" && d.mode !== "full") return 0;
+	const zone = Math.min(CHAT_SNAP_ZONE, (d.full - d.floor) / 3);
+	return clamp01((d.floor + zone - d.height) / Math.max(1, zone));
+}
+/** Sheet rows above the composer that appear only once the sheet has room for all of them. */
+const SHEET_ROWS = "[data-alpha-chat-header],[data-alpha-chat-suggestions]";
+/** Travel over which a row that has just fit fades in, in canvas pixels. */
+const ROW_REVEAL = 16;
+/**
+ * The pinned composer leaves rows above it to clip at the sheet's top edge. Each row stays
+ * hidden until it fits below that edge, so the header is never shown cut off.
+ */
+function revealRows(panel: HTMLElement, scale: number) {
+	const top = panel.getBoundingClientRect().top;
+	// The header rests under the status-bar spacer; once it fits, the transcript below it takes
+	// any further height, so that is the room it has been given since.
+	const spacer =
+		panel.querySelector<HTMLElement>("[data-alpha-chat-top]")?.offsetHeight ?? 0;
+	const transcript =
+		panel.querySelector<HTMLElement>("[data-alpha-transcript]")?.offsetHeight ?? 0;
+	for (const row of panel.querySelectorAll<HTMLElement>(SHEET_ROWS)) {
+		const header = row.matches("[data-alpha-chat-header]");
+		let room = (row.getBoundingClientRect().top - top) / scale - (header ? spacer : 0);
+		if (header && room > -0.5) room = transcript;
+		row.style.opacity = String(clamp01(room / ROW_REVEAL));
+	}
+}
+/** The sheet's composer block, from its top to the sheet's bottom edge, in canvas pixels. */
+function composerBlock(panel: HTMLElement, scale: number): number {
+	const composer = panel.querySelector<HTMLElement>(".alpha-chat-composer");
+	if (!composer) return 0;
+	return (
+		(panel.getBoundingClientRect().bottom -
+			composer.getBoundingClientRect().top) /
+		scale
+	);
+}
+/**
+ * Keeps sheet rows hidden until they fit while the sheet's height animates, then hands them
+ * back to the template once an open sheet has settled.
+ */
+function revealWhileResizing(shell: Shell, scale: number) {
+	const token = (shell.chatRevealToken = (shell.chatRevealToken || 0) + 1);
+	const end = performance.now() + 480;
+	const frame = () => {
+		const panel = document.querySelector<HTMLElement>(
+			'[data-alpha-layer="conversation"]',
+		);
+		if (!panel || shell.chatRevealToken !== token || shell.chatMotion) return;
+		if (performance.now() < end) {
+			revealRows(panel, scale);
+			requestAnimationFrame(frame);
+			return;
+		}
+		const mode = shell.S().chat;
+		if (mode === "sheet" || mode === "full")
+			for (const row of panel.querySelectorAll<HTMLElement>(SHEET_ROWS))
+				row.style.removeProperty("opacity");
+	};
+	const panel = document.querySelector<HTMLElement>(
+		'[data-alpha-layer="conversation"]',
+	);
+	if (panel) revealRows(panel, scale);
+	requestAnimationFrame(frame);
+}
+/** Direct style for the bar or pill while a drag is moving. */
+function dockStyle(d: Drag): Record<string, string> {
+	const still = { transition: "none", animation: "none" };
+	// Pulling the bar down dismisses it to the pill: the bar follows the finger out.
+	if (d.mode === "input" && d.height === 0) {
+		const down = -d.offset / d.scale;
+		return {
+			...still,
+			transform: `translateY(${down}px)`,
+			opacity: String(1 - clamp01(Math.abs(down) / Math.max(80, d.half))),
+		};
+	}
+	if (d.mode === "input" || d.mode === "hidden")
+		return { ...still, transform: "none", opacity: d.height > 0 ? "0" : "1" };
+	return { ...still, transform: "none", opacity: String(collapseShare(d)) };
+}
 /** The nearest ancestor that scrolls vertically and has somewhere to scroll to. */
 function scrollParent(element: HTMLElement): HTMLElement | null {
 	for (let node = element.parentElement; node; node = node.parentElement) {
@@ -135,6 +233,51 @@ export function installChatOverlayMotion(Component: Shell) {
 	function sheetHeight(shell: Shell, geometry: ReturnType<typeof bounds>) {
 		return restingHeight(shell.chatSheetShare, geometry.full, geometry.half);
 	}
+	/**
+	 * A tap between the bar and the sheet resizes the sheet from or to the bar's own place, with
+	 * the composer pinned there, the way a drag does: the bar is never left showing behind it,
+	 * and no blank frame or ghosted header shows between the two.
+	 */
+	function resizeForTap(shell: Shell, change: { from: Mode; to: Mode; tap: boolean }) {
+		// Navigation can pass through the pill before reopening. Every mode change
+		// retires the previous resize, including changes that do not animate the bar.
+		const token = (shell.chatResizeToken = (shell.chatResizeToken || 0) + 1);
+		const panel = document.querySelector<HTMLElement>(
+			'[data-alpha-layer="conversation"]',
+		);
+		const scale = bounds().scale || 1;
+		const open = (mode: Mode) => mode === "sheet" || mode === "full";
+		if (panel && change.tap && change.from === "input" && open(change.to)) {
+			const target = panel.style.height;
+			panel.style.transition = "none";
+			panel.style.opacity = "1";
+			panel.style.height = `${composerBlock(panel, scale)}px`;
+			panel.getBoundingClientRect();
+			panel.style.transition = RESIZE_TRANSITION;
+			panel.style.height = target;
+			setTimeout(() => {
+				if (shell.chatResizeToken === token)
+					panel.style.transition = PANEL_TRANSITION;
+			}, 460);
+		}
+		if (panel && change.tap && open(change.from) && change.to === "input") {
+			panel.style.transition = RESIZE_TRANSITION;
+			panel.style.opacity = "1";
+			panel.style.height = `${composerBlock(panel, scale)}px`;
+			setTimeout(() => {
+				if (shell.chatResizeToken === token) panel.style.opacity = "0";
+			}, CLOSE_MS - CLOSE_FADE_MS);
+			setTimeout(() => {
+				if (shell.chatResizeToken !== token || shell.live === false) return;
+				shell.chatClosingUntil = 0;
+				// Back to the template's closed values before the composer leaves.
+				panel.style.height = "0px";
+				panel.style.transition = PANEL_TRANSITION;
+				shell.setState({});
+			}, CLOSE_MS);
+		}
+		revealWhileResizing(shell, scale);
+	}
 	function retire(shell: Shell, redraw = true) {
 		const drag: Drag | undefined = shell.chatMotion;
 		shell.chatMotion = undefined;
@@ -151,17 +294,20 @@ export function installChatOverlayMotion(Component: Shell) {
 				mode = shell.S().chat;
 			if (panel) {
 				panel.style.height = `${mode === "full" ? geometry.full : mode === "sheet" ? sheetHeight(shell, geometry) : 0}px`;
+				if (drag.renderedOpacity !== undefined)
+					panel.style.opacity = drag.renderedOpacity;
 				panel.style.transition = PANEL_TRANSITION;
 			}
-			const input = document.querySelector<HTMLElement>(
-				"[data-alpha-input-bar]",
-			);
-			if (input)
-				for (const name of ["transform", "opacity", "transition", "animation"])
-					input.style.removeProperty(name);
-			document
-				.querySelector<HTMLElement>('[data-alpha-layer="pill"]>div')
-				?.style.removeProperty("opacity");
+			revealWhileResizing(shell, geometry.scale || 1);
+			// The bar or pill was already in place: replaying its entrance would drop it and rise again.
+			shell.chatDockShown = true;
+			for (const dock of document.querySelectorAll<HTMLElement>(
+				'[data-alpha-input-bar],[data-alpha-layer="pill"]>div',
+			)) {
+				for (const name of ["transform", "opacity", "transition"])
+					dock.style.removeProperty(name);
+				dock.style.animation = "none";
+			}
 		}
 		if (drag.owner.hasPointerCapture(drag.id))
 			drag.owner.releasePointerCapture(drag.id);
@@ -225,6 +371,11 @@ export function installChatOverlayMotion(Component: Shell) {
 				s.voice !== "off")
 		)
 			retire(this);
+		const change = this.chatChange;
+		if (change?.pending) {
+			change.pending = false;
+			resizeForTap(this, change);
+		}
 	};
 	p.componentWillUnmount = function () {
 		retire(this, false);
@@ -266,28 +417,25 @@ export function installChatOverlayMotion(Component: Shell) {
 		const panel = document.querySelector<HTMLElement>(
 			'[data-alpha-layer="conversation"]',
 		);
+		const share = collapseShare(d);
 		if (panel) {
 			panel.style.transition = "none";
-			panel.style.height = `${d.height}px`;
+			panel.style.height = `${paintedHeight(d)}px`;
+			if (d.mode === "sheet" || d.mode === "full")
+				panel.style.opacity = String(1 - share);
+			revealRows(panel, d.scale);
 		}
+		// The open sheet and the collapsed bar or pill are one control in two places that line up:
+		// opening hides the dock at once, and closing hands back to it in place, never moved.
+		const dock = dockStyle(d);
 		const pill = document.querySelector<HTMLElement>(
 			'[data-alpha-layer="pill"]>div',
 		);
-		if (pill)
-			pill.style.opacity = String(1 - clamp01(d.height / Math.max(1, d.half)));
-		if (d.mode === "input") {
-			const input = document.querySelector<HTMLElement>(
-				"[data-alpha-input-bar]",
-			);
-			if (input) {
-				input.style.transform = `translateY(${delta}px)`;
-				input.style.opacity = String(
-					1 - clamp01(Math.abs(delta) / Math.max(80, d.half)),
-				);
-				input.style.transition = "none";
-				input.style.animation = "none";
-			}
-		}
+		const input = document.querySelector<HTMLElement>("[data-alpha-input-bar]");
+		for (const element of [pill, input])
+			if (element)
+				for (const [name, value] of Object.entries(dock))
+					element.style.setProperty(name, value);
 		if (firstMove) shell.setState({});
 	};
 	p.settleChatMotion = function (direction: "up" | "down", free = false) {
@@ -313,6 +461,7 @@ export function installChatOverlayMotion(Component: Shell) {
 			this.chatSheetShare = next.height / Math.max(1, d.full);
 		retire(this, false);
 		this.swallow = Date.now();
+		this.chatSettledByDrag = true;
 		// An open chat collapses to its resting form; only the bar itself dismisses to the pill.
 		this.setState({
 			chat: next.chat === "hidden" && !collapsed ? this.rest() : next.chat,
@@ -325,7 +474,7 @@ export function installChatOverlayMotion(Component: Shell) {
 			geometry = bounds(),
 			drag: Drag | undefined = this.chatMotion;
 		out.panelH =
-			drag?.height ??
+			(drag && paintedHeight(drag)) ??
 			(s.chat === "full"
 				? geometry.full
 				: s.chat === "sheet"
@@ -346,7 +495,7 @@ export function installChatOverlayMotion(Component: Shell) {
 			)
 				return;
 			const scroll = target.closest<HTMLElement>(
-				'[data-alpha-app-scroll],[data-alpha-layer="home"],.calendar-timeline,.calendar-draft-fields',
+				'[data-alpha-app-scroll],[data-installed-apps-scroll],[data-alpha-layer="home"],.calendar-timeline,.calendar-draft-fields',
 			) ?? scrollParent(target);
 			if (!scroll || target === scroll) return;
 			const box = target.getBoundingClientRect();
@@ -371,19 +520,52 @@ export function installChatOverlayMotion(Component: Shell) {
 			}
 			if (hidden > 0) scroll.scrollTop += hidden / geometry.scale;
 		};
-		out.pillDragStyle = drag?.moved
-			? `opacity:${1 - clamp01(drag.height / Math.max(1, drag.half))}`
-			: "";
-		out.inputDragStyle =
-			drag?.mode === "input" && drag.moved
-				? `transform:translateY(${-drag.offset / drag.scale}px);opacity:${1 - clamp01(Math.abs(drag.offset / drag.scale) / Math.max(80, drag.half))};transition:none;animation:none`
+		const isOpen = (mode: unknown) => mode === "sheet" || mode === "full";
+		if (shell.chatRenderedMode !== s.chat) {
+			const from = shell.chatRenderedMode;
+			shell.chatRenderedMode = s.chat;
+			if (from !== undefined && !drag) {
+				const tap = !shell.chatSettledByDrag && s.voice === "off";
+				shell.chatChange = { from, to: s.chat, tap, pending: true };
+				if (tap && isOpen(from) && s.chat === "input")
+					shell.chatClosingUntil = Date.now() + CLOSE_MS;
+			}
+			shell.chatSettledByDrag = false;
+			if (isOpen(s.chat)) {
+				shell.chatDockShown = false;
+				shell.chatClosingUntil = 0;
+			}
+		} else if (!drag) shell.chatSettledByDrag = false;
+		if (isOpen(s.chat)) shell.chatSuggestions = out.showSugg;
+		// A tap close keeps the sheet's composer while the sheet shrinks onto the bar, which is
+		// already in place under it and so skips its entrance.
+		if (s.chat === "input" && Date.now() < (shell.chatClosingUntil || 0)) {
+			out.panelComposer = true;
+			out.showSugg = shell.chatSuggestions;
+			shell.chatDockShown = true;
+		}
+		const dock = drag?.moved
+			? Object.entries(dockStyle(drag))
+					.map(([name, value]) => `${name}:${value}`)
+					.join(";")
+			: shell.chatDockShown
+				? "animation:none"
 				: "";
+		out.pillDragStyle = dock;
+		out.inputDragStyle = dock;
 		if (drag?.moved && (drag.mode !== "input" || drag.height > 0)) {
 			out.conversationHidden = false;
 			out.panelComposer = true;
-			out.panelOp = 1;
+			out.panelOp = 1 - collapseShare(drag);
+			drag.renderedOpacity = String(out.panelOp);
 			out.panelPE = "auto";
 			out.panelR = drag.height >= drag.full ? "0px" : "30px 30px 0 0";
+		}
+		// An open chat dragged down hands over to the form it collapses to, drawn under it in place.
+		if (drag?.moved && (drag.mode === "sheet" || drag.mode === "full") && s.voice === "off") {
+			const rest = shell.rest();
+			if (rest === "input") out.showComposer = true;
+			if (rest === "hidden") out.showPill = true;
 		}
 		const binding = shell.props.chatPullBinding;
 		const handlers = {

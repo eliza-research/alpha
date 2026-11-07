@@ -30,6 +30,7 @@ import {
  missedRunNowOffers,
  type MissedRunNow,
  rememberRetainedDigests,
+ bindRetainedDigestScope,
  DIGEST_SOURCE_MAX_HOURS,
 	type DigestCapabilities,
 	type DigestSource,
@@ -101,7 +102,7 @@ export function HostedDigestPanel({composeQuestion,canComposeQuestion}:{composeQ
 		notices: HostedResultBinding;
 		client: HostedDigestProtocol;
 		inbox: ResultInbox;
-		slot: string;
+		pendingSlot: string;
 		sessionId: string;
 		controller: AbortController;
 	} | null>(null);
@@ -177,13 +178,13 @@ export function HostedDigestPanel({composeQuestion,canComposeQuestion}:{composeQ
 				b.client.sources(signal),
 				b.client.loops(signal),
 				b.inbox.sync(b.client, signal),
-				b.storage.read<Pending>(b.slot + ":pending"),
+				b.storage.read<Pending>(b.pendingSlot),
 			]);
 			signal.throwIfAborted();
 			if (binding.current !== b || document.hidden) return;
 			setSources(ss);
 			setLoops(ll);
-			setResults(rr);rememberRetainedDigests(rr,connection.name||undefined);
+			setResults(rr);rememberRetainedDigests(rr,connection.name||undefined,b.notices.scope);
 			setPending(pp);
 			setMessage("Synced with this agent.");
             try {const status=await hostedResultNative.status();if(binding.current===b){setNoticeEnabled(status.enabled);setBackgroundEnabled(status.backgroundEnabled===true);}}catch{}
@@ -208,7 +209,7 @@ export function HostedDigestPanel({composeQuestion,canComposeQuestion}:{composeQ
         questionClose.current?.();
 		binding.current = null;
 		setAvailable(false);setNativeReady(false);setBackgroundEnabled(false);setNoticeEnabled(false);setFeatures({nativeEvening:false,sourcePause:false,dossier:false});
-		setResults([]);rememberRetainedDigests(null);setFocusedRun(null);setTap(null);setRenewing(null);
+		setResults([]);bindRetainedDigestScope(null);setFocusedRun(null);setTap(null);setRenewing(null);
 		setSources([]);
 		setLoops([]);
 		setPending(null);
@@ -251,16 +252,18 @@ export function HostedDigestPanel({composeQuestion,canComposeQuestion}:{composeQ
                 recover:development&&'recovery' in storage?()=>openDomainRecovery(storage.recovery as Parameters<typeof openDomainRecovery>[0],'digest inbox','Development digest inbox recovery','Download saved results and pending recovery records before resetting. Reset clears this account’s local inbox and pending request records. It does not cancel or restart agent schedules. Review uncertain requests with the agent before creating replacements. The backup preserves older slot bytes inside a JSON archive. Close older Alpha tabs before continuing.',controller.signal):undefined,
 				client,
 				inbox,
-				slot,
+				pendingSlot: (isAndroid ? "renderer-" : "") + slot + ":pending",
 				sessionId: selected.sessionId,
 				controller,
 			};
 			binding.current = b;
+            // Home's retained brief belongs to this account and agent only; a late read for another is ignored.
+            bindRetainedDigestScope(notices.scope);
             if(development){const {startDevelopmentDigestScheduler}=await import('../browser/development-digests');if(!disposed)releaseScheduler=startDevelopmentDigestScheduler(notices.current,controller.signal);}
             if(!isAndroid)releaseBrowser=browserHostedResults.bind(session.sessionId,notices);
 			try {
 				const old = await b.inbox.history();
-				if (binding.current === b) {setResults(old);rememberRetainedDigests(old,connection.name||undefined);}
+				if (binding.current === b) {setResults(old);rememberRetainedDigests(old,connection.name||undefined,b.notices.scope);}
 			} catch {}
 			await refreshFlight.current?.promise;
 			if (!disposed && binding.current === b) await refresh();
@@ -372,7 +375,7 @@ export function HostedDigestPanel({composeQuestion,canComposeQuestion}:{composeQ
 			refreshFlight.current?.controller.abort();
 			await refreshFlight.current?.promise;
 			if (binding.current !== b) return;
-			await b.storage.write(b.slot + ":pending", value);
+			await b.storage.write(b.pendingSlot, value);
 			if (binding.current !== b) return;
 			setPending(value);
 			let body=value.body;
@@ -399,14 +402,14 @@ export function HostedDigestPanel({composeQuestion,canComposeQuestion}:{composeQ
             if(value.renews&&binding.current===b)setRenewing(null);
             if(value.missedRunId&&binding.current===b){const id=value.missedRunId;setRanMissed(prior=>new Set([...prior,id]));}
 			if (binding.current !== b) return;
-			await b.storage.remove(b.slot + ":pending");
+			await b.storage.remove(b.pendingSlot);
 			setPending(null);
 			setReview(null);
 			setText("");
 			await refresh(true);
 		} catch (error) {
       if(error instanceof HostedSourceRejected && binding.current===b){
-        try { await b.storage.remove(b.slot + ":pending"); } catch {setMessage("Source was not saved, but its local recovery record could not be cleared. Retry to clear it safely.");return;}
+        try { await b.storage.remove(b.pendingSlot); } catch {setMessage("Source was not saved, but its local recovery record could not be cleared. Retry to clear it safely.");return;}
         if(binding.current!==b)return;
         setPending(null);setReview(null);await refresh(true);setMessage(error.message);return;
       }
@@ -688,7 +691,7 @@ export function HostedDigestPanel({composeQuestion,canComposeQuestion}:{composeQ
 							<p>
 								Skipped clock times are missed; repeated times run once at the
 								earlier offset. A missed schedule does not replay a backlog. Only these
-								digests are scheduled; workflows you build run when you start them.
+								digests are scheduled; workflows you build run when you start them.{' '}
 								{interactiveDevelopment ? 'Digests use the configured development reply.' : 'Model usage is billed by the connected agent.'}
 							</p>
 							{(["morning", "evening"] as const).filter(t=>t==='morning'||features.nativeEvening||sources.find(source=>source.id===sourceId)?.live?.provider!=='native').map((t) => (
@@ -756,7 +759,8 @@ export function HostedDigestPanel({composeQuestion,canComposeQuestion}:{composeQ
 							>
 								{digestSummaryText(result)}
 							</pre>
-                            {digestRan(result)&&result.source.type!=='live_selected_native_read'&&<details><summary>Execution details</summary><pre style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere',font:'inherit',width:'100%'}}>{JSON.stringify(result.output,null,2)}</pre></details>}
+                            {/* A readable run summary; the raw agent output is a developer surface, never product UI. */}
+                            {digestRan(result)&&result.source.type!=='live_selected_native_read'&&<details><summary>Execution details</summary><p>Started {new Date(result.startedAt).toLocaleString()}. Finished {new Date(result.completedAt).toLocaleString()}.</p>{devSurfacesEnabled&&<pre style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere',font:'inherit',width:'100%'}}>{JSON.stringify(result.output,null,2)}</pre>}</details>}
                             {missedOffers.has(result.runId)&&!ranMissed.has(result.runId)&&<button disabled={busy||!!pending||!!review} aria-label="Review Run now for this missed digest" onClick={()=>reviewMissedRunNow(missedOffers.get(result.runId)!)}>Run now</button>}
 						</article>
 					))}

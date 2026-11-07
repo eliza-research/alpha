@@ -7,7 +7,7 @@ public final class ResidentDeliveryTest {
  public static void main(String[] args)throws Exception {
   android.content.Context context=new android.content.Context();HostedDelivery delivery=HostedDelivery.get(context);
   String origin="https://device.alpha.invalid",scope=HostedResultNotices.hash(new JSONArray().put(origin).put("owner").put("agent").toString());
-  JSONObject device=new JSONObject().put("installationId","11111111-1111-1111-1111-111111111111").put("key","a".repeat(64)).put("enrollmentId","enrollment");delivery.store.write("device:"+scope,device.toString());
+  JSONObject device=new JSONObject().put("installationId","11111111-1111-1111-1111-111111111111").put("key","a".repeat(64)).put("enrollmentId","enrollment");delivery.store.write("device:a5a78b0a446c6c0f726b837ed0f98197dde5c367485e69860ca06e75081591d1",device.toString());
   String attempt="11111111-1111-1111-1111-111111111111";
   JSONObject request=new JSONObject().put("attemptId",attempt).put("mode","resident").put("origin",origin).put("ownerId","owner").put("agentId","agent").put("sessionId","ui-session");
   delivery.begin(attempt);JSONObject configured=delivery.configure(request);String generation=configured.getString("generation");

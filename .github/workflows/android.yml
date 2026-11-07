@@ -63,11 +63,27 @@ jobs:
       # resident runtime, so releases are recorded distributable:false (APK-build
       # evidence only); the resident workflow builds and verifies PACKAGED releases.
       # This lane never runs instrumentation; manual build archives still include it.
+      - name: Record tracked source frame before normal Android build
+        timeout-minutes: 1
+        env:
+          ALPHA_CALENDAR_BRIDGE_EXPECTED_HEAD: ${{ github.sha }}
+        run: python scripts/ci/calendar-bridge.py --source-frame
       - name: Build flag-off distribution APKs
         env:
           ELIZA_DEV_ALLOW_TEST_MOCKS: ""
           VITE_ELIZA_DEV_ALLOW_TEST_MOCKS: ""
+          # A clean release R8 pass exhausted the default 2 GiB heap on this runner.
+          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4096m"
         run: npm run android:build -- --allow-unpackaged-runtime --skip-instrumentation
+      # Use actual normal JavaCompile outputs; this qualification assembles no extra APK.
+      - name: Prepare normal host-test JSON for Calendar bridge
+        timeout-minutes: 1
+        run: bash scripts/ci/prepare-host-test-json.sh
+      - name: Qualify actual Calendar bridge in normal Java compile context
+        timeout-minutes: 4
+        env:
+          ALPHA_CALENDAR_BRIDGE_EXPECTED_HEAD: ${{ github.sha }}
+        run: python scripts/ci/calendar-bridge.py
       - name: Require test-mock-free distribution
         run: |
           node scripts/audit-production-bundle.mjs web-dist
@@ -102,6 +118,12 @@ jobs:
             test-results/
             android/app/build/reports/
             android/voice-host/qualified-voice-host.json
+            ${{ runner.temp }}/alpha-calendar-bridge-${{ github.run_id }}-${{ github.run_attempt }}/receipt/inputs.json
+            ${{ runner.temp }}/alpha-calendar-bridge-${{ github.run_id }}-${{ github.run_attempt }}/receipt/taskgraph.json
+            ${{ runner.temp }}/alpha-calendar-bridge-${{ github.run_id }}-${{ github.run_attempt }}/receipt/bridge.log
+            ${{ runner.temp }}/alpha-calendar-bridge-${{ github.run_id }}-${{ github.run_attempt }}/receipt/result.json
+            ${{ runner.temp }}/alpha-calendar-bridge-${{ github.run_id }}-${{ github.run_attempt }}/gradle.log
+            ${{ runner.temp }}/alpha-calendar-bridge-${{ github.run_id }}-${{ github.run_attempt }}/supervisor.json
           retention-days: 3
   # Stable required check. The ruleset in docs/ci-cost-policy.md requires this job:
   # it passes when the change gate did not select Android and fails when the

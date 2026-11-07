@@ -30,8 +30,25 @@ for(const outcome of ['complete','cancel','failure'] as const){
   if(outcome==='complete'){
    await expect(conversation.getByText('Authoritative final reply',{exact:true})).toHaveCount(1);
    await expect(conversation.getByText('First streamed text',{exact:true})).toHaveCount(0);
-  }else await expect(conversation.getByText(/First streamed text.*Response interrupted/s)).toBeVisible();
+  }else {
+   const reason=outcome==='cancel'?'Request cancelled. A dispatched action may still need status reconciliation.':'Sorry, I couldn’t finish that reply.';
+   await expect(conversation.getByText('First streamed text',{exact:false})).toContainText(reason);
+   await expect(page.getByRole('button',{name:/^Check saved conversation/})).toHaveCount(0);
+  }
   expect(await page.evaluate(()=>(window as any).streamFixture.posts)).toBe(1);
   await page.screenshot({path:info.outputPath('terminal.png')});
  });
 }
+
+test('authored composer text reaches the verified transport unchanged and blank-only stays local',async({page})=>{
+ await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
+ await page.goto('/');
+ const input=page.getByRole('textbox',{name:'Ask Alpha',exact:true});await input.waitFor();
+ await page.evaluate(async()=>{const {alphaClient}=await import('/src/runtime/alpha-client.ts');const w=window as any;w.authoredRequests=[];alphaClient.attachVerifiedTransport({session:{ownerId:'fixture-owner',agentId:'fixture-agent',sessionId:'authored-session',origin:'https://fixture.example'},send:async({text}:any)=>{w.authoredRequests.push(text);return{text:'Complete'};},execute:async()=>{throw Error('No action');}});});
+ await input.fill(' \n\t  ');await input.press('Enter');
+ expect(await page.evaluate(()=>(window as any).authoredRequests)).toEqual([]);
+ const authored='  Indented line.\n\nTrailing space.  \n';
+ await input.fill(authored);await input.press('Enter');
+ await expect.poll(()=>page.evaluate(()=>(window as any).authoredRequests)).toEqual([authored]);
+ await expect(page.locator('[data-alpha-message-text]').filter({hasText:'Complete'})).toBeVisible();
+});

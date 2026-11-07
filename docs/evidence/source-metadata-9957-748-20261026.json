@@ -1,0 +1,79 @@
+{
+  "schema": 1,
+  "recordedAt": "2026-10-26",
+  "recordedAtUTC": "2026-10-26T12:04:56.776134+00:00",
+  "baseProduct": "9957155b3e2a9c3d7152ccffd53f4ff48900e2ac",
+  "SDK": "7481f0eac237341903c5c1fad9208879d442cf9d",
+  "previousSDK": "c2a0ef993bcf790a920698a8b661511b81725891",
+  "behavioralFix": true,
+  "liveVerified": false,
+  "upstreamFixReceipt": "/Users/nubs/.local/state/eliza-five-lane-coordination/native-google-auth-implementation-20261025/secret-swap-json-c2/ROOT-COMBINED-INTEGRATED.json",
+  "upstreamFixChecks": {
+    "coreOwningPass": 37,
+    "builderPass": 4,
+    "fullRuntimeDispatch": "baseline failed; fixed FINISH with plain/fenced JSON and real credential protection; zero network"
+  },
+  "dependencyInputIdentity": {
+    "parent": "c2a0ef993bcf790a920698a8b661511b81725891",
+    "SDK": "7481f0eac237341903c5c1fad9208879d442cf9d",
+    "changedFiles": [
+      "packages/agent/src/runtime/build-character-config.cloud-settings.contract.test.mjs",
+      "packages/agent/src/runtime/build-character-config.ts",
+      "packages/core/src/runtime.ts",
+      "packages/core/src/security/secret-swap.ts",
+      "packages/core/test/runtime-settings.test.ts",
+      "packages/core/test/secret-swap-json.test.ts"
+    ],
+    "rawLockBytesIdentical": true,
+    "rawLockSHA256": "c88cc7693c852e49ec1a2aebfba619d9a76cf038c26c5d0c19fa2994b9f4f762",
+    "nativeAndVoiceSourceInputsIdentical": true,
+    "normalizedInputIdentical": true,
+    "normalizedInputSHA256": "6db6e88363397fd2c73a561ea1f3a071dfc11b31378cbe0c193163ea1ecf70ff",
+    "packageVersions": 3694
+  },
+  "preservation": {
+    "docs/dependency-audit.snapshot.json": "Only resident.upstreamCommit changed",
+    "docs/dependency-audit.dispositions.json": "Only resident.upstreamCommit changed",
+    "patches/eliza/native-manifest.json": "Only baseCommit changed",
+    "android/voice-host/qualified-voice-host.json": "Only pin changed",
+    "docs/requirements.json": "Only note changed",
+    "docs/mvp-remaining-work-2026-10-09.json": "Only upstream_pin changed",
+    "apps/app/public/licenses/third-party-notices.json": "Generated output differs only by source pin",
+    "apps/app/public/licenses/THIRD_PARTY_NOTICES.txt": "Generated output differs only by source pin"
+  },
+  "retainedAudit": {
+    "auditedOn": "2026-10-26",
+    "findings": 124,
+    "counts": {
+      "info": 0,
+      "low": 17,
+      "moderate": 53,
+      "high": 53,
+      "critical": 1
+    },
+    "exceptionsAndDeadlinesUnchanged": true,
+    "exceptions": 104,
+    "maintenance": 103
+  },
+  "reachability": {
+    "status": "diverged",
+    "aheadBy": 50,
+    "behindBy": 208,
+    "baseCommit": "04658de1b942510e0d37efc777c154530f5c0ef1"
+  },
+  "consumerChecks": {
+    "pass": 48,
+    "fail": 0,
+    "skip": 0,
+    "residentOffline": "PASS",
+    "generatedNotices": "PASS",
+    "sourceSBOM": "generated outside product; not an APK inventory"
+  },
+  "qualificationStatesChanged": false,
+  "runtimeBuildDeviceActions": false,
+  "remaining": [
+    "Root integration",
+    "One coherent fixed native build",
+    "Live native prompt proof"
+  ]
+}

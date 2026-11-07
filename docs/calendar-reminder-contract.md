@@ -95,7 +95,9 @@ them. A retried save with the same ID and text is idempotent. The adapter expose
 ## Note origin and the note hand-offs
 
 A reminder or calendar event saved from a voice note's draft keeps a back-reference to that
-note (`apps/app/src/runtime/note-origin.ts`, `NoteOrigin`):
+note (`NoteOrigin`; the link rules are the elizaOS Notes client's
+`plugins/plugin-notes/src/client/note-origin.ts`, re-exported under Alpha's import names by
+`apps/app/src/runtime/note-origin.ts`):
 
 - It is identity only: note id, recording id and the hash of the whole note record at review.
   It grants no access to the note and carries none of its content, not even its title; the

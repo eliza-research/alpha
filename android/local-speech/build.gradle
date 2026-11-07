@@ -1,9 +1,20 @@
+// One explicit selection controls JNI compilation and the same integrity checks.
+def selectedParadeeAbis = project.findProperty('elizaParadeeAbis')?.toString()?.split(',', -1)?.toList() ?: ['arm64-v8a', 'x86_64']
+if (!selectedParadeeAbis || selectedParadeeAbis.toSet().size() != selectedParadeeAbis.size() || selectedParadeeAbis.any { !(it in ['arm64-v8a', 'x86_64']) }) throw new GradleException('Invalid elizaParadeeAbis')
+def paradeeAbiArgs = selectedParadeeAbis.collectMany { ['--abi', it] }
 // Shared native speech API and build policy come from the exact reviewed pin.
-def paradee = file('../../vendor/eliza/plugins/plugin-local-inference/native/android')
+def preparedSpeech = new groovy.json.JsonSlurper().parseText(providers.exec {
+ workingDir rootProject.projectDir.parentFile
+ commandLine 'node', 'scripts/prepare-patched-native.mjs'
+}.standardOutput.asText.get())
+def paradee = new File(preparedSpeech.root.toString(), 'plugins/plugin-local-inference/native/android')
+if (!paradee.isDirectory()) paradee = file('../../vendor/eliza/plugins/plugin-local-inference/native/android')
 if (!paradee.isDirectory()) {
  ext.elizaSpeechSourceDir = file('../../vendor/eliza/packages/app/platforms/android/local-speech')
  apply from: new File(ext.elizaSpeechSourceDir, 'consumer.gradle')
 } else {
+ // Alpha's AlphaVoiceCloud bridge subclasses the shared LocalSpeechBridgePlugin.
+ ext.elizaSpeechBridgeCapacitor = 'true'
  def nativeOutput = file('../../.eliza/paradee-voice/native')
  def cloudProfile = project.findProperty('ELIZA_RUNTIME_PROFILE')?.toString() == 'cloud'
  def unpackaged = project.findProperty('ELIZA_ALLOW_UNPACKAGED_RUNTIME')?.toString() == '1'
@@ -17,13 +28,14 @@ if (!paradee.isDirectory()) {
    compileSdk 36
    defaultConfig { minSdk 26 }
    sourceSets.main {
-    java.srcDirs = [new File(paradee, 'src/main/java')]
+    java.srcDirs = [new File(paradee, 'src/main/java'), new File(paradee, 'speech-bridge/src/main/java')]
     manifest.srcFile new File(paradee, 'src/main/AndroidManifest.xml')
     assets.srcDirs = []
     jniLibs.srcDirs = []
    }
    compileOptions { sourceCompatibility JavaVersion.VERSION_21; targetCompatibility JavaVersion.VERSION_21 }
   }
+  dependencies { compileOnly project(':capacitor-android') }
  } else {
   ext.elizaParadeeSourceDir = paradee
   ext.elizaParadeeNativeDir = nativeOutput
@@ -33,7 +45,10 @@ if (!paradee.isDirectory()) {
  def verifySpeechInputs = tasks.register('verifySpeechInputs', Exec) {
   onlyIf { !cloudProfile }
   workingDir rootProject.projectDir.parentFile
-  commandLine(['node', 'scripts/paradee-runtime.mjs'] + ((unpackaged || cloudProfile) ? ['--allow-absent'] : []))
+  commandLine(['node', 'scripts/paradee-runtime.mjs'] + paradeeAbiArgs + ((unpackaged || cloudProfile) ? ['--allow-absent'] : []))
  }
  tasks.named('preBuild').configure { dependsOn verifySpeechInputs }
 }
+
+// Shared relay compiles against the same pinned OkHttp API implemented by the app.
+dependencies { compileOnly 'com.squareup.okhttp3:okhttp:5.3.2' }

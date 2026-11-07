@@ -122,7 +122,7 @@ async function nativeVault(page: Page, options: { leak?: boolean; selected?: str
       { name: 'AlphaConnection', methods: methods(['secureRead', 'addListener', 'removeListener']) },
       { name: 'AlphaHostedResults', methods: methods(['status', 'pendingResult', 'addListener', 'removeListener']) },
       { name: 'Agent', methods: methods(['getStatus']) },
-      { name: 'DeviceApps', methods: methods(['buildInfo']) },
+      { name: 'ElizaSystem', methods: methods(['getBuildInfo']) },
       { name: 'DailyApps', methods: [...methods(['surfaceInfo', 'removeListener']), { name: 'addListener', rtype: 'callback' }] },
     ], nativeCallback: (plugin: string, method: string, input: any, callback: any) => { f.listeners[input.eventName] ??= []; f.listeners[input.eventName].push(callback); return 'listener'; },
     nativePromise: async (plugin: string, method: string, input: any) => {
@@ -144,7 +144,7 @@ async function nativeVault(page: Page, options: { leak?: boolean; selected?: str
       if (plugin === 'AlphaDevice' && method === 'snapshot') return { passwordProvider: { installation: 'absent', selection: 'none', support: 'available' } };
       if (method === 'secureRead') return { value: null };
       if (plugin === 'Agent') return { packaged: false, state: 'unavailable' };
-      if (plugin === 'DeviceApps') return { launcher: false, version: 'fixture' };
+      if (plugin === 'ElizaSystem' && method === 'getBuildInfo') return { launcher: false, version: 'fixture' };
       return {};
     } };
   }, options);

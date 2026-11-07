@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {openNativeResidentCapture} from '../apps/app/src/runtime/native-resident-capture.ts';
+// The shared native live transport (@elizaos/voice/native-live) projected from the reviewed pin.
+import {openNativeResidentCapture} from '../.eliza/client-features/packages/voice/src/native-live-voice.ts';
 
 const flush=async()=>{for(let i=0;i<10;i++)await Promise.resolve();};
 function fixture(){

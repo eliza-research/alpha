@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "target": "pixel10a",
+  "codename": "stallion",
+  "sourceLockSha256": "760a7184c62c93aeac40595cf5733f8089aa16ccd28eb7a5f5ce41d4dae741d3",
+  "manifestCommit": "5bc9a7ce1cd78dd53613bbfd0ebf506e1e4adb0f",
+  "factorySha256": "d1d2550268de9fd4bfdd4ff0910cc4471fec6ba361506278c25f34f312106675",
+  "projectsChecked": 1087,
+  "overridesChecked": 16,
+  "generatedFilesChecked": 6360,
+  "developmentOnly": false,
+  "appliedPatches": [
+    {
+      "name": "listener-systemui-chip",
+      "project": "frameworks/base",
+      "revision": "94b4c163b7dfe5ce3607f7bb8456f9573f7de57d",
+      "manifestSha256": "270cd07fd31c25e5b4d271dc184ecea83850851d9f4febc69b64a4e3d7d700a0",
+      "patchSha256": "dd8aaf6ef95ed1a6e09d6c1926c63849dd06bb7a0cd35e5ff34d44d1fd747419",
+      "filesChecked": 9
+    }
+  ],
+  "imageBuilt": false,
+  "releaseQualified": false,
+  "deviceAcceptanceVerified": false,
+  "observedAt": "2026-10-26T05:52:19.780Z"
+}

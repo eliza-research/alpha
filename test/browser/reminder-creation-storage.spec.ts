@@ -1,4 +1,5 @@
 import {test,expect} from '@playwright/test';
+import {openBrowserCalendar} from './helpers/browser-calendar';
 const key='alpha.browser.reminder-creations.v1';
 test.beforeEach(async({page})=>{await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));await page.goto('/');});
 test('empty reads and absent discard do not initialize creation history',async({page})=>{
@@ -23,7 +24,7 @@ test('an older tab changing the legacy copy cannot overwrite canonical requests'
  expect(await page.evaluate(async key=>{const {retainReminderCreation,reminderCreations}=await import('/src/runtime/reminder-creations.ts'),{reminderCreationDocument}=await import('/src/browser/reminder-creation-document.ts');await retainReminderCreation({id:'saved',request:{id:'saved',title:'Saved',body:'',at:Date.now()+3600000},state:'pending'});localStorage.setItem(key,'{old tab');let rejected=false;try{await reminderCreations();}catch{rejected=true;}const capture=await reminderCreationDocument.capture();return {rejected,changed:capture.legacyChanged,ids:Object.keys(JSON.parse(JSON.parse(capture.raw!).raw))};},key)).toEqual({rejected:true,changed:true,ids:['saved']});
 });
 test('unreadable history offers exact backup and explicit reset without scheduling',async({page},testInfo)=>{
- await page.evaluate(key=>localStorage.setItem(key,' {broken creation history '),key);await page.reload();await page.getByRole('button',{name:'Calendar',exact:true}).click();await page.getByRole('button',{name:'Recover browser reminder creation history',exact:true}).click();const dialog=page.getByRole('dialog',{name:'Browser reminder creation recovery'});
+ await page.evaluate(key=>localStorage.setItem(key,' {broken creation history '),key);await page.reload();await openBrowserCalendar(page);await page.getByRole('button',{name:'Recover browser reminder creation history',exact:true}).click();const dialog=page.getByRole('dialog',{name:'Browser reminder creation recovery'});
  await page.screenshot({path:testInfo.outputPath('reminder-creation-recovery.png')});
  await expect(dialog).toContainText('may already exist');await expect(dialog).toContainText('does not cancel or remove reminders');
  const pending=page.waitForEvent('download');await dialog.getByRole('button',{name:'Download reminder creation history backup',exact:true}).click();const stream=await (await pending).createReadStream(),chunks:Buffer[]=[];for await(const chunk of stream!)chunks.push(Buffer.from(chunk));expect(JSON.parse(Buffer.concat(chunks).toString())).toEqual({raw:' {broken creation history '});

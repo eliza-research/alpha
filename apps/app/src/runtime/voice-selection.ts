@@ -6,16 +6,16 @@ import { connectionController } from './connection-ui';
  * Neither deployment silently falls back to the other speech route. */
 // Plain constants and function exports only: Node contract tests evaluate this source directly.
 const voiceRouteKey = 'alphaphone:voice-route:v1';
-const speakRepliesKey = 'alphaphone:speak-replies:v1';
 const voicePreferencesEvent = 'alpha:voice-preferences';
 /** Storage keys and the change event, for Settings and diagnostics. */
-export function voicePreferenceKeys() { return { route: voiceRouteKey, speakReplies: speakRepliesKey, event: voicePreferencesEvent }; }
+export function voicePreferenceKeys() { return { route: voiceRouteKey, event: voicePreferencesEvent }; }
 export type VoiceRouteChoice = 'device' | 'cloud';
 export type VoicePreference = 'default' | 'device' | 'agent' | 'manual';
 /**
  * When a spoken turn is sent. 'auto-send' (today's behaviour) sends each finished Cloud
  * conversation transcript as it is; 'review' shows it for editing and an explicit Send first.
- * The choice is an owner decision (MVP-01, A-04, A-10): this constant is the one switch.
+ * P-39 (MVP-01) decided the split: the voice assistant submits automatically, while Transcribe
+ * only inserts editable text the user sends. This constant is the one switch for the former.
  */
 export type VoiceSendPolicy = 'auto-send' | 'review';
 const VOICE_SEND_POLICY: VoiceSendPolicy = 'auto-send';
@@ -27,6 +27,17 @@ export function setVoiceSendPolicyForTests(policy?: VoiceSendPolicy): boolean {
   voiceSendPolicyForTests = policy === 'auto-send' || policy === 'review' ? policy : undefined;
   return true;
 }
+
+/**
+ * The Clef end-of-turn stage (P-39 names Clef for semantic turn completion; #663 / H-18 holds the
+ * owner decision). Off: the local fused scorer and the long gap decide, and no transcript text
+ * leaves the phone for endpointing. Turning it on also needs a Cloud Clef client, which the
+ * renderer does not hold (native code owns the Cloud credential), so the stage stays out until
+ * the owner admits a model and that client exists. This constant is the one switch.
+ */
+const CLEF_ENDPOINT_ENABLED = false;
+/** The Clef stage for `createEndpointChain`: built only with the switch on AND a client. */
+export function clefEndpointStage(): { enabled: boolean; client: null } { return { enabled: CLEF_ENDPOINT_ENABLED, client: null }; }
 
 function storage(): Storage | undefined { try { return globalThis.localStorage; } catch { return undefined; } }
 function read(key: string): unknown { try { const raw = storage()?.getItem(key); return raw == null ? null : JSON.parse(raw); } catch { return null; } }
@@ -59,20 +70,17 @@ export function chooseVoiceRoute(route: VoiceRouteChoice, disclosure?: { disclos
   return write(voiceRouteKey, route === 'cloud' ? { version: 1, route, disclosed: disclosure!.disclosed, chosenAt: Date.now() } : { version: 1, route: 'device', chosenAt: Date.now() });
 }
 /** Disclosure shown wherever Cloud speech can be chosen. */
-export function cloudSpeechDisclosure(serviceName = 'Cloud') { return `${serviceName} speech uploads recordings and reply text to your Cloud account and counts toward your plan allowance.`; }
-
-/** Opt-in: replies to voice-originated turns are read aloud. Off unless explicitly enabled. */
-export function speakRepliesEnabled(): boolean { const value = record(read(speakRepliesKey)); return !!value && value.version === 1 && value.enabled === true; }
-/** No Settings control calls this yet (MVP-01); tests use it to seed a retained preference. */
-export function setSpeakReplies(enabled: boolean): boolean { return write(speakRepliesKey, { version: 1, enabled: enabled === true }); }
+export function cloudSpeechDisclosure(serviceName = 'Cloud') { if(connectionController.getSnapshot().residentInference==='direct')return 'Cartesia speech sends recordings and reply text using your own API key and provider allowance.'; return `${serviceName} speech uploads recordings and reply text to your Cloud account and counts toward your plan allowance.`; }
 
 /** A usable Cloud speech account is signed in for this renderer. */
 export function cloudVoiceAvailable(): boolean {
+  const current=connectionController.getSnapshot();if(current.residentInference==='direct')return current.providerStatus?.voiceConfigured===true;
   return (cloudRuntimeEnabled || testMocksEnabled) && !browserDevProfile && connectionController.getCloudEnvironment() !== null && connectionController.getCloudClient() !== null;
 }
 
 /** Explicit local/manual routes are available only in test-mocks builds. */
-export function selectVoiceRoute(preference: 'default' | 'device' | 'agent' | 'manual' = 'default'): 'device' | 'cloud' | 'agent' | 'manual' {
+export function selectVoiceRoute(preference: VoicePreference = 'default'): 'device' | 'cloud' | 'agent' | 'manual' {
+  if(connectionController.getSnapshot().residentInference==='direct'&&(preference==='default'||preference==='agent'))return 'cloud';
   if (cloudRuntimeEnabled) return 'cloud';
   if (!testMocksEnabled) return 'device';
   if (testMocksEnabled && (preference === 'device' || preference === 'manual')) return preference;

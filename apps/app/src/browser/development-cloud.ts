@@ -10,7 +10,7 @@ export function developmentCloudSetupDocument(account:NonNullable<Account>){
 }
 export async function configureDevelopmentCloud(scenario:DevelopmentScenario,signal:AbortSignal){
  const account=developmentCloudAccount();if(!account||!['new','existing','insufficient','failed','changed'].includes(scenario))throw Error('Choose a development setup.');
- await developmentCloudSetupDocument(account).edit(state=>{Object.keys(state).forEach(key=>delete (state as any)[key]);Object.assign(state,{phase:'review',scenario,quote:revision()});},signal);
+ await developmentCloudSetupDocument(account).edit(state=>{Object.keys(state).forEach(key=>delete state[key as keyof typeof state]);Object.assign(state,{phase:'review',scenario,quote:revision()});},signal);
  window.dispatchEvent(new Event('alpha:development-account-changed'));
 }
 export function developmentPersonal(account:NonNullable<Account>){

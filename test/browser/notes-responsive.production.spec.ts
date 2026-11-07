@@ -1,3 +1,4 @@
+import { openLegacyNotes } from './helpers/legacy-notes';
 import { test, expect } from '@playwright/test';
 
 // Production renderer in a touch viewport. This does not qualify Android rotation or TalkBack.
@@ -7,7 +8,7 @@ test.beforeEach(({}, info) => test.skip(info.project.name !== 'production', 'Pro
 test('Notes keeps a readable column and preserves the same draft, caret and scroll through resizing', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('alpha.connection.selection.v1', JSON.stringify({ kind: 'offline', localApps: true })));
   await page.goto('/');
-  await page.getByRole('button', { name: 'Notes', exact: true }).click();
+  await openLegacyNotes(page);
   await page.getByRole('button', { name: 'New note', exact: true }).click();
   const title = page.getByRole('textbox', { name: 'Title', exact: true });
   const body = page.getByRole('textbox', { name: 'Note', exact: true });

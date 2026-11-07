@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "date": "2026-10-26",
+  "baseProduct": "961352ecb2d02d125d9758cd530c03c8cbe31708",
+  "SDK": "f3c38ace5d2de647b5bff6ed9b783bf97d80d60c",
+  "previousSDK": "ff4a0bdeb47e8f3ddf15b55139939165b10bb612",
+  "preservation": {
+    "upstream.lock.json": "Only commit changed",
+    "patches/eliza/native-manifest.json": "Only baseCommit changed",
+    "android/voice-host/qualified-voice-host.json": "Only pin changed",
+    "docs/dependency-audit.snapshot.json": "Only resident.upstreamCommit changed",
+    "docs/dependency-audit.dispositions.json": "Only resident.upstreamCommit changed",
+    "docs/requirements.json": "Only note changed",
+    "docs/mvp-remaining-work-2026-10-09.json": "Only upstream_pin changed",
+    "apps/app/public/licenses/third-party-notices.json": "Generated pin only",
+    "apps/app/public/licenses/THIRD_PARTY_NOTICES.txt": "Generated pin only"
+  },
+  "dependencyInputIdentity": {
+    "parent": "ff4a0bdeb47e8f3ddf15b55139939165b10bb612",
+    "SDK": "f3c38ace5d2de647b5bff6ed9b783bf97d80d60c",
+    "rawLockBytesIdentical": true,
+    "rawLockSHA256": "c88cc7693c852e49ec1a2aebfba619d9a76cf038c26c5d0c19fa2994b9f4f762",
+    "changedFiles": [
+      "plugins/plugin-assistant/src/runtime/pending-navigation-synthesis.test.ts",
+      "plugins/plugin-assistant/src/runtime/planner-loop.ts",
+      "plugins/plugin-assistant/src/services/message/egress-policy.ts",
+      "plugins/plugin-assistant/src/services/message/prepared-view-terminal.test.ts",
+      "plugins/plugin-assistant/src/services/message/reply-policy.ts",
+      "plugins/plugin-assistant/src/services/message/structured-tool-effect.ts",
+      "plugins/plugin-personal-assistant/src/actions/lib/extract-task-plan.ts",
+      "plugins/plugin-personal-assistant/src/actions/lib/reminder-alert-semantics.test.ts",
+      "plugins/plugin-personal-assistant/src/actions/lib/task-create-plan-parameter.ts",
+      "plugins/plugin-personal-assistant/src/actions/life.ts",
+      "plugins/plugin-personal-assistant/test/reminder-alert-semantics.pglite.mjs"
+    ],
+    "nativeAndVoiceSourceInputsIdentical": true,
+    "normalizedInputIdentical": true,
+    "normalizedInputSHA256": "6db6e88363397fd2c73a561ea1f3a071dfc11b31378cbe0c193163ea1ecf70ff",
+    "packageVersions": 3694
+  },
+  "auditDateRetained": "2026-10-26",
+  "allAuditExceptionsAndDeadlinesRetained": true,
+  "sourceTests": {
+    "semanticPass": 5,
+    "PGlite": "Typed none/default, capturedomitteddetails withfallback, unknownpreference no-effect, nonowner rejection, actualnotificationgrounding",
+    "fullLifeTypeGraph": "Unqualified underprevious1536MiBheaplimit; plan/extractorsemantictypespassed"
+  },
+  "consumerTests": {
+    "pass": 48,
+    "fail": 0,
+    "skip": 0,
+    "offlineAudit": "PASS",
+    "notices": "PASS"
+  },
+  "authAndChooserTestFixPreserved": true,
+  "liveActions": false
+}

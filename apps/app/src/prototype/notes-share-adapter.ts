@@ -1,6 +1,6 @@
 import {shareSelectedText,copySelectedText} from '../runtime/text-share';
 import {openSharePanel} from '../runtime/share-panel';
-import {noteShareText} from '../runtime/note-share-text';
+import {noteShareText} from '../../../../.eliza/client-features/plugins/plugin-notes/src/client/note-share-text.ts';
 type Bag=Record<string,any>;
 /** User actions snapshot exactly one currently selected note; Email remains an in-app draft. */
 export function installNotesShareAdapter(views:Record<string,Bag>){

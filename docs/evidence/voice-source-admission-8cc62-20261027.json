@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "scope": "Current native source admission only; Calendar promoted read-schema metadata fix, no native or model source delta",
+  "productBase": "c27544f52a038735f32472203a137fa583c6bd53",
+  "priorAdmittedSDK": "f983d68173f12b89af22f93502d81234c7112b7d",
+  "currentAdmittedSDK": "8cc623855ce49cab68f9ed321b206abcad4d5c0b",
+  "sourceComparisons": [
+    {
+      "path": "plugins/plugin-local-inference/native",
+      "priorObject": "5fd29ab443616f86840e3b9f6e9cb1ad052eb436",
+      "currentObject": "5fd29ab443616f86840e3b9f6e9cb1ad052eb436",
+      "mode": "040000",
+      "type": "tree"
+    },
+    {
+      "path": "packages/app/scripts/paradee-voice",
+      "priorObject": "e18c150daf71c321ba287e0c6e5484e487367fd9",
+      "currentObject": "e18c150daf71c321ba287e0c6e5484e487367fd9",
+      "mode": "040000",
+      "type": "tree"
+    },
+    {
+      "path": "packages/app/scripts/stage-elizavoice-lib.ts",
+      "priorObject": "2ff1adb9ed9a394759562c2ff6a1f7e4b0d75f3c",
+      "currentObject": "2ff1adb9ed9a394759562c2ff6a1f7e4b0d75f3c",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "packages/app/platforms/android/app/src/main/elizavoice-jni",
+      "priorObject": "1016d67d05ce8f4c7bc10412372cc71d7ad48aee",
+      "currentObject": "1016d67d05ce8f4c7bc10412372cc71d7ad48aee",
+      "mode": "040000",
+      "type": "tree"
+    },
+    {
+      "path": "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+      "priorObject": "1cd241c5710fc302e75aec8993eefee0a709ab9c",
+      "currentObject": "1cd241c5710fc302e75aec8993eefee0a709ab9c",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+      "priorObject": "83c8e91becc3a2c46902cc168fdc9b88fc038e5d",
+      "currentObject": "83c8e91becc3a2c46902cc168fdc9b88fc038e5d",
+      "mode": "100644",
+      "type": "blob"
+    }
+  ],
+  "priorEvidenceSHA256": {
+    "docs/evidence/voice-source-admission-41d99-20261027.json": "aea99515a5b29b58d9b868640fdbad6a5e6575a744670b95e10ed6cc655b3f52",
+    "docs/evidence/voice-source-admission-18cc0-20261027.json": "a7cc86f21550b04aba8f526ddc8fb192540225c976dd408d6937d0cd552ae37a",
+    "docs/evidence/voice-source-admission-f983d-20261027.json": "73f51db714ccf56401e1293628c2b29276a1a863c395c4d6b33998325598e3a8"
+  },
+  "unchangedFieldSHA256": {
+    "abis": "f93c5550a3f2edd5f6feea0fabf1a52f9c3e37eb71a63954ebeabae67e9bb736",
+    "models": "20f69eb7291d3013cb8aa49d476ea94e878c6d9c1bbd93352626bac9c6135cab",
+    "bundle": "fac92598c106f82fcc330beacb918a7b61e289850156fb3496933f8ee4c72f05",
+    "asrSlot": "44d0fa2ff8274741d05c72f0748b05de6f68198cc781ea2ef9492cbfe4147ffc",
+    "forkPin": "7915bd72abbbc3940fe63510713f4f863550b09a1ebea2112300fd4aebef3e57",
+    "evidence": "9973b6de7993ffa41f2f2bf615c8f3e4069633fcf4f8d3c02afec1dc42081c15"
+  },
+  "historicalEngineBuildRecord": "docs/evidence/native-c95a/voice-build-record.json",
+  "historicalComponentRecord": "docs/evidence/native-c95a/embedding-QUALIFICATION.json",
+  "qualified": false,
+  "nativeQualificationTransferred": false,
+  "deviceOrUserAcceptanceAdded": false,
+  "guardUnchanged": true,
+  "limits": [
+    "Only existing canonical read-window metadata is reused in promoted Calendar actions; runtime behavior needs independent causal verification.",
+    "All earlier source comparisons/evidence and original binary/model/ABI/build records remain historical and unchanged.",
+    "Allow-absent admission does not establish packaged voice or hardware acceptance.",
+    "Present outputs require exact current source/build/model/JNI/ABI checks; historical sourceCommit is never relabeled."
+  ]
+}

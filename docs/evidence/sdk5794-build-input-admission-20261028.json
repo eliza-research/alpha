@@ -1,0 +1,58 @@
+{
+  "from": "e40497d5d0111d557aef022eb01d4f03023c9fc8",
+  "to": "5794c8c0d18914b3564d5c6716e28c2a3587f5ed",
+  "inputs": [
+    {
+      "path": "plugins/plugin-local-inference/native",
+      "entries": 310,
+      "gitModeTypeBlobPathInventorySha256": "8baee2792a7475becab820019d54a69b7f67f027032e7a7cf9bc9192fec6607e",
+      "unchanged": true
+    },
+    {
+      "path": "packages/app/scripts/paradee-voice",
+      "entries": 17,
+      "gitModeTypeBlobPathInventorySha256": "ccbf9ae9c0e247511226b0a73846863d24e17b3efa8a42f2f54ef3b282dee40d",
+      "unchanged": true
+    },
+    {
+      "path": "packages/app/scripts/stage-elizavoice-lib.ts",
+      "entries": 1,
+      "gitModeTypeBlobPathInventorySha256": "5528a4aaf9e2a92a52d949a07686add120648958c61b4982665974b02eea7b70",
+      "unchanged": true
+    },
+    {
+      "path": "packages/app/scripts/build-helpers/arm64-simd.ts",
+      "entries": 1,
+      "gitModeTypeBlobPathInventorySha256": "77fa89da9b1e02685ca2b911a321a2b7a0064badb0d3fb5531e9eb34e77e1645",
+      "unchanged": true
+    },
+    {
+      "path": "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
+      "entries": 1,
+      "gitModeTypeBlobPathInventorySha256": "2820a2a2dfb2cdbb6e2055ebee72f68d186e182f20d1b8933e550af11d54fccf",
+      "unchanged": true
+    },
+    {
+      "path": "packages/app/platforms/android/app/src/main/elizavoice-jni",
+      "entries": 2,
+      "gitModeTypeBlobPathInventorySha256": "6691b514e7a52e332bb5ab0cc6895e9804a53320d1f1ff3ccf1e12634334de88",
+      "unchanged": true
+    },
+    {
+      "path": "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+      "entries": 1,
+      "gitModeTypeBlobPathInventorySha256": "95d7104d164c65cfd91732e41a510e3bf9bf426daf7a722b943a399601d88d07",
+      "unchanged": true
+    },
+    {
+      "path": "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+      "entries": 1,
+      "gitModeTypeBlobPathInventorySha256": "b04a6f9e0c1cc14b36bd23080073583186356cb2ecaa01e556bc63f047456b4b",
+      "unchanged": true
+    }
+  ],
+  "evidenceScope": "Source-only equality of build inputs; no binary/device/user qualification transferred",
+  "productBase": "2ee347533bab29adb53285762ef8fea1dce1e179",
+  "qualificationTransferred": false,
+  "note": "Source admission only. Historical binary hashes, model inputs, ABI/toolchain qualification and device/user evidence remain unchanged. Full-lock dependency audit remains FAIL; exact new packaged inventory remains required."
+}

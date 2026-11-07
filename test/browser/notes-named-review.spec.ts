@@ -6,7 +6,7 @@ import {stripTypeScriptTypes} from 'node:module';
 const root=resolve(import.meta.dirname,'../..');
 const compile=(path:string)=>stripTypeScriptTypes(readFileSync(resolve(root,path),'utf8'),{mode:'strip'});
 const inert=compile('apps/app/src/runtime/modal-inert.ts');
-const review=compile('apps/app/src/prototype/notes-query-review.ts').replace(/import\s*\{\s*holdPhoneInert\s*\}\s*from\s*['"]\.\.\/runtime\/modal-inert['"];/,'');
+const review=[compile('apps/app/src/prototype/source-review-dialog.ts').replace(/import\s*\{\s*holdPhoneInert\s*\}\s*from\s*['"]\.\.\/runtime\/modal-inert['"];/,''),compile('apps/app/src/prototype/notes-query-review.ts').replace(/import\s*\{\s*openReview\s*\}\s*from\s*['"]\.\/source-review-dialog['"];/,'')].join('\n');
 const css=readFileSync(resolve(root,'apps/app/src/prototype/phone.css'),'utf8');
 test.beforeEach(async({page})=>{
  await page.setViewportSize({width:360,height:740});

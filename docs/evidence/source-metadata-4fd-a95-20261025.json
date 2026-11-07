@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "recordedAt": "2026-10-25",
+  "recordedAtUTC": "2026-10-26T00:54:00.507337+00:00",
+  "product": "4fd822874850a68c3d82675630593e4c63be943d",
+  "sdk": "a95cd4d28eb2bcd5fe5527e98058c167ff480557",
+  "previousSDK": "f4142d3a92d6b5b49ef6c6a666155218b8b75b07",
+  "sourceDelta": [
+    "packages/agent/src/runtime/mobile-dns.ts",
+    "packages/agent/test/mobile-dns-native-android.test.ts",
+    "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/AndroidBunTarget.java",
+    "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaAgentService.java",
+    "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/WorkflowSurvivorInventory.java",
+    "packages/app/platforms/android/app/src/test/java/ai/elizaos/app/AndroidBunTargetTest.java",
+    "packages/app/platforms/android/app/src/test/java/ai/elizaos/app/WorkflowSurvivorInventoryTest.java",
+    "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+    "packages/app/scripts/lib/consumer-android-runtime.mjs",
+    "packages/app/scripts/lib/consumer-android-runtime.test.mjs",
+    "packages/app/scripts/lib/pinned-android-bun.ts",
+    "packages/app/scripts/lib/stage-android-agent.ts",
+    "packages/app/scripts/stage-android-agent.test.ts",
+    "packages/app/src/runtime/install-mobile-workflow-process-host.ts",
+    "packages/app/src/runtime/mobile-workflow-process-host.integration.test.ts",
+    "packages/ui/src/components/pages/RemindersFeed.tsx",
+    "packages/ui/src/utils/reminder-presentation.ts"
+  ],
+  "dependencyInputIdentity": {
+    "oldSDK": "f4142d3a92d6b5b49ef6c6a666155218b8b75b07",
+    "newSDK": "a95cd4d28eb2bcd5fe5527e98058c167ff480557",
+    "lockBytesIdentical": true,
+    "normalizedInputIdentical": true,
+    "rawLockSHA256": "fc88bf9a5d718a932d72d48f2bb58caea32174e9f07d547e9c3dadd2f0901e91",
+    "normalizedInputSHA256": "6db6e88363397fd2c73a561ea1f3a071dfc11b31378cbe0c193163ea1ecf70ff",
+    "snapshotInputSHA256": "6db6e88363397fd2c73a561ea1f3a071dfc11b31378cbe0c193163ea1ecf70ff",
+    "packageVersions": 3694,
+    "findings": 124,
+    "auditedOn": "2026-10-25",
+    "newRegistryQuery": false
+  },
+  "scope": "Current SOURCE input/metadata only; prior actual artifact qualifications preserved without transfer.",
+  "qualificationStatesChanged": false,
+  "registryQueryRepeated": false,
+  "exceptionDeadlinesRenewed": false,
+  "shippedHighCriticalWaiverAdded": false,
+  "nativeInferenceOrEngineMigrationAdopted": false,
+  "lastReviewedArtifact": {
+    "path": "docs/security/resident-artifact-review-77c65ebe29c011f7-2026-10-25.json",
+    "sha256": "77c65ebe29c011f7d8f211a3a5dcfb2a79d1909cc74ecf0e40a0f4a68377f0cb",
+    "product": "a424de923b4b19aa0d86a7e23ef30598f6704d94",
+    "sdk": "f4142d3a92d6b5b49ef6c6a666155218b8b75b07",
+    "receiptChanged": false,
+    "acceptanceTransferred": false
+  },
+  "binaryBoundary": "AndroidBun target/provenance/Java/launch/ownership/DNS source changed. No equality of new runtime/APK/native components or new shipped dependency closure is claimed.",
+  "reachability": {
+    "status": "diverged",
+    "aheadBy": 35,
+    "behindBy": 208,
+    "baseCommit": "04658de1b942510e0d37efc777c154530f5c0ef1",
+    "reachableFromDevelop": false
+  },
+  "pending": [
+    "Normal full producer exact SDK/app source and target admission",
+    "New artifact source/signature/runtime payload and dependency closure verification",
+    "Native app-UID/SELinux/DNS/TLS/IPC/PGlite/BGEFFI/lifecycle qualification",
+    "Provider/agent request and physical-device acceptance"
+  ],
+  "parallelScopeExcluded": "Normal notices generation/byte equality handled by Root; notices files untouched."
+}

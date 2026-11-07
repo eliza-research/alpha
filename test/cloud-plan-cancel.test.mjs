@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 // The Eliza Cloud page is a pure function in the settings-facts region of the adapter.
 const text=readFileSync(process.env.SETTINGS_SOURCE||'apps/app/src/prototype/settings-adapter.ts','utf8');
 const region=text.slice(text.indexOf('// settings-facts:begin'),text.indexOf('// settings-facts:end'));
@@ -21,7 +21,7 @@ test('Sign out asks first and does nothing when declined',()=>{
  assert.ok(!accepted.out.actions.some(a=>a.label==='Cancel'));
 });
 test('the status line is the plan and its renewal; expiring sign-in and redeem appear only when they apply',()=>{
- assert.equal(page().out.status,'Synthetic plan · renews day '+plan.endsAt);
+ assert.equal(page().out.status,'Synthetic plan · Access until day '+plan.endsAt);
  assert.equal(page().out.detail,'synthetic@example.invalid');
  assert.deepEqual(page().out.actions.map(a=>a.label),['Manage plan','Sign out']);
  const expiring=page({plan:{keyExpiring:true,offerRedeem:true}});

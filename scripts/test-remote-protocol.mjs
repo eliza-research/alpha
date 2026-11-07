@@ -9,6 +9,7 @@ if (!process.execArgv.some(arg => arg === '--import=tsx' || arg === 'tsx')) {
 }
 const { RemoteProtocol, normalizeRemoteOrigin } = await import('../apps/app/src/runtime/remote-protocol.ts');
 let now = Date.now(), mode = 'ok', creates = 0, sends = 0, truncates = 0;
+const routedRequests=[];
 const conversation = { id: 'conversation-fixture', title: 'Contract flow' };
 const token = 'synthetic-machine-session';
 const server = http.createServer(async (req, res) => {
@@ -30,6 +31,7 @@ const server = http.createServer(async (req, res) => {
     else if(req.url.endsWith('/messages/truncate')){truncates++;assert.equal(req.method,'POST');assert.deepEqual(body,{messageId:'11111111-1111-4111-8111-111111111111',inclusive:true});response={ok:true,deletedCount:2};}
     else if (req.url.endsWith('/messages') && req.method === 'POST') {
       sends++;
+      routedRequests.push({clientId:req.headers['x-elizaos-client-id'],body});
       assert.equal(body.channelType, 'DM');
       response = { text: 'Synthetic contract reply', agentName: 'Fixture' };
     } else response = { messages: [{ role: 'assistant', text: 'Synthetic contract reply' }], hasMore: false };
@@ -55,6 +57,20 @@ try {
   assert.equal(created.id, conversation.id);
   assert.equal((await client.listConversations()).length, 1);
   assert.equal((await client.send(created.id, 'Hello')).text, 'Synthetic contract reply');
+  const metadata={viewClientId:'renderer-fixture',viewDelivery:'completed-action'};
+  await client.send(created.id,'Open Notes',{metadata,clientMessageId:'header-request'});
+  assert.equal(routedRequests.at(-1).clientId,metadata.viewClientId);
+  assert.equal(routedRequests.at(-1).body.metadata.viewDelivery,'completed-action');
+  let dropped=false;
+  const recovering=new RemoteProtocol(origin,async input=>{const response=await request(input);if(input.url.endsWith('/messages')&&!dropped){dropped=true;throw new TypeError('fetch failed');}return response;},store,{developmentOrigins:[origin],now:()=>now});
+  await recovering.restore();
+  await recovering.send(created.id,'Open Notes',{metadata,clientMessageId:'same-id-recovery'});
+  const attempts=routedRequests.slice(-2);assert.equal(attempts.length,2);
+  assert.deepEqual(attempts.map(x=>x.clientId),['renderer-fixture','renderer-fixture']);
+  assert.deepEqual(attempts.map(x=>x.body.clientMessageId),['same-id-recovery','same-id-recovery']);
+  const beforeInvalid=sends;
+  await assert.rejects(client.send(created.id,'Invalid',{metadata:{viewClientId:'bad/header'}}),error=>error.code==='invalid_view_client_id');
+  assert.equal(sends,beforeInvalid);
   assert.equal((await client.messages(created.id)).messages.length, 1);
   await client.truncateMessages(created.id,'11111111-1111-4111-8111-111111111111',new AbortController().signal);assert.equal(truncates,1);
   assert.equal((await make().restore()).identityId, 'owner-fixture');
@@ -62,7 +78,7 @@ try {
   await assert.rejects(make().restore(), error => error.status === 503);
   assert.ok(saved, 'temporary outage must preserve credential');
   await assert.rejects(client.send(created.id, 'No automatic replay'), error => error.status === 503);
-  assert.equal(sends, 1);
+  assert.equal(sends, 4);
   mode = 'changed-owner';
   await assert.rejects(make().restore(), error => error.code === 'identity_changed');
   assert.equal(saved, null);

@@ -5,6 +5,8 @@ import { verifyAospClockHandlers } from "./aosp-clock-contract.mjs";
 
 const serial = process.env.ANDROID_SERIAL;
 if (!serial || !/^[A-Za-z0-9_.:-]+$/.test(serial)) throw Error("Explicit ANDROID_SERIAL required");
+// The shared admission refuses an unbound image; name the variable that binds it here.
+if (!process.env.ALPHA_EXPECTED_IMAGE_FINGERPRINT?.trim()) throw Error("Explicit expected image fingerprint required (ALPHA_EXPECTED_IMAGE_FINGERPRINT)");
 const env = androidEnv();
 const adb = path.join(env.ANDROID_HOME, "platform-tools/adb");
 const run = (...args) => execFileSync(adb, ["-s", serial, ...args], {

@@ -7,19 +7,35 @@ not a successful sync. No OAuth grant, credential or send capability is created.
 
 ## Ownership and durable progress
 
-`GmailDelivery` uses the existing encrypted production Cloud key and native provider
-admission. It independently verifies Cloud owner/organization and the selected
-connected Gmail read grant. Selection attempts, credential changes, provider
-changes, reset and worker cancellation fence asynchronous responses. Revalidating
-the same owner/grant preserves the cursor; renderer cold-start hydration cannot
-clear native progress. Explicit Google disconnect (Settings or the Google accounts
-panel) starts retiring native state before sending the remote revoke, including
-uncertain revocations. A local withdraw failure never blocks the revoke; it is
-retried once afterwards, and sync and taps re-verify the grant and fail closed.
-Background admission is bound to the Eliza Cloud inference provider's owner
-snapshot; with another provider Settings reports `provider-unsupported`.
+The behaviour is shared upstream: `MailBackgroundDelivery`, `MailHistoryReconciliation`
+and `MailNoticePoster` in `plugins/plugin-native-notifications`, and
+`createMailBackground`/`mailBackgroundMessage` in `@elizaos/plugin-inbox/mailbox`.
+Alpha keeps only its installed binding (`GmailBackground.java`, the `AlphaGmail`
+Capacitor bridge, the WorkManager worker and `apps/app/src/runtime/gmail-background.ts`):
+the `gmail-background:v1` slot, the `alpha-gmail` channel, tap action and route prefixes,
+the production Cloud key and the reset fence.
 
-`GmailReconciliation` saves event-derived notice records and continuation together
+The delivery uses the existing encrypted production Cloud key. The foreground
+selection names the Cloud credential, owner (user and organization) and Gmail grant;
+native independently verifies that owner and the connected `google.gmail.triage`
+grant with Cloud before saving the selection and before every history page, and pins
+the exact credential bytes. Selection attempts, credential changes, reset and worker
+cancellation fence asynchronous responses. Revalidating the same owner/grant
+preserves the cursor; renderer cold-start hydration cannot clear native progress.
+Explicit Google disconnect (Settings or the Google accounts panel) starts retiring
+native state before sending the remote revoke, including uncertain revocations. A
+local withdraw failure never blocks the revoke; it is retried once afterwards, and
+sync and taps re-verify the grant and fail closed.
+
+Background checks do not depend on the agent's inference provider. The earlier
+design admitted them only with the Eliza Cloud inference provider (reporting
+`provider-unsupported` otherwise) because it borrowed that provider's owner snapshot.
+The check only reads Cloud Gmail routes with the Cloud key, and the Cloud credential
+plus the remotely verified owner are sufficient, so the coupling and that state were
+removed; changing the inference provider no longer withdraws background checks.
+Installed selections keep their cursor: the owner account reference format is unchanged.
+
+`MailHistoryReconciliation` saves event-derived notice records and continuation together
 in the native-only encrypted `gmail-background:v1` slot. Every continuation keeps
 the original decimal history ID; only the final durable page advances it. Decimal
 IDs retain 20-digit precision. A profile baseline or expired-history reset quietly
@@ -55,7 +71,8 @@ channel settings. Delivery is not an exact-time promise.
 
 ## Validation and remaining acceptance
 
-Controlled tests execute the real reconciliation engine and native delivery
+Controlled tests (upstream `test/native-host/mail.node.mjs`, rerun at the pin by
+`test/gmail-background-binding.test.mjs`) execute the real reconciliation engine and native delivery
 coordinator on the JVM, with in-memory durable storage and an HTTP transport
 fixture. They cover pagination/restart, failed persistence, death after notify,
 permission loss, uncertain dispatch, stale owner/grant responses, same-owner
@@ -64,8 +81,8 @@ cycles. The real Inbox adapter fixture covers Sent/search-to-Inbox taps, cold
 hydration and resume retry. Existing grant/read-ahead/draft/notice tests and
 TypeScript checks pass.
 
-The five new Android classes were also compiled against Android 36 and cached
-Capacitor/WorkManager APIs with fixture app plumbing. This is API compilation,
+The shared Android sources compile against the Android 36 platform jar upstream
+(`android-compile.node.mjs`); the Alpha bridge and worker compile only in the APK build. This is API compilation,
 not a packaged APK or device run. Required release acceptance remains: deployed
 served endpoint/source verification, real owned mailbox arrival and revoke,
 notification permission/channel denial, lock/unlock, Doze, reboot, process death,

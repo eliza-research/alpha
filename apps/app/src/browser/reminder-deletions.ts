@@ -1,5 +1,5 @@
 import type {Reminder} from '../daily';
-import {browserDeletionClock,claimDeletion,deletionDeadline,deletionWindow,type PendingDeletion} from '../runtime/deletion-window';
+import {rendererDeletionClock,claimDeletion,deletionDeadline,deletionWindow,type PendingDeletion} from '../../../../.eliza/client-features/packages/contracts/src/deletion-window';
 import {revision} from './revision';
 export type DeletableReminder=Reminder&{revision:string;pendingDeletion?:string};
 export type ReminderDeletion=PendingDeletion<{sourceRevision:string;row:DeletableReminder}>&{blocked?:string;binding?:string;journalBinding?:{scope:string;proposalId:string;operationHash:string}};
@@ -9,11 +9,11 @@ export function stageReminderDeletion(data:ReminderDeletionState,row:DeletableRe
  const terminal=Object.values(data.deletions||{}).filter(e=>['deleted','undone','conflict'].includes(e.phase)).sort((a,b)=>a.deadline.createdElapsed-b.deadline.createdElapsed);
  for(const entry of terminal.slice(0,Math.max(0,terminal.length-127)))delete data.deletions![entry.id];
  if(Object.keys(data.deletions||{}).length>=500)throw Error('Pending reminder deletions require review.');
- const entry:ReminderDeletion={version:1,id,owner,target:{sourceRevision:data.sourceRevision,row:structuredClone(row)},deadline:deletionDeadline(browserDeletionClock()),phase:'queued',...(binding?{binding}:{})};
+ const entry:ReminderDeletion={version:1,id,owner,target:{sourceRevision:data.sourceRevision,row:structuredClone(row)},deadline:deletionDeadline(rendererDeletionClock()),phase:'queued',...(binding?{binding}:{})};
  (data.deletions??={})[id]=entry;row.pendingDeletion=id;return structuredClone(entry);
 }
 export function settleReminderDeletions(data:ReminderDeletionState,ownerCurrent:(owner:string)=>boolean){
- const clock=browserDeletionClock();
+ const clock=rendererDeletionClock();
  for(const entry of Object.values(data.deletions||{})){
   if(entry.phase!=='queued'||deletionWindow(entry.deadline,clock)!=='expired')continue;
   if(!ownerCurrent(entry.owner)){entry.phase='paused';entry.blocked='owner-changed';continue;}
@@ -27,7 +27,7 @@ export function undoReminderDeletion(data:ReminderDeletionState,id:string,ownerC
  const entry=data.deletions?.[id];if(!entry||!ownerCurrent(entry.owner))throw Error('Deletion owner changed.');
  const row=data.reminders.find(r=>r.id===entry.target.row.id),copy=row?{...row}:undefined;if(copy)delete copy.pendingDeletion;
  if(data.sourceRevision!==entry.target.sourceRevision||row?.pendingDeletion!==id||JSON.stringify(copy)!==JSON.stringify(entry.target.row))throw Error('Reminder changed. Review it again.');
- if(!claimDeletion(entry,entry.owner,browserDeletionClock(),'undo'))throw Error('Undo window ended or deletion already settled.');
+ if(!claimDeletion(entry,entry.owner,rendererDeletionClock(),'undo'))throw Error('Undo window ended or deletion already settled.');
  // Removing only suspension preserves occurrence identity, original due time and revision.
  // Normal due reconciliation then applies its existing missed-occurrence policy.
  delete row.pendingDeletion;return structuredClone(entry);

@@ -32,6 +32,9 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: "1.4.2"
       - run: npm ci
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
@@ -40,7 +43,35 @@ jobs:
       - name: Prepare pinned JSON dependency for host contract tests
         shell: bash
         run: bash scripts/ci/prepare-host-test-json.sh
+      - name: Prepare pinned SDK for canonical host contract tests
+        shell: bash
+        run: |
+          export ALPHA_BUN="$(command -v bun)"
+          test "$("$ALPHA_BUN" --version)" = '1.4.2'
+          node scripts/prepare-local-agent.mjs
+          prepared_source=$(node --input-type=module -e "import {sourceDirectory,verifySource} from './scripts/local-agent-source.mjs'; import fs from 'node:fs'; const source=sourceDirectory(process.cwd()); verifySource(source,JSON.parse(fs.readFileSync('upstream.lock.json','utf8')).commit); process.stdout.write(source);")
+          echo "ALPHA_BUN=$ALPHA_BUN" >> "$GITHUB_ENV"
+          echo "ALPHA_CLOUD_COLLECTOR_SOURCE=$prepared_source" >> "$GITHUB_ENV"
       - run: npm run verify
+      # Reuses the product dependencies and client projection prepared by npm run verify.
+      - name: Build the connected browser proof renderer
+        env:
+          VITE_ALPHA_CLOUD_RESIDENT: '1'
+          VITE_ALPHA_CLOUD_ENVIRONMENT: staging
+          VITE_LOCAL_AGENT: '1'
+          VITE_ELIZA_RUNTIME_PROFILE: cloud
+          VITE_ELIZA_DEV_ALLOW_TEST_MOCKS: ''
+          ELIZA_DEV_ALLOW_TEST_MOCKS: ''
+        run: |
+          npx vite build --outDir ../../test-results/browser-proof-renderer
+          node scripts/audit-production-bundle.mjs test-results/browser-proof-renderer
+          node scripts/ci/export-browser-proof.mjs renderer
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: browser-proof-renderer-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: test-results/browser-proof/renderer/
+          retention-days: 3
+          if-no-files-found: error
       # Recorded develop compare; warns (never networks) when develop cannot reach the pin.
       - name: Report upstream develop reachability
         run: node scripts/verify-upstream.mjs --reachability-only
@@ -56,6 +87,13 @@ jobs:
       matrix:
         shard: ${{ fromJSON(needs.changes.outputs.browser_shards) }}
     steps:
+      - name: Free disk on the disposable browser runner
+        if: runner.environment == 'github-hosted'
+        run: |
+          for unused in /usr/share/dotnet /usr/local/.ghcup /opt/ghc /usr/local/share/powershell; do
+            if [ -d "$unused" ]; then sudo rm -rf -- "$unused"; fi
+          done
+          df -h "$GITHUB_WORKSPACE"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: true

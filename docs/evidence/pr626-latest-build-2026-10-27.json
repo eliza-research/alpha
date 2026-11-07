@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-10-27T11:21:05.681909+00:00",
+  "sourceCommit": "497691f29d796d69c74850b7bf210f1ea6d664cb",
+  "upstream": {
+    "url": "https://github.com/elizaOS/eliza.git",
+    "commit": "3d05abdcdc9bd2437f15763cdecddf774c12864b",
+    "appSource": "packages/app",
+    "nativeSystemSource": "plugins/plugin-native-system",
+    "osSource": "packages/os"
+  },
+  "scope": "Strict native APK build and synthetic source/browser verification. No emulator, AOSP image boot, real-provider integration, device execution or user acceptance is established.",
+  "verification": {
+    "command": "npm run verify",
+    "tests": 2077,
+    "passed": 2074,
+    "skipped": 3,
+    "failed": 0,
+    "typecheck": true,
+    "productionBuild": true,
+    "productionAudit": {
+      "passed": true,
+      "files": 419,
+      "testMocks": false
+    },
+    "logSha256": "5203f78370aafdc61dd4204ecc13c7397f8723201576a909981eded224f22527"
+  },
+  "browser": {
+    "project": "production",
+    "targetedPassed": 35,
+    "scope": "25 native sign-in/account/recovery cases and 10 Calendar/Notes/CSP/voice cases; targeted synthetic checks, not live provider acceptance.",
+    "logsSha256": [
+      "beaebeff78a3bb9a112c0222ea7699d570c84c993a29269a5a3ffae92f0653e3",
+      "ef53e3b0bf71df08de39f831c58b3b52f3f12b06fbcc43a0db6faaede513f506",
+      "4eec6fdbe0a0d558db6cba94da08d22481674cd3b63a97d74aa4029ea7276310"
+    ]
+  },
+  "android": {
+    "command": "npm run android:build:local",
+    "exitCode": 0,
+    "bun": "1.4.2",
+    "node": "24.15.0",
+    "jdk": 21,
+    "runtimeProfile": "native",
+    "allowUnpackagedRuntime": false,
+    "testMocks": false,
+    "gradle": {
+      "successful": true,
+      "actionableTasks": 1290,
+      "executed": 151,
+      "upToDate": 1139
+    },
+    "manifestSha256": "ac8241423f7f93d7e5aece4f6bfce50170d477f61b1c865698f4db60cebda3cc",
+    "logSha256": "0cbb6afe5f1638f3ce43cd2fc7ddd7fb70158aad4cbe2563549e16afc6e6eecd",
+    "apks": [
+      {
+        "file": "artifacts/standalone-debug.apk",
+        "variant": "standalone",
+        "bytes": 565673273,
+        "sha256": "6110ae1bd9d2a374ecca89cee715764dacf88f0b574951a7e38a6668b3774f91",
+        "runtime": "PACKAGED",
+        "voiceHostPackaged": true,
+        "voiceHostQualified": false
+      },
+      {
+        "file": "artifacts/standalone-release-unsigned.apk",
+        "variant": "standalone",
+        "bytes": 488497984,
+        "sha256": "934ea2c665d224a5598f2182638bec9ee8b4a775fded72881e56763ce89b3587",
+        "runtime": "PACKAGED",
+        "voiceHostPackaged": true,
+        "voiceHostQualified": false,
+        "distributable": false
+      },
+      {
+        "file": "artifacts/launcher-debug.apk",
+        "variant": "launcher",
+        "bytes": 565674017,
+        "sha256": "8fa49fb9198da98afeae8549d643d7eea6d67f3591c1f26280c297d208ec16e7",
+        "runtime": "PACKAGED",
+        "voiceHostPackaged": true,
+        "voiceHostQualified": false
+      },
+      {
+        "file": "artifacts/launcher-release-unsigned.apk",
+        "variant": "launcher",
+        "bytes": 488503964,
+        "sha256": "bd9fcc48b969a4223e8b1eff8747bca651ec7c6614f5dbf26daaee3005ca878e",
+        "runtime": "PACKAGED",
+        "voiceHostPackaged": true,
+        "voiceHostQualified": false,
+        "distributable": false
+      }
+    ],
+    "releaseSigned": false
+  },
+  "agentBundle": {
+    "sha256": "f1bee88a5c324ef42c9563e6e9f1086ee6ccfa55d835507aa0cc194c95732695",
+    "verifiedDependencyRecords": 568
+  },
+  "ci": {
+    "status": "in progress; full production suite reported nine stale sign-out message assertions being repaired",
+    "browserRun": "https://github.com/AlphaCompute/alphaphone/actions/runs/40493845478",
+    "androidRun": "https://github.com/AlphaCompute/alphaphone/actions/runs/40493844672",
+    "residentRun": "https://github.com/AlphaCompute/alphaphone/actions/runs/40493845129"
+  }
+}

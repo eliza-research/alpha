@@ -11,7 +11,7 @@ import org.json.JSONObject;
 public final class InboxFixtureSignIn extends Plugin {
  static final String EMAIL="fixture-owner@example.invalid",CODE="123456",ATTEMPT="12345678-1234-4234-8234-123456789abc";
  /** Fills the in-app sign-in screen through its own controls. */
- static final String DRIVE_EMAIL="(()=>{const field=document.querySelector('.alpha-cloud-sign-in input[name=email]');field.value='"+EMAIL+"';[...document.querySelectorAll('.alpha-cloud-sign-in button')].find(b=>b.textContent.trim()==='Email me a code').click();})()";
+ static final String DRIVE_EMAIL="(()=>{const toggle=document.getElementById('alpha-sign-in-other-methods')?.previousElementSibling;if(toggle?.getAttribute('aria-expanded')==='false')toggle.click();const field=document.querySelector('.alpha-cloud-sign-in input[name=email]');field.value='"+EMAIL+"';[...document.querySelectorAll('.alpha-cloud-sign-in button')].find(b=>b.textContent.trim()==='Email me a code').click();})()";
  static final String DRIVE_CODE="(()=>{const field=document.querySelector('.alpha-cloud-sign-in input[name=one-time-code]');field.value='"+CODE+"';[...document.querySelectorAll('.alpha-cloud-sign-in button')].find(b=>b.textContent.trim()==='Verify').click();})()";
  @PluginMethod public void startEmail(PluginCall call){
   if(!EMAIL.equals(call.getString("email"))||!"production".equals(call.getString("environment"))){call.reject("invalid-request","invalid-request");return;}

@@ -1,4 +1,5 @@
 import {test,expect} from '@playwright/test';
+import {openBrowserCalendar} from './helpers/browser-calendar';
 test.beforeEach(async({page})=>{await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));await page.goto('/?mode=dev');});
 test('empty and unchanged reminder polling preserves document identity',async({page})=>{
  const result=await page.evaluate(async()=>{
@@ -37,7 +38,7 @@ test('stale reset cannot erase a newer reminder',async({page})=>{
  const result=await page.evaluate(async()=>{const {BrowserDaily}=await import('/src/browser/daily.ts'),{reminderDocument}=await import('/src/browser/reminder-store.ts'),daily=new BrowserDaily({} as any);await daily.scheduleReminder({id:'first',title:'First',at:Date.now()+3600000});const snapshot=await reminderDocument.capture();await daily.scheduleReminder({id:'second',title:'Second',at:Date.now()+3600000});let rejected=false;try{await reminderDocument.reset(snapshot);}catch{rejected=true;}return {rejected,ids:(await daily.listReminders()).reminders.map(row=>row.id)};});expect(result).toEqual({rejected:true,ids:['first','second']});
 });
 test('damaged reminders expose exact backup and explicit reset from Calendar',async({page})=>{
- await page.evaluate(()=>localStorage.setItem('alpha.browser.reminders.v1','{damaged reminder bytes'));await page.reload();await page.getByRole('button',{name:'Calendar',exact:true}).click();await page.getByRole('button',{name:'Recover browser reminders',exact:true}).click();
+ await page.evaluate(()=>localStorage.setItem('alpha.browser.reminders.v1','{damaged reminder bytes'));await page.reload();await openBrowserCalendar(page);await page.getByRole('button',{name:'Recover browser reminders',exact:true}).click();
  const dialog=page.getByRole('dialog',{name:'Browser reminder recovery',exact:true});await expect(dialog).toBeVisible();
  const downloadPromise=page.waitForEvent('download');await dialog.getByRole('button',{name:'Download reminders backup',exact:true}).click();const download=await downloadPromise;const stream=await download.createReadStream();const chunks:Buffer[]=[];for await(const chunk of stream!)chunks.push(Buffer.from(chunk));expect(Buffer.concat(chunks).toString()).toBe('{damaged reminder bytes');
  await dialog.getByRole('button',{name:'Reset app reminders',exact:true}).click();await dialog.getByRole('button',{name:'Confirm reminders reset',exact:true}).click();await expect(dialog).toHaveCount(0);

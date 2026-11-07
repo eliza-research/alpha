@@ -4,13 +4,11 @@ import {reviewMailAttachment,type MailAttachment} from '../runtime/inbox-attachm
 import type {Source} from './note-source-adapter';
 const sourceFiles=registerPlugin<{readSelected(input:{selectionId:string}):Promise<MailAttachment & {sha256:string;size:number;sourceReferenceVersion?:1}>;retainSourceReference(input:{selectionId:string;sha256:string}):Promise<{reference?:string}>}>('AlphaMailAttachments');
 import {reviewContentQuestion} from '../browser/content-question';
-import {sensitiveReadingText} from '../browser/reading-sensitive';
-import { installFilesTreeAdapter } from './files-tree-adapter';
+import {sensitiveReadingText} from '../../../../.eliza/client-features/plugins/plugin-native-browser-surface/src/page-reading.ts';
+import { installFilesBrowserAdapter } from './files-browser-adapter';
 import { Capacitor } from '@capacitor/core';
 import { DailyApps, type NativeResult } from '../daily';
 import { filesIndex } from './files-index';
-/** Native-only reopen of one recorded selection while Android still holds its grant. */
-const selectedFiles=registerPlugin<{describeSelected(input:{selectionId:string}):Promise<NativeResult>}>('DailyApps');
 
 type Bag = Record<string, any>;
 type Selection = { result: NativeResult; status: string; text?: string; pdf?: {page:number;count:number;image:string}; epoch: number; renames?: number };
@@ -107,7 +105,7 @@ export function installSelectedDocumentAdapter(_Component: unknown, views: Recor
       const data = render(st, api);
       if(module === 'files' && api.active && !restoreAttempted && Capacitor.isNativePlatform()) {
         restoreAttempted = true; const requestedEpoch = epoch;
-        const openId = filesIndex.open(); if (openId) void selectedFiles.describeSelected({ selectionId: openId }).then(result => {if(epoch === requestedEpoch && !current && result.status === 'selected')void accept('files',result,api);}).catch(()=>{});
+        const openId = filesIndex.open(); if (openId) void DailyApps.describeSelected({ selectionId: openId }).then(result => {if(epoch === requestedEpoch && !current && result.status === 'selected')void accept('files',result,api);}).catch(()=>{});
       }
       if (st.open !== marker || !current) return data;
       const selected = current;
@@ -185,6 +183,6 @@ export function installSelectedDocumentAdapter(_Component: unknown, views: Recor
       current = { ...current, text: undefined, status: 'Could not read this document. Select it again or open in Android.' }; refresh();
     }
   }
-  installFilesTreeAdapter(views,accept,clear);
+  installFilesBrowserAdapter(views,accept,clear);
   return accept;
 }

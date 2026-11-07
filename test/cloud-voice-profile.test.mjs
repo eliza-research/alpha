@@ -1,3 +1,4 @@
+import {sharedSpeechSource} from './fixtures/jvm-tools.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -8,22 +9,22 @@ import {resolveCloudSignatureClassifier,verifyCloudRecordingSignatures} from '..
 import {voiceFakeClock} from './fixtures/shared-batch-voice.mjs';
 import {cloudVoiceViewFixture} from './fixtures/cloud-voice-view.mjs';
 
-test('signed-in production Cloud conversation starts without a consent step, avoids local models, and stops on account change',async()=>{
+test('one explicit Talk action starts Cloud voice and stops on account change',async()=>{
  const f=cloudVoiceViewFixture({cloudProfile:true});
  try {
   f.box.React={createElement:()=>null};f.box.VoiceActivity=()=>null;f.shell.state.chat='hidden';
-  await f.shell.startVoice();for(let i=0;i<20&&!f.starts;i++)await f.tick();
-  const view=f.renderChat();
-  assert.doesNotMatch(JSON.stringify(view),/uploads your recordings|plan allowance|Start Cloud voice/);
-  assert.notEqual(view.recoveryLabel,'Start Cloud voice');
-  assert.equal(f.starts,1);assert.equal(f.localFactories,0);assert.equal(f.pairedFactories,0);assert.equal(f.box.testMocksEnabled,false);
+  await f.shell.startVoice();
+  assert.equal(f.shell.state.chat,'sheet','hidden Home entry reveals the active voice sheet');
+  const view=f.renderChat();assert.equal(view.state,'listening');assert.equal(view.cloudDisclosureText,undefined);
+  assert.notEqual(view.recoveryLabel,'Start Cloud voice');assert.equal(f.localFactories,0);assert.equal(f.box.testMocksEnabled,false);
+  assert.equal(f.starts,1);assert.equal(f.localFactories,0);assert.equal(f.pairedFactories,0);
   f.credential='different-credential';f.changed();for(let i=0;i<20;i++)await f.tick();
   assert.equal(f.uploads,0);assert.equal(f.cloudSpeech,0);assert.equal(f.sends,0);
  } finally {f.close();await f.tick();}
 });
 test('signed-out production Cloud speech offers sign-in without microphone or local fallback',async()=>{
  const f=cloudVoiceViewFixture({cloudProfile:true,account:null});
- try {f.box.React={createElement:()=>null};f.box.VoiceActivity=()=>null;await f.shell.startVoice();const view=f.renderChat();assert.equal(view.recoveryLabel,'Connect Eliza Cloud');view.recover();await f.tick();assert.equal(f.accountOpens,1);assert.equal(f.starts,0);assert.equal(f.localFactories,0);}finally{f.close();await f.tick();}
+ try {f.box.React={createElement:()=>null};f.box.VoiceActivity=()=>null;await f.shell.startVoice();const view=f.renderChat();assert.equal(view.state,'error');assert.equal(view.recoveryLabel,'');assert.equal(view.statusLines.length,0);assert.equal(view.voiceDetails,false);assert.equal(f.accountOpens,0,'failed Talk never opens sign-in automatically');assert.equal(typeof view.recover,'function','internal recovery classification remains available to Settings');assert.equal(f.starts,0);assert.equal(f.localFactories,0);}finally{f.close();await f.tick();}
 });
 test('native production Cloud voice pins host and Cartesia; staging and other output providers fail closed',()=>{
  const out=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-cloud-speech-'));
@@ -31,13 +32,13 @@ test('native production Cloud voice pins host and Cartesia; staging and other ou
  execFileSync(binary('javac'),['--release','11','-d',out,'android/app/src/main/java/ai/elizaresearch/alphaphone/CloudDeployment.java','android/app/src/main/java/ai/elizaresearch/alphaphone/CloudSpeechPolicy.java','test/fixtures/CloudSpeechPolicyTest.java']);
  assert.match(execFileSync(binary('java'),['-cp',out,'ai.elizaresearch.alphaphone.CloudSpeechPolicyTest'],{encoding:'utf8'}),/PASS Cloud speech production host and Cartesia admission/);
  const native=fs.readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaVoiceCloudPlugin.java','utf8');
- const upload=native.slice(native.indexOf('@PluginMethod public void transcribeRecording('),native.indexOf('private void submitLocal('));
- assert.match(upload,/AlphaVoicePcm\.decode\(file,\(\)->request\.cancelled\|\|destroyed\)/,'Cloud uploads real decoded PCM rather than relabelling the MPEG_4 recorder');
+ const upload=native.slice(native.indexOf('@PluginMethod public void transcribeRecording('),native.indexOf('@PluginMethod public void synthesize('));
+ assert.match(upload,/RecordingPcm\.decode\(file,\(\)->request\.cancelled\|\|destroyed\(\)\)/,'Cloud uploads real decoded PCM rather than relabelling the MPEG_4 recorder');
  assert.match(upload,/filename=\\"recording\.wav\\"\\r\\nContent-Type: audio\/wav/);
  assert.match(upload,/finally\{Arrays\.fill\(audio,\(byte\)0\);\}/,'uploaded PCM is cleared after the request body write');
  assert.match(native,/CloudSpeechPolicy\.host\(BuildConfig\.ELIZA_RUNTIME_PROFILE,BuildConfig\.ELIZA_DEV_ALLOW_TEST_MOCKS,environment\)/);
  assert.match(native,/if\(!paired\)CloudSpeechPolicy\.requireProvider\(BuildConfig\.ELIZA_RUNTIME_PROFILE,c\.getHeaderField\("X-Eliza-TTS-Provider"\)\)/);
- const paired=native.slice(native.indexOf('private HttpURLConnection connectPaired(PluginCall call,boolean status,Pending request,boolean asr)'));
+ const paired=native.slice(native.indexOf('private HttpURLConnection connectPaired(PluginCall call,boolean status,SpeechRequestGate.Request request,boolean asr)'));
  assert.match(paired,/if\(!BuildConfig\.ELIZA_DEV_ALLOW_TEST_MOCKS\)throw new IOException\("Network speech is not enabled"\)/);
  }finally{fs.rmSync(out,{recursive:true,force:true});}
 });
@@ -51,23 +52,23 @@ test('Cloud signature classifier rejects actual Android mp42 header and accepts 
 
 test('real native multipart method uploads decoded WAV and clears it on credential, setup, cancellation and write failures',()=>{
  const source=fs.readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaVoiceCloudPlugin.java','utf8');
- const method=source.slice(source.indexOf('@PluginMethod public void transcribeRecording('),source.indexOf('private void submitLocal(')).replace('@PluginMethod ','');
+ const method=source.slice(source.indexOf('@PluginMethod public void transcribeRecording('),source.indexOf('@PluginMethod public void synthesize(')).replace('@PluginMethod ','');
  const out=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-cloud-wav-upload-'));
  try{
  const file=path.join(out,'CloudWavUploadTest.java');
- fs.writeFileSync(file,`package ai.elizaresearch.alphaphone;import java.io.*;import java.net.*;import java.util.*;import java.nio.charset.StandardCharsets;import java.util.function.BooleanSupplier;
+ fs.writeFileSync(file,`package ai.elizaresearch.alphaphone;import ai.eliza.voice.CloudSpeechTimings;import java.io.*;import java.net.*;import java.util.*;import java.nio.charset.StandardCharsets;import java.util.function.BooleanSupplier;
 public class CloudWavUploadTest {
  static class BuildConfig{static final String ELIZA_RUNTIME_PROFILE="cloud";}
- boolean destroyed;String failure="";Exception error;Pending pending;Connection connection;Capture capture=new Capture();CloudSpeechTimings cloudTimings=new CloudSpeechTimings();
+ CloudSpeechTimings cloudTimings=new CloudSpeechTimings();boolean destroyed;String failure="";Exception error;Pending pending;Connection connection;Capture capture=new Capture();Capture recording(){return capture;}boolean destroyed(){return destroyed;}
  static class PluginCall{String getString(String key){return "selected-recording";}}
- static class Pending{boolean cancelled;JSObject result;String failureCode;CloudSpeechTimings.Record timing;}
+ static class Pending{boolean cancelled;JSObject result;String failureCode;}
  static class JSObject{void put(String key,Object value){}}
  static class JSONObject{static int reads;JSONObject(String value){reads++;}Object get(String key){return "transcript";}}
  static class Capture{File file=new File("opaque-selected-recording");File selected(String id){return file;}}
  interface Work{void run(Pending request)throws Exception;}
- void submit(PluginCall call,String route,Work work){pending=new Pending();pending.timing=cloudTimings.begin(route);try{work.run(pending);}catch(Exception e){error=e;}}
+ void submit(PluginCall call,Work work){pending=new Pending();try{work.run(pending);}catch(Exception e){error=e;}}
  String required(String value,int limit){return value;}
- static class AlphaVoicePcm{static byte[] last;static File selected;static String failure;static byte[] decode(File file,BooleanSupplier cancelled)throws Exception{selected=file;if("decode".equals(failure)||cancelled.getAsBoolean())throw new IOException("PRIVATE_DECODE_SENTINEL");last=new byte[]{82,73,70,70,0,0,0,0,87,65,86,69};return last;}}
+ static class RecordingPcm{static byte[] last;static File selected;static String failure;static byte[] decode(File file,BooleanSupplier cancelled)throws Exception{selected=file;if("decode".equals(failure)||cancelled.getAsBoolean())throw new IOException("PRIVATE_DECODE_SENTINEL");last=new byte[]{82,73,70,70,0,0,0,0,87,65,86,69};return last;}}
  class Connection extends HttpURLConnection {
   int expectedLength;public void setFixedLengthStreamingMode(int length){expectedLength=length;}
   ByteArrayOutputStream bytes=new ByteArrayOutputStream();Connection()throws Exception{super(new URL("http://fixture.invalid"));}
@@ -78,15 +79,15 @@ public class CloudWavUploadTest {
   public void connect(){}public void disconnect(){}public boolean usingProxy(){return false;}
  }
  HttpURLConnection connect(PluginCall call,String route,Pending request)throws Exception{if(!route.equals("stt"))throw new AssertionError();if(failure.equals("connect"))throw new IOException();if(failure.equals("cancel"))request.cancelled=true;return connection=new Connection();}
- void successfulCloud(HttpURLConnection c,Pending request){}
+ void answered(HttpURLConnection c){} void answeredTimed(HttpURLConnection c,CloudSpeechTimings.Record timing){}
  byte[] read(InputStream in,int max,Pending request)throws Exception{if(failure.equals("response"))throw new IOException("PRIVATE_RESPONSE_SENTINEL");return in.readAllBytes();}
  ${method}
  public static void main(String[] args)throws Exception{
   for(String mode:new String[]{"","decode","connect","properties","output","write","cancel","response","missing-provider","wrong-provider"}){
-   CloudWavUploadTest host=new CloudWavUploadTest();host.failure=mode;AlphaVoicePcm.last=null;AlphaVoicePcm.failure=mode;JSONObject.reads=0;host.transcribeRecording(new PluginCall());
-   if(AlphaVoicePcm.selected!=host.capture.file)throw new AssertionError("Selected recording changed");
-   if(!mode.equals("decode")&&AlphaVoicePcm.last==null)throw new AssertionError("PCM fixture missing on "+mode);
-   for(byte value:AlphaVoicePcm.last==null?new byte[0]:AlphaVoicePcm.last)if(value!=0)throw new AssertionError("Decoded PCM not cleared on "+mode);
+   CloudWavUploadTest host=new CloudWavUploadTest();host.failure=mode;RecordingPcm.last=null;RecordingPcm.failure=mode;JSONObject.reads=0;host.transcribeRecording(new PluginCall());
+   if(RecordingPcm.selected!=host.capture.file)throw new AssertionError("Selected recording changed");
+   if(!mode.equals("decode")&&RecordingPcm.last==null)throw new AssertionError("PCM fixture missing on "+mode);
+   for(byte value:RecordingPcm.last==null?new byte[0]:RecordingPcm.last)if(value!=0)throw new AssertionError("Decoded PCM not cleared on "+mode);
    if(mode.isEmpty()){
     if(host.error!=null||host.pending.result==null)throw new AssertionError("Upload failed");
     if(host.pending.failureCode!=null)throw new AssertionError("Successful transcription kept a failure code");
@@ -103,7 +104,7 @@ public class CloudWavUploadTest {
  }
 }`);
  const binary=name=>process.env.JAVA_HOME?path.join(process.env.JAVA_HOME,'bin',name):name;
- execFileSync(binary('javac'),['--release','11','-d',out,file,'android/app/src/main/java/ai/elizaresearch/alphaphone/CloudSpeechTimings.java','android/app/src/main/java/ai/elizaresearch/alphaphone/CloudDeployment.java','android/app/src/main/java/ai/elizaresearch/alphaphone/CloudSpeechPolicy.java']);
+ execFileSync(binary('javac'),['--release','11','-d',out,file,sharedSpeechSource('CloudSpeechTimings.java'),'android/app/src/main/java/ai/elizaresearch/alphaphone/CloudDeployment.java','android/app/src/main/java/ai/elizaresearch/alphaphone/CloudSpeechPolicy.java']);
  assert.match(execFileSync(binary('java'),['-cp',out,'ai.elizaresearch.alphaphone.CloudWavUploadTest'],{encoding:'utf8'}),/PASS real native multipart WAV upload and cleanup/);
  }finally{fs.rmSync(out,{recursive:true,force:true});}
 });
@@ -114,7 +115,9 @@ test('Cloud voice shows finite HTTP support codes without replacing sign-in or b
   const failure=code=>f.box.cloudVoiceFailure({code,message:'PRIVATE_HTTP_SENTINEL'});
   for(const status of [401,403])assert.equal(failure(`voice-http-${status}`),'Sign in to Cloud again in Settings, then retry voice.');
   assert.equal(failure('voice-http-402'),"Cloud declined cloud voice for your account's billing. Check your account in Settings, then retry.");
-  for(const status of [400,429,503])assert.equal(failure(`voice-http-${status}`),`Cloud voice could not complete this request (${status}). Try again later.`);
+  for(const status of [400,503])assert.equal(failure(`voice-http-${status}`),`Cloud voice could not complete this request (${status}). Try again later.`);
+  // A 429 is the plan's request limit (cloud-voice-limit.test.mjs covers its retry facts).
+  assert.match(failure('voice-http-429'),/voice reached your plan's request limit\. Wait a moment, then try again\.$/);
   for(const code of ['voice-http-200','voice-http-600','voice-http-400PRIVATE_HTTP_SENTINEL','voice-http-400\n','voice-http-400\r\n','voice-http-400\nPRIVATE_HTTP_SENTINEL','voice-http-0400',400,null])assert.equal(failure(code),null);
  }finally{f.close();}
 });
@@ -124,7 +127,10 @@ test('Cloud Notes exposes only read while idle, only Stop while live, and cancel
  try {
   f.box.pendingAudioDeletions=async()=>({});
   f.shell.notes={open:'qa-note',list:[{id:'qa-note',title:'QA note',body:'Reviewed text.',updatedAt:1}]};
-  let view=f.render().ed;assert.equal(view.stopReading,undefined);assert.equal(typeof view.readAloud,'function');assert.match(view.cloudSpeechDisclosure,/uploads this note/);
+  let view=f.render().ed;assert.equal(view.stopReading,undefined);assert.equal(typeof view.readAloud,'function');assert.equal(view.cloudSpeechDisclosure,'Read with Eliza Cloud uploads this note’s text to your selected Cloud account for Cartesia speech and uses your plan allowance.');
+  // Read-aloud sends only the note's text, on either route; own keys bill the owner's Cartesia account.
+  const snapshot=f.box.connectionController.getSnapshot;f.box.connectionController.getSnapshot=()=>({...snapshot(),residentInference:'direct'});
+  assert.equal(f.render().ed.cloudSpeechDisclosure,'Cartesia speech sends this note’s text using your own API key and provider allowance.');f.box.connectionController.getSnapshot=snapshot;
   view.readAloud();for(let i=0;i<20&&!f.cloudSpeech;i++)await f.tick();
   assert.equal(f.cloudSpeech,1);assert.equal(f.localFactories,0);assert.equal(f.speechInputs[0].credentialId,'cloud-credential');
   view=f.render().ed;assert.equal(typeof view.stopReading,'function');assert.equal(view.readAloud,undefined);
@@ -138,7 +144,7 @@ test('Cloud profile sends one credential-bound recorded turn and speaks its matc
  try {
   f.box.React={createElement:()=>null};f.box.VoiceActivity=()=>null;
   await f.shell.startVoice();await clock.flush();
-  await clock.advance(700);f.peak=0;await clock.advance(1200);
+  await clock.advance(700);f.peak=0;await clock.advance(1200);await clock.flush();
   assert.equal(f.uploads,1);assert.equal(f.sends,1);assert.equal(f.cloudSpeech,1);
   assert.equal(f.transcribeInput.environment,'production');assert.equal(f.transcribeInput.credentialId,'cloud-credential');
   assert.equal(f.speechInputs[0].credentialId,'cloud-credential');assert.equal(f.speechInputs[0].text,'Synthetic matching reply.');
@@ -147,17 +153,17 @@ test('Cloud profile sends one credential-bound recorded turn and speaks its matc
 });
 
 
-test('configured service name follows sign-in recovery; signed-in voice starts without a disclosure',async()=>{
+test('configured service name follows explicit Talk and signed-out recovery',async()=>{
  for(const account of ['cloud-account',null]){
   const f=cloudVoiceViewFixture({cloudProfile:true,account});
   try {
    f.box.cloudServiceName=()=> 'Nebula';
    f.box.React={createElement:()=>null};f.box.VoiceActivity=()=>null;
-   await f.shell.startVoice();for(let i=0;i<20&&account&&!f.starts;i++)await f.tick();const view=f.renderChat();
-   assert.doesNotMatch(JSON.stringify(view),/Eliza Cloud|uploads your recordings|plan allowance/);
-   if(account)assert.equal(f.starts,1);
-   else {assert.equal(view.recoveryLabel,'Connect Nebula');view.recover();await f.tick();assert.equal(f.accountOpens,1);assert.equal(f.starts,0);}
-   assert.equal(f.uploads,0);assert.equal(f.localFactories,0);
+   await f.shell.startVoice();const view=f.renderChat();
+   assert.doesNotMatch(JSON.stringify(view),/Eliza Cloud/);
+   if(account){assert.equal(view.state,'listening');}
+   else {assert.equal(view.state,'error');assert.equal(view.recoveryLabel,'');assert.equal(view.statusLines.length,0);assert.equal(view.voiceDetails,false);assert.equal(f.accountOpens,0,'no automatic sign-in from a failed Talk');assert.equal(typeof view.recover,'function');}
+   assert.equal(f.starts,account?1:0);assert.equal(f.uploads,0);assert.equal(f.localFactories,0);
   }finally{f.close();await f.tick();}
  }
 });

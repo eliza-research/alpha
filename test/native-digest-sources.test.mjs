@@ -1,3 +1,4 @@
+import {prepareNativeFixture,noticeSources} from './fixtures/native-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {existsSync,readdirSync,mkdtempSync,rmSync,writeFileSync} from 'node:fs';
@@ -16,7 +17,7 @@ test('native digest consent and source reads remain bounded across persistence a
  assert.ok(jsonJar,`${missingJar}. CI must provide it (ALPHA_JSON_JAR or the Gradle cache).`);
  const root=resolve(import.meta.dirname,'..'),temporary=mkdtempSync(join(tmpdir(),'native-digest-'));
  try{
-  execFileSync(binary('javac'),['--release','11','-cp',jsonJar,'-d',temporary,join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/NoticeOwner.java'),join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/NativeDigestSources.java'),join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/HostedResultNotices.java'),join(root,'test/fixtures/NativeDigestSourcesTest.java')],{timeout:20000});
+  execFileSync(binary('javac'),['--release','11','-cp',jsonJar,'-d',temporary,...noticeSources(prepareNativeFixture(root,temporary).root,'NoticeOwner'),join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/NativeDigestSources.java'),join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/HostedResultNotices.java'),join(root,'test/fixtures/NativeDigestSourcesTest.java')],{timeout:20000});
   assert.match(execFileSync(binary('java'),['-cp',temporary+':'+jsonJar,'ai.elizaresearch.alphaphone.NativeDigestSourcesTest'],{encoding:'utf8',timeout:20000}),/^PASS native digest sources/);
  }finally{rmSync(temporary,{recursive:true,force:true});}
 });

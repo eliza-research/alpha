@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "evidence": "cuttlefish-readonly-observation",
+  "level": "development",
+  "observedAt": "2026-10-26T05:53:46Z",
+  "target": "127.0.0.1:6520 (local Cuttlefish)",
+  "fingerprint": "Alpha/alpha_cf_x86_64_phone/vsoc_x86_64_only:Baklava/CP2A.260605.016/eng.shaw:userdebug/test-keys",
+  "androidRelease": "17",
+  "bootCompleted": true,
+  "selinux": "Enforcing",
+  "alphaPackagePath": "package:/data/app/<install>/base.apk",
+  "systemCopyPresent": "/product/app/AlphaPhone",
+  "resolvedHome": "ai.elizaresearch.alphaphone/.MainActivity",
+  "launcherPostbootVerifierPassable": false,
+  "reason": "CP2A.260605.016 eng userdebug test-keys image (release 17), a development build for the Cuttlefish product, not a release-candidate image; the installed Alpha APK is a /data/app override of the /product/app copy, which verify-cuttlefish-launcher.mjs refuses.",
+  "actions": "Read-only getprop, getenforce, pm path and resolve-activity. No install, role change, reboot or data change.",
+  "imageBuiltFromAdmittedSource": false,
+  "releaseQualified": false
+}

@@ -1,3 +1,4 @@
+import {calendarEditorReady} from './calendar-draft-readiness';
 import {test,expect} from '@playwright/test';
 for(const kind of ['event','response'] as const)test(`closing ${kind} editor after preparation cancels the pending transaction`,async({page})=>{
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
@@ -17,7 +18,7 @@ for(const kind of ['event','response'] as const)test(`closing ${kind} editor aft
    await new Promise<void>(resolve=>{(window as any).releasePrepared=resolve;});return result;
   },signal).finally(()=>{(window as any).writeSettled=true;});};
  });
- if(kind==='event')await dialog.getByLabel('Event title',{exact:true}).fill('Must not be saved');
+ if(kind==='event'){await calendarEditorReady(dialog);await dialog.getByLabel('Event title',{exact:true}).fill('Must not be saved');}
  else await dialog.getByLabel('Guest response',{exact:true}).selectOption('yes');
  await dialog.getByRole('button',{name:kind==='event'?'Save event':'Save response',exact:true}).click();
  await expect.poll(()=>page.evaluate(()=>(window as any).prepared)).toBe(true);

@@ -8,7 +8,6 @@
   "lunchTarget": "alphaphone_cf_x86_64_phone-trunk_staging-user",
   "architecture": "x86_64",
   "aospLockProfile": "cuttlefish",
-  "aospLockPath": "android/aosp/aosp.lock.json",
   "aospDeviceTreePaths": [
     "device/google/cuttlefish/vsoc_x86_64_only/phone/aosp_cf.mk"
   ],

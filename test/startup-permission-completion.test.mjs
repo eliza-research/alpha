@@ -19,10 +19,10 @@ async function fixture(t,{native=false,denied=false,unsupported=false,legacy=nul
  const dom=new JSDOM('<div id="root"></div>',{url:'https://required.invalid',pretendToBeVisual:true}),saved={};for(const key of ['window','document','localStorage','sessionStorage','Event','CustomEvent','dispatchEvent','navigator','Notification','IS_REACT_ACT_ENVIRONMENT','requiredPlatform','requiredPorts','requiredConnection','requiredGoogle'])saved[key]=Object.getOwnPropertyDescriptor(globalThis,key);
  for(const [key,value]of Object.entries({window:dom.window,document:dom.window.document,localStorage:dom.window.localStorage,sessionStorage:dom.window.sessionStorage,Event:dom.window.Event,CustomEvent:dom.window.CustomEvent,dispatchEvent:e=>dom.window.dispatchEvent(e),IS_REACT_ACT_ENVIRONMENT:true,requiredPlatform:native?'android':'web',requiredGoogle:false,requiredConnection:{cloudAccount:{credentialId:'fixture',email:'owner@example.invalid'},open:false,...connection}}))Object.defineProperty(globalThis,key,{value,writable:true,configurable:true});
  dom.window.HTMLDialogElement.prototype.showModal=function(){this.open=true;};dom.window.HTMLDialogElement.prototype.close=function(){this.open=false;};
- const state={notifications:true,microphone:true,camera:true,location:!deniedLocation,calendar:true,photos:'selected',accuracy:badLocation?'invalid':'approximate'},calls=[];
+ const state={notifications:true,microphone:true,camera:true,location:!deniedLocation,calendar:true,photos:'selected',files:'granted',accuracy:badLocation?'invalid':'approximate'},calls=[];
  Object.defineProperty(globalThis,'navigator',{configurable:true,value:{userAgent:'Alpha required onboarding fixture',permissions:{async query({name}){return {state:state[name==='geolocation'?'location':name]?'granted':'denied'};}},mediaDevices:{async getUserMedia(input){calls.push({kind:'media',input});return {getTracks:()=>[{stop(){calls.push({kind:'track-stop'});}}]};}},geolocation:{getCurrentPosition(ok){calls.push({kind:'location'});ok({coords:{latitude:1,longitude:1}});}}}});
  Object.defineProperty(globalThis,'Notification',{configurable:true,value:unsupported?{}:{get permission(){return typeof state.notifications==='string'?state.notifications:state.notifications?'granted':'denied';},async requestPermission(){calls.push({kind:'notifications-request'});return state.notifications?'granted':'denied';}}});
- globalThis.requiredPorts={AlphaNotifications:{async status(){return {permissionGranted:state.notifications,appEnabled:state.notifications};}},DailyApps:{async checkPermissions(){return {camera:state.camera?'granted':'denied'};},async requestPermissions(input){calls.push({kind:'native-request',input});},async addListener(){return {async remove(){}};}},AlphaVoiceCloud:{async checkPermissions(){return {microphone:state.microphone?'granted':'denied'};},async requestPermissions(input){calls.push({kind:'native-request',input});}},ElizaLocation:{async checkPermissions(){return {location:state.location?'granted':'denied',accuracy:state.location?state.accuracy:'none'};},async requestPermissions(){calls.push({kind:'native-location'});}},AlphaCalendar:{async checkPermissions(){return {calendar:state.calendar?'granted':'denied'};},async requestAccess(){calls.push({kind:'calendar-access'});}},AlphaPhotoLibrary:{async scope(){return {scope:state.photos,locked:false};},async requestAccess(){calls.push({kind:'photos-access'});}},AlphaDevice:{async openSettings(input){calls.push({kind:'settings',input});}}};
+ globalThis.requiredPorts={AlphaNotifications:{async status(){return {permissionGranted:state.notifications,appEnabled:state.notifications};}},DailyApps:{async checkPermissions(){return {camera:state.camera?'granted':'denied'};},async requestPermissions(input){calls.push({kind:'native-request',input});},async addListener(){return {async remove(){}};}},AlphaVoiceCloud:{async checkPermissions(){return {microphone:state.microphone?'granted':'denied'};},async requestPermissions(input){calls.push({kind:'native-request',input});}},ElizaLocation:{async checkPermissions(){return {location:state.location?'granted':'denied',accuracy:state.location?state.accuracy:'none'};},async requestPermissions(){calls.push({kind:'native-location'});}},AlphaCalendar:{async checkPermissions(){return {calendar:state.calendar?'granted':'denied'};},async requestAccess(){calls.push({kind:'calendar-access'});}},AlphaPhotoLibrary:{async scope(){return {scope:state.photos,locked:false};},async requestAccess(){calls.push({kind:'photos-access'});}},AlphaDevice:{async openSettings(input){calls.push({kind:'settings',input});}},AlphaFiles:{async storageState(){return {status:'ready',access:state.files};},async storageRequestAccess(){calls.push({kind:'files-access'});if(state.grantFilesOnReturn)state.files='granted';return {status:'ready',access:state.files};}}};
  if(denied)state.notifications=false;
  if(legacy)sessionStorage.setItem('alpha:startup-permission-progress:v1',JSON.stringify(legacy));if(durable)localStorage.setItem(startupPermissionProgressKey,JSON.stringify(durable));
  localStorage.setItem('alpha.startup-permissions.v1',JSON.stringify({dismissed:true,attempted:{camera:true}}));
@@ -40,31 +40,34 @@ test('actual recovered order is required, no Skip/Not now/Back/footer/count, the
 test('denied native permission stays on required step, blocks dismissal, and settings never repeats its prompt',async t=>{
  const f=await fixture(t,{native:true,denied:true});assert.equal(f.heading(),'Notifications');await f.click('Allow');assert.equal(f.heading(),'Notifications');assert.equal(f.calls.filter(x=>x.kind==='native-request').length,1);await f.cancel();await f.back();assert.equal(f.heading(),'Notifications');await f.click('Open Android settings');assert.equal(f.calls.filter(x=>x.kind==='native-request').length,1);assert.equal(f.calls.filter(x=>x.kind==='settings').length,1);assert.equal(f.progress().step,0);
 });
-test('unsupported browser permission is honest and cannot be skipped or inferred granted',async t=>{const f=await fixture(t,{unsupported:true});assert.equal(f.heading(),'Notifications');assert.match(document.body.textContent,/Access could not be confirmed/);await f.click('Try again');assert.equal(f.heading(),'Notifications');assert.equal(f.calls.length,0);assert.equal(f.progress().step,0);});
+test('unsupported browser permission is honest and cannot be skipped or inferred granted',async t=>{const f=await fixture(t,{unsupported:true});assert.equal(f.heading(),'Notifications');assert.match(document.body.textContent,/Could not check/);await f.click('Try again');assert.equal(f.heading(),'Notifications');assert.equal(f.calls.length,0);assert.equal(f.progress().step,0);});
 test('a hung browser notification prompt releases Checking without granting access or retrying, and late completion cannot advance setup',async t=>{
+ t.mock.timers.enable({apis:['setTimeout']});
  const f=await fixture(t);let requests=0,complete;
  f.state.notifications='default';
  Notification.requestPermission=()=>{requests++;return new Promise(resolve=>{complete=resolve;});};
  await React.act(async()=>document.dispatchEvent(new f.dom.window.Event('visibilitychange')));
  assert.equal(f.heading(),'Notifications');
- t.mock.timers.enable({apis:['setTimeout']});
  await f.click('Allow');assert.equal(f.button('Checking…').disabled,true);assert.equal(requests,1);
  await React.act(async()=>t.mock.timers.tick(14999));assert.equal(f.button('Checking…').disabled,true);
  await React.act(async()=>t.mock.timers.tick(1));
- assert.equal(f.button('Check access').disabled,false);assert.equal(f.progress().step,0);assert.match(document.body.textContent,/Allow access in your browser/);assert.equal(requests,1);
+ assert.equal(f.button('Check access').disabled,false);assert.equal(f.progress().step,0);assert.match(document.body.textContent,/Access is still off/);assert.equal(requests,1);
  await React.act(async()=>complete('granted'));
  assert.equal(f.heading(),'Notifications');assert.equal(f.button('Check access').disabled,false);assert.equal(f.progress().step,0);
  await f.click('Check access');assert.equal(f.heading(),'Notifications');assert.equal(requests,1);
  f.state.notifications=true;await f.click('Check access');
  assert.equal(f.heading(),'Microphone');assert.equal(f.progress().step,1);assert.equal(requests,1);
 });
-test('durable partial progress resumes but a revoked earlier grant rewinds without requesting anything',async t=>{const f=await fixture(t);await f.click('Continue');assert.equal(f.progress().step,1);await f.remount();assert.equal(f.heading(),'Microphone');f.state.notifications=false;await f.remount();assert.equal(f.heading(),'Notifications');assert.equal(f.progress().step,0);assert.equal(f.calls.length,0);});
-test('legacy skipped choices restart required setup and old session data is preserved',async t=>{const legacy={version:1,step:2,choices:['allowed','skipped']};const f=await fixture(t,{legacy});assert.equal(f.heading(),'Notifications');assert.deepEqual(JSON.parse(sessionStorage.getItem('alpha:startup-permission-progress:v1')),legacy);assert.equal(f.progress().step,0);});
-test('storage write/readback failure prevents UI progress without re-requesting a granted permission',async t=>{const f=await fixture(t,{writeFailure:true});await f.click('Continue');assert.equal(f.heading(),'Notifications');assert.match(document.body.textContent,/Setup progress could not be saved/);assert.equal(f.calls.length,0);});
+test('durable reviewed progress resumes without reopening an earlier revoked permission',async t=>{const f=await fixture(t);await f.click('Continue');assert.equal(f.progress().step,1);await f.remount();assert.equal(f.heading(),'Microphone');f.state.notifications=false;await f.remount();assert.equal(f.heading(),'Microphone');assert.equal(f.progress().step,1);assert.equal(f.calls.length,0);});
+test('legacy skipped choices resume reviewed setup and old session data is preserved',async t=>{const legacy={version:1,step:2,choices:['allowed','skipped']};const f=await fixture(t,{legacy});assert.equal(f.heading(),'Camera');assert.deepEqual(JSON.parse(sessionStorage.getItem('alpha:startup-permission-progress:v1')),legacy);assert.equal(f.progress().step,2);});
+test('storage write/readback failure keeps session progress with an honest warning',async t=>{const f=await fixture(t,{writeFailure:true});await f.click('Continue');assert.equal(f.heading(),'Microphone');assert.match(document.body.textContent,/Setup progress could not be saved/);assert.equal(f.calls.length,0);});
 test('targeted Settings review has Done and never rewrites completed progress',async t=>{const marker={version:1,status:'completed',step:4};const f=await fixture(t,{durable:marker});assert.equal(document.querySelector('dialog'),null);f.state.camera=false;await f.open('camera');assert.equal(f.heading(),'Camera');await f.click('Done');assert.equal(document.querySelector('dialog'),null);assert.deepEqual(f.progress(),marker);assert.equal(f.calls.length,0);});
 test('historical completed v1/v2 installations remain completed with native Calendar/Photos extension',async t=>{for(const version of [1,2]){const marker={version,status:'completed',step:version===1?4:5};assert.deepEqual(readStartupPermissionProgress({getItem:()=>JSON.stringify(marker)},true),marker);}const f=await fixture(t,{native:true,durable:{version:2,status:'completed',step:5}});assert.equal(document.querySelector('dialog'),null);assert.equal(f.calls.length,0);});
-test('new native setup retains original first four, then guarded Calendar and selected Photos',async t=>{const f=await fixture(t,{native:true});for(const title of ['Notifications','Microphone','Camera','Location','Calendar','Photos']){assert.equal(f.heading(),title);await f.click('Continue');}assert.equal(f.heading(),'You’re all set');await f.click('Go to Alpha');assert.deepEqual(f.progress(),{version:3,status:'completed',step:6});assert.equal(f.calls.length,0);});
-test('Ready rechecks grants and cannot finish if access was revoked',async t=>{const f=await fixture(t);for(let i=0;i<4;i++)await f.click('Continue');assert.equal(f.heading(),'You’re all set');f.state.camera=false;await f.click('Go to Alpha');assert.equal(f.heading(),'Camera');assert.notEqual(f.progress().status,'completed');assert(!document.querySelector('.alpha-permission-status').textContent.includes('Access is allowed'));});
+test('new native setup retains original first four, then guarded Calendar, selected Photos and Files',async t=>{const f=await fixture(t,{native:true});for(const title of ['Notifications','Microphone','Camera','Location','Calendar','Photos','Files']){assert.equal(f.heading(),title);await f.click('Continue');}assert.equal(f.heading(),'You’re all set');await f.click('Go to Alpha');assert.deepEqual(f.progress(),{version:4,status:'completed',step:7});assert.equal(f.calls.length,0);});
+test('completed six-step native setup stays completed; unfinished v3 progress continues as v4',async t=>{assert.deepEqual(readStartupPermissionProgress({getItem:()=>JSON.stringify({version:3,status:'completed',step:6})},true),{version:3,status:'completed',step:6});assert.deepEqual(readStartupPermissionProgress({getItem:()=>JSON.stringify({version:3,status:'pending',step:5})},true),{version:4,status:'pending',step:5});const f=await fixture(t,{native:true,durable:{version:3,status:'completed',step:6}});assert.equal(document.querySelector('dialog'),null);assert.equal(f.calls.length,0);});
+test('Files opens Android all-files access and reads access back on return',async t=>{const f=await fixture(t,{native:true,durable:{version:4,status:'pending',step:6}});f.state.files='denied';f.state.grantFilesOnReturn=true;await f.remount();assert.equal(f.heading(),'Files');await f.click('Allow');assert.deepEqual(f.calls.map(c=>c.kind),['files-access']);assert.equal(f.heading(),'You’re all set');});
+test('Files access denied on return stays on Files and offers Android settings without another prompt',async t=>{const f=await fixture(t,{native:true,durable:{version:4,status:'pending',step:6}});f.state.files='denied';await f.remount();await f.click('Allow');assert.equal(f.heading(),'Files');await f.click('Open Android settings');assert.equal(f.calls.filter(c=>c.kind==='files-access').length,2);assert.equal(f.heading(),'Files');assert.equal(f.progress().step,6);});
+test('completed walkthrough stays complete when access changes and never grants platform access',async t=>{const f=await fixture(t);for(let i=0;i<4;i++)await f.click('Continue');assert.equal(f.heading(),'You’re all set');f.state.camera=false;await f.click('Go to Alpha');assert.equal(document.querySelector('dialog'),null);assert.equal(f.progress().status,'completed');assert.equal(f.state.camera,false);assert.equal(f.calls.length,0);});
 test('progress writes require exact readback',()=>{let raw=null;assert.throws(()=>writeStartupPermissionProgress({getItem:()=>raw,setItem(){}},{version:1,status:'pending',step:1}),/could not be saved/);});
 for(const code of [2,3])test(`original browser location fix preserves permission grant despite provider code ${code}`,async()=>{let state='prompt',requests=0;const flow=browserStartupPermission('location',{permissions:{async query(){return {state};}},geolocation:{getCurrentPosition(_ok,fail){requests++;state='granted';fail({code});}}});await flow.request();assert.equal((await flow.status()).granted,true);assert.equal(requests,1);});
 test('original browser camera asks only for camera and stops every track, including cleanup failure',async()=>{const stopped=[];let input;const flow=browserStartupPermission('camera',{media:{async getUserMedia(value){input=value;return {getTracks:()=>[{stop(){stopped.push(1);throw Error('stop');}},{stop(){stopped.push(2);}}]};}}});await assert.rejects(flow.request(),/cleanup/);assert.deepEqual(input,{video:true,audio:false});assert.deepEqual(stopped,[1,2]);});
@@ -75,10 +78,22 @@ test('completed installation can explicitly review all permissions without autom
 test('native approximate location and selected Photos keep their actual access descriptions',async t=>{
  const f=await fixture(t,{native:true});for(let i=0;i<3;i++)await f.click('Continue');assert.equal(f.heading(),'Location');assert.match(document.body.textContent,/Approximate location allowed/);await f.click('Continue');await f.click('Continue');assert.equal(f.heading(),'Photos');assert.match(document.body.textContent,/Selected photos and videos only/);
 });
-test('malformed native accuracy cannot be read as a usable location grant',async t=>{const f=await fixture(t,{native:true,badLocation:true});for(let i=0;i<3;i++)await f.click('Continue');assert.equal(f.heading(),'Location');assert.match(document.body.textContent,/Access could not be confirmed/);await f.click('Try again');assert.equal(f.heading(),'Location');assert.equal(f.calls.length,0);});
+test('malformed native accuracy cannot be read as a usable location grant',async t=>{const f=await fixture(t,{native:true,badLocation:true});for(let i=0;i<3;i++)await f.click('Continue');assert.equal(f.heading(),'Location');assert.match(document.body.textContent,/Could not check/);await f.click('Try again');assert.equal(f.heading(),'Location');assert.equal(f.calls.length,0);});
 
 test('Ready retains verified new-account, AI readiness and prior-key revocation warnings without another popup',async t=>{
- const message='Signed in. Eliza Cloud did not confirm revoking the sign-in this phone used before.';const f=await fixture(t,{connection:{accountCreated:true,residentInference:'unknown',message,error:'Cloud binding could not be verified.'}});for(let i=0;i<4;i++)await f.click('Continue');assert.equal(f.heading(),'You’re all set');assert.match(document.body.textContent,/AI is not ready yet/);assert.match(document.body.textContent,/Account created\./);assert(document.body.textContent.includes(message));assert.equal(document.querySelectorAll('dialog').length,1);assert.equal(f.calls.length,0);
+ const message='Signed in. Eliza Cloud did not confirm revoking the sign-in this phone used before.';const f=await fixture(t,{connection:{accountCreated:true,residentInference:'unknown',message,error:'Cloud binding could not be verified.'}});for(let i=0;i<4;i++)await f.click('Continue');assert.equal(f.heading(),'You’re all set');assert.match(document.body.textContent,/AI is not ready yet/);assert.match(document.body.textContent,/Account created: owner@example\.invalid\./);assert(document.body.textContent.includes(message));assert.equal(document.querySelectorAll('dialog').length,1);assert.equal(f.calls.length,0);
+});
+
+test('Ready while the agent still starts after sign-in makes no AI claim',async t=>{
+ // Setup no longer waits for the agent (owner report 2026-10-30): its AI binding is not known yet.
+ const starting=await fixture(t,{connection:{residentInference:null}});for(let i=0;i<4;i++)await starting.click('Continue');assert.equal(starting.heading(),'You’re all set');assert.doesNotMatch(document.body.textContent,/AI is not ready yet|AI needs an active Cloud plan/);
+});
+test('Ready after saving own API keys makes no false AI-not-ready claim',async t=>{
+ // Own Cerebras keys bind the agent's inference directly ('direct'): AI is ready (#772 regression).
+ const own=await fixture(t,{connection:{residentInference:'direct'}});for(let i=0;i<4;i++)await own.click('Continue');assert.equal(own.heading(),'You’re all set');assert.doesNotMatch(document.body.textContent,/AI is not ready yet|AI needs an active Cloud plan/);
+});
+test('Ready shows a needs-plan admission before the agent that setup no longer waits for has started',async t=>{
+ const f=await fixture(t,{connection:{residentInference:null,residentPlanNotice:'needs-plan'}});for(let i=0;i<4;i++)await f.click('Continue');assert.equal(f.heading(),'You’re all set');assert.match(document.body.textContent,/AI needs an active Cloud plan\. Manage it in Settings\./);
 });
 
 test('opening an existing Google panel hides required setup and closing it resumes the same step without permission requests',async t=>{
@@ -88,5 +103,60 @@ test('opening an existing Google panel hides required setup and closing it resum
 test('a known denied native location grant goes to Settings and never re-asks without an eligible prompt',async t=>{const f=await fixture(t,{native:true,deniedLocation:true,durable:{version:3,status:'pending',step:3}});assert.equal(f.heading(),'Location');await f.click('Open Android settings');assert.equal(f.calls.filter(x=>x.kind==='native-location').length,0);assert.equal(f.calls.filter(x=>x.kind==='settings').length,1);assert.equal(f.progress().step,3);});
 
 test('explicit sign-in Ready preserves a completed legacy installation without forcing newly added grants',async t=>{
- const marker={version:1,status:'completed',step:4};const f=await fixture(t,{native:true,durable:marker});f.state.calendar=false;f.state.photos='denied';let homes=0;window.addEventListener('launcher-home',()=>homes++);await f.auth();assert.equal(f.heading(),'You’re all set');await f.click('Go to Alpha');assert.equal(f.heading(),undefined);assert.deepEqual(f.progress(),marker);assert.equal(f.calls.length,0);assert.equal(homes,1);
+ const marker={version:1,status:'completed',step:4};const f=await fixture(t,{native:true,durable:marker});f.state.calendar=false;f.state.photos='denied';let homes=0;window.addEventListener('launcher-home',()=>homes++);await f.auth();assert.equal(f.heading(),undefined);assert.deepEqual(f.progress(),marker);assert.equal(f.calls.length,0);assert.equal(homes,0);
+});
+
+
+test('blocked access exposes a per-step skip after 20 seconds and completed choices survive refresh and auth',async t=>{
+ t.mock.timers.enable({apis:['setTimeout']});
+ const f=await fixture(t,{denied:true});
+ assert.equal(document.querySelector('.alpha-permission-skip'),null);
+ await f.click('Check access');assert.match(document.body.textContent,/Access is still off/);
+ await React.act(async()=>t.mock.timers.tick(19999));assert.equal(document.querySelector('.alpha-permission-skip'),null);
+ await React.act(async()=>t.mock.timers.tick(1));await f.click('Skip for now');
+ assert.equal(f.heading(),'Microphone');assert.equal(document.querySelector('.alpha-permission-skip'),null);
+ assert.deepEqual(f.progress().choices,['skipped']);
+ await f.remount();assert.equal(f.heading(),'Microphone');
+ for(let i=0;i<3;i++){await React.act(async()=>t.mock.timers.tick(20000));await f.click('Skip for now');}
+ assert.equal(f.heading(),'You’re all set');assert.deepEqual(f.progress().choices,Array(4).fill('skipped'));
+ await f.click('Go to Alpha');await f.remount();await f.auth();
+ assert.equal(document.querySelector('dialog'),null);assert.equal(f.state.notifications,false);assert.equal(f.calls.length,0);
+});
+test('skip escapes a pending media request and its late result cannot advance the next step',async t=>{
+ t.mock.timers.enable({apis:['setTimeout']});const f=await fixture(t);await f.click('Continue');
+ let resolveMedia,stops=0;
+ navigator.permissions.query=async({name})=>({state:name==='microphone'?'prompt':'granted'});
+ navigator.mediaDevices.getUserMedia=()=>new Promise(resolve=>{resolveMedia=resolve;});
+ await React.act(async()=>document.dispatchEvent(new f.dom.window.Event('visibilitychange')));
+ await f.click('Allow');assert.equal(f.button('Checking…').disabled,true);
+ await React.act(async()=>t.mock.timers.tick(20000));await f.click('Skip for now');
+ assert.equal(f.heading(),'Camera');assert.equal(f.progress().step,2);
+ await React.act(async()=>resolveMedia({getTracks:()=>[{readyState:'live',stop(){stops++;}}]}));
+ assert.equal(stops,1);assert.equal(f.heading(),'Camera');assert.equal(f.progress().step,2);assert.equal(f.button('Continue').disabled,false);
+});
+test('unsupported browser access can be skipped without a grant or a permission request',async t=>{
+ t.mock.timers.enable({apis:['setTimeout']});const f=await fixture(t,{unsupported:true});
+ assert.match(document.body.textContent,/Could not check/);
+ await React.act(async()=>t.mock.timers.tick(20000));await f.click('Skip for now');
+ assert.equal(f.heading(),'Microphone');assert.equal(f.progress().choices[0],'skipped');assert.equal(f.calls.length,0);
+});
+test('blocked storage still allows the timed fallback and never claims durable choices',async t=>{
+ t.mock.timers.enable({apis:['setTimeout']});const f=await fixture(t,{writeFailure:true,unsupported:true});
+ for(let i=0;i<4;i++){await React.act(async()=>t.mock.timers.tick(20000));await f.click('Skip for now');}
+ assert.equal(f.heading(),'You’re all set');assert.match(document.body.textContent,/Setup progress could not be saved/);
+ await f.click('Go to Alpha');assert.equal(document.querySelector('dialog'),null);assert.equal(f.calls.length,0);
+});
+
+test('a newly created account still gets its Ready notice without reopening completed access steps',async t=>{
+ const marker={version:1,status:'completed',step:4};const f=await fixture(t,{durable:marker,connection:{accountCreated:true}});
+ await f.auth();assert.equal(f.heading(),'You’re all set');assert.match(document.body.textContent,/Account created/);
+ await f.click('Go to Alpha');assert.equal(document.querySelector('dialog'),null);assert.deepEqual(f.progress(),marker);assert.equal(f.calls.length,0);
+});
+
+test('targeted Settings review can escape a hung request after20s without rewriting completed setup',async t=>{
+ t.mock.timers.enable({apis:['setTimeout']});const marker={version:1,status:'completed',step:4};const f=await fixture(t,{durable:marker});
+ let resolveMedia,stops=0;navigator.permissions.query=async()=>({state:'prompt'});navigator.mediaDevices.getUserMedia=()=>new Promise(resolve=>{resolveMedia=resolve;});
+ await f.open('microphone');await f.click('Allow');assert.equal(f.button('Done').disabled,true);
+ await React.act(async()=>t.mock.timers.tick(20000));await f.click('Skip for now');assert.equal(document.querySelector('dialog'),null);assert.deepEqual(f.progress(),marker);
+ await React.act(async()=>resolveMedia({getTracks:()=>[{readyState:'live',stop(){stops++;}}]}));assert.equal(stops,1);assert.equal(document.querySelector('dialog'),null);assert.deepEqual(f.progress(),marker);
 });

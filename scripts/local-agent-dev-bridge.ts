@@ -1,7 +1,8 @@
-import {CALENDAR_APPROVAL_READ_PATH} from '../apps/app/src/runtime/calendar-approval.ts';
+import {isPreparedViewNavigationRequest} from '../apps/app/src/runtime/prepared-view-navigation.ts';
+import {parseViewInteractionClientId} from "../.eliza/client-features/packages/core/src/views/view-interact-protocol.ts";
+import {ownerRouteAllowed,ownerRouteGroup} from '../apps/app/src/runtime/owner-route-policy.ts';
 import {createGmailAgentDevBroker} from './gmail-agent-dev-broker.ts';
 import {homedir} from 'node:os';
-import {automationsRouteAllowed, isAutomationsPath} from '../apps/app/src/runtime/automations-route-policy.ts';
 import {dirname,join} from 'node:path';
 import {once} from 'node:events';
 import {localAgentStorage} from './local-agent-dev-storage.ts';
@@ -23,6 +24,13 @@ const VOICE_AGENT_ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 const VOICE_UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 // Owner diagnostics only: bounded list and exact trace detail, no configuration/export/write routes.
 const TRAJECTORY_READ=/^\/api\/trajectories(?:\?limit=(?:[1-9]|10)(?:&search=[A-Za-z0-9_-]{1,128})?|\/(?!(?:config|export|stats)$)[A-Za-z0-9_-]{1,128})$/i;
+// Keep the existing exact-ID validator; only this literal metadata-only suffix is new.
+function trajectoryReadAllowed(value:unknown):value is string {
+ if(typeof value!=='string')return false;
+ if(TRAJECTORY_READ.test(value))return true;
+ const suffix='?includePayloads=0';
+ return value.startsWith('/api/trajectories/')&&value.endsWith(suffix)&&TRAJECTORY_READ.test(value.slice(0,-suffix.length));
+}
 function voiceControl(input:any):'health'|'consent'|'mint'|'revoke'|null {
  if(typeof input.path!=='string'||!input.path.startsWith(VOICE_PATH))return null;
  if(typeof input.ownerId!=='string'||!input.ownerId||input.stream||input.storage||input.audioBase64||input.requestId)return null;
@@ -33,23 +41,28 @@ function voiceControl(input:any):'health'|'consent'|'mint'|'revoke'|null {
  if(!value||typeof value!=='object'||Array.isArray(value))return null;
  if(input.path===VOICE_PATH+'/consent'&&Object.keys(value).length===0)return 'consent';
  if(new RegExp('^'+VOICE_PATH+'/[0-9a-f-]{36}/revoke$','i').test(input.path)&&VOICE_UUID.test(input.path.split('/')[5])&&Object.keys(value).length===0)return 'revoke';
- if(input.path===VOICE_PATH&&Object.keys(value).every(key=>['agentId','conversationId','consentNonce','transport'].includes(key))&&VOICE_AGENT_ID.test(value.agentId)&&VOICE_UUID.test(value.conversationId)&&typeof value.consentNonce==='string'&&/^[A-Za-z0-9_-]{43}$/.test(value.consentNonce)&&value.transport==='websocket')return 'mint';
+ if(input.path===VOICE_PATH&&Object.keys(value).every(key=>['agentId','conversationId','consentNonce','transport','predecessorSessionId','turnTerminal'].includes(key))&&VOICE_AGENT_ID.test(value.agentId)&&VOICE_UUID.test(value.conversationId)&&typeof value.consentNonce==='string'&&/^[A-Za-z0-9_-]{43}$/.test(value.consentNonce)&&value.transport==='websocket'&&(!Object.hasOwn(value,'turnTerminal')||value.turnTerminal===true)&&(!Object.hasOwn(value,'predecessorSessionId')||typeof value.predecessorSessionId==='string'&&value.predecessorSessionId.length===36&&VOICE_UUID.test(value.predecessorSessionId)))return 'mint';
  return null;
 }
-function voiceControlResponse(kind:string,input:any,status:number,raw:string,origin:URL,cloudRealtime=false){
+function voiceControlResponse(kind:string,input:any,status:number,raw:string,origin:URL,cloudRealtime=false,selectableProvider=false){
  const value=JSON.parse(raw),now=Date.now(),exact=(keys:string[])=>value&&typeof value==='object'&&!Array.isArray(value)&&Object.keys(value).every(key=>keys.includes(key));
  if(status<200||status>=300){if(!exact(['code'])||typeof value.code!=='string'||!/^[a-z0-9_]{1,100}$/.test(value.code))throw Error('Invalid voice error');return value;}
- if(kind==='health'){if(!exact(['ready','agentId','conversationId','speechRoute','speechProvider','providerAdmission'])||value.ready!==true||!VOICE_AGENT_ID.test(value.agentId)||value.conversationId!==input.path.split('=')[1])throw Error('Invalid voice health');if(cloudRealtime&&(value.speechRoute!=='cloud'||value.speechProvider!=='cartesia'||value.providerAdmission!=='at-session-start'))throw Error('Cloud realtime speech was not attested');if(!cloudRealtime&&value.speechRoute!==undefined&&value.speechRoute!=='direct')throw Error('Direct speech route changed');if(value.speechProvider!==undefined&&value.speechProvider!=='cartesia'||value.providerAdmission!==undefined&&value.providerAdmission!=='at-session-start')throw Error('Invalid voice provider attestation');}
+ if(kind==='health'){if(!exact(['ready','agentId','conversationId','speechRoute','speechProvider','providerAdmission','turnTerminal'])||(Object.hasOwn(value,'turnTerminal')&&value.turnTerminal!==true)||value.ready!==true||!VOICE_AGENT_ID.test(value.agentId)||value.conversationId!==input.path.split('=')[1])throw Error('Invalid voice health');if(selectableProvider&&!['direct','cloud'].includes(value.speechRoute))throw Error('Invalid selected speech route');if(!selectableProvider&&cloudRealtime&&(value.speechRoute!=='cloud'||value.speechProvider!=='cartesia'||value.providerAdmission!=='at-session-start'))throw Error('Cloud realtime speech was not attested');if(!selectableProvider&&!cloudRealtime&&value.speechRoute!==undefined&&value.speechRoute!=='direct')throw Error('Direct speech route changed');if(value.speechProvider!==undefined&&value.speechProvider!=='cartesia'||value.providerAdmission!==undefined&&value.providerAdmission!=='at-session-start')throw Error('Invalid voice provider attestation');}
  else if(kind==='consent'){if(!exact(['consentNonce','expiresAt'])||typeof value.consentNonce!=='string'||!/^[A-Za-z0-9_-]{43}$/.test(value.consentNonce))throw Error('Invalid voice consent');}
  else if(kind==='revoke'){if(!exact(['revoked'])||value.revoked!==true)throw Error('Invalid voice revocation');}
  else{
-  if(!exact(['sessionId','token','expiresAt','wsUrl','uplink','downlink','iceServers'])||!VOICE_UUID.test(value.sessionId)||typeof value.token!=='string'||!/^[A-Za-z0-9_-]{43}$/.test(value.token)||value.iceServers!==null||JSON.stringify(value.uplink)!=='{"codecs":["pcm16"]}'||JSON.stringify(value.downlink)!=='{"codecs":["pcm16"]}')throw Error('Invalid voice mint');
+  if(!exact(['sessionId','token','expiresAt','wsUrl','uplink','downlink','iceServers','stopIntentVersion','stopIntentGeneration','rotationPreparation','turnTerminal'])||(Object.hasOwn(value,'turnTerminal')&&value.turnTerminal!==true)||(JSON.parse(input.body).turnTerminal===true&&value.turnTerminal!==true)||!VOICE_UUID.test(value.sessionId)||typeof value.token!=='string'||!/^[A-Za-z0-9_-]{43}$/.test(value.token)||value.iceServers!==null||JSON.stringify(value.uplink)!=='{"codecs":["pcm16"]}'||JSON.stringify(value.downlink)!=='{"codecs":["pcm16"]}')throw Error('Invalid voice mint');
+  const hasVersion=Object.hasOwn(value,'stopIntentVersion'),hasGeneration=Object.hasOwn(value,'stopIntentGeneration'),hasRotation=Object.hasOwn(value,'rotationPreparation');
+  // Preserve the legacy shape; newer stop authority is an exact paired attestation bound to this minted session.
+  if(hasVersion!==hasGeneration||hasVersion&&(value.stopIntentVersion!==1||typeof value.stopIntentGeneration!=='string'||value.stopIntentGeneration.length!==36||!VOICE_UUID.test(value.stopIntentGeneration)||value.stopIntentGeneration!==value.sessionId)||hasRotation&&(!hasVersion||value.rotationPreparation!=='retire-before-open-v1'||!cloudRealtime&&!selectableProvider))throw Error('Invalid voice stop or renewal attestation');
   const ws=new URL(value.wsUrl);if(ws.protocol!=='ws:'||ws.host!==origin.host||ws.username||ws.password||ws.hash||ws.pathname!==VOICE_PATH+'/ws'||ws.search!==`?sessionId=${value.sessionId}`)throw Error('Invalid voice socket destination');
  }
  if(kind==='mint'||kind==='consent')if(!Number.isFinite(value.expiresAt)||value.expiresAt<=now||value.expiresAt>now+125000)throw Error('Invalid voice expiry');
  return value;
 }
 export function localAgentPathAllowed(path:unknown):path is string {
+  const group=ownerRouteGroup(path);
+  if(group)return ['GET','POST','PUT','PATCH','DELETE'].some(method=>ownerRouteAllowed(group,path,method));
   if(typeof path!=='string'||path.length>2048||/[\\#%\r\n]/.test(path)||path.includes('..'))return false;
   if(/^\/api\/conversations\/[A-Za-z0-9_-]+\/messages\?/.test(path)){
     const query=new URL(path,'http://localhost').searchParams,keys=[...query.keys()];
@@ -57,15 +70,13 @@ export function localAgentPathAllowed(path:unknown):path is string {
     const before=query.get('before'),id=query.get('beforeId'),limit=query.get('limit');
     return (limit===null||/^[1-9][0-9]{0,2}$/.test(limit)&&Number(limit)<=200)&&(before===null&&id===null||before!==null&&/^[0-9]{1,16}$/.test(before)&&Number.isSafeInteger(Number(before))&&id!==null&&VOICE_AGENT_ID.test(id));
   }
-  if(isAutomationsPath(path))return ['GET','POST','PUT','DELETE'].some(method=>automationsRouteAllowed(path,method));
-  if(path===CALENDAR_APPROVAL_READ_PATH)return true;
-  if(TRAJECTORY_READ.test(path))return true;
+  if(trajectoryReadAllowed(path))return true;
   if(path===ASR_PATH||path===ASR_PATH+'/status'||path===TTS_PATH||path===TTS_PATH+'/status')return true;
-  return /^\/api\/(auth\/me|agents|status|conversations(?:\/[A-Za-z0-9_-]+(?:\/messages(?:\/(?:stream|truncate))?)?)?|views\/interact-(claim|result)|client-devices\/[A-Za-z0-9_/-]+|workflow(?:\/[A-Za-z0-9_/?=&-]+)?)$/.test(path);
+  return /^\/api\/(auth\/me|agents|status|cloud\/warm|conversations(?:\/[A-Za-z0-9_-]+(?:\/messages(?:\/(?:stream|truncate))?)?)?|views\/interact-(claim|result)|client-devices\/[A-Za-z0-9_/-]+|workflow(?:\/[A-Za-z0-9_/?=&-]+)?)$/.test(path);
 }
-export function createLocalAgentDevHandler(options:{origin:string;tokenFile:string;request?:typeof fetch;cartesiaEnabled?:boolean;cloudVoiceEnabled?:boolean;cloudRealtimeEnabled?:boolean}) {
+export function createLocalAgentDevHandler(options:{origin:string;tokenFile:string;request?:typeof fetch;cartesiaEnabled?:boolean;cloudVoiceEnabled?:boolean;cloudRealtimeEnabled?:boolean;selectableProvider?:boolean}) {
   if(options.cartesiaEnabled&&options.cloudRealtimeEnabled)throw Error('Direct and Cloud realtime voice cannot both be enabled.');
-  const realtimeEnabled=options.cartesiaEnabled===true||options.cloudRealtimeEnabled===true;
+  const realtimeEnabled=options.cartesiaEnabled===true||options.cloudRealtimeEnabled===true||options.selectableProvider===true;
   const origin=new URL(options.origin);
   if(origin.protocol!=='http:'||origin.hostname!=='127.0.0.1'||origin.pathname!=='/'||origin.search||origin.hash||origin.username||origin.password)
     throw new Error('The development agent must use an explicit 127.0.0.1 HTTP origin.');
@@ -95,7 +106,7 @@ export function createLocalAgentDevHandler(options:{origin:string;tokenFile:stri
   const handler=async(req:IncomingMessage,res:ServerResponse)=>{
     const fail=(status:number,message:string)=>{res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify({error:message}));};
     const host=req.headers.host;
-    if(!host||!/^127\.0\.0\.1:\d+$/.test(host)||req.headers.origin!==`http://${host}`||
+    if(!host||!/^(?:127\.0\.0\.1|localhost):\d+$/.test(host)||req.headers.origin!==`http://${host}`||
        req.headers['x-alpha-local-agent']!=='1'||req.method!=='POST'||req.headers['content-type']!=='application/json'){
       fail(403,'Local development origin required');return;
     }
@@ -105,24 +116,32 @@ export function createLocalAgentDevHandler(options:{origin:string;tokenFile:stri
       const chunks:Buffer[]=[];let size=0;
       for await(const chunk of req){size+=chunk.length;if(size>AUDIO_ENVELOPE_LIMIT){fail(413,'Request too large');return;}chunks.push(Buffer.from(chunk));}
       const input=JSON.parse(Buffer.concat(chunks).toString('utf8'));
-      const renderer=input.path==='/api/views/voice-channel';
-      if(renderer&&(!realtimeEnabled||input.method!=='POST'||typeof input.ownerId!=='string'||typeof input.body!=='string'||Object.keys(input.headers??{}).some(key=>!['accept','content-type','x-eliza-device-id','x-eliza-device-key','x-eliza-device-capabilities'].includes(key.toLowerCase()))||input.stream||input.storage||input.audioBase64||input.requestId)){fail(400,'Invalid renderer channel request');return;}
+      const conversationRenderer=input.path==='/api/views/renderer-channel';
+      const renderer=conversationRenderer||input.path==='/api/views/voice-channel';
+      if(renderer&&((!conversationRenderer&&!realtimeEnabled)||input.method!=='POST'||typeof input.ownerId!=='string'||typeof input.body!=='string'||Object.keys(input.headers??{}).some(key=>!['accept','content-type','x-eliza-device-id','x-eliza-device-key','x-eliza-device-capabilities'].includes(key.toLowerCase()))||input.stream||input.storage||input.audioBase64||input.requestId)){fail(400,'Invalid renderer channel request');return;}
       let rendererId:string|undefined;if(renderer){const body=JSON.parse(input.body);if(!body||Object.keys(body).length!==1||!VOICE_UUID.test(body.clientId)){fail(400,'Invalid renderer identity');return;}rendererId=body.clientId;}
-      const directTts=input.path===VOICE_PATH+'/read-aloud',voicePath=typeof input.path==='string'&&input.path.startsWith(VOICE_PATH)&&!directTts,voice=voicePath&&realtimeEnabled?voiceControl(input):null;
+      const directAsr=input.path===VOICE_PATH+'/transcribe',directTts=input.path===VOICE_PATH+'/read-aloud',voicePath=typeof input.path==='string'&&input.path.startsWith(VOICE_PATH)&&!directTts&&!directAsr,voice=voicePath&&realtimeEnabled?voiceControl(input):null;
       if(voicePath&&!voice){fail(400,'Unsupported development voice request');return;}
-      if(directTts&&options.cartesiaEnabled!==true){fail(400,'Developer direct speech is disabled');return;}
+      if((directTts||directAsr)&&options.cartesiaEnabled!==true&&options.selectableProvider!==true){fail(400,'Developer direct speech is disabled');return;}
       const cloudAsr=input.path==='/api/asr/cloud',cloudTts=input.path==='/api/tts/cloud',cloudSpeech=cloudAsr||cloudTts;
       if(cloudSpeech&&options.cloudVoiceEnabled!==true){fail(400,'Developer Cloud speech is disabled');return;}
-      const asr=cloudAsr||input.path===ASR_PATH||input.path===ASR_PATH+'/status',tts=directTts||cloudTts||input.path===TTS_PATH||input.path===TTS_PATH+'/status';
+      const asr=directAsr||cloudAsr||input.path===ASR_PATH||input.path===ASR_PATH+'/status',tts=directTts||cloudTts||input.path===TTS_PATH||input.path===TTS_PATH+'/status';
       const speech=asr||tts,ttsAudio=(directTts||cloudTts||input.path===TTS_PATH)&&input.method==='POST';
-      if(size>LIMIT&&!((cloudAsr||input.path===ASR_PATH)&&input.method==='POST')){fail(413,'Request too large');return;}
+      if(size>LIMIT&&!((directAsr||cloudAsr||input.path===ASR_PATH)&&input.method==='POST')){fail(413,'Request too large');return;}
       if(input.storage){const result=localAgentStorage(join(dirname(options.tokenFile),'browser-device'),input.storage);res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(result));return;}
-      if((!renderer&&!voice&&!cloudSpeech&&!directTts&&!localAgentPathAllowed(input.path))||(isAutomationsPath(input.path)?!automationsRouteAllowed(input.path,input.method)||typeof input.ownerId!=='string'||!input.ownerId.trim():!['GET','POST'].includes(input.method))||
-         (input.path===CALENDAR_APPROVAL_READ_PATH&&(input.method!=='GET'||typeof input.ownerId!=='string'||!input.ownerId.trim()))||
-         (TRAJECTORY_READ.test(input.path)&&(input.method!=='GET'||typeof input.ownerId!=='string'||!input.ownerId.trim()))||
+      let preparedNavigation=false;
+      if(typeof input.body==='string'){
+        try{preparedNavigation=isPreparedViewNavigationRequest(input.path,JSON.parse(input.body),input.method);}catch{/* Malformed preparation stays outside the route allowlist. */}
+      }
+      const group=ownerRouteGroup(input.path);
+      if((!renderer&&!voice&&!cloudSpeech&&!directTts&&!directAsr&&!localAgentPathAllowed(input.path)&&!preparedNavigation)||(group?!ownerRouteAllowed(group,input.path,input.method)||typeof input.ownerId!=='string'||!input.ownerId.trim():!['GET','POST'].includes(input.method))||
+         (trajectoryReadAllowed(input.path)&&(input.method!=='GET'||typeof input.ownerId!=='string'||!input.ownerId.trim()))||
          ((input.path.startsWith('/api/views/')||input.path.endsWith('/messages/truncate'))&&(input.method!=='POST'||typeof input.ownerId!=='string'||!input.ownerId.trim()))||
          (input.body!==undefined&&typeof input.body!=='string')||
          (['GET','DELETE'].includes(input.method)&&input.body!==undefined)) {fail(400,'Unsupported local request');return;}
+      const routingHeaders=Object.entries(input.headers??{}).filter(([name])=>name.toLowerCase()==='x-elizaos-client-id');
+      const routedClient=routingHeaders.length===1?parseViewInteractionClientId(routingHeaders[0][1]):undefined;
+      if(routingHeaders.length&&(routingHeaders.length!==1||!routedClient||input.method!=='POST'||!/^\/api\/conversations\/[^/?#]+\/messages(?:\/stream)?$/.test(input.path))){fail(400,'Invalid conversation renderer header');return;}
       let audio:Buffer|undefined;
       if(asr){
         if(typeof input.ownerId!=='string'||!input.ownerId||input.storage||input.stream||input.body!==undefined){fail(400,'Invalid speech request');return;}
@@ -161,11 +180,15 @@ export function createLocalAgentDevHandler(options:{origin:string;tokenFile:stri
       for(const key of ['X-Eliza-Device-Id','X-Eliza-Device-Key','X-Eliza-Device-Capabilities']){
         const value=input.headers?.[key];if(value!==undefined){if(typeof value!=='string'||value.length>2048||/[\r\n]/.test(value))throw new Error('Invalid device header');headers[key]=value;}
       }
+      if(routedClient)headers['X-ElizaOS-Client-Id']=routedClient;
       if(cloudAsr)headers['X-Eliza-STT-Provider']='cartesia';
       if(audio){headers['Content-Type']='audio/wav';headers['X-Request-Id']=input.requestId;}
       if(ttsAudio){headers['X-Request-Id']=input.requestId;headers.Accept=cloudTts?'audio/mpeg':'audio/wav';}
-      const result=await request(origin.origin+input.path,{method:input.method,headers,body:audio??input.body,redirect:'error',
-        signal:AbortSignal.any([abort.signal,AbortSignal.timeout(voice?10000:120000)])});
+      // Ends the upstream request when the page goes away or the deadline passes. A streamed body
+      // stays under it until its last chunk is sent.
+      const upstream=AbortSignal.any([abort.signal,AbortSignal.timeout(voice?10000:120000)]);
+      const result=await request(origin.origin+input.path,{method:input.method,headers,body:audio??input.body,redirect:'error',signal:upstream});
+      if(directAsr&&!result.ok){await result.body?.cancel();res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify({status:result.status,body:JSON.stringify({code:'direct_transcription_unavailable'})}));return;}
       if(cloudSpeech&&!result.ok){await result.body?.cancel();res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify({status:result.status,body:JSON.stringify({code:'cloud_voice_unavailable'})}));return;}
       if(cloudSpeech&&(result.headers.get('x-eliza-speech-provider')!=='cartesia'||result.headers.get('x-eliza-speech-route')!=='cloud'||(cloudTts&&result.headers.get('content-type')?.split(';')[0]!=='audio/mpeg'))){await result.body?.cancel();fail(502,'Cloud speech provider was not verified');return;}
       if(directTts&&result.ok&&(result.headers.get('x-eliza-speech-provider')!=='cartesia'||result.headers.get('x-eliza-speech-route')!=='direct')){await result.body?.cancel();fail(502,'Direct speech provider was not verified');return;}
@@ -176,29 +199,59 @@ export function createLocalAgentDevHandler(options:{origin:string;tokenFile:stri
           await result.body?.cancel();fail(result.ok?502:result.status,'Local agent stream unavailable. No automatic retry was made.');return;
         }
         res.writeHead(200,{'Content-Type':'text/event-stream','Cache-Control':'no-store, no-transform','X-Content-Type-Options':'nosniff'});res.flushHeaders();
+        // The request deadline covers idle reads and drain waits on a page that stops reading, and cancels the upstream.
+        // A failure after the headers destroys the response (outer catch), so the page never sees a cleanly ended stream.
+        // A listener misses an earlier abort (a request that resolved late), so the signal is checked before the first read.
         const reader=result.body.getReader();let received=0;
-        try{while(true){const part=await reader.read();if(part.done)break;received+=part.value.byteLength;if(received>LIMIT)throw Error('Stream too large');if(!res.write(part.value))await once(res,'drain',{signal:abort.signal});}}
-        finally{await reader.cancel().catch(()=>{});}
+        const cancel=()=>{void reader.cancel(upstream.reason).catch(()=>{});};upstream.addEventListener('abort',cancel,{once:true});
+        try{upstream.throwIfAborted();while(true){const part=await reader.read();upstream.throwIfAborted();if(part.done)break;received+=part.value.byteLength;if(received>LIMIT)throw Error('Stream too large');if(!res.write(part.value))await once(res,'drain',{signal:upstream});}}
+        finally{upstream.removeEventListener('abort',cancel);await reader.cancel(upstream.reason).catch(()=>{});}
         if(!abort.signal.aborted)res.end();return;
       }
+      const owned=()=>readFileSync(options.tokenFile,'utf8').trim()===token&&credential.expiresAt>Date.now();
+      const timings=cloudSpeech?[...(result.headers.get('server-timing')||'').slice(0,4096).matchAll(/(?:^|,)\s*([A-Za-z][A-Za-z0-9_-]{0,80});dur=([0-9]+(?:\.[0-9]+)?)/g)].slice(0,32).map(match=>({name:match[1],durationMs:Number(match[2])})).filter(value=>Number.isFinite(value.durationMs)):[];
+      if(cloudTts){
+        // Cloud read-aloud streams as binary audio/mpeg so the page can play the first frames while the
+        // rest arrives. Every chunk passes the owner check before it is sent. Headers go out with the
+        // first chunk, so an empty or re-owned clip still gets its JSON failure. A failure after that
+        // destroys the response (outer catch): the page sees a truncated clip, never a cleanly ended one.
+        // The deadline covers idle reads and drain waits on a page that stops reading, and cancels the upstream.
+        // A listener misses an earlier abort (a request that resolved late), so the signal is checked before the first read.
+        const reader=result.body?.getReader(),moderation=result.headers.get('x-eliza-tts-moderation');let received=0,committed=false;
+        const cancel=()=>{void reader?.cancel(upstream.reason).catch(()=>{});};upstream.addEventListener('abort',cancel,{once:true});
+        try{
+          upstream.throwIfAborted();
+          while(reader){
+            const part=await reader.read();upstream.throwIfAborted();if(part.done)break;if(!part.value.byteLength)continue;
+            received+=part.value.byteLength;if(received>8*1024*1024)throw Error('Response too large');
+            if(!owned()){if(committed)throw Error('Cloud voice owner changed');fail(409,'Cloud voice owner changed');return;}
+            if(!committed){committed=true;res.writeHead(200,{'Content-Type':'audio/mpeg','Cache-Control':'no-store, no-transform','X-Content-Type-Options':'nosniff','X-Request-Id':input.requestId,'X-Eliza-Speech-Provider':'cartesia','X-Eliza-Speech-Route':'cloud',
+              ...(timings.length?{'Server-Timing':timings.map(value=>`${value.name};dur=${value.durationMs}`).join(', ')}:{}),...(moderation==='reviewed'||moderation==='approved-hit'?{'X-Eliza-TTS-Moderation':moderation}:{})});}
+            if(!res.write(part.value))await once(res,'drain',{signal:upstream});
+          }
+        }finally{upstream.removeEventListener('abort',cancel);await reader?.cancel(upstream.reason).catch(()=>{});}
+        if(abort.signal.aborted)return;
+        if(!committed){if(!owned())fail(409,'Cloud voice owner changed');else fail(502,'Empty Cloud speech audio');return;}
+        res.end();return;
+      }
       const reader=result.body?.getReader();let received=0;const output:Uint8Array[]=[];
-      if(reader)try{while(true){const item=await reader.read();if(item.done)break;received+=item.value.length;if(received>(voice?16*1024:(cloudTts||directTts)&&result.ok?8*1024*1024:ttsAudio&&result.ok?1440044:speech?128*1024:LIMIT))throw new Error('Response too large');output.push(item.value);}}finally{await reader.cancel();}
+      if(reader)try{while(true){const item=await reader.read();if(item.done)break;received+=item.value.length;if(received>(voice?16*1024:directTts&&result.ok?8*1024*1024:ttsAudio&&result.ok?1440044:speech?128*1024:LIMIT))throw new Error('Response too large');output.push(item.value);}}finally{await reader.cancel();}
       if(abort.signal.aborted)return;
       const bytes=Buffer.concat(output);
-      if((cloudSpeech||directTts)&&(readFileSync(options.tokenFile,'utf8').trim()!==token||credential.expiresAt<=Date.now())){fail(409,'Cloud voice owner changed');return;}
-      if(cloudTts&&!bytes.length){fail(502,'Empty Cloud speech audio');return;}
-      if(ttsAudio&&!cloudTts&&result.ok&&(bytes.length<44||bytes.toString('ascii',0,4)!=='RIFF'||bytes.toString('ascii',8,12)!=='WAVE'||bytes.readUInt32LE(4)+8!==bytes.length)){fail(502,'Invalid local speech audio');return;}
-      let body=ttsAudio&&result.ok?JSON.stringify({audioBase64:bytes.toString('base64'),requestId:input.requestId,provider:cloudTts||directTts?'cartesia':'libelizainference-paradee',...(cloudTts?{route:'cloud'}:directTts?{route:'direct'}:{}),contentType:cloudTts?'audio/mpeg':'audio/wav'}):bytes.toString('utf8');
-      if(cloudAsr){const transcript=JSON.parse(body);if(typeof transcript.text!=='string'||transcript.text.length>16000){fail(502,'Invalid Cloud transcript');return;}body=JSON.stringify({text:transcript.text,provider:'cartesia',route:'cloud',requestId:input.requestId});}
+      if((cloudSpeech||directTts||directAsr)&&!owned()){fail(409,'Cloud voice owner changed');return;}
+      if(ttsAudio&&result.ok&&(bytes.length<44||bytes.toString('ascii',0,4)!=='RIFF'||bytes.toString('ascii',8,12)!=='WAVE'||bytes.readUInt32LE(4)+8!==bytes.length)){fail(502,'Invalid local speech audio');return;}
+      let body=ttsAudio&&result.ok?JSON.stringify({audioBase64:bytes.toString('base64'),requestId:input.requestId,provider:directTts?'cartesia':'libelizainference-paradee',...(directTts?{route:'direct'}:{}),contentType:'audio/wav'}):bytes.toString('utf8');
+      if(directAsr&&result.ok&&(result.headers.get('x-eliza-stt-provider')!=='cartesia'||result.headers.get('x-eliza-speech-route')!=='direct'||result.headers.get('x-request-id')!==input.requestId))throw Error('Direct transcription provider was not verified');
+      if(directAsr||cloudAsr){const transcript=JSON.parse(body);if(typeof transcript.text!=='string'||transcript.text.length>16000){fail(502,'Invalid Cloud transcript');return;}body=JSON.stringify({text:transcript.text,provider:'cartesia',route:directAsr?'direct':'cloud',requestId:input.requestId});}
       // The upstream machine session ID is its bearer token. Keep it on the host.
-      if(voice){try{if(readFileSync(options.tokenFile,'utf8').trim()!==token||credential.expiresAt<=Date.now())throw Error('Voice owner changed');const projected=voiceControlResponse(voice,input,result.status,body,origin,options.cloudRealtimeEnabled===true);
+      if(voice){try{if(readFileSync(options.tokenFile,'utf8').trim()!==token||credential.expiresAt<=Date.now())throw Error('Voice owner changed');const projected=voiceControlResponse(voice,input,result.status,body,origin,options.cloudRealtimeEnabled===true,options.selectableProvider===true);
         if(result.ok&&voice==='mint'){for(const [id,ticket]of tickets)if(ticket.expiresAt<=Date.now()){ticket.close?.();tickets.delete(id);}if(tickets.size>=32)throw Error('Voice capacity reached');tickets.set(projected.sessionId,{root:token,ownerId:credential.ownerId,expiresAt:projected.expiresAt,claimed:false});projected.wsUrl=`ws://${host}${LOCAL_VOICE_WS_PATH}?sessionId=${projected.sessionId}`;}
         if(result.ok&&voice==='revoke'){const id=input.path.split('/')[5];tickets.get(id)?.close?.();tickets.delete(id);}
         body=JSON.stringify(projected);}catch{if(result.status===401)pairing=undefined;throw Error('Invalid development voice response');}}
       if(input.path==='/api/auth/me'&&result.status===200){const who=JSON.parse(body);if(who.session)who.session.id='host-owned-session';body=JSON.stringify(who);}
       if(result.status===401)pairing=undefined; // Never replay the failed request.
       res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});
-      const timings=cloudSpeech?[...(result.headers.get('server-timing')||'').slice(0,4096).matchAll(/(?:^|,)\s*([A-Za-z][A-Za-z0-9_-]{0,80});dur=([0-9]+(?:\.[0-9]+)?)/g)].slice(0,32).map(match=>({name:match[1],durationMs:Number(match[2])})).filter(value=>Number.isFinite(value.durationMs)):[];const moderation=cloudTts?result.headers.get('x-eliza-tts-moderation'):null;const moderationCache=moderation==='reviewed'||moderation==='approved-hit'?moderation:undefined;res.end(JSON.stringify({status:result.status,body,...(timings.length?{timings}:{}),...(moderationCache?{moderationCache}:{})}));
+      res.end(JSON.stringify({status:result.status,body,...(timings.length?{timings}:{})}));
     }catch{if(!abort.signal.aborted){if(!res.headersSent)fail(503,'Local runtime unavailable. Check the private host log.');else res.destroy();}}
     finally{res.off('close',onClose);}
   };
@@ -207,7 +260,7 @@ export function createLocalAgentDevHandler(options:{origin:string;tokenFile:stri
     const reject=()=>{socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');};
     try{
       const host=req.headers.host,url=new URL(req.url,'http://localhost'),id=url.searchParams.get('sessionId'),ticket=id?tickets.get(id):undefined;
-      if(!realtimeEnabled||!host||!/^127\.0\.0\.1:\d+$/.test(host)||req.headers.origin!==`http://${host}`||req.method!=='GET'||url.pathname!==(ticket?.clientId?LOCAL_RENDERER_WS_PATH:LOCAL_VOICE_WS_PATH)||url.search!==`?sessionId=${id}`||!id||!VOICE_UUID.test(id)||!ticket||ticket.claimed||ticket.expiresAt<=Date.now()||req.headers.upgrade?.toLowerCase()!=='websocket'||req.headers['sec-websocket-version']!=='13'||typeof req.headers['sec-websocket-key']!=='string'||!/^[A-Za-z0-9+/]{22}==$/.test(req.headers['sec-websocket-key'])){reject();return true;}
+      if((!realtimeEnabled&&!ticket?.clientId)||!host||!/^(?:127\.0\.0\.1|localhost):\d+$/.test(host)||req.headers.origin!==`http://${host}`||req.method!=='GET'||url.pathname!==(ticket?.clientId?LOCAL_RENDERER_WS_PATH:LOCAL_VOICE_WS_PATH)||url.search!==`?sessionId=${id}`||!id||!VOICE_UUID.test(id)||!ticket||ticket.claimed||ticket.expiresAt<=Date.now()||req.headers.upgrade?.toLowerCase()!=='websocket'||req.headers['sec-websocket-version']!=='13'||typeof req.headers['sec-websocket-key']!=='string'||!/^[A-Za-z0-9+/]{22}==$/.test(req.headers['sec-websocket-key'])){reject();return true;}
       const stat=statSync(options.tokenFile);if(!stat.isFile()||(stat.mode&0o077)!==0)throw Error('Private runtime credential required');
       const currentRoot=readFileSync(options.tokenFile,'utf8').trim();for(const [key,entry]of tickets)if(entry.root!==currentRoot||entry.expiresAt<=Date.now()){entry.close?.();tickets.delete(key);}
       const credential=await session(currentRoot);
@@ -236,11 +289,21 @@ export function localAgentDevBridge():Plugin {
     if(process.env.VITE_LOCAL_AGENT!=='1')return;
     const tokenFile=process.env.ALPHA_LOCAL_AGENT_TOKEN_FILE;
     if(!tokenFile)throw new Error('ALPHA_LOCAL_AGENT_TOKEN_FILE is required for browser agent development.');
-    const handler=createLocalAgentDevHandler({origin:process.env.ALPHA_LOCAL_AGENT_ORIGIN||'http://127.0.0.1:47839',tokenFile,cartesiaEnabled:process.env.ALPHA_DEV_CARTESIA==='1',cloudVoiceEnabled:process.env.ALPHA_DEV_CLOUD_VOICE==='1',cloudRealtimeEnabled:process.env.ALPHA_DEV_CLOUD_REALTIME_VOICE==='1'});
+    const handler=createLocalAgentDevHandler({origin:process.env.ALPHA_LOCAL_AGENT_ORIGIN||'http://127.0.0.1:47839',tokenFile,cartesiaEnabled:process.env.ALPHA_DEV_CARTESIA==='1',cloudVoiceEnabled:process.env.ALPHA_DEV_CLOUD_VOICE==='1',cloudRealtimeEnabled:process.env.ALPHA_DEV_CLOUD_REALTIME_VOICE==='1',selectableProvider:process.env.VITE_ALPHA_CLOUD_RESIDENT==='1'});
     const upgrade=(req:IncomingMessage,socket:Duplex,head:Buffer)=>{if(req.url?.startsWith(LOCAL_VOICE_WS_PATH)||req.url?.startsWith(LOCAL_RENDERER_WS_PATH))void handler.upgrade(req,socket,head);};
     server.httpServer?.on('upgrade',upgrade);server.httpServer?.once('close',()=>{server.httpServer?.off('upgrade',upgrade);handler.closeVoice();});
     server.middlewares.use((req,res,next)=>{if(req.url!==LOCAL_AGENT_BRIDGE_PATH){next();return;}void handler(req,res);});
-    const gmail=createGmailAgentDevBroker({profile:process.env.ALPHA_BROWSER_CLOUD_PROFILE||join(homedir(),'.local/share/alphaphone/browser-cloud'),tokenFile});
+    // The owner's Settings switches (apps/app/src/runtime/google-agent-access.ts). Same-origin renderer only;
+    // a restart starts from the product default (on) until the renderer republishes on load.
+    let googleAccess={gmailChanges:true,calendarEdits:true};
+    server.middlewares.use('/__alpha-agent-google-access',(req,res)=>{
+      const host=req.headers.host||'';
+      if(req.method!=='POST'||!/^(?:127\.0\.0\.1|localhost):\d+$/.test(host)||req.headers.origin!==`http://${host}`){res.writeHead(403).end();return;}
+      let body='';req.setEncoding('utf8');
+      req.on('data',chunk=>{body+=chunk;if(body.length>256)req.destroy();});
+      req.on('end',()=>{try{const value=JSON.parse(body);if(Object.keys(value).sort().join()!=='calendarEdits,gmailChanges'||typeof value.gmailChanges!=='boolean'||typeof value.calendarEdits!=='boolean')throw Error('invalid');googleAccess={gmailChanges:value.gmailChanges,calendarEdits:value.calendarEdits};res.writeHead(204).end();}catch{res.writeHead(400).end();}});
+    });
+    const gmail=createGmailAgentDevBroker({profile:process.env.ALPHA_BROWSER_CLOUD_PROFILE||join(homedir(),'.local/share/alphaphone/browser-cloud'),tokenFile,access:()=>googleAccess});
     server.middlewares.use('/__alpha-owner-gmail',(req,res)=>{void gmail(req,res);});
   }};
 }

@@ -6,8 +6,15 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
-import { archiveWebPayload, readBuildFlags } from "../scripts/apk.mjs";
+import { archiveWebPayload, readBuildFlags, verifyOwnerRouteTable } from "../scripts/apk.mjs";
 const root = path.resolve(import.meta.dirname, "..");
+test("Cloud QA evidence requires one explicit Cloud profile before any APK work", () => {
+  for (const args of [["--cloud-voice-evidence=missing.json"], ["--runtime-profile=cloud", "--cloud-voice-evidence=a.json", "--cloud-voice-evidence=b.json"]]) {
+    const result=spawnSync(process.execPath,["scripts/verify-apks.mjs",...args],{cwd:root,encoding:"utf8"});
+    assert.notEqual(result.status,0);
+    assert.match(result.stderr,/Cloud voice evidence requires one explicit Cloud profile/);
+  }
+});
 /** Copy the committed AOSP product files into `dir` with every unset value filled, so production staging passes its lock check. */
 function completeAospLock(dir) {
   const read = rel => JSON.parse(fs.readFileSync(path.join(root, rel), "utf8"));
@@ -16,9 +23,7 @@ function completeAospLock(dir) {
   write("android/aosp/product.json", { ...product, hostPackages: product.hostPackages.map(pkg => ({ ...pkg, version: "1.0.0", sha256: "e".repeat(64) })),
     signer: { ...product.signer, platformCertificateSha256: "c".repeat(64) } });
   write(product.brandConfig, read(product.brandConfig));
-  const lock = read(product.sourceLock.file);
-  Object.assign(lock.profiles.cuttlefish.manifest, { tag: "android-17.0.0_r1", tagObject: "a".repeat(40), commit: "b".repeat(40) });
-  write(product.sourceLock.file, lock);
+  write(product.sourceLock.file, read(product.sourceLock.file));
   write("android/release-signer.json", { ...read("android/release-signer.json"), signerSha256: "d".repeat(64) });
 }
 function zip(file, entries) {
@@ -158,6 +163,20 @@ test("AOSP staging refuses --production without a descriptor, with --development
   }
 });
 
+test("APK verification requires the packaged owner route table to be config/owner-routes.json byte for byte", t => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "alpha-owner-routes-apk-"));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const table = fs.readFileSync(path.join(root, "config/owner-routes.json"), "utf8"), apk = path.join(dir, "app.apk");
+  zip(apk, { "classes.dex": "app", "assets/owner-routes.json": table });
+  verifyOwnerRouteTable(apk);
+  zip(apk, { "classes.dex": "app" });
+  assert.throws(() => verifyOwnerRouteTable(apk), /assets\/owner-routes\.json is missing/);
+  for (const other of [table + "\n", table.replace("/api/approvals?", "/api/approvals/x?"), ""]) {
+    zip(apk, { "assets/owner-routes.json": other });
+    assert.throws(() => verifyOwnerRouteTable(apk), /assets\/owner-routes\.json differs from config\/owner-routes\.json/);
+  }
+});
+
 for (const testMocks of [false, true]) test(`archive retains actual APK web bytes with testMocks=${testMocks}`, t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-archive-web-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
@@ -185,6 +204,8 @@ for (const mode of ['native', 'test-mocks', 'cloud', 'wrong-cloud-profile']) tes
   for (const name of ['scripts', 'bin']) fs.mkdirSync(path.join(dir, name));
   fs.symlinkSync(path.join(root, 'scripts/audit-production-bundle.mjs'), path.join(dir, 'scripts/audit-production-bundle.mjs'));
   fs.writeFileSync(path.join(dir, 'scripts/stage-local-agent-sources.mjs'), '');
+  // The generated Gradle host is written before the source snapshot; the stub stands in for it.
+  fs.writeFileSync(path.join(dir, 'scripts/android-host.mjs'), '');
   fs.writeFileSync(path.join(dir, 'scripts/source-snapshot.mjs'), 'console.log(JSON.stringify({digest:"synthetic-stable-source"}));');
   fs.writeFileSync(path.join(dir, 'bin/npm'), `#!/usr/bin/env node
 import fs from 'node:fs';

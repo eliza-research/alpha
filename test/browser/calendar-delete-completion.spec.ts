@@ -1,8 +1,9 @@
+import {openBrowserCalendar} from './helpers/browser-calendar';
 import { returnToApps } from './app-navigation';
 import {test,expect} from '@playwright/test';
 for(const next of ['event','home','new-draft'] as const)test(`late Calendar deletion preserves newer ${next}`,async({page})=>{
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
- await page.clock.install();await page.goto('/?mode=dev');await page.getByRole('button',{name:'Calendar',exact:true}).click();
+ await page.clock.install();await page.goto('/?mode=dev');await openBrowserCalendar(page);
  for(const title of ['Keep event B','Delete event A']){
   await page.getByRole('button',{name:'New event',exact:true}).click();
   await page.getByRole('textbox',{name:'Title',exact:true}).fill(title);

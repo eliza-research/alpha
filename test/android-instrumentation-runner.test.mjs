@@ -591,7 +591,7 @@ test("round-9 journeys and links: J01, J05, the note link and the Maps return ar
     assert.ok(gateRead(sourceOf(name), gate, "1"), `${name} reads ${gate}`);
     assert.ok(!DEFAULT_CLASSES.includes(name), `${name} is not a default class`);
   }
-  // Maps gained a runner entry, so it is no longer listed as unreachable.
+  // Maps has a runner entry, so it is not listed as unreachable.
   assert.ok(!Object.hasOwn(NOT_RUN_BY_A_RUNNER, "Maps"));
   assert.equal(parseInstrumentationArgs(["--classes", "Maps"]).classes[0], C("Maps"));
   // J05 composes the flag-off journey: a test-mocks build is refused.

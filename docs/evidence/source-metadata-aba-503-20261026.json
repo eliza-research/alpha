@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "date": "2026-10-26",
+  "baseProduct": "aba0804c95de399cd815cb63c541e5197a757a57",
+  "SDK": "50394d04d5f9714b98c7bdce48a720bee1f70099",
+  "previousSDK": "f3c38ace5d2de647b5bff6ed9b783bf97d80d60c",
+  "preservation": {
+    "upstream.lock.json": "Only commit changed",
+    "patches/eliza/native-manifest.json": "Only baseCommit changed",
+    "android/voice-host/qualified-voice-host.json": "Only pin changed",
+    "docs/dependency-audit.snapshot.json": "Only resident.upstreamCommit changed",
+    "docs/dependency-audit.dispositions.json": "Only resident.upstreamCommit changed",
+    "docs/requirements.json": "Only note changed",
+    "docs/mvp-remaining-work-2026-10-09.json": "Only upstream_pin changed",
+    "apps/app/public/licenses/third-party-notices.json": "Generated source pin only",
+    "apps/app/public/licenses/THIRD_PARTY_NOTICES.txt": "Generated source pin only"
+  },
+  "dependencyInputIdentity": {
+    "parent": "f3c38ace5d2de647b5bff6ed9b783bf97d80d60c",
+    "SDK": "50394d04d5f9714b98c7bdce48a720bee1f70099",
+    "rawLockBytesIdentical": true,
+    "rawLockSHA256": "c88cc7693c852e49ec1a2aebfba619d9a76cf038c26c5d0c19fa2994b9f4f762",
+    "changedFiles": [
+      "packages/agent/src/runtime/view-navigation-targets.ts",
+      "packages/agent/src/runtime/view-navigation.ts",
+      "packages/agent/test/view-navigation-alias.test.ts",
+      "packages/agent/test/view-navigation-routing.test.ts",
+      "plugins/plugin-openai/__tests__/cerebras-root-union-validation.test.ts",
+      "plugins/plugin-openai/__tests__/cerebras-root-union.wire.test.ts",
+      "plugins/plugin-openai/__tests__/qwen-response-schema.wire.test.ts",
+      "plugins/plugin-openai/models/text.ts",
+      "plugins/plugin-personal-assistant/src/actions/lib/task-create-plan-parameter.ts"
+    ],
+    "nativeAndVoiceSourceInputsIdentical": true,
+    "normalizedInputIdentical": true,
+    "normalizedInputSHA256": "6db6e88363397fd2c73a561ea1f3a071dfc11b31378cbe0c193163ea1ecf70ff",
+    "packageVersions": 3694
+  },
+  "allAuditDatesExceptionsAndDeadlinesRetained": true,
+  "consumerTests": {
+    "pass": 48,
+    "fail": 0,
+    "skip": 0,
+    "offlineAudit": "PASS",
+    "notices": "PASS"
+  },
+  "sharedLifeTypes": "Previous boundedfullgraph limitation remains; not resolved by consumerchecks",
+  "authAndTypedNotificationPreserved": true,
+  "liveActions": false
+}

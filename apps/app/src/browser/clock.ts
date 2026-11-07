@@ -25,7 +25,10 @@ export class BrowserClock {
  private audio=new BrowserAlertAudio();
  constructor(private daily:BrowserDaily,private notifications:BrowserNotifications){
   window.addEventListener('alpha:clock-open',()=>this.open());window.addEventListener('alpha:alarms-changed',()=>void this.poll());window.addEventListener('alpha:reminders-document-changed',()=>void this.poll());
-  window.addEventListener('pagehide',()=>this.retire());window.addEventListener('alpha:device-state',()=>{this.retire();});document.addEventListener('visibilitychange',()=>{if(document.hidden)this.retire();else void this.poll();});
+  window.addEventListener('pagehide',()=>this.retire());
+  // HOME (AP-15) closes alarm settings left open in the app it leaves; a ringing alarm stays until it is stopped or snoozed.
+  window.addEventListener('launcher-home',()=>{if(!this.ringing)this.dialog?.close();});
+  window.addEventListener('alpha:device-state',()=>{this.retire();});document.addEventListener('visibilitychange',()=>{if(document.hidden)this.retire();else void this.poll();});
   window.addEventListener('storage',event=>{if(event.key==='alpha.browser.reminders.v1')void this.poll();});setInterval(()=>void this.poll(),1000);
  }
  private allowed(){return !document.hidden&&document.documentElement.dataset.devBackground!=='true'&&!(testMocksEnabled&&document.documentElement.dataset.connectionMode==='mock')&&!browserScreenLocked();}

@@ -1,5 +1,78 @@
 # Dependency and artifact supply chain
 
+## Reviewed native Android APK npm closure (2026-10-25)
+
+The exact signed ARM64 APK `d3f1fd7792071e0ac76484e437e9a15cd1aa082e75f236ea8c4e4b8e5bdd5e10`
+was built from product `4fd8228` / SDK `a95cd4d`. Its normalized packaged npm input
+is the same 603 versions as the preserved `77c65e` review, so the dated registry
+result is reused without a query: one moderate UUID finding, no high or critical
+npm finding. Current affected UUID/Zod bodies and Zod 4.6.6 aliases were checked;
+existing exception objects and deadlines remain unchanged. See the
+[exact artifact review](security/resident-artifact-review-d3f1fd7792071e0a-2026-10-25.json).
+
+Bun itself changed from the musl binary to native Android binary `f2970336…`,
+using Android's linker. The npm dispositions do not prove this binary's builtin,
+ELF, FFI/JNI or device security/behavior. External Undici implementation remains
+outside the npm absence conclusion. All earlier artifact records and functional
+qualification states are preserved; no device or full-app result transfers.
+
+
+## Current source-only input rebind (2026-10-26)
+
+SDK `349235fd384f0c0694b8ad9b3f96fec493f33440` at fixed build-source product `19bd44c31b97903212e1b00935c5c715d0a17602` changes shared prepared-navigation reply handling only. The raw Bun lock and normalized3,694-package advisory input are unchanged from0f. The dated findings, exception objects and deadlines remain unchanged; no new registry query or security clearance is claimed. Installed877a/d7/0f and its Notes reply mismatch remain separate. See [source identity evidence](evidence/source-metadata-19bd-349-20261026.json).
+
+## Historical 737 source-only input rebind (2026-10-25)
+
+SDK `737c4d578f69659a6881afe8ff06e3379cbc713c` at build-source product `c8801829f4f3ff9c1fed6f700473460852820a65`
+has byte-identical Bun lock and normalized 3,694-package input versus the prior
+`a95cd4d28eb2bcd5fe5527e98058c167ff480557` source. The dated October 25 registry result and all124 findings,
+104 exception objects,103 maintenance records and existing deadlines stay unchanged.
+No registry query, new waiver, remediation or renewal occurred. See [current source
+scope](evidence/source-metadata-c880-737-20261025.json).
+
+The installed `d3f1fd7792071e0ac76484e437e9a15cd1aa082e75f236ea8c4e4b8e5bdd5e10`
+artifact remains bound to4fd/a95. Its packaged npm review and older receipts are
+preserved. They do not qualify a737 bundle/APK, Bun builtins, native FFI, Notes
+navigation, provider responses, hardware audio or Seeker. Current-source artifact
+qualification remains false while the normal producer and acceptance are pending.
+
+## Historical a95 source-only input rebind (2026-10-25)
+
+SDK `a95cd4d28eb2bcd5fe5527e98058c167ff480557` at product `4fd822874850a68c3d82675630593e4c63be943d`
+uses exactly the prior full Bun lock bytes and normalized 3,694-version registry
+input. The dated October 25 registry result and 124 source findings are reused;
+no registry query or exception deadline renewal occurred. The source snapshot and
+disposition source binding now name this pin. See [identity and qualification
+scope](evidence/source-metadata-4fd-a95-20261025.json).
+
+The artifact review below stays bound to APK `77c65ebe29c011f7d8f211a3a5dcfb2a79d1909cc74ecf0e40a0f4a68377f0cb`,
+product `a424de9`, SDK `f4142d3`. Native Android Bun changes the binary/platform
+contract. Its new APK closure, packaged advisory review, app-UID behavior and
+full device acceptance remain pending; source-input identity transfers none of
+those results. No shipped high/critical waiver or Bun builtin assurance is added.
+
+
+## Historical f414 source and artifact projection (2026-10-25)
+
+SDK `f4142d3a92d6b5b49ef6c6a666155218b8b75b07` at product
+`a424de923b4b19aa0d86a7e23ef30598f6704d94` has the same Bun lock bytes and
+normalized 3,694-version registry input as the October 25 snapshot at SDK `4e561dc`.
+The 124 existing full-lock findings are reused as dated source-review evidence;
+no fresh registry query or remediation is claimed. See
+[source identity and pending gates](evidence/source-metadata-a424-f414-20261025.json).
+
+The current snapshot and disposition binding now name this SDK and exact signed
+APK `77c65ebe29c011f7d8f211a3a5dcfb2a79d1909cc74ecf0e40a0f4a68377f0cb`.
+Its [artifact review](security/resident-artifact-review-77c65ebe29c011f7-2026-10-25.json)
+verifies the same 603-version packaged npm input: one moderate UUID finding and
+no shipped high or critical npm finding. UUID affected-function aliases remain
+unused by the reviewed v4-only consumers, and Zod wrappers resolve to 4.6.6.
+Bun external Undici implementation remains outside this npm closure conclusion.
+The old artifact review is preserved; no exception object or deadline is renewed.
+Owning offline audit checks pass for this binding. Functional provider/navigation,
+voice hardware and physical-device acceptance remain separate pending gates.
+
+
 Covers inventory items MVP-45 (dependency findings), the licence flags of decision P-09, the
 software part of MVP-43 (Denton typeface rights) and the read-back tooling for MVP-46
 (required checks). Everything here is source and test evidence. It is not an APK build,
@@ -221,9 +294,11 @@ same command. A second, ordinary strict build then passed with verification enfo
 macOS. No hosted Linux build has run with this file: the first Android foundation run
 after it merges is that evidence, and a failure there names the artifact to add.
 
-Review of sources. The root scripts (`android/settings.gradle`, `android/build.gradle`)
+Review of sources. The root scripts (`settings.gradle` and `build.gradle`, generated into
+`android/` from the pinned upstream consumer-host templates by `npm run android:host`)
 declare `google()`, `mavenCentral()` and `gradlePluginPortal()` only. The build also
-includes projects with a `build.gradle` of their own (the app, the notification fixture, Capacitor from `node_modules` and eleven plugins from the pinned
+includes the generated app script, Alpha's `android/app/product.gradle` and the modules
+`android/consumer-host.json` names, each with a `build.gradle` of its own (the notification fixture, Capacitor from `node_modules` and the plugins from the pinned
 upstream checkout), and some of those declare repositories too: the same named ones, Maven
 Central by URL (`https://repo.maven.apache.org/maven2`, four upstream plugins) and the
 plugin portal by URL (`https://plugins.gradle.org/m2/`, Capacitor's build script). The
@@ -232,7 +307,8 @@ and fails on any other repository, on a `maven { }` block without a literal revi
 on `flatDir`, `mavenLocal()` and the like, and on an included script it cannot read. The
 four upstream plugins take a mirror in place of Maven Central when the root project
 defines `mavenCentralMirrorUrl`; nothing in this repository defines it and the check
-fails if a root Gradle file or a build script here names it. Someone running Gradle by
+fails if the host descriptor, the pinned generator or its templates, or a build script here
+names it. Someone running Gradle by
 hand can still pass that property, which is why the checksum, not the repository list, is
 the enforcement.
 
@@ -367,6 +443,15 @@ It is listed with its own terms, flagged, and not blocked; whether the product m
 is an open question for the owner, and removing it from the agent bundle would be an
 upstream elizaOS change. It was not assessed here.
 
+That upstream change exists: the shared mobile agent build
+(`packages/agent/scripts/mobile-wallet-connectors.ts`) resolves wagmi, RainbowKit and every
+`@metamask/*` specifier to the mobile stub, so the wallet-connector closure, including
+`@metamask/sdk`, is not bundled. An Android mobile bundle built from that change contained no
+MetaMask SDK source. The licence inventory above predates it; regenerate the notices from a
+runtime staged at that pin (`npm run agent:stage-android`, then the licence generator) and
+`test/wallet-disabled.test.mjs` asserts the staged inventory lists no `@metamask/*`, wagmi or
+`@rainbow-me/*` package.
+
 Bun is flagged `copyleft-weak` as well as `unverified` because it statically links
 JavaScriptCore (LGPL). The other copyleft entries (`mediabunny`, MPL-2.0; the pdf.js
 Liberation fonts, GPL-2.0-only with the font exception) are in the committed notices too.
@@ -421,6 +506,7 @@ nothing.
 | `licenses/font-licenses.json` | The owner-statement record for "Denton typeface", by exact hash |
 | `apps/app/public/licenses/` | Generated notice entry flagged `proprietary-licence-held-outside-repo` |
 | `scripts/generate-licenses.mjs` | Reads every font under `apps/app/public`; no Denton-specific code |
+| `config/alpha-product.json` | The product theme's display stack (Denton/Fraunces/Georgia), read by the shared mobile shell's Home and All apps |
 | `scripts/prototype-capture.mjs` line 111 | Records `document.fonts.check('300 30px Denton')` in capture output |
 | `test/licenses.test.mjs`, `test/font-license.test.mjs` | Use Denton as the proprietary-font example |
 
@@ -603,3 +689,11 @@ An actual `node scripts/dependency-audit.mjs --resident --write` refresh at `3e4
 Normal root and resident registry audits were refreshed after Alpha Vite8.3.3 and the reviewed SDK development-tool update ([Eliza #37226](https://github.com/elizaOS/eliza/pull/37226)). The root audit retains its three reviewed moderate findings. The new resident lock input has3691 package versions and104 findings:1 critical,45 high,44 moderate,14 low. This removes12 rows from the immediately preceding fresh116-row audit: the six newly reported Storybook/Vite rows plus six older Vite rows. Compared with the historical110-row snapshot, every retained104 row is identical. Three stale Vite exceptions were removed; the90 remaining exception objects and original dates/deadlines were preserved exactly. No new exception was added or renewed.
 
 The Bun lock and normalized input hash changed. The old raw/normalized input equality receipt is historical and is not reused. This is a full-source-lock registry audit, a superset of the mobile payload; it does not establish a freshly staged runtime, packaged-subset audit, APK, provider response or device acceptance. Fresh normal runtime preparation and installed qualification remain required. See [source admission](evidence/sdk-dev-tool-source-admission-20261021.json).
+
+### October 27 test dependency refresh
+
+The shared Notes consumer changes the npm lockfile, so the audit was regenerated. The fresh audit identified Undici 8.11.2 under the development-only jsdom dependency. The lockfile now resolves 8.12.3 within jsdom's existing `^8.11.2` range. The upstream patched threshold is 8.12.2 for [GHSA-4qv8-2p9j-2685](https://github.com/advisories/GHSA-4qv8-2p9j-2685), [GHSA-f72v-6w45-q472](https://github.com/advisories/GHSA-f72v-6w45-q472), and [GHSA-xjj6-f33q-929c](https://github.com/advisories/GHSA-xjj6-f33q-929c). The new audit contains the same three moderate findings covered by the existing Capacitor/xcode/uuid disposition and no high or critical findings. No exception or review deadline was expanded.
+The shared installed-app launcher receives Alpha's existing Denton/Fraunces/Georgia
+font stack from the product theme in `config/alpha-product.json`. This adds no font file
+or download: `prototype.css` remains the sole Denton loading rule. The owner-stated
+commercial license record and the open/system fallback stack are unchanged.

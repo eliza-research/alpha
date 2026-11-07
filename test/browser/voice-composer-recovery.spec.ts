@@ -1,4 +1,5 @@
 import {test,expect,type Page} from '@playwright/test';
+import {preloadPageModules} from './helpers/page-modules';
 
 // A synthetic voice delegate exercises the real adapter/template without capturing audio,
 // opening a speech connection or submitting a provider/model request.
@@ -18,6 +19,7 @@ async function setup(page:Page){
   if(navigator.mediaDevices)navigator.mediaDevices.getUserMedia=async()=>{(window as any).voicePresentationFixture.media++;throw Error('Actual microphone forbidden in synthetic presentation test');};
  });
  await page.goto('/');await expect(page.locator('textarea[data-alpha-composer]')).toBeEnabled();
+ await preloadPageModules(page,['/src/runtime/connection-ui.tsx','/src/prototype/model.js']);
  await page.evaluate(async()=>{
   const {connectionController:c}=await import('/src/runtime/connection-ui.tsx'),{Component}=await import('/src/prototype/model.js');
   const f=(window as any).voicePresentationFixture;
@@ -51,7 +53,8 @@ test('synthetic voice: one idle mic, full-width synth, mute and Stop preserve vi
 });
 
 test('synthetic pill voice keeps five-bar synth, mute and Stop compact without opening chat',async({page},info)=>{
- await setup(page);await page.evaluate(()=>new Promise<void>(resolve=>(window as any).voicePresentationFixture.shell.setState({chat:'hidden'},resolve)));
+ await setup(page);await page.evaluate(()=>{(window as any).voicePresentationFixture.shell.setState({chat:'hidden'});});
+ await expect.poll(()=>page.evaluate(()=>(window as any).voicePresentationFixture.shell.S().chat)).toBe('hidden');
  await page.getByRole('button',{name:'Talk',exact:true}).click();
  const pill=page.locator('[data-alpha-pill-voice]');await expect(pill).toBeVisible();await expect(pill.locator('[data-alpha-voice-bar]')).toHaveCount(5);
  expect(await page.evaluate(()=>(window as any).voicePresentationFixture.shell.S().chat)).toBe('hidden');
@@ -89,6 +92,7 @@ test('synthetic pending retirement stays unconfirmed until Stop acknowledgement'
 
 test('synthetic pending microphone startup is unconfirmed until the ready state',async({page})=>{
  await setup(page);await page.evaluate(()=>(window as any).voicePresentationFixture.startHold=true);await page.getByRole('button',{name:'Talk',exact:true}).click();const controls=page.locator('.alpha-voice-composer');await expect(controls).toHaveAttribute('data-voice-state','starting');
+ await expect(controls.locator('[data-alpha-voice-animation]')).toBeVisible();
  const mic=controls.getByRole('button',{name:'Microphone status unconfirmed',exact:true});await expect(mic).toBeDisabled();await expect(mic).toHaveAttribute('aria-pressed','mixed');
  await page.evaluate(()=>(window as any).voicePresentationFixture.releaseStart());await expect(controls.getByRole('button',{name:'Mute microphone',exact:true})).toBeEnabled();await controls.getByRole('button',{name:'Stop voice conversation',exact:true}).click();await expect(controls).toHaveCount(0);await noMediaOrSends(page);
 });
@@ -154,7 +158,7 @@ test('speaking shows automatic microphone pause without changing the manual mute
  const voice=page.locator('.alpha-voice-composer');
  await voice.getByRole('button',{name:'Mute microphone',exact:true}).click();
  await page.evaluate(()=>(window as any).voicePresentationFixture.phase('speaking'));
- const paused=voice.getByRole('button',{name:'Microphone paused while Alpha speaks',exact:true});
+ const paused=voice.getByRole('button',{name:'Microphone paused while Alpha responds',exact:true});
  await expect(paused).toBeDisabled();await expect(paused).toHaveAttribute('aria-pressed','true');
  await expect(voice.locator('[data-alpha-voice-animation]')).toHaveAttribute('data-phase','speaking');
  await page.evaluate(()=>(window as any).voicePresentationFixture.phase('listening'));

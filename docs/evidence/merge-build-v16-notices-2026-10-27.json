@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "upstream": {
+    "url": "https://github.com/elizaOS/eliza.git",
+    "commit": "6497825b38cbe41b3677c0a445341fec900f0dd2",
+    "appSource": "packages/app",
+    "nativeSystemSource": "plugins/plugin-native-system",
+    "osSource": "packages/os"
+  },
+  "versionCode": 16,
+  "files": {
+    "third-party-notices.json": "a8234035325ae27743684d68daece69ac33331a223c6f62ebce8548522b1db77",
+    "THIRD_PARTY_NOTICES.txt": "dc6cd7e8879a8d10447315b4f1ca3d1c340f102d8c21e09f46433b2a5b1cc45a"
+  },
+  "fullNoticeSnapshot": "licenses/packaged-runtime/6497825b38cbe41b3677c0a445341fec900f0dd2",
+  "sourceDefaultsRestored": true
+}

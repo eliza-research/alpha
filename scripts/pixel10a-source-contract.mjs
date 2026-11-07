@@ -1,109 +1,37 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
-import {execFile} from 'node:child_process';
-import {promisify} from 'node:util';
 import {fileURLToPath} from 'node:url';
+import {verifyDeviceSource} from '../vendor/eliza/packages/os/scripts/android/verify-device-source.mjs';
+import {soongAppNativePatch} from '../vendor/eliza/packages/os/scripts/android/soong-app-native.mjs';
+import {loadProfile, verifyProfileSource} from '../vendor/eliza/packages/os/scripts/android/verify-source-lock.ts';
 
-const exec = promisify(execFile);
-export const defaultLockPath = fileURLToPath(new URL('../android/aosp/pixel10a-source.json', import.meta.url));
+export const defaultLockPath = fileURLToPath(new URL('../vendor/eliza/packages/os/android/sources/pixel10a-stallion.json', import.meta.url));
+const profileLockPath = fileURLToPath(new URL('../vendor/eliza/packages/os/android/aosp.lock.json', import.meta.url));
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
-const safe = value => typeof value === 'string' && value.length > 0 && !path.isAbsolute(value) && value.split('/').every(p => p && p !== '.' && p !== '..');
-function within(root, name) {
-  if (!safe(name)) throw Error(`Unsafe source path: ${name}`);
-  return path.join(root, name);
-}
-async function fileHash(file) {
-  const hash = createHash('sha256');
-  for await (const chunk of fs.createReadStream(file)) hash.update(chunk);
-  return hash.digest('hex');
-}
-async function checkFile(root, entry) {
-  const file = within(root, entry.path), stat = fs.lstatSync(file);
-  if ('link' in entry) {
-    if (!stat.isSymbolicLink() || fs.readlinkSync(file) !== entry.link) throw Error(`Source link differs: ${entry.path}`);
-    const relative = path.relative(root, fs.realpathSync(file));
-    if (relative.startsWith('..') || path.isAbsolute(relative)) throw Error(`Source link escapes tree: ${entry.path}`);
-  } else {
-    if (!stat.isFile() || stat.size !== entry.sizeBytes || await fileHash(file) !== entry.sha256) throw Error(`Source bytes differ: ${entry.path}`);
-  }
-}
-function inventory(root, relative) {
-  const found = [];
-  for (const entry of fs.readdirSync(within(root, relative), {withFileTypes:true})) {
-    const name = `${relative}/${entry.name}`;
-    if (entry.isDirectory()) found.push(...inventory(root, name));
-    else found.push(name);
-  }
-  return found.sort();
-}
-async function git(root, args) {
-  return (await exec('git', ['-C', root, ...args], {maxBuffer:64 * 1024 * 1024, env:{...process.env, GIT_OPTIONAL_LOCKS:'0'}})).stdout;
-}
-/** Verify the recorded source inputs. Does not modify source, admit an APK,
- * certify build outputs, or authorize a flash. Ignored build outputs are not inputs.
- * `developmentOnly` is reported from the lock; production staging separately requires it
- * to be false (pixel10aProductProblems). */
-export async function verifyPixel10aSource({source, factory, lock = defaultLockPath}) {
+
+/** Alpha adapter for upstream's shared Pixel 10a source admission. Fixture locks may
+ * be supplied explicitly; production defaults authenticate the shared profile and inventory. */
+export async function verifyPixel10aSource({source, factory, lock = defaultLockPath, appliedPatches = []}) {
   if (!source || !factory) throw Error('Pixel 10a staging requires --aosp-source and --factory-image');
-  const root = fs.realpathSync(source), bytes = fs.readFileSync(lock), contract = JSON.parse(bytes);
-  if (contract.schema !== 1 || contract.target !== 'pixel10a' || contract.device?.codename !== 'stallion' || contract.device?.androidRelease !== '17' || typeof contract.developmentOnly !== 'boolean' || contract.releaseQualified !== false) throw Error('Not the Pixel 10a Android 17 source contract');
-  if (!contract.projects?.length || !contract.generated?.files?.length) throw Error('Incomplete Pixel 10a source inventory');
-  const expectedFactory = contract.factory;
-  if (!fs.statSync(factory).isFile() || fs.statSync(factory).size !== expectedFactory.sizeBytes || await fileHash(factory) !== expectedFactory.sha256) throw Error('Pixel 10a factory archive differs from the source lock');
-  const manifestRoot = path.join(root, '.repo/manifests');
-  if ((await git(manifestRoot, ['rev-parse','HEAD'])).trim() !== contract.manifest.commit) throw Error('AOSP manifest revision differs');
-  if ((await git(manifestRoot, ['ls-files','-v','-z'])).split('\0').some(row => row && row[0] !== 'H') || (await git(manifestRoot, ['status','--porcelain=v1','-z','--untracked-files=all'])).length) throw Error('AOSP manifest working tree differs');
-  const configuration = contract.manifest.configuration;
-  if (!Array.isArray(configuration) || !configuration.some(entry => entry.path === '.repo/manifest.xml') || !configuration.some(entry => entry.path === '.repo/project.list')) throw Error('Missing manifest configuration inventory');
-  for (const entry of configuration) await checkFile(root, entry);
-  const localRoot = '.repo/local_manifests';
-  const actualLocal = fs.existsSync(path.join(root, localRoot)) ? inventory(root, localRoot) : [];
-  const expectedLocal = configuration.filter(entry => entry.path.startsWith(`${localRoot}/`)).map(entry => entry.path).sort();
-  if (JSON.stringify(actualLocal) !== JSON.stringify(expectedLocal)) throw Error('Local manifest inventory differs');
-  const overrides = new Map();
-  for (const entry of contract.overrides) {
-    if (overrides.has(entry.path)) throw Error(`Duplicate override: ${entry.path}`);
-    overrides.set(entry.path, entry);
+  if (path.resolve(lock) === defaultLockPath) {
+    return verifyProfileSource(loadProfile('pixel10a', profileLockPath), {
+      aospRoot: source, archivePath: factory, lockPath: profileLockPath, appliedPatches,
+    });
   }
-  const seen = new Set();
-  // Bound filesystem pressure on a full AOSP checkout.
-  let cursor = 0;
-  await Promise.all(Array.from({length:8}, async () => {
-    while (cursor < contract.projects.length) {
-      const project = contract.projects[cursor++];
-      if (seen.has(project.path)) throw Error(`Duplicate project: ${project.path}`);
-      seen.add(project.path);
-      const directory = within(root, project.path);
-      if ((await git(directory, ['rev-parse','HEAD'])).trim() !== project.commit) throw Error(`Source revision differs: ${project.path}`);
-      const flags = await git(directory, ['ls-files','-v','-z']);
-      if (flags.split('\0').some(row => row && row[0] !== 'H')) throw Error(`Hidden or unresolved index entries: ${project.path}`);
-      const changed = await git(directory, ['status','--porcelain=v1','-z','--untracked-files=all']);
-      const actual = changed.split('\0').filter(Boolean).map(row => `${project.path}/${row.slice(3)}`).sort();
-      const expected = [...overrides.keys()].filter(name => name.startsWith(`${project.path}/`)).sort();
-      if (JSON.stringify(actual) !== JSON.stringify(expected)) throw Error(`Unrecorded source changes: ${project.path}`);
-      for (const name of expected) await checkFile(root, overrides.get(name));
-      // git status hides ignored source. Bind even ignored extraction-tool outputs;
-      // a new ignored Android.bp or source file must not silently enter the build.
-      const ignored = (await git(directory, ['ls-files','--others','--ignored','--exclude-standard','-z'])).split('\0').filter(Boolean).map(name => `${project.path}/${name}`).sort();
-      const expectedIgnored = (contract.ignoredInputs ?? []).find(entry => entry.project === project.path);
-      if (ignored.length !== (expectedIgnored?.files ?? 0)) throw Error(`Ignored source inventory differs: ${project.path}`);
-      if (ignored.length) {
-        const tree = createHash('sha256');
-        for (const name of ignored) {
-          const file = within(root, name), stat = fs.lstatSync(file);
-          const record = stat.isSymbolicLink() ? {path:name, link:fs.readlinkSync(file)} : {path:name, sizeBytes:stat.size, sha256:await fileHash(file)};
-          if (!stat.isSymbolicLink() && !stat.isFile()) throw Error(`Invalid ignored source input: ${name}`);
-          tree.update(JSON.stringify(record)+'\n');
-        }
-        if (tree.digest('hex') !== expectedIgnored.sha256) throw Error(`Ignored source bytes differ: ${project.path}`);
-      }
-    }
-  }));
-  const files = contract.generated.files;
-  const expectedNames = files.map(entry => entry.path).sort();
-  if (new Set(expectedNames).size !== files.length || files.some(entry => !entry.path.startsWith(`${contract.generated.root}/`))) throw Error('Invalid generated vendor inventory');
-  if (JSON.stringify(inventory(root, contract.generated.root)) !== JSON.stringify(expectedNames)) throw Error('Generated vendor inventory differs');
-  for (const entry of files) await checkFile(root, entry);
-  return {schema:1, target:'pixel10a', codename:'stallion', sourceLockSha256:digest(bytes), manifestCommit:contract.manifest.commit, factorySha256:expectedFactory.sha256, projectsChecked:seen.size, overridesChecked:overrides.size, generatedFilesChecked:files.length, developmentOnly:contract.developmentOnly, imageBuilt:false, releaseQualified:false, deviceAcceptanceVerified:false};
+  return verifyDeviceSource({source, factory, lock, appliedPatches,
+    expected: {target:'pixel10a', codename:'stallion', androidRelease:'17'}});
+}
+
+/** A reviewed SystemUI bundle ('ops', 'chip' or 'assist') in the form verifyPixel10aSource accepts. */
+export {senseSystemuiPatch as listenerSystemuiPatch} from '../vendor/eliza/packages/os/scripts/android/sense-systemui.mjs';
+
+/** Explicit host-build patches; defaults and device source remain unchanged. */
+export function aospBuildPatch(bundle) {
+  if (bundle === 'soong-app-native') return soongAppNativePatch();
+  if (bundle !== 'soong-memory') throw Error(`Unknown AOSP build patch: ${bundle}`);
+  const directory = fileURLToPath(new URL('../android/aosp/build-host/', import.meta.url));
+  const bytes = fs.readFileSync(path.join(directory, 'manifest.json')), manifest = JSON.parse(bytes);
+  if (digest(fs.readFileSync(path.join(directory, manifest.patch))) !== manifest.patchSha256) throw Error(`AOSP build patch ${bundle} hash mismatch`);
+  return {name:bundle, manifest, manifestSha256:digest(bytes)};
 }

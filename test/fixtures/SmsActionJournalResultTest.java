@@ -1,4 +1,5 @@
 package ai.elizaresearch.alphaphone;
+import ai.eliza.plugins.messages.SmsSendJournal;
 import org.json.*;
 public final class SmsActionJournalResultTest {
  static void fails(JSONObject entry,String status,JSONObject result)throws Exception{try{SmsActionJournalResult.check(entry,status,result);}catch(Exception expected){return;}throw new AssertionError("accepted invalid evidence");}

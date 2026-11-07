@@ -1,0 +1,10 @@
+{
+  "atUTC": "2026-10-26T23:22:42.871797+00:00",
+  "productBase": "6f86e54d46458ec9b4d3d6fdaceb51d70970b0ae",
+  "SDK": "94a2f9d848d2d1ed311fb5c28eba94b58635eeae",
+  "previousSDK": "8bce98d798e9e8f1f6b65820d70d2e2d05c83118",
+  "scope": "Navigation first-review consistency, trusted complete Back routing and verified alias retention",
+  "tests": "Focused behavior/baseline regressions and scoped semantic checks passed; source-only consumer validation recorded separately.",
+  "liveNewSourceVerified": false,
+  "fullNativeAcceptance": false
+}

@@ -135,14 +135,12 @@ Use an already authorized environment with `CEREBRAS_API_KEY` and
 `CEREBRAS_BASE_URL`; do not store credentials in the repository or APK. The host
 prints an owner-only temporary token file path. For an owned debug emulator,
 `node scripts/configure-dev-agent.mjs` provisions the debug bridge and port reverse.
-`npm run agent:diagnostic` explicitly selects the direct-model diagnostic path,
-which has no runtime conversation memory. For the full local host and resident
+`npm run agent:diagnostic` selects the direct Cerebras request path. It uses the same pinned canonical tool schemas, validators and non-effecting preparation host as `agent:dev`; it does not send diagnostic turns through runtime conversation memory. Both commands explicitly enable `ELIZA_DEV_ALLOW_TEST_MOCKS=1` and require Bun. For the full local host and resident
 runtime, follow [local agent setup](local-agent-development.md).
 
 `bun run backend/test-runtime.ts` is separate live acceptance: it uses a private
 fixture for real model turns, new-process history, cancellation and proposal-only
-actions. `scripts/test-dev-agent.mjs` exercises the host protocol and an approved
-temporary host note fixture. Neither proves Android UI execution. Local ASR's
+actions. Note and reminder review is a simulation: it never writes a note or schedules a notification. View navigation can open only a registered local view after review. `scripts/test-dev-agent.mjs` exercises the host protocol and checks that proposals are marked simulated. Neither proves Android UI execution. Local ASR's
 host-only and HTTP checks were in the retired `test-local-asr.mjs` (Whisper era, deleted on
 2026-10-14); the current ASR route contract is checked against the pinned upstream workers.
 
@@ -253,9 +251,9 @@ compilation; nothing here ran on an emulator or a device.
 | Upstream change | What Alpha does with it | Test |
 | --- | --- | --- |
 | #35906 register `POST /api/workflow/hosted/dossier` | The resident agent registers the dossier route; the renderer offers the dossier with native phone sources on the resident agent (`hosted-digest-ui.tsx`), with the request body unchanged and capped at 2000 bytes by the dispatcher and the handler | `test/digest-route-registration.test.mjs`, `test/digest-capabilities.test.mjs` |
-| #35907 `clientMessageId` on history user rows | Stop's single reconciliation read matches the stopped turn by the `clientMessageId` it was sent with; the text and time match is kept only when no row carries an id (older agents, shared-tier Cloud) (`stopped-reply-match.ts`, `connection-ui.tsx`) | `test/stopped-reply-match.test.mjs`, `scripts/test-connection-history.mjs` |
+| #35907 `clientMessageId` on history user rows | Stop's single reconciliation read matches the stopped turn by the `clientMessageId` it was sent with; the text and time match is kept only when no row carries an id (older agents, shared-tier Cloud) (shared `conversation-turn-controller.ts` matcher, `connection-ui.tsx`) | `test/stopped-reply-match.test.mjs`, `scripts/test-connection-history.mjs` |
 | #35908 Gmail `mailboxHistoryId` per search page | `gmailSearch` parses it; the Inbox keeps the first page's value and treats a later page with another as a changed list (Load newer mail), even when no row repeats. Needs the deployed Eliza Cloud to include the change | `scripts/test-cloud-protocol.mjs`, `scripts/test-inbox-cloud-flow.mjs` |
-| #35909 `SystemLauncherApps` by component and profile | Replaces `LauncherLibrary.java` in `DeviceAppsPlugin` (list, icon, resolve, launch intent, change watch); Alpha keeps its `failed` code and a package-only refusal helper because `SystemLauncherApps.explain` is package-private. Upstream sorts by label; the renderer sorts itself | `LauncherAppsInstrumentedTest` (compiled, not run) |
+| #35909 `SystemLauncherApps` by component and profile | Alpha lists, launches and hands off to the dialer only through the shared ElizaSystem (`createSystemLauncherBridge`); `DeviceAppsPlugin` is deleted and the `failed` code, package-only refusal wording and malformed-request guard are upstream. Upstream sorts by label; the renderer sorts itself | `LauncherAppsInstrumentedTest` (compiled, not run) |
 | #35910 retained limit for JSON slots | `AlphaCredentialStore` passes `retainedLimit` (32 MiB for `notes-trash:v1:device`, else the slot limit), lowers the Trash cap to the 30 MiB policy limit and reports `CapacityException` as storage-full on every write path | `NotesStorageDurabilityInstrumentedTest` (compiled, not run) |
 | #35911 free/busy read of selected calendars | `CalendarAvailabilityReader.java` deleted; `AlphaCalendarPlugin` calls `SelectedCalendarReader.availabilitySources` and `readAvailability`, after `assertSourceIdentities` and Alpha's own fail-closed freshness gate (`CalendarSyncFreshness.java`, only device-local calendars; from main's `bed4b60b2`, which the upstream reader does not have); the zone check moved to `CalendarZones.java`; the 200-interval journal bound stays Alpha's | `test/calendar-availability-reader.test.mjs` (the upstream reader on the JVM) |
 | #35912 `creationId` on events the host created | Note links for device-calendar events are keyed by the `creationId` Alpha saves with, not the reusable row id; events from the Android Calendar hand-off are not linked and say so | `scripts/test-calendar-crud-review.mjs`, `journey-j04-android.production.spec.ts` |

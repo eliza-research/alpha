@@ -4,6 +4,7 @@ import { createConsumerSourceResolver } from "../vendor/eliza/packages/app/scrip
 import { verifyPinnedUpstream } from "../scripts/pinned-upstream-source.mjs";
 import { randomBytes } from "node:crypto";
 export async function loadPinnedRuntime() {
+	if (process.env.ELIZA_DEV_ALLOW_TEST_MOCKS !== "1") throw new Error("Development runtime is disabled");
 	// Authenticate on every build, before resolution, generated output or private state.
 	const { directory: root, commit: head } = verifyPinnedUpstream(
 		resolve(import.meta.dirname, ".."),

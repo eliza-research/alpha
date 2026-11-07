@@ -1,0 +1,9 @@
+// Sense is a separate APK and owns its complete runtime, as in the Eliza host.
+ext.elizaParadeeSourceDir = file('../../vendor/eliza/plugins/plugin-local-inference/native/android')
+ext.elizaParadeeNativeDir = file('../../.eliza/paradee-voice/native')
+apply from: new File(elizaParadeeSourceDir, 'consumer.gradle')
+def verifySenseVoice = tasks.register('verifySenseVoice', Exec) {
+ workingDir rootProject.projectDir.parentFile
+ commandLine 'node', 'scripts/voice-host.mjs', '--verify'
+}
+tasks.named('preBuild').configure { dependsOn verifySenseVoice }

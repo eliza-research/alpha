@@ -1,6 +1,8 @@
+import {openCloudPlanFromSettings} from './helpers/cloud-plan-settings';
 import { cloudStorageSlot } from '../../apps/app/src/runtime/cloud-deployment.generated';
 import {seedCompletedAccessSetup} from './flag-off-android';
 import { test, expect, type Page, type Route } from '@playwright/test';
+import {installResidentAgentPlugin} from './helpers/resident-agent-plugin';
 import { openYourAgent, completeAccessSetup } from './flag-off-android';
 // Flag-off production bundle only. Android cases stub the Capacitor bridge in a desktop browser and
 // saved remote selections must never reconnect. Nothing here contacts
@@ -31,9 +33,11 @@ interface NativeCall { plugin: string; method: string; slot?: string; url?: stri
 interface AndroidOptions { selection?: unknown; remoteCredential?: boolean; cloudCredential?: boolean; balance?: number; revoke?: RevokeMode; packaged?: boolean; start?: 'reject' | 'starting' }
 /** Production Android as the renderer sees it: resident Agent plugin plus AlphaConnection storage and transport. */
 async function android(page: Page, options: AndroidOptions) {
+  await installResidentAgentPlugin(page);
   await page.addInitScript(({ options, SELECTION, origin, owner, token }) => {
     const w = window as any; w.androidBridge = {}; w.nativeCalls = [];
     const id = '9f1dc45a-4011-4e44-947a-30d999d24fa5';
+    const resident = w.residentAgent = w.createResidentAgentPlugin({ owner: () => id, agentId: id });
     // Secure slots survive reload like Keystore-backed storage; the selection is seeded once.
     const values: Record<string, string> = JSON.parse(sessionStorage.getItem('secure-fixture') || 'null') ?? {
       ...(options.remoteCredential ? { [`remote:${origin}`]: JSON.stringify({ origin, token, identityId: owner, sessionId: token, expiresAt: Date.now() + 3_600_000 }) } : {}),
@@ -45,23 +49,24 @@ async function android(page: Page, options: AndroidOptions) {
     const methods = (names: string[]) => names.map(name => ({ name, rtype: 'promise' }));
     w.Capacitor = { PluginHeaders: [
         { name: 'AlphaDeletions', methods: methods(['pending']) },
-      { name: 'DeviceApps', methods: methods(['buildInfo']) },
-      { name: 'Agent', methods: methods(['getStatus', 'start', 'stop', 'configureCloudProvider', 'clearProvider', 'providerStatus', 'request']) },
+      { name: 'ElizaSystem', methods: methods(['getBuildInfo']) },
+      { name: 'Agent', methods: resident.methods(['getStatus', 'start', 'stop', 'configureCloudProvider', 'clearProvider', 'providerStatus', 'request']) },
       { name: 'AlphaConnection', methods: methods(['secureRead', 'secureWrite', 'secureRemove', 'secureCompareExchange', 'request', 'cancel', 'openExternal']) },
       { name: 'AlphaNotifications', methods: methods(['status', 'crossAppStatus', 'addListener', 'removeListener']) },
       { name: 'AlphaHostedResults', methods: methods(['disableBackground']) },
       { name: 'AlphaVoiceCloud', methods: methods(['checkPermissions']) },
       // P-43: a running resident's hosted background delivery is retired on sign-out.
       { name: 'AlphaHostedResults', methods: methods(['disableBackground']) },
-    ], nativePromise: async (plugin: string, method: string, input: any) => {
+    ], nativeCallback: resident.nativeCallback, nativePromise: async (plugin: string, method: string, input: any) => {
         if (plugin === 'AlphaDeletions' && method === 'pending') return { deletions: [] };
       w.nativeCalls.push({ plugin, method, slot: input?.slot, url: input?.url, http: input?.method, authorization: input?.headers?.Authorization, path: input?.path });
       if (plugin === 'AlphaHostedResults') return {};
-      if (plugin === 'DeviceApps') return { launcher: false, version: 'connection-boundaries' };
+      if (plugin === 'ElizaSystem' && method === 'getBuildInfo') return { launcher: false, version: 'connection-boundaries' };
       if (plugin === 'AlphaNotifications') return { permissionGranted: true, appEnabled: true };
       if (plugin === 'AlphaVoiceCloud') return { microphone: 'granted' };
       if (plugin === 'AlphaHostedResults' && method === 'disableBackground') return {};
       if (plugin === 'Agent') {
+        const owned = resident.answer(method, input); if (owned) return owned;
         if (method === 'getStatus') return { packaged: options.packaged !== false, state: 'stopped', serviceActive: false, socketListening: false };
         // A held unbind lets a test cancel sign-out before any revocation request is issued.
         if (method === 'clearProvider') { if (w.holdStop) await new Promise<void>(resolve => { w.releaseStop = resolve; }); return { configured: false }; }
@@ -124,7 +129,7 @@ for (const legacy of [{ name: 'remote agent', selection: { kind: 'remote', origi
     // Eliza Cloud account, so the sign-in dialog opens and cannot be dismissed while the agent runs.
     await expect.poll(async () => (await nativeCalls(page)).filter(call => call.plugin === 'Agent').map(call => call.method)).toContain('start');
     const saved = await secureValues(page);
-    const welcome = page.getByRole('main', { name: 'Sign in',exact:true });
+    const welcome = page.getByRole('main', { name: 'Welcome to Alpha.',exact:true });
     await expect(welcome).toBeVisible();
     // The retired route has no entry: no address, code or connect control, and no fake remote state.
     await expect(welcome.getByLabel('Agent HTTPS address')).toHaveCount(0);
@@ -134,7 +139,10 @@ for (const legacy of [{ name: 'remote agent', selection: { kind: 'remote', origi
     await expect.poll(async () => (await nativeCalls(page)).filter(call => call.plugin === 'Agent').map(call => call.method)).toContain('start');
     // Every Alpha Phone signs in to Eliza Cloud: no local-only bypass and no close while signed out.
     await expect(welcome.getByRole('button', { name: 'Use local apps without AI', exact: true })).toHaveCount(0);
-    await expect(welcome.getByRole('button', { name: 'Sign in with Eliza Cloud', exact: true })).toBeVisible();
+    // This fixture has no native sign-in plugin: the page shows the reason and one retry (and the
+    // own-keys entry), never a column of disabled sign-in controls.
+    await expect(welcome.getByRole('button', { name: 'Try again', exact: true })).toBeVisible();
+    await expect(welcome.getByRole('button', { name: 'Use my own API keys', exact: true })).toBeVisible();
     await expect(welcome.getByRole('button', { name: 'Close connection settings', exact: true })).toHaveCount(0);
     expectRemoteUntouched(await nativeCalls(page));
     expect((await secureValues(page))[remoteSlot]).toBe(saved[remoteSlot]);
@@ -142,7 +150,7 @@ for (const legacy of [{ name: 'remote agent', selection: { kind: 'remote', origi
     expect(await page.evaluate(key => JSON.parse(localStorage.getItem(key)!), SELECTION)).toEqual({ kind: 'resident' });
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem('alpha.connection.legacy-hosted-selection.v1')!))).toEqual([legacy.selection]);
     await page.reload();
-    await expect(page.getByRole('main', { name: 'Sign in',exact:true })).toBeVisible();
+    await expect(page.getByRole('main', { name: 'Welcome to Alpha.',exact:true })).toBeVisible();
     await expect.poll(async () => (await nativeCalls(page)).filter(call => call.plugin === 'Agent').map(call => call.method)).toContain('start');
     const calls = await nativeCalls(page);
     expectRemoteUntouched(calls);
@@ -233,7 +241,7 @@ for (const mode of ['revoked', 'unsupported', 'failed', 'refused-in-body', 'not-
     await expect(page.getByRole('button', { name: 'Notes', exact: true })).toBeVisible();
     await expect.poll(async () => (await nativeCalls(page)).filter(call => call.plugin === 'Agent').map(call => call.method)).toContain('start');
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
-    await page.getByRole('button', { name: 'Eliza Cloud account & plan',exact:true }).click();
+    await openCloudPlanFromSettings(page);
     await expect(page.getByRole('button', { name: 'Sign out of Eliza Cloud', exact: true })).toBeVisible();
     const before = (await nativeCalls(page)).length;
     if (mode === 'cancelled') await page.evaluate(() => { (window as any).holdStop = true; });
@@ -244,6 +252,9 @@ for (const mode of ['revoked', 'unsupported', 'failed', 'refused-in-body', 'not-
       await page.getByRole('button', { name: 'Cancel', exact: true }).click();
       await page.evaluate(() => { (window as any).holdStop = false; (window as any).releaseStop(); });
     }
+    // This bridge has no sign-in readiness service. Its automatic refusal must not erase
+    // the completed sign-out receipt or turn an unconfirmed revocation into success.
+    await expect(page.getByRole('alert').filter({hasText:'Eliza Cloud sign-in is unavailable.'})).toBeVisible();
     const status = page.locator('.alpha-connection').getByRole('status').filter({ hasText: /Signed out|sign-in token was removed/ });
     if (mode === 'revoked') await expect(status).toContainText('Signed out of Eliza Cloud. This sign-in was revoked.');
     else {
@@ -263,13 +274,13 @@ for (const mode of ['revoked', 'unsupported', 'failed', 'refused-in-body', 'not-
     expect(calls.slice(before).some(call => call.plugin === 'AlphaHostedResults' && call.method === 'disableBackground')).toBe(true);
     if (mode !== 'cancelled') expect(stop).toBeLessThan(calls.indexOf(revocations[0]));
     expect(await secureValues(page)).not.toHaveProperty('cloud:production');
-    await expect(page.getByRole('main', { name: 'Sign in', exact: true }).getByRole('button', { name: 'Sign in with Eliza Cloud', exact: true })).toBeVisible();
+    await expect(page.getByRole('main', { name: 'Welcome to Alpha.', exact: true }).getByRole('button', { name: 'Try again', exact: true })).toBeVisible();
     // P-43: sign-out unbinds inference only; the resident restarted and the outcome says so.
-    if (mode !== 'cancelled') await expect(status).toContainText('Your agent is running. Sign in to Eliza Cloud to turn AI back on.');
+    if (mode !== 'cancelled') await expect(status).toContainText('Your agent is running. Sign in to Cloud to turn AI back on.');
     await expect.poll(async () => (await nativeCalls(page)).slice(before).filter(call => call.plugin === 'Agent' && call.method === 'start').length).toBeGreaterThan(0);
     await page.reload();
     // Signed out after a restart: the sign-in dialog opens by itself while the resident runs.
-    await expect(page.getByRole('main', { name: 'Sign in', exact: true })).toBeVisible();
+    await expect(page.getByRole('main', { name: 'Welcome to Alpha.', exact: true })).toBeVisible();
     expect((await nativeCalls(page)).filter(call => call.plugin === 'AlphaConnection' && call.method === 'request')).toEqual([]);
     expect(foreign).toEqual([]);
   });
@@ -431,9 +442,10 @@ test('transient startup storage failures recover without flashing global notices
   await android(page,{cloudCredential:true,balance:5});
   await page.addInitScript(()=>{
     const w=window as any,bridge=w.Capacitor,original=bridge.nativePromise;
-    w.startupStorage={pending:0,flashes:[]};
+    w.startupStorage={pending:0,drafts:0,flashes:[]};
     bridge.nativePromise=(plugin:string,method:string,input:any)=>{
       if(plugin==='AlphaDeletions'&&method==='pending'&&++w.startupStorage.pending<=2)return Promise.reject(Error('Storage is opening'));
+      if(plugin==='AlphaConnection'&&method==='secureRead'&&input?.slot?.startsWith('assistant-draft:')&&++w.startupStorage.drafts===1)return Promise.reject(Error('Storage is opening'));
       return original(plugin,method,input);
     };
     new MutationObserver(()=>{
@@ -445,6 +457,7 @@ test('transient startup storage failures recover without flashing global notices
   await completeAccessSetup(page);
   await expect(page.getByRole('button',{name:'Notes',exact:true})).toBeVisible();
   await expect.poll(()=>page.evaluate(()=>(window as any).startupStorage.pending)).toBeGreaterThanOrEqual(3);
+  await expect.poll(()=>page.evaluate(()=>(window as any).startupStorage.drafts)).toBeGreaterThanOrEqual(2);
   expect(await page.evaluate(()=>(window as any).startupStorage.flashes)).toEqual([]);
 });
 
@@ -474,7 +487,7 @@ test('passive deletion failures stay quiet; known pending failures preserve sett
   await page.evaluate(()=>{Object.assign((window as any).deletionNoticeFixture,{known:false,checks:0});window.dispatchEvent(new Event('alpha:deletions-changed'));});
   await expect(notice).toContainText('Pending deletion status is unavailable');
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.getByRole('button', { name: 'Eliza Cloud account & plan',exact:true }).click();
+  await openCloudPlanFromSettings(page);
   const signout = page.getByRole('button', { name: 'Sign out of Eliza Cloud', exact: true });
   // Force geometric overlap without forcing the click: informational text must not consume it.
   await signout.evaluate(button => {
@@ -482,7 +495,7 @@ test('passive deletion failures stay quiet; known pending failures preserve sett
     Object.assign(banner.style, { top: `${rect.top}px`, left: `${rect.left}px`, right: 'auto', bottom: 'auto', width: `${rect.width}px` });
   });
   await signout.click();
-  await expect(page.getByRole('main', { name: 'Sign in', exact: true })).toBeVisible();
+  await expect(page.locator('.alpha-connection').getByRole('status')).toContainText('Signed out of Eliza Cloud. This sign-in was revoked.');
   await expect(notice).toHaveCount(0);
 });
 

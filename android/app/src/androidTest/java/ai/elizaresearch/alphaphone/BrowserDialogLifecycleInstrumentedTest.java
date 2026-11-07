@@ -20,7 +20,7 @@ public final class BrowserDialogLifecycleInstrumentedTest {
  private AlertDialog listing()throws Exception{
   AtomicReference<AlertDialog> result=new AtomicReference<>();
   WebViewTestDriver.withActivity(MainActivity.class,activity->{try{
-   Object plugin=activity.getBridge().getPlugin("AlphaBrowser").getInstance();java.lang.reflect.Field downloads=plugin.getClass().getDeclaredField("downloads");downloads.setAccessible(true);
+   Object plugin=activity.getBridge().getPlugin("AlphaBrowser").getInstance();java.lang.reflect.Field downloads=ai.eliza.plugins.browsersurface.BrowserTabHostPlugin.class.getDeclaredField("downloads");downloads.setAccessible(true);
    Object owner=downloads.get(plugin);java.lang.reflect.Field field=owner.getClass().getDeclaredField("listing");field.setAccessible(true);result.set((AlertDialog)field.get(owner));
   }catch(Exception failure){throw new AssertionError(failure);}});return result.get();
  }

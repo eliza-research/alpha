@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 const source=readFileSync('apps/app/src/runtime/abort-signal.ts','utf8');
 const {anyAbortSignal}=await import('data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(source,{mode:'strip'})).toString('base64'));
 test('WebView113 without AbortSignal.any preserves first cancellation and removes every source listener',()=>{

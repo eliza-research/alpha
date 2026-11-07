@@ -16,7 +16,9 @@ for(const mode of ['', 'dev'])for(const view of ['Inbox','Calendar','Browser','C
  const text=await page.locator('body').innerText();for(const claim of forbidden)expect(text).not.toMatch(claim);
 });
 for(const mode of ['', 'dev'])for(const tab of ['Privacy & data','About','Models','Developer'])test(`visible ${mode||'production'} Settings ${tab} has no unverified confidentiality claim`,async({page},info)=>{
- await page.goto(mode?'/?mode=dev':'/');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:tab,exact:true}).click();
+ // Developer sits behind the one Developer gate: the development server opened with ?tools=1.
+ const query=[mode&&'mode=dev',tab==='Developer'&&'tools=1'].filter(Boolean).join('&');
+ await page.goto(query?`/?${query}`:'/');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:tab,exact:true}).click();
  await expect(page.locator('html')).toHaveAttribute('data-active-view','settings');
  await expect(page.getByText(tab,{exact:true}).last()).toBeVisible();
  const text=await page.locator('body').innerText();for(const claim of forbidden)expect(text).not.toMatch(claim);

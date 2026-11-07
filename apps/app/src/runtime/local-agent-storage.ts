@@ -3,9 +3,9 @@ import {actionScope} from './device-actions';
 import {isReminderOperation,validateReminderOperation,validateReminderResult} from '../../../../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/reminder-contract.ts';
 import type {ActionJournal} from './device-actions';
 // The host storage bridge exists only on the development server with
-// ELIZA_DEV_ALLOW_TEST_MOCKS=1 (devSurfacesEnabled in build-flags.ts). Node
+// test mocks or the explicit private local preview, matching local-agent.ts. Node
 // contract tests import this module without Vite and pass their own request.
-const developmentBridgeAllowed:boolean=import.meta.env!==undefined&&import.meta.env.DEV===true&&import.meta.env.VITE_ELIZA_DEV_ALLOW_TEST_MOCKS==='1';
+const developmentBridgeAllowed:boolean=import.meta.env!==undefined&&import.meta.env.DEV===true&&(import.meta.env.VITE_ELIZA_DEV_ALLOW_TEST_MOCKS==='1'||(import.meta.env.VITE_ALPHA_PRIVATE_LOCAL_PREVIEW==='1'&&import.meta.env.VITE_LOCAL_AGENT==='1'));
 const operation:(input:Record<string,unknown>)=>Promise<any>=developmentBridgeAllowed?async input=>{
  const response=await fetch('/__alpha-local-agent',{method:'POST',headers:{'Content-Type':'application/json','X-Alpha-Local-Agent':'1'},body:JSON.stringify({storage:input}),signal:AbortSignal.timeout(15000),redirect:'error'});
  if(!response.ok)throw Error('Development device storage unavailable');return response.json();

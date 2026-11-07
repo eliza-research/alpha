@@ -1,0 +1,126 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-10-27T08:11:57.963Z",
+  "sourceCommit": "5a0c9f08997af93848c202fb670bb0747695d4e9",
+  "upstream": {
+    "url": "https://github.com/elizaOS/eliza.git",
+    "commit": "2d1d8797bc185cf6fe9d29c1ed7d5db4c8cae82a",
+    "appSource": "packages/app",
+    "nativeSystemSource": "plugins/plugin-native-system",
+    "osSource": "packages/os"
+  },
+  "scope": "Strict APK build and synthetic source/browser validation; no emulator boot, AOSP image boot, real integrations, device execution or user acceptance.",
+  "verification": {
+    "command": "npm run verify",
+    "sourceCommit": "c9ec55ea1",
+    "tests": 2116,
+    "passed": 2109,
+    "skipped": 7,
+    "failed": 0,
+    "typecheck": true,
+    "productionBuild": true,
+    "productionAudit": {
+      "passed": true,
+      "files": 419,
+      "testMocks": false
+    },
+    "logSha256": "dc2bb3ab074c4fbf6d193aaa3ef526a3a727a60ff67c9bee2a6e7c3fe57f1db7"
+  },
+  "browser": {
+    "project": "production",
+    "specs": [
+      "home-brief-result.production.spec.ts",
+      "journey-core-loops.production.spec.ts"
+    ],
+    "passed": 25,
+    "note": "24 passed in the complete run; the remaining sign-out assertion was updated to current Cloud readiness wording and passed in isolation.",
+    "logsSha256": [
+      "07bb712f7aeb4539072fcd80900a5a4b57e1a0391349f9b7668c1dd1345a62ad",
+      "324789937a6f51987d50648a12471fd94c78b9ac8d441e295dc62a62c582f672"
+    ]
+  },
+  "android": {
+    "command": "npm run android:build:local",
+    "exitCode": 0,
+    "bun": "1.4.2",
+    "node": "24.15.0",
+    "jdk": 21,
+    "environment": {
+      "RUN_TURBO_CONCURRENCY": "1",
+      "NODE_OPTIONS": "--max-old-space-size=4096"
+    },
+    "testMocks": false,
+    "allowUnpackagedRuntime": false,
+    "runtimeProfile": "native",
+    "version": {
+      "code": 1,
+      "name": "0.1.0"
+    },
+    "apks": [
+      {
+        "file": "artifacts/standalone-debug.apk",
+        "sha256": "a75e96b2ddabe1f00ba0ab0eb81d75a1ac9ce2dc506a0fa31e1fb7ac7295e8bb",
+        "variant": "standalone",
+        "mode": "debug",
+        "versionCode": 1,
+        "versionName": "0.1.0",
+        "signed": true,
+        "signerSha256": "2242994d2d237f98d01927999157067df4e2495a8f980451ac3de5d40642584a"
+      },
+      {
+        "file": "artifacts/standalone-release-unsigned.apk",
+        "sha256": "b1aea3d2ac53359da23313096fba0b5fa625b876f7ecff2f295798e93515fd2e",
+        "variant": "standalone",
+        "mode": "release",
+        "versionCode": 1,
+        "versionName": "0.1.0",
+        "signed": false,
+        "signerSha256": null,
+        "distributable": false
+      },
+      {
+        "file": "artifacts/launcher-debug.apk",
+        "sha256": "377ea0723a459791d7d084ba2bdc97dff817fc42f33392b0d3dec395d9e516cf",
+        "variant": "launcher",
+        "mode": "debug",
+        "versionCode": 1,
+        "versionName": "0.1.0",
+        "signed": true,
+        "signerSha256": "2242994d2d237f98d01927999157067df4e2495a8f980451ac3de5d40642584a"
+      },
+      {
+        "file": "artifacts/launcher-release-unsigned.apk",
+        "sha256": "7a2168de280d911939581435548beef479a428dd259bb678ca2bcab6b3a983d0",
+        "variant": "launcher",
+        "mode": "release",
+        "versionCode": 1,
+        "versionName": "0.1.0",
+        "signed": false,
+        "signerSha256": null,
+        "distributable": false
+      }
+    ],
+    "instrumentation": {
+      "standalone": {
+        "file": "artifacts/instrumentation/standalone-androidTest.apk",
+        "sha256": "33fcc04514e36aa79a077663d050db501aeac6b6d0eaecbe22f76a51cef590a6"
+      },
+      "launcher": {
+        "file": "artifacts/instrumentation/launcher-androidTest.apk",
+        "sha256": "dd1d97b8814a902f6ecc62dff961d5c1168152e95df609f1b3bc244c074478d7"
+      }
+    },
+    "logSha256": "938e51ffb5e760223d0cb43a0c533e3edb84899873eb048fc800707c007993a6",
+    "manifestSha256": "8c6e19773b45ce4290279ac9749aa08babfc6706e9dbe090800f3e7174552c80",
+    "limitations": [
+      "Releases unsigned and non-distributable.",
+      "Voice host remains unqualified for device acceptance.",
+      "Version code 1 is build evidence, not an upgrade/deployment candidate."
+    ]
+  },
+  "remaining": [
+    "PR621 broad production-browser CI: 255 passed and 50 failed; targeted passing results do not clear this job.",
+    "GitHub requires independent approval of the latest push; configured ruleset has no administrator bypass.",
+    "Eliza develop advanced after this build snapshot; this evidence covers only the exact pin above."
+  ]
+}

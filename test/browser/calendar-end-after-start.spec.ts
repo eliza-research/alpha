@@ -1,4 +1,5 @@
 import {test,expect} from '@playwright/test';
+import {openBrowserCalendar} from './helpers/browser-calendar';
 // A zero-length or negative form is a user-correctable end time, not a clock change.
 // Before this check every end <= start reported "the clocks change", including the
 // zero-hour reminder draft opened from a recording. Source/test evidence only.
@@ -19,7 +20,7 @@ test('rendered End controls cannot reach the start, and the shortest form still 
  test.setTimeout(120_000);
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
  await page.clock.setFixedTime(new Date('2027-06-01T12:00:00Z'));
- await page.goto('/');await page.getByRole('button',{name:'Calendar',exact:true}).click();
+ await page.goto('/');await openBrowserCalendar(page);
  await page.getByRole('button',{name:'New event',exact:true}).click();
  await page.getByRole('textbox',{name:'Title',exact:true}).fill('End validation');
  // End cannot be stepped to or before the start through rendered controls.

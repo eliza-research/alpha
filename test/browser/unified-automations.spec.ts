@@ -1,4 +1,8 @@
 import {test,expect,type Page} from '@playwright/test';
+import {openBrowserCalendar} from './helpers/browser-calendar';
+import {returnToApps} from './app-navigation';
+
+async function filterType(page:Page,type:string){await page.getByRole('button',{name:'Filter workflows',exact:true}).click();const dialog=page.getByRole('dialog',{name:'Filter workflows',exact:true});await dialog.getByRole('radio',{name:type,exact:true}).click();await dialog.getByRole('button',{name:'Show workflows',exact:true}).click();}
 
 /** Fresh browser context and synthetic canonical API only. No provider or native effects. */
 async function setup(page:Page){
@@ -24,7 +28,7 @@ async function setup(page:Page){
   else if(path==='/api/workflow/workflows/flow')result=flow;
   await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(result)});
  });
- await page.goto('/?mode=dev&workflows=agent');
+ await page.goto('/?mode=dev&workflows=agent');await openBrowserCalendar(page);await returnToApps(page);
  await page.evaluate(async()=>{
   const {connectionController:connection}=await import('/src/runtime/connection-ui.tsx');
   const {WorkflowProtocol}=await import('/src/runtime/workflow-protocol.ts');
@@ -46,19 +50,19 @@ test('Alpha unified list, filters, paused authoring and explicit owner review us
  await expect(page.locator('[data-alpha-layer=app]').getByText('Check the draft',{exact:true})).toBeVisible();await expect(page.locator('[data-alpha-layer=app]').getByText('Weekly review',{exact:true})).toBeVisible();
  await page.screenshot({path:testInfo.outputPath('unified-mobile.png')});
  await page.setViewportSize({width:1280,height:900});await page.screenshot({path:testInfo.outputPath('unified-desktop.png')});await page.setViewportSize({width:390,height:844});
- await page.getByRole('button',{name:'Schedules',exact:true}).click();await expect(page.locator('[data-alpha-layer=app]').getByText('Weekly review',{exact:true})).toBeVisible();await expect(page.locator('[data-alpha-layer=app]').getByText('Document review',{exact:true})).toBeHidden();
- await page.getByRole('button',{name:'Reminders',exact:true}).click();await expect(page.locator('[data-alpha-layer=app]').getByText('Check the draft',{exact:true})).toBeVisible();await expect(page.locator('[data-alpha-layer=app]').getByText('Weekly review',{exact:true})).toBeHidden();
- await page.getByRole('button',{name:'All',exact:true}).click();await page.getByRole('button',{name:'New automation',exact:true}).click();await page.getByRole('button',{name:'Prompt automation',exact:false}).click();
- await page.getByLabel('Name',{exact:true}).fill('Paused source review');await page.getByLabel('Instructions',{exact:true}).fill('Use only text explicitly supplied in this prompt.');
- await page.screenshot({path:testInfo.outputPath('prompt-editor.png')});await page.getByRole('button',{name:'Save paused',exact:true}).click();await expect(page.locator('[data-alpha-layer=app]').getByText('Paused source review',{exact:true})).toBeVisible();
+ await filterType(page,'Schedules');await expect(page.locator('[data-alpha-layer=app]').getByText('Weekly review',{exact:true})).toBeVisible();await expect(page.locator('[data-alpha-layer=app]').getByText('Document review',{exact:true})).toBeHidden();
+ await filterType(page,'Reminders');await expect(page.locator('[data-alpha-layer=app]').getByText('Check the draft',{exact:true})).toBeVisible();await expect(page.locator('[data-alpha-layer=app]').getByText('Weekly review',{exact:true})).toBeHidden();
+ await filterType(page,'All types');await page.getByRole('button',{name:'New automation',exact:true}).click();await page.getByRole('button',{name:/^Automation/,exact:false}).click();
+ await page.getByLabel('What should Alpha do?',{exact:true}).fill('Use only text explicitly supplied in this prompt.');await page.getByRole('button',{name:'More options',exact:true}).click();await page.getByLabel('Name (optional)',{exact:true}).fill('Paused source review');
+ await page.screenshot({path:testInfo.outputPath('prompt-editor.png')});await page.getByRole('button',{name:'Save automation',exact:true}).click();await expect(page.locator('[data-alpha-layer=app]').getByText('Paused source review',{exact:true})).toBeVisible();
  const created=calls.find(call=>call.path==='/api/triggers'&&call.method==='POST');expect(created?.body.enabled).toBe(false);expect(calls.filter(call=>call.path.endsWith('/execute')||call.path.endsWith('/fire'))).toHaveLength(0);
  await page.locator('[data-alpha-layer=app]').getByText('Document review',{exact:true}).click();await page.getByRole('button',{name:'Enable',exact:true}).click();expect(calls.filter(call=>call.method==='PUT')).toHaveLength(0);await page.getByRole('button',{name:'Confirm Enable',exact:true}).click();await expect(page.locator('[data-alpha-subview=automations-detail]').getByText('Saved on this agent.',{exact:true})).toBeVisible();await expect(page.locator('[data-alpha-subview=workflows-list]')).toHaveAttribute('inert','');expect(calls.filter(call=>call.path==='/api/triggers/prompt'&&call.method==='PUT')).toHaveLength(1);
  await page.getByRole('button',{name:'Back to automations',exact:true}).click();await page.locator('[data-alpha-subview=workflows-list]').getByText('Reviewed workflow',{exact:true}).click();await expect(page.getByRole('heading',{name:'Reviewed workflow',exact:true})).toBeVisible();await page.getByRole('button',{name:'Back to workflows',exact:true}).click();
- await page.getByRole('button',{name:'New automation',exact:true}).click();await page.getByRole('button',{name:'Reminder on this phone',exact:false}).click();await expect(page.getByRole('button',{name:'Reminders',exact:true})).toBeVisible();expect(calls.filter(call=>call.path==='/api/lifeops/definitions')).toHaveLength(0);
+ await page.getByRole('button',{name:'New automation',exact:true}).click();await page.getByRole('button',{name:'More options',exact:true}).click();await page.getByRole('button',{name:'Reminder on this phone',exact:false}).click();await expect(page.getByRole('button',{name:'Reminders',exact:true})).toBeVisible();expect(calls.filter(call=>call.path==='/api/lifeops/definitions')).toHaveLength(0);
  expect(errors).toEqual([]);
 });
 
 test('missing server capability is an explicit source state, not a healthy empty automation list',async({page})=>{
- const calls=await setup(page);await page.route('**/__unified_api/api/lifeops/reminders',route=>route.fulfill({status:404,contentType:'application/json',body:'{}'}));await page.getByRole('button',{name:'Refresh',exact:true}).click();await expect(page.getByRole('alert')).toContainText('Agent reminders are not available on this agent.');await expect(page.locator('[data-alpha-layer=app]').getByText('Document review',{exact:true})).toBeVisible();
- await page.getByRole('button',{name:'New automation',exact:true}).click();await expect(page.getByRole('button',{name:'Agent reminder',exact:false})).toBeDisabled();await expect(page.getByRole('button',{name:'Agent reminder',exact:false})).toContainText('not available on this agent');await expect(page.getByRole('button',{name:'Prompt automation',exact:false})).toBeEnabled();await expect(page.getByRole('button',{name:'Reminder on this phone',exact:false})).toBeEnabled();expect(calls.filter(call=>call.method!=='GET')).toHaveLength(0);
+ const calls=await setup(page);await page.route('**/__unified_api/api/lifeops/reminders',route=>route.fulfill({status:404,contentType:'application/json',body:'{}'}));await page.getByRole('button',{name:'Filter workflows',exact:true}).click();await page.getByRole('dialog',{name:'Filter workflows',exact:true}).getByRole('button',{name:'Refresh list',exact:true}).click();await expect(page.getByRole('alert')).toContainText('Agent reminders are not available on this agent.');await expect(page.locator('[data-alpha-layer=app]').getByText('Document review',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'New automation',exact:true}).click();await expect(page.getByRole('button',{name:/^Reminder(?! on this phone)/,exact:false})).toBeDisabled();await expect(page.getByRole('button',{name:/^Reminder(?! on this phone)/,exact:false})).toContainText('not available on this agent');await expect(page.getByRole('button',{name:/^Automation/,exact:false})).toBeEnabled();await page.getByRole('button',{name:'More options',exact:true}).click();await expect(page.getByRole('button',{name:'Reminder on this phone',exact:false})).toBeEnabled();expect(calls.filter(call=>call.method!=='GET')).toHaveLength(0);
 });

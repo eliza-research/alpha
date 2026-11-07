@@ -25,7 +25,12 @@ export function installCalendarApprovalAdapter(Component:Shell){
  p.renderVals=function(){
   const out=render.call(this),value=state(this),key=binding();
   out.msgs=(out.msgs||[]).map((message:Shell)=>{
-   if(!message.isAgent)return message;const parsed=calendarReviewText(String(message.text||''));
+   if(!message.isAgent)return message;
+   const source=String(message.text||'');
+   // A verified device receipt may already replace the original review prose.
+   // Keep that projection and never interpret its summary as Calendar commands.
+   if(typeof message.displayText==='string'&&message.displayText!==source)return {...message,messageActionsLabel:message.messageActionsLabel?'Message actions: '+message.displayText:message.messageActionsLabel};
+   const parsed=calendarReviewText(source);
    return {...message,displayText:parsed.displayText,hasCalendarText:message.hasCalendarText!==false&&!!parsed.displayText,messageActionsLabel:message.messageActionsLabel?'Message actions: '+(parsed.displayText||'Calendar request'):message.messageActionsLabel,calendarReviews:parsed.ids.map(id=>({id,status:value.statuses.get(key+id)||'Check current status',open:()=>void review(this,id)}))};
   });return out;
  };

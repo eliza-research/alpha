@@ -42,9 +42,8 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
-import {AGENT_ASSETS, ANDROID_CLASSPATH, BUN_ENTRY, COMMERCIAL_FONT, FONT_LICENSES, HELD_OUTSIDE_REPOSITORY, KNOWN_LICENSES, NO_FONT_LICENCE, ROOT, TESSERACT_CORE_SOURCES, UNKNOWN, UNVERIFIED, VOICE_HOST, collectNotices, fontLicense, fontNames, mavenFamily, packagedRuntimePresent, pinnedVoiceModels, productionLockPackages, voiceHostProblems} from './generate-licenses.mjs';
+import {AGENT_ASSETS, ANDROID_CLASSPATH, BUN_ENTRY, COMMERCIAL_FONT, FONT_LICENSES, HELD_OUTSIDE_REPOSITORY, KNOWN_LICENSES, NO_FONT_LICENCE, ROOT, TESSERACT_CORE_SOURCES, UNKNOWN, UNVERIFIED, VOICE_HOST, collectNotices, exists, fontLicense, fontNames, listFonts, mavenFamily, packagedRuntimePresent, pinnedVoiceModels, productionLockPackages, readJson, sha256, voiceHostProblems} from './generate-licenses.mjs';
 import {METADATA as GRADLE_METADATA, coordinateChecksum, parseVerificationMetadata} from './gradle-verification.mjs';
 import {classifyLicence, flagSummary} from './licence-policy.mjs';
 
@@ -55,9 +54,6 @@ const NOT_COVERED = 'Staged resident runtime payload (Bun, bundled agent and wor
 const EMBEDDING_HOST = 'android/embedding-host/qualified-host.json';
 const JNI_LIBS = 'android/app/src/main/jniLibs';
 
-const sha256 = data => createHash('sha256').update(data).digest('hex');
-const exists = (root, rel) => fs.existsSync(path.join(root, rel));
-const readJson = (root, rel) => JSON.parse(fs.readFileSync(path.join(root, rel), 'utf8'));
 const property = (name, value) => ({name: `alphaphone:${name}`, value: String(value)});
 
 function licenses(expression) {
@@ -85,17 +81,9 @@ function npmComponents(root, lock) {
   });
 }
 
-function fontFiles(root, rel = 'apps/app/public', out = []) {
-  for (const entry of fs.readdirSync(path.join(root, rel), {withFileTypes: true}).sort((a, b) => a.name.localeCompare(b.name))) {
-    const child = path.posix.join(rel, entry.name);
-    if (entry.isDirectory()) { if (entry.name !== 'licenses') fontFiles(root, child, out); } else if (/\.(woff2|ttf|otf)$/i.test(entry.name)) out.push(child);
-  }
-  return out;
-}
-
 function fontComponents(root) {
   const records = exists(root, FONT_LICENSES) ? readJson(root, FONT_LICENSES).entries : [];
-  return fontFiles(root).map(rel => {
+  return listFonts(root).map(rel => {
     const bytes = fs.readFileSync(path.join(root, rel));
     const names = fontNames(bytes);
     const digest = sha256(bytes);

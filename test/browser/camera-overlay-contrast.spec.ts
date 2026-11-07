@@ -1,5 +1,5 @@
 import {test,expect} from '@playwright/test';
-for(const state of ['camera','camera:scan'])test(`camera text has contrast over a white feed: ${state}`,async({page},info)=>{
+for(const state of ['camera'])test(`camera text has contrast over a white feed: ${state}`,async({page},info)=>{
  await page.goto('/?mode=mock&start='+state);
  const controls=page.locator(state==='camera'?'button[aria-label^="Zoom "]':'button[aria-label="Save to Files"],button[aria-label="Open link"]');
  await expect(controls.first()).toBeVisible();

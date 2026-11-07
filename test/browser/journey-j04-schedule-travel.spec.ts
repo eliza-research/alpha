@@ -1,3 +1,4 @@
+import {openBrowserCalendar} from './helpers/browser-calendar';
 // Journey J04: Schedule -> travel, driven through rendered controls in the browser build
 // (development profile with the development device controls, /?mode=dev&tools=1).
 //
@@ -10,6 +11,8 @@
 //   The fixture logs every search and route request to a test-owned localStorage key so the
 //   exactly-once assertions survive reloads. No map tiles, geocoder or router is contacted.
 // - "Device controls -> Back" is the development stand-in for the Android system Back gesture.
+// - Events live in the development browser calendar, an explicit test-mocks Calendar source
+//   (openBrowserCalendar); Agent Calendar is not involved.
 //
 // Native-only steps (not provable here; the honest browser state is asserted where one exists):
 // - Device location as a route origin and turn-by-turn "Start": the browser build reports that
@@ -66,7 +69,7 @@ test('calendar event location is handed to Maps once, routed by explicit choices
   const from = {latitude: 43.738, longitude: 7.424}, to = {latitude: 43.74, longitude: 7.425};
 
   await test.step('create an event with a location through the editor', async () => {
-    await button(page, 'Calendar').click();
+    await openBrowserCalendar(page);
     await button(page, 'New event').click();
     await page.getByRole('textbox', {name: 'Title', exact: true}).fill('Harbour meeting');
     await page.getByRole('textbox', {name: 'Location', exact: true}).fill(address);
@@ -83,7 +86,7 @@ test('calendar event location is handed to Maps once, routed by explicit choices
   await test.step('reopen the saved event after reload and hand its location to Maps once', async () => {
     await page.reload();
     await installMaps(page);
-    await button(page, 'Calendar').click();
+    await openBrowserCalendar(page);
     await page.getByRole('button', {name: /^Harbour meeting,/}).click();
     await expect(heading).toBeVisible();
     expect(await requests(page)).toEqual({queries: [], routes: []});
@@ -173,7 +176,7 @@ test('calendar event location is handed to Maps once, routed by explicit choices
     // Maps opened from the launcher has no event to return to.
     await expect(button(page, 'Back to event')).toHaveCount(0);
     await systemBack(page);
-    await button(page, 'Calendar').click();
+    await openBrowserCalendar(page);
     await page.getByRole('button', {name: /^Harbour meeting,/}).click();
     await expect(heading).toBeVisible();
     expect(await events(page)).toHaveLength(1);

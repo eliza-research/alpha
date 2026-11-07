@@ -1,0 +1,62 @@
+{
+  "pullRequest": 625,
+  "head": "5a0c9f08997af93848c202fb670bb0747695d4e9",
+  "includesPr621Head": "cb2ea7e5bdddf74590cd8f4404fe57c691efedaf",
+  "baseIntegration": "4ec51c3034b9e4aa2cdb7262ab239a27168c02a1",
+  "reviewedAreas": [
+    "Native embedding missing-input refusal and provider selectors",
+    "Shared inference session loading, preparation, cancellation and speech readiness",
+    "Shared Notes lifecycle, CAS revisions, dirty drafts and owner retirement",
+    "Private Notes transport and same-session invalidation binding",
+    "Clock handoff-only validation and outcome binding",
+    "Browser PCM encoding and narrow source projections",
+    "Scanned Calendar draft source admission without immediate writes"
+  ],
+  "blockingSourceFindings": [],
+  "validation": "Pending integration and full checks; prior PR/CI success is not final-build evidence",
+  "requestedDevelopSnapshot": "e5316af35b827fa26a52b8bc2402cce4405bf5db",
+  "developReview": "Additional shared launcher/Sense/OS modules do not replace Alpha renderer automatically. Shared SSE framing and weather output changes inspected. Final source preparation and runtime build required.",
+  "mainMerged": false,
+  "deviceAcceptance": false,
+  "integratedCommit": "664c97245ed4ef67b6d5592a749a739501e3b1fc",
+  "finalDevelopSnapshot": "4e617a0c15080df16391ced88dbbc73b818a7af5",
+  "finalDevelopObservedAt": "2026-10-27T08:13:00Z",
+  "finalDevelopReachability": {
+    "ahead_by": 0,
+    "base": "4e617a0c15080df16391ced88dbbc73b818a7af5",
+    "behind_by": 0,
+    "mergeBase": "4e617a0c15080df16391ced88dbbc73b818a7af5",
+    "status": "identical"
+  },
+  "packagingFixVerification": {
+    "passed": 2102,
+    "skipped": 6,
+    "failed": 0,
+    "total": 2108,
+    "log": "/tmp/alphaphone-soong-packaging-verify.log"
+  },
+  "latestIntegratedHead": "107f2271598e954a67159dc3672d0ccf9991d2ad",
+  "latestIntegrationCommit": "94fcb5cac",
+  "receiptPresentationFix": "4036618980ed7b6ebe87563be500ae226a173183",
+  "receiptPresentationVerification": {
+    "focusedTestsPassed": 19,
+    "browserRerun": "running; prior Clock unknown failure reproduced and traced to Calendar projection overwriting the device result"
+  },
+  "sharedAndroidReview": {
+    "commit": "cfa2784d6",
+    "areas": [
+      "shared launcher model and component retain Alpha theme, package IDs and explicit native bridge",
+      "shared Sense logic uses stable Alpha wrapper component names and separate complete speech runtime",
+      "shared Pixel source inventory hash matches existing admitted lock",
+      "shared SSE framing replaces duplicate decoder",
+      "retain Soong-only installation adaptation after shared native admission and product composition"
+    ],
+    "focusedStagingTestsPassed": 11,
+    "focusedSenseTestsPassed": 31,
+    "focusedSenseTestsSkipped": 1,
+    "priorDevelopmentBrowserPassed": 50,
+    "priorProductionBrowserPassed": 50,
+    "newSourceFullVerify": "running",
+    "newSourceBrowser": "queued/running"
+  }
+}

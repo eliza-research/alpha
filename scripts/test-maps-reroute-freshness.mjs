@@ -2,23 +2,26 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import { stripTypeScriptTypes } from 'node:module';
+import { stripTypeScriptTypes } from '../test/support/strip-types.mjs';
 import { usableNavigationFix } from '../apps/app/src/maps/navigation-fix.ts';
 import { MapsController } from '../.eliza/client-features/plugins/plugin-maps/src/client/state.ts';
 import { SavedPlaces } from '../.eliza/client-features/plugins/plugin-maps/src/client/saved-places.ts';
 import { MapsFailure, coordinate, failure } from '../.eliza/client-features/plugins/plugin-maps/src/client/contracts.ts';
 import { distanceToRoute, routeProgress } from '../apps/app/src/maps/route-distance.ts';
 import { atStep, guidanceView } from '../apps/app/src/maps/guidance.ts';
+import { MapsScreenController } from '../apps/app/src/maps/screen.ts';
 
 const ORIGIN = {latitude: 43.73, longitude: 7.42};
 const END = {latitude: 43.74, longitude: 7.42};
 const OFF_ROUTE = {latitude: 43.735, longitude: 7.43};
 const source = stripTypeScriptTypes(fs.readFileSync(new URL('../apps/app/src/prototype/maps-adapter.ts', import.meta.url), 'utf8').replace(/^import .*;\n/gm, '').replace('export function installPrototypeMapsAdapter', 'function installPrototypeMapsAdapter'), {mode: 'strip'});
 
-// Execute the actual adapter/render callbacks with the real shared controller. Only device,
-// DOM and provider boundaries are fixtures: this does not establish physical GPS acceptance.
+// Execute the actual adapter/render callbacks with the real shared screen and domain controllers.
+// Only device, DOM and provider boundaries are fixtures: this does not establish physical GPS acceptance.
+const realNow = Date.now;
 async function fixture() {
- let now = Date.now(), surface, receiveFix;
+ let now = realNow(), surface, receiveFix;
+ Date.now = () => now;
  const requests = [];
  const config = {status:'configured',providerId:'fixture',connectionId:'conn_fixture_123456789',revision:'1',capabilities:{map:false,search:true,placeDetails:true,modes:['drive'],traffic:'none',transit:'none',offline:{map:false,search:false,routing:false}}};
  const place = {providerId:'fixture',id:'destination',name:'Destination',coordinate:END,attribution:'Fixture',fetchedAt:now};
@@ -29,13 +32,14 @@ async function fixture() {
  const noop = ()=>{};
  class Location { async start(_prompt, callback) { receiveFix = callback; } async stop() {} awaitingPermission() { return false; } }
  class Background { async start(){return false;} async stop(){} active(){return false;} update(){} }
- class Voice { pause(){} update(){} }
+ class Voice { enabled=true; pause(){} update(){} toggle(){this.enabled=!this.enabled;} }
  const storage = {getItem:()=>null,setItem:noop};
  const context = vm.createContext({console,queueMicrotask, setTimeout, clearTimeout, AbortController,
-  usableNavigationFix:fix=>usableNavigationFix(fix,now), coordinate, failure, MapsFailure, distanceToRoute, routeProgress, atStep, guidanceView,
+  MapsScreenController, shareMap:async()=>'closed', MapPlane:class{update(){} destroy(){}}, insideCloudCoverage:()=>true, describeMapsDisclosure:()=>'', DailyApps:{}, mapsEventStillThere:()=>false, connectionController:{getSnapshot:()=>({open:false})},
+  initializeRegionalMaps:async()=>{}, regionalDiagnostics:()=>({}),
   MapsController:class extends MapsController { constructor(c,p){super(c,p,new SavedPlaces('freshness',storage),new Location());} },
   locationPermissionGranted:async()=>true,NativeMapsLocation:Location,BackgroundNavigation:Background,NavigationVoice:Voice,registerPlugin:()=>({}),Capacitor:{isNativePlatform:()=>false},isAndroid:false,
-  regionalMapsConfigured:false,initializeCloudMaps:async()=>{},regionalMap:()=>undefined,cloudMapsCoverage:()=>undefined,cloudMapsDiagnostics:()=>({}),globalBasemap:{attribution:'Fixture'},
+  regionalMapsConfigured:false,initializeCloudMaps:async()=>{},regionalMap:()=>undefined,cloudMapsCoverage:()=>undefined,cloudMapsBasemap:()=>undefined,cloudMapsDiagnostics:()=>({}),globalBasemap:{attribution:'Fixture'},
   mapsConnection:()=>({config,provider}),onMapsConnectionChange:()=>noop,
   bindAgentNavigation:options=>{surface=options.surface;return {dispose:noop,registered:()=>true};},residentMapsNavigationPort:{relay:false},
   publishMapsSelection:noop,clearMapsSelection:noop,mapsEventReturnOffered:()=>undefined,
@@ -53,7 +57,7 @@ async function fixture() {
  render().dr.start();
  await Promise.resolve();
  const fix=(overrides={})=>({coordinate:OFF_ROUTE,accuracyMeters:8,precision:'precise',timestamp:now,...overrides});
- return {surface,render,requests,fix,emit:value=>receiveFix(value),advance:ms=>{now+=ms;},dispose};
+ return {surface,render,requests,fix,emit:value=>receiveFix(value),advance:ms=>{now+=ms;},dispose:()=>{dispose();Date.now=realNow;}};
 }
 
 test('actual Maps UI refuses an aged reroute callback and preserves the exact active route', async()=>{

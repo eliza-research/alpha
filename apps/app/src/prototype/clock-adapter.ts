@@ -46,19 +46,9 @@ export function installClockAdapter(Component:any,views:Bag,options:{simulated:b
  p.componentDidMount=function(){mount.call(this);owner=this;this.clockSelection=selection;void restore();window.addEventListener('alpha-back',back,true);window.addEventListener('pagehide',retireReview);document.addEventListener('visibilitychange',hidden);};
  p.componentWillUnmount=function(){if(owner===this){window.removeEventListener('alpha-back',back,true);window.removeEventListener('pagehide',retireReview);document.removeEventListener('visibilitychange',hidden);delete this.clockSelection;owner=null;open=false;review=null;++generation;}unmount.call(this);};
  const change=(fn:()=>void)=>{if(busy)return;fn();review=null;publish();};
- // One-time requests keep the original builder; a repeat uses the contract's validated builder.
  const build=():ClockRequest=>{
   if(action==='set'&&days.length&&!repeatAvailable())throw Error('Repeating alarms are not available in this version. Clear the repeat days, or set the repeat in Clock.');
-  if(action==='set'&&days.length)return buildClockRequest({action,time,label,snooze,days},currentClockTimeZone());
-  if(action==='set'){
-   if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)||label.length>200||label.includes('\0'))throw Error('Choose a valid time and a label up to 200 characters.');
-   const [hour,minute]=time.split(':').map(Number);return {action,hour,minute,label:label.trim(),timeZone:currentClockTimeZone(),reviewed:true};
-  }
-  if(action==='snooze'){
-   if(!/^\d{1,2}$/.test(snooze)||Number(snooze)<1||Number(snooze)>60)throw Error('Choose 1 to 60 snooze minutes.');
-   return {action,snoozeMinutes:Number(snooze),reviewed:true};
-  }
-  return {action,reviewed:true};
+  return buildClockRequest({action,time,label,snooze,days},action==='set'?currentClockTimeZone():'');
  };
  const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
  const description=(request:ClockRequest)=>request.action==='set'?`Ask Clock to set ${request.days?`a repeating alarm (${describeClockDays(request.days)})`:'an alarm'} at ${String(request.hour).padStart(2,'0')}:${String(request.minute).padStart(2,'0')}${request.label?` named “${request.label}”`:''}, using the phone’s local time. Review the alarm in Clock.`:request.action==='show'?'Open the installed Clock app’s alarms page.':request.action==='snooze'?`Ask Clock to snooze ringing alarms, requesting ${request.snoozeMinutes} minutes. Clock may use its default duration and snooze all ringing alarms. If nothing is ringing, Clock may do nothing.`:'Ask Clock to dismiss the active alarm. If there is more than one, Clock may ask you to choose. A one-time alarm is disabled; a repeated alarm skips its upcoming occurrence.';

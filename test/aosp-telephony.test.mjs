@@ -104,3 +104,17 @@ test("phone number normalisation", () => {
   assert.equal(normalizePhoneNumber("911"), "911", "emergency numbers go to the system dialer like any other");
   for (const bad of ["", "1", "tel:5550100", "555-CALL-NOW", "*#06#", "5550100;ext=2", 5550100, "+1".padEnd(30, "1")]) assert.equal(normalizePhoneNumber(bad), null, String(bad));
 });
+
+test("only the verified image's client becomes the shared Messages and Phone profile", async () => {
+  const { registerTelephonyProfile } = await import("../apps/app/src/runtime/aosp-telephony.ts");
+  const { telephonyProfile } = await import("../.eliza/client-features/packages/contracts/src/native-telephony.ts");
+  const { plugin } = stub({ status: status() });
+  let clear = registerTelephonyProfile(createAospTelephony(plugin, false));
+  assert.equal(telephonyProfile(), null, "a standalone or unverified install leaves the shared views on their own path");
+  clear();
+  const image = createAospTelephony(plugin, true);
+  clear = registerTelephonyProfile(image);
+  assert.equal(telephonyProfile(), image);
+  clear();
+  assert.equal(telephonyProfile(), null);
+});

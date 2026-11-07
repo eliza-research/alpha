@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
 const source=stripTypeScriptTypes(readFileSync('apps/app/src/runtime/app-speech.ts','utf8').replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'strip'});
 function fixture(ready=true){const f={cloud:0,spoken:[],checks:0};const box={AbortController,DOMException,window:{addEventListener(){},removeEventListener(){}},document:{hidden:false,documentElement:{dataset:{}}},connectionController:{getSnapshot:()=>({})},markTtsPlaybackStarted(){},markTtsPlaybackEnded(){},cloudRuntimeEnabled:false,testMocksEnabled:false,createOnDeviceVoice:()=>({ready:async()=>{throw Error("app speech must not use transcription readiness");},playbackReady:async()=>ready,speak:async(...args)=>{f.spoken.push(args);args[4].assertCurrent();if(f.hold)await new Promise(resolve=>f.release=resolve);}}),speakCloudText:async()=>{f.cloud++;}};vm.runInNewContext(source+';globalThis.speak=speakAppText;',box);return {f,box};}

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {mkdtemp,writeFile,readFile,rm,stat,mkdir} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
@@ -9,9 +10,9 @@ import {createServer} from 'node:http';
 if(!process.execArgv.some((arg,i)=>arg==='--import'&&process.execArgv[i+1]==='tsx')){const child=spawnSync(process.execPath,['--import','tsx',process.argv[1]],{stdio:'inherit',timeout:60000});if(child.error)throw child.error;process.exit(child.status??1);}
 const {createBrowserCloudDevHandler}=await import('../scripts/browser-cloud-dev-bridge.ts');
 const {CloudProtocol}=await import('../apps/app/src/runtime/cloud-protocol.ts');
-const {cloudStorageNamespace,productionCloud}=await import('../apps/app/src/runtime/cloud-deployment.generated.ts');
+const {cloudStorageNamespace,productionCloud,stagingCloud}=await import('../apps/app/src/runtime/cloud-deployment.generated.ts');
 const profileFile=(profile,name)=>join(profile,cloudStorageNamespace.replaceAll(':','-'),name);
-const {BrowserCloudConnection}=await import('../apps/app/src/browser/cloud-connection.ts');
+const {BrowserCloudConnection,BrowserCloudSignIn}=await import('../apps/app/src/browser/cloud-connection.ts');
 const owner='11111111-1111-4111-8111-111111111111',org='22222222-2222-4222-8222-222222222222',credentialId='33333333-3333-4333-8333-333333333333',reference='browser-cloud-reference:44444444-4444-4444-8444-444444444444';
 const secret='synthetic-cloud-credential-not-a-real-key';
 test('Cloud browser login admits only one session and the optional fixed Alpha hint',async()=>{
@@ -44,6 +45,7 @@ async function fixture(resident,environment){
  const request=async(url,input={})=>{
   const path=new URL(url).pathname;calls.push({url,input});
   if(signIn){const handled=await signIn(path,input);if(handled)return handled;}
+  if(path==='/steward/auth/providers')return Response.json({google:false,oauth:[]});
   if(path==='/api/auth/cli-session')return Response.json({sessionId:session,expiresAt:new Date(Date.now()+60000).toISOString()});
   if(path==='/api/auth/cli-session/'+session)return pollResponse();
   if(path==='/api/v1/subscription/entitlement-keys')return response(url,input);
@@ -602,4 +604,476 @@ test('legacy profile credentials cannot authenticate the configured deployment',
   const result=await f.rpc({operation:'request',environment:'production',requestId:randomUUID(),input:{url:'https://api.eliza.app/api/v1/user',method:'GET',headers:{Accept:'application/json'},credentialReference:reference}});
   assert.equal(result.status,401);assert.equal(f.calls.length,0);
  }finally{await f.close();}
+});
+
+test('public signing keys do not read or forward account credentials',async()=>{
+ const key={kty:'EC',crv:'P-256',kid:'public-only',x:'test-public-x',y:'test-public-y'};let requests=0;
+ const client=new CloudProtocol('production',async input=>{
+  requests++;assert.equal(new URL(input.url).pathname,'/api/v1/subscription/entitlement-keys');
+  assert.equal(input.headers.Authorization,undefined);assert.equal(input.credentialReference,undefined);
+  return {status:200,data:{keys:[key]}};
+ },{read:async()=>{throw Error('Public key lookup must not read account storage');},write:async()=>{},clear:async()=>{}},async()=>{});
+ assert.deepEqual(await client.subscriptionEntitlementKeys(new AbortController().signal),[key]);assert.equal(requests,1);
+});
+
+const publicService={success:true,version:1,service:{name:'Example Cloud',terms:{title:'Terms',revision:'terms-1',sections:[{title:'Use',paragraphs:['Exact public terms.']}]},privacy:{title:'Privacy',revision:'privacy-1',sections:[{title:'Data',paragraphs:['Exact public privacy text.']}]}}};
+test('browser sign-in exposes the native-compatible public service-info method',async()=>{
+ const port=new BrowserCloudSignIn();assert.equal(typeof port.serviceInfo,'function');
+ const previous=globalThis.fetch,calls=[];
+ globalThis.fetch=async(url,input)=>{calls.push({url,input});return Response.json(publicService);};
+ try{assert.deepEqual(await port.serviceInfo({environment:'production'}),publicService);assert.equal(calls.length,1);assert.equal(calls[0].url,'/__alpha-browser-cloud');assert.deepEqual(JSON.parse(calls[0].input.body),{operation:'signInServiceInfo',environment:'production'});assert.equal(calls[0].input.redirect,'error');assert.equal(new Headers(calls[0].input.headers).get('Authorization'),null);}
+ finally{globalThis.fetch=previous;}
+});
+test('service-info bridge reads only the selected canonical public endpoint without account or login changes',async()=>{
+ const f=await fixture(undefined,'production');try{
+  const before=await readFile(profileFile(f.profile,'initial-credential.json'),'utf8');
+  f.setSignIn(async(path,input)=>{if(path==='/steward/auth/providers')return null;assert.equal(path,'/api/public/service');assert.equal(input.method,'GET');assert.equal(input.redirect,'error');assert.equal(new Headers(input.headers).get('Authorization'),null);assert.equal(input.body,undefined);assert.ok(input.signal instanceof AbortSignal);return Response.json(publicService);});
+  assert.deepEqual(await f.rpc({operation:'signInServiceInfo',environment:'production'}),{status:200,data:publicService});
+  assert.equal(f.calls[0].url,productionCloud.api+'/api/public/service');assert.equal(f.calls.length,1);assert.deepEqual((await f.rpc({operation:'signInStatus'})).data,{active:false,inApp:true,google:false,email:true});
+  // Status answers Google availability from the public provider list only: no credential, no login.
+  assert.equal(f.calls.length,2);assert.equal(f.calls[1].url,productionCloud.api+'/steward/auth/providers?tenantId='+encodeURIComponent(productionCloud.tenant));assert.equal(f.calls[1].input.method,'GET');assert.equal(new Headers(f.calls[1].input.headers).get('Authorization'),null);
+  assert.equal(await readFile(profileFile(f.profile,'initial-credential.json'),'utf8'),before);await assert.rejects(readFile(profileFile(f.profile,'credentials.json')),{code:'ENOENT'});
+  for(const input of [{environment:'staging'},{environment:'other'},{environment:'production',url:'https://attacker.invalid'},{environment:'production',credentialReference:reference},{environment:'production',headers:{Authorization:'Bearer '+secret}}])assert.notEqual((await f.rpc({operation:'signInServiceInfo',...input})).status,200);
+  for(const headers of [{Origin:'http://attacker.invalid'},{'X-Alpha-Browser-Cloud':'0'}])assert.equal((await f.send({operation:'signInServiceInfo',environment:'production'},{headers})).status,403);
+  assert.equal(f.calls.length,2,'unadmitted requests never reach the provider');
+ }finally{await f.close();}
+});
+test('service-info bridge rejects unavailable, oversized and noncanonical documents without leaking content',async()=>{
+ const f=await fixture();try{
+  for(const reply of [()=>Response.json(publicService,{status:503}),()=>Response.json({...publicService,version:2}),()=>Response.json({...publicService,token:secret}),()=>Response.json({...publicService,service:{...publicService.service,privacy:{}}}),()=>new Response('x'.repeat(16*1024*1024+1))]){
+   f.setSignIn(async()=>reply());const result=await f.rpc({operation:'signInServiceInfo',environment:'production'});assert.notEqual(result.status,200);assert.equal(JSON.stringify(result).includes(secret),false);
+  }
+ }finally{await f.close();}
+});
+test('service-info honors the configured staging authority without requiring its account credentials',async()=>{
+ const f=await fixture(undefined,'staging');try{
+  f.setSignIn(async(path,input)=>{assert.equal(path,'/api/public/service');assert.equal(new Headers(input.headers).get('Authorization'),null);return Response.json(publicService);});
+  assert.equal((await f.rpc({operation:'signInServiceInfo',environment:'staging'})).status,200);assert.equal(f.calls[0].url,stagingCloud.api+'/api/public/service');
+  assert.notEqual((await f.rpc({operation:'signInServiceInfo',environment:'production'})).status,200);assert.equal(f.calls.length,1);
+ }finally{await f.close();}
+});
+test('service-info cancels its provider request when the browser request closes',{timeout:3000},async()=>{
+ const f=await fixture();const controller=new AbortController();let started,aborted;
+ const ready=new Promise(resolve=>started=resolve),cancelled=new Promise(resolve=>aborted=resolve);
+ try{
+  f.setSignIn(async(_path,input)=>new Promise((_resolve,reject)=>{started();input.signal.addEventListener('abort',()=>{aborted();reject(input.signal.reason);},{once:true});}));
+  const pending=f.send({operation:'signInServiceInfo',environment:'production'},{signal:controller.signal});await ready;controller.abort();await assert.rejects(pending,{name:'AbortError'});await cancelled;
+ }finally{controller.abort();await f.close();}
+});
+
+
+test('browser Google broker lifetime pins the real host credential and refuses retired same-credential reads',async()=>{
+ const f=await fixture(),token='a'.repeat(64);let host;
+ f.setResponse(async url=>{if(new URL(url).pathname.endsWith('/accounts'))return Response.json([]);throw Error('Unexpected synthetic Cloud request');});
+ try{
+  host=await f.host().startGoogleHost(token,{credentialId,reference});
+  const call=()=>fetch('http://127.0.0.1:'+host.port+'/__alpha-owner-gmail',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({calendar:{operation:'sources'}})});
+  assert.equal((await call()).status,200);
+  const before=f.calls.length,seed=JSON.parse(await readFile(profileFile(f.profile,'initial-credential.json'),'utf8'));
+  const replacement={...seed,credentialId:randomUUID(),credentialReference:'browser-cloud-reference:'+randomUUID()};
+  await writeFile(profileFile(f.profile,'credentials.json'),JSON.stringify({production:replacement}),{mode:0o600});
+  assert.equal((await call()).status,409);assert.equal(f.calls.length,before,'changed binding refuses before provider');
+  await writeFile(profileFile(f.profile,'credentials.json'),JSON.stringify({production:seed}),{mode:0o600});
+  assert.equal((await call()).status,200);
+  await Promise.all([host.close(),host.close()]);const retiredCalls=f.calls.length;
+  await assert.rejects(call());assert.equal(f.calls.length,retiredCalls,'retired broker cannot read even the identical credential');
+ }finally{await host?.close();await f.close();}
+});
+
+test('full browser resident Calendar writes require exact owner intent and preserve read-only Gmail',async()=>{
+ const resident={async bind(){return {};},async clear(){return {configured:false,attachable:false};},status(){return {};},async ready(){return {};}};
+ const f=await fixture(resident,'production'),token='a'.repeat(64),grant='55555555-5555-4555-8555-555555555555';let google,second,third;
+ let readOnly=false,capabilityStatus=200;
+ f.setResponse(async(url)=>{
+  const path=new URL(url).pathname;
+  if(path.endsWith('/accounts'))return Response.json([{configured:true,connected:true,reason:'connected',connectionId:grant,identity:{email:'owner@example.invalid'},grantedCapabilities:['google.calendar.read',...(readOnly?[]:['google.calendar.write'])]}]);
+  if(path.endsWith('/calendars'))return Response.json([{calendarId:'primary',summary:'Owner',primary:true,selected:true,accessRole:'owner'}]);
+  if(path.endsWith('/sync-v1/capabilities')){if(capabilityStatus!==200)return Response.json({error:'Synthetic provider unavailable'},{status:capabilityStatus});return Response.json({version:1,calendarId:'primary',accountId:'verified-account',read:true,write:true,idempotentCreate:true,conditionalWrites:true,providerExactlyOnce:false});}
+  throw Error('Unexpected synthetic Cloud operation '+path);
+ });
+ const privateCall=async(host,body)=>{const r=await fetch('http://127.0.0.1:'+host.port+'/__alpha-owner-gmail',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify(body)});return {status:r.status,data:await r.json()};};
+ const intent=calendarEdits=>f.rpc({operation:'residentGoogleCalendarAccess',environment:'production',credentialId,calendarEdits});
+ try{
+  google=await f.host().startGoogleHost(token,{credentialId,reference});
+  const source=await privateCall(google,{calendar:{operation:'sources'}});assert.equal(source.status,200);
+  const write={calendar:{operation:'write-capabilities',grantId:source.data.calendars[0].grantId,calendarId:'primary'}};
+  let count=f.calls.length;assert.notEqual((await privateCall(google,write)).status,200);assert.equal(f.calls.length,count,'Default Calendar gate refuses before Cloud');
+  for(const patch of [{credentialId:grant},{calendarEdits:'true'},{gmailChanges:true}]){
+   const result=await f.rpc({operation:'residentGoogleCalendarAccess',environment:'production',credentialId,calendarEdits:true,...patch});assert.notEqual(result.status,200);
+  }
+  assert.deepEqual((await intent(true)).data,{calendarEdits:true});
+  const permitted=await privateCall(google,write);assert.equal(permitted.status,200);assert.equal(permitted.data.write,true);
+  count=f.calls.length;
+  assert.notEqual((await privateCall(google,{send:{operation:'prepare',to:['self@example.invalid'],subject:'Not sent',bodyText:'Synthetic only',requestId:randomUUID()}})).status,200);assert.equal(f.calls.length,count,'Calendar intent never enables Gmail writes');
+  assert.equal((await intent(false)).status,200);count=f.calls.length;
+  assert.notEqual((await privateCall(google,write)).status,200);assert.equal(f.calls.length,count,'Explicit off refuses before any provider read or write');
+  assert.equal((await intent(true)).status,200);readOnly=true;count=f.calls.length;
+  assert.notEqual((await privateCall(google,write)).status,200);assert.equal(f.calls.slice(count).some(call=>new URL(call.url).pathname.endsWith('/sync-v1/capabilities')),false,'Host intent does not invent Google WRITE scope');readOnly=false;
+  capabilityStatus=503;count=f.calls.length;
+  assert.notEqual((await privateCall(google,write)).status,200);assert.equal(f.calls.slice(count).filter(call=>new URL(call.url).pathname.endsWith('/sync-v1/capabilities')).length,1,'Provider refusal is not retried or reported as a write capability');capabilityStatus=200;
+  second=await f.host().startGoogleHost(token,{credentialId,reference});count=f.calls.length;
+  assert.notEqual((await privateCall(second,write)).status,200);assert.equal(f.calls.length,count,'A new resident generation starts read-only');
+  assert.notEqual((await privateCall(google,write)).status,200);assert.equal(f.calls.length,count,'Old generation is retired even with the same credential');
+  assert.equal((await intent(true)).status,200);await google.close();google=undefined;
+  assert.equal((await privateCall(second,write)).status,200,'Old close does not clear the replacement generation intent');
+  const initial=profileFile(f.profile,'initial-credential.json'),seed=JSON.parse(await readFile(initial,'utf8'));
+  await writeFile(initial,JSON.stringify({...seed,credentialReference:'browser-cloud-reference:66666666-6666-4666-8666-666666666666'}),{mode:0o600});
+  assert.equal((await intent(true)).status,200);count=f.calls.length;
+  assert.notEqual((await privateCall(second,write)).status,200);assert.equal(f.calls.length,count,'A reused credential ID cannot revive a host bound to another reference');
+  third=await f.host().startGoogleHost(token,{credentialId,reference:'browser-cloud-reference:66666666-6666-4666-8666-666666666666'});
+  const freshSources=await privateCall(third,{calendar:{operation:'sources'}});assert.equal(freshSources.status,200);
+  const freshWrite={calendar:{...write.calendar,grantId:freshSources.data.calendars[0].grantId}};
+  assert.equal((await intent(true)).status,200);assert.equal((await privateCall(third,freshWrite)).data.write,true,'The new current binding is live before Clear');
+  assert.equal((await f.rpc({operation:'residentClear',environment:'production'})).status,200);count=f.calls.length;
+  assert.notEqual((await privateCall(third,freshWrite)).status,200);assert.equal(f.calls.length,count,'Clear retires the independently current intent');
+
+
+ }finally{await google?.close();await second?.close();await third?.close();await f.close();}
+});
+
+
+async function googleReady(f) {
+ f.setSignIn(async path=>path==='/steward/auth/providers'?Response.json({google:true,oauth:['google']}):null);
+ f.setPollResponse(async()=>Response.json({status:'authenticated',apiKey:secret,expiresAt:new Date(Date.now()+60000).toISOString()}));
+ const id=randomUUID(),started=await f.rpc({operation:'signInStartGoogle',environment:'production',attemptId:id});
+ assert.equal(started.status,200);assert.equal(started.data.attemptId,id);return started.data;
+}
+test('browser Google host checks capability and saves only after canonical one-consumption identity verification',async()=>{
+ const f=await fixture();try{
+  const started=await googleReady(f);assert.equal(new URL(started.browserUrl).searchParams.get('provider'),'google');
+  assert.equal(JSON.stringify(started).includes(secret),false);
+  const done=await f.rpc({operation:'signInPollGoogle',attemptId:started.attemptId});assert.equal(done.status,200);assert.equal(done.data.status,'authenticated');assert.equal(JSON.stringify(done).includes(secret),false);
+  const stored=JSON.parse((await f.rpc({operation:'secureRead',slot:'cloud:production'})).data.value);assert.equal(stored.token,undefined);assert.notEqual(stored.credentialReference,reference);
+  assert.notEqual((await f.rpc({operation:'signInPollGoogle',attemptId:started.attemptId})).status,200);
+ }finally{await f.close();}
+});
+test('unavailable browser Google leaves the old account and email path usable',async()=>{
+ const f=await fixture();try{assert.equal((await f.rpc({operation:'signInStatus'})).data.google,false);assert.notEqual((await f.rpc({operation:'signInStartGoogle',environment:'production',attemptId:randomUUID()})).status,200);assert.equal(JSON.parse((await f.rpc({operation:'secureRead',slot:'cloud:production'})).data.value).credentialReference,reference);assert.equal((await f.rpc({operation:'signInStatus'})).data.email,true);}finally{await f.close();}
+});
+test('browser Google rejects expired server session before opening an authorization flow',async()=>{
+ const f=await fixture();try{f.setSignIn(async path=>path==='/steward/auth/providers'?Response.json({google:true}):path==='/api/auth/cli-session'?Response.json({sessionId:randomUUID(),expiresAt:new Date(Date.now()-1).toISOString()}):null);assert.notEqual((await f.rpc({operation:'signInStartGoogle',environment:'production',attemptId:randomUUID()})).status,200);assert.equal((await f.rpc({operation:'signInStatus'})).data.active,false);}finally{await f.close();}
+});
+test('browser Google completion cannot replace an account changed since launch',async()=>{
+ const f=await fixture();try{const started=await googleReady(f);await f.rpc({operation:'secureRemove',slot:'cloud:production',previousReference:reference});assert.notEqual((await f.rpc({operation:'signInPollGoogle',attemptId:started.attemptId})).status,200);assert.equal((await f.rpc({operation:'secureRead',slot:'cloud:production'})).data.value,null);}finally{await f.close();}
+});
+test('cancelled browser Google poll ignores an already in-flight authenticated response',async()=>{
+ const f=await fixture();let release;try{const started=await googleReady(f);let entered;const waiting=new Promise(r=>entered=r);f.setPollResponse(async()=>{entered();await new Promise(r=>release=r);return Response.json({status:'authenticated',apiKey:secret,expiresAt:new Date(Date.now()+60000).toISOString()});});const poll=f.rpc({operation:'signInPollGoogle',attemptId:started.attemptId});await waiting;await f.rpc({operation:'signInCancelGoogle',attemptId:started.attemptId});release();assert.notEqual((await poll).status,200);assert.equal(JSON.parse((await f.rpc({operation:'secureRead',slot:'cloud:production'})).data.value).credentialReference,reference);}finally{release?.();await f.close();}
+});
+test('wrong attempt cancellation cannot retire the current browser Google login',async()=>{
+ const f=await fixture();try{const started=await googleReady(f);await f.rpc({operation:'signInCancelGoogle',attemptId:randomUUID()});assert.equal((await f.rpc({operation:'signInPollGoogle',attemptId:started.attemptId})).data.status,'authenticated');}finally{await f.close();}
+});
+test('Google popup blocking refuses before starting any host request',async()=>{
+ const wd=Object.getOwnPropertyDescriptor(globalThis,'window'),fetch=globalThis.fetch;let calls=0;
+ Object.defineProperty(globalThis,'window',{configurable:true,value:{open:()=>null}});globalThis.fetch=async()=>{calls++;throw Error('must not start');};
+ try{await assert.rejects(new BrowserCloudSignIn().startGoogle({environment:'production'}),e=>e.code==='browser-unavailable');assert.equal(calls,0);}finally{globalThis.fetch=fetch;if(wd)Object.defineProperty(globalThis,'window',wd);else delete globalThis.window;}
+});
+test('Google popup is reserved before the first host request and exposes no credential',async()=>{
+ const wd=Object.getOwnPropertyDescriptor(globalThis,'window'),fetch=globalThis.fetch;let opened=false,id,assigned;const popup={opener:{},closed:false,location:{replace:url=>assigned=url},close(){this.closed=true;}};
+ Object.defineProperty(globalThis,'window',{configurable:true,value:{open:url=>{assert.equal(url,'about:blank');opened=true;return popup;}}});
+ globalThis.fetch=async(_url,input)=>{assert.equal(opened,true);const body=JSON.parse(input.body);if(body.operation==='signInStartGoogle'){id=body.attemptId;return Response.json({attemptId:id,expiresAt:Date.now()+60000,browserUrl:'https://eliza.app/auth/cli-login?session='+randomUUID()+'&app=alpha&provider=google'});}if(body.operation==='signInPollGoogle')return Response.json({status:'authenticated',environment:'production',expiresAt:Date.now()+60000,accountCreated:null});return Response.json({});};
+ try{const result=await new BrowserCloudSignIn().startGoogle({environment:'production'});assert.equal(result.status,'authenticated');assert.equal(popup.opener,null);assert.equal(new URL(assigned).origin,'https://eliza.app');assert.equal(popup.closed,true);}finally{globalThis.fetch=fetch;if(wd)Object.defineProperty(globalThis,'window',wd);else delete globalThis.window;}
+});
+
+
+test('detached or auto-closed Google popup still accepts the host completion',async()=>{
+ const wd=Object.getOwnPropertyDescriptor(globalThis,'window'),fetch=globalThis.fetch,calls=[];let attempt;
+ const popup={opener:null,closed:false,location:{replace(){popup.closed=true;}},close(){this.closed=true;}};
+ Object.defineProperty(globalThis,'window',{configurable:true,value:{open:()=>popup}});
+ globalThis.fetch=async(_url,input)=>{const body=JSON.parse(input.body);calls.push(body);if(body.operation==='signInStartGoogle'){attempt=body.attemptId;return Response.json({attemptId:attempt,expiresAt:Date.now()+60000,browserUrl:'https://eliza.app/auth/cli-login?session='+randomUUID()+'&app=alpha&provider=google'});}if(body.operation==='signInPollGoogle')return Response.json({status:'authenticated',environment:'production',expiresAt:Date.now()+60000,accountCreated:null});return Response.json({});};
+ try{const result=await new BrowserCloudSignIn().startGoogle({environment:'production'});assert.equal(result.status,'authenticated');assert.equal(calls.some(x=>x.operation==='signInPollGoogle'),true);}finally{globalThis.fetch=fetch;if(wd)Object.defineProperty(globalThis,'window',wd);else delete globalThis.window;}
+});
+
+test('detached WindowProxy with inaccessible closed property is not a cancellation',async()=>{
+ const wd=Object.getOwnPropertyDescriptor(globalThis,'window'),fetch=globalThis.fetch,calls=[];let attempt;
+ const popup={opener:null,get closed(){throw Error('detached WindowProxy');},location:{replace(){}},close(){}};
+ Object.defineProperty(globalThis,'window',{configurable:true,value:{open:()=>popup}});
+ globalThis.fetch=async(_url,input)=>{const body=JSON.parse(input.body);calls.push(body);if(body.operation==='signInStartGoogle'){attempt=body.attemptId;return Response.json({attemptId:attempt,expiresAt:Date.now()+60000,browserUrl:'https://eliza.app/auth/cli-login?session='+randomUUID()+'&app=alpha&provider=google'});}if(body.operation==='signInPollGoogle')return Response.json({status:'authenticated',environment:'production',expiresAt:Date.now()+60000,accountCreated:null});return Response.json({});};
+ try{const result=await new BrowserCloudSignIn().startGoogle({environment:'production'});assert.equal(result.status,'authenticated');assert.equal(calls.some(x=>x.operation==='signInPollGoogle'),true);}finally{globalThis.fetch=fetch;if(wd)Object.defineProperty(globalThis,'window',wd);else delete globalThis.window;}
+});
+
+
+test('cancelling Google while durable save awaits resident retirement retains the previous account',async()=>{
+ let entered,release;const waiting=new Promise(r=>entered=r);
+ const f=await fixture({clear:async()=>{entered();await new Promise(r=>release=r);}});
+ try{
+  const started=await googleReady(f),poll=f.rpc({operation:'signInPollGoogle',attemptId:started.attemptId});await waiting;
+  const cancellation=await f.rpc({operation:'signInCancelGoogle',attemptId:started.attemptId});assert.equal(cancellation.data.status,'cancelled');
+  release();assert.notEqual((await poll).status,200);
+  assert.equal(JSON.parse((await f.rpc({operation:'secureRead',slot:'cloud:production'})).data.value).credentialReference,reference);
+ }finally{release?.();await f.close();}
+});
+
+async function googleCommitBoundaryFixture(){
+ const source=await readFile(new URL('../scripts/browser-cloud-dev-bridge.ts',import.meta.url),'utf8');
+ const start=source.indexOf(' async function cancelGoogleAttempt('),end=source.indexOf(' async function browserGoogleAvailable(',start);
+ assert.ok(start>=0&&end>start);const code=stripTypeScriptTypes(source.slice(start,end),{mode:'transform'});
+ const deferred=()=>{let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve};};
+ const renameEntered=deferred(),releaseRename=deferred(),writeEntered=deferred(),releaseWrite=deferred();
+ const disk={value:'old',temporary:null},attempt={id:'attempt',phase:'preparing',environment:'production',controller:new AbortController(),sessionId:'session'};
+ const state={googleAttempt:attempt};
+ const harness=new Function('state','disk','attempt','renameEntered','releaseRename','writeEntered','releaseWrite','AbortController',`
+ let googleAttempt=state.googleAttempt;
+ const pending=new Map([['session',{}]]);const options={};const resetCalendarAccess=()=>{};
+ const directory=async()=>{};const stateFile='credentials';const randomUUID=()=> 'temporary';
+ const writeFile=async(_path,value)=>{disk.temporary=value;writeEntered.resolve();await releaseWrite.promise;};
+ const rename=async()=>{renameEntered.resolve();await releaseRename.promise;disk.value=disk.temporary;disk.temporary=null;};
+ const unlink=async()=>{disk.temporary=null;};
+ let queue=Promise.resolve();function serial(run){const result=queue.then(run,run);queue=result.catch(()=>{});return result;}
+ ${code}
+ const current=()=>{attempt.controller.signal.throwIfAborted();if(googleAttempt!==attempt)throw Error('cancelled');};
+ return {cancel:()=>cancelGoogleAttempt('attempt'),commit:()=>serial(async()=>{await saveGoogleCredential({production:{value:'new'}},attempt,current);attempt.outcome={status:'authenticated',environment:'production',expiresAt:Date.now()+60000,accountCreated:null,attemptId:'77777777-7777-4777-8777-777777777777',credentialId:'33333333-3333-4333-8333-333333333333'};return attempt.outcome;})};
+ `)(state,disk,attempt,renameEntered,releaseRename,writeEntered,releaseWrite,AbortController);
+ return {...harness,disk,attempt,renameEntered,releaseRename,writeEntered,releaseWrite};
+}
+test('cancel during staged credential write prevents rename and cleans the temporary file',async()=>{
+ const f=await googleCommitBoundaryFixture(),save=f.commit();await f.writeEntered.promise;
+ assert.equal((await f.cancel()).status,'cancelled');f.releaseWrite.resolve();await assert.rejects(save);
+ assert.equal(f.disk.value,'old');assert.equal(f.disk.temporary,null);assert.notEqual(f.attempt.phase,'committed');
+});
+test('cancel after rename dispatch waits for and returns the committed outcome',async()=>{
+ const f=await googleCommitBoundaryFixture(),save=f.commit();await f.writeEntered.promise;f.releaseWrite.resolve();await f.renameEntered.promise;
+ let returned=false;const cancel=f.cancel().then(value=>{returned=true;return value;});await Promise.resolve();assert.equal(returned,false);
+ f.releaseRename.resolve();assert.equal((await save).status,'authenticated');assert.equal((await cancel).status,'authenticated');
+ assert.equal(f.attempt.controller.signal.aborted,false);assert.equal(f.attempt.phase,'committed');assert.match(f.disk.value,/new/);
+});
+
+
+async function wholeGoogleStackFixture(options={}){
+ const commit=await googleCommitBoundaryFixture();
+ const deferred=()=>{let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve};};
+ const readEntered=deferred(),releaseRead=deferred(),adoptionEntered=deferred(),releaseAdoption=deferred(),releaseCancel=deferred(),admissionEntered=deferred(),releaseAdmission=deferred();
+ if(!options.holdAdmission)releaseAdmission.resolve();
+ const descriptor=Object.getOwnPropertyDescriptor(globalThis,'window'),oldFetch=globalThis.fetch;
+ const popup={opener:null,location:{replace(){}},close(){}};
+ Object.defineProperty(globalThis,'window',{configurable:true,value:{open:()=>popup}});
+ let id,reads=0,heldCancel=options.deferCancel,currentCredential={credentialId,credentialReference:reference,userId:owner,organizationId:org,expiresAt:Date.now()+60000};
+ globalThis.fetch=async(_url,input)=>{
+  const body=JSON.parse(input.body);
+  if(body.operation==='signInStartGoogle'){id=body.attemptId;return Response.json({attemptId:id,expiresAt:Date.now()+60000,browserUrl:'https://eliza.app/auth/cli-login?session='+randomUUID()+'&app=alpha&provider=google'});}
+  if(body.operation==='signInPollGoogle')return Response.json(await commit.commit());
+  if(body.operation==='signInCancelGoogle'){if(heldCancel){heldCancel=false;await releaseCancel.promise;}return options.cancelFails?Response.json({code:'unavailable'},{status:503}):Response.json(await commit.cancel());}
+  throw Error('Unexpected fake host operation');
+ };
+ const port=new BrowserCloudSignIn();
+ const store={acceptsReferences:true,read:async()=>{reads++;if(reads===1&&options.deferRead){readEntered.resolve();await releaseRead.promise;}if(reads===2&&options.deferAdoption){adoptionEntered.resolve();await releaseAdoption.promise;}return currentCredential;},write:async()=>{throw Error('Renderer must not write');},clear:async()=>{throw Error('No clear');}};
+ const client=new CloudProtocol('production',async()=>{throw Error('No external request');},store,async()=>{throw Error('No external window');},{signIn:port});
+ client.identity=async()=>({userId:owner,organizationId:org});
+ const source=await readFile(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
+ const from=source.indexOf('  async cancelSignIn() {'),to=source.indexOf('  /** Sends a six-digit code',from);assert.ok(from>=0&&to>from);
+ const methods=stripTypeScriptTypes('({'+source.slice(from,to)+'})',{mode:'transform'});
+ const signed=stripTypeScriptTypes(source.slice(source.indexOf('async function signedIn('),source.indexOf('/** The development hosted-agent client.')),{mode:'transform'});
+ const verify=stripTypeScriptTypes(source.slice(source.indexOf('async function verifyService('),source.indexOf('let pendingBillingReview:')),{mode:'transform'});
+ const part=(start,end)=>stripTypeScriptTypes(source.slice(source.indexOf(start),source.indexOf(end)),{mode:'transform'});
+ // The real admission path; only the shared binding controller and the agent start are stubbed.
+ const admission=part('function signInClient(','/**\n * A new key was stored')+part('async function residentSignedIn(','/** The key is stored;')+part('async function admitCloudResident(','/**\n * Cloud reported, on a background refresh');
+ const serviceSlot=source.match(/const CLOUD_SERVICE = ('[^']+');/);assert.ok(serviceSlot);
+ const harness=new Function('client','methods','signed','verify','admission','residentOn','admissionEntered','releaseAdmission','store','crypto','CLOUD_SERVICE',`
+ let operation=null,cloud=client,active=true,entitlementRefresher=null;
+ let googleSignInGeneration=0,signInReadinessOwner=null;
+ const trace=[];
+ const state={signIn:{step:'choose',environment:'production'},open:true,purpose:'cloud-account'};
+ const listeners=new Set();let service=null,membershipRead=null,pendingBillingReview=null;
+ const update=patch=>{Object.assign(state,patch);for(const listener of listeners)listener();};
+ const makeCloud=environment=>{trace.push('makeCloud:'+environment);return {environment,identity:client.identity};};
+ const cloudCredentialStore=store,CloudProtocolError=Error,localStorage={setItem(){}},refreshMembershipBalance=()=>{};
+ const productionCloudSignInRequired=()=>false,explicitSignedOutCloudEntry=()=>false;
+ const ensureResident=async()=>{trace.push('ensureResident:'+(active?'running':'absent'));},showGoogleMfa=()=>{throw Error('No MFA');},signInFailed=()=>{};
+ const residentCloudFlow=()=>!!residentOn,prepareSignInReplacement=()=>{},showPostSignInSetup=()=>{},save=()=>{},hosted=null,cloudServiceName=()=> 'Cloud';
+ const residentEnvironment=()=>residentOn,ownProviderSelected=()=>false,residentAlwaysPresent=true,stopEntitlementRefresh=()=>{},EntitlementRefresher=class {};
+ const retire=()=>{trace.push('retire');active=null;},connectResident=async signal=>{signal.throwIfAborted();trace.push('connectResident');active=true;};
+ const residentBindingController=(_environment,bound,hooks)=>({async admit(signal){
+  await verifyService(bound,signal);hooks.verified(service);admissionEntered.resolve();await releaseAdmission.promise;signal.throwIfAborted();hooks.checked({view:{kind:'active'}});
+  return {binding:'cloud',reason:'admitted',identity:service.identity,plan:{view:{kind:'active'}},endsAt:null};}});
+ eval(verify);eval(signed);eval(admission);
+ const work=async(_message,action)=>{if(operation)return;operation=new AbortController();try{await action(operation.signal);}finally{operation=null;}};
+ const connectionController={cancel(){operation?.abort(new DOMException('Cancelled','AbortError'));client.cancelLogin();},close(){},subscribe(listener){listeners.add(listener);return()=>listeners.delete(listener);}};
+ const actions=eval(methods);
+ return {actions,state,trace,genericAbort(){operation.abort(new DOMException('Cancelled','AbortError'));},replaceClient(){cloud={environment:'production'};for(const listener of listeners)listener();},supersede(){googleSignInGeneration++;for(const listener of listeners)listener();},get adopted(){return !!state.cloudAccount;},get operation(){return operation;}};
+ `)(client,methods,signed,verify,admission,options.residentEnvironment,admissionEntered,releaseAdmission,store,crypto,serviceSlot[1].slice(1,-1));
+ return {commit,client,harness,readEntered,releaseRead,adoptionEntered,releaseAdoption,releaseCancel,admissionEntered,releaseAdmission,changeAccount(){currentCredential={...currentCredential,credentialId:'99999999-9999-4999-8999-999999999999'};},close(){globalThis.fetch=oldFetch;if(descriptor)Object.defineProperty(globalThis,'window',descriptor);else delete globalThis.window;}};
+}
+test('whole Google protocol and controller cancel after rename waits and adopts the committed account',async()=>{
+ const f=await wholeGoogleStackFixture();try{
+  const signing=f.harness.actions.signInGoogle();await f.commit.writeEntered.promise;f.commit.releaseWrite.resolve();await f.commit.renameEntered.promise;
+  const cancelling=f.harness.actions.cancelSignIn();await Promise.resolve();
+  assert.equal(f.harness.state.signIn.step,'google');assert.equal(f.harness.operation.signal.aborted,false);
+  f.commit.releaseRename.resolve();await Promise.all([signing,cancelling]);
+  assert.equal(f.harness.adopted,true);assert.equal(f.harness.state.signIn,null);assert.equal(f.harness.state.cloudAccount.credentialId,credentialId);assert.equal(f.harness.state.cloudAccount.userId,owner);assert.equal(f.harness.state.cloudAccount.organizationId,org);assert.equal(f.harness.state.cloudAccount.environment,'production');
+ }finally{f.commit.releaseWrite.resolve();f.commit.releaseRename.resolve();f.close();}
+});
+test('whole Google protocol and controller cancel before rename retains the previous account',async()=>{
+ const f=await wholeGoogleStackFixture();try{
+  const signing=f.harness.actions.signInGoogle();await f.commit.writeEntered.promise;
+  const cancelling=f.harness.actions.cancelSignIn();await cancelling;f.commit.releaseWrite.resolve();await assert.rejects(signing,e=>e.name==='AbortError');
+  assert.equal(f.commit.disk.value,'old');assert.equal(f.harness.adopted,false);assert.equal(f.harness.state.signIn.step,'choose');
+ }finally{f.commit.releaseWrite.resolve();f.commit.releaseRename.resolve();f.close();}
+});
+
+for(const phase of ['Read','Adoption'])test(`normal committed Google success survives generic abort during deferred ${phase}`,async()=>{
+ const f=await wholeGoogleStackFixture(phase==='Read'?{deferRead:true}:{deferAdoption:true});try{
+  const signing=f.harness.actions.signInGoogle();await f.commit.writeEntered.promise;f.commit.releaseWrite.resolve();await f.commit.renameEntered.promise;f.commit.releaseRename.resolve();
+  await f[phase==='Read'?'readEntered':'adoptionEntered'].promise;f.harness.genericAbort();f[phase==='Read'?'releaseRead':'releaseAdoption'].resolve();await signing;
+  assert.equal(f.harness.adopted,true);assert.equal(f.harness.state.signIn,null);
+ }finally{f.releaseRead.resolve();f.releaseAdoption.resolve();f.commit.releaseWrite.resolve();f.commit.releaseRename.resolve();f.close();}
+});
+test('postcommit readback still rejects a changed credential instead of adopting another account',async()=>{
+ const f=await wholeGoogleStackFixture({deferRead:true});try{
+  const signing=f.harness.actions.signInGoogle();await f.commit.writeEntered.promise;f.commit.releaseWrite.resolve();await f.commit.renameEntered.promise;f.commit.releaseRename.resolve();await f.readEntered.promise;f.changeAccount();f.releaseRead.resolve();await assert.rejects(signing);assert.equal(f.harness.adopted,false);
+ }finally{f.releaseRead.resolve();f.commit.releaseWrite.resolve();f.commit.releaseRename.resolve();f.close();}
+});
+test('native Google port without commit-aware cancellation retains ordinary abort behavior',async()=>{
+ let resolve,cancels=0;const pending=new Promise(r=>resolve=r),abort=new AbortController();
+ const port={startGoogle:()=>pending,cancel:async()=>{cancels++;}},store={read:async()=>null,write:async()=>{},clear:async()=>{}};
+ const client=new CloudProtocol('production',async()=>{throw Error('unused');},store,async()=>{}, {signIn:port});
+ const result=client.signInWithGoogle(abort.signal);abort.abort(new DOMException('Cancelled','AbortError'));await assert.rejects(result,e=>e.name==='AbortError');assert.ok(cancels>0);assert.equal(client.googleCancellationSupported,false);resolve({});
+});
+
+test('a refused second Google tap during deferred adoption cannot abort the committed result',async()=>{
+ const f=await wholeGoogleStackFixture({deferAdoption:true});try{
+  const signing=f.harness.actions.signInGoogle();await f.commit.writeEntered.promise;f.commit.releaseWrite.resolve();await f.commit.renameEntered.promise;f.commit.releaseRename.resolve();
+  await f.adoptionEntered.promise;assert.equal(f.harness.state.signIn.step,'google');await f.harness.actions.signInGoogle();f.releaseAdoption.resolve();await signing;
+  assert.equal(f.harness.adopted,true);assert.equal(f.harness.state.cloudAccount.credentialId,credentialId);
+ }finally{f.releaseAdoption.resolve();f.commit.releaseWrite.resolve();f.commit.releaseRename.resolve();f.close();}
+});
+test('a replaced Cloud client during deferred adoption rejects the old committed result',async()=>{
+ const f=await wholeGoogleStackFixture({deferAdoption:true});try{
+  const signing=f.harness.actions.signInGoogle();await f.commit.writeEntered.promise;f.commit.releaseWrite.resolve();await f.commit.renameEntered.promise;f.commit.releaseRename.resolve();
+  await f.adoptionEntered.promise;f.harness.replaceClient();f.releaseAdoption.resolve();await assert.rejects(signing,e=>e.name==='AbortError');assert.equal(f.harness.adopted,false);
+ }finally{f.releaseAdoption.resolve();f.commit.releaseWrite.resolve();f.commit.releaseRename.resolve();f.close();}
+});
+test('a new sign-in generation during deferred adoption rejects the old committed result',async()=>{
+ const f=await wholeGoogleStackFixture({deferAdoption:true});try{
+  const signing=f.harness.actions.signInGoogle();await f.commit.writeEntered.promise;f.commit.releaseWrite.resolve();await f.commit.renameEntered.promise;f.commit.releaseRename.resolve();
+  await f.adoptionEntered.promise;f.harness.supersede();f.releaseAdoption.resolve();await assert.rejects(signing,e=>e.name==='AbortError');assert.equal(f.harness.adopted,false);
+ }finally{f.releaseAdoption.resolve();f.commit.releaseWrite.resolve();f.commit.releaseRename.resolve();f.close();}
+});
+const commitGoogle=async f=>{await f.commit.writeEntered.promise;f.commit.releaseWrite.resolve();await f.commit.renameEntered.promise;f.commit.releaseRename.resolve();};
+test('committed Google on the resident flow keeps its client through admission and restarts the agent',async()=>{
+ const f=await wholeGoogleStackFixture({residentEnvironment:'production'});try{
+  const signing=f.harness.actions.signInGoogle();await commitGoogle(f);await signing;
+  assert.deepEqual(f.harness.trace,['retire','connectResident','ensureResident:running']);
+  assert.equal(f.harness.adopted,true);assert.equal(f.harness.state.signIn,null);assert.equal(f.harness.state.error,'');
+ }finally{f.commit.releaseWrite.resolve();f.commit.releaseRename.resolve();f.close();}
+});
+test('a Cancel during resident admission of a committed Google key stays quiet and the adoption finishes',async()=>{
+ const f=await wholeGoogleStackFixture({residentEnvironment:'production',holdAdmission:true});try{
+  const signing=f.harness.actions.signInGoogle();await commitGoogle(f);await f.admissionEntered.promise;
+  await f.harness.actions.cancelSignIn();
+  assert.equal(f.harness.state.signIn.step,'google');assert.equal(f.harness.operation.signal.aborted,false);
+  f.releaseAdmission.resolve();await signing;
+  assert.deepEqual(f.harness.trace,['retire','connectResident','ensureResident:running']);assert.equal(f.harness.state.error,'');
+ }finally{f.releaseAdmission.resolve();f.commit.releaseWrite.resolve();f.commit.releaseRename.resolve();f.close();}
+});
+test('a key replaced during resident admission still stops before the agent restarts',async()=>{
+ const f=await wholeGoogleStackFixture({residentEnvironment:'production',holdAdmission:true});try{
+  const signing=f.harness.actions.signInGoogle();await commitGoogle(f);await f.admissionEntered.promise;
+  f.changeAccount();f.releaseAdmission.resolve();await assert.rejects(signing,/account-changed/);
+  assert.deepEqual(f.harness.trace,['retire']);
+ }finally{f.releaseAdmission.resolve();f.commit.releaseWrite.resolve();f.commit.releaseRename.resolve();f.close();}
+});
+test('an admission in another environment still replaces the client and fences the adoption',async()=>{
+ const f=await wholeGoogleStackFixture({residentEnvironment:'staging'});try{
+  const signing=f.harness.actions.signInGoogle();await commitGoogle(f);await assert.rejects(signing,e=>e.name==='AbortError');
+  assert.deepEqual(f.harness.trace,['retire','makeCloud:staging']);
+ }finally{f.commit.releaseWrite.resolve();f.commit.releaseRename.resolve();f.close();}
+});
+test('an unconfirmed Google cancel keeps the attempt and reports only its state',async()=>{
+ const f=await wholeGoogleStackFixture({cancelFails:true});try{
+  const signing=f.harness.actions.signInGoogle();await f.commit.writeEntered.promise;
+  await f.harness.actions.cancelSignIn();
+  assert.equal(f.harness.state.error,'Cancel could not be confirmed. Sign-in is still in progress.');assert.doesNotMatch(f.harness.state.error,/try(ing)? again/i);
+  assert.equal(f.harness.state.signIn.step,'google');assert.equal(f.harness.operation.signal.aborted,false);
+  f.commit.releaseWrite.resolve();await f.commit.renameEntered.promise;f.commit.releaseRename.resolve();await signing;
+  assert.equal(f.harness.adopted,true);assert.equal(f.harness.state.signIn,null);assert.equal(f.harness.state.error,'');
+ }finally{f.commit.releaseWrite.resolve();f.commit.releaseRename.resolve();f.close();}
+});
+test('a cancel reply lost after the commit reports nothing over the adopted sign-in',async()=>{
+ const f=await wholeGoogleStackFixture({cancelFails:true,deferCancel:true,deferAdoption:true});try{
+  const signing=f.harness.actions.signInGoogle();await f.commit.writeEntered.promise;
+  const cancelling=f.harness.actions.cancelSignIn();
+  f.commit.releaseWrite.resolve();await f.commit.renameEntered.promise;f.commit.releaseRename.resolve();await f.adoptionEntered.promise;
+  f.releaseCancel.resolve();await cancelling;assert.equal(f.harness.state.error,'');
+  f.releaseAdoption.resolve();await signing;
+  assert.equal(f.harness.adopted,true);assert.equal(f.harness.state.error,'');
+ }finally{f.releaseCancel.resolve();f.releaseAdoption.resolve();f.commit.releaseWrite.resolve();f.commit.releaseRename.resolve();f.close();}
+});
+
+test('Google poll without an active attempt or id is an expired attempt, not a null dereference',async()=>{
+ const f=await fixture();try{const result=await f.rpc({operation:'signInPollGoogle'});assert.equal(result.status,409);assert.equal(result.data.code,'expired');}finally{await f.close();}
+});
+
+
+// The imported production CloudProtocol public Google entry supplies both attempts.
+function publicSequentialGoogleAttempts(){
+ const starts=[],cancellations=[],cancelEntered=Promise.withResolvers();let saved=null;
+ const port={
+  startGoogle(){const reply=Promise.withResolvers();starts.push(reply);return reply.promise;},
+  cancelGoogleSignIn(){const reply=Promise.withResolvers();cancellations.push(reply);cancelEntered.resolve();return reply.promise;},
+  async cancel(){}
+ };
+ const store={acceptsReferences:true,read:async()=>saved,write:async()=>{throw Error('No renderer write');},clear:async()=>{throw Error('No credential clear');}};
+ const client=new CloudProtocol('production',async()=>{throw Error('No external request');},store,async()=>{throw Error('No external window');},{signIn:port});
+ return {client,starts,cancellations,cancelEntered,
+  commit(index){
+   const outcome={status:'authenticated',environment:'production',attemptId:randomUUID(),credentialId:randomUUID(),expiresAt:Date.now()+60000,accountCreated:false};
+   saved={credentialId:outcome.credentialId,credentialReference:'browser-cloud-reference:'+randomUUID(),userId:owner,organizationId:org,expiresAt:outcome.expiresAt};
+   starts[index].resolve(outcome);return outcome;
+  },
+  close(){for(const reply of starts)reply.reject(Error('test cleanup'));for(const reply of cancellations)reply.reject(Error('test cleanup'));}
+ };
+}
+test('a committed public Google attempt retains its delayed cancel outcome while the next public attempt is pending',{timeout:3000},async()=>{
+ const f=publicSequentialGoogleAttempts();let a,b,cancellingA,bSettled=false;
+ try{
+  a=f.client.signInWithGoogle(new AbortController().signal);a.catch(()=>{});assert.equal(f.starts.length,1);
+  cancellingA=f.client.cancelGoogleSignIn();cancellingA.catch(()=>{});await f.cancelEntered.promise;
+  const committedA=f.commit(0);assert.equal((await a).credentialId,committedA.credentialId);
+  b=f.client.signInWithGoogle(new AbortController().signal);b.then(()=>{bSettled=true;},()=>{bSettled=true;});assert.equal(f.starts.length,2);
+  f.cancellations[0].reject(Error('A cancel reply lost'));
+  assert.equal(await cancellingA,true,'A uses its own parsed commit after B resets current public state');
+  assert.equal(bSettled,false);assert.equal(f.cancellations.length,1,'A completion neither cancels nor finishes B');
+  const committedB=f.commit(1);assert.equal((await b).credentialId,committedB.credentialId);
+  assert.equal(await f.client.cancelGoogleSignIn(),true,'current public later-cancel behavior still reports B committed');
+  assert.equal(f.cancellations.length,1);
+ }finally{f.close();await Promise.allSettled([a,b,cancellingA].filter(Boolean));}
+});
+
+test('Cloud tiles use the existing account fence and a scoped GET allowance identity',async()=>{
+ const f=await fixture();try{
+  f.setResponse(async()=>Response.json({encoding:'base64',contentType:'image/png',data:'iVBORw=='}));
+  const key=randomUUID(),base={url:'https://api.eliza.app/api/v1/maps/tiles/2/1/3',method:'GET',credentialReference:reference,headers:{'Idempotency-Key':key}};
+  const call=change=>f.rpc({operation:'request',environment:'production',requestId:randomUUID(),input:{...base,...change}});
+  const result=await call({});assert.equal(result.status,200);assert.equal(result.data.data.data,'iVBORw==');
+  assert.equal(new Headers(f.calls.at(-1).input.headers).get('Idempotency-Key'),key);
+  const count=f.calls.length;
+  for(const change of [{url:base.url+'?key=x'},{url:'https://api.eliza.app/api/v1/maps/tiles/2/4/0'},{body:'{}'},{method:'POST'},{headers:{}},{headers:{'Idempotency-Key':key,Authorization:'Bearer unowned'}}])assert.notEqual((await call(change)).status,200);
+  assert.equal(f.calls.length,count,'refused tile requests never reach Cloud');
+ }finally{await f.close();}
+});
+
+for(const selected of ['production','staging'])test(`managed Calendar host stays bound to ${selected} and rejects other issuers, owners and expired bindings`,async()=>{
+ const resident={async bind(){return {};},async clear(){return {};},status(){return {};},async ready(){return {};}};
+ const f=await fixture(resident,selected),token='a'.repeat(64),grant='55555555-5555-4555-8555-555555555555';let host;
+ const sourceFile=profileFile(f.profile,'initial-credential.json'),seed=JSON.parse(await readFile(sourceFile,'utf8'));
+ seed.environment=selected;await writeFile(sourceFile,JSON.stringify(seed),{mode:0o600});
+ const base=selected==='production'?productionCloud.api:stagingCloud.api,other=selected==='production'?stagingCloud.api:productionCloud.api;
+ f.setResponse(async(url)=>{assert.equal(new URL(url).origin,base);if(url.includes('/accounts'))return Response.json([{configured:true,connected:true,reason:'connected',connectionId:grant,identity:{email:'owner@example.invalid'},grantedCapabilities:['google.calendar.read','google.calendar.write']}]);if(url.includes('/calendars'))return Response.json([{calendarId:'holiday',summary:'Holidays',primary:false,selected:true,accessRole:'reader'}]);throw Error('Unexpected provider route');});
+ const direct=(url,signal=new AbortController().signal)=>f.host().agentRead({url,method:'GET',credentialReference:reference,signal});
+ const call=async body=>{const r=await fetch('http://127.0.0.1:'+host.port+'/__alpha-owner-gmail',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify(body)});return {status:r.status,data:await r.json()};};
+ try{
+  await assert.rejects(f.host().startGoogleHost(token,{credentialId,reference:'browser-cloud-reference:'+randomUUID()}));assert.equal(f.calls.length,0);
+  host=await f.host().startGoogleHost(token,{credentialId,reference});
+  const sources=await call({calendar:{operation:'sources'}});assert.equal(sources.status,200);assert.equal(sources.data.calendars[0].calendarId,'holiday');assert.ok(f.calls.every(c=>new URL(c.url).origin===base));
+  let before=f.calls.length;await assert.rejects(direct(other+'/api/v1/user'));assert.equal(f.calls.length,before,'other environment refused before dispatch');
+  assert.notEqual((await f.rpc({operation:'residentGoogleCalendarAccess',environment:selected==='production'?'staging':'production',credentialId,calendarEdits:true})).status,200);
+  assert.equal((await f.rpc({operation:'residentGoogleCalendarAccess',environment:selected,credentialId,calendarEdits:false})).status,200);
+  assert.notEqual((await call({calendar:{operation:'write-capabilities',grantId:sources.data.calendars[0].grantId,calendarId:'holiday'}})).status,200);assert.equal(f.calls.length,before,'explicit Calendar write gate stays off');
+  await writeFile(sourceFile,JSON.stringify({...seed,credentialId:randomUUID()}),{mode:0o600});assert.equal((await call({calendar:{operation:'sources'}})).status,409);assert.equal(f.calls.length,before,'wrong owner binding refuses before provider');
+  await writeFile(sourceFile,JSON.stringify({...seed,expiresAt:Date.now()-1}),{mode:0o600});assert.notEqual((await call({calendar:{operation:'sources'}})).status,200);assert.equal(f.calls.length,before,'expired binding refuses before provider');
+  await writeFile(sourceFile,JSON.stringify(seed),{mode:0o600});
+  const controller=new AbortController(),entered=Promise.withResolvers();
+  f.setResponse(async(_url,input)=>new Promise((_resolve,reject)=>{entered.resolve();input.signal.addEventListener('abort',()=>reject(input.signal.reason),{once:true});}));
+  const pending=direct(base+'/api/v1/eliza/google/accounts?side=owner',controller.signal);const outcome=pending.then(()=>null,error=>error);await entered.promise;controller.abort();assert.equal((await outcome).name,'AbortError');
+  await host.close();before=f.calls.length;await assert.rejects(call({calendar:{operation:'sources'}}));assert.equal(f.calls.length,before,'retired host cannot issue reads');
+ }finally{await host?.close();await f.close();}
 });

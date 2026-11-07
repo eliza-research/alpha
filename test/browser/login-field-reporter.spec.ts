@@ -2,17 +2,19 @@ import { expect, test, type Frame, type Page } from '@playwright/test';
 import fs from 'node:fs';
 
 // Issue #404: the login-field reporter Alpha's Android browser injects at document start into
-// every frame (android/app/src/main/res/raw/browser_login_fields.js). On Android it runs in an
+// every frame (BrowserLoginFields.SCRIPT in the pinned plugin-native-browser-surface). On Android it runs in an
 // isolated JavaScript world and its channel is a WebMessageListener whose sourceOrigin the
 // engine supplies. Here a stand-in channel records messages in each frame, so this checks the
 // script's own behaviour only: what it reports, on which events, and where fills land. It does
 // not exercise WebView, the isolated world, the engine origin or a password provider.
-const reporter = fs.readFileSync('android/app/src/main/res/raw/browser_login_fields.js', 'utf8');
+// The reporter is a Java text block; undo its backslash escapes.
+const reporter = fs.readFileSync('vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserLoginFields.java', 'utf8')
+  .split('static final String SCRIPT = """')[1].split('""";')[0].replaceAll('\\\\', '\\');
 const channel = `(() => {
   const target = new EventTarget();
   globalThis.__sent = [];
   target.postMessage = message => { globalThis.__sent.push(String(message)); };
-  globalThis.__alphaLoginFields = target;
+  globalThis.__elizaLoginFields = target;
   globalThis.__deliver = data => target.dispatchEvent(new MessageEvent('message', { data }));
 })();`;
 

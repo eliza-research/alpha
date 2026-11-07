@@ -29,7 +29,9 @@ test('unavailable initial workflow tap lookup establishes no retained tap and pr
 test('owner return requires current workflow revision, pending exact proposal, expiry and stable session',()=>{
  const script=`
  import assert from 'node:assert/strict';
- import {revalidateApprovalNotice as check} from './apps/app/src/runtime/workflow-notice-return.ts';
+ import {revalidateWorkflowApprovalNotice} from './.eliza/client-features/packages/contracts/src/notice-routes.ts';
+ // The adapter's binding of the shared revalidation to the workflow client and phone actions.
+ const check=(notice,client,actions,valid,signal,now)=>revalidateWorkflowApprovalNotice(notice,{detail:client.detail,receipt:client.receipt,phoneReview:client.phoneReview,pending:actions},valid,signal,now);
  import {workflowApprovalNotice} from './apps/app/src/runtime/workflow-device-contract.ts';
  const route={scope:'a'.repeat(64),origin:'https://agent.invalid',ownerId:'owner',agentId:'agent',workflowId:'flow',runId:'run',versionId:'v1'};
  const bound=await workflowApprovalNotice(route,'proposal'),notice={...bound,route,expiresAt:200};

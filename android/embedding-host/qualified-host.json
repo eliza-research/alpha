@@ -1,6 +1,6 @@
 {
-  "pin": "c95a37be8d56fb672825df7e9e9a742b59567bbb",
-  "forkPin": "0d9fd4b9db239bbf851068f98c99f4263f8c05c5",
+  "pin": "d38e4ec7fad5952fdf4f40d4c809240d639792ac",
+  "forkPin": "cc8c979157e1f577448d8b8c6ff598b7cfc3d661",
   "identity": "ai.elizaresearch.alphaphone",
   "abi": "arm64-v8a",
   "model": {
@@ -11,14 +11,14 @@
   "libraries": [
     {
       "name": "libelizainference.so",
-      "sha256": "c1679c25c28f1ba5a7757aa821265135f3c8f09657a16804ae744761f262eb1e",
-      "bytes": 8066120,
+      "sha256": "bc575c8267dfff9041d9607ce84e8cce37a3db799c6a9f4628c4359418b8bdba",
+      "bytes": 10002168,
       "alignment16KiB": true
     },
     {
       "name": "libelizavoicejni.so",
-      "sha256": "49f59561bf022650f813d79cf0ab0be84f53f37f908c679e05d80ce4e444a491",
-      "bytes": 1190824,
+      "sha256": "4244312b8c63988b606f8d120c53335dce28b27b0d339128670afa684e9cc59e",
+      "bytes": 1234768,
       "alignment16KiB": true
     },
     {
@@ -28,13 +28,13 @@
       "alignment16KiB": true
     }
   ],
-  "qualificationReceiptSha256": "78d598438eb62947532b02251565181e7c8f505fe453488deec605b10a65f20a",
+  "qualificationReceiptSha256": "feaa7710254e08518b90dee29d7b99c3efde8a17db456bc89136231e510a5412",
   "jniIdentityRelocated": true,
   "inputs": [
     {
       "path": "packages/app/scripts/stage-elizavoice-lib.ts",
-      "sourceSha256": "b1203497834b883d19b638ace5e791a1c608bd0c65e9d8b38315db76730c2fdf",
-      "generatedSha256": "b1203497834b883d19b638ace5e791a1c608bd0c65e9d8b38315db76730c2fdf"
+      "sourceSha256": "7c36788b0886de46bde06f84a50c54a3ace7f2aa59468f811864e47134be4309",
+      "generatedSha256": "7c36788b0886de46bde06f84a50c54a3ace7f2aa59468f811864e47134be4309"
     },
     {
       "path": "packages/app/scripts/build-helpers/arm64-simd.ts",
@@ -53,13 +53,67 @@
     },
     {
       "path": "packages/app/platforms/android/app/src/main/elizavoice-jni/elizavoice-jni.cpp",
-      "sourceSha256": "cacf867e01c7867d0d5c35e8a60f68584deeb0a95d6f49e22e4a751ace0b69eb",
-      "generatedSha256": "cacf867e01c7867d0d5c35e8a60f68584deeb0a95d6f49e22e4a751ace0b69eb"
+      "sourceSha256": "128c4e7306479ecf80130028a79d3537552fbc93c2ab13a821cf0b5213efd94f",
+      "generatedSha256": "128c4e7306479ecf80130028a79d3537552fbc93c2ab13a821cf0b5213efd94f"
     },
     {
       "path": "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
-      "sourceSha256": "53a0c6edaeb4b43b0e673996ec9539b4e10c43fa6db2d018f59b00a91a8d5551",
-      "generatedSha256": "8667be638eaee77b24ec285b3119f27d19fbdcb27719c900fe85b9ea1b088f1f"
+      "sourceSha256": "328c96c067aabdae17adcc6534b41abfb6befd9d598a1d44b30ffc20a5157c87",
+      "generatedSha256": "b22b27587e71352266c7ba200f70d65f571c11a6015e4c43f979622ff0fccfea"
+    }
+  ],
+  "producerInputs": [
+    {
+      "path": "package.json",
+      "sha256": "fd04e2ad8574cd0055627138466b8eec77404863e2bc546a866bace10c6d732b"
+    },
+    {
+      "path": "packages/agent/package.json",
+      "sha256": "1082dc34ec6894e19a43003528fd5701ebe53621f77c37d1bec37662bd822554"
+    },
+    {
+      "path": "packages/app/package.json",
+      "sha256": "1ee43697b88c28dd2e95a64c7113c936fe13dc923482305a904f073e52bfe23a"
+    },
+    {
+      "path": "packages/app/scripts/aosp/compile-libllama-paths.ts",
+      "sha256": "c484bd46cb7f8cf308f449840f491f1e8d380c1c66a75b2a57a02867a09a8a3c"
+    },
+    {
+      "path": "packages/app/scripts/aosp/compile-libllama.ts",
+      "sha256": "81de4affc63f07f662679d34a01cea7f4f720fc705ef1ac5c5b501021070e1fd"
+    },
+    {
+      "path": "packages/app/scripts/aosp/compile-shim.ts",
+      "sha256": "c7765557fafa6cc39090590c3e52a3b8bc1f03e6cedb7170492512a45bcbe15b"
+    },
+    {
+      "path": "packages/app/scripts/aosp/vulkan-source-contract.ts",
+      "sha256": "8b1d173b222ab7017b1cc7d18d4125392cafda022ac6c49cfc6c38f31549a73b"
+    },
+    {
+      "path": "packages/app/scripts/aosp/zig-toolchain.ts",
+      "sha256": "5d7ad034f9fbbce9fc241c7d7ba64b4bfece2b0aa6c7a699c761df8c8ac36959"
+    },
+    {
+      "path": "packages/app/scripts/build-helpers/arm64-simd.ts",
+      "sha256": "b5291bb3c31f2b284691ff7c465de31c7564ea1c1c22e726309661e64a47aee2"
+    },
+    {
+      "path": "packages/app/scripts/build-helpers/omnivoice-merged.ts",
+      "sha256": "4192c42fd54940ff0039bbb452aadb6e39cb286b732baaaf76513411c7adc4fe"
+    },
+    {
+      "path": "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
+      "sha256": "a7706e5f2526e20a7685825b19e9bdd7115f61d2791d921ba55af4fe3e73baa1"
+    },
+    {
+      "path": "packages/app/scripts/lib/repo-root.ts",
+      "sha256": "9e75776f57d7fa219993cb454d33102fe80a9276c576d299b42a0b284f2980ba"
+    },
+    {
+      "path": "packages/app/scripts/stage-elizavoice-lib.ts",
+      "sha256": "7c36788b0886de46bde06f84a50c54a3ace7f2aa59468f811864e47134be4309"
     }
   ],
   "jniBinding": {
@@ -69,7 +123,8 @@
   },
   "requalification": {
     "required": true,
-    "atPin": "b25d8aef2916385c571f4367e099809254fde0bb",
-    "reason": "Upstream changed the native llama.cpp fork from 0d9fd4b9 to b3eb2bf6 and then to 6337fd4c. The recorded libraries remain historical; rebuild and qualify new libraries without relabeling these bytes. The Cloud profile packages no local engine and is unaffected."
+    "atPin": "ae1a9dda6712cd20fa249982afef1ef0abd28a3c",
+    "reason": "elizaOS/eliza #38761 moves the native engine gitlink plugins/plugin-local-inference/native/llama.cpp from cc8c9791 to the fork main tip b3eb2bf6 and reformats stage-elizavoice-lib.ts. The fork delta is one Metal-only CMake commit and the producer arguments are unchanged, but no rebuild has compared the bytes, so the reviewed ARM64 embedding host (engine cc8c9791, SDK d38e4ec7) needs a new reviewed receipt. The pin then moved to 5d1af326e5 and 0594fc72da, which keep the engine gitlink at b3eb2bf6 with no further embedding build input change (docs/evidence/sdk-5d1af326e5-build-input-admission-20261106.json, docs/evidence/sdk-0594fc72da-build-input-admission-20261106.json), so the earlier statement still holds: nothing was built or run at this pin. The 3c76d07819 Maps/Cloud integration has no delta from 0594fc72da under plugins/plugin-local-inference/native or packages/app/scripts/paradee-voice. This carries the refusal forward; it does not qualify native bytes. The 3a2e43de28 restored-source candidate retains identical native inference input trees. Native bytes still require the recorded qualification. The 475a8d59dc Maps admission-message change leaves native inference inputs identical; the existing refusal remains. The 94c8ca4976 integration retains engine6337fd4c from b25d8aef29. Historical embedding binaries were built against cc8c9791 and require new embedding qualification. Speech component evidence does not qualify the embedding JNI host. The ae1a9dda67 OS SystemUI overlay staging fix leaves all native engine and producer inputs unchanged, so the requalification requirement remains.",
+    "evidence": "docs/evidence/sdk-018a2b9537-build-input-admission-20261105.json"
   }
 }

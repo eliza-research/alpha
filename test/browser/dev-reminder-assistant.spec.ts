@@ -21,7 +21,7 @@ for (const mode of ['create', 'read', 'update', 'complete', 'snooze', 'cancel', 
         nativePromise: async (plugin: string, method: string, input: any) => {
           if (plugin === 'AlphaActionJournal') {
             fixture.journal.push(method);
-            if (method === 'reserve') { w.calendarEntry={...structuredClone(input),phase:'reserved'}; return { created: true }; }
+            if (method === 'reserve') { w.calendarEntry={...structuredClone(input),phase:'reserved'}; return { created: true, entry: structuredClone(w.calendarEntry) }; }
             if (method === 'markApplying') { Object.assign(w.calendarEntry,{phase:'applying',attemptId:input.attemptId});return {}; }
             if(method==='get')return {entry:structuredClone(w.calendarEntry)};
             if(method==='list')return {entries:w.calendarEntry?[structuredClone(w.calendarEntry)]:[]};
@@ -76,7 +76,7 @@ for (const mode of ['create', 'read', 'update', 'complete', 'snooze', 'cancel', 
     await page.clock.setFixedTime(new Date('2026-10-02T12:00:00Z'));
     await page.goto('/?mode=dev');
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
-    await page.getByRole('button', { name: 'Agent connection', exact: true }).click();
+    await page.getByRole('button', { name: 'Agent', exact: true }).click();
     await page.getByText('Local development agent', { exact: true }).click();
     const local = page.locator('.alpha-connection details').filter({ has: page.getByText('Local development agent', { exact: true }) });
     await local.getByLabel('Local agent address').fill('http://127.0.0.1:47842');

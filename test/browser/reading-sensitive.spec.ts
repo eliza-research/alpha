@@ -1,6 +1,9 @@
-import {readFileSync} from 'node:fs';
+import {readFileSync,realpathSync} from 'node:fs';
 import {test,expect} from '@playwright/test';
-const native=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserReading.java','utf8').split('static final String EXTRACT = """')[1].split('""";')[0].replaceAll('\\\\','\\');
+// The shared public page-source reader, served from the prepared client features (vite fs.allow).
+const pageSourceModule='/@fs'+realpathSync('.eliza/client-features/plugins/plugin-native-browser-surface/src/page-source.ts');
+// The extraction script is the shared BrowserPageReading.EXTRACT text block at the pin; undo its escapes.
+const native=readFileSync('vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserPageReading.java','utf8').split('public static final String EXTRACT = """')[1].split('""";')[0].replaceAll('\\\\','\\');
 const cases=[['api-key','<article>API key: SYNTHETIC-ONLY</article>'],['access-token','<article>Access token: SYNTHETIC-ONLY</article>'],['refresh-token','<article>refresh_token: SYNTHETIC-ONLY</article>'],['vault','<article><h1>Password vault</h1><div>SYNTHETIC-ONLY</div></article>'],['otp','<main><span>Verification</span><span>code</span><div>001122</div></main>'],['recovery','<aside>Account recovery codes TEST-ONLY</aside><article>Garden journal</article>'],['hidden-field','<input type="password" hidden><article>Garden journal</article>'],['normalized','<article>Ｐａｓｓｗｏｒｄ: synthetic</article>'],['split-zero-width','<article>pass\u200Bword: synthetic</article>'],['bare-code','<article>001122</article>']]as const;
 for(const [kind,body]of cases)test(`browser and native extraction refuse credential prose: ${kind}`,async({page,context})=>{
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));await page.goto('/?mode=dev');const url='https://public-fixture.test/article';await page.route(url,r=>r.fulfill({contentType:'text/html',headers:{'access-control-allow-origin':'*'},body}));
@@ -20,7 +23,7 @@ for(const url of ['https://pass.proton.me/','https://example.com/%70assword','ht
 for(const control of ['textarea','div contenteditable="true"','div role="textbox"'])test(`interactive content is excluded from browser and native reading: ${control}`,async({page})=>{
  await page.goto('/');const tag=control.split(' ')[0];const body=`<article><${control}>ABCD-EFGH-IJKL</${tag}><p>Garden journal</p></article>`;
  await page.route('https://public-fixture.test/article',r=>r.fulfill({contentType:'text/html',body}));
- const extracted=await page.evaluate(async()=>{const {browserReadingSource}=await import('/src/browser/reading-source.ts');return browserReadingSource('https://public-fixture.test/article',new AbortController().signal);});expect(extracted).toEqual({text:'Garden journal',truncated:false});
+ const extracted=await page.evaluate(async(pageSourceModule)=>{const {readPublicPageSource:browserReadingSource}=await import(pageSourceModule);return browserReadingSource('https://public-fixture.test/article',new AbortController().signal);},pageSourceModule);expect(extracted).toEqual({text:'Garden journal',truncated:false});
  await page.setContent(body);const result=await page.evaluate(script=>(0,eval)(script),native);expect(result.text).toBe('Garden journal');expect(JSON.stringify(result)).not.toContain('ABCD-EFGH-IJKL');
 });
 for(const declared of [true,false])test(`oversized ${declared?'declared':'streamed'} source blocks an edited pending excerpt`,async({page})=>{

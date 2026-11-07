@@ -1,31 +1,40 @@
+import {nativeGoogleWorkspaceReturnAvailable,type GoogleWorkspaceBinding,type GoogleWorkspaceReturnPort} from './google-workspace-return';
 import {cloudStorageSlot} from './cloud-deployment.generated.ts';
 import {browserCloudResidentEnabled,browserCloudManagedServiceAllowed} from './browser-cloud-resident';
-import {managedServiceRequest} from './managed-service-routes';
-import {automationsRouteAllowed} from './automations-route-policy';
+import {managedServiceRequest,mapsRequestIdentity} from './managed-service-routes';
+import {ownerRouteAllowed} from './owner-route-policy';
 import {BrowserCloudConnection,BrowserCloudSignIn,clearBrowserCloudCredentialIfCurrent} from '../browser/cloud-connection';
 import {Capacitor} from '@capacitor/core';
-import {devSurfacesEnabled,testMocksEnabled} from '../build-flags';
+import {devSurfacesEnabled,testMocksEnabled,privateLocalPreviewEnabled} from '../build-flags';
 import { registerPlugin } from '../platform-plugins';
 import type { CloudNativeRequest, CloudCredentialStore, CloudCredential, CloudEnvironment } from './cloud-protocol';
 import type { CloudSignInPort } from './cloud-sign-in';
 import type { RemoteRequester, RemoteCredentialStore } from './remote-protocol';
 
 const nativeConnectionHeader=(Capacitor as typeof Capacitor&{PluginHeaders?:{name:string}[]}).PluginHeaders?.some(header=>header.name==='AlphaConnection')??false;
-const browserCloudHost=(devSurfacesEnabled||browserCloudResidentEnabled)&&!Capacitor.isNativePlatform()&&!nativeConnectionHeader;
+const browserCloudHost=(devSurfacesEnabled||browserCloudResidentEnabled||privateLocalPreviewEnabled)&&!Capacitor.isNativePlatform()&&!nativeConnectionHeader;
 /** Exact current-key self-revocation is supported only by the owned Android/private browser hosts. */
 export const cloudSelfRevocationSupported=Capacitor.getPlatform()==='android'||browserCloudHost;
 const nativeSignInHeader=(Capacitor as typeof Capacitor&{PluginHeaders?:{name:string}[]}).PluginHeaders?.some(header=>header.name==='AlphaCloudSignIn')??false;
 /**
  * In-app Eliza Cloud sign-in host: AlphaCloudSignInPlugin on Android, or the development Cloud bridge
- * (email code only) in a test-mocks browser build. Undefined where this build has no sign-in.
+ * (email code or canonical hosted Google OAuth) in the explicit browser host. Undefined where this build has no sign-in.
  */
-/** Google sign-in needs the phone's App Link return; the browser bridge offers email only. */
-export const cloudSignInGoogle=nativeSignInHeader;
+/** Google uses the native picker or the explicitly hosted browser OAuth flow. */
+export const cloudSignInGoogle=nativeSignInHeader||browserCloudHost;
 export const cloudSignInPhone=(Capacitor as typeof Capacitor&{PluginHeaders?:{name:string;methods?:{name:string}[]}[]}).PluginHeaders?.some(header=>header.name==='AlphaCloudSignIn'&&header.methods?.some(method=>method.name==='startPhone')&&header.methods?.some(method=>method.name==='verifyPhone'))??false;
-export const cloudSignIn:CloudSignInPort|undefined=nativeSignInHeader?registerPlugin<CloudSignInPort>('AlphaCloudSignIn')
+// The durable Google commit/cancel extension belongs to BrowserCloudSignIn only.
+// Capacitor synthesizes functions even for absent native methods; a cancellation
+// method in a native header does not imply the browser's reference-only receipt contract.
+export const cloudSignIn:CloudSignInPort|undefined=nativeSignInHeader?new Proxy(registerPlugin<CloudSignInPort>('AlphaCloudSignIn'),{get(target,property,receiver){if(property==='cancelGoogleSignIn')return undefined;return Reflect.get(target,property,receiver);}})
   :browserCloudHost?registerPlugin<CloudSignInPort>('AlphaCloudSignIn',{web:()=>new BrowserCloudSignIn()}):undefined;
 
 export interface ConnectionPort {
+  prepareGoogleWorkspaceReturn?(binding:GoogleWorkspaceBinding):ReturnType<GoogleWorkspaceReturnPort['prepare']>;
+  consumeGoogleWorkspaceReturn?(binding:GoogleWorkspaceBinding):ReturnType<GoogleWorkspaceReturnPort['consume']>;
+  cancelGoogleWorkspaceReturn?(input:{state:string}):Promise<void>;
+  addListener?(name:'googleWorkspaceReturn',listener:()=>void):Promise<{remove():void|Promise<void>}>;
+
   /** `retryAfter` is the Retry-After header of an error response (seconds or an HTTP date), when present. */
   request(input: { requestId: string; url: string; method: string; headers: Record<string,string>; body?: string; credentialReference?:string; expiresAt?: number }): Promise<{status:number;data:unknown;retryAfter?:string}>;
   cancel(input:{requestId:string}):Promise<void>;
@@ -141,11 +150,11 @@ export function createBrowserConnection(options:{fetch?:typeof fetch;secrets?:Br
       if(!testMocksEnabled&&!managedServiceRequest(input.url,input.method,input.body!==undefined))throw new Error('Only managed Cloud services are available.');
       const loopback=['localhost','127.0.0.1','[::1]'].includes(url.hostname);
       if(url.username||url.password||!(url.protocol==='https:'||(allowHttp&&loopback&&url.protocol==='http:')))throw new Error('Connection request failed');
-      if(input.method!=='GET'&&input.method!=='POST'&&!automationsRouteAllowed(url.pathname+url.search,input.method)&&!managedServiceRequest(input.url,input.method,input.body!==undefined))throw new Error('Connection request failed');
+      if(input.method!=='GET'&&input.method!=='POST'&&!ownerRouteAllowed('automations',url.pathname+url.search,input.method)&&!managedServiceRequest(input.url,input.method,input.body!==undefined))throw new Error('Connection request failed');
       if(input.credentialReference)throw new Error('This credential requires its native or development host.');
       if(input.method==='GET'&&input.body!==undefined)throw new Error('Connection request failed');
       const headers=new Headers();
-      for(const [name,value] of Object.entries(input.headers||{})){if(!allowedHeaders.has(name.toLowerCase())||typeof value!=='string'||value.length>16384||/[\r\n]/.test(value))throw new Error('Connection request failed');headers.set(name,value);}
+      for(const [name,value] of Object.entries(input.headers||{})){if(typeof value!=='string'||!allowedHeaders.has(name.toLowerCase())&&!mapsRequestIdentity(name,value,url.pathname,input.method)||value.length>16384||/[\r\n]/.test(value))throw new Error('Connection request failed');headers.set(name,value);}
       if(input.body!==undefined)JSON.parse(input.body);
       const controller=new AbortController();requests.set(input.requestId,controller);
       try{
@@ -179,6 +188,14 @@ let browserConnection:ConnectionPort|undefined;
 // Capacitor keeps the first registration. browser/register.ts imports this module first, so the
 // web build gets this implementation while Android keeps the native plugin.
 const native = registerPlugin<ConnectionPort>('AlphaConnection',!nativeConnectionHeader&&!Capacitor.isNativePlatform()?{web:()=>browserCloudHost?new BrowserCloudConnection():browserConnection??=createBrowserConnection()}:undefined);
+
+/** Unsupported or unverified native app links retain the existing manual-return flow. */
+export const googleWorkspaceReturnPort:GoogleWorkspaceReturnPort|undefined=Capacitor.getPlatform()==='android'&&nativeGoogleWorkspaceReturnAvailable((Capacitor as typeof Capacitor&{PluginHeaders?:unknown}).PluginHeaders)?{
+ async prepare(binding){if(binding.environment!=='production')return {supported:false};return native.prepareGoogleWorkspaceReturn?native.prepareGoogleWorkspaceReturn(binding):{supported:false};},
+ async consume(binding){return native.consumeGoogleWorkspaceReturn?native.consumeGoogleWorkspaceReturn(binding):{result:'none'};},
+ async cancel(state){await native.cancelGoogleWorkspaceReturn?.({state});},
+ async subscribe(listener){return native.addListener?native.addListener('googleWorkspaceReturn',listener):{remove(){}};},
+}:undefined;
 
 export const secureConnectionStore = {
   async readRaw(slot:string):Promise<string|null> { return (await native.secureRead({slot})).value; },

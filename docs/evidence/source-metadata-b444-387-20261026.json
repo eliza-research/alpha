@@ -1,0 +1,67 @@
+{
+  "schema": 1,
+  "recordedAt": "2026-10-26",
+  "recordedAtUTC": "2026-10-26T10:53:38.950130+00:00",
+  "product": "b4440066fc9530c81b37995d32046e085ebf9064",
+  "SDK": "387c8ebaf22f3bf0c7dd1d72bad90075d023fde1",
+  "previousSDK": "efc7fa578eb2c62da6a6f56117176f106b574841",
+  "concurrentShawSource": "7870042f28d0ebbd62cea9eae9c306fed11af986",
+  "dependencyInputIdentity": {
+    "oldSDK": "efc7fa578eb2c62da6a6f56117176f106b574841",
+    "newSDK": "387c8ebaf22f3bf0c7dd1d72bad90075d023fde1",
+    "rawLockBytesIdentical": true,
+    "rawLockSHA256": "c88cc7693c852e49ec1a2aebfba619d9a76cf038c26c5d0c19fa2994b9f4f762",
+    "normalizedInputIdentical": true,
+    "normalizedInputSHA256": "6db6e88363397fd2c73a561ea1f3a071dfc11b31378cbe0c193163ea1ecf70ff",
+    "packageVersions": 3694,
+    "newRegistryQuery": false
+  },
+  "retainedAudit": {
+    "auditedOn": "2026-10-26",
+    "findings": 124,
+    "counts": {
+      "info": 0,
+      "low": 17,
+      "moderate": 53,
+      "high": 53,
+      "critical": 1
+    },
+    "allExceptionObjectsAndExpiryUnchanged": true
+  },
+  "reachability": {
+    "status": "diverged",
+    "aheadBy": 47,
+    "behindBy": 208,
+    "pinOnlyNonMergeCommits": 46,
+    "baseCommit": "04658de1b942510e0d37efc777c154530f5c0ef1",
+    "producer": "gh api repos/elizaOS/eliza/compare/develop...387c8ebaf22f3bf0c7dd1d72bad90075d023fde1"
+  },
+  "sourceDelta": [
+    "packages/agent/src/actions/views.resolved-alias.contract.test.mjs",
+    "packages/agent/src/actions/views.ts",
+    "packages/agent/src/runtime/view-navigation-alias.contract.test.mjs",
+    "packages/agent/src/runtime/view-navigation-targets.ts",
+    "packages/agent/src/runtime/view-navigation.ts",
+    "plugins/plugin-assistant/src/services/message/egress-policy.ts"
+  ],
+  "qualificationStatesChanged": false,
+  "currentSourceArtifactQualified": false,
+  "liveBrowserEvidence": {
+    "receipt": "/Users/nubs/.local/state/eliza-five-lane-coordination/native-google-auth-implementation-20261025/direct-preview-view-metadata-next/LIVE-WORKFLOWS-ACCEPTANCE.json",
+    "meaning": "OneRoot-ownedOpenWorkflowsactualbrowserandsavedreplypassed;4calls/~5.16snotcostaccepted",
+    "nativeAcceptance": false
+  },
+  "unchangedScopes": [
+    "requirementrows/statuses/gates",
+    "allfindings/counts/auditdates",
+    "exceptions/expiry/maintenance/proposalstatuses",
+    "historicalAPK/sourcebindings",
+    "consumerpin/native/voice/notices/runtimefiles"
+  ],
+  "pending": [
+    "actualnewdeviceartifactqualification",
+    "nativepromptandvoiceacceptance",
+    "remainingcostandbroadQA"
+  ],
+  "noModelDeviceConfigCaptureBuildRefActions": true
+}

@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "template": "pixel10a-drill-evidence",
+  "evidenceClass": "physical-device-drill",
+  "gate": "signedUpdateRecovery",
+  "level": "release",
+  "description": "One record per executed update or recovery drill on a physical Pixel 10a (docs/human-actions.md H-25, docs/runbooks/673-pixel10a-device-day.md). Copy to docs/evidence/pixel10a-drill-<drill>-<YYYY-MM-DD>.json. The release owner then sets the matching drills.<drill> in android/aosp/pixel10a-ota-channel.json from this record. Simulated-device test runs, Cuttlefish boots and APK-only pilot-update records never fill this class.",
+  "drill": "UNSET",
+  "allowedDrills": ["signedUpdate", "interruptedUpdate", "compatibleRollback", "stockRecovery"],
+  "unit": { "alias": "UNSET", "serialSha256": "UNSET", "ownerConsentToWipe": "UNSET" },
+  "operator": "UNSET",
+  "releaseOwner": "Shaw",
+  "startedAtUtc": "UNSET",
+  "endedAtUtc": "UNSET",
+  "from": { "buildFingerprint": "UNSET", "releaseRecordSha256": "UNSET", "slot": "UNSET" },
+  "to": { "buildFingerprint": "UNSET", "releaseRecordSha256": "UNSET", "otaSha256": "UNSET", "slot": "UNSET" },
+  "tool": {
+    "commands": "UNSET",
+    "journalSha256": "UNSET"
+  },
+  "observed": {
+    "verifiedBootStateBefore": "UNSET",
+    "verifiedBootStateAfter": "UNSET",
+    "selinuxEnforcingAfter": "UNSET",
+    "userDataPreserved": "UNSET",
+    "downgradeRefused": "UNSET"
+  },
+  "result": "not run",
+  "signedUpdateApplied": false,
+  "releaseQualified": false
+}

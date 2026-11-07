@@ -1,0 +1,11 @@
+{
+  "versionCode": 15,
+  "upstream": "6497825b38cbe41b3677c0a445341fec900f0dd2",
+  "noticeDirectory": "docs/evidence/packaged-notices-v14-2026-10-27",
+  "byteIdenticalToV14": true,
+  "hashes": {
+    "third-party-notices.json": "a8234035325ae27743684d68daece69ac33331a223c6f62ebce8548522b1db77",
+    "THIRD_PARTY_NOTICES.txt": "dc6cd7e8879a8d10447315b4f1ca3d1c340f102d8c21e09f46433b2a5b1cc45a"
+  },
+  "apkManifest": "docs/evidence/merge-build-final-apks-v15-2026-10-27.json"
+}

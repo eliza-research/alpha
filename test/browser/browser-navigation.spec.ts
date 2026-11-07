@@ -71,8 +71,9 @@ test('a file chosen in a framed page reaches that page only, never the host docu
  expect(requests).toEqual(['GET https://upload.example/form']);
 });
 
-for(const available of [false,true])test(`page sharing keeps external handoff and explicit copy separate: Web Share ${available?'available':'unavailable'}`,async({page})=>{
- const url='https://navigation.example/share';
+for(const available of [false,true])test(`browser UI does not offer native page sharing: Web Share ${available?'available':'unavailable'}`,async({page})=>{
+ const url='https://navigation.example/share',externalRequests:string[]=[];let popups=0;
+ page.on('request',request=>{if(!/^https?:\/\/(?:127\.0\.0\.1|localhost)(?::|\/)/.test(request.url()))externalRequests.push(request.url());});page.on('popup',()=>{popups++;});
  await page.route(url,route=>route.fulfill({contentType:'text/html',body:'<h1>Share this page</h1>'}));
  await page.evaluate(available=>{
   const w=window as any;w.shareCalls=[];w.copiedUrls=[];
@@ -85,15 +86,30 @@ for(const available of [false,true])test(`page sharing keeps external handoff an
  await page.getByRole('textbox',{name:'Address',exact:true}).press('Enter');
  await expect(page.frameLocator('iframe[title="Website"]').getByRole('heading',{name:'Share this page'})).toBeVisible();
  await page.getByRole('button',{name:'Menu',exact:true}).click();
- await page.getByRole('dialog',{name:'Browser menu',exact:true}).getByRole('button',{name:'Share',exact:true}).click();
- const panel=page.getByRole('dialog',{name:'Share',exact:true});
- await expect(panel.getByRole('button',{name:'Share to email',exact:true})).toBeVisible();
- await panel.getByRole('button',{name:'Share externally',exact:true}).click();
- if(available)await expect.poll(()=>page.evaluate(()=>(window as any).shareCalls)).toEqual([{url}]);
- else await expect(page.getByText('Sharing is unavailable in this browser. Use Copy text.',{exact:true})).toBeVisible();
+ await expect(page.getByRole('dialog',{name:'Browser menu',exact:true}).getByRole('button',{name:'Share',exact:true})).toHaveCount(0);
+ // Native Share requires an Android child WebView; navigator.share availability grants no authority.
+ await expect(page.getByRole('dialog',{name:'Share',exact:true})).toHaveCount(0);
+ expect(await page.evaluate(()=>(window as any).shareCalls)).toEqual([]);
  expect(await page.evaluate(()=>(window as any).copiedUrls)).toEqual([]);
- await page.getByRole('button',{name:'Menu',exact:true}).click();
- await page.getByRole('dialog',{name:'Browser menu',exact:true}).getByRole('button',{name:'Share',exact:true}).click();
- await page.getByRole('dialog',{name:'Share',exact:true}).getByRole('button',{name:'Copy text',exact:true}).click();
- await expect.poll(()=>page.evaluate(()=>(window as any).copiedUrls)).toEqual([url]);
+ expect(externalRequests).toEqual([url]);expect(popups).toBe(0);
+ await page.keyboard.press('Escape');
+ await expect(page.getByRole('dialog',{name:'Browser menu',exact:true})).toHaveCount(0);
+ await expect(page.frameLocator('iframe[title="Website"]').getByRole('heading',{name:'Share this page'})).toBeVisible();
+});
+
+for(const available of [false,true])test(`BrowserSurface shares only an admitted current page: Web Share ${available?'available':'unavailable'}`,async({page})=>{
+ const url='https://navigation.example/port-share';
+ await page.route(url,route=>route.fulfill({contentType:'text/html',body:'<h1>Port share</h1>'}));await setup(page);
+ await page.evaluate(async({available,url})=>{
+  const w=window as any;w.shareCalls=[];w.copiedUrls=[];
+  Object.defineProperty(navigator,'share',{configurable:true,value:available?async(data:ShareData)=>{w.shareCalls.push(data);}:undefined});
+  Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async(text:string)=>{w.copiedUrls.push(text);}}});
+  const {registerPlugin}=await import('/src/platform-plugins.ts');await registerPlugin<any>('AlphaBrowser').navigate({session:'navigation-test',id:'nav',url});
+ },{available,url});
+ await expect(page.frameLocator('[data-browser-surface=nav] iframe').getByRole('heading',{name:'Port share',exact:true})).toBeVisible();
+ await expect.poll(()=>page.evaluate(()=>(window as any).navEvents.at(-1)?.committed)).toBe(true);
+ const result=await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');try{await registerPlugin<any>('AlphaBrowser').share((window as any).navEvents.at(-1));return null;}catch(error){return (error as Error).message;}});
+ expect(result).toBe(available?null:'Sharing is unavailable in this browser. Use Copy text.');
+ expect(await page.evaluate(()=>(window as any).shareCalls)).toEqual(available?[{url}]:[]);
+ expect(await page.evaluate(()=>(window as any).copiedUrls)).toEqual([]);
 });

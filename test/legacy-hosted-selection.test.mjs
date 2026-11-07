@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
 // #406: a saved hosted or paired agent selection from an earlier build becomes the resident agent.
 // Runs the real selection and migration functions of connection-ui.tsx against an in-memory
@@ -14,7 +14,7 @@ const code=stripTypeScriptTypes([
  slice('function save(selection: Selection)','\nfunction retire('),
  slice('function selection(): Selection | null {','\nfunction errorMessage('),
  slice('/** Saved selection kinds of the retired hosted and paired agents','/**\n * Every Alpha Phone signs in to Eliza Cloud'),
-].join('\n').replace(/export /g,''),{mode:'strip'});
+].join('\n').replace(/export /g,''),{mode:'transform'});
 const SELECTION='alpha.connection.selection.v1',LEGACY='alpha.connection.legacy-hosted-selection.v1';
 const CONVERSATIONS='alpha.connection.conversations.v1',CLOUD_SERVICE='alpha.connection.cloud-service.v1';
 function fixture(testMocksEnabled,seed){
@@ -79,9 +79,7 @@ test('a non-array or unreadable earlier record is kept ahead of the new one',()=
 
 test('product labels never describe an unexpected non-resident connection as on this device',()=>{
  const settings=readFileSync(new URL('../apps/app/src/prototype/settings-adapter.ts',import.meta.url),'utf8');
- // Settings claims the agent runs on this device only for the native resident build.
- assert.match(settings,/native && !testMocksEnabled \? agentStatus : connection\.session \? connection\.name : 'Not connected'/);
- assert.doesNotMatch(settings,/'On this device'/);
+ assert.match(settings,/testMocksEnabled\?'Remote agent':'Unsupported connection'/);
  assert.match(source,/testMocksEnabled \? \(snapshot\.kind === 'cloud' \? serviceName : snapshot\.kind === 'local' \? 'Local development' : 'Remote agent'\) : 'Unsupported connection'\}/);
  assert.doesNotMatch(settings,/testMocksEnabled\?'Remote agent':'On this device'/);
 });

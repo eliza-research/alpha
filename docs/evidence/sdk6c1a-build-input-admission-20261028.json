@@ -1,0 +1,127 @@
+{
+  "from": "5794c8c0d18914b3564d5c6716e28c2a3587f5ed",
+  "to": "6c1a31f2331581e2bd148d7792c20f25276c0da7",
+  "inputs": [
+    {
+      "path": "plugins/plugin-local-inference/native/llama.cpp",
+      "entries": 1,
+      "gitModeTypeBlobPathInventorySha256": "5c7c85d9f8a97f02a3f4ae20205d190df30048fe1a434e90e15fbf869c206724",
+      "unchanged": true
+    },
+    {
+      "path": "plugins/plugin-local-inference/native/android/inputs.json",
+      "entries": 1,
+      "gitModeTypeBlobPathInventorySha256": "309a82d3fcdcd40e21b57a3c50efb4404ff63ef6b073d477c8de273677b3bc2c",
+      "unchanged": true
+    },
+    {
+      "path": "plugins/plugin-local-inference/native/android/consumer.gradle",
+      "entries": 1,
+      "gitModeTypeBlobPathInventorySha256": "87d47cab837de2fa72551ae9b3252670dbc6b9df7e45596c6aa7f60f357c6894",
+      "unchanged": true
+    },
+    {
+      "path": "packages/app/scripts/paradee-voice/build-native.ts",
+      "entries": 1,
+      "gitModeTypeBlobPathInventorySha256": "ed87383d87ab6f1d0344c291dd6ad89df368b7cb29372b211b888a062236fa2e",
+      "unchanged": true
+    },
+    {
+      "path": "packages/app/scripts/stage-elizavoice-lib.ts",
+      "entries": 1,
+      "gitModeTypeBlobPathInventorySha256": "5528a4aaf9e2a92a52d949a07686add120648958c61b4982665974b02eea7b70",
+      "unchanged": true
+    },
+    {
+      "path": "packages/app/scripts/build-helpers/arm64-simd.ts",
+      "entries": 1,
+      "gitModeTypeBlobPathInventorySha256": "77fa89da9b1e02685ca2b911a321a2b7a0064badb0d3fb5531e9eb34e77e1645",
+      "unchanged": true
+    },
+    {
+      "path": "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
+      "entries": 1,
+      "gitModeTypeBlobPathInventorySha256": "2820a2a2dfb2cdbb6e2055ebee72f68d186e182f20d1b8933e550af11d54fccf",
+      "unchanged": true
+    },
+    {
+      "path": "packages/app/platforms/android/app/src/main/elizavoice-jni",
+      "entries": 2,
+      "gitModeTypeBlobPathInventorySha256": "6691b514e7a52e332bb5ab0cc6895e9804a53320d1f1ff3ccf1e12634334de88",
+      "unchanged": true
+    },
+    {
+      "path": "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+      "entries": 1,
+      "gitModeTypeBlobPathInventorySha256": "95d7104d164c65cfd91732e41a510e3bf9bf426daf7a722b943a399601d88d07",
+      "unchanged": true
+    },
+    {
+      "path": "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+      "entries": 1,
+      "gitModeTypeBlobPathInventorySha256": "b04a6f9e0c1cc14b36bd23080073583186356cb2ecaa01e556bc63f047456b4b",
+      "unchanged": true
+    },
+    {
+      "path": "plugins/plugin-local-inference/native",
+      "entries": 328,
+      "gitModeTypeBlobPathInventorySha256": "d790ec46bf3ac08070d411a869f2865d7cf1405657753c53447f6641ec2a1f54",
+      "unchanged": false,
+      "priorEntries": 310,
+      "priorGitModeTypeBlobPathInventorySha256": "8baee2792a7475becab820019d54a69b7f67f027032e7a7cf9bc9192fec6607e"
+    },
+    {
+      "path": "packages/app/scripts/paradee-voice",
+      "entries": 30,
+      "gitModeTypeBlobPathInventorySha256": "a94edfe8ddb2107c36073001dbe2789723d18ce5e721d83b054c63425284c7d7",
+      "unchanged": false,
+      "priorEntries": 17,
+      "priorGitModeTypeBlobPathInventorySha256": "ccbf9ae9c0e247511226b0a73846863d24e17b3efa8a42f2f54ef3b282dee40d"
+    }
+  ],
+  "changedPaths": [
+    "packages/app/scripts/paradee-voice/plugin-contract.test.mjs",
+    "packages/app/scripts/paradee-voice/plugin-contract/RecognizerLanguageCheck.java",
+    "packages/app/scripts/paradee-voice/speech-pipeline-contract.test.mjs",
+    "packages/app/scripts/paradee-voice/speech-pipeline/BufferedStreamExchangeTest.java",
+    "packages/app/scripts/paradee-voice/speech-pipeline/LiveCaptureAdmissionTest.java",
+    "packages/app/scripts/paradee-voice/speech-pipeline/LiveCaptureControllerTest.java",
+    "packages/app/scripts/paradee-voice/speech-pipeline/LiveCaptureResourceTest.java",
+    "packages/app/scripts/paradee-voice/speech-pipeline/LiveCaptureSourceTest.java",
+    "packages/app/scripts/paradee-voice/speech-pipeline/LiveSegmentPipeTest.java",
+    "packages/app/scripts/paradee-voice/speech-pipeline/LiveVadGateTest.java",
+    "packages/app/scripts/paradee-voice/speech-pipeline/LocalSpeechEngineTest.java",
+    "packages/app/scripts/paradee-voice/speech-pipeline/SessionSpeechContract.java",
+    "packages/app/scripts/paradee-voice/speech-pipeline/StreamingSpeechTest.java",
+    "packages/app/scripts/paradee-voice/speech-pipeline/VoiceLatencyTrialsTest.java",
+    "packages/app/scripts/paradee-voice/stream-contract/StreamContract.java",
+    "packages/app/scripts/paradee-voice/stream-contract/VoiceNative.java",
+    "plugins/plugin-local-inference/native/android/README.md",
+    "plugins/plugin-local-inference/native/android/capacitor/src/main/java/ai/eliza/voice/ElizaInferencePlugin.java",
+    "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/AudioTrackSpeechOutput.java",
+    "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/BufferedStreamExchange.java",
+    "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/InferenceSession.java",
+    "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureAdmission.java",
+    "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureController.java",
+    "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureResource.java",
+    "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureSource.java",
+    "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveSegmentPipe.java",
+    "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveVadGate.java",
+    "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveVoiceCapture.java",
+    "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalSpeechEngine.java",
+    "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/OnDeviceRecognizer.java",
+    "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SessionSpeech.java",
+    "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechAudioFocus.java",
+    "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechAudioFocusPolicy.java",
+    "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechPcmQueue.java",
+    "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechStreamValidation.java",
+    "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/StreamingSpeechPlayback.java",
+    "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/VoiceAssets.java",
+    "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/VoiceLatencyProbe.java",
+    "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/VoiceLatencyTrials.java"
+  ],
+  "command": "git -C vendor/eliza ls-tree -r <commit> -- <path> | sha256sum",
+  "evidenceScope": "Source-only comparison of on-device voice build inputs between the two SDK commits; no binary, emulator, device or user qualification is transferred",
+  "qualificationTransferred": false,
+  "note": "The native engine inputs (llama.cpp fork, Android inputs.json, consumer.gradle, build-native.ts, staging and SIMD/symbol helpers, JNI sources, ElizaVoiceNative.java and the Bun artifact lock) are byte-identical, and no native method declaration changed. The shared ai.eliza.voice Java API (Android sources under plugins/plugin-local-inference/native/android, compiled from source by Gradle) and its paradee-voice contract tests changed: streamed playback, audio focus, live capture/VAD and latency probes were added and InferenceSession/OnDeviceRecognizer/VoiceAssets/ElizaInferencePlugin were modified. Those Java changes need a fresh APK build and on-device voice validation; recorded native .so bytes and model inputs are unaffected."
+}

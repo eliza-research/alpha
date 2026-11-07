@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "date": "2026-10-26",
+  "baseProduct": "39b1d472a3da696e43a3d0827422787059eb8079",
+  "SDK": "603f73bc6317329a61eadfa7858741742a3d5fff",
+  "previousSDK": "f8b8299cc2be0f6e91127808384cbd17b90f906f",
+  "upstreamFixReceipt": "/Users/nubs/.local/state/alpha-local-personal-provider-20261023/c9-release-join-20261025/phone-context-f8-review/ROOT-INTEGRATED.json",
+  "upstreamChecks": {
+    "pass": 41,
+    "types": "PASS"
+  },
+  "livePerformanceVerified": false,
+  "dependencyInputIdentity": {
+    "parent": "f8b8299cc2be0f6e91127808384cbd17b90f906f",
+    "SDK": "603f73bc6317329a61eadfa7858741742a3d5fff",
+    "changedFiles": [
+      "plugins/plugin-assistant/src/runtime/planner-loop.ts",
+      "plugins/plugin-assistant/src/runtime/prepared-navigation-reply.test.ts",
+      "plugins/plugin-assistant/src/services/message/context-assembly.ts",
+      "plugins/plugin-assistant/src/services/message/phone-capability-context.test.ts"
+    ],
+    "rawLockBytesIdentical": true,
+    "rawLockSHA256": "c88cc7693c852e49ec1a2aebfba619d9a76cf038c26c5d0c19fa2994b9f4f762",
+    "nativeAndVoiceSourceInputsIdentical": true,
+    "normalizedInputIdentical": true,
+    "normalizedInputSHA256": "6db6e88363397fd2c73a561ea1f3a071dfc11b31378cbe0c193163ea1ecf70ff",
+    "packageVersions": 3694
+  },
+  "preservation": {
+    "upstream.lock.json": "Only commit changed",
+    "patches/eliza/native-manifest.json": "Only baseCommit changed",
+    "android/voice-host/qualified-voice-host.json": "Only pin changed",
+    "docs/dependency-audit.snapshot.json": "Only resident.upstreamCommit changed",
+    "docs/dependency-audit.dispositions.json": "Only resident.upstreamCommit changed",
+    "docs/requirements.json": "Only note changed",
+    "docs/mvp-remaining-work-2026-10-09.json": "Only upstream_pin changed",
+    "apps/app/public/licenses/third-party-notices.json": "Generated output differs only by pin",
+    "apps/app/public/licenses/THIRD_PARTY_NOTICES.txt": "Generated output differs only by pin"
+  },
+  "retainedAudit": {
+    "auditedOn": "2026-10-26",
+    "findings": 124,
+    "counts": {
+      "info": 0,
+      "low": 17,
+      "moderate": 53,
+      "high": 53,
+      "critical": 1
+    },
+    "allExceptionsAndDeadlinesUnchanged": true
+  },
+  "consumerChecks": {
+    "pass": 48,
+    "fail": 0,
+    "skip": 0,
+    "offlineAudit": "PASS",
+    "notices": "PASS"
+  },
+  "clientTypeFix39b1Preserved": true,
+  "noRuntimeOrRefChanges": true
+}

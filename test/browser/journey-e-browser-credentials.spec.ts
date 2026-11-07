@@ -102,6 +102,7 @@ test('browser navigation, tabs, private tab, reviewed reading and password manag
     await button(page, 'Tabs').click();
     await expect(page.getByRole('heading', {name: '1 tab', exact: true})).toBeVisible();
     await button(page, 'New tab').click();
+    await expect(page.getByRole('note', {name: 'Private tab notice'})).toHaveCount(0);
     await enter(page, `${origin}/article`);
     await expect(heading(page, 'Harbour notes')).toBeVisible();
     await expect(button(page, 'Tabs')).toHaveText('2');
@@ -150,11 +151,15 @@ test('browser navigation, tabs, private tab, reviewed reading and password manag
     await expect(page.getByRole('button', {name: 'Read locally', exact: true})).toHaveCount(0);
     expect(await page.evaluate(() => (window as any).speechCalls)).toEqual(['The ferry leaves at nine.']);
     // The host cannot see where a sandboxed page took itself, so it says so and offers no reading
-    // of that unknown document: Read aloud opens no review and nothing is spoken.
+    // of that unknown document: the menu offers neither Read aloud nor a page question, so no review
+    // opens and nothing is spoken.
     await expect(page.getByRole('status').filter({hasText: 'The website navigated inside'})).toBeVisible();
-    await menu(page, 'Read aloud');
-    await expect(page.getByText('Load a page before reading.', {exact: true}).first()).toBeVisible();
-    await expect(button(page, 'Close menu')).toHaveCount(0);
+    await button(page, 'Menu').click();
+    await expect(button(page, 'Reload page')).toBeVisible();
+    await expect(button(page, 'Read aloud')).toHaveCount(0);
+    await expect(button(page, 'Ask about page')).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog',{name:'Browser menu',exact:true})).toHaveCount(0);
     await expect(review).toHaveCount(0);
     expect(await page.evaluate(() => (window as any).speechCalls)).toEqual(['The ferry leaves at nine.']);
     // Going to the new address explicitly restores a reviewable page: the review is of that page.

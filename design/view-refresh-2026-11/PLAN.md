@@ -20,7 +20,7 @@ Principles applied to every view:
    and the view shows the result as a dismissible filter chip. The agent tools are
    read-only filters, so this adds no new side effects.
 4. **One model per flow.** Each view gets a TLA+ spec next to the existing ones in
-   `artifacts/review-2026-11/specs/`. Each spec checks the as-built behaviour (with fix
+   `design/view-refresh-2026-11/tla/`. Each spec checks the as-built behaviour (with fix
    flags), then the fixed design. Implementation follows the checked design.
 
 ---
@@ -34,7 +34,7 @@ Principles applied to every view:
 | Video hint "Stops and saves when you leave. Maximum 5 minutes or 100 MB." | Removed. The timer shows during recording; the limit appears only when reached |
 | ".5" chip shown on every lens | Zoom chips come from the bound lens's real zoom range |
 | Status pill "Starting camera…" | Removed. The viewfinder fades in on the first real frame |
-| Modes: Video · Photo · Scan | Unchanged (decision C1: keep Scan as a mode or remove it) |
+| Modes: Video · Photo · Scan | Video · Photo (decision C1: Scan removed as a mode; ask Alpha to scan what Camera sees) |
 
 "Ask Alpha about this" stays reachable through the chat pill. When Camera is open, the
 agent already has `camera_capture_photo` and ask-about-frame, so it doesn't need a button.
@@ -80,8 +80,9 @@ before numbers are captured on-device in phase 0. This review doesn't claim them
 - Dead UI: the focus ring, the model's scan-found sheet, `scanPages`, and the viewfinder
   gestures promised by its aria-label.
 
-### TLA+: `specs/camera-session/Spec.tla`
-- **Variables:** `view∈{away,camera}`, `vis∈{fg,bg}`, `chat∈{closed,open}`,
+### TLA+: `tla/camera-session/Spec.tla`
+- **Variables:** `view∈{away,camera}`, `vis∈{fg,bg}`, `chat∈{closed,open}` (modelled since the
+  port: the chat keeps the session for a grace period, then releases it),
   `phase∈{off,starting,ready,error}`, `perm∈{unknown,granted,denied}`,
   `mode∈{photo,video,scan}`, `lens`, `zoom`, `flash`, `capture∈{idle,photo,recStarting,recording,finalizing}`,
   `focusBusy`, `pendingAgentCapture`, `epoch`, `media` (a set of committed items), `thumb`.
@@ -135,7 +136,7 @@ before numbers are captured on-device in phase 0. This review doesn't claim them
 - `photos_open{id}`, `photos_album_create{name, ids}` (reviewed), `photos_share{ids}`
   (opens the system share sheet), `photos_trash{ids}` (reviewed, undoable).
 
-### TLA+: `specs/photos-library/Spec.tla`
+### TLA+: `tla/photos-library/Spec.tla`
 - **Variables:** `items` (id → {trashed, fav, albums, rev}), `window`, `tab`,
   `selection`, `viewer`, `filter`, `pending` ops, `access∈{none,partial,full}`,
   `storeEvents`.
@@ -179,7 +180,9 @@ before numbers are captured on-device in phase 0. This review doesn't claim them
 - Paired and Cloud routes upload in 55 s chunks, since those servers cap one request at
   60 s. There's no user-visible limit on any route.
 - Recording continues with the screen off, in a foreground service with a notification,
-  as Recorder apps do.
+  as Recorder apps do. As built, segments are transcribed while Notes is shown; segments
+  recorded with Notes hidden are transcribed when it is shown again, or at Done (spec
+  notes-view `shown`, AsrWhileHidden = FALSE). Native background transcription is open work.
 
 ### Data model
 - Add `folderId` to the note record. Folders are a new `notes-folders:v1:device` slot.
@@ -195,7 +198,7 @@ before numbers are captured on-device in phase 0. This review doesn't claim them
 - The existing `create_note`, `notes_update`, `notes_delete` (to Trash) and `notes_query`
   stay. `notes_restore{noteId}` is added.
 
-### TLA+: extend `specs/notes-merge` into `specs/notes-view/Spec.tla`
+### TLA+: extend `specs/notes-merge` into `tla/notes-view/Spec.tla`
 The existing merge/trash/draft spec covers storage. The new module adds:
 - **Variables:** `folders`, `noteFolder`, `rec∈{idle,recording,paused,finalizing}`,
   `audioBytes`, `asrCommitted`, `asrPending`, `filter`, `screen∈{list,editor,recorder,deleted}`.
@@ -259,7 +262,7 @@ A real file browser needs one of these:
   `files_trash{paths}` (reviewed, undoable), `files_folder_create{parent,name}` (reviewed).
 - The model's fixture `reply()` regexes are deleted.
 
-### TLA+: `specs/files-browser/Spec.tla`
+### TLA+: `tla/files-browser/Spec.tla`
 - **Variables:** `fs` (a tree of path → {kind, mime, trashed}), `cwd`, `root∈{category,storage,trash}`,
   `selection`, `clipboard/op`, `filter`, `access`.
 - **Actions:** Navigate, Up, OpenCategory, Select, Move, Copy, Rename, Trash,
@@ -293,24 +296,50 @@ a pure projection of `DeviceApps.list`.
 
 ---
 
-## Decisions for you (also in the prototype, with your answers recorded there)
-- **C1:** Keep Scan as a camera mode? *(rec: keep)*
-- **C2:** Save new captures to `DCIM/Camera` (standard) instead of `Pictures/`? *(rec: yes)*
-- **P1:** Photo grid edge-to-edge (iOS/Google standard) or inset rounded? *(rec: edge-to-edge)*
-- **P2:** Remove the photo search box entirely in favour of Ask Alpha? *(rec: yes)*
-- **N1:** Folders (Apple) or labels (Keep, multi-tag)? *(rec: folders)*
-- **N2:** Trash retention: 30 days? *(rec: 30)*
-- **N3:** Notes list or 2-column grid? *(rec: list)*
-- **F1:** Files access model: A, B or C? *(rec: A)*
-- **F2:** Drop Recents entirely? *(rec: yes)*
-- **A1:** Apps drawer: icon grid or list? *(rec: grid)*
+## Decisions
+Answered 2026-11-06:
+- **F1: All-files access.** Pre-granted to the launcher on the AOSP image. The standalone
+  APK asks for it at the beginning, as a step in the startup permission walkthrough
+  (`startup-permission-flow.ts`, which already has a checked spec in
+  `specs/startup-permissions`; that spec gains the step). `MANAGE_EXTERNAL_STORAGE` is an
+  app-op, not a runtime permission, so `default-permissions` XML can't grant it. The image
+  sets the app-op for the launcher during provisioning (to be verified on Cuttlefish and the
+  Pixel 10a image).
+- **N2:** Recently deleted keeps notes for 30 days, matching Apple Notes.
+- **C2:** New captures go to `DCIM/Camera`, the Android standard.
+
+Final:
+- **C1:** Scan is removed as a camera mode. Scanning goes through the agent: asking Alpha to scan
+  while Camera is open captures one frame into scan review.
+- **P1:** Photo grid edge-to-edge.
+- **P2:** No photo search box; agent filter tools.
+- **N1:** Folders.
+- **N3:** One-column notes list.
+- **F2:** No Recents.
+- **A1:** Apps drawer is a 4-column icon grid.
+
+## TLA+ models (written and checked 2026-11-06)
+Specs are in `design/view-refresh-2026-11/tla/{camera-session,photos-library,notes-view,files-browser}`,
+run by `tla/check.sh <tla2tools.jar>`; results in `tla/results.md`.
+`Design.cfg` is the proposed design. Each `AsBuilt_*.cfg` turns off one fix, to show that
+today's code has the defect. Each `Ablate_*.cfg` turns off one design rule, to show the
+rule is needed.
+
+Design changes the models found:
+- **Camera:** if the agent queues a photo during start and you then start recording, the
+  agent's request would wait as long as you record. Rule: starting a recording refuses the
+  queued agent capture, and the agent says so.
+- **Camera:** every start re-checks access, since you may have granted it in Settings after
+  a denial. Without this, Camera could stay "starting" forever.
+- **Files:** moving or restoring into a folder that already has that name picks a free
+  "name (1)" and never replaces the existing file.
 
 ## Phases after approval
 0. On the Pixel 10a, measure camera cold and warm first frame and shutter latency, and
    record the before numbers.
 1. Write the TLA+ specs. Run the as-built configuration to reproduce the bugs listed
    above, then the fixed design. Specs and run logs go under
-   `artifacts/review-2026-11/specs/`.
+   `design/view-refresh-2026-11/tla/`.
 2. Camera: the header cleanup and the native startup and shutter work (as a
    `patches/eliza` patch), then re-measure.
 3. Photos: the unified catalog, grid, selection, viewer and agent filter.

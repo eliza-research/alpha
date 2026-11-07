@@ -1,0 +1,17 @@
+{
+  "sourceCommit": "9eef5dbd7b381576aad0801b1fee424d1483c63c",
+  "previousSourceCommit": "6497825b38cbe41b3677c0a445341fec900f0dd2",
+  "sourceFiles": {
+    "vendor/eliza/packages/app/platforms/android/app/src/main/java/ai/elizaos/app/AndroidBunTarget.java": "1ce791f9fbeeeea2a40bdf94b1b11e600df75c8fbee8649a5f47b3d919d7f675",
+    "vendor/eliza/packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaAgentService.java": "47878486961f044fc77e6c29f3acf6c06901d94065368ea2ab0adc98404dff1e",
+    "vendor/eliza/packages/app/platforms/android/app/src/main/java/ai/elizaos/app/IpcStartupRecovery.java": "c51152d8b6403622171e4baed30f55cb540cad2c3fd49a8be1171a4b2c015c27",
+    "vendor/eliza/packages/app/platforms/android/app/src/main/java/ai/elizaos/app/WorkflowSurvivorInventory.java": "3270bebe7e125705eda25e91ba9996f99cb80fbcb7e534c0d1ea47672a0fc42b"
+  },
+  "review": "The IpcStartupRecovery change verifies directory timestamps after cross-parent recovery publication; reviewed with PR37979/37981. Other listed sources are unchanged.",
+  "validation": {
+    "javaCompilation": "IpcStartupRecovery and its actual source dependencies compiled against SDK36/JDK21 at tree 0697c87b0d702eb545c29f7b4861267af7787410",
+    "sourceReviewEvidence": "https://github.com/elizaOS/eliza/releases/download/pr-evidence-14/eliza-calendar-0697c87b0-local-review-evidence.tar.gz",
+    "deviceExecuted": false,
+    "userAccepted": false
+  }
+}

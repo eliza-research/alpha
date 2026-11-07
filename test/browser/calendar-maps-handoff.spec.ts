@@ -1,9 +1,10 @@
+import {openBrowserCalendar} from './helpers/browser-calendar';
 import { returnToApps } from './app-navigation';
 import {test,expect,type Page} from '@playwright/test';
 const address='12 Market Street, Test Town';
 async function event(page:Page,configured=true,deferred=false){
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
- await page.goto('/?mode=dev');
+ await page.goto('/?mode=dev');await openBrowserCalendar(page);
  await page.evaluate(async({address,configured,deferred})=>{
   const row={id:'travel-source',calendarId:'local',title:'Travel appointment',body:'Return to this exact event',location:address,begin:Date.parse('2028-04-02T12:00:00Z'),end:Date.parse('2028-04-02T13:00:00Z'),revision:'b'.repeat(64)};
   await (async(raw:string)=>{const {browserDocuments}=await import('/src/browser/documents.ts');await browserDocuments.edit('alpha.browser.calendar.v1',async before=>({raw:JSON.stringify({...before?JSON.parse(before.raw!):{version:1,legacy:localStorage.getItem('alpha.browser.calendar.v1')},value:raw}),result:undefined}));})(JSON.stringify({sourceRevision:'a'.repeat(64),events:[row]}));
@@ -29,8 +30,8 @@ test('event address searches once, preserves result choice and returns to the sa
  await expect(page.getByText('Return to this exact event',{exact:true})).toBeVisible();
  await page.getByRole('button',{name:address,exact:true}).click();await expect(page.getByRole('button',{name:/^East entrance/}).first()).toBeVisible();expect(await page.evaluate(()=>(window as any).travelQueries)).toEqual([address,address]);
 });
-test('missing Maps provider retains the event address without inventing a destination',async({page})=>{
- await event(page,false);await expect(page.getByRole('textbox',{name:'Search places',exact:true})).toHaveValue(address);await expect(page.getByText(/Maps provider not connected|Connect a Maps provider/).first()).toBeVisible();await expect(page.getByRole('button',{name:'Directions',exact:true})).toHaveCount(0);await back(page);await expect(page.locator('html')).toHaveAttribute('data-active-view','calendar');await expect(page.getByText('Return to this exact event',{exact:true})).toBeVisible();
+test('signed-out Maps retains the event address without inventing a destination',async({page})=>{
+ await event(page,false);await expect(page.getByRole('textbox',{name:'Search places',exact:true})).toHaveValue(address);await expect(page.getByRole('status').filter({hasText:'The Maps account changed. Search again after signing in.'})).toBeVisible();await expect(page.getByRole('button',{name:'Directions',exact:true})).toHaveCount(0);await back(page);await expect(page.locator('html')).toHaveAttribute('data-active-view','calendar');await expect(page.getByText('Return to this exact event',{exact:true})).toBeVisible();
 });
 
 test('a late event-address response cannot replace a newer Maps search',async({page})=>{

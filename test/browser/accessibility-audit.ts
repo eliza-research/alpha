@@ -477,6 +477,156 @@ export async function auditPage(page: Page, options: PageAuditOptions = {}): Pro
   }, { contrast: !!options.contrast, clipping: !!options.clipping, targetSize: options.targetSize || 0, overlap: !!options.overlap, dock: !!options.dock });
 }
 
+/** The accessible name of the one semantic group that holds the floating assistant controls. */
+export const ASSISTANT_GROUP = 'Assistant controls';
+/** Roles Android exposes as clickable or checkable nodes; their children are part of their label. */
+const ANDROID_ACTIONABLE = new Set([
+  'button', 'ToggleButton', 'PopUpButton', 'DisclosureTriangle', 'link', 'checkbox', 'radio', 'switch', 'tab',
+  'menuitem', 'menuitemcheckbox', 'menuitemradio', 'option', 'textbox', 'searchbox', 'combobox', 'slider', 'spinbutton',
+]);
+type AxTreeNode = AxNode & { nodeId: string; childIds?: string[]; parentId?: string };
+type ReadGeometry = { box: { left: number; top: number; right: number; bottom: number }; live: boolean; where: string; group: number; surface: boolean };
+/**
+ * Bars of controls read in one order in every layout. An app header keeps the navigation, title,
+ * actions order of an Android toolbar when a large system font moves its title to a row of its own
+ * below the buttons (Material's large top app bar is read the same way), and the camera's capture
+ * row keeps its portrait order when landscape turns it into a rail that runs upward, as the device
+ * itself turned. Order is judged between bars and the rest of the screen, not inside one bar.
+ */
+export const READING_GROUPS = '[data-alpha-app-header],[data-alpha-camera="capture"]';
+
+/**
+ * TalkBack's linear reading order, the check AccessibilityInstrumentedTest.talkBackOrder makes on
+ * Android, made in Chromium so that every view and state of the sweep gets it.
+ *
+ * Android WebView builds its node tree from the same Blink accessibility tree that CDP returns.
+ * The walk follows that tree in order and keeps what Android exposes as a node TalkBack visits: a
+ * control (its children are part of its label), a heading, focusable element or element with only
+ * text inside it (Chromium drops their children on Android and reads their text as one node), and
+ * remaining text and named images. For each visible node, by the bounds left after clipping:
+ *
+ * - `reading-order`: the next node must not sit above the previous one by more than half the
+ *   taller of the two, unless it starts a new column to the right (the Android rule, unchanged);
+ * - `assistant-group-order`: the floating assistant controls form one group, read last, so no
+ *   app content may follow it (it floats above the bottom edge, so moving into it may go up);
+ * - `assistant-group-duplicate`: at most one such group is exposed.
+ *
+ * Live regions (toasts, status lines) are announced when they change, not found by reading on,
+ * so their place in the order is not judged; nor is order inside one bar of controls
+ * (READING_GROUPS), or among the names painted on the pannable map. The conversation sheet floats
+ * over the app like the dock and is judged like it. Content outside the phone screen (the browser
+ * preview's rail) is not on a phone. These are renderer checks: TalkBack itself, Switch Access and
+ * WebView's own node exposure remain emulator and device evidence (AccessibilityInstrumentedTest).
+ */
+export async function auditReadingOrder(page: Page): Promise<Violation[]> {
+  const session = await page.context().newCDPSession(page);
+  try {
+    await session.send('Accessibility.enable');
+    const { nodes } = await session.send('Accessibility.getFullAXTree') as { nodes: AxTreeNode[] };
+    const byId = new Map(nodes.map(node => [node.nodeId, node]));
+    const root = nodes.find(node => !node.parentId || !byId.has(node.parentId));
+    if (!root) return [];
+    const role = (node: AxTreeNode) => String(node.role?.value || '');
+    const name = (node: AxTreeNode) => String(node.name?.value || '').trim();
+    const property = (node: AxTreeNode, key: string) => (node.properties || []).find(item => item.name === key)?.value.value;
+    const children = (node: AxTreeNode) => (node.childIds || []).map(id => byId.get(id)).filter((child): child is AxTreeNode => !!child);
+    const exposedChildren = (node: AxTreeNode): AxTreeNode[] => children(node).flatMap(child => child.ignored ? exposedChildren(child) : [child]);
+    const text = (node: AxTreeNode): string => role(node) === 'StaticText' ? name(node) : exposedChildren(node).map(text).filter(Boolean).join(' ');
+    const focusableBelow = (node: AxTreeNode): boolean => exposedChildren(node).some(child => (property(child, 'focusable') === true && role(child) !== 'option') || focusableBelow(child));
+    // BrowserAccessibilityAndroid::IsLeaf: which nodes Android reads as one node with their text.
+    const leaf = (node: AxTreeNode) => {
+      const kind = role(node);
+      if (ANDROID_ACTIONABLE.has(kind) || kind === 'image' || kind === 'img' || kind === 'StaticText') return true;
+      if (focusableBelow(node)) return false;
+      if ((kind === 'heading' || property(node, 'focusable') === true) && text(node)) return true;
+      const list = exposedChildren(node);
+      return list.length > 0 && list.every(child => role(child) === 'StaticText');
+    };
+    type Visit = { node: AxTreeNode; label: string; assistant: boolean; order: number };
+    const visits: Visit[] = []; let groups = 0;
+    const walk = (node: AxTreeNode, assistant: boolean) => {
+      if (node.ignored) { for (const child of children(node)) walk(child, assistant); return; }
+      const kind = role(node);
+      const group = kind === 'group' && name(node) === ASSISTANT_GROUP;
+      if (group) groups++;
+      const inside = assistant || group;
+      if (leaf(node)) {
+        const label = name(node) || text(node);
+        if (ANDROID_ACTIONABLE.has(kind) || label) visits.push({ node, label, assistant: inside, order: visits.length });
+        return;
+      }
+      for (const child of children(node)) walk(child, inside);
+    };
+    walk(root, false);
+    const out: Violation[] = [];
+    if (groups > 1) out.push({ rule: 'assistant-group-duplicate', target: `${groups} groups named "${ASSISTANT_GROUP}"` });
+    // Geometry from the page: each node resolved once, all measured in one call.
+    const resolved: Array<{ visit: Visit; objectId: string }> = [];
+    for (const visit of visits) {
+      if (!visit.node.backendDOMNodeId) continue;
+      try {
+        const { object } = await session.send('DOM.resolveNode', { backendNodeId: visit.node.backendDOMNodeId }) as { object: { objectId?: string } };
+        if (object.objectId) resolved.push({ visit, objectId: object.objectId });
+      } catch { /* detached while reading */ }
+    }
+    if (!resolved.length) return out;
+    const { result } = await session.send('Runtime.callFunctionOn', {
+      objectId: resolved[0].objectId, returnByValue: true, arguments: [{ value: READING_GROUPS }, ...resolved.map(item => ({ objectId: item.objectId }))],
+      functionDeclaration: `function(groups,...nodes){
+        const out=[],ids=new Map();
+        for(const node of nodes){
+          const el=node&&node.nodeType===1?node:node&&node.parentElement;
+          if(!el||!el.isConnected){out.push(null);continue;}
+          // The phone screen and what is drawn over it in the top layer. A shell without the phone
+          // frame (the shared upstream shell) is judged whole, never skipped.
+          const framed=!!document.querySelector('[data-screen]');
+          const screen=!framed||el.closest('[data-screen]')||el.closest('dialog[open],:popover-open');
+          // Names painted on the pannable map have a place, not an order; its pins are also listed in the results sheet.
+          if(!screen||el.closest('[inert],[aria-hidden="true"]')||el.closest('[data-alpha-map-canvas],[data-alpha-map-plane]')){out.push(null);continue;}
+          let rect;
+          if(node.nodeType===3){const range=document.createRange();range.selectNodeContents(node);rect=range.getBoundingClientRect();}else rect=el.getBoundingClientRect();
+          const box={left:Math.max(0,rect.left),top:Math.max(0,rect.top),right:Math.min(innerWidth,rect.right),bottom:Math.min(innerHeight,rect.bottom)};
+          for(let p=el.parentElement;p&&p!==document.documentElement;p=p.parentElement){
+            const s=getComputedStyle(p);if(s.overflowX==='visible'&&s.overflowY==='visible')continue;
+            const f=p.getBoundingClientRect();
+            if(s.overflowX!=='visible'){box.left=Math.max(box.left,f.left);box.right=Math.min(box.right,f.right);}
+            if(s.overflowY!=='visible'){box.top=Math.max(box.top,f.top);box.bottom=Math.min(box.bottom,f.bottom);}
+          }
+          if(box.right-box.left<1||box.bottom-box.top<1){out.push(null);continue;}
+          const live=!!el.closest('[aria-live]:not([aria-live="off"]),[role=status],[role=alert],[role=log],[role=timer],[role=marquee]');
+          const layer=el.closest('[data-alpha-subview],[data-alpha-layer],[data-screen],dialog,[role=dialog]');
+          const where=layer?(layer.getAttribute('data-alpha-subview')||layer.getAttribute('data-alpha-layer')||(layer.hasAttribute('data-screen')?'screen':'')||layer.getAttribute('aria-label')||layer.tagName.toLowerCase()):'';
+          // A bar of controls is read in its own order in every layout (see GROUPS).
+          const bar=el.closest(groups);let group=0;
+          if(bar){if(!ids.has(bar))ids.set(bar,ids.size+1);group=ids.get(bar);}
+          // The conversation sheet floats over the app like the dock: it is read after the app, and moving into it may go up.
+          const surface=!!el.closest('[data-alpha-layer="conversation"]');
+          out.push({box,live,where,group,surface});
+        }
+        return out;
+      }`,
+    }) as { result: { value: Array<ReadGeometry | null> } };
+    const placed = resolved.map((item, index) => ({ ...item.visit, geometry: result.value[index] }))
+      .filter((item): item is Visit & { geometry: ReadGeometry } => !!item.geometry && !item.geometry.live)
+      .map(item => ({ ...item, assistant: item.assistant || item.geometry.surface }))
+      .sort((a, b) => a.order - b.order);
+    const describe = (item: { label: string; node: AxTreeNode; geometry: ReadGeometry }) => `${item.geometry.where ? `[${item.geometry.where}] ` : ''}${role(item.node)} '${item.label.slice(0, 60)}'`;
+    let previous: (typeof placed)[number] | null = null, seenAssistant = false, reported = false;
+    for (const item of placed) {
+      if (seenAssistant && !item.assistant && !reported) { reported = true; out.push({ rule: 'assistant-group-order', target: describe(item), detail: `read after the "${ASSISTANT_GROUP}" group` }); }
+      seenAssistant ||= item.assistant;
+      if (previous && previous.assistant === item.assistant && !(item.geometry.group && item.geometry.group === previous.geometry.group)) {
+        const p = previous.geometry.box, r = item.geometry.box;
+        const tallest = Math.max(p.bottom - p.top, r.bottom - r.top);
+        if (r.top < p.top - tallest / 2 && r.left < p.right)
+          out.push({ rule: 'reading-order', target: describe(item), detail: `goes up from ${describe(previous)} (${Math.round(p.top)} to ${Math.round(r.top)})` });
+      }
+      previous = item;
+    }
+    return out;
+  } finally { await session.detach().catch(() => {}); }
+}
+
 /**
  * Walk the tab order. Focus must move on every press, must never land in content hidden from
  * assistive technology, and must return to where it began (no trap, no dead end). A modal

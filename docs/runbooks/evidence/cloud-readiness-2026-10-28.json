@@ -1,0 +1,162 @@
+{
+  "schema": 1,
+  "status": "draft evidence record prepared for #666 (owner may promote it to docs/evidence/)",
+  "command": "node scripts/cloud-readiness.mjs probe [--environment staging] --json",
+  "checkout": "origin/main 94676c82123a16e3c1f49521f391b0d929329f9d (branch i-cloud)",
+  "scope": "Unauthenticated, read-only deployment probes (the requests the phone sign-in readiness and plan check make, once each). No account, key, code, email or subscription was used or changed; the email code route was probed with an empty body, which Steward refuses without sending email. Deployment configuration evidence only: not a sign-in, plan admission, App Link verification on a device, Maps coverage, Google connector or device result.",
+  "releaseSigner": "unset",
+  "comparedWith": "docs/evidence/cloud-readiness-2026-10-27.json (observed 2026-10-28T05:55:42Z): every checkable gate has the same outcome, and the App Links fingerprints are unchanged",
+  "issueGates": {
+    "#666 registration (H-11)": "pass in both environments",
+    "#666 service documents (H-14)": "pass in both environments",
+    "#666 entitlement keys (H-15)": "pass in both environments (entitlement-production-2026-10, entitlement-staging-2026-10)"
+  },
+  "openGates": [
+    "production App Links (H-13): no release certificate enrolled; two non-release certificates listed (see #670)",
+    "staging native Google (H-12): googleNative not advertised (see #669)"
+  ],
+  "supplementary": {
+    "subscriptionCatalog": {
+      "production": "GET https://api.eliza.app/api/v1/subscriptions/plans: HTTP 200, catalog v1 matching docs/runbooks/drafts/665-recorded-catalog-v1.json",
+      "staging": "GET https://api-staging.eliza.app/api/v1/subscriptions/plans: HTTP 503 service_unavailable (\"Subscription plans are temporarily unavailable\")"
+    }
+  },
+  "environments": [
+    {
+      "environment": "production",
+      "api": "https://api.eliza.app",
+      "observedAt": "2026-10-29T03:59:36Z",
+      "exit": 1,
+      "gates": [
+        {
+          "gate": "registration",
+          "step": "H-11",
+          "passed": true,
+          "detail": "ai.elizaresearch.alphaphone is registered for https://eliza.app/alphaphone/auth/callback with S256"
+        },
+        {
+          "gate": "email sign-in",
+          "step": "H-12",
+          "passed": true,
+          "detail": "email offered without a captcha; code route present"
+        },
+        {
+          "gate": "native Google",
+          "step": "H-12",
+          "passed": true,
+          "detail": "google offered, googleNative advertised"
+        },
+        {
+          "gate": "browser return",
+          "step": "H-12",
+          "passed": true,
+          "detail": "the elizacloud allowlist admits https://eliza.app/alphaphone/auth/callback"
+        },
+        {
+          "gate": "App Links",
+          "step": "H-13",
+          "passed": false,
+          "detail": "android/release-signer.json signerSha256 is \"unset\"; the release certificate is not recorded yet (docs/human-actions.md H-09); ai.elizaresearch.alphaphone is also granted to 22:42:99:4D:2D:23:7F:98:D0:19:27:99:91:57:06:7D:F4:E2:49:5A:8F:98:04:51:AC:3D:E5:D4:06:42:58:4A; ai.elizaresearch.alphaphone is also granted to ED:BF:CA:CB:1D:A6:89:00:8B:F4:E7:D6:75:17:6C:30:2D:EC:F8:31:61:A8:77:EB:8B:1D:E4:FF:AE:04:45:ED"
+        },
+        {
+          "gate": "callback page",
+          "step": "H-13",
+          "passed": true,
+          "detail": "https://eliza.app/alphaphone/auth/callback serves the fallback page"
+        },
+        {
+          "gate": "service documents",
+          "step": "H-14",
+          "passed": true,
+          "detail": "Terms and Privacy published by Eliza Cloud"
+        },
+        {
+          "gate": "entitlement keys",
+          "step": "H-15",
+          "passed": true,
+          "detail": "1 ES256 signing key(s): entitlement-production-2026-10"
+        },
+        {
+          "gate": "Maps route",
+          "step": "H-16",
+          "passed": null,
+          "detail": "needs an account: Cloud answers every protected /api/ path with 401 before routing, so only GET /api/v1/maps/capabilities with a signed-in plan shows the route, its coverage and its dataset revision (H-32)"
+        },
+        {
+          "gate": "Google connector",
+          "step": "H-17",
+          "passed": null,
+          "detail": "needs an account: the Gmail and Calendar routes under /api/v1/eliza/google answer 401 without a session whether or not they are deployed; a signed-in connect, and inbox-v1/capabilities for readState, show them (H-27)"
+        }
+      ]
+    },
+    {
+      "environment": "staging",
+      "api": "https://api-staging.eliza.app",
+      "observedAt": "2026-10-29T03:59:48Z",
+      "exit": 1,
+      "gates": [
+        {
+          "gate": "registration",
+          "step": "H-11",
+          "passed": true,
+          "detail": "ai.elizaresearch.alphaphone is registered for https://staging.eliza.app/alphaphone/auth/callback with S256"
+        },
+        {
+          "gate": "email sign-in",
+          "step": "H-12",
+          "passed": true,
+          "detail": "email offered without a captcha; code route present"
+        },
+        {
+          "gate": "native Google",
+          "step": "H-12",
+          "passed": false,
+          "detail": "google offered, googleNative not advertised (STEWARD_GOOGLE_NATIVE_CLIENT_IDS has no Android client for an app client of this tenant)"
+        },
+        {
+          "gate": "browser return",
+          "step": "H-12",
+          "passed": true,
+          "detail": "the elizacloud-staging allowlist admits https://staging.eliza.app/alphaphone/auth/callback"
+        },
+        {
+          "gate": "App Links",
+          "step": "H-13",
+          "passed": true,
+          "detail": "ai.elizaresearch.alphaphone is granted to B1:DE:6A:3E:D3:00:39:95:74:80:7F:0C:6F:63:C0:21:2B:62:63:E7:EC:28:AE:A2:25:3C:EB:20:B1:70:F4:7E (debug-signed test-mocks builds; pass --signer to require one)"
+        },
+        {
+          "gate": "callback page",
+          "step": "H-13",
+          "passed": true,
+          "detail": "https://staging.eliza.app/alphaphone/auth/callback serves the fallback page"
+        },
+        {
+          "gate": "service documents",
+          "step": "H-14",
+          "passed": true,
+          "detail": "Terms and Privacy published by Eliza Cloud"
+        },
+        {
+          "gate": "entitlement keys",
+          "step": "H-15",
+          "passed": true,
+          "detail": "1 ES256 signing key(s): entitlement-staging-2026-10"
+        },
+        {
+          "gate": "Maps route",
+          "step": "H-16",
+          "passed": null,
+          "detail": "needs an account: Cloud answers every protected /api/ path with 401 before routing, so only GET /api/v1/maps/capabilities with a signed-in plan shows the route, its coverage and its dataset revision (H-32)"
+        },
+        {
+          "gate": "Google connector",
+          "step": "H-17",
+          "passed": null,
+          "detail": "needs an account: the Gmail and Calendar routes under /api/v1/eliza/google answer 401 without a session whether or not they are deployed; a signed-in connect, and inbox-v1/capabilities for readState, show them (H-27)"
+        }
+      ]
+    }
+  ]
+}

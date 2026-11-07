@@ -16,7 +16,7 @@ public final class ResetPolicyInstrumentedTest {
  @Test public void cancelledNativeReviewLeavesDataAndOffersNoMigrationPlugins()throws Exception {
   org.junit.Assume.assumeFalse(BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS);
   Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();
-  assertFalse("No real reset pending before fixture",AlphaDataReset.pending(context));
+  assertFalse("No real reset pending before fixture",AlphaDataReset.RESET.pending(context));
   try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
    AppNavigation.liveMode();
    String before=WebViewTestDriver.evaluate("localStorage.getItem('alpha.connection.selection.v1')");
@@ -29,7 +29,7 @@ public final class ResetPolicyInstrumentedTest {
    while(android.os.SystemClock.elapsedRealtime()<end&&!"\"cancelled\"".equals(WebViewTestDriver.evaluate("window.__resetResult?.status")))android.os.SystemClock.sleep(50);
    assertEquals("\"cancelled\"",WebViewTestDriver.evaluate("window.__resetResult?.status"));
    assertEquals(before,WebViewTestDriver.evaluate("localStorage.getItem('alpha.connection.selection.v1')"));
-   assertFalse("Cancel cannot persist reset authority",AlphaDataReset.pending(context));
+   assertFalse("Cancel cannot persist reset authority",AlphaDataReset.RESET.pending(context));
    assertEquals("false",WebViewTestDriver.evaluate("Capacitor.isPluginAvailable('ElizaPasswordTransfer')"));
    WebViewTestDriver.evaluate("window.__migration=null;Promise.all([Capacitor.Plugins.AlphaNoteDocuments.importText(),Capacitor.Plugins.AlphaNoteDocuments.exportText({text:'fixture'})]).then(v=>window.__migration=v.map(x=>x.status))");
    end=android.os.SystemClock.elapsedRealtime()+10000;String statuses="null";
@@ -42,9 +42,9 @@ public final class ResetPolicyInstrumentedTest {
   File directory=new File(real.getCacheDir(),"reset-marker-fixture-"+UUID.randomUUID());assertTrue(directory.mkdirs());
   Context fixture=new ContextWrapper(real){@Override public Context createDeviceProtectedStorageContext(){return this;}@Override public File getNoBackupFilesDir(){return directory;}};
   try{
-   assertFalse(AlphaDataReset.pending(fixture));AlphaDataReset.record(fixture);assertTrue(AlphaDataReset.pending(fixture));
+   assertFalse(AlphaDataReset.RESET.pending(fixture));AlphaDataReset.RESET.record(fixture);assertTrue(AlphaDataReset.RESET.pending(fixture));
    Context reopened=new ContextWrapper(real){@Override public Context createDeviceProtectedStorageContext(){return this;}@Override public File getNoBackupFilesDir(){return directory;}};
-   assertTrue(AlphaDataReset.pending(reopened));assertFalse("Real application startup remains unaffected",AlphaDataReset.pending(real));
+   assertTrue(AlphaDataReset.RESET.pending(reopened));assertFalse("Real application startup remains unaffected",AlphaDataReset.RESET.pending(real));
   }finally{for(File file:directory.listFiles())assertTrue(file.delete());assertTrue(directory.delete());}
  }
 }

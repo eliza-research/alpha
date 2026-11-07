@@ -102,7 +102,7 @@ public final class PhotosTrashInstrumentedTest {
    assertEquals("Disposable fixture requires empty app-owned trash",0,nativeCall("summary",new JSONObject()).getInt("trash"));
    Uri restored=fixture(resolver);fixtures.add(restored);Uri remove=fixture(resolver);fixtures.add(remove);Uri later=fixture(resolver);fixtures.add(later);byte[] original=bytes(resolver,restored);
    JSONObject trashedRow=trash(restored,metadata(restored),true);
-   JSONObject prepared=nativeCall("prepareDeleteTrash",new JSONObject());assertEquals(1,prepared.getInt("count"));
+   JSONObject prepared=nativeCall("prepareDeleteTrash",new JSONObject().put("all",true));assertEquals(1,prepared.getInt("count"));
    trash(restored,trashedRow,false);trash(remove,metadata(remove),true);
    JSONObject partial=nativeCall("deletePreparedTrash",new JSONObject().put("confirmation",prepared.getString("confirmation")));
    assertEquals("partial",partial.getString("status"));assertEquals(0,partial.getJSONArray("deletedIds").length());assertEquals("Restored snapshot is classified as skipped: "+partial,1,partial.getJSONArray("skippedIds").length());assertEquals(key(restored),partial.getJSONArray("skippedIds").getString(0));state(resolver,restored,false);state(resolver,remove,true);

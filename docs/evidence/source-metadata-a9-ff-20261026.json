@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "date": "2026-10-26",
+  "baseProduct": "a9bda8928022f8e749fe9df2fdd6e074566341b3",
+  "SDK": "ff4a0bdeb47e8f3ddf15b55139939165b10bb612",
+  "previousSDK": "603f73bc6317329a61eadfa7858741742a3d5fff",
+  "preservation": {
+    "upstream.lock.json": "Only commit changed",
+    "patches/eliza/native-manifest.json": "Only baseCommit changed",
+    "android/voice-host/qualified-voice-host.json": "Only pin changed",
+    "docs/dependency-audit.snapshot.json": "Only resident.upstreamCommit changed",
+    "docs/dependency-audit.dispositions.json": "Only resident.upstreamCommit changed",
+    "docs/requirements.json": "Only note changed",
+    "docs/mvp-remaining-work-2026-10-09.json": "Only upstream_pin changed",
+    "apps/app/public/licenses/third-party-notices.json": "Only generated source pin changed",
+    "apps/app/public/licenses/THIRD_PARTY_NOTICES.txt": "Only generated source pin changed"
+  },
+  "dependencyInputIdentity": {
+    "parent": "603f73bc6317329a61eadfa7858741742a3d5fff",
+    "SDK": "ff4a0bdeb47e8f3ddf15b55139939165b10bb612",
+    "rawLockBytesIdentical": true,
+    "rawLockSHA256": "c88cc7693c852e49ec1a2aebfba619d9a76cf038c26c5d0c19fa2994b9f4f762",
+    "changedFiles": [
+      "packages/agent/src/runtime/eliza-plugin.ts",
+      "packages/agent/src/runtime/view-navigation-targets.ts",
+      "packages/agent/src/runtime/view-navigation.ts",
+      "packages/agent/test/view-navigation-routing.test.ts",
+      "plugins/plugin-personal-assistant/src/actions/lib/reminder-create-contract.test.ts",
+      "plugins/plugin-personal-assistant/src/actions/lib/task-create-plan-parameter.ts",
+      "plugins/plugin-personal-assistant/src/actions/life.ts",
+      "plugins/plugin-personal-assistant/test/reminder-no-alert.pglite.mjs"
+    ],
+    "nativeAndVoiceSourceInputsIdentical": true,
+    "normalizedInputIdentical": true,
+    "normalizedInputSHA256": "6db6e88363397fd2c73a561ea1f3a071dfc11b31378cbe0c193163ea1ecf70ff",
+    "packageVersions": 3694
+  },
+  "auditDateRetained": "2026-10-26",
+  "allAuditExceptionsAndDeadlinesRetained": true,
+  "sourceTests": {
+    "schemaPass": 8,
+    "PGlite": "Real owner executor/service saves noAlert withzeroalertsteps; defaultone; nonownerdenied; nomodelcalls",
+    "fullLifeTypeGraph": "Unqualified afterboundedheapfailure; schema semantictypespassed"
+  },
+  "consumerTests": {
+    "pass": 48,
+    "fail": 0,
+    "skip": 0,
+    "offlineAudit": "PASS",
+    "notices": "PASS"
+  },
+  "remaining": [
+    "Rootintegration",
+    "Coherentpreviewpreparation",
+    "Livefailedreminderretryonlyafternewsource"
+  ],
+  "liveActions": false,
+  "nativeProjectionNullFallback": "Unchanged; existing extraction retains destination selection"
+}

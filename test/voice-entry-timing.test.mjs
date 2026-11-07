@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 // Entry-sourced voice latency records under both send policies (voice-selection.ts
-// voiceSendPolicy; MVP-01/A-10 decide which one ships). The real voice-timing source and the
+// voiceSendPolicy; P-39 auto-sends the voice assistant, A-10 measures it). The real voice-timing source and the
 // real aggregator run on a deterministic clock. The views only choose the entry: a Cloud voice
 // conversation started on Home or Calendar is a 'conversation' entry, the Notes recorder is a
 // 'notes' entry whose send is the user's Save. The rendered integration is covered by

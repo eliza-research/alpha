@@ -6,11 +6,18 @@ export function residentRecoveryReason(error:unknown):ResidentRecoveryReason|und
  return code==='ipc-recovery-retention-limit'||code==='ipc-recovery-required'||code==='runtime-identity-unavailable'?code:undefined;
 }
 export function residentRecoveryMessage(reason:ResidentRecoveryReason):string {
- if(reason==='ipc-recovery-retention-limit')return 'Your agent needs recovery review. Your records were kept. Restarting won’t fix this; don’t clear app data.';
- if(reason==='ipc-recovery-required')return 'Your agent needs recovery review. Your records were kept. Don’t clear app data or rerun unfinished work.';
- return 'Your agent’s runtime needs review. Your records were kept. Don’t clear app data.';
+ return reason==='ipc-recovery-retention-limit'?'Alpha needs a restart. Open Settings › Agent connection.':'Alpha couldn’t start. Open Settings › Agent connection for details.';
 }
-export const RESIDENT_RECOVERY_PENDING='Your agent needs recovery review. Open Settings › Agent connection.';
+export const RESIDENT_RECOVERY_PENDING='Alpha couldn’t start. Open Settings › Agent connection.';
+/** Only a fresh, reviewable native snapshot supports restart readiness. */
+export function residentRecoveryCopy(reason:ResidentRecoveryReason,view?:ResidentRecoveryView):string {
+ if(view?.step==='unavailable')return 'Alpha couldn’t confirm a safe restart. Try again later.';
+ if(view?.step==='partial')return 'Alpha couldn’t finish restarting. Check the details before trying again.';
+ if(view?.step==='reviewing')return 'Checking restart…';
+ if(view?.step==='archiving')return 'Restarting Alpha…';
+ if(reason==='ipc-recovery-retention-limit')return view?.step==='review'?'Alpha is ready to restart.':'Alpha needs a restart.';
+ return 'Alpha couldn’t start. Check the details in Settings.';
+}
 
 export type RecoveryReview = {status:'reviewable';retainedCount:number;reviewToken:string}|{status:'unavailable';retainedCount:number};
 export type RecoveryArchive = {status:'archived'|'unavailable'|'partial';archivedCount:number;retainedCount:number};

@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {resolve} from 'node:path';
 // MVP-32 at the protocol boundary: generated candidates stay inside the reviewed bounds, a typed workflow
-// can only carry the manual trigger, migrated or unreadable definitions never take the list down, and a
-// retained submission can be repeated only under its own identity. Synthetic agent responses; no runtime.
+// carries only the manual trigger or a reviewed local-time trigger (shared upstream contract), migrated or
+// unreadable definitions never take the list down, and a retained submission can be repeated only under its
+// own identity. Synthetic agent responses; no runtime.
 const root=resolve(import.meta.dirname,'..');
 const run=script=>JSON.parse(execFileSync(process.execPath,['--import=tsx','--input-type=module','-e',script],{cwd:root,encoding:'utf8',timeout:120000}));
 const prelude=`
@@ -27,6 +28,7 @@ out.schedule=await generate(async()=>({...await answer(base),spec:{...base,trigg
 out.extraTriggerField=await generate(async()=>({...await answer(base),spec:{...base,trigger:{kind:'manual',cron:'0 7 * * *'}}}));
 out.unknownOperation=await generate(async()=>({...await answer(base),spec:{...base,steps:[...base.steps,{id:'c',kind:'Send',operation:'send_email',source:'b',to:'someone@example.com'}]}}));
 out.unofferedOperation=await generate(()=>answer({...base,steps:[base.steps[0],{id:'b',kind:'Write',operation:'model_draft',source:'a',instruction:'Summarize'}]}));
+out.addedSchedule=await generate(()=>answer({...base,trigger:{kind:'time',localTime:'07:30',timeZone:'UTC',days:[1,2,3,4,5]}}));
 out.tooManySteps=await generate(()=>({spec:{...base,steps:Array.from({length:33},(_,i)=>({id:'s'+i,kind:'Read',operation:'supplied_text',text:'x'}))},specDigest:'0',catalogRevision:'c1',compilerRevision:'k1',active:false}));
 out.oversized=await generate(async()=>({...await answer(base),padding:'x'.repeat(80000)}));
 out.active=await generate(async()=>({...await answer(base),active:true}));
@@ -39,11 +41,13 @@ out.noGenerator=await message(()=>new P.WorkflowProtocol(async()=>{throw Error('
 out.clarify=await message(()=>new P.WorkflowProtocol(async()=>{throw new P.WorkflowHttpError(422,{error:'Workflow needs clarification: Which notes?'});}).generatePhone('Draft',catalog,['supplied_text'],signal));
 console.log(JSON.stringify(out));`);
  assert.equal(out.valid,'');
- assert.equal(out.schedule,'Error: Only explicitly started workflows are available');
- assert.equal(out.extraTriggerField,'Error: Unsupported workflow field');
- assert.equal(out.unknownOperation,'Error: This workflow operation is unavailable');
+ assert.equal(out.schedule,'PhoneWorkflowSpecError: This workflow trigger is unavailable');
+ assert.equal(out.extraTriggerField,'PhoneWorkflowSpecError: Unsupported workflow field');
+ assert.equal(out.unknownOperation,'PhoneWorkflowSpecError: This workflow operation is unavailable');
  assert.equal(out.unofferedOperation,'Error: Generated draft changed the available device or operations');
- assert.equal(out.tooManySteps,'Error: Add between 1 and 32 steps');
+ // A schedule is owner-set; a generated draft that adds one is refused before review.
+ assert.equal(out.addedSchedule,'Error: Generated draft changed when this workflow runs');
+ assert.equal(out.tooManySteps,'PhoneWorkflowSpecError: Add between 1 and 32 steps');
  assert.equal(out.oversized,'Error: Generated draft exceeds the response limit');
  for(const key of ['active','wrongDigest','wrongCompiler'])assert.equal(out[key],'Error: Agent validation changed the reviewed workflow',key);
  assert.match(out.addedDevice,/Generated draft changed the available device or operations|A verified phone enrollment is required|Invalid/);
@@ -53,32 +57,41 @@ console.log(JSON.stringify(out));`);
  assert.equal(out.clarify,'Error: Workflow needs clarification: Which notes?');
 });
 
-test('a typed workflow carries only the manual trigger and a catalog without it disables authoring',()=>{
+test('a typed workflow carries the manual trigger or a reviewed local time, and the agent must offer it',()=>{
  const out=run(prelude+`
-out.manual=A.normalizePhoneSpec(base).trigger;
-for(const [name,trigger] of Object.entries({schedule:{kind:'schedule'},cron:{kind:'cron',expression:'* * * * *'},event:{kind:'event'},time:{kind:'time',t:7},missing:undefined}))out[name]=await message(async()=>A.normalizePhoneSpec({...base,trigger}));
-out.noManual=await message(async()=>A.assertPhoneCapabilities(A.normalizePhoneSpec(base),A.parsePhoneCatalog({...catalogBody,triggers:[{kind:'manual',available:false,reason:'Paused'},{kind:'schedule',available:true}]})));
-out.scheduleOnly=await message(async()=>A.assertPhoneCapabilities(A.normalizePhoneSpec(base),A.parsePhoneCatalog({...catalogBody,triggers:[{kind:'schedule',available:true}]})));
+const weekdays={kind:'time',localTime:'07:30',timeZone:'Europe/Paris',days:[1,2,3,4,5]};
+out.manual=A.normalizePhoneSpec(base).trigger;out.time=A.normalizePhoneSpec({...base,trigger:weekdays}).trigger;
+out.describe=[A.describePhoneTrigger(weekdays),A.describePhoneTrigger({kind:'manual'})];
+for(const [name,trigger] of Object.entries({schedule:{kind:'schedule'},cron:{kind:'cron',expression:'* * * * *'},event:{kind:'event'},legacyTime:{kind:'time',t:7},unordered:{...weekdays,days:[5,1]},noDays:{...weekdays,days:[]},badZone:{...weekdays,timeZone:'Mars/Olympus'},badTime:{...weekdays,localTime:'7:30'},missing:undefined}))out[name]=await message(async()=>A.normalizePhoneSpec({...base,trigger}));
+out.noManual=await message(async()=>A.assertPhoneCapabilities(A.normalizePhoneSpec(base),A.parsePhoneCatalog({...catalogBody,triggers:[{kind:'manual',available:false,reason:'Paused'},{kind:'time',available:true}]})));
+out.scheduleOnly=await message(async()=>A.assertPhoneCapabilities(A.normalizePhoneSpec(base),A.parsePhoneCatalog({...catalogBody,triggers:[{kind:'time',available:true}]})));
+out.timeUnoffered=await message(async()=>A.assertPhoneCapabilities(A.normalizePhoneSpec({...base,trigger:weekdays}),catalog));
+out.timeOffered=await message(async()=>A.assertPhoneCapabilities(A.normalizePhoneSpec({...base,trigger:weekdays}),A.parsePhoneCatalog({...catalogBody,triggers:[{kind:'manual',available:true},{kind:'time',available:true,label:'At a set local time'}]})));
 console.log(JSON.stringify(out));`);
  assert.deepEqual(out.manual,{kind:'manual'});
- for(const name of ['schedule','cron','event','time'])assert.equal(out[name],'Error: Only explicitly started workflows are available',name);
+ assert.deepEqual(out.time,{kind:'time',localTime:'07:30',timeZone:'Europe/Paris',days:[1,2,3,4,5]});
+ assert.deepEqual(out.describe,['Weekdays at 07:30 (Europe/Paris)','Only when you choose Run now']);
+ for(const name of ['schedule','cron','event'])assert.equal(out[name],'PhoneWorkflowSpecError: This workflow trigger is unavailable',name);
+ assert.equal(out.legacyTime,'PhoneWorkflowSpecError: Unsupported workflow field');
+ for(const name of ['unordered','noDays','badZone','badTime'])assert.equal(out[name],'PhoneWorkflowSpecError: Choose a local time, a valid time zone and at least one day',name);
  assert.notEqual(out.missing,'');
- assert.equal(out.noManual,'Error: Agent capabilities changed. Review the available steps again.');assert.equal(out.scheduleOnly,'Error: Agent capabilities changed. Review the available steps again.');
+ for(const name of ['noManual','scheduleOnly','timeUnoffered'])assert.equal(out[name],'PhoneWorkflowSpecError: Agent capabilities changed. Review the available steps again.',name);
+ assert.equal(out.timeOffered,'');
 });
 
 test('migrated and unreadable definitions stay listed; only a readable typed definition is offered the typed editor',()=>{
  const out=run(prelude+`
 const flow=(id,metadata)=>({id,name:'Flow '+id,description:'',active:false,versionId:'v-'+id,steps:[{label:'Step'}],...(metadata?{metadata}:{})});
-const flows=[flow('typed',{elizaPhoneWorkflowSpec:JSON.stringify(base)}),flow('legacy'),flow('broken',{elizaPhoneWorkflowSpec:'{"version":1,"name":'}),flow('scalar',{elizaPhoneWorkflowSpec:'null'}),flow('array',{elizaPhoneWorkflowSpec:'[]'}),flow('huge',{elizaPhoneWorkflowSpec:JSON.stringify({...base,description:'x'.repeat(70000)})}),flow('scheduled',{elizaPhoneWorkflowSpec:JSON.stringify({...base,trigger:{kind:'schedule'}})}),flow('hosted',{elizaPhoneWorkflowSpec:JSON.stringify(base),elizaHostedDigestV1:'{}'})];
+const flows=[flow('typed',{elizaPhoneWorkflowSpec:JSON.stringify(base)}),flow('legacy'),flow('broken',{elizaPhoneWorkflowSpec:'{"version":1,"name":'}),flow('scalar',{elizaPhoneWorkflowSpec:'null'}),flow('array',{elizaPhoneWorkflowSpec:'[]'}),flow('huge',{elizaPhoneWorkflowSpec:JSON.stringify({...base,description:'x'.repeat(70000)})}),flow('scheduled',{elizaPhoneWorkflowSpec:JSON.stringify({...base,trigger:{kind:'schedule'}})}),flow('timed',{elizaPhoneWorkflowSpec:JSON.stringify({...base,trigger:{kind:'time',localTime:'06:00',timeZone:'UTC',days:[0,6]}})}),flow('hosted',{elizaPhoneWorkflowSpec:JSON.stringify(base),elizaHostedDigestV1:'{}'})];
 const client=new P.WorkflowProtocol(async path=>{if(path==='/api/workflow/status')return {engine:'smthrs',status:'ready'};if(path==='/api/workflow/workflows')return {workflows:flows};throw Error(path);});
 const listed=await client.list(signal);out.ids=listed.map(row=>row.id);out.typed=listed.filter(row=>row.phoneSpec!==undefined).map(row=>row.id);out.hosted=listed.filter(row=>row.hostedDigest).map(row=>row.id);
 out.editable=[];for(const row of listed){if(row.phoneSpec===undefined)continue;try{A.normalizePhoneSpec(row.phoneSpec);out.editable.push(row.id);}catch{}}
 console.log(JSON.stringify(out));`);
- assert.deepEqual(out.ids,['typed','legacy','broken','scalar','array','huge','scheduled','hosted']);
- assert.deepEqual(out.typed,['typed','scheduled','hosted']);
+ assert.deepEqual(out.ids,['typed','legacy','broken','scalar','array','huge','scheduled','timed','hosted']);
+ assert.deepEqual(out.typed,['typed','scheduled','timed','hosted']);
  assert.deepEqual(out.hosted,['hosted']);
- // A migrated definition with a non-manual trigger is listed but cannot enter the typed editor.
- assert.deepEqual(out.editable,['typed','hosted']);
+ // A migrated definition with an unsupported trigger is listed but cannot enter the typed editor; a reviewed local-time trigger can.
+ assert.deepEqual(out.editable,['typed','timed','hosted']);
 });
 
 test('a retained submission is repeated only under its own identity and reviewed version',()=>{

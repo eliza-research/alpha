@@ -7,17 +7,17 @@ for(const scenario of ['supported','legacy','unsupported','malformed','lost','re
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
   await page.addInitScript(scenario=>{
    const w=window as any;w.androidBridge={};localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));
-   const store=new Map();const f=w.viewProfileFixture={reads:0,writes:[] as any[],headers:[] as any[],profile:null as any};
+   const store=new Map();const f=w.viewProfileFixture={reads:0,contextReads:0,writes:[] as any[],headers:[] as any[],profile:null as any};
    const methods=(names:string[])=>names.map(name=>({name,rtype:'promise'}));
    const supported=['home','notes','reminders','browser','settings','wallet'];
    if(scenario==='retained')f.profile={version:1,revision:'11111111-1111-4111-8111-111111111111',views:['browser','home','notes','reminders','settings']};
    w.Capacitor={PluginHeaders:[
     {name:'AlphaNotifications',methods:methods(['status','crossAppStatus','addListener','removeListener'])},
     {name:'AlphaVoiceCloud',methods:methods(['checkPermissions'])},
-    {name:'Agent',methods:methods(['getStatus','start','request'])},
+    {name:'Agent',methods:methods(['getStatus','start','request','providerStatus','addListener','removeListener','subscribeViewEvents','unsubscribeViewEvents'])},
     {name:'AlphaConnection',methods:methods(['secureRead','secureWrite','secureCompareExchange','secureRemove','cancel','addListener','removeListener','pauseNotificationCollection'])},
     {name:'AlphaActionJournal',methods:methods(['list'])},
-    {name:'DeviceApps',methods:methods(['buildInfo'])},
+    {name:'ElizaSystem',methods:methods(['getBuildInfo'])},
     {name:'AlphaHostedResults',methods:methods(['configureBackground','disableBackground','cancelBackground','inboxHistory','status','pendingResult','addListener','removeListener'])},
    ],nativePromise:async(plugin:string,method:string,input:any)=>{
     if(plugin==='AlphaNotifications')return {permissionGranted:true,appEnabled:true};
@@ -25,6 +25,11 @@ for(const scenario of ['supported','legacy','unsupported','malformed','lost','re
     if(plugin==='Agent'){
      if(method==='getStatus')return {packaged:true,state:'ready'};
      if(method==='start')return {state:'ready'};
+     // The real Agent plugin always exposes the Android resident renderer feed.
+     if(method==='subscribeViewEvents')return {subscriptionId:input.subscriptionId};
+     if(method==='unsubscribeViewEvents'||method==='addListener'||method==='removeListener')return {};
+     // Read before every resident start since e15f0b735; nothing is saved, so Cloud stays the default.
+     if(method==='providerStatus')return {provider:'elizacloud',configured:false};
      const path=input.path;let body:any;
      if(path==='/api/auth/me')body={identity:{kind:'owner',id:'fixture-owner'},access:{role:'OWNER',mode:'session'}};
      else if(path==='/api/agents')body={agents:[{id:'fixture-agent',name:'Profile fixture',status:'running'}]};
@@ -33,6 +38,7 @@ for(const scenario of ['supported','legacy','unsupported','malformed','lost','re
       f.headers.push(input.headers);if(input.method==='GET'){f.reads++;body={version:1,supportedViews:scenario==='malformed'?['notes','notes']:supported,profile:f.profile};}
       else{const value=JSON.parse(input.body);f.writes.push(value);f.profile={version:1,revision:'22222222-2222-4222-8222-222222222222',views:value.views};if(scenario==='lost')throw Error('Synthetic committed response loss');body={version:1,profile:f.profile};}
      }
+     else if(path==='/api/client-devices/context'){f.contextReads++;body={subjectUserId:'fixture-owner',agentId:'fixture-agent',installationId:input.headers['X-Eliza-Device-Id'],enrollmentId:'fixture-enrollment'};}
      else if(path==='/api/conversations')body={conversations:[]};
      else if(path==='/api/client-devices/proposals')body={proposals:[]};
      else return {status:404,body:'{}'};
@@ -45,7 +51,7 @@ for(const scenario of ['supported','legacy','unsupported','malformed','lost','re
      if(method==='secureRemove'){store.delete(input.slot);return {};}
      return {};
     }
-    if(plugin==='DeviceApps')return {launcher:false,version:'fixture'};
+    if(plugin==='ElizaSystem'&&method==='getBuildInfo')return {launcher:false,version:'fixture'};
     if(plugin==='AlphaActionJournal')return {entries:[]};
     return {};
    }};
@@ -56,6 +62,8 @@ for(const scenario of ['supported','legacy','unsupported','malformed','lost','re
   const snapshot=await page.evaluate(async()=>{const {connectionController}=await import('/src/runtime/connection-ui.tsx');return connectionController.getSnapshot();});
   expect(snapshot.session?.ownerId).toBe('fixture-owner');
   const f=await page.evaluate(()=>(window as any).viewProfileFixture);
+  // Android resident connect confirms the committed enrollment only after view negotiation succeeds.
+  expect(f.contextReads).toBe(['supported','legacy','retained'].includes(scenario)?1:0);
   if(scenario==='supported'){
    expect(snapshot.phoneActionsAvailable).toBe(true);expect(snapshot.phoneCapabilityReason).toBe('');
    expect(f.writes).toEqual([{version:1,views:['browser','home','notes','reminders','settings'],expectedRevision:null}]);
@@ -71,6 +79,7 @@ for(const scenario of ['supported','legacy','unsupported','malformed','lost','re
    const restored=await page.evaluate(async()=>{const {connectionController}=await import('/src/runtime/connection-ui.tsx');return connectionController.getSnapshot();});
    expect(restored.phoneActionsAvailable).toBe(true);
    expect(await page.evaluate(()=>(window as any).viewProfileFixture.writes.length)).toBe(1);
+   expect(await page.evaluate(()=>(window as any).viewProfileFixture.contextReads)).toBe(1);
   }
   expect(errors).toEqual([]);
  });

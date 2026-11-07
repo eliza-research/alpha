@@ -1,6 +1,7 @@
 import {seedCompletedAccessSetup} from './flag-off-android';
 import { completeAccessSetup } from './flag-off-android';
 import { test, expect, type Page } from '@playwright/test';
+import { installResidentAgentPlugin } from './helpers/resident-agent-plugin';
 
 // B-13 on the FLAG-OFF bundle with the Android bridge stubbed (docs/core-loop-audit.md).
 //
@@ -31,6 +32,7 @@ const card = [
 ];
 
 async function residentAgent(page: Page, operation: unknown, capabilities: string[]) {
+  await installResidentAgentPlugin(page);
   await page.addInitScript(({ agentId, operation, capabilities }) => {
     const w = window as any;
     w.androidBridge = {};
@@ -38,6 +40,7 @@ async function residentAgent(page: Page, operation: unknown, capabilities: strin
     const future = Date.now() + 86_400_000, account = '9f1dc45a-4011-4e44-947a-30d999d24fa5';
     store.set('cloud:production', JSON.stringify({ token: 'synthetic-cloud-key', credentialId: account, expiresAt: future }));
     const f = w.declineFixture = { decisions: [] as string[], reconciliations: [] as unknown[], effects: 0, journal: [] as string[], unexpected: [] as string[], proposals: [] as any[], installationId: '', calendar: [] as any[], receipts: [] as any[], entry: null as any, lists: 0 };
+    const resident = w.residentAgent = w.createResidentAgentPlugin({ owner: () => 'fixture-owner', agentId, unexpected: f.unexpected });
     const proposal = (id: string, state: string, extra: Record<string, unknown> = {}) => ({
       id, digest: 'a'.repeat(64), state, expiresAt: new Date(future).toISOString(),
       subjectUserId: 'fixture-owner', requestedBy: agentId, action: 'device_action',
@@ -81,24 +84,25 @@ async function residentAgent(page: Page, operation: unknown, capabilities: strin
     w.Capacitor = {
       PluginHeaders: [
         { name: 'AlphaDeletions', methods: methods(['pending']) },
-        { name: 'DeviceApps', methods: methods(['buildInfo']) },
-        { name: 'Agent', methods: methods(['getStatus', 'start', 'stop', 'configureCloudProvider', 'request', 'providerStatus']) },
+        { name: 'ElizaSystem', methods: methods(['getBuildInfo']) },
+        { name: 'Agent', methods: resident.methods(['getStatus', 'start', 'stop', 'configureCloudProvider', 'request', 'providerStatus']) },
         { name: 'AlphaConnection', methods: methods(['secureRead', 'secureWrite', 'secureRemove', 'secureCompareExchange', 'request', 'cancel', 'openExternal', 'addListener', 'removeListener', 'pauseNotificationCollection']) },
         { name: 'AlphaActionJournal', methods: methods(['reserve', 'markApplying', 'finish', 'list', 'get']) },
         { name: 'AlphaNotifications', methods: methods(['status', 'crossAppStatus', 'addListener', 'removeListener']) },
         { name: 'AlphaVoiceCloud', methods: methods(['checkPermissions']) },
         { name: 'AlphaCalendar', methods: methods(['requestAccess', 'executeAgent', 'cancelAgent', 'calendars', 'range', 'listAlerts', 'prepareAgentSource', 'addListener', 'removeListener']) },
       ],
+      nativeCallback: resident.nativeCallback,
       nativePromise: async (plugin: string, method: string, input: any) => {
         if (plugin === 'AlphaDeletions' && method === 'pending') return { deletions: [] };
-        if (plugin === 'DeviceApps') return { launcher: false, version: 'decline-fixture' };
+        if (plugin === 'ElizaSystem' && method === 'getBuildInfo') return { launcher: false, version: 'decline-fixture' };
         if (plugin === 'AlphaNotifications') return { permissionGranted: true, appEnabled: true };
         if (plugin === 'AlphaVoiceCloud') return { microphone: 'granted' };
         if (plugin === 'AlphaActionJournal') {
           f.journal.push(method);
           if (method === 'list') return { entries: f.entry ? [structuredClone(f.entry)] : [] };
           if (method === 'get') return { entry: f.entry ? structuredClone(f.entry) : null };
-          if (method === 'reserve') { if (f.entry) return { created: false, entry: structuredClone(f.entry) }; f.entry = { ...structuredClone(input), phase: 'reserved' }; return { created: true }; }
+          if (method === 'reserve') { if (f.entry) return { created: false, entry: structuredClone(f.entry) }; f.entry = { ...structuredClone(input), phase: 'reserved' }; return { created: true, entry: structuredClone(f.entry) }; }
           if (method === 'markApplying') { Object.assign(f.entry, { phase: 'applying', attemptId: input.attemptId }); return {}; }
           if (method === 'finish') { Object.assign(f.entry, { phase: 'terminal', status: input.status, summary: input.summary, result: input.result }); return {}; }
           throw Error('Unexpected journal effect');
@@ -115,6 +119,7 @@ async function residentAgent(page: Page, operation: unknown, capabilities: strin
           return {};
         }
         if (plugin === 'Agent') {
+          const owned = resident.answer(method, input); if (owned) return owned;
           if (method === 'getStatus') return { packaged: true, state: 'stopped', serviceActive: false, socketListening: false };
           if (method === 'providerStatus') return { provider: 'cerebras', configured: true, model: 'qwen-3.8-27b' };
           if (method === 'request') {
@@ -178,7 +183,10 @@ test('Android: the proposal card states time zone, calendar and attendees, and A
   expect(state.journal.filter(m => ['reserve', 'markApplying', 'finish'].includes(m))).toEqual([]);
 
   await approve.dblclick();
-  await expect(page.getByRole('button', { name: /^Completed Created event “Venue booking call”/ })).toBeVisible({ timeout: 20_000 });
+  const completed = page.getByText(`Created event “Venue booking call” — ${card[2]}.`, { exact: true });
+  await expect(completed).toBeVisible({ timeout: 20_000 });
+  await expect(completed).toHaveCount(1);
+  await expect(page.locator('.alpha-action-review')).toHaveCount(0);
   state = await fixture(page);
   // One native request binds the reviewed operation to its reserved journal identity.
   expect(state.calendar).toHaveLength(1);

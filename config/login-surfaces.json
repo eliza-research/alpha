@@ -15,10 +15,10 @@
       "id": "browser-website-login",
       "kind": "website",
       "eligible": true,
-      "file": "android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserLoginFields.java",
+      "file": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserLoginFields.java",
       "pattern": "child\\.set(?:AutofillHints|InputType)\\(",
       "count": 2,
-      "owner": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaBrowserPlugin.java (tabs), BrowserLoginFields.java (engine-attested field adapter), BrowserFieldOrigin.java (binding rule), res/raw/browser_login_fields.js (isolated-world reporter)",
+      "owner": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaBrowserPlugin.java (tabs; passes the integrated vault extras keys), shared plugin-native-browser-surface BrowserLoginFields (engine-attested field adapter and isolated-world reporter) and BrowserFieldOrigin (binding rule) at the reviewed pin",
       "binding": "websiteBinding",
       "providers": {
         "integrated": {
@@ -82,7 +82,7 @@
       "kind": "external-browser",
       "eligible": false,
       "owner": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCloudSignInPlugin.java (startGoogle), apps/app/src/runtime/cloud-sign-in-ui.tsx",
-      "reason": "Continue with Google opens Steward's Google authorize URL in a Custom Tab of the user's own browser (never a WebView, never Alpha's browser; plain ACTION_VIEW with CATEGORY_BROWSABLE when no Custom Tabs browser exists). Google's password is entered and filled by that browser's own manager. The only Alpha web handler is the verified App Link https://eliza.app/alphaphone/auth/callback (declared only by builds with ELIZAOS_APP_LINK_HOST; staging host in test-mocks builds only), which receives a one-time Steward code, never a page."
+      "reason": "Google sign-in opens the user's external browser (a Custom Tab when one is available, otherwise the default browser) so AOSP does not need Google Play services. Google credentials remain in that browser. Alpha's native bridge validates the returned state and exchanges the authorization code with its original PKCE verifier; no Google password or authorization code crosses the renderer bridge."
     },
     {
       "id": "eliza-cloud-sign-in-code",
@@ -96,9 +96,9 @@
       "id": "eliza-cloud-subscription-code",
       "kind": "alpha-owned",
       "eligible": false,
-      "file": "apps/app/src/runtime/connection-ui.tsx",
-      "pattern": "name=\"subscription-code\" autoComplete=\"one-time-code\"",
-      "reason": "A subscription grant redemption code, not a username or reusable password. It remains only in the input after a refused attempt and is cleared after successful redemption; Alpha never persists it. This privileged renderer WebView is excluded from Android Autofill, and the field is not an integrated-vault or password-provider fill target."
+      "file": "apps/app/src/runtime/cloud-membership-ui.tsx",
+      "pattern": "name=\"membership-code\"(?:(?!<input).)*?autoComplete=\"one-time-code\"",
+      "reason": "A subscription grant redemption code, not a username or reusable password. It is held only in the controlled input's component state, remains after a refused attempt and is cleared after successful redemption; Alpha never persists it. This privileged renderer WebView is excluded from Android Autofill, and the field is not an integrated-vault or password-provider fill target."
     },
     {
       "id": "google-account-authorization",
@@ -111,10 +111,10 @@
       "id": "browser-http-auth-prompt",
       "kind": "alpha-owned-native",
       "eligible": false,
-      "file": "android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserHttpAuthAutofill.java",
+      "file": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserHttpAuthAutofill.java",
       "pattern": "TYPE_TEXT_VARIATION_PASSWORD|setAutofillHints|AUTOFILL_HINT_(?:PASSWORD|USERNAME)",
       "count": 5,
-      "owner": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaBrowserPlugin.java (httpAuth)",
+      "owner": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaBrowserPlugin.java (httpAuth), shared plugin-native-browser-surface BrowserHttpAuthAutofill and BrowserHttpAuthOrigin at the reviewed pin",
       "binding": "httpAuthBinding",
       "fillRoute": "Engine-bound only (BrowserHttpAuthOrigin.bind). AlphaBrowserPlugin uses BrowserHttpAuthOrigin.STANDARD_WEBVIEW, which reports no challenge, so production refuses provider fill/save and the prompt states the reason; native fields are then IMPORTANT_FOR_AUTOFILL_NO with no hints. Manual entry remains available; every browser tab is excluded from Autofill while the prompt is open.",
       "providers": {
@@ -178,6 +178,22 @@
       "file": "apps/app/src/prototype/model.js",
       "pattern": "stRow\\(\"kInput\", \\{ d: IC\\.lock, label: \"Password\", ph: \"Password\", type: \"password\", value: st\\.addPw",
       "reason": "Simulated prototype email sign-in. Production Settings forces adding:false, so this form is unreachable; real email accounts connect through Eliza Cloud in the user's browser."
+    },
+    {
+      "id": "own-cerebras-provider-key",
+      "kind": "service-token",
+      "eligible": false,
+      "file": "apps/app/src/runtime/connection-ui.tsx",
+      "pattern": "<label>Cerebras API key<input ref=\\{ai\\} type=\"password\" autoComplete=\"off\"",
+      "reason": "An explicitly supplied provider API token, not a website or app login password. The privileged Alpha renderer stays excluded from Android Autofill; this field is never a vault or password-provider fill target. Submission clears the form, then uses the Android secure store or the private browser host session without putting tokens in observations or transcripts."
+    },
+    {
+      "id": "own-cartesia-provider-key",
+      "kind": "service-token",
+      "eligible": false,
+      "file": "apps/app/src/runtime/connection-ui.tsx",
+      "pattern": "<label>Cartesia API key \\(optional\\)<input ref=\\{speech\\} type=\"password\" autoComplete=\"off\"",
+      "reason": "An explicitly supplied provider API token, not a website or app login password. The privileged Alpha renderer stays excluded from Android Autofill; this field is never a vault or password-provider fill target. Submission clears the form, then uses the Android secure store or the private browser host session without putting tokens in observations or transcripts."
     }
   ]
 }

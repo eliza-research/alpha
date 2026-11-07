@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "reviewedHead": "723397b3d8ddceb5502a69d6c945f6f99cd374e5",
+  "upstream": "6497825b38cbe41b3677c0a445341fec900f0dd2",
+  "priorCheckpoint": {
+    "upstream": "c307290782dd7fa22c2c826ccc6a929574ea418d",
+    "fullVerification": {
+      "command": [
+        "npm",
+        "run",
+        "verify"
+      ],
+      "startedAtEpoch": 1793102212.8053985,
+      "passed": true,
+      "pin": "c307290782dd7fa22c2c826ccc6a929574ea418d",
+      "exitCode": 0,
+      "finishedAtEpoch": 1793102644.2769473
+    },
+    "tests": 2079,
+    "passed": 2075,
+    "skipped": 4,
+    "failed": 0,
+    "apkManifest": "docs/evidence/merge-build-final-apks-v12-2026-10-27.json"
+  },
+  "reviewNotes": [
+    "Maps padding and attribution respond to sheet placement and rotation without taking route camera ownership.",
+    "Disconnected Notes retains a reachable opaque app surface.",
+    "Browser Calendar selection is enabled only by the explicit test-mocks build and is denied by production-bundle audit.",
+    "Page reading requires a committed, nonloading, nonfailed, non-external-only document.",
+    "The upstream delta changes two Cloud release-tooling files; phone runtime source is unchanged."
+  ],
+  "currentPinVerification": "pending",
+  "imageBuilt": false,
+  "bootTested": false,
+  "deviceAccepted": false,
+  "finalReviewedHead": "ec71a6856d426a608c1c29beea6183359f710d42",
+  "mergedAs": "23a3234334db7ee5d569ef8f705c11d330b51642",
+  "finalFocusedChecks": {
+    "passed": 20,
+    "failed": 0,
+    "typecheckPassed": true
+  },
+  "finalReviewNotes": [
+    "Cross-turn deduplication only hides exact text for the same completed proposal while its card is in the rendered history; pending, foreign, quoted and offscreen receipts stay visible.",
+    "Browser Calendar links preserve only an already selected test-mocks source; production and native links retain normal authority.",
+    "Native page sharing remains distinct from explicit reading of committed web pages.",
+    "Shared Notes retains storage-access warnings and registers its browser document provider before use."
+  ]
+}

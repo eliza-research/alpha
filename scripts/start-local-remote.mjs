@@ -8,6 +8,8 @@ import crypto from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {preparePrivateRuntimeProfile,runtimeEnvironment,startPrivateRuntimeProcess,writePrivateRuntimeJson} from '../vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs';
 import {AGENT_MODEL,agentModelEnvironment} from './agent-model.mjs';
+import {AGENT_CHARACTER_ENVIRONMENT,freshAgentProfile,prepareAgentIdentityConfig} from './agent-identity.mjs';
+import {LOCAL_EMBEDDING_ROUTE,localEmbeddingEnvironment,reportMissingEmbeddingRoute} from './agent-embeddings.mjs';
 import {agentTtsEnvironment} from './agent-tts.mjs';
 import {developmentCartesiaEnvironment} from './dev-cartesia.mjs';
 import {agentAsrEnvironment} from './agent-asr.mjs';
@@ -25,6 +27,7 @@ if (redaction === 'all') {
 const profile = path.resolve(process.env.ALPHA_REMOTE_PROFILE || path.join(os.homedir(), '.local/share/alphaphone/local-remote'));
 const port = Number(process.env.ALPHA_REMOTE_PORT || 47839);
 if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error('Invalid port');
+const freshProfile=freshAgentProfile(profile);
 const keyPath = path.join(os.homedir(), '.config/alphaphone/cerebras-key');
 let providerKey = process.env.CEREBRAS_API_KEY;
 if (!providerKey && fs.existsSync(keyPath)) { if ((fs.statSync(keyPath).mode & 0o077) !== 0) throw new Error('Provider key must be owner-only'); providerKey=fs.readFileSync(keyPath,'utf8').trim(); }
@@ -38,9 +41,11 @@ if (!fs.existsSync(entry)) throw new Error('Eliza app host source is missing');
 const config = path.join(profile,'eliza.json');
 const privateProfile=await preparePrivateRuntimeProfile({tokenPath,configPath:config,
  createToken:()=>crypto.randomBytes(32).toString('hex'),
- initialConfig:{cloud:{enabled:false},serviceRouting:{llmText:{backend:'cerebras',transport:'direct',smallModel:AGENT_MODEL,largeModel:AGENT_MODEL}},plugins:{entries:{'personal-assistant':{enabled:false}}}},
+ initialConfig:{cloud:{enabled:false},serviceRouting:{llmText:{backend:'cerebras',transport:'direct',smallModel:AGENT_MODEL,largeModel:AGENT_MODEL},embeddings:{...LOCAL_EMBEDDING_ROUTE}},plugins:{entries:{'personal-assistant':{enabled:false}}}},
 });
-const modelEnvironment=agentModelEnvironment(privateProfile.config);
+const savedConfig=await prepareAgentIdentityConfig(config,privateProfile.config,{freshProfile});
+const modelEnvironment=agentModelEnvironment(savedConfig);
+reportMissingEmbeddingRoute(savedConfig,config);
 if(!/^[a-f0-9]{64}$/.test(privateProfile.token))throw Error('Invalid owner token');
 const asrEnvironment = agentAsrEnvironment();
 const ttsEnvironment = agentTtsEnvironment();
@@ -51,8 +56,8 @@ if ((asrEnvironment.ELIZA_ASR_ENABLED === '1' || ttsEnvironment.ELIZA_PARADEE_EN
 }
 const env=runtimeEnvironment({
  inherited:process.env,allow:['PATH','TMPDIR','LANG','SHELL','USER','LOGNAME','HOME','ELIZA_PGLITE_AUTO_RESET'],
- settings:{CEREBRAS_API_KEY:providerKey,...modelEnvironment,...asrEnvironment,...ttsEnvironment,...cartesiaEnvironment,...(redaction==='all'?{ELIZA_SECRET_SWAP_ENABLED:'true',ELIZA_PII_SWAP_ENABLED:'true'}:{})},
- owned:{ELIZA_HEADLESS:'1',ELIZA_DISTRIBUTION_PROFILE:'store',ELIZA_PLUGIN_SET:'lean-chat',ELIZA_REQUIRE_LOCAL_AUTH:'1',ELIZA_API_BIND:'127.0.0.1',ELIZA_ALLOWED_HOSTS:'10.0.2.2',ELIZA_API_PORT:String(port),ELIZA_API_EXPOSE_PORT:'1',ELIZA_STATE_DIR:profile,ELIZA_HOST_CONTEXT_REVISION:'boot:'+crypto.randomUUID(),ELIZA_CONFIG_PATH:config,ELIZA_API_TOKEN:privateProfile.token,ELIZAOS_CLOUD_USE_INFERENCE:'false',ELIZA_LEAN_CHAT_WORKFLOWS:'1',ELIZA_NATIVE_VIEW_DECLARATIONS:nativeViewDeclarationsJson,...(process.env.ALPHA_BROWSER_GMAIL_READ_BROKER?{ELIZA_MANAGED_GMAIL_READ_BROKER:process.env.ALPHA_BROWSER_GMAIL_READ_BROKER,ELIZA_MANAGED_GMAIL_SEND_BROKER:process.env.ALPHA_BROWSER_GMAIL_READ_BROKER,ELIZA_MANAGED_GMAIL_OPERATION_BROKER:process.env.ALPHA_BROWSER_GMAIL_READ_BROKER,ELIZA_MANAGED_CALENDAR_READ_BROKER:process.env.ALPHA_BROWSER_GMAIL_READ_BROKER}:{})},
+ settings:{CEREBRAS_API_KEY:providerKey,...modelEnvironment,...localEmbeddingEnvironment({...process.env,...asrEnvironment,...ttsEnvironment}),...asrEnvironment,...ttsEnvironment,...cartesiaEnvironment,...(redaction==='all'?{ELIZA_SECRET_SWAP_ENABLED:'true',ELIZA_PII_SWAP_ENABLED:'true'}:{})},
+ owned:{...AGENT_CHARACTER_ENVIRONMENT,ELIZA_HEADLESS:'1',ELIZA_DISTRIBUTION_PROFILE:'store',ELIZA_PLUGIN_SET:'lean-chat',ELIZA_REQUIRE_LOCAL_AUTH:'1',ELIZA_API_BIND:'127.0.0.1',ELIZA_ALLOWED_HOSTS:'10.0.2.2',ELIZA_API_PORT:String(port),ELIZA_API_EXPOSE_PORT:'1',ELIZA_STATE_DIR:profile,ELIZA_HOST_CONTEXT_REVISION:'boot:'+crypto.randomUUID(),ELIZA_CONFIG_PATH:config,ELIZA_API_TOKEN:privateProfile.token,ELIZAOS_CLOUD_USE_INFERENCE:'false',ELIZA_LEAN_CHAT_WORKFLOWS:'1',ELIZA_NATIVE_VIEW_DECLARATIONS:nativeViewDeclarationsJson,...(process.env.ALPHA_BROWSER_GMAIL_READ_BROKER?{ELIZA_MANAGED_GMAIL_READ_BROKER:process.env.ALPHA_BROWSER_GMAIL_READ_BROKER,ELIZA_MANAGED_GMAIL_SEND_BROKER:process.env.ALPHA_BROWSER_GMAIL_READ_BROKER,ELIZA_MANAGED_GMAIL_OPERATION_BROKER:process.env.ALPHA_BROWSER_GMAIL_READ_BROKER,ELIZA_MANAGED_CALENDAR_READ_BROKER:process.env.ALPHA_BROWSER_GMAIL_READ_BROKER}:{})},
  remove:['ELIZAOS_CLOUD_API_KEY','OPENAI_API_KEY','ANTHROPIC_API_KEY'],
 });
 const log=fs.openSync(path.join(profile,'server.log'),'a',0o600);

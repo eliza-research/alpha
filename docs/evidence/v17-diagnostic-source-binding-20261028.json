@@ -1,0 +1,192 @@
+{
+  "schema": 1,
+  "atUTC": "2026-10-28T10:06:57.699096+00:00",
+  "state": "DATA_ONLY_PIN_REBIND_NO_NEW_RUNTIME_ACCEPTANCE",
+  "priorSDK": "2f664cc6dc223cf12002120576357114f8cb9763",
+  "candidateSDK": "6f91e22e6bfabdef67138b91c61ebf2929dad775",
+  "collectorParent": "0042d14b2d2a91c70e620be88f99eb86b578da17",
+  "method": "Offline Git object equality; no source code execution or network query",
+  "nativeAndDependencyInputs": [
+    {
+      "path": "plugins/plugin-local-inference/native/llama.cpp",
+      "oldObject": "0d9fd4b9db239bbf851068f98c99f4263f8c05c5",
+      "newObject": "0d9fd4b9db239bbf851068f98c99f4263f8c05c5",
+      "unchanged": true
+    },
+    {
+      "path": "plugins/plugin-local-inference/native/android/inputs.json",
+      "oldObject": "8e303364ecffd4056b494d5dde808f5887eca120",
+      "newObject": "8e303364ecffd4056b494d5dde808f5887eca120",
+      "unchanged": true
+    },
+    {
+      "path": "packages/app/scripts/paradee-voice",
+      "oldObject": "e18c150daf71c321ba287e0c6e5484e487367fd9",
+      "newObject": "e18c150daf71c321ba287e0c6e5484e487367fd9",
+      "unchanged": true
+    },
+    {
+      "path": "packages/app/scripts/stage-elizavoice-lib.ts",
+      "oldObject": "2ff1adb9ed9a394759562c2ff6a1f7e4b0d75f3c",
+      "newObject": "2ff1adb9ed9a394759562c2ff6a1f7e4b0d75f3c",
+      "unchanged": true
+    },
+    {
+      "path": "packages/app/platforms/android/app/src/main/elizavoice-jni",
+      "oldObject": "1016d67d05ce8f4c7bc10412372cc71d7ad48aee",
+      "newObject": "1016d67d05ce8f4c7bc10412372cc71d7ad48aee",
+      "unchanged": true
+    },
+    {
+      "path": "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+      "oldObject": "1cd241c5710fc302e75aec8993eefee0a709ab9c",
+      "newObject": "1cd241c5710fc302e75aec8993eefee0a709ab9c",
+      "unchanged": true
+    },
+    {
+      "path": "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+      "oldObject": "83c8e91becc3a2c46902cc168fdc9b88fc038e5d",
+      "newObject": "83c8e91becc3a2c46902cc168fdc9b88fc038e5d",
+      "unchanged": true
+    },
+    {
+      "path": "plugins/plugin-local-inference/native",
+      "oldObject": "a403e3519315fd99bb811c88f07673d8f7616f85",
+      "newObject": "a403e3519315fd99bb811c88f07673d8f7616f85",
+      "unchanged": true
+    },
+    {
+      "path": "plugins/plugin-native-system/android",
+      "oldObject": "63d823cef5c559d599fcf241f89a6182cbed75e1",
+      "newObject": "63d823cef5c559d599fcf241f89a6182cbed75e1",
+      "unchanged": true
+    },
+    {
+      "path": "packages/app/platforms/android",
+      "oldObject": "dc048743daa30f8b86e78297224bb3afb5a3a010",
+      "newObject": "dc048743daa30f8b86e78297224bb3afb5a3a010",
+      "unchanged": true
+    },
+    {
+      "path": "plugins/plugin-native-action-journal/android",
+      "oldObject": "939cdf4c8cda26bef587476f13dfef9e760ebcb8",
+      "newObject": "939cdf4c8cda26bef587476f13dfef9e760ebcb8",
+      "unchanged": true
+    },
+    {
+      "path": "plugins/plugin-native-calendar/android",
+      "oldObject": "85eb68f5126a91b57aa62591e0bceb42de1c330c",
+      "newObject": "85eb68f5126a91b57aa62591e0bceb42de1c330c",
+      "unchanged": true
+    },
+    {
+      "path": "plugins/plugin-native-media/android",
+      "oldObject": "7a7caf33e46ef52d0ce0752673453070c6107309",
+      "newObject": "7a7caf33e46ef52d0ce0752673453070c6107309",
+      "unchanged": true
+    },
+    {
+      "path": "plugins/plugin-native-notifications/android",
+      "oldObject": "8544d529a5a02d6ddec1733ea8f44b4f74f99b85",
+      "newObject": "8544d529a5a02d6ddec1733ea8f44b4f74f99b85",
+      "unchanged": true
+    },
+    {
+      "path": "plugins/plugin-native-reminders/android",
+      "oldObject": "5f4fbf13505e0fd0a4eed5b773075d3eaaa02aa5",
+      "newObject": "5f4fbf13505e0fd0a4eed5b773075d3eaaa02aa5",
+      "unchanged": true
+    },
+    {
+      "path": "plugins/plugin-native-secure-store/android",
+      "oldObject": "b6cd284b734a62603938a20ca0b945e22122df99",
+      "newObject": "b6cd284b734a62603938a20ca0b945e22122df99",
+      "unchanged": true
+    },
+    {
+      "path": "packages/core",
+      "oldObject": "d4fd60bb02b1a6dd2e6c995c97eeb0e20623ad8d",
+      "newObject": "3a59c7b934c5ef8c46d06cb927771462154b95b2",
+      "unchanged": false
+    },
+    {
+      "path": "plugins/plugin-workflow",
+      "oldObject": "28f0fef4426a6ff5a5f2a279b565f1cae044bc30",
+      "newObject": "28f0fef4426a6ff5a5f2a279b565f1cae044bc30",
+      "unchanged": true
+    },
+    {
+      "path": "packages/agent",
+      "oldObject": "b2cd657243c25bad345563b5229814ac0b02c213",
+      "newObject": "22b1b9aa1829369a0956133322c4672ca495c675",
+      "unchanged": false
+    },
+    {
+      "path": "packages/contracts/src/lifeops/workflows.ts",
+      "oldObject": "3a52ac39c667c81631d1b07ddf903092ea5ece81",
+      "newObject": "3a52ac39c667c81631d1b07ddf903092ea5ece81",
+      "unchanged": true
+    },
+    {
+      "path": "packages/host",
+      "oldObject": "29a466e6c334a04904cfcf5ee3d02b1867664fad",
+      "newObject": "29a466e6c334a04904cfcf5ee3d02b1867664fad",
+      "unchanged": true
+    },
+    {
+      "path": "plugins/plugin-pdf",
+      "oldObject": "d651309f60c46c70aa35a92a548396487b44fa9a",
+      "newObject": "d651309f60c46c70aa35a92a548396487b44fa9a",
+      "unchanged": true
+    },
+    {
+      "path": "LICENSE",
+      "oldObject": "2a5dfe7a78df1ec7dad9fe5fbbf41fc65f6fa8fd",
+      "newObject": "2a5dfe7a78df1ec7dad9fe5fbbf41fc65f6fa8fd",
+      "unchanged": true
+    },
+    {
+      "path": "package.json",
+      "oldObject": "6facdf6e8322509ea6108e0856bd6266c328c577",
+      "newObject": "6facdf6e8322509ea6108e0856bd6266c328c577",
+      "unchanged": true
+    },
+    {
+      "path": "bun.lock",
+      "oldObject": "0144b57346079d23998cede8993c55507fae24ab",
+      "newObject": "0144b57346079d23998cede8993c55507fae24ab",
+      "unchanged": true
+    }
+  ],
+  "requiredNativeInputPathsUnchanged": [
+    "plugins/plugin-native-action-journal/android",
+    "plugins/plugin-native-calendar/android",
+    "plugins/plugin-native-media/android",
+    "plugins/plugin-native-notifications/android",
+    "plugins/plugin-native-reminders/android",
+    "plugins/plugin-native-secure-store/android",
+    "plugins/plugin-native-system/android",
+    "bun.lock",
+    "package.json",
+    "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+    "plugins/plugin-local-inference/native",
+    "packages/app/scripts/paradee-voice",
+    "packages/app/platforms/android"
+  ],
+  "bunLockSHA256": "c12836b0149b84a4f257629c1bbfb6618710a12a8ee5a907e799c4715929913f",
+  "SDKChangedPaths": [
+    "packages/agent/test/calendar-read-failure-transport.test.ts",
+    "packages/contracts/src/calendar.ts",
+    "packages/core/src/runtime/planner-types.ts",
+    "plugins/plugin-assistant/src/runtime/calendar-read-coverage.test.ts",
+    "plugins/plugin-assistant/src/runtime/evaluator.ts",
+    "plugins/plugin-assistant/src/runtime/planner-loop.ts"
+  ],
+  "qualificationTransferred": false,
+  "pending": [
+    "canonical notification bridge commit and final SDK pin",
+    "bridge HTTP/merged tests and normal generation/build",
+    "runtime, device and user acceptance"
+  ],
+  "historicalRecordsRetained": true
+}

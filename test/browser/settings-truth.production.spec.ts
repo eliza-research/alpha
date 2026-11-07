@@ -1,15 +1,22 @@
+import {openCloudPlanFromSettings} from './helpers/cloud-plan-settings';
 import {seedCompletedAccessSetup} from './flag-off-android';
 import {writeFileSync} from 'node:fs';
 import {test,expect,type Page} from '@playwright/test';
+import {installResidentAgentPlugin} from './helpers/resident-agent-plugin';
 // Production lane only: the flag-off bundle that the APKs package, with only the Android IPC
 // boundary replaced. These prove what the shipped renderer reads, shows and sends. They do not
 // prove what a phone's Android Settings does; device qualification of each handoff is separate.
 test.describe.configure({timeout:240_000});
 test.beforeEach(async({},testInfo)=>{test.skip(testInfo.project.name!=='production','Production lane only (flag-off build)');});
 
-type Fixture={snapshot?:Record<string,unknown>;drop?:string[];subscription?:'credits'|'active'|'canceled';agentStartFailure?:boolean};
+type Fixture={snapshot?:Record<string,unknown>;drop?:string[];subscription?:'credits'|'active'|'canceled';agentStartFailure?:boolean;
+ /** Exact USD organization credit balance in the billing snapshot (data.v2.balance); absent when unset. */
+ credits?:string;
+ /** The resident's providerStatus answer; tests change truth.state.provider to model a later binding. */
+ provider?:Record<string,unknown>};
 async function nativeStub(page:Page,fixture:Fixture={}){
- await page.addInitScript(({snapshot,drop,subscription,agentStartFailure})=>{
+ await installResidentAgentPlugin(page);
+ await page.addInitScript(({snapshot,drop,subscription,agentStartFailure,credits,provider})=>{
   const w=window as any;w.androidBridge={};
   localStorage.setItem('alpha.startup-permissions.v1',JSON.stringify({dismissed:true,attempted:{}}));
   const now=Date.now(),store=new Map<string,string>();
@@ -18,6 +25,8 @@ async function nativeStub(page:Page,fixture:Fixture={}){
   store.set('cloud:production',JSON.stringify({token:'synthetic-settings-key',credentialId,expiresAt:now+60*24*3600_000}));
   try{localStorage.setItem('alpha.connection.plan-admission.v1',JSON.stringify({version:1,environment:'production',credentialId,userId:'9f1dc45a-4011-4e44-947a-30d999d24fa5',organizationId:null,status:'active',planName:'Synthetic plan',verifiedAt:now,endsAt:null}));}catch{/* covered elsewhere */}
   const listeners:Array<{plugin:string;event:string;callback:(value:unknown)=>void}>=[];
+  const residentId='9f1dc45a-4011-4e44-947a-30d999d24fa5';
+  const resident=w.residentAgent=w.createResidentAgentPlugin({owner:()=>residentId,agentId:residentId});
   const state={
    // Android's answers. Tests change these, then resume, to prove the renderer reads them again.
    snapshot:{readAt:now,model:'Stub phone',manufacturer:'Stub maker',appVersion:'0.1.0',appVersionCode:7,appUpdatedAt:Date.UTC(2026,8,1),androidRelease:'16',build:'stub-build',securityPatch:'2026-09-05',
@@ -26,7 +35,7 @@ async function nativeStub(page:Page,fixture:Fixture={}){
    status:{permissionGranted:true,appEnabled:true,interruption:'all',scope:'alpha-phone',channels:[{id:'c-reminders',name:'Reminders',importance:4,blocked:false,groupBlocked:false},{id:'c-results',name:'Scheduled digest results',importance:3,blocked:false,groupBlocked:false}]} as Record<string,any>,
    cross:{revision:'r1',enabled:false,paused:false,accessGranted:false,connected:false,history:true,apps:[]} as Record<string,unknown>,
    history:[{appLabel:'Stub Mail',state:'posted',at:now-60_000}] as unknown[],
-   items:[] as unknown[],openFails:false,unspecific:[] as string[],unavailable:[] as string[],torch:true,shadeOutcome:'opened' as string,
+   items:[] as unknown[],openFails:false,unspecific:[] as string[],unavailable:[] as string[],torch:true,shadeOutcome:'opened' as string,provider:provider??{provider:'elizacloud',configured:false},
   };
   for(const key of drop)delete state.snapshot[key];
   w.truth={calls:[] as any[],shared:[] as string[],state,resume:()=>listeners.filter(l=>l.plugin==='DailyApps'&&l.event==='appResumed').forEach(l=>l.callback({}))};
@@ -36,14 +45,13 @@ async function nativeStub(page:Page,fixture:Fixture={}){
         { name: 'AlphaDeletions', methods: methods(['pending']) },
     {name:'AlphaNotifications',methods:methods(['pendingWorkflowTap','status','crossAppStatus','notificationHistory','list','open','dismiss','clear','openChannelSettings','openAppSettings','addListener','removeListener'])},
     {name:'AlphaVoiceCloud',methods:methods(['checkPermissions'])},
-    {name:'Agent',methods:methods(['getStatus','start','stop','providerStatus','configureCloudProvider','clearProvider','request'])},
+    {name:'Agent',methods:resident.methods(['getStatus','start','stop','providerStatus','configureCloudProvider','clearProvider','request'])},
     {name:'AlphaConnection',methods:methods(['secureRead','secureWrite','secureCompareExchange','secureRemove','request','cancel','addListener','removeListener'])},
-    {name:'DeviceApps',methods:methods(['buildInfo'])},
-    {name:'ElizaSystem',methods:methods(['getStatus','requestRole','getDeviceSettings','setFlashlight'])},
+    {name:'ElizaSystem',methods:methods(['getStatus','requestRole','getDeviceSettings','setFlashlight','getBuildInfo'])},
     {name:'AlphaDevice',methods:methods(['snapshot','crashLog','clearCrashLog','recordRendererFailure','diagnosticsFacts','shareDiagnostics','openSettings','openNotificationShade'])},
     {name:'DailyApps',methods:[{name:'addListener',rtype:'callback'},{name:'removeListener',rtype:'callback'}]},
    ],
-   nativeCallback:(plugin:string,method:string,options:any,callback:(value:unknown)=>void)=>{if(method==='addListener'){listeners.push({plugin,event:options?.eventName,callback});return String(listeners.length);}return '0';},
+   nativeCallback:(plugin:string,method:string,options:any,callback:(value:unknown)=>void)=>{if(plugin==='Agent')return resident.nativeCallback(plugin,method,options,callback);if(method==='addListener'){listeners.push({plugin,event:options?.eventName,callback});return String(listeners.length);}return '0';},
    nativePromise:async(plugin:string,method:string,input:any)=>{
         if (plugin === 'AlphaDeletions' && method === 'pending') return { deletions: [] };
     w.truth.calls.push({plugin,method,input});
@@ -59,9 +67,10 @@ async function nativeStub(page:Page,fixture:Fixture={}){
     }
     if(plugin==='AlphaVoiceCloud')return {microphone:'granted'};
     if(plugin==='Agent'){
+     const owned=resident.answer(method,input);if(owned)return owned;
      if(agentStartFailure&&method==='start')throw Error('Synthetic resident startup failure');
-     if(method==='request'){const id='9f1dc45a-4011-4e44-947a-30d999d24fa5';return {status:200,body:JSON.stringify(input.path==='/api/auth/me'?{identity:{id,kind:'owner'},access:{role:'OWNER',mode:'local'}}:input.path==='/api/agents'?{agents:[{id,name:'Alpha',status:'running'}]}:input.path==='/api/conversations'?{conversations:[]}:{} )};}
-     return method==='providerStatus'?{configured:false}:{packaged:true,state:'stopped',serviceActive:false,socketListening:false};
+     if(method==='request'){const id=residentId;return {status:200,body:JSON.stringify(input.path==='/api/auth/me'?{identity:{id,kind:'owner'},access:{role:'OWNER',mode:'local'}}:input.path==='/api/agents'?{agents:[{id,name:'Alpha',status:'running'}]}:input.path==='/api/conversations'?{conversations:[]}:{} )};}
+     return method==='providerStatus'?state.provider:{packaged:true,state:'stopped',serviceActive:false,socketListening:false};
     }
     if(plugin==='AlphaConnection'){
      if(method==='secureRead')return {value:store.get(input.slot)??null};
@@ -72,12 +81,13 @@ async function nativeStub(page:Page,fixture:Fixture={}){
       const path=new URL(input.url).pathname;
       if(path==='/api/v1/user')return {status:200,data:{success:true,data:{id:'9f1dc45a-4011-4e44-947a-30d999d24fa5',email:'synthetic-settings@example.invalid'}}};
       if(path==='/api/v1/subscription/entitlement')return {status:404,data:{}};
-      if(path==='/api/v1/billing/limits')return {status:200,data:{success:true,data:{schemaVersion:2,v2:{subscription:subscription==='credits'?{status:'not_applicable',reason:'no_organization_subscription'}:{status:'available',value:{planKey:'plus_monthly',state:subscription||'active',currentPeriodEnd:'2099-01-01T00:00:00.000Z'}}}}}};
+      if(path==='/api/v1/billing/limits')return {status:200,data:{success:true,data:{schemaVersion:2,v2:{subscription:subscription==='credits'?{status:'not_applicable',reason:'no_organization_subscription'}:{status:'available',value:{planKey:'plus_monthly',state:subscription||'active',currentPeriodEnd:'2099-01-01T00:00:00.000Z'}},
+       ...(credits===undefined?{}:{balance:{status:'available',source:'organizations',observedAt:new Date().toISOString(),value:{balance:{value:credits,unit:'usd',currency:'USD'},revision:'1'}}})}}}};
       return {status:404,data:{}};
      }
      return {};
     }
-    if(plugin==='DeviceApps')return {launcher:true,version:'0.1.0'};
+    if(plugin==='ElizaSystem'&&method==='getBuildInfo')return {launcher:true,version:'0.1.0'};
     if(plugin==='ElizaSystem'){
      if(method==='getStatus')return {packageName:'ai.elizaresearch.alphaphone',roles:['home','assistant'].map(role=>({role,androidRole:'android.app.role.'+role.toUpperCase(),available:true,held:false,holders:[]}))};
      if(method==='getDeviceSettings')return {volumes:[{stream:'music',current:6,max:15},{stream:'ring',current:7,max:7},{stream:'alarm',current:0,max:7}]};
@@ -97,7 +107,7 @@ async function nativeStub(page:Page,fixture:Fixture={}){
     throw Error('Unexpected native operation '+plugin+'.'+method);
    },
   };
- },{snapshot:fixture.snapshot??{},drop:fixture.drop??[],subscription:fixture.subscription,agentStartFailure:fixture.agentStartFailure});
+ },{snapshot:fixture.snapshot??{},drop:fixture.drop??[],subscription:fixture.subscription,agentStartFailure:fixture.agentStartFailure,credits:fixture.credits,provider:fixture.provider});
 }
 const app=(page:Page)=>page.locator('[data-alpha-layer="app"]');
 const current=(page:Page)=>page.locator('[data-settings-page]:not([inert])').last();
@@ -108,7 +118,11 @@ const callNames=(page:Page)=>page.evaluate(()=>[...new Set((window as any).truth
 /** Production Android starts the resident by itself (P-43). Offline with a saved sign-in, nothing gates it and no dialog opens. */
 async function start(page:Page){
  await page.goto('/');
- if(await page.evaluate(()=>!!(window as any).truth))await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
+ if(await page.evaluate(()=>!!(window as any).truth)){
+  await expect.poll(()=>page.evaluate(()=>(window as any).truth.calls.some((call:any)=>call.plugin==='Agent'&&call.method==='request'&&call.input.path==='/api/auth/me'))).toBe(true);
+  await expect(page.locator('.alpha-cloud-sign-in')).toHaveCount(0);
+  await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
+ }
  await page.getByRole('button',{name:'Settings',exact:true}).waitFor({state:'visible'});
 }
 async function openSettings(page:Page){
@@ -126,7 +140,7 @@ async function drag(page:Page,from:{x:number;y:number},dy:number){
  await page.mouse.move(box.x+from.x*scale,box.y+(from.y+dy)*scale,{steps:10});await page.mouse.up();
 }
 /** Values that exist only in the reference fixtures or as prototype simulations. */
-const fixtureValues=['you@gmail.example','you@alpha.example','Alpha Home','Studio 5G','Ritual Coffee','Neighbors_2.4','Pixel Buds Pro 2','Keyboard K3','Kitchen Speaker','Vision 2B','Core 7B','elizaOS 2.1','AC1.260915','Alpha Compute phone','Powered by elizaOS','Alpha Mobile','3.2 of 20 GB','2,418 items','About 1 day','Redaction on','Redaction receipt','Enclave lock','Memory wiped','Wipe memory','Up to date','Check for updates','Cloud fallback','Charge to 80%','Verbose logs','Agent summaries','Last sync','Export logs','Logs saved','Pair new device','Tap to pair','Hey Alpha','Speak replies','Proactive briefings','Roaming','This month','Device uptime','NPU'];
+const fixtureValues=['you@gmail.example','you@alpha.example','Alpha Home','Studio 5G','Ritual Coffee','Neighbors_2.4','Pixel Buds Pro 2','Keyboard K3','Kitchen Speaker','Vision 2B','Core 7B','elizaOS 2.1','AC1.260915','Alpha Compute phone','Powered by elizaOS','Alpha Mobile','3.2 of 20 GB','2,418 items','About 1 day','Redaction on','Redaction receipt','Enclave lock','Memory wiped','Wipe memory','Up to date','Cloud fallback','Charge to 80%','Verbose logs','Agent summaries','Last sync','Export logs','Logs saved','Pair new device','Tap to pair','Hey Alpha','Speak replies','Proactive briefings','Roaming','This month','Device uptime','NPU'];
 const noFixtures=(text:string,where:string)=>{for(const value of fixtureValues)expect(text,`${where} shows the fixture value "${value}"`).not.toContain(value);};
 
 test('launcher Home asks Android for its own shade and draws no Alpha shade, tiles or brightness',async({page})=>{
@@ -288,7 +302,7 @@ test('the flag-off build exports redacted diagnostics with the real version and 
  expect(report.format).toBe('alpha-diagnostics/v1');
  expect(report.app).toEqual({version:'0.1.0',versionCode:7,variant:'launcher',buildType:'release',testMocks:false});
  expect(report.permissions).toEqual({Microphone:true,Location:false,Camera:false,Calendar:true,Notifications:true});
- expect(Object.keys(report).sort()).toEqual(['app','cloudPlan','connection','crashes','format','generatedAt','nativeVoiceTiming','os','permissions','platform','roles','runtimeHashes','upstreamPin','voiceTiming']);
+ expect(Object.keys(report).sort()).toEqual(['app','cloudPlan','connection','crashes','format','generatedAt','nativeVoiceTiming','os','permissions','platform','realtimeVoiceTiming','roles','runtimeHashes','upstreamPin','voiceTiming']);
  expect(report.cloudPlan).toEqual({view:'active',admission:'admit',source:'billing-limits',status:'active'});
  for(const leak of ['csk-synthetic','synthetic-settings-key','synthetic-settings@example.invalid','9f1dc45a-4011-4e44-947a-30d999d24fa5','5c1f2a9e-3b4d-4e6f-8a7b-9c0d1e2f3a4b','Stub phone','Stub maker','stub-build','Stub Mail','update','Update'])expect(shared).not.toContain(leak);
 });
@@ -343,6 +357,7 @@ test('Settings › Eliza Cloud reports the verified plan without asking an admit
  await expect(plan.getByRole('button',{name:'Redeem code',exact:true})).toHaveCount(0);
  await expect(plan.getByRole('button',{name:'Manage plan',exact:true})).toBeVisible();
  expect(await page.evaluate(()=>(window as any).truth.calls.filter((c:any)=>c.plugin==='AlphaConnection'&&c.method==='request'&&new URL(c.input.url).pathname==='/api/v1/subscription/redeem').length)).toBe(0);
+ expect(await page.evaluate(()=>(window as any).truth.calls.some((c:any)=>c.plugin==='AlphaConnection'&&c.method==='request'&&new URL(c.input.url).pathname==='/api/v1/credits/balance'))).toBe(false);
 });
 
 for(const subscription of ['credits','active','canceled'] as const)test(`Settings redemption matches ${subscription} account controls`,async({page})=>{
@@ -350,6 +365,8 @@ for(const subscription of ['credits','active','canceled'] as const)test(`Setting
  await page.goto('/');
  // Plan admission does not open an automatic account sheet.
  await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
+ const notice=page.getByRole('region',{name:'Eliza Cloud plan notice',exact:true});
+ if(subscription==='canceled')await expect(notice).toBeVisible();
  await page.getByRole('button',{name:'Settings',exact:true}).click();
  await current(page).getByRole('button',{name:'Eliza Cloud',exact:true}).click();
  const plan=current(page),redeem=plan.getByRole('button',{name:'Redeem code',exact:true});
@@ -364,6 +381,10 @@ for(const subscription of ['credits','active','canceled'] as const)test(`Setting
   await expect(page.getByLabel('Subscription code',{exact:true})).toBeVisible();
   await expect(page.getByRole('dialog',{name:'Eliza Cloud account & plan',exact:true}).getByRole('button',{name:'Redeem code',exact:true})).toBeVisible();
  }
+ // Legacy credit admission does not hide the subscription choices or explicit membership-code entry.
+ await expect(redeem).toBeVisible();await redeem.click();
+ await expect(page.getByLabel('Membership code',{exact:true})).toBeVisible();
+ await expect(page.getByRole('dialog',{name:'Eliza Cloud account & plan',exact:true}).getByRole('region',{name:'Subscription',exact:true}).getByRole('button',{name:'Redeem',exact:true})).toBeVisible();
  expect(await page.evaluate(()=>(window as any).truth.calls.filter((c:any)=>c.plugin==='AlphaConnection'&&c.method==='request'&&new URL(c.input.url).pathname==='/api/v1/subscription/redeem').length)).toBe(0);
 });
 

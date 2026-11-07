@@ -87,5 +87,10 @@ export class BrowserDevice extends WebPlugin {
  }
  async list(){return {apps:browserApps.map(({view,...app})=>app)};}
  async launch(input:{packageName:string}){const app=browserApps.find(app=>app.packageName===input.packageName);if(!app)throw Error('Choose an installed development app.');window.dispatchEvent(new CustomEvent('alpha:browser-open-view',{detail:app.view}));}
+ /** The development device as ElizaSystem's launcher methods, so the browser and Android share one
+  * launcher bridge (createSystemLauncherBridge). */
+ async listLauncherApps(){return this.list();}
+ async launchApp(input:{packageName:string}){return this.launch(input);}
  async buildInfo(){return {launcher:false,version:appVersion};}
+ async getBuildInfo(){return this.buildInfo();}
 }

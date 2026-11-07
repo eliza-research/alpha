@@ -1,5 +1,33 @@
 # Fused speech: libelizainference on the device and on the local agent
 
+## November 1 Cloud streaming source ownership
+
+The explicit Cloud profile now has a native streaming relay behind the existing
+Alpha speech adapter. Its reusable Java implementation, PCM framing and numeric
+timing collector live in the reviewed additions in
+`patches/eliza/cloud-speech-native.patch`, under the shared
+`plugins/plugin-local-inference/native/android/speech-bridge` package. The
+framework-independent client session and text chunking live in
+`patches/eliza/cloud-speech-client.patch`, under `packages/voice/src`.
+Alpha supplies only its plugin name, Cloud origin, credential-authority ports and
+connection lifecycle. The pinned `vendor/eliza` checkout is never edited.
+
+`prepare-patched-native.mjs` binds the exact base revision, patch digest, absent
+preimage, output digest and complete native module inventory before Gradle uses
+the staged source. Additions are admitted only in the shared speech Java package;
+existing native patch rules remain in force. `prepare-client-features.mjs` likewise
+authenticates the base voice tree and the client patch's exact additions before
+copying them into its managed cache. Its receipt includes the patch and preparer
+hashes. Neither preparation overlays the immutable resident runtime.
+
+The native relay requires an explicitly started, credential-bound Cloud session.
+It sends microphone PCM as captured and plays returned PCM incrementally; pause,
+account changes and Stop retire the session. A server that rejects startup with
+exactly HTTP 404 before microphone capture may use the retained disclosed batch
+path. Other failures cannot replay recorded speech. Server deployment, physical
+audio latency and the shared-source migration's build/test results must be
+recorded separately; source support alone is not Cloud or device acceptance.
+
 Alpha Phone has one local speech engine: **libelizainference**, the llama.cpp-based native
 library from the elizaOS llama.cpp fork (decision P-42). At the pin `968348d792d3` (llama.cpp
 gitlink `3e5f73922ee8`, voice ABI 18, built with `LLAMA_BUILD_PARAKEET=ON`) it contains ggml, the
@@ -12,11 +40,35 @@ loads GGUF models only; no other neural runtime or model ships anywhere
 
 | Where | Engine | Route |
 | --- | --- | --- |
-| Android phone | The shared paradee-voice library (`:local-speech`, Java package `ai.eliza.voice`: `VoiceAssets`, `ParadeeVoice`, `NativeAsr`) and its `libparadeevoicejni.so` (RegisterNatives, only `JNI_OnLoad` exported), over the app's `libelizainference.so` | `AlphaVoiceCloud` local methods through `AlphaParadeeSpeech` / `AlphaLocalSpeechEngine`; provider `fused-paradee-asr`, execution `device` |
-| Android phone, live voice conversation | Silero VAD in the app process (`AlphaLiveVoiceCapture`, `ElizaVoiceNative`), Phonon-2 streaming decode in the resident agent's bionic host | The agent's `POST /api/asr/local-inference/live` through the owner-authenticated agent bridge (see Live voice below) |
+| Android phone | The shared paradee-voice library (`:local-speech`, Java package `ai.eliza.voice`: `VoiceAssets`, `ParadeeVoice`, `NativeAsr`) and its `libparadeevoicejni.so` (RegisterNatives, only `JNI_OnLoad` exported), over the app's `libelizainference.so` | `AlphaVoiceCloud` local methods through the shared `LocalSpeechEngine` / `SessionSpeech` on the process-wide `InferenceSession`; provider `fused-paradee-asr`, execution `device` |
+| Android phone, live voice conversation | Silero VAD in the app process (shared `ai.eliza.voice.LiveVoiceCapture` on the process-wide `InferenceSession` VAD context), Phonon-2 streaming decode in the resident agent's bionic host | The agent's `POST /api/asr/local-inference/live` through the owner-authenticated agent bridge (see Live voice below) |
 | Browser with the local agent | The agent's host workers load libelizainference from `ELIZA_INFERENCE_LIBRARY` | TTS `POST /api/tts/paradee` (provider `libelizainference-paradee`); ASR `POST /api/asr/libelizainference` (provider `local-inference`) |
 | Browser without the local agent | none | Local speech reports `local-agent-required`; replies are read as text. There is no Web Speech, no in-browser engine and no automatic network fallback |
-| Eliza Cloud | provider-side | Test-mocks builds only; production speech stays on the device (P-43) |
+| Explicit Cloud QA profile | provider-side | Authenticated Eliza Cloud speech; no local speech model is packaged. This is the October 18 scoped override below. |
+
+Since the October 27 consolidation the speech engine owner (`LocalSpeechEngine`, `SessionSpeech`),
+streamed playback (`StreamingSpeechPlayback`, `SpeechPcmQueue`, `AudioTrackSpeechOutput`), audio
+focus, live capture with VAD (`LiveVoiceCapture`, `LiveVadGate`, `LiveCaptureSource`,
+`LiveCaptureResource`, `LiveCaptureAdmission`) and the latency trials (`VoiceLatencyTrials`,
+`VoiceLatencyProbe`) are the shared `ai.eliza.voice` classes in `plugin-local-inference`, compiled
+through `:local-speech`. Speech output, recognition and VAD share one process-wide
+`InferenceSession` (`VoiceAssets.sharedInference`). The engine's backend is its own client of that
+session: cancelling a request fences only the engine's own calls, and an idle or memory-pressure
+release drops only its own hold (the models are freed once no consumer holds them). VAD keeps a
+small separate context so capture stays full duplex while a sentence is synthesized.
+The Capacitor bridge itself is the shared `LocalSpeechBridgePlugin`
+(`plugin-local-inference/native/android/speech-bridge`, enabled in `:local-speech` with
+`elizaSpeechBridgeCapacitor=true`): recording drafts (`LocalVoiceRecording`, decoded by
+`RecordingPcm`), single-request admission and the cancellation drain (`SpeechRequestGate`),
+on-device recognition and synthesis, playback, audio focus, live capture and the latency
+collector. `AlphaVoiceCloudPlugin` is a thin subclass that keeps the `AlphaVoiceCloud` name, the
+installed `alpha-cloud-voice-`/`alpha-cloud-tts-` cache prefixes, the owner's resident transport
+(`AlphaLocalAgentPlugin.openNativeVoiceTransport`), Notes audio storage and the Alpha-only
+methods (browser-reading synthesis, paired agent speech, the explicit Cloud profile). The renderer
+side is the shared `@elizaos/voice/native-live` and `@elizaos/voice/native-speech`, which
+`native-live-voice.ts`, `native-voice-turn.ts`, `local-voice.ts` and `paired-voice.ts` bind to
+that bridge. `AlphaApplication` names the timing export `alpha-native-voice-timing-v3`. The class
+names in the sections below refer to these shared classes.
 
 The app's own `ElizaVoiceNative` (embeddings and the host natives) is built from the same
 upstream `elizavoice-jni.cpp` with `-DELIZA_VOICE_JNI_CLASS=ai/elizaresearch/alphaphone/ElizaVoiceNative`
@@ -26,8 +78,56 @@ the app's engine instead of packaging a second copy, so the two must be byte-ide
 
 ## November 5 device measurements
 
-The bundle and engine moved to the pin `36236fc059` (engine `b3eb2bf63b`, `eliza-paradee-voice-v2`, Paradee v1.2).
+The November 5 measurements used pin `36236fc059` (engine `b3eb2bf63b`, `eliza-paradee-voice-v2`, Paradee v1.2).
 Device latency, TPU and GPU findings are in [on-device speech](on-device-speech-2026-11-05.md); bundle sizes below are historical.
+
+## Cloud speech diagnosis — November 1
+
+The Pixel's selected `cloud` profile runs the resident agent and history on the
+phone. Speech recognition and synthesis use Eliza Cloud; local Paradee/Phonon
+models are absent. This differs from the default native profile described here.
+
+The installed v12 path was serial: finish recording, upload batch STT, wait for
+the complete resident-agent reply, fetch complete TTS, then play. Saved completed
+turns took 8.3–18.0 seconds from recording stop to playback start. This boundary
+excludes input endpointing and is not a microphone-to-speaker acoustic measure.
+The native Android bridge now records decode/upload/response/download/prepare
+stages and the bounded numeric server timing fields. The streaming bridge records
+session bootstrap, STT final, first PCM and AudioTrack playback timing. Export
+only these fields with `node scripts/android-cloud-voice-timing.mjs --out FILE`;
+it excludes credentials, transcripts and reply text.
+
+The Cloud client uses one native PCM WebSocket for input and output, with final
+STT events delivered to the existing local `VoiceAssistantSession`. It removes
+the second silence timer and the native Cloud thinking-acknowledgment TTS request.
+Reply speech still follows the existing complete-reply and action checks.
+AudioTrack can play incoming PCM before synthesis ends. A `404` on the new
+speech endpoint retains the existing batch route; authentication or provider
+failures do not replay a request through a second route.
+
+The installed v15 retry recognized speech with 154 ms of decode, 21 ms of
+upload and 2,582 ms waiting for Cloud response. It did not complete an answer.
+A normal typed probe also failed: the resident emitted terminal
+`provider_issue` after 128 ms. Its log identified `ReferenceError: default10 is
+not defined` at `agent-bundle.js:39523:19870`. The evidence is in
+[`v15-resident-failure.json`](evidence/cloud-streaming-2026-11-01/v15-resident-failure.json).
+This separate bundle defect must be fixed before an end-to-end comparison.
+
+Generic client transport, phrase planning, native socket/media ownership and
+wire/timing parsing are explicit, byte-verified shared-source patches under
+`patches/eliza`. Product wrappers supply only bridge registration, current owner,
+credential slots, deployment origins and diagnostic format names. The immutable
+vendor checkout and resident source are not patched. The feature-parity allowlist
+must not grow for this work.
+
+Cloud implementation and rollout are tracked in
+[elizaOS/eliza#38469](https://github.com/elizaOS/eliza/pull/38469). Production at
+this diagnosis does not mount the new speech relay. The new route uses a bounded
+60-second session and reserves its budget at bootstrap; PCM and TTS frames then
+run through the Durable Object. Unique reply text still needs the service's
+content-safety check. The exact-input positive safety cache is not an audio cache.
+A production streaming or latency acceptance claim requires the deployed backend
+and a completed physical-device turn, separately from APK checks.
 
 ## October 24 source update
 
@@ -51,12 +151,18 @@ nothing is downloaded.
 
 | Path | Role | Size | Licence |
 | --- | --- | --- | --- |
-| `tts/paradee/paradee-8m-v1_1.gguf` | Paradee-8M F32 (converted from the pinned PyTorch files) | 32 MB | Apache-2.0 |
+| `tts/paradee/paradee-8m-v1_2.gguf` | Paradee-8M v1.2 F32 (converted from the pinned PyTorch files) | 32 MB | Apache-2.0 |
 | `tts/paradee/misaki-en-us.lex` | misaki US lexicon (converted from the pinned misaki data) | 12.9 MB | Apache-2.0 |
 | `tts/paradee/espeak-ng-data/*` (7 files) | eSpeak NG English data for out-of-lexicon words | 0.8 MB | GPL-3.0-or-later (flagged) |
 | `asr/phonon-2-fv5.gguf` | The ASR slot: Phonon-2 (Parakeet-TDT 0.6B, five-value weights, `general.architecture=parakeet-tdt`) | 331 MB | CC-BY-4.0 (attribution and NOTICE shipped; training-data terms flagged) |
 | `vad/silero-vad-v5.gguf` | Silero VAD v5 | 0.6 MB | MIT |
 | `notices/*` | eSpeak NG, misaki, spaCy and Phonon-2 (Fermion NOTICE, CC-BY-4.0 text) notices | small | as named |
+
+At eliza pin `fbc2d23d4b` upstream pins Paradee-8M v1.2, adds an enabled Castilian Spanish voice
+(Delibes-8M, with Spanish eSpeak NG data) and moves the llama.cpp fork to `13d0ccbf`. The recorded
+engine libraries were built from fork `0d9fd4b9` and are not admitted at this pin: a fresh engine
+build, a fresh byte record, a fresh APK and on-device validation are required
+(`docs/evidence/develop-fbc2d23d-build-input-admission-20261029.json`).
 
 The Phonon-2 GGUF (330,632,256 bytes, sha256 `dc552eb7…`) replaces the Qwen3-ASR pair
 (about 1 GB), so the bundle is about 380 MB. It ships in the APK assets with the verified first-run
@@ -73,10 +179,10 @@ libelizainference serves `eliza_inference_asr_*` and `asr_stream_*` from whateve
 files; `scripts/paradee-runtime.mjs` admits exactly the files that backend needs (one for
 parakeet, two for qwen3) and refuses any other file under `asr/`, because the library would load
 a stray parakeet GGUF first. The voice host record carries the same rows
-(`asrSlot.backend`, `scripts/voice-host.mjs`). The APK sets `ELIZA_ASR_BACKEND=parakeet` by
-default (`BuildConfig.ELIZA_ASR_BACKEND`, exported before the library loads by the pinned
-`ElizaVoiceNative`/`ElizaAsrNativeEnv` and by `AlphaParadeeSpeech`); a build environment value of
-`auto`, `parakeet` or `qwen3` overrides it.
+(`asrSlot.backend`, `scripts/voice-host.mjs`). At runtime `parakeet` names the model
+architecture, not a backend: the pinned `ElizaVoiceNative`/`ElizaAsrNativeEnv` and the shared
+paradee-voice `VoiceNative` (loaded by the `SessionSpeech` backend) export
+`ELIZA_ASR_BACKEND=ggml` before the library loads, so Phonon-2 runs on the in-tree ggml path.
 
 **Licence.** Phonon-2 by Fermion Research is CC-BY-4.0, derived from NVIDIA
 parakeet-tdt-0.6b-v3 (CC-BY-4.0). The attribution, Fermion's NOTICE
@@ -99,7 +205,7 @@ recording a clip on the device:
 
 1. **App process.** `AlphaVoiceCloud.startLiveCapture` opens `AudioRecord` (16 kHz mono PCM16)
    and runs Silero VAD on every 32 ms window through libelizainference
-   (`AlphaLiveVoiceCapture`, `ElizaVoiceNative.nativeVadProcessBatch`). `LiveVadGate` opens a
+   (shared `LiveVoiceCapture`, `InferenceSession.openVad()`). `LiveVadGate` opens a
    segment after two windows at P ≥ 0.5 and closes it after 16 windows (about 512 ms) below 0.35,
    with a 320 ms pre-roll. Only segment audio is forwarded; nothing is written to storage. The
    assistant asks for `echoCancel`: the communication source with the platform
@@ -113,6 +219,8 @@ recording a clip on the device:
    closes the current IPC read. See [native transport](native-live-pcm-transport.md).
    Older native packages retain the renderer-forwarding compatibility path through
    `live-segment-stream.ts` and `live-voice.ts`; errors do not silently replay on that path.
+   Both, and `voice-turn-routes.ts` below, re-export the shared `@elizaos/voice/live-session` and
+   `@elizaos/voice/turn-routes` clients projected from the pin; Alpha adds no behavior to them.
 3. **Agent.** The live route (elizaOS #36213, #36214) decodes with the Phonon-2 streaming decoder
    through the bionic host (`BionicAsrStreams`, staged from the pin) and returns
    `final.text` in the response to the request that carries `speech-end`.
@@ -135,14 +243,33 @@ recording a clip on the device:
    `ram-pressure`, `unscored`, `timeout`), a 502 scoring error, a transport failure or the deadline
    all fall back to the long gap; unavailable is never treated as complete. The route never starts
    voice or loads a model, so the semantic path only works where the resident's voice bridge and
-   its fused text context are loaded; elsewhere the gaps decide alone. **Clef is not in the pin**
-   (no Clef model, loader or decision head); the scorer is the Eliza-1 one. Each submitted turn's
-   voice timing record keeps `endpoint`: the path (`semantic` or `gap`), the outcome enum, the
-   unavailable reason and the scorer latency, never text. The gaps and deadline are engineering
+   its fused text context are loaded; elsewhere the gaps decide alone. The scorer is the Eliza-1
+   one. The assistant asks it through the shared end-of-turn chain (`@elizaos/voice/endpoint-chain`
+   `createEndpointChain`): local fused scorer, then an optional **Clef** `turn` stage (Eliza Cloud
+   `clef-decisions`, transcript text only, its own 300 ms timeout; unavailable, disabled, refused or
+   late is never a yes), then the long gap. The Clef stage is asked only when the local scorer could
+   not score, and is built only with an explicit switch AND a Cloud client: `CLEF_ENDPOINT_ENABLED`
+   in `voice-selection.ts` is `false` and the renderer holds no Cloud Clef client (the owner
+   decision is #663 / H-18), so today the chain is the local scorer and the gap, and no transcript
+   leaves the phone for endpointing. Each submitted turn's voice timing record keeps `endpoint`: the
+   path (`semantic` or `gap`), the outcome enum, the unavailable reason (scorer or `clef-*`), the
+   latency and the chain stage that answered (`path`: `local` or `clef`), never text; the
+   diagnostics export copies the same enums. The gaps and deadline are engineering
    defaults (local-speech research), not measurements or owner-set constants.
 6. **Send.** The turn goes through the existing voice policy unchanged (`VOICE_SEND_POLICY`
-   in `voice-selection.ts`, MVP-01/P-01). A reply carrying action proposals ends voice for review in
+   in `voice-selection.ts`, P-39: the assistant submits automatically; Transcribe only inserts
+   editable text the user sends). A reply carrying action proposals ends voice for review in
    the conversation: automatic submission never approves a side effect.
+   **Spoken replies follow voice mode.** Replies are spoken in the voice conversation and nowhere
+   else: a typed message, or one dictated with Transcribe and sent from the composer, gets a
+   silent reply. There is no setting for this; a stored `alphaphone:speak-replies:v1` value from
+   an earlier build is ignored. A message action's Read aloud still plays one reply on request.
+   **Path.** When the live assistant is not ready (`nativeLiveVoiceReady` false) or the route is
+   Cloud, the conversation runs the recorded-clip loop (`BatchVoiceConversation`), which cannot hear
+   the user while a reply plays. Alpha shows no notice about this; Stop voice conversation ends a
+   reply. Each conversation turn's timing record keeps its path as the
+   live ASR mode (`live.mode`: `batch` for the recorded-clip loop, `stream` from the live route), and
+   the diagnostics export names it `path: live | batch`.
 7. **Barge-in and heard content.** Speech that starts while a reply is pending or playing is
    tentative. Before playback it interrupts once the VAD segment has stayed open for 700 ms (longer
    than the gate's hangover, so a blip never confirms by time) or its transcript passes the
@@ -150,12 +277,12 @@ recording a clip on the device:
    can hold the VAD open for a whole sentence. The gate is upstream `shouldRespondToVoiceTurn`,
    applied against every sentence of the reply that has started playing. A cough or the reply's own echo leaves the reply running. While a reply plays, voice
    interrupts only over a capture whose platform echo canceller is attached and enabled
-   (`echoCancelled` from `startLiveCapture`); otherwise speech during playback is ignored and the
-   Stop speaking button remains. Interrupting cancels that request or playback (generation ids drop
+   (`echoCancelled` from `startLiveCapture`); otherwise speech during playback is ignored. The voice
+   view offers only Mute and Stop voice conversation. Interrupting cancels that request or playback (generation ids drop
    its late callbacks) and the speech becomes the next turn; the earlier turn is never resent.
    Replies play one sentence at a time and only sentences whose playback completed count as heard:
    the conversation view keeps that text and marks the rest
-   "(Interrupted. The rest of this reply was not played.)". Stop speaking does the same by button.
+   "(Interrupted. The rest of this reply was not played.)".
    Once the reply's message id is known, Alpha also sends exactly the played prefix (the completed
    sentences of the spoken form) to `POST /api/conversations/:id/messages/:messageId/heard`
    (elizaOS #36547), so the agent's stored reply, and its memory and search, keep only the heard
@@ -163,8 +290,15 @@ recording a clip on the device:
    sent for a reply that was fully heard. The request never blocks the next turn. A 409 (the played
    text is not a prefix the agent recognises) is recorded and the view stays trimmed; a 404 or 503
    is retried once after 1.5 s, then dropped; the outcome enum is kept on the turn's voice timing
-   record (`heard`). **Gaps:** a reply interrupted before its first sentence finished cannot be
-   recorded (the route needs a non-empty prefix), so the agent keeps it in full; a reply the agent
+   record (`heard`). A reply interrupted before its first sentence finished is reported as
+   `{ nothingHeard: true }`: the agent replaces it with an empty, interruption-marked reply
+   (`heardNothing`), so it keeps that it answered and was cut off but none of the unheard words; an
+   agent that predates the explicit report refuses it (`rejected`) and keeps the reply. A speech
+   failure is not a barge-in: when playback fails before the first sentence finished
+   (`playbackFailed`, for example a refused Cloud speech request) nothing is sent (`nothing-heard`)
+   and both the agent and the view keep the whole reply; after a finished sentence only the heard
+   prefix is kept, as for an interruption. **Gaps:** a
+   reply the agent
    completes after the user interrupted it while it was still being generated has no message id
    in the voice session, is not trimmed and appears in full after a reload; a partially played
    sentence is never claimed as heard. The 700 ms hold and the sentence-by-sentence synthesis gap
@@ -293,9 +427,27 @@ still required.
 - The app-process recorded-clip path (`NativeAsr.transcribe`, used by Notes dictation and when the
   live route is not ready) is batch.
 
+## Cloud speech plan limits (cloud runtime profile only)
+
+Only the explicit `--runtime-profile=cloud` QA build and development browser-resident builds send
+speech to Eliza Cloud; a flag-off native build routes speech to the device (`selectVoiceRoute`) and
+never makes a Cloud speech request. When Cloud answers HTTP 429, `AlphaVoiceCloudPlugin`
+(`CloudVoiceLimit.java`) and the development bridge (`cloud-voice-limit.ts`) pass on only the retry
+facts: `Retry-After` or the body's `retryAfterSeconds`/`retryAt` (at most a day), a short
+lower-case limit code and a bounded `resetAt`; the message, plan and provider body never leave.
+The shared `LocalSpeechBridgePlugin.submit` rejects a non-2xx answer with `voice-http-<status>`
+and no data, so Alpha's `submitLimited` settles a 429 itself: it closes the connection, marks the
+request resolved and rejects with the same code plus those facts (a cancelled request keeps the
+shared cancellation). Moving this data path into the shared request gate is upstream follow-up.
+`cloud-voice.ts` reads them as the shared `ServiceLimit` (`readServiceLimit`), shows plan-limit
+wording with the retry time ("... reached your plan's request limit. Try again in about 42
+seconds. Your recording is kept."), keeps the recorded clip for an explicit retry, and records the
+limit as the account panel's latest limit (`lastLimit` of the shared `useCloudSubscriptionSummary`)
+for the same signed-in Cloud session only. Nothing is retried automatically.
+
 ## Streamed speech output and audio focus (#397)
 
-When the pinned engine reports `ParadeeVoice.supportsStreaming()`, `AlphaVoiceCloudPlugin` synthesizes
+When the pinned engine reports `ParadeeVoice.supportsStreaming()`, the speech bridge synthesizes
 each reviewed sentence with `synthesizeStream` and plays the chunks through an AudioTrack
 (`AudioTrackSpeechOutput`: MODE_STREAM, 24 kHz mono float, USAGE_ASSISTANT/CONTENT_TYPE_SPEECH) as
 they arrive. `StreamingSpeechPlayback` holds at most 30 s of PCM in a `SpeechPcmQueue`; a full queue
@@ -307,7 +459,7 @@ with the same `playbackId`/`play`/`playbackEnded` protocol. Only an engine witho
 whole-sentence MediaPlayer path; a streaming error is a failure, not a fallback.
 
 Speech requests `AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK` before it plays and abandons it afterwards
-(`AlphaSpeechAudioFocus`, `SpeechAudioFocusPolicy`): permanent or transient loss stops the utterance
+(shared `SpeechAudioFocus`, `SpeechAudioFocusPolicy`): permanent or transient loss stops the utterance
 and clears its queue, a ducking loss lowers it to 20 %, regain restores it. No speech, recording or
 live capture starts while the audio mode is ringing, in a call or in VoIP communication
 (`call-active`), and on Android 12+ a call starting stops speech and the assistant's live capture
@@ -342,3 +494,33 @@ therefore must not substitute for the output hash check on either platform.
 The attached rebuild workspace retains receipts, conversion scripts, logs and
 model hashes under `test-results/rebuild-oct14` and `.eliza/native-oct14`.
 These are development build inputs, not a production qualification declaration.
+
+### Owner-bound wake invocation
+
+The shared ElizaSense bridge binds wake invocations to the active authenticated
+owner, agent and session. AlphaListener remains a compatibility alias for status
+and settings. Cold process starts open the assistant with the microphone closed;
+a wake starts voice automatically only when the native process already had the
+same authenticated owner binding. Locked, stale, consumed or changed-owner wakes
+never start capture.
+
+### Android agent producer UUID admission
+
+The Cloud speech investigation found a separate first-turn agent failure in the
+Android mobile bundle: Bun 1.4.2 lowered UUID's named re-export barrel into an
+undeclared `default10` binding. The bundle loaded, but creating a message response
+ID failed before any model request. `patches/eliza/mobile-uuid-build.json` admits
+the exact upstream producer, Bun revision, dependency lock, and UUID 14.0.2 module
+hashes. `scripts/build-mobile-agent.mjs` runs that unchanged producer with a
+bounded build adapter for the one admitted UUID barrel. The adapter imports the
+real UUID algorithms through CommonJS namespace properties; it does not supply a
+replacement UUID implementation or rewrite emitted bundle text.
+
+Every build exercises UUID options, buffers, versions and known name vectors in
+the actual emitted bundle, then reaches the real message-turn response-ID path
+and stops before provider execution. The staged `alpha-mobile-build.json`
+receipt binds these producer inputs and the resulting bundle. Cloud and native
+build preflight, APK verification, and the build source snapshot enforce that
+receipt separately from the unchanged upstream source stamp. These host smoke
+tests verify the failing code path; they do not establish device voice latency
+or a successful Cloud model response.

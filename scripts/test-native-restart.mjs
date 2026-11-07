@@ -87,6 +87,15 @@ const cases = {
 		scope:
 			"A real uncaught exception recorded by class only, read back and shown in Settings by a new process",
 	},
+	// PRD AP-15: 200% system font kept by a new process, and the first screen read in TalkBack order.
+	accessibility: {
+		testClass: "AccessibilityLifecycleInstrumentedTest",
+		method: "processRestartPhase",
+		gate: "accessibilityPhase",
+		restore: "verify",
+		scope:
+			"200% system font kept by a new process: measured text scale and the TalkBack order of the first screen (Home and Settings, or the required sign-in page of a signed-out flag-off build); distinct PID asserted by native test",
+	},
 	// F18: Display > Theme survives a new process (the browser spec covers storage only).
 	theme: {
 		testClass: "SettingsFlowInstrumentedTest",

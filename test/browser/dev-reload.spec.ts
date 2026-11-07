@@ -15,7 +15,15 @@ for(const polling of [false,true]) for(const replacement of [false,true]) test(`
   await expect.poll(()=>server.watcher.getWatched()[path.join(root,'src')]||[]).toContain('value.js');
   await page.evaluate(()=>localStorage.setItem('saved-note','Retain me'));
   const file=path.join(root,'src/value.js');
-  if(replacement){const original=await stat(file),temporary=path.join(root,'src/value.js.next');await writeFile(temporary,'export const value="after";');await utimes(temporary,original.atime,original.mtime);await rename(temporary,file);}else await writeFile(file,'export const value="after";');await expect(page.locator('body')).toHaveText('after:2');expect(await page.evaluate(()=>localStorage.getItem('saved-note'))).toBe('Retain me');
+  if(replacement){
+   const original=await stat(file),temporary=path.join(root,'src/value.js.next');
+   await writeFile(temporary,'export const value="after";');await utimes(temporary,original.atime,original.mtime);await rename(temporary,file);
+   // Native watchers can announce an existing path as added during replacement.
+   if(!polling)server.watcher.emit('add',file);
+  }else await writeFile(file,'export const value="after";');
+  await expect(page.locator('body')).toHaveText('after:2');
+  if(replacement&&!polling){await page.waitForTimeout(500);await expect(page.locator('body')).toHaveText('after:2');}
+  expect(await page.evaluate(()=>localStorage.getItem('saved-note'))).toBe('Retain me');
  }finally{await server.close();await rm(root,{recursive:true,force:true});}
 });
 test('delayed unchanged source and CSS notifications do not restart the document',async({page})=>{

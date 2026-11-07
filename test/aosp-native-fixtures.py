@@ -53,10 +53,14 @@ class Packaging(unittest.TestCase):
             warnings.simplefilter('ignore', UserWarning)
             for name, payload in entries:
                 z.writestr(name, payload)
+        if self.output.exists():
+            shutil.copyfile(self.apk, self.output / 'Launcher.apk')
 
     def overlay(self):
         self.output.mkdir()
         (self.output / 'Android.bp').write_text(BP)
+        if self.apk.exists():
+            shutil.copyfile(self.apk, self.output / 'Launcher.apk')
 
     def test_native_rejections_preserve_overlay(self):
         self.overlay()
@@ -72,7 +76,7 @@ class Packaging(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     native.stage(self.apk, self.output, 'AlphaPhone')
                 self.assertEqual((self.output / 'Android.bp').read_text(), BP)
-                self.assertEqual(len(list(self.output.iterdir())), 1)
+                self.assertEqual(set(self.output.iterdir()), {self.output / 'Android.bp', self.output / 'Launcher.apk'})
 
     def test_changed_overlay_is_not_overwritten(self):
         self.archive()
@@ -222,7 +226,7 @@ class Packaging(unittest.TestCase):
                 with patch.object(native, 'ROOT', trust), self.assertRaises((ValueError, KeyError)):
                     native.stage(self.apk, self.output, 'AlphaPhone')
                 self.assertEqual((self.output / 'Android.bp').read_text(), BP)
-                self.assertEqual(len(list(self.output.iterdir())), 1)
+                self.assertEqual(set(self.output.iterdir()), {self.output / 'Android.bp', self.output / 'Launcher.apk'})
 
     def test_native_profile_still_requires_its_original_local_model(self):
         trust, entries = self.resident_fixture()
@@ -231,7 +235,7 @@ class Packaging(unittest.TestCase):
         self.overlay()
         with patch.object(native, 'ROOT', trust), self.assertRaises(KeyError):
             native.stage(self.apk, self.output, 'AlphaPhone')
-        self.assertEqual(len(list(self.output.iterdir())), 1)
+        self.assertEqual(set(self.output.iterdir()), {self.output / 'Android.bp', self.output / 'Launcher.apk'})
 
     def test_complete_resident_payload_gets_explicit_modes_without_execution_claim(self):
         trust, entries = self.resident_fixture()
@@ -263,7 +267,7 @@ class Packaging(unittest.TestCase):
                 with patch.object(native, 'ROOT', trust), self.assertRaises(ValueError):
                     native.stage(self.apk, self.output, 'AlphaPhone')
                 self.assertEqual((self.output / 'Android.bp').read_text(), BP)
-                self.assertEqual(len(list(self.output.iterdir())), 1)
+                self.assertEqual(set(self.output.iterdir()), {self.output / 'Android.bp', self.output / 'Launcher.apk'})
 
     def test_changed_copy_helper_rejects_current_preparer_stamp(self):
         trust, entries = self.resident_fixture()
@@ -272,7 +276,7 @@ class Packaging(unittest.TestCase):
         (trust / 'scripts/copy-file-clone.mjs').write_text('changed copier')
         with patch.object(native, 'ROOT', trust), self.assertRaisesRegex(ValueError, 'source stamp'):
             native.stage(self.apk, self.output, 'AlphaPhone')
-        self.assertEqual(len(list(self.output.iterdir())), 1)
+        self.assertEqual(set(self.output.iterdir()), {self.output / 'Android.bp', self.output / 'Launcher.apk'})
 
     def test_self_consistent_bun_substitution_still_refuses_pinned_binary_mismatch(self):
         trust, entries = self.resident_fixture()
@@ -289,7 +293,7 @@ class Packaging(unittest.TestCase):
         self.overlay()
         with patch.object(native, 'ROOT', trust), self.assertRaisesRegex(ValueError, 'pinned binary'):
             native.stage(self.apk, self.output, 'AlphaPhone')
-        self.assertEqual(len(list(self.output.iterdir())), 1)
+        self.assertEqual(set(self.output.iterdir()), {self.output / 'Android.bp', self.output / 'Launcher.apk'})
 
     def test_cuttlefish_exact_x86_payload_modes_and_no_arm64_installation(self):
         trust, entries = self.cloud_fixture('cuttlefish')
@@ -314,11 +318,16 @@ class Packaging(unittest.TestCase):
             self.assertEqual((self.output / 'native-x86_64' / name).read_bytes(), ELF_X86)
             self.assertEqual(dict(config['product/app/AlphaPhone/lib/x86_64/' + name]),
                              {'mode': mode, 'user': 'AID_ROOT', 'group': 'AID_ROOT', 'caps': '0'})
-        makefile = (self.output / 'Android.mk').read_text()
-        self.assertIn('LOCAL_MODULE_TARGET_ARCH := x86_64\n', makefile)
-        self.assertNotIn('arm64', makefile)
+        self.assertFalse((self.output / 'Android.mk').exists())
+        blueprint = (self.output / 'Android.bp').read_text()
+        self.assertIn('android_app_import {', blueprint)
+        self.assertIn('required: ["AlphaPhone_native_0"', blueprint)
+        self.assertEqual(blueprint.count('prebuilt_app_native {'), len(expected))
+        self.assertEqual(blueprint.count('relative_install_path: "AlphaPhone/lib/x86_64"'), len(expected))
+        self.assertNotIn('arm64', blueprint)
         for name in expected:
-            self.assertIn('native-x86_64/' + name, makefile)
+            self.assertIn('src: "native-x86_64/' + name + '"', blueprint)
+            self.assertIn('filename: "' + name + '"', blueprint)
         self.assertTrue(report['residentAgentIncluded'])
         self.assertFalse(report['runtimeVerified'])
         self.assertFalse(report['deployReady'])
@@ -342,7 +351,7 @@ class Packaging(unittest.TestCase):
             self.archive(list(entries.items()))
             with patch.object(native, 'ROOT', trust), self.assertRaises((ValueError, KeyError)):
                 native.stage(self.apk, self.output, 'AlphaPhone', 'cuttlefish')
-            self.assertEqual(list(self.output.iterdir()), [self.output / 'Android.bp'])
+            self.assertEqual(set(self.output.iterdir()), {self.output / 'Android.bp', self.output / 'Launcher.apk'})
         self.archive(list(original.items()))
         with self.assertRaisesRegex(ValueError, 'Unsupported'):
             native.stage(self.apk, self.output, 'AlphaPhone', 'generic-x86')
@@ -364,7 +373,7 @@ class Packaging(unittest.TestCase):
         self.overlay()
         with patch.object(native, 'ROOT', trust), self.assertRaisesRegex(ValueError, 'pinned binary'):
             native.stage(self.apk, self.output, 'AlphaPhone', 'cuttlefish')
-        self.assertEqual(list(self.output.iterdir()), [self.output / 'Android.bp'])
+        self.assertEqual(set(self.output.iterdir()), {self.output / 'Android.bp', self.output / 'Launcher.apk'})
 
 
 if __name__ == '__main__':

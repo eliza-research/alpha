@@ -1,21 +1,16 @@
 import {developmentWorkflowRequest} from './development-workflows';
-import {devSurfacesEnabled} from '../build-flags';
-import {developmentIdentity,readDevelopmentIdentity,verifyDevelopmentIdentity,assertDevelopmentIdentity,type DevelopmentIdentity} from './development-identity';
+import {developmentIdentity,readDevelopmentIdentity,verifyDevelopmentIdentity,assertDevelopmentIdentity,assertDevelopmentProfile,type DevelopmentProfile} from './development-identity';
 import {developmentActionRequest} from './development-actions';
-import {browserDevProfile} from './dev-profile';
 import {readDevelopmentAgent,editDevelopmentAgent,type DevelopmentConversation as Conversation} from './development-agent-document';
 import type {LocalAgentBridge} from '../runtime/local-agent';
-export const developmentProfiles=['local','cloud','remote'] as const;
-export type DevelopmentProfile=typeof developmentProfiles[number];
 export const developmentName=(profile:DevelopmentProfile)=>`${profile==='local'?'On-device':profile==='cloud'?'Cloud':'Remote'} agent · development`;
-function allowed(profile:DevelopmentProfile){if(!devSurfacesEnabled||!browserDevProfile||!developmentProfiles.includes(profile))throw Error('Choose a development profile.');}
-export async function developmentReply(profile:DevelopmentProfile,signal?:AbortSignal){allowed(profile);return (await readDevelopmentAgent(await readDevelopmentIdentity(profile,signal),signal)).reply;}
-export async function saveDevelopmentReply(profile:DevelopmentProfile,reply:string,signal?:AbortSignal){allowed(profile);const identity=developmentIdentity(profile);await verifyDevelopmentIdentity(identity,signal);if(typeof reply!=='string'||!reply.trim()||reply.length>16000)throw Error('Enter a reply between 1 and 16000 characters.');await editDevelopmentAgent(identity,data=>{data.reply=reply;},signal);}
+export async function developmentReply(profile:DevelopmentProfile,signal?:AbortSignal){assertDevelopmentProfile(profile);return (await readDevelopmentAgent(await readDevelopmentIdentity(profile,signal),signal)).reply;}
+export async function saveDevelopmentReply(profile:DevelopmentProfile,reply:string,signal?:AbortSignal){assertDevelopmentProfile(profile);const identity=developmentIdentity(profile);await verifyDevelopmentIdentity(identity,signal);if(typeof reply!=='string'||!reply.trim()||reply.length>16000)throw Error('Enter a reply between 1 and 16000 characters.');await editDevelopmentAgent(identity,data=>{data.reply=reply;},signal);}
 /** Local protocol fixture for explicit dev profiles. It has no network or credential APIs. */
 export function developmentBridge(profile:DevelopmentProfile,identity=developmentIdentity(profile)):LocalAgentBridge{
- allowed(profile);const {ownerId,agentId}=identity;
+ assertDevelopmentProfile(profile);const {ownerId,agentId}=identity;
  return {start:async()=>({state:'running'}),async request(input,signal){
-  signal?.throwIfAborted();allowed(profile);await verifyDevelopmentIdentity(identity,signal);const path=input.path,body=input.body===undefined?undefined:JSON.parse(input.body);let result:unknown;
+  signal?.throwIfAborted();assertDevelopmentProfile(profile);await verifyDevelopmentIdentity(identity,signal);const path=input.path,body=input.body===undefined?undefined:JSON.parse(input.body);let result:unknown;
   if(path==='/api/auth/me')result={identity:{id:ownerId,kind:'owner'},access:{role:'OWNER',mode:'local'}};
   else if(path==='/api/agents')result={agents:[{id:agentId,name:developmentName(profile),status:'running'}]};
   else{

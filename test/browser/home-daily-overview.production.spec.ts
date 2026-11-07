@@ -1,6 +1,6 @@
 import {test,expect} from '@playwright/test';
 // Production lane (flag-off build, mocks unset): the daily overview on a fresh profile with no
-// account. The calendar card names its source and read time, no brief card or fixture content is
+// account. The calendar card reports its unverified source, no brief card or fixture content is
 // present, and loading Home makes no request beyond the app's own origin.
 test.beforeEach(({}, info) => { test.skip(info.project.name !== 'production', 'Runs against the flag-off production build only'); });
 

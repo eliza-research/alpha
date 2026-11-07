@@ -25,7 +25,7 @@ public class ShellInstrumentedTest {
     SystemClock.sleep(100);
    }
    assertEquals("Bundled renderer must mount offline", "true",ready);
-   evaluate(scenario,"Promise.all([Capacitor.Plugins.DeviceApps.list(),Capacitor.Plugins.ElizaSystem.getStatus(),Capacitor.Plugins.DeviceApps.buildInfo()]).then(v=>document.body.dataset.nativeResult=JSON.stringify(v)).catch(e=>document.body.dataset.nativeError=String(e))");
+   evaluate(scenario,"Promise.all([Capacitor.Plugins.ElizaSystem.listLauncherApps(),Capacitor.Plugins.ElizaSystem.getStatus(),Capacitor.Plugins.ElizaSystem.getBuildInfo()]).then(v=>document.body.dataset.nativeResult=JSON.stringify(v)).catch(e=>document.body.dataset.nativeError=String(e))");
    String result="null";
    for(int i=0;i<100;i++) { result=evaluate(scenario,"document.body.dataset.nativeResult || null"); if(!result.equals("null"))break;SystemClock.sleep(100); }
    assertNotEquals("Native bridge failed: "+evaluate(scenario,"document.body.dataset.nativeError || null"),"null",result);
@@ -71,7 +71,7 @@ public class ShellInstrumentedTest {
    SystemClock.sleep(500);
    String layout = evaluate(scenario,"JSON.stringify({height:innerHeight,viewport:visualViewport?.height,fields:[...document.querySelectorAll('textarea[data-alpha-composer]')].map(e=>({value:e.value,rect:e.getBoundingClientRect().toJSON(),hidden:!!e.closest('[inert], [aria-hidden=\"true\"]'),send:e.parentElement.querySelector('button[aria-label=Send]')?.getBoundingClientRect().toJSON()}))})");
    assertEquals("Composer remains above the real Android keyboard: "+layout, "true", evaluate(scenario,"(() => { const input=("+composer+"); const button=input?.parentElement.querySelector('button[aria-label=Send]'); if(!input||!button)return false; const field=input.getBoundingClientRect(); const send=button.getBoundingClientRect(); return field.top >= 0 && field.bottom <= innerHeight && field.width > 100 && send.top >= 0 && send.bottom <= innerHeight; })()"));
-   evaluate(scenario,"Capacitor.Plugins.DeviceApps.launch({packageName:'com.android.settings'})");
+   evaluate(scenario,"Capacitor.Plugins.ElizaSystem.launchApp({packageName:'com.android.settings'})");
    boolean settingsOpened = false;
    String lastActivityState = "";
    for (int i=0; i<30; i++) {
