@@ -200,7 +200,6 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   function closeVideo() { if (video) { video.pause(); video.removeAttribute('src'); video.load(); video.remove(); } video = undefined; videoId = ''; }
   let captures: SavedPhoto[] = [];
   let photosApi: Bag | undefined, loaded = false, loading = false, next = '', libraryEpoch = 0;
-  let libraryQuery = '';
   let libraryAccess:LibraryAccess|undefined,requestingLibraryAccess=false;
   /** The newest rows Photos keeps loaded; a reload re-reads at most RELOAD_LIMIT of them. */
   const WINDOW=LIBRARY_LIMITS.kept,RELOAD_LIMIT=240,BATCH=20,SHARE_BATCH=100;
@@ -337,19 +336,13 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
       photosApi?.set({ nativeLibraryError: 'Saved photos are available in the Android app.' });
       return;
     }
-    loading = true; const token = ++libraryEpoch, query = libraryQuery;
+    loading = true; const token = ++libraryEpoch;
     try {
       if(!browserMode)libraryAccess=await nativeLibrary.libraryAccess();
       // One catalog: AlphaPhotos lists every permitted item, or Alpha's own captures without access.
       // A reload re-reads as many rows as were showing (bounded), so a change patches the window in place.
       const want=more?1:Math.min(Math.max(captures.length,1),RELOAD_LIMIT),rows:SavedPhoto[]=[];let cursor=more?next:'';
-      do {
-        const before = cursor ? {before: cursor} : {};
-        const result = query ? await nativeLibrary.listPermitted({...before, query}) : await library.list(before);
-        if (disposed || token !== libraryEpoch) return;
-        rows.push(...result.items.map(normalize));
-        cursor = result.next;
-      } while (cursor && !more && rows.length < want);
+      do{const result=await library.list(cursor?{before:cursor}:{});if(disposed||token!==libraryEpoch)return;rows.push(...result.items.map(normalize));cursor=result.next;}while(cursor&&!more&&rows.length<want);
       captures = more ? mergeWindow(captures, rows, WINDOW) : newestFirst(rows).slice(0, WINDOW);
       next = cursor; loaded = true; loading = false;
       patchView();
@@ -1187,21 +1180,14 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
       editRecoveryChecked=true;const token=editEpoch;
       queueMicrotask(()=>{void readMediaCopyIntent().then(pending=>{if(!disposed&&currentApi.isActive()&&editEpoch===token&&pending&&automaticEditRecovery!==pending.token){automaticEditRecovery=pending.token;void recoverEdit(currentApi);}}).catch(()=>{if(!disposed&&currentApi.isActive()&&editEpoch===token){currentApi.set({nativeCopyRecovery:true});currentApi.toast('Saved-copy request needs recovery. No edit was repeated.');}});});
     }
-    const searchText = st.searching ? String(st.q || '').trim().slice(0, 128) : '';
-    const nextLibraryQuery = permittedLibrary() ? searchText : '';
-    if (nextLibraryQuery !== libraryQuery) {
-      libraryQuery = nextLibraryQuery; loaded = false; ++libraryEpoch; captures = []; next = '';
-      if (loading) refreshAgain = true;
-    }
     if (!loaded && !loading) queueMicrotask(() => { void refresh(); });
     const data = photosRender(st, currentApi);data.normalSelecting=true;if(data.v)data.v.notDeleted=true;
-    data.searchPlaceholder = 'Search by filename';
     const onAlbums=st.tab==='alb'&&!st.album;
     // Header: "Photos" / "Albums" with text tabs; Select in the Library and in albums.
     data.tabs=(data.tabs||[]).map((tab:Bag)=>({...tab,pick:()=>{if(mutating||sharing)return;selection=undefined;selectionTab=undefined;drag=undefined;currentApi.set({nativeMultiSelection:Date.now()});tab.pick?.();}}));
     data.libTab=!onAlbums&&!selection;
     // Access: one row while access is partial or denied; nothing once it is full.
-    data.libraryAccessControl=!browserMode&&!!libraryAccess&&libraryAccess.scope!=='full'&&!st.open&&!st.album&&!selection&&!onAlbums&&!st.searching;
+    data.libraryAccessControl=!browserMode&&!!libraryAccess&&libraryAccess.scope!=='full'&&!st.open&&!st.album&&!selection&&!onAlbums;
     data.libraryAccessBusy=requestingLibraryAccess;
     data.libraryAccessChoose=async()=>{if(requestingLibraryAccess)return;requestingLibraryAccess=true;currentApi.set({nativeLibraryAccessRevision:Date.now()});const before=libraryAccess?.scope;try{libraryAccess=await nativeLibrary.requestLibraryAccess();if(libraryAccess.scope===before&&before==='denied')await nativeLibrary.openLibrarySettings();retirePhotoRead();captures=[];preview=undefined;next='';loaded=false;cancelEdit();closeVideo();currentApi.set({open:null,nativePhotoSelection:null});await refresh();}catch{currentApi.toast('Photo access could not open. You can review it in Android settings.');}finally{requestingLibraryAccess=false;currentApi.set({nativeLibraryAccessRevision:Date.now()});}};
     data.copyRecovery=browserMode&&!!st.nativeCopyRecovery;data.openCopyRecovery=()=>void openCopyRecovery(currentApi);
@@ -1264,9 +1250,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     data.libraryError = st.nativeLibraryError || '';
     data.libraryRetry = () => { void refresh(); };
     // Library: newest first, grouped by day (Today, Yesterday, weekday dates), then by month.
-    const filenameFilter = searchText && !libraryQuery ? {text: searchText} : undefined;
-    const shownCaptures = st.filter ? [] : captures.filter(row =>
-      filterMatches(row, photosFilter, albumMembers) && filterMatches(row, filenameFilter));
+    const shownCaptures = st.filter ? [] : captures.filter(row=>filterMatches(row,photosFilter,albumMembers));
     if (photosFilter) { data.hasFilter = true; data.filterLabel = photosFilter.label; data.filterN = String(shownCaptures.length) + (next ? '+' : ''); data.clearFilter = () => { photosFilter = undefined; currentApi.set({ nativePhotosFilter: Date.now() }); }; }
     // Drag ranges follow the whole visible grid, across day headers.
     // Virtualised: sections off screen become one spacer each side; on-screen sections render only
@@ -1276,8 +1260,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     data.gridBefore = `height:${grid.before}px`; data.gridAfter = `height:${grid.after}px`;
     data.groups = [...sections, ...(data.groups || [])];
     const nothing = !data.groups.length && loaded && !loading && !st.nativeLibraryError;
-    const filtering = !!photosFilter || !!searchText;
-    data.empty = nothing && !filtering; data.noMatches = nothing && filtering;
+    data.empty = nothing && !photosFilter; data.noMatches = nothing && !!photosFilter;
     // An agent review (photo_library_review or photos_album_create) waits over the grid.
     const review = deviceLibrary.reviewCard();
     data.agentReview = review ? { title: review.title, detail: review.detail, confirmLabel: 'Continue', busy: review.busy, confirm: review.confirm, cancel: review.cancel }

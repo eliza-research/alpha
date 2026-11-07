@@ -55,21 +55,13 @@ for(const [orientation,viewport] of [['portrait',{width:412,height:915}],['lands
    const items=Array.from({length:9},(_,index)=>({...f.row,id:`m:external_primary:i:${91+index}`,name:`Synthetic photo ${index+1}.jpg`,date:f.row.date-index*60000}));
    w.Capacitor.nativePromise=async(plugin:string,method:string,input:any)=>{
     if(plugin==='AlphaPhotos'&&method==='list')return {items,next:''};
-    if(plugin==='AlphaPhotos'&&method==='listPermitted')return {
-     items:items.filter(item=>item.name.toLowerCase().includes(String(input.query||'').toLowerCase())),
-     next:'',access:{scope:'selected',images:'selected',videos:'selected'},
-    };
     return base(plugin,method,input);
    };
    f.emit();
   });
   await expect(page.getByRole('button',{name:/^Photo,/})).toHaveCount(9);
   await expect(page.getByRole('button',{name:'Library',exact:true})).toBeVisible();
-  await page.getByRole('button',{name:'Search photos',exact:true}).click();
-  const search=page.getByRole('textbox',{name:'Search photos',exact:true});
-  await expect(search).toHaveAttribute('placeholder','Search by filename');
-  await search.fill('Synthetic photo 2');
-  await expect(page.getByRole('button',{name:/^Photo,/})).toHaveCount(1);
+  await expect(page.getByRole('button',{name:'Search photos',exact:true})).toHaveCount(0);
   await expect(page.getByText(/up to 240 loaded items/)).toHaveCount(0);
   const grid=page.locator('.photo-grid').filter({visible:true}).first();await expect(grid).toHaveCSS('margin-left','12px');await expect(grid).toHaveCSS('margin-right','12px');
   expect(await page.evaluate(()=>(window as any).mediaFixture.calls.filter((call:any)=>call.method==='requestLibraryAccess').length)).toBe(0);
