@@ -11,6 +11,7 @@ import { workflowApprovalNotice, type WorkflowPhoneReview } from '../runtime/wor
 import type { WorkflowNoticeRoute } from '../runtime/device-actions';
 import { connectionController, agentAvailabilityNotice, residentAlwaysPresent } from '../runtime/connection-ui';
 import { testMocksEnabled } from '../build-flags';
+import { showAgentStatus } from '../runtime/agent-status-route';
 import { WorkflowAdmissionRejected, WorkflowMetadataRejected, WorkflowLifecycleRejected, WorkflowActivationRejected, type RemoteWorkflow, type WorkflowRun, type WorkflowApproval, type WorkflowApprovalReceipt } from '../runtime/workflow-protocol';
 import { describePhoneTrigger, normalizePhoneSpec, phoneTriggerClockChangeNote, type PhoneTimeTrigger } from '../runtime/phone-workflow-authoring';
 type Bag=Record<string,any>;
@@ -87,7 +88,7 @@ export function installWorkflowAdapter(Component:any,views:Bag){
  let noticeQuestion:(()=>void)|undefined;
  const clear=(keepList=false)=>{noticeQuestion?.();noticeQuestion=undefined;unadmitted=null;reviewResend=false;intentStore=null;recovery?.abort();recovery=null;authoring.close();phoneReview=null;phoneSteps=[];phoneConfirm=null;phoneStatus='';generation++;operation?.abort();operation=null;editor=null;removedList=false;lifecycleAvailable=false;lifecycleReview=false;unknownReview=false;reviewRerun=false;noSchedule=false;if(!keepList){flows=[];listPhase='idle';listSession=null;}homeVisit=null;detail=null;detailSession=null;runs=[];receipt=null;approvalReceipt=null;approvalReview=null;reviewRun=false;reviewActivation=false;reviewCancel=false;phase='idle';publish();};
  async function work(task:(client:NonNullable<ReturnType<typeof connectionController.getWorkflowClient>>['client'],signal:AbortSignal,valid:()=>boolean,sessionId:string,intents:WorkflowIntentStore)=>Promise<void>){
-  if(operation)return;const binding=connectionController.getWorkflowClient();if(!binding){connectionController.open();return;}
+  if(operation)return;const binding=connectionController.getWorkflowClient();if(!binding){showAgentStatus(owner);return;}
   const controller=new AbortController(),token=++generation;operation=controller;phase='busy';publish();const valid=()=>token===generation&&!controller.signal.aborted&&binding.sessionId===connectionController.getWorkflowClient()?.sessionId;
   const session=connectionController.getSnapshot().session;if(!session){operation=null;return;}const intents=new WorkflowIntentStore(session);intentStore=intents;
   try{await intents.load(controller.signal);if(!valid())return;await task(binding.client,controller.signal,valid,binding.sessionId,intents);}catch(error){if(valid()){status=(error instanceof WorkflowAdmissionRejected||error instanceof WorkflowMetadataRejected||error instanceof WorkflowLifecycleRejected||error instanceof WorkflowActivationRejected)?error.message:'Workflow request unavailable. Refresh history before repeating any run.';api?.toast(status);}}finally{if(valid()){try{await intents.load(controller.signal);}catch{intents.invalidate();}}if(token===generation){operation=null;phase='ready';publish();
@@ -185,7 +186,7 @@ export function installWorkflowAdapter(Component:any,views:Bag){
    homeWorkflowTitle:rows.length?'':!binding?'Connect your agent':listPhase==='failed'?'Couldn’t load workflows':listPhase==='ready'?'No workflows yet':'Loading workflows…',
    homeWorkflowTime:!binding?'Tap to connect':listPhase==='failed'?'Tap to retry':listPhase!=='ready'?'':saved.length>2?`+${saved.length-2} more`:saved.length?'View '+(saved.length===1?'workflow':'workflows'):'',
    homeWorkflowLabel:!binding?'Connect agent for workflows':listPhase==='failed'?'Retry workflows':'Open workflows',
-   goFlows:()=>{if(!binding){connectionController.open();return;}if(listPhase==='failed'){void refresh();return;}if(!operation)phase='idle';this.openView('workflows');}
+   goFlows:()=>{if(!binding){showAgentStatus(this);return;}if(listPhase==='failed'){void refresh();return;}if(!operation)phase='idle';this.openView('workflows');}
   };
  };
 

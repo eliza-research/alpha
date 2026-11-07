@@ -4,13 +4,15 @@ import {formatSchedule} from '../../../../.eliza/client-features/packages/ui/src
  * No runner, mirroring, task storage or automatic execution lives in this client. */
 import type {AutomationsMethod} from './automations-route-policy.ts';
 export type AutomationRequest = (path:string,method:AutomationsMethod,body:unknown|undefined,signal:AbortSignal)=>Promise<unknown>;
-export type AutomationKind = 'workflow'|'prompt'|'schedule'|'reminder'|'device-reminder';
+export type AutomationKind = 'workflow'|'prompt'|'schedule'|'reminder'|'routine'|'device-reminder';
+/** Effect receipt resource kinds whose applied, durable commit changes a record the unified list shows. */
+export const AUTOMATION_RESOURCE_KINDS=['lifeops.definition','lifeops.occurrence','lifeops.scheduled_task','trigger.task','workflow.definition'] as const;
 type ObjectValue = Record<string,any>;
 export interface AutomationRow {
  key:string;id:string;kind:AutomationKind;title:string;description:string;status:string;enabled:boolean;
  source:string;schedule:string;record:ObjectValue;workflowId?:string;triggerId?:string;occurrenceId?:string;
 }
-export interface AutomationIssue {source:'automations'|'schedules'|'reminders'|'device';message:string;unavailable:boolean}
+export interface AutomationIssue {source:'automations'|'schedules'|'reminders'|'definitions'|'device';message:string;unavailable:boolean}
 export interface AutomationSnapshot {rows:AutomationRow[];issues:AutomationIssue[]}
 export interface PromptDraft {title:string;instructions:string;triggerType:'once'|'cron'|'event';scheduledAt:string;cron:string;eventKind:string;timezone:string;originalScheduledAt?:string;originalEnabled?:boolean}
 export interface ReminderDraft {message:string;due:string;timezone:string;idempotencyKey:string}
@@ -71,9 +73,19 @@ function reminder(value:unknown):AutomationRow {
  const presentation={definition:row.definition,occurrence:row.occurrence??null,latestAttempt:row.latestAttempt??null},due=reminderDue(presentation);
  return {key:'reminder:'+id,id,kind:'reminder',title:text(definition.title)||'Reminder',description:text(definition.description),status:reminderDeliveryLabel(presentation),enabled:definition.status==='active',source:'Agent reminder',schedule:due?automationWhen(due,text(definition.timezone)||undefined):'No upcoming occurrence',record:row,...(occurrence?{occurrenceId:automationId(occurrence.id)}:{})};
 }
+/** Routines and goals the agent keeps as LifeOps definitions. Reminder-surface definitions are listed from
+ * /api/lifeops/reminders; the shared 'reminder:' key lets mergeAutomationRows drop any overlap. */
+function definition(value:unknown):AutomationRow|null {
+ const row=object(value),record=object(row.definition),id=automationId(record.id),surface=text(record.metadata?.ownerSurface);
+ const label=surface==='OWNER_GOALS'?'Goal':surface==='OWNER_ROUTINES'||(!surface&&['habit','routine'].includes(record.kind))?'Routine':'';
+ if(!label||record.status==='archived')return null;
+ const cadence=record.cadence&&typeof record.cadence==='object'?record.cadence:{},zone=text(record.timezone)||undefined;
+ const when=cadence.kind==='once'?automationWhen(Date.parse(text(cadence.dueAt)),zone)||'Once':({daily:'Daily',times_per_day:'Several times a day',weekly:'Weekly',interval:'Repeats'} as Record<string,string>)[text(cadence.kind)]||'';
+ return {key:'reminder:'+id,id,kind:'routine',title:text(record.title)||label,description:text(record.description),status:text(record.status),enabled:record.status==='active',source:'Agent '+label.toLowerCase(),schedule:when,record:row};
+}
 export function automationIssue(source:AutomationIssue['source'],error:unknown):AutomationIssue {
  const status=error&&typeof error==='object'&&'status' in error?Number(error.status):0;
- const name={automations:'Automations',schedules:'Scheduled items',reminders:'Agent reminders',device:'Device reminders'}[source];
+ const name={automations:'Automations',schedules:'Scheduled items',reminders:'Agent reminders',definitions:'Routines and goals',device:'Device reminders'}[source];
  const unavailable=status===404||status===501;
  return {source,unavailable,message:unavailable?`${name} are not available on this agent.`:status===401||status===403?`${name} require the original owner connection.`:`${name} could not refresh. Retry to check the current records.`};
 }
@@ -85,8 +97,8 @@ export function mergeAutomationRows(rows:AutomationRow[]):AutomationRow[] {
 export class AutomationsProtocol {
  constructor(private request:AutomationRequest){}
  async list(signal:AbortSignal):Promise<AutomationSnapshot>{
-  const sources=[['automations','/api/automations','automations',automation],['schedules','/api/lifeops/scheduled-tasks?ownerVisibleOnly=1','tasks',scheduled],['reminders','/api/lifeops/reminders','reminders',reminder]] as const;
-  const results=await Promise.allSettled(sources.map(async([source,path,key,parse])=>{const data=object(await this.request(path,'GET',undefined,signal));return {rows:list(data[key]).map(parse),issue:source==='automations'&&(text(data.workflowFetchError)||(Array.isArray(data.executionFetchErrors)&&data.executionFetchErrors.length))?{source:'automations' as const,unavailable:false,message:'Some workflow data or execution history could not refresh. Open the workflow to check it before running.'}:null};}));
+  const sources=[['automations','/api/automations','automations',automation],['schedules','/api/lifeops/scheduled-tasks?ownerVisibleOnly=1','tasks',scheduled],['reminders','/api/lifeops/reminders','reminders',reminder],['definitions','/api/lifeops/definitions','definitions',definition]] as const;
+  const results=await Promise.allSettled(sources.map(async([source,path,key,parse])=>{const data=object(await this.request(path,'GET',undefined,signal));return {rows:list(data[key]).flatMap(item=>{const row=parse(item);return row?[row]:[];}),issue:source==='automations'&&(text(data.workflowFetchError)||(Array.isArray(data.executionFetchErrors)&&data.executionFetchErrors.length))?{source:'automations' as const,unavailable:false,message:'Some workflow data or execution history could not refresh. Open the workflow to check it before running.'}:null};}));
   signal.throwIfAborted();const rows:AutomationRow[]=[],issues:AutomationIssue[]=[];
   results.forEach((result,index)=>{if(result.status==='fulfilled'){rows.push(...result.value.rows);if(result.value.issue)issues.push(result.value.issue);}else issues.push(automationIssue(sources[index][0],result.reason));});
   return {rows:mergeAutomationRows(rows),issues};
@@ -97,7 +109,7 @@ export class AutomationsProtocol {
   const title=draft.title.trim(),instructions=draft.instructions.trim();if(!title||!instructions)throw Error('Add a name and instructions.');
   const request:ObjectValue={kind:'prompt',displayName:title,instructions,triggerType:draft.triggerType,timezone:draft.timezone};
   if(draft.triggerType==='once'){const unchanged=!!id&&!!draft.originalScheduledAt&&draft.scheduledAt===automationLocalDateInput(draft.originalScheduledAt),date=unchanged?new Date(draft.originalScheduledAt!):localDate(draft.scheduledAt);if(!Number.isFinite(date.getTime())||(date.getTime()<=Date.now()&&!(unchanged&&draft.originalEnabled===false)))throw Error('Choose a future time.');request.scheduledAtIso=unchanged?draft.originalScheduledAt:date.toISOString();}
-  else if(draft.triggerType==='cron'){if(!draft.cron.trim())throw Error('Add a cron schedule.');request.cronExpression=draft.cron.trim();}
+  else if(draft.triggerType==='cron'){if(!draft.cron.trim())throw Error('Add a schedule.');request.cronExpression=draft.cron.trim();}
   else {if(!draft.eventKind.trim())throw Error('Add an event name.');request.eventKind=draft.eventKind.trim();}
   if(!id)Object.assign(request,{wakeMode:'inject_now',enabled:false});
   const result=object(await this.request(id?'/api/triggers/'+automationId(id):'/api/triggers',id?'PUT':'POST',request,signal)),trigger=object(result.trigger);automationId(trigger.id);
@@ -133,5 +145,7 @@ export class AutomationsProtocol {
   const result=object(await this.request('/api/lifeops/definitions/'+automationId(row.id),'PUT',payload,signal)),saved=object(result.definition);if(saved.id!==row.id||Object.entries(payload).some(([field,value])=>field!=='cadence'&&saved[field]!==value)||(payload.cadence&&saved.cadence?.dueAt!==payload.cadence.dueAt))throw Error('Reminder edit was not confirmed.');
  }
  async cancelReminder(id:string,signal:AbortSignal){const definition=object(object(await this.request('/api/lifeops/definitions/'+automationId(id),'PUT',{status:'archived'},signal)).definition);if(definition.id!==id||definition.status!=='archived')throw Error('Reminder cancellation was not confirmed.');}
+ async setDefinitionEnabled(id:string,enabled:boolean,signal:AbortSignal){const status=enabled?'active':'paused',saved=object(object(await this.request('/api/lifeops/definitions/'+automationId(id),'PUT',{status},signal)).definition);if(saved.id!==id||saved.status!==status)throw Error('Change was not confirmed.');}
+ async deleteDefinition(id:string,signal:AbortSignal){if(object(await this.request('/api/lifeops/definitions/'+automationId(id),'DELETE',undefined,signal)).deleted!==true)throw Error('Deletion was not confirmed.');}
  async snoozeReminder(id:string,signal:AbortSignal){if(object(object(await this.request('/api/lifeops/occurrences/'+automationId(id)+'/snooze','POST',{minutes:10},signal)).occurrence).id!==id)throw Error('Reminder snooze was not confirmed.');}
 }
