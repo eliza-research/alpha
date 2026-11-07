@@ -7,5 +7,10 @@ for(const app of ['Files','Photos'])test(`${app} search Ask composes the user's 
 });
 test('Home attention opens the local Inbox and tracks unread mail through reload',async({page})=>{
  await page.addInitScript(()=>{if(!localStorage.getItem('alpha.dev.app.inbox'))localStorage.setItem('alpha.dev.app.inbox',JSON.stringify({mails:[{id:'visible',name:'Reader',ini:'R',email:'reader@example.test',acct:'personal',k:1,time:'Now',unread:true,subj:'Visible unread',body:'Local body'},{id:'archived',name:'Reader',ini:'R',acct:'personal',unread:true,arch:true,subj:'Archived unread'},{id:'deleted',name:'Reader',ini:'R',acct:'personal',unread:true,del:true,subj:'Deleted unread'}],sent:[],localDrafts:[]}));});
- await page.goto('/?mode=dev');const attention=page.getByRole('button',{name:'Open Inbox: 1 unread email',exact:true});await expect(attention).toContainText('1');await attention.click();await page.getByRole('button',{name:'Unread, Reader, Visible unread',exact:true}).click();await expect(page.getByText('Local body',{exact:true}).last()).toBeVisible();await returnToApps(page);await expect(page.getByRole('button',{name:'Open Inbox: 0 unread emails',exact:true})).toBeVisible();await page.reload();await expect(page.getByRole('button',{name:'Open Inbox: 0 unread emails',exact:true})).toBeVisible();
+ await page.goto('/?mode=dev');const attention=page.getByRole('button',{name:'Open Inbox: 1 unread email',exact:true});await expect(attention).toContainText('1');await attention.click();await page.getByRole('button',{name:'Unread, Reader, Visible unread',exact:true}).click();await expect(page.getByText('Local body',{exact:true}).last()).toBeVisible();await returnToApps(page);await expect(page.locator('[data-alpha-layer="home"] [data-alpha-home-inbox]')).toHaveCount(0);
+ // A fully read mailbox collapses its attention card, while the app tile remains.
+ await page.reload();const inbox=page.getByRole('button',{name:'Inbox',exact:true});await expect(inbox).toBeVisible();
+ await expect(page.locator('[data-alpha-layer="home"] [data-alpha-home-inbox]')).toHaveCount(0);
+ await inbox.click();await expect(page.getByRole('button',{name:'Reader, Visible unread',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Unread, Reader, Visible unread',exact:true})).toHaveCount(0);
 });
