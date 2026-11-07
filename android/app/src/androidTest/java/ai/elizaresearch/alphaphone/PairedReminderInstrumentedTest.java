@@ -75,7 +75,7 @@ public final class PairedReminderInstrumentedTest {
     }
    }catch(Exception|AssertionError error){primary=error;throw error;}
    finally{try{
-    if(created){ReminderTestAccess.cancel(c,id);synchronized(ReminderTestAccess.class){ReminderTestAccess.Envelope e=new ReminderTestAccess.Envelope(c);e.value.getJSONObject("records").remove(id);e.save();}assertNull(ReminderTestAccess.read(c,id));}
+    if(created){ReminderTestAccess.cancel(c,id);ReminderTestAccess.removeFixture(c,java.util.Collections.singletonList(id),java.util.Collections.emptyList());assertNull(ReminderTestAccess.read(c,id));}
     if(admitted)NotesSecureFixture.call("Promise.all([Capacitor.Plugins.AlphaConnection.secureRemove({slot:"+JSONObject.quote("remote:"+ORIGIN)+"}),Capacitor.Plugins.AlphaConnection.secureRemove({slot:"+JSONObject.quote(slot)+"})]).then(()=>({removed:true}))");
     NotesSecureFixture.evaluate("(()=>{const previous="+previous+";if(previous===null)localStorage.removeItem('alpha.connection.selection.v1');else localStorage.setItem('alpha.connection.selection.v1',previous);})()");scenario.recreate();until("document.querySelector('.os')",30000);
    }catch(Exception|AssertionError cleanup){if(primary!=null)primary.addSuppressed(cleanup);else throw cleanup;}}

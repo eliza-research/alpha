@@ -38,7 +38,7 @@ public class ReminderTimingInstrumentedTest {
  private void noNotification(Context c,String id){for(android.service.notification.StatusBarNotification n:c.getSystemService(NotificationManager.class).getActiveNotifications())assertNotEquals(id,n.getTag());}
  private void cleanup(Context c)throws Exception{
   for(String id:ids)ReminderTestAccess.cancel(c,id);
-  synchronized(ReminderTestAccess.class){ReminderTestAccess.Envelope e=new ReminderTestAccess.Envelope(c);for(String id:ids)e.value.getJSONObject("records").remove(id);for(String op:operations)e.value.getJSONObject("operations").remove(op);e.save();}
+  ReminderTestAccess.removeFixture(c,ids,operations);
  }
  private JSONObject bridge(JSONObject args)throws Exception{return bridge("scheduleReminder",args);}
  private JSONObject bridge(String method,JSONObject args)throws Exception{return pluginBridge("DailyApps",method,args);}

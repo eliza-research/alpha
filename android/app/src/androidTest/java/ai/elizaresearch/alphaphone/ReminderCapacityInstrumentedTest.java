@@ -20,11 +20,12 @@ public class ReminderCapacityInstrumentedTest {
  @Test public void fullStorePreservesUnresolvedAndDamagedNeighborsUntilExplicitCancellation() throws Exception {
   Context base = InstrumentationRegistry.getInstrumentation().getTargetContext();
   String prefix = "capacity_" + UUID.randomUUID().toString().replace("-", "");
-  // Isolate preferences only. AlarmManager, PendingIntents and notification cancellation
-  // still use real Android services; every fixture has a unique ID and is cancelled below.
+  // Every preference (rows, legacy rows and the restored-boot marker) is prefixed, and isolate()
+  // gives the store its own tap slot, channels and alarm routes. AlarmManager, PendingIntents and
+  // notifications still use real Android services; every fixture has a unique ID and is cancelled below.
   Context context = new ContextWrapper(base) {
    @Override public SharedPreferences getSharedPreferences(String name, int mode) {
-    return super.getSharedPreferences(name.equals("alpha-local-reminders-v1")||name.equals("alpha-reminder-envelope-v1") ? prefix+"_"+name : name, mode);
+    return super.getSharedPreferences(prefix+"_"+name, mode);
    }
   };
 
@@ -71,6 +72,7 @@ public class ReminderCapacityInstrumentedTest {
    for (String id : ids) ReminderTestAccess.cancel(context, id);
    ReminderTestAccess.release(context);
    assertTrue(base.getSharedPreferences(prefix+"_alpha-reminder-envelope-v1",0).edit().clear().commit());assertTrue(base.getSharedPreferences(prefix+"_alpha-local-reminders-v1",0).edit().clear().commit());
+   assertTrue(base.getSharedPreferences(prefix+"_alpha-reminder-envelope-v1_restored_boot",0).edit().clear().commit());
   }
  }
 }
