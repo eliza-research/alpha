@@ -713,12 +713,14 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   const chatCovers = () => ['sheet', 'full'].includes(api?.S.chat);
   /** When the chat sheet started covering Camera; the session stays bound for CHAT_GRACE_MS after that. */
   let chatCoveredAt: number | undefined, chatTimer: number | undefined;
+  /** Set by the grace timer itself, so a wall clock set back while the chat covers Camera cannot extend the grace. */
+  let chatGraceOver = false;
   function trackChat() {
     const covered = cameraViewVisible() && chatCovers();
-    if (covered && chatCoveredAt === undefined) { chatCoveredAt = Date.now(); chatTimer = window.setTimeout(() => { chatTimer = undefined; schedule(); }, CHAT_GRACE_MS); }
-    else if (!covered && chatCoveredAt !== undefined) { chatCoveredAt = undefined; window.clearTimeout(chatTimer); chatTimer = undefined; }
+    if (covered && chatCoveredAt === undefined) { chatCoveredAt = Date.now(); chatGraceOver = false; chatTimer = window.setTimeout(() => { chatTimer = undefined; chatGraceOver = true; schedule(); }, CHAT_GRACE_MS); }
+    else if (!covered && chatCoveredAt !== undefined) { chatCoveredAt = undefined; chatGraceOver = false; window.clearTimeout(chatTimer); chatTimer = undefined; }
   }
-  const chatGrace = () => chatCoveredAt === undefined || Date.now() - chatCoveredAt < CHAT_GRACE_MS;
+  const chatGrace = () => chatCoveredAt === undefined || (!chatGraceOver && Date.now() - chatCoveredAt < CHAT_GRACE_MS);
   const active = () => cameraViewVisible() && (requestedCaptureActive || !chatCovers() || chatGrace());
   /** The one photo being written natively, if any; releasing the preview waits for it. */
   let photoWrite: Promise<unknown> | undefined;

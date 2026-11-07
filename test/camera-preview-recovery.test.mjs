@@ -188,6 +188,12 @@ function fixture({permission=false,failing=true,receipt={width:1280,height:720,d
  f.setView({chat:'sheet'});f.api.syncCamera();f.clock.now+=4000;f.setView({chat:'hidden'});f.api.syncCamera();await settle();assert.equal(f.calls.starts,2);assert.equal(f.calls.stops,1);
  f.env.window.close();
 }
+// ChatGraceReleases: the grace timer ends the grace even if the wall clock was set back meanwhile.
+{
+ const f=fixture({failing:false});await f.api.start();f.setView({chat:'sheet'});f.api.syncCamera();await settle();
+ const grace=[...f.timers.values()].find(t=>t.ms===f.api.CHAT_GRACE_MS);f.clock.now-=60000;grace.fn();f.api.syncCamera();await settle();
+ assert.equal(f.api.state().phase,'off','Released when the timer fires, whatever the wall clock says');f.env.window.close();
+}
 // An agent capture while the chat holds Camera past the grace starts the preview again and captures.
 {
  const f=fixture({failing:false});await f.api.start();f.setView({chat:'sheet'});f.api.syncCamera();f.clock.now+=f.api.CHAT_GRACE_MS;f.api.syncCamera();await settle();assert.equal(f.api.state().phase,'off');
