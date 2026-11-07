@@ -190,6 +190,24 @@ test('long-pressing an app offers Add to Home and App info; Home order persists 
   await expect.poll(() => calls(page, 'launch')).toEqual([{ packageName: 'com.vendor.notes', activityName: 'com.vendor.notes.Launch' }]);
 });
 
+test('a long-press menu on a tile at the bottom edge of a full drawer is shown whole, not clipped by the scroller', async ({ page }) => {
+  const many: App[] = Array.from({ length: 40 }, (_, i) => ({ packageName: `org.example.app${String(i).padStart(2, '0')}`, activityName: 'Main', label: `App ${String(i).padStart(2, '0')}` }));
+  await nativeStub(page, many);
+  await page.goto('/');
+  const drawer = await openDrawer(page);
+  const scroller = drawer.locator('[data-installed-apps-scroll]');
+  const tile = drawer.locator('[data-launcher-app]').nth(32);
+  // Scroll so this tile's row ends just above the scroller's bottom edge: no room for a menu below it.
+  await tile.evaluate(node => { const scroller = node.closest('[data-installed-apps-scroll]') as HTMLElement; scroller.scrollTop += node.getBoundingClientRect().bottom - (scroller.getBoundingClientRect().bottom - 4); });
+  await tile.locator('> button').dispatchEvent('contextmenu');
+  const menu = drawer.getByRole('menu');
+  await expect(menu).toBeVisible();
+  const inside = await menu.evaluate(node => { const room = node.closest('[data-installed-apps-scroll]')!.getBoundingClientRect(), box = node.getBoundingClientRect(); return box.top >= room.top - 1 && box.bottom <= room.bottom + 1; });
+  expect(inside, 'the whole menu is inside the scroller').toBe(true);
+  await menu.getByRole('menuitem', { name: 'App info', exact: true }).dispatchEvent('click');
+  await expect.poll(() => calls(page, 'openAppInfo')).toHaveLength(1);
+  expect(await scroller.evaluate(node => node.scrollTop)).toBeGreaterThan(0);
+});
 test('Home edit mode removes and rearranges icons, "+" restores hidden views, and Done persists', async ({ page }, info) => {
   await nativeStub(page, ALL, {}, false);
   await page.goto('/');

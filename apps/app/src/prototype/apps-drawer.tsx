@@ -48,6 +48,18 @@ const mask = (url: string, size: number): CSSProperties => {
   const value = `url("${url}") center / contain no-repeat`;
   return {display: 'block', width: size, height: size, flexShrink: 0, backgroundColor: 'currentColor', mask: value, WebkitMask: value};
 };
+/**
+ * Keeps an opened menu inside the scroller that clips it: above its tile when there is no room
+ * below, otherwise scrolled into view (the menu's backdrop blocks scrolling by hand).
+ */
+function placeMenu(menu: HTMLDivElement | null) {
+  const scroller = menu?.closest<HTMLElement>('[data-installed-apps-scroll]'), tile = menu?.parentElement;
+  if (!menu || !scroller || !tile) return;
+  const room = scroller.getBoundingClientRect(), box = menu.getBoundingClientRect(), at = tile.getBoundingClientRect();
+  if (box.bottom <= room.bottom && box.top >= room.top) return;
+  if (box.bottom > room.bottom && at.top - box.height - 4 >= room.top) { menu.style.top = 'auto'; menu.style.bottom = 'calc(100% + 4px)'; menu.dataset.launcherMenuAbove = ''; return; }
+  menu.scrollIntoView({block: 'nearest'});
+}
 const menuItem: CSSProperties = {display: 'flex', alignItems: 'center', gap: 10, width: '100%', minHeight: 44, padding: '0 10px', border: 0, borderRadius: 9, background: 'none', color: 'inherit', font: 'inherit', fontSize: 14, textAlign: 'left', cursor: 'pointer'};
 
 export function AppsDrawer({launcher, builtinPrefix, query, onQuery, onClose, menu, onMenu, onAddHome, onAppInfo, glyphs, style, onKeyDown, className, ...attributes}: AppsDrawerProps) {
@@ -111,7 +123,7 @@ export function AppsDrawer({launcher, builtinPrefix, query, onQuery, onClose, me
                   {detail.length ? <span style={{fontSize: 11, color: 'var(--mut, var(--muted))', maxWidth: '100%', textAlign: 'center', overflowWrap: 'anywhere'}}>{detail.join(' · ')}</span> : null}
                 </button>
                 {open && target ? (
-                  <div role="menu" aria-label={app.label} data-launcher-menu="" style={{position: 'absolute', top: 72, left: '50%', transform: 'translateX(-50%)', zIndex: 2, minWidth: 170, padding: 6, borderRadius: 14, background: 'var(--bg)', color: 'var(--fg, var(--text))', boxShadow: '0 10px 30px rgba(0,0,0,.2)'}}>
+                  <div role="menu" aria-label={app.label} data-launcher-menu="" ref={placeMenu} style={{position: 'absolute', top: 72, left: '50%', transform: 'translateX(-50%)', zIndex: 2, minWidth: 170, padding: 6, borderRadius: 14, background: 'var(--bg)', color: 'var(--fg, var(--text))', boxShadow: '0 10px 30px rgba(0,0,0,.2)'}}>
                     <button type="button" role="menuitem" disabled={onHome} onClick={() => { onMenu(null); if (!onHome) onAddHome(target); }} style={{...menuItem, opacity: onHome ? .5 : 1}}>
                       <span aria-hidden="true" style={mask(glyphs.plus, 18)} />{onHome ? 'On Home' : 'Add to Home'}
                     </button>
