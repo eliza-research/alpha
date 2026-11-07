@@ -1,5 +1,5 @@
 import {findMapsCardRegions,type MapsCardPlace,type MapsCardSpec} from '../../../../.eliza/client-features/packages/ui/src/components/chat/message-maps-parser.ts';
-import {guidanceDistance,guidanceDuration} from '../maps/guidance';
+import {guidanceDistance,guidanceDuration} from '../maps/guidance.ts';
 import {systemNoticeText} from '../../../../.eliza/client-features/packages/core/src/types/system-notice.ts';
 /** Display only. Stored messages, proposals and journal receipts are never rewritten. */
 type Message = Record<string, any>;

@@ -31,7 +31,11 @@ test('every retained MVP view has a live state and a populated state in the swee
     const title = view[0].toUpperCase() + view.slice(1);
     assert.match(liveBlock, new RegExp(`live\\('[^']*', \\['${title}'`), `live state opens ${title}`);
     assert.match(mockBlock, new RegExp(`'${view}'`), `fixture state opens ${view}`);
-    assert.match(mockBlock, new RegExp(`'${view}:[a-z]+'`), `fixture state opens a ${view} subview`);
+    if (view === 'settings') {
+      assert.ok(liveBlock.includes("live('Settings about', ['Settings', 'About'])"), 'the real Settings About page is swept');
+    } else {
+      assert.match(mockBlock, new RegExp(`'${view}:[a-z]+'`), `fixture state opens a ${view} subview`);
+    }
   }
   for (const surface of ["live('Home')", "live('Apps'", "live('Conversation'", "'shade'", "'sheet'", "'full'"])
     assert.ok(states.includes(surface), `${surface} is swept`);
