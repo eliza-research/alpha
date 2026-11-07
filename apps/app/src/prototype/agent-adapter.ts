@@ -49,7 +49,7 @@ import { isMapsOperation } from '../runtime/maps-contract';
 import { readMapsSelection } from '../maps/agent-context';
 import { isLibraryOperation, type LibraryAgentResult } from '../runtime/photo-library';
 import { isPhotosViewOperation } from '../runtime/photos-view-contract';
-import { isFilesOperation, filesAgent, filesContextAllowed } from '../runtime/files-agent-contract';
+import { isFilesOperation, filesContextAllowed, type FilesAgentRunner } from '../../../../.eliza/client-features/plugins/plugin-files/src/browser/files-agent-contract.ts';
 import { deviceLibraryAgent, LibraryAgentRefusal } from './photo-library-adapter';
 import {isReminderOperation,validateReminderResult} from '../../../../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/reminder-contract.ts';
 import { SecureNotesStore, notesDraftBase, applyNotesDraft, notesDraftConflicts, NotesStorageFull, SECURE_NOTES_SLOT, SECURE_NOTES_DRAFT_SLOT, type NotesDraft, type NotesDraftReason } from '../runtime/notes-secure-store';
@@ -812,7 +812,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       if(isFilesOperation(operation)){
         // Files tools (PLAN section 4): filter/open only change what Files shows; every other
         // tool reached here after the owner approved its proposal card.
-        const files=filesAgent();
+        const files=this.filesAgent as FilesAgentRunner|undefined;
         if(!files||!filesContextAllowed(operation,expectedContext)||document.hidden)return {status:'failed',summary:'Open Files on the unlocked phone. Nothing was changed.'};
         signal.throwIfAborted();
         return await files.run(operation,signal);

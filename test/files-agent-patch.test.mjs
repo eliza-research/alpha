@@ -68,7 +68,7 @@ import assert from 'node:assert/strict';
 import {validateDeviceOperation, proposalContextNotice} from './client-coordinator.ts';
 import {deviceOperationSupportedByCapabilities} from './contract.ts';
 import * as shared from './files-browser-contract.ts';
-import * as alpha from ${JSON.stringify(path.join(root, 'apps/app/src/runtime/files-agent-contract.ts'))};
+import * as alpha from ${JSON.stringify(path.join(root, '.eliza/client-features/plugins/plugin-files/src/browser/files-agent-contract.ts'))};
 const policy = {admitView: () => true, parseWorkflowRead: () => { throw Error('no'); }};
 const good = [
   {type: 'files_filter', text: 'lease', kind: 'pdf', folder: 'Download'},

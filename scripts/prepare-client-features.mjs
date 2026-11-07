@@ -104,6 +104,8 @@ export const CLIENT_FEATURE_PATHS = [
   'packages/ui/src/mobile-shell/photos-view.ts',
   'plugins/plugin-files/src/browser/storage-model.ts',
   'plugins/plugin-files/src/browser/storage-volume.ts',
+  'plugins/plugin-files/src/browser/files-agent-contract.ts',
+  'plugins/plugin-files/src/browser/files-browser-adapter.ts',
   'packages/ui/src/mobile-shell/application-catalog.ts',
   'packages/ui/src/mobile-shell/core.ts',
   'packages/ui/src/mobile-shell/eliza-product.ts',

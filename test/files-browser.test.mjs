@@ -1,12 +1,9 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from 'node:module';
+import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
 import {fixture,runJvm,jsonJarSkip} from './fixtures/jvm-tools.mjs';
 // Files browser rules (design/view-refresh-2026-11/PLAN.md section 4; spec files-browser Design.cfg).
-const url=(code)=>'data:text/javascript;base64,'+Buffer.from(code).toString('base64');
-const strip=path=>stripTypeScriptTypes(readFileSync(path,'utf8'));
-const storageUrl=url(strip('.eliza/client-features/plugins/plugin-files/src/browser/storage-model.ts'));
-const storage=await import(storageUrl);
+const storage=await import('../.eliza/client-features/plugins/plugin-files/src/browser/storage-model.ts');
 const {BrowserStorageVolume}=await import('../.eliza/client-features/plugins/plugin-files/src/browser/storage-volume.ts');
-const contract=await import(url(strip('apps/app/src/runtime/files-agent-contract.ts').replace("from '../../../../.eliza/client-features/plugins/plugin-files/src/browser/storage-model'",`from '${storageUrl}'`)));
+const contract=await import('../.eliza/client-features/plugins/plugin-files/src/browser/files-agent-contract.ts');
 const TRASH_FOLDER='.Trash-alpha';
 const nativeStorage='vendor/eliza/plugins/plugin-native-filesystem/android/src/main/java/ai/eliza/plugins/filesystem/browser';
 /** The browser file library's contract (plugin-files): unique names per folder, a move or
@@ -162,7 +159,7 @@ test('Files shows no picker tiles, search box, Recents or instruction subtitles'
  for(const gone of ['Search files','files.recent','files.locs','recentEmptyText','files.storageText','Choose folder','Import folder','Receipts'])assert.equal(files.includes(gone),false,gone);
  const model=readFileSync('apps/app/src/prototype/model.js','utf8'),module=model.slice(model.indexOf('registerView("files"'),model.indexOf('render: function (st, api) {\n    var files'));
  assert.equal(/reply:/.test(module),false,'no fixture reply() regexes for files');
- const adapter=readFileSync('apps/app/src/prototype/files-browser-adapter.ts','utf8');
+ const adapter=readFileSync('.eliza/client-features/plugins/plugin-files/src/browser/files-browser-adapter.ts','utf8');
  assert.equal(/ACTION_OPEN_DOCUMENT|pickFiles|action:'files'/.test(adapter),false,'no picker behind a Browse entry');
 });
 
@@ -176,7 +173,7 @@ test('category counts and folder groups cover the whole category, not only the l
  const counted=[{folder:'DCIM/Camera',count:1850,latest:listed[0]},{folder:'Pictures/Old',count:150,latest:row('Pictures/Old/z.jpg',1)}];
  assert.deepEqual(storage.groupByFolder(listed,counted).map(g=>[g.name,g.count]),[['Camera',1850],['Old',150]]);
  assert.deepEqual(storage.groupByFolder(listed).map(g=>[g.name,g.count]),[['Camera',2]],'without counts the listed rows are grouped');
- const adapter=readFileSync('apps/app/src/prototype/files-browser-adapter.ts','utf8');
+ const adapter=readFileSync('.eliza/client-features/plugins/plugin-files/src/browser/files-browser-adapter.ts','utf8');
  assert.match(adapter,/next\[id\] = value\.count \?\? value\.entries\?\.length \?\? 0/);
  assert.match(adapter,/groupByFolder\(entries, categoryFolders\)/);
  const catalog=readFileSync(`${nativeStorage}/StorageCatalog.java`,'utf8');
@@ -204,7 +201,7 @@ test('every Browse category id has a native answer on Android; Downloads is the 
  assert.match(instrumented,/for\(String id:StorageCatalog\.CATEGORY_IDS\)/,'the device test answers every category id');
 });
 test('the agent filter queries documents as their types and folders by a walk, not the newest rows of any type',()=>{
- const adapter=readFileSync('apps/app/src/prototype/files-browser-adapter.ts','utf8');
+ const adapter=readFileSync('.eliza/client-features/plugins/plugin-files/src/browser/files-browser-adapter.ts','utf8');
  assert.match(adapter,/value\.kind === 'document' \? \{documents: true\} : value\.kind === 'folder' \? \{folders: true\}/);
  const catalog=readFileSync(`${nativeStorage}/StorageCatalog.java`,'utf8');
  assert.match(catalog,/if\(documents\)\{[^\n]*args\.add\(DOCUMENT_TYPES\[i\]\)[^\n]*MIME_TYPE\+" IN \("/);
@@ -215,7 +212,7 @@ test('the agent filter queries documents as their types and folders by a walk, n
  assert.deepEqual([...catalogDocs].sort(),[...storage.DOCUMENT_MIME_TYPES].sort(),'native and renderer agree on document types');
 });
 test('each mounted volume is its own Storage row and tree; Trash spans volumes and acts on the row\'s volume',()=>{
- const adapter=readFileSync('apps/app/src/prototype/files-browser-adapter.ts','utf8');
+ const adapter=readFileSync('.eliza/client-features/plugins/plugin-files/src/browser/files-browser-adapter.ts','utf8');
  assert.match(adapter,/vols: volumes\.map\(volume => \(\{[^\n]*go: \(\) => go\(\{kind: 'folder', path: '', \.\.\.onVolume\(volume\.primary \? undefined : volume\.id\)\}\)/);
  assert.match(adapter,/storageList\(\{path: at\.path, \.\.\.onVolume\(at\.volume\)\}\)/);
  assert.match(adapter,/\[undefined, \.\.\.extraVolumes\(\)\]\.map\(async volume =>/);

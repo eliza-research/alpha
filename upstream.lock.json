@@ -1,6 +1,6 @@
 {
   "url": "https://github.com/elizaOS/eliza.git",
-  "commit": "07157fd21db2aa527efcc161823f9b674f446479",
+  "commit": "80a81a6ca1dc7d327ea55f758117b19ee29e31af",
   "appSource": "packages/app",
   "nativeSystemSource": "plugins/plugin-native-system",
   "osSource": "packages/os"
