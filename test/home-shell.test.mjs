@@ -114,7 +114,7 @@ test('the drawer menu offers Add to Home (or On Home) and App info for exactly t
     shell.launcher.toggleFavorite(work);
     home.setState({drawerMenu:key});
     drawer=renderToStaticMarkup(home.renderVals().allAppsDrawer);
-    assert.match(drawer,/role="menuitem" disabled=""[^>]*>.*?On Home<\/button>/,'an app already on Home cannot be added again');
+    assert.match(drawer,/role="menuitem"[^>]* disabled=""[^>]*>.*?On Home<\/button>/,'an app already on Home cannot be added again');
     // The dialer's own entry keeps its menu on the installed tile.
     home.setState({drawerMenu:'com.android.dialer/com.android.dialer.Main'});
     assert.match(renderToStaticMarkup(home.renderVals().allAppsDrawer),/role="menu" aria-label="Dialer"/);
