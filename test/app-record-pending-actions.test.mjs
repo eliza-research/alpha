@@ -44,3 +44,19 @@ test('actual Notes binding accepts the existing app-record port independently of
  const shell={live:true,notesSourceMode:'canonical',setState(){}};sync(shell);await shell.notesReady;assert.equal(bindings,1);assert.equal(starts,1);assert.equal(shell.canonicalNotesUi.current,true);sync(shell);assert.equal(bindings,1);
  selected=null;sync(shell);await shell.notesReady;assert.match(updates.at(-1).storageStatus,/unavailable for this agent connection/);assert.equal(bindings,1);
 });
+test('Review event from an agent note goes through Calendar admission with its note link; refusal opens nothing',async()=>{
+ const origin={version:2,noteId:'n1',revision:'c'.repeat(64)};
+ for(const admitted of [true,false]){
+  const toasts=[],opened=[],reviewed=[];
+  class Controller{current=true;pending=false;revision=1;snapshot={notes:[],trash:[],revision:1};constructor(_port,hooks){this.hooks=hooks;}listen(){}refresh(){return Promise.resolve(this.snapshot);}hasViewNote(){return true;}viewNote(id){return {id,title:'Venue plan'};}retire(){this.current=false;}}
+  class Editor{draft=null;constructor(_controller,hooks){this.hooks=hooks;}open(id){this.draft={id,token:'t',version:0,title:'Venue plan',body:''};this.hooks.changed();}close(){this.draft=null;}}
+  const module=new Function('parseNoteFormat','projectNoteForModel','noteScheduleDraft','agentPendingText','agentAvailabilityNotice','DailyApps','CanonicalNotesController','CanonicalNotesEditor','window',code+';return {installCanonicalNotesView,CanonicalNotesUi};')(x=>x,x=>x,async()=>({status:'ready',draft:{title:'',notes:'Book the venue',origin}}),()=>'',()=>'',{},Controller,Editor,{});
+  class Shell{live=true;notesSourceMode='canonical';vget(){return {};}reviewScannedCalendarDraft(draft){reviewed.push(draft);return admitted;}api(){return{toast:x=>toasts.push(x),isActive:()=>true,get:()=>({}),open:(...args)=>opened.push(args),set:()=>true,notesSourceOptions:[]};}}
+  const shell=new Shell();shell.canonicalNotesUi=new module.CanonicalNotesUi({},{paint(){},review(){}});shell.canonicalNotesUi.editor.open('n1');
+  const views={notes:{render:()=>({ed:{}})}};module.installCanonicalNotesView(Shell,views);
+  views.notes.render({},shell.api('notes')).ed.draftEvent();await new Promise(resolve=>setTimeout(resolve,0));
+  assert.equal(reviewed.length,1);assert.deepEqual(reviewed[0].origin,origin);assert.equal(reviewed[0].notes,'Book the venue');assert.equal(reviewed[0].alert,null);
+  assert.deepEqual(opened,[],'Calendar admission opens Calendar itself');
+  assert.match(toasts[0],admitted?/Nothing is on your calendar yet/:/can't open this event yet/);
+ }
+});

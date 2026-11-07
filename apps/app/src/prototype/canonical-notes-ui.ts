@@ -156,7 +156,8 @@ export class CanonicalNotesUi {
   const id=this.editor.draft?.id;this.reviewPending=false;this.failure=null;this.editor.close();
   try{await this.controller.refresh();if(id&&this.controller.hasViewNote(id))this.editor.open(id);}catch{this.needsReview();}
  }
- /** A reviewed Calendar event or reminder draft from the open record. Nothing is written until Save in Calendar; the saved record keeps the draft's canonical origin link. */
+ /** A reviewed Calendar event or reminder draft from the open record. Nothing is written until Save in Calendar; the saved record keeps the draft's canonical origin link.
+  * An event goes through Calendar's own admission, which binds it to Agent Calendar's owner and source or opens the device draft. */
  private async scheduleDraft(id:string,kind:NoteScheduleKind,api:Bag):Promise<void>{
   if(this.editor.draft?.version&&!await this.leave(id))return;
   const note=this.controller.viewNote(id);if(!note||!api.isActive()||this.open!==id)return;
@@ -164,7 +165,8 @@ export class CanonicalNotesUi {
   if(!this.controller.current||!api.isActive()||this.open!==id)return;
   if(result.status!=='ready'){api.toast(result.message);return;}
   const {draft}=result,shared={id:null,title:draft.title,off:1,t:9,d:1,where:'',video:false,who:[],repeat:'none',notes:draft.notes,origin:draft.origin};
-  api.open('calendar',{calendarAuthority:api.get('calendar').calendarAuthority,form:kind==='event'?{...shared,creationId:crypto.randomUUID(),separateCreation:false,cal:'native:local',alert:null}:{...shared,cal:'alpha-reminders',alert:0},open:null,month:null,day:1},'hidden');
+  if(kind==='event'){if(!api.reviewCalendarDraft?.({...shared,creationId:crypto.randomUUID(),separateCreation:false,cal:'native:local',alert:null})){api.toast("Calendar can't open this event yet. Finish any open Calendar draft and try again.");return;}}
+  else api.open('calendar',{calendarAuthority:api.get('calendar').calendarAuthority,form:{...shared,cal:'alpha-reminders',alert:0},open:null,month:null,day:1},'hidden');
   api.toast(kind==='event'?'Review the time, then Save. Nothing is on your calendar yet.':'Review the time, then Save. Nothing scheduled yet.');
  }
  /** Speech recognition through the platform port; the transcript lands at the caret of the note it was started from. */
@@ -223,8 +225,8 @@ export function installCanonicalNotesView(Component:any,views:Record<string,Bag>
  prototype.vget=function(key:string){const state=get.call(this,key);return key==='notes'&&this.canonicalNotesUi?this.canonicalNotesUi.renderState(state):state;};
  prototype.api=function(key:string){
   const value=api.call(this,key);if(key!=='notes')return value;
-  if(this.canonicalNotesUi)return this.canonicalNotesUi.api(value);
-  // Agent Notes are the default source (agent-adapter.ts); Older notes is an explicit choice.
+  if(this.canonicalNotesUi)return this.canonicalNotesUi.api({...value,reviewCalendarDraft:(draft:Bag)=>this.reviewScannedCalendarDraft?.(draft)??false});
+  // Agent Notes are the default source (agent-adapter.ts); Previous notes is an explicit choice.
   if(this.notesSourceMode==='legacy')return value;
   // Waiting for a connection: an attempted action explains why, nothing is drafted.
   return {...value,notesSourceMode:'canonical',notesTrash:undefined,moveNoteToTrash:()=>false,set:(patch:Bag)=>{if(patch.compose||patch.record===true){value.toast(this.vget('notes').storageStatus||agentPendingText(undefined,UNAVAILABLE));return false;}return value.set(patch);}};
@@ -232,7 +234,7 @@ export function installCanonicalNotesView(Component:any,views:Record<string,Bag>
  const notes=views.notes,render=notes.render;
  notes.render=(state:Bag,value:Bag)=>{
   const ui:CanonicalNotesUi|undefined=value.canonicalNotes,sources=value.notesSourceOptions??[],older=sources.find((source:Bag)=>source.id==='legacy'),main=sources.find((source:Bag)=>source.id==='canonical');
-  if(value.notesSourceMode!=='canonical')return {...render(state,value),notesTitle:'Older notes',primaryNotes:false,returnToNotesAction:main?.choose};
+  if(value.notesSourceMode!=='canonical')return {...render(state,value),notesTitle:'Previous notes',primaryNotes:false,returnToNotesAction:main?.choose};
   const olderNotesAction=older&&!older.selected?older.choose:null;
   if(ui)return {...ui.decorate(render(state,value),value,state),olderNotesAction,listActions:true};
   // A pending New note request waits for the binding instead of drafting into no collection.

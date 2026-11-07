@@ -59,7 +59,7 @@ async function openCalendarItem(page:Page,name:string){
 /** Reload and open Older notes, where the linked recordings live, so links can name their note. */
 async function reloadWithOlderNotes(page:Page){
  await page.reload({waitUntil:'domcontentloaded'});await selectLegacyNotes(page);
- await expect(page.getByRole('heading',{name:'Older notes',exact:true})).toBeVisible();await returnToApps(page);
+ await expect(page.getByRole('heading',{name:'Previous notes',exact:true})).toBeVisible();await returnToApps(page);
 }
 async function openRecording(page:Page,name:string){
  await returnToApps(page);await selectLegacyNotes(page);await button(page,`Open ${name}`).click();
@@ -113,7 +113,7 @@ test('an event draft writes nothing until Save, then links to exactly the note i
  // the note lives without claiming it is gone; Open note opens Older notes and then that note.
  await page.reload({waitUntil:'domcontentloaded'});
  await openCalendarItem(page,'Water the plants');
- await expect(page.getByText('From a voice note in Older notes',{exact:true})).toBeVisible();
+ await expect(page.getByText('From a voice note in Previous notes',{exact:true})).toBeVisible();
  await expect(page.getByText('From a note that is no longer in Notes',{exact:true})).toHaveCount(0);
  await button(page,'Open note').click();
  await expect(button(page,'Play recording')).toBeVisible();
