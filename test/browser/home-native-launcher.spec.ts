@@ -4,7 +4,7 @@ import { test, expect, type Page } from '@playwright/test';
 // device, package manager or permission prompt is involved; LauncherHomeInstrumentedTest covers
 // the real launcher APK holding HOME.
 
-type Stub = { apps?: unknown; failLaunch?: string[]; dial?: unknown; notifications?: { permissionGranted: boolean; appEnabled: boolean }; microphone?: string; assistant?: boolean };
+type Stub = { apps?: unknown; failLaunch?: string[]; dial?: unknown; notifications?: { permissionGranted: boolean; appEnabled: boolean }; microphone?: string; assistant?: boolean; update?: {activationId:string;bridgeId:string} };
 
 async function nativeStub(page: Page, stub: Stub) {
   await page.addInitScript((stub: Stub) => {
@@ -16,9 +16,11 @@ async function nativeStub(page: Page, stub: Stub) {
       DailyApps: ['surfaceInfo', 'requestPermissions', 'closeAssistant'],
       AlphaNotifications: ['status', 'list'],
       AlphaVoiceCloud: ['checkPermissions', 'requestPermissions'],
-      AlphaDevice: ['openSettings'],
+      AlphaDevice: ['openSettings', ...(stub.update ? ['updateState','activateUpdate'] : [])],
     };
+    if (stub.update) w.updateState = {...stub.update,pending:true,phase:'preparing'};
     const answer = (plugin: string, method: string, options: any) => {
+      if (plugin === 'AlphaDevice' && method === 'updateState') return structuredClone(w.updateState);
       if (plugin === 'ElizaSystem') {
         if (method === 'listLauncherApps') return { apps: stub.apps ?? [] };
         if (method === 'launchApp') { if ((stub.failLaunch || []).includes(options?.packageName)) throw Error('Activity not found'); return {}; }
@@ -44,6 +46,21 @@ async function nativeStub(page: Page, stub: Stub) {
 }
 const calls = (page: Page, plugin: string, method: string) => page.evaluate(([plugin, method]) => (window as any).nativeCalls.filter((c: any) => c.plugin === plugin && c.method === method).map((c: any) => c.options ?? null), [plugin, method]);
 const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
+test('a new Android WebView holds Home until its update settles', async ({page}) => {
+  const update = {activationId:'11111111-2222-4333-8444-555555555555',bridgeId:'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'};
+  await nativeStub(page,{update});
+  await page.goto('/');
+  await expect.poll(() => calls(page,'AlphaDevice','activateUpdate')).toEqual([{...update,ready:true}]);
+  await expect(page.getByRole('button',{name:'Settings',exact:true})).toHaveCount(0);
+  expect(await calls(page,'ElizaSystem','getBuildInfo')).toEqual([]);
+  await page.evaluate(() => {
+    const w = window as any;
+    w.updateState = {...w.updateState,pending:false,outcome:'canceled'};
+  });
+  await expect(page.getByRole('button',{name:'Settings',exact:true})).toBeVisible();
+  expect(await calls(page,'AlphaDevice','activateUpdate')).toEqual([{...update,ready:true}]);
+});
 
 test('Apps lists Android entries with icons and launches by package', async ({ page }, info) => {
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
