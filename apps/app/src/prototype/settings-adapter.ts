@@ -367,6 +367,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         nativeVoiceTiming: nativeTiming.status === 'fulfilled' ? nativeTiming.value : null,
         nativeCloudStreamTiming: nativeCloudTiming.status === 'fulfilled' ? nativeCloudTiming.value : null,
         nativeInferenceTiming: connection.session===session ? diagnostic?.nativeInferenceTiming : undefined,
+        nativeInferenceVoiceJoin: connection.session===session ? diagnostic?.nativeInferenceVoiceJoin : undefined,
       });
       const text = diagnosticsText(report);
       if (native) {

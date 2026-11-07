@@ -10,7 +10,8 @@ import {AUTOMATIONS_COMMITTED_EVENT,automationsCommitted} from './automation-com
 import {OWNER_REMINDER_LIST,OWNER_REMINDER_READBACK,ownerReminderRoute,reminderReadPath,type ReminderNotificationBinding} from './owner-reminder-notification-protocol';
 import {CAMERA_CAPTURE_CAPABILITY} from '../../../../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/camera-contract.ts';
 import {sanitizeCloudInferenceFailure,type CloudInferenceFailure} from './crash-log';
-import {sanitizeNativeInferenceTiming,type NativeInferenceTiming} from './diagnostics-export';
+import {sanitizeNativeInferenceTiming,type NativeInferenceTiming,type NativeInferenceVoiceJoin} from './diagnostics-export';
+import {activeVoiceTurn} from './voice-timing';
 import {residentRecoveryReason,residentRecoveryMessage,residentRecoveryCopy,RESIDENT_RECOVERY_PENDING,type ResidentRecoveryReason,type ResidentRecoveryView} from './resident-recovery';
 import {anyAbortSignal} from './abort-signal';
 import {CALENDAR_APPROVAL_READ_PATH,calendarApprovalFromList,calendarApprovalId} from './calendar-approval';
@@ -49,7 +50,7 @@ import { PersonalProtocolError, type CloudPersonalProtocol, type PersonalView, t
 import { holdPhoneInert } from './modal-inert';
 import { pauseHostedBackground } from './hosted-background';
 import {developmentDeviceStore,developmentActionJournal} from './local-agent-storage';
-import { reviewLocalRecovery,archiveLocalRecovery,stopLocalAgent, configureLocalProvider, bindResidentCloudProvider, LocalCloudProviderStopUnconfirmed, LocalAgentProtocol, localAgentPackaged, localAgentStopped, browserLocalAgentEnabled, localProviderStatus, clearLocalProvider, clearLocalProviderIfCurrent, providerStatusLabel, LOCAL_PROVIDER_MODEL, type LocalProviderStatus } from './local-agent';
+import { reviewLocalRecovery,archiveLocalRecovery,stopLocalAgent, configureLocalProvider, bindResidentCloudProvider, LocalCloudProviderStopUnconfirmed, LocalAgentProtocol, nativeVoiceTraceId, localAgentPackaged, localAgentStopped, browserLocalAgentEnabled, localProviderStatus, clearLocalProvider, clearLocalProviderIfCurrent, providerStatusLabel, LOCAL_PROVIDER_MODEL, type LocalProviderStatus } from './local-agent';
 import { presentDeviceRecordOperation } from './device-record-presentation';
 import {checkinDisplayText, succeededBrowserDestination, systemNoticeDisplayText, systemNoticeKind, type SystemNoticeKind } from './action-message-presentation';
 import type { MessagePage } from './remote-protocol';
@@ -338,6 +339,7 @@ let lastInferenceWarm = Number.NEGATIVE_INFINITY;
 let developmentVoiceExpiresAt=0;
 const appRequests = new Set<AbortController>();
 const conversationMemory = new Map<string, string>();
+let lastNativeVoiceInference:(NativeInferenceVoiceJoin&{epoch:number;sessionId:string})|undefined;
 let closeConversationEvents:(()=>void)|undefined,conversationEventRead:AbortController|undefined,conversationResync=false;
 function retireConversationEvents(){closeConversationEvents?.();closeConversationEvents=undefined;conversationEventRead?.abort();conversationEventRead=undefined;conversationResync=false;}
 function deliverConversationMessages(selected:Active,session:VerifiedSession,id:string,rows:Record<string,unknown>[]){
@@ -2236,12 +2238,14 @@ export const connectionController = {
     lastInferenceWarm=now;
     void selected.remote.request('/api/cloud/warm',{},AbortSignal.timeout(10000)).catch(()=>{});
   },
-  async readResidentDiagnostics(signal:AbortSignal):Promise<{cloudInferenceFailure:CloudInferenceFailure|null;nativeInferenceTiming?:NativeInferenceTiming}|null>{
+  async readResidentDiagnostics(signal:AbortSignal):Promise<{cloudInferenceFailure:CloudInferenceFailure|null;nativeInferenceTiming?:NativeInferenceTiming;nativeInferenceVoiceJoin?:NativeInferenceVoiceJoin}|null>{
     const selected=active,session=state.session,generation=epoch;
     signal.throwIfAborted();if(selected?.kind!=='resident'||!session)return null;
     const status=await selected.remote.request('/api/status',undefined,signal);
     signal.throwIfAborted();if(generation!==epoch||selected!==active||session!==state.session)throw new DOMException('The connection changed','AbortError');
-    return {cloudInferenceFailure:sanitizeCloudInferenceFailure(status?.cloudInferenceFailure),nativeInferenceTiming:sanitizeNativeInferenceTiming(status?.nativeInferenceTiming)};
+    const nativeInferenceTiming=sanitizeNativeInferenceTiming(status?.nativeInferenceTiming),last=lastNativeVoiceInference;
+    const nativeInferenceVoiceJoin=last&&last.epoch===generation&&last.sessionId===session.sessionId&&last.traceId===nativeInferenceTiming?.traceId?{traceId:last.traceId,voiceTurnId:last.voiceTurnId}:undefined;
+    return {cloudInferenceFailure:sanitizeCloudInferenceFailure(status?.cloudInferenceFailure),nativeInferenceTiming,...(nativeInferenceVoiceJoin?{nativeInferenceVoiceJoin}:{})};
   },
   voiceTurnFailureMessage(code?:string){return active?replyFailure(code,active,readServiceLimit({failureKind:code})).message:REPLY_FAILURES.hosted_unreachable;},
   getBrowserSpeechAgent(){return active?.kind==='resident'&&state.session&&active.remote.browserSpeechAvailable?active.remote:null;},
@@ -3066,6 +3070,8 @@ export const connectionController = {
       dispatched = { conversationId: id, at: Date.now() };
       const progress=(value:string)=>{requestSignal.throwIfAborted();if(generation!==epoch||selected!==active||state.session?.sessionId!==session.sessionId)throw Error('The connection changed.');onText?.(value);};
       const replyReady=(results:readonly unknown[]|undefined)=>{assertCurrent();onReplyReady?.(results);};
+      const voiceTurnId=isAndroid&&selected.kind==='resident'&&channelType==='VOICE_DM'?activeVoiceTurn():undefined;
+      const voiceTraceId=voiceTurnId?nativeVoiceTraceId(requestId):undefined;
       const reply = selected.kind === 'cloud' ? await selected.cloud.send(selected.agentId, id, wireText, options) : selected.kind==='resident'?await withResidentMapsNavigation(selected.request,id,requestSignal,()=>selected.remote.send(id,wireText,{...options,onText:progress,onReplyReady:replyReady})):await selected.remote.send(id, wireText, options);
       requestSignal.throwIfAborted();
       assertCurrent();
@@ -3081,6 +3087,7 @@ export const connectionController = {
       // a transport failure and must not gain a retry prompt or extra card.
       const calendarFailure = 'terminalFailure' in reply && reply.terminalFailure && typeof reply.terminalFailure === 'object' ? reply.terminalFailure as {kind?:unknown;code?:unknown;transient?:unknown} : undefined;
       const visibleCalendarFailure = calendarFailure?.kind === 'reply_generation_error' && calendarFailure.transient === false && isCalendarReadFailureCode(calendarFailure.code) && (!('failureKind' in reply) || reply.failureKind === undefined || reply.failureKind === 'reply_generation_error') && typeof reply.text === 'string' && !!reply.text.trim() && !('interrupted' in reply && reply.interrupted === true);
+      if(voiceTurnId&&voiceTraceId&&(!failed||visibleCalendarFailure))lastNativeVoiceInference={voiceTurnId,traceId:voiceTraceId,epoch:generation,sessionId:session.sessionId};
       // The on-device agent answered without Eliza Cloud inference (no plan, offline or signed
       // out): its turn is recorded in the conversation, and the owner gets an honest answer with
       // the plan actions instead of a generic failure. Nothing is retried or purchased.

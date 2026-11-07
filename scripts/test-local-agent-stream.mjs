@@ -103,6 +103,18 @@ const stale=client.send('Cancel',text=>values.push(text));client.cancel();late('
  mode='hold';const stop=new AbortController();const stopped=local.send('thread','Stop me',{clientMessageId:'client-3',signal:stop.signal,onText:()=>stop.abort()});
  await assert.rejects(stopped,error=>error.name==='AbortError');assert.equal(posts.length,1,'Stop never reads or repeats the turn');
 }
+// The resident stream tags only a canonical random voice request, never a typed or malformed turn.
+{
+ const requests=[];
+ const local=new LocalAgentProtocol({stream:async input=>{requests.push(input);return {text:'Ready',agentName:'Fixture'};}});
+ local.session={ownerId:'owner',agentId:'agent',sessionId:'session',origin:'https://device.alpha.invalid'};
+ const id='1b0c7a52-6d5e-4e0f-9a43-5c1d2e3f4a51';
+ await local.send('thread','Fixture',{channelType:'VOICE_DM',clientMessageId:id,onText:()=>{}});
+ Object.defineProperty(local,'origin',{value:'https://device.alpha.invalid'});
+ for(const [channelType,clientMessageId] of [['VOICE_DM',id],['DM',id],['VOICE_DM','not-a-uuid']])
+  await local.send('thread','Fixture',{channelType,clientMessageId,onText:()=>{}});
+ assert.deepEqual(requests.map(input=>input.headers['X-Eliza-Trace-Id']),[undefined,id.replaceAll('-',''),undefined,undefined]);
+}
 // Remote: a transport drop repeats the identical request once; HTTP failures and Stop are not repeated.
 {
  const saved={origin:'https://agent.example',token:'session-token',identityId:'owner',sessionId:'session-token',expiresAt:Date.now()+60000};

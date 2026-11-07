@@ -147,6 +147,13 @@ function identifier(value:unknown):string {
   return value;
 }
 
+/** A random voice request UUID as the resident stream's existing trace format. */
+export function nativeVoiceTraceId(turnId:unknown):string|undefined {
+  if(typeof turnId!=='string'||!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(turnId))return;
+  const id=turnId.replaceAll('-','');
+  return id==='0'.repeat(32)?undefined:id;
+}
+
 /** Same app-host conversation API on both platforms. The native service or
  * development server injects credentials; no bearer token reaches the renderer. */
 export class LocalAgentProtocol {
@@ -417,7 +424,8 @@ export class LocalAgentProtocol {
       const valid=()=>{signal.throwIfAborted();if(generation!==this.generation||session!==this.session)throw Error('Local agent connection changed.');};
       try{
         valid();
-        const result=await this.bridge.stream({path:`${path}/stream`,ownerId:session.ownerId,headers:{...this.deviceHeaders,...headers},
+        const traceId=this.origin==='https://device.alpha.invalid'&&options.channelType==='VOICE_DM'?nativeVoiceTraceId(options.clientMessageId):undefined;
+        const result=await this.bridge.stream({path:`${path}/stream`,ownerId:session.ownerId,headers:{...this.deviceHeaders,...headers,...(traceId?{'X-Eliza-Trace-Id':traceId}:{})},
           body:JSON.stringify({...body,streamProtocol:'delta-v2'})},signal,value=>{valid();options.onText!(value);},results=>{valid();options.onReplyReady?.(results);});
         valid();return result;
       }catch(error){

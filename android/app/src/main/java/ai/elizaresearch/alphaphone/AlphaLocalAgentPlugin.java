@@ -1025,6 +1025,14 @@ private static final class ResidentAttachDiagnostic {
   PluginWorkers.submit(workers,()->{try{
    String token=enroll(epoch);JSONObject headers=new JSONObject().put("Authorization","Bearer "+token).put("Accept","text/event-stream").put("Content-Type","application/json");
    if(supplied!=null)for(String key:new String[]{"X-Eliza-Device-Id","X-Eliza-Device-Key","X-Eliza-Device-Capabilities","X-ElizaOS-Client-Id"})if(supplied.has(key)){String value=supplied.getString(key);if(value.length()>2048||value.contains("\r")||value.contains("\n")||("X-ElizaOS-Client-Id".equals(key)&&!value.matches("[A-Za-z0-9._-]{1,128}")))throw new IllegalArgumentException();headers.put(key,value);}
+   if(supplied!=null&&supplied.has("X-Eliza-Trace-Id")){
+    String traceId=supplied.getString("X-Eliza-Trace-Id");
+    JSONObject turn=new JSONObject(body);
+    String turnId=turn.optString("clientMessageId");
+    if(!"VOICE_DM".equals(turn.optString("channelType"))||!traceId.matches("[a-f0-9]{32}")||traceId.matches("0{32}")||
+       !turnId.matches("[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}")||!traceId.equals(turnId.replace("-","")))throw new IllegalArgumentException();
+    headers.put("X-Eliza-Trace-Id",traceId);
+   }
    synchronized(lifecycleLock){requireCurrent(epoch);if(!owner.equals(ownerIdentity)||streams.get(id)!=handle)throw new Superseded();}
    JSONObject input=new JSONObject().put("path",path).put("method","POST").put("body",body).put("headers",headers).put("timeoutMs",120000);
    ElizaAgentService.requestLocalAgentStream(input.toString(),event->{synchronized(lifecycleLock){try{requireCurrent(epoch);if(streams.get(id)!=handle)return;JSONObject value=new JSONObject(event);if("response".equals(value.optString("type"))&&value.optInt("status")==401)clearEnrollment();notifyListeners("alphaAgentStream",new JSObject().put("streamId",id).put("event",value));}catch(Exception ignored){}}},handle);
