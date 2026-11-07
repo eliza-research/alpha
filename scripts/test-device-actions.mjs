@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import { spawnSync } from 'node:child_process';
-if (!process.execArgv.includes('--experimental-transform-types')) process.exit(spawnSync(process.execPath, ['--experimental-transform-types', process.argv[1]], { stdio: 'inherit' }).status ?? 1);
+if (!process.execArgv.some(arg=>arg==='--import=tsx'||arg==='tsx')) process.exit(spawnSync(process.execPath, ['--import=tsx', process.argv[1]], { stdio: 'inherit' }).status ?? 1);
 const { DeviceActions, FOREGROUND_OPERATION_TYPES } = await import('../apps/app/src/runtime/device-actions.ts');
 const { DEVICE_REVIEW_TYPES: FOREGROUND_REVIEW_TYPES } = await import('../.eliza/client-features/packages/contracts/src/device-reviews.ts');
 const { calendarAvailability } = await import('../.eliza/client-features/packages/contracts/src/device-reviews.ts');

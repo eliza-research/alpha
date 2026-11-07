@@ -225,7 +225,7 @@ permission before the app process starts and runs one exact method:
 | Scenario | Permission state | What runs |
 | --- | --- | --- |
 | `camera` | CAMERA revoked | denial and explicit retry without a fake preview |
-| `settings` | fine location revoked, coarse granted | Accounts handoff and location accuracy readback |
+| `settings` | camera revoked | App permissions handoff and grant readback |
 | `channels` | POST_NOTIFICATIONS granted | a blocked channel read back, user recovery and a real notification |
 | `voice` | RECORD_AUDIO revoked | the denied recorder state, Open app settings and back, no capture file, typing in the composer still works |
 | `voice-revoke` | RECORD_AUDIO granted, revoked while recording, granted again | four phases in separate processes: a baseline capture; a capture during which the runner runs `pm revoke` and requires Android to end that process mid-test; a new process that finds no capture file, no active recording and no note audio; and a capture after the grant is restored |

@@ -90,8 +90,11 @@ test.describe('launcher', () => {
     // A mostly sideways drag is a card row or Back, not the shade.
     await drag(page, { x: 120, y: 420 }, 120, 160);
     await closed(page, 'sideways');
-    // An upward swipe on Home is the conversation sheet; while it is open a pull down closes it.
+    // An upward drag on Home opens nothing: only the dock opens the chat (docs/ui-refresh-2026-11).
     await drag(page, { x: 206, y: 600 }, -260);
+    await expect(page.locator('[data-alpha-layer="conversation"]')).toHaveAttribute('aria-hidden', 'true');
+    // While the sheet is open a pull down closes it.
+    await page.locator('[data-alpha-layer="composer"]').getByRole('button', { name: 'Open conversation', exact: true }).click();
     await expect(page.locator('[data-alpha-transcript]')).toBeVisible();
     await drag(page, { x: 206, y: 300 }, 260);
     await closed(page, 'pull while the conversation sheet was open');

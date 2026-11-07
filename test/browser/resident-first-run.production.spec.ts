@@ -169,7 +169,7 @@ test('first run: native email sign-in, credits, provider binding, then the resid
   expect(await harness(page, f => f.streams)).toBe(1);
   const settings=await openYourAgent(page);
   await expect(settings.getByRole('button',{name:'Reconnect agent',exact:true})).toBeVisible();
-  await expect(settings.getByText('Conversation history',{exact:true})).toBeVisible();
+  await expect(settings.getByRole('button',{name:'Earlier conversations',exact:true})).toBeVisible();
   expect(await page.locator('body').innerText()).not.toContain(account.token);
   await expectNoDevelopmentSurface(page);
   const lifecycle=await page.evaluate(()=>(window as any).firstRunLifecycle) as Array<{path:string;method:string;ownerId:string;credentialId:string|null}>;

@@ -23,13 +23,15 @@
 <sc-if value="{{storageAccessWarning}}"><p role="alert" class="storage-access-warning">{{storageAccessWarning}}</p></sc-if>
 </sc-slot>
 <sc-slot name="cards">
+    <!-- With no card to show, the row holds the date line (docs/ui-refresh-2026-11); same fixed height. -->
+    <sc-if value="{{homeShowDate}}"><div class="home-date-line" data-alpha-home-date><span class="serif home-date-text">{{homeDateLabel}}</span><sc-if value="{{homeShowSetup}}"><button class="tap home-date-setup" data-alpha-home-connect-google onClick="{{connectGoogle}}">Connect Google</button></sc-if></div></sc-if>
     {{homeAgendaCard}}
-    <button data-alpha-home-workflows onClick="{{goFlows}}" aria-label="{{homeWorkflowLabel}}" aria-description="{{homeWorkflowDescription}}" class="home-card" style="flex-shrink: 0; scroll-snap-align: start; width: max-content; min-width: 172px; max-width: calc(100% - 48px); border-radius: 30px; background: var(--s2); padding: 22px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between">
+    <sc-if value="{{homeShowWorkflows}}"><button data-alpha-home-workflows onClick="{{goFlows}}" aria-label="{{homeWorkflowLabel}}" aria-description="{{homeWorkflowDescription}}" class="home-card" style="flex-shrink: 0; scroll-snap-align: start; width: max-content; min-width: 172px; max-width: calc(100% - 48px); border-radius: 30px; background: var(--s2); padding: 22px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between">
       <div style="display:flex;justify-content:flex-end;width:100%"><span aria-hidden="true" style="display:block;flex-shrink:0;width:24px;height:24px;background:var(--acct);mask:url('/icons/lucide/workflow.svg') center/contain no-repeat;-webkit-mask:url('/icons/lucide/workflow.svg') center/contain no-repeat"></span></div>
-      <sc-if value="{{homeWorkflowHasRows}}"><div style="display:flex;flex-direction:column;gap:10px;max-width:260px;min-width:0;text-align:left"><sc-for list="{{homeWorkflowRows}}" as="flow"><div style="min-width:0"><div style="font-size:18px;font-weight:600;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{flow.name}}</div><div style="font-size:12px;line-height:1.4;color:var(--mut)">{{flow.status}}</div></div></sc-for></div></sc-if>
+      <sc-if value="{{homeWorkflowHasRows}}"><div style="display:flex;flex-direction:column;gap:10px;max-width:260px;min-width:0;text-align:left"><sc-for list="{{homeWorkflowRows}}" as="flow"><div style="min-width:0"><div style="font-size:18px;font-weight:600;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{flow.name}}</div><sc-if value="{{flow.status}}"><div style="font-size:12px;line-height:1.4;color:var(--mut)">{{flow.status}}</div></sc-if></div></sc-for></div></sc-if>
       <sc-if value="{{homeWorkflowTitle}}"><span class="serif" style="font-size:26px;line-height:1.1;min-width:0;max-width:260px;text-align:left;overflow-wrap:anywhere">{{homeWorkflowTitle}}</span></sc-if>
-      <span style="display:flex;flex-direction:column;align-items:flex-start;min-width:0;font-size:12px;line-height:1.4;color:var(--mut);text-align:left"><span>{{homeWorkflowTime}}</span><sc-if value="{{homeWorkflowFreshness}}"><span data-alpha-home-workflow-freshness>{{homeWorkflowFreshness}}</span></sc-if></span>
-    </button>
+      <span style="display:flex;flex-direction:column;align-items:flex-start;min-width:0;font-size:12px;line-height:1.4;color:var(--mut);text-align:left"><span>{{homeWorkflowTime}}</span></span>
+    </button></sc-if>
     {{homeAttentionCard}}
     <!-- Each card placeholder stays alone in its text node, so it renders as the shared card element. -->
     {{homeBriefCard}}
@@ -3766,11 +3768,6 @@
               </div>
               <input aria-label="Agent name" placeholder="Alpha" value="{{settings.charVal}}" onChange="{{settings.onName}}" style="flex-grow: 1; min-width: 0; background: transparent; border: 0; border-bottom: 1px solid var(--line); color: var(--fg); font-family: Denton, Fraunces, Georgia, serif; font-weight: 300; font-size: 32px; padding: 2px 0 6px; outline: none">
             </div>
-            <button class="tap" aria-label="Character" onClick="{{settings.openChar}}" style="margin-top: 14px; width: 100%; min-height: 48px; border-radius: 24px; background: var(--bg); display: flex; align-items: center; gap: 12px; padding: 0 14px 0 16px; box-sizing: border-box">
-              <svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px; color: var(--acct)"><path d="{{ic.wave}}"></path></svg>
-              <span style="flex-grow: 1; text-align: left; font-size: 14.5px">{{settings.persona}}</span>
-              <svg class="i" viewBox="0 0 24 24" style="width: 16px; height: 16px; color: var(--mut)"><path d="{{ic.right}}"></path></svg>
-            </button>
           </div>
         </sc-if>
 
@@ -4174,6 +4171,9 @@
 </sc-if>
 
 
+<!-- A raised dock (the bar above a pill view's rest, or the composer with the keyboard up) takes
+     the first touch outside it: that touch lowers the dock and reaches nothing underneath. -->
+<div data-alpha-dock-guard aria-hidden="true" onPointerDown="{{dockGuardSw.down}}" onPointerMove="{{dockGuardSw.move}}" onPointerUp="{{dockGuardSw.up}}" onPointerCancel="{{dockGuardSw.cancel}}" onClick="{{dockGuardTap}}" onContextMenu="{{dockGuardMenu}}" style="position: absolute; inset: 0; z-index: 39; pointer-events: {{dockGuardPE}}; touch-action: none"></div>
 <sc-if value="{{showComposer}}">
 <div data-alpha-layer="composer" role="group" aria-label="Assistant controls" aria-hidden="{{dockHidden}}" inert="{{dockHidden}}" style="position: absolute; left: 16px; right: 16px; bottom: {{cmpBottom}}px; z-index: 40">
   <sc-if value="{{messageComposeContext}}"><div style="display:flex;align-items:center;gap:8px;padding:6px 16px;font-size:13px;background:var(--s2);border-radius:14px"><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{messageComposeContext}}</span><button class="tap" aria-label="Cancel reply or edit" onClick="{{cancelMessageContext}}" style="min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center"><svg class="i" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="{{ic.x}}"></path></svg></button></div></sc-if>
@@ -4182,7 +4182,7 @@
   <div data-alpha-input-bar class="enter" onPointerDown="{{inputSw.down}}" onPointerMove="{{inputSw.move}}" onPointerUp="{{inputSw.up}}" onPointerCancel="{{inputSw.cancel}}" onLostPointerCapture="{{inputSw.lost}}" style="{{inputDragStyle}}; position:relative; display: flex; align-items: center; gap: 4px; min-height: 62px; padding: 6px 8px 6px 9px; border-radius: 31px; background: var(--s2); box-shadow: 0 14px 40px var(--shc); touch-action: pan-y">
     <span data-alpha-input-drag-background aria-hidden="true" style="position:absolute;inset:0;z-index:0;border-radius:inherit;touch-action:none"></span>
     <button data-alpha-input-drag-alpha class="alpha-mark-fill" aria-label="Open conversation" onClick="{{openSheet}}" style="position:relative;z-index:1;touch-action:none;width: 44px; height: 44px; border-radius: 22px; background: var(--acc); color: var(--alpha-white); display: flex; align-items: center; justify-content: center; font-family: Denton, Fraunces, Georgia, serif; font-style: italic; font-size: 24px; flex-shrink: 0"><span class="alpha-compute-mark" aria-hidden="true"></span></button>
-    <textarea disabled="{{draftOpening}}" onPointerDown="{{inputComposerPointer}}" data-alpha-composer="true" rows="1" aria-label="{{cmpPlaceholder}}" placeholder="{{cmpPlaceholder}}" value="{{draft}}" onChange="{{onDraft}}" onKeyDown="{{onKey}}" style="position:relative;z-index:1;touch-action:{{inputComposerTouchAction}};flex-grow: 1; min-width: 0; height: 44px; min-height:44px; max-height:min(168px,28dvh); resize:none; overflow-y:auto; font-family:inherit; line-height:22px; padding-top:11px; padding-bottom:11px; box-sizing:border-box; border: 0; outline: 0; background: transparent; color: var(--fg); font-size: 16px; padding-left: 8px"></textarea>
+    <textarea disabled="{{draftOpening}}" onPointerDown="{{inputComposerPointer}}" onFocus="{{dockComposerFocus}}" onBlur="{{dockComposerBlur}}" data-alpha-composer="true" rows="1" aria-label="{{cmpPlaceholder}}" placeholder="{{cmpPlaceholder}}" value="{{draft}}" onChange="{{onDraft}}" onKeyDown="{{onKey}}" style="position:relative;z-index:1;touch-action:{{inputComposerTouchAction}};flex-grow: 1; min-width: 0; height: 44px; min-height:44px; max-height:min(168px,28dvh); resize:none; overflow-y:auto; font-family:inherit; line-height:22px; padding-top:11px; padding-bottom:11px; box-sizing:border-box; border: 0; outline: 0; background: transparent; color: var(--fg); font-size: 16px; padding-left: 8px"></textarea>
     <sc-if value="{{canStopReply}}"><button aria-label="Stop reply" onClick="{{stopReply}}" style="position:relative;z-index:1;width: 44px; height: 44px; border-radius: 22px; flex-shrink: 0; background: var(--fg); color: var(--bg); display: flex; align-items: center; justify-content: center"><svg class="i" viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor" stroke="none"></rect></svg></button></sc-if>
     <sc-if value="{{sendVisible}}"><button aria-label="Send" onClick="{{sendNow}}" style="position:relative;z-index:1;width: 44px; height: 44px; border-radius: 22px; background: var(--acc); color: var(--alpha-white); display: flex; align-items: center; justify-content: center"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.send}}"></path></svg></button></sc-if>
     <sc-if value="{{talkVisible}}"><button class="ib" style="position:relative;z-index:1" title="Voice assistant" aria-label="Talk" onPointerDown="{{chatControlPointer}}" onClick="{{startVoice}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.mic}}"></path></svg></button></sc-if>

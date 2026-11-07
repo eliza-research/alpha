@@ -177,7 +177,7 @@ Materials: an air-gapped laptop booted from a verified live image with networkin
 new encrypted USB drives; tamper-evident bags; a printer for `fingerprints.json`.
 
 1. Copy this repository at a reviewed commit (with `vendor/eliza` at the `upstream.lock.json`
-   pin) onto the laptop. Node 24 and OpenSSL 3. Run the toolchain check:
+   pin) onto the laptop. Node 26 and OpenSSL 3. Run the toolchain check:
    `(cd vendor/eliza/packages/os && node --test scripts/__tests__/release-key-ceremony.node.test.ts)`.
 2. Each person types half of the passphrase (at least 20 characters in total) into tmpfs:
    ```sh

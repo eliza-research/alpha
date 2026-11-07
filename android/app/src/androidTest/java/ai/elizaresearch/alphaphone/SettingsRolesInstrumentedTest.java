@@ -136,15 +136,15 @@ public final class SettingsRolesInstrumentedTest {
    assertEquals("One MainActivity before the role request: "+started.values(),1,started.size());
    android.app.Activity original=started.keySet().iterator().next();
    settings();
-   until(text("Home app"));until(text("Make Alpha your Home app"));
-   // Decline in Android's own dialog: nothing changes, and Settings says so after reading back.
+   until(text("Make Alpha your Home app"));
+   // Decline in Android's own dialog: nothing changes, and Settings offers the request again after reading back.
    button("Make Alpha your Home app");
    assertNotNull("Android role dialog shown",dialogNode("Alpha Phone","Cancel"));
    // Decline with the dialog's own Cancel: on Android 16 this dialog ignores the Back key
    // (measured on the API 36 emulator), so Back is only the fallback for a dialog without the button.
    AccessibilityNodeInfo cancel=dialogNode("Cancel");
    if(cancel==null||!click(cancel))back();
-   until(text("Home app not changed"));
+   until(text("Make Alpha your Home app"));
    assertFalse("Declined request holds no role",holdsHome());
    assertEquals("Settings offers the request again","true",js("Boolean("+"[...document.querySelectorAll('button')].find(e=>e.textContent.trim().startsWith('Make Alpha your Home app'))"+")"));
    // Accept: choose Alpha, then confirm when the dialog asks.
@@ -205,7 +205,8 @@ public final class SettingsRolesInstrumentedTest {
   * `pm revoke` kills the app process, and with it this instrumentation, so a permission-changing
   * runner sets the grant between runs and passes the expected state (settingsCalendar=granted|revoked).
   * Without that argument the row is still compared with the current runtime grant, so the test
-  * never skips; covering both states needs the two runs.
+  * never skips; covering both states needs the two runs. The row is Settings › App permissions,
+  * whose value counts the grants Android reports off (Calendar is one of them).
   */
  @Test public void calendarRowMatchesRuntimeGrant()throws Exception{
   String expected=InstrumentationRegistry.getArguments().getString("settingsCalendar");
@@ -213,8 +214,12 @@ public final class SettingsRolesInstrumentedTest {
   boolean granted=context.checkSelfPermission(Manifest.permission.READ_CALENDAR)==PackageManager.PERMISSION_GRANTED;
   if(expected!=null)assertEquals("Runner applied the requested grant","granted".equals(expected),granted);
   try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
-   AppNavigation.liveMode();settings();button("Privacy & data");
-   String row="[...document.querySelectorAll('[aria-label],*')].some(e=>e.childElementCount<4&&e.textContent.includes('Calendar')&&e.textContent.includes("+JSONObject.quote(granted?"Allowed for Alpha":"Not allowed")+"))";
+   // Settings › Privacy › App permissions counts the grants Android reports off (settings-adapter permissionSummary).
+   AppNavigation.liveMode();settings();
+   String[] grants={Manifest.permission.RECORD_AUDIO,Manifest.permission.CAMERA,Manifest.permission.READ_CALENDAR};
+   int off=0;for(String permission:grants)if(context.checkSelfPermission(permission)!=PackageManager.PERMISSION_GRANTED)off++;
+   if(context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED&&context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)!=PackageManager.PERMISSION_GRANTED)off++;
+   String row="[...document.querySelectorAll('button')].find(e=>e.getAttribute('aria-label')==='App permissions')?.textContent.includes("+JSONObject.quote(off==0?"All allowed":off+" not allowed")+")";
    until(row);
    assertEquals("Contacts is not presented","false",js("[...document.querySelectorAll('button,div')].some(e=>e.childElementCount===0&&e.textContent.trim()==='Contacts')"));
   }

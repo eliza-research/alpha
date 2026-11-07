@@ -1,9 +1,9 @@
 import {test,expect} from '@playwright/test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from '../support/strip-types.mjs';
 declare global { interface Window { calls: {email:number;external:number;copy:number}; current:boolean; openSharePanel: (options: import('../../apps/app/src/runtime/share-panel').SharePanelOptions) => Promise<void>; } }
-const script=stripTypeScriptTypes(fs.readFileSync('apps/app/src/runtime/share-panel.ts','utf8').replace(/^export /gm,''),{mode:'transform'})+'\nwindow.openSharePanel=openSharePanel;';
+const script=stripTypeScriptTypes(fs.readFileSync('apps/app/src/runtime/share-panel.ts','utf8').replace(/^export /gm,''),{mode:'strip'})+'\nwindow.openSharePanel=openSharePanel;';
 test('common Share panel keeps email/external explicit and retires without fallback',async({page})=>{
  await page.setContent('<style>body{font-family:serif}.os{font-family:"Public Sans",system-ui,sans-serif;font-size:19px}</style><main class="os"><button id="origin">Share selected</button></main>');await page.addScriptTag({content:script});
  const open=()=>page.evaluate(()=>{window.calls={email:0,external:0,copy:0};window.current=true;void window.openSharePanel({title:'Selected note',current:()=>window.current,email:()=>window.calls.email++,external:()=>{window.calls.external++;throw new DOMException('Cancel','AbortError');},copy:()=>window.calls.copy++});});

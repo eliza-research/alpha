@@ -146,22 +146,18 @@ test('a proposal is declined from its chat card and the agent records the reject
   await expect(page.getByText('Create note', { exact: true })).toHaveCount(0);
 });
 
-test('Activity reconciles a reconciliation-required entry as not applied', async ({ page }) => {
+test('Settings › Agent connection reconciles a reconciliation-required entry as not applied', async ({ page }) => {
   test.setTimeout(90_000);
   await residentAgent(page, 'reconcile');
   await connected(page, { review: true });
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.getByText('Privacy & data', { exact: true }).click();
-  await page.getByRole('button', { name: 'Activity', exact: true }).click();
-  const app = page.locator('[data-alpha-layer="app"]');
-  // Background proposal recovery stays passive. Activity loads its history only
-  // when the owner asks, before any reconciliation decision is available.
-  await app.getByRole('button', { name: 'Load phone action history', exact: true }).click();
-  await expect(app.getByRole('button', { name: 'Refresh phone action history', exact: true })).toBeVisible();
-  await expect(app.getByRole('button', { name: 'Load phone action history', exact: true })).toHaveCount(0);
-  await expect(app.getByText('Needs your review', { exact: true })).toBeVisible();
-  await expect(app.getByRole('button', { name: 'It happened', exact: true })).toBeVisible();
-  await app.getByRole('button', { name: 'It did not happen', exact: true }).click();
+  await page.getByRole('button', { name: 'Agent connection', exact: true }).click();
+  const app = page.locator('[data-settings-page]:not([inert])').last();
+  // The owner reads the history explicitly; only then is a reconciliation decision offered.
+  await app.getByRole('button', { name: 'Refresh actions', exact: true }).click();
+  await expect(app.getByText('Actions to confirm', { exact: true })).toBeVisible();
+  await expect(app.getByRole('button', { name: 'I verified it happened', exact: true })).toBeVisible();
+  await app.getByRole('button', { name: 'I verified it did not happen', exact: true }).click();
   await expect.poll(async () => (await fixture(page)).states).toEqual([['fixture-reconcile', 'not_applied']]);
   const state = await fixture(page);
   expect(state.reconciliations).toEqual([{ attemptId: 'fixture-attempt', resolution: { confirmed: true, outcome: 'not_applied' } }]);

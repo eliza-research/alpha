@@ -4,8 +4,8 @@
 // Cloud account, a real code, staging or a device.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-if (!process.execArgv.includes('--experimental-transform-types')) {
-  const child = spawnSync(process.execPath, ['--import', 'tsx', '--experimental-transform-types', process.argv[1]], { stdio: 'inherit' });
+if (!process.execArgv.some(arg=>arg==='--import=tsx'||arg==='tsx')) {
+  const child = spawnSync(process.execPath, ['--import', 'tsx', process.argv[1]], { stdio: 'inherit' });
   process.exit(child.status ?? 1);
 }
 const { CloudProtocol, CloudProtocolError, planManagementUrl } = await import('../apps/app/src/runtime/cloud-protocol.ts');

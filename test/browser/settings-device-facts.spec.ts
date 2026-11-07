@@ -67,58 +67,58 @@ const settings=async(page:Page,query='')=>{await page.goto(`/${query}`);await pa
 const app=(page:Page)=>page.locator('[data-alpha-layer="app"]');
 const calls=(page:Page,plugin:string,method:string)=>page.evaluate(([plugin,method])=>(window as any).settingsFixture.calls.filter((c:any)=>c.plugin===plugin&&c.method===method).length,[plugin,method]);
 
-test('Settings shows HOME and assistant role state and reads it back after a declined then accepted request',async({page})=>{
+const current=(page:Page)=>page.locator('[data-settings-page]:not([inert])').last();
+
+// Settings offers the HOME request and reads Android's answer back; it shows no role facts (docs/ui-refresh-2026-11).
+test('Settings offers the HOME request and reads it back after a declined then accepted request',async({page})=>{
  await nativeStub(page,{launcher:true,decline:1});
  await settings(page);
- await expect(app(page).getByText('Home app',{exact:true})).toBeVisible();
- await expect(app(page).getByText('Another app',{exact:true})).toBeVisible();
- await expect(app(page).getByText('Not Alpha Phone',{exact:true})).toBeVisible();
  const make=app(page).getByRole('button',{name:'Make Alpha your Home app',exact:true});
+ await expect(make).toBeVisible();
+ for(const fact of ['Home app','Assistant app','Another app','Not Alpha Phone'])await expect(app(page).getByText(fact,{exact:true}),fact).toHaveCount(0);
  const reads=await calls(page,'ElizaSystem','getStatus');
  await make.click();
  // A decline is read back from Android quietly: no toast and no "Last change" row.
  await expect.poll(()=>calls(page,'ElizaSystem','getStatus')).toBeGreaterThan(reads);
- await expect(app(page).getByText('Not Alpha Phone',{exact:true})).toBeVisible();
  await expect(page.getByText('Home app not changed',{exact:true})).toHaveCount(0);
  await expect(app(page).getByText('Last change',{exact:true})).toHaveCount(0);
  await expect(make).toBeVisible();
  await make.click();
-  await expect(app(page).getByText('Alpha Phone',{exact:true})).toBeVisible();
  await expect(make).toHaveCount(0);
  // A native resume re-reads Android's answer rather than trusting the earlier result.
  const before=await calls(page,'ElizaSystem','getStatus');
  await page.evaluate(()=>(window as any).settingsFixture.resume());
  await expect.poll(()=>calls(page,'ElizaSystem','getStatus')).toBeGreaterThan(before);
- await app(page).getByRole('button',{name:'Default apps in Android',exact:true}).click();
- await expect.poll(()=>page.evaluate(()=>(window as any).settingsFixture.calls.some((c:any)=>c.method==='openSettings'&&c.input.page==='default-apps'))).toBe(true);
+ // Android's own Settings is one row in the launcher; default apps are there.
+ await expect(app(page).getByRole('button',{name:'Default apps in Android',exact:true})).toHaveCount(0);
+ await app(page).getByRole('button',{name:'Android settings',exact:true}).click();
+ await expect.poll(()=>page.evaluate(()=>(window as any).settingsFixture.calls.filter((c:any)=>c.method==='openSettings').map((c:any)=>c.input.page))).toEqual(['system']);
 });
 
-test('the standalone variant shows role state but never offers the HOME request',async({page})=>{
+test('the standalone variant never offers the HOME request or the Android settings row',async({page})=>{
  await nativeStub(page,{launcher:false});
  await settings(page);
- await expect(app(page).getByText('Home app',{exact:true})).toBeVisible();
+ await expect(app(page).getByRole('button',{name:'About',exact:true})).toBeVisible();
  await expect(app(page).getByRole('button',{name:'Make Alpha your Home app',exact:true})).toHaveCount(0);
+ await expect(app(page).getByRole('button',{name:'Android settings',exact:true})).toHaveCount(0);
  expect(await calls(page,'ElizaSystem','requestRole')).toBe(0);
 });
 
-test('Privacy shows Calendar and no Contacts, Developer has no NPU or uptime, and diagnostics are redacted',async({page})=>{
+test('App permissions counts Android grants, Developer has no NPU or uptime, and diagnostics are redacted',async({page})=>{
  await nativeStub(page);
  // Developer appears only behind the one gate: a development server opened with ?tools=1.
  await settings(page);
  await expect(app(page).getByRole('button',{name:'Developer',exact:true})).toHaveCount(0);
- await settings(page,'?tools=1');
- await app(page).getByRole('button',{name:'Privacy & data',exact:true}).click();
- await expect(app(page).getByText('Calendar',{exact:true}).first()).toBeVisible();
- await expect(app(page).getByText('Allowed for Alpha',{exact:true}).first()).toBeVisible();
+ await expect(app(page).getByRole('button',{name:'App permissions',exact:true})).toContainText('2 not allowed');
  await expect(app(page).getByText('Contacts',{exact:true})).toHaveCount(0);
- await page.getByRole('button',{name:'Back to Settings',exact:true}).click();
+ await settings(page,'?tools=1');
  await app(page).getByRole('button',{name:'Developer',exact:true}).click();
- const developer=await app(page).innerText();
+ const developer=await current(page).innerText();
  expect(developer).not.toMatch(/NPU|Device uptime|Uptime/);
  await page.getByRole('button',{name:'Back to Settings',exact:true}).click();
 
  await app(page).getByRole('button',{name:'About',exact:true}).click();
- await expect(app(page).getByText('3 recorded',{exact:true})).toBeVisible();
+ await expect(current(page).getByRole('button',{name:'Problem log',exact:true})).toContainText('3');
  await app(page).getByRole('button',{name:'Problem log',exact:true}).click();
  await expect(app(page).getByText(/App crashed · java\.lang\.IllegalStateException · main thread/)).toBeVisible();
  await expect(app(page).getByText(/App process stopped: anr/)).toBeVisible();
@@ -138,22 +138,26 @@ test('Privacy shows Calendar and no Contacts, Developer has no NPU or uptime, an
 // Software update: what the app start, resume and owner taps send to AlphaDevice, and the rows they leave.
 const update={schema:'alpha-update/v1',versionCode:8,versionName:'0.1.1',variant:'launcher',signerSha256:'5c'.repeat(32),apkUrl:'https://github.com/eliza-research/alphaphone/releases/download/app-8/alpha-phone-8.apk',sha256:'0a'.repeat(32),sizeBytes:400_000_000,notes:'Faster Home'};
 const saved=(page:Page)=>page.evaluate(()=>localStorage.getItem('alpha.app-update.v1'));
+/** Check for updates is on About; Install update is on the top level and About while a newer build is offered. */
+const about=(page:Page)=>current(page).getByRole('button',{name:'About',exact:true}).click();
 
 test('a failed update check stays due, one check runs at a time, and Install update sends the offered APK',async({page})=>{
  await nativeStub(page,{updates:['fail',update]});
  await settings(page);
- const install=app(page).getByRole('button',{name:'Install update',exact:true});
+ const install=current(page).getByRole('button',{name:'Install update',exact:true});
  // The check at app start fails quietly: nothing is offered or recorded, so the next resume checks again.
  await expect.poll(()=>calls(page,'AlphaDevice','checkForUpdate')).toBe(1);
  await page.waitForTimeout(500);
  expect(await saved(page)).toBeNull();
  await expect(install).toHaveCount(0);
- await expect(app(page).getByRole('button',{name:'Check for updates',exact:true})).toBeVisible();
+ await about(page);
+ await expect(current(page).getByRole('button',{name:'Check for updates',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Back to Settings',exact:true}).click();
  // Two resumes while that check runs share it.
  await page.evaluate(()=>{const f=(window as any).settingsFixture;f.resume();f.resume();});
  await expect(install).toBeVisible();
- await expect(app(page).getByText('0.1.1 (8)',{exact:true})).toBeVisible();
- await expect(app(page).getByText('Faster Home',{exact:true})).toBeVisible();
+ await expect(install).toContainText('0.1.1 (8)');
+ await expect(install).toContainText('Faster Home');
  expect(await calls(page,'AlphaDevice','checkForUpdate')).toBe(2);
  // Answered: later resumes that day do not check again.
  await page.evaluate(()=>(window as any).settingsFixture.resume());
@@ -175,9 +179,9 @@ test('a failed update check stays due, one check runs at a time, and Install upd
 test('an update whose versionName cannot be shown is still offered, under its versionCode',async({page})=>{
  await nativeStub(page,{updates:[{...update,versionName:'x'.repeat(65)}]});
  await settings(page);
- const row=app(page).getByRole('button',{name:'Install update',exact:true});
+ const row=current(page).getByRole('button',{name:'Install update',exact:true});
  await expect(row).toBeVisible();
- await expect(app(page).getByText('8',{exact:true})).toBeVisible();
+ await expect(row.getByText('8',{exact:true})).toBeVisible();
  expect(await page.locator('body').innerText()).not.toContain('x'.repeat(65));
  await row.click();
  await expect.poll(()=>calls(page,'AlphaDevice','installUpdate')).toBe(1);
@@ -186,8 +190,9 @@ test('an update whose versionName cannot be shown is still offered, under its ve
 test('Install update appears only for a newer build of this flavor and signer, and a withdrawn release removes it',async({page})=>{
  await nativeStub(page,{updates:[{...update,versionCode:7},{...update,variant:'standalone'},{...update,signerSha256:'6d'.repeat(32)},update,null]});
  await settings(page);
- const install=app(page).getByRole('button',{name:'Install update',exact:true}),check=app(page).getByRole('button',{name:'Check for updates',exact:true});
+ const install=current(page).getByRole('button',{name:'Install update',exact:true}),check=current(page).getByRole('button',{name:'Check for updates',exact:true});
  await expect.poll(()=>calls(page,'AlphaDevice','checkForUpdate')).toBe(1);
+ await about(page);
  for(const [count,offered] of [[2,false],[3,false],[4,true],[5,false]] as const){
   await check.click();
   await expect.poll(()=>calls(page,'AlphaDevice','checkForUpdate')).toBe(count);
@@ -204,5 +209,6 @@ test('a browser build never checks for updates',async({page})=>{
  await expect(page.locator('html')).toHaveAttribute('data-active-view','settings');
  await page.waitForTimeout(500);
  expect(await saved(page)).toBeNull();
- await expect(app(page).getByRole('button',{name:'Check for updates',exact:true})).toHaveCount(0);
+ await about(page);
+ await expect(current(page).getByRole('button',{name:'Check for updates',exact:true})).toHaveCount(0);
 });

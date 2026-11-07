@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {resolveCloudEnvironment} from '../apps/app/src/runtime/cloud-environment-selection.ts';
 const preview={development:true,testMocks:true,android:false,previewEnvironment:'staging'};
 test('staging default requires exact public flag plus development, test-mocks and non-Android',()=>{
@@ -19,7 +19,7 @@ test('a hidden selector retains current Cloud issuer and actual sign-in dispatch
  const calls=[];
  const expression=ui.match(/const env = \(\): CloudEnvironment => ([^\n;]+);/)[1];
  const method=ui.match(/  async cloudLogin\(environment: CloudEnvironment\) \{([\s\S]*?)\n  \},/)[1];
- const actual=vm.runInNewContext(stripTypeScriptTypes('({async cloudLogin(environment: CloudEnvironment){'+method+'}})',{mode:'transform'}),{testMocksEnabled:true,isAndroid:false,browserLocalAgentEnabled:true,residentCloudFlow:()=>false,connectionController:{browserCloudLogin:async value=>calls.push(value),beginSignIn:async value=>calls.push(value)}});
+ const actual=vm.runInNewContext(stripTypeScriptTypes('({async cloudLogin(environment: CloudEnvironment){'+method+'}})',{mode:'strip'}),{testMocksEnabled:true,isAndroid:false,browserLocalAgentEnabled:true,residentCloudFlow:()=>false,connectionController:{browserCloudLogin:async value=>calls.push(value),beginSignIn:async value=>calls.push(value)}});
  for(const [control,current] of [[null,'staging'],[null,'production'],[{value:'production'},'staging'],[{value:'staging'},'production']]){
   const selected=vm.runInNewContext(expression,{resolveCloudEnvironment,cloudEnvironmentPolicy:preview,environment:{current:control},snapshot:{},cloud:{environment:current}});
   await actual.cloudLogin(selected);

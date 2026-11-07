@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from '../support/strip-types.mjs';
 import {randomUUID} from 'node:crypto';
 import vm from 'node:vm';
 
@@ -43,7 +43,7 @@ export function googleCancelBoundary(root) {
   CloudSignInError:class extends Error {constructor(code){super(code);this.code=code;}static from(error){return error;}}
  };
  const protocolClass=`class ProtocolBoundary {activeLogin=null;activeGoogleCancellation=null;googleSignInCommitted=false;authority={};constructor(port){this.options={signIn:port};}\n${publicCancel}\n${protocol.slice(stepFrom,stepTo)}\n}`;
- vm.runInNewContext(stripTypeScriptTypes(browser.slice(from).replace('export class','class')+'\n'+protocolClass,{mode:'transform'})+';globalThis.Browser=BrowserCloudSignIn;globalThis.Protocol=ProtocolBoundary;',sandbox);
+ vm.runInNewContext(stripTypeScriptTypes(browser.slice(from).replace('export class','class')+'\n'+protocolClass,{mode:'strip'})+';globalThis.Browser=BrowserCloudSignIn;globalThis.Protocol=ProtocolBoundary;',sandbox);
  const port=new sandbox.Browser(),client=new sandbox.Protocol(port);
  const parse=value=>{assert.equal(value.status,'authenticated');assert.equal(value.environment,'production');assert.equal(typeof value.credentialId,'string');assert.equal(typeof value.attemptId,'string');return value;};
  const outcome=id=>({status:'authenticated',environment:'production',attemptId:id,credentialId:randomUUID(),expiresAt:Date.now()+60000,accountCreated:false});

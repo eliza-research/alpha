@@ -10,7 +10,7 @@ import os from 'node:os';
 import path from 'node:path';
 import vm from 'node:vm';
 import {execFileSync} from 'node:child_process';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {tsImport} from 'tsx/esm/api';
 
 const limitModule=await tsImport(new URL('../apps/app/src/runtime/cloud-voice-limit.ts',import.meta.url).href,{parentURL:import.meta.url});
@@ -30,7 +30,7 @@ function loadCloudVoice(f={}){
   playOwnedSpeech:async(_native,_signal,prepare)=>{await prepare('request');},
   cloudVoiceLimitOf,readServiceLimit:sdk.readServiceLimit,retryDuration:sdk.retryDuration,cloudServiceName:()=>'Eliza Cloud'};
  const source=fs.readFileSync('apps/app/src/runtime/cloud-voice.ts','utf8').replace(/^import [^;]*;\n/gm,'').replaceAll('export async function','async function').replaceAll('export function','function').replaceAll('export type','type');
- vm.runInNewContext('{'+stripTypeScriptTypes(source,{mode:'transform'})+';globalThis.failure=cloudVoiceFailure;globalThis.serviceLimit=cloudVoiceServiceLimit;globalThis.create=createCloudVoice;}',box);
+ vm.runInNewContext('{'+stripTypeScriptTypes(source,{mode:'strip'})+';globalThis.failure=cloudVoiceFailure;globalThis.serviceLimit=cloudVoiceServiceLimit;globalThis.create=createCloudVoice;}',box);
  return {box,notes};
 }
 
@@ -73,7 +73,7 @@ test('connection controller records a Cloud speech limit only for the account it
  const start=ui.indexOf('  noteCloudServiceLimit(');const end=ui.indexOf('\n  },',start);
  assert.ok(start>=0&&end>start);
  const updates=[];let service={identity:{sessionId:'account-session'}};
- const object=stripTypeScriptTypes(`const controller={${ui.slice(start,end+4)}};`,{mode:'transform'});
+ const object=stripTypeScriptTypes(`const controller={${ui.slice(start,end+4)}};`,{mode:'strip'});
  const method=(limit,sessionId)=>new Function('update','service','limit','sessionId',`${object}\nreturn controller.noteCloudServiceLimit(limit,sessionId);`)(value=>updates.push(value),service,limit,sessionId);
  const limit={kind:'rate-limited',retryAfterMs:30_000,resetsAt:null};
  assert.equal(method(limit,'account-session'),true);
@@ -124,7 +124,7 @@ test('only the explicit Cloud profile and development browser-resident builds re
  const selection=fs.readFileSync('apps/app/src/runtime/voice-selection.ts','utf8').replace(/^import .*;\n/gm,'').replaceAll('export function','function').replaceAll('export type','type');
  for(const [cloud,mocks,expected] of [[false,false,'device'],[true,false,'cloud']]){
   const box={cloudRuntimeEnabled:cloud,testMocksEnabled:mocks,browserDevProfile:false,localStorage:{getItem:()=>JSON.stringify({version:1,route:'cloud',disclosed:'cloud-speech-uses-plan',chosenAt:1}),setItem(){}},JSON,Number,Date,connectionController:{getSnapshot:()=>({residentInference:'cloud'}),getCloudEnvironment:()=>'production',getCloudClient:()=>({})}};
-  vm.runInNewContext('{'+stripTypeScriptTypes(selection,{mode:'transform'})+'\nglobalThis.api={selectVoiceRoute,voiceRoutePreference};}',box);
+  vm.runInNewContext('{'+stripTypeScriptTypes(selection,{mode:'strip'})+'\nglobalThis.api={selectVoiceRoute,voiceRoutePreference};}',box);
   // A native flag-off build routes speech to the device even with a stored Cloud choice.
   for(const requested of ['default','device','manual','agent'])assert.equal(box.api.selectVoiceRoute(requested),expected);
   assert.equal(box.api.voiceRoutePreference(),expected);

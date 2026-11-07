@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
 // #406: a saved hosted or paired agent selection from an earlier build becomes the resident agent.
 // Runs the real selection and migration functions of connection-ui.tsx against an in-memory
@@ -14,7 +14,7 @@ const code=stripTypeScriptTypes([
  slice('function save(selection: Selection)','\nfunction retire('),
  slice('function selection(): Selection | null {','\nfunction errorMessage('),
  slice('/** Saved selection kinds of the retired hosted and paired agents','/**\n * Every Alpha Phone signs in to Eliza Cloud'),
-].join('\n').replace(/export /g,''),{mode:'transform'});
+].join('\n').replace(/export /g,''),{mode:'strip'});
 const SELECTION='alpha.connection.selection.v1',LEGACY='alpha.connection.legacy-hosted-selection.v1';
 const CONVERSATIONS='alpha.connection.conversations.v1',CLOUD_SERVICE='alpha.connection.cloud-service.v1';
 function fixture(testMocksEnabled,seed){

@@ -726,7 +726,7 @@ test('failed native provider binding reports unconfirmed inference and exposes t
  await expect(settings.getByText('Not available',{exact:true})).toBeVisible();
  const error=settings.getByText(/Synthetic account verification failure/);await expect(error).toBeVisible();
  await expect(error).toContainText('Cloud inference removal could not be confirmed. Your agent is running; retry in Settings.');
- const history=settings.getByText('Conversation history',{exact:true});await expect(history).toBeVisible();
+ const history=settings.getByRole('button',{name:'Earlier conversations',exact:true});await expect(history).toBeVisible();
  expect(await error.evaluate((node,other)=>(node.compareDocumentPosition(other!)&Node.DOCUMENT_POSITION_FOLLOWING)!==0,await history.elementHandle())).toBe(true);
  expect(await configured(page)).toBe(1);
  // The configure call failed before returning a binding guard. The client cannot claim the

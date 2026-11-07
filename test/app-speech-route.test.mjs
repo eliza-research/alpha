@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
-const source=stripTypeScriptTypes(readFileSync('apps/app/src/runtime/app-speech.ts','utf8').replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'transform'});
+const source=stripTypeScriptTypes(readFileSync('apps/app/src/runtime/app-speech.ts','utf8').replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'strip'});
 function fixture(ready=true){const f={cloud:0,spoken:[],checks:0};const box={AbortController,DOMException,window:{addEventListener(){},removeEventListener(){}},document:{hidden:false,documentElement:{dataset:{}}},connectionController:{getSnapshot:()=>({})},markTtsPlaybackStarted(){},markTtsPlaybackEnded(){},cloudRuntimeEnabled:false,testMocksEnabled:false,createOnDeviceVoice:()=>({ready:async()=>{throw Error("app speech must not use transcription readiness");},playbackReady:async()=>ready,speak:async(...args)=>{f.spoken.push(args);args[4].assertCurrent();if(f.hold)await new Promise(resolve=>f.release=resolve);}}),speakCloudText:async()=>{f.cloud++;}};vm.runInNewContext(source+';globalThis.speak=speakAppText;',box);return {f,box};}
 test('reviewed app speech stays local with strict cleanup, queue and owner checks',async()=>{const {f,box}=fixture();await box.speak('Reviewed text',new AbortController().signal,undefined,true,()=>f.checks++);assert.equal(f.cloud,0);assert.equal(f.spoken[0][0],'Reviewed text');assert.equal(f.spoken[0][3],true);assert.equal(f.spoken[0][4].queue,true);assert.ok(f.checks>=3);});
 test('unavailable app speech does not fall back to cloud',async()=>{const {f,box}=fixture(false);await assert.rejects(box.speak('Reviewed text',new AbortController().signal),/On-device speech is unavailable/);assert.equal(f.cloud,0);assert.equal(f.spoken.length,0);});

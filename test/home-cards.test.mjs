@@ -162,7 +162,8 @@ test('next item: an overdue reminder does not hide the next event, which keeps i
   assert.deepEqual(H.presentHomeNext({title: '  ', begin: at(17), allDay: false, now, provenance: reminder}),
     {text: 'Next: Untitled event 5:00 PM', source: 'Reminder', description: 'Next: Untitled event, 5:00 PM. Reminder saved on this browser, read 2:50 PM'});
   const cards = readFileSync(new URL('../apps/app/src/prototype/home-overview-cards.ts', import.meta.url), 'utf8');
-  assert.match(cards, /out\.homeCalendarHasNext \? \{text: String\(out\.homeCalendarNext \|\| ''\), source: String\(out\.homeCalendarNextSource \|\| ''\)\}/);
+  // The next item's source is not drawn on Home (docs/ui-refresh-2026-11); its description keeps it.
+  assert.match(cards, /out\.homeCalendarHasNext \? \{text: String\(out\.homeCalendarNext \|\| ''\), source: ''\}/);
   assert.match(cards, /next: \{'data-alpha-home-calendar-next-line': ''\}, nextSource: \{'data-alpha-home-calendar-next-source': ''\}/);
 });
 test('next item under Agent Calendar: an overdue reminder shows whichever comes first of an upcoming phone reminder and the agent event', () => {
@@ -272,7 +273,7 @@ test('workflow freshness: a load time only after a list was actually loaded', ()
   assert.deepEqual(H.presentHomeWorkflowFreshness({loadedAt: at(8, 15, 6), now, unified: true}), {visible: 'Loaded Tue, Oct 6 8:15 AM', description: 'Automations from your agent and reminders on this phone, loaded Tue, Oct 6 8:15 AM'});
   assert.deepEqual(H.presentHomeWorkflowFreshness({loadedAt: at(15, 4), now, unified: true, agent: false}), {visible: 'Loaded 3:04 PM', description: 'Reminders on this phone, loaded 3:04 PM'}, 'no agent is named when none is connected');
 });
-test('Home template renders source, freshness and the brief card only from live values', () => {
+test('Home template renders the cards Home shows, the date line and the brief card only from live values', () => {
   const template = readFileSync(new URL('../apps/app/src/prototype/template.html', import.meta.url), 'utf8');
   const home = template.slice(template.indexOf('<sc-element value="{{homeShell}}">'), template.indexOf('</sc-element>'));
   assert.ok(home.includes('<sc-slot name="cards">'), 'Home cards fill the shared shell\'s card slot');
@@ -288,7 +289,13 @@ test('Home template renders source, freshness and the brief card only from live 
   assert.doesNotMatch(home, /\}\}\s+\{\{/, 'each card placeholder is alone in its text node');
   assert.doesNotMatch(home, /home-calendar-card|home-brief-card|data-alpha-home-inbox|\{\{homeCalendarTitle\}\}|\{\{homeBriefTitle\}\}|\{\{homeInboxTitle\}\}/, 'no second copy of the shared card markup');
   assert.match(home, /aria-description="\{\{homeWorkflowDescription\}\}"/);
-  assert.match(home, /<sc-if value="\{\{homeWorkflowFreshness\}\}"><span data-alpha-home-workflow-freshness>/);
+  // Freshness is in the accessible description only (docs/ui-refresh-2026-11).
+  assert.doesNotMatch(home, /\{\{homeWorkflowFreshness\}\}|data-alpha-home-workflow-freshness/);
+  // The workflows card is drawn only while Home's visibility pass shows it; with no card, the row
+  // holds the date line first, with Connect Google only while Google is known disconnected.
+  assert.match(home, /<sc-if value="\{\{homeShowWorkflows\}\}"><button data-alpha-home-workflows /);
+  assert.match(home, /<sc-if value="\{\{homeShowDate\}\}"><div class="home-date-line" data-alpha-home-date><span class="serif home-date-text">\{\{homeDateLabel\}\}<\/span><sc-if value="\{\{homeShowSetup\}\}"><button class="tap home-date-setup" data-alpha-home-connect-google onClick="\{\{connectGoogle\}\}">Connect Google<\/button><\/sc-if><\/div><\/sc-if>/);
+  assert.ok(home.indexOf('data-alpha-home-date') < home.indexOf('{{homeAgendaCard}}'), 'the date line is the row\'s first child');
   assert.doesNotMatch(home, /Morning brief|Design review|7:02 AM/, 'no fixture brief or agenda text in the template');
   const adapter = readFileSync(new URL('../apps/app/src/prototype/data-adapter.ts', import.meta.url), 'utf8');
   assert.doesNotMatch(adapter, /gmailSearch|gmailThread|\.sync\(|fetch\(/, 'the Home adapter starts no mail read, digest sync or network request');
@@ -318,4 +325,34 @@ test('calendar name lookup: the event\'s own calendar in the same read, and no b
   const base = {state: 'ready', overdue: false, readAt: at(15, 4), now, native: true};
   assert.equal(H.presentHomeCalendarSource({...base, calendar: H.homeCalendarName(sources, '7')}).description, 'Harbour team. Read 3:04 PM from calendars on this device');
   assert.deepEqual(H.presentHomeCalendarSource({...base, calendar: H.homeCalendarName(sources, '99')}), {origin: '', read: '', description: 'Read 3:04 PM from calendars on this device'});
+});
+
+test('Home card visibility: a card only with something to show, else the date line, and Connect Google only when Google is known disconnected', () => {
+  const source = readFileSync(new URL('../apps/app/src/prototype/data-adapter.ts', import.meta.url), 'utf8');
+  const start = source.indexOf('export function installHomeCardVisibility');
+  const body = source.slice(start, source.indexOf('\n}\n', start) + 3).replace('export function', 'function');
+  const context = {formatFullDate: L.formatFullDate, Date};
+  vm.runInNewContext(transformSync(body + '\nglobalThis.install = installHomeCardVisibility;', {loader: 'ts'}).code, context);
+  let values = {};
+  let opened = 0;
+  class Shell { renderVals() { return values; } }
+  context.install(Shell, () => opened++);
+  const home = next => { values = next; return new Shell().renderVals(); };
+  const none = home({homeCalendarHasEvent: false, homeWorkflowHasRows: false, homeInboxHasRows: false, homeBriefHas: false});
+  assert.equal(none.homeShowDate, true);
+  assert.equal(none.homeShowSetup, false, 'no Connect Google while Google is unknown or signed out of Eliza Cloud');
+  assert.equal(none.homeDateLabel, L.formatFullDate(new Date()));
+  assert.deepEqual([none.homeShowCalendar, none.homeShowWorkflows, none.homeShowInbox], [false, false, false]);
+  assert.equal(home({homeGoogleConnected: false}).homeShowSetup, true);
+  assert.equal(home({homeGoogleConnected: true}).homeShowSetup, false);
+  assert.equal(home({homeGoogleConnected: false, homeBriefHas: true}).homeShowSetup, false, 'a card replaces the date line and its button');
+  for (const [key, shown] of [['homeCalendarHasEvent', 'homeShowCalendar'], ['homeWorkflowHasRows', 'homeShowWorkflows'], ['homeInboxHasRows', 'homeShowInbox'], ['homeBriefHas', null]]) {
+    const out = home({[key]: true, homeGoogleConnected: false});
+    assert.equal(out.homeShowDate, false, key);
+    assert.equal(out.homeDateLabel, '', key);
+    for (const flag of ['homeShowCalendar', 'homeShowWorkflows', 'homeShowInbox']) assert.equal(out[flag], flag === shown, `${key} shows only its own card`);
+  }
+  home({homeGoogleConnected: false}).connectGoogle();
+  assert.equal(opened, 1, 'Connect Google opens the existing Google connection flow');
+  assert.equal(L.formatFullDate(new Date(2026, 10, 6)), 'Friday, November 6');
 });

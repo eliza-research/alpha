@@ -121,6 +121,17 @@ public final class AlphaDevicePlugin extends Plugin {
  }
  @PluginMethod public void openSettings(PluginCall call) {
   String page=call.getString("page","");
+  // Settings' one "Android settings" row (launcher only): Android's own Settings home, where radios,
+  // sound, battery and display live. Alpha's own page, kept out of the shared allowlist, whose pages
+  // never fall back to the Settings home.
+  if("system".equals(page)){
+   getActivity().runOnUiThread(()->{
+    try{getActivity().startActivity(new Intent(Settings.ACTION_SETTINGS));}
+    catch(RuntimeException unavailable){call.reject("This Android settings page is unavailable");return;}
+    JSObject out=new JSObject();out.put("status","opened");out.put("page",page);out.put("specific",true);call.resolve(out);
+   });
+   return;
+  }
   if(SystemSettingsPages.actions(page)==null){call.reject("Unsupported settings page");return;}
   getActivity().runOnUiThread(()->{
    // The shared allowlist (SystemSettingsPages); "specific" is false when only the broader fallback opened.

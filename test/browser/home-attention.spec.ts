@@ -14,15 +14,20 @@ test('the explicit development fixture reports unread email and opens Inbox', as
   await expect(page.locator('html')).toHaveAttribute('data-active-view','inbox');
 });
 
-test('a failed calendar read shows the retry state instead of neutral copy, then recovers', async ({ page }) => {
+test('a failed calendar read draws no card instead of neutral copy, then recovers', async ({ page }) => {
   test.slow(); // Chooses the browser calendar in Calendar first.
   await page.goto('/');
+  await page.evaluate(async () => {
+    const { BrowserCalendar } = await import('/src/browser/calendar.ts'), date = new Date(Date.now() + 2 * 86400000); date.setHours(9, 30, 0, 0);
+    await new BrowserCalendar().save({ calendarId: 'local', title: 'Synthetic attention event', begin: date.getTime(), end: date.getTime() + 1800000, allDay: false, creationId: crypto.randomUUID() });
+  });
+  await page.reload();
   // Home's agenda reads the calendar chosen in Calendar (Agent Calendar by default); this case is
   // about a device-calendar read failure, so it chooses the test-mocks browser calendar first.
   await openBrowserCalendar(page);
   await returnToApps(page);
-  const card = page.locator('[data-alpha-layer="home"] .scr > button').first();
-  await expect(card).toContainText('No upcoming events');
+  const home = page.getByRole('region', { name: 'Home', exact: true }), card = home.locator('[data-alpha-home-calendar]');
+  await expect(card).toContainText('Synthetic attention event');
   await page.evaluate(async () => {
     const { BrowserCalendar } = await import('/src/browser/calendar.ts');
     const proto = BrowserCalendar.prototype as any;
@@ -30,35 +35,35 @@ test('a failed calendar read shows the retry state instead of neutral copy, then
     proto.list = () => Promise.reject(Error('Calendar storage unavailable'));
     window.dispatchEvent(new Event('alpha:calendar-preferences'));
   });
-  await expect(card).toHaveAttribute('aria-label', 'Open your calendar');
-  await expect(card).toContainText('Calendar unavailable');
-  await expect(card).not.toContainText(/from this browser/);
+  // A failed read has nothing to show (docs/ui-refresh-2026-11): no card, and no failure copy.
+  await expect(card).toHaveCount(0);
+  await expect(home.locator('[data-alpha-home-date]')).toBeVisible();
+  await expect(home).not.toContainText(/Calendar unavailable|from this browser/);
   await page.evaluate(async () => {
     const { BrowserCalendar } = await import('/src/browser/calendar.ts');
     (BrowserCalendar.prototype as any).list = (window as any).__calendarList;
     window.dispatchEvent(new Event('alpha:calendar-preferences'));
   });
-  await expect(card).toContainText('No upcoming events');
+  await expect(card).toContainText('Synthetic attention event');
 });
 
-test('a failed Agent Calendar read shows the retry state and recovers only after retry', async ({ page }) => {
-  await page.goto('/');await installHomeCalendar(page);
-  const card = page.locator('[data-alpha-home-calendar]');
-  await expect(card).toContainText('Nothing planned');
+test('a failed Agent Calendar read draws no card and recovers only after Calendar is opened', async ({ page }) => {
+  await page.goto('/');
+  const event = { title: 'Synthetic agent attention event', startAt: new Date(Date.now() + 86400000).toISOString(), endAt: new Date(Date.now() + 90000000).toISOString() };
+  await installHomeCalendar(page, event);
+  const home = page.getByRole('region', { name: 'Home', exact: true }), card = home.locator('[data-alpha-home-calendar]');
+  await expect(card).toContainText(event.title);
   await refreshHomeCalendar(page,{fail:true});
-  await expect(card).toHaveAttribute('aria-label', 'Open Agent Calendar');
-  await expect(card).toContainText('Calendar unavailable');
-  await expect(card).not.toContainText(/Nothing planned|No upcoming/);
-  await expect(card).toHaveAttribute('aria-description','Calendar service unavailable. Open Calendar to retry.');
-  await expect(card).not.toContainText(/from this browser/);
+  await expect(card).toHaveCount(0);
+  await expect(home).not.toContainText(/Calendar unavailable|Nothing planned|No upcoming|from this browser/);
   await page.evaluate(()=>(window as any).homeCalendarFixture.fail=false);
-  // Opening Calendar from the failed card is the explicit retry: it reads the agent calendar again.
+  // Opening Calendar, here from its app tile, is the retry: it reads the agent calendar again.
   const before = await page.evaluate(()=>(window as any).homeCalendarFixture.requests.length);
-  await card.click();
+  await home.locator('[data-alpha-home-apps]').getByRole('button', { name: 'Calendar', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('data-active-view','calendar');
   await expect.poll(()=>page.evaluate(()=>(window as any).homeCalendarFixture.requests.length)).toBeGreaterThan(before);
   await returnToApps(page);
-  await expect(card).toContainText('Nothing planned');
+  await expect(card).toContainText(event.title);
 });
 
 // A retained brief sits beside the attention items without replacing them; a record of an
@@ -76,7 +81,7 @@ test('a retained brief appears next to the attention items, which keep their cou
   await expect(brief).toContainText('Synthetic brief beside attention.');
   // The attention card is unchanged and the brief card follows it in the same row.
   await expect(attention).toHaveAttribute('aria-label', name!);
-  const order = await home.locator('[data-alpha-home-layout] > .scr').first().getByRole('button').evaluateAll(list => list.map(el => el.hasAttribute('data-alpha-home-inbox') ? 'inbox' : el.hasAttribute('data-alpha-home-brief') ? 'brief' : 'other'));
+  const order = await home.locator('.home-card-row').getByRole('button').evaluateAll(list => list.map(el => el.hasAttribute('data-alpha-home-inbox') ? 'inbox' : el.hasAttribute('data-alpha-home-brief') ? 'brief' : 'other'));
   expect(order.indexOf('brief')).toBe(order.indexOf('inbox') + 1);
 });
 test('with only missed records there is no brief card, and the attention items stay', async ({ page }) => {

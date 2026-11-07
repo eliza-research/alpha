@@ -7,6 +7,7 @@ import {
 	DEFAULT_PULL_DISTANCE,
 	TAP_SLOP,
 } from "../../../../.eliza/client-features/packages/ui/src/gestures/constants";
+import { isEditing, keyboardFreeHeight } from "../runtime/canvas-geometry";
 import { visibleDocks } from "../runtime/dock-clearance";
 
 const SHEET_EASE = `cubic-bezier(${OVERLAY_EASE.join(",")})`;
@@ -322,11 +323,62 @@ export function installChatOverlayMotion(Component: Shell) {
 		window.addEventListener("blur", this.cancelChatMotion);
 		window.addEventListener("pagehide", this.cancelChatMotion);
 		document.addEventListener("visibilitychange", this.chatMotionVisibility);
+		// Android can close the keyboard by itself (its hide key, Back) and leave the composer
+		// focused. Keyboard up and composer focus are one state here, so the composer lets go.
+		// MainActivity uses adjustResize, so the WebView itself shrinks with the keyboard: compare
+		// against the keyboard-free height for this width (the shared helper main.tsx also uses),
+		// seeded now, before any keyboard can have shrunk the window.
+		const free = keyboardFreeHeight();
+		const visible = () => {
+			const width = document.documentElement.clientWidth || window.innerWidth,
+				layout = document.documentElement.clientHeight || window.innerHeight;
+			return {
+				width,
+				layout,
+				height: Math.min(layout, window.visualViewport?.height || layout),
+			};
+		};
+		const seed = visible();
+		free(seed.width, seed.layout, false);
+		let keyboardOpen = false;
+		this.dockKeyboardWatch = () => {
+			const now = visible(),
+				covered =
+					free(now.width, now.layout, isEditing(document.activeElement)) -
+						now.height >
+					150;
+			if (keyboardOpen && !covered && this.dockComposerFocused) {
+				const active = document.activeElement;
+				if (active instanceof HTMLElement && active.matches("[data-alpha-composer]"))
+					active.blur();
+			}
+			keyboardOpen = covered;
+		};
+		window.visualViewport?.addEventListener("resize", this.dockKeyboardWatch);
+		window.addEventListener("resize", this.dockKeyboardWatch);
+		// Leaving the app ends typing: the keyboard is gone when it returns.
+		this.dockHiddenWatch = () => {
+			if (!document.hidden) return;
+			const active = document.activeElement;
+			if (active instanceof HTMLElement && active.matches("[data-alpha-composer]"))
+				active.blur();
+			this.dockComposerFocused = false;
+			this.dockGuardPress = undefined;
+		};
+		document.addEventListener("visibilitychange", this.dockHiddenWatch);
 	};
 	p.componentDidUpdate = function (...args: Shell[]) {
 		update?.apply(this, args);
 		const drag: Drag | undefined = this.chatMotion,
 			s = this.S();
+		// The bar's composer unmounts without a blur event: its focus ends with it.
+		if (
+			(s.chat !== "input" || (args[1] && args[1].view !== s.view)) &&
+			(this.dockComposerFocused || this.dockGuardPress)
+		) {
+			this.dockComposerFocused = false;
+			this.dockGuardPress = undefined;
+		}
 		if (
 			drag &&
 			(s.view !== drag.view ||
@@ -347,6 +399,9 @@ export function installChatOverlayMotion(Component: Shell) {
 		window.removeEventListener("blur", this.cancelChatMotion);
 		window.removeEventListener("pagehide", this.cancelChatMotion);
 		document.removeEventListener("visibilitychange", this.chatMotionVisibility);
+		window.visualViewport?.removeEventListener("resize", this.dockKeyboardWatch);
+		window.removeEventListener("resize", this.dockKeyboardWatch);
+		document.removeEventListener("visibilitychange", this.dockHiddenWatch);
 		unmount?.call(this);
 	};
 
@@ -730,6 +785,94 @@ export function installChatOverlayMotion(Component: Shell) {
 			},
 			cancel() {
 				shell.chatScrimPress = undefined;
+			},
+		};
+		// One rule for every raised dock (docs/ui-refresh-2026-11, tla/ChatInput.tla): the bar
+		// above a pill view's resting form, or any composer bar with the keyboard up, takes the
+		// first touch outside it. That touch lowers the dock to its resting form, closes the
+		// keyboard and reaches nothing underneath; the next touch is ordinary. The draft stays.
+		const raisedBar =
+			s.chat === "input" &&
+			!!out.showComposer &&
+			s.voice === "off" &&
+			!shell.props.assistantSurface &&
+			(shell.rest() === "hidden" || !!shell.dockComposerFocused);
+		out.dockGuardPE = raisedBar ? "auto" : "none";
+		out.dockComposerFocus = () => {
+			if (shell.dockComposerFocused) return;
+			shell.dockComposerFocused = true;
+			shell.setState({});
+		};
+		out.dockComposerBlur = () => {
+			// A press on the guard keeps the dock raised until it lowers it, so the press cannot
+			// fall through to what the guard covers.
+			if (shell.dockGuardPress || !shell.dockComposerFocused) return;
+			shell.dockComposerFocused = false;
+			shell.setState({});
+		};
+		const lowerDock = () => {
+			shell.dockGuardPress = undefined;
+			shell.dockComposerFocused = false;
+			const active = document.activeElement;
+			if (active instanceof HTMLElement && active.matches("[data-alpha-composer]"))
+				active.blur();
+			retire(shell, false);
+			shell.setState({ chat: shell.rest() });
+		};
+		// A long press opens no menu and lowers the dock like any other touch.
+		out.dockGuardMenu = (event: MouseEvent) => {
+			event.preventDefault();
+			event.stopPropagation();
+			lowerDock();
+		};
+		out.dockGuardTap = (event: MouseEvent) => {
+			event.stopPropagation();
+			lowerDock();
+		};
+		out.dockGuardSw = {
+			down(event: PointerEvent) {
+				event.stopPropagation();
+				// No focus change and no compatibility mouse events: the click alone lowers.
+				event.preventDefault();
+				if (event.isPrimary === false) return;
+				shell.dockGuardPress = {
+					id: event.pointerId,
+					x: event.clientX,
+					y: event.clientY,
+					moved: false,
+				};
+			},
+			// Captured only once it is a drag, as on the scrim above.
+			move(event: PointerEvent) {
+				const press = shell.dockGuardPress;
+				if (
+					press?.id !== event.pointerId ||
+					press.moved ||
+					Math.hypot(event.clientX - press.x, event.clientY - press.y) <
+						TAP_SLOP * geometry.scale
+				)
+					return;
+				press.moved = true;
+				(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+			},
+			up(event: PointerEvent) {
+				event.stopPropagation();
+				const press = shell.dockGuardPress;
+				if (press?.id !== event.pointerId) return;
+				// A drag has no click: it lowers on release.
+				if (press.moved) lowerDock();
+				// A tap lowers on its click; a press that sends no click (a long press) lowers
+				// here instead, so the press is never left stuck.
+				else
+					setTimeout(() => {
+						if (shell.dockGuardPress === press) lowerDock();
+					}, 0);
+			},
+			cancel(event: PointerEvent) {
+				// A cancelled press (the system took the touch) still lowers: the dock is never
+				// left raised with its guard holding a stale press.
+				const press = shell.dockGuardPress;
+				if (press?.id === event.pointerId) lowerDock();
 			},
 		};
 		return out;

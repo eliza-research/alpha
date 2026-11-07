@@ -239,7 +239,11 @@ file flows, dialog accessibility, disclosed adapter fixtures and reference desig
 states. Reports/screenshots are in `test-results/browser-report` and
 `test-results/browser`. Browser CI runs independently of Android qualification.
 
-Use Node 24.15.0, the prepared source's pinned Bun version (currently 1.4.2), and JDK 21.
+Use Node 26.13.0 (`.nvmrc`), the prepared source's pinned Bun version (currently 1.4.2), and JDK 21.
+Node and Bun have separate jobs. Node and npm drive this repository's own tooling: Vite, Playwright,
+the `node --test` suite, Capacitor and the build scripts. Bun is the runtime of the Eliza agent that
+ships on the phone (`libeliza_bun.so`) and the tool upstream Eliza uses to build that agent bundle,
+so it is needed only to prepare or run the agent (`agent:prepare`, the local agent scripts).
 `agent:prepare` checks Bun against the upstream `packageManager` before installing dependencies.
 Put that Bun version first on `PATH` for the build scripts; `ALPHA_BUN` may also select
 its absolute executable for preparation and nested tools. An older Bun can emit incompatible

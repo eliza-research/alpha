@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
 const source=readFileSync(process.env.ALPHA_RESTORE_SOURCE||'apps/app/src/runtime/connection-ui.tsx','utf8');
 const part=(start,end)=>{const a=source.indexOf(start),b=source.indexOf(end,a);assert.ok(a>=0&&b>a);return source.slice(a,b);};
@@ -9,7 +9,7 @@ const code=stripTypeScriptTypes([
  part('async function createSelectedConversation(', '/** Only remove'),
  part('async function restoreConversationHistory(', '/** Restored chats'),
  part('async function restoreSavedHistory(', 'type HistoryEntry'),
-].join('\n'),{mode:'transform'});
+].join('\n'),{mode:'strip'});
 function fixture(){
  let choice={id:'gone',revision:'r1'},createCount=0;
  const state={session:{sessionId:'session'},history:{conversationId:'manual-visible',revision:4,messages:[]}},writes=[],memory=new Map();

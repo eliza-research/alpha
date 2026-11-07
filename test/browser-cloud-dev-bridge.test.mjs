@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {mkdtemp,writeFile,readFile,rm,stat,mkdir} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {createHash,randomUUID} from 'node:crypto';
 import {createServer} from 'node:http';
-if(!process.execArgv.some((arg,i)=>arg==='--import'&&process.execArgv[i+1]==='tsx')){const child=spawnSync(process.execPath,['--import','tsx',process.argv[1]],{stdio:'inherit',timeout:60000});if(child.error)throw child.error;process.exit(child.status??1);}
+if(!process.execArgv.some((arg,i)=>arg==='--import=tsx'||(arg==='--import'&&process.execArgv[i+1]==='tsx'))){const child=spawnSync(process.execPath,['--import','tsx',process.argv[1]],{stdio:'inherit',timeout:60000});if(child.error)throw child.error;process.exit(child.status??1);}
 const {createBrowserCloudDevHandler}=await import('../scripts/browser-cloud-dev-bridge.ts');
 const {CloudProtocol}=await import('../apps/app/src/runtime/cloud-protocol.ts');
 const {cloudStorageNamespace,productionCloud,stagingCloud}=await import('../apps/app/src/runtime/cloud-deployment.generated.ts');
@@ -806,7 +806,7 @@ test('cancelling Google while durable save awaits resident retirement retains th
 async function googleCommitBoundaryFixture(){
  const source=await readFile(new URL('../scripts/browser-cloud-dev-bridge.ts',import.meta.url),'utf8');
  const start=source.indexOf(' async function cancelGoogleAttempt('),end=source.indexOf(' async function browserGoogleAvailable(',start);
- assert.ok(start>=0&&end>start);const code=stripTypeScriptTypes(source.slice(start,end),{mode:'transform'});
+ assert.ok(start>=0&&end>start);const code=stripTypeScriptTypes(source.slice(start,end),{mode:'strip'});
  const deferred=()=>{let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve};};
  const renameEntered=deferred(),releaseRename=deferred(),writeEntered=deferred(),releaseWrite=deferred();
  const disk={value:'old',temporary:null},attempt={id:'attempt',phase:'preparing',environment:'production',controller:new AbortController(),sessionId:'session'};
@@ -860,10 +860,10 @@ async function wholeGoogleStackFixture(options={}){
  client.identity=async()=>({userId:owner,organizationId:org});
  const source=await readFile(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
  const from=source.indexOf('  async cancelSignIn() {'),to=source.indexOf('  /** Sends a six-digit code',from);assert.ok(from>=0&&to>from);
- const methods=stripTypeScriptTypes('({'+source.slice(from,to)+'})',{mode:'transform'});
- const signed=stripTypeScriptTypes(source.slice(source.indexOf('async function signedIn('),source.indexOf('/** The development hosted-agent client.')),{mode:'transform'});
- const verify=stripTypeScriptTypes(source.slice(source.indexOf('async function verifyService('),source.indexOf('let pendingBillingReview:')),{mode:'transform'});
- const part=(start,end)=>stripTypeScriptTypes(source.slice(source.indexOf(start),source.indexOf(end)),{mode:'transform'});
+ const methods=stripTypeScriptTypes('({'+source.slice(from,to)+'})',{mode:'strip'});
+ const signed=stripTypeScriptTypes(source.slice(source.indexOf('async function signedIn('),source.indexOf('/** The development hosted-agent client.')),{mode:'strip'});
+ const verify=stripTypeScriptTypes(source.slice(source.indexOf('async function verifyService('),source.indexOf('let pendingBillingReview:')),{mode:'strip'});
+ const part=(start,end)=>stripTypeScriptTypes(source.slice(source.indexOf(start),source.indexOf(end)),{mode:'strip'});
  // The real admission path; only the shared binding controller and the agent start are stubbed.
  const admission=part('function signInClient(','/**\n * A new key was stored')+part('async function residentSignedIn(','/** The key is stored;')+part('async function admitCloudResident(','/**\n * Cloud reported, on a background refresh');
  const serviceSlot=source.match(/const CLOUD_SERVICE = ('[^']+');/);assert.ok(serviceSlot);

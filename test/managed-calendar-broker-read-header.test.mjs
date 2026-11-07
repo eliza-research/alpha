@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {Readable} from 'node:stream';
 import {EventEmitter} from 'node:events';
 // Actual broker + exact shared codec, with only external error-class identities
 // replaced. No real host/SDK graph, provider, native bridge, or socket is loaded.
-const strip=source=>stripTypeScriptTypes(source.replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'transform'});
+const strip=source=>stripTypeScriptTypes(source.replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'strip'});
 const brokerSource=readFileSync('backend/managed-google-agent-broker.ts','utf8');
 const contractImport=brokerSource.match(/^import \{calendarReadBrokerDiagnosticHeader\} from '([^']+)';$/m);
 assert.equal(contractImport?.[1],'../vendor/eliza/packages/contracts/src/calendar.ts','broker must consume the actual pinned shared source');

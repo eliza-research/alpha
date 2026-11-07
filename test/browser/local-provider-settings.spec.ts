@@ -103,7 +103,7 @@ test('provider status, pinned model, verified save and confirmed key removal', a
   // Removal stops the agent that holds the key, deletes the key, then starts the agent again without it.
   await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
   expect(await page.evaluate(() => { const f = (window as any).providerFixture; return { clears: f.clears, stops: f.stops }; })).toEqual({ clears: 1, stops: 1 });
-  await expect(page.getByRole('button', { name: 'AI provider', exact: true })).toContainText('Cloud');
+  await expect(page.getByRole('button', { name: 'AI', exact: true })).toContainText('Cloud');
   await agentConnection.click();
   await expect(chooser.getByText('Connected · On this device', { exact: true })).toBeVisible();
   await chooser.getByText('Model provider', { exact: true }).click();
@@ -122,16 +122,15 @@ test('the chooser names the Eliza Cloud model as Settings does', async ({ page }
   await expect(chooser.getByText('Configured · Cloud · qwen-3.8-27b (Cerebras)', { exact: true })).toBeVisible();
 });
 
-for(const cloud of [false,true])test(`native Models shows on-device voice and actual provider admission: ${cloud?'configured':'unconfigured'}`,async({page})=>{
+// Settings has no Models page (docs/ui-refresh-2026-11): its one AI row names the provider choice.
+for(const cloud of [false,true])test(`native Settings names the AI provider choice and admits nothing: ${cloud?'configured':'unconfigured'}`,async({page})=>{
  const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
  await stubAgent(page,cloud);await page.goto('/');
  await page.locator('.alpha-connection').getByRole('button',{name:'Start local agent',exact:true}).click();
  await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
- await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Models',exact:true}).click();
- await expect(page.getByText('Conversation uses the selected agent. Voice runs on this device.',{exact:true})).toBeVisible();
- await expect(page.getByText('On this device',{exact:true}).first()).toBeVisible();
- await expect(page.getByText(cloud?'Eliza Cloud':'Not configured',{exact:true})).toBeVisible();
- if(cloud)await expect(page.getByText('Eliza Cloud · qwen-3.8-27b (Cerebras)',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Settings',exact:true}).click();
+ await expect(page.getByRole('button',{name:'AI',exact:true})).toContainText('Cloud');
+ await expect(page.getByRole('button',{name:'Models',exact:true})).toHaveCount(0);
  expect(await page.evaluate(()=>(window as any).providerFixture.configures)).toEqual([]);
  expect(await page.evaluate(()=>(window as any).residentAgent.state.unexpected)).toEqual([]);expect(errors).toEqual([]);
 });

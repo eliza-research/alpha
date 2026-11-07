@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from '../test/support/strip-types.mjs';
 import {InboxOperation, composerKind, composerContent, reviewBinding, reviewBindingRefusal} from '../apps/app/src/runtime/inbox-operation.ts';
 import {classifyGmailFailure} from '../apps/app/src/runtime/gmail-mailbox.ts';
 import * as grants from '../apps/app/src/runtime/gmail-grants.ts';
@@ -12,7 +12,7 @@ import {createMailReviewController} from '../.eliza/client-features/plugins/plug
 import {reviewMailAttachment} from '../apps/app/src/runtime/inbox-attachment.ts';
 
 let source = await readFile(new URL('../apps/app/src/prototype/inbox-provider-controls.ts', import.meta.url), 'utf8');
-source = '{' + stripTypeScriptTypes(source.replace(/^import .*;\n/gm, '').replace(/^export (?=function )/gm, '') + '\nglobalThis.inboxProviderControls=inboxProviderControls;', {mode: 'transform'}) + '}';
+source = '{' + stripTypeScriptTypes(source.replace(/^import .*;\n/gm, '').replace(/^export (?=function )/gm, '') + '\nglobalThis.inboxProviderControls=inboxProviderControls;', {mode: 'strip'}) + '}';
 const digest = async text => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))), b => b.toString(16).padStart(2, '0')).join('');
 // Timer turns do not establish readiness: WebCrypto and secure-store work may still be pending.
 // Await public promises where available, and observable completion for fire-and-forget controls.

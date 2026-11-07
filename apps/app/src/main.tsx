@@ -54,7 +54,7 @@ import { installAgentAdapter } from './prototype/agent-adapter';
 import { installPrototypeNativeAdapters } from './prototype/native-adapter';
 import { installSelectedDocumentAdapter } from './prototype/selection-adapter';
 import { installPrototypeCameraAdapter } from './prototype/camera-adapter';
-import { installPrototypeHomeBindings, installPrototypeDataAdapter, setHomeSources, HOME_SOURCES_CHANGED } from './prototype/data-adapter';
+import { installPrototypeHomeBindings, installPrototypeDataAdapter, installHomeCardVisibility, setHomeSources, HOME_SOURCES_CHANGED } from './prototype/data-adapter';
 import { isAndroid, DeviceApps, System, launcherBridge, launcherListens } from './native';
 import { DailyApps } from './daily';
 import { installPrototypeVoiceAdapter } from './prototype/voice-adapter';
@@ -64,7 +64,7 @@ import { installSettingsAdapter, readAppearanceChoice, resolveAppearance } from 
 import { ConnectionChooser, connectionController, connectionChooserVisible, residentAlwaysPresent } from './runtime/connection-ui';
 import { protectedPowerLaunchState } from './runtime/power-launch-state';
 import { installListenerInvocation, stopWakeListenerForChatOnly } from './runtime/always-on-listener';
-import {GoogleConnectionsPanel} from './runtime/google-connection-ui';
+import {GoogleConnectionsPanel,googleConnectionController} from './runtime/google-connection-ui';
 import { installNotesTrashAdapter } from './prototype/notes-trash-adapter';
 import { installInboxCloudAdapter, inboxAttention, subscribeInboxAttention } from './prototype/inbox-cloud-adapter';
 import { installHomeOverviewCards } from './prototype/home-overview-cards';
@@ -164,6 +164,9 @@ installSubviewAccessibility(VIEWS);
 installCalendarMonthFocus(Component, VIEWS);
 installChatOverlayMotion(Component);
 installSystemShade(Component,{native:isAndroid});
+// Which Home cards are drawn, from the final card values of every adapter above; the card builders
+// and the template read the result (docs/ui-refresh-2026-11).
+installHomeCardVisibility(Component, () => googleConnectionController.open());
 // The shared agenda, mail and brief cards render the final Home values of every adapter above.
 installHomeOverviewCards(Component);
 installClockAdapter(Component, VIEWS, { simulated: testMocksEnabled && fixture, browser: !isAndroid });
@@ -183,6 +186,19 @@ function installBrowserCapabilityTiles(Component:any){
     return {...out,tiles,deviceSettingsPending:true,deviceSettingsMessage:'Network, radio and sensor settings are managed by your browser and operating system.',sbWifi:navigator.onLine,sbPlane:false};
   };
 }
+/** Android's bar insets arrive from the bridge after the first paint. The last ones are kept and
+ * applied before it, so Home's grid and the dock start where they will stay (docs/ui-refresh-2026-11,
+ * tla/HomeLayout.tla). */
+const INSETS_KEY = 'alpha.surface-insets.v1';
+function rememberInsets(top: unknown, bottom: unknown) {
+  if (!Number.isFinite(top) || !Number.isFinite(bottom)) return;
+  try { localStorage.setItem(INSETS_KEY, JSON.stringify({ top, bottom })); } catch { /* the bridge value still applies */ }
+}
+if (isAndroid) try {
+  const saved = JSON.parse(localStorage.getItem(INSETS_KEY) || 'null');
+  if (Number.isFinite(saved?.top)) document.documentElement.style.setProperty('--native-top-inset', `${saved.top}px`);
+  if (Number.isFinite(saved?.bottom)) document.documentElement.style.setProperty('--native-bottom-inset', `${saved.bottom}px`);
+} catch { /* no saved insets: the bridge supplies them */ }
 let shell: any;
 /** A notice raised while the startup loading screen holds Home unmounted; shown once Home mounts. */
 let pendingNotice: string | undefined;
@@ -222,6 +238,7 @@ function Phone() {
     if (isAndroid) void DailyApps.surfaceInfo().then(info => {
       if (Number.isFinite(info.topInset)) document.documentElement.style.setProperty('--native-top-inset', `${info.topInset}px`);
       if (Number.isFinite(info.bottomInset)) document.documentElement.style.setProperty('--native-bottom-inset', `${info.bottomInset}px`);
+      rememberInsets(info.topInset, info.bottomInset);
       size();
     }).catch(() => {});
     const freeHeight = keyboardFreeHeight();
@@ -262,6 +279,15 @@ function Phone() {
       document.documentElement.style.setProperty('--phone-scale', String(geometry.scale));
       document.documentElement.style.setProperty('--phone-width', geometry.width);
       document.documentElement.style.setProperty('--phone-height', `${geometry.height}px`);
+      // Home keeps its keyboard-free layout while text is edited: the keyboard covers its bottom
+      // instead of Home laying itself out again in the smaller canvas (tla/HomeLayout.tla). Without a
+      // native inset the CSS fallback stays live, so a later --native-bottom-inset still applies.
+      if (!input.editing) {
+        document.documentElement.style.setProperty('--alpha-home-height', `${geometry.height}px`);
+        const bottomInset = document.documentElement.style.getPropertyValue('--native-bottom-inset');
+        if (bottomInset) document.documentElement.style.setProperty('--alpha-home-bottom-inset', bottomInset);
+        else document.documentElement.style.removeProperty('--alpha-home-bottom-inset');
+      }
       document.documentElement.style.setProperty('--phone-left', `${geometry.left}px`);
       document.documentElement.style.setProperty('--phone-top', `${geometry.top}px`);
       document.documentElement.classList.toggle('browser-desktop', desktop);

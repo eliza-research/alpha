@@ -5327,6 +5327,9 @@ class Component extends DCLogic {
     if (S.voice !== "off") return this.stopVoice();
     // An open conversation lowers one detent (full, sheet, rest) before Back leaves the view.
     if (S.chat === "full" || S.chat === "sheet") return this.setState(this.shellNavigate({ type: "back" }));
+    // A bar raised from the pill lowers before Back leaves the view: one level at a time
+    // (docs/ui-refresh-2026-11, tla/ChatInput.tla).
+    if (S.chat === "input" && this.rest() === "hidden") return this.setState({ chat: "hidden" });
     if (S.view) {
       var m = this.mod(S.view);
       if (m.back && m.back(this.vget(S.view), this.api(S.view))) return;
@@ -5392,7 +5395,8 @@ class Component extends DCLogic {
     if (action === "open-system-shade") return this.openSystemShade();
     if (action === "home") return this.goHome();
     if (action === "lower-assistant") return this.setState({ chat: this.rest() });
-    if (action === "raise-assistant") return this.setState({ chat: "sheet" });
+    // "raise-assistant" (an upward swipe on Home content) opens nothing: only the dock opens the
+    // chat, through its own drag handlers (chat-overlay-motion-adapter.ts, docs/ui-refresh-2026-11).
   }
   pullContext() {
     var S = this.S();
@@ -5620,7 +5624,7 @@ class Component extends DCLogic {
       [IC.up, "Swipe up from the bottom bar, or tap it · Home, from anywhere"],
       [IC.back, "Swipe in from either edge · back one step inside the app"],
       [IC.down, "Swipe down on launcher Home, or tap Notifications · Android notifications and quick settings"],
-      [IC.half, "Swipe up on Home · chat. Drag its grabber to resize"],
+      [IC.half, "Tap the Alpha mark or drag up from the bar · chat. Drag its grabber to resize"],
       [IC.lock, "Side key: tap · lock or wake"]
     ].map(function (l) { return { d: l[0], t: l[1] }; });
 
@@ -5672,7 +5676,7 @@ class Component extends DCLogic {
       panelOp: panelOpen ? 1 : 0, panelPE: panelOpen ? "auto" : "none", panelTop: S.chat === "full" && this.props.systemShell !== false ? "var(--alpha-chat-full-top,60px)" : "4px",
       scrimOp: 0, scrimPE: "none",
       showGrabber: S.chat !== "full", sizeIcon: S.chat === "full" ? IC.shrink : IC.expand, sizeLabel: S.chat === "full" ? "Shrink chat" : "Expand chat",
-      showComposer: showComposer, showPill: showPill, cmpBottom: 28,
+      showComposer: showComposer, showPill: showPill, cmpBottom: 28, dockGuardPE: "none", dockGuardSw: {}, dockGuardTap: null, dockGuardMenu: null, dockComposerFocus: null, dockComposerBlur: null,
       cmpPlaceholder: (mod && mod.placeholder) ? mod.placeholder : "Ask " + name,
       draft: S.draft, hasDraft: !!S.draft, noDraft: !S.draft,
       // The composer template binds these; the agent adapter refines them for a live turn.

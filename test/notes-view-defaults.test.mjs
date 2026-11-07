@@ -1,4 +1,4 @@
-import test from 'node:test';import assert from 'node:assert/strict';import{readFileSync}from'node:fs';import{stripTypeScriptTypes}from'node:module';import vm from'node:vm';
+import test from 'node:test';import assert from 'node:assert/strict';import{readFileSync}from'node:fs';import {stripTypeScriptTypes} from './support/strip-types.mjs';import vm from'node:vm';
 const source=readFileSync('apps/app/src/prototype/model.js','utf8'),start=source.indexOf('/* ===== module: notes ===== */'),end=source.indexOf('/* ===== module:',start+20);assert.ok(start>=0&&end>start);
 function fixture(list=[]){
  let view;const context=vm.createContext({IC:{},NOTES_SEED:list,NOTES_LIVE:[],NOTES_DICT:[],copy:()=>({}),cap:text=>text,pad2:value=>String(value).padStart(2,'0'),registerView:(id,value)=>{assert.equal(id,'notes');view=value;},setTimeout(){throw Error('No recorder starts during an empty render');},setInterval(){throw Error('No recorder starts during an empty render');},clearInterval(){},Date});
@@ -15,7 +15,7 @@ test('a voice card without a duration names only its to-dos, never NaN',()=>{
 });
 /** The restored projection (canonical-notes-ui.ts) over the real model.js Notes view. */
 function installCanonicalProjection(f){
- const code=stripTypeScriptTypes(readFileSync('apps/app/src/prototype/canonical-notes-ui.ts','utf8').replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'transform'});
+ const code=stripTypeScriptTypes(readFileSync('apps/app/src/prototype/canonical-notes-ui.ts','utf8').replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'strip'});
  const install=new Function('parseNoteFormat','projectNoteForModel','noteScheduleDraft','agentPendingText','agentAvailabilityNotice','DailyApps','CanonicalNotesController','CanonicalNotesEditor',code+';return installCanonicalNotesView;')(x=>x,x=>x,async()=>({}),(_s,text)=>text,(_s,text)=>text,{},class{},class{});
  install(class{},{notes:f.view});
 }

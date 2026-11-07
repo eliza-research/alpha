@@ -314,7 +314,7 @@ test('loop A on Android: the resident agent answers, the conversation follows ac
   // The connection names the agent and where it runs, and no credential is rendered anywhere.
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
   await button(page, 'Settings').click();
-  await expect(page.getByRole('button', { name: 'Agent connection', exact: true })).toContainText('Alpha');
+  await expect(page.getByRole('button', { name: 'Agent connection', exact: true })).toContainText('Running');
   await page.getByRole('button', { name: 'Agent connection', exact: true }).click();
   const account = page.getByRole('region', { name: 'Settings',exact:true });
   await expect(account).toContainText('Running on this device');
@@ -531,11 +531,12 @@ test('loops E and J05 in the web build: page content requires review and no deve
   await expect(review).toHaveCount(0);
   await page.goto('/');
   await button(page, 'Settings').click();
-  await button(page, 'Password manager').click();
+  await button(page, 'Passwords').click();
   const settings = page.locator('[data-settings-page]:not([inert])').last();
   await expect(settings).toContainText(/Saved passwords\s*Available in the Android app/);
-  await expect(settings).toContainText('Native provider status is unavailable here');
-  for (const name of ['Add development provider', 'Open development vault', 'Unlock passwords', 'Choose password provider']) await expect(button(page, name)).toHaveCount(0);
+  // A browser has no Android password provider: the page offers none.
+  await expect(button(page, 'Password provider')).toHaveCount(0);
+  for (const name of ['Add development provider', 'Open development vault', 'Unlock passwords', 'Password provider']) await expect(button(page, name)).toHaveCount(0);
   await expect(page.getByText(/demo-only-password|Example sign-in/)).toHaveCount(0);
   await expectNoDevelopmentSurface(page);
   expect(foreign).toEqual([]);

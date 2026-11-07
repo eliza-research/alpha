@@ -6,7 +6,7 @@ import {join} from 'node:path';
 import {createServer,request as httpRequest} from 'node:http';
 import {createHash,randomUUID} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
-if(!process.execArgv.includes('tsx')){const child=spawnSync(process.execPath,['--import','tsx',process.argv[1]],{stdio:'inherit',timeout:60000});process.exit(child.status??1);}
+if(!process.execArgv.some(arg=>arg==='--import=tsx'||arg==='tsx')){const child=spawnSync(process.execPath,['--import','tsx',process.argv[1]],{stdio:'inherit',timeout:60000});process.exit(child.status??1);}
 const {createLocalAgentDevHandler,localAgentPathAllowed,LOCAL_VOICE_WS_PATH}=await import('../scripts/local-agent-dev-bridge.ts');
 const owner=randomUUID(),agent=randomUUID(),conversation=randomUUID(),nonce='a'.repeat(43),voiceToken='b'.repeat(43),root='1'.repeat(64),paired='synthetic-owner-bearer';
 const BASE='/api/v1/voice/session';

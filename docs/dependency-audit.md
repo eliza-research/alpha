@@ -697,3 +697,20 @@ The shared installed-app launcher receives Alpha's existing Denton/Fraunces/Geor
 font stack from the product theme in `config/alpha-product.json`. This adds no font file
 or download: `prototype.css` remains the sole Denton loading rule. The owner-stated
 commercial license record and the open/system fallback stack are unchanged.
+
+### November 6 Node 26 tooling refresh
+
+Moving the repository tooling to Node 26.13.0 changes the npm lockfile (`@types/node` 26.6.6
+with `undici-types` 8.9.0, and `esbuild` 0.28.2 as a direct devDependency where it was already a
+transitive one), so the audit was regenerated. The fresh audit reported two advisories published
+the same day under the development-only `@capacitor/cli > rimraf` chain:
+[GHSA-3g3m-2fjr-6pw4](https://github.com/advisories/GHSA-3g3m-2fjr-6pw4) in `glob` 13.0.6
+(patched in 14.0.2) and [GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249)
+in `minimatch` 10.2.6 (patched in 11.0.1). The lockfile now resolves `rimraf` 6.1.4, `glob`
+14.0.4, `minimatch` 11.0.5 and `path-scurry` 3.0.0 (plus `@isaacs/nonrecursive-glob-match`
+1.1.0, BlueOak-1.0.0), all inside `@capacitor/cli`'s declared `rimraf ^6.0.1` range; no
+`package.json` range changed for them and none ships in the web bundle or an APK. The remaining
+findings are the three moderate `uuid`/`xcode`/`@capacitor/cli` paths already covered by the
+existing exception. The registry now offers `@capacitor/cli` 8.6.0 as a fix for that advisory;
+taking it means moving `@capacitor/core` and `@capacitor/android` with it, which this change does
+not do.

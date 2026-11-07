@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test';
 import { installResidentAgentPlugin } from './helpers/resident-agent-plugin';
-// Real Settings Activity over the real connection controller and DeviceActions; only the Android
+// Real Settings › Agent connection over the real connection controller and DeviceActions; only the Android
 // IPC boundary is synthetic. No runtime, model or account is used and no action is performed.
 
-test('Activity presents recorded phone actions in plain language with reconcile controls', async ({ page }) => {
+test('Agent connection presents recorded phone actions in plain language with reconcile controls', async ({ page }) => {
   await installResidentAgentPlugin(page);
   await page.addInitScript(() => {
     const w = window as any; w.androidBridge = {};
@@ -59,20 +59,17 @@ test('Activity presents recorded phone actions in plain language with reconcile 
   if (!await page.locator('.alpha-connection-scrim').isVisible()) await page.getByRole('button', { name: 'Agent connection', exact: true }).click();
   await page.locator('.alpha-connection').getByRole('button', { name: 'Start local agent', exact: true }).click();
   await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
+  // Settings › Agent connection opens the connection panel here (a development build); the owner
+  // reads the recorded actions explicitly.
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.getByRole('button', { name: 'Privacy & data', exact: true }).click();
-  await page.getByRole('button', { name: 'Activity', exact: true }).click();
-  const app = page.locator('[data-alpha-layer="app"]');
-  await app.getByRole('button', { name: 'Load phone action history', exact: true }).click();
+  await page.getByRole('button', { name: 'Agent connection', exact: true }).click();
   const panel = page.locator('.alpha-connection');
+  await panel.getByRole('button', { name: 'Refresh actions', exact: true }).first().click();
   // The uncertain action opens with its reconcile controls in the connection panel.
   await expect(panel.getByText('Create note', { exact: true }).first()).toBeVisible();
   await expect(panel.getByRole('button', { name: 'I verified it happened', exact: true })).toBeVisible();
   await expect(panel.getByRole('button', { name: 'Reject proposal', exact: true })).toBeVisible();
   expect(await panel.innerText()).not.toContain('{"type"');
-  await page.getByRole('button', { name: 'Close connection settings' }).first().click();
-  await expect(app.getByText(/Create note · “Groceries” · Needs your review · this phone: applying/)).toBeVisible();
-  await expect(app.getByText(/Create note · “Call back” · Waiting for your review · not dispatched by this phone/)).toBeVisible();
   const text = await page.locator('body').innerText();
   expect(text).not.toContain('{"type"');
   expect(text).not.toContain('"title"');

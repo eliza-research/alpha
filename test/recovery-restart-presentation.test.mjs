@@ -19,11 +19,11 @@ test('real React recovery panel has one restart action, no collapsible details a
  assert.doesNotMatch(failed,/Your data is safe/);assert.match(failed,/<button disabled=""/);
 });
 const settings=readFileSync(new URL('../apps/app/src/prototype/settings-adapter.ts',import.meta.url),'utf8');
-const start=settings.indexOf("        if(native&&developerTools&&state.page==='agent-recovery-details')");
-const end=settings.indexOf("        if(native&&!testMocksEnabled&&state.page==='agent-connection')",start);
+const start=settings.indexOf("    if(native&&developerTools&&state.page==='agent-recovery-details')");
+const end=settings.indexOf("    if(native&&!testMocksEnabled&&(current==='agent-connection'||current==='history'))",start);
 // Execute the actual detail page and recovery rows with the existing adapter helper boundaries.
-const rowsStart=settings.indexOf('          if(connection.residentRecoveryReason&&!connection.session){',end);
-const rowsEnd=settings.indexOf('          if(connection.busy){',rowsStart);
+const rowsStart=settings.indexOf('      if(connection.residentRecoveryReason&&!connection.session){',end);
+const rowsEnd=settings.indexOf('      if(connection.busy){',rowsStart);
 const rows=settings.slice(rowsStart,rowsEnd);
 function nativeFixture(connection=snapshot,page='agent-connection',developerTools=true){
  const actions=[];const context={native:true,testMocksEnabled:false,developerTools,state:{page},connection,agentRows:[],out:{stack:[]},residentRecoveryCopy,info:(label,value)=>({label,value}),action:(label,go)=>({label,go}),group:rows=>rows,api:{set:value=>actions.push(value)},connectionController:{restartRecovery:()=>actions.push('restart'),startLocal:()=>actions.push('start')}};

@@ -1,7 +1,7 @@
 import { returnToApps } from './app-navigation';
 import { test, expect, type Page } from '@playwright/test';
 
-// Settings → Password manager over the shared plugin-native-passwords contract.
+// Settings → Passwords over the shared plugin-native-passwords contract.
 // The development vault exists only with ELIZA_DEV_ALLOW_TEST_MOCKS=1 on the development
 // server (?mode=dev); native cases use a controlled Capacitor boundary. All values synthetic.
 const SECRET_MARKERS = ['synthetic-dev-', 'typed-synthetic-Z9q', 'abcdefghjkmnpqrstuvw'];
@@ -9,7 +9,7 @@ const SECRET_MARKERS = ['synthetic-dev-', 'typed-synthetic-Z9q', 'abcdefghjkmnpq
 async function devVault(page: Page) {
   await page.goto('/?mode=dev');
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.getByRole('button', { name: 'Password manager', exact: true }).click();
+  await page.getByRole('button', { name: 'Passwords', exact: true }).click();
 }
 async function agentContext(page: Page) {
   return page.evaluate(async () => { const { alphaClient } = await import('/src/runtime/alpha-client.ts'); return alphaClient.getState().context; });
@@ -93,7 +93,7 @@ test('development vault locks when leaving and reports autofill selection only a
   await expect(page.getByRole('button', { name: 'Open Example sign-in', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Back to Settings', exact: true }).click();
   await expect.poll(async () => (await agentContext(page)).sensitive).toBe(false);
-  await page.getByRole('button', { name: 'Password manager', exact: true }).click();
+  await page.getByRole('button', { name: 'Passwords', exact: true }).click();
   await expect(page.getByText('Locked', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Open Example sign-in', exact: true })).toHaveCount(0);
 });
@@ -101,7 +101,7 @@ test('development vault locks when leaving and reports autofill selection only a
 test('browser build without the development profile offers no simulated vault', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.getByRole('button', { name: 'Password manager', exact: true }).click();
+  await page.getByRole('button', { name: 'Passwords', exact: true }).click();
   await expect(page.getByText('Available in the Android app', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Unlock passwords', exact: true })).toHaveCount(0);
 });
@@ -150,7 +150,7 @@ async function nativeVault(page: Page, options: { leak?: boolean; selected?: str
   }, options);
   await page.goto('/');
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.getByRole('button', { name: 'Password manager', exact: true }).click();
+  await page.getByRole('button', { name: 'Passwords', exact: true }).click();
 }
 
 test('native vault: Android unlock, app bindings, copy and autofill picker with status readback', async ({ page }) => {
@@ -162,7 +162,7 @@ test('native vault: Android unlock, app bindings, copy and autofill picker with 
   await expect(page.getByText('App · verified publisher', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Copy password', exact: true }).click();
   await expect(page.getByText('Copied. We try to clear it after 45 s, or when you return to the app.', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Back to Password manager', exact: true }).click();
+  await page.getByRole('button', { name: 'Back to Passwords', exact: true }).click();
   await page.getByRole('button', { name: 'Set as autofill service', exact: true }).click();
   // Opening Android's confirmation is not a selection; only the readback changes the status.
   await expect(page.getByText('None selected', { exact: true })).toBeVisible();
@@ -257,6 +257,6 @@ test('leaving Settings for another view locks the development vault', async ({ p
   // Locked and forgotten as soon as Settings is left, not only when it is reopened.
   expect(await page.evaluate(async () => (await import('/src/passwords/password-manager.ts')).passwordManagerHoldsEntries())).toBe(false);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.getByRole('button', { name: 'Password manager', exact: true }).click();
+  await page.getByRole('button', { name: 'Passwords', exact: true }).click();
   await expect(page.getByText('Locked', { exact: true })).toBeVisible();
 });

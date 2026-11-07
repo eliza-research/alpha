@@ -5,6 +5,7 @@ import {canonicalNotesFixture,openCanonicalNotes} from './helpers/canonical-note
 import {openOwnedPhotoViewer} from './helpers/owned-photo';
 import { auditPage, auditTabOrder, format } from './accessibility-audit';
 import { settled } from './helpers/settled';
+import { installHomeCalendar } from './helpers/home-calendar';
 
 // Behaviour behind the defects the accessibility sweep found (MVP-48, renderer part).
 const offline = () => localStorage.setItem('alpha.connection.selection.v1', JSON.stringify({ kind: 'offline' }));
@@ -170,6 +171,7 @@ test.describe('menus and sheets over a scrim own focus', () => {
     ['files:preview', ['Move file'], 'Move to', 'Close move', 'Move file'],
     ['files:preview', ['Share file'], 'Share file', 'Close share', 'Share file'],
     ['workflows:new', ['Add Read step'], 'Step editor', 'Close', null],
+    // Mock mode draws the shared prototype Settings, which keeps its connection sheet.
     ['settings', ['Connections', 'Slack'], 'Slack', 'Close sheet', 'Slack'],
   ] as const;
   for (const [start, steps, name, scrim, opener] of POPUPS) {
@@ -442,18 +444,20 @@ for (const shell of HOME_SHELLS) for (const scale of [1, 1.5, 2, 3]) {
     await expect(last).toBeInViewport({ ratio: 1 });
     const tile = (await last.boundingBox())!, bar = (await page.locator('[data-alpha-input-bar]').boundingBox())!;
     expect(tile.y + tile.height).toBeLessThanOrEqual(bar.y);
-    // Three columns, four rows fit the screen at 200% in both shells, since f21e9a6e4 took the
-    // Notifications row off the launcher's Home. At 300% (the largest in-app size with the largest
-    // system font) Home has to scroll: the case the emulator caught at 200%, where the checks above
-    // hold the last row above the dock.
-    if (scale >= 2) expect(top.scrolls).toBe(scale === 3);
+    // Up to 150% Home fits the screen. The card row has one fixed height that follows the text scale
+    // (docs/ui-refresh-2026-11), sized so a calendar card's whole title fits at 200%: from 200% Home
+    // scrolls, the case the emulator caught, where the checks above hold the last row above the dock.
+    expect(top.scrolls).toBe(scale >= 2);
     // The rule the sweep runs agrees.
     const found = format(await auditPage(page, { dock: true, clipping: true, overlap: true })).filter(line => !line.startsWith('text-truncated:'));
     expect(found, found.join('\n')).toEqual([]);
   });
 }
 
-async function homeHasClearance(page:Page){return page.locator('[data-alpha-home-layout]').evaluate(el=>{const screen=document.querySelector('[data-screen]')!.getBoundingClientRect(),bar=document.querySelector('[data-alpha-layer="composer"]')!.getBoundingClientRect();return parseFloat(getComputedStyle(el).paddingBottom)>=screen.bottom-bar.top+4;});}
+/** Home's reserve below the grid: the layout's padding, computed from the insets alone, plus the
+ * clearance block a taller dock adds as scroll range (docs/ui-refresh-2026-11). */
+const homeReserve=(page:Page)=>page.locator('[data-alpha-home-layout]').evaluate(el=>({padding:parseFloat(getComputedStyle(el).paddingBottom),extra:document.querySelector('[data-alpha-home-clearance]')!.getBoundingClientRect().height}));
+async function homeHasClearance(page:Page){return page.locator('[data-alpha-home-layout]').evaluate(el=>{const screen=document.querySelector('[data-screen]')!.getBoundingClientRect(),bar=document.querySelector('[data-alpha-layer="composer"]')!.getBoundingClientRect(),extra=document.querySelector('[data-alpha-home-clearance]')!.getBoundingClientRect().height;return parseFloat(getComputedStyle(el).paddingBottom)+extra>=screen.bottom-bar.top+4;});}
 test('Home keeps enough scroll clearance when Android raises the dock and when the draft grows',async({page})=>{
  await openHome(page,'/',2);const home=page.locator('[data-alpha-layer="home"]'),height=(await home.boundingBox())!.height;
  await page.evaluate(()=>{document.documentElement.classList.add('native-phone');document.documentElement.style.setProperty('--native-bottom-inset','72px');});
@@ -464,13 +468,15 @@ test('Home keeps enough scroll clearance when Android raises the dock and when t
 });
 test('a status line on the composer adds Home scroll clearance without moving its rows',async({page})=>{
  await openHome(page,'/',1);const home=page.locator('[data-alpha-layer="home"]'),tile=home.getByRole('button',{name:'Inbox',exact:true}).and(page.locator('[data-mobile-shell-tile]'));
- const before={tile:(await tile.boundingBox())!.y,height:(await home.boundingBox())!.height,padding:await page.locator('[data-alpha-home-layout]').evaluate(el=>parseFloat(getComputedStyle(el).paddingBottom))};
+ const before={tile:(await tile.boundingBox())!.y,height:(await home.boundingBox())!.height,reserve:await homeReserve(page)};
  await page.evaluate(()=>{const block=document.createElement('div');block.dataset.testStack='';block.style.height='40px';document.querySelector('[data-alpha-layer="composer"]')!.prepend(block);});
- await expect.poll(()=>page.locator('[data-alpha-home-layout]').evaluate(el=>parseFloat(getComputedStyle(el).paddingBottom))).toBe(before.padding+40);
+ // The taller dock adds scroll range below the grid; the inset-only padding does not change.
+ await expect.poll(async()=>{const now=await homeReserve(page);return now.padding+now.extra;}).toBeGreaterThanOrEqual(before.reserve.padding+before.reserve.extra+34);
+ expect((await homeReserve(page)).padding).toBe(before.reserve.padding);
  expect((await tile.boundingBox())!.y).toBeCloseTo(before.tile,0);expect((await home.boundingBox())!.height).toBe(before.height);
  await expect.poll(()=>homeHasClearance(page)).toBe(true);
  await page.evaluate(()=>document.querySelector('[data-test-stack]')!.remove());
- await expect.poll(()=>page.locator('[data-alpha-home-layout]').evaluate(el=>parseFloat(getComputedStyle(el).paddingBottom))).toBe(before.padding);
+ await expect.poll(()=>homeReserve(page)).toEqual(before.reserve);
 });
 
 test.describe('landscape Home', () => {
@@ -536,14 +542,14 @@ test.describe('keyboard focus and the floating dock', () => {
     await page.goto('/');
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     const scroller = page.locator('[data-alpha-app-scroll="settings"]');
-    const row = page.getByRole('button', { name: 'Display', exact: true });
+    const row = page.getByRole('button', { name: 'About', exact: true });
     await row.scrollIntoViewIfNeeded();
     const dock = (await page.locator('[data-alpha-layer="pill"] > *, [data-alpha-layer="composer"]').first().boundingBox())!;
     // Put the row so that its lower edge is just inside the dock's band, to the left of the pill.
-    await scroller.evaluate((el, top) => { const target = Array.from(el.querySelectorAll('button')).find(item => (item.getAttribute('aria-label') || item.textContent || '').trim().startsWith('Display'))!; el.scrollTop += target.getBoundingClientRect().bottom - (top + 10); }, dock.y);
+    await scroller.evaluate((el, top) => { const target = Array.from(el.querySelectorAll('button')).find(item => (item.getAttribute('aria-label') || item.textContent || '').trim().startsWith('About'))!; el.scrollTop += target.getBoundingClientRect().bottom - (top + 10); }, dock.y);
     const box = (await row.boundingBox())!, before = await scroller.evaluate(el => el.scrollTop);
     await page.mouse.click(box.x + 24, box.y + 8);
-    await expect(page.getByRole('heading', { name: 'Display', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'About', exact: true })).toBeVisible();
     expect(before).toBeGreaterThan(0);
   });
 });
@@ -551,7 +557,7 @@ test.describe('keyboard focus and the floating dock', () => {
 test.describe('screen titles with a large system font', () => {
   // Large-text layouts re-measure every rule after the text grows: explicit, as other sweeps run beside them.
   test.describe.configure({ timeout: 60_000 });
-  for (const title of [{ name: 'Photos', steps: ['Photos'] }, { name: 'Camera', steps: ['Camera'] }, { name: 'Password manager', steps: ['Settings', 'Password manager'] }]) {
+  for (const title of [{ name: 'Photos', steps: ['Photos'] }, { name: 'Camera', steps: ['Camera'] }, { name: 'Passwords', steps: ['Settings', 'Passwords'] }]) {
     test(`"${title.name}" is shown whole at 200% text`, async ({ page }) => {
       await page.addInitScript(offline);
       await page.goto('/');
@@ -590,6 +596,8 @@ test.describe('screen titles with a large system font', () => {
 
   test('the Home calendar title is not cut by its own clamp at 200% text', async ({ page }) => {
     await openHome(page, '/', 2);
+    // Home draws the calendar card only with a next event (docs/ui-refresh-2026-11).
+    await installHomeCalendar(page, { title: 'Weekly project meeting', startAt: new Date(Date.now() + 3600000).toISOString(), endAt: new Date(Date.now() + 7200000).toISOString() });
     const title = page.locator('.home-calendar-title');
     await expect(title).toBeVisible();
     expect(await title.evaluate(el => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(1);

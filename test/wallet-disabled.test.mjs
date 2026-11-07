@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync,readdirSync,statSync,existsSync} from 'node:fs';
 import {join,resolve,dirname} from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 // AP-13 / #422: Wallet is outside the MVP in both distributions and on the Alpha AOSP image. Its
 // views, deep links, native/payment adapters and agent actions stay unavailable; no payment, card
 // or pass-wallet effect can be reached from a product build.
@@ -19,9 +19,9 @@ const resolveRelativeImports=(text,from)=>text.replace(/(\bfrom\s*)(['"])(\.\.?\
 async function features(image){
  const headers=image?[{name:'AlphaTelephony',methods:[{name:'imageCapability'}]}]:[];
  const aospFile='apps/app/src/runtime/aosp-image.ts';
- const aosp=resolveRelativeImports(stripTypeScriptTypes(read(aospFile).replace("import { Capacitor } from '@capacitor/core';",`const Capacitor={getPlatform:()=>'android',PluginHeaders:${JSON.stringify(headers)}};`),{mode:'transform'}),aospFile);
+ const aosp=resolveRelativeImports(stripTypeScriptTypes(read(aospFile).replace("import { Capacitor } from '@capacitor/core';",`const Capacitor={getPlatform:()=>'android',PluginHeaders:${JSON.stringify(headers)}};`),{mode:'strip'}),aospFile);
  assert.doesNotMatch(aosp,/from ['"](?!file:)[^'"]+['"]/,'every image-gate dependency is substituted or resolved to the shipped file');
- const source=stripTypeScriptTypes(read('apps/app/src/prototype/mvp-features.ts'),{mode:'transform'})
+ const source=stripTypeScriptTypes(read('apps/app/src/prototype/mvp-features.ts'),{mode:'strip'})
   .replace(/from ['"]\.\.\/browser\/dev-profile['"]/,`from '${dataModule('export const browserDevProfile=false;')}'`)
   .replace(/from ['"]\.\.\/runtime\/aosp-image['"]/,`from '${dataModule(aosp)}'`);
  assert.doesNotMatch(source,/from ['"]\.\.?\//,'every renderer dependency is substituted');
@@ -77,7 +77,7 @@ test('the resident agent profile used by Alpha loads no Wallet actions in either
  // variant) to these lists, so @elizaos/plugin-wallet and its transfer/swap actions never load.
  const file=join(root,'vendor/eliza/packages/agent/src/runtime/core-plugins.ts');
  assert.ok(existsSync(file),'pinned upstream plugin policy');
- const policy=await import(dataModule(stripTypeScriptTypes(readFileSync(file,'utf8'),{mode:'transform'})));
+ const policy=await import(dataModule(stripTypeScriptTypes(readFileSync(file,'utf8'),{mode:'strip'})));
  const lists=['MOBILE_CORE_PLUGINS','MOBILE_VIEW_PLUGINS','MOBILE_MODEL_PROVIDER_PLUGINS','ELIZAOS_ANDROID_CORE_PLUGINS','ELIZAOS_ANDROID_TERMINAL_PLUGINS'];
  for(const name of lists){
   assert.ok(Array.isArray(policy[name])&&policy[name].length>0,name);

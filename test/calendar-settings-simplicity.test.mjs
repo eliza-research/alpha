@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 const source=readFileSync('apps/app/src/prototype/settings-adapter.ts','utf8');
 const start=source.indexOf('// calendar-settings:begin'),end=source.indexOf('// calendar-settings:end');
 assert(start>=0&&end>start);
-const region=stripTypeScriptTypes(source.slice(start,end),{mode:'transform'});
+const region=stripTypeScriptTypes(source.slice(start,end),{mode:'strip'});
 const names=['page','state','views','owner','info','group','api','gmailAccounts','gmail','developerTools','Capacitor','out','native','testMocksEnabled','browserCalendarScope','openCalendarSyncSettings','connectionController','googleConnectionController','openCalendarRecovery'];
 const render=new Function(...names,region);
 function fixture({status='ready',accounts=[],gmail='Read access authorized',authority='canonical',detail=false,form=null,transition=false,native=false,calendarMessage}={}){

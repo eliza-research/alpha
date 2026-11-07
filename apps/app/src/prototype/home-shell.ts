@@ -56,7 +56,7 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
       onOpenAllApps: () => self.openAllApps(), allAppsGlyphUrl: grid, allAppsIconId: ALPHA_PRODUCT.icons.allApps, covered: !!out.homeHidden,
       onFocusCapture: out.focusAppContent, 'data-alpha-layer': 'home',
       style: {inset: '44px 0 0', zIndex: 10, scrollPaddingBottom: 110},
-      layoutProps: {'data-alpha-home-layout': ''}, cardsProps: {className: 'scr'}, gridProps: {'data-alpha-home-apps': ''}, clearanceProps: {'data-alpha-home-clearance': ''},
+      layoutProps: {'data-alpha-home-layout': ''}, cardsProps: {className: 'scr home-card-row'}, gridProps: {'data-alpha-home-apps': ''}, clearanceProps: {'data-alpha-home-clearance': ''},
     });
     const allAppsDrawer = createElement(MobileAllAppsDrawer, {
       shellLauncher: shell, registry: alphaViews, query: String(S.drawerQ || ''),

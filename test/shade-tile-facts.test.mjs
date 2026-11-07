@@ -1,10 +1,10 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from 'node:module';
+import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from './support/strip-types.mjs';
 // The tile region of the native adapter (Alpha's labels and theme) over the shared truthful
 // presentation at the pin (@elizaos/capacitor-system/settings), evaluated without the renderer.
 const source=readFileSync('apps/app/src/prototype/native-adapter.ts','utf8');
 const region=source.slice(source.indexOf('// tile-facts:begin'),source.indexOf('// tile-facts:end'));
 assert.ok(region.length>100,'tile-facts region is present');
-const toModule=text=>'data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(text,{mode:'transform'})).toString('base64');
+const toModule=text=>'data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(text,{mode:'strip'})).toString('base64');
 const shared=toModule(readFileSync('vendor/eliza/plugins/plugin-native-system/src/settings.ts','utf8'));
 const imported=source.match(/^import \{[^}]*\} from '@elizaos\/capacitor-system\/settings';$/m);
 assert.ok(imported,'the adapter uses the shared presentation');
@@ -67,6 +67,11 @@ test('every tile with a switch opens its own Android page, and the native allowl
  assert.deepEqual(m.tileSettingsPages,{wifi:'wifi',bt:'bluetooth',dnd:'dnd',plane:'airplane',loc:'location',mic:'privacy'});
  // AlphaDevice.openSettings uses the shared allowlist at the pin (SystemSettingsPages).
  assert.match(readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java','utf8'),/SystemSettingsPages\.open\(page,getContext\(\)\.getPackageName\(\),/);
+ // Settings' one "Android settings" row is Alpha's own page, outside the shared allowlist: only it opens the Settings home.
+ const alpha=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java','utf8');
+ const own=alpha.slice(alpha.indexOf('@PluginMethod public void openSettings('),alpha.indexOf('if(SystemSettingsPages.actions(page)==null)'));
+ assert.match(own,/if\("system"\.equals\(page\)\)\{[\s\S]*startActivity\(new Intent\(Settings\.ACTION_SETTINGS\)\)/);
+ assert.equal((alpha.match(/Settings\.ACTION_SETTINGS/g)||[]).length,3,'the system page and the password-provider fallback only');
  const java=readFileSync('vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SystemSettingsPages.java','utf8');
  const body=java.slice(java.indexOf('public static String[] actions(String page)'),java.indexOf('public interface Launcher'));
  const pages=Object.fromEntries([...body.matchAll(/case "([a-z-]+)": return new String\[\] \{([^}]*)\}/g)].map(match=>[match[1],match[2].split(',').map(action=>action.trim())]));

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
 
 // Owner report 2026-10-30: after a verified email code the app held "Checking your code…" and an
@@ -10,9 +10,9 @@ import vm from 'node:vm';
 // it shown as starting, and the earlier failure rules (P-43, a refused key) still hold.
 const ui=readFileSync(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
 const between=(text,start,end)=>{const from=text.indexOf(start),to=text.indexOf(end,from);assert.ok(from>=0&&to>from,start);return text.slice(from,to);};
-const residentSignedIn=stripTypeScriptTypes(between(ui,'async function residentSignedIn(','/** The key is stored;'),{mode:'transform'});
-const signedIn=stripTypeScriptTypes(between(ui,'async function signedIn(','/** The development hosted-agent client.'),{mode:'transform'});
-const showPostSignInSetup=stripTypeScriptTypes(between(ui,'function showPostSignInSetup(','/**\n * A verified sign-in on the resident flow'),{mode:'transform'});
+const residentSignedIn=stripTypeScriptTypes(between(ui,'async function residentSignedIn(','/** The key is stored;'),{mode:'strip'});
+const signedIn=stripTypeScriptTypes(between(ui,'async function signedIn(','/** The development hosted-agent client.'),{mode:'strip'});
+const showPostSignInSetup=stripTypeScriptTypes(between(ui,'function showPostSignInSetup(','/**\n * A verified sign-in on the resident flow'),{mode:'strip'});
 const ISSUED='11111111-1111-4111-8111-111111111111';
 const COMMITTED={credentialId:ISSUED,credentialReference:'browser-cloud-reference:33333333-3333-4333-8333-333333333333',userId:'owner',organizationId:'organization'};
 
@@ -128,7 +128,7 @@ test('a cancelled admission leaves the sign-in step and the agent to the caller 
 });
 
 test('a resident start ends with its operation in one update, so setup behind it never blinks',async()=>{
-  const work=stripTypeScriptTypes(between(ui,'async function work(','/** Start (or restart) the resident.'),{mode:'transform'});
+  const work=stripTypeScriptTypes(between(ui,'async function work(','/** Start (or restart) the resident.'),{mode:'strip'});
   for(const fail of [false,true]){
     const seen=[],state={busy:false,open:false,residentStarting:false,error:'',message:''};
     const box={state,AbortController,active:null,cloud:{},testMocksEnabled:false,

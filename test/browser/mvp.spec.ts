@@ -114,9 +114,8 @@ test('Unsigned recorder offers Cloud sign-in before any recording',async({page})
   await page.getByRole('button',{name:'Discard recording',exact:true}).click();
   await expect(page.getByRole('button',{name:'Start recording',exact:true})).toHaveCount(0);
 });
-test('Display theme survives reload and mock preview does not overwrite it',async({page})=>{
+test('Theme survives reload and mock preview does not overwrite it',async({page})=>{
   await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();
-  await page.getByRole('button',{name:'Display',exact:true}).click();
   await page.getByRole('button',{name:'Theme: Dark',exact:true}).click();
   await expect.poll(()=>page.evaluate(()=>localStorage.getItem('alpha.appearance.v1'))).toBe('dark');
   await page.reload();

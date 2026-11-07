@@ -1,4 +1,4 @@
-import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import vm from 'node:vm';import {stripTypeScriptTypes} from 'node:module';import {webcrypto} from 'node:crypto';
+import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import vm from 'node:vm';import {stripTypeScriptTypes} from './support/strip-types.mjs';import {webcrypto} from 'node:crypto';
 const binding={environment:'production',userId:'owner',organizationId:'org',connectionId:'11111111-1111-4111-8111-111111111111',providerAccountId:'google',calendarId:'primary',agentId:'agent',localSourceId:'native:7',localSourceRevision:'22222222-2222-4222-8222-222222222222'};
 const event={title:'Synthetic Calendar event',description:'',location:'',startAt:'2026-10-16',endAt:'2026-10-17',timeZone:null,isAllDay:true,attendees:[],recurrence:[]};
 function fixture(){
@@ -19,8 +19,8 @@ function fixture(){
   throw Error('Unexpected native operation');
  }};
  const context=vm.createContext({crypto:webcrypto,TextEncoder,document:{hidden:false},Event,DOMException,Date,AbortController,setTimeout,clearTimeout,window:{dispatchEvent(){}},Capacitor:{isNativePlatform:()=>true},registerPlugin:()=>bridge});
- const fields=stripTypeScriptTypes(fs.readFileSync('apps/app/src/browser/calendar-sync-fields.ts','utf8'),{mode:'transform'}).replace(/^export /gm,'');vm.runInContext(fields,context);
- const source=stripTypeScriptTypes(fs.readFileSync('apps/app/src/runtime/native-calendar-sync.ts','utf8'),{mode:'transform'}).replace(/^import[^\n]+\n/gm,'').replace('export const nativeCalendarSync =','globalThis.nativeCalendarSync =');vm.runInContext(source,context);
+ const fields=stripTypeScriptTypes(fs.readFileSync('apps/app/src/browser/calendar-sync-fields.ts','utf8'),{mode:'strip'}).replace(/^export /gm,'');vm.runInContext(fields,context);
+ const source=stripTypeScriptTypes(fs.readFileSync('apps/app/src/runtime/native-calendar-sync.ts','utf8'),{mode:'strip'}).replace(/^import[^\n]+\n/gm,'').replace('export const nativeCalendarSync =','globalThis.nativeCalendarSync =');vm.runInContext(source,context);
  const api=context.nativeCalendarSync,current=()=>state.current,prepare=()=>api.prepare({environment:'production',connectionId:binding.connectionId,calendarId:'primary'},current,abort.signal);
  return {api,state,calls,abort,prepare,current};
 }

@@ -69,12 +69,12 @@ test('every subview of a retained view is opened by a state that asserts it is t
     assert.ok(asserted.has(id), `a state opens and asserts the ${id} subview`);
   }
   // Menus, search fields, sheets and the Undo toast are states of their own.
-  for (const step of ["['New automation', 'Edit When step']", "['Add Read step']", "['Connections', 'Slack']", "['Browser', 'Menu']", "['Photos', 'Search photos']", "['Files', 'Search files']", "['Search email']", "['Menu', 'Share']", "['Share photo']", "['View and sort']", "['Move file']", "['Delete file']"])
+  for (const step of ["['New automation', 'Edit When step']", "['Add Read step']", "['Browser', 'Menu']", "['Photos', 'Search photos']", "['Files', 'Search files']", "['Search email']", "['Menu', 'Share']", "['Share photo']", "['View and sort']", "['Move file']", "['Delete file']"])
     assert.ok(states.includes(step), `${step} is swept`);
   assert.ok(states.includes("legacyNotes('Notes search', ['Search notes'])"), 'retained Notes search is swept');
   assert.match(states, /const legacyNotes = [\s\S]*?await openLegacyNotes\(page\);[\s\S]*?await press\(page, steps\)/, 'retained Notes states select their source before opening controls');
 
-  for (const page of ['Character', 'Accounts', 'Connections', 'Notifications', 'Calendar', 'Password manager', 'Models', 'Display', 'Privacy & data', 'About', 'Scheduled digests', 'Agent connection'])
+  for (const page of ['Eliza Cloud', 'Google', 'Calendars', 'Passwords', 'About', 'Scheduled digests', 'Agent connection'])
     assert.ok(states.includes(`['Settings', '${page}']`), `Settings > ${page} is swept`);
 });
 
@@ -107,7 +107,7 @@ test('the sweep applies every dimension and cannot be narrowed silently', () => 
   // The fixture lock screen and photos-empty viewer and the launcher presentation run at 100%
   // and 200% with names, focus, contrast and the dock rules (provider-connected states are in STATES).
   assert.match(sweep, /for \(const state of \[\.\.\.FIXTURE_STATES, \.\.\.LAUNCHER_STATES\]\) \{\s*for \(const scale of \[1, 2\]\)/);
-  for (const name of ["mock('lock')", "shows: 'photos-empty'", "launcher('Home')", "launcher('All apps'", "connected('Inbox'", "connected('Settings connections'", "name: 'connected Calendar with events'", "CONNECTED_STATES.push(calendarWithEvents)"])
+  for (const name of ["mock('lock')", "shows: 'photos-empty'", "launcher('Home')", "launcher('All apps'", "connected('Inbox'", "connected('Settings Google'", "name: 'connected Calendar with events'", "CONNECTED_STATES.push(calendarWithEvents)"])
     assert.ok(states.includes(name), `${name} is swept`);
   // Above 200%: the largest in-app size with the largest system font (300%), over every live and
   // launcher state, with the clipping, overlap, dock, name, tab-order and reading-order rules.
@@ -115,7 +115,7 @@ test('the sweep applies every dimension and cannot be narrowed silently', () => 
   // The 300% defects open when the lane was added (#701) run as expected failures; the list only shrinks.
   const open300 = sweep.match(/const OPEN_AT_300 = new Set\(\[([^\]]*)\]\);/)?.[1];
   assert.ok(open300 !== undefined, 'the open 300% defects are listed in one place');
-  const recorded300 = ['live Camera (unavailable)', 'live Browser tabs', 'live Browser menu', 'live Settings display', 'launcher Calendar', 'launcher Camera', 'launcher Photos', 'launcher Workflows', 'launcher Settings display'];
+  const recorded300 = ['live Camera (unavailable)', 'live Browser tabs', 'live Browser menu', 'launcher Calendar', 'launcher Camera', 'launcher Photos', 'launcher Workflows'];
   for (const name of [...open300.matchAll(/'([^']+)'/g)].map(match => match[1])) assert.ok(recorded300.includes(name), `${name} is not a recorded 300% defect; fix it instead of exempting it`);
   // An open entry must still report a layout defect from the audit itself; a timeout, a crash or a
   // state that no longer opens is not taken as the expected failure.
@@ -178,7 +178,7 @@ test('TalkBack reading order is checked in every lane, as Android checks it, acr
 
 test('provider-connected screens are swept, against a synthetic mailbox only', () => {
   const block = states.slice(states.indexOf('export const CONNECTED_STATES'), states.indexOf('export const DEVELOPMENT_STATES'));
-  for (const state of ["connected('Home'", "connected('Inbox')", "connected('Inbox sent (empty)'", "connected('Inbox search'", "connected('Inbox message'", "connected('Inbox long subject'", "connected('Inbox compose'", "connected('Settings',", "connected('Settings accounts'", "connected('Settings connections'"])
+  for (const state of ["connected('Home'", "connected('Inbox')", "connected('Inbox sent (empty)'", "connected('Inbox search'", "connected('Inbox message'", "connected('Inbox long subject'", "connected('Inbox compose'", "connected('Settings',", "connected('Settings Eliza Cloud'", "connected('Settings Google'"])
     assert.ok(block.includes(state), `${state} is swept`);
   // Connected states other than a mailbox (MVP-48): an agent's calendar, a linked Google Calendar
   // account's sync review and a connected agent's conversation. None writes to a provider.
@@ -201,7 +201,18 @@ test('the dock, title and toast fixes the sweep depends on stay in the source', 
   assert.match(css, /--alpha-dock-reserve:max\(108px,calc\(var\(--alpha-dock-clearance,102px\) \+ 6px\)\)/);
   assert.match(css, /html:not\(\.alpha-landscape\) \.alpha-phone \[data-alpha-layer="home"\] \{ bottom:0!important; scroll-padding-bottom:var\(--alpha-dock-reserve\)!important;/);
   assert.match(css, /html:not\(\.alpha-landscape\) \.alpha-phone \[data-alpha-layer="drawer"\] \{ padding-bottom:0!important; \}/);
-  assert.match(css, /\[data-alpha-home-layout\] \{ padding-bottom:var\(--alpha-dock-reserve\)!important; min-height:calc\(100% \+ var\(--alpha-dock-reserve\) - 108px\)!important; \}/);
+  // Home's grid is anchored to a reserve computed from the insets alone (bar rest + 62px bar + 24px
+  // gap), never the measured dock; a taller dock adds scroll range below the grid (docs/ui-refresh-2026-11).
+  assert.match(css, /\.alpha-phone \{ --alpha-home-clearance:max\(28px,calc\(\(max\(var\(--alpha-home-bottom-inset,var\(--native-bottom-inset,0px\)\),env\(safe-area-inset-bottom,0px\)\) \+ 12px\) \/ var\(--phone-scale,1\)\)\); \}/);
+  assert.match(css, /\[data-alpha-home-layout\] \{ padding-bottom:calc\(var\(--alpha-home-clearance\) \+ 86px\)!important; min-height:max\(100%,calc\(var\(--alpha-home-height,100%\) - var\(--alpha-home-top\)\)\)!important; \}/);
+  // Home sits 44px below the status bar in the launcher and at the top in the standalone app.
+  assert.match(css, /\.alpha-phone \{ --alpha-home-top:44px; \}\nhtml\.standalone-app \.alpha-phone \{ --alpha-home-top:0px; \}/);
+  assert.match(css, /\[data-screen\]:not\(\[data-alpha-chat-half="true"\]\) \[data-alpha-home-clearance\] \{ height:max\(0px,calc\(var\(--alpha-dock-clearance,102px\) \+ 6px - var\(--alpha-home-clearance\) - 86px\)\); \}/);
+  assert.match(css, /\[data-alpha-home-layout\] > \[data-mobile-shell-home-spacer="end"\] \{ flex-grow:0!important; min-height:0!important; \}/);
+  assert.doesNotMatch(css, /\[data-alpha-home-layout\] \{ padding-bottom:var\(--alpha-dock-reserve\)/);
+  // The override relies on the shared shell's layout: the grid followed by its own end spacer.
+  const homeScreen = read('.eliza/client-features/packages/ui/src/mobile-shell/MobileHomeScreen.tsx');
+  assert.match(homeScreen, /data-mobile-shell-apps=""[\s\S]*<\/div>\s*<div data-mobile-shell-home-spacer="end" \/>\s*<\/div>/);
   assert.match(css, /:is\(\[data-alpha-app-scroll\],\.calendar-timeline,\.calendar-draft-fields\) \{ scroll-padding-bottom:calc\(var\(--alpha-dock-clearance,102px\) \+ 16px\); \}/);
   assert.match(css, /\.inbox-compose-fields \{[^}]*padding-bottom:max\(64px,calc\(var\(--alpha-dock-clearance,102px\) \+ 8px\)\)!important/);
   assert.match(main, /installDockClearance\(\)/);

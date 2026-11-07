@@ -96,19 +96,16 @@ export const LIVE_STATES: State[] = [
   live('Files', ['Files']),
   live('Workflows', ['Workflows']),
   live('Settings', ['Settings']),
-  live('Settings models', ['Settings', 'Models']),
-  live('Settings display', ['Settings', 'Display']),
-  live('Settings privacy', ['Settings', 'Privacy & data']),
   live('Settings about', ['Settings', 'About']),
   live('Settings scheduled digests', ['Settings', 'Scheduled digests']),
   live('Settings agent connection', ['Settings', 'Agent connection']),
-  // The remaining Settings pages, and each app's open menu, search field and editor.
-  live('Settings character', ['Settings', 'Character']),
-  live('Settings accounts', ['Settings', 'Accounts']),
-  live('Settings connections', ['Settings', 'Connections']),
-  live('Settings notifications', ['Settings', 'Notifications']),
-  live('Settings calendar', ['Settings', 'Calendar']),
-  live('Settings password manager', ['Settings', 'Password manager']),
+  // The remaining Settings pages and entries, and each app's open menu, search field and editor.
+  live('Settings Eliza Cloud', ['Settings', 'Eliza Cloud']),
+  live('Settings Google', ['Settings', 'Google']),
+  live('Settings calendars', ['Settings', 'Calendars']),
+  live('Settings passwords', ['Settings', 'Passwords']),
+  live('Settings problem log', ['Settings', 'About', 'Problem log']),
+  live('Settings licenses', ['Settings', 'About', 'Open source licenses']),
   live('Browser menu', ['Browser', 'Menu']),
   live('Browser address', ['Browser', 'Edit address']),
   live('Calendar alarms', ['Calendar', 'Clock alarms']),
@@ -171,11 +168,11 @@ export const MOCK_STATES: State[] = [
   // Deleting a fixture file shows the toast with Undo over the folder.
   mock('files:preview', ['Delete file']),
   mock('workflows:flow', ['Change'], 'workflows-builder'),
-  // The builder's trigger and step sheets, and the Settings connection sheet.
+  // The builder's trigger and step sheets, and the Settings connection sheet. Mock mode draws the
+  // shared prototype Settings (no Alpha adapter), whose pages the Settings refresh does not change.
   mock('workflows', ['New automation', 'Edit When step'], 'workflows-builder'),
   mock('workflows:new', ['Add Read step'], 'workflows-builder'),
   mock('settings', ['Connections', 'Slack']),
-  mock('settings', ['Character']),
   mock('settings', ['Connections']),
   mock('settings', ['Notifications']),
   mock('settings:accounts', ['you@gmail.example']),
@@ -249,8 +246,8 @@ export const CONNECTED_STATES: State[] = [
   connected('Inbox long subject', [/^Unread, Synthetic Sender C/], { shows: 'inbox-detail' }),
   connected('Inbox compose', ['Compose'], { shows: 'inbox-composing' }),
   connected('Settings', ['Settings'], { home: true }),
-  connected('Settings accounts', ['Settings', 'Accounts'], { home: true }),
-  connected('Settings connections', ['Settings', 'Connections'], { home: true }),
+  connected('Settings Eliza Cloud', ['Settings', 'Eliza Cloud'], { home: true }),
+  connected('Settings Google', ['Settings', 'Google'], { home: true }),
 ];
 
 /** Live states that exist only behind the one Developer gate: the development server opened with ?tools=1. */
@@ -391,7 +388,7 @@ export const LAUNCHER_STATES: State[] = [
   launcher('Files', ['Files']),
   launcher('Workflows', ['Workflows']),
   launcher('Settings', ['Settings']),
-  launcher('Settings display', ['Settings', 'Display']),
+  launcher('Settings about', ['Settings', 'About']),
 ];
 
 /** A seeded local calendar (browser store), so the Calendar view has events to audit. */

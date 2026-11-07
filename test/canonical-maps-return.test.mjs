@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {canonicalMapsEventOriginFor,mapsEventOriginOf,mapsEventReturnOffered,mapsEventStillThere} from '../apps/app/src/runtime/maps-event-return.ts';
 const text=readFileSync('apps/app/src/runtime/agent-calendar.ts','utf8');
-const code=stripTypeScriptTypes(text.replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'transform'});
+const code=stripTypeScriptTypes(text.replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'strip'});
 const unexpected=()=>{throw Error('Unexpected write or editor dependency');};
 const {AgentCalendar,calendarEventKey}=new Function('agentCalendarClient','eventEditorMutability','cancellationModeForEditorEvent',code+';return {AgentCalendar,calendarEventKey};')(unexpected,unexpected,unexpected);
 async function fixture(){

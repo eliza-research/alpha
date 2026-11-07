@@ -5,7 +5,7 @@ for(const theme of ['light','dark'])test(`${theme} file rename and delete dialog
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
  await page.goto(`/?mode=dev&theme=${theme}`);
  await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');await registerPlugin<any>('AlphaFiles').importFile(new File(['Retained contents'],'keep.txt',{type:'text/plain'}));});
- await page.getByRole('textbox',{name:'Ask Alpha',exact:true}).fill('Retained unsent file question');
+ await page.getByRole('textbox',{name:'Ask Alpha',exact:true}).fill('Retained unsent file question');await page.getByRole('textbox',{name:'Ask Alpha',exact:true}).blur();
  await page.getByRole('button',{name:'Files',exact:true}).click();await page.getByText('App files',{exact:true}).first().click();await page.getByRole('button',{name:'Open keep.txt',exact:true}).click();
  const remove=page.getByRole('button',{name:'Delete file',exact:true});await expect(remove).toBeVisible();const selection=await page.evaluate(async()=>(await import('/src/runtime/alpha-client.ts')).alphaClient.getState().context.selectedObject);await remove.click();
  const dialog=page.getByRole('dialog',{name:'Permanently delete?',exact:true});

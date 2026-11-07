@@ -216,7 +216,7 @@ def main():
     require(safe_git(root / 'vendor/eliza', ['rev-parse', 'HEAD']) == SDK, 'Unexpected SDK checkout')
     host = root / 'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCalendarPlugin.java'
     require(digest(host) == HOST, 'Unexpected Alpha calendar host')
-    require((root / '.nvmrc').read_text().strip() == '24.15.0', 'Unexpected Node declaration')
+    require((root / '.nvmrc').read_text().strip() == '26.13.0', 'Unexpected Node declaration')
     node = Path(shutil.which('node')).resolve(strict=True)
     java_home = Path(os.environ['JAVA_HOME']).resolve(strict=True)
     jar = Path(os.environ['ALPHA_JSON_JAR']).resolve(strict=True)

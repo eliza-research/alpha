@@ -10,9 +10,11 @@ test('permitted library requests no permission automatically and searches throug
 });
 test('selected access is explicit and only the choice control requests more access',async({page})=>{
  await photosBridge(page,'selected');await expect(page.getByRole('button',{name:'Choose photo access',exact:true})).toHaveCount(0);
- await page.getByRole('button',{name:'Back to apps',exact:true}).click();await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Photos',exact:true}).click();
- await expect(page.getByText('Selected photos and videos',{exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Choose photo access',exact:true}).click();await expect(page.getByText('All photos and videos',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Back to apps',exact:true}).click();await page.getByRole('button',{name:'Settings',exact:true}).click();
+ // Settings › Apps › Photos access: one row whose value is the scope Android reports.
+ const access=page.getByRole('button',{name:'Photos access',exact:true});
+ await expect(access).toContainText('Selected');
+ await access.click();await expect(access).toContainText('All');
  expect(await page.evaluate(()=>(window as any).mediaFixture.calls.filter((c:any)=>c.method==='requestLibraryAccess').length)).toBe(1);
 });
 test('denied Photos keeps an explicit permission request and loads the library after approval',async({page})=>{
