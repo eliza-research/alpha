@@ -381,9 +381,10 @@
         "apps/app/src/runtime/service-read-cache.ts",
         "apps/app/src/runtime/service-read-cache-store.ts",
         "apps/app/src/runtime/gmail-background.ts",
-        "apps/app/src/runtime/workflow-notice-taps.ts",
+        "apps/app/src/runtime/workflow-device-contract.ts",
         "apps/app/src/runtime/hosted-result-notices.ts",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/WorkflowNoticeDelivery.java"
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/WorkflowNoticeDelivery.java",
+        "apps/app/src/prototype/workflow-adapter.ts"
       ],
       "stateMapping": {
         "epoch/phase/retry": "NoticeOwnerCoordinator generation, immediate privacy transition and retryNeeded",
@@ -394,7 +395,8 @@
         "One notice and one cached entry, two claimants and two expiry ticks.",
         "Native platform post success, uncertain delivery and detailed provider cursor pagination remain external observations. The model checks the admitted claim/consume path.",
         "Per-entry byte limits and multiple bounded entries are checked by existing cache tests. Cache data never authorizes a provider mutation.",
-        "The shared NoticeOwnerCoordinator and native notification contracts now own previously product-local coordination and delivery helpers. IdentityHashMap tap retention is bounded by the native contract; this one-notice model does not prove its full 512-entry capacity behavior."
+        "The shared NoticeOwnerCoordinator and native notification contracts now own previously product-local coordination and delivery helpers. IdentityHashMap tap retention is bounded by the native contract; this one-notice model does not prove its full 512-entry capacity behavior.",
+        "The current workflow notice adapter delegates tap resolution to workflow-device-contract and the shared notice-routes contract. Multi-definition revision comparison and retained notice revisions are checked by source tests; this one-notice model retains an opaque notice identity."
       ],
       "path": "specs/quint/services/NoticesAndCaches.qnt",
       "module": "NoticesAndCaches",
