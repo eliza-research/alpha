@@ -81,6 +81,17 @@ public class AlphaFilesPlugin extends Plugin {
   for(int i=0;i<array.length();i++){String value=array.optString(i,null);if(value==null||!seen.add(value))throw new IllegalArgumentException();out.add(value);}
   return out;
  }
+ private static List<String> reviewedTokens(PluginCall call){
+  if(!call.getData().has("reviewed"))return null;
+  JSArray values=call.getArray("reviewed");
+  if(values==null||values.length()<1||values.length()>StorageBrowser.BATCH_MAX)throw new IllegalArgumentException();
+  List<String> tokens=new ArrayList<>(values.length());
+  for(int i=0;i<values.length();i++){
+   Object value=values.opt(i);if(!(value instanceof String))throw new IllegalArgumentException();
+   tokens.add((String)value);
+  }
+  return tokens;
+ }
  private static JSObject row(StorageBrowser.Row r){JSObject o=new JSObject();o.put("path",r.path);o.put("name",r.name);o.put("directory",r.directory);o.put("mimeType",r.mime);o.put("size",r.size);o.put("modified",r.modified);if(r.directory)o.put("children",r.children);return o;}
  private static JSArray outcomes(List<StorageBrowser.Outcome> list){JSArray out=new JSArray();for(StorageBrowser.Outcome o:list){JSObject v=new JSObject();v.put("path",o.path);v.put("status",o.status);if(o.to!=null)v.put("to",o.to);out.put(v);}return out;}
  /** MediaStore follows moves, copies and trash so the categories stay queries over what is there. */
@@ -122,9 +133,18 @@ public class AlphaFilesPlugin extends Plugin {
   if(Boolean.TRUE.equals(call.getBoolean("folders",false))){JSArray rows=new JSArray();for(StorageBrowser.Row r:primaryBrowser().folders(call.getString("folder",""),call.getString("text"),since,until,StorageCatalog.QUERY_MAX,StorageBrowser.WALK_MAX))rows.put(row(r));out.put("entries",rows);return out;}
   out.put("entries",StorageCatalog.query(resolver(),call.getString("text"),call.getString("mimePrefix"),Boolean.TRUE.equals(call.getBoolean("documents",false)),call.getString("folder"),since,until));return out;
  });}
+ @PluginMethod public void storageReviewedIdentities(PluginCall call){storage(call,b->{
+  List<String> paths=strings(call,"paths",StorageBrowser.BATCH_MAX);
+  JSArray tokens=new JSArray();
+  for(String identity:b.reviewedIdentities(paths)){
+   if(identity==null)return result("changed","A file couldn’t be verified. Nothing changed.");
+   tokens.put(identity);
+  }
+  JSObject out=new JSObject();out.put("reviewed",tokens);return out;
+ });}
  @PluginMethod public void storageTransfer(PluginCall call){storage(call,b->{
   List<String> paths=strings(call,"paths",StorageBrowser.BATCH_MAX);boolean copy=Boolean.TRUE.equals(call.getBoolean("copy",false));
-  List<StorageBrowser.Outcome> done=b.transfer(paths,call.getString("dest",""),copy);
+  List<StorageBrowser.Outcome> done=b.transfer(paths,call.getString("dest",""),copy,reviewedTokens(call));
   List<String> touched=new ArrayList<>();for(StorageBrowser.Outcome o:done){if(o.to!=null)touched.add(o.to);if(!copy&&"moved".equals(o.status))touched.add(o.path);}scan(b,touched);
   JSObject out=new JSObject();out.put("outcomes",outcomes(done));return out;
  });}
@@ -133,7 +153,7 @@ public class AlphaFilesPlugin extends Plugin {
  });}
  @PluginMethod public void storageCreateFolder(PluginCall call){storage(call,b->{JSObject out=new JSObject();out.put("path",b.createFolder(call.getString("parent",""),call.getString("name","")));return out;});}
  @PluginMethod public void storageTrash(PluginCall call){storage(call,b->{
-  List<String> paths=strings(call,"paths",StorageBrowser.BATCH_MAX);List<StorageBrowser.Outcome> done=b.trash(paths,System.currentTimeMillis());
+  List<String> paths=strings(call,"paths",StorageBrowser.BATCH_MAX);List<StorageBrowser.Outcome> done=b.trash(paths,System.currentTimeMillis(),reviewedTokens(call));
   List<String> gone=new ArrayList<>();for(StorageBrowser.Outcome o:done)if("trashed".equals(o.status))gone.add(o.path);scan(b,gone);
   JSObject out=new JSObject();out.put("outcomes",outcomes(done));return out;
  });}

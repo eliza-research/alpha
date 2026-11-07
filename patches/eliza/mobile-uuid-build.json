@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "baseCommit": "77428481fbf9b6369c496d377e2dabeb90c6f703",
+  "baseCommit": "aa9a50d96c6144e9d839ed65fd4f8a161514a570",
   "bun": {
     "version": "1.4.2",
     "revision": "744846f844374847c902b5e7fd59b4342a51ef99"

@@ -26,6 +26,19 @@ public final class StorageBrowserTest {
    check(!new File(root,"Download/a.pdf").exists(),"moved, not duplicated");
    // A selection row that is gone is skipped, not invented.
    check(b.transfer(Arrays.asList("Download/a.pdf"),"Documents",false).get(0).status.equals("missing"),"missing skipped");
+   // A replacement at the same path can match both size and modified time.
+   String reviewedPath="Download/reviewed.txt";File reviewedFile=new File(root,reviewedPath);
+   StorageBrowser.write(reviewedFile,"old!");long reviewedTime=reviewedFile.lastModified();
+   List<String> selection=Arrays.asList(reviewedPath);
+   List<String> identity=b.reviewedIdentities(selection);
+   check(identity.get(0)!=null&&identity.equals(b.reviewedIdentities(selection)),"stable review identity");
+   Files.move(reviewedFile.toPath(),new File(root,"Download/original-reviewed.txt").toPath());
+   StorageBrowser.write(reviewedFile,"new!");check(reviewedFile.setLastModified(reviewedTime),"restore replacement timestamp");
+   check(reviewedFile.length()==4&&reviewedFile.lastModified()==reviewedTime,"same metadata fixture");
+   check(b.transfer(selection,"Documents",false,identity).get(0).status.equals("changed"),"reviewed move refuses a replacement");
+   check(b.trash(selection,1000L,identity).get(0).status.equals("changed"),"reviewed Trash refuses a replacement");
+   check(text(reviewedFile).equals("new!")&&!new File(root,"Documents/reviewed.txt").exists()&&!new File(root,TRASH).exists(),"refusals leave both files and Trash unchanged");
+   check(b.transfer(selection,"Documents",false,b.reviewedIdentities(selection)).get(0).status.equals("moved"),"a fresh review moves the exact file");
    // Copy keeps the source.
    check(b.transfer(Arrays.asList("Documents/a.pdf"),"Download",true).get(0).to.equals("Download/a.pdf"),"copy");
    check(new File(root,"Documents/a.pdf").exists(),"copy keeps source");
