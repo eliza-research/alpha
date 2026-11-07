@@ -73,7 +73,7 @@ test('production Settings controls act or explain the current Calendar authority
    // has no current owner/source scope. Its successful and interrupted flows are
    // exercised by calendar-sync-settings; this sweep must verify this guard,
    // not treat the expected safety refusal as a dead navigation control.
-   if(label==='Calendar'&&control==='Google Calendar'){
+   if(label==='Calendars'&&control==='Google Calendar'){
     expect(now.toast).toContain('Return to Calendar and finish checking saved events before connecting Google.');
     expect(now.pages).toBe(was.pages);expect(now.dialogs).toBe(was.dialogs);
     continue;
@@ -90,13 +90,9 @@ test('production Settings controls act or explain the current Calendar authority
 
 /** Rows the Settings cleanup removed or put behind the Developer gate; a product build shows none of them. */
 const removedRows:Record<string,RegExp[]>={
- '':[/^Developer$/,/^Try mock mode$/,/^Saved data needs recovery$/,/^Last change$/],
+ '':[/^Developer$/,/^Try mock mode$/,/^Saved data needs recovery$/,/^Last change$/,/^Connections$/,/^Notifications$/,/^Voice and agent settings$/,/^Privacy & data$/],
  'About':[/^Update channel \(development\)$/,/^Updates$/,/^Alpha does not check for updates$/,/^Runtime$/],
- 'Calendar':[/^Calendar backups$/,/^Display only$/],
- 'Connections':[/^Other connectors$/,/^Not available in this version$/,/^Last change$/],
- 'Notifications':[/^Delivery timing$/],
- 'Voice and agent settings':[/^Personality settings$/,/^Managed by your agent$/,/^Scheduled digests$/],
- 'Privacy & data':[/^Workflow runs$/],
+ 'Calendars':[/^Calendar backups$/,/^Display only$/],
 };
 test('production Settings shows no developer or removed rows, even with ?tools=1',async({page})=>{
  await page.addInitScript(offline);

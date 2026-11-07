@@ -10,7 +10,7 @@ import { filterEntries, normalizeWebsite } from '../../../../vendor/eliza/plugin
 import type { ElizaPasswordsPlugin, PasswordBinding, PasswordEntrySummary, PasswordsStatus } from '../../../../vendor/eliza/plugins/plugin-native-passwords/src/definitions.ts';
 
 /**
- * Settings → Password manager over the shared plugin-native-passwords vault.
+ * Settings → Passwords over the shared plugin-native-passwords vault.
  *
  * Secrets boundary: the renderer only ever holds a password the user is typing for this form
  * (module memory, cleared on save, leave, lock and background). Native responses are metadata,
@@ -170,7 +170,7 @@ function save(helpers: Helpers) {
   });
 }
 
-/** Rows for Settings → Password manager, placed above the other-provider (Proton) section. */
+/** Rows for Settings → Passwords, placed above the other-provider (Proton) section. */
 export function passwordManagerGroups(helpers: Helpers): Bag[] {
   if (!active) { active = true; notice = ''; void refresh(); }
   const vault = client;
@@ -281,5 +281,5 @@ export function passwordEntryPage(helpers: Helpers, back: () => void): Bag | nul
     }));
   }
   groups.push(captioned(helpers, '', actions, true));
-  return { isTop: false, notTop: true, cls: 'enter', z: 5, title: current.id ? 'Edit password' : 'New password', hasTitle: true, backLabel: 'Back to Password manager', back: () => { clearSecrets(); back(); }, hero: {}, groups };
+  return { isTop: false, notTop: true, cls: 'enter', z: 5, title: current.id ? 'Edit password' : 'New password', hasTitle: true, backLabel: 'Back to Passwords', back: () => { clearSecrets(); back(); }, hero: {}, groups };
 }

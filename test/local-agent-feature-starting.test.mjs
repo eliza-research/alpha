@@ -9,7 +9,7 @@ import {anyAbortSignal} from '../apps/app/src/runtime/abort-signal.ts';
 const source=readFileSync(process.env.ALPHA_FEATURE_STARTING_SOURCE||'apps/app/src/runtime/local-agent.ts','utf8');
 const begin=source.indexOf('export class LocalAgentProtocol {'),end=source.indexOf('export const LOCAL_PROVIDER_MODEL=',begin);
 assert.ok(begin>=0&&end>begin);
-const classCode=stripTypeScriptTypes(source.slice(begin,end).replace(/^export /gm,''),{mode:'transform'});
+const classCode=stripTypeScriptTypes(source.slice(begin,end).replace(/^export /gm,''),{mode:'strip'});
 const pending=(extra={})=>({status:503,body:JSON.stringify({error:'feature_starting',code:'feature_starting',phase:'app-route-tail',status:'pending',retryable:true,...extra})});
 const ok=value=>({status:200,body:JSON.stringify(value)});
 function fixture(request){

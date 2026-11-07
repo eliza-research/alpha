@@ -7,7 +7,7 @@ import {createServer,request as pageRequest} from 'node:http';
 import {duplexPair} from 'node:stream';
 import {randomUUID} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
-if(!process.execArgv.includes('tsx')){const child=spawnSync(process.execPath,['--import','tsx',process.argv[1]],{stdio:'inherit',timeout:30000});process.exit(child.status??1);}
+if(!process.execArgv.some(arg=>arg==='--import=tsx'||arg==='tsx')){const child=spawnSync(process.execPath,['--import','tsx',process.argv[1]],{stdio:'inherit',timeout:30000});process.exit(child.status??1);}
 const {createLocalAgentDevHandler}=await import('../scripts/local-agent-dev-bridge.ts');
 const owner=randomUUID(),root='1'.repeat(64),paired='fixture-private-owner';
 async function fixture(enabled=true,moderation,direct=false){
@@ -81,7 +81,7 @@ test('actual Cloud driver uses explicit paired gateway with no renderer Cloud ac
  let agent={session:{ownerId:'fixture-owner',sessionId:'fixture-session'}},uploads=0,synthesis=0,legacy=0,sends=0,release;
  const native={transcribeDevelopmentCloudRecording:async()=>{uploads++;if(release===true)await new Promise(r=>release=r);return {text:'hello',local:false};},synthesizeDevelopmentCloud:async input=>{synthesis++;assert.deepEqual(Object.keys(input).sort(),['requestId','text']);return {playbackId:'owned'};},transcribeRecording:async()=>{legacy++;},synthesize:async()=>{legacy++;}};
  const box={browserCloudResidentEnabled:false,developmentCartesiaVoiceEnabled:false,developmentCloudVoiceEnabled:true,registerPlugin:()=>native,connectionController:{getCloudEnvironment:()=>null,getCloudClient:()=>null,getBrowserSpeechAgent:()=>agent,getSnapshot:()=>({open:false}),subscribe:()=>()=>{},send:()=>sends++},document:{hidden:false,addEventListener(){},removeEventListener(){}},window:{addEventListener(){},removeEventListener(){}},AbortController,DOMException,markTtsPlaybackStarted(){},markTtsPlaybackEnded(){},playOwnedSpeech:async(_native,signal,prepare,current,started,strict)=>{assert.equal(strict,true);signal.throwIfAborted();current();await prepare('request');current();started();}};
- vm.runInNewContext('{'+stripTypeScriptTypes(source,{mode:'transform'})+';globalThis.create=createCloudVoice;globalThis.failure=cloudVoiceFailure;}',box);
+ vm.runInNewContext('{'+stripTypeScriptTypes(source,{mode:'strip'})+';globalThis.create=createCloudVoice;globalThis.failure=cloudVoiceFailure;}',box);
  for(const mode of [true,false])for(const environment of [null,'production']){box.browserCloudResidentEnabled=mode;box.connectionController.getCloudEnvironment=()=>environment;for(const code of ['voice-http-401','voice-http-403'])assert.match(box.failure({code}),mode?/Sign in to Cloud again in Settings/:/developer agent/);}box.browserCloudResidentEnabled=false;box.connectionController.getCloudEnvironment=()=>null;
  const driver=box.create();assert.deepEqual(JSON.parse(JSON.stringify(await driver.transcribeRecording({recordingId:'clip',requestId:'request'}))),{text:'hello',local:false});await driver.speak('reply',new AbortController().signal);assert.equal(uploads,1);assert.equal(synthesis,1);assert.equal(legacy,0);assert.equal(sends,0);
  release=true;const stale=driver.transcribeRecording({recordingId:'clip',requestId:'request'});while(typeof release!=='function')await Promise.resolve();agent={session:{ownerId:'other',sessionId:'other'}};release();await assert.rejects(stale,/Voice agent changed/);

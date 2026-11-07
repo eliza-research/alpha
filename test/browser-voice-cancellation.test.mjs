@@ -5,7 +5,7 @@ import test from 'node:test';
 // The real BrowserVoice and speech errors, with only their imports replaced by synthetic ports.
 // Every agent or Cloud speech call is held until the test settles it and rejects on its own signal,
 // as fetch does; zero network, audio, IndexedDB or agent I/O.
-const load=(file,names)=>stripTypeScriptTypes(readFileSync(file,'utf8').replace(/^import .*;\n/gm,'').replace(/^export /gm,'').replaceAll('import.meta.env.DEV','true'),{mode:'transform'})+`;return {${names}};`;
+const load=(file,names)=>stripTypeScriptTypes(readFileSync(file,'utf8').replace(/^import .*;\n/gm,'').replace(/^export /gm,'').replaceAll('import.meta.env.DEV','true'),{mode:'strip'})+`;return {${names}};`;
 const {speechError,speechCancelled}=new Function(load('apps/app/src/browser/speech-errors.ts','speechError,speechCancelled:typeof speechCancelled==="function"?speechCancelled:undefined'))();
 // voice.ts carries the real streamed clip and support check; only MediaSource is a stand-in that accepts audio/mpeg.
 const voiceCode=load('apps/app/src/browser/voice.ts','BrowserVoice');

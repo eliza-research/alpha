@@ -7,10 +7,10 @@ import vm from 'node:vm';
 // Existing explicit link gesture is a separate trusted UI path. A provider's
 // browser-tab identity or page text is never promoted to authored permission.
 const source=readFileSync('apps/app/src/prototype/note-web-source-adapter.ts','utf8');
-const adapter=stripTypeScriptTypes(source,{mode:'transform'}).replace(/^import[^;]+;\n/gm,'').replace(/^export /gm,'');
+const adapter=stripTypeScriptTypes(source,{mode:'strip'}).replace(/^import[^;]+;\n/gm,'').replace(/^export /gm,'');
 const agent=readFileSync('apps/app/src/prototype/agent-adapter.ts','utf8');
 const start=agent.indexOf('    api.openReviewedWebSource=');
-const bridge=stripTypeScriptTypes(agent.slice(start,agent.indexOf('\n',start)),{mode:'transform'});
+const bridge=stripTypeScriptTypes(agent.slice(start,agent.indexOf('\n',start)),{mode:'strip'});
 function fixture(){
  class Element extends EventTarget{constructor(tag){super();this.tag=tag;this.children=[];this.style={setProperty(){}};}append(...children){this.children.push(...children);}setAttribute(){}showModal(){}focus(){}remove(){this.removed=true;}}
  const document=Object.assign(new EventTarget(),{hidden:false,body:new Element('body'),createElement:tag=>new Element(tag),querySelector:()=>null,activeElement:null});

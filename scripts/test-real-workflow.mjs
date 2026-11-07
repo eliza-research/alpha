@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import {parseArgs} from 'node:util';
-if(!process.execArgv.includes('tsx'))process.exit(spawnSync(process.execPath,['--import','tsx',...process.argv.slice(1)],{stdio:'inherit',env:process.env}).status??1);
+if(!process.execArgv.some(arg=>arg==='--import=tsx'||arg==='tsx'))process.exit(spawnSync(process.execPath,['--import','tsx',...process.argv.slice(1)],{stdio:'inherit',env:process.env}).status??1);
 // Inputs: --session-file names an owner-only paired session JSON file; --origin the exact loopback host.
 const {values:options}=parseArgs({options:{origin:{type:'string'},'session-file':{type:'string'}},strict:true});
 const {WorkflowProtocol}=await import('../apps/app/src/runtime/workflow-protocol.ts');

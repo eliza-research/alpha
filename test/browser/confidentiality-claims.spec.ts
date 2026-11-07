@@ -5,7 +5,7 @@ const states: Record<string,string[]> = {
   home:[''], inbox:['','mail','compose'], calendar:['','event','new','month','invite','add'],
   browser:['','book','tabs','agent'], camera:['','video','scan'], photos:['','viewer','albums','search'],
   maps:['','search','place','route','nav'], notes:['','editor','rec','voice'], files:['','folder','preview'],
-  workflows:['','flow','run','failed','new'], settings:['','character','accounts','privacy','about','models','developer'],
+  workflows:['','flow','run','failed','new'], settings:['','about','calendar','developer'],
   notifications:[''], reminders:[''],
 };
 const shell = ['boot','lock','shade','sheet','full','voice','heads'];
@@ -15,7 +15,7 @@ for(const mode of ['', 'dev'])for(const view of ['Inbox','Calendar','Browser','C
  await expect(page.locator('html')).toHaveAttribute('data-active-view',view.toLowerCase());
  const text=await page.locator('body').innerText();for(const claim of forbidden)expect(text).not.toMatch(claim);
 });
-for(const mode of ['', 'dev'])for(const tab of ['Privacy & data','About','Models','Developer'])test(`visible ${mode||'production'} Settings ${tab} has no unverified confidentiality claim`,async({page},info)=>{
+for(const mode of ['', 'dev'])for(const tab of ['About','Calendars',...(mode==='dev'?['Passwords']:[]),'Developer'])test(`visible ${mode||'production'} Settings ${tab} has no unverified confidentiality claim`,async({page},info)=>{
  // Developer sits behind the one Developer gate: the development server opened with ?tools=1.
  const query=[mode&&'mode=dev',tab==='Developer'&&'tools=1'].filter(Boolean).join('&');
  await page.goto(query?`/?${query}`:'/');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:tab,exact:true}).click();
@@ -23,7 +23,6 @@ for(const mode of ['', 'dev'])for(const tab of ['Privacy & data','About','Models
  await expect(page.getByText(tab,{exact:true}).last()).toBeVisible();
  const text=await page.locator('body').innerText();for(const claim of forbidden)expect(text).not.toMatch(claim);
  expect(text).not.toContain('Privacy & Enclave');
- if(tab==='Privacy & data'){await expect(page.getByText('No remote agent connected; no hosted inference requests',{exact:true})).toBeVisible();expect(text).not.toContain('Pre-egress redaction is not connected');expect(text).not.toMatch(/Secret and contact identifiers are swapped/);expect(text).not.toMatch(/\b\d+ apps\b|2,418 items|6 today/);await page.evaluate(async()=>{await Promise.all(document.getAnimations().filter(animation=>Number.isFinite(animation.effect?.getComputedTiming().endTime)).map(animation=>animation.finished.catch(()=>{})));});await page.screenshot({path:info.outputPath('privacy.png')});}
 });
 // Mock mode is a labeled design vision; it may show planned redaction features but never sealing or attestation.
 const mockForbidden = [/\bSealed\b/, /\bAttested\b/, /attestation passed/i, /stays? in the enclave/i, /keys? never left/i, /keys in hardware/i, /synced into the enclave/i, /enclave attest/i];

@@ -75,7 +75,7 @@ console.log('PASS 3 canonical sync dialog cases: same-source review/select/resum
  const settings=fs.readFileSync(new URL('../apps/app/src/prototype/settings-adapter.ts',import.meta.url),'utf8');
  const start=settings.indexOf('// calendar-settings:begin'),end=settings.indexOf('// calendar-settings:end',start);
  assert(start>=0&&end>start,'the actual Settings Calendar block must remain explicit');
- const block=stripTypeScriptTypes(settings.slice(start,end),{mode:'transform'});
+ const block=stripTypeScriptTypes(settings.slice(start,end),{mode:'strip'});
  function page({native=false,authority='canonical',status='ready',grants=[],gmail='',display={},transition=false,choices=false,scopeAvailable=true}={}){
   const calls={pages:[],connects:[],transition:0,recovery:0,returned:0,retry:0};
   const scope={owner:'synthetic-calendar-scope'},state={page:'calendar'},page={groups:[]},out={stack:[]};

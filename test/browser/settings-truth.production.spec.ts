@@ -345,7 +345,7 @@ test('the browser build of Settings shows no fixture value and no radio or senso
  expect(await page.locator('[aria-pressed]').evaluateAll(list=>list.map(e=>e.getAttribute('aria-label')))).toEqual([]);
 });
 
-test('Settings › Eliza Cloud reports the verified plan without asking an admitted account for a code',async({page})=>{
+test('Settings › Eliza Cloud reports the verified plan without automatically opening code entry',async({page})=>{
  await nativeStub(page);
  await openSettings(page);
  const row=current(page).getByRole('button',{name:'Eliza Cloud',exact:true});
@@ -354,7 +354,8 @@ test('Settings › Eliza Cloud reports the verified plan without asking an admit
  await expect(plan.getByText('synthetic-settings@example.invalid',{exact:true})).toBeVisible();
  await expect(plan).toContainText('Plus');
  await expect(plan.getByRole('button',{name:'Sign out',exact:true})).toBeVisible();
- await expect(plan.getByRole('button',{name:'Redeem code',exact:true})).toHaveCount(0);
+ await expect(plan.getByRole('button',{name:'Redeem code',exact:true})).toBeVisible();
+ await expect(page.getByLabel('Membership code',{exact:true})).toHaveCount(0);
  await expect(plan.getByRole('button',{name:'Manage plan',exact:true})).toBeVisible();
  expect(await page.evaluate(()=>(window as any).truth.calls.filter((c:any)=>c.plugin==='AlphaConnection'&&c.method==='request'&&new URL(c.input.url).pathname==='/api/v1/subscription/redeem').length)).toBe(0);
  expect(await page.evaluate(()=>(window as any).truth.calls.some((c:any)=>c.plugin==='AlphaConnection'&&c.method==='request'&&new URL(c.input.url).pathname==='/api/v1/credits/balance'))).toBe(false);
@@ -370,19 +371,12 @@ for(const subscription of ['credits','active','canceled'] as const)test(`Setting
  await page.getByRole('button',{name:'Settings',exact:true}).click();
  await current(page).getByRole('button',{name:'Eliza Cloud',exact:true}).click();
  const plan=current(page),redeem=plan.getByRole('button',{name:'Redeem code',exact:true});
- if(subscription!=='canceled'){
-  // An account Cloud admitted (credits or an active plan) is not asked for a code.
-  if(subscription==='credits')await expect(plan).toContainText('Eliza Cloud credits');
-  await expect(redeem).toHaveCount(0);
-  await expect(plan.getByRole('button',{name:'Manage plan',exact:true})).toBeVisible();
- }else{
-  // The plan notice banner can sit over the top rows; activate by keyboard as assistive technology would.
-  await expect(redeem).toBeVisible();await redeem.focus();await redeem.press('Enter');
-  await expect(page.getByLabel('Subscription code',{exact:true})).toBeVisible();
-  await expect(page.getByRole('dialog',{name:'Eliza Cloud account & plan',exact:true}).getByRole('button',{name:'Redeem code',exact:true})).toBeVisible();
- }
- // Legacy credit admission does not hide the subscription choices or explicit membership-code entry.
- await expect(redeem).toBeVisible();await redeem.click();
+ if(subscription==='credits')await expect(plan).toContainText('Eliza Cloud credits');
+ await expect(plan.getByRole('button',{name:'Manage plan',exact:true})).toBeVisible();
+ await expect(page.getByLabel('Membership code',{exact:true})).toHaveCount(0);
+ // A signed-in owner may open code entry without changing current plan admission.
+ // Focus activation also works when the cancellation notice occupies the top edge.
+ await expect(redeem).toBeVisible();await redeem.focus();await redeem.press('Enter');
  await expect(page.getByLabel('Membership code',{exact:true})).toBeVisible();
  await expect(page.getByRole('dialog',{name:'Eliza Cloud account & plan',exact:true}).getByRole('region',{name:'Subscription',exact:true}).getByRole('button',{name:'Redeem',exact:true})).toBeVisible();
  expect(await page.evaluate(()=>(window as any).truth.calls.filter((c:any)=>c.plugin==='AlphaConnection'&&c.method==='request'&&new URL(c.input.url).pathname==='/api/v1/subscription/redeem').length)).toBe(0);

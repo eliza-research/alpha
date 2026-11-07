@@ -213,10 +213,11 @@ test('a verified empty Agent Calendar does not substitute device events', async 
   expect(await harness(page, f => f.unexpected)).toEqual([]);
 });
 
-for (const mode of ['stale-empty', 'future-empty'] as const) test(`an ${mode} Calendar read keeps the Home entry visible`, async ({page}) => {
+for (const mode of ['stale-empty', 'future-empty'] as const) test(`an ${mode} Calendar read withholds the unverified empty card`, async ({page}) => {
   await canonicalHome(page, mode);
-  await expect(calendarCard(page)).toBeVisible();
-  await expect(calendarCard(page)).not.toContainText(/Device-only event|Private device calendar/);
+  await expect(calendarCard(page)).toHaveCount(0);
+  await expect(home(page).locator('[data-alpha-home-date]')).toBeVisible();
+  await expect(home(page)).not.toContainText(/Device-only event|Private device calendar/);
   expect(await harness(page, f => f.calendar.requests)).toBe(0);
   expect(await harness(page, f => f.unexpected)).toEqual([]);
 });
@@ -227,8 +228,8 @@ test('Calendar settings retain canonical Home authority even when native device 
   await expect(card).toContainText('Agent calendar meeting');
   const before = await harness(page, f => f.calendar.lists);
   await button(page, 'Settings').click();
-  await button(page, 'Calendar').click();
-  const settings = page.locator('[data-settings-page="Calendar"]');
+  await button(page, 'Calendars').click();
+  const settings = page.locator('[data-settings-page="Calendars"]');
   // The current product has one Calendar; native rows remain covered by native/retained-source tests.
   await expect(settings.getByRole('button', {name:'Android calendars',exact:true})).toHaveCount(0);
   await expect(settings.getByRole('button', {name:'Agent Calendar',exact:true})).toHaveCount(0);

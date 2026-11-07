@@ -161,3 +161,15 @@ test('active temporary account access reports its end without claiming a renewal
  assert.equal(row.status,'Temporary access · Access until Jan 15');
  assert.doesNotMatch(row.status,/renew/i);
 });
+
+
+test('every signed-in account offers explicit code entry without opening it automatically',()=>{
+ for(const offerRedeem of [false,true]){
+  let opened=0;
+  const row=m.cloudAccountPage({plan:{signedIn:true,offline:false,offerRedeem,account:'Owner',plan:'Plus',status:'active',endsAt:null,keyExpiresAt:null,keyExpiring:false},busy:false,message:'',serviceName:'Cloud',day:()=>'',confirm:()=>false,actions:{cancel(){},approve(){},redeem(){opened++;},manage(){},signOut(){},recheck(){},signIn(){}}});
+  assert.equal(opened,0);
+  row.actions.find(action=>action.label==='Redeem code').go();
+  assert.equal(opened,1);
+  assert.equal(row.status,'Plus');
+ }
+});
