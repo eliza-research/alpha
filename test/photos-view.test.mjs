@@ -133,3 +133,17 @@ test('FixPatch: a reload re-reads every loaded row (up to the window), so rows p
  let live=true;const stale=await v.readWindow(async o=>{live=false;return list(o);},{more:false,cursor:'',loaded:100,limit:2000},()=>live);
  assert.equal(stale,undefined,'A superseded reload returns nothing');
 });
+
+test('FixNoCap: permitted items go in one reviewed request per 500; Cancel ends the run',async()=>{
+ const owned=Array.from({length:300},(_,i)=>({id:'native-camera-'+(i+1)})),permitted=Array.from({length:300},(_,i)=>({id:'native-camera-m:external_primary:i:'+(i+1)}));
+ const id=row=>row.id.replace(/^native-camera-/,'');
+ assert.equal(v.changeBatches(owned,id,{owned:20,permitted:500}).length,15,'Owned items keep internal batches');
+ assert.deepEqual(v.changeBatches(permitted,id,{owned:20,permitted:500}).map(b=>b.length),[300],'One Android confirmation for 300 permitted items');
+ const sent=[];const declined=Object.assign(Error('Photo change cancelled.'),{code:'LIBRARY_DECLINED'});
+ const runs=await v.runBatches(v.batches(owned,20),async batch=>{sent.push(batch);throw declined;});
+ assert.equal(sent.length,1,'Cancelling the first confirmation does not open the next');
+ assert.equal(runs.length,15);assert.ok(runs.every(r=>r.declined));
+ const mixed=[];const outcome=await v.runBatches([[1],[2],[3]],async batch=>{mixed.push(batch[0]);if(batch[0]===1)throw Error('provider error');return batch[0];});
+ assert.deepEqual(mixed,[1,2,3],'Another failure does not stop later batches');assert.ok(outcome[0].error);assert.equal(outcome[2].receipt,3);
+ assert.equal(await v.runBatches([[1]],async()=>1,()=>true),undefined);
+});

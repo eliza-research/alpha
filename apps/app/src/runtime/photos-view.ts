@@ -95,6 +95,31 @@ export function batches<T>(items: readonly T[], size: number): T[][] {
   return out;
 }
 
+/** How a favorite, trash or restore selection is sent: owned items in internal batches of `owned`;
+ * permitted library items (ids `m:…`) in reviewed requests of up to `permitted`, each one Android
+ * confirmation, so a large selection is not one confirmation per 20 items. */
+export function changeBatches<T>(items: readonly T[], id: (row: T) => string, sizes: { owned: number; permitted: number }): T[][] {
+  const permitted = items.length > 0 && items.every(row => id(row).startsWith('m:'));
+  return batches(items, permitted ? sizes.permitted : sizes.owned);
+}
+
+export type BatchRun<T, R> = { batch: T[]; receipt?: R; error?: unknown; declined?: boolean };
+/** Sends batches in order. A batch the owner declined (LIBRARY_DECLINED) ends the run: it and every
+ * later batch are reported declined and never sent, so Cancel never opens the next confirmation.
+ * Returns undefined when `stopped` (the view closed) before a batch. */
+export async function runBatches<T, R>(groups: readonly T[][], send: (batch: T[]) => Promise<R>, stopped: () => boolean = () => false): Promise<BatchRun<T, R>[] | undefined> {
+  const out: BatchRun<T, R>[] = [];
+  for (let at = 0; at < groups.length; at++) {
+    if (stopped()) return undefined;
+    try { out.push({ batch: groups[at], receipt: await send(groups[at]) }); }
+    catch (error) {
+      if ((error as { code?: unknown } | null)?.code === 'LIBRARY_DECLINED') { for (const rest of groups.slice(at)) out.push({ batch: rest, declined: true }); break; }
+      out.push({ batch: groups[at], error });
+    }
+  }
+  return out;
+}
+
 /** Days left before Android removes an item from Recently deleted. */
 export function daysLeft(expiresAt: number | undefined, now = Date.now()): number | undefined {
   if (!expiresAt || !Number.isFinite(expiresAt) || expiresAt <= 0) return undefined;

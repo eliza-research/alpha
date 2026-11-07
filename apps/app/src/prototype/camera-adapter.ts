@@ -15,7 +15,7 @@ import {reviewContentQuestion} from '../browser/content-question';
 import {createCaptureRevisions,captureUnchanged} from './context-selection';
 import {createDeviceLibrary,setMainLibraryHost,LibraryAgentRefusal,type HostOperation} from './photo-library-adapter';
 import type {PhotosViewResult} from '../runtime/photos-view-contract';
-import {virtualGrid,newestFirst,mergeWindow,readWindow,groupSections,patchRows,insertRows,patchSelection,favoriteTarget,batches,daysLeft,pinchColumns,dragRange,filterMatches,filterLabel,viewerTitle,formatBytes,shotAt,albumOf,GRID_COLUMNS,type PhotosFilter} from '../runtime/photos-view';
+import {virtualGrid,newestFirst,mergeWindow,readWindow,changeBatches,runBatches,groupSections,patchRows,insertRows,patchSelection,favoriteTarget,batches,daysLeft,pinchColumns,dragRange,filterMatches,filterLabel,viewerTitle,formatBytes,shotAt,albumOf,GRID_COLUMNS,type PhotosFilter} from '../runtime/photos-view';
 import {LIBRARY_LIMITS,type LibraryAgentOperation,type LibraryAgentResult} from '../runtime/photo-library';
 import {openVideoEditReview} from './video-edit-review';
 import {openScanReview,ScanKeepError} from './scan-review';
@@ -214,6 +214,8 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   let libraryAccess:LibraryAccess|undefined,requestingLibraryAccess=false;
   /** The newest rows Photos keeps loaded; a reload re-reads as many as were loaded. */
   const WINDOW=LIBRARY_LIMITS.kept,BATCH=20,SHARE_BATCH=100;
+  /** One reviewed Android request over permitted items (PhotoLibraryAccess.REVIEWED_BATCH, patches/eliza/photos-library.patch). */
+  const PERMITTED_BATCH=500;
   /** The agent's read-only filter (photos_filter), shown as a clearable chip. */
   let photosFilter:(PhotosFilter&{label:string})|undefined;
   let gridColumns:number=GRID_COLUMNS.default;
@@ -434,12 +436,13 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     const native:'favorite'|'unfavorite'|'trash'|'restore'=operation==='favorite'?(favoriteTarget(chosen)?'favorite':'unfavorite'):operation;
     mutating=true;closeVideo();preview=undefined;retirePhotoRead();
     owner.set({open:null,nativePhotoSelection:null,nativeMultiSelection:Date.now()});
-    const verified:SavedPhoto[]=[],changed:SavedPhoto[]=[];let failed=0,unverified=false;
+    const verified:SavedPhoto[]=[],changed:SavedPhoto[]=[];let failed=0,unverified=false,declined=false;
     try{
-      for(const batch of batches(chosen,BATCH)){
-        if(disposed)return;
-        let receipt;try{receipt=await library.changeMany({operation:native,items:batch.map(row=>({id:nativeId(row.id),revision:row.mutationRevision||''}))});}
-        catch{unverified=true;failed+=batch.length;continue;}
+      const runs=await runBatches(changeBatches(chosen,row=>nativeId(row.id),{owned:BATCH,permitted:PERMITTED_BATCH}),batch=>library.changeMany({operation:native,items:batch.map(row=>({id:nativeId(row.id),revision:row.mutationRevision||''}))}),()=>disposed);
+      if(!runs)return;
+      for(const {batch,receipt,declined:cancelled} of runs){
+        if(cancelled){declined=true;failed+=batch.length;continue;}
+        if(!receipt){unverified=true;failed+=batch.length;continue;}
         for(const outcome of receipt.outcomes){if(!outcome.item){failed++;continue;}const before=batch.find(item=>nativeId(item.id)===outcome.id);const item={...before,...normalize(outcome.item)} as SavedPhoto;verified.push(item);if(outcome.status!=='unchanged')changed.push(item);}
         failed+=Math.max(0,batch.length-receipt.outcomes.length);
       }
@@ -455,7 +458,8 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
         owner.set({nativeMultiSelection:Date.now(),nativeCaptureRevision:Date.now()});
         const n=verified.length,message=operation==='favorite'?(native==='favorite'?`Added ${n} to Favorites`:`Removed ${n} from Favorites`):operation==='trash'?`${n} moved to Recently deleted`:`${n} restored`;
         const undo=operation==='trash'?changed.filter(row=>row.trashed):[];
-        owner.toast(message+(failed?` · ${failed} not changed`:''),undo.length?{undo:()=>{void changeSelection(owner,'restore',undo);}}:undefined);
+        // Declining Android's confirmation is the owner's own answer: nothing more is said when nothing changed.
+        if(verified.length||!declined)owner.toast(message+(failed?` · ${failed} not changed`:''),undo.length?{undo:()=>{void changeSelection(owner,'restore',undo);}}:undefined);
       }
       if(unverified&&!verified.length&&owner.isActive())owner.toast('Nothing changed. Try again.');
     }finally{mutating=false;if(!disposed){void refresh();void loadTrash(owner);void loadCounts(owner);void loadCustomAlbums(owner);owner.set({nativeMultiSelection:Date.now()});}}

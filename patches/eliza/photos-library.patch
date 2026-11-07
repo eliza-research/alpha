@@ -1008,7 +1008,40 @@
      } catch (RuntimeException unavailable) {
        request.call.reject("Photos closed before dispatch. Review the selection again.");
      }
-@@ -201,6 +210,47 @@
+@@ -132,9 +141,11 @@
+   private void request(PluginCall call, List<String> ids, List<String> revisions, boolean favorite,
+       boolean desired, boolean batch, boolean permanent) {
+     Request request = new Request(call, ids, revisions, favorite, desired, batch, permanent);
+-    if (closed || Build.VERSION.SDK_INT < 30 || ids.isEmpty() || ids.size() > 20
++    // A favorite, trash or restore is one request of up to REVIEWED_BATCH; a permanent removal stays at REVIEWED.
++    int max = batch && !permanent ? PhotoLibraryAccess.REVIEWED_BATCH : PhotoLibraryAccess.REVIEWED;
++    if (closed || Build.VERSION.SDK_INT < 30 || ids.isEmpty() || ids.size() > max
+         || new HashSet<>(ids).size() != ids.size() || ids.size() != revisions.size()) {
+-      call.reject("Select 1–20 distinct permitted items.");
++      call.reject("Select 1–" + max + " distinct permitted items.");
+       return;
+     }
+     if (!pending.compareAndSet(null, request)) {
+@@ -150,11 +161,14 @@
+             || permanent && !Boolean.TRUE.equals(row.getBoolean("trashed")))
+           throw new IllegalStateException();
+         uris.add(catalog.uri(MediaLibraryKey.parse(ids.get(i))));
+-        names.append(i + 1)
+-            .append(". ")
+-            .append(row.getString("name").replaceAll("[\\p{Cntrl}]", " "))
+-            .append('\n');
++        if (i < PhotoLibraryAccess.REVIEWED)
++          names.append(i + 1)
++              .append(". ")
++              .append(row.getString("name").replaceAll("[\\p{Cntrl}]", " "))
++              .append('\n');
+       }
++      if (ids.size() > PhotoLibraryAccess.REVIEWED)
++        names.append("+ ").append(ids.size() - PhotoLibraryAccess.REVIEWED).append(" more\n");
+       android.app.PendingIntent grant =
+           MediaStore.createWriteRequest(bridge.getContext().getContentResolver(), uris);
+       bridge.getActivity().runOnUiThread(() -> {
+@@ -201,6 +215,47 @@
      }
    }
    /**
@@ -1058,19 +1091,24 @@
     */
 --- a/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotoLibraryAccess.java
 +++ b/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotoLibraryAccess.java
-@@ -26,8 +26,10 @@
+@@ -26,8 +26,15 @@
    public static final int PAGE = 24;
    /** Validation reads at most this many named items in one call. */
    public static final int VALIDATE = 200;
 -  /** Reviewed changes, shares and permanent removals name at most this many items. */
 +  /** Reviewed changes and permanent removals name at most this many items. */
    public static final int REVIEWED = 20;
++  /**
++   * A favorite, trash or restore over permitted items is one Android write request of at most this
++   * many items, behind one confirmation, so a large selection is not one consent per 20 items.
++   */
++  public static final int REVIEWED_BATCH = 500;
 +  /** One share names at most this many items; it changes nothing, so its bound is wider. */
 +  public static final int SHARE = 100;
  
    private PhotoLibraryAccess() {}
  
-@@ -80,17 +82,17 @@
+@@ -80,17 +87,17 @@
  
    /**
     * Which permitted listing the Photos grid's {@code album} parameter reads, as
@@ -1093,7 +1131,7 @@
      };
    }
  
-@@ -153,14 +155,16 @@
+@@ -153,14 +160,16 @@
    }
  
    /**
@@ -1200,3 +1238,14 @@
            throw new IllegalArgumentException();
          ArrayList<Uri> uris = new ArrayList<>();
          Set<String> unique = new HashSet<>();
+@@ -635,7 +671,9 @@
+         String operation = call.getString("operation", "");
+         boolean[] change = PhotoLibraryAccess.batchChange(operation);
+         JSArray items = call.getArray("items");
+-        List<PhotoLibraryAccess.Reviewed> reviewed = PhotoLibraryAccess.reviewed(items, PhotoLibraryAccess.REVIEWED);
++        // Owned items are changed in batches of OwnedMediaLibrary.BATCH (checked there); permitted
++        // items in one reviewed Android request of up to REVIEWED_BATCH.
++        List<PhotoLibraryAccess.Reviewed> reviewed = PhotoLibraryAccess.reviewed(items, PhotoLibraryAccess.REVIEWED_BATCH);
+         if (PhotoLibraryAccess.anyPermitted(reviewed)) {
+           mediaReview.request(call, PhotoLibraryAccess.ids(reviewed), PhotoLibraryAccess.revisions(reviewed),
+               change[0], change[1], true);
