@@ -16,13 +16,16 @@ const branch=between(source,'  const requiredSignInView:', '  const accountCreat
 const renderBranch=new Function('React','CloudSignInPanel','snapshot','productionSignInRequired','signInEntryRequired','residentEnvironment','inAppGoogle','panel','RESIDENT_UNPACKAGED','connectionController','browserCloudResidentEnabled','testMocksEnabled','ResidentRecoveryPanel','loadSignInService','cloudSignInPhone','inAppPhone','inAppEmail','ownKeyEntry','OwnKeyForm',transformSync('function render(){const providerChoice=null;const setOwnKeyEntry=()=>{},ownKeyAttempted=false,setOwnKeyAttempted=()=>{},signInPage=productionSignInRequired,sending=null,signInPageShown=!!snapshot.signIn||signInEntryRequired,ownKeySaving=false,LOCAL_PROVIDER_MODEL=\'qwen\',automaticSignInProbe={current:false},signInProbeMessage=()=>\'Checking Eliza Cloud sign-in…\',ownProviderSelected=()=>false;'+branch+'return null;}',{loader:'tsx',jsxFactory:'React.createElement'}).code+';return render();');
 const controller={beginSignIn(){},signInGoogle(){},signInEmail(){},verifySignInCode(){},resendSignInCode(){},cancelSignIn(){}};
 const render=(snapshot,ownKeyEntry=false)=>renderToStaticMarkup(renderBranch(React,CloudSignInPanel,snapshot,true,true,()=> 'production',false,null,'unpackaged',controller,false,false,()=>null,undefined,null,false,true,ownKeyEntry,()=>React.createElement('form',{'aria-label':'Own API keys'},'Cerebras API key')));
-test('production signed-out entry server-renders direct options before readiness without false Google failure',()=>{
- const html=render({signIn:null,busy:false,message:'',error:''});
- assert.match(html,/Welcome to Alpha/);assert.match(html,/Continue with Google/);assert.match(html,/Email me a code/);
- assert.doesNotMatch(html,/Sign in with Eliza Cloud|unavailable|Try again/);assert.match(html,/disabled/);
- // Own API keys are offered on the welcome page, below the Cloud methods and independent of readiness.
- assert.ok(html.indexOf('cloud-sign-in-title')<html.indexOf('Use my own API keys'));
- assert.match(html,/<button type="button" class="alpha-btn alpha-btn--text">Use my own API keys<\/button>/);
+test('production signed-out entry stays quiet until readiness and then shows the sign-in methods',()=>{
+ const loading=render({signIn:null,busy:false,message:'',error:''});
+ assert.match(loading,/role="status" aria-label="Loading Alpha"/);
+ assert.doesNotMatch(loading,/Welcome to Alpha|Continue with Google|Email me a code|Use my own API keys|unavailable|Try again/);
+ const ready=render({signIn:{step:'choose',environment:'production'},busy:false,message:'',error:''});
+ assert.match(ready,/Welcome to Alpha/);
+ assert.match(ready,/Email me a code/);
+ assert.doesNotMatch(ready,/Sign in with Eliza Cloud|unavailable|Try again/);
+ assert.ok(ready.indexOf('cloud-sign-in-title')<ready.indexOf('Use my own API keys'));
+ assert.match(ready,/<button type="button" class="alpha-btn alpha-btn--text">Use my own API keys<\/button>/);
 });
 test('a failed readiness check shows its reason and one retry instead of disabled forms',()=>{
  const html=render({signIn:null,busy:false,message:'',error:'Alpha could not reach Eliza Cloud. Check your connection and try again.'});
