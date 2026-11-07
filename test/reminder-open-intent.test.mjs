@@ -6,9 +6,9 @@ import vm from 'node:vm';
 import * as reminderJournal from '../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/reminder-journal.ts';
 
 // Run the real ReminderAdapter refresh with only its native and service dependencies replaced.
-const adapterCode=stripTypeScriptTypes(readFileSync('apps/app/src/prototype/reminder-adapter.ts','utf8').replace(/^import .*?;\n/gm,'').replace(/^export /gm,''),{mode:'transform'});
+const adapterCode=stripTypeScriptTypes(readFileSync('apps/app/src/prototype/reminder-adapter.ts','utf8').replace(/^import .*?;\n/gm,'').replace(/^export /gm,''),{mode:'strip'});
 const presentationFile=readFileSync('apps/app/src/runtime/reminder-creations.ts','utf8');
-const presentationCode=stripTypeScriptTypes(presentationFile.slice(presentationFile.indexOf('export function reminderEvents('),presentationFile.indexOf('/** Specific, stable reason')).replace(/^export /gm,''),{mode:'transform'});
+const presentationCode=stripTypeScriptTypes(presentationFile.slice(presentationFile.indexOf('export function reminderEvents('),presentationFile.indexOf('/** Specific, stable reason')).replace(/^export /gm,''),{mode:'strip'});
 
 function fixture(){
  const calendar={},opened=[],toasts=[],reads=[],clock={now:1_000_000};

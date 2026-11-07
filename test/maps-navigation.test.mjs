@@ -216,5 +216,5 @@ assert.equal(agent.registered(), false);
 assert.equal(requests.length, 2, 'signing out reads nothing');
 stop(); agent.dispose();
 `;
-  execFileSync(process.execPath, ['--experimental-transform-types', '--no-warnings', '--input-type=module', '-e', script], { cwd: path.resolve(import.meta.dirname, '..'), stdio: 'pipe', timeout: 60_000 });
+  execFileSync(process.execPath, ['--import', 'tsx', '--no-warnings', '--input-type=module', '-e', script], { cwd: path.resolve(import.meta.dirname, '..'), stdio: 'pipe', timeout: 60_000 });
 });
