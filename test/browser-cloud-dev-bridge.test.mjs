@@ -329,7 +329,8 @@ test('cancelling an in-flight email verification keeps the existing account and 
   assert.equal(started.status,200);
   const pending=f.rpc({operation:'signInVerifyEmail',attemptId:started.data.attemptId,code:'123456'});
   await waiting;
-  assert.equal((await f.rpc({operation:'signInCancel'})).status,200);
+  const cancellation=await f.rpc({operation:'signInCancel'});
+  assert.equal(cancellation.status,200);assert.deepEqual(cancellation.data,{status:'cancelled'});
   release();
   assert.notEqual((await pending).status,200);
   assert.equal(f.calls.some(call=>new URL(call.url).pathname.startsWith('/api/v1/app-auth/')),false);
@@ -337,6 +338,36 @@ test('cancelling an in-flight email verification keeps the existing account and 
   assert.equal(saved.credentialId,credentialId);
   assert.equal((await f.rpc({operation:'signInStatus'})).data.active,false);
  }finally{release?.();await f.close();}
+});
+
+test('cancelling email sign-in after its commit began reports the new account as signed in',async()=>{
+ let entered,release;const waiting=new Promise(resolve=>{entered=resolve;});
+ // The resident is cleared inside save(): holding it parks the commit past its cancellation check.
+ const f=await fixture({clear:async()=>{entered();await new Promise(resolve=>{release=resolve;});}});
+ const steward='synthetic-steward-session-token-0002',minted='eliza_mobile_synthetic-minted-key-0002',serverId='77777777-7777-4777-8777-777777777777',newOwner='88888888-8888-4888-8888-888888888888';
+ f.setSignIn(async(path,input)=>{
+  if(path==='/api/v1/user'&&new Headers(input.headers).get('Authorization')==='Bearer '+minted)return Response.json({success:true,data:{id:newOwner,organization_id:org}});
+  if(path==='/steward/auth/email/code/send')return Response.json({ok:true,data:{expiresAt:new Date(Date.now()+600000).toISOString()}});
+  if(path==='/steward/auth/email/code/verify')return Response.json({ok:true,token:steward,refreshToken:'synthetic-refresh-0002'});
+  if(path==='/api/v1/app-auth/connect')return Response.json({success:true,code:'emac_'+'b'.repeat(64),codeType:'mobile_app_auth_code',accountCreated:false});
+  if(path==='/api/v1/app-auth/mobile/token')return Response.json({success:true,credentialId:serverId,secret:minted,expiresAt:new Date(Date.now()+30*86400000).toISOString(),acknowledgementRequired:true});
+  if(path==='/api/v1/app-auth/mobile/ack')return Response.json({success:true,status:'acknowledged',credentialId:serverId});
+  if(path==='/steward/auth/logout')return Response.json({ok:true});
+  return null;
+ });
+ const original=globalThis.fetch;globalThis.fetch=(url,options={})=>String(url).startsWith('/__alpha')?original(f.origin(),{...options,headers:{...options.headers,Origin:f.origin()}}):original(url,options);
+ try{
+  const started=await f.rpc({operation:'signInStartEmail',environment:'production',email:'owner@example.invalid'});
+  const pending=f.rpc({operation:'signInVerifyEmail',attemptId:started.data.attemptId,code:'123456'});
+  await waiting;
+  const cancellation=new BrowserCloudSignIn().cancel();
+  release();
+  const outcome=await cancellation;
+  assert.equal(outcome.status,'authenticated');assert.equal(outcome.environment,'production');assert.equal(outcome.accountCreated,false);
+  assert.equal((await pending).data.status,'authenticated');
+  const privateState=JSON.parse(await readFile(profileFile(f.profile,'credentials.json'),'utf8'));assert.equal(privateState.production.userId,newOwner);
+  assert.equal(JSON.stringify(outcome).includes(minted),false,'no secret reaches the page');
+ }finally{globalThis.fetch=original;release?.();await f.close();}
 });
 
 test('private agent Google port shares the current credential without allowing writes or unrelated services',async()=>{
