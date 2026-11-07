@@ -1736,7 +1736,19 @@
       "inputSha256": "df24d894bd6f044c2678168b14e6fcfcbaeb2101586d510e3a724746d1f19226",
       "packages": 3675,
       "findings": 103,
-      "evidence": "Fresh npm bulk advisory query against the exact94c lock. Every reported advisory already has a disposition in the incoming speech branch. Existing review dates, expiration dates and source-specific reachability evidence are retained. Removed five obsolete main-only exceptions absent from the new lock. The older payload inventory does not qualify the new payload; regenerate and audit packaged-runtime notices before distributing it. The ae1a9dda6712 child has byte-identical bun.lock and changes only two OS staging/test files. Existing advisory and package-version identities are unchanged."
+      "evidence": "Fresh npm bulk advisory query against the exact94c lock. Every reported advisory already has a disposition in the incoming speech branch. Existing review dates, expiration dates and source-specific reachability evidence are retained. Removed five obsolete main-only exceptions absent from the new lock. The older payload inventory does not qualify the new payload; regenerate and audit packaged-runtime notices before distributing it. The ae1a9dda6712 child has byte-identical bun.lock and changes only two OS staging/test files. Existing advisory and package-version identities are unchanged.",
+      "packagedReview": {
+        "record": "docs/security/resident-bundle-review-ae1a9dda-2026-11-07.json",
+        "packages": 457,
+        "inputSha256": "01d29fdcbba3b72917ba1e386f24dbade53de400bcd429a113ac86c07f6d764f",
+        "counts": {
+          "info": 0,
+          "low": 0,
+          "moderate": 1,
+          "high": 0,
+          "critical": 0
+        }
+      }
     },
     "sourceBindingHistory": [
       {
