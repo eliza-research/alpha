@@ -32,6 +32,21 @@ module IdentitySession {
         consumed: s.consumed.union(Set(token)), callbackAccepted: true }
     else s' = s
   }
+  /// A failed durable burn retains the record and cannot enter exchange.
+  action callbackBurnFailed = all {
+    s.phase == "browser", s.pending,
+    s' = { ...s, phase: "failed", callbackAccepted: false }
+  }
+  /// Failed cancellation cannot claim that the stored pending record was removed.
+  action cancelBurnFailed = all {
+    s.phase == "browser", s.pending,
+    s' = { ...s, phase: "cancelled", cancelRequested: true, callbackAccepted: false }
+  }
+  /// A process restart can find an unretired record; successful burn is still required.
+  action restorePending = all {
+    s.pending, s.phase.in(Set("failed", "cancelled")),
+    s' = { ...s, phase: "browser", cancelRequested: false }
+  }
   /// Browser resume without a result leaves the pending record for a late return.
   action browserClosed = all { s.phase == "browser", s' = s }
   action wrongCode = all {
@@ -66,10 +81,10 @@ module IdentitySession {
       phase: if (success) { if (s.oldKey) "revoking-previous" else "authenticated" }
         else if (s.ackTries == 2) "activation-pending" else "acknowledging" }
   }
-  /// Startup retries a retained ack against the key actually saved on the phone.
+  /// Startup retries the retained ack. The previous token was transient and cannot be revoked after restart.
   action restart = all {
     s.phase.in(Set("activation-pending", "acknowledging")), s.receipt, s.key,
-    s' = { ...s, phase: "acknowledging", ackTries: 0, steward: false }
+    s' = { ...s, phase: "acknowledging", ackTries: 0, steward: false, oldKey: false, revoked: false }
   }
   action revokePrevious(success: bool): bool = all {
     s.phase == "revoking-previous", s.oldKey,
@@ -100,7 +115,7 @@ module IdentitySession {
   }
   action step = any {
     begin("google"), begin("email"), begin("phone"), callback(0), callback(s.epoch),
-    browserClosed, wrongCode, codeVerified(false), codeVerified(true), mfaVerified,
+    browserClosed, callbackBurnFailed, cancelBurnFailed, restorePending, wrongCode, codeVerified(false), codeVerified(true), mfaVerified,
     exchanged, writeReceipt, storageFailure, writeKey, ack(false), ack(true),
     restart, revokePrevious(false), revokePrevious(true), cooldownElapsed,
     cancel, releaseSteward, expire, signOut, s' = s
@@ -110,11 +125,23 @@ module IdentitySession {
   val SingleUseGoogleReturn = s.pending implies not(s.epoch.in(s.consumed))
   val MatchedReturnBurned = s.callbackAccepted implies s.epoch.in(s.consumed)
   val BoundedAttempts = s.wrongCodes <= 5 and s.ackTries <= 3
+  val NoExchangeWithPending = s.phase.in(Set("exchange", "minted", "receipt-saved", "acknowledging", "activation-pending", "revoking-previous", "authenticated")) implies not(s.pending)
   val AuthenticatedKey = s.phase == "authenticated" implies s.key and s.acknowledged
   val TypeOK = s.phase.in(Set("idle", "browser", "code", "mfa", "exchange", "minted", "receipt-saved", "acknowledging", "activation-pending", "authenticated", "cancelled", "expired", "exhausted", "failed", "revoking-previous")) and s.epoch.in(0.to(2)) and s.owner.in(0.to(2)) and s.ownerEpoch.in(0.to(2)) and s.wrongCodes.in(0.to(5)) and s.ackTries.in(0.to(3))
   val safety = TypeOK and KeyBeforeAck and DurableReceiptBeforeKey and SingleUseGoogleReturn and
-    MatchedReturnBurned and BoundedAttempts and AuthenticatedKey
+    MatchedReturnBurned and BoundedAttempts and AuthenticatedKey and NoExchangeWithPending
 
+  run failedCallbackBurnTest = init.then(begin("google")).then(callbackBurnFailed)
+    .expect(s.pending and not(s.callbackAccepted) and s.phase == "failed" and safety)
+    .then(restorePending).then(callback(1)).expect(not(s.pending) and safety)
+  run failedCancelBurnTest = init.then(begin("google")).then(cancelBurnFailed)
+    .expect(s.pending and s.cancelRequested and safety).then(restorePending)
+    .then(callback(1)).expect(not(s.pending) and safety)
+  run recoveredAckLosesPreviousRevocationTest = init.then(begin("google")).then(callback(1))
+    .then(exchanged).then(writeReceipt).then(writeKey).then(ack(true)).then(releaseSteward)
+    .then(begin("google")).then(callback(2)).then(exchanged).then(writeReceipt).then(writeKey)
+    .then(ack(false)).then(ack(false)).then(ack(false)).then(restart).then(ack(true))
+    .expect(s.phase == "authenticated" and not(s.oldKey or s.revoked) and safety)
   run googleReturnTest = init.then(begin("google")).then(callback(0))
     .expect(s.pending).then(callback(1)).expect(not(s.pending))
     .then(exchanged).then(writeReceipt).then(writeKey).then(ack(true)).expect(safety)

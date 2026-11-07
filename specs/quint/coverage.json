@@ -9386,7 +9386,7 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCloudSignInPlugin.java",
-      "sha256": "18fdddaeae2155cb478d0e2a579acb55bae3256d4def7f61387ade32d29be7f0",
+      "sha256": "c5c12a4fba9f3977a0833380520005fa2addb332950df5d938f65fb2e9abd7a0",
       "models": [
         "IdentitySession"
       ],
@@ -33029,7 +33029,7 @@
     },
     {
       "path": "apps/app/src/runtime/cloud-sign-in.ts",
-      "sha256": "794834254728cefdb018f5ba5ae82183bc8d4d2543df09d91611a248d943185a",
+      "sha256": "65c69cb1357d46c20c080c55fcb9f59a17b27d46ec5ba998577307c313a0f548",
       "models": [
         "IdentitySession"
       ],
@@ -33101,7 +33101,7 @@
     },
     {
       "path": "apps/app/src/runtime/connection-ui.tsx",
-      "sha256": "d6f507fc25674af8817192b9d1329e42cc36b22f4c61ac9bf3cf7de3a6ab0b26",
+      "sha256": "1bc52207959f595143b7fd4f2d1ca280874f94467515702b18e0abb3725af86e",
       "models": [
         "Application",
         "ApplicationComposition",

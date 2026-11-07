@@ -2145,8 +2145,12 @@ export const connectionController = {
    */
   signInIncomplete(value: unknown) {
     const code = value && typeof value === 'object' ? (value as { code?: unknown }).code : undefined;
-    if (operation || code !== 'app-link-unverified') return;
-    update({ open: true, signIn: state.signIn ? { step: 'choose', environment: state.signIn.environment } : state.signIn, message: '', error: signInFailureMessage('app-link-unverified') });
+    if (code !== 'app-link-unverified' && code !== 'storage') return;
+    if (operation) {
+      if (code === 'storage') void operationSettled.then(() => connectionController.signInIncomplete(value));
+      return;
+    }
+    update({ open: true, signIn: state.signIn ? { step: 'choose', environment: state.signIn.environment } : state.signIn, message: '', error: signInFailureMessage(code) });
   },
   /**
    * The Cloud sign-in hand-off in the browser (cli-session), used by the explicit browser

@@ -87,17 +87,17 @@ test('the native sign-in client owns every secret, compares state before burning
  // Google: pending record encrypted before the browser opens.
  const google=between(plugin,'@PluginMethod public void startGoogle(','/** Custom Tab in a browser');
  assert.ok(google.indexOf('writeCredentialSlot(PENDING_SLOT')<google.indexOf('openBrowser(url)'));
- const capture=between(plugin,'private boolean captureCallback(','private void burnUnclaimedPending()');
+ const capture=between(plugin,'private boolean captureCallback(','private void burnUnclaimedPending(');
  assert.ok(capture.indexOf('intent.setData(null)')>0&&capture.indexOf('intent.setData(null)')<capture.indexOf('run(() ->'),'the return is consumed once');
  // Contract: a return without a result keeps the pending record; a state mismatch is ignored; the
  // record is burned only after the state matched, and before any network request.
  const noResult=between(capture,'ReturnKind.RETURN) {','// Not this phone');
  assert.doesNotMatch(noResult,/removeCredentialSlot|burnUnclaimedPending/);assert.match(noResult,/"app-link-unverified", false/);
- assert.ok(capture.indexOf('!pending.sameState(received)) return;')<capture.indexOf('store.removeCredentialSlot(PENDING_SLOT)'),'state compared before burning');
- assert.ok(capture.indexOf('store.removeCredentialSlot(PENDING_SLOT)')<capture.indexOf('"/steward/auth/oauth/exchange"'),'single use before any network request');
+ assert.ok(capture.indexOf('!pending.sameState(received)) return;')<capture.indexOf('store.compareExchangeCredentialSlot(PENDING_SLOT, pendingRaw, null)'),'state compared before burning');
+ assert.ok(capture.indexOf('store.compareExchangeCredentialSlot(PENDING_SLOT, pendingRaw, null)')<capture.indexOf('"/steward/auth/oauth/exchange"'),'single use before any network request');
  assert.match(capture,/\.put\("codeVerifier", pending\.verifier\)/);
  assert.match(between(plugin,'@Override protected void handleOnResume()','@Override protected void handleOnDestroy()'),/end\(current, "browser-closed", false\)/,'closing the browser keeps the pending record until expiry or a retry');
- assert.match(between(plugin,'@PluginMethod public void cancel(','// ── Shared tail'),/burnUnclaimedPending\(\);/,'an explicit cancel burns it');
+ assert.match(between(plugin,'@PluginMethod public void cancel(','// ── Shared tail'),/store\(\)\.compareExchangeCredentialSlot\(PENDING_SLOT, pending, null\)/,'an explicit cancel retires only its captured pending record');
  // Tail: receipt and key stored before ack; bounded ack; Steward session revoked and never stored.
  const tail=between(plugin,'private void complete(Attempt current, JSONObject session)','/** The saved key for this environment');
  const key=tail.indexOf('credentials.writeCredentialSlot("cloud:" + environment.name'),ack=tail.indexOf('acknowledge(current, proof');

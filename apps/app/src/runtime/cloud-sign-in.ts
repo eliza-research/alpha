@@ -45,13 +45,13 @@ export interface CloudSignInPort {
   verifyMfa(input: { attemptId: string; code: string }): Promise<unknown>;
   /** Revalidates a retained MFA event against the current native attempt; no network or secrets. */
   resumeMfa?(input: { attemptId: string; environment: CloudEnvironment }): Promise<unknown>;
-  /** Ends the attempt and burns any pending Google record. Idempotent. */
+  /** Ends the attempt and retires its pending Google record. Rejects if durable retirement fails. */
   cancel(): Promise<void>;
   /** Which methods this host offers and whether Cloud is ready for in-app sign-in on this phone
    * (`inApp`, from the host's cached readiness probe). Hosts without Google (the browser bridge) say so. */
   status?(input?: { environment: CloudEnvironment; refresh?: boolean }): Promise<unknown>;
   /** `signInCompleted`: a Google return that completed after Alpha restarted (no waiting call).
-   * `signInIncomplete`: a return without a sign-in result arrived with no waiting call.
+   * `signInIncomplete`: a cold return has no result, or pending-record retirement failed.
    * `signInMfaRequired`: a retained hint that must be revalidated through resumeMfa. */
   addListener?(event: 'signInCompleted' | 'signInIncomplete' | 'signInMfaRequired', listener: (outcome: unknown) => void): Promise<unknown>;
 }

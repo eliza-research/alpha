@@ -85,7 +85,7 @@ public final class AlphaCloudSignInPlugin extends Plugin {
   PluginCall waiting;
   volatile CountDownLatch authorizationDecision;
   volatile boolean authorized;
-  String email, phone, emailVerifier, mfaType, mfaChallenge;
+  String email, phone, emailVerifier, mfaType, mfaChallenge, pendingRecord;
   long expiresAt, resendAt;
   int failedVerifies;
   boolean busy;
@@ -107,6 +107,8 @@ public final class AlphaCloudSignInPlugin extends Plugin {
  /** Global code-send cooldown: one send a minute from this phone, whatever the address. */
  private long lastEmailSendAt;
  private volatile boolean destroyed;
+ /** Failed retirement is never treated as a consumed callback in this process. */
+ private boolean pendingRetirementUnconfirmed;
  private boolean testMocks() { return BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS; }
 
  @Override public void load() {
@@ -318,17 +320,21 @@ public final class AlphaCloudSignInPlugin extends Plugin {
   try { environment = CloudSignInFlow.environment(call.getString("environment"), testMocks()); }
   catch (Exception invalid) { call.reject("Unsupported Cloud environment", "invalid-request"); return; }
   final Attempt next = new Attempt(environment, true);
+  final CloudSignInFlow.Pending pending = CloudSignInFlow.Pending.create(environment, System.currentTimeMillis());
+  next.pendingRecord = pending.serialize();
   synchronized (lock) {
    if (attempt != null) { call.reject("Another sign-in is in progress", "login-active"); return; }
-   attempt = next; next.waiting = call;
+   attempt = next; next.waiting = call; pendingRetirementUnconfirmed = true;
   }
-  final CloudSignInFlow.Pending pending = CloudSignInFlow.Pending.create(environment, System.currentTimeMillis());
   run(() -> {
    try {
     // Encrypted at rest before the browser opens, so a return after process death can be matched.
     // Starting again replaces any earlier pending record (the explicit retry).
-    store().writeCredentialSlot(PENDING_SLOT, pending.serialize());
-    if (next.cancelled) throw new SignInFailure("cancelled");
+    store().writeCredentialSlot(PENDING_SLOT, next.pendingRecord);
+    synchronized (lock) {
+     if (next.cancelled || attempt != next) throw new SignInFailure("cancelled");
+     pendingRetirementUnconfirmed = false;
+    }
     final String url = CloudSignInFlow.authorizeUrl(environment, CloudSignInFlow.s256(pending.verifier), pending.state);
     getActivity().runOnUiThread(() -> {
      synchronized (lock) { if (attempt != next || next.cancelled) return; next.browserLaunched = true; }
@@ -382,8 +388,10 @@ public final class AlphaCloudSignInPlugin extends Plugin {
   final CloudSignInFlow.Callback received = callback;
   run(() -> {
    CloudSignInFlow.Pending pending = null;
+   String pendingRaw = null;
    AlphaCredentialStore store = null;
-   try { store = store(); pending = CloudSignInFlow.Pending.parse(store.readCredentialSlot(PENDING_SLOT), testMocks()); }
+   synchronized (lock) { if (pendingRetirementUnconfirmed) return; }
+   try { store = store(); pendingRaw = store.readCredentialSlot(PENDING_SLOT); pending = CloudSignInFlow.Pending.parse(pendingRaw, testMocks()); }
    catch (Exception storage) { /* Treated as no pending record. */ }
    long now = System.currentTimeMillis();
    final Attempt waiting;
@@ -397,14 +405,22 @@ public final class AlphaCloudSignInPlugin extends Plugin {
    // Not this phone's request (unknown, foreign or duplicate): ignored, nothing burned or ended.
    if (pending == null || pending.environment != returned || !pending.sameState(received)) return;
    // The matching return: single use, burned before any network request, whatever the outcome.
-   try { if (store != null) store.removeCredentialSlot(PENDING_SLOT); } catch (Exception storage) { /* Expires on its own. */ }
+   try {
+    if (!store.compareExchangeCredentialSlot(PENDING_SLOT, pendingRaw, null)) throw new IllegalStateException("Pending sign-in changed");
+   } catch (Exception storage) {
+    synchronized (lock) { pendingRetirementUnconfirmed = true; }
+    if (waiting != null) end(waiting, "storage", false);
+    else notifyListeners("signInIncomplete", new JSObject().put("code", "storage"), true);
+    return;
+   }
    Attempt owner = waiting;
    if (owner != null) synchronized (lock) { owner.callbackReceived = true; }
    else {
     // A cold start (process death in the browser) or a step that already ended: complete into storage
     // and announce it (signInCompleted) unless another sign-in has started meanwhile.
     owner = new Attempt(returned, true);
-    synchronized (lock) { if (attempt != null) return; attempt = owner; }
+    owner.pendingRecord = pendingRaw;
+    synchronized (lock) { if (attempt != null || pendingRetirementUnconfirmed) return; attempt = owner; }
    }
    if (pending.expired(now)) { end(owner, "expired", false); return; }
    owner.expiresAt = pending.expiresAt;
@@ -424,9 +440,9 @@ public final class AlphaCloudSignInPlugin extends Plugin {
   });
   return true;
  }
- /** Cancelled, ended or consumed: the pending record is never reused. */
- private void burnUnclaimedPending() {
-  run(() -> { try { store().removeCredentialSlot(PENDING_SLOT); } catch (Exception ignored) { /* Absent or unreadable. */ } });
+ /** Retire only this attempt; a later explicit retry may already own the slot. */
+ private void burnUnclaimedPending(Attempt current) {
+  run(() -> { try { store().compareExchangeCredentialSlot(PENDING_SLOT, current.pendingRecord, null); } catch (Exception ignored) { /* The failed start keeps callback retirement fenced. */ } });
  }
 
  // ── Email code and MFA: fully native ─────────────────────────────────────────────────────────
@@ -566,11 +582,33 @@ public final class AlphaCloudSignInPlugin extends Plugin {
 
  @PluginMethod public void cancel(PluginCall call) {
   Attempt current;
-  synchronized (lock) { current = attempt; attempt = null; }
+  synchronized (lock) { current = attempt; attempt = null; pendingRetirementUnconfirmed = true; }
   if (current != null) { current.cancel(); PluginCall waiting; synchronized (lock) { waiting = current.waiting; current.waiting = null; } if (waiting != null) waiting.reject("cancelled", "cancelled"); }
-  // The explicit cancel burns a pending Google record.
-  burnUnclaimedPending();
-  call.resolve();
+  // Capture ownership at admission, before a queued cancellation can observe a later attempt.
+  final String pending;
+  try {
+   pending = current != null && current.google
+    ? current.pendingRecord : store().readCredentialSlot(PENDING_SLOT);
+  } catch (Exception storage) {
+   notifyListeners("signInIncomplete", new JSObject().put("code", "storage"), true);
+   call.reject("Pending sign-in cancellation was not saved", "storage");
+   return;
+  }
+  // Report durable cancellation only after the exact pending record has been retired.
+  try { worker.execute(() -> {
+   try {
+    synchronized (lock) { if (attempt != null) { call.resolve(); return; } }
+    if (pending != null) store().compareExchangeCredentialSlot(PENDING_SLOT, pending, null);
+    synchronized (lock) { if (attempt == null) pendingRetirementUnconfirmed = false; }
+    call.resolve();
+   } catch (Exception storage) {
+    notifyListeners("signInIncomplete", new JSObject().put("code", "storage"), true);
+    call.reject("Pending sign-in cancellation was not saved", "storage");
+   }
+  }); } catch (java.util.concurrent.RejectedExecutionException closed) {
+   notifyListeners("signInIncomplete", new JSObject().put("code", "storage"), true);
+   call.reject("Sign-in closed", "storage");
+  }
  }
 
  /** Post-authentication consent is owned by Android, never a renderer-supplied boolean.
@@ -745,8 +783,8 @@ public final class AlphaCloudSignInPlugin extends Plugin {
  /** Ends the attempt with a stable code. `burn` also removes a pending Google record (explicit cancel or a failed start). */
  private void end(Attempt current, String code, boolean burn) {
   PluginCall waiting;
-  synchronized (lock) { current.cancel(); waiting = current.waiting; current.waiting = null; if (attempt == current) attempt = null; }
-  if (current.google && burn) burnUnclaimedPending();
+  synchronized (lock) { current.cancel(); waiting = current.waiting; current.waiting = null; if (attempt == current) { attempt = null; if (burn) pendingRetirementUnconfirmed = true; } }
+  if (current.google && burn) burnUnclaimedPending(current);
   refused(current.environment, code);
   if (waiting != null) waiting.reject(code, code);
  }
