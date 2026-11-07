@@ -69,6 +69,8 @@ export class AgentCalendar {
     ended=!live(nextRead.value);next=ended?null:nextRead.value;
    }
    const feed=feedRead.status==='fulfilled'?feedRead.value:null;
+   // A failed feed read during a re-read is a transport failure: keep the shown feed (catch below).
+   if(revalidating&&feedRead.status==='rejected')throw feedRead.reason;
    if(feed&&(window.timeMin&&Date.parse(window.timeMin)!==Date.parse(feed.timeMin)||window.timeMax&&Date.parse(window.timeMax)!==Date.parse(feed.timeMax)))throw new CalendarIntegrityError('Calendar response window changed');
    if(feed?.events.some((e:LifeOpsCalendarEvent)=>e.agentId!==port.identity.agentId))throw new CalendarIntegrityError('Calendar response belongs to another agent');
    const revisions=await Promise.all(sources.calendars.map(async(source:LifeOpsCalendarSummary)=>[calendarSourceKey(source),Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(calendarSourceKey(source))))).map(n=>n.toString(16).padStart(2,'0')).join('')] as const));this.current(port,epoch,signal);this.sourceRevisions=new Map(revisions);

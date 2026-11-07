@@ -39,9 +39,10 @@ final class ResetBeforeDispatch {
  }
  private static long remaining(long deadline){return Math.max(0,(deadline-System.nanoTime())/1_000_000L);}
 
- /** The raw pre-namespace production slot (LegacyCloudRecovery), only when it holds another key. */
+ /** The raw pre-namespace production slot (LegacyCloudRecovery), only when it holds another key and
+  * this build still targets the deployment that issued it: a key is never sent to another Cloud. */
  static String readLegacyCloudSlot(Context base,String slot)throws Exception{
-  if(!"cloud:production".equals(slot))return null;
+  if(!"cloud:production".equals(slot)||!LegacyCloudRecovery.LEGACY_NAMESPACE.equals(CloudDeployment.STORAGE_NAMESPACE))return null;
   return distinctCredential(AlphaCredentialStore.readLegacySlotBeforeAttach(base,slot),AlphaCredentialStore.readSlotBeforeAttach(base,slot));
  }
  /** The legacy record unless it is the same credential as the current one (already revoked). */

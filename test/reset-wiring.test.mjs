@@ -23,6 +23,7 @@ test('Alpha reset is the shared native review, coordinator and recovery under Al
   put('com/getcapacitor/annotation/ActivityCallback.java','package com.getcapacitor.annotation; @java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy.RUNTIME) public @interface ActivityCallback {}');
   put('androidx/activity/result/ActivityResult.java','package androidx.activity.result; public class ActivityResult { public int getResultCode(){return 0;} }');
   put('ai/elizaresearch/alphaphone/AlphaCloudSignInPlugin.java','package ai.elizaresearch.alphaphone; final class AlphaCloudSignInPlugin {static ai.eliza.auth.cloud.CloudSignInConfig REGISTRATION;}');
+  put('ai/elizaresearch/alphaphone/LegacyCloudRecovery.java','package ai.elizaresearch.alphaphone; final class LegacyCloudRecovery {static final String LEGACY_NAMESPACE="";}');
   put('ai/elizaresearch/alphaphone/AlphaCredentialStore.java','package ai.elizaresearch.alphaphone; final class AlphaCredentialStore {static String readSlotBeforeAttach(android.content.Context c,String n)throws Exception{return null;}static String readLegacySlotBeforeAttach(android.content.Context c,String n)throws Exception{return null;}}');
   put('ai/elizaresearch/alphaphone/AlphaCalendarPlugin.java','package ai.elizaresearch.alphaphone; final class AlphaCalendarPlugin {static ai.eliza.plugins.calendar.CalendarConfiguration CONFIGURATION;}');
   put('ai/elizaresearch/alphaphone/WiringCheck.java',`package ai.elizaresearch.alphaphone;
@@ -55,7 +56,7 @@ public final class WiringCheck {
   const authDir=resolve(root,'vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud');
   const auth=readdirSync(authDir).filter(name=>name.endsWith('.java')&&!['CloudSignInPlugin.java','NativeGoogleCredential.java'].includes(name)).map(name=>join(authDir,name));
   const calendar=resolve(root,'vendor/eliza/plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/CalendarConfiguration.java');
-  execFileSync(javaBinary('javac'),['--release','17','-proc:none','-cp',sdk,'-d',join(dir,'classes'),...files,...shared,...auth,calendar,...['AlphaDataReset','ResetBeforeDispatch','AlphaResetPlugin','ResetRecoveryActivity'].map(alpha)],{timeout:120000});
+  execFileSync(javaBinary('javac'),['--release','17','-proc:none','-cp',sdk,'-d',join(dir,'classes'),...files,...shared,...auth,calendar,...['AlphaDataReset','ResetBeforeDispatch','CloudDeployment','AlphaResetPlugin','ResetRecoveryActivity'].map(alpha)],{timeout:120000});
   assert.match(execFileSync(javaBinary('java'),['-cp',`${join(dir,'classes')}:${sdk}`,'ai.elizaresearch.alphaphone.WiringCheck'],{encoding:'utf8',timeout:30000}),/PASS Alpha reset wiring/);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });

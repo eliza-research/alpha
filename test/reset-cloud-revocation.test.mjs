@@ -26,6 +26,8 @@ final class AlphaCredentialStore {
  static String readSlotBeforeAttach(android.content.Context c,String n)throws Exception{if(unreadable)throw new Exception("locked");return current.get(n);}
  static String readLegacySlotBeforeAttach(android.content.Context c,String n)throws Exception{if(unreadable)throw new Exception("locked");return legacy.get(n);}
 }`);
+  // Not final here so a case can move the build to another deployment; the real one is a constant.
+  put('ai/elizaresearch/alphaphone/LegacyCloudRecovery.java','package ai.elizaresearch.alphaphone; final class LegacyCloudRecovery {static String LEGACY_NAMESPACE=CloudDeployment.STORAGE_NAMESPACE;}');
   put('ai/elizaresearch/alphaphone/AlphaCloudSignInPlugin.java',`package ai.elizaresearch.alphaphone;
 import ai.eliza.auth.cloud.*;
 final class AlphaCloudSignInPlugin {static CloudSignInConfig REGISTRATION=registration(false);
@@ -48,6 +50,8 @@ public class Fixture {
   step.run(null,1000);check(revoked.equals(java.util.List.of("production=eliza_mobile_same")),"the same key is revoked once");
   reset();AlphaCredentialStore.legacy.put("cloud:production",key("legacy","eliza_mobile_legacy"));
   step.run(null,1000);check(revoked.equals(java.util.List.of("production=eliza_mobile_legacy")),"a legacy key alone is revoked");
+  reset();AlphaCredentialStore.legacy.put("cloud:production",key("legacy","eliza_mobile_legacy"));LegacyCloudRecovery.LEGACY_NAMESPACE="cloud-deployment:other:";
+  step.run(null,1000);check(revoked.isEmpty(),"a legacy key from another deployment is never sent");LegacyCloudRecovery.LEGACY_NAMESPACE=CloudDeployment.STORAGE_NAMESPACE;
   reset();AlphaCloudSignInPlugin.REGISTRATION=AlphaCloudSignInPlugin.registration(true);
   AlphaCredentialStore.current.put("cloud:production",key("p","eliza_mobile_production"));AlphaCredentialStore.current.put("cloud:staging",key("s","eliza_mobile_staging"));AlphaCredentialStore.legacy.put("cloud:staging",key("old","eliza_mobile_old_staging"));
   step.run(null,1000);check(revoked.equals(java.util.List.of("production=eliza_mobile_production","staging=eliza_mobile_staging")),"each registered environment; the legacy reader is production only");
@@ -60,9 +64,9 @@ public class Fixture {
 `);
   const reset=['reset/DataReset','reset/DataResetCopy','reset/DataResetRecoveryActivity','reset/ResetAuthorization','SenseListenerClient','SenseInvocation'].map(name=>join(system,`${name}.java`));
   const calendar=resolve(root,'vendor/eliza/plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/CalendarConfiguration.java');
-  const alpha=resolve(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/ResetBeforeDispatch.java');
+  const alpha=['ResetBeforeDispatch','CloudDeployment'].map(name=>resolve(root,`android/app/src/main/java/ai/elizaresearch/alphaphone/${name}.java`));
   // org.json comes from the real jar ahead of android.jar's stubs.
-  execFileSync(javaBinary('javac'),['--release','17','-proc:none','-cp',`${jsonJar}:${sdk}`,'-d',join(dir,'classes'),...files,...shared,...reset,calendar,alpha],{timeout:120000});
+  execFileSync(javaBinary('javac'),['--release','17','-proc:none','-cp',`${jsonJar}:${sdk}`,'-d',join(dir,'classes'),...files,...shared,...reset,calendar,...alpha],{timeout:120000});
   assert.match(execFileSync(javaBinary('java'),['-cp',`${join(dir,'classes')}:${jsonJar}:${sdk}`,'ai.elizaresearch.alphaphone.Fixture'],{encoding:'utf8',timeout:60000}),/PASS Alpha reset revocation binding/);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });

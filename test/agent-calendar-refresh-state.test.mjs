@@ -30,7 +30,9 @@ test('next read failure keeps a same-source cached event but never presents it a
 });
 test('partial coverage and feed failure never mark next as verified',async()=>{
  const f=await fixture();f.api.getLifeOpsCalendarFeed=async()=>({state:'partial',events:[]});await f.calendar.refresh({});assert.equal(f.calendar.state.nextFresh,false);
- f.api.getLifeOpsCalendarFeed=async()=>{throw Error('Feed unavailable');};await f.calendar.refresh({});assert.equal(f.calendar.state.feed,null);assert.equal(f.calendar.state.nextFresh,false);assert.equal(home(f.calendar.state.next,f.calendar.state.nextFresh).verified,false);f.retire();
+ const shown=f.calendar.state.feed;f.api.getLifeOpsCalendarFeed=async()=>{throw Error('Feed unavailable');};await f.calendar.refresh({});
+ // A same-window re-read whose feed read fails keeps the shown feed, with the fixed owner text.
+ assert.equal(f.calendar.state.feed,shown);assert.equal(f.calendar.state.status,'partial');assert.equal(f.calendar.state.error,'Calendar could not load. Try again.');assert.equal(f.calendar.state.nextFresh,false);assert.equal(home(f.calendar.state.next,f.calendar.state.nextFresh).verified,false);f.retire();
 });
 test('source failure, removed source and another agent cannot publish a verified next event',async()=>{
  const f=await fixture();f.api.getLifeOpsNextCalendarEventContext=async()=>{throw Error('Unavailable');};f.api.getLifeOpsCalendars=async()=>({calendars:[]});await f.calendar.refresh({});assert.equal(f.calendar.state.next,null);
