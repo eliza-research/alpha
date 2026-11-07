@@ -60,8 +60,10 @@ body:has([data-alpha-layer="app"]:not([inert]) [data-settings-page]) .alpha-plan
 .alpha-auth-page .alpha-cloud-sign-in{width:min(100%,32rem);margin-inline:auto}
 .alpha-auth-brand{display:flex;align-items:center;margin:0 0 24px;color:var(--connection-fg,#000)}
 .alpha-auth-mark{display:block;width:44px;height:44px;flex:none;background:var(--connection-acc,#0000ff);mask:url('/logo-mark.svg') center/contain no-repeat;-webkit-mask:url('/logo-mark.svg') center/contain no-repeat}
+.alpha-auth-page:has(.alpha-auth-loading),.alpha-cloud-sign-in:has(>.alpha-auth-loading){background:#fff}
+.alpha-auth-loading{min-height:1px}
 @media(prefers-reduced-motion:no-preference){
-  .alpha-cloud-sign-in:has(>.alpha-auth-chooser)>:not(.alpha-auth-brand){animation:alpha-auth-reveal 180ms ease-out}
+  .alpha-cloud-sign-in:has(>.alpha-auth-chooser)>*{animation:alpha-auth-reveal 180ms ease-out}
 }
 @keyframes alpha-auth-reveal{from{opacity:0}to{opacity:1}}
 .alpha-auth-page h1{font-size:clamp(36px,9vw,48px);line-height:1.08;letter-spacing:-.025em;text-wrap:balance;margin:0 0 28px}

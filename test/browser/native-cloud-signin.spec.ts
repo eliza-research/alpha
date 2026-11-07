@@ -214,14 +214,15 @@ test.describe('in-app Eliza Cloud sign-in on the production Android composition'
   await noHandOff(page);
  });
 
- test('a slow sign-in readiness check shows only the logo until the chooser is ready',async({page})=>{
+ test('a slow sign-in readiness check keeps the screen white until the chooser is ready',async({page})=>{
   await page.emulateMedia({reducedMotion:'no-preference'});
   await boot(page,{...await entitlements(),signIn:'readiness-hold'});
   await agent(page,'unavailable');
   const welcome=signInDialog(page);
   const google=welcome.getByRole('button',{name:'Continue with Google',exact:true});
   await expect(welcome.getByRole('status',{name:'Loading Alpha',exact:true})).toBeVisible();
-  await expect(welcome.locator('.alpha-auth-mark')).toBeVisible();
+  await expect(welcome).toHaveCSS('background-color','rgb(255, 255, 255)');
+  await expect(welcome.locator('.alpha-auth-mark')).toHaveCount(0);
   await expect(welcome.getByRole('heading')).toHaveCount(0);
   await expect(welcome.getByText(/Checking.*sign-in/)).toHaveCount(0);
   await expect(google).toHaveCount(0);
@@ -234,7 +235,7 @@ test.describe('in-app Eliza Cloud sign-in on the production Android composition'
   await expect(welcome.getByRole('button',{name:'Email me a code',exact:true})).toBeEnabled({timeout:10_000});
   const heading=welcome.getByRole('heading',{name:'Welcome to Alpha.',exact:true});
   await expect(heading.locator('..')).toHaveCSS('animation-name','alpha-auth-reveal');
-  await expect(welcome.locator('.alpha-auth-brand')).toHaveCSS('animation-name','none');
+  await expect(welcome.locator('.alpha-auth-brand')).toHaveCSS('animation-name','alpha-auth-reveal');
   await page.emulateMedia({reducedMotion:'reduce'});
   await expect(heading.locator('..')).toHaveCSS('animation-name','none');
   await expect(ownKeys).toBeEnabled();

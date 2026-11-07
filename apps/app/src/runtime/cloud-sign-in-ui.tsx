@@ -12,11 +12,8 @@ export interface CloudSignInActions {
   /** Ends the waiting Google attempt and opens a fresh Google page. */
   reopenGoogle?(): void;
 }
-export function AlphaAuthBrand({loading = false}: {loading?: boolean} = {}) {
-  return <div className="alpha-auth-brand" id={loading ? 'cloud-sign-in-title' : undefined}
-    role={loading ? 'status' : undefined} aria-label={loading ? 'Loading Alpha' : undefined}>
-    <span className="alpha-auth-mark" aria-hidden="true"/>
-  </div>;
+export function AlphaAuthBrand() {
+  return <div className="alpha-auth-brand"><span className="alpha-auth-mark" aria-hidden="true"/></div>;
 }
 /** Exact busy messages the controller uses; the panel shows them on the control that started them. */
 export const SIGN_IN_SENDING = 'Sending your code…';
@@ -91,7 +88,7 @@ export function CloudSignInPanel({ view, busy, google, phone, emailEnabled = tru
   // readiness check is not something the owner started, so it offers nothing to go back from.
   const back = !alternate && (view.step !== 'choose' || dismissible || busy);
   const sendLabel = (method: 'email' | 'phone', idle: string) => sending && pending === method ? 'Sending code…' : idle;
-  if (checking) return <><AlphaAuthBrand loading/></>;
+  if (checking) return <div id="cloud-sign-in-title" className="alpha-auth-loading" role="status" aria-label="Loading Alpha"/>;
   return <>
     <AlphaAuthBrand/>
     <header className={choose ? 'alpha-auth-chooser' : undefined}><h1 id="cloud-sign-in-title" className="serif">{title}</h1></header>
