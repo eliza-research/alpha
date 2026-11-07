@@ -113,3 +113,36 @@ for(const available of [false,true])test(`BrowserSurface shares only an admitted
  expect(await page.evaluate(()=>(window as any).shareCalls)).toEqual(available?[{url}]:[]);
  expect(await page.evaluate(()=>(window as any).copiedUrls)).toEqual([]);
 });
+
+// The sandboxed development frame cannot raise native WebView pop-ups, so the native tab events
+// are delivered through the registered plugin's listener API, as in browser-signins.spec.ts.
+const emitTab=(page:any,name:string,data:any)=>page.evaluate(async({name,data}:any)=>{const {registerPlugin}=await import('/src/platform-plugins.ts');await (registerPlugin<any>('AlphaBrowser') as any).notifyListeners(name,{session:(window as any).browserSession,...data});},{name,data});
+const trackTabs=(page:any)=>page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');(window as any).tabIds={};await registerPlugin<any>('AlphaBrowser').addListener('stateChanged',(e:any)=>{(window as any).browserSession=e.session;if(e.url)(window as any).tabIds[new URL(e.url).pathname.slice(1)]=e.id;});});
+test('a pop-up that closes itself returns to the tab that opened it',async({page})=>{
+ await page.route('https://navigation.example/**',route=>route.fulfill({contentType:'text/html',body:`<h1>${new URL(route.request().url()).pathname.slice(1)}</h1>`}));
+ await trackTabs(page);await page.evaluate(()=>{(window as any).Capacitor.isNativePlatform=()=>true;});
+ await page.getByRole('button',{name:'Browser',exact:true}).click();
+ const heading=(name:string)=>page.frameLocator('[data-browser-surface]:visible iframe').getByRole('heading',{name,exact:true});
+ const address=async(path:string)=>{const box=page.getByRole('textbox',{name:'Address',exact:true});if(!await box.isVisible())await page.getByRole('button',{name:'Edit address',exact:true}).click();await box.fill('https://navigation.example/'+path);await box.press('Enter');await expect(heading(path)).toBeVisible();};
+ await address('news');
+ await page.getByRole('button',{name:'Tabs',exact:true}).click();await page.getByRole('button',{name:'New tab',exact:true}).click();await address('shop');
+ const opener=await page.evaluate(()=>(window as any).tabIds.shop);expect(opener).toBeTruthy();
+ await emitTab(page,'tabOpened',{id:'bpopup1',opener,private:false});
+ await expect(page.getByRole('button',{name:'Tabs',exact:true})).toHaveText('3');
+ await emitTab(page,'tabClosed',{id:'bpopup1'});
+ await expect(page.getByRole('button',{name:'Tabs',exact:true})).toHaveText('2');
+ await expect(heading('shop')).toBeVisible();await expect(heading('news')).toHaveCount(0);
+});
+test('a pop-up at the tab limit, counting restored tabs, is refused and explained',async({page})=>{
+ // Eight saved tabs restore without a loaded page; only the selected one loads when shown.
+ await page.route('https://navigation.example/**',route=>route.fulfill({contentType:'text/html',body:`<h1>${new URL(route.request().url()).pathname.slice(1)}</h1>`}));
+ const ids=Array.from({length:8},(_,i)=>'brestored'+i);
+ await page.evaluate(async(ids:string[])=>{const {registerPlugin}=await import('/src/platform-plugins.ts');await registerPlugin<any>('AlphaBrowser').saveBrowsingState({tabs:ids.map((id,i)=>({id,url:'https://navigation.example/saved'+i,title:'Saved '+i})),cur:ids[0],history:[]});},ids);
+ await page.reload();await trackTabs(page);await page.evaluate(()=>{(window as any).Capacitor.isNativePlatform=()=>true;});
+ await page.getByRole('button',{name:'Browser',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Tabs',exact:true})).toHaveText('8');
+ await expect.poll(()=>page.evaluate(()=>(window as any).tabIds.saved0)).toBeTruthy();
+ await emitTab(page,'tabOpened',{id:'bpopup9',opener:await page.evaluate(()=>(window as any).tabIds.saved0),private:false});
+ await expect(page.getByText('Close a tab before opening another.',{exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Tabs',exact:true})).toHaveText('8');
+});

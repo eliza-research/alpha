@@ -13,14 +13,12 @@ import {webSourceOf} from './summary-source';
 import {browserCalendarScope} from './agent-calendar-adapter';
 import { connectionController, agentPendingText } from '../runtime/connection-ui';
 import { BrowserReviews } from '../browser/review';
-import { browserErrorMessage } from '../browser/browser-errors';
+import { browserErrorMessage, PROFILE_UNSUPPORTED_MESSAGE, PROFILE_UNSUPPORTED_NATIVE_MESSAGE } from '../browser/browser-errors';
 const {tabs: MAX_TABS, history: MAX_HISTORY} = DEFAULT_BROWSING_LIMITS;
 type Bag = Record<string, any>;
 // The shared native tab host (BrowserTabHostPlugin) under Alpha's Capacitor name; the web build
 // registers its isolated-frame surface under the same name (browser/register.ts).
 const Browser = registerPlugin<any>('AlphaBrowser');
-const PROFILE_UNSUPPORTED_NATIVE_MESSAGE='This Android WebView does not support isolated browser profiles';
-const PROFILE_UNSUPPORTED_MESSAGE='In-app browsing is unavailable with this Android WebView because isolated browser profiles are not supported. Use another installed browser to browse websites.';
 
 /** Public browsing only. Install last, only outside visual fixture mode.
  * Product decision: normal tabs keep sign-ins (one persistent browser profile),
@@ -40,6 +38,8 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
   let shell: any, lastGeometry = '', disposed = false, sharing = false, confirming = false, clearingData = false;
   // Saving waits for a successful read so a damaged saved record is never overwritten implicitly.
   let sessionRead = false, sessionHydrated = false, lastSaved = '', saveQueue = Promise.resolve();
+  // Set when tabs, pages or browser state change; the geometry timer saves only then.
+  let sessionDirty = false, lastBrowserState: unknown;
   const tabOf = (id: string) => state()?.tabs?.find((tab: Bag) => tab.id === id);
   const isPrivate = (id: string) => !!tabOf(id)?.priv;
   let bookmarkRead: Promise<void> | undefined, bookmarkQueue = Promise.resolve();
@@ -156,8 +156,9 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
       reviewContentQuestion({name:source.name,text,signal:controller.signal,current,validate:text=>!sensitiveReadingText(text),source:async()=>{if(!current())throw Error('Page changed');return source;},compose:(draft,source)=>shell.api('browser').composeContentQuestion(draft,source),closed:()=>{questionReview=false;lastGeometry='';if(reading===controller)reading=undefined;}});
     }catch(error){if(!controller.signal.aborted)report(error);}finally{if(!questionReview&&reading===controller)reading=undefined;}
   }
+  const withdrawn = JSON.stringify({session,id:null});
   function hide() {
-    const next = JSON.stringify({session,id:null});
+    const next = withdrawn;
     if (lastGeometry === next) return;
     lastGeometry = next;
     void Browser.present({session,id:null}).catch(() => { if(lastGeometry === next) lastGeometry=''; });
@@ -184,6 +185,8 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
       }
     } catch { if (approvedSignal) throw new Error('Invalid approved browser destination'); report(new Error('Enter search words or a valid HTTP or HTTPS address without credentials.')); return; }
     const s = state(); if (!s) { if (approvedSignal) throw new Error('Browser unavailable'); return; }
+    // Restored tabs count, though they have no native WebView until shown.
+    if (newTab && s.tabs.length >= MAX_TABS) { const full = new Error('Close a tab before opening another.'); if (approvedSignal) throw full; report(full); return; }
     profileUnsupportedTab=undefined;
     const selectedTab=s.cur;
     const id = newTab ? newTabId() : s.cur, priv = newTab ? privateTab : isPrivate(id);
@@ -281,7 +284,7 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
       shell.vset('browser', {menu:false});
       if (priv) {
         confirming = true; lastGeometry = ''; await update();
-        const approved = await reviews.confirm('external-browser', 'Leave private browsing?', `Only this address will be sent to another browser:\n${page.url}\n\nThe other browser may save it in its history and use its own signed-in accounts. Alpha cookies and private tab data are not transferred.`, 'Choose browser');
+        const approved = await reviews.confirm('external-browser', 'Leave private browsing?', `Open in another browser?\n${page.url}\n\nIt may save this address and use its own sign-ins. Your Alpha sign-ins and private tabs aren't shared.`, 'Choose browser');
         confirming = false;
         if (!approved) return;
       }
@@ -297,7 +300,9 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
     const s = state(); if (!s) return;
     const rest = s.tabs.filter((tab: Bag) => !ids.includes(tab.id));
     const next = rest.length ? rest : [{ id: newTabId(), hist: ['newtab'], pos: 0 }];
-    shell.vset('browser', { tabs: next, cur: next.some((tab: Bag) => tab.id === s.cur) ? s.cur : next[0].id });
+    // A pop-up that closed itself (a site's sign-in window) returns to the tab that opened it.
+    const opener = s.tabs.find((tab: Bag) => tab.id === s.cur)?.opener;
+    shell.vset('browser', { tabs: next, cur: next.some((tab: Bag) => tab.id === s.cur) ? s.cur : next.some((tab: Bag) => tab.id === opener) ? opener : next[0].id });
   }
   function savedSnapshot() {
     const s = state(); if (!s) return null;
@@ -308,7 +313,7 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
     const snapshot = savedSnapshot(); if (!snapshot) return;
     const next = JSON.stringify(snapshot); if (next === lastSaved) return;
     lastSaved = next;
-    saveQueue = saveQueue.then(() => disposed || clearingData ? undefined : Browser.saveBrowsingState({ session, ...snapshot })).catch(() => { if (lastSaved === next) lastSaved = ''; });
+    saveQueue = saveQueue.then(() => disposed || clearingData ? undefined : Browser.saveBrowsingState({ session, ...snapshot })).catch(() => { if (lastSaved === next) { lastSaved = ''; sessionDirty = true; } });
   }
   async function restoreSession() {
     if (sessionRead) return; sessionRead = true;
@@ -413,6 +418,8 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
     if (browserActive && !browserWasActive) void readingSupport?.check();
     if (!sessionRead && this.vget('browser')?.tabs) void restoreSession();
     browserWasActive = browserActive;
+    // vset replaces the view's state object, so a new object means browser state changed.
+    const browserState = this.S().vs?.browser; if (browserState !== lastBrowserState) { lastBrowserState = browserState; sessionDirty = true; }
     this.browserCommand = async (raw:unknown,signal:AbortSignal,current:()=>void) => {
       const command=parseNativeHistoryCommand(raw),id=state()?.cur,info=tabInfo(id);
       const admittedNavigation=info?.navigation;
@@ -421,7 +428,7 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
       const receipt=await Browser.command({session,id,command:command.subaction,navigation:admittedNavigation});
       // A back/reload dispatch may change its own document. Keep exact tab/session
       // and lifetime fences; never call the command again to obtain an acknowledgment.
-      signal.throwIfAborted();if(disposed||shell.S().view!=='browser'||state()?.cur!==id||receipt?.session!==session||receipt?.id!==id)throw Error('Native browser result belongs to another tab or session');
+      signal.throwIfAborted();if(disposed||shell.S().view!=='browser'||state()?.cur!==id||receipt?.session!==session||receipt?.id!==id)throw Error('This tab changed. Try again.');
       return {ok:true,data:{dispatched:true,completed:false,requiresReadback:true}};
     };
     this.browserNavigateApproved = async (raw: string, signal: AbortSignal, deferPresentation = false) => {
@@ -463,6 +470,7 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
     // The session model moves the document revision on a new address or load and never lets an
     // external-only fallback gain reading authority.
     const change=tabs.applyState(event);if(!change)return;
+    sessionDirty=true;
     // Android hides child surfaces while a system picker/activity is foreground.
     // Resume must resend geometry even when the host's visibility event did not fire.
     if(change.surfaceResumed)lastGeometry='';
@@ -475,9 +483,14 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
   void Browser.addListener('tabOpened',(event:BrowserTabOpened)=>{
     const s=state();if(disposed||!s||s.tabs.some((tab:Bag)=>tab.id===event.id))return;
     const opened=tabs.applyOpened(event);if(!opened)return;
-    shell.vset('browser',{tabs:[...s.tabs,{id:opened.id,hist:['newtab'],pos:0,...(opened.private?{priv:true}:{})}],cur:event.id,editing:false,tabsOpen:false,menu:false,lib:null,share:false});refresh();
+    sessionDirty=true;
+    // Restored tabs count toward the limit; the native host counts only loaded ones.
+    if(s.tabs.length>=MAX_TABS){tabs.forget([opened.id]);void Browser.close({session,id:opened.id}).catch(()=>{});shell.toast('Close a tab before opening another.');return;}
+    // Kept in memory only, so a pop-up that closes itself can return to its opener.
+    const opener=typeof event.opener==='string'&&s.tabs.some((tab:Bag)=>tab.id===event.opener)?event.opener:undefined;
+    shell.vset('browser',{tabs:[...s.tabs,{id:opened.id,hist:['newtab'],pos:0,...(opened.private?{priv:true}:{}),...(opener?{opener}:{})}],cur:event.id,editing:false,tabsOpen:false,menu:false,lib:null,share:false});refresh();
   }).then((value:any)=>{openedListener=value;}).catch(()=>{});
-  void Browser.addListener('tabClosed',(event:BrowserTabEvent)=>{const id=disposed?undefined:tabs.applyClosed(event);if(id)forgetTabs([id]);}).then((value:any)=>{closedListener=value;}).catch(()=>{});
+  void Browser.addListener('tabClosed',(event:BrowserTabEvent)=>{const id=disposed?undefined:tabs.applyClosed(event);if(id){sessionDirty=true;forgetTabs([id]);}}).then((value:any)=>{closedListener=value;}).catch(()=>{});
   void Browser.addListener('notice',(event:BrowserTabNotice)=>{const message=disposed?undefined:tabs.notice(event);if(message!==undefined)shell?.toast(message);}).then((value:any)=>{noticeListener=value;}).catch(()=>{});
   // A native surface sits above the host WebView. Hide it for every host overlay.
   // host-modal:begin
@@ -493,9 +506,17 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
   const nativeUnderAssistant = () => Capacitor.isNativePlatform() && (['sheet','full'].includes(shell?.S().chat) || !!shell?.chatMotion?.moved);
   const update = () => {
     if(disposed)return;
-    const s=state(), S=shell?.S();
+    if(sessionDirty&&sessionHydrated&&!clearingData){sessionDirty=false;saveSession();}
+    // A stopped Activity draws nothing, so nothing needs withdrawing, and handleOnPause owns pause:
+    // withdrawing here would cancel the Autofill session kept for a provider's unlock screen.
+    // The visibility listener presents the tab again on return.
+    if(document.hidden){if(reading)stopReading();return;}
+    const S=shell?.S();
+    // Idle outside Browser: the page is already withdrawn and nothing is read.
+    if(S?.view!=='browser'&&!reading&&lastGeometry===withdrawn)return;
+    const s=state();
     const element=document.querySelector('[data-native-browser-viewport]') as HTMLElement|null;
-    const hidden=questionReview || confirming || hostModalOpen(document, Capacitor.isNativePlatform()) || !s || !element || !element.isConnected || !element.getClientRects().length || S?.view!=='browser' || s.editing || s.tabsOpen || s.menu || s.lib || s.share || s.ag || s.confirm || S?.shade || S?.screen !== 'home' || nativeUnderAssistant() || document.hidden;
+    const hidden=questionReview || confirming || hostModalOpen(document, Capacitor.isNativePlatform()) || !s || !element || !element.isConnected || !element.getClientRects().length || S?.view!=='browser' || s.editing || s.tabsOpen || s.menu || s.lib || s.share || s.ag || s.confirm || S?.shade || S?.screen !== 'home' || nativeUnderAssistant();
     if(reading && (disposed || document.hidden || document.documentElement.hasAttribute('data-dev-background') || S?.screen!=='home' || S?.view!=='browser' || s?.tabsOpen || s?.editing || S?.shade || ['sheet','full'].includes(S?.chat)))stopReading();
     const rect=element?.getBoundingClientRect();
     // The page ends above the resting dock's reserve (template.html), never above the dock's current
@@ -504,7 +525,6 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
     const height=rect ? Math.max(0,Math.min(rect.bottom,page?.bottom ?? rect.bottom)-rect.top) : 0;
     // A restored cold-start tab loads its last committed page when first shown.
     if(!hidden && s && restored.has(s.cur) && !tabs.has(s.cur) && !clearingData){const saved=restored.get(s.cur)!;void navigate(saved.url,false,undefined,false,true);}
-    saveSession();
     const payload=hidden || !tabs.has(s?.cur) ? {session,id:null} : {session,id:s.cur,x:rect!.x,y:rect!.y,width:rect!.width,height};
     const next=JSON.stringify(payload);
     if(next!==lastGeometry){lastGeometry=next;return Browser.present(payload).catch(()=>{lastGeometry='';});}

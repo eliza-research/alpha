@@ -65,7 +65,7 @@ public class BrowserFlowInstrumentedTest {
    });
   }catch(Throwable error){evidence.append("; native-diagnostic-unavailable:").append(error.getClass().getSimpleName());}
   try{
-   evidence.append("; host=").append(host("JSON.stringify({activeView:document.documentElement.dataset.activeView,mode:document.documentElement.dataset.connectionMode,addressPresent:!!document.querySelector('input[aria-label=Address]'),connectionDialog:!!document.querySelector('.alpha-connection-scrim'),isolatedProfilesRejected:document.body.innerText.includes('This Android WebView does not support isolated browser profiles'),privateTabRejected:document.body.innerText.includes('Private tabs need an Android System WebView'),createRejected:document.body.innerText.includes('Could not create an isolated browser tab'),identityRejected:document.body.innerText.includes('Invalid browser identity'),sessionRejected:document.body.innerText.includes('Expired browser session'),tabLimitRejected:document.body.innerText.includes('Close a tab before opening another')})"));
+   evidence.append("; host=").append(host("JSON.stringify({activeView:document.documentElement.dataset.activeView,mode:document.documentElement.dataset.connectionMode,addressPresent:!!document.querySelector('input[aria-label=Address]'),connectionDialog:!!document.querySelector('.alpha-connection-scrim'),isolatedProfilesRejected:document.body.innerText.includes('needs a newer Android System WebView'),privateTabRejected:document.body.innerText.includes('Private tabs need an Android System WebView'),createRejected:document.body.innerText.includes('Could not create an isolated browser tab'),identityRejected:document.body.innerText.includes('Invalid browser identity'),sessionRejected:document.body.innerText.includes('Expired browser session'),tabLimitRejected:document.body.innerText.includes('Close a tab before opening another')})"));
   }catch(Throwable error){evidence.append("; host-diagnostic-unavailable:").append(error.getClass().getSimpleName());}
   try{evidence.append("; child=").append(child("JSON.stringify({protocol:location.protocol,ready:document.readyState,body:!!document.body})"));}
   catch(Throwable error){evidence.append("; child-diagnostic-unavailable:").append(error.getClass().getSimpleName());}
@@ -229,6 +229,34 @@ public class BrowserFlowInstrumentedTest {
    until("!document.querySelector('[aria-label=\"Private tab\"]')");page(two);
    assertEquals("Normal tab cannot read private-tab storage","null",child("localStorage.getItem('alpha_flow_private')"));
    click("Tabs");click("Close tab");
+  }
+ }
+ /** The native host's selected tab; present(id:null) clears it and cancels that tab's Autofill session. */
+ private String presentedTab()throws Exception{
+  AtomicReference<String> id=new AtomicReference<>();
+  WebViewTestDriver.withActivity(MainActivity.class,main->{try{Object plugin=main.getBridge().getPlugin("AlphaBrowser").getInstance();java.lang.reflect.Field field=ai.eliza.plugins.browsersurface.BrowserTabHostPlugin.class.getDeclaredField("presentedId");field.setAccessible(true);id.set((String)field.get(plugin));}catch(ReflectiveOperationException error){throw new AssertionError(error);}});
+  return id.get();
+ }
+ /** A provider's full-screen unlock screen stops Alpha. Pause keeps the tab's Autofill session for it;
+  * the renderer must not withdraw the tab while hidden, which would cancel that session. */
+ @Test public void fullScreenActivityOverBrowserKeepsTheTabPresented()throws Exception{
+  String suffix="?alpha_flow="+UUID.randomUUID()+"-stopped";
+  try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
+   until("document.documentElement.dataset.activeView");host(AppNavigation.request("Browser"));until(AppNavigation.selected("Browser"));AppNavigation.declineStartupAccess();
+   address("https://example.com/"+suffix);page(suffix);
+   String tab=null;for(int i=0;i<50&&tab==null;i++){tab=presentedTab();if(tab==null)SystemClock.sleep(100);}
+   assertNotNull("Loaded page is presented",tab);
+   WebViewTestDriver.withActivity(MainActivity.class,a->a.startActivity(new android.content.Intent(android.provider.Settings.ACTION_SETTINGS)));
+   try{
+    AtomicBoolean stopped=new AtomicBoolean();for(int i=0;i<100&&!stopped.get();i++){
+     new Handler(Looper.getMainLooper()).post(()->{for(Activity activity:ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.STOPPED))if(activity.getClass()==MainActivity.class)stopped.set(true);});SystemClock.sleep(100);
+    }assertTrue("Full-screen Settings Activity stopped the browser host",stopped.get());
+    // Ten renderer geometry ticks; a hidden document must not send present(id:null).
+    SystemClock.sleep(1000);
+    assertEquals("Stopped host keeps the tab presented, so its Autofill session survives",tab,presentedTab());
+   }finally{WebViewTestDriver.pressBack();}
+   page(suffix);
+   assertEquals("Returning shows the same tab",tab,presentedTab());
   }
  }
  /** The URL the shown child WebView was asked to load (WebView.getUrl(), the pending or committed

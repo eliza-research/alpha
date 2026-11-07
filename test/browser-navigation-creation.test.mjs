@@ -6,7 +6,7 @@ import test from 'node:test';import assert from 'node:assert/strict';import {rea
 const source=readFileSync(process.env.ALPHA_BROWSER_ADAPTER_SOURCE||'apps/app/src/prototype/browser-adapter.ts','utf8');
 const region=stripTypeScriptTypes(source.slice(source.indexOf('  async function navigate('),source.indexOf('  async function command(')),{mode:'transform'});
 function harness(){let release;const pending=new Promise(resolve=>release=resolve),state={cur:'owned',tabs:[{id:'owned'},{id:'other'}],editing:true,tabsOpen:true,menu:true},navigations=[],patches=[],closed=[];const tabs=new BrowserTabSession({session:'owned-session'});void tabs.ensure('owned',false,()=>pending);
- const context={URL,Error,parseBrowserAddressInput,session:"owned-session",disposed:false,state:()=>state,isPrivate:()=>false,newTabId:()=> 'owned',restored:new Map(),tabs,restoreAttempts:new Map(),ensure:id=>tabs.creation(id)??tabs.ensure(id,false,()=>pending),shell:{vset(_key,patch){patches.push(patch);Object.assign(state,patch);}},Browser:{async navigate(input){navigations.push(input);},async close(input){closed.push(input);}},refresh(){},report(){}};
+ const context={URL,Error,MAX_TABS:8,parseBrowserAddressInput,session:"owned-session",disposed:false,state:()=>state,isPrivate:()=>false,newTabId:()=> 'owned',restored:new Map(),tabs,restoreAttempts:new Map(),ensure:id=>tabs.creation(id)??tabs.ensure(id,false,()=>pending),shell:{vset(_key,patch){patches.push(patch);Object.assign(state,patch);}},Browser:{async navigate(input){navigations.push(input);},async close(input){closed.push(input);}},refresh(){},report(){}};
  const navigate=vm.runInNewContext(region+';navigate',context);return {state,tabs,navigations,patches,closed,release,navigate};}
 test('closing a tab while native creation is pending cannot resurrect or navigate it',async()=>{const h=harness(),task=h.navigate('https://example.com');h.state.tabs=[{id:'other'}];h.state.cur='other';h.tabs.forget(['owned']);h.release();await task;assert.equal(h.navigations.length,0);assert.equal(h.patches.length,0);});
 test('switching while creation is pending keeps the new tab’s editor and switcher state',async()=>{const h=harness(),task=h.navigate('https://example.com');h.state.cur='other';h.release();await task;assert.equal(h.navigations.length,0);assert.equal(h.state.editing,true);assert.equal(h.state.tabsOpen,true);});
@@ -60,7 +60,7 @@ function approvedHarness({native=false,deferred=false,failNavigate=false}={}){
  const pending=deferred?new Promise(resolve=>{release=resolve;}):Promise.resolve();
  const state={cur:'existing',tabs:[{id:'existing',hist:['newtab'],pos:0}],editing:true,tabsOpen:true,menu:true};
  const calls=[],closed=[],opened=[],tabs=new BrowserTabSession({session:'reviewed-session'});
- const context={URL,Error,parseBrowserAddressInput,document:{hidden:false},Capacitor:{isNativePlatform:()=>native},session:'reviewed-session',get disposed(){return disposed;},profileUnsupportedTab:undefined,state:()=>state,isPrivate:()=>false,newTabId:()=> 'approved-tab',restored:new Map(),tabs,restoreAttempts:new Map(),
+ const context={URL,Error,MAX_TABS:8,parseBrowserAddressInput,document:{hidden:false},Capacitor:{isNativePlatform:()=>native},session:'reviewed-session',get disposed(){return disposed;},profileUnsupportedTab:undefined,state:()=>state,isPrivate:()=>false,newTabId:()=> 'approved-tab',restored:new Map(),tabs,restoreAttempts:new Map(),
   ensure(id){creations++;return tabs.creation(id)??tabs.ensure(id,false,()=>pending);},
   shell:{vset(_key,patch){Object.assign(state,patch);},openView(...args){opened.push({args,tab:state.cur,bridgeCalls:calls.length});}},
   Browser:{async navigate(input){calls.push(input);if(failNavigate)throw Error('Bridge navigation failed');},async close(input){closed.push(input);}},refresh(){},report(){}};
@@ -126,3 +126,10 @@ for(const native of [false,true]){
   c.abort();assert.throws(present);assert.equal(h.calls.length,1);assert.equal(h.opened.length,0);assert.equal(h.state.cur,'existing');
  });
 }
+
+// Restored tabs have no native WebView until shown, so only the renderer can count them.
+for(const native of [false,true])test(`${native?'native':'web preview'} approved open at the tab limit refuses, counting restored tabs`,async()=>{
+ const h=approvedHarness({native});h.state.tabs=Array.from({length:8},(_,i)=>({id:i?'restored-'+i:'existing',hist:['newtab'],pos:0}));
+ await assert.rejects(h.approved('https://example.com',new AbortController().signal),/Close a tab before opening another\./);
+ assert.equal(h.creations,0);assert.equal(h.calls.length,0);assert.equal(h.opened.length,0);assert.equal(h.state.tabs.length,8);
+});
