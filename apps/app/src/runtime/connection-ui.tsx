@@ -1475,6 +1475,10 @@ function restoredMessages(items:Record<string,unknown>[]):RestoredMessage[] {
     if(typeof item.id!=='string'||!item.id||typeof item.text!=='string'||item.text.length>200000)throw Error('The agent returned invalid history.');
     const notice=item.role==='assistant'?systemNoticeKind(item.text):undefined;
     if(notice)return {id:item.id,from:'agent',text:systemNoticeDisplayText(notice),systemNotice:notice};
+    // A saved failure row holds the agent's own failure prose, written for another app. The live
+    // reply read today's setup; a restored row says only that this reply did not complete. An
+    // interrupted row keeps what was heard, and a Calendar refusal its answer.
+    if(item.role==='assistant'&&item.interrupted!==true&&failureKindOf(item)&&!calendarRefusalKept(item))return {id:item.id,from:'agent',text:'This reply couldn’t be completed.',unfinished:true};
     return {id:item.id,from:item.role==='user'?'user':'agent',text:item.role==='user'?restoredText(item.text,item.userTextFormat):item.interrupted===true&&!item.text?'This reply did not finish.':item.text,...(item.role==='assistant'&&item.interrupted===true?{unfinished:true as const}:{})};
   });
 }
@@ -1521,6 +1525,12 @@ export const REPLY_FAILURES = {
   no_provider_resident: 'Your agent answered without its AI connection. Check the connection again; nothing was retried.',
   no_provider: 'The agent has no model provider configured. Set one up on the agent; nothing was retried.',
 } as const;
+/** A completed Calendar read can truthfully fail its coverage guard. Its visible answer and
+ * durable message identity remain usable, live and restored: not a transport failure. */
+function calendarRefusalKept(value:{failureKind?:unknown;terminalFailure?:unknown;text?:unknown;interrupted?:unknown}):boolean {
+  const failure=value.terminalFailure&&typeof value.terminalFailure==='object'?value.terminalFailure as {kind?:unknown;code?:unknown;transient?:unknown}:undefined;
+  return failure?.kind==='reply_generation_error'&&failure.transient===false&&isCalendarReadFailureCode(failure.code)&&(value.failureKind===undefined||value.failureKind==='reply_generation_error')&&typeof value.text==='string'&&!!value.text.trim()&&value.interrupted!==true;
+}
 /** The upstream failure kind a reply or a stream error frame carried, if any. */
 function failureKindOf(value:unknown):string|undefined {
   if(!value||typeof value!=='object')return undefined;
@@ -2984,7 +2994,7 @@ export const connectionController = {
     try{current();const conversationId=await ensureSelectedConversation(selected,session,controller.signal,current);current();return {conversationId,session:{...session},connectionEpoch:generation};}
     finally{signal.removeEventListener('abort',cancel);if(operation===controller)operation=null;}
   },
-  async send(text: string, context: ContextEnvelope, requestId: string, signal: AbortSignal, onText?:(text:string)=>void,replyTo?:ConversationMessageTarget,onReplyReady?:(results:readonly unknown[]|undefined)=>void,channelType:ChatChannel='DM',expectedConversationId?:string,voiceTurnSignal?:VoiceTurnSignal): Promise<{ messageId?:string;userMessageId?:string;messageBinding?:{conversationId:string;session:VerifiedSession};text: string; proposals?: ActionProposal[]; actionResults?:readonly unknown[]; planAction?: 'plan' | 'retry' | 'sign-in' }> {
+  async send(text: string, context: ContextEnvelope, requestId: string, signal: AbortSignal, onText?:(text:string)=>void,replyTo?:ConversationMessageTarget,onReplyReady?:(results:readonly unknown[]|undefined)=>void,channelType:ChatChannel='DM',expectedConversationId?:string,voiceTurnSignal?:VoiceTurnSignal): Promise<{ ignored?:true;messageId?:string;userMessageId?:string;messageBinding?:{conversationId:string;session:VerifiedSession};text: string; proposals?: ActionProposal[]; actionResults?:readonly unknown[]; planAction?: 'plan' | 'retry' | 'sign-in' }> {
     if(!ownProviderSelected()&&state.cloudAccount&&state.membershipBalance==='zero')throw fundingNeeded();
     // P-43: before the resident has a session, say it is starting (or recovering); nothing is sent.
     if (!active && residentAlwaysPresent) throw noSessionError('');
@@ -3046,15 +3056,17 @@ export const connectionController = {
       // Action callbacks (calendar receipts, approval cards) commit rows outside the streamed reply;
       // the deferred update after this send re-reads the conversation.
       if('historyRefreshRequired' in reply&&reply.historyRefreshRequired===true)conversationResync=true;
-      if(channelType==='VOICE_DM' && (('interrupted' in reply && reply.interrupted===true)||('noResponseReason' in reply && reply.noResponseReason==='ignored')))throw Error('The voice response did not complete. Check conversation history before speaking again.');
+      if(channelType==='VOICE_DM' && 'interrupted' in reply && reply.interrupted===true)throw Error('The voice response did not complete. Check conversation history before speaking again.');
+      // The agent chose not to answer this voice turn (an echo it caught, say). That is not a
+      // failed reply: the turn ends with nothing to say and the voice session listens again.
+      const ignored=channelType==='VOICE_DM'&&'noResponseReason' in reply&&reply.noResponseReason==='ignored';
       let responseFailure: Error | undefined;
       const failed = ('interrupted' in reply && reply.interrupted===true) || ('failureKind' in reply && !!reply.failureKind) || ('terminalFailure' in reply && !!reply.terminalFailure);
       const effectApplied=failed&&effectAppliedBeforeFailure(reply);
       // A completed Calendar read can truthfully fail its coverage guard. Its
       // visible answer and durable message identity remain usable; this is not
       // a transport failure and must not gain a retry prompt or extra card.
-      const calendarFailure = 'terminalFailure' in reply && reply.terminalFailure && typeof reply.terminalFailure === 'object' ? reply.terminalFailure as {kind?:unknown;code?:unknown;transient?:unknown} : undefined;
-      const visibleCalendarFailure = calendarFailure?.kind === 'reply_generation_error' && calendarFailure.transient === false && isCalendarReadFailureCode(calendarFailure.code) && (!('failureKind' in reply) || reply.failureKind === undefined || reply.failureKind === 'reply_generation_error') && typeof reply.text === 'string' && !!reply.text.trim() && !('interrupted' in reply && reply.interrupted === true);
+      const visibleCalendarFailure = calendarRefusalKept(reply);
       // The on-device agent answered without Eliza Cloud inference (no plan, offline or signed
       // out): its turn is recorded in the conversation, and the owner gets an honest answer with
       // the plan actions instead of a generic failure. Nothing is retried or purchased.
@@ -3126,7 +3138,7 @@ export const connectionController = {
       if(!failed&&(state.lastServiceLimit||state.fundingRefused))update({lastServiceLimit:null,fundingRefused:false});
       return { text: responseFailure
         ? `${responseFailure.message} Pending phone actions are available for separate review.${effectApplied?'':' Nothing has been approved or performed automatically.'}`
-        : reply.text, ...(completedReads.length?{completedReads}:{}), ...(completedActions.length?{completedActions}:{}), ...(notices.length ? { notices } : {}), ...(!responseFailure?{...(typeof reply.messageId==='string'?{messageId:reply.messageId}:{}),messageBinding}:{}), ...recorded, ...(proposals ? { proposals } : {}), ...(!failed&&Array.isArray(reply.actionResults)?{actionResults:reply.actionResults}:{}) };
+        : ignored?'':reply.text, ...(ignored&&!responseFailure?{ignored:true as const}:{}), ...(completedReads.length?{completedReads}:{}), ...(completedActions.length?{completedActions}:{}), ...(notices.length ? { notices } : {}), ...(!responseFailure?{...(typeof reply.messageId==='string'?{messageId:reply.messageId}:{}),messageBinding}:{}), ...recorded, ...(proposals ? { proposals } : {}), ...(!failed&&Array.isArray(reply.actionResults)?{actionResults:reply.actionResults}:{}) };
     } catch (error) {
       // Nothing carrying the message left this phone (no conversation, offline, changed owner, or a
       // Stop before the post): the composer keeps the text instead of reporting an unknown outcome.

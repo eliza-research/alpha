@@ -45,7 +45,7 @@ async function finish({kind='handler_error',limit=null,effectApplied=false,resid
  const context={view:'home',sensitive:false,timeZone:'UTC',revision:1};
  const run={...env,context,reply:{text:'PRIVATE_PROVIDER_FAILURE_CANARY',terminalFailure:record,...(hasServerId?{userMessageId}:{})},
    replyFailure:failure,effectAppliedBeforeFailure:()=>effectApplied,EFFECT_APPLIED_INTERRUPTED:appliedText,
-   isAndroid:false,ownProviderSelected:()=>false,isCalendarReadFailureCode:()=>false,
+   isAndroid:false,ownProviderSelected:()=>false,isCalendarReadFailureCode:()=>false,calendarRefusalKept:()=>false,
    failureKindOf:reply=>reply.terminalFailure?.kind,readServiceLimit:()=>limit,
    retractReadiness(){state.message='';},validateUuid:value=>value===userMessageId,
    message:{context},id:'conversation',session:{...verifiedSession},generation:1,
