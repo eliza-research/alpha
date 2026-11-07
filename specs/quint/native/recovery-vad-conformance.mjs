@@ -9,6 +9,7 @@ import {fileURLToPath} from 'node:url';
 const directory = dirname(fileURLToPath(import.meta.url));
 const root = resolve(directory, '../../..');
 const native = join(root, 'android/app/src/main/java/ai/elizaresearch/alphaphone');
+const speech = join(root, 'vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice');
 const models = ['RendererRecovery', 'VadSegmentation'];
 
 function run(command, args, timeout = 120_000) {
@@ -85,6 +86,7 @@ export async function runRecoveryVadConformance() {
     writeFileSync(input, lines.join('\n') + '\n');
     const harness = join(work, 'RecoveryVadConformance.java');
     writeFileSync(harness, `package ai.elizaresearch.alphaphone;
+import ai.eliza.voice.LiveVadGate;
 import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -133,7 +135,7 @@ public final class RecoveryVadConformance {
 `);
     const javac = jdkTool('javac');
     const java = jdkTool('java');
-    const sources = [join(native, 'RendererRecoveryBudget.java'), join(native, 'LiveVadGate.java')];
+    const sources = [join(native, 'RendererRecoveryBudget.java'), join(speech, 'LiveVadGate.java')];
     run(javac, ['-d', work, harness, ...sources]);
     const checks = Number(run(java, ['-cp', work, 'ai.elizaresearch.alphaphone.RecoveryVadConformance', input]));
     assert.ok(Number.isSafeInteger(checks) && checks > 1000);

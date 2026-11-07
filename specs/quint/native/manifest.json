@@ -12,8 +12,7 @@
         "apps/app/src/runtime/local-agent-native-stream.ts",
         "apps/app/src/runtime/local-agent-storage.ts",
         "apps/app/src/runtime/resident-recovery.ts",
-        "backend/runtime.ts",
-        "backend/native-cloud-runtime-config.ts",
+        "backend/native-cloud-runtime.ts",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/LocalAgentProviderAdmission.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentCredentialShutdownRetry.java",
@@ -53,7 +52,6 @@
         "apps/app/src/runtime/voice-states.ts",
         "apps/app/src/runtime/cloud-voice.ts",
         "apps/app/src/runtime/live-segment-stream.ts",
-        "apps/app/src/runtime/native-resident-capture.ts",
         "apps/app/src/runtime/voice-turn-routes.ts",
         "apps/app/src/runtime/app-speech.ts",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeVoiceBinding.java",
@@ -84,6 +82,10 @@
         "At most three session identities, five turn identities and five utterance identities.",
         "Two complete sentences represent streamed playback and heard-content accounting.",
         "Errors retire the session; disclosure and exact owner binding are represented as admission predicates."
+      ],
+      "sharedSources": [
+        "packages/voice/src/native-live-voice.ts",
+        "packages/voice/src/voice-assistant-session.ts"
       ]
     },
     {
@@ -93,16 +95,7 @@
       "step": "step",
       "invariant": "safety",
       "sources": [
-        "apps/app/src/local-speech-playback.ts",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/SpeechAudioFocusPolicy.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/SpeechPcmQueue.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/LiveCaptureAdmission.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLiveVoiceCapture.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeLiveVoicePipe.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/SpeechStreamValidation.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/StreamingSpeechPlayback.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AudioTrackSpeechOutput.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaParadeeSpeech.java"
+        "apps/app/src/local-speech-playback.ts"
       ],
       "tests": [
         "queueBackpressureTest",
@@ -124,6 +117,18 @@
         "A two-chunk queue represents bounded PCM sample storage and backpressure.",
         "Three capture and synthesis generations, one native capture reservation, one playback writer.",
         "Native cleanup calls are atomic completion steps; PCM buffer contents and wall-clock latency are omitted."
+      ],
+      "sharedSources": [
+        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechAudioFocusPolicy.java",
+        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechPcmQueue.java",
+        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureAdmission.java",
+        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveVoiceCapture.java",
+        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveSegmentPipe.java",
+        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechStreamValidation.java",
+        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/StreamingSpeechPlayback.java",
+        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/AudioTrackSpeechOutput.java",
+        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalSpeechEngine.java",
+        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SessionSpeech.java"
       ]
     },
     {
@@ -135,10 +140,6 @@
       "sources": [
         "apps/app/src/runtime/always-on-listener.ts",
         "apps/app/src/runtime/always-on-listener-status.ts",
-        "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ListenerPolicy.java",
-        "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ListeningEpoch.java",
-        "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/IndicatorLease.java",
-        "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ListenerStore.java",
         "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ListeningService.java",
         "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ConsentActivity.java",
         "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ListenerControlProvider.java",
@@ -162,6 +163,12 @@
         "Nine generation identities and three reset generations; epoch counters stop advancing at the bound.",
         "Display-off, fullscreen, shade and transition explanations share the paused-indicator abstraction.",
         "Lease freshness summarizes monotonic TTL, process-death and SystemUI attribution checks."
+      ],
+      "sharedSources": [
+        "packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListenerPolicy.java",
+        "packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListeningEpoch.java",
+        "packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/IndicatorLease.java",
+        "packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListenerStore.java"
       ]
     },
     {
@@ -172,12 +179,9 @@
       "invariant": "safety",
       "sources": [
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDataReset.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/ResetAuthorization.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/ResetRecoveryActivity.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/ResetCloudRevocation.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaApplication.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaResetPlugin.java",
-        "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ListenerStore.java",
         "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ListenerControlProvider.java"
       ],
       "tests": [
@@ -198,6 +202,11 @@
         "Three automatic attempts per abstract time window and five authentication generation identities.",
         "Listener acknowledgement and Android dispatch are environment results; observed erasure is a separate action.",
         "Files, fsync and Binder calls are abstracted at their documented completion/failure boundaries."
+      ],
+      "sharedSources": [
+        "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/reset/ResetAuthorization.java",
+        "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudKeyRevocation.java",
+        "packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListenerStore.java"
       ]
     },
     {
@@ -207,15 +216,10 @@
       "step": "step",
       "invariant": "safety",
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/DeferredDeletionJournal.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeDeletionCoordinator.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeDeletionClaim.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeDeletionRecovery.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/DeletionDeadline.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/DeletionWorker.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/NotesDeletionLease.java",
         "apps/app/src/runtime/deletion-owner.ts",
-        "apps/app/src/runtime/deletion-window.ts",
         "apps/app/src/runtime/deletions.ts",
         "apps/app/src/runtime/note-audio-deletions.ts"
       ],
@@ -237,6 +241,13 @@
         "One operation, two owner identities, two source revisions and open/expired/clock-changed windows.",
         "Atomic durable writes are represented by storage success; capacity and multi-row scheduling are omitted.",
         "A stored dispatching row projects unknown on restart and is never automatically dispatched again."
+      ],
+      "sharedSources": [
+        "plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/DeferredDeletionJournal.java",
+        "plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/DeletionDispatchClaim.java",
+        "plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/DeletionReceiptRecovery.java",
+        "plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/DeletionDeadline.java",
+        "packages/contracts/src/deletion-window.ts"
       ]
     },
     {
@@ -251,13 +262,7 @@
         "apps/app/src/prototype/photo-library-adapter.ts",
         "apps/app/src/prototype/video-edit-review.ts",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeReadEpoch.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/PhotoLibraryAccess.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/PermittedMediaCatalog.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/PermittedMediaReview.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/PhotoAttachmentSource.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/SelectedDocumentAccess.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/OwnedVideoPlayback.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/VideoCopyEdits.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPhotoLibraryPlugin.java"
       ],
       "tests": [
@@ -280,6 +285,14 @@
         "One selected media item, two source revisions and four native read generations.",
         "Full/selected summarize permitted access; mixed/partial policies are represented by current per-item permission.",
         "Exact content/hash equality is represented by matching revision identities; codecs and pixel transforms are omitted."
+      ],
+      "sharedSources": [
+        "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotoLibraryAccess.java",
+        "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PermittedMediaCatalog.java",
+        "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PermittedMediaReview.java",
+        "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/SelectedPhotoCopy.java",
+        "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/OwnedVideoPlayback.java",
+        "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/VideoCopyEdits.java"
       ]
     },
     {
@@ -290,7 +303,6 @@
       "invariant": "safety",
       "sources": [
         "apps/app/src/runtime/aosp-telephony.ts",
-        "apps/app/src/runtime/aosp-telephony-client.ts",
         "apps/app/src/runtime/aosp-image.ts",
         "apps/app/src/runtime/sms-agent-contract.ts",
         "apps/app/src/runtime/sms-subscription-revision.ts",
@@ -299,12 +311,6 @@
         "apps/app/src/runtime/clock-contract.ts",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaImageCapabilities.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaTelephonyPlugin.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaContactsCatalog.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/SmsSendJournal.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/SmsRecords.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/SmsPageCursor.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/ClockContract.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/ClockHandoff.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaReminders.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentScheduleRearm.java"
       ],
@@ -334,6 +340,15 @@
         "One SMS id, one or two message parts, two SIM/text identities and permanent retired-id membership.",
         "Carrier and provider evidence are distinct inputs; multipart never claims delivered.",
         "One reminder creation and three reminder revisions; notification delivery is posted rather than evidence of Clock execution."
+      ],
+      "sharedSources": [
+        "packages/contracts/src/native-telephony.ts",
+        "plugins/plugin-native-contacts/android/src/main/java/ai/eliza/plugins/contacts/ContactsCatalog.java",
+        "plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsSendJournal.java",
+        "plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsRecords.java",
+        "plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsPageCursor.java",
+        "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/clock/ClockDays.java",
+        "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/clock/ClockHandoff.java"
       ]
     },
     {
@@ -347,7 +362,7 @@
         "apps/app/src/runtime/cloud-protocol.ts",
         "apps/app/src/runtime/voice-assistant.ts",
         "apps/app/src/runtime/local-agent.ts",
-        "apps/app/src/runtime/google-calendar-outbox.ts",
+        "apps/app/src/runtime/calendar-sync-host.ts",
         "apps/app/src/runtime/inbox-operation.ts",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDataReset.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/LocalAgentProviderAdmission.java"
@@ -471,9 +486,6 @@
       "step": "step",
       "invariant": "safety",
       "sources": [
-        "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/IndicatorLease.java",
-        "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/CrashLoopBreaker.java",
-        "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ListenerStore.java",
         "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/SenseApplication.java",
         "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ListeningService.java"
       ],
@@ -514,6 +526,11 @@
         "AttributionAfterGrace",
         "CrashHistoryBounded",
         "NoRenewExpiredLease"
+      ],
+      "sharedSources": [
+        "packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/IndicatorLease.java",
+        "packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/CrashLoopBreaker.java",
+        "packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListenerStore.java"
       ]
     },
     {
@@ -522,13 +539,7 @@
       "init": "init",
       "step": "step",
       "invariant": "safety",
-      "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/StreamingSpeechPlayback.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/SpeechPcmQueue.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AudioTrackSpeechOutput.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/SpeechAudioFocusPolicy.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/VoiceLatencyTrials.java"
-      ],
+      "sources": [],
       "stateMapping": {
         "started/terminal/stopped/writer/outputOpen": "StreamingSpeechPlayback.start, settle, stop, run/finally",
         "queue/chunkRemaining/produced/written/played/firstFrame": "bounded queue, partial AudioTrack writes and drain loop",
@@ -555,6 +566,13 @@
         "TerminalStopsNewFrames",
         "WriterNeedsOutput",
         "AudibleHasEvidence"
+      ],
+      "sharedSources": [
+        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/StreamingSpeechPlayback.java",
+        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechPcmQueue.java",
+        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/AudioTrackSpeechOutput.java",
+        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechAudioFocusPolicy.java",
+        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/VoiceLatencyTrials.java"
       ]
     },
     {
@@ -642,10 +660,7 @@
       "init": "init",
       "step": "step",
       "invariant": "safety",
-      "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/LiveVadGate.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLiveVoiceCapture.java"
-      ],
+      "sources": [],
       "stateMapping": {
         "speaking/above/below": "LiveVadGate.speaking,above,below with exact2-window start and16-window end counts",
         "probability/edge": "accept probability classes, nonfinite-to-zero normalization and edge return",
@@ -673,7 +688,11 @@
         "closeEndsOpenSegmentOnceTest",
         "closeResetsPartialOpeningTest"
       ],
-      "additionalProofInit": "counterInit"
+      "additionalProofInit": "counterInit",
+      "sharedSources": [
+        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveVadGate.java",
+        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveVoiceCapture.java"
+      ]
     },
     {
       "path": "specs/quint/native/VoiceIpcAssembly.qnt",
@@ -682,7 +701,6 @@
       "step": "step",
       "invariant": "safety",
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeVoiceIpc.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeVoiceBinding.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/VoiceEventAdmission.java"
       ],
@@ -721,7 +739,10 @@
         "maxSamples": 1000,
         "maxSteps": 80,
         "seed": "123"
-      }
+      },
+      "sharedSources": [
+        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/BufferedStreamExchange.java"
+      ]
     },
     {
       "path": "specs/quint/native/ListenerLeaseProducer.qnt",
@@ -729,12 +750,7 @@
       "init": "init",
       "step": "step",
       "invariant": "safety",
-      "sources": [
-        "android/aosp/listener/systemui/chip/source/AlphaListeningController.java",
-        "android/aosp/listener/systemui/chip/source/AlphaListeningLease.java",
-        "android/aosp/listener/systemui/chip/source/AlphaListeningPolicy.java",
-        "android/aosp/listener/systemui/chip/source/AlphaListeningChipView.java"
-      ],
+      "sources": [],
       "stateMapping": {
         "view": "Controller identity/AudioManager observations, user-switch state, display/keyguard/shade state and measured chip/host visibility",
         "queue/pending/phase": "Main-thread acknowledgement snapshots delivered on the serial background executor",
@@ -773,7 +789,13 @@
         "maxSamples": 1000,
         "maxSteps": 80,
         "seed": "123"
-      }
+      },
+      "sharedSources": [
+        "packages/os/android/sense/systemui/chip/source/SenseListeningController.java",
+        "packages/os/android/sense/systemui/chip/source/SenseListeningLease.java",
+        "packages/os/android/sense/systemui/chip/source/SenseListeningPolicy.java",
+        "packages/os/android/sense/systemui/chip/source/SenseListeningChipView.java"
+      ]
     }
   ]
 }

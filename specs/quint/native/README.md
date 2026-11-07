@@ -1,8 +1,13 @@
 # Native application models
 
-These finite models describe Alpha-owned protocol boundaries in the current
+These finite models describe Alpha-bound protocol boundaries in the current
 working source. The source lists, named invariants, scenarios and bounds are in
 [manifest.json](manifest.json). Each exposes `init`, `step` and `safety`.
+
+The manifest distinguishes product `sources` from `sharedSources` under the
+reviewed Eliza pin. Native speech, listener policies, reset authorization, media
+catalogs and deletion journals now use their shared owners. The Java conformance
+adapters compile those current packages alongside Alpha's remaining host policies.
 
 ## Source correspondence
 
@@ -12,14 +17,14 @@ working source. The source lists, named invariants, scenarios and bounds are in
 | `VoiceSession` | `VoiceAssistantSession.start`, `stop`, `setMuted`, `speechStarted`, `schedule`, `submit`, `respond`, `resume`, `playSentence`, `createNativeLiveDictation`, `createCloudVoice` | Session/turn/utterance generations, semantic and long-gap endpointing, capture, mute, barge-in, completed-sentence accounting, separately reviewed read response and local dictation |
 | `SpeechResources` | `LiveCaptureAdmission.begin`, `attach`, `stop`, `cancelAll`, `SpeechAudioFocusPolicy.changed`, `stopsCapture`, `SpeechPcmQueue.offer`, `take`, `close` | Capture reservation and late startup, one capture owner, transient focus/duck/loss, bounded PCM queue and canceled stream |
 | `AlwaysOnListener` | `ListenerPolicy.decide`, `holdsMicrophone`, `processesAudio`, `latchesIndicatorLoss`, `IndicatorLease.renew`, `verdict`, `ListeningEpoch.current`, `ListenerStore` consent generation | Consent, visibility, unlock, call/privacy, SystemUI lease, explained pause, sticky indicator loss and queued recognition invalidation |
-| `ResetRecovery` | `ResetAuthorization.begin`, `confirm`, `authenticate`, `retire`, `AlphaDataReset.record`, `attempt`, `automaticAttemptAllowed`, `recordFailure`, `admitAndExit` | Activity-bound approval, durable pending marker, listener-first reset, bounded automatic retry, recovery surface, accepted dispatch and externally observed erasure |
-| `DeletionJournal` | `DeferredDeletionJournal.stage`, `undo`, `expire`, `list`, `acknowledge`, `NativeDeletionCoordinator.reconcile`, `stageOwnerCurrent` | Durable intent, monotonic Undo window, changed boot, exact owner/source admission, dispatch uncertainty and retained no-replay receipt |
-| `MediaLifecycle` | `NativeReadEpoch.current`, `LibraryCatalog.observeScope`, `PhotoAttachmentSource.read`, `publish`, browser `beginPhotoEdit`, `savePhotoEdit`, `cancelPhotoEdit`, `resultPhotoEdit` | Per-item permission, lifecycle/source revision, selected read, reviewed output, canceled temporary capture and active playback |
-| `DeviceActions` | `SmsSendJournal.beginDispatch`, `endDispatch`, `sentResult`, `status`, `existing`, telephony read epoch checks, `retainReminderCreation`, `checkReminderCreation`, `reconcileReminderCreations`, `ClockContract.receiver` | Image/permission/SIM gates, exact reviewed SMS binding, durable dispatch, multipart evidence, retired operation id, stale contacts, reminder creation recovery and revision-bound notification |
+| `ResetRecovery` | `ResetAuthorization.begin`, `confirm`, `authenticate`, `retire`, shared `DataReset.record`, `attempt`, `automaticAttemptAllowed`, `recordFailure`, `admitAndExit` | Activity-bound approval, durable pending marker, listener-first reset, bounded automatic retry, recovery surface, accepted dispatch and externally observed erasure |
+| `DeletionJournal` | `DeferredDeletionJournal.stage`, `undo`, `expire`, `list`, `acknowledge`, shared `DeferredDeletionCoordinator.reconcile`, `stageOwnerCurrent` | Durable intent, monotonic Undo window, changed boot, exact owner/source admission, dispatch uncertainty and retained no-replay receipt |
+| `MediaLifecycle` | `NativeReadEpoch.current`, `PermittedMediaCatalog`, `SelectedPhotoCopy.read`, browser `beginPhotoEdit`, `savePhotoEdit`, `cancelPhotoEdit`, `resultPhotoEdit` | Per-item permission, lifecycle/source revision, selected read, reviewed output, canceled temporary capture and active playback |
+| `DeviceActions` | `SmsSendJournal.beginDispatch`, `endDispatch`, `sentResult`, `status`, `existing`, telephony read epoch checks, `retainReminderCreation`, `checkReminderCreation`, `reconcileReminderCreations`, shared `ClockHandoff` | Image/permission/SIM gates, exact reviewed SMS binding, durable dispatch, multipart evidence, retired operation id, stale contacts, reminder creation recovery and revision-bound notification |
 | `RendererRecovery` | `RendererRecoveryBudget.onLoss`, `MainActivity.onRenderProcessGone`, delayed recreation and stock Settings actions | Three immediate losses, exact 60-second window, five-second backoff, HOME escape, duplicate callbacks and activity ownership |
 | `VadSegmentation` | `LiveVadGate.accept`, `close` | Two high windows to open, sixteen low windows to close, hysteresis thresholds, nonfinite values and counter reset |
-| `VoiceIpcAssembly` | `NativeVoiceIpc.exchange` | Handle ownership, deadline, response/chunk assembly, size limit, completion validation, first failure and cleanup |
-| `ListenerLeaseProducer` | SystemUI `AlphaListeningController`, `AlphaListeningLease` | Measured eligible surfaces, queued acknowledgements, target validation, client generation and lease retirement |
+| `VoiceIpcAssembly` | `BufferedStreamExchange.exchange` | Handle ownership, deadline, response/chunk assembly, size limit, completion validation, first failure and cleanup |
+| `ListenerLeaseProducer` | SystemUI `SenseListeningController`, `SenseListeningLease` | Measured eligible surfaces, queued acknowledgements, target validation, client generation and lease retirement |
 
 The reviewed source paths are listed as repository-relative paths in the
 manifest. Every callback accepting an identity has matching and stale scenarios.

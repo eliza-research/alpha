@@ -1,4 +1,4 @@
-/// NativeVoiceIpc.exchange owns one handle and assembles a bounded response without retry.
+/// BufferedStreamExchange.exchange owns one handle and assembles a bounded response without retry.
 module VoiceIpcAssembly {
   type State = {
     phase: str, active: int, foreignActive: bool, opened: bool, claimed: bool, cancelled: bool,
