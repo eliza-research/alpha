@@ -59,10 +59,10 @@ index 522bfb9..f2470cd 100644
                  type !== "phone_dial" &&
                  type !== "clock_alarm" &&
 diff --git a/plugins/plugin-assistant/src/services/device-actions/client-coordinator.ts b/plugins/plugin-assistant/src/services/device-actions/client-coordinator.ts
-index 6a6f778..98eb3bb 100644
+index 6a6f778..d96023c 100644
 --- a/plugins/plugin-assistant/src/services/device-actions/client-coordinator.ts
 +++ b/plugins/plugin-assistant/src/services/device-actions/client-coordinator.ts
-@@ -126,6 +126,15 @@ import {
+@@ -126,6 +126,17 @@ import {
    validateLibraryOperation,
    validateLibraryResult,
  } from "./photo-library-contract.ts";
@@ -71,14 +71,16 @@ index 6a6f778..98eb3bb 100644
 +  FILES_CAPABILITY,
 +  FILES_DIRECT_TYPES,
 +  type FilesAgentOperation,
++  type FilesIdentity,
 +  filesContextAllowed,
++  filesNeedsIdentity,
 +  isFilesOperation,
 +  validateFilesOperation,
 +} from "./files-browser-contract.ts";
  import {
    isReminderOperation,
    type ReminderOperation,
-@@ -223,6 +232,7 @@ export type DeviceOperation =
+@@ -223,6 +234,7 @@ export type DeviceOperation =
    | ClockHandoffOperation
    | MapsOperation
    | LibraryAgentOperation
@@ -86,7 +88,7 @@ index 6a6f778..98eb3bb 100644
    | ReminderOperation
    | NotesOperation
    | NativeNotesQueryOperation
-@@ -494,6 +504,7 @@ export function validateDeviceOperation(
+@@ -494,6 +506,7 @@ export function validateDeviceOperation(
    if (isClockHandoffOperation(p)) return validateClockHandoffDispatch(p);
    if (isMapsOperation(p)) return validateMapsOperation(p);
    if (isLibraryOperation(p)) return validateLibraryOperation(p);
@@ -94,7 +96,7 @@ index 6a6f778..98eb3bb 100644
    if (isReminderOperation(p)) return validateReminderOperation(p);
    if (isNotesOperation(p)) return validateNotesOperation(p);
    if (isCalendarOperation(p)) return validateCalendarOperation(p);
-@@ -774,6 +785,12 @@ export function assertProposalContext<C extends DeviceContextEnvelope>(
+@@ -774,6 +787,12 @@ export function assertProposalContext<C extends DeviceContextEnvelope>(
      assertClockHandoffTimeZone(operation, context.timeZone);
    if (isMapsOperation(operation)) assertMapsContext(operation, context, ports);
    if (isLibraryOperation(operation)) assertLibraryContext(context);
@@ -107,7 +109,20 @@ index 6a6f778..98eb3bb 100644
    if (isReminderOperation(operation)) assertReminderContext(operation, context);
    if (isNativeNotesQuery(operation)) assertNotesQueryContext(context);
    if (isNotesOperation(operation)) assertNotesContext(operation, context);
-@@ -1232,6 +1249,8 @@ export class DeviceActionCoordinator<
+@@ -1022,6 +1041,12 @@ export interface DeviceActionCoordinatorPorts<
+   reminderTimingV2?: boolean;
+   /** The agent negotiated reviewed reminder creation. */
+   reminderCreate?: boolean;
++  /**
++   * Reads each path's identity (size, modified time) as Files sees it now, in
++   * order; rejects when a path is missing. A Files move or trash is reviewable
++   * only with it, and carries it so the phone acts only on the reviewed files.
++   */
++  filesIdentity?(paths: string[], signal: AbortSignal): Promise<FilesIdentity[]>;
+   profile: DeviceActionClientProfile<C, R>;
+ }
+ type ExecutionResult = DeviceExecutionResult & {
+@@ -1232,6 +1257,8 @@ export class DeviceActionCoordinator<
        throw Error("Notes discovery was not negotiated with this agent");
      if (isLibraryOperation(op) && !this.capability(PHOTO_LIBRARY_CAPABILITY))
        throw Error("Device library access was not negotiated with this agent");
@@ -116,7 +131,7 @@ index 6a6f778..98eb3bb 100644
      if (
        isForegroundReviewOperation(op) &&
        (!foregroundReviewOperationAvailable(op, this.credential.capabilities) ||
-@@ -1407,6 +1426,7 @@ export class DeviceActionCoordinator<
+@@ -1407,6 +1434,7 @@ export class DeviceActionCoordinator<
        };
      if (isLibraryOperation(op))
        return { ...base, ...describeLibraryOperation(op, this.profile.appName) };
@@ -124,7 +139,44 @@ index 6a6f778..98eb3bb 100644
      const notesDestination =
        (op.type === "notes_delete" || op.type === "notes_update") &&
        !context.sensitive &&
-@@ -1576,6 +1596,7 @@ export class DeviceActionCoordinator<
+@@ -1516,8 +1544,35 @@ export class DeviceActionCoordinator<
+         });
+         continue;
+       }
++      // A Files move or trash binds the identity of each file as the card shows
++      // it; whatever identity the agent sent is replaced.
++      let reviewed = proposal;
++      if (
++        isFilesOperation(proposal.operation) &&
++        filesNeedsIdentity(proposal.operation)
++      ) {
++        const op = proposal.operation;
++        let operation: FilesAgentOperation | undefined;
++        try {
++          const identity = await this.ports.filesIdentity?.(op.paths, signal);
++          if (identity)
++            operation = validateFilesOperation({ ...op, reviewed: identity });
++        } catch {
++          operation = undefined;
++        }
++        signal.throwIfAborted();
++        if (!operation) {
++          items.push({
++            proposalId: proposal.id,
++            proposal: null,
++            notice: `${card.title}: These files are not in Files.`,
++          });
++          continue;
++        }
++        reviewed = { ...proposal, operation };
++      }
+       this.proposals.set(proposal.id, {
+-        proposal,
++        proposal: reviewed,
+         context: structuredClone(context),
+         requestKey: browserRequestKey,
+       });
+@@ -1576,6 +1631,7 @@ export class DeviceActionCoordinator<
        "browser_navigate",
        "camera_capture_photo",
        "photo_library_select",
@@ -188,10 +240,10 @@ index 7f26cf0..64d4ce6 100644
        return {
 diff --git a/plugins/plugin-assistant/src/services/device-actions/files-browser-contract.test.ts b/plugins/plugin-assistant/src/services/device-actions/files-browser-contract.test.ts
 new file mode 100644
-index 0000000..5cdcdf0
+index 0000000..39918cc
 --- /dev/null
 +++ b/plugins/plugin-assistant/src/services/device-actions/files-browser-contract.test.ts
-@@ -0,0 +1,84 @@
+@@ -0,0 +1,110 @@
 +import { describe, expect, it } from "vitest";
 +import { deviceOperationSupportedByCapabilities } from "./contract.ts";
 +import {
@@ -201,6 +253,7 @@ index 0000000..5cdcdf0
 +  FILES_OPERATION_SCHEMAS,
 +  FILES_OPERATION_TYPES,
 +  filesContextAllowed,
++  filesNeedsIdentity,
 +  isFilesOperation,
 +  validateFilesOperation,
 +} from "./files-browser-contract.ts";
@@ -220,6 +273,31 @@ index 0000000..5cdcdf0
 +      expect(valid).toEqual(op);
 +      expect(validateFilesOperation(valid)).toEqual(valid);
 +    }
++  });
++  it("carries the reviewed identity of each moved or trashed file", () => {
++    const reviewed = [{ size: 3, modified: 1_800_000_000_000 }, { size: 0, modified: 1 }];
++    for (const op of [
++      { type: "files_move", paths: ["Download/a.pdf", "Download/Folder"], dest: "Documents", reviewed },
++      { type: "files_trash", paths: ["Download/a.pdf", "Download/Folder"], reviewed },
++    ]) {
++      const valid = validateFilesOperation(op);
++      expect(valid).toEqual(op);
++      expect(validateFilesOperation(valid)).toEqual(valid);
++    }
++    for (const bad of [
++      { type: "files_trash", paths: ["a", "b"], reviewed: [{ size: 1, modified: 1 }] },
++      { type: "files_trash", paths: ["a"], reviewed: [{ size: -1, modified: 1 }] },
++      { type: "files_trash", paths: ["a"], reviewed: [{ size: 1, modified: 1.5 }] },
++      { type: "files_trash", paths: ["a"], reviewed: [{ size: 1, modified: 1, path: "a" }] },
++      { type: "files_move", paths: ["a"], dest: "", reviewed: {} },
++      { type: "files_share", paths: ["a"], reviewed: [{ size: 1, modified: 1 }] },
++    ])
++      expect(() => validateFilesOperation(bad)).toThrow();
++    expect(filesNeedsIdentity({ type: "files_trash", paths: ["a"] })).toBe(true);
++    expect(filesNeedsIdentity({ type: "files_share", paths: ["a"] })).toBe(false);
++    // The agent's tool schema never offers it.
++    for (const schema of FILES_OPERATION_SCHEMAS)
++      expect(Object.keys(schema.properties)).not.toContain("reviewed");
 +  });
 +  it("rejects escapes, duplicates, hidden folders, empty filters and extra fields", () => {
 +    for (const bad of [
@@ -278,10 +356,10 @@ index 0000000..5cdcdf0
 +});
 diff --git a/plugins/plugin-assistant/src/services/device-actions/files-browser-contract.ts b/plugins/plugin-assistant/src/services/device-actions/files-browser-contract.ts
 new file mode 100644
-index 0000000..6229771
+index 0000000..8d5ce57
 --- /dev/null
 +++ b/plugins/plugin-assistant/src/services/device-actions/files-browser-contract.ts
-@@ -0,0 +1,326 @@
+@@ -0,0 +1,374 @@
 +/**
 + * Files browser device operations (`files.browser.v1`).
 + *
@@ -297,6 +375,10 @@ index 0000000..6229771
 + *   leaves the phone. A move keeps both files when the name is taken; trash is
 + *   undoable from Files > Trash. A file that is no longer where the owner
 + *   reviewed it is left alone.
++ * - A move or trash carries `reviewed`: the identity (size, modified time) of
++ *   each path as the phone read it when the proposal card was built. The agent
++ *   never supplies it (the coordinator replaces whatever arrives), and the phone
++ *   leaves any file whose identity has changed since then untouched.
 + *
 + * Operations keep one flat shape, so a validated operation validates again
 + * unchanged (journal recovery re-reads it).
@@ -331,12 +413,20 @@ index 0000000..6229771
 +  from?: string;
 +  to?: string;
 +};
++/** What the owner reviewed for one path: its size in bytes (0 for a folder)
++ * and its modified time in milliseconds since the epoch. */
++export type FilesIdentity = { size: number; modified: number };
 +export type FilesAgentOperation =
 +  | FilesFilterOperation
 +  | { type: "files_open"; path: string }
 +  | { type: "files_share"; paths: string[] }
-+  | { type: "files_move"; paths: string[]; dest: string }
-+  | { type: "files_trash"; paths: string[] }
++  | {
++      type: "files_move";
++      paths: string[];
++      dest: string;
++      reviewed?: FilesIdentity[];
++    }
++  | { type: "files_trash"; paths: string[]; reviewed?: FilesIdentity[] }
 +  | { type: "files_folder_create"; parent: string; name: string };
 +
 +type Row = Record<string, unknown>;
@@ -383,6 +473,29 @@ index 0000000..6229771
 +  const out = value.map((item) => validFilesPath(item));
 +  if (new Set(out).size !== out.length) throw Error("Duplicate files");
 +  return out;
++}
++function identities(value: unknown, count: number): FilesIdentity[] {
++  if (!Array.isArray(value) || value.length !== count)
++    throw Error("Invalid reviewed files");
++  return value.map((item) => {
++    const identity = row(item);
++    exact(identity, ["size", "modified"]);
++    const { size, modified } = identity;
++    if (
++      !Number.isSafeInteger(size) ||
++      (size as number) < 0 ||
++      !Number.isSafeInteger(modified) ||
++      (modified as number) < 0
++    )
++      throw Error("Invalid reviewed files");
++    return { size: size as number, modified: modified as number };
++  });
++}
++/** Files operations that change files the owner reviewed by identity. */
++export function filesNeedsIdentity(
++  op: FilesAgentOperation,
++): op is Extract<FilesAgentOperation, { type: "files_move" | "files_trash" }> {
++  return op.type === "files_move" || op.type === "files_trash";
 +}
 +function isoDate(value: unknown): string {
 +  if (
@@ -446,16 +559,29 @@ index 0000000..6229771
 +    case "files_share":
 +      exact(op, ["type", "paths"]);
 +      return { type: "files_share", paths: paths(op.paths) };
-+    case "files_trash":
-+      exact(op, ["type", "paths"]);
-+      return { type: "files_trash", paths: paths(op.paths) };
-+    case "files_move":
-+      exact(op, ["type", "paths", "dest"]);
++    case "files_trash": {
++      exact(op, ["type", "paths", "reviewed"]);
++      const list = paths(op.paths);
++      return {
++        type: "files_trash",
++        paths: list,
++        ...(op.reviewed === undefined
++          ? {}
++          : { reviewed: identities(op.reviewed, list.length) }),
++      };
++    }
++    case "files_move": {
++      exact(op, ["type", "paths", "dest", "reviewed"]);
++      const list = paths(op.paths);
 +      return {
 +        type: "files_move",
-+        paths: paths(op.paths),
++        paths: list,
 +        dest: validFilesPath(op.dest, true),
++        ...(op.reviewed === undefined
++          ? {}
++          : { reviewed: identities(op.reviewed, list.length) }),
 +      };
++    }
 +    case "files_folder_create": {
 +      exact(op, ["type", "parent", "name"]);
 +      const name = validFilesName(op.name);

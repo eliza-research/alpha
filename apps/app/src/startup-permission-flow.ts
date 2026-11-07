@@ -29,7 +29,8 @@ export function startupPhotoAccess(value: unknown) {
 }
 
 /** Files all-files access (decision F1). The step opens Android's "All files access" page, which
- * returns to Alpha; access is read back then. Android 10 has no such access, so nothing is asked. */
+ * returns to Alpha; access is read back then. Android 10 (API 29) has no such access: native asks
+ * for READ_/WRITE_EXTERNAL_STORAGE (legacy storage) and reports them as this access. */
 export function startupFilesAccess(value: unknown) {
   const row = value as {access?: unknown} | null;
   if (!row || typeof row.access !== 'string' || !['granted', 'denied', 'unsupported'].includes(row.access)) throw Error('Files access unavailable');

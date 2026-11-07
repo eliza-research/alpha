@@ -58,6 +58,18 @@ function fakeHost(){
  await assert.rejects(library.agent.runView({type:'photos_share',ids:['lib:i:3:30']},signal),/Finish the open review/);
  library.reviewCard().cancel();assert.equal(library.reviewCard(),undefined);
  await assert.rejects(library.agent.run({type:'photo_library_review',action:'trash',items:[{id:'lib:i:3:30',revision:'rev-zz-999'}]},signal),/changed since/);
+ // Two reviews racing through validation: only the first opens. Leaving Photos during validation opens none.
+ {
+  const gate=[];const validate=port.validate;port.validate=async options=>{await new Promise(resolve=>gate.push(resolve));return validate(options);};
+  const first=library.agent.run(review,signal),second=library.agent.run(review,signal);await tick();
+  assert.equal(gate.length,2,'both are validating');gate.splice(0).forEach(resolve=>resolve());
+  const outcomes=await Promise.allSettled([first,second]);
+  assert.deepEqual(outcomes.map(o=>o.status),['fulfilled','rejected']);assert.match(String(outcomes[1].reason?.message),/Finish the open review/);
+  library.reviewCard().cancel();
+  const left=library.agent.run(review,signal);await tick();library.leave();gate.splice(0).forEach(resolve=>resolve());
+  await assert.rejects(left,/Open Photos, then ask again/);assert.equal(library.reviewCard(),undefined,'no review reappears after leaving');
+  port.validate=validate;
+ }
  const selected=await library.agent.run({type:'photo_library_select',ids:['lib:i:3:30','lib:i:9:90']},signal);
  assert.deepEqual(selected,{kind:'photo_library_select',selected:2,missing:0});
  // Select and review need Photos on screen.
@@ -110,6 +122,12 @@ function fakeHost(){
  // While the host's album or share review waits, no second review opens.
  host.pending=true;
  await assert.rejects(library.agent.run({type:'photo_library_select',ids:['lib:i:3:30']},signal),/Finish the open review/);
+ // Nor does the agent navigate under it (AgentOpen: review.ids = {}); the read-only filter still works.
+ const before=host.calls.length;
+ await assert.rejects(library.agent.runView({type:'photos_open',id:'lib:i:3:30'},signal),/Finish the open review/);
+ await assert.rejects(library.agent.runView({type:'photos_share',ids:['lib:i:3:30']},signal),/Finish the open review/);
+ assert.deepEqual(await library.agent.runView({type:'photos_filter',kind:'video'},signal),{kind:'photos_filter',shown:2,more:false});
+ assert.deepEqual(host.calls.slice(before).map(call=>call.type),['photos_filter']);
  host.pending=false;
  // A review binds the revisions the assistant read; the provider confirms they are current before it opens.
  const search=await library.agent.run({type:'photo_library_search',limit:3},signal);

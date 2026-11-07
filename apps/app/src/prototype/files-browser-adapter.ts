@@ -6,7 +6,7 @@ import {
   parentOf, sortEntries, trashDaysLeft, validateFilesFilter,
   type CategoryFolder, type FilesCategory, type FilesFilter, type SortMode, type StorageEntry, type StorageVolume, type TrashEntry,
 } from '../runtime/files-storage';
-import {filesFilterOf, registerFilesAgent, type FilesAgentOperation} from '../runtime/files-agent-contract';
+import {filesFilterOf, registerFilesAgent, type FilesAgentOperation, type FilesIdentity} from '../runtime/files-agent-contract';
 
 /**
  * Files (design/view-refresh-2026-11/PLAN.md section 4; checked model
@@ -26,10 +26,13 @@ const storage = registerPlugin<{
   /** `count` and `folders` cover the whole category; `entries` may be its newest part (`truncated`). */
   storageCategory(input: {category: FilesCategory}): Promise<Result & {entries?: StorageEntry[]; count?: number; truncated?: boolean; folders?: CategoryFolder[]}>;
   storageQuery(input: {text?: string; mimePrefix?: string; documents?: boolean; folders?: boolean; folder?: string; from?: number; to?: number}): Promise<Result & {entries?: StorageEntry[]}>;
-  storageTransfer(input: {paths: string[]; dest: string; copy: boolean; volume?: string}): Promise<Result & {outcomes?: Outcome[]}>;
+  /** `expect` (one identity per path) leaves any path whose size or modified time differs untouched ("changed"). */
+  storageTransfer(input: {paths: string[]; dest: string; copy: boolean; volume?: string; expect?: FilesIdentity[]}): Promise<Result & {outcomes?: Outcome[]}>;
+  /** Each path's identity, in order; `missing` when it is not there. */
+  storageIdentity(input: {paths: string[]; volume?: string}): Promise<Result & {identities?: (FilesIdentity & {missing?: boolean})[]}>;
   storageRename(input: {path: string; name: string; volume?: string}): Promise<Result & {path?: string}>;
   storageCreateFolder(input: {parent: string; name: string; volume?: string}): Promise<Result & {path?: string}>;
-  storageTrash(input: {paths: string[]; volume?: string}): Promise<Result & {outcomes?: Outcome[]}>;
+  storageTrash(input: {paths: string[]; volume?: string; expect?: FilesIdentity[]}): Promise<Result & {outcomes?: Outcome[]}>;
   storageTrashList(input?: {volume?: string}): Promise<Result & {items?: TrashEntry[]}>;
   storageRestore(input: {ids: string[]; volume?: string}): Promise<Result & {outcomes?: Outcome[]}>;
   storageEmptyTrash(input: {ids?: string[]; confirmed: boolean; volume?: string}): Promise<Result & {count?: number}>;
@@ -329,12 +332,21 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
       }
       if (op.type === 'files_share') { const value = await storage.storageShare({paths: op.paths}); return value.status === 'opened' ? {status: 'succeeded', summary: 'Opened the share sheet. Nothing is sent until you pick an app.'} : {status: 'failed', summary: value.message || 'Sharing could not open.'}; }
       if (op.type === 'files_folder_create') { const value = await storage.storageCreateFolder({parent: op.parent, name: op.name}); void reload(); return value.status === 'ready' ? {status: 'succeeded', summary: 'Created ' + (value.path || op.name) + '.'} : {status: 'failed', summary: value.message || 'The folder was not created.'}; }
-      const value = op.type === 'files_move' ? await storage.storageTransfer({paths: op.paths, dest: op.dest, copy: false}) : await storage.storageTrash({paths: op.paths});
+      // Only the files the owner reviewed: each must still have the identity read for the card.
+      if (!op.reviewed || op.reviewed.length !== op.paths.length) return {status: 'failed', summary: 'Nothing was changed.'};
+      const value = op.type === 'files_move' ? await storage.storageTransfer({paths: op.paths, dest: op.dest, copy: false, expect: op.reviewed}) : await storage.storageTrash({paths: op.paths, expect: op.reviewed});
       void reload();
       if (value.status !== 'ready') return {status: 'failed', summary: value.message || 'Nothing was changed.'};
       const done = (value.outcomes || []).filter(o => o.status === (op.type === 'files_move' ? 'moved' : 'trashed')).length;
-      // Files that are no longer where the owner reviewed them are left alone (AgentMoveOnlyReviewed).
-      return {status: done ? 'succeeded' : 'failed', summary: op.type === 'files_move' ? `Moved ${done} of ${op.paths.length}.` : `Moved ${done} of ${op.paths.length} to Trash. Restore from Files › Trash.`};
+      // Files that are no longer where the owner reviewed them, or no longer the same files
+      // ("changed"), are left alone (AgentMoveOnlyReviewed).
+      return {status: done ? 'succeeded' : 'failed', summary: op.type === 'files_move' ? `Moved ${done} of ${op.paths.length}.` : `Moved ${done} of ${op.paths.length} to Trash.`};
+    },
+    async identity(paths: string[]) {
+      const value = await storage.storageIdentity({paths});
+      const rows = value.identities || [];
+      if (value.status !== 'ready' || rows.length !== paths.length || rows.some(row => row.missing)) throw Error('Files are not there');
+      return rows.map(row => ({size: row.size, modified: row.modified}));
     },
   });
 

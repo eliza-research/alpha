@@ -586,7 +586,9 @@ test("restart runner wires the migration, crash-log, theme and source-reference 
 });
 
 test("round-9 journeys and links: J01, J05, the note link and the Maps return are registered offline", () => {
-  for (const [name, gate] of [["PosterCalendarJourney", "posterJourney"], ["JourneyJ05", "journeyJ05"], ["Maps", "mapsEventReturn"]]) {
+  // J01 drives Camera UI the view refresh removed; it is listed as not run until it is rewritten.
+  assert.ok(Object.hasOwn(NOT_RUN_BY_A_RUNNER, "PosterCalendarJourney") && !Object.hasOwn(CLASS_REGISTRY, "PosterCalendarJourney"));
+  for (const [name, gate] of [["JourneyJ05", "journeyJ05"], ["Maps", "mapsEventReturn"]]) {
     assert.equal(CLASS_REGISTRY[name].args[gate], "1", `${name} passes ${gate}`);
     assert.ok(gateRead(sourceOf(name), gate, "1"), `${name} reads ${gate}`);
     assert.ok(!DEFAULT_CLASSES.includes(name), `${name} is not a default class`);
@@ -603,4 +605,14 @@ test("round-9 journeys and links: J01, J05, the note link and the Maps return ar
   // BrowserPageQuestion and the journey built on it name no public host.
   for (const name of ["BrowserPageQuestion", "JourneyJ05"]) assert.ok(!/example\.com|www\.google\.com/.test(sourceOf(name)), `${name} contacts no public host`);
   assert.doesNotMatch(CLASS_REGISTRY.BrowserPageQuestion.note, /needs network|example\.com/);
+});
+
+test("no registered instrumented class drives a control the view refresh removed", () => {
+  // Files' SAF folder tree, Camera's Scan mode and its Choose image picker are gone from the renderer.
+  const removed = ["Choose folder", "Scan mode", "Choose image"];
+  for (const name of Object.keys(CLASS_REGISTRY)) {
+    const java = sourceOf(name);
+    for (const label of removed) assert.ok(!java.includes(`"${label}"`), `${name} still clicks "${label}"`);
+  }
+  for (const label of removed) assert.equal(fs.readFileSync("apps/app/src/prototype/template.html", "utf8").includes(label), false, `the renderer has no "${label}"`);
 });
