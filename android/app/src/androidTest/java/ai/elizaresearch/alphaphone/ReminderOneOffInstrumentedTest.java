@@ -31,10 +31,10 @@ public class ReminderOneOffInstrumentedTest {
    AppNavigation.liveMode();ReminderTestAccess.channel(c);assertTrue("Notifications must be granted by external runner",ReminderTestAccess.allowed(c));
    JSONObject created=ReminderTestAccess.schedule(c,id,"One-time native fixture "+id,"Owned one-off test",System.currentTimeMillis()+10000);
    String occurrence=created.getString("occurrenceId");assertFalse(created.has("recurrence"));state(id,"posted");
-   StatusBarNotification posted=notification(id);assertNotNull("Real AlarmManager notification required",posted);assertEquals(2,posted.getNotification().actions.length);
-   posted.getNotification().actions[1].actionIntent.send();JSONObject snoozed=state(id,"scheduled");long deadline=snoozed.getLong("at");
+   StatusBarNotification posted=notification(id);assertNotNull("Real AlarmManager notification required",posted);
+   ReminderNotificationActions.intent(posted,ReminderNotificationActions.SNOOZE).send();JSONObject snoozed=state(id,"scheduled");long deadline=snoozed.getLong("at");
    assertEquals(occurrence,snoozed.getString("occurrenceId"));assertTrue(deadline>System.currentTimeMillis()+590000);assertEquals(created.getLong("dueAt"),snoozed.getLong("dueAt"));
-   posted.getNotification().actions[1].actionIntent.send();InstrumentationRegistry.getInstrumentation().waitForIdleSync();assertEquals("Duplicate snooze cannot move deadline",deadline,ReminderTestAccess.read(c,id).getLong("at"));
+   ReminderNotificationActions.intent(posted,ReminderNotificationActions.SNOOZE).send();InstrumentationRegistry.getInstrumentation().waitForIdleSync();assertEquals("Duplicate snooze cannot move deadline",deadline,ReminderTestAccess.read(c,id).getLong("at"));
    posted.getNotification().contentIntent.send();ReminderUiTestDriver.assertStaleTapRetained(c);ReminderUiTestDriver.openCurrent("One-time native fixture "+id);until("document.body.innerText.includes('Snoozed until') && document.body.innerText.includes('One-time reminder') && document.querySelector('button[aria-label=\"Complete reminder occurrence\"]')");
    WebViewTestDriver.evaluate("document.querySelector('button[aria-label=\"Complete reminder occurrence\"]').click()");
    JSONObject complete=state(id,"completed");assertEquals(id,complete.getString("id"));assertEquals(occurrence,complete.getString("occurrenceId"));assertEquals(1,complete.getJSONArray("history").length());assertFalse(complete.has("recurrence"));assertNull(notification(id));
@@ -42,7 +42,7 @@ public class ReminderOneOffInstrumentedTest {
    WebViewTestDriver.evaluate(AppNavigation.request("Home"));until(AppNavigation.selected("Home"));
    until("[...document.querySelectorAll('button[aria-label]')].some(e=>e.getClientRects().length&&(e.getAttribute('aria-label')==='Open your calendar'||e.getAttribute('aria-label').startsWith('Open calendar event: ')))");
    assertEquals("A completed reminder with future snooze time is not an upcoming Home event","false",WebViewTestDriver.evaluate("[...document.querySelectorAll('button[aria-label]')].some(e=>e.getClientRects().length&&e.getAttribute('aria-label')==="+JSONObject.quote("Open calendar event: One-time native fixture "+id)+")"));
-   posted.getNotification().actions[0].actionIntent.send();posted.getNotification().actions[1].actionIntent.send();InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+   ReminderNotificationActions.intent(posted,ReminderNotificationActions.DONE).send();ReminderNotificationActions.intent(posted,ReminderNotificationActions.SNOOZE).send();InstrumentationRegistry.getInstrumentation().waitForIdleSync();
    assertEquals("Old decisions cannot reopen or duplicate completion",complete.toString(),ReminderTestAccess.read(c,id).toString());
    ReminderTestAccess.restore(c);ReminderTestAccess.deliver(c,id,occurrence);assertNull(notification(id));assertEquals(complete.toString(),ReminderTestAccess.read(c,id).toString());
    scenario.diagnosticCheckpoint("oneoff-before-recreate");scenario.recreate();scenario.diagnosticCheckpoint("oneoff-after-recreate-before-content-intent");AppNavigation.liveMode();ReminderUiTestDriver.openCurrent("One-time native fixture "+id);scenario.diagnosticCheckpoint("oneoff-after-current-selection");until("document.body.innerText.includes('no further alarm scheduled') && document.body.innerText.includes(' · due ')");assertEquals(complete.toString(),ReminderTestAccess.read(c,id).toString());

@@ -36,9 +36,9 @@ import org.junit.runner.RunWith;
 public final class AccessibilityInstrumentedTest {
  /**
   * One connection for the whole test. A UiAutomation connected without this flag suspends every
-  * other accessibility service for as long as it is connected, which would unbind the stand-in
-  * screen reader; asking for a connection with different flags drops and reconnects it. UiDevice
-  * is given the same flags through Configurator.
+  * other accessibility service for as long as it is connected, which would unbind a real screen
+  * reader such as TalkBack when one is on; asking for a connection with different flags drops and
+  * reconnects it. UiDevice is given the same flags through Configurator.
   */
  private static final int AUTOMATION_FLAGS=android.app.UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES;
  private static android.app.UiAutomation automation(){return InstrumentationRegistry.getInstrumentation().getUiAutomation(AUTOMATION_FLAGS);}
@@ -124,9 +124,9 @@ public final class AccessibilityInstrumentedTest {
   androidx.test.uiautomator.Configurator configurator=androidx.test.uiautomator.Configurator.getInstance();
   int previousFlags=configurator.getUiAutomationFlags();
   configurator.setUiAutomationFlags(AUTOMATION_FLAGS);
-  // AndroidShade shares the same connection: with its default flags each shade check reconnected
-  // UiAutomation with accessibility services suppressed, which unbound the stand-in screen reader in
-  // the middle of the click loop (emulator campaign of 2026-10-14: "running services: []" after 19 attempts).
+  // AndroidShade shares the same connection: with its default flags each shade check reconnects
+  // UiAutomation with accessibility services suppressed, which would unbind a running screen reader
+  // such as TalkBack in the middle of the journey.
   AndroidShade.useAutomationFlags(AUTOMATION_FLAGS);
   String previous=shell("settings get system font_scale");
   UiDevice device=UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
@@ -151,7 +151,6 @@ public final class AccessibilityInstrumentedTest {
     // one notification surface: Alpha draws none, in either flavor.
     until(AndroidShade.ALPHA_SHADE_ABSENT);
     Rect web=device.findObject(By.clazz("android.webkit.WebView")).getVisibleBounds();
-    float css=web.width()/Float.parseFloat(js("window.innerWidth"));
     // 1. A swipe from the very top edge belongs to Android in both flavors and opens Android's shade.
     device.swipe(web.centerX(),2,web.centerX(),web.top+web.height()/2,20);
     assertTrue("A top-edge swipe opens Android's own shade",AndroidShade.waitOpen(5000));
