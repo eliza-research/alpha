@@ -1,4 +1,4 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {join,resolve} from 'node:path';import {execFileSync} from 'node:child_process';
+import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {join,resolve} from 'node:path';import {execFileSync} from 'node:child_process';import {located} from './fixtures/source-text.mjs';
 // Device photo/video library rules (issue 408). Source-level: this proves the renderer contract and
 // the native source shape, not Android behaviour (see PhotoLibraryInstrumentedTest for that).
 const m=await import('../apps/app/src/runtime/photo-library.ts');
@@ -217,7 +217,7 @@ test('agent album observes only while open and falls back to a bounded fresh cat
  // The shared catalog registers its MediaStore observer only while some view watches (tested upstream).
  assert.match(java,/out\.put\("reset",true\)/);
  assert.match(adapter,/watch\(!!scope && scope.scope !== 'denied' && !scope.locked\)/);
- const agent=adapter.slice(adapter.indexOf('const agent: LibraryAgent'),adapter.indexOf('mountedAgent = agent;'));
+ const agent=located(adapter,'const agent: LibraryAgent','mountedAgent = agent;');
  assert.doesNotMatch(agent,/query/);
 });
 
