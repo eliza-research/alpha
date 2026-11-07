@@ -3418,6 +3418,8 @@ export function ConnectionChooser() {
     {snapshot.busy&&!ownKeySaving&&<>{snapshot.message&&<p role="status">{snapshot.message}</p>}<div className="alpha-form-actions"><button type="button" className="alpha-btn alpha-btn--text alpha-btn--quiet" onClick={()=>connectionController.cancel()}>Cancel</button></div></>}
   </div></div>;
   const requiredSignInView: SignInView = snapshot.signIn ?? { step: 'choose', environment: residentEnvironment() };
+  // The resident can start behind Welcome. Its failure does not describe an account or sign-in failure.
+  const signInError = requiredSignInView.step==='choose'&&!snapshot.cloudAccount&&snapshot.error===residentStartFailure?'':snapshot.error;
   // Own API keys are offered where Cloud sign-in is the first step, never when sign-in was opened
   // for the Cloud account or plan, or while own keys are already selected.
   const offerOwnKeys=(productionSignInRequired||(!ownProviderSelected(snapshot)&&snapshot.purpose!=='cloud-account'&&snapshot.purpose!=='plan'))&&requiredSignInView.step==='choose';
@@ -3429,8 +3431,8 @@ export function ConnectionChooser() {
     onSave={(key,voice)=>{setOwnKeyAttempted(true);return connectionController.configureLocal(key,LOCAL_PROVIDER_MODEL,voice,{onboarding:true});}}
     onCancel={()=>{setOwnKeyEntry(false);setOwnKeyAttempted(false);connectionController.dismissError();const current=connectionController.getSnapshot();if(!current.signIn&&!current.busy)void connectionController.beginSignIn(residentEnvironment(),false,true);}}/>:undefined;
   if (signInPageShown) return <div className={signInPage?'alpha-auth-page':'alpha-connection-scrim'}><div className={`alpha-connection alpha-connection-native alpha-cloud-sign-in${signInPage?' alpha-auth-content':''}`} role={signInPage?'main':'dialog'} aria-modal={signInPage?undefined:true} aria-labelledby="cloud-sign-in-title" aria-busy={snapshot.busy||undefined} tabIndex={-1} ref={panel}>
-    <CloudSignInPanel phone={cloudSignInPhone && inAppPhone} emailEnabled={inAppEmail} view={requiredSignInView} busy={snapshot.busy} ready={!!snapshot.signIn} dismissible={!signInPage} google={inAppGoogle} message={snapshot.message} error={snapshot.error} errorIsNotice={snapshot.error===RESIDENT_UNPACKAGED}
-      probing={probing} unavailable={!snapshot.signIn&&!snapshot.busy&&(!!snapshot.error||automaticSignInProbe.current)}
+    <CloudSignInPanel phone={cloudSignInPhone && inAppPhone} emailEnabled={inAppEmail} view={requiredSignInView} busy={snapshot.busy} ready={!!snapshot.signIn} dismissible={!signInPage} google={inAppGoogle} message={snapshot.message} error={signInError} errorIsNotice={signInError===RESIDENT_UNPACKAGED}
+      probing={probing} unavailable={!snapshot.signIn&&!snapshot.busy&&(!!signInError||automaticSignInProbe.current)}
       ownKeys={offerOwnKeys?()=>{connectionController.dismissError();setOwnKeyAttempted(false);setOwnKeyEntry(true);}:undefined} alternate={ownKeyForm}
       actions={{phone:number=>void connectionController.signInPhone(number),google:()=>void connectionController.signInGoogle(),email:address=>void connectionController.signInEmail(address),verify:code=>void connectionController.verifySignInCode(code),resend:()=>void connectionController.resendSignInCode(),cancel:()=>connectionController.cancelSignIn(),reopenGoogle:()=>void connectionController.reopenGoogle(),retry:()=>void connectionController.beginSignIn(requiredSignInView.environment,true)}}
       extra={signInExtra}/>
