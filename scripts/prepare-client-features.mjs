@@ -253,6 +253,7 @@ export const CLIENT_FEATURE_PATHS = [
   'plugins/plugin-assistant/src/services/device-actions/workflow-contract.ts',
   'plugins/plugin-assistant/src/services/device-actions/camera-contract.ts',
   'plugins/plugin-assistant/src/services/device-actions/photo-library-contract.ts',
+  'plugins/plugin-assistant/src/services/device-actions/photos-view-contract.ts',
   'plugins/plugin-native-camera/src/definitions.ts',
   'plugins/plugin-native-camera/src/host-ports.ts',
   'plugins/plugin-native-camera/src/session.ts',

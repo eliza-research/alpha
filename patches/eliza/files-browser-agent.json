@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "baseCommit": "80a81a6ca1dc7d327ea55f758117b19ee29e31af",
+  "baseCommit": "7ce87b1e8daca847bd4c6d983856d2416e9c59af",
   "status": "proposed-upstream",
   "purpose": "files.browser.v1 device operations (files_filter, files_open, reviewed files_share/files_move/files_trash/files_folder_create): shared contract, agent tool schema and capability gating, service admission and the phone-side coordinator. Not applied by any build until it lands as a reviewed upstream commit and the pin moves.",
   "patches": [

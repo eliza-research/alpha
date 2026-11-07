@@ -9,7 +9,7 @@ import {
   LibraryRevisions, parsePage, parseScope, parseValidation, parseItem, prepareReview, modelItem, modelSearchResult, LIBRARY_LIMITS,
   type LibraryReview, type LibraryScopeState, type LibraryItem, type LibraryChange, type LibraryAgentOperation, type LibraryAgentResult,
 } from '../runtime/photo-library';
-import type { PhotosViewOperation, PhotosViewResult } from '../runtime/photos-view-contract';
+import type { PhotosViewOperation, PhotosViewResult } from '../../../../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/photos-view-contract.ts';
 
 type Bag = Record<string, any>;
 type Items = { items: { id: string; revision: string }[] };

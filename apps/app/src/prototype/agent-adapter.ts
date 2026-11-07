@@ -48,7 +48,7 @@ import { Capacitor } from '@capacitor/core';
 import { isMapsOperation } from '../runtime/maps-contract';
 import { readMapsSelection } from '../maps/agent-context';
 import { isLibraryOperation, type LibraryAgentResult } from '../runtime/photo-library';
-import { isPhotosViewOperation } from '../runtime/photos-view-contract';
+import { isPhotosViewOperation } from '../../../../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/photos-view-contract.ts';
 import { isFilesOperation, filesContextAllowed, type FilesAgentRunner } from '../../../../.eliza/client-features/plugins/plugin-files/src/browser/files-agent-contract.ts';
 import { deviceLibraryAgent, LibraryAgentRefusal } from './photo-library-adapter';
 import {isReminderOperation,validateReminderResult} from '../../../../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/reminder-contract.ts';

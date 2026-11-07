@@ -3,7 +3,7 @@
   "reference": "ELIZA_MOBILE_PRODUCT",
   "ceiling": {
     "differences": 17,
-    "modules": 555
+    "modules": 554
   },
   "differences": {
     "view:clock:only-b": "Eliza offers Clock; Alpha hands alarms and timers to the Android clock (clock.handoff) without a Clock view.",
@@ -335,7 +335,6 @@
     "apps/app/src/prototype/dc-lite.js",
     "apps/app/src/prototype/file-email-review.ts",
     "apps/app/src/prototype/files-index.ts",
-    "apps/app/src/prototype/files-tree-adapter.ts",
     "apps/app/src/prototype/fixtures.empty.js",
     "apps/app/src/prototype/fixtures.js",
     "apps/app/src/prototype/home-cards.ts",
