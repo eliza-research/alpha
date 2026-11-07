@@ -63,7 +63,7 @@ canonical HTTPS origins on the default port, without base paths or credentials.
 Alpha retains its own package/client ID and `/alphaphone/auth/callback` return
 path. The configured deployment must register that client, approve its callback
 and publish the app's signing certificate in its web host's assetlinks document.
-`ELIZAOS_APP_LINK_HOST`, when enabled, must equal the configured production web
+`ELIZAOS_APP_LINK_HOST`, if set, must equal the configured production web
 host. The staging return uses the configured staging web host in test-mocks
 builds only. Changing the backend does not import another product's identity.
 

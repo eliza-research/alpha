@@ -33,7 +33,7 @@ public final class CloudSignInCallbackInstrumentedTest {
 
  private static void holdFor(long millis) { SystemClock.sleep(millis); }
 
- /** The return resolves to MainActivity only, at one exact path; eliza.app only in builds with ELIZAOS_APP_LINK_HOST=eliza.app. */
+ /** The return resolves to MainActivity only, at one exact path, on the build's App Link host (production.web). */
  @Test public void returnLinkResolvesOnlyToMainActivity() {
   PackageManager packages = context().getPackageManager();
   Intent link = new Intent(Intent.ACTION_VIEW, Uri.parse(callback(CloudSignInFlow.newState()))).addCategory(Intent.CATEGORY_BROWSABLE).setPackage(context().getPackageName());

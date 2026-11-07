@@ -68,7 +68,7 @@ export const DISTRIBUTION_POLICY = Object.freeze({
  * Pure release-policy assessment. `apk` holds aapt dumps, zip entry names and
  * the development class names found in dex. Returns `{ facts, problems }`.
  * The upstream inspection applies DISTRIBUTION_POLICY; the Power entry's
- * component kind and the Quick Settings tile shape are Alpha's own checks.
+ * component kind and the Quick Settings tile shape and target are Alpha's own checks.
  */
 export function distributionProblems(apk, { mode, testMocks = false } = {}) {
   const { facts, problems } = apkDistributionProblems(
@@ -80,6 +80,9 @@ export function distributionProblems(apk, { mode, testMocks = false } = {}) {
   if (facts.exported.some(component => component.name === powerName && component.tag !== "activity"))
     problems.push("AlphaPowerVoiceActivity must be an activity");
   const tileName = "ai.elizaresearch.alphaphone.AlphaQuickSettingsTile";
+  const assistName = "ai.elizaresearch.alphaphone.AlphaAssistActivity";
+  // aapt prints android:enabled="false" as (type 0x12)0x0; a missing attribute means enabled.
+  const enabled = node => node && !["0x0", "false"].includes(node.attrs.enabled);
   const tile = facts.components.find(component => component.name === tileName);
   if (tile) {
     const application = parseXmlTree(apk.xml).children.find(node => node.name === "manifest")
@@ -92,6 +95,12 @@ export function distributionProblems(apk, { mode, testMocks = false } = {}) {
         tile.permission !== EXPORTED_COMPONENTS[tileName] || nodes.length !== 1 ||
         actions.length !== 1 || actions[0] !== "android.service.quicksettings.action.QS_TILE")
       problems.push("Alpha Quick Settings tile must be one exported, permission-protected QS_TILE service");
+    // The tile's only target is AlphaAssistActivity (AlphaQuickSettingsTile.entryIntent); a tile that
+    // can be tapped while that activity is disabled or absent opens nothing.
+    const assist = application?.children.find(node => node.name === "activity" &&
+      (node.attrs.name === assistName || node.attrs.name === ".AlphaAssistActivity"));
+    if (enabled(nodes[0]) && !enabled(assist))
+      problems.push("Alpha Quick Settings tile must be disabled while AlphaAssistActivity is disabled");
   }
   return { facts, problems };
 }
