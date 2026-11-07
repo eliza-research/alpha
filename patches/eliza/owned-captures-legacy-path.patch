@@ -1,0 +1,81 @@
+--- a/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/OwnedCaptures.java
++++ b/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/OwnedCaptures.java
+@@ -62,11 +62,20 @@
+     return new Result(true, id, null);
+   }
+ 
++  /** The capture of one operation, in the current capture folder or an earlier one of this host. */
+   private Cursor lookup(String operation) throws IOException {
++    java.util.List<String> paths = new java.util.ArrayList<>();
++    paths.add(config.captureRelativePath);
++    paths.addAll(config.legacyCaptureRelativePaths);
++    java.util.List<String> args = new java.util.ArrayList<>();
++    args.add(owner);
++    args.add(config.captureName(operation));
++    args.addAll(paths);
++    String placeholders = String.join(",", java.util.Collections.nCopies(paths.size(), "?"));
+     Cursor row = resolver.query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+         new String[] {"_id", "is_pending"},
+-        "owner_package_name=? AND _display_name=? AND relative_path=?",
+-        new String[] {owner, config.captureName(operation), config.captureRelativePath}, null);
++        "owner_package_name=? AND _display_name=? AND relative_path IN (" + placeholders + ")",
++        args.toArray(new String[0]), null);
+     if (row == null)
+       throw new IOException("Capture lookup is unavailable");
+     return row;
+--- a/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/OwnedMediaConfig.java
++++ b/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/OwnedMediaConfig.java
+@@ -20,6 +20,11 @@
+   public final String editNamePrefix;
+   public final String captureRelativePath;
+   public final String captureNamePrefix;
++  /**
++   * Earlier capture folders of this host, newest first. A keep reserved under one of them before
++   * the host moved its capture folder is still found there, never published a second time.
++   */
++  public final java.util.List<String> legacyCaptureRelativePaths;
+   /** MediaStore placement of video edit copies, or null when the host does not edit videos. */
+   public final String videoEditRelativePath;
+   public final String videoEditNamePrefix;
+@@ -30,6 +35,8 @@
+     editNamePrefix = builder.editNamePrefix;
+     captureRelativePath = builder.captureRelativePath;
+     captureNamePrefix = builder.captureNamePrefix;
++    legacyCaptureRelativePaths =
++        java.util.Collections.unmodifiableList(new java.util.ArrayList<>(builder.legacyCaptureRelativePaths));
+     videoEditRelativePath = builder.videoEditRelativePath;
+     videoEditNamePrefix = builder.videoEditNamePrefix;
+   }
+@@ -100,6 +107,7 @@
+     private final String namespace;
+     private String editRelativePath, editNamePrefix, captureRelativePath, captureNamePrefix;
+     private String videoEditRelativePath, videoEditNamePrefix;
++    private final java.util.List<String> legacyCaptureRelativePaths = new java.util.ArrayList<>();
+ 
+     private Builder(String namespace) {
+       if (namespace == null || !NAMESPACE.matcher(namespace).matches())
+@@ -118,6 +126,16 @@
+       captureNamePrefix = prefix(namePrefix);
+       return this;
+     }
++    /**
++     * An earlier RELATIVE_PATH of kept captures (same display-name prefix). Lookups of a reserved
++     * keep also search it; new keeps are always published under {@link #captures}.
++     */
++    public Builder legacyCaptures(String relativePath) {
++      String path = relativePath(relativePath);
++      if (!legacyCaptureRelativePaths.contains(path))
++        legacyCaptureRelativePaths.add(path);
++      return this;
++    }
+     /** Optional MediaStore RELATIVE_PATH (under Movies/ or DCIM/) and prefix for video copies. */
+     public Builder videoEdits(String relativePath, String namePrefix) {
+       videoEditRelativePath = relativePath(relativePath, "Movies", "DCIM");
+@@ -127,6 +145,7 @@
+     public OwnedMediaConfig build() {
+       if (editRelativePath == null || captureRelativePath == null)
+         throw new IllegalStateException("Configure edits and captures");
++      legacyCaptureRelativePaths.remove(captureRelativePath);
+       return new OwnedMediaConfig(this);
+     }
+     private static String prefix(String value) {
