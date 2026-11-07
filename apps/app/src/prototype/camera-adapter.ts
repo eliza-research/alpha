@@ -827,6 +827,17 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     if(outcome==='done')completed(value as T);
     else if(outcome==='failed')message('Not supported on this camera.');
   }
+  /** Flash and zoom return to their defaults on the current lens (native and here alike) before the
+   * lens changes, so the new lens never inherits a setting it lacks, and a rejected switch leaves
+   * both sides agreeing on flash off at 1×. */
+  function flipLens(owner:Bag){
+    const next = direction === 'back' ? 'front' : 'back';
+    return control(async () => {
+      if (flash) { await camera.setSettings({ settings: { flash: 'off' } }); flash = false; owner.set({ flash: false }); }
+      if (Math.abs(zoomRatio - 1) > 1e-3) { await camera.setZoom({ zoom: 1 }); zoomRatio = 1; owner.set({ nativeZoom: 1 }); }
+      return camera.switchCamera({ direction: next });
+    }, receipt => { direction = next; adoptLens(receipt); owner.set({ front: next === 'front', flash }); });
+  }
   /** Tap to focus runs alongside everything else: it never holds a lock the shutter waits on. */
   function focusAt(x:number,y:number){
     if(session.phase!=='ready'||session.recordingStarting||session.finalizing)return;
@@ -1055,11 +1066,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     data.bg = 'transparent'; data.vfBg = ready ? 'transparent' : '#000000'; data.vfOp = 1;
     data.zoomCss = ''; data.rec = session.recording; data.recTime = `${Math.floor(duration / 60)}:${String(Math.floor(duration % 60)).padStart(2, '0')}`;
     data.shutter = () => { void capture(); };
-    data.flip = () => {
-      const next = direction === 'back' ? 'front' : 'back';
-      // Flash and zoom return to their defaults before the lens changes, so the new lens never inherits a setting it lacks.
-      void control(async () => { flash = false; zoomRatio = 1; currentApi.set({ flash: false }); return camera.switchCamera({ direction: next }); }, receipt => { direction = next; adoptLens(receipt); currentApi.set({ front: next === 'front', flash }); });
-    };
+    data.flip = () => { void flipLens(currentApi); };
     data.flashAvailable = ready && (browserMode ? browserCamera.flashAvailable() : lens.hasFlash);
     if (browserMode) data.flashLabel = browserCamera.lightingLabel(flash);
     data.toggleFlash = () => { const next = !flash; void control(() => camera.setSettings({ settings: { flash: next ? 'on' : 'off' } }), () => { flash = next; currentApi.set({ flash: next }); }); };
