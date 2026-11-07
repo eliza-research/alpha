@@ -10,6 +10,7 @@ const registration=readFileSync('android/app/src/main/java/ai/elizaresearch/alph
 const java=compact(readFileSync(media+'DeviceLibraryPlugin.java','utf8'));
 const access=compact(readFileSync(media+'PhotoLibraryAccess.java','utf8'));
 const sharedPhotos=compact(readFileSync(media+'PhotosPlugin.java','utf8'));
+const permittedPhotos=compact(readFileSync(media+'PermittedPhotosPlugin.java','utf8'));
 const manifest=readFileSync('android/app/src/main/AndroidManifest.xml','utf8');
 const adapter=readFileSync('apps/app/src/prototype/photo-library-adapter.ts','utf8');
 
@@ -32,7 +33,8 @@ test('native facade bounds the renderer contract: per-SDK permission request, pa
  // The scope, identity and MediaStore rules live in the shared PermittedMediaCatalog/MediaLibraryKey
  // (plugins/plugin-native-media, tested upstream). Alpha keeps only the facade bounds checked here.
  assert.match(registration,/public class AlphaPhotoLibraryPlugin extends DeviceLibraryPlugin \{/);
- assert.match(sharedPhotos,/public static String\[\]libraryPermissionAliases\(\)\{return PhotoLibraryAccess\.permissionAliases\(Build\.VERSION\.SDK_INT\);\}/);
+ assert.match(sharedPhotos,/class PhotosPlugin extends PermittedPhotosPlugin/);
+ assert.match(permittedPhotos,/public static String\[\]libraryPermissionAliases\(\)\{return PhotoLibraryAccess\.permissionAliases\(Build\.VERSION\.SDK_INT\);\}/);
  assert.match(access,/public static final int SELECTED_SDK=34;/);assert.match(access,/public static final int MEDIA_PERMISSIONS_SDK=33;/);
  assert.match(access,/if\(sdk>=SELECTED_SDK\)return new String\[\]\{"libraryImages","libraryVideos","librarySelected"\};if\(sdk>=MEDIA_PERMISSIONS_SDK\)return new String\[\]\{"libraryImages","libraryVideos"\};return new String\[\]\{"libraryLegacy"\};/);
  assert.match(access,/public static final int PAGE=24;/);assert.match(access,/return Math\.min\(PAGE,Math\.max\(1,requested\)\);/);
@@ -210,8 +212,8 @@ test('agent album observes only while open and falls back to a bounded fresh cat
  assert.match(java,/catalog=photos\.permittedCatalog\(\);review=photos\.permittedReview\(\);/);
  assert.doesNotMatch(java,/new PermittedMediaCatalog\(|new PermittedMediaReview\(/,'the device library constructs no second catalog or review');
  assert.match(java,/catalog\.watch\("library",watching\)/);
- const photos=sharedPhotos;
- assert.match(photos,/permitted=new PermittedMediaCatalog\(getContext\(\),false,\(\)->\{if\(!destroyed\)\{diagnostic\(Diagnostic\.LIBRARY_CHANGED_CATALOG\);notifyListeners\("libraryChanged",new JSObject\(\)\);\}\}\);/,'Photos observes only while its grid is open; catalog diagnostics and notification share the destroyed guard');
+ const photos=permittedPhotos;
+ assert.match(photos,/permitted=new PermittedMediaCatalog\(getContext\(\),false,\(\)->\{if\(!destroyed\)\{diagnostic\(Diagnostic\.LIBRARY_CHANGED_CATALOG\);notifyListeners\("libraryChanged",new JSObject\(\)\);\}\},profile\);/,'Photos observes only while its grid is open; catalog diagnostics and notification share the destroyed guard');
  assert.match(photos,/permitted\.watch\("photos",active\)/);
  const camera=readFileSync('apps/app/src/prototype/camera-adapter.ts','utf8');
  assert.match(camera,/watchLibrary\(!disposed&&!document\.hidden&&!!photosApi\?\.isActive\(\)&&permittedLibrary\(\)\)/);
