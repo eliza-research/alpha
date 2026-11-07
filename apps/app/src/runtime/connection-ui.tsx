@@ -9,6 +9,7 @@ import {AUTOMATIONS_COMMITTED_EVENT,automationsCommitted} from './automation-com
 import {OWNER_REMINDER_LIST,OWNER_REMINDER_READBACK,ownerReminderRoute,reminderReadPath,type ReminderNotificationBinding} from './owner-reminder-notification-protocol';
 import {CAMERA_CAPTURE_CAPABILITY} from '../../../../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/camera-contract.ts';
 import {sanitizeCloudInferenceFailure,type CloudInferenceFailure} from './crash-log';
+import {sanitizeNativeInferenceTiming,type NativeInferenceTiming} from './diagnostics-export';
 import {residentRecoveryReason,residentRecoveryMessage,residentRecoveryCopy,RESIDENT_RECOVERY_PENDING,type ResidentRecoveryReason,type ResidentRecoveryView} from './resident-recovery';
 import {anyAbortSignal} from './abort-signal';
 import {CALENDAR_APPROVAL_READ_PATH,calendarApprovalFromList,calendarApprovalId} from './calendar-approval';
@@ -2213,12 +2214,12 @@ export const connectionController = {
     lastInferenceWarm=now;
     void selected.remote.request('/api/cloud/warm',{},AbortSignal.timeout(10000)).catch(()=>{});
   },
-  async readCloudInferenceFailure(signal:AbortSignal):Promise<CloudInferenceFailure|null>{
+  async readResidentDiagnostics(signal:AbortSignal):Promise<{cloudInferenceFailure:CloudInferenceFailure|null;nativeInferenceTiming?:NativeInferenceTiming}|null>{
     const selected=active,session=state.session,generation=epoch;
     signal.throwIfAborted();if(selected?.kind!=='resident'||!session)return null;
     const status=await selected.remote.request('/api/status',undefined,signal);
     signal.throwIfAborted();if(generation!==epoch||selected!==active||session!==state.session)throw new DOMException('The connection changed','AbortError');
-    return sanitizeCloudInferenceFailure(status?.cloudInferenceFailure);
+    return {cloudInferenceFailure:sanitizeCloudInferenceFailure(status?.cloudInferenceFailure),nativeInferenceTiming:sanitizeNativeInferenceTiming(status?.nativeInferenceTiming)};
   },
   voiceTurnFailureMessage(code?:string){return active?replyFailure(code,active,readServiceLimit({failureKind:code})).message:REPLY_FAILURES.hosted_unreachable;},
   getBrowserSpeechAgent(){return active?.kind==='resident'&&state.session&&active.remote.browserSpeechAvailable?active.remote:null;},

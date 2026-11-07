@@ -29,6 +29,29 @@ export const VOICE_TIMING_FORMAT='alpha-voice-timing-v1';
 const VOICE_MARKS=['recording-end','transcript-ready','send','first-token','final-reply','first-audio'] as const;
 const VOICE_ROUTES=['on-device','browser','local-agent','eliza-cloud','paired-agent','development-agent','manual'] as const;
 const VOICE_LIMIT=200;
+// Fixed upstream inference flow categories; arbitrary span labels never leave the host.
+const INFERENCE_STAGES=['document-augmentation','providers','embedding','model-queue','model-routing','model-preprocess','llm-inference','model-postprocess','actions','evaluators','planner-overhead','response-finalization','message-ingress','message-delivery','message-lifecycle','message-service-overhead','unattributed'] as const;
+export type NativeInferenceTiming={version:1;traceId?:string;totalMs:number|null;timeToFirstVisibleMs:number|null;timeToReplyMs:number|null;timeToResponseFinalizedMs:number|null;stages:{stage:typeof INFERENCE_STAGES[number];totalMs:number;toFirstVisibleMs:number|null}[]};
+/** Optional existing /api/status projection; copy only known enums and finite durations. */
+export function sanitizeNativeInferenceTiming(input:unknown):NativeInferenceTiming|undefined{
+ try{
+  if(!input||typeof input!=='object'||Array.isArray(input))return;
+  const row=input as Record<string,unknown>;
+  if(row.version!==1||!Array.isArray(row.stages)||row.stages.length>INFERENCE_STAGES.length)return;
+  const ms=(value:unknown):value is number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0;
+  const optionalMs=(value:unknown):value is number|null=>value===null||ms(value);
+  if(!optionalMs(row.totalMs)||!optionalMs(row.timeToFirstVisibleMs)||!optionalMs(row.timeToReplyMs)||!optionalMs(row.timeToResponseFinalizedMs))return;
+  const stages:NativeInferenceTiming['stages']=[],seen=new Set<string>();
+  for(const value of row.stages){
+   if(!value||typeof value!=='object'||Array.isArray(value))return;
+   const stage=one(value.stage,INFERENCE_STAGES);
+   if(!stage||seen.has(stage)||!ms(value.totalMs)||!optionalMs(value.toFirstVisibleMs))return;
+   seen.add(stage);stages.push({stage,totalMs:value.totalMs,toFirstVisibleMs:value.toFirstVisibleMs});
+  }
+  const traceId=row.traceId;
+  return {version:1,...(typeof traceId==='string'&&/^[0-9a-f]{32}$/.test(traceId)&&traceId!=='0'.repeat(32)?{traceId}:{}),totalMs:row.totalMs,timeToFirstVisibleMs:row.timeToFirstVisibleMs,timeToReplyMs:row.timeToReplyMs,timeToResponseFinalizedMs:row.timeToResponseFinalizedMs,stages};
+ }catch{return;}
+}
 const version=/^[0-9A-Za-z][0-9A-Za-z.+_-]{0,63}$/;
 const pin=/^[0-9a-f]{40}$/;
 const sha256=/^[0-9a-f]{64}$/;
@@ -68,6 +91,7 @@ export type DiagnosticsInput={
  nativeVoiceTiming?:unknown;
  /** AlphaCloudSpeechStream.cloudStreamTiming() output, absent on older builds. */
  nativeCloudStreamTiming?:unknown;
+ nativeInferenceTiming?:unknown;
 };
 type NativeVoiceTimingIdentity={sourceCommit:string;sourceDirty:boolean;engineSha256:string;modelSha256:string;models?:Record<string,string>;device:string;environment:'device'|'emulator';abi:'arm64-v8a'|'x86_64';sdk?:number;build:string};
 type NativeVoiceTimingRow={id:string;turnId:string;pipeline:string;clock:'native-monotonic-ms';captureClock:string;cold:boolean;coldReason?:string;outcome:string;reason?:string;audibleClock?:string;network?:string;thermal?:string;thermalHeadroom?:number;identity:NativeVoiceTimingIdentity;marks:Record<string,number>};
@@ -77,6 +101,7 @@ type VoiceTimingRow={version:1;id:string;recordedAt:number;route:string;cold:boo
   * records endpointing, or streaming ASR) or 'batch' (the recorded-clip loop, live mode 'batch'). */
  path?:'live'|'batch'};
 export type DiagnosticsReport={
+ nativeInferenceTiming?:NativeInferenceTiming;
  realtimeVoiceTiming?:ReturnType<typeof sanitizeRealtimeTiming>;
  format:typeof DIAGNOSTICS_FORMAT;generatedAt:string;platform:'android'|'web';
  app:{version:string|null;versionCode?:number;variant?:'launcher'|'standalone';buildType?:'debug'|'release';testMocks?:boolean};
@@ -228,6 +253,8 @@ export function buildDiagnostics(input:DiagnosticsInput,now=Date.now()):Diagnost
   if(stage&&outcome&&typeof elapsedMs==='number'&&Number.isSafeInteger(elapsedMs)&&elapsedMs>=0&&elapsedMs<=120000)report.voiceStartup={stage,outcome,elapsedMs};
  }
  if(report.platform==='android'){
+  const inference=sanitizeNativeInferenceTiming(input.nativeInferenceTiming);
+  if(inference)report.nativeInferenceTiming=inference;
   const cloudTiming=nativeCloudStreamTiming(input.nativeCloudStreamTiming);
   if(cloudTiming)report.nativeCloudStreamTiming=cloudTiming;
  }
