@@ -1,3 +1,6 @@
+import fs from 'node:fs';
+import vm from 'node:vm';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {build} from 'esbuild';
@@ -5,7 +8,7 @@ import {build} from 'esbuild';
 const load=async(entry,plugins=[])=>{const out=await build({entryPoints:[entry],bundle:true,platform:'node',format:'esm',write:false,plugins});return import('data:text/javascript;base64,'+Buffer.from(out.outputFiles[0].text).toString('base64'));};
 const {appendMapsCard,routeCard}=await load('vendor/eliza/plugins/plugin-maps/src/card.ts');
 const {appendInteractionBlock}=await load('vendor/eliza/packages/core/src/messaging/interaction-serialize.ts');
-const {mapsChatText}=await load('apps/app/src/runtime/maps-chat-markup.ts');
+const {mapsChatText}=await load('apps/app/src/runtime/action-message-presentation.ts');
 const place={name:'Ferry Building',latitude:37.7955,longitude:-122.3937,provider:'eliza-cloud',providerPlaceId:'osm:n1',formattedAddress:'1 Ferry Building, San Francisco',categories:[]};
 const ref={name:place.name,coordinates:{latitude:place.latitude,longitude:place.longitude},provider:place.provider,providerPlaceId:place.providerPlaceId,formattedAddress:place.formattedAddress,categories:[]};
 const attribution='© OpenStreetMap contributors';
@@ -33,14 +36,6 @@ test('the share confirmation keeps its question as prose and offers its two exac
  assert.deepEqual(mapsChatText(text),{displayText:prompt,cards:[],choice:{id:'maps-share-m1',options:[{value:'Yes, share the location of Ferry Building (confirmed).',label:'Share location'},{value:'No, do not share my location.',label:"Don't share"}]}});
 });
 
-test('a missing-input form keeps its question as prose and drops the form Alpha cannot show',()=>{
- const prompt='I still need a starting place.';
- const text=appendInteractionBlock(prompt,{kind:'form',id:'maps-route-m1',title:'Route with Maps',description:prompt,submitLabel:'Continue',fields:[{name:'origin',type:'text',label:'Starting place',required:true}]});
- assert.match(text,/\[FORM\]/);
- assert.deepEqual(mapsChatText(text),{displayText:prompt,cards:[],choice:null});
- for(const literal of ['[FORM]\n{not json}\n[/FORM]','[FORM]\n{"id":"x"}\n[/FORM]','Ask.\n\n[FORM]\n{"id":"x","fields":[]}'])assert.deepEqual(mapsChatText(literal),{displayText:literal,cards:[],choice:null},literal);
-});
-
 test('ordinary, malformed, out-of-policy and foreign markup stays literal',()=>{
  const ordinary='  An indented reply.\n\n\tSecond paragraph.  \n';
  assert.deepEqual(mapsChatText(ordinary),{displayText:ordinary,cards:[],choice:null});
@@ -56,7 +51,11 @@ test('ordinary, malformed, out-of-policy and foreign markup stays literal',()=>{
 });
 
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
-const {installMapsChatAdapter}=await load('apps/app/src/prototype/maps-chat-adapter.ts',[{name:'connection-port',setup(b){b.onResolve({filter:/\/connection-ui$/},()=>({path:'connection-ui',namespace:'port'}));b.onLoad({filter:/.*/,namespace:'port'},()=>({loader:'js',contents:'export const connectionController={getSnapshot:()=>globalThis.mapsChatFixture.snapshot};'}));}}]);
+const adapterSource=fs.readFileSync('apps/app/src/prototype/maps-adapter.ts','utf8');
+const adapterBody=adapterSource.slice(adapterSource.indexOf('/** Presentation only:')).replace('export function','function');
+const adapterScope={mapsChatText,connectionController:{getSnapshot:()=>globalThis.mapsChatFixture.snapshot}};
+vm.runInNewContext(stripTypeScriptTypes('type Bag=Record<string,any>;\n'+adapterBody+'\nglobalThis.installMapsChatAdapter=installMapsChatAdapter;', {mode:'transform'}),adapterScope);
+const {installMapsChatAdapter}=adapterScope;
 const shareText=appendInteractionBlock('Share the location of Ferry Building?',{kind:'choice',id:'maps-share-m1',scope:'maps-share',prompt:'',options:[{value:'Yes, share the location of Ferry Building (confirmed).',label:'Share location'},{value:'No, do not share my location.',label:"Don't share"}]});
 function fixture(msgs){const f={snapshot:{open:false,busy:false},sent:[],toasts:[]};globalThis.mapsChatFixture=f;
  class Shell{live=true;st={msgs,draft:'',typing:false};S(){return this.st;}renderVals(){return {msgs:this.st.msgs.map(m=>({...m,isAgent:m.from==='agent',isUser:m.from==='user',displayText:m.text,hasCalendarText:true,messageActionsLabel:'Message actions: '+m.text}))};}setState(p){Object.assign(this.st,p);}toast(t){f.toasts.push(t);}async send(t){f.sent.push(t);}}
@@ -77,12 +76,6 @@ test('rendering sends nothing; one tap sends the exact answer once and stored te
  }finally{delete globalThis.mapsChatFixture;}
 });
 
-test('a form-only reply shows its prose and offers nothing to send',()=>{
- const prompt='What place or address should I look up?';
- const {f,shell}=fixture([{id:'a1',from:'agent',text:appendInteractionBlock(prompt,{kind:'form',id:'maps-search-m1',fields:[{name:'query',type:'text',label:'Place or address',required:true}]})}]);
- try{const view=shell.renderVals().msgs[0];assert.equal(view.displayText,prompt);assert.deepEqual(view.mapsCards,[]);assert.equal(view.hasMapsChoice,false);assert.equal(f.sent.length,0);}finally{delete globalThis.mapsChatFixture;}
-});
-
 test('an older question, a draft or a busy connection never sends an answer',async()=>{
  const older=fixture([{id:'a1',from:'agent',text:shareText},{id:'u2',from:'user',text:'Never mind'}]);
  try{assert.equal(older.shell.renderVals().msgs[0].hasMapsChoice,false);}finally{delete globalThis.mapsChatFixture;}
@@ -90,4 +83,10 @@ test('an older question, a draft or a busy connection never sends an answer',asy
  try{draft.shell.st.draft='Keep my words';draft.shell.renderVals().msgs[0].mapsChoices[0].choose();await tick();assert.equal(draft.f.sent.length,0);assert.equal(draft.f.toasts.length,1);assert.equal(draft.shell.st.draft,'Keep my words');}finally{delete globalThis.mapsChatFixture;}
  const busy=fixture([{id:'a1',from:'agent',text:shareText}]);
  try{busy.f.snapshot.busy=true;busy.shell.renderVals().msgs[0].mapsChoices[1].choose();await tick();assert.equal(busy.f.sent.length,0);}finally{delete globalThis.mapsChatFixture;}
+});
+
+test('a form-only reply shows its prose and offers nothing to send',()=>{
+ const prompt='What place or address should I look up?';
+ const {f,shell}=fixture([{id:'a1',from:'agent',text:appendInteractionBlock(prompt,{kind:'form',id:'maps-search-m1',fields:[{name:'query',type:'text',label:'Place or address',required:true}]})}]);
+ try{const view=shell.renderVals().msgs[0];assert.equal(view.displayText,prompt);assert.deepEqual(view.mapsCards,[]);assert.equal(view.hasMapsChoice,false);assert.equal(f.sent.length,0);}finally{delete globalThis.mapsChatFixture;}
 });

@@ -4,7 +4,7 @@ import templateHtml from "./template.html?raw";
 /* Minimal renderer for the prototype's .dc.html template: {{holes}}, sc-if, sc-for, events, refs. */
 
   var h = React.createElement;
-  var EVENTS = { onsubmit:"onSubmit", onerror:"onError", onload:"onLoad", onfocuscapture: "onFocusCapture", onclick: "onClick", oncontextmenu: "onContextMenu", onpointermove: "onPointerMove", onpointerdown: "onPointerDown", onpointerup: "onPointerUp", onpointerleave: "onPointerLeave", onpointercancel: "onPointerCancel", onlostpointercapture: "onLostPointerCapture", onchange: "onChange", onkeydown: "onKeyDown", oninput: "onInput" };
+  var EVENTS = { onsubmit:"onSubmit", onerror:"onError", onload:"onLoad", onfocuscapture: "onFocusCapture", onfocus: "onFocus", onblur: "onBlur", onclick: "onClick", oncontextmenu: "onContextMenu", onpointermove: "onPointerMove", onpointerdown: "onPointerDown", onpointerup: "onPointerUp", onpointerleave: "onPointerLeave", onpointercancel: "onPointerCancel", onlostpointercapture: "onLostPointerCapture", onchange: "onChange", onkeydown: "onKeyDown", oninput: "onInput" };
   var HOLE = /\{\{\s*([^}]+?)\s*\}\}/g;
   var WHOLE = /^\{\{\s*([^}]+?)\s*\}\}$/;
 

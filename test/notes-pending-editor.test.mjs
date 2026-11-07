@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {fileURLToPath} from 'node:url';
 const sdk=process.env.ALPHA_NOTES_TEST_SDK??fileURLToPath(new URL('../.eliza/client-features/plugins/plugin-notes/src/client',import.meta.url));
 // Use Node's normal test entry without a TS loader; transform the exact prepared modules.

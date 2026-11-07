@@ -9,7 +9,7 @@ import path from 'node:path';
 import vm from 'node:vm';
 import {createServer} from 'node:net';
 import {spawn} from 'node:child_process';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 
 const stubs={
  'scripts/prepare-client-features.mjs':'export function prepareClientFeatures(){}\n',

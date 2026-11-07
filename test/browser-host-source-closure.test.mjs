@@ -12,14 +12,16 @@ const expected=JSON.parse(fs.readFileSync(path.join(root,'upstream.lock.json'),'
 assert.equal(execFileSync('git',['-C',sdk,'rev-parse','HEAD'],{encoding:'utf8'}).trim(),expected,'test the descriptor-pinned SDK');
 const {stageResidentHostSources,RESIDENT_HOST_CLASSES}=await import(pathToFileURL(path.join(sdk,'packages/app/scripts/mobile/android/resident-host-sources.mjs')).href);
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
-test('actual resident staging includes the shared browser host and its helper classes',t=>{
+test('actual resident staging includes the shared browser host and runtime admission helpers',t=>{
  const descriptor=JSON.parse(fs.readFileSync(path.join(root,'android/consumer-host.json'),'utf8'));
  const app=JSON.parse(fs.readFileSync(path.join(root,'app.config.json'),'utf8'));
  const output=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-browser-host-sources-'));t.after(()=>fs.rmSync(output,{recursive:true,force:true}));
  const {files}=stageResidentHostSources({sourceRoot:sdk,output,identity:{packageName:app.appId,...descriptor.residentHost},classes:[...RESIDENT_HOST_CLASSES,...descriptor.residentHost.classes],helpers:descriptor.residentHost.helpers});
  const prefix='plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/';
- for(const name of ['BrowserTabHostConfig','BrowserTabHostPlugin','BrowserProfilePolicy','BrowserReviewedReading']){
-  const relative=prefix+name+'.java';const row=files.find(file=>file.path===relative);assert.ok(row,`${name} is staged for the app classpath`);
+ const required=[...['BrowserTabHostConfig','BrowserTabHostPlugin','BrowserProfilePolicy','BrowserReviewedReading'].map(name=>prefix+name+'.java'),
+  'plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/updater/RuntimeUpdatePause.java'];
+ for(const relative of required){
+  const row=files.find(file=>file.path===relative);assert.ok(row,`${relative} is staged for the app classpath`);
   const bytes=fs.readFileSync(path.join(sdk,relative));assert.equal(row.sourceSha256,sha(bytes));assert.equal(row.generatedSha256,sha(bytes));assert.deepEqual(fs.readFileSync(row.generatedFile),bytes);
  }
 });

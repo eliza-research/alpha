@@ -217,7 +217,7 @@ test('voice timing and diagnostics keep the endpoint path and heard outcome as e
 });
 
 test('the end-of-turn chain keeps Clef off: the local scorer decides, and its path is kept as an enum', async () => {
-  const {stripTypeScriptTypes} = await import('node:module'), vm = await import('node:vm');
+  const {stripTypeScriptTypes} = await import('./support/strip-types.mjs'), vm = await import('node:vm');
   const source = fs.readFileSync(new URL('../apps/app/src/runtime/voice-selection.ts', import.meta.url), 'utf8').replace(/^import .*;\n/gm, '').replaceAll('export function', 'function').replaceAll('export type', 'type');
   const box = {cloudRuntimeEnabled: false, testMocksEnabled: true, browserDevProfile: false, connectionController: {}};
   vm.runInNewContext('{' + stripTypeScriptTypes(source, {mode: 'transform'}) + '\nglobalThis.selection={clefEndpointStage};}', box);

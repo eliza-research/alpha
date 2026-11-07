@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from '../test/support/strip-types.mjs';
 process.env.TZ='America/New_York';
 let writes=[],toasts=[],stored={},subscriptions=0,unsubscriptions=0;
 const DailyApps={surfaceInfo:async()=>({reminderTimingVersion:2}),scheduleReminder:async input=>{writes.push(input);return {status:'scheduled',id:input.id};},listReminders:async()=>({reminders:writes.map(r=>({...r,status:'scheduled',occurrenceId:'fixture-occurrence'}))}),addListener:async()=>({remove(){}})};

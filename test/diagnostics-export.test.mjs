@@ -1,7 +1,7 @@
 // Settings > About "Export diagnostics": the report copies allowlisted shapes only.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {buildDiagnostics,diagnosticsText,DIAGNOSTICS_FORMAT} from '../apps/app/src/runtime/diagnostics-export.ts';
+import {buildDiagnostics,diagnosticsText,DIAGNOSTICS_FORMAT,sanitizeNativeInferenceTiming} from '../apps/app/src/runtime/diagnostics-export.ts';
 import {sanitizeCrashEntries,errorClassOf,describeCrashEntry} from '../apps/app/src/runtime/crash-log.ts';
 
 const now=Date.UTC(2026,9,8,12);
@@ -9,6 +9,18 @@ const pin='45242af234e7f3d55c433f327798e7cb2130e06e';
 const hash='a'.repeat(64);
 // Synthetic sensitive values: note text, a provider key, a bearer token, account and session ids, mail and a URL.
 const secrets=['Buy milk and call Dana at 555-0100','csk-synthetic-provider-key-7f3a9c0e5b','Bearer synthetic-session-token','acct_7f3a9c0e5b11','6f1d3c3e-8c55-4c1b-9d1f-2b6f0b0d3a11','dana@example.com','https://agent.example.test/api','com.example.otherlauncher','/data/user/0/ai.elizaresearch.alphaphone'];
+
+const nativeInference={version:1,traceId:'ab'.repeat(16),totalMs:8000,timeToFirstVisibleMs:7700,timeToReplyMs:7750,timeToResponseFinalizedMs:7900,stages:[{stage:'llm-inference',totalMs:6700,toFirstVisibleMs:6600},{stage:'actions',totalMs:900,toFirstVisibleMs:900}]};
+test('native inference export keeps fixed durations and a valid trace, never arbitrary span or identity data',()=>{
+ const row={...nativeInference,roomId:secrets[4],messageId:secrets[3],label:secrets[0],meta:{token:secrets[2]},spans:[{name:secrets[0]}],stages:nativeInference.stages.map(stage=>({...stage,model:secrets[1]}))};
+ const report=buildDiagnostics({platform:'android',nativeInferenceTiming:row},now);
+ assert.deepEqual(report.nativeInferenceTiming,nativeInference);
+ for(const secret of secrets)assert.equal(diagnosticsText(report).includes(secret),false);
+ assert.equal(buildDiagnostics({platform:'web',nativeInferenceTiming:row},now).nativeInferenceTiming,undefined);
+ for(const bad of [null,{}, {...row,version:2},{...row,totalMs:Infinity},{...row,timeToReplyMs:-1},{...row,stages:[{stage:secrets[0],totalMs:1,toFirstVisibleMs:null}]},{...row,stages:[...row.stages,row.stages[0]]}])assert.equal(sanitizeNativeInferenceTiming(bad),undefined);
+ for(const traceId of [secrets[4],'0'.repeat(32),'AB'.repeat(16),'ab'.repeat(17)])assert.equal(sanitizeNativeInferenceTiming({...row,traceId}).traceId,undefined);
+ assert.equal(sanitizeNativeInferenceTiming({get version(){throw Error('diagnostics must not throw');}}),undefined);
+});
 
 test('diagnostics keep versions, pin, runtime hashes, permission and role state and crash classes',()=>{
  const report=buildDiagnostics({generatedAt:now,platform:'android',
@@ -76,6 +88,54 @@ test('crash entries keep classes only, are bounded and expire after 30 days',()=
  assert.equal(errorClassOf('a string with content'),'string');
  assert.deepEqual(describeCrashEntry({at:now,source:'exit',reason:'anr',process:':isolated_pdf'}),{title:'App process stopped: anr',detail:'Reported by Android · :isolated_pdf process'});
  assert.deepEqual(describeCrashEntry({at:now,source:'uncaught',errorClass:'java.lang.IllegalStateException',rootClass:'java.io.IOException',thread:'main'}),{title:'App crashed',detail:'java.lang.IllegalStateException · caused by java.io.IOException · main thread'});
+});
+
+test('renderer voice startup exports only the bounded phase, outcome and elapsed time',()=>{
+ const diagnostic={stage:'draft-binding',outcome:'timeout',elapsedMs:12000};
+ const report=buildDiagnostics({voiceStartup:{...diagnostic,account:secrets[3],message:secrets[0]}},now);
+ assert.deepEqual(report.voiceStartup,diagnostic);
+ assert.doesNotMatch(diagnosticsText(report),/acct_|Buy milk/);
+ assert.equal(buildDiagnostics({voiceStartup:{...diagnostic,stage:secrets[0]}},now).voiceStartup,undefined);
+ assert.equal(buildDiagnostics({voiceStartup:{...diagnostic,elapsedMs:Infinity}},now).voiceStartup,undefined);
+});
+test('Cloud startup diagnostics keep bounded stages and status without carrying content or raw ids',()=>{
+ const secret=secrets[2],rawSession=7194538;
+ const row={session:rawSession,stage:'consent-headers',elapsedMs:45,httpStatus:503,clock:'monotonic-observed',sentFrames:0,sentBytes:0,receivedFrames:0,receivedBytes:0,token:secret,transcript:secrets[0]};
+ const records=[...Array.from({length:99},()=>row),{...row,stage:'relay-start',elapsedMs:9474},{...row,stage:'error',httpStatus:999,receivedBytes:-1},
+  {...row,session:secrets[4]},{...row,stage:secret},{...row,elapsedMs:Infinity}];
+ const report=buildDiagnostics({platform:'android',nativeCloudStreamTiming:{format:'alpha-cloud-stream-timing-v1',records,accountId:secrets[3]}},now);
+ const timing=report.nativeCloudStreamTiming;
+ assert.equal(timing.records.length,97,'only the last 100 input rows are scanned and invalid rows are discarded');
+ assert.deepEqual(timing.records[0],{session:1,stage:'consent-headers',elapsedMs:45,clock:'monotonic-observed',httpStatus:503,sentFrames:0,sentBytes:0,receivedFrames:0,receivedBytes:0});
+ assert.equal(timing.records.at(-2).stage,'relay-start');
+ assert.equal(timing.records.at(-1).stage,'error');
+ assert.equal(Object.hasOwn(timing.records.at(-1),'httpStatus'),false);
+ assert.equal(Object.hasOwn(timing.records.at(-1),'receivedBytes'),false);
+ const json=diagnosticsText(report);
+ for(const value of [...secrets,String(rawSession)])assert.equal(json.includes(value),false);
+ assert.equal(buildDiagnostics({platform:'android',nativeCloudStreamTiming:null},now).nativeCloudStreamTiming,undefined);
+ assert.equal(buildDiagnostics({platform:'web',nativeCloudStreamTiming:{format:'alpha-cloud-stream-timing-v1',records:[row]}},now).nativeCloudStreamTiming,undefined);
+});
+
+test('Cloud startup diagnostics tolerate absent, outdated, and stalled native bridges',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const {stripTypeScriptTypes}=await import('./support/strip-types.mjs');
+ const vm=await import('node:vm');
+ const source=readFileSync(new URL('../apps/app/src/runtime/cloud-voice.ts',import.meta.url),'utf8');
+ const start=source.indexOf('export async function readNativeCloudStreamTiming');
+ const end=source.indexOf('export function createCloudStreamingSpeech',start);
+ assert.ok(start>=0&&end>start);
+ const fn=source.slice(start,end).trim().replace(/^export /,'');
+ const read=(present,stream)=>vm.runInNewContext(`(${stripTypeScriptTypes(fn)})`,{
+  nativeCloudStreamingAvailable:()=>present,
+  streamingNative:stream,
+  setTimeout,clearTimeout,
+ });
+ const payload={format:'alpha-cloud-stream-timing-v1',records:[]};
+ assert.equal(await read(true,{cloudStreamTiming:async()=>payload})(),payload);
+ assert.equal(await read(false,{cloudStreamTiming:()=>assert.fail('unavailable bridge called')})(),null);
+ assert.equal(await read(true,{})(),null);
+ assert.equal(await read(true,{cloudStreamTiming:()=>new Promise(()=>{})})(1),null);
 });
 
 test('plan diagnostics distinguish signed inactive plans from organization-credit presentation without exporting authority',()=>{
@@ -168,8 +228,9 @@ test('native voice timing (#395): linked monotonic trials, hashes and labels onl
  // The renderer calls the native export on Settings > Export diagnostics.
  const {readFileSync}=await import('node:fs');
  const settings=readFileSync(new URL('../apps/app/src/prototype/settings-adapter.ts',import.meta.url),'utf8');
- assert.match(settings,/readNativeVoiceTiming\(\)\]\);/);
+ assert.match(settings,/readNativeVoiceTiming\(\), readNativeCloudStreamTiming\(\)\]\);/);
  assert.match(settings,/nativeVoiceTiming: nativeTiming\.status === 'fulfilled' \? nativeTiming\.value : null/);
+ assert.match(settings,/nativeCloudStreamTiming: nativeCloudTiming\.status === 'fulfilled' \? nativeCloudTiming\.value : null/);
  assert.match(readFileSync(new URL('../apps/app/src/runtime/native-voice-turn.ts',import.meta.url),'utf8'),/return readBridgeTiming\(plugin\(\), timeoutMs\)/);assert.match(readFileSync(new URL('../vendor/eliza/packages/voice/src/native-live-voice.ts',import.meta.url),'utf8'),/port\.nativeVoiceTiming\(\)/);
 });
 
@@ -198,29 +259,40 @@ test('Cloud inference failures share one finite problem-log and Android export p
 });
 
 test('status inference read rejects retired resident sessions before recording',async()=>{
- const {readFileSync}=await import('node:fs');const {stripTypeScriptTypes}=await import('node:module');const vm=await import('node:vm');const {sanitizeCloudInferenceFailure}=await import('../apps/app/src/runtime/crash-log.ts');
- const source=readFileSync(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');const method=source.slice(source.indexOf('  async readCloudInferenceFailure('),source.indexOf('  voiceTurnFailureMessage(')).trim().replace(/,$/,'');const code=stripTypeScriptTypes('async function '+method.slice('async '.length),{mode:'strip'});
- let release,calls=0;const pending=new Promise(resolve=>{release=resolve;});const context={active:{kind:'resident',remote:{request:async(path,body,signal)=>{calls++;assert.equal(path,'/api/status');assert.equal(body,undefined);assert.ok(signal instanceof AbortSignal);return pending;}}},state:{session:{}},epoch:1,sanitizeCloudInferenceFailure,DOMException};
+ const {readFileSync}=await import('node:fs');const {stripTypeScriptTypes}=await import('./support/strip-types.mjs');const vm=await import('node:vm');const {sanitizeCloudInferenceFailure}=await import('../apps/app/src/runtime/crash-log.ts');
+ const source=readFileSync(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');const method=source.slice(source.indexOf('  async readResidentDiagnostics('),source.indexOf('  voiceTurnFailureMessage(')).trim().replace(/,$/,'');const code=stripTypeScriptTypes('async function '+method.slice('async '.length),{mode:'strip'});
+ let release,calls=0;const pending=new Promise(resolve=>{release=resolve;});const context={active:{kind:'resident',remote:{request:async(path,body,signal)=>{calls++;assert.equal(path,'/api/status');assert.equal(body,undefined);assert.ok(signal instanceof AbortSignal);return pending;}}},state:{session:{}},epoch:1,sanitizeCloudInferenceFailure,sanitizeNativeInferenceTiming,DOMException};
  const read=vm.runInNewContext('('+code+')',context),signal=new AbortController().signal;const result=read(signal);context.epoch=2;release({cloudInferenceFailure:{version:1,at:Date.now(),stage:'text',reason:'unknown',strictTools:[],schemaKeywords:[],schemaScanTruncated:false,prompt:secrets[0]}});await assert.rejects(result,{name:'AbortError'});assert.equal(calls,1);
- const failure={version:1,at:Date.now(),stage:'text',reason:'unknown',strictTools:[],schemaKeywords:[],schemaScanTruncated:false,prompt:secrets[0]};context.active={kind:'resident',remote:{request:async()=>({cloudInferenceFailure:failure})}};assert.deepEqual(await read(signal),sanitizeCloudInferenceFailure(failure));
+ const failure={version:1,at:Date.now(),stage:'text',reason:'unknown',strictTools:[],schemaKeywords:[],schemaScanTruncated:false,prompt:secrets[0]};context.active={kind:'resident',remote:{request:async()=>({cloudInferenceFailure:failure,nativeInferenceTiming:nativeInference})}};assert.deepEqual(JSON.parse(JSON.stringify(await read(signal))),{cloudInferenceFailure:sanitizeCloudInferenceFailure(failure),nativeInferenceTiming:nativeInference});
  context.active=null;assert.equal(await read(signal),null);const abort=new AbortController();abort.abort();await assert.rejects(read(abort.signal),{name:'AbortError'});assert.equal(calls,1);
 });
 
 test('explicit inference refresh is isolated and abortable without unrelated capability reads',async()=>{
- const {readFileSync}=await import('node:fs');const {stripTypeScriptTypes}=await import('node:module');const vm=await import('node:vm');
- const source=readFileSync(new URL('../apps/app/src/prototype/settings-adapter.ts',import.meta.url),'utf8');const body=source.slice(source.indexOf('  async function refreshInferenceFailure(){'),source.indexOf('  async function refreshCapabilities(')).trim();const code=stripTypeScriptTypes(body,{mode:'strip'});
- let reads=0,records=0;const context={inferenceAbort:null,owner:{},AbortController,setTimeout:callback=>{queueMicrotask(callback);return 1;},clearTimeout:()=>{},connectionController:{readCloudInferenceFailure:signal=>{reads++;return new Promise((_,reject)=>signal.addEventListener('abort',()=>reject(signal.reason),{once:true}));}},recordCloudInferenceFailure:()=>{records++;return true;},readCrashLog:()=>{throw Error('Unexpected log read after cancellation');},changed:()=>{throw Error('Unexpected update after cancellation');}};
+ const {readFileSync}=await import('node:fs');const {stripTypeScriptTypes}=await import('./support/strip-types.mjs');const vm=await import('node:vm');
+ const source=readFileSync(new URL('../apps/app/src/prototype/settings-adapter.ts',import.meta.url),'utf8');const body=source.slice(source.indexOf('  async function refreshResidentDiagnostics(){'),source.indexOf('  async function refreshCapabilities(')).trim();const code=stripTypeScriptTypes(body,{mode:'strip'});
+ let reads=0,records=0;const context={inferenceAbort:null,owner:{},AbortController,setTimeout:callback=>{queueMicrotask(callback);return 1;},clearTimeout:()=>{},connectionController:{readResidentDiagnostics:signal=>{reads++;return new Promise((_,reject)=>signal.addEventListener('abort',()=>reject(signal.reason),{once:true}));}},recordCloudInferenceFailure:()=>{records++;return true;},readCrashLog:()=>{throw Error('Unexpected log read after cancellation');},changed:()=>{throw Error('Unexpected update after cancellation');}};
  await vm.runInNewContext('('+code+')',context)();assert.equal(reads,1);assert.equal(records,0);assert.equal(context.inferenceAbort,null);
  assert.doesNotMatch(body,/refreshCapabilities|gmailAccounts|listenerStatus|workflow/);
 });
 
+test('diagnostics export uses one status observation and drops timing after a resident session changes',async()=>{
+ const {readFileSync}=await import('node:fs');const {stripTypeScriptTypes}=await import('./support/strip-types.mjs');const vm=await import('node:vm');
+ const source=readFileSync(new URL('../apps/app/src/prototype/settings-adapter.ts',import.meta.url),'utf8');const body=source.slice(source.indexOf('  async function exportDiagnostics(api: Bag) {'),source.indexOf('  async function clearProblems(')).trim();
+ for(const retire of [false,true]){
+  let session={},reads=0,shared;
+  const context={diagnosticsBusy:false,owner:{},Capacitor:{isNativePlatform:()=>true},changed:()=>{},connectionController:{getSnapshot:()=>({kind:'resident',session})},refreshResidentDiagnostics:async()=>{reads++;return {nativeInferenceTiming:nativeInference};},device:{diagnosticsFacts:async()=>{if(retire)session={};return {};},shareDiagnostics:async({text})=>{shared=JSON.parse(text);return {status:'opened'};}},readCrashLog:async()=>({entries:[]}),system:{getStatus:async()=>({})},readRoles:()=>({}),readNativeVoiceTiming:async()=>null,readNativeCloudStreamTiming:async()=>null,buildDiagnostics,diagnosticsText,facts:{},delivery:{},exportRealtimeVoiceTiming:()=>undefined,voiceStartupTiming:()=>undefined,exportVoiceTiming:()=>'{"records":[]}'};
+  await vm.runInNewContext('('+stripTypeScriptTypes(body,{mode:'strip'})+')',context)({toast:()=>{}});
+  assert.equal(reads,1);assert.ok(shared);assert.deepEqual(shared.nativeInferenceTiming,retire?undefined:nativeInference);assert.equal(context.diagnosticsBusy,false);
+ }
+});
+
 test('confirmed clear cancels an outstanding inference refresh before it can append',async()=>{
- const {readFileSync}=await import('node:fs');const {stripTypeScriptTypes}=await import('node:module');const vm=await import('node:vm');
+ const {readFileSync}=await import('node:fs');const {stripTypeScriptTypes}=await import('./support/strip-types.mjs');const vm=await import('node:vm');
  const source=readFileSync(new URL('../apps/app/src/prototype/settings-adapter.ts',import.meta.url),'utf8');
- const refresh=source.slice(source.indexOf('  async function refreshInferenceFailure(){'),source.indexOf('  async function refreshCapabilities(')).trim();
+ const refresh=source.slice(source.indexOf('  async function refreshResidentDiagnostics(){'),source.indexOf('  async function refreshCapabilities(')).trim();
  const clear=source.slice(source.indexOf('  async function clearProblems(api: Bag) {'),source.indexOf('  async function refresh()')).trim();
- let records=0,clears=0;const context={inferenceAbort:null,owner:{toast:()=>{}},crashBusy:false,crashLog:null,AbortController,window:{confirm:()=>true},setTimeout:()=>1,clearTimeout:()=>{},connectionController:{readCloudInferenceFailure:signal=>new Promise((_,reject)=>signal.addEventListener('abort',()=>reject(signal.reason),{once:true}))},recordCloudInferenceFailure:()=>{records++;return true;},readCrashLog:async()=>({entries:[],exitHistory:false}),clearCrashLog:async()=>{clears++;},changed:()=>{}};
- vm.runInNewContext(stripTypeScriptTypes(refresh+'\n'+clear,{mode:'strip'})+'\nglobalThis.refresh=refreshInferenceFailure;globalThis.clear=clearProblems;',context);
+ let records=0,clears=0;const context={inferenceAbort:null,owner:{toast:()=>{}},crashBusy:false,crashLog:null,AbortController,window:{confirm:()=>true},setTimeout:()=>1,clearTimeout:()=>{},connectionController:{readResidentDiagnostics:signal=>new Promise((_,reject)=>signal.addEventListener('abort',()=>reject(signal.reason),{once:true}))},recordCloudInferenceFailure:()=>{records++;return true;},readCrashLog:async()=>({entries:[],exitHistory:false}),clearCrashLog:async()=>{clears++;},changed:()=>{}};
+ vm.runInNewContext(stripTypeScriptTypes(refresh+'\n'+clear,{mode:'strip'})+'\nglobalThis.refresh=refreshResidentDiagnostics;globalThis.clear=clearProblems;',context);
  const pending=context.refresh();await context.clear({toast:()=>{}});await pending;assert.equal(clears,1);assert.equal(records,0);assert.equal(context.inferenceAbort,null);
 });
 

@@ -20,15 +20,18 @@ test('Notes records, reviews, saves, reloads, plays and restores the same retain
  await openLegacyNotes(page);
  await expect.poll(()=>page.evaluate(()=>(window as any).fixture.ctx.state)).toBe('running');
  await page.getByRole('button',{name:'Record and transcribe',exact:true}).click();
- await page.getByRole('button',{name:'Start recording',exact:true}).click();
- await expect(page.getByRole('button',{name:'Stop recording',exact:true})).toBeVisible();
+ // The recorder starts at once, counts up with no limit and offers Discard, Pause and Done.
+ const recorder=page.locator('[data-alpha-subview="notes-recorder"]');
+ await expect(recorder).toHaveAttribute('data-recorder-state','recording');
  await expect.poll(()=>page.evaluate(()=>(window as any).recordedBytes)).toBeGreaterThan(0);
- await page.getByRole('button',{name:'Stop recording',exact:true}).click();
- await page.getByRole('button',{name:'Transcribe with Eliza Cloud',exact:true}).click();
+ await expect(recorder.getByText(/Record up to|Nothing is uploaded|Waveform levels/)).toHaveCount(0);
+ await recorder.getByRole('button',{name:'Pause',exact:true}).click();
+ await expect(recorder).toHaveAttribute('data-recorder-state','paused');
+ await recorder.getByRole('button',{name:'Resume',exact:true}).click();
+ await expect(recorder).toHaveAttribute('data-recorder-state','recording');
+ await recorder.getByRole('button',{name:'Done',exact:true}).click();
  await expect.poll(()=>page.evaluate(()=>(window as any).cloudVoiceFixture.transcriptions.length)).toBe(1);
  expect(await page.evaluate(()=>(window as any).cloudVoiceFixture.transcriptions[0].credentialId)).toBe('synthetic-cloud-credential');
- await page.getByRole('textbox',{name:'Review transcript',exact:true}).fill('A recorded note saved through the real Notes interface.');
- await page.getByRole('button',{name:'Save note',exact:true}).click();
  await expect(page.getByRole('button',{name:'Play recording',exact:true})).toBeVisible();
  await page.getByRole('textbox',{name:'Title',exact:true}).fill('Browser audio journey');
  // Reload only after asynchronous title autosave reaches the durable document.
@@ -48,8 +51,8 @@ test('Notes records, reviews, saves, reloads, plays and restores the same retain
  await page.getByRole('button',{name:'Play recording',exact:true}).click();
  await expect(page.getByRole('button',{name:'Stop recording playback',exact:true})).toBeVisible();
  await expect(page.getByRole('button',{name:'Play recording',exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Delete note',exact:true}).click();
- await expect(page.getByText('Voice note moved to Trash',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
+ await expect(page.getByText('Moved to Recently deleted',{exact:true})).toBeVisible();
  await expect(page.getByRole('button',{name:'Undo',exact:true})).toBeVisible();
  expect(await page.evaluate(async(id)=>{const {registerPlugin}=await import('/src/platform-plugins.ts');return (await registerPlugin<any>('AlphaNoteAudio').describe({audioId:id})).deletedAt;},note.audio.audioId)).toBeGreaterThan(0);
  await page.getByRole('button',{name:'Undo',exact:true}).click();

@@ -8,6 +8,7 @@
  * Executors and the durable journal slots are registered by the composition
  * root (agent adapter / local-agent storage).
  */
+import {filesReviewIdentity} from './files-agent-contract';
 import {
   actionScope,
   deviceJournalContext,
@@ -84,6 +85,9 @@ export class DeviceActions extends DeviceActionCoordinator<ContextEnvelope,Workf
   constructor(session: VerifiedSession, credential: DeviceCredential, scope: string,
     request: (path: string, body: unknown | undefined, signal: AbortSignal) => Promise<unknown>,
     journal: ActionJournal, execute: DeviceExecutor, recover?:DeviceRecovery, reminderTimingV2=false, reminderCreate=false, executeForeground?:ForegroundReviewExecutor) {
-    super({session,credential,scope,request,journal,execute,recover,reminderTimingV2,reminderCreate,executeForeground,profile:alphaDeviceActionProfile},{currentRequestBrowserPolicy:true});
+    // filesIdentity: the Files move/trash review binds each file's identity (files-browser-agent.patch);
+    // a pin without that port ignores it.
+    const ports={session,credential,scope,request,journal,execute,recover,reminderTimingV2,reminderCreate,executeForeground,filesIdentity:filesReviewIdentity,profile:alphaDeviceActionProfile};
+    super(ports,{currentRequestBrowserPolicy:true});
   }
 }

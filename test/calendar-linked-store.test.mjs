@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { registerHooks, stripTypeScriptTypes } from "node:module";
+import {registerHooks} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 // The shared store (@elizaos/plugin-calendar/linked-sync) through Alpha's installed-key wrapper.
 const { CalendarLinkedStore } = await import(
 	"../apps/app/src/runtime/calendar-linked-store.ts"

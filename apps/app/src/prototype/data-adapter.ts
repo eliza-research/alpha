@@ -13,6 +13,12 @@ const installed = new WeakSet<object>();
 export function installPrototypeDataAdapter(Component: any, views: Record<string, Bag>) {
   if (installed.has(views)) return;
   installed.add(views);
+  // Home draws no card for a failed calendar read, so opening Calendar by any route reads it again.
+  const openView = Component.prototype.openView;
+  Component.prototype.openView = function (key: string, ...args: any[]) {
+    if (key === 'calendar') { const source = views.calendar?.displaySources?.(); if (source?.error) source.retry?.(); }
+    return openView.call(this, key, ...args);
+  };
   const empty: Record<string, Bag> = {
     photos: { list: [], trash: [], albums: [], open: null, album: null, edit: null, sheet: null, filter: null, seq: null, sel: null },
     files: { files: [], folder: null, open: null, asked: {}, asking: null, sel: null, sheet: null },
@@ -64,13 +70,6 @@ export function installPrototypeDataAdapter(Component: any, views: Record<string
   const renderVals = p.renderVals;
   p.renderVals = function () {
     const out = renderVals.call(this);
-    // Offer only connected operations. Reference suggestions name fictional
-    // people and imply image analysis/mail/workflows that are not available yet.
-    const view = this.S().view;
-    const first = view === 'camera' ? 'Open Photos' : view === 'photos' ? 'Open Camera'
-      : view === 'files' || view === 'browser' || view === 'inbox' ? 'Open Notes'
-      : view === 'phone' || view === 'messages' ? 'Open Contacts' : 'Open Calendar';
-    const suggestions = ['Create a note', 'Set a reminder', first];
     const now = Date.now();
     const calendarSource = views.calendar.displaySources?.();
     const calendarState = this.vget('calendar');
@@ -139,15 +138,17 @@ export function installPrototypeDataAdapter(Component: any, views: Record<string
       next: following ? {item: itemOf(following), provenance: deviceFresh(following.event, false)} : null} : agendaInput;
     return {
       ...out, shadeN: [],
-      sugg: suggestions.map(label => ({ label, go: () => this.send(label) })),
+      sugg: [], showSugg: false,
       ...homeCalendarValues(presentHomeAgendaCard(agendaInput)),
+      homeCalendarConfirmedEmpty: cardState === 'ready' && readAt != null && readAt > 0 && readAt <= now
+        && !stale && !calendarHidden && !calendarSource?.truncated && !agenda && !following,
       // The agent calendar adapter presents the card again with the agent's next event under an overdue
       // reminder, and lets an upcoming reminder lead when it comes first.
       homeAgendaInput: agentAgendaInput, homeAgendaReminder: !!agenda?.event.alphaReminderId && !overdue,
       homeAgendaNextReminder: !!following?.event.alphaReminderId,
       homeAttentionLabel: attention.label, homeAttentionAction: attention.action,
       homeAttentionPeople: [], homeAttentionPeopleVisibility: 'hidden',
-      ...(browserDevProfile?{homeInboxCount:attention.count,homeInboxRows:unreadRows.slice(0,2).map(mail=>({subject:mail.subj||'(no subject)',from:mail.name||mail.email||''})),homeInboxHasRows:unread>0,homeInboxTitle:unread?'':'No unread email',homeInboxStatus:'Development inbox'}:{}),
+      ...(browserDevProfile?{homeInboxCount:attention.count,homeInboxRows:unreadRows.slice(0,2).map(mail=>({subject:mail.subj||'(no subject)',from:mail.name||mail.email||''})),homeInboxHasRows:unread>0,homeInboxConfirmedEmpty:unread===0,homeInboxTitle:unread?'':'No unread email',homeInboxStatus:'Development inbox'}:{}),
       homeWorkflowLabel: brief.label, homeWorkflowTitle: brief.title, homeWorkflowTime: brief.time, homeWorkflowSource: brief.source,
       // After a failed read, opening Calendar from the card reads it again; Calendar itself does not retry on entry.
       // A stale read is read again when the card is opened (the same forced read Calendar's retry uses).
@@ -188,6 +189,24 @@ export function setHomeSources(next: Partial<typeof homeSources>) {
   if (next.attention) homeSources.attention = safe(next.attention);
   if (next.brief) homeSources.brief = safe(next.brief);
   window.dispatchEvent(new Event(HOME_SOURCES_CHANGED));
+}
+
+/** Which Home cards are drawn (docs/ui-refresh-2026-11, tla/HomeLayout.tla). A card is drawn only
+ * when it has something to show: the next event or an overdue reminder, an enabled workflow,
+ * unread mail from a connected account, a retained brief. With none, Home shows the date, and a
+ * Connect Google button while Google is known to be disconnected. Installed outermost, after
+ * every adapter that writes the card values. */
+export function installHomeCardVisibility(Component: any, openGoogle: () => void) {
+  const p = Component.prototype, render = p.renderVals;
+  p.renderVals = function () {
+    const out = render.call(this);
+    const calendar = !!out.homeCalendarHasEvent, workflows = !!out.homeWorkflowHasRows, inbox = !!out.homeInboxHasRows, brief = !!out.homeBriefHas;
+    const none = !calendar && !workflows && !inbox && !brief;
+    return {...out, homeShowCalendar: calendar, homeShowWorkflows: workflows, homeShowInbox: inbox, homeShowDate: none,
+      homeShowSetup: none && out.homeGoogleConnected === false,
+      homeDateLabel: new Date().toLocaleDateString([], {weekday: 'long', month: 'long', day: 'numeric'}),
+      connectGoogle: openGoogle};
+  };
 }
 
 /** Neutral Home card values used when no fixture defaults are bundled. */

@@ -1,3 +1,4 @@
+import type {VoiceStartupStage,VoiceStartupTiming} from './diagnostics-export';
 /**
  * Per-turn voice latency records, kept only on this device. A record holds a random turn
  * id, the speech route, whether the turn was cold, and millisecond offsets from the end of
@@ -79,3 +80,37 @@ import {createRealtimeVoiceTiming} from '../../../../.eliza/client-features/pack
 const realtimeVoiceTiming=createRealtimeVoiceTiming({storageKey:'alphaphone:realtime-voice-timing:v1',storage:()=>globalThis.localStorage});
 export const beginRealtimeVoiceTiming=(route:'direct-cartesia'|'cloud-cartesia')=>realtimeVoiceTiming.start(route);
 export const exportRealtimeVoiceTiming=()=>realtimeVoiceTiming.exportJson();
+
+// Startup and turn timings are distinct: preparation can fail before there is
+// audio or a turn. Keep only the most recent phase and a bounded duration.
+type VoiceStartupAttempt={stage:VoiceStartupStage;outcome:VoiceStartupTiming['outcome'];started:number;ended?:number};
+let startup:VoiceStartupAttempt|undefined;
+const voiceStartupClock=()=>typeof performance==='undefined'?Date.now():performance.now();
+export function voiceStartupTiming():VoiceStartupTiming|undefined {
+ if(!startup)return;
+ return {stage:startup.stage,outcome:startup.outcome,elapsedMs:Math.min(120000,Math.max(0,Math.round((startup.ended??voiceStartupClock())-startup.started)))};
+}
+
+export async function runVoiceStartupPreparation<T>(controller:AbortController,prepare:(stage:(value:VoiceStartupStage)=>void)=>Promise<T>):Promise<T>{
+ const signal=controller.signal,attempt:VoiceStartupAttempt={stage:'conversation-selection',outcome:'pending',started:voiceStartupClock()};
+ startup=attempt;
+ const timeout=Object.assign(new Error('Voice preparation timed out.'),{code:'voice-preparation-timeout'});
+ let cancel=()=>{};
+ const interrupted=new Promise<never>((_resolve,reject)=>{cancel=()=>reject(signal.reason);});
+ signal.addEventListener('abort',cancel,{once:true});
+ if(signal.aborted)cancel();
+ const deadline=setTimeout(()=>controller.abort(timeout),12000);
+ const work=Promise.resolve().then(()=>{
+  signal.throwIfAborted();
+  return prepare(value=>{if(attempt.outcome==='pending')attempt.stage=value;});
+ });
+ try{
+  const result=await Promise.race([work,interrupted]);signal.throwIfAborted();
+  attempt.outcome='prepared';return result;
+ }catch(error){
+  attempt.outcome=error===timeout?'timeout':signal.aborted?'cancelled':'failed';
+  throw error;
+ }finally{
+  attempt.ended=voiceStartupClock();clearTimeout(deadline);signal.removeEventListener('abort',cancel);
+ }
+}

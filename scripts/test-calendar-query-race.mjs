@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from '../test/support/strip-types.mjs';
 const pending=[],calls=[];
 const calendar={list:range=>{calls.push(range);return new Promise(resolve=>pending.push(resolve));}};
 const DailyApps={addListener:async()=>({remove(){}})};

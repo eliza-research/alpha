@@ -17,9 +17,8 @@ final class GmailBackground {
   if(delivery!=null)return delivery;
   Context app=context.getApplicationContext();AlphaCredentialStore store=new AlphaCredentialStore(app);
   delivery=new MailBackgroundDelivery(new MailBackgroundDelivery.Host(){
-   // Lifecycle first: the slot writes below then take the vault lock in the order every writer uses,
-   // and a Cloud key commit (which holds both) withdraws reentrantly.
-   public Object lock(){return AlphaLocalAgentPlugin.credentialLock();}
+   // Lifecycle precedes the vault lock, matching credential writers.
+   public Object lock(){return AlphaLocalAgentPlugin.credentialLifecycleLock();}
    public String readState()throws Exception{return store.readCredentialSlot(SLOT);}
    public void writeState(String value)throws Exception{store.writeCredentialSlot(SLOT,value);}
    public void removeState()throws Exception{store.removeCredentialSlot(SLOT);}

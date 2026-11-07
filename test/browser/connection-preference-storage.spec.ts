@@ -35,7 +35,7 @@ for(const changed of ['service','offline','target'] as const)test(`normal browse
  // Offline was also the initial saved target; create a distinct prior preference
  // so the explicit offline choice emits a real storage event.
  if(changed==='offline')await other.evaluate(selection=>{localStorage.setItem(selection,JSON.stringify({kind:'none'}));localStorage.setItem(selection,JSON.stringify({kind:'offline'}));},selection);
- if(changed==='target')await expect(page.getByRole('dialog',{name:'Agent connection',exact:true})).toHaveCount(0);
+ if(changed==='target')await expect(page.getByRole('dialog',{name:'Agent',exact:true})).toHaveCount(0);
  await expect.poll(()=>page.evaluate(async()=>(await import('/src/runtime/connection-ui.tsx')).connectionController.getCloudEnvironment())).toBe(changed==='target'?'production':null);
  expect(await page.evaluate(()=>(window as any).preferenceFixture.calls)).toBe(1);
 });

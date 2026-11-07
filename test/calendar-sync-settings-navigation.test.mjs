@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {createRequire} from 'node:module';
 const require=createRequire(import.meta.url);
 const {JSDOM}=require('jsdom');
-const source=stripTypeScriptTypes(fs.readFileSync(new URL('../apps/app/src/runtime/calendar-sync-settings.ts',import.meta.url),'utf8'),{mode:'transform'}).replace(/^import .*;\n/gm,'').replace('export function openCalendarSyncSettings','function openCalendarSyncSettings');
+const source=stripTypeScriptTypes(fs.readFileSync(new URL('../apps/app/src/runtime/calendar-sync-settings.ts',import.meta.url),'utf8'),{mode:'strip'}).replace(/^import .*;\n/gm,'').replace('export function openCalendarSyncSettings','function openCalendarSyncSettings');
 const settle=async()=>{await Promise.resolve();await Promise.resolve();await Promise.resolve();};
 function fixture(state={status:'Sync is off.',enabled:false,running:false},review=async()=>{throw Error('Choose a Google calendar for sync first.');},offered=[{connectionId:'connection',sourceId:'google:connection:owner%40example.test',providerCalendarId:'owner@example.test',name:'owner@example.test',account:'owner@example.test'},{connectionId:'connection',sourceId:'google:connection:team',providerCalendarId:'team',name:'Team',account:'owner@example.test'}]){
  const env=new JSDOM('<div class="os"></div><button id="prior">Calendar settings</button>',{pretendToBeVisual:true});
@@ -83,7 +83,7 @@ console.log('PASS 3 canonical sync dialog cases: same-source review/select/resum
   const calendarView={canConfirmCalendarTransition:transition,confirmCalendarTransition:()=>calls.transition++,
    calendarAuthorityChoices:choices?[{label:'Agent Calendar',go:()=>calls.returned++},{label:'Old source',go:()=>{throw Error('No arbitrary source chooser');}}]:[],
    nativeStatusRetry:()=>calls.retry++};
-  const context=vm.createContext({state,page,out,owner:shell,native,developerTools:false,
+  const context=vm.createContext({current:'calendar',stack:out.stack,subpage:(title,groups)=>({title,groups,back:()=>calls.pages.push({page:null})}),state,page,out,owner:shell,native,developerTools:false,
    Capacitor:{isNativePlatform:()=>native},views:{calendar:{displaySources:()=>display,render:()=>calendarView}},
    gmailAccounts:grants,gmail,group:rows=>({rows}),info:(label,val)=>({label,val,kInfo:true}),
    api:{set:x=>calls.pages.push(x)},googleConnectionController:{openCalendar:x=>calls.connects.push(x)},

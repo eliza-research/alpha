@@ -3,13 +3,14 @@ import {applyPhotoFilter} from '../browser/photo-filter';
 import {renderVideoEdit,validateVideoEdit,type VideoEdit} from '../browser/video-edit';
 import {BrowserCameraFocus} from '../browser/camera-focus';
 import {browserDevProfile} from '../browser/dev-profile';
-import type {ImportedCameraImage} from './browser-image-import';
+/** A browser image chosen for Photos or kept from scan review, re-encoded as JPEG. */
+export type ImportedCameraImage={original:File;image:string;width:number;height:number};
 import {drawCameraFrame} from '../browser/camera-frame';
 import {BrowserVideoCapture} from '../browser/video-capture';
 import {albumDocument} from '../browser/preference-documents';
 
 type Row={id:string;kind:'image'|'video';path?:string;duration?:number;operationId?:string;image:string;width:number;height:number;date:number;revision:string;mutationRevision:string;favorite:boolean;trashed:boolean};
-const finder='[aria-label="Viewfinder. Tap to focus, hold to ask Alpha, swipe to change mode"]';
+const finder='[data-alpha-camera="viewfinder"]';
 const revision=()=>crypto.randomUUID();
 let database:Promise<IDBDatabase>|undefined;
 function db(){return database??=new Promise<IDBDatabase>((resolve,reject)=>{
@@ -34,14 +35,16 @@ function pageBoundary(value:string){
  try{const key=JSON.parse(value.slice(5));if(value.startsWith('date:')&&Array.isArray(key)&&key.length===2&&Number.isFinite(key[0])&&typeof key[1]==='string'&&key[1])return key as [number,string];}catch{}
  throw Error('Photo page changed. Reopen the library.');
 }
+/** Every browser capture comes from Alpha's camera; the browser has no screenshots. */
+const BUILT_IN_ALBUMS=['favorites','videos','camera','screenshots'];
 async function rows(options:{before?:string;trashed?:boolean;album?:string}={},metadata=false){
- const custom=options.album&&!['favorites','videos'].includes(options.album)?(await albumDocument.read<Album[]>(()=>[])).find(a=>a.id===options.album!.replace(/^custom:/,'')):undefined;
- if(options.album&&!['favorites','videos'].includes(options.album)&&!custom)throw Error('Album no longer available.');
+ const custom=options.album&&!BUILT_IN_ALBUMS.includes(options.album)?(await albumDocument.read<Album[]>(()=>[])).find(a=>a.id===options.album!.replace(/^custom:/,'')):undefined;
+ if(options.album&&!BUILT_IN_ALBUMS.includes(options.album)&&!custom)throw Error('Album no longer available.');
  const members=new Set(custom?.memberIds||[]);
  const boundary=options.before?pageBoundary(options.before):undefined;
  return transaction<Row[]>('readonly',(store,set)=>{const result:Row[]=[];const request=store.index('chronological').openCursor(boundary?IDBKeyRange.upperBound(boundary,true):undefined,'prev');
   request.onsuccess=()=>{const cursor=request.result;if(!cursor){set(result);return;}const row=cursor.value as Row;if(row.kind!=='image'&&row.kind!=='video'){cursor.continue();return;}
-   if(metadata||(!!row.trashed===!!options.trashed&&(!options.album||options.album==='favorites'&&row.favorite||options.album==='videos'&&row.kind==='video'||members.has(row.id))))result.push(metadata?{...row,image:'',path:undefined}:row);
+   if(metadata||(!!row.trashed===!!options.trashed&&(!options.album||options.album==='favorites'&&row.favorite||options.album==='videos'&&row.kind==='video'||options.album==='camera'||members.has(row.id))))result.push(metadata?{...row,image:'',path:undefined}:row);
    if(!metadata&&result.length>=41){set(result);return;}cursor.continue();
   };
  });
@@ -55,15 +58,15 @@ async function change(input:{id:string;revision:string},patch:Partial<Pick<Row,'
 }
 type EditParameters={rotation:number;crop:boolean;filter:string};
 type EditSession={id:string;source:Row;active:boolean;expiresAt:number};
-type EditRecord={id:string;kind:'edit-receipt';operationId:string;sourceId:string;sourceRevision:string;copyId:string;status:'prepared'|'saving'|'saved'|'failed'|'cancelled'|'unchanged';parameters?:string;attempt?:string};
-type EditResult={status:string;operationId:string;id?:string};
+type EditRecord={id:string;kind:'edit-receipt';operationId:string;sourceId:string;sourceRevision:string;copyId:string;status:'prepared'|'saving'|'saved'|'failed'|'cancelled'|'unchanged';parameters?:string;attempt?:string;replace?:boolean};
+type EditResult={status:string;operationId:string;id?:string;replaced?:boolean};
 const edits=new Map<string,EditSession>();
 const filters:Record<string,string>={none:'none',vivid:'saturate(1.55) contrast(1.08)',warm:'sepia(.3) saturate(1.35) hue-rotate(-8deg)',cool:'saturate(1.1) hue-rotate(14deg) brightness(1.03)',mono:'grayscale(1) contrast(1.05)',fade:'contrast(.78) brightness(1.12) saturate(.75)',noir:'grayscale(1) contrast(1.55) brightness(.88)'};
 const photoId=()=>Date.now().toString().padStart(13,'0')+Array.from(crypto.getRandomValues(new Uint8Array(12)),n=>String(n%10)).join('');
 function editKey(id:string){if(!/^[a-f0-9-]{36}$/.test(id))throw Error('Invalid edit identity.');return 'edit:'+id;}
 function parameters(input:EditParameters){if(![0,90,180,270].includes(input.rotation)||typeof input.crop!=='boolean'||!Object.hasOwn(filters,input.filter))throw Error('Invalid photo transform.');return JSON.stringify([input.rotation,input.crop,input.filter]);}
 function session(id:string){const value=edits.get(id);if(!value?.active||Date.now()>value.expiresAt)throw Error('Reopen the photo editor.');return value;}
-function outcome(record:EditRecord):EditResult{return {operationId:record.operationId,status:record.status==='saved'?'saved':record.status==='failed'?'failed':record.status==='unchanged'?'unchanged':'not-started',...(record.status==='saved'?{id:record.copyId}:{})};}
+function outcome(record:EditRecord):EditResult{return {operationId:record.operationId,status:record.status==='saved'?'saved':record.status==='failed'?'failed':record.status==='unchanged'?'unchanged':'not-started',...(record.status==='saved'?{id:record.replace?record.sourceId:record.copyId,...(record.replace?{replaced:true}:{})}:{})};}
 async function renderEdit(value:EditSession,input:EditParameters){
  input={rotation:input.rotation,crop:input.crop,filter:input.filter};
  parameters(input);session(value.id);
@@ -77,7 +80,8 @@ async function renderEdit(value:EditSession,input:EditParameters){
  context.drawImage(image,(image.naturalWidth-sw)/2,(image.naturalHeight-sh)/2,sw,sh,-sw*scale/2,-sh*scale/2,sw*scale,sh*scale);
  if(!nativeFilter)applyPhotoFilter(context,canvas.width,canvas.height,filters[input.filter]);
  const encoded=canvas.toDataURL('image/jpeg',0.9);if(!encoded.startsWith('data:image/jpeg;base64,')||encoded.length>12_000_000)throw Error('Edited photo could not be encoded.');
- return {sessionId:value.id,operationId:value.id,image:encoded,width:canvas.width,height:canvas.height,reduced:scale<1,maxEdge:2048,filter:input.filter};
+ // Browser captures are Alpha's own: Replace may overwrite them in place.
+ return {sessionId:value.id,operationId:value.id,image:encoded,width:canvas.width,height:canvas.height,reduced:scale<1,maxEdge:2048,filter:input.filter,canReplace:true};
 }
 async function beginPhotoEdit(input:{id:string;revision:string}){
  for(const value of edits.values())if(Date.now()>value.expiresAt)await cancelPhotoEdit({sessionId:value.id});
@@ -102,16 +106,18 @@ async function resultPhotoEdit(input:{operationId:string}):Promise<EditResult>{
  };});
 }
 async function cancelPhotoEdit(input:{sessionId:string}){const value=edits.get(input.sessionId);if(value)value.active=false;edits.delete(input.sessionId);await resultPhotoEdit({operationId:input.sessionId});}
-async function savePhotoEdit(input:EditParameters&{sessionId:string}):Promise<EditResult>{
+async function savePhotoEdit(input:EditParameters&{sessionId:string;replace?:boolean}):Promise<EditResult>{
+ const replace=input.replace===true;
  input={sessionId:input.sessionId,rotation:input.rotation,crop:input.crop,filter:input.filter};
- const encodedParameters=parameters(input),key=editKey(input.sessionId),attempt=revision();
+ // The mode is part of the save's identity: a retry cannot turn a copy into a replace.
+ const encodedParameters=parameters(input)+(replace?':replace':''),key=editKey(input.sessionId),attempt=revision();
  const claimed=await transaction<EditRecord>('readwrite',(store,set,fail)=>{const request=store.get(key);request.onsuccess=()=>{
   const record=request.result as EditRecord|undefined;
   if(!record){fail(Error('Reopen the photo editor.'));return;}
   if(record.parameters&&record.parameters!==encodedParameters){fail(Error('This save already refers to another edit.'));return;}
   if(record.status==='saved'||record.status==='failed'||record.status==='cancelled'||record.status==='unchanged'){set(record);return;}
   if(record.status==='saving'){fail(Error('Save is already in progress. Check its existing outcome.'));return;}
-  record.status=input.rotation===0&&!input.crop&&input.filter==='none'?'unchanged':'saving';record.parameters=encodedParameters;record.attempt=attempt;store.put(record);set(record);
+  record.status=input.rotation===0&&!input.crop&&input.filter==='none'?'unchanged':'saving';record.parameters=encodedParameters;record.attempt=attempt;record.replace=replace;store.put(record);set(record);
  };});
  if(claimed.status!=='saving')return outcome(claimed);
  try{
@@ -122,9 +128,11 @@ async function savePhotoEdit(input:EditParameters&{sessionId:string}):Promise<Ed
    const original=store.get(record.sourceId);original.onsuccess=()=>{
     const source=original.result as Row|undefined;
     if(!value.active||Date.now()>value.expiresAt||!source||source.trashed||source.mutationRevision!==record.sourceRevision){record.status='failed';store.put(record);set(outcome(record));return;}
-    const copy:Row={id:record.copyId,kind:'image',image:rendered.image,width:rendered.width,height:rendered.height,date:Date.now(),revision:revision(),mutationRevision:revision(),favorite:false,trashed:false};
-    // Copy and receipt either both commit or neither does. The original is never written.
-    store.add(copy);record.status='saved';store.put(record);set(outcome(record));
+    // Replace overwrites the reviewed revision in place (new revisions, same id and date);
+    // a copy and its receipt either both commit or neither does, and the original is not written.
+    if(record.replace)store.put({...source,image:rendered.image,width:rendered.width,height:rendered.height,revision:revision(),mutationRevision:revision()});
+    else store.add({id:record.copyId,kind:'image',image:rendered.image,width:rendered.width,height:rendered.height,date:Date.now(),revision:revision(),mutationRevision:revision(),favorite:false,trashed:false} satisfies Row);
+    record.status='saved';store.put(record);set(outcome(record));
    };
   };});
  }catch(error){
@@ -136,8 +144,10 @@ type Album={id:string;name:string;revision:string;count:number;memberIds:string[
 const mediaId=()=>Date.now().toString().padStart(13,'0')+Array.from(crypto.getRandomValues(new Uint8Array(12)),n=>String(n%10)).join('');
 const prepared=new Map<string,{id:string;revision:string}[]>();
 type SelectedMedia={id:string;revision:string};
-function selectedMedia(items:SelectedMedia[]){
- if(!Array.isArray(items)||items.length<1||items.length>20||items.some(item=>!item||typeof item.id!=='string'||!item.id||typeof item.revision!=='string'||!item.revision)||new Set(items.map(item=>item.id)).size!==items.length)throw Error('Select between 1 and 20 distinct items again.');
+/** Share and save hand one set to the system at once; changes are batched by the caller. */
+export const SHARE_LIMIT=100;
+function selectedMedia(items:SelectedMedia[],limit=20){
+ if(!Array.isArray(items)||items.length<1||items.length>limit||items.some(item=>!item||typeof item.id!=='string'||!item.id||typeof item.revision!=='string'||!item.revision)||new Set(items.map(item=>item.id)).size!==items.length)throw Error(`Select between 1 and ${limit} distinct items again.`);
  return items.map(item=>({id:item.id,revision:item.revision}));
 }
 // Same rule as the shared TrashDeleteRequest: emptying the trash is only the explicit {all:true}
@@ -146,7 +156,7 @@ function trashSelection(input:unknown):SelectedMedia[]|null{
  const value=input as {items?:unknown;all?:unknown}|null|undefined;
  if(!value||typeof value!=='object'||('all' in value)===('items' in value))throw Error('Select deleted items again.');
  if('all' in value){if(value.all!==true)throw Error('Select deleted items again.');return null;}
- return selectedMedia(value.items as SelectedMedia[]);
+ return selectedMedia(value.items as SelectedMedia[],2000);
 }
 async function selectedMediaRows(items:SelectedMedia[]){
  return transaction<Row[]>('readonly',(store,set,fail)=>{const result:Row[]=[];set(result);for(const item of items){const request=store.get(item.id);request.onsuccess=()=>{const row=request.result as Row|undefined;if(!row||!['image','video'].includes(row.kind)||row.mutationRevision!==item.revision||row.trashed){fail(Error('Selection changed. Reselect the items.'));return;}result.push(row);};}});
@@ -164,7 +174,7 @@ async function selectedMediaFiles(items:SelectedMedia[]){
 }
 export async function saveBrowserMedia(input:{items:SelectedMedia[]},current:()=>boolean){
  if(!current())throw new DOMException('Share view changed','AbortError');
- const items=selectedMedia(input.items),files=await selectedMediaFiles(items);
+ const items=selectedMedia(input.items,SHARE_LIMIT),files=await selectedMediaFiles(items);
  const blob=files.length===1?files[0]:fileArchive(await Promise.all(files.map(async file=>({path:file.name,bytes:new Uint8Array(await file.arrayBuffer())}))));
  await selectedMediaRows(items);
  if(document.hidden||!current())throw new DOMException('Share view changed','AbortError');
@@ -186,13 +196,13 @@ async function saveVideoCopy(input:{id:string;revision:string;operationId:string
 export const browserPhotoLibrary={
  saveVideoCopy,
  beginEdit:beginPhotoEdit,previewEdit:previewPhotoEdit,saveEdit:savePhotoEdit,editResult:resultPhotoEdit,cancelEdit:cancelPhotoEdit,
- async list(options:{before?:string;trashed?:boolean;album?:string}={}){const result=await rows(options);return {items:result.slice(0,40),next:result.length>40?pageCursor(result[39]):''};},
+ async list(options:{before?:string;trashed?:boolean;album?:string;limit?:number}={}){const result=await rows(options),page=Math.max(1,Math.min(40,Math.floor(options.limit??40)||40));return {items:result.slice(0,page),next:result.length>page?pageCursor(result[page-1]):''};},
  async read(input:{id:string}){return read(input.id);},
- async summary(){const all=await rows({},true);return {favorites:all.filter(r=>!r.trashed&&r.favorite).length,videos:all.filter(r=>!r.trashed&&r.kind==='video').length,trash:all.filter(r=>r.trashed).length,canFavorite:true};},
+ async summary(){const all=await rows({},true);return {favorites:all.filter(r=>!r.trashed&&r.favorite).length,videos:all.filter(r=>!r.trashed&&r.kind==='video').length,camera:all.filter(r=>!r.trashed).length,screenshots:0,trash:all.filter(r=>r.trashed).length,canFavorite:true};},
  async albums(){const live=new Set((await rows({},true)).filter(row=>!row.trashed).map(row=>row.id));return {items:(await albumDocument.read<Album[]>(()=>[])).map(album=>({...album,count:album.memberIds.filter(id=>live.has(id)).length}))};},
  async shareMany(input:{items:SelectedMedia[]},current:()=>boolean){
   if(!current())throw new DOMException('Share view changed','AbortError');
-  const items=selectedMedia(input.items),files=await selectedMediaFiles(items);
+  const items=selectedMedia(input.items,SHARE_LIMIT),files=await selectedMediaFiles(items);
   await selectedMediaRows(items);
   if(document.hidden||!current())throw new DOMException('Share view changed','AbortError');
   if(!navigator.share||!navigator.canShare?.({files}))throw Error('Sharing is unavailable in this browser. Use Save locally.');
@@ -219,14 +229,14 @@ export const browserPhotoLibrary={
  },
  async setFavorite(input:{id:string;revision:string;favorite:boolean}){return change(input,{favorite:input.favorite});},
  async setTrashed(input:{id:string;revision:string;trashed:boolean}){return {...await change(input,{trashed:input.trashed}),status:'updated'};},
- async changeMany(input:{operation:'favorite'|'trash'|'restore';items:SelectedMedia[]}){
-  if(!['favorite','trash','restore'].includes(input.operation))throw Error('Unknown photo operation.');
-  const items=selectedMedia(input.items),patch=input.operation==='favorite'?{favorite:true}:{trashed:input.operation==='trash'};
+ async changeMany(input:{operation:'favorite'|'unfavorite'|'trash'|'restore';items:SelectedMedia[]}){
+  if(!['favorite','unfavorite','trash','restore'].includes(input.operation))throw Error('Unknown photo operation.');
+  const items=selectedMedia(input.items),patch=input.operation==='favorite'||input.operation==='unfavorite'?{favorite:input.operation==='favorite'}:{trashed:input.operation==='trash'};
   return transaction<{status:string;outcomes:{id:string;status:string;item?:Row}[]}>('readwrite',(store,set)=>{
    const result={status:'complete',outcomes:[] as {id:string;status:string;item?:Row}[]};set(result);
    for(const item of items){const request=store.get(item.id);request.onsuccess=()=>{
     const row=request.result as Row|undefined;
-    if(!row||!['image','video'].includes(row.kind)||row.mutationRevision!==item.revision||input.operation==='favorite'&&row.trashed){result.outcomes.push({id:item.id,status:'conflict'});return;}
+    if(!row||!['image','video'].includes(row.kind)||row.mutationRevision!==item.revision||(input.operation==='favorite'||input.operation==='unfavorite')&&row.trashed){result.outcomes.push({id:item.id,status:'conflict'});return;}
     const unchanged=Object.entries(patch).every(([key,value])=>row[key as 'favorite'|'trashed']===value);
     const updated=unchanged?row:{...row,...patch,mutationRevision:revision()};if(!unchanged)store.put(updated);
     result.outcomes.push({id:item.id,status:unchanged?'unchanged':'updated',item:updated});
@@ -281,7 +291,7 @@ export const browserCamera={
    });
    controller.signal.throwIfAborted();
    ownStream.getVideoTracks()[0].addEventListener('ended',()=>{if(token===generation){clearScreenLight();cameraFocus.clear();}},{once:true});
-   const settings=ownStream.getVideoTracks()[0].getSettings();return {width:ownVideo.videoWidth,height:ownVideo.videoHeight,deviceId:settings.deviceId??''};
+   const settings=ownStream.getVideoTracks()[0].getSettings();return {width:ownVideo.videoWidth,height:ownVideo.videoHeight,deviceId:settings.deviceId??'',minZoom:1,maxZoom:options.direction==='front'?1:8,hasFlash:browserCamera.flashAvailable()};
   }catch(error){release(ownVideo,ownStream);if(preview===ownVideo){preview=null;stream=null;}throw error;}
   finally{if(starting===controller)starting=undefined;}
  },

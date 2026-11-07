@@ -5,7 +5,7 @@ import {mkdtemp,writeFile,rm} from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import vm from 'node:vm';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {createServer,request as httpRequest} from 'node:http';
 import {once} from 'node:events';
 import {createHash,randomUUID} from 'node:crypto';

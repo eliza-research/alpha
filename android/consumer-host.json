@@ -23,13 +23,15 @@
     "modules": [
       { "name": "capacitor-android", "source": { "root": "dependencies", "path": "@capacitor/android/capacitor" } },
       { "name": "eliza-system", "source": { "root": "patchedNative", "path": "plugins/plugin-native-system/android" }, "relocateBuild": true },
-      { "name": "eliza-camera", "source": { "root": "upstream", "path": "plugins/plugin-native-camera/android" } },
+      { "name": "eliza-camera", "source": { "root": "patchedNative", "path": "plugins/plugin-native-camera/android" }, "relocateBuild": true },
       { "name": "eliza-location", "source": { "root": "upstream", "path": "plugins/plugin-native-location/android" } },
       { "name": "eliza-network-policy", "source": { "root": "upstream", "path": "plugins/plugin-native-network-policy/android" } },
       { "name": "eliza-calendar", "source": { "root": "patchedNative", "path": "plugins/plugin-native-calendar/android" }, "relocateBuild": true },
       { "name": "eliza-reminders", "source": { "root": "patchedNative", "path": "plugins/plugin-native-reminders/android" }, "relocateBuild": true },
       { "name": "elizaos-capacitor-secure-store", "source": { "root": "patchedNative", "path": "plugins/plugin-native-secure-store/android" }, "relocateBuild": true },
-      { "name": "eliza-passwords", "source": { "root": "upstream", "path": "plugins/plugin-native-passwords/android" } },
+      { "name": "elizaos-capacitor-secure-store-nativeonly", "source": { "root": "patchedNative", "path": "plugins/plugin-native-secure-store/android-nativeonly" }, "relocateBuild": true },
+      { "name": "elizaos-capacitor-passwords", "source": { "root": "upstream", "path": "plugins/plugin-native-passwords/android" } },
+      { "name": "elizaos-capacitor-passwords-transfer", "source": { "root": "upstream", "path": "plugins/plugin-native-passwords/android-transfer" } },
       { "name": "eliza-cloud-auth", "source": { "root": "patchedNative", "path": "packages/auth/android" }, "relocateBuild": true },
       { "name": "eliza-notifications", "source": { "root": "patchedNative", "path": "plugins/plugin-native-notifications/android" }, "relocateBuild": true },
       { "name": "eliza-owned-media", "source": { "root": "patchedNative", "path": "plugins/plugin-native-media/android" }, "relocateBuild": true },
@@ -150,6 +152,7 @@
       "ready": { "className": "AlphaCanonicalNotifications", "method": "resumeExisting" }
     },
     "helpers": [
+      "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/updater/RuntimeUpdatePause.java",
       "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/NativeProcessSupervisor.java",
       "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/NativeProviderAdmission.java",
       "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/NativeRuntimeEmbeddings.java",

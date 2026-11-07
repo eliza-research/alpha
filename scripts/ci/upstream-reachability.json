@@ -2,14 +2,71 @@
   "schema": 1,
   "repository": "elizaOS/eliza",
   "base": "develop",
-  "baseCommit": "0594fc72da4450a84a986ad12e730e3faa902018",
-  "head": "0594fc72da4450a84a986ad12e730e3faa902018",
-  "recordedAt": "2026-11-06",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...0594fc72da4450a84a986ad12e730e3faa902018",
-  "status": "identical",
-  "aheadBy": 0,
-  "behindBy": 0,
-  "mergeBase": "0594fc72da4450a84a986ad12e730e3faa902018",
-  "pinOnlyCommits": [],
+  "baseCommit": "a744332dd2ad7437d0f0d38707c6e579d21a67f6",
+  "head": "ae1a9dda6712cd20fa249982afef1ef0abd28a3c",
+  "recordedAt": "2026-11-07",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...ae1a9dda6712cd20fa249982afef1ef0abd28a3c",
+  "status": "diverged",
+  "aheadBy": 14,
+  "behindBy": 5,
+  "mergeBase": "175899288f829b1d19e98d2a05bc010ca5d1a8ea",
+  "pinOnlyCommits": [
+    {
+      "sha": "e8484a964435d672f9423972d13779bbf8b54dfe",
+      "subject": "Let mobile hosts show an installed-only Apps drawer"
+    },
+    {
+      "sha": "4c651368721fe6ef6df7720329a5e35f132aef05",
+      "subject": "Admit explicit Cloud APK profiles only with exact voice evidence"
+    },
+    {
+      "sha": "130821d04f69c30af48c753f615cc429a6b9eb09",
+      "subject": "Integrate reviewed Google raster client and scoped native tile routes"
+    },
+    {
+      "sha": "3c76d07819b253b3c8f071f84ec7e6a5374a9a66",
+      "subject": "Keep voice reply drafting notes out of visible text"
+    },
+    {
+      "sha": "267ca242df18c30ecef0710e26f8043d6cbb5658",
+      "subject": "Keep native Google reads bound to the admitted service key"
+    },
+    {
+      "sha": "5ce65673c621a8554205f64d61006cb11007ccc2",
+      "subject": "Fix strict voice reply tools on the staging Cloud mobile route"
+    },
+    {
+      "sha": "72004059deae7b03c850b4c48ccaa0d571ff47d9",
+      "subject": "Keep strict Cloud handler intents with Calendar evidence"
+    },
+    {
+      "sha": "f7a7b56f8cff20bc64f2616ebcad902173d59e4c",
+      "subject": "Expose bounded availability in standalone Calendar"
+    },
+    {
+      "sha": "923f5d0b82faf28d3a70688e06ee30f53abd6ae7",
+      "subject": "Recover the reply after a confirmed Notes create"
+    },
+    {
+      "sha": "f72b44f03152577e403a426cad01deafb69cc5f0",
+      "subject": "Allow bounded larger managed Calendar feed responses"
+    },
+    {
+      "sha": "3a2e43de288a5ec8a77212084772fede22577665",
+      "subject": "Verify restored Calendar bounds and settled Notes reply recovery"
+    },
+    {
+      "sha": "475a8d59dc1811c2cde093613519906a5a3f6457",
+      "subject": "Keep Maps admission errors visible during place search"
+    },
+    {
+      "sha": "94c8ca4976751f2ad0854943064fa39aa54a9d70",
+      "subject": "Integrate current develop while retaining reviewed Alpha runtime fixes"
+    },
+    {
+      "sha": "ae1a9dda6712cd20fa249982afef1ef0abd28a3c",
+      "subject": "Fix exclusive SystemUI overlay staging on Node 26"
+    }
+  ],
   "pullRequests": []
 }

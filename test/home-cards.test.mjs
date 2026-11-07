@@ -162,7 +162,8 @@ test('next item: an overdue reminder does not hide the next event, which keeps i
   assert.deepEqual(H.presentHomeNext({title: '  ', begin: at(17), allDay: false, now, provenance: reminder}),
     {text: 'Next: Untitled event 5:00 PM', source: 'Reminder', description: 'Next: Untitled event, 5:00 PM. Reminder saved on this browser, read 2:50 PM'});
   const cards = readFileSync(new URL('../apps/app/src/prototype/home-overview-cards.ts', import.meta.url), 'utf8');
-  assert.match(cards, /out\.homeCalendarHasNext \? \{text: String\(out\.homeCalendarNext \|\| ''\), source: String\(out\.homeCalendarNextSource \|\| ''\)\}/);
+  assert.match(cards, /out\.homeCalendarHasNext \? \{text: String\(out\.homeCalendarNext \|\| ''\), source: ''\}/, 'the compact Next line omits a separate source label');
+  assert.match(cards, /description: String\(out\.homeCalendarDescription \?\? ''\)/, 'the card retains the model description, including the next item source');
   assert.match(cards, /next: \{'data-alpha-home-calendar-next-line': ''\}, nextSource: \{'data-alpha-home-calendar-next-source': ''\}/);
 });
 test('next item under Agent Calendar: an overdue reminder shows whichever comes first of an upcoming phone reminder and the agent event', () => {
@@ -249,6 +250,10 @@ test('Agent Calendar freshness: an unverified next event is never fresh or an em
   for(const status of ['error','unavailable','partial']){
     const saved=state;state={...state,status,error:'Calendar service unavailable',feed:status==='partial'?{...state.feed,state:'partial'}:null};
     const failed=render();assert.equal(reads,0,'failure rendering never starts reads');assert.doesNotMatch(failed.homeCalendarTitle,/Verified today|Nothing planned/);
+    if(status==='partial'){
+      assert.equal(failed.homeCalendarTitle,'Calendar');
+      assert.equal(failed.homeCalendarDescription,'Open Calendar to retry');
+    }
     failed.goCalendar();assert.equal(reads,1,'explicit navigation retries the actual failed/unverified feed');reads=0;state=saved;
   }
   current=false;assert.doesNotMatch(render().homeCalendarTitle,/Verified today|Nothing planned/,'retired connection drops the event');current=true;
@@ -288,7 +293,12 @@ test('Home template renders source, freshness and the brief card only from live 
   assert.doesNotMatch(home, /\}\}\s+\{\{/, 'each card placeholder is alone in its text node');
   assert.doesNotMatch(home, /home-calendar-card|home-brief-card|data-alpha-home-inbox|\{\{homeCalendarTitle\}\}|\{\{homeBriefTitle\}\}|\{\{homeInboxTitle\}\}/, 'no second copy of the shared card markup');
   assert.match(home, /aria-description="\{\{homeWorkflowDescription\}\}"/);
-  assert.match(home, /<sc-if value="\{\{homeWorkflowFreshness\}\}"><span data-alpha-home-workflow-freshness>/);
+  const workflows = readFileSync(new URL('../apps/app/src/prototype/workflow-adapter.ts', import.meta.url), 'utf8');
+  const automations = readFileSync(new URL('../apps/app/src/prototype/automations-adapter.ts', import.meta.url), 'utf8');
+  for (const source of [workflows, automations]) {
+    assert.match(source, /presentHomeWorkflowFreshness\(/);
+    assert.match(source, /homeWorkflowDescription:loaded\.description/, 'the compact card keeps the read time in its accessible description');
+  }
   assert.doesNotMatch(home, /Morning brief|Design review|7:02 AM/, 'no fixture brief or agenda text in the template');
   const adapter = readFileSync(new URL('../apps/app/src/prototype/data-adapter.ts', import.meta.url), 'utf8');
   assert.doesNotMatch(adapter, /gmailSearch|gmailThread|\.sync\(|fetch\(/, 'the Home adapter starts no mail read, digest sync or network request');

@@ -1,4 +1,4 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from 'node:module';
+import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from './support/strip-types.mjs';
 // Dependency-free Settings wording, evaluated without the renderer.
 const source=readFileSync('apps/app/src/prototype/settings-adapter.ts','utf8');
 const region=source.slice(source.indexOf('// settings-facts:begin'),source.indexOf('// settings-facts:end'));
@@ -16,10 +16,9 @@ test('About shows only the install time Android recorded and never claims the ap
  const format=at=>'day '+at;
  assert.deepEqual(m.installedRows(1760000000000,format),[['Installed or last updated','day 1760000000000']]);
  for(const at of [undefined,null,0,-5,'1760000000000',1.5])assert.deepEqual(m.installedRows(at,format),[]);
- // The OS update-channel check is registered off; only the Developer gate (both About pages)
- // shows its state, and the production bundle audit denies the row.
+ // The update-channel implementation remains disabled and the revised About page has no update status row.
  assert.match(readFileSync('apps/app/src/build-flags.ts','utf8'),/export const updateChannelCheckEnabled = false as boolean;/);
- assert.equal((source.match(/\.\.\.\(developerTools\?\[info\('Update channel \(development\)',updateChannelCheckEnabled\?'Read-only check on · never downloads or installs':'Off'\)\]:\[\]\)/g)??[]).length,2);
+ assert.doesNotMatch(source,/Update channel \(development\)/);
  assert.match(readFileSync('scripts/audit-production-bundle.mjs','utf8'),/'Update channel \(development\)'/);
  // Nothing claims the app is current or that an update failed; Software update has no notice text at all.
  assert.doesNotMatch(source,/Up to date|Update available|Update failed/);
@@ -74,15 +73,15 @@ test('the automatic update check is due a day after the last answered check',()=
 });
 test('dead-end and negative Settings rows are gone from the adapter',()=>{
  for(const row of ["info('Other connectors'","info('Personality settings'","info('Runtime'","info('Display only'","info('Delivery timing'","'Last change'"])assert.ok(!source.includes(row),row);
- // Their notices stay as toasts only, so no state is kept for a row.
- assert.doesNotMatch(source,/gmailNotice|roleNotice/);
+ // The revised groups expose controls and diagnostics, without a device-facts summary page.
+ assert.doesNotMatch(source,/row\('(?:Security patch|Do Not Disturb|Delivery timing)'/);
 });
 test('the Google accounts sheet has no Gmail notification settings button: Android lists Gmail with Alpha\'s other channels',()=>{
  assert.doesNotMatch(readFileSync('apps/app/src/runtime/google-connection-ui.tsx','utf8'),/Gmail notification settings|gmailNotificationSettings/);
  assert.doesNotMatch(readFileSync('apps/app/src/runtime/gmail-background.ts','utf8'),/gmailNotificationSettings/);
 });
 test('Scheduled digests has one Settings entry, the top-level row',()=>{
- assert.equal((source.match(/label:'Scheduled digests'/g)??[]).length,1);
+ assert.equal((source.match(/row\('Scheduled digests'/g)??[]).length,1);
  assert.doesNotMatch(source,/\bdigests\b *=|hosted\(\)\.available/);
 });
 test('prototype-only sheets (memory wipe, Wi-Fi password, forget network) never reach the renderer',()=>{
@@ -104,10 +103,10 @@ test('native system facts are read without new permissions and are omitted when 
  for(const permission of ['ACCESS_WIFI_STATE','CHANGE_WIFI_STATE','BLUETOOTH_CONNECT','READ_PHONE_STATE','WRITE_SECURE_SETTINGS','ACCESS_NOTIFICATION_POLICY'])assert.doesNotMatch(manifest,new RegExp(`<uses-permission[^>]*android\\.permission\\.${permission}"(?![^>]*tools:node="remove")`),permission);
 });
 
-test('Cloud privacy facts describe AI and speech without model-navigation claims',()=>{
- assert.deepEqual(m.cloudPrivacyRow('Leaves this device'),['Shared with Cloud','Messages and selected content when you use AI']);
- assert.deepEqual(m.cloudPrivacyRow('On-device model'),['Voice','Recordings for transcription and text for playback, when used']);
- assert.equal(m.cloudPrivacyRow('Manage Alpha permissions'),null);
+test('the Privacy group contains permission and setup actions',()=>{
+ assert.match(source,/group\(present\(\[permissionsRow, setupRow\]\), 'Privacy'\)/);
+ assert.match(source,/const permissionsRow = native \? row\('App permissions', manage\('privacy'\), permissionsValue\) : null/);
+ assert.match(source,/const setupRow = api\.reopenStartupAccess && missing \? row\('Finish setup', api\.reopenStartupAccess\) : null/);
 });
 
 test('Cloud privacy hero includes speech while retaining native and offline/startup truth',async()=>{
@@ -125,26 +124,40 @@ test('Cloud privacy hero includes speech while retaining native and offline/star
  for(const [kind,label]of [['starting','Agent starting'],['recovering','Agent not running'],['none','Offline']])assert.equal(cloud.egressPrivacy({kind,session:null,cloudAccount:null},true).big,label);
 });
 
-// Exercise the policy used by the real adapter for both stale routes and navigation rows.
-test('production Settings refuses Developer routes and preserves real About diagnostics',()=>{
- const rows=[{label:'Models'},{label:'Developer'},{label:'About'}, {lbl:'Developer'}];
- assert.deepEqual(m.settingsNavigationRows(rows,false),[{label:'Models'},{label:'About'}]);
- assert.equal(rows.length,4,'filtering must not mutate the reference model');
- assert.equal(m.settingsPage('developer',false),null);
- for(const page of ['about','problems','licenses','models',null,undefined])assert.equal(m.settingsPage(page,false),page);
- assert.match(source,/page: settingsPage\(state\.page, developerTools\)/);
- assert.match(source,/rows: settingsNavigationRows\(group\.rows, developerTools\)/);
+// Exercise the current route policy directly, including stale persisted routes.
+test('removed Settings routes open the top level and production refuses Developer',()=>{
+ for(const page of ['wifi','bluetooth','mobile','battery','sound','display','models','privacy','character','accounts','connections','photos','notifications','developer','nonsense',null,undefined])assert.equal(m.settingsPage(page,false),null,String(page));
+ for(const page of ['account','agent-connection','history','listening','calendar','password-provider','password-entry','cross','about','problems','licenses'])assert.equal(m.settingsPage(page,false),page);
+ assert.equal(m.settingsPage('cloud-plan',false),'account');
+ assert.match(source,/const current = settingsPage\(state\.page, developerTools\)/);
 });
-test('one Developer gate: a development server build opened with ?tools=1, never the product',()=>{
+test('one Developer gate requires a development-server build and tools=1',()=>{
  const profile=readFileSync('apps/app/src/browser/dev-profile.ts','utf8');
  assert.match(profile,/export const developerTools=devSurfacesEnabled&&new URLSearchParams\(location\.search\)\.get\('tools'\)==='1';/);
  assert.match(profile,/const devSurfacesEnabled:boolean=import\.meta\.env!==undefined&&import\.meta\.env\.DEV===true&&/);
- // Every developer-only Settings row reads the same gate, not a test-mocks or dev-surface flag alone.
- for(const row of ["if(developerTools&&!Capacitor.isNativePlatform())groups.push({...group([{kNav:true,label:'Calendar backups'","if(developerTools)page.groups.push(group([{kNav:true,label:'Try mock mode'","if(developerTools&&recovery.length)page.groups.push(group([info('Saved data needs recovery'","if(developerTools)agentRows.push(action('Details',","if(native&&developerTools&&state.page==='agent-recovery-details')"])assert.ok(source.includes(row),row);
- assert.doesNotMatch(source,/(testMocksEnabled|devSurfacesEnabled)[^;\n]{0,40}(Calendar backups|Try mock mode|Saved data needs recovery|Update channel)/);
+ assert.match(source,/const developerRow = developerTools \? row\('Developer', go\('developer'\)\) : null/);
+ assert.match(source,/developerTools && !native && recovery\.length/);
 });
-test('explicit developer surfaces retain Developer navigation and route',()=>{
- const rows=[{label:'Developer'},{label:'About'}];
- assert.equal(m.settingsNavigationRows(rows,true),rows);
+test('explicit developer surfaces retain the Developer route',()=>{
  assert.equal(m.settingsPage('developer',true),'developer');
+});
+test('Settings groups retain account, assistant, app, appearance, notification, privacy and system controls',()=>{
+ const groups=source.slice(source.indexOf('    top.groups = ['),source.indexOf('    // ---- Pages'));
+ let cursor=-1;
+ for(const name of ['Account','Assistant','Apps','Appearance','Notifications','Privacy']){
+  const next=groups.indexOf("'"+name+"'",cursor+1);assert.ok(next>cursor,name);cursor=next;
+ }
+ assert.match(groups,/group\(present\(\[androidRow, aboutRow, developerRow\]\)\)/);
+ assert.match(groups,/group\(present\(\[resetRow\]\)\)/);
+});
+test('permission summary counts only reported grants',()=>{
+ assert.equal(m.permissionSummary({Microphone:true,Camera:true}),'All allowed');
+ assert.equal(m.permissionSummary({Microphone:false,Camera:true,Location:false}),'2 not allowed');
+ for(const values of [{},null,{Camera:'yes'}])assert.equal(m.permissionSummary(values),'');
+});
+
+test('active temporary account access reports its end without claiming a renewal', () => {
+ const row=m.cloudAccountPage({plan:{signedIn:true,offline:false,offerRedeem:false,account:'Owner',plan:'Temporary access',status:'active',endsAt:1800000000000,keyExpiresAt:null,keyExpiring:false},busy:false,message:'',serviceName:'Cloud',day:()=> 'Jan 15',confirm:()=>false,actions:{cancel(){},approve(){},redeem(){},manage(){},signOut(){},recheck(){},signIn(){}}});
+ assert.equal(row.status,'Temporary access · Access until Jan 15');
+ assert.doesNotMatch(row.status,/renew/i);
 });

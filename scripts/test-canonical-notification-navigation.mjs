@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from '../test/support/strip-types.mjs';
 const read=path=>readFile(new URL('../'+path,import.meta.url),'utf8');
 const source=(await read('apps/app/src/prototype/notifications-adapter.ts')).replace(/^import .*;\n/gm,'').replaceAll('export function','function')+'\nglobalThis.install=installCanonicalNotificationTaps;';
 // main.tsx's own install statements, run with the real shade policy for each build shape.

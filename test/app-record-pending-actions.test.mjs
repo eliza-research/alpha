@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import test from 'node:test';
 const connection=readFileSync('apps/app/src/runtime/connection-ui.tsx','utf8');
 const pendingCode=stripTypeScriptTypes(connection.slice(connection.indexOf('export function residentPendingText('),connection.indexOf('/** The send/voice refusal')).replace(/^export /gm,''),{mode:'transform'});

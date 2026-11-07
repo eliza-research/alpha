@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 
 test('holding the side key never opens the microphone while the chat mic still works',()=>{

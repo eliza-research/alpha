@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { stripTypeScriptTypes } from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 
 // Where a released chat sheet goes: the dependency-free decision region of the gesture adapter.
 // Real pointers are in test/browser/full-chat-grabber.spec.ts.

@@ -1,0 +1,124 @@
+name: Protected app signing proof
+run-name: App signing proof ${{ inputs.source_commit }} (workflow ${{ github.sha }})
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_commit:
+        description: Exact reviewed Alpha main commit for the closed signing proof
+        required: true
+        type: string
+      fixture_generator_sha256:
+        description: SHA-256 of the reviewed code-free fixture generator
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: release-signing
+  cancel-in-progress: false
+
+jobs:
+  sign-apps:
+    if: github.repository == 'eliza-research/alphaphone' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: release
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          submodules: true
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Install Android signing tools
+        uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3.2.2
+        with:
+          packages: platforms;android-36 build-tools;36.0.0
+          log-accepted-android-sdk-licenses: false
+      - name: Generate and verify the closed APK fixtures
+        env:
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+          FIXTURE_GENERATOR_SHA256: ${{ inputs.fixture_generator_sha256 }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/main
+          test "$SOURCE_COMMIT" = "$GITHUB_SHA"
+          test "$SOURCE_COMMIT" = "$(git rev-parse HEAD)"
+          [[ "$FIXTURE_GENERATOR_SHA256" =~ ^[0-9a-f]{64}$ ]]
+          printf '%s  scripts/ci/build-app-signing-fixtures.py\n' "$FIXTURE_GENERATOR_SHA256" | sha256sum --check --strict
+          node -e 'if (!/^[0-9a-f]{64}$/.test(require("./android/release-signer.json").signerSha256)) process.exit(1)'
+          python3 scripts/ci/build-app-signing-fixtures.py "$ANDROID_HOME" artifacts
+          sha256sum artifacts/standalone-release-unsigned.apk artifacts/launcher-release-unsigned.apk > artifacts/unsigned-fixtures.sha256
+      - name: Sign both fixtures using the protected app keystore
+        env:
+          ALPHA_APP_RELEASE_KEYSTORE_B64: ${{ secrets.ALPHA_APP_RELEASE_KEYSTORE_B64 }}
+          ALPHA_APP_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.ALPHA_APP_RELEASE_KEYSTORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+          ulimit -c 0
+          sha256sum --check --strict artifacts/unsigned-fixtures.sha256
+          test "$(stat -f -c %T /dev/shm)" = tmpfs
+          key_directory=$(mktemp -d /dev/shm/alpha-app-signing.XXXXXX)
+          trap 'rm -rf -- "$key_directory"' EXIT
+          trap 'exit 1' HUP INT TERM
+          keystore="$key_directory/app.p12"
+          printf '%s' "$ALPHA_APP_RELEASE_KEYSTORE_B64" | base64 --decode > "$keystore"
+          unset ALPHA_APP_RELEASE_KEYSTORE_B64
+          expected=$(node -p 'require("./android/release-signer.json").signerSha256')
+          actual=$(keytool -exportcert -storetype PKCS12 -keystore "$keystore" -alias alpha-release \
+            -storepass:env ALPHA_APP_RELEASE_KEYSTORE_PASSWORD | sha256sum | cut -d ' ' -f 1)
+          test "$actual" = "$expected"
+          for variant in standalone launcher; do
+            node scripts/sign-release-apks.mjs --keystore "$keystore" --key-label alpha-release \
+              --apk "artifacts/$variant-release-unsigned.apk" --out "artifacts/$variant-release.apk"
+          done
+      - name: Record fixture signing proof without exporting APKs
+        env:
+          FIXTURE_GENERATOR_SHA256: ${{ inputs.fixture_generator_sha256 }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { createHash } from 'node:crypto';
+          import { createReadStream, readFileSync, statSync, writeFileSync } from 'node:fs';
+          const read = file => JSON.parse(readFileSync(file, 'utf8'));
+          const packages = read('artifacts/fixture-packages.json');
+          const unsigned = Object.fromEntries(readFileSync('artifacts/unsigned-fixtures.sha256', 'utf8').trim().split('\n')
+            .map(line => line.split('  ').reverse()));
+          const artifacts = [];
+          for (const variant of ['standalone', 'launcher']) {
+            const file = `artifacts/${variant}-release.apk`;
+            const hash = createHash('sha256');
+            for await (const bytes of createReadStream(file)) hash.update(bytes);
+            artifacts.push({ variant, packageName: packages[variant],
+              unsignedSha256: unsigned[`artifacts/${variant}-release-unsigned.apk`],
+              signedSha256: hash.digest('hex'), sizeBytes: statSync(file).size });
+          }
+          const result = {
+            evidence: 'closed-app-signing-fixtures',
+            alphaCommit: process.env.GITHUB_SHA,
+            sdkCommit: read('upstream.lock.json').commit,
+            fixtureGeneratorSha256: process.env.FIXTURE_GENERATOR_SHA256,
+            signerSha256: read('android/release-signer.json').signerSha256,
+            artifacts,
+            applicationApksSigned: false,
+            distributionQualified: false,
+            signedApksExported: false,
+          };
+          writeFileSync('artifacts/app-signing-proof.json', JSON.stringify(result, null, 2) + '\n');
+          NODE
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: app-signing-proof
+          if-no-files-found: error
+          path: artifacts/app-signing-proof.json

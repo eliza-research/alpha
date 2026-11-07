@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
 const tick=()=>new Promise(resolve=>setTimeout(resolve,0));
 const load=(box,file,names)=>{let src=readFileSync(file,'utf8').replace(/^import [\s\S]*?;\n/gm,'').replace(/^export /gm,'');src=stripTypeScriptTypes(src,{mode:'transform'});vm.runInNewContext('{'+src+';Object.assign(globalThis,{'+names+'});}',box);};

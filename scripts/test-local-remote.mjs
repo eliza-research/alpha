@@ -3,8 +3,8 @@ import fs from 'node:fs';
 import http from 'node:http';
 import {spawnSync} from 'node:child_process';
 if(process.env.ALPHA_LOCAL_REMOTE_TEST!=='1')throw Error('Set ALPHA_LOCAL_REMOTE_TEST=1 for the isolated localhost:47839 service.');
-if(!process.execArgv.includes('--experimental-transform-types')){
- const child=spawnSync(process.execPath,['--experimental-transform-types',process.argv[1]],{stdio:'inherit'});process.exit(child.status??1);
+if(!process.execArgv.some(arg => arg === '--import=tsx' || arg === 'tsx')){
+ const child=spawnSync(process.execPath,['--import=tsx',process.argv[1]],{stdio:'inherit'});process.exit(child.status??1);
 }
 const {RemoteProtocol}=await import('../apps/app/src/runtime/remote-protocol.ts');
 const origin='http://127.0.0.1:47839';let saved=null;

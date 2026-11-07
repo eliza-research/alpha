@@ -6,7 +6,7 @@ import {test,before,after} from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {createServer} from 'vite';
 import {fileURLToPath} from 'node:url';
 

@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {randomUUID} from 'node:crypto';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -171,7 +171,7 @@ test('Calendar Settings keeps one Google entry and conditional recovery without 
   assert.match(calendar,/label:'Google Calendar'/);assert.match(calendar,/googleConnectionController\.openCalendar\(scope\)/);
   assert.match(calendar,/go:calendarView\.confirmCalendarTransition/);assert.match(calendar,/cap:'Recovery',hasCap:true/);
   assert.match(calendar,/label:'Recover saved events'/);assert.match(calendar,/label:'Return to Calendar'/);
-  assert.match(calendar,/label:'Retry calendar'/);assert.match(calendar,/back:\(\)=>api\.set\(\{page:null\}\)/);
+  assert.match(calendar,/label:'Retry calendar'/);assert.match(settings,/const back = \(\) => api\.set\(\{ page: null \}\)/);assert.match(calendar,/subpage\('Calendars'/);
   assert.doesNotMatch(calendar,/sourceRows|cap:'Calendar sources'|label:'Current source'|cap:'Sync'/);
 });
 

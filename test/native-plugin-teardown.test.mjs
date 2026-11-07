@@ -279,14 +279,21 @@ test("Capacitor's own permission request, and the shared plugins' requests an ap
   const guardedOverride = (source, method) => new RegExp(`@Override @PluginMethod public void ${method}\\(PluginCall call\\) ?\\{(?: if \\(refused\\(call\\)\\) return;)? ?LateLaunch\\.ask\\(call, ?\\(\\) ?-> ?super\\.${method}\\(call\\)\\); ?\\}`).test(source);
   // Plugin.requestPermissions is a plugin method of every plugin and launches for one that declares permissions.
   const declaring = files.filter(name => /@CapacitorPlugin\([^\n]*\bpermissions\s*=/.test(read(name)));
-  assert.deepEqual(declaring, ["AlphaCalendarPlugin.java", "AlphaContactsPlugin.java", "AlphaHostedResultsPlugin.java", "AlphaPhotoLibraryPlugin.java", "AlphaPhotosPlugin.java", "AlphaSystemPlugin.java", "AlphaTelephonyPlugin.java", "AlphaVoiceCloudPlugin.java", "DailyAppsPlugin.java"], "the plugins that declare permissions");
+  assert.deepEqual(declaring, ["AlphaCalendarPlugin.java", "AlphaContactsPlugin.java", "AlphaFilesPlugin.java", "AlphaHostedResultsPlugin.java", "AlphaPhotoLibraryPlugin.java", "AlphaPhotosPlugin.java", "AlphaSystemPlugin.java", "AlphaTelephonyPlugin.java", "AlphaVoiceCloudPlugin.java", "DailyAppsPlugin.java"], "the plugins that declare permissions");
   for (const name of declaring.filter(name=>name!=="AlphaContactsPlugin.java")) {
     if(name==='AlphaPhotosPlugin.java'||name==='AlphaPhotoLibraryPlugin.java') {
       // Registrations of the shared PhotosPlugin and DeviceLibraryPlugin. Photos must select aliases for this
       // Android version, rather than asking for the obsolete legacy permission together with the current media
       // grants, and a late request is answered with Alpha's LateLaunch wording.
       const media="vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/";
-      const base=fs.readFileSync(media+(name==='AlphaPhotosPlugin.java'?"PhotosPlugin.java":"DeviceLibraryPlugin.java"),"utf8");
+      let base=fs.readFileSync(media+(name==='AlphaPhotosPlugin.java'?"PhotosPlugin.java":"DeviceLibraryPlugin.java"),"utf8");
+      if(name==='AlphaPhotosPlugin.java'){
+        assert.match(base,/class PhotosPlugin extends PermittedPhotosPlugin/);
+        assert.doesNotMatch(base,/public void (?:requestPermissions|requestLibraryAccess)\(/, "Photos inherits the guarded library permission path");
+        base=fs.readFileSync(media+"PermittedPhotosPlugin.java","utf8");
+        assert.match(base,/protected void handleOnDestroy\(\) \{\n {4}destroyed = true;/);
+        assert.match(base,/public void requestLibraryAccess\(PluginCall call\) \{\n {4}if \(destroyed \|\| !getActivity\(\).hasWindowFocus\(\)\) \{\n {6}call\.reject\("Return to Photos to choose access"\);\n {6}return;/);
+      }
       assert.match(base,/@Override\n {2}@PluginMethod\n {2}public void requestPermissions\(PluginCall call\) \{\n {4}(?:requestLibraryAccess|requestAccess)\(call\);\n {2}\}/);
       if(name==='AlphaPhotosPlugin.java'){
         assert.match(base,/ask\(call, \(\) -> requestPermissionForAliases\(aliases, call, "libraryPermissionResult"\)\);/);

@@ -1,4 +1,4 @@
-import vm from 'node:vm';import fs from 'node:fs';import {stripTypeScriptTypes} from 'node:module';
+import vm from 'node:vm';import fs from 'node:fs';import {stripTypeScriptTypes} from '../support/strip-types.mjs';
 import {workflowRendererFixture} from '../../scripts/workflow-renderer-fixture.mjs';
 import {WorkflowProtocol,WorkflowAdmissionRejected,WorkflowMetadataRejected,WorkflowLifecycleRejected} from '../../apps/app/src/runtime/workflow-protocol.ts';
 const source=fs.readFileSync('apps/app/src/prototype/workflow-adapter.ts','utf8').replace(/^import .*;\n/gm,'').replace('export function','function')+'\nglobalThis.install=installWorkflowAdapter;';

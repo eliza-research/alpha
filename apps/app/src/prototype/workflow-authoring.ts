@@ -1,10 +1,11 @@
+import {Capacitor} from '@capacitor/core';
+import {testMocksEnabled} from '../build-flags';
 import {browserWorkflowDraftStore} from '../browser/workflow-drafts';
 import {browserDevProfile} from '../browser/dev-profile';
 import { registerPlugin } from '../platform-plugins';
 import { browserLocalAgentEnabled } from '../runtime/local-agent';
 import { developmentWorkflowDraftStore } from '../runtime/local-agent-storage';
 import { connectionController } from '../runtime/connection-ui';
-import { showAgentStatus } from '../runtime/agent-status-route';
 import { normalizePhoneSpec, assertPhoneCapabilities, describePhoneTrigger, phoneTriggerClockChangeNote, type PhoneSpec, type PhoneStep, type PhoneCatalog, type PhoneTimeTrigger } from '../runtime/phone-workflow-authoring';
 import { workflowSha, workflowBytes } from '../runtime/workflow-device-contract';
 import { checkWorkflowScope, WORKFLOW_OPERATION_LABELS } from '../../../../.eliza/client-features/packages/contracts/src/workflow-scope.ts';
@@ -183,4 +184,13 @@ export function createWorkflowAuthoring(owner:()=>any,publish:()=>void,onSaved:(
   sp:step?{typed:true,freeTextStyle:"display:none",k:step.kind,d:api.ic[icons[step.kind]],up:()=>move(-1),down:()=>move(1),upCss:index===0?'opacity:.3':'',downCss:index===draft!.spec.steps.length-1?'opacity:.3':'',presets:enabledOptions.map(o=>({label:o.label||o.id.replaceAll('_',' '),css:o.id===step.operation?'background:var(--acc);color:#fff':o.available&&offered(o.id)?'background:var(--s2)':'background:var(--s2);opacity:.5',pick:()=>chooseOperation(o.id)})),text:'',onText:()=>{},fields,hasSource:!!step.source,sources:draft!.spec.steps.slice(0,index).map(s=>({label:s.kind+': '+s.operation.replaceAll('_',' '),selected:step.source===s.id,pick:()=>change(()=>{step.source=s.id;})})),caseMatch:step.operation==='contains',caseLabel:step.caseSensitive?'Case-sensitive match':'Ignore letter case',toggleCase:()=>change(()=>{step.caseSensitive=!step.caseSensitive;}),isNotes:step.operation==='selected_notes',notes:step.operation==='selected_notes'?noteRows().map((n:Bag)=>({label:n.title||'Untitled note',selected:step.notes.some((chosen:Bag)=>chosen.id===n.id),pick:()=>void chooseNote(n.id)})):[],isCalendar:step.operation==='calendar_range',connectCalendars:()=>void loadCalendars(true),calendars:step.operation==='calendar_range'?calendars.map(c=>({label:c.name+' · '+c.account,selected:step.range.calendarIds.includes(c.id),pick:()=>change(()=>{const chosen=step.range.calendarIds;step.range.calendarIds=chosen.includes(c.id)?chosen.filter((id:string)=>id!==c.id):chosen.length<16?[...chosen,c.id]:chosen;})})):[],del:remove}:null};
  }
  return {get active(){return active;},open,close,render};
+}
+
+type AgentStatusShell = {S():{view?:string|null};openView(view:string,patch?:Record<string,unknown>|null,chat?:unknown,opts?:{push?:boolean}):unknown};
+/** Where a tap on an unavailable agent goes. Product Android hides the connection chooser, so it opens
+ * Settings > Agent connection (Back returns to the calling view); development and browser builds keep the chooser. */
+export function showAgentStatus(shell:AgentStatusShell|null|undefined){
+ if(!shell||!Capacitor.isNativePlatform()||testMocksEnabled){connectionController.open();return;}
+ const from=shell.S().view;
+ shell.openView('settings',{page:'agent-connection'},undefined,{push:!!from&&from!=='settings'});
 }

@@ -18,7 +18,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 /**
- * Every retained MVP view and the All apps drawer at 200% system font scale (PRD AP-15): the
+ * Every retained MVP view and the Apps drawer at 200% system font scale (PRD AP-15): the
  * Accessibility Test Framework checks of the native hierarchy, the TalkBack linear order of the
  * WebView's nodes (TalkBackOrder: labels, reading order, at most one assistant group read last),
  * the screen's name as the focused element after opening it (runtime/view-focus.ts) and the page's
@@ -74,14 +74,14 @@ public final class AccessibilityViewsInstrumentedTest {
     AppNavigation.declineStartupAccess();
     AccessibilityChecks.enable().setRunChecksFromRootView(true);
     assertTrue("The page measures the 200% text it is drawn at", until("Math.abs(Number(getComputedStyle(document.documentElement).getPropertyValue('--alpha-text-scale'))-2)<0.2", 100));
-    // The All apps drawer is a dialog over Home: its own names and order, nothing of Home after it.
-    js("document.querySelector('[data-alpha-layer=\"home\"] button[aria-label=\"All apps\"]')?.click()");
+    // The Apps drawer is a dialog over Home: its own names and order, nothing of Home after it.
+    js("document.querySelector('[data-alpha-layer=\"home\"] button[aria-label=\"Apps\"]')?.click()");
     if (until("document.querySelector('[data-alpha-layer=\"drawer\"]')", 100)) {
-     TalkBackOrder.Result drawer = TalkBackOrder.read(device, "All apps", TalkBackOrder.Assistant.LAST_IF_PRESENT);
-     for (String problem : drawer.problems) problems.add("All apps: " + problem);
+     TalkBackOrder.Result drawer = TalkBackOrder.read(device, "Apps", TalkBackOrder.Assistant.LAST_IF_PRESENT);
+     for (String problem : drawer.problems) problems.add("Apps: " + problem);
      js("window.dispatchEvent(new Event('launcher-home'))");
      until("!document.querySelector('[data-alpha-layer=\"drawer\"]')", 100);
-    } else problems.add("All apps: the drawer did not open");
+    } else problems.add("Apps: the drawer did not open");
     for (String view : VIEWS) {
      js(AppNavigation.request(view));
      if (!until(AppNavigation.selected(view), 200)) { problems.add(view + ": did not open"); continue; }

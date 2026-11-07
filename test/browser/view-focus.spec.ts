@@ -38,7 +38,7 @@ test('a screen change that drops focus moves it to the screen title, then to the
   // A name, not a stop: the title takes focus only from the script.
   await expect(title).toHaveAttribute('tabindex', '-1');
   await page.keyboard.press('Tab');
-  await expect(page.getByRole('button', { name: 'Display', exact: true })).toBeFocused();
+  await expect(page.getByRole('button', { name: 'About', exact: true })).toBeFocused();
   // HOME: the app retires with focus inside it.
   await show(page, 'home');
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
@@ -71,14 +71,14 @@ test('rotation that rebuilds the focused layer gives focus back to the screen na
   await frames(page);
   expect(await focused(page)).toBe('body');
   await show(page, 'settings');
-  await page.getByRole('button', { name: 'Display', exact: true }).focus();
+  await page.getByRole('button', { name: 'About', exact: true }).focus();
   // The landscape layout replaces the row that held focus.
   await page.evaluate(() => { document.querySelector('[data-alpha-layer="app"] button:not([aria-label])')!.replaceWith(Object.assign(document.createElement('button'), { textContent: 'Display' })); });
   await page.setViewportSize({ width: 412, height: 915 });
   await expect.poll(() => focused(page)).toBe('Settings');
   // An app without a title row is named by its region.
   await page.evaluate(() => document.querySelector('[data-alpha-app-title]')!.remove());
-  await page.getByRole('button', { name: 'Display', exact: true }).focus();
+  await page.getByRole('button', { name: 'About', exact: true }).focus();
   await show(page, 'home'); await show(page, 'settings');
   await expect.poll(() => focused(page)).toBe('Settings');
   expect(await page.evaluate(() => document.activeElement?.getAttribute('data-alpha-layer'))).toBe('app');
@@ -86,16 +86,16 @@ test('rotation that rebuilds the focused layer gives focus back to the screen na
 
 test('an inline modal surface opening over dropped focus takes it, and HOME gives it back to Home', async ({ page }) => {
   await load(page);
-  // Opening All apps retires Home's tiles behind its own inline modal surface (no native <dialog>).
+  // Opening Apps retires Home's tiles behind its own inline modal surface (no native <dialog>).
   await page.getByRole('button', { name: 'Settings', exact: true }).focus();
   await page.evaluate(() => {
     const home = document.querySelector<HTMLElement>('[data-alpha-layer="home"]')!;
     home.inert = true; home.setAttribute('aria-hidden', 'true');
     const drawer = Object.assign(document.createElement('div'), { innerHTML: '<input type="search" aria-label="Search apps"><button>Open Clock</button>' });
-    drawer.setAttribute('data-alpha-layer', 'drawer'); drawer.setAttribute('role', 'dialog'); drawer.setAttribute('aria-modal', 'true'); drawer.setAttribute('aria-label', 'All apps');
+    drawer.setAttribute('data-alpha-layer', 'drawer'); drawer.setAttribute('role', 'dialog'); drawer.setAttribute('aria-modal', 'true'); drawer.setAttribute('aria-label', 'Apps');
     document.querySelector('[data-screen]')!.append(drawer);
   });
-  await expect.poll(() => focused(page)).toBe('All apps');
+  await expect.poll(() => focused(page)).toBe('Apps');
   // Named by its label, never by typing into it: the search field (and the keyboard) stay closed.
   await expect(page.getByRole('searchbox', { name: 'Search apps', exact: true })).not.toBeFocused();
   // HOME closes it with focus inside.

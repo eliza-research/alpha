@@ -9,14 +9,13 @@ import {resolveCloudSignatureClassifier,verifyCloudRecordingSignatures} from '..
 import {voiceFakeClock} from './fixtures/shared-batch-voice.mjs';
 import {cloudVoiceViewFixture} from './fixtures/cloud-voice-view.mjs';
 
-test('one explicit Talk action starts Cloud voice, keeps its disclosure, and stops on account change',async()=>{
+test('one explicit Talk action starts Cloud voice and stops on account change',async()=>{
  const f=cloudVoiceViewFixture({cloudProfile:true});
  try {
   f.box.React={createElement:()=>null};f.box.VoiceActivity=()=>null;f.shell.state.chat='hidden';
   await f.shell.startVoice();
   assert.equal(f.shell.state.chat,'sheet','hidden Home entry reveals the active voice sheet');
-  const view=f.renderChat();assert.equal(view.state,'listening');assert.equal(view.cloudDisclosure,true);
-  assert.match(view.cloudDisclosureText,/uploads recordings.*plan allowance/);
+  const view=f.renderChat();assert.equal(view.state,'listening');assert.equal(view.cloudDisclosureText,undefined);
   assert.notEqual(view.recoveryLabel,'Start Cloud voice');assert.equal(f.localFactories,0);assert.equal(f.box.testMocksEnabled,false);
   assert.equal(f.starts,1);assert.equal(f.localFactories,0);assert.equal(f.pairedFactories,0);
   f.credential='different-credential';f.changed();for(let i=0;i<20;i++)await f.tick();
@@ -162,7 +161,7 @@ test('configured service name follows explicit Talk and signed-out recovery',asy
    f.box.React={createElement:()=>null};f.box.VoiceActivity=()=>null;
    await f.shell.startVoice();const view=f.renderChat();
    assert.doesNotMatch(JSON.stringify(view),/Eliza Cloud/);
-   if(account){assert.match(view.cloudDisclosureText,/recordings and reply text to your Nebula account/);assert.match(view.cloudDisclosureText,/plan allowance/);assert.equal(view.state,'listening');}
+   if(account){assert.equal(view.state,'listening');}
    else {assert.equal(view.state,'error');assert.equal(view.recoveryLabel,'');assert.equal(view.statusLines.length,0);assert.ok(!view.voiceDetails);assert.equal(f.accountOpens,0,'no automatic sign-in from a failed Talk');assert.equal(typeof view.recover,'function');}
    assert.equal(f.starts,account?1:0);assert.equal(f.uploads,0);assert.equal(f.localFactories,0);
   }finally{f.close();await f.tick();}

@@ -1,4 +1,4 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from 'node:module';
+import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from './support/strip-types.mjs';
 // The tile region of the native adapter (Alpha's labels and theme) over the shared truthful
 // presentation at the pin (@elizaos/capacitor-system/settings), evaluated without the renderer.
 const source=readFileSync('apps/app/src/prototype/native-adapter.ts','utf8');
@@ -120,4 +120,26 @@ test('handoff tiles are buttons named with their reported state; only the flashl
   ['Agent can listen, opens Android permission settings',undefined],['Location, opens Android settings',undefined],['Airplane mode, opens Android settings',undefined],['Enclave lock, opens Android settings',undefined],['Flashlight',undefined]]);
  assert.equal(m.honestTiles(modelTiles(),{torch:false},{flashlight:true,act:()=>{}}).at(-1).pressed,false);
  for(const tile of [...tiles,...unknown])assert.doesNotMatch(tile.aria,/toggle|switch|pressed/i);
+});
+
+
+test('the explicit Android settings row opens Settings home without weakening specific-page handoffs',()=>{
+ const java=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java','utf8');
+ const begin=java.indexOf('@PluginMethod public void openSettings(PluginCall call)');
+ const end=java.indexOf('private final java.util.concurrent.ExecutorService diagnosticsWorker',begin);
+ const method=java.slice(begin,end);
+ const home=method.slice(method.indexOf('if("system".equals(page))'),method.indexOf('if(SystemSettingsPages.actions(page)==null)'));
+ assert.ok(home.length>0,'the explicit system action is handled before the specific-page allowlist');
+ assert.match(home,/android\.app\.Activity activity=getActivity\(\);/);
+ assert.match(home,/if\(activity==null\)\{call\.reject\(/);
+ assert.match(home,/activity\.runOnUiThread\(\(\)->\{/);
+ assert.match(home,/try\{activity\.startActivity\(new Intent\(Settings\.ACTION_SETTINGS\)\);\}/);
+ assert.match(home,/catch\(RuntimeException unavailable\)\{call\.reject\([^;]+;return;\}/);
+ assert.match(home,/out\.put\("status","opened"\)/);
+ assert.match(home,/out\.put\("specific",true\)/);
+ assert.match(home,/call\.resolve\(out\);[\s\S]*return;/);
+ const specific=method.slice(method.indexOf('if(SystemSettingsPages.actions(page)==null)'));
+ assert.match(specific,/call\.reject\("Unsupported settings page"\)/);
+ assert.match(specific,/SystemSettingsPages\.open\(page,getContext\(\)\.getPackageName\(\),/);
+ assert.doesNotMatch(specific,/ACTION_SETTINGS/);
 });

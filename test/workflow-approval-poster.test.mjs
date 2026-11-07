@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {build} from 'esbuild';
-const bundle=await build({stdin:{contents:"export {createWorkflowApprovalPoster} from './apps/app/src/runtime/workflow-notice-taps.ts';export {workflowApprovalNotice} from './apps/app/src/runtime/workflow-device-contract.ts';",resolveDir:process.cwd(),loader:'ts'},bundle:true,platform:'node',format:'esm',write:false,logLevel:'silent'});
+const bundle=await build({stdin:{contents:"export {createWorkflowApprovalPoster} from './apps/app/src/runtime/workflow-device-contract.ts';export {workflowApprovalNotice} from './apps/app/src/runtime/workflow-device-contract.ts';",resolveDir:process.cwd(),loader:'ts'},bundle:true,platform:'node',format:'esm',write:false,logLevel:'silent'});
 const {createWorkflowApprovalPoster,workflowApprovalNotice}=await import('data:text/javascript;base64,'+Buffer.from(bundle.outputFiles[0].text).toString('base64'));
 const owner={scope:'scope',origin:'https://agent.invalid',ownerId:'owner',agentId:'agent'};
 const flow={id:'flow',name:'Digest',description:'',active:true,versionId:'v1',steps:[],phoneSpec:{trigger:{kind:'manual'},steps:[]}};

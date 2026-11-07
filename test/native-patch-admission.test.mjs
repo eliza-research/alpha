@@ -41,6 +41,21 @@ test('plugin patch admission refuses resident service modules now owned by upstr
  assert.throws(()=>materializeNativePatches(args),/Invalid native patch module/);
 }));
 
+const nativeOnlyModule='plugins/plugin-native-secure-store/android-nativeonly';
+test('native-only custody modules retain authenticated source and output hashes',()=>fixture(args=>{
+ const result=materializeNativePatches(args);
+ const target=nativeOnlyModule+'/src/main/java/Test.java';
+ assert.deepEqual(result.modules,[nativeOnlyModule]);
+ assert.equal(result.files[target],sha('new\n'));
+ assert.equal(fs.readFileSync(path.join(args.temporary,target),'utf8'),'new\n');
+},nativeOnlyModule));
+for(const module of [nativeOnlyModule+'-other',nativeOnlyModule+'/../android'])
+ test(`native-only custody admission rejects ${module}`,()=>fixture(args=>{
+  args.manifest.patches[0].module=module;
+  args.source.read=()=>assert.fail('an unadmitted module must not be read');
+  assert.throws(()=>materializeNativePatches(args),/Invalid native patch module/);
+ },nativeOnlyModule));
+
 const authModule='packages/auth/android';
 for(const authTarget of [authModule+'/src/main/java/CloudSignInPlugin.java',authModule+'/build.gradle'])test(`shared auth admission authenticates ${authTarget}`,()=>fixture(args=>{
  const descriptor=authModule+'/settings.gradle',unchanged=Buffer.from('unchanged descriptor\n'),read=args.source.read;
@@ -99,3 +114,22 @@ for(const scenario of ['existing','namespace','module','output'])test(`shared sp
  if(scenario==='output')patch.targets[0].afterSha256='0'.repeat(64);
  assert.throws(()=>materializeNativePatches(args),/mismatch|output differs/);
 }));
+
+
+const speechJniSource='packages/app/platforms/android/app/src/main/elizavoice-jni';
+test('shared speech JNI companion inputs are copied byte-exact with source hashes',()=>fixture(args=>{
+ const entries=new Map(['CMakeLists.txt','elizavoice-jni.cpp'].map(name=>{
+  const bytes=Buffer.from('reviewed '+name+'\n');
+  return [speechJniSource+'/'+name,{bytes,mode:'100644',sha256:sha(bytes)}];
+ }));
+ args.manifest.modules=[speechJniSource];args.manifest.patches=[];
+ args.source.read=prefix=>{assert.equal(prefix,speechJniSource);return entries;};
+ const result=materializeNativePatches(args);
+ for(const [name,file] of entries){
+  assert.equal(result.files[name],file.sha256);
+  assert.deepEqual(fs.readFileSync(path.join(args.temporary,name)),file.bytes);
+ }
+}));
+test('shared speech JNI companion admission does not authorize source patches',()=>fixture(args=>{
+ assert.throws(()=>materializeNativePatches(args),/companion source is read-only/);
+},speechJniSource));

@@ -7,12 +7,12 @@ import assert from 'node:assert/strict';
 import http from 'node:http';
 import vm from 'node:vm';
 import { readFile } from 'node:fs/promises';
-import { stripTypeScriptTypes } from 'node:module';
+import { stripTypeScriptTypes } from '../test/support/strip-types.mjs';
 import { spawnSync } from 'node:child_process';
 import { installWorkflowDeviceBindings } from '../test/fixtures/workflow-device-bindings.mjs';
 const cloudSignInModule = await import('../apps/app/src/runtime/cloud-sign-in.ts');
-if (!process.execArgv.includes('--experimental-transform-types')) {
-  process.exit(spawnSync(process.execPath, ['--import','tsx','--experimental-transform-types', process.argv[1]], { stdio: 'inherit' }).status ?? 1);
+if (!process.execArgv.some(arg => arg === '--import=tsx' || arg === 'tsx')) {
+  process.exit(spawnSync(process.execPath, ['--import=tsx', process.argv[1]], { stdio: 'inherit' }).status ?? 1);
 }
 const {clockHandoffCapabilities}=await import('../apps/app/src/runtime/clock-contract.ts');
 const {PHONE_DIAL_CAPABILITY,telephonyDeviceCapabilities}=await import('../apps/app/src/runtime/phone-dial-contract.ts');
@@ -130,7 +130,7 @@ const sandbox = { validateUuid, isCalendarReadFailureCode, appRecordInvalidation
 };
 // Exercise the real installed string-map adapter alongside the controller fixture.
 const selectionSandbox = { ...sandbox, Capacitor: { getPlatform: () => 'android' } };
-const selectionSource = stripTypeScriptTypes(await readFile(new URL('../apps/app/src/runtime/conversation-selection.ts', import.meta.url), 'utf8'), { mode: 'transform' })
+const selectionSource = stripTypeScriptTypes(await readFile(new URL('../apps/app/src/runtime/conversation-selection.ts', import.meta.url), 'utf8'), { mode: 'strip' })
   .replace(/^import .*;\n/gm, '').replace(/export /g, '');
 vm.runInNewContext(selectionSource + '\nglobalThis.selectionApi = { captureConversationChoice, selectConversation };', selectionSandbox);
 Object.assign(sandbox, selectionSandbox.selectionApi);

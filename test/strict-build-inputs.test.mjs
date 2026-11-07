@@ -86,6 +86,27 @@ test('a rebuild is staged only when every library is byte-identical to the revie
   assert.deepEqual(stagedLibraries(f.root).map(row => row.state), ['staged', 'staged', 'staged']);
 });
 
+test('pending requalification stops every builder entry before historical bytes or producers are used', t => {
+  const f = fixture(t, {remapBuildPath: true});
+  const record = {...f.manifest, requalification: {required: true, atPin: 'c'.repeat(40), reason: 'The pinned engine and producer inputs changed.'}};
+  const stored = JSON.stringify(record);
+  f.write(QUALIFIED_HOST, stored);
+  // The qualification decision must precede even reading the historical toolchain.
+  fs.unlinkSync(path.join(f.root, BUILD_TOOLCHAIN));
+  for (const staged of [false, true]) {
+    if (staged) for (const name of f.names) f.stage(name);
+    for (const options of [{}, {status: true}, {candidate: true}]) {
+      assert.throws(() => run(f.root, {...options, build: () => assert.fail('historical producer must not run')}),
+        error => error instanceof Stop && error.code === 3
+          && error.message.includes(`requalification required at ${'c'.repeat(40)}`)
+          && error.message.includes('prepare-embedding-host.mjs --fork')
+          && error.message.includes('stage-embedding-host.mjs --receipt'));
+    }
+  }
+  assert.equal(fs.readFileSync(path.join(f.root, QUALIFIED_HOST), 'utf8'), stored);
+  assert.equal(fs.existsSync(path.join(f.root, '.eliza')), false);
+});
+
 test('once the reviewed bytes are reproducible the step rebuilds with the remap and stages only an exact reproduction', t => {
   // The compile step is replaced: these cases are about what the step does with its result.
   const f = fixture(t, {remapBuildPath: true});

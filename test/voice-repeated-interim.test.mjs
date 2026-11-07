@@ -1,4 +1,4 @@
-import test from'node:test';import assert from'node:assert/strict';import{readFileSync}from'node:fs';import{stripTypeScriptTypes}from'node:module';
+import test from'node:test';import assert from'node:assert/strict';import{readFileSync}from'node:fs';import {stripTypeScriptTypes} from './support/strip-types.mjs';
 const source=readFileSync(new URL('../apps/app/src/prototype/voice-adapter.ts',import.meta.url),'utf8');
 const start=source.indexOf('const direct=await developmentCartesiaConversation('),block=source.slice(start,source.indexOf('current();conversationVoice=direct;',start));
 const transcript=block.slice(block.indexOf('onTranscript:')+'onTranscript:'.length,block.indexOf(',onError:'));

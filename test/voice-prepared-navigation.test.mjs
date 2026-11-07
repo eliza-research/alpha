@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync}from'node:fs';
-import {stripTypeScriptTypes}from'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import{findViewActionHandoff}from'../.eliza/client-features/packages/core/src/views/view-action-handoff.ts';
 import{createCompletedActionNavigationState}from'../.eliza/client-features/packages/core/src/views/completed-action-navigation.ts';
 import{NAVIGATE_VIEW_EVENT}from'../.eliza/client-features/packages/core/src/events.ts';

@@ -62,457 +62,28 @@
     }
   ],
   "resident": {
-    "upstreamCommit": "0594fc72da4450a84a986ad12e730e3faa902018",
-    "description": "Fresh October 24 registry audit at c95a37be: the upstream lock SHA-256 is unchanged from 58df, but the registry now reports 124 finding rows. Existing still-reported exceptions retain their review dates and scope. Newly reported advisories are conservatively pending upstream fixes and packaged reachability review; they are not waived or declared safe. This does not establish production acceptance. Re-audited at develop 00ee639798a02f3d7f2fae61ea8b902160e85d72: all 124 findings and normalized lock input are identical; pending fixes remain pending with no new exceptions. Re-audited on 2026-10-26 at develop 04658de1b: all 124 advisory rows remain; the affected Zod version set no longer includes 4.6.5. Existing exception deadlines and unresolved findings are unchanged. Rebound to integration pin 6293e29bf398 after comparing the fresh October 27 snapshot: normalized package input, all 124 finding rows and severity counts are identical to the reviewed 04658de1b snapshot. Existing exception scope and deadlines remain unchanged, and pending upstream fixes remain pending; this is not packaged-runtime acceptance. Re-audited at 4e617a0c1508 on 2026-10-27: normalized package input and all 124 finding rows/severity counts are identical to the reviewed 2d1d8797 snapshot. Existing exceptions and deadlines are unchanged; unexcepted full-lock findings remain pending upstream fixes. Final packaged payload audit is separate. Re-audited at develop 3d05abd on October 27: normalized dependency input and all advisory findings are unchanged; existing deadlines and pending fixes remain unchanged. Reviewed native/context integration de1ebdb521 on October 27: normalized package input and all 124 advisory rows are identical to 3d05abdcdc. Pending fixes, exception scope and deadlines are unchanged; a fresh packaged inventory audit remains required. The subsequent f3852e8ee3 merge adds only the native Activity compile dependency; the Bun lock and normalized audit input remain identical. Re-audited at merged develop c307290782dd on October 27: all 124 advisory rows and severity counts remain identical to f3852e8ee3. Pending findings and exception deadlines remain unchanged. Final build snapshot 6497825b38cb on October 27 changes only Cloud release scripts relative to c307290782dd; a fresh registry query returns identical 124 findings. Pending fixes and exception deadlines are unchanged. Fresh normal resident audit at SDK35e0a605 on 2026-11-02 UTC: all 153 finding rows, severity counts and 3677-version normalized input are byte-equivalent to the prior995 snapshot. Existing exception scope, review dates, expiry and shipped flags remain unchanged; unexcepted findings stay unresolved. This review rebinds only the identical source-lock findings, not packaged reachability or release acceptance.",
+    "upstreamCommit": "ae1a9dda6712cd20fa249982afef1ef0abd28a3c",
+    "description": "Fresh October 24 registry audit at c95a37be: the upstream lock SHA-256 is unchanged from 58df, but the registry now reports 124 finding rows. Existing still-reported exceptions retain their review dates and scope. Newly reported advisories are conservatively pending upstream fixes and packaged reachability review; they are not waived or declared safe. This does not establish production acceptance. Re-audited at develop 00ee639798a02f3d7f2fae61ea8b902160e85d72: all 124 findings and normalized lock input are identical; pending fixes remain pending with no new exceptions. Re-audit at ff9c826455 confirms identical findings and lock inputs; unresolved fixes remain pending. Re-audited at 912f972e58b1 on 2026-11-06 after elizaOS/eliza#38902: the shipped set has no advisory; seven earlier exceptions are no longer reported and were removed; the remaining full-lock advisories are recorded as not shipped with no compatible fix. Re-audited at 3f869454f5f9 on 2026-11-06: vendor/eliza/bun.lock is unchanged from 912f972e58b1 and the registry reports the same 103 findings; no exception changed. Re-audited at 86a0d19473 on 2026-11-06: bun.lock unchanged; same findings; no exception changed. Re-audited at c35106fb14 on 2026-11-06: bun.lock unchanged; same findings; no exception changed. Re-audited at b25d8aef29 on 2026-11-06: bun.lock unchanged; same findings; no exception changed.",
     "shippedSetEvidence": "Payload staged at upstream 13c98575987a121decc45b161b0c8a4ee698554e on 2026-10-12 on a development machine (npm run agent:prepare, agent:build-workflow-worker, agent:stage-android); generate-licenses --packaged-runtime listed 550 bundled npm package versions; node scripts/dependency-audit.mjs --resident --notices on them: 2 critical, 2 moderate, 1 low (handlebars 4.7.9 x3, uuid 8.3.2/9.0.1, @ai-sdk/provider-utils 4.0.26). At pin bc71e21f3b50 (2026-10-13, after elizaOS/eliza#36124): vendor/eliza/bun.lock resolves only handlebars@4.7.10 and no @ai-sdk/provider-utils@4.0.26 (@ai-sdk/openai 3.0.118), and node scripts/dependency-audit.mjs --resident --write reports neither the three handlebars advisories nor GHSA-866g-f22w-33x8; every remaining finding resolves to the same package versions as at 13c98575987a, so the earlier shipped-set classification is carried forward. The payload has not been re-staged at bc71e21f3b50, so the packaged-notices audit (A-4) at this pin is still to run. Source and registry evidence plus an earlier staged payload; not an APK build or device run. At pin 644d56c93df9 (2026-10-14, the shared speech contract pin of alphaphone#493): node scripts/dependency-audit.mjs --resident --write over vendor/eliza/bun.lock reports exactly the same advisory and package-version set as at bc71e21f3b50 (every finding is covered by an existing exception and none is stale), so the dispositions are carried forward unchanged. The payload was not re-staged at this pin either. At pin c7a9a0d7e7ea (2026-10-14): vendor/eliza/bun.lock is byte-identical to the 644d56c93df9 lock (inputSha256 a0cd9a6b...), so the resident snapshot findings and these dispositions are unchanged; re-reviewed against the regenerated snapshot. At pin 968348d792d3 (2026-10-15 UTC), the upstream bun.lock is byte-identical to fb6232523074 (raw SHA-256 c57e11dd22fd112d12842ed897a1239c93081957a6a08599eed2cc82737c9437). A fresh node scripts/dependency-audit.mjs --resident --write against that exact source returned the same 98 findings across 3675 package versions as the fb6232523074 snapshot (normalized input SHA-256 bcadc30aafbef10e1413c673bae3e8669536ac0525296053c159f8b212f684bd). Existing dispositions and review deadlines are carried forward unchanged; no payload was re-staged for this audit and this does not establish packaged-runtime or device qualification. At isolated Maps relay pin 2d1c8a9071dc (2026-10-15 UTC), a fresh npm bulk audit returned the identical 98 findings and 3675 package versions with normalized input SHA-256 bcadc30aafbef10e1413c673bae3e8669536ac0525296053c159f8b212f684bd. The Bun lock adds the Maps workspace dependency without changing any package version. The existing dispositions and review deadlines are carried forward unchanged; this is not a new packaged-runtime or device qualification. Final Maps relay pin 1a5a05db0c80 adds strict-string protocol validation and regressions; its bun.lock is byte-identical to 2d1c8a9071dc, with unchanged package versions and dispositions. Native qualification is unchanged. A fresh npm bulk audit at this final pin again returned the same 98 findings across 3675 package versions (normalized input SHA-256 bcadc30aafbef10e1413c673bae3e8669536ac0525296053c159f8b212f684bd). At isolated P-56 Maps allowance pin 221a0bc4e0d5, bun.lock is byte-identical to 1a5a05db0c80. A fresh npm audit reports the same 98 findings across 3675 package versions. Existing dispositions and deadlines remain unchanged; no runtime payload or device qualification is inferred. Fresh audit at a89b72fce70b (2026-10-16 UTC) returned the identical 98 findings across3675 package versions and the same normalized input SHA256. Existing dispositions and deadlines remain unchanged; no packaged-runtime qualification is inferred. Fresh audit at33a6d19c024a (2026-10-16UTC) found exactly the same98 advisories and severity counts across3691 package versions, up from3675. Every current finding is covered by the retained disposition and originaldeadline. New package versions introduced no additional reported advisories. This is source registry evidence, not packaged runtime or native acceptance. At pin 619cff55eb6e (2026-10-22, after elizaOS/eliza#37305, #37307 and #37313): a fresh npm bulk audit over vendor/eliza/bun.lock reported 106 findings across 3694 package versions. #37313 resolved the newly published dompurify (GHSA-cg2g-xh64-v4q7 critical, GHSA-mrv2-3pqr-j5jr, GHSA-c6gr-qvv4-5v3f) and ip-address (GHSA-rxp7-6hxx-x8q5) advisories upstream; the newly published toml@3.0.0 advisories are recorded as not shipped; GHSA-hp3w-g68c-fv3c is no longer reported and its exception is removed. No payload was re-staged; this is source registry evidence, not packaged-runtime or device qualification. At pin 40c77a51246f (2026-10-22, after elizaOS/eliza#37306 and #37309-#37312) bun.lock is byte-identical to 619cff55eb6e, so the findings and dispositions are carried forward unchanged. October24 c95a: fresh packaged-runtime notices list573 bundled package versions; live audit reports uuid moderate and Zod4.6.5 high GHSA-mrhx-c7xc-m3w5. Zod remains pending, not excepted; this blocks release qualification. Evidence: docs/evidence/native-c95a/packaged-audit.log. At 00ee639798a0 on 2026-10-24, a freshly prepared worker and Android payload produced 573 bundled npm package versions. The packaged-notices audit reports moderate GHSA-w5hq-g745-h8pq (uuid 8.3.2/9.0.1, existing disposition) and high GHSA-mrhx-c7xc-m3w5 (zod 4.6.5, pending upstream fix). The packaged gate exits 1 for Zod; this finding is not waived and distribution acceptance remains blocked.",
-    "pendingUpstreamFixes": [
-      {
-        "advisory": "GHSA-27r3-jxmh-p828",
-        "package": "body-parser",
-        "severity": "high",
-        "versions": [
-          "1.20.8",
-          "2.3.0"
-        ],
-        "reachability": "Present in the full upstream lock; none of these exact package versions are in the 603-package staged agent/worker inventory at the current pin. This is packaging evidence only, not a general safety exception.",
-        "plan": "Retain as unresolved upstream work, adopt dependency fixes upstream, and re-audit both full lock and packaged inventory before release.",
-        "observedOn": "2026-10-26"
-      },
-      {
-        "advisory": "GHSA-333x-w4r6-6crp",
-        "package": "fast-uri",
-        "severity": "low",
-        "versions": [
-          "3.1.8"
-        ],
-        "reachability": "Present in the full upstream lock; none of these exact package versions are in the 603-package staged agent/worker inventory at the current pin. This is packaging evidence only, not a general safety exception.",
-        "plan": "Retain as unresolved upstream work, adopt dependency fixes upstream, and re-audit both full lock and packaged inventory before release.",
-        "observedOn": "2026-10-26"
-      },
-      {
-        "advisory": "GHSA-w74x-v6f9-j3xg",
-        "package": "fast-uri",
-        "severity": "moderate",
-        "versions": [
-          "3.1.8"
-        ],
-        "reachability": "Present in the full upstream lock; none of these exact package versions are in the 603-package staged agent/worker inventory at the current pin. This is packaging evidence only, not a general safety exception.",
-        "plan": "Retain as unresolved upstream work, adopt dependency fixes upstream, and re-audit both full lock and packaged inventory before release.",
-        "observedOn": "2026-10-26"
-      },
-      {
-        "advisory": "GHSA-wjr9-j795-jxcr",
-        "package": "fast-uri",
-        "severity": "moderate",
-        "versions": [
-          "3.1.8"
-        ],
-        "reachability": "Present in the full upstream lock; none of these exact package versions are in the 603-package staged agent/worker inventory at the current pin. This is packaging evidence only, not a general safety exception.",
-        "plan": "Retain as unresolved upstream work, adopt dependency fixes upstream, and re-audit both full lock and packaged inventory before release.",
-        "observedOn": "2026-10-26"
-      },
-      {
-        "advisory": "GHSA-xhq7-xmqj-769h",
-        "package": "fast-uri",
-        "severity": "low",
-        "versions": [
-          "3.1.8"
-        ],
-        "reachability": "Present in the full upstream lock; none of these exact package versions are in the 603-package staged agent/worker inventory at the current pin. This is packaging evidence only, not a general safety exception.",
-        "plan": "Retain as unresolved upstream work, adopt dependency fixes upstream, and re-audit both full lock and packaged inventory before release.",
-        "observedOn": "2026-10-26"
-      },
-      {
-        "advisory": "GHSA-85x2-q946-cp5h",
-        "package": "nodemailer",
-        "severity": "moderate",
-        "versions": [
-          "10.0.12"
-        ],
-        "reachability": "Present in the full upstream lock; none of these exact package versions are in the 603-package staged agent/worker inventory at the current pin. This is packaging evidence only, not a general safety exception.",
-        "plan": "Retain as unresolved upstream work, adopt dependency fixes upstream, and re-audit both full lock and packaged inventory before release.",
-        "observedOn": "2026-10-26"
-      },
-      {
-        "advisory": "GHSA-8c8m-p3m8-cjg8",
-        "package": "nodemailer",
-        "severity": "moderate",
-        "versions": [
-          "10.0.12"
-        ],
-        "reachability": "Present in the full upstream lock; none of these exact package versions are in the 603-package staged agent/worker inventory at the current pin. This is packaging evidence only, not a general safety exception.",
-        "plan": "Retain as unresolved upstream work, adopt dependency fixes upstream, and re-audit both full lock and packaged inventory before release.",
-        "observedOn": "2026-10-26"
-      },
-      {
-        "advisory": "GHSA-m943-m63m-w62w",
-        "package": "nodemailer",
-        "severity": "moderate",
-        "versions": [
-          "10.0.12"
-        ],
-        "reachability": "Present in the full upstream lock; none of these exact package versions are in the 603-package staged agent/worker inventory at the current pin. This is packaging evidence only, not a general safety exception.",
-        "plan": "Retain as unresolved upstream work, adopt dependency fixes upstream, and re-audit both full lock and packaged inventory before release.",
-        "observedOn": "2026-10-26"
-      },
-      {
-        "advisory": "GHSA-m5mm-p8h7-m29v",
-        "package": "serialize-javascript",
-        "severity": "low",
-        "versions": [
-          "7.0.5"
-        ],
-        "reachability": "Present in the full upstream lock; none of these exact package versions are in the 603-package staged agent/worker inventory at the current pin. This is packaging evidence only, not a general safety exception.",
-        "plan": "Retain as unresolved upstream work, adopt dependency fixes upstream, and re-audit both full lock and packaged inventory before release.",
-        "observedOn": "2026-10-26"
-      },
-      {
-        "advisory": "GHSA-4qv8-2p9j-2685",
-        "package": "undici",
-        "severity": "moderate",
-        "versions": [
-          "8.10.0",
-          "8.10.2",
-          "8.11.2",
-          "7.28.0",
-          "7.29.1",
-          "6.28.1"
-        ],
-        "reachability": "Present in the full upstream lock; none of these exact package versions are in the 603-package staged agent/worker inventory at the current pin. This is packaging evidence only, not a general safety exception.",
-        "plan": "Retain as unresolved upstream work, adopt dependency fixes upstream, and re-audit both full lock and packaged inventory before release.",
-        "observedOn": "2026-10-26"
-      },
-      {
-        "advisory": "GHSA-f72v-6w45-q472",
-        "package": "undici",
-        "severity": "moderate",
-        "versions": [
-          "8.10.0",
-          "8.10.2",
-          "8.11.2",
-          "7.28.0",
-          "7.29.1"
-        ],
-        "reachability": "Present in the full upstream lock; none of these exact package versions are in the 603-package staged agent/worker inventory at the current pin. This is packaging evidence only, not a general safety exception.",
-        "plan": "Retain as unresolved upstream work, adopt dependency fixes upstream, and re-audit both full lock and packaged inventory before release.",
-        "observedOn": "2026-10-26"
-      },
-      {
-        "advisory": "GHSA-xjj6-f33q-929c",
-        "package": "undici",
-        "severity": "high",
-        "versions": [
-          "8.10.0",
-          "8.10.2",
-          "8.11.2",
-          "7.28.0",
-          "7.29.1",
-          "6.28.1"
-        ],
-        "reachability": "Present in the full upstream lock; none of these exact package versions are in the 603-package staged agent/worker inventory at the current pin. This is packaging evidence only, not a general safety exception.",
-        "plan": "Retain as unresolved upstream work, adopt dependency fixes upstream, and re-audit both full lock and packaged inventory before release.",
-        "observedOn": "2026-10-26"
-      },
-      {
-        "advisory": "GHSA-mrhx-c7xc-m3w5",
-        "package": "zod",
-        "severity": "high",
-        "versions": [
-          "3.22.4",
-          "3.25.76",
-          "4.4.3"
-        ],
-        "reachability": "Present in the full upstream lock as zod@3.22.4, zod@3.25.76 and zod@4.4.3. The 603-package staged agent/worker inventory at this pin ships zod@4.6.7 only, which is outside the GHSA-mrhx-c7xc-m3w5 range (< 4.6.6). Packaging evidence: docs/evidence/packaged-notices-v14-2026-10-27. This is unresolved upstream lock work, not a shipped high.",
-        "plan": "Keep unresolved for the full lock audit. Adopt upstream dependency fixes that drop the vulnerable zod versions from vendor/eliza/bun.lock, then re-audit both the full lock and packaged inventory before release. Do not treat this row as a shipped exception.",
-        "observedOn": "2026-10-29",
-        "ships": false
-      },
-      {
-        "advisory": "GHSA-2m5v-pch6-74hx",
-        "package": "undici",
-        "severity": "high",
-        "versions": [
-          "5.29.0",
-          "6.28.1",
-          "7.28.0",
-          "7.29.1",
-          "8.10.0",
-          "8.10.2",
-          "8.11.2"
-        ],
-        "reachability": "Present in the full upstream dependency lock. Exact current packaged-runtime inclusion and call-site reachability have not yet been established; this is unresolved, not a safety exception.",
-        "plan": "Keep unresolved, adopt upstream dependency fixes, and audit the exact current packaged inventory and reachable code before release. No exception or distribution acceptance is granted.",
-        "observedOn": "2026-10-27"
-      },
-      {
-        "advisory": "GHSA-4ffr-jq9g-5ffx",
-        "package": "nodemailer",
-        "severity": "moderate",
-        "versions": [
-          "10.0.12"
-        ],
-        "reachability": "Present in the full upstream dependency lock. Exact current packaged-runtime inclusion and call-site reachability have not yet been established; this is unresolved, not a safety exception.",
-        "plan": "Keep unresolved, adopt upstream dependency fixes, and audit the exact current packaged inventory and reachable code before release. No exception or distribution acceptance is granted.",
-        "observedOn": "2026-10-27"
-      },
-      {
-        "advisory": "GHSA-4w7w-5xrc-9h26",
-        "package": "undici",
-        "severity": "high",
-        "versions": [
-          "7.28.0",
-          "7.29.1",
-          "8.10.0",
-          "8.10.2",
-          "8.11.2"
-        ],
-        "reachability": "Present in the full upstream dependency lock. Exact current packaged-runtime inclusion and call-site reachability have not yet been established; this is unresolved, not a safety exception.",
-        "plan": "Keep unresolved, adopt upstream dependency fixes, and audit the exact current packaged inventory and reachable code before release. No exception or distribution acceptance is granted.",
-        "observedOn": "2026-10-27"
-      },
-      {
-        "advisory": "GHSA-55wc-3pg8-jfw6",
-        "package": "undici",
-        "severity": "moderate",
-        "versions": [
-          "7.28.0",
-          "7.29.1",
-          "8.10.0",
-          "8.10.2",
-          "8.11.2"
-        ],
-        "reachability": "Present in the full upstream dependency lock. Exact current packaged-runtime inclusion and call-site reachability have not yet been established; this is unresolved, not a safety exception.",
-        "plan": "Keep unresolved, adopt upstream dependency fixes, and audit the exact current packaged inventory and reachable code before release. No exception or distribution acceptance is granted.",
-        "observedOn": "2026-10-27"
-      },
-      {
-        "advisory": "GHSA-9fm3-97px-rjf6",
-        "package": "undici",
-        "severity": "moderate",
-        "versions": [
-          "5.29.0",
-          "6.28.1",
-          "7.28.0",
-          "7.29.1",
-          "8.10.0",
-          "8.10.2",
-          "8.11.2"
-        ],
-        "reachability": "Present in the full upstream dependency lock. Exact current packaged-runtime inclusion and call-site reachability have not yet been established; this is unresolved, not a safety exception.",
-        "plan": "Keep unresolved, adopt upstream dependency fixes, and audit the exact current packaged inventory and reachable code before release. No exception or distribution acceptance is granted.",
-        "observedOn": "2026-10-27"
-      },
-      {
-        "advisory": "GHSA-g73g-hqqh-jr95",
-        "package": "nodemailer",
-        "severity": "moderate",
-        "versions": [
-          "10.0.12"
-        ],
-        "reachability": "Present in the full upstream dependency lock. Exact current packaged-runtime inclusion and call-site reachability have not yet been established; this is unresolved, not a safety exception.",
-        "plan": "Keep unresolved, adopt upstream dependency fixes, and audit the exact current packaged inventory and reachable code before release. No exception or distribution acceptance is granted.",
-        "observedOn": "2026-10-27"
-      },
-      {
-        "advisory": "GHSA-qrxm-fqhp-jwvm",
-        "package": "undici",
-        "severity": "high",
-        "versions": [
-          "5.29.0",
-          "6.28.1",
-          "7.28.0",
-          "7.29.1",
-          "8.10.0",
-          "8.10.2",
-          "8.11.2"
-        ],
-        "reachability": "Present in the full upstream dependency lock. Exact current packaged-runtime inclusion and call-site reachability have not yet been established; this is unresolved, not a safety exception.",
-        "plan": "Keep unresolved, adopt upstream dependency fixes, and audit the exact current packaged inventory and reachable code before release. No exception or distribution acceptance is granted.",
-        "observedOn": "2026-10-27"
-      },
-      {
-        "advisory": "GHSA-gcqx-w48m-w2h4",
-        "package": "deepmerge",
-        "severity": "low",
-        "versions": [
-          "4.3.1"
-        ],
-        "reachability": "Present in unchanged full upstream dependency lock. Current candidate packaged inclusion and reachable use remain unverified.",
-        "plan": "Keep unresolved pending upstream fix and exact candidate packaged inventory/call-site review. No exception or distribution acceptance.",
-        "observedOn": "2026-10-28"
-      },
-      {
-        "advisory": "GHSA-rmxm-3fg6-px4f",
-        "package": "@hono/node-server",
-        "severity": "moderate",
-        "versions": [
-          "2.0.10"
-        ],
-        "reachability": "Present in the full upstream lock, declared by the packages/cloud/services/gateway-discord workspace and accepted by @modelcontextprotocol/sdk@1.30.1 (^1.19.9 || ^2.0.5). The advisory (serveStatic double path decoding) was published after the previous audit; no payload was staged at this pin, so current packaged reachability is unknown.",
-        "plan": "Retain as unresolved upstream work: bump @hono/node-server to >=2.1.3 upstream in elizaOS, then re-audit the full lock and a packaged-runtime notices inventory before release.",
-        "observedOn": "2026-10-29"
-      },
-      {
-        "advisory": "GHSA-mrwp-f3q8-3g9p",
-        "package": "follow-redirects",
-        "severity": "high",
-        "versions": [
-          "1.16.0"
-        ],
-        "reachability": "Present in the full pinned upstream lock. Reachability in a newly packaged agent/worker is not yet established; historical APK and package inventories do not qualify this source. No safety exception is granted.",
-        "plan": "Retain as unresolved upstream work, adopt reviewed dependency fixes upstream, and audit the exact current packaged inventory before release. Shipped high or critical findings must be fixed, not excepted.",
-        "observedOn": "2026-11-01"
-      },
-      {
-        "advisory": "GHSA-3g3m-2fjr-6pw4",
-        "package": "glob",
-        "severity": "moderate",
-        "versions": [
-          "10.5.0",
-          "13.0.6"
-        ],
-        "reachability": "Present in the full pinned upstream lock. Reachability in a newly packaged agent/worker is not yet established; historical APK and package inventories do not qualify this source. No safety exception is granted.",
-        "plan": "Retain as unresolved upstream work, adopt reviewed dependency fixes upstream, and audit the exact current packaged inventory before release. Shipped high or critical findings must be fixed, not excepted.",
-        "observedOn": "2026-11-01"
-      },
-      {
-        "advisory": "GHSA-g3hv-75wg-m249",
-        "package": "minimatch",
-        "severity": "moderate",
-        "versions": [
-          "10.2.5",
-          "10.2.6",
-          "3.1.4",
-          "5.1.9",
-          "9.0.9"
-        ],
-        "reachability": "Present in the full pinned upstream lock. Reachability in a newly packaged agent/worker is not yet established; historical APK and package inventories do not qualify this source. No safety exception is granted.",
-        "plan": "Retain as unresolved upstream work, adopt reviewed dependency fixes upstream, and audit the exact current packaged inventory before release. Shipped high or critical findings must be fixed, not excepted.",
-        "observedOn": "2026-11-01"
-      },
-      {
-        "advisory": "GHSA-4487-j8r4-4g2f",
-        "package": "node-forge",
-        "severity": "low",
-        "versions": [
-          "1.4.0"
-        ],
-        "reachability": "Present in the full pinned upstream lock. Reachability in a newly packaged agent/worker is not yet established; historical APK and package inventories do not qualify this source. No safety exception is granted.",
-        "plan": "Retain as unresolved upstream work, adopt reviewed dependency fixes upstream, and audit the exact current packaged inventory before release. Shipped high or critical findings must be fixed, not excepted.",
-        "observedOn": "2026-11-01"
-      },
-      {
-        "advisory": "GHSA-4642-5mcj-2rqw",
-        "package": "node-forge",
-        "severity": "low",
-        "versions": [
-          "1.4.0"
-        ],
-        "reachability": "Present in the full pinned upstream lock. Reachability in a newly packaged agent/worker is not yet established; historical APK and package inventories do not qualify this source. No safety exception is granted.",
-        "plan": "Retain as unresolved upstream work, adopt reviewed dependency fixes upstream, and audit the exact current packaged inventory before release. Shipped high or critical findings must be fixed, not excepted.",
-        "observedOn": "2026-11-01"
-      },
-      {
-        "advisory": "GHSA-525v-9gp9-w22h",
-        "package": "node-forge",
-        "severity": "moderate",
-        "versions": [
-          "1.4.0"
-        ],
-        "reachability": "Present in the full pinned upstream lock. Reachability in a newly packaged agent/worker is not yet established; historical APK and package inventories do not qualify this source. No safety exception is granted.",
-        "plan": "Retain as unresolved upstream work, adopt reviewed dependency fixes upstream, and audit the exact current packaged inventory before release. Shipped high or critical findings must be fixed, not excepted.",
-        "observedOn": "2026-11-01"
-      },
-      {
-        "advisory": "GHSA-5cwg-6vw7-rj6p",
-        "package": "node-forge",
-        "severity": "moderate",
-        "versions": [
-          "1.4.0"
-        ],
-        "reachability": "Present in the full pinned upstream lock. Reachability in a newly packaged agent/worker is not yet established; historical APK and package inventories do not qualify this source. No safety exception is granted.",
-        "plan": "Retain as unresolved upstream work, adopt reviewed dependency fixes upstream, and audit the exact current packaged inventory before release. Shipped high or critical findings must be fixed, not excepted.",
-        "observedOn": "2026-11-01"
-      },
-      {
-        "advisory": "GHSA-5x38-2vff-x55p",
-        "package": "node-forge",
-        "severity": "high",
-        "versions": [
-          "1.4.0"
-        ],
-        "reachability": "Present in the full pinned upstream lock. Reachability in a newly packaged agent/worker is not yet established; historical APK and package inventories do not qualify this source. No safety exception is granted.",
-        "plan": "Retain as unresolved upstream work, adopt reviewed dependency fixes upstream, and audit the exact current packaged inventory before release. Shipped high or critical findings must be fixed, not excepted.",
-        "observedOn": "2026-11-01"
-      },
-      {
-        "advisory": "GHSA-6wvx-3r32-xmcg",
-        "package": "node-forge",
-        "severity": "moderate",
-        "versions": [
-          "1.4.0"
-        ],
-        "reachability": "Present in the full pinned upstream lock. Reachability in a newly packaged agent/worker is not yet established; historical APK and package inventories do not qualify this source. No safety exception is granted.",
-        "plan": "Retain as unresolved upstream work, adopt reviewed dependency fixes upstream, and audit the exact current packaged inventory before release. Shipped high or critical findings must be fixed, not excepted.",
-        "observedOn": "2026-11-01"
-      },
-      {
-        "advisory": "GHSA-7wch-p9px-956x",
-        "package": "node-forge",
-        "severity": "high",
-        "versions": [
-          "1.4.0"
-        ],
-        "reachability": "Present in the full pinned upstream lock. Reachability in a newly packaged agent/worker is not yet established; historical APK and package inventories do not qualify this source. No safety exception is granted.",
-        "plan": "Retain as unresolved upstream work, adopt reviewed dependency fixes upstream, and audit the exact current packaged inventory before release. Shipped high or critical findings must be fixed, not excepted.",
-        "observedOn": "2026-11-01"
-      },
-      {
-        "advisory": "GHSA-8hrf-8g6f-7xwp",
-        "package": "node-forge",
-        "severity": "high",
-        "versions": [
-          "1.4.0"
-        ],
-        "reachability": "Present in the full pinned upstream lock. Reachability in a newly packaged agent/worker is not yet established; historical APK and package inventories do not qualify this source. No safety exception is granted.",
-        "plan": "Retain as unresolved upstream work, adopt reviewed dependency fixes upstream, and audit the exact current packaged inventory before release. Shipped high or critical findings must be fixed, not excepted.",
-        "observedOn": "2026-11-01"
-      },
-      {
-        "advisory": "GHSA-h6cr-wjv9-3cpp",
-        "package": "node-forge",
-        "severity": "low",
-        "versions": [
-          "1.4.0"
-        ],
-        "reachability": "Present in the full pinned upstream lock. Reachability in a newly packaged agent/worker is not yet established; historical APK and package inventories do not qualify this source. No safety exception is granted.",
-        "plan": "Retain as unresolved upstream work, adopt reviewed dependency fixes upstream, and audit the exact current packaged inventory before release. Shipped high or critical findings must be fixed, not excepted.",
-        "observedOn": "2026-11-01"
-      },
-      {
-        "advisory": "GHSA-hqq3-7jhf-c5jx",
-        "package": "node-forge",
-        "severity": "high",
-        "versions": [
-          "1.4.0"
-        ],
-        "reachability": "Present in the full pinned upstream lock. Reachability in a newly packaged agent/worker is not yet established; historical APK and package inventories do not qualify this source. No safety exception is granted.",
-        "plan": "Retain as unresolved upstream work, adopt reviewed dependency fixes upstream, and audit the exact current packaged inventory before release. Shipped high or critical findings must be fixed, not excepted.",
-        "observedOn": "2026-11-01"
-      },
-      {
-        "advisory": "GHSA-jc66-7q78-782g",
-        "package": "node-forge",
-        "severity": "high",
-        "versions": [
-          "1.4.0"
-        ],
-        "reachability": "Present in the full pinned upstream lock. Reachability in a newly packaged agent/worker is not yet established; historical APK and package inventories do not qualify this source. No safety exception is granted.",
-        "plan": "Retain as unresolved upstream work, adopt reviewed dependency fixes upstream, and audit the exact current packaged inventory before release. Shipped high or critical findings must be fixed, not excepted.",
-        "observedOn": "2026-11-01"
-      }
-    ],
+    "pendingUpstreamFixes": [],
     "exceptions": [
+      {
+        "advisory": "GHSA-22jm-h49p-29qw",
+        "severity": "high",
+        "packages": [
+          "@modelcontextprotocol/sdk"
+        ],
+        "versions": [
+          "@modelcontextprotocol/sdk@1.30.1"
+        ],
+        "ships": false,
+        "reachability": "Not in the freshly staged agent bundle or workflow worker at 3d6f68a129702a1a2779cc087c93a80ba0f2332e: collectNotices(root, {packagedRuntime:true}) returned 674 entries with no errors/warnings and none named @modelcontextprotocol/sdk. This is staged source/package inventory evidence, not an APK/device result.",
+        "justification": "The full upstream lock is a superset of the mobile payload. The affected package is absent from this exact staged payload; no vulnerable resident consumer is included. Upstream workspace consumers remain outside this Alpha packaging exception.",
+        "removeWhen": "A new upstream pin or payload includes @modelcontextprotocol/sdk, or the upstream lock removes these affected versions; re-audit and review the exact staged set.",
+        "reviewedBy": "Alpha staged package inventory review 2026-10-21 using existing generate-licenses collectNotices and fresh npm bulk audit",
+        "reviewedOn": "2026-10-21",
+        "reviewBy": "2026-11-20"
+      },
       {
         "advisory": "GHSA-238p-pmpm-9mq7",
         "severity": "low",
@@ -585,6 +156,24 @@
         "reviewBy": "2027-01-10"
       },
       {
+        "advisory": "GHSA-2m5v-pch6-74hx",
+        "severity": "high",
+        "packages": [
+          "undici"
+        ],
+        "versions": [
+          "undici@5.29.0",
+          "undici@7.28.0"
+        ],
+        "ships": false,
+        "reachability": "Not in the APK. The packaged-runtime notices generated on 2026-11-06 from the payload staged at 912f972e58b1 (agent bundle and workflow worker, 561 entries) do not list undici@5.29.0, undici@7.28.0; node scripts/dependency-audit.mjs --resident --notices reports no advisory in the shipped set. In vendor/eliza/bun.lock it is reached through miniflare (Cloudflare Workers dev server, exact pin 7.28.0) and hardhat (contract tooling, undici 5).",
+        "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. miniflare pins undici 7.28.0 exactly and hardhat uses undici 5, which has no patched 5.x release; Bun overrides do not reach either. elizaOS/eliza#38902 moved every other affected package to a patched release.",
+        "removeWhen": "The upstream lock no longer resolves undici@5.29.0, undici@7.28.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "reviewedBy": "On-device speech pin review 2026-11-06: npm bulk advisories at the pin, GitHub advisory patched ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
+        "reviewedOn": "2026-11-06",
+        "reviewBy": "2027-02-03"
+      },
+      {
         "advisory": "GHSA-2mjp-6q6p-2qxm",
         "severity": "moderate",
         "packages": [
@@ -617,6 +206,24 @@
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
+      },
+      {
+        "advisory": "GHSA-3g3m-2fjr-6pw4",
+        "severity": "moderate",
+        "packages": [
+          "glob"
+        ],
+        "versions": [
+          "glob@10.5.0",
+          "glob@13.0.6"
+        ],
+        "ships": false,
+        "reachability": "Not in the APK. The packaged-runtime notices generated on 2026-11-06 from the payload staged at 912f972e58b1 (agent bundle and workflow worker, 561 entries) do not list glob@10.5.0, glob@13.0.6; node scripts/dependency-audit.mjs --resident --notices reports no advisory in the shipped set. In vendor/eliza/bun.lock it is reached through mocha, rimraf, cacache, archiver-utils and @npmcli tooling (test and build tooling).",
+        "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix is glob 14.0.2, a new major; these consumers pin glob 10 or 13. elizaOS/eliza#38902 moved every other affected package to a patched release.",
+        "removeWhen": "The upstream lock no longer resolves glob@10.5.0, glob@13.0.6 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "reviewedBy": "On-device speech pin review 2026-11-06: npm bulk advisories at the pin, GitHub advisory patched ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
+        "reviewedOn": "2026-11-06",
+        "reviewBy": "2027-02-03"
       },
       {
         "advisory": "GHSA-3gc7-fjrx-p6mg",
@@ -706,6 +313,23 @@
         "reviewBy": "2027-01-10"
       },
       {
+        "advisory": "GHSA-46jr-4wx8-v453",
+        "severity": "high",
+        "packages": [
+          "@modelcontextprotocol/sdk"
+        ],
+        "versions": [
+          "@modelcontextprotocol/sdk@1.30.1"
+        ],
+        "ships": false,
+        "reachability": "Not in the freshly staged agent bundle or workflow worker at 3d6f68a129702a1a2779cc087c93a80ba0f2332e: collectNotices(root, {packagedRuntime:true}) returned 674 entries with no errors/warnings and none named @modelcontextprotocol/sdk. This is staged source/package inventory evidence, not an APK/device result.",
+        "justification": "The full upstream lock is a superset of the mobile payload. The affected package is absent from this exact staged payload; no vulnerable resident consumer is included. Upstream workspace consumers remain outside this Alpha packaging exception.",
+        "removeWhen": "A new upstream pin or payload includes @modelcontextprotocol/sdk, or the upstream lock removes these affected versions; re-audit and review the exact staged set.",
+        "reviewedBy": "Alpha staged package inventory review 2026-10-21 using existing generate-licenses collectNotices and fresh npm bulk audit",
+        "reviewedOn": "2026-10-21",
+        "reviewBy": "2026-11-20"
+      },
+      {
         "advisory": "GHSA-477h-4r7f-fvrx",
         "severity": "moderate",
         "packages": [
@@ -774,6 +398,57 @@
         "reviewBy": "2027-01-10"
       },
       {
+        "advisory": "GHSA-4qv8-2p9j-2685",
+        "severity": "moderate",
+        "packages": [
+          "undici"
+        ],
+        "versions": [
+          "undici@7.28.0"
+        ],
+        "ships": false,
+        "reachability": "Not in the APK. The packaged-runtime notices generated on 2026-11-06 from the payload staged at 912f972e58b1 (agent bundle and workflow worker, 561 entries) do not list undici@7.28.0; node scripts/dependency-audit.mjs --resident --notices reports no advisory in the shipped set. In vendor/eliza/bun.lock it is reached through miniflare (Cloudflare Workers dev server, exact pin 7.28.0) and hardhat (contract tooling, undici 5).",
+        "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. miniflare pins undici 7.28.0 exactly and hardhat uses undici 5, which has no patched 5.x release; Bun overrides do not reach either. elizaOS/eliza#38902 moved every other affected package to a patched release.",
+        "removeWhen": "The upstream lock no longer resolves undici@7.28.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "reviewedBy": "On-device speech pin review 2026-11-06: npm bulk advisories at the pin, GitHub advisory patched ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
+        "reviewedOn": "2026-11-06",
+        "reviewBy": "2027-02-03"
+      },
+      {
+        "advisory": "GHSA-4qx8-w7c3-pj3p",
+        "severity": "high",
+        "packages": [
+          "toml"
+        ],
+        "versions": [
+          "toml@3.0.0"
+        ],
+        "ships": false,
+        "reachability": "Not in the APK. In vendor/eliza/bun.lock toml@3.0.0 is reached only from @coral-xyz/anchor (^3.0.0, also via @meteora-ag/dlmm), a dependency of @elizaos/plugin-wallet, which earlier reviews of the staged packaged-runtime notices place outside the mobile agent bundle.",
+        "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The advisories (toml.parse CPU DoS) were published after the previous audit; the fix belongs upstream in elizaOS: toml@3.0.0 -> 5.0.1 needs a parent bump of @coral-xyz/anchor.",
+        "removeWhen": "The upstream lock no longer resolves toml@3.0.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "reviewedBy": "Pin bump review 2026-10-22: npm bulk advisories at the pin, GitHub advisory ranges and bun.lock dependency chains",
+        "reviewedOn": "2026-10-22",
+        "reviewBy": "2027-01-10"
+      },
+      {
+        "advisory": "GHSA-4w7w-5xrc-9h26",
+        "severity": "high",
+        "packages": [
+          "undici"
+        ],
+        "versions": [
+          "undici@7.28.0"
+        ],
+        "ships": false,
+        "reachability": "Not in the APK. The packaged-runtime notices generated on 2026-11-06 from the payload staged at 912f972e58b1 (agent bundle and workflow worker, 561 entries) do not list undici@7.28.0; node scripts/dependency-audit.mjs --resident --notices reports no advisory in the shipped set. In vendor/eliza/bun.lock it is reached through miniflare (Cloudflare Workers dev server, exact pin 7.28.0) and hardhat (contract tooling, undici 5).",
+        "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. miniflare pins undici 7.28.0 exactly and hardhat uses undici 5, which has no patched 5.x release; Bun overrides do not reach either. elizaOS/eliza#38902 moved every other affected package to a patched release.",
+        "removeWhen": "The upstream lock no longer resolves undici@7.28.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "reviewedBy": "On-device speech pin review 2026-11-06: npm bulk advisories at the pin, GitHub advisory patched ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
+        "reviewedOn": "2026-11-06",
+        "reviewBy": "2027-02-03"
+      },
+      {
         "advisory": "GHSA-528h-pc64-c93x",
         "severity": "moderate",
         "packages": [
@@ -806,6 +481,23 @@
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
+      },
+      {
+        "advisory": "GHSA-55wc-3pg8-jfw6",
+        "severity": "moderate",
+        "packages": [
+          "undici"
+        ],
+        "versions": [
+          "undici@7.28.0"
+        ],
+        "ships": false,
+        "reachability": "Not in the APK. The packaged-runtime notices generated on 2026-11-06 from the payload staged at 912f972e58b1 (agent bundle and workflow worker, 561 entries) do not list undici@7.28.0; node scripts/dependency-audit.mjs --resident --notices reports no advisory in the shipped set. In vendor/eliza/bun.lock it is reached through miniflare (Cloudflare Workers dev server, exact pin 7.28.0) and hardhat (contract tooling, undici 5).",
+        "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. miniflare pins undici 7.28.0 exactly and hardhat uses undici 5, which has no patched 5.x release; Bun overrides do not reach either. elizaOS/eliza#38902 moved every other affected package to a patched release.",
+        "removeWhen": "The upstream lock no longer resolves undici@7.28.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "reviewedBy": "On-device speech pin review 2026-11-06: npm bulk advisories at the pin, GitHub advisory patched ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
+        "reviewedOn": "2026-11-06",
+        "reviewBy": "2027-02-03"
       },
       {
         "advisory": "GHSA-5p4m-2wfm-xmqj",
@@ -891,6 +583,23 @@
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
+      },
+      {
+        "advisory": "GHSA-6prh-2h8m-c8cw",
+        "severity": "moderate",
+        "packages": [
+          "@modelcontextprotocol/sdk"
+        ],
+        "versions": [
+          "@modelcontextprotocol/sdk@1.30.1"
+        ],
+        "ships": false,
+        "reachability": "Not in the freshly staged agent bundle or workflow worker at 3d6f68a129702a1a2779cc087c93a80ba0f2332e: collectNotices(root, {packagedRuntime:true}) returned 674 entries with no errors/warnings and none named @modelcontextprotocol/sdk. This is staged source/package inventory evidence, not an APK/device result.",
+        "justification": "The full upstream lock is a superset of the mobile payload. The affected package is absent from this exact staged payload; no vulnerable resident consumer is included. Upstream workspace consumers remain outside this Alpha packaging exception.",
+        "removeWhen": "A new upstream pin or payload includes @modelcontextprotocol/sdk, or the upstream lock removes these affected versions; re-audit and review the exact staged set.",
+        "reviewedBy": "Alpha staged package inventory review 2026-10-21 using existing generate-licenses collectNotices and fresh npm bulk audit",
+        "reviewedOn": "2026-10-21",
+        "reviewBy": "2026-11-20"
       },
       {
         "advisory": "GHSA-6qxp-vccf-f47h",
@@ -1047,23 +756,6 @@
         "reviewBy": "2027-01-10"
       },
       {
-        "advisory": "GHSA-86w9-cpqp-85rv",
-        "severity": "high",
-        "packages": [
-          "node-forge"
-        ],
-        "versions": [
-          "node-forge@1.4.0"
-        ],
-        "ships": false,
-        "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list node-forge@1.4.0. In vendor/eliza/bun.lock it is reached only from @elizaos/operator (dependency), outside the mobile agent bundle.",
-        "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): node-forge@1.4.0: no patched release. Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves node-forge@1.4.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
-        "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
-        "reviewedOn": "2026-10-12",
-        "reviewBy": "2027-01-10"
-      },
-      {
         "advisory": "GHSA-8xcm-r25x-g524",
         "severity": "moderate",
         "packages": [
@@ -1082,6 +774,24 @@
         "reviewBy": "2027-01-10"
       },
       {
+        "advisory": "GHSA-9fm3-97px-rjf6",
+        "severity": "moderate",
+        "packages": [
+          "undici"
+        ],
+        "versions": [
+          "undici@5.29.0",
+          "undici@7.28.0"
+        ],
+        "ships": false,
+        "reachability": "Not in the APK. The packaged-runtime notices generated on 2026-11-06 from the payload staged at 912f972e58b1 (agent bundle and workflow worker, 561 entries) do not list undici@5.29.0, undici@7.28.0; node scripts/dependency-audit.mjs --resident --notices reports no advisory in the shipped set. In vendor/eliza/bun.lock it is reached through miniflare (Cloudflare Workers dev server, exact pin 7.28.0) and hardhat (contract tooling, undici 5).",
+        "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. miniflare pins undici 7.28.0 exactly and hardhat uses undici 5, which has no patched 5.x release; Bun overrides do not reach either. elizaOS/eliza#38902 moved every other affected package to a patched release.",
+        "removeWhen": "The upstream lock no longer resolves undici@5.29.0, undici@7.28.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "reviewedBy": "On-device speech pin review 2026-11-06: npm bulk advisories at the pin, GitHub advisory patched ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
+        "reviewedOn": "2026-11-06",
+        "reviewBy": "2027-02-03"
+      },
+      {
         "advisory": "GHSA-9fr6-4gfg-395g",
         "severity": "moderate",
         "packages": [
@@ -1096,6 +806,40 @@
         "removeWhen": "The upstream lock no longer resolves axios@1.19.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
+        "reviewBy": "2027-01-10"
+      },
+      {
+        "advisory": "GHSA-9j65-hcg3-gc64",
+        "severity": "high",
+        "packages": [
+          "toml"
+        ],
+        "versions": [
+          "toml@3.0.0"
+        ],
+        "ships": false,
+        "reachability": "Not in the APK. In vendor/eliza/bun.lock toml@3.0.0 is reached only from @coral-xyz/anchor (^3.0.0, also via @meteora-ag/dlmm), a dependency of @elizaos/plugin-wallet, which earlier reviews of the staged packaged-runtime notices place outside the mobile agent bundle.",
+        "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The advisories (toml.parse CPU DoS) were published after the previous audit; the fix belongs upstream in elizaOS: toml@3.0.0 -> 5.0.1 needs a parent bump of @coral-xyz/anchor.",
+        "removeWhen": "The upstream lock no longer resolves toml@3.0.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "reviewedBy": "Pin bump review 2026-10-22: npm bulk advisories at the pin, GitHub advisory ranges and bun.lock dependency chains",
+        "reviewedOn": "2026-10-22",
+        "reviewBy": "2027-01-10"
+      },
+      {
+        "advisory": "GHSA-9qmh-m7c6-f92p",
+        "severity": "high",
+        "packages": [
+          "toml"
+        ],
+        "versions": [
+          "toml@3.0.0"
+        ],
+        "ships": false,
+        "reachability": "Not in the APK. In vendor/eliza/bun.lock toml@3.0.0 is reached only from @coral-xyz/anchor (^3.0.0, also via @meteora-ag/dlmm), a dependency of @elizaos/plugin-wallet, which earlier reviews of the staged packaged-runtime notices place outside the mobile agent bundle.",
+        "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The advisories (toml.parse CPU DoS) were published after the previous audit; the fix belongs upstream in elizaOS: toml@3.0.0 -> 5.0.1 needs a parent bump of @coral-xyz/anchor.",
+        "removeWhen": "The upstream lock no longer resolves toml@3.0.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "reviewedBy": "Pin bump review 2026-10-22: npm bulk advisories at the pin, GitHub advisory ranges and bun.lock dependency chains",
+        "reviewedOn": "2026-10-22",
         "reviewBy": "2027-01-10"
       },
       {
@@ -1150,6 +894,42 @@
         "reviewBy": "2027-01-10"
       },
       {
+        "advisory": "GHSA-f72v-6w45-q472",
+        "severity": "moderate",
+        "packages": [
+          "undici"
+        ],
+        "versions": [
+          "undici@7.28.0"
+        ],
+        "ships": false,
+        "reachability": "Not in the APK. The packaged-runtime notices generated on 2026-11-06 from the payload staged at 912f972e58b1 (agent bundle and workflow worker, 561 entries) do not list undici@7.28.0; node scripts/dependency-audit.mjs --resident --notices reports no advisory in the shipped set. In vendor/eliza/bun.lock it is reached through miniflare (Cloudflare Workers dev server, exact pin 7.28.0) and hardhat (contract tooling, undici 5).",
+        "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. miniflare pins undici 7.28.0 exactly and hardhat uses undici 5, which has no patched 5.x release; Bun overrides do not reach either. elizaOS/eliza#38902 moved every other affected package to a patched release.",
+        "removeWhen": "The upstream lock no longer resolves undici@7.28.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "reviewedBy": "On-device speech pin review 2026-11-06: npm bulk advisories at the pin, GitHub advisory patched ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
+        "reviewedOn": "2026-11-06",
+        "reviewBy": "2027-02-03"
+      },
+      {
+        "advisory": "GHSA-g3hv-75wg-m249",
+        "severity": "moderate",
+        "packages": [
+          "minimatch"
+        ],
+        "versions": [
+          "minimatch@10.2.5",
+          "minimatch@10.2.6",
+          "minimatch@9.0.9"
+        ],
+        "ships": false,
+        "reachability": "Not in the APK. The packaged-runtime notices generated on 2026-11-06 from the payload staged at 912f972e58b1 (agent bundle and workflow worker, 561 entries) do not list minimatch@10.2.5, minimatch@10.2.6, minimatch@9.0.9; node scripts/dependency-audit.mjs --resident --notices reports no advisory in the shipped set. In vendor/eliza/bun.lock it is reached through nx, mocha, eslint, @npmcli and @ts-morph tooling (build, lint and test tooling).",
+        "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix is minimatch 11.0.1, a new major; these consumers pin minimatch 9 or 10. elizaOS/eliza#38902 moved every other affected package to a patched release.",
+        "removeWhen": "The upstream lock no longer resolves minimatch@10.2.5, minimatch@10.2.6, minimatch@9.0.9 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "reviewedBy": "On-device speech pin review 2026-11-06: npm bulk advisories at the pin, GitHub advisory patched ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
+        "reviewedOn": "2026-11-06",
+        "reviewBy": "2027-02-03"
+      },
+      {
         "advisory": "GHSA-g7r4-m6w7-qqqr",
         "severity": "low",
         "packages": [
@@ -1199,6 +979,23 @@
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
+      },
+      {
+        "advisory": "GHSA-gcqx-w48m-w2h4",
+        "severity": "low",
+        "packages": [
+          "deepmerge"
+        ],
+        "versions": [
+          "deepmerge@4.3.1"
+        ],
+        "ships": false,
+        "reachability": "Not in the APK. The packaged-runtime notices generated on 2026-11-06 from the payload staged at 912f972e58b1 (agent bundle and workflow worker, 561 entries) do not list deepmerge@4.3.1; node scripts/dependency-audit.mjs --resident --notices reports no advisory in the shipped set. In vendor/eliza/bun.lock it is reached through @rollup/plugin-node-resolve, @sendgrid/helpers and @vanilla-extract/css (build tooling and the Cloud email service).",
+        "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. No patched deepmerge release exists. elizaOS/eliza#38902 moved every other affected package to a patched release.",
+        "removeWhen": "The upstream lock no longer resolves deepmerge@4.3.1 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "reviewedBy": "On-device speech pin review 2026-11-06: npm bulk advisories at the pin, GitHub advisory patched ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
+        "reviewedOn": "2026-11-06",
+        "reviewBy": "2027-02-03"
       },
       {
         "advisory": "GHSA-gxm5-99cw-xjw9",
@@ -1372,6 +1169,25 @@
         "reviewBy": "2027-01-10"
       },
       {
+        "advisory": "GHSA-mrhx-c7xc-m3w5",
+        "severity": "high",
+        "packages": [
+          "zod"
+        ],
+        "versions": [
+          "zod@3.22.4",
+          "zod@3.25.76",
+          "zod@4.4.3"
+        ],
+        "ships": false,
+        "reachability": "Not in the APK. The packaged-runtime notices generated on 2026-11-06 from the payload staged at 912f972e58b1 (agent bundle and workflow worker, 561 entries) do not list zod@3.22.4, zod@3.25.76, zod@4.4.3; node scripts/dependency-audit.mjs --resident --notices reports no advisory in the shipped set. In vendor/eliza/bun.lock it is reached through @reown/appkit-wallet and @coinbase/cdp-sdk (zod 3.x), @jimp plugins and chromium-bidi (zod 3.25.76), and @smthrs/integrations (exact pin 4.4.3).",
+        "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix is zod 4.6.6; zod 3.x has no patched release and @smthrs/integrations pins 4.4.3 exactly. elizaOS/eliza#38902 moved every other affected package to a patched release.",
+        "removeWhen": "The upstream lock no longer resolves zod@3.22.4, zod@3.25.76, zod@4.4.3 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "reviewedBy": "On-device speech pin review 2026-11-06: npm bulk advisories at the pin, GitHub advisory patched ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
+        "reviewedOn": "2026-11-06",
+        "reviewBy": "2027-02-03"
+      },
+      {
         "advisory": "GHSA-p634-w6r4-rjp2",
         "severity": "moderate",
         "packages": [
@@ -1509,6 +1325,24 @@
         "reviewBy": "2027-01-10"
       },
       {
+        "advisory": "GHSA-qrxm-fqhp-jwvm",
+        "severity": "high",
+        "packages": [
+          "undici"
+        ],
+        "versions": [
+          "undici@5.29.0",
+          "undici@7.28.0"
+        ],
+        "ships": false,
+        "reachability": "Not in the APK. The packaged-runtime notices generated on 2026-11-06 from the payload staged at 912f972e58b1 (agent bundle and workflow worker, 561 entries) do not list undici@5.29.0, undici@7.28.0; node scripts/dependency-audit.mjs --resident --notices reports no advisory in the shipped set. In vendor/eliza/bun.lock it is reached through miniflare (Cloudflare Workers dev server, exact pin 7.28.0) and hardhat (contract tooling, undici 5).",
+        "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. miniflare pins undici 7.28.0 exactly and hardhat uses undici 5, which has no patched 5.x release; Bun overrides do not reach either. elizaOS/eliza#38902 moved every other affected package to a patched release.",
+        "removeWhen": "The upstream lock no longer resolves undici@5.29.0, undici@7.28.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "reviewedBy": "On-device speech pin review 2026-11-06: npm bulk advisories at the pin, GitHub advisory patched ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
+        "reviewedOn": "2026-11-06",
+        "reviewBy": "2027-02-03"
+      },
+      {
         "advisory": "GHSA-r3ph-w7gj-g6xm",
         "severity": "moderate",
         "packages": [
@@ -1631,6 +1465,23 @@
         "reviewBy": "2027-01-10"
       },
       {
+        "advisory": "GHSA-rvq5-wwqv-78pq",
+        "severity": "moderate",
+        "packages": [
+          "@modelcontextprotocol/sdk"
+        ],
+        "versions": [
+          "@modelcontextprotocol/sdk@1.30.1"
+        ],
+        "ships": false,
+        "reachability": "Not in the freshly staged agent bundle or workflow worker at 3d6f68a129702a1a2779cc087c93a80ba0f2332e: collectNotices(root, {packagedRuntime:true}) returned 674 entries with no errors/warnings and none named @modelcontextprotocol/sdk. This is staged source/package inventory evidence, not an APK/device result.",
+        "justification": "The full upstream lock is a superset of the mobile payload. The affected package is absent from this exact staged payload; no vulnerable resident consumer is included. Upstream workspace consumers remain outside this Alpha packaging exception.",
+        "removeWhen": "A new upstream pin or payload includes @modelcontextprotocol/sdk, or the upstream lock removes these affected versions; re-audit and review the exact staged set.",
+        "reviewedBy": "Alpha staged package inventory review 2026-10-21 using existing generate-licenses collectNotices and fresh npm bulk audit",
+        "reviewedOn": "2026-10-21",
+        "reviewBy": "2026-11-20"
+      },
+      {
         "advisory": "GHSA-rx4f-c7p8-82vq",
         "severity": "moderate",
         "packages": [
@@ -1713,23 +1564,6 @@
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list axios@1.19.0. In vendor/eliza/bun.lock it is reached only from @elizaos/cloud-shared (dependency), @elizaos/plugin-slack (dependency), @elizaos/plugin-wallet (dependency), @elizaos/ui (dependency), eliza (devDependency), outside the mobile agent bundle. The upstream root override pins axios to 1.19.0.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): axios@1.19.0 -> 1.20.0 (needs a parent bump: @coinbase/cdp-sdk@1.56.0 ^1.18.0; @raydium-io/raydium-sdk@1.3.1-beta.58 ^1.6.2; @sendgrid/client@8.1.6 ^1.12.0). Plan item U-7 batches these upstream bumps.",
         "removeWhen": "The upstream lock no longer resolves axios@1.19.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
-        "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
-        "reviewedOn": "2026-10-12",
-        "reviewBy": "2027-01-10"
-      },
-      {
-        "advisory": "GHSA-vp8m-p9jh-q5pm",
-        "severity": "high",
-        "packages": [
-          "undici"
-        ],
-        "versions": [
-          "undici@8.10.0"
-        ],
-        "ships": false,
-        "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list undici@8.10.0. In vendor/eliza/bun.lock it is reached only from @elizaos/operator (dependency), outside the mobile agent bundle. The agent bundle's require(\"undici\") resolves to Bun's built-in module, not to an npm undici copy.",
-        "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): undici@8.10.0 -> 8.10.2 (needs a parent bump: kubernetes-fluent-client@3.12.3 8.10.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves undici@8.10.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -1875,182 +1709,46 @@
         "reviewBy": "2027-01-10"
       },
       {
-        "advisory": "GHSA-22jm-h49p-29qw",
+        "advisory": "GHSA-xjj6-f33q-929c",
         "severity": "high",
         "packages": [
-          "@modelcontextprotocol/sdk"
+          "undici"
         ],
         "versions": [
-          "@modelcontextprotocol/sdk@1.30.1"
+          "undici@7.28.0"
         ],
         "ships": false,
-        "reachability": "Not in the freshly staged agent bundle or workflow worker at 3d6f68a129702a1a2779cc087c93a80ba0f2332e: collectNotices(root, {packagedRuntime:true}) returned 674 entries with no errors/warnings and none named @modelcontextprotocol/sdk. This is staged source/package inventory evidence, not an APK/device result.",
-        "justification": "The full upstream lock is a superset of the mobile payload. The affected package is absent from this exact staged payload; no vulnerable resident consumer is included. Upstream workspace consumers remain outside this Alpha packaging exception.",
-        "removeWhen": "A new upstream pin or payload includes @modelcontextprotocol/sdk, or the upstream lock removes these affected versions; re-audit and review the exact staged set.",
-        "reviewedBy": "Alpha staged package inventory review 2026-10-21 using existing generate-licenses collectNotices and fresh npm bulk audit",
-        "reviewedOn": "2026-10-21",
-        "reviewBy": "2026-11-20"
-      },
-      {
-        "advisory": "GHSA-46jr-4wx8-v453",
-        "severity": "high",
-        "packages": [
-          "@modelcontextprotocol/sdk"
-        ],
-        "versions": [
-          "@modelcontextprotocol/sdk@1.30.1"
-        ],
-        "ships": false,
-        "reachability": "Not in the freshly staged agent bundle or workflow worker at 3d6f68a129702a1a2779cc087c93a80ba0f2332e: collectNotices(root, {packagedRuntime:true}) returned 674 entries with no errors/warnings and none named @modelcontextprotocol/sdk. This is staged source/package inventory evidence, not an APK/device result.",
-        "justification": "The full upstream lock is a superset of the mobile payload. The affected package is absent from this exact staged payload; no vulnerable resident consumer is included. Upstream workspace consumers remain outside this Alpha packaging exception.",
-        "removeWhen": "A new upstream pin or payload includes @modelcontextprotocol/sdk, or the upstream lock removes these affected versions; re-audit and review the exact staged set.",
-        "reviewedBy": "Alpha staged package inventory review 2026-10-21 using existing generate-licenses collectNotices and fresh npm bulk audit",
-        "reviewedOn": "2026-10-21",
-        "reviewBy": "2026-11-20"
-      },
-      {
-        "advisory": "GHSA-6prh-2h8m-c8cw",
-        "severity": "moderate",
-        "packages": [
-          "@modelcontextprotocol/sdk"
-        ],
-        "versions": [
-          "@modelcontextprotocol/sdk@1.30.1"
-        ],
-        "ships": false,
-        "reachability": "Not in the freshly staged agent bundle or workflow worker at 3d6f68a129702a1a2779cc087c93a80ba0f2332e: collectNotices(root, {packagedRuntime:true}) returned 674 entries with no errors/warnings and none named @modelcontextprotocol/sdk. This is staged source/package inventory evidence, not an APK/device result.",
-        "justification": "The full upstream lock is a superset of the mobile payload. The affected package is absent from this exact staged payload; no vulnerable resident consumer is included. Upstream workspace consumers remain outside this Alpha packaging exception.",
-        "removeWhen": "A new upstream pin or payload includes @modelcontextprotocol/sdk, or the upstream lock removes these affected versions; re-audit and review the exact staged set.",
-        "reviewedBy": "Alpha staged package inventory review 2026-10-21 using existing generate-licenses collectNotices and fresh npm bulk audit",
-        "reviewedOn": "2026-10-21",
-        "reviewBy": "2026-11-20"
-      },
-      {
-        "advisory": "GHSA-rvq5-wwqv-78pq",
-        "severity": "moderate",
-        "packages": [
-          "@modelcontextprotocol/sdk"
-        ],
-        "versions": [
-          "@modelcontextprotocol/sdk@1.30.1"
-        ],
-        "ships": false,
-        "reachability": "Not in the freshly staged agent bundle or workflow worker at 3d6f68a129702a1a2779cc087c93a80ba0f2332e: collectNotices(root, {packagedRuntime:true}) returned 674 entries with no errors/warnings and none named @modelcontextprotocol/sdk. This is staged source/package inventory evidence, not an APK/device result.",
-        "justification": "The full upstream lock is a superset of the mobile payload. The affected package is absent from this exact staged payload; no vulnerable resident consumer is included. Upstream workspace consumers remain outside this Alpha packaging exception.",
-        "removeWhen": "A new upstream pin or payload includes @modelcontextprotocol/sdk, or the upstream lock removes these affected versions; re-audit and review the exact staged set.",
-        "reviewedBy": "Alpha staged package inventory review 2026-10-21 using existing generate-licenses collectNotices and fresh npm bulk audit",
-        "reviewedOn": "2026-10-21",
-        "reviewBy": "2026-11-20"
-      },
-      {
-        "advisory": "GHSA-8r9p-f939-6h3c",
-        "severity": "high",
-        "packages": [
-          "follow-redirects"
-        ],
-        "versions": [
-          "follow-redirects@1.16.0"
-        ],
-        "ships": false,
-        "reachability": "Not in the freshly staged agent bundle or workflow worker at 3d6f68a129702a1a2779cc087c93a80ba0f2332e: collectNotices(root, {packagedRuntime:true}) returned 674 entries with no errors/warnings and none named follow-redirects. This is staged source/package inventory evidence, not an APK/device result.",
-        "justification": "The full upstream lock is a superset of the mobile payload. The affected package is absent from this exact staged payload; no vulnerable resident consumer is included. Upstream workspace consumers remain outside this Alpha packaging exception.",
-        "removeWhen": "A new upstream pin or payload includes follow-redirects, or the upstream lock removes these affected versions; re-audit and review the exact staged set.",
-        "reviewedBy": "Alpha staged package inventory review 2026-10-21 using existing generate-licenses collectNotices and fresh npm bulk audit",
-        "reviewedOn": "2026-10-21",
-        "reviewBy": "2026-11-20"
-      },
-      {
-        "advisory": "GHSA-q3jh-wrc6-jgq8",
-        "severity": "high",
-        "packages": [
-          "follow-redirects"
-        ],
-        "versions": [
-          "follow-redirects@1.16.0"
-        ],
-        "ships": false,
-        "reachability": "Not in the freshly staged agent bundle or workflow worker at 3d6f68a129702a1a2779cc087c93a80ba0f2332e: collectNotices(root, {packagedRuntime:true}) returned 674 entries with no errors/warnings and none named follow-redirects. This is staged source/package inventory evidence, not an APK/device result.",
-        "justification": "The full upstream lock is a superset of the mobile payload. The affected package is absent from this exact staged payload; no vulnerable resident consumer is included. Upstream workspace consumers remain outside this Alpha packaging exception.",
-        "removeWhen": "A new upstream pin or payload includes follow-redirects, or the upstream lock removes these affected versions; re-audit and review the exact staged set.",
-        "reviewedBy": "Alpha staged package inventory review 2026-10-21 using existing generate-licenses collectNotices and fresh npm bulk audit",
-        "reviewedOn": "2026-10-21",
-        "reviewBy": "2026-11-20"
-      },
-      {
-        "advisory": "GHSA-4qx8-w7c3-pj3p",
-        "severity": "high",
-        "packages": [
-          "toml"
-        ],
-        "versions": [
-          "toml@3.0.0"
-        ],
-        "ships": false,
-        "reachability": "Not in the APK. In vendor/eliza/bun.lock toml@3.0.0 is reached only from @coral-xyz/anchor (^3.0.0, also via @meteora-ag/dlmm), a dependency of @elizaos/plugin-wallet, which earlier reviews of the staged packaged-runtime notices place outside the mobile agent bundle.",
-        "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The advisories (toml.parse CPU DoS) were published after the previous audit; the fix belongs upstream in elizaOS: toml@3.0.0 -> 5.0.1 needs a parent bump of @coral-xyz/anchor.",
-        "removeWhen": "The upstream lock no longer resolves toml@3.0.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
-        "reviewedBy": "Pin bump review 2026-10-22: npm bulk advisories at the pin, GitHub advisory ranges and bun.lock dependency chains",
-        "reviewedOn": "2026-10-22",
-        "reviewBy": "2027-01-10"
-      },
-      {
-        "advisory": "GHSA-9j65-hcg3-gc64",
-        "severity": "high",
-        "packages": [
-          "toml"
-        ],
-        "versions": [
-          "toml@3.0.0"
-        ],
-        "ships": false,
-        "reachability": "Not in the APK. In vendor/eliza/bun.lock toml@3.0.0 is reached only from @coral-xyz/anchor (^3.0.0, also via @meteora-ag/dlmm), a dependency of @elizaos/plugin-wallet, which earlier reviews of the staged packaged-runtime notices place outside the mobile agent bundle.",
-        "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The advisories (toml.parse CPU DoS) were published after the previous audit; the fix belongs upstream in elizaOS: toml@3.0.0 -> 5.0.1 needs a parent bump of @coral-xyz/anchor.",
-        "removeWhen": "The upstream lock no longer resolves toml@3.0.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
-        "reviewedBy": "Pin bump review 2026-10-22: npm bulk advisories at the pin, GitHub advisory ranges and bun.lock dependency chains",
-        "reviewedOn": "2026-10-22",
-        "reviewBy": "2027-01-10"
-      },
-      {
-        "advisory": "GHSA-9qmh-m7c6-f92p",
-        "severity": "high",
-        "packages": [
-          "toml"
-        ],
-        "versions": [
-          "toml@3.0.0"
-        ],
-        "ships": false,
-        "reachability": "Not in the APK. In vendor/eliza/bun.lock toml@3.0.0 is reached only from @coral-xyz/anchor (^3.0.0, also via @meteora-ag/dlmm), a dependency of @elizaos/plugin-wallet, which earlier reviews of the staged packaged-runtime notices place outside the mobile agent bundle.",
-        "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The advisories (toml.parse CPU DoS) were published after the previous audit; the fix belongs upstream in elizaOS: toml@3.0.0 -> 5.0.1 needs a parent bump of @coral-xyz/anchor.",
-        "removeWhen": "The upstream lock no longer resolves toml@3.0.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
-        "reviewedBy": "Pin bump review 2026-10-22: npm bulk advisories at the pin, GitHub advisory ranges and bun.lock dependency chains",
-        "reviewedOn": "2026-10-22",
-        "reviewBy": "2027-01-10"
-      },
-      {
-        "advisory": "GHSA-6pq8-jhm2-2vcw",
-        "severity": "moderate",
-        "packages": [
-          "qs"
-        ],
-        "versions": [
-          "qs@6.16.0"
-        ],
-        "ships": true,
-        "reachability": "qs@6.16.0 ships in the staged on-device agent bundle at the evidence pin (docs/evidence/packaged-notices-v14-2026-10-27/third-party-notices.json, SHA-256 a8234035325ae27743684d68daece69ac33331a223c6f62ebce8548522b1db77; upstream elizaOS/eliza fbc2d23d4bae0c7086ea529c019e5a47fb7b8352). The only packaged npm consumer of qs in that inventory is googleapis@169.0.0 -> googleapis-common@8.0.3 -> qs@6.16.0 (bun.lock integrities sha512-IOGMG8tljCZSLvYgdojRu6mB10KEsK0J7X62sXXlQz9koe5BUAW+rqkY3qhQM9wXM6hVL3/Hase7XbxoMyeYiQ==, sha512-7g1yzQKx0mmNTjiK0H9dJ8eqKqDBveES9vLHeg5neb3BMQy/d1oQefIMhIpOVT8a+f+LOcixMEdRbFIW/cQUJw==, sha512-h6fhOIaRrID2CbEY2fqs+7t+UXZo+MLAnU5gRIq85uFtdiUPCdsApMlHhXogKVM4HM2DVbIjGNTTYH2OcmP1vA==). express, body-parser, pepr, and @meteora-ag/dlmm also depend on qs in the full upstream lock, but none of those packages appear in the packaged-runtime notices. GHSA-6pq8-jhm2-2vcw is a DoS only when qs.stringify runs with arrayFormat 'comma' on an array element whose own toString is not callable. Shipped stringify call sites in googleapis-common@8.0.3: build/src/apirequest.js sets paramsSerializer to qs.stringify(params, { arrayFormat: 'repeat' }); build/src/http2.js uses config.paramsSerializer || qs.stringify (qs default arrayFormat is 'indices'). Neither call site selects arrayFormat 'comma'. Input to stringify is Google API request params assembled by googleapis-common for outbound calls; the arrayFormat option is fixed by that library, not taken from request bodies or query strings. This row does not claim a product-wide proof that no future caller can pass arrayFormat 'comma', and it does not assert a process-level error boundary.",
-        "justification": "Shipped moderate DoS advisory whose vulnerable sink requires arrayFormat 'comma'. The only packaged qs consumer's verified stringify options are 'repeat' or the qs default 'indices', so the comma branch is not taken on the evidence artifact. Recorded as a time-bounded shipped exception so the A-4 packaged-notices gate can stay green while upstream adopts qs >= 6.16.1 (eliza develop tip still resolves qs@6.16.0 under a frozen lockfile; alphaphone prepare uses bun install --frozen-lockfile with no local qs override). High/critical shipped advisories remain forbidden exceptions.",
-        "removeWhen": "The upstream lock and packaged-runtime notices no longer resolve qs@6.16.0 (prefer qs >= 6.16.1 via an upstream override or dependency bump, then re-run node scripts/dependency-audit.mjs --resident --notices apps/app/public/licenses/third-party-notices.json).",
-        "reviewedBy": "Alpha packaged-notices gate re-review 2026-10-29 after NubsCarson change request: npm advisory GHSA-6pq8-jhm2-2vcw, eliza bun.lock at fbc2d23d4bae (qs dependents and integrities), packaged-notices-v14-2026-10-27 (SHA-256 a8234035...), and googleapis-common@8.0.3 apirequest.js / http2.js stringify options from the published package tarball",
-        "reviewedOn": "2026-10-29",
-        "reviewBy": "2027-02-26"
+        "reachability": "Not in the APK. The packaged-runtime notices generated on 2026-11-06 from the payload staged at 912f972e58b1 (agent bundle and workflow worker, 561 entries) do not list undici@7.28.0; node scripts/dependency-audit.mjs --resident --notices reports no advisory in the shipped set. In vendor/eliza/bun.lock it is reached through miniflare (Cloudflare Workers dev server, exact pin 7.28.0) and hardhat (contract tooling, undici 5).",
+        "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. miniflare pins undici 7.28.0 exactly and hardhat uses undici 5, which has no patched 5.x release; Bun overrides do not reach either. elizaOS/eliza#38902 moved every other affected package to a patched release.",
+        "removeWhen": "The upstream lock no longer resolves undici@7.28.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "reviewedBy": "On-device speech pin review 2026-11-06: npm bulk advisories at the pin, GitHub advisory patched ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
+        "reviewedOn": "2026-11-06",
+        "reviewBy": "2027-02-03"
       }
     ],
-    "note": "The complete lock inventory and advisory findings were re-audited unchanged at 9eef5dbd7b381576aad0801b1fee424d1483c63c. Existing pending upstream fixes remain open; no new exception or security acceptance is granted. October 26 build campaign: re-bound to 6293e29bf398603d0ea233871edbdeb57e5c2405 after fresh full-lock and 603-package agent/worker inventory audits. Existing exceptions and expiry dates are unchanged. All unexcepted full-lock findings remain pending; none of their exact vulnerable versions is in this staged inventory. The packaged audit reports only the existing uuid moderate advisory. No release or device qualification is inferred. Rebound to fd5511ca1d after verifying its only delta from 9eef5dbd is the Notes/Calendar end-to-end test fixture; the dependency lock is byte-identical. No new advisory exception or device acceptance. Fresh npm bulk advisory audit on 2026-10-27 at SDK 41d99bb4c86cb61bfa07d5e49b07603dbbe1080b covers the same 3,694 exact package versions and input hash 63509920ce413bb6fcb44fc7e5b1047cc22517eab2ea51a445203e29bd7c6201. All 124 finding rows and severity counts are byte-identical to the prior admitted snapshot. This updates the full-lock evidence binding only: existing exceptions, review dates, expiry dates, shipped-set evidence and pending upstream fixes are unchanged. Historical packaged inventories are not new payload or release acceptance; exact current packaged audit remains required before release. A further normal npm bulk audit at reviewed recovery SDK 18cc0cf2ee9f332afe8b6dffecc8f9b2fbcf8d47 returned the identical package/input/finding set; the current full-lock binding is advanced without changing any exception, expiry, pending-fix or historical packaged-evidence classification. Fresh full-lock registry query at the type-only recovery successor f983d68173f12b89af22f93502d81234c7112b7d returns identical normalized package input and all 124 advisory rows. Existing exceptions, deadlines, pending fixes and historical packaged evidence remain unchanged; this is source binding only. Fresh registry full-lock audit at Calendar schema successor 8cc623855ce49cab68f9ed321b206abcad4d5c0b on 2026-10-27 returns the same 3,694 exact package versions/input hash but 140 advisory rows: all prior 124 are preserved, with 16 new rows across eight advisory IDs. The eight new findings remain pending upstream fixes with current packaged reachability explicitly unknown. Existing exceptions, deadlines, old pending entries and historical shipped-set evidence are unchanged. No security, current payload or release acceptance is granted.",
-    "sourceBinding": {
-      "priorUpstreamCommit": "5d1af326e596fea5893d095db882bdb858a4a774",
-      "evidence": "docs/dependency-audit.snapshot.json",
-      "unchangedBunLockGitBlob": "1cc61ff8862fd52607467743370879b575050d4d",
-      "note": "Fresh npm bulk advisory query at 0594fc72da4450a84a986ad12e730e3faa902018 on 2026-11-06 reproduces the same 3677 package versions, normalized input SHA-256 7c9d7bd390a29fac9da3c16af0fdc4d0998ce7eaf6fb2b82020bc9055ee9e11e and all 153 findings; bun.lock is the identical Git blob. Existing exceptions, review dates, pending upstream fixes and unknown packaged reachability are unchanged. No security, payload or release acceptance is granted."
+    "pinReview": {
+      "reviewedOn": "2026-11-07",
+      "priorUpstreamCommits": [
+        "475a8d59dc1811c2cde093613519906a5a3f6457",
+        "b25d8aef2916385c571f4367e099809254fde0bb",
+        "94c8ca4976751f2ad0854943064fa39aa54a9d70"
+      ],
+      "inputSha256": "df24d894bd6f044c2678168b14e6fcfcbaeb2101586d510e3a724746d1f19226",
+      "packages": 3675,
+      "findings": 103,
+      "evidence": "Fresh npm bulk advisory query against the exact94c lock. Every reported advisory already has a disposition in the incoming speech branch. Existing review dates, expiration dates and source-specific reachability evidence are retained. Removed five obsolete main-only exceptions absent from the new lock. The older payload inventory does not qualify the new payload; regenerate and audit packaged-runtime notices before distributing it. The ae1a9dda6712 child has byte-identical bun.lock and changes only two OS staging/test files. Existing advisory and package-version identities are unchanged.",
+      "packagedReview": {
+        "record": "docs/security/resident-bundle-review-ae1a9dda-2026-11-07.json",
+        "packages": 457,
+        "inputSha256": "01d29fdcbba3b72917ba1e386f24dbade53de400bcd429a113ac86c07f6d764f",
+        "counts": {
+          "info": 0,
+          "low": 0,
+          "moderate": 1,
+          "high": 0,
+          "critical": 0
+        }
+      }
     },
     "sourceBindingHistory": [
       {
@@ -2150,19 +1848,39 @@
         "evidence": "docs/dependency-audit.snapshot.json",
         "unchangedBunLockGitBlob": "1cc61ff8862fd52607467743370879b575050d4d",
         "note": "Fresh npm bulk advisory query at 5d1af326e596fea5893d095db882bdb858a4a774 on 2026-11-06 reproduces the same 3677 package versions, normalized input SHA-256 7c9d7bd390a29fac9da3c16af0fdc4d0998ce7eaf6fb2b82020bc9055ee9e11e and all 153 findings; bun.lock is the identical Git blob. Existing exceptions, review dates, pending upstream fixes and unknown packaged reachability are unchanged. No security, payload or release acceptance is granted."
+      },
+      {
+        "previousUpstreamCommit": "3c76d07819b253b3c8f071f84ec7e6a5374a9a66",
+        "previousPinRebind": {
+          "from": "0594fc72da4450a84a986ad12e730e3faa902018",
+          "to": "3c76d07819b253b3c8f071f84ec7e6a5374a9a66",
+          "date": "2026-11-07",
+          "inputSha256": "7c9d7bd390a29fac9da3c16af0fdc4d0998ce7eaf6fb2b82020bc9055ee9e11e",
+          "basis": "Fresh npm audit has identical 153 findings and unchanged Bun lock. Maps client/native transport, Cloud release admission and voice prompt changes do not alter dependency inputs or the recorded disposition paths. Existing expiry and qualification refusals remain."
+        },
+        "date": "2026-11-07"
+      },
+      {
+        "upstreamCommit": "475a8d59dc1811c2cde093613519906a5a3f6457",
+        "sourceBinding": {
+          "priorUpstreamCommit": "5d1af326e596fea5893d095db882bdb858a4a774",
+          "evidence": "docs/dependency-audit.snapshot.json",
+          "unchangedBunLockGitBlob": "1cc61ff8862fd52607467743370879b575050d4d",
+          "note": "Fresh npm bulk advisory query at 0594fc72da4450a84a986ad12e730e3faa902018 on 2026-11-06 reproduces the same 3677 package versions, normalized input SHA-256 7c9d7bd390a29fac9da3c16af0fdc4d0998ce7eaf6fb2b82020bc9055ee9e11e and all 153 findings; bun.lock is the identical Git blob. Existing exceptions, review dates, pending upstream fixes and unknown packaged reachability are unchanged. No security, payload or release acceptance is granted."
+        },
+        "pinReview": {
+          "previousUpstreamCommit": "35e0a605b3d560eedec664e79693d5ecc0b5ece3",
+          "reviewedOn": "2026-11-05",
+          "unchangedLockInputSha256": "7c9d7bd390a29fac9da3c16af0fdc4d0998ce7eaf6fb2b82020bc9055ee9e11e",
+          "packagedNoticesSha256": "0526205ce12a1467427c48c8e8c2d83d6e63b0300007b48e0dcf442e43264f75",
+          "packagedPackageVersions": 457,
+          "evidence": "Rechecked the exact Alpha 1483f2736 Cloud APK inventory. Reviewed qs and uuid call sites at the installed dependency versions. Prior lock-wide exceptions and pending fixes retain their evidence and expiration dates.",
+          "shippedAdvisories": [
+            "GHSA-6pq8-jhm2-2vcw",
+            "GHSA-w5hq-g745-h8pq"
+          ]
+        }
       }
-    ],
-    "pinReview": {
-      "previousUpstreamCommit": "35e0a605b3d560eedec664e79693d5ecc0b5ece3",
-      "reviewedOn": "2026-11-05",
-      "unchangedLockInputSha256": "7c9d7bd390a29fac9da3c16af0fdc4d0998ce7eaf6fb2b82020bc9055ee9e11e",
-      "packagedNoticesSha256": "0526205ce12a1467427c48c8e8c2d83d6e63b0300007b48e0dcf442e43264f75",
-      "packagedPackageVersions": 457,
-      "evidence": "Rechecked the exact Alpha 1483f2736 Cloud APK inventory. Reviewed qs and uuid call sites at the installed dependency versions. Prior lock-wide exceptions and pending fixes retain their evidence and expiration dates.",
-      "shippedAdvisories": [
-        "GHSA-6pq8-jhm2-2vcw",
-        "GHSA-w5hq-g745-h8pq"
-      ]
-    }
+    ]
   }
 }

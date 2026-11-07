@@ -46,3 +46,21 @@ print('PASS: real upstream blobs and ten tamper cases; generated output is a syn
   assert.match(result,/PASS: real upstream blobs and ten tamper cases/);
  }finally{fs.rmSync(temporary,{recursive:true,force:true});}
 });
+
+
+test('Calendar bridge CI admits the current reviewed pin, Node declaration and exact owning fixture bytes',()=>{
+ const result=execFileSync('python3',['-c',String.raw`
+import hashlib,json,runpy
+from pathlib import Path
+root=Path.cwd()
+bridge=runpy.run_path(str(root/'scripts/ci/calendar-bridge.py'))
+assert bridge['SDK']==json.loads((root/'upstream.lock.json').read_text())['commit'], 'Calendar CI source pin is stale'
+assert bridge['NODE']==(root/'.nvmrc').read_text().strip(), 'Calendar CI Node declaration is stale'
+h=lambda path:hashlib.sha256(path.read_bytes()).hexdigest()
+assert h(root/'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCalendarPlugin.java')==bridge['HOST'], 'Calendar host source changed'
+for relative,expected in bridge['OWNING_SHA256'].items():
+ assert h(root/'vendor/eliza'/relative)==expected, 'Calendar owning fixture changed: '+relative
+print('PASS: current Calendar CI pin and exact host/owning fixture bytes')
+`],{cwd:root,encoding:'utf8',timeout:10000,env:{...process.env,PYTHONDONTWRITEBYTECODE:'1'}});
+ assert.match(result,/PASS: current Calendar CI pin and exact host\/owning fixture bytes/);
+});

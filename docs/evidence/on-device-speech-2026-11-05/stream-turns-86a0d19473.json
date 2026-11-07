@@ -1,0 +1,186 @@
+{
+  "description": "Typed chat turns on the Pixel 10a against the resident agent at elizaOS/eliza 86a0d19473 (elizaOS/eliza#38968). Measured over WebView CDP by a passive listener on the app own alphaAgentStream events; each message was typed into the chat composer and sent with the Send button. Times are milliseconds from the Send click. firstCompleteSentenceMs is the first token frame whose accumulated text holds a complete sentence. No microphone or audio was used.",
+  "recordedAt": "2026-11-06",
+  "device": "Pixel 10a stallion, Alpha userdebug image",
+  "app": {
+    "apk": "artifacts/launcher-debug.apk",
+    "versionCode": 38,
+    "profile": "native",
+    "sha256Prefix": "f4569e2fc717045c",
+    "distributable": false
+  },
+  "upstreamPin": "86a0d19473dfaf1702b0d3e5e2eda7de993aca86",
+  "model": "Eliza Cloud cerebras/qwen-3.8-27b (RESPONSE_HANDLER over chat/completions:stream)",
+  "result": "Not streamed: every turn delivered one non-provisional token frame holding the whole reply, about 50 ms before reply_ready.",
+  "cause": "The Stage-1 stream gate (plugins/plugin-assistant/src/services/message/stage1-reply-stream.ts) holds the attempt unless every field before replyText has a direct-reply value. On this host, for plain factual questions, the model set notesRequestEffect.classification to read_only (6 of 7 turns); plugin-notes directReplyValue accepts only unresolved. In the one unresolved turn, visualContinuation came back as a string containing tool-call markup and a stray top-level viewId field, which neither the view-navigation directReplyValue (object required) nor the gate (unknown field) admits. Two other turns sent visualContinuation as a JSON string rather than an object. Source: the messageHandler stage of each turn trajectory.",
+  "turns": [
+    {
+      "prompt": "What is the capital of Portugal? Two sentences.",
+      "tokenFrames": 1,
+      "provisionalFrames": 0,
+      "nonProvisionalFrames": 1,
+      "firstTokenMs": 8508,
+      "firstCompleteSentenceMs": 8508,
+      "replyReadyMs": 8567,
+      "doneMs": 8630,
+      "finalDiffersFromLastDraft": null,
+      "finalChars": 83,
+      "lastDraftChars": null,
+      "tokenTimesMs": [
+        8508
+      ],
+      "tokenLengths": [
+        83
+      ],
+      "finalText": "Lisbon is the capital of Portugal. It sits on the Tagus River on the western coast.",
+      "stage1BeforeReplyText": {
+        "notesRequestEffectClassification": "read_only",
+        "visualContinuation": "string with tool-call markup"
+      }
+    },
+    {
+      "prompt": "What is the largest planet in our solar system? Two sentences.",
+      "tokenFrames": 1,
+      "provisionalFrames": 0,
+      "nonProvisionalFrames": 1,
+      "firstTokenMs": 1966,
+      "firstCompleteSentenceMs": 1966,
+      "replyReadyMs": 2025,
+      "doneMs": 2046,
+      "finalDiffersFromLastDraft": null,
+      "finalChars": 110,
+      "lastDraftChars": null,
+      "tokenTimesMs": [
+        1966
+      ],
+      "tokenLengths": [
+        110
+      ],
+      "finalText": "Jupiter is the largest planet in our solar system. It's so big that all the other planets could fit inside it.",
+      "stage1BeforeReplyText": {
+        "notesRequestEffectClassification": "read_only",
+        "visualContinuation": "object, disposition none"
+      }
+    },
+    {
+      "prompt": "Who wrote Pride and Prejudice? Two sentences.",
+      "tokenFrames": 1,
+      "provisionalFrames": 0,
+      "nonProvisionalFrames": 1,
+      "firstTokenMs": 1847,
+      "firstCompleteSentenceMs": 1847,
+      "replyReadyMs": 1904,
+      "doneMs": 1947,
+      "finalDiffersFromLastDraft": null,
+      "finalChars": 64,
+      "lastDraftChars": null,
+      "tokenTimesMs": [
+        1847
+      ],
+      "tokenLengths": [
+        64
+      ],
+      "finalText": "Jane Austen wrote Pride and Prejudice. It was published in 1813.",
+      "stage1BeforeReplyText": {
+        "notesRequestEffectClassification": "read_only",
+        "visualContinuation": "object, disposition none"
+      }
+    },
+    {
+      "prompt": "Why is the sky blue? Two sentences.",
+      "tokenFrames": 1,
+      "provisionalFrames": 0,
+      "nonProvisionalFrames": 1,
+      "firstTokenMs": 1885,
+      "firstCompleteSentenceMs": 1885,
+      "replyReadyMs": 1935,
+      "doneMs": 1972,
+      "finalDiffersFromLastDraft": null,
+      "finalChars": 272,
+      "lastDraftChars": null,
+      "tokenTimesMs": [
+        1885
+      ],
+      "tokenLengths": [
+        272
+      ],
+      "finalText": "Sunlight is white, made of all colors, but blue light has a shorter wavelength so it scatters far more than the others as it passes through the air. That scattered blue light reaches our eyes from every direction, which is why the sky looks blue instead of white or black.",
+      "stage1BeforeReplyText": {
+        "notesRequestEffectClassification": "read_only",
+        "visualContinuation": "JSON string, not an object"
+      }
+    },
+    {
+      "prompt": "What is the boiling point of water at sea level? Two sentences.",
+      "tokenFrames": 1,
+      "provisionalFrames": 0,
+      "nonProvisionalFrames": 1,
+      "firstTokenMs": 6641,
+      "firstCompleteSentenceMs": 6641,
+      "replyReadyMs": 6702,
+      "doneMs": 6757,
+      "finalDiffersFromLastDraft": null,
+      "finalChars": 157,
+      "lastDraftChars": null,
+      "tokenTimesMs": [
+        6641
+      ],
+      "tokenLengths": [
+        157
+      ],
+      "finalText": "Water boils at 100 degrees Celsius, which is 212 degrees Fahrenheit, at sea level. That temperature drops as elevation and air pressure rise above sea level.",
+      "stage1BeforeReplyText": {
+        "notesRequestEffectClassification": "unresolved",
+        "visualContinuation": "string with tool-call markup, plus a stray top-level viewId field"
+      }
+    },
+    {
+      "prompt": "How many continents are there? Two sentences.",
+      "tokenFrames": 1,
+      "provisionalFrames": 0,
+      "nonProvisionalFrames": 1,
+      "firstTokenMs": 2951,
+      "firstCompleteSentenceMs": 2951,
+      "replyReadyMs": 3006,
+      "doneMs": 3064,
+      "finalDiffersFromLastDraft": null,
+      "finalChars": 191,
+      "lastDraftChars": null,
+      "tokenTimesMs": [
+        2951
+      ],
+      "tokenLengths": [
+        191
+      ],
+      "finalText": "There are seven continents: Africa, Antarctica, Asia, Australia, Europe, North America, and South America. The count varies by school of thought, but seven is the most widely used convention.",
+      "stage1BeforeReplyText": {
+        "notesRequestEffectClassification": "read_only",
+        "visualContinuation": "object, disposition none (facts, relationships and addressedTo also emitted before replyText)"
+      }
+    },
+    {
+      "prompt": "What language is spoken in Brazil? Two sentences.",
+      "tokenFrames": 1,
+      "provisionalFrames": 0,
+      "nonProvisionalFrames": 1,
+      "firstTokenMs": 2763,
+      "firstCompleteSentenceMs": 2763,
+      "replyReadyMs": 2810,
+      "doneMs": 2897,
+      "finalDiffersFromLastDraft": null,
+      "finalChars": 167,
+      "lastDraftChars": null,
+      "tokenTimesMs": [
+        2763
+      ],
+      "tokenLengths": [
+        167
+      ],
+      "finalText": "Portuguese is the language spoken in Brazil. Specifically, it's Brazilian Portuguese, which has its own distinct pronunciation and vocabulary from European Portuguese.",
+      "stage1BeforeReplyText": {
+        "notesRequestEffectClassification": "read_only",
+        "visualContinuation": "object, disposition none"
+      }
+    }
+  ]
+}

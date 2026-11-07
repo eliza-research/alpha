@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {spawnSync} from 'node:child_process';
 import vm from 'node:vm';
 if(!process.execArgv.includes('tsx')){const child=spawnSync(process.execPath,['--import','tsx',process.argv[1]],{stdio:'inherit',timeout:60000});process.exit(child.status??1);}
@@ -11,7 +11,7 @@ const {localAgentPathAllowed}=await import('../scripts/local-agent-dev-bridge.ts
 const source=path=>readFileSync(new URL('../apps/app/src/'+path,import.meta.url),'utf8');
 
 function warmer(context){
- const text=source('runtime/connection-ui.tsx'),method=text.slice(text.indexOf('  warmInference(){'),text.indexOf('  async readCloudInferenceFailure(')).trim().replace(/,$/,'');
+ const text=source('runtime/connection-ui.tsx'),method=text.slice(text.indexOf('  warmInference(){'),text.indexOf('  async readResidentDiagnostics(')).trim().replace(/,$/,'');
  assert.ok(method.startsWith('warmInference(){'));
  vm.runInNewContext(stripTypeScriptTypes('function '+method,{mode:'strip'})+'\nglobalThis.warm=warmInference;',context);
  return context.warm;

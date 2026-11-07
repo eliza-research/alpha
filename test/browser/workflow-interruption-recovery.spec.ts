@@ -41,7 +41,7 @@ async function setup(page:Page){
      return inner.request(path,body,signal);});wrapped.set(binding.client,client);}
    return {...binding,client};};
  });
- await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent connection',exact:true}).click();await page.getByRole('button',{name:'Connect development profile'}).click();
+ await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent',exact:true}).click();await page.getByRole('button',{name:'Connect development profile'}).click();
 }
 const rule=(page:Page,value:Rule)=>page.evaluate(value=>{(window as any).faults.rules.push(value);},value);
 const posts=(page:Page,suffix:string)=>page.evaluate(suffix=>(window as any).faults.calls.filter((call:any)=>call.method==='POST'&&call.path.endsWith(suffix)).map((call:any)=>call.body),suffix) as Promise<any[]>;
@@ -230,14 +230,13 @@ test('editing while a run awaits approval leaves that run on its reviewed versio
  await expect(page.getByText('Remove workflow; keep execution history. Future runs are blocked. This does not undo completed effects.',{exact:true})).toBeVisible();expect(await posts(page,'/run')).toHaveLength(1);
 });
 
-test('assistant suggestion chips never offer a scheduled workflow',async({page})=>{
+test('the assistant shows no suggestion chips',async({page})=>{
  // The reference model still carries the design prototype's "Every weekday at 6, …" chip text. The connected
- // product replaces every chip list, on Home and inside Workflows, with operations that exist.
+ // product shows no suggestion chips, on Home or inside Workflows.
  await setup(page);
  await page.evaluate(async()=>{const {Component}=await import('/src/prototype/model.js');const values=Component.prototype.renderVals,seen=(window as any).chipLists={} as Record<string,string[]>;Component.prototype.renderVals=function(){const out=values.call(this);seen[this.S().view||'home']=(out.sugg||[]).map((chip:any)=>String(chip.label));return out;};});
  await returnToApps(page);await page.getByRole('button',{name:'Workflows',exact:true}).click();await newWorkflow(page);await page.evaluate(()=>window.dispatchEvent(new Event('alpha-back')));await returnToApps(page);
  const lists=await page.evaluate(()=>(window as any).chipLists as Record<string,string[]>);
  expect(Object.keys(lists)).toEqual(expect.arrayContaining(['home','workflows']));
- for(const [view,chips] of Object.entries(lists)){expect(chips.length,view).toBeGreaterThan(0);for(const chip of chips)expect(chip,view).not.toMatch(/every\s+(week)?day|weekdays|every\s+(morning|evening|week|hour)|daily|schedul|automat|recurring/i);}
- expect(lists.workflows).toEqual(['Create a note','Set a reminder','Open Calendar']);expect(lists.home).toEqual(['Create a note','Set a reminder','Open Calendar']);
+ for(const [view,chips] of Object.entries(lists))expect(chips,view).toEqual([]);
 });

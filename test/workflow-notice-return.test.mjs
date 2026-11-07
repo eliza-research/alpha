@@ -2,7 +2,7 @@ import test from 'node:test';import assert from 'node:assert/strict';import {exe
 test('unavailable initial workflow tap lookup establishes no retained tap and preserves later validation',()=>{
  const script=`
  import assert from 'node:assert/strict';
- import {resolveWorkflowTap} from './apps/app/src/runtime/workflow-notice-taps.ts';
+ import {resolveWorkflowTap} from './apps/app/src/runtime/workflow-device-contract.ts';
  const route={scope:'a'.repeat(64),origin:'https://agent.invalid',ownerId:'owner',agentId:'agent',workflowId:'flow',runId:'run',versionId:'v1'};
  const tap={...route,token:'tap',operationId:'operation',bindingHash:'b'.repeat(64),retained:true};
  let unavailable=true,reads=0,consumed=0,pendingReads=0;

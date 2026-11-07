@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 
 // Executes the owning controller's real post-turn orchestration and failure mapper.
 // Only transport, membership refresh and proposal-list boundaries are controlled.

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
@@ -40,7 +40,10 @@ const adapterCases = Object.freeze([
   'chat dictation keeps the device route even when private Cartesia conversation is eligible',
   'actual adapter fences explicit device conversation from private Cartesia',
   'actual adapter fences explicit manual conversation from private Cartesia',
-  'Cloud conversation keeps concise phases and accessible route details',
+  'Cloud conversation keeps the composer focused on the current voice phase',
+  'Cloud startup bounds a stalled draft and fences its late completion',
+  'Cloud startup timeout keeps the media retirement fence',
+  'Cloud preparation records success separately from bridge startup',
   'typed native 503 is waited out quietly, then voice ends with one calm line',
   'unknown native voice failures retain their existing recovery',
 ]);
@@ -100,9 +103,7 @@ adapterTest('actual adapter starts existing Cartesia route without local preflig
   assert.equal(h.directOptions.binding.conversationId,h.conversation);
   assert.equal(h.directOptions.getUiContext().uiViewPath,'/chat');
   assert.equal(h.renderChat().lines[0].t,'Listening…');
-  assert.match(h.renderChat().cloudDisclosureText,/Cartesia.*direct Cerebras/);
-  assert.doesNotMatch(h.renderChat().cloudDisclosureText,/Cloud account|plan allowance/);
-  assert.ok(!h.renderChat().voiceDetails);
+  assert.equal(h.renderChat().voiceDetails,false);
   h.directOptions.onState('transcribing');
   assert.equal(h.renderChat().lines[0].t,'Transcribing…');
   h.directOptions.onError(Error('Synthetic owned transport failure'));
@@ -146,7 +147,7 @@ for(const preference of ['device','manual'])adapterTest(`actual adapter fences e
   await h.shell.startVoice();
   assert.equal(h.directFactories,undefined);assert.ok(h.localFactories>0);
   assert.doesNotMatch(JSON.stringify(h.renderChat().lines),/Cartesia/);
-  assert.equal(h.renderChat().cloudDisclosure,false);
+  assert.equal(h.renderChat().cloudDisclosureText,undefined);
   h.localConversationOptions.onState({phase:'transcribing'});
   const caption=JSON.stringify(h.renderChat().lines);
   assert.equal(h.renderChat().lines[0].t,'Transcribing…');
@@ -159,7 +160,60 @@ function cloudFixture(options={}){
   h.box.React={createElement:()=>null};h.box.VoiceActivity=()=>null;
   return h;
 }
-adapterTest('Cloud conversation keeps concise phases and accessible route details',async t=>{
+adapterTest('Cloud startup bounds a stalled draft and fences its late completion',async t=>{
+  const clock=voiceFakeClock(),h=cloudFixture({clock});t.after(()=>h.close());
+  let release,started=0;
+  const prepare=h.shell.prepareVoiceConversation.bind(h.shell);
+  h.shell.prepareVoiceConversation=(signal,stage)=>new Promise(resolve=>{
+    stage?.('draft-binding');
+    release=()=>resolve(prepare(signal));
+  });
+  h.box.nativeCloudStreamingAvailable=()=>true;
+  h.box.createCloudStreamingSpeech=()=>{started++;throw Error('Unexpected native speech route');};
+  let finished=false;const opening=h.shell.startVoice().then(()=>{finished=true;});
+  try{
+    await clock.flush();
+    assert.equal(typeof release,'function');
+    assert.equal(h.renderChat().lines[0].t,'Connecting to voice…');
+    await clock.advance(12001);
+    assert.match(h.renderChat().lines[0].t,/setup is taking too long/i);
+    assert.deepEqual(JSON.parse(JSON.stringify(h.box.voiceStartupTiming())),{stage:'draft-binding',outcome:'timeout',elapsedMs:12000});
+    assert.equal(finished,true);
+    release();release=undefined;await clock.flush();
+    assert.equal(started,0,'timeout itself fences the late preparation');
+  }finally{
+    await h.shell.stopVoiceConversation();release?.();await opening;
+  }
+  assert.equal(started,0,'a late preparation cannot open native speech');
+});
+adapterTest('Cloud startup timeout keeps the media retirement fence',async t=>{
+  const clock=voiceFakeClock(),h=cloudFixture({clock});t.after(()=>h.close());
+  let release,started=0,stopped=false;
+  const retirement=new Promise(resolve=>{release=resolve;});
+  h.box.stopLocalSpeechPlayback=()=>retirement;
+  h.box.nativeCloudStreamingAvailable=()=>true;
+  h.box.createCloudStreamingSpeech=()=>{started++;throw Error('Unexpected native speech route');};
+  const opening=h.shell.startVoice();
+  try{
+    await clock.flush();assert.equal(typeof release,'function');
+    await clock.advance(12001);await opening;
+    assert.deepEqual(JSON.parse(JSON.stringify(h.box.voiceStartupTiming())),{stage:'media-retirement',outcome:'timeout',elapsedMs:12000});
+    const stop=Promise.resolve(h.shell.stopVoiceConversation()).then(()=>{stopped=true;});
+    await clock.flush();assert.equal(stopped,false,'Stop waits for the original media retirement');
+    release();await stop;
+    assert.equal(started,0);
+  }finally{release?.();}
+});
+adapterTest('Cloud preparation records success separately from bridge startup',async t=>{
+  const clock=voiceFakeClock(),h=cloudFixture({clock});t.after(()=>h.close());
+  assert.equal(h.box.voiceStartupTiming(),undefined,'no preparation attempt has entered');
+  h.box.nativeCloudStreamingAvailable=()=>true;
+  h.box.createCloudStreamingSpeech=()=>{throw Error('Bridge unavailable before start');};
+  await h.shell.startVoice();
+  assert.deepEqual(JSON.parse(JSON.stringify(h.box.voiceStartupTiming())),{stage:'media-retirement',outcome:'prepared',elapsedMs:0});
+  assert.equal(h.starts,0,'preparation success does not claim microphone capture');
+});
+adapterTest('Cloud conversation keeps the composer focused on the current voice phase',async t=>{
   const h=cloudFixture();t.after(()=>h.close());
   h.box.BatchVoiceConversation=class {
     constructor(options){h.batchOptions=options;}
@@ -169,18 +223,17 @@ adapterTest('Cloud conversation keeps concise phases and accessible route detail
   };
   await h.shell.startVoice();
   assert.equal(h.initialView.state,'starting');assert.ok(!h.initialView.voiceDetails);
-  assert.match(h.initialView.cloudDisclosureText,/uploads recordings.*plan allowance/);
   for(const [phase,caption] of [['listening','Listening…'],['transcribing','Transcribing…'],['thinking','Thinking…'],['preparing-speech','Thinking…'],['speaking','Speaking…']]){
     h.batchOptions.onState({phase});const view=h.renderChat();
     assert.equal(view.lines[0].t,caption);
+    assert.equal(view.cloudDisclosureText,undefined);
     assert.ok(!view.voiceDetails);
-    assert.match(view.cloudDisclosureText,/uploads recordings and reply text.*account.*plan allowance.*Cartesia/);
     assert.equal(typeof view.stop,'function');assert.equal(typeof view.keyboard,'function');
   }
   // The loop's own idle is shown once its retire settles (a failure it is about to report replaces it).
   h.batchOptions.onState({phase:'idle'});await new Promise(resolve=>setImmediate(resolve));
   assert.equal(h.renderChat().lines[0].t,'Voice conversation stopped.');
-  assert.ok(!h.renderChat().voiceDetails);
+  assert.equal(h.renderChat().voiceDetails,false);
 });
 adapterTest('typed native 503 is waited out quietly, then voice ends with one calm line',async t=>{
   // A Cloud 503 while voice warms is transient: no alarming copy, no support code, no Try voice again.

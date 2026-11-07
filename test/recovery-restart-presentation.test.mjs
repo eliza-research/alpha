@@ -19,35 +19,45 @@ test('real React recovery panel has one restart action, no collapsible details a
  assert.doesNotMatch(failed,/Your data is safe/);assert.match(failed,/<button disabled=""/);
 });
 const settings=readFileSync(new URL('../apps/app/src/prototype/settings-adapter.ts',import.meta.url),'utf8');
-const start=settings.indexOf("        if(native&&developerTools&&state.page==='agent-recovery-details')");
-const end=settings.indexOf("        if(native&&!testMocksEnabled&&state.page==='agent-connection')",start);
-// Execute the actual detail page and recovery rows with the existing adapter helper boundaries.
-const rowsStart=settings.indexOf('          if(connection.residentRecoveryReason&&!connection.session){',end);
-const rowsEnd=settings.indexOf('          if(connection.busy){',rowsStart);
-const rows=settings.slice(rowsStart,rowsEnd);
-function nativeFixture(connection=snapshot,page='agent-connection',developerTools=true){
- const actions=[];const context={native:true,testMocksEnabled:false,developerTools,state:{page},connection,agentRows:[],out:{stack:[]},residentRecoveryCopy,info:(label,value)=>({label,value}),action:(label,go)=>({label,go}),group:rows=>rows,api:{set:value=>actions.push(value)},connectionController:{restartRecovery:()=>actions.push('restart'),startLocal:()=>actions.push('start')}};
- vm.createContext(context);vm.runInContext(transformSync(page==='agent-connection'?rows:settings.slice(start,end),{loader:'ts'}).code,context);return {context,actions};
+const start=settings.indexOf("    if ((current === 'agent-connection' || current === 'history') && native && !testMocksEnabled) {");
+const end=settings.indexOf("    if (current === 'listening'",start);
+assert.ok(start>0&&end>start,'actual Agent page located');
+// Execute the current Agent page with controlled native state and its real action callbacks.
+function nativeFixture(overrides={},current='agent-connection'){
+ const actions=[];
+ const connection={...snapshot,kind:'recovering',residentInference:'unavailable',cloudAccount:null,conversations:[],actionHistory:[],...overrides};
+ const context={current,native:true,testMocksEnabled:false,connection,agentStatus:'Needs review',serviceName:'Nebula',stack:[],
+  info:(label,value)=>({label,value}),log:(label,value)=>({label,value}),row:(label,go)=>({label,go}),group:rows=>({rows}),subpage:(title,groups)=>({title,groups}),
+  api:{set:value=>actions.push(value)},connectionController:{confirmRecovery:()=>actions.push('confirm'),reviewRecovery:()=>actions.push('review'),cancelRecoveryReview:()=>actions.push('cancel-review'),cancel:()=>actions.push('cancel'),startLocal:()=>actions.push('start')}};
+ vm.createContext(context);vm.runInContext(transformSync(settings.slice(start,end),{loader:'ts'}).code,context);
+ const rows=context.stack.flatMap(page=>page.groups.flatMap(group=>group.rows));
+ return {context,actions,rows};
 }
-test('the product keeps the plain recovery status and Restart Alpha, with no raw Restart details',()=>{
- assert.ok(start>0&&end>start,'Restart details is gated by the Developer gate');
- const f=nativeFixture(snapshot,'agent-connection',false);
- assert.deepEqual(Array.from(f.context.agentRows,r=>r.label),['Status','Restart Alpha']);
- assert.equal(f.context.agentRows[0].value,residentRecoveryCopy(snapshot.residentRecoveryReason,snapshot.residentRecovery));
- assert.deepEqual(Array.from(nativeFixture({...snapshot,residentRecoveryReason:'runtime-identity-unavailable',residentRecovery:undefined},'agent-connection',false).context.agentRows,r=>r.label),['Status']);
- // A stale or direct selection of the details page renders nothing in the product.
- assert.deepEqual(nativeFixture(snapshot,'agent-recovery-details',false).context.out.stack,[]);
+test('the native Agent page requires the reviewed recovery before confirming restart',()=>{
+ const f=nativeFixture();
+ assert.deepEqual(f.actions,[]);
+ assert.deepEqual(f.rows.filter(row=>row.go).map(row=>row.label),['Keep records and restart','Cancel']);
+ assert.match(JSON.stringify(f.rows),/keep 8 old startup records/);
+ assert.doesNotMatch(JSON.stringify(f.rows),new RegExp(token));
+ assert.doesNotMatch(JSON.stringify(f.rows),/Your data is safe/);
+ f.rows.find(row=>row.label==='Keep records and restart').go();
+ assert.deepEqual(f.actions,['confirm']);
+ f.rows.find(row=>row.label==='Cancel').go();
+ assert.deepEqual(f.actions,['confirm','cancel-review']);
 });
-test('behind the Developer gate, Settings navigates to details without starting recovery',()=>{
- const f=nativeFixture();assert.deepEqual(f.actions,[]);
- assert.deepEqual(Array.from(f.context.agentRows,r=>r.label),['Status','Restart Alpha','Details']);
- f.context.agentRows[2].go();assert.equal(f.actions[0].page,'agent-recovery-details');
- f.context.agentRows[1].go();assert.equal(f.actions[1],'restart');
- const details=nativeFixture(snapshot,'agent-recovery-details');const page=details.context.out.stack[0];
- assert.match(JSON.stringify(page),/Startup records to keep/);assert.doesNotMatch(JSON.stringify(page),new RegExp(token));page.back();assert.equal(details.actions[0].page,'agent-connection');
+test('partial and unavailable recovery keep a review action and do not claim completion',()=>{
+ for(const step of ['partial','unavailable']){
+  const f=nativeFixture({residentRecovery:{step}});
+  assert.deepEqual(f.rows.filter(row=>row.go).map(row=>row.label),['Review recovery']);
+  assert.match(JSON.stringify(f.rows),/Your records were kept/);
+  assert.doesNotMatch(JSON.stringify(f.rows),/Your data is safe|Keep records and restart/);
+  f.rows.find(row=>row.label==='Review recovery').go();assert.deepEqual(f.actions,['review']);
+ }
 });
-test('native unknown and partial states never claim safe data; unsupported reasons cannot restart',()=>{
- for(const step of ['partial','unavailable']){const f=nativeFixture({...snapshot,residentRecovery:{step}});assert.doesNotMatch(JSON.stringify(f.context.agentRows),/Your data is safe/);}
- const f=nativeFixture({...snapshot,residentRecoveryReason:'runtime-identity-unavailable',residentRecovery:undefined});assert.deepEqual(Array.from(f.context.agentRows,r=>r.label),['Status','Details']);
- const completed=nativeFixture({...snapshot,residentRecoveryReason:undefined,residentRecovery:undefined,session:{}},'agent-recovery-details');assert.match(JSON.stringify(completed.context.out.stack),/Alpha is running/);
+test('unknown recovery cannot restart and archiving cannot be cancelled from Settings',()=>{
+ const unknown=nativeFixture({residentRecoveryReason:'runtime-identity-unavailable',residentRecovery:undefined});
+ assert.equal(unknown.rows.filter(row=>row.go).length,0);
+ const archiving=nativeFixture({busy:true,residentRecovery:{step:'archiving'}});
+ assert.equal(archiving.rows.filter(row=>row.go).length,0);
+ assert.deepEqual(nativeFixture({},'agent-recovery-details').context.stack,[]);
 });

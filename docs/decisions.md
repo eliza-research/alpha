@@ -412,3 +412,11 @@ or a credit top-up as the product's billing model. P-62's monthly catalog remain
 force; prices and renewal terms come from Cloud's billing flow, never inferred by the
 phone. A temporary grant remains temporary access and is not described as a paid
 renewal. This changes presentation, not Cloud's existing account admission or charging.
+
+## November 5: on-device speech default and acceleration
+
+Decided by the product owner on 2026-11-05. Same rules as above: policy, not evidence.
+
+- **P-79** On-device speech replaces Cartesia as the default: Phonon-2 and Paradee on libelizainference, in the `native` profile, with Eliza Cloud text inference. The `cloud` profile remains an explicit QA selection.
+- **P-80** Accelerators are used only when they are faster on the path that ships. Measured on the Pixel 10a (Tensor G4), Phonon-2's streaming finish takes 45 to 54 ms on the CPU, and a best-case TPU pass cannot go below about 59 ms for 5 s of audio, so Phonon-2 stays on the CPU. P-42 therefore stands. See [on-device speech](on-device-speech-2026-11-05.md). A faster future chip or model reopens this.
+- **P-81** The Delibes-8M-esES Spanish voice ships under its open-source licence (Apache-2.0 for the model files), with its notices in the bundle and the generated third-party notices. This is the owner's Alpha decision on the upstream `spanish.release_override`.

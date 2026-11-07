@@ -1,5 +1,18 @@
 # Dependency and artifact supply chain
 
+## Built mobile and worker inventory (2026-11-07)
+
+The mobile bundle and workflow worker built from SDK `ae1a9dda6712` contain
+457 distinct npm package versions. A fresh registry query reports one moderate
+UUID advisory affecting `8.3.2` and `9.0.1`, with zero high or critical findings.
+The installed Jayson and Solflare consumers select `v4` and call it without
+arguments. The existing exception retains its January 10, 2027 deadline.
+The receipt-bound inventory and audit are recorded in the
+[built bundle review](security/resident-bundle-review-ae1a9dda-2026-11-07.json).
+
+This review covers the built JavaScript dependency inventory. APK distribution,
+embedding, voice and device qualification retain their independent gates.
+
 ## Reviewed native Android APK npm closure (2026-10-25)
 
 The exact signed ARM64 APK `d3f1fd7792071e0ac76484e437e9a15cd1aa082e75f236ea8c4e4b8e5bdd5e10`

@@ -18,7 +18,7 @@ test('noncritical slot commits keep lifecycle before vault, exact owner/CAS, and
  const host=readFileSync(nativeSource('AlphaLocalAgentPlugin.java'),'utf8');
  const access=method(host,'static <T> T withCredentialSlotMutation(');
  const order=method(host,'private static void requireLockOrder(');
- const credentialLock=method(host,'static Object credentialLock(');
+ const credentialLock=method(host,'static Object credentialLifecycleLock(');
  // The installed Gmail binding's lock, as MailBackgroundDelivery holds it around every slot access.
  const gmailLock=readFileSync(nativeSource('GmailBackground.java'),'utf8').match(/public Object lock\(\)\{return ([^;]+);\}/)?.[1];
  assert.ok(gmailLock,'Gmail host lock located');

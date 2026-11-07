@@ -9,6 +9,7 @@ import {AUTOMATIONS_COMMITTED_EVENT,automationsCommitted} from './automation-com
 import {OWNER_REMINDER_LIST,OWNER_REMINDER_READBACK,ownerReminderRoute,reminderReadPath,type ReminderNotificationBinding} from './owner-reminder-notification-protocol';
 import {CAMERA_CAPTURE_CAPABILITY} from '../../../../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/camera-contract.ts';
 import {sanitizeCloudInferenceFailure,type CloudInferenceFailure} from './crash-log';
+import {sanitizeNativeInferenceTiming,type NativeInferenceTiming} from './diagnostics-export';
 import {residentRecoveryReason,residentRecoveryMessage,residentRecoveryCopy,RESIDENT_RECOVERY_PENDING,type ResidentRecoveryReason,type ResidentRecoveryView} from './resident-recovery';
 import {anyAbortSignal} from './abort-signal';
 import {CALENDAR_APPROVAL_READ_PATH,calendarApprovalFromList,calendarApprovalId} from './calendar-approval';
@@ -49,7 +50,7 @@ import { pauseHostedBackground } from './hosted-background';
 import {developmentDeviceStore,developmentActionJournal} from './local-agent-storage';
 import { reviewLocalRecovery,archiveLocalRecovery,stopLocalAgent, configureLocalProvider, bindResidentCloudProvider, LocalCloudProviderStopUnconfirmed, LocalAgentProtocol, localAgentPackaged, browserLocalAgentEnabled, localProviderStatus, clearLocalProvider, clearLocalProviderIfCurrent, providerStatusLabel, LOCAL_PROVIDER_MODEL, type LocalProviderStatus } from './local-agent';
 import { presentDeviceRecordOperation } from './device-record-presentation';
-import { succeededBrowserDestination, systemNoticeDisplayText, systemNoticeKind, type SystemNoticeKind } from './action-message-presentation';
+import {checkinDisplayText, succeededBrowserDestination, systemNoticeDisplayText, systemNoticeKind, type SystemNoticeKind } from './action-message-presentation';
 import type { MessagePage } from './remote-protocol';
 import type {DeviceRecovery,CurrentDeviceActionRequest} from "./device-actions";
 import type { WorkflowPhoneReview } from './workflow-device-contract';
@@ -84,6 +85,8 @@ export interface CloudServiceSession { environment: CloudEnvironment; userId: st
   expiresAt?: number }
 export interface RestoredMessage { id: string; from: 'user' | 'agent'; text: string; deviceReceipt?:true; browserDestination?:string; inReplyTo?:string;
   systemNotice?:SystemNoticeKind;
+  /** Trusted service presentation; original text remains the copy/reply source. */
+  displayText?:string;
   /** A restored interrupted reply cannot prove a later system notice is resolved. */
   unfinished?:true }
 export interface ConnectionSnapshot {
@@ -453,6 +456,8 @@ async function deviceCapabilities(offered:unknown):Promise<string>{
   if(agent.includes(CAMERA_CAPTURE_CAPABILITY)&&(Capacitor.isPluginAvailable('ElizaCamera')||!android&&typeof navigator!=='undefined'&&typeof navigator.mediaDevices?.getUserMedia==='function'))capabilities.push(CAMERA_CAPTURE_CAPABILITY);
   if(agent.includes('reminders.local-record.v2'))capabilities.push('reminders.local-record.v2');else if(agent.includes('reminders.local-record.v1'))capabilities.push('reminders.local-record.v1');
   // Browser chat reminders use the runtime scheduler; do not offer a second device-creation lifecycle.
+  // notes.organize.v1 (Notes folders, filter, restore, record) waits for the pin to carry
+  // patches/eliza/notes-organize-agent.patch: the shared coordinator cannot parse those operations yet.
   for(const capability of [...(!Capacitor.isNativePlatform()?['calendar.agenda-read.v1']:[]),'notes.query.v1',...(Capacitor.isNativePlatform()?['reminders.create.v1']:[]),'calendar.create.v1',...(android||!Capacitor.isNativePlatform()?['calendar.next-read.v1']:[]),'maps.selected-read.v1'])if(agent.includes(capability))capabilities.push(capability);
   if(availabilityNegotiated(agent))capabilities.push(CALENDAR_AVAILABILITY_CAPABILITY);
   if((android||!Capacitor.isNativePlatform())&&typeof foregroundExecutor==='function'&&agent.includes('calendar.named-read.v1'))capabilities.push('calendar.named-read.v1');
@@ -838,7 +843,17 @@ async function work(message: string, action: (signal: AbortSignal) => Promise<vo
   }
   // A resident start ends with its operation, in one update: setup shown behind the start never
   // sees a still-busy connection that is no longer starting.
-  finally { if (operation === controller) { operation = null; residentStartInBackground = false; } update({ busy: false, backgroundWork: false, residentStarting: false, ...(background&&!state.open?{message:''}:{}) }); runQueuedResidentRebind(); runQueuedSignInReturn(); }
+  finally { if (operation === controller) { operation = null; residentStartInBackground = false; } update({ busy: false, backgroundWork: false, residentStarting: false, ...(background&&!state.open?{message:''}:{}) }); runQueuedResidentRebind(); runQueuedSignInReturn(); scheduleResidentAutoRetry(); }
+}
+/** P-43: the agent always runs. A resident left `recovering` (a failed start or rebind, never a
+ * recovery review, which needs the owner) starts again by itself with backoff; Retry stays offered
+ * throughout and once the attempts are spent. A running agent resets the attempts. */
+const RESIDENT_AUTO_RETRY_MS = [3000, 10000, 30000, 60000];
+let residentAutoRetries = 0, residentAutoRetry: ReturnType<typeof setTimeout> | undefined;
+function scheduleResidentAutoRetry() {
+  if (active) { residentAutoRetries = 0; return; }
+  if (!residentAlwaysPresent || !isAndroid || testMocksEnabled || residentAutoRetry || operation || state.kind !== 'recovering' || state.residentRecoveryReason || residentAutoRetries >= RESIDENT_AUTO_RETRY_MS.length) return;
+  residentAutoRetry = setTimeout(() => { residentAutoRetry = undefined; residentAutoRetries++; void ensureResident(); }, RESIDENT_AUTO_RETRY_MS[residentAutoRetries]);
 }
 /** Start (or restart) the resident. A failure leaves the `recovering` state with a Retry, never "no agent". */
 async function startResident(message = RESIDENT_STARTING, background = true) {
@@ -1477,7 +1492,8 @@ function restoredMessages(items:Record<string,unknown>[]):RestoredMessage[] {
     if(typeof item.id!=='string'||!item.id||typeof item.text!=='string'||item.text.length>200000)throw Error('The agent returned invalid history.');
     const notice=item.role==='assistant'?systemNoticeKind(item.text):undefined;
     if(notice)return {id:item.id,from:'agent',text:systemNoticeDisplayText(notice),systemNotice:notice};
-    return {id:item.id,from:item.role==='user'?'user':'agent',text:item.role==='user'?restoredText(item.text,item.userTextFormat):item.interrupted===true&&!item.text?'This reply did not finish.':item.text,...(item.role==='assistant'&&item.interrupted===true?{unfinished:true as const}:{})};
+    const displayText=item.source==='lifeops-checkin'?checkinDisplayText(item):undefined;
+    return {id:item.id,from:item.role==='user'?'user':'agent',text:item.role==='user'?restoredText(item.text,item.userTextFormat):item.interrupted===true&&!item.text?'This reply did not finish.':item.text,...(item.role==='assistant'&&item.interrupted===true?{unfinished:true as const}:{}),...(displayText===undefined?{}:{displayText})};
   });
 }
 /** Eliza Cloud's API answers credentialed browser requests only from Eliza's own origins
@@ -2212,12 +2228,12 @@ export const connectionController = {
     lastInferenceWarm=now;
     void selected.remote.request('/api/cloud/warm',{},AbortSignal.timeout(10000)).catch(()=>{});
   },
-  async readCloudInferenceFailure(signal:AbortSignal):Promise<CloudInferenceFailure|null>{
+  async readResidentDiagnostics(signal:AbortSignal):Promise<{cloudInferenceFailure:CloudInferenceFailure|null;nativeInferenceTiming?:NativeInferenceTiming}|null>{
     const selected=active,session=state.session,generation=epoch;
     signal.throwIfAborted();if(selected?.kind!=='resident'||!session)return null;
     const status=await selected.remote.request('/api/status',undefined,signal);
     signal.throwIfAborted();if(generation!==epoch||selected!==active||session!==state.session)throw new DOMException('The connection changed','AbortError');
-    return sanitizeCloudInferenceFailure(status?.cloudInferenceFailure);
+    return {cloudInferenceFailure:sanitizeCloudInferenceFailure(status?.cloudInferenceFailure),nativeInferenceTiming:sanitizeNativeInferenceTiming(status?.nativeInferenceTiming)};
   },
   voiceTurnFailureMessage(code?:string){return active?replyFailure(code,active,readServiceLimit({failureKind:code})).message:REPLY_FAILURES.hosted_unreachable;},
   getBrowserSpeechAgent(){return active?.kind==='resident'&&state.session&&active.remote.browserSpeechAvailable?active.remote:null;},
@@ -2287,10 +2303,10 @@ export const connectionController = {
     const expiresAt=account?.expiresAt??null;
     // The agent always runs; this says only whether Eliza Cloud AI is connected to it.
     const inference=state.residentInference==='direct'?'Cerebras · own API key':state.residentInference==='unknown'?'Status unconfirmed':state.residentInference==='cloud'?serviceName:state.residentPlanNotice==='offline'?'Unavailable · Cloud unreachable':state.residentInference==='unavailable'?(account?(view?.kind==='inactive'?'Unavailable · check Cloud account':'Unavailable · Cloud status unconfirmed'):'Unavailable · sign in'):state.kind==='recovering'?'Unavailable · agent not running':'Starting…';
-    if(state.residentPlanNotice==='offline'&&!account){const recent=readPlanAdmission();return {signedIn:false,offline:true,account:null,plan:recent?`${recent.planName} · offline`:'Offline',status:recent?.status??null,endsAt:state.planEndsAt??null,allowance:null,limit:null,keyExpiresAt:null,keyExpiring:false,inference};}
+    if(state.residentPlanNotice==='offline'&&!account){const recent=readPlanAdmission();return {signedIn:false,offline:true,offerRedeem:false,account:null,plan:recent?`${recent.planName} · offline`:'Offline',status:recent?.status??null,endsAt:state.planEndsAt??null,allowance:null,limit:null,keyExpiresAt:null,keyExpiring:false,inference};}
     // The plan allowance Cloud reports and the latest Cloud limit with its remaining wait (#410, P-26).
     const summary=account?subscriptionSummary(view,{lastLimit:state.lastServiceLimit??null,lastLimitAt:state.lastServiceLimit?.observedAt??null,serviceName}):null;
-    return {signedIn:!!account,offline:false,inference,account:account?(account.email||`Account ${account.userId.slice(0,8)}`):null,
+    return {signedIn:!!account,offline:false,inference,offerRedeem:!!account&&planAdmission(view)!=='admit'&&view?.kind!=='credits',account:account?(account.email||`Account ${account.userId.slice(0,8)}`):null,
       plan:plan?.headline??(account?'Checking plan…':'Not signed in'),
       status:view?.kind==='active'?view.status:view?.kind==='inactive'?view.status:null,
       endsAt:state.planEndsAt??null,allowance:summary?.allowance??null,limit:summary?.limit??null,keyExpiresAt:expiresAt,keyExpiring:expiresAt!==null&&expiresAt-Date.now()<=CLOUD_KEY_EXPIRY_WARNING_MS};

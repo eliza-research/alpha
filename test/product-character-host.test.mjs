@@ -6,7 +6,7 @@ import path from 'node:path';
 import vm from 'node:vm';
 import {createHash,randomUUID,randomBytes} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {verifySource,preparedSourceEnv,workerArtifactDirectory,digest} from '../scripts/local-agent-source.mjs';
 import {verifyWorkerArtifact} from '../scripts/workflow-worker-artifact.mjs';
 import {preparePrivateRuntimeProfile,runtimeEnvironment} from '../vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs';

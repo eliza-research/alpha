@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 // A turn the agent recorded but could not finish: the sent bubble keeps the agent's user row
 // identity (one bubble after the conversation re-read), and a turn that failed after its action
 // committed says the action went through instead of the generic failure.
@@ -9,7 +9,7 @@ const ui=fs.readFileSync('apps/app/src/runtime/connection-ui.tsx','utf8'),adapte
 const between=(source,start,end)=>{const a=source.indexOf(start),b=source.indexOf(end,a);assert.ok(a>=0&&b>a,start);return source.slice(a,b);};
 const ts=source=>stripTypeScriptTypes(source,{mode:'transform'});
 // The pinned receipt normalizer itself (its error class stubbed; the module resolves `.js` specifiers only under a bundler).
-const {normalizeEffectReceipts}=await import('data:text/javascript;base64,'+Buffer.from(ts(fs.readFileSync('.eliza/client-features/packages/core/src/types/effects.ts','utf8')).replace('import { ElizaError } from "../errors.js";','class ElizaError extends Error{}')).toString('base64'));
+const {normalizeEffectReceipts}=await import('data:text/javascript;base64,'+Buffer.from(ts(fs.readFileSync('.eliza/client-features/packages/core/src/types/effects.ts','utf8')).replace('import { ElizaError } from "../errors.js";','class ElizaError extends Error{}').replace('from "../utils/type-guards"','from '+JSON.stringify(new URL('../.eliza/client-features/packages/core/src/utils/type-guards.ts',import.meta.url).href))).toString('base64'));
 const effectApplied=new Function('normalizeEffectReceipts',ts(between(ui,'function effectAppliedBeforeFailure(','\n}\n')+'\n}')+';return effectAppliedBeforeFailure;')(normalizeEffectReceipts);
 const merge=new Function(ts(between(ui,'export function mergeConversationDelivery','\n}\n').replace('export ','')+'\n}')+';return mergeConversationDelivery;')();
 const EFFECT_COPY=ui.match(/export const EFFECT_APPLIED_INTERRUPTED = '([^']+)';/)[1];

@@ -1,4 +1,5 @@
 import {test,expect,type Page} from '@playwright/test';
+// The closing sheet keeps an inert composer briefly; interact with the one exposed to users.
 import {preloadPageModules} from './helpers/page-modules';
 
 const voice=(page:Page)=>page.getByRole('region',{name:'Voice conversation',exact:true});
@@ -10,7 +11,7 @@ async function setup(page:Page,signed=true,theme='light'){
   if(navigator.mediaDevices)navigator.mediaDevices.getUserMedia=async()=>{f.media++;throw Error('This test forbids microphone access');};
  });
  await page.goto('/?theme='+theme);
- await expect(page.locator('textarea[data-alpha-composer]')).toBeEnabled();
+ await expect(page.getByRole('textbox',{name:/^(Ask|Message) Alpha$/})).toBeEnabled();
  await preloadPageModules(page,['/src/browser/voice.ts','/src/runtime/connection-ui.tsx','/src/prototype/model.js','/src/runtime/voice-selection.ts','/src/runtime/voice-timing.ts','/src/runtime/diagnostics-export.ts']);
  await page.evaluate(async signed=>{
   const {BrowserVoice}=await import('/src/browser/voice.ts'),{connectionController:c}=await import('/src/runtime/connection-ui.tsx'),{Component}=await import('/src/prototype/model.js');
@@ -49,10 +50,10 @@ async function noMedia(page:Page){expect(await page.evaluate(()=>{const f=(windo
 
 test('unsigned chat voice stays in Home and can stop without opening the microphone',async({page},info)=>{
  await setup(page,false);await page.getByRole('button',{name:'Talk',exact:true}).click();await expect(voice(page)).toBeVisible();await expect(page.locator('html')).toHaveAttribute('data-active-view','home');
- await expect(voice(page).getByRole('button',{name:'Microphone off',exact:true})).toBeDisabled();await expect(voice(page).getByRole('button',{name:'Stop voice conversation',exact:true})).toBeEnabled();expect(await page.evaluate(()=>(window as any).chatVoiceFixture.starts)).toBe(0);await expect(page.locator('[data-alpha-subview="notes-recording"]')).toHaveCount(0);await expect(page.locator('[data-alpha-transcript]')).toBeVisible();await expect(page.locator('textarea[data-alpha-composer]')).toHaveCount(0);
+ await expect(voice(page).getByRole('button',{name:'Microphone off',exact:true})).toBeDisabled();await expect(voice(page).getByRole('button',{name:'Stop voice conversation',exact:true})).toBeEnabled();expect(await page.evaluate(()=>(window as any).chatVoiceFixture.starts)).toBe(0);await expect(page.locator('[data-alpha-subview="notes-recording"], [data-alpha-subview="notes-recorder"]')).toHaveCount(0);await expect(page.locator('[data-alpha-transcript]')).toBeVisible();await expect(page.getByRole('textbox',{name:/^(Ask|Message) Alpha$/})).toHaveCount(0);
  const notice=page.locator('.alpha-chat-notices');await expect(notice.getByRole('alert')).toHaveCount(0);await expect(notice.getByRole('button',{name:'Connect Eliza Cloud',exact:true})).toHaveCount(0);
  await page.screenshot({path:info.outputPath('unsigned-stop-microphone-off.png'),animations:'disabled'});
- await voice(page).getByRole('button',{name:'Stop voice conversation',exact:true}).click();await expect(voice(page)).toHaveCount(0);await expect(page.locator('[data-alpha-layer="conversation"]')).toBeVisible();await expect(page.locator('textarea[data-alpha-composer]')).toBeVisible();expect(await page.evaluate(()=>(window as any).chatVoiceFixture.starts)).toBe(0);await noMedia(page);
+ await voice(page).getByRole('button',{name:'Stop voice conversation',exact:true}).click();await expect(voice(page)).toHaveCount(0);await expect(page.locator('[data-alpha-layer="conversation"]')).toBeVisible();await expect(page.getByRole('textbox',{name:/^(Ask|Message) Alpha$/})).toBeVisible();expect(await page.evaluate(()=>(window as any).chatVoiceFixture.starts)).toBe(0);await noMedia(page);
 });
 
 test('ongoing Cloud conversation stays in Calendar, sends only new speech and preserves the saved draft and Notes',async({page})=>{
@@ -63,7 +64,7 @@ test('ongoing Cloud conversation stays in Calendar, sends only new speech and pr
 });
 test('the recorded-clip conversation shows no interruption notice and records its batch path',async({page})=>{
  await setup(page);await page.evaluate(()=>{const f=(window as any).chatVoiceFixture,toast=f.shell.toast.bind(f.shell);f.toasts=[];f.shell.toast=(message:string,...rest:unknown[])=>{f.toasts.push(message);return toast(message,...rest);};});
- await expect(page.locator('textarea[data-alpha-composer]')).toHaveValue('');
+ await expect(page.getByRole('textbox',{name:/^(Ask|Message) Alpha$/})).toHaveValue('');
  await expect(page.getByRole('button',{name:'Talk',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Talk',exact:true}).click();await expect(voice(page)).toHaveAttribute('data-voice-state','listening');
  await utterance(page);await expect(voice(page)).toHaveAttribute('data-voice-state','speaking');
@@ -99,7 +100,7 @@ test('explicit voice API with a retained draft holds review for edited Send or z
  expect(await page.evaluate(()=>{const f=(window as any).chatVoiceFixture;return {sends:f.sends,sent:f.sent};})).toEqual({sends:1,sent:'Edited Cloud words'});
  await page.evaluate(()=>(window as any).chatVoiceFixture.finishPlayback());await expect(voice(page)).toHaveAttribute('data-voice-state','listening');
  await utterance(page);await expect(voice(page)).toHaveAttribute('data-voice-state','review');await voice(page).getByRole('button',{name:'Discard voice message',exact:true}).click();
- await expect(voice(page)).toHaveCount(0);await expect(page.locator('textarea[data-alpha-composer]')).toBeVisible();
+ await expect(voice(page)).toHaveCount(0);await expect(page.getByRole('textbox',{name:/^(Ask|Message) Alpha$/})).toBeVisible();
  expect(await page.evaluate(()=>{const f=(window as any).chatVoiceFixture;return {sends:f.sends,uploads:f.uploads,active:f.active,draft:f.shell.S().draft};})).toEqual({sends:1,uploads:2,active:null,draft:'Existing unsent draft'});await noMedia(page);
 });
 test('minimize returns the same owned capture to compact pill; explicit Stop retires media',async({page})=>{await setup(page);await page.evaluate(()=>(window as any).chatVoiceFixture.shell.setState({chat:'hidden',draft:'Keep this draft'}));await page.getByRole('button',{name:'Talk',exact:true}).click();await expect(page.locator('[data-alpha-pill-voice]')).toBeVisible();expect(await page.evaluate(()=>(window as any).chatVoiceFixture.shell.S().chat)).toBe('hidden');await expect.poll(()=>page.evaluate(()=>(window as any).chatVoiceFixture.shell.swallowed())).toBe(false);await page.locator('[data-alpha-pill-voice]').getByRole('button',{name:'Open conversation',exact:true}).click();await expect(voice(page)).toHaveAttribute('data-voice-state','listening');await page.getByRole('button',{name:'Minimize chat',exact:true}).click();await expect(page.locator('[data-alpha-pill-voice]')).toBeVisible();expect(await page.evaluate(()=>{const f=(window as any).chatVoiceFixture;return {chat:f.shell.S().chat,draft:f.shell.S().draft,active:f.active,starts:f.starts,sends:f.sends};})).toEqual({chat:'hidden',draft:'Keep this draft',active:'synthetic-clip-1',starts:1,sends:0});await page.locator('[data-alpha-pill-voice]').getByRole('button',{name:'Stop voice conversation',exact:true}).click();await expect.poll(()=>page.evaluate(()=>(window as any).chatVoiceFixture.active)).toBe(null);await expect(page.locator('[data-alpha-pill-voice]')).toHaveCount(0);expect(await page.evaluate(()=>(window as any).chatVoiceFixture.starts)).toBe(1);await noMedia(page);});

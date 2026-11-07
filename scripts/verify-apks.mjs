@@ -47,11 +47,12 @@ import { apkPermissions, checkListenerPermissions, checkListenerSpeechBundle, li
 import { listenerApkRow, listenerManifestSection, readListenerRecord } from "./listener-qualification.mjs";
 
 import {verifyEmbeddingHost} from './stage-embedding-host.mjs';
+import {cloudVoiceAdmission, cloudVoiceBlockers} from '../vendor/eliza/packages/os/scripts/android/apk-release-record.mjs';
 import { preparePatchedNative, nativePatchReceipt, verifyNativePatchReceipt } from './prepare-patched-native.mjs';
-const USAGE = "Usage: node scripts/verify-apks.mjs [--test-mocks] [--allow-unpackaged-runtime] [--signer-api-level=N]";
+const USAGE = "Usage: node scripts/verify-apks.mjs [--test-mocks] [--allow-unpackaged-runtime] [--signer-api-level=N] [--runtime-profile=cloud --cloud-voice-evidence=FILE]";
 const args = process.argv.slice(2);
 for (const arg of args)
-  if (!["--test-mocks", "--allow-unpackaged-runtime", "--runtime-profile=cloud", "--local-embeddings"].includes(arg) && !/^--signer-api-level=[1-9][0-9]*$/.test(arg)) throw new Error(`Unknown option ${arg}. ${USAGE}`);
+  if (!["--test-mocks", "--allow-unpackaged-runtime", "--runtime-profile=cloud", "--local-embeddings"].includes(arg) && !/^--signer-api-level=[1-9][0-9]*$/.test(arg) && !/^--cloud-voice-evidence=.+$/.test(arg)) throw new Error(`Unknown option ${arg}. ${USAGE}`);
 // Artifact signing admission is explicitly scoped to this Android API. Device
 // install/update independently verify the certificate applicable to the actual device.
 const signerApiArgs = args.filter(arg => arg.startsWith("--signer-api-level="));
@@ -60,6 +61,8 @@ const signerApiLevel = signerApiArgs.length ? Number(signerApiArgs[0].split("=")
 if (signerApiLevel !== undefined && !Number.isSafeInteger(signerApiLevel)) throw new Error("Invalid signer API level");
 const testMocks = args.includes("--test-mocks");
 const runtimeProfile=args.includes("--runtime-profile=cloud")?"cloud":"native";
+const cloudEvidenceArgs=args.filter(arg=>arg.startsWith('--cloud-voice-evidence='));
+if(cloudEvidenceArgs.length>1||cloudEvidenceArgs.length&&runtimeProfile!=='cloud')throw Error('Cloud voice evidence requires one explicit Cloud profile');
 const localEmbeddings=args.includes("--local-embeddings");
 if(localEmbeddings&&runtimeProfile!=="cloud")throw Error("--local-embeddings requires the Cloud profile");
 if(runtimeProfile==="cloud"&&(testMocks||args.includes("--allow-unpackaged-runtime")))throw Error("Cloud requires a genuine resident without mocks");
@@ -69,6 +72,14 @@ const directory = testMocks ? "artifacts/test-mocks" : "artifacts";
 const manifestFile = path.join(directory, "apk-manifest.json");
 // Never leave an older passing manifest beside APKs that failed verification.
 fs.rmSync(manifestFile, { force: true });
+let cloudEvidence, cloudEvidenceSha256;
+if(cloudEvidenceArgs.length){
+  try {
+    const bytes=fs.readFileSync(cloudEvidenceArgs[0].slice('--cloud-voice-evidence='.length));
+    cloudEvidence=JSON.parse(bytes.toString('utf8'));
+    cloudEvidenceSha256=createHash('sha256').update(bytes).digest('hex');
+  } catch { throw Error('Cloud voice evidence could not be read as JSON'); }
+}
 
 const identity = JSON.parse(fs.readFileSync("app.config.json"));
 const callbackHost = new URL(JSON.parse(fs.readFileSync("config/cloud-deployment.json", "utf8")).production.web).hostname;
@@ -226,6 +237,7 @@ if (release.some(row => row.signed) && !release.every(row => row.signed))
 // a versionCode above the last recorded release. A mismatch fails verification.
 const releaseSigner = readReleaseSigner();
 for (const row of release) {
+  row.runtimeProfile = runtimeProfile;
   row.releaseAdmission = releaseAdmission(row, releaseSigner);
   if (!testMocks && row.releaseAdmission.failures.length)
     throw new Error(`Release signing admission failed for ${row.file}: ${row.releaseAdmission.failures.join("; ")}`);
@@ -254,15 +266,19 @@ for (const row of release) {
   // Test-mocks builds and releases without the resident runtime are never
   // distributable. Signing is recorded separately (row.signed).
   // Without on-device voice, local speech reports unavailable (never a network fallback). A packaged
-  // bundle must match android/voice-host/qualified-voice-host.json byte for byte, and only a qualified
-  // voice host (device acceptance recorded) can make a release distributable.
+  // bundle must match android/voice-host/qualified-voice-host.json byte for byte.
+  // Explicit Cloud builds instead need a passing Cartesia receipt for these exact APK bytes.
   row.voiceHost = voiceHostAdmission(row.file);
   if (row.voiceHost.differences.length)
     throw new Error(`On-device voice in ${row.file} is not admitted:\n  - ${row.voiceHost.differences.join("\n  - ")}`);
+  if(runtimeProfile==='cloud')row.cloudVoice=cloudVoiceAdmission(row.sha256,cloudEvidence,cloudEvidenceSha256);
+  const speechQualified=runtimeProfile==='cloud'
+    ? cloudVoiceBlockers(row,'cartesia').length===0
+    : row.voiceHost.packaged===true&&row.voiceHost.qualified===true;
   row.distributable = !testMocks && row.signed === true && row.releaseAdmission.signerMatches === true &&
     row.releaseAdmission.blockers.length === 0 && row.releaseAdmission.failures.length === 0 &&
     runtime.distributable === true && row.runtimeNotices === true &&
-    row.voiceHost.packaged === true && row.voiceHost.qualified === true &&
+    speechQualified &&
     row.licenceBlockers.length === 0;
 }
 for (const row of results.filter(row => row.mode === "debug")) {
@@ -351,7 +367,7 @@ fs.writeFileSync(
 console.log(JSON.stringify(results, null, 2));
 const undistributable = release.filter(row => !row.distributable);
 if (undistributable.length)
-  console.warn(`Not distributable: ${undistributable.map(row => `${row.file} (${[row.runtime !== "PACKAGED" && "no packaged runtime", testMocks && "test-mocks build", !row.runtimeNotices && "notices lack the packaged runtime (run node scripts/generate-licenses.mjs --packaged-runtime after staging)", !row.voiceHost.packaged && "no on-device voice packaged", row.voiceHost.packaged && !row.voiceHost.qualified && "on-device voice not qualified (no recorded device acceptance)", ...row.releaseAdmission.blockers, ...row.licenceBlockers].filter(Boolean).join(", ")})`).join("; ")}`);
+  console.warn(`Not distributable: ${undistributable.map(row => `${row.file} (${[row.runtime !== "PACKAGED" && "no packaged runtime", testMocks && "test-mocks build", !row.runtimeNotices && "notices lack the packaged runtime (run node scripts/generate-licenses.mjs --packaged-runtime after staging)", ...(runtimeProfile === "cloud" ? cloudVoiceBlockers(row, "cartesia") : [!row.voiceHost.packaged && "no on-device voice packaged", row.voiceHost.packaged && !row.voiceHost.qualified && "on-device voice not qualified (no recorded device acceptance)"]), ...row.releaseAdmission.blockers, ...row.licenceBlockers].filter(Boolean).join(", ")})`).join("; ")}`);
 console.warn(`Listener (${listener.record}): ${listener.blockers.join("; ")}.`);
 // Licence flags are warnings: recorded per APK above, printed once here, never a failure.
 for (const line of flagLines) console.warn(line);

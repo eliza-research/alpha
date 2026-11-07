@@ -14,7 +14,7 @@ test('automatic readiness retains existing and newer errors without restarting t
  const work=part('async function work(','/** Start (or restart) the resident.');
  const begin=part('  async beginSignIn(','  /** Leaves the sign-in screen');
  const compiled=transformSync(`function make(){
-  let operation=null,residentStartInBackground=false,epoch=0,signInReadinessOwner=null,googleSignInGeneration=0,inAppGoogle=false,inAppPhone=false,inAppEmail=true,release,starts=0;
+  const residentAlwaysPresent=false,active=null;let operation=null,residentStartInBackground=false,epoch=0,signInReadinessOwner=null,googleSignInGeneration=0,inAppGoogle=false,inAppPhone=false,inAppEmail=true,release,starts=0;
   const state={purpose:'agent',error:'Saved sign-in expired'},update=value=>Object.assign(state,value);
   const cloud={environment:'production',cancelLogin(){}},cloudSignIn={},cloudServiceName=()=> 'Eliza Cloud';
   const cloudEnvironmentAllowed=()=>true,residentCloudFlow=()=>true,residentEnvironment=()=> 'production';

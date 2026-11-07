@@ -1,8 +1,6 @@
-diff --git a/packages/auth/android/build.gradle b/packages/auth/android/build.gradle
-index dd0601db5f..7b80d66825 100644
 --- a/packages/auth/android/build.gradle
 +++ b/packages/auth/android/build.gradle
-@@ -13,6 +13,7 @@ dependencies {
+@@ -13,6 +13,7 @@
   implementation project(':capacitor-android')
   // Plugin.getActivity() returns an AppCompatActivity; Capacitor does not export AppCompat.
   implementation "androidx.appcompat:appcompat:${project.hasProperty('androidxAppCompatVersion') ? rootProject.ext.androidxAppCompatVersion : '1.7.1'}"
@@ -10,11 +8,9 @@ index dd0601db5f..7b80d66825 100644
   implementation 'androidx.credentials:credentials:1.6.0'
   implementation 'androidx.credentials:credentials-play-services-auth:1.6.0'
   implementation 'com.google.android.libraries.identity.googleid:googleid:1.1.1'
-diff --git a/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInConfig.java b/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInConfig.java
-index 2a74fbb6ba..afe28594f5 100644
 --- a/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInConfig.java
 +++ b/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInConfig.java
-@@ -19,6 +19,8 @@ public final class CloudSignInConfig {
+@@ -19,6 +19,8 @@
   public final String productName;
   /** Steward app client id for native Google sign-in. */
   public final String googleClientId;
@@ -23,7 +19,7 @@ index 2a74fbb6ba..afe28594f5 100644
   /** Tag of the one bounded Google diagnostic line. */
   public final String logTag;
   /** Plain preferences file that caches non-secret readiness. */
-@@ -36,6 +38,7 @@ public final class CloudSignInConfig {
+@@ -36,6 +38,7 @@
    deviceName = label(builder.deviceName, "device name");
    productName = label(builder.productName, "product name");
    googleClientId = required(builder.googleClientId, "[a-z0-9][a-z0-9_-]{2,63}", "Google client id");
@@ -31,7 +27,7 @@ index 2a74fbb6ba..afe28594f5 100644
    logTag = required(builder.logTag, "[A-Za-z][A-Za-z0-9_]{0,22}", "log tag");
    readinessPreferences = required(builder.readinessPreferences, "[A-Za-z0-9._:-]{1,200}", "readiness preferences");
    pendingSlot = required(builder.pendingSlot, "[A-Za-z0-9._:-]{1,128}", "pending slot");
-@@ -72,6 +75,7 @@ public final class CloudSignInConfig {
+@@ -72,6 +75,7 @@
   public static Builder builder() { return new Builder(); }
   public static final class Builder {
    private String clientId, deviceName, productName, googleClientId, logTag = "ElizaCloudSignIn";
@@ -39,7 +35,7 @@ index 2a74fbb6ba..afe28594f5 100644
    private String readinessPreferences = "eliza-cloud-signin-readiness", pendingSlot = "cloud-signin:v1:pending";
    private String receiptSlotPrefix = "cloud-signin:v1:ack:", credentialSlotPrefix = "cloud:";
    private final List<CloudSignInEnvironment> environments = new ArrayList<>();
-@@ -80,6 +84,7 @@ public final class CloudSignInConfig {
+@@ -80,6 +84,7 @@
    public Builder deviceName(String value) { deviceName = value; return this; }
    public Builder productName(String value) { productName = value; return this; }
    public Builder googleClientId(String value) { googleClientId = value; return this; }
@@ -47,11 +43,9 @@ index 2a74fbb6ba..afe28594f5 100644
    public Builder logTag(String value) { logTag = value; return this; }
    public Builder readinessPreferences(String value) { readinessPreferences = value; return this; }
    public Builder pendingSlot(String value) { pendingSlot = value; return this; }
-diff --git a/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInFlow.java b/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInFlow.java
-index 1d7091624f..272b839a87 100644
 --- a/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInFlow.java
 +++ b/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInFlow.java
-@@ -55,6 +55,23 @@ public final class CloudSignInFlow {
+@@ -55,6 +55,23 @@
   public static boolean validVerifier(String value) { return value != null && value.matches("[A-Za-z0-9._~-]{43,128}"); }
   public static boolean validState(String value) { return value != null && value.matches("[A-Za-z0-9_-]{43}"); }
  
@@ -75,11 +69,9 @@ index 1d7091624f..272b839a87 100644
   /** What a return to the callback URL carries (shared callback contract). */
   public enum ReturnKind { SUCCESS, ERROR, RETURN }
   /** A return to this environment's callback. SUCCESS sets code and state, ERROR sets error and state, RETURN sets neither. */
-diff --git a/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java b/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java
-index 4b5990b840..9a643af4bb 100644
 --- a/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java
 +++ b/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java
-@@ -2,9 +2,18 @@ package ai.eliza.auth.cloud;
+@@ -2,9 +2,18 @@
  
  import android.app.AlertDialog;
  import android.content.Intent;
@@ -98,7 +90,7 @@ index 4b5990b840..9a643af4bb 100644
  import com.getcapacitor.JSObject;
  import com.getcapacitor.Plugin;
  import com.getcapacitor.PluginCall;
-@@ -17,8 +26,10 @@ import java.nio.charset.StandardCharsets;
+@@ -17,8 +26,10 @@
  import java.time.Instant;
  import java.util.ArrayList;
  import java.util.HashMap;
@@ -109,7 +101,7 @@ index 4b5990b840..9a643af4bb 100644
  import java.util.UUID;
  import java.util.concurrent.CountDownLatch;
  import java.util.concurrent.TimeUnit;
-@@ -30,8 +41,8 @@ import org.json.JSONTokener;
+@@ -30,8 +41,8 @@
  
  /**
   * Native Eliza Cloud sign-in for a registered Android application. Native screens collect an email
@@ -120,7 +112,7 @@ index 4b5990b840..9a643af4bb 100644
   * verification, mobile App Auth connect, token and ack, Steward logout) is made here with fixed URLs
   * (CloudSignInRoutes). The Steward session, refresh token, authorization codes and PKCE verifiers
   * never cross the bridge; the Steward session is revoked after one sign-in and never stored.
-@@ -53,6 +64,7 @@ import org.json.JSONTokener;
+@@ -53,6 +64,7 @@
   */
  public abstract class CloudSignInPlugin extends Plugin {
   private static final int RESPONSE_LIMIT = 256 * 1024;
@@ -128,7 +120,7 @@ index 4b5990b840..9a643af4bb 100644
  
   /** Thrown with a stable, non-secret code the renderer maps to copy. */
   public static final class SignInFailure extends Exception {
-@@ -68,7 +80,8 @@ public abstract class CloudSignInPlugin extends Plugin {
+@@ -68,7 +80,8 @@
    /** Renderer correlation only; never account or credential authority. */
    final String requestId;
    final Runnable credentialGuard;
@@ -138,7 +130,7 @@ index 4b5990b840..9a643af4bb 100644
    volatile HttpURLConnection connection;
    volatile android.os.CancellationSignal googleCancellation;
    String googleVerifier, googleChallengeId;
-@@ -155,6 +168,22 @@ public abstract class CloudSignInPlugin extends Plugin {
+@@ -155,6 +168,22 @@
    probe(config().defaultEnvironment(), null, false);
   }
   @Override protected void handleOnNewIntent(Intent intent) { super.handleOnNewIntent(intent); captureCallback(intent); }
@@ -161,7 +153,7 @@ index 4b5990b840..9a643af4bb 100644
   @Override protected void handleOnDestroy() {
    destroyed = true;
    synchronized (lock) { if (attempt != null) attempt.cancel(); attempt = null; }
-@@ -230,14 +259,14 @@ public abstract class CloudSignInPlugin extends Plugin {
+@@ -230,14 +259,14 @@
   /** Cloud refused this app's native sign-in: invalidate the readiness cache. */
   private void forgetReadiness(CloudSignInEnvironment environment) {
    synchronized (lock) { readiness.remove(environment.name); }
@@ -179,7 +171,7 @@ index 4b5990b840..9a643af4bb 100644
    catch (Exception ignored) { /* Kept in memory. */ }
   }
   /** The readiness observations (CloudSignInReadiness). Every read is short, fixed and fail-safe. */
-@@ -261,12 +290,131 @@ public abstract class CloudSignInPlugin extends Plugin {
+@@ -261,11 +290,130 @@
    if (emailOffered) try { emailRoute = CloudSignInReadiness.emailRoutePresent(probePost(environment, CloudEmailCode.SEND_PATH)); } catch (Exception unavailable) { /* Other methods remain independent. */ }
    // Native Google verifies an ID token and does not require a browser return.
    boolean googleReady = Boolean.TRUE.equals(providers.data.opt("googleNative"));
@@ -197,7 +189,7 @@ index 4b5990b840..9a643af4bb 100644
     now + (emailReady || googleReady || phoneOffered ? CloudSignInReadiness.READY_TTL_MS : CloudSignInReadiness.NOT_READY_TTL_MS));
   }
   // ── Google: native Credential Manager with server-bound nonce and PKCE ────────────────────
- 
++
 + /** A real external Custom Tabs browser only. The host's WebView is never an OAuth user agent. */
 + private String browserPackage() {
 +  try {
@@ -307,11 +299,10 @@ index 4b5990b840..9a643af4bb 100644
 +   catch (Exception unavailable) { end(next, "unavailable", true); }
 +  });
 + }
-+
+ 
   /** Optional caller identity scopes retained events to the interactive request that began them. */
   private static String callerRequestId(PluginCall call) throws SignInFailure {
-   if (!call.getData().has("requestId")) return null;
-@@ -289,6 +437,7 @@ public abstract class CloudSignInPlugin extends Plugin {
+@@ -289,6 +437,7 @@
     next = new Attempt(environment, true, requestId, reserveCredentialCommit());
     attempt = next; next.waiting = call;
    }
@@ -319,7 +310,7 @@ index 4b5990b840..9a643af4bb 100644
    next.googleVerifier = CloudSignInFlow.newVerifier();
    next.googleCancellation = new android.os.CancellationSignal();
    next.busy = true;
-@@ -380,7 +529,7 @@ public abstract class CloudSignInPlugin extends Plugin {
+@@ -380,7 +529,7 @@
     catch (Exception storage) { /* Treated as no pending record. */ }
     long now = System.currentTimeMillis();
     final Attempt waiting;
@@ -328,7 +319,7 @@ index 4b5990b840..9a643af4bb 100644
     if (received.kind == CloudSignInFlow.ReturnKind.RETURN) {
      if (pending == null || pending.environment != returned || pending.expired(now)) return;
      if (waiting != null) { synchronized (lock) { waiting.callbackReceived = true; } end(waiting, "app-link-unverified", false); }
-@@ -389,16 +538,21 @@ public abstract class CloudSignInPlugin extends Plugin {
+@@ -389,16 +538,21 @@
     }
     // Not this device's request (unknown, foreign or duplicate): ignored, nothing burned or ended.
     if (pending == null || pending.environment != returned || !pending.sameState(received)) return;
@@ -356,7 +347,7 @@ index 4b5990b840..9a643af4bb 100644
     if (pending.expired(now)) { end(owner, "expired", false); return; }
     owner.expiresAt = pending.expiresAt;
     owner.callbackReceived = true;
-@@ -411,7 +565,8 @@ public abstract class CloudSignInPlugin extends Plugin {
+@@ -411,7 +565,8 @@
       .put("tenantId", returned.tenant).put("codeVerifier", pending.verifier);
      Response exchanged = post(owner, "/steward/auth/oauth/exchange", body, null);
      if (exchanged.status != 200) throw new SignInFailure(CloudSignInFlow.failureForStatus("exchange", exchanged.status));
@@ -366,7 +357,7 @@ index 4b5990b840..9a643af4bb 100644
     } catch (SignInFailure failure) { end(owner, failure.code, false); }
     catch (Exception unexpected) { end(owner, "unavailable", false); }
    });
-@@ -821,7 +976,7 @@ public abstract class CloudSignInPlugin extends Plugin {
+@@ -821,7 +976,7 @@
   private void end(Attempt current, String code, boolean burn) {
    PluginCall waiting;
    synchronized (lock) { current.cancel(); waiting = current.waiting; current.waiting = null; if (attempt == current) attempt = null; }
@@ -375,8 +366,6 @@ index 4b5990b840..9a643af4bb 100644
    refused(current.environment, code);
    if (waiting != null) waiting.reject(code, code);
   }
-diff --git a/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInReadiness.java b/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInReadiness.java
-index 61af587b1b..9c479f0bc3 100644
 --- a/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInReadiness.java
 +++ b/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInReadiness.java
 @@ -1,6 +1,9 @@
@@ -389,7 +378,7 @@ index 61af587b1b..9c479f0bc3 100644
  
  /**
   * Pure policy for the native sign-in readiness probe (no Android classes, so it runs on a plain JVM).
-@@ -31,6 +34,47 @@ public final class CloudSignInReadiness {
+@@ -31,6 +34,47 @@
   /** The email code route exists: a bodiless request is refused as invalid, not as unknown. */
   public static boolean emailRoutePresent(int status) { return status >= 400 && status < 500 && status != 404 && status != 405; }
  
@@ -437,11 +426,9 @@ index 61af587b1b..9c479f0bc3 100644
   /** The probe's answer. */
   public static final class Result {
    public final boolean inApp, email, google, phone, methodsKnown; public final long until;
-diff --git a/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInRoutes.java b/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInRoutes.java
-index 5bfe749d54..9bb1649f25 100644
 --- a/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInRoutes.java
 +++ b/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInRoutes.java
-@@ -10,7 +10,7 @@ import java.util.Set;
+@@ -10,7 +10,7 @@
  public final class CloudSignInRoutes {
   private CloudSignInRoutes() {}
   /** Readiness reads: service document, App Auth registration and Steward providers. */

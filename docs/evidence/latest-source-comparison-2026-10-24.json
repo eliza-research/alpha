@@ -1,0 +1,14 @@
+{
+  "superproject": "329d792f6d5e33e8a6fc5a02809c795ce17774ab",
+  "manifest": "ad156f32caaa06dae91c02d443f6a8fe210eaa54",
+  "comparedProjects": 1087,
+  "changedProjects": 3,
+  "note": "All 1084 AOSP projects match the latest release superproject. The three absent entries are separately pinned device-support repositories, not AOSP projects.",
+  "aospProjectsMatching": 1084,
+  "aospProjectsChanged": 0,
+  "observedAt": "2026-10-25T03:26:30.031617+00:00",
+  "runtimePin": "ff9c8264550efd64fd0119c6ff50f99eb8561977",
+  "nativeSourceChange": false,
+  "buildComplete": false,
+  "installed": false
+}

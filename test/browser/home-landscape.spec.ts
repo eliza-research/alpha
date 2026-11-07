@@ -21,7 +21,7 @@ test('landscape lays Home and the composer side by side and keeps every Home con
   const home = page.locator('[data-alpha-layer="home"]'), composer = page.locator('[data-alpha-layer="composer"]');
   const homeBox = (await home.boundingBox())!, composerBox = (await composer.boundingBox())!;
   expect(homeBox.x + homeBox.width).toBeLessThanOrEqual(composerBox.x + 1);
-  for (const name of ['Settings', 'Notes', 'Calendar', 'All apps', 'Open workflows and automations'])
+  for (const name of ['Settings', 'Notes', 'Calendar', 'Apps', 'Open workflows and automations'])
     await reachable(page, page.getByRole('button', { name, exact: true }));
   await page.screenshot({ path: info.outputPath('landscape-home.png') });
 
@@ -39,10 +39,10 @@ test('landscape lays Home and the composer side by side and keeps every Home con
   await reachable(page, page.getByRole('button', { name: 'Settings', exact: true }));
   // And back to landscape with the drawer open: its search and rows stay reachable too.
   await page.setViewportSize({ width: 915, height: 412 });
-  await page.getByRole('button', { name: 'All apps', exact: true }).click();
-  const drawer = page.getByRole('dialog', { name: 'All apps', exact: true });
+  await page.getByRole('button', { name: 'Apps', exact: true }).click();
+  const drawer = page.getByRole('dialog', { name: 'Apps', exact: true });
   await reachable(page, drawer.getByRole('searchbox', { name: 'Search apps', exact: true }));
-  await reachable(page, drawer.getByRole('button', { name: 'Close all apps', exact: true }));
+  await reachable(page, drawer.getByRole('button', { name: 'Close apps', exact: true }));
   await page.screenshot({ path: info.outputPath('landscape-drawer.png') });
 });
 

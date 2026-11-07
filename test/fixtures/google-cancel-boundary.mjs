@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from '../support/strip-types.mjs';
 import {randomUUID} from 'node:crypto';
 import vm from 'node:vm';
 

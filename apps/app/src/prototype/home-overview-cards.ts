@@ -7,13 +7,14 @@ const maskIcon = (name: string, color: string) => createElement('span', {style: 
   mask: `url('/icons/lucide/${name}.svg') center/contain no-repeat`, WebkitMask: `url('/icons/lucide/${name}.svg') center/contain no-repeat`}});
 
 /** The Home agenda card: the shared upstream card with Alpha's classes and installed selectors. */
-export function homeAgendaCard(out: Bag): ReactElement {
-  const next = out.homeCalendarHasNext ? {text: String(out.homeCalendarNext || ''), source: String(out.homeCalendarNextSource || '')} : null;
+export function homeAgendaCard(out: Bag): ReactElement | null {
+  if (out.homeShowCalendar === false || out.homeCalendarConfirmedEmpty === true) return null;
+  const next = out.homeCalendarHasNext ? {text: String(out.homeCalendarNext || ''), source: ''} : null;
   return createElement(OverviewAgendaCard, {
-    heading: String(out.homeCalendarTime ?? ''), origin: String(out.homeCalendarOrigin ?? ''), title: String(out.homeCalendarTitle ?? ''),
+    heading: String(out.homeCalendarTime ?? ''), origin: '', title: String(out.homeCalendarTitle ?? ''),
     footer: String(out.homeCalendarFooter ?? ''), hasItem: out.homeCalendarHasEvent === true,
     // The read line appears only when the data adapter put one in the meta row.
-    source: out.homeCalendarHasMeta === false ? '' : String(out.homeCalendarSource ?? ''),
+    source: '',
     next, overdue: out.homeCalendarOverdue === true, stale: out.homeCalendarStale === true,
     label: String(out.homeCalendarLabel ?? 'Open your calendar'), description: String(out.homeCalendarDescription ?? ''),
     onActivate: typeof out.goCalendar === 'function' ? out.goCalendar : undefined,
@@ -38,7 +39,8 @@ const INBOX_STATES = new Set(['not-connected', 'idle', 'loading', 'ready', 'stal
  * computed from the page the user loaded (presentHomeInboxCard), Alpha's styles and its installed
  * selectors. It shows no message body and reads no mail.
  */
-export function homeAttentionCard(out: Bag): ReactElement {
+export function homeAttentionCard(out: Bag): ReactElement | null {
+  if (out.homeShowInbox === false || out.homeInboxConfirmedEmpty === true) return null;
   const rows = Array.isArray(out.homeInboxRows) && out.homeInboxHasRows !== false
     ? out.homeInboxRows.map((row: Bag) => ({title: String(row?.subject ?? ''), detail: String(row?.from ?? '')})) : [];
   const people = Array.isArray(out.homeAttentionPeople) ? out.homeAttentionPeople.map((person: Bag) => String(person?.ini ?? '')) : [];
@@ -90,6 +92,9 @@ export function installHomeOverviewCards(Component: any) {
   const p = Component.prototype, render = p.renderVals;
   p.renderVals = function () {
     const out = render.call(this);
-    return {...out, homeAgendaCard: homeAgendaCard(out), homeAttentionCard: homeAttentionCard(out), homeBriefCard: homeBriefCard(out)};
+    const agenda = homeAgendaCard(out), attention = homeAttentionCard(out), brief = homeBriefCard(out);
+    const showWorkflow = out.homeShowWorkflows !== false && out.homeWorkflowConfirmedEmpty !== true;
+    return {...out, homeAgendaCard: agenda, homeAttentionCard: attention, homeBriefCard: brief, homeShowWorkflow: showWorkflow,
+      homeHasOverviewCards: !!(agenda || attention || brief || showWorkflow)};
   };
 }

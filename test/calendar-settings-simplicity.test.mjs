@@ -1,19 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 const source=readFileSync('apps/app/src/prototype/settings-adapter.ts','utf8');
 const start=source.indexOf('// calendar-settings:begin'),end=source.indexOf('// calendar-settings:end');
 assert(start>=0&&end>start);
 const region=stripTypeScriptTypes(source.slice(start,end),{mode:'transform'});
-const names=['page','state','views','owner','info','group','api','gmailAccounts','gmail','developerTools','Capacitor','out','native','testMocksEnabled','browserCalendarScope','openCalendarSyncSettings','connectionController','googleConnectionController','openCalendarRecovery'];
+const names=['current','stack','subpage','page','state','views','owner','info','group','api','gmailAccounts','gmail','developerTools','Capacitor','out','native','testMocksEnabled','browserCalendarScope','openCalendarSyncSettings','connectionController','googleConnectionController','openCalendarRecovery'];
 const render=new Function(...names,region);
 function fixture({status='ready',accounts=[],gmail='Read access authorized',authority='canonical',detail=false,form=null,transition=false,native=false,calendarMessage}={}){
  const calls={sync:[],google:0,connection:0,recovery:0,retry:0,transition:0,pages:[]},calendar={calendarAuthority:authority,form},model={status,ownerKey:'owner',error:calendarMessage??(status==='error'?'Calendar read failed':null)};
  const controller={state:model},owner={live:true,agentCalendar:controller,vget:()=>calendar,api:()=>({})};
  const calendarView={nativeStatusLabel:calendarMessage??(['error','partial','unavailable'].includes(status)?'Calendar could not update':''),nativeStatusRetry:()=>calls.retry++,canConfirmCalendarTransition:transition,confirmCalendarTransition:()=>calls.transition++,calendarAuthorityChoices:[{label:'Agent Calendar',go:()=>{if(!calendar.form)calendar.calendarAuthority='canonical';}}]};
  owner.calendarConnectionScope=()=>{if(!model.ownerKey||!owner.live||calendar.form||['legacy','android-native','browser-local'].includes(calendar.calendarAuthority))return null;return{calendar:controller,current:()=>owner.live&&owner.agentCalendar===controller&&model.ownerKey==='owner',canChange:()=>!calendar.form&&!owner.canonicalDraftText};};
- const out={stack:[]},api={set:patch=>calls.pages.push(patch),toast:()=>{}},context={page:{groups:[]},state:{page:detail?'calendar-google':'calendar'},views:{calendar:{displaySources:()=>({status,ready:status==='ready',native:false,loading:false,sources:[]}),render:()=>calendarView}},owner,info:(label,val)=>({kInfo:true,label,val}),group:rows=>({rows}),api,gmailAccounts:accounts,gmail,developerTools:false,Capacitor:{isNativePlatform:()=>native},out,native,testMocksEnabled:false,browserCalendarScope:()=>false,openCalendarSyncSettings:scope=>calls.sync.push(scope),connectionController:{open:()=>calls.connection++},googleConnectionController:{open:()=>calls.google++,openCalendar:scope=>calls.sync.push(scope)},openCalendarRecovery:()=>calls.recovery++};
+ const out={stack:[]},api={set:patch=>calls.pages.push(patch),toast:()=>{}},context={current:'calendar',stack:out.stack,subpage:(title,groups)=>({title,groups,back:()=>calls.pages.push({page:null})}),page:{groups:[]},state:{page:detail?'calendar-google':'calendar'},views:{calendar:{displaySources:()=>({status,ready:status==='ready',native:false,loading:false,sources:[]}),render:()=>calendarView}},owner,info:(label,val)=>({kInfo:true,label,val}),group:rows=>({rows}),api,gmailAccounts:accounts,gmail,developerTools:false,Capacitor:{isNativePlatform:()=>native},out,native,testMocksEnabled:false,browserCalendarScope:()=>false,openCalendarSyncSettings:scope=>calls.sync.push(scope),connectionController:{open:()=>calls.connection++},googleConnectionController:{open:()=>calls.google++,openCalendar:scope=>calls.sync.push(scope)},openCalendarRecovery:()=>calls.recovery++};
  render(...names.map(n=>context[n]));
  return {calls,owner,calendar,controller,out,context,rows:out.stack[0].groups.flatMap(g=>g.rows),details:out.stack.at(-1).groups.flatMap(g=>g.rows)};
 }

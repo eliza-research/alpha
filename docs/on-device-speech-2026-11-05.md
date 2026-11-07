@@ -1,11 +1,12 @@
 # On-device speech: measurements and decisions, 2026-11-05
 
 Device: Pixel 10a `stallion`, `ro.soc.model` Tensor G4, Alpha userdebug image. Engine
-`b3eb2bf63b`, measured at Eliza pin `36236fc059`; the pin is now `5d1af326e5` with byte-identical engines. Raw results are under
+`b3eb2bf63b`, measured at Eliza pin `36236fc059`. The branch measured `b25d8aef29` with engine `6337fd4c4b`
+(same model bytes). Integration uses `ae1a9dda6712`, the reviewed Node26 staging fix over `94c8ca497675`, which preserves the current Alpha source
+and the speech branch. The recorded device measurements remain bound to their original
+source and artifacts, and do not qualify a new APK at the integration pin. Raw results are under
 [evidence](evidence/on-device-speech-2026-11-05). Everything here is development evidence from
-a dirty tree and a debug APK: not release, AOSP image or user acceptance. The defect 1 fix is on main;
-`SpeechLeadTrim`, `SpeechOutputWarmup` and `FirstWriteSpeechOutput` targeted the older app-owned playback and
-are kept on branch `claude/finish-open-issues` (ef9fbf7cd7); landing them means a change to the shared upstream speech bridge.
+a dirty tree and a debug APK: not release, AOSP image or user acceptance.
 
 ## Status
 
@@ -52,7 +53,7 @@ does not reach the bridge log, so an absent log line proves nothing.
 The boot hook runs and registers the loader in `local` mode (`runBootHooks`, `ensure mode=local`,
 `tryBionic`). The Cloud rule in `ensureLocalInferenceHandler` is not involved.
 
-A local patch (`patches/eliza/local-inference-live-asr.patch`, kept on branch `claude/finish-open-issues`) fixed 2,
+[`patches/eliza/local-inference-live-asr.patch`](../patches/eliza/local-inference-live-asr.patch) fixes 2,
 3 and 4; it applies to the pin. With it, status returned `ready:true, streaming:true` and a
 real clip posted to the route returned "If you go into different cultures, they have different concepts
 of creation." in stream mode in 287 ms, including the final IPC round trip. That run was a one-off
@@ -66,6 +67,138 @@ barge-in armed, and three real turns passed. It was removed in favour of the ups
 turns: VAD 536 ms, endpoint to submit 998 ms, request to first token 8,310 ms, first token to TTS start
 170 ms, TTS start to ready 284 ms, ready to audible 192 ms. One turn is not a distribution; its record
 was not retained.
+
+## Where the reply time goes (November 6)
+
+One voice turn is one Cloud call: `RESPONSE_HANDLER` on `cerebras/qwen-3.8-27b`, 11,309 prompt and
+233 completion tokens. Server-Timing from Eliza Cloud, captured on the phone
+([records](evidence/on-device-speech-2026-11-05/cloud-model-http-timing.jsonl)):
+
+| Turn | Total | Breakdown |
+| --- | --- | --- |
+| First after 9 min idle | 11.3 s | 503 warming at 0.5 s; retry 503 after 5.3 s with `gateway_middle` 5,006 ms; third attempt `gateway_reserve` 1,023 ms, setup 293 ms, headers 1.9 s, body 0.9 s |
+| Warm | 2.2 s | auth 98, middle 79, reserve 209, setup 253 ms (preforward 639 ms); provider about 0.3 s; body 0.9 s |
+| Warm | 6.2 s | reserve 2,410 ms; preforward 2,814 ms; provider about 2.2 s; body 0.9 s |
+
+- `gateway_reserve` is `admitOrganizationInference`: a Postgres write transaction over Hyperdrive on every
+  request (policy lock and read, billing-hold check, funding capacity). 0.2 to 2.4 s measured.
+- Every request also pays about 100 ms of auth: identity and moderation lookups (`auth_identity`,
+  `auth_moderation`).
+- A cold gateway answers 503 `*_cache_warming`; the plugin retries with backoff, and one retry spent
+  5 s in middleware before failing again.
+- The database-free path exists: snapshot admission and funded-budget admission (Durable Object).
+  Production keeps it off (`INFERENCE_STRONG_REVOCATION_ENABLED`, `INFERENCE_SNAPSHOT_ADMISSION_ENABLED`,
+  `INFERENCE_FUNDED_BUDGET_ADMISSION`) behind a documented canary of the credential-revocation lane
+  (`packages/cloud/api/wrangler.toml`). Staging runs it.
+- Generation itself is about 1 s. With admission off the hot path, a warm turn would be about 1.3 s.
+
+Reply streaming: the Cloud call already streams, but core only releases skeleton fields named `text` or
+`messageToUser` (`DEFAULT_RESPONSE_SKELETON_STREAM_FIELDS`). Stage 1's field is `replyText`, which
+reply-parts resolution, source-quote validation and a validation retry can still change, so it is
+delivered once complete. Streaming it safely needs a rule for when early text is final, for example a
+plain-string reply in a turn with no actions.
+
+## November 6 evening: lean Cloud admission and reply streaming
+
+- **Cloud admission.** [elizaOS/eliza#38954](https://github.com/elizaOS/eliza/pull/38954) makes the
+  database-free admission (cached snapshot plus the `INFERENCE_ADMISSION_GATES` Durable Object) the
+  only Worker inference path. It deletes nine slow-path flags, the cold-cache warming 503s, the
+  unused moderation service and the pending-charge ledger lanes. Two adversarial reviews found
+  stale cached balances after credit changes; credit mutations now republish the committed balance
+  to the gate. Deployed to staging (run 42297513900, certified) and production at 100% (run
+  42300090162, `a590c7a58f`) with no canary, as the owner authorised.
+- **Effect on the phone** ([records](evidence/on-device-speech-2026-11-05/cloud-lean-production-text-turns.json)):
+  10 typed turns gave first reply text after a median of 2.0 s (1.8 to 2.0 s on 6 turns, then 4.3,
+  4.5, 7.3 and 8.1 s), against 2.2, 6.2 and 11.3 s before. Later runs at newer pins: 1.7 to 2.1 s on
+  most turns, with occasional 4 to 8.5 s turns. The slow tail has not been attributed: the stock
+  bundle records no Server-Timing.
+- **Reply streaming.** Stage 1 now streams `replyText` as provisional drafts that the validated
+  final reply confirms, revises or retracts. Four upstream changes were needed:
+  [#38955](https://github.com/elizaOS/eliza/pull/38955) (streaming fields and gate),
+  [#38968](https://github.com/elizaOS/eliza/pull/38968) (gate follows the emitted schema; plugin
+  routing fields declare their direct-answer value and are written before the reply),
+  [#38972](https://github.com/elizaOS/eliza/pull/38972) (accept the no-op Notes and navigation values
+  a real model writes) and [#38979](https://github.com/elizaOS/eliza/pull/38979) (gate on the fields of
+  the tool schema actually sent). Each step was found on this phone: pins `86a0d19473` and
+  `c35106fb14` still delivered every reply in one frame
+  ([86a0d19473](evidence/on-device-speech-2026-11-05/stream-turns-86a0d19473.json),
+  [c35106fb14](evidence/on-device-speech-2026-11-05/stream-turns-c35106fb14.json)). A temporary,
+  restored, instrumented bundle located the last refusal
+  ([diagnosis](evidence/on-device-speech-2026-11-05/stream-hold-diagnosis.json)).
+- **Streaming cannot shorten the wait on the current model.** Cerebras, through Eliza Cloud,
+  returns the whole Stage-1 tool-call envelope in one chunk, 0.5 to 1.1 s after the response body
+  starts. The Worker passes the provider stream through unchanged. A draft can therefore lead the
+  final reply only by milliseconds. Time to first reply is prefill of an about 11,000-token prompt
+  plus Cloud and network time, not decoding. The remaining levers are a shorter Stage-1 prompt, the
+  unexplained slow turns, or a provider that streams tool arguments.
+- **Confirmed on the phone (November 7).** At pin `b25d8aef29` (versionCode 40, all four streaming
+  changes, stock bundle) all 8 typed direct-answer turns delivered a provisional draft frame before
+  the confirming final frame, and no final text differed from its draft
+  ([records](evidence/on-device-speech-2026-11-05/stream-turns-b25d8aef29.json)). The draft led
+  `reply_ready` by only 76 to 162 ms, as expected from the one-chunk provider stream. Those turns
+  took 2.9 to 8.7 s to first text, but the phone's network was degraded during the run: ping to
+  1.1.1.1 from the phone was 824 to 1,880 ms (average 1.4 s) against 33 ms from the host on the same
+  site. Their absolute times describe that link, not Cloud or the agent.
+
+### Engine 6337fd4c4b qualification (November 7)
+
+The pin moves brought a new engine revision with the same model bytes. The upstream qualify app was
+rebuilt from prepared source at `b25d8aef29` and run on both ABIs
+([records](evidence/voice-engine-6337fd4c)). Every transcript matches the `b3eb2bf63b` runs word for
+word; only speed moved, and only on the emulator.
+
+| | ASR WER (101 utterances, limit 6%) | Round-trip WER (230 sentences, limit 8%) | ASR / TTS RTF |
+| --- | --- | --- | --- |
+| Pixel 10a arm64, API 37 | 1.94% | 4.77% | 0.042 / 0.055 |
+| x86_64 emulator, API 35 | 2.13% | 4.90% | 0.488 / 0.118 |
+
+The voice record now has `deviceExecuted` and `emulatorDeviceExecuted` true for this engine;
+`qualified` stays false until the owner accepts real use.
+
+### Where a voice turn's time goes now
+
+| Stage | Time | Source |
+| --- | --- | --- |
+| Last spoken word to final transcript (VAD 519 ms, Phonon-2 81 ms) | about 0.6 s | v36 harness, on device |
+| Language model, first reply text (Cloud, lean admission) | 1.7 to 2.1 s typical, 4 to 8.5 s tail | typed turns, production |
+| Paradee synthesis start to audible | about 0.3 s | v36 harness, on device |
+| **Estimated last word to first audible reply** | **about 2.6 to 3.0 s typical** | sum, not a measured turn |
+
+Cloud speech for comparison (`cloud-voice-latency-2026-11-01.json`, 8 turns, Cartesia and Cloud
+STT): recording stop to transcript 2.1 to 8.9 s, and final reply to playback start 2.2 to 8.3 s.
+Those two Cloud spans add up to 4.3 to 17.2 s per turn, against about 0.9 s for the on-device
+speech stages, so on-device speech removes about 3.4 to 16 s; the language model now dominates. This is an estimate from separate runs, not a same-day A/B. A
+spoken A/B on November 7 stopped at its first capture because the microphone heard people in the
+room; the owner then chose to skip it.
+
+## November 6, later: AOSP image, dependency audit, conversational latency
+
+- **AOSP image.** The v35 overlay, including the listener, built into an `alpha_stallion_phone` userdebug
+  image (`~/Android/pixel10a-preparation/latest-v35-20261106`), and it was flashed with no wipe or relock.
+  The phone booted it (build date Nov 6) with its data intact. On that image the resident reported
+  `ready:true, streaming:true` and transcribed the test clip correctly. The first boot showed the Cloud
+  account as signed out; a clean app restart restored it. The package manager still lists the
+  `/product` copy as version 6, probably because the build fingerprint did not change.
+- **Dependencies.** [elizaOS/eliza#38902](https://github.com/elizaOS/eliza/pull/38902) (merged) moved
+  undici, body-parser, qs, node-forge, follow-redirects, fast-uri, `@hono/node-server`,
+  serialize-javascript and nodemailer to patched releases. Pin `912f972e58`. The packaged-runtime audit
+  reports no advisory in what the APK ships. The 12 remaining full-lock advisories (undici 5 and
+  7.28.0, zod 3.x and 4.4.3, glob, minimatch, deepmerge) are not shipped and have no fix in a
+  compatible major; they are recorded as reviewed exceptions. The root lockfile's undici, glob,
+  minimatch and rimraf advisories were fixed with `npm update`.
+- **Streamed speech and shorter gaps (v36).** The assistant now speaks each sentence as soon as the
+  streamed reply completes it, rather than after the whole reply. The end-of-turn gaps are now 250 ms
+  (short), 800 ms (long) and a 500 ms scorer deadline, down from 300, 1,200 and 600.
+- **Speech pipeline, v36, no LLM** (paced feed, 9 of 9 passed): 909 ms p50 from the last spoken word to
+  audible reply, of which VAD hangover is 519 ms, final transcript 81 ms, and synthesis start to audible
+  308 ms.
+- **The LLM is now the bottleneck.** On three text turns in the app, the first reply text appeared
+  after 11.6, 5.0 and 2.4 s, and each reply arrived in one piece. The resident does not deliver partial
+  text to the app, so the streamed-speech change has nothing to start early on until it does. Fixing
+  that is in the agent (reply streaming, and a faster first response from Cloud inference), not in
+  speech.
+- No acoustic turn ran on v36: the phone's microphone recorded a peak of 0 while the laptop played the
+  prompt, so the phone is no longer within range of the speaker.
 
 ## November 6: pin 5d1af326e5, qualification, live turns
 
@@ -164,7 +297,7 @@ Earlier FC-only probes showed a slowdown above N=64 and 438 ms for the encoder. 
 of those probes and does not apply to the layered graph. One 604M-weight model at N=64 panicked the
 kernel (`system_is_deadlocked_on_memory`); 24 separate models did not.
 
-## TPU decision (P-58)
+## TPU decision (P-80)
 
 The owner's rule is to use the TPU only if it is faster on the shipped path. On that path, live voice
 streams Phonon-2 during speech, so the user waits only for the stream's finish after the endpoint:

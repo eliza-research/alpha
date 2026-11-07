@@ -7,7 +7,7 @@ import {test,expect,type Page} from '@playwright/test';
 type FixtureOptions={kind?:'typed'|'generic'|'hosted';occurrence?:'missed'|'overlap'};
 async function setup(page:Page,options:FixtureOptions={}){
  await page.goto('/?mode=dev&workflows=agent');
- await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent connection',exact:true}).click();await page.getByRole('button',{name:'Connect development profile'}).click();
+ await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent',exact:true}).click();await page.getByRole('button',{name:'Connect development profile'}).click();
  await page.evaluate(async(options:FixtureOptions)=>{
   const {WorkflowProtocol}=await import('/src/runtime/workflow-protocol.ts');const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');
   const trigger={kind:'time',localTime:'07:30',timeZone:'UTC',days:[3]};

@@ -14,7 +14,8 @@ import stat
 import subprocess
 import sys
 
-SDK = '0594fc72da4450a84a986ad12e730e3faa902018'
+SDK = 'ae1a9dda6712cd20fa249982afef1ef0abd28a3c'
+NODE = '26.13.0'
 HOST = 'f222d4ce2e67fc0c401bec9d35bb3b72fbe83e9d74ca6c2bf7353d0d79e2026b'
 JSON_SHA = '3ea61b2a06e31edf1c91134fe9106b0ebb16628be169f3db75bc7a2b06b45796'
 ENTRY_SECONDS = 180  # <240s GHA timeout, leaving >=60s platform margin.
@@ -216,7 +217,7 @@ def main():
     require(safe_git(root / 'vendor/eliza', ['rev-parse', 'HEAD']) == SDK, 'Unexpected SDK checkout')
     host = root / 'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCalendarPlugin.java'
     require(digest(host) == HOST, 'Unexpected Alpha calendar host')
-    require((root / '.nvmrc').read_text().strip() == '24.15.0', 'Unexpected Node declaration')
+    require((root / '.nvmrc').read_text().strip() == NODE, 'Unexpected Node declaration')
     node = Path(shutil.which('node')).resolve(strict=True)
     java_home = Path(os.environ['JAVA_HOME']).resolve(strict=True)
     jar = Path(os.environ['ALPHA_JSON_JAR']).resolve(strict=True)

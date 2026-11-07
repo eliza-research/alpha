@@ -41,6 +41,16 @@ test('background admission no longer depends on the agent inference provider',()
  assert.equal((watch.match(/configureGmailBackground\(/g)||[]).length,2,'an unnamed owner never withdraws the saved selection');
 });
 
+test('mail delivery enters the credential lifecycle lock before the vault and resumes off the UI thread',()=>{
+ const binding=java('GmailBackground.java'),agent=java('AlphaLocalAgentPlugin.java'),plugin=java('AlphaGmailPlugin.java');
+ assert.match(binding,/public Object lock\(\)\{return AlphaLocalAgentPlugin\.credentialLifecycleLock\(\);\}/);
+ assert.match(agent,/static Object credentialLifecycleLock\(\)\{return lifecycleLock;\}/);
+ assert.match(agent,/withCredentialSlotMutation\([^\n]+\n\s+synchronized\(lifecycleLock\)\{synchronized\(ai\.eliza\.plugins\.securestore\.nativeonly\.JsonCredentialSlots\.LOCK\)/);
+ assert.match(plugin,/void resumeDelivery\(boolean notify\)\{try\{io\.execute\(\(\)->\{delivery\(\)\.resume\(\);/);
+ assert.match(plugin,/void load\(\)\{[^\n]*resumeDelivery\(false\);\}/);
+ assert.match(plugin,/void handleOnResume\(\)\{resumeDelivery\(true\);\}/);
+});
+
 // The shared engine and delivery are exercised at the pin, against the real projected sources.
 const cache=join(homedir(),'.gradle/caches/modules-2/files-2.1/org.json/json/20250517');
 const cached=existsSync(cache)?readdirSync(cache).flatMap(hash=>readdirSync(join(cache,hash)).filter(name=>name==='json-20250517.jar').map(name=>join(cache,hash,name)))[0]:undefined;

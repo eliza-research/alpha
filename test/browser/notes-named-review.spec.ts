@@ -1,10 +1,10 @@
 import {test,expect} from '@playwright/test';
 import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from '../support/strip-types.mjs';
 // Local review dialogs for name-targeted Notes edits and the titles-only listing.
 const root=resolve(import.meta.dirname,'../..');
-const compile=(path:string)=>stripTypeScriptTypes(readFileSync(resolve(root,path),'utf8'),{mode:'transform'});
+const compile=(path:string)=>stripTypeScriptTypes(readFileSync(resolve(root,path),'utf8'),{mode:'strip'});
 const inert=compile('apps/app/src/runtime/modal-inert.ts');
 const review=[compile('apps/app/src/prototype/source-review-dialog.ts').replace(/import\s*\{\s*holdPhoneInert\s*\}\s*from\s*['"]\.\.\/runtime\/modal-inert['"];/,''),compile('apps/app/src/prototype/notes-query-review.ts').replace(/import\s*\{\s*openReview\s*\}\s*from\s*['"]\.\/source-review-dialog['"];/,'')].join('\n');
 const css=readFileSync(resolve(root,'apps/app/src/prototype/phone.css'),'utf8');

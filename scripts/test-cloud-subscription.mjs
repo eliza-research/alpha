@@ -4,8 +4,8 @@
 // Cloud account, a real code, staging or a device.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-if (!process.execArgv.includes('--experimental-transform-types')) {
-  const child = spawnSync(process.execPath, ['--import', 'tsx', '--experimental-transform-types', process.argv[1]], { stdio: 'inherit' });
+if (!process.execArgv.some(arg => arg === '--import=tsx' || arg === 'tsx')) {
+  const child = spawnSync(process.execPath, ['--import', 'tsx', process.argv[1]], { stdio: 'inherit' });
   process.exit(child.status ?? 1);
 }
 const { CloudProtocol, CloudProtocolError, planManagementUrl } = await import('../apps/app/src/runtime/cloud-protocol.ts');
@@ -30,7 +30,12 @@ const refused = async (promise, code) => assert.rejects(promise, error => error 
 {
   const { cloud, calls } = client(() => granted);
   const result = await cloud.redeemSubscriptionCode(`  ${CODE} `, 'submission-key-0001', signal());
-  assert.deepEqual(result, { planEndsAt: Date.parse('2027-04-14T00:00:00.000Z'), replayed: false, grantEndsAt: Date.parse('2027-04-14T00:00:00.000Z'), paidPlanTakesPrecedence: false, planName: 'Plus' });
+  assert.deepEqual(result, {
+    planKey: 'plus_monthly', startsAt: Date.parse('2026-10-13T00:00:00.000Z'),
+    planEndsAt: Date.parse('2027-04-14T00:00:00.000Z'), replayed: false,
+    grantEndsAt: Date.parse('2027-04-14T00:00:00.000Z'),
+    paidPlanTakesPrecedence: false, planName: 'Plus',
+  });
   assert.equal(calls.length, 1);
   assert.equal(calls[0].url, 'https://api.eliza.app/api/v1/subscription/redeem');
   assert.equal(calls[0].method, 'POST');
@@ -48,7 +53,9 @@ const refused = async (promise, code) => assert.rejects(promise, error => error 
 // Revoked replays grant nothing, and the effective paid window is distinct from the grant window.
 {
  const revoked=client(()=>({status:200,data:{...granted.data,replayed:true,grant:{...granted.data.grant,revoked:true}}}));
- await refused(revoked.cloud.redeemSubscriptionCode(CODE,'submission-revoked',signal()),'invalid');
+ await refused(revoked.cloud.redeemSubscriptionCode(CODE,'submission-revoked',signal()),'ended');
+ const expired=client(()=>({status:200,data:{...granted.data,replayed:true,grant:{...granted.data.grant,endsAt:'2000-01-01T00:00:00.000Z'}}}));
+ await refused(expired.cloud.redeemSubscriptionCode(CODE,'submission-expired',signal()),'ended');
  const paid=client(()=>({status:200,data:{...granted.data,grant:{...granted.data.grant,paidPlanTakesPrecedence:true},entitlement:{...granted.data.entitlement,effectiveUntil:'2027-05-01T00:00:00.000Z'}}}));
  assert.equal((await paid.cloud.redeemSubscriptionCode(CODE,'submission-paid',signal())).planEndsAt,Date.parse('2027-05-01T00:00:00.000Z'));
 }

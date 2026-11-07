@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 
 function fixture(options={}){
  const source=fs.readFileSync('.eliza/client-features/packages/voice/src/native-cloud-speech.ts','utf8').replace(/^import .*;\n/gm,'').replaceAll('export interface','interface').replaceAll('export const','const').replaceAll('export function','function');
@@ -30,6 +30,57 @@ test('streaming ASR sends one final segment, interims never submit, unrelated se
  await capture.close();assert.deepEqual(f.mutes,[false,true]);assert.equal(f.stops,0,'mute preserves the output socket');
  await f.speech.listen(f.handlers);assert.deepEqual(f.mutes,[false,true,false]);
  await f.speech.stop();assert.equal(f.stops,1);assert.equal(f.removed,1);
+});
+
+test('reopen drains a pending old turn while muted before accepting a new short turn',async()=>{
+ const f=fixture(),capture=await f.speech.listen(f.handlers);
+ f.emit({type:'speech-start'});f.emit({type:'speech-end',text:'What is twelve plus eight?'});
+ await capture.close();
+ f.emit({type:'speech-start'}); // Buffered onset arrives during the reply hold.
+ let opened=false;const opening=f.speech.listen(f.handlers).then(value=>{opened=true;return value;});
+ for(let i=0;i<20;i++)await Promise.resolve();
+ assert.equal(opened,false);assert.equal(f.mutes.at(-1),true,'new physical audio stays off until the old final');
+ f.emit({type:'speech-start'}); // A turn.resume is still the old provider turn.
+ f.emit({type:'transcript',text:'Just'});
+ f.emit({type:'speech-end',text:'Just'});
+ await opening;assert.equal(f.mutes.at(-1),false);
+ assert.deepEqual(f.events,['start','end','What is twelve plus eight?']);
+ assert.deepEqual(f.interim,[],'stale partial text does not appear in the reopened composer');
+ f.emit({type:'speech-start'});f.emit({type:'speech-end',text:'Yes'});
+ assert.deepEqual(f.events.slice(-3),['start','end','Yes'],'valid short turns remain accepted');
+ await f.speech.stop();
+});
+
+// Ink guarantees each turn starts before its final and the next turn starts
+// after that final. Native maps turn.resume to speech-start within the old turn.
+// https://docs.cartesia.ai/use-the-api/stt/turns
+test('a final without a matching provider start is not invented as a new turn',async()=>{
+ const f=fixture();await f.speech.listen(f.handlers);
+ f.emit({type:'speech-end',text:'unowned final'});assert.deepEqual(f.events,[]);
+ f.emit({type:'speech-start'});f.emit({type:'speech-end',text:'Yes'});
+ assert.deepEqual(f.events,['start','end','Yes']);await f.speech.stop();
+});
+
+for(const ending of ['Stop','abort'])test(`${ending} during old-turn drain never reopens capture`,async()=>{
+ const f=fixture(),capture=await f.speech.listen(f.handlers);await capture.close();
+ f.emit({type:'speech-start'});const opening=f.speech.listen(f.handlers);
+ const rejected=assert.rejects(opening,{name:'AbortError'});
+ for(let i=0;i<20;i++)await Promise.resolve();
+ assert.equal(f.mutes.at(-1),true);
+ if(ending==='abort')f.controller.abort();else await f.speech.stop();
+ await rejected;f.emit({type:'speech-end',text:'late'});
+ assert.equal(f.mutes.filter(value=>!value).length,1,'only the original capture ever unmuted');
+ assert.equal(f.stops,1);assert.deepEqual(f.events,[]);
+});
+
+test('old-turn drain is bounded and cannot unmute after its deadline',async t=>{
+ t.mock.timers.enable({apis:['setTimeout']});
+ const f=fixture(),capture=await f.speech.listen(f.handlers);await capture.close();
+ f.emit({type:'speech-start'});const opening=f.speech.listen(f.handlers);
+ const rejected=assert.rejects(opening,/did not confirm the mute in time/);
+ for(let i=0;i<20;i++)await Promise.resolve();
+ t.mock.timers.tick(2500);await rejected;
+ assert.equal(f.mutes.filter(value=>!value).length,1);assert.equal(f.stops,1);
 });
 
 test('first PCM starts playback before completion; unrelated completion cannot settle speech',async()=>{

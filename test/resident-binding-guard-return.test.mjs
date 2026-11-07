@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 const source=readFileSync(new URL('../apps/app/src/runtime/local-agent.ts',import.meta.url),'utf8');
 const start=source.indexOf('export async function bindResidentCloudProvider('),end=source.indexOf('/** Automatic failed-bind cleanup',start);
 assert.ok(start>=0&&end>start);

@@ -9,7 +9,13 @@ import {
 } from "../../../../.eliza/client-features/packages/ui/src/gestures/constants";
 import { visibleDocks } from "../runtime/dock-clearance";
 
-const PANEL_TRANSITION = `height .42s cubic-bezier(${OVERLAY_EASE.join(",")}), border-radius .42s, opacity .2s`;
+const SHEET_EASE = `cubic-bezier(${OVERLAY_EASE.join(",")})`;
+const PANEL_TRANSITION = `height .42s ${SHEET_EASE}, border-radius .42s, opacity .2s`;
+/** A tap opening or closing from the bar changes height only; the sheet is opaque throughout. */
+const RESIZE_TRANSITION = `height .42s ${SHEET_EASE}, border-radius .42s, opacity .12s linear`;
+/** How long a tap close keeps the sheet's composer, then fades it to show the bar in its place. */
+const CLOSE_MS = 400;
+const CLOSE_FADE_MS = 120;
 type Shell = any;
 // chat-release:begin (dependency-free; exercised by test/chat-release.test.mjs)
 type Mode = "hidden" | "input" | "sheet" | "full";
@@ -125,6 +131,44 @@ function revealRows(panel: HTMLElement, scale: number) {
 		row.style.opacity = String(clamp01(room / ROW_REVEAL));
 	}
 }
+/** The sheet's composer block, from its top to the sheet's bottom edge, in canvas pixels. */
+function composerBlock(panel: HTMLElement, scale: number): number {
+	const composer = panel.querySelector<HTMLElement>(".alpha-chat-composer");
+	if (!composer) return 0;
+	return (
+		(panel.getBoundingClientRect().bottom -
+			composer.getBoundingClientRect().top) /
+		scale
+	);
+}
+/**
+ * Keeps sheet rows hidden until they fit while the sheet's height animates, then hands them
+ * back to the template once an open sheet has settled.
+ */
+function revealWhileResizing(shell: Shell, scale: number) {
+	const token = (shell.chatRevealToken = (shell.chatRevealToken || 0) + 1);
+	const end = performance.now() + 480;
+	const frame = () => {
+		const panel = document.querySelector<HTMLElement>(
+			'[data-alpha-layer="conversation"]',
+		);
+		if (!panel || shell.chatRevealToken !== token || shell.chatMotion) return;
+		if (performance.now() < end) {
+			revealRows(panel, scale);
+			requestAnimationFrame(frame);
+			return;
+		}
+		const mode = shell.S().chat;
+		if (mode === "sheet" || mode === "full")
+			for (const row of panel.querySelectorAll<HTMLElement>(SHEET_ROWS))
+				row.style.removeProperty("opacity");
+	};
+	const panel = document.querySelector<HTMLElement>(
+		'[data-alpha-layer="conversation"]',
+	);
+	if (panel) revealRows(panel, scale);
+	requestAnimationFrame(frame);
+}
 /** Direct style for the bar or pill while a drag is moving. */
 function dockStyle(d: Drag): Record<string, string> {
 	const still = { transition: "none", animation: "none" };
@@ -189,6 +233,51 @@ export function installChatOverlayMotion(Component: Shell) {
 	function sheetHeight(shell: Shell, geometry: ReturnType<typeof bounds>) {
 		return restingHeight(shell.chatSheetShare, geometry.full, geometry.half);
 	}
+	/**
+	 * A tap between the bar and the sheet resizes the sheet from or to the bar's own place, with
+	 * the composer pinned there, the way a drag does: the bar is never left showing behind it,
+	 * and no blank frame or ghosted header shows between the two.
+	 */
+	function resizeForTap(shell: Shell, change: { from: Mode; to: Mode; tap: boolean }) {
+		// Navigation can pass through the pill before reopening. Every mode change
+		// retires the previous resize, including changes that do not animate the bar.
+		const token = (shell.chatResizeToken = (shell.chatResizeToken || 0) + 1);
+		const panel = document.querySelector<HTMLElement>(
+			'[data-alpha-layer="conversation"]',
+		);
+		const scale = bounds().scale || 1;
+		const open = (mode: Mode) => mode === "sheet" || mode === "full";
+		if (panel && change.tap && change.from === "input" && open(change.to)) {
+			const target = panel.style.height;
+			panel.style.transition = "none";
+			panel.style.opacity = "1";
+			panel.style.height = `${composerBlock(panel, scale)}px`;
+			panel.getBoundingClientRect();
+			panel.style.transition = RESIZE_TRANSITION;
+			panel.style.height = target;
+			setTimeout(() => {
+				if (shell.chatResizeToken === token)
+					panel.style.transition = PANEL_TRANSITION;
+			}, 460);
+		}
+		if (panel && change.tap && open(change.from) && change.to === "input") {
+			panel.style.transition = RESIZE_TRANSITION;
+			panel.style.opacity = "1";
+			panel.style.height = `${composerBlock(panel, scale)}px`;
+			setTimeout(() => {
+				if (shell.chatResizeToken === token) panel.style.opacity = "0";
+			}, CLOSE_MS - CLOSE_FADE_MS);
+			setTimeout(() => {
+				if (shell.chatResizeToken !== token || shell.live === false) return;
+				shell.chatClosingUntil = 0;
+				// Back to the template's closed values before the composer leaves.
+				panel.style.height = "0px";
+				panel.style.transition = PANEL_TRANSITION;
+				shell.setState({});
+			}, CLOSE_MS);
+		}
+		revealWhileResizing(shell, scale);
+	}
 	function retire(shell: Shell, redraw = true) {
 		const drag: Drag | undefined = shell.chatMotion;
 		shell.chatMotion = undefined;
@@ -207,22 +296,18 @@ export function installChatOverlayMotion(Component: Shell) {
 				panel.style.height = `${mode === "full" ? geometry.full : mode === "sheet" ? sheetHeight(shell, geometry) : 0}px`;
 				if (drag.renderedOpacity !== undefined)
 					panel.style.opacity = drag.renderedOpacity;
-				for (const row of panel.querySelectorAll<HTMLElement>(SHEET_ROWS))
-					row.style.removeProperty("opacity");
 				panel.style.transition = PANEL_TRANSITION;
 			}
-			const input = document.querySelector<HTMLElement>(
-				"[data-alpha-input-bar]",
-			);
-			if (input)
-				for (const name of ["transform", "opacity", "transition", "animation"])
-					input.style.removeProperty(name);
-			const pill = document.querySelector<HTMLElement>(
-				'[data-alpha-layer="pill"]>div',
-			);
-			if (pill)
-				for (const name of ["transform", "opacity", "transition", "animation"])
-					pill.style.removeProperty(name);
+			revealWhileResizing(shell, geometry.scale || 1);
+			// The bar or pill was already in place: replaying its entrance would drop it and rise again.
+			shell.chatDockShown = true;
+			for (const dock of document.querySelectorAll<HTMLElement>(
+				'[data-alpha-input-bar],[data-alpha-layer="pill"]>div',
+			)) {
+				for (const name of ["transform", "opacity", "transition"])
+					dock.style.removeProperty(name);
+				dock.style.animation = "none";
+			}
 		}
 		if (drag.owner.hasPointerCapture(drag.id))
 			drag.owner.releasePointerCapture(drag.id);
@@ -238,11 +323,46 @@ export function installChatOverlayMotion(Component: Shell) {
 		window.addEventListener("blur", this.cancelChatMotion);
 		window.addEventListener("pagehide", this.cancelChatMotion);
 		document.addEventListener("visibilitychange", this.chatMotionVisibility);
+		// Android can close the keyboard itself (its hide key, Back) and leave the composer
+		// focused. Keyboard up and composer focus are one state here, so the composer lets go.
+		// MainActivity uses adjustResize, so the WebView itself shrinks with the keyboard: compare
+		// against the tallest height seen at this width (as keyboardFreeHeight does), not innerHeight.
+		// The baseline is taken now, before any keyboard can have shrunk the window.
+		let keyboardOpen = false, base = { width: window.innerWidth, height: Math.min(window.innerHeight, window.visualViewport?.height ?? window.innerHeight) };
+		this.dockKeyboardWatch = () => {
+			const width = window.innerWidth,
+				height = Math.min(window.innerHeight, window.visualViewport?.height ?? window.innerHeight);
+			if (width !== base.width || height > base.height) base = { width, height: Math.max(height, width === base.width ? base.height : 0) };
+			const covered = base.height - height > 150;
+			if (keyboardOpen && !covered && this.dockComposerFocused) {
+				const active = document.activeElement;
+				if (active instanceof HTMLElement && active.matches("[data-alpha-composer]"))
+					active.blur();
+			}
+			keyboardOpen = covered;
+		};
+		window.visualViewport?.addEventListener("resize", this.dockKeyboardWatch);
+		window.addEventListener("resize", this.dockKeyboardWatch);
+		// Leaving the app ends typing: the keyboard is gone when it returns.
+		this.dockHiddenWatch = () => {
+			if (!document.hidden) return;
+			const active = document.activeElement;
+			if (active instanceof HTMLElement && active.matches("[data-alpha-composer]")) active.blur();
+			this.dockComposerFocused = false;
+			this.dockGuardPress = undefined;
+		};
+		document.addEventListener("visibilitychange", this.dockHiddenWatch);
 	};
 	p.componentDidUpdate = function (...args: Shell[]) {
 		update?.apply(this, args);
 		const drag: Drag | undefined = this.chatMotion,
 			s = this.S();
+		// The bar's composer unmounts without a blur event: its focus ends with it.
+		const previousView = args[1]?.view;
+		if ((s.chat !== "input" || (args[1] && previousView !== s.view)) && (this.dockComposerFocused || this.dockGuardPress)) {
+			this.dockComposerFocused = false;
+			this.dockGuardPress = undefined;
+		}
 		if (
 			drag &&
 			(s.view !== drag.view ||
@@ -251,6 +371,11 @@ export function installChatOverlayMotion(Component: Shell) {
 				s.voice !== "off")
 		)
 			retire(this);
+		const change = this.chatChange;
+		if (change?.pending) {
+			change.pending = false;
+			resizeForTap(this, change);
+		}
 	};
 	p.componentWillUnmount = function () {
 		retire(this, false);
@@ -258,6 +383,9 @@ export function installChatOverlayMotion(Component: Shell) {
 		window.removeEventListener("blur", this.cancelChatMotion);
 		window.removeEventListener("pagehide", this.cancelChatMotion);
 		document.removeEventListener("visibilitychange", this.chatMotionVisibility);
+		window.visualViewport?.removeEventListener("resize", this.dockKeyboardWatch);
+		window.removeEventListener("resize", this.dockKeyboardWatch);
+		document.removeEventListener("visibilitychange", this.dockHiddenWatch);
 		unmount?.call(this);
 	};
 
@@ -333,6 +461,7 @@ export function installChatOverlayMotion(Component: Shell) {
 			this.chatSheetShare = next.height / Math.max(1, d.full);
 		retire(this, false);
 		this.swallow = Date.now();
+		this.chatSettledByDrag = true;
 		// An open chat collapses to its resting form; only the bar itself dismisses to the pill.
 		this.setState({
 			chat: next.chat === "hidden" && !collapsed ? this.rest() : next.chat,
@@ -391,11 +520,37 @@ export function installChatOverlayMotion(Component: Shell) {
 			}
 			if (hidden > 0) scroll.scrollTop += hidden / geometry.scale;
 		};
+		const isOpen = (mode: unknown) => mode === "sheet" || mode === "full";
+		if (shell.chatRenderedMode !== s.chat) {
+			const from = shell.chatRenderedMode;
+			shell.chatRenderedMode = s.chat;
+			if (from !== undefined && !drag) {
+				const tap = !shell.chatSettledByDrag && s.voice === "off";
+				shell.chatChange = { from, to: s.chat, tap, pending: true };
+				if (tap && isOpen(from) && s.chat === "input")
+					shell.chatClosingUntil = Date.now() + CLOSE_MS;
+			}
+			shell.chatSettledByDrag = false;
+			if (isOpen(s.chat)) {
+				shell.chatDockShown = false;
+				shell.chatClosingUntil = 0;
+			}
+		} else if (!drag) shell.chatSettledByDrag = false;
+		if (isOpen(s.chat)) shell.chatSuggestions = out.showSugg;
+		// A tap close keeps the sheet's composer while the sheet shrinks onto the bar, which is
+		// already in place under it and so skips its entrance.
+		if (s.chat === "input" && Date.now() < (shell.chatClosingUntil || 0)) {
+			out.panelComposer = true;
+			out.showSugg = shell.chatSuggestions;
+			shell.chatDockShown = true;
+		}
 		const dock = drag?.moved
 			? Object.entries(dockStyle(drag))
 					.map(([name, value]) => `${name}:${value}`)
 					.join(";")
-			: "";
+			: shell.chatDockShown
+				? "animation:none"
+				: "";
 		out.pillDragStyle = dock;
 		out.inputDragStyle = dock;
 		if (drag?.moved && (drag.mode !== "input" || drag.height > 0)) {
@@ -573,6 +728,84 @@ export function installChatOverlayMotion(Component: Shell) {
 			});
 		};
 		out.scrimTap = out.closeChat;
+		// One rule for every raised dock (docs/ui-refresh-2026-11, tla/ChatInput.tla): the bar
+		// above a pill view's resting form, or any composer bar with the keyboard up, takes the
+		// first touch outside it. That touch lowers the dock to its resting form, closes the
+		// keyboard and reaches nothing underneath; the next touch is ordinary. The draft stays.
+		const raisedBar =
+			s.chat === "input" &&
+			!!out.showComposer &&
+			s.voice === "off" &&
+			!shell.props.assistantSurface &&
+			(shell.rest() === "hidden" || !!shell.dockComposerFocused);
+		out.dockGuardPE = raisedBar ? "auto" : "none";
+		out.dockComposerFocus = () => {
+			if (shell.dockComposerFocused) return;
+			shell.dockComposerFocused = true;
+			shell.setState({});
+		};
+		out.dockComposerBlur = () => {
+			// A press on the guard keeps the dock raised until its click lowers it, so the
+			// click cannot fall through to what the guard covers.
+			if (shell.dockGuardPress || !shell.dockComposerFocused) return;
+			shell.dockComposerFocused = false;
+			shell.setState({});
+		};
+		const lowerDock = () => {
+			shell.dockGuardPress = undefined;
+			shell.dockComposerFocused = false;
+			const active = document.activeElement;
+			if (active instanceof HTMLElement && active.matches("[data-alpha-composer]"))
+				active.blur();
+			retire(shell, false);
+			shell.setState({ chat: shell.rest() });
+		};
+		out.dockGuardMenu = (event: MouseEvent) => {
+			event.preventDefault();
+			event.stopPropagation();
+			lowerDock();
+		};
+		out.dockGuardTap = (event: MouseEvent) => {
+			event.stopPropagation();
+			lowerDock();
+		};
+		out.dockGuardSw = {
+			down(event: PointerEvent) {
+				event.stopPropagation();
+				// No focus change and no compatibility mouse events: the click alone lowers.
+				event.preventDefault();
+				if (event.isPrimary === false) return;
+				shell.dockGuardPress = {
+					id: event.pointerId,
+					x: event.clientX,
+					y: event.clientY,
+					moved: false,
+				};
+			},
+			move(event: PointerEvent) {
+				const press = shell.dockGuardPress;
+				if (
+					press?.id !== event.pointerId ||
+					press.moved ||
+					Math.hypot(event.clientX - press.x, event.clientY - press.y) <
+						TAP_SLOP * geometry.scale
+				)
+					return;
+				press.moved = true;
+				(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+			},
+			up(event: PointerEvent) {
+				event.stopPropagation();
+				const press = shell.dockGuardPress;
+				// A drag has no click: it lowers on release.
+				if (press?.id === event.pointerId && press.moved) lowerDock();
+				// A tap lowers on its click; a press that sends no click (long-press) lowers here instead.
+				else if (press?.id === event.pointerId) setTimeout(() => { if (shell.dockGuardPress === press) lowerDock(); }, 0);
+			},
+			cancel() {
+				shell.dockGuardPress = undefined;
+			},
+		};
 		// Any touch outside the open sheet collapses it and reaches nothing underneath. A tap
 		// collapses on its click, so no compatibility click can land on what the sheet uncovers;
 		// a drag has no click, so it collapses on release. Assistive technology activates

@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from '../test/support/strip-types.mjs';
 import {mapsEventOriginFor} from '../apps/app/src/runtime/maps-event-return.ts';
 // The adapter imports reminderWallTime through runtime/reminder-creations, which re-exports the shared journal's.
 import {reminderWallTime} from '../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/reminder-journal.ts';

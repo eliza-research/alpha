@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {getEventListeners} from 'node:events';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import test from 'node:test';
 // The real streamed clip and MediaSource feeder against a stand-in MediaSource that keeps the Media
 // Source Extensions event order: a failed append fires error, then updateend; detaching the element

@@ -46,8 +46,9 @@ export function resolveMapColors(container: HTMLElement, colors: Record<string, 
 /** Product palette, typography and space reserved for the Alpha route sheets. The shared
  * plane reflows the selected place when these sheets move (plugin-maps 5176c4523c). */
 export class MapPlane extends SharedMapPlane {
- constructor(container:HTMLElement,region:MapBasemap,onError:()=>void,colors:Record<string,string>,onPin?:(id:string)=>void) {
-  super(container,region,onError,region.kind==='global'?colors:resolveMapColors(container,colors),{fontUrl,workerUrl,accent:'#1616d8',protocol:'alpha-region',routePadding:{top:220,bottom:280,left:30,right:30},nativeRegion,nativeRequest:nativeRegionRequest,selectionPadding:region.kind==='global'?()=>{
+ constructor(container:HTMLElement,region:MapBasemap,onError:()=>void,colors:Record<string,string>,onPin?:(id:string)=>void,onCopyright?:(text:string)=>void) {
+  const worldwide=region.kind==='global'||region.kind==='cloud-raster';
+  super(container,region,onError,region.kind==='global'?colors:resolveMapColors(container,colors),{fontUrl,workerUrl,accent:'#1616d8',protocol:'alpha-region',routePadding:{top:220,bottom:280,left:30,right:30},nativeRegion,nativeRequest:nativeRegionRequest,onCopyright,selectionPadding:worldwide?()=>{
    const bounds=container.getBoundingClientRect();
    const credits=container.parentElement?.querySelector('.alpha-map-credits')?.getBoundingClientRect();
    const header=container.parentElement?.querySelector('[data-alpha-app-header="main"]')?.getBoundingClientRect();

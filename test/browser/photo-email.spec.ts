@@ -25,7 +25,7 @@ async function setup(page:Page){
 
  await expect.poll(()=>page.evaluate(async()=>{const {VIEWS}=await import('/src/prototype/model.js');return VIEWS.inbox.fileEmailTarget().ready;})).toBe(true);
  await page.evaluate(()=>(window as any).fileEmail.shell.openView('photos',{}));
- await page.getByRole('button',{name:/^Captured photo /}).click();
+ await page.getByRole('button',{name:/^Photo, /}).click();
  expect(await page.evaluate(()=>(window as any).mediaFixture.calls.filter((c:any)=>c.method==='readPhotoSelected').length)).toBe(0);
  await page.getByRole('button',{name:'Use photo in email',exact:true}).click();
  await expect(dialog(page)).toContainText('source.png');

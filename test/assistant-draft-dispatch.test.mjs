@@ -1,4 +1,4 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from 'node:module';
+import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from './support/strip-types.mjs';
 // Alpha's composer contract, run against the shared controller exactly as the pin projects it
 // (apps/app/src/prototype/assistant-draft-controller.ts only re-exports it under Alpha's name).
 const code=stripTypeScriptTypes(readFileSync(new URL('../.eliza/client-features/packages/ui/src/state/durable-draft-controller.ts',import.meta.url),'utf8'),{mode:'transform'});

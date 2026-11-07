@@ -48,7 +48,7 @@ for (const mode of ['checking', 'unavailable', 'available'] as const) {
     await page.goto('/');
     // Initial native launch may open automatically; otherwise use the product control.
     if (!await page.locator('.alpha-connection-scrim').isVisible())
-      await page.getByRole('button', { name: 'Agent connection', exact: true }).click();
+      await page.getByRole('button', { name: 'Agent', exact: true }).click();
     await expect(page.locator('.alpha-connection-scrim')).toBeVisible();
     const chooser = page.locator('.alpha-connection');
     const start = chooser.getByRole('button', { name: 'Start local agent', exact: true });
@@ -73,7 +73,7 @@ for (const mode of ['checking', 'unavailable', 'available'] as const) {
       await expect(provider.getByLabel('Cerebras API key')).toHaveValue('');
       await provider.getByRole('button', { name: 'Close AI provider settings', exact: true }).click();
       await page.getByRole('button', { name: 'Settings', exact: true }).click();
-      await page.getByRole('button', { name: 'Agent connection', exact: true }).click({ timeout: 5000 });
+      await page.getByRole('button', { name: 'Agent', exact: true }).click({ timeout: 5000 });
     }
     await chooser.locator('summary').filter({ hasText: /^Remote agent$/ }).click();
     await expect(chooser.getByLabel('Agent HTTPS address')).toBeEditable();

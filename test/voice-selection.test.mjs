@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 
 // Real voice-selection source with a synthetic Cloud session and an in-memory Storage.
 // "Restart" evaluates the source again in a fresh context over the same stored bytes.

@@ -2,7 +2,7 @@ import {parseNativeHistoryCommand} from '../.eliza/client-features/plugins/plugi
 import {parseBrowserAddressInput} from '../.eliza/client-features/plugins/plugin-native-browser-surface/src/address-input.ts';
 // The adapter's native tabs are the shared session model; the harnesses run the real one.
 import {BrowserTabSession} from '../.eliza/client-features/plugins/plugin-native-browser-surface/src/tab-host.ts';
-import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from 'node:module';import vm from 'node:vm';
+import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from './support/strip-types.mjs';import vm from 'node:vm';
 const source=readFileSync(process.env.ALPHA_BROWSER_ADAPTER_SOURCE||'apps/app/src/prototype/browser-adapter.ts','utf8');
 const region=stripTypeScriptTypes(source.slice(source.indexOf('  async function navigate('),source.indexOf('  async function command(')),{mode:'transform'});
 function harness(){let release;const pending=new Promise(resolve=>release=resolve),state={cur:'owned',tabs:[{id:'owned'},{id:'other'}],editing:true,tabsOpen:true,menu:true},navigations=[],patches=[],closed=[];const tabs=new BrowserTabSession({session:'owned-session'});void tabs.ensure('owned',false,()=>pending);

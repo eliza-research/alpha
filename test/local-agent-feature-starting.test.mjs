@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {ownerRouteGroup,ownerRouteAllowed} from '../apps/app/src/runtime/owner-route-policy.ts';
 import {anyAbortSignal} from '../apps/app/src/runtime/abort-signal.ts';
 // The actual protocol class, with only platform/transport/time collaborators injected.

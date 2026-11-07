@@ -3,14 +3,14 @@ import { NoticeOwnerCoordinator, revalidateWorkflowApprovalNotice } from '../.el
 // legacy workflow tests. No native plugin or production account is contacted.
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
-import { stripTypeScriptTypes } from 'node:module';
+import { stripTypeScriptTypes } from '../test/support/strip-types.mjs';
 import { normalizePhoneSpec, assertPhoneCapabilities, describePhoneTrigger } from '../apps/app/src/runtime/phone-workflow-authoring.ts';
 import { WorkflowActivationRejected } from '../apps/app/src/runtime/workflow-protocol.ts';
 import { workflowSha, workflowBytes, workflowApprovalNotice } from '../apps/app/src/runtime/workflow-device-contract.ts';
 import { alphaClient } from '../apps/app/src/runtime/alpha-client.ts';
 import { WorkflowIntentStore as SharedWorkflowIntentStore, emptyWorkflowIntentArchive, storageWorkflowIntentBackend, workflowIntentKey as sharedWorkflowIntentKey, workflowIntentOwnerPrefix } from '../.eliza/client-features/packages/contracts/src/workflow-intents.ts';
-const source = readFileSync(new URL('../apps/app/src/prototype/workflow-authoring.ts', import.meta.url),'utf8').replace(/^import .*;\n/gm,'').replace('export function','function');
-const poster = readFileSync(new URL('../apps/app/src/runtime/workflow-notice-taps.ts', import.meta.url),'utf8').replace(/^import .*;\n/gm,'').replace(/^export /gm,'');
+const source = readFileSync(new URL('../apps/app/src/prototype/workflow-authoring.ts', import.meta.url),'utf8').replace(/^import .*;\n/gm,'').replaceAll('export function','function');
+const poster = readFileSync(new URL('../apps/app/src/runtime/workflow-device-contract.ts', import.meta.url),'utf8').split('// workflow-notice-coordination:begin')[1].replace(/^export /gm,'');
 export function workflowRendererFixture(context) {
   // connection-ui's no-session wording (P-43) for a production build without the resident (the web
   // preview): the agent is the phone's own; there is no remote-agent copy outside test mocks.

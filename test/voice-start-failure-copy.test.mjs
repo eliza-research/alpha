@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {voiceFailure} from '../apps/app/src/runtime/voice-states.ts';
 
 // The actual start-catch expression and Cloud mapper, without starting voice,

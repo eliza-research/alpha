@@ -90,8 +90,11 @@ test.describe('launcher', () => {
     // A mostly sideways drag is a card row or Back, not the shade.
     await drag(page, { x: 120, y: 420 }, 120, 160);
     await closed(page, 'sideways');
-    // An upward swipe on Home is the conversation sheet; while it is open a pull down closes it.
+    // An upward drag on Home opens nothing: only the dock opens the chat (docs/ui-refresh-2026-11).
     await drag(page, { x: 206, y: 600 }, -260);
+    await expect(page.locator('[data-alpha-layer="conversation"]')).toHaveAttribute('aria-hidden', 'true');
+    // While the sheet is open a pull down closes it.
+    await page.locator('[data-alpha-layer="composer"]').getByRole('button', { name: 'Open conversation', exact: true }).click();
     await expect(page.locator('[data-alpha-transcript]')).toBeVisible();
     await drag(page, { x: 206, y: 300 }, 260);
     await closed(page, 'pull while the conversation sheet was open');
@@ -204,7 +207,8 @@ test.describe('launcher Home taller than the screen (landscape)', () => {
     // Empty Home, clear of every control and below the status bar, where vertical touch would scroll Home.
     const start = await page.evaluate(() => {
       const screen = document.querySelector('[data-screen]')!.getBoundingClientRect();
-      for (let y = screen.top + 90; y < screen.bottom; y += 4) for (let x = screen.left + 12; x < screen.right; x += 12) {
+      // Below Android's 44px status band in canvas pixels (the canvas is scaled to the screen).
+      for (let y = screen.top + Math.ceil(60 * screen.width / 412); y < screen.bottom; y += 4) for (let x = screen.left + 12; x < screen.right; x += 12) {
         const hit = document.elementFromPoint(x, y);
         if (hit?.closest('[data-alpha-layer="home"]') && !hit.closest('button,.scr')) return { x, y };
       }

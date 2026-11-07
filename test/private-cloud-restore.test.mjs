@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
 const source=readFileSync('apps/app/src/runtime/connection-ui.tsx','utf8');
 const section=(a,b)=>{const start=source.indexOf(a),end=source.indexOf(b,start+a.length);assert.ok(start>=0&&end>start);return source.slice(start,end);};
@@ -13,7 +13,7 @@ const credential={credentialId:'fixture-id',credentialReference:'browser-cloud-r
 function fixture({values=[credential,credential],choice={kind:'resident'},attachFails=false,android=false,profile=false,cloudResident=false,accepts=true,search='',readChoice,testMocks=false}={}){
  const calls=[],history={messages:[{id:'retained',text:'Exact retained history'}]};let context;
  const state={open:false,error:'',busy:false,history,cloudAccount:null};
- context=vm.createContext({state,epoch:1,startup:null,operation:null,active:null,residentStartInBackground:false,privateLocalPreviewEnabled:true,
+ context=vm.createContext({residentAlwaysPresent:false,state,epoch:1,startup:null,operation:null,active:null,residentStartInBackground:false,privateLocalPreviewEnabled:true,
   browserDevProfile:profile,browserCloudResidentEnabled:cloudResident,isAndroid:android,testMocksEnabled:testMocks,
   update:patch=>Object.assign(state,patch),AbortController,DOMException,URLSearchParams,location:{search},residentRecoveryReason:()=>undefined,errorMessage:error=>error.message,expired:()=>false,
   runQueuedResidentRebind(){},runQueuedSignInReturn(){},residentCloudFlow:()=>false,settleResidentAfterStartup(){},selection:()=>context.choice,choice,

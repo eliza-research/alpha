@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
 import {tsImport} from 'tsx/esm/api';
 const {alphaNavigation}=await tsImport('../apps/app/src/product/alpha-product.ts',import.meta.url);
@@ -25,7 +25,7 @@ function harness(initial,source=helper){
     setState(patch,done){Object.assign(this.state,patch);this.transitions.push({...this.state});done?.();}
     ${transitions}
   }
-  ${stripTypeScriptTypes(source,{mode:'transform'})}
+  ${stripTypeScriptTypes(source,{mode:'strip'})}
   globalThis.shell=new Shell();globalThis.deliver=deliverChatNavigation;`,context);
   return {shell:context.shell,deliver:context.deliver};
 }

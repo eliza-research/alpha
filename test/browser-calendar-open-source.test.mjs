@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import test from 'node:test';
 
 const adapter=readFileSync('apps/app/src/prototype/browser-adapter.ts','utf8');
