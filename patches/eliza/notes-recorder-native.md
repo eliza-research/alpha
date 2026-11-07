@@ -2,7 +2,8 @@
 
 Two explicit native patches admitted by `native-manifest.json` (applied by
 `scripts/prepare-patched-native.mjs` into the staged Android sources; the vendor checkout is
-never edited). Base: elizaOS/eliza `0594fc72da4450a84a986ad12e730e3faa902018`. Both are
+never edited). Base: elizaOS/eliza `475a8d59dc1811c2cde093613519906a5a3f6457` (regenerated
+unchanged from `0594fc72da`: their targets are byte-identical at both commits). Both are
 upstream proposals; once merged and the pin moves, drop them from the manifest.
 
 ## notes-recording-store.patch (`plugins/plugin-native-media/android`)
