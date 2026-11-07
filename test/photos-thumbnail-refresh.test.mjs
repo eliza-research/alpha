@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
 import {batches, thumbnailPlan} from '../apps/app/src/runtime/photos-view.ts';
 
@@ -11,7 +11,7 @@ const source = readFileSync('apps/app/src/prototype/camera-adapter.ts', 'utf8');
 const start = source.indexOf('  async function settleThumbnails(');
 const end = source.indexOf('  const gridCss=', start);
 assert.ok(start >= 0 && end > start);
-const implementation = stripTypeScriptTypes(source.slice(start, end), {mode: 'transform'});
+const implementation = stripTypeScriptTypes(source.slice(start, end), {mode: 'strip'});
 
 test('a thumbnail read finishing after a catalog reload preserves the new row and retries its image', async () => {
   const id = 'native-camera-m:external_primary:i:1';

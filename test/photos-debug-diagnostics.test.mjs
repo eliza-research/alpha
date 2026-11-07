@@ -9,8 +9,10 @@ test('Photos QA emits only fixed debug enum markers; exception payloads and rele
  // The marker enum and its failure categories are the shared PhotosPlugin's; Alpha logs them in debug builds only.
  const source=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPhotosPlugin.java','utf8');
  const shared=readFileSync('vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotosPlugin.java','utf8');
+ const permitted=readFileSync('vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PermittedPhotosPlugin.java','utf8');
+ assert.match(shared,/class PhotosPlugin extends PermittedPhotosPlugin/);
  assert.match(source,/@Override protected void diagnostic\(PhotosPlugin\.Diagnostic marker\)\{qaMarker\(marker\);\}/);
- assert.match(shared,/protected void diagnostic\(Diagnostic marker\) \{\}/,'hosts that do not log record nothing');
+ assert.match(permitted,/protected void diagnostic\(Diagnostic marker\) \{\}/,'hosts that do not log record nothing');
  assert.match(shared,/diagnostic\(Diagnostic\.readFailure\(failure\)\);\n {8}call\.reject\("This saved media is no longer available"\);/,'a failed read reports its category only');
  const dir=mkdtempSync(join(tmpdir(),'photos-diagnostic-'));
  try{
@@ -18,9 +20,10 @@ test('Photos QA emits only fixed debug enum markers; exception payloads and rele
   writeFileSync(join(dir,'android/util/Log.java'),'package android.util;public class Log {public static final java.util.List<String> entries=new java.util.ArrayList<>();public static int i(String tag,String message){entries.add(tag+":"+message);return 0;}}');
   writeFileSync(join(dir,'PhotosDiagnosticHarness.java'),`class BuildConfig {static boolean DEBUG;}
  public class PhotosDiagnosticHarness {
- static class PhotosPlugin {
- ${declaration(shared,'public enum Diagnostic ')}
+ static class PermittedPhotosPlugin {
+ ${declaration(permitted,'public enum Diagnostic ')}
  }
+ static class PhotosPlugin extends PermittedPhotosPlugin {}
  ${declaration(source,'static void qaMarker(PhotosPlugin.Diagnostic marker)')}
  static void diagnostic(PhotosPlugin.Diagnostic marker){qaMarker(marker);}
  static void diagnosticReadFailure(Exception failure){qaMarker(PhotosPlugin.Diagnostic.readFailure(failure));}
