@@ -1436,7 +1436,7 @@ registerView("calendar", {
       var alertLabel = ev.alert == null ? "" : (ev.alert === 0 ? "Alert at start" : (ev.alert >= 60 ? ev.alert / 60 + " hour before" : ev.alert + " min before"));
       D = {
         title: ev.title, when: calRange(ev.t, ev.d), day: calDayName(api, evDay) + (repeatLabel ? " · " + repeatLabel : ""),
-        dot: CAL_COLORS[c.color], calName: c.name,
+        dot: CAL_COLORS[c.color], calName: c.name, canModify: true,
         recurringReminder: false, reminderPolicy: "", reminderHistory: [], reminderDone: function () {}, reminderSnooze: function () {},
         hasWhere: !!ev.where, where: isPhone ? ((ev.who || [])[0] ? "Call " + calPerson(api, ev.who[0]).name.split(" ")[0] : "Phone call") : ev.where, whereIcon: isPhone ? IC.phone : IC.pin,
         goWhere: function () { if (isPhone) { if ((ev.who || [])[0]) api.open("phone", { call: ev.who[0] }); } else api.open("maps", { query: ev.where }); },
