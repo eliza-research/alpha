@@ -3,11 +3,11 @@
   "repository": "elizaOS/eliza",
   "base": "develop",
   "baseCommit": "a38f9caf556722308e8fe0e4643dac7d4336a2ae",
-  "head": "3c76d07819b253b3c8f071f84ec7e6a5374a9a66",
+  "head": "3a2e43de288a5ec8a77212084772fede22577665",
   "recordedAt": "2026-11-07",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...3c76d07819b253b3c8f071f84ec7e6a5374a9a66",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...3a2e43de288a5ec8a77212084772fede22577665",
   "status": "diverged",
-  "aheadBy": 4,
+  "aheadBy": 11,
   "behindBy": 87,
   "mergeBase": "0594fc72da4450a84a986ad12e730e3faa902018",
   "pinOnlyCommits": [
@@ -26,6 +26,34 @@
     {
       "sha": "3c76d07819b253b3c8f071f84ec7e6a5374a9a66",
       "subject": "Keep voice reply drafting notes out of visible text"
+    },
+    {
+      "sha": "267ca242df18c30ecef0710e26f8043d6cbb5658",
+      "subject": "Keep native Google reads bound to the admitted service key"
+    },
+    {
+      "sha": "5ce65673c621a8554205f64d61006cb11007ccc2",
+      "subject": "Fix strict voice reply tools on the staging Cloud mobile route"
+    },
+    {
+      "sha": "72004059deae7b03c850b4c48ccaa0d571ff47d9",
+      "subject": "Keep strict Cloud handler intents with Calendar evidence"
+    },
+    {
+      "sha": "f7a7b56f8cff20bc64f2616ebcad902173d59e4c",
+      "subject": "Expose bounded availability in standalone Calendar"
+    },
+    {
+      "sha": "923f5d0b82faf28d3a70688e06ee30f53abd6ae7",
+      "subject": "Recover the reply after a confirmed Notes create"
+    },
+    {
+      "sha": "f72b44f03152577e403a426cad01deafb69cc5f0",
+      "subject": "Allow bounded larger managed Calendar feed responses"
+    },
+    {
+      "sha": "3a2e43de288a5ec8a77212084772fede22577665",
+      "subject": "Verify restored Calendar bounds and settled Notes reply recovery"
     }
   ],
   "pullRequests": []
