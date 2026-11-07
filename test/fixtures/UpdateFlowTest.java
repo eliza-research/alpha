@@ -1617,23 +1617,37 @@ public final class UpdateFlowTest {
  private static void updateWaitsForDraftsAndExactShutdown(File cache)throws Exception{
   var original=com.getcapacitor.Plugin.ready;
   try{
-   Context context=installing(cache);AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);
+   Context context=installing(cache);AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED),other=bridge(context,Lifecycle.State.RESUMED);
    CountDownLatch ready=new CountDownLatch(1);JSObject[] activation=new JSObject[1];
    com.getcapacitor.Plugin.ready=(plugin,value)->{activation[0]=value;ready.countDown();};
    AlphaLocalAgentPlugin.stops=0;AlphaLocalAgentPlugin.releases=0;AlphaLocalAgentPlugin.confirmed=false;
    PluginCall installing=offered();owner.installUpdate(installing);
    check(ready.await(10,TimeUnit.SECONDS),"verified staged APK asks the renderer for draft readback");
    check(context.packages.installer.committed.isEmpty()&&AlphaLocalAgentPlugin.stops==0,"no shutdown or commit before renderer acknowledgment");
-   PluginCall wrong=new PluginCall(new JSObject().put("activationId","00000000-0000-4000-8000-000000000000"));owner.activateUpdate(wrong);
+   PluginCall wrong=new PluginCall(new JSObject().put("activationId","00000000-0000-4000-8000-000000000000").put("ready",true));owner.activateUpdate(wrong);
    check(wrong.rejected.get()==1&&AlphaLocalAgentPlugin.stops==0,"wrong activation has no effect");
+   String activationId=activation[0].optString("activationId");
+   PluginCall absent=new PluginCall(new JSObject().put("activationId",activationId));owner.activateUpdate(absent);
+   check(absent.rejected.get()==1&&absent.resolved.get()==0,"absent readiness is rejected without consuming the activation");
+   for(Object malformed:new Object[]{null,"true","false",1,0,new JSObject(),new Object[]{true}}){
+    PluginCall invalid=new PluginCall(new JSObject().put("activationId",activationId).put("ready",malformed));owner.activateUpdate(invalid);
+    check(invalid.rejected.get()==1&&invalid.resolved.get()==0,"nonboolean readiness is rejected: "+malformed);
+   }
+   PluginCall foreign=new PluginCall(new JSObject().put("activationId",activationId).put("ready",true));other.activateUpdate(foreign);
+   check(foreign.rejected.get()==1,"another bridge cannot acknowledge this activation");
+   Thread.sleep(50);
+   check(context.packages.installer.committed.isEmpty()&&AlphaLocalAgentPlugin.stops==0&&installing.resolved.get()==0&&installing.rejected.get()==0,"delayed valid acknowledgment keeps the staged install waiting after invalid calls");
    PluginCall ack=new PluginCall(new JSObject().put("activationId",activation[0].optString("activationId")).put("ready",true));owner.activateUpdate(ack);
+   check(ack.resolved.get()==1&&ack.rejected.get()==0,"the exact activation still accepts explicit true after invalid calls");
    long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(5);
    while(AlphaLocalAgentPlugin.stops==0&&System.nanoTime()<deadline)Thread.sleep(5);
    check(AlphaLocalAgentPlugin.stops==1&&context.packages.installer.committed.isEmpty(),"shutdown requested, unconfirmed stop prevents commit");
    check(AlphaDevicePlugin.UpdatePause.store().read()!=null,"pause survives before stop acknowledgment");
+   PluginCall repeated=new PluginCall(new JSObject().put("activationId",activationId).put("ready",false));owner.activateUpdate(repeated);
+   check(repeated.rejected.get()==1&&repeated.resolved.get()==0,"an acknowledged activation cannot be changed to a refusal while shutdown waits");
    AlphaLocalAgentPlugin.confirmed=true;installing.awaitAnswer();
    check(installing.resolved.get()==1&&context.packages.installer.committed.size()==1,"matching shutdown allows exactly one commit");
-   PluginCall duplicate=new PluginCall(activation[0]);owner.activateUpdate(duplicate);check(duplicate.rejected.get()==1,"activation cannot be replayed");
+   PluginCall duplicate=new PluginCall(new JSObject().put("activationId",activationId).put("ready",true));owner.activateUpdate(duplicate);check(duplicate.rejected.get()==1,"activation cannot be replayed");
    int session=committed(context);confirmation(context,session);owner.handleOnResume();
    check(AlphaDevicePlugin.UpdatePause.store().read()!=null&&AlphaLocalAgentPlugin.releases==0,"dismissal/resume does not release the pause");
    ended(context,session,PackageInstaller.STATUS_FAILURE_ABORTED);

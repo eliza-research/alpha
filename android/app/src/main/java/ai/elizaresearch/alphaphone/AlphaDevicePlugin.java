@@ -310,7 +310,8 @@ public final class AlphaDevicePlugin extends Plugin {
  /** Acknowledges only the current staged activation; false is a pre-commit refusal, not cancellation of an install. */
  @PluginMethod public void activateUpdate(PluginCall call){
   UpdateActivation pending=activation;
-  if(pending==null||pending.owner!=this||!pending.id.equals(call.getString("activationId"))||!pending.ready.complete(call.getData().optBoolean("ready",true))){call.reject("Update preparation changed");return;}
+  Object ready=call.getData().opt("ready");
+  if(pending==null||pending.owner!=this||!pending.id.equals(call.getString("activationId"))||!(ready instanceof Boolean)||!pending.ready.complete((Boolean)ready)){call.reject("Update preparation changed");return;}
   call.resolve();
  }
  private void settleUpdate(String id,String outcome){notifyListeners("alphaUpdateSettled",new JSObject().put("activationId",id).put("outcome",outcome));}
