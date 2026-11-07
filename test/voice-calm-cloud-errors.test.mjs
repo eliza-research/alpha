@@ -1,13 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
-import {createRequire} from 'node:module';
-import {build} from 'esbuild';
 import {JSDOM} from 'jsdom';
 import {cloudVoiceViewFixture} from './fixtures/cloud-voice-view.mjs';
 import {voiceFakeClock} from './fixtures/shared-batch-voice.mjs';
+import {voiceMarkup} from './fixtures/voice-markup.mjs';
 
 // The actual voice adapter, production template and DCLogic renderer with closed ports only:
 // a Cloud voice 429/503 is waited out quietly, a terminal failure is said once and plainly.
@@ -15,21 +11,13 @@ const CALM=[]; // Exhausted transient waits close quietly; no voice error toast.
 const SLOP=/request limit|Last transcript|Try voice again|Wait a moment|HTTP 503|Voice is unavailable/;
 const limited=(data={retryAfterSeconds:3,limitCode:'rate_limited'})=>Object.assign(Error('PRIVATE_PROVIDER_BODY'),{code:'voice-http-429',data});
 
-let renderer,temporary,page;
+let renderer,page;
 const before={document:globalThis.document,matchMedia:globalThis.matchMedia};
 test.before(async()=>{
  page=new JSDOM('<!doctype html>');globalThis.document=page.window.document;globalThis.matchMedia=()=>({matches:true});
- const template=fs.readFileSync('apps/app/src/prototype/template.html','utf8');
- // The chat notices above the composer (disclosure, recovery) and the inline voice controls.
- const noticesStart=template.indexOf('<div class="alpha-chat-notices">'),noticesEnd=template.indexOf('<sc-if value="{{legacyChatRecorder}}">',noticesStart);
- const start=template.indexOf('<sc-if value="{{inlineChatRecorder}}">',noticesEnd),end=template.indexOf('<sc-if value="{{panelComposer}}">',start);
- assert.ok(noticesStart>=0&&noticesEnd>noticesStart&&start>noticesEnd&&end>start);
- const fragment='<div class="os"><div data-screen="1">'+template.slice(noticesStart,noticesEnd)+template.slice(start,end)+'</div></div>';
- const bundle=await build({stdin:{contents:`import React from 'react';import{renderToStaticMarkup}from'react-dom/server';import{DCLogic}from'./apps/app/src/prototype/dc-lite.js';class Fixture extends DCLogic{renderVals(){return this.props.values;}}export const render=values=>renderToStaticMarkup(React.createElement(Fixture,{phoneSurface:true,values}));`,resolveDir:process.cwd(),loader:'js'},bundle:true,platform:'node',format:'cjs',write:false,plugins:[{name:'actual-voice-template',setup(b){b.onResolve({filter:/template\.html\?raw$/},()=>({path:'voice',namespace:'actual-template'}));b.onLoad({filter:/.*/,namespace:'actual-template'},()=>({contents:'export default '+JSON.stringify(fragment),loader:'js'}));}}]});
- temporary=fs.mkdtempSync(path.join(os.tmpdir(),'voice-calm-markup-'));const file=path.join(temporary,'renderer.cjs');
- fs.writeFileSync(file,bundle.outputFiles[0].text);renderer=createRequire(import.meta.url)(file).render;
+ renderer=(await voiceMarkup()).render;
 });
-test.after(()=>{if(temporary)fs.rmSync(temporary,{recursive:true,force:true});page?.window.close();globalThis.document=before.document;globalThis.matchMedia=before.matchMedia;});
+test.after(()=>{page?.window.close();globalThis.document=before.document;globalThis.matchMedia=before.matchMedia;});
 
 async function voice(t,{startFailure}={}){
  const clock=voiceFakeClock();
