@@ -26,7 +26,8 @@ import { clearCrashLog, describeCrashEntry, readCrashLog, recordCloudInferenceFa
 import { buildDiagnostics, diagnosticsFileName, diagnosticsText } from '../runtime/diagnostics-export';
 import {planAdmission} from '../runtime/subscription-entitlement';
 import { exportVoiceTiming, exportRealtimeVoiceTiming, voiceStartupTiming } from '../runtime/voice-timing';
-import { readNativeCloudStreamTiming, readNativeVoiceTiming } from '../runtime/native-voice-turn';
+import { readNativeVoiceTiming } from '../runtime/native-voice-turn';
+import { readNativeCloudStreamTiming } from '../runtime/cloud-voice';
 import { listenerStatus, openListenerSettings, pauseListener, turnOffListener, wakeListeningStopUnconfirmed, type ListenerStatus } from '../runtime/always-on-listener';
 import { reviewDataReset, type DataResetPlugin } from '@elizaos/capacitor-system/reset';
 import { androidRoleLabel, parseRoleStatuses } from '@elizaos/capacitor-system/settings';
