@@ -20,7 +20,7 @@ import org.junit.runner.RunWith;
 
 /**
  * Android's shade is the one notification and quick-settings surface (#416, #417). On the launcher
- * flavor launcher Home asks Android to open it (button and pull on empty Home, EXPAND_STATUS_BAR);
+ * flavor launcher Home asks Android to open it (a pull on empty Home, EXPAND_STATUS_BAR);
  * the standalone app is an ordinary app and never asks. Alpha draws no shade of its own.
  *
  * The Home method needs a test-mocks app build (it is skipped on any other): a production Android
@@ -104,7 +104,7 @@ public class SystemShadeInstrumentedTest {
    // touch, so a pull would land on the panel and the standalone half would pass vacuously.
    until("!document.querySelector('.alpha-connection-scrim')");
    until(AndroidShade.ALPHA_SHADE_ABSENT);
-   // The plugin call the button makes, with Alpha in front.
+   // The plugin call the empty-Home pull makes, with Alpha in front.
    js("window.__shadeOutcome=null;Capacitor.Plugins.AlphaDevice.openNotificationShade().then(r=>window.__shadeOutcome=r.status,()=>window.__shadeOutcome='rejected')");
    until("window.__shadeOutcome!==null");
    String outcome = js("window.__shadeOutcome");

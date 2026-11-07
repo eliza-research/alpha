@@ -142,16 +142,15 @@ public class CameraFlowInstrumentedTest {
   assertEquals("Revoke CAMERA before this instrumentation run",PackageManager.PERMISSION_DENIED,context().checkSelfPermission(Manifest.permission.CAMERA));
   try(BoundedActivityScenario<MainActivity>s=BoundedActivityScenario.launch(MainActivity.class)){
    navigate(s,"Camera");permissionButton(":id/permission_deny_button");
-   until(s,"document.body.innerText.includes('Tap the shutter to retry')");nativePreview(s,false);
-   until(s,"document.querySelector('[role=alert][aria-label=\"Camera access is off\"]')");
+   until(s,"document.querySelector('[role=alert][aria-label=\"Camera access is off\"]')");nativePreview(s,false);
    // Closing Android's dialog resumes the app. A denial must not be answered with a second dialog:
    // Alpha stays in front, still denied, until the owner retries.
    long quiet=SystemClock.elapsedRealtime()+4000;
    while(SystemClock.elapsedRealtime()<quiet){assertTrue("No permission dialog reopens after Don't allow: "+resumed(),resumed().contains(context().getPackageName()+"/")&&!resumed().contains("permissioncontroller"));SystemClock.sleep(250);}
    assertEquals(PackageManager.PERMISSION_DENIED,context().checkSelfPermission(Manifest.permission.CAMERA));
-   until(s,"document.body.innerText.includes('Tap the shutter to retry')&&document.querySelector('[role=alert][aria-label=\"Camera access is off\"]')");
-   click(s,"Take photo");permissionButton(":id/permission_allow_foreground_only_button");
-   until(s,"document.querySelector('[data-alpha-camera-screen]')");nativePreview(s,true);
+   until(s,"document.querySelector('[role=alert][aria-label=\"Camera access is off\"]')");
+   clickText(s,"Try again");permissionButton(":id/permission_allow_foreground_only_button");
+   until(s,"document.querySelector('[data-alpha-camera-screen]') && !document.querySelector('[data-alpha-camera-access]')");nativePreview(s,true);
    assertEquals(PackageManager.PERMISSION_GRANTED,context().checkSelfPermission(Manifest.permission.CAMERA));
    navigate(s,"Home");nativePreview(s,false);
   }

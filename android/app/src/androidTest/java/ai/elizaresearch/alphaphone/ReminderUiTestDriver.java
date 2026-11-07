@@ -1,7 +1,9 @@
 package ai.elizaresearch.alphaphone;
 
+import android.app.Notification;
 import android.content.Context;
 import android.os.SystemClock;
+import android.service.notification.StatusBarNotification;
 import ai.eliza.plugins.reminders.ReminderTestAccess;
 import org.json.JSONObject;
 import static org.junit.Assert.*;
@@ -13,6 +15,13 @@ final class ReminderUiTestDriver {
   long end=SystemClock.elapsedRealtime()+20000;
   while(SystemClock.elapsedRealtime()<end){if("true".equals(WebViewTestDriver.evaluate("Boolean("+predicate+")")))return;SystemClock.sleep(100);}
   fail("Reminder Calendar selection missing: "+predicate);
+ }
+ /** A posted reminder offers exactly Done, Snooze and the configured question; returns the one titled. */
+ static Notification.Action notificationAction(StatusBarNotification posted,String title){
+  Notification.Action[] actions=posted.getNotification().actions;String[] expected={"Done","Snooze 10 minutes",AlphaReminders.CONFIGURATION.questionActionLabel};
+  assertNotNull("Reminder notification actions",actions);assertEquals("Reminder notification actions",expected.length,actions.length);
+  Notification.Action found=null;for(int i=0;i<actions.length;i++){assertEquals("Reminder notification action "+i,expected[i],actions[i].title.toString());if(expected[i].equals(title))found=actions[i];}
+  assertNotNull("Reminder notification action "+title,found);return found;
  }
  static void assertStaleTapRetained(Context context)throws Exception {
   long end=SystemClock.elapsedRealtime()+20000;JSONObject pending;

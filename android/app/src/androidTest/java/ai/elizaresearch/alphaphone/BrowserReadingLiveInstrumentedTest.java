@@ -13,7 +13,7 @@ import java.security.MessageDigest;
 import java.util.concurrent.atomic.AtomicReference;
 import static org.junit.Assert.*;
 
-/** Normal chooser pairing -> review -> actual combined Kokoro, plus held-response Stop. */
+/** Normal chooser pairing -> review -> actual combined-host paired speech, plus held-response Stop. */
 public final class BrowserReadingLiveInstrumentedTest {
  private final BrowserFlowInstrumentedTest child=new BrowserFlowInstrumentedTest();
  private String js(String code)throws Exception{return WebViewTestDriver.evaluate(code);}

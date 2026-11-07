@@ -69,13 +69,13 @@ public final class VoicePermissionDeniedInstrumentedTest {
     until(button("Connect Eliza Cloud"),20000);
     for(String absent:new String[]{"Start recording","Record without transcription"})assertEquals("Signed-out recorder offers no "+absent,"false",eval("Boolean("+button(absent)+")"));
     assertTrue("No permission prompt while signed out",appFocused());
-    eval(AppNavigation.request("Settings"));until(AppNavigation.selected("Settings"),30000);until("window.__alphaTestNavigation?.status==='complete'",30000);
-    click("Agent connection");click("Sign in with Eliza Cloud");
+    // A signed-out production build shows the required sign-in page itself; fill it in place.
     until("document.querySelector('.alpha-cloud-sign-in input[name=email]')",20000);eval(InboxFixtureSignIn.DRIVE_EMAIL);
     until("document.querySelector('.alpha-cloud-sign-in input[name=one-time-code]')",20000);eval(InboxFixtureSignIn.DRIVE_CODE);
-    until("document.querySelector('#connection-title')?.textContent==='Your Cloud account'&&"+button("Sign out"),30000);click("Close connection settings");
+    until("!document.querySelector('.alpha-cloud-sign-in')",30000);
     eval(AppNavigation.request("Notes"));until(AppNavigation.selected("Notes"),30000);until("window.__alphaTestNavigation?.status==='complete'",30000);
-    click("Record and transcribe");
+    click("Record and transcribe");until(button("Start recording"),20000);
+    assertEquals("Signed-in recorder no longer asks for Eliza Cloud","false",eval("Boolean("+button("Connect Eliza Cloud")+")"));
    }else{
     // Recording without transcription needs no speech models; it still needs the microphone.
     click("Record without transcription");

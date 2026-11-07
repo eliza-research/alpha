@@ -23,8 +23,8 @@ import java.util.List;
  * (auditReadingOrder) makes the same check in Chromium for every view of the browser sweep.
  *
  * It reads the tree with the UiAutomation flags the caller configured (Configurator), so a test
- * that keeps accessibility services bound (AccessibilityInstrumentedTest's stand-in screen
- * reader) is not reconnected without them. Emulator evidence only.
+ * that keeps accessibility services bound (AccessibilityInstrumentedTest, so a real screen
+ * reader such as TalkBack stays bound) is not reconnected without them. Emulator evidence only.
  */
 final class TalkBackOrder {
  private TalkBackOrder() {}

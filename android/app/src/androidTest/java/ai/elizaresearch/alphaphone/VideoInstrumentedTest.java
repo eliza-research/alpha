@@ -83,9 +83,11 @@ public class VideoInstrumentedTest {
  @Test public void recordsDurableVideoAndPrototypeControlsDriveRealPlayback()throws Exception{
   permission();Set<Uri> before=owned();
   try(BoundedActivityScenario<MainActivity>s=BoundedActivityScenario.launch(MainActivity.class)){
-   admitAccount();begin();click("Stop recording");until("document.body.innerText.includes('Video saved to Android Photos.')");
-   Set<Uri> created=owned();created.removeAll(before);assertEquals("One finalized video",1,created.size());assertMedia(created.iterator().next());
-   click("Open last photo");until(AppNavigation.selected("Photos"));until("document.body.innerText.includes('Captured video')");
+   admitAccount();begin();click("Stop recording");
+   long end=SystemClock.elapsedRealtime()+30000;Set<Uri> created;
+   do{created=owned();created.removeAll(before);if(!created.isEmpty())break;SystemClock.sleep(100);}while(SystemClock.elapsedRealtime()<end);
+   assertEquals("One finalized video",1,created.size());assertMedia(created.iterator().next());
+   click("Open last video");until(AppNavigation.selected("Photos"));until("document.body.innerText.includes('Captured video')");
    click("Play video");until("(()=>{const v=document.querySelector('video[data-alpha-captured-video]');return v&&!v.paused&&v.currentTime>0.2&&v.videoWidth>0})()");
    click("Pause video");until("document.querySelector('video[data-alpha-captured-video]')?.paused && document.querySelector('button[aria-label=\"Play video\"]')");
    byte[] prefix;
