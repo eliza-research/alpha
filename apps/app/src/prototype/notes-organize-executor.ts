@@ -22,7 +22,7 @@ export interface NotesOrganizeHost {
  restore(noteId:string):Promise<NotesRestoreOutcome>;
  /** Starts the Notes recorder; `already` when a recording is open. */
  recordStart():Promise<NotesRecordStart>;
- /** Stops and saves the open recording as one voice note (NoteRecorderSession.finish). */
+ /** Stops the recording; audio that needs a separate transcription choice stays in Notes. */
  recordStop():Promise<NotesRecordStop>;
 }
 export interface NotesOrganizeReceipt {status:'succeeded'|'failed'|'unknown';summary:string}
@@ -52,6 +52,7 @@ export async function executeNotesOrganize(host:NotesOrganizeHost,operation:Note
    return started==='started'?{status:'succeeded',summary:'Recording a voice note in Notes.'}:started==='already'?{status:'succeeded',summary:'A voice note is already recording.'}:{status:'failed',summary:'The microphone did not start. Nothing was recorded.'};
   }
   const stopped=await host.recordStop().catch(():NotesRecordStop=>'failed');
+  if(stopped==='retained')return {status:'succeeded',summary:'Recording stopped. Open Notes to transcribe it.'};
   return stopped==='saved'?{status:'succeeded',summary:'Saved the voice note.'}:stopped==='none'?{status:'failed',summary:'No voice note is recording.'}:{status:'unknown',summary:'The voice note could not be saved. The recording is kept in Notes.'};
  }
  if(operation.type==='notes_folder_create'){

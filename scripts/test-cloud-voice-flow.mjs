@@ -1,20 +1,67 @@
-// Real renderer/Cloud-driver code with in-memory ports. No microphone, provider or playback.
-// Production speech is device-only; the Cloud voice route exists only in explicit test-mocks builds.
+// Actual segmented Notes renderer and Cloud speech driver, with in-memory native ports.
 import assert from 'node:assert/strict';
 import {cloudVoiceViewFixture} from '../test/fixtures/cloud-voice-view.mjs';
-const until=async check=>{for(let count=0;count<200;count++){if(check())return;await new Promise(resolve=>setTimeout(resolve,2));}assert.ok(check(),'Synthetic recorder did not settle');};
-async function review(f){f.render().record();f.render().rec.stop();await until(()=>f.render().rec?.primaryLabel==='Stop recording');assert.equal(f.uploads,0);f.render().rec.stop();await until(()=>f.render().rec?.primaryLabel==='Transcribe with Eliza Cloud');assert.equal(f.uploads,0);f.render().rec.stop();await until(()=>f.render().rec?.review===true&&!f.render().rec.transcriptDisabled);}
-// Cloud Notes speech exists only in test-mocks builds: production Notes speech is on-device (P-43).
-const cloud=cloudVoiceViewFixture();
-try{
- cloud.box.testMocksEnabled=true;cloud.shell.openView('notes');await review(cloud);assert.equal(cloud.uploads,1);assert.equal(cloud.render().rec.transcript,'Synthetic Cloud transcript');cloud.render().rec.onTranscript({target:{value:'Edited owned transcript'}});cloud.shell.failPersistence=true;cloud.render().rec.stop();await until(()=>!cloud.render().rec?.transcriptDisabled);assert.equal(cloud.shell.notes.list.length,0);assert.equal(cloud.render().rec.transcript,'Edited owned transcript');cloud.shell.failPersistence=false;cloud.render().rec.stop();await until(()=>cloud.shell.notes.list.length===1);assert.equal(cloud.shell.notes.list[0].body,'Edited owned transcript');assert.equal(cloud.shell.notes.list[0].audio.transcript,'Edited owned transcript');assert.equal(cloud.sends,0);
-}finally{cloud.close();}
-const manual=cloudVoiceViewFixture({account:null});
-try{
- manual.box.testMocksEnabled=true;manual.shell.openView('notes');manual.render().record();assert.equal(manual.render().rec.primaryLabel,'Connect Eliza Cloud');assert.equal(manual.render().rec.manualChoice,false);manual.render().rec.recordOnly();manual.render().rec.stop();await until(()=>manual.render().rec?.primaryLabel==='Stop recording');manual.render().rec.stop();await until(()=>manual.render().rec?.primaryLabel==='Review recording');manual.render().rec.stop();await until(()=>manual.render().rec?.review===true&&!manual.render().rec.transcriptDisabled);manual.render().rec.onTranscript({target:{value:'Explicit debug-only manual transcript'}});manual.render().rec.stop();await until(()=>manual.shell.notes.list.length===1);assert.equal(manual.uploads,0);assert.equal(manual.sends,0);assert.equal(manual.shell.notes.list[0].body,'Explicit debug-only manual transcript');
-}finally{manual.close();}
-const dictation=cloudVoiceViewFixture();
-try{
- dictation.box.testMocksEnabled=true;dictation.shell.openView('notes');const note={id:'selected-text',kind:'text',title:'Existing note',body:'Before OLD after',pinned:true};dictation.shell.notes.list=[note];dictation.shell.notes.open=note.id;dictation.noteEditor={value:note.body,selectionStart:7,selectionEnd:10};dictation.render().ed.dictate();dictation.render().rec.stop();await until(()=>dictation.render().rec?.primaryLabel==='Stop recording');dictation.render().rec.stop();await until(()=>dictation.render().rec?.primaryLabel==='Transcribe with Eliza Cloud');dictation.render().rec.stop();await until(()=>dictation.render().rec?.review===true&&!dictation.render().rec.transcriptDisabled);dictation.render().rec.onTranscript({target:{value:'inserted'}});dictation.shell.failPersistence=true;dictation.render().rec.stop();await until(()=>!dictation.render().rec?.transcriptDisabled);assert.equal(dictation.shell.notes.list[0].body,note.body);dictation.shell.failPersistence=false;dictation.render().rec.stop();await until(()=>dictation.shell.notes.list[0].body==='Before inserted after');assert.equal(dictation.shell.notes.list[0].kind,'text');assert.equal(dictation.shell.notes.list[0].pinned,true);assert.equal(dictation.audioSaves,0);assert.equal(dictation.sends,0);
-}finally{dictation.close();}
-console.log('PASS real recorder/Cloud protocol: explicit-only upload, unconfirmed-save retention, Notes selection preservation, debug-only manual path, and no automatic chat send. In-memory ports only.');
+
+async function until(check) {
+  for (let attempt = 0; attempt < 200; attempt++) {
+    if (check()) return;
+    await new Promise(resolve => setTimeout(resolve, 2));
+  }
+  assert.ok(check(), 'Synthetic Notes recorder did not settle');
+}
+
+const recordingId = '11111111-2222-4333-8444-555555555555';
+const segmentId = recordingId + '-s0';
+let recording = {state:'idle'};
+const noteRecording = driver => ({
+  async startNoteRecording(binding) {
+    recording = {state:'recording', recordingId, binding, durationMs:1000, segments:[{segmentId,durationMs:1000}]};
+    return structuredClone(recording);
+  },
+  async noteRecordingStatus() { return structuredClone(recording); },
+  async stopNoteRecording(input) {
+    assert.equal(input.recordingId, recordingId);
+    recording.state = 'stopped';
+    return structuredClone(recording);
+  },
+  async setNoteSegmentText(input) {
+    assert.equal(input.recordingId, recordingId);
+    assert.equal(input.segmentId, segmentId);
+    recording.segments[0].text = input.text;
+  },
+  saveNoteRecording: input => driver.saveRecording(input),
+  async discardNoteRecording() { recording = {state:'idle'}; return recording; },
+});
+const f = cloudVoiceViewFixture({cloudProfile:true,noteRecording});
+try {
+  f.shell.openView('notes');
+  f.render().record();
+  await until(() => f.render().noteRecorder?.phase === 'recording');
+  assert.equal(f.render().noteRecorder.doneLabel, 'Stop recording');
+  assert.equal(f.uploads, 0);
+  assert.equal(await f.notesRecorderControl.stop(), 'retained');
+  assert.equal(recording.state, 'stopped');
+  assert.equal(f.render().noteRecorder.transcribeLabel, 'Transcribe with Eliza Cloud');
+  assert.equal(f.uploads, 0);
+  assert.equal(f.shell.notes.list.length, 0);
+
+  f.shell.failPersistence = true;
+  f.render().noteRecorder.transcribe();
+  await until(() => f.render().noteRecorder?.phase === 'stopped' && f.render().noteRecorder.error);
+  assert.equal(f.uploads, 1);
+  assert.equal(f.transcribeInput.recordingId, segmentId);
+  assert.equal(f.render().noteRecorder.transcript, 'Synthetic Cloud transcript');
+  assert.equal(f.render().noteRecorder.doneLabel, 'Done');
+  assert.equal(f.shell.notes.list.length, 0);
+
+  f.shell.failPersistence = false;
+  f.render().noteRecorder.done();
+  await until(() => f.shell.notes.list.length === 1);
+  assert.equal(f.shell.notes.list[0].body, 'Synthetic Cloud transcript');
+  assert.equal(f.shell.notes.list[0].audio.transcript, 'Synthetic Cloud transcript');
+  assert.equal(f.uploads, 1, 'Retrying a local save must send no additional audio');
+  assert.equal(f.sends, 0);
+} finally {
+  f.close();
+}
+console.log('PASS Notes Cloud transcription requires a named choice after Stop and retries only local save.');

@@ -73,22 +73,40 @@ test('canonical Notes UI creates, edits, trashes and restores the same committed
  expect(foreign).toEqual([]);expect(errors).toEqual([]);
 });
 
-// Agent Notes have the redesign's header: Record and New note (PLAN.md section 3). Record opens the
-// Notes recorder; Done saves an agent voice note with the transcript and length, and no audio.
-test('Record in agent Notes saves a voice note without audio',async({page})=>{
+test('Record in agent Notes offers a separate Cloud choice and saves only the transcript',async({page})=>{
  const {foreign,errors}=await canonicalNotesFixture(page);await openCanonicalNotes(page);
  const header=page.locator('[data-alpha-subview="notes-list"] [data-alpha-app-header="main"]');
  expect(await header.getByRole('button').evaluateAll(list=>list.map(el=>el.getAttribute('aria-label')))).toEqual(['Back to apps','Record and transcribe','New note']);
- await page.evaluate(()=>{const ctx=new AudioContext(),osc=ctx.createOscillator(),sink=ctx.createMediaStreamDestination();osc.connect(sink);osc.start();Object.defineProperty(navigator.mediaDevices,'getUserMedia',{configurable:true,value:async()=>sink.stream});(window as any).micContext=ctx;});
+ await page.evaluate(async()=>{
+  const {connectionController}=await import('/src/runtime/connection-ui.tsx');
+  const {BrowserVoice}=await import('/src/browser/voice.ts');
+  const fixture=(window as any).canonicalNotesFixture;
+  fixture.transcriptions=0;
+  connectionController.getCloudEnvironment=()=> 'production';
+  connectionController.getCloudClient=()=>({sessionId:'notes-fixture',credentialId:'notes-fixture'} as any);
+  BrowserVoice.prototype.transcribeRecording=async()=>{fixture.transcriptions++;return {text:'A closed Notes fixture.',local:false};};
+  const ctx=new AudioContext(),osc=ctx.createOscillator(),sink=ctx.createMediaStreamDestination();
+  osc.connect(sink);osc.start();
+  Object.defineProperty(navigator.mediaDevices,'getUserMedia',{configurable:true,value:async()=>sink.stream});
+  (window as any).micContext=ctx;
+ });
  await page.getByRole('button',{name:'Record and transcribe',exact:true}).click();
  const recorder=page.locator('[data-alpha-subview="notes-recorder"]');
  await expect(recorder).toHaveAttribute('data-recorder-state','recording');
  await page.waitForTimeout(1200);
- await recorder.getByRole('button',{name:'Done',exact:true}).click();
+ const uploads=()=>page.evaluate(()=>(window as any).canonicalNotesFixture.transcriptions);
+ expect(await uploads()).toBe(0);
+ await recorder.getByRole('button',{name:'Stop recording',exact:true}).click();
+ const transcribe=recorder.getByRole('button',{name:'Transcribe with Eliza Cloud',exact:true});
+ await expect(transcribe).toBeVisible();
+ expect(await uploads()).toBe(0);
+ await transcribe.click();
  await expect(recorder).toHaveCount(0);
  await expect.poll(()=>snapshot(page).then((s:any)=>s.notes.map((n:any)=>[n.title,n.format?.kind]))).toEqual([['Voice note','voice']]);
  const saved=(await snapshot(page)).notes[0];
  expect(saved.format.data.dur).toBeGreaterThan(0);expect(JSON.stringify(saved)).not.toMatch(/audio/i);
+ expect(saved.body).toBe('\nA closed Notes fixture.');
+ expect(await uploads()).toBe(1);
  const requests=await page.evaluate(()=>(window as any).canonicalNotesFixture.requests.filter((r:any)=>r.path==='/api/views/notes/interact'));
  expect(JSON.stringify(requests)).not.toMatch(/audioId/);
  await page.evaluate(()=>(window as any).micContext.close());
