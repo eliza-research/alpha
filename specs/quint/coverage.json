@@ -9877,7 +9877,7 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDataReset.java",
-      "sha256": "86da5d693466356356c898feffea545d794b15b8c4d5de1fa184318a907d3426",
+      "sha256": "cdf49fd6d0aa456239241e4a73109c8f38e46bbc3dcdfee32b5d484be2687905",
       "models": [
         "ApplicationComposition",
         "ResetRecovery"
@@ -9886,47 +9886,63 @@
       "treatment": "state-and-transition-projection",
       "stateAnchors": [
         {
-          "line": 25,
+          "line": 27,
           "text": "enum Outcome{DISPATCHED,LISTENER_UNACKNOWLEDGED,ANDROID_REFUSED,DEFERRED}"
         },
         {
-          "line": 26,
+          "line": 28,
+          "text": "private static final java.util.concurrent.locks.ReentrantLock ATTEMPT_LOCK=new java.util.concurrent.locks.ReentrantLock();"
+        },
+        {
+          "line": 31,
+          "text": "private static <T>T locked(Context context,Locked<T> operation)throws Exception{"
+        },
+        {
+          "line": 39,
           "text": "private static File directory(Context context){return context.createDeviceProtectedStorageContext().getNoBackupFilesDir();}"
         },
         {
-          "line": 27,
+          "line": 40,
           "text": "private static AtomicFile marker(Context context){return new AtomicFile(new File(directory(context),\"reset-alpha.pending\"));}"
         },
         {
-          "line": 28,
+          "line": 41,
           "text": "private static AtomicFile failures(Context context){return new AtomicFile(new File(directory(context),\"reset-alpha.failures\"));}"
         },
         {
-          "line": 29,
+          "line": 42,
           "text": "private static boolean exists(AtomicFile file){return file.getBaseFile().exists()||new File(file.getBaseFile().getPath()+\".bak\").exists();}"
         },
         {
-          "line": 33,
+          "line": 53,
           "text": "private static void write(AtomicFile file,byte[] value)throws Exception{"
         },
         {
-          "line": 57,
-          "text": "private static void recordFailure(Context context,long now){"
+          "line": 79,
+          "text": "static Outcome retry(Context context,long now){return admittedAttempt(context,now,true);}"
         },
         {
-          "line": 90,
+          "line": 82,
+          "text": "static Outcome automaticAttempt(Context context,long now){return admittedAttempt(context,now,false);}"
+        },
+        {
+          "line": 83,
+          "text": "private static Outcome admittedAttempt(Context context,long now,boolean explicit){"
+        },
+        {
+          "line": 117,
           "text": "private static boolean userVisibleStart(Context context){"
         },
         {
-          "line": 107,
+          "line": 134,
           "text": "private static void dispatchAndExit(Context context,boolean showRecovery){"
         },
         {
-          "line": 115,
+          "line": 142,
           "text": "private static void showRecovery(Context context){"
         },
         {
-          "line": 119,
+          "line": 146,
           "text": "private AlphaDataReset(){}"
         }
       ]
@@ -16124,7 +16140,7 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/ResetRecoveryActivity.java",
-      "sha256": "f4d803f1649de3f58b2b12dc9674ca91f087f415a03c22c1f39f704471180bb2",
+      "sha256": "840e583479dfa0f320dfb94172f12b9f8033893cecae31c03e1fcd73b0ab6451",
       "models": [
         "ResetRecovery"
       ],

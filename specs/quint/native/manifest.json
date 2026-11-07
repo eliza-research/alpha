@@ -191,20 +191,41 @@
         "failedListenerRetainsDataTest",
         "staleDeviceCredentialRejectedTest",
         "boundedLaunchRecoveryTest",
-        "failedPersistenceDoesNotAuthorizeTest"
+        "failedPersistenceDoesNotAuthorizeTest",
+        "authorizationPrecedesMarkerTest",
+        "failedReservationDispatchesNothingTest",
+        "writeAheadReservationSurvivesCrashTest",
+        "missingLegacyBudgetDefersTest",
+        "explicitRetryPreservesExhaustedBudgetTest",
+        "oneReservationOwnerTest",
+        "windowResetOccursAtCommitTest",
+        "erasedRequestCannotRestoreTest",
+        "acceptedClearMayNeedRetryTest",
+        "committedReservationFailureConsumesSlotTest"
       ],
       "invariants": [
         "FreshAuthentication",
         "PendingBlocksInitialization",
         "ListenerBeforeAndroid",
         "DispatchIsNotCompletion",
-        "BoundedAutomaticAttempts"
+        "BoundedAutomaticAttempts",
+        "DurableReservationBeforeEffects",
+        "AutomaticReservationAdmitted"
       ],
       "abstractions": [
-        "Three automatic attempts per abstract time window and five authentication generation identities.",
-        "Listener acknowledgement and Android dispatch are environment results; observed erasure is a separate action.",
-        "Files, fsync and Binder calls are abstracted at their documented completion/failure boundaries."
-      ]
+        "Three-or-more admitted attempts share the exhausted class. Raw source counters are retained in source-trace evidence; explicit retries preserve a readable same-window count.",
+        "Five authentication generation identities. Authorization, budget initialization, marker commit, attempt reservation, listener result, Android result and process exit are separate transitions.",
+        "Legacy pending markers remain recognized. Missing or corrupt budgets block automatic effects until a durable explicit retry reservation.",
+        "One lock owner is represented by attemptStage; contention refuses another admission until the active attempt finishes or the process exits. Actual two-process FileChannel locking is regression-tested.",
+        "Android dispatch acceptance and externally observed package erasure remain separate. AtomicFile/fsync and real Binder/package deletion require platform evidence."
+      ],
+      "stateMapping": {
+        "review/confirmed/authGeneration/authReady": "ResetAuthorization begin, confirm, authenticate and retire; authorization is consumed before persistence",
+        "marker/budgetPresent/failures/budgetReadable": "AlphaDataReset record, failureState and durable write-ahead attempt reservation; failures is the saturated admitted-attempt count",
+        "attemptStage/reserved/explicitRetry": "Cross-process file lock and automaticAttempt/retry admission before listener/Android callbacks",
+        "processInitialized/startupAdmitted/recoveryVisible": "Current process differs from new-process startup admission; AlphaApplication attachBaseContext and recovery/exit callbacks",
+        "dispatched/clearAccepted/erased": "Current attempt acceptance is separate from historical accepted-clear evidence and external erasure; a surviving marker may be retried after restart."
+      }
     },
     {
       "path": "specs/quint/native/DeletionJournal.qnt",

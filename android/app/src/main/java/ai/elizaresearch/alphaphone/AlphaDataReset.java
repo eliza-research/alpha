@@ -7,6 +7,8 @@ import android.util.AtomicFile;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.nio.charset.StandardCharsets;
+import java.io.RandomAccessFile;
+import java.nio.channels.FileLock;
 
 /** Android owns the package-scoped deletion, process stop, jobs, alarms and Keystore cleanup.
  * A persisted request retries before app initialization if interrupted before system dispatch.
@@ -23,24 +25,43 @@ final class AlphaDataReset {
  static final int AUTOMATIC_ATTEMPTS=3;
  static final long AUTOMATIC_WINDOW_MS=60_000;
  enum Outcome{DISPATCHED,LISTENER_UNACKNOWLEDGED,ANDROID_REFUSED,DEFERRED}
+ private static final java.util.concurrent.locks.ReentrantLock ATTEMPT_LOCK=new java.util.concurrent.locks.ReentrantLock();
+ private interface Locked<T>{T run()throws Exception;}
+ /** Main and recovery run in separate processes. Both must reserve the same durable budget. */
+ private static <T>T locked(Context context,Locked<T> operation)throws Exception{
+  if(!ATTEMPT_LOCK.tryLock())throw new java.io.IOException("Reset attempt already active");
+  try(RandomAccessFile file=new RandomAccessFile(new File(directory(context),"reset-alpha.lock"),"rw")){
+   FileLock lease=file.getChannel().tryLock();
+   if(lease==null)throw new java.io.IOException("Reset attempt already active");
+   try(FileLock ignored=lease){return operation.run();}
+  }finally{ATTEMPT_LOCK.unlock();}
+ }
  private static File directory(Context context){return context.createDeviceProtectedStorageContext().getNoBackupFilesDir();}
  private static AtomicFile marker(Context context){return new AtomicFile(new File(directory(context),"reset-alpha.pending"));}
  private static AtomicFile failures(Context context){return new AtomicFile(new File(directory(context),"reset-alpha.failures"));}
  private static boolean exists(AtomicFile file){return file.getBaseFile().exists()||new File(file.getBaseFile().getPath()+".bak").exists();}
  static boolean pending(Context context){return exists(marker(context));}
- /** A new confirmed request starts with a fresh automatic-attempt budget. */
- static void record(Context context)throws Exception{failures(context).delete();write(marker(context),new byte[]{1});}
+ /** The budget is durable before the marker can authorize an automatic attempt. */
+ static void record(Context context)throws Exception{
+  locked(context,()->{
+   if(pending(context))return null;
+   write(failures(context),"0:0".getBytes(StandardCharsets.US_ASCII));
+   write(marker(context),new byte[]{1});
+   return null;
+  });
+ }
  private static void write(AtomicFile file,byte[] value)throws Exception{
   FileOutputStream out=null;
   try{out=file.startWrite();out.write(value);out.getFD().sync();file.finishWrite(out);out=null;
    java.io.FileDescriptor directory=android.system.Os.open(file.getBaseFile().getParent(),android.system.OsConstants.O_RDONLY,0);
    try{android.system.Os.fsync(directory);}finally{android.system.Os.close(directory);}
+   if(!java.util.Arrays.equals(file.readFully(),value))throw new java.io.IOException("Reset write was not committed");
   }finally{if(out!=null)file.failWrite(out);}
  }
- /** {count, first failure time in the current window}; unreadable state counts as exhausted
-  * until a user-initiated attempt from the recovery surface starts a new window. */
+ /** {reserved attempt count, window start}; missing legacy or unreadable budgets block
+  * automatic work until an explicit recovery attempt durably repairs the budget. */
  static long[] failureState(Context context){
-  AtomicFile file=failures(context);if(!exists(file))return new long[]{0,0};
+  AtomicFile file=failures(context);if(!exists(file))return pending(context)?new long[]{AUTOMATIC_ATTEMPTS,-1}:new long[]{0,0};
   try{String[] parts=new String(file.readFully(),StandardCharsets.US_ASCII).trim().split(":");
    long count=Long.parseLong(parts[0]),first=Long.parseLong(parts[1]);
    // A negative or overflowing count would otherwise grant unbounded automatic attempts.
@@ -54,25 +75,31 @@ final class AlphaDataReset {
   // A wall-clock step backwards also starts a new window rather than deferring forever.
   return now<state[1]||now-state[1]>=AUTOMATIC_WINDOW_MS;
  }
- private static void recordFailure(Context context,long now){
-  // A late result after Android finished the clear must not recreate state in fresh data.
-  if(!pending(context))return;
-  long[] state=failureState(context);
-  long[] next=state[0]==0||now<state[1]||now-state[1]>=AUTOMATIC_WINDOW_MS?new long[]{1,now}:new long[]{Math.min(state[0]+1,Integer.MAX_VALUE),state[1]};
-  try{write(failures(context),(next[0]+":"+next[1]).getBytes(StandardCharsets.US_ASCII));}
-  catch(Exception unavailable){/* The pending marker, not this counter, keeps the reset fail-closed. */}
- }
- /** One attempt: durable listener revocation first, then Android's package-scoped clear of Alpha
-  * itself. On {@link Outcome#DISPATCHED} Android stops every Alpha process and deletes its data,
-  * including this marker; any other outcome leaves the marker and all data in place. */
- static Outcome attempt(Context context,long now){
-  Outcome outcome;
-  try{
-   if(!AlphaListenerPlugin.resetForData(context))outcome=Outcome.LISTENER_UNACKNOWLEDGED;
-   else{ActivityManager manager=context.getSystemService(ActivityManager.class);outcome=manager!=null&&manager.clearApplicationUserData()?Outcome.DISPATCHED:Outcome.ANDROID_REFUSED;}
-  }catch(RuntimeException failure){outcome=Outcome.ANDROID_REFUSED;}
-  if(outcome!=Outcome.DISPATCHED)recordFailure(context,now);
-  return outcome;
+ /** Explicit recovery retry may repair an unreadable legacy budget or exceed automatic limits. */
+ static Outcome retry(Context context,long now){return admittedAttempt(context,now,true);}
+ /** Retained for package-local callers that explicitly request a recovery attempt. */
+ static Outcome attempt(Context context,long now){return retry(context,now);}
+ static Outcome automaticAttempt(Context context,long now){return admittedAttempt(context,now,false);}
+ private static Outcome admittedAttempt(Context context,long now,boolean explicit){
+  if(now<0||!pending(context))return Outcome.DEFERRED;
+  try{return locked(context,()->{
+   // A queued caller cannot authorize another clear after Android removed the request.
+   if(!pending(context))return Outcome.DEFERRED;
+   long[] state=failureState(context);
+   if(!explicit&&!automaticAttemptAllowed(state,now))return Outcome.DEFERRED;
+   boolean newWindow=state[1]<0||state[0]==0||now<state[1]||now-state[1]>=AUTOMATIC_WINDOW_MS;
+   long count=newWindow?1:Math.min(state[0]+1,Integer.MAX_VALUE);
+   long first=newWindow?now:state[1];
+   // A crash or failed write cannot give the next process this reservation again.
+   write(failures(context),(count+":"+first).getBytes(StandardCharsets.US_ASCII));
+   if(!pending(context))return Outcome.DEFERRED;
+   try{
+    if(!AlphaListenerPlugin.resetForData(context))return Outcome.LISTENER_UNACKNOWLEDGED;
+    if(!pending(context))return Outcome.DEFERRED;
+    ActivityManager manager=context.getSystemService(ActivityManager.class);
+    return manager!=null&&manager.clearApplicationUserData()?Outcome.DISPATCHED:Outcome.ANDROID_REFUSED;
+   }catch(RuntimeException failure){return Outcome.ANDROID_REFUSED;}
+  });}catch(Exception unavailable){return Outcome.DEFERRED;}
  }
  /** The user just confirmed the reset in Alpha, so an unfinished reset always opens recovery. */
  static void dispatchAndExit(Context context){dispatchAndExit(context,true);}
@@ -107,7 +134,7 @@ final class AlphaDataReset {
  private static void dispatchAndExit(Context context,boolean showRecovery){
   try{
    long now=System.currentTimeMillis();
-   Outcome outcome=automaticAttemptAllowed(failureState(context),now)?attempt(context,now):Outcome.DEFERRED;
+   Outcome outcome=automaticAttempt(context,now);
    if(outcome!=Outcome.DISPATCHED){android.util.Log.w("AlphaReset","Reset not finished ("+outcome+")"+(showRecovery?"; showing recovery":"; background start"));if(showRecovery)showRecovery(context);}
   }catch(RuntimeException failure){android.util.Log.w("AlphaReset","Reset admission failed");if(showRecovery)showRecovery(context);}
   finally{android.os.Process.killProcess(android.os.Process.myPid());System.exit(0);}

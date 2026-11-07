@@ -12,7 +12,7 @@ working source. The source lists, named invariants, scenarios and bounds are in
 | `VoiceSession` | `VoiceAssistantSession.start`, `stop`, `setMuted`, `speechStarted`, `schedule`, `submit`, `respond`, `resume`, `playSentence`, `createNativeLiveDictation`, `createCloudVoice` | Session/turn/utterance generations, semantic and long-gap endpointing, capture, mute, barge-in, completed-sentence accounting, separately reviewed read response and local dictation |
 | `SpeechResources` | `LiveCaptureAdmission.begin`, `attach`, `stop`, `cancelAll`, `SpeechAudioFocusPolicy.changed`, `stopsCapture`, `SpeechPcmQueue.offer`, `take`, `close` | Capture reservation and late startup, one capture owner, transient focus/duck/loss, bounded PCM queue and canceled stream |
 | `AlwaysOnListener` | `ListenerPolicy.decide`, `holdsMicrophone`, `processesAudio`, `latchesIndicatorLoss`, `IndicatorLease.renew`, `verdict`, `ListeningEpoch.current`, `ListenerStore` consent generation | Consent, visibility, unlock, call/privacy, SystemUI lease, explained pause, sticky indicator loss and queued recognition invalidation |
-| `ResetRecovery` | `ResetAuthorization.begin`, `confirm`, `authenticate`, `retire`, `AlphaDataReset.record`, `attempt`, `automaticAttemptAllowed`, `recordFailure`, `admitAndExit` | Activity-bound approval, durable pending marker, listener-first reset, bounded automatic retry, recovery surface, accepted dispatch and externally observed erasure |
+| `ResetRecovery` | `ResetAuthorization.begin`, `confirm`, `authenticate`, `retire`, `AlphaDataReset.record`, `automaticAttempt`, `retry`, `admittedAttempt`, `automaticAttemptAllowed`, `admitAndExit` | Activity-bound approval, durable pending marker, listener-first reset, bounded automatic retry, recovery surface, accepted dispatch and externally observed erasure |
 | `DeletionJournal` | `DeferredDeletionJournal.stage`, `undo`, `expire`, `list`, `acknowledge`, `NativeDeletionCoordinator.reconcile`, `stageOwnerCurrent` | Durable intent, monotonic Undo window, changed boot, exact owner/source admission, dispatch uncertainty and retained no-replay receipt |
 | `MediaLifecycle` | `NativeReadEpoch.current`, `LibraryCatalog.observeScope`, `PhotoAttachmentSource.read`, `publish`, browser `beginPhotoEdit`, `savePhotoEdit`, `cancelPhotoEdit`, `resultPhotoEdit` | Per-item permission, lifecycle/source revision, selected read, reviewed output, canceled temporary capture and active playback |
 | `DeviceActions` | `SmsSendJournal.beginDispatch`, `endDispatch`, `sentResult`, `status`, `existing`, telephony read epoch checks, `retainReminderCreation`, `checkReminderCreation`, `reconcileReminderCreations`, `ClockContract.receiver` | Image/permission/SIM gates, exact reviewed SMS binding, durable dispatch, multipart evidence, retired operation id, stale contacts, reminder creation recovery and revision-bound notification |
@@ -253,3 +253,13 @@ The current proof index is `test-results/quint/final-proof-index.json`. It links
 the expanded composition, four new models and corrected IPC successor-ownership
 invariant to their current receipts. The repository verification report records
 the detailed bounds and provenance.
+
+## Durable reset attempt admission
+
+`ResetRecovery` separates authentication, budget and marker persistence, write-ahead
+attempt reservation, listener/Android callbacks and process exit. An existing
+process may remain initialized while the marker blocks subsequent startup. Legacy
+markers retain their authority, while missing or corrupt budgets require explicit
+recovery. Explicit retry preserves a readable same-window count. The reset source
+adapter and two-process file-lock regressions are documented in
+[reset-orchestration-report.md](../refinement/native/reset-orchestration-report.md).

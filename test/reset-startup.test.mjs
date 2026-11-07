@@ -39,7 +39,7 @@ public class ResetStartupTest {
   android.content.Context.data=new java.io.File(args[0]);AlphaApplication app=new AlphaApplication();
   check(!AlphaDataReset.pending(app));
   // A late failure result from a stale recovery attempt cannot recreate reset state in fresh data.
-  AlphaListenerPlugin.resetSaved=false;check(AlphaDataReset.attempt(app,System.currentTimeMillis())==AlphaDataReset.Outcome.LISTENER_UNACKNOWLEDGED);check(android.content.Context.data.listFiles().length==0);AlphaListenerPlugin.resetSaved=true;
+  AlphaListenerPlugin.resetSaved=false;check(AlphaDataReset.attempt(app,System.currentTimeMillis())==AlphaDataReset.Outcome.DEFERRED);check(android.content.Context.data.listFiles().length==0);AlphaListenerPlugin.resetSaved=true;
   app.attachBaseContext(app);app.onCreate();check(NativeSourceHost.started==7);
   // Package-scoped: Android's own-package clear only; the sibling app's fixture data is untouched.
   check(new java.io.File(args[1],"keep").isFile());NativeSourceHost.started=0;
@@ -52,7 +52,7 @@ public class ResetStartupTest {
   // #409 launcher loop: an installed listener that never acknowledges. Android relaunches HOME each
   // time the process stops. Every launch must stop without clearing or initializing, must show the
   // recovery surface, and automatic listener attempts must be bounded rather than repeated forever.
-  java.io.File failures=new java.io.File(android.content.Context.data,"reset-alpha.failures");check(failures.delete()||true);
+  java.io.File failures=new java.io.File(android.content.Context.data,"reset-alpha.failures");java.nio.file.Files.write(failures.toPath(),"0:0".getBytes());
   android.content.Context.recoveries=0;AlphaListenerPlugin.calls=0;int clears=android.app.ActivityManager.calls;
   for(int relaunch=0;relaunch<25;relaunch++){try{new AlphaApplication().attachBaseContext(app);throw new AssertionError("Unacknowledged reset resumed on relaunch "+relaunch);}catch(android.os.Process.Exit stopped){}}
   check(android.content.Context.recoveries==25);check(AlphaListenerPlugin.calls==AlphaDataReset.AUTOMATIC_ATTEMPTS);
@@ -87,8 +87,9 @@ public class ResetStartupTest {
   android.os.Build.VERSION.SDK_INT=36;android.app.ActivityManager.startsFail=false;android.app.ActivityManager.starts=java.util.List.of(new android.app.ApplicationStartInfo(123,android.app.ApplicationStartInfo.START_REASON_JOB));
   int shown=android.content.Context.recoveries;try{AlphaDataReset.dispatchAndExit(app);throw new AssertionError();}catch(android.os.Process.Exit stopped){}check(android.content.Context.recoveries==shown+1);
   android.app.ActivityManager.starts=new java.util.ArrayList<>();
-  // A new confirmation starts a fresh budget, so the interactive attempt is never silently deferred.
-  AlphaDataReset.record(app);check(!failures.exists());check(AlphaDataReset.automaticAttemptAllowed(AlphaDataReset.failureState(app),System.currentTimeMillis()));
+  // An existing marker preserves its missing budget. Only explicit retry repairs it.
+  AlphaDataReset.record(app);check(!failures.exists());check(!AlphaDataReset.automaticAttemptAllowed(AlphaDataReset.failureState(app),System.currentTimeMillis()));
+  check(AlphaDataReset.retry(app,System.currentTimeMillis())==AlphaDataReset.Outcome.LISTENER_UNACKNOWLEDGED);check(AlphaDataReset.failureState(app)[0]==1);
   // Interrupted between acknowledgement and dispatch: the listener acknowledges, Android refuses; the next launch completes.
   AlphaListenerPlugin.resetSaved=true;android.app.ActivityManager.mode=2;try{new AlphaApplication().attachBaseContext(app);throw new AssertionError();}catch(android.os.Process.Exit stopped){}check(AlphaDataReset.pending(app));
   android.app.ActivityManager.mode=0;int recoveriesBefore=android.content.Context.recoveries;
@@ -97,7 +98,7 @@ public class ResetStartupTest {
   for(java.io.File f:android.content.Context.data.listFiles())check(f.delete());
   check(!AlphaDataReset.pending(app));
   // A late failure result from a stale recovery attempt cannot recreate reset state in fresh data.
-  AlphaListenerPlugin.resetSaved=false;check(AlphaDataReset.attempt(app,System.currentTimeMillis())==AlphaDataReset.Outcome.LISTENER_UNACKNOWLEDGED);check(android.content.Context.data.listFiles().length==0);AlphaListenerPlugin.resetSaved=true;
+  AlphaListenerPlugin.resetSaved=false;check(AlphaDataReset.attempt(app,System.currentTimeMillis())==AlphaDataReset.Outcome.DEFERRED);check(android.content.Context.data.listFiles().length==0);AlphaListenerPlugin.resetSaved=true;
   app.attachBaseContext(app);app.onCreate();check(NativeSourceHost.started==7);
   // Package-scoped: Android's own-package clear only; the sibling app's fixture data is untouched.
   check(new java.io.File(args[1],"keep").isFile());

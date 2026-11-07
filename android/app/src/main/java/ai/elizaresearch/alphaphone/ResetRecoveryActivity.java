@@ -69,12 +69,14 @@ public final class ResetRecoveryActivity extends Activity {
   retry.setEnabled(false);status.setText("Trying the reset again…");
   final android.content.Context context=getApplicationContext();
   Thread attempt=new Thread(()->{
-   AlphaDataReset.Outcome outcome=AlphaDataReset.attempt(context,System.currentTimeMillis());
+   AlphaDataReset.Outcome outcome=AlphaDataReset.retry(context,System.currentTimeMillis());
    main.post(()->{
     if(destroyed)return;
     if(outcome==AlphaDataReset.Outcome.DISPATCHED){status.setText("Android is deleting Alpha's data. Alpha will close.");return;}
     retry.setEnabled(true);
-    status.setText(outcome!=AlphaDataReset.Outcome.LISTENER_UNACKNOWLEDGED
+    status.setText(outcome==AlphaDataReset.Outcome.DEFERRED
+     ?"Reset preparation is unavailable. Alpha stays closed. Try again after the current attempt finishes or storage is available."
+     :outcome!=AlphaDataReset.Outcome.LISTENER_UNACKNOWLEDGED
      ?"Android did not accept the reset. Alpha's local data was not deleted. Try again."
      :AlphaListenerPlugin.available(this)
      ?"The listener still has not confirmed. Alpha's local data was not deleted. Open its settings to turn it off, then try again."
