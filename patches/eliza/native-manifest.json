@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "baseCommit": "912f972e58b1b707ecdf2271eeba495f2ed966ef",
+  "baseCommit": "b25d8aef2916385c571f4367e099809254fde0bb",
   "patches": [],
   "modules": [
     "plugins/plugin-native-action-journal/android",
@@ -9,6 +9,7 @@
     "plugins/plugin-native-notifications/android",
     "plugins/plugin-native-reminders/android",
     "plugins/plugin-native-secure-store/android",
+    "plugins/plugin-native-secure-store/android-nativeonly",
     "plugins/plugin-native-system/android"
   ]
 }

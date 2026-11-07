@@ -38,8 +38,15 @@ project(':eliza-calendar').projectDir = new File(nativePatchSource.root, 'plugin
 project(':eliza-reminders').projectDir = new File(nativePatchSource.root, 'plugins/plugin-native-reminders/android')
 include ':elizaos-capacitor-secure-store'
 project(':elizaos-capacitor-secure-store').projectDir = new File(nativePatchSource.root, 'plugins/plugin-native-secure-store/android')
-include ':eliza-passwords'
-project(':eliza-passwords').projectDir = new File('../vendor/eliza/plugins/plugin-native-passwords/android')
+// Native-only custody classes (ai.eliza.plugins.securestore.nativeonly); the secure-store and passwords modules depend on it.
+include ':elizaos-capacitor-secure-store-nativeonly'
+project(':elizaos-capacitor-secure-store-nativeonly').projectDir = new File(nativePatchSource.root, 'plugins/plugin-native-secure-store/android-nativeonly')
+// Upstream module names: android-transfer depends on ':elizaos-capacitor-passwords' by name.
+include ':elizaos-capacitor-passwords'
+project(':elizaos-capacitor-passwords').projectDir = new File('../vendor/eliza/plugins/plugin-native-passwords/android')
+// CSV transfer (PasswordTransferPlugin), registered only in test-mocks builds as before it moved out of the core module.
+include ':elizaos-capacitor-passwords-transfer'
+project(':elizaos-capacitor-passwords-transfer').projectDir = new File('../vendor/eliza/plugins/plugin-native-passwords/android-transfer')
 
 include ':eliza-notifications'
 project(':eliza-notifications').projectDir = new File(nativePatchSource.root, 'plugins/plugin-native-notifications/android')

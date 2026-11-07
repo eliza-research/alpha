@@ -311,7 +311,7 @@ test('the pinned password policy admits the HTTP auth prompt only for its exact 
     execFileSync(binary('javac'), ['--release', '17', '-d', temporary,
       'android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserHttpAuthOrigin.java',
       'vendor/eliza/plugins/plugin-native-passwords/android/src/main/java/ai/eliza/plugins/passwords/PasswordFormPolicy.java',
-      'vendor/eliza/plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/PasswordFacets.java',
+      'vendor/eliza/plugins/plugin-native-secure-store/android-nativeonly/src/main/java/ai/eliza/plugins/securestore/nativeonly/PasswordFacets.java',
       'vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserAutofillEligibility.java',
       'vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserWebOrigin.java',
       'test/fixtures/LoginBindingTest.java'], {timeout: 60000});
@@ -414,7 +414,7 @@ test('the field-origin rule and the pinned password policy run on the JVM', () =
     execFileSync(binary('javac'), ['--release', '17', '-d', temporary,
       'android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserFieldOrigin.java',
       'vendor/eliza/plugins/plugin-native-passwords/android/src/main/java/ai/eliza/plugins/passwords/PasswordFormPolicy.java',
-      'vendor/eliza/plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/PasswordFacets.java',
+      'vendor/eliza/plugins/plugin-native-secure-store/android-nativeonly/src/main/java/ai/eliza/plugins/securestore/nativeonly/PasswordFacets.java',
       'vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserAutofillEligibility.java',
       'vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserWebOrigin.java',
       'test/fixtures/FieldOriginBindingTest.java'], {timeout: 60000});
