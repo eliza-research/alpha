@@ -81,6 +81,21 @@ public final class StorageBrowserTest {
    check(b.folders("Download","bank",0,0,500,20000).isEmpty(),"folder filter stays under the folder");
    check(b.folders("","bank",1_760_000_000_000L,0,500,20000).isEmpty(),"folder filter applies the date range");
    check(b.folders("","",0,0,500,20000).stream().noneMatch(r->r.path.startsWith(".")||r.path.contains("/.")),"no hidden folders");
+   // FixIdentity: a reviewed agent move or trash acts only on the file the owner reviewed.
+   new File(root,"Review").mkdirs();
+   File lease=new File(root,"Review/lease.pdf"),notes=new File(root,"Review/notes.txt");
+   StorageBrowser.write(lease,"lease v1");StorageBrowser.write(notes,"notes");
+   lease.setLastModified(1_700_000_000_000L);notes.setLastModified(1_700_000_000_000L);
+   List<StorageBrowser.Identity> reviewed=b.identities(Arrays.asList("Review/lease.pdf","Review/notes.txt","Review/none.txt"));
+   check(reviewed.get(0).size==8&&reviewed.get(0).modified==1_700_000_000_000L&&reviewed.get(2)==null,"identity is size and modified time; missing is null");
+   StorageBrowser.write(lease,"lease v2, rewritten");   // edited after the card was built
+   List<StorageBrowser.Outcome> bound=b.transfer(Arrays.asList("Review/lease.pdf","Review/notes.txt"),"Documents",false,reviewed.subList(0,2));
+   check(bound.get(0).status.equals("changed")&&bound.get(0).to==null&&bound.get(1).status.equals("moved"),"a changed file is left alone, the reviewed one moves");
+   check(text(lease).equals("lease v2, rewritten"),"the changed file is untouched");
+   File replaced=new File(root,"Review/lease.pdf");replaced.setLastModified(1_700_000_000_000L);
+   check(b.trash(Arrays.asList("Review/lease.pdf"),1000L,Arrays.asList(reviewed.get(0))).get(0).status.equals("changed")&&replaced.exists(),"trash also binds the identity (same mtime, other size)");
+   check(b.trash(Arrays.asList("Review/lease.pdf"),1000L,b.identities(Arrays.asList("Review/lease.pdf"))).get(0).status.equals("trashed"),"the current identity trashes");
+   try{b.trash(Arrays.asList("Download/a.pdf"),1000L,Arrays.asList());check(false,"identity count");}catch(IllegalArgumentException expected){}
    System.out.println("PASS storage browser");
   }finally{StorageBrowser.deleteRecursive(root);}
  }

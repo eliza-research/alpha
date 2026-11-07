@@ -121,3 +121,40 @@ test('the Library grid is virtualised: rendered tiles come from virtualGrid wind
  assert.match(camera,/tiles\(group\.items\.slice\(part\.from, part\.to\)/);
  assert.match(template,/style="\{\{photos\.gridBefore\}\}"[\s\S]*\{\{g\.pad\}\}[\s\S]*style="\{\{photos\.gridAfter\}\}"/);
 });
+
+test('FixPatch: a reload re-reads every loaded row (up to the window), so rows paged in deep stay loaded',async()=>{
+ const all=Array.from({length:1000},(_,i)=>row('r'+i,now-i*60000)),pages=[];
+ const list=async({before}={})=>{pages.push(before||'');const at=before?all.findIndex(r=>r.id===before)+1:0,items=all.slice(at,at+24);return {items,next:at+24<all.length?items.at(-1).id:''};};
+ const reload=await v.readWindow(list,{more:false,cursor:'',loaded:800,limit:2000});
+ assert.ok(reload.rows.length>=800,'Row 800 is still loaded after a reload');assert.ok(reload.rows.some(r=>r.id==='r799'));
+ assert.equal((await v.readWindow(list,{more:false,cursor:'',loaded:3000,limit:500})).rows.length,504,'Bounded by the window (whole pages)');
+ pages.length=0;const page=await v.readWindow(list,{more:true,cursor:'r23',loaded:24,limit:2000});
+ assert.deepEqual(pages,['r23']);assert.equal(page.rows[0].id,'r24');
+ let live=true;const stale=await v.readWindow(async o=>{live=false;return list(o);},{more:false,cursor:'',loaded:100,limit:2000},()=>live);
+ assert.equal(stale,undefined,'A superseded reload returns nothing');
+});
+
+test('FixNoCap: permitted items go in one reviewed request per 500; Cancel ends the run',async()=>{
+ const owned=Array.from({length:300},(_,i)=>({id:'native-camera-'+(i+1)})),permitted=Array.from({length:300},(_,i)=>({id:'native-camera-m:external_primary:i:'+(i+1)}));
+ const id=row=>row.id.replace(/^native-camera-/,'');
+ assert.equal(v.changeBatches(owned,id,{owned:20,permitted:500}).length,15,'Owned items keep internal batches');
+ assert.deepEqual(v.changeBatches(permitted,id,{owned:20,permitted:500}).map(b=>b.length),[300],'One Android confirmation for 300 permitted items');
+ const sent=[];const declined=Object.assign(Error('Photo change cancelled.'),{code:'LIBRARY_DECLINED'});
+ const runs=await v.runBatches(v.batches(owned,20),async batch=>{sent.push(batch);throw declined;});
+ assert.equal(sent.length,1,'Cancelling the first confirmation does not open the next');
+ assert.equal(runs.length,15);assert.ok(runs.every(r=>r.declined));
+ const mixed=[];const outcome=await v.runBatches([[1],[2],[3]],async batch=>{mixed.push(batch[0]);if(batch[0]===1)throw Error('provider error');return batch[0];});
+ assert.deepEqual(mixed,[1,2,3],'Another failure does not stop later batches');assert.ok(outcome[0].error);assert.equal(outcome[2].receipt,3);
+ assert.equal(await v.runBatches([[1]],async()=>1,()=>true),undefined);
+});
+
+test('thumbnails are kept only around the rendered rows; rendered rows without one are fetched again',()=>{
+ const rows=Array.from({length:2000},(_,i)=>row('r'+i,now-i*60000,{image:'data:x'}));
+ const plan=v.thumbnailPlan(rows,900,940,240);
+ assert.equal(2000-plan.drop.length,240,'240 thumbnails kept around rows 900-940');
+ assert.ok(!plan.drop.includes('r900')&&!plan.drop.includes('r939'));assert.ok(plan.drop.includes('r0'));
+ assert.deepEqual(plan.fetch,[]);
+ const back=v.thumbnailPlan(rows.map(r=>({...r,image:''})),10,30,240);
+ assert.deepEqual(back.fetch,Array.from({length:20},(_,i)=>'r'+(10+i)),'scrolling back fetches the rendered rows');
+ assert.deepEqual(v.thumbnailPlan(rows.slice(0,100),0,50,240).drop,[],'a small library keeps every thumbnail');
+});

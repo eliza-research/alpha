@@ -16,7 +16,7 @@
      private var cameraProvider: ProcessCameraProvider? = null
      private var preview: Preview? = null
      private var imageCapture: ImageCapture? = null
-@@ -125,6 +134,35 @@
+@@ -125,6 +134,38 @@
      private val frameDelivery = Handler(Looper.getMainLooper())
      private var previewEpoch = 0L
      private var lastFrameEventNanos = 0L
@@ -28,6 +28,9 @@
 +    private var captureMode = "photo"
 +    private data class VideoConfig(val quality: Quality, val bitrate: Int?, val frameRate: Int?)
 +    private var boundVideoConfig: VideoConfig? = null
++    /** What Video mode pre-binds: setCaptureMode's quality, bitrate and frame rate, so a recording
++     * started with the same options starts without another rebind. */
++    private var modeVideoConfig = VideoConfig(Quality.HIGHEST, null, null)
 +
 +    // Every capturePhoto call settles exactly once, including after the preview stops.
 +    private inner class CaptureTicket(val call: PluginCall, val executor: ExecutorService) {
@@ -52,7 +55,7 @@
  
      // Track current preview resolution for reference.
      private var currentPreviewWidth = 1920
-@@ -139,6 +177,12 @@
+@@ -139,6 +180,12 @@
          "whiteBalance" to "auto"
      ))
  
@@ -65,7 +68,7 @@
      // ---- Device Enumeration ----
  
      @PluginMethod
-@@ -191,6 +235,9 @@
+@@ -191,6 +238,9 @@
              }
              stopPreviewInternal()
              pendingPreviewCall = call
@@ -75,7 +78,7 @@
              if (!hasRequiredPermissions()) {
                  requestPermissionForAlias("camera", call, "handleCameraPermissionResult")
              } else {
-@@ -216,27 +263,53 @@
+@@ -216,27 +266,53 @@
          return getPermissionState("camera") == com.getcapacitor.PermissionState.GRANTED
      }
  
@@ -132,7 +135,7 @@
                      cameraProvider = provider
  
                      previewView = androidx.camera.view.PreviewView(context).apply {
-@@ -274,43 +347,36 @@
+@@ -274,43 +350,36 @@
                      }
  
                      val previewBuilder = Preview.Builder().setResolutionSelector(resolutionSelector)
@@ -194,7 +197,7 @@
                      }, { error -> failPreview(call, error) })
                  } catch (error: Exception) {
                      // error-policy:J1 asynchronous preview failures settle the owning bridge call.
-@@ -323,15 +389,119 @@
+@@ -323,15 +392,151 @@
          }
      }
  
@@ -219,8 +222,8 @@
 +    // Binds Preview + ImageCapture, plus VideoCapture only in video mode.
 +    private fun bindUseCases(provider: ProcessCameraProvider): Camera {
 +        if (captureMode == "video") {
-+            if (videoCapture == null) {
-+                val config = VideoConfig(Quality.HIGHEST, null, null)
++            if (videoCapture == null || boundVideoConfig != modeVideoConfig) {
++                val config = modeVideoConfig
 +                videoCapture = buildVideoCapture(config)
 +                boundVideoConfig = config
 +            }
@@ -240,6 +243,16 @@
 +        return bound
 +    }
 +
++    /** A recording's (or Video mode's) quality option; "highest" when absent. */
++    private fun recordingQuality(call: PluginCall): Quality =
++        when (if (call.data.has("quality")) call.getString("quality") else "highest") {
++            "low" -> Quality.SD
++            "medium" -> Quality.HD
++            "high" -> Quality.FHD
++            "highest" -> Quality.HIGHEST
++            else -> throw IllegalArgumentException("Unknown recording quality")
++        }
++
 +    private fun buildVideoCapture(config: VideoConfig): VideoCapture<Recorder> {
 +        val selector = if (config.quality == Quality.HIGHEST) QualitySelector.from(config.quality)
 +            else QualitySelector.from(config.quality, FallbackStrategy.lowerQualityOrHigherThan(config.quality))
@@ -257,6 +270,17 @@
 +            call.reject("mode must be photo or video", "INVALID_ARGUMENT")
 +            return
 +        }
++        // Video mode binds VideoCapture for the options the recordings will ask for.
++        val videoConfig = try {
++            VideoConfig(
++                recordingQuality(call),
++                positiveRecordingOption(call, "bitrate", Int.MAX_VALUE.toDouble() + 1, true)?.toInt(),
++                positiveRecordingOption(call, "frameRate", Int.MAX_VALUE.toDouble() + 1, true)?.toInt(),
++            )
++        } catch (error: IllegalArgumentException) {
++            call.reject(error.message, "INVALID_OPTIONS", error)
++            return
++        }
 +        activity.runOnUiThread {
 +            val provider = cameraProvider
 +            if (destroyed) {
@@ -267,14 +291,17 @@
 +                call.reject("Camera settings are being restored", "CAMERA_NOT_READY")
 +            } else if (provider == null || camera == null) {
 +                call.reject("Camera preview is not active", "CAMERA_INACTIVE")
-+            } else if (mode == captureMode) {
++            } else if (mode == captureMode && (mode == "photo" || videoConfig == boundVideoConfig)) {
++                if (mode == "video") modeVideoConfig = videoConfig
 +                call.resolve()
 +            } else {
 +                // Shares the switch gate so camera switches, recordings and settings wait for the rebind.
 +                switchingCamera = true
 +                val previous = captureMode
++                val previousVideo = modeVideoConfig
 +                try {
 +                    captureMode = mode
++                    if (mode == "video") modeVideoConfig = videoConfig
 +                    val owner = bindUseCases(provider)
 +                    restoreCameraSettings(owner, {
 +                        call.resolve()
@@ -286,16 +313,24 @@
 +                } catch (error: Exception) {
 +                    // error-policy:J1 an unsupported use-case combination restores the previous mode.
 +                    captureMode = previous
++                    modeVideoConfig = previousVideo
 +                    val recovered = try {
 +                        bindUseCases(provider)
 +                    } catch (ignored: Exception) {
 +                        null
 +                    }
-+                    call.reject("Failed to change capture mode: ${error.message}", "CAPTURE_MODE_ERROR", error)
 +                    if (recovered == null) {
++                        // Neither mode could be bound: the preview is released, which the caller
++                        // must show (PREVIEW_STOPPED and an error event), not just this failure.
++                        call.reject("Camera preview stopped: ${error.message}", "PREVIEW_STOPPED", error)
 +                        stopPreviewInternal()
++                        notifyListeners("error", JSObject().apply {
++                            put("code", "PREVIEW_STOPPED")
++                            put("message", "Camera preview stopped: ${error.message}")
++                        })
 +                        finishCameraSwitch()
 +                    } else {
++                        call.reject("Failed to change capture mode: ${error.message}", "CAPTURE_MODE_ERROR", error)
 +                        restoreCameraSettings(recovered, { finishCameraSwitch() }, { finishCameraSwitch() })
 +                    }
 +                }
@@ -318,7 +353,7 @@
      }
  
      @PluginMethod
-@@ -350,6 +520,8 @@
+@@ -350,6 +555,8 @@
          pendingPreviewCall = null
          previewEpoch++
          frameDelivery.removeCallbacksAndMessages(null)
@@ -327,7 +362,7 @@
          lastFrameEventNanos = 0L
          observedFocus = null
          observedSensor = null
-@@ -369,15 +541,48 @@
+@@ -369,15 +576,48 @@
          }
          previewView = null
  
@@ -377,7 +412,7 @@
      // ---- Switch Camera ----
  
      @PluginMethod
-@@ -436,31 +641,23 @@
+@@ -436,31 +676,23 @@
                  if (targetInfo.exposureState.isExposureCompensationSupported || requestedExposureEv != 0.0) {
                      planExposure(targetInfo, requestedExposureEv)
                  }
@@ -418,7 +453,7 @@
                      finishCameraSwitch()
                  }, { error ->
                      call.reject("Failed to restore camera settings", "SWITCH_CAMERA_ERROR", error)
-@@ -487,11 +684,129 @@
+@@ -487,11 +719,129 @@
              call.reject(optionError, "INVALID_ARGUMENT")
              return
          }
@@ -498,7 +533,7 @@
 +            }
 +        })
 +    }
-+
+ 
 +    private fun galleryPhotoReceipt(uri: Uri, includeExif: Boolean): JSObject {
 +        val resolver = context.contentResolver
 +        val exif = resolver.openInputStream(uri)?.use { ExifInterface(it) }
@@ -542,14 +577,14 @@
 +            bitmap.recycle()
 +        }
 +    }
- 
++
 +    // Default path: decode, optionally resize, re-encode and return base64 (plus an optional gallery copy).
 +    private fun captureProcessed(imgCapture: ImageCapture, ticket: CaptureTicket) {
 +        val call = ticket.call
          val quality = call.getFloat("quality") ?: 90f
          val format = call.getString("format") ?: "jpeg"
          val saveToGallery = call.getBoolean("saveToGallery") ?: false
-@@ -499,25 +814,16 @@
+@@ -499,25 +849,16 @@
          val targetHeight = call.getInt("height")
          val includeExif = call.getBoolean("exifOrientation") ?: false
  
@@ -577,7 +612,7 @@
                      var bitmap: Bitmap? = null
                      try {
                          // Extract EXIF orientation before decoding.
-@@ -573,24 +879,22 @@
+@@ -573,24 +914,22 @@
                          // Finish fallible metadata work before publishing the external effect.
                          val galleryPath = if (saveToGallery) saveImageToGallery(outputBytes, format) else null
  
@@ -612,7 +647,7 @@
                      } finally {
                          bitmap?.recycle()
                          tempFile.delete()
-@@ -598,12 +902,9 @@
+@@ -598,12 +937,9 @@
                  }
  
                  override fun onError(exception: ImageCaptureException) {
@@ -627,7 +662,7 @@
                  }
              }
          )
-@@ -618,11 +919,17 @@
+@@ -618,11 +954,17 @@
                  "width", "height" -> value is Number && value.toDouble().isFinite() &&
                      value.toDouble() >= 1.0 && value.toDouble() <= Int.MAX_VALUE.toDouble() &&
                      value.toDouble() == kotlin.math.floor(value.toDouble())
@@ -646,7 +681,7 @@
          val width = (options.opt("width") as? Number)?.toLong() ?: 1L
          val height = (options.opt("height") as? Number)?.toLong() ?: 1L
          if (width * height > Int.MAX_VALUE / 4) return "Requested image exceeds Android bitmap byte capacity"
-@@ -685,25 +992,9 @@
+@@ -685,25 +1027,9 @@
          } else capturePhoto(call)
      }
  
@@ -675,7 +710,7 @@
  
      // ---- Video Recording ----
  
-@@ -716,18 +1007,32 @@
+@@ -716,18 +1042,32 @@
                  call.reject("Camera settings are being restored", "CAMERA_NOT_READY")
              } else if (recordingSession != null || recordingPermissionCalls.isNotEmpty()) {
                  call.reject("A recording is already starting, recording or finalizing", "RECORDING_BUSY")
@@ -710,7 +745,7 @@
      @PermissionCallback
      private fun handleMicPermissionForRecording(call: PluginCall) {
          activity.runOnUiThread {
-@@ -735,6 +1040,18 @@
+@@ -735,6 +1075,18 @@
              if (getPermissionState("microphone") != com.getcapacitor.PermissionState.GRANTED) {
                  call.reject("Microphone permission denied for the requested audio recording", "MICROPHONE_DENIED")
              } else {
@@ -729,7 +764,7 @@
                  startRecordingInternal(call)
              }
          }
-@@ -746,7 +1063,7 @@
+@@ -746,7 +1098,7 @@
              call.reject("Camera settings are being restored", "CAMERA_NOT_READY")
              return
          }
@@ -738,7 +773,21 @@
              call.reject("Camera is no longer available", "CAMERA_NOT_READY")
              return
          }
-@@ -777,8 +1094,9 @@
+@@ -764,21 +1116,16 @@
+             maxFileSize = positiveRecordingOption(call, "maxFileSize", Long.MAX_VALUE.toDouble(), true)
+             bitrate = positiveRecordingOption(call, "bitrate", Int.MAX_VALUE.toDouble() + 1, true)
+             frameRate = positiveRecordingOption(call, "frameRate", Int.MAX_VALUE.toDouble() + 1, true)
+-            quality = when (if (call.data.has("quality")) call.getString("quality") else "highest") {
+-                "low" -> Quality.SD
+-                "medium" -> Quality.HD
+-                "high" -> Quality.FHD
+-                "highest" -> Quality.HIGHEST
+-                else -> throw IllegalArgumentException("Unknown recording quality")
+-            }
++            quality = recordingQuality(call)
+         } catch (error: IllegalArgumentException) {
+             // error-policy:J3 reject malformed recording options before native effects.
+             call.reject(error.message, "INVALID_OPTIONS", error)
              return
          }
          val saveToGallery = call.getBoolean("saveToGallery") ?: false
@@ -750,7 +799,7 @@
              return
          }
          val fileName = "VID_${UUID.randomUUID()}.mp4"
-@@ -787,92 +1105,100 @@
+@@ -787,92 +1134,100 @@
          recordingSession = session
          completedRecording = null
          completedRecordingError = null
@@ -930,7 +979,7 @@
              }, { error ->
                  if (recordingSession === session) {
                      finishRecording(session, null, error)
-@@ -1136,12 +1462,149 @@
+@@ -1136,12 +1491,149 @@
      }
  
      // Rebinding CameraX use cases must restore confirmed white balance, EV, zoom and flash before the
@@ -1082,7 +1131,7 @@
              try {
                  val future = whiteBalanceFuture(owner, preset)
                  val requestId = whiteBalanceRequestId
-@@ -1149,49 +1612,57 @@
+@@ -1149,49 +1641,57 @@
                      try {
                          future.get()
                          check(stillOwnsCamera()) { "Camera changed during white balance restoration" }
@@ -1175,7 +1224,7 @@
      }
  
      @androidx.annotation.OptIn(markerClass = [ExperimentalCamera2Interop::class])
-@@ -1635,6 +2106,15 @@
+@@ -1635,6 +2135,15 @@
                      if (epoch != previewEpoch || destroyed) return@post
                      val owner = camera ?: return@post
                      if (Camera2CameraInfo.from(owner.cameraInfo).cameraId != session.device.id) return@post

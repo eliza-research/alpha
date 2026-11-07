@@ -36,7 +36,7 @@ export const ISSUE_676 = Object.freeze([
   { group: "Agent", classes: ["ResidentAlwaysPresent", "ResidentService", "ResidentEgressRedaction"], items: ["resident restart, history and missed-run checks on an installed APK"] },
   { group: "Browser (Chromium 157 WebView)", classes: ["BrowserDownload", "BrowserAutofill", "PasswordBrowserFill", "BrowserIsolatedReading"] },
   { group: "Accessibility", classes: ["Accessibility", "AccessibilityViews", "AccessibilityLifecycle", "AccessibilityHomeRole", "Rotation"] },
-  { group: "Media", classes: ["CameraScan", "PhotoEdit", "PhotoFilter", "PhotosBatch", "FilesTree"] },
+  { group: "Media", classes: ["CameraScan", "PhotoEdit", "PhotoFilter", "PhotosBatch", "StorageCategories"] },
   { group: "Upgrade", classes: [], items: ["upgrade from earlier installs that saved mock state"] },
 ]);
 
@@ -46,7 +46,7 @@ export const ISSUE_676 = Object.freeze([
  * test/owner-emulator-campaign-check.test.mjs parses each with the runner's own parser.
  */
 export const CAMPAIGN_BATCHES = Object.freeze([
-  { name: "h31-flagoff", build: "flag-off", args: ["--classes", "ResidentAlwaysPresent,Assistant,Flow,ChatContinuity,AssistantResidentReuse,SettingsFlow,ResetPolicy,LauncherApps,PasswordBrowserFill,Accessibility,Rotation,CameraScan,PhotoEdit,PhotoFilter,PhotosBatch,FilesTree"] },
+  { name: "h31-flagoff", build: "flag-off", args: ["--classes", "ResidentAlwaysPresent,Assistant,Flow,ChatContinuity,AssistantResidentReuse,SettingsFlow,ResetPolicy,LauncherApps,PasswordBrowserFill,Accessibility,Rotation,CameraScan,PhotoEdit,PhotoFilter,PhotosBatch,StorageCategories"] },
   { name: "h31-home-role", build: "flag-off", args: ["--variants", "launcher", "--home-role", "--classes", "SettingsRoles,LauncherHome"] },
   { name: "h31-test-mocks", build: "test-mocks", args: ["--test-mocks", "--classes", "AccessibilityViews,AccessibilityLifecycle,HostedProcessRestart,BrowserIsolatedReading,BrowserDownload,BrowserAutofill"] },
   { name: "h31-test-mocks-home-role", build: "test-mocks", args: ["--variants", "launcher", "--home-role", "--test-mocks", "--classes", "AccessibilityHomeRole"] },

@@ -4,7 +4,7 @@
  * an entry's menu: Add to Home, App info. Open state, query and the open menu live in the shell
  * model, so Back closes the menu first, then the drawer. */
 import {appKey, describeLauncherApps, filterLauncherApps, type InstalledApp, type Launcher} from '@elizaos/capacitor-system/launcher';
-import {useEffect, useRef, type CSSProperties, type HTMLAttributes, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent} from 'react';
+import {useEffect, useRef, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type HTMLAttributes, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent} from 'react';
 
 /** A press held this long opens an entry's menu (drawer) or Home edit mode. */
 export const HOLD_MS = 450;
@@ -60,6 +60,22 @@ function placeMenu(menu: HTMLDivElement | null) {
   if (box.bottom > room.bottom && at.top - box.height - 4 >= room.top) { menu.style.top = 'auto'; menu.style.bottom = 'calc(100% + 4px)'; menu.dataset.launcherMenuAbove = ''; return; }
   menu.scrollIntoView({block: 'nearest'});
 }
+/** ARIA menu keyboard model: focus moves to the first enabled item when the menu opens; Up/Down
+ * (and Home/End) move between enabled items; Tab closes the menu. */
+function focusMenu(menu: HTMLDivElement | null) {
+  placeMenu(menu);
+  if (menu && !menu.contains(document.activeElement)) menu.querySelector<HTMLElement>('[role="menuitem"]:not(:disabled)')?.focus();
+}
+function menuKeys(event: ReactKeyboardEvent<HTMLDivElement>, close: () => void) {
+  const items = [...event.currentTarget.querySelectorAll<HTMLElement>('[role="menuitem"]:not(:disabled)')];
+  if (event.key === 'Tab') { close(); return; }
+  if (!items.length || !['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+  event.preventDefault();
+  const at = items.indexOf(document.activeElement as HTMLElement);
+  const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1
+    : event.key === 'ArrowDown' ? (at + 1) % items.length : (at - 1 + items.length) % items.length;
+  items[next].focus();
+}
 const menuItem: CSSProperties = {display: 'flex', alignItems: 'center', gap: 10, width: '100%', minHeight: 44, padding: '0 10px', border: 0, borderRadius: 9, background: 'none', color: 'inherit', font: 'inherit', fontSize: 14, textAlign: 'left', cursor: 'pointer'};
 
 export function AppsDrawer({launcher, builtinPrefix, query, onQuery, onClose, menu, onMenu, onAddHome, onAppInfo, glyphs, style, onKeyDown, className, ...attributes}: AppsDrawerProps) {
@@ -83,8 +99,17 @@ export function AppsDrawer({launcher, builtinPrefix, query, onQuery, onClose, me
     onContextMenu: (event: ReactMouseEvent) => { event.preventDefault(); endPress(); swallow.current = key; onMenu(key); },
   });
   const tapped = (key: string) => { const held = swallow.current === key; swallow.current = ''; return !held; };
+  // A closed menu returns focus to its entry's tile, wherever focus was inside it.
+  const scope = useRef<HTMLDivElement>(null), opened = useRef<string | null>(null);
+  useEffect(() => {
+    const previous = opened.current; opened.current = menu;
+    if (!previous || previous === menu) return;
+    const root = scope.current, active = document.activeElement;
+    if (!root || (active && active !== document.body && root.contains(active) && !active.closest('[data-launcher-menu]'))) return;
+    root.querySelector<HTMLElement>(`[data-launcher-app="${CSS.escape(previous)}"] > button`)?.focus();
+  }, [menu]);
   return (
-    <div role="dialog" aria-modal="true" aria-label="Apps" {...attributes} className={className} data-alpha-apps-drawer=""
+    <div ref={scope} role="dialog" aria-modal="true" aria-label="Apps" {...attributes} className={className} data-alpha-apps-drawer=""
       onKeyDown={event => {
         onKeyDown?.(event);
         if (event.key !== 'Escape' || event.defaultPrevented) return;
@@ -123,12 +148,12 @@ export function AppsDrawer({launcher, builtinPrefix, query, onQuery, onClose, me
                   {detail.length ? <span style={{fontSize: 11, color: 'var(--mut, var(--muted))', maxWidth: '100%', textAlign: 'center', overflowWrap: 'anywhere'}}>{detail.join(' · ')}</span> : null}
                 </button>
                 {open && target ? (
-                  <div role="menu" aria-label={app.label} data-launcher-menu="" ref={placeMenu} style={{position: 'absolute', top: 72, left: '50%', transform: 'translateX(-50%)', zIndex: 2, minWidth: 170, padding: 6, borderRadius: 14, background: 'var(--bg)', color: 'var(--fg, var(--text))', boxShadow: '0 10px 30px rgba(0,0,0,.2)'}}>
-                    <button type="button" role="menuitem" disabled={onHome} onClick={() => { onMenu(null); if (!onHome) onAddHome(target); }} style={{...menuItem, opacity: onHome ? .5 : 1}}>
+                  <div role="menu" aria-label={app.label} data-launcher-menu="" ref={focusMenu} onKeyDown={event => menuKeys(event, () => onMenu(null))} style={{position: 'absolute', top: 72, left: '50%', transform: 'translateX(-50%)', zIndex: 2, minWidth: 170, padding: 6, borderRadius: 14, background: 'var(--bg)', color: 'var(--fg, var(--text))', boxShadow: '0 10px 30px rgba(0,0,0,.2)'}}>
+                    <button type="button" role="menuitem" tabIndex={-1} disabled={onHome} onClick={() => { onMenu(null); if (!onHome) onAddHome(target); }} style={{...menuItem, opacity: onHome ? .5 : 1}}>
                       <span aria-hidden="true" style={mask(glyphs.plus, 18)} />{onHome ? 'On Home' : 'Add to Home'}
                     </button>
                     {onAppInfo ? (
-                      <button type="button" role="menuitem" onClick={() => { onMenu(null); onAppInfo(target); }} style={menuItem}>
+                      <button type="button" role="menuitem" tabIndex={-1} onClick={() => { onMenu(null); onAppInfo(target); }} style={menuItem}>
                         <span aria-hidden="true" style={mask(glyphs.info, 18)} />App info
                       </button>
                     ) : null}

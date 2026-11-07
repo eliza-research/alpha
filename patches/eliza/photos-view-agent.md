@@ -34,8 +34,9 @@ only when both `photos.library.v1` and `photos.view.v1` were negotiated.
   depends only on `photo-library-contract.ts`): types, `PHOTOS_VIEW_CAPABILITY`,
   `PHOTOS_VIEW_TYPES`, `PHOTOS_VIEW_DIRECT_TYPES`, `PHOTOS_FILTER_ALBUMS`,
   `isPhotosViewOperation`, `photosViewCapabilityAvailable`, `validatePhotosViewOperation`,
-  `describePhotosViewOperation` (owner-facing text names the app through an `appName` argument,
-  like `describeLibraryOperation`), `photosViewContextAllowed` and `validatePhotosViewResult`.
+  `describePhotosViewOperation` (the review card is the change itself: "Open photo",
+  "Create album “Trip”" · "2 items", "Share 3 items" · "Android share sheet"; it takes an
+  `appName` argument like `describeLibraryOperation`, though no text needs it), `photosViewContextAllowed` and `validatePhotosViewResult`.
   Validation is the same as the earlier phone implementation: unknown fields are rejected;
   `from`/`to` are non-negative safe integers (ms) with `from <= to`; `text` is at most
   `LIBRARY_LIMITS.query` (80) characters with no control characters; `album` is one of the four

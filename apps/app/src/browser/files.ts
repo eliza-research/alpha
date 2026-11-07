@@ -30,10 +30,11 @@ export class BrowserFiles extends SharedFiles {
  storageList(input:{path?:string}){return this.volume.run('storageList',input);}
  storageCategory(input:{category:string}){return this.volume.run('storageCategory',input);}
  storageQuery(input:Record<string,unknown>){return this.volume.run('storageQuery',input);}
- storageTransfer(input:{paths:string[];dest:string;copy?:boolean}){return this.volume.run('storageTransfer',input);}
+ storageTransfer(input:{paths:string[];dest:string;copy?:boolean;expect?:{size:number;modified:number}[]}){return this.volume.run('storageTransfer',input);}
+ storageIdentity(input:{paths:string[]}){return this.volume.run('storageIdentity',input);}
  storageRename(input:{path:string;name:string}){return this.volume.run('storageRename',input);}
  storageCreateFolder(input:{parent:string;name:string}){return this.volume.run('storageCreateFolder',input);}
- storageTrash(input:{paths:string[]}){return this.volume.run('storageTrash',input);}
+ storageTrash(input:{paths:string[];expect?:{size:number;modified:number}[]}){return this.volume.run('storageTrash',input);}
  storageTrashList(){return this.volume.run('storageTrashList',{});}
  storageRestore(input:{ids:string[]}){return this.volume.run('storageRestore',input);}
  storageEmptyTrash(input:{ids?:string[];confirmed?:boolean}){return this.volume.run('storageEmptyTrash',input);}

@@ -52,6 +52,12 @@ test('the Files agent patch is pinned, digest-bound and applies exactly to the p
   assert.match(at('client-coordinator.ts'), /isFilesOperation\(op\) && !this\.capability\(FILES_CAPABILITY\)/);
   assert.match(at('client-coordinator.ts'), /"photo_library_select",\n\s+\.\.\.FILES_DIRECT_TYPES,/);
   assert.match(at('files-browser-contract.ts'), /export const FILES_DIRECT_TYPES = \["files_filter", "files_open"\] as const;/);
+  // A move or trash is reviewable only with each file's identity read for the card, which
+  // replaces anything the agent sent; the agent's schema never offers it.
+  assert.match(at('client-coordinator.ts'), /filesIdentity\?\(paths: string\[\], signal: AbortSignal\): Promise<FilesIdentity\[\]>;/);
+  assert.match(at('client-coordinator.ts'), /filesNeedsIdentity\(proposal\.operation\)[\s\S]*?await this\.ports\.filesIdentity\?\.\(op\.paths, signal\)[\s\S]*?validateFilesOperation\(\{ \.\.\.op, reviewed: identity \}\)[\s\S]*?if \(!operation\) \{[\s\S]*?continue;[\s\S]*?reviewed = \{ \.\.\.proposal, operation \};[\s\S]*?this\.proposals\.set\(proposal\.id, \{\n\s+proposal: reviewed,/);
+  assert.doesNotMatch(at('files-browser-contract.ts').slice(at('files-browser-contract.ts').indexOf('FILES_OPERATION_SCHEMAS')), /reviewed:/);
+  assert.match(fs.readFileSync(path.join(root, 'apps/app/src/runtime/device-actions.ts'), 'utf8'), /filesIdentity:filesReviewIdentity/);
 });
 
 test('patched coordinator admits Files tools only as reviewed, and agrees with Alpha\'s Files contract', {skip: (!vendorReady || !featuresReady) && 'vendor/eliza or prepared client features are missing'}, t => {
@@ -78,11 +84,14 @@ const good = [
   {type: 'files_move', paths: ['Download/a.pdf'], dest: ''},
   {type: 'files_trash', paths: ['Download/a.pdf']},
   {type: 'files_folder_create', parent: 'Documents', name: 'Taxes'},
+  {type: 'files_move', paths: ['Download/a.pdf'], dest: 'Documents', reviewed: [{size: 3, modified: 1800000000000}]},
+  {type: 'files_trash', paths: ['Download/a.pdf'], reviewed: [{size: 0, modified: 1}]},
 ];
 const bad = [
   {type: 'files_trash', paths: ['../etc']}, {type: 'files_open', path: 'a', extra: 1}, {type: 'files_move', paths: ['a', 'a'], dest: 'x'},
   {type: 'files_folder_create', parent: '', name: '.hidden'}, {type: 'files_filter'}, {type: 'files_filter', kind: 'zip'},
   {type: 'files_filter', from: '2026-11-02', to: '2026-11-01'}, {type: 'files_move', paths: [], dest: 'x'},
+  {type: 'files_trash', paths: ['a', 'b'], reviewed: [{size: 1, modified: 1}]}, {type: 'files_share', paths: ['a'], reviewed: [{size: 1, modified: 1}]},
 ];
 for (const op of good) {
   const valid = validateDeviceOperation(op, policy);
