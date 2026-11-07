@@ -98,6 +98,8 @@ test('the drawer menu offers Add to Home (or On Home) and App info for exactly t
     let rendered=home.renderVals(),drawer=renderToStaticMarkup(rendered.allAppsDrawer);
     assert.deepEqual([...drawer.matchAll(/aria-label="Open ([^"]+)"/g)].map(m=>m[1]),['Caméra','Mail (Work)','Phone (Dialer)','Settings'],'the dialer appears once, as Phone');
     assert.doesNotMatch(drawer,/role="menu"/);
+    // Activating a tile launches its app, so the button announces no popup; the menu is the long-press action.
+    assert.doesNotMatch(drawer,/aria-haspopup="menu"|aria-expanded=/);
     const work=shell.launcher.snapshot().apps.find(app=>app.user==='10');
     const key='org.example.mail/org.example.Mail#10';
     rendered.allAppsDrawer.props.onMenu(key);

@@ -112,7 +112,7 @@ export function AppsDrawer({launcher, builtinPrefix, query, onQuery, onClose, me
             const open = menu === key, onHome = !!target && launcher.isFavorite(target);
             return (
               <div key={key} data-launcher-app={key} {...(target ? hold(key) : {})} style={{position: 'relative', display: 'flex', justifyContent: 'center', minWidth: 0}}>
-                <button type="button" aria-label={aria} aria-busy={snapshot.launching === key || undefined} aria-haspopup={target ? 'menu' : undefined} aria-expanded={target ? open : undefined}
+                <button type="button" aria-label={aria} aria-busy={snapshot.launching === key || undefined}
                   disabled={!!snapshot.launching}
                   onClick={() => { if (!tapped(key)) return; if (dial) void launcher.openDial(); else void launcher.launch(app); }}
                   style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, minWidth: 0, width: '100%', border: 0, padding: 0, background: 'none', color: 'inherit', font: 'inherit', cursor: 'pointer'}}>
