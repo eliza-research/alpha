@@ -20,7 +20,7 @@ async function harness(){
  });
  const settle=async()=>{for(let i=0;i<30;i++)await Promise.resolve();};
  view.render(state,api);await settle();view.render(state,api).browse.cats.find(row=>row.name==='Documents').go();await settle();
- return {accepted,forgotten,calls,toasts,doc,failRelease(){failForget=true;},pick(){view.render(state,api).fd.items[0].tap();},agentOpen(){return agent.run({type:'files_open',path:entry.path});},release:value=>resolve(value),leave(){active=false;view.onLeave(api);},return(){active=true;view.render(state,api);},settle};
+ return {accepted,forgotten,calls,toasts,doc,failRelease(){failForget=true;},pick(){view.render(state,api).fd.items[0].tap();},agentOpen(){return agent.run({type:'files_open',path:entry.path},new AbortController().signal);},release:value=>resolve(value),leave(){active=false;view.onLeave(api);},return(){active=true;view.render(state,api);},settle};
 }
 const selected={status:'selected',action:'files',selectionId:'owned-selected-fixture',name:'fixture.txt',mimeType:'text/plain'};
 test('an active storage selection accepts its result once',async()=>{
