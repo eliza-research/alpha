@@ -38,10 +38,9 @@ public final class CloudSignInCallbackInstrumentedTest {
   PackageManager packages = context().getPackageManager();
   Intent link = new Intent(Intent.ACTION_VIEW, Uri.parse(callback(CloudSignInFlow.newState()))).addCategory(Intent.CATEGORY_BROWSABLE).setPackage(context().getPackageName());
   List<ResolveInfo> matches = packages.queryIntentActivities(link, 0);
-  if ("eliza.app".equals(BuildConfig.ELIZAOS_APP_LINK_HOST)) {
-   assertEquals(1, matches.size());
-   assertEquals(MainActivity.class.getName(), matches.get(0).activityInfo.name);
-  } else assertTrue("A build without ELIZAOS_APP_LINK_HOST declares no production return", matches.isEmpty());
+  assertEquals("eliza.app", BuildConfig.ELIZAOS_APP_LINK_HOST);
+  assertEquals(1, matches.size());
+  assertEquals(MainActivity.class.getName(), matches.get(0).activityInfo.name);
   for (String other : new String[]{"https://eliza.app/", "https://eliza.app/alphaphone/auth/callback/extra", "https://eliza.app/auth/callback", "https://api.eliza.app/alphaphone/auth/callback", "http://eliza.app/alphaphone/auth/callback"})
    assertTrue(other, packages.queryIntentActivities(new Intent(Intent.ACTION_VIEW, Uri.parse(other)).addCategory(Intent.CATEGORY_BROWSABLE).setPackage(context().getPackageName()), 0).isEmpty());
   boolean staging = !packages.queryIntentActivities(new Intent(Intent.ACTION_VIEW, Uri.parse("https://staging.eliza.app/alphaphone/auth/callback")).addCategory(Intent.CATEGORY_BROWSABLE).setPackage(context().getPackageName()), 0).isEmpty();
