@@ -22,7 +22,12 @@ function client(answer, opened = []) {
   };
   return { calls, opened, cloud: new CloudProtocol('production', request, store, async url => { opened.push(url); }) };
 }
-const granted = { status: 200, data: { success: true, replayed: false, grant: { id: 'g1', planKey: 'plus_monthly', startsAt: '2026-10-13T00:00:00.000Z', endsAt: '2027-04-14T00:00:00.000Z', revoked: false, paidPlanTakesPrecedence: false }, entitlement: { plan: { id: 'plus_monthly', name: 'Plus', status: 'active' }, source: 'grant', effectiveUntil: '2027-04-14T00:00:00.000Z' } } };
+const dayMs = 86_400_000;
+const grantStartsAt = Date.now() - dayMs;
+const grantEndsAt = grantStartsAt + 180 * dayMs;
+const paidEndsAt = grantEndsAt + dayMs;
+const iso = time => new Date(time).toISOString();
+const granted = { status: 200, data: { success: true, replayed: false, grant: { id: 'g1', planKey: 'plus_monthly', startsAt: iso(grantStartsAt), endsAt: iso(grantEndsAt), revoked: false, paidPlanTakesPrecedence: false }, entitlement: { plan: { id: 'plus_monthly', name: 'Plus', status: 'active' }, source: 'grant', effectiveUntil: iso(grantEndsAt) } } };
 const signal = () => new AbortController().signal;
 const refused = async (promise, code) => assert.rejects(promise, error => error instanceof SubscriptionRedeemError && error.code === code && !String(error.message).includes('ABCD') && !JSON.stringify(error).includes('ABCD'));
 
@@ -30,7 +35,15 @@ const refused = async (promise, code) => assert.rejects(promise, error => error 
 {
   const { cloud, calls } = client(() => granted);
   const result = await cloud.redeemSubscriptionCode(`  ${CODE} `, 'submission-key-0001', signal());
-  assert.deepEqual(result, { planEndsAt: Date.parse('2027-04-14T00:00:00.000Z'), replayed: false, grantEndsAt: Date.parse('2027-04-14T00:00:00.000Z'), paidPlanTakesPrecedence: false, planName: 'Plus' });
+  assert.deepEqual(result, {
+    planKey: 'plus_monthly',
+    planName: 'Plus',
+    startsAt: grantStartsAt,
+    planEndsAt: grantEndsAt,
+    grantEndsAt,
+    paidPlanTakesPrecedence: false,
+    replayed: false,
+  });
   assert.equal(calls.length, 1);
   assert.equal(calls[0].url, 'https://api.eliza.app/api/v1/subscription/redeem');
   assert.equal(calls[0].method, 'POST');
@@ -48,9 +61,11 @@ const refused = async (promise, code) => assert.rejects(promise, error => error 
 // Revoked replays grant nothing, and the effective paid window is distinct from the grant window.
 {
  const revoked=client(()=>({status:200,data:{...granted.data,replayed:true,grant:{...granted.data.grant,revoked:true}}}));
- await refused(revoked.cloud.redeemSubscriptionCode(CODE,'submission-revoked',signal()),'invalid');
- const paid=client(()=>({status:200,data:{...granted.data,grant:{...granted.data.grant,paidPlanTakesPrecedence:true},entitlement:{...granted.data.entitlement,effectiveUntil:'2027-05-01T00:00:00.000Z'}}}));
- assert.equal((await paid.cloud.redeemSubscriptionCode(CODE,'submission-paid',signal())).planEndsAt,Date.parse('2027-05-01T00:00:00.000Z'));
+ await refused(revoked.cloud.redeemSubscriptionCode(CODE,'submission-revoked',signal()),'ended');
+ const paid=client(()=>({status:200,data:{...granted.data,grant:{...granted.data.grant,paidPlanTakesPrecedence:true},entitlement:{...granted.data.entitlement,effectiveUntil:iso(paidEndsAt)}}}));
+ const result=await paid.cloud.redeemSubscriptionCode(CODE,'submission-paid',signal());
+ assert.equal(result.planEndsAt,paidEndsAt);
+ assert.equal(result.grantEndsAt,grantEndsAt);
 }
 // Transport failure (the request may have arrived): exactly one replay with the same key.
 {
