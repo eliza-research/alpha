@@ -67,9 +67,20 @@ test('the plugin start path attaches before it would retire shared work, and att
 });
 
 test('attach diagnostics retain only a fixed stage, bounded status and allowlisted exception class',async()=>{
- const {runJvm,nativeSource,fixture}=await import('./fixtures/jvm-tools.mjs');
- assert.match(runJvm([nativeSource('ResidentAttachDiagnostic.java'),fixture('ResidentAttachDiagnosticTest.java')],'ai.elizaresearch.alphaphone.ResidentAttachDiagnosticTest',{json:true}),/PASS content-free resident attach diagnostic/);
+ const {runJvm,fixture}=await import('./fixtures/jvm-tools.mjs');
+ const {writeFileSync}=await import('node:fs');
  const source=readFileSync(join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java'),'utf8');
+ const diagnosticStart=source.indexOf('private static final class ResidentAttachDiagnostic {');
+ const diagnosticEnd=source.indexOf(' private final ExecutorService workers=',diagnosticStart);
+ assert.ok(diagnosticStart>=0&&diagnosticEnd>diagnosticStart);
+ const harness=readFileSync(fixture('ResidentAttachDiagnosticTest.java'),'utf8');
+ const bodyStart=harness.indexOf('public final class ResidentAttachDiagnosticTest {')+'public final class ResidentAttachDiagnosticTest {'.length;
+ const directory=mkdtempSync(join(tmpdir(),'alpha-attach-diagnostic-'));
+ try{
+  const java=join(directory,'ResidentAttachDiagnosticTest.java');
+  writeFileSync(java,'package ai.elizaresearch.alphaphone;\npublic final class ResidentAttachDiagnosticTest {\n'+source.slice(diagnosticStart,diagnosticEnd)+harness.slice(bodyStart,harness.lastIndexOf('}'))+'\n}');
+  assert.match(runJvm([java],'ai.elizaresearch.alphaphone.ResidentAttachDiagnosticTest',{json:true}),/PASS content-free resident attach diagnostic/);
+ }finally{rmSync(directory,{recursive:true,force:true});}
  const start=source.indexOf('   if(attached){'),end=source.indexOf('   PluginWorkers.submit(workers,()->{\n    long deadline=',start);
  const worker=source.slice(start,end);
  assert.match(worker,/authenticatedStatus\(epoch,root,diagnostic::response\)/);
