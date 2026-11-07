@@ -3,6 +3,8 @@
 // radio, provider, image or carrier is involved; nothing here establishes a real send or delivery.
 import test from "node:test";
 import assert from "node:assert/strict";
+import { assertBefore } from "./fixtures/assert-order.mjs";
+import { javaBinary } from "./fixtures/jvm-tools.mjs";
 import { createHash } from "node:crypto";
 import { existsSync, mkdtempSync, rmSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -32,13 +34,12 @@ function stub(answers = {}) {
 
 test("JVM: Alpha's installed journal stays compatible with the shared reviewed-SMS core", () => {
   const dir = mkdtempSync(join(tmpdir(), "alpha-sms-"));
-  const java = name => process.env.JAVA_HOME ? join(process.env.JAVA_HOME, "bin", name) : name;
   try {
-    execFileSync(java("javac"), ["--release", "11", "-d", dir, ...["SmsSendJournal", "SmsRecords", "SmsPageCursor"].map(name => join(SHARED, `${name}.java`)), join(root, "test/fixtures/SmsSendJournalTest.java")], { timeout: 60000 });
+    execFileSync(javaBinary("javac"), ["--release", "11", "-d", dir, ...["SmsSendJournal", "SmsRecords", "SmsPageCursor"].map(name => join(SHARED, `${name}.java`)), join(root, "test/fixtures/SmsSendJournalTest.java")], { timeout: 60000 });
     const body = "Running late \"5\" min\né😀\t\u0001";
     const expected = createHash("sha256").update(smsBindingText({ recipients: ["+15555550100", "5550101"], body, subscriptionId: 3 })).digest("hex");
     const namespace = read("android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaTelephony.java").match(/"(alpha-sms-operation:v1:)"/)[1];
-    assert.match(execFileSync(java("java"), ["-Djava.io.tmpdir=" + dir, "-cp", dir, "ai.eliza.plugins.messages.SmsSendJournalTest", expected, namespace], { encoding: "utf8", timeout: 120000 }), /PASS alpha sms journal compatibility/);
+    assert.match(execFileSync(javaBinary("java"), ["-Djava.io.tmpdir=" + dir, "-cp", dir, "ai.eliza.plugins.messages.SmsSendJournalTest", expected, namespace], { encoding: "utf8", timeout: 120000 }), /PASS alpha sms journal compatibility/);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
@@ -213,7 +214,7 @@ test("native boundary: image-only plugin methods, immutable explicit callbacks, 
   const mmsDispatch = sms.slice(sms.indexOf("static SmsSendJournal.Record dispatchMms("), sms.indexOf("static boolean sendConfirmed("));
   assert.match(mmsDispatch, /PendingIntent\.FLAG_MUTABLE : 0;\n\s*PendingIntent sent = PendingIntent\.getBroadcast\(context, 0, intent, mutable \| PendingIntent\.FLAG_ONE_SHOT\);/);
   assert.match(mmsDispatch, /setClass\(context, config\.receiverClass\)\.setPackage\(context\.getPackageName\(\)\)/);
-  assert.ok(mmsDispatch.indexOf("journal.beginMmsDispatch(") < mmsDispatch.indexOf("manager.sendMultimediaMessage("), "MMS journaled before the platform call");
+  assertBefore(mmsDispatch, "journal.beginMmsDispatch(", "manager.sendMultimediaMessage(", "MMS journaled before the platform call");
   assert.match(sms, /if \(mmsFile != null && !Uri\.fromParts\(config\.callbackScheme, operation \+ "\/mms", null\)\.equals\(intent\.getData\(\)\)\) return;/);
   assert.equal((plugin.match(/SmsTelephony\.dispatchMms\(/g) || []).length, 1, "one MMS dispatch site, inside the owner's Send decision");
   assert.match(plugin, /if \(!admitted\(\) \|\| !unlockedForeground\(\) \|\| mmsBlocker\(sub\) != null\) \{ decideMms\(/);

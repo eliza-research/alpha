@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {assertBefore} from './fixtures/assert-order.mjs';
 import fs from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
@@ -161,7 +162,7 @@ test('Gmail read broker follows the retained owner through Direct selection and 
   assert.equal(launches.at(-1).env.CEREBRAS_API_KEY,'synthetic-direct-key');assert.equal(launches.at(-1).env.ELIZAOS_CLOUD_API_KEY,undefined);assert.equal(launches.at(-1).env.ELIZAOS_CLOUD_USE_INFERENCE,'false');
   await host.bind({token:'synthetic-cloud-b',credentialId:'owner-b',reference:'ref-b'});assertRead(launches.at(-1),47873);
   assert.deepEqual(bindings,['owner-a','owner-a','owner-b']);assert.equal(host.status('owner-a').attachable,false);
-  assert.ok(events.indexOf('close:47871')<events.indexOf('broker:47872'));assert.ok(events.indexOf('close:47872')<events.indexOf('broker:47873'));
+  assertBefore(events,'close:47871','broker:47872','the first read broker closes before the next starts');assertBefore(events,'close:47872','broker:47873','the second read broker closes before owner-b starts');
   await host.clear();assert.equal(launches.at(-1).env.ELIZA_MANAGED_GMAIL_READ_BROKER,'');assert.equal(launches.at(-1).env.ELIZA_MANAGED_CALENDAR_READ_BROKER,'');
   for(const key of ['ELIZA_MANAGED_GMAIL_SEND_BROKER','ELIZA_MANAGED_GMAIL_OPERATION_BROKER'])assert.equal(launches.at(-1).env[key],undefined,key);
  }finally{await host.close();await fs.rm(profile,{recursive:true,force:true});}

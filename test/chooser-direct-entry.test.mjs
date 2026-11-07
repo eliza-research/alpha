@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {assertBefore} from './fixtures/assert-order.mjs';
 import React,{act} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {transformSync} from 'esbuild';
@@ -21,7 +22,7 @@ test('production signed-out entry server-renders direct options before readiness
  assert.match(html,/Welcome to Alpha/);assert.match(html,/Continue with Google/);assert.match(html,/Email me a code/);
  assert.doesNotMatch(html,/Sign in with Eliza Cloud|unavailable|Try again/);assert.match(html,/disabled/);
  // Own API keys are offered on the welcome page, below the Cloud methods and independent of readiness.
- assert.ok(html.indexOf('cloud-sign-in-title')<html.indexOf('Use my own API keys'));
+ assertBefore(html,'cloud-sign-in-title','Use my own API keys','sign-in comes before own keys');
  assert.match(html,/<button type="button" class="alpha-btn alpha-btn--text">Use my own API keys<\/button>/);
 });
 test('a failed readiness check shows its reason and one retry instead of disabled forms',()=>{

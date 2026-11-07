@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {assertBefore} from './fixtures/assert-order.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -66,7 +67,7 @@ test('every emulator job uploads its result directory, also after a failure',()=
   assert.match(uploads[0],/\n            test-results\/emulator-suite\/\n/,name);
   assert.match(uploads[0],/name: [a-z0-9_-]+-\$\{\{ github\.sha \}\}-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/,`${name} artifact is named by commit and run`);
   // The emulator step comes before the upload and is not allowed to fail quietly.
-  assert.ok(job[name].indexOf('android-emulator-runner@')<job[name].indexOf('actions/upload-artifact@'),name);
+  assertBefore(job[name],'android-emulator-runner@','actions/upload-artifact@',name);
   assert.doesNotMatch(job[name],/continue-on-error/,name);
  }
  for(const name of ['instrumentation','browser-reading'])assert.match(job[name],/\n            test-results\/android-instrumentation\/\n/,name);
@@ -126,7 +127,7 @@ test('the build job refuses the speech suite until hosted Paradee staging exists
  // The fused-speech suite needs staged Paradee outputs and a same-engine embedding host; the hosted job cannot
  // produce that pair yet, so it refuses instead of building an APK that only proves speech is unavailable.
  assert.match(build,/- name: Refuse the fused-speech suite until hosted voice staging exists\n        if: inputs\.suite == 'fused-speech' \|\| inputs\.suite == 'all'\n        run: \|\n          echo "::error::[^\n]*"\n          exit 1\n/);
- assert.ok(build.indexOf('Refuse the fused-speech suite')<build.indexOf('npm run android:build'),'before any build');
+ assertBefore(build,'Refuse the fused-speech suite','npm run android:build','before any build');
  // No other speech runtime is built, acquired or recorded, and nothing here admits anything by a person's review.
  assert.doesNotMatch(workflow,/scripts\/local-speech|requalify-runtime|browser-speech|--reviewer|android-voice-lexicon|kokoro/i);
  // The instrumentation APKs are built (no --skip-instrumentation) and the flag-off pair stays flag-off.
@@ -141,7 +142,7 @@ test('the build job refuses the speech suite until hosted Paradee staging exists
  // The speech job checks the APK it was handed against that record before booting anything.
  const speech=job['fused-speech'];
  assert.ok(speech.indexOf('node scripts/ci/speech-candidate.mjs check artifacts/standalone-debug.apk')>0);
- assert.ok(speech.indexOf('speech-candidate.mjs check')<speech.indexOf('android-emulator-runner@'));
+ assertBefore(speech,'speech-candidate.mjs check','android-emulator-runner@');
  assert.match(speech,/node scripts\/ci\/speech-candidate\.mjs package test-results\/android-instrumentation\/ci-fused-speech test-results\/fused-speech-x86_64/);
 });
 
