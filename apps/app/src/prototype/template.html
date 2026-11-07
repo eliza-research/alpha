@@ -1650,7 +1650,8 @@
         </button>
       </div>
     </sc-if>
-    <div class="scr" ref="{{photos.gridRef}}" data-alpha-app-scroll="photos" style="flex-grow: 1; overflow-y: auto; touch-action: pan-y; padding: 12px 0 180px">
+    <!-- Virtual row spacers own scroll position. Browser anchoring would shift it a second time. -->
+    <div class="scr" ref="{{photos.gridRef}}" data-alpha-app-scroll="photos" style="flex-grow: 1; overflow-y: auto; overflow-anchor: none; touch-action: pan-y; padding: 12px 0 180px">
       <div aria-hidden="true" style="{{photos.gridBefore}}"></div>
       <sc-for list="{{photos.groups}}" as="g">
         <section aria-label="{{g.label}}">
@@ -1744,7 +1745,8 @@
           <button class="ib" aria-label="Delete all forever" onClick="{{photos.alb.emptyTrash}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.trash}}"></path></svg></button>
         </sc-if>
       </div>
-      <div class="scr" ref="{{photos.gridRef}}" data-alpha-app-scroll="photos" style="flex-grow: 1; overflow-y: auto; touch-action: pan-y; padding: 12px 0 180px">
+      <!-- Virtual row spacers own scroll position. Browser anchoring would shift it a second time. -->
+    <div class="scr" ref="{{photos.gridRef}}" data-alpha-app-scroll="photos" style="flex-grow: 1; overflow-y: auto; overflow-anchor: none; touch-action: pan-y; padding: 12px 0 180px">
         <div class="photo-grid" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px; {{photos.gridCss}}">
           <sc-for list="{{photos.alb.items}}" as="p">
             <button data-owned-media-id="{{p.nativeMediaId}}" aria-label="{{p.alt}}" aria-pressed="{{p.pressed}}" onClick="{{p.tap}}" onPointerDown="{{p.pd}}" onPointerMove="{{p.pm}}" onPointerUp="{{p.pu}}" onPointerLeave="{{p.pu}}" onPointerCancel="{{p.pu}}" style="position: relative; display: block; aspect-ratio: 1; overflow: hidden; background: var(--s2); touch-action: pan-y; {{p.dim}}">
