@@ -286,7 +286,14 @@ test("Capacitor's own permission request, and the shared plugins' requests an ap
       // Android version, rather than asking for the obsolete legacy permission together with the current media
       // grants, and a late request is answered with Alpha's LateLaunch wording.
       const media="vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/";
-      const base=fs.readFileSync(media+(name==='AlphaPhotosPlugin.java'?"PhotosPlugin.java":"DeviceLibraryPlugin.java"),"utf8");
+      let base=fs.readFileSync(media+(name==='AlphaPhotosPlugin.java'?"PhotosPlugin.java":"DeviceLibraryPlugin.java"),"utf8");
+      if(name==='AlphaPhotosPlugin.java'){
+        assert.match(base,/class PhotosPlugin extends PermittedPhotosPlugin/);
+        assert.doesNotMatch(base,/public void (?:requestPermissions|requestLibraryAccess)\(/, "Photos inherits the guarded library permission path");
+        base=fs.readFileSync(media+"PermittedPhotosPlugin.java","utf8");
+        assert.match(base,/protected void handleOnDestroy\(\) \{\n {4}destroyed = true;/);
+        assert.match(base,/public void requestLibraryAccess\(PluginCall call\) \{\n {4}if \(destroyed \|\| !getActivity\(\).hasWindowFocus\(\)\) \{\n {6}call\.reject\("Return to Photos to choose access"\);\n {6}return;/);
+      }
       assert.match(base,/@Override\n {2}@PluginMethod\n {2}public void requestPermissions\(PluginCall call\) \{\n {4}(?:requestLibraryAccess|requestAccess)\(call\);\n {2}\}/);
       if(name==='AlphaPhotosPlugin.java'){
         assert.match(base,/ask\(call, \(\) -> requestPermissionForAliases\(aliases, call, "libraryPermissionResult"\)\);/);
