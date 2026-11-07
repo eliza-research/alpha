@@ -80,7 +80,10 @@ export function cloudVoiceAvailable(): boolean {
 
 /** Explicit local/manual routes are available only in test-mocks builds. */
 export function selectVoiceRoute(preference: VoicePreference = 'default'): 'device' | 'cloud' | 'agent' | 'manual' {
-  if(connectionController.getSnapshot().residentInference==='direct'&&(preference==='default'||preference==='agent'))return 'cloud';
+  // Own keys send speech to Cartesia only when the owner added a Cartesia key (the form says what
+  // Cartesia receives). Without one, speech follows the build's route and stays on this phone natively.
+  const current=connectionController.getSnapshot();
+  if(current.residentInference==='direct'&&current.providerStatus?.voiceConfigured===true&&(preference==='default'||preference==='agent'))return 'cloud';
   if (cloudRuntimeEnabled) return 'cloud';
   if (!testMocksEnabled) return 'device';
   if (testMocksEnabled && (preference === 'device' || preference === 'manual')) return preference;

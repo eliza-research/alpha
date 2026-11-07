@@ -58,11 +58,15 @@ export function createOnDeviceVoice() {
     async playbackReady(signal: AbortSignal) { return operation(signal, async (requestId, interrupted) => { const result = await Promise.race([native.localSpeechStatus({ requestId }), interrupted]); return (result.ready === true || result.playback === true) && result.execution === (Capacitor.isNativePlatform()?'device':'browser'); }); },
     async transcribe(recordingId: string, signal: AbortSignal) { return operation(signal, async (requestId, interrupted) => {
       const result = await Promise.race([native.transcribeLocalRecording({ recordingId, requestId }), interrupted]);
-      if (result.execution !== (Capacitor.isNativePlatform()?'device':'browser') || result.local !== true || typeof result.text !== 'string' || !result.text.trim()) throw new Error('No usable on-device transcript');
+      if (result.execution !== (Capacitor.isNativePlatform()?'device':'browser') || result.local !== true || typeof result.text !== 'string') throw new Error('No usable on-device transcript');
+      if (!result.text.trim()) throw Object.assign(new Error('No speech was detected.'), { code: 'no-speech' });
       return result;
     }); },
-    async speak(text: string, signal: AbortSignal, onStarted?:()=>void, strictDrain=false, options?:{queue?:boolean;assertCurrent?:()=>void}) {
-      const chunks = planLocalSpeech(text);
+    /** `conversation`: a spoken reply. Only a likely secret is refused (code 'speech-refused');
+     * text with nothing left to say resolves as a silent sentence. */
+    async speak(text: string, signal: AbortSignal, onStarted?:()=>void, strictDrain=false, options?:{queue?:boolean;assertCurrent?:()=>void;conversation?:boolean}) {
+      const chunks = planLocalSpeech(text, { mode: options?.conversation ? 'conversation' : 'listen' });
+      if (!chunks.length) { signal.throwIfAborted(); onStarted?.(); return; }
       return operation(signal, async (_requestId, interrupted, ownedSignal) => {
         let started=false;
         for (const chunk of chunks) {

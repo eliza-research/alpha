@@ -37,7 +37,7 @@ export class CanonicalNotesUi {
  private openValue:string|null=null;
  private blankCreationValue:string|null=null;
  private trashValue:{id:string;title:string;kind:string}[]=[];
- constructor(port:AppRecordPort,private readonly hooks:{paint():void;review():void;committed?(id:string):void}){
+ constructor(port:AppRecordPort,private readonly hooks:{paint():void;review():void;committed?(id:string):void;dropped?(title:string):void}){
   this.controller=new CanonicalNotesController(port,{
    snapshot:(snapshot,reason)=>{
     this.trashValue=(snapshot.trash??[]).map(entry=>({id:entry.note.id,title:entry.note.title,kind:entry.note.format?.kind??'text'}));
@@ -93,12 +93,13 @@ export class CanonicalNotesUi {
  notes():StickyNote[]{return this.controller.current?this.controller.snapshot?.notes??[]:[];}
  selection(){return this.editor.selection();}
  private status():string{
-  if(this.phase==='review')return this.editor.draft?.version?'Your draft is kept here. Reload the current notes to discard it.':this.failure==='read'&&this.reviewPending==='read'?'Notes could not be opened. Check the agent connection, then reload.':'That change could not be confirmed. Reload Notes to see what was saved.';
+  if(this.phase==='review')return this.editor.draft?.version?'Your draft is shown here until you reload or the connection changes. Reload the current notes to discard it.':this.failure==='read'&&this.reviewPending==='read'?'Notes could not be opened. Check the agent connection, then reload.':'That change could not be confirmed. Reload Notes to see what was saved.';
   return this.controller.revision===null?'Opening Notes…':'';
  }
  renderState(previous:Bag):Bag{return {...previous,...DEVICE_ONLY_STATE,list:this.list,open:this.open,storageStatus:this.status(),blankCreationId:this.blankCreationValue};}
  async refresh():Promise<void>{await this.controller.refresh();}
- retire():void{this.editor.close();this.controller.retire();this.baseRows=[];this.rowsValue=[];this.openValue=null;this.trashValue=[];}
+ /** A connection change ends this binding; an unsaved edit is not carried over, so the owner is told. */
+ retire():void{const draft=this.editor.draft;if(draft?.version)this.hooks.dropped?.(draft.title||'Untitled');this.editor.close();this.controller.retire();this.baseRows=[];this.rowsValue=[];this.openValue=null;this.trashValue=[];}
  /** Wait out an in-flight save and the follow-up it queued for edits typed meanwhile. */
  private async settle():Promise<void>{
   for(let attempt=0;attempt<8&&this.controller.pending;attempt++){await new Promise<void>(resume=>this.idleWaiters.push(resume));await new Promise(resume=>setTimeout(resume,0));}
@@ -145,8 +146,15 @@ export class CanonicalNotesUi {
   if(this.editor.draft&&!this.editor.draft.id&&id===this.open){this.editor.close();return true;}
   const title=this.list.find(row=>row.id===id)?.title||'Note';
   const removed=await this.editor.remove(id);
-  if(removed&&this.controller.current)api.toast(`${title} moved to Trash`,{undo:()=>void this.editor.restore(id)});
+  if(removed&&this.controller.current)api.toast(`${title} moved to Trash`,{undo:()=>void this.undoRemove(id,api)});
   return removed;
+ }
+ /** Undo waits out an in-flight save; restoring over one would only fail into review. */
+ private async undoRemove(id:string,api:Bag):Promise<void>{
+  await this.settle();
+  if(!this.controller.current)return;
+  if(this.controller.pending){api.toast('Wait for the current save, then restore it from Trash.');return;}
+  await this.editor.restore(id);
  }
  async saveCard(content:string,api:Bag):Promise<boolean>{
   try{const result=await this.controller.interact('create-note',{content});if(!this.controller.current||!result.target)return false;this.hooks.committed?.(result.target.id);return true;}
@@ -167,7 +175,7 @@ export class CanonicalNotesUi {
   const {draft}=result,shared={id:null,title:draft.title,off:1,t:9,d:1,where:'',video:false,who:[],repeat:'none',notes:draft.notes,origin:draft.origin};
   if(kind==='event'){if(!api.reviewCalendarDraft?.({...shared,creationId:crypto.randomUUID(),separateCreation:false,cal:'native:local',alert:null})){api.toast("Calendar can't open this event yet. Finish any open Calendar draft and try again.");return;}}
   else api.open('calendar',{calendarAuthority:api.get('calendar').calendarAuthority,form:{...shared,cal:'alpha-reminders',alert:0},open:null,month:null,day:1},'hidden');
-  api.toast(kind==='event'?'Review the time, then Save. Nothing is on your calendar yet.':'Review the time, then Save. Nothing scheduled yet.');
+  api.toast('Review the time, then Save.');
  }
  /** Speech recognition through the platform port; the transcript lands at the caret of the note it was started from. */
  private async dictate(id:string,api:Bag):Promise<void>{

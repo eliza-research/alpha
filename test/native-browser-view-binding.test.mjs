@@ -34,3 +34,20 @@ test('background disconnect cancels current authority and foreground recreates a
  document.hidden=false;document.dispatchEvent(new Event('visibilitychange'));await client.ready();await settle();assert.equal(feeds.length,2);assert.equal(effects.length,1);
  current=false;feeds[1].ended();client.connectRenderer();assert.equal(feeds.length,2);client.dispose();
 });
+test("'Review phone actions first' refuses an agent browser command after claiming it",async()=>{
+ for(const review of [async()=>true,async()=>{throw Error('Device settings need recovery.');}]){
+  const requests=[],executed=[];let listener;
+  const client=new ViewNavigationClient(async(path,body)=>{requests.push([path,body]);return path.endsWith('claim')?{claimId:'owned-claim'}:{accepted:true};},()=>true,()=>({view:'browser',revision:1,sensitive:false}),(id,receive,end)=>{listener=receive;return {ready:Promise.resolve(),close:end};},async(...args)=>{executed.push(args);return {dispatched:true};},review);
+  await client.ready();await settle();
+  listener({type:'view:interact',requestId:'review-request',viewId:'browser',viewType:'gui',installationId:'owned-install',capability:'browser-command',params:{command:{subaction:'back'}}});await settle();
+  assert.equal(executed.length,0);assert.equal(requests.length,2);const result=requests[1][1];
+  assert.equal(result.claimId,'owned-claim');assert.equal(result.success,false);assert.match(result.error,/^review-required:/);client.dispose();
+ }
+});
+test('review off still runs the agent browser command',async()=>{
+ const requests=[],executed=[];let listener;
+ const client=new ViewNavigationClient(async(path,body)=>{requests.push([path,body]);return path.endsWith('claim')?{claimId:'owned-claim'}:{accepted:true};},()=>true,()=>({view:'browser',revision:1,sensitive:false}),(id,receive,end)=>{listener=receive;return {ready:Promise.resolve(),close:end};},async(...args)=>{executed.push(args);return {dispatched:true};},async()=>false);
+ await client.ready();await settle();
+ listener({type:'view:interact',requestId:'allowed-request',viewId:'browser',viewType:'gui',installationId:'owned-install',capability:'browser-command',params:{command:{subaction:'back'}}});await settle();
+ assert.equal(executed.length,1);assert.equal(requests[1][1].success,true);client.dispose();
+});

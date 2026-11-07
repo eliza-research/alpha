@@ -225,15 +225,15 @@ test('every Settings page shows native facts or an honest handoff, with no fixtu
  };
  const shown:Record<string,RegExp[]>={
   'Wi-Fi':[/On · connected/],'Bluetooth':[/Bluetooth\s*Off/],'Mobile data':[/Mobile data\s*On/,/Airplane mode\s*Off/],'Display':[/Adaptive brightness on/],
-  'Sound & vibration':[/Media\s*40%/,/Ring\s*100%/,/Alarm\s*0%/,/Do Not Disturb\s*No DND suppression reported/],
+  'Sound & vibration':[/Media\s*40%/,/Ring\s*100%/,/Alarm\s*0%/,/Do Not Disturb\s*Off/],
   'Notifications':[/Reminders\s*Channel allowed/,/Scheduled digest results\s*Channel allowed/],'Battery':[/64%/,/On battery/,/Battery saver\s*Off/],
   'Privacy & data':[/Device location\s*On/,/Microphone\s*Allowed for Alpha/,/Camera\s*Not allowed/],
-  'About':[/Stub phone/,/Alpha Phone\s*0\.1\.0 \(7\)/,/Installed or last updated/,/Android\s*16/,/Security patch\s*2026-09-05/,/Inference model\s*Not reported by agent/],
-  'Connections':[/Manage Google accounts/],'Models':[/Inference model\s*Not reported by agent/],
+  'About':[/Stub phone/,/Alpha Phone\s*0\.1\.0 \(7\)/,/Installed or last updated/,/Android\s*16/,/Security patch\s*2026-09-05/,/AI model\s*Not reported/],
+  'Connections':[/Manage Google accounts/],'Models':[/Inference model\s*Not reported/],
  };
  // Dead-end and negative rows the Settings cleanup removed.
  const gone:Record<string,RegExp[]>={
-  'About':[/Updates|Alpha does not check for updates/,/Runtime/,/Android app/],'Connections':[/Other connectors|Not available in this version/],
+  'About':[/Updates|Alpha does not check for updates/,/Runtime/,/Android app/,/Agent execution|Inference model/],'Connections':[/Other connectors|Not available in this version/],
   'Notifications':[/Delivery timing|Android battery policies may delay alerts/],'Calendar':[/Display only|Agent access is reviewed separately/],
  };
  await expect(current(page).getByRole('button',{name:'Developer',exact:true})).toHaveCount(0);
@@ -315,6 +315,21 @@ test('unreadable email image preferences fail closed without overwriting recover
  expect(await page.evaluate(()=>localStorage.getItem('alpha.browser.device.v1'))).toBe('{damaged settings');
 });
 
+// Unreadable preferences keep review on (connection-ui reads them as ask-first), so the switch
+// must not read as Off, a tap says why it does nothing, and recovery offers a backup first.
+test('an unreadable action preference shows Unavailable, explains the tap and offers recovery',async({page})=>{
+ await nativeStub(page);
+ await page.addInitScript(()=>localStorage.setItem('alpha.browser.device.v1','{damaged settings'));
+ await openSettings(page);
+ await expect(current(page)).toContainText(/Review phone actions first\s*Unavailable\. Alpha asks before every action\./);
+ await expect(current(page)).not.toContainText('Covers opening websites');
+ await current(page).getByRole('button',{name:'Review phone actions first',exact:true}).click();
+ await expect(page.getByText('Action preference couldn’t be read. Alpha asks before every action until it is fixed.',{exact:true})).toBeVisible();
+ await current(page).getByRole('button',{name:'Recover device settings',exact:true}).click();
+ await expect(page.getByRole('dialog',{name:'Device settings recovery'})).toBeVisible();
+ expect(await page.evaluate(()=>localStorage.getItem('alpha.browser.device.v1'))).toBe('{damaged settings');
+});
+
 test('notification denial and re-enable are read back from Android, and local history stays available',async({page})=>{
  page.on('dialog',dialog=>void dialog.dismiss());
  await nativeStub(page);
@@ -334,7 +349,7 @@ test('notification denial and re-enable are read back from Android, and local hi
  // Opening Android's page changes nothing here until Android reports the change.
  await expect(current(page)).toContainText(/Reminders\s*Channel blocked/);
  // Retained history does not depend on the channel: it is still listed while delivery is blocked.
- await current(page).getByRole('button',{name:'View local metadata history',exact:true}).click();
+ await current(page).getByRole('button',{name:'View notification history',exact:true}).click();
  await expect(current(page)).toContainText(/Stub Mail\s*posted/);
  await page.evaluate(()=>{(window as any).truth.state.status.channels[0].blocked=false;(window as any).truth.state.status.channels[0].importance=4;});
  await resume(page);
@@ -400,7 +415,7 @@ test('the browser build of Settings shows no fixture value and no radio or senso
    expect(text).toContain('In-app alerts enabled');
    expect(text).not.toMatch(/Delivery timing|Shown while Alpha is open/);
    expect(text).not.toMatch(/App notifications allowed|Channel allowed|Android battery policies/);
-   expect(text).not.toMatch(/Manage development notification access|selected-app collection|other-app collection|Choose notification apps|Hide app choices|Local metadata history|local metadata history|Notification privacy/);
+   expect(text).not.toMatch(/Manage development notification access|selected-app collection|other-app collection|Choose notification apps|Hide app choices|Notification history|notification history|Notification privacy/);
    await expect(current(page).getByRole('button',{name:'Manage Reminders',exact:true})).toBeVisible();
    await expect(current(page).getByRole('button',{name:'Manage Calendar',exact:true})).toBeVisible();
    await current(page).getByRole('button',{name:'Manage in-app alerts',exact:true}).click();
@@ -430,22 +445,23 @@ test('the browser build of Settings shows no fixture value and no radio or senso
  expect(await page.locator('[aria-pressed]').evaluateAll(list=>list.map(e=>e.getAttribute('aria-label')))).toEqual([]);
 });
 
-// The audit's demo contradiction: About said "Not reported by agent" while Models named the model.
+// The audit's demo contradiction: About said "Not reported" while Models named the model.
 // Both read the provider the resident reports when Settings refreshes, so a binding that lands after
 // Settings first opened is shown the same way on both pages.
 test('About and Models report the same inference model after the provider binds',async({page},info)=>{
- const row=async()=>/Inference model\s*([^\n]+)/.exec(await current(page).innerText())?.[1];
+ // About names it "AI model"; Models keeps "Inference model" beside the provider (msg-alphaphone-035).
+ const row=async()=>/(?:Inference|AI) model\s*([^\n]+)/.exec(await current(page).innerText())?.[1];
  await nativeStub(page,{provider:{provider:'elizacloud',configured:false}});
  await openSettings(page);
  await current(page).getByRole('button',{name:'About',exact:true}).click();
- await expect.poll(row).toBe('Not reported by agent');
+ await expect.poll(row).toBe('Not reported');
  // The binding lands later; Settings reads the provider again when the app resumes.
  await set(page,{provider:{provider:'elizacloud',configured:true,model:'cerebras/qwen-3.8-27b'}});
  await resume(page);
  await page.getByRole('button',{name:'Back to Settings',exact:true}).click();
  await current(page).getByRole('button',{name:'Models',exact:true}).click();
  await expect(current(page)).toContainText(/Inference provider\s*Eliza Cloud/);
- await expect.poll(row).not.toBe('Not reported by agent');
+ await expect.poll(row).not.toBe('Not reported');
  const models=await row();
  await page.screenshot({path:info.outputPath('models.png'),animations:'disabled'});
  await page.getByRole('button',{name:'Back to Settings',exact:true}).click();
@@ -535,7 +551,9 @@ for(const scenario of ['unbound','recovering','connected'] as const)test(`Cloud 
  const plan=current(page);
  await expect(plan).not.toContainText('Running on this phone',{timeout:1000});
  await expect(plan).toContainText('Agent execution');
- await expect(plan.getByText(scenario==='recovering'?'Not connected':'On this device',{exact:true})).toBeVisible();
+ // A stopped resident is never "Not connected" (P-43): the row says the agent stopped.
+ if(scenario==='recovering'){await expect(plan).toContainText(/Agent execution\s*(Your agent|Alpha couldn’t)/);await expect(plan).not.toContainText('Not connected');}
+ else await expect(plan.getByText('On this device',{exact:true})).toBeVisible();
  await expect(plan).not.toContainText('On this computer');
  if(scenario==='connected')await expect(plan.getByText('Eliza Cloud',{exact:true})).toBeVisible();
 });

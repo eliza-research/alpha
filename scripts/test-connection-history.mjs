@@ -243,7 +243,7 @@ try {
   await controller.disconnect();
   assert.equal(remote.deviceRevokes,1,'disconnect revokes the device enrollment');
   assert.equal(remote.logouts,1,'disconnect revokes the owner session');
-  assert.match(controller.getSnapshot().message,/revoked on the agent/);
+  assert.equal(controller.getSnapshot().message,'Agent disconnected.');
   assert.equal(remoteSaved.size,0,'local remote credential removed after revocation');
   assert.equal([...deviceSlots.keys()].filter(key=>key.startsWith('device:')).length,0,'device installation key deleted');
   const replay=await nativeRemoteRequest({url:'https://agent.example/api/auth/me',method:'GET',headers:{Authorization:`Bearer ${firstToken}`}});
@@ -308,7 +308,7 @@ try {
     [{kind:'insufficient_credits',message:'Synthetic upstream text',transient:false},/^Eliza Cloud declined this AI request for your account's billing\. Check your account in Settings\. Alpha Phone did not retry your message, and nothing is purchased automatically\./],
     [{kind:'rate_limited',message:'Synthetic upstream text',transient:true},/^The AI request rate limit was reached\. Wait a moment before sending again\. Alpha Phone did not retry your message\.$/],
     [{kind:'rate_limited',message:'Synthetic upstream text',transient:true,rateLimit:{kind:'rate_limited',retryAfterMs:2400,planId:'synthetic',scope:'burst'}},/^The AI request rate limit was reached\. Try again in about 3 seconds\. Alpha Phone did not retry your message\.$/],
-    [{kind:'provider_issue',message:'Synthetic upstream text',transient:true},/^Alpha’s AI service could not complete this reply\. Nothing was resent\.$/],
+    [{kind:'provider_issue',message:'Synthetic upstream text',transient:true},/^Alpha’s AI service couldn’t finish this reply\.$/],
   ]){
     const before=remote.failureReplies||0;remote.failureReply=failure;
     const refused=await controller.send('Refused turn',{view:'home',revision:13,sensitive:false},'refused-'+failure.kind+(failure.rateLimit?'-live-wait':''),new AbortController().signal).then(()=>null,error=>error);

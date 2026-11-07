@@ -23,7 +23,7 @@ const say=between(adapter,'  p.agentSay = function','  p.reply = function');
 const plan=between(adapter,'function planActionCard(','/** Context notices');
 const notices=between(adapter,'function replyNotices(','/** Decline one pending proposal');
 const merge=between(connection,'export function mergeConversationDelivery','const actionReceipts =').replace('export ','');
-const history=between(connection,'function restoredMessages(','/** Eliza Cloud\'s API');
+const history=between(connection,'/** A display bound, not a protocol limit','/** Eliza Cloud\'s API');
 const failureKind=between(connection,'function failureKindOf(','/** The error a failed reply');
 const delivery=between(adapter,'      const delivery=connectionController.getSnapshot().conversationDelivery;','      syncStoppedReplyNotice');
 const compiled=ts(`${plan}\n${notices}\n${merge}\n${history}\n${failureKind}\nfunction methods(){const p={};\n${voice}\n${send}\n${say}\np.receiveCanonicalDelivery=function(){const session=connectionController.getSnapshot().session?.sessionId;\n${delivery}\n};return p;}globalThis.methods=methods();globalThis.projectHistory=restoredMessages;`);

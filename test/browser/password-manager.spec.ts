@@ -86,7 +86,9 @@ test('development vault locks when leaving and reports autofill selection only a
   await devVault(page);
   await expect(page.getByText('None selected', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Set as autofill service', exact: true }).click();
-  await expect(page.getByText('Confirm Alpha Phone passwords in Android, then return here.', { exact: true })).toBeVisible();
+  // The instruction is on the row before the handoff; no toast follows it.
+  await expect(page.getByText('Confirm in Android, or search there for autofill', { exact: true })).toBeVisible();
+  await expect(page.getByText('Confirm Alpha Phone passwords in Android, then return here.', { exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Refresh autofill status', exact: true }).click();
   await expect(page.getByText('Alpha Phone passwords', { exact: true }).last()).toBeVisible();
   await page.getByRole('button', { name: 'Unlock passwords', exact: true }).click();

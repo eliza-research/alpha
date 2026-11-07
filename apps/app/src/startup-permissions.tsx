@@ -3,7 +3,7 @@ import React, {useEffect, useLayoutEffect, useRef, useState, useSyncExternalStor
 import {registerPlugin} from './platform-plugins';
 import {connectionController} from './runtime/connection-ui';
 import {googleConnectionController} from './runtime/google-connection-ui';
-import {readStartupPermissionMemory,writeStartupPermissionMemory,startupPhotoAccess,startupLocationAccess,STARTUP_PERMISSIONS_REOPEN} from './startup-permission-flow';
+import {readStartupPermissionMemory,writeStartupPermissionMemory,startupPhotoAccess,startupLocationAccess,lateReadyNotice,STARTUP_PERMISSIONS_REOPEN} from './startup-permission-flow';
 import {iconStyle} from './icon-style';
 import {browserStartupPermission} from './startup-browser-permissions';
 import {createStartupPermissionFlow, startupPermissionKeys, nativeStartupPermissionKeys, type NativeStartupPermissionKey as PermissionKey, type StartupPermissionState} from './startup-permission-flow';
@@ -56,6 +56,8 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
   const googleOpen = useSyncExternalStore(googleConnectionController.subscribe,googleConnectionController.getSnapshot);
   const [reopened,setReopened] = useState(false);
   const [ready,setReady] = useState(false);
+  // Setup ran for a sign-in but showed nothing (completed install, no new account).
+  const [silent,setSilent] = useState(false);
   const locationDescription=useRef(''),photoDescription=useRef('');
   const native = Capacitor.getPlatform() === 'android';
   const keys: readonly PermissionKey[] = native ? nativeStartupPermissionKeys : startupPermissionKeys;
@@ -103,8 +105,12 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
   useEffect(() => {
     if (!connection.setupRevision) return;
     ++sequence.current;setReopened(false);setTarget(null);targetRef.current=null;setReview(false);reviewRef.current=false;
-    const resume=progressError?progressRef.current:savedProgress(native);setReady(showWalkthroughCompletion({accountCreated: connection.accountCreated, resumed: !!resume}));setActive(!!resume);if(resume)writeProgress(resume);
+    const resume=progressError?progressRef.current:savedProgress(native),shown=showWalkthroughCompletion({accountCreated: connection.accountCreated, resumed: !!resume});
+    setReady(shown);setActive(!!resume);setSilent(!shown&&!resume);if(resume)writeProgress(resume);
   }, [connection.setupRevision]);
+  useEffect(() => {if (lateReadyNotice({silent, error: connection.error, message: connection.message})) {setSilent(false);setReady(true);}}, [silent, connection.error, connection.message]);
+  // Only notices from the sign-in that opened setup: its operation ending closes the window.
+  useEffect(() => {if (!connection.busy) setSilent(false);}, [connection.busy]);
   useEffect(() => {
     alive.current = true; let disposed = false;
     const refresh = async () => {
@@ -131,7 +137,7 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
       setTarget(targetRef.current);
       const resume=savedProgress(native);reviewRef.current=resume===null;setReview(reviewRef.current);
       if (!selected) {if(!writeProgress(resume??{version:3 as const,step:0,choices:[]}))return;}
-      setReopened(true);setReady(false);
+      setReopened(true);setReady(false);setSilent(false);
       setActive(true);
       void Promise.all(keys.map(async key => {const value = await flows[key].refresh(); if (alive.current && value !== null) setStates(previous => ({...previous, [key]: value}));}));
     };

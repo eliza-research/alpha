@@ -46,8 +46,8 @@ async function sendRefused(page: Page, text: string) {
 const KINDS = {
   // Cloud's billing refusal of a signed-in account: one answer naming both ways back (cloud-membership-ui.tsx).
   insufficient_credits: 'Eliza Cloud declined this request for billing. Check your subscription or enter a membership code, then send again.',
-  provider_issue: 'Alpha’s AI service could not complete this reply. Nothing was resent.',
-  generation_timeout: 'Alpha’s AI service could not complete this reply. Nothing was resent.',
+  provider_issue: 'Alpha’s AI service couldn’t finish this reply.',
+  generation_timeout: 'Alpha’s AI service couldn’t finish this reply.',
   // Bound to an admitted plan, yet the agent ran without a provider: a check of what native bound is offered.
   no_provider: 'AI isn’t connected right now. Check Eliza Cloud again.',
 } as const;
@@ -245,7 +245,7 @@ test('a restart while the resident holds a reply posts nothing and shows the use
   await button(page, 'Open conversation').click();
   await expect(bubble(page, 'Held across a restart')).toHaveCount(1, { timeout: 30_000 });
   // The restored chat says it will check once; the agent finishes after the restart.
-  await expect(conversation(page).getByText('The agent may still finish this reply. Alpha Phone will check once and show it here if it does.', { exact: true })).toHaveCount(1);
+  await expect(conversation(page).getByText('This reply may still finish. It will appear here if it does.', { exact: true })).toHaveCount(1);
   await stub(page, s => s.finishHeld());
   await expect(bubble(page, 'Held reply 1')).toHaveCount(1, { timeout: 60_000 });
   await expect(bubble(page, 'Held across a restart')).toHaveCount(1);

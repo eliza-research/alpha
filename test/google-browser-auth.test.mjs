@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync, cpSync, rmSync} from 'node:fs';
-import {join, resolve} from 'node:path';
+import {mkdtempSync, cpSync, rmSync, readFileSync, readdirSync, existsSync} from 'node:fs';
+import {join, resolve, relative} from 'node:path';
+import {createHash} from 'node:crypto';
 import {tmpdir} from 'node:os';
 import {execFileSync} from 'node:child_process';
 import {preparePatchedNative} from '../scripts/prepare-patched-native.mjs';
@@ -15,7 +16,19 @@ test('packaged shared Google browser sign-in preserves lifecycle and credential 
   const module=join(temporary, 'packages/auth/android');
   try {
     cpSync(join(staged.root, 'packages/auth/android'), module, {recursive:true});
-    cpSync(join(root, 'test/fixtures/google-browser-auth'), join(module, 'test'), {recursive:true});
+    // The overlay replaces upstream test files wholesale. Each fork records the upstream
+    // file it came from, so a pin bump that changes one forces the fork to be rebased.
+    const overlay=join(root, 'test/fixtures/google-browser-auth');
+    const base=JSON.parse(readFileSync(join(overlay, 'upstream-base.json'), 'utf8'));
+    const forks=readdirSync(overlay, {recursive:true, withFileTypes:true}).filter((entry) => entry.isFile())
+      .map((entry) => relative(overlay, join(entry.parentPath, entry.name))).filter((name) => name!=='upstream-base.json');
+    assert.deepEqual(forks.sort(), Object.keys(base.files).sort(), 'every overlay file records its upstream base');
+    for (const [name, sha256] of Object.entries(base.files)) {
+      const upstream=join(module, 'test', name);
+      const actual=existsSync(upstream) ? createHash('sha256').update(readFileSync(upstream)).digest('hex') : null;
+      assert.equal(actual, sha256, `upstream sign-in tests changed; rebase the Alpha fork (${name})`);
+    }
+    cpSync(overlay, join(module, 'test'), {recursive:true, filter:(source) => source!==join(overlay, 'upstream-base.json')});
     // The shared suite also checks that its existing first-party host retains
     // native mode. These are test inputs only, never Alpha application sources.
     cpSync(join(root, 'vendor/eliza/packages/app/platforms/android'), join(temporary, 'packages/app/platforms/android'), {recursive:true});

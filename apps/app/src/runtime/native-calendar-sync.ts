@@ -48,7 +48,7 @@ export const nativeCalendarSync = {
    deletionUndone:(id:string)=>undone.has(id),
    async applyProviderEvent(id,event,expectedRevision){
     const operation=await operationId(['native-calendar-apply-v1',admitted.binding,id,expectedRevision,event]);const result=await call('apply',{...input,eventId:id,expectedRevision,event,operationId:operation},current,signal);
-    if(result.status!=='saved')throw error(result);const saved=snapshot(result.snapshot);if(!saved||saved.eventId!==id)throw Error('Device Calendar save was not confirmed');await call('ack',{...input,operationId:operation},current,signal);window.dispatchEvent(new Event('alpha:calendar-committed'));return saved;
+    if(result.status!=='saved')throw error(result);const saved=snapshot(result.snapshot);if(!saved||saved.eventId!==id)throw Error('Device Calendar save was not confirmed');await call('ack',{...input,operationId:operation},current,signal);window.dispatchEvent(new CustomEvent('alpha:calendar-committed',{detail:{eventId:id}}));return saved;
    },
    async delete(id,expectedRevision){
     const operation=await operationId(['native-calendar-delete-v1',admitted.binding,id,expectedRevision]);const result=await call('delete',{...input,eventId:id,expectedRevision,operationId:operation},current,signal);
@@ -56,7 +56,7 @@ export const nativeCalendarSync = {
     const deadline=Date.now()+15000;
     while(Date.now()<deadline){
      const response=await call('deletion',{...input,operationId:operation},current,signal);if(response.status!=='receipt')throw error(response);const receipt=object(response.receipt),phase=receipt.phase;
-     if(phase==='deleted'){if(await get(id)!==null)throw Error('Calendar deletion readback changed');await call('ack',{...input,operationId:operation},current,signal);window.dispatchEvent(new Event('alpha:calendar-committed'));return;}
+     if(phase==='deleted'){if(await get(id)!==null)throw Error('Calendar deletion readback changed');await call('ack',{...input,operationId:operation},current,signal);window.dispatchEvent(new CustomEvent('alpha:calendar-committed',{detail:{eventId:id}}));return;}
      if(phase==='undone'){undone.add(id);await call('ack',{...input,operationId:operation},current,signal);throw Error('Deletion undone. The local event is kept and its Google link is paused.');}
      if(phase!=='queued')throw Error('Calendar deletion is paused or unconfirmed. It will not be repeated.');
      await new Promise<void>((resolve,reject)=>{const stop=()=>{clearTimeout(timer);reject(new DOMException('Calendar sync stopped','AbortError'));};const timer=setTimeout(()=>{signal.removeEventListener('abort',stop);resolve();},400);signal.addEventListener('abort',stop,{once:true});if(signal.aborted)stop();});

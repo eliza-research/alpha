@@ -256,9 +256,9 @@ for (const mode of ['revoked', 'unsupported', 'failed', 'refused-in-body', 'not-
     // the completed sign-out receipt or turn an unconfirmed revocation into success.
     await expect(page.getByRole('alert').filter({hasText:'Eliza Cloud sign-in is unavailable.'})).toBeVisible();
     const status = page.locator('.alpha-connection').getByRole('status').filter({ hasText: /Signed out|sign-in token was removed/ });
-    if (mode === 'revoked') await expect(status).toContainText('Signed out of Eliza Cloud. This sign-in was revoked.');
+    if (mode === 'revoked') await expect(status).toContainText('Signed out of Eliza Cloud.');
     else {
-      await expect(status).toContainText('The sign-in token was removed here; Eliza Cloud did not confirm revoking it.');
+      await expect(status).toContainText('Signed out here. Eliza Cloud did not confirm revoking this sign-in.');
       await expect(page.getByText(/was revoked/)).toHaveCount(0);
     }
     const calls = await nativeCalls(page);
@@ -495,7 +495,7 @@ test('passive deletion failures stay quiet; known pending failures preserve sett
     Object.assign(banner.style, { top: `${rect.top}px`, left: `${rect.left}px`, right: 'auto', bottom: 'auto', width: `${rect.width}px` });
   });
   await signout.click();
-  await expect(page.locator('.alpha-connection').getByRole('status')).toContainText('Signed out of Eliza Cloud. This sign-in was revoked.');
+  await expect(page.locator('.alpha-connection').getByRole('status')).toContainText('Signed out of Eliza Cloud.');
   await expect(notice).toHaveCount(0);
 });
 

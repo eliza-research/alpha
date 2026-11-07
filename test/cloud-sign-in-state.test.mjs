@@ -107,12 +107,12 @@ test('resend starts at thirty seconds and cannot be clicked during the countdown
 
 function controllerFixture({isAndroid=false,browserCloudResidentEnabled=false}={}){
   const source=`
-    const ownProviderSelected=()=>false;let operation=null,residentStartInBackground=false,active=null,signInReadinessOwner=null,googleSignInGeneration=0;
+    const ownProviderSelected=()=>false;let operation=null,residentStartInBackground=false,active=null,signInReadinessOwner=null,googleSignInGeneration=0,googleSignInPrior=null;
     const state={signIn:{step:'code',environment:'production',attemptId:'old',email:'person@example.invalid'},open:true,busy:false,message:'',error:''};
     const events=[],update=values=>{Object.assign(state,values);events.push({...values});};
     const cloud={cancelLogin(){events.push({cancel:true});}};
     const client={};
-    const signInClient=()=>client,ensureResident=async()=>{},residentRecoveryReason=()=>null;
+    const signInClient=()=>client,ensureResident=async()=>{},residentRecoveryReason=()=>null,cloudCredentialStore={read:async()=>null};
     const errorMessage=e=>e.message,errorKindOf=()=>null,runQueuedResidentRebind=()=>{},runQueuedSignInReturn=()=>{};let planRecheck=null;
     const testMocksEnabled=false,isAndroid=${isAndroid},browserCloudResidentEnabled=${browserCloudResidentEnabled},expired=()=>false,residentCloudFlow=()=>true;
     let required=false;const productionCloudSignInRequired=()=>required,residentSignInRequired=()=>required;let pendingBillingReview=null;const clearPersonalSetup=()=>{};
@@ -167,6 +167,18 @@ test('actual controller keeps wrong-code challenge and prevents duplicate verifi
   await f.connectionController.verifySignInCode('123456');assert.equal(calls,1);
   pending.reject(new f.CloudSignInError('invalid-code'));await first;
   assert.equal(f.state.signIn.attemptId,'old');assert.equal(f.state.error,'invalid-code');
+});
+
+test('a failed resend keeps the code step and the code already sent',async()=>{
+  for(const failure of ['rate-limited','offline']){
+    const f=controllerFixture();f.state.signIn={...f.state.signIn,resendAt:0,expiresAt:Date.now()+600000};
+    f.client.startEmailSignIn=async()=>{throw new f.CloudSignInError(failure);};
+    await f.connectionController.resendSignInCode();
+    assert.equal(f.state.signIn.step,'code');assert.equal(f.state.signIn.attemptId,'old','the first code can still be verified');
+    assert.equal(f.state.error,failure);assert.equal(f.state.busy,false);
+    let verified;f.client.verifyEmailSignIn=async attemptId=>{verified=attemptId;return {status:'authenticated'};};
+    await f.connectionController.verifySignInCode('123456');assert.equal(verified,'old');
+  }
 });
 
 test('an expired or exhausted code keeps the address with a new code ready; other refusals return with it filled in',async()=>{
@@ -270,7 +282,7 @@ test('verified account is not redirected from membership into first-run sign-in'
 
 test('explicit account chooser preserves newer in-app email/phone readiness and never starts hosted auth',async()=>{
  const begin=part('  async beginSignIn(', '  /** Leaves the sign-in screen');
- const body=`${explicitEntrySource}function make(purpose,methods){let operation=null,epoch=0,signInReadinessOwner=null,googleSignInGeneration=0,inAppGoogle=false,inAppPhone=false,inAppEmail=false;const cloudSignIn={},cloudServiceName=()=> 'Eliza Cloud',state={open:true,purpose,cloudAccount:null},updates=[],calls=[];const residentCloudFlow=()=>false,residentEnvironment=()=> 'production',cloudEnvironmentAllowed=()=>true,isAndroid=false;let cloud={environment:'production',cancelLogin(){calls.push('cancel');}};const inAppSignInMethods=async()=>{calls.push('status');return methods;},update=patch=>{updates.push(patch);Object.assign(state,patch);},work=async(_,fn)=>fn(new AbortController().signal),ensureResident=async()=>{},browserCloudLoginAction=async()=>calls.push('web-auth'),residentBrowserLoginAction=async()=>calls.push('resident-auth');const connectionController={${begin}};return {controller:connectionController,state,updates,calls,methods:()=>({google:inAppGoogle,phone:inAppPhone,email:inAppEmail})};}`;
+ const body=`${explicitEntrySource}function make(purpose,methods){let operation=null,epoch=0,signInReadinessOwner=null,googleSignInGeneration=0,googleSignInPrior=null,inAppGoogle=false,inAppPhone=false,inAppEmail=false;const cloudSignIn={},cloudServiceName=()=> 'Eliza Cloud',state={open:true,purpose,cloudAccount:null},updates=[],calls=[];const residentCloudFlow=()=>false,residentEnvironment=()=> 'production',cloudEnvironmentAllowed=()=>true,isAndroid=false;let cloud={environment:'production',cancelLogin(){calls.push('cancel');}};const inAppSignInMethods=async()=>{calls.push('status');return methods;},update=patch=>{updates.push(patch);Object.assign(state,patch);},work=async(_,fn)=>fn(new AbortController().signal),ensureResident=async()=>{},browserCloudLoginAction=async()=>calls.push('web-auth'),residentBrowserLoginAction=async()=>calls.push('resident-auth');const connectionController={${begin}};return {controller:connectionController,state,updates,calls,methods:()=>({google:inAppGoogle,phone:inAppPhone,email:inAppEmail})};}`;
  const compiled=transformSync(body,{loader:'ts',format:'cjs'}).code,make=new Function(compiled+';return make;')();
  for(const purpose of ['cloud-account','plan','agent'])for(const methods of [null,{google:false,phone:true,email:false}]){const f=make(purpose,methods);await f.controller.beginSignIn('production');assert.equal(f.state.signIn.step,'choose');assert.deepEqual(f.calls,['status','cancel']);assert.deepEqual(f.methods(),{google:false,phone:methods?.phone===true,email:methods===null||methods.email!==false});}
 });

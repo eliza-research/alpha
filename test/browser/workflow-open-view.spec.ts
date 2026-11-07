@@ -105,13 +105,13 @@ for (const mode of ['pending', 'wrong-owner', 'expired'] as const) {
       await page.getByRole('button',{name:'Settings',exact:true}).click();
       await page.getByRole('button',{name:'Agent connection',exact:true}).click();
       await page.getByText('Phone action history',{exact:true}).click();
-      await page.getByRole('button',{name:'Sync recorded receipts',exact:true}).click();
-      await expect(page.getByRole('button',{name:'Sync recorded receipts',exact:true})).toBeEnabled();
+      await page.getByRole('button',{name:'Check with agent',exact:true}).click();
+      await expect(page.getByRole('button',{name:'Check with agent',exact:true})).toBeEnabled();
       await expect.poll(async()=> (await counts()).receipts).toBe(1);
       // History shows the agent state, then this phone's journal outcome.
       await expect(page.getByText('done · this phone: succeeded',{exact:true})).toBeVisible();
-      await page.getByRole('button',{name:'Sync recorded receipts',exact:true}).click();
-      await expect(page.getByRole('button',{name:'Sync recorded receipts',exact:true})).toBeEnabled();
+      await page.getByRole('button',{name:'Check with agent',exact:true}).click();
+      await expect(page.getByRole('button',{name:'Check with agent',exact:true})).toBeEnabled();
       await expect(page.getByText('done · this phone: succeeded',{exact:true})).toBeVisible();
       expect(await counts()).toEqual({ posts: 1, decisions: 1, claims: 1, receipts: 1, automationLists: 1, journal: ['reserve', 'markApplying', 'finish'] });
       expect(await page.evaluate(()=>new Set((window as any).navigationFixture.receiptBodies).size)).toBe(1);

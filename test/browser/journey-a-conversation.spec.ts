@@ -29,7 +29,7 @@ const AGENT_KEY='alpha.browser.agent.local.v1';
 const AGENT_LOCK=JSON.stringify(['browser-document','alpha.browser.documents.v1',AGENT_KEY]);
 const REPLY='Journey A scripted reply';
 // Wording owned by apps/app/src/runtime/connection-ui.tsx (STOPPED_REPLY_NOTICE and the check's outcome).
-const MAY_FINISH='The agent may still finish this reply. Alpha Phone will check once and show it here if it does.';
+const MAY_FINISH='This reply may still finish. It will appear here if it does.';
 const NOT_RECORDED='The agent did not record the stopped message.';
 /** Pass-through counter of reads of the development agent document; it changes no result. */
 const countAgentReads=(page:Page)=>page.addInitScript(key=>{const w=window as any;w.agentReads=0;const get=IDBObjectStore.prototype.get;IDBObjectStore.prototype.get=function(query:any){if(query===key)w.agentReads++;return get.call(this,query);};},AGENT_KEY);
@@ -119,7 +119,7 @@ test('journey A: boot, connect, converse across apps, stop a reply, reload and r
    // Honest in-chat state, shown exactly once: no claim that the agent stopped or that nothing happened,
    // and no second "may have reached the agent" bubble beside it.
    await expect(conversation.getByText(MAY_FINISH,{exact:true})).toHaveCount(1);
-   await expect(conversation.getByText('Request cancelled. A dispatched action may still need status reconciliation.',{exact:true})).toHaveCount(0);
+   await expect(conversation.getByText('Request cancelled. Check whether the action already happened.',{exact:true})).toHaveCount(0);
    await expect(bubble(page,'Your message may have reached the agent. Check before sending it again.')).toHaveCount(0);
    await expect(conversation.getByText('The agent stopped this reply.',{exact:true})).toHaveCount(0);
    // While the single check is pending there is nothing to press: the check is automatic.

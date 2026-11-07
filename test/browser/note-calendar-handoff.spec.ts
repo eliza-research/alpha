@@ -80,7 +80,7 @@ test('an event draft writes nothing until Save, then links to exactly the note i
  await button(page,'Review calendar event draft').click();
  await expect(title(page)).toHaveValue('');
  await expect(page.getByRole('textbox',{name:'Notes',exact:true})).toHaveValue('Book the venue\nEmail the caterer');
- await expect(page.getByText('Choose one action and review its time, then Save. Nothing is on your calendar yet.',{exact:true})).toBeVisible();
+ await expect(page.getByText('Choose one action, then Save.',{exact:true})).toBeVisible();
  await expect(button(page,'Save event')).toBeDisabled();
  expect(await events(page)).toEqual([]);expect(await reminders(page)).toEqual([]);expect(await links(page)).toEqual({});
  // Leaving the draft saves nothing and changes no note.
@@ -268,7 +268,7 @@ test('a canonical note opens a reminder draft whose saved reminder links back to
  const before=await page.evaluate(()=>structuredClone((window as any).canonicalNotesFixture.state.notes));
  await button(page,'Review reminder draft').click();
  await expect(page.getByRole('textbox',{name:'Notes',exact:true})).toHaveValue('Book the venue');
- await expect(page.getByText('Review the time, then Save. Nothing scheduled yet.',{exact:true})).toBeVisible();
+ await expect(page.getByText('Review the time, then Save.',{exact:true})).toBeVisible();
  expect(await reminders(page)).toEqual([]);expect(await stored(page)).toEqual({});
  await button(page,'Save event').click();
  await expect.poll(async()=>(await reminders(page)).length).toBe(1);

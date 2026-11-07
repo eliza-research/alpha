@@ -109,7 +109,7 @@ for(const scenario of ['ready','rejected','late','mock-ready','mock-retire-rejec
   if(scenario==='late'){
    await page.getByRole('button',{name:/Agent connection/}).click();
    await page.getByRole('button',{name:'Disconnect agent',exact:true}).click();
-   await expect(page.getByText('Agent disconnected. Cloud services keep their separate sign-in.',{exact:true})).toBeVisible();
+   await expect(page.getByText('Agent disconnected.',{exact:true})).toBeVisible();
    await page.evaluate(()=>(window as any).deliveryFixture.release());
    await expect.poll(()=>page.evaluate(()=>(window as any).deliveryFixture.enabled)).toBe(false);
    expect(await page.evaluate(()=>(window as any).deliveryFixture.nativeSync)).toBe(0);
@@ -142,10 +142,10 @@ for(const scenario of ['ready','rejected','late','mock-ready','mock-retire-rejec
    await page.getByRole('button',{name:/Agent connection/}).click();
    await page.getByRole('button',{name:'Disconnect agent',exact:true}).click();
    await expect(page.getByText('Disconnecting…',{exact:true})).toBeVisible();
-   await expect(page.getByText('Agent disconnected. Cloud services keep their separate sign-in.',{exact:true})).toHaveCount(0);
+   await expect(page.getByText('Agent disconnected.',{exact:true})).toHaveCount(0);
    await expect.poll(()=>page.evaluate(()=>typeof (window as any).deliveryFixture.retireRelease)).toBe('function');
    await page.evaluate(()=>(window as any).deliveryFixture.retireRelease());
-   await expect(page.getByText('Agent disconnected. Cloud services keep their separate sign-in.',{exact:true})).toBeVisible();
+   await expect(page.getByText('Agent disconnected.',{exact:true})).toBeVisible();
   }
  });
 }

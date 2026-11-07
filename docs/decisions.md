@@ -216,6 +216,18 @@ screen are refused (`contextRevision` already fences proposals)? Until it is dec
 behaviour stays and no software chooses otherwise. Tracked with the other open engineering
 choices in issue #680.
 
+### What "Review phone actions first" covers (2026-11-06, engineering disposition, pending owner confirmation)
+
+The toggle is read where the agent runs an action the owner asked for in the same message
+(`performRequested`) and where it runs a command inside a view (Browser back, forward and
+reload). With it on, or unreadable, opening websites, taking photos and choosing photos wait
+for a card, and view commands are refused. Two paths do not read it: in-app navigation goes
+through the view route (`viewDelivery: completed-action`), and ordinary Notes writes go through
+canonical Notes, where a deleted note stays in Trash for 3 days. Both are exempt from the toggle.
+Settings and `docs/agent-view-coverage.md` say so; `open_view` stays on the upstream
+direct list. The owner should confirm the exemption or ask for navigation and Notes writes
+to be reviewed too (alpha-prototype-3-P05, ctl-alphaphone-014).
+
 ## Pending owner decisions
 
 No reviewed A-01–A-26/A-32–A-35/MVP-01/MVP-52/owner-notice item remains awaiting

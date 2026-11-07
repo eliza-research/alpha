@@ -35,8 +35,11 @@ test('setup handoff does not claim selected; explicit refresh observes return an
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await nativeFixture(page);
  await expect(page.getByText('Installed · publisher verified',{exact:true})).toBeVisible();
  await expect(page.getByText('No provider selected',{exact:true})).toBeVisible();
+ // The instruction is on the row before Android covers Alpha; no toast follows the handoff.
+ await expect(page.getByText('In Android, search for passwords or autofill',{exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Choose password provider in Android',exact:true}).click();
  await expect(page.getByText('No provider selected',{exact:true})).toBeVisible();
+ await expect(page.getByText(/Opened Android settings|Opened provider setup/)).toHaveCount(0);
  await page.getByRole('button',{name:'Refresh password provider status',exact:true}).click();
  await expect(page.getByText('No provider selected',{exact:true})).toBeVisible();
  await page.evaluate(()=>{(window as any).passwordFixture.selection='proton';});
@@ -61,7 +64,7 @@ test('unavailable handoff and unrecognized publisher never claim enablement or o
  await expect(page.getByText('Another provider selected',{exact:true})).toBeVisible();
  await page.evaluate(()=>{(window as any).passwordFixture.fail=true;});
  await page.getByRole('button',{name:'Choose password provider in Android',exact:true}).click();
- await expect(page.getByText('Password provider setup is unavailable. No provider change is confirmed.',{exact:true})).toBeVisible();
+ await expect(page.getByText('Password provider setup is unavailable.',{exact:true})).toBeVisible();
 });
 test('browser environment reports native provider unavailable without simulated installation',async({page})=>{
  await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Password manager',exact:true}).click();
@@ -112,7 +115,7 @@ test('unexpected resolved handoff status never reports opened',async({page})=>{
  await nativeFixture(page);
  await page.evaluate(()=>{(window as any).passwordFixture.unexpected=true;});
  await page.getByRole('button',{name:'Choose password provider in Android',exact:true}).click();
- await expect(page.getByText('Password provider setup is unavailable. No provider change is confirmed.',{exact:true})).toBeVisible();
+ await expect(page.getByText('Password provider setup is unavailable.',{exact:true})).toBeVisible();
  await expect(page.getByText(/Opened provider setup/)).toHaveCount(0);
  await expect(page.getByText('No provider selected',{exact:true})).toBeVisible();
 });

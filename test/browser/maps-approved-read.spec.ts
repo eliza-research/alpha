@@ -104,7 +104,7 @@ for (const mode of ['place', 'route', 'stale-before-approval', 'stale-after-read
     await page.getByRole('button', { name: 'Type', exact: true }).click();
     const input = page.locator('[data-alpha-layer="composer"][aria-hidden="false"], [data-alpha-layer="conversation"][aria-hidden="false"]').getByRole('textbox').first();
     await input.fill('Propose a synthetic action; await explicit approval.'); await input.press('Enter');
-    await expect(page.getByText(/Pending phone actions are available for separate review/)).toBeVisible();
+    await expect(page.getByText(/Review the action below\./)).toBeVisible();
     const sent=await page.evaluate(()=>(window as any).mapsSent);
     expect(JSON.stringify(sent)).not.toContain('Private fixture destination');
     expect(JSON.stringify(sent)).not.toContain('43.738');

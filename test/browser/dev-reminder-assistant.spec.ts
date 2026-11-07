@@ -90,7 +90,7 @@ for (const mode of ['create', 'read', 'update', 'complete', 'snooze', 'cancel', 
     await page.getByRole('button',{name:'Type',exact:true}).click();
     const input=page.locator('[data-alpha-layer="composer"][aria-hidden="false"], [data-alpha-layer="conversation"][aria-hidden="false"]').getByRole('textbox').first();
     await input.fill('Review this reminder action before applying it.');await input.press('Enter');
-    await expect(page.getByText(/Pending phone actions are available for separate review/)).toBeVisible();
+    await expect(page.getByText(/Review the action below\./)).toBeVisible();
     expect(await page.evaluate(()=>(window as any).calendarSent.metadata.clientDevice.context.selectedObject.kind)).toBe('reminder');
     const before=await page.evaluate(async ()=>JSON.parse((await (await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw())!).reminders);expect(before).toHaveLength(1);
     expect(JSON.stringify(await page.evaluate(()=>(window as any).calendarSent))).not.toContain('Private reminder details');

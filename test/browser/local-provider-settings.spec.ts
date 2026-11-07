@@ -128,7 +128,7 @@ for(const cloud of [false,true])test(`native Models shows on-device voice and ac
  await page.locator('.alpha-connection').getByRole('button',{name:'Start local agent',exact:true}).click();
  await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
  await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Models',exact:true}).click();
- await expect(page.getByText('Conversation uses the selected agent. Voice runs on this device.',{exact:true})).toBeVisible();
+ await expect(page.getByText('Conversation uses your agent. Voice runs on this device.',{exact:true})).toBeVisible();
  await expect(page.getByText('On this device',{exact:true}).first()).toBeVisible();
  await expect(page.getByText(cloud?'Eliza Cloud':'Not configured',{exact:true})).toBeVisible();
  if(cloud)await expect(page.getByText('Eliza Cloud · qwen-3.8-27b (Cerebras)',{exact:true})).toBeVisible();

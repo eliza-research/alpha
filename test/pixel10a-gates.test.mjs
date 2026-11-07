@@ -66,3 +66,23 @@ test('source admission must match the pinned, admitted lock and its verification
   const stale = {'docs/pixel10a-source-verification-2026-10-25.json': report => ({...report, sourceLockSha256: '0'.repeat(64)})};
   assert.match(pixel10aGateProblems(copy(t, stale)).join('\n'), /evidence does not verify the pinned admitted lock/);
 });
+
+test('physicalDevice cannot pass on an unlocked (orange) pilot unit or without a recorded boot state', t => {
+  assert.equal(read(PIXEL10A_GATES).gates.physicalDevice.verifiedBootState, 'orange');
+  const release = [{ref: 'docs/pixel10a-code6-boot-evidence.json', level: 'release'}];
+  for (const verifiedBootState of ['orange', undefined])
+    assert.match(pixel10aGateProblems(copy(t, gate('physicalDevice', g => ({...g, status: 'passed', verifiedBootState, evidence: release})))).join('\n'), /physicalDevice cannot pass with verifiedBootState .*\(P-70\)/);
+  assert.doesNotMatch(pixel10aGateProblems(copy(t, gate('physicalDevice', g => ({...g, status: 'passed', verifiedBootState: 'yellow', evidence: release})))).join('\n'), /verifiedBootState/);
+  assert.match(pixel10aGateProblems(copy(t, gate('physicalDevice', g => ({...g, verifiedBootState: 'unlocked'})))).join('\n'), /verifiedBootState must be one of/);
+});
+
+test('the unattended update gate stays open while no update client exists', t => {
+  assert.equal(read(PIXEL10A_GATES).alphaGates.unattendedUpdate.status, 'not run');
+  const update = edit => ({[PIXEL10A_GATES]: record => ({...record, alphaGates: {...record.alphaGates, unattendedUpdate: edit(record.alphaGates.unattendedUpdate)}})});
+  const release = [{ref: 'docs/pixel10a-code6-boot-evidence.json', level: 'release'}];
+  assert.match(pixel10aGateProblems(copy(t, update(g => ({...g, status: 'passed', evidence: release})))).join('\n'), /unattendedUpdate cannot pass while no update client is recorded/);
+  assert.match(pixel10aGateProblems(copy(t, update(g => ({...g, status: 'passed', client: 'android/absent-update-client', evidence: release})))).join('\n'), /no update client is recorded/);
+  assert.match(pixel10aGateProblems(copy(t, update(g => ({...g, status: 'passed', client: PIXEL10A_GATES, evidence: [{...release[0], level: 'development'}]})))).join('\n'), /unattendedUpdate cannot pass on development evidence/);
+  assert.match(pixel10aGateProblems(copy(t, update(g => ({...g, status: 'development'})))).join('\n'), /unattendedUpdate is "development" without evidence/);
+  assert.match(pixel10aGateProblems(copy(t, {[PIXEL10A_GATES]: ({alphaGates, ...record}) => record})).join('\n'), /unattendedUpdate is missing/);
+});

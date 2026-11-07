@@ -5,10 +5,11 @@ import { Capacitor } from '@capacitor/core';
 import { speakLocalText } from '../local-speech-playback';
 import { markVoiceTiming, abandonVoiceTurn, finishVoiceTurn } from '../runtime/voice-timing';
 import { connectionController } from '../runtime/connection-ui';
-import { planLocalSpeech } from '../runtime/local-speech-text';
+import { planLocalSpeech, screenSpeechText } from '../runtime/local-speech-text';
 import { createOnDeviceVoice } from '../runtime/local-voice';
 import { createCloudVoice, cloudVoiceFailure } from '../runtime/cloud-voice';
 import { selectVoiceRoute } from '../runtime/voice-selection';
+import { speakCloudSpeechChunks } from '../../../../.eliza/client-features/packages/voice/src/cloud-speech-chunks.ts';
 
 let cancelCurrent: (() => Promise<void>|void) | undefined;
 let cancelOwner: object | undefined;
@@ -54,27 +55,36 @@ export function stopSpeaking() {
  * to the selected account; its Notes control discloses that before a user starts it. Leaving the note or editing it cancels the reading
  * (the Notes adapter calls stopSpeaking). Resolves with the outcome; never throws.
  */
-export function speakNote(text: string, owner: { noteId?: string } = {}) { return readNote(text, owner); }
-async function readNote(text: string, owner: { noteId?: string }): Promise<'finished' | 'stopped' | 'unavailable' | 'unsupported' | 'failed'> {
+export function speakNote(text: string, owner: { noteId?: string } = {}) { return readNoteAloud(text, owner).then(result => result.outcome); }
+type NoteReadOutcome = 'finished' | 'stopped' | 'unavailable' | 'unsupported' | 'failed';
+/** The outcome with the message a failure shows: the Cloud cause, and whether any audio played. */
+export async function readNoteAloud(text: string, owner: { noteId?: string } = {}): Promise<{ outcome: NoteReadOutcome; message: string }> {
+  const done = (outcome: NoteReadOutcome, message = '') => ({ outcome, message });
   const retirement = stopLocalSpeechPlayback();
   const passage = typeof text === 'string' ? text.trim() : '';
-  if (!passage || passage.length > (cloudRuntimeEnabled ? 5000 : 16000)) return 'unsupported';
-  // The same preflight as message Listen, on every platform: text with credentials, card
-  // numbers, links or unsupported characters is refused before any audio or local-agent
-  // request. The browser still speaks the original passage; the native engine speaks its plan.
-  try { planLocalSpeech(passage); } catch { return 'unsupported'; }
-  const voice = (() => { try { return cloudRuntimeEnabled ? createCloudVoice() : createOnDeviceVoice(); } catch { return null; } })(); if (!voice) return 'unavailable';
+  // The same refusal as message Listen on both routes: text over 16,000 characters or with
+  // credentials, card numbers or links never reaches audio, Cloud or a local agent. The
+  // character check applies only to the on-device engine. The browser still speaks the
+  // original passage; the native engine speaks its plan.
+  try { screenSpeechText(passage); if (!cloudRuntimeEnabled) planLocalSpeech(passage); } catch { return done('unsupported'); }
+  const voice = (() => { try { return cloudRuntimeEnabled ? createCloudVoice() : createOnDeviceVoice(); } catch { return null; } })(); if (!voice) return done('unavailable');
   const reading: NoteReading = { noteId: owner.noteId, text: passage, controller: new AbortController(), state: 'preparing' };
   noteReading = reading; noteReadingChanged();
   const signal = reading.controller.signal;
   try {
     await retirement;
-    if ('playbackReady' in voice && !await voice.playbackReady(signal)) { if (noteReading === reading) { noteReading = undefined; noteReadingChanged(); } return 'unavailable'; }
-    if (noteReading !== reading || signal.aborted) return 'stopped';
+    if ('playbackReady' in voice && !await voice.playbackReady(signal)) { if (noteReading === reading) { noteReading = undefined; noteReadingChanged(); } return done('unavailable'); }
+    if (noteReading !== reading || signal.aborted) return done('stopped');
     const started=() => { if (noteReading === reading) { reading.state = 'reading'; noteReadingChanged(); } };
-    const pending=reading.pending=cloudRuntimeEnabled ? voice.speak(passage, signal, started) : speakOnDevice(passage, signal, started);await pending;
-    return noteReading === reading && !signal.aborted ? 'finished' : 'stopped';
-  } catch { return noteReading !== reading || signal.aborted ? 'stopped' : 'failed'; }
+    const assertCurrent=() => { if (noteReading !== reading) throw new DOMException('Speech cancelled', 'AbortError'); };
+    // Cloud reads in provider-sized pieces, one owned request at a time.
+    const pending=reading.pending=cloudRuntimeEnabled ? speakCloudSpeechChunks({ text: passage, signal, assertCurrent, onStarted: started, speak: (piece, pieceSignal, onStarted) => voice.speak(piece, pieceSignal, onStarted) }) : speakOnDevice(passage, signal, started);await pending;
+    return done(noteReading === reading && !signal.aborted ? 'finished' : 'stopped');
+  } catch (error) {
+    if (noteReading !== reading || signal.aborted) return done('stopped');
+    const cause = (cloudRuntimeEnabled ? cloudVoiceFailure(error) : null) || (error instanceof Error && !(error instanceof DOMException) && error.message ? error.message : '');
+    return done('failed', reading.state === 'reading' ? ['Reading stopped before the end.', cause || 'The note is unchanged.'].join(' ') : ['Couldn’t start reading.', cause || 'The note is unchanged.'].join(' '));
+  }
   finally { if (noteReading === reading) { noteReading = undefined; noteReadingChanged(); } }
 }
 
@@ -148,30 +158,35 @@ export function installLocalSpeechPlayback(Component: Shell) {
     const directReadAloud=developmentCartesiaVoiceEnabled;
     const cloud = selectVoiceRoute() === 'cloud'||directReadAloud;
     const controller = new AbortController(), state: Reading = { id, text, controller, message: 'Waiting for the previous audio to stop…' };
+    let reached = false;
     const current=()=>!(shell.S().msgs||[]).some((row:Shell)=>row.from==='user'&&!knownUsers.has(row.id))&&states.get(shell)===state&&!controller.signal.aborted&&shell.live!==false&&!document.hidden&&!connectionController.getSnapshot().open&&selection()===binding&&shell.S().view===view&&['sheet','full'].includes(shell.S().chat)&&(shell.S().msgs||[]).some((row:Shell)=>row.id===id&&row.text===text&&JSON.stringify(row.messageBinding)===messageBinding);
     state.current=current;states.set(shell,state);cancelOwner=shell;cancelCurrent=()=>{stop(shell);refresh(shell);return state.pending;};refresh(shell);
     try {
       if(retiring){await retiring;if(!current())return;}
       if(previousSpeech){await previousSpeech;if(!current())return;}
       if(!current())return;
+      // Links, email addresses, credentials and card numbers are refused on every route.
+      screenSpeechText(text);
       if (cloud && !developmentCloudVoiceEnabled && !directReadAloud && (!connectionController.getCloudEnvironment() || !connectionController.getCloudClient()?.credentialId)) { stop(shell);connectionController.openCloudAccount();return; }
       const voice = cloud ? createCloudVoice(directReadAloud?'direct':'cloud') : createOnDeviceVoice(); if (!voice) {stop(shell);return;}
       state.message=cloud?'Preparing audio…':'Preparing audio on this phone…';refresh(shell);
       if ('playbackReady' in voice) {
         planLocalSpeech(text);
-        if (!await voice.playbackReady(controller.signal)) throw new Error('On-device speech models are unavailable. The written message is still available.');
+        if (!await voice.playbackReady(controller.signal)) throw new Error('On-device speech isn’t ready.');
       }
       if (!current()) return;
-      state.message = 'Reading aloud…'; refresh(shell);
+      state.message = 'Reading aloud…'; reached = true; refresh(shell);
       if(!current())return;
-      const pending=state.pending=(cloud ? createCloudVoice(directReadAloud?'direct':'cloud').speak(spokenText, controller.signal) : speakOnDevice(spokenText, controller.signal));await pending;
+      // Cloud reads in provider-sized pieces, one owned request at a time.
+      const assertCurrent=()=>{if(!current())throw new DOMException('Speech cancelled','AbortError');};
+      const pending=state.pending=(cloud ? speakCloudSpeechChunks({ text: spokenText, signal: controller.signal, assertCurrent, speak: (piece, signal, onStarted) => voice.speak(piece, signal, onStarted) }) : speakOnDevice(spokenText, controller.signal));await pending;
       if (current()) { state.controller = undefined; state.message = 'Finished reading.'; refresh(shell); }
     } catch (error) {
       if((error as {code?:string})?.code==='speech-cleanup-unconfirmed'&&state.pending)retainSpeechRetirement(state.pending);
       if (!current()) return;
       state.controller = undefined;
       const recovery = cloud ? cloudVoiceFailure(error) : null;
-      state.message = controller.signal.aborted || (error instanceof DOMException && error.name === 'AbortError') ? 'Reading stopped.' : recovery || (error instanceof Error ? error.message + ' The complete message may not have been read.' : 'Reading stopped before completion. The written message is still available.');
+      state.message = controller.signal.aborted || (error instanceof DOMException && error.name === 'AbortError') ? 'Reading stopped.' : recovery || (error instanceof Error ? error.message + (reached ? ' The complete message may not have been read.' : '') : 'Reading stopped before the end.');
       refresh(shell);
     } finally {if(states.get(shell)===state&&!current()){stop(shell);refresh(shell);}}
   }

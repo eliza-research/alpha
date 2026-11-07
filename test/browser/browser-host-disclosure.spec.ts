@@ -19,7 +19,7 @@ test('connected browser host discloses inference egress and retains resident mem
  await page.getByRole('button',{name:'Privacy & data',exact:true}).click();
  await expect(page.getByText('Prompts and selected context go to the development host and its configured inference provider',{exact:true})).toBeVisible();
  await expect(page.getByText('Memory',{exact:true})).toHaveCount(0);
- await expect(page.getByText('Depends on the selected agent; not reported',{exact:true})).toBeVisible();
+ await expect(page.getByText('Depends on your agent',{exact:true})).toBeVisible();
  await page.evaluate(async()=>{await Promise.all(document.getAnimations().filter(animation=>Number.isFinite(animation.effect?.getComputedTiming().endTime)).map(animation=>animation.finished.catch(()=>{})));});
  await page.screenshot({path:info.outputPath('browser-host-privacy.png')});
  await page.getByRole('button',{name:'Back to Settings',exact:true}).click();

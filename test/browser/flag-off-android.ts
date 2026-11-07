@@ -42,13 +42,13 @@ export interface FlagOffOptions {
 export interface FlagOffSchedules {
   /** The first response to a POST on this path is lost after the agent applied it. */
   dropFirstAck?: 'sources' | 'loops';
-  /** Advertise phone sources (`hostedNativeSourceProtocol`) and accept native selections; stubs
-   * the AlphaHostedResults consent port and AlphaCalendar's workflow calendars. */
-  native?: { evening?: boolean; calendars: { id: string; name: string; account: string }[] };
-  /** Serve POST /hosted/dossier (and advertise `hostedDossierProtocol: 1`). The agent pinned in
-   * upstream.lock.json registers that route without advertising it, and the renderer offers the
-   * dossier with resident phone sources either way; without this flag the stub refuses the POST. */
-  dossier?: boolean;
+  /** Advertise phone sources and accept native selections; stubs the AlphaHostedResults consent
+   * port and AlphaCalendar's workflow calendars. The agent pinned in upstream.lock.json advertises
+   * `hostedNativeSourceProtocol`, `hostedNativeEveningProtocol` and `hostedDossierProtocol`
+   * together and serves POST /hosted/dossier, and so does this stub. `olderAgent` models an agent
+   * from before evening briefs and the dossier: phone sources only, morning briefs only, and every
+   * dossier POST refused. */
+  native?: { olderAgent?: boolean; calendars: { id: string; name: string; account: string }[] };
 }
 export const AGENT_NAME = 'Alpha';
 
@@ -102,7 +102,7 @@ export async function flagOffAndroid(page: Page, options: FlagOffOptions = {}) {
       if (path === '/api/client-devices/proposals') return ok({ proposals: [] });
       // The agent advertises scheduled digests only; the workflow engine itself is not offered here.
       if (path === '/api/workflow/status') return ok(!options.digests ? { status: 'unavailable' } : !options.schedules ? { status: 'unavailable', hostedDigestProtocol: 1 }
-        : { status: 'unavailable', hostedDigestProtocol: 1, hostedDigestSourcePauseProtocol: 1, ...(options.schedules.native ? { hostedNativeSourceProtocol: 1, ...(options.schedules.native.evening ? { hostedNativeEveningProtocol: 1 } : {}) } : {}), ...(options.schedules.dossier ? { hostedDossierProtocol: 1 } : {}) });
+        : { status: 'unavailable', hostedDigestProtocol: 1, hostedDigestSourcePauseProtocol: 1, ...(options.schedules.native ? { hostedNativeSourceProtocol: 1, ...(options.schedules.native.olderAgent ? {} : { hostedNativeEveningProtocol: 1, hostedDossierProtocol: 1 }) } : {}) });
       if (options.digests && options.schedules && path.startsWith('/api/workflow/hosted/') && path !== '/api/workflow/hosted/cloud-delegation/revocations' && !path.startsWith('/api/workflow/hosted/results')) return hosted(method, path.slice('/api/workflow/hosted/'.length), body);
       if (options.digests) {
         if (path === '/api/workflow/hosted/sources') return ok({ sources: [] });
@@ -124,12 +124,14 @@ export async function flagOffAndroid(page: Page, options: FlagOffOptions = {}) {
     };
     // The phone enrollment the resident agent registered (the binding a phone-source consent names).
     const enrollment = () => ({ ownerId: id, agentId, installationId: f.installationId, enrollmentId: 'fixture-enrollment' });
-    // Hosted digests as the pinned agent's plugin-workflow keeps them (embedded-workflow-service.ts
-    // at upstream.lock.json's commit): same request keys, refusals, receipts and replay rules. It
-    // never runs a schedule or a model; results stay whatever `f.digests.results` holds.
+    // Hosted digests as the pinned agent's plugin-workflow keeps them (workflow-routes.ts,
+    // hosted-digest.ts and embedded-workflow-service.ts at upstream.lock.json's commit): the same
+    // request keys and replay rules, and the refusal texts of the checks it models. It checks less
+    // than the pin does (no IANA zone check, no manualOnly specs). It never runs a schedule or a
+    // model; results stay whatever `f.digests.results` holds.
     const hosted = async (method: string, route: string, body: any): Promise<{ status: number; data: unknown }> => {
       const d = f.digests, refuse = (status: number, error: string, extra: Record<string, unknown> = {}) => ({ status, data: { error, ...extra } });
-      const keys = (allowed: string[]) => Object.keys(body ?? {}).every(key => allowed.includes(key));
+      const keys = (allowed: string[], value: any = body) => Object.keys(value ?? {}).every(key => allowed.includes(key));
       const listed = (source: any) => { const { text: _private, ...metadata } = source; return metadata; };
       const state = (source: any) => !source || source.revoked ? 'revoked' : Date.parse(source.expiresAt) <= Date.now() ? 'expired' : 'current';
       const lost = (response: { status: number; data: unknown }) => {
@@ -141,7 +143,8 @@ export async function flagOffAndroid(page: Page, options: FlagOffOptions = {}) {
       if (method !== 'POST') return refuse(404, 'Hosted digest route not found');
       d.posts.push({ path: route, body: structuredClone(body) });
       if (route === 'sources') {
-        if (!keys(['id', 'kind', 'label', 'text', 'observedAt', 'expiresAt', 'confirmed', 'live']) || body.confirmed !== true || !['tasks', 'calendar', 'email', 'notes'].includes(body.kind)) return refuse(400, 'Review and confirm the exact snapshot');
+        if (!keys(['id', 'kind', 'label', 'text', 'observedAt', 'expiresAt', 'confirmed', 'live'])) return refuse(400, 'Unexpected digest field');
+        if (body.confirmed !== true || !['tasks', 'calendar', 'email', 'notes'].includes(body.kind)) return refuse(400, 'Review and confirm the exact snapshot');
         const live = body.live;
         if (live && (live.provider !== 'native' || !options.schedules!.native || body.kind !== 'tasks' || body.text !== undefined)) return refuse(400, 'Live source must match selected kind and cannot include snapshot text');
         const fields = { id: body.id, kind: body.kind, label: body.label, text: live ? 'Fresh selected-account read is resolved only at the scheduled occurrence.' : body.text, ...(live ? { live } : {}), observedAt: body.observedAt, expiresAt: body.expiresAt };
@@ -156,30 +159,35 @@ export async function flagOffAndroid(page: Page, options: FlagOffOptions = {}) {
         return lost(ok({ source: structuredClone(source) }));
       }
       if (route === 'sources/revoke') {
-        if (!keys(['id', 'confirmed']) || body.confirmed !== true) return refuse(400, 'Confirm source revocation');
+        if (!keys(['id', 'confirmed'])) return refuse(400, 'Unexpected digest field');
+        if (body.confirmed !== true) return refuse(400, 'Confirm source revocation');
         const source = d.sources.find(s => s.id === body.id);
         if (!source) return refuse(404, 'Digest source not found');
         source.revoked = true;
         return lost(ok({ id: source.id, revoked: true }));
       }
-      if (route === 'dossier' && options.schedules!.dossier) {
-        if (!keys(['sourceId', 'sourceRevision', 'mutationId', 'confirmed']) || body.confirmed !== true) return refuse(400, 'Confirm this on-demand model execution');
+      if (route === 'dossier' && options.schedules!.native && !options.schedules!.native.olderAgent) {
+        if (!keys(['sourceId', 'sourceRevision', 'mutationId', 'confirmed'])) return refuse(400, 'Unexpected digest field');
+        if (body.confirmed !== true) return refuse(400, 'Confirm this on-demand model execution');
         const source = d.sources.find(s => s.id === body.sourceId);
         if (!source || source.revision !== body.sourceRevision || source.live?.provider !== 'native' || state(source) !== 'current') return refuse(409, 'Dossier source binding changed');
         d.dossiers.push(structuredClone(body));
         return ok({ execution: { id: 'dossier-' + body.mutationId, status: 'running' } });
       }
       if (route === 'loops') {
-        if (!keys(['spec', 'id', 'expectedVersionId', 'mutationId', 'confirmed']) || body.confirmed !== true) return refuse(400, 'Review and confirm recurring model execution');
+        if (!keys(['spec', 'id', 'expectedVersionId', 'mutationId', 'confirmed'])) return refuse(400, 'Unexpected digest field');
+        if (body.confirmed !== true) return refuse(400, 'Review and confirm recurring model execution');
         const spec = body.spec;
-        if (!spec || spec.version !== 1 || !['morning', 'evening'].includes(spec.template) || typeof spec.enabled !== 'boolean' || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(spec.localTime) || Object.keys(spec).some(key => !['version', 'template', 'sourceId', 'sourceRevision', 'timeZone', 'localTime', 'enabled'].includes(key))) return refuse(400, 'Invalid digest specification');
+        if (!spec || typeof spec !== 'object' || !keys(['version', 'template', 'sourceId', 'sourceRevision', 'timeZone', 'localTime', 'enabled'], spec)) return refuse(400, 'Unexpected digest field');
+        if (spec.version !== 1 || !['morning', 'evening'].includes(spec.template) || typeof spec.enabled !== 'boolean') return refuse(400, 'Invalid digest preset');
+        if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(spec.localTime) || !/^[a-f0-9]{64}$/.test(spec.sourceRevision)) return refuse(400, 'Invalid digest schedule or source revision');
         const source = d.sources.find(s => s.id === spec.sourceId);
         if (!source) return refuse(404, 'Digest source not found');
         if (source.revision !== spec.sourceRevision) return refuse(409, 'Reviewed snapshot revision changed');
         if (source.live?.provider === 'native' && spec.enabled) {
           if (state(source) !== 'current') return refuse(409, 'Native source grant expired or revoked');
           if (d.grants[source.live.sourceId]?.scope.timeZone !== spec.timeZone) return refuse(409, 'Review a native source grant for this schedule time zone');
-          if (spec.template === 'evening' && !options.schedules!.native!.evening) return refuse(400, 'Invalid digest specification');
+          if (spec.template === 'evening' && options.schedules!.native!.olderAgent) return refuse(400, 'Invalid digest preset');
         }
         // A replayed mutationId returns its first receipt; a different request under it is refused.
         const operation = body.id ? 'edit' : 'create', identity = JSON.stringify({ operation, id: body.id ?? null, expectedVersionId: body.expectedVersionId ?? null, spec });

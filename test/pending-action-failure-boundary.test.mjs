@@ -34,7 +34,7 @@ async function finish({kind='handler_error',limit=null,effectApplied=false,resid
  const selected={kind:resident?'resident':'remote',actions:{async pendingReview(){events.lists++;return[{proposalId:'saved-action',proposal:null,notice}];},
    async performRequested(){events.effects++;throw Error('failed turns must never execute');}}};
  const env={state,selected,isAndroid:false,AlphaClientError:ClientError,REPLY_FAILURES:replyLabels,
-   RATE_LIMITED:'The AI request rate limit was reached.',cloud:{environment:'production'},
+   cloud:{environment:'production'},
    connectionController:{recheckPlanAfterRefusal(){events.planRecheck++;}},
    update(patch){Object.assign(state,patch);},refreshMembershipBalance(){events.refresh++;return Promise.resolve();},
    fundingRefusedReply:()=> 'Billing refused. Check your subscription; nothing was purchased.',
@@ -135,7 +135,7 @@ test('provider-less resident keeps its provider check card and notice without se
 });
 for(const kind of ['handler_error','provider_issue','insufficient_credits'])test(`${kind}: applied-effect failure and notice never claim nothing happened`,async()=>{
  const r=await finish({kind,effectApplied:true,account:true,limit:kind==='insufficient_credits'?{kind:'billing-refused'}:null});noEffects(r);
- const view=visibleFailureAndNotice(r);assert.match(view.failures()[0].text,/requested action went through/);
+ const view=visibleFailureAndNotice(r);assert.match(view.failures()[0].text,/That went through/);
  assert.doesNotMatch(JSON.stringify(view.state),/Nothing has been approved or performed automatically/);
  if(kind==='insufficient_credits'){assert.equal(r.error.planAction,'funding');assert.equal(r.state.fundingRefused,true);}
 });
