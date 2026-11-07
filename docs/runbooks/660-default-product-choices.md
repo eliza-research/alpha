@@ -115,7 +115,7 @@ grep for device-local Notes markers (`Older notes`, `notes-trash:v1`, `AlphaNote
 `browser-note-documents`, device-local):
 - Browser specs: `test/browser/notes-document-storage.spec.ts`, `test/browser/notes-trash.spec.ts`,
   `test/browser/notes-trash-recovery.spec.ts`, `test/browser/note-calendar-handoff.spec.ts`,
-  `test/browser/notes-permanent-delete-backstop.spec.ts`, `test/browser/notes-named-review.spec.ts`,
+  `test/browser/notes-permanent-delete-backstop.spec.ts`, `test/browser/notes-review.spec.ts`,
   `test/browser/journey-j05-web-research-note.spec.ts`.
 - Node and flow checks: `test/notes-view-defaults.test.mjs`,
   `scripts/test-notes-documents-browser.mjs`, `scripts/test-notes-store-flow.ts` and
