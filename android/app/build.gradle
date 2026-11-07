@@ -50,6 +50,7 @@ if (appLinkHost) {
   <activity android:name="${identity.appId}.MainActivity" android:exported="true">
    <intent-filter android:autoVerify="true"><action android:name="android.intent.action.VIEW"/><category android:name="android.intent.category.DEFAULT"/><category android:name="android.intent.category.BROWSABLE"/><data android:scheme="https" android:host="\${appLinkHost}" android:pathPrefix="/alphaphone/cloud-delegation"/></intent-filter>
    <intent-filter android:autoVerify="true"><action android:name="android.intent.action.VIEW"/><category android:name="android.intent.category.DEFAULT"/><category android:name="android.intent.category.BROWSABLE"/><data android:scheme="https" android:host="\${appLinkHost}" android:path="/alphaphone/auth/callback"/></intent-filter>
+   <intent-filter android:autoVerify="true"><action android:name="android.intent.action.VIEW"/><category android:name="android.intent.category.DEFAULT"/><category android:name="android.intent.category.BROWSABLE"/><data android:scheme="https" android:host="\${appLinkHost}" android:path="/alphaphone/google/return"/></intent-filter>
   </activity>
  </application>
 </manifest>
@@ -160,7 +161,8 @@ dependencies {
  implementation project(':eliza-calendar')
  implementation project(':eliza-reminders')
  implementation project(':eliza-location')
- implementation project(':eliza-passwords')
+ implementation project(':elizaos-capacitor-passwords')
+ implementation project(':elizaos-capacitor-passwords-transfer')
  implementation project(':elizaos-capacitor-secure-store')
  implementation "androidx.webkit:webkit:$rootProject.ext.androidxWebkitVersion"
  implementation "androidx.appcompat:appcompat:$rootProject.ext.androidxAppCompatVersion"

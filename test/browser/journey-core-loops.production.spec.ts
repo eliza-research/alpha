@@ -56,7 +56,7 @@ async function android(page: Page, options: { clock?: 'opened' | 'unavailable' |
     const device: { reminders: any[]; events: any[] } = kept('core-loops-device', { reminders: [], events: [] });
     const agent: { conversations: { id: string; title: string }[]; history: Record<string, any[]> } = kept('core-loops-agent', { conversations: [], history: {} });
     const persist = () => { sessionStorage.setItem('core-loops-slots', JSON.stringify(slots)); sessionStorage.setItem('core-loops-agent', JSON.stringify(agent)); sessionStorage.setItem('core-loops-device', JSON.stringify(device)); };
-    const f = w.coreLoops = { calls: [] as string[], posts: [] as string[], views: [] as string[], conversations: [] as string[], bodies: [] as string[], replies: [] as string[], streams: 0, cancelled: 0, aborts: 0, clock: [] as unknown[], hold: false, release: null as null | (() => void), unexpected: [] as string[],
+    const f = w.coreLoops = { calls: [] as string[], posts: [] as string[], views: [] as string[], conversations: [] as string[], bodies: [] as string[], replies: [] as string[], streams: 0, cancelled: 0, aborts: 0, clock: [] as unknown[], hold: false, release: null as null | (() => void), unexpected: [] as string[], googleConnects: [] as any[], opened: [] as string[],
       // AlphaBrowser: tabs the renderer created, with the address and navigation number each one
       // committed; `excerpt` is what reviewQuestion returns, and `questions` records its arguments.
       browser: { tabs: {} as Record<string, { session: string; url: string; navigation: number }>, sequence: 0, created: [] as string[], navigations: [] as string[], questions: [] as unknown[], excerpt: '', title: 'Harbour report' },
@@ -194,8 +194,11 @@ async function android(page: Page, options: { clock?: 'opened' | 'unavailable' |
             if (url.pathname === '/api/v1/user') return { status: 200, data: { success: true, data: { id } } };
             if (url.pathname === '/api/v1/subscription/entitlement') return { status: 404, data: {} }; // Deployed Cloud has no subscription entitlement route yet.
             if (url.pathname === '/api/v1/billing/limits') return { status: 200, data: { success: true, data: { v2: { subscription: { status: 'available', value: { planKey: 'plus_monthly', state: 'active', currentPeriodEnd: '2099-01-01T00:00:00.000Z' } } } } } };
+            // Google consent (docs/flow-redesign-2026-11): Cloud answers with Google's authorization page only.
+            if (url.pathname === '/api/v1/eliza/google/connect/initiate' && input.method === 'POST') { f.googleConnects.push(typeof input.body === 'string' ? JSON.parse(input.body) : input.body); return { status: 200, data: { authUrl: 'https://accounts.google.com/o/oauth2/v2/auth?client_id=fixture&state=synthetic' } }; }
             return { status: 404, data: {} };
           }
+          if (method === 'openExternal') { f.opened.push(input.url); return {}; }
           return {};
         }
         f.unexpected.push(plugin + '.' + method); throw Error('Unexpected native operation ' + plugin + '.' + method);
@@ -443,7 +446,7 @@ test('loops B, C and J04 in the web build: local calendar and alarm records are 
   await button(page, '12 Market Street, Test Town').click();
   await expect(page.locator('html')).toHaveAttribute('data-active-view', 'maps');
   await expect(page.getByRole('textbox', { name: 'Search places', exact: true })).toHaveValue('12 Market Street, Test Town');
-  await expect(page.getByText('Connect a Maps provider to search places and plan routes.', { exact: true })).toBeVisible();
+  await expect(page.locator('[data-alpha-maps-status]')).toContainText(/Sign in to (Eliza Cloud )?use Maps|Connecting Maps…/);
   await expect(button(page, 'Directions')).toHaveCount(0);
   await expect(page.getByRole('region', { name: 'Maps' })).not.toContainText(/\d+ min|\d km/);
   // C: the web build keeps its own alarm list (it is not a development surface) and it survives a reload.
@@ -504,7 +507,9 @@ test('loops D and F in the web build: digests and mail name the missing account 
   await button(page, 'Close scheduled digests').click();
   await page.goto('/');
   await button(page, 'Inbox').click();
-  await expect(page.locator('[data-screen]')).toContainText('Connect Eliza Cloud to use Gmail');
+  await expect(page.locator('[data-screen]')).toContainText('Sign in to use Inbox.');
+  // The empty state's one action signs in; there is no separate Sign in chip.
+  await expect(page.locator('[data-screen]').getByRole('button', { name: 'Sign in', exact: true })).toHaveCount(1);
   // No development mailbox: no fixture message, and Compose does not open a local "Sent locally" path.
   await expect(page.getByText('Dinner Friday?', { exact: true })).toHaveCount(0);
   await expect(button(page, 'Compose')).toBeDisabled();
@@ -921,7 +926,8 @@ test('loop B / J02 on Android signed out: the Eliza Cloud sign-in comes first an
   // needs, opens by itself and cannot be dismissed; no "without AI" choice is offered.
   const dialog = page.getByRole('main', { name: 'Sign in', exact: true });
   await expect(dialog).toBeVisible({ timeout: 30_000 });
-  await expect(dialog.getByRole('button', { name: 'Sign in with Eliza Cloud', exact: true })).toBeVisible();
+  // This fixture has no in-app sign-in host (AlphaCloudSignIn), so the page offers Sign in only.
+  await expect(dialog.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'Close connection settings', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Use local apps without AI', exact: true })).toHaveCount(0);
   await expect(button(page, 'Start recording')).toHaveCount(0);
@@ -952,17 +958,20 @@ test('loops D and F on Android: schedules are stated as phone-bound, and mail wi
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
   await button(page, 'Inbox').click();
   // Signed in to Cloud but with no Gmail grant (the account list is refused): no messages, an explicit connect.
-  await expect(page.locator('[data-screen]')).toContainText('Gmail access was revoked or needs authorization again. Reconnect Gmail, then retry.');
+  await expect(page.locator('[data-screen]')).toContainText('Gmail needs to be reconnected.');
   await expect(button(page, 'Reconnect Gmail')).toHaveCount(1);
   await expect(button(page, 'Reconnect Gmail')).toBeVisible();
   await expect(button(page, 'Connect Gmail')).toHaveCount(0);
   await expect(page.getByText('Dinner Friday?', { exact: true })).toHaveCount(0);
   await button(page, 'Reconnect Gmail').click();
-  const google = page.getByRole('dialog', { name: 'Google accounts', exact: true });
-  await expect(google).toBeVisible();
-  await google.getByRole('button', { name: 'Close Google accounts', exact: true }).click();
-  await expect(google).toHaveCount(0);
-  await expect(button(page, 'Reconnect Gmail')).toBeVisible();
+  // Reconnect starts Google's consent at once (no Google accounts panel), asking once for Gmail
+  // changes and Calendar together, and hands the page to the system browser.
+  await expect.poll(() => native(page, f => f.opened)).toEqual(['https://accounts.google.com/o/oauth2/v2/auth?client_id=fixture&state=synthetic']);
+  await expect(page.getByRole('dialog', { name: 'Google accounts', exact: true })).toHaveCount(0);
+  const consent = await native(page, f => f.googleConnects);
+  expect(consent).toHaveLength(1);
+  expect(consent[0].capabilities).toEqual(expect.arrayContaining(['google.calendar.read', 'google.calendar.write']));
+  expect(consent[0].capabilities.some((capability: string) => capability.startsWith('google.gmail.'))).toBe(true);
   await expectNoDevelopmentSurface(page);
   expect(await native(page, f => f.unexpected)).toEqual([]);
   expect(foreign).toEqual([]);

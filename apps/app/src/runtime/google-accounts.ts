@@ -6,7 +6,7 @@ import {disconnectGmailAccount, type GmailDisconnectOutcome} from './gmail-mailb
 export const GOOGLE_ACCOUNTS_CHANGED = 'alpha:google-accounts-changed';
 
 export interface GoogleAccountsClient {
-  initiateGoogle(signal: AbortSignal, calendarPermission?: 'read' | 'write', gmailPermission?: 'read' | 'modify' | 'send' | 'drafts' | 'mailbox'): Promise<string>;
+  initiateGoogle(signal: AbortSignal, calendarPermission?: 'read' | 'write', gmailPermission?: 'read' | 'modify' | 'send' | 'drafts' | 'mailbox', redirectUrl?: string): Promise<string>;
   gmailAccounts(signal: AbortSignal): Promise<GmailAccount[]>;
   disconnectGmail(connectionId: string, signal: AbortSignal): Promise<void>;
 }
@@ -21,13 +21,13 @@ export function notifyGoogleAccountsChanged(): void {
 }
 
 export function googleDisconnectConfirmation(label: string, serviceName = 'Cloud'): string {
-  return `Disconnect ${label} from Alpha Phone?\n\nThis removes ${serviceName}'s stored Google connection, including Gmail and Calendar access granted through it. Your Google account, mail and calendar events are not deleted. Local drafts stay in this app until you discard them.`;
+  return `Disconnect ${label}?\n\n${serviceName} stops using Gmail and Calendar for this account. Your Google account, mail and calendar events are not deleted.`;
 }
 
-export function googleDisconnectMessage(outcome: GmailDisconnectOutcome, label: string, serviceName = 'Cloud'): string {
-  if (outcome === 'disconnected') return `${label} is disconnected from Alpha. ${serviceName} no longer holds this Google connection's Gmail or Calendar access. Your Google account, mail and events were not deleted; local drafts stay in this app. Google may still list the app in your Google Account permissions.`;
-  if (outcome === 'still-connected') return `Disconnect was requested, but Google still reports ${label} as connected to Alpha. Check the connection again.`;
-  return `Disconnect of ${label} was not confirmed. Check the connection before trying again.`;
+export function googleDisconnectMessage(outcome: GmailDisconnectOutcome, label: string): string {
+  if (outcome === 'disconnected') return `${label} disconnected.`;
+  if (outcome === 'still-connected') return `${label} is still connected. Try again.`;
+  return `Couldn’t disconnect ${label}. Try again.`;
 }
 
 /** One captured Cloud session owns every request and result. Recreate after an account change. */
@@ -52,9 +52,9 @@ export function createGoogleAccounts(
       return accounts;
     },
     /** Returns the authorization URL only; authorization completion must be checked with list. */
-    async connect(signal: AbortSignal, calendarPermission: 'read' | 'write' = 'read', gmailPermission: 'read' | 'modify' | 'send' | 'drafts' | 'mailbox' = 'read'): Promise<string> {
+    async connect(signal: AbortSignal, calendarPermission: 'read' | 'write' = 'read', gmailPermission: 'read' | 'modify' | 'send' | 'drafts' | 'mailbox' = 'read', redirectUrl?: string): Promise<string> {
       check(signal);
-      const url = await client.initiateGoogle(signal, calendarPermission, gmailPermission);
+      const url = await client.initiateGoogle(signal, calendarPermission, gmailPermission, redirectUrl);
       check(signal);
       return url;
     },

@@ -19,19 +19,21 @@ import static org.junit.Assert.*;
 @RunWith(AndroidJUnit4.class)
 public final class CalendarRangeInstrumentedTest {
  private String js(String s)throws Exception{return WebViewTestDriver.evaluate(s);}
- private void until(String s)throws Exception{for(int i=0;i<200;i++){if("true".equals(js("Boolean("+s+")")))return;SystemClock.sleep(100);}fail("Calendar range condition: "+s+"; safe state="+js("JSON.stringify({view:document.documentElement.dataset.activeView,month:document.querySelector('[aria-label=\"Month view\"]')?.textContent,loading:document.body.textContent.includes('Loading calendars'),failed:document.body.textContent.includes('Calendar range could not be loaded'),connected:document.body.textContent.includes('Device calendars connected'),incomplete:document.body.textContent.includes('Calendar results incomplete')})"));}
+ private void until(String s)throws Exception{for(int i=0;i<200;i++){if("true".equals(js("Boolean("+s+")")))return;SystemClock.sleep(100);}fail("Calendar range condition: "+s+"; safe state="+js("JSON.stringify({view:document.documentElement.dataset.activeView,month:document.querySelector('[data-alpha-calendar-month]')?.getAttribute('aria-label'),loading:document.body.textContent.includes('Loading calendars'),failed:document.body.textContent.includes('Calendar range could not be loaded'),connected:document.body.textContent.includes('Device calendars connected'),incomplete:document.body.textContent.includes('Calendar results incomplete')})"));}
  private void click(String label)throws Exception{String s="[...document.querySelectorAll('button')].find(e=>e.getAttribute('aria-label')==="+JSONObject.quote(label)+")";until(s);js("("+s+").click()");}
  private void date(LocalDate target)throws Exception{
   if("true".equals(js("!!document.querySelector('button[aria-label=\"Today\"]')")))click("Today");
-  click("Month view");LocalDate today=LocalDate.now();int delta=(target.getYear()-today.getYear())*12+target.getMonthValue()-today.getMonthValue();
+  // Title -> views menu -> Month. The Month region is labelled with the shown month.
+  click("Calendar views");String monthRadio="[...document.querySelectorAll('[role=\"dialog\"][aria-label=\"Views and calendars\"] [role=\"radio\"]')].find(e=>e.textContent.trim()==='Month')";until(monthRadio);js("("+monthRadio+").click()");until("document.querySelector('[data-alpha-calendar-month]')");
+  LocalDate today=LocalDate.now();int delta=(target.getYear()-today.getYear())*12+target.getMonthValue()-today.getMonthValue();
   for(int i=1;i<=Math.abs(delta);i++){
    click(delta<0?"Previous month":"Next month");LocalDate month=today.withDayOfMonth(1).plusMonths((delta<0?-1:1)*i);
    String label=month.getMonth().getDisplayName(java.time.format.TextStyle.FULL,Locale.US)+(month.getYear()==today.getYear()?"":" "+month.getYear());
-   until("document.querySelector('[aria-label=\"Month view\"]').textContent.trim()==="+JSONObject.quote(label));
+   until("document.querySelector('[data-alpha-calendar-month]')?.getAttribute('aria-label')==="+JSONObject.quote(label));
   }
   // Exercise overlapping real provider requests around the chosen month.
   click("Next month");click("Previous month");
-  click(target.format(DateTimeFormatter.ofPattern("EEEE MMMM d",Locale.US)));
+  String dayLabel=target.format(DateTimeFormatter.ofPattern("EEEE, MMMM d",Locale.US)),day="[...document.querySelectorAll('[data-alpha-calendar-month] button')].find(e=>{const l=e.getAttribute('aria-label')||'';return l==="+JSONObject.quote(dayLabel)+"||l.startsWith("+JSONObject.quote(dayLabel+", ")+");})";until(day);js("("+day+").click()");
  }
  @Test public void distantDatesLoadRealRowsAndNewestNavigationWins()throws Exception{
   org.junit.Assume.assumeTrue("External permission restoration runner required", "1".equals(InstrumentationRegistry.getArguments().getString("calendarRange")));

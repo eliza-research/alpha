@@ -71,7 +71,7 @@ public final class VoicePermissionDeniedInstrumentedTest {
     assertTrue("No permission prompt while signed out",appFocused());
     eval(AppNavigation.request("Settings"));until(AppNavigation.selected("Settings"),30000);until("window.__alphaTestNavigation?.status==='complete'",30000);
     click("Agent connection");click("Sign in with Eliza Cloud");
-    until("document.querySelector('.alpha-cloud-sign-in input[name=email]')",20000);eval(InboxFixtureSignIn.DRIVE_EMAIL);
+    until("document.querySelector('.alpha-cloud-sign-in input[name=username]')",20000);eval(InboxFixtureSignIn.DRIVE_EMAIL);
     until("document.querySelector('.alpha-cloud-sign-in input[name=one-time-code]')",20000);eval(InboxFixtureSignIn.DRIVE_CODE);
     until("document.querySelector('#connection-title')?.textContent==='Your Cloud account'&&"+button("Sign out"),30000);click("Close connection settings");
     eval(AppNavigation.request("Notes"));until(AppNavigation.selected("Notes"),30000);until("window.__alphaTestNavigation?.status==='complete'",30000);

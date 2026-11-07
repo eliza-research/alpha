@@ -28,9 +28,10 @@ public class MapsInstrumentedTest {
  private void until(String js)throws Exception{long end=SystemClock.elapsedRealtime()+25000;while(SystemClock.elapsedRealtime()<end){if("true".equals(eval("Boolean("+js+")")))return;SystemClock.sleep(100);}fail("Maps condition: "+js+" screen="+eval("document.body.innerText.slice(-900)"));}
  private void click(String label)throws Exception{String node="document.querySelector('[aria-label='+"+JSONObject.quote(JSONObject.quote(label))+"+']')";until(node);eval("("+node+").click()");}
  private void input(String label,String text)throws Exception{String node="document.querySelector('input[aria-label='+"+JSONObject.quote(JSONObject.quote(label))+"+']')";until(node);eval("(()=>{const e="+node+";Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(e,"+JSONObject.quote(text)+");e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}));})()");}
- /** No Maps provider: the honest Eliza Cloud not-connected state (signed out or no subscription, or Cloud
-  * Maps not deployed), never a map, search result or route (maps-adapter.ts mapStatus). */
- private static final String NOT_CONNECTED="(s=>s?.dataset.mapState==='unconfigured'&&['Sign in to Eliza Cloud with an active subscription to search places and plan routes.','Eliza Cloud Maps is not available yet. Enter coordinates or use saved places.'].some(t=>s.textContent.includes(t)))(document.querySelector('[data-alpha-maps-status]'))";
+ /** No Maps provider: the honest Eliza Cloud not-connected state (signed out, still connecting, or Cloud
+  * Maps not deployed), never a search result or route (maps-adapter.ts providerFailureText). No shown
+  * text names a "Maps provider". */
+ private static final String NOT_CONNECTED="/Sign in to use Maps|Connecting Maps|Maps isn’t available yet/.test(document.querySelector('[data-alpha-maps-status]')?.textContent||'')";
  private void maps()throws Exception{AppNavigation.liveMode();eval(AppNavigation.request("Maps"));until(AppNavigation.selected("Maps"));}
  @Test public void coordinatesSaveRenamePersistAndRemoveWithoutInventedProviderData()throws Exception{
   String label="Alpha maps fixture "+UUID.randomUUID(),renamed=label+" renamed";
@@ -41,7 +42,8 @@ public class MapsInstrumentedTest {
    input("Search places",point);eval("document.querySelector('input[aria-label=\"Search places\"]').dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}))");
    until("document.querySelector('[aria-label=\"Rename place\"]')");assertEquals("Name editor is opt-in", "false", eval("!!document.querySelector('input[aria-label=\"Place name\"]')"));click("Rename place");input("Place name",label);click("Apply place name");click("Save");
    until("JSON.parse(localStorage.getItem('alpha.maps.saved-places.v1')||'{\"items\":[]}').items.some(p=>p.label==="+JSONObject.quote(label)+")");
-   click("Directions");until("document.querySelector('[data-alpha-maps-status]')?.textContent.includes('No route has been calculated')");
+   // Without a provider no travel mode exists, so no Directions (and no route) is offered.
+   assertEquals("No route without a provider","false",eval("!!document.querySelector('[aria-label=\"Directions\"]')"));
    click("Rename place");input("Place name",renamed);click("Apply place name");
    eval(AppNavigation.request("Home"));until(AppNavigation.selected("Home"));scenario.recreate();maps();
    until("[...document.querySelectorAll('[data-alpha-maps-root] button')].some(b=>b.textContent.trim()==="+JSONObject.quote(renamed)+")");
@@ -49,7 +51,7 @@ public class MapsInstrumentedTest {
    until("document.querySelector('[aria-label=\"Rename place\"]')?.textContent==="+JSONObject.quote(renamed));click("Remove from saved");
    until("!JSON.parse(localStorage.getItem('alpha.maps.saved-places.v1')).items.some(p=>p.label==="+JSONObject.quote(renamed)+")");
    click("Close place");input("Search places","Tartine Bakery San Francisco");eval("document.querySelector('input[aria-label=\"Search places\"]').dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}))");
-   until("document.querySelector('[data-alpha-maps-status]')?.textContent.includes('Connect a Maps provider')");
+   until(NOT_CONNECTED);
    assertEquals("No fake search results","false",eval("[...document.querySelectorAll('[data-alpha-maps-root] button')].some(b=>b.textContent.includes('600 Guerrero'))"));
   }finally{
    // Cleanup only this test's two labels; never restore/erase unrelated saved places.
@@ -67,7 +69,8 @@ public class MapsInstrumentedTest {
    maps();click("Recenter");until("document.querySelector('[aria-label=\"Rename place\"]')?.textContent==='Current location'");
    String coordinates=String.format(java.util.Locale.ROOT,"%.5f, %.5f",Double.parseDouble(expectedLat),Double.parseDouble(expectedLon));
    until("document.querySelector('[data-alpha-maps-root]').textContent.includes("+JSONObject.quote(coordinates)+")");
-   until("document.querySelector('[data-alpha-maps-status]')?.textContent.includes('accuracy')");
+   // The fix is shown as the place above; a precise fix adds no accuracy status line any more.
+   assertEquals("No accuracy status line","false",eval("(document.querySelector('[data-alpha-maps-status]')?.textContent||'').includes('accuracy')"));
    java.util.concurrent.atomic.AtomicInteger watches=new java.util.concurrent.atomic.AtomicInteger(-1);
    for(int i=0;i<50;i++){
     WebViewTestDriver.withActivity(MainActivity.class,activity->{try{Object plugin=activity.getBridge().getPlugin("ElizaLocation").getInstance();java.lang.reflect.Field field=plugin.getClass().getDeclaredField("watches");field.setAccessible(true);watches.set(((java.util.Map<?,?>)field.get(plugin)).size());}catch(Exception error){throw new AssertionError(error);}});
@@ -90,7 +93,7 @@ public class MapsInstrumentedTest {
   String button="[...document.querySelectorAll('[data-screen] button')].find(b=>b.textContent.trim()==="+JSONObject.quote(where)+")";
   until(button);eval("("+button+").click()");until(AppNavigation.selected("Maps"));
   // No provider: the hand-off is a one-use search that reaches only the unconfigured notice.
-  until("document.querySelector('[data-alpha-maps-status]')?.textContent.includes('Connect a Maps provider')");
+  until(NOT_CONNECTED);
   assertEquals("The hand-off filled the search with the event location only",where,new JSONObject("{\"v\":"+eval("document.querySelector('input[aria-label=\"Search places\"]')?.value??''")+"}").getString("v"));
  }
  @Test public void calendarLocationReturnsToTheSameEventAndFailsClosed()throws Exception{

@@ -238,15 +238,15 @@ export function describeSubscription(view: SubscriptionView | null | undefined, 
   const manageLabel = `Manage plan in ${serviceName}`;
   if (!view || view.kind === 'checking') return { headline: 'Checking your plan…', detail: '', manage: false, manageLabel };
   switch (view.kind) {
-    case 'credits': return { headline: `${serviceName} credits`, detail: `Uses your ${serviceName} account balance.`, manage: true, manageLabel: `Manage billing in ${serviceName}` };
+    case 'credits': return { headline: `${serviceName} credits`, detail: '', manage: true, manageLabel: `Manage billing in ${serviceName}` };
     case 'active': return {
       headline: view.status === 'past_due' ? `${view.planName} · payment due` : view.status === 'trialing' ? `${view.planName} · trial` : view.planName,
-      detail: [view.source === 'billing-limits' ? '' : allowanceText(view.allowance, Date.now(), serviceName), view.status === 'past_due' ? `Payment is past due. Update payment in ${serviceName} to keep AI available.` : '', view.refreshFailed ? `Plan status could not be refreshed; ${serviceName} still decides each AI request.` : ''].filter(Boolean).join(' '),
+      detail: [view.source === 'billing-limits' ? '' : allowanceText(view.allowance, Date.now(), serviceName), view.status === 'past_due' ? 'Payment is past due.' : ''].filter(Boolean).join(' '),
       manage: view.status === 'past_due', manageLabel };
     case 'inactive':
-      return { headline: view.status === 'canceled' ? `${view.planName ?? 'Your plan'} has ended` : 'No active plan', detail: `Alpha Phone needs an active ${serviceName} plan. Redeem a subscription code or choose a plan in ${serviceName}. Nothing is purchased automatically, and your data on this phone is kept.`, manage: true, manageLabel: CHOOSE_PLAN_LABEL };
-    case 'expired': return { headline: view.planName, detail: `Plan status is out of date and could not be refreshed. ${serviceName} still decides each AI request. ${LOCAL_KEEPS_WORKING}`, manage: false, manageLabel };
-    case 'unavailable': return { headline: 'Plan status unavailable', detail: view.reason === 'not-published' ? `${serviceName} did not report a plan for this account. Check again, redeem a subscription code or choose a plan. Your data on this phone is kept.` : `Plan status could not be checked right now. ${serviceName} still decides each AI request. ${LOCAL_KEEPS_WORKING}`, manage: false, manageLabel };
+      return { headline: view.status === 'canceled' ? `${view.planName ?? 'Your plan'} has ended` : 'No active plan', detail: '', manage: true, manageLabel: CHOOSE_PLAN_LABEL };
+    case 'expired': return { headline: view.planName, detail: 'Couldn’t refresh your plan.', manage: false, manageLabel };
+    case 'unavailable': return { headline: 'Plan status unavailable', detail: view.reason === 'not-published' ? 'No plan found for this account.' : 'Couldn’t check your plan.', manage: false, manageLabel };
   }
 }
 

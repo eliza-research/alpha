@@ -3,7 +3,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { googleAccountAccessLabel, gmailCapabilitiesFor, requiredGmailCapability, gmailGrantTier, gmailActionGrant, gmailInboxAllows, gmailModifyIncomplete, gmailReadCacheKey, gmailGrantChange, gmailGrantLabel, GMAIL_MODIFY_CAPABILITIES } from "../apps/app/src/runtime/gmail-grants.ts";
+import { googleAccountAccessLabel, gmailCapabilitiesFor, requiredGmailCapability, gmailGrantTier, gmailActionGrant, gmailInboxAllows, gmailModifyIncomplete, gmailReadCacheKey, gmailGrantChange, GMAIL_MODIFY_CAPABILITIES } from "../apps/app/src/runtime/gmail-grants.ts";
 
 const account = (capabilities, patch = {}) => ({ configured: true, connected: true, reason: "connected", connectionId: "grant-1", label: "Mailbox", grantedCapabilities: capabilities, ...patch });
 const READ = ["google.gmail.triage"], MODIFY = [...READ, ...GMAIL_MODIFY_CAPABILITIES];
@@ -29,14 +29,11 @@ test("approved mailbox actions map to the change capability they need", () => {
   assert.equal(gmailModifyIncomplete(caps()), false);
 });
 
-test("grant tiers and labels", () => {
+test("grant tiers", () => {
   assert.equal(gmailGrantTier(account(READ)), "readonly");
   assert.equal(gmailGrantTier(account(MODIFY)), "modify");
   assert.equal(gmailGrantTier(account([...READ, "google.gmail.send"])), "readonly", "a partial change grant is not the modify tier");
   assert.equal(gmailGrantTier(account(MODIFY, { connectionId: null })), "none");
-  assert.equal(gmailGrantLabel([account(READ)]), "Read access authorized");
-  assert.equal(gmailGrantLabel([account(READ), account(MODIFY, { connectionId: "grant-2" })]), "Read and change access authorized");
-  assert.equal(gmailGrantLabel([account([])]), "Authorization required");
 });
 
 test("revoke and account or session changes isolate cached mail and unsent reviews", () => {
@@ -55,9 +52,13 @@ test("revoke and account or session changes isolate cached mail and unsent revie
 
 test("Inbox uses the single modify step and discards unsent reviews when change access is withdrawn", () => {
   const inbox = fs.readFileSync("apps/app/src/prototype/inbox-cloud-adapter.ts", "utf8");
-  const panel=fs.readFileSync('apps/app/src/runtime/google-connection-ui.tsx','utf8');
-  assert.match(panel,/connect\('modify'\)/,'Settings offers the single incremental modify consent');
+  const panel=fs.readFileSync('apps/app/src/runtime/google-connection-ui.tsx','utf8'),flow=fs.readFileSync('apps/app/src/runtime/google-connect-flow.ts','utf8');
+  assert.match(flow,/connect\(abort\.signal, 'write', 'modify'/,'one consent asks for Gmail changes together with Calendar');
   assert.doesNotMatch(panel,/connect\('(send|drafts|mailbox)'\)/,'no separate per-capability buttons');
+  // A consent browser that never hid Alpha must not lock the panel: a quiet Cancel ends the wait.
+  assert.match(panel,/\{connecting&&<button className="alpha-connection-cancel" onClick=\{\(\)=>googleConnect\.cancel\(\)\}>Cancel<\/button>\}/);
+  assert.match(flow,/cancel\(\) \{ active\?\.abort\(\); \}/);
+  assert.match(flow,/if \(abort\.signal\.aborted\) \{ if \(active === abort\) set\('idle'\); return; \}/,'a cancelled wait returns the panel to idle');
   assert.doesNotMatch(inbox, /connect\('(send|drafts|mailbox)'\)/, "no separate per-capability consent prompts");
   assert.match(inbox, /if\(previous&&grantChange\.withdrawn\.length\)provider\.withdrawn\(\);/);
   assert.match(inbox, /const dropped=previous!==selected\|\|\(!!previous&&grantChange\.dropReadCache\);/, "a changed read-cache identity drops what was read");
@@ -68,7 +69,11 @@ test("Inbox uses the single modify step and discards unsent reviews when change 
   assert.match(provider, /static async discardUnsent|InboxOperation\.discardUnsent\(inboxLocalStore,pending\.owner,pending\.grant\)/, "the discard is bound to the grant, not the live operation");
 });
 
- test("connection status reflects send-only and Calendar write grants",()=>{
- assert.equal(googleAccountAccessLabel(account([...READ,"google.calendar.read"])),"Connected · Gmail: Read access · Calendar: Read access");
- assert.equal(googleAccountAccessLabel(account([...READ,"google.gmail.send","google.calendar.read","google.calendar.write"])),"Connected · Gmail: Read and send access · Calendar: Read and edit access");
+ test("account access is labelled only when it is partial",()=>{
+ assert.equal(googleAccountAccessLabel(account([...MODIFY,"google.calendar.read","google.calendar.write"])),"","full access needs no label");
+ assert.equal(googleAccountAccessLabel(account([...READ,"google.calendar.read"])),"Limited access");
+ assert.equal(googleAccountAccessLabel(account([...READ,"google.gmail.send","google.calendar.read","google.calendar.write"])),"Limited access","send-only consent is still partial");
+ assert.equal(googleAccountAccessLabel(account(MODIFY)),"Gmail only");
+ assert.equal(googleAccountAccessLabel(account(["google.calendar.read","google.calendar.write"])),"Calendar only");
+ assert.equal(googleAccountAccessLabel(account([])),"Not authorized");
  });

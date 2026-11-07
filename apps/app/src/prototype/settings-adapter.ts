@@ -1,5 +1,7 @@
 import {cloudServiceName} from '../runtime/cloud-protocol';
 import {openCalendarSyncSettings} from '../runtime/calendar-sync-settings';
+import {calendarSyncHost} from '../runtime/calendar-sync-host';
+import {readGoogleCalendarSelection} from '../runtime/google-calendar-selection';
 import {browserDevProfile as devProfileQuery} from '../browser/dev-profile';
 import {testMocksEnabled,devSurfacesEnabled} from '../build-flags';
 import {openCalendarRecovery} from '../browser/calendar-recovery';
@@ -13,7 +15,7 @@ import { broaderPageNotice } from './native-adapter';
 import { Capacitor } from '@capacitor/core';
 import { DailyApps } from '../daily';
 import { connectionController } from '../runtime/connection-ui';
-import {googleConnectionController} from '../runtime/google-connection-ui';
+import {googleConnectionController,googleCalendarAccountKey} from '../runtime/google-connection-ui';
 import {GOOGLE_ACCOUNTS_CHANGED} from '../runtime/google-accounts';
 import type { GmailAccount } from '../runtime/cloud-protocol';
 import { clearCrashLog, describeCrashEntry, readCrashLog, recordCloudInferenceFailure, type CrashLog } from '../runtime/crash-log';
@@ -555,7 +557,9 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         rows.push(row(display.native ? 'Refresh calendars' : 'Refresh calendar', display.connect, display.loading ? 'Loading…' : '', { busy: display.loading }));
         if (!display.native) for (const source of display.sources || []) rows.push({ kCalendarDisplay: true, label: source.name, sub: source.account, on: source.on, busy: display.loading, aria: `Show ${source.name} calendar`, track: api.track(source.on), kx: api.kx(source.on), toggle: () => void source.change('visibility'), color: () => void source.change('color'), colorLabel: `Change ${source.name} calendar color`, sw: ({ acc: 'var(--acct)', fg: 'var(--fg)', mut: 'var(--mut)' } as Bag)[source.color] || 'var(--acct)' });
       }
-      rows.push(row('Google Calendar sync', openCalendarSyncSettings));
+      // Linked sync is retired (flow redesign): the row stays only while an owner still has it on or a calendar chosen for it, so they can pause it.
+      const syncAccount = googleCalendarAccountKey();
+      if (calendarSyncHost.snapshot().enabled || (syncAccount && readGoogleCalendarSelection(syncAccount))) rows.push(row('Google Calendar sync', openCalendarSyncSettings));
       if (testMocksEnabled && !native) rows.push(row('Calendar backups', () => openCalendarRecovery()));
       stack.push(subpage('Calendars', [group(rows)]));
     }

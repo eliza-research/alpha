@@ -45,8 +45,8 @@ test('required native access keeps focused, reachable controls at narrow widths 
  await heading.focus();await page.keyboard.press('Tab');await expect(action).toBeFocused();
  for(const name of ['Notifications','Microphone','Camera','Location','Calendar','Photos']){
   await expect(panel.getByRole('heading',{name,exact:true})).toBeVisible();
-  if(name==='Location')await expect(panel.getByText('Approximate location allowed',{exact:true})).toBeVisible();
-  if(name==='Photos')await expect(panel.getByText('Selected photos and videos only',{exact:true})).toBeVisible();
+  if(name==='Location')await expect(panel.getByText('Approximate location',{exact:true})).toBeVisible();
+  if(name==='Photos')await expect(panel.getByText('Selected photos only',{exact:true})).toBeVisible();
   await panel.getByRole('button',{name:'Continue',exact:true}).click();
  }
  await expect(panel.getByRole('heading',{name:'You’re all set',exact:true})).toBeFocused();await panel.getByRole('button',{name:'Go to Alpha',exact:true}).click();await expect(panel).toHaveCount(0);

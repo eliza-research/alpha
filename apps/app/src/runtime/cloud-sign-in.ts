@@ -65,33 +65,37 @@ export class CloudSignInError extends Error {
     return new CloudSignInError(typeof code === 'string' && CODES.has(code) ? code as CloudSignInFailureCode : 'unavailable');
   }
 }
+/** Shown on the method choice while Cloud cannot be reached; Alpha re-checks by itself. */
+export const SIGN_IN_WAITING = 'Waiting for connection';
+/** A Resend on the code step that could not reach Cloud: no new code was sent. */
+export const SIGN_IN_RESEND_FAILED = 'Couldn’t send a new code. Check your connection.';
 /** Owner-facing copy. Never includes server text, codes or addresses. */
 export function signInFailureMessage(code: CloudSignInFailureCode, serviceName: string): string {
   switch (code) {
-    case 'cancelled': return 'Sign-in cancelled.';
+    case 'cancelled': return '';
     case 'login-active': return 'A sign-in is already in progress. Finish or cancel it first.';
     case 'invalid-phone': return 'Enter your phone number with its country code, such as +14155550100.';
     case 'invalid-email': return 'Enter a valid email address.';
-    case 'invalid-code': return 'That code did not work. Check it and try again, or send a new code.';
+    case 'invalid-code': return 'That code didn’t work. Check it, or resend.';
     case 'cooldown': return 'Wait a minute before sending another code.';
     case 'expired': return 'This sign-in expired. Start again.';
     case 'rate-limited': return 'Too many attempts. Wait a few minutes, then try again.';
-    case 'offline': return `Alpha could not reach ${serviceName}. Check your connection and try again.`;
-    case 'dns': return `Could not find ${serviceName}. Try another network or retry.`;
-    case 'timeout': return `${serviceName} took too long to respond. Try again.`;
-    case 'secure-connection': return `Could not securely connect to ${serviceName}. Check the phone’s date and time, then retry.`;
-    case 'account-check': return `This account needs an extra check that Alpha cannot complete. Use account recovery or contact ${serviceName} support.`;
-    case 'state-mismatch': return 'That sign-in return did not match this phone’s request. Start again.';
-    case 'browser-closed': return 'Google sign-in was closed before it finished. Start again when you are ready.';
-    case 'browser-unavailable': return 'No browser that can show Google sign-in is available. Use your email instead.';
-    case 'provider-refused': return 'Google did not complete the sign-in. Try again or use your email.';
-    case 'mfa-browser': return 'This account needs a second verification step. Sign in with your email to complete it in Alpha.';
-    case 'mfa-unsupported': return `This account’s second verification method is not available in Alpha yet. Use account recovery or contact ${serviceName} support.`;
+    case 'offline': return `Alpha could not reach ${serviceName}. Check your connection, then enter the code again.`;
+    case 'dns': return `Could not find ${serviceName}. Check your connection, then enter the code again.`;
+    case 'timeout': return `${serviceName} took too long to respond. Enter the code again.`;
+    case 'secure-connection': return `Could not securely connect to ${serviceName}. Check the phone’s date and time, then try again.`;
+    case 'account-check': return 'This account needs extra verification. Use account recovery.';
+    case 'state-mismatch': return 'Sign-in didn’t finish. Try again.';
+    case 'browser-closed': return '';
+    case 'browser-unavailable': return 'Google sign-in isn’t available. Use email.';
+    case 'provider-refused': return 'Google didn’t sign you in. Try again or use email.';
+    case 'mfa-browser': return 'This account needs a second step. Sign in with your email to finish.';
+    case 'mfa-unsupported': return 'This account’s second step isn’t supported yet. Use account recovery.';
     case 'activation-pending': return `Signed in, but ${serviceName} has not confirmed this phone yet. Alpha retries when it starts again; you can also sign in again.`;
-    case 'storage': return 'Alpha could not save the sign-in securely on this phone. Try again.';
+    case 'storage': return 'Couldn’t save your sign-in. Try again.';
     case 'app-link-unverified': return 'Alpha did not receive the sign-in from your browser, so you are not signed in yet. Start sign-in again in Alpha.';
     case 'attempts-exhausted': return 'Too many incorrect codes. Send a new code and try again.';
-    case 'rejected': case 'invalid-request': return `${serviceName} refused this sign-in. Start again.`;
+    case 'rejected': case 'invalid-request': return 'Sign-in was refused. Try again.';
     default: return `${serviceName} sign-in is unavailable right now. Try again.`;
   }
 }

@@ -51,7 +51,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { isAndroid } from '../native';
 import type { ActionProposal, OperationReceipt, ContextEnvelope, VerifiedSession } from './alpha-client';
 import { cloudServiceName, CloudProtocol, CloudProtocolError, type CloudAgent, type CloudEnvironment } from './cloud-protocol';
-import { googleOutcome as signInOutcome, type CloudSignInGoogleOutcome, CloudSignInError, normalizeSignInCode, signInFailureMessage as formatSignInFailureMessage, signInReadiness, validSignInEmail, validSignInPhone, type CloudSignInAuthenticated } from './cloud-sign-in';
+import { googleOutcome as signInOutcome, type CloudSignInGoogleOutcome, CloudSignInError, normalizeSignInCode, signInFailureMessage as formatSignInFailureMessage, SIGN_IN_RESEND_FAILED, SIGN_IN_WAITING, signInReadiness, validSignInEmail, validSignInPhone, type CloudSignInAuthenticated } from './cloud-sign-in';
 import { DevelopmentCloudAgentProtocol, type CloudPhoneTarget } from './development-cloud-agents';
 import { checkEntitlement, clearEntitlementKeyCache, describeSubscription, EntitlementError, EntitlementRefresher, isEntitlementSignInFailure, CHOOSE_PLAN_LABEL, MANAGE_PLAN_LABEL, planAdmission, readServiceLimit, redeemFailureMessage, redeemSuccessMessage, serviceLimitMessage, SubscriptionRedeemError, type ServiceLimit, type SubscriptionView } from './subscription-entitlement';
 import { RemoteProtocol, RemoteProtocolError } from './remote-protocol';
@@ -114,6 +114,9 @@ export interface ConnectionSnapshot {
   setupRevision?: number;
   /** Alpha's own Eliza Cloud sign-in screen. Never holds a code, session or credential. */
   signIn?: SignInView | null;
+  /** A step the owner started on the method choice while Cloud was unreachable. It waits behind a
+   * locked "Waiting for connection" control and is sent once Cloud answers. Never holds a code. */
+  signInPending?: SignInPending | null;
   /** The last in-app sign-in created a new Eliza Cloud account: said explicitly, never silent. */
   accountCreated?: boolean;
   purpose?:'agent'|'cloud-account'|'plan';
@@ -137,6 +140,7 @@ export type SignInView =
   | { step: 'google'; environment: CloudEnvironment }
   | { step: 'code'; environment: CloudEnvironment; email: string; phone?: string; attemptId: string; expiresAt: number; resendAt: number }
   | { step: 'mfa'; environment: CloudEnvironment; email?: string; attemptId: string; method: 'totp' | 'sms' | 'passkey'; expiresAt: number };
+export type SignInPending = { kind: 'email' | 'phone'; value: string } | { kind: 'google' };
 /** `revokeDevice` revokes this phone's enrollment on the agent; `deviceSlot` names its installation key. */
 type Enrollment = { revokeDevice?: (signal: AbortSignal) => Promise<boolean>; deviceSlot?: string; deviceHeaders?: Record<string,string> };
 type DeviceRequest=(path:string,body:unknown|undefined,signal:AbortSignal)=>Promise<unknown>;
@@ -258,13 +262,16 @@ const NEEDS_PLAN_NOTICE = 'Your agent is running on this device. AI replies aren
 export function inferenceUnavailableReply(notice: ConnectionSnapshot['residentPlanNotice'], signedIn: boolean): string {
   const local = 'Local apps keep working.';
   if (notice === 'offline') return `I'm running on this device, but I can't reach ${cloudServiceName(cloud.environment)} for AI replies right now. ${local} Check your connection and try again.`;
-  if (!signedIn) return `I'm running on this device, but AI replies need ${cloudServiceName(cloud.environment)}. Sign in with ${cloudServiceName(cloud.environment)} to continue. ${local}`;
+  if (!signedIn) return `I'm running on this device, but AI replies need ${cloudServiceName(cloud.environment)}. Sign in to continue. ${local}`;
   return `I'm running on this device, but AI replies aren’t available right now. Check your ${cloudServiceName(cloud.environment)} account in Settings. ${local} Nothing was purchased.`;
 }
 const listeners = new Set<() => void>();
 let developmentPageSuspended = false;
 let state: ConnectionSnapshot = { startupResolved:false, inferenceOffline: typeof navigator !== 'undefined' && navigator.onLine === false, phoneActionsAvailable:false, phoneCapabilityReason:'', actionHistory: [], conversations: [], history: null, cloudAccount: null, open: false, busy: false, message: '', error: '', kind: residentAlwaysPresent ? 'starting' : 'offline', name: residentAlwaysPresent ? RESIDENT_NAME : 'Offline', session: null, agents: [] };
 let active: Active | null = null, operation: AbortController | null = null;
+/** Resolves when the step that set `operation` (through work() or a plan re-check) has finished. */
+let operationSettled: Promise<void> = Promise.resolve();
+function holdOperation(): () => void { let settle = () => {}; operationSettled = new Promise<void>(resolve => { settle = resolve; }); return settle; }
 let startup: Promise<void> | null = null, epoch = 0;
 let sending: AbortController | null = null;
 let developmentVoiceExpiresAt=0;
@@ -321,7 +328,11 @@ let entitlementRefresher: EntitlementRefresher | null = null;
  */
 let residentBinding: 'cloud' | 'unbound' | 'kept' | 'unknown' | null = null;
 /** Shown beside the running agent when native could not confirm the Cloud inference binding was removed. */
-const RESIDENT_UNBIND_UNCONFIRMED='Cloud inference removal could not be confirmed. Your agent is running; retry in Settings.';
+const RESIDENT_UNBIND_UNCONFIRMED='AI couldn’t be turned off. Try again in Settings.';
+/** Cloud refused the key it just issued. */
+const SIGN_IN_REFUSED='Sign-in didn’t go through. Sign in again to turn on AI.';
+/** AI could not be bound to the plan; the agent keeps running either way. */
+const bindFailure=(error:unknown)=>error instanceof Error&&error.message==='Cloud account changed. Sign in again.'?'Your account changed. Sign in again.':'AI couldn’t connect. Try again in Settings.';
 /** A plan change arrived while another connection step ran; it is applied when that step ends. */
 let residentRebindQueued = false;
 /** Every Cloud detach ends background plan refresh, so no request goes out under a stale admission. */
@@ -350,7 +361,7 @@ function personalCurrent(binding:NonNullable<typeof personalSetup>,generation:nu
 async function inspectPersonal(signal:AbortSignal){
  if(!testMocksEnabled)throw Error(PAIRING_RETIRED);
  const generation=personalGeneration,serviceId=service?.identity.sessionId;
- if(!serviceId)throw Error(`Sign in with ${cloudServiceName(cloud.environment)} first.`);
+ if(!serviceId)throw Error('Sign in first.');
  const client=await developmentCloud().personal(signal);signal.throwIfAborted();
  if(generation!==personalGeneration||service?.identity.sessionId!==serviceId||service.identity.credentialId!==client.owner.credentialId||service.identity.userId!==client.owner.userId||service.identity.organizationId!==client.owner.organizationId)throw Error('Cloud account changed. Refresh status.');
  const binding={client,serviceId};personalSetup=binding;
@@ -417,6 +428,8 @@ function prepareSignInReplacement() {
 const SIGN_IN_READINESS_WAIT_MS = 6000;
 /** Whether the last ready host offered Google (it needs this phone's verified App Link return). */
 let inAppGoogle = false, inAppPhone = false, inAppEmail = true, inAppMethodsUnconfirmed = true;
+/** The background readiness check in flight, if any. */
+let methodsRefresh: AbortController | null = null;
 /** Explicit sign-in from a recovery screen can return without losing its controls. */
 let inAppReturnToStart = false;
 /**
@@ -468,17 +481,16 @@ async function signedIn(client: CloudProtocol, outcome: CloudSignInAuthenticated
     try { await connectResident(signal); } catch (error) { if (residentAlwaysPresent && !active) update({ kind: 'recovering' }); showPostSignInSetup(); throw error; }
     if (!state.cloudAccount && state.residentPlanNotice !== 'offline' && issued && (await cloudCredentialStore.read(residentEnvironment()).catch(() => null))?.credentialId === issued) {
       await cloudCredentialStore.clear(residentEnvironment());
-      update({ residentSavedCredential: false, open: true, error: `${cloudServiceName(cloud.environment)} refused this sign-in. Your agent keeps running; sign in again to turn AI on.` });
+      update({ residentSavedCredential: false, open: true, error: SIGN_IN_REFUSED });
       return;
     }
-    if (unconfirmed) update({ message: `Signed in. ${cloudServiceName(cloud.environment)} did not confirm revoking the sign-in this phone used before.` });
     showPostSignInSetup();
     return;
   }
   const accountOnly = state.purpose === 'cloud-account';
   await verifyService(client, signal);
   if (!active) save({ kind: 'none' });
-  if (accountOnly || created || unconfirmed) update({ message: created ? `Signed in. ${cloudServiceName(cloud.environment)} created a new account for this sign-in.` : unconfirmed ? `Signed in to ${cloudServiceName(cloud.environment)}. ${cloudServiceName(cloud.environment)} did not confirm revoking the previous sign-in.` : `Signed in to ${cloudServiceName(cloud.environment)}.` });
+  if (accountOnly || created || unconfirmed) update({ message: created ? `Signed in. ${cloudServiceName(cloud.environment)} created a new account for this sign-in.` : `Signed in to ${cloudServiceName(cloud.environment)}.` });
   else if (hosted) await hosted.inspectPersonal(signal);
   if(accountOnly)showPostSignInSetup();
 }
@@ -541,16 +553,43 @@ function selection(): Selection | null {
 }
 function signInFailureMessage(code: CloudSignInError['code']): string {
   const environment=state.signIn?.environment??cloud.environment;
+  // The method choice re-checks Cloud by itself, so an unreachable Cloud there is just a wait.
+  if ((code==='offline'||code==='dns'||code==='timeout')&&(state.signIn?.step==='choose'||state.signIn?.step==='google'))return SIGN_IN_WAITING;
   return formatSignInFailureMessage(code,cloudServiceName(environment));
+}
+/** Failures that only mean this request did not reach Cloud. */
+const TRANSPORT_FAILURES: readonly CloudSignInError['code'][] = ['offline', 'dns', 'timeout', 'secure-connection'];
+/** A step started on the method choice that failed only because Cloud was unreachable waits for it. */
+function holdSignInStep(pending: SignInPending) {
+  if (state.error === SIGN_IN_WAITING && state.signIn?.step === 'choose') update({ signInPending: pending });
+}
+function sendPendingSignInStep() {
+  const pending = state.signInPending;
+  if (!pending || operation || state.signIn?.step !== 'choose') return;
+  update({ signInPending: null, error: '' });
+  if (pending.kind === 'google') void connectionController.signInGoogle();
+  else if (pending.kind === 'phone') void connectionController.signInPhone(pending.value);
+  else void connectionController.signInEmail(pending.value);
+}
+/** Once Cloud answers, the held step is sent as soon as no other connection step runs (the network
+ * returning also re-checks the plan, which can briefly hold `operation`). */
+function sendPendingSignInStepWhenIdle(attempt = 0) {
+  if (!state.signInPending || state.signIn?.step !== 'choose') return;
+  if (!operation) { queueMicrotask(sendPendingSignInStep); return; }
+  if (attempt < 120) void operationSettled.then(() => { setTimeout(() => sendPendingSignInStepWhenIdle(attempt + 1), 250); });
+}
+/** Sign-in errors that only mean Cloud could not be reached; cleared once it answers. */
+function connectionFailure(message: string): boolean {
+  return !!message && (message===SIGN_IN_WAITING || message===SIGN_IN_RESEND_FAILED || (['offline', 'dns', 'timeout', 'secure-connection', 'unavailable'] as const).some(code => signInFailureMessage(code) === message));
 }
 function errorMessage(error: unknown): string {
   const recovery=residentRecoveryReason(error);if(recovery)return residentRecoveryMessage(recovery);
   if (error instanceof CloudSignInError) return signInFailureMessage(error.code);
   if (error && typeof error === 'object' && 'code' in error) {
-    if (error.code === 'expired') return testMocksEnabled ? `This sign-in link has expired. Close the old browser tab and select Sign in with ${cloudServiceName(cloud.environment)} to open a fresh link.` : `Your ${cloudServiceName(cloud.environment)} sign-in has expired. Sign in again.`;
+    if (error.code === 'expired') return testMocksEnabled ? 'This sign-in link has expired. Close the old browser tab and select Sign in to open a fresh link.' : `Your ${cloudServiceName(cloud.environment)} sign-in has expired. Sign in again.`;
     if (error.code === 'credential-consumed') return `This sign-in link has already been used. Close the old browser tab and start a fresh ${cloudServiceName(cloud.environment)} sign-in.`;
     if (error.code === 'login-active') return signInFailureMessage('login-active');
-    if (error.code === 'credentials-missing') return `Sign in with ${cloudServiceName(cloud.environment)} to reconnect your account.`;
+    if (error.code === 'credentials-missing') return 'Sign in to reconnect your account.';
   }
   if (error instanceof DOMException && error.name === 'AbortError') return 'Connection cancelled.';
   if (error instanceof EntitlementError && error.code === 'account-mismatch') return `${cloudServiceName(cloud.environment)} returned plan status for a different account. Sign in again.`;
@@ -565,6 +604,7 @@ let residentStartInBackground = false;
 async function work(message: string, action: (signal: AbortSignal) => Promise<void>, background = false, openOnError = false) {
   if (operation) return;
   const controller = new AbortController(); operation = controller; residentStartInBackground = background;
+  const settle = holdOperation();
   update({ busy: true, ...(background ? {} : { open: true }), message, error: '' });
   try { await action(controller.signal); }
   catch (error) {
@@ -578,7 +618,7 @@ async function work(message: string, action: (signal: AbortSignal) => Promise<vo
     }
     update({ error: errorMessage(error), ...(background&&!state.open?{purpose:residentCloudFlow()?'agent' as const:'cloud-account' as const}:{}), open: true, message: '' });
   }
-  finally { if (operation === controller) { operation = null; residentStartInBackground = false; } update({ busy: false, ...(background&&!state.open?{message:''}:{}) }); runQueuedResidentRebind(); runQueuedSignInReturn(); scheduleResidentAutoRetry(); }
+  finally { if (operation === controller) { operation = null; residentStartInBackground = false; } settle(); update({ busy: false, ...(background&&!state.open?{message:''}:{}) }); runQueuedResidentRebind(); runQueuedSignInReturn(); scheduleResidentAutoRetry(); }
 }
 /** P-43: the agent always runs. A resident left `recovering` (a failed start or rebind, never a
  * recovery review, which needs the owner) starts again by itself with backoff; Retry stays offered
@@ -856,14 +896,14 @@ function residentRefreshRefused(account:NonNullable<typeof service>,error:unknow
 async function recheckResidentPlan(){
   if(operation)return;
   if(!state.session||active?.kind!=='resident'){queueResidentRebind();return;}
-  const controller=new AbortController();operation=controller;
+  const controller=new AbortController();operation=controller;const settle=holdOperation();
   try{
     const admission=await admitCloudResident(controller.signal);
     const target=residentBindable()?admission.binding:residentBinding;
     if(target!=='kept'&&target!==residentBinding)residentRebindQueued=true;
     else if(admission.notice?.open||admission.notice?.error)update({open:true,purpose:state.purpose==='plan'||state.purpose==='cloud-account'?state.purpose:'agent',message:'',error:admission.notice.error??''});
   }catch{/* The next return checks again; the agent keeps running as it is. */}
-  finally{if(operation===controller)operation=null;runQueuedResidentRebind();}
+  finally{if(operation===controller)operation=null;settle();runQueuedResidentRebind();}
 }
 /** Bind or unbind Eliza Cloud inference before the agent starts. Returns the binding in effect. */
 async function applyResidentBinding(admission:ResidentAdmission,signal:AbortSignal):Promise<{binding:'cloud'|'unbound'|'kept'|'unknown';error?:string}> {
@@ -882,9 +922,9 @@ async function applyResidentBinding(admission:ResidentAdmission,signal:AbortSign
       // The agent always starts. It is reported unbound only after native confirms removal;
       // otherwise its inference state is unconfirmed (native still gates a Cloud binding on a
       // valid production credential at use time) and the owner can retry in Settings.
-      try{await clearLocalProvider();}catch{signal.throwIfAborted();return {binding:'unknown',error:`AI could not be connected to your ${cloudServiceName(cloud.environment)} plan: ${errorMessage(error)} ${RESIDENT_UNBIND_UNCONFIRMED}`};}
+      try{await clearLocalProvider();}catch{signal.throwIfAborted();return {binding:'unknown',error:bindFailure(error)};}
       signal.throwIfAborted();
-      return {binding:'unbound',error:`AI could not be connected to your ${cloudServiceName(cloud.environment)} plan: ${errorMessage(error)} Your agent is running; check your plan again in Settings.`};
+      return {binding:'unbound',error:bindFailure(error)};
     }
   }
   // Unbound: remove any stored Cloud inference binding. A no-op (no restart) when none is stored.
@@ -1129,9 +1169,9 @@ function pairingError(error: unknown, withCode: boolean): unknown {
   return new Error(text, { cause: error });
 }
 /** After the provider key is removed or Cloud is signed out: the agent keeps running with AI off. */
-const AI_OFF_MESSAGE = 'Your agent is running. Sign in to Cloud to turn AI back on.';
+const AI_OFF_MESSAGE = 'Sign in to turn on AI.';
 const PAIRING_RETIRED = 'Pairing is unavailable. Your agent runs on this device; sign in to Cloud for inference.';
-const RESIDENT_SIGN_IN_EXPIRED = 'Your Cloud sign-in has expired. Sign in with Cloud again.';
+const RESIDENT_SIGN_IN_EXPIRED = 'Your sign-in expired. Sign in again.';
 const RATE_LIMITED = 'The agent provider is rate-limiting requests. Wait before sending again. Alpha Phone did not retry your message.';
 /** Owner-facing states for upstream's CHAT_FAILURE_KINDS (pinned contracts `chat.ts`). Each says
  * what happened and what to do next; none retries the message. Unlisted kinds keep the generic text. */
@@ -1459,9 +1499,8 @@ async function residentBrowserLoginAction(signal: AbortSignal) {
   try{await connectResident(signal);}catch(error){if(residentAlwaysPresent&&!active)update({kind:'recovering'});showPostSignInSetup();throw error;}
   // Cloud refused the key it just issued. It is removed rather than kept for a retry that cannot
   // work; the agent keeps running without Cloud inference.
-  if(!state.cloudAccount&&state.residentPlanNotice!=='offline'&&issued&&(await cloudCredentialStore.read(residentEnvironment()).catch(()=>null))?.credentialId===issued){await cloudCredentialStore.clear(residentEnvironment());update({residentSavedCredential:false,open:true,error:`${cloudServiceName(cloud.environment)} refused this sign-in. Your agent keeps running; sign in again to turn AI on.`});return;}
+  if(!state.cloudAccount&&state.residentPlanNotice!=='offline'&&issued&&(await cloudCredentialStore.read(residentEnvironment()).catch(()=>null))?.credentialId===issued){await cloudCredentialStore.clear(residentEnvironment());update({residentSavedCredential:false,open:true,error:SIGN_IN_REFUSED});return;}
   // A verified account finishes through setup; AI binding/plan warnings stay visible there.
-  if(login.previousSignIn==='unconfirmed')update({message:`Signed in. ${cloudServiceName(cloud.environment)} did not confirm revoking the sign-in this phone used before.`});
   showPostSignInSetup();
 }
 async function browserCloudLoginAction(environment: CloudEnvironment, signal: AbortSignal) {
@@ -1474,7 +1513,7 @@ async function browserCloudLoginAction(environment: CloudEnvironment, signal: Ab
   const login = await cloud.login(signal, () => update({ message: accountOnly?`Finish signing in to ${cloudServiceName(cloud.environment)} in your browser, then return here. If the link expires, cancel and sign in again.`:'Use the newly opened browser tab to sign in and approve this phone. If the link expires, cancel here and start a fresh sign-in.' }));
   await verifyService(cloud, signal);
   if (!active) save({ kind: 'none' });
-  if(accountOnly)update({message:login.previousSignIn==='unconfirmed'?`Signed in to ${cloudServiceName(cloud.environment)}. ${cloudServiceName(cloud.environment)} did not confirm revoking the previous sign-in.`:`Signed in to ${cloudServiceName(cloud.environment)}.`});else if(hosted)await hosted.inspectPersonal(signal);
+  if(accountOnly)update({message:`Signed in to ${cloudServiceName(cloud.environment)}.`});else if(hosted)await hosted.inspectPersonal(signal);
   if(accountOnly)showPostSignInSetup();
 }
 
@@ -1741,9 +1780,11 @@ export const connectionController = {
     if (!online) retractReadiness();
   },
   openCloudAccount(){
+    // Not signed in: go straight to the sign-in methods (Google, email or phone), not an account sheet.
+    if(!state.cloudAccount&&cloudSignIn&&!operation){update({purpose:'cloud-account'});void connectionController.beginSignIn();return;}
     update({open:true,automaticRestore:false,purpose:'cloud-account',message:'',error:''});
     // Production Android: whether a Cloud sign-in is kept on this phone decides if the panel offers
-    // "Retry saved connection". A local keystore read; no Cloud request and nothing is restored.
+    // its automatic reconnect. A local keystore read; no Cloud request and nothing is restored.
     if(residentCloudFlow()&&!state.cloudAccount)void cloudCredentialStore.read(residentEnvironment()).then(credential=>{if(state.open&&state.purpose==='cloud-account'&&!state.cloudAccount)update({residentSavedCredential:!!credential?.credentialId});}).catch(()=>{/* Sign-in stays available. */});
   },
   /** Settings › Eliza Cloud account & plan: the plan panel with Redeem code, Manage plan and Sign out. */
@@ -1764,7 +1805,7 @@ export const connectionController = {
     // An agent that is not running cannot use any plan: say that, not a plan or Cloud problem.
     const inference=!state.session&&account&&planAdmission(view)!=='needs-plan'?(state.kind==='recovering'?'Unavailable · agent not running':'Starting…'):state.residentInference==='unknown'?'Status unconfirmed':state.residentInference==='cloud'?serviceName:state.residentPlanNotice==='offline'?'Unavailable · Cloud unreachable':state.residentInference==='unavailable'?(account?(view?.kind==='inactive'?'Unavailable · check Cloud account':'Unavailable · Cloud status unconfirmed'):'Unavailable · sign in'):'Starting…';
     if(state.residentPlanNotice==='offline'&&!account){const recent=readPlanAdmission();return {signedIn:false,offline:true,offerRedeem:false,account:null,plan:recent?`${recent.planName} · offline`:'Offline',status:recent?.status??null,endsAt:state.planEndsAt??null,keyExpiresAt:null,keyExpiring:false,inference};}
-    return {signedIn:!!account,offline:false,inference,account:account?(account.email||`Account ${account.userId.slice(0,8)}`):null,
+    return {signedIn:!!account,offline:false,inference,account:account?(account.email||'Signed in'):null,
       plan:plan?.headline??(account?'Checking plan…':'Not signed in'),
       status:view?.kind==='active'?view.status:view?.kind==='inactive'?view.status:null,
       // A code is offered as the way to get a plan; an account Cloud admitted is not asked for one.
@@ -1781,6 +1822,12 @@ export const connectionController = {
     if (!state.busy || residentStartInBackground || state.residentStarting) {if(state.purpose!=='cloud-account'&&state.purpose!=='plan')clearPersonalSetup();update({ open: false,purpose:'agent',redeemError:'',redeemNotice:'' });}
   },
   cancel() { operation?.abort(new DOMException('Cancelled', 'AbortError')); cloud.cancelLogin(); },
+  /** Cancels the running step and resolves once it has finished, so the next step can start
+   * (for example "Use another account" during the automatic reconnect of a saved sign-in). */
+  async cancelAndWait() {
+    // A step that finishes may queue one more (a rebind); cancel that too, a bounded number of times.
+    for (let round = 0; round < 3 && operation; round++) { const settled = operationSettled; connectionController.cancel(); await settled; }
+  },
   async initialize() {
     if (startup) return startup;
     update({automaticRestore:!state.open});
@@ -1836,7 +1883,7 @@ export const connectionController = {
       if (saved?.kind === 'mock') { const url = new URL(location.href); url.searchParams.set('mode', 'mock'); location.replace(url.href); return; }
       await work('Restoring your connection…', async signal => {
         const environment = localStorage.getItem(CLOUD_SERVICE);
-        if (environment === 'staging' && !testMocksEnabled) { localStorage.removeItem(CLOUD_SERVICE); update({ message: `Sign in with ${cloudServiceName(cloud.environment)} to continue.` }); }
+        if (environment === 'staging' && !testMocksEnabled) { localStorage.removeItem(CLOUD_SERVICE); update({ message: 'Sign in to continue.' }); }
         else if (cloudEnvironmentAllowed(environment)) {
           try { await verifyService(makeCloud(environment), signal); }
           catch (error) { signal.throwIfAborted(); detachService(); update({ message: 'Cloud services need sign-in or retry. Your agent connection is independent.' }); }
@@ -1857,7 +1904,7 @@ export const connectionController = {
     if (operation) return;
     if (residentAlwaysPresent) { await connectionController.startLocal(); return; }
     // Subscription gate QA (test-mocks builds): the gate has no local-only bypass.
-    if(residentCloudFlow()){update({open:true,error:`Sign in with ${cloudServiceName(cloud.environment)} to use AI replies.`,message:''});return;}
+    if(residentCloudFlow()){update({open:true,error:'Sign in to use AI replies.',message:''});return;}
     // The flag-off web preview runs no agent at all (A-27): it may close its notice and keep that choice.
     if (!testMocksEnabled && !webCloudUnavailable()) return;
     retire(); detachService();
@@ -1941,37 +1988,60 @@ export const connectionController = {
   async residentCloudLogin() { await connectionController.beginSignIn(residentEnvironment()); },
   /** Opens Alpha's own sign-in screen when ready. Nothing is sent until the owner chooses Google or
    * enters an email; no Eliza Cloud web page is opened. */
-  async beginSignIn(environment: CloudEnvironment = residentCloudFlow() ? residentEnvironment() : cloud.environment) {
+  async beginSignIn(environment: CloudEnvironment = residentCloudFlow() ? residentEnvironment() : cloud.environment, keepError = false) {
     if (operation || !cloudEnvironmentAllowed(environment)) return;
     if (!state.signIn) inAppReturnToStart = !!(state.residentRecoveryReason || state.residentSavedCredential || state.error === RESIDENT_UNPACKAGED);
-    // Readiness may take six seconds on a fresh install. Keep that wait cancellable and prevent
-    // repeated taps from starting competing probes or opening a browser after the owner cancelled.
-    await work(`Checking ${cloudServiceName(environment)} sign-in…`, async signal => {
-      const methods = await inAppSignInMethods(environment, signal);
-      signal.throwIfAborted();
-      // Email stays inside Alpha even when readiness is unavailable. Its native request
-      // reports the actual failure; missing Google/App Link setup never opens hosted login.
-      if (!cloudSignIn) throw new CloudSignInError('unavailable');
-      inAppMethodsUnconfirmed = methods === null;
-      inAppGoogle = methods?.google === true;
-      inAppPhone = methods?.phone === true;
-      inAppEmail = methods === null || methods.email !== false;
-      if (cloud.environment !== environment) cloud = makeCloud(environment);
-      cloud.cancelLogin();
-      update({ open: true, ...(residentCloudFlow() && state.purpose !== 'cloud-account' ? { purpose: 'agent' as const } : {}), signIn: { step: 'choose', environment }, message: '', error: '' });
-    });
+    // The chooser opens at once with email and phone; Google appears when the background readiness
+    // check confirms it. Missing Google/App Link setup never opens hosted login.
+    // Without an in-app sign-in host, a kept startup error (an expired sign-in) stays: replacing it
+    // would end the required sign-in page for an account Cloud already refused.
+    if (!cloudSignIn) { update({ open: true, error: keepError && state.error ? state.error : signInFailureMessage('unavailable'), message: '' }); return; }
+    if (cloud.environment !== environment) cloud = makeCloud(environment);
+    cloud.cancelLogin();
+    update({ open: true, ...(residentCloudFlow() && state.purpose !== 'cloud-account' ? { purpose: 'agent' as const } : {}), signIn: { step: 'choose', environment }, signInPending: null, message: '', error: keepError ? state.error : '' });
+    void connectionController.refreshSignInMethods();
     await ensureResident();
+  },
+  /** Re-checks which sign-in methods Cloud offers without blocking the chooser. Runs on open, when
+   * the network returns and when Alpha comes back to the front: there is no Retry button. */
+  async refreshSignInMethods() {
+    const view = state.signIn;
+    if (!view || view.step !== 'choose' || methodsRefresh) return;
+    const controller = methodsRefresh = new AbortController();
+    try {
+      const methods = await inAppSignInMethods(view.environment, controller.signal);
+      if (methodsRefresh !== controller || state.signIn?.step !== 'choose' || state.signIn.environment !== view.environment) return;
+      if (methods === null) { inAppMethodsUnconfirmed = true; update({}); return; }
+      inAppMethodsUnconfirmed = false; inAppGoogle = methods.google; inAppPhone = methods.phone; inAppEmail = methods.email !== false;
+      // A step the owner started offline is sent now, or as soon as another running step ends
+      // (the error stays meanwhile, so the panel's re-check also comes back for it).
+      if (state.signInPending) { sendPendingSignInStepWhenIdle(); return; }
+      // A connection failure from before is over once Cloud answered.
+      update(connectionFailure(state.error) ? { error: '' } : {});
+    } finally { if (methodsRefresh === controller) methodsRefresh = null; }
+  },
+  /** Back from the code or second-verification step: the method choice again, attempt burned. */
+  backToChooser() {
+    const view = state.signIn;
+    if (operation || !view || (view.step !== 'code' && view.step !== 'mfa')) return;
+    cloud.cancelLogin();
+    update({ signIn: { step: 'choose', environment: view.environment }, signInPending: null, message: '', error: '' });
+    void connectionController.refreshSignInMethods();
   },
   /** Leaves the sign-in screen and burns any pending attempt. The stored sign-in is unchanged. */
   cancelSignIn() {
+    if (state.signInPending) update({ signInPending: null });
     if (operation) { connectionController.cancel(); return; }
     cloud.cancelLogin();
-    update({ signIn: productionCloudSignInRequired(state) && !inAppReturnToStart ? {step: 'choose', environment: state.signIn?.environment ?? residentEnvironment()} : null, message: '', error: '' });
+    const keep = productionCloudSignInRequired(state) && !inAppReturnToStart;
+    // Opened from an app's Sign in (Inbox, Calendar): backing out returns to that app, not to an account sheet.
+    const leave = !keep && state.purpose === 'cloud-account' && !state.cloudAccount;
+    update({ signIn: keep ? {step: 'choose', environment: state.signIn?.environment ?? residentEnvironment()} : null, message: '', error: '', ...(leave ? { open: false } : {}) });
   },
   /** Google's consent in a Custom Tab, returning to Alpha through a verified App Link. */
   async signInGoogle() {
     const view = state.signIn; if (!view) return;
-    await work('Continue in Google.', async signal => {
+    await work('', async signal => {
       update({ signIn: { step: 'google', environment: view.environment } });
       const client = signInClient(view.environment);
       let outcome: CloudSignInGoogleOutcome;
@@ -1980,6 +2050,7 @@ export const connectionController = {
       if (outcome.status === 'mfa') { showGoogleMfa(outcome); return; }
       await signedIn(client, outcome, signal);
     });
+    if (state.error) holdSignInStep({ kind: 'google' });
     // A cancelled or failed sign-in never leaves the phone without its agent (P-43).
     await ensureResident();
   },
@@ -1993,6 +2064,7 @@ export const connectionController = {
       update({ signIn: { step: 'code', environment: view.environment, email: address, ...started }, message: '' });
     });
     if (state.error && state.signIn?.step !== 'code') update({ signIn: { step: 'choose', environment: view.environment } });
+    if (state.error && view.step === 'choose') holdSignInStep({ kind: 'email', value: address });
   },
   async signInPhone(phone: string) {
     const view = state.signIn; if (!view || !cloudSignInPhone || !inAppPhone) return;
@@ -2003,8 +2075,14 @@ export const connectionController = {
       update({ signIn: { step: 'code', environment: view.environment, email: '', phone: number, ...started }, message: '' });
     });
     if (state.error && state.signIn?.step !== 'code') update({ signIn: { step: 'choose', environment: view.environment } });
+    if (state.error && view.step === 'choose') holdSignInStep({ kind: 'phone', value: number });
   },
-  async resendSignInCode() { const view = state.signIn; if (view?.step === 'code') { if (view.phone) await connectionController.signInPhone(view.phone); else await connectionController.signInEmail(view.email); } },
+  async resendSignInCode() {
+    const view = state.signIn; if (view?.step !== 'code') return;
+    if (view.phone) await connectionController.signInPhone(view.phone); else await connectionController.signInEmail(view.email);
+    // No new code was sent: say that, not "enter the code again".
+    if (state.signIn?.step === 'code' && TRANSPORT_FAILURES.some(code => state.error === signInFailureMessage(code))) update({ error: SIGN_IN_RESEND_FAILED });
+  },
   /** Verifies the emailed code, or the second verification Cloud asked for. */
   async verifySignInCode(code: string) {
     const view = state.signIn; if (!view || (view.step !== 'code' && view.step !== 'mfa')) return;
@@ -2029,8 +2107,8 @@ export const connectionController = {
       } catch (error) {
         // Only native verification failures retire the attempt. Once authenticated, resident
         // startup failures must not reopen sign-in over the stored key and permission setup.
-        if (!(error instanceof CloudSignInError && error.code === 'invalid-code')) signInFailed(view.environment);
-        else signInFailed(view.environment, true);
+        // A wrong code or a connection failure keeps the code step, so "enter the code again" is true.
+        signInFailed(view.environment, error instanceof CloudSignInError && (error.code === 'invalid-code' || TRANSPORT_FAILURES.includes(error.code)));
         throw error;
       }
       await signedIn(client, outcome, signal);
@@ -2057,7 +2135,7 @@ export const connectionController = {
       });
       await ensureResident(); return;
     }
-    await work(`Finishing ${cloudServiceName(cloud.environment)} sign-in…`, signal => signedIn(signInClient(environment), outcome, signal));
+    await work('Signing in…', signal => signedIn(signInClient(environment), outcome, signal));
     await ensureResident();
   },
   /**
@@ -2087,7 +2165,7 @@ export const connectionController = {
   },
   /** Opens the hosted plan page in the system browser; the plan is checked again on return. */
   async residentManagePlan() {
-    await work(`Opening ${cloudServiceName(cloud.environment)} plans…`,async signal=>{await makeCloud(residentEnvironment()).openSubscriptionManagement(signal);planManagementReturn=true;update({message:`Choose or manage your plan in ${cloudServiceName(cloud.environment)}, then return here. Alpha checks your plan again when you come back.`});});
+    await work(`Opening ${cloudServiceName(cloud.environment)} plans…`,async signal=>{await makeCloud(residentEnvironment()).openSubscriptionManagement(signal);planManagementReturn=true;});
   },
   /**
    * Redeems a subscription code for the signed-in account, then checks the plan again and admits
@@ -2101,7 +2179,7 @@ export const connectionController = {
     update({redeemError:'',redeemNotice:''});
     await work('Redeeming your code…',async signal=>{
       const account=service;
-      if(!account)throw Error(`Sign in with ${cloudServiceName(cloud.environment)} first.`);
+      if(!account)throw Error('Sign in first.');
       let result;
       try{result=await account.client.redeemSubscriptionCode(code,idempotencyKey,signal);}
       catch(error){if(error instanceof SubscriptionRedeemError){update({redeemError:redeemFailureMessage(error, cloudServiceName(account.client.environment)),message:''});return;}throw error;}
@@ -2206,17 +2284,15 @@ export const connectionController = {
       localStorage.removeItem(CLOUD_SERVICE);
       if (!active) save({ kind: 'none' });
 
-      // Only a confirmed server-side revocation counts. A transport or server that does not offer
-      // the route ({supported:false}) or a failed request removes this phone's token only, and the copy says so.
-      let revoked = false;
-      if (typeof client.revokeSession === 'function') { try { const result = await client.revokeSession(signal, expected); revoked = result?.supported === true && result.revoked === true; } catch { /* Unconfirmed. A cancelled or failed revocation still removes the local token below. */ } }
+      // Revoke the session on the server when the route exists. A transport or server that does not
+      // offer it, or a failed request, still removes this phone's token below. The owner sees one line.
+      if (typeof client.revokeSession === 'function') { try { await client.revokeSession(signal, expected); } catch { /* Unconfirmed. A cancelled or failed revocation still removes the local token below. */ } }
       await client.disconnect(expected);
-      const message = (revoked ? `Signed out of ${cloudServiceName(cloud.environment)}. This sign-in was revoked.` : `Signed out of ${cloudServiceName(cloud.environment)} on this phone. The sign-in token was removed here; ${cloudServiceName(cloud.environment)} did not confirm revoking it.`)+(isAndroid&&!testMocksEnabled?' '+AI_OFF_MESSAGE:'');
-      update({ agents: [], residentSavedCredential:false, ...(residentCloudFlow()?{purpose:'agent' as const}:{}), message });
+      update({ agents: [], residentSavedCredential:false, ...(residentCloudFlow()?{purpose:'agent' as const}:{}), message: 'Signed out.' });
       // The agent keeps running: reconnected (or restarted) without Cloud inference, and the
       // sign-in dialog asks for an account again.
       // A cancelled sign-out still removed the local key above; the agent is then started by the queued rebind.
-      if(residentCloudFlow()){if(signal.aborted)residentRebindQueued=true;else{retire();try{await connectResident(signal);}catch(error){if(residentAlwaysPresent&&!active)update({kind:'recovering'});throw error;}update({message,open:true,...(state.residentInference==='unknown'?{error:RESIDENT_UNBIND_UNCONFIRMED}:{})});}}
+      if(residentCloudFlow()){if(signal.aborted)residentRebindQueued=true;else{retire();try{await connectResident(signal);}catch(error){if(residentAlwaysPresent&&!active)update({kind:'recovering'});throw error;}update({message:'Signed out.',open:true,...(state.residentInference==='unknown'?{error:RESIDENT_UNBIND_UNCONFIRMED}:{})});}}
     });
     // P-43: signing out unbinds inference only; the resident restarts without it.
     await ensureResident();
@@ -2422,6 +2498,17 @@ export function connectionChooserVisible(snapshot: Pick<ConnectionSnapshot,'open
   }
   return snapshot.open && !(snapshot.automaticRestore && snapshot.busy && !snapshot.error);
 }
+/** Stable for the panel's automatic re-check effect. */
+const signInActions = {
+  retry: () => void connectionController.refreshSignInMethods(),
+  phone: (number: string) => void connectionController.signInPhone(number),
+  google: () => void connectionController.signInGoogle(),
+  email: (address: string) => void connectionController.signInEmail(address),
+  verify: (code: string) => void connectionController.verifySignInCode(code),
+  resend: () => void connectionController.resendSignInCode(),
+  back: () => connectionController.backToChooser(),
+  cancel: () => connectionController.cancelSignIn(),
+};
 export function ConnectionChooser() {
   const snapshot = useSyncExternalStore(connectionController.subscribe, connectionController.getSnapshot);
   // Production Android always enters through sign-in while signed out.
@@ -2429,13 +2516,31 @@ export function ConnectionChooser() {
   const productionSignInRequired=productionCloudSignInRequired(snapshot);
   const visible=connectionChooserVisible(snapshot);
   const initialSignInStarted=useRef(false);
+  // A sign-in kept on this phone that Cloud has not refused is retried automatically (on start,
+  // when the network returns, when Alpha comes back to the front, then with backoff). There is no
+  // manual retry button; the owner can still sign in with another account. Only a connection
+  // failure is waited out: an expired key or any other error (a different account, storage, an
+  // unpackaged agent) is shown on the sign-in methods instead of an endless wait.
+  const savedKeyExpired=snapshot.cloudAccount?.expiresAt!==undefined&&snapshot.cloudAccount.expiresAt<=Date.now();
+  const savedSignInWaiting=!snapshot.error||snapshot.residentPlanNotice==='offline'||!!snapshot.inferenceOffline||connectionFailure(snapshot.error)||/^(Connection request failed|Connection timed out)$/.test(snapshot.error)||snapshot.error==='Connection cancelled.';
+  const savedSignInUsable=productionSignInRequired&&!!snapshot.residentSavedCredential&&!snapshot.residentRecoveryReason&&snapshot.error!==errorMessage({status:401})&&!savedKeyExpired&&savedSignInWaiting&&!snapshot.signIn;
   useEffect(()=>{
     if(!productionSignInRequired){initialSignInStarted.current=false;return;}
-    // Keep saved-session retry and startup/recovery errors visible before a new sign-in.
-    if(initialSignInStarted.current||!snapshot.startupResolved||snapshot.busy||snapshot.signIn||snapshot.residentRecoveryReason||snapshot.residentSavedCredential||snapshot.error)return;
+    if(initialSignInStarted.current||!snapshot.startupResolved||snapshot.busy||snapshot.signIn||snapshot.residentRecoveryReason||savedSignInUsable)return;
     initialSignInStarted.current=true;
-    void connectionController.beginSignIn(residentEnvironment());
-  },[productionSignInRequired,snapshot.startupResolved,snapshot.busy,snapshot.signIn,snapshot.residentRecoveryReason,snapshot.residentSavedCredential,snapshot.error]);
+    // Any startup error (for example an expired sign-in) stays visible on the chooser.
+    void connectionController.beginSignIn(residentEnvironment(),true);
+  },[productionSignInRequired,snapshot.startupResolved,snapshot.busy,snapshot.signIn,snapshot.residentRecoveryReason,savedSignInUsable]);
+  useEffect(()=>{
+    if(!savedSignInUsable)return;
+    let delay=4000,timer:ReturnType<typeof setTimeout>|undefined,alive=true;
+    const attempt=()=>{if(alive&&!document.hidden&&!connectionController.getSnapshot().busy)void connectionController.startLocal();};
+    const schedule=()=>{timer=setTimeout(()=>{attempt();delay=Math.min(delay*2,60000);schedule();},delay);};
+    const now=()=>{delay=4000;clearTimeout(timer);attempt();schedule();};
+    const visible=()=>{if(!document.hidden)now();};
+    window.addEventListener('online',now);document.addEventListener('visibilitychange',visible);schedule();
+    return()=>{alive=false;clearTimeout(timer);window.removeEventListener('online',now);document.removeEventListener('visibilitychange',visible);};
+  },[savedSignInUsable]);
   const [developmentAction,setDevelopmentAction]=useState('{"type":"create_note","title":"Development note","body":"Reviewed local action"}');
   const [developmentProfile,setDevelopmentProfile]=useState<DevelopmentProfile>('local'),[reply,setReply]=useState(''),[developmentError,setDevelopmentError]=useState('');
   const [replyReady,setReplyReady]=useState(false),[developmentAccountRevision,setDevelopmentAccountRevision]=useState(0);
@@ -2541,10 +2646,10 @@ export function ConnectionChooser() {
   const browserOnly = !testMocksEnabled && !isAndroid && !browserLocalAgentEnabled;
   const cloudAccountControls=<>
     {browserOnly&&<p>{WEB_CLOUD_UNAVAILABLE}</p>}
-    {snapshot.cloudAccount&&<section className="alpha-connection-current alpha-cloud-account-summary"><strong>{snapshot.cloudAccount.email||`Signed in to ${serviceName}`}</strong>{!snapshot.cloudAccount.email&&<span>Account {snapshot.cloudAccount.userId}</span>}<button disabled={snapshot.busy} onClick={()=>void connectionController.cloudSignOut()}>Sign out of {serviceName}</button></section>}
+    {snapshot.cloudAccount&&<section className="alpha-connection-current alpha-cloud-account-summary"><strong>{snapshot.cloudAccount.email||'Signed in'}</strong><button className="alpha-connection-cancel" disabled={snapshot.busy} onClick={()=>void connectionController.cloudSignOut()}>Sign out</button></section>}
     {browserCloudResidentEnabled&&<p role="status">Cloud environment: {browserCloudResidentEnvironment==='staging'?'Staging QA':'Production'}. Your agent runs on this computer.</p>}
     {testMocksEnabled&&snapshot.purpose!=='cloud-account'&&<label>Environment<select aria-label="Environment" ref={environment} disabled={snapshot.busy} defaultValue={resolveCloudEnvironment(cloudEnvironmentPolicy, snapshot.signIn?.environment ?? cloud.environment)} onChange={()=>connectionController.cloudEnvironment(env())}><option value="production">Production</option><option value="staging">Staging</option></select></label>}
-    {!browserOnly&&(!snapshot.cloudAccount||snapshot.purpose!=='cloud-account')&&<div className="alpha-connection-actions"><button disabled={snapshot.busy} onClick={()=>void connectionController.cloudLogin(env())}>Sign in with {serviceName}</button></div>}
+    {!browserOnly&&(!snapshot.cloudAccount||snapshot.purpose!=='cloud-account')&&<div className="alpha-connection-actions"><button disabled={snapshot.busy} onClick={()=>void connectionController.cloudLogin(env())}>Sign in</button></div>}
   </>;
   if (!visible) {
     // Never a gate: the agent is running. A non-blocking notice offers the plan actions.
@@ -2561,23 +2666,21 @@ export function ConnectionChooser() {
       </div>
     </aside>;
   }
-  if (snapshot.signIn) return <div className={productionSignInRequired?'alpha-auth-page':'alpha-connection-scrim'}><div className={`alpha-connection alpha-connection-native alpha-cloud-sign-in${productionSignInRequired?' alpha-auth-content':''}`} role={productionSignInRequired?'main':'dialog'} aria-modal={productionSignInRequired?undefined:true} aria-labelledby="cloud-sign-in-title" aria-busy={snapshot.busy||undefined} tabIndex={-1} ref={panel}>
-    <CloudSignInPanel methodsUnconfirmed={inAppMethodsUnconfirmed} canGoBack={!productionSignInRequired || inAppReturnToStart} view={snapshot.signIn} busy={snapshot.busy} google={inAppGoogle} phone={cloudSignInPhone && inAppPhone} emailEnabled={inAppEmail} message={snapshot.message} error={snapshot.error}
-      actions={{retry:()=>void connectionController.beginSignIn(snapshot.signIn!.environment),phone:number=>void connectionController.signInPhone(number),google:()=>void connectionController.signInGoogle(),email:address=>void connectionController.signInEmail(address),verify:code=>void connectionController.verifySignInCode(code),resend:()=>void connectionController.resendSignInCode(),cancel:()=>connectionController.cancelSignIn()}}
+  if (snapshot.signIn) return <div className={productionSignInRequired?'alpha-auth-page':'alpha-connection-scrim'}><div className={`alpha-connection alpha-connection-native alpha-cloud-sign-in${productionSignInRequired?' alpha-auth-content':''}`} role={productionSignInRequired?'main':'dialog'} aria-modal={productionSignInRequired?undefined:true} aria-label="Sign in" aria-busy={snapshot.busy||undefined} tabIndex={-1} ref={panel}>
+    <CloudSignInPanel pending={snapshot.signInPending?.kind} methodsUnconfirmed={inAppMethodsUnconfirmed} canGoBack={!productionSignInRequired || inAppReturnToStart} view={snapshot.signIn} busy={snapshot.busy} google={inAppGoogle} phone={cloudSignInPhone && inAppPhone} emailEnabled={inAppEmail} message={snapshot.message} error={snapshot.error}
+      actions={signInActions}
       extra={browserCloudResidentEnabled?<button disabled={snapshot.busy} onClick={()=>void connectionController.signInBrowser()}>Sign in with browser</button>:testMocksEnabled?<button disabled={snapshot.busy} onClick={()=>void connectionController.signInBrowser()}>Browser sign-in (diagnostic)</button>:undefined}/>
   </div></div>;
   if(productionSignInRequired)return <div className="alpha-auth-page"><div className="alpha-connection alpha-auth-content" role="main" aria-labelledby="alpha-auth-title" aria-busy={snapshot.busy||undefined} tabIndex={-1} ref={panel}>
     <div className="alpha-auth-body">
       <h1 id="alpha-auth-title" className="serif">Sign in</h1>
-      <div className="alpha-connection-actions"><button disabled={snapshot.busy} onClick={()=>void connectionController.residentCloudLogin()}>Sign in with {serviceName}</button></div>
-      {snapshot.busy&&<><p role="status">{snapshot.message||'Please wait…'}</p><button className="alpha-connection-cancel" onClick={()=>connectionController.cancel()}>Cancel</button></>}
-      {!snapshot.busy&&snapshot.message&&snapshot.message!=='Connected'&&<p role="status">{snapshot.message}</p>}
-      {snapshot.residentSavedCredential&&!snapshot.residentRecoveryReason&&snapshot.error!==errorMessage({status:401})&&<button disabled={snapshot.busy} onClick={()=>void connectionController.startLocal()}>Retry saved connection</button>}
-      {snapshot.error&&<p role="alert" className="alpha-connection-error">{snapshot.error}</p>}
+      {savedSignInUsable&&<p role="status">{snapshot.busy?'Connecting…':'Waiting for connection'}</p>}
+      {snapshot.error&&!savedSignInUsable&&<p role="alert" className="alpha-connection-error">{snapshot.error}</p>}
+      <div className="alpha-connection-actions"><button className={savedSignInUsable?'alpha-connection-cancel':undefined} disabled={snapshot.busy&&!savedSignInUsable} onClick={async()=>{if(snapshot.busy)await connectionController.cancelAndWait();void connectionController.residentCloudLogin();}}>{savedSignInUsable?'Use another account':'Sign in'}</button></div>
       <ResidentRecoveryPanel snapshot={snapshot}/>
     </div>
   </div></div>;
-  const accountCreatedNotice=snapshot.accountCreated&&snapshot.cloudAccount&&<p role="status" className="alpha-cloud-account-created">This sign-in created a new {serviceName} account{snapshot.cloudAccount.email?` (${snapshot.cloudAccount.email})`:''}. If you meant to use an existing account, sign out and sign in with that account’s email or Google.</p>;
+  const accountCreatedNotice=snapshot.accountCreated&&snapshot.cloudAccount&&<p role="status" className="alpha-cloud-account-created">{snapshot.cloudAccount.email?`New ${serviceName} account created for ${snapshot.cloudAccount.email}.`:`New ${serviceName} account created.`}</p>;
   const actionReview=snapshot.session&&snapshot.phoneActionsAvailable&&<details open={snapshot.actionHistory.some(item=>item.state==='reconciliation_required')}><summary>Phone action history</summary><button disabled={snapshot.busy} onClick={() => void connectionController.actionHistory()}>Refresh actions</button><button disabled={snapshot.busy} onClick={() => void connectionController.actionHistory(true)}>Sync recorded receipts</button>{snapshot.actionHistory.map(item => <section key={item.id} className="alpha-connection-agent"><strong>{item.title}</strong>{item.detail&&<span>{item.detail}</span>}<span>{item.outcome}{item.timestamp&&` · ${item.timestamp}`}</span>{item.state === 'pending' && <button disabled={snapshot.busy} onClick={() => void connectionController.rejectAction(item.id)}>Reject proposal</button>}{['executing','reconciliation_required'].includes(item.state) && <><p>After checking this phone, confirm whether this exact action happened.</p><button disabled={snapshot.busy} onClick={() => void connectionController.reconcileAction(item.id, 'applied')}>I verified it happened</button><button disabled={snapshot.busy} onClick={() => void connectionController.reconcileAction(item.id, 'not_applied')}>I verified it did not happen</button></>}</section>)}</details>;
   const conversations=snapshot.session&&<details><summary>Conversation history</summary><p>Load from this agent only. Restoring replaces the visible chat and draft; it does not run past actions.</p><button disabled={snapshot.busy} onClick={() => void connectionController.newConversation()}>New conversation</button><button disabled={snapshot.busy} onClick={() => void connectionController.listHistory()}>Load conversations</button>{snapshot.conversations.map(item => <section key={item.id} className="alpha-connection-agent"><strong>{item.title}</strong><button disabled={snapshot.busy} onClick={() => void connectionController.restoreHistory(item.id)}>Restore conversation</button></section>)}</details>;
   // The account panel Inbox opens ("Connect Eliza Cloud"). On production Android a sign-in kept on
@@ -2591,11 +2694,9 @@ export function ConnectionChooser() {
   if(snapshot.purpose==='cloud-account')return <div className="alpha-connection-scrim"><div className="alpha-connection" role="dialog" aria-modal="true" aria-labelledby="cloud-account-title" tabIndex={-1} ref={panel}>
     <header><h1 id="cloud-account-title" className="serif">{serviceName}</h1><button aria-label="Close Cloud account" disabled={snapshot.busy} onClick={()=>connectionController.close()}><span aria-hidden="true" data-alpha-icon="/icons/lucide/x.svg" style={iconStyle("x")}/></button></header>
     {accountCreatedNotice}
-    {!snapshot.cloudAccount&&<p>{savedSignInOffered?'Retry your saved connection or sign in again to use connected services such as Gmail.':'Sign in to use connected services such as Gmail.'}</p>}
-    {savedSignInOffered&&<div className="alpha-connection-actions"><button disabled={snapshot.busy} onClick={()=>void connectionController.startLocal()}>Retry saved connection</button></div>}
     {savedSignInOffered&&snapshot.residentPlanNotice==='offline'&&<p role="status">{OFFLINE_NOTICE}</p>}
     {cloudAccountControls}
-    {snapshot.message&&<p role="status">{snapshot.message}</p>}{snapshot.error&&<p role="alert" className="alpha-connection-error">{residentCloudFlow()&&savedSignInRejected?'Your saved Cloud sign-in is no longer valid.':snapshot.error}</p>}
+    {snapshot.message&&<p role="status">{snapshot.message}</p>}{snapshot.error&&<p role="alert" className="alpha-connection-error">{residentCloudFlow()&&savedSignInRejected?'Your sign-in expired. Sign in again.':snapshot.error}</p>}
     {snapshot.busy&&<button className="alpha-connection-cancel" onClick={()=>connectionController.cancel()}>Cancel</button>}
   </div></div>;
 
@@ -2614,11 +2715,11 @@ export function ConnectionChooser() {
   // A check that ended without a view (identity or transport failure) is "unavailable", never a stale gate.
   const residentPlanView=snapshot.residentSubscription;
   const residentPlanUnchecked=!residentPlanView||residentPlanView.kind==='checking';
-  const residentPlanDescribed=residentPlanUnchecked&&!snapshot.busy?{headline:'Plan status unavailable',detail:'Try again.',manage:false,manageLabel:''}:describeSubscription(residentPlanView,serviceName);
+  const residentPlanDescribed=residentPlanUnchecked&&!snapshot.busy?{headline:'Plan status unavailable',detail:'',manage:false,manageLabel:''}:describeSubscription(residentPlanView,serviceName);
   const residentPlan=residentNeedsPlan&&residentPlanView?.kind==='unavailable'&&residentPlanView.reason!=='not-published'
-    ?{...residentPlanDescribed,detail:`${serviceName} could not confirm a plan for this account right now. Check again, redeem a subscription code or choose a plan. Your data on this phone is kept.`}:residentPlanDescribed;
+    ?{...residentPlanDescribed,detail:`${serviceName} couldn’t confirm your plan.`}:residentPlanDescribed;
   const residentPlanRecheck=residentPlanUnchecked||residentPlanView.kind==='inactive'||residentPlanView.kind==='unavailable';
-  const residentAiOff=residentFirstSignIn?`Sign in to ${serviceName} to use AI. Your agent keeps running on this phone.`:snapshot.residentSavedCredential?`AI is off. Retry your saved ${serviceName} sign-in or sign in again.`:`AI is off. Sign in to ${serviceName} for AI.`;
+  const residentAiOff=residentFirstSignIn?`Sign in to ${serviceName} to use AI. Your agent keeps running on this phone.`:snapshot.residentSavedCredential?`AI is off. Sign in to ${serviceName} again to turn it on.`:`AI is off. Sign in to ${serviceName} for AI.`;
   const keyExpiresAt=snapshot.cloudAccount?.expiresAt;
   const keyExpiring=keyExpiresAt!==undefined&&keyExpiresAt-Date.now()<=CLOUD_KEY_EXPIRY_WARNING_MS;
   const day=(at:number)=>new Date(at).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'});
@@ -2628,38 +2729,37 @@ export function ConnectionChooser() {
   </form>;
   if(residentCloudFlow())return <div className="alpha-connection-scrim"><div className="alpha-connection alpha-connection-native alpha-connection-resume" role="dialog" aria-modal="true" aria-labelledby="connection-title" aria-busy={snapshot.residentStarting||undefined} tabIndex={-1} ref={panel}>
     <header><h1 id="connection-title" className="serif">{planPanel&&snapshot.cloudAccount?(residentPlanView?.kind==='credits'?`${serviceName} account`:`${serviceName} account & plan`):'Your agent'}</h1>{!residentMustSignIn&&<button aria-label="Close connection settings" disabled={snapshot.busy&&!snapshot.residentStarting} onClick={()=>connectionController.close()}>×</button>}</header>
-    <section aria-label="Agent status"><p role="status"><strong>{residentStatus}</strong>{!snapshot.session&&snapshot.kind!=='recovering'?' · Your agent runs on this device.':''}</p>
+    <section aria-label="Agent status"><p role="status"><strong>{residentStatus}</strong></p>
       {snapshot.kind==='recovering'&&!snapshot.session&&!snapshot.residentRecoveryReason&&<div className="alpha-connection-actions"><button disabled={snapshot.busy} onClick={()=>void connectionController.startLocal()}>Retry</button></div>}
       <ResidentRecoveryPanel snapshot={snapshot}/>
       {snapshot.session&&!planPanel&&!residentFirstSignIn&&<div className="alpha-connection-actions"><button disabled={snapshot.busy} onClick={()=>void connectionController.startLocal()}>Reconnect agent</button></div>}
     </section>
-    <section aria-label="AI inference"><h3>AI</h3>{!residentFirstSignIn&&<p>{snapshot.residentRecoveryReason?'AI is unavailable while your agent needs recovery.':snapshot.cloudAccount&&!residentSignInRejected?(snapshot.residentInference==='cloud'?`Your agent uses ${serviceName} for AI.`:snapshot.residentInference==='unavailable'?`AI is off. Your saved ${serviceName} sign-in is retained; check the connection below.`:'AI connection is not confirmed. Your agent still runs on this device.'):`Your agent runs with AI off until you sign in to ${serviceName}.`}</p>}
+    <section aria-label="AI inference"><h3>AI</h3>{!residentFirstSignIn&&<p>{snapshot.residentRecoveryReason?'Needs recovery':snapshot.cloudAccount&&!residentSignInRejected?(snapshot.residentInference==='cloud'?'On':snapshot.residentInference==='unavailable'?'Off':'Connecting…'):'Off'}</p>}
       {snapshot.cloudAccount&&!residentSignInRejected?<>
         {accountCreatedNotice}
-        {(planPanel||residentNeedsPlan)&&<p>{snapshot.cloudAccount.email||`Account ${snapshot.cloudAccount.userId}`}</p>}
+        {(planPanel||residentNeedsPlan)&&snapshot.cloudAccount.email&&<p>{snapshot.cloudAccount.email}</p>}
         <section aria-label={`${serviceName} plan`}><p><strong>{residentPlan.headline}</strong></p>{residentPlan.detail&&<p>{residentPlan.detail}</p>}{snapshot.planEndsAt&&!residentNeedsPlan?<p>Plan runs until {day(snapshot.planEndsAt)}.</p>:null}</section>
         {residentNeedsPlan&&<p role="status">{NEEDS_PLAN_NOTICE}</p>}
-        {keyExpiring&&<section aria-label={`${serviceName} sign-in`}><p role="status">{keyExpiresAt<=Date.now()?`Your ${serviceName} sign-in on this phone has expired.`:`Your ${serviceName} sign-in on this phone expires ${day(keyExpiresAt)}.`} Approve this phone again to keep AI available.</p><button disabled={snapshot.busy} onClick={()=>void connectionController.residentCloudLogin()}>Approve this phone again</button></section>}
+        {keyExpiring&&<section aria-label={`${serviceName} sign-in`}><p role="status">{keyExpiresAt<=Date.now()?'Sign-in expired.':`Sign-in expires ${day(keyExpiresAt)}.`}</p><div className="alpha-connection-actions"><button disabled={snapshot.busy} onClick={()=>void connectionController.residentCloudLogin()}>Sign in again</button></div></section>}
         {(residentNeedsPlan||planPanel)&&redeemForm}
         {snapshot.redeemError&&<p id="alpha-redeem-error" role="alert" className="alpha-connection-error">{snapshot.redeemError}</p>}
         {snapshot.redeemNotice&&<p role="status">{snapshot.redeemNotice}</p>}
-      </>:<p>{residentSignInRejected?(snapshot.error?`Sign in to ${serviceName} again to turn AI back on.`:'Your saved Cloud sign-in is no longer valid.'):residentAiOff}</p>}
+      </>:<p>{residentSignInRejected?(snapshot.error?`Sign in to ${serviceName} again to turn AI back on.`:'Your sign-in expired. Sign in again.'):residentAiOff}</p>}
       {residentOffline&&<p role="status">{OFFLINE_NOTICE}</p>}
-      <div className="alpha-connection-actions">
+      <div className="alpha-connection-actions alpha-connection-actions-stack">
       {snapshot.cloudAccount&&!residentSignInRejected ? <>
         {residentNeedsPlan?<button disabled={snapshot.busy} onClick={()=>void connectionController.residentManagePlan()}>{CHOOSE_PLAN_LABEL}</button>:(residentPlan.manage||planPanel)&&<button disabled={snapshot.busy} onClick={()=>void connectionController.residentManagePlan()}>{residentPlan.manageLabel||MANAGE_PLAN_LABEL}</button>}
         {!snapshot.residentRecoveryReason&&(residentPlanRecheck||residentNeedsPlan)?<button disabled={snapshot.busy} onClick={()=>void connectionController.startLocal()}>Check plan again</button>:planPanel&&<button disabled={snapshot.busy} onClick={()=>connectionController.close()}>Done</button>}
-        <button disabled={snapshot.busy} onClick={()=>void connectionController.cloudSignOut()}>Sign out</button>
+        <button className="alpha-connection-cancel" disabled={snapshot.busy} onClick={()=>void connectionController.cloudSignOut()}>Sign out</button>
       </>:<>
         {residentOffline&&!snapshot.residentRecoveryReason&&<button disabled={snapshot.busy} onClick={()=>void connectionController.startLocal()}>Try again</button>}
-        {snapshot.residentSavedCredential&&!residentSignInRejected&&!residentOffline&&!snapshot.residentRecoveryReason&&<button disabled={snapshot.busy} onClick={()=>void connectionController.startLocal()}>Retry saved connection</button>}
-        {!residentOffline&&<button disabled={snapshot.busy} onClick={()=>void connectionController.residentCloudLogin()}>Sign in with {serviceName}</button>}
+        {!residentOffline&&<button disabled={snapshot.busy} onClick={()=>void connectionController.residentCloudLogin()}>Sign in</button>}
       </>}
       </div>
     </section>
     {snapshot.replyNotice&&<p role="status">{snapshot.replyNotice}</p>}
     {snapshot.message&&<p role="status">{snapshot.message}</p>}
-    {snapshot.error&&<p role="alert">{snapshot.error===errorMessage({status:401})?'Your saved Cloud sign-in is no longer valid.':snapshot.error}</p>}
+    {snapshot.error&&<p role="alert">{snapshot.error===errorMessage({status:401})?'Your sign-in expired. Sign in again.':snapshot.error}</p>}
     {snapshot.historyError&&<><p role="status">{snapshot.historyError}</p><button disabled={snapshot.busy} onClick={()=>void connectionController.retrySavedHistory()}>Retry saved conversation</button></>}
     {!residentFirstSignIn&&conversations}
     {!residentFirstSignIn&&actionReview}
@@ -2749,7 +2849,7 @@ function ResidentRecoveryPanel({snapshot}:{snapshot:ConnectionSnapshot}) {
         </>:<>
           {snapshot.residentRecovery?.step==='unavailable'&&<p role="status">Recovery could not be checked. Your records were kept. Review again later.</p>}
           {snapshot.residentRecovery?.step==='partial'&&<p role="status">Recovery did not finish. Your records were kept. Review again before restarting.</p>}
-          <button disabled={snapshot.busy} onClick={()=>void connectionController.reviewRecovery()}>Review recovery</button>
+          <div className="alpha-connection-actions"><button className="alpha-connection-cancel" disabled={snapshot.busy} onClick={()=>void connectionController.reviewRecovery()}>Review recovery</button></div>
         </>}
       </section>;
 }

@@ -2,8 +2,9 @@ import {Capacitor, type PluginListenerHandle} from '@capacitor/core';
 import React, {useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore} from 'react';
 import {registerPlugin} from './platform-plugins';
 import {connectionController} from './runtime/connection-ui';
+import {cloudServiceName} from './runtime/cloud-protocol';
 import {googleConnectionController} from './runtime/google-connection-ui';
-import {readStartupPermissionMemory,writeStartupPermissionMemory,startupPhotoAccess,startupLocationAccess,STARTUP_PERMISSIONS_REOPEN} from './startup-permission-flow';
+import {readStartupPermissionMemory,writeStartupPermissionMemory,startupPhotoAccess,startupLocationAccess,startupPlanNotice,STARTUP_PERMISSIONS_REOPEN} from './startup-permission-flow';
 import {iconStyle} from './icon-style';
 import {browserStartupPermission} from './startup-browser-permissions';
 import {createStartupPermissionFlow, startupPermissionKeys, nativeStartupPermissionKeys, type NativeStartupPermissionKey as PermissionKey, type StartupPermissionState} from './startup-permission-flow';
@@ -68,9 +69,9 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
       microphone: {status: async () => permissionAccess((await microphone.checkPermissions()).microphone), request: () => microphone.requestPermissions({permissions: ['microphone']}), openSettings: () => device.openSettings({page: 'privacy'})},
       // Shared ElizaCamera requests all aliases. The product DailyApps alias requests CAMERA only.
       camera: {status: async () => permissionAccess((await permissions.checkPermissions()).camera), request: () => permissions.requestPermissions({permissions: ['camera']}), openSettings: () => device.openSettings({page: 'privacy'})},
-      photos: {status: async () => {const access=startupPhotoAccess(await photos.scope());photoDescription.current=access.description;return access;},request: () => photos.requestAccess(),openSettings: () => device.openSettings({page:'privacy'})},
+      photos: {status: async () => {const access=startupPhotoAccess(await photos.scope());photoDescription.current=access.limited?access.description:'';return access;},request: () => photos.requestAccess(),openSettings: () => device.openSettings({page:'privacy'})},
       calendar: {status: async () => permissionAccess((await calendar.checkPermissions()).calendar), request: () => calendar.requestAccess(), openSettings: () => device.openSettings({page: 'privacy'})},
-      location: {status: async () => {const raw=await location.checkPermissions();const access=startupLocationAccess(raw);locationDescription.current=access.description;return {...access,requestable:raw.location!=='denied'};}, request: () => location.requestPermissions(), openSettings: () => device.openSettings({page: 'privacy'})},
+      location: {status: async () => {const raw=await location.checkPermissions();const access=startupLocationAccess(raw);locationDescription.current=access.limited?access.description:'';return {...access,requestable:raw.location!=='denied'};}, request: () => location.requestPermissions(), openSettings: () => device.openSettings({page: 'privacy'})},
     } as const;
     return Object.fromEntries(keys.map(key => [key, createStartupPermissionFlow(native ? nativeBridges[key] : browserStartupPermission(key as typeof startupPermissionKeys[number], {permissions: navigator.permissions, media: navigator.mediaDevices, geolocation: navigator.geolocation, notifications: typeof Notification === 'undefined' ? undefined : Notification}), {key: native ? key : 'browser'+key})])) as Record<PermissionKey, ReturnType<typeof createStartupPermissionFlow>>;
   });
@@ -201,9 +202,8 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
   if (!visible) return null;
   if(ready)return <dialog ref={dialog} className="alpha-startup-permissions" aria-label="You’re all set" onCancel={event=>event.preventDefault()}><div className="alpha-permission-content">
     <span className="alpha-permission-icon" aria-hidden="true"><span style={iconStyle('check')}/></span><h2 className="serif" tabIndex={-1}>You’re all set</h2>
-    {connection.residentInference&&connection.residentInference!=='cloud'&&<p role="status" className="alpha-permission-status">{connection.residentPlanNotice==='needs-plan'?'AI needs an active Cloud plan. Manage it in Settings.':'AI is not ready yet. Check your connection in Settings.'}</p>}
+    {connection.residentInference&&connection.residentInference!=='cloud'&&<p role="status" className="alpha-permission-status">{connection.residentPlanNotice==='needs-plan'?startupPlanNotice(cloudServiceName(connection.cloudAccount?.environment??'production')):connection.residentPlanNotice==='offline'?'AI is unavailable right now. Trying again automatically.':'AI is still connecting.'}</p>}
     {connection.error&&<p role="alert" className="alpha-permission-status">{connection.error}</p>}
-    {connection.message?.includes('did not confirm revoking')&&<p role="status" className="alpha-permission-status">{connection.message}</p>}
     {connection.accountCreated&&<p role="status" className="alpha-permission-status">Account created.</p>}
     {progressError&&<p role="alert" className="alpha-permission-status">Setup progress could not be saved. Try again.</p>}
     <div className="alpha-permission-actions"><button type="button" className="alpha-permission-primary" disabled={busy} onClick={()=>void finish()}>{busy?'Checking…':'Go to Alpha'}</button></div>
@@ -214,9 +214,9 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
     <div className="alpha-permission-content" key={key}>
       <span className="alpha-permission-icon" aria-hidden="true"><span style={iconStyle(info.icon)}/></span>
       <h2 id="alpha-permission-title" className="serif" tabIndex={-1}>{info.title}</h2>
-      {state === 'ready' && native && (key === 'location' || key === 'photos') && <p className="alpha-permission-status" role="status">{key === 'location' ? locationDescription.current : photoDescription.current}</p>}
-      {state === 'settings' && <p className="alpha-permission-status" role="status">{native ? 'Access is off. Open Android settings.' : 'Allow access in your browser’s site settings.'}</p>}
-      {state === 'unavailable' && <p className="alpha-permission-status" role="status">Access could not be confirmed. {native ? 'Check Android app settings.' : 'Check your browser’s site settings.'}</p>}
+      {state === 'ready' && native && (key === 'location' ? locationDescription.current : key === 'photos' ? photoDescription.current : '') && <p className="alpha-permission-status" role="status">{key === 'location' ? locationDescription.current : photoDescription.current}</p>}
+      {state === 'settings' && <p className="alpha-permission-status" role="status">{native ? 'Access is off.' : 'Allow access in your browser’s site settings.'}</p>}
+      {state === 'unavailable' && <p className="alpha-permission-status" role="status">Couldn’t check access.</p>}
       {progressError && <p className="alpha-permission-status" role="alert">Setup progress could not be saved. Try again.</p>}
       {/* Nubs removed Skip from full onboarding; the previous optional flow remains in Git. */}
       <div className="alpha-permission-actions"><button className="alpha-permission-primary" type="button" disabled={busy || state === 'checking'} onClick={() => void allow()}>{state === 'checking' ? 'Checking…' : primary}</button>{target && !( !native && state === 'ready') && <button className="alpha-permission-skip" type="button" disabled={busy} onClick={() => advance('continued')}>Done</button>}</div>

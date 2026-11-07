@@ -13,7 +13,7 @@ import { MapPlane } from '../maps/map-plane';
 import type {MapBasemap} from '../../../../.eliza/client-features/plugins/plugin-maps/src/client/map-plane.ts';
 import { globalBasemap } from '../maps/basemap';
 import { initializeRegionalMaps, regionalMap, regionalDiagnostics, regionalMapsConfigured } from '../maps/regional-provider';
-import { initializeCloudMaps, cloudMapsCoverage, cloudMapsDiagnostics } from '../maps/cloud-maps';
+import { initializeCloudMaps, cloudMapsConnecting, cloudMapsCoverage, cloudMapsDiagnostics } from '../maps/cloud-maps';
 import { insideCloudCoverage } from '../maps/cloud-provider';
 import { NativeMapsLocation, locationPermissionGranted, type Position } from '../maps/native-location';
 import { bindAgentNavigation, residentMapsNavigationPort } from '../maps/agent-navigation';
@@ -22,7 +22,8 @@ import { publishMapsSelection, clearMapsSelection } from '../maps/agent-context'
 import { MapsController, type MapsState } from '../maps/state';
 import { mapsConnection, onMapsConnectionChange } from '../maps/runtime';
 import { connectionController } from '../runtime/connection-ui';
-import { coordinate, failure, MapsFailure, type Coordinate, type Place, type TravelMode } from '../maps/contracts';
+import { coordinate, failure, MapsFailure, type Coordinate, type Place, type Route, type TravelMode } from '../maps/contracts';
+import { readDevicePreferences } from '../browser/device-preferences';
 import type { SavedPlace } from '../maps/saved-places';
 
 type Bag = Record<string, any>;
@@ -32,8 +33,23 @@ const coordLabel = (point: Coordinate) => `${point.latitude.toFixed(5)}, ${point
 // Product builds use Eliza Cloud Maps; the regional gateway is a test-mocks prototype.
 const initializeMaps = () => regionalMapsConfigured ? initializeRegionalMaps() : initializeCloudMaps();
 const mapsDiagnostics = () => regionalMapsConfigured ? regionalDiagnostics() : cloudMapsDiagnostics();
+/** The readable reason Maps is not connected (Cloud only; the regional gateway is development-only). */
+const mapsFailureText = () => { const value = mapsDiagnostics(); return 'message' in value ? value.message : ''; };
+/** Cloud Maps needs a Cloud sign-in; nothing connects (or is "connecting") without one. */
+const signedOut = () => !regionalMapsConfigured && !connectionController.getCloudClient();
+/** Why Maps has no provider: signed out, the last connection failure, or still connecting. */
+const providerFailureText = () => signedOut() ? 'Sign in to use Maps.' : mapsFailureText() || 'Connecting Maps…';
 const mapsAttribution = () => regionalMap()?.attribution || cloudMapsCoverage()?.attribution || '';
 const mapsConnected = () => mapsConnection().config.status === 'configured';
+/** The origin text once the device's own fix is the starting point; coordinates are never shown or typed. */
+const YOUR_LOCATION = 'Your location';
+const REROUTE_KEPT = 'Couldn’t get a new route. Keeping the current route and trying again.';
+const OFF_ROUTE = 'Off route. Reroute from here, or end navigation.';
+/** After a failed reroute the phone tries again from its latest precise fix, less often each time. */
+const REROUTE_RETRY_MS = [10_000, 20_000, 40_000, 60_000];
+/** Shared-controller failures that name a provider become the screen's one-line wording. */
+const shownFailure = (text: string) => /support that route mode/i.test(text) ? 'This travel mode isn’t available here.'
+  : /choose an actual origin/i.test(text) ? 'Choose a starting point.' : /provider/i.test(text) ? 'Maps is unavailable right now.' : text;
 
 /** Exact prototype chrome with honest no-provider state and real local/native flows. */
 export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views: Record<string, Bag>): () => void {
@@ -45,21 +61,28 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
   let planeBasemap:MapBasemap|undefined;
   let plane: MapPlane | undefined, planeElement: HTMLElement | undefined, initialized=false, directions=false, originText='', navigating=false, navDistance=0, arrived=false;
   // Origin picking reuses the results sheet; navigation state is per explicit Start.
+  // The starting point the user typed or chose; a late GPS fix never replaces it.
+  let chosenOrigin: {coordinate: Coordinate; label?: string} | undefined;
   let originMode=false, navStep=0, navFix: Position | undefined, navRouteId='', follow=true, offRoute=false, rerouting=false, navSession=0, backgroundRunning=false, rerouteCleared=false;
+  // The route being followed. The shared controller clears its route while a reroute is planned
+  // and keeps an error when one fails; guidance follows this one until a new route replaces it.
+  let navRoute: Route | undefined, rerouteTimer: ReturnType<typeof setTimeout> | undefined, rerouteAttempts=0;
   const navigationLocation=new NativeMapsLocation();
   const background=new BackgroundNavigation(registerPlugin<NavigationBridge>('AlphaMapsTransport'),()=>Capacitor.isNativePlatform());
   let mapGeneration=0,mapFailed=false,mapObserver:MutationObserver|undefined;
   let query = '', searching = false, message = '', disposed = false, revision = 0, locating = false;
   const lifecycle={releases:0,hidden:0,permissionHeld:0,providerActivations:0,lastRelease:'',backgroundNavigation:0,backgroundStops:0};
   let initialization: Promise<void> | undefined, searchIntent = 0;
-  const navigationVoice=new NavigationVoice(error=>{message=(error instanceof Error?error.message+' ':'')+'Voice guidance paused. Tap Enable voice guidance to retry.';invalidate();});
+  const navigationVoice=new NavigationVoice(()=>{message='Voice guidance paused.';invalidate();});
   const searchIdentity = {};
   /** Ends guidance, its location watch and any screen-off session, once per Start. */
   // The agent's navigation requests (device-navigation.ts) are cancelled whenever Maps is released.
   const releaseListeners=new Set<()=>void>();
   const agentLocation=new NativeMapsLocation();
+  function clearRerouteRetry(){if(rerouteTimer!==undefined)clearTimeout(rerouteTimer);rerouteTimer=undefined;}
   function stopGuidance(){
-    navigationVoice.pause();navigating=false;rerouting=false;offRoute=false;navFix=undefined;navRouteId='';backgroundRunning=false;++navSession;
+    navigationVoice.pause();navigating=false;rerouting=false;offRoute=false;navFix=undefined;navRouteId='';navRoute=undefined;backgroundRunning=false;++navSession;
+    clearRerouteRetry();rerouteAttempts=0;
     void background.stop();
     return navigationLocation.stop();
   }
@@ -111,7 +134,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     if (selectionChanged && selected) {
       let identity = identities.get(selected);
       if (!identity) { identity = {}; identities.set(selected, identity); }
-      const route = (directions || navigating) && state?.route.phase === 'ready' ? state.route.value : null;
+      const route = navigating ? navRoute ?? null : directions && state?.route.phase === 'ready' ? state.route.value : null;
       const selection = selected, provider = state?.provider;
       const read = provider?.status === 'configured' ? () => {
         if (route && route.mode !== 'transit') return { kind: 'map-route' as const, providerId: provider.providerId, providerRevision: provider.revision, attribution: route.attribution, from: route.from, to: route.to, mode: route.mode, distanceMeters: route.distanceMeters, durationSeconds: route.durationSeconds, traffic: route.traffic };
@@ -126,7 +149,11 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     queueMicrotask(() => { if (!disposed && token === revision && api?.isActive()) api.set({ nativeMapsRevision: token }); });
   };
   function ensure() {
-    if (!initialized) { initialized=true; initialization=initializeMaps().finally(()=>{initialization=undefined;invalidate();}); }
+    // Cloud Maps usually connected at launch; connect here only if it has not, or failed. A launch
+    // connection still in flight is awaited instead, so the first search runs once it is ready.
+    if (!initialized) { initialized=true; const state=mapsDiagnostics(),connecting=regionalMapsConfigured?undefined:cloudMapsConnecting();
+      if(connecting)initialization=connecting.finally(()=>{initialization=undefined;invalidate();});
+      else if(!signedOut()&&(regionalMapsConfigured||!state.configured||state.error))initialization=initializeMaps().finally(()=>{initialization=undefined;invalidate();}); }
     if (controller) return controller;
     const connection = mapsConnection(); controller = new MapsController(connection.config, connection.provider);
     unsubscribe = controller.subscribe(next => {
@@ -134,18 +161,27 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
         // An explicit reroute keeps the session; the new route replaces the old one.
         // Only a route planned after the reroute request replaced the old one is accepted.
         if(next.route.phase!=='ready'&&next.route.phase!=='error')rerouteCleared=true;
-        else if(next.route.phase==='ready'&&next.route.value&&rerouteCleared){rerouting=false;navStep=0;navRouteId=next.route.value.id;navigationVoice.pause();message='New route ready.';}
-        else if(next.route.phase==='error'){void stopGuidance().catch(()=>{});}
+        else if(next.route.phase==='ready'&&next.route.value&&rerouteCleared){rerouting=false;navStep=0;navRoute=next.route.value;navRouteId=navRoute.id;clearRerouteRetry();rerouteAttempts=0;navigationVoice.pause();message='New route ready.';}
+        // A failed reroute keeps the route being followed and tries again shortly.
+        else if(next.route.phase==='error'&&rerouteCleared){rerouting=false;message=REROUTE_KEPT;scheduleRerouteRetry();}
       }
-      else if(navigating&&(next.route.phase!=='ready'||next.route.value?.id!==navRouteId)){void stopGuidance().catch(()=>{});}
+      // Only a different ready route planned outside a reroute replaces the session; an idle,
+      // loading or failed controller route leaves guidance on the route it follows.
+      else if(navigating&&next.route.phase==='ready'&&next.route.value&&next.route.value.id!==navRouteId){void stopGuidance().catch(()=>{});}
+      // A fix that arrives after the user typed or chose a starting point: the shared controller has
+      // already made it the origin, so the user's own starting point is put back.
+      const late=!locating&&directions&&!navigating&&next.position.phase==='ready'&&!!next.position.value&&state?.position.phase!=='ready'&&originText!==YOUR_LOCATION;
       state = next;
+      if(late){const chosen=chosenOrigin;queueMicrotask(()=>{
+        if(disposed||!controller||!directions||locating||navigating||originText===YOUR_LOCATION||chosenOrigin!==chosen)return;
+        if(chosen){controller.setOrigin(chosen.coordinate,chosen.label);void controller.planRoute();}else controller.clearOrigin();});}
       if (locating && next.position.phase === 'ready' && next.position.value) {
         const position = next.position.value; locating = false;
         if (!directions) selected = { label: 'Current location', coordinate: position.coordinate, origin: 'location' };
-        else { originText=coordLabel(position.coordinate); void controller?.planRoute(); }
+        else { originText=YOUR_LOCATION; void controller?.planRoute(); }
         searching = false;
-        message = `${position.precision === 'approximate' ? 'Approximate location' : 'Location fix'} · accuracy ±${Math.ceil(position.accuracyMeters)} m`;
-      } else if (locating && next.position.phase === 'error') { locating = false; message = next.position.error?.message || 'Location unavailable.'; }
+        message = position.precision === 'approximate' ? 'Approximate location' : '';
+      } else if (locating && next.position.phase === 'error') { locating = false; message = directions ? 'Choose a starting point.' : next.position.error?.message || 'Location unavailable.'; }
       invalidate();
     });
     return controller;
@@ -157,7 +193,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
   function release(cancelIntent=true) {
     sharing?.abort.abort();sharing=undefined;navigationVoice.pause();
     for(const listener of [...releaseListeners])listener();void agentLocation.stop().catch(()=>{});
-    lifecycle.releases++;lifecycle.lastRelease=cancelIntent?'leave-or-background':'provider-switch';message='';
+    lifecycle.releases++;lifecycle.lastRelease=cancelIntent?'leave-or-background':'provider-switch';message='';chosenOrigin=undefined;
     if(cancelIntent){++searchIntent;discardHandoff();eventQuery='';mapsApp=undefined;}
     ++mapGeneration;mapObserver?.disconnect();mapObserver=undefined;mapFailed=false;    plane?.destroy(); plane=undefined; planeElement=undefined;planeBasemap=undefined; directions=false; originMode=false; void stopGuidance().catch(()=>{});
     clearMapsSelection(); ++revision; locating = false; unsubscribe?.(); unsubscribe = undefined;
@@ -173,14 +209,67 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
   /** "Reroute from here": replans the active session from a device coordinate; the session is kept. */
   function rerouteFrom(from: Coordinate): Promise<void>|undefined {
     if(!navigating||rerouting)return undefined;
-    if(!usableNavigationFix(navFix)){message='A fresh, precise location fix is needed to reroute. The current route was kept.';navigationVoice.pause();invalidate();return undefined;}
-    rerouting=true;rerouteCleared=false;offRoute=false;navigationVoice.pause();originText=coordLabel(from);message='Planning a new route from here…';
+    if(!usableNavigationFix(navFix)){message='Finding your location to reroute… Your current route is kept.';navigationVoice.pause();invalidate();return undefined;}
+    clearRerouteRetry();
+    rerouting=true;rerouteCleared=false;offRoute=false;navigationVoice.pause();originText=YOUR_LOCATION;message='Planning a new route from here…';
     const pending=ensure().reroute(from);invalidate();return pending;
+  }
+  /** Tries the failed reroute again while still navigating off the followed route with a precise fix. */
+  function scheduleRerouteRetry(){
+    clearRerouteRetry();if(!navigating||arrived)return;
+    const delay=REROUTE_RETRY_MS[Math.min(rerouteAttempts++,REROUTE_RETRY_MS.length-1)];
+    rerouteTimer=setTimeout(()=>{
+      rerouteTimer=undefined;
+      if(disposed||!navigating||rerouting||arrived||!navRoute)return;
+      const fix=navFix&&usableNavigationFix(navFix)?navFix:undefined;
+      if(fix&&distanceToRoute(fix.coordinate,navRoute.geometry)<=Math.max(75,fix.accuracyMeters*2)){rerouteAttempts=0;if(message===REROUTE_KEPT)message='';invalidate();return;}
+      if(fix)void rerouteFrom(fix.coordinate);else scheduleRerouteRetry();
+    },delay);
+  }
+  const distance=(a:Coordinate,b:Coordinate)=>{const r=Math.PI/180,dlat=(a.latitude-b.latitude)*r,dlon=(a.longitude-b.longitude)*r;return 6371000*2*Math.asin(Math.min(1,Math.sqrt(Math.sin(dlat/2)**2+Math.cos(a.latitude*r)*Math.cos(b.latitude*r)*Math.sin(dlon/2)**2)));};
+  /** The screen's End. */
+  function endGuidance(){void stopGuidance().catch(error=>{message=failure(error).message;invalidate();});invalidate();}
+  /** One location update during guidance, measured against the route being followed. */
+  function onNavFix(fix:Position){
+    if(!navigating)return;
+    const current=navRoute;
+    if(!usableNavigationFix(fix)){navFix=undefined;navigationVoice.pause();message='Finding your location…';invalidate();return;}
+    if(rerouting||!current){navFix=fix;invalidate();return;}
+    navFix=fix;navDistance=distance(fix.coordinate,current.to);arrived=navDistance<25&&fix.accuracyMeters<=30;
+    if(arrived){navigationVoice.pause();clearRerouteRetry();message='Destination reached.';offRoute=false;void navigationLocation.stop();void background.stop();backgroundRunning=false;}
+    else{
+      const nearest=distanceToRoute(fix.coordinate,current.geometry);offRoute=nearest>Math.max(75,fix.accuracyMeters*2);
+      // As before, a maneuver is passed once a fix comes within 40 m of it.
+      while(navStep<current.steps.length-1&&distance(fix.coordinate,current.steps[navStep].coordinate)<40)navStep++;
+      const reading=atStep(routeProgress(fix.coordinate,current),current.steps,navStep),view=guidanceView(reading,undefined,current.traffic),next=reading.next;
+      // A retry after a failed reroute keeps its notice until the next attempt.
+      message=offRoute?(rerouteTimer!==undefined?REROUTE_KEPT:OFF_ROUTE):'';
+      if(offRoute){navigationVoice.pause();background.update('Off route','Open Maps to reroute from here or stop.');}
+      else{if(next)navigationVoice.update(current.id+':'+next.index,view.spoken);background.update(view.notificationTitle,view.notificationText);}
+    }
+    invalidate();
+  }
+  /** The screen's Start for the route it shows (also the agent's, when allowed). False without a ready route. */
+  function startGuidance():boolean{
+    const route=state?.route.phase==='ready'?state.route.value:null,target=selected;
+    if(navigating||!directions||!route||!target)return false;
+    navigationVoice.pause();arrived=false;navigating=true;follow=true;navStep=0;offRoute=false;rerouting=false;navFix=undefined;navRoute=route;navRouteId=route.id;backgroundRunning=false;clearRerouteRetry();rerouteAttempts=0;
+    const session=++navSession;message='Finding your location…';
+    // Screen-off continuation only where the native session is available; the
+    // notification's Stop ends this exact session once.
+    void background.start(`Route to ${target.label}`,'Waiting for location',reason=>{if(session!==navSession||!navigating)return;lifecycle.backgroundStops++;
+      // Only the notification's Stop is the user ending navigation. A refused or system-ended
+      // service drops back to foreground-only guidance, which a hidden page then releases.
+      if(reason==='notification'){message='Navigation stopped from the notification.';endGuidance();return;}
+      backgroundRunning=false;message='Keep the screen on for guidance.';if(document.hidden)release();else invalidate();}).then(running=>{if(session!==navSession||!navigating){if(running)void background.stop();return;}backgroundRunning=running;invalidate();});
+    void navigationLocation.start(false,onNavFix,error=>{if(session!==navSession)return;message=failure(error).message;void stopGuidance().catch(()=>{});invalidate();});invalidate();
+    return true;
   }
   let pinTap: (id: string) => void = () => {};
   /** A chosen origin (saved or regional place) replaces the typed text and replans. */
   function chooseOrigin(candidate: Place | SavedPlace) {
-    originMode=false;originText='label' in candidate?candidate.label:candidate.name;message='';
+    originMode=false;locating=false;originText='label' in candidate?candidate.label:candidate.name;message='';
+    chosenOrigin={coordinate:candidate.coordinate,label:originText};
     void ensure().chooseOrigin(candidate);invalidate();
   }
   /** Opens a provider website only on an explicit tap, in the system browser surface. */
@@ -194,6 +283,8 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
   function submit() {
     discardHandoff();
     const intent=++searchIntent;
+    // A search the owner typed replaces a pending "Add location": a late fix must not take its place.
+    locating = false;
     selected = undefined; searching = true; message = '';
     const match = query.trim().match(/^([+-]?\d+(?:\.\d+)?)\s*,\s*([+-]?\d+(?:\.\d+)?)$/);
     if (match) {
@@ -206,7 +297,10 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     const requestedQuery=query;
     void (async()=>{
       ensure();
-      if(!initialization&&mapsDiagnostics().configured&&mapsDiagnostics().error){
+      // A connection already in flight (for example after an account change) is awaited first.
+      const connecting=!initialization&&!regionalMapsConfigured?cloudMapsConnecting():undefined;
+      if(connecting)initialization=connecting.finally(()=>{initialization=undefined;invalidate();});
+      if(!initialization&&!signedOut()&&mapsDiagnostics().configured&&mapsDiagnostics().error){
         message='Connecting Maps…';invalidate();
         initialization=initializeMaps().finally(()=>{initialization=undefined;invalidate();});
       }
@@ -215,13 +309,13 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       message='';void ensure().search(requestedQuery);
     })();
   }
-  function locate() { if(disposed||locating||document.hidden||!api?.isActive())return;discardHandoff();message = ''; locating = true; if(!directions)selected = undefined; searching = false; void ensure().locate(); invalidate(); }
+  function locate() { if(disposed||locating||document.hidden||!api?.isActive())return;discardHandoff();message = ''; locating = true; chosenOrigin = undefined; if(!directions)selected = undefined; searching = false; void ensure().locate(); invalidate(); }
   function save() {
     if (!selected) return;
     try {
       const existing = state?.saved.value.find(item => item.id === selected?.savedId || (!!selected?.providerId && item.providerId === selected.providerId && item.providerPlaceId === selected.providerPlaceId));
-      if (existing) { ensure().removeSaved(existing.id); selected.savedId = undefined; message = 'Place removed from saved.'; }
-      else { const saved = ensure().save({ label: selected.label, coordinate: selected.coordinate, providerId: selected.providerId, providerPlaceId: selected.providerPlaceId }); selected.savedId = saved.id; message = 'Place saved on this device.'; }
+      if (existing) { ensure().removeSaved(existing.id); selected.savedId = undefined; message = 'Removed from saved.'; }
+      else { const saved = ensure().save({ label: selected.label, coordinate: selected.coordinate, providerId: selected.providerId, providerPlaceId: selected.providerPlaceId }); selected.savedId = saved.id; message = 'Saved.'; }
     } catch (error) { message = failure(error).message; }
     invalidate();
   }
@@ -233,7 +327,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     } return false; };
   module.back = back; module.onLeave = () => release(); module.ongoing = () => null;
   module.reply = () => null;
-  module.suggestions = () => mapsConnected() ? ['Help me with this place', 'Explain Maps coverage'] : ['Help me choose a Maps provider', 'Explain location permissions'];
+  module.suggestions = () => mapsConnected() ? ['Help me with this place', 'Directions home'] : ['Find coffee near me', 'Directions home'];
   module.render = (st: Bag, currentApi: Bag) => {
     api = currentApi; ensure();
     // Cross-app navigation carries a one-use search, not a selected destination.
@@ -252,7 +346,9 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     const data = original.render({ ...st, query: null, place: null, directions: null, nav: false, saved: [], pan: null }, currentApi);
     const snapshot = state!, saved = snapshot.saved.value;
     const choosingOrigin = originMode && directions && !navigating && !!selected;
-    const error = snapshot.saved.error || snapshot.position.error || (choosingOrigin ? snapshot.originSearch.error : snapshot.search.error) || snapshot.route.error;
+    // While navigating, a failed reroute's error is not the route being followed; its notice is the message.
+    const routeError = navigating ? null : snapshot.route.error;
+    const error = snapshot.saved.error || snapshot.position.error || (choosingOrigin ? snapshot.originSearch.error : snapshot.search.error) || routeError;
     const pending = locating || (choosingOrigin ? snapshot.originSearch.phase === 'loading' : snapshot.search.phase === 'loading');
     const unconfigured = snapshot.provider.status === 'unconfigured';
     const region=regionalMap(),cloud=region?undefined:cloudMapsCoverage(),diagnostic=mapsDiagnostics(),basemap=region||globalBasemap,globalMap=!region;
@@ -260,8 +356,10 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     const outsideCoverage=!!point&&(region?(point.longitude<region.bounds[0]||point.latitude<region.bounds[1]||point.longitude>region.bounds[2]||point.latitude>region.bounds[3]):!!cloud&&!insideCloudCoverage(cloud,point));
     const locationState=locating?'loading':snapshot.position.phase==='ready'||!!selected?'ready':snapshot.position.error?.code==='permission-denied'?'denied':snapshot.position.phase==='error'?'unavailable':'not-set';
     const mapState=mapFailed?'error':region&&outsideCoverage?'outside-coverage':planeElement?.dataset.mapReady==='true'?'ready':'loading';
-    const mapStatus=mapFailed?'Map rendering is unavailable. Retry the map, or use coordinates and saved places.':outsideCoverage?`This location is outside ${coverageName} ${region?'map':'search and route'} coverage. Its coordinates are retained.`:mapState==='loading'?'Loading map…':globalMap?(locationState==='ready'?'Location added':'Add a location'):region?.region||'Connected Maps';
-    const status=(choosingOrigin && !snapshot.originSearch.error && snapshot.originSearch.phase !== 'loading' ? message : '')||snapshot.route.error?.message||message||error?.message||(pending?'Finding location…':mapStatus);
+    const mapStatus=mapFailed?'The map couldn’t load.':outsideCoverage?'Maps doesn’t cover this area yet.':mapState==='loading'?'Loading map…':globalMap?(locationState==='ready'?'Location added':'Add a location'):region?.region||'Maps';
+    // There is no Maps provider for the owner to choose: an unconfigured provider shows why Cloud Maps is not connected.
+    const providerText=(text:string)=>/Maps provider/.test(text)?providerFailureText():text;
+    const status=shownFailure(providerText((choosingOrigin && !snapshot.originSearch.error && snapshot.originSearch.phase !== 'loading' ? message : '')||routeError?.message||message||error?.message||(pending?'Finding location…':mapStatus)));
     const isPlace = !!selected && !directions && !navigating;
     const isResults = (searching && !isPlace && !directions && !navigating) || choosingOrigin;
     const isDir = directions && !navigating && !choosingOrigin;
@@ -275,17 +373,18 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     Object.assign(data, {
       rootRef:(element:HTMLElement)=>{if(element)element.dataset.mapDiagnostics=JSON.stringify({...mapsDiagnostics(),agentNavigation:{offered:agentNavigation.registered(),relay:residentMapsNavigationPort.relay},lifecycle:{...lifecycle,locating,permissionPending:controller?.awaitingLocationPermission()||navigationLocation.awaitingPermission(),position:state?.position.phase}});},
       notNative:false, hasNativeMap:true,globalBasemap:globalMap,regionalBasemap:!globalMap,mapLabel:globalMap?'World map':'Regional map',mapAttribution:globalMap?globalBasemap.attribution:mapsAttribution(),attributionBottom:directions?310:isPlace?410:130,
-      mapRef:(element:HTMLElement)=>{if(element&&basemap){if((element!==planeElement||planeBasemap!==basemap)&&!mapFailed){mapObserver?.disconnect();plane?.destroy();planeElement=element;planeBasemap=basemap;const generation=++mapGeneration;delete element.dataset.mapReady;delete element.dataset.mapError;try{plane=new MapPlane(element,basemap,()=>{if(generation!==mapGeneration||planeElement!==element||disposed||!api?.isActive())return;mapFailed=true;invalidate(false);},data.C,id=>pinTap(id));mapObserver=new MutationObserver(()=>{if(generation===mapGeneration&&planeElement===element&&!disposed&&api?.isActive())invalidate(false);});mapObserver.observe(element,{attributes:true,attributeFilter:['data-map-ready']});}catch{mapFailed=true;element.replaceChildren();queueMicrotask(()=>{if(generation===mapGeneration&&planeElement===element&&!disposed&&api?.isActive())invalidate(false);});}}pinTap=onPin;plane?.update(region&&outsideCoverage?undefined:selected?.coordinate,snapshot.route.value,overlay);}},
-      native: true, nativeStatusVisible:!isPlace||!!(mapFailed||outsideCoverage||snapshot.route.error||error||message), nativeStatus: status, nativeStatusTop: directions?232:isPlace ? 128 : searching ? 130 : 174,
+      mapRef:(element:HTMLElement)=>{if(element&&basemap){if((element!==planeElement||planeBasemap!==basemap)&&!mapFailed){mapObserver?.disconnect();plane?.destroy();planeElement=element;planeBasemap=basemap;const generation=++mapGeneration;delete element.dataset.mapReady;delete element.dataset.mapError;try{plane=new MapPlane(element,basemap,()=>{if(generation!==mapGeneration||planeElement!==element||disposed||!api?.isActive())return;mapFailed=true;invalidate(false);},data.C,id=>pinTap(id));mapObserver=new MutationObserver(()=>{if(generation===mapGeneration&&planeElement===element&&!disposed&&api?.isActive())invalidate(false);});mapObserver.observe(element,{attributes:true,attributeFilter:['data-map-ready']});}catch{mapFailed=true;element.replaceChildren();queueMicrotask(()=>{if(generation===mapGeneration&&planeElement===element&&!disposed&&api?.isActive())invalidate(false);});}}pinTap=onPin;plane?.update(region&&outsideCoverage?undefined:selected?.coordinate,navigating&&navRoute?navRoute:snapshot.route.value,overlay);}},
+      // Guidance shows no status line of its own; only a notice (off route, a kept route, an error) appears.
+      native: true, nativeStatusVisible:navigating?!!status&&status!==mapStatus:!isPlace||!!(mapFailed||outsideCoverage||routeError||error||message), nativeStatus: status, nativeStatusTop: directions?232:isPlace ? 128 : searching ? 130 : 174,
       nativeSavedEmpty: !saved.length, nativeLocationBusy: locating, nativeLocation: locate,
       nativeLocationState:locationState,nativeMapState:mapState,nativeMapStatus:status===mapStatus?'':mapStatus,
       nativeLocationLabel:locating?'Finding location…':locationState==='ready'?'Use current location':'Add location',
       nativeLocationDenied:locationState==='denied',nativeStatusControls:!searching&&!directions&&!navigating,
-      nativeLocationHelp:locationState==='denied'?(isAndroid?'Allow location in app settings, or enter coordinates.':'Allow location in browser site settings, or enter coordinates.'):'Location access does not share it with your agent.',
-      nativeLocationSettings:()=>{if(disposed||document.hidden||!currentApi.isActive())return;void device.openSettings({page:'privacy'}).catch(()=>{if(!disposed&&currentApi.isActive()){message='Location settings could not be opened. Check device or browser permissions, or enter coordinates.';invalidate();}});},
-      nativeManualLocation:()=>{if(disposed||document.hidden||!currentApi.isActive())return;release();query='';searching=false;message='Enter latitude, longitude in Search, then press Enter.';invalidate();queueMicrotask(()=>{if(!disposed&&!document.hidden&&currentApi.isActive())document.querySelector<HTMLInputElement>('input[aria-label="Search places"]')?.focus();});},
+      // Shown only when location is off; Location settings follows it.
+      nativeLocationHelp:locationState==='denied'?'Location is off.':'',
+      nativeLocationSettings:()=>{if(disposed||document.hidden||!currentApi.isActive())return;void device.openSettings({page:'privacy'}).catch(()=>{if(!disposed&&currentApi.isActive()){message=isAndroid?'Location settings couldn’t open.':'Allow location in your browser’s site settings.';invalidate();}});},
       nativeMapRetry:mapFailed,
-      retryNativeMap:()=>{if(disposed||document.hidden||!currentApi.isActive())return;++mapGeneration;mapObserver?.disconnect();mapObserver=undefined;plane?.destroy();plane=undefined;planeElement=undefined;planeBasemap=undefined;mapFailed=false;message='';if(diagnostic.error&&!initialization)initialization=initializeMaps().finally(()=>{initialization=undefined;invalidate();});invalidate();},
+      retryNativeMap:()=>{if(disposed||document.hidden||!currentApi.isActive())return;++mapGeneration;mapObserver?.disconnect();mapObserver=undefined;plane?.destroy();plane=undefined;planeElement=undefined;planeBasemap=undefined;mapFailed=false;message='';if(diagnostic.error&&!initialization&&!signedOut())initialization=initializeMaps().finally(()=>{initialization=undefined;invalidate();});invalidate();},
       mode:navigating?'nav':choosingOrigin?'origin':directions?'dir':isPlace?'place':searching?'results':'base', isBase:!isPlace&&!searching&&!directions&&!navigating,isResults,isPlace,isDir,isNav:navigating,
       showSearch:!directions&&!navigating, showRec:!navigating, grid: '', major: '', fwy: '', water: '', parks: '', rwy: '', routeD: '', doneD: '', hasRoute: false, pins: [], labels: [], meCss: 'display:none;',
       mapDown: () => {}, mapUp: () => {}, q: query, hasQ: !!query, searchLabel: isPlace || searching ? 'Back' : 'Search',
@@ -298,7 +397,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       cats: data.cats.map((category: Bag) => ({ ...category, go: () => { query = category.label; submit(); } })),
       savedRows: saved.map(item => ({ name: item.label, sub: coordLabel(item.coordinate), d: PIN, go: () => showSaved(item) })),
       results: choosingOrigin
-        ? [...savedOrigins.map(item => ({ name: item.label, sub: 'Saved place · ' + coordLabel(item.coordinate), d: PIN, go: () => chooseOrigin(item) })),
+        ? [...savedOrigins.map(item => ({ name: item.label, sub: 'Saved place', d: PIN, go: () => chooseOrigin(item) })),
            ...snapshot.originSearch.value.map(item => ({ name: item.name, sub: item.address || coordLabel(item.coordinate), d: PIN, go: () => chooseOrigin(item) }))]
         : snapshot.search.value.map(item => ({ name: item.name, sub: item.address || coordLabel(item.coordinate), d: PIN, go: () => showPlace(item) })),
       hasResults: choosingOrigin ? savedOrigins.length + snapshot.originSearch.value.length > 0 : snapshot.search.value.length > 0,
@@ -315,13 +414,14 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       const detail = snapshot.selection.phase === 'ready' && item.providerPlaceId && snapshot.selection.value?.id === item.providerPlaceId && snapshot.selection.value.providerId === item.providerId ? snapshot.selection.value : undefined;
       const website = detail?.website;
       data.pc = {
-        name: item.label, meta: (item.origin === 'saved' ? 'Saved on this device' : item.origin === 'location' ? 'Device location' : 'Coordinates') + (detail?.phone ? ' · Phone ' + detail.phone : ''), addr: detail?.address || coordLabel(item.coordinate),
+        name: item.label, meta: [item.origin === 'saved' ? 'Saved' : item.origin === 'location' ? YOUR_LOCATION : item.origin === 'manual' ? 'Dropped pin' : '', detail?.phone ? 'Phone ' + detail.phone : ''].filter(Boolean).join(' · '), addr: detail?.address || coordLabel(item.coordinate),
         hasHours: !!detail?.openingHours, openTxt: 'Hours', openCss: '', hoursTxt: detail?.openingHours || '',
         hasPhone: false, hasWeb: !!website, web: () => { if (website) openWebsite(website); },
         canDir: ensure().capabilities().modes.length>0, min: 'Directions', saved: !!existing,
         saveLabel: existing ? 'Remove from saved' : 'Save', starCss: existing ? 'color:var(--acct)' : '', starFill: existing ? 'fill:currentColor' : '',
         close: () => { selected = undefined; message = ''; invalidate(); }, save,
-        dirs: () => { if(unconfigured){message='Connect a Maps provider to plan a route. No route has been calculated.';}else{directions=true; message='Enter an origin latitude, longitude and press Enter, or explicitly use current location.'; if(item.origin!=='provider'&&snapshot.provider.status==='configured')void ensure().select({providerId:snapshot.provider.providerId,id:item.providerPlaceId||'manual',name:item.label,coordinate:item.coordinate,attribution:'User-selected coordinates',fetchedAt:Date.now()},false);} invalidate(); },
+        // Directions start from the device's location, asked for the first time it is needed.
+        dirs: () => { if(unconfigured){message=providerFailureText();}else{directions=true; message=''; if(item.origin!=='provider'&&snapshot.provider.status==='configured')void ensure().select({providerId:snapshot.provider.providerId,id:item.providerPlaceId||'manual',name:item.label,coordinate:item.coordinate,attribution:'User-selected coordinates',fetchedAt:Date.now()},false); locate();} invalidate(); },
         share: () => share(placeShare(item.label,item.coordinate),()=>!disposed&&!!api?.isActive()&&selected===item),
         nativeName: item.label, nativeEditing: !!item.editingName,
         nativeTitleRole: 'button', nativeTitleTabIndex: 0, nativeTitleLabel: 'Rename place',
@@ -332,18 +432,22 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       };
     }
     if(directions&&selected){
-      const route=snapshot.route.value;
-      // Coordinates plan directly; any other text searches regional places and saved places.
+      const route=navigating&&navRoute?navRoute:snapshot.route.value;
+      // A place or saved place is searched; the device's location replans as is. Typed
+      // coordinates still plan directly (development and test flows), though nothing asks for them.
       const plan=()=>{
         const text=originText.trim(),match=text.match(/^([+-]?\d+(?:\.\d+)?)\s*,\s*([+-]?\d+(?:\.\d+)?)$/);
-        if(match){try{ensure().setOrigin(coordinate({latitude:Number(match[1]),longitude:Number(match[2])}));message='';originMode=false;void ensure().planRoute();}catch{message='Enter origin latitude, longitude.';}invalidate();return;}
-        if(!text){message='Enter a starting place, a saved place or latitude, longitude.';invalidate();return;}
-        if(snapshot.provider.status!=='configured'&&!ensure().savedMatches(text).length){message='Enter origin latitude, longitude.';invalidate();return;}
-        originMode=true;message=`Choose a starting point for the route to ${selected!.label}.`;
+        // An explicit starting point ends a pending "Your location" request.
+        locating=false;
+        if(text===YOUR_LOCATION&&snapshot.origin){message='';originMode=false;void ensure().planRoute();invalidate();return;}
+        if(match){try{const point=coordinate({latitude:Number(match[1]),longitude:Number(match[2])});ensure().setOrigin(point);chosenOrigin={coordinate:point};message='';originMode=false;void ensure().planRoute();}catch{message='That location isn’t valid. Enter a starting point.';}invalidate();return;}
+        if(!text){message='Enter a starting point.';invalidate();return;}
+        if(snapshot.provider.status!=='configured'&&!ensure().savedMatches(text).length){message='Choose a saved place or use your location.';invalidate();return;}
+        originMode=true;message='';
         if(snapshot.provider.status==='configured')void ensure().searchOrigin(text);
         invalidate();
       };
-      const editOrigin=(value:string)=>{originText=value;ensure().clearOrigin();message=choosingOrigin?`Press Enter to search again for a starting point to ${selected!.label}.`:'Press Enter to search for this origin or calculate a route from coordinates.';invalidate();};
+      const editOrigin=(value:string)=>{originText=value;locating=false;chosenOrigin=undefined;ensure().clearOrigin();message='';invalidate();};
       data.originText=originText;data.onOrigin=(event:Event)=>{originMode=false;editOrigin((event.target as HTMLInputElement).value);};data.originKey=(event:KeyboardEvent)=>{if(event.key==='Enter'){event.preventDefault();plan();}};data.originLocation=locate;
       if(choosingOrigin){
         // While choosing an origin the search bar edits the origin text; editing cancels
@@ -353,47 +457,17 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
           qKey:(event:KeyboardEvent)=>{if(event.key==='Enter'){event.preventDefault();plan();(event.target as HTMLInputElement).blur();}},
           clearQ:()=>editOrigin('')});
       }
-      const distance=(a:Coordinate,b:Coordinate)=>{const r=Math.PI/180,dlat=(a.latitude-b.latitude)*r,dlon=(a.longitude-b.longitude)*r;return 6371000*2*Math.asin(Math.min(1,Math.sqrt(Math.sin(dlat/2)**2+Math.cos(a.latitude*r)*Math.cos(b.latitude*r)*Math.sin(dlon/2)**2)));};
-      const end=()=>{void stopGuidance().catch(error=>{message=failure(error).message;invalidate();});invalidate();};
+      const end=endGuidance;
       const progress=navigating&&navFix&&route&&!arrived&&!rerouting?atStep(routeProgress(navFix.coordinate,route),route.steps,navStep):undefined;
-      const view=progress?guidanceView(progress):undefined;
-      const onFix=(fix:Position)=>{
-        if(!navigating)return;
-        const current=state?.route.phase==='ready'?state.route.value:null;
-        if(!usableNavigationFix(fix)){navFix=undefined;navigationVoice.pause();message='A fresh, precise location fix is needed for turn guidance.';invalidate();return;}
-        if(rerouting||!current){navFix=fix;invalidate();return;}
-        if(current.id!==navRouteId){void stopGuidance().catch(()=>{});invalidate();return;}
-        navFix=fix;navDistance=distance(fix.coordinate,current.to);arrived=navDistance<25&&fix.accuracyMeters<=30;
-        if(arrived){navigationVoice.pause();message='Destination reached.';offRoute=false;void navigationLocation.stop();void background.stop();backgroundRunning=false;}
-        else{
-          const nearest=distanceToRoute(fix.coordinate,current.geometry);offRoute=nearest>Math.max(75,fix.accuracyMeters*2);
-          // As before, a maneuver is passed once a fix comes within 40 m of it.
-          while(navStep<current.steps.length-1&&distance(fix.coordinate,current.steps[navStep].coordinate)<40)navStep++;
-          const reading=atStep(routeProgress(fix.coordinate,current),current.steps,navStep),view=guidanceView(reading),next=reading.next;
-          message=offRoute?'Off route. Stop and calculate a new route.':'Foreground guidance · location accuracy ±'+Math.ceil(fix.accuracyMeters)+' m'+(backgroundRunning?' · continues with the screen off':'');
-          if(offRoute){navigationVoice.pause();background.update('Off route','Open Maps to reroute from here or stop.');}
-          else{if(next)navigationVoice.update(current.id+':'+next.index,view.spoken);background.update(view.notificationTitle,view.notificationText);}
-        }
-        invalidate();
-      };
+      const view=progress&&route?guidanceView(progress,undefined,route.traffic):undefined;
       const reroute=()=>{const from=navFix?.coordinate;if(from)void rerouteFrom(from);};
-      data.dr={name:selected.label,close:()=>back(),min:route?Math.max(1,Math.round(route.durationSeconds/60))+' min':snapshot.route.phase==='loading'?'Planning…':'No route',meta:route?(route.distanceMeters/1000).toFixed(1)+' km · no live traffic':'Regional route',via:route?(snapshot.originLabel?'From '+snapshot.originLabel+' · ':'')+(route.steps[0]?.instruction||''):'Choose a real origin to calculate a route.',shareLabel:'Share route',shareEta:()=>{if(route&&snapshot.route.phase==='ready'){const target=selected;share(routeShare(target!.label,route),()=>!disposed&&!!api?.isActive()&&selected===target&&!!directions&&state?.route.phase==='ready'&&state.route.value===route);}},
-       modes:data.nativeModeMetadata.map((reference:{mode:'drive'|'walk'|'bike'|'transit';label:string;d:string})=>{const mode=reference.mode==='bike'?'bicycle':reference.mode;const {label,d}=reference;return {label,t:label,d,on:snapshot.mode===mode,css:snapshot.mode===mode?'background:var(--acc);color:#fff':'background:var(--s2);color:var(--fg)',go:()=>{if(!ensure().capabilities().modes.includes(mode)){message=mode==='transit'?'Transit schedules are not available for this region.':`${label} directions are not available from this Maps provider.`;invalidate();return;}ensure().setMode(mode);message='';if(snapshot.origin)void ensure().planRoute();}};}),
-       start:()=>{
-        if(!route){message='Calculate a route before starting navigation.';invalidate();return;}
-        navigationVoice.pause();arrived=false;navigating=true;follow=true;navStep=0;offRoute=false;rerouting=false;navFix=undefined;navRouteId=route.id;backgroundRunning=false;
-        const session=++navSession;message='Waiting for a fresh location fix. Foreground guidance only.';
-        // Screen-off continuation only where the native session is available; the
-        // notification's Stop ends this exact session once.
-        void background.start(`Route to ${selected!.label}`,'Waiting for location',reason=>{if(session!==navSession||!navigating)return;lifecycle.backgroundStops++;
-          // Only the notification's Stop is the user ending navigation. A refused or system-ended
-          // service drops back to foreground-only guidance, which a hidden page then releases.
-          if(reason==='notification'){message='Navigation stopped from the notification.';end();return;}
-          backgroundRunning=false;message='Screen-off guidance is unavailable. Foreground guidance only.';if(document.hidden)release();else invalidate();}).then(running=>{if(session!==navSession||!navigating){if(running)void background.stop();return;}backgroundRunning=running;if(running&&!navFix)message='Waiting for a fresh location fix. Guidance continues with the screen off.';invalidate();});
-        void navigationLocation.start(false,onFix,error=>{if(session!==navSession)return;message=failure(error).message;void stopGuidance().catch(()=>{});invalidate();});invalidate();
-       },
+      data.dr={name:selected.label,close:()=>back(),min:route?Math.max(1,Math.round(route.durationSeconds/60))+' min':snapshot.route.phase==='loading'?'Planning…':'No route',meta:route?(route.distanceMeters/1000).toFixed(1)+' km'+(route.traffic==='live'?' · live traffic':''):'',via:route?(snapshot.originLabel?'From '+snapshot.originLabel+' · ':'')+(route.steps[0]?.instruction||''):'Choose a starting point',shareLabel:'Share route',shareEta:()=>{if(route&&snapshot.route.phase==='ready'){const target=selected;share(routeShare(target!.label,route),()=>!disposed&&!!api?.isActive()&&selected===target&&!!directions&&(navigating?navRoute===route:state?.route.phase==='ready'&&state.route.value===route));}},
+       modes:data.nativeModeMetadata.map((reference:{mode:'drive'|'walk'|'bike'|'transit';label:string;d:string})=>{const mode=reference.mode==='bike'?'bicycle':reference.mode;const {label,d}=reference;return {label,t:label,d,on:snapshot.mode===mode,css:snapshot.mode===mode?'background:var(--acc);color:#fff':'background:var(--s2);color:var(--fg)',go:()=>{if(!ensure().capabilities().modes.includes(mode)){message=mode==='transit'?'Transit schedules are not available for this region.':`${label} directions aren’t available here.`;invalidate();return;}ensure().setMode(mode);message='';if(snapshot.origin)void ensure().planRoute();}};}),
+       // Start is offered only with a ready route (canStart); without one it does nothing, and
+       // startDisabled is its real disabled state for TalkBack and the keyboard.
+       canStart:!!route&&!navigating,startDisabled:!route||navigating,start:()=>{startGuidance();},
        nav:{going:!arrived,arrived,dist:arrived?'Arrived':view?view.distance:rerouting?'Rerouting…':'Locating…',street:arrived?selected.label:view?view.instruction:rerouting?'Planning a new route from here':'Waiting for location',icon:view?.icon||PIN,hasThen:!!view?.hasThen,thenD:view?.thenIcon||'',thenText:view?.thenText||'',
-        left:arrived?'Arrived':view?view.remainingTime:'Guidance',meta:arrived?'Destination reached':view?view.remaining:backgroundRunning?'Continues with the screen off':'Foreground guidance',remaining:view?.remaining||'',
+        left:arrived?'Arrived':view?view.remainingTime:'Guidance',meta:arrived?'Destination reached':view?view.remaining:'',remaining:view?.remaining||'',
         offRoute,canReroute:offRoute&&usableNavigationFix(navFix)&&!rerouting,reroute,rerouteLabel:'Reroute from here',background:backgroundRunning,
         end,ask:()=>currentApi.send('Help me with this route.'),voiceLabel:navigationVoice.enabled?'Mute voice guidance':'Enable voice guidance',voice:()=>{navigationVoice.toggle();invalidate();},voiceD:PIN}};
     }
@@ -423,18 +497,27 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
   }
   /** The agent's requests use this screen's own state: selection, route sheet, Start, Reroute and End. */
   const surface: MapsNavigationSurface = {
-    // Maps opens only over Home or itself, on an unlocked, visible, non-sensitive launcher screen.
-    // Any other app keeps the screen; the agent hears that the phone cannot show Maps now.
+    // Maps opens on an unlocked, visible, non-sensitive launcher screen: over Home or itself, or
+    // over another app while the owner is talking to the agent there. Never over a call or a
+    // recording; the agent then hears that the phone cannot show Maps now.
     async present(){
       const showable=()=>{
         const value=shell?.S?.();
-        return !disposed&&!document.hidden&&!!shell?.live&&!!value&&value.screen==='home'&&!value.secure&&!value.shade&&!shell.pageSuspended&&
-          !shell.props?.assistantSurface&&!connectionController.getSnapshot().open&&(!value.view||value.view==='home'||value.view==='maps');
+        if(disposed||document.hidden||!shell?.live||!value||value.screen!=='home'||value.secure||value.shade||shell.pageSuspended||
+          shell.props?.assistantSurface||connectionController.getSnapshot().open)return false;
+        if(!value.view||value.view==='home'||value.view==='maps')return true;
+        if(value.chat!=='full'&&value.chat!=='sheet')return false;
+        return !shell.mod?.(value.view)?.ongoing?.(shell.vget(value.view),shell.api(value.view));
       };
       if(!showable())return false;
+      const value=shell!.S();
       if(!api?.isActive()){
-        shell!.openView('maps');
+        // Back returns to the app the request was made in; a conversation sheet stays in view.
+        shell!.openView('maps',null,value.chat==='sheet'?'sheet':null,{push:!!value.view&&value.view!=='home'});
         await Promise.race([new Promise<void>(resolve=>shell!.setState({},()=>resolve())),new Promise<void>(resolve=>setTimeout(resolve,2000))]);
+      } else if(value.chat==='full'){
+        // The full conversation covers Maps; it folds away so the result is visible.
+        await Promise.race([new Promise<void>(resolve=>shell!.setState({chat:shell!.rest()},()=>resolve())),new Promise<void>(resolve=>setTimeout(resolve,2000))]);
       }
       return showable()&&shell!.S().view==='maps'&&!!api?.isActive()&&!!controller&&!!state;
     },
@@ -444,11 +527,17 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       return showAgentPlace(place,resolveDetails);
     },
     showDirections(place,travelMode:TravelMode,resolveDetails){
-      discardHandoff();++searchIntent;originMode=false;searching=false;locating=false;originText='';
+      discardHandoff();++searchIntent;originMode=false;searching=false;locating=false;originText='';chosenOrigin=undefined;
       const maps=ensure();maps.clearOrigin();maps.setMode(travelMode);directions=true;
-      message='Your agent asked for directions. Use current location or enter an origin to plan the route, then tap Start.';
+      // Maps opens at the route sheet; without a location the sheet asks for a starting point.
+      message='';
       return showAgentPlace(place,resolveDetails);
     },
+    async showResults(text){
+      // The agent's search, run as the screen's own search for the same words.
+      directions=false;originMode=false;locating=false;selected=undefined;message='';query=text;submit();
+    },
+    startGuidance,
     locationGranted:locationPermissionGranted,
     async locate(signal){
       // Checked again right before the watch starts: an agent request never shows a permission prompt.
@@ -462,7 +551,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       });
     },
     planFrom(origin){
-      const maps=ensure();originMode=false;originText=coordLabel(origin);maps.setOrigin(origin);message='';
+      const maps=ensure();originMode=false;locating=false;chosenOrigin=undefined;originText=YOUR_LOCATION;maps.setOrigin(origin);message='';
       const pending=maps.planRoute();invalidate();return pending;
     },
     // The session lasts from Start to End, including while rerouting and after arrival.
@@ -479,6 +568,8 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     enabled:()=>!regionalMapsConfigured&&!shell?.props?.assistantSurface&&!document.documentElement.classList.contains('alpha-assistant-surface'),
     installation:()=>{const coverage=cloudMapsCoverage();return coverage&&{providerId:coverage.providerId,attribution:coverage.attribution};},
     connection:mapsConnection,onChange:onMapsConnectionChange,surface,port:residentMapsNavigationPort,
+    // "Ask before agent actions" off: an agent's route starts guidance. A failed read asks.
+    directStart:async()=>{try{return !(await readDevicePreferences()).askBeforeAgentActions;}catch{return false;}},
   });
   const changed = onMapsConnectionChange(() => {
     const connection=mapsConnection();

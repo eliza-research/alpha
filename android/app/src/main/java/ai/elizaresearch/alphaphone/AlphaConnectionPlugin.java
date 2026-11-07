@@ -1,7 +1,13 @@
 package ai.elizaresearch.alphaphone;
 
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.pm.verify.domain.DomainVerificationManager;
+import android.content.pm.verify.domain.DomainVerificationUserState;
 import android.net.Uri;
+import android.os.Build;
+import androidx.browser.customtabs.CustomTabsClient;
+import androidx.browser.customtabs.CustomTabsIntent;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -27,8 +33,60 @@ public final class AlphaConnectionPlugin extends Plugin {
  private volatile Uri delegationCallback;
  private final Object foregroundLock=new Object();
  private boolean foreground;
- @Override public void load() { super.load(); synchronized(foregroundLock){foreground=getActivity().getLifecycle().getCurrentState().isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)||getActivity().hasWindowFocus();}captureDelegationCallback(getActivity().getIntent()); }
- @Override protected void handleOnNewIntent(Intent intent) { super.handleOnNewIntent(intent); captureDelegationCallback(intent); }
+ @Override public void load() { super.load(); synchronized(foregroundLock){foreground=getActivity().getLifecycle().getCurrentState().isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)||getActivity().hasWindowFocus();}captureDelegationCallback(getActivity().getIntent());captureGoogleReturn(getActivity().getIntent()); }
+ @Override protected void handleOnNewIntent(Intent intent) { super.handleOnNewIntent(intent); captureDelegationCallback(intent); captureGoogleReturn(intent); }
+ /**
+  * Google connector return on the verified App Link. MainActivity is singleTask, so this intent also
+  * finishes the Custom Tab that showed Google's consent. The result names no secret; the renderer
+  * reads the grant back from Cloud.
+  */
+ private void captureGoogleReturn(Intent intent) {
+  Uri uri = intent == null ? null : intent.getData();
+  if (uri == null || !"https".equals(uri.getScheme()) || BuildConfig.ELIZAOS_APP_LINK_HOST.isEmpty() || !BuildConfig.ELIZAOS_APP_LINK_HOST.equals(uri.getHost())
+   || uri.getPort() != -1 || uri.getUserInfo() != null || !GoogleConnectReturn.PATH.equals(uri.getPath())) return;
+  java.util.Map<String, String> result = GoogleConnectReturn.parse(uri.getEncodedQuery(), uri.getEncodedFragment());
+  intent.setData(null);
+  if (result == null) return;
+  JSObject out = new JSObject();
+  for (java.util.Map.Entry<String, String> entry : result.entrySet()) out.put(entry.getKey(), entry.getValue());
+  notifyListeners("googleConnectReturn", out, true);
+ }
+ /** The return URL Cloud may redirect to, only when Android will hand it to Alpha; otherwise null. */
+ @PluginMethod public void googleReturnUrl(PluginCall call) {
+  JSObject out = new JSObject();
+  String host = BuildConfig.ELIZAOS_APP_LINK_HOST;
+  String url = host.isEmpty() ? null : "https://" + host + GoogleConnectReturn.PATH;
+  out.put("url", url != null && appLinkHandled(host, url) ? url : JSONObject.NULL);
+  call.resolve(out);
+ }
+ private boolean appLinkHandled(String host, String url) {
+  try {
+   if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+    DomainVerificationManager manager = getContext().getSystemService(DomainVerificationManager.class);
+    DomainVerificationUserState state = manager == null ? null : manager.getDomainVerificationUserState(getContext().getPackageName());
+    Integer verified = state == null ? null : state.getHostToStateMap().get(host);
+    if (state == null || !state.isLinkHandlingAllowed() || verified == null
+     || (verified != DomainVerificationUserState.DOMAIN_STATE_VERIFIED && verified != DomainVerificationUserState.DOMAIN_STATE_SELECTED)) return false;
+   }
+   Intent view = new Intent(Intent.ACTION_VIEW, Uri.parse(url)).addCategory(Intent.CATEGORY_BROWSABLE).setPackage(getContext().getPackageName());
+   return !getContext().getPackageManager().queryIntentActivities(view, PackageManager.MATCH_DEFAULT_ONLY).isEmpty();
+  } catch (Exception unavailable) { return false; }
+ }
+ /** Google's consent opens in a Custom Tab on Alpha's task (an App Link return closes it); other pages in the browser. */
+ private void startBrowser(URI url, Intent fallback) {
+  if ("accounts.google.com".equals(url.getHost())) {
+   try {
+    String browser = CustomTabsClient.getPackageName(getContext(), null);
+    if (browser != null && !browser.equals(getContext().getPackageName())) {
+     CustomTabsIntent tab = new CustomTabsIntent.Builder().setShowTitle(true).setShareState(CustomTabsIntent.SHARE_STATE_OFF).build();
+     tab.intent.setPackage(browser);
+     tab.launchUrl(getActivity(), Uri.parse(url.toASCIIString()));
+     return;
+    }
+   } catch (RuntimeException unavailable) { /* Fall back to the system browser. */ }
+  }
+  getActivity().startActivity(fallback);
+ }
  private void captureDelegationCallback(Intent intent) {
   Uri uri = intent == null ? null : intent.getData();
   if(uri==null || !"alphaphone".equals(uri.getScheme()) || !"cloud-delegation".equals(uri.getHost()) || uri.getPort()!=-1 || uri.getUserInfo()!=null || uri.getFragment()!=null || (uri.getPath()!=null&&!uri.getPath().isEmpty()&&!"/".equals(uri.getPath())))return;
@@ -132,7 +190,7 @@ public final class AlphaConnectionPlugin extends Plugin {
   submitStorage(call,()->{
    try {
     String name=RendererCredentialSlots.requireAllowed(call.getString("slot"));
-    if(name==null||!(name.startsWith("inbox-drafts:v1:")||name.matches("inbox-operation:v1:[a-f0-9]{64}")||name.matches("calendar-linked-sync:v1:[a-f0-9]{64}")||name.matches("connected-read-cache:v1:[a-f0-9]{64}")||name.matches("workflow-draft:v1:[a-f0-9]{64}")||name.matches("assistant-draft:v1:[a-f0-9]{64}")||name.equals("notes-records:v1:device")||name.equals("reminder-deletions:v1:device")||name.equals("reminder-creations:v1:device")||name.equals("clock-handoff:v1:device")||name.equals("notes-audio-deletions:v1:device")||name.equals("notes-trash:v1:device")||name.equals(AlphaCredentialStore.NOTES_DRAFT)||name.equals("note-origins:v1:device")||name.matches("cloud-delegation:v1:[a-f0-9]{64}"))||!call.getData().has("expectedValue")||!call.getData().has("value"))throw new IllegalArgumentException();
+    if(name==null||!(name.startsWith("inbox-drafts:v1:")||name.matches("inbox-operation:v1:[a-f0-9]{64}")||name.matches("calendar-linked-sync:v1:[a-f0-9]{64}")||name.matches("connected-read-cache:v1:[a-f0-9]{64}")||name.matches("google-calendar-outbox:v1:[a-f0-9]{64}")||name.matches("workflow-draft:v1:[a-f0-9]{64}")||name.matches("assistant-draft:v1:[a-f0-9]{64}")||name.equals("notes-records:v1:device")||name.equals("reminder-deletions:v1:device")||name.equals("reminder-creations:v1:device")||name.equals("clock-handoff:v1:device")||name.equals("notes-audio-deletions:v1:device")||name.equals("notes-trash:v1:device")||name.equals(AlphaCredentialStore.NOTES_DRAFT)||name.equals("note-origins:v1:device")||name.matches("cloud-delegation:v1:[a-f0-9]{64}"))||!call.getData().has("expectedValue")||!call.getData().has("value"))throw new IllegalArgumentException();
     for(String field:new String[]{"expectedValue","value"})if(!call.getData().isNull(field)&&!(call.getData().get(field) instanceof String))throw new IllegalArgumentException();
     String expected=call.getString("expectedValue"), value=call.getString("value");
     JSObject result=new JSObject();
@@ -245,7 +303,7 @@ public final class AlphaConnectionPlugin extends Plugin {
     String route=url.getRawPath()+(url.getRawQuery()==null?"":"?"+url.getRawQuery());
     if(ConnectionRoutes.retiredPairing(url.getPath(),BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS))throw new IllegalArgumentException();
     boolean selfRevocation=ConnectionRoutes.cloudSelfRevocation(url.getScheme(),url.getHost(),url.getPort(),url.getRawPath(),url.getRawQuery(),method,call.getString("body")!=null,BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS);
-    if((AutomationsRoutes.owns(url.getPath())||AutomationsRoutes.owns(route))?!AutomationsRoutes.allowed(route,method):!(Set.of("GET","POST").contains(method)||selfRevocation||ConnectionRoutes.calendarSync(url.getPath(),url.getRawQuery(),method,call.getString("body")!=null)))throw new IllegalArgumentException();
+    if((AutomationsRoutes.owns(url.getPath())||AutomationsRoutes.owns(route))?!AutomationsRoutes.allowed(route,method):!(Set.of("GET","POST").contains(method)||selfRevocation||ConnectionRoutes.calendarSync(url.getPath(),url.getRawQuery(),method,call.getString("body")!=null)||ConnectionRoutes.googleCalendarEvents(url.getRawPath(),url.getRawQuery(),method,call.getString("body")!=null)))throw new IllegalArgumentException();
     if("GET".equals(method)&&(CloudDeployment.PRODUCTION_API_HOST.equals(url.getHost())||CloudDeployment.STAGING_API_HOST.equals(url.getHost()))&&url.getPath().matches("/api/auth/cli-session/[0-9a-fA-F-]{36}")){
      // Gate only future dispatch. A claim already sent must finish and may be saved while backgrounded.
      long expiresAt=call.getLong("expiresAt",System.currentTimeMillis()+30000);
@@ -274,7 +332,7 @@ public final class AlphaConnectionPlugin extends Plugin {
     }
     String body = call.getString("body");
     if (body != null) {
-     if (!("POST".equals(method)||"PUT".equals(method)&&AutomationsRoutes.allowed(route,method)||"PATCH".equals(method)&&ConnectionRoutes.calendarSync(url.getPath(),url.getRawQuery(),method,true))) throw new IllegalArgumentException();
+     if (!("POST".equals(method)||"PUT".equals(method)&&AutomationsRoutes.allowed(route,method)||"PATCH".equals(method)&&(ConnectionRoutes.calendarSync(url.getPath(),url.getRawQuery(),method,true)||ConnectionRoutes.googleCalendarEvents(url.getRawPath(),url.getRawQuery(),method,true)))) throw new IllegalArgumentException();
      byte[] encoded = body.getBytes(StandardCharsets.UTF_8);
      if (encoded.length > responseLimit) throw new IllegalArgumentException();
      parseJson(body); connection.setDoOutput(true); connection.setFixedLengthStreamingMode(encoded.length);
@@ -334,7 +392,7 @@ public final class AlphaConnectionPlugin extends Plugin {
      if(pending.browserCall==null)requests.remove(id,pending);
     });
    }else getActivity().runOnUiThread(() -> {
-    try { getActivity().startActivity(intent); call.resolve(); }
+    try { startBrowser(url, intent); call.resolve(); }
     catch (RuntimeException error) { call.reject("Authentication browser unavailable"); }
    });
   } catch (Exception error) { call.reject("Unsupported authentication URL"); }

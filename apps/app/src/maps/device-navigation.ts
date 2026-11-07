@@ -53,8 +53,12 @@ export interface MapsNavigationSurface {
  snapshot(): MapsState | undefined;
  /** Shows the place sheet for this destination and resolves when the selection settles. */
  showPlace(place: Place, resolveDetails: boolean): Promise<void>;
- /** Shows the route sheet for this destination and mode. Guidance still needs the user's Start. */
+ /** Shows the route sheet for this destination and mode. Guidance needs Start (or `directStart`). */
  showDirections(place: Place, travelMode: TravelMode, resolveDetails: boolean): Promise<void>;
+ /** Shows search results for an agent's place search: the screen's own search for `query`. */
+ showResults(query: string, places: readonly Place[]): Promise<void>;
+ /** The screen's own Start for the route it shows. False when no ready route is shown. */
+ startGuidance(): boolean;
  /** Whether location is already granted. Never shows a permission prompt. */
  locationGranted(): Promise<boolean>;
  /** One location fix from the device; rejects when none arrives. */
@@ -69,8 +73,19 @@ export interface MapsNavigationSurface {
  /** Called when Maps is left or released; in-flight agent work is cancelled. */
  onRelease(listener: () => void): () => void;
 }
-/** The Cloud Maps installation (signed-in account) this binding belongs to. */
-export type NavigationOwner = Readonly<{ providerId: string; attribution: string; current(): boolean }>;
+/** The Cloud Maps installation (signed-in account) this binding belongs to. `directStart` says
+ * whether an agent's route may begin guidance without the user's Start ("Ask before agent
+ * actions" off); absent, failing or false means the user taps Start. */
+export type NavigationOwner = Readonly<{ providerId: string; attribution: string; current(): boolean; directStart?(): Promise<boolean> }>;
+/** The card's place: plugin-maps `MapsCardPlace`, flat coordinates. */
+export type AgentCardPlace = Readonly<{ name: string; latitude: number; longitude: number; provider: string; providerPlaceId: string; formattedAddress?: string }>;
+/** An agent result shown in chat (a plugin-maps card), opened on the phone's Maps screen. */
+export type AgentMapsResult =
+ | Readonly<{ kind: 'place'; place: AgentCardPlace }>
+ | Readonly<{ kind: 'places'; query: string; places: readonly AgentCardPlace[] }>
+ | Readonly<{ kind: 'route'; destination: AgentCardPlace; travelMode: TravelMode }>;
+const cardPlace = (value: AgentCardPlace): AgentPlaceRef => ({ provider: value.provider, providerPlaceId: value.providerPlaceId, name: value.name,
+ coordinates: { latitude: value.latitude, longitude: value.longitude }, ...(value.formattedAddress ? { formattedAddress: value.formattedAddress } : {}) });
 export type NavigationLimits = Readonly<{ fixTimeoutMs: number; maxFixAgeMs: number; maxAccuracyMeters: number; now: () => number }>;
 const LIMITS: NavigationLimits = { fixTimeoutMs: 15_000, ...NAVIGATION_FIX_LIMITS, now: () => Date.now() };
 const MODES: readonly TravelMode[] = ['drive', 'walk', 'bicycle', 'transit'];
@@ -84,7 +99,7 @@ export function deviceNavigationFailure(error: unknown): DeviceNavigationFailure
  if (!(error instanceof MapsFailure)) return unavailable('The phone could not complete this Maps request.');
  switch (error.code) {
   case 'cancelled': return unavailable('The Maps request was cancelled on the phone.');
-  case 'unauthorized': return new DeviceNavigationFailure(/subscription/i.test(error.message) ? 'MAPS_NOT_ENTITLED' : /account changed/i.test(error.message) ? 'MAPS_PROVIDER_CHANGED' : 'MAPS_AUTH_EXPIRED', error.message);
+  case 'unauthorized': return new DeviceNavigationFailure(/subscription|plan\b/i.test(error.message) ? 'MAPS_NOT_ENTITLED' : /account changed/i.test(error.message) ? 'MAPS_PROVIDER_CHANGED' : 'MAPS_AUTH_EXPIRED', error.message);
   case 'rate-limited': return new DeviceNavigationFailure('MAPS_RATE_LIMITED', error.message);
   case 'unsupported': return new DeviceNavigationFailure(/no route/i.test(error.message) ? 'MAPS_NOT_FOUND' : /choose an actual origin/i.test(error.message) ? 'MAPS_INVALID_INPUT' : 'MAPS_UNSUPPORTED_REGION', error.message);
   case 'offline': return new DeviceNavigationFailure('MAPS_PROVIDER_NETWORK', error.message);
@@ -178,11 +193,17 @@ export class AlphaMapsDeviceNavigation implements MapsDeviceNavigation {
  }
 
  /**
-  * Shows the route from a fresh device fix and leaves Start to the user. Guidance never
-  * begins from an agent request: the phone reports awaiting-confirmation, or
-  * awaiting-location when it has no fresh, precise enough fix.
+  * Shows the route from a fresh device fix. Guidance begins at once only when the owner
+  * allows agent actions without asking (`directStart`) and nothing changed on the screen;
+  * otherwise the phone reports awaiting-confirmation and Start is the user's. Without a
+  * fresh, precise enough fix it reports awaiting-location.
   */
  async start(request: { destination: AgentPlaceRef; travelMode: TravelMode }, signal?: AbortSignal): Promise<MapsDeviceNavigationStatus> {
+  return this.showRoute(request, signal, true);
+ }
+
+ /** The route sheet for `start` and `open`; only an agent's own request may begin guidance. */
+ private async showRoute(request: { destination: AgentPlaceRef; travelMode: TravelMode }, signal: AbortSignal | undefined, allowDirectStart: boolean): Promise<MapsDeviceNavigationStatus> {
   const run = this.begin(signal);
   try {
    const travelMode = request?.travelMode;
@@ -213,6 +234,14 @@ export class AlphaMapsDeviceNavigation implements MapsDeviceNavigation {
    const value = route?.phase === 'ready' ? route.value : null;
    if (!value || value.mode !== travelMode || value.to.latitude !== destination.coordinate.latitude || value.to.longitude !== destination.coordinate.longitude)
     throw unavailable('The route could not be planned on the phone.');
+   const planned = this.surface.snapshot()?.revision;
+   if (allowDirectStart && await this.allowsDirectStart()) {
+    run.check();
+    const now = this.surface.snapshot();
+    // The user changed the route sheet or started guidance themselves meanwhile: Start stays theirs.
+    if (!this.surface.guidance() && now && now.revision === planned && now.route.phase === 'ready' && now.route.value?.id === value.id && this.surface.startGuidance())
+     return { state: 'navigating', ...status };
+   }
    return { state: 'awaiting-confirmation', ...status };
   } catch (error) { throw deviceNavigationFailure(error); } finally { run.done(); }
  }
@@ -238,6 +267,11 @@ export class AlphaMapsDeviceNavigation implements MapsDeviceNavigation {
     const route = this.surface.snapshot()?.route;
     throw route?.phase === 'error' && route.error ? deviceNavigationFailure(route.error) : unavailable('Navigation ended on the phone before the new route was ready.');
    }
+   if (next.routeId === active.routeId && !next.rerouting) {
+    // A failed reroute keeps the route being followed; the phone tries again by itself.
+    const route = this.surface.snapshot()?.route;
+    if (route?.phase === 'error' && route.error) throw new DeviceNavigationFailure(deviceNavigationFailure(route.error).code, `Couldn’t get a new route: ${route.error.message} The current route was kept.`);
+   }
    if (next.rerouting || next.routeId === active.routeId) throw unavailable('The phone kept the previous route.');
    return { state: 'navigating', ...status };
   } catch (error) { throw deviceNavigationFailure(error); } finally { run.done(); }
@@ -251,6 +285,49 @@ export class AlphaMapsDeviceNavigation implements MapsDeviceNavigation {
    await this.surface.stop();
    return { state: 'stopped', ...(active ? { placeName: active.placeName, travelMode: active.travelMode } : {}) };
   } catch (error) { throw deviceNavigationFailure(error); } finally { run.done(); }
+ }
+
+ /**
+  * Opens an agent's chat result on the Maps screen: search results, a place, or a route
+  * (which follows `start`). `directStart` applies only with `allowDirectStart`, for a reply
+  * that just arrived; the user's own Show in Maps tap leaves Start to the user. The same result
+  * already shown, or shown by the relay request that produced the card, is not opened again;
+  * nothing opens over active guidance. Returns null when nothing was opened.
+  */
+ async open(result: AgentMapsResult, options: { signal?: AbortSignal; allowDirectStart?: boolean } = {}): Promise<MapsDeviceNavigationStatus | null> {
+  const { signal, allowDirectStart = false } = options;
+  if (!result || typeof result !== 'object' || !['place', 'places', 'route'].includes(result.kind)) throw new DeviceNavigationFailure('MAPS_INVALID_INPUT', 'The Maps result is invalid.');
+  const shown = this.surface.snapshot();
+  if (this.surface.guidance()) return null;
+  const showing = (ref: AgentCardPlace) => { const value = shown?.selection.value; return !!value && value.id === ref.providerPlaceId && value.coordinate.latitude === ref.latitude && value.coordinate.longitude === ref.longitude; };
+  switch (result.kind) {
+   case 'place':
+    return showing(result.place) ? null : this.select(cardPlace(result.place), signal);
+   case 'route':
+    if (showing(result.destination) && shown?.mode === result.travelMode && shown.route.phase !== 'idle') return null;
+    return this.showRoute({ destination: cardPlace(result.destination), travelMode: result.travelMode }, signal, allowDirectStart);
+   case 'places': {
+    const query = boundedText(result.query, 300) ? result.query.trim() : '';
+    if (!query || !Array.isArray(result.places)) throw new DeviceNavigationFailure('MAPS_INVALID_INPUT', 'The Maps result is invalid.');
+    if (shown?.query === query) return null;
+    const run = this.begin(signal);
+    try {
+     // Only Cloud places (or coordinates) are shown; any other provider's entry is left out.
+     const places = result.places.flatMap(item => { try { return [this.destination(cardPlace(item)).place]; } catch { return []; } });
+     await this.present(run.check);
+     if (this.surface.guidance()) return null;
+     await this.surface.showResults(query, places);
+     run.check();
+     return { state: 'selected' };
+    } catch (error) { throw deviceNavigationFailure(error); } finally { run.done(); }
+   }
+   default: throw new DeviceNavigationFailure('MAPS_INVALID_INPUT', 'The Maps result is invalid.');
+  }
+ }
+
+ /** A failed or refused preference read never starts guidance. */
+ private async allowsDirectStart() {
+  try { return (await this.owner.directStart?.()) === true; } catch { return false; }
  }
 
  private usable(fix: Position | undefined): fix is Position {

@@ -144,12 +144,15 @@ test('presentation uses only Cloud numbers and never mentions credits or top-ups
   assert.equal(describeSubscription(views[4]).manage, true);
   assert.equal(describeSubscription(views[4]).headline, 'No active plan');
   assert.equal(describeSubscription(views[4]).manageLabel, 'Choose a plan');
-  assert.match(describeSubscription(views[4]).detail, /Redeem a subscription code or choose a plan/);
+  assert.equal(describeSubscription(views[4]).detail, '');
   assert.equal(describeSubscription(views[5]).manageLabel, 'Choose a plan');
   assert.equal(describeSubscription(views[5]).headline, 'Synthetic plan has ended');
   assert.equal(describeSubscription(views[2]).manage, true);
   assert.match(describeSubscription(views[3]).detail, /^20% of this billing period's plan allowance is left\./);
-  assert.match(describeSubscription(views[6]).detail, /Local apps keep working/);
+  assert.equal(describeSubscription(views[6]).detail, 'Couldn’t check your plan.');
+  assert.equal(describeSubscription(views[7]).detail, 'No plan found for this account.');
+  assert.equal(describeSubscription(views[9]).detail, 'Couldn’t refresh your plan.');
+  assert.match(describeSubscription(views[2]).detail, / Payment is past due\.$/, 'past due is one short line and a refresh failure adds nothing');
   // Only an explicit no-plan answer stops Cloud-backed AI from starting.
 });
 

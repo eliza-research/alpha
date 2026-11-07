@@ -29,5 +29,5 @@ for(const theme of ['light','dark'])for(const size of [{width:360,height:640},{w
  await page.keyboard.press('Shift+Tab');await expect(review.getByRole('button',{name:'Send reviewed email to agent',exact:true})).toBeFocused();
  await page.keyboard.press('Escape');await expect(review).toHaveCount(0);await expect(share).toBeFocused();
  expect(await page.evaluate(()=>(window as any).attachmentFixture.mutations)).toBe(0);
- if(theme==='light'&&size.height===640){await page.evaluate(()=>{(window as any).attachmentFixture.revoked=true;window.dispatchEvent(new Event('focus'));});await expect(page.getByText('Choose the attachment below.',{exact:true})).toHaveCount(0);await expect(page.getByText('Connect Gmail to read your inbox',{exact:true})).toBeVisible();}
+ if(theme==='light'&&size.height===640){await page.evaluate(()=>{(window as any).attachmentFixture.revoked=true;window.dispatchEvent(new Event('focus'));});await expect(page.getByText('Choose the attachment below.',{exact:true})).toHaveCount(0);await expect(page.getByRole('region',{name:'Inbox',exact:true}).getByRole('button',{name:'Connect Gmail',exact:true})).toBeVisible();}
 });

@@ -57,6 +57,19 @@ test('Google Calendar admission is confined to body-free reads of the reviewed s
  assert.equal(allowed('https://api.eliza.app/api/v1/eliza/google/calendar/events','GET'),false);
 });
 
+test('Google Calendar writes admit exactly create, change and delete of one event',()=>{
+ const events='https://api.eliza.app/api/v1/eliza/google/calendar/events',one=events+'/abc123_20261013T150000Z';
+ assert.equal(allowed(events,'POST',true),true);
+ assert.equal(allowed(one,'PATCH',true),true);
+ assert.equal(allowed(one+'?side=owner&grantId=g&calendarId=primary','DELETE',false),true);
+ for(const [url,method,body] of [
+  [events,'POST',false],[events+'?side=owner','POST',true],[events+'/','POST',true],[events,'GET',false],[events,'PATCH',true],[events,'DELETE',false],[events,'PUT',true],
+  [one,'PATCH',false],[one+'?side=owner','PATCH',true],[one,'DELETE',false],[one+'?side=owner','DELETE',true],[one,'PUT',true],[one+'?side=owner','GET',false],[one,'POST',true],
+  [one+'/','PATCH',true],[one+'/instances','PATCH',true],[events+'/a%2Fb','PATCH',true],[events+'/a-b','PATCH',true],[events+'/'+'a'.repeat(1025),'PATCH',true],
+  [one.replace('api.eliza.app','agent.cloud.eliza.app'),'PATCH',true],[one.replace('api.eliza.app','api-staging.eliza.app'),'PATCH',true],
+ ])assert.equal(allowed(url,method,body),false,`${method} ${url} body=${body}`);
+});
+
 test('Eliza Cloud Maps admission is the exact reviewed routes with location data only in a POST body',()=>{
  const base='https://api.eliza.app/api/v1/maps/';
  assert.equal(allowed(base+'capabilities','GET'),true);

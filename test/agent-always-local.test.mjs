@@ -129,7 +129,7 @@ test('a chat turn without Cloud inference gets an honest answer with the plan ac
     reply.replace(/^export /, '').replace(/notice: ConnectionSnapshot\['residentPlanNotice'\], signedIn: boolean\): string/, 'notice, signedIn)')
       + '\n}; return inferenceUnavailableReply;')(() => 'Nebula', {environment:'production'});
   const replies = [renderReply('offline', true), renderReply(null, false), renderReply(null, true)].join('\n');
-  for (const text of ['Check your Nebula account in Settings', "can't reach Nebula", 'Sign in with Nebula', 'Local apps keep working'])
+  for (const text of ['Check your Nebula account in Settings', "can't reach Nebula", 'AI replies need Nebula. Sign in to continue.', 'Local apps keep working'])
     assert.ok(replies.includes(text), text);
   assert.doesNotMatch(reply, /no agent|without AI|credit|top.?up|upgrade|needs? (?:an? )?Eliza Cloud (?:account with a )?plan|on-device speech|Nothing was sent to Cloud/i);
   // Workflow text generation fails honestly instead of using the plan answer as generated text.
@@ -188,4 +188,38 @@ test('native starts the agent without a provider and never offers it a Cloud key
 test('browser speech has no Web Speech fallback', () => {
   for (const file of ['apps/app/src/browser/voice.ts', 'apps/app/src/browser/browser-surface.ts'])
     assert.doesNotMatch(read(file), /speechSynthesis|SpeechSynthesisUtterance/, file);
+});
+
+test('the saved sign-in waits only on a connection failure, and "Use another account" replaces a running reconnect', () => {
+  const chooser = ui.slice(ui.indexOf('export function ConnectionChooser'));
+  // An expired key or any non-connection error is shown on the sign-in methods, not waited out.
+  assert.ok(chooser.includes("const savedKeyExpired=snapshot.cloudAccount?.expiresAt!==undefined&&snapshot.cloudAccount.expiresAt<=Date.now();"));
+  assert.ok(chooser.includes("const savedSignInWaiting=!snapshot.error||snapshot.residentPlanNotice==='offline'||!!snapshot.inferenceOffline||connectionFailure(snapshot.error)||/^(Connection request failed|Connection timed out)$/.test(snapshot.error)||snapshot.error==='Connection cancelled.';"));
+  assert.match(chooser, /const savedSignInUsable=[^;]*&&!savedKeyExpired&&savedSignInWaiting&&!snapshot\.signIn;/);
+  // The tap waits for the cancelled reconnect to finish before opening sign-in.
+  assert.ok(chooser.includes("onClick={async()=>{if(snapshot.busy)await connectionController.cancelAndWait();void connectionController.residentCloudLogin();}}"));
+  const wait = between(ui, 'async cancelAndWait() {', '\n  },');
+  assert.match(wait, /const settled = operationSettled; connectionController\.cancel\(\); await settled;/);
+  assert.match(between(ui, 'async function work(', '\n}\n'), /finally \{ if \(operation === controller\) \{ operation = null; residentStartInBackground = false; \} settle\(\);/);
+});
+
+test('a sign-in step started offline is held and sent once Cloud answers; transport failures keep the code step', () => {
+  for (const [method, kind] of [['async signInEmail(', "{ kind: 'email', value: address }"], ['async signInPhone(', "{ kind: 'phone', value: number }"], ['async signInGoogle(', "{ kind: 'google' }"]])
+    assert.ok(between(ui, method, '\n  },').includes(`holdSignInStep(${kind})`), method);
+  assert.match(between(ui, 'function holdSignInStep(', '\n}\n'), /state\.error === SIGN_IN_WAITING && state\.signIn\?\.step === 'choose'/);
+  const refresh = between(ui, 'async refreshSignInMethods() {', 'backToChooser() {');
+  assert.match(refresh, /if \(state\.signInPending\) \{ sendPendingSignInStepWhenIdle\(\); return; \}/);
+  // Sent at once when nothing else runs; otherwise once the running step (a plan re-check on the
+  // network's return, for example) has settled.
+  const idle = between(ui, 'function sendPendingSignInStepWhenIdle(', '\n}\n');
+  assert.match(idle, /if \(!operation\) \{ queueMicrotask\(sendPendingSignInStep\); return; \}/);
+  assert.match(idle, /operationSettled\.then\(/);
+  assert.match(between(ui, 'cancelSignIn() {', '\n  },'), /if \(state\.signInPending\) update\(\{ signInPending: null \}\);/);
+  // Verify keeps the code step on a transport failure, so "enter the code again" is true there.
+  assert.match(between(ui, 'async verifySignInCode(', '\n  },'), /signInFailed\(view\.environment, error instanceof CloudSignInError && \(error\.code === 'invalid-code' \|\| TRANSPORT_FAILURES\.includes\(error\.code\)\)\);/);
+  // A Resend that never reached Cloud says no new code was sent.
+  assert.match(between(ui, 'async resendSignInCode() {', '\n  },'), /update\(\{ error: SIGN_IN_RESEND_FAILED \}\)/);
+  // Back from the code step returns to the method choice.
+  assert.match(between(ui, 'backToChooser() {', '\n  },'), /update\(\{ signIn: \{ step: 'choose', environment: view\.environment \}, signInPending: null, message: '', error: '' \}\);/);
+  assert.match(ui, /back: \(\) => connectionController\.backToChooser\(\),/);
 });

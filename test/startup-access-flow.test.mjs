@@ -6,7 +6,9 @@ const source=readFileSync('apps/app/src/startup-permission-flow.ts','utf8');
 const flow=await import('data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(source,{mode:'strip'})).toString('base64'));
 test('photo grant description preserves selected/partial scope and rejects locked or malformed native results',()=>{
  assert.match(flow.startupPhotoAccess({scope:'selected',locked:false}).description,/Selected/);
- assert.match(flow.startupPhotoAccess({scope:'partial',locked:false}).description,/Limited/);
+ assert.match(flow.startupPhotoAccess({scope:'partial',locked:false}).description,/Selected photos only/);
+ assert.equal(flow.startupPhotoAccess({scope:'partial',locked:false}).limited,true);
+ assert.equal(flow.startupPhotoAccess({scope:'full',locked:false}).limited,false);
  assert.equal(flow.startupPhotoAccess({scope:'denied',locked:false}).granted,false);
  for(const value of [null,{scope:['full'],locked:false},{scope:'full',locked:true},{scope:'full'}])assert.throws(()=>flow.startupPhotoAccess(value));
 });
@@ -32,6 +34,8 @@ test('checks never prompt, denial persists to settings, and a granted readback r
 test('location metadata labels approximate and precise grants without accepting malformed accuracy',()=>{
  assert.match(flow.startupLocationAccess({location:'granted',accuracy:'approximate'}).description,/Approximate/);
  assert.match(flow.startupLocationAccess({location:'granted',accuracy:'precise'}).description,/Precise/);
+ assert.equal(flow.startupLocationAccess({location:'granted',accuracy:'approximate'}).limited,true);
+ assert.equal(flow.startupLocationAccess({location:'granted',accuracy:'precise'}).limited,false);
  assert.equal(flow.startupLocationAccess({location:'denied',accuracy:'none'}).granted,false);
  for(const value of [null,{location:'granted',accuracy:'none'},{location:'granted',accuracy:['precise']},{location:'denied',accuracy:'precise'},{location:'prompt'}])assert.throws(()=>flow.startupLocationAccess(value));
 });

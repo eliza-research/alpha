@@ -50,10 +50,10 @@ async function firstRun(page: Page, overrides: Partial<StubAccount> = {}) {
   await expect(welcome.getByRole('button', { name: 'Close connection settings', exact: true })).toHaveCount(0);
   expect(await harness(page, f => f.slots['cloud:production'] ?? null)).toBeNull();
   expect(await stub(page, s => s.order.some((entry: string) => entry.startsWith('configureCloudProvider')))).toBe(false);
-  await expect(welcome.getByRole('form', { name: 'Sign in with email' })).toBeVisible();
+  await expect(welcome.getByRole('form', { name: 'Sign in with email or phone' })).toBeVisible();
   await expect(welcome.getByRole('button', { name: 'Use local apps without AI', exact: true })).toHaveCount(0);
   await expect(welcome.getByRole('button',{name:'Reconnect agent',exact:true})).toHaveCount(0);
-  await expect(welcome.getByText('Your agent runs with AI off until you sign in to Eliza Cloud.',{exact:true})).toHaveCount(0);
+  await expect(welcome.getByText(/AI off|Your agent runs/)).toHaveCount(0);
   await expect(welcome.getByText('Phone action history',{exact:true})).toHaveCount(0);
   await expect(welcome.getByText('Conversation history',{exact:true})).toHaveCount(0);
   return { foreign, welcome };
@@ -63,7 +63,7 @@ async function firstRun(page: Page, overrides: Partial<StubAccount> = {}) {
 async function nothingLeft(page: Page, welcome: ReturnType<Page['getByRole']>, untouched = false) {
   await expect.poll(()=>harness(page,f=>f.calls.filter((call:string)=>call==='Agent.start').length)).toBeGreaterThan(0);
   await expect(welcome).toBeVisible();
-  await expect(welcome.getByRole('button', { name: 'Email me a code', exact: true }).or(welcome.getByRole('button', { name: 'Sign in with Eliza Cloud', exact: true }))).toBeEnabled();
+  await expect(welcome.getByRole('button', { name: 'Continue', exact: true }).or(welcome.getByRole('button', { name: 'Sign in', exact: true }))).toBeEnabled();
   expect(await harness(page, f => f.slots['cloud:production'] ?? null)).toBeNull();
   expect(await stub(page, s => s.order.some((entry: string) => entry.startsWith('configureCloudProvider')))).toBe(false);
   if (untouched) {
@@ -160,7 +160,7 @@ test('first run: Cloud refusing the new key (401 on the account read) removes it
   await expect(welcome).not.toContainText(/pair/i);
   expect(await stub(page, s => s.order.filter((entry: string) => entry.startsWith('store') || entry === 'remove cloud key'))).toEqual(['store first-run-key', 'remove cloud key']);
   await nothingLeft(page, welcome);
-  await expect(welcome.getByRole('alert')).toHaveText('Eliza Cloud refused this sign-in. Your agent keeps running; sign in again to turn AI on.');
+  await expect(welcome.getByRole('alert')).toHaveText('Sign-in didn’t go through. Sign in again to turn on AI.');
   await expect(welcome.getByRole('button',{name:'Reconnect agent',exact:true})).toHaveCount(0);
   await expect(welcome.getByText('Conversation history',{exact:true})).toHaveCount(0);
 });
