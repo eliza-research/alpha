@@ -18,7 +18,7 @@ and binds results to source, adapter and model hashes. A mismatched observation
 fails the invocation. The harness test includes a deliberately wrong observation.
 
 Run an implemented family with `node scripts/check-quint-refinement.mjs
---families=native`. The default command runs all three families. Missing adapters
+--families=native`. The default command runs application, services, native and composition campaigns. Missing adapters
 and failed checks produce a failing command. `--require-complete` also requires
 the outstanding application-refinement obligations to be discharged.
 
@@ -46,7 +46,11 @@ implementation's intermediate states.
 Text containing quotes, backslashes or control characters needs an explicit
 equality-class mapping because this pinned Quint parser retains literal escapes.
 Include adapter and harness files in `sources` so receipt hashes bind the
-abstraction function as well as the implementation.
+abstraction function as well as the implementation. Capture them with
+`captureInputs(sources)` before executing product code and pass the returned
+`driverHashes`. The checker also hashes transitive imported Quint models.
+The report rejects stale receipts and the complete campaign fails when any
+runtime model has no current passing source-bound receipt.
 
 ## Evidence levels
 

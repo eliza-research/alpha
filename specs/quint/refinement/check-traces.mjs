@@ -9,6 +9,10 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const identifier = /^[A-Za-z][A-Za-z0-9_]*$/;
 const fieldPath = /^[A-Za-z][A-Za-z0-9_]*(?:(?:::|\.)[A-Za-z][A-Za-z0-9_]*)*$/;
 const hash = path => createHash('sha256').update(readFileSync(path)).digest('hex');
+export function captureInputs(sources) {
+  return Object.fromEntries([...new Set([...sources.map(source => resolve(root, source)), fileURLToPath(import.meta.url)])]
+    .map(path => [path, hash(path)]));
+}
 export const qset = values => ({quintCollection: 'set', values: [...values]});
 export const qmap = entries => ({quintCollection: 'map', entries: [...entries]});
 
@@ -56,18 +60,41 @@ function modelFile(model, requested) {
   throw new Error(`Unknown model ${model}`);
 }
 
+function invariantFor(model) {
+  for (const family of ['application', 'services', 'native', 'legacy']) {
+    const document = JSON.parse(readFileSync(join(root, 'specs/quint', family, 'manifest.json')));
+    const found = (Array.isArray(document) ? document : document.models).find(row => row.module === model);
+    if (found) return found.invariant;
+  }
+  return null;
+}
+
+function modelDependencies(path, paths = new Set()) {
+  if (paths.has(path)) return paths;
+  paths.add(path);
+  for (const match of readFileSync(path, 'utf8').matchAll(/\bfrom\s+"([^"]+)"/g)) {
+    const imported = resolve(dirname(path), match[1]);
+    modelDependencies(imported.endsWith('.qnt') ? imported : `${imported}.qnt`, paths);
+  }
+  return paths;
+}
+
 /** Check concrete source observations at every named model transition. */
-export async function checkTraces({model, modelPath, sources, traces, assumptions = [], scope, id = model, out, batchSize = 60}) {
+export async function checkTraces({model, modelPath, sources, traces, assumptions = [], scope, id = model, out, batchSize = 60, driverHashes}) {
   if (!identifier.test(model) || !/^[A-Za-z0-9_-]+$/.test(id)) throw new Error('Invalid model or receipt identifier');
   if (!['complete-finite-helper', 'bounded-component', 'bounded-orchestration'].includes(scope)) throw new Error('An explicit refinement scope is required');
   if (!Array.isArray(traces) || !traces.length || !Array.isArray(sources) || !sources.length) throw new Error('Concrete traces and implementation source paths are required');
   if (!Number.isSafeInteger(batchSize) || batchSize < 1 || batchSize > 500) throw new Error('Invalid trace batch size');
   const path = modelFile(model, modelPath);
-  const inputs = [...new Set([path, ...sources.map(source => resolve(root, source)), fileURLToPath(import.meta.url)])];
+  const invariant = invariantFor(model);
+  const modelInputs = modelDependencies(path);
+  const inputs = [...new Set([...modelInputs, ...sources.map(source => resolve(root, source)), fileURLToPath(import.meta.url)])];
   const before = Object.fromEntries(inputs.map(input => [input, hash(input)]));
   const receiptPath = out ? resolve(root, out) : join(root, 'test-results/quint-refinement', `${id}.json`);
-  const receipt = {schemaVersion: 1, model, scope, assumptions, startedAt: new Date().toISOString(),
-    sourceHashesBefore: before, traces: traces.length, checkpoints: 0, actions: {}, observedFields: [],
+  const receipt = {schemaVersion: 1, model, scope, assumptions, invariant, startedAt: new Date().toISOString(),
+    sourceHashesBefore: before, driverHashesBefore: driverHashes || null,
+    sourceCapture: driverHashes ? 'before driver execution' : 'before model checking, after observation generation',
+    traces: traces.length, checkpoints: 0, actions: {}, observedFields: [],
     traceInputs: traces, results: [], passed: false, status: 'running'};
   const serialize = value => JSON.stringify(value, (_key, entry) => typeof entry === 'bigint' ? {'#bigint': String(entry)} : entry, 2) + '\n';
   mkdirSync(dirname(receiptPath), {recursive: true});
@@ -94,7 +121,7 @@ export async function checkTraces({model, modelPath, sources, traces, assumption
             }
           }
           for (const field of Object.keys(step.expect || {})) fields.add(field);
-          expression += `.expect(${observationText(step.expect)})`;
+          expression += `.expect(${invariant ? `spec::${invariant} and ` : ''}${observationText(step.expect)})`;
           receipt.checkpoints++;
         }
         return [`  // ${JSON.stringify(trace.name || name)}\n  run ${name} = ${expression}`, ...rejected];
@@ -120,6 +147,9 @@ export async function checkTraces({model, modelPath, sources, traces, assumption
     receipt.sourceHashesAfter = Object.fromEntries(inputs.map(input => [input, hash(input)]));
     receipt.inputsUnchanged = inputs.every(input => before[input] === receipt.sourceHashesAfter[input]);
     if (!receipt.inputsUnchanged) failure ||= new Error('Refinement input changed during checking');
+    receipt.driverInputsBound = !!driverHashes && inputs.filter(input => !modelInputs.has(input))
+      .every(input => driverHashes[input] === receipt.sourceHashesAfter[input]);
+    if (driverHashes && !receipt.driverInputsBound) failure ||= new Error('Implementation or adapter changed during observation generation');
     receipt.observedFields = [...fields].sort();
     receipt.finishedAt = new Date().toISOString();
     receipt.passed = !failure;

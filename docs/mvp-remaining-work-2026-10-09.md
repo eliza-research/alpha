@@ -1,9 +1,11 @@
-Current integration candidate: SDK `3d76ff5acacb369e2c58fc8512e69e59f53ce69b` is the eliza `develop` tip (2026-10-18), which contains elizaOS/eliza#36598 (native Google host, Calendar approvals and Gmail host operations) and replaced `985322b5df96`. Upstream's Calendar delete, native Gmail send and Gmail mailbox-change paths are default-off flags that Alpha removes from the agent environment. Existing JNI/build inputs are unchanged from `9365c9bb0d`; recorded qualified native bytes are retained. New end-of-turn, heard-content, allowance and Maps behavior still needs current-source qualification. Historical source-bound evidence follows.
+Current source inventory pin is `b25d8aef2916385c571f4367e099809254fde0bb`. The historical entries below identify their reviewed revisions and qualification requirements.
+
+Earlier integration candidate: SDK `3d76ff5acacb369e2c58fc8512e69e59f53ce69b` is the eliza `develop` tip (2026-10-18), which contains elizaOS/eliza#36598 (native Google host, Calendar approvals and Gmail host operations) and replaced `985322b5df96`. Upstream's Calendar delete, native Gmail send and Gmail mailbox-change paths are default-off flags that Alpha removes from the agent environment. Existing JNI/build inputs are unchanged from `9365c9bb0d`; recorded qualified native bytes are retained. New end-of-turn, heard-content, allowance and Maps behavior still needs current-source qualification. Historical source-bound evidence follows.
 
 <!-- Integration 9e7a1553f378a570be3fe74c021e71710a1c96eb combines main Maps and Calendar; native qualification remains pending. -->
 # MVP remaining-work inventory — policy reconciled October 12, 2026
 
-Current consumer runtime source pin: `9365c9bb0d177` (2026-10-16 Android Google host entry-point wiring). Native build and device acceptance remain pending. The earlier PR #531 pin was `968348d792d3`, llama.cpp `3e5f73922ee8`.
+Earlier consumer runtime source pin: `9365c9bb0d177` (2026-10-16 Android Google host entry-point wiring). Native build and device acceptance remain pending. The earlier PR #531 pin was `968348d792d3`, llama.cpp `3e5f73922ee8`.
 Native source/provenance changed; voice remains unqualified and the prior embedding-host
 receipt remains refused pending requalification. Historical evidence below is not promoted.
 

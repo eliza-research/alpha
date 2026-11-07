@@ -101,14 +101,19 @@ TypeScript/Java execution refines all models. APK build and audit results,
 installed emulator behavior, AOSP image boot, provider integrations and device
 acceptance retain their separate gates in the repository.
 
-## Known modeled discrepancy
+## Implementation refinement
 
-The scan model records a current autosave/explicit-save/export discrepancy.
-After automatic save, explicitly saving the draft does not reset the automatic
-save marker. A successful export can therefore delete that explicitly saved
-draft. The services guide documents the counterexample and source-entry-point
-reproduction. Its desired preservation property is recorded separately from
-the invariants that describe current behavior.
+The source-driven campaigns under `refinement/` execute product TypeScript and
+Java with controlled external ports and check concrete observations against the
+Quint transitions. Run `npm run quint:refinement` after installing the pinned
+Chromium browser and host Java dependencies. See
+[the refinement report](../../docs/quint-implementation-refinement.md) for scope,
+findings and open obligations.
+
+The first migration reproduced an explicitly saved scan draft being deleted
+after export. The implementation-refinement phase fixes ownership retention
+across later autosaves and makes `ExplicitlySavedDraftPreserved` part of safety.
+The source regression now checks preservation through the normal scan entry point.
 
 ## Verification record
 

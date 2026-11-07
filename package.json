@@ -58,6 +58,7 @@
     "predev:maps": "npm run upstream:prepare-client",
     "prebuild:test-mocks": "npm run upstream:prepare-client",
     "dev:cloud": "node scripts/dev-cloud.mjs",
+    "quint:refinement": "node scripts/check-quint-refinement.mjs",
     "quint:check": "node scripts/check-quint.mjs check",
     "quint:typecheck": "node scripts/check-quint.mjs typecheck",
     "quint:test": "node scripts/check-quint.mjs test",
@@ -96,6 +97,7 @@
     "jsdom": "30.1.2",
     "tsx": "4.23.15",
     "typescript": "7.0.2",
-    "vite": "8.3.3"
+    "vite": "8.3.3",
+    "zod": "4.6.7"
   }
 }

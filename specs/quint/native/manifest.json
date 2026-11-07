@@ -26,19 +26,25 @@
         "failedUnbindKeepsAgentTest",
         "recoveryAndRestartTest",
         "replacementRetiresPendingBindingTest",
-        "resetFencesCallbackTest"
+        "resetFencesCallbackTest",
+        "stopRetainsProviderConfigurationTest",
+        "unconfirmedStopKeepsProcessUnknownTest",
+        "ownedCancellationRetiresLateStartupTest",
+        "attachedCancellationPreservesServiceTest"
       ],
       "invariants": [
         "TypeOK",
         "LocalOnly",
         "ResetStopsRuntime",
         "RecoveryPreservesRecords",
-        "CurrentCredentialAtUse"
+        "CurrentCredentialAtUse",
+        "StoppingRetiresEnrollment"
       ],
       "abstractions": [
         "One resident process, three epoch advances and two runtime profiles.",
         "Payload provenance, credential parsing, identity validation and IPC acknowledgement are environment results.",
-        "One retained record represents durable history."
+        "One retained record represents durable history.",
+        "Ordinary stop retires enrollment and voice admission before process shutdown is confirmed. Provider configuration persists. Owned and attached startup requests have distinct cancellation effects."
       ]
     },
     {
@@ -399,14 +405,19 @@
         "restoredCalendarGrantAllowsCurrentWorkTest",
         "restoredInboxGrantRequiresFreshReviewTest",
         "restoredGrantCannotReviveRetiredCalendarTest",
-        "restoredGrantCannotReviveRetiredInboxTest"
+        "restoredGrantCannotReviveRetiredInboxTest",
+        "ordinaryStopRetiresVoiceBeforeRestartTest",
+        "attachedStartCancellationPreservesVoiceTest",
+        "ownedStartupCancellationFencesReplyTest",
+        "pendingReplacementPreservesAccountTest"
       ],
       "abstractions": [
         "Actual imported domain transitions run together with explicit frames for every unaffected component.",
         "Host state contains foreground status and the identity/epoch captured when voice starts; it does not duplicate component state.",
         "Two account identities and the existing finite component bounds. Expected-rejection scenarios execute imported guards, and a test-only uncoordinated transition must violate cross-domain safety.",
         "Coordinated account/reset/lifecycle boundary actions specify the product integration contract. Full implementation refinement and every possible component interleaving remain separate evidence.",
-        "MFA, acknowledgement recovery, grant restoration, cancellation and process restart use imported transitions. Each Calendar and Inbox projection retains one durable operation through account retirement."
+        "MFA, acknowledgement recovery, grant restoration, cancellation and process restart use imported transitions. Each Calendar and Inbox projection retains one durable operation through account retirement.",
+        "A pending replacement attempt preserves the active old account. Voice ownership follows committed ownerEpoch, separately from the pending attempt epoch."
       ]
     },
     {

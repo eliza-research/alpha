@@ -1,12 +1,12 @@
 /// Projection of createStartupPermissionFlow and the versioned walkthrough record.
 module StartupPermissions {
-  type State = { status: str, attempted: bool, granted: bool, enabled: bool,
+  type State = { status: str, attempted: bool, durableAttempt: bool, sessionRequests: int, granted: bool, enabled: bool,
     requestable: bool, pending: bool, generation: int, captured: int,
     requests: int, step: int, persistedStep: int, completed: bool }
   var s: State
   pure def statusFor(granted: bool, accessEnabled: bool, attempted: bool, requestable: bool): str =
     if (granted and accessEnabled) "ready" else if (attempted or granted or not(requestable)) "settings" else "request"
-  action init = s' = { status: "checking", attempted: false, granted: false,
+  action init = s' = { status: "checking", attempted: false, durableAttempt: false, sessionRequests: 0, granted: false,
     enabled: false, requestable: true, pending: false, generation: 0, captured: 0,
     requests: 0, step: 0, persistedStep: 0, completed: false }
   action check = s' = { ...s, status: statusFor(s.granted, s.enabled, s.attempted, s.requestable) }
@@ -14,7 +14,13 @@ module StartupPermissions {
     s' = { ...s, pending: true, generation: s.generation + 1, captured: s.generation + 1,
       status: statusFor(s.granted, s.enabled, s.attempted, s.requestable) } }
   action prompt = all { s.pending, s.status == "request", not(s.attempted),
-    s' = { ...s, attempted: true, requests: s.requests + 1 } }
+    s' = { ...s, attempted: true, durableAttempt: true,
+      sessionRequests: s.sessionRequests + 1, requests: s.requests + 1 } }
+  // Attempt persistence is best-effort. This session still refuses a second prompt,
+  // while a reconstructed flow can prompt again when no durable marker was saved.
+  action promptWithoutPersistence = all { s.pending, s.status == "request", not(s.attempted),
+    s' = { ...s, attempted: true, sessionRequests: s.sessionRequests + 1,
+      requests: s.requests + 1 } }
   action result(granted: bool): bool = all { s.pending,
     s' = { ...s, granted: granted, enabled: granted, pending: false,
       status: statusFor(granted, granted, s.attempted, s.requestable) } }
@@ -23,15 +29,18 @@ module StartupPermissions {
   action persistNext = all { not(s.completed), s.step < 6,
     s' = { ...s, step: s.step + 1, persistedStep: s.step + 1, completed: s.step + 1 == 6 } }
   action persistFailed = s' = s
-  action restart = s' = { ...s, pending: false, status: "checking", step: s.persistedStep }
+  action restart = s' = { ...s, pending: false, status: "checking", step: s.persistedStep,
+    attempted: s.durableAttempt, sessionRequests: 0 }
   action oldCompletedInstall = {
     nondet count = Set(4, 5).oneOf()
     s' = { ...s, completed: true, step: count, persistedStep: count }
   }
   action resumeDuringPrompt = s' = s
-  action step = any { check, enable, prompt, result(true), result(false), failed, denied,
+  action step = any { check, enable, prompt, promptWithoutPersistence, result(true), result(false), failed, denied,
     persistNext, persistFailed, restart, oldCompletedInstall, resumeDuringPrompt }
-  val NoRepeatedPrompt = s.requests <= 1
+  val NoRepeatedPrompt = s.sessionRequests <= 1 and (s.durableAttempt implies s.attempted)
+  // This stronger diagnostic needs durable attempt storage across reconstruction.
+  val NoRepeatedPromptAcrossRestart = s.requests <= 1
   val DurableProgress = s.step == s.persistedStep
   val OwnedPending = s.pending implies s.captured == s.generation
   val CompletedUpgrade = s.completed implies s.step.in(Set(4, 5, 6))
@@ -43,4 +52,7 @@ module StartupPermissions {
   run failedProgressTest = init.then(persistNext).then(persistFailed).then(restart)
     .expect(s.step == 1 and safety)
   run upgradeTest = init.then(oldCompletedInstall).then(restart).expect(s.completed and safety)
+  run failedAttemptPersistenceTest = init.then(enable).then(promptWithoutPersistence)
+    .then(result(false)).then(restart).then(enable).then(promptWithoutPersistence)
+    .then(result(false)).expect(s.requests == 2 and not(s.durableAttempt) and not(NoRepeatedPromptAcrossRestart) and safety)
 }

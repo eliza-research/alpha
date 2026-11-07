@@ -15,7 +15,8 @@
         "phase/method/pending/consumed": "native Attempt, encrypted pending record and callback burn",
         "receipt/key/acknowledged/ackTries": "persisted ack receipt, credential slot and acknowledge rounds",
         "epoch/attemptOwner/owner": "credential intent and captured account ownership",
-        "cancelRequested/steward": "pre-key cancellation versus post-key activation and separate transient Steward cleanup after authentication delivery"
+        "cancelRequested/steward": "pre-key cancellation versus post-key activation and separate transient Steward cleanup after authentication delivery",
+        "ownerEpoch": "committed credential generation, preserved while a replacement attempt is pending"
       },
       "abstractions": [
         "Two sign-in attempts and owners, five wrong-code attempts and three ack attempts.",
@@ -565,13 +566,14 @@
         "queued/saving/pendingPages/pendingExpected": "serialized captured autosave work and CAS checked against current stored revision",
         "storedRevision/expectedRevision/autoSaved": "saved draft ownership, explicit load and automatic-draft cleanup",
         "phase/picker/closed": "editor operation admission and system-picker visibility exception",
-        "exported/output": "retryable known non-writes versus requested/exported/unverified or thrown export failures"
+        "exported/output": "retryable known non-writes versus requested/exported/unverified or thrown export failures",
+        "storedRevision/expectedRevision/autoSaved/userSaved": "saved draft CAS identity, explicit ownership across autosaves and confirmed-export cleanup"
       },
       "abstractions": [
         "Two pages, two queued writes and four non-reused draft revisions represent source limits of 20 pages and arbitrary UUID revisions.",
         "Opaque image identities encode already-validated MIME, dimensions and size. Each text layer stays with its image through reorder and is cleared on image replacement.",
         "The exported flag follows the source UI retry lock and does not assert that a provider has saved a PDF. Requested and unverified outcomes lock retry.",
-        "Current native source keeps autoSaved true after explicitly saving the automatically created draft. explicitSaveAfterAutosaveCounterexampleTest preserves that behavior, including cleanup after confirmed export, despite the source comment promising preservation of explicitly saved drafts."
+        "An explicitly saved or loaded draft remains user-owned across subsequent automatic saves. Confirmed export cleans up only a draft created solely by automatic saving."
       ],
       "tests": [
         "orderedLayersTest",
@@ -582,7 +584,8 @@
         "cancelledExportRetryTest",
         "exportWaitsForQueuedDraftsTest",
         "automaticDraftCleanupTest",
-        "explicitSaveAfterAutosaveCounterexampleTest",
+        "explicitSaveAfterAutosavePreservedTest",
+        "autosaveAfterExplicitSaveRetainedTest",
         "loadedDraftRetainedTest"
       ],
       "invariants": [
@@ -592,21 +595,14 @@
         "ImmutableExport",
         "UnknownExportLocked",
         "ClosedNoWriter",
-        "TypeOK"
+        "TypeOK",
+        "ExplicitlySavedDraftPreserved"
       ],
       "bounds": {
         "maxSamples": 1000,
         "maxSteps": 60,
         "seed": "123"
-      },
-      "expectedViolations": [
-        {
-          "property": "ExplicitlySavedDraftPreserved",
-          "scenario": "explicitSaveAfterAutosaveCounterexampleTest",
-          "sourceConformance": "node specs/quint/services/scan-source-conformance.mjs",
-          "reason": "Save draft retains autoSaved and clearAutoDraft deletes it after confirmed export."
-        }
-      ]
+      }
     },
     {
       "sources": [

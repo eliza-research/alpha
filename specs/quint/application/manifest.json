@@ -55,7 +55,8 @@
       "denialRestartTest",
       "resumeWhilePromptTest",
       "failedProgressTest",
-      "upgradeTest"
+      "upgradeTest",
+      "failedAttemptPersistenceTest"
     ],
     "sources": [
       "apps/app/src/startup-permission-flow.ts",
@@ -251,7 +252,8 @@
       "competingWriterTest",
       "corruptRecoveryTest",
       "staleRecoveryTest",
-      "failedWriteRetainsDraftTest"
+      "failedWriteRetainsDraftTest",
+      "legacyWriteAfterPrepareTest"
     ],
     "sources": [
       "apps/app/src/browser/domain-document.ts",
@@ -262,8 +264,12 @@
     ],
     "abstractions": [
       "One document with finite content identities, non-reused revision classes, explicit corrupt metadata and legacy-write fencing.",
-      "Encryption and storage-engine transactional correctness are environment contracts."
-    ]
+      "Encryption and storage-engine transactional correctness are environment contracts.",
+      "A concurrent external legacy write can arrive after editor validation but before the document transaction commits. CommitLegacyCurrent preserves the stronger cross-store claim as a separately falsifiable predicate; the next source read refuses mismatched legacy bytes."
+    ],
+    "stateMapping": {
+      "phase/capturedLegacy": "separate editor legacy validation, prepared callback result and eventual document CAS commit"
+    }
   },
   {
     "path": "specs/quint/application/PermissionWalkthrough.qnt",

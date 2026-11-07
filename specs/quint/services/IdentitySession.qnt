@@ -1,14 +1,14 @@
 /// Native Cloud sign-in. Source mappings and finite abstractions are in manifest.json.
 module IdentitySession {
   type Session = {
-    phase: str, method: str, epoch: int, owner: int, attemptOwner: int,
+    phase: str, method: str, epoch: int, owner: int, ownerEpoch: int, attemptOwner: int,
     pending: bool, consumed: Set[int], wrongCodes: int, cooldown: bool,
     receipt: bool, key: bool, acknowledged: bool, ackTries: int,
     oldKey: bool, revoked: bool, steward: bool, callbackAccepted: bool, cancelRequested: bool
   }
   var s: Session
   action init = s' = {
-    phase: "idle", method: "none", epoch: 0, owner: 0, attemptOwner: 0,
+    phase: "idle", method: "none", epoch: 0, owner: 0, ownerEpoch: 0, attemptOwner: 0,
     pending: false, consumed: Set(), wrongCodes: 0, cooldown: false,
     receipt: false, key: false, acknowledged: false, ackTries: 0,
     oldKey: false, revoked: false, steward: false, callbackAccepted: false, cancelRequested: false
@@ -56,7 +56,7 @@ module IdentitySession {
   }
   action writeKey = all {
     s.phase == "receipt-saved", s.receipt,
-    s' = { ...s, key: true, owner: s.attemptOwner, phase: "acknowledging" }
+    s' = { ...s, key: true, owner: s.attemptOwner, ownerEpoch: s.epoch, phase: "acknowledging" }
   }
   action ack(success: bool): bool = all {
     s.phase == "acknowledging", s.key, s.receipt, s.ackTries < 3,
@@ -111,7 +111,7 @@ module IdentitySession {
   val MatchedReturnBurned = s.callbackAccepted implies s.epoch.in(s.consumed)
   val BoundedAttempts = s.wrongCodes <= 5 and s.ackTries <= 3
   val AuthenticatedKey = s.phase == "authenticated" implies s.key and s.acknowledged
-  val TypeOK = s.phase.in(Set("idle", "browser", "code", "mfa", "exchange", "minted", "receipt-saved", "acknowledging", "activation-pending", "authenticated", "cancelled", "expired", "exhausted", "failed", "revoking-previous")) and s.epoch.in(0.to(2)) and s.owner.in(0.to(2)) and s.wrongCodes.in(0.to(5)) and s.ackTries.in(0.to(3))
+  val TypeOK = s.phase.in(Set("idle", "browser", "code", "mfa", "exchange", "minted", "receipt-saved", "acknowledging", "activation-pending", "authenticated", "cancelled", "expired", "exhausted", "failed", "revoking-previous")) and s.epoch.in(0.to(2)) and s.owner.in(0.to(2)) and s.ownerEpoch.in(0.to(2)) and s.wrongCodes.in(0.to(5)) and s.ackTries.in(0.to(3))
   val safety = TypeOK and KeyBeforeAck and DurableReceiptBeforeKey and SingleUseGoogleReturn and
     MatchedReturnBurned and BoundedAttempts and AuthenticatedKey
 

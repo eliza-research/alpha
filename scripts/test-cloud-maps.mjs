@@ -102,13 +102,13 @@ assert.equal(cloudMapsFailure(cloudError(503, 'provider_unavailable'), AbortSign
   assert.deepEqual(config.capabilities.modes, ['drive', 'walk', 'bicycle', 'transit']);
   assert.equal(config.capabilities.traffic, 'live');
   assert.equal(config.capabilities.transit, 'scheduled');
-  // Cloud must stamp every route with the advertised traffic; the phone never rewrites it.
+  // A live-traffic capability can return a free-flow route. The route keeps its own traffic evidence.
   const controller = new MapsController(config, provider, new SavedPlaces('test.maps.live', memory()), location);
   await controller.select(place);
   controller.setOrigin(CASINO); controller.setMode('transit');
   await controller.planRoute();
-  assert.equal(controller.snapshot().route.phase, 'error', 'a route whose traffic differs from the capabilities is refused');
-  assert.equal(controller.snapshot().route.error.code, 'invalid-response');
+  assert.equal(controller.snapshot().route.phase, 'ready', 'free-flow transit is valid under a live-traffic capability');
+  assert.equal(controller.snapshot().route.value.traffic, 'none', 'free-flow data is never relabeled live');
 }
 for (const capabilities of [
   { traffic: 'approximated' }, { transit: 'approximated' }, { traffic: 'unknown' },

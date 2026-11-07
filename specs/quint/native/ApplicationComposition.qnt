@@ -56,6 +56,12 @@ module ResidentComponent {
   export ResidentRuntime.revokeCredential
   export ResidentRuntime.start
   export ResidentRuntime.started
+  export ResidentRuntime.attachStart
+  export ResidentRuntime.cancelAttachedStart
+  export ResidentRuntime.cancelOwnedStart
+  export ResidentRuntime.requestStop
+  export ResidentRuntime.shutdownConfirmed
+  export ResidentRuntime.shutdownUnconfirmed
   export ResidentRuntime.beginBinding
   export ResidentRuntime.bindingResult
   export ResidentRuntime.inference
@@ -146,6 +152,9 @@ module ApplicationComposition {
   import InboxComponent(instance = 5) as Inbox
   import ResetComponent(instance = 6) as Reset
 
+  // Public read-only projection for implementation trace observations.
+  val state = { identity: Identity::s, voice: Voice::s, resident: Resident::s,
+    calendar: Calendar::s, inbox: Inbox::s, reset: Reset::s }
   type Host = {foreground: bool, voiceOwner: int, voiceIdentityEpoch: int}
   var host: Host
   action init = all {
@@ -162,13 +171,19 @@ module ApplicationComposition {
   action keep = all {keepHost, keepIdentity, keepVoice, keepResident, keepCalendar, keepInbox, keepReset}
   action stopVoice = if (Voice::s.phase == "idle") keepVoice else Voice::stop
 
-  val accountReady = Identity::s.phase == "authenticated" and Identity::s.key and not(Reset::s.marker) and not(Resident::s.resetPending)
+  val credentialPresent = Identity::s.owner != 0 and (Identity::s.key or Identity::s.oldKey)
+  // Precommit sign-in keeps the prior account and resident available. A newly
+  // committed key becomes active only after acknowledgement finishes.
+  val accountReady = Identity::s.owner != 0 and
+    ((Identity::s.phase == "authenticated" and Identity::s.key) or
+      (Identity::s.oldKey and not(Identity::s.key))) and
+    not(Reset::s.marker) and not(Resident::s.resetPending)
   val OwnerAgreement = Identity::s.owner == 0 or
     (Identity::s.owner == Calendar::s.owner and Identity::s.owner == Inbox::s.owner)
   val VoiceAccountBound = Voice::s.phase == "idle" or
     (accountReady and Resident::s.phase == "ready" and Resident::s.provider == "cloud"
       and Resident::s.credential and Resident::s.bindingEpoch == Resident::s.epoch
-      and host.foreground and host.voiceOwner == Identity::s.owner and host.voiceIdentityEpoch == Identity::s.epoch)
+      and host.foreground and host.voiceOwner == Identity::s.owner and host.voiceIdentityEpoch == Identity::s.ownerEpoch)
   val ResetStopsConsumers = Reset::s.marker implies
     (Resident::s.resetPending and not(Resident::s.localProcess) and Voice::s.phase == "idle" and not(Inbox::s.read))
   val InferenceAccountBound = Resident::s.inferenceAccepted implies accountReady
@@ -177,9 +192,7 @@ module ApplicationComposition {
   // Every composite transition frames all unaffected imported variables explicitly.
   action beginSignIn(method: str): bool = all {
     host.foreground, not(Reset::s.marker), not(Resident::s.resetPending),
-    Identity::begin(method), stopVoice,
-    if (Resident::s.phase == "ready" and Resident::s.provider != "none")
-      Resident::clearBinding(false) else keepResident,
+    Identity::begin(method), keepVoice, keepResident,
     keepCalendar, keepInbox, keepReset, keepHost
   }
   action acceptIdentityKey = all {
@@ -192,7 +205,7 @@ module ApplicationComposition {
     host.foreground, accountReady, Resident::s.phase == "ready",
     Resident::s.provider == "cloud", Resident::s.bindingEpoch == Resident::s.epoch,
     Voice::start(false, true), keepIdentity, keepResident, keepCalendar, keepInbox, keepReset,
-    host' = {foreground: true, voiceOwner: Identity::s.owner, voiceIdentityEpoch: Identity::s.epoch}
+    host' = {foreground: true, voiceOwner: Identity::s.owner, voiceIdentityEpoch: Identity::s.ownerEpoch}
   }
   action signOut = all {
     Identity::signOut, stopVoice, Resident::revokeCredential,
@@ -256,6 +269,24 @@ module ApplicationComposition {
   action startResident = all {
     not(Reset::s.marker), not(Resident::s.resetPending), Resident::start,
     keepIdentity, keepVoice, keepCalendar, keepInbox, keepReset, keepHost
+  }
+  action attachResidentStart = all {
+    Resident::attachStart, keepIdentity, keepVoice, keepCalendar, keepInbox, keepReset, keepHost
+  }
+  action cancelAttachedResidentStart = all {
+    Resident::cancelAttachedStart, keepIdentity, keepVoice, keepCalendar, keepInbox, keepReset, keepHost
+  }
+  action stopResident = all {
+    Resident::requestStop, stopVoice, keepIdentity, keepCalendar, keepInbox, keepReset, keepHost
+  }
+  action cancelOwnedResidentStart = all {
+    Resident::cancelOwnedStart, stopVoice, keepIdentity, keepCalendar, keepInbox, keepReset, keepHost
+  }
+  action residentShutdownConfirmed = all {
+    Resident::shutdownConfirmed, keepIdentity, keepVoice, keepCalendar, keepInbox, keepReset, keepHost
+  }
+  action residentShutdownUnconfirmed = all {
+    Resident::shutdownUnconfirmed, keepIdentity, keepVoice, keepCalendar, keepInbox, keepReset, keepHost
   }
   action residentStarted(ticket: int): bool = all {
     Resident::started(ticket),
@@ -431,7 +462,7 @@ module ApplicationComposition {
     host.foreground, accountReady, Resident::s.phase == "ready",
     Resident::s.provider == "cloud", Resident::s.bindingEpoch == Resident::s.epoch,
     Voice::start(true, false), keepIdentity, keepResident, keepCalendar, keepInbox, keepReset,
-    host' = {foreground: true, voiceOwner: Identity::s.owner, voiceIdentityEpoch: Identity::s.epoch}
+    host' = {foreground: true, voiceOwner: Identity::s.owner, voiceIdentityEpoch: Identity::s.ownerEpoch}
   }
   action chooseResidentProfile(profile: str): bool = all {
     not(Reset::s.marker), not(Resident::s.resetPending), Resident::chooseProfile(profile),
@@ -645,7 +676,8 @@ module ApplicationComposition {
       revokePreviousIdentity(result)
     },
     releaseIdentitySession,
-    startResident,
+    startResident, attachResidentStart, cancelAttachedResidentStart, stopResident,
+    cancelOwnedResidentStart, residentShutdownConfirmed, residentShutdownUnconfirmed,
     {
       nondet ticket = Set(-1, 0, 1, 2, 3, 4).oneOf()
       residentStarted(ticket)
@@ -871,7 +903,8 @@ module ApplicationComposition {
   run uncoordinatedIdentityChangeDetectedTest = init.then(beginSignIn("google")).then(identityCallback(1))
     .then(identityExchanged).then(saveIdentityReceipt).then(acceptIdentityKey).then(acknowledgeIdentity(true))
     .then(startResident).then(residentStarted(1)).then(beginBinding).then(bindingReply(1)).then(startVoice)
-    .then(all {Identity::begin("google"), keepVoice, keepResident, keepCalendar, keepInbox, keepReset, keepHost})
+    .then(beginSignIn("google")).then(identityCallback(2)).then(identityExchanged).then(saveIdentityReceipt)
+    .then(all {Identity::writeKey, keepVoice, keepResident, keepCalendar, keepInbox, keepReset, keepHost})
     .then(check(not(VoiceAccountBound) and not(safety)))
 
   run signedInSetup = init.then(beginSignIn("google")).then(identityCallback(1))
@@ -960,4 +993,23 @@ module ApplicationComposition {
     .then(identityExchanged).then(saveIdentityReceipt).then(acceptIdentityKey)
     .then(acknowledgeIdentity(true)).then(revokePreviousIdentity(false)).then(releaseIdentitySession)
     .then(inboxRestoreGrants).then(inboxReply.fail())
+  run ordinaryStopRetiresVoiceBeforeRestartTest = readySetup.then(startVoice).then(stopResident)
+    .then(residentShutdownUnconfirmed)
+    .then(check(safety and Resident::s.phase == "stopping" and Voice::s.phase == "idle"))
+    .then(residentShutdownConfirmed).then(startResident).then(residentStarted(2))
+    .then(beginBinding).then(bindingReply(2)).then(startVoice)
+    .then(check(safety and Identity::s.owner == 1 and Resident::s.provider == "cloud"))
+  run attachedStartCancellationPreservesVoiceTest = readySetup.then(startVoice)
+    .then(attachResidentStart).then(cancelAttachedResidentStart)
+    .then(check(safety and Resident::s.phase == "ready" and Voice::s.phase == "listening"))
+  run ownedStartupCancellationFencesReplyTest = signedInSetup.then(startResident)
+    .then(cancelOwnedResidentStart).then(residentStarted(1)).then(residentShutdownConfirmed)
+    .then(check(safety and Resident::s.phase == "stopped" and not(Resident::s.localProcess)))
+
+  run pendingReplacementPreservesAccountTest = readySetup.then(startVoice)
+    .then(beginSignIn("email"))
+    .then(check(safety and accountReady and credentialPresent and Identity::s.owner == 1
+      and Voice::s.phase == "listening" and Resident::s.provider == "cloud"))
+    .then(verifyCode(true)).then(check(safety and accountReady and Identity::s.phase == "mfa"))
+
 }

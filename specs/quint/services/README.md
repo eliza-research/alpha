@@ -139,29 +139,23 @@ retryable known non-writes from the `requested`, `exported` and `unverified` res
 that lock the current review. Two pages and four opaque non-reused revisions keep
 the model finite while preserving ordering and concurrency distinctions.
 
-The source comment says an explicitly saved draft survives confirmed export.
-Current native code retains `autoSaved` after the explicit Save draft action,
-so autosave followed by Save draft and confirmed export still clears that draft.
-`explicitSaveAfterAutosaveCounterexampleTest` records current behavior. Loaded drafts set
-`autoSaved` to false and survive export. This source/comment discrepancy remains
-visible rather than being changed in the specification.
+The implementation-refinement phase fixes the earlier explicit-save ownership
+bug. A successful manual save or load marks the draft as user-owned. Later
+autosaves retain that ownership, and confirmed export cleans up only an
+automatically created draft. `ExplicitlySavedDraftPreserved` is now part of
+`safety`, with scenarios for explicit save followed by another page change.
 
-The existing `scan-review-pdf-errors` tests passed all three cases for conversion
-failure, unknown export failure and resolved status retry behavior.
-
-The desired `ExplicitlySavedDraftPreserved` predicate is kept separately from
-runtime `safety`. `explicitSaveAfterAutosaveCounterexampleTest` reproduces its
-violation. A controlled execution of the actual `openScanDocument` source entry
-point also reproduces the same sequence with in-memory draft storage and a
-synthetic successful export receipt.
+The source-conformance runner exercises the actual `openScanDocument` UI and
+IndexedDB draft storage in isolated Chromium pages. It covers automatic cleanup,
+explicit preservation, subsequent autosave, system-picker visibility and
+unverified export. Image selection and final export are controlled ports.
 
 ```sh
 node specs/quint/services/scan-source-conformance.mjs
 ```
 
-The script succeeds when it observes the documented discrepancy. It creates no
-PDF or external side effect. It is a source-level counterexample reproduction,
-not an assertion that the desired preservation contract passes.
+The script succeeds when the preservation and cleanup checks pass. Its PDF and
+provider boundaries use isolated synthetic responses.
 
 ## Native credential and isolated PDF lifecycles
 

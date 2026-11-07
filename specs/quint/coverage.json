@@ -16046,7 +16046,7 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/RendererRecoveryBudget.java",
-      "sha256": "7b0b7d61bf4a61e1d043c97c7ffce9b77d1ecb8d979ac11cfc0bd8a741bf3fc6",
+      "sha256": "1871e6957736a7d51439eb463f3ae65f32e59a612612e2a4f6aa182e1fe4aadd",
       "models": [
         "Application",
         "RendererRecovery"
@@ -30690,7 +30690,7 @@
     },
     {
       "path": "apps/app/src/prototype/scan-document.ts",
-      "sha256": "de0b73318106d13bcaa8993d4506d9b0404b3abdf4ee12b22044c9adec235ed4",
+      "sha256": "82e5b43cd39b376783877045ba5990015e1997f713e292b17476c8c426450226",
       "models": [
         "MediaLifecycle",
         "ScanDocument"
@@ -30704,7 +30704,7 @@
         },
         {
           "line": 39,
-          "text": "let saving:Promise<void>=Promise.resolve(),autoSaved=false;"
+          "text": "let saving:Promise<void>=Promise.resolve(),autoSaved=false,explicitlySaved=false;"
         }
       ]
     },

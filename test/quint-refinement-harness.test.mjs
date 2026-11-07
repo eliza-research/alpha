@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdtempSync, readFileSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {checkTraces, literal, qmap, qset} from '../specs/quint/refinement/check-traces.mjs';
+import {captureInputs, checkTraces, literal, qmap, qset} from '../specs/quint/refinement/check-traces.mjs';
 
 test('refinement literals preserve collection identity and reject unsupported values', () => {
   assert.equal(literal(qset([1, 2])), 'Set(1, 2)');
@@ -18,12 +18,21 @@ test('refinement literals preserve collection identity and reject unsupported va
 test('collection observations are evaluated with the actual Quint value constructors', async () => {
   const directory = mkdtempSync(join(tmpdir(), 'alpha-refinement-collections-'));
   try {
-    const result = await checkTraces({model: 'DevelopmentHost',
-      sources: ['test/quint-refinement-harness.test.mjs'], scope: 'bounded-component',
+    const sources = ['test/quint-refinement-harness.test.mjs'];
+    const driverHashes = captureInputs(sources);
+    const result = await checkTraces({model: 'DevelopmentHost', driverHashes,
+      sources, scope: 'bounded-component',
       assumptions: ['Synthetic serializer canary.'], out: join(directory, 'result.json'),
       traces: [{name: 'empty-runtime', init: {name: 'init'},
         expect: {'s.active': qset([]), 's.requestOwners': qmap([[1, 0], [2, 0]])}, steps: []}]});
     assert.equal(result.passed, true);
+    assert.equal(result.driverInputsBound, true);
+    const changedHashes = {...driverHashes};
+    changedHashes[Object.keys(changedHashes)[0]] = 'changed-input';
+    await assert.rejects(checkTraces({model: 'DevelopmentHost', sources, driverHashes: changedHashes,
+      scope: 'bounded-component', assumptions: ['Source hash mutation canary.'], out: join(directory, 'changed.json'),
+      traces: [{name: 'empty-runtime', expect: {'s.active': qset([])}, steps: []}]}),
+      /changed during observation generation/);
   } finally { rmSync(directory, {recursive: true, force: true}); }
 });
 
@@ -48,5 +57,19 @@ test('Quint checks every source checkpoint and rejects a divergent observation',
     const failed = JSON.parse(readFileSync(join(directory, 'fail.json')));
     assert.equal(failed.passed, false);
     assert.equal(failed.inputsUnchanged, true);
+  } finally { rmSync(directory, {recursive: true, force: true}); }
+});
+
+test('matching observations still fail when the model safety invariant is false', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'alpha-refinement-invariant-'));
+  try {
+    await assert.rejects(checkTraces({model: 'ApplicationComposition',
+      sources: ['test/quint-refinement-harness.test.mjs'], scope: 'bounded-component',
+      assumptions: ['Synthetic unsafe-state canary exercises the checker.'], out: join(directory, 'result.json'),
+      traces: [{name: 'matching-unsafe-observation', init: {name: 'uncoordinatedIdentityChangeDetectedTest'},
+        expect: {'state.identity.owner': 2}, steps: []}]}), /trace mismatch/);
+    const receipt = JSON.parse(readFileSync(join(directory, 'result.json')));
+    assert.equal(receipt.invariant, 'safety');
+    assert.equal(receipt.passed, false);
   } finally { rmSync(directory, {recursive: true, force: true}); }
 });

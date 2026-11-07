@@ -1,5 +1,10 @@
 # Quint migration verification
 
+This document records the migration baseline before implementation refinement.
+Model and source hashes in that baseline identify the checked revisions. Current
+source-driven results and subsequent corrections are recorded in
+[the implementation-refinement report](../../docs/quint-implementation-refinement.md).
+
 Verification date is 2026-11-07. The source pin is
 `b25d8aef2916385c571f4367e099809254fde0bb`. The source basis is the existing
 working tree, including its uncommitted product changes.
@@ -159,9 +164,10 @@ Upstream implementation details are modeled at their consumed contracts and
 remain tied to the source pin. The ledger enforces source review and ownership,
 rather than proving a correspondence for every variable or instruction.
 
-The scan draft-deletion defect remains present in runtime source. Changes to
-existing product source in this migration update formal-specification references
-in comments. The existing uncommitted product implementation is preserved.
+The scan draft-deletion defect was present at this migration baseline. The
+subsequent refinement phase fixes it and reruns the affected model and source
+checks. The prerequisite product implementation was captured separately before
+publishing the migration PR.
 
 The checker timeout regression deliberately failed a one-second invocation and
 verified that it was recorded as a tool failure. Checker descendants are stopped

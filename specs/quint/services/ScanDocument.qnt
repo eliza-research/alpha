@@ -62,7 +62,7 @@ module ScanDocument {
     s.saving, not(s.closed), s.pendingExpected == s.storedRevision, s.serial < 4,
     s' = { ...s, saving: false, savedPages: s.pendingPages, pendingPages: [],
       serial: s.serial + 1, storedRevision: s.serial + 1, expectedRevision: s.serial + 1,
-      autoSaved: s.autoSaved or s.pendingAuto, userSaved: s.userSaved or not(s.pendingAuto), conflict: false,
+      autoSaved: s.pendingAuto and not(s.userSaved), userSaved: s.userSaved or not(s.pendingAuto), conflict: false,
       phase: if (s.phase == "saving") "review" else s.phase }
   }
   action saveFailure = all {
@@ -122,7 +122,7 @@ module ScanDocument {
     s' = { ...s, phase: "review", picker: false, output: "unverified", exported: true }
   }
   action clearAutoDraft = all {
-    s.output == "exported", s.autoSaved, not(s.saving), s.queued.length() == 0,
+    s.output == "exported", s.autoSaved, not(s.userSaved), not(s.saving), s.queued.length() == 0,
     s.expectedRevision != 0, s.expectedRevision == s.storedRevision,
     s' = { ...s, storedRevision: 0, expectedRevision: 0, savedPages: [], autoSaved: false }
   }
@@ -134,7 +134,7 @@ module ScanDocument {
   action close = s' = { ...s, closed: true, phase: "closed", pages: [],
     queued: [], saving: false, pendingPages: [], picker: false }
   action reopen = all { s.closed, s' = { ...s, closed: false, hidden: false,
-    phase: "review", exported: false, output: "none", expectedRevision: 0, autoSaved: false } }
+    phase: "review", exported: false, output: "none", expectedRevision: 0, autoSaved: false, userSaved: false } }
   action step = any {
     add(1), add(2), reorder, correct, keepReviewedText, removeFirst, beginAutoSave,
     beginManualSave, saveCommit, saveFailure, competingDraft, loadDraft(true), loadDraft(false),
@@ -153,9 +153,9 @@ module ScanDocument {
   val ClosedNoWriter = s.closed implies not(s.saving)
   val TypeOK = s.phase.in(Set("review", "saving", "picking", "preparing", "exporting", "closed"))
     and s.output.in(Set("none", "conversion-failed", "cancelled", "failed", "unavailable", "too-large", "exported", "requested", "unverified"))
-  /// Desired source-comment contract. Current code violates this after explicit save of an auto-draft.
+  /// Explicitly saved or loaded drafts remain user-owned through later automatic saves and exports.
   val ExplicitlySavedDraftPreserved = s.userSaved and s.output == "exported" implies s.storedRevision != 0
-  val safety = TypeOK and TextStaysWithPage and BoundedDraft and WriterSerialized and ImmutableExport and UnknownExportLocked and ClosedNoWriter
+  val safety = TypeOK and TextStaysWithPage and BoundedDraft and WriterSerialized and ImmutableExport and UnknownExportLocked and ClosedNoWriter and ExplicitlySavedDraftPreserved
   run orderedLayersTest = initFor(false).then(add(1)).then(add(2)).then(keepReviewedText)
     .then(reorder).expect(s.pages.head().image == 2 and s.pages.head().text == 2 and safety)
     .then(correct).expect(s.pages.head().image == 3 and s.pages.head().text == 0 and safety)
@@ -177,10 +177,14 @@ module ScanDocument {
   run automaticDraftCleanupTest = initFor(true).then(add(1)).then(beginAutoSave).then(saveCommit)
     .then(beginExport).then(requestExport).then(exportReply("exported")).then(clearAutoDraft)
     .expect(s.storedRevision == 0 and s.exported and safety)
-  /// Current source retains autoSaved through an explicit save of that same draft.
-  run explicitSaveAfterAutosaveCounterexampleTest = initFor(true).then(add(1)).then(beginAutoSave).then(saveCommit)
+  /// Explicit save turns a previous auto-draft into a user-owned saved draft.
+  run explicitSaveAfterAutosavePreservedTest = initFor(true).then(add(1)).then(beginAutoSave).then(saveCommit)
     .then(beginManualSave).then(saveCommit).then(beginExport).then(requestExport)
-    .then(exportReply("exported")).then(clearAutoDraft).expect(not(ExplicitlySavedDraftPreserved) and safety)
+    .then(exportReply("exported")).expect(ExplicitlySavedDraftPreserved and not(s.autoSaved) and safety)
+  run autosaveAfterExplicitSaveRetainedTest = initFor(true).then(add(1)).then(beginAutoSave).then(saveCommit)
+    .then(beginManualSave).then(saveCommit).then(add(2)).then(beginAutoSave).then(saveCommit)
+    .then(beginExport).then(requestExport).then(exportReply("exported"))
+    .expect(ExplicitlySavedDraftPreserved and not(s.autoSaved) and s.savedPages.length() == 2 and safety)
   run loadedDraftRetainedTest = initFor(false).then(add(1)).then(beginManualSave).then(saveCommit)
     .then(loadDraft(true)).then(beginExport).then(requestExport).then(exportReply("exported"))
     .expect(s.storedRevision != 0 and not(s.autoSaved) and safety)
