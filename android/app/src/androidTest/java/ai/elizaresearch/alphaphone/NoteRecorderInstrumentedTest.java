@@ -57,11 +57,12 @@ public class NoteRecorderInstrumentedTest {
  @Test public void segmentsSurviveACrashAndJoinIntoOnePlayableRecording()throws Exception{
   InstrumentationRegistry.getInstrumentation().getUiAutomation().grantRuntimePermission(context().getPackageName(),Manifest.permission.RECORD_AUDIO);
   AlphaNoteRecorder recorder=AlphaNoteRecorder.get(context());
-  if(recorder.open())main(()->{recorder.discard();return null;});
+  assertFalse("requires a disposable recorder with no existing audio",recorder.open());
   File root=new File(context().getNoBackupFilesDir(),"note-recording"),copy=null;
   AlphaNoteRecorder recovered=null;
   try{
-   JSObject started=main(recorder::start);String id=started.getString("recordingId");
+   String owner="a".repeat(64),folder="f-original";
+   JSObject started=main(()->recorder.start(owner,folder));String id=started.getString("recordingId");
    assertEquals("recording",started.getString("state"));
    // Pause for two seconds: paused time is not recording time.
    SystemClock.sleep(3000);main(()->recorder.pause(id));long pausedAt=main(recorder::status).getLong("durationMs");
@@ -88,6 +89,8 @@ public class NoteRecorderInstrumentedTest {
    AlphaNoteRecorder next=fresh();recovered=next;
    JSObject back=main(next::status);
    assertEquals("paused",back.getString("state"));assertTrue(back.getBoolean("recovered"));assertEquals(crashedId,back.getString("recordingId"));
+   assertEquals(owner,back.getJSONObject("binding").getString("ownerDigest"));
+   assertEquals(folder,back.getJSONObject("binding").getString("folderId"));
    assertEquals("finished segments are kept",list.length(),segments(back));
    assertEquals("journaled text is kept","journaled words",back.getJSONArray("segments").getJSONObject(0).getString("text"));
    assertFalse("the partial segment is dropped",new File(copy,String.format(java.util.Locale.ROOT,"%05d.m4a",partialIndex)).exists());
@@ -98,6 +101,11 @@ public class NoteRecorderInstrumentedTest {
    assertTrue("joined length "+length+" ms matches the journal "+total+" ms",Math.abs(length-total)<1500);
    MediaPlayer player=new MediaPlayer();
    try{player.setDataSource(joined.getAbsolutePath());player.prepare();assertTrue(Math.abs(player.getDuration()-total)<1500);}finally{player.release();}
+   assertTrue(main(()->next.claimCanonicalSave(crashedId)));
+   AlphaNoteRecorder afterClaim=fresh();
+   assertTrue(main(afterClaim::status).getBoolean("canonicalSavePending"));
+   main(()->afterClaim.stop(crashedId));
+   assertFalse(main(()->afterClaim.claimCanonicalSave(crashedId)));
   }finally{
    AlphaNoteRecorder r=recovered;if(r!=null)main(()->{r.discard();return null;});
    if(recorder.open())main(()->{recorder.discard();return null;});
