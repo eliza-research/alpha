@@ -579,7 +579,11 @@ export const ATTENTION_ROWS = [
 /* Home card values of the reference layout. */
 export const HOME_DEFAULTS = {
   homeCalendarLabel: "Next: Design review at 3:00 PM", homeCalendarTime: "3:00 PM", homeCalendarTitle: "Design review",
-  homeWorkflowLabel: "Morning brief delivered at 7:02 AM", homeWorkflowTitle: "Morning brief", homeWorkflowTime: "7:02 AM"
+  homeWorkflowLabel: "Morning brief delivered at 7:02 AM", homeWorkflowTime: "7:02 AM",
+  // Home draws a card only when it has something to show (docs/ui-refresh-2026-11), so the fixture
+  // Home says it has the next event, an enabled workflow and unread mail.
+  homeCalendarHasEvent: true, homeWorkflowHasRows: true, homeWorkflowRows: [{ name: "Morning brief", status: "" }], homeWorkflowTitle: "",
+  homeInboxCount: "2 unread", homeInboxRows: [{ subject: "Design review notes", from: "Maya Chen" }, { subject: "Offsite agenda", from: "Priya Nair" }], homeInboxHasRows: true, homeInboxState: "ready"
 };
 
 /* Per-view scripted copy: suggestions, voice phrases, presets for the dev jump

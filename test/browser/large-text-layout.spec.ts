@@ -7,7 +7,7 @@ for(const theme of ['light','dark'])test(`compact large text preserves Files car
  // Home draws a card only when it has something to show (docs/ui-refresh-2026-11): the development
  // inbox has unread mail, so its card stands for the row here (no workflow is enabled in this profile).
  const workflow=page.getByRole('button',{name:/^Open Inbox: \d+ unread emails?$/});await workflow.scrollIntoViewIfNeeded();
- expect(await workflow.evaluate(el=>el.scrollWidth-el.clientWidth)).toBeLessThanOrEqual(1);expect(await workflow.getByText(/^\d+\+? unread$/).evaluate(el=>{const range=document.createRange();range.selectNodeContents(el);return range.getClientRects().length;})).toBe(1);await page.screenshot({path:info.outputPath('home-workflow-large-text.png')});
+ expect(await workflow.evaluate(el=>el.scrollWidth-el.clientWidth)).toBeLessThanOrEqual(1);expect(await workflow.locator('[data-overview-part="count"]').evaluate(el=>{const range=document.createRange();range.selectNodeContents(el);return range.getClientRects().length;})).toBe(1);await page.screenshot({path:info.outputPath('home-workflow-large-text.png')});
  await workflow.focus();await page.keyboard.press('Enter');await expect(page.locator('html')).toHaveAttribute('data-active-view','inbox');
  await returnToApps(page);await page.getByRole('button',{name:'Files',exact:true}).click();
  const cards=page.getByRole('button',{name:/^(Downloads|Documents|Receipts|Recordings|Photos|App files|Import folder)$/});

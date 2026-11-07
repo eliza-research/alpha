@@ -158,6 +158,9 @@ export function installPrototypeDataAdapter(Component: any, views: Record<string
       homeAttentionPeople: [], homeAttentionPeopleVisibility: 'hidden',
       ...(browserDevProfile?{homeInboxCount:attention.count,homeInboxRows:unreadRows.slice(0,2).map(mail=>({subject:mail.subj||'(no subject)',from:mail.name||mail.email||''})),homeInboxHasRows:unread>0,homeInboxTitle:unread?'':'No unread email',homeInboxStatus:'Development inbox'}:{}),
       homeWorkflowLabel: brief.label, homeWorkflowTitle: brief.title, homeWorkflowTime: brief.time, homeWorkflowSource: brief.source,
+      // No workflow rows here: only the workflow and automations adapters list enabled workflows, so
+      // the reference-layout fixture rows never reach a Home outside the fixture.
+      homeWorkflowRows: [], homeWorkflowHasRows: false,
       // After a failed read, opening Calendar by any route reads it again (the openView wrapper above).
       // A stale read is read again when the card is opened (the same forced read Calendar's retry uses).
       // Opening a view resets its state, so the card names the calendar source it showed: Calendar
