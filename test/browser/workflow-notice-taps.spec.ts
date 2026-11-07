@@ -15,7 +15,7 @@ for(const scenario of ['lookup-unavailable','lookup-unavailable-navigation','ask
    const agent=w.residentAgent=w.createResidentAgentPlugin({owner:()=>f.owner||'fixture-owner',agentId:'fixture-agent', providerStatus: {provider: 'elizacloud', configured: false}});
    if(scenario.startsWith('lookup-unavailable')){
     f.lookupUnavailable=true;f.lookupFailures=0;f.noticeToasts=[];
-    new MutationObserver(()=>{const shown=document.body?.innerText.match(/Workflow notifications? (?:retained|could not be checked)[^\n]*/)?.[0];if(shown&&!f.noticeToasts.includes(shown))f.noticeToasts.push(shown);}).observe(document,{subtree:true,childList:true,characterData:true});
+    new MutationObserver(()=>{const shown=document.body?.innerText.match(/Couldn’t check workflow notifications\. Try again\.|This notice belongs to a different agent connection\.|This run is no longer available\. Check Workflows\./)?.[0];if(shown&&!f.noticeToasts.includes(shown))f.noticeToasts.push(shown);}).observe(document,{subtree:true,childList:true,characterData:true});
    }
    const methods=(names:string[])=>names.map(name=>({name,rtype:'promise'}));
    w.Capacitor={PluginHeaders:[
