@@ -73,6 +73,23 @@ function fixture({permission=false,failing=true,receipt={width:1280,height:720,d
  assert.equal(f.calls.captures.at(-1).saveToGallery,false,'The frame is never written to the gallery');
  f.env.window.close();
 }
+// NoLostShutter: a shutter press while the session is busy (the previous photo's write, a lens control)
+// is kept as one pending shot and taken when the session is free.
+{
+ const f=fixture({failing:false});await f.api.start();await settle();
+ f.gates.capture=deferred();const first=f.api.capture();await settle();assert.equal(f.calls.captures.length,1);assert.equal(f.api.state().capturing,true);
+ await f.api.capture();await f.api.capture();assert.equal(f.calls.captures.length,1,'Still writing the first photo');
+ f.gates.capture.resolve();f.gates.capture=undefined;await first;await settle();await settle();
+ assert.equal(f.calls.captures.length,2,'The press during the write is taken once, not dropped and not doubled');
+ const gate=deferred();const zoom=f.api.control(()=>gate.promise,()=>{});await settle();
+ await f.api.capture();assert.equal(f.calls.captures.length,2,'Busy with a zoom change');
+ gate.resolve();await zoom;await settle();await settle();
+ assert.equal(f.calls.captures.length,3,'The press during the zoom change is taken after it');
+ const gate2=deferred();const flash=f.api.control(()=>gate2.promise,()=>{});await settle();
+ await f.api.capture();f.api.mode('video');gate2.resolve();await flash;await settle();await settle();
+ assert.equal(f.calls.captures.length,3,'A pending shot is not taken after switching to Video');assert.equal(f.calls.recordings,0);
+ f.env.window.close();
+}
 // Preview failure, permission denial and recovery.
 {
  const f=fixture();await f.api.start();assert.equal(f.api.state().phase,'error');assert.equal(f.api.state().denied,undefined,'A hardware/start failure is not a permission denial');assert.equal(f.timers.size,0,'Unavailable panel cannot disappear with transient toast timer');

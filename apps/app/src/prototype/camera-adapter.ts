@@ -751,7 +751,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
       recordingFinishing(){api?.set({rec:false});},
       recordingSaved:adoptVideo,
       recordingFailed(){limitStop=false;if(!disposed)message('Video may not have saved. Check Photos.');},
-      changed(){settle();schedule();},
+      changed(){settle();schedule();takePendingShot();},
     },
   });
   function hideAccess(){accessPanel?.remove();accessPanel=undefined;}
@@ -872,17 +872,29 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     job.then(clear,clear);
     return job;
   }
+  /** A shutter press that found the session busy (the previous photo's write, a zoom, flash or
+   * flip change, an agent capture) is kept as one pending shot, taken as soon as the session is free. */
+  let pendingShot:number|undefined;
+  function takePendingShot(){
+    if(pendingShot===undefined||session.busy)return;
+    const token=pendingShot;pendingShot=undefined;
+    if(disposed||session.phase!=='ready'||token!==session.token()||api?.get('camera').mode!=='photo'||!active())return;
+    void Promise.resolve().then(capture);
+  }
   async function capture() {
     if (session.phase !== 'ready') { if (session.phase !== 'starting') await start(true); return; }
     if (!api) return;
     if (api.get('camera').mode === 'video') { await record(); return; }
+    // A scan frame being captured is not a photo: pressing the shutter then is refused visibly.
+    if (scanning) { message('Camera is busy. Try again.'); return; }
     cancelScan();
     const owner = api;
-    await session.exclusive(async token=>{
+    const outcome = await session.exclusive(async token=>{
       shutterFlash(owner);
       try { await writePhoto(owner,true); }
       catch { if (session.current(token)) message('Photo not saved. Try again.'); }
     });
+    if (outcome.status === 'busy') { if (session.recording || session.recordingStarting || session.finalizing) message('Camera is busy. Try again.'); else { pendingShot = session.token(); takePendingShot(); } }
   }
   /** An agent capture asked for while Camera starts waits for the preview, unless a recording starts first. */
   let agentRequest:{queued:boolean;refused:boolean}|undefined;
