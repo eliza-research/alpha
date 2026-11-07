@@ -1573,6 +1573,17 @@
     </div>
   </sc-if>
 
+  <details class="alpha-camera-tools" data-alpha-camera="tools">
+    <summary aria-label="Camera tools"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.more}}"></path></svg></summary>
+    <div>
+      <sc-if value="{{camera.importAvailable}}">
+        <button onClick="{{camera.importImage}}">Choose image</button>
+        <button onClick="{{camera.scanDocument}}">Scan document</button>
+      </sc-if>
+      <button onClick="{{camera.ask}}">Ask Alpha about this</button>
+    </div>
+  </details>
+
   <sc-if value="{{camera.showModes}}">
     <div data-alpha-camera="modes" style="position: absolute; left: 0; right: 0; top: 656px; height: 44px; display: flex; align-items: center; justify-content: center; gap: 8px">
       <sc-for list="{{camera.modes}}" as="m">
@@ -1612,6 +1623,7 @@
     <div data-alpha-app-header="main" style="display: flex; align-items: center; height: 56px; margin-top: 44px; padding: 0 8px 0 20px; gap: 2px; flex-shrink: 0">
     <sc-if value="{{showAppBack}}"><button class="app-header-back" aria-label="Back to apps" onClick="{{backToApps}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button></sc-if>
       <h1 data-alpha-app-title class="serif" style="margin: 0; font-size: 32px; flex-grow: 1; letter-spacing: -.01em">{{photos.title}}</h1>
+      <button class="ib" aria-label="Search photos" onClick="{{photos.search}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.search}}"></path></svg></button>
       <sc-if value="{{photos.libTab}}"><button class="tap" aria-label="Select photos" onClick="{{photos.selStart}}" style="min-height: 44px; padding: 0 12px; font-size: 16px; font-weight: 600; color: var(--acct)">Select</button></sc-if>
     </div>
     <div role="group" aria-label="Photos sections" style="display: flex; gap: 2px; margin: 0 16px 4px; padding: 2px; border-radius: 24px; background: var(--s2); flex-shrink: 0">
@@ -1621,6 +1633,15 @@
     </div>
   </sc-if>
   <sc-if value="{{photos.copyRecovery}}"><button aria-label="Recover saved-copy request" onClick="{{photos.openCopyRecovery}}" style="margin:8px 16px;padding:10px;border-radius:12px;background:var(--s2);color:var(--fg)">Saved-copy recovery</button></sc-if>
+  <sc-if value="{{photos.searching}}">
+    <div data-alpha-app-header="detail" style="display: flex; align-items: center; height: 56px; margin-top: 44px; padding: 0 8px 0 16px; flex-shrink: 0">
+      <div style="flex-grow: 1; min-width: 0; display: flex; align-items: center; gap: 10px; height: 46px; padding: 0 4px 0 16px; border-radius: 23px; background: var(--s2)">
+        <svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px; color: var(--mut)"><path d="{{ic.search}}"></path></svg>
+        <input ref="{{photos.searchRef}}" aria-label="Search photos" placeholder="{{photos.searchPlaceholder}}" value="{{photos.q}}" onChange="{{photos.onQ}}" style="flex-grow: 1; min-width: 0; height: 44px; background: transparent; border: 0; outline: none; color: var(--fg); font-size: 16px">
+        <button class="ib" aria-label="Close search" onClick="{{photos.closeSearch}}" style="width: 40px; height: 40px"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.x}}"></path></svg></button>
+      </div>
+    </div>
+  </sc-if>
   <sc-if value="{{photos.selecting}}">
     <div data-alpha-app-header="detail" style="display: flex; align-items: center; height: 56px; margin-top: 44px; padding: 0 8px; gap: 6px; flex-shrink: 0">
       <button class="ib" aria-label="Cancel selection" onClick="{{photos.selCancel}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.x}}"></path></svg></button>
@@ -1692,6 +1713,11 @@
         </div>
       </sc-if>
       <sc-if value="{{photos.noMatches}}"><div style="padding: 120px 24px 0; text-align: center; color: var(--mut); font-size: 15px">No matches</div></sc-if>
+      <sc-if value="{{photos.hasQ}}">
+        <div style="display: flex; justify-content: center; padding: 22px 20px 0">
+          <button aria-label="{{photos.askLabel}}" onClick="{{photos.askQ}}" style="height: 36px; max-width: 100%; padding: 0 16px 0 12px; border-radius: 18px; background: var(--s2); display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600"><span style="font-family: Denton, Fraunces, Georgia, serif; font-style: italic; font-size: 18px; color: var(--acct)"><span class="alpha-compute-mark" aria-hidden="true"></span></span><span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{photos.askLabel}}</span></button>
+        </div>
+      </sc-if>
     </div>
   </sc-if>
 
