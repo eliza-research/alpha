@@ -32,6 +32,26 @@ test('delayed conversation creation preserves another owner selection',async({pa
  await expect(page.getByText('Development reply. Edit this response in Agent connection.',{exact:true}).first()).toBeVisible();
  expect(await page.evaluate(async owner=>{const m=await import('/src/runtime/conversation-selection.ts'),{connectionController}=await import('/src/runtime/connection-ui.tsx'),session=connectionController.getSnapshot().session!;return {other:(await m.captureConversationChoice(owner))?.id,current:!!await m.captureConversationChoice(JSON.stringify([session.origin,session.ownerId,session.agentId]))};},owner)).toEqual({other:'other-owner-chat',current:true});
 });
+test('warm voice uses the active conversation without reopening its saved selection',async({page})=>{
+ const result=await page.evaluate(async()=>{
+  const {connectionController:connection}=await import('/src/runtime/connection-ui.tsx');
+  const {conversationSelectionDocument}=await import('/src/runtime/conversation-selection.ts');
+  await connection.initialize();
+  await connection.startDevelopment('local');
+  connection.close();
+  const signal=new AbortController().signal;
+  const initial=await connection.prepareVoiceConversation(signal);
+  const selections=await conversationSelectionDocument();
+  const read=selections.readJson;
+  let reads=0;
+  selections.readJson=async()=>{reads++;throw Error('Saved selection unavailable');};
+  try {
+   const warm=await connection.prepareVoiceConversation(signal);
+   return {sameConversation:warm.conversationId===initial.conversationId,sameOwner:warm.session.ownerId===initial.session.ownerId,reads};
+  } finally {selections.readJson=read;}
+ });
+ expect(result).toEqual({sameConversation:true,sameOwner:true,reads:0});
+});
 for(const mode of ['disconnect','recovery'])test(`${mode} during conversation creation prevents late cache writes and sending`,async({page})=>{
  await page.evaluate(async()=>{const {connectionController}=await import('/src/runtime/connection-ui.tsx');await connectionController.initialize();await connectionController.startDevelopment('local');const {LocalAgentProtocol}=await import('/src/runtime/local-agent.ts');(window as any).lateSends=0;LocalAgentProtocol.prototype.createConversation=async()=>{(window as any).createWaiting=true;await new Promise<void>(resolve=>(window as any).releaseCreate=resolve);(window as any).createFinished=true;return {id:'late-conversation',title:'Late'};};LocalAgentProtocol.prototype.send=async()=>{(window as any).lateSends++;return {text:'Unexpected send'};};});
  await page.getByRole('textbox',{name:'Ask Alpha',exact:true}).fill('Cancelled message');await page.getByRole('textbox',{name:'Ask Alpha',exact:true}).press('Enter');await expect.poll(()=>page.evaluate(()=>(window as any).createWaiting)).toBe(true);

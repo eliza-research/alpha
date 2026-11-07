@@ -1448,7 +1448,11 @@ async function startResidentGate(){
 }
 function conversationKey(session: VerifiedSession) { return JSON.stringify([session.origin, session.ownerId, session.agentId]); }
 async function ensureSelectedConversation(selected:Active,session:VerifiedSession,signal:AbortSignal,current:()=>void):Promise<string>{
- const key=conversationKey(session),cached=await captureConversationChoice(key,signal);current();
+ const key=conversationKey(session);current();
+ // The active selection belongs to this session. Durable storage supplies restart state and the new-conversation CAS.
+ const activeId=conversationMemory.get(key);
+ if(activeId)return activeId;
+ const cached=await captureConversationChoice(key,signal);current();
  let id=conversationMemory.has(key)?conversationMemory.get(key):cached?.id;
  if(typeof id!=='string'||!id)id=await createSelectedConversation(selected,key,cached,signal,current);
  if(!conversationMemory.has(key)){current();conversationMemory.set(key,id);}
