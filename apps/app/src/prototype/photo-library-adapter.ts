@@ -148,10 +148,13 @@ export function createDeviceLibrary(port: PhotoLibraryPort = nativePort, availab
       if (operation.type === 'photo_library_select') return host.run(operation, signal) as Promise<LibraryAgentResult>;
       const items = operation.items.map(entry => ({ id: entry.id, revision: modelRevisions.native(entry.id, entry.revision) ?? '' }));
       if (items.some(entry => !entry.revision)) throw new LibraryAgentRefusal('An item changed since the assistant read it. Nothing changed; ask again.');
-      const prepared = prepareReview(operation.action, items);
+      const prepared = prepareReview(operation.action, items), token = epoch;
       // The review binds the exact revisions the assistant read; the provider confirms they are still current.
       if (!await validCurrent(prepared.items)) throw new LibraryAgentRefusal('An item changed or left the library. Nothing changed; ask again.');
       signal.throwIfAborted();
+      // Photos may have been left, or another review opened, while the provider checked.
+      if (token !== epoch || disposed) throw new LibraryAgentRefusal('Open Photos, then ask again.');
+      if (acting || review || host.reviewOpen() || !host.visible()) throw new LibraryAgentRefusal('Finish the open review first.');
       review = prepared; status = ''; host.reviewChanged();
       return { kind: 'photo_library_review', status: 'review_opened', action: operation.action, count: items.length };
     },
