@@ -201,7 +201,7 @@ for (const proposals of [true, false]) test(`Agent reads action history only aft
   await nativeStub(page, 'resident', {proposals});
   await connect(page, 'resident');
   const panel = await openAgent(page);
-  const history = panel.locator('details').filter({has: panel.locator('summary').filter({hasText: 'Phone action history'})});
+  const history = panel.locator('details').filter({has: page.locator('summary').filter({hasText: 'Phone action history'})});
   await history.locator('summary').click();
   expect(await panel.innerText()).not.toContain('No phone actions recorded');
   const before = await proposalReads(page);

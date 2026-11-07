@@ -131,7 +131,7 @@ test('a resident start ends with its operation in one update, so setup behind it
   const work=stripTypeScriptTypes(between(ui,'async function work(','/** Start (or restart) the resident.'),{mode:'transform'});
   for(const fail of [false,true]){
     const seen=[],state={busy:false,open:false,residentStarting:false,error:'',message:''};
-    const box={state,AbortController,active:null,cloud:{},testMocksEnabled:false,
+    const box={residentAlwaysPresent:false,state,AbortController,active:null,cloud:{},testMocksEnabled:false,
       update:patch=>{Object.assign(state,patch);seen.push({busy:state.busy,starting:state.residentStarting});},
       residentRecoveryReason:()=>null,errorMessage:error=>error.message,expired:()=>false,residentCloudFlow:()=>true,runQueuedResidentRebind:()=>{},runQueuedSignInReturn:()=>{}};
     vm.createContext(box);vm.runInContext('var operation=null,residentStartInBackground=false,signInReadinessOwner=null;\n'+work+';globalThis.run=work;',box);
@@ -162,17 +162,20 @@ test('access setup is not held behind a background resident start, only behind a
   assert.equal(active({...ownKeys,setupRevision:1,providerStatus:{selected:false,provider:'elizacloud'}}),false);
 });
 
-test('Settings says the agent and its AI are starting instead of "Not available"',()=>{
+test('Settings keeps starting, unconfirmed and unavailable AI states distinct',()=>{
   const settings=readFileSync(new URL('../apps/app/src/prototype/settings-adapter.ts',import.meta.url),'utf8');
-  const line=/const agentRows=\[(info\('Agent'.*?\)),(info\('AI'.*?\))\];/.exec(settings);
-  assert.ok(line,'agent connection rows');
-  const rows=connection=>new Function('connection','serviceName','info','return ['+line[1]+','+line[2]+']')(connection,'Eliza Cloud',(label,value)=>value);
-  assert.deepEqual(rows({session:null,kind:'starting',cloudAccount:{userId:'owner'},residentInference:null}),['Starting…','Starting…']);
-  assert.deepEqual(rows({session:{},kind:'resident',cloudAccount:{userId:'owner'},residentInference:'cloud'}),['Running on this device','Eliza Cloud']);
-  assert.deepEqual(rows({session:{},kind:'resident',cloudAccount:{userId:'owner'},residentInference:'unavailable'}),['Running on this device','Not available']);
-  assert.deepEqual(rows({session:null,kind:'recovering',cloudAccount:{userId:'owner'},residentInference:null}),['Not running','Not available']);
-  assert.deepEqual(rows({session:null,kind:'starting',cloudAccount:{userId:'owner'},residentInference:null,residentRecoveryReason:'startup-refused'}),['Needs attention','Not available']);
-  assert.deepEqual(rows({session:null,kind:'starting',cloudAccount:null,residentInference:null}),['Starting…','Sign in required']);
+  const status=/const agentStatus = ([^\n]+);/.exec(settings)?.[1];
+  const row=/const rows: Bag\[\] = \[(info\(connection\.session[^\n]+)\];/.exec(settings)?.[1];
+  assert.ok(status&&row,'the current Agent status row is present');
+  const render=connection=>new Function('connection','serviceName','info',`const agentStatus=${status};return ${row};`)(connection,'Eliza Cloud',(label,value)=>[label,value]);
+  assert.deepEqual(render({session:null,kind:'starting',cloudAccount:{userId:'owner'},residentInference:null}),['Starting…','AI starting…']);
+  assert.deepEqual(render({session:{},kind:'resident',cloudAccount:{userId:'owner'},residentInference:'cloud'}),['Running on this device','AI: Eliza Cloud']);
+  assert.deepEqual(render({session:{},kind:'resident',cloudAccount:{userId:'owner'},residentInference:'direct'}),['Running on this device','AI: Cerebras · own API keys']);
+  assert.deepEqual(render({session:{},kind:'resident',cloudAccount:{userId:'owner'},residentInference:'unknown'}),['Running on this device','AI status unconfirmed']);
+  assert.deepEqual(render({session:{},kind:'resident',cloudAccount:{userId:'owner'},residentInference:'unavailable'}),['Running on this device','AI unavailable']);
+  assert.deepEqual(render({session:null,kind:'recovering',cloudAccount:{userId:'owner'},residentInference:null}),['Not running','AI unavailable']);
+  assert.deepEqual(render({session:null,kind:'starting',cloudAccount:{userId:'owner'},residentInference:null,residentRecoveryReason:'startup-refused'}),['Needs review','AI unavailable']);
+  assert.deepEqual(render({session:null,kind:'starting',cloudAccount:null,residentInference:null}),['Starting…','Sign in for AI']);
 });
 
 test('the agent panel shows a calm starting state while a signed-in agent starts',()=>{

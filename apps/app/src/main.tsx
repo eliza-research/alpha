@@ -7,7 +7,6 @@ import {installAgentCalendarAdapter,deviceCalendarScope} from './prototype/agent
 import {Capacitor} from '@capacitor/core';
 import {ownerReminderNotifications} from './runtime/owner-reminder-notification-port';
 import {installCalendarApprovalAdapter} from './prototype/calendar-approval-adapter';
-import {installMapsChatAdapter} from './prototype/maps-chat-adapter';
 import {bindBrowserDeletionOwner} from './runtime/deletion-owner';
 import {DEFAULT_PULL_VELOCITY} from "../../../.eliza/client-features/packages/ui/src/gestures/constants";
 import {usePullGesture} from "../../../.eliza/client-features/packages/ui/src/components/shell/use-pull-gesture";
@@ -38,7 +37,7 @@ import {installNoteSourceAdapter} from './prototype/note-source-adapter';
 import {installSharePanelAdapter} from './prototype/share-panel-adapter';
 import {installNotesShareAdapter} from './prototype/notes-share-adapter';
 import { installNotesDocumentAdapter } from './prototype/notes-document-adapter';
-import { installPrototypeMapsAdapter } from './prototype/maps-adapter';
+import { installPrototypeMapsAdapter, installMapsChatAdapter } from './prototype/maps-adapter';
 import { installNotificationsAdapter } from './prototype/notifications-adapter';
 import { installSystemShade, shadeSurface } from './prototype/system-shade';
 import { installContextSelection } from './prototype/context-selection';

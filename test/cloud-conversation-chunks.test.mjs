@@ -9,7 +9,7 @@ const reply = first + ' The rest of this answer contains the details you asked f
 async function start(f, clock) {
   f.box.React = { createElement: () => null }; f.box.VoiceActivity = () => null;
   await f.shell.startVoice(); await clock.flush();
-  await clock.advance(700); f.peak = 0; await clock.advance(1200);
+  await clock.advance(700); f.peak = 0; await clock.advance(1200); await clock.advance(0);
 }
 
 test('Cloud conversation waits for the validated reply, then speaks a short first piece before the rest', async () => {
@@ -17,13 +17,13 @@ test('Cloud conversation waits for the validated reply, then speaks a short firs
   try {
     await start(f, clock);
     assert.equal(f.sends, 1); assert.equal(f.cloudSpeech, 0, 'no speculative audio before the final reply');
-    f.releaseReply(); await clock.flush();
+    f.releaseReply(); await clock.advance(0);
     assert.equal(f.cloudSpeech, 1); assert.equal(f.speechInputs[0].text, first);
     assert.ok(f.activePlayback);
-    f.finishPlayback(); await clock.flush();
+    f.finishPlayback(); await clock.advance(0);
     assert.equal(f.cloudSpeech, 2);
     assert.equal(f.speechInputs.map(input => input.text).join(' '), reply);
-    f.finishPlayback(); await clock.flush();
+    f.finishPlayback(); await clock.advance(0);
     assert.equal(f.sends, 1, 'chunking never resends the user turn');
   } finally { f.close(); await clock.flush(); }
 });

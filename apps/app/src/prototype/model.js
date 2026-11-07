@@ -4525,7 +4525,9 @@ function stPageAccess(root) {
   var previous = stPageFocus.get(root);
   var saved = previous ? previous.saved : new Map();
   var active = document.activeElement;
-  if (previous && previous.key !== key && previous.page.contains(active)) saved.set(previous.depth, active);
+  if (previous && previous.key !== key && previous.page.contains(active)) {
+    saved.set(previous.depth, { element: active, id: active.id, tag: active.tagName, label: active.getAttribute("aria-label") });
+  }
   // Release the destination before restoring focus. Hide the former page only
   // after focus moves so browsers do not reject aria-hidden on its active child.
   // An open sheet owns focus and has retired this page; it releases the page when it closes.
@@ -4534,7 +4536,16 @@ function stPageAccess(root) {
     current.removeAttribute("aria-hidden");
   }
   if (previous && previous.key !== key) {
-    var target = depth < previous.depth ? saved.get(depth) : null;
+    var record = depth < previous.depth ? saved.get(depth) : null;
+    var target = record ? record.element : null;
+    // Settings can refresh the covered page while a child is open. Restore its
+    // uniquely named control even when that refresh replaced the original node.
+    if (record && (!target || !target.isConnected || !current.contains(target))) {
+      var matches = Array.from(current.querySelectorAll("button, input, select, textarea, [tabindex='0']")).filter(function (element) {
+        return record.id ? element.id === record.id : record.label && element.tagName === record.tag && element.getAttribute("aria-label") === record.label;
+      });
+      target = matches.length === 1 ? matches[0] : null;
+    }
     if (!target || !target.isConnected || !current.contains(target)) target = current.querySelector("button, input, select, textarea, [tabindex='0']");
     if (target) target.focus({ preventScroll: true });
     Array.from(saved.keys()).forEach(function (i) { if (i > depth) saved.delete(i); });

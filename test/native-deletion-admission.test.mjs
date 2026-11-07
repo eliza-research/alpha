@@ -63,8 +63,10 @@ test('reviewed photo changes use the shared resume-gated review with Alpha\'s la
  // Resume gating and rejection codes are the shared native media module's PermittedMediaReview (tested there).
  // AlphaPhotos registers the shared PhotosPlugin; its launch gate answers with Alpha's LateLaunch wording.
  const photos=java('AlphaPhotosPlugin'),bridge=readFileSync(new URL('../vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotosPlugin.java',import.meta.url),'utf8');
- assert.match(bridge,/mediaReview = new PermittedMediaReview\(getBridge\(\), permitted, worker, this::ask\);/);
- assert.match(bridge,/protected final boolean ask\(PluginCall call, Runnable launch\) \{\n {4}try \{\n {6}launch\.run\(\);\n {6}return true;\n {4}\} catch \(IllegalStateException closed\) \{\n {6}call\.reject\(closedMessage\(\)\);/);
+ const permitted=readFileSync(new URL('../vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PermittedPhotosPlugin.java',import.meta.url),'utf8');
+ assert.match(bridge,/class PhotosPlugin extends PermittedPhotosPlugin/);
+ assert.match(bridge,/mediaReview = new PermittedMediaReview\(getBridge\(\), permitted, worker\(\), this::ask\);/);
+ assert.match(permitted,/protected final boolean ask\(PluginCall call, Runnable launch\) \{\n {4}try \{\n {6}launch\.run\(\);\n {6}return true;\n {4}\} catch \(IllegalStateException closed\) \{\n {6}call\.reject\(closedMessage\(\)\);/);
  assert.match(photos,/@Override protected String closedMessage\(\)\{return LateLaunch\.CLOSED;\}/);
 });
 

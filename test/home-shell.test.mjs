@@ -247,7 +247,7 @@ test('the empty Home card row is hidden without hiding app tiles', () => {
     {favorites: {read: () => null, write: () => {}}});
   const {homeShell} = new Shell().renderVals();
   const markup = renderToStaticMarkup(cloneElement(homeShell, {cards: createElement('div')}));
-  assert.match(markup, /<div class="scr" hidden="" style="display:none" data-mobile-shell-cards=""/);
+  assert.match(markup, /<div class="scr home-card-row" hidden="" style="display:none" data-mobile-shell-cards=""/);
   assert.ok(tiles(markup).includes('Calendar'));
 });
 

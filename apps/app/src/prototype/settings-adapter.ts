@@ -514,7 +514,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       const saved = cachedDevicePreferences(); if (!saved) { api.toast(preferenceUnavailable); return; }
       try { await editDevicePreferences(value => { value.askBeforeAgentActions = !saved.askBeforeAgentActions; }); changed(); } catch { api.toast('Could not save. Try again.'); }
     });
-    const agentStatus = connection.session ? 'Running' : connection.residentRecoveryReason ? 'Needs review' : connection.busy || connection.kind !== 'recovering' ? 'Starting…' : 'Not running';
+    const agentStatus = connection.session ? connection.kind === 'resident' ? 'Running' : testMocksEnabled ? 'Remote agent' : 'Unsupported connection' : connection.residentRecoveryReason ? 'Needs review' : connection.busy || connection.kind !== 'recovering' ? 'Starting…' : 'Not running';
     const agentRow = row('Agent', native && !testMocksEnabled ? go('agent-connection') : () => connectionController.open(), native && !testMocksEnabled ? agentStatus : connection.session ? connection.name : 'Not connected');
     const digestsRow = row('Scheduled digests', () => window.dispatchEvent(new Event('alpha:hosted-digests')));
     const listeningRow = listener.available ? row('Listening', go('listening'), listenerBusy ? 'Updating…' : listener.label) : null;
@@ -595,7 +595,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     if (current === 'account' && cloudPage)
       stack.push(subpage(serviceName, [group([info(cloudPage.status, cloudPage.detail)]), group(cloudPage.actions.map(action => row(action.label, action.go, '', action.danger ? { labCss: 'color:var(--fg);font-weight:600' } : {})))]));
     if ((current === 'agent-connection' || current === 'history') && native && !testMocksEnabled) {
-      const rows: Bag[] = [info(connection.session ? 'Running on this device' : agentStatus, connection.residentInference === 'direct' ? 'AI: Cerebras · own API keys' : connection.residentInference === 'cloud' ? `AI: ${serviceName}` : connection.residentInference === 'unknown' ? 'AI status unconfirmed' : connection.cloudAccount ? 'AI unavailable' : 'Sign in for AI')];
+      const rows: Bag[] = [info(connection.session ? connection.kind === 'resident' ? 'Running on this device' : testMocksEnabled ? 'Remote agent' : 'Unsupported connection' : agentStatus, connection.residentInference === 'direct' ? 'AI: Cerebras · own API keys' : connection.residentInference === 'cloud' ? `AI: ${serviceName}` : connection.residentInference === 'unknown' ? 'AI status unconfirmed' : connection.cloudAccount && !connection.session && connection.kind === 'starting' && !connection.residentRecoveryReason ? 'AI starting…' : connection.cloudAccount ? 'AI unavailable' : 'Sign in for AI')];
       if (connection.error) rows.push(log('Problem', connection.error));
       const actions: Bag[] = [];
       if (connection.busy) { if (connection.residentRecovery?.step !== 'archiving') actions.push(row('Cancel', () => connectionController.cancel())); }

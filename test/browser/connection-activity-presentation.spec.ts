@@ -66,7 +66,7 @@ test('Activity presents recorded phone actions in plain language with reconcile 
     await page.getByRole('button', {name: 'Settings', exact: true}).click();
   await page.getByRole('button', {name: 'Agent', exact: true}).click();
   const panel = page.locator('.alpha-connection');
-  const history = panel.locator('details').filter({has: panel.locator('summary').filter({hasText: 'Phone action history'})});
+  const history = panel.locator('details').filter({has: page.locator('summary').filter({hasText: 'Phone action history'})});
   await history.locator('summary').click();
   await history.getByRole('button', {name: 'Refresh actions', exact: true}).click();
   // The uncertain action stays with its reconcile controls in the connection dialog.
