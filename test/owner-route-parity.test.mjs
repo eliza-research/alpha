@@ -28,8 +28,8 @@ const paths=[
  C+'/feed/',C+'/feed/x',C+'//feed',C+'/./feed',C+'/../notes/state',C+'/feed/..',C+'/feed/.',C+'/%66eed',C+'/FEED',C+'/feed#x',C+'/feed\\x',C+'/feed x',C+'/feed?a=1?b=2',
  // Calendar writes and event ids
  C+'/events',C+'/events?',C+'/events?mode=a',C+'/events/',C+'/events/x/extra',
- ...['x','eliza-1','grant%3Aevent-1','grant:event-1','a..b','a.b','a@b','a+b','a%2Bb','%41bc','%2Fetc','a%2','%2e%2e','..','.','x/..','x/.','-x','_x','.x','x/y','x%2Fy','a%C0','a%00','a b','x'.repeat(512),'x'.repeat(513),'é','%C3%A9','a%2e%2e'].map(id=>E+id),
- E+'x?mode=a',E+'x?recurrenceScope=instance&idempotencyKey=k',E+'x?cancellationMode=a',E+'x?mode=a&mode=b',E+'x?unknown=1',E+'x%3Fmode=a',E+'grant%3Aevent-1?side=owner&calendarId=primary',
+ ...['x','eliza-1','grant%3Aevent-1','grant:event-1','a..b','a.b','a@b','a+b','a%2Bb','%41bc','%2Fetc','a%2','%2e%2e','..','.','x/..','x/.','-x','_x','.x','x/y','x%2Fy','a%C0','a%00','a b','x'.repeat(512),'x'.repeat(513),'é','%C3%A9','a%2e%2e','abc123_20261110T150000Z','a%5Fb','_20261110T150000Z','abc123_/x','abc123_%2Fx'].map(id=>E+id),
+ E+'x?mode=a',E+'x?recurrenceScope=instance&idempotencyKey=k',E+'x?cancellationMode=a',E+'x?mode=a&mode=b',E+'x?unknown=1',E+'x%3Fmode=a',E+'grant%3Aevent-1?side=owner&calendarId=primary',E+'abc123_20261110T150000Z?recurrenceScope=instance',
  // Automations: exact routes, the exact-query route, actions and ids
  '/api/automations','/api/automations/','/api/automations?','/api/automations?x=1','/api/automations/x','/api/automationsx','/api/lifeops','/api/lifeopsx','/api/lifeops/reminders','/api/lifeops/reminders?',
  T,T+'?ownerVisibleOnly=1',T+'?ownerVisibleOnly=0',T+'?ownerVisibleOnly=1&ownerVisibleOnly=1',T+'?ownerVisibleOnly=%31',T+'/t1',T+'/t1/',T+'/t1?',
@@ -137,6 +137,13 @@ const settledDrift=[
  ['GET','/api/lifeops/calendar/feed?side=\u3000'],
  ['GET','/api/lifeops/calendar/feed?side=\ufeff'],
 ];
+// Admitted since the snapshot: Google recurring-occurrence ids, '<baseId>_<YYYYMMDDTHHMMSSZ>', in the records id
+// pattern. A leading '_' and any '/' or '..' segment stay refused.
+const widenedSince=new Map([
+ [E+'abc123_20261110T150000Z',['PATCH','PATCH flipped body','DELETE']],
+ [E+'a%5Fb',['PATCH','PATCH flipped body','DELETE']],
+ [E+'abc123_20261110T150000Z?recurrenceScope=instance',['DELETE']],
+]);
 // The Cloud transport polices only the automations group: what it admitted before, by path. The old native claim
 // regex stopped at a line terminator, which a parsed Cloud URL cannot carry; the table claims those as the renderer did.
 const cloudAdmittedBefore=new Map([
@@ -210,7 +217,7 @@ test('the Android gate and the renderer interpret the owner route table identica
  const label=c=>c.method+(c.label?' '+c.label:''),settled=new Set(settledDrift.map(([method,path])=>method+' '+path));
  cases.forEach((c,i)=>{
   const [gate,group,cloud]=native[i],claimant=ownerRouteGroup(c.path),cloudClaimant=ownerRouteGroup(c.path,'automations');
-  const before=(admittedBefore.get(c.path)??[]).includes(label(c))&&!settled.has(label(c)+' '+c.path)?'A':'R',where=`${label(c)} ${JSON.stringify(c.path)}`;
+  const before=(admittedBefore.get(c.path)??[]).includes(label(c))&&!settled.has(label(c)+' '+c.path)||(widenedSince.get(c.path)??[]).includes(label(c))?'A':'R',where=`${label(c)} ${JSON.stringify(c.path)}`;
   assert.equal(gate,before,`native gate, ${where}`);
   assert.equal(group,String(claimant??null),`claiming group, ${where}`);
   if(claimant)assert.equal(ownerRouteAllowed(claimant,c.path,c.method)&&!!c.owner?.trim()&&!((c.method==='GET'||c.method==='DELETE')&&c.body!==null)?'A':'R',gate,`renderer policy, ${where}`);
@@ -218,6 +225,7 @@ test('the Android gate and the renderer interpret the owner route table identica
   // The old renderer's automations claim.
   assert.equal(cloud,/^\/api\/(automations|lifeops|triggers)([/?]|$)/.test(c.path)?(cloudAdmittedBefore.get(c.path)??[]).includes(c.method)?'A':'R':'U',`Cloud transport, ${where}`);
  });
+ for(const path of widenedSince.keys())assert.ok(!admittedBefore.has(path),'every widened route was refused before');
  for(const [method,path] of settledDrift)assert.ok(admittedBefore.get(path).includes(method),'every settled disagreement was admitted natively before');
  assert.deepEqual(native[cases.length],['UU'],'the Android interpreter refuses unknown group names');
  assert.throws(()=>ownerRouteGroup('/api/triggers','automations','nope'),/Unknown owner route group nope/);
