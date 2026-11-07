@@ -93,7 +93,7 @@ function targetFiles(t) {
   return { file, sha256: sha256(fs.readFileSync(file)) };
 }
 
-test("the committed Pixel 10a descriptor admits its pinned source lock, names every unset release input and never claims qualification", () => {
+test("the committed Pixel 10a descriptor admits the app signer but still refuses unset OS inputs and qualification", () => {
   const product = read(PIXEL10A_PRODUCT), channel = read(CHANNEL);
   assert.equal(product.product, "alpha_stallion_phone");
   assert.equal(product.product, read("vendor/eliza/packages/os/android/products/pixel10a-alpha.json").productName);
@@ -103,8 +103,9 @@ test("the committed Pixel 10a descriptor admits its pinned source lock, names ev
   assert.equal(product.ota.channel, CHANNEL);
   assert.equal(channel.recovery.stockFactoryImage.sha256, read(LOCK).factory.sha256, "stock recovery is the locked factory archive");
   const problems = pixel10aProductProblems(root);
-  for (const expected of [/signerSha256 is "unset"/, /platformCertificateSha256 must be a SHA-256/])
-    assert.ok(problems.some(problem => expected.test(problem)), `${expected}\n${problems.join("\n")}`);
+  assert.match(read("android/release-signer.json").signerSha256, /^[0-9a-f]{64}$/);
+  assert.ok(!problems.some(problem => /android\/release-signer\.json signerSha256/.test(problem)), problems.join("\n"));
+  assert.ok(problems.some(problem => /platformCertificateSha256 must be a SHA-256/.test(problem)), problems.join("\n"));
   const lockBytes = fs.readFileSync(path.join(root, product.sourceLock.file));
   assert.equal(JSON.parse(lockBytes).developmentOnly, false);
   assert.equal(sha256(lockBytes), product.sourceLock.sha256);
@@ -183,7 +184,8 @@ test("Alpha's signing binding signs with its descriptor, channel and APK signer 
   assert.ok(result.distributionProblems.some(problem => /signedUpdate drill is "not run"/.test(problem)));
   // The committed repository is refused for its unset release inputs before any tool runs.
   const committed = await signRelease({ ...options, root, out: path.join(path.dirname(out), "committed"), dryRun: true });
-  assert.ok(committed.problems.some(problem => /android\/release-signer\.json signerSha256 is "unset"/.test(problem)), committed.problems.join("\n"));
+  assert.ok(!committed.problems.some(problem => /android\/release-signer\.json signerSha256/.test(problem)), committed.problems.join("\n"));
+  assert.ok(committed.problems.some(problem => /platformCertificateSha256 must be a SHA-256/.test(problem)), committed.problems.join("\n"));
   assert.ok(committed.problems.some(problem => /otaCertificateSha256 is unset/.test(problem)));
   // The standalone record command defaults to Alpha's descriptor and channel.
   const file = path.join(path.dirname(out), "standalone-record.json");
