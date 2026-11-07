@@ -735,6 +735,8 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   let previewReceipt: PreviewReceipt | undefined;
   /** Bind VideoCapture only while Video mode is chosen. Builds without setCaptureMode bind it when recording starts. */
   let modeChange: Promise<void> = Promise.resolve();
+  /** Native released the preview (no mode could bind): Camera stays unavailable until Try again or the view is left. */
+  let previewReleased = false;
   /** The bridge the shared session drives. It reads the lens receipt, lets an in-flight photo finish
    * before the preview is released, and starts a recording after any pending video binding. */
   const sessionCamera = {
@@ -814,7 +816,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     const token=session.token(),wanted=mode==='video'?'video':'photo';
     modeChange=modeChange.then(async()=>{if(token!==session.token()||typeof camera.setCaptureMode!=='function')return;try{await camera.setCaptureMode({mode:wanted,quality:RECORDING.quality});}catch(error){
       // Neither mode could be bound and native released the preview: show it as unavailable.
-      if((error as {code?:unknown})?.code==='PREVIEW_STOPPED'&&token===session.token()){await session.stop();if(!disposed){mask(false);showAccess('unavailable');}}
+      if((error as {code?:unknown})?.code==='PREVIEW_STOPPED'&&token===session.token()){previewReleased=true;await session.stop();if(!disposed){mask(false);showAccess('unavailable');}}
       /* Otherwise startRecording binds video itself. */}});
   }
   async function stop() {
@@ -824,6 +826,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   }
   async function start(retry = false) {
     // Every start goes through the native layer, which checks camera access again: it may have changed in Android settings.
+    if(retry)previewReleased=false;
     const outcome=await session.start(retry);
     if(outcome.status==='ready'){hideAccess();adoptLens(previewReceipt);mask(true);api?.set({flash,nativeCameraPhase:'ready'});bindMode(api?.get('camera').mode);void loadLast(session.token());}
     else if(outcome.status==='denied'){mask(false);showAccess('camera');}
@@ -1408,7 +1411,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   // Photos: the library observer, an editor whose photo closed, and the mounted video follow Photos' presence.
   const syncPhotos = () => { watchLibrary(!disposed&&!document.hidden&&!!photosApi?.isActive()&&permittedLibrary());if((edit||videoEditSource)&&(!photosApi?.isActive()||photosApi.get('photos').open!==(edit?.source??videoEditSource)))cancelEdit(); mountVideo(); };
   // Camera: entering (or uncovering) Camera starts the session; leaving, hiding, or a chat sheet left open past the grace releases it.
-  const syncCamera = () => { trackChat(); if (active()) { if (session.phase === 'off') void start(); else if (session.phase === 'ready') mask(true); } else if (session.phase !== 'off') void stop(); };
+  const syncCamera = () => { trackChat(); if (active()) { if (session.phase === 'off' && !previewReleased) void start(); else if (session.phase === 'ready') mask(true); } else { previewReleased = false; if (session.phase !== 'off') void stop(); } };
   const sync = () => { queued = false; if (disposed) return; syncPhotos(); syncCamera(); };
   function schedule() { if (!queued && !disposed) { queued = true; queueMicrotask(sync); } }
   // View enter/leave and chat cover come from the shell's own commits (and page visibility),
