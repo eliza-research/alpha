@@ -42,7 +42,7 @@ test('reviewed SystemUI patch binds the baseline and adds both recording ops to 
   } finally { fs.rmSync(temp, {recursive: true, force: true}); }
 });
 
-test('exact pinned source produces a verified overlay and rejects postimage mutation', {skip: !process.env.ALPHA_SYSTEMUI_TEST_SOURCE}, () => {
+test('exact pinned source produces a verified overlay and rejects postimage mutation', {skip: process.env.ALPHA_SYSTEMUI_TEST_SOURCE ? false : 'Set ALPHA_SYSTEMUI_TEST_SOURCE to a pinned SystemUI checkout; no CI lane checks one out, so the local AOSP image build owns this test'}, () => {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'systemui-exact-'));
   try {
     const output = path.join(temp, 'overlay');

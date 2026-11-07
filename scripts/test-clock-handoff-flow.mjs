@@ -55,7 +55,7 @@ response={status:'unavailable',message:'No installed Clock app handles this acti
 for(const status of ['denied','failed']){response={status,message:`Clock ${status}`};f.render().clock.prepare();await f.render().clock.review.confirm();assert.equal(f.render().clock.message,`Clock ${status}`);}
 response=new Error('lost response');f.render().clock.prepare();await f.render().clock.review.confirm();assert.match(f.render().clock.message,/unknown/);const count=writes.length;
 f.shell.componentWillUnmount();f=await fixture();assert.match(f.render().clock.message,/unknown/);assert.equal(writes.length,count,'recreation must not dispatch or retry');
-failStorage=true;f.render().clock.prepare();await f.render().clock.review.confirm();assert.equal(writes.length,count);assert.match(f.render().clock.message,/not sent/);failStorage=false;
+failStorage=true;f.render().clock.prepare();await f.render().clock.review.confirm();assert.equal(writes.length,count);assert.equal(f.render().clock.message,"Can’t reach Clock. Reopen it and try again.");failStorage=false;
 hidden=true;f.render().clock.prepare();await f.render().clock.review.confirm();assert.equal(writes.length,count);hidden=false;
 // Leaving the view invalidates even a retained confirmation callback.
 f.render().clock.prepare();const departed=f.render().clock.review;f.leave();await departed.confirm();assert.equal(writes.length,count);assert.equal(f.render().clock,null);assert.equal(f.shell.clockSelection(),undefined);f.render().openClock();assert.equal(f.render().clock.review,null);

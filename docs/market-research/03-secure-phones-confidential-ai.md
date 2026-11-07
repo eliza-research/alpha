@@ -1,6 +1,6 @@
 # 03 — Secure and sovereign phones, and confidential-compute AI
 
-Alpha Phone's product facts in this file come from the repository's [`docs/enclave-candidate-validation.md`](https://github.com/AlphaCompute/alphaphone/blob/d0a9db7829f7546668af46752bac57c6a339c7dd/docs/enclave-candidate-validation.md).
+Alpha Phone's product facts in this file come from the repository's [`docs/enclave-candidate-validation.md`](https://github.com/eliza-research/alphaphone/blob/d0a9db7829f7546668af46752bac57c6a339c7dd/docs/enclave-candidate-validation.md).
 
 **Conventions.** **(est.)** marks an analyst estimate or modelled value; **(unverified)** marks a widely reported figure not confirmed against a primary source. Funding rounds carry the announcement date. Where sources disagree, both values are shown and the disagreement is flagged.
 
@@ -198,7 +198,7 @@ Alpha's differentiator is not "a secure phone." Bittium and Samsung own that. It
 
 ### C2. The Nitro-has-no-GPU / Cerebras gap, stated precisely
 
-Facts from the repo ([enclave-candidate-validation.md](https://github.com/AlphaCompute/alphaphone/blob/d0a9db7829f7546668af46752bac57c6a339c7dd/docs/enclave-candidate-validation.md)) and sources:
+Facts from the repo ([enclave-candidate-validation.md](https://github.com/eliza-research/alphaphone/blob/d0a9db7829f7546668af46752bac57c6a339c7dd/docs/enclave-candidate-validation.md)) and sources:
 
 1. The elizaOS agent runs inside a Nitro Enclave. Its image is measured (PCR0/1/2), signed (PCR8), and bound to an IAM role (PCR3). KMS releases the data key only to enclaves matching the key policy.
 2. Text inference is **direct Cerebras `qwen-3.8-27b`**, and the cloud inference proxy is disabled (`ELIZAOS_CLOUD_USE_INFERENCE=false`). Qwen stays as the model. Because Qwen is open-weight, the mitigation is to self-host it inside an attested boundary (Option C), redact before any Cerebras hop (Option B), and document weight provenance (hashes of the exact checkpoint used). Qwen's PRC origin stays a buyer concern for some segments (see [05](05-regulation-compliance.md)).

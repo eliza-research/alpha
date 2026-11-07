@@ -26,7 +26,7 @@ Schedules run only while the phone is powered on; the agent is local. Remove pow
 - [ ] Persist occurrence identity, missed status and future schedule across restart, reboot and clock/time-zone changes
 - [ ] Test screen-off/Doze delivery separately from powered-off missed recovery; no duplicate results or automatic overdue writes
 
-[Implementation issue](https://github.com/AlphaCompute/alphaphone/issues/394)
+[Implementation issue](https://github.com/eliza-research/alphaphone/issues/394)
 
 ## #395 — A-10: Measure last-input-audio to first-response-audio latency
 
@@ -40,7 +40,7 @@ Voice-assistant latency is the elapsed time from the last user speech audio samp
 
 Dependencies: #397, #413, #423.
 
-[Implementation issue](https://github.com/AlphaCompute/alphaphone/issues/395)
+[Implementation issue](https://github.com/eliza-research/alphaphone/issues/395)
 
 ## #396 — A-02: Use Eliza Cloud services with a strictly local agent
 
@@ -54,7 +54,7 @@ Eliza Cloud is the managed account, inference, subscription and Maps service end
 
 Dependencies: #406, #410, #415.
 
-[Implementation issue](https://github.com/AlphaCompute/alphaphone/issues/396)
+[Implementation issue](https://github.com/eliza-research/alphaphone/issues/396)
 
 ## #397 — A-04: Build native on-device STT and TTS through Eliza inference
 
@@ -70,7 +70,7 @@ All speech recognition and synthesis run locally on the device, always. Replace 
 
 Dependencies: #413, #423.
 
-[Implementation issue](https://github.com/AlphaCompute/alphaphone/issues/397)
+[Implementation issue](https://github.com/eliza-research/alphaphone/issues/397)
 
 ## #398 — A-05: Deliver background notices with durable reconciliation
 
@@ -84,7 +84,7 @@ Use periodic background work and immediate reconciliation at resume/start. Doze 
 
 Dependencies: #421, #425.
 
-[Implementation issue](https://github.com/AlphaCompute/alphaphone/issues/398)
+[Implementation issue](https://github.com/eliza-research/alphaphone/issues/398)
 
 ## #399 — A-01: Pin and qualify Pixel 10a Android 17 distributions
 
@@ -98,7 +98,7 @@ Target Pixel 10a on Android 17. Ship standalone APK and Alpha AOSP image/launche
 
 Dependencies: #400.
 
-[Implementation issue](https://github.com/AlphaCompute/alphaphone/issues/399)
+[Implementation issue](https://github.com/eliza-research/alphaphone/issues/399)
 
 ## #400 — A-06: Establish Alpha release signing, updates and recovery ownership
 
@@ -112,7 +112,7 @@ Alpha Compute controls signing and update authority; Shaw is the accountable rel
 
 Dependencies: #399.
 
-[Implementation issue](https://github.com/AlphaCompute/alphaphone/issues/400)
+[Implementation issue](https://github.com/eliza-research/alphaphone/issues/400)
 
 ## #401 — A-11: Integrate Android Clock alarms with Alpha and the AOSP image
 
@@ -126,7 +126,7 @@ Android Clock owns alarms, conditional on a usable integration in the app and AO
 
 Dependencies: #399.
 
-[Implementation issue](https://github.com/AlphaCompute/alphaphone/issues/401)
+[Implementation issue](https://github.com/eliza-research/alphaphone/issues/401)
 
 ## #402 — A-12: Keep passkeys outside MVP and provide honest unsupported handling
 
@@ -140,7 +140,7 @@ Passkeys are outside MVP acceptance. Integrated passwords remain in scope. A lat
 
 Dependencies: #404.
 
-[Implementation issue](https://github.com/AlphaCompute/alphaphone/issues/402)
+[Implementation issue](https://github.com/eliza-research/alphaphone/issues/402)
 
 ## #403 — A-13: Allow third-party cookies in the normal isolated browser profile
 
@@ -152,7 +152,7 @@ Third-party cookies are allowed in normal browsing. Persistent first-party sign-
 - [ ] Verify embedded sign-in/session behavior across tabs and restart, plus explicit clearing
 - [ ] Keep private-tab cookies ephemeral, block cross-profile leakage and preserve Capacitor isolation
 
-[Implementation issue](https://github.com/AlphaCompute/alphaphone/issues/403)
+[Implementation issue](https://github.com/eliza-research/alphaphone/issues/403)
 
 ## #404 — A-14: Enable secure autofill across eligible Alpha app surfaces
 
@@ -164,7 +164,7 @@ Every eligible login surface in Alpha should support password-manager fill. The 
 - [ ] Bind website fills to committed HTTPS origin and native fills to verified app identity; exclude secrets from observations, transcripts and logs
 - [ ] Test redirects, frames, wrong origin, lock/cancel, app-owned fields and release-signing identity with both integrated vault and optional Proton provider
 
-[Implementation issue](https://github.com/AlphaCompute/alphaphone/issues/404)
+[Implementation issue](https://github.com/eliza-research/alphaphone/issues/404)
 
 ## #405 — A-15: Complete Gmail attachments and reviewed mailbox actions
 
@@ -178,7 +178,7 @@ Include reading, read/unread, archive, drafts, reply/forward, reviewed send, ope
 
 Dependencies: #419, #421.
 
-[Implementation issue](https://github.com/AlphaCompute/alphaphone/issues/405)
+[Implementation issue](https://github.com/eliza-research/alphaphone/issues/405)
 
 ## #406 — A-16: Remove hosted-agent onboarding from every product path
 
@@ -192,7 +192,7 @@ Only the local resident agent is supported. No hosted agent, dedicated-agent pur
 
 Dependencies: #396, #415.
 
-[Implementation issue](https://github.com/AlphaCompute/alphaphone/issues/406)
+[Implementation issue](https://github.com/eliza-research/alphaphone/issues/406)
 
 ## #407 — A-17: Preserve system secure-camera entry on the lock screen
 
@@ -206,7 +206,7 @@ Use the system secure camera and its AOSP lock-screen gesture. Alpha does not im
 
 Dependencies: #399.
 
-[Implementation issue](https://github.com/AlphaCompute/alphaphone/issues/407)
+[Implementation issue](https://github.com/eliza-research/alphaphone/issues/407)
 
 ## #408 — A-18: Give the local agent full permitted photo-library access
 
@@ -219,7 +219,7 @@ Provide full device photo/video library access to the local agent where Android 
 - [ ] Show actual full/selected/denied permission scope; protect locked/work-profile/restricted media and bound indexing memory/battery
 - [ ] Test large catalogs, external edits/deletes, reboot, permission downgrade and selected outbound model context
 
-[Implementation issue](https://github.com/AlphaCompute/alphaphone/issues/408)
+[Implementation issue](https://github.com/eliza-research/alphaphone/issues/408)
 
 ## #409 — A-19: Provide reset only and remove data import/export backup scope
 
@@ -234,7 +234,7 @@ No app-data import/export, backup or device-transfer product workflow. Provide a
 
 Dependencies: #424, #425.
 
-[Implementation issue](https://github.com/AlphaCompute/alphaphone/issues/409)
+[Implementation issue](https://github.com/eliza-research/alphaphone/issues/409)
 
 ## #410 — A-20: Implement subscription entitlement with low-latency rate limiting
 
@@ -250,7 +250,7 @@ Use subscription billing with reasonable rate limits rather than a user-facing c
 
 Dependencies: #396, #412.
 
-[Implementation issue](https://github.com/AlphaCompute/alphaphone/issues/410)
+[Implementation issue](https://github.com/eliza-research/alphaphone/issues/410)
 
 ## #411 — A-22: Implement intentional responsive layouts and rotation continuity
 
@@ -262,7 +262,7 @@ Support portrait and landscape, adapting each surface by its purpose. Do not str
 - [ ] Use measured width/height and keyboard/insets, not orientation alone; preserve tap targets, reading width and media aspect ratio
 - [ ] Qualify both distributions at small landscape, portrait, large text, keyboard, screen reader and process recreation; native/system screens remain native
 
-[Implementation issue](https://github.com/AlphaCompute/alphaphone/issues/411)
+[Implementation issue](https://github.com/eliza-research/alphaphone/issues/411)
 
 ## #412 — A-23: Deliver shared Eliza Cloud Maps service and full local-agent tools
 
@@ -278,7 +278,7 @@ Maps belongs in Eliza Cloud as a reusable managed service for agents, with full 
 
 Dependencies: #410, #397.
 
-[Implementation issue](https://github.com/AlphaCompute/alphaphone/issues/412)
+[Implementation issue](https://github.com/eliza-research/alphaphone/issues/412)
 
 ## #413 — A-24: Qualify always-local speech on both Android ABIs
 
@@ -293,7 +293,7 @@ On-device STT and TTS are mandatory for every production speech entrypoint, incl
 
 Dependencies: #397.
 
-[Implementation issue](https://github.com/AlphaCompute/alphaphone/issues/413)
+[Implementation issue](https://github.com/eliza-research/alphaphone/issues/413)
 
 ## #414 — A-25: Add reviewed deletion with durable Undo for Calendar and reminders
 
@@ -305,7 +305,7 @@ Use a short durable Undo window and one review step for events and reminders. In
 - [ ] Implement Undo and final provider readback; handle concurrent edits, permission loss, organizer effects and unknown outcomes
 - [ ] Test process death before/after expiry, recurrence, notification suppression and failed restoration
 
-[Implementation issue](https://github.com/AlphaCompute/alphaphone/issues/414)
+[Implementation issue](https://github.com/eliza-research/alphaphone/issues/414)
 
 ## #415 — A-26: Reject all hosted-agent origins and remove remote connection restore
 
@@ -319,7 +319,7 @@ No Cloud-agent host is admitted. The resident agent uses the local native bridge
 
 Dependencies: #396, #406, #412.
 
-[Implementation issue](https://github.com/AlphaCompute/alphaphone/issues/415)
+[Implementation issue](https://github.com/eliza-research/alphaphone/issues/415)
 
 ## #416 — A-32: Unify notices and quick settings in the Android shade
 
@@ -333,7 +333,7 @@ Use Android’s shade as the single notification/quick-settings surface if it in
 
 Dependencies: #417, #424, #425.
 
-[Implementation issue](https://github.com/AlphaCompute/alphaphone/issues/416)
+[Implementation issue](https://github.com/eliza-research/alphaphone/issues/416)
 
 ## #417 — A-33: Open the Android shade with a launcher Home swipe
 
@@ -347,7 +347,7 @@ A downward swipe on empty launcher Home opens Android’s shade. Preserve top-ed
 
 Dependencies: #416.
 
-[Implementation issue](https://github.com/AlphaCompute/alphaphone/issues/417)
+[Implementation issue](https://github.com/eliza-research/alphaphone/issues/417)
 
 ## #418 — A-34: Finalize Calendar availability semantics
 
@@ -359,7 +359,7 @@ Free, cancelled and declined entries are not busy. Offer owner-selected free/bus
 - [ ] Preserve review/re-read consistency before sharing intervals with the agent
 - [ ] Test real synced invitations, free/busy-only permission, stale/revoked sources, all-day/DST and conflict updates
 
-[Implementation issue](https://github.com/AlphaCompute/alphaphone/issues/418)
+[Implementation issue](https://github.com/eliza-research/alphaphone/issues/418)
 
 ## #419 — A-35: Attach selected Files and Photos through reviewed email drafts
 
@@ -373,7 +373,7 @@ A reviewed Use in email suggestion may attach items selected in Files or Photos.
 
 Dependencies: #405, #408.
 
-[Implementation issue](https://github.com/AlphaCompute/alphaphone/issues/419)
+[Implementation issue](https://github.com/eliza-research/alphaphone/issues/419)
 
 ## #420 — A-03: Expose Phone, Contacts and SMS only in the Alpha AOSP image
 
@@ -387,7 +387,7 @@ Phone, Contacts and SMS are included only in the AOSP fork. Hide and capability-
 
 Dependencies: #399, #421, #422.
 
-[Implementation issue](https://github.com/AlphaCompute/alphaphone/issues/420)
+[Implementation issue](https://github.com/eliza-research/alphaphone/issues/420)
 
 ## #421 — A-07: Integrate Gmail and AOSP text messaging as communication providers
 
@@ -402,7 +402,7 @@ Communication providers are Gmail and text messaging. Gmail is available in both
 
 Dependencies: #405, #420.
 
-[Implementation issue](https://github.com/AlphaCompute/alphaphone/issues/421)
+[Implementation issue](https://github.com/eliza-research/alphaphone/issues/421)
 
 ## #422 — A-08: Remove Wallet from MVP scope and acceptance
 
@@ -414,7 +414,7 @@ Wallet is removed from the MVP plan. No custody, payment, pass-wallet, NFC payme
 - [ ] Keep Wallet views, deep links, agent actions and native/payment adapters disabled in both distributions including AOSP
 - [ ] Test saved route recovery and requests to open/pay so they cannot expose simulated success or payment side effects
 
-[Implementation issue](https://github.com/AlphaCompute/alphaphone/issues/422)
+[Implementation issue](https://github.com/eliza-research/alphaphone/issues/422)
 
 ## #423 — MVP-01: Deliver separate dictation and interruptible voice-assistant controls
 
@@ -430,7 +430,7 @@ Transcribe records locally and on Stop inserts editable text; the user sends it.
 
 Dependencies: #397, #395, #413.
 
-[Implementation issue](https://github.com/AlphaCompute/alphaphone/issues/423)
+[Implementation issue](https://github.com/eliza-research/alphaphone/issues/423)
 
 ## #424 — MVP-52: Deliver opt-in always-on listening and hardware invocation in AOSP MVP
 
@@ -445,7 +445,7 @@ Always-on listening and supported hardware-key invocation are required in the AO
 
 Dependencies: #399, #397, #413, #423, #416.
 
-[Implementation issue](https://github.com/AlphaCompute/alphaphone/issues/424)
+[Implementation issue](https://github.com/eliza-research/alphaphone/issues/424)
 
 ## #425 — OWNER-NOTICE: Restore valid approval notices when their owner reconnects
 
@@ -457,4 +457,4 @@ Withdraw owner-specific approval notices on owner change. Repost quietly when th
 - [ ] Revalidate approval expiry, decision, cancellation and source revision before quiet repost; no repeated sound/vibration on account toggles
 - [ ] Test A-to-B-to-A, process death, lock previews, expired/decided approvals and result notices without cross-owner disclosure
 
-[Implementation issue](https://github.com/AlphaCompute/alphaphone/issues/425)
+[Implementation issue](https://github.com/eliza-research/alphaphone/issues/425)

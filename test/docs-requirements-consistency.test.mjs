@@ -137,7 +137,63 @@ test('every decision ID named in the requirement ledgers is a row in decisions.m
   const decisions = read('docs/decisions.md');
   const named = new Set([...status.matchAll(/\bA-\d\d\b/g), ...JSON.stringify(requirements).matchAll(/\bA-\d\d\b/g)].map(match => match[0]));
   for (const id of named) assert.ok(decisions.includes(`| ${id} |`), `${id} is named in the ledgers but has no row in docs/decisions.md`);
-  for (const [policy] of status.matchAll(/\bP-\d\d\b/g)) assert.ok(decisions.includes(`**${policy}**`), `${policy} is named in docs/mvp-current-status.md but is not an owner decision`);
+  // October 12 entries are written "**P-22 — A-16 (...)", later ones "**P-43**".
+  for (const [policy] of status.matchAll(/\bP-\d\d\b/g)) assert.ok(decisions.includes(`**${policy}**`) || decisions.includes(`**${policy} — `), `${policy} is named in docs/mvp-current-status.md but is not an owner decision`);
+});
+
+// GitHub's heading anchor: lowercased, punctuation dropped, spaces to hyphens, repeats numbered.
+function headingSlugs(markdown) {
+  const seen = new Map(), slugs = new Set();
+  for (const [, heading] of markdown.matchAll(/^#{1,6} +(.+?) *#*$/gm)) {
+    const base = heading.replace(/[`*_]|\[([^\]]*)\]\([^)]*\)/g, '$1').trim().toLowerCase().replace(/[^\p{L}\p{N}\s-]/gu, '').replace(/\s/g, '-');
+    const count = seen.get(base) ?? 0;
+    seen.set(base, count + 1);
+    slugs.add(count ? `${base}-${count}` : base);
+  }
+  return slugs;
+}
+const LEDGERS = ['docs/mvp-current-status.md', 'docs/requirements.json', 'docs/agent-integration.md', 'docs/core-loop-status.md'];
+
+test('every link from the ledgers into decisions.md names one of its headings', () => {
+  const slugs = headingSlugs(read('docs/decisions.md'));
+  assert.ok(slugs.has('resolved-decision-index') && slugs.has('october-12-owner-decisions'));
+  for (const file of LEDGERS) {
+    for (const [, fragment] of read(file).matchAll(/decisions\.md#([^)\s"'`]+)/g)) {
+      assert.ok(slugs.has(fragment), `${file} links decisions.md#${fragment}, which is not a heading`);
+    }
+  }
+});
+
+test('the ledgers do not call a resolved decision pending', () => {
+  const resolved = new Map(table(read('docs/decisions.md'), 'Resolved decision index').map(row => [row.ID, row.Policy]));
+  // Link targets hold full stops (decisions.md), so read each link as its text.
+  const text = [status, ...requirements.requirements.map(requirement => `${requirement.remaining}\n${requirement.gate}`)].join('\n').replace(/\[([^\]]*)\]\([^)]*\)/g, '$1');
+  for (const [, id, word] of text.matchAll(/\b(A-\d\d)\b[^.\n]*?\b(pending|undecided)\b/gi)) {
+    assert.ok(!/^P-\d\d$/.test(resolved.get(id) ?? ''), `${id} is called ${word}, but the resolved decision index maps it to ${resolved.get(id)}`);
+  }
+});
+
+test('an S gate does not call software "not implemented" when every evidence file exists', () => {
+  for (const requirement of requirements.requirements) {
+    if (requirement.status !== 'partial' || !/^S:/.test(requirement.gate) || !/not implemented/.test(requirement.remaining)) continue;
+    assert.ok(!requirement.evidence.every(evidence => fs.existsSync(path.join(root, evidence))),
+      `${requirement.id}: "remaining" says not implemented, yet every evidence file it lists exists; name what is missing or change the gate`);
+  }
+});
+
+test('no status cell says one instrumented class both never ran and passed', () => {
+  const unrun = /never run|no recorded run|has not run|not run/;
+  for (const row of capabilities) {
+    for (const cell of Object.values(row)) {
+      const sentences = cell.split(/(?<=[.;])\s+/);
+      for (const [, name] of cell.matchAll(/`(\w+InstrumentedTest)`/g)) {
+        const about = sentences.filter(sentence => sentence.includes(name));
+        const never = about.some(sentence => /never run|no recorded run/.test(sentence));
+        const passed = about.some(sentence => /\bpassed\b/.test(sentence) && !unrun.test(sentence));
+        assert.ok(!(never && passed), `${row.Area}: ${name} is both unrun and passed in one cell`);
+      }
+    }
+  }
 });
 
 // An MVP item that a requirement's remaining text or gate names must be tagged with that

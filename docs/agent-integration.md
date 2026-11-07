@@ -215,11 +215,13 @@ failure and cleanup, and never weaken seccomp or SELinux to obtain a pass.
   enrollment completes do not share the pending pairing; the second takes the ordinary start
   path, and a completed enrollment is attached to. This is kept as an accepted limit, and the
   host JVM contract asserts it (merged with `0fd9c5b8`). It is class S only.
-- Direct Cerebras key (A-20): a flag-off build still admits `configureProvider` with a direct
-  Cerebras key, because `ResidentAgentInstrumentedTest` configures the resident agent through
-  it. The Cloud branch is limited to `cerebras` and `qwen-3.8-27b` and its environment drops
-  every direct-provider variable (`LocalAgentProviderAdmissionTest`, host JVM). Whether the
-  direct key stays is [A-20](decisions.md#new-decision-items).
+- Owner-provided keys: production builds admit `configureProvider` with a direct Cerebras key
+  and an optional Cartesia key, offered at sign-in (`offerOwnKeys` and `OwnKeyForm` in
+  `connection-ui.tsx`, e15f0b7359), and `ResidentAgentInstrumentedTest` configures the resident
+  agent through the same call. The Cloud branch is limited to `cerebras` and `qwen-3.8-27b` and its
+  environment drops every direct-provider variable (`LocalAgentProviderAdmissionTest`, host JVM).
+  A-20 was decided as [P-26](decisions.md#october-12-owner-decisions) (subscription billing); no
+  owner decision records the owner-provided key path, which P-43 and P-68 describe as absent.
 - Account replacement (AP-03): a Cloud sign-in as a second account revokes the first
   account's key once, before the new key is stored, unless Cloud hands back the same key
   (`cloud-account-replacement.production.spec.ts`, `scripts/test-cloud-protocol.mjs`). The

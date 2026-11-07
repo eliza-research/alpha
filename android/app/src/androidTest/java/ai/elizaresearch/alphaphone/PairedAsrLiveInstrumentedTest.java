@@ -15,7 +15,7 @@ import org.junit.*;
 import org.junit.runner.RunWith;
 import static org.junit.Assert.*;
 
-/** Opt-in real paired host Whisper ASR, edited Notes review, TTS and MediaPlayer. Only recording ingress is synthetic. */
+/** Opt-in real paired agent ASR (/api/asr/libelizainference), edited Notes review, TTS and MediaPlayer. Only recording ingress is synthetic. */
 @RunWith(AndroidJUnit4.class)
 public class PairedAsrLiveInstrumentedTest {
  private static void until(String expression,long timeout)throws Exception{long end=SystemClock.elapsedRealtime()+timeout;while(SystemClock.elapsedRealtime()<end){if("true".equals(WebViewTestDriver.evaluate("Boolean("+expression+")")))return;SystemClock.sleep(100);}fail("Paired voice UI condition timed out");}
@@ -24,7 +24,7 @@ public class PairedAsrLiveInstrumentedTest {
  private static AlphaVoiceCloudPlugin voice(){return (AlphaVoiceCloudPlugin)activity().getBridge().getPlugin("AlphaVoiceCloud").getInstance();}
  private static AlphaConnectionPlugin store(){return (AlphaConnectionPlugin)activity().getBridge().getPlugin("AlphaConnection").getInstance();}
  private static void field(Object object,String name,Object value)throws Exception{Field field=object.getClass().getDeclaredField(name);field.setAccessible(true);field.set(object,value);}
- @Test public void actualPairedWhisperTranscriptReviewAndAudioPlayback()throws Exception{
+ @Test public void actualPairedAgentTranscriptReviewAndAudioPlayback()throws Exception{
   Assume.assumeTrue("Explicit live paired voice opt-in required","1".equals(InstrumentationRegistry.getArguments().getString("pairedAsrLive")));assertTrue("Loopback HTTP fixtures require a -PELIZA_DEV_ALLOW_TEST_MOCKS=1 debug build",BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS);
   android.content.Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();File material=new File(context.getFilesDir(),"paired-asr-live.json");JSONObject input=new JSONObject(new String(Files.readAllBytes(material.toPath()),java.nio.charset.StandardCharsets.UTF_8));
   String origin=input.getString("origin");assertEquals("http://10.0.2.2:47846",origin);String code=input.getString("code"),slot="remote:"+origin;
@@ -45,7 +45,7 @@ public class PairedAsrLiveInstrumentedTest {
     WebViewTestDriver.evaluate("window.__voiceOriginalPromise=Capacitor.nativePromise;Capacitor.nativePromise=function(plugin,method,options){if(plugin==='AlphaVoiceCloud'&&method==='startRecording')return Promise.resolve({recordingId:"+JSONObject.quote(clip)+",maxDurationMs:59000});return window.__voiceOriginalPromise.apply(this,arguments)}");
     click("Start recording");until("document.querySelector('button[aria-label=\"Stop recording\"]')",10000);
     BoundedActivityScenario.main(()->{try{Field f=ai.eliza.voice.LocalSpeechBridgePlugin.class.getDeclaredField("capture");f.setAccessible(true);Object capture=f.get(voice());field(capture,"file",audio);field(capture,"id",clip);field(capture,"durationMs",1000L);JSObject stopped=new JSObject();stopped.put("recordingId",clip);stopped.put("durationMs",1000);Field events=ai.eliza.voice.LocalVoiceRecording.class.getDeclaredField("events");events.setAccessible(true);((java.util.function.Consumer<JSObject>)events.get(capture)).accept(stopped);}catch(Exception e){throw new RuntimeException(e);}});
-    WebViewTestDriver.evaluate("Capacitor.nativePromise=window.__voiceOriginalPromise;delete window.__voiceOriginalPromise");click("Transcribe with agent Whisper");
+    WebViewTestDriver.evaluate("Capacitor.nativePromise=window.__voiceOriginalPromise;delete window.__voiceOriginalPromise");click("Transcribe with your agent");
     until("document.querySelector('textarea[aria-label=\"Review transcript\"]')?.value.toLowerCase().includes('water the plants tomorrow morning')",150000);
     until("document.querySelector('textarea[aria-label=\"Review transcript\"]')",10000);
     WebViewTestDriver.evaluate("(()=>{const e=document.querySelector('textarea[aria-label=\"Review transcript\"]');Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(e,'Alpha Phone synthetic paired voice verification. The recording stays on this phone.');e.dispatchEvent(new Event('input',{bubbles:true}));})()");

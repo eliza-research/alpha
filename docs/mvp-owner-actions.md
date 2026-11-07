@@ -3,7 +3,7 @@
 Updated 2026-10-12: the owner answered all 32 decisions. There is no pending scope
 approval for those choices. [Approved TODOs](owner-approved-mvp-plan-2026-10-12.md)
 and [implementation order](implementation-plan.md) replace the old decision queue.
-The [previous owner-action ledger](https://github.com/AlphaCompute/alphaphone/blob/f3ccefd382bd40b29b06117c97da366c1e9b75a7/docs/mvp-owner-actions.md)
+The [previous owner-action ledger](https://github.com/eliza-research/alphaphone/blob/f3ccefd382bd40b29b06117c97da366c1e9b75a7/docs/mvp-owner-actions.md)
 retains earlier campaign details. Policy approval is not evidence of qualification.
 
 The single ordered checklist of every step only a person can take, with the file, setting,

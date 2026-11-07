@@ -38,6 +38,9 @@ test('CI selection follows changed files, renames, missing history and manual di
   let result=select(pr());assert.deepEqual(lanes(result),[true,true,false,false]);
   assert.deepEqual(result.browser_specs,['test/browser/notes.spec.ts']);assert.deepEqual(result.browser_shards,[1]);
   assert.equal(result.browser_production,false);assert.equal(result.browser_speech,false);
+  // The local-agent step owns host reminder recovery, which skips without VITE_LOCAL_AGENT.
+  base=git('rev-parse','HEAD');put('test/browser/host-reminder-recovery.spec.ts','changed\n');commit('test/browser/host-reminder-recovery.spec.ts');
+  assert.equal(select(pr()).browser_speech,true);
   base=git('rev-parse','HEAD');put('test/browser/production-surface.spec.ts','changed\n');commit('test');
   result=select(pr());assert.equal(result.browser_development,false);assert.equal(result.browser_production,true);
   base=git('rev-parse','HEAD');git('mv','apps/app/source.ts','docs/reference.ts');commit('.');

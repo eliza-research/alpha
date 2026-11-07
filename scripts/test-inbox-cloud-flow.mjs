@@ -267,3 +267,38 @@ for(const purgeFailure of ['reject','exhausted-cas'])await test(`a fresh Home sh
   fresh.componentWillUnmount();sandbox.serviceReadCache=previousCache;controller.getCloudClient=previousClient;delayAccounts=false;failNext=null;
  }
 });
+
+// An expired Cloud key while changing read state signs out the session captured before the request.
+await test('read state with an expired Cloud key rejects the captured session and asks for sign-in',async()=>{
+ class ReadShell{constructor(){this.st={q:null,compose:null};}renderVals(){return {};}componentDidMount(){}componentWillUnmount(){}vset(_,patch){Object.assign(this.st,patch);}}
+ const readViews={inbox:{state:{}}};sandbox.installInboxCloudAdapter(ReadShell,readViews);
+ const rejected=[],prepares=[],previousClient=controller.getCloudClient,previousReject=controller.rejectCloudSession,previousCache=sandbox.serviceReadCache;
+ let expire=null;
+ const readClient={...client,
+  gmailInboxCapabilities:async()=>({readState:true}),
+  gmailRead:async(_grant,id)=>({message:mail(id),bodyText:'Read-state body',historyId:'history-'+id}),
+  gmailPrepareOperation:async(_grant,_request,proposal)=>{prepares.push(proposal.kind);throw expire;},
+ };
+ pages['in:inbox']=[[mail('read-1'),mail('read-2')]];sandbox.serviceReadCache=async()=>null;
+ controller.getCloudClient=()=>session?{client:readClient,sessionId:session,credentialId:'fixture-credential'}:null;
+ controller.rejectCloudSession=(sessionId,error)=>{rejected.push([sessionId,error]);return error?.status===401||error?.code==='expired';};
+ const shellR=new ReadShell(),readApi={...api,get:()=>shellR.st,set:patch=>shellR.vset('inbox',patch),isActive:()=>true},inbox=()=>readViews.inbox.render(shellR.st,readApi);
+ inboxActive=true;connected=true;readGrant=true;delayAccounts=false;delay=false;failNext=null;
+ try{
+  shellR.componentDidMount();inbox();await tick();for(const fn of listeners)fn();await tick();
+  inbox().rows[0].open();await tick();await tick();
+  assert.equal(inbox().d?.canToggleRead,true,'the fixture account can change read state');
+  for(const error of [new CloudProtocolError('http',401),new CloudProtocolError('expired')]){
+   expire=error;const toastsBefore=toasts.length,rejectedBefore=rejected.length;
+   inbox().d.toggleRead();await tick();
+   assert.equal(prepares.at(-1),'mark-unread','one explicit change was sent');
+   assert.deepEqual(rejected.slice(rejectedBefore).map(([id,e])=>[id,e===error]),[[session,true]],'the captured session is rejected with the request error');
+   assert.deepEqual(toasts.slice(toastsBefore),['Cloud sign-in expired. Sign in again to update read state.'],'the sign-in message replaces the generic receipt message');
+  }
+  expire=new CloudProtocolError('http',503);const toastsBefore=toasts.length;
+  inbox().d.toggleRead();await tick();
+  assert.equal(toasts.length,toastsBefore+1);assert.doesNotMatch(toasts.at(-1),/sign-in expired/,'an unavailable Cloud keeps the classified message');
+ }finally{
+  shellR.componentWillUnmount();controller.getCloudClient=previousClient;controller.rejectCloudSession=previousReject;sandbox.serviceReadCache=previousCache;
+ }
+});

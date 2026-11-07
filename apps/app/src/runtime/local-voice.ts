@@ -5,7 +5,7 @@ import { Capacitor } from '@capacitor/core';
 import { connectionController } from './connection-ui';
 import { createNativeSpeechRequests } from '../../../../.eliza/client-features/packages/voice/src/native-speech-request.ts';
 const native = registerPlugin<{
-  /** `ready` is recognition readiness; `playback`, when reported, is read-aloud readiness on its own. */
+  /** `ready` is full speech readiness (recognition and playback prepared together); native reports no separate `playback` today, so read-aloud waits for it. */
   localSpeechStatus(input: { requestId: string }): Promise<{ ready: boolean; playback?: boolean; execution: string }>;
   transcribeLocalRecording(input: { recordingId: string; requestId: string }): Promise<LocalTranscript>;
   releaseLocalSpeech(): Promise<void>;

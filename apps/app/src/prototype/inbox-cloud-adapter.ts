@@ -542,6 +542,8 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
     const outcome = await readState.set(binding.client, accountId, { messageId: message.id, expectedHistoryId: historyId, unread }, explicit);
     const notice = explicit ? mailReadStateMessage(outcome, unread, error => classifyGmailFailure(error, 'operation').message) : null;
     if (outcome.status === 'busy') { if (notice) api?.toast(notice); return; }
+    // The session captured before the request, so an expired key never signs out a newer one.
+    if (outcome.status === 'failed' && connectionController.rejectCloudSession(binding.sessionId, outcome.error)) { if (explicit) api?.toast('Cloud sign-in expired. Sign in again to update read state.'); return; }
     if (!current()) return;
     if (outcome.status !== 'changed') { if (notice) api?.toast(notice); return; }
     folderLists.clear();readAhead.invalidate();messageBodies.delete(bodyKey(message.id));

@@ -399,8 +399,8 @@ it. Before P-09 this command stopped on 24 entries. Result: exit 0, 660 entries,
 named by the agent bundle and 53 workflow-worker dependencies, 550 distinct name and version
 pairs, none missing), no entry without text, 66 entries flagged. This is notice generation
 on a staged payload on a development machine. No APK was built from it, and the packaged
-notices were not committed: the committed notices are the form without a staged runtime
-(109 entries, 15 flagged), which `test/licenses.test.mjs` checks byte for byte.
+notices were not committed: the committed notices are the form without a staged runtime,
+which `test/licenses.test.mjs` checks byte for byte against the generator.
 
 | Flag | Entries (660 total) |
 | --- | --- |

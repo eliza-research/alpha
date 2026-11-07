@@ -138,9 +138,9 @@ the diagnostics export (`alpha-native-voice-timing-v3`; numbers only, never audi
 | I-1 | Transcribe: speak, Stop | Editable text appears in review, nothing is sent until Send |
 | I-2 | Voice assistant streaming | Interim "Heard so far, not sent" text updates; final arrives once per turn |
 | I-3 | Endpointing | Turn submits about 1.2 s after speech ends; timing record `endpoint.path` is `gap` (or `semantic` where the scorer loaded), with the reason recorded |
-| I-4 | Cancel before playback | Speech during a pending reply cancels it; the turn is not resent |
-| I-5 | Barge-in during playback | With echo canceller attached, speech interrupts; the view marks "(Interrupted…)" and only played sentences are kept; a `heard` outcome is recorded |
-| I-6 | No Stop speaking button | Voice view shows only Mute and Stop voice conversation |
+| I-4 | Speech while Alpha is busy | Input stays closed until the reply has played; speech does not cancel the turn |
+| I-5 | Stop speaking during playback | Stop speaking cuts the reply; the view marks "(Interrupted…)" and only played sentences are kept; a `heard` outcome is recorded; the microphone reopens |
+| I-6 | Stop speaking only while speaking | Stop speaking shows next to Mute while Alpha speaks and is gone otherwise |
 | I-7 | Cough or echo of the reply | Reply keeps running |
 | I-8 | Action proposal reply | Voice ends for review; nothing is approved automatically |
 | I-9 | Account change / sign-out mid-turn | Capture stops; no audio crosses owners |
@@ -216,11 +216,11 @@ merge time; P-56 is the last entry on `main` today).
 
 **Variant A (long-gap fallback):**
 
-> - **P-xx — MVP-01 ([#423](https://github.com/AlphaCompute/alphaphone/issues/423), #663):** Clef is not admitted (owner, 2026-10-__). Clef-Flash is 9B with no on-device build. The voice assistant ends a turn on the long gap (1,200 ms after VAD speech-end). At the short gap (300 ms) it asks the pinned Eliza-1 end-of-turn scorer (`/api/asr/local-inference/end-of-turn`, elizaOS #36546), which submits early only when available and complete. Unavailable is never complete. The gap values are engineering defaults to tune on a device. Amends P-39's "with Clef". A small turn-detection model may be proposed later as a separately reviewed GGUF admission. No hosted endpointing is used.
+> - **P-xx — MVP-01 ([#423](https://github.com/eliza-research/alphaphone/issues/423), #663):** Clef is not admitted (owner, 2026-10-__). Clef-Flash is 9B with no on-device build. The voice assistant ends a turn on the long gap (1,200 ms after VAD speech-end). At the short gap (300 ms) it asks the pinned Eliza-1 end-of-turn scorer (`/api/asr/local-inference/end-of-turn`, elizaOS #36546), which submits early only when available and complete. Unavailable is never complete. The gap values are engineering defaults to tune on a device. Amends P-39's "with Clef". A small turn-detection model may be proposed later as a separately reviewed GGUF admission. No hosted endpointing is used.
 
 **Variant B (admit a small turn-detection model):**
 
-> - **P-xx — MVP-01 ([#423](https://github.com/AlphaCompute/alphaphone/issues/423), #663):** Instead of Clef-Flash (9B, no on-device build), Alpha admits `<model name, revision, bytes, sha256, licence>` as its short-gap turn-completion model (owner, 2026-10-__). It runs as GGUF on libelizainference through `<upstream loader/PR>`. It ships in the voice bundle as a new `models[]` row of `android/voice-host/qualified-voice-host.json`, and the host is qualified again on both ABIs (H-18). The long gap (1,200 ms) still always submits, and an unavailable or late model never counts as complete. Admission needs phone measurements of p95 decision latency, resident memory, battery cost and false-submit rate on `<device>`, not desktop model-card figures. Amends P-39's "with Clef".
+> - **P-xx — MVP-01 ([#423](https://github.com/eliza-research/alphaphone/issues/423), #663):** Instead of Clef-Flash (9B, no on-device build), Alpha admits `<model name, revision, bytes, sha256, licence>` as its short-gap turn-completion model (owner, 2026-10-__). It runs as GGUF on libelizainference through `<upstream loader/PR>`. It ships in the voice bundle as a new `models[]` row of `android/voice-host/qualified-voice-host.json`, and the host is qualified again on both ABIs (H-18). The long gap (1,200 ms) still always submits, and an unavailable or late model never counts as complete. Admission needs phone measurements of p95 decision latency, resident memory, battery cost and false-submit rate on `<device>`, not desktop model-card figures. Amends P-39's "with Clef".
 
 ## Remaining human steps
 

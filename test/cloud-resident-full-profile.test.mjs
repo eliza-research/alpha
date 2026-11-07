@@ -86,12 +86,11 @@ test('full mode refuses an unset saved assistant choice without rewriting the pr
   } finally { await fs.rm(profile, {recursive: true, force: true}); }
 });
 
-// The actual collector needs the verified prepared SDK and the pinned Bun (npm run agent:prepare).
-// Without them it skips, unless ALPHA_REQUIRE_PREPARED_SDK=1 makes the missing preparation fail.
-const skipUnprepared = (!process.env.ALPHA_CLOUD_COLLECTOR_SOURCE || !process.env.ALPHA_BUN) && process.env.ALPHA_REQUIRE_PREPARED_SDK !== '1' ? 'Set ALPHA_CLOUD_COLLECTOR_SOURCE and ALPHA_BUN to the prepared SDK and pinned Bun' : false;
+// npm test runs without the prepared SDK and skips; browser.yml's verify job sets ALPHA_REQUIRE_PREPARED_SDK=1.
+const skipUnprepared = !(process.env.ALPHA_CLOUD_COLLECTOR_SOURCE && process.env.ALPHA_BUN) && process.env.ALPHA_REQUIRE_PREPARED_SDK !== '1' ? 'Prepared SDK unavailable; run npm run agent:prepare and export ALPHA_CLOUD_COLLECTOR_SOURCE and ALPHA_BUN (browser.yml verify)' : false;
+
 test('actual pinned SDK collector retains the full host assistant and preserves lean/store exclusions', {skip: skipUnprepared}, async () => {
-  assert.ok(process.env.ALPHA_CLOUD_COLLECTOR_SOURCE, 'a verified prepared SDK is required');
-  assert.ok(process.env.ALPHA_BUN, 'the pinned Bun must be supplied');
+  assert.ok(process.env.ALPHA_CLOUD_COLLECTOR_SOURCE && process.env.ALPHA_BUN, 'ALPHA_REQUIRE_PREPARED_SDK=1 needs ALPHA_CLOUD_COLLECTOR_SOURCE and ALPHA_BUN');
   const {spawnSync} = await import('node:child_process');
   const profile = await fs.mkdtemp(join(tmpdir(), 'alpha-cloud-collector-'));
   const launches = [];
@@ -100,22 +99,23 @@ test('actual pinned SDK collector retains the full host assistant and preserves 
     await host.bind({token: 'synthetic-cloud-only', credentialId: 'collector', reference: 'collector-ref'});
     const config = JSON.parse(await fs.readFile(join(profile, 'eliza.json'), 'utf8'));
     const actualEnvironment = launches[0].env;
-    function collect(extra = {}) {
-      const run = spawnSync(process.env.ALPHA_BUN, ['--no-install', '--conditions=eliza-source', 'test/fixtures/cloud-plugin-selection.mjs'], {cwd: process.cwd(), env: {...actualEnvironment, ...extra, ALPHA_CLOUD_COLLECTOR_SOURCE: process.env.ALPHA_CLOUD_COLLECTOR_SOURCE, GIT_NO_LAZY_FETCH: '1', GIT_NO_REPLACE_OBJECTS: '1', GIT_OPTIONAL_LOCKS: '0'}, input: JSON.stringify({config}), encoding: 'utf8', timeout: 20000});
-      assert.equal(run.status, 0, run.stderr);
-      const line = run.stdout.split('\n').find(row => row.startsWith('SDK_PLUGIN_SELECTION='));
-      assert.ok(line, 'the actual collector must return its selection');
-      return new Set(JSON.parse(line.slice('SDK_PLUGIN_SELECTION='.length)));
-    }
     assert.equal(actualEnvironment.ELIZA_BUILD_VARIANT, undefined);
     assert.equal(actualEnvironment.ELIZA_PLATFORM, undefined);
-    const full = collect();
+    // One child verifies the source and imports the collector once, then selects each variant.
+    const variants = [{}, {ELIZA_PLUGIN_SET: 'lean-chat'}, {ELIZA_BUILD_VARIANT: 'store'}];
+    const run = spawnSync(process.env.ALPHA_BUN, ['--no-install', '--conditions=eliza-source', 'test/fixtures/cloud-plugin-selection.mjs'], {cwd: process.cwd(), env: {...actualEnvironment, ALPHA_CLOUD_COLLECTOR_SOURCE: process.env.ALPHA_CLOUD_COLLECTOR_SOURCE, GIT_NO_LAZY_FETCH: '1', GIT_NO_REPLACE_OBJECTS: '1', GIT_OPTIONAL_LOCKS: '0'}, input: JSON.stringify({config, variants}), encoding: 'utf8', timeout: 60000});
+    assert.equal(run.error, undefined, `the collector did not finish within 60 s: ${run.error?.message}`);
+    assert.equal(run.signal, null, `the collector was killed by ${run.signal}`);
+    assert.equal(run.status, 0, run.stderr);
+    const lines = run.stdout.split('\n').filter(row => row.startsWith('SDK_PLUGIN_SELECTION='));
+    assert.equal(lines.length, variants.length, 'the actual collector must return one selection per variant');
+    const [full, lean, store] = lines.map(line => new Set(JSON.parse(line.slice('SDK_PLUGIN_SELECTION='.length))));
     assert.ok(full.has('@elizaos/plugin-personal-assistant'));
     assert.ok(full.has('@elizaos/plugin-notes'));
     // The SDK deliberately withholds standalone Calendar when the assistant
     // composes it, preventing competing CALENDAR action registrations (#30943).
     assert.equal(full.has('@elizaos/plugin-calendar'), false);
-    assert.equal(collect({ELIZA_PLUGIN_SET: 'lean-chat'}).has('@elizaos/plugin-personal-assistant'), false);
-    assert.equal(collect({ELIZA_BUILD_VARIANT: 'store'}).has('@elizaos/plugin-personal-assistant'), false);
+    assert.equal(lean.has('@elizaos/plugin-personal-assistant'), false);
+    assert.equal(store.has('@elizaos/plugin-personal-assistant'), false);
   } finally { await host.close(); await fs.rm(profile, {recursive: true, force: true}); }
 });

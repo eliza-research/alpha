@@ -41,6 +41,8 @@ jobs:
         with:
           bun-version: "1.4.2"
       - run: npm ci
+      # The development-host loopback test (development-scope-flow) fails on CI without it.
+      - run: npm ci --prefix backend
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
@@ -59,8 +61,9 @@ jobs:
           echo "ALPHA_CLOUD_COLLECTOR_SOURCE=$prepared_source" >> "$GITHUB_ENV"
       - run: npm run verify
         env:
-          # Prepared-SDK tests fail here instead of skipping when the preparation is missing.
+          # The prepared-SDK tests fail instead of skipping, and cloud-sdk-routing uses the prepared tree.
           ALPHA_REQUIRE_PREPARED_SDK: '1'
+          ALPHA_ELIZA_SOURCE: ${{ env.ALPHA_CLOUD_COLLECTOR_SOURCE }}
       # Reuses the product dependencies and client projection prepared by npm run verify.
       - name: Build the connected browser proof renderer
         env:
@@ -117,11 +120,11 @@ jobs:
           ELIZA_DEV_ALLOW_TEST_MOCKS: '1'
           ALPHA_CI_BROWSER_SPECS: ${{ needs.changes.outputs.browser_specs }}
         run: node scripts/ci/run-browser.mjs --shard=${{ matrix.shard }}/${{ needs.changes.outputs.browser_total }}
-      - name: Exercise synthetic local-agent speech profile
+      - name: Exercise synthetic local-agent speech profile and host reminder recovery
         if: matrix.shard == 1 && needs.changes.outputs.browser_speech == 'true'
         run: |
           node --input-type=module -e "import fs from 'node:fs'; fs.writeFileSync(process.env.RUNNER_TEMP + '/alpha-synthetic-owner-token', 'a'.repeat(64), {mode: 0o600});"
-          PLAYWRIGHT_HTML_OUTPUT_DIR=test-results/browser-agent-profile-report ELIZA_DEV_ALLOW_TEST_MOCKS=1 VITE_LOCAL_AGENT=1 ALPHA_LOCAL_AGENT_TOKEN_FILE="$RUNNER_TEMP/alpha-synthetic-owner-token" ALPHA_LOCAL_AGENT_ORIGIN=http://127.0.0.1:1 npm run test:browser -- test/browser/browser-agent-tts.spec.ts test/browser/browser-host-disclosure.spec.ts --grep 'local agent TTS|prepared agent audio|connected browser host' --output=test-results/browser-agent-profile
+          PLAYWRIGHT_HTML_OUTPUT_DIR=test-results/browser-agent-profile-report ELIZA_DEV_ALLOW_TEST_MOCKS=1 VITE_LOCAL_AGENT=1 ALPHA_LOCAL_AGENT_TOKEN_FILE="$RUNNER_TEMP/alpha-synthetic-owner-token" ALPHA_LOCAL_AGENT_ORIGIN=http://127.0.0.1:1 npm run test:browser -- test/browser/browser-agent-tts.spec.ts test/browser/browser-host-disclosure.spec.ts test/browser/host-reminder-recovery.spec.ts --grep 'local agent TTS|prepared agent audio|connected browser host|host journal reminder recovery' --output=test-results/browser-agent-profile
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:

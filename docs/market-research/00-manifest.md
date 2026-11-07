@@ -2,7 +2,7 @@
 
 This document defines the scope of the Alpha Phone research: the product baseline every section assumes, the questions each section answers, and the topics outside the original request that the research covers. The consolidated findings are in [REPORT.md](REPORT.md).
 
-Product capability statements come from the repository's evidence ledger (`docs/mvp-scope-and-gap-report.md`, `docs/mvp-current-status.md`, [historical enclave candidate](https://github.com/AlphaCompute/alphaphone/blob/d0a9db7829f7546668af46752bac57c6a339c7dd/docs/enclave-candidate-validation.md)). Where a capability is only planned, the research says so.
+Product capability statements come from the repository's evidence ledger (`docs/mvp-scope-and-gap-report.md`, `docs/mvp-current-status.md`, [historical enclave candidate](https://github.com/eliza-research/alphaphone/blob/d0a9db7829f7546668af46752bac57c6a339c7dd/docs/enclave-candidate-validation.md)). Where a capability is only planned, the research says so.
 
 ## Product baseline
 

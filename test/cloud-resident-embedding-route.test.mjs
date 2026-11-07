@@ -7,10 +7,9 @@ import {spawnSync} from 'node:child_process';
 import {createCloudResidentHost} from './fixtures/product-character-host.mjs';
 import {CLOUD_MODEL} from '../scripts/cloud-resident-host.mjs';
 
-// The real SDK route needs the verified prepared SDK and the pinned Bun (npm run agent:prepare;
-// browser.yml's Repository verification exports both). npm test without them skips; with
-// ALPHA_REQUIRE_PREPARED_SDK=1 a missing preparation fails instead.
-const skipUnprepared=(!process.env.ALPHA_CLOUD_COLLECTOR_SOURCE||!process.env.ALPHA_BUN)&&process.env.ALPHA_REQUIRE_PREPARED_SDK!=='1'?'Set ALPHA_CLOUD_COLLECTOR_SOURCE and ALPHA_BUN to the prepared SDK and pinned Bun':false;
+// npm test runs without the prepared SDK and skips. browser.yml's verify job prepares it, exports
+// ALPHA_CLOUD_COLLECTOR_SOURCE and ALPHA_BUN, and sets ALPHA_REQUIRE_PREPARED_SDK=1 so a missing SDK fails there.
+const skipUnprepared=!(process.env.ALPHA_CLOUD_COLLECTOR_SOURCE&&process.env.ALPHA_BUN)&&process.env.ALPHA_REQUIRE_PREPARED_SDK!=='1'?'Prepared SDK unavailable; run npm run agent:prepare and export ALPHA_CLOUD_COLLECTOR_SOURCE and ALPHA_BUN (browser.yml verify)':false;
 
 function recordingLauncher(launches) {
  return async options=>{launches.push(options);let finish;return {completion:new Promise(done=>{finish=done;}),async stop(){finish({code:0});}};};
@@ -19,8 +18,7 @@ function recordingLauncher(launches) {
 // Exercise the real SDK's routing normalization, runtime projection and dispatch
 // capability gate. No runtime or registered provider is instantiated or called.
 function selectEmbeddingRoute(config,env) {
- assert.ok(process.env.ALPHA_CLOUD_COLLECTOR_SOURCE,'a verified prepared SDK is required');
- assert.ok(process.env.ALPHA_BUN,'the pinned Bun must be supplied');
+ assert.ok(process.env.ALPHA_CLOUD_COLLECTOR_SOURCE&&process.env.ALPHA_BUN,'ALPHA_REQUIRE_PREPARED_SDK=1 needs ALPHA_CLOUD_COLLECTOR_SOURCE and ALPHA_BUN');
  const code=`import {readFileSync} from 'node:fs';import {join} from 'node:path';import {pathToFileURL} from 'node:url';
  const {config,env}=JSON.parse(readFileSync(0,'utf8')),source=process.env.ALPHA_CLOUD_COLLECTOR_SOURCE;
  const load=p=>import(pathToFileURL(join(source,p)).href);

@@ -103,7 +103,7 @@ test('API interruptSpeech preserves listening; Mute controls capture with presse
  await expect.poll(()=>live(page,f=>f.captures.length)).toBe(2);
  await say(page,'How is the weather');
  await expect(voice(page)).toHaveAttribute('data-voice-state','speaking');
- expect(await page.evaluate(()=>typeof(window as any).dictationApiFixture.renderVals().chatRecorder.interrupt)).toBe('undefined');
+ expect(await page.evaluate(()=>(window as any).dictationApiFixture.renderVals().chatRecorder.canInterrupt)).toBe(true);
  await expect.poll(()=>live(page,f=>typeof f.sharedVoiceSession?.interruptSpeech)).toBe('function');
  expect(await page.evaluate(()=>(window as any).live.sharedVoiceSession.interruptSpeech())).toBe(true);
  await expect(voice(page)).toHaveAttribute('data-voice-state','listening');
