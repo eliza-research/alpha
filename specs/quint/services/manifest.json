@@ -608,7 +608,8 @@
         "Two pages, two queued writes and four non-reused draft revisions represent source limits of 20 pages and arbitrary UUID revisions.",
         "Opaque image identities encode already-validated MIME, dimensions and size. Each text layer stays with its image through reorder and is cleared on image replacement.",
         "The exported flag follows the source UI retry lock and does not assert that a provider has saved a PDF. Requested and unverified outcomes lock retry.",
-        "The shared scan controller clears autoSaved when explicit Save completes. Confirmed export removes only an automatically owned draft, preserving explicitly saved or loaded drafts."
+        "The shared scan controller clears autoSaved when explicit Save completes. Confirmed export removes only an automatically owned draft, preserving explicitly saved or loaded drafts.",
+        "The reviewed scan-document-client patch makes explicit or loaded draft ownership survive later automatic saves. The bound client-patch manifest and preparation script distinguish this behavior from the raw upstream source."
       ],
       "tests": [
         "orderedLayersTest",
@@ -620,6 +621,7 @@
         "exportWaitsForQueuedDraftsTest",
         "automaticDraftCleanupTest",
         "explicitSaveAfterAutosavePreservedTest",
+        "autosaveAfterExplicitSaveRetainedTest",
         "loadedDraftRetainedTest"
       ],
       "invariants": [
@@ -630,6 +632,7 @@
         "UnknownExportLocked",
         "ClosedNoWriter",
         "TypeOK",
+        "ExplicitlySavedDraftPreserved",
         "ExplicitlySavedDraftPreserved"
       ],
       "bounds": {
