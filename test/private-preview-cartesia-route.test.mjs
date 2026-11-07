@@ -45,6 +45,7 @@ const adapterCases = Object.freeze([
   'Cloud startup timeout keeps the media retirement fence',
   'Cloud preparation records success separately from bridge startup',
   'renderer preparation measures each phase once on the same clock',
+  'browser startup measures Talk through microphone listening for both voice routes',
   'typed native 503 is waited out quietly, then voice ends with one calm line',
   'unknown native voice failures retain their existing recovery',
 ]);
@@ -234,6 +235,46 @@ adapterTest('renderer preparation measures each phase once on the same clock',as
     stage:'media-retirement',outcome:'prepared',elapsedMs:250,
     phaseMs:{'conversation-selection':100,'draft-binding':100,'agent-attach':30,'media-retirement':20},
   });
+});
+adapterTest('browser startup measures Talk through microphone listening for both voice routes',async t=>{
+  const clock=voiceFakeClock(),h=cloudFixture({clock,native:false,platform:'web'});t.after(()=>h.close());
+  h.box.HTMLElement=class {};
+  h.box.React={createElement:()=>null};h.box.VoiceActivity=()=>null;
+  h.box.connectionController.voiceRendererMetadata=()=>({viewDelivery:'completed-action'});
+  const snapshot=h.box.connectionController.getSnapshot.bind(h.box.connectionController);
+  let own=true;
+  h.box.connectionController.getSnapshot=()=>({...snapshot(),...(own?{residentInference:'direct',providerStatus:{voiceConfigured:true}}:{})});
+  const prepare=h.shell.prepareVoiceConversation.bind(h.shell);
+  h.shell.prepareVoiceConversation=async(signal,mark)=>{
+    await clock.advance(100);mark?.('draft-binding');
+    await clock.advance(50);mark?.('agent-attach');
+    await clock.advance(150);return prepare(signal);
+  };
+  let listening;
+  h.box.developmentCartesiaConversation=async options=>{
+    await clock.advance(200);
+    listening=()=>options.onState('listening');
+    return {async start(){options.onState('ready');},async stop(){},recheck(){}};
+  };
+  const startup=()=>JSON.parse(JSON.stringify(h.box.voiceStartupTiming()??null));
+  await h.shell.startVoice();
+  assert.equal(startup()?.outcome,'pending','server readiness is not microphone capture');
+  await clock.advance(350);listening();
+  assert.deepEqual(startup(),{route:'direct-cartesia',stage:'speech-session',outcome:'listening',elapsedMs:850,
+    phaseMs:{'conversation-selection':100,'draft-binding':50,'agent-attach':150,'media-retirement':0,'renderer-channel':200,'speech-session':350}});
+  await h.shell.stopVoiceConversation();
+  own=false;h.box.developmentCloudRealtimeVoiceEnabled=true;
+  await h.shell.startVoice();
+  assert.equal(startup()?.route,'cloud-cartesia');
+  await clock.advance(500);listening();
+  assert.equal(startup()?.outcome,'listening');
+  assert.equal(startup()?.phaseMs['speech-session'],500);
+  await h.shell.stopVoiceConversation();
+  await h.shell.startVoice();
+  await h.shell.stopVoiceConversation();
+  assert.equal(startup()?.outcome,'cancelled');
+  listening();
+  assert.equal(startup()?.outcome,'cancelled','late microphone status cannot revive a stopped attempt');
 });
 adapterTest('Cloud conversation keeps the composer focused on the current voice phase',async t=>{
   const h=cloudFixture();t.after(()=>h.close());

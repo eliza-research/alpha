@@ -29,7 +29,7 @@ export function cloudVoiceViewFixture(options={}){
  load('../../../.eliza/client-features/packages/voice/src/voice-turn-timing.ts',box,['createVoiceTurnTiming']);
  // Imports are stripped by load(): supply the actual projected realtime recorder in this realm.
  load('../../../.eliza/client-features/packages/voice/src/realtime-voice-timing.ts',box,['createRealtimeVoiceTiming']);
- load('runtime/voice-timing.ts',box,['beginVoiceTurn','markVoiceTiming','abandonVoiceTurn','finishVoiceTurn','sendVoiceEntry','runVoiceStartupPreparation','voiceStartupTiming']);
+ load('runtime/voice-timing.ts',box,['beginVoiceTurn','markVoiceTiming','abandonVoiceTurn','finishVoiceTurn','sendVoiceEntry','observeVoiceStartup','runVoiceStartupPreparation','voiceStartupTiming']);
  load('local-speech-playback.ts',box,['playOwnedSpeech']);
  load('runtime/cloud-voice.ts',box,['cloudVoiceFailure','createCloudVoice']);
  // Legacy fixtures exercise batch compatibility; streaming scenarios opt in explicitly.

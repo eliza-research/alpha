@@ -108,6 +108,11 @@ test('renderer voice startup exports only the bounded phase, outcome and elapsed
  assert.doesNotMatch(diagnosticsText(report),/acct_|Buy milk/);
  assert.equal(buildDiagnostics({voiceStartup:{...diagnostic,stage:secrets[0]}},now).voiceStartup,undefined);
  assert.equal(buildDiagnostics({voiceStartup:{...diagnostic,elapsedMs:Infinity}},now).voiceStartup,undefined);
+ const listening={route:'cloud-cartesia',stage:'speech-session',outcome:'listening',elapsedMs:850,
+  phaseMs:{'conversation-selection':300,'renderer-channel':200,'speech-session':350}};
+ assert.deepEqual(buildDiagnostics({voiceStartup:listening},now).voiceStartup,listening);
+ const {route:_,...withoutRoute}=listening;
+ assert.deepEqual(buildDiagnostics({voiceStartup:{...listening,route:secrets[3]}},now).voiceStartup,withoutRoute);
 });
 test('renderer startup phase times retain only known stages and sum to the measured attempt',()=>{
  const attempt={stage:'draft-binding',outcome:'timeout',elapsedMs:12000};
