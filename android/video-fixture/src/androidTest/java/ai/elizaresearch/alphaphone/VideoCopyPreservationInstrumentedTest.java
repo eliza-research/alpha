@@ -76,12 +76,12 @@ public final class VideoCopyPreservationInstrumentedTest {
  }
  @Test public void closedRecordIdentityCustodyAndForegroundDenialsCreateNoArchive()throws Exception{
   try(ActivityScenario<VideoFixtureActivity> scene=ActivityScenario.launch(VideoFixtureActivity.class)){
-   AtomicReference<VideoFixtureActivity> activity=new AtomicReference<>();scene.onActivity(activity::set);
+   AtomicReference<VideoFixtureActivity> activity=new AtomicReference<>();scene.onActivity(activity::set);InstrumentationRegistry.getInstrumentation().waitForIdleSync();assertTrue("Unlock the device and leave the QA activity visible",activity.get().hasWindowFocus());
    for(String mode:List.of("missing","wrong-hash","not-failed","wrong-row","renamed","duplicate","retired","foreground-denied","owner-denied","private-storage-denied")){
-    Pending p=new Pending(asset());File denied=null;Uri duplicate=null;Context owner=context;
+    Pending p=new Pending(asset());File denied=null;Uri duplicate=null;Context owner=context;AtomicBoolean admitted=new AtomicBoolean();
     if(mode.equals("owner-denied"))owner=new ContextWrapper(context){@Override public Context getApplicationContext(){return this;}@Override public String getPackageName(){return "not-the-fixture-owner";}};
     if(mode.equals("private-storage-denied")){denied=new File(context.getFilesDir(),"QA-denied-private-"+UUID.randomUUID());Os.mkdir(denied.getAbsolutePath(),0000);final File deniedRoot=denied;owner=new ContextWrapper(context){@Override public Context getApplicationContext(){return this;}@Override public File getFilesDir(){return deniedRoot;}};}
-    VideoCopyEdits editor=new VideoCopyEdits(owner,AlphaMediaConfig.MEDIA,(id,revision)->{throw new AssertionError("Preservation source callback is forbidden");},()->!mode.equals("foreground-denied")&&activity.get().hasWindowFocus());boolean verified=false;
+    VideoCopyEdits editor=new VideoCopyEdits(owner,AlphaMediaConfig.MEDIA,(id,revision)->{throw new AssertionError("Preservation source callback is forbidden");},()->{boolean focused=!mode.equals("foreground-denied")&&activity.get().hasWindowFocus();if(focused)admitted.set(true);return focused;});boolean verified=false;
     try{
      if(mode.equals("not-failed"))p.setRecord(new JSONObject(p.record).put("status","exporting"));
      if(mode.equals("wrong-row"))p.setRecord(new JSONObject(p.record).put("pendingId","9223372036854775806"));
@@ -89,7 +89,11 @@ public final class VideoCopyPreservationInstrumentedTest {
      if(mode.equals("duplicate")){ContentValues values=new ContentValues();values.put("_display_name","Alpha-video-edit-"+p.token.substring(6)+".mp4");values.put("mime_type","video/mp4");values.put("relative_path","Movies/Alpha Video QA/Duplicate/");values.put("is_pending",1);duplicate=context.getContentResolver().insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI,values);assertNotNull(duplicate);}
      if(mode.equals("retired"))editor.close();
      if(mode.equals("missing"))assertTrue(journal.edit().remove(p.token).commit());String record=journal.getString(p.token,null),before=metadata(p.uri);
-     Response call=new Response();editor.preserveClosedFailure(p.token,mode.equals("wrong-hash")?String.format(java.util.Locale.ROOT,"%064d",0):recordHash(p.record),call);refused(call);if(mode.equals("private-storage-denied"))assertTrue(call.error.contains("ErrnoException"));assertFalse(p.directory().exists());assertEquals(record,journal.getString(p.token,null));assertEquals(before,metadata(p.uri));assertArrayEquals(p.bytes,bytes(p.uri));verified=true;
+     Response call=new Response();editor.preserveClosedFailure(p.token,mode.equals("wrong-hash")?String.format(java.util.Locale.ROOT,"%064d",0):recordHash(p.record),call);refused(call);
+     // Failure text names only the stage and class, so each mode also proves its refusal came after the foreground check.
+     assertEquals(mode,mode.equals("retired")?"Video editor closed":"Video copy preservation refused: admission/"+(mode.equals("private-storage-denied")?"ErrnoException":"IOException"),call.error);
+     assertEquals(mode+": refused after the foreground check passed",!mode.equals("retired")&&!mode.equals("foreground-denied"),admitted.get());
+     assertFalse(p.directory().exists());assertEquals(record,journal.getString(p.token,null));assertEquals(before,metadata(p.uri));assertArrayEquals(p.bytes,bytes(p.uri));verified=true;
     }finally{editor.close();if(verified){dispose(p);if(denied!=null)Files.delete(denied.toPath());if(duplicate!=null)assertEquals(1,context.getContentResolver().delete(duplicate,"owner_package_name=?",new String[]{context.getPackageName()}));}}
    }
   }
@@ -107,13 +111,14 @@ public final class VideoCopyPreservationInstrumentedTest {
  }
  @Test public void oversizedAndUnsafeExistingArtifactsNeverCompleteOrOverwrite()throws Exception{
   try(ActivityScenario<VideoFixtureActivity> scene=ActivityScenario.launch(VideoFixtureActivity.class)){
-   AtomicReference<VideoFixtureActivity> activity=new AtomicReference<>();scene.onActivity(activity::set);
+   AtomicReference<VideoFixtureActivity> activity=new AtomicReference<>();scene.onActivity(activity::set);InstrumentationRegistry.getInstrumentation().waitForIdleSync();assertTrue("Unlock the device and leave the QA activity visible",activity.get().hasWindowFocus());
    for(String mode:List.of("oversize","existing","symlink")){
-    Pending p=new Pending(mode.equals("oversize")?new byte[4*1024*1024+1]:asset());VideoCopyEdits editor=editor(()->activity.get().hasWindowFocus());File sentinel=null;boolean verified=false;
+    Pending p=new Pending(mode.equals("oversize")?new byte[4*1024*1024+1]:asset());AtomicBoolean admitted=new AtomicBoolean();VideoCopyEdits editor=editor(()->{boolean focused=activity.get().hasWindowFocus();if(focused)admitted.set(true);return focused;});File sentinel=null;boolean verified=false;
     try{String before=metadata(p.uri);byte[] marker={9,8,7};
      if(mode.equals("existing")){privateRoot();Os.mkdir(p.directory().getAbsolutePath(),0700);Files.write(new File(p.directory(),"sentinel").toPath(),marker);}
      if(mode.equals("symlink")){privateRoot();sentinel=new File(context.getFilesDir(),"QA-recovery-sentinel-"+UUID.randomUUID());assertTrue(sentinel.mkdir());Files.write(new File(sentinel,"sentinel").toPath(),marker);Os.symlink(sentinel.getAbsolutePath(),p.directory().getAbsolutePath());}
-     Response call=new Response();editor.preserveClosedFailure(p.token,recordHash(p.record),call);refused(call);noComplete(p);unchanged(p,before);
+     Response call=new Response();editor.preserveClosedFailure(p.token,recordHash(p.record),call);refused(call);noComplete(p);unchanged(p,before);assertTrue(mode+": refused after the foreground check passed",admitted.get());
+     if(!mode.equals("oversize"))assertEquals(mode,"Video copy preservation refused: admission/ErrnoException",call.error);
      if(mode.equals("existing"))assertArrayEquals(marker,Files.readAllBytes(new File(p.directory(),"sentinel").toPath()));
      if(mode.equals("symlink"))assertArrayEquals(marker,Files.readAllBytes(new File(sentinel,"sentinel").toPath()));
      if(mode.equals("oversize")){assertTrue(new File(p.directory(),"INCOMPLETE.json").isFile());assertTrue(new File(p.directory(),"bytes.bin").length()<=4*1024*1024);}

@@ -210,3 +210,15 @@ test('an Inbox operation journal saved by the installed Alpha journal keeps its 
  assert.equal(await InboxOperation.discardUnsent(store,owner,grantId),false,'a dispatching record is never discarded');
  assert.deepEqual(slots.get(key),installed);
 });
+
+test('the native-only namespace set is pinned, so removing one is a reviewed change',()=>{
+ // The device campaign (ConnectionInstrumentedTest.reservedNativeSlotsRejectEveryPublicStorageOperation)
+ // derives its slots from this list; this pin catches a namespace dropped from it.
+ assert.deepEqual(nativeOnlyNamespaces().toSorted(),[
+  'action-journal','alpha-sms-operation','canonical-notification-owner','cloud-deployment','cloud-signin',
+  'gmail-background','google-workspace-return','hosted-background','hosted-digests','hosted-notices',
+  'local-agent-provider','native-calendar-sync','native-delete-installation','native-delete-journal',
+  'native-digest-source','note-audio-metadata','reminder-taps','resident-results','sms-send-ledger',
+  'workflow-approval-notices','workflow-notice-delivery','workflow-notice-owner','workflow-notice-taps'
+ ]);
+});
