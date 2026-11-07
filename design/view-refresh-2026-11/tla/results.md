@@ -49,5 +49,5 @@ catching up only while Notes is shown, and a recording made with Notes hidden is
 when it is shown again or at Done. Every notes-view cfg sets `AsrWhileHidden = FALSE`.
 New `AsBuilt_Hidden.cfg` (Design with the old unconditional property `TranscriptKeepsUpHidden`):
 Temporal property TranscriptKeepsUpHidden is violated (51,655 distinct states), i.e. the
-deviation is real and recorded. Design: DESIGN_RESULT.
+deviation is real and recorded. Design (4 workers): 73,280,298 states generated, 8,398,068 distinct, no error (all invariants and temporal properties). The other notes-view cfgs only gained the constant and were not rerun.
 Agent-notes Done (outside the modelled state) is now refused until asr = recorded (comment only).
