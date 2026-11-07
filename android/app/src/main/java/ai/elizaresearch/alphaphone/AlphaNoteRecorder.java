@@ -13,6 +13,7 @@ import android.os.SystemClock;
 import android.util.AtomicFile;
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -90,7 +91,11 @@ final class AlphaNoteRecorder {
     List<Segment> segments=new ArrayList<>();
     JSONObject record;
     try(InputStream in=new AtomicFile(new File(session,"segments.json")).openRead()){
-     record=new JSONObject(new String(in.readAllBytes(),StandardCharsets.UTF_8));
+     ByteArrayOutputStream bytes=new ByteArrayOutputStream();
+     byte[] buffer=new byte[8192];
+     int count;
+     while((count=in.read(buffer))!=-1)bytes.write(buffer,0,count);
+     record=new JSONObject(new String(bytes.toByteArray(),StandardCharsets.UTF_8));
      JSONArray list=record.getJSONArray("segments");
      for(int i=0;i<list.length();i++){JSONObject s=list.getJSONObject(i);segments.add(new Segment(Math.max(1,s.getLong("d")),s.has("t")?s.getString("t"):null));}
     }

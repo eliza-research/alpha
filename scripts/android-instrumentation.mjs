@@ -103,8 +103,11 @@ export const CLASS_REGISTRY = {
   // Added by the round-2 integration (PR 388); no recorded run.
   AssistantResidentReuse: { note: "synthetic runtime observation, enrollment and streams; not evidence that a live resident stream survives" },
   LauncherApps: { note: "upstream SystemLauncherApps through Alpha's identity; resolves against this image's package manager only; two methods skip when the image has no other launchable app" },
+  AppInfo: { note: "opens Android Settings for its installed package and checks invalid targets; returns with Back without changing settings" },
   NotesDocument: { note: "Production migration refusal and unchanged Notes; test-mocks builds exercise SAF migration. Restart phase requires the explicit notes development campaign." },
   NotesStorageDurability: { args: { notesStorage: "1" } },
+  NoteRecorder: { grant: ["RECORD_AUDIO"], note: "records microphone segments, checks recovery and joined-file playback readiness, then removes its recording; emulator results do not establish physical microphone quality" },
+  NoteRecordingSave: { note: "synthetic WAV and long transcript exercise local recording retention and retry without microphone or network use" },
   CloudDeploymentStorage: {},
   CloudSignInAuthorization: { note: "Actual native Authorize/Cancel gate with an isolated plugin and no session; not live authentication or remote key issuance" },
   DailyApps: {},
@@ -133,6 +136,7 @@ export const CLASS_REGISTRY = {
   CameraScan: {},
   CameraLatency: { args: { cameraLatency: "1" }, note: "cold/warm first frame (PreviewView STREAMING, also traced as alpha.camera.firstFrame) and shutter-to-thumbnail, reported as cameraLatency.* status; -e cameraLatencyAssert 1 fails on a missed Pixel 10a target; emulator numbers are not device evidence" },
   FilesTree: {},
+  StorageCategories: { note: "queries MediaStore category shapes and a temporary Downloads tree; temporary files remain inside the test package cache" },
   FilesFolderQuestion: { note: "real DocumentsUI tree grant; the folder question reviews entry names only, and a delete or revoked grant during review adds nothing (MVP-13)" },
   // J05-2: native page excerpt -> reviewed question -> composer; a note's web source across recreation.
   BrowserPageQuestion: { args: { browserPageQuestion: "1" }, note: "offline: every page is served from memory to the tab's WebView (the first tab opens on https://reading.invalid/start, which never resolves); needs a WebView provider with isolated-world injection; the agent's answer and the summary-note save that follows it need a connected agent and are not covered" },

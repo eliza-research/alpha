@@ -53,6 +53,13 @@ public final class StorageBrowserTest {
    check(b.transfer(Arrays.asList("Documents"),"Documents/Sub",false).get(0).status.equals("invalid"),"no move into itself");
    check(b.createFolder("Documents","Sub").equals("Documents/Sub (1)"),"new folder keeps both");
    try{b.rename("Documents/Sub (1)","Sub");check(false,"rename refuses a clash");}catch(IllegalStateException expected){}
+   StorageBrowser.write(new File(root,"Documents/case.txt"),"lowercase");
+   File upper=new File(root,"Documents/CASE.txt");
+   if(!upper.exists()){
+    StorageBrowser.write(upper,"uppercase");
+    try{b.rename("Documents/case.txt","CASE.txt");check(false,"case-only names still refuse a distinct existing file");}catch(IllegalStateException expected){}
+    check(text(upper).equals("uppercase")&&text(new File(root,"Documents/case.txt")).equals("lowercase"),"rename preserves both case-distinct files");
+   }
    for(String hidden:new String[]{".Sub",".Trash-alpha"}){try{b.rename("Documents/Sub (1)",hidden);check(false,"rename refuses "+hidden);}catch(IllegalArgumentException expected){}}
    check(new File(root,"Documents/Sub (1)").isDirectory(),"a refused rename changes nothing");
    // The Downloads category: files directly in Download/, newest first; no folders, no hidden entries.

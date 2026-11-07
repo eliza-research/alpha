@@ -136,7 +136,7 @@ final class StorageBrowser {
  String rename(String path,String name)throws IOException{
   File source=resolve(path,false);validName(name);if(name.startsWith("."))throw new IllegalArgumentException("Invalid name");if(!source.exists())throw new java.io.FileNotFoundException();
   File destination=new File(source.getParentFile(),name);
-  if(destination.exists()&&!destination.getCanonicalPath().equals(source.getCanonicalPath())&&!name.equalsIgnoreCase(source.getName()))throw new IllegalStateException("exists");
+  if(destination.exists()&&!java.nio.file.Files.isSameFile(source.toPath(),destination.toPath()))throw new IllegalStateException("exists");
   if(!source.renameTo(destination))throw new IOException("Rename failed");
   return relative(destination);
  }
