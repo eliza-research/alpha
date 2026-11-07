@@ -222,8 +222,14 @@
   */
  public final class OwnedPhotoEdits {
    private final Context context;
-@@ -28,20 +31,59 @@
+@@ -26,26 +29,114 @@
+     boolean accepts(String id);
+     Uri source(String id) throws Exception;
      String revision(String id) throws Exception;
++    /** The item's content URI without checking it is still available; Replace recovery queries it. */
++    default Uri location(String id) throws Exception {
++      return source(id);
++    }
    }
    private final SourceAccess sourceAccess;
 +  /**
@@ -284,7 +290,56 @@
      context = c;
      this.config = config;
      resolver = c.getContentResolver();
-@@ -134,8 +176,11 @@
+     journal = c.getSharedPreferences(config.preferences("photo-edit-results"), 0);
++    sweepBackups();
++  }
++  private static final java.util.Set<String> SWEPT =
++      java.util.Collections.synchronizedSet(new java.util.HashSet<>());
++  /**
++   * Deletes Replace backups this journal has settled: a process that died after writing them but
++   * before the journal named them ({@code incomplete}), or after the edit was settled but before
++   * they were deleted. Only an unsettled ({@code writing}) record keeps its files; files without a
++   * record here are left alone. Runs once per process and directory, before any Replace starts.
++   */
++  private void sweepBackups() {
++    File directory = new File(context.getFilesDir(), "photo-replace-backups");
++    if (!SWEPT.add(directory.getAbsolutePath()))
++      return;
++    File[] files = directory.listFiles();
++    if (files == null)
++      return;
++    for (File file : files) {
++      String name = file.getName();
++      int dot = name.lastIndexOf('.');
++      if (dot <= 0)
++        continue;
++      try {
++        String text = journal.getString(name.substring(0, dot), null);
++        if (text != null && !"writing".equals(new JSONObject(text).optString("status")))
++          file.delete();
++      } catch (Exception unreadable) {
++        // Kept: an unreadable record is not proof the backup is unused.
++      }
++    }
++  }
++  /**
++   * Whether MediaStore positively reports the original's row as gone (a query answering no row),
++   * not merely unreadable now.
++   */
++  private boolean originalGone(String id) {
++    try {
++      Uri uri = sourceAccess != null && sourceAccess.accepts(id) ? sourceAccess.location(id)
++          : source(id);
++      try (Cursor row = resolver.query(uri, new String[] {"_id"}, null, null, null)) {
++        return row != null && !row.moveToFirst();
++      }
++    } catch (Exception unknown) {
++      return false;
++    }
+   }
+   private Uri source(String id) throws Exception {
+     if (sourceAccess != null && sourceAccess.accepts(id)) return sourceAccess.source(id);
+@@ -134,8 +225,11 @@
      s.pixels = pixels;
      active = s;
      try {
@@ -297,7 +352,7 @@
      } catch (Exception error) {
        close();
        throw error;
-@@ -148,32 +193,35 @@
+@@ -148,32 +242,35 @@
      current(s);
      return s;
    }
@@ -340,7 +395,7 @@
          geometry.recycle();
        throw e;
      }
-@@ -226,6 +274,8 @@
+@@ -226,6 +323,8 @@
      if (record == null)
        return receipt("not-started", token, null);
      JSONObject saved = new JSONObject(record);
@@ -349,7 +404,7 @@
      boolean published = saved.optString("status").equals("saved");
      String savedId = saved.optString("id", null);
      if (published && savedId != null)
-@@ -272,7 +322,8 @@
+@@ -272,7 +371,8 @@
      String existing = journal.getString(token, null);
      if (existing != null) {
        JSONObject previous = new JSONObject(existing);
@@ -359,7 +414,7 @@
            || !previous.optString("filter", "none").equals(filter))
          throw new IllegalArgumentException("This save identity already has a different edit");
        return result(token);
-@@ -329,6 +380,419 @@
+@@ -329,6 +429,423 @@
          bitmap.recycle();
      }
    }
@@ -600,7 +655,8 @@
 +   * counts as {@code saved}; the original's own bytes as {@code failed}. Only a prefix of the
 +   * retained encoded edit can be restored automatically. Different bytes may be a later external
 +   * edit and remain untouched. Old records without the encoded edit also remain unresolved.
-+   * Until settled, the record stays {@code writing} and both private files are kept.
++   * An original MediaStore reports deleted settles as {@code failed}. Until settled, the record
++   * stays {@code writing} and both private files are kept.
 +   */
 +  private String settleReplace(String token, JSONObject record) throws Exception {
 +    String name = record.optString("backup", "");
@@ -618,6 +674,9 @@
 +    if (now.equals(record.optString("edited")))
 +      status = "saved";
 +    else if (now.equals(record.optString("original")))
++      status = "failed";
++    else if (now.isEmpty() && originalGone(id))
++      // The original was deleted: there is nothing left to restore or to replace.
 +      status = "failed";
 +    else {
 +      try {
@@ -1276,7 +1335,18 @@
        case "restore":
 --- a/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotosPlugin.java
 +++ b/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotosPlugin.java
-@@ -313,18 +313,51 @@
+@@ -156,6 +156,10 @@
+         return permitted.uri(MediaLibraryKey.parse(id));
+       }
+       @Override
++      public Uri location(String id) throws Exception {
++        return permitted.uri(MediaLibraryKey.parse(id));
++      }
++      @Override
+       public String revision(String id) throws Exception {
+         MediaLibraryKey key = MediaLibraryKey.parse(id);
+         if (key.video) throw new IllegalArgumentException("Only still photos support edit copies");
+@@ -313,18 +317,51 @@
      });
    }
  
@@ -1330,7 +1400,7 @@
    @PluginMethod
    public void editResult(PluginCall call) {
      if (VideoCopyEdits.isVideoOperation(call.getString("operationId"))) {
-@@ -451,22 +484,59 @@
+@@ -451,22 +488,59 @@
            call.resolve(albums.list(album.substring(7), call.getString("before", "")));
            return;
          }
@@ -1392,7 +1462,7 @@
    @PluginMethod
    public void read(PluginCall call) {
      diagnostic(Diagnostic.READ_INVOKED);
-@@ -545,7 +615,7 @@
+@@ -545,7 +619,7 @@
      submit(call, () -> {
        try {
          JSArray items = call.getArray("items");
@@ -1401,7 +1471,7 @@
            throw new IllegalArgumentException();
          ArrayList<Uri> uris = new ArrayList<>();
          Set<String> unique = new HashSet<>();
-@@ -635,7 +705,9 @@
+@@ -635,7 +709,9 @@
          String operation = call.getString("operation", "");
          boolean[] change = PhotoLibraryAccess.batchChange(operation);
          JSArray items = call.getArray("items");

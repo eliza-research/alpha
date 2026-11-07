@@ -127,7 +127,14 @@ public final class ContentResolver {
   writes++;
   return new FileOutputStream(target);
  }
- public Cursor query(Uri uri,String[] columns,String where,String[] args,String order) { throw new AssertionError("Unexpected query"); }
+ /** Rows MediaStore reports for the original: one, or none once it was deleted. */
+ public int rows=1;
+ public Cursor query(Uri uri,String[] columns,String where,String[] args,String order) {
+  if(columns==null||columns.length!=1||!"_id".equals(columns[0])) throw new AssertionError("Unexpected query");
+  return (Cursor)java.lang.reflect.Proxy.newProxyInstance(Cursor.class.getClassLoader(),new Class<?>[]{Cursor.class},(proxy,method,values)->{
+   switch(method.getName()){case "moveToFirst":return rows>0;case "getCount":return rows;case "close":return null;default:throw new AssertionError("Unexpected cursor call "+method.getName());}
+  });
+ }
  public Uri insert(Uri uri,ContentValues values) { throw new AssertionError("Unexpected insert"); }
  public int update(Uri uri,ContentValues values,String where,String[] args) { throw new AssertionError("Unexpected update"); }
  public int delete(Uri uri,String where,String[] args) { throw new AssertionError("Unexpected delete"); }
@@ -194,7 +201,7 @@ public final class PhotoRecoveryCheck {
   Case(File root,String name,byte[] current,boolean retainEdit) throws Exception {
    retainedEdit=retainEdit;
    directory=new File(root,name); check(directory.mkdirs(),"create case");
-   target=new File(directory,"published-photo"); Files.write(target.toPath(),current);
+   target=new File(directory,"published-photo"); if(current!=null) Files.write(target.toPath(),current);
    File backups=new File(directory,"photo-replace-backups"); check(backups.mkdir(),"create backups");
    original=new File(backups,TOKEN+".original"); Files.write(original.toPath(),ORIGINAL);
    edited=new File(backups,TOKEN+".edited");
@@ -203,7 +210,12 @@ public final class PhotoRecoveryCheck {
     .put("backup",original.getName()).put("original",hash(ORIGINAL)).put("edited",hash(EDITED));
    if(retainEdit) record.put("editBackup",edited.getName());
    context=new Context(directory,target);
+   if(current==null) context.getContentResolver().rows=0;
    saveRecord();
+   for(String[] orphan:ORPHANS){
+    File file=new File(backups,orphan[0]); Files.write(file.toPath(),ORIGINAL);
+    if(orphan[1]!=null) context.preferences.values.put(orphan[0].substring(0,orphan[0].lastIndexOf('.')),new JSONObject().put("replace",true).put("status",orphan[1]).put("backup",orphan[0]).toString());
+   }
    OwnedMediaConfig config=OwnedMediaConfig.builder("fixture").edits("Pictures/Fixture/","edit_").captures("DCIM/Fixture/","capture_").build();
    recovery=new OwnedPhotoEdits(context,config,new OwnedPhotoEdits.SourceAccess() {
     public boolean accepts(String id) { return id.equals("1"); }
@@ -212,9 +224,15 @@ public final class PhotoRecoveryCheck {
    });
   }
   void saveRecord() { context.preferences.values.put(TOKEN,record.toString()); }
+  /** Other operations' files: {name, journal status or null for no record here}. */
+  static final String[][] ORPHANS={{"aaaaaaaa-0000-4000-8000-000000000001.original","incomplete"},{"aaaaaaaa-0000-4000-8000-000000000002.original","saved"},{"aaaaaaaa-0000-4000-8000-000000000003.edited","failed"},{"aaaaaaaa-0000-4000-8000-000000000004.original","writing"},{"aaaaaaaa-0000-4000-8000-000000000005.original",null}};
+  void expectSwept() {
+   File backups=new File(directory,"photo-replace-backups");
+   for(String[] orphan:ORPHANS) check(new File(backups,orphan[0]).exists()==(orphan[1]==null||orphan[1].equals("writing")),directory.getName()+" sweep "+orphan[0]);
+  }
   void expect(String status,byte[] expected,int writes,boolean keepBackups) throws Exception {
    String actualStatus=recovery.result(TOKEN).getString("status");
-   check(Arrays.equals(expected,Files.readAllBytes(target.toPath())),directory.getName()+" preserved bytes");
+   check(expected==null?!target.exists():Arrays.equals(expected,Files.readAllBytes(target.toPath())),directory.getName()+" preserved bytes");
    check(status.equals(actualStatus),directory.getName()+" result");
    check(context.getContentResolver().writes==writes,directory.getName()+" write count");
    check(original.exists()==keepBackups,directory.getName()+" original backup");
@@ -228,7 +246,10 @@ public final class PhotoRecoveryCheck {
  public static void main(String[] args) throws Exception {
   File root=new File(args[0]); check(root.mkdir(),"create data directory");
   byte[] external=bytes("a later external photo edit");
-  new Case(root,"external",external,true).expect("unknown",external,0,true);
+  Case external0=new Case(root,"external",external,true);external0.expectSwept();external0.expect("unknown",external,0,true);
+  // A deleted original settles as failed and its backups go; an unreadable one that still exists stays unknown.
+  Case deleted=new Case(root,"deleted",null,true);deleted.expect("failed",null,0,false);
+  Case unreadable=new Case(root,"unreadable",null,true);unreadable.context.getContentResolver().rows=1;unreadable.expect("unknown",null,0,true);
   new Case(root,"complete",EDITED,true).expect("saved",EDITED,0,false);
   new Case(root,"unchanged",ORIGINAL,true).expect("failed",ORIGINAL,0,false);
   new Case(root,"prefix",Arrays.copyOf(EDITED,9),true).expect("failed",ORIGINAL,1,false);
