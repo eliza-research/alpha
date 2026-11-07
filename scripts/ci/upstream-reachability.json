@@ -2,18 +2,22 @@
   "schema": 1,
   "repository": "elizaOS/eliza",
   "base": "develop",
-  "baseCommit": "b65e29c33081a0cd4560b0649a60ac3fc7d428d3",
-  "head": "e8484a964435d672f9423972d13779bbf8b54dfe",
+  "baseCommit": "c35106fb14003a5a85e9793dabcf047118cc09e0",
+  "head": "4c651368721fe6ef6df7720329a5e35f132aef05",
   "recordedAt": "2026-11-06",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...e8484a964435d672f9423972d13779bbf8b54dfe",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...4c651368721fe6ef6df7720329a5e35f132aef05",
   "status": "diverged",
-  "aheadBy": 1,
-  "behindBy": 71,
+  "aheadBy": 2,
+  "behindBy": 80,
   "mergeBase": "0594fc72da4450a84a986ad12e730e3faa902018",
   "pinOnlyCommits": [
     {
       "sha": "e8484a964435d672f9423972d13779bbf8b54dfe",
       "subject": "Let mobile hosts show an installed-only Apps drawer"
+    },
+    {
+      "sha": "4c651368721fe6ef6df7720329a5e35f132aef05",
+      "subject": "Admit explicit Cloud APK profiles only with exact voice evidence"
     }
   ],
   "pullRequests": []

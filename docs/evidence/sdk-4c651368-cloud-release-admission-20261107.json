@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "kind": "reviewed-cloud-release-admission-source",
+  "base": "e8484a964435d672f9423972d13779bbf8b54dfe",
+  "commit": "4c651368721fe6ef6df7720329a5e35f132aef05",
+  "scope": "Shared explicit Cloud release evidence gate; native audio transport/model/index/routing inputs unchanged",
+  "changedSdkFiles": [
+    "packages/os/scripts/android/apk-release-record.mjs",
+    "packages/os/scripts/__tests__/apk-release-record.node.test.ts"
+  ],
+  "unchangedObjects": {
+    "plugins/plugin-local-inference/native": "ab0f228667d9aa9353d6c3aac448b6c6d3fa8a50",
+    "packages/app/platforms/android/app/src/main/elizavoice-jni": "4e2a70ed029f3100cfede14a7d2f150f7d1bafd3",
+    "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaAgentService.java": "3a9542ce253c84350f610b50b6c1b4683c40a8ba",
+    "packages/app/scripts/stage-elizavoice-lib.ts": "8b62403a7e449dda24a8259fdf14c265af33f9e7",
+    "plugins/plugin-native-system/android": "9a205ab39854e750b7eb869c449b5faca957f216"
+  },
+  "validation": {
+    "sharedAdmissionTestsPassed": 12,
+    "alphaPackagingSigningIntegrationTestsPassed": 31,
+    "independentReviewPassed": true
+  },
+  "cloudArtifactQualified": false,
+  "nativeQualificationTransferred": false,
+  "signedApkProduced": false,
+  "publishedRelease": false
+}
