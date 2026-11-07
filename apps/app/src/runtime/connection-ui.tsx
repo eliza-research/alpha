@@ -2856,7 +2856,8 @@ export const connectionController = {
       if(residentCloudFlow()){retire();try{await connectResident(signal);}catch(error){if(residentAlwaysPresent&&!active)update({kind:'recovering'});throw error;}}
       else {await verifyService(account.client,signal);if(service?.identity.credentialId!==account.identity.credentialId||service.identity.userId!==account.identity.userId||service.identity.organizationId!==account.identity.organizationId||service.identity.environment!==account.identity.environment||service.credentialReference!==account.credentialReference)throw Error('Cloud account changed. Sign in again.');}
       await refreshMembershipBalance();
-      if(known&&service===account){recordEnd();update({planEndsAt:endsAt});}
+      // The restart re-verifies the account into a new connection object: compare the account, not the object.
+      if(known&&service?.identity.environment===account.identity.environment&&service.identity.credentialId===account.identity.credentialId){recordEnd();update({planEndsAt:endsAt});}
       // The code was redeemed from the plan panel: show its outcome there beside the running agent.
       if(!state.error)update({open:true,purpose:'plan',redeemNotice:notice,message:''});
     });

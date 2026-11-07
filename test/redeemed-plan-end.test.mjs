@@ -59,3 +59,33 @@ test('without a redeem, or for another credential or environment, the stored end
     assert.equal(state.planEndsAt,stored.endsAt,JSON.stringify(redeemed));
   }
 });
+
+// The restart after a redeem re-verifies the account into a new connection object; the redeemed
+// end must still be recorded and shown for that same account, and never for another one.
+const redeemCode=stripTypeScriptTypes(`globalThis.controller={${section('  async residentRedeem(', '  /** Checks the plan again')}};`,{mode:'transform'});
+async function redeem(nextCredential){
+  const identity={environment:'production',credentialId:'credential-1',userId:'user-1',organizationId:null},end=Date.now()+90*DAY,writes=[];
+  const account={identity,credentialReference:'ref-1',client:{environment:'production',redeemSubscriptionCode:async()=>({planEndsAt:end,paidPlanTakesPrecedence:false})}};
+  const box={operation:null,service:account,redeemedPlanEnd:null,state:{redeemNotice:'',error:''},crypto,Error,
+    update:patch=>Object.assign(box.state,patch),work:async(_message,action)=>action(new AbortController().signal),
+    SubscriptionRedeemError:class extends Error {},redeemFailureMessage:()=>'',redeemSuccessMessage:()=>'Redeemed.',cloudServiceName:()=>'Eliza Cloud',cloud:account.client,
+    readPlanAdmission:()=>({version:1,environment:'production',credentialId:'credential-1',endsAt:Date.now()+DAY}),writePlanAdmission:record=>writes.push(record),
+    residentCloudFlow:()=>true,retire(){},residentAlwaysPresent:true,active:{},
+    connectResident:async()=>{box.service={...account,identity:{...identity,credentialId:nextCredential}};},
+    refreshMembershipBalance:async()=>{box.state.planEndsAt=null;}};
+  vm.createContext(box);vm.runInContext(redeemCode,box);
+  assert.equal(await box.controller.residentRedeem('CODE'),true);
+  return {end,state:box.state,writes};
+}
+
+test('a redeemed end survives the restart that re-verifies the same account',async()=>{
+  const {end,state,writes}=await redeem('credential-1');
+  assert.equal(state.planEndsAt,end);
+  assert.equal(writes.length,2);assert.ok(writes.every(record=>record.endsAt===end));
+});
+
+test('a restart that lands on another account does not take the redeemed end',async()=>{
+  const {state,writes}=await redeem('credential-2');
+  assert.equal(state.planEndsAt,null);
+  assert.equal(writes.length,1,'only the pre-restart write for the redeeming account');
+});
