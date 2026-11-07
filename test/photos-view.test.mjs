@@ -1,7 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
 // Photos view rules (design/view-refresh-2026-11 section 2). Each block names the specs/photos-library
 // Design.cfg rule it implements. Source-level: browser specs drive the rendered view.
-const v=await import('../apps/app/src/runtime/photos-view.ts');
+const v=await import('../.eliza/client-features/packages/ui/src/mobile-shell/photos-view.ts');
 const now=new Date(2026,10,6,15,0).getTime(),DAY=86400000;
 const row=(id,date,extra={})=>({id,date,...extra});
 

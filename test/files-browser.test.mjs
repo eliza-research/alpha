@@ -3,10 +3,10 @@ import {nativeSource,fixture,runJvm,jsonJarSkip} from './fixtures/jvm-tools.mjs'
 // Files browser rules (design/view-refresh-2026-11/PLAN.md section 4; spec files-browser Design.cfg).
 const url=(code)=>'data:text/javascript;base64,'+Buffer.from(code).toString('base64');
 const strip=path=>stripTypeScriptTypes(readFileSync(path,'utf8'));
-const storageUrl=url(strip('apps/app/src/runtime/files-storage.ts'));
+const storageUrl=url(strip('.eliza/client-features/plugins/plugin-files/src/browser/storage-model.ts'));
 const storage=await import(storageUrl);
-const volumeModule=await import(url(strip('apps/app/src/browser/storage-volume.ts').replace("from '../runtime/files-storage'",`from '${storageUrl}'`)));
-const contract=await import(url(strip('apps/app/src/runtime/files-agent-contract.ts').replace("from './files-storage'",`from '${storageUrl}'`)));
+const volumeModule=await import(url(strip('apps/app/src/browser/storage-volume.ts').replace("from '../../../../.eliza/client-features/plugins/plugin-files/src/browser/storage-model'",`from '${storageUrl}'`)));
+const contract=await import(url(strip('apps/app/src/runtime/files-agent-contract.ts').replace("from '../../../../.eliza/client-features/plugins/plugin-files/src/browser/storage-model'",`from '${storageUrl}'`)));
 const {BrowserStorageVolume,TRASH_FOLDER}=volumeModule;
 /** The browser file library's contract (plugin-files): unique names per folder, a move or
  * rename into a used name is refused, delete only removes an empty folder. */

@@ -1,4 +1,4 @@
-import {validateFilesFilter, validName, validPath, filterLabel, baseName, type FilesFilter} from './files-storage';
+import {validateFilesFilter, validName, validPath, filterLabel, baseName, type FilesFilter} from '../../../../.eliza/client-features/plugins/plugin-files/src/browser/storage-model';
 
 /**
  * Files agent tools (design/view-refresh-2026-11/PLAN.md section 4, spec files-browser).

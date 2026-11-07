@@ -1,4 +1,4 @@
-import {DOWNLOAD_FOLDER, freeName, inCategory, joinPath, parentOf, trashExpired, validName, validPath, within, type FilesCategory, type StorageEntry, type TrashEntry} from '../runtime/files-storage';
+import {DOWNLOAD_FOLDER, freeName, inCategory, joinPath, parentOf, trashExpired, validName, validPath, within, type FilesCategory, type StorageEntry, type TrashEntry} from '../../../../.eliza/client-features/plugins/plugin-files/src/browser/storage-model';
 
 /**
  * The browser build's storage volume for Files (design/view-refresh-2026-11/PLAN.md section 4):

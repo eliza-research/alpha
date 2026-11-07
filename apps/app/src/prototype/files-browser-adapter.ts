@@ -5,7 +5,7 @@ import {
   CATEGORIES, DOWNLOAD_FOLDER, SORT_LABELS, baseName, breadcrumbs, filterLabel, filterMatches, formatFree, formatSize, groupByFolder,
   parentOf, sortEntries, trashDaysLeft, validateFilesFilter,
   type CategoryFolder, type FilesCategory, type FilesFilter, type SortMode, type StorageEntry, type StorageVolume, type TrashEntry,
-} from '../runtime/files-storage';
+} from '../../../../.eliza/client-features/plugins/plugin-files/src/browser/storage-model';
 import {filesFilterOf, registerFilesAgent, type FilesAgentOperation} from '../runtime/files-agent-contract';
 
 /**

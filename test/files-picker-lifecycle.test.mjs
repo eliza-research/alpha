@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import {stripTypeScriptTypes} from 'node:module';
 const source=stripTypeScriptTypes(fs.readFileSync('apps/app/src/prototype/files-browser-adapter.ts','utf8').replace(/^import[\s\S]*?;\n/gm,'').replace(/^export /gm,''),{mode:'transform'});
-const rules=stripTypeScriptTypes(fs.readFileSync('apps/app/src/runtime/files-storage.ts','utf8').replace(/^export /gm,''),{mode:'transform'});
+const rules=stripTypeScriptTypes(fs.readFileSync('.eliza/client-features/plugins/plugin-files/src/browser/storage-model.ts','utf8').replace(/^export /gm,''),{mode:'transform'});
 async function harness(){
  let resolve,active=true,agent;const doc=Object.assign(new EventTarget(),{hidden:false}),toasts=[];let failForget=false;
  const result=new Promise(done=>{resolve=done;}),accepted=[],forgotten=[],calls=[],state={};
