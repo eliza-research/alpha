@@ -27,6 +27,14 @@ const cached=existsSync(cache)?readdirSync(cache).flatMap(hash=>readdirSync(join
 export const jsonJar=process.env.ALPHA_JSON_JAR||cached;
 /** Skip reason when org.json is missing. On CI a missing jar is a failure, never a skip. */
 export const jsonJarSkip=jsonJar||process.env.CI?false:'Set ALPHA_JSON_JAR or install the pinned Gradle JSON test dependency';
+const runs=(command,args)=>{try{execFileSync(command,args,{stdio:'pipe',timeout:20000});return true;}catch{return false;}};
+const tools={json:()=>Boolean(jsonJar),javac:()=>runs(javaBinary('javac'),['-version']),sqlite3:()=>runs('sqlite3',['-version'])};
+/** Skip reason when a listed host tool ('json', 'javac', 'sqlite3') is missing. On CI a missing tool is a failure, never a skip. */
+export function jvmSkip(names){
+ if(process.env.CI)return false;
+ const missing=names.filter(name=>!tools[name]());
+ return missing.length?'Missing host test tools: '+missing.join(', '):false;
+}
 
 /** Compiles the sources (plus org.json when needed) and returns the main class's stdout for the given stdin. */
 export function runJvm(sources,mainClass,{json=false,args=[],input}={}){

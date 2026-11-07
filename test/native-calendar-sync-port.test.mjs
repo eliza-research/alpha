@@ -1,4 +1,5 @@
-import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import vm from 'node:vm';import {stripTypeScriptTypes} from 'node:module';import {webcrypto} from 'node:crypto';
+import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import vm from 'node:vm';import {registerHooks,stripTypeScriptTypes} from 'node:module';import {webcrypto} from 'node:crypto';
+import {jvmSkip} from './fixtures/jvm-tools.mjs';import {calendarSyncSnapshotJvm} from './fixtures/calendar-sync-snapshot-jvm.mjs';
 const binding={environment:'production',userId:'owner',organizationId:'org',connectionId:'11111111-1111-4111-8111-111111111111',providerAccountId:'google',calendarId:'primary',agentId:'agent',localSourceId:'native:7',localSourceRevision:'22222222-2222-4222-8222-222222222222'};
 const event={title:'Synthetic Calendar event',description:'',location:'',startAt:'2026-10-16',endAt:'2026-10-17',timeZone:null,isAllDay:true,attendees:[],recurrence:[]};
 function fixture(){
@@ -9,7 +10,7 @@ function fixture(){
   if(input.kind==='prepare')return state.permission?projection():{status:'permission-required'};
   if(input.kind==='enable')return state.outcome==='cancelled'?{status:'cancelled'}:(state.enabled=true,projection());
   if(input.kind==='status')return projection();
-  if(input.kind==='get')return {status:'ready',snapshot:null,...(state.recoveries?{recoveries:state.recoveries}:{})};
+  if(input.kind==='get')return {status:'ready',snapshot:state.snapshot??null,...(state.recoveries?{recoveries:state.recoveries}:{})};
   if(input.kind==='apply'){if(state.abortAfterApply)abort.abort();return state.outcome==='saved'?{status:'saved',snapshot:{eventId:'42',revision:'b'.repeat(64),event:{...structuredClone(input.event),...(state.invalidEnd?{endAt:'invalid-date'}:{})}}}:{status:state.outcome};}
   if(input.kind==='delete')return {status:'queued',receipt:{phase:'queued'}};
   if(input.kind==='deletion')return {status:'receipt',receipt:{phase:state.phase}};
@@ -57,3 +58,32 @@ test('an invalid native readback date is rejected without acknowledging or repla
 test('a staging selection never falls through to a production native request',async()=>{const f=fixture();await assert.rejects(f.api.prepare({environment:'staging',connectionId:binding.connectionId,calendarId:'primary'},f.current,f.abort.signal),/different Cloud environment/);assert.equal(f.calls.length,0);});
 
 test('a recovered native receipt is acknowledged through a read-only get, without a write',async()=>{const f=fixture(),admitted=await f.prepare();f.state.recoveries=['c'.repeat(64)];assert.equal(await f.api.port(admitted,f.current,f.abort.signal).get('42'),null);assert.deepEqual(f.calls.map(c=>c.kind),['prepare','get','ack']);});
+
+// One timed event as the device reports it (CalendarSyncSnapshot through the JVM harness) and as
+// Cloud returns it (Google's dateTime with the event's offset). The shared digest hashes startAt and
+// endAt as raw strings, so the same instant spelled two ways reads as a change after a pull.
+test('a timed event hashes the same from the device and from Cloud, and two passes push nothing',{skip:jvmSkip(['json','javac','sqlite3']),todo:'Upstream: linkedCalendarSemanticText (packages/contracts/src/calendar-linked-sync.ts) must normalize timed startAt/endAt to one instant form'},async()=>{
+ const device=JSON.parse(calendarSyncSnapshotJvm().trim().split('\n')[1]);
+ registerHooks({load:(url,context,next)=>url.includes('/.eliza/client-features/')&&url.endsWith('.ts')?{format:'module',shortCircuit:true,source:stripTypeScriptTypes(fs.readFileSync(new URL(url),'utf8'),{mode:'transform'})}:next(url,context)});
+ const {googleCalendarSyncPort}=await import('../apps/app/src/runtime/calendar-linked-provider.ts');
+ const {LinkedCalendarReconciler,linkedCalendarSemanticDigest}=await import('../.eliza/client-features/packages/contracts/src/calendar-linked-sync.ts');
+ const f=fixture(),admitted=await f.prepare();f.state.snapshot={eventId:'42',revision:'a'.repeat(64),event:device};
+ const local=f.api.port(admitted,f.current,f.abort.signal);
+ const cloud={eventId:'google-1',etag:'"1"',event:{title:device.title,description:'',location:'',startAt:'2026-10-15T15:00:00-04:00',endAt:'2026-10-15T16:00:00-04:00',timeZone:'America/New_York',isAllDay:false,attendees:[]}};
+ const writes=[],reply=data=>({version:1,calendarId:'primary',providerExactlyOnce:false,...data});
+ const client={async googleCalendarSync(input){
+  if(input.kind==='capabilities')return reply({accountId:binding.providerAccountId,read:true,write:true,idempotentCreate:true,conditionalWrites:true});
+  if(input.kind==='get')return reply({event:structuredClone(cloud)});
+  writes.push(input.kind);throw Error('No provider write is expected');
+ }};
+ const provider=await googleCalendarSyncPort(client,binding,()=>true,new AbortController().signal);
+ const deviceEvent=(await local.get('42')).event,cloudEvent=(await provider.get({agentId:binding.agentId,connectorAccountId:binding.connectionId,providerCalendarId:'primary',providerEventId:'google-1',idempotencyKey:'link'})).event;
+ assert.equal(Date.parse(deviceEvent.startAt),Date.parse(cloudEvent.startAt));
+ assert.equal(await linkedCalendarSemanticDigest(deviceEvent),await linkedCalendarSemanticDigest(cloudEvent));
+ // The checkpoint a pull of the Cloud event leaves behind.
+ let record={id:'link',agentId:binding.agentId,localEventId:'42',connectorAccountId:binding.connectionId,providerCalendarId:'primary',providerEventId:'google-1',providerEtag:'"1"',localRevision:'a'.repeat(64),lastCommonSemanticHash:await linkedCalendarSemanticDigest(cloudEvent),state:'clean',pendingOperation:null,idempotencyKey:'link',lastErrorCode:null,lastErrorMessage:null,createdAt:'2026-10-15T00:00:00.000Z',updatedAt:'2026-10-15T00:00:00.000Z'};
+ const reconciler=new LinkedCalendarReconciler({async save(row,patch){record={...row,...patch};return record;}},local,provider);
+ assert.deepEqual([await reconciler.reconcile(record),await reconciler.reconcile(record)],['clean','clean']);
+ assert.deepEqual(writes,[]);
+ assert.equal(f.calls.some(c=>['apply','delete'].includes(c.kind)),false);
+});

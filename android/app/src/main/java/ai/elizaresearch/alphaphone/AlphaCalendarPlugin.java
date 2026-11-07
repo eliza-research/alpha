@@ -153,11 +153,7 @@ public final class AlphaCalendarPlugin extends CalendarPlugin {
   try{
    JSArray chosen=c.getArray("calendars");
    org.json.JSONArray selected=chosen==null?null:new org.json.JSONArray(chosen.toString());
-   // A changed source is reported as changed before freshness is judged; an unknown-freshness
-   // source refuses the whole read before any instance is queried.
-   if(selected!=null)ai.eliza.plugins.calendar.read.SelectedCalendarReader.assertSourceIdentities(getContext().getContentResolver(),selected);
-   CalendarSyncFreshness.requireLocal(getContext().getContentResolver(),selected);
-   org.json.JSONArray events=ai.eliza.plugins.calendar.read.SelectedCalendarReader.readAvailability(getContext().getContentResolver(),selected,c.getString("start"),c.getString("end"),zone);
+   org.json.JSONArray events=CalendarAvailabilityGate.read(getContext().getContentResolver(),selected,c.getString("start"),c.getString("end"),zone);
    if(!readGranted()||!foreground()||!unlocked())throw new IllegalStateException();
    if(!java.time.ZoneId.systemDefault().equals(zone)){c.resolve(status("timezone-changed"));return;}
    JSObject out=status("ready");out.put("freshness","local");out.put("events",events);c.resolve(out);
