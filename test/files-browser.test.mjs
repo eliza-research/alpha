@@ -1,13 +1,11 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from 'node:module';
-import {nativeSource,fixture,runJvm,jsonJarSkip} from './fixtures/jvm-tools.mjs';
+import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
+import {fixture,runJvm,jsonJarSkip} from './fixtures/jvm-tools.mjs';
 // Files browser rules (design/view-refresh-2026-11/PLAN.md section 4; spec files-browser Design.cfg).
-const url=(code)=>'data:text/javascript;base64,'+Buffer.from(code).toString('base64');
-const strip=path=>stripTypeScriptTypes(readFileSync(path,'utf8'));
-const storageUrl=url(strip('apps/app/src/runtime/files-storage.ts'));
-const storage=await import(storageUrl);
-const volumeModule=await import(url(strip('apps/app/src/browser/storage-volume.ts').replace("from '../runtime/files-storage'",`from '${storageUrl}'`)));
-const contract=await import(url(strip('apps/app/src/runtime/files-agent-contract.ts').replace("from './files-storage'",`from '${storageUrl}'`)));
-const {BrowserStorageVolume,TRASH_FOLDER}=volumeModule;
+const storage=await import('../.eliza/client-features/plugins/plugin-files/src/browser/storage-model.ts');
+const {BrowserStorageVolume}=await import('../.eliza/client-features/plugins/plugin-files/src/browser/storage-volume.ts');
+const contract=await import('../.eliza/client-features/plugins/plugin-files/src/browser/files-agent-contract.ts');
+const TRASH_FOLDER='.Trash-alpha';
+const nativeStorage='vendor/eliza/plugins/plugin-native-filesystem/android/src/main/java/ai/eliza/plugins/filesystem/browser';
 /** The browser file library's contract (plugin-files): unique names per folder, a move or
  * rename into a used name is refused, delete only removes an empty folder. */
 function library(){
@@ -33,7 +31,7 @@ let clock=1_000_000;
 const memory=()=>{const m=new Map();return {getItem:k=>m.has(k)?m.get(k):null,setItem:(k,v)=>m.set(k,String(v))};};
 async function fresh(){
  clock=1_000_000;const lib=library(),changes=[];
- const v=new BrowserStorageVolume(lib,()=>changes.push(clock),()=>clock,memory());
+ const v=new BrowserStorageVolume(lib,{trashFolder:TRASH_FOLDER,trashKey:'alpha.files.trash.v1'},()=>changes.push(clock),()=>clock,memory());
  for(const f of ['DCIM','Documents','Download','Movies','Pictures','Recordings'])await lib.createFolder({id:'root',name:f});
  await v.createFolder('DCIM','Camera');
  v.add=async(folder,name,text='x',type)=>{const id=folder?await idOf(lib,folder):'root';await lib.importFile(new File([text],name,{type:type??storage.mimeFromName(name)}),id);};
@@ -48,12 +46,13 @@ test('volume free space requires a finite, nonnegative and internally consistent
  Object.defineProperty(globalThis,'navigator',{configurable:true,value:{storage:{estimate:async()=>estimate}}});
  t.after(()=>{if(descriptor)Object.defineProperty(globalThis,'navigator',descriptor);else delete globalThis.navigator;});
  const v=await fresh();
+ v.lib.usage=async()=>({bytes:7,files:2});
  estimate={usage:1024,quota:4096};
  assert.deepEqual(await v.volume(),{id:'primary',name:'Internal storage',primary:true,free:3072,total:4096});
  for(const invalid of [undefined,{}, {usage:-1,quota:4096},{usage:Infinity,quota:4096},
    {usage:1024,quota:Infinity},{usage:4097,quota:4096},{usage:0,quota:-1},{usage:0,quota:0}]){
   estimate=invalid;
-  assert.deepEqual(await v.volume(),{id:'primary',name:'Internal storage',primary:true,free:0,total:0});
+  assert.deepEqual(await v.volume(),{id:'primary',name:'Internal storage',primary:true,free:0,total:0,usage:{bytes:7,files:2}});
  }
 });
 
@@ -176,12 +175,12 @@ test('Files shows no picker tiles, search box, Recents or instruction subtitles'
  for(const gone of ['Search files','files.recent','files.locs','recentEmptyText','files.storageText','Choose folder','Import folder','Receipts'])assert.equal(files.includes(gone),false,gone);
  const model=readFileSync('apps/app/src/prototype/model.js','utf8'),module=model.slice(model.indexOf('registerView("files"'),model.indexOf('render: function (st, api) {\n    var files'));
  assert.equal(/reply:/.test(module),false,'no fixture reply() regexes for files');
- const adapter=readFileSync('apps/app/src/prototype/files-browser-adapter.ts','utf8');
+ const adapter=readFileSync('.eliza/client-features/plugins/plugin-files/src/browser/files-browser-adapter.ts','utf8');
  assert.equal(/ACTION_OPEN_DOCUMENT|pickFiles|action:'files'/.test(adapter),false,'no picker behind a Browse entry');
 });
 
 test('native StorageBrowser on a host JVM: clashes keep both, trash restores to origin, retention, no escape',{skip:jsonJarSkip},()=>{
- assert.match(runJvm([nativeSource('StorageBrowser.java'),fixture('android-stubs/android/webkit/MimeTypeMap.java'),fixture('StorageBrowserTest.java')],'ai.elizaresearch.alphaphone.StorageBrowserTest',{json:true}),/^PASS storage browser/);
+ assert.match(runJvm([`${nativeStorage}/StorageBrowser.java`,fixture('android-stubs/android/webkit/MimeTypeMap.java'),fixture('StorageBrowserTest.java')],'ai.eliza.plugins.filesystem.browser.StorageBrowserTest',{json:true}),/^PASS storage browser/);
 });
 test('category counts and folder groups cover the whole category, not only the listed newest rows',()=>{
  const row=(path,modified)=>({path,name:storage.baseName(path),directory:false,mimeType:'image/jpeg',size:1,modified});
@@ -190,10 +189,10 @@ test('category counts and folder groups cover the whole category, not only the l
  const counted=[{folder:'DCIM/Camera',count:1850,latest:listed[0]},{folder:'Pictures/Old',count:150,latest:row('Pictures/Old/z.jpg',1)}];
  assert.deepEqual(storage.groupByFolder(listed,counted).map(g=>[g.name,g.count]),[['Camera',1850],['Old',150]]);
  assert.deepEqual(storage.groupByFolder(listed).map(g=>[g.name,g.count]),[['Camera',2]],'without counts the listed rows are grouped');
- const adapter=readFileSync('apps/app/src/prototype/files-browser-adapter.ts','utf8');
+ const adapter=readFileSync('.eliza/client-features/plugins/plugin-files/src/browser/files-browser-adapter.ts','utf8');
  assert.match(adapter,/next\[id\] = value\.count \?\? value\.entries\?\.length \?\? 0/);
  assert.match(adapter,/groupByFolder\(entries, categoryFolders\)/);
- const catalog=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/StorageCatalog.java','utf8');
+ const catalog=readFileSync(`${nativeStorage}/StorageCatalog.java`,'utf8');
  assert.match(catalog,/while\(cursor\.moveToNext\(\)&&\(tally!=null\|\|out\.length\(\)<limit\)\)/,'a category reads every row to count it');
  assert.match(catalog,/out\.put\("count",tally\.count\);out\.put\("truncated",tally\.count>entries\.length\(\)\)/);
 });
@@ -205,7 +204,7 @@ test('a folder watch also follows MediaStore, so provider writes (downloads, cam
  assert.match(watch,/"downloads"\.equals\(category\)\?new java\.io\.File\(primaryBrowser\(\)\.root,StorageCatalog\.DOWNLOAD_FOLDER\)/,'Downloads watches the Download folder too');
 });
 test('every Browse category id has a native answer on Android; Downloads is the Download folder',()=>{
- const catalog=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/StorageCatalog.java','utf8');
+ const catalog=readFileSync(`${nativeStorage}/StorageCatalog.java`,'utf8');
  const ids=JSON.parse('['+catalog.match(/static final String\[\] CATEGORY_IDS=\{([^}]*)\};/)[1]+']');
  assert.deepEqual(ids,storage.CATEGORIES.map(c=>c.id),'StorageCatalog.CATEGORY_IDS names exactly the renderer\'s categories');
  assert.equal(catalog.match(/static final String DOWNLOAD_FOLDER="([^"]+)";/)[1],storage.DOWNLOAD_FOLDER);
@@ -218,9 +217,9 @@ test('every Browse category id has a native answer on Android; Downloads is the 
  assert.match(instrumented,/for\(String id:StorageCatalog\.CATEGORY_IDS\)/,'the device test answers every category id');
 });
 test('the agent filter queries documents as their types and folders by a walk, not the newest rows of any type',()=>{
- const adapter=readFileSync('apps/app/src/prototype/files-browser-adapter.ts','utf8');
- assert.match(adapter,/value\.kind === 'document' \? \{documents: true\} : value\.kind === 'folder' \? \{folders: true\}/);
- const catalog=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/StorageCatalog.java','utf8');
+ const adapter=readFileSync('.eliza/client-features/plugins/plugin-files/src/browser/files-browser-adapter.ts','utf8');
+ assert.match(adapter,/value\.kind === ["']document["']\s*\?\s*\{\s*documents: true\s*\}\s*:\s*value\.kind === ["']folder["']\s*\?\s*\{\s*folders: true\s*\}/);
+ const catalog=readFileSync(`${nativeStorage}/StorageCatalog.java`,'utf8');
  assert.match(catalog,/if\(documents\)\{[^\n]*args\.add\(DOCUMENT_TYPES\[i\]\)[^\n]*MIME_TYPE\+" IN \("/);
  const plugin=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaFilesPlugin.java','utf8');
  assert.match(plugin,/call\.getBoolean\("folders",false\)[^\n]*primaryBrowser\(\)\.folders\(/);
@@ -229,17 +228,17 @@ test('the agent filter queries documents as their types and folders by a walk, n
  assert.deepEqual([...catalogDocs].sort(),[...storage.DOCUMENT_MIME_TYPES].sort(),'native and renderer agree on document types');
 });
 test('each mounted volume is its own Storage row and tree; Trash spans volumes and acts on the row\'s volume',()=>{
- const adapter=readFileSync('apps/app/src/prototype/files-browser-adapter.ts','utf8');
- assert.match(adapter,/vols: volumes\.map\(volume => \(\{[^\n]*go: \(\) => go\(\{kind: 'folder', path: '', \.\.\.onVolume\(volume\.primary \? undefined : volume\.id\)\}\)/);
- assert.match(adapter,/storageList\(\{path: at\.path, \.\.\.onVolume\(at\.volume\)\}\)/);
- assert.match(adapter,/\[undefined, \.\.\.extraVolumes\(\)\]\.map\(async volume =>/);
- assert.match(adapter,/storageEmptyTrash\(\{ids: ids\.slice\(at, at \+ EMPTY_BATCH\), confirmed: true, \.\.\.onVolume\(volume\)\}\)/);
- assert.match(adapter,/dialog = \{kind: 'empty', items: \[\.\.\.trashItems\]\}/,'Empty deletes the rows the owner was shown');
+ const adapter=readFileSync('.eliza/client-features/plugins/plugin-files/src/browser/files-browser-adapter.ts','utf8');
+ assert.match(adapter,/vols: volumes\.map\(\(?volume\)? => \(\{[\s\S]*?go: \(\) =>\s*go\(\{\s*kind: ["']folder["'],\s*path: ["']["'],\s*\.\.\.onVolume\(volume\.primary \? undefined : volume\.id\),?\s*\}\)/);
+ assert.match(adapter,/storageList\(\{\s*path: at\.path,\s*\.\.\.onVolume\(at\.volume\),?\s*\}\)/);
+ assert.match(adapter,/\[undefined, \.\.\.extraVolumes\(\)\]\.map\(async \(?volume\)? =>/);
+ assert.match(adapter,/storageEmptyTrash\(\{\s*ids: ids\.slice\(at, at \+ EMPTY_BATCH\),\s*confirmed: true,\s*\.\.\.onVolume\(volume\),?\s*\}\)/);
+ assert.match(adapter,/dialog = \{\s*kind: ["']empty["'],\s*items: \[\.\.\.trashItems\],?\s*\}/,'Empty deletes the rows the owner was shown');
  assert.match(adapter,/void emptyTrash\(d\.items\)/);
- assert.equal(Number(adapter.match(/const EMPTY_BATCH = (\d+);/)[1]),Number(readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/StorageBrowser.java','utf8').match(/BATCH_MAX=(\d+)/)[1]));
+ assert.equal(Number(adapter.match(/const EMPTY_BATCH = (\d+);/)[1]),Number(readFileSync(`${nativeStorage}/StorageBrowser.java`,'utf8').match(/BATCH_MAX=(\d+)/)[1]));
  assert.match(readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaFilesPlugin.java','utf8'),/b\.emptyTrash\(strings\(call,"ids",StorageBrowser\.BATCH_MAX\)\)/,'native refuses an Empty without ids');
  assert.match(adapter,/void restore\(\[d\.item\.id\], d\.item\.volume\)/);
- const catalog=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/StorageCatalog.java','utf8');
+ const catalog=readFileSync(`${nativeStorage}/StorageCatalog.java`,'utf8');
  assert.match(catalog,/for\(StorageVolume volume:manager\.getStorageVolumes\(\)\)/);
  assert.match(catalog,/if\(!primary&&\(uuid==null\|\|!uuid\.matches\("\[A-Za-z0-9-\]\{1,64\}"\)\)\)continue;/);
 });

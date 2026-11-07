@@ -17,7 +17,7 @@
 <sc-if value="{{showAppBack}}"><button data-alpha-app-back-fallback aria-label="Back to apps" onClick="{{backToApps}}" style="position:absolute;top:0;left:12px;z-index:44;min-height:44px;display:flex;align-items:center;gap:6px;padding:0 8px;color:var(--fg);font-size:14px"><svg class="i" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="{{ic.back}}"></path></svg>Apps</button></sc-if>
 
 <!-- Home and its app grid come from the shared mobile shell, the Apps drawer from Alpha
-     (prototype/home-shell.ts, apps-drawer.tsx); this template fills Home's notice and card slots
+     (prototype/home-shell.ts); this template fills Home's notice and card slots
      and Home edit mode's bar and Add sheet. -->
 {{homeEditStyle}}
 <sc-element value="{{homeShell}}">
@@ -1573,6 +1573,17 @@
     </div>
   </sc-if>
 
+  <details class="alpha-camera-tools" data-alpha-camera="tools">
+    <summary aria-label="Camera tools"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.more}}"></path></svg></summary>
+    <div>
+      <sc-if value="{{camera.importAvailable}}">
+        <button onClick="{{camera.importImage}}">Choose image</button>
+        <button onClick="{{camera.scanDocument}}">Scan document</button>
+      </sc-if>
+      <button onClick="{{camera.ask}}">Ask Alpha about this</button>
+    </div>
+  </details>
+
   <sc-if value="{{camera.showModes}}">
     <div data-alpha-camera="modes" style="position: absolute; left: 0; right: 0; top: 656px; height: 44px; display: flex; align-items: center; justify-content: center; gap: 8px">
       <sc-for list="{{camera.modes}}" as="m">
@@ -1616,7 +1627,7 @@
     </div>
     <div role="group" aria-label="Photos sections" style="display: flex; gap: 2px; margin: 0 16px 4px; padding: 2px; border-radius: 24px; background: var(--s2); flex-shrink: 0">
       <sc-for list="{{photos.tabs}}" as="t">
-        <button aria-label="{{t.label}}" aria-pressed="{{t.on}}" onClick="{{t.pick}}" style="flex: 1; min-width: 0; min-height: 44px; padding: 8px; border-radius: 22px; font-size: 14.5px; font-weight: 600; transition: background .2s; {{t.css}}">{{t.label}}</button>
+        <button aria-label="{{t.label}}" aria-pressed="{{t.on}}" onClick="{{t.pick}}" style="flex: 1; min-width: 0; min-height: 44px; padding: 6px 4px; border-radius: 22px; font-size: 14.5px; font-weight: 600; line-height: 1.2; transition: background .2s; {{t.css}}">{{t.label}}</button>
       </sc-for>
     </div>
   </sc-if>
@@ -1650,7 +1661,6 @@
         </button>
       </div>
     </sc-if>
-    <!-- Virtual row spacers own scroll position. Browser anchoring would shift it a second time. -->
     <div class="scr" ref="{{photos.gridRef}}" data-alpha-app-scroll="photos" style="flex-grow: 1; overflow-y: auto; overflow-anchor: none; touch-action: pan-y; padding: 12px 0 180px">
       <div aria-hidden="true" style="{{photos.gridBefore}}"></div>
       <sc-for list="{{photos.groups}}" as="g">
@@ -1745,8 +1755,7 @@
           <button class="ib" aria-label="Delete all forever" onClick="{{photos.alb.emptyTrash}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.trash}}"></path></svg></button>
         </sc-if>
       </div>
-      <!-- Virtual row spacers own scroll position. Browser anchoring would shift it a second time. -->
-    <div class="scr" ref="{{photos.gridRef}}" data-alpha-app-scroll="photos" style="flex-grow: 1; overflow-y: auto; overflow-anchor: none; touch-action: pan-y; padding: 12px 0 180px">
+      <div class="scr" ref="{{photos.gridRef}}" data-alpha-app-scroll="photos" style="flex-grow: 1; overflow-y: auto; overflow-anchor: none; touch-action: pan-y; padding: 12px 0 180px">
         <div class="photo-grid" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px; {{photos.gridCss}}">
           <sc-for list="{{photos.alb.items}}" as="p">
             <button data-owned-media-id="{{p.nativeMediaId}}" aria-label="{{p.alt}}" aria-pressed="{{p.pressed}}" onClick="{{p.tap}}" onPointerDown="{{p.pd}}" onPointerMove="{{p.pm}}" onPointerUp="{{p.pu}}" onPointerLeave="{{p.pu}}" onPointerCancel="{{p.pu}}" style="position: relative; display: block; aspect-ratio: 1; overflow: hidden; background: var(--s2); touch-action: pan-y; {{p.dim}}">
@@ -2529,10 +2538,13 @@
           <button class="tap" onClick="{{notes.noteRecorder.confirmDiscard}}" style="padding: 10px 16px; border-radius: 20px; background: var(--fg); color: var(--bg)">Discard</button>
         </div>
       </sc-if>
+      <sc-if value="{{notes.noteRecorder.transcribeLabel}}">
+        <button class="tap" onClick="{{notes.noteRecorder.transcribe}}" style="min-height: 44px; margin-top: 12px; padding: 10px 16px; border-radius: 24px; background: var(--acc); color: var(--alpha-white)">{{notes.noteRecorder.transcribeLabel}}</button>
+      </sc-if>
       <div style="display: flex; align-items: center; justify-content: center; gap: 40px; padding: 20px 0 56px; flex-shrink: 0">
         <button class="ib" aria-label="Discard" onClick="{{notes.noteRecorder.discard}}" style="width: 60px; height: 60px; border-radius: 30px; background: var(--s2)"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.trash}}"></path></svg></button>
         <button aria-label="{{notes.noteRecorder.pauseLabel}}" disabled="{{notes.noteRecorder.pauseDisabled}}" onClick="{{notes.noteRecorder.toggle}}" style="width: 84px; height: 84px; border-radius: 42px; background: var(--acc); color: var(--alpha-white); display: flex; align-items: center; justify-content: center"><svg class="i" viewBox="0 0 24 24" style="width: 28px; height: 28px"><path d="{{notes.noteRecorder.pauseIcon}}"></path></svg></button>
-        <button class="ib" aria-label="Done" disabled="{{notes.noteRecorder.doneDisabled}}" onClick="{{notes.noteRecorder.done}}" style="width: 60px; height: 60px; border-radius: 30px; background: var(--fg); color: var(--bg)"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.check}}"></path></svg></button>
+        <sc-if value="{{notes.noteRecorder.showDone}}"><button class="ib" aria-label="{{notes.noteRecorder.doneLabel}}" disabled="{{notes.noteRecorder.doneDisabled}}" onClick="{{notes.noteRecorder.done}}" style="width: 60px; height: 60px; border-radius: 30px; background: var(--fg); color: var(--bg)"><svg class="i" viewBox="0 0 24 24"><path d="{{notes.noteRecorder.doneIcon}}"></path></svg></button></sc-if>
       </div>
     </div>
   </sc-if>

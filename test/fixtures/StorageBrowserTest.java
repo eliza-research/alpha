@@ -1,22 +1,24 @@
-package ai.elizaresearch.alphaphone;
+package ai.eliza.plugins.filesystem.browser;
 
 import java.io.File;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 
 /** Host-JVM check of StorageBrowser over a temporary folder (spec files-browser, Design.cfg). */
 public final class StorageBrowserTest {
+ private static final String TRASH=".Trash-alpha";
  static void check(boolean ok,String what){if(!ok)throw new AssertionError(what);}
  static String text(File f)throws Exception{return new String(Files.readAllBytes(f.toPath()),"UTF-8");}
  public static void main(String[] args)throws Exception{
   File root=Files.createTempDirectory("alpha-storage").toFile();
   try{
-   StorageBrowser b=new StorageBrowser(root);
+   StorageBrowser b=new StorageBrowser(root,TRASH);
    new File(root,"Download").mkdirs();new File(root,"Documents").mkdirs();
    StorageBrowser.write(new File(root,"Download/a.pdf"),"download");
    StorageBrowser.write(new File(root,"Documents/a.pdf"),"document");
-   check(b.trashList(0L).isEmpty()&&b.emptyTrash(Arrays.asList())==0&&!new File(root,StorageBrowser.TRASH).exists(),"reading Trash does not create it");
+   check(b.trashList(0L).isEmpty()&&b.emptyTrash(Arrays.asList())==0&&!new File(root,TRASH).exists(),"reading Trash does not create it");
    // NoOverwriteWithoutConfirm: a clash keeps both.
    List<StorageBrowser.Outcome> moved=b.transfer(Arrays.asList("Download/a.pdf"),"Documents",false);
    check(moved.get(0).status.equals("moved")&&moved.get(0).to.equals("Documents/a (1).pdf"),"move keeps both: "+moved.get(0).to);
@@ -24,6 +26,19 @@ public final class StorageBrowserTest {
    check(!new File(root,"Download/a.pdf").exists(),"moved, not duplicated");
    // A selection row that is gone is skipped, not invented.
    check(b.transfer(Arrays.asList("Download/a.pdf"),"Documents",false).get(0).status.equals("missing"),"missing skipped");
+   // A replacement at the same path can match both size and modified time.
+   String reviewedPath="Download/reviewed.txt";File reviewedFile=new File(root,reviewedPath);
+   StorageBrowser.write(reviewedFile,"old!");long reviewedTime=reviewedFile.lastModified();
+   List<String> selection=Arrays.asList(reviewedPath);
+   List<String> identity=b.reviewedIdentities(selection);
+   check(identity.get(0)!=null&&identity.equals(b.reviewedIdentities(selection)),"stable review identity");
+   Files.move(reviewedFile.toPath(),new File(root,"Download/original-reviewed.txt").toPath());
+   StorageBrowser.write(reviewedFile,"new!");check(reviewedFile.setLastModified(reviewedTime),"restore replacement timestamp");
+   check(reviewedFile.length()==4&&reviewedFile.lastModified()==reviewedTime,"same metadata fixture");
+   check(b.transfer(selection,"Documents",false,identity).get(0).status.equals("changed"),"reviewed move refuses a replacement");
+   check(b.trash(selection,1000L,identity).get(0).status.equals("changed"),"reviewed Trash refuses a replacement");
+   check(text(reviewedFile).equals("new!")&&!new File(root,"Documents/reviewed.txt").exists()&&!new File(root,TRASH).exists(),"refusals leave both files and Trash unchanged");
+   check(b.transfer(selection,"Documents",false,b.reviewedIdentities(selection)).get(0).status.equals("moved"),"a fresh review moves the exact file");
    // Copy keeps the source.
    check(b.transfer(Arrays.asList("Documents/a.pdf"),"Download",true).get(0).to.equals("Download/a.pdf"),"copy");
    check(new File(root,"Documents/a.pdf").exists(),"copy keeps source");
@@ -71,7 +86,7 @@ public final class StorageBrowserTest {
    List<StorageBrowser.Row> downloads=b.files("Download",2000);
    check(downloads.size()==2&&downloads.get(0).path.equals("Download/new.txt")&&downloads.get(1).path.equals("Download/old.pdf"),"downloads lists Download/ files newest first");
    check(b.files("Download",1).size()==1,"downloads is bounded");
-   check(new StorageBrowser(Files.createTempDirectory("alpha-empty").toFile()).files("Download",2000).isEmpty(),"no Download folder is an empty category");
+   check(new StorageBrowser(Files.createTempDirectory("alpha-empty").toFile(),TRASH).files("Download",2000).isEmpty(),"no Download folder is an empty category");
    // A copy that fails part way leaves no partial "Folder (1)" behind.
    File tree=new File(root,"Tree");new File(tree,"a").mkdirs();StorageBrowser.write(new File(tree,"a/one.txt"),"1");StorageBrowser.write(new File(tree,"b.txt"),"2");
    File unreadable=new File(tree,"zz.txt");StorageBrowser.write(unreadable,"3");
@@ -88,7 +103,46 @@ public final class StorageBrowserTest {
    check(b.folders("Download","bank",0,0,500,20000).isEmpty(),"folder filter stays under the folder");
    check(b.folders("","bank",1_760_000_000_000L,0,500,20000).isEmpty(),"folder filter applies the date range");
    check(b.folders("","",0,0,500,20000).stream().noneMatch(r->r.path.startsWith(".")||r.path.contains("/.")),"no hidden folders");
+   verifyLinkedPaths(b,root);
    System.out.println("PASS storage browser");
   }finally{StorageBrowser.deleteRecursive(root);}
+ }
+ static void verifyLinkedPaths(StorageBrowser browser,File root)throws Exception{
+  Path outside=Files.createTempDirectory("alpha-outside-storage");
+  try{
+   Path sentinel=Files.writeString(outside.resolve("sentinel.txt"),"private");
+   Path volume=root.toPath();
+   Path tree=Files.createDirectory(volume.resolve("LinkedTree"));
+   Files.writeString(tree.resolve("ordinary.txt"),"local");
+   Files.createSymbolicLink(tree.resolve("escape"),outside);
+   Files.createSymbolicLink(volume.resolve("TrashAlias"),volume.resolve(TRASH));
+   try{browser.resolve("TrashAlias/info",false);check(false,"link to hidden trash refused");}catch(IllegalArgumentException expected){}
+   check(browser.list("LinkedTree").size()==1,"listing hides links");
+   check(browser.folders("","escape",0,0,500,20000).isEmpty(),"folder search skips linked folders");
+   check(browser.transfer(List.of("LinkedTree"),"Documents",true).get(0).status.equals("failed"),"recursive copy refuses linked children");
+   check(!Files.exists(volume.resolve("Documents/LinkedTree"))&&Files.exists(tree.resolve("ordinary.txt")),"failed copy rolls back only its new destination");
+   String expired=browser.trash(List.of("LinkedTree"),0L).get(0).to;
+   check(expired!=null,"renaming a tree to trash does not follow its child");
+   check(browser.trashList(StorageBrowser.RETENTION_MS).stream().noneMatch(row->row.id.equals(expired)),"retention removes the selected tree");
+   check(Files.readString(sentinel).equals("private"),"retention never follows linked children");
+   Path linkFolder=Files.createDirectory(volume.resolve("PermanentDelete"));
+   Files.createSymbolicLink(linkFolder.resolve("escape"),outside);
+   String id=browser.trash(List.of("PermanentDelete"),1L).get(0).to;
+   check(browser.emptyTrash(List.of(id))==1&&Files.readString(sentinel).equals("private"),"confirmed deletion never follows linked children");
+   Path trash=volume.resolve(TRASH);
+   Path info=trash.resolve("info"),movedInfo=trash.resolve("old-info");
+   Files.move(info,movedInfo);
+   Files.createSymbolicLink(info,outside);
+   try{browser.emptyTrash(List.of(id));check(false,"linked trash component refused");}catch(java.io.IOException expected){}
+   try{browser.trash(List.of("Documents/a (1).pdf"),2L);check(false,"no write through linked trash component");}catch(java.io.IOException expected){}
+   check(Files.readString(sentinel).equals("private")&&Files.exists(volume.resolve("Documents/a (1).pdf")),"failed Trash writes preserve both locations");
+   Files.delete(info);
+   Files.move(movedInfo,info);
+   Path otherRoot=Files.createDirectory(volume.resolve("OtherRoot"));
+   Files.createSymbolicLink(otherRoot.resolve(TRASH),outside);
+   try{new StorageBrowser(otherRoot.toFile(),TRASH).trashList(0L);check(false,"linked trash root refused");}catch(java.io.IOException expected){}
+   check(!StorageBrowser.deleteInside(root,otherRoot.resolve(TRASH).resolve("sentinel.txt").toFile()),"secure deletion refuses a linked parent");
+   check(Files.readString(sentinel).equals("private"),"outside sentinel survived every operation");
+  }finally{StorageBrowser.deleteRecursive(outside.toFile());}
  }
 }

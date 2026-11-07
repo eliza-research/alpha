@@ -29,7 +29,7 @@ export class BrowserVoice extends WebPlugin {
  // time as it goes (each fits every transcription request bound); the whole recording is kept
  // for the saved note.
  private noteCapture=new BrowserAudioCapture(event=>{const note=this.note;if(note&&event.recordingId===note.recordingId&&note.state!=='stopped'){note.state='stopped';note.stopReason='error';this.noteChanged();}});
- private note?:{recordingId:string;binding:import('../prototype/note-recorder').NoteRecordingBinding;state:'recording'|'paused'|'stopped';stopReason?:string;durationMs:number;segments:{segmentId:string;durationMs:number;text?:string}[]};
+ private note?:{recordingId:string;binding:import('../prototype/note-recorder').NoteRecordingBinding;canonicalSavePending?:boolean;state:'recording'|'paused'|'stopped';stopReason?:string;durationMs:number;segments:{segmentId:string;durationMs:number;text?:string}[]};
  private noteSegments=new Map<string,{blob:Blob;durationMs:number}>();
  private clip(id:string){return this.capture.get(id)??this.noteCapture.get(id)??this.noteSegments.get(id);}
  private noteChanged(){void this.notifyListeners('noteRecordingChanged',this.noteStatus());}
@@ -37,7 +37,7 @@ export class BrowserVoice extends WebPlugin {
   const note=this.note;if(!note)return {state:'idle'};
   const live=note.state!=='stopped';
   let peak=0;if(note.state==='recording')try{peak=this.noteCapture.metrics(note.recordingId).peak;}catch{/* Not sampled yet. */}
-  return {state:note.state,recordingId:note.recordingId,binding:{...note.binding},recovered:false,...(note.stopReason?{stopReason:note.stopReason}:{}),durationMs:live?this.noteCapture.elapsed(note.recordingId):note.durationMs,segments:note.segments.map(segment=>({...segment})),peak};
+  return {state:note.state,recordingId:note.recordingId,binding:{...note.binding},canonicalSavePending:note.canonicalSavePending===true,recovered:false,...(note.stopReason?{stopReason:note.stopReason}:{}),durationMs:live?this.noteCapture.elapsed(note.recordingId):note.durationMs,segments:note.segments.map(segment=>({...segment})),peak};
  }
  private ownedNote(recordingId:string){const note=this.note;if(!note||note.recordingId!==recordingId)throw Error('Recording changed.');return note;}
  async startNoteRecording(binding:import('../prototype/note-recorder').NoteRecordingBinding){
@@ -63,6 +63,12 @@ export class BrowserVoice extends WebPlugin {
  }
  async discardNoteRecording(input:{recordingId?:string}){if(this.note&&(!input.recordingId||this.note.recordingId===input.recordingId)){this.noteCapture.cancel();this.noteSegments.clear();this.note=undefined;this.noteChanged();}return this.noteStatus();}
  async setNoteSegmentText(input:{recordingId:string;segmentId:string;text:string}){const segment=this.ownedNote(input.recordingId).segments.find(s=>s.segmentId===input.segmentId);if(!segment||typeof input.text!=='string')throw Error('Recording changed.');segment.text=input.text;}
+ async claimCanonicalNoteSave(input:{recordingId:string}){
+  const note=this.ownedNote(input.recordingId);
+  if(note.canonicalSavePending||note.state!=='stopped'||!note.segments.length)return {claimed:false};
+  note.canonicalSavePending=true;
+  return {claimed:true};
+ }
  async saveNoteRecording(input:{recordingId:string;noteId:string;transcript:string}){
   const note=this.ownedNote(input.recordingId);if(note.state!=='stopped'||!note.segments.length)throw Error('Stop the recording first.');
   // Repeatable until discarded: the renderer discards once the note itself is saved.

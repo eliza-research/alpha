@@ -79,18 +79,19 @@ async function keyDirectory(t, { managed = false } = {}) {
     writeKey(keys, "avb_pkmd.bin", "test avb public key metadata");
     avb = sha256(Buffer.from("test avb public key metadata"));
   }
-  return { keys, platform, releasekey, apex, avb };
+  const apexPayloadAvb = sha256(fs.readFileSync(path.join(keys, "apex_payload.avbpubkey")));
+  return { keys, platform, releasekey, apex, avb, apexPayloadAvb };
 }
 
 /** A copy of Alpha's release inputs, complete for the given keys (apex has its own reviewed digest). */
-function completeRoot(t, { platform, releasekey, apex, avb }) {
+function completeRoot(t, { platform, releasekey, apex, avb, apexPayloadAvb }) {
   const dir = temporary(t, "alpha-owner-root-");
   const write = (rel, value) => { fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true }); fs.writeFileSync(path.join(dir, rel), typeof value === "string" ? value : JSON.stringify(value, null, 2)); };
   const lock = JSON.stringify({ schema: 1, target: "pixel10a", device: { codename: "stallion", androidRelease: "17" }, developmentOnly: false, releaseQualified: false, factory: read(LOCK).factory });
   write(LOCK, lock);
   const product = read(PIXEL10A_PRODUCT);
   const others = Object.fromEntries(Object.keys(product.signer.releaseCertificates).map(name => [name, name === "apex" ? apex : releasekey]));
-  write(PIXEL10A_PRODUCT, { ...product, sourceLock: { ...product.sourceLock, sha256: sha256(lock) }, signer: { ...product.signer, platformCertificateSha256: platform, releaseCertificates: others }, avb: { ...product.avb, publicKeySha256: avb } });
+  write(PIXEL10A_PRODUCT, { ...product, sourceLock: { ...product.sourceLock, sha256: sha256(lock) }, signer: { ...product.signer, platformCertificateSha256: platform, releaseCertificates: others, apexPayloadAvbPublicKeySha256: apexPayloadAvb }, avb: { ...product.avb, publicKeySha256: avb } });
   write(CHANNEL, { ...read(CHANNEL), otaCertificateSha256: releasekey, avbPublicKeySha256: avb });
   write("android/release-signer.json", { ...read("android/release-signer.json"), signerSha256: "d".repeat(64) });
   return { dir, write, readBack: rel => JSON.parse(fs.readFileSync(path.join(dir, rel), "utf8")) };
@@ -266,12 +267,8 @@ test("after signing, a re-signed APEX that still carries the test payload key st
   assert.ok(!calls(fixture.bin).some(call => call[0] === "ota_from_target_files"), "no OTA is built from a refused signed target-files");
 });
 
-// Gap recorded for the owner (docs/runbooks/672-pixel10a-production-image.md): enrollment records the
-// apex container certificate but no reviewed digest for the apex_payload AVB key, so the signing job
-// compares re-signed APEXes only with the key directory's own apex_payload.avbpubkey. A substituted
-// payload key pair in the key directory is therefore not refused. Marked todo until a reviewed
-// apex_payload digest is pinned upstream; flip to a plain test then.
-test("an APEX payload key pair that is not the enrolled one is refused", { skip, todo: "no reviewed apex_payload digest is recorded (enroll-release-keys.mjs ENROLLMENT, shared keyDirectoryProblems)" }, async t => {
+// A substituted key pair can be internally consistent and still differ from the enrolled digest.
+test("an APEX payload key pair that is not the enrolled one is refused", { skip }, async t => {
   const fixture = await setup(t, { managed: true });
   const other = await avbPublic();
   writeKey(fixture.key.keys, "apex_payload.pem", other.pem);

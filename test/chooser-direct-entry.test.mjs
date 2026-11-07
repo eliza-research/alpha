@@ -13,9 +13,9 @@ const CloudSignInPanel=new Function('React','useRef','useState','useEffect','clo
 const branch=between(source,'  const requiredSignInView:', '  const accountCreatedNotice=');
 // `signInPage` (the full-page entry) follows the required-entry policy here; `sending` is a reply
 // in flight (none on the signed-out welcome page). `ownKeyEntry` selects the own-key form.
-const renderBranch=new Function('React','CloudSignInPanel','snapshot','productionSignInRequired','signInEntryRequired','residentEnvironment','inAppGoogle','panel','RESIDENT_UNPACKAGED','connectionController','browserCloudResidentEnabled','testMocksEnabled','ResidentRecoveryPanel','loadSignInService','cloudSignInPhone','inAppPhone','inAppEmail','ownKeyEntry','OwnKeyForm',transformSync('function render(){const providerChoice=null;const setOwnKeyEntry=()=>{},ownKeyAttempted=false,setOwnKeyAttempted=()=>{},signInPage=productionSignInRequired,sending=null,signInPageShown=!!snapshot.signIn||signInEntryRequired,ownKeySaving=false,LOCAL_PROVIDER_MODEL=\'qwen\',automaticSignInProbe={current:false},signInProbeMessage=()=>\'Checking Eliza Cloud sign-in…\',ownProviderSelected=()=>false;'+branch+'return null;}',{loader:'tsx',jsxFactory:'React.createElement'}).code+';return render();');
+const renderBranch=new Function('React','CloudSignInPanel','snapshot','productionSignInRequired','signInEntryRequired','residentEnvironment','inAppGoogle','panel','RESIDENT_UNPACKAGED','connectionController','browserCloudResidentEnabled','testMocksEnabled','ResidentRecoveryPanel','loadSignInService','cloudSignInPhone','inAppPhone','inAppEmail','ownKeyEntry','OwnKeyForm','residentStartFailure',transformSync('function render(){const providerChoice=null;const setOwnKeyEntry=()=>{},ownKeyAttempted=false,setOwnKeyAttempted=()=>{},signInPage=productionSignInRequired,sending=null,signInPageShown=!!snapshot.signIn||signInEntryRequired,ownKeySaving=false,LOCAL_PROVIDER_MODEL=\'qwen\',automaticSignInProbe={current:false},signInProbeMessage=()=>\'Checking Eliza Cloud sign-in…\',ownProviderSelected=()=>false;'+branch+'return null;}',{loader:'tsx',jsxFactory:'React.createElement'}).code+';return render();');
 const controller={beginSignIn(){},signInGoogle(){},signInEmail(){},verifySignInCode(){},resendSignInCode(){},cancelSignIn(){}};
-const render=(snapshot,ownKeyEntry=false)=>renderToStaticMarkup(renderBranch(React,CloudSignInPanel,snapshot,true,true,()=> 'production',false,null,'unpackaged',controller,false,false,()=>null,undefined,null,false,true,ownKeyEntry,()=>React.createElement('form',{'aria-label':'Own API keys'},'Cerebras API key')));
+const render=(snapshot,ownKeyEntry=false,residentStartFailure='')=>renderToStaticMarkup(renderBranch(React,CloudSignInPanel,snapshot,true,true,()=> 'production',false,null,'unpackaged',controller,false,false,()=>null,undefined,null,false,true,ownKeyEntry,()=>React.createElement('form',{'aria-label':'Own API keys'},'Cerebras API key'),residentStartFailure));
 test('production signed-out entry stays quiet until readiness and then shows the sign-in methods',()=>{
  const loading=render({signIn:null,busy:false,message:'',error:''});
  assert.match(loading,/role="status" aria-label="Loading Alpha"/);
@@ -26,6 +26,15 @@ test('production signed-out entry stays quiet until readiness and then shows the
  assert.doesNotMatch(ready,/Sign in with Eliza Cloud|unavailable|Try again/);
  assert.ok(ready.indexOf('cloud-sign-in-title')<ready.indexOf('Use my own API keys'));
  assert.match(ready,/<button type="button" class="alpha-btn alpha-btn--text">Use my own API keys<\/button>/);
+});
+test('the required Cloud chooser keeps a runtime start warning off the sign-in page',()=>{
+ const failure='The on-device agent could not start. Try again or connect another agent.';
+ const snapshot={signIn:{step:'choose',environment:'production'},cloudAccount:null,busy:false,message:'',error:failure};
+ const html=render(snapshot,false,failure);
+ assert.doesNotMatch(html,/on-device agent could not start/);
+ assert.match(html,/Email me a code/);
+ const signInError=render({...snapshot,error:'Google sign-in could not be completed.'},false,failure);
+ assert.match(signInError,/Google sign-in could not be completed/);
 });
 test('a failed readiness check shows its reason and one retry instead of disabled forms',()=>{
  const html=render({signIn:null,busy:false,message:'',error:'Alpha could not reach Eliza Cloud. Check your connection and try again.'});

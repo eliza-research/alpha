@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import {stripTypeScriptTypes} from 'node:module';
-const source=stripTypeScriptTypes(fs.readFileSync('apps/app/src/prototype/files-browser-adapter.ts','utf8').replace(/^import[\s\S]*?;\n/gm,'').replace(/^export /gm,''),{mode:'transform'});
-const rules=stripTypeScriptTypes(fs.readFileSync('apps/app/src/runtime/files-storage.ts','utf8').replace(/^export /gm,''),{mode:'transform'});
+const source=stripTypeScriptTypes(fs.readFileSync('.eliza/client-features/plugins/plugin-files/src/browser/files-browser-adapter.ts','utf8').replace(/^import[\s\S]*?;\n/gm,'').replace(/^export /gm,''),{mode:'transform'});
+const rules=stripTypeScriptTypes(fs.readFileSync('.eliza/client-features/plugins/plugin-files/src/browser/storage-model.ts','utf8').replace(/^export /gm,''),{mode:'transform'});
 async function harness(){
  let resolve,active=true,agent;const doc=Object.assign(new EventTarget(),{hidden:false}),toasts=[];let failForget=false;
  const result=new Promise(done=>{resolve=done;}),accepted=[],forgotten=[],calls=[],state={};
@@ -12,9 +12,12 @@ async function harness(){
  const api={ic:{},get:()=>state,set:patch=>Object.assign(state,patch),isActive:()=>active,toast:message=>toasts.push(message)};
  const storage={storageSelect:input=>{calls.push(input);return result;},storageState:async()=>({status:'ready',access:'granted',volumes:[]}),storageCategory:async()=>({status:'ready',entries:[entry]}),storageTrashList:async()=>({status:'ready',items:[]}),storageWatch:async()=>({status:'ready'}),storageUnwatch:async()=>({status:'ready'}),addListener:async()=>({remove:async()=>{}})};
  const view={render:()=>({}),onLeave(){}};
- const ctx=vm.createContext({setTimeout,clearTimeout,queueMicrotask,window:new EventTarget(),CustomEvent:class{},HTMLElement:class{},document:doc,registerPlugin:()=>storage,DailyApps:{async forgetSelected(input){forgotten.push(input.selectionId);if(failForget)throw Error('release failed');}},createInlineModal:()=>({}),registerFilesAgent:handler=>{agent=handler;}});
+ const ctx=vm.createContext({setTimeout,clearTimeout,queueMicrotask,window:new EventTarget(),CustomEvent:class{},HTMLElement:class{},document:doc});
  vm.runInContext(rules+';'+source+';globalThis.install=installFilesBrowserAdapter',ctx);
- ctx.install({files:view},async(_module,value)=>accepted.push(value.selectionId),()=>{});
+ agent=ctx.install(view,async(_module,value)=>accepted.push(value.selectionId),()=>{},{
+  storage, createInlineModal:()=>({}), menuFocus:()=>null,
+  async forgetSelected(selectionId){forgotten.push(selectionId);if(failForget)throw Error('release failed');},
+ });
  const settle=async()=>{for(let i=0;i<30;i++)await Promise.resolve();};
  view.render(state,api);await settle();view.render(state,api).browse.cats.find(row=>row.name==='Documents').go();await settle();
  return {accepted,forgotten,calls,toasts,doc,failRelease(){failForget=true;},pick(){view.render(state,api).fd.items[0].tap();},agentOpen(){return agent.run({type:'files_open',path:entry.path});},release:value=>resolve(value),leave(){active=false;view.onLeave(api);},return(){active=true;view.render(state,api);},settle};

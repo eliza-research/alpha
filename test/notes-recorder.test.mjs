@@ -25,6 +25,12 @@ function fakeDriver() {
     async stop(rid) { assert.equal(rid, id); state.status = {...state.status, state: 'stopped', stopReason: 'user'}; return structuredClone(state.status); },
     async discard(rid) { if (rid === id) { state.discarded++; state.status = {state: 'idle'}; } return structuredClone(state.status); },
     async setText(rid, segmentId, text) { state.texts[segmentId] = text; },
+    async claimCanonicalSave(rid) {
+      assert.equal(rid,id);
+      if (state.status.canonicalSavePending) return false;
+      state.status.canonicalSavePending = true;
+      return true;
+    },
     async save(input) { state.saves.push(input); return {audioId: input.recordingId, noteId: input.noteId, durationMs: state.status.durationMs, transcript: input.transcript}; },
     async listen(callback) { state.listeners.add(callback); return {remove() { state.listeners.delete(callback); }}; },
     /** One more finished segment (the recorder rolled over to the next file). */
@@ -190,6 +196,32 @@ test('account change stops capture and drops late transcription without deleting
   assert.equal(driver.state.discarded, 0);
 });
 
+test('an uncertain canonical save keeps audio and cannot claim another create after recovery', async t => {
+  const driver = fakeDriver(), first = session(driver);
+  t.after(() => first.close());
+  await first.begin();
+  driver.segment();
+  await settle();
+  let writes=0;
+  assert.equal(await first.finish(async (_saved,_transcript,intent) => {
+    assert.equal(await intent.claim(),true);
+    writes++;
+    throw Error('The canonical note committed but its reply was lost');
+  }, false),false);
+  assert.equal(driver.state.discarded,0);
+  first.leave();
+  const restored=session(driver);
+  t.after(() => restored.close());
+  assert.equal(await restored.adopt(),true);
+  assert.equal(await restored.finish(async (_saved,_transcript,intent) => {
+    assert.equal(intent.pending,true);
+    if(await intent.claim())writes++;
+    return false;
+  }, false),false);
+  assert.equal(writes,1);
+  assert.equal(driver.state.discarded,0);
+});
+
 test('Done stops, catches the transcript up, saves one voice note and only then discards the segments', async () => {
   const driver = fakeDriver(), s = session(driver), persisted = [];
   await s.begin();
@@ -291,15 +323,45 @@ test('the renderer and native recorder carry no duration cap and no status narra
   assert.match(store, /JSObject retainNoteRecording\(/, 'a Notes recording is retained without the 4 MiB clip bound');
 });
 
-test('a Cloud route without an account records anyway and asks for sign-in once', async () => {
+test('a Cloud route without an account asks for sign-in only after the owner chooses transcription', async t => {
   const driver = fakeDriver();
-  const s = new NoteRecorderSession(driver, async () => { throw Object.assign(new Error('no account'), {code: 'sign-in'}); }, () => {}, {pollMs: 60_000});
+  let admissions = 0;
+  const s = new NoteRecorderSession(driver, async () => { admissions++; throw Object.assign(new Error('no account'), {code: 'sign-in'}); }, () => {}, {pollMs: 60_000, remoteTranscription: () => true});
+  t.after(() => s.close());
   await s.begin();
   driver.segment();
   await settle();
   assert.equal(s.phase, 'recording');
+  assert.equal(admissions, 0);
+  assert.equal(s.error, '');
+  assert.equal(await s.stop(), true);
+  assert.equal(s.needsTranscriptionConsent, true);
+  assert.equal(admissions, 0);
+  assert.equal(await s.finish(async () => assert.fail('An incomplete remote transcript must keep its audio'), true, true), false);
+  assert.equal(admissions, 1);
   assert.equal(s.error, 'Sign in to transcribe. The audio is kept.');
-  assert.equal(await s.finish(async (audio, transcript) => transcript === '' && audio.audioId === driver.id), true, 'saved with its audio only');
+  assert.equal(driver.state.status.recordingId, driver.id);
+  assert.equal(driver.state.discarded, 0);
+});
+
+test('a remote recording needs a choice after Stop, and a local save retry sends no more audio', async t => {
+  const driver = fakeDriver(), live = fakeLive(), uploads = [];
+  const s = new NoteRecorderSession(driver, async () => async id => { uploads.push(id); return 'heard'; }, () => {}, {pollMs: 60_000, live: live.port, remoteTranscription: () => true});
+  t.after(() => s.close());
+  await s.begin();
+  driver.segment(); driver.segment();
+  await settle();
+  assert.equal(live.opened, 0);
+  assert.deepEqual(uploads, []);
+  assert.equal(await s.finish(async () => assert.fail('Stop must precede transcription'), true, true), false);
+  assert.equal(await s.stop(), true);
+  assert.equal(await s.finish(async () => assert.fail('Missing remote consent')), false);
+  assert.deepEqual(uploads, []);
+  assert.equal(await s.finish(async () => false, true, true), false);
+  assert.deepEqual(uploads, [driver.id + '-s0', driver.id + '-s1']);
+  assert.equal(s.needsTranscriptionConsent, false);
+  assert.equal(await s.finish(async (_audio, transcript) => transcript === 'heard heard'), true);
+  assert.equal(uploads.length, 2);
 });
 
 /** A live transcription stream like openNativeLiveStream: speech start, interim words, finals. */

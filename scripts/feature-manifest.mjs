@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // Alpha's functional feature manifest, emitted by the shared mobile-shell emitter
 // (@elizaos/ui/mobile-shell/core mobileFeatureManifest) from config/alpha-product.json, and its
-// parity against Eliza's reference registration. Reviewed product-owned modules and remaining
-// functional differences are recorded in config/feature-parity.json. The current baseline is
-// enforced by test/feature-parity.test.mjs.
+// parity against Eliza's reference registration. Alpha and Eliza may differ only by identity and
+// theme; every remaining functional difference and every Alpha-owned behavioural module is listed
+// in config/feature-parity.json, which may only shrink (test/feature-parity.test.mjs).
 //
 //   node scripts/feature-manifest.mjs            print Alpha's manifest
 //   node scripts/feature-manifest.mjs --parity   print the differences and modules as they are now

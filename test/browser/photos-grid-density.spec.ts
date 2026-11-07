@@ -43,7 +43,7 @@ for (const viewport of [{width: 412, height: 915}, {width: 800, height: 1280}]) 
           const rows = 120 / columns;
           const expected = parseFloat(scrollStyle.paddingTop) + header.offsetHeight + rows * tile + (rows - 1) * gap + parseFloat(scrollStyle.paddingBottom);
           return {aligned: Math.abs(el.scrollHeight - expected) <= 2, left: style.marginLeft, right: style.marginRight};
-        }, columns)).toEqual({aligned: true, left: '0px', right: '0px'});
+        }, columns)).toEqual({aligned: true, left: '12px', right: '12px'});
         const rendered = await scroller.locator('[data-owned-media-id]').count();
         expect(rendered).toBeGreaterThan(columns);
         expect(rendered).toBeLessThan(120);

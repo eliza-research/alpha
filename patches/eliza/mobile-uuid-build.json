@@ -1,13 +1,13 @@
 {
   "schema": 1,
-  "baseCommit": "475a8d59dc1811c2cde093613519906a5a3f6457",
+  "baseCommit": "9237023aee3856b7375f21a6dfde0f9b957929a5",
   "bun": {
     "version": "1.4.2",
     "revision": "744846f844374847c902b5e7fd59b4342a51ef99"
   },
   "builder": {
     "path": "packages/agent/scripts/build-mobile-bundle.ts",
-    "sha256": "b56b0f722fd25fdbf99e71c0ba79385addc2b4af495205ebf091fa46367b14c8"
+    "sha256": "8194667dca284bf957795c0bfa91094d67673981cfad47fd3ec2cb7f31c8af4a"
   },
   "package": {
     "name": "uuid",
@@ -39,5 +39,5 @@
       "dist-node/version.js": "5a43d6eb8496806fd5e152f92edda603dbb1f77108045edcf034f22c9e320ce8"
     }
   },
-  "lockSha256": "3b2baea4b2490f48c19dfbfa48f6cedfd61d5edaf66ee31ab87f7de44c282088"
+  "lockSha256": "bde947199c8a46fa6085bcdf1fb2a79990de52a08e0f318db17e19161cf8e105"
 }

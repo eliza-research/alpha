@@ -327,11 +327,10 @@ A manifest is offered only to an install with a lower `versionCode`, of its `var
 or `standalone`, as `ElizaSystem.getBuildInfo` reports) and of the signing lineage it names
 (`appSigner` in `AlphaDevice.snapshot`). `versionName` is only shown, as 1 to 64 characters with no
 control characters; a manifest whose name cannot be shown is still offered, under its `versionCode`.
-The flavors share the package and signer, so Android would install either over the other, and a
-standalone APK over the launcher image loses the HOME, Phone, Contacts and SMS admission; a device
-signed otherwise (a debug build, a lab-key build
-reading a release-key manifest, or the reverse) is offered nothing rather than downloading an APK
-Android refuses. One manifest URL therefore serves one flavor and one signer; the default serves
+The flavors share the package and signer. A standalone APK installed over the launcher image loses
+HOME, Phone, Contacts and SMS admission. Before preparing an install, Alpha reads the APK’s
+launcher permission marker and checks its original signing certificate against the installed app.
+One manifest URL serves one flavor and one signer. The default serves
 the launcher image. `signerSha256` is always the original certificate, index 0 of Android's
 `getSigningCertificateHistory`: the APK's own until a key rotates. APK Signature Scheme v3 key rotation
 never changes it, so a phone that missed the rotating release is still offered later ones, and Android

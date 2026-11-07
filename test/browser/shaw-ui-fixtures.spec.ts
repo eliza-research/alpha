@@ -48,23 +48,27 @@ for(const [orientation,viewport] of [['portrait',{width:412,height:915}],['lands
   await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));await page.goto('/');
   await expect(page.locator('[data-alpha-home-calendar]')).toBeVisible();await expect(page.locator('[data-alpha-home-inbox]')).toBeVisible();await expect(page.locator('[data-alpha-home-workflows]')).toBeVisible();await capture(page,info,`home-unverified-${orientation}`);
  });
- test('permitted Photos uses an edge-to-edge grid without requesting access',async({page},info)=>{
+ test('permitted Photos uses concise labels and inset thumbnails without requesting access',async({page},info)=>{
   await photosBridge(page,'selected');
   await page.evaluate(()=>{
    const w=window as any,base=w.Capacitor.nativePromise,f=w.mediaFixture;
    const items=Array.from({length:9},(_,index)=>({...f.row,id:`m:external_primary:i:${91+index}`,name:`Synthetic photo ${index+1}.jpg`,date:f.row.date-index*60000}));
-   w.Capacitor.nativePromise=async(plugin:string,method:string,input:any)=>plugin==='AlphaPhotos'&&(method==='list'||method==='listPermitted')?{items:input?.trashed?[]:items,next:'',access:{scope:'selected',images:'selected',videos:'selected'}}:base(plugin,method,input);
+   w.Capacitor.nativePromise=async(plugin:string,method:string,input:any)=>{
+    if(plugin==='AlphaPhotos'&&method==='list')return {items,next:''};
+    return base(plugin,method,input);
+   };
    f.emit();
   });
-  await expect(page.getByRole('button',{name:/^Photo, /})).toHaveCount(9);
+  await expect(page.getByRole('button',{name:/^Photo,/})).toHaveCount(9);
+  await expect(page.getByRole('button',{name:'Library',exact:true})).toBeVisible();
   await expect(page.getByRole('button',{name:'Search photos',exact:true})).toHaveCount(0);
-  await expect(page.getByText('Library',{exact:true})).toBeVisible();await expect(page.getByText(/up to 240 loaded items/)).toHaveCount(0);
-  const grid=page.locator('.photo-grid').filter({visible:true}).first();await expect(grid).toHaveCSS('margin-left','0px');await expect(grid).toHaveCSS('margin-right','0px');
+  await expect(page.getByText(/up to 240 loaded items/)).toHaveCount(0);
+  const grid=page.locator('.photo-grid').filter({visible:true}).first();await expect(grid).toHaveCSS('margin-left','12px');await expect(grid).toHaveCSS('margin-right','12px');
   expect(await page.evaluate(()=>(window as any).mediaFixture.calls.filter((call:any)=>call.method==='requestLibraryAccess').length)).toBe(0);
   await capture(page,info,`photos-selected-access-${orientation}`);
  });
  test('empty Files stays quiet with existing entry controls',async({page},info)=>{
   await page.route(/\/src\/prototype\/fixtures\.js(\?.*)?$/,async route=>{const response=await route.fetch({url:route.request().url().replace('/fixtures.js','/fixtures.empty.js')});await route.fulfill({response});});
-  await page.goto('/');await page.getByRole('button',{name:'Files',exact:true}).click();await expect(page.getByText(/No recent files/)).toHaveCount(0);await expect(page.getByRole('button',{name:/Internal storage/})).toBeVisible();await capture(page,info,`files-empty-${orientation}`);
+  await page.goto('/');await page.getByRole('button',{name:'Files',exact:true}).click();await expect(page.getByText(/No recent files/)).toHaveCount(0);await expect(page.getByRole('button',{name:'Internal storage',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Downloads',exact:true})).toBeVisible();await capture(page,info,`files-empty-${orientation}`);
  });
 });

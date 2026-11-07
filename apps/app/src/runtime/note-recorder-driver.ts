@@ -21,6 +21,7 @@ const native = registerPlugin<{
   stopNoteRecording(input: { recordingId: string }): Promise<NoteRecordingStatus>;
   discardNoteRecording(input: { recordingId: string }): Promise<NoteRecordingStatus>;
   setNoteSegmentText(input: { recordingId: string; segmentId: string; text: string }): Promise<void>;
+  claimCanonicalNoteSave(input: { recordingId: string }): Promise<{ claimed: boolean }>;
   saveNoteRecording(input: { recordingId: string; noteId: string; transcript: string }): Promise<SavedNoteAudio>;
   addListener(event: 'noteRecordingChanged', callback: (status: NoteRecordingStatus) => void): Promise<{ remove(): Promise<void> }>;
 }>('AlphaVoiceCloud');
@@ -37,6 +38,7 @@ export function createNoteRecorderDriver(): NoteRecorderDriver {
     stop: recordingId => native.stopNoteRecording({ recordingId }),
     discard: recordingId => native.discardNoteRecording({ recordingId }),
     setText: (recordingId, segmentId, text) => native.setNoteSegmentText({ recordingId, segmentId, text }),
+    claimCanonicalSave: async recordingId => (await native.claimCanonicalNoteSave({ recordingId })).claimed === true,
     save: input => native.saveNoteRecording(input),
     listen: callback => native.addListener('noteRecordingChanged', callback),
   };

@@ -98,6 +98,11 @@
       { "name": "stageLocalAgentSources", "command": ["node", "scripts/stage-local-agent-sources.mjs"], "directory": { "root": "consumer", "path": "." } },
       { "name": "verifyCloudDeployment", "command": ["node", "scripts/cloud-deployment.mjs", "--check"], "directory": { "root": "consumer", "path": "." } }
     ],
+    "sourceSets": {
+      "main": {
+        "java": [{ "root": "upstream", "path": "plugins/plugin-native-filesystem/android/src/main/java" }]
+      }
+    },
     "generatedSources": [{ "sourceSet": "main", "kind": "java", "path": "generated/local-agent/java" }],
     "assetFiles": [
       { "source": { "root": "patchedNative", "path": ".source.json" }, "name": "native-patches.json" },

@@ -46,6 +46,8 @@ async function freshPhone(page: Page) {
       if (plugin === 'AlphaNotifications' && method === 'status') return { permissionGranted: granted.notifications, appEnabled: granted.notifications };
       if (plugin === 'AlphaFiles' && method === 'storageState') return {status: 'ready', access: granted.files ? 'granted' : 'denied', volumes: []};
       if (plugin === 'AlphaPhotoLibrary' && method === 'scope') return { scope: granted.photos ? 'selected' : 'denied', locked: false };
+      if (plugin === 'AlphaFiles' && method === 'storageState') return {status: 'ready', access: granted.files ? 'granted' : 'denied'};
+      if (plugin === 'AlphaFiles' && method === 'storageRequestAccess') { granted.files = true; return {status: 'ready', access: 'granted'}; }
       if (key && method === 'checkPermissions') return key === 'location' ? { location: granted.location ? 'granted' : 'prompt', accuracy: granted.location ? 'approximate' : 'none' } : { [key]: granted[key] ? 'granted' : 'prompt' };
       return previous(plugin, method, input);
     };

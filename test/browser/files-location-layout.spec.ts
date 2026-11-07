@@ -1,21 +1,22 @@
 import {test,expect} from '@playwright/test';
-for (const theme of ['light', 'dark']) test(`Files category and storage labels align in the ${theme} browse list`, async ({page}, info) => {
-  await page.addInitScript(() => localStorage.setItem('alpha.connection.selection.v1', JSON.stringify({kind: 'offline'})));
-  await page.goto(`/?mode=dev&theme=${theme}`);
-  await page.getByRole('button', {name: 'Files', exact: true}).click();
-  const list = page.locator('[data-alpha-app-scroll="files"]');
-  await expect(list.getByRole('button', {name: 'Internal storage', exact: true})).toBeVisible();
-  const names = ['Downloads', 'Images', 'Videos', 'Audio', 'Documents', 'Internal storage', 'Trash'];
-  const positions = [];
-  for (const name of names) {
-    const row = list.getByRole('button', {name, exact: true});
-    await expect(row).toBeVisible();
-    positions.push(await row.evaluate(button => {
-      const label = button.querySelector(':scope > span:nth-child(2)')!;
-      return {top: button.getBoundingClientRect().top, left: label.getBoundingClientRect().left};
-    }));
-  }
-  expect(new Set(positions.map(row => row.top)).size).toBe(names.length);
-  expect(Math.max(...positions.map(row => row.left)) - Math.min(...positions.map(row => row.left))).toBeLessThan(1);
-  await page.screenshot({path: info.outputPath('files-aligned.png'), animations: 'disabled'});
+for(const theme of ['light','dark'])test(`Files aligns category, storage and Trash rows in ${theme}`,async({page},info)=>{
+ await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
+ await page.goto(`/?mode=dev&theme=${theme}`);
+ await page.getByRole('button',{name:'Files',exact:true}).click();
+ const list=page.locator('[data-alpha-app-scroll="files"]');
+ await expect(list.getByRole('heading',{name:'Storage',exact:true})).toBeVisible();
+ const labels=[], rowTops=[];
+ for(const name of ['Downloads','Images','Videos','Audio','Documents','Internal storage','Trash']){
+  const row=list.getByRole('button',{name,exact:true});
+  await expect(row).toBeVisible();
+  const label=await row.getByText(name,{exact:true}).boundingBox();
+  const box=await row.boundingBox();
+  expect(label).not.toBeNull();
+  expect(box?.height).toBeGreaterThanOrEqual(44);
+  labels.push(label!.x);
+  rowTops.push(box!.y);
+ }
+ expect(new Set(rowTops).size).toBe(labels.length);
+ expect(Math.max(...labels)-Math.min(...labels)).toBeLessThan(1);
+ await page.screenshot({path:info.outputPath('files-aligned.png'),animations:'disabled'});
 });

@@ -1,5 +1,5 @@
 // Alpha's Home and app grid render from the shared mobile shell (@elizaos/ui/mobile-shell), its Apps
-// drawer from apps-drawer.tsx, with the product record in config/alpha-product.json. Shared controller and search cases live in
+// drawer from the shared installed-app grid, with the product record in config/alpha-product.json. Shared controller and search cases live in
 // the upstream mobile-shell and native-system suites.
 import {test} from 'node:test';
 import assert from 'node:assert/strict';

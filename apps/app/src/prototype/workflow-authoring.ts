@@ -34,10 +34,42 @@ export function createWorkflowAuthoring(owner:()=>any,publish:()=>void,onSaved:(
  type DraftStorage={slot:string;raw:string|null;failed:boolean;queue:Promise<void>;secure:typeof secure};
  let calendars:Bag[]=[],storage:DraftStorage|null=null;
  let retainedDraftState:{storage:DraftStorage;draft:Draft|null}|null=null;
+ const pendingWrites=new Set<Promise<void>>();
+ const failedWrites=new Set<DraftStorage>();
  const toast=(value:string)=>owner()?.toast?.(value);
  const selected=()=>draft?.spec.steps.find(s=>s.id===sheet);
  const locked=()=>busy||!!draft?.pending||!!storage?.failed;
- function persist(){if(!draft||!storage)return;const target=storage,snapshot=JSON.stringify(draft);target.queue=target.queue.then(async()=>{if(target.failed)throw new Error('Local draft needs recovery');if(new TextEncoder().encode(snapshot).length>100000)throw new Error('Local draft is too large');const result=await target.secure.secureCompareExchange({slot:target.slot,expectedValue:target.raw,value:snapshot});if(result.status!=='saved')throw new Error('Draft changed in another window. Close and reopen it before editing.');target.raw=snapshot;}).catch(error=>{target.failed=true;status=error instanceof Error?error.message:'Local draft could not be saved';if(storage===target)publish();});}
+ function persist(recovered?:DraftStorage){
+  if(!draft||!storage)return;
+  const target=storage,snapshot=JSON.stringify(draft);
+  const write=target.queue=target.queue.then(async()=>{
+   if(target.failed)throw new Error('Local draft needs recovery');
+   if(new TextEncoder().encode(snapshot).length>100000)throw new Error('Local draft is too large');
+   const result=await target.secure.secureCompareExchange({slot:target.slot,expectedValue:target.raw,value:snapshot});
+   if(result.status!=='saved')throw new Error('Draft changed in another window. Close and reopen it before editing.');
+   target.raw=snapshot;
+   if(recovered)failedWrites.delete(recovered);
+  }).catch(error=>{
+   target.failed=true;failedWrites.add(target);
+   status=error instanceof Error?error.message:'Local draft could not be saved';
+   if(storage===target)publish();
+  });
+  pendingWrites.add(write);
+  void write.then(()=>pendingWrites.delete(write));
+ }
+ async function flushForAppUpdate(current:()=>boolean){
+  const token=generation,target=storage,writes=new Set(pendingWrites);
+  const exact=()=>current()&&generation===token&&storage===target&&!busy&&
+   !(describeOn&&descriptionPrompt)&&!failedWrites.size&&
+   [...pendingWrites].every(write=>writes.has(write));
+  await Promise.all(writes);
+  if(!exact())throw Error('Workflow draft changed');
+  if(!target)return;
+  const queue=target.queue,raw=target.raw;
+  const saved=await target.secure.secureRead({slot:target.slot});
+  if(!exact()||target.queue!==queue||target.raw!==raw||saved.value!==raw)
+   throw Error('Workflow draft could not be verified');
+ }
  function change(run:()=>void){if(locked()||!draft)return;run();review=null;generated=null;discard=false;status=`Draft stays ${draftStorageDescription} until you confirm Save.`;persist();publish();}
  async function localSaved(){await storage?.queue;if(!storage||storage.failed)throw new Error('Resolve local draft storage before saving');}
  function close(){unreceipted=false;resendReview=false;describeOn=false;descriptionPrompt='';generated=null;generating=false;active=false;generation++;controller?.abort();controller=null;busy=false;sheet=null;review=null;discard=false;calendars=[];publish();}
@@ -51,8 +83,9 @@ export function createWorkflowAuthoring(owner:()=>any,publish:()=>void,onSaved:(
    // Consume the retained state once: every later reopen reads the slot again, so a failed save can always be recovered by close and reopen.
    if(retainedDraftState?.storage===previousStorage)retainedDraftState=null;if(previousStorage.failed&&previousDraft){unsaved=previousDraft;unsavedBase=previousStorage.raw;}}
    const draftSecure=browserDevProfile&&JSON.parse(localStorage.getItem('alpha.connection.selection.v1')||'null')?.kind==='development'?await browserWorkflowDraftStore(session):secure,saved=await draftSecure.secureRead({slot});if(!valid())return;storage={slot,raw:saved.value,failed:false,queue:Promise.resolve(),secure:draftSecure};
+   if(previousStorage?.slot===slot&&previousStorage.failed&&previousDraft&&saved.value===JSON.stringify(previousDraft))failedWrites.delete(previousStorage);
    // A failed write leaves the slot at the last confirmed bytes: retry the retained edits there. If another window changed the slot, load its newer draft instead.
-   if(unsaved&&saved.value===unsavedBase&&JSON.stringify(unsaved)!==saved.value){draft=unsaved;status='The latest local draft save failed. Your retained edits are being saved again.';persist();}
+   if(unsaved&&saved.value===unsavedBase&&JSON.stringify(unsaved)!==saved.value){draft=unsaved;status='The latest local draft save failed. Your retained edits are being saved again.';persist(previousStorage);}
    else if(saved.value!==null){if(new TextEncoder().encode(saved.value).length>100000)throw new Error('Saved draft exceeds the recovery limit');const retained=JSON.parse(saved.value);if(retained.format!==1||retained.identity!==identity||!retained.spec||retained.spec.version!==1||!Array.isArray(retained.spec.steps)||retained.spec.steps.length>32)throw new Error('Saved draft requires recovery');draft=retained;status=draft!.pending?'Save outcome unknown. Refresh its exact receipt; another save is blocked.':unsaved&&JSON.stringify(unsaved)!==saved.value?`Another window changed this draft, so unsaved edits from the failed save were not kept. Restored the newer draft stored ${draftStorageDescription}.`:`Restored the draft stored ${draftStorageDescription}. Resume it or discard it explicitly.`;}
    else{const spec=workflow?normalizePhoneSpec(workflow.phoneSpec):{version:1 as const,name:'New workflow',description:'',trigger:{kind:'manual' as const},steps:[]};draft={format:1,identity,spec,...(workflow?{workflowId:workflow.id,versionId:workflow.versionId}:{})};status=catalog.triggers.some(t=>t.kind==='time'&&t.available)?'Build a workflow. It will be saved paused; choose When to run it manually or at a set time.':'Build a manual workflow. It will be saved paused.';persist();}
   }catch(error){if(valid()){status=error instanceof Error?error.message:'Typed workflow authoring is unavailable on this agent';draft=null;toast(status);}}finally{if(token===generation){busy=false;controller=null;publish();}}
@@ -99,7 +132,22 @@ export function createWorkflowAuthoring(owner:()=>any,publish:()=>void,onSaved:(
   catch(error){if(valid()){unreceipted=false;if(error instanceof WorkflowTypedRejected)await refused();else status='Save outcome unknown. Refresh the exact save receipt. The app will not submit a second workflow.';toast(status);}}
   finally{if(token===generation){busy=false;controller=null;publish();}}
  }
- async function discardDraft(){if(!draft||busy||draft.pending)return;if(!discard){discard=true;status='Tap Discard local draft again to remove only this local draft.';publish();return;}try{if(!storage)throw new Error('Resolve local draft storage before discarding');await storage.queue;const result=await storage!.secure.secureCompareExchange({slot:storage!.slot,expectedValue:storage!.raw,value:null});if(result.status!=='saved')throw new Error('Draft changed elsewhere');draft=null;close();}catch(error){toast((error as Error).message);}}
+ async function discardDraft(){
+  if(!draft||busy||draft.pending)return;
+  if(!discard){discard=true;status='Tap Discard local draft again to remove only this local draft.';publish();return;}
+  const target=storage,token=generation;
+  if(!target){toast('Resolve local draft storage before discarding');return;}
+  busy=true;publish();
+  try{
+   await target.queue;
+   if(token!==generation||storage!==target)return;
+   const result=await target.secure.secureCompareExchange({slot:target.slot,expectedValue:target.raw,value:null});
+   if(result.status!=='saved')throw Error('Draft changed elsewhere');
+   target.raw=null;target.failed=false;failedWrites.delete(target);
+   if(token===generation&&storage===target){draft=null;close();}
+  }catch(error){if(token===generation)toast((error as Error).message);}
+  finally{if(token===generation){busy=false;publish();}}
+ }
  function cancelGeneration(){if(generating){generation++;controller?.abort();controller=null;busy=false;generating=false;}describeOn=false;generated=null;status='Current draft retained. Nothing was saved on the agent.';publish();}
  async function generateDraft(){
   if(!describeOn||!draft||!catalog||locked())return;
@@ -157,5 +205,5 @@ export function createWorkflowAuthoring(owner:()=>any,publish:()=>void,onSaved:(
   tr:triggerSheet(api),
   sp:step?{typed:true,freeTextStyle:"display:none",k:step.kind,d:api.ic[icons[step.kind]],up:()=>move(-1),down:()=>move(1),upCss:index===0?'opacity:.3':'',downCss:index===draft!.spec.steps.length-1?'opacity:.3':'',presets:enabledOptions.map(o=>({label:o.label||o.id.replaceAll('_',' '),css:o.id===step.operation?'background:var(--acc);color:#fff':o.available&&supported(o.id)?'background:var(--s2)':'background:var(--s2);opacity:.5',pick:()=>chooseOperation(o.id)})),text:'',onText:()=>{},fields,hasSource:!!step.source,sources:draft!.spec.steps.slice(0,index).map(s=>({label:s.kind+': '+s.operation.replaceAll('_',' '),selected:step.source===s.id,pick:()=>change(()=>{step.source=s.id;})})),caseMatch:step.operation==='contains',caseLabel:step.caseSensitive?'Case-sensitive match':'Ignore letter case',toggleCase:()=>change(()=>{step.caseSensitive=!step.caseSensitive;}),isNotes:step.operation==='selected_notes',notes:step.operation==='selected_notes'?(owner()?.vget('notes').list??[]).map((n:Bag)=>({label:n.title||'Untitled note',selected:step.notes.some((chosen:Bag)=>chosen.id===n.id),pick:()=>void chooseNote(n.id)})):[],isCalendar:step.operation==='calendar_range',connectCalendars:()=>void loadCalendars(true),calendars:step.operation==='calendar_range'?calendars.map(c=>({label:c.name+' · '+c.account,selected:step.range.calendarIds.includes(c.id),pick:()=>change(()=>{const chosen=step.range.calendarIds;step.range.calendarIds=chosen.includes(c.id)?chosen.filter((id:string)=>id!==c.id):chosen.length<16?[...chosen,c.id]:chosen;})})):[],del:remove}:null};
  }
- return {get active(){return active;},open,close,render};
+ return {get active(){return active;},open,close,render,flushForAppUpdate};
 }

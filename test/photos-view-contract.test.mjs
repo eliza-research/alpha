@@ -1,7 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
 // Photos view agent tools (design/view-refresh-2026-11/PLAN.md section 2). Source-level: the phone
-// mirror of the proposed upstream photos-view-contract (patches/eliza/photos-view-agent.patch).
-const m=await import('../apps/app/src/runtime/photos-view-contract.ts');
+// consumer tests of the shared Photos view leaf.
+const m=await import('../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/photos-view-contract.ts');
 const {LIBRARY_LIMITS}=await import('../apps/app/src/runtime/photo-library.ts');
 const id=(n,kind='i')=>`lib:${kind}:${n}:${n*10}`;
 const ids=count=>Array.from({length:count},(_,i)=>id(i+1));
@@ -51,7 +51,7 @@ test('photos_open, photos_album_create and photos_share validation',()=>{
 });
 
 test('review text is short and names Photos',()=>{
-  const d=m.describePhotosViewOperation;
+  const d=op=>m.describePhotosViewOperation(op,'Alpha');
   assert.deepEqual(d({type:'photos_filter'}),{title:'Filter Photos',description:'Everything'});
   assert.deepEqual(d({type:'photos_filter',kind:'video',favorite:true,album:'camera',text:'beach',from:1}),{title:'Filter Photos',description:'Videos · Favorites · In Camera · “beach” · In the requested dates'});
   assert.deepEqual(d({type:'photos_open',id:id(1)}),{title:'Open photo',description:'In Photos. Nothing is changed or shared.'});
@@ -79,7 +79,7 @@ test('review only in Photos on the unlocked phone',()=>{
   assert.equal(m.photosViewContextAllowed({view:'home'}),false);
 });
 
-test('the mirror keeps the upstream rules: same constants and messages as the proposed patch',()=>{
+test('the shared leaf keeps the reviewed rules: same constants and messages as the proposed patch',()=>{
   const patch=readFileSync(new URL('../patches/eliza/photos-view-agent.patch',import.meta.url),'utf8');
   for(const text of ['"photos.view.v1"','/^custom:[A-Za-z0-9_-]{1,80}$/','PHOTOS_SHARE_MAX = 100','Choose an album name between 1 and 80 characters','Invalid album items','Invalid share items','Invalid filter text','In Photos. Nothing is changed or shared.','You confirm it in Photos.',"then pick where it goes in Android's share sheet. Nothing leaves ${appName} before that."])assert.ok(patch.includes(text),text);
 });

@@ -1,6 +1,7 @@
 package android.content.pm;
 public class PackageManager {
  public static final int GET_SIGNING_CERTIFICATES=0x08000000;
+ public static final int GET_PERMISSIONS=0x00001000;
  public boolean installsAllowed=true,binderDown;
  public PackageInfo archive,installed=new PackageInfo();
  /** Runs while the archive is read, to destroy a bridge at that moment. */

@@ -19,11 +19,10 @@ records the migration order and the gaps that prevent a completion claim.
 ### Shell host pieces and their upstream targets
 
 The shared mobile shell (`@elizaos/ui/mobile-shell`) renders Home, its app grid, the view
-registry and navigation from `config/alpha-product.json`. Apps (the installed-app drawer) and
-Home edit mode are Alpha's own (`prototype/apps-drawer.tsx`, `prototype/home-shell.ts`) over the
-shell's launcher join: the shell's All apps drawer lists product views beside installed apps,
-while Alpha lists installed Android apps only (view refresh 2026-11, PLAN section 5). Upstream
-target: a drawer filter and Home edit hooks in the shared shell. App info is
+registry and navigation from `config/alpha-product.json`. Alpha uses the shared installed-app
+grid drawer and supplies its classes, icons, menu state and Home edit mode in `prototype/home-shell.ts`.
+The grid lists installed Android apps only (view refresh 2026-11, PLAN section 5).
+Shared Home edit hooks remain a migration target. App info is
 `AlphaSystemPlugin.openAppInfo` (ElizaSystem under Alpha's plugin class). A view whose registration carries a
 lazy loader renders through `MobileViewHost`; Alpha contributes none today. Notes, live and mock
 alike, is Alpha's own Notes template (`prototype/template.html`, `model.js`): live agent notes are

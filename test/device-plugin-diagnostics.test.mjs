@@ -17,5 +17,7 @@ test("problem-log work is never handed to the worker outside the helper that sur
   assert.ok(helper, "the helper exists");
   assert.match(helper[1], /PluginWorkers\.submit\(diagnosticsWorker,work,\(\)->call\.reject\(/);
   assert.ok([...source.matchAll(/diagnostics\(call,\(\)->/g)].length >= 4, "the four problem-log methods use the helper");
-  assert.match(source, /handleOnDestroy\(\)\{diagnosticsWorker\.shutdown\(\);/, "the worker is still stopped with the plugin");
+  const destroy = source.match(/handleOnDestroy\(\)\{([^\n]+)super\.handleOnDestroy\(\);/);
+  assert.ok(destroy, "the plugin implements the destroy lifecycle");
+  assert.match(destroy[1], /diagnosticsWorker\.shutdown\(\);/, "the worker is stopped before the superclass lifecycle");
 });

@@ -14,14 +14,15 @@ import {createInlineModal} from '../runtime/inline-modal';
 import {reviewContentQuestion} from '../browser/content-question';
 import {createCaptureRevisions,captureUnchanged} from './context-selection';
 import {createDeviceLibrary,setMainLibraryHost,LibraryAgentRefusal,type HostOperation} from './photo-library-adapter';
-import type {PhotosViewResult} from '../runtime/photos-view-contract';
-import {virtualGrid,newestFirst,mergeWindow,groupSections,patchRows,insertRows,patchSelection,favoriteTarget,batches,daysLeft,pinchColumns,dragRange,filterMatches,filterLabel,viewerTitle,formatBytes,shotAt,albumOf,GRID_COLUMNS,type PhotosFilter} from '../runtime/photos-view';
+import type {PhotosViewResult} from '../../../../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/photos-view-contract.ts';
+import {virtualGrid,newestFirst,mergeWindow,groupSections,patchRows,insertRows,patchSelection,favoriteTarget,batches,daysLeft,pinchColumns,dragRange,filterMatches,filterLabel,viewerTitle,formatBytes,shotAt,albumOf,GRID_COLUMNS,type PhotosFilter} from '../../../../.eliza/client-features/packages/ui/src/mobile-shell/photos-view';
 import {LIBRARY_LIMITS,type LibraryAgentOperation,type LibraryAgentResult} from '../runtime/photo-library';
 import {openVideoEditReview} from './video-edit-review';
 import {openScanReview,ScanKeepError} from './scan-review';
+import {openScanDocument,pickNativeScanImage} from './scan-document';
 import {systemPickerActive} from './scan-pdf';
 import {DailyApps} from '../daily';
-import {browserCamera,browserLibrary,browserPhotoLibrary,mountBrowserCamera,importBrowserPhoto,saveBrowserMedia} from './browser-camera';
+import {browserCamera,browserLibrary,browserPhotoLibrary,mountBrowserCamera,importBrowserPhoto,openCameraImageImport,saveBrowserMedia} from './browser-camera';
 import { registerPlugin } from '../platform-plugins';
 import { Capacitor } from '@capacitor/core';
 
@@ -50,7 +51,7 @@ const nativeCamera = registerPlugin<{
   getRecordingState(): Promise<{ isRecording: boolean; duration: number; fileSize: number }>;
   switchCamera(options: { direction: 'front' | 'back' }): Promise<PreviewReceipt>;
   /** Binds VideoCapture only for Video mode (patches/eliza/camera-capture-latency.patch). */
-  setCaptureMode?(options: { mode: 'photo' | 'video' }): Promise<unknown>;
+  setCaptureMode?(options: { mode: 'photo' | 'video'; quality?: string; bitrate?: number; frameRate?: number }): Promise<unknown>;
   setZoom(options: { zoom: number }): Promise<void>;
   setSettings(options: { settings: { flash: 'off' | 'on' } }): Promise<void>;
   setFocusPoint(options: { x: number; y: number }): Promise<void>;
@@ -692,7 +693,8 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     if (maskCache.top !== top) { screen.style.setProperty('--alpha-camera-top', top); maskCache.top = top; }
     if (maskCache.bottom !== bottom) { screen.style.setProperty('--alpha-camera-bottom', bottom); maskCache.bottom = bottom; }
   }
-  let requestedCaptureActive=false;
+  let requestedCaptureHolds=0;
+  let pendingShot:number|undefined;
   const cameraViewVisible = () => !disposed && !document.hidden && !!api?.isActive() && !!document.querySelector(finder);
   const chatCovers = () => ['sheet', 'full'].includes(api?.S.chat);
   /** When the chat sheet started covering Camera; the session stays bound for CHAT_GRACE_MS after that. */
@@ -703,9 +705,10 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     else if (!covered && chatCoveredAt !== undefined) { chatCoveredAt = undefined; window.clearTimeout(chatTimer); chatTimer = undefined; }
   }
   const chatGrace = () => chatCoveredAt === undefined || Date.now() - chatCoveredAt < CHAT_GRACE_MS;
-  const active = () => cameraViewVisible() && (requestedCaptureActive || !chatCovers() || chatGrace());
+  const active = () => cameraViewVisible() && (requestedCaptureHolds>0 || !chatCovers() || chatGrace());
   /** The one photo being written natively, if any; releasing the preview waits for it. */
   let photoWrite: Promise<unknown> | undefined;
+  const RECORDING = { audio: true, saveToGallery: true, quality: 'medium', maxDuration: 300, maxFileSize: 104857600 } as const;
   let previewReceipt: PreviewReceipt | undefined;
   /** Bind VideoCapture only while Video mode is chosen. Builds without setCaptureMode bind it when recording starts. */
   let modeChange: Promise<void> = Promise.resolve();
@@ -718,7 +721,12 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
       if (writing) await Promise.race([writing.then(() => {}, () => {}), new Promise(resolve => window.setTimeout(resolve, 10000))]);
       return camera.stopPreview();
     },
-    async startRecording(options: Parameters<typeof camera.startRecording>[0]) { await modeChange; return camera.startRecording(options); },
+    async startRecording(options: Parameters<typeof camera.startRecording>[0]) {
+      const token = session.token();
+      await modeChange;
+      if (session.phase !== 'ready' || !session.current(token)) throw new Error('Camera preview unavailable');
+      return camera.startRecording(options);
+    },
     stopRecording: () => camera.stopRecording(),
   };
   /** Everything waiting for the preview (a queued agent capture or scan) resumes when a start settles. */
@@ -737,12 +745,12 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   const session=createCameraSession({
     camera:sessionCamera,active,available:()=>browserMode||Capacitor.isPluginAvailable('ElizaCamera'),
     preview:()=>({direction,resolution:{width:1280,height:720},mirror:direction==='front'}),
-    recording:()=>({audio:true,saveToGallery:true,quality:'medium',maxDuration:300,maxFileSize:104857600}),
+    recording: () => RECORDING,
     hooks:{
       recordingFinishing(){api?.set({rec:false});},
       recordingSaved:adoptVideo,
       recordingFailed(){limitStop=false;if(!disposed)message('Video may not have saved. Check Photos.');},
-      changed(){settle();schedule();},
+      changed(){settle();schedule();takePendingShot();},
     },
   });
   function hideAccess(){accessPanel?.remove();accessPanel=undefined;}
@@ -783,9 +791,21 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   function bindMode(mode:string){
     if(session.phase!=='ready')return;
     const token=session.token(),wanted=mode==='video'?'video':'photo';
-    modeChange=modeChange.then(async()=>{if(token!==session.token()||typeof camera.setCaptureMode!=='function')return;try{await camera.setCaptureMode({mode:wanted});}catch{/* startRecording binds video itself. */}});
+    modeChange = modeChange.then(async () => {
+      if (!session.current(token) || typeof camera.setCaptureMode !== 'function') return;
+      try {
+        await camera.setCaptureMode({ mode: wanted, quality: RECORDING.quality });
+      } catch (error) {
+        // If native kept a preview, startRecording may still bind video itself.
+        if ((error as {code?:unknown})?.code === 'PREVIEW_STOPPED' && session.current(token)) {
+          await stop();
+          if (cameraViewVisible() && session.phase === 'off') showAccess('unavailable');
+        }
+      }
+    });
   }
   async function stop() {
+    pendingShot=undefined;
     // A scan review that opened a system picker stays open while Android covers the WebView.
     closeQuestion?.();closeQuestion=undefined;if(!systemPickerActive())cancelScan(); mask(false); hideAccess();
     await session.stop();
@@ -820,6 +840,26 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     api?.setView('photos', { nativeCaptureRevision: item.id });
     message(limitReached?'Maximum length reached. Video saved.':'');
   }
+  function flipLens(owner: Bag) {
+    const next = direction === 'back' ? 'front' : 'back';
+    return control(async () => {
+      if (flash) {
+        await camera.setSettings({ settings: { flash: 'off' } });
+        flash = false;
+        owner.set({ flash: false });
+      }
+      if (Math.abs(zoomRatio - 1) > 1e-3) {
+        await camera.setZoom({ zoom: 1 });
+        zoomRatio = 1;
+        owner.set({ nativeZoom: 1 });
+      }
+      return camera.switchCamera({ direction: next });
+    }, receipt => {
+      direction = next;
+      adoptLens(receipt);
+      owner.set({ front: next === 'front', flash });
+    });
+  }
   const finishVideo=()=>session.finishRecording();
   async function record() {
     if (session.recording || session.finalizing) { await finishVideo(); return; }
@@ -850,7 +890,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     lastCapture = item;
     if (item.id) captures = [item, ...captures.filter(row => row.id !== item.id)];
     loaded = false;
-    if(showSaved)owner.setView('photos', { nativeCaptureRevision: item.id || Date.now() });
+    if(showSaved&&pendingShot!==session.token()&&active()&&owner.get('camera').mode==='photo')owner.setView('photos', { nativeCaptureRevision: item.id || Date.now() });
     else owner.set({nativeCaptureRevision:item.id || Date.now()});
     return item;
   }
@@ -860,10 +900,23 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     job.then(clear,clear);
     return job;
   }
+  /** A busy preview retains one shutter press for this Photo session. */
+  function takePendingShot(){
+    if(pendingShot===undefined||session.busy)return;
+    const token=pendingShot;pendingShot=undefined;
+    void Promise.resolve().then(()=>{
+      if(session.phase==='ready'&&session.current(token)&&api?.get('camera').mode==='photo')return capture();
+    });
+  }
   async function capture() {
+    if (!api || !active()) return;
     if (session.phase !== 'ready') { if (session.phase !== 'starting') await start(true); return; }
-    if (!api) return;
     if (api.get('camera').mode === 'video') { await record(); return; }
+    if (scanning || session.recording || session.recordingStarting || session.finalizing) {
+      message('Camera is busy. Try again.');
+      return;
+    }
+    if (session.busy) { pendingShot=session.token(); return; }
     cancelScan();
     const owner = api;
     await session.exclusive(async token=>{
@@ -882,7 +935,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
       const owner=api;
       if(!cameraViewVisible()||!owner)return {status:'failed',summary:'Open Camera, then ask again. No photo was taken.'};
       if(agentRequest||session.busy)return busy;
-      request=agentRequest={queued:false,refused:false};requestedCaptureActive=true;
+      request=agentRequest={queued:false,refused:false};requestedCaptureHolds++;
       if(session.phase!=='ready'){
         request.queued=true;
         if(session.phase!=='starting')void start(true);
@@ -902,7 +955,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
       });
       return attempt.status==='busy'?busy:attempt.value;
     }catch{return {status:dispatched?'unknown':'failed',summary:dispatched?'The photo outcome is unconfirmed. Check Photos before taking another.':'The Camera request changed. No photo was taken.'};}
-    finally{if(request&&agentRequest===request)agentRequest=undefined;if(request){requestedCaptureActive=false;schedule();}}
+    finally{if(request&&agentRequest===request)agentRequest=undefined;if(request){requestedCaptureHolds--;schedule();}}
   };
   requestedPhoto=takeRequestedPhoto;
   /** The host Keep port of a scanned page: the browser's photo store, or the owned captures store with the capture's operation identity. */
@@ -923,8 +976,9 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   let scanning=false;
   async function scanFrame(owner:Bag){
     if(scanning||session.busy){message('Camera is busy. Try again.');return;}
-    scanning=true;requestedCaptureActive=true;cancelScan();
+    scanning=true;requestedCaptureHolds++;
     try{
+      cancelScan();
       if(session.phase!=='ready'){if(session.phase!=='starting')void start(true);await untilSettled();}
       if(session.phase!=='ready'||!active())return;
       await session.exclusive(async token=>{
@@ -945,7 +999,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
           closeScan=()=>{scan.close();closeReview();};
         }catch{if(session.current(token))message('Page not captured. Try again.');}
       });
-    }finally{scanning=false;requestedCaptureActive=false;schedule();}
+    }finally{scanning=false;requestedCaptureHolds--;schedule();}
   }
   scanRequest=()=>{
     const owner=api;if(disposed||!owner||!cameraViewVisible())return false;
@@ -953,6 +1007,28 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     if(owner.S.chat!=='hidden')owner.shell({chat:'hidden'});
     void scanFrame(owner);return true;
   };
+  /** Android: the system picker returns one image straight into scan review
+   * (source 'selected'); the grant is released and nothing is copied to Photos. */
+  async function chooseNativeImage(owner:Bag){
+    try{
+      const image=await pickNativeScanImage();
+      // The picker covered the page, so the preview restarted: check the view, not the camera epoch.
+      if(!image||disposed||!owner.isActive())return;
+      closeScan=openScanReview(image,(text,id)=>owner.saveScannedNote?.(text,id)??Promise.resolve(false),draft=>{if(disposed||!active())return false;return owner.reviewScannedCalendarDraft?.(draft)??false;},'selected');
+    }catch(error){if(!disposed&&owner.isActive())message(error instanceof Error&&error.message?error.message:'The selected image could not be read.');}
+  }
+  function chooseImage(){
+    if(!api||!active()||session.recording||session.recordingStarting||session.finalizing||session.capturing)return;
+    if(!browserMode){cancelScan();void chooseNativeImage(api);return;}
+    cancelScan();const owner=api,token=session.token();
+    closeScan=openCameraImageImport(async(image,signal)=>{
+      if(!session.current(token))throw Error('Camera closed.');const row=await importBrowserPhoto(image,signal);loaded=false;
+      if(session.current(token)){captures=[normalize(row),...captures.filter(item=>nativeId(item.id)!==row.id)];owner.setView('photos',{nativeCaptureRevision:row.id});message('');}
+    },image=>{
+      if(!session.current(token))return;
+      closeScan=openScanReview(image,(text,id)=>owner.saveScannedNote?.(text,id)??Promise.resolve(false),draft=>{if(disposed||!active())return false;return owner.reviewScannedCalendarDraft?.(draft)??false;},'selected');
+    });
+  }
   function askCameraFrame(owner:Bag):boolean{
     if(session.recording||session.recordingStarting||session.finalizing||session.capturing||session.phase!=='ready')return false;
     closeQuestion?.();const token=session.token();
@@ -1012,11 +1088,13 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     data.bg = 'transparent'; data.vfBg = ready ? 'transparent' : '#000000'; data.vfOp = 1;
     data.zoomCss = ''; data.rec = session.recording; data.recTime = `${Math.floor(duration / 60)}:${String(Math.floor(duration % 60)).padStart(2, '0')}`;
     data.shutter = () => { void capture(); };
-    data.flip = () => {
-      const next = direction === 'back' ? 'front' : 'back';
-      // Flash and zoom return to their defaults before the lens changes, so the new lens never inherits a setting it lacks.
-      void control(async () => { flash = false; zoomRatio = 1; currentApi.set({ flash: false }); return camera.switchCamera({ direction: next }); }, receipt => { direction = next; adoptLens(receipt); currentApi.set({ front: next === 'front', flash }); });
+    data.importAvailable = (browserMode || Capacitor.isPluginAvailable('DailyApps')) && !recordingBusy;
+    data.importImage = chooseImage;
+    data.scanDocument = () => { cancelScan(); closeScan = openScanDocument(); };
+    data.ask = () => {
+      if (!askCameraFrame(currentApi)) message(ready ? 'Finish the current capture, then ask again.' : 'Start the camera first.');
     };
+    data.flip = () => { void flipLens(currentApi); };
     data.flashAvailable = ready && (browserMode ? browserCamera.flashAvailable() : lens.hasFlash);
     if (browserMode) data.flashLabel = browserCamera.lightingLabel(flash);
     data.toggleFlash = () => { const next = !flash; void control(() => camera.setSettings({ settings: { flash: next ? 'on' : 'off' } }), () => { flash = next; currentApi.set({ flash: next }); }); };
@@ -1025,7 +1103,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     data.zooms = stops.map(([ratio, label]) => ({ label, aria: `Zoom ${label.replace('×', '')}x`, css: Math.abs(ratio - zoomRatio) < 1e-3 ? ZOOM_ON : ZOOM_OFF, pick: () => { void control(() => camera.setZoom({ zoom: ratio }), () => { zoomRatio = ratio; currentApi.set({ nativeZoom: ratio }); }); } }));
     data.vfUp = (event: PointerEvent) => { const bounds = document.querySelector(finder)?.getBoundingClientRect(); focusAt((event.clientX - (bounds?.left ?? 0)) / (bounds?.width || window.innerWidth), (event.clientY - (bounds?.top ?? 0)) / (bounds?.height || window.innerHeight)); };
     data.showModes = !recordingBusy;
-    data.modes = (data.modes || []).map((m: Bag) => ({ ...m, pick: () => { if (recordingBusy || session.capturing) return; const mode = m.label.toLowerCase(); if (mode === 'photo' || mode === 'video') { if (currentApi.get('camera').mode !== mode) bindMode(mode); currentApi.set({ mode, rec: false }); } } }));
+    data.modes = (data.modes || []).map((m: Bag) => ({ ...m, pick: () => { if (recordingBusy || session.capturing) return; const mode = m.label.toLowerCase(); if (mode === 'photo' || mode === 'video') { if (currentApi.get('camera').mode !== mode) {pendingShot=undefined;bindMode(mode);} currentApi.set({ mode, rec: false }); } } }));
     const last = lastCapture;
     data.lastLabel = last?.kind === 'video' ? 'Open last video' : 'Open last photo';
     if (last) {
@@ -1048,7 +1126,9 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   }
   function measureGrid(el:HTMLElement,owner:Bag){
     const header=el.querySelector<HTMLElement>('.photo-day-header')?.offsetHeight;
-    gridView={...gridView,scrollTop:el.scrollTop,viewport:el.clientHeight,width:el.clientWidth,header:header&&header>0?header:gridView.header};
+    const width=el.querySelector<HTMLElement>('.photo-grid')?.clientWidth
+      || el.clientWidth-2*(parseFloat(getComputedStyle(el).getPropertyValue('--photo-grid-inset'))||0);
+    gridView={...gridView,scrollTop:el.scrollTop,viewport:el.clientHeight,width,header:header&&header>0?header:gridView.header};
     // Re-render only when the set of rendered rows changes (row-sized steps), not on every pixel.
     const pitch=(gridView.width-GRID_GAP*(gridColumns-1))/gridColumns+GRID_GAP,key=[gridColumns,Math.floor(gridView.scrollTop/Math.max(1,pitch)),Math.round(gridView.viewport/Math.max(1,pitch)),gridView.width,gridView.header].join(':');
     if(key!==gridView.key){gridView.key=key;owner.set({nativeGridWindow:key});}
@@ -1278,7 +1358,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     return data;
   };
   if (views.photos) views.photos.back = (st: Bag, currentApi: Bag) => { if(edit){cancelEdit();currentApi.set({nativeEditRevision:Date.now()});return true;}if(selection){cancelPhotoSelection(currentApi);return true;}if(st.sheet==='owned-album'){manager=undefined;currentApi.set({sheet:null});return true;}if(st.sheet==='empty'){cancelPermanent(currentApi);return true;}if(st.sheet)return photosBack?.(st,currentApi); if (preview?.id === st.open || captures.some(c => c.id === st.open) || albumRows.some(c => c.id === st.open)) { retirePhotoRead();currentApi.set({ open: null, nativePhotoSelection: null }); preview = undefined; closeVideo(); return true; } return photosBack?.(st, currentApi); };
-  if(views.photos)views.photos.onLeave=(owner:Bag)=>{retirePhotoRead();deviceLibrary.leave();closeQuestion?.();closeQuestion=undefined;void photoAttachments.cancelPhotoSelected().catch(()=>{});cancelEdit();editRecoveryChecked=false;automaticEditRecovery='';selection=undefined;selectionTab=undefined;swallowedTap='';endHold();manager=undefined;const old=prepared;prepared=undefined;if(old)void library.cancelDeleteTrash({confirmation:old.confirmation}).catch(()=>{});owner.set({sheet:null});photosLeave?.(owner);};
+  if(views.photos)views.photos.onLeave=(owner:Bag)=>{retirePhotoRead();deviceLibrary.leave();shareReview=undefined;albumReview=undefined;closeQuestion?.();closeQuestion=undefined;void photoAttachments.cancelPhotoSelected().catch(()=>{});cancelEdit();editRecoveryChecked=false;automaticEditRecovery='';selection=undefined;selectionTab=undefined;swallowedTap='';endHold();manager=undefined;const old=prepared;prepared=undefined;if(old)void library.cancelDeleteTrash({confirmation:old.confirmation}).catch(()=>{});owner.set({sheet:null});photosLeave?.(owner);};
   async function playVideo(selected: SavedPhoto, owner: Bag) {
     if (selected.kind !== 'video') return;
     try {
@@ -1326,7 +1406,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   // not from observing every DOM mutation in the document.
   const removePresence = installViewPresence(_Component, schedule);
   const resize = () => { if (session.phase === 'ready') mask(true); schedule(); };
-  const visibility = () => { if (document.hidden) { retirePhotoRead();watchLibrary(false);cancelEdit();closeVideo();if(permittedLibrary()){++libraryEpoch;captures=[];albumRows=[];trash=[];albumNext='';trashNext='';albumKey='';counts=undefined;++countsEpoch;countsBusy=false;++albumsEpoch;albumsBusy=false;albumsLoaded=false;customAlbums=[];++albumEpoch;++trashEpoch;preview=undefined;selection=undefined;next='';loaded=false;photosApi?.set({open:null,nativePhotoSelection:null,nativeCaptureRevision:Date.now()});}void stop(); } else { loaded = false; if (photosApi?.isActive()) void refresh(); schedule(); } };
+  const visibility = () => { if (document.hidden) { retirePhotoRead();watchLibrary(false);cancelEdit();closeVideo();if(permittedLibrary()){++libraryEpoch;captures=[];albumRows=[];trash=[];albumNext='';trashNext='';albumKey='';counts=undefined;++countsEpoch;countsBusy=false;++albumsEpoch;albumsBusy=false;albumsLoaded=false;customAlbums=[];++albumEpoch;++trashEpoch;preview=undefined;shareReview=undefined;albumReview=undefined;selection=undefined;next='';loaded=false;photosApi?.set({open:null,nativePhotoSelection:null,nativeCaptureRevision:Date.now()});}void stop(); } else { loaded = false; if (photosApi?.isActive()) void refresh(); schedule(); } };
   let libraryChangeHandle:{remove():Promise<void>}|undefined;
   /** A MediaStore change: re-read what is loaded and patch it (FixPatch). The selection keeps rows that
    * still exist and the viewer stays open unless its item is gone. `hard` (the edited source changed

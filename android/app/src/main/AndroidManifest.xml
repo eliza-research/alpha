@@ -91,7 +91,7 @@
   <!-- Release-build data integrity export for pilot updates: per-file HMAC digests only, read-only,
        in its own process, readable only with the platform DUMP permission (adb shell). -->
   <provider android:name=".release.DataIntegrityProvider" android:authorities="${applicationId}.integrity" android:exported="true" android:permission="android.permission.DUMP" android:process=":integrity" android:grantUriPermissions="false" />
-  <provider android:name=".AlphaStorageFileProvider" android:authorities="${applicationId}.storage" android:exported="false" android:grantUriPermissions="true"><meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/storage_paths"/></provider>
+  <provider android:name="ai.eliza.plugins.filesystem.browser.ReadOnlyStorageFileProvider" android:authorities="${applicationId}.storage" android:exported="false" android:grantUriPermissions="true"><meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/storage_paths"/></provider>
   <provider android:name=".AlphaMailFileProvider" android:authorities="${applicationId}.mailattachments" android:exported="false" android:grantUriPermissions="true"><meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/mail_attachment_paths"/></provider>
   <service android:name=".AlphaNotificationListener" android:label="Alpha Phone selected notifications" android:exported="true" android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
    <intent-filter><action android:name="android.service.notification.NotificationListenerService"/></intent-filter>

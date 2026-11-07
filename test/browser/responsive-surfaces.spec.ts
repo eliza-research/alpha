@@ -118,8 +118,8 @@ test('Photos keeps its selected grid density through resizing and albums reflow'
   for (const viewport of [{ width: 412, height: 915 }, { width: 915, height: 412 }, { width: 1280, height: 800 }]) {
     await resize(page, viewport);
     await expect.poll(columns).toBe(4);
-    await expect(grid).toHaveCSS('margin-left', '0px');
-    await expect(grid).toHaveCSS('margin-right', '0px');
+    await expect(grid).toHaveCSS('margin-left', '12px');
+    await expect(grid).toHaveCSS('margin-right', '12px');
     const tile = await box(grid.getByRole('button').first());
     expect(Math.abs(tile.width - tile.height)).toBeLessThan(1);
   }

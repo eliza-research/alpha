@@ -79,6 +79,11 @@ export function installWorkflowAdapter(Component:any,views:Bag){
  // Retirement still cancels work, but must not render after document storage is revoked.
  const publish=()=>{if(!suspended&&!document.hidden)owner?.vset('workflows',{remoteWorkflowTick:Date.now()});};
  const authoring=createWorkflowAuthoring(()=>owner,publish,async(id)=>{await open(id);});
+ p.flushWorkflowsForAppUpdate=async function(current:()=>boolean){
+  const exact=()=>current()&&(!owner||owner===this)&&!operation&&!editor;
+  if(!exact())throw Error('Workflow changes are still pending');
+  await authoring.flushForAppUpdate(exact);
+ };
  let noticeQuestion:(()=>void)|undefined;
  const clear=(keepList=false)=>{noticeQuestion?.();noticeQuestion=undefined;unadmitted=null;reviewResend=false;intentStore=null;recovery?.abort();recovery=null;authoring.close();phoneReview=null;phoneSteps=[];phoneConfirm=null;phoneStatus='';generation++;operation?.abort();operation=null;editor=null;removedList=false;lifecycleAvailable=false;lifecycleReview=false;unknownReview=false;reviewRerun=false;if(!keepList){flows=[];listPhase='idle';listSession=null;}homeVisit=null;detail=null;detailSession=null;runs=[];receipt=null;approvalReceipt=null;approvalReview=null;reviewRun=false;reviewActivation=false;reviewCancel=false;phase='idle';publish();};
  async function work(task:(client:NonNullable<ReturnType<typeof connectionController.getWorkflowClient>>['client'],signal:AbortSignal,valid:()=>boolean,sessionId:string,intents:WorkflowIntentStore)=>Promise<void>){
