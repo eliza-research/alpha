@@ -445,6 +445,27 @@ test('reconnecting restores the saved remote conversation with older pages; the 
   await expect.poll(restored, { timeout: 30_000 }).toMatchObject({ count: 232, conversation: 'fixture-chat' });
 });
 
+test('a restored conversation longer than the chat window scrolls up to its first message', async ({ page }) => {
+  test.setTimeout(120_000);
+  await connected(page, { long: true });
+  await typeDraft(page, 'Newest question');
+  await composer(page).press('Enter');
+  await expect.poll(() => fixture(page, f => f.posts), { timeout: 15_000 }).toBe(1);
+  await fixture(page, f => { f.release('Newest answer'); f.finish('Newest answer'); });
+  await page.reload();
+  await expect.poll(() => fixture(page, f => ({ reads: f.historyReads, pages: f.pageReads })), { timeout: 30_000 }).toEqual({ reads: 1, pages: 1 });
+  const transcript = conversation(page).locator('[data-alpha-transcript]'), rows = transcript.locator('[data-alpha-message-id]');
+  // Closed, only the newest rows are rendered; open, a page of them; each scroll to the top adds a page.
+  await expect(rows.last()).toContainText('Newest answer', { timeout: 20_000 });
+  await expect(rows).toHaveCount(20);
+  await page.getByRole('button', { name: 'Open conversation', exact: true }).click();
+  await expect(rows).toHaveCount(100);
+  await expect.poll(async () => { await transcript.evaluate(element => { element.scrollTop = 0; }); return rows.first().textContent(); }, { timeout: 20_000 }).toContain('Synthetic message 0');
+  await expect(rows).toHaveCount(232);
+  await expect(transcript.getByText('Synthetic message 0', { exact: true })).toBeInViewport();
+  expect(await fixture(page, f => f.posts)).toBe(0);
+});
+
 const NOT_CHECKED = /The stopped reply was not checked because another message was sent\./;
 const NOT_FINISHED = 'The agent had not finished the stopped reply when Alpha Phone checked. Load conversations later to see it.';
 const LOAD_TO_SEE = 'Load this conversation from Agent connection to see whether the stopped reply finished.';
