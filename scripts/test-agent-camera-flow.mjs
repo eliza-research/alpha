@@ -15,14 +15,16 @@ const receiptPath=source.slice(source.indexOf('/** A saved still'),source.indexO
 // The capture lock is the shared camera session's (plugin-native-camera), run as-is.
 const shared=stripTypeScriptTypes(['host-ports','session'].map(name=>readFileSync(`.eliza/client-features/plugins/plugin-native-camera/src/${name}.ts`,'utf8')).join('\n').replace(/^import[^;]*;$/gm,'').replace(/^export /gm,''),{mode:'transform'});
 function cameraFixture(browser=false){
- let calls=0,mode='ok',release,startHeld=false,releaseStart;
- const camera={startPreview:async()=>{if(startHeld)await new Promise(resolve=>{releaseStart=resolve});},stopPreview:async()=>{},async capturePhoto(options){calls++;assert.equal(options.saveToGallery,true);if(mode==='hold')await new Promise(resolve=>{release=resolve});if(mode==='fail')throw Error('write unavailable');return {path:mode==='invalid'?'file:///tmp/45':browser?'browser-photo:///1792274767123123456789012':'content://media/external/images/media/45',format:'jpeg',base64:'jpeg-fixture',width:1280,height:720}}};
+ let calls=0,mode='ok',release;
+ const camera={startPreview:async()=>{},stopPreview:async()=>{},async capturePhoto(options){calls++;assert.equal(options.saveToGallery,true);if(mode==='hold')await new Promise(resolve=>{release=resolve});if(mode==='fail')throw Error('write unavailable');return {path:mode==='invalid'?'file:///tmp/45':browser?'browser-photo:///1792274767123123456789012':'content://media/external/images/media/45',format:'jpeg',base64:'jpeg-fixture',width:1280,height:720}}};
  const api={S:{chat:'hidden'},isActive:()=>true,set(){},setView(){throw Error('An agent capture must not change views')}};
  const context=vm.createContext({camera,api,validateCameraCaptureResult,nativeId:id=>id.replace('native-camera-',''),browserMode:browser,disposed:false,captures:[],loaded:true,requestedCaptureHolds:0,document:{hidden:false,querySelector:()=>({})},finder:'#camera',schedule(){},message(){},Date});
  const visibility=source.slice(source.indexOf('  const cameraViewVisible'),source.indexOf('  /** The one photo being written natively'));
  vm.runInContext(shared+stripTypeScriptTypes(receiptPath+'const CHAT_GRACE_MS=10000;let lastCapture,photoWrite;const shutterFlash=()=>{};\n'+lastCaptureState+visibility+'\n'+queue+save+request+';globalThis.capture=takeRequestedPhoto;',{mode:'transform'}),context);
  vm.runInContext('globalThis.session=createCameraSession({camera,active:()=>true,preview:()=>({}),recording:()=>({}),hooks:{changed:()=>settle()}});var session=globalThis.session;',context);
- return {capture:context.capture,context,get calls(){return calls},setMode:value=>{mode=value},release:()=>release?.(),holdStart:()=>{startHeld=true},releaseStart:()=>{startHeld=false;releaseStart?.()}};
+ // The request starts the preview itself through the session, as on an agent request from another view.
+ context.start=async retry=>{await context.session.start(retry);};
+ return {capture:context.capture,context,get calls(){return calls},setMode:value=>{mode=value},release:()=>release?.()};
 }
 function flow(camera){
  let state='pending',receipt;const entries=new Map(),digest='b'.repeat(64),id='request-one',scope='c'.repeat(64);
