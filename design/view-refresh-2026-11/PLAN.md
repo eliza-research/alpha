@@ -249,7 +249,10 @@ Camera, and nowhere else.
 A real file browser needs one of these:
 - **(A, recommended) All-files access** (`MANAGE_EXTERNAL_STORAGE`). On the AOSP image
   it's pre-granted via `default-permissions` / appop. In the APK variant it's granted once
-  through the system "All files access" screen.
+  through the system "All files access" screen. Android 10 (API 29, minSdk) has no all-files
+  access: there the app uses legacy storage (`requestLegacyExternalStorage`, with
+  `READ_`/`WRITE_EXTERNAL_STORAGE` capped at `maxSdkVersion="29"`), asked for in the same
+  walkthrough step on API 29 only.
 - **(B)** MediaStore only (Images/Videos/Audio/Downloads that we created). Downloads from
   other apps and Documents would be invisible, so B can't meet the goal.
 - **(C)** SAF tree grants per root. This works without the special permission, but it
