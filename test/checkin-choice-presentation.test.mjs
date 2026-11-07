@@ -42,10 +42,11 @@ test('actual history projection preserves source text and only attaches a truste
  assert.equal(user.text,text);assert.equal(user.displayText,undefined);
  assert.equal(quoted.text,text);assert.equal(quoted.displayText,undefined);
  const model=readFileSync('apps/app/src/prototype/model.js','utf8');
- const begin=model.indexOf('    var msgs = S.msgs.map('),end=model.indexOf('    var baseSug =',begin);
+ const begin=model.indexOf('    var msgs = this.transcriptWindow('),end=model.indexOf('    var baseSug =',begin);
  assert.ok(begin>=0&&end>begin);
- const render=new Function('S','IC','self',model.slice(begin,end)+';return msgs;');
- const [rendered,renderedUser]=render({msgs:[checkin,{...user,displayText:'untrusted projection'}]}, {}, {});
+ const render=new Function('S','IC','self','panelOpen','isOn',model.slice(begin,end)+';return msgs;');
+ // Window growth is covered by chat-transcript-window; these two rows exercise the real row projection.
+ const [rendered,renderedUser]=render.call({transcriptWindow:rows=>rows},{msgs:[checkin,{...user,displayText:'untrusted projection'}]}, {}, {},false,false);
  assert.equal(rendered.displayText,'Take twenty quiet minutes before bed.');
  assert.equal(rendered.text,text,'copy and reply retain the original text');
  assert.equal(renderedUser.displayText,text,'a user row cannot supply a display projection');
