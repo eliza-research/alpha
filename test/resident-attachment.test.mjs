@@ -35,7 +35,7 @@ test('the plugin start path attaches before it would retire shared work, and att
   assert.ok(!admission.includes(forbidden),`attach admission must not ${forbidden}`);
  // The attach worker verifies the runtime and the existing enrollment; it has no pairing call.
  const worker=start.slice(start.indexOf('if(attached){'),start.indexOf('long deadline=android.os.SystemClock.elapsedRealtime()+90000'));
- assert.ok(worker.includes('authenticatedStatus(epoch,root)')&&worker.includes('attachUnverified=true'));
+ assert.ok(worker.includes('authenticatedStatus(epoch,root,diagnostic::response)')&&worker.includes('attachUnverified=true'));
  assert.ok(!worker.includes('enroll(')&&!worker.includes('ElizaAgentService.start')&&!worker.includes('clearEnrollment'));
  // attachLocked supersedes only the calling surface's own work.
  const locked=source.slice(source.indexOf('private String attachLocked('),source.indexOf('private static String storedProviderGeneration('));
@@ -64,4 +64,17 @@ test('the plugin start path attaches before it would retire shared work, and att
  // Plan admission decides the binding before any bind or attach; Cloud inference is bound only for an admitted plan.
  assert.ok(admit.indexOf('planAdmission(view)')>0&&admit.indexOf('planAdmission(view)')<admit.indexOf('bindResidentCloudProvider'),'plan admission precedes any bind');
  assert.ok(admit.includes("admission.binding==='cloud'&&admission.credentialId&&admission.account?{identity:{credentialId:admission.credentialId,"),'an identity is passed only for an admitted Cloud binding');
+});
+
+test('attach diagnostics retain only a fixed stage, bounded status and allowlisted exception class',async()=>{
+ const {runJvm,nativeSource,fixture}=await import('./fixtures/jvm-tools.mjs');
+ assert.match(runJvm([nativeSource('ResidentAttachDiagnostic.java'),fixture('ResidentAttachDiagnosticTest.java')],'ai.elizaresearch.alphaphone.ResidentAttachDiagnosticTest',{json:true}),/PASS content-free resident attach diagnostic/);
+ const source=readFileSync(join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java'),'utf8');
+ const start=source.indexOf('   if(attached){'),end=source.indexOf('   PluginWorkers.submit(workers,()->{\n    long deadline=',start);
+ const worker=source.slice(start,end);
+ assert.match(worker,/authenticatedStatus\(epoch,root,diagnostic::response\)/);
+ assert.match(worker,/catch\(Superseded stale\)\{rejectSuperseded\(call\);\}/);
+ assert.match(worker,/Log\.w\("AlphaAgentRequest",diagnostic\.failure\(unverified\)\)/);
+ assert.doesNotMatch(worker,/unverified\.(getMessage|toString)|String\.valueOf\(unverified/);
+ assert.match(source,/observedStatus\.accept\(response\.getInt\("status"\)\);\s+if\(response\.getInt\("status"\)!=200\)/);
 });
