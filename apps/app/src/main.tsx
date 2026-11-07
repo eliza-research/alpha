@@ -5,6 +5,7 @@ import {installCanonicalNotesView} from './prototype/canonical-notes-ui';
 import {installCanonicalCalendarDrafts} from './prototype/canonical-calendar-drafts';
 import {installAgentCalendarAdapter,deviceCalendarScope} from './prototype/agent-calendar-adapter';
 import {installCalendarApprovalAdapter} from './prototype/calendar-approval-adapter';
+import {installMapsChatAdapter} from './prototype/maps-chat-adapter';
 import {bindBrowserDeletionOwner} from './runtime/deletion-owner';
 import {DEFAULT_PULL_VELOCITY} from "../../../.eliza/client-features/packages/ui/src/gestures/constants";
 import {usePullGesture} from "../../../.eliza/client-features/packages/ui/src/components/shell/use-pull-gesture";
@@ -130,6 +131,7 @@ if (!fixture) {
   installContextSelection(Component);
   installPrototypeVoiceAdapter(Component, VIEWS);
   installCalendarApprovalAdapter(Component);
+  installMapsChatAdapter(Component);
   installNotesDocumentAdapter(Component, VIEWS);
   installNotesShareAdapter(VIEWS);
   installNotesTrashAdapter(Component, VIEWS);

@@ -14,6 +14,18 @@ export function calendarReviewText(text:string){
  const displayText=ids.length?rendered.trim():rendered;
  return {displayText,ids};
 }
+/** Inbox queue choices name commands whose adapter capability Alpha cannot check, so they are
+ * shown as prose only. Complete blocks are removed; malformed ones stay literal. */
+export function inboxChoiceText(text:string){
+ let removed=false;
+ const pattern=/\[CHOICE:inbox-(?:draft|thread)-([^\s\]]{1,200}) id=\1\]\r?\n([\s\S]*?)\r?\n\[\/CHOICE\]/g;
+ const rendered=text.replace(pattern,(whole,id:string,body:string)=>{
+  const lines=body.split(/\r?\n/).map(line=>line.trim()).filter(Boolean);
+  const valid=lines.length>0&&lines.every(line=>{const at=line.indexOf('=');return at>0&&!!line.slice(at+1).trim()&&/^inbox [a-z]+ (.+)$/.exec(line.slice(0,at).trim())?.[1]===id;});
+  if(!valid)return whole;removed=true;return '';
+ });
+ return removed?rendered.replace(/\n{3,}/g,'\n\n').trim():text;
+}
 export type CalendarApproval={id:string;ownerVerified:boolean;state:string;action:'schedule_event'|'modify_event'|'cancel_event';reason:string;expiresAt:string;payload:Record<string,unknown>;revision:string};
 const object=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==='object'&&!Array.isArray(v);
 export function calendarApprovalFromList(raw:unknown,id:string,ownerId:string):CalendarApproval|null{
