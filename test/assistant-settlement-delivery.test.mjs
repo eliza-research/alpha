@@ -16,7 +16,7 @@ const read=relative=>fs.readFileSync(relative==='apps/app/src/prototype/agent-ad
 const adapter=read('apps/app/src/prototype/agent-adapter.ts');
 const connection=read('apps/app/src/runtime/connection-ui.tsx');
 const between=(source,start,end)=>{const a=source.indexOf(start),b=source.indexOf(end,a);assert.ok(a>=0&&b>a,start);return source.slice(a,b);};
-const ts=source=>stripTypeScriptTypes(source,{mode:'transform'});
+const ts=source=>stripTypeScriptTypes(source,{mode:'strip'});
 const voice=between(adapter,'  p.sendVoiceTurn = async function','  p.send = async function');
 const send=between(adapter,'  p.send = async function','  p.agentSay = function');
 const say=between(adapter,'  p.agentSay = function','  p.reply = function');

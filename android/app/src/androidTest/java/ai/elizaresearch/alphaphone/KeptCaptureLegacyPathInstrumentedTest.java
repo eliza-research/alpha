@@ -5,6 +5,8 @@ import android.content.*;
 import android.database.Cursor;
 import android.graphics.*;
 import android.net.Uri;
+import android.os.Build;
+import android.os.Bundle;
 import android.provider.MediaStore;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -41,13 +43,22 @@ public final class KeptCaptureLegacyPathInstrumentedTest {
   if(publish){ContentValues published=new ContentValues();published.put("is_pending",0);assertEquals(1,r.update(uri,published,null,null));}
   return uri;
  }
+ private Cursor captureRows(ContentResolver r,String operation){
+  String[] arguments={AlphaMediaConfig.MEDIA.captureName(operation)};
+  if(Build.VERSION.SDK_INT<30){
+   Uri collection=MediaStore.setIncludePending(MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+   return r.query(collection,new String[]{"_id"},"_display_name=?",arguments,null);
+  }
+  Bundle query=new Bundle();query.putString(ContentResolver.QUERY_ARG_SQL_SELECTION,"_display_name=?");query.putStringArray(ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS,arguments);query.putInt(MediaStore.QUERY_ARG_MATCH_PENDING,MediaStore.MATCH_INCLUDE);
+  return r.query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,new String[]{"_id"},query,null);
+ }
  private int rows(ContentResolver r,String operation){
-  Bundle query=new Bundle();query.putString(ContentResolver.QUERY_ARG_SQL_SELECTION,"_display_name=?");query.putStringArray(ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS,new String[]{AlphaMediaConfig.MEDIA.captureName(operation)});query.putInt(MediaStore.QUERY_ARG_MATCH_PENDING,MediaStore.MATCH_INCLUDE);
-  try(Cursor row=r.query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,new String[]{"_id"},query,null)){assertNotNull(row);return row.getCount();}
+  try(Cursor row=captureRows(r,operation)){assertNotNull(row);return row.getCount();}
  }
  private void cleanup(Context c,ContentResolver r,String operation){
-  Bundle query=new Bundle();query.putString(ContentResolver.QUERY_ARG_SQL_SELECTION,"_display_name=?");query.putStringArray(ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS,new String[]{AlphaMediaConfig.MEDIA.captureName(operation)});query.putInt(MediaStore.QUERY_ARG_MATCH_PENDING,MediaStore.MATCH_INCLUDE);
-  r.delete(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,query);
+  try(Cursor row=captureRows(r,operation)){
+   if(row!=null)while(row.moveToNext())r.delete(ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,row.getLong(0)),null,null);
+  }
   c.getSharedPreferences(AlphaMediaConfig.MEDIA.preferences("kept-captures"),0).edit().remove(operation).commit();
  }
 

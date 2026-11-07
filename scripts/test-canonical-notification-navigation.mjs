@@ -25,7 +25,7 @@ function fixture(){
  const controller={getSnapshot:()=>connection,getSelectedConversationId:()=>selectedConversation,subscribe:()=>()=>{},restoreHistory:async(id,canCommit)=>{restores.push(id);if(restoreHook)await restoreHook();if(canCommit()){selectedConversation=id;connection.history={conversationId:id,messages:[{id:'message'}]};}}};
  const sandbox={alphaClient:{getState:()=>({context:navigation})},connectionController:controller,registerPlugin:()=>native,Capacitor:{isNativePlatform:()=>true},queueMicrotask,window:{addEventListener(){},removeEventListener(){},setInterval:()=>1,clearInterval(){}},document:{hidden:false,addEventListener(){},removeEventListener(){}},reviewContentQuestion(){},sensitiveReadingText:()=>false,noticeCurrent:()=>true,noticeExcerpt:()=>'',noticeReviewable:()=>true};
  vm.createContext(sandbox);vm.runInContext(stripTypeScriptTypes(source,{mode:'transform'}),sandbox);
- class Component{};sandbox.install(Component);
+ class Component{};Component.prototype.renderVals=()=>({});sandbox.install(Component);
  const shell=new Component();shell.S=()=>state;shell.setState=(patch,done)=>{Object.assign(state,patch);commitHook?.();done?.();};shell.openView=view=>{views.push(view);state.view=view;};shell.componentDidMount();
  return {shell,state,connection,navigation,acknowledgments,restores,views,select:id=>{selectedConversation=id;},commit:fn=>{commitHook=fn;},setTap:(extra={})=>{pending={token:'tap-a',ownerId:'owner',agentId:'agent',view:'chat',conversationId:'conversation',messageId:'message',...extra};},hook:fn=>{restoreHook=fn;}};
 }

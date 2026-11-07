@@ -11,7 +11,7 @@ function browser(run){
  const connection={getSnapshot:()=>snapshot,getBrowserSpeechAgent:()=>agent,getCloudEnvironment:()=>null,getCloudClient:()=>null,subscribe:listener=>{listeners.push(listener);return()=>{};}};
  const source=fs.readFileSync('apps/app/src/browser/voice.ts','utf8').replace(/^import\b[\s\S]*?;\s*$/gm,'').replace(/^export (?=(?:class|function)\b)/gm,'').replaceAll('import.meta.env.DEV','false');
  const box={connectionController:connection,WebPlugin:class{notifyListeners(){}},BrowserAudioCapture:class{get(){return clip;}cancel(){}clear(){}},window:{addEventListener(){}},document:{hidden:false,addEventListener(){}},migrateAudio:async()=>{},BroadcastChannel:undefined,recordingPcmWav:async()=>audio,Blob,AbortController,DOMException,crypto:{randomUUID},URL,console,speechCancelled:(_kind,reason)=>new DOMException(reason,'AbortError')};
- vm.runInNewContext(stripTypeScriptTypes(source,{mode:'transform'})+';globalThis.voice=new BrowserVoice();',box);
+ vm.runInNewContext(stripTypeScriptTypes(source,{mode:'strip'})+';globalThis.voice=new BrowserVoice();',box);
  return {voice:box.voice,calls:()=>calls,clip,change(value,notify=false){snapshot={...snapshot,...value};if(notify)for(const listener of listeners)listener();}};
 }
 test('captured browser dictation uses direct resident route with no Cloud account',async()=>{
@@ -36,7 +36,7 @@ test('normal capture cancellation aborts upload and a provider change rejects la
 test('resident protocol sends direct WAV to the authenticated route and projects transcript only',async()=>{
  const source=fs.readFileSync('apps/app/src/runtime/local-agent.ts','utf8');const method=source.slice(source.indexOf('  async developmentCloudSpeech('),source.indexOf('  async synthesizeSpeech('));let seen;
  const box={browserCloudResidentEnabled:true,developmentCartesiaVoiceEnabled:false,developmentCloudVoiceEnabled:true,anyAbortSignal:signals=>AbortSignal.any(signals),AbortController,DOMException,crypto:{randomUUID},btoa:s=>Buffer.from(s,'binary').toString('base64'),Blob};
- vm.runInNewContext(stripTypeScriptTypes('class Protocol {session={ownerId:"owner-a"};generation=1;streams=new Set();browserSpeechAvailable=true;bridge;'+method+'};globalThis.protocol=new Protocol();',{mode:'transform'}),box);
+ vm.runInNewContext(stripTypeScriptTypes('class Protocol {session={ownerId:"owner-a"};generation=1;streams=new Set();browserSpeechAvailable=true;bridge;'+method+'};globalThis.protocol=new Protocol();',{mode:'strip'}),box);
  box.protocol.bridge={async request(input){seen=input;return {status:200,body:JSON.stringify({provider:'cartesia',route:'direct',requestId:input.requestId,text:'dictation',apiKey:'must-not-leak'})};}};
  const result=await box.protocol.developmentCloudSpeech({kind:'asr',audio:new Uint8Array([1,2,3])},new AbortController().signal,'direct');
  assert.equal(seen.path,'/api/v1/voice/session/transcribe');assert.equal(seen.ownerId,'owner-a');assert.equal(seen.audioBase64,'AQID');assert.equal(result.text,'dictation');assert.deepEqual(Object.keys(result).sort(),['local','text']);

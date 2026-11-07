@@ -6,9 +6,9 @@ import {fileURLToPath} from 'node:url';
 const sdk=process.env.ALPHA_NOTES_TEST_SDK??fileURLToPath(new URL('../.eliza/client-features/plugins/plugin-notes/src/client',import.meta.url));
 // Use Node's normal test entry without a TS loader; transform the exact prepared modules.
 const moduleUrl=code=>'data:text/javascript;base64,'+Buffer.from(code).toString('base64');
-const contract=moduleUrl(stripTypeScriptTypes(readFileSync(sdk+'/notes-contract.ts','utf8'),{mode:'transform'}));
-const store=moduleUrl(stripTypeScriptTypes(readFileSync(sdk+'/notes-store.ts','utf8'),{mode:'transform'}).replaceAll('./notes-contract.ts',contract));
-const documentStore=moduleUrl(stripTypeScriptTypes(readFileSync(sdk+'/notes-document-store.ts','utf8'),{mode:'transform'}).replaceAll('./notes-store.ts',store).replaceAll('./notes-contract.ts',contract));
+const contract=moduleUrl(stripTypeScriptTypes(readFileSync(sdk+'/notes-contract.ts','utf8'),{mode:'strip'}));
+const store=moduleUrl(stripTypeScriptTypes(readFileSync(sdk+'/notes-store.ts','utf8'),{mode:'strip'}).replaceAll('./notes-contract.ts',contract));
+const documentStore=moduleUrl(stripTypeScriptTypes(readFileSync(sdk+'/notes-document-store.ts','utf8'),{mode:'strip'}).replaceAll('./notes-store.ts',store).replaceAll('./notes-contract.ts',contract));
 const {DocumentNotesStore,NotesDocumentConflict}=await import(documentStore);
 const {NotesCommitUncertain}=await import(store);
 const source=readFileSync(new URL('../apps/app/src/prototype/agent-adapter.ts',import.meta.url),'utf8');
