@@ -706,7 +706,8 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     if (maskCache.top !== top) { screen.style.setProperty('--alpha-camera-top', top); maskCache.top = top; }
     if (maskCache.bottom !== bottom) { screen.style.setProperty('--alpha-camera-bottom', bottom); maskCache.bottom = bottom; }
   }
-  let requestedCaptureActive=false;
+  /** How many requests (an agent capture, a scan frame) need Camera active; each releases only its own hold. */
+  let requestedCaptureHolds=0;
   /** Every recording's options; Video mode pre-binds VideoCapture for the same quality, so starting one does not rebind. */
   const RECORDING={audio:true,saveToGallery:true,quality:'medium',maxDuration:300,maxFileSize:104857600} as const;
   const cameraViewVisible = () => !disposed && !document.hidden && !!api?.isActive() && !!document.querySelector(finder);
@@ -721,7 +722,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     else if (!covered && chatCoveredAt !== undefined) { chatCoveredAt = undefined; chatGraceOver = false; window.clearTimeout(chatTimer); chatTimer = undefined; }
   }
   const chatGrace = () => chatCoveredAt === undefined || (!chatGraceOver && Date.now() - chatCoveredAt < CHAT_GRACE_MS);
-  const active = () => cameraViewVisible() && (requestedCaptureActive || !chatCovers() || chatGrace());
+  const active = () => cameraViewVisible() && (requestedCaptureHolds > 0 || !chatCovers() || chatGrace());
   /** The one photo being written natively, if any; releasing the preview waits for it. */
   let photoWrite: Promise<unknown> | undefined;
   let previewReceipt: PreviewReceipt | undefined;
@@ -929,7 +930,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
       const owner=api;
       if(!cameraViewVisible()||!owner)return {status:'failed',summary:'Open Camera, then ask again. No photo was taken.'};
       if(agentRequest||session.busy)return busy;
-      request=agentRequest={queued:false,refused:false};requestedCaptureActive=true;
+      request=agentRequest={queued:false,refused:false};requestedCaptureHolds++;
       if(session.phase!=='ready'){
         request.queued=true;
         if(session.phase!=='starting')void start(true);
@@ -949,7 +950,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
       });
       return attempt.status==='busy'?busy:attempt.value;
     }catch{return {status:dispatched?'unknown':'failed',summary:dispatched?'The photo outcome is unconfirmed. Check Photos before taking another.':'The Camera request changed. No photo was taken.'};}
-    finally{if(request&&agentRequest===request)agentRequest=undefined;if(request){requestedCaptureActive=false;schedule();}}
+    finally{if(request&&agentRequest===request)agentRequest=undefined;if(request){requestedCaptureHolds--;schedule();}}
   };
   requestedPhoto=takeRequestedPhoto;
   /** The host Keep port of a scanned page: the browser's photo store, or the owned captures store with the capture's operation identity. */
@@ -970,7 +971,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   let scanning=false;
   async function scanFrame(owner:Bag){
     if(scanning||session.busy){message('Camera is busy. Try again.');return;}
-    scanning=true;requestedCaptureActive=true;cancelScan();
+    scanning=true;requestedCaptureHolds++;cancelScan();
     try{
       if(session.phase!=='ready'){if(session.phase!=='starting')void start(true);await untilSettled();}
       if(session.phase!=='ready'||!active())return;
@@ -992,7 +993,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
           closeScan=()=>{scan.close();closeReview();};
         }catch{if(session.current(token))message('Page not captured. Try again.');}
       });
-    }finally{scanning=false;requestedCaptureActive=false;schedule();}
+    }finally{scanning=false;requestedCaptureHolds--;schedule();}
   }
   scanRequest=()=>{
     const owner=api;if(disposed||!owner||!cameraViewVisible())return false;

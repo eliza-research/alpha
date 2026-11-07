@@ -7,7 +7,7 @@ const source=fs.readFileSync(new URL('../apps/app/src/prototype/camera-adapter.t
 const slice=(from,to)=>{const a=source.indexOf(from),b=source.indexOf(to,a);assert.ok(a>=0&&b>a,`camera-adapter.ts still has ${from} … ${to}`);return source.slice(a,b);};
 const helpers=slice('const ZOOM_STOPS','/** Install after native').replace(/^export /gm,'');
 const scanWords=slice('const SCAN_REQUEST','const browserMode').replace(/^export /gm,'');
-const session=slice('  let requestedCaptureActive=false;','  function askCameraFrame(');
+const session=slice('  /** How many requests (an agent capture, a scan frame) need Camera active','  function askCameraFrame(');
 const frameAsk=slice('  function askCameraFrame(','  /** The reviewed item is still');
 const syncCamera=source.match(/  const syncCamera = [^\n]+\n/)[0];
 const sessionSource=fs.readFileSync(new URL('../.eliza/client-features/plugins/plugin-native-camera/src/session.ts',import.meta.url),'utf8');
@@ -98,6 +98,22 @@ function fixture({permission=false,failing=true,receipt={width:1280,height:720,d
  await f.api.capture();await settle();assert.equal(f.api.state().last.id,'native-camera-42','A capture made here is shown at once');
  await f.api.stop();f.rows.camera=[];await f.api.start();await settle();
  assert.equal(f.api.state().last,undefined,'The trashed capture is not shown after Camera is ready again');
+ f.env.window.close();
+}
+// An agent capture queued past the chat grace keeps Camera active even when a scan request finishes first.
+{
+ const f=fixture({failing:false});await f.api.start();f.setView({chat:'sheet'});f.api.syncCamera();f.clock.now+=f.api.CHAT_GRACE_MS;f.api.syncCamera();await settle();assert.equal(f.api.state().phase,'off');
+ f.gates.start=deferred();
+ const request=f.api.takeRequestedPhoto('op-hold',new AbortController().signal,()=>{});await settle();
+ assert.equal(f.api.scanRequest(),true);await settle();
+ // The scan closes the chat; reopen it so only the agent request's hold keeps Camera active.
+ f.setView({chat:'sheet'});
+ f.gates.capture=deferred();f.gates.start.resolve();f.gates.start=undefined;await settle();await settle();await settle();
+ assert.equal(f.calls.captures.length,1,'The agent photo is being written');
+ f.api.syncCamera();await settle();
+ assert.equal(f.api.state().phase,'ready','The scan request ending does not release the hold of the agent capture still being written');
+ f.gates.capture.resolve();f.gates.capture=undefined;
+ const result=await request;assert.equal(result.status,'succeeded',result.summary);
  f.env.window.close();
 }
 // Preview failure, permission denial and recovery.
