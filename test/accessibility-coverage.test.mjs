@@ -69,7 +69,7 @@ test('every subview of a retained view is opened by a state that asserts it is t
     assert.ok(asserted.has(id), `a state opens and asserts the ${id} subview`);
   }
   // Menus, search fields, sheets and the Undo toast are states of their own.
-  for (const step of ["['New automation', 'Edit When step']", "['Add Read step']", "['Connections', 'Slack']", "['Browser', 'Menu']", "['New note', 'More']", "['Search email']", "['Menu', 'Share']", "['Share photo']", "['View and sort']", "['Move file']", "['Delete file']"])
+  for (const step of ["['New automation', 'Edit When step']", "['Add Read step']", "['Connections', 'Slack']", "['Browser', 'Menu']", "['New note', 'More']", "['Search email']", "['Menu', 'Share']", "['Share photo']", "['Sort and more']", "['Move file']", "['Delete file']"])
     assert.ok(states.includes(step), `${step} is swept`);
   // Notes has no search field (PLAN.md decision P2); its folders, ⋯ menu and Recently deleted are swept.
   for (const state of ["legacyNotes('Notes new folder', ['New folder'])", "legacyNotes('Notes note menu', ['New note', 'More'])", "'notes-trash'", "'notes-recorder'"])

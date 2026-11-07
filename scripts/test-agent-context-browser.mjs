@@ -37,7 +37,7 @@ try {
  });
  await page.goto(url, { waitUntil: 'load', timeout: 180000 });
  await page.getByRole('button', { name: 'Photos', exact: true }).click();
- await page.getByRole('button', { name: /^Captured video / }).click();
+ await page.getByRole('button', { name: /^Video, / }).click();
  await page.getByRole('button', { name: 'Ask Alpha about this video', exact: true }).click();
  // Ask opens the local content review first; only reviewed, synthetic text reaches the composer.
  const review = page.getByRole('dialog', { name: 'Ask about selected content' });
