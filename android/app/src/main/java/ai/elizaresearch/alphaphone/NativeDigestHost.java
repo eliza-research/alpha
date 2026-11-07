@@ -24,7 +24,7 @@ final class NativeDigestHost {
    if("describe".equals(request.getString("action")))return grant;
    if(!"read".equals(request.getString("action")))throw new SecurityException("Unsupported native source operation");
    long occurrence=java.time.Instant.parse(request.getString("occurrence")).toEpochMilli();
-   if(Math.abs(Math.subtractExact(now,occurrence))>120000)throw new SecurityException("Native source occurrence expired");
+   NativeDigestSources.checkOccurrence(occurrence,now);
    // Only the evening window is named; an absent template keeps the reviewed morning read.
    String template=request.has("template")?request.getString("template"):"morning";if(!"evening".equals(template)&&request.has("template"))throw new SecurityException("Unsupported native digest template");
    return sources.read(binding,id,revision,occurrence,now,template,new NativeDigestSources.Reader(){

@@ -22,6 +22,11 @@ final class NativeDigestSources {
  static final long MAXIMUM_EXPIRY_MS=7L*86400000;
  /** Morning: the owner day plus open reminders due by its end (overdue included). Evening adds reminders completed during the owner day. */
  static final java.util.Set<String> TEMPLATES=java.util.Set.of("morning","evening");
+ /** The agent admits a run up to 30 minutes after its occurrence (DIGEST_RUN_WINDOW_MS); 5 more cover admission-to-read latency. */
+ static final long NATIVE_READ_PAST_MS=35L*60000;
+ /** A read may run slightly early, never so early that it returns the next owner day. */
+ static final long NATIVE_READ_FUTURE_MS=120000;
+ static void checkOccurrence(long occurrence,long now){long late=Math.subtractExact(now,occurrence);if(late>NATIVE_READ_PAST_MS||-late>NATIVE_READ_FUTURE_MS)throw new SecurityException("Native source occurrence expired");}
  private static final DateTimeFormatter UTC=new java.time.format.DateTimeFormatterBuilder().appendInstant(3).toFormatter();
  private static String id(JSONObject value,String key)throws Exception {String text=value.getString(key);if(!text.matches("[A-Za-z0-9][A-Za-z0-9_.-]{0,255}"))throw new SecurityException("Invalid source identity");return text;}
  private static void keys(JSONObject value,String... expected){Set<String> names=new HashSet<>(Arrays.asList(expected));if(value.length()!=names.size())throw new SecurityException("Invalid source scope");for(java.util.Iterator<String> it=value.keys();it.hasNext();)if(!names.contains(it.next()))throw new SecurityException("Unexpected source scope");}
@@ -57,16 +62,17 @@ final class NativeDigestSources {
  JSONObject read(JSONObject binding,String sourceId,String revision,long occurrence,long now,Reader reader,Guard guard)throws Exception {return read(binding,sourceId,revision,occurrence,now,"morning",reader,guard);}
  private static long millis(JSONObject row,String key)throws Exception {Object value=row.get(key);return value instanceof Number?((Number)value).longValue():Instant.parse(String.valueOf(value)).toEpochMilli();}
  JSONObject read(JSONObject binding,String sourceId,String revision,long occurrence,long now,String template,Reader reader,Guard guard)throws Exception {
-  if(!TEMPLATES.contains(template))throw new SecurityException("Unsupported native digest template");boolean evening="evening".equals(template);
+  if(!TEMPLATES.contains(template))throw new SecurityException("Unsupported native digest template");boolean evening="evening".equals(template);checkOccurrence(occurrence,now);
   final JSONObject grant;synchronized(lock){grant=current(binding,sourceId,revision,now,guard);}
   JSONObject selected=grant.getJSONObject("scope");ZoneId zone=ZoneId.of(selected.getString("timeZone"));LocalDate day=Instant.ofEpochMilli(occurrence).atZone(zone).toLocalDate();
   Instant begin=day.atStartOfDay(zone).toInstant(),end=day.plusDays(1).atStartOfDay(zone).toInstant();int maximum=selected.getInt("maximumItems");
   JSONArray calendars=selected.getJSONArray("calendars"),events=calendars.length()==0?new JSONArray():reader.calendar(calendars,UTC.format(begin),UTC.format(end),maximum,day.toString(),day.plusDays(1).toString()),reminders=new JSONArray();
   if(events.length()>maximum)throw new SecurityException("Selected calendar results exceed consent bound");
   if(selected.getBoolean("reminders")){JSONArray rows=reader.reminders();for(int i=0;i<rows.length();i++){JSONObject row=rows.getJSONObject(i);String status=row.getString("status");
-   if("cancelled".equals(status))continue;
+   // Staged deletions are suspended rows (ReminderStore.deletionSuspended); undated to-dos have no instant for this window.
+   if("cancelled".equals(status)||row.has("pendingDeletion")||row.optBoolean("undated"))continue;
    // Completed reminders and completed recurring occurrences belong only to the evening window, and only for this owner day.
-   if(evening){JSONArray history=row.optJSONArray("history");if(history!=null)for(int h=0;h<history.length();h++){JSONObject done=history.getJSONObject(h);if(!done.has("completedAt"))continue;long at=millis(done,"completedAt");if(at<begin.toEpochMilli()||at>=end.toEpochMilli())continue;if("completed".equals(status)&&row.has("completedAt")&&millis(row,"completedAt")==at)continue;if(events.length()+reminders.length()>=maximum)throw new SecurityException("Selected source results exceed consent bound");reminders.put(new JSONObject().put("id",row.getString("id")).put("title",row.getString("title")).put("dueAt",UTC.format(Instant.ofEpochMilli(millis(done,"dueAt")))).put("status","completed"));}}
+   if(evening){JSONArray history=row.optJSONArray("history");if(history!=null)for(int h=0;h<history.length();h++){JSONObject done=history.getJSONObject(h);if(!done.has("completedAt")||!done.has("dueAt"))continue;long at=millis(done,"completedAt");if(at<begin.toEpochMilli()||at>=end.toEpochMilli())continue;if("completed".equals(status)&&row.has("completedAt")&&millis(row,"completedAt")==at)continue;if(events.length()+reminders.length()>=maximum)throw new SecurityException("Selected source results exceed consent bound");reminders.put(new JSONObject().put("id",row.getString("id")).put("title",row.getString("title")).put("dueAt",UTC.format(Instant.ofEpochMilli(millis(done,"dueAt")))).put("status","completed"));}}
    if("completed".equals(status)){if(!evening||!row.has("completedAt"))continue;long at=millis(row,"completedAt");if(at<begin.toEpochMilli()||at>=end.toEpochMilli())continue;}
    // Upgraded one-off alarms (legacyAlarm, dueAt derived from at) are ordinary open reminders here.
    long due=row.has("dueAt")?millis(row,"dueAt"):millis(row,"at");if(!"completed".equals(status)&&due>=end.toEpochMilli())continue;

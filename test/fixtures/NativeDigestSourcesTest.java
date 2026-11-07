@@ -34,13 +34,20 @@ public final class NativeDigestSourcesTest {
    .put(new JSONObject().put("id","done-today").put("title","Done today").put("at",today-7200000).put("dueAt",today-7200000).put("status","completed").put("completedAt",today-60000).put("history",new JSONArray().put(new JSONObject().put("occurrenceId","o1").put("dueAt",today-7200000).put("completedAt",today-60000).put("skippedDates",0))))
    .put(new JSONObject().put("id","done-yesterday").put("title","Done yesterday").put("at",today-86400000).put("dueAt",today-86400000).put("status","completed").put("completedAt",today-86400000))
    .put(new JSONObject().put("id","daily").put("title","Recurring").put("at",today+86400000).put("dueAt",today+86400000).put("status","scheduled").put("recurrence",new JSONObject()).put("history",new JSONArray().put(new JSONObject().put("occurrenceId","d1").put("dueAt",today-3600000).put("completedAt",today-1800000).put("skippedDates",0))))
-   .put(new JSONObject().put("id","cancelled").put("title","Cancelled").put("at",today).put("dueAt",today).put("status","cancelled"));}};
+   .put(new JSONObject().put("id","cancelled").put("title","Cancelled").put("at",today).put("dueAt",today).put("status","cancelled"))
+   .put(new JSONObject().put("id","staged-delete").put("title","Deleted").put("at",today).put("dueAt",today).put("status","scheduled").put("pendingDeletion","token"))
+   .put(new JSONObject().put("id","todo-open").put("title","Undated").put("status","todo").put("mode","none").put("undated",true))
+   .put(new JSONObject().put("id","todo-done").put("title","Undated done").put("status","completed").put("mode","none").put("undated",true).put("completedAt",today-60000).put("history",new JSONArray().put(new JSONObject().put("occurrenceId","t1").put("completedAt",today-60000))))
+   .put(new JSONObject().put("id","todo-reopened").put("title","Undated reopened").put("status","todo").put("mode","none").put("undated",true).put("history",new JSONArray().put(new JSONObject().put("occurrenceId","t2").put("completedAt",today-120000))));}};
   JSONObject morning=sources.read(binding,"shared",shared.getString("revision"),now[0],now[0],"morning",daily,()->{});JSONArray morningRows=morning.getJSONArray("reminders");
   require(!morning.has("template")&&morningRows.length()==2&&morningRows.getJSONObject(0).getString("id").equals("legacy")&&morningRows.getJSONObject(1).getString("id").equals("open")&&!morningRows.toString().contains("completed"));
   JSONObject evening=sources.read(binding,"shared",shared.getString("revision"),now[0],now[0],"evening",daily,()->{});JSONArray eveningRows=evening.getJSONArray("reminders");Set<String> eveningIds=new HashSet<>();for(int i=0;i<eveningRows.length();i++)eveningIds.add(eveningRows.getJSONObject(i).getString("id")+":"+eveningRows.getJSONObject(i).getString("status"));
   require("evening".equals(evening.getString("template"))&&eveningRows.length()==4&&eveningIds.equals(Set.of("legacy:posted","open:scheduled","done-today:completed","daily:completed"))&&evening.getString("start").equals(morning.getString("start"))&&evening.getString("end").equals(morning.getString("end")));
   rejects(()->sources.read(binding,"shared",shared.getString("revision"),now[0],now[0],"weekly",daily,()->{}));
+  // A delayed run inside the agent's 30-minute admission window still reads its occurrence; a later or early read does not.
+  for(long minutes:new long[]{10,34})require(sources.read(binding,"shared",shared.getString("revision"),today-minutes*60000,today,"morning",daily,()->{}).getString("occurrence").equals(Instant.ofEpochMilli(today-minutes*60000).toString()));
+  for(long minutes:new long[]{36,-3}){long occurrence=today-minutes*60000;rejects(()->sources.read(binding,"shared",shared.getString("revision"),occurrence,today,"morning",daily,()->{}));}
   try(var files=Files.list(dir)){for(Path p:(Iterable<Path>)files::iterator)Files.delete(p);}Files.delete(dir);
-  System.out.println("PASS native digest sources: durable consent/restart, tenant/enrollment fences, revocation during read, selected scope, due-time projection, DST, overflow, expiry and egress, 7-day cap, evening window, legacy reminders");
+  System.out.println("PASS native digest sources: durable consent/restart, tenant/enrollment fences, revocation during read, selected scope, due-time projection, DST, overflow, expiry and egress, 7-day cap, evening window, legacy reminders, undated to-dos, staged deletions, run window");
  }
 }
