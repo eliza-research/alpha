@@ -1,5 +1,7 @@
 package ai.elizaresearch.alphaphone;
 
+import ai.eliza.plugins.filesystem.browser.StorageBrowser;
+import ai.eliza.plugins.filesystem.browser.StorageCatalog;
 import android.content.Context;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -12,17 +14,18 @@ import static org.junit.Assert.*;
 
 /**
  * Every Browse category id the renderer sends (StorageCatalog.CATEGORY_IDS, kept equal to
- * runtime/files-storage.ts CATEGORIES by test/files-browser.test.mjs) is answered by the
+ * the shared Files storage model by test/files-browser.test.mjs) is answered by the
  * native category path, and Downloads lists the files directly in Download/.
  */
 @RunWith(AndroidJUnit4.class)
 public class StorageCategoriesInstrumentedTest {
+ private static final String TRASH_FOLDER=".Trash-fixture";
  private static File tempRoot(Context context){File root=new File(context.getCacheDir(),"storage-categories-"+System.nanoTime());assertTrue(root.mkdirs());return root;}
  private static void file(File file,String text)throws Exception{try(FileOutputStream out=new FileOutputStream(file)){out.write(text.getBytes("UTF-8"));}}
 
  @Test public void everyCategoryIdIsAnswered()throws Exception{
   Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();
-  StorageBrowser browser=new StorageBrowser(tempRoot(context));
+  StorageBrowser browser=new StorageBrowser(tempRoot(context),TRASH_FOLDER);
   for(String id:StorageCatalog.CATEGORY_IDS){JSONObject out=StorageCatalog.category(context.getContentResolver(),browser,id);assertNotNull(id,out.getJSONArray("entries"));assertTrue(id,out.getInt("count")>=out.getJSONArray("entries").length());assertTrue(id,out.has("truncated"));}
   try{StorageCatalog.category(context.getContentResolver(),browser,"recent");fail("an unknown category is refused");}catch(IllegalArgumentException expected){}
  }
@@ -30,7 +33,7 @@ public class StorageCategoriesInstrumentedTest {
  @Test public void downloadsListsTheDownloadFolderFilesNewestFirst()throws Exception{
   Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();
   File root=tempRoot(context),download=new File(root,StorageCatalog.DOWNLOAD_FOLDER);
-  StorageBrowser browser=new StorageBrowser(root);
+  StorageBrowser browser=new StorageBrowser(root,TRASH_FOLDER);
   assertEquals("no Download folder is an empty category",0,StorageCatalog.category(context.getContentResolver(),browser,"downloads").getInt("count"));
   assertTrue(download.mkdirs());
   File older=new File(download,"lease.pdf"),newer=new File(download,"notes.txt");

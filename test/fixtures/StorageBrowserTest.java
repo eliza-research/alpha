@@ -1,4 +1,4 @@
-package ai.elizaresearch.alphaphone;
+package ai.eliza.plugins.filesystem.browser;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -7,16 +7,17 @@ import java.util.List;
 
 /** Host-JVM check of StorageBrowser over a temporary folder (spec files-browser, Design.cfg). */
 public final class StorageBrowserTest {
+ private static final String TRASH=".Trash-alpha";
  static void check(boolean ok,String what){if(!ok)throw new AssertionError(what);}
  static String text(File f)throws Exception{return new String(Files.readAllBytes(f.toPath()),"UTF-8");}
  public static void main(String[] args)throws Exception{
   File root=Files.createTempDirectory("alpha-storage").toFile();
   try{
-   StorageBrowser b=new StorageBrowser(root);
+   StorageBrowser b=new StorageBrowser(root,TRASH);
    new File(root,"Download").mkdirs();new File(root,"Documents").mkdirs();
    StorageBrowser.write(new File(root,"Download/a.pdf"),"download");
    StorageBrowser.write(new File(root,"Documents/a.pdf"),"document");
-   check(b.trashList(0L).isEmpty()&&b.emptyTrash(Arrays.asList())==0&&!new File(root,StorageBrowser.TRASH).exists(),"reading Trash does not create it");
+   check(b.trashList(0L).isEmpty()&&b.emptyTrash(Arrays.asList())==0&&!new File(root,TRASH).exists(),"reading Trash does not create it");
    // NoOverwriteWithoutConfirm: a clash keeps both.
    List<StorageBrowser.Outcome> moved=b.transfer(Arrays.asList("Download/a.pdf"),"Documents",false);
    check(moved.get(0).status.equals("moved")&&moved.get(0).to.equals("Documents/a (1).pdf"),"move keeps both: "+moved.get(0).to);
@@ -64,7 +65,7 @@ public final class StorageBrowserTest {
    List<StorageBrowser.Row> downloads=b.files("Download",2000);
    check(downloads.size()==2&&downloads.get(0).path.equals("Download/new.txt")&&downloads.get(1).path.equals("Download/old.pdf"),"downloads lists Download/ files newest first");
    check(b.files("Download",1).size()==1,"downloads is bounded");
-   check(new StorageBrowser(Files.createTempDirectory("alpha-empty").toFile()).files("Download",2000).isEmpty(),"no Download folder is an empty category");
+   check(new StorageBrowser(Files.createTempDirectory("alpha-empty").toFile(),TRASH).files("Download",2000).isEmpty(),"no Download folder is an empty category");
    // A copy that fails part way leaves no partial "Folder (1)" behind.
    File tree=new File(root,"Tree");new File(tree,"a").mkdirs();StorageBrowser.write(new File(tree,"a/one.txt"),"1");StorageBrowser.write(new File(tree,"b.txt"),"2");
    File unreadable=new File(tree,"zz.txt");StorageBrowser.write(unreadable,"3");

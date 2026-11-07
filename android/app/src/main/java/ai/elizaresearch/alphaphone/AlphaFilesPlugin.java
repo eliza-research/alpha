@@ -1,5 +1,7 @@
 package ai.elizaresearch.alphaphone;
 
+import ai.eliza.plugins.filesystem.browser.StorageBrowser;
+import ai.eliza.plugins.filesystem.browser.StorageCatalog;
 import ai.eliza.plugins.media.DocumentFolderTree;
 import android.app.Activity;
 import android.content.*;
@@ -22,6 +24,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class AlphaFilesPlugin extends Plugin {
  /** Installed name of the preference that records the chosen tree. */
  static final String PREF="alpha-files-tree";
+ private static final String STORAGE_TRASH_FOLDER=".Trash-alpha";
  private final ExecutorService worker=Executors.newSingleThreadExecutor();
  private final AtomicBoolean picking=new AtomicBoolean();
  private DocumentFolderTree tree;
@@ -65,7 +68,7 @@ public class AlphaFilesPlugin extends Plugin {
    if(!"granted".equals(StorageCatalog.access())){call.resolve(denied());return;}
    StorageCatalog.Volume volume=StorageCatalog.volume(getContext(),call.getString("volume","primary"));
    if(volume==null){call.resolve(result("unavailable","This storage is not mounted."));return;}
-   JSObject out=task.run(new StorageBrowser(volume.directory));if(!out.has("status"))out.put("status","ready");call.resolve(out);
+   JSObject out=task.run(new StorageBrowser(volume.directory,STORAGE_TRASH_FOLDER));if(!out.has("status"))out.put("status","ready");call.resolve(out);
   }catch(IllegalArgumentException e){call.resolve(result("invalid","Invalid name or path."));}
   catch(IllegalStateException e){call.resolve(result("exists","That name is already used here."));}
   catch(java.io.FileNotFoundException e){call.resolve(result("missing","This item is no longer there."));}
@@ -110,7 +113,7 @@ public class AlphaFilesPlugin extends Plugin {
  });}
  @PluginMethod public void storageCategory(PluginCall call){storage(call,b->StorageCatalog.category(resolver(),primaryBrowser(),call.getString("category","")));}
  /** Categories are on the primary volume whichever volume the call named. */
- private StorageBrowser primaryBrowser(){StorageCatalog.Volume v=StorageCatalog.volume(getContext(),"primary");return new StorageBrowser(v==null?android.os.Environment.getExternalStorageDirectory():v.directory);}
+ private StorageBrowser primaryBrowser(){StorageCatalog.Volume v=StorageCatalog.volume(getContext(),"primary");return new StorageBrowser(v==null?android.os.Environment.getExternalStorageDirectory():v.directory,STORAGE_TRASH_FOLDER);}
  /** Candidates for the agent's read-only filter; the renderer applies the exact rules. */
  @PluginMethod public void storageQuery(PluginCall call){storage(call,b->{
   Double from=call.getDouble("from"),to=call.getDouble("to");long since=from==null?0:from.longValue(),until=to==null?0:to.longValue();
