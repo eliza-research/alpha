@@ -71,8 +71,25 @@ export function GoogleConnectionsPanel(){
   setBusy(true);setNotice('Checking Google connections…');
   try{
    if(!current())return;
-   const rows=await createGoogleAccounts(cloud,()=>connectionController.getCloudClient()).list(abort.signal);if(!current())return;setAccounts(rows);
-   if(requiredConnectionId&&!rows.some(row=>row.connected&&row.connectionId===requiredConnectionId)){setNotice('Google returned, but that connection could not be verified. Existing connections are unchanged.');return;}
+   const accountsClient=createGoogleAccounts(cloud,()=>connectionController.getCloudClient());
+   let rows=await accountsClient.list(abort.signal);
+   if(!current()||requiredConnectionId&&returnedWorkspace.current!==returned)return;
+   setAccounts(rows);
+   const returnedGrantVisible=()=>rows.some(row=>row.connected&&row.connectionId===requiredConnectionId);
+   if(requiredConnectionId&&!returnedGrantVisible()){
+    // The verified native return can arrive before the account list reflects the grant.
+    await new Promise<void>(resolve=>{
+     const done=()=>{clearTimeout(timer);abort.signal.removeEventListener('abort',done);resolve();};
+     const timer=setTimeout(done,350);
+     abort.signal.addEventListener('abort',done,{once:true});
+     if(abort.signal.aborted)done();
+    });
+    if(!current()||returnedWorkspace.current!==returned)return;
+    rows=await accountsClient.list(abort.signal);
+    if(!current()||returnedWorkspace.current!==returned)return;
+    setAccounts(rows);
+    if(!returnedGrantVisible()){setNotice('Google returned, but that connection could not be verified. Existing connections are unchanged.');return;}
+   }
    // Calendar is one merged view: the agent's Calendar reads every calendar these accounts show in Google.
    setNotice(returned?.result==='denied'?'Google authorization was cancelled. Existing connections are unchanged.':returned?.result==='failed'?'Google authorization did not complete. Existing connections are unchanged.':!rows.some(row=>row.connected)?'No Google account connected.':rows.some(row=>row.connected&&row.grantedCapabilities.includes('google.calendar.read'))?'Calendar includes the calendars you show in Google.':'');if(returnedWorkspace.current===returned)returnedWorkspace.current=null;
    // The Calendar intent links only from this readback, and only the returned grant when Google named one.
