@@ -30,7 +30,7 @@ Platform contracts: [Android ImageDecoder](https://developer.android.com/referen
 
 ## Measured browser filter reference (APK source frozen during Build72)
 
-Superseded by the Build74 canonical PNG reference below; the Build72 chart script was removed. Reproduce the measurement with `scripts/test-photo-filter-png-reference.mjs`. The record below is historical.
+Superseded by the Build74 canonical PNG reference below; the Build72 chart script was removed. The record below is historical.
 
 The Build72 chart script rendered actual CSS-filtered color blocks in headless Chromium151.0.7922.34, reads their screenshot pixels and independently evaluates sequential normalized sRGB formulas. Its65 inputs cover45 opaque RGB cube samples plus20 zero/partial-alpha samples. All seven filters matched **every opaque RGB byte exactly** using floating-point intermediates, per-primitive `[0,1]` clipping, and final byte rounding. Alpha was retained exactly; nonzero partial-alpha RGB differed by at most3 byte levels, including up to2 levels for Original, consistent with premultiplied-alpha quantization. Fully transparent RGB is not meaningful and is not an equivalence assertion.
 
