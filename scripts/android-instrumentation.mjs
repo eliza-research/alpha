@@ -174,6 +174,7 @@ export const CLASS_REGISTRY = {
   NotesSecureStorage: { args: { notesSecureStorage: "1" }, note: "the legacy-layout migration runs across a process restart in node scripts/test-native-restart.mjs notes-secure-migration; its in-process variant (notesSecureMigration=1) is skipped here" },
   PdfViewer: { args: { isolatedPdfNative: "1" } },
   PhotosBatch: { args: { photosBatch: "1" } },
+  KeptCaptureLegacyPath: { note: "A scan Keep reserved under the old Pictures/ capture folder, pending or published, resolves there after the move to DCIM/Camera/ with no second copy" },
   PhotoLibrary: { args: { photoLibrary: "1" }, note: "grants READ_MEDIA_IMAGES/VIDEO (Android 13+), creates and deletes only its own uniquely named fixtures; permission revoke, selected-only grants and reboot need separate campaigns" },
   PhotosForeignLibrary: { args: {}, note: "requires an explicit disposable user, separate-UID synthetic ledger and expected permission scope; no implicit media access" },
   PhotosLibrary: { args: { photosLibrary: "1" }, note: "requires an owned disposable secondary user; synthetic generation fence only, not foreign-media permission acceptance" },
