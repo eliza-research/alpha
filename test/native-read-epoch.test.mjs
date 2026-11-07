@@ -14,7 +14,9 @@ test('delayed provider results cannot cross a lifecycle or permission boundary',
   // AlphaPhotos and AlphaPhotoLibrary register the shared Photos plugins, which publish under the ticket.
   const media=join(root,'vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media');
   const photos=readFileSync(join(media,'PhotosPlugin.java'),'utf8');
-  assert.match(photos,/permitted\.publish\(call, value, ticket\)/);
+  assert.match(photos,/class PhotosPlugin extends PermittedPhotosPlugin/);
+  const permitted=readFileSync(join(media,'PermittedPhotosPlugin.java'),'utf8');
+  assert.match(permitted,/permitted\.publish\(call, value, ticket\)/);
   const facade=readFileSync(join(media,'DeviceLibraryPlugin.java'),'utf8');
   assert.equal((facade.match(/catalog\.publish\(call,/g)||[]).length,3);
   assert.match(readFileSync(join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPhotosPlugin.java'),'utf8'),/extends PhotosPlugin \{/);

@@ -20,12 +20,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * selected-document capabilities. */
 @CapacitorPlugin(name="AlphaFiles", permissions={@Permission(alias="legacyStorage",strings={android.Manifest.permission.READ_EXTERNAL_STORAGE,android.Manifest.permission.WRITE_EXTERNAL_STORAGE})})
 public class AlphaFilesPlugin extends Plugin {
- @Override @PluginMethod public void requestPermissions(PluginCall call) { LateLaunch.ask(call, () -> super.requestPermissions(call)); }
  /** Installed name of the preference that records the chosen tree. */
  static final String PREF="alpha-files-tree";
  private final ExecutorService worker=Executors.newSingleThreadExecutor();
  private final AtomicBoolean picking=new AtomicBoolean();
  private DocumentFolderTree tree;
+ /** Plugin.requestPermissions launches for a plugin that declares permissions (legacyStorage);
+  * a late call is answered like every other Alpha plugin (LateLaunch). */
+ @Override @PluginMethod public void requestPermissions(PluginCall call){LateLaunch.ask(call,()->super.requestPermissions(call));}
  @Override public void load(){tree=new DocumentFolderTree(getContext(),PREF,uri->SelectedDocumentAccess.authorize(getContext(),uri,0));}
  private void run(PluginCall call,DocumentFolderTree.Work task){PluginWorkers.submit(worker,()->call.resolve(tree.guarded(task)),()->call.resolve(DocumentFolderTree.result("unavailable","Files closed. Reopen Files to continue.")));}
  @PluginMethod public void choose(PluginCall call){

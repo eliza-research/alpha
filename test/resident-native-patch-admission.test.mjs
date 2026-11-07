@@ -18,7 +18,10 @@ test('pinned recovery and lifecycle sources match the reviewed upstream repair',
  // android/consumer-host.json compiles the lease helper.
  // elizaOS/eliza#38821 adds only ELIZA_ANDROID_VOICE_BUNDLE_DIR to the agent's environment, from the
  // VoiceBundleAssets.bundleRoot the service already calls, which reads the manifest and writes nothing.
- ['ElizaAgentService','1cb89a4c1283fcd90f19d739ef3cf23d556ee9da184516583c41a128bb49e984'],
+ // The reviewed 94c8 merge also fences explicit starts and delayed recovery restarts through
+ // RuntimeUpdatePause.beforeStart(). Credential shutdown and the other recovery sources retain
+ // their byte identities; the RuntimeUpdatePause helper is included in the consumer host.
+ ['ElizaAgentService','43ec0d33a6fcefb214b52f792d0b67a635933f32c2c9dbbe3ef3ac57fd11bdd7'],
  // PR37979/37981: verify directory timestamps after recovery publication.
  ['IpcStartupRecovery','c51152d8b6403622171e4baed30f55cb540cad2c3fd49a8be1171a4b2c015c27'],
  ['WorkflowSurvivorInventory','3270bebe7e125705eda25e91ba9996f99cb80fbcb7e534c0d1ea47672a0fc42b'],
