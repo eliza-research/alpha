@@ -248,7 +248,7 @@ public final class AlphaDevicePlugin extends Plugin {
    Context application=base.getApplicationContext();context=application!=null?application:base;
    executingApk=base.getApplicationInfo().sourceDir;
    ai.eliza.plugins.agent.updater.RuntimeUpdatePause.configureStartAdmission(()->{
-    try{return store().read()==null;}catch(Exception unavailable){return false;}
+    try{return activation==null&&store().read()==null;}catch(Exception unavailable){return false;}
    });
    // No record means no APK hashing on ordinary startup. A successor reconciles before providers start.
    try{reconcile();}catch(Exception unavailable){/* Durable uncertainty keeps starts fenced. */}
@@ -304,23 +304,79 @@ public final class AlphaDevicePlugin extends Plugin {
   final String id=java.util.UUID.randomUUID().toString();
   final AlphaDevicePlugin owner;
   final java.util.concurrent.CompletableFuture<Boolean> ready=new java.util.concurrent.CompletableFuture<>();
-  UpdateActivation(AlphaDevicePlugin owner){this.owner=owner;}
+  final java.util.Set<AlphaDevicePlugin> waiting=new java.util.HashSet<>();
+  final java.util.Set<AlphaDevicePlugin> acknowledged=new java.util.HashSet<>();
+  boolean sealed,invalid;
+  UpdateActivation(AlphaDevicePlugin owner){this.owner=owner;waiting.addAll(updateBridges);}
  }
+ private static final Object updateBarrier=new Object();
+ private static final java.util.Set<AlphaDevicePlugin> updateBridges=new java.util.HashSet<>();
+ private final String updateBridgeId=java.util.UUID.randomUUID().toString();
  private static volatile UpdateActivation activation;
+ private static String settledActivation,settledOutcome;
+ private JSObject preparation(UpdateActivation pending){return new JSObject().put("activationId",pending.id).put("bridgeId",updateBridgeId).put("phase",pending.sealed?"paused":"preparing");}
+ private void registerUpdateBridge(){
+  UpdateActivation pending;
+  synchronized(updateBarrier){
+   updateBridges.add(this);pending=activation;
+   if(pending!=null&&!pending.sealed){
+    // A completed barrier cannot grow. Its installer must retry preparation;
+    // this new page has not proved that it has retained its drafts.
+    if(pending.ready.isDone()){pending.invalid=true;}
+    else pending.waiting.add(this);
+   }
+  }
+  if(pending!=null)notifyListeners("alphaUpdateReady",preparation(pending));
+ }
+ private void retireUpdateBridge(){
+  synchronized(updateBarrier){
+   updateBridges.remove(this);
+   UpdateActivation pending=activation;
+   if(pending!=null&&!pending.sealed){pending.invalid=true;pending.ready.complete(false);}
+  }
+ }
  /** Acknowledges only the current staged activation; false is a pre-commit refusal, not cancellation of an install. */
  @PluginMethod public void activateUpdate(PluginCall call){
-  UpdateActivation pending=activation;
   Object ready=call.getData().opt("ready");
-  if(pending==null||pending.owner!=this||!pending.id.equals(call.getString("activationId"))||!(ready instanceof Boolean)||!pending.ready.complete((Boolean)ready)){call.reject("Update preparation changed");return;}
+  synchronized(updateBarrier){
+   UpdateActivation pending=activation;
+   if(pending==null||pending.invalid||pending.sealed||!pending.id.equals(call.getString("activationId"))||!updateBridgeId.equals(call.getString("bridgeId"))||!(ready instanceof Boolean)||!pending.waiting.remove(this)){call.reject("Update preparation changed");return;}
+   if(!(Boolean)ready){pending.invalid=true;pending.ready.complete(false);}
+   else {pending.acknowledged.add(this);if(pending.waiting.isEmpty())pending.ready.complete(true);}
+  }
   call.resolve();
  }
- private void settleUpdate(String id,String outcome){notifyListeners("alphaUpdateSettled",new JSObject().put("activationId",id).put("outcome",outcome));}
+ private void settleUpdate(String id,String outcome){
+  java.util.List<AlphaDevicePlugin> bridges;
+  synchronized(updateBarrier){
+   if(id.equals(settledActivation))return;
+   settledActivation=id;settledOutcome=outcome;
+   if(activation!=null&&activation.id.equals(id))activation=null;
+   bridges=new java.util.ArrayList<>(updateBridges);
+  }
+  for(AlphaDevicePlugin bridge:bridges)bridge.notifyListeners("alphaUpdateSettled",new JSObject().put("activationId",id).put("outcome",outcome));
+ }
+ private JSObject readUpdateState()throws Exception{
+  synchronized(updateBarrier){
+   UpdateActivation pending=activation;
+   if(pending!=null)return preparation(pending).put("pending",true);
+   var record=UpdatePause.store().read();
+   JSObject result=new JSObject().put("bridgeId",updateBridgeId).put("pending",record!=null);
+   if(record!=null)result.put("activationId",record.id).put("phase","paused");
+   else if(settledActivation!=null)result.put("activationId",settledActivation).put("outcome",settledOutcome);
+   return result;
+  }
+ }
+ /** Startup admission is queried after listeners are installed, before the page starts owners or the resident. */
+ @PluginMethod public void updateState(PluginCall call){
+  PluginWorkers.submit(diagnosticsWorker,()->{try{call.resolve(readUpdateState());}catch(Exception unavailable){call.reject("Update status unavailable");}},()->call.reject("Update status unavailable"));
+ }
  private boolean reconcileUpdate(){
   try{var settled=UpdatePause.reconcile();if(settled!=null){settleUpdate(settled.id,BuildConfig.VERSION_CODE==settled.targetCode?"installed":"canceled");return true;}}catch(Exception unavailable){/* Unknown stays paused; no replay. */}
   return false;
  }
  @PluginMethod public void reconcileUpdate(PluginCall call){
-  PluginWorkers.submit(updateWorker,()->{reconcileUpdate();try{call.resolve(new JSObject().put("pending",activation!=null||UpdatePause.store().read()!=null));}catch(Exception unavailable){call.reject("Update status unavailable");}},()->call.reject("Update status unavailable"));
+  PluginWorkers.submit(updateWorker,()->{reconcileUpdate();try{call.resolve(readUpdateState());}catch(Exception unavailable){call.reject("Update status unavailable");}},()->call.reject("Update status unavailable"));
  }
  /** Downloads run here, never on the problem-log worker. */
  private final java.util.concurrent.ExecutorService updateWorker=java.util.concurrent.Executors.newSingleThreadExecutor();
@@ -396,6 +452,7 @@ public final class AlphaDevicePlugin extends Plugin {
  private static final java.util.concurrent.atomic.AtomicInteger updatesCommitted=new java.util.concurrent.atomic.AtomicInteger();
  @Override public void load(){
   super.load();
+  registerUpdateBridge();
   PluginWorkers.submit(updateWorker,()->reconcileUpdate(),()->{});
   // Deletes the download a killed process left (up to UPDATE_MAX_BYTES), never one in flight on another bridge.
   if(updating.compareAndSet(false,true)){updateApk().delete();updating.set(false);}
@@ -510,9 +567,14 @@ public final class AlphaDevicePlugin extends Plugin {
       try(PackageInstaller.Session session=installer.openSession(id)){
        try(java.io.OutputStream out=session.openWrite("base.apk",0,size)){java.nio.file.Files.copy(apk.toPath(),out);session.fsync(out);}
        throwIfDestroyed();
-       preparation=new UpdateActivation(this);activation=preparation;
-       notifyListeners("alphaUpdateReady",new JSObject().put("activationId",preparation.id));
+       java.util.List<AlphaDevicePlugin> participants;
+       synchronized(updateBarrier){preparation=new UpdateActivation(this);activation=preparation;participants=new java.util.ArrayList<>(updateBridges);}
+       for(AlphaDevicePlugin bridge:participants)bridge.notifyListeners("alphaUpdateReady",bridge.preparation(preparation));
        if(!preparation.ready.get(30,java.util.concurrent.TimeUnit.SECONDS))throw new java.io.IOException("Update preparation refused");
+       synchronized(updateBarrier){
+        if(activation!=preparation||preparation.invalid||!preparation.waiting.isEmpty()||!preparation.acknowledged.containsAll(updateBridges))throw new java.io.IOException("Update renderers changed");
+        preparation.sealed=true;
+       }
        throwIfDestroyed();
        pauseOwned=true;UpdatePause.acquire(preparation.id,id,versionCode,sha256,updateBoot());
        UpdatePause.stop();
@@ -539,9 +601,11 @@ public final class AlphaDevicePlugin extends Plugin {
      }
     }finally{
      if(preparation!=null){
-      if(activation==preparation)activation=null;
       if(preparation.id.equals(UpdatePause.liveOwner))UpdatePause.liveOwner=null;
       if(pauseOwned){boolean settled=reconcileUpdate();try{if(!settled&&UpdatePause.store().read()==null&&UpdatePause.shutdownRequest<0)settleUpdate(preparation.id,"failed");}catch(Exception unknown){/* Failed publication may have persisted. */}}else settleUpdate(preparation.id,"failed");
+      // Keep a pre-commit attempt visible until its terminal identity is published.
+      // After an uncertain commit the durable journal continues to own the pause.
+      synchronized(updateBarrier){if(activation==preparation)activation=null;}
      }
      apk.delete();updating.set(false);
     }
@@ -550,5 +614,5 @@ public final class AlphaDevicePlugin extends Plugin {
   },()->call.reject("Update unavailable"));
  }
  /** Stops an update download too: disconnect only closes the raw socket, which Android allows on this main thread. A session outlives its owner, for a later tap on any bridge. */
- @Override protected void handleOnDestroy(){UpdateActivation pending=activation;if(pending!=null&&pending.owner==this)pending.ready.complete(false);diagnosticsWorker.shutdown();updateWorker.shutdownNow();javax.net.ssl.HttpsURLConnection active=updateActive;if(active!=null)active.disconnect();getContext().unregisterReceiver(updateStatus);if(updateOwner==this){updateOwner=null;updateDue=false;updateOpen=false;}super.handleOnDestroy();}
+ @Override protected void handleOnDestroy(){retireUpdateBridge();UpdateActivation pending=activation;if(pending!=null&&pending.owner==this)pending.ready.complete(false);diagnosticsWorker.shutdown();updateWorker.shutdownNow();javax.net.ssl.HttpsURLConnection active=updateActive;if(active!=null)active.disconnect();getContext().unregisterReceiver(updateStatus);if(updateOwner==this){updateOwner=null;updateDue=false;updateOpen=false;}super.handleOnDestroy();}
 }

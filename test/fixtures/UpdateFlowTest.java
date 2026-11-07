@@ -194,6 +194,9 @@ public final class UpdateFlowTest {
  private static void forgetProcess()throws Exception{
   AlphaDevicePlugin.UpdatePause.liveOwner=null;AlphaDevicePlugin.UpdatePause.shutdownRequest=-1;
 
+  plugin("activation",null);plugin("settledActivation",null);plugin("settledOutcome",null);
+  var registry=AlphaDevicePlugin.class.getDeclaredField("updateBridges");
+  registry.setAccessible(true);((java.util.Set<?>)registry.get(null)).clear();
   plugin("updateOwner",null);plugin("updateConfirm",null);plugin("updateSession",0);plugin("updateDue",false);plugin("updateOpen",false);plugin("updateAsked",0L);
   java.lang.reflect.Field attempt=AlphaDevicePlugin.class.getDeclaredField("updating");
   attempt.setAccessible(true);((java.util.concurrent.atomic.AtomicBoolean)attempt.get(null)).set(false);
@@ -1618,32 +1621,41 @@ public final class UpdateFlowTest {
   var original=com.getcapacitor.Plugin.ready;
   try{
    Context context=installing(cache);AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED),other=bridge(context,Lifecycle.State.RESUMED);
-   CountDownLatch ready=new CountDownLatch(1);JSObject[] activation=new JSObject[1];
-   com.getcapacitor.Plugin.ready=(plugin,value)->{activation[0]=value;ready.countDown();};
+   CountDownLatch ready=new CountDownLatch(2);
+   var preparations=new java.util.concurrent.ConcurrentHashMap<com.getcapacitor.Plugin,JSObject>();
+   com.getcapacitor.Plugin.ready=(plugin,value)->{preparations.put(plugin,value);ready.countDown();};
    AlphaLocalAgentPlugin.stops=0;AlphaLocalAgentPlugin.releases=0;AlphaLocalAgentPlugin.confirmed=false;
    PluginCall installing=offered();owner.installUpdate(installing);
    check(ready.await(10,TimeUnit.SECONDS),"verified staged APK asks the renderer for draft readback");
    check(context.packages.installer.committed.isEmpty()&&AlphaLocalAgentPlugin.stops==0,"no shutdown or commit before renderer acknowledgment");
    PluginCall wrong=new PluginCall(new JSObject().put("activationId","00000000-0000-4000-8000-000000000000").put("ready",true));owner.activateUpdate(wrong);
    check(wrong.rejected.get()==1&&AlphaLocalAgentPlugin.stops==0,"wrong activation has no effect");
-   String activationId=activation[0].optString("activationId");
-   PluginCall absent=new PluginCall(new JSObject().put("activationId",activationId));owner.activateUpdate(absent);
+   JSObject request=preparations.get(owner), siblingRequest=preparations.get(other);
+   String activationId=request.optString("activationId"), bridgeId=request.optString("bridgeId");
+   check(activationId.equals(siblingRequest.optString("activationId"))&&!bridgeId.equals(siblingRequest.optString("bridgeId")),"same activation has distinct bridge receipts");
+   PluginCall absent=new PluginCall(new JSObject().put("activationId",activationId).put("bridgeId",bridgeId));owner.activateUpdate(absent);
    check(absent.rejected.get()==1&&absent.resolved.get()==0,"absent readiness is rejected without consuming the activation");
    for(Object malformed:new Object[]{null,"true","false",1,0,new JSObject(),new Object[]{true}}){
-    PluginCall invalid=new PluginCall(new JSObject().put("activationId",activationId).put("ready",malformed));owner.activateUpdate(invalid);
+    PluginCall invalid=new PluginCall(new JSObject().put("activationId",activationId).put("bridgeId",bridgeId).put("ready",malformed));owner.activateUpdate(invalid);
     check(invalid.rejected.get()==1&&invalid.resolved.get()==0,"nonboolean readiness is rejected: "+malformed);
    }
-   PluginCall foreign=new PluginCall(new JSObject().put("activationId",activationId).put("ready",true));other.activateUpdate(foreign);
-   check(foreign.rejected.get()==1,"another bridge cannot acknowledge this activation");
+   PluginCall foreign=new PluginCall(new JSObject().put("activationId",activationId).put("bridgeId",bridgeId).put("ready",true));other.activateUpdate(foreign);
+   check(foreign.rejected.get()==1,"another bridge cannot acknowledge with the owner's receipt");
    Thread.sleep(50);
    check(context.packages.installer.committed.isEmpty()&&AlphaLocalAgentPlugin.stops==0&&installing.resolved.get()==0&&installing.rejected.get()==0,"delayed valid acknowledgment keeps the staged install waiting after invalid calls");
-   PluginCall ack=new PluginCall(new JSObject().put("activationId",activation[0].optString("activationId")).put("ready",true));owner.activateUpdate(ack);
+   PluginCall ack=new PluginCall(request.put("ready",true));owner.activateUpdate(ack);
    check(ack.resolved.get()==1&&ack.rejected.get()==0,"the exact activation still accepts explicit true after invalid calls");
+   check(AlphaLocalAgentPlugin.stops==0&&context.packages.installer.committed.isEmpty(),"owner acknowledgment alone keeps the runtime running");
+   AlphaDevicePlugin joining=bridge(context,Lifecycle.State.CREATED);
+   PluginCall sibling=new PluginCall(siblingRequest.put("ready",true));other.activateUpdate(sibling);
+   check(sibling.resolved.get()==1&&AlphaLocalAgentPlugin.stops==0,"a joining renderer also must acknowledge its drafts");
+   PluginCall joined=new PluginCall(preparations.get(joining).put("ready",true));joining.activateUpdate(joined);
+   check(joined.resolved.get()==1,"the joining renderer acknowledged its own receipt");
    long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(5);
    while(AlphaLocalAgentPlugin.stops==0&&System.nanoTime()<deadline)Thread.sleep(5);
    check(AlphaLocalAgentPlugin.stops==1&&context.packages.installer.committed.isEmpty(),"shutdown requested, unconfirmed stop prevents commit");
    check(AlphaDevicePlugin.UpdatePause.store().read()!=null,"pause survives before stop acknowledgment");
-   PluginCall repeated=new PluginCall(new JSObject().put("activationId",activationId).put("ready",false));owner.activateUpdate(repeated);
+   PluginCall repeated=new PluginCall(request.put("ready",false));owner.activateUpdate(repeated);
    check(repeated.rejected.get()==1&&repeated.resolved.get()==0,"an acknowledged activation cannot be changed to a refusal while shutdown waits");
    AlphaLocalAgentPlugin.confirmed=true;installing.awaitAnswer();
    check(installing.resolved.get()==1&&context.packages.installer.committed.size()==1,"matching shutdown allows exactly one commit");
@@ -1653,7 +1665,15 @@ public final class UpdateFlowTest {
    ended(context,session,PackageInstaller.STATUS_FAILURE_ABORTED);
    PluginCall reconciled=new PluginCall(new JSObject());owner.reconcileUpdate(reconciled);reconciled.awaitAnswer();
    check(AlphaDevicePlugin.UpdatePause.store().read()==null&&AlphaLocalAgentPlugin.releases==1,"actual terminal cancellation releases the owned shutdown");
+   check(reconciled.result!=null&&activationId.equals(reconciled.result.optString("activationId"))
+     &&"canceled".equals(reconciled.result.optString("outcome")),"reconciliation returns the proven activation result");
    check(owner.events.stream().filter(e->e.equals("alphaUpdateSettled:canceled")).count()==1,"cancellation settles once");
+   check(other.events.stream().filter(e->e.equals("alphaUpdateSettled:canceled")).count()==1
+     &&joining.events.stream().filter(e->e.equals("alphaUpdateSettled:canceled")).count()==1,"all live renderers receive the terminal result");
+   PluginCall readback=new PluginCall(new JSObject());joining.updateState(readback);readback.awaitAnswer();
+   check(readback.resolved.get()==1&&Boolean.FALSE.equals(readback.result.opt("pending"))
+     &&activationId.equals(readback.result.optString("activationId"))&&"canceled".equals(readback.result.optString("outcome")),
+     "a renderer that missed the event can read the same terminal identity");
   }finally{com.getcapacitor.Plugin.ready=original;AlphaLocalAgentPlugin.confirmed=true;}
  }
  private static void refusedDraftFlushNeverStopsOrCommits(File cache)throws Exception{
@@ -1667,6 +1687,25 @@ public final class UpdateFlowTest {
    check(owner.events.stream().filter(e->e.equals("alphaUpdateSettled:failed")).count()==1,"preparation refusal settles once");
   }finally{com.getcapacitor.Plugin.ready=original;}
  }
+ private static void destroyedSiblingCannotSatisfyDraftBarrier(File cache)throws Exception{
+  var original=com.getcapacitor.Plugin.ready;
+  try{
+   Context context=installing(cache);
+   AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED),sibling=bridge(context,Lifecycle.State.CREATED);
+   CountDownLatch ready=new CountDownLatch(2);
+   com.getcapacitor.Plugin.ready=(plugin,value)->{
+    if(plugin==owner)owner.activateUpdate(new PluginCall(value.put("ready",true)));
+    ready.countDown();
+   };
+   AlphaLocalAgentPlugin.stops=0;
+   PluginCall install=offered();owner.installUpdate(install);
+   check(ready.await(10,TimeUnit.SECONDS),"both WebViews were asked to flush");
+   sibling.handleOnDestroy();
+   install.awaitAnswer();
+   check(install.rejected.get()==1&&AlphaLocalAgentPlugin.stops==0,"destroy is not a draft acknowledgment");
+   check(context.packages.installer.committed.isEmpty()&&context.packages.installer.sessions.isEmpty(),"refused activation abandons only its staged session");
+  }finally{com.getcapacitor.Plugin.ready=original;}
+ }
  public static void main(String[] args)throws Exception{
   URL.setURLStreamHandlerFactory(protocol->!"https".equals(protocol)?null:new URLStreamHandler(){@Override protected URLConnection openConnection(URL url){return new Served(url);}});
   File cache=Files.createTempDirectory("alpha-update-flow").toFile();
@@ -1675,6 +1714,7 @@ public final class UpdateFlowTest {
    applicationAttachBeforePublicationDoesNotFenceOrdinaryStartup(cache);
    updateWaitsForDraftsAndExactShutdown(cache);
    refusedDraftFlushNeverStopsOrCommits(cache);
+   destroyedSiblingCannotSatisfyDraftBarrier(cache);
    aStartSweepsTheDownloadOfAKilledProcess(cache);
    oneTapInstallsWhileATapOnAnotherBridgeChangesNothing(cache);
    aTapOnAnotherBridgeLeavesAConfirmationPendingForTheOwner(cache);
