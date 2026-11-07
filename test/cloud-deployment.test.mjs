@@ -100,6 +100,20 @@ test('build admission rejects drift in either renderer or native generated autho
  }finally{fs.rmSync(temp,{recursive:true,force:true});}
 });
 
+test('build admission rejects a staging-only change that would move production credentials without a migration',async()=>{
+ const {checkCloudDeployment,storageFingerprint,STORAGE_NAMESPACES}=await import('../scripts/cloud-deployment.mjs');
+ assert.equal(storageFingerprint(defaults),STORAGE_NAMESPACES.at(-1));
+ const temp=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-cloud-namespace-'));
+ try{
+  const changed=structuredClone(defaults);changed.staging.services='https://different.example.org';
+  fs.mkdirSync(path.join(temp,'config'));fs.writeFileSync(path.join(temp,'config/cloud-deployment.json'),JSON.stringify(changed));
+  // Regenerated outputs are not enough: the reviewed namespace list must move with them.
+  for(const [file,contents] of Object.entries(deploymentOutputs(changed))){fs.mkdirSync(path.dirname(path.join(temp,file)),{recursive:true});fs.writeFileSync(path.join(temp,file),contents);}
+  assert.throws(()=>checkCloudDeployment(temp),/Cloud storage namespace would change: every installed phone loses its production credential/);
+  checkCloudDeployment(temp,undefined,[...STORAGE_NAMESPACES,storageFingerprint(changed)]);
+ }finally{fs.rmSync(temp,{recursive:true,force:true});}
+});
+
 test('build admission rejects a resident Cloud SDK base that disagrees with the deployment configuration',async()=>{
  const {checkCloudDeployment}=await import('../scripts/cloud-deployment.mjs');
  const {CLOUD_SDK_BASES,cloudSdkBases}=await import('../scripts/cloud-sdk-authority.mjs');

@@ -1,9 +1,9 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {execFileSync} from 'node:child_process';
 import {build} from 'esbuild';
+import {runChildSuite} from './fixtures/child-suite.mjs';
 test('saved Inbox drafts use the platform store and preserve account/conflict boundaries',()=>{
- execFileSync(process.execPath,['scripts/test-inbox-saved-drafts.mjs'],{stdio:'pipe',timeout:30000});
+ runChildSuite('test-inbox-saved-drafts.mjs',{timeout:30000});
 });
 test('retained email edits publish Inbox status copy verbatim',async()=>{
  const fixtures={

@@ -17,8 +17,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { flagOffAndroid, harness, button, fenceNetwork, expectNoDevelopmentSurface, residentHome, AGENT_NAME } from './flag-off-android';
 
-test.beforeEach(({}, testInfo) => { test.skip(testInfo.project.name !== 'production', 'Production bundle only'); });
-
 const home = (page: Page) => page.getByRole('region', { name: 'Home', exact: true });
 const brief = (page: Page) => home(page).locator('[data-alpha-home-brief]');
 /** The app's "Read/Ran <when>" wording for an instant: the time today, otherwise the date too. */

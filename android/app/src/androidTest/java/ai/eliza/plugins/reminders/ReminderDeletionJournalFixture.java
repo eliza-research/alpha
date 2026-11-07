@@ -37,6 +37,8 @@ public final class ReminderDeletionJournalFixture {
   c.deleteSharedPreferences(config.envelopeName);c.deleteSharedPreferences(config.legacyName);c.deleteSharedPreferences(config.bootMarkerName());
  }
  private void seed(Context c,ReminderConfiguration config,JSONObject row)throws Exception{assertTrue(c.getSharedPreferences(config.envelopeName,0).edit().putString("envelope",new JSONObject().put("version",1).put("source","original_source").put("records",new JSONObject().put("one",row.toString())).put("operations",new JSONObject()).toString()).commit());}
+ // Restoring a fresh store creates both channels on the real NotificationManager; remove them with the preference files.
+ private void cleanup(Context c,ReminderConfiguration config){c.deleteSharedPreferences(config.envelopeName);c.deleteSharedPreferences(config.legacyName);c.deleteSharedPreferences(config.bootMarkerName());NotificationManager manager=c.getSystemService(NotificationManager.class);manager.deleteNotificationChannel(config.channelId);manager.deleteNotificationChannel(config.dueChannelId());}
  public void persistedSuspensionBlocksDueDeliveryAndUndoKeepsOriginalOccurrence()throws Exception{
   Context c=notifying();String id="undo_"+UUID.randomUUID().toString().replace("-","");ReminderConfiguration config=config(id);JSONObject original=row();
   try{

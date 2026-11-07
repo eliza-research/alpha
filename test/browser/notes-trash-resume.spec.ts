@@ -1,7 +1,7 @@
 import {returnToApps} from './app-navigation';
 import {openLegacyNotes} from './helpers/legacy-notes';
 import {test,expect,type Page} from '@playwright/test';
-// Trash expiry must not depend on opening Notes: resume and the shell's 15-minute timer purge too.
+// With the legacy source selected, resume and the shell's 15-minute timer purge Trash too, not only opening Notes.
 const DAY=24*60*60*1000;
 test.describe.configure({timeout:60_000});
 const trashEntries=(page:Page)=>page.evaluate(async()=>(await (await import('/src/runtime/notes-trash.ts')).readNotesTrash()).entries);

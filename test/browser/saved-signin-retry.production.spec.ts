@@ -12,7 +12,6 @@ import {installResidentAgentPlugin} from './helpers/resident-agent-plugin';
 //
 // Flag-off production bundle with the Android bridge stubbed. The stub is not the native plugins,
 // the keystore or Eliza Cloud; the Android run is test-native-restart.mjs inbox on an emulator.
-test.beforeEach(({}, testInfo) => { test.skip(testInfo.project.name !== 'production', 'Production bundle only'); });
 type Mode = 'offline' | 'rejected' | 'funded';
 type Call = { plugin: string; method: string; path?: string; url?: string; slot?: string };
 

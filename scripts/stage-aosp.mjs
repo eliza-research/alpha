@@ -229,12 +229,17 @@ execFileSync(
 );
 fs.appendFileSync(path.join(output, "product.mk"), clockProductRequirement);
 // The image system feature Alpha Phone requires, with a system-partition install, before it offers
-// Phone, Contacts or SMS (P-36). Development and production images both declare it; test-mocks APKs
-// were refused above, and a sideloaded APK never has the system-partition install. The shared
-// Pixel 10a composition declares it for every brand, so only the other products write it here.
+// Phone, Contacts or SMS (P-36). Every image declares it, but the app also requires a release
+// launcher and the provisioning overlay written below only for production, so a development image
+// never passes the capability. Test-mocks APKs were refused above, and a sideloaded APK never has the
+// system-partition install. The shared Pixel 10a composition declares it for every brand, so only
+// the other products write it here.
 if (!physical) {
   const capability = writeImageCapability(output, identity.appId);
-  console.log(`Image capability: ${Object.keys(capability).find(name => name !== "productMakefile")}.`);
+  const feature = Object.keys(capability).find(name => name !== "productMakefile");
+  console.log(production
+    ? `Image capability: ${feature}.`
+    : `Image capability: ${feature} declared; Phone, Contacts and SMS need a production-staged release launcher.`);
 }
 writeSecureCameraOverlay(output, cameraSource);
 if (production) {

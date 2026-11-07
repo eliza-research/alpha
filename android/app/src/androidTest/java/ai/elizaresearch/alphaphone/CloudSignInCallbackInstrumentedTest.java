@@ -17,12 +17,13 @@ import static org.junit.Assert.*;
  * owned synthetic links only. No Steward exchange, Cloud request, Google consent or account is
  * involved; an unexpired matching return is never delivered here, so no sign-in request is sent. This does
  * not show that Android verified the App Link: that is `adb shell pm get-app-links
- * ai.elizaresearch.alphaphone` on a device whose eliza.app assetlinks lists the installed signer.
+ * ai.elizaresearch.alphaphone` on a device whose App Link host assetlinks lists the installed signer.
  */
 public final class CloudSignInCallbackInstrumentedTest {
  private static Context context() { return InstrumentationRegistry.getInstrumentation().getTargetContext(); }
  private static Intent intent(String uri) { return new Intent(Intent.ACTION_VIEW, Uri.parse(uri), context(), MainActivity.class); }
- private static String callback(String state) { return "https://eliza.app/alphaphone/auth/callback#code=synthetic-unused-code&state=" + state; }
+ private static final String HOST = BuildConfig.ELIZAOS_APP_LINK_HOST;
+ private static String callback(String state) { return "https://" + HOST + "/alphaphone/auth/callback#code=synthetic-unused-code&state=" + state; }
  private static void gate() { org.junit.Assume.assumeTrue("Explicit synthetic Cloud sign-in campaign", "1".equals(InstrumentationRegistry.getArguments().getString("cloudSignInNative"))); }
  private static AlphaCredentialStore store() { return new AlphaCredentialStore(context()); }
  private static void waitForRemoved(String slot) throws Exception {
@@ -33,16 +34,15 @@ public final class CloudSignInCallbackInstrumentedTest {
 
  private static void holdFor(long millis) { SystemClock.sleep(millis); }
 
- /** The return resolves to MainActivity only, at one exact path; eliza.app only in builds with ELIZAOS_APP_LINK_HOST=eliza.app. */
+ /** The return resolves to MainActivity only, at one exact path on the build's App Link host. */
  @Test public void returnLinkResolvesOnlyToMainActivity() {
+  assertFalse("The build declares an App Link host", HOST == null || HOST.isEmpty());
   PackageManager packages = context().getPackageManager();
   Intent link = new Intent(Intent.ACTION_VIEW, Uri.parse(callback(CloudSignInFlow.newState()))).addCategory(Intent.CATEGORY_BROWSABLE).setPackage(context().getPackageName());
   List<ResolveInfo> matches = packages.queryIntentActivities(link, 0);
-  if ("eliza.app".equals(BuildConfig.ELIZAOS_APP_LINK_HOST)) {
-   assertEquals(1, matches.size());
-   assertEquals(MainActivity.class.getName(), matches.get(0).activityInfo.name);
-  } else assertTrue("A build without ELIZAOS_APP_LINK_HOST declares no production return", matches.isEmpty());
-  for (String other : new String[]{"https://eliza.app/", "https://eliza.app/alphaphone/auth/callback/extra", "https://eliza.app/auth/callback", "https://api.eliza.app/alphaphone/auth/callback", "http://eliza.app/alphaphone/auth/callback"})
+  assertEquals(1, matches.size());
+  assertEquals(MainActivity.class.getName(), matches.get(0).activityInfo.name);
+  for (String other : new String[]{"https://" + HOST + "/", "https://" + HOST + "/alphaphone/auth/callback/extra", "https://" + HOST + "/auth/callback", "https://api." + HOST + "/alphaphone/auth/callback", "http://" + HOST + "/alphaphone/auth/callback"})
    assertTrue(other, packages.queryIntentActivities(new Intent(Intent.ACTION_VIEW, Uri.parse(other)).addCategory(Intent.CATEGORY_BROWSABLE).setPackage(context().getPackageName()), 0).isEmpty());
   boolean staging = !packages.queryIntentActivities(new Intent(Intent.ACTION_VIEW, Uri.parse("https://staging.eliza.app/alphaphone/auth/callback")).addCategory(Intent.CATEGORY_BROWSABLE).setPackage(context().getPackageName()), 0).isEmpty();
   assertEquals("The staging return exists only in test-mocks builds", BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS, staging);
@@ -67,7 +67,7 @@ public final class CloudSignInCallbackInstrumentedTest {
   String cloudBefore = store().readCredentialSlot("cloud:production");
   CloudSignInFlow.Pending pending = CloudSignInFlow.Pending.create(AlphaCloudSignInPlugin.REGISTRATION.defaultEnvironment(), System.currentTimeMillis());
   store().writeCredentialSlot(AlphaCloudSignInPlugin.PENDING_SLOT, pending.serialize());
-  try (BoundedActivityScenario<MainActivity> scenario = BoundedActivityScenario.launch(intent("https://eliza.app/alphaphone/auth/callback").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK))) {
+  try (BoundedActivityScenario<MainActivity> scenario = BoundedActivityScenario.launch(intent("https://" + HOST + "/alphaphone/auth/callback").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK))) {
    holdFor(3000);
    assertEquals(pending.serialize(), store().readCredentialSlot(AlphaCloudSignInPlugin.PENDING_SLOT));
    assertEquals(cloudBefore, store().readCredentialSlot("cloud:production"));

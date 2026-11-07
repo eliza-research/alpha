@@ -4,7 +4,6 @@ import { test, expect } from '@playwright/test';
 // calendar names where it was read from. The connected Inbox state of this card is exercised with
 // development data in home-attention.spec.ts until a provider adapter reports through
 // setHomeSources() in this lane.
-test.beforeEach(({}, info) => { test.skip(info.project.name !== 'production', 'Runs against the flag-off production build only'); });
 const offline = () => localStorage.setItem('alpha.connection.selection.v1', JSON.stringify({ kind: 'offline' }));
 
 test('not connected: the Inbox card opens Connections without inventing an unread count', async ({ page }, info) => {

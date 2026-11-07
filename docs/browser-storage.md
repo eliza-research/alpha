@@ -234,11 +234,14 @@ deletion that never committed).
 
 Entries expire exactly 3 days (`NOTES_TRASH_RETENTION_MS`) after `deletedAt`
 ([decision P-06](decisions.md#october-7-owner-product-decisions)).
-Maintenance runs at startup once saved Notes open, each time Notes opens, whenever the
-app returns to the foreground (`visibilitychange` and the native `appResumed` event) and
-every 15 minutes (`NOTES_TRASH_MAINTENANCE_INTERVAL_MS`) while the shell is alive, from
-`prototype/notes-trash-adapter.ts`, so expiry never waits for the user to open Notes.
-Background passes repaint Notes only when they removed something. It reads
+Maintenance is scheduled at startup once saved Notes open, each time Notes opens, whenever
+the app returns to the foreground (`visibilitychange` and the native `appResumed` event)
+and every 15 minutes (`NOTES_TRASH_MAINTENANCE_INTERVAL_MS`) while the shell is alive, from
+`prototype/notes-trash-adapter.ts`. Each pass returns at once in the default canonical
+source mode, so it does work only after Previous/Older notes (the legacy source) has been
+opened in the session. On Android the native backstop below bounds expiry and recordings
+regardless; in a browser, legacy Trash rows can outlive three days until that source is
+opened. Background passes repaint Notes only when they removed something. It reads
 authoritative storage, only takes the lock when there is work, and is idempotent: an
 interrupted purge is simply repeated. On Android a native backstop
 (`AlphaNoteAudioPlugin.sweepExpiredTrash`, run when the plugin loads and by the
@@ -296,8 +299,8 @@ with one renderer, that means the creating process is dead; in the browser build
 tab also settles a row that a first, still open tab left under review, once that tab has
 released the lock. A row left by an earlier process (process death) is settled by a backstop
 that is started with every Trash maintenance pass and takes the deletion-effects lock
-itself: at startup once saved Notes open, on resume, on the 15-minute timer and when Notes
-opens, so it never waits for Notes to be opened. With no recovery row it takes no lock and
+itself. Those passes do work only once the legacy source (Previous/Older notes) is
+selected in the session, so until then the row stays under review. With no recovery row it takes no lock and
 repaints nothing. `runtime/permanent-voice-deletion.ts` decides one
 step from authoritative readback of the saved note, the recording's metadata and this
 operation's own receipt:

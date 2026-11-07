@@ -37,7 +37,7 @@ public final class AlphaDeletionsPlugin extends Plugin {
    JSONObject target=binding==null?call.getObject("target"):binding.getJSONObject("operation").getJSONObject("target");if(target==null)throw new IllegalArgumentException();String id=target.getString("reminderId");
    JSONObject selected=AlphaReminders.engine(getContext()).selected(id);if(!DeferredDeletionJournal.same(selected,target)){resolveStatus(call,"stale");return;}
    JSONObject row=AlphaReminders.engine(getContext()).read(id);final JSONObject[] outcome={null};final AlertDialog[] own={null};
-   own[0]=new AlertDialog.Builder(getActivity()).setTitle("Delete reminder?").setMessage(row.getString("title")+"\n\nDelete this reminder after 10 seconds? Its alert is paused immediately. You can Undo during that time.").setNegativeButton("Cancel",(d,w)->{}).setPositiveButton("Delete reminder",(d,w)->{
+   own[0]=new AlertDialog.Builder(getActivity()).setTitle("Delete reminder?").setMessage(row.getString("title")+"\n\nIts alert pauses now. You can undo for 10 seconds.").setNegativeButton("Cancel",(d,w)->{}).setPositiveButton("Delete reminder",(d,w)->{
     if(retired||review!=own[0]||getContext().getSystemService(android.app.KeyguardManager.class).isDeviceLocked()||!getActivity().getLifecycle().getCurrentState().isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED))return;
     DeferredDeletionCoordinator coordinator=NativeDeletionCoordinator.get(getContext());String operationId;
     try{operationId=binding==null?java.util.UUID.randomUUID().toString():binding.getString("operationId");}catch(JSONException impossible){throw new IllegalStateException(impossible);}

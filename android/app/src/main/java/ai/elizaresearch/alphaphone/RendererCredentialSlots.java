@@ -17,7 +17,9 @@ final class RendererCredentialSlots {
   // In-app Cloud sign-in: the pending Google PKCE record and the key acknowledgement receipt.
   "cloud-signin", "google-workspace-return",
   // Physical deployment slots are native-owned. Renderer calls must use logical names.
-  "cloud-deployment"
+  "cloud-deployment",
+  // SMS send ledger and per-operation records: AlphaTelephony owns them.
+  "sms-send-ledger", "alpha-sms-operation"
  };
  /** Full-match patterns of the draft and pending-action slots that admit compare-and-exchange. */
  private static final String[] COMPARE_EXCHANGE = {
@@ -30,6 +32,8 @@ final class RendererCredentialSlots {
  /** Cloud sign-in credentials: renderer writes and removals reserve a credential intent (AlphaLocalAgentPlugin). */
  private static final String[] CREDENTIAL_SLOTS = { "cloud:production", "cloud:staging" };
  static final SecureSlotPolicy POLICY = new SecureSlotPolicy(Arrays.asList(NATIVE_NAMESPACES), Arrays.asList(COMPARE_EXCHANGE), Arrays.asList(CREDENTIAL_SLOTS));
+ /** The native-only namespaces, for the device isolation campaign. */
+ static java.util.List<String> nativeNamespaces() { return java.util.Collections.unmodifiableList(Arrays.asList(NATIVE_NAMESPACES)); }
  static String requireAllowed(String slot) { return POLICY.requireRendererSlot(slot); }
  static boolean compareExchangeAllowed(String slot) { return POLICY.compareExchangeAllowed(slot); }
  static boolean credentialSlot(String slot) { return POLICY.credentialSlot(slot); }

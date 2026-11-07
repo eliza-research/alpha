@@ -58,9 +58,9 @@ final class CalendarScopedDeletionReview {
   try{
    JSONObject fields=target.getJSONObject("fields");String scope=target.getString("scope"),scopeText=scope.equals("series")?"Entire series":scope.equals("occurrence")?"This occurrence only":"This event";
    String message=fields.getString("title")+"\n"+fields.getString("start")+" — "+fields.getString("end")+"\nTime zone: "+fields.getString("timeZone")+"\n"+scopeText+"\nCalendar: "+target.getString("account");
-   if(!target.optBoolean("local"))message+="\nThis change may sync to the calendar service. Remote completion cannot be verified here.";
-   if(target.optInt("attendeeCount")>0)message+="\nThis calendar event has guests. Its provider may notify them. Organizer: "+target.optString("organizer");
-   message+="\n\nDelete after 10 seconds? Undo keeps the original event and invitation unchanged during that window.";
+   if(!target.optBoolean("local"))message+="\nThis may sync to your calendar service.";
+   if(target.optInt("attendeeCount")>0)message+="\nGuests may be notified. Organizer: "+target.optString("organizer");
+   message+="\n\nYou can undo for 10 seconds. Until then the event and its invitation are unchanged.";
    dialog=new android.app.AlertDialog.Builder(plugin.getActivity()).setTitle("Delete calendar event?").setMessage(message).setNegativeButton("Cancel",(d,w)->{}).setPositiveButton("Delete event",(d,w)->{
     if(!reviewForeground()||!granted(plugin.getContext())){outcome[0]=status("cancelled");return;}
     try{outcome[0]=plugin.enqueueReviewedDeletion(target,operationId);}catch(Exception uncertain){outcome[0]=status("unknown");}

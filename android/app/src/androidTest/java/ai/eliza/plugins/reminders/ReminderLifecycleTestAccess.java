@@ -5,7 +5,7 @@ import ai.elizaresearch.alphaphone.AlphaReminders;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-/** Instrumentation-only access to patch 0040 internals (refusals, boot re-post, due channel, to-dos). */
+/** Instrumentation-only access to the upstream reminder lifecycle internals (refusals, boot re-post, due channel, to-dos). */
 public final class ReminderLifecycleTestAccess {
  private ReminderLifecycleTestAccess() {}
  private static ReminderStore store(Context c){return AlphaReminders.engine(c).store;}
