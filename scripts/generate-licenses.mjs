@@ -527,6 +527,8 @@ function elizaEntry(root) {
 export function parseGradleTree(output) {
   const coords = new Set();
   for (const line of output.split('\n')) {
+    if (/[+\\]--- .+ FAILED(?:\s|$)/.test(line))
+      throw new Error(`Unresolved Android runtime dependency: ${line.trim()}`);
     const match = line.match(/[+\\]--- ([^\s:]+):([^\s:]+)(?::([^\s]+))?(?: -> ([^\s]+))?(?: \((\*|c|n)\))?\s*$/);
     if (!match || match[1] === 'project') continue;
     if (match[5] === 'c' || match[5] === 'n') continue;
@@ -545,7 +547,8 @@ export function parseGradleTree(output) {
  */
 export function androidDependencyFingerprint(root) {
   const {profile} = readHostDescriptor(root);
-  const modules = profile.modules.filter(module => module.appDependency !== false)
+  // The secure-store bridge links native-only custody transitively. Fixture modules stay excluded.
+  const modules = profile.modules.filter(module => module.appDependency !== false || module.name === 'elizaos-capacitor-secure-store-nativeonly')
     .map(module => [module.name, referencePath(module.source)]).sort(([a], [b]) => a.localeCompare(b));
   const toolchain = readJson(root, `${HOST_TEMPLATES}/toolchain.json`);
   const template = read(root, `${HOST_TEMPLATES}/app.gradle`).split('\n').map(line => line.trim()).filter(line => /\b(implementation|add)\b.*(module|dependency)/.test(line));
