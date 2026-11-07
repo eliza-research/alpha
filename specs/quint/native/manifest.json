@@ -95,7 +95,8 @@
       "step": "step",
       "invariant": "safety",
       "sources": [
-        "apps/app/src/local-speech-playback.ts"
+        "apps/app/src/local-speech-playback.ts",
+        "patches/eliza/cloud-speech-native.patch"
       ],
       "tests": [
         "queueBackpressureTest",
@@ -116,7 +117,8 @@
       "abstractions": [
         "A two-chunk queue represents bounded PCM sample storage and backpressure.",
         "Three capture and synthesis generations, one native capture reservation, one playback writer.",
-        "Native cleanup calls are atomic completion steps; PCM buffer contents and wall-clock latency are omitted."
+        "Native cleanup calls are atomic completion steps; PCM buffer contents and wall-clock latency are omitted.",
+        "Silent output warmup is an independent, bounded output holder supplied by the authenticated cloud-speech-native patch. Its close/play serialization, timeout and first-audio retirement have separate JVM coverage in test/speech-output-warmup.test.mjs; this model represents capture and audible reply playback only."
       ],
       "sharedSources": [
         "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechAudioFocusPolicy.java",
@@ -539,7 +541,9 @@
       "init": "init",
       "step": "step",
       "invariant": "safety",
-      "sources": [],
+      "sources": [
+        "patches/eliza/cloud-speech-native.patch"
+      ],
       "stateMapping": {
         "started/terminal/stopped/writer/outputOpen": "StreamingSpeechPlayback.start, settle, stop, run/finally",
         "queue/chunkRemaining/produced/written/played/firstFrame": "bounded queue, partial AudioTrack writes and drain loop",
@@ -548,7 +552,8 @@
       "abstractions": [
         "Two chunks, two frames per chunk and one writer preserve partial/zero writes and output-drain ordering.",
         "Elapsed timeout boundaries are represented by explicit synthesis-stall and drain-timeout events.",
-        "PCM values, platform timestamps and audio quality stay external numeric inputs, while writer and callback lifecycle is explicit."
+        "PCM values, platform timestamps and audio quality stay external numeric inputs, while writer and callback lifecycle is explicit.",
+        "Silent output warmup is an independent, bounded output holder supplied by the authenticated cloud-speech-native patch. Its close/play serialization, timeout and first-audio retirement have separate JVM coverage in test/speech-output-warmup.test.mjs; this model represents capture and audible reply playback only."
       ],
       "tests": [
         "partialWriteThenDrainTest",

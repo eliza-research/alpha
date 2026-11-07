@@ -9,6 +9,13 @@ reviewed Eliza pin. Native speech, listener policies, reset authorization, media
 catalogs and deletion journals now use their shared owners. The Java conformance
 adapters compile those current packages alongside Alpha's remaining host policies.
 
+The authenticated `cloud-speech-native.patch` also supplies the bounded silent
+output-warmup holder. Its close/play serialization, timeout and retirement on
+first audio, cancellation and lifecycle loss have separate JVM coverage in
+`test/speech-output-warmup.test.mjs`. `SpeechResources` and `StreamingPlayback`
+represent capture and audible reply playback. Complete native-audio resource
+refinement remains an additional obligation.
+
 ## Source correspondence
 
 | Model | Source symbols inspected | State represented |
