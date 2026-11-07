@@ -133,7 +133,9 @@ public class AlphaFilesPlugin extends Plugin {
   if(Boolean.TRUE.equals(call.getBoolean("folders",false))){JSArray rows=new JSArray();for(StorageBrowser.Row r:primaryBrowser().folders(call.getString("folder",""),call.getString("text"),since,until,StorageCatalog.QUERY_MAX,StorageBrowser.WALK_MAX))rows.put(row(r));out.put("entries",rows);return out;}
   out.put("entries",StorageCatalog.query(resolver(),call.getString("text"),call.getString("mimePrefix"),Boolean.TRUE.equals(call.getBoolean("documents",false)),call.getString("folder"),since,until));return out;
  });}
+ private boolean filesReviewVisible(){Activity activity=getActivity();return activity!=null&&activity.hasWindowFocus();}
  @PluginMethod public void storageReviewedIdentities(PluginCall call){storage(call,b->{
+  if(!filesReviewVisible())return result("changed","Open Files to review these items.");
   List<String> paths=strings(call,"paths",StorageBrowser.BATCH_MAX);
   JSArray tokens=new JSArray();
   for(String identity:b.reviewedIdentities(paths)){
@@ -144,7 +146,9 @@ public class AlphaFilesPlugin extends Plugin {
  });}
  @PluginMethod public void storageTransfer(PluginCall call){storage(call,b->{
   List<String> paths=strings(call,"paths",StorageBrowser.BATCH_MAX);boolean copy=Boolean.TRUE.equals(call.getBoolean("copy",false));
-  List<StorageBrowser.Outcome> done=b.transfer(paths,call.getString("dest",""),copy,reviewedTokens(call));
+  List<String> reviewed=reviewedTokens(call);
+  if(reviewed!=null&&!filesReviewVisible())return result("changed","Open Files to review these items.");
+  List<StorageBrowser.Outcome> done=b.transfer(paths,call.getString("dest",""),copy,reviewed);
   List<String> touched=new ArrayList<>();for(StorageBrowser.Outcome o:done){if(o.to!=null)touched.add(o.to);if(!copy&&"moved".equals(o.status))touched.add(o.path);}scan(b,touched);
   JSObject out=new JSObject();out.put("outcomes",outcomes(done));return out;
  });}
@@ -153,7 +157,9 @@ public class AlphaFilesPlugin extends Plugin {
  });}
  @PluginMethod public void storageCreateFolder(PluginCall call){storage(call,b->{JSObject out=new JSObject();out.put("path",b.createFolder(call.getString("parent",""),call.getString("name","")));return out;});}
  @PluginMethod public void storageTrash(PluginCall call){storage(call,b->{
-  List<String> paths=strings(call,"paths",StorageBrowser.BATCH_MAX);List<StorageBrowser.Outcome> done=b.trash(paths,System.currentTimeMillis(),reviewedTokens(call));
+  List<String> paths=strings(call,"paths",StorageBrowser.BATCH_MAX),reviewed=reviewedTokens(call);
+  if(reviewed!=null&&!filesReviewVisible())return result("changed","Open Files to review these items.");
+  List<StorageBrowser.Outcome> done=b.trash(paths,System.currentTimeMillis(),reviewed);
   List<String> gone=new ArrayList<>();for(StorageBrowser.Outcome o:done)if("trashed".equals(o.status))gone.add(o.path);scan(b,gone);
   JSObject out=new JSObject();out.put("outcomes",outcomes(done));return out;
  });}

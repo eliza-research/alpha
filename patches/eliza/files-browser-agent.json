@@ -1,8 +1,8 @@
 {
   "schema": 1,
-  "baseCommit": "aa9a50d96c6144e9d839ed65fd4f8a161514a570",
-  "status": "proposed-upstream",
-  "purpose": "files.browser.v1 device operations (files_filter, files_open, reviewed files_share/files_move/files_trash/files_folder_create): shared contract, agent tool schema and capability gating, service admission and the phone-side coordinator. Not applied by any build until it lands as a reviewed upstream commit and the pin moves.",
+  "baseCommit": "9237023aee3856b7375f21a6dfde0f9b957929a5",
+  "status": "integrated-in-pin",
+  "purpose": "Files agent operations are in the pinned SDK. The original proposed patch and its target digests are retained as historical source evidence.",
   "patches": [
     {
       "file": "files-browser-agent.patch",

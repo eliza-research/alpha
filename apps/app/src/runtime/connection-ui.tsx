@@ -1,3 +1,4 @@
+import {FILES_CAPABILITY} from '../../../../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/files-browser-contract.ts';
 import {isCalendarReadFailureCode} from "../../../../.eliza/client-features/packages/contracts/src/calendar.ts";
 import {SingleFlightMemo} from "@elizaos/core/read-memo";
 import {productionCloud, stagingCloud} from './cloud-deployment.generated.ts';
@@ -404,6 +405,7 @@ let deviceExecutor: DeviceExecutor = async () => ({ status: 'failed', summary: '
 let foregroundExecutor: ForegroundReviewExecutor | undefined;
 const runForegroundReview: ForegroundReviewExecutor = (op, id, context, signal, bindingHash, journalIdentity, capabilities) => foregroundExecutor ? foregroundExecutor(op, id, context, signal, bindingHash, journalIdentity, capabilities) : Promise.resolve({ status: 'failed', summary: 'This review is unavailable on this phone. Nothing was shared.' });
 /** The shared contract's free/busy capability name (kept equal by test-calendar-availability-flow). */
+
 export const CALENDAR_AVAILABILITY_CAPABILITY = 'calendar.availability-read.v1';
 /** Free/busy is negotiated only when the agent offers it. */
 const availabilityNegotiated = (offered: unknown) => Array.isArray(offered) && offered.includes(CALENDAR_AVAILABILITY_CAPABILITY);
@@ -457,6 +459,7 @@ async function deviceCapabilities(offered:unknown):Promise<string>{
   // notes.organize.v1 (Notes folders, filter, restore, record) waits for the pin to carry
   // patches/eliza/notes-organize-agent.patch: the shared coordinator cannot parse those operations yet.
   for(const capability of [...(!Capacitor.isNativePlatform()?['calendar.agenda-read.v1']:[]),'notes.query.v1',...(Capacitor.isNativePlatform()?['reminders.create.v1']:[]),'calendar.create.v1',...(android||!Capacitor.isNativePlatform()?['calendar.next-read.v1']:[]),'maps.selected-read.v1'])if(agent.includes(capability))capabilities.push(capability);
+  if(agent.includes(FILES_CAPABILITY)&&Capacitor.isPluginAvailable('AlphaFiles'))capabilities.push(FILES_CAPABILITY);
   if(availabilityNegotiated(agent))capabilities.push(CALENDAR_AVAILABILITY_CAPABILITY);
   if((android||!Capacitor.isNativePlatform())&&typeof foregroundExecutor==='function'&&agent.includes('calendar.named-read.v1'))capabilities.push('calendar.named-read.v1');
   // One shared external-handoff policy for every brand: never clock.alarms.v1 (P-17).
@@ -1014,7 +1017,7 @@ async function connectRemote(kind: 'remote' | 'local', origin: string, code: str
 async function connectDevelopment(profile:DevelopmentProfile,signal:AbortSignal){
  if(!browserDevProfile)throw Error('Development mode required.');
  // This explicitly gated browser fixture implements reminder v2; real peers still negotiate it.
- const identity=await readDevelopmentIdentity(profile,signal);const client=new LocalAgentProtocol(developmentBridge(profile,identity));const {session,name}=await client.connect(signal);signal.throwIfAborted();const credential=developmentCredential(profile,identity),scope=await actionScope(JSON.stringify([client.origin,session.ownerId,session.agentId,credential.installationId]));const actions=new DeviceActions(session,credential,scope,(path,body,signal)=>client.request(path,body,signal),developmentJournal(profile,identity),(op,id,context,signal,binding,workflowRoute,journalIdentity,agendaSource)=>deviceExecutor(op,id,context,signal,binding,workflowRoute,journalIdentity,agendaSource),(op,id,binding,signal)=>deviceRecovery?deviceRecovery(op,id,binding,signal):Promise.resolve({status:'unknown'}),true,true);await retire();signal.throwIfAborted();await verifyDevelopmentIdentity(identity,signal);const workflowProtocol=3 as const;save({kind:'development',profile,...(identity.account?{account:identity.account}:{})});developmentVoiceExpiresAt=Date.now()+3600000;activate({kind:'resident',remote:client,origin:client.origin,actions,workflowProtocol},session,name);
+ const identity=await readDevelopmentIdentity(profile,signal);const client=new LocalAgentProtocol(developmentBridge(profile,identity));const {session,name}=await client.connect(signal);signal.throwIfAborted();const credential={...developmentCredential(profile,identity),capabilities:[FILES_CAPABILITY]},scope=await actionScope(JSON.stringify([client.origin,session.ownerId,session.agentId,credential.installationId]));const actions=new DeviceActions(session,credential,scope,(path,body,signal)=>client.request(path,body,signal),developmentJournal(profile,identity),(op,id,context,signal,binding,workflowRoute,journalIdentity,agendaSource)=>deviceExecutor(op,id,context,signal,binding,workflowRoute,journalIdentity,agendaSource),(op,id,binding,signal)=>deviceRecovery?deviceRecovery(op,id,binding,signal):Promise.resolve({status:'unknown'}),true,true);await retire();signal.throwIfAborted();await verifyDevelopmentIdentity(identity,signal);const workflowProtocol=3 as const;save({kind:'development',profile,...(identity.account?{account:identity.account}:{})});developmentVoiceExpiresAt=Date.now()+3600000;activate({kind:'resident',remote:client,origin:client.origin,actions,workflowProtocol},session,name);
 }
 /** How the running resident's Eliza Cloud inference is bound after admission, and what to tell the owner. */
 type ResidentAdmission = { binding: 'cloud' | 'unbound' | 'kept'; credentialId?: string; account?: { client: CloudProtocol; identity: CloudServiceSession }; notice?: { error?: string; open?: boolean } };

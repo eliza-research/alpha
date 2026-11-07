@@ -33,10 +33,11 @@ export class BrowserFiles extends SharedFiles {
  storageList(input:{path?:string}){return this.volume.run('storageList',input);}
  storageCategory(input:{category:string}){return this.volume.run('storageCategory',input);}
  storageQuery(input:Record<string,unknown>){return this.volume.run('storageQuery',input);}
- storageTransfer(input:{paths:string[];dest:string;copy?:boolean}){return this.volume.run('storageTransfer',input);}
+ storageReviewedIdentities(input:{paths:string[]}){return this.volume.run('storageReviewedIdentities',input);}
+ storageTransfer(input:{paths:string[];dest:string;copy?:boolean;reviewed?:string[]}){return this.volume.run('storageTransfer',input);}
  storageRename(input:{path:string;name:string}){return this.volume.run('storageRename',input);}
  storageCreateFolder(input:{parent:string;name:string}){return this.volume.run('storageCreateFolder',input);}
- storageTrash(input:{paths:string[]}){return this.volume.run('storageTrash',input);}
+ storageTrash(input:{paths:string[];reviewed?:string[]}){return this.volume.run('storageTrash',input);}
  storageTrashList(){return this.volume.run('storageTrashList',{});}
  storageRestore(input:{ids:string[]}){return this.volume.run('storageRestore',input);}
  storageEmptyTrash(input:{ids?:string[];confirmed?:boolean}){return this.volume.run('storageEmptyTrash',input);}

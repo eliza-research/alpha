@@ -253,6 +253,7 @@ export const CLIENT_FEATURE_PATHS = [
   'plugins/plugin-assistant/src/services/device-actions/contract.ts',
   'plugins/plugin-assistant/src/services/device-actions/phone-dial-contract.ts',
   'plugins/plugin-assistant/src/services/device-actions/client-coordinator.ts',
+  'plugins/plugin-assistant/src/services/device-actions/files-browser-contract.ts',
   'plugins/plugin-assistant/src/services/device-actions/maps-contract.ts',
   'plugins/plugin-assistant/src/services/device-actions/workflow-contract.ts',
   'plugins/plugin-assistant/src/services/device-actions/camera-contract.ts',
