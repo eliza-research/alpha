@@ -10,7 +10,7 @@ function fixture(){
  const state={open:null,album:null,nativePhotoSelection:null},requests=[],toasts=[];
  const api={get:()=>state,isActive:()=>true,set:patch=>Object.assign(state,patch),toast:message=>toasts.push(message)};
  const sandbox={disposed:false,document:{hidden:false},photoReadEpoch:0,reading:'',preview:undefined,photosApi:api,Date,
-  library:{read:()=>new Promise((resolve,reject)=>requests.push({resolve,reject}))},nativeId:id=>id,normalize:row=>row,captureSelection:row=>({id:row.id}),closeVideo(){},cancelEdit(){},refresh(){},loadTrash(){},loadCounts(){},loadCustomAlbums(){},loadAlbum(){},
+  library:{read:()=>new Promise((resolve,reject)=>requests.push({resolve,reject}))},nativeId:id=>id,normalize:row=>row,captureSelection:row=>({id:row.id}),staleLast(){},closeVideo(){},cancelEdit(){},refresh(){},loadTrash(){},loadCounts(){},loadCustomAlbums(){},loadAlbum(){},
   libraryEpoch:0,captures:[],albumRows:[],trash:[],albumNext:'',trashNext:'',albumKey:'',counts:undefined,countsEpoch:0,countsBusy:false,albumsEpoch:0,albumsBusy:false,albumsLoaded:false,customAlbums:[],albumEpoch:0,trashEpoch:0,selection:undefined,next:'',loaded:false};
  vm.createContext(sandbox);
  const code=[declaration('const retirePhotoRead='),declaration('async function openSaved('),declaration('function invalidateLibrary(')].join('\n')+'\nglobalThis.openSaved=openSaved;globalThis.invalidateLibrary=invalidateLibrary;';
