@@ -366,7 +366,12 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
     ICONS = Object.fromEntries(Object.entries(ICON_KEYS).map(([key, name]) => [key, currentApi.ic?.[name] ?? ''])) as typeof ICONS;
     const out = render(state, currentApi);
     const visible = currentApi.isActive?.() !== false;
-    if (visible) activate(); else deactivate();
+    if (visible && !active) {
+      // Reload publishes its loading state. Start it after React finishes this render.
+      queueMicrotask(() => {
+        if (api === currentApi && currentApi.isActive?.() !== false) activate();
+      });
+    } else if (!visible) deactivate();
     const sort: SortMode = state.sort === 'name' || state.sort === 'size' ? state.sort : 'date';
     const granted = access === 'granted';
     // Browse (no search box and no Recents: the agent filters, decision F2).

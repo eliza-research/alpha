@@ -12,7 +12,7 @@ async function harness(){
  const api={ic:{},get:()=>state,set:patch=>Object.assign(state,patch),isActive:()=>active,toast:message=>toasts.push(message)};
  const storage={storageSelect:input=>{calls.push(input);return result;},storageState:async()=>({status:'ready',access:'granted',volumes:[]}),storageCategory:async()=>({status:'ready',entries:[entry]}),storageTrashList:async()=>({status:'ready',items:[]}),storageWatch:async()=>({status:'ready'}),storageUnwatch:async()=>({status:'ready'}),addListener:async()=>({remove:async()=>{}})};
  const view={render:()=>({}),onLeave(){}};
- const ctx=vm.createContext({setTimeout,clearTimeout,window:new EventTarget(),CustomEvent:class{},HTMLElement:class{},document:doc,registerPlugin:()=>storage,DailyApps:{async forgetSelected(input){forgotten.push(input.selectionId);if(failForget)throw Error('release failed');}},createInlineModal:()=>({}),registerFilesAgent:handler=>{agent=handler;}});
+ const ctx=vm.createContext({setTimeout,clearTimeout,queueMicrotask,window:new EventTarget(),CustomEvent:class{},HTMLElement:class{},document:doc,registerPlugin:()=>storage,DailyApps:{async forgetSelected(input){forgotten.push(input.selectionId);if(failForget)throw Error('release failed');}},createInlineModal:()=>({}),registerFilesAgent:handler=>{agent=handler;}});
  vm.runInContext(rules+';'+source+';globalThis.install=installFilesBrowserAdapter',ctx);
  ctx.install({files:view},async(_module,value)=>accepted.push(value.selectionId),()=>{});
  const settle=async()=>{for(let i=0;i<30;i++)await Promise.resolve();};

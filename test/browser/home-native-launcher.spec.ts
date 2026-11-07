@@ -132,7 +132,7 @@ test('required denied notification remains pending after cold start without repe
  await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Set up Alpha access',exact:true}).click();
  await expect(panel.getByRole('button',{name:'Open Android settings',exact:true})).toBeVisible();
  expect(await calls(page,'DailyApps','requestPermissions')).toEqual([]);
- expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('alpha:startup-permission-walkthrough:v1')!))).toEqual({version:3,status:'pending',step:0});
+ expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('alpha:startup-permission-walkthrough:v1')!))).toEqual({version:4,status:'pending',step:0});
 });
 
 test('an Activity opened with the alpha.assistant extra renders chat and Close only', async ({ page }) => {
