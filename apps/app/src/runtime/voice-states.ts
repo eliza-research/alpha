@@ -15,7 +15,7 @@ export function voiceFailure(reason: unknown, context: { transcribing: boolean; 
   if (!context.transcribing && (name === 'NotAllowedError' || name === 'SecurityError' || name === 'PermissionDeniedError' || code === 'permission-denied'))
     return { kind: 'denied', message: context.browser
       ? 'Microphone access is blocked. Allow the microphone for this site in your browser’s site settings, then choose Start recording again, or use the keyboard instead. Nothing was recorded.'
-      : 'Microphone access is off. Choose Open app settings and allow the microphone for Alpha in Android settings, then choose Start recording again, or use the keyboard instead. Nothing was recorded.' };
+      : 'Microphone access is off. Open app settings to allow it. Nothing was recorded.' };
   if (!context.transcribing && (name === 'NotFoundError' || name === 'OverconstrainedError' || name === 'NotReadableError'))
     return { kind: 'no-microphone', message: 'No usable microphone was found. Connect or enable a microphone, then choose Start recording again.' };
   // The Cloud route renders no typing choice (P-39 keeps the conversation spoken; the keyboard stays a separate entry), so its
@@ -46,9 +46,9 @@ export function deniedSettingsChoice(input: { failure: string; stage: string; bu
 
 const field = (value: unknown) => typeof value === 'string' && value.length > 0 && value.length <= 128 ? value : undefined;
 /** Where a transcript came from. Only fields reported by the engine are recorded, never guessed. */
-export function transcriptProvenance(result: Record<string, unknown>, route: { onDevice: boolean; native: boolean; paired: boolean; cloud: boolean }): TranscriptProvenance {
+export function transcriptProvenance(result: Record<string, unknown>, route: { onDevice: boolean; native: boolean; cloud: boolean }): TranscriptProvenance {
   const reported = field(result.route);
-  const name = route.cloud ? 'eliza-cloud' : route.paired ? 'paired-agent' : route.onDevice ? (route.native ? 'on-device' : reported || 'browser') : 'development-agent';
+  const name = route.cloud ? 'eliza-cloud' : route.onDevice ? (route.native ? 'on-device' : reported || 'browser') : 'development-agent';
   const provenance: TranscriptProvenance = { route: name };
   for (const key of ['engine', 'model', 'modelRevision', 'runtime', 'language'] as const) { const value = field(result[key]); if (value) provenance[key] = value; }
   return provenance;

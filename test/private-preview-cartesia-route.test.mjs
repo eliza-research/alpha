@@ -73,7 +73,7 @@ function fixture(preference){
   // Public startVoice is default-only. Substitute only its call argument to exercise
   // explicit internal choices through the unchanged actual enter/begin bodies.
   const h=cloudVoiceViewFixture({native:false,platform:'web',account:null,
-    adapterSourceTransform:preference?source=>source.replace("enter(undefined,undefined,'default',chat)","enter(undefined,undefined,'"+preference+"',chat)"):undefined,
+    adapterSourceTransform:preference?source=>source.replace("enter(undefined,'default',chat)","enter(undefined,'"+preference+"',chat)"):undefined,
   });
   h.box.developmentCartesiaVoiceEnabled=enabled();
   h.box.HTMLElement=class {};
@@ -102,7 +102,7 @@ adapterTest('actual adapter starts existing Cartesia route without local preflig
   assert.equal(h.renderChat().lines[0].t,'Listening…');
   assert.match(h.renderChat().cloudDisclosureText,/Cartesia.*direct Cerebras/);
   assert.doesNotMatch(h.renderChat().cloudDisclosureText,/Cloud account|plan allowance/);
-  assert.equal(h.renderChat().voiceDetails,false);
+  assert.ok(!h.renderChat().voiceDetails);
   h.directOptions.onState('transcribing');
   assert.equal(h.renderChat().lines[0].t,'Transcribing…');
   h.directOptions.onError(Error('Synthetic owned transport failure'));
@@ -168,19 +168,19 @@ adapterTest('Cloud conversation keeps concise phases and accessible route detail
     recheck(){}
   };
   await h.shell.startVoice();
-  assert.equal(h.initialView.state,'starting');assert.equal(h.initialView.voiceDetails,false);
+  assert.equal(h.initialView.state,'starting');assert.ok(!h.initialView.voiceDetails);
   assert.match(h.initialView.cloudDisclosureText,/uploads recordings.*plan allowance/);
   for(const [phase,caption] of [['listening','Listening…'],['transcribing','Transcribing…'],['thinking','Thinking…'],['preparing-speech','Thinking…'],['speaking','Speaking…']]){
     h.batchOptions.onState({phase});const view=h.renderChat();
     assert.equal(view.lines[0].t,caption);
-    assert.equal(view.voiceDetails,false);
+    assert.ok(!view.voiceDetails);
     assert.match(view.cloudDisclosureText,/uploads recordings and reply text.*account.*plan allowance.*Cartesia/);
     assert.equal(typeof view.stop,'function');assert.equal(typeof view.keyboard,'function');
   }
   // The loop's own idle is shown once its retire settles (a failure it is about to report replaces it).
   h.batchOptions.onState({phase:'idle'});await new Promise(resolve=>setImmediate(resolve));
   assert.equal(h.renderChat().lines[0].t,'Voice conversation stopped.');
-  assert.equal(h.renderChat().voiceDetails,false);
+  assert.ok(!h.renderChat().voiceDetails);
 });
 adapterTest('typed native 503 is waited out quietly, then voice ends with one calm line',async t=>{
   // A Cloud 503 while voice warms is transient: no alarming copy, no support code, no Try voice again.
@@ -190,7 +190,7 @@ adapterTest('typed native 503 is waited out quietly, then voice ends with one ca
   await h.shell.startVoice();await clock.flush();
   for(let attempt=1;attempt<=2;attempt++){
     const view=h.renderChat();assert.equal(view.state,'starting');
-    assert.equal(view.errorDetail,'');assert.equal(view.voiceDetails,false);assert.ok(!view.recoveryLabel);
+    assert.ok(!view.errorDetail);assert.ok(!view.voiceDetails);assert.ok(!view.recoveryLabel);
     assert.doesNotMatch(JSON.stringify(view),/PRIVATE_PROVIDER_BODY|Voice is unavailable|Try voice again|503/);
     assert.equal(typeof view.stop,'function');assert.equal(typeof view.keyboard,'function');
     assert.equal(h.starts,attempt);await clock.advance(2_000);
@@ -206,7 +206,7 @@ adapterTest('typed native 503 is waited out quietly, then voice ends with one ca
 adapterTest('unknown native voice failures retain their existing recovery',async t=>{
   const h=cloudFixture({startError:Object.assign(new Error('Unknown voice failure remains'),{code:'voice-http-503-extra'})});t.after(()=>h.close());
   await h.shell.startVoice();await h.tick();const view=h.renderChat();
-  assert.equal(view.state,'error');assert.equal(view.errorDetail,'');
+  assert.equal(view.state,'error');assert.ok(!view.errorDetail);
   assert.doesNotMatch(view.lines[0].t,/Voice is unavailable right now/);
-  assert.equal(view.recoveryLabel,'');assert.equal(view.statusLines.length,0);assert.equal(view.voiceDetails,false);assert.equal(h.startError?.code,'voice-http-503-extra','underlying failure is retained');assert.deepEqual(h.shell.messages,[]);
+  assert.equal(view.recoveryLabel,'');assert.equal(view.statusLines.length,0);assert.ok(!view.voiceDetails);assert.equal(h.startError?.code,'voice-http-503-extra','underlying failure is retained');assert.deepEqual(h.shell.messages,[]);
 });
