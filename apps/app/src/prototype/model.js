@@ -5315,7 +5315,6 @@ class Component extends DCLogic {
     if (action === "open-system-shade") return this.openSystemShade();
     if (action === "home") return this.goHome();
     if (action === "lower-assistant") return this.setState({ chat: this.rest() });
-    if (action === "raise-assistant") return this.setState({ chat: "sheet" });
   }
   pullContext() {
     var S = this.S();
@@ -5543,7 +5542,7 @@ class Component extends DCLogic {
       [IC.up, "Swipe up from the bottom bar, or tap it · Home, from anywhere"],
       [IC.back, "Swipe in from either edge · back one step inside the app"],
       [IC.down, "Swipe down on launcher Home, or tap Notifications · Android notifications and quick settings"],
-      [IC.half, "Swipe up on Home · chat. Drag its grabber to resize"],
+      [IC.half, "Tap the chat dock to open chat. Drag its grabber to resize"],
       [IC.lock, "Side key: tap · lock or wake"]
     ].map(function (l) { return { d: l[0], t: l[1] }; });
 

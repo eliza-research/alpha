@@ -34,7 +34,7 @@ SystemUI, because a browser has none; it is a developer surface (`simulatedShade
 | Standalone app: any downward pull on Home | Nobody in Alpha | An ordinary app: Android's top-edge swipe is the way in. |
 | A swipe in from the left or right edge | Android (gesture navigation) | Android delivers Back. In the browser build the same swipe within 30px of an edge goes Back. |
 | A swipe up from the bottom edge | Android (gesture navigation) | Android delivers HOME; the launcher flavor shows Alpha Home. |
-| A swipe up on Alpha Home, away from the bottom edge | Alpha | Opens the conversation sheet. |
+| A swipe up on Alpha Home, away from the bottom edge | Home content | Scrolls Home if its content overflows. Open the conversation from the chat dock. |
 | The open chat sheet: the Resize chat grabber | Alpha | The sheet follows the finger and rests where it is released. A release within 120 canvas pixels of the collapsed form collapses it, within 120 of the top goes full screen, and a flick (at least 1 canvas pixel per millisecond at release) jumps to either end (`chatRelease` in `chat-overlay-motion-adapter.ts`). |
 | Outside the open chat sheet (portrait) | Alpha | Any touch, tap or drag, collapses the chat and reaches nothing underneath; the next touch is ordinary. Assistive technology activates controls directly. In landscape the chat docks beside the app, which stays live. |
 | Full-screen chat | Alpha | No grabber: nothing of Alpha's competes with Android's top-edge band. The header starts 16 screen pixels below Android's status bar on the launcher (`--alpha-chat-full-top`, at least 60px of canvas). Shrink chat returns to the last resting height, Minimize chat collapses. |
