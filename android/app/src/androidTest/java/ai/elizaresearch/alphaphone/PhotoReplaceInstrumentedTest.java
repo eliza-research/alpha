@@ -74,9 +74,9 @@ public final class PhotoReplaceInstrumentedTest {
    String token=begin(edits,r,uri);
    try{edits.replace(token,90,false,"none");fail("the injected write failure is reported");}catch(IOException expected){}
    assertFalse("the original is damaged while the restore keeps failing",Arrays.equals(original,read(r,uri)));
-   assertEquals(1,backups(c).length);
+   assertEquals(2,backups(c).length);
    assertEquals("unknown",new OwnedPhotoEdits(c,AlphaPhotosPlugin.MEDIA_CONFIG,null,new Faulty(1000,Integer.MAX_VALUE)).result(token).getString("status"));
-   assertEquals("the backup is still kept",1,backups(c).length);
+   assertEquals("the original and encoded edit are still kept",2,backups(c).length);
    // As a new process would: the default writer restores the original from the backup.
    assertEquals("failed",new OwnedPhotoEdits(c,AlphaPhotosPlugin.MEDIA_CONFIG).result(token).getString("status"));
    assertArrayEquals(original,read(r,uri));
@@ -96,5 +96,46 @@ public final class PhotoReplaceInstrumentedTest {
    Bitmap rotated=BitmapFactory.decodeByteArray(now,0,now.length);assertNotNull(rotated);assertEquals(192,rotated.getWidth());assertEquals(256,rotated.getHeight());rotated.recycle();
    assertEquals(0,backups(c).length);
   }finally{r.delete(uri,null,null);}
+ }
+
+ @Test public void recoveryLeavesALaterExternalEditUntouched()throws Exception{
+  assumeTrue(android.os.Build.VERSION.SDK_INT>=30);Context c=context();ContentResolver r=c.getContentResolver();Uri uri=owned(r);String token=null;
+  try{
+   OwnedPhotoEdits edits=new OwnedPhotoEdits(c,AlphaPhotosPlugin.MEDIA_CONFIG,null,new Faulty(1000,Integer.MAX_VALUE));
+   token=begin(edits,r,uri);
+   try{edits.replace(token,90,false,"none");fail("the injected write failure is reported");}catch(IOException expected){}
+   byte[] newer="a later external edit must survive recovery".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+   try(OutputStream output=r.openOutputStream(uri,"wt")){assertNotNull(output);output.write(newer);}
+   OwnedPhotoEdits recovery=new OwnedPhotoEdits(c,AlphaPhotosPlugin.MEDIA_CONFIG);
+   assertEquals("unknown",recovery.result(token).getString("status"));
+   assertArrayEquals(newer,read(r,uri));
+   assertEquals("inspection keeps both recovery files",2,backups(c).length);
+   assertEquals("unknown",recovery.result(token).getString("status"));
+   assertArrayEquals(newer,read(r,uri));
+  }finally{discardRecovery(c,token);r.delete(uri,null,null);}
+ }
+
+ @Test public void legacyRecoveryWithoutEncodedBytesLeavesCurrentContentUntouched()throws Exception{
+  assumeTrue(android.os.Build.VERSION.SDK_INT>=30);Context c=context();ContentResolver r=c.getContentResolver();Uri uri=owned(r);String token=null;
+  try{
+   OwnedPhotoEdits edits=new OwnedPhotoEdits(c,AlphaPhotosPlugin.MEDIA_CONFIG,null,new Faulty(1000,Integer.MAX_VALUE));
+   token=begin(edits,r,uri);
+   try{edits.replace(token,90,false,"none");fail("the injected write failure is reported");}catch(IOException expected){}
+   android.content.SharedPreferences journal=c.getSharedPreferences(AlphaPhotosPlugin.MEDIA_CONFIG.preferences("photo-edit-results"),0);
+   JSONObject record=new JSONObject(journal.getString(token,null));record.remove("editBackup");
+   assertTrue(journal.edit().putString(token,record.toString()).commit());
+   assertTrue(new File(c.getFilesDir(),"photo-replace-backups/"+token+".edited").delete());
+   byte[] current=read(r,uri);
+   assertEquals("unknown",new OwnedPhotoEdits(c,AlphaPhotosPlugin.MEDIA_CONFIG).result(token).getString("status"));
+   assertArrayEquals(current,read(r,uri));
+   assertEquals(1,backups(c).length);
+  }finally{discardRecovery(c,token);r.delete(uri,null,null);}
+ }
+
+ private static void discardRecovery(Context c,String token){
+  if(token==null)return;
+  new File(c.getFilesDir(),"photo-replace-backups/"+token+".original").delete();
+  new File(c.getFilesDir(),"photo-replace-backups/"+token+".edited").delete();
+  c.getSharedPreferences(AlphaPhotosPlugin.MEDIA_CONFIG.preferences("photo-edit-results"),0).edit().remove(token).commit();
  }
 }

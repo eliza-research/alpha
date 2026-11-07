@@ -238,6 +238,6 @@ test('MVP Notes sharing keeps email and export without a deferred SMS dead end',
 test('the notes:rec deep link no longer opens the old simulated clip recorder', async ({ page }) => {
   await page.goto('/?mode=mock&start=notes:rec');
   await expect(page.getByText('Recording isn’t available in this preview.', { exact: true })).toBeVisible();
-  await expect(page.locator('[data-alpha-subview="notes-recording"]')).toHaveCount(0);
+  await expect(page.locator('[data-alpha-subview="notes-recording"], [data-alpha-subview="notes-recorder"]')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Stop and save', exact: true })).toHaveCount(0);
 });

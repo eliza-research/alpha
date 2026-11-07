@@ -65,8 +65,7 @@ test('Apps lists Android entries with icons and launches by package', async ({ p
   expect(await calls(page, 'ElizaSystem', 'listLauncherApps')).toEqual([{ icons: true }]);
   await expect(drawer.getByRole('button', { name: 'Open Bad icon', exact: true })).toHaveCount(0);
   await expect(drawer.getByRole('button', { name: 'Open Settings duplicate', exact: true })).toHaveCount(0);
-  // Installed apps only, without a count; Alpha's views are on Home. The resolved dialer has no
-  // launcher entry here, so there is no Phone tile (it only folds an installed dialer entry).
+  // Installed apps only, without a count; Alpha's views are on Home.
   await expect.poll(() => drawer.locator('[data-launcher-app] > button').evaluateAll(nodes => nodes.map(node => node.getAttribute('aria-label')))).toEqual(['Open Broken app', 'Open Settings']);
   await expect(drawer.getByText(/\d+ apps?$/)).toHaveCount(0);
   await expect(drawer.getByRole('button', { name: 'Open Settings', exact: true }).locator('img')).toHaveAttribute('src', PNG);

@@ -48,10 +48,26 @@ export function cloudVoiceViewFixture(options={}){
   if(start<0||end<0)throw Error('Missing actual batch progress helper source');
   return source.slice(start,end);
  });
- // The Notes recorder (note-recorder.ts has no imports); its native driver is idle here.
+ // Notes tests opt into a synthetic segmented native recorder. The session and Cloud
+ // transcription adapter still run from product source, with no microphone or network.
  load('prototype/note-recorder.ts',box,['NoteRecorderSession','formatRecordingClock'],source=>source.replaceAll('export class','class'));
  box.createNoteRecorderDriver=()=>({status:async()=>({state:'idle'}),listen:async()=>({remove(){}}),start:async()=>{throw Error('No Notes recording in this fixture');}});
  box.noteSegmentTranscriber=async()=>null;box.setNotesRecorderControl=()=>{};box.openNativeLiveStream=async()=>{throw Error('No live stream in this fixture');};
+ if(options.notes){
+  let status={state:'idle'};
+  const current=id=>{if(status.recordingId!==id)throw Error('Recording changed');return status;};
+  Object.assign(driver,{
+   async startNoteRecording(binding){const recordingId=crypto.randomUUID();status={state:'recording',recordingId,binding,durationMs:0,segments:[]};f.starts++;return structuredClone(status);},
+   async noteRecordingStatus(){return structuredClone(status);},
+   async pauseNoteRecording({recordingId}){current(recordingId).state='paused';return structuredClone(status);},
+   async resumeNoteRecording({recordingId}){current(recordingId).state='recording';return structuredClone(status);},
+   async stopNoteRecording({recordingId}){const note=current(recordingId);if(note.state!=='stopped'){note.state='stopped';note.durationMs=1000;note.segments=[{segmentId:recordingId+'-s0',durationMs:1000}];f.stops++;}return structuredClone(note);},
+   async discardNoteRecording({recordingId}){current(recordingId);status={state:'idle'};f.recordingCancels.push(recordingId);return structuredClone(status);},
+   async setNoteSegmentText({recordingId,segmentId,text}){const segment=current(recordingId).segments.find(row=>row.segmentId===segmentId);if(!segment)throw Error('Segment changed');segment.text=text;},
+   async saveNoteRecording(input){const note=current(input.recordingId);f.audioSaves++;return {audioId:input.recordingId,noteId:input.noteId,durationMs:note.durationMs,transcript:input.transcript};},
+  });
+  load('runtime/note-recorder-driver.ts',box,['createNoteRecorderDriver','noteSegmentTranscriber']);
+ }
  load('prototype/voice-adapter.ts',box,['installPrototypeVoiceAdapter'],options.adapterSourceTransform);
  const icons={check:'check',mic:'official-mic-path',stop:'stop',play:'play',x:'close',cloud:'cloud',user:'account'};
  class Shell{
@@ -64,6 +80,7 @@ export function cloudVoiceViewFixture(options={}){
  }
  const views={notes:{render:()=>({ed:{},vo:{bars:[]}}),back:()=>false,onLeave(){}}};box.installPrototypeVoiceAdapter(Shell,views);
  const shell=new Shell(),api={...shell.api('notes'),get:()=>shell.notes,set:patch=>Object.assign(shell.notes,patch),ic:icons};
+ if(options.notes)Object.assign(api,{voiceNoteStorage:()=>({mode:'device',epoch:1,target:'device'}),storageReady:()=>true,saveVoiceNote:async patch=>shell.vset('notes',patch)});
  const render=()=>views.notes.render(shell.notes,api);
  render();
  return Object.assign(f,{box,shell,driver,events,flushUpdates:()=>{const updates=f.updates||[];f.updates=[];for(const update of updates)update();},render,renderChat:()=>shell.renderVals().chatRecorder,changed:()=>{for(const callback of subscriptions)callback();},close:()=>{views.notes.onLeave();shell.componentWillUnmount();},tick:()=>new Promise(resolve=>setTimeout(resolve,0))});

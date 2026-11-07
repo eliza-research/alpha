@@ -240,11 +240,12 @@ public class LauncherHomeInstrumentedTest {
    AppNavigation.liveMode();
    eval(AppNavigation.request("Home"));
    until(AppNavigation.selected("Home") + "&&!document.querySelector('.os')?.inert", "Home ready");
-   // Tap 1: Apps. Tap 2: Phone, the stock dialer's installed launcher entry folded into one tile that
-   // opens the resolved ACTION_DIAL handler (not Alpha's deferred Phone view).
+   // Tap 1: Apps. Tap 2: the stock dialer's installed entry.
    tap("Apps");
-   String phone = "[...document.querySelectorAll('[data-alpha-layer=\"drawer\"] button')].find(b=>/^Open Phone/.test(b.getAttribute('aria-label')||'')&&!b.disabled)";
-   until(phone, "The drawer offers the resolved Phone shortcut");
+   String phone = "[...document.querySelectorAll('[data-alpha-layer=drawer] [data-launcher-app],[data-alpha-layer=drawer] [data-launcher-favorite]')]"
+    + ".find(row=>(row.getAttribute('data-launcher-app')||row.getAttribute('data-launcher-favorite')).split('/')[0].split('#')[0]==="
+    + JSONObject.quote(dialerPackage) + ")?.querySelector('button')";
+   until(phone, "Apps includes the stock dialer's installed launcher entry");
    eval("(" + phone + ").click()");
    awaitForeground(dialerPackage, "The stock dialer opens within two taps");
    returnHome(context);

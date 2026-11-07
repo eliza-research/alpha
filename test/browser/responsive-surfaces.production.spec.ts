@@ -226,13 +226,17 @@ test('Camera keeps one capture session and an undistorted preview through rotati
   const tile = page.getByRole('button', { name: /^Photo, / });
   await expect(tile).toHaveCount(1);
   for (const tab of ['Library', 'Albums']) await expectTarget(page, page.getByRole('button', { name: tab, exact: true }));
-  // The grid adds columns with width instead of growing each square tile.
-  const portraitTile = await box(tile);
-  expect(portraitTile.width).toBeGreaterThan(120); expect(portraitTile.width).toBeLessThan(140);
-  await resize(page, LANDSCAPE);
-  const landscapeTile = await box(tile);
-  expect(landscapeTile.width).toBeLessThan(140);
-  expect(Math.abs(landscapeTile.width - landscapeTile.height)).toBeLessThan(1);
+  // Photos retains its selected density through rotation. The default is four
+  // edge-to-edge columns with 2px gaps (view refresh PLAN section 2).
+  const grid = page.locator('.photo-grid').filter({visible: true}).first();
+  for (const viewport of [PORTRAIT, LANDSCAPE]) {
+    await resize(page, viewport);
+    await expect.poll(() => grid.evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length)).toBe(4);
+    await expect(grid).toHaveCSS('column-gap', '2px');
+    const gridBounds = await box(grid), tileBounds = await box(tile);
+    expect(tileBounds.width).toBeCloseTo((gridBounds.width - 6) / 4, 1);
+    expect(Math.abs(tileBounds.width - tileBounds.height)).toBeLessThan(1);
+  }
   await tile.click();
   // The viewer fits the whole frame on screen in landscape instead of cropping it to the width.
   const frame = page.locator('[data-alpha-photo-frame]');

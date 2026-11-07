@@ -61,7 +61,8 @@ public class NoteRecorderInstrumentedTest {
   File root=new File(context().getNoBackupFilesDir(),"note-recording"),copy=null;
   AlphaNoteRecorder recovered=null;
   try{
-   JSObject started=main(recorder::start);String id=started.getString("recordingId");
+   String owner="a".repeat(64),folder="f-lecture";
+   JSObject started=main(()->recorder.start(owner,folder));String id=started.getString("recordingId");
    assertEquals("recording",started.getString("state"));
    // Pause for two seconds: paused time is not recording time.
    SystemClock.sleep(3000);main(()->recorder.pause(id));long pausedAt=main(recorder::status).getLong("durationMs");
@@ -88,6 +89,8 @@ public class NoteRecorderInstrumentedTest {
    AlphaNoteRecorder next=fresh();recovered=next;
    JSObject back=main(next::status);
    assertEquals("paused",back.getString("state"));assertTrue(back.getBoolean("recovered"));assertEquals(crashedId,back.getString("recordingId"));
+   assertEquals(owner,back.getJSONObject("binding").getString("ownerDigest"));
+   assertEquals(folder,back.getJSONObject("binding").getString("folderId"));
    assertEquals("finished segments are kept",list.length(),segments(back));
    assertEquals("journaled text is kept","journaled words",back.getJSONArray("segments").getJSONObject(0).getString("text"));
    assertFalse("the partial segment is dropped",new File(copy,String.format(java.util.Locale.ROOT,"%05d.m4a",partialIndex)).exists());

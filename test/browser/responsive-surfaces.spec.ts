@@ -111,15 +111,18 @@ test('the listening panel stays compact beside the page in landscape and keeps t
   expect(await page.evaluate(()=>(window as any).cloudNotesVoice.starts)).toBe(1);
 });
 
-test('the Photos grid reflows into more columns and the album grid keeps square covers', async ({ page }) => {
+test('Photos keeps its selected grid density through resizing and albums reflow', async ({ page }) => {
   await openMock(page, 'Photos');
   const grid = page.locator('.photo-grid').first();
   const columns = () => grid.evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length);
-  await expect.poll(columns).toBe(3);
-  await resize(page, { width: 915, height: 412 });
-  await expect.poll(columns).toBeGreaterThanOrEqual(7);
-  await resize(page, { width: 1280, height: 800 });
-  await expect.poll(columns).toBeGreaterThanOrEqual(10);
+  for (const viewport of [{ width: 412, height: 915 }, { width: 915, height: 412 }, { width: 1280, height: 800 }]) {
+    await resize(page, viewport);
+    await expect.poll(columns).toBe(4);
+    await expect(grid).toHaveCSS('margin-left', '0px');
+    await expect(grid).toHaveCSS('margin-right', '0px');
+    const tile = await box(grid.getByRole('button').first());
+    expect(Math.abs(tile.width - tile.height)).toBeLessThan(1);
+  }
   await page.getByRole('button', { name: 'Albums', exact: true }).click();
   const albums = page.locator('.photo-album-grid');
   await expect.poll(() => albums.evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length)).toBeGreaterThanOrEqual(6);
