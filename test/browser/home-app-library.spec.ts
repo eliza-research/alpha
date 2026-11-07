@@ -360,3 +360,32 @@ test('a failed refresh clears the grid instead of leaving a stale one, and HOME 
   await expect(drawer.getByRole('searchbox', { name: 'Search apps', exact: true })).toHaveValue('');
   await expect.poll(() => tiles(drawer)).toEqual(['Open Clock', 'Open Settings']);
 });
+
+test('the entry menu is a keyboard menu: focus moves in, arrows move between items, closing returns focus to the tile', async ({ page }) => {
+  await nativeStub(page, ALL);
+  await page.goto('/');
+  const drawer = await openDrawer(page);
+  const tile = drawer.getByRole('button', { name: 'Open Settings', exact: true });
+  await tile.focus();
+  await page.keyboard.press('Shift+F10');
+  const menu = drawer.getByRole('menu');
+  if (!await menu.count()) await longPress(tile);
+  await expect(menu).toBeVisible();
+  await expect(menu.getByRole('menuitem', { name: 'Add to Home', exact: true })).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(menu.getByRole('menuitem', { name: 'App info', exact: true })).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(menu.getByRole('menuitem', { name: 'Add to Home', exact: true })).toBeFocused();
+  await page.keyboard.press('ArrowUp');
+  await expect(menu.getByRole('menuitem', { name: 'App info', exact: true })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveCount(0);
+  await expect(drawer).toBeVisible();
+  await expect(tile).toBeFocused();
+  // On Home is disabled and skipped: the menu of an app already on Home starts on App info.
+  await longPress(tile);
+  await menu.getByRole('menuitem', { name: 'Add to Home', exact: true }).click();
+  const again = await openDrawer(page);
+  await longPress(again.getByRole('button', { name: 'Open Settings', exact: true }));
+  await expect(again.getByRole('menuitem', { name: 'App info', exact: true })).toBeFocused();
+});
