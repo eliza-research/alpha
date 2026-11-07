@@ -83,7 +83,11 @@ public final class AlphaVoiceCloudPlugin extends LocalSpeechBridgePlugin {
    JSObject status=noteRecorder().start(call.getString("ownerDigest"),folder);
    AlphaNoteRecordingService.start(getContext(),status.getString("recordingId"));call.resolve(status);
   }
-  catch(IOException error){call.reject("storage".equals(error.getMessage())?"Storage is full":"Microphone could not start","storage".equals(error.getMessage())?"storage":"capture");}
+  catch(IOException error){
+   String reason=error.getMessage();
+   if("recovery".equals(reason))call.reject("Recording recovery is unavailable","recovery");
+   else call.reject("storage".equals(reason)?"Storage is full":"Microphone could not start","storage".equals(reason)?"storage":"capture");
+  }
   catch(RuntimeException error){call.reject("Microphone could not start","capture");}
  });}
  @PluginMethod public void noteRecordingStatus(PluginCall call){mainHandler().post(()->call.resolve(noteRecorder().status()));}
@@ -97,6 +101,10 @@ public final class AlphaVoiceCloudPlugin extends LocalSpeechBridgePlugin {
  @PluginMethod public void stopNoteRecording(PluginCall call){mainHandler().post(()->{try{call.resolve(noteRecorder().stop(noteRecordingId(call)));}catch(RuntimeException error){call.reject("Recording changed");}});}
  @PluginMethod public void discardNoteRecording(PluginCall call){mainHandler().post(()->{AlphaNoteRecorder recorder=noteRecorder();String id=call.getString("recordingId");if(id!=null&&recorder.owns(id))recorder.discard();call.resolve(recorder.status());});}
  @PluginMethod public void setNoteSegmentText(PluginCall call){mainHandler().post(()->{try{noteRecorder().setText(noteRecordingId(call),call.getString("segmentId"),call.getString("text"));call.resolve();}catch(Exception error){call.reject("Recording changed");}});}
+ @PluginMethod public void claimCanonicalNoteSave(PluginCall call){mainHandler().post(()->{
+  try{call.resolve(new JSObject().put("claimed",noteRecorder().claimCanonicalSave(noteRecordingId(call))));}
+  catch(Exception error){call.reject("Recording save could not be confirmed");}
+ });}
  /** Joins the finished segments into one recording and saves it for the note. Repeatable until discarded. */
  @PluginMethod public void saveNoteRecording(PluginCall call){
   final String id;try{id=noteRecordingId(call);}catch(RuntimeException invalid){call.reject("Invalid recording");return;}

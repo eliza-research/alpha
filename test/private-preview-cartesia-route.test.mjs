@@ -76,7 +76,11 @@ function fixture(preference){
   // Public startVoice is default-only. Substitute only its call argument to exercise
   // explicit internal choices through the unchanged actual enter/begin bodies.
   const h=cloudVoiceViewFixture({native:false,platform:'web',account:null,
-    adapterSourceTransform:preference?source=>source.replace("enter(undefined,undefined,'default',chat)","enter(undefined,undefined,'"+preference+"',chat)"):undefined,
+    adapterSourceTransform:preference?source=>{
+      const entry="enter(undefined,'default',chat)";
+      assert.ok(source.includes(entry),'The explicit route fixture must reach the actual start entry');
+      return source.replace(entry,"enter(undefined,'"+preference+"',chat)");
+    }:undefined,
   });
   h.box.developmentCartesiaVoiceEnabled=enabled();
   h.box.HTMLElement=class {};

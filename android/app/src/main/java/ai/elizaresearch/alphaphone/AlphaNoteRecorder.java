@@ -13,6 +13,7 @@ import android.os.SystemClock;
 import android.util.AtomicFile;
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -50,6 +51,7 @@ final class AlphaNoteRecorder {
  static final long SEGMENT_MS=27_000;
  /** Recording stops, keeping every finished segment, when free space falls below this. */
  static final long MIN_FREE_BYTES=64L*1024*1024;
+ private static final int MAX_JOURNAL_BYTES=32*1024*1024;
  static final String ID="[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
  private static AlphaNoteRecorder instance;
  static synchronized AlphaNoteRecorder get(Context context){if(instance==null)instance=new AlphaNoteRecorder(context.getApplicationContext());return instance;}
@@ -70,6 +72,8 @@ final class AlphaNoteRecorder {
  private boolean recovered;
  private String ownerDigest;
  private String folderId;
+ private boolean canonicalSavePending;
+ private boolean recoveryUnavailable;
  private final Runnable rollover=this::rollover;
 
  private AlphaNoteRecorder(Context context){this.context=context;recover();}
@@ -82,15 +86,15 @@ final class AlphaNoteRecorder {
 
  /** A recording a previous process left behind comes back paused, with its finished segments. */
  private synchronized void recover(){
-  File[] sessions;try{sessions=root().listFiles(File::isDirectory);}catch(RuntimeException unavailable){return;}
-  if(sessions==null)return;
+  File[] sessions;try{sessions=root().listFiles(File::isDirectory);}catch(RuntimeException unavailable){recoveryUnavailable=true;return;}
+  if(sessions==null){recoveryUnavailable=true;return;}
   for(File session:sessions){
-   if(id!=null||!session.getName().matches(ID)){deleteTree(session);continue;}
+   if(id!=null||!session.getName().matches(ID))continue;
    try{
     List<Segment> segments=new ArrayList<>();
     JSONObject record;
     try(InputStream in=new AtomicFile(new File(session,"segments.json")).openRead()){
-     record=new JSONObject(new String(in.readAllBytes(),StandardCharsets.UTF_8));
+     record=readJournal(in);
      JSONArray list=record.getJSONArray("segments");
      for(int i=0;i<list.length();i++){JSONObject s=list.getJSONObject(i);segments.add(new Segment(Math.max(1,s.getLong("d")),s.has("t")?s.getString("t"):null));}
     }
@@ -104,9 +108,23 @@ final class AlphaNoteRecorder {
     String recordedFolder=record.optString("folderId","");
     ownerDigest=validOwner(recordedOwner)&&validFolder(recordedFolder)?recordedOwner:null;
     folderId=ownerDigest!=null&&!recordedFolder.isEmpty()?recordedFolder:null;
+    canonicalSavePending=record.optBoolean("canonicalSavePending",false);
     state="paused";recovered=true;stopReason=null;
-   }catch(Exception unreadable){deleteTree(session);}
+   }catch(Exception unreadable){
+    // A process may die before its first frame. Preserve any audio it wrote.
+    File[] audio=session.listFiles((d,name)->name.endsWith(".m4a")&&new File(d,name).length()>0);
+    if(audio==null||audio.length>0)recoveryUnavailable=true;
+   }
   }
+ }
+ private static JSONObject readJournal(InputStream in)throws IOException,org.json.JSONException{
+  var bytes=new ByteArrayOutputStream();
+  byte[] buffer=new byte[8192];
+  for(int count;(count=in.read(buffer))!=-1;){
+   if(count>MAX_JOURNAL_BYTES-bytes.size())throw new IOException("Recording index is too large");
+   bytes.write(buffer,0,count);
+  }
+  return new JSONObject(new String(bytes.toByteArray(),StandardCharsets.UTF_8));
  }
  private static int parseIndex(String name){try{return Integer.parseInt(name.substring(0,name.length()-4));}catch(RuntimeException e){return -1;}}
  private long usableSpace(){try{return root().getUsableSpace();}catch(RuntimeException unavailable){return 0;}}
@@ -115,12 +133,13 @@ final class AlphaNoteRecorder {
  private static boolean validFolder(String value){return value==null||value.isEmpty()||value.matches("f-[A-Za-z0-9_-]{1,64}");}
  synchronized JSObject start(String owner,String destination) throws IOException {
   if(id!=null)throw new IllegalStateException("A recording is already open");
+  if(recoveryUnavailable)throw new IOException("recovery");
   if(!validOwner(owner)||!validFolder(destination))throw new IllegalArgumentException("Invalid recording ownership");
   if(usableSpace()<MIN_FREE_BYTES)throw new IOException("storage");
   String next=UUID.randomUUID().toString();File folder=new File(root(),next);
   if(!folder.mkdirs())throw new IOException("Recording storage unavailable");
   id=next;dir=folder;finished.clear();index=0;pausedTotal=0;stopReason=null;recovered=false;
-  ownerDigest=owner;folderId=destination==null||destination.isEmpty()?null:destination;
+  ownerDigest=owner;folderId=destination==null||destination.isEmpty()?null:destination;canonicalSavePending=false;
   state="recording";
   try{writeJournal();open(index);}catch(IOException|RuntimeException error){discard();throw error;}
   publish();return status();
@@ -203,6 +222,7 @@ final class AlphaNoteRecorder {
  }
  synchronized JSObject resume(String recordingId) throws IOException {
   owned(recordingId);
+  if(canonicalSavePending)throw new IOException("Note save is unconfirmed");
   if(!"paused".equals(state)&&!"stopped".equals(state))return status();
   if(usableSpace()<MIN_FREE_BYTES)throw new IOException("storage");
   if(recorder!=null){recorder.resume();pausedTotal+=SystemClock.elapsedRealtime()-pausedAt;pausedAt=0;state="recording";scheduleRollover();}
@@ -218,8 +238,14 @@ final class AlphaNoteRecorder {
  /** The transcript of one finished segment, journaled with it. */
  synchronized void setText(String recordingId,String segmentId,String text) throws IOException {
   owned(recordingId);int i=segmentIndex(segmentId);if(i<0)throw new IllegalArgumentException("Unknown segment");
+  if(canonicalSavePending)throw new IOException("Note save is unconfirmed");
   if(text==null||text.length()>20_000)throw new IllegalArgumentException("Invalid transcript");
   finished.get(i).text=text;writeJournal();
+ }
+ synchronized boolean claimCanonicalSave(String recordingId)throws IOException{
+  owned(recordingId);
+  if(canonicalSavePending||ownerDigest==null||!"stopped".equals(state)||finished.isEmpty())return false;
+  canonicalSavePending=true;writeJournal();return true;
  }
  /** Deletes the recording and every segment. */
  synchronized void discard(){
@@ -227,7 +253,7 @@ final class AlphaNoteRecorder {
   MediaRecorder active=recorder;recorder=null;
   if(active!=null){try{active.stop();}catch(RuntimeException ignored){}active.release();}
   if(dir!=null)deleteTree(dir);
-  id=null;dir=null;ownerDigest=null;folderId=null;finished.clear();index=0;state="idle";stopReason=null;recovered=false;pausedTotal=0;pausedAt=0;
+  id=null;dir=null;ownerDigest=null;folderId=null;canonicalSavePending=false;finished.clear();index=0;state="idle";stopReason=null;recovered=false;pausedTotal=0;pausedAt=0;
   publish();
  }
  synchronized boolean owns(String recordingId){return id!=null&&id.equals(recordingId);}
@@ -251,6 +277,7 @@ final class AlphaNoteRecorder {
   if(id==null)return out;
   out.put("recordingId",id);out.put("recovered",recovered);
   if(ownerDigest!=null)out.put("binding",new JSObject().put("ownerDigest",ownerDigest).put("folderId",folderId==null?JSONObject.NULL:folderId));
+  if(canonicalSavePending)out.put("canonicalSavePending",true);
   if(stopReason!=null)out.put("stopReason",stopReason);
   long total=0;JSArray segments=new JSArray();
   for(int i=0;i<finished.size();i++){Segment s=finished.get(i);total+=s.durationMs;JSObject o=new JSObject();o.put("segmentId",id+"-s"+i);o.put("durationMs",s.durationMs);if(s.text!=null)o.put("text",s.text);segments.put(o);}
@@ -267,7 +294,7 @@ final class AlphaNoteRecorder {
   try{
    JSONArray list=new JSONArray();
    for(Segment s:finished){JSONObject o=new JSONObject().put("d",s.durationMs);if(s.text!=null)o.put("t",s.text);list.put(o);}
-   JSONObject record=new JSONObject().put("segments",list).put("ownerDigest",ownerDigest).put("folderId",folderId);
+   JSONObject record=new JSONObject().put("segments",list).put("ownerDigest",ownerDigest).put("folderId",folderId).put("canonicalSavePending",canonicalSavePending);
    out=file.startWrite();out.write(record.toString().getBytes(StandardCharsets.UTF_8));file.finishWrite(out);
   }
   catch(org.json.JSONException|IOException error){if(out!=null)file.failWrite(out);throw new IOException("Recording index unavailable",error);}

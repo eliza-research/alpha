@@ -25,6 +25,12 @@ function fakeDriver() {
     async stop(rid) { assert.equal(rid, id); state.status = {...state.status, state: 'stopped', stopReason: 'user'}; return structuredClone(state.status); },
     async discard(rid) { if (rid === id) { state.discarded++; state.status = {state: 'idle'}; } return structuredClone(state.status); },
     async setText(rid, segmentId, text) { state.texts[segmentId] = text; },
+    async claimCanonicalSave(rid) {
+      assert.equal(rid,id);
+      if (state.status.canonicalSavePending) return false;
+      state.status.canonicalSavePending = true;
+      return true;
+    },
     async save(input) { state.saves.push(input); return {audioId: input.recordingId, noteId: input.noteId, durationMs: state.status.durationMs, transcript: input.transcript}; },
     async listen(callback) { state.listeners.add(callback); return {remove() { state.listeners.delete(callback); }}; },
     /** One more finished segment (the recorder rolled over to the next file). */
@@ -188,6 +194,32 @@ test('account change stops capture and drops late transcription without deleting
   assert.equal(s.displayTranscript(), '');
   assert.equal(await s.finish(async () => assert.fail('Old recording saved')), false);
   assert.equal(driver.state.discarded, 0);
+});
+
+test('an uncertain canonical save keeps audio and cannot claim another create after recovery', async t => {
+  const driver = fakeDriver(), first = session(driver);
+  t.after(() => first.close());
+  await first.begin();
+  driver.segment();
+  await settle();
+  let writes=0;
+  assert.equal(await first.finish(async (_saved,_transcript,intent) => {
+    assert.equal(await intent.claim(),true);
+    writes++;
+    throw Error('The canonical note committed but its reply was lost');
+  }, false),false);
+  assert.equal(driver.state.discarded,0);
+  first.leave();
+  const restored=session(driver);
+  t.after(() => restored.close());
+  assert.equal(await restored.adopt(),true);
+  assert.equal(await restored.finish(async (_saved,_transcript,intent) => {
+    assert.equal(intent.pending,true);
+    if(await intent.claim())writes++;
+    return false;
+  }, false),false);
+  assert.equal(writes,1);
+  assert.equal(driver.state.discarded,0);
 });
 
 test('Done stops, catches the transcript up, saves one voice note and only then discards the segments', async () => {

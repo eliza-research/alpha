@@ -2,6 +2,36 @@ import {test,expect} from '@playwright/test';
 import {canonicalNotesFixture,openCanonicalNotes} from './helpers/canonical-notes';
 const snapshot=(page:import('@playwright/test').Page)=>page.evaluate(()=>(window as any).canonicalNotesFixture.state);
 
+test('a lost canonical recording save reply is reconciled without another create',async({page})=>{
+ await canonicalNotesFixture(page);
+ const result=await page.evaluate(async()=>{
+  const {connectionController}=await import('/src/runtime/connection-ui.tsx');
+  const {CanonicalNotesUi}=await import('/src/prototype/canonical-notes-ui.ts');
+  const fixture=(window as any).canonicalNotesFixture;
+  let pending=false,claims=0;
+  const attempt=async()=>{
+   const ui=new CanonicalNotesUi(connectionController.getAppRecordClient()!,{paint(){},review(){}});
+   try{
+    return await ui.saveVoice('11111111-2222-4333-8444-555555555555','A recovered recording.',3000,'f-original',()=>true,{
+     pending,
+     claim:async()=>{claims++;if(pending)return false;pending=true;return true;},
+    });
+   }finally{ui.retire();}
+  };
+  fixture.failAfterApplied=true;
+  const first=await attempt();
+  fixture.failReads=true;
+  const unavailable=await attempt();
+  fixture.failReads=false;
+  const reconciled=await attempt();
+  return {first,unavailable,reconciled,claims,notes:fixture.state.notes,posts:fixture.requests.filter((r:any)=>r.method==='POST')};
+ });
+ expect(result).toMatchObject({first:false,unavailable:false,reconciled:true,claims:1});
+ expect(result.posts).toHaveLength(1);
+ expect(result.notes).toHaveLength(1);
+ expect(result.notes[0].format.data).toMatchObject({recordingId:'11111111-2222-4333-8444-555555555555',folderId:'f-original',dur:3});
+});
+
 // Live agent Notes render through Alpha's own Notes template (the one mock mode shows), saved through
 // the canonical Notes client: the same committed identity, expectedRevision and Trash restore.
 test('canonical Notes UI creates, edits, trashes and restores the same committed identity',async({page})=>{

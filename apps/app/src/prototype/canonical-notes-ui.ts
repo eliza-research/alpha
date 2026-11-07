@@ -1,11 +1,12 @@
 import {parseNoteFormat} from '../../../../.eliza/client-features/plugins/plugin-notes/src/note-format.ts';
-import {projectNoteForModel,type NoteJson,type StickyNote} from '../../../../.eliza/client-features/plugins/plugin-notes/src/types.ts';
+import {projectNoteForModel,reconstructNoteContent,type NoteJson,type StickyNote} from '../../../../.eliza/client-features/plugins/plugin-notes/src/types.ts';
 import {noteScheduleDraft,type NoteScheduleKind} from '../../../../.eliza/client-features/plugins/plugin-notes/src/client/note-schedule-draft.ts';
 import type {AppRecordPort} from '../runtime/app-record-route-policy';
 import {agentPendingText,agentAvailabilityNotice} from '../runtime/connection-ui';
 import {DailyApps} from '../daily';
 import {CanonicalNotesController,type NotesPhase} from './canonical-notes-controller';
 import {CanonicalNotesEditor} from './canonical-notes-editor';
+import type {CanonicalNoteSaveIntent} from './note-recorder';
 type Bag=Record<string,any>;
 const UNAVAILABLE='Notes is unavailable for this agent connection. Check Settings › Agent connection.';
 /** Device-local handles (a recording, a picked document, a web source) belong to Older notes adapters, never to an agent record's view. */
@@ -157,15 +158,29 @@ export class CanonicalNotesUi {
   * A finished Notes recording as an agent voice note: its transcript and length, in the selected
   * folder. Agent notes keep no audio (as dictation), so the recording itself is not stored.
   */
- async saveVoice(transcript:string,durationMs:number,folderId:string|null,current:()=>boolean):Promise<boolean>{
+ async saveVoice(recordingId:string,transcript:string,durationMs:number,folderId:string|null,current:()=>boolean,intent:CanonicalNoteSaveIntent):Promise<boolean>{
   try{
-   if(!current()||!await this.leave(null))return false;
-   if(this.controller.revision===null)await this.controller.refresh();
-   if(!current())return false;
-   this.editor.begin('voice');
-   const data:Record<string,NoteJson>={lines:transcript?[{s:'me',at:0,t:transcript}]:[],summary:[],actions:[],dur:Math.round(durationMs)/1000,...(folderId?{folderId}:{})};
-   this.editor.edit({title:'Voice note',body:transcript,format:parseNoteFormat({kind:'voice',data})});
-   return await this.editor.save();
+   if(!current()||this.pending)return false;
+   await this.controller.refresh();
+   if(!current()||this.pending)return false;
+   const duration=Math.round(durationMs)/1000;
+   const content=transcript?`Voice note\n${transcript}`:'Voice note';
+   const belongs=(note:StickyNote)=>note.format?.kind==='voice'&&note.format.data.recordingId===recordingId;
+   const matches=(note:StickyNote)=>belongs(note)&&reconstructNoteContent(note)===content&&
+    note.format?.data.dur===duration&&(note.format?.data.folderId??null)===folderId;
+   const snapshot=this.controller.snapshot;
+   const prior=[...(snapshot?.notes??[]),...(snapshot?.trash??[]).map(entry=>entry.note)].filter(belongs);
+   if(prior.length)return prior.length===1&&matches(prior[0]);
+   if(intent.pending||this.dirty||!await intent.claim()||!current()||this.pending||this.dirty)return false;
+   const data:Record<string,NoteJson>={recordingId,lines:transcript?[{s:'me',at:0,t:transcript}]:[],summary:[],actions:[],dur:duration,...(folderId?{folderId}:{})};
+   const result=await this.controller.interact('create-note',{
+    content,
+    forceNew:true,format:parseNoteFormat({kind:'voice',data}),
+   });
+   if(!current()||!result.note||!result.target||!matches(result.note))return false;
+   this.editor.open(result.target.id);
+   this.hooks.committed?.(result.target.id);
+   return true;
   }catch{if(this.controller.current)this.needsReview();return false;}
  }
  async saveCard(content:string,api:Bag):Promise<boolean>{
