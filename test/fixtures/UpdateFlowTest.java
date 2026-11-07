@@ -125,6 +125,7 @@ public final class UpdateFlowTest {
  private static AlphaDevicePlugin bridge(Context context,Lifecycle.State state){
   AlphaDevicePlugin plugin=new AlphaDevicePlugin();
   fixtureBridges.add(plugin);
+  if(AlphaDevicePlugin.UpdatePause.context!=context){AlphaDevicePlugin.UpdatePause.journal=null;AlphaDevicePlugin.UpdatePause.configure(context);}
   plugin.context=context;plugin.activity=new Activity();plugin.activity.state=state;plugin.load();
   return plugin;
  }
@@ -183,6 +184,7 @@ public final class UpdateFlowTest {
  private static AlphaDevicePlugin restarted(Context context)throws Exception{
   context.receivers.clear();
   forgetProcess();
+  AlphaDevicePlugin.UpdatePause.journal=null;AlphaDevicePlugin.UpdatePause.configure(context);
   return bridge(context,Lifecycle.State.RESUMED);
  }
  private static void plugin(String field,Object value)throws Exception{
@@ -190,6 +192,8 @@ public final class UpdateFlowTest {
   member.setAccessible(true);member.set(null,value);
  }
  private static void forgetProcess()throws Exception{
+  AlphaDevicePlugin.UpdatePause.liveOwner=null;AlphaDevicePlugin.UpdatePause.shutdownRequest=-1;
+
   plugin("updateOwner",null);plugin("updateConfirm",null);plugin("updateSession",0);plugin("updateDue",false);plugin("updateOpen",false);plugin("updateAsked",0L);
   java.lang.reflect.Field attempt=AlphaDevicePlugin.class.getDeclaredField("updating");
   attempt.setAccessible(true);((java.util.concurrent.atomic.AtomicBoolean)attempt.get(null)).set(false);
@@ -209,7 +213,7 @@ public final class UpdateFlowTest {
  private static void aged(long millis)throws Exception{plugin("updateAsked",System.nanoTime()-TimeUnit.MILLISECONDS.toNanos(millis));}
  private static void resume(AlphaDevicePlugin plugin){plugin.activity.state=Lifecycle.State.RESUMED;plugin.handleOnResume();}
  private static void stop(AlphaDevicePlugin plugin){plugin.activity.state=Lifecycle.State.CREATED;}
- private static Context installing(File cache)throws Exception{retireFixtureWorkers();forgetProcess();Build.VERSION.SDK_INT=37;Build.VERSION.CODENAME="REL";Context context=new Context(cache);context.packages.archive=archive(context.getPackageName(),8);return context;}
+ private static Context installing(File cache)throws Exception{retireFixtureWorkers();forgetProcess();BuildConfig.VERSION_CODE=7;Build.VERSION.SDK_INT=37;Build.VERSION.CODENAME="REL";Context context=new Context(cache);context.packages.archive=archive(context.getPackageName(),8);return context;}
  /** The confirmation goes with no status, as Home or Alpha's own singleTask relaunch can do it. Alpha returns, and time passes. */
  private static void dismissed(AlphaDevicePlugin plugin)throws Exception{stop(plugin);resume(plugin);settled();}
 
@@ -983,7 +987,8 @@ public final class UpdateFlowTest {
    else if(end.equals("android"))installer.destroy(left);
    else{context.packages.installed.versionCode=8;context.packages.archive=archive(context.getPackageName(),9);}
    PluginCall later=offered(end.equals("installed")?9:8);next.installUpdate(later);later.awaitAnswer();
-   check(later.resolved.get()==1&&connections.size()==1&&installer.committed.size()==1&&committed(context)!=left&&installer.abandoned.isEmpty(),"and the fence ends with it:"+run);
+   if(end.equals("installed"))check(later.rejected.get()==1&&connections.isEmpty()&&installer.committed.isEmpty()&&installer.abandoned.isEmpty(),"an old executing binary cannot clear the successor runtime pause or stage another install:"+run);
+   else check(later.resolved.get()==1&&connections.size()==1&&installer.committed.size()==1&&committed(context)!=left&&installer.abandoned.isEmpty(),"and the fence ends with it:"+run);
   }
  }
  /** The intent is one float in Android's memory, so nothing writes half of it, but only an exact 0 proves no commit, and a read Android cannot give stops the tap. */
@@ -1200,6 +1205,11 @@ public final class UpdateFlowTest {
    check(tap(next).resolved.get()==1&&installer.committed.equals(List.of(landed))&&connections.isEmpty(),"its binding came back with it, and below its target it fences:"+run);
    context.packages.installed.versionCode=8;
    context.packages.archive=archive(context.getPackageName(),9);
+   PluginCall stale=offered(9);next.installUpdate(stale);stale.awaitAnswer();
+   check(stale.rejected.get()==1&&connections.isEmpty(),"the old binary cannot retire the successor pause:"+run);
+   // Simulate the exact successor process: Android package identity alone is insufficient.
+   java.nio.file.Files.write(new File(context.getNoBackupFilesDir(),"base.apk").toPath(),APK);
+   BuildConfig.VERSION_CODE=8;next=restarted(context);
    PluginCall later=offered(9);next.installUpdate(later);later.awaitAnswer();
    int newer=committed(context);
    check(later.resolved.get()==1&&connections.size()==1&&newer!=landed,"at its target it holds nothing, and the later build goes to Android:"+run);
@@ -1209,6 +1219,7 @@ public final class UpdateFlowTest {
    ended(context,newer,PackageInstaller.STATUS_SUCCESS);
    context.packages.installed.versionCode=9;
    context.packages.archive=archive(context.getPackageName(),10);
+   BuildConfig.VERSION_CODE=9;next=restarted(context);
    later=offered(10);next.installUpdate(later);later.awaitAnswer();
    check(later.resolved.get()==1&&committed(context)!=newer&&installer.committed.size()==3,"and past its target it holds nothing either:"+run);
   }
@@ -1596,11 +1607,52 @@ public final class UpdateFlowTest {
   context.packages.installed.signingInfo=new SigningInfo(new Signature[]{original,rotated},null);
   check(AlphaDevicePlugin.appSigner(context)==null,"several signers have no one lineage: nothing is reported");
  }
+ private static void updateWaitsForDraftsAndExactShutdown(File cache)throws Exception{
+  var original=com.getcapacitor.Plugin.ready;
+  try{
+   Context context=installing(cache);AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);
+   CountDownLatch ready=new CountDownLatch(1);JSObject[] activation=new JSObject[1];
+   com.getcapacitor.Plugin.ready=(plugin,value)->{activation[0]=value;ready.countDown();};
+   AlphaLocalAgentPlugin.stops=0;AlphaLocalAgentPlugin.releases=0;AlphaLocalAgentPlugin.confirmed=false;
+   PluginCall installing=offered();owner.installUpdate(installing);
+   check(ready.await(10,TimeUnit.SECONDS),"verified staged APK asks the renderer for draft readback");
+   check(context.packages.installer.committed.isEmpty()&&AlphaLocalAgentPlugin.stops==0,"no shutdown or commit before renderer acknowledgment");
+   PluginCall wrong=new PluginCall(new JSObject().put("activationId","00000000-0000-4000-8000-000000000000"));owner.activateUpdate(wrong);
+   check(wrong.rejected.get()==1&&AlphaLocalAgentPlugin.stops==0,"wrong activation has no effect");
+   PluginCall ack=new PluginCall(new JSObject().put("activationId",activation[0].optString("activationId")).put("ready",true));owner.activateUpdate(ack);
+   long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(5);
+   while(AlphaLocalAgentPlugin.stops==0&&System.nanoTime()<deadline)Thread.sleep(5);
+   check(AlphaLocalAgentPlugin.stops==1&&context.packages.installer.committed.isEmpty(),"shutdown requested, unconfirmed stop prevents commit");
+   check(AlphaDevicePlugin.UpdatePause.store().read()!=null,"pause survives before stop acknowledgment");
+   AlphaLocalAgentPlugin.confirmed=true;installing.awaitAnswer();
+   check(installing.resolved.get()==1&&context.packages.installer.committed.size()==1,"matching shutdown allows exactly one commit");
+   PluginCall duplicate=new PluginCall(activation[0]);owner.activateUpdate(duplicate);check(duplicate.rejected.get()==1,"activation cannot be replayed");
+   int session=committed(context);confirmation(context,session);owner.handleOnResume();
+   check(AlphaDevicePlugin.UpdatePause.store().read()!=null&&AlphaLocalAgentPlugin.releases==0,"dismissal/resume does not release the pause");
+   ended(context,session,PackageInstaller.STATUS_FAILURE_ABORTED);
+   PluginCall reconciled=new PluginCall(new JSObject());owner.reconcileUpdate(reconciled);reconciled.awaitAnswer();
+   check(AlphaDevicePlugin.UpdatePause.store().read()==null&&AlphaLocalAgentPlugin.releases==1,"actual terminal cancellation releases the owned shutdown");
+   check(owner.events.stream().filter(e->e.equals("alphaUpdateSettled:canceled")).count()==1,"cancellation settles once");
+  }finally{com.getcapacitor.Plugin.ready=original;AlphaLocalAgentPlugin.confirmed=true;}
+ }
+ private static void refusedDraftFlushNeverStopsOrCommits(File cache)throws Exception{
+  var original=com.getcapacitor.Plugin.ready;
+  try{
+   Context context=installing(cache);AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);AlphaLocalAgentPlugin.stops=0;
+   com.getcapacitor.Plugin.ready=(plugin,value)->((AlphaDevicePlugin)plugin).activateUpdate(new PluginCall(value.put("ready",false)));
+   PluginCall refused=tap(owner);
+   check(refused.rejected.get()==1&&AlphaLocalAgentPlugin.stops==0&&context.packages.installer.committed.isEmpty(),"refused draft flush leaves running resident and sends no commit");
+   check(AlphaDevicePlugin.UpdatePause.store().read()==null&&context.packages.installer.sessions.isEmpty(),"only its own uncommitted staging is abandoned");
+   check(owner.events.stream().filter(e->e.equals("alphaUpdateSettled:failed")).count()==1,"preparation refusal settles once");
+  }finally{com.getcapacitor.Plugin.ready=original;}
+ }
  public static void main(String[] args)throws Exception{
   URL.setURLStreamHandlerFactory(protocol->!"https".equals(protocol)?null:new URLStreamHandler(){@Override protected URLConnection openConnection(URL url){return new Served(url);}});
   File cache=Files.createTempDirectory("alpha-update-flow").toFile();
   int status=1;
   try{
+   updateWaitsForDraftsAndExactShutdown(cache);
+   refusedDraftFlushNeverStopsOrCommits(cache);
    aStartSweepsTheDownloadOfAKilledProcess(cache);
    oneTapInstallsWhileATapOnAnotherBridgeChangesNothing(cache);
    aTapOnAnotherBridgeLeavesAConfirmationPendingForTheOwner(cache);

@@ -236,6 +236,89 @@ public final class AlphaDevicePlugin extends Plugin {
  }
  /** Moves at every system_server start, ahead of any app (AOSP 10 to 17). Android keeps a session's status receiver in memory only, so no status comes across it. */
  private int updateBoot()throws Settings.SettingNotFoundException{return Settings.Global.getInt(getContext().getContentResolver(),Settings.Global.BOOT_COUNT);}
+ /** Native-only durable ownership. Android's session is still the commit fence; this record fences runtime starts. */
+ static final class UpdatePause {
+  static volatile ai.eliza.plugins.agent.updater.RuntimeUpdatePause journal;
+  static volatile Context context;
+  static volatile String executingApk;
+  static volatile String liveOwner;
+  static volatile long shutdownRequest=-1;
+  static void configure(Context base){
+   context=base.getApplicationContext();executingApk=base.getApplicationInfo().sourceDir;
+   ai.eliza.plugins.agent.updater.RuntimeUpdatePause.configureStartAdmission(()->{
+    try{return store().read()==null;}catch(Exception unavailable){return false;}
+   });
+   // No record means no APK hashing on ordinary startup. A successor reconciles before providers start.
+   try{reconcile();}catch(Exception unavailable){/* Durable uncertainty keeps starts fenced. */}
+  }
+  static ai.eliza.plugins.agent.updater.RuntimeUpdatePause store()throws Exception {
+   if(journal==null)synchronized(UpdatePause.class){if(journal==null)journal=new ai.eliza.plugins.agent.updater.RuntimeUpdatePause(new java.io.File(context.getNoBackupFilesDir(),"app-update-pause").toPath());}
+   return journal;
+  }
+  static String digest(String path)throws Exception {
+   java.security.MessageDigest digest=java.security.MessageDigest.getInstance("SHA-256");
+   try(java.io.InputStream in=new java.io.FileInputStream(path)){byte[] bytes=new byte[65536];for(int n;(n=in.read(bytes))!=-1;)digest.update(bytes,0,n);}
+   return hex(digest.digest());
+  }
+  static void acquire(String id,int session,long version,String sha,int boot)throws Exception {
+   liveOwner=id;
+   store().acquire(new ai.eliza.plugins.agent.updater.RuntimeUpdatePause.Record(id,session,boot,BuildConfig.VERSION_CODE,digest(executingApk),version,sha,appSigner(context),false));
+  }
+  static void stop()throws Exception {
+   shutdownRequest=AlphaLocalAgentPlugin.pauseForUpdate(context);
+   ai.elizaos.app.ElizaAgentService.retryCredentialShutdown(context,shutdownRequest);
+   long deadline=System.nanoTime()+java.util.concurrent.TimeUnit.SECONDS.toNanos(20);
+   while(!AlphaLocalAgentPlugin.updateShutdownConfirmed(context,shutdownRequest)){
+    if(System.nanoTime()>=deadline)throw new java.io.IOException("Update shutdown unconfirmed");
+    Thread.sleep(50);
+   }
+  }
+  static void committing(String id)throws Exception{store().committing(id);}
+  /** Returns only a proven settled owner. It never starts the runtime or retains a provider credential. */
+  static ai.eliza.plugins.agent.updater.RuntimeUpdatePause.Record reconcile()throws Exception {
+   var record=store().read();if(record==null||record.id.equals(liveOwner))return null;
+   PackageInstaller installer=context.getPackageManager().getPackageInstaller();
+   PackageInstaller.SessionInfo session=installer.getSessionInfo(record.session);
+   var observation=ai.eliza.plugins.agent.updater.RuntimeUpdatePause.Session.PENDING;
+   if(session==null)observation=ai.eliza.plugins.agent.updater.RuntimeUpdatePause.Session.ABSENT;
+   else {
+    String expected="alpha-update://"+context.getPackageName()+"/"+record.targetCode+"/"+record.targetDigest+"/"+record.signer+"/"+record.boot+"/intent";
+    boolean bound=expected.equals(String.valueOf(session.getReferrerUri()));
+    int boot=Settings.Global.getInt(context.getContentResolver(),Settings.Global.BOOT_COUNT);
+    // PAUSING was durably written before any commit intent. COMMITTING retains the existing Android ordering proof.
+    boolean uncommitted=bound&&!session.isSealed()&&(!record.committing||record.boot!=boot||"REL".equals(Build.VERSION.CODENAME)&&(Build.VERSION.SDK_INT<=30||Build.VERSION.SDK_INT>=33&&Build.VERSION.SDK_INT<=37)&&session.getProgress()==0f);
+    if(uncommitted)observation=ai.eliza.plugins.agent.updater.RuntimeUpdatePause.Session.PROVEN_UNCOMMITTED;
+   }
+   // A stop that timed out in this process does not become success just because its install was abandoned.
+   if(shutdownRequest>=0&&!AlphaLocalAgentPlugin.updateShutdownConfirmed(context,shutdownRequest))return null;
+   var installed=context.getPackageManager().getPackageInfo(context.getPackageName(),0);
+   if(!record.signer.equals(appSigner(context)))return null;
+   if(!store().reconcile(record.id,installed.getLongVersionCode(),digest(context.getApplicationInfo().sourceDir),BuildConfig.VERSION_CODE,digest(executingApk),observation,false))return null;
+   if(shutdownRequest>=0){AlphaLocalAgentPlugin.releaseUpdateShutdown(shutdownRequest);shutdownRequest=-1;}
+   return record;
+  }
+ }
+ private static final class UpdateActivation {
+  final String id=java.util.UUID.randomUUID().toString();
+  final AlphaDevicePlugin owner;
+  final java.util.concurrent.CompletableFuture<Boolean> ready=new java.util.concurrent.CompletableFuture<>();
+  UpdateActivation(AlphaDevicePlugin owner){this.owner=owner;}
+ }
+ private static volatile UpdateActivation activation;
+ /** Acknowledges only the current staged activation; false is a pre-commit refusal, not cancellation of an install. */
+ @PluginMethod public void activateUpdate(PluginCall call){
+  UpdateActivation pending=activation;
+  if(pending==null||pending.owner!=this||!pending.id.equals(call.getString("activationId"))||!pending.ready.complete(call.getData().optBoolean("ready",true))){call.reject("Update preparation changed");return;}
+  call.resolve();
+ }
+ private void settleUpdate(String id,String outcome){notifyListeners("alphaUpdateSettled",new JSObject().put("activationId",id).put("outcome",outcome));}
+ private boolean reconcileUpdate(){
+  try{var settled=UpdatePause.reconcile();if(settled!=null){settleUpdate(settled.id,BuildConfig.VERSION_CODE==settled.targetCode?"installed":"canceled");return true;}}catch(Exception unavailable){/* Unknown stays paused; no replay. */}
+  return false;
+ }
+ @PluginMethod public void reconcileUpdate(PluginCall call){
+  PluginWorkers.submit(updateWorker,()->{reconcileUpdate();try{call.resolve(new JSObject().put("pending",activation!=null||UpdatePause.store().read()!=null));}catch(Exception unavailable){call.reject("Update status unavailable");}},()->call.reject("Update status unavailable"));
+ }
  /** Downloads run here, never on the problem-log worker. */
  private final java.util.concurrent.ExecutorService updateWorker=java.util.concurrent.Executors.newSingleThreadExecutor();
  /** The session this process last handed to Android, set before its commit. Every bridge's receiver hears every session's status, and only updateOwner acts on it. */
@@ -267,6 +350,7 @@ public final class AlphaDevicePlugin extends Plugin {
    updateDue=intent.getIntExtra(PackageInstaller.EXTRA_STATUS,PackageInstaller.STATUS_FAILURE)==PackageInstaller.STATUS_PENDING_USER_ACTION;
    updateConfirm=updateDue?androidx.core.content.IntentCompat.getParcelableExtra(intent,Intent.EXTRA_INTENT,Intent.class):null;
    if(inFront())confirmUpdate();
+   PluginWorkers.submit(updateWorker,()->reconcileUpdate(),()->{});
   }
  };
  private boolean inFront(){return getActivity().getLifecycle().getCurrentState().isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED);}
@@ -288,6 +372,7 @@ public final class AlphaDevicePlugin extends Plugin {
  /** A resume follows a pause, so what this bridge opened above itself is gone: answered, or dismissed with no status. Time may have passed since Android asked for what it kept. */
  @Override protected void handleOnResume(){
   super.handleOnResume();
+  PluginWorkers.submit(updateWorker,()->reconcileUpdate(),()->{});
   if(updateOwner!=this)return;
   if(updateOpen){updateOpen=false;updateAsked=System.nanoTime();}
   try{if(updateDue&&pastConfirmation(getContext().getPackageManager().getPackageInstaller().getSessionInfo(updateSession),updateConfirm))updateDue=false;}catch(RuntimeException unanswered){/* It opens as kept. */}
@@ -308,6 +393,7 @@ public final class AlphaDevicePlugin extends Plugin {
  private static final java.util.concurrent.atomic.AtomicInteger updatesCommitted=new java.util.concurrent.atomic.AtomicInteger();
  @Override public void load(){
   super.load();
+  PluginWorkers.submit(updateWorker,()->reconcileUpdate(),()->{});
   // Deletes the download a killed process left (up to UPDATE_MAX_BYTES), never one in flight on another bridge.
   if(updating.compareAndSet(false,true)){updateApk().delete();updating.set(false);}
   androidx.core.content.ContextCompat.registerReceiver(getContext(),updateStatus,new android.content.IntentFilter(UPDATE_STATUS),androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED);
@@ -329,6 +415,7 @@ public final class AlphaDevicePlugin extends Plugin {
  @PluginMethod public void checkForUpdate(PluginCall call){
   PluginWorkers.submit(updateWorker,()->{
    try{
+    reconcileUpdate();
     javax.net.ssl.HttpsURLConnection connection=updateConnection(BuildConfig.ALPHA_UPDATE_MANIFEST_URL);
     try{
      int status=connection.getResponseCode();
@@ -367,8 +454,10 @@ public final class AlphaDevicePlugin extends Plugin {
    // Read holding updating: an attempt ending between a read and the claim above would otherwise pass unseen.
    if(updatesCommitted.get()!=seen){updating.set(false);call.resolve();return;}
    java.io.File apk=updateApk();
+   UpdateActivation preparation=null;boolean pauseOwned=false;
    try{
     try{
+     reconcileUpdate();
      PackageInstaller installer=getContext().getPackageManager().getPackageInstaller();
      // Android's own list is the fence, so no process can lose it: a commit seals the session, and Android drops it at
      // its terminal status, whether or not that status reached Alpha. A commit can wait in Binder, unsealed, past its process's
@@ -398,6 +487,7 @@ public final class AlphaDevicePlugin extends Plugin {
       // be up behind its owner; and while another bridge owes the one it kept. A start Android dropped frees itself.
       if(confirm!=null&&!pastConfirmation(pending,confirm)&&(asked==0||System.nanoTime()-asked>=java.util.concurrent.TimeUnit.SECONDS.toNanos(3))&&(!updateOpen||owner==null||owner.inFront())&&(!updateDue||owner==this)){updateOwner=this;updateOpen=false;updateDue=true;getActivity().runOnUiThread(()->{if(inFront())confirmUpdate();});}
      }else{
+      if(UpdatePause.store().read()!=null)throw new java.io.IOException("Update outcome is pending");
       long deadline=System.nanoTime()+UPDATE_DEADLINE_NANOS;
       javax.net.ssl.HttpsURLConnection connection=updateConnection(apkUrl);
       try{
@@ -417,6 +507,14 @@ public final class AlphaDevicePlugin extends Plugin {
       try(PackageInstaller.Session session=installer.openSession(id)){
        try(java.io.OutputStream out=session.openWrite("base.apk",0,size)){java.nio.file.Files.copy(apk.toPath(),out);session.fsync(out);}
        throwIfDestroyed();
+       preparation=new UpdateActivation(this);activation=preparation;
+       notifyListeners("alphaUpdateReady",new JSObject().put("activationId",preparation.id));
+       if(!preparation.ready.get(30,java.util.concurrent.TimeUnit.SECONDS))throw new java.io.IOException("Update preparation refused");
+       throwIfDestroyed();
+       pauseOwned=true;UpdatePause.acquire(preparation.id,id,versionCode,sha256,updateBoot());
+       UpdatePause.stop();
+       throwIfDestroyed();
+       UpdatePause.committing(preparation.id);
        android.content.IntentSender status=android.app.PendingIntent.getBroadcast(getContext(),id,new Intent(UPDATE_STATUS).setPackage(getContext().getPackageName()),android.app.PendingIntent.FLAG_UPDATE_CURRENT|android.app.PendingIntent.FLAG_MUTABLE).getIntentSender();
        // The commit intent. Android holds this before the call returns, so on a level that orders a later read after it (above), a
        // session reading 0 was sent no commit, and it lasts in Android's memory for exactly as long as a queued commit can: no corrupt
@@ -436,11 +534,18 @@ public final class AlphaDevicePlugin extends Plugin {
        throw failed;
       }
      }
-    }finally{apk.delete();updating.set(false);}
+    }finally{
+     if(preparation!=null){
+      if(activation==preparation)activation=null;
+      if(preparation.id.equals(UpdatePause.liveOwner))UpdatePause.liveOwner=null;
+      if(pauseOwned){boolean settled=reconcileUpdate();try{if(!settled&&UpdatePause.store().read()==null&&UpdatePause.shutdownRequest<0)settleUpdate(preparation.id,"failed");}catch(Exception unknown){/* Failed publication may have persisted. */}}else settleUpdate(preparation.id,"failed");
+     }
+     apk.delete();updating.set(false);
+    }
     call.resolve();
    }catch(Exception unavailable){call.reject("Update unavailable");}
   },()->call.reject("Update unavailable"));
  }
  /** Stops an update download too: disconnect only closes the raw socket, which Android allows on this main thread. A session outlives its owner, for a later tap on any bridge. */
- @Override protected void handleOnDestroy(){diagnosticsWorker.shutdown();updateWorker.shutdownNow();javax.net.ssl.HttpsURLConnection active=updateActive;if(active!=null)active.disconnect();getContext().unregisterReceiver(updateStatus);if(updateOwner==this){updateOwner=null;updateDue=false;updateOpen=false;}super.handleOnDestroy();}
+ @Override protected void handleOnDestroy(){UpdateActivation pending=activation;if(pending!=null&&pending.owner==this)pending.ready.complete(false);diagnosticsWorker.shutdown();updateWorker.shutdownNow();javax.net.ssl.HttpsURLConnection active=updateActive;if(active!=null)active.disconnect();getContext().unregisterReceiver(updateStatus);if(updateOwner==this){updateOwner=null;updateDue=false;updateOpen=false;}super.handleOnDestroy();}
 }
