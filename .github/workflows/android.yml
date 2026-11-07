@@ -28,6 +28,10 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          bun-version: "1.4.2"
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
@@ -50,14 +54,25 @@ jobs:
           python3 -m pip install cmake==4.0.3
           test "$(cmake --version | head -1)" = "cmake version 4.0.3"
       - run: npm ci
+      - name: Prepare pinned JSON dependency for manual host contract tests
+        if: github.event_name == 'workflow_dispatch'
+        run: bash scripts/ci/prepare-host-test-json.sh
       - name: Verify standalone manual qualification
         if: github.event_name == 'workflow_dispatch'
-        run: npm run verify
+        shell: bash
+        run: |
+          ALPHA_BUN="$(command -v bun)"
+          export ALPHA_BUN
+          node scripts/prepare-local-agent.mjs
+          ALPHA_CLOUD_COLLECTOR_SOURCE=$(node --input-type=module -e "import {sourceDirectory} from './scripts/local-agent-source.mjs'; process.stdout.write(sourceDirectory(process.cwd()));")
+          export ALPHA_CLOUD_COLLECTOR_SOURCE
+          npm run verify
       - run: node --test vendor/eliza/packages/os/scripts/__tests__/stage-launcher-overlay.node.test.ts
       # On-device speech is the shared paradee-voice library on libelizainference (llama.cpp/ggml):
       # Paradee-8M TTS with misaki G2P and the bundle's ASR slot. This lane stages no native voice
       # outputs, so Gradle compiles the real Java API unpackaged and the APKs report speech unavailable.
       - name: Prepare pinned native lifecycle sources
+        if: github.event_name != 'workflow_dispatch'
         run: node scripts/prepare-local-agent.mjs --source-only
       # Distribution build: flag-off whatever the runner exports. This job stages no
       # resident runtime, so releases are recorded distributable:false (APK-build

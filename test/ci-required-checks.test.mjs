@@ -44,6 +44,10 @@ test('Android foundation runs on main and develop pushes and both workflows end 
     assert.match(text, new RegExp(`group: ${name}-\\$\\{\\{ github\\.event_name == 'push' && github\\.sha \\|\\| github\\.ref \\}\\}`), name);
   assert.match(android, /name: Android foundation result\n    needs: \[changes, build\]\n    if: always\(\)/);
   assert.match(android, /artifacts\/mapping\/\*\.txt/);
+  const manualVerify = android.split('- name: Verify standalone manual qualification\n')[1]?.split('\n      - ')[0];
+  assert.match(manualVerify, /if: github\.event_name == 'workflow_dispatch'/);
+  assert.match(manualVerify, /node scripts\/prepare-local-agent\.mjs\n[\s\S]+export ALPHA_CLOUD_COLLECTOR_SOURCE\n\s+npm run verify/);
+  assert.match(android, /name: Prepare pinned native lifecycle sources\n\s+if: github\.event_name != 'workflow_dispatch'/);
   const browser = read('.github/workflows/browser.yml');
   assert.match(browser, /name: Browser MVP result\n    needs: \[changes, verify, browser, production\]\n    if: always\(\)/);
   assert.match(browser, /name: Repository verification\n/);
