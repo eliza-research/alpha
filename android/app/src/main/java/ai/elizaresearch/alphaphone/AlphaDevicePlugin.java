@@ -452,13 +452,22 @@ public final class AlphaDevicePlugin extends Plugin {
  }
  /** Reopens only Android's kept confirmation, using the same session and timing fence as the Settings tap. */
  private void reopenUpdateConfirmation(PackageInstaller.SessionInfo pending){
-  Intent confirm=pending.getSessionId()==updateSession?updateConfirm:null;
+  int id=pending.getSessionId();
+  Intent confirm=id==updateSession?updateConfirm:null;
   AlphaDevicePlugin owner=updateOwner;
   long asked=updateAsked;
   // Leave time for a queued accept, an activity not yet covering Alpha, or a status in flight.
-  if(confirm!=null&&!pastConfirmation(pending,confirm)&&(asked==0||System.nanoTime()-asked>=java.util.concurrent.TimeUnit.SECONDS.toNanos(3))&&(!updateOpen||owner==null||owner.inFront())&&(!updateDue||owner==this)){
+  if(confirm!=null&&!pastConfirmation(pending,confirm)&&(asked==0||System.nanoTime()-asked>=java.util.concurrent.TimeUnit.SECONDS.toNanos(3))&&(!updateOpen||owner==null||owner.inFront())&&(!updateDue||owner==null||owner==this)){
    updateOwner=this;updateOpen=false;updateDue=true;
-   getActivity().runOnUiThread(()->{if(inFront())confirmUpdate();});
+   getActivity().runOnUiThread(()->{
+    // An accept, a new status, or a retired bridge can overtake this queued launch.
+    if(updateOwner!=this||updateSession!=id||updateConfirm!=confirm||!inFront())return;
+    try{
+     var current=getContext().getPackageManager().getPackageInstaller().getSessionInfo(id);
+     if(pastConfirmation(current,confirm)){updateDue=false;return;}
+    }catch(RuntimeException unavailable){return;}
+    confirmUpdate();
+   });
   }
  }
  /** A newly opened WebView can reach the already-staged update without mounting editors or downloading again. */

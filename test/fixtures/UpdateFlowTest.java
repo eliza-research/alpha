@@ -1118,6 +1118,45 @@ public final class UpdateFlowTest {
    check(tap(owner).resolved.get()==1&&installer.committed.size()==2,"and its end frees the next tap:"+run);
   }
  }
+ private static void aQueuedConfirmationStillNeedsItsOwnerAndPendingSession(File cache)throws Exception{
+  for(String change:List.of("none","accepted","retired","unreadable","new confirmation")){
+   Context context=installing(cache);
+   PackageInstaller installer=context.packages.installer;
+   AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);
+   check(tap(owner).resolved.get()==1,"one update is staged");
+   int pending=committed(context);
+   Intent confirm=confirmation(context,pending);
+   dismissed(owner);
+   owner.activity.deferUiWork=true;
+   check(tap(owner).resolved.get()==1&&owner.activity.queuedUiWork.size()==1,"the retained confirmation queues on the main thread");
+   check(owner.activity.started.equals(List.of(confirm)),"the queued confirmation has not run yet");
+   Intent nextConfirmation=null;
+   switch(change){
+    case "accepted":installer.accept(pending);installer.prepare(pending);break;
+    case "retired":owner.handleOnDestroy();break;
+    case "unreadable":installer.infoDown=true;break;
+    case "new confirmation":
+     stop(owner);installer.accept(pending);installer.install(pending);
+     nextConfirmation=verificationRequest(context,pending);
+     owner.activity.state=Lifecycle.State.RESUMED;break;
+   }
+   owner.activity.queuedUiWork.remove().run();
+   check(owner.activity.started.equals("none".equals(change)?List.of(confirm,confirm):List.of(confirm)),"queued launch respects the current owner and installer state: "+change);
+   if("retired".equals(change)){
+    AlphaDevicePlugin replacement=bridge(context,Lifecycle.State.RESUMED);
+    check(tap(replacement).resolved.get()==1&&replacement.activity.started.equals(List.of(confirm)),"a fresh tap can adopt the retired bridge's pending confirmation");
+   }
+   if("unreadable".equals(change)){
+    installer.infoDown=false;owner.activity.deferUiWork=false;
+    check(tap(owner).resolved.get()==1&&owner.activity.started.equals(List.of(confirm,confirm)),"a fresh tap can reopen after native readback recovers");
+   }
+   if(nextConfirmation!=null){
+    resume(owner);
+    check(owner.activity.started.equals(List.of(confirm,nextConfirmation)),"resume opens the new Android confirmation itself");
+   }
+   check(installer.committed.equals(List.of(pending))&&installer.abandoned.isEmpty(),"readback never repeats or abandons a commit: "+change);
+  }
+ }
  /** Progress says staging finished, not that the owner has yet to answer: Android 10 queues an accept before progress moves, and a commit then ends the install. */
  private static void aRecoveredSessionAt08IsNotCommitted(File cache)throws Exception{
   for(int sdk=29;sdk<=37;sdk++)for(int accepted=0;accepted<=1;accepted++){
@@ -1758,6 +1797,7 @@ public final class UpdateFlowTest {
    applicationAttachBeforePublicationDoesNotFenceOrdinaryStartup(cache);
    onlyTheInstalledFlavorAndLineageReachAndroid(cache);
    updateWaitsForDraftsAndExactShutdown(cache);
+   aQueuedConfirmationStillNeedsItsOwnerAndPendingSession(cache);
    refusedDraftFlushNeverStopsOrCommits(cache);
    destroyedSiblingCannotSatisfyDraftBarrier(cache);
    aStartSweepsTheDownloadOfAKilledProcess(cache);
