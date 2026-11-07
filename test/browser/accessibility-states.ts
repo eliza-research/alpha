@@ -116,7 +116,7 @@ export const LIVE_STATES: State[] = [
 ];
 
 /** The simulated browser inventory exists only in test-mocks builds. */
-export const BROWSER_APP_STATES: State[] = [live('All apps', ['All apps'])];
+export const BROWSER_APP_STATES: State[] = [live('Apps', ['Apps'])];
 
 /** The subview each fixture deep link must put on screen. */
 const SUBVIEW: Record<string, string> = {
