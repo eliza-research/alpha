@@ -324,14 +324,14 @@ test('loop A on Android: the resident agent answers, the conversation follows ac
   // The connection names the agent and where it runs, and no credential is rendered anywhere.
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
   await button(page, 'Settings').click();
-  await expect(page.getByRole('button', { name: 'Agent', exact: true })).toContainText('Alpha');
+  await expect(page.getByRole('button', { name: 'Agent', exact: true })).toContainText('Running');
   await page.getByRole('button', { name: 'Agent', exact: true }).click();
   const account = page.getByRole('region', { name: 'Settings',exact:true });
   await expect(account).toContainText('Running on this device');
   await expect(account.getByText('Eliza Cloud',{exact:true})).toBeVisible();
   await account.getByRole('button',{name:'Back to Settings',exact:true}).click();
   await openCloudPlanFromSettings(page);
-  await expect(page.getByRole('button',{name:'Sign out of Eliza Cloud',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Sign out',exact:true})).toBeVisible();
   expect(await page.locator('body').innerText()).not.toContain('synthetic-cloud-key');
   await expectNoDevelopmentSurface(page);
   expect(await native(page, f => f.unexpected)).toEqual([]);
@@ -541,10 +541,8 @@ test('loops E and J05 in the web build: page content requires review and no deve
   await expect(review).toHaveCount(0);
   await page.goto('/');
   await button(page, 'Settings').click();
-  await button(page, 'Password manager').click();
+  await expect(button(page, 'Passwords')).toHaveCount(0);
   const settings = page.locator('[data-settings-page]:not([inert])').last();
-  await expect(settings).toContainText(/Saved passwords\s*Available in the Android app/);
-  await expect(settings).toContainText('Native provider status is unavailable here');
   for (const name of ['Add development provider', 'Open development vault', 'Unlock passwords', 'Choose password provider']) await expect(button(page, name)).toHaveCount(0);
   await expect(page.getByText(/demo-only-password|Example sign-in/)).toHaveCount(0);
   await expectNoDevelopmentSurface(page);

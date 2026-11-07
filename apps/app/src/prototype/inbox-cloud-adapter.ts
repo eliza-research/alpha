@@ -672,7 +672,7 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
     // account list for this session was read and has no connected Google account. Any connected Google
     // account counts, including one that grants Calendar without Gmail; otherwise unknown.
     const googleConnected=accounts.some(a=>a.connected)||connected;
-    const homeGoogleConnected=binding&&connectionController.getSnapshot().startupResolved===true&&accountsChecked&&accountsSession===binding.sessionId?googleConnected:googleConnected&&binding?true:undefined;
+    const homeGoogleConnected=binding&&connectionController.getSnapshot().startupResolved===true&&accountsChecked&&accountsSession===binding.sessionId?googleConnected:undefined;
     // The shared Home mail card from the page the user loaded in Inbox: account and read time, never a body.
     // A page dropped since (an account change or disconnect elsewhere) after a real read says when it last
     // updated, with the last count only in the accessible name.

@@ -182,7 +182,7 @@ export function cloudAccountPage(input: { plan: PlanFacts; busy: boolean; messag
   if (!plan.signedIn) return { status, detail, actions: [{ label: `Sign in with ${serviceName}`, go: actions.signIn }] };
   return { status, detail, actions: [
     ...(plan.keyExpiring ? [{ label: 'Sign in again', go: actions.approve }] : []),
-    ...(plan.offerRedeem ? [{ label: 'Redeem code', go: actions.redeem }] : []),
+    { label: 'Redeem code', go: actions.redeem },
     { label: 'Manage plan', go: actions.manage },
     { label: 'Sign out', danger: true, go: () => { if (input.confirm(`Sign out of ${serviceName}? Your notes and chats stay on this phone.`)) actions.signOut(); } },
   ] };
