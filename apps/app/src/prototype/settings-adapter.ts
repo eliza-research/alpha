@@ -518,6 +518,8 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     const agentRow = row('Agent', native && !testMocksEnabled ? go('agent-connection') : () => connectionController.open(), native && !testMocksEnabled ? agentStatus : connection.session ? connection.name : 'Not connected');
     const digestsRow = row('Scheduled digests', () => window.dispatchEvent(new Event('alpha:hosted-digests')));
     const listeningRow = listener.available ? row('Listening', go('listening'), listenerBusy ? 'Updating…' : listener.label) : null;
+    const listeningWarning = wakeListeningStopUnconfirmed()
+      ? info('Wake listening', 'Could not confirm listening is off. Turn it off in Android settings.') : null;
 
     // ---- Apps
     const photoScope = photoAccess?.scope === 'full' ? 'All' : photoAccess?.scope === 'selected' || photoAccess?.scope === 'partial' ? 'Selected' : photoAccess?.scope === 'denied' ? 'Not allowed' : '';
@@ -574,13 +576,12 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     const aboutRow = row('About', () => { api.set({ page: 'about' }); void refresh(); }, versionLabel(facts.appVersion || buildVersion, facts.appVersionCode));
     const developerRow = developerTools ? row('Developer', go('developer')) : null;
     const resetRow = native ? row('Reset Alpha data', async () => {
-      try { const result = await registerPlugin<{ review(): Promise<{ status: string; message: string }> }>('AlphaReset').review(); api.toast(result.message); }
-      catch { api.toast('Reset could not be opened. Nothing was erased.'); }
+      api.toast((await reviewDataReset(registerPlugin<DataResetPlugin>('AlphaReset'))).message);
     }, '', { labCss: 'color:var(--fg);font-weight:600' }) : null;
     const present = (rows: Array<Bag | null>) => rows.filter((value): value is Bag => !!value);
     top.groups = [
       group([cloudRow, googleRow], 'Account'),
-      group(present([askRow, agentRow, row('AI provider', () => connectionController.openProviderSettings(), connection.providerStatus?.selected && connection.providerStatus.provider === 'cerebras' ? 'Own API keys' : 'Cloud'), listeningRow, digestsRow]), 'Assistant'),
+      group(present([askRow, agentRow, row('AI provider', () => connectionController.openProviderSettings(), connection.providerStatus?.selected && connection.providerStatus.provider === 'cerebras' ? 'Own API keys' : 'Cloud'), listeningRow, listeningWarning, digestsRow]), 'Assistant'),
       group(present([row('Calendars', go('calendar')), native || browserDevProfile ? row('Passwords', go('password-provider')) : null, photosRow, mailImagesRow, homeRow]), 'Apps'),
       group(present([themeRow, textRow]), 'Appearance'),
       group(present([notificationsRow, crossRow]), 'Notifications'),
@@ -592,8 +593,12 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     ].filter(g => g.rows.length);
 
     // ---- Pages
-    if (current === 'account' && cloudPage)
-      stack.push(subpage(serviceName, [group([info(cloudPage.status, cloudPage.detail)]), group(cloudPage.actions.map(action => row(action.label, action.go, '', action.danger ? { labCss: 'color:var(--fg);font-weight:600' } : {})))]));
+    if (current === 'account' && cloudPage && plan) {
+      const rows = [info(cloudPage.status, cloudPage.detail)];
+      if(plan.allowance)rows.push(info('Plan allowance',plan.allowance));
+      if(plan.limit)rows.push(info('AI requests',plan.limit));
+      stack.push(subpage(serviceName, [group(rows), group(cloudPage.actions.map(action => row(action.label, action.go, '', action.danger ? { labCss: 'color:var(--fg);font-weight:600' } : {})))]));
+    }
     if ((current === 'agent-connection' || current === 'history') && native && !testMocksEnabled) {
       const rows: Bag[] = [info(connection.session ? connection.kind === 'resident' ? 'Running on this device' : testMocksEnabled ? 'Remote agent' : 'Unsupported connection' : agentStatus, connection.residentInference === 'direct' ? 'AI: Cerebras · own API keys' : connection.residentInference === 'cloud' ? `AI: ${serviceName}` : connection.residentInference === 'unknown' ? 'AI status unconfirmed' : connection.cloudAccount && !connection.session && connection.kind === 'starting' && !connection.residentRecoveryReason ? 'AI starting…' : connection.cloudAccount ? 'AI unavailable' : 'Sign in for AI')];
       if (connection.error) rows.push(log('Problem', connection.error));
