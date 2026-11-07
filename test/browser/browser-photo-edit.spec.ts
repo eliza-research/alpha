@@ -30,7 +30,7 @@ test('browser photo rotation, crop and filter save a distinct copy with unchange
  await expect(page.getByRole('button',{name:'Mono filter',exact:true})).toHaveAttribute('aria-pressed','true');
  await page.screenshot({path:info.outputPath('edit-preview.png'),animations:'disabled'});
  await page.getByRole('button',{name:'Save edit',exact:true}).click();
- await expect(page.getByText('Saved a copy. Original unchanged.',{exact:true})).toBeVisible();
+ await expect(page.getByText('Copy saved.',{exact:true})).toBeVisible();
  const result=await page.evaluate(async()=>{
   const {browserPhotoLibrary:library}=await import('/src/prototype/browser-camera.ts');const rows=(await library.list()).items;
   const copy=rows.find(row=>row.id!=='1000')!;const image=new Image();image.src=copy.image;await image.decode();
@@ -46,7 +46,7 @@ test('lost photo-copy response and reload recover the same durable receipt witho
  await page.getByRole('button',{name:'Rotate',exact:true}).click();await expect(page.getByRole('button',{name:'Save edit',exact:true})).toBeEnabled();
  await page.evaluate(async()=>{const {browserPhotoLibrary:library}=await import('/src/prototype/browser-camera.ts');const save=library.saveEdit;library.saveEdit=async input=>{(window as any).savedEdit=input;await save(input);throw Error('Synthetic lost reply after commit');};});
  await page.getByRole('button',{name:'Save edit',exact:true}).click();
- await expect(page.getByText('Saved a copy. Original unchanged.',{exact:true})).toBeVisible();
+ await expect(page.getByText('Copy saved.',{exact:true})).toBeVisible();
  const request=await page.evaluate(()=>(window as any).savedEdit);
  await page.evaluate(async id=>(await import('/src/runtime/media-copy-intent.ts')).admitMediaCopyIntent(id),request.sessionId);
  await page.reload();await page.getByRole('button',{name:'Photos',exact:true}).click();
@@ -125,7 +125,7 @@ for(const mode of ['failed','cancelled'])test(`photo copy waits for durable requ
  },mode);
  await page.getByRole('button',{name:'Save edit',exact:true}).click();
  if(mode==='cancelled'){await expect.poll(()=>page.evaluate(()=>typeof(window as any).releaseCopyAdmission)).toBe('function');await page.getByRole('button',{name:'Cancel edit',exact:true}).click();await page.evaluate(()=>(window as any).releaseCopyAdmission());}
- else await expect(page.getByText('Copy request could not be retained. Check saved-copy recovery before another save.',{exact:true})).toBeVisible();
+ else await expect(page.getByText('Copy status unknown. Check Photos before saving again.',{exact:true})).toBeVisible();
  await expect.poll(()=>page.evaluate(async()=>(await import('/src/runtime/media-copy-intent.ts')).readMediaCopyIntent())).toBeNull();expect(await page.evaluate(()=>(window as any).copyDispatches)).toBe(0);expect(await page.evaluate(async()=>(await(await import('/src/prototype/browser-camera.ts')).browserPhotoLibrary.list()).items.length)).toBe(1);
 });
 test('a late pending-request read cannot open an editor after Home',async({page})=>{

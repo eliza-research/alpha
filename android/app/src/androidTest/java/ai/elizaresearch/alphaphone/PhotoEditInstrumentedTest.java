@@ -9,6 +9,7 @@ import androidx.test.platform.app.InstrumentationRegistry;
 import java.io.*;
 import java.util.*;
 import org.json.*;
+import org.junit.Assume;
 import org.junit.Test;
 import static org.junit.Assert.*;
 /** Real native image edit via prototype UI; only synthetic owned pixels. */
@@ -49,5 +50,31 @@ public final class PhotoEditInstrumentedTest {
     v.clear();v.put("is_trashed",1);assertEquals(1,r.update(original,v,null,null));assertTrue("Trashed source cannot export a stale snapshot",call("saveEdit",new JSONObject().put("sessionId",stale).put("rotation",90).put("crop",false)).optBoolean("rejected"));assertEquals(0,copies(r,stale).size());call("cancelEdit",new JSONObject().put("sessionId",stale));v.clear();v.put("is_trashed",0);r.update(original,v,null,null);assertArrayEquals(before,bytes(r,original));
    }
   }finally{for(String token:tokens){for(Uri copy:copies(r,token))r.delete(copy,null,null);c.getSharedPreferences("alpha-photo-edit-results",0).edit().remove(token).commit();}if(original!=null)r.delete(original,null,null);}
+ }
+ /** With Photos access granted the grid watches MediaStore, and the save's own copy row notifies it.
+  * The save must still publish one copy, open the viewer on it and say so. Granting is not undone
+  * here (revoking kills the process): run it as its own fixture with -e photoLibraryGrantTest true. */
+ @Test public void grantedLibrarySaveOpensTheCopyAndConfirms()throws Exception{
+  Assume.assumeTrue("Separate granted-library fixture: -e photoLibraryGrantTest true","true".equals(InstrumentationRegistry.getArguments().getString("photoLibraryGrantTest")));
+  Context c=InstrumentationRegistry.getInstrumentation().getTargetContext();ContentResolver r=c.getContentResolver();Uri original=null;String token=null;
+  InstrumentationRegistry.getInstrumentation().getUiAutomation().grantRuntimePermission(c.getPackageName(),android.Manifest.permission.READ_MEDIA_IMAGES);
+  try{
+   ContentValues v=new ContentValues();v.put("_display_name","alpha-edit-granted-"+UUID.randomUUID()+".png");v.put("mime_type","image/png");v.put("relative_path","Pictures/AlphaPhone-tests/");v.put("is_pending",1);original=r.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,v);assertNotNull(original);
+   Bitmap fixture=Bitmap.createBitmap(120,80,Bitmap.Config.ARGB_8888);fixture.eraseColor(Color.RED);try(OutputStream out=r.openOutputStream(original)){assertNotNull(out);assertTrue(fixture.compress(Bitmap.CompressFormat.PNG,100,out));}finally{fixture.recycle();}v.clear();v.put("is_pending",0);r.update(original,v,null,null);byte[] before=bytes(r,original);String id=Long.toString(ContentUris.parseId(original));
+   try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
+    AppNavigation.liveMode();js(AppNavigation.request("Photos"));until(AppNavigation.selected("Photos"));
+    // The permitted library names items by volume and kind: m:<volume>:i:<id>.
+    String tile="document.querySelector('[data-owned-media-id$=\":i:"+id+"\"]')";until(tile);js(tile+".click()");
+    js("window.__editNative=Capacitor.nativePromise;window.__editMeta=null;Capacitor.nativePromise=function(p,m,a){return window.__editNative.apply(this,arguments).then(v=>{if(p==='AlphaPhotos'&&m==='beginEdit')window.__editMeta={sessionId:v.sessionId};return v;});}");
+    try{
+     click("Edit photo");until("window.__editMeta&&document.querySelector('[aria-label=\"Cancel edit\"]')");token=new JSONObject(js("window.__editMeta")).getString("sessionId");
+     click("Rotate");click("Save edit");
+     until("document.querySelector('[data-alpha-toast]')?.textContent.includes('Copy saved.')");
+     assertEquals("The save's own MediaStore notification must not cancel it",1,copies(r,token).size());
+     until("!document.querySelector('[aria-label=\"Cancel edit\"]')&&document.querySelector('[aria-label=\"Back from photo\"]')&&document.body.innerText.includes('80 × 120')");
+     assertArrayEquals(before,bytes(r,original));
+    }finally{js("if(window.__editNative){Capacitor.nativePromise=window.__editNative;delete window.__editNative;}");}
+   }
+  }finally{if(token!=null){for(Uri copy:copies(r,token))r.delete(copy,null,null);c.getSharedPreferences("alpha-photo-edit-results",0).edit().remove(token).commit();}if(original!=null)r.delete(original,null,null);}
  }
 }

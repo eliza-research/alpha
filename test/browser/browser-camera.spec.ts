@@ -18,7 +18,7 @@ test('browser camera persists a real encoded frame, releases capture and restore
  await page.evaluate(()=>{(window as any).cameraTracks=(document.querySelector('[aria-label^="Viewfinder."] video') as HTMLVideoElement).srcObject;});
  await page.evaluate(()=>{const add=IDBObjectStore.prototype.add;(window as any).restorePhotoWrites=()=>{IDBObjectStore.prototype.add=add;};IDBObjectStore.prototype.add=function(value,key){if(this.name==='photos')throw new DOMException('Synthetic full storage','QuotaExceededError');return add.call(this,value,key);};});
  await page.getByRole('button',{name:'Take photo',exact:true}).click();
- await expect(page.getByText('Photo could not be saved. No successful capture was confirmed.',{exact:true})).toBeVisible();
+ await expect(page.getByText('Photo may not have saved. Check Photos.',{exact:true})).toBeVisible();
  expect(await page.evaluate(async()=>{const {browserPhotoLibrary}=await import('/src/prototype/browser-camera.ts');return (await browserPhotoLibrary.list()).items.length;})).toBe(0);
  await page.evaluate(()=>(window as any).restorePhotoWrites());
  await page.getByRole('button',{name:'Take photo',exact:true}).click();

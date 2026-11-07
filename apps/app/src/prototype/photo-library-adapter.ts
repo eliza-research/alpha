@@ -52,7 +52,7 @@ export const deviceLibraryAgent = () => mountedAgent;
 /** One instance per Photos module mount. */
 export function createDeviceLibrary(port: PhotoLibraryPort = nativePort, available = deviceLibraryAvailable) {
   const catalog = new LibraryCatalog(), selection = new LibrarySelection(), revisions = createCaptureRevisions(), modelRevisions = new LibraryRevisions(revisionSession());
-  let scope: LibraryScopeState | undefined, scopeRequested = false, loadRequested = false, busy = false, error = '', status = '', review: LibraryReview | undefined, acting = false, epoch = 0, disposed = false;
+  let scope: LibraryScopeState | undefined, deniedAgain = false, scopeRequested = false, loadRequested = false, busy = false, error = '', status = '', review: LibraryReview | undefined, acting = false, epoch = 0, disposed = false;
   /** Set when the next visit must start from a fresh first page: Photos was left, or Android access changed. */
   let reloadOnOpen = false, watching = false;
   let api: Bag | undefined;
@@ -128,16 +128,18 @@ export function createDeviceLibrary(port: PhotoLibraryPort = nativePort, availab
     finally { refresh(); }
   }
 
+  /** Android answers a request denied again without a dialog; access then changes only in Android Settings. */
+  const presentationOf = (value: typeof scope) => scopePresentation(value && deniedAgain && value.scope === 'denied' ? { ...value, settingsRequired: true } : value);
   async function requestAccess() {
     if (!scope || acting) return;
-    const presentation = scopePresentation(scope);
+    const presentation = presentationOf(scope);
     if (presentation.actionKind === 'settings') {
       try { await device.openSettings({ page: 'privacy' }); status = 'Change Photos and videos access in Android Settings, then return to Alpha.'; }
       catch { status = 'Open Android Settings > Apps > Alpha Phone > Permissions to change access.'; }
       refresh(); return;
     }
     acting = true; refresh();
-    try { await port.requestAccess(); scope = parseScope(await port.scope()); if (catalog.observeScope(scope)) selection.clear(); }
+    try { const before = scope.scope; await port.requestAccess(); scope = parseScope(await port.scope()); deniedAgain = before === 'denied' && scope.scope === 'denied'; if (catalog.observeScope(scope)) selection.clear(); }
     catch { error = 'Android did not open the access dialog.'; }
     finally { acting = false; }
     await load();
@@ -259,7 +261,7 @@ export function createDeviceLibrary(port: PhotoLibraryPort = nativePort, availab
       api = currentApi;
       if ((!catalog.loaded || reloadOnOpen) && !loadRequested) { loadRequested = true; queueMicrotask(() => { void load(); }); }
       watch(!!scope && scope.scope !== 'denied' && !scope.locked);
-      const presentation = scopePresentation(scope);
+      const presentation = presentationOf(scope);
       const message = [error, status, presentation.detail, selection.size ? `${selection.size} selected${selection.size === 1 ? ' · the assistant can see this item\'s identity only' : ''}` : ''].filter(Boolean).join(' ');
       const reviewOpen = !!review;
       return {
