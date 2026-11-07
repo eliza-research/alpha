@@ -14,8 +14,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { flagOffAndroid, harness, button, fenceNetwork, expectNoDevelopmentSurface, residentHome } from './flag-off-android';
 
-test.beforeEach(({}, testInfo) => { test.skip(testInfo.project.name !== 'production', 'Production bundle only'); });
-
 const calendars = Array.from({ length: 17 }, (_, index) => ({ id: String(index + 1), name: index ? `Shared ${index}` : 'Personal', account: 'owner@example.invalid' }));
 const panel = (page: Page) => page.getByRole('dialog', { name: 'Scheduled digests', exact: true });
 const posts = (page: Page) => harness(page, f => f.digests.posts) as Promise<{ path: string; body: any }[]>;
@@ -42,7 +40,7 @@ async function reviewConsent(page: Page, hours = '48', reminders = true) {
 test('phone sources on Android: reviewed consent within the calendar and expiry bounds, a bound schedule arms renewal, a Renew tap rebinds it, and revocation clears it', async ({ page }) => {
   test.setTimeout(180_000);
   const foreign = await fenceNetwork(page);
-  await flagOffAndroid(page, { digests: 'native', schedules: { native: { evening: true, calendars } } });
+  await flagOffAndroid(page, { digests: 'native', schedules: { native: { calendars } } });
   await openDigests(page);
   const digests = panel(page), zone = await page.evaluate(() => Intl.DateTimeFormat().resolvedOptions().timeZone);
   await digests.getByText('Selected phone sources', { exact: true }).click();
@@ -137,10 +135,10 @@ test('phone sources on Android: reviewed consent within the calendar and expiry 
   expect(foreign).toEqual([]);
 });
 
-test('phone sources on Android: without the evening advertisement only a morning brief is offered; the dossier is reviewed and Cancel dispatches nothing', async ({ page }) => {
+test('phone sources on an older agent without the evening advertisement: only a morning brief is offered', async ({ page }) => {
   test.setTimeout(120_000);
   const foreign = await fenceNetwork(page);
-  await flagOffAndroid(page, { digests: 'native', schedules: { native: { calendars: calendars.slice(0, 2) }, dossier: true } });
+  await flagOffAndroid(page, { digests: 'native', schedules: { native: { olderAgent: true, calendars: calendars.slice(0, 2) } } });
   await openDigests(page);
   const digests = panel(page);
   await digests.getByText('Selected phone sources', { exact: true }).click();
@@ -156,6 +154,23 @@ test('phone sources on Android: without the evening advertisement only a morning
   await expect(button(page, 'Review morning schedule')).toBeVisible();
   await expect(button(page, 'Review evening schedule')).toHaveCount(0);
   await expect(digests.getByLabel('Evening', { exact: true })).toHaveCount(0);
+  await expectNoDevelopmentSurface(page);
+  expect(await harness(page, f => f.unexpected)).toEqual([]);
+  expect(foreign).toEqual([]);
+});
+
+test('phone sources on Android: the on-demand dossier is reviewed, Cancel dispatches nothing and Confirm dispatches once', async ({ page }) => {
+  test.setTimeout(120_000);
+  const foreign = await fenceNetwork(page);
+  await flagOffAndroid(page, { digests: 'native', schedules: { native: { calendars: calendars.slice(0, 2) } } });
+  await openDigests(page);
+  const digests = panel(page);
+  await digests.getByText('Selected phone sources', { exact: true }).click();
+  await reviewConsent(page, '24', false);
+  await reviewSection(page).getByRole('button', { name: 'Confirm', exact: true }).click();
+  await expect.poll(() => posts(page)).toHaveLength(1);
+  const source = await harness(page, f => f.digests.sources[0]) as any;
+  await expect(digests.getByRole('combobox', { name: 'Reviewed source', exact: true })).toHaveValue(source.id);
 
   // The on-demand dossier is reviewed first; Cancel sends nothing.
   await button(page, 'Review on-demand dossier').click();

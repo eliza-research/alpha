@@ -84,6 +84,17 @@ test('every capability row labels its evidence class', () => {
   for (const code of ['(S)', '(B)', '(E)', '(I)', '(R)', '(D)']) assert.ok(status.includes(code), `class ${code} is not defined`);
 });
 
+// Every recorded run is bound to the pin it ran at. The legend and the Evidence class column are
+// where a reader looks up what a class means for the shipping source, so neither may describe a
+// recorded run as being "at the current pin": the pin in upstream.lock.json moves without them.
+test('the evidence legend and the Evidence class column never place a recorded run at the current pin', () => {
+  const capabilitySection = section(status, 'Capabilities and remaining acceptance');
+  const legend = capabilitySection.slice(0, capabilitySection.indexOf('\n|'));
+  assert.ok(legend.includes('round 8'), 'the legend must define round 8');
+  assert.doesNotMatch(legend, /current pin/i, 'the legend must name the pin each run was at');
+  for (const row of capabilities) assert.doesNotMatch(row['Evidence class'], /current pin/i, `${row.Area}: the Evidence class names no pin, or the pin its run was at`);
+});
+
 
 test('October 12 owner choices map all 32 reviewed issues to open implementation TODOs', () => {
   const decisions = read('docs/decisions.md');
@@ -113,6 +124,8 @@ test('the status index names the pinned upstream commit and no gate starts with 
   const pin = JSON.parse(read('upstream.lock.json')).commit;
   assert.ok(section(status, 'Product boundaries').includes(`\`${pin.slice(0, 10)}\``), `Product boundaries must name the pin ${pin.slice(0, 10)} from upstream.lock.json`);
   assert.ok(requirements.note.includes(pin.slice(0, 10)), 'requirements.json note must name the pin it was refreshed against');
+  // One current-pin statement; the history of earlier pins is the git log of upstream.lock.json.
+  assert.ok(requirements.note.length <= 3000, `requirements.json note is ${requirements.note.length} characters; keep it to the current pin and the reading rules (at most 3000)`);
   for (const requirement of requirements.requirements) {
     if (requirement.status !== 'partial') continue;
     // A gate that opens with "S:" says software is the next step; then "remaining" must name where that software is.
