@@ -102,6 +102,7 @@ for(const scenario of ['ready','rejected','late','mock-ready','mock-retire-rejec
     await expect(page.getByText('Live background activity could not be paused. Retry before opening mock mode.',{exact:true})).toBeVisible();await unentered();
    }else{
     await expect(page).toHaveURL(/mode=mock/);
+    await page.waitForLoadState('domcontentloaded');
     await expect(page.getByText('Mock mode · simulated data and actions')).toBeVisible();
    }
    expect(await page.evaluate(()=>(window as any).residentAgent.state.unexpected)).toEqual([]);expect(errors).toEqual([]);return;
