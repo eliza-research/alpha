@@ -19,8 +19,6 @@ import {seedCompletedAccessSetup} from './flag-off-android';
 import { test, expect, type Page } from '@playwright/test';
 import {completeAccessSetup} from './flag-off-android';
 
-test.beforeEach(({}, testInfo) => { test.skip(testInfo.project.name !== 'production', 'Production bundle only'); });
-
 const SELECTION = 'alpha.connection.selection.v1';
 const offline = () => localStorage.setItem('alpha.connection.selection.v1', JSON.stringify({ kind: 'offline' }));
 const button = (page: Page, name: string) => name==='Inbox'

@@ -11,7 +11,7 @@ for(const scenario of ['lookup-unavailable','lookup-unavailable-navigation','ask
    const w=window as any;w.androidBridge={};
    localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));
    const store=new Map();
-   const f=w.deliveryFixture={configured:0,cancelled:0,disabled:[] as string[],nativeSync:0,foregroundSync:0,polling:true,enabled:false,notifications:false,events:[] as string[],input:null as any,release:null as any,holdRetire:false,retireRelease:null as any,mockHold:false,mockReleases:{} as Record<string,()=>void>,removed:[] as string[]};
+   const f=w.deliveryFixture={configured:0,cancelled:0,disabled:[] as string[],nativeSync:0,foregroundSync:0,polling:true,enabled:false,notifications:false,events:[] as string[],input:null as any,release:null as any,removed:[] as string[]};
    const agent=w.residentAgent=w.createResidentAgentPlugin({owner:()=>f.owner||'fixture-owner',agentId:'fixture-agent', providerStatus: {provider: 'elizacloud', configured: false}});
    if(scenario.startsWith('lookup-unavailable')){
     f.lookupUnavailable=true;f.lookupFailures=0;f.noticeToasts=[];
@@ -66,20 +66,14 @@ for(const scenario of ['lookup-unavailable','lookup-unavailable-navigation','ask
      if(method==='secureCompareExchange'){if((store.get(input.slot)??null)!==input.expectedValue)return {status:'conflict'};if(input.value===null)store.delete(input.slot);else store.set(input.slot,input.value);return {status:'saved'};}
      if(method==='secureWrite'){store.set(input.slot,input.value);return {};}
      if(method==='secureRemove'){f.removed.push(input.slot);store.delete(input.slot);return {};}
-     if(method==='pauseNotificationCollection'&&f.mockHold){await new Promise<void>(resolve=>{f.mockReleases.notifications=resolve;});return {};}
      return {};
     }
     if(plugin==='AlphaActionJournal')return {entries:[]};
     if(plugin==='ElizaSystem'&&method==='getBuildInfo')return {launcher:false,version:'fixture'};
     if(plugin==='AlphaHostedResults'){
-     if(method==='configureBackground'){
-      f.configured++;f.input=input;
-      if(scenario==='rejected')throw Error('Synthetic verification failure');
-      if(scenario==='late')await new Promise(resolve=>{f.release=resolve;});
-      f.enabled=true;return {generation:'fixture-generation',scope:'a'.repeat(64)};
-     }
+     if(method==='configureBackground'){f.configured++;f.input=input;f.enabled=true;return {generation:'fixture-generation',scope:'a'.repeat(64)};}
      if(method==='cancelBackground'){f.cancelled++;f.enabled=false;f.events.push('cancel');return {};}
-     if(method==='disableBackground'){f.disabled.push(input?.sessionId);if(f.mockHold){const kind=input?.sessionId?'scoped':'unscoped';await new Promise<void>(resolve=>{f.mockReleases[kind]=resolve;});if(kind==='scoped'&&scenario==='mock-retire-rejected')throw Error('Synthetic session retirement rejection');}if(f.holdRetire)await new Promise(resolve=>{f.retireRelease=resolve;});f.enabled=false;return {};}
+     if(method==='disableBackground'){f.disabled.push(input?.sessionId);f.enabled=false;return {};}
      if(method==='inboxHistory'||method==='syncInbox'){if(method==='syncInbox')f.nativeSync++;return {entries:[]};}
      if(method==='status')return {enabled:f.notifications,backgroundEnabled:f.enabled&&f.polling};
      if(method==='setBackgroundPolling'){f.polling=input.enabled;return {backgroundEnabled:f.enabled&&f.polling};}

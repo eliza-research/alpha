@@ -6,8 +6,6 @@ import { test, expect } from '@playwright/test';
 //
 // Evidence boundary: source/test evidence for the web renderer only; no device, WebView or site.
 
-test.beforeEach(({}, testInfo) => { test.skip(testInfo.project.name !== 'production', 'Production bundle only'); });
-
 test('the web Browser menu offers no Find in page and shows no "not implemented" toast', async ({ page }) => {
   const foreign: string[] = [], toasts: string[] = [], errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));

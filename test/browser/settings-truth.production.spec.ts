@@ -7,7 +7,6 @@ import {installResidentAgentPlugin} from './helpers/resident-agent-plugin';
 // boundary replaced. These prove what the shipped renderer reads, shows and sends. They do not
 // prove what a phone's Android Settings does; device qualification of each handoff is separate.
 test.describe.configure({timeout:240_000});
-test.beforeEach(async({},testInfo)=>{test.skip(testInfo.project.name!=='production','Production lane only (flag-off build)');});
 
 type Fixture={snapshot?:Record<string,unknown>;drop?:string[];subscription?:'credits'|'active'|'canceled';agentStartFailure?:boolean;
  /** Exact USD organization credit balance in the billing snapshot (data.v2.balance); absent when unset. */
@@ -527,7 +526,9 @@ for(const scenario of ['unbound','recovering','connected'] as const)test(`Cloud 
  await page.goto('/');
  if(scenario==='recovering'){
   await expect.poll(()=>page.evaluate(()=>(window as any).truth.calls.some((call:any)=>call.plugin==='Agent'&&call.method==='start'))).toBe(true);
-  const close=page.getByRole('button',{name:'Close connection settings',exact:true});if(await close.isVisible())await close.click();
+  const close=page.getByRole('button',{name:'Close connection settings',exact:true});
+  await expect(close.or(page.getByRole('button',{name:'Settings',exact:true})).filter({visible:true}).first()).toBeVisible();
+  if(await close.isVisible())await close.click();
  }
  await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
  await page.getByRole('button',{name:'Settings',exact:true}).click();

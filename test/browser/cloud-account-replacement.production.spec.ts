@@ -10,8 +10,6 @@ import { test, expect, type Page } from '@playwright/test';
 import { flagOffAndroid, harness, button, fenceNetwork, expectNoDevelopmentSurface, residentHome, openYourAgent, completeAccessSetup } from './flag-off-android';
 import { residentStub, stub, setStub, enterNativeEmailCode, type StubAccount } from './resident-stub';
 
-test.beforeEach(({}, testInfo) => { test.skip(testInfo.project.name !== 'production', 'Production bundle only'); });
-
 const A: StubAccount = { token: 'account-a-key', userId: '9f1dc45a-4011-4e44-947a-30d999d24fa5', email: 'owner-a@example.invalid', balance: 5, inbox: 'mail-a@example.invalid' };
 const B: StubAccount = { token: 'account-b-key', userId: '3c5e7a90-1b2d-4f6e-8a0c-2e4f6a8b0c1d', email: 'owner-b@example.invalid', balance: 7, inbox: 'mail-b@example.invalid' };
 const PERSONAL_A = 'alpha.cloud.personal-setup.v1:' + JSON.stringify(['production', A.userId, null]);

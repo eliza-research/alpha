@@ -7,7 +7,6 @@ import { test, expect, type Page, type Locator } from '@playwright/test';
 // window resizing and the software keyboard; they do not qualify Android rotation, process
 // recreation, TalkBack or a device keyboard.
 test.use({ hasTouch: true, isMobile: true, viewport: { width: 412, height: 915 } });
-test.beforeEach(({}, info) => test.skip(info.project.name !== 'production', 'Production bundle only'));
 
 const PORTRAIT = { width: 412, height: 915 }, SMALL_LANDSCAPE = { width: 640, height: 360 }, LANDSCAPE = { width: 915, height: 412 };
 const TABLET_PORTRAIT = { width: 800, height: 1280 }, TABLET_LANDSCAPE = { width: 1280, height: 800 };
@@ -175,7 +174,6 @@ test('the Browser menu ends above the dock on short screens and its rows stay re
     expect(await last.evaluate(el => { const r = el.getBoundingClientRect(); const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2); return hit === el || el.contains(hit); })).toBe(true);
     await page.screenshot({ animations: 'disabled', path: test.info().outputPath(`browser-menu-${viewport.width}x${viewport.height}.png`) });
     await page.keyboard.press('Escape');
-    if (await menu.isVisible()) await page.getByRole('button', { name: 'Menu', exact: true }).click();
     await expect(menu).toBeHidden();
   }
 });

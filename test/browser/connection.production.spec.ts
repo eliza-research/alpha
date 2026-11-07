@@ -1,6 +1,5 @@
 import {test,expect} from '@playwright/test';
 // Flag-off product boundary. Remote development protocol fixtures live in the dev-* lane.
-test.beforeEach(({},info)=>test.skip(info.project.name!=='production','Production bundle only'));
 for(const legacy of [null,{kind:'remote',origin:'https://agent.example.test'},{kind:'cloud',environment:'production',agentId:'legacy-agent',ownerId:'legacy-owner'}])test(`local-only product does not reconnect ${legacy?.kind||'cold start'}`,async({page})=>{
  const outside:string[]=[];
  await page.route('**/*',route=>{const url=new URL(route.request().url());if(['127.0.0.1','localhost'].includes(url.hostname))return route.continue();outside.push(url.href);return route.abort();});

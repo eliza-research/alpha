@@ -9,8 +9,6 @@ import { button, fenceNetwork, flagOffAndroid, harness, residentHome } from './f
 // test-owned page and answers reviewQuestion as each case needs. Evidence boundary: renderer source/
 // test evidence only. Not the native BrowserReading code, an Android WebView, an APK or a device.
 
-test.beforeEach(({}, testInfo) => { test.skip(testInfo.project.name !== 'production', 'Production bundle only'); });
-
 const PAGE = 'https://paste-fixture.test/harbour';
 type Answer = { reject?: { message: string; code?: string }; text?: unknown };
 

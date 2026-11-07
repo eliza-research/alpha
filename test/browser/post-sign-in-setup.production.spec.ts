@@ -7,8 +7,6 @@ import { flagOffAndroid, button, fenceNetwork, openYourAgent } from './flag-off-
 import { residentStub, stub, setStub } from './resident-stub';
 import { recordStartupFrames, expectNoHomeBeforePrompt, startupLoading } from './helpers/startup-frames';
 
-test.beforeEach(({}, testInfo) => { test.skip(testInfo.project.name !== 'production', 'Production bundle only'); });
-
 const account = { token: 'post-sign-in-key', userId: '9f1dc45a-4011-4e44-947a-30d999d24fa5', email: 'new-owner@example.invalid', balance: 5 };
 const STEPS = ['Notifications', 'Microphone', 'Camera', 'Location', 'Calendar', 'Photos'];
 /** Starting-state copy the owner reported: none of it may show while the agent merely starts. */

@@ -5,8 +5,6 @@ import { flagOffAndroid, harness, button, fenceNetwork, expectNoDevelopmentSurfa
 import { residentStub, stub, setStub, enterNativeEmailCode, type StubAccount } from './resident-stub';
 import { recordStartupFrames, expectNoHomeBeforePrompt, startupLoading } from './helpers/startup-frames';
 
-test.beforeEach(({}, testInfo) => { test.skip(testInfo.project.name !== 'production', 'Production bundle only'); });
-
 const id = '9f1dc45a-4011-4e44-947a-30d999d24fa5';
 const account: StubAccount = { token: 'first-run-key', userId: id, email: 'new-owner@example.invalid', balance: 5 };
 const WAITING = 'Checking code…';

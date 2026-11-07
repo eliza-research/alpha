@@ -51,9 +51,8 @@ async function open(page: Page, view: View, theme: 'light' | 'dark'): Promise<Lo
     return shade;
   }
   const target=view === 'Reminders' ? 'Calendar' : view;
-  const shortcut=page.getByRole('button',{name:target,exact:true});
-  if(await shortcut.isVisible())await shortcut.click();
-  else{await page.getByRole('button',{name:'All apps',exact:true}).click();await page.getByRole('dialog',{name:'All apps',exact:true}).getByRole('button',{name:`Open ${target}`,exact:true}).click();}
+  // Always through All apps: Home shortcuts may still be restoring, and are absent when storage is blocked.
+  await page.getByRole('button',{name:'All apps',exact:true}).click();await page.getByRole('dialog',{name:'All apps',exact:true}).getByRole('button',{name:`Open ${target}`,exact:true}).click();
   await expect(page.locator('html')).toHaveAttribute('data-active-view', view === 'Reminders' ? 'calendar' : view.toLowerCase());
   const app = page.locator('[data-alpha-layer="app"]');
   await expect(app).toHaveAttribute('aria-hidden', 'false');

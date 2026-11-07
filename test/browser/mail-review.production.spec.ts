@@ -13,7 +13,6 @@ import { installResidentAgentPlugin } from './helpers/resident-agent-plugin';
 // native encrypted journal, Eliza Cloud, Google or delivery.
 const AGENT = '6f1d3c3e-8c55-4c1b-9d1f-2b6f0b0d3a11';
 type Wire = { requestId: string; digest: string; proposal: string };
-test.beforeEach(({}, testInfo) => { test.skip(testInfo.project.name !== 'production', 'Production bundle only'); });
 const button = (page: Page, name: string) => name==='Inbox'
   ? page.getByRole('button', { name, exact: true }).and(page.locator('[data-mobile-shell-tile]'))
   : page.getByRole('button', { name, exact: true });

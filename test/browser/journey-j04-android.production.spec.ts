@@ -13,8 +13,6 @@ import {installCanonicalCalendarFixture} from './helpers/canonical-calendar';
 import { test, expect, type Page } from '@playwright/test';
 import { flagOffAndroid, harness, button, fenceNetwork, expectNoDevelopmentSurface, residentHome } from './flag-off-android';
 
-test.beforeEach(({}, testInfo) => { test.skip(testInfo.project.name !== 'production', 'Production bundle only'); });
-
 const LOCATION = 'Pier 4, Harbour Road';
 const TITLE = 'Ferry inspection';
 
