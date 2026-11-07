@@ -3901,12 +3901,12 @@
           </div>
         </sc-if>
 
-        <sc-for list="{{p.groups}}" as="g">
+        <sc-for list="{{p.groups}}" as="g" key="{{g.id}}">
           <sc-if value="{{g.hasCap}}">
             <div style="padding: 2px 30px 8px; font-size: 13px; color: var(--mut)">{{g.cap}}</div>
           </sc-if>
           <div style="margin: 0 16px 12px; border-radius: 26px; overflow: hidden; {{g.css}}">
-            <sc-for list="{{g.rows}}" as="r">
+            <sc-for list="{{g.rows}}" as="r" key="{{r.id}}">
               <sc-if value="{{r.kNav}}">
                 <button class="tap" disabled="{{r.busy}}" onClick="{{r.go}}" aria-label="{{r.lbl}}" style="width: 100%; display: flex; align-items: center; gap: 14px; padding: 8px 16px 8px 18px; min-height: 58px; box-sizing: border-box; text-align: left">
                   <sc-if value="{{r.hasIcon}}"><svg class="i" viewBox="0 0 24 24" style="{{r.labCss}}"><path d="{{r.d}}"></path></svg></sc-if>

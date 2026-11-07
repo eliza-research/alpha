@@ -402,7 +402,12 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     const row = (label: string, go: () => void, val = '', extra: Bag = {}): Bag => ({ kNav: true, label, lbl: label, val, hasVal: !!val, chev: true, noAB: true, go, ...extra });
     const toggle = (label: string, on: boolean, change: () => void): Bag => ({ kTog: true, label, aria: label, on, track: on ? 'background:var(--acc)' : 'background:var(--line)', kx: on ? 20 : 0, toggle: change });
     const log = (time: string, text: string): Bag => ({ kLog: true, time, text });
-    const group = (rows: Bag[], cap = ''): Bag => ({ css: 'background:var(--s2);padding:4px 0', rows, ...(cap ? { cap, hasCap: true } : {}) });
+    const group = (rows: Bag[], cap = '', id?: string): Bag => ({
+      css: 'background:var(--s2);padding:4px 0',
+      rows: id ? rows.map(item => ({ ...item, id: item.id ?? item.lbl ?? item.aria ?? item.label })) : rows,
+      ...(id ? { id } : {}),
+      ...(cap ? { cap, hasCap: true } : {}),
+    });
     const back = () => api.set({ page: null });
     const subpage = (title: string, groups: Bag[], options: Bag = {}): Bag => ({ isTop: false, notTop: true, cls: 'enter', z: options.z ?? 4, title, hasTitle: true, backLabel: options.backLabel ?? 'Back to Settings', back: options.back ?? back, hero: {}, groups: groups.filter(g => g.rows.length) });
     const day = (at: number) => new Date(at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
@@ -415,8 +420,8 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     const cloudPage = plan ? cloudAccountPage({ plan, busy: connection.busy, message: connection.message || '', serviceName, day, confirm: text => window.confirm(text),
       actions: { cancel: () => connectionController.cancel(), approve: () => void connectionController.residentCloudLogin(), redeem: () => connectionController.openPlan(), manage: () => void connectionController.residentManagePlan(),
         signOut: () => void connectionController.cloudSignOut(), recheck: () => connectionController.recheckPlanOnReturn(), signIn: () => void connectionController.residentCloudLogin() } }) : null;
-    const cloudRow = cloudPage ? row(serviceName, go('account'), plan!.keyExpiring ? 'Sign-in expiring' : plan!.signedIn ? plan!.plan : 'Sign in')
-      : row(serviceName, () => connectionController.openCloudAccount(), account ? 'Signed in' : 'Sign in');
+    const cloudRow = cloudPage ? row(serviceName, go('account'), plan!.keyExpiring ? 'Sign-in expiring' : plan!.signedIn ? plan!.plan : 'Sign in', { id: 'cloud-account' })
+      : row(serviceName, () => connectionController.openCloudAccount(), account ? 'Signed in' : 'Sign in', { id: 'cloud-account' });
     const googleCount = gmailAccounts.filter(a => a.connected && a.connectionId).length;
     const googleRow = row('Google', () => googleConnectionController.open(), googleCount ? `${googleCount} account${googleCount === 1 ? '' : 's'}` : connectionController.getCloudClient() ? 'Connect' : '');
 
@@ -492,16 +497,16 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     }, '', { labCss: 'color:var(--fg);font-weight:600' }) : null;
     const present = (rows: Array<Bag | null>) => rows.filter((value): value is Bag => !!value);
     top.groups = [
-      group([cloudRow, googleRow], 'Account'),
-      group(present([askRow, agentRow, listeningRow, digestsRow]), 'Assistant'),
-      group(present([row('Calendars', go('calendar')), native || browserDevProfile ? row('Passwords', go('password-provider')) : null, photosRow, mailImagesRow, homeRow]), 'Apps'),
-      group(present([themeRow, textRow]), 'Appearance'),
-      group(present([notificationsRow, crossRow]), 'Notifications'),
-      group(present([permissionsRow, setupRow]), 'Privacy'),
-      group(present([androidRow, aboutRow, developerRow])),
-      group(present([resetRow])),
-      ...(testMocksEnabled ? [group([row('Try mock mode', () => connectionController.mock())])] : []),
-      ...(testMocksEnabled && recovery.length ? [group(recovery.map(name => row(recoveryActions[name].label, () => recoveryActions[name].open())), 'Saved data needs recovery')] : []),
+      group([cloudRow, googleRow], 'Account', 'account'),
+      group(present([askRow, agentRow, listeningRow, digestsRow]), 'Assistant', 'assistant'),
+      group(present([row('Calendars', go('calendar')), native || browserDevProfile ? row('Passwords', go('password-provider')) : null, photosRow, mailImagesRow, homeRow]), 'Apps', 'apps'),
+      group(present([themeRow, textRow]), 'Appearance', 'appearance'),
+      group(present([notificationsRow, crossRow]), 'Notifications', 'notifications'),
+      group(present([permissionsRow, setupRow]), 'Privacy', 'privacy'),
+      group(present([androidRow, aboutRow, developerRow]), '', 'system'),
+      group(present([resetRow]), '', 'reset'),
+      ...(testMocksEnabled ? [group([row('Try mock mode', () => connectionController.mock())], '', 'mock')] : []),
+      ...(testMocksEnabled && recovery.length ? [group(recovery.map(name => row(recoveryActions[name].label, () => recoveryActions[name].open())), 'Saved data needs recovery', 'recovery')] : []),
     ].filter(g => g.rows.length);
 
     // ---- Pages
