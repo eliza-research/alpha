@@ -287,7 +287,7 @@ test('loop A on Android: the resident agent answers, the conversation follows ac
   await expect(stop).toBeVisible();
   await stop.click();
   await expect(stop).toHaveCount(0);
-  await expect(page.locator('[data-alpha-layer="conversation"]').getByText('The agent may still finish this reply. Alpha Phone will check once and show it here if it does.', { exact: true })).toHaveCount(1);
+  await expect(page.locator('[data-alpha-layer="conversation"]').getByText('This reply may still finish. It will appear here if it does.', { exact: true })).toHaveCount(1);
   await expect(message).toHaveValue('');
   await expect.poll(() => native(page, f => f.cancelled)).toBeGreaterThan(0);
   expect(await native(page, f => f.posts)).toEqual(['Flag-off first request', 'Flag-off notes request', 'Flag-off browser request', 'Flag-off stopped request']);

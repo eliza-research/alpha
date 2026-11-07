@@ -67,3 +67,11 @@ export function createStartupPermissionFlow(bridge: StartupPermissionBridge, opt
   const store = options.store === undefined ? defaultStore() : options.store;
   return createPermissionStepFlow(bridge, {attemptKey: options.key, memory: memory(store)});
 }
+
+/**
+ * A returning sign-in on completed setup opens no Ready card. A connection error or an unconfirmed
+ * revocation of the earlier sign-in that arrives after it opens the card, so the owner still sees it.
+ */
+export function lateReadyNotice(input: {silent: boolean; error?: string; message?: string}): boolean {
+  return input.silent && (!!input.error || !!input.message?.includes('did not confirm revoking'));
+}

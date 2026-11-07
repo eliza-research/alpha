@@ -101,7 +101,7 @@ for (const mode of ['pending', 'wrong-owner', 'expired', 'wrong-reminder-context
         (window as any).releaseRecoveryProposals();
       });
       await expect.poll(() => page.evaluate(() => (window as any).recoveryProposalsReleased)).toBe(true);
-      await expect(page.getByText(/Request cancelled\. A dispatched action may still need status reconciliation\./).first()).toBeVisible();
+      await expect(page.getByText(/Request cancelled\. Check whether the action already happened\./).first()).toBeVisible();
     } else if(mode==='notes-from-calendar'){
       await expect(page.getByText('Review Notes on Home',{exact:true})).toBeVisible();
     } else {
@@ -122,7 +122,7 @@ for (const mode of ['pending', 'wrong-owner', 'expired', 'wrong-reminder-context
       await expect(page.getByText('notes query',{exact:true})).toBeVisible();
       expect(await counts()).toEqual({posts:1,decisions:0,claims:0,receipts:0,effects:0,journal:[]});
     } else if (mode === 'pending') {
-      await expect(page.getByText(/Pending phone actions are available for separate review/)).toBeVisible();
+      await expect(page.getByText(/Review the action below\./)).toBeVisible();
       await page.getByText('Create note', { exact: true }).click();
       await expect(page.getByText('Synthetic approved effect recorded', { exact: true }).last()).toBeVisible();
       expect(await counts()).toEqual({ posts: 1, decisions: 1, claims: 1, receipts: 1, effects: 1, journal: ['reserve', 'markApplying', 'finish'] });

@@ -92,7 +92,7 @@ test('Cloud is the default; explicit own-key save and return to Cloud preserve e
  await expect(page.locator('.alpha-cloud-sign-in')).toHaveCount(0);
  await enterKeys(page);
  await expect(dialog(page).getByRole('button',{name:'Own API keys',exact:true})).toHaveAttribute('aria-pressed','true');
- await expect(dialog(page)).toContainText('Cerebras receives your prompts; Cartesia, if added, receives voice recordings and reply text.');await expect(dialog(page)).not.toContainText(/selected context|Android Keystore|model list|Switching is manual/);
+ await expect(dialog(page)).toContainText('Cerebras receives your prompts. Cartesia, if added, is used for voice and receives recordings and reply text; without it voice stays on this phone.');await expect(dialog(page)).not.toContainText(/selected context|Android Keystore|model list|Switching is manual/);
  await page.screenshot({path:info.outputPath('own-provider-form.png'),animations:'disabled'});
  await dialog(page).getByRole('button',{name:'Cancel',exact:true}).click();
  expect(await page.evaluate(()=>(window as any).ownProvider.events)).toEqual([]);
@@ -142,7 +142,7 @@ test('opening AI provider during a reply stops it as a sensitive screen; the swi
  await page.getByRole('button',{name:'Minimize chat',exact:true}).click();
  await page.getByRole('button',{name:'AI provider',exact:true}).click();
  await expect(dialog(page)).toBeVisible();
- await expect(page.getByText('The agent may still finish this reply. Alpha Phone will check once and show it here if it does.',{exact:true})).toHaveCount(1);
+ await expect(page.getByText('This reply may still finish. It will appear here if it does.',{exact:true})).toHaveCount(1);
  await expect(page.getByRole('button',{name:'Stop reply',exact:true})).toHaveCount(0);
  await expect(page.getByText(/The connection changed/)).toHaveCount(0);
  await enterKeys(page);

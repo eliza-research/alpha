@@ -105,7 +105,7 @@ test('a kept sign-in Cloud rejects is reported as no longer valid in the sign-in
   await boot(page, 'rejected');
   // Every Alpha Phone needs an Eliza Cloud account: the sign-in dialog opens and cannot be dismissed.
   const dialog = page.locator('[role="main"].alpha-cloud-sign-in');
-  await expect(dialog.getByText('Your Cloud sign-in has expired. Sign in with Cloud again.', { exact: true })).toBeVisible();
+  await expect(dialog.getByText('Your Eliza Cloud sign-in has expired. Sign in again.', { exact: true })).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'Retry saved connection', exact: true })).toHaveCount(0);
   await expect(dialog.getByRole('button', { name: 'Email me a code', exact: true })).toBeEnabled();
   await expect(dialog.getByRole('button', { name: 'Close connection settings', exact: true })).toHaveCount(0);

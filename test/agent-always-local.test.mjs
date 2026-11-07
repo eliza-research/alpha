@@ -116,7 +116,7 @@ test('the connection controller has no local-apps-only mode and migrates old sel
 
 test('no startup path ends claiming "starting" with nothing starting', () => {
   // Every startup outcome is settled: the resident starts, or the state is `recovering` with Retry.
-  assert.match(ui, /\}\)\(\)\.then\(settleResidentAfterStartup\)(\.finally\(\(\)=>update\(\{startupResolved:true(?:,automaticRestore:false)?\}\)\))?;/);
+  assert.match(ui, /\}\)\(\)\.then\(settleResidentAfterStartup\)(\.finally\(\(\)=>\{update\(\{startupResolved:true(?:,automaticRestore:false)?\}\);runQueuedSignInReturn\(\);\}\))?;/);
   assert.match(ui, /async function settleResidentAfterStartup\(\) \{[\s\S]{0,600}await ensureResident\(\);[\s\S]{0,80}update\(\{ kind: 'recovering' \}\);/);
   // A rebind that fails to reconnect leaves the agent recovering (Retry), never "no agent".
   assert.match(between(ui, 'function queueResidentRebind(', 'function runQueuedResidentRebind('), /catch \(error\) \{ if \(residentAlwaysPresent && !active\) update\(\{ kind: 'recovering' \}\); throw error; \}/);

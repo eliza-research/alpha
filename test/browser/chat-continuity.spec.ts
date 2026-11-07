@@ -126,7 +126,9 @@ async function typeDraft(page: Page, text: string) {
   await composer(page).fill(text);
   await expect.poll(() => savedDraft(page), { timeout: 15_000 }).toBe(text);
 }
-const MAY_FINISH = 'The agent may still finish this reply. Alpha Phone will check once and show it here if it does.';
+const MAY_FINISH = 'This reply may still finish. It will appear here if it does.';
+// The pending notice (may still finish, or cancelled) until the single check settles it.
+const CHECK_PENDING = /[Ii]t will appear here/;
 const UNKNOWN = 'Your message may have reached the agent. Check before sending it again.';
 const UNSETTLED = 'This message may already have been sent. Check the conversation before sending it again.';
 
@@ -319,9 +321,9 @@ test('Stop asks the agent to cancel exactly once and reports a confirmed cancel 
   await composer(page).press('Enter');
   await expect.poll(() => fixture(page, f => f.posts), { timeout: 15_000 }).toBe(1);
   await stop(page).click();
-  await expect(conversation(page).getByText('The agent cancelled this reply. Alpha Phone will check once in case it had already finished.', { exact: true })).toBeVisible({ timeout: 15_000 });
+  await expect(conversation(page).getByText('Reply cancelled. If it had already finished, it will appear here.', { exact: true })).toBeVisible({ timeout: 15_000 });
   await expect(conversation(page).getByText('The agent stopped this reply.', { exact: true })).toBeVisible({ timeout: 40_000 });
-  await expect(conversation(page).getByText(/Alpha Phone will check once/)).toHaveCount(0);
+  await expect(conversation(page).getByText(CHECK_PENDING)).toHaveCount(0);
   await expect(conversation(page).getByText('Please stop this one', { exact: true })).toHaveCount(1);
   expect(await fixture(page, f => ({ posts: f.posts, aborts: f.aborts, reads: f.historyReads }))).toEqual({ posts: 1, aborts: 1, reads: 1 });
 });
@@ -338,7 +340,7 @@ test('a new message after Stop retires the pending check and says so; nothing is
   await composer(page).press('Enter');
   await expect.poll(() => fixture(page, f => f.posts), { timeout: 15_000 }).toBe(2);
   await expect(conversation(page).getByText(MAY_FINISH, { exact: true })).toHaveCount(0);
-  await expect(conversation(page).getByText(/The stopped reply was not checked because another message was sent\./)).toHaveCount(1);
+  await expect(conversation(page).getByText(UNCHECKED, { exact: true })).toHaveCount(1);
   await fixture(page, f => f.release('Answer to the second question'));
   await expect(conversation(page).getByText('Answer to the second question', { exact: true })).toHaveCount(1);
   // Two messages the person sent, two distinct identities, no automatic history replacement.
@@ -445,9 +447,8 @@ test('reconnecting restores the saved remote conversation with older pages; the 
   await expect.poll(restored, { timeout: 30_000 }).toMatchObject({ count: 232, conversation: 'fixture-chat' });
 });
 
-const NOT_CHECKED = /The stopped reply was not checked because another message was sent\./;
-const NOT_FINISHED = 'The agent had not finished the stopped reply when Alpha Phone checked. Load conversations later to see it.';
-const LOAD_TO_SEE = 'Load this conversation from Agent connection to see whether the stopped reply finished.';
+// One notice for every stop the single check could not settle (not run, not finished, overtaken).
+const UNCHECKED = 'Stopped. To see if it finished, load this conversation in Agent connection.';
 
 test('a rate limit before the message is posted keeps the text instead of reporting an unknown outcome', async ({ page }) => {
   test.setTimeout(90_000);
@@ -491,12 +492,12 @@ test('a confirmed stop of one turn is never repeated as the outcome of a later s
   await composer(page).press('Enter');
   await expect.poll(() => fixture(page, f => f.posts), { timeout: 15_000 }).toBe(2);
   await stop(page).click();
-  await expect(conversation(page).getByText(/Alpha Phone will check once/)).toHaveCount(1, { timeout: 15_000 });
+  await expect(conversation(page).getByText(CHECK_PENDING)).toHaveCount(1, { timeout: 15_000 });
   // A third message retires the second turn's check before it ran: its outcome is unknown, not "stopped".
   await typeDraft(page, 'A third message');
   await composer(page).press('Enter');
   await expect.poll(() => fixture(page, f => f.posts), { timeout: 15_000 }).toBe(3);
-  await expect(conversation(page).getByText(NOT_CHECKED)).toHaveCount(1);
+  await expect(conversation(page).getByText(UNCHECKED, { exact: true })).toHaveCount(1);
   await expect(conversation(page).getByText('The agent stopped this reply.', { exact: true })).toHaveCount(1);
   expect(await fixture(page, f => ({ aborts: f.aborts, reads: f.historyReads }))).toEqual({ aborts: 2, reads: 1 });
 });
@@ -508,14 +509,13 @@ test('a check that reported its result keeps that statement, with no Check saved
   await composer(page).press('Enter');
   await expect.poll(() => fixture(page, f => f.posts), { timeout: 15_000 }).toBe(1);
   await stop(page).click();
-  await expect(conversation(page).getByText(NOT_FINISHED, { exact: true })).toHaveCount(1, { timeout: 40_000 });
+  await expect(conversation(page).getByText(UNCHECKED, { exact: true })).toHaveCount(1, { timeout: 40_000 });
   await expect(page.getByRole('button', { name: /^Check saved conversation/ })).toHaveCount(0);
   await typeDraft(page, 'Another message');
   await composer(page).press('Enter');
   await expect.poll(() => fixture(page, f => f.posts), { timeout: 15_000 }).toBe(2);
-  // The check did run; the chat must not now claim that it did not.
-  await expect(conversation(page).getByText(NOT_CHECKED)).toHaveCount(0);
-  await expect(conversation(page).getByText(NOT_FINISHED, { exact: true })).toHaveCount(1);
+  // The check did run; its statement stays and is not repeated for the later message.
+  await expect(conversation(page).getByText(UNCHECKED, { exact: true })).toHaveCount(1);
   await expect(page.getByRole('button', { name: /^Check saved conversation/ })).toHaveCount(0);
   expect(await fixture(page, f => f.historyReads)).toBe(1);
 });
@@ -534,7 +534,7 @@ test('a check overtaken by another connection operation says so instead of promi
   await page.evaluate(async () => { const { connectionController } = await import('/src/runtime/connection-ui.tsx'); void connectionController.listHistory(); });
   await expect.poll(() => fixture(page, f => f.lists), { timeout: 15_000 }).toBe(1);
   await fixture(page, f => { f.holdReads = false; f.heldRead(); });
-  await expect(conversation(page).getByText(LOAD_TO_SEE, { exact: true })).toHaveCount(1, { timeout: 15_000 });
+  await expect(conversation(page).getByText(UNCHECKED, { exact: true })).toHaveCount(1, { timeout: 15_000 });
   await expect(conversation(page).getByText(MAY_FINISH, { exact: true })).toHaveCount(0);
   await fixture(page, f => f.heldList());
   await page.waitForTimeout(1_000);

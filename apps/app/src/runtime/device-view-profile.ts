@@ -2,7 +2,8 @@ import { ENABLED_MVP_VIEWS } from '../prototype/mvp-features';
 
 const PROFILE_PATH = '/api/client-devices/view-profile';
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
-const legacy = 'This agent does not negotiate enabled views. Phone actions still use local view checks.';
+/** An agent without enabled-view negotiation: phone actions still use local view checks, so no notice. */
+const legacy = '';
 type Request = (path: string, body: unknown | undefined, signal: AbortSignal) => Promise<unknown>;
 function object(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw Error('Enabled-view profile was not verified.');
@@ -33,6 +34,6 @@ export async function negotiateEnabledViews(version: unknown, request: Request, 
   const response = object(await request(PROFILE_PATH, {version: 1, views: wanted, expectedRevision: prior?.revision ?? null}, signal));
   signal.throwIfAborted();
   const confirmed = profile(response.profile);
-  if (response.version !== 1 || !confirmed || JSON.stringify(confirmed.views) !== JSON.stringify(wanted) || prior && confirmed.revision === prior.revision) throw Error('Enabled-view enrollment was not confirmed. Reconnect to read its status.');
+  if (response.version !== 1 || !confirmed || JSON.stringify(confirmed.views) !== JSON.stringify(wanted) || prior && confirmed.revision === prior.revision) throw Error('Connected. Phone actions aren’t confirmed. Reconnect to check.');
   return '';
 }

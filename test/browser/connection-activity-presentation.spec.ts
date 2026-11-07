@@ -67,8 +67,8 @@ test('Activity presents recorded phone actions in plain language with reconcile 
   const panel = page.locator('.alpha-connection');
   // The uncertain action opens with its reconcile controls in the connection panel.
   await expect(panel.getByText('Create note', { exact: true }).first()).toBeVisible();
-  await expect(panel.getByRole('button', { name: 'I verified it happened', exact: true })).toBeVisible();
-  await expect(panel.getByRole('button', { name: 'Reject proposal', exact: true })).toBeVisible();
+  await expect(panel.getByRole('button', { name: 'It happened', exact: true })).toBeVisible();
+  await expect(panel.getByRole('button', { name: 'Decline', exact: true })).toBeVisible();
   expect(await panel.innerText()).not.toContain('{"type"');
   await page.getByRole('button', { name: 'Close connection settings' }).first().click();
   await expect(app.getByText(/Create note · “Groceries” · Needs your review · this phone: applying/)).toBeVisible();

@@ -184,3 +184,23 @@ test('the agent panel shows a calm starting state while a signed-in agent starts
   // A start that failed (the binding was cleared at sign-in) never says the agent still runs.
   assert.match(panel,/:!snapshot\.session&&snapshot\.kind==='recovering'\?'AI is unavailable while your agent is not running\.':'AI connection is not confirmed\. Your agent still runs on this device\.'/);
 });
+
+test('a returning sign-in on completed setup opens Ready when an unconfirmed revocation arrives after setup opened',async()=>{
+  // spec-startup-permissions-F04: a completed install with no new account shows no Ready card, and
+  // the restart's notice used to have nowhere to render.
+  const {showWalkthroughCompletion}=await import('../.eliza/client-features/packages/ui/src/components/permissions/permission-walkthrough.ts');
+  const {lateReadyNotice}=await import('../apps/app/src/startup-permission-flow.ts');
+  const shown=showWalkthroughCompletion({accountCreated:false,resumed:false});
+  assert.equal(shown,false,'setup opened silently');
+  const silent=!shown;
+  // At setup the restart is still running: nothing to show yet.
+  assert.equal(lateReadyNotice({silent,error:'',message:''}),false);
+  // The real restart's notice (same harness as above) arrives after setup opened.
+  const box=harness();await box.run(new AbortController().signal,true);
+  assert.equal(box.state.setupRevision,1);
+  assert.equal(lateReadyNotice({silent,error:box.state.error??'',message:box.state.message}),true);
+  assert.equal(lateReadyNotice({silent,error:'Eliza Cloud is unavailable right now. Try again.',message:''}),true);
+  // A sign-in that showed Ready (or resumed setup) never reopens it, and plain receipts do not count.
+  assert.equal(lateReadyNotice({silent:false,error:'',message:box.state.message}),false);
+  assert.equal(lateReadyNotice({silent,error:'',message:'Signed in to Eliza Cloud.'}),false);
+});

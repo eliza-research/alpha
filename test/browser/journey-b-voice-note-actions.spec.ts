@@ -281,7 +281,7 @@ test('Journey B: recorded note is read aloud, summarized, and becomes an event a
  expect(recordedActions.journal.map((j:any)=>[j.record.operation.type,j.phase,j.status])).toEqual([['create_reminder','terminal','succeeded'],['calendar_create','terminal','succeeded']]);
  expect(recordedActions.proposals[1].receipt.result).toMatchObject({kind:'calendar_create',sourceId:'local',eventId:(await events(page)).find(e=>e.title==='Venue booking call').id});
  await openDeviceActions(page);
- await page.getByRole('button',{name:'Sync recorded receipts'}).click();
+ await page.getByRole('button',{name:'Check with agent'}).click();
  const connection=page.getByRole('dialog',{name:'Development connections'});
  await expect(connection.getByText(/Create event · “Venue booking call” · Completed · this phone: succeeded/)).toHaveCount(1);
  await expect(connection.getByText(/Create reminder · .*Email the caterer.* · Completed · this phone: succeeded/)).toHaveCount(1);

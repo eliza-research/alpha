@@ -79,7 +79,7 @@ test('failed, unfinished, streaming, card and phone receipt rows do not prove ch
 
 test('restored history marks saved interrupted replies as unfinished',()=>{
  const restored=ui.slice(ui.indexOf('function restoredMessages('),ui.indexOf('\n}\n',ui.indexOf('function restoredMessages(')));
- const run=new Function('systemNoticeKind','systemNoticeDisplayText','restoredText',ts(restored.replace(/:RestoredMessage\[\]/,'').replace(/items:Record<string,unknown>\[\]/,'items')+'\n}')+';return restoredMessages;')(systemNoticeKind,systemNoticeDisplayText,text=>text);
+ const run=new Function('systemNoticeKind','systemNoticeDisplayText','restoredText','displayText',ts(restored.replace(/:RestoredMessage\[\]/,'').replace(/items:Record<string,unknown>\[\]/,'items')+'\n}')+';return restoredMessages;')(systemNoticeKind,systemNoticeDisplayText,text=>text,text=>text);
  const rows=run([{id:'u1',role:'user',text:'hi'},{id:'a1',role:'assistant',text:'',interrupted:true},{id:'a2',role:'assistant',text:'Half',interrupted:true},{id:'n1',role:'assistant',text:systemNoticeText('runtime-error')}]);
  assert.deepEqual(rows.map(m=>[m.id,m.unfinished===true,m.systemNotice]),[['u1',false,undefined],['a1',true,undefined],['a2',true,undefined],['n1',false,'runtime-error']]);
  assert.deepEqual(collapseSystemNotices(rows).map(m=>m.id),['u1','a1','a2','n1'],'after a reload, a failed turn keeps its notice');

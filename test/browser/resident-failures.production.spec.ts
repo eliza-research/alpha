@@ -46,8 +46,8 @@ async function sendRefused(page: Page, text: string) {
 const KINDS = {
   // Cloud's billing refusal of a signed-in account: one answer naming both ways back (cloud-membership-ui.tsx).
   insufficient_credits: 'Eliza Cloud declined this AI request for your account’s billing. Check your subscription or enter a membership code, then send again. Nothing was retried or purchased.',
-  provider_issue: 'Alpha’s AI service could not complete this reply. Nothing was resent.',
-  generation_timeout: 'Alpha’s AI service could not complete this reply. Nothing was resent.',
+  provider_issue: 'Alpha’s AI service couldn’t finish this reply.',
+  generation_timeout: 'Alpha’s AI service couldn’t finish this reply.',
   // Bound to an admitted plan, yet the agent ran without a provider: a recheck is offered.
   no_provider: 'Your agent answered without its AI connection. Check the connection again; nothing was retried.',
 } as const;
@@ -245,7 +245,7 @@ test('a restart while the resident holds a reply posts nothing and shows the use
   await button(page, 'Open conversation').click();
   await expect(bubble(page, 'Held across a restart')).toHaveCount(1, { timeout: 30_000 });
   // The restored chat says it will check once; the agent finishes after the restart.
-  await expect(conversation(page).getByText('The agent may still finish this reply. Alpha Phone will check once and show it here if it does.', { exact: true })).toHaveCount(1);
+  await expect(conversation(page).getByText('This reply may still finish. It will appear here if it does.', { exact: true })).toHaveCount(1);
   await stub(page, s => s.finishHeld());
   await expect(bubble(page, 'Held reply 1')).toHaveCount(1, { timeout: 60_000 });
   await expect(bubble(page, 'Held across a restart')).toHaveCount(1);
@@ -259,7 +259,7 @@ test('a resident send the runtime no longer accepts (401) asks for an Eliza Clou
   await setStub(page, { stream: 'expired' });
   await send(page, 'Sent with an expired session');
   const dialog = page.getByRole('main',{name:'Welcome to Alpha.',exact:true});
-  await expect(dialog.getByRole('alert')).toHaveText('Your Cloud sign-in has expired. Sign in with Cloud again.', { timeout: 30_000 });
+  await expect(dialog.getByRole('alert')).toHaveText('Your Eliza Cloud sign-in has expired. Sign in again.', { timeout: 30_000 });
   // This fixture reports Google unavailable: a quiet retry instead of a dead Google button.
   await expect(dialog.getByRole('button', { name: 'Retry Google sign-in', exact: true })).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'Email me a code', exact: true })).toBeEnabled();

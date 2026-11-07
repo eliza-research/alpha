@@ -683,14 +683,14 @@ export function installSettingsAdapter(Component: any, views: Bag) {
             groups.push(group(historyRows));
           }
           if(connection.session&&connection.phoneActionsAvailable){
-            const refreshRows=connection.busy?[info('Phone action history','Please wait…')]:[action('Refresh actions',()=>void connectionController.actionHistory()),action('Sync recorded receipts',()=>void connectionController.actionHistory(true))];
+            const refreshRows=connection.busy?[info('Phone action history','Please wait…')]:[action('Refresh actions',()=>void connectionController.actionHistory()),action('Check with agent',()=>void connectionController.actionHistory(true))];
             groups.push(group(refreshRows));
             for(const item of connection.actionHistory){
               const rows=[info(item.title,item.outcome+(item.timestamp?` · ${item.timestamp}`:''))];
               if(item.detail)rows.push(info('Details',item.detail));
               if(!connection.busy){
-                if(item.state==='pending')rows.push(action('Reject proposal',()=>void connectionController.rejectAction(item.id)));
-                if(['executing','reconciliation_required'].includes(item.state))rows.push(info('Review','After checking this phone, confirm whether this exact action happened.'),action('I verified it happened',()=>void connectionController.reconcileAction(item.id,'applied')),action('I verified it did not happen',()=>void connectionController.reconcileAction(item.id,'not_applied')));
+                if(item.state==='pending')rows.push(action('Decline',()=>void connectionController.rejectAction(item.id)));
+                if(['executing','reconciliation_required'].includes(item.state))rows.push(info('Review','After checking this phone, confirm whether this exact action happened.'),action('It happened',()=>void connectionController.reconcileAction(item.id,'applied')),action('It did not happen',()=>void connectionController.reconcileAction(item.id,'not_applied')));
               }
               groups.push(group(rows));
             }

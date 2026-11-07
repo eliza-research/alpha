@@ -305,7 +305,7 @@ export class AlphaClient {
           reject(
             new AlphaClientError(
               "cancelled",
-              "Request cancelled. A dispatched action may still need status reconciliation.",
+              "Request cancelled. Check whether the action already happened.",
             ),
           );
         controller.signal.addEventListener("abort", abortListener, {
