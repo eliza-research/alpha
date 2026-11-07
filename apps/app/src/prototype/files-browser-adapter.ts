@@ -331,7 +331,7 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
       const done = (value.outcomes || []).filter(o => o.status === (op.type === 'files_move' ? 'moved' : 'trashed')).length;
       // Files that are no longer where the owner reviewed them, or no longer the same files
       // ("changed"), are left alone (AgentMoveOnlyReviewed).
-      return {status: done ? 'succeeded' : 'failed', summary: op.type === 'files_move' ? `Moved ${done} of ${op.paths.length}.` : `Moved ${done} of ${op.paths.length} to Trash. Restore from Files › Trash.`};
+      return {status: done ? 'succeeded' : 'failed', summary: op.type === 'files_move' ? `Moved ${done} of ${op.paths.length}.` : `Moved ${done} of ${op.paths.length} to Trash.`};
     },
     async identity(paths: string[]) {
       const value = await storage.storageIdentity({paths});
