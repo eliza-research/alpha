@@ -475,9 +475,9 @@ dialog:is(.alpha-operation-review,.alpha-calendar-editor,.alpha-calendar-meeting
 .alpha-wide [data-alpha-app-scroll="settings"] { padding-inline:max(16px, calc((100% - var(--alpha-reading-column)) / 2))!important; }
 /* The month picker is a bounded sheet, not a full-width band, once the canvas is wide. */
 .alpha-wide .calendar-month-dialog { max-width:560px; margin-inline:auto; }
-/* Photos: the grid gains columns with width instead of growing each tile; never fewer than three
- * (two for albums), so portrait keeps its reference grid. Tiles stay square crops of the media. */
-.photo-grid { margin-inline:12px; grid-template-columns:repeat(auto-fill,minmax(min(112px,calc((100% - 4px) / 3)),1fr))!important; }
+/* The Photos model supplies the column count used by its virtual rows and pinch gestures. */
+[data-alpha-app-scroll="photos"] { --photo-grid-inset:12px; }
+.photo-grid { margin-inline:var(--photo-grid-inset); }
 .photo-album-grid { grid-template-columns:repeat(auto-fill,minmax(min(168px,calc((100% - 12px) / 2)),1fr))!important; }
 /* The viewer fits the whole 3:4 frame in the space it has (letterboxed in landscape) rather than
  * cropping it to the screen's width, and shows the media inside without cropping either. */

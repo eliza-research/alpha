@@ -1077,7 +1077,9 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   }
   function measureGrid(el:HTMLElement,owner:Bag){
     const header=el.querySelector<HTMLElement>('.photo-day-header')?.offsetHeight;
-    gridView={...gridView,scrollTop:el.scrollTop,viewport:el.clientHeight,width:el.clientWidth,header:header&&header>0?header:gridView.header};
+    const width=el.querySelector<HTMLElement>('.photo-grid')?.clientWidth
+      || el.clientWidth-2*(parseFloat(getComputedStyle(el).getPropertyValue('--photo-grid-inset'))||0);
+    gridView={...gridView,scrollTop:el.scrollTop,viewport:el.clientHeight,width,header:header&&header>0?header:gridView.header};
     // Re-render only when the set of rendered rows changes (row-sized steps), not on every pixel.
     const pitch=(gridView.width-GRID_GAP*(gridColumns-1))/gridColumns+GRID_GAP,key=[gridColumns,Math.floor(gridView.scrollTop/Math.max(1,pitch)),Math.round(gridView.viewport/Math.max(1,pitch)),gridView.width,gridView.header].join(':');
     if(key!==gridView.key){gridView.key=key;owner.set({nativeGridWindow:key});}
