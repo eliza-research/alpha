@@ -138,6 +138,7 @@ export const CLASS_REGISTRY = {
   NoteRecorder: { note: "real microphone audio across three segment rollovers and a simulated process loss; grants RECORD_AUDIO itself; about 90 s" },
   NoteRecordingSave: { note: "retains one recording twice into the same voice note, with a 200k-character transcript" },
   KeptCaptureLegacyPath: { note: "A scan Keep reserved under the old Pictures/ capture folder, pending or published, resolves there after the move to DCIM/Camera/ with no second copy" },
+  PhotosCatalogOrder: { note: "two owned JPEGs with EXIF capture times 2010 and now, the old one inserted last: the permitted catalog pages newest capture first, one row per page, no repeats; grants READ_MEDIA_IMAGES itself" },
   PhotoReplace: { note: "Replace over its own owned PNG fixtures with an injected write failure: restored from the backup, kept until a later result restores it, or saved when the write completed" },
   StorageLegacyAccess: { note: "API 29: legacy storage in effect, both storage permissions granted by the test, one uniquely named Download/ folder created and removed; API 30+: all-files access unchanged" },
   StorageCategories: { note: "every Browse category id over a private cache root; the Downloads listing is a temporary Download/ folder, not shared storage" },

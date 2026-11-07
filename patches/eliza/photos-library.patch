@@ -734,15 +734,64 @@
      if (s != null && (token == null || s.token.equals(token)))
 --- a/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PermittedMediaCatalog.java
 +++ b/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PermittedMediaCatalog.java
-@@ -71,6 +71,7 @@
+@@ -71,17 +71,51 @@
    };
    private static final class Page {
      final String snapshot, query, kind;
-+    /** Index of the volume the next page continues in. */
-     final int bucket;
-     final long before, until;
-     Page(String snapshot, String query, String kind, int bucket, long before) {
-@@ -246,6 +247,9 @@
+-    final int bucket;
+-    final long before, until;
+-    Page(String snapshot, String query, String kind, int bucket, long before) {
++    /** The last listed item's catalog key: capture time, source (volume x type) and _id. */
++    final long shot, id;
++    final int source;
++    final long until;
++    Page(String snapshot, String query, String kind, long shot, int source, long id) {
+       this.snapshot = snapshot;
+       this.query = query;
+       this.kind = kind;
+-      this.bucket = bucket;
+-      this.before = before;
++      this.shot = shot;
++      this.source = source;
++      this.id = id;
+       until = SystemClock.elapsedRealtime() + 120000;
+     }
+   }
++  /**
++   * The catalog's sort time in SQL: DATE_TAKEN, or date_added (seconds) when it is unset. It must
++   * equal {@link #shot(Cursor)}, which computes the same value for a listed row.
++   */
++  static final String SHOT = "ifnull(nullif(datetaken,0),date_added*1000)";
++  private static long shot(Cursor row) {
++    int taken = row.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_TAKEN);
++    long value = row.isNull(taken) ? 0 : row.getLong(taken);
++    return value != 0 ? value : row.getLong(3) * 1000;
++  }
++  /** Catalog order of merged rows {shot, source, _id, item}: newest first, then source, then _id desc. */
++  static final java.util.Comparator<Object[]> CATALOG_ORDER = (a, b) -> {
++    int byShot = Long.compare((Long) b[0], (Long) a[0]);
++    if (byShot != 0) return byShot;
++    int bySource = Integer.compare((Integer) a[1], (Integer) b[1]);
++    return bySource != 0 ? bySource : Long.compare((Long) b[2], (Long) a[2]);
++  };
++  /**
++   * Rows of {@code source} that come after the key (shot, source, id) in catalog order: newest
++   * capture time first, then source index, then _id descending. {@code args} receives the values.
++   */
++  static String after(int source, long shot, int lastSource, long id, List<String> args) {
++    args.add(Long.toString(shot));
++    if (source < lastSource)
++      return " AND " + SHOT + "<?";
++    if (source > lastSource)
++      return " AND " + SHOT + "<=?";
++    args.add(Long.toString(shot));
++    args.add(Long.toString(id));
++    return " AND (" + SHOT + "<? OR (" + SHOT + "=? AND _id<?))";
++  }
+   private boolean observing;
+   public PermittedMediaCatalog(Context context, Runnable changed) {
+     this(context, true, changed);
+@@ -246,6 +280,9 @@
          Build.VERSION.SDK_INT >= 30 ? FIELDS : java.util.Arrays.copyOf(FIELDS, 8)));
      if (video)
        result.add(MediaStore.Video.VideoColumns.DURATION);
@@ -752,7 +801,7 @@
      return result.toArray(new String[0]);
    }
    private String revision(Cursor row, String volume) {
-@@ -277,6 +281,7 @@
+@@ -277,6 +314,7 @@
      result.put("identity",
          version(volume) + ":" + row.getLong(3)
              + (Build.VERSION.SDK_INT >= 30 ? ":" + row.getLong(8) : ""));
@@ -760,7 +809,7 @@
      return result;
    }
    public Uri uri(MediaLibraryKey key) {
-@@ -351,8 +356,8 @@
+@@ -351,8 +389,8 @@
        long from, long to, int limit) throws Exception {
      if (from < 0 || to < from || limit < 1 || limit > PAGE_SIZE)
        throw new IllegalArgumentException("Invalid bounded media query");
@@ -771,13 +820,12 @@
        throw new IllegalArgumentException("Unsupported media filter");
      String pageKind = kind + ":" + filter + ":" + from + ":" + to + ":" + limit;
      if (search == null || search.length() > 128 || search.indexOf('\0') >= 0 || kind == null
-@@ -360,15 +365,10 @@
+@@ -360,89 +398,93 @@
        throw new IllegalArgumentException("Invalid photo query");
      List<String> volumes = volumes();
      String snapshot = snapshot(volumes);
 -    int bucketIndex = 0;
-+    int volumeIndex = 0;
-     long before = Long.MAX_VALUE;
+-    long before = Long.MAX_VALUE;
 -    List<MediaLibraryKey> buckets = new ArrayList<>();
 -    for (String volume : volumes) {
 -      if (readable(false) && !kind.equals("video"))
@@ -787,24 +835,27 @@
 -    }
 +    boolean images = readable(false) && !kind.equals("video");
 +    boolean videos = readable(true) && !kind.equals("image");
++    Page last = null;
      if (cursor != null && !cursor.isEmpty()) {
-       Page page;
+-      Page page;
        synchronized (pages) {
-@@ -378,70 +378,83 @@
-           || !page.snapshot.equals(snapshot) || !page.query.equals(search)
-           || !page.kind.equals(pageKind))
+-        page = pages.remove(cursor);
++        last = pages.remove(cursor);
+       }
+-      if (page == null || page.until < SystemClock.elapsedRealtime()
+-          || !page.snapshot.equals(snapshot) || !page.query.equals(search)
+-          || !page.kind.equals(pageKind))
++      if (last == null || last.until < SystemClock.elapsedRealtime()
++          || !last.snapshot.equals(snapshot) || !last.query.equals(search)
++          || !last.kind.equals(pageKind))
          throw new IllegalStateException("Photo page expired; refresh Photos");
 -      bucketIndex = page.bucket;
-+      volumeIndex = page.bucket;
-       before = page.before;
+-      before = page.before;
      }
      JSArray items = new JSArray();
      String next = "";
      long thumbnailUntil = SystemClock.elapsedRealtime() + 3000;
-+    // One newest-first catalog: images and videos share a volume's _id sequence, so both typed
-+    // collections are read below the same cursor and merged, instead of every image before any
-+    // video. The cursor is (volume, last _id), so favorite or restore never reorders a page.
-   outer:
+-  outer:
 -    for (; bucketIndex < buckets.size(); bucketIndex++, before = Long.MAX_VALUE) {
 -      MediaLibraryKey bucket = buckets.get(bucketIndex);
 -      String volume = bucket.volume;
@@ -825,26 +876,27 @@
 -      if (to < Long.MAX_VALUE) {
 -        where += " AND date_added<=?";
 -        values.add(Long.toString(to / 1000));
--      }
--      if (!search.isBlank()) {
--        where += " AND instr(lower(" + MediaStore.MediaColumns.DISPLAY_NAME + "),lower(?))>0";
--        values.add(search.trim());
-+    for (; volumeIndex < volumes.size(); volumeIndex++, before = Long.MAX_VALUE) {
++    // One newest-first catalog across every volume and both typed collections: each source
++    // (volume x images/videos) is read below the previous page's last key, and the sources are
++    // merged on (capture time desc, source, _id desc). The cursor is that key, so a later page never
++    // inserts rows above ones already listed, and favorite or restore never reorders a page.
++    List<Object[]> merged = new ArrayList<>();
++    for (int volumeIndex = 0; volumeIndex < volumes.size(); volumeIndex++) {
 +      String volume = volumes.get(volumeIndex);
-+      int want = limit + 1 - items.length();
-+      List<Object[]> merged = new ArrayList<>();
 +      for (boolean video : new boolean[] {false, true}) {
 +        if (video ? !videos : !images)
 +          continue;
++        int source = volumeIndex * 2 + (video ? 1 : 0);
 +        Bundle args = new Bundle();
 +        List<String> values = new ArrayList<>();
-+        values.add(Long.toString(before));
-+        String where = "is_pending=0 AND _id<?"
++        String where = "is_pending=0"
 +            + (Build.VERSION.SDK_INT >= 30
 +                    ? " AND is_trashed=" + (filter.equals("trash") ? "1" : "0")
 +                    : "")
 +            + (filter.equals("favorites") ? " AND is_favorite=1" : "")
 +            + OwnedMediaSelection.folderSelection(filter);
++        if (last != null)
++          where += after(source, last.shot, last.source, last.id, values);
 +        if (Build.VERSION.SDK_INT >= 30)
 +          args.putInt(MediaStore.QUERY_ARG_MATCH_TRASHED,
 +              filter.equals("trash") ? MediaStore.MATCH_ONLY : MediaStore.MATCH_EXCLUDE);
@@ -863,16 +915,32 @@
 +        args.putString(ContentResolver.QUERY_ARG_SQL_SELECTION, where);
 +        args.putStringArray(
 +            ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS, values.toArray(new String[0]));
-+        args.putStringArray(ContentResolver.QUERY_ARG_SORT_COLUMNS, new String[] {"_id"});
-+        args.putInt(ContentResolver.QUERY_ARG_SORT_DIRECTION,
-+            ContentResolver.QUERY_SORT_DIRECTION_DESCENDING);
-+        args.putInt(ContentResolver.QUERY_ARG_LIMIT, want);
++        args.putString(ContentResolver.QUERY_ARG_SQL_SORT_ORDER, SHOT + " DESC, _id DESC");
++        args.putInt(ContentResolver.QUERY_ARG_LIMIT, limit + 1);
 +        try (Cursor rows = query(volume, video, args)) {
 +          if (rows == null)
 +            throw new IllegalStateException("Media provider unavailable");
 +          while (rows.moveToNext())
-+            merged.add(new Object[] {rows.getLong(0), metadata(rows, volume, video)});
++            merged.add(new Object[] {shot(rows), source, rows.getLong(0), metadata(rows, volume, video)});
 +        }
+       }
+-      if (!search.isBlank()) {
+-        where += " AND instr(lower(" + MediaStore.MediaColumns.DISPLAY_NAME + "),lower(?))>0";
+-        values.add(search.trim());
++    }
++    merged.sort(CATALOG_ORDER);
++    for (Object[] row : merged) {
++      if (items.length() == limit) {
++        // The key of the last listed row; the next page continues strictly after it.
++        Object[] key = merged.get(limit - 1);
++        next = UUID.randomUUID().toString();
++        synchronized (pages) {
++          pages.entrySet().removeIf(
++              entry -> entry.getValue().until < SystemClock.elapsedRealtime());
++          while (pages.size() >= 32) pages.remove(pages.keySet().iterator().next());
++          pages.put(next, new Page(snapshot, search, pageKind, (Long) key[0], (Integer) key[1], (Long) key[2]));
++        }
++        break;
        }
 -      args.putString(ContentResolver.QUERY_ARG_SQL_SELECTION, where);
 -      args.putStringArray(
@@ -894,16 +962,7 @@
 -              pages.put(next, new Page(snapshot, search, pageKind, bucketIndex, before));
 -            }
 -            break outer;
-+      merged.sort((a, b) -> Long.compare((Long) b[0], (Long) a[0]));
-+      for (Object[] row : merged) {
-+        if (items.length() == limit) {
-+          next = UUID.randomUUID().toString();
-+          synchronized (pages) {
-+            pages.entrySet().removeIf(
-+                entry -> entry.getValue().until < SystemClock.elapsedRealtime());
-+            while (pages.size() >= 32) pages.remove(pages.keySet().iterator().next());
-+            pages.put(next, new Page(snapshot, search, pageKind, volumeIndex, before));
-           }
+-          }
 -          JSObject item = metadata(rows, volume, bucket.video);
 -          before = rows.getLong(0);
 -          if (thumbnails && SystemClock.elapsedRealtime() < thumbnailUntil) {
@@ -912,23 +971,21 @@
 -            } catch (Exception unavailable) {
 -              item.put("image", "");
 -            }
-+          break outer;
-+        }
-+        JSObject item = (JSObject) row[1];
-+        before = (Long) row[0];
-+        if (thumbnails && SystemClock.elapsedRealtime() < thumbnailUntil) {
-+          try {
-+            item.put("image", thumbnail(MediaLibraryKey.parse(item.getString("id")), 240));
-+          } catch (Exception unavailable) {
-+            item.put("image", "");
-           }
+-          }
 -          items.put(item);
++      JSObject item = (JSObject) row[3];
++      if (thumbnails && SystemClock.elapsedRealtime() < thumbnailUntil) {
++        try {
++          item.put("image", thumbnail(MediaLibraryKey.parse(item.getString("id")), 240));
++        } catch (Exception unavailable) {
++          item.put("image", "");
          }
-+        items.put(item);
        }
++      items.put(item);
      }
      current(snapshot, volumes);
-@@ -564,7 +577,7 @@
+     JSObject result = new JSObject();
+@@ -564,7 +606,7 @@
      List<String> volumes = volumes();
      String snapshot = snapshot(volumes);
      long until = SystemClock.elapsedRealtime() + 3000;
@@ -937,7 +994,7 @@
      for (String volume : volumes)
        for (boolean video : new boolean[] {false, true}) {
          if (!readable(video))
-@@ -574,8 +587,8 @@
+@@ -574,8 +616,8 @@
          if (Build.VERSION.SDK_INT >= 30)
            args.putInt(MediaStore.QUERY_ARG_MATCH_TRASHED, MediaStore.MATCH_INCLUDE);
          String[] projection = Build.VERSION.SDK_INT >= 30
@@ -948,7 +1005,7 @@
          try (Cursor rows = query(volume, video, args, projection)) {
            if (rows == null)
              throw new IllegalStateException("Media provider unavailable");
-@@ -590,6 +603,11 @@
+@@ -590,6 +632,11 @@
                videos++;
              if (Build.VERSION.SDK_INT >= 30 && rows.getInt(0) == 1)
                favorites++;
@@ -960,7 +1017,7 @@
            }
          }
        }
-@@ -597,6 +615,8 @@
+@@ -597,6 +644,8 @@
      JSObject result = new JSObject();
      result.put("favorites", favorites);
      result.put("videos", videos);
