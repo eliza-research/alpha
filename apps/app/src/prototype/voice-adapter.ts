@@ -716,7 +716,10 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
             if(value.phase==='error')error=voiceStopped(value as BatchVoiceState);
             stopClock();if(value.phase==='listening'||value.phase==='speaking')tick=setInterval(refresh,250);refresh();
           },
-        },streamingCloud?{timing:{shortGapMs:0,longGapMs:0}}:undefined);
+        // Keep capture open briefly after a provider final so a buffered next
+        // onset can continue the same utterance before the reply hold mutes it.
+        // This adds at most 400 ms after the final, only on Cloud streaming.
+        },streamingCloud?{timing:{shortGapMs:0,longGapMs:400}}:undefined);
         conversationLive=assistant;conversationVoice=assistant;conversationInterim='';conversationLevels=[];started=Date.now();
         try{await assistant.start();current();return;}
         catch(failure){
