@@ -54,7 +54,7 @@ export const ENROLLMENT = Object.freeze([
   { file: RELEASE_SIGNER, field: ["signerSha256"], key: APPLICATION_KEY, digest: "certificateSha256" },
   { file: PRODUCT, field: ["signer", "platformCertificateSha256"], key: "platform", digest: "certificateSha256" },
   ...IMAGE_CERTIFICATES.map(name => ({ file: PRODUCT, field: ["signer", "releaseCertificates", name], key: name, digest: "certificateSha256" })),
-  { file: PRODUCT, field: ["signer", "apexPayloadAvbPublicKeySha256"], key: "apex_payload", digest: "avbPublicKeySha256" },
+  { file: PRODUCT, field: ["signer", "apexPayloadAvbPublicKeySha256"], key: "apex_payload", digest: "avbPublicKeySha256", initial: "UNSET" },
   { file: PRODUCT, field: ["avb", "publicKeySha256"], key: "avb", digest: "avbPublicKeySha256" },
   { file: CHANNEL, field: ["otaCertificateSha256"], key: "releasekey", digest: "certificateSha256" },
   { file: CHANNEL, field: ["avbPublicKeySha256"], key: "avb", digest: "avbPublicKeySha256" },
@@ -161,7 +161,8 @@ export function plannedChanges(root, fingerprints, { replace = false } = {}) {
   for (const row of ENROLLMENT) {
     if (!records.has(row.file)) records.set(row.file, readJson(root, row.file));
     const record = records.get(row.file);
-    const from = get(record, row.field);
+    const recorded = get(record, row.field);
+    const from = recorded === undefined ? row.initial : recorded;
     if (from === undefined) throw new Error(`${row.file} has no ${row.field.join(".")}`);
     const to = byName.get(row.key)?.[row.digest];
     const state = UNSET.has(from) ? "set" : from === to ? "same" : "conflict";

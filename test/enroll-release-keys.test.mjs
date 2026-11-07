@@ -39,7 +39,8 @@ function recordsFixture(t) {
   for (const row of ENROLLMENT) {
     if (!records.has(row.file)) records.set(row.file, JSON.parse(fs.readFileSync(path.join(dir, row.file), "utf8")));
     const parent = row.field.slice(0, -1).reduce((value, key) => value[key], records.get(row.file));
-    parent[row.field.at(-1)] = row.file === RELEASE_SIGNER ? "unset" : "UNSET";
+    if (row.initial !== undefined) delete parent[row.field.at(-1)];
+    else parent[row.field.at(-1)] = row.file === RELEASE_SIGNER ? "unset" : "UNSET";
   }
   for (const [file, value] of records) fs.writeFileSync(path.join(dir, file), formatRecord(value));
   return dir;
@@ -147,8 +148,14 @@ test("a release ceremony is recorded field by field, a dry run writes nothing an
   assert.match(fs.readFileSync(path.join(fixture, PRODUCT), "utf8"), /"chainedPartitions": \["vbmeta_system", "vbmeta_vendor"\]/);
   for (const record of [RELEASE_SIGNER, PRODUCT, CHANNEL]) {
     const before = unenrolled[record].split("\n");
-    const after = fs.readFileSync(path.join(fixture, record), "utf8").split("\n");
-    assert.equal(after.length, before.length, `${record} keeps its layout`);
+    let writtenText = fs.readFileSync(path.join(fixture, record), "utf8");
+    if (record === PRODUCT) {
+      const existingFields = JSON.parse(writtenText);
+      delete existingFields.signer.apexPayloadAvbPublicKeySha256;
+      writtenText = formatRecord(existingFields);
+    }
+    const after = writtenText.split("\n");
+    assert.equal(after.length, before.length, `${record} keeps its layout apart from the new APEX payload pin`);
     const changed = after.filter((line, index) => line !== before[index]);
     assert.ok(changed.length > 0 && changed.every(line => /"[a-z_A-Z0-9]+": "[0-9a-f]{64}",?$/.test(line)), `${record} changes only digest lines`);
   }
