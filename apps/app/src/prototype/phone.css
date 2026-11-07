@@ -346,7 +346,8 @@ html:not(.alpha-landscape) .alpha-phone [data-screen]:not([data-alpha-chat-half=
 /* The sheet is hidden behind that dialog, and in landscape it docks beside the app: neither covers
  * anything, so a touch outside it stays the app's. */
 [data-screen][data-alpha-chat-half="true"]:has([data-alpha-layer="app"] [role="dialog"]) [data-alpha-chat-scrim],
-.alpha-landscape .alpha-phone [data-alpha-chat-scrim] { pointer-events:none!important; }
+[data-screen]:has([data-alpha-layer="app"] [role="dialog"]) [data-alpha-dock-scrim="true"],
+.alpha-landscape .alpha-phone [data-alpha-chat-scrim]:not([data-alpha-dock-scrim="true"]) { pointer-events:none!important; }
 
 /* Assistant owns only its conversation surface. */
 .alpha-assistant-surface .alpha-phone :is([data-alpha-layer="home"],[data-alpha-layer="drawer"]){display:none!important}

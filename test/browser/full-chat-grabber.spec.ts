@@ -114,6 +114,45 @@ test('the first click outside collapses and is captured; the next one reaches th
  await expect.poll(()=>activeView(page)).toBe('calendar');
 });
 
+test.describe('focused Home composer',()=>{
+ test.use({hasTouch:true});
+ for(const touch of [false,true])test(`outside ${touch?'touch':'click'} dismisses the composer before opening an app`,async({page})=>{
+  await page.setViewportSize({width:412,height:915});
+  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
+  await page.goto('/?shell=launcher&tools=1');
+  const composer=page.getByRole('textbox',{name:'Ask Alpha',exact:true});
+  await composer.fill('Keep this draft');
+  await expect(composer).toBeFocused();
+  const settings=page.locator('[data-alpha-layer="home"]').getByRole('button',{name:'Settings',exact:true});
+  const box=(await settings.boundingBox())!,x=box.x+box.width/2,y=box.y+box.height/2;
+  const tap=()=>touch?page.touchscreen.tap(x,y):page.mouse.click(x,y);
+  await tap();
+  await expect(composer).not.toBeFocused();
+  await expect(page.locator('html')).toHaveAttribute('data-active-view','home');
+  await expect(composer).toHaveValue('Keep this draft');
+  await tap();
+  await expect(page.locator('html')).toHaveAttribute('data-active-view','settings');
+ });
+ test('the composer raised from the pill returns to it with the draft',async({page})=>{
+  await page.setViewportSize({width:412,height:915});
+  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
+  await page.goto('/');
+  await page.getByRole('button',{name:'Settings',exact:true}).click();
+  const type=page.getByRole('button',{name:'Type',exact:true});
+  await type.click();
+  const composer=page.locator('[data-alpha-input-bar] textarea');
+  await composer.fill('Keep this Settings draft');
+  await expect(composer).toBeFocused();
+  const back=page.getByRole('button',{name:'Back to apps',exact:true});
+  const box=(await back.boundingBox())!;
+  await page.touchscreen.tap(box.x+box.width/2,box.y+box.height/2);
+  await expect(type).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('data-active-view','settings');
+  await type.click();
+  await expect(composer).toHaveValue('Keep this Settings draft');
+ });
+});
+
 test('a drag outside collapses and neither scrolls nor pulls anything',async({page})=>{
  await sheet(page);
  const home=page.locator('[data-alpha-layer="home"]');

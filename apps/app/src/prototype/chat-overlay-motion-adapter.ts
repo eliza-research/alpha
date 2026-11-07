@@ -689,18 +689,39 @@ export function installChatOverlayMotion(Component: Shell) {
 					: shell.rest(),
 			});
 		};
-		out.scrimTap = out.closeChat;
-		// Any touch outside the open sheet collapses it and reaches nothing underneath. A tap
-		// collapses on its click, so no compatibility click can land on what the sheet uncovers;
-		// a drag has no click, so it collapses on release. Assistive technology activates
-		// controls directly and keeps reaching the app.
+		if (!out.showComposer) shell.chatInputFocused = false;
+		const setInputFocus = (focused: boolean) => {
+			if (!!shell.chatInputFocused === focused) return;
+			shell.chatInputFocused = focused;
+			shell.setState({});
+		};
+		out.inputComposerFocus = () => setInputFocus(true);
+		out.inputComposerBlur = () => setInputFocus(false);
+		const dockScrim =
+			s.chat === "input" && !!out.showComposer && !s.shade &&
+			s.voice === "off" && !shell.props.assistantSurface &&
+			(shell.chatInputFocused || shell.rest() === "hidden");
+		out.dockScrim = dockScrim;
+		out.scrimZ = dockScrim ? 39 : 45;
+		out.scrimTap = () => {
+			const active = document.activeElement;
+			if (dockScrim && active instanceof HTMLElement && active.matches("[data-alpha-composer]"))
+				active.blur();
+			out.closeChat();
+		};
+		// An outside tap lowers the sheet or dock without activating what it uncovers.
+		// A drag has no click, so it collapses on release. Assistive technology can
+		// still activate app controls directly.
 		out.scrimPE =
-			s.chat === "sheet" && s.voice === "off" && !shell.props.assistantSurface
+			dockScrim || s.chat === "sheet" && s.voice === "off" && !shell.props.assistantSurface
 				? "auto"
 				: "none";
 		out.scrimSw = {
 			down(event: PointerEvent) {
 				event.stopPropagation();
+				// Keep focus until the scrim receives the click. An early blur would
+				// otherwise uncover the app between pointer down and pointer up.
+				if (dockScrim) event.preventDefault();
 				if (event.isPrimary === false) return;
 				shell.chatScrimPress = {
 					id: event.pointerId,
