@@ -23,7 +23,7 @@
     "modules": [
       { "name": "capacitor-android", "source": { "root": "dependencies", "path": "@capacitor/android/capacitor" } },
       { "name": "eliza-system", "source": { "root": "patchedNative", "path": "plugins/plugin-native-system/android" }, "relocateBuild": true },
-      { "name": "eliza-camera", "source": { "root": "upstream", "path": "plugins/plugin-native-camera/android" } },
+      { "name": "eliza-camera", "source": { "root": "patchedNative", "path": "plugins/plugin-native-camera/android" }, "relocateBuild": true },
       { "name": "eliza-location", "source": { "root": "upstream", "path": "plugins/plugin-native-location/android" } },
       { "name": "eliza-network-policy", "source": { "root": "upstream", "path": "plugins/plugin-native-network-policy/android" } },
       { "name": "eliza-calendar", "source": { "root": "patchedNative", "path": "plugins/plugin-native-calendar/android" }, "relocateBuild": true },

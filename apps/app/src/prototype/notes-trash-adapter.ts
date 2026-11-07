@@ -3,7 +3,9 @@ import {
 } from '../runtime/notes-trash';
 import type {NoteRecord} from '../runtime/notes-store';
 import type {NotesTarget} from '../runtime/notes-contract';
-import {notesTrashPolicy} from '../runtime/notes-trash-policy';
+import {notesTrashPolicy,notesTrashDaysShort} from '../runtime/notes-trash-policy';
+import {readNotesFolders,restoredNoteFolder} from '../runtime/notes-folders';
+import {notePreview} from '../runtime/notes-view';
 import {maintainNotesTrash} from '../../../../.eliza/client-features/plugins/plugin-notes/src/client/notes-trash-maintenance.ts';
 import {createNotesTrashActions,type NotesTrashCollection} from '../../../../.eliza/client-features/plugins/plugin-notes/src/client/notes-trash-actions.ts';
 import {scheduleNotesTrashMaintenance} from '../../../../.eliza/client-features/plugins/plugin-notes/src/client/notes-trash-schedule.ts';
@@ -17,7 +19,8 @@ const kindLabel:Record<string,string>={text:'Note',list:'Checklist',voice:'Voice
 export const NOTES_TRASH_MAINTENANCE_INTERVAL_MS=15*60*1000;
 
 /**
- * Deleted notes go to a durable Trash and are erased three days after deletion.
+ * Deleted notes go to a durable Trash, shown as the "Recently deleted" folder, and are erased
+ * 30 days after deletion.
  * Maintenance (drop rows whose note is live again, purge expired rows) runs at startup,
  * whenever Notes opens, when the app returns to the foreground (visibilitychange and the
  * native appResumed event) and on a 15-minute timer while the shell is alive, so expiry
@@ -43,7 +46,7 @@ export function installNotesTrashAdapter(Component:Shell,views:Record<string,Bag
  async function load(shell:Shell){
   if(shell.notesSourceMode==='canonical')return;
   try{const doc=await readNotesTrash();if(shell.live)shell.vset('notes',{trash:sortedNotesTrash(doc),trashError:''});}
-  catch{if(shell.live)shell.vset('notes',{trash:[],trashError:'Trash could not be read. Nothing in it was deleted.'});}
+  catch{if(shell.live)shell.vset('notes',{trash:[],trashError:'Recently deleted could not be read.'});}
  }
  /** Idempotent: a second run with the same clock finds nothing to do. */
  async function maintain(shell:Shell,background:boolean,now=Date.now()){
@@ -89,6 +92,9 @@ export function installNotesTrashAdapter(Component:Shell,views:Record<string,Bag
    stored:()=>shell.notesStore.list,
    visible:()=>shell.vget('notes').list,
    async commit(list,reason){
+    // A restored note returns to its folder, or to no folder when that folder was deleted meanwhile.
+    // An unreadable folder list keeps the stored reference, which then reads as no folder.
+    if(reason==='restore'){const folders=await readNotesFolders().then(doc=>doc.folders,()=>null);if(folders)list=list.map(note=>restoredNoteFolder(note,folders));}
     return reason==='restore'?await shell.vset('notes',{list},{exact:true})===true:await shell.vset('notes',{list,open:null,sheet:null,playing:false,dict:false})===true;
    },
   };
@@ -106,14 +112,15 @@ export function installNotesTrashAdapter(Component:Shell,views:Record<string,Bag
   }
   // An unconfirmed list save is reported by the Notes save path; maintenance drops the copy if the note stays saved.
   if(outcome.status==='unconfirmed')return false;
-  if(outcome.status!=='moved'){shell.toast(outcome.status==='changed'?'This note changed in another view. Nothing was deleted.':'Could not move this note to Trash. Nothing was deleted.');return false;}
+  if(outcome.status!=='moved'){shell.toast(outcome.status==='changed'?'This note changed in another view. Nothing was deleted.':'Could not move this note to Recently deleted. Nothing was deleted.');return false;}
   void load(shell);
-  shell.toast(`${note.title||kindLabel[note.kind]||'Note'} moved to Trash`,{undo:()=>void restore(shell,outcome.entry.id)});
+  shell.toast('Moved to Recently deleted',{undo:()=>void restore(shell,outcome.entry.id)});
   return true;
  }
 
- async function restore(shell:Shell,id:string){
-  if(busy)return;busy=true;shell.vset('notes',{trashBusy:true});
+ type RestoreOutcome='restored'|'live'|'gone'|'expired'|'failed'|'busy';
+ async function restore(shell:Shell,id:string):Promise<RestoreOutcome>{
+  if(busy)return 'busy';busy=true;shell.vset('notes',{trashBusy:true});
   try{
    await runMaintenance(shell);
    const entry=(await readNotesTrash().catch(()=>null))?.entries.find(x=>x.id===id);
@@ -121,14 +128,15 @@ export function installNotesTrashAdapter(Component:Shell,views:Record<string,Bag
    if(outcome==='owned-content'&&entry){
     // The recording follows its note through the reviewed voice restore path.
     const hook=voice(shell).restoreTrashedVoice;
-    if(typeof hook==='function')await hook(entry);else shell.toast('Voice restore is unavailable. The note stays in Trash.');
-    return;
+    if(typeof hook==='function')return await hook(entry)?'restored':'failed';
+    shell.toast('Voice restore is unavailable.');return 'failed';
    }
    const title=entry?.note.title||kindLabel[entry?.note.kind as string]||'Note';
-   shell.toast(outcome==='restored'?`${title} restored`:outcome==='live'?'This note is already in Notes.':outcome==='gone'?'This note is no longer in Trash.'
+   shell.toast(outcome==='restored'?`${title} restored`:outcome==='live'?'This note is already in Notes.':outcome==='gone'?'This note is no longer in Recently deleted.'
     :outcome==='expired'?'This note has expired and cannot be restored. Permanent deletion will be retried.'
-    :'Restore is unconfirmed. Reopen Notes to check Trash. No newer note was replaced.');
-  }catch{shell.toast('Restore is unconfirmed. Reopen Notes to check Trash. No newer note was replaced.');}
+    :'Restore is unconfirmed. Reopen Notes to check Recently deleted. No newer note was replaced.');
+   return outcome==='restored'||outcome==='live'||outcome==='gone'||outcome==='expired'?outcome:'failed';
+  }catch{shell.toast('Restore is unconfirmed. Reopen Notes to check Recently deleted. No newer note was replaced.');return 'failed';}
   finally{busy=false;if(shell.live)shell.vset('notes',{trashBusy:false});await load(shell);}
  }
 
@@ -136,7 +144,7 @@ export function installNotesTrashAdapter(Component:Shell,views:Record<string,Bag
   if(busy)return;busy=true;shell.vset('notes',{trashBusy:true,trashConfirm:null});
   try{
    const outcome=await actionsFor(shell).erase(ids);
-   shell.toast(outcome.status==='unconfirmed'?'Permanent deletion is unconfirmed. Reopen Trash to check.':outcome.failed?`${outcome.failed} item(s) could not be deleted yet. They stay in Trash.`:ids==='all'?'Trash emptied':outcome.erased?'Deleted forever':'This note is no longer in Trash.');
+   shell.toast(outcome.status==='unconfirmed'?'Permanent deletion is unconfirmed. Reopen Recently deleted to check.':outcome.failed?`${outcome.failed} item(s) could not be deleted yet. They stay in Recently deleted.`:ids==='all'?'Recently deleted emptied':outcome.erased?'Deleted':'This note is no longer in Recently deleted.');
   }finally{busy=false;if(shell.live)shell.vset('notes',{trashBusy:false});await load(shell);}
  }
 
@@ -169,7 +177,9 @@ export function installNotesTrashAdapter(Component:Shell,views:Record<string,Bag
   if(key==='notes'){
    const shell=this;
    api.moveNoteToTrash=(note:Bag,index:number)=>moveToTrash(shell,note,index);
-   api.notesTrash={restore:(id:string)=>restore(shell,id),erase:(ids:'all'|string)=>erase(shell,ids),maintain:()=>runMaintenance(shell),
+   api.notesTrash={restore:(id:string)=>restore(shell,id),
+    // The newest Recently deleted entry of a note, for the agent's reviewed notes_restore.
+    entryFor:async(noteId:string)=>(await readNotesTrash()).entries.filter(entry=>entry.note.id===noteId).sort((a,b)=>b.deletedAt-a.deletedAt)[0]??null,erase:(ids:'all'|string)=>erase(shell,ids),maintain:()=>runMaintenance(shell),
     deleteForever:(id:string)=>deleteForever(shell,id),forget:()=>{refused=null;}};
   }
   return api;
@@ -192,27 +202,39 @@ export function installNotesTrashAdapter(Component:Shell,views:Record<string,Bag
  notes.back=(state:Bag,api:Bag)=>{
   if(state.trashFull){(api.notesTrash as Bag|undefined)?.forget();api.set({trashFull:null});return true;}
   if(state.trashConfirm){api.set({trashConfirm:null});return true;}
-  if(state.trashOpen){api.set({trashOpen:false});return true;}
+  if(state.trashAsk){api.set({trashAsk:null});return true;}
+  if(state.folder==='deleted'){api.set({folder:null});return true;}
   return back(state,api);
  };
  notes.render=(state:Bag,api:Bag)=>{
   const view=render(state,api),trash=api.notesTrash as Bag|undefined;
-  view.trashAvailable=!!trash;view.trashCanErase=true;view.trashRetentionText='Deleted notes stay here for 3 days, then they are deleted permanently.';
+  view.trashAvailable=!!trash;view.trashCanErase=true;
   if(!trash)return view;
   // Notes opened: purge due entries. Navigation resets this flag, so every open checks again.
   if(!state.trashChecked){queueMicrotask(()=>{api.set({trashChecked:true});void trash.maintain();});}
   const rows:NotesTrashEntry[]=state.trash||[],now=Date.now(),disabled=!!state.trashBusy;
-  view.openTrash=()=>{trash.forget();api.set({trashOpen:true,open:null,sheet:null,q:null,trashConfirm:null,trashFull:null});void trash.maintain();};
-  view.closeTrash=()=>api.set({trashOpen:false,trashConfirm:null});
-  view.trashOpen=!!state.trashOpen;
-  view.trashLabel=rows.length?`Trash, ${rows.length} item${rows.length===1?'':'s'}`:'Trash';
+  // Recently deleted is the last folder of the list (state.folder 'deleted'), shown while it has notes.
+  view.openTrash=()=>{trash.forget();api.set({folder:'deleted',open:null,sheet:null,q:null,trashConfirm:null,trashFull:null});void trash.maintain();};
+  view.closeTrash=()=>api.set({folder:null,trashConfirm:null,trashAsk:null});
+  view.trashOpen=state.folder==='deleted';
+  if(view.trashOpen&&Array.isArray(state.trash)&&!rows.length&&!disabled&&!state.trashFull)queueMicrotask(()=>{const latest=api.get('notes');if(latest.folder==='deleted'&&Array.isArray(latest.trash)&&!latest.trash.length)api.set({folder:null,trashConfirm:null});});
+  view.trashCount=rows.length;
+  view.hasDeleted=rows.length>0;
   view.trashRows=rows.map(entry=>{
    const title=entry.note.title||kindLabel[entry.note.kind]||'Untitled';
-   return {id:entry.id,title,kind:kindLabel[entry.note.kind]||'Note',left:notesTrashDaysLabel(entry,now),
-    restoreLabel:`Restore ${title}`,deleteLabel:`Delete ${title} forever`,disabled,
+   return {id:entry.id,title,kind:kindLabel[entry.note.kind]||'Note',preview:notePreview(entry.note),left:notesTrashDaysShort(entry,now),label:`${title}, ${notesTrashDaysLabel(entry,now)}`,
+    restoreLabel:`Recover ${title}`,deleteLabel:`Delete ${title} now`,disabled,
     restore:()=>void trash.restore(entry.id),
-    erase:()=>api.set({trashConfirm:{id:entry.id,title}})};
+    erase:()=>api.set({trashConfirm:{id:entry.id,title}}),
+    ask:()=>api.set({trashAsk:{id:entry.id,title}})};
   });
+  // Tapping a row offers Recover or Delete now; Delete now asks again before erasing.
+  const ask=state.trashAsk as Bag|null,asked=ask&&view.trashOpen?rows.find(entry=>entry.id===ask.id):undefined;
+  view.trashAskOpen=!!asked;
+  view.trashAskTitle=asked?ask!.title:'';
+  view.trashAskClose=()=>api.set({trashAsk:null});
+  view.trashAskRecover=()=>{if(!asked)return;api.set({trashAsk:null});void trash.restore(asked.id);};
+  view.trashAskDelete=()=>{if(!asked)return;api.set({trashAsk:null,trashConfirm:{id:asked.id,title:ask!.title}});};
   view.trashNone=!rows.length;
   view.trashError=state.trashError||'';
   view.trashEmptyDisabled=disabled||!rows.length;
@@ -223,12 +245,11 @@ export function installNotesTrashAdapter(Component:Shell,views:Record<string,Bag
   const full=(state.trashFull as Bag|null)&&(state.list||[]).some((n:Bag)=>n.id===state.trashFull.id&&n.id===state.open)?state.trashFull as Bag:null;
   if(state.trashFull&&!full)queueMicrotask(()=>{trash.forget();api.set({trashFull:null});});
   view.trashFullOpen=!!full;
-  view.trashConfirmOpen=!!full||(!!confirm&&!!state.trashOpen);
-  view.trashConfirmTitle=full?'Trash is full':confirm?.id==='all'?'Empty Trash?':'Delete forever?';
-  view.trashConfirmText=full?`“${full.title}” was not deleted because Trash has no room for a restorable copy. Empty Trash to make room, or delete this ${full.voice?'voice note and its recording':'note'} permanently now. Permanent deletion skips Trash and cannot be undone.`
-   :confirm?.id==='all'?`${rows.length} item${rows.length===1?'':'s'} will be deleted permanently. This cannot be undone.`:`“${confirm?.title||'This note'}” will be deleted permanently. This cannot be undone.`;
-  view.trashConfirmLabel=full?'Delete forever without Trash':confirm?.id==='all'?'Confirm empty Trash':'Confirm delete forever';
-  view.trashConfirmText2=confirm?.id==='all'&&!full?'Empty Trash':'Delete forever';
+  view.trashConfirmOpen=!!full||(!!confirm&&view.trashOpen);
+  view.trashConfirmTitle=full?'Recently deleted is full':confirm?.id==='all'?'Delete all recently deleted notes?':`Delete “${confirm?.title||'this note'}”?`;
+  view.trashConfirmText=full?'':'This can’t be undone.';
+  view.trashConfirmLabel=full?'Delete permanently':confirm?.id==='all'?'Delete all':'Delete';
+  view.trashConfirmText2=full?'Delete permanently':confirm?.id==='all'?'Delete all':'Delete';
   view.trashCancel=()=>{if(full)trash.forget();api.set({trashConfirm:null,trashFull:null});};
   view.trashFullReview=()=>view.openTrash();
   view.trashConfirmGo=()=>{

@@ -83,17 +83,17 @@ test.describe('repeated HOME across views', () => {
     });
   }
 
-  test('HOME on Home with All apps open closes it and keeps focus on Home', async ({ page }) => {
+  test('HOME on Home with Apps open closes it and keeps focus on Home', async ({ page }) => {
     test.setTimeout(60_000);
     await start(page);
-    await page.getByRole('button', { name: 'All apps', exact: true }).focus();
+    await page.getByRole('button', { name: 'Apps', exact: true }).focus();
     await page.keyboard.press('Enter');
     await expect(page.locator('[data-alpha-layer="drawer"]')).toBeVisible();
     await expect.poll(async () => (await focusState(page)).dropped).toBe(false);
     await pressHome(page, 2);
     await expect(page.locator('[data-alpha-layer="drawer"]')).toHaveCount(0);
     await expect.poll(async () => (await focusState(page)).onHome).toBe(true);
-    await screenIsSound(page, 'Home after HOME from All apps');
+    await screenIsSound(page, 'Home after HOME from Apps');
   });
 });
 

@@ -358,8 +358,6 @@ html:not(.alpha-landscape) .alpha-phone [data-screen]:not([data-alpha-chat-half=
 .alpha-landscape .alpha-phone [data-alpha-layer="pill"]{left:auto!important;width:var(--alpha-dock-width)}
 .alpha-landscape .alpha-phone [data-alpha-layer="conversation"]{left:auto!important;width:var(--alpha-dock-width);height:100%!important;border-radius:0!important;box-shadow:-1px 0 0 var(--line),-20px 0 60px var(--shc)!important}
 .alpha-landscape .alpha-phone>[data-screen]{width:var(--phone-width,412px)!important}
-/* App library: a favorite at either end cannot move further. */
-.alpha-app-drawer button.ib:disabled{opacity:.3}
 
 /* Accessibility and resilience (MVP-48). Large text arrives as WebView text zoom, which CSS cannot
  * read, so these are layout rules: text either fits, wraps or is hidden whole; it is never cut. */
@@ -405,7 +403,8 @@ html.alpha-text-xl:not(.alpha-landscape) [data-alpha-camera="modes"] button{heig
 /* The camera's message stops at the capture rail in landscape instead of lying across it. */
 .alpha-landscape [data-alpha-camera="said"],
 .alpha-landscape [data-alpha-camera-access]{right:calc(var(--alpha-camera-rail) + 16px)!important}
-.alpha-landscape [data-alpha-camera="viewfinder"]{top:0!important;bottom:0!important;height:auto!important;right:var(--alpha-camera-rail)!important}
+/* The assistant pill floats at the bottom in landscape; the viewfinder ends above it. */
+.alpha-landscape [data-alpha-camera="viewfinder"]{top:0!important;bottom:var(--alpha-dock-clearance,0px)!important;height:auto!important;right:var(--alpha-camera-rail)!important}
 .alpha-landscape [data-alpha-camera="capture"]{left:auto!important;right:0!important;top:var(--alpha-camera-top)!important;bottom:0!important;width:var(--alpha-camera-rail)!important;height:auto!important;flex-direction:column-reverse!important;padding:8px 0!important;box-sizing:border-box}
 .alpha-landscape [data-alpha-camera="modes"]{top:auto!important;bottom:8px!important;right:var(--alpha-camera-rail)!important;z-index:2}
 .alpha-landscape [data-alpha-camera="modes"] button{background:rgba(0,0,0,.62);border-radius:22px}
@@ -639,3 +638,11 @@ button[aria-label$=" on or off"][aria-pressed]::before { content:""; position:ab
  * the viewfinder and the capture row, and scrolls sideways instead of pushing a mode off screen. */
 .alpha-text-xl:not(.alpha-landscape) [data-alpha-camera="modes"]{top:648px!important;height:auto!important;min-height:44px;overflow-x:auto;overflow-y:hidden;justify-content:safe center!important;padding:0 8px;box-sizing:border-box;touch-action:pan-x}
 .alpha-text-xl [data-alpha-camera="modes"] button{line-height:1.1;gap:2px!important;padding:0 10px!important}
+/* Notes folders, filter chip and the editor's ⋯ menu (view refresh 2026-11, PLAN.md section 3). */
+.notes-folders { scrollbar-width:none; }
+.notes-folders::-webkit-scrollbar { display:none; }
+.notes-chip { display:inline-flex; align-items:center; gap:6px; flex-shrink:0; min-height:36px; padding:0 14px; border-radius:18px; background:var(--s2); color:var(--fg); font-size:14px; font-weight:500; white-space:nowrap; }
+.notes-chip[aria-pressed="true"] { background:var(--fg); color:var(--bg); }
+.notes-menu { position:absolute; right:10px; top:56px; z-index:12; min-width:208px; padding:6px; border-radius:16px; background:var(--s1); box-shadow:0 10px 30px rgba(0,0,0,.2); }
+.notes-menu button { display:flex; align-items:center; gap:12px; width:100%; min-height:44px; padding:0 12px; border-radius:10px; color:var(--fg); font-size:15px; text-align:left; box-sizing:border-box; }
+.notes-menu hr { border:0; border-top:1px solid var(--line); margin:4px 0; }

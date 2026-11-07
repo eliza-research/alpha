@@ -34,11 +34,12 @@ test('live views render from empty fixtures without errors or fixture text', asy
   expect(errors).toEqual([]);
 });
 
-test('Files root omits empty recent copy and seeded storage', async ({ page }) => {
+test('Files root shows the storage browser instead of seeded files', async ({ page }) => {
   const { errors } = await withEmptyFixtures(page);
   await page.goto('/');
   await page.getByRole('button', { name: 'Files', exact: true }).click();
-  await expect(page.getByText('No recent files', { exact: false })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Internal storage', exact: true })).toBeVisible();
+  await expect(page.getByText(/No recent files/)).toHaveCount(0);
   await expect(page.getByText('218 GB free')).toHaveCount(0);
   expect(errors).toEqual([]);
 });

@@ -20,8 +20,10 @@ const page=(rows,next='',extra={})=>({...scope(extra),items:rows.map(row=>typeof
 test('manifest declares the media permissions Android needs per API level, legacy read capped at API 32',()=>{
  assert.match(manifest,/<uses-permission android:name="android\.permission\.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" \/>/);
  for(const name of ['READ_MEDIA_IMAGES','READ_MEDIA_VIDEO','READ_MEDIA_VISUAL_USER_SELECTED'])assert.match(manifest,new RegExp(`<uses-permission android:name="android\\.permission\\.${name}" />`));
- // No write-all or manage-all storage shortcut.
- assert.doesNotMatch(manifest,/MANAGE_EXTERNAL_STORAGE|ACCESS_MEDIA_LOCATION/);
+ // No write-all storage shortcut. All-files access belongs to Files (PLAN F1); the photo library never relies on it.
+ assert.doesNotMatch(manifest,/ACCESS_MEDIA_LOCATION/);
+ assert.equal(manifest.match(/MANAGE_EXTERNAL_STORAGE/g)?.length,1);
+ assert.doesNotMatch(readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPhotoLibraryPlugin.java','utf8'),/MANAGE_EXTERNAL_STORAGE|isExternalStorageManager/);
  assert.match(manifest,/WRITE_EXTERNAL_STORAGE" tools:node="remove"/);
  assert.match(readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/MainActivity.java','utf8'),/registerPlugin\(AlphaPhotoLibraryPlugin\.class\);/);
 });
@@ -153,7 +155,7 @@ test('destructive and share actions are reviewed against exact revisions and exp
  for(const action of m.DESTRUCTIVE_LIBRARY_ACTIONS)assert.ok(m.REVIEWED_LIBRARY_ACTIONS.includes(action));
  assert.ok(m.REVIEWED_LIBRARY_ACTIONS.includes('share'));
  // The adapter calls native change/share only from the confirmed review, never from a tap.
- const confirm=adapter.slice(adapter.indexOf('async function confirmReview'),adapter.indexOf('function attach'));
+ const confirm=adapter.slice(adapter.indexOf('async function confirmReview'),adapter.indexOf('const visibleHost'));
  assert.match(confirm,/port\.share\(\{ items: pending\.items \}\)/);assert.match(confirm,/port\.requestChange\(\{ operation: pending\.action, items: pending\.items \}\)/);
  assert.equal((adapter.match(/port\.(share|requestChange)\(/g)||[]).length,2,'no other native change path');
 });
@@ -197,11 +199,10 @@ test('selected outbound model context carries no names, album names, sizes, modi
  assert.doesNotMatch(wire,/PRIVATE_NAME|PRIVATE_ALBUM|base64|image\/jpeg|987654|1699999999|1700000000:/);
  assert.deepEqual(result.items[0],{id:'lib:i:7:70',revision:'rev-s1-1',kind:'image',takenAt:parsed.items[0].takenAt,width:4000,height:3000,favorite:true});
  assert.equal(result.items[1].duration,12);
- // The assistant's selected object is one item's identity and a local counter revision.
- assert.match(adapter,/if \(selection\.size !== 1 \|\| !visible\(\)\) return null;/);
- assert.match(adapter,/revisions\(\{ kind: item\.kind, id: item\.id, revision: item\.revision \}\)/);
+ // There is no separate Device library album: select and reviews act on the main Library host.
+ assert.doesNotMatch(adapter,/'device'|tile\(|album\(/);
  const agent=readFileSync('apps/app/src/prototype/agent-adapter.ts','utf8');
- assert.match(agent,/state\.album === 'device' && !state\.open && state\.nativeLibrarySelection\) providerSelection = state\.nativeLibrarySelection;/);
+ assert.doesNotMatch(agent,/nativeLibrarySelection/);
 });
 
 test('agent album observes only while open and falls back to a bounded fresh catalog',()=>{
@@ -216,12 +217,13 @@ test('agent album observes only while open and falls back to a bounded fresh cat
  assert.match(camera,/watchLibrary\(!disposed&&!document\.hidden&&!!photosApi\?\.isActive\(\)&&permittedLibrary\(\)\)/);
  // The shared catalog registers its MediaStore observer only while some view watches (tested upstream).
  assert.match(java,/out\.put\("reset",true\)/);
- assert.match(adapter,/watch\(!!scope && scope.scope !== 'denied' && !scope.locked\)/);
+ // The agent bridge never registers its own observer: the Photos grid watches the shared catalog.
+ assert.doesNotMatch(adapter,/watch\(|addListener\(/);
  const agent=adapter.slice(adapter.indexOf('const agent: LibraryAgent'),adapter.indexOf('mountedAgent = agent;'));
  assert.doesNotMatch(agent,/query/);
 });
 
-test('adapter: new items and widened grants reload a fresh first page; agent reads are identity-only',()=>{
+test('adapter: agent reads are identity-only; select, view requests and reviews act on the main Library',()=>{
  const root=resolve(import.meta.dirname,'..');
  assert.match(execFileSync(process.execPath,['--import=tsx',join(root,'test/fixtures/photo-library-adapter.mjs')],{cwd:root,encoding:'utf8',timeout:120000}),/PASS photo library adapter/);
 });
@@ -253,7 +255,7 @@ test('library operations are registered in Alpha device actions: Photos-only, ne
  const executor=readFileSync('apps/app/src/prototype/agent-adapter.ts','utf8');
  assert.match(executor,/if\(isLibraryOperation\(operation\)\)\{[\s\S]*deviceLibraryAgent\(\)[\s\S]*expectedContext\.view!=='photos'/);
  const journal=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaActionJournal.java','utf8');
- assert.match(journal,/"photo_library_search","photo_library_inspect","photo_library_select","photo_library_review"\)\.contains\(type\)\)\{/);
+ assert.match(journal,/"photo_library_search","photo_library_inspect","photo_library_select","photo_library_review","photos_filter","photos_open","photos_album_create","photos_share"\)\.contains\(type\)\)\{/);
 });
 
 test('volume-qualified media identities and provider revisions survive the agent contract',()=>{

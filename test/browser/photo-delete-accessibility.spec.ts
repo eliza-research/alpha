@@ -23,10 +23,10 @@ for(const theme of ['light','dark'])for(const height of [915,420])test(`photo de
  await page.keyboard.press('Shift+Tab');await expect(remove).toBeFocused();await page.keyboard.press('Tab');await expect(cancel).toBeFocused();
  await page.screenshot({path:info.outputPath('delete-review.png'),animations:'disabled'});
  await page.keyboard.press('Escape');await expect(dialog).toHaveCount(0);await expect(opener).toBeFocused();
- await expect(page.getByRole('button',{name:/Deleted photo/})).toHaveCount(1);
+ await expect(page.getByRole('button',{name:/^Photo, /})).toHaveCount(1);
  await opener.click();await expect(cancel).toBeFocused();await cancel.click();await expect(opener).toBeFocused();
  await opener.click();await expect(cancel).toBeFocused();await page.evaluate(()=>window.dispatchEvent(new Event('alpha-back')));await expect(dialog).toHaveCount(0);await expect(opener).toBeFocused();
  // Deletion is exercised only against the isolated, test-created image.
  await opener.click();await expect(cancel).toBeFocused();await remove.click();await expect(dialog).toHaveCount(0);
- await expect(page.getByRole('button',{name:/Deleted photo/})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:/^Photo, /})).toHaveCount(0);
 });

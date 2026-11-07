@@ -6,7 +6,7 @@ import {
   IMG, PEOPLE, PN_REC, PN_VM, PN_SCRIPT, PN_SCREEN, PN_REPLIES, MSG_PHOTOS, MSG_SEED, MSG_UNREAD,
   MSG_SMART, MSG_BOT, INBOX_ACCTS, INBOX_SEED, CAL_SEED, CAL_PREP, BR_START, BR_PAGES, BR_ME,
   PH_SEED, PH_DESC, PH_SHARE, MAPS_PLACES, MAPS_FAR, MAPS_MATCH, MAPS_SAVED, NOTES_SEED,
-  NOTES_LIVE, NOTES_DICT, CT_SEED, FILES_FOLDERS_EXTRA, FILES_SEED, WAL_CARDS, WAL_TRIPS,
+  CT_SEED, FILES_FOLDERS_EXTRA, FILES_SEED, WAL_CARDS, WAL_TRIPS,
   WAL_MERCH, WAL_PASSES, WF_SEED, ST_ACCOUNTS, ST_NETS, ST_BT, ST_PERM0, ST_MODELS, ST_LOG,
   ST_DEVLOG, ST_DEVICE, ST_ABOUT, NOTIF, LOCK_SUM, QUICK_SETTINGS, QUICK_TILES, HEADS, VOICE, COPY,
   ATTENTION_ROWS, HOME_DEFAULTS
@@ -18,6 +18,7 @@ import { emptyHomeShadePull, pullStart, shadeFallback } from "./system-shade";
 import React from "react";
 import { DCLogic } from "./dc-lite.js";
 import { calendarDayColumns, calendarDayCount, calendarReturnDay, markVisibleWeek, visibleCalendarDays } from "./calendar-days";
+import { filterNotes, sortNotes, notePreview, noteDateLabel, notesFilterLabel } from "../runtime/notes-view";
 import { WEEKDAYS, MONTHS, formatTime, formatClock, formatHours, formatHoursRange, formatHour, weekdayName, formatShortDate, formatLongDate, formatMonthDay, formatMonthTitle } from "./locale-time";
 
 
@@ -1841,51 +1842,36 @@ registerView("browser", {
 });
 
 /* ===== module: camera ===== */
-/* Camera: photo / video / scan. Immersive. Captures are prepended to Photos' shared list.
+/* Camera: video / photo. Immersive. Captures are prepended to Photos' shared list.
+   Scanning is not a mode: asking Alpha to scan while Camera is open captures one frame into scan review.
    Scenes come from phScene()/phLook() in the Photos module (CSS compositions, no images). All holes are {{camera.*}}. */
 IC.camFlash = IC.camFlash || "M13 3L5 14h6l-1 7 8-11h-6l1-7z";
 IC.camFlashOff = IC.camFlashOff || "M13 3L9.5 8M8 10l-3 4h6l-1 7 3.2-4.4M15 13.6L18 10h-6l1-7M3 3l18 18";
 IC.camFlip = IC.camFlip || "M4 12a8 8 0 0 1 13.7-5.6L20 9M20 4v5h-5M20 12a8 8 0 0 1-13.7 5.6L4 15M4 20v-5h5";
 IC.camScan = IC.camScan || "M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4M7 12h10";
 
-var CAM = { live: false, scan: false, lp: null, long: false, g: null };
+/* Zoom ratios of the simulated lenses: the back lens has an ultra-wide, the front lens only 1×. */
 var CAM_ZOOM = [[".5", 1], ["1×", 1.35], ["2", 2], ["5", 3.4]];
-var CAM_MODES = [["video", "Video"], ["photo", "Photo"], ["scan", "Scan"]];
-var CAM_DRIFT = [[0, 0], [-5, 3], [3, -4], [-2, -6], [4, 2]];
-function camScene(st) { return st.mode === "scan" ? "poster" : (st.front ? "selfie" : "park"); }
-function camFigs(st) { return st.mode !== "scan" && st.front ? [[50, 2.2]] : null; }
-function camPoster(now) {
-  var d = new Date(now); var add = (5 - d.getDay() + 7) % 7 || 7; d.setDate(d.getDate() + add);
-  return { day: formatShortDate(d), short: weekdayName(d, "short") + " " + formatHours(18) };
-}
+var CAM_MODES = [["video", "Video"], ["photo", "Photo"]];
+var CAM_SCAN_WORDS = /\bscan\b.*\b(document|doc|receipt|qr|code|poster|page|this|that|a|it|text)\b|\bscan (this|it|that)\b/;
+function camScene(st) { return st.front ? "selfie" : "park"; }
+function camFigs(st) { return st.front ? [[50, 2.2]] : null; }
 function camSave(api, item) {
   var ph = api.get("photos");
   api.setView("photos", { list: [item].concat(ph.list || []) });
   api.set({ session: [item.id].concat(api.get("camera").session || []) });   // this session's captures (all secure mode may show)
 }
 function camFlashFx(api) { api.set({ fl: 1 }); api.later(function () { api.set({ fl: 0 }); }, 90); }
+function camShot(s) { return { id: "c" + Date.now(), ts: Date.now(), kind: "photo", scene: camScene(s), figs: camFigs(s), place: copy("camera").place || "", people: [], tags: s.front ? ["selfie"] : [], fav: false, z: s.front ? 1 : CAM_ZOOM[s.zoom][1] }; }
 function camStopRec(api) {
   var s = api.get("camera"); if (!s.rec) return;
   var sec = Math.max(1, Math.floor((Date.now() - s.recAt) / 1000));
   camSave(api, { id: "c" + Date.now(), ts: Date.now(), kind: "video", dur: Math.floor(sec / 60) + ":" + pad2(sec % 60), scene: camScene(s), figs: camFigs(s), place: copy("camera").place || "", people: [], tags: s.front ? ["selfie"] : [], fav: false, z: s.front ? 1 : CAM_ZOOM[s.zoom][1] });
   api.set({ rec: false, recAt: 0 }); api.stopBg();
 }
-function camAsk(api) {
-  var s = api.get("camera");
-  if (api.secure) { var k = Date.now(); api.set({ said: camDescribe(s, Date.now()), saidK: k }); api.later(function () { if (api.get("camera").saidK === k) api.set({ said: "" }); }, 7000); return; }
-  api.send(s.mode === "scan" ? "What does it say?" : "What am I looking at?");
-}
 function camRecLabel(st) { var sec = Math.max(0, Math.floor((Date.now() - st.recAt) / 1000)); return Math.floor(sec / 60) + ":" + pad2(sec % 60); }
-function camSaveScan(api, quiet) {
-  var s = api.get("camera");
-  var scan = copy("camera").scan || {};
-  camSave(api, { id: "c" + Date.now(), ts: Date.now(), kind: "doc", scene: "poster", figs: null, place: scan.place || "", people: [], tags: (scan.tags || []).slice(), fav: false, z: 1 });
-  if (!quiet) camFlashFx(api);
-  return s;
-}
-function camDescribe(st, now) {
+function camDescribe(st) {
   var cc = copy("camera");
-  if (st.mode === "scan") { var scan = cc.scan || {}; return scan.describe ? scan.describe.replace("{day}", camPoster(now).day) : "Document reading is not connected."; }
   if (st.front) return cc.describeFront || "Scene description is not connected.";
   return cc.describeBack || "Scene description is not connected.";
 }
@@ -1893,113 +1879,79 @@ function camDescribe(st, now) {
 registerView("camera", {
   title: "Camera", icon: "camera", aliases: ["cam"],
   chat: "hidden",
-  state: { mode: "photo", front: false, flash: false, zoom: 1, rec: false, recAt: 0, tick: 0, fl: 0, focus: null, found: false, flip: false, session: [], said: "" },
+  state: { mode: "photo", front: false, flash: false, zoom: 1, rec: false, recAt: 0, tick: 0, fl: 0, session: [], said: "" },
   ongoing: function (st) { return st.rec ? { label: camRecLabel(st), icon: "video", color: "var(--alpha-record-red)" } : null; },
-  jumps: [[null, "Camera"], ["video", "Video"], ["scan", "Scan"]],
-  preset: function (sub) { if (sub) return { mode: sub }; },
-  immersive: function () { return { dark: true, noPill: true }; },
+  jumps: [[null, "Camera"], ["video", "Video"]],
+  preset: function (sub) { if (sub === "video" || sub === "photo") return { mode: sub }; },
+  // The assistant pill stays below the shutter row: asking Alpha (about the frame, or to scan it) replaces header buttons.
+  immersive: function (st) { return st.rec ? { dark: true, noPill: true } : { dark: true }; },
   back: function (st, api) { if (st.rec) { camStopRec(api); return true; } return false; },
-  onLeave: function (api) { if (api.secure && api.get("camera").rec) camStopRec(api); CAM.live = false; CAM.scan = false; clearTimeout(CAM.lp); },  // recording keeps going in the background (ongoing chip) except from the lock screen
-  suggestions: function (st) {
-    if (st.mode === "scan") return ["What does it say?", "Add it to my calendar", "Save it to Files"];
-    return ["What am I looking at?", "Take a selfie", "Scan a document"];
-  },
+  onLeave: function (api) { if (api.secure && api.get("camera").rec) camStopRec(api); },  // recording keeps going in the background (ongoing chip) except from the lock screen
+  suggestions: function () { return ["What am I looking at?", "Take a selfie", "Scan this"]; },
   voicePhrase: "What am I looking at?",
   actions: {
-    addEvent: function (card, api) { api.toast("Added to Calendar"); }
+    /* The camera adapter replaces this with one frame into scan review. */
+    scan: function (card, api) { camFlashFx(api); }
   },
   reply: function (t, raw, api) {
-    var st = api.st; var now = api.now.getTime();
+    var st = api.st;
     if (api.active) {
-      if (/what (am i|do you|is (this|that)|'s (this|that))|what.*(see|looking)|read (this|it)|what does it say|describe/.test(t)) {
-        if (st.mode === "scan" && (copy("camera").scan || {}).title) { var p = camPoster(now); return { text: camDescribe(st, now), card: { type: "event", time: p.day + " · 6:00 PM", title: copy("camera").scan.title, act: { mod: "camera", fn: "addEvent" } } }; }
-        return { text: camDescribe(st, now) };
-      }
-      if (st.mode === "scan" && (copy("camera").scan || {}).added && /calendar|add (it|the event|event)/.test(t)) return { text: copy("camera").scan.added, then: function () { api.toast("Added to Calendar"); } };
-      if (st.mode === "scan" && /files|save (it|this)/.test(t)) return { text: "Saved to Files, under Scans.", then: function () { camSaveScan(api, true); api.toast("Saved to Files"); } };
-      if (/\b(take|snap|shoot)\b.*\bselfie\b/.test(t)) return { text: "Smile.", then: function () { api.set({ mode: "photo", front: true }); api.later(function () { api.set({ fl: 1 }); var s = api.get("camera"); camSave(api, { id: "c" + Date.now(), ts: Date.now(), kind: "photo", scene: "selfie", figs: [[50, 2.2]], place: copy("camera").place || "", people: [], tags: ["selfie"], fav: false, z: 1 }); api.later(function () { api.set({ fl: 0 }); }, 90); }, 900); } };
-      if (/\b(take|snap|shoot)\b.*\b(photo|picture|pic|shot)\b/.test(t)) return { text: "Got it.", then: function () { var s = api.get("camera"); camFlashFx(api); camSave(api, { id: "c" + Date.now(), ts: Date.now(), kind: "photo", scene: camScene(s), figs: camFigs(s), place: copy("camera").place || "", people: [], tags: s.front ? ["selfie"] : [], fav: false, z: s.front ? 1 : CAM_ZOOM[s.zoom][1] }); } };
+      if (CAM_SCAN_WORDS.test(t)) return { text: "Scanning.", then: function () { VIEWS.camera.actions.scan(null, api); } };
+      if (/what (am i|do you|is (this|that)|'s (this|that))|what.*(see|looking)|read (this|it)|what does it say|describe/.test(t)) return { text: camDescribe(st) };
+      if (/\b(take|snap|shoot)\b.*\bselfie\b/.test(t)) return { text: "Smile.", then: function () { api.set({ mode: "photo", front: true, flash: false, zoom: 1 }); api.later(function () { camFlashFx(api); camSave(api, camShot(api.get("camera"))); }, 900); } };
+      if (/\b(take|snap|shoot)\b.*\b(photo|picture|pic|shot)\b/.test(t)) return { text: "Got it.", then: function () { camFlashFx(api); camSave(api, camShot(api.get("camera"))); } };
     }
-    if (/\b(take|snap)\b.*\bselfie\b/.test(t)) return { text: "Front camera's ready.", nav: { view: "camera", patch: { mode: "photo", front: true } } };
+    if (/\b(take|snap)\b.*\bselfie\b/.test(t)) return { text: "Front camera's ready.", nav: { view: "camera", patch: { mode: "photo", front: true, flash: false, zoom: 1 } } };
     if (/\b(take|snap|shoot)\b.*\b(photo|picture|pic)\b|\bopen (the )?camera\b/.test(t)) return { text: "Camera's ready.", nav: { view: "camera", patch: { mode: "photo" } } };
-    if (/\b(record|film|shoot)\b.*\bvideo\b/.test(t)) return { text: "Tap the red button to start.", nav: { view: "camera", patch: { mode: "video" } } };
-    if (/\bscan\b.*\b(document|doc|receipt|qr|code|poster|page|this|a|it)\b/.test(t)) return { text: "Point it at the page. I'll read it.", nav: { view: "camera", patch: { mode: "scan", found: false } } };
+    if (/\b(record|film|shoot)\b.*\bvideo\b/.test(t)) return { text: "Camera's ready.", nav: { view: "camera", patch: { mode: "video" } } };
+    if (CAM_SCAN_WORDS.test(t)) return { text: "Camera's ready. Point it at the page and ask again.", nav: { view: "camera", patch: { mode: "photo" } } };
     return null;
   },
   render: function (st, api) {
-    var now = api.now.getTime();
-    if (!CAM.live) { CAM.live = true; api.every(function () { var s = api.get("camera"); if (!s.rec) api.set({ tick: (s.tick || 0) + 1 }); }, 1000); }
-    if (st.mode === "scan" && !st.found && !CAM.scan) { CAM.scan = true; api.later(function () { CAM.scan = false; if (api.get("camera").mode === "scan") api.set({ found: true }); }, 1100); }
-    var isScan = st.mode === "scan", isVideo = st.mode === "video";
-    var front = st.front && !isScan;
-    var zs = isScan ? 0.8 : (front ? 1.05 : CAM_ZOOM[st.zoom][1]);
-    var dr = CAM_DRIFT[Math.floor((st.tick || 0) / 2) % CAM_DRIFT.length];
+    var isVideo = st.mode === "video";
+    var front = st.front;
+    var zs = front ? 1.05 : CAM_ZOOM[st.zoom][1];
     var bg = phScene(camScene(st), camFigs(st), 0, PH_SCENE_IMG[camScene(st)]);
-    var setMode = function (m) { var s = api.get("camera"); if (s.rec) camStopRec(api); if (s.mode !== m) api.set({ mode: m, found: false }); };
-    var modeIdx = CAM_MODES.map(function (m) { return m[0]; }).indexOf(st.mode);
+    var setMode = function (m) { var s = api.get("camera"); if (s.rec) camStopRec(api); if (s.mode !== m) api.set({ mode: m }); };
 
     var ph = api.get("photos"); var sess = st.session || [];
     var last = (ph.list || []).filter(function (it) { return !api.secure || sess.indexOf(it.id) >= 0; })[0] || null;
     var lastLook = last ? phLook(last, "thumb") : null;
-    var poster = camPoster(now);
-
-    function pt(e) { var sc = e.currentTarget.closest("[data-screen]"); var r = sc.getBoundingClientRect(); var s = r.width / 412 || 1; return { x: (e.clientX - r.left) / s, y: (e.clientY - r.top) / s }; }
+    // The simulated front lens has no ultra-wide or telephoto: 1× only, so no chips.
+    var zooms = front ? [] : CAM_ZOOM.map(function (z, i) { return [z[0], i]; });
     return {
-      bg: bg, vfBg: isScan ? "linear-gradient(135deg, var(--alpha-scan-viewfinder-1), var(--alpha-scan-viewfinder-2))" : "var(--alpha-gray-11)",
-      drift: "transform: translate(" + dr[0] + "px, calc(-50% + " + dr[1] + "px))",
-      zoomCss: "transform: scale(" + zs + ")" + (front ? " scaleX(-1)" : "") + "; filter: " + (st.flip ? "blur(14px) brightness(.7)" : "none"),
+      bg: bg, vfBg: "var(--alpha-gray-11)", vfOp: 1,
+      zoomCss: "transform: scale(" + zs + ")" + (front ? " scaleX(-1)" : ""),
       flOp: st.fl ? (st.flash ? 1 : 0.85) : 0, flTr: st.fl ? "none" : "opacity .45s",
-      hasFocus: !!st.focus, focus: st.focus ? "left: " + (st.focus.x - 34) + "px; top: " + (st.focus.y - 34) + "px" : "",
-      flashIcon: st.flash ? IC.camFlash : IC.camFlashOff, flashAvailable: true, flashLabel: st.flash ? "Flash on" : "Flash off",
+      flashIcon: st.flash ? IC.camFlash : IC.camFlashOff, flashAvailable: !front, flashLabel: st.flash ? "Flash on" : "Flash off",
       toggleFlash: function () { api.set({ flash: !api.get("camera").flash }); },
       rec: st.rec, recTime: st.rec ? camRecLabel(st) : "",
       said: st.said || "", hasSaid: !!st.said, clearSaid: function () { api.set({ said: "" }); },
-      showZoom: !isScan && !front,
-      zooms: CAM_ZOOM.map(function (z, i) {
-        var on = st.zoom === i;
-        return { label: z[0], aria: "Zoom " + z[0].replace("×", "") + "x", css: on ? "background-color:var(--alpha-white);color:var(--alpha-black);width:40px;height:40px;padding:2px;box-sizing:content-box;background-clip:content-box;font-size:13px" : "background-color:rgba(0,0,0,.65);color:var(--alpha-white);width:34px;height:34px;padding:5px;box-sizing:content-box;background-clip:content-box;font-size:12px", pick: function () { api.set({ zoom: i }); } };
+      showZoom: !st.rec && zooms.length > 1,
+      zooms: zooms.map(function (z) {
+        var on = st.zoom === z[1];
+        return { label: z[0], aria: "Zoom " + z[0].replace("×", "") + "x", css: on ? "background-color:var(--alpha-white);color:var(--alpha-black);width:40px;height:40px;padding:2px;box-sizing:content-box;background-clip:content-box;font-size:13px" : "background-color:rgba(0,0,0,.65);color:var(--alpha-white);width:34px;height:34px;padding:5px;box-sizing:content-box;background-clip:content-box;font-size:12px", pick: function () { api.set({ zoom: z[1] }); } };
       }),
-      scanFound: isScan && st.found, scanning: isScan && !st.found,
-      posterDay: poster.short,
-      addEvent: function () { api.toast("Added to Calendar · " + poster.short); },
-      saveFiles: function () { camSaveScan(api); api.toast("Saved to Files"); },
-      openLink: function () { var link = (copy("camera").scan || {}).link; if (link) api.open("browser", { url: link }); else api.toast("No link was read from this scan"); },
+      showModes: !st.rec,
       modes: CAM_MODES.map(function (m) {
         var on = st.mode === m[0];
         return { label: m[1], css: on ? "color:var(--alpha-white)" : "color:rgba(255,255,255,.55)", dot: on ? 1 : 0, pick: function () { setMode(m[0]); } };
       }),
       innerCss: isVideo ? (st.rec ? "width:30px;height:30px;border-radius:8px;background:var(--alpha-record-red)" : "width:62px;height:62px;border-radius:31px;background:var(--alpha-record-red)") : "width:62px;height:62px;border-radius:31px;background:var(--alpha-white)",
-      scanGlyph: isScan,
-      shutterLabel: isVideo ? (st.rec ? "Stop recording" : "Start recording") : (isScan ? "Save scan" : "Take photo"),
+      shutterLabel: isVideo ? (st.rec ? "Stop recording" : "Start recording") : "Take photo",
       shutter: function () {
         var s = api.get("camera");
         if (s.mode === "video") { if (s.rec) camStopRec(api); else { api.set({ rec: true, recAt: Date.now() }); api.everyBg(function () { var c = api.get("camera"); api.set({ tick: (c.tick || 0) + 1 }); }, 1000); } return; }
-        if (s.mode === "scan") { camSaveScan(api); api.toast("Scan saved"); return; }
         camFlashFx(api);
-        camSave(api, { id: "c" + Date.now(), ts: Date.now(), kind: "photo", scene: camScene(s), figs: camFigs(s), place: copy("camera").place || "", people: [], tags: s.front ? ["selfie"] : [], fav: false, z: s.front ? 1 : CAM_ZOOM[s.zoom][1] });
+        camSave(api, camShot(s));
       },
       hasLast: !!last, lastBg: lastLook ? lastLook.bg : "", lastTf: lastLook ? lastLook.tf : "", lastFlt: lastLook ? lastLook.flt : "none",
       lastLabel: last && last.kind === "video" ? "Open last video" : "Open last photo",
       openLast: function () { if (last) api.open("photos", { open: last.id, from: "camera", seq: api.secure ? sess.slice() : null, chrome: true, sheet: null, edit: null, sel: null, searching: false }); },
-      showFlip: !isScan && !st.rec, noFlip: isScan || !!st.rec, noLast: !last,
-      flip: function () { api.set({ front: !api.get("camera").front, flip: true }); api.later(function () { api.set({ flip: false }); }, 260); },
-      ask: function () { camAsk(api); },
-      vfDown: function (e) {
-        CAM.g = pt(e); CAM.long = false; clearTimeout(CAM.lp); try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
-        CAM.lp = setTimeout(function () { CAM.long = true; camAsk(api); }, 650);
-      },
-      vfUp: function (e) {
-        clearTimeout(CAM.lp); var g = CAM.g; CAM.g = null; if (!g || CAM.long) return;
-        var p = pt(e); var dx = p.x - g.x, dy = p.y - g.y;
-        if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) && g.x > 30 && g.x < 382) {
-          var ni = modeIdx + (dx < 0 ? 1 : -1); if (ni >= 0 && ni < CAM_MODES.length) setMode(CAM_MODES[ni][0]); return;
-        }
-        if (Math.abs(dx) < 10 && Math.abs(dy) < 10) {
-          var k = Date.now(); api.set({ focus: { x: g.x, y: g.y - 96, k: k } });
-          api.later(function () { var s = api.get("camera"); if (s.focus && s.focus.k === k) api.set({ focus: null }); }, 1100);
-        }
-      },
-      vfLeave: function () { clearTimeout(CAM.lp); CAM.g = null; }
+      showFlip: !st.rec, noFlip: !!st.rec, noLast: !last,
+      // Flash and zoom reset before the lens changes, so the new lens never inherits an unsupported setting.
+      flip: function () { var s = api.get("camera"); api.set({ flash: false, zoom: 1, front: !s.front }); },
+      vfUp: function () {}
     };
   }
 });
@@ -2898,11 +2850,12 @@ IC.notesPin = IC.notesPin || "M9 3h6l-1 6 4 4H6l4-4zM12 13v8";
 IC.notesList = IC.notesList || "M10 6h10M10 12h10M10 18h10M4 6l1.5 1.5L8 5M4 12l1.5 1.5L8 11M4 18l1.5 1.5L8 17";
 IC.notesBox = IC.notesBox || "M5 5h14v14H5z";
 IC.notesRecDot = IC.notesRecDot || "M12 7.5a4.5 4.5 0 1 1 0 9a4.5 4.5 0 1 1 0-9zM12 10a2 2 0 1 1 0 4a2 2 0 1 1 0-4z";
+IC.notesFolder = IC.notesFolder || "M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z";
 IC.notesWave = IC.notesWave || "M3 12h2M7 8v8M11 5v14M15 9v6M19 11v2M21 12h0";
 var NOTES_RED = "var(--alpha-notes-red)";
 
 var NOTES_WAVE = []; (function () { for (var i = 0; i < 56; i++) NOTES_WAVE.push(Math.round(8 + 26 * Math.abs(Math.sin(i * 0.9) * Math.cos(i * 0.37)) + (i % 3) * 3)); })();
-var NT = { pend: false, recI: null, playI: null, dicI: null, dIdx: 0, undoT: null };
+var NT = { pend: false, playI: null, undoT: null, holdT: null, held: null };
 
 function notesFmt(sec) { if (!Number.isFinite(sec)) return ""; sec = Math.max(0, Math.floor(sec)); return Math.floor(sec / 60) + ":" + pad2(sec % 60); }
 function notesNowLabel(d) { return formatTime(d); }
@@ -2911,7 +2864,13 @@ function notesFind(list, id) { for (var i = 0; i < list.length; i++) if (list[i]
 function notesUpd(api, id, patch) {
   if (api.canonicalNotes) return api.canonicalNotes.update(id, patch);
   var s = api.get("notes");
-  var list = s.list.map(function (n) { return n.id === id ? Object.assign({}, n, typeof patch === "function" ? patch(n) : patch) : n; });
+  var list = s.list.map(function (n) {
+    if (n.id !== id) return n;
+    var next = Object.assign({}, n, typeof patch === "function" ? patch(n) : patch);
+    // An edit to the content is a modification (the list is newest first); pinning or a folder move is not.
+    if (["title", "body", "items", "lines"].some(function (k) { return next[k] !== n[k]; })) next.modifiedAt = Date.now();
+    return next;
+  });
   var change = { list: list };
   if (s.blankCreationId === id && !notesEmpty(notesFind(list, id))) change.blankCreationId = null;
   return api.set(change);
@@ -2922,7 +2881,7 @@ function notesEmpty(n) {
   if (n.kind === "list") return !String(n.title || "").trim() && !(n.items || []).some(function (i) { return String(i.t).trim(); });
   return false;
 }
-function notesStopTimers() { clearInterval(NT.playI); clearInterval(NT.dicI); NT.playI = null; NT.dicI = null; }
+function notesStopTimers() { clearInterval(NT.playI); NT.playI = null; }
 function notesClose(api) {
   api.set(notesLeave(api, null));
 }
@@ -2932,7 +2891,7 @@ function notesLeave(api, next) {
   if (api.canonicalNotes) { void api.canonicalNotes.leave(next); return {}; }
   var s = api.get("notes"); notesStopTimers();
   var n = s.open !== next && s.open === s.blankCreationId ? notesFind(s.list, s.open) : null;
-  var patch = { open: next, sheet: null, playing: false, dict: false, newItem: "", blankCreationId: next === s.open ? s.blankCreationId : null };
+  var patch = { open: next, sheet: null, playing: false, newItem: "", blankCreationId: next === s.open ? s.blankCreationId : null };
   if (n && notesEmpty(n)) patch.list = s.list.filter(function (x) { return x.id !== n.id; });
   return patch;
 }
@@ -2947,52 +2906,78 @@ async function notesDelete(api, id) {
   var note = s.list[idx];
   // Live Notes move the note to the durable Trash (and offer Undo); fixtures keep the in-memory undo.
   if (api.moveNoteToTrash) { await api.moveNoteToTrash(note, idx); return; }
-  if(await api.set({ list: s.list.filter(function (n) { return n.id !== id; }), open: null, sheet: null, playing: false, dict: false })===false)return;
+  if(await api.set({ list: s.list.filter(function (n) { return n.id !== id; }), open: null, sheet: null, playing: false })===false)return;
   notesUndoable(api, note, idx, (note.title || "Note") + " deleted");
 }
+/** The folder a note shows in: its folderId while that folder exists, else none (specs/notes-view FolderRefsValid). */
+function notesFolderOf(n, folders) { return n && typeof n.folderId === "string" && (folders || []).some(function (f) { return f.id === n.folderId; }) ? n.folderId : null; }
+/** Moves a note by the owner's own tap: folderId set, or removed for "No folder". */
+async function notesMove(api, id, folderId, name) {
+  if (api.canonicalNotes) {
+    api.set({ menu: null });
+    if (!await api.canonicalNotes.update(id, { folderId: folderId || null })) return;
+    api.toast(folderId ? "Moved to " + name : "Removed from folder");
+    return;
+  }
+  var s = api.get("notes");
+  var list = s.list.map(function (n) { if (n.id !== id) return n; var x = Object.assign({}, n); if (folderId) x.folderId = folderId; else delete x.folderId; return x; });
+  api.set({ list: list, menu: null });
+  api.toast(folderId ? "Moved to " + name : "Removed from folder");
+}
+/** Live Notes keep folders in their own encrypted slot (api.notesFolders); fixtures keep them in view state. */
+async function notesCreateFolder(api) {
+  var sheet = api.get("notes").folderSheet, name = sheet && sheet.kind === "new" ? String(sheet.name || "").replace(/\s+/g, " ").trim() : "";
+  if (!name) return;
+  if (name.length > 40) { api.toast("Use a shorter name."); return; }
+  var folders = api.get("notes").folders || [];
+  var existing = folders.filter(function (f) { return f.name.toLowerCase() === name.toLowerCase(); })[0];
+  if (existing) { api.set({ folderSheet: null, folder: existing.id, filter: null }); return; }
+  var created = api.notesFolders ? await api.notesFolders.create(name) : { id: "f-" + Date.now(), name: name, createdAt: Date.now() };
+  if (!created) return;
+  var patch = { folderSheet: null, folder: created.id, filter: null };
+  if (!api.notesFolders) patch.folders = folders.concat([created]);
+  api.set(patch);
+}
+/** Renaming keeps the folder's id, so every note stays in it. A name another folder uses is refused. */
+async function notesRenameFolder(api, id) {
+  var st = api.get("notes"), sheet = st.folderSheet, name = sheet && sheet.kind === "rename" && sheet.id === id ? String(sheet.name || "").replace(/\s+/g, " ").trim() : "";
+  if (!name) return;
+  if (name.length > 40) { api.toast("Use a shorter name."); return; }
+  var folders = st.folders || [], folder = folders.filter(function (f) { return f.id === id; })[0];
+  if (!folder) { api.set({ folderSheet: null }); return; }
+  if (folder.name === name) { api.set({ folderSheet: null }); return; }
+  if (folders.some(function (f) { return f.id !== id && f.name.toLowerCase() === name.toLowerCase(); })) { api.toast("A folder with that name exists."); return; }
+  if (api.notesFolders) { if (!await api.notesFolders.rename(id, name)) return; }
+  else api.set({ folders: folders.map(function (f) { return f.id === id ? Object.assign({}, f, { name: name }) : f; }) });
+  api.set({ folderSheet: null });
+}
+/** Long-press (or a context-menu click) on a folder chip opens its options. */
+function notesChipHold(api, id) {
+  return {
+    down: function () { clearTimeout(NT.holdT); NT.held = null; NT.holdT = setTimeout(function () { NT.holdT = null; NT.held = id; api.set({ folderSheet: { kind: "options", id: id } }); }, 450); },
+    up: function () { clearTimeout(NT.holdT); NT.holdT = null; },
+    context: function (e) { if (e && e.preventDefault) e.preventDefault(); clearTimeout(NT.holdT); NT.holdT = null; NT.held = id; api.set({ folderSheet: { kind: "options", id: id } }); }
+  };
+}
+/** Deleting a folder moves its notes to no folder; it never deletes a note. */
+async function notesDeleteFolder(api, id) {
+  if (api.notesFolders) { if (!await api.notesFolders.remove(id)) return; }
+  else {
+    var s = api.get("notes");
+    api.set({ folders: (s.folders || []).filter(function (f) { return f.id !== id; }), list: s.list.map(function (n) { if (n.folderId !== id) return n; var x = Object.assign({}, n); delete x.folderId; return x; }) });
+  }
+  var cur = api.get("notes");
+  api.set({ folderSheet: null, folder: cur.folder === id ? null : cur.folder });
+}
 function notesNew(api, kind) {
-  if (api.canonicalNotes) { void api.canonicalNotes.create(kind); api.set({ compose: false, q: null }); return; }
-  var id = "n" + Date.now();
-  var n = kind === "list" ? { id: id, kind: "list", title: "", items: [], pinned: false, when: "Now" } : { id: id, kind: "text", title: "", body: "", pinned: false, when: "Now" };
+  var id = "n" + Date.now(), st0 = api.get("notes");
+  var inFolder = notesFolderOf({ folderId: st0.folder }, st0.folders);
+  if (api.canonicalNotes) { void api.canonicalNotes.create(kind, inFolder); api.set({ compose: false, q: null }); return; }
+  var now = Date.now();
+  var n = kind === "list" ? { id: id, kind: "list", title: "", items: [], pinned: false, when: "Now", createdAt: now, modifiedAt: now } : { id: id, kind: "text", title: "", body: "", pinned: false, when: "Now", createdAt: now, modifiedAt: now };
+  if (inFolder) n.folderId = inFolder;
   var leave = notesLeave(api, id);
   api.set(Object.assign(leave, { list: [n].concat(leave.list || api.get("notes").list), blankCreationId: id, compose: false, q: null }));
-}
-function notesStartRec(api) {
-  notesStopTimers();
-  api.set({ record: false, open: null, sheet: null, q: null, rec: { tick: 0, paused: false, levels: [] } });
-  api.stopBg();
-  NT.recI = api.everyBg(function () {
-    var s = api.get("notes"); var r = s.rec; if (!r || r.paused) return;
-    var t = r.tick + 1;
-    var speaking = t >= NOTES_T0 && ((t - NOTES_T0) % NOTES_STEP) < 9 && notesLiveCount(t) <= NOTES_LIVE.length && t < NOTES_T0 + NOTES_LIVE.length * NOTES_STEP;
-    var lv = speaking ? 0.3 + 0.7 * Math.abs(Math.sin(t * 1.7) * Math.cos(t * 0.53)) : 0.08 + 0.1 * Math.abs(Math.sin(t));
-    api.set({ rec: Object.assign({}, r, { tick: t, levels: r.levels.concat([lv]).slice(-44) }) });
-  }, 250);
-}
-var NOTES_T0 = 2, NOTES_STEP = 12;
-function notesLiveCount(tick) { return Math.max(0, Math.min(NOTES_LIVE.length, Math.floor((tick - NOTES_T0) / NOTES_STEP) + 1)); }
-function notesBuildRec(api, r) {
-  var n = notesLiveCount(r.tick); var got = NOTES_LIVE.slice(0, n);
-  var sum = [], acts = [];
-  got.forEach(function (l) { if (l.sum) sum.push(l.sum); if (l.act) acts.push({ t: l.act, done: false }); });
-  if (!sum.length && got.length) sum.push("Short check-in, nothing decided yet");
-  return { id: "r" + Date.now(), kind: "voice", title: got.length ? "Standup" : "Recording", when: "Today · " + notesNowLabel(api.now), dur: Math.round(r.tick / 4), pinned: false,
-    lines: got.map(function (l, i) { return { s: l.s, t: l.t, at: Math.round((NOTES_T0 + i * NOTES_STEP) / 4) }; }), summary: sum, actions: acts, fresh: true };
-}
-function notesStopRec(api, quiet) {
-  api.stopBg(); NT.recI = null;
-  var s = api.get("notes"); if (!s.rec) return;
-  var note = notesBuildRec(api, s.rec);
-  api.set({ rec: null, list: [note].concat(s.list), open: quiet ? null : note.id, proc: quiet ? null : note.id, pos: 0, playing: false });
-  if (quiet) api.toast("Recording saved to Notes");
-  else api.later(function () { api.set({ proc: null }); }, 1500);
-}
-function notesDiscardRec(api) {
-  api.stopBg(); NT.recI = null;
-  var s = api.get("notes"); if (!s.rec) return;
-  var note = notesBuildRec(api, s.rec);
-  api.set({ rec: null });
-  notesUndoable(api, note, 0, "Recording discarded");
 }
 function notesLast(list) { for (var i = 0; i < list.length; i++) if (list[i].kind === "voice") return list[i]; return null; }
 function notesShare(api, n, via) {
@@ -3012,25 +2997,26 @@ function notesShare(api, n, via) {
 registerView("notes", {
   title: "Notes", icon: "notes", aliases: ["note", "recorder", "memos"],
   chat: "hidden",
-  state: { list: NOTES_SEED, open: null, blankCreationId: null, q: null, rec: null, record: false, compose: false, proc: null, sheet: null, pos: 0, playing: false, dict: false, newItem: "" },
+  state: { list: NOTES_SEED, open: null, blankCreationId: null, folders: [], folder: null, filter: null, menu: null, folderSheet: null, record: false, compose: false, proc: null, sheet: null, pos: 0, playing: false, newItem: "" },
   persist: ["list"],
-  jumps: [[null, "Notes"], ["editor", "Note editor"], ["rec", "Recording"], ["voice", "Voice note"]],
+  jumps: [[null, "Notes"], ["editor", "Note editor"], ["voice", "Voice note"]],
   preset: function (sub) {
     var pr = copy("notes").presets || {};
     if (sub === "editor") return pr.editor ? { open: pr.editor } : { compose: true };
+    // notes:rec opens the Notes recorder (voice-adapter) where it is installed.
     if (sub === "rec") return { record: true };
     if (sub === "voice") return pr.voice ? { open: pr.voice } : null;
   },
-  immersive: function (st) { return st.rec || st.record || st.sheet ? { noPill: true } : null; },
+  immersive: function (st) { return st.sheet ? { noPill: true } : null; },
   back: function (st, api) {
-    if (st.rec) { notesStopRec(api); return true; }
     if (st.sheet) { api.set({ sheet: null }); return true; }
+    if (st.menu) { api.set({ menu: null }); return true; }
     if (st.open) { notesClose(api); return true; }
-    if (st.q !== null && st.q !== undefined) { api.set({ q: null }); return true; }
+    if (st.folderSheet) { api.set({ folderSheet: null }); return true; }
+    if (st.filter) { api.set({ filter: null }); return true; }
     return false;
   },
   onLeave: function (api) { var s = api.get("notes"); if (s.blankCreationId) api.set(notesLeave(api, null)); else notesStopTimers(); },
-  ongoing: function (st) { return st.rec ? { label: notesFmt(st.rec.tick / 4), icon: "notesRecDot", color: NOTES_RED } : null; },
   suggestions: function (st, api) {
     var n = st.open ? notesFind(st.list, st.open) : null;
     if (n && n.kind === "voice") {
@@ -3063,7 +3049,7 @@ registerView("notes", {
     if (m && m[1].trim()) {
       var text = m[1].trim().replace(/\.$/, ""); var id = "n" + Date.now();
       var title = text.length <= 44 ? cap(text) : cap(text.split(/\s+/).slice(0, 5).join(" ")) + "…";
-      var note = { id: id, kind: "text", title: title, body: text.length <= 44 ? "" : cap(text) + ".", pinned: false, when: "Now" };
+      var note = { id: id, kind: "text", title: title, body: text.length <= 44 ? "" : cap(text) + ".", pinned: false, when: "Now", createdAt: Date.now(), modifiedAt: Date.now() };
       return { text: /^\s*remember/i.test(raw) ? "I'll remember. It's in Notes." : "Saved to Notes.", card: { type: "note", body: cap(text), go: { view: "notes", patch: { open: id } } },
         then: function () { var s = api.get("notes"); api.set({ list: [note].concat(s.list) }); } };
     }
@@ -3072,10 +3058,10 @@ registerView("notes", {
       var term = fm[1].trim().replace(/[?.!]$/, ""); var tl = term.toLowerCase();
       var hits = st.list.filter(function (n) { return [n.title, n.body, (n.items || []).map(function (i) { return i.t; }).join(" "), (n.lines || []).map(function (l) { return l.t; }).join(" "), (n.summary || []).join(" ")].join(" ").toLowerCase().indexOf(tl) >= 0; });
       if (!hits.length) return { text: "No notes mention \u201c" + term + "\u201d." };
-      return { text: hits.length === 1 ? "One note: " + (hits[0].title || "Untitled") + "." : hits.length + " notes mention \u201c" + term + "\u201d.", nav: { view: "notes", patch: hits.length === 1 ? { open: hits[0].id, q: null } : { q: term, open: null } } };
+      return { text: hits.length === 1 ? "One note: " + (hits[0].title || "Untitled") + "." : hits.length + " notes mention \u201c" + term + "\u201d.", nav: { view: "notes", patch: hits.length === 1 ? { open: hits[0].id, filter: null } : { filter: { text: term }, folder: null, open: null } } };
     }
     if (/(start|begin)\s+(a\s+)?(recording|transcri)|record (this|the) (meeting|call)|^record$|^transcribe/.test(t)) {
-      return { text: "Recording. I'll transcribe as we go and summarize when you stop.", nav: { view: "notes", patch: { record: true } } };
+      return { text: "Recording.", nav: { view: "notes", patch: { record: true } } };
     }
     var digest = copy("notes").digest;
     if (digest && digest.re.test(t) && /decide|decision|agree|summar|what/.test(t)) {
@@ -3107,29 +3093,42 @@ registerView("notes", {
   render: function (st, api) {
     if (!NT.pend && (st.record || st.compose)) {
       NT.pend = true;
-      setTimeout(function () { NT.pend = false; var s = api.get("notes"); if (s.record) notesStartRec(api); else if (s.compose) notesNew(api, "text"); }, 0);
+      // The Notes recorder is installed by the voice adapter, which consumes `record` first; only a
+      // fixture preview without it gets here.
+      setTimeout(function () { NT.pend = false; var s = api.get("notes"); if (s.record) { api.set({ record: false }); api.toast("Recording isn’t available in this preview."); } else if (s.compose) notesNew(api, "text"); }, 0);
     }
     var list = st.list || [];
-    var q = st.q == null ? null : String(st.q).toLowerCase().trim();
-    var shown = list.filter(function (n) {
-      if (!q) return true;
-      var hay = [n.title, n.body, n.domain, (n.items || []).map(function (i) { return i.t; }).join(" "), (n.lines || []).map(function (l) { return l.t; }).join(" "), (n.summary || []).join(" ")].join(" ").toLowerCase();
-      return hay.indexOf(q) >= 0;
-    });
-    shown = shown.filter(function (n) { return n.pinned; }).concat(shown.filter(function (n) { return !n.pinned; }));
-    var cards = shown.map(function (n, order) {
-      var items = (n.items || []).slice(0, 5).map(function (i) { return { t: i.t, css: i.done ? "text-decoration: line-through; color: var(--mut)" : "", box: i.done ? "background: var(--fg); box-shadow: none" : "box-shadow: inset 0 0 0 1.5px var(--mut)", done: i.done }; });
-      var more = (n.items || []).length - items.length;
-      var bars = NOTES_WAVE.slice(0, 22);
+    /* One-column list (PLAN.md section 3, decision N3): the selected folder chip, then the agent's
+       read-only filter, pinned notes first. A note whose folder was deleted shows under All only. */
+    var folders = Array.isArray(st.folders) ? st.folders : [];
+    var folder = st.folder && st.folder !== "deleted" && folders.some(function (f) { return f.id === st.folder; }) ? st.folder : null;
+    var filter = st.filter && typeof st.filter === "object" ? st.filter : null;
+    var shown = sortNotes(filterNotes(filterNotes(list, folder ? { folder: folder } : null, folders), filter, folders));
+    var now = Date.now();
+    var rows = shown.map(function (n) {
+      var voiceDur = n.kind === "voice" ? (typeof n.dur === "number" ? n.dur : n.audio && typeof n.audio.durationMs === "number" ? n.audio.durationMs / 1000 : null) : null;
+      var preview = notePreview(n) || (n.audio && typeof n.audio.transcript === "string" ? n.audio.transcript.trim().slice(0, 240) : "");
       return {
-        id: n.id, title: n.title || "Untitled", hasTitle: true, body: n.kind === "text" ? String(n.body || "").slice(0, 180) : "", hasBody: n.kind === "text" && !!String(n.body || "").trim(),
-        isList: n.kind === "list", isVoice: n.kind === "voice", isLink: n.kind === "link", items: items, more: more > 0 ? "+" + more : "", hasMore: more > 0,
-        bars: bars, dur: n.kind === "voice" ? [notesFmt(n.dur), n.actions && n.actions.length ? n.actions.length + " to-dos" : ""].filter(Boolean).join(" · ") : "", domain: n.domain || "",
-        pinned: !!n.pinned, current: st.open === n.id ? "true" : "false", order: order, open: function () { api.set(Object.assign(notesLeave(api, n.id), { pos: 0 })); }
+        id: n.id, title: n.title || "Untitled", date: noteDateLabel(n, now) || (typeof n.when === "string" ? n.when : ""),
+        preview: (voiceDur != null ? notesFmt(voiceDur) + (preview ? " · " : "") : "") + preview,
+        isVoice: n.kind === "voice", isLink: n.kind === "link", pinned: !!n.pinned,
+        current: st.open === n.id ? "true" : "false", open: function () { api.set(Object.assign(notesLeave(api, n.id), { pos: 0, menu: null })); }
       };
     });
-    var colL = [], colR = [];
-    cards.forEach(function (c, i) { (i % 2 ? colR : colL).push(c); });
+    var pinnedRows = rows.filter(function (r) { return r.pinned; }), otherRows = rows.filter(function (r) { return !r.pinned; });
+    var folderChips = folders.map(function (f) {
+      var on = folder === f.id, hold = notesChipHold(api, f.id);
+      return { id: f.id, name: f.name, pressed: on ? "true" : "false", label: on ? f.name + ", folder options" : f.name,
+        down: hold.down, up: hold.up, context: hold.context,
+        select: function () {
+          // The click that ends a long-press only opened the options.
+          if (NT.held === f.id) { NT.held = null; return; }
+          if (api.get("notes").folder === f.id) api.set({ folderSheet: { kind: "options", id: f.id } }); else api.set({ folder: f.id, filter: null, folderSheet: null });
+        } };
+    });
+    var sheet = st.folderSheet && typeof st.folderSheet === "object" ? st.folderSheet : null;
+    var sheetFolder = sheet && (sheet.kind === "options" || sheet.kind === "rename") ? folders.filter(function (f) { return f.id === sheet.id; })[0] || null : null;
+    var renaming = !!sheetFolder && sheet.kind === "rename";
 
     /* open note */
     var n = st.open ? notesFind(list, st.open) : null;
@@ -3138,9 +3137,18 @@ registerView("notes", {
     var common = n ? {
       close: function () { notesClose(api); },
       pinIcon: IC.notesPin, pinCss: n.pinned ? "color: var(--acct)" : "", pinLabel: n.pinned ? "Unpin" : "Pin",
-      pin: async function () { await notesUpd(api, n.id, { pinned: !n.pinned }); },
-      share: function () { api.set({ sheet: "share" }); },
-      del: function () { notesDelete(api, n.id); },
+      pin: async function () { api.set({ menu: null }); await notesUpd(api, n.id, { pinned: !n.pinned }); },
+      share: function () { api.set({ sheet: "share", menu: null }); },
+      del: function () { api.set({ menu: null }); notesDelete(api, n.id); },
+      /* ⋯ menu: Pin, Move to…, Delete (PLAN.md section 3). */
+      menuOpen: st.menu === "main", moveOpen: st.menu === "move", menuShown: !!st.menu,
+      more: function () { api.set({ menu: api.get("notes").menu ? null : "main" }); },
+      closeMenu: function () { api.set({ menu: null }); },
+      moveTo: function () { api.set({ menu: "move" }); },
+      moveRows: [{ id: null, name: "No folder" }].concat(folders).map(function (f) {
+        var on = (notesFolderOf(n, folders) || null) === f.id;
+        return { name: f.name, checked: on ? "true" : "false", mark: on ? "✓" : "", pick: function () { notesMove(api, n.id, f.id, f.name); } };
+      }),
       title: n.title || "",
       onTitle: function (e) { notesUpd(api, n.id, { title: e.target.value }); }
     } : null;
@@ -3168,30 +3176,6 @@ registerView("notes", {
         onNew: function (e) { api.set({ newItem: e.target.value }); },
         addItem: function () { var v = String(api.get("notes").newItem || "").trim(); if (!v) return; notesUpd(api, n.id, function (x) { return { items: (x.items || []).concat([{ t: v, done: false }]) }; }); api.set({ newItem: "" }); },
         newKey: function (e) { if (e.key === "Enter") { e.preventDefault(); var v = String(api.get("notes").newItem || "").trim(); if (!v) return; notesUpd(api, n.id, function (x) { return { items: (x.items || []).concat([{ t: v, done: false }]) }; }); api.set({ newItem: "" }); } },
-        dict: !!st.dict, notDict: !st.dict,
-        dictLabel: st.dict ? "Stop dictation" : "Dictate", dictCss: st.dict ? "background: var(--acc); color: var(--alpha-white)" : "",
-        dictate: function () {
-          if (api.get("notes").dict) { clearInterval(NT.dicI); NT.dicI = null; api.set({ dict: false }); return; }
-          if (!NOTES_DICT.length) { api.toast("Dictation is not connected"); return; }
-          var phrase = NOTES_DICT[NT.dIdx++ % NOTES_DICT.length]; var i = 0; var id = n.id;
-          api.set({ dict: true });
-          clearInterval(NT.dicI);
-          NT.dicI = api.every(function () {
-            var cur = notesFind(api.get("notes").list, id); if (!cur) { clearInterval(NT.dicI); return; }
-            i++;
-            var ch = phrase.charAt(i - 1);
-            if (cur.kind === "list") {
-              var its = (cur.items || []).slice();
-              if (i === 1) its.push({ t: ch, done: false }); else { var L = its.length - 1; its[L] = Object.assign({}, its[L], { t: its[L].t + ch }); }
-              notesUpd(api, id, { items: its });
-            } else {
-              var b = String(cur.body || "");
-              if (i === 1 && b && !/\s$/.test(b)) b += /[.!?]$/.test(b) ? " " : "\n";
-              notesUpd(api, id, { body: b + ch });
-            }
-            if (i >= phrase.length) { clearInterval(NT.dicI); NT.dicI = null; api.later(function () { api.set({ dict: false }); }, 400); }
-          }, 38);
-        }
       });
     }
     if (n && n.kind === "voice") {
@@ -3245,47 +3229,31 @@ registerView("notes", {
       });
     }
 
-    /* recorder */
-    var r = st.rec;
-    var rec = null;
-    if (r) {
-      var cnt = notesLiveCount(r.tick);
-      var within = r.tick - NOTES_T0 - (cnt - 1) * NOTES_STEP;
-      var lines = NOTES_LIVE.slice(0, cnt).map(function (l, i) {
-        var p = l.s === "me" ? null : api.person(l.s);
-        var tx = i === cnt - 1 && within < 9 ? l.t.slice(0, Math.max(1, Math.round(l.t.length * (within + 1) / 9))) : l.t;
-        return { ini: p ? p.ini : "You", t: tx, chip: l.s === "me" ? "background: var(--acc); color: var(--alpha-white)" : "background: var(--s3); color: var(--fg)", css: i === cnt - 1 ? "" : "color: var(--mut)" };
-      }).reverse();
-      var lv = r.levels.slice(); while (lv.length < 44) lv.unshift(0.06);
-      rec = {
-        clock: notesFmt(r.tick / 4), paused: r.paused, live: !r.paused,
-        primaryLabel: "Stop and save", primaryIcon: IC.stop,
-        clockCss: r.paused ? "opacity: .4" : "",
-        levels: lv.map(function (v) { return { h: Math.round(4 + v * 64) }; }),
-        lines: lines, dotCss: r.paused ? "background: var(--mut)" : "background: " + NOTES_RED,
-        pauseIcon: r.paused ? IC.mic : IC.pause, pauseLabel: r.paused ? "Resume" : "Pause",
-        toggle: function () { var s = api.get("notes"); if (s.rec) api.set({ rec: Object.assign({}, s.rec, { paused: !s.rec.paused }) }); },
-        stop: function () { notesStopRec(api); },
-        discard: function () { notesDiscardRec(api); }
-      };
-    }
-
     var shareSheet = st.sheet === "share" && !!n;
     return {
       notesTitle: "Notes", primaryNotes: true, canRecord: true, canCreate: true,
-      searching: st.q !== null && st.q !== undefined, notSearching: st.q === null || st.q === undefined,
-      q: st.q || "",
-      onQ: function (e) { api.set({ q: e.target.value }); },
-      search: function () { api.set({ q: "" }); },
-      endSearch: function () { api.set({ q: null }); },
       newNote: function () { notesNew(api, "text"); },
-      record: function () { notesStartRec(api); },
-      colL: colL, colR: colR, none: cards.length === 0,
-      emptyText: q ? "No matches" : "No notes yet. Create a note to get started.",
-      askQ: "Ask " + api.name + ": “" + String(st.q || "").trim() + "”", hasQ: !!q,
-      askSearch: function () { var qq = String(api.get("notes").q || "").trim(); api.set({ q: null }); api.send("Find my notes about " + qq); },
+      // The Notes recorder (voice-adapter, note-recorder.ts) handles Record; `record` is its deep-link flag.
+      record: function () { api.set({ record: true }); },
+      pinnedRows: pinnedRows, otherRows: otherRows, hasPinned: pinnedRows.length > 0, notesHead: pinnedRows.length > 0 && otherRows.length > 0,
+      allPressed: folder ? "false" : "true", selectAll: function () { api.set({ folder: null, filter: null, folderSheet: null }); },
+      folderChips: folderChips,
+      newFolder: function () { api.set({ folderSheet: { kind: "new", name: "" } }); },
+      filterOn: !!filter, filterLabel: filter ? notesFilterLabel(filter, folders) + " · " + shown.length : "",
+      clearFilter: function () { api.set({ filter: null }); },
+      folderSheetOpen: !!sheet && (sheet.kind === "new" || !!sheetFolder),
+      folderNew: !!sheet && sheet.kind === "new" || renaming, folderOptions: !!sheetFolder && !renaming,
+      folderName: sheet && (sheet.kind === "new" || renaming) ? String(sheet.name || "") : "", folderOptionsTitle: sheetFolder ? sheetFolder.name : "",
+      folderSheetTitle: sheet && sheet.kind === "new" ? "New folder" : renaming ? "Rename folder" : sheetFolder ? sheetFolder.name : "",
+      folderSubmitLabel: renaming ? "Save" : "Create",
+      onFolderName: function (e) { var cur = api.get("notes").folderSheet; if (cur && (cur.kind === "new" || cur.kind === "rename")) api.set({ folderSheet: Object.assign({}, cur, { name: e.target.value }) }); },
+      folderNameKey: function (e) { if (e.key === "Enter") { e.preventDefault(); var cur = api.get("notes").folderSheet; if (cur && cur.kind === "rename") notesRenameFolder(api, cur.id); else notesCreateFolder(api); } },
+      createFolder: function () { var cur = api.get("notes").folderSheet; if (cur && cur.kind === "rename") notesRenameFolder(api, cur.id); else notesCreateFolder(api); },
+      folderSaveDisabled: !(sheet && (sheet.kind === "new" || renaming) && String(sheet.name || "").trim()),
+      renameFolder: function () { if (sheetFolder) api.set({ folderSheet: { kind: "rename", id: sheetFolder.id, name: sheetFolder.name } }); },
+      deleteFolder: function () { if (sheetFolder) notesDeleteFolder(api, sheetFolder.id); },
+      closeFolderSheet: function () { api.set({ folderSheet: null }); },
       isEdit: isEdit, ed: ed, isVoice: !!vo, vo: vo, isLink: !!lk, lk: lk,
-      recording: !!rec, rec: rec,
       shareSheet: shareSheet,
       closeSheet: function () { api.set({ sheet: null }); },
       shareMsg: function () { notesShare(api, n, "msg"); },
@@ -3544,7 +3512,6 @@ IC.filesZip = IC.filesZip || "M6 3h12v18H6zM12 3v2M12 7v2M12 11v2M10.5 15h3v3h-3
 var FILES_FOLDERS = [
   { id: "Downloads", icon: "filesDown" },
   { id: "Documents", icon: "folder" },
-  { id: "Receipts", icon: "filesReceipt" },
   { id: "Recordings", icon: "wave" }
 ].concat(FILES_FOLDERS_EXTRA);
 var FILES_TYPES = {
@@ -3606,52 +3573,8 @@ registerView("files", {
     return false;
   },
   onLeave: function () { clearInterval(FL.playI); },
-  suggestions: function (st) {
-    var sg = copy("files").suggestions || {};
-    if (st.open) return sg.open || ["Summarize this file"];
-    if (st.folder === "Receipts") return sg.receipts || ["Show my receipts"];
-    return sg.root || ["Show my receipts"];
-  },
+  suggestions: function (st) { return st.open ? ["Summarize this file"] : []; },
   voicePhrase: copy("files").voicePhrase,
-  reply: function (t, raw, api) {
-    var st = api.get("files");
-    var cur = api.active && st.open ? filesFind(st.files, st.open) : null;
-    var fs = copy("files").findShortcut;
-    if (fs && fs.re.test(t) && /\b(find|where|open|show|pull up|get)\b/.test(t) && !/summar/.test(t)) {
-      var ts = filesFind(st.files, fs.id);
-      if (ts) return { text: "In " + ts.folder + fs.from, card: { type: "generic", icon: "filesDoc", title: ts.name, sub: ts.folder + " · " + ts.size, go: { view: "files", patch: { open: fs.id } } }, nav: { view: "files", patch: { open: fs.id } } };
-    }
-    var ff = raw.match(/^\s*(?:find|where(?:'s| is))\s+(?:the\s+|my\s+)?(?:file\s+)?(.+?)\s*(?:file)?\??$/i);
-    if (ff && !/\bnotes?\b/i.test(raw)) {
-      var nq = filesNorm(ff[1].replace(/^(named|called)\s+/i, ""));
-      var hit = nq.length > 2 ? st.files.filter(function (x) { return filesNorm(x.name).indexOf(nq) >= 0 || nq.indexOf(filesNorm(filesSplit(x.name)[0])) >= 0; })[0] : null;
-      if (hit) return { text: "In " + hit.folder + ".", card: { type: "generic", icon: "filesDoc", title: hit.name, sub: hit.folder + " · " + hit.size, go: { view: "files", patch: { open: hit.id } } }, nav: { view: "files", patch: { open: hit.id, q: null } } };
-    }
-    if (/receipts?/.test(t) && /\b(show|find|open|my|where|total)\b/.test(t)) {
-      var rs = st.files.filter(function (f) { return f.folder === "Receipts"; });
-      var rc = copy("files").receipts;
-      if (!rc) return { text: rs.length ? rs.length + (rs.length === 1 ? " receipt" : " receipts") + " in Files. Totals are not calculated." : "No receipts in Files.", nav: { view: "files", patch: { folder: "Receipts", open: null } } };
-      return { text: /total/.test(t) ? rc.total + " across " + rs.length + " receipts this month." : rs.length + " receipts: " + rc.list + ".", card: { type: "generic", icon: "filesReceipt", title: "Receipts", sub: rs.length + " files · " + rc.total, go: { view: "files", patch: { folder: "Receipts" } } }, nav: { view: "files", patch: { folder: "Receipts", open: null } } };
-    }
-    if (/summar|what'?s in|tl;?dr|key points/.test(t) && (cur || /\b(pdf|file|document|doc|term sheet|receipt)\b/.test(t))) {
-      var sd = copy("files").summaryDefaults || {};
-      var f = cur || (/receipt/.test(t) ? filesFind(st.files, sd.receipt) : /term sheet/.test(t) || /pdf/.test(t) ? filesFind(st.files, sd.pdf) : null);
-      if (f && f.sum) return { text: f.name, card: { type: "summary", title: filesSplit(f.name)[0] + " · summary", bullets: f.sum, act: VIEWS.notes ? { mod: "notes", fn: "save" } : null },
-        then: function () { var a = Object.assign({}, api.get("files").asked); a[f.id] = true; api.set({ asked: a }); } };
-    }
-    var storage = copy("files").storage;
-    if (storage && /taking up space|storage|free up/.test(t)) {
-      return { text: storage.text, card: { type: "generic", icon: "filesDisk", title: storage.title, sub: storage.sub, go: { view: "files", patch: { folder: "Downloads" } } } };
-    }
-    if (cur && /send (this|it)|share (this|it)/.test(t)) {
-      var shareTo = copy("files").shareTo || {};
-      var pid = (shareTo.match || []).filter(function (x) { return x[0].test(t); }).map(function (x) { return x[1]; })[0] || cur.from || shareTo.fallback;
-      var p = pid ? api.person(pid) : null;
-      if (!p) return { text: "Choose who to send " + cur.name + " to.", then: function () { api.set({ sheet: "share", sel: null }); } };
-      return { text: "Draft to " + p.name.split(" ")[0] + " with " + cur.name + " attached.", card: { type: "draft", to: p.name, pid: pid, body: "Here's " + filesSplit(cur.name)[0] + ". Let me know if anything's off.", act: VIEWS.messages && VIEWS.messages.actions && VIEWS.messages.actions.sendDraft ? { mod: "messages", fn: "sendDraft" } : null } };
-    }
-    return null;
-  },
 
   render: function (st, api) {
     var files = st.files || [];
@@ -3686,7 +3609,6 @@ registerView("files", {
       var n = filesCount(files, d.id);
       return { name: d.id, d: IC[d.icon], sub: n === 1 ? "1 item" : n + " items", go: function () { api.set({ folder: d.id, q: null }); } };
     });
-    locs.push({ name: "Photos", d: IC.photo, sub: copy("files").photosSub || "Photo library", go: function () { if (VIEWS.photos) api.open("photos"); else api.toast("Opening Photos"); } });
     var q = st.q == null ? null : String(st.q).toLowerCase().trim();
     var results = q ? files.filter(function (f) { return filesNorm(f.name + " " + f.folder + " " + (FILES_TYPES[f.type] || {}).label).indexOf(filesNorm(q)) >= 0; }).map(row) : [];
 
@@ -3700,7 +3622,7 @@ registerView("files", {
         close: function () { var d = null; FILES_FOLDERS.forEach(function (x) { if (x.id === st.folder) d = x; }); api.set({ folder: d && d.parent ? d.parent : null, sel: null }); },
         viewIcon: st.grid ? IC.filesRows : IC.grid, viewLabel: st.grid ? "Show as list" : "Show as grid",
         toggleView: function () { api.set({ grid: !st.grid }); },
-        openMenu: function () { api.set({ menu: true }); },
+        hasMenu: true, hasCrumbs: false, openMenu: function () { api.set({ menu: true }); },
         menuRows: [["list", IC.filesRows, "List", !st.grid, { grid: false }], ["grid", IC.grid, "Grid", !!st.grid, { grid: true }], ["recent", IC.clock, "Newest first", st.sort !== "name", { sort: "recent" }], ["name", IC.filesSort, "Name", st.sort === "name", { sort: "name" }]].map(function (m) {
           return { label: m[2], d: m[1], on: m[3], go: function () { api.set(Object.assign({ menu: false }, m[4])); } };
         }),
@@ -3797,7 +3719,9 @@ registerView("files", {
       top: !st.folder, searching: st.q !== null && st.q !== undefined, notSearching: st.q === null || st.q === undefined,
       q: st.q || "", onQ: function (e) { api.set({ q: e.target.value }); }, search: function () { api.set({ q: "" }); }, endSearch: function () { api.set({ q: null }); },
       hasQuery: !!q, noQuery: !q, results: results, noResults: !!q && results.length === 0,
-      locs: locs, recent: files.slice(0, 5).map(row),
+      locs: locs, recent: [], noRecent: false,
+      // Fixture browse (mock mode only): the fixture folders stand in for categories; Trash is an empty folder.
+      browse: { ready: true, cats: locs.map(function (l) { return { name: l.name, d: l.d, count: l.sub.split(" ")[0], label: l.name, go: l.go }; }), vols: [], trashD: IC.trash, trashCount: "", openTrash: function () { api.set({ folder: "Trash", q: null }); } },
       storageText: copy("files").storageText || "Storage usage unavailable",
       storageW: copy("files").storageW || "0%",
       inFolder: !!fd, fd: fd,

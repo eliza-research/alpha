@@ -66,12 +66,14 @@ test('recording uses the timer and saved-video thumbnail without a success banne
 });
 
 
-test('Photos toolbar stays aligned in Albums and selection opens the real media library',async({page})=>{
+test('Photos tabs stay aligned in Albums and selection opens the real media library',async({page})=>{
  await page.goto('/');await page.getByRole('button',{name:'Photos',exact:true}).click();
- const select=page.getByRole('button',{name:'Select photos',exact:true}),search=page.getByRole('button',{name:'Search photos',exact:true});
- const settleToolbar=()=>search.evaluate(async el=>{await document.fonts.ready;const animations=new Set(el.getAnimations({subtree:true}));for(let parent=el.parentElement;parent;parent=parent.parentElement)for(const animation of parent.getAnimations())animations.add(animation);await Promise.all([...animations].filter(animation=>animation.effect?.getComputedTiming().endTime!==Infinity).map(animation=>animation.finished));await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));});
- await search.click({trial:true});await settleToolbar();const before=await search.boundingBox();await page.getByRole('button',{name:'Albums',exact:true}).click();await expect(select).toBeVisible();
- await search.click({trial:true});await settleToolbar();const after=await search.boundingBox();expect(after!.x).toBe(before!.x);expect(after!.y).toBe(before!.y);
+ const select=page.getByRole('button',{name:'Select photos',exact:true}),library=page.getByRole('button',{name:'Library',exact:true});
+ const settle=()=>library.evaluate(async el=>{await document.fonts.ready;const animations=new Set(el.getAnimations({subtree:true}));for(let parent=el.parentElement;parent;parent=parent.parentElement)for(const animation of parent.getAnimations())animations.add(animation);await Promise.all([...animations].filter(animation=>animation.effect?.getComputedTiming().endTime!==Infinity).map(animation=>animation.finished));await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));});
+ await settle();const before=await library.boundingBox();await page.getByRole('button',{name:'Albums',exact:true}).click();
+ await settle();const after=await library.boundingBox();expect(after!.x).toBe(before!.x);expect(after!.y).toBe(before!.y);
+ // Select belongs to grids (the Library and each album), not the album list.
+ await expect(select).toHaveCount(0);await library.click();
  await select.click();await expect(page.getByRole('button',{name:'Cancel selection',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Delete selected',exact:true})).toBeVisible();
 });
 

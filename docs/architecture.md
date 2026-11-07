@@ -18,8 +18,13 @@ records the migration order and the gaps that prevent a completion claim.
 
 ### Shell host pieces and their upstream targets
 
-The shared mobile shell (`@elizaos/ui/mobile-shell`) renders Home, All apps, the view
-registry and navigation from `config/alpha-product.json`. A view whose registration carries a
+The shared mobile shell (`@elizaos/ui/mobile-shell`) renders Home, its app grid, the view
+registry and navigation from `config/alpha-product.json`. Apps (the installed-app drawer) and
+Home edit mode are Alpha's own (`prototype/apps-drawer.tsx`, `prototype/home-shell.ts`) over the
+shell's launcher join: the shell's All apps drawer lists product views beside installed apps,
+while Alpha lists installed Android apps only (view refresh 2026-11, PLAN section 5). Upstream
+target: a drawer filter and Home edit hooks in the shared shell. App info is
+`AlphaSystemPlugin.openAppInfo` (ElizaSystem under Alpha's plugin class). A view whose registration carries a
 lazy loader renders through `MobileViewHost`; Alpha contributes none today. Notes, live and mock
 alike, is Alpha's own Notes template (`prototype/template.html`, `model.js`): live agent notes are
 bound to it by `prototype/canonical-notes-ui.ts` over the shared Notes client, controller and
@@ -138,7 +143,7 @@ Gmail attachments and PDF file creation remain available.
 | `android` | Product identity, Activity, permissions, resources and standalone/HOME packaging. `android/consumer-host.json` is the descriptor the pinned upstream consumer-host generator turns into the git-ignored Gradle host; `android/app/product.gradle` holds Gradle-time product admission |
 | `android/sense` | Product identity wrappers for the upstream Sense listener; shared implementation and SystemUI policy live in `vendor/eliza/packages/app/platforms/android/sense` and `vendor/eliza/packages/os/android/sense` ([ADR 0001](adr/0001-privileged-listener.md)); never in the standalone or launcher APK |
 | `app.config.json` | Package ID, display name, version and orientation |
-| `config/alpha-product.json` | Versioned product record of the shared mobile shell (`@elizaos/ui/mobile-shell`, schema `elizaos.mobile-product` v1): identity, theme and stylesheet aliases, icons, view order and labels, older view ids migrated once, and installed storage names (the launcher favorites record with its `alpha:` prefix and `alpha-apps` default policy, and the other names the app keeps reading). Home, the app grid, All apps, the view registry and navigation state (open view, Back stack, drawer and the assistant's pill, composer, sheet or full detent) render from the upstream shell with this record; runtime code such as agent navigation reads the React-free `@elizaos/ui/mobile-shell/core` entry |
+| `config/alpha-product.json` | Versioned product record of the shared mobile shell (`@elizaos/ui/mobile-shell`, schema `elizaos.mobile-product` v1): identity, theme and stylesheet aliases, icons, view order and labels, older view ids migrated once, and installed storage names (the launcher favorites record with its `alpha:` prefix and `alpha-apps` default policy, and the other names the app keeps reading). Home, the app grid, the view registry and navigation state (open view, Back stack, drawer and the assistant's pill, composer, sheet or full detent) render from the upstream shell with this record; runtime code such as agent navigation reads the React-free `@elizaos/ui/mobile-shell/core` entry |
 | `backend` | Development runtime composition, character and permitted model/actions |
 | `vendor/eliza` | Pinned shared platform source; never modified by consumer builds |
 | `scripts` | Consumer build orchestration and product acceptance scenarios |
@@ -525,10 +530,17 @@ Both Notes sources render through Alpha's own Notes view. Agent notes use the sh
 `plugin-notes/src/client` controller and editor (canonical records, `expectedRevision`, restore-only
 Trash, review and reload) bound by `canonical-notes-ui.ts`; the device-local Older notes collection
 keeps its own store, Trash and recorder. The shared `NotesWorkspace` component is not rendered.
-Agent Notes keep the template's header, waveform and + (owner decision, 2026-10-30): the waveform
-(`notes-dictate-new`) opens a new note and runs the editor's dictation into it, speech to text through
-the platform's recognizer with no audio kept, saved like typing after +. Their Trash (`notes-trash`) and
-Previous notes (`notes-source-legacy`) are quiet text actions under the list, not filled pills.
+Both sources share the view refresh layout (design/view-refresh-2026-11/PLAN.md section 3): a header
+with Record (`notes-record`) and New note only, a folder chip row (All, folders, +, and Recently deleted
+while it has items), a one-column list with a Pinned section, and Back · Checklist · Share · ⋯ on a note.
+Folders are one device slot (`notes-folders:v1:device`, `runtime/notes-folders.ts`); a note names its
+folder by `folderId` (agent notes in their format data), and a reference to a deleted folder reads as no
+folder. Record opens the unlimited Notes recorder (`prototype/note-recorder.ts` over
+`AlphaNoteRecorder`, segments transcribed while recording). In Older notes Done saves the audio and
+transcript; in agent notes it saves the transcript and length only, since agent notes keep no audio
+(owner decision, 2026-10-30). Record replaces agent notes' earlier dictate-new waveform. Agent notes'
+restore-only Trash is their Recently deleted folder; Older notes keep 30 days (decision N2) with Delete
+now and Empty. Previous notes (`notes-source-legacy`) stays a quiet text action under the list.
 Notes ports are shared too: `plugin-notes/src/client` owns the document port and its browser
 implementation (`note-documents.ts`; Alpha's `runtime/browser-note-documents.ts` only registers
 it as `AlphaNoteDocuments` with the `Alpha scan` PDF file name), the deletion-receipt rule that

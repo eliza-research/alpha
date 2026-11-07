@@ -172,11 +172,12 @@ test('Inbox shows the open message beside its list on a wide canvas and keeps th
   }
 });
 
-test('Files previews beside its list on a tablet-width canvas and full screen on a phone', async ({ page }) => {
+test('Files previews beside its folder on a tablet-width canvas and full screen on a phone', async ({ page }) => {
   await openMock(page, 'Files');
   await resize(page, { width: 1280, height: 800 });
+  await page.getByRole('button', { name: 'Documents', exact: true }).click();
   await page.getByRole('button', { name: /Design review notes/ }).first().click();
-  const list = page.locator('[data-alpha-subview="files-list"]'), preview = page.locator('[data-alpha-subview="files-preview"]');
+  const list = page.locator('[data-alpha-subview="files-folder"]'), preview = page.locator('[data-alpha-subview="files-preview"]');
   await expect(preview).toContainText('Design review notes.pdf');
   await expect.poll(() => inert(list)).toBe(false);
   expect((await box(preview)).x).toBeGreaterThanOrEqual((await box(list)).x + (await box(list)).width - 1);
@@ -246,7 +247,7 @@ test('Files keeps folder entries beside the same selected preview and moves focu
   await page.evaluate(async () => { const { registerPlugin } = await import('/src/platform-plugins.ts'); await registerPlugin<any>('AlphaFiles').importFile(new File(['A retained selected document.'], 'panes.txt', { type: 'text/plain' })); });
   await resize(page, { width: 1280, height: 800 });
   await page.getByRole('button', { name: 'Files', exact: true }).click();
-  await page.getByRole('button', { name: 'App files', exact: true }).last().click();
+  await page.getByRole('button', { name: 'Internal storage', exact: true }).click();
   const root = page.locator('[data-alpha-subview="files-list"]'), folder = page.locator('[data-alpha-subview="files-folder"]');
   await page.getByRole('button', { name: 'Open panes.txt', exact: true }).click();
   const preview = page.locator('[data-alpha-subview="files-preview"]');

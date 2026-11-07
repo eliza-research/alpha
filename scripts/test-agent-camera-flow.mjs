@@ -7,7 +7,10 @@ import {validateCameraCaptureResult} from '../.eliza/client-features/plugins/plu
 
 const source=readFileSync('apps/app/src/prototype/camera-adapter.ts','utf8');
 const save=source.slice(source.indexOf('  async function saveCameraPhoto('),source.indexOf('  async function capture()'));
-const request=source.slice(source.indexOf('  const takeRequestedPhoto='),source.indexOf('  requestedPhoto=takeRequestedPhoto;'));
+const request=source.slice(source.indexOf('  /** An agent capture asked for while Camera starts'),source.indexOf('  requestedPhoto=takeRequestedPhoto;'));
+// A request made while the preview starts waits for it (the adapter's queue), then captures.
+const queue=source.slice(source.indexOf('  const waiters = new Set'),source.indexOf('  /** Set when the native size'));
+const receiptPath=source.slice(source.indexOf('/** A saved still'),source.indexOf('/** The chat sheet may cover Camera')).replace(/^export /gm,'');
 // The capture lock is the shared camera session's (plugin-native-camera), run as-is.
 const shared=stripTypeScriptTypes(['host-ports','session'].map(name=>readFileSync(`.eliza/client-features/plugins/plugin-native-camera/src/${name}.ts`,'utf8')).join('\n').replace(/^import[^;]*;$/gm,'').replace(/^export /gm,''),{mode:'transform'});
 function cameraFixture(browser=false){
@@ -15,9 +18,9 @@ function cameraFixture(browser=false){
  const camera={startPreview:async()=>{},stopPreview:async()=>{},async capturePhoto(options){calls++;assert.equal(options.saveToGallery,true);if(mode==='hold')await new Promise(resolve=>{release=resolve});if(mode==='fail')throw Error('write unavailable');return {path:mode==='invalid'?'file:///tmp/45':browser?'browser-photo:///1792274767123123456789012':'content://media/external/images/media/45',format:'jpeg',base64:'jpeg-fixture',width:1280,height:720}}};
  const api={S:{chat:'hidden'},isActive:()=>true,set(){},setView(){throw Error('An agent capture must not change views')}};
  const context=vm.createContext({camera,api,validateCameraCaptureResult,nativeId:id=>id.replace('native-camera-',''),browserMode:browser,disposed:false,captures:[],loaded:true,requestedCaptureActive:false,document:{hidden:false,querySelector:()=>({})},finder:'#camera',schedule(){},message(){},Date});
- const visibility=source.match(/  const cameraViewVisible[^\n]+\n  const active[^\n]+/)[0];
- vm.runInContext(shared+stripTypeScriptTypes(visibility+'\n'+save+request+';globalThis.capture=takeRequestedPhoto;',{mode:'transform'}),context);
- vm.runInContext('globalThis.session=createCameraSession({camera,active:()=>true,preview:()=>({}),recording:()=>({})});',context);
+ const visibility=source.slice(source.indexOf('  const cameraViewVisible'),source.indexOf('  /** The one photo being written natively'));
+ vm.runInContext(shared+stripTypeScriptTypes(receiptPath+'const CHAT_GRACE_MS=10000;let lastCapture,photoWrite;const shutterFlash=()=>{};\n'+visibility+'\n'+queue+save+request+';globalThis.capture=takeRequestedPhoto;',{mode:'transform'}),context);
+ vm.runInContext('globalThis.session=createCameraSession({camera,active:()=>true,preview:()=>({}),recording:()=>({}),hooks:{changed:()=>settle()}});var session=globalThis.session;',context);
  // The request starts the preview itself through the session, as on an agent request from another view.
  context.start=async retry=>{await context.session.start(retry);};
  return {capture:context.capture,context,get calls(){return calls},setMode:value=>{mode=value},release:()=>release?.()};
@@ -37,7 +40,7 @@ const done=await client.performRequested('message-one',view,signal(),async()=>tr
 f.lostReceipt();await f.make().syncReceipts(signal());assert.equal(camera.calls,1,'lost server receipt resends evidence, never takes another photo');
 const hidden=flow(cameraFixture());assert.equal((await hidden.make().pendingReview({...view,view:'home'},signal())).filter(row=>row.proposal).length,0);assert.equal((await hidden.make([]).pendingReview(view,signal())).filter(row=>row.proposal).length,0);
 for(const mode of ['fail','invalid']){const camera=cameraFixture();camera.setMode(mode);const f=flow(camera),c=f.make();await c.pendingReview(view,signal());assert.equal((await c.performRequested('message-one',view,signal(),async()=>true))[0].status,'unknown');assert.equal(camera.calls,1);await c.pendingReview(view,signal());assert.equal((await c.performRequested('message-one',view,signal(),async()=>true)).length,0);assert.equal(camera.calls,1);}
-const held=cameraFixture();held.setMode('hold');const first=held.capture('operation-one',signal(),()=>{});await Promise.resolve();assert.equal(held.context.session.capturing,true);assert.equal((await held.capture('operation-two',signal(),()=>{})).status,'failed');assert.equal(held.context.session.capturing,true,'a refused concurrent capture cannot clear the active capture lock');while(held.calls===0)await new Promise(resolve=>setTimeout(resolve,0));held.release();assert.equal((await first).status,'succeeded');assert.equal(held.calls,1);
+const held=cameraFixture();held.setMode('hold');const first=held.capture('operation-one',signal(),()=>{});while(held.calls===0)await new Promise(resolve=>setTimeout(resolve,0));assert.equal(held.context.session.capturing,true);assert.equal((await held.capture('operation-two',signal(),()=>{})).status,'failed');assert.equal(held.context.session.capturing,true,'a refused concurrent capture cannot clear the active capture lock');while(held.calls===0)await new Promise(resolve=>setTimeout(resolve,0));held.release();assert.equal((await first).status,'succeeded');assert.equal(held.calls,1);
 const browser=cameraFixture(true);assert.equal((await browser.capture('browser-operation',signal(),()=>{})).cameraResult.mediaId,'1792274767123123456789012');assert.equal(browser.calls,1);
 const changed=cameraFixture();let checks=0;assert.equal((await changed.capture('changed',signal(),()=>{if(++checks===2)throw Error('owner changed')})).status,'failed');assert.equal(changed.calls,0);
 const overlay=cameraFixture();overlay.context.api.S.chat='full';assert.equal((await overlay.capture('overlay-operation',signal(),()=>{})).status,'succeeded');assert.equal(overlay.context.requestedCaptureActive,false);assert.equal(overlay.calls,1);

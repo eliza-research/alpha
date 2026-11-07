@@ -238,7 +238,7 @@ for (const theme of ['light', 'dark'] as const) {
       icon: element.getAttribute('data-mobile-shell-tile-icon'), image: !!element.querySelector('img'),
     })));
     expect(tiles.length).toBe(await grid.getByRole('button').count());
-    expect(tiles.length, 'product tiles and All apps').toBeGreaterThan(1);
+    expect(tiles.length, 'product tiles and Apps').toBeGreaterThan(1);
     for (const tile of tiles) {
       expect(tile).toMatchObject({ tag: 'BUTTON', type: 'button' });
       expect(tile.name, 'accessible name is the visible label').toBe(tile.label);

@@ -8,6 +8,16 @@ import {openLegacyNotes} from './helpers/legacy-notes';
 // choices; the entry-limit test here only declines it. The second test reaches the same refusal
 // through the byte limit (NOTES_TRASH_MAX_BYTES) rather than the entry limit.
 import {test,expect,type Page} from '@playwright/test';
+/** A Recently deleted row → its action sheet. */
+async function rowAction(page:Page,title:string,action:'Recover'|'Delete now'){
+ await page.locator('[data-alpha-subview="notes-trash"]').getByRole('button',{name:new RegExp(`^${title}, `)}).click();
+ await page.getByRole('dialog',{name:title,exact:true}).getByRole('button',{name:action,exact:true}).click();
+}
+/** Delete now → the confirmation → Delete. */
+async function deleteNow(page:Page,title:string){
+ await rowAction(page,title,'Delete now');
+ await page.getByRole('dialog',{name:`Delete “${title}”?`}).getByRole('button',{name:'Delete',exact:true}).click();
+}
 const savedRecords=(page:Page)=>page.evaluate(async()=>JSON.parse(await (await import('/src/runtime/browser-notes-document.ts')).readBrowserNotesRaw()).records as any[]);
 const trashEntries=(page:Page)=>page.evaluate(async()=>(await (await import('/src/runtime/notes-trash.ts')).readNotesTrash()).entries as any[]);
 async function openNotes(page:Page){await openLegacyNotes(page);await expect(page.getByRole('button',{name:'New note',exact:true})).toBeEnabled();}
@@ -20,8 +30,8 @@ async function createNote(page:Page,title:string,body:string){
 }
 async function deleteNote(page:Page,title:string){
  await page.getByRole('button',{name:`Open ${title}`,exact:true}).click();
- await page.getByRole('button',{name:'Delete note',exact:true}).click();
- await expect(page.getByText(`${title} moved to Trash`,{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
+ await expect(page.getByText(`Moved to Recently deleted`,{exact:true})).toBeVisible();
  await expect(page.getByRole('button',{name:`Open ${title}`,exact:true})).toHaveCount(0);
 }
 /**
@@ -55,10 +65,10 @@ test('a deletion that would overfill Trash is refused: the note stays saved, Tra
 
  // One more deletion: refused, in words, before anything is written.
  await page.getByRole('button',{name:'Open Charlie',exact:true}).click();
- await page.getByRole('button',{name:'Delete note',exact:true}).click();
- const dialog=page.getByRole('dialog',{name:'Trash is full'});
+ await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
+ const dialog=page.getByRole('dialog',{name:'Recently deleted is full'});
  await expect(dialog).toBeVisible();
- await expect(page.getByText('Charlie moved to Trash',{exact:true})).toHaveCount(0);
+ await expect(page.getByText('Moved to Recently deleted',{exact:true})).toHaveCount(0);
  // The note is still saved, byte for byte, and Trash holds exactly what it held.
  expect(await savedRecords(page)).toEqual(saved);
  expect(await trashEntries(page)).toEqual(full);
@@ -66,7 +76,7 @@ test('a deletion that would overfill Trash is refused: the note stays saved, Tra
  await dialog.getByRole('button',{name:'Cancel',exact:true}).click();await expect(dialog).toHaveCount(0);
  await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveValue('Charlie');
  // Pressing Delete again is refused again; a second press never forces the deletion through.
- await page.getByRole('button',{name:'Delete note',exact:true}).click();
+ await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
  await expect(dialog).toBeVisible();
  expect(await savedRecords(page)).toEqual(saved);
  expect(await trashEntries(page)).toEqual(full);
@@ -79,11 +89,11 @@ test('a deletion that would overfill Trash is refused: the note stays saved, Tra
  await expect(page.getByRole('button',{name:'Open Charlie',exact:true})).toBeVisible();
 
  // Make room the way the refusal says to: restore one trashed note. The refused deletion then works.
- await page.getByRole('button',{name:/^Open Trash|^Trash, 2 items$/}).first().click();
+ await page.getByRole('button',{name:'Recently deleted',exact:true}).click();
  const trash=page.locator('[data-alpha-subview="notes-trash"]');
- await trash.getByRole('button',{name:'Restore Alpha',exact:true}).click();
+ await rowAction(page,'Alpha','Recover');
  await expect(page.getByText('Alpha restored',{exact:true})).toBeVisible();
- await trash.getByRole('button',{name:'Close Trash',exact:true}).click();
+ await trash.getByRole('button',{name:'Back to notes',exact:true}).click();
  await deleteNote(page,'Charlie');
  expect((await trashEntries(page)).map(entry=>entry.note.title).sort()).toEqual(['Bravo','Charlie']);
  expect((await savedRecords(page)).map(note=>note.title).sort()).toEqual(['Alpha','Delta']);
@@ -133,11 +143,11 @@ test('a deletion that would push Trash past its byte limit is refused: the note 
 
  // A second heavy note does not fit: refused in words before anything is written.
  await page.getByRole('button',{name:'Open Second heavy',exact:true}).click();
- await page.getByRole('button',{name:'Delete note',exact:true}).click();
- const dialog=page.getByRole('dialog',{name:'Trash is full'});
+ await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
+ const dialog=page.getByRole('dialog',{name:'Recently deleted is full'});
  await expect(dialog).toBeVisible();
- await expect(dialog).toContainText('was not deleted because Trash has no room for a restorable copy');
- await expect(page.getByText('Second heavy moved to Trash',{exact:true})).toHaveCount(0);
+ await expect(dialog.getByRole('button',{name:'Delete permanently',exact:true})).toBeVisible();await expect(dialog).not.toContainText('was not deleted');
+ await expect(page.getByText('Moved to Recently deleted',{exact:true})).toHaveCount(0);
  expect(await savedRecords(page)).toEqual(saved);
  expect(await trashEntries(page)).toEqual(full);
  expect(await trashBytes(page)).toBe(bytes);
@@ -166,17 +176,16 @@ test('a deletion that would push Trash past its byte limit is refused: the note 
  expect(await trashEntries(page)).toEqual(three);
  expect((await savedRecords(page)).map(note=>note.title)).toEqual(['Second heavy']);
  await page.getByRole('button',{name:'Open Second heavy',exact:true}).click();
- await page.getByRole('button',{name:'Delete note',exact:true}).click();
+ await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
  await expect(dialog).toBeVisible();
  expect(await trashEntries(page)).toEqual(three);
 
  // Make room the way the dialog offers: Open Trash, confirm Delete forever for the heavy entry.
- await dialog.getByRole('button',{name:'Open Trash to make room',exact:true}).click();
+ await dialog.getByRole('button',{name:'Open Recently deleted',exact:true}).click();
  const trash=page.locator('[data-alpha-subview="notes-trash"]');
- await trash.getByRole('button',{name:'Delete Heavy forever',exact:true}).click();
- await page.getByRole('button',{name:'Confirm delete forever',exact:true}).click();
- await expect(page.getByText('Deleted forever',{exact:true})).toBeVisible();
- await trash.getByRole('button',{name:'Close Trash',exact:true}).click();
+ await deleteNow(page,'Heavy');
+ await expect(page.getByText('Deleted',{exact:true})).toBeVisible();
+ await trash.getByRole('button',{name:'Back to notes',exact:true}).click();
  await deleteNote(page,'Second heavy');
  expect((await trashEntries(page)).map(entry=>entry.note.title).sort()).toEqual(['Second heavy','Small','Tiny']);
  expect(await trashBytes(page)).toBeLessThanOrEqual(LIMIT);

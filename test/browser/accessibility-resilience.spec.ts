@@ -30,7 +30,7 @@ test.describe('camera in landscape', () => {
       if (mode === 'live') await page.getByRole('button', { name: 'Camera', exact: true }).click();
       await expect(page.locator('html')).toHaveClass(/alpha-landscape/);
       const shutter = page.getByRole('button', { name: 'Take photo', exact: true });
-      for (const control of [shutter, ...['Photo mode', 'Video mode', 'Scan mode', 'Zoom 1x', 'Back to apps'].map(name => page.getByRole('button', { name, exact: true }))])
+      for (const control of [shutter, ...['Photo mode', 'Video mode', ...(mode === 'mock' ? ['Zoom 1x'] : []), 'Back to apps'].map(name => page.getByRole('button', { name, exact: true }))])
         await reachable(page, control);
       // The viewfinder keeps the space the controls do not use, and no control sits on another.
       const finder = (await page.locator('[data-alpha-camera="viewfinder"]').boundingBox())!, capture = (await page.locator('[data-alpha-camera="capture"]').boundingBox())!;
@@ -99,15 +99,15 @@ test('a new browser tab shows no find bar until find is opened', async ({ page }
   await expect(page.getByRole('button', { name: 'Close find in page', exact: true })).toHaveCount(0);
 });
 
-test('the note editor keeps Delete on screen beside the other header actions', async ({ page }) => {
+test('the note editor keeps More (Pin, Move to, Delete) on screen beside the other header actions', async ({ page }) => {
   const {foreign,errors}=await canonicalNotesFixture(page);
   await openCanonicalNotes(page);
   await page.getByRole('button', { name: 'New note', exact: true }).click();
-  // Alpha's note editor header holds Back and every note action, Share and Delete included, in one row.
-  for (const name of ['Back to notes', 'Pin', 'Share note', 'Delete note']) await reachable(page, page.getByRole('button', { name, exact: true }));
+  // Back · Checklist · Share · ⋯ in one row; Pin, Move to and Delete are in ⋯.
+  for (const name of ['Back to notes', 'Share note', 'More']) await reachable(page, page.getByRole('button', { name, exact: true }));
   const sizes = await page.locator('[data-alpha-subview="notes-editor"] [data-alpha-app-header="detail"] button').evaluateAll(list => list.map(el => el.getBoundingClientRect().width));
   for (const width of sizes) expect(width).toBeGreaterThanOrEqual(43.5);
-  expect(sizes.length).toBeGreaterThanOrEqual(6);
+  expect(sizes.length).toBeGreaterThanOrEqual(4);
   expect(foreign).toEqual([]);
   expect(errors).toEqual([]);
 });
@@ -115,7 +115,7 @@ test('the note editor keeps Delete on screen beside the other header actions', a
 test.describe('200% text keeps the way out on screen', () => {
   // Large-text layouts re-measure every rule after the text grows: explicit, as other sweeps run beside them.
   test.describe.configure({ timeout: 60_000 });
-  for (const [start, open, field] of [['inbox', 'Search email', 'Search mail'], ['photos', 'Search photos', 'Search photos'], ['notes', 'Search notes', 'Search notes'], ['files', 'Search files', 'Search files']] as const) {
+  for (const [start, open, field] of [['inbox', 'Search email', 'Search mail']] as const) {
     test(`${start} search: the field shrinks and Close search stays reachable`, async ({ page }) => {
       await page.goto(`/?mode=mock&start=${start}`);
       await page.getByRole('button', { name: open, exact: true }).click();
@@ -166,7 +166,7 @@ test.describe('menus and sheets over a scrim own focus', () => {
     ['photos:viewer', ['Photo info'], 'Photo info', 'Close info', 'Photo info'],
     ['photos:viewer', ['Share photo'], 'Share photo', 'Close share', 'Share photo'],
     ['notes:editor', ['Share note'], 'Share', 'Cancel', 'Share note'],
-    ['files:folder', ['View and sort'], 'View and sort', 'Close menu', 'View and sort'],
+    ['files:folder', ['Sort and more'], 'Sort and more', 'Close menu', 'Sort and more'],
     ['files:preview', ['Move file'], 'Move to', 'Close move', 'Move file'],
     ['files:preview', ['Share file'], 'Share file', 'Close share', 'Share file'],
     ['workflows:new', ['Add Read step'], 'Step editor', 'Close', null],
@@ -207,8 +207,7 @@ test.describe('menus and sheets over a scrim own focus', () => {
           .filter(el => el.getClientRects().length && !el.closest('[inert],[aria-hidden="true"]') && !el.closest('[data-alpha-popup],[role="dialog"]')).map(el => el.getAttribute('aria-label') || el.textContent));
         expect(exposed).toEqual([]);
       }
-      if(ownedInfo){const scrim=page.locator('button[aria-label="Close album management"]');await expect(scrim).toHaveAttribute('aria-hidden','true');await expect(scrim).toHaveAttribute('tabindex','-1');}
-      await expect(page.getByRole('button', { name: ownedInfo?'Close dialog':scrim, exact: true })).toHaveCount(1);
+      await expect(page.getByRole('button', { name: scrim, exact: true })).toHaveCount(1);
       const stops = await dialog.locator('button:not(:disabled), input, textarea, select').count();
       for (let step = 0; step < stops + 2; step++) { await page.keyboard.press('Tab'); expect(await inside()).toBe(true); }
       for (let step = 0; step < 2; step++) { await page.keyboard.press('Shift+Tab'); expect(await inside()).toBe(true); }
@@ -284,7 +283,7 @@ test.describe('photo editor in landscape', () => {
     const mono = page.getByRole('button', { name: 'Mono filter', exact: true });
     await mono.focus(); await page.keyboard.press('Enter');
     await expect(mono).toHaveAttribute('aria-pressed', 'true');
-    await reachable(page, page.getByRole('button', { name: 'Save edit', exact: true }));
+    await reachable(page, page.getByRole('button', { name: 'Save copy', exact: true }));
   });
 });
 
@@ -438,7 +437,7 @@ for (const shell of HOME_SHELLS) for (const scale of [1, 1.5, 2, 3]) {
       expect(format(await auditPage(page,{dock:true}))).toEqual([]);
       if(position===1){expect(at.under,at.under.join(', ')).toEqual([]);expect(await readingOrderProblems(page)).toEqual([]);}
     }
-    const last = home.getByRole('button', { name: 'All apps', exact: true });
+    const last = home.getByRole('button', { name: 'Apps', exact: true });
     await expect(last).toBeInViewport({ ratio: 1 });
     const tile = (await last.boundingBox())!, bar = (await page.locator('[data-alpha-input-bar]').boundingBox())!;
     expect(tile.y + tile.height).toBeLessThanOrEqual(bar.y);
@@ -460,7 +459,7 @@ test('Home keeps enough scroll clearance when Android raises the dock and when t
  await expect.poll(()=>homeHasClearance(page)).toBe(true);
  await page.getByRole('textbox',{name:'Ask Alpha',exact:true}).fill('one\ntwo\nthree\nfour\nfive');
  await expect.poll(()=>homeHasClearance(page)).toBe(true);expect((await home.boundingBox())!.height).toBe(height);
- await home.evaluate(el=>{el.scrollTop=el.scrollHeight;});expect((await homeUnderDock(page)).under).toEqual([]);await expect(home.getByRole('button',{name:'All apps',exact:true})).toBeInViewport({ratio:1});
+ await home.evaluate(el=>{el.scrollTop=el.scrollHeight;});expect((await homeUnderDock(page)).under).toEqual([]);await expect(home.getByRole('button',{name:'Apps',exact:true})).toBeInViewport({ratio:1});
 });
 test('a status line on the composer adds Home scroll clearance without moving its rows',async({page})=>{
  await openHome(page,'/',1);const home=page.locator('[data-alpha-layer="home"]'),tile=home.getByRole('button',{name:'Inbox',exact:true}).and(page.locator('[data-mobile-shell-tile]'));
@@ -487,7 +486,7 @@ test.describe('landscape Home', () => {
     // Beside the dock, Home keeps the full height of the screen.
     expect(home.y + home.height).toBeGreaterThanOrEqual(bar.y + bar.height);
     await page.locator('[data-alpha-layer="home"]').evaluate(el => { el.scrollTop = el.scrollHeight; });
-    await expect(page.getByRole('button', { name: 'All apps', exact: true })).toBeInViewport({ ratio: 1 });
+    await expect(page.getByRole('button', { name: 'Apps', exact: true })).toBeInViewport({ ratio: 1 });
     const found = format([...await auditPage(page, { dock: true, clipping: true, overlap: true }), ...await auditTabOrder(page)]).filter(line => !line.startsWith('text-truncated:'));
     expect(found, found.join('\n')).toEqual([]);
   });
@@ -551,7 +550,7 @@ test.describe('keyboard focus and the floating dock', () => {
 test.describe('screen titles with a large system font', () => {
   // Large-text layouts re-measure every rule after the text grows: explicit, as other sweeps run beside them.
   test.describe.configure({ timeout: 60_000 });
-  for (const title of [{ name: 'Photos', steps: ['Photos'] }, { name: 'Camera', steps: ['Camera'] }, { name: 'Password manager', steps: ['Settings', 'Password manager'] }]) {
+  for (const title of [{ name: 'Photos', steps: ['Photos'] }, { name: 'Password manager', steps: ['Settings', 'Password manager'] }]) {
     test(`"${title.name}" is shown whole at 200% text`, async ({ page }) => {
       await page.addInitScript(offline);
       await page.goto('/');

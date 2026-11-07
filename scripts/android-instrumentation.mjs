@@ -86,7 +86,7 @@ export const CLASS_REGISTRY = {
     note: "fixture qualified for API 35 only (it asserts the SDK level); the runner grants AOSP Clock its notification permission, which the class requires for real firing evidence" },
   Accessibility: { note: "a flag-off build signed out of Eliza Cloud runs requiredCloudSignInAtDoubleFontScale (P-43's sign-in page); the test-mocks pair runs the Home, shade and Settings journey" },
   // PRD AP-15 coverage across views; the views need the test-mocks pair (a flag-off emulator build is signed out, P-43).
-  AccessibilityViews: { requiresTestMocksBuild: true, note: "every retained view and All apps at 200% font: ATF, TalkBack order and focus after opening; not TalkBack itself or a device" },
+  AccessibilityViews: { requiresTestMocksBuild: true, note: "every retained view and Apps at 200% font: ATF, TalkBack order and focus after opening; not TalkBack itself or a device" },
   AccessibilityLifecycle: { requiresTestMocksBuild: true, note: "repeated HOME with relaunch and rotation across every view at 200% font; processRestartPhase is skipped here; run node scripts/test-native-restart.mjs accessibility" },
   AccessibilityHomeRole: { homeRole: "held", requiresTestMocksBuild: true, note: "launcher variant with Alpha selected as HOME by --home-role: HOME from every view at 200% font lands on an accessible Alpha Home; not boot-time HOME or device acceptance" },
   ContactsCatalog: { note: "Owned disposable-profile ContactsProvider fixture only; no image admission or contacts activity" },
@@ -131,6 +131,7 @@ export const CLASS_REGISTRY = {
   Notifications: { requiresTestMocksBuild: true, note: "opens Android's own shade with Android's global action on both flavors and taps the notice on its own row (Android 15 bundles two notices into a collapsed automatic group first); Alpha draws no shade (#416)" },
   SystemShade: { note: "homeAsksAndroidForItsShadeOnTheLauncherOnly needs --test-mocks (skipped otherwise). Launcher Home asks Android for its shade (EXPAND_STATUS_BAR); standalone never does (#416, #417). Not AOSP-image or device acceptance" },
   CameraScan: {},
+  CameraLatency: { args: { cameraLatency: "1" }, note: "cold/warm first frame (PreviewView STREAMING, also traced as alpha.camera.firstFrame) and shutter-to-thumbnail, reported as cameraLatency.* status; -e cameraLatencyAssert 1 fails on a missed Pixel 10a target; emulator numbers are not device evidence" },
   FilesTree: {},
   FilesFolderQuestion: { note: "real DocumentsUI tree grant; the folder question reviews entry names only, and a delete or revoked grant during review adds nothing (MVP-13)" },
   // J05-2: native page excerpt -> reviewed question -> composer; a note's web source across recreation.

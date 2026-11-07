@@ -207,7 +207,7 @@ test('the open-note action fails closed when the note was deleted or replaced, a
 
  // Deleted (moved to Trash): nothing opens, the event is unchanged, the other note is never opened instead.
  await openRecording(page,'Venue meeting');
- await button(page,'Delete note').click();
+ await button(page,'More').click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
  await expect.poll(async()=>(await notes(page)).map(n=>n.title)).toEqual(['Garden meeting']);
  await openEvent();
  // A note in Trash is not shown as live: its title is not displayed and is stored nowhere with the link.

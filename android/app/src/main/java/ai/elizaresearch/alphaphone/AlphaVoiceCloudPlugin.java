@@ -54,6 +54,52 @@ public final class AlphaVoiceCloudPlugin extends LocalSpeechBridgePlugin {
   */
  @PluginMethod public void saveRecording(PluginCall call){getActivity().runOnUiThread(()->{try{String key=call.getString("recordingId");AlphaNoteAudioPlugin store=(AlphaNoteAudioPlugin)getBridge().getPlugin("AlphaNoteAudio").getInstance();ai.eliza.voice.LocalVoiceRecording drafts=recording();JSObject kept;synchronized(drafts){File chosen=drafts.selected(key);if(chosen==null)throw new IllegalStateException();kept=store.retain(chosen,key,call.getString("noteId"),drafts.durationMs(),call.getString("transcript"));}call.resolve(kept);}catch(Exception error){call.reject("The recording could not be saved. Keep this draft and retry.");}});}
 
+ // ---- Notes recording (AlphaNoteRecorder) ----------------------------------------------------
+ // No length limit; finished segments survive process death, and AlphaNoteRecordingService keeps a
+ // recording going with the screen off. Segments are transcribed through the same recordingId
+ // lookups as a draft: LocalVoiceRecording.selectAlso (patches/eliza/notes-recording-segments.patch).
+ private volatile boolean noteForeground=true;
+ /** The shared bridge's refusal code for an active call, so the renderer shows its one call line. */
+ private static final String CALL_ACTIVE_CODE="call-active";
+ @Override public void load(){super.load();recording().selectAlso(id->AlphaNoteRecorder.get(getContext()).segment(id));}
+ @Override protected void handleOnResume(){noteForeground=true;super.handleOnResume();}
+ @Override protected void handleOnPause(){noteForeground=false;super.handleOnPause();}
+ private boolean callActive(){android.media.AudioManager audio=(android.media.AudioManager)getContext().getSystemService(android.content.Context.AUDIO_SERVICE);int mode=audio==null?android.media.AudioManager.MODE_NORMAL:audio.getMode();return mode==android.media.AudioManager.MODE_IN_CALL||mode==android.media.AudioManager.MODE_IN_COMMUNICATION||mode==android.media.AudioManager.MODE_RINGTONE;}
+ /** The last state the notification showed, so it is rebuilt only when the state changes. */
+ private volatile String lastNoteState;
+ private final AlphaNoteRecorder.Listener noteRecorderEvents=status->{notifyListeners("noteRecordingChanged",status);if(!"recording".equals(status.getString("state"))&&!"paused".equals(status.getString("state")))AlphaNoteRecordingService.recordingClosed(getContext(),status.getString("recordingId"));else if(!java.util.Objects.equals(status.getString("state"),lastNoteState))AlphaNoteRecordingService.refresh(getContext());lastNoteState=status.getString("state");};
+ private AlphaNoteRecorder noteRecorder(){AlphaNoteRecorder recorder=AlphaNoteRecorder.get(getContext());recorder.setListener(noteRecorderEvents);return recorder;}
+ private static String noteRecordingId(PluginCall call){String value=call.getString("recordingId");if(value==null||!value.matches(AlphaNoteRecorder.ID))throw new IllegalArgumentException();return value;}
+ @PluginMethod public void startNoteRecording(PluginCall call){
+  if(callActive()){call.reject(CALL_MESSAGE,CALL_ACTIVE_CODE);return;}
+  if(getPermissionState("microphone")!=PermissionState.GRANTED){LateLaunch.ask(call,()->requestPermissionForAlias("microphone",call,"noteMicrophonePermission"));return;}
+  startNote(call);
+ }
+ @PermissionCallback private void noteMicrophonePermission(PluginCall call){if(getPermissionState("microphone")!=PermissionState.GRANTED){call.reject("Microphone permission denied","permission-denied");return;}startNote(call);}
+ private void startNote(PluginCall call){mainHandler().post(()->{
+  if(destroyed()||!noteForeground){call.reject("Recording cancelled");return;}
+  try{JSObject status=noteRecorder().start();AlphaNoteRecordingService.start(getContext(),status.getString("recordingId"));call.resolve(status);}
+  catch(IOException error){call.reject("storage".equals(error.getMessage())?"Storage is full":"Microphone could not start","storage".equals(error.getMessage())?"storage":"capture");}
+  catch(RuntimeException error){call.reject("Microphone could not start","capture");}
+ });}
+ @PluginMethod public void noteRecordingStatus(PluginCall call){mainHandler().post(()->call.resolve(noteRecorder().status()));}
+ @PluginMethod public void pauseNoteRecording(PluginCall call){mainHandler().post(()->{try{call.resolve(noteRecorder().pause(noteRecordingId(call)));}catch(RuntimeException error){call.reject("Recording changed");}});}
+ @PluginMethod public void resumeNoteRecording(PluginCall call){
+  if(callActive()){call.reject(CALL_MESSAGE,CALL_ACTIVE_CODE);return;}
+  mainHandler().post(()->{try{String id=noteRecordingId(call);JSObject status=noteRecorder().resume(id);AlphaNoteRecordingService.start(getContext(),id);call.resolve(status);}
+  catch(IOException error){call.reject("storage".equals(error.getMessage())?"Storage is full":"Microphone could not start","storage".equals(error.getMessage())?"storage":"capture");}
+  catch(RuntimeException error){call.reject("Recording changed");}});
+ }
+ @PluginMethod public void stopNoteRecording(PluginCall call){mainHandler().post(()->{try{call.resolve(noteRecorder().stop(noteRecordingId(call)));}catch(RuntimeException error){call.reject("Recording changed");}});}
+ @PluginMethod public void discardNoteRecording(PluginCall call){mainHandler().post(()->{AlphaNoteRecorder recorder=noteRecorder();String id=call.getString("recordingId");if(id!=null&&recorder.owns(id))recorder.discard();call.resolve(recorder.status());});}
+ @PluginMethod public void setNoteSegmentText(PluginCall call){mainHandler().post(()->{try{noteRecorder().setText(noteRecordingId(call),call.getString("segmentId"),call.getString("text"));call.resolve();}catch(Exception error){call.reject("Recording changed");}});}
+ /** Joins the finished segments into one recording and saves it for the note. Repeatable until discarded. */
+ @PluginMethod public void saveNoteRecording(PluginCall call){
+  final String id;try{id=noteRecordingId(call);}catch(RuntimeException invalid){call.reject("Invalid recording");return;}
+  // Off the bridge thread, on AlphaNoteAudio's own worker; this subclass owns no worker.
+  ((AlphaNoteAudioPlugin)getBridge().getPlugin("AlphaNoteAudio").getInstance()).saveNoteRecording(call,noteRecorder(),id);
+ }
+
  // ---- Speech plan limits (HTTP 429) ------------------------------------------------------------
 
  /** An HTTP 429 with its retry facts only; any other non-2xx status stays the shared voice-http-<status>. */

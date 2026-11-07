@@ -33,7 +33,7 @@ test('every retained MVP view has a live state and a populated state in the swee
     assert.match(mockBlock, new RegExp(`'${view}'`), `fixture state opens ${view}`);
     assert.match(mockBlock, new RegExp(`'${view}:[a-z]+'`), `fixture state opens a ${view} subview`);
   }
-  for (const surface of ["live('Home')", "live('All apps'", "live('Conversation'", "'shade'", "'sheet'", "'full'"])
+  for (const surface of ["live('Home')", "live('Apps'", "live('Conversation'", "'shade'", "'sheet'", "'full'"])
     assert.ok(states.includes(surface), `${surface} is swept`);
   assert.match(states, /name: 'render failure recovery'/);
   assert.match(states, /name: 'startup failure recovery'/);
@@ -69,9 +69,11 @@ test('every subview of a retained view is opened by a state that asserts it is t
     assert.ok(asserted.has(id), `a state opens and asserts the ${id} subview`);
   }
   // Menus, search fields, sheets and the Undo toast are states of their own.
-  for (const step of ["['New automation', 'Edit When step']", "['Add Read step']", "['Connections', 'Slack']", "['Browser', 'Menu']", "['Photos', 'Search photos']", "['Files', 'Search files']", "['Search email']", "['Menu', 'Share']", "['Share photo']", "['View and sort']", "['Move file']", "['Delete file']"])
+  for (const step of ["['New automation', 'Edit When step']", "['Add Read step']", "['Connections', 'Slack']", "['Browser', 'Menu']", "['New note', 'More']", "['Search email']", "['Menu', 'Share']", "['Share photo']", "['View and sort']", "['Move file']", "['Delete file']"])
     assert.ok(states.includes(step), `${step} is swept`);
-  assert.ok(states.includes("legacyNotes('Notes search', ['Search notes'])"), 'retained Notes search is swept');
+  // Notes has no search field (PLAN.md decision P2); its folders, ⋯ menu and Recently deleted are swept.
+  for (const state of ["legacyNotes('Notes new folder', ['New folder'])", "legacyNotes('Notes note menu', ['New note', 'More'])", "'notes-trash'", "'notes-recorder'"])
+    assert.ok(states.includes(state), `${state} is swept`);
   assert.match(states, /const legacyNotes = [\s\S]*?await openLegacyNotes\(page\);[\s\S]*?await press\(page, steps\)/, 'retained Notes states select their source before opening controls');
 
   for (const page of ['Character', 'Accounts', 'Connections', 'Notifications', 'Calendar', 'Password manager', 'Models', 'Display', 'Privacy & data', 'About', 'Scheduled digests', 'Agent connection'])
@@ -255,12 +257,14 @@ test('the layout fixes the sweep depends on stay in the stylesheet and template'
   // which Alpha maps to the measured text size.
   assert.match(read('.eliza/client-features/packages/ui/src/mobile-shell/MobileHomeScreen.tsx'), /\[data-mobile-shell-apps\]\{display:grid;grid-template-columns:repeat\(auto-fill,[^}]*var\(--mobile-shell-grid-columns,4\)[^}]*var\(--mobile-shell-grid-min,62px\) \* var\(--mobile-shell-text-scale,1\)/);
   assert.match(css, /\[data-alpha-layer="home"\] \{ --mobile-shell-text-scale:var\(--alpha-text-scale,1\); \}/);
-  assert.match(read('apps/app/src/prototype/home-shell.ts'), /gridProps: \{'data-alpha-home-apps': ''\}/);
+  assert.match(read('apps/app/src/prototype/home-shell.ts'), /const gridProps: Bag = \{\s*'data-alpha-home-apps': ''/);
+  // The Apps drawer's icon grid is four columns of at least 62px times the text scale too.
+  assert.match(read('apps/app/src/prototype/apps-drawer.tsx'), /className="alpha-fit-grid" data-alpha-apps-grid="" style=\{\{'--fit-columns': 4, '--fit-min': '62px'/);
   assert.doesNotMatch(template, /data-alpha-home-(calendar|workflows|inbox)\b[^>]*height: 196px/);
   assert.match(read('apps/app/src/main.tsx'), /installTextScale\(\)/);
   assert.match(read('apps/app/src/runtime/text-scale.ts'), /font-size:100px;line-height:1/);
   // Search fields may shrink below the input's intrinsic width, so Close search stays on screen.
-  for (const label of ['Search mail', 'Search photos', 'Search notes', 'Search files']) {
+  for (const label of ['Search mail']) {
     const at = template.indexOf(`aria-label="${label}" placeholder`);
     assert.ok(at > 0, `${label} field is in the template`);
     const wrappers=[...template.slice(0,at).matchAll(/<(?:div|form)\b[^>]*style="flex-grow: 1;[^>]*>/g)];

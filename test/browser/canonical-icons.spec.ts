@@ -36,7 +36,7 @@ for(const theme of ['light','dark'])test(`canonical launcher, dock and Files ass
   expect(await tileGlyph(name).evaluate(el=>getComputedStyle(el).maskImage)).toMatch(new RegExp('/icons/lucide/'+asset+'\\.svg"?\\)$'));
  }
  // Every shared Home tile names the published glyph it draws (data-mobile-shell-tile-icon); its
- // accessible name stays the label. The count covers every product tile and All apps.
+ // accessible name stays the label. The count covers every product tile and Apps.
  const record=JSON.parse(readFileSync(new URL('../../config/alpha-product.json',import.meta.url),'utf8'));
  const homeTiles=await page.getByRole('region',{name:'Home',exact:true}).locator('[data-mobile-shell-tile]').evaluateAll(tiles=>tiles.map(tile=>({name:tile.getAttribute('aria-label'),icon:tile.getAttribute('data-mobile-shell-tile-icon'),mask:getComputedStyle(tile.querySelector('[data-mobile-shell-tile-face] > span[aria-hidden="true"]')||tile).maskImage,image:!!tile.querySelector('img')})));
  expect(homeTiles.length,'shared Home tiles').toBeGreaterThan(1);
@@ -46,7 +46,7 @@ for(const theme of ['light','dark'])test(`canonical launcher, dock and Files ass
   expect(glyphs.has(tile.icon),tile.name+' names a published glyph: '+tile.icon).toBe(true);
   expect(tile.mask,tile.name+' draws the glyph it names').toMatch(new RegExp('/icons/lucide/'+tile.icon+'\\.svg"?\\)$'));
  }
- expect(homeTiles.find(tile=>tile.name==='All apps')?.icon).toBe(record.icons.allApps);
+ expect(homeTiles.find(tile=>tile.name==='Apps')?.icon).toBe(record.icons.allApps);
  await expect(camera.first()).toBeVisible();
  await page.screenshot({animations:'disabled',path:info.outputPath('launcher-'+theme+'.png')});
  await page.getByRole('button',{name:'Files',exact:true}).click();
@@ -54,14 +54,14 @@ for(const theme of ['light','dark'])test(`canonical launcher, dock and Files ass
 
  await expect(page.getByRole('region',{name:'Home',exact:true})).toHaveCount(0);
  await page.screenshot({animations:'disabled',path:info.outputPath('dock-folders-'+theme+'.png')});
- const folder=page.getByText('App files',{exact:true}).first().locator('xpath=ancestor::button[1]').locator('[data-alpha-icon]');await expect(folder).toHaveAttribute('data-alpha-icon','/icons/lucide/folder.svg');
- await page.getByText('App files',{exact:true}).first().click();
- await page.getByRole('button',{name:'View and sort',exact:true}).click();await page.getByText('New folder',{exact:true}).click();await page.getByRole('textbox',{name:'Folder or file name'}).fill('Synthetic folder');await page.getByRole('button',{name:'Create folder',exact:true}).click();
+ const storage=page.getByRole('button',{name:'Internal storage',exact:true}).locator('[data-alpha-icon]');await expect(storage).toHaveAttribute('data-alpha-icon','/icons/lucide/hard-drive.svg');
+ await page.getByRole('button',{name:'Internal storage',exact:true}).click();
+ await page.getByRole('button',{name:'Sort and more',exact:true}).click();await page.getByText('New folder',{exact:true}).click();await page.getByRole('textbox',{name:'Name'}).fill('Synthetic folder');await page.getByRole('button',{name:'Create',exact:true}).click();
  const row=page.getByRole('button',{name:'Open Synthetic folder',exact:true});await expect(row.locator('[data-alpha-icon="/icons/lucide/folder.svg"]')).toHaveAttribute('data-alpha-icon','/icons/lucide/folder.svg');
  await page.screenshot({animations:'disabled',path:info.outputPath('folders-'+theme+'.png')});
  const icon=row.locator('[data-alpha-icon="/icons/lucide/folder.svg"]');expect(await icon.evaluate(el=>({tag:el.tagName,mask:getComputedStyle(el).maskImage,color:getComputedStyle(el).backgroundColor,width:el.getBoundingClientRect().width,hidden:el.getAttribute('aria-hidden'),viewbox:el.hasAttribute('viewBox')}))).toMatchObject({tag:'SPAN',hidden:'true',viewbox:false});expect(await icon.evaluate(el=>getComputedStyle(el).maskImage)).toContain('folder.svg');
  // The folder's own Back control uses the same pack.
- await expect(page.getByRole('button',{name:'Back to files',exact:true}).first().locator('[data-alpha-icon]')).toHaveAttribute('data-alpha-icon','/icons/lucide/chevron-left.svg');
+ await expect(page.getByRole('button',{name:'Back',exact:true}).first().locator('[data-alpha-icon]')).toHaveAttribute('data-alpha-icon','/icons/lucide/chevron-left.svg');
  await page.screenshot({animations:'disabled',path:info.outputPath('folders-'+theme+'.png')});
 });
 

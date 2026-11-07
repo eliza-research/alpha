@@ -2,6 +2,7 @@ import {installHomeCalendar} from './helpers/home-calendar';
 import { test, expect, type Page } from '@playwright/test';
 import { auditPage, format } from './accessibility-audit';
 import { setTextScale } from './accessibility-states';
+import { deviceAppsStub } from './device-apps-stub';
 
 // PRD AP-15 (large font). The round-7 emulator run at 200% font showed the Home card title printed
 // over the lines around it and the Home app labels split mid-word; the instrumentation's bounds
@@ -144,34 +145,35 @@ test('the Home calendar card shows its whole title at 200% and widens to the row
 });
 
 for (const scale of [1, 2]) {
-  test(`the app library at ${scale * 100}% text: rows, favorites and the header do not overlap`, async ({ page }) => {
-    await home(page);
-    await page.getByRole('button', { name: 'All apps', exact: true }).click();
-    const drawer = page.getByRole('dialog', { name: 'All apps' });
+  test(`Apps at ${scale * 100}% text: tiles and the header do not overlap`, async ({ page }) => {
+    await deviceAppsStub(page, 24);
+    await page.goto('/');
+    await page.evaluate(() => document.fonts.ready);
+    await page.getByRole('button', { name: 'Apps', exact: true }).click();
+    const drawer = page.getByRole('dialog', { name: 'Apps' });
     await expect(drawer).toBeVisible();
-    await drawer.getByRole('button', { name: 'Remove Files from favorites', exact: true }).click();
-    await expect(drawer.locator('[data-launcher-app]')).not.toHaveCount(0);
+    await expect(drawer.locator('[data-launcher-app]')).toHaveCount(24);
     await setTextScale(page, scale);
     const found = blocking(format(await auditPage(page, { clipping: true, overlap: true })));
     expect(found, found.join('\n')).toEqual([]);
-    // The library covers Home: nothing of Home is left showing around it.
+    // Apps covers Home below the launcher's status bar: nothing of Home is left showing around it.
     const cover = await drawer.evaluate(element => { const box = element.getBoundingClientRect(), screen = element.closest('[data-screen]')!.getBoundingClientRect(); return { top: box.top - screen.top, left: box.left - screen.left, right: screen.right - box.right }; });
-    expect(cover).toEqual({ top: 0, left: 0, right: 0 });
-    // Each row: the name sits between the icon and the favorite control and inside the row.
-    const rows = await drawer.locator('[data-launcher-app], [data-launcher-favorite]').evaluateAll(list => list.map(row => {
-      const open = row.querySelector('button')!, name = open.querySelector('span > span')!, favorite = row.querySelector('button[aria-pressed]')!;
-      const range = document.createRange(); range.selectNodeContents(name);
-      const text = Array.from(range.getClientRects()).filter(rect => rect.width > 1);
-      const box = row.getBoundingClientRect(), star = favorite.getBoundingClientRect(), frame = name.getBoundingClientRect();
-      return { label: name.textContent, top: box.top, bottom: box.bottom, textTop: Math.min(...text.map(rect => rect.top)), textBottom: Math.max(...text.map(rect => rect.bottom)), frameRight: frame.right, starLeft: star.left };
+    expect({ left: cover.left, right: cover.right }).toEqual({ left: 0, right: 0 });
+    expect(cover.top).toBeLessThanOrEqual(44);
+    // Each tile's name stays inside its tile, and no two tiles overlap.
+    const tiles = await drawer.locator('[data-launcher-app]').evaluateAll(list => list.map(tile => {
+      const name = tile.querySelector('button > span:last-of-type')!, range = document.createRange(); range.selectNodeContents(name);
+      const text = Array.from(range.getClientRects()).filter(rect => rect.width > 1), box = tile.getBoundingClientRect();
+      return { label: name.textContent, left: box.left, right: box.right, top: box.top, bottom: box.bottom,
+        textLeft: Math.min(...text.map(rect => rect.left)), textRight: Math.max(...text.map(rect => rect.right)), textBottom: Math.max(...text.map(rect => rect.bottom)) };
     }));
-    expect(rows.length).toBeGreaterThanOrEqual(10);
-    for (const row of rows) {
-      expect(row.frameRight, `${row.label} under its favorite control`).toBeLessThanOrEqual(row.starLeft + 1);
-      expect(row.textTop, `${row.label} above its row`).toBeGreaterThanOrEqual(row.top - 1);
-      expect(row.textBottom, `${row.label} below its row`).toBeLessThanOrEqual(row.bottom + 1);
+    for (const tile of tiles) {
+      expect(tile.textLeft, `${tile.label} left of its tile`).toBeGreaterThanOrEqual(tile.left - 1);
+      expect(tile.textRight, `${tile.label} right of its tile`).toBeLessThanOrEqual(tile.right + 1);
+      expect(tile.textBottom, `${tile.label} below its tile`).toBeLessThanOrEqual(tile.bottom + 1);
     }
-    for (let index = 1; index < rows.length; index++) expect(rows[index].top, `${rows[index].label} over ${rows[index - 1].label}`).toBeGreaterThanOrEqual(rows[index - 1].bottom - 1);
+    for (let i = 0; i < tiles.length; i++) for (let j = i + 1; j < tiles.length; j++)
+      expect(overlaps(tiles[i], tiles[j]), `${tiles[j].label} over ${tiles[i].label}`).toBe(false);
   });
 }
 

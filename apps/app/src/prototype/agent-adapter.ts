@@ -6,7 +6,7 @@ import {openExistingBrowserNotes,openExistingDeviceNotes} from './legacy-notes-a
 import {executeNamedCalendarRead,type NamedCalendarReadProvider} from '../../../../.eliza/client-features/plugins/plugin-calendar/src/client/named-read.ts';
 import {reconcileNotesEditor} from '../../../../.eliza/client-features/plugins/plugin-notes/src/client/notes-draft.ts';
 import {CAMERA_CONTEXT_NOTICE,publishCommittedDeviceChanges} from '../runtime/device-actions';
-import {captureAgentPhoto} from './camera-adapter';
+import {captureAgentPhoto,cameraScanRequested,requestCameraScan} from './camera-adapter';
 import {isCameraCapture} from '../../../../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/camera-contract.ts';
 import {dismissMailFolderMenu} from '../../../../.eliza/client-features/plugins/plugin-inbox/src/components/mailbox/MailFolderPicker.tsx';
 import {aospImage} from '../runtime/aosp-image';
@@ -22,6 +22,9 @@ import type {ConversationMessageTarget} from '../runtime/alpha-client';
 import {formatDeviceRecordDateTime} from "../../../../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/device-record-presentation.ts";
 import {isNativeNotesQuery} from '../../../../.eliza/client-features/packages/contracts/src/native-notes-query.ts';
 import {executeNotesQuery} from './notes-query-executor';
+import {executeNotesOrganize,notesOrganizeShellHost} from './notes-organize-executor';
+import {isNotesOrganizeOperation,notesOrganizeContextAllowed} from '../runtime/notes-organize-contract';
+import {readNotesFolders,editNotesFolders} from '../runtime/notes-folders';
 import {executeCalendarAvailability,type AvailabilityProvider} from '../runtime/calendar-availability';
 import {availabilityReview} from './calendar-availability-review';
 import {presentDeviceRecordOperation} from '../runtime/device-record-presentation';
@@ -44,7 +47,9 @@ import {isClockOperation,assertClockTimeZone,currentClockTimeZone,validateClockR
 import { Capacitor } from '@capacitor/core';
 import { isMapsOperation } from '../runtime/maps-contract';
 import { readMapsSelection } from '../maps/agent-context';
-import { isLibraryOperation } from '../runtime/photo-library';
+import { isLibraryOperation, type LibraryAgentResult } from '../runtime/photo-library';
+import { isPhotosViewOperation } from '../runtime/photos-view-contract';
+import { isFilesOperation, filesAgent, filesContextAllowed } from '../runtime/files-agent-contract';
 import { deviceLibraryAgent, LibraryAgentRefusal } from './photo-library-adapter';
 import {isReminderOperation,validateReminderResult} from '../../../../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/reminder-contract.ts';
 import { SecureNotesStore, notesDraftBase, applyNotesDraft, notesDraftConflicts, NotesStorageFull, SECURE_NOTES_SLOT, SECURE_NOTES_DRAFT_SLOT, type NotesDraft, type NotesDraftReason } from '../runtime/notes-secure-store';
@@ -524,8 +529,6 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     if (view === 'photos') {
       const state = shell.vget('photos');
       if (state.open === state.nativePhotoSelection?.id) providerSelection = state.nativePhotoSelection;
-      // Device library: exactly one owner-selected item, by identity and a local revision only.
-      else if (state.album === 'device' && !state.open && state.nativeLibrarySelection) providerSelection = state.nativeLibrarySelection;
     }
     if (view === 'inbox') {
       const state = shell.vget('inbox');
@@ -806,18 +809,42 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         if(JSON.stringify(alphaClient.getState().context)!==JSON.stringify(expectedContext))throw Error('Maps context changed');
         return {status:'succeeded',summary:'Shared the exact selected Maps snapshot with approval. Navigation was not started.',mapsResult};
       }
+      if(isFilesOperation(operation)){
+        // Files tools (PLAN section 4): filter/open only change what Files shows; every other
+        // tool reached here after the owner approved its proposal card.
+        const files=filesAgent();
+        if(!files||!filesContextAllowed(operation,expectedContext)||document.hidden)return {status:'failed',summary:'Open Files on the unlocked phone. Nothing was changed.'};
+        signal.throwIfAborted();
+        return await files.run(operation,signal);
+      }
+      // Until the pin carries photos-view-agent.patch the shared operation union does not name these.
+      const photosView:unknown=operation;
+      if(isPhotosViewOperation(photosView)){
+        // photos_filter / photos_open run on the Photos grid; photos_album_create / photos_share open a review there.
+        const library=deviceLibraryAgent();
+        if(!library||expectedContext.sensitive||expectedContext.view!=='photos'||document.hidden)return {status:'failed',summary:'Open Photos on the unlocked phone. Nothing was shared or changed.'};
+        let photosViewResult;
+        try{photosViewResult=await library.runView(photosView,signal);}
+        catch(failure){if(failure instanceof LibraryAgentRefusal)return {status:'failed',summary:failure.message};throw failure;}
+        signal.throwIfAborted();context(this);
+        const summary=photosViewResult.kind==='photos_filter'?`Photos shows ${photosViewResult.shown}${photosViewResult.more?'+':''} ${photosViewResult.shown===1?'item':'items'}. Nothing was changed or shared.`:photosViewResult.kind==='photos_open'?(photosViewResult.opened?'Opened the item in Photos. Nothing was changed or shared.':'That item is not in Photos. Nothing was changed or shared.'):photosViewResult.kind==='photos_album_create'?'Opened the album review in Photos. Nothing changes until you confirm there.':'Opened the share review in Photos. Nothing is shared until you confirm there and pick an app.';
+        if(photosViewResult.kind==='photos_open'&&!photosViewResult.opened)return {status:'failed',summary};
+        // photos-view-agent.patch widens photoLibraryResult to LibraryAgentResult|PhotosViewResult; until the
+        // pin carries it the shared type names only the photo_library_* results (and never reaches here).
+        return {status:'succeeded',summary,photoLibraryResult:photosViewResult as unknown as LibraryAgentResult};
+      }
       if(isLibraryOperation(operation)){
         // Device library (issue 408): reads stay local and return identity-only rows; select and
         // review act only on the owner-visible Photos > Device library, never directly on media.
         const library=deviceLibraryAgent();
-        if(!library||expectedContext.sensitive||expectedContext.view!=='photos'||document.hidden)return {status:'failed',summary:'Open Photos on the unlocked phone to use the device library. Nothing was shared or changed.'};
+        if(!library||expectedContext.sensitive||expectedContext.view!=='photos'||document.hidden)return {status:'failed',summary:'Open Photos on the unlocked phone. Nothing was shared or changed.'};
         let photoLibraryResult;
         try{photoLibraryResult=await library.run(operation,signal);}
         catch(failure){if(failure instanceof LibraryAgentRefusal)return {status:'failed',summary:failure.message};throw failure;}
         signal.throwIfAborted();context(this);
         // Selection deliberately changes the selected object; every other operation must leave the context as approved.
         if(operation.type!=='photo_library_select'&&JSON.stringify(alphaClient.getState().context)!==JSON.stringify(expectedContext))throw Error('Photos context changed');
-        const summary=photoLibraryResult.kind==='photo_library_search'?`Shared ${photoLibraryResult.items.length} library ${photoLibraryResult.items.length===1?'item':'items'} by id, kind, date and size in pixels. No names, location or pixels were shared.`:photoLibraryResult.kind==='photo_library_inspect'?'Shared one library item by id, kind, date and size in pixels. No name, location or pixels were shared.':photoLibraryResult.kind==='photo_library_select'?`Selected ${photoLibraryResult.selected} ${photoLibraryResult.selected===1?'item':'items'} in Photos. Nothing was changed or shared.`:'Opened the review in Photos > Device library. Nothing changes until you confirm there and in Android.';
+        const summary=photoLibraryResult.kind==='photo_library_search'?`Shared ${photoLibraryResult.items.length} library ${photoLibraryResult.items.length===1?'item':'items'} by id, kind, date and size in pixels. No names, location or pixels were shared.`:photoLibraryResult.kind==='photo_library_inspect'?'Shared one library item by id, kind, date and size in pixels. No name, location or pixels were shared.':photoLibraryResult.kind==='photo_library_select'?`Selected ${photoLibraryResult.selected} ${photoLibraryResult.selected===1?'item':'items'} in Photos. Nothing was changed or shared.`:'Opened the review in Photos. Nothing changes until you confirm there and in Android.';
         return {status:'succeeded',summary,photoLibraryResult};
       }
       if(isCalendarOperation(operation)){
@@ -840,6 +867,14 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         const current=()=>{signal.throwIfAborted();context(this);if(!ownerSession||connectionController.getSnapshot().session!==ownerSession||JSON.stringify(connectionController.getWorkflowDeviceTarget())!==ownerTarget||!this.live||this.notesPending||this.notesStorageFailed||document.hidden||expectedContext.sensitive||!['home','notes'].includes(expectedContext.view)||JSON.stringify(alphaClient.getState().context)!==JSON.stringify(expectedContext))throw Error('Notes query or connection changed');};
         try{return await executeNotesQuery(this.notesStore,operation,operationId,signal,current);
         }catch{return {status:'failed',summary:'Notes changed or sharing became unavailable. Review the query again; nothing was shared.'};}
+      }
+      // Until the pin carries notes-organize-agent.patch the shared operation union does not name these.
+      const organize:unknown=operation;
+      if(isNotesOrganizeOperation(organize)){
+        // Folders, the read-only list filter, Recently deleted restore and recording (runtime/notes-organize-contract).
+        const current=()=>{signal.throwIfAborted();context(this);if(!this.live||document.hidden||!notesOrganizeContextAllowed(expectedContext,organize.type)||JSON.stringify(alphaClient.getState().context)!==JSON.stringify(expectedContext))throw Error('Notes context changed');};
+        try{return await executeNotesOrganize(notesOrganizeShellHost(this,{read:readNotesFolders,edit:editNotesFolders}),organize,current);}
+        catch{return {status:'failed',summary:'Notes changed or became unavailable. Nothing was changed.'};}
       }
       if(isNotesOperation(operation)){
         try{
@@ -1351,6 +1386,8 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     // A prompt sent from elsewhere (a suggestion, a Calendar decision, a reviewed email) is not the
     // composer's text: the composer keeps its draft, its saved copy, its reply target and source.
     const fromComposer=argument===undefined;
+    // Scanning is not a Camera mode: asking to scan in Camera opens scan review on one frame, on this phone.
+    if(!this.messageEditTarget&&s.view==='camera'&&cameraScanRequested(text)&&requestCameraScan()){if(fromComposer)this.setState({draft:''});return;}
     const editTarget:ConversationMessageTarget|undefined=this.messageEditTarget,replyTarget:ConversationMessageTarget|undefined=fromComposer?this.messageReplyTarget:undefined,editView=s.view;
     if(editTarget){
       if(argument!==undefined||!connectionController.messageTargetCurrent(editTarget))return;
@@ -1645,18 +1682,6 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     out.browserRecovery=isAndroid?Boolean(failed||activeShell?.notesDraftUnreadable||activeShell?.notesDraftDeferred||activeShell?.notesDraftConflict):Boolean(failed||state.audioDeletionRecoveryFailed||state.audioDeletionPending?.length);
     out.openBrowserRecovery=()=>{const shell=activeShell;if(!shell||shell.notesPending)return;notesRecovery?.abort();const controller=notesRecovery=new AbortController();if(isAndroid){openNativeNotesRecovery(shell,controller.signal);return;}openDomainRecovery({capture:async signal=>{const draft=JSON.stringify({...JSON.parse(shell.notesStore?.raw||'{}'),records:shell.vget('notes').list});const saved=await browserNotesRecovery.capture(signal);return {...saved,raw:JSON.stringify({saved:saved.raw,draft})};},reset:browserNotesRecovery.reset},'Notes','Browser Notes recovery','Download saved Notes and the current editor draft before resetting. Reset starts an empty collection; it does not delete audio files or resolve pending audio deletion. Close other Alpha tabs before continuing.',controller.signal);};
     out.openAudioRecovery=async()=>{const shell=activeShell;if(!shell)return;notesRecovery?.abort();const controller=notesRecovery=new AbortController();try{const recovery=await audioDeletionRecovery();if(controller.signal.aborted||activeShell!==shell||!shell.live||shell.S().view!=='notes')return;openDomainRecovery(recovery,'note audio deletion history','Note audio deletion recovery','Download unresolved note/audio deletion records before resetting. Reset forgets recovery records, but does not delete or restore Notes or audio. Check uncertain outcomes before repeating any deletion. Close other Alpha tabs before continuing.',controller.signal);}catch{if(!controller.signal.aborted)api.toast('Audio deletion recovery could not be opened.');}};
-    const dictate = async () => {
-      try {
-        const r = await DailyApps.perform({ action: 'voice' });
-        if (r.transcript) {
-          const latest = api.get('notes');
-          if (latest.open !== state.open) return;
-          api.set({ list: latest.list.map((n: Shell) => n.id === state.open ? { ...n, body: [n.body, r.transcript].filter(Boolean).join('\n') } : n) });
-        } else api.toast(r.message || 'Speech recognition is unavailable.');
-      } catch { api.toast('Speech recognition is unavailable.'); }
-    };
-    out.record = () => window.dispatchEvent(new CustomEvent('alpha-record-note'));
-    if (out.ed) out.ed.dictate = dictate;
     if (out.vo) { out.vo.play = () => api.toast('No audio is available for this note.'); out.vo.toCal = () => void DailyApps.perform({ action: 'calendar-create', title: out.vo.title }).catch(() => api.toast('Calendar is unavailable.')); }
     return out;
   };

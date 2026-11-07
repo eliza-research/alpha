@@ -16,10 +16,10 @@ async function openNote(page:Page){
  await page.getByRole('textbox',{name:'Note',exact:true}).fill('Milk and eggs.');
  await page.waitForTimeout(500);
 }
-/** Starts reading through the module entry point the editor button calls, so the resolved
- * outcome is observable. The editor button itself is covered by its own test below. */
+/** Starts reading through the module entry point, so the resolved outcome is observable. The editor
+ * has no Read aloud button (PLAN.md section 3): reading a note is asked of Alpha. */
 async function readAloud(page:Page){
- await expect(page.getByRole('button',{name:'Read aloud',exact:true})).toBeVisible();
+ await expect(page.getByRole('textbox',{name:'Note',exact:true})).toBeVisible();
  await page.evaluate(async()=>{
   const raw=await(await import('/src/runtime/browser-notes-document.ts')).readBrowserNotesRaw();
   const note=JSON.parse(raw!).records.find((n:any)=>n.title==='Groceries');
@@ -53,15 +53,8 @@ test('leaving the note stops reading; a finished reading reports completion',asy
  await expect.poll(()=>page.evaluate(()=>(window as any).voiceFixture.outcome)).toBe('finished');
  expect(await reading(page)).toBeNull();
 });
-test('the editor Read aloud button reads the open note and Stop reading stops it',async({page})=>{
- const posts:string[]=[];page.on('request',request=>{if(request.method()==='POST')posts.push(request.url());});
+test('the editor toolbar has no Read aloud or Dictate button',async({page})=>{
  await openNote(page);
- await page.getByRole('button',{name:'Read aloud',exact:true}).click();
- await expect.poll(()=>spoken(page)).toEqual(['Groceries. Milk and eggs.']);
- await expect.poll(async()=>(await reading(page))?.state).toBe('reading');
- await page.getByRole('button',{name:'Stop reading',exact:true}).click();
- await expect.poll(()=>reading(page)).toBeNull();
- expect(await page.evaluate(()=>(window as any).voiceFixture.cancels)).toBeGreaterThan(0);
- await expect(page.getByRole('button',{name:'Read aloud',exact:true})).toBeVisible();
- expect(posts).toEqual([]);
+ for(const name of ['Read aloud','Stop reading','Dictate'])await expect(page.getByRole('button',{name,exact:true})).toHaveCount(0);
+ for(const name of ['Back to notes','Turn into checklist','Share note','More'])await expect(page.getByRole('button',{name,exact:true})).toBeVisible();
 });

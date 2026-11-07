@@ -18,8 +18,10 @@ The new catalog queries the current user's MediaStore in 24-item pages. Keys inc
 the storage volume, media kind and row ID; revisions also bind the provider version
 and available generation columns. Filename queries run against the provider,
 not only loaded thumbnails. Cursors expire after two minutes and are invalidated
-by library changes or app backgrounding. At most 240 thumbnails remain in the
-renderer; library access does not create a cloud upload or background pixel index.
+by library changes or app backgrounding. Images and videos of a volume are merged
+below one `_id` cursor, so the grid is newest first across both kinds. The renderer
+keeps the newest 2000 rows (a reload re-reads at most 240) and groups them by day;
+library access does not create a cloud upload or background pixel index.
 Selected reads recheck permission, lock state and revision. A reviewed native-source
 patch lets the existing copy editor read a host-validated permitted still image;
 saved copies remain owned PNGs with the existing operation receipt journal.
@@ -170,10 +172,13 @@ and requires sharing to reject before opening another chooser. The existing
 single-item receiver behavior remains supported. Typecheck passed; native build
 and both-variant execution are pending.
 
-## Device library (source for issue 408)
+## Agent library bridge (source for issue 408)
 
-The Device library album retains the agent proposal, selection, review and receipt
-contract from #442. Its native facade (`AlphaPhotoLibraryPlugin`, a registration of the
+The former Device library album is gone (2026-11 view refresh). Its agent proposal,
+selection, review and receipt contract from #442 lives on in
+`apps/app/src/prototype/photo-library-adapter.ts`, which no longer renders anything: reads
+go to the native facade, and select, view requests and reviews act on the main Library.
+The native facade (`AlphaPhotoLibraryPlugin`, a registration of the
 shared `DeviceLibraryPlugin`) uses the
 `AlphaPhotos` plugin's own `PermittedMediaCatalog` and `PermittedMediaReview`
 instances (the shared engines in elizaOS `plugins/plugin-native-media`, configured
@@ -182,10 +187,10 @@ invalidation, one MediaStore observer and one Android review at a time across bo
 surfaces. Both use the same permission grants, typed per-volume collections,
 volume-qualified identities, provider-version/generation revisions and exact
 conditional mutations. There is no second media index. The observer is registered
-only while the main Photos grid or this album is open (each watches under its own
-name), and both refresh bounded pages on provider changes. The two owner surfaces
-(the main grid and this album) still both exist; consolidating them into one view is
-a product decision left open.
+only while the main Photos grid is open. Agent select, filter, open, album-create,
+share and review requests act on the main Library grid (`setMainLibraryHost`); one
+review waits at a time. Reviews validate the reviewed revisions with the provider
+before they open and again before Android is asked.
 
 Search supports kind, dates and favorites. Names remain local to owner searches;
 the agent search accepts no text and its results omit filenames, albums, byte sizes,
@@ -203,8 +208,31 @@ receipt that anything was sent.
 
 The Alpha action path supports `photo_library_search`, `photo_library_inspect`,
 `photo_library_select` and `photo_library_review` behind `photos.library.v1` and a
-Photos context check. Upstream Eliza still must emit those operations and negotiate
-that capability, so source registration does not establish live agent acceptance.
+Photos context check. The Photos view tools behind `photos.view.v1` are
+`photos_filter` (read-only, a clearable chip over the grid), `photos_open` (opens one
+item in the viewer), `photos_album_create` (reviewed in Photos) and `photos_share`
+(reviewed in Photos, then Android's share sheet). Their contract is
+`apps/app/src/runtime/photos-view-contract.ts`; the agent tools and the shared
+coordinator changes are the proposed upstream patch `patches/eliza/photos-view-agent.patch`
+(see its `.md`). Until the pin carries it the shared coordinator rejects these
+operation types, so the phone code is inert and `photos.view.v1` is not offered. Upstream
+Eliza still must emit the library operations and negotiate the capabilities, so source
+registration does not establish live agent acceptance.
+
+## Native Photos patch
+
+`patches/eliza/photos-library.patch` (listed in `patches/eliza/native-manifest.json`,
+replacing `photos-list-limit.patch`, which it contains) changes the shared
+`plugin-native-media` Photos sources: list rows carry `folder`, `taken` and `size`;
+`camera` and `screenshots` albums and counts; `changeMany` accepts `unfavorite`;
+`shareMany` takes up to 100 items; permitted images and videos merge below one cursor;
+and the editor's **Replace**. `beginEdit` reports `canReplace` (a JPEG, PNG or WebP
+still whose revision and digest matched, owned by Alpha or on Android 11+).
+`saveEdit({replace:true})` overwrites the original through the same Uri after
+`MediaStore.createWriteRequest` consent (none for Alpha's own items or with all-files
+access), bound to the reviewed revision; a changed item returns `stale` and nothing is
+written. The browser library implements the same Replace for its own captures. None of
+this has run on a device.
 
 The host tests exercise the renderer contract, opaque outbound revisions, selection,
 review expiry and shared catalog delegation. The instrumentation fixture is updated
