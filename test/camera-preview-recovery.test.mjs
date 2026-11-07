@@ -17,16 +17,17 @@ const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve
 function fixture({permission=false,failing=true,navigateAfterPhoto=false,receipt={width:1280,height:720,deviceId:'0',minZoom:0.5,maxZoom:10,hasFlash:true,zoom:1,flash:'off'}}={}){
  const env=new JSDOM('<div data-alpha-camera-root data-alpha-layer><button data-alpha-camera="viewfinder"></button></div>',{pretendToBeVisual:true});const timers=new Map();let timerId=0;
  env.window.setTimeout=(fn,ms)=>{timers.set(++timerId,{fn,ms});return timerId;};env.window.clearTimeout=id=>timers.delete(id);
- const calls={starts:0,stops:0,masked:false,captures:[],focus:0,switches:[],recordings:0,list:[],scans:0,views:[]};let failed=failing;
- const gates={start:undefined,capture:undefined};const clock={now:1000};
+ const calls={starts:0,stops:0,masked:false,captures:[],focus:0,switches:[],recordings:0,list:[],scans:0,views:[],modes:[],native:{flash:"on",zoom:0.5}};let failed=failing;
+ const gates={start:undefined,capture:undefined,mode:undefined,switchError:undefined};const clock={now:1000};
  let context;
  const camera={
   startPreview:async()=>{calls.starts++;if(gates.start)await gates.start.promise;if(failed)throw permission?Object.assign(Error('Camera permission denied'),{code:'CAMERA_PERMISSION_DENIED'}):Error('Camera in use');return receipt;},
   stopPreview:async()=>{calls.stops++;},
   capturePhoto:async options=>{calls.captures.push(options);if(gates.capture)await gates.capture.promise;return options.saveToGallery?{format:'jpeg',width:4000,height:3000,path:'content://media/external/images/media/'+(41+calls.captures.length),thumbnail:'AAAA'}:{format:'jpeg',width:4000,height:3000,base64:'AAAA'};},
   setFocusPoint:()=>{calls.focus++;return new Promise(()=>{});},// a focus that never settles
-  switchCamera:async options=>{calls.switches.push({...options,flash:context.flashNow(),zoom:context.zoomNow()});return {...receipt,minZoom:1,maxZoom:4,hasFlash:false};},
-  setZoom:async()=>{},setSettings:async()=>{},
+  switchCamera:async options=>{calls.switches.push({...options,flash:context.flashNow(),zoom:context.zoomNow()});if(gates.switchError)throw gates.switchError;return {...receipt,minZoom:1,maxZoom:4,hasFlash:false};},
+  setZoom:async o=>{calls.native.zoom=o.zoom;},setSettings:async o=>{calls.native.flash=o.settings.flash;},
+  setCaptureMode:async o=>{calls.modes.push(o);if(gates.mode)await gates.mode.promise;},
   startRecording:async()=>{calls.recordings++;},stopRecording:async()=>({path:'content://media/external/video/media/9',duration:1,width:1,height:1,fileSize:1}),
  };
  const library={list:async options=>{calls.list.push(options);return {items:[]};},read:async({id})=>({id,image:'',width:1,height:1,date:0,revision:'r'})};
@@ -39,8 +40,8 @@ function fixture({permission=false,failing=true,navigateAfterPhoto=false,receipt
   const browserMode=false,libraryAvailable=()=>true,normalize=row=>({...row,id:'native-camera-'+row.id}),nativeId=id=>id.replace(/^native-camera-/,''),cancelScan=()=>{};function schedule(){}
   const finder='[data-alpha-camera="viewfinder"]';let state={said:'',mode:'photo'};
   const api={S:{get chat(){return view().chat;}},isActive:()=>view().active,set:patch=>Object.assign(state,patch),get:()=>state,setView:name=>{calls.views.push(name);if(navigateAfterPhoto&&name==='photos')view().active=false;},shell:patch=>{view().chat=patch.chat;}};`;
- vm.runInContext(shared+stripTypeScriptTypes(prelude+helpers+scanWords+session+syncCamera+`;globalThis.testCamera={start,stop,control,capture,record,focusAt,takeRequestedPhoto,zoomStops,lensFromReceipt,photoReceiptPath,cameraScanRequested,scanRequest:()=>scanRequest(),active,installViewPresence,syncCamera,CHAT_GRACE_MS,
-  flip:()=>{const next=direction==='back'?'front':'back';return control(async()=>{flash=false;zoomRatio=1;return camera.switchCamera({direction:next});},r=>{direction=next;adoptLens(r);});},
+ vm.runInContext(shared+stripTypeScriptTypes(prelude+helpers+scanWords+session+syncCamera+`;globalThis.testCamera={bindMode,modeSettled:()=>modeChange,start,stop,control,capture,record,focusAt,takeRequestedPhoto,zoomStops,lensFromReceipt,photoReceiptPath,cameraScanRequested,scanRequest:()=>scanRequest(),active,installViewPresence,syncCamera,CHAT_GRACE_MS,
+  flip:()=>flipLens(api),
   setFlash:on=>{flash=on;},setZoom:z=>{zoomRatio=z;},mode:m=>{state.mode=m;},
   state:()=>({phase:session.phase,denied:session.denied,said:state.said,capturing:session.capturing,recording:session.recording,flash,zoomRatio,lens,last:lastCapture,fl:state.fl})};
   globalThis.flashNow=()=>flash;globalThis.zoomNow=()=>zoomRatio;`,{mode:'transform'}),context);
@@ -61,6 +62,19 @@ function fixture({permission=false,failing=true,navigateAfterPhoto=false,receipt
  const f=fixture({failing:false});await f.api.start();assert.equal(f.api.state().said,'','No status pill while starting or after ready');
  await f.api.control(async()=>{throw Error('unsupported');},()=>{throw Error('must not complete');});const timer=[...f.timers.values()].find(t=>t.ms===5000);assert.ok(timer);assert.equal(f.api.state().said,'Not supported on this camera.');timer.fn();assert.equal(f.api.state().said,'');f.env.window.close();
 }
+// The Video preview and recording must use the same quality. A released preview cannot start recording.
+{
+ const f=fixture({failing:false});await f.api.start();await f.api.modeSettled();
+ f.api.mode('video');f.api.bindMode('video');await f.api.modeSettled();
+ assert.deepEqual(JSON.parse(JSON.stringify(f.calls.modes.at(-1))),{mode:'video',quality:'medium'});
+ f.gates.mode=deferred();f.api.bindMode('video');await settle();const recording=f.api.record();await settle();
+ f.gates.mode.reject(Object.assign(Error('Camera preview stopped'),{code:'PREVIEW_STOPPED'}));
+ await recording;await f.api.modeSettled();await settle();
+ assert.equal(f.calls.recordings,0,'A recording waiting on a released preview must not reach native');
+ assert.equal(f.api.state().phase,'off');
+ assert.equal(f.env.window.document.querySelector('[role="alert"]').getAttribute('aria-label'),'Camera unavailable');
+ f.env.window.close();
+}
 // The bound lens decides zoom chips and flash; its receipt is read on first frame; the last tile reads one row.
 {
  const f=fixture({failing:false});await f.api.start();await settle();
@@ -79,6 +93,14 @@ function fixture({permission=false,failing=true,navigateAfterPhoto=false,receipt
 {
  const f=fixture({failing:false});await f.api.start();f.api.setFlash(true);f.api.setZoom(0.5);await f.api.flip();
  assert.deepEqual(JSON.parse(JSON.stringify(f.calls.switches)),[{direction:'front',flash:false,zoom:1}]);assert.equal(f.api.state().lens.hasFlash,false);assert.equal(f.api.state().flash,false);f.env.window.close();
+}
+// When switching lenses fails, the UI and native old lens still agree on their reset controls.
+{
+ const f=fixture({failing:false});await f.api.start();f.api.setFlash(true);f.api.setZoom(0.5);
+ f.gates.switchError=Error('Switch unavailable');await f.api.flip();
+ assert.deepEqual({...f.calls.native},{flash:'off',zoom:1});
+ assert.equal(f.api.state().flash,false);assert.equal(f.api.state().zoomRatio,1);
+ assert.equal(f.api.state().said,'Not supported on this camera.');f.env.window.close();
 }
 // FixFocus: a focus that never settles does not block the shutter.
 {

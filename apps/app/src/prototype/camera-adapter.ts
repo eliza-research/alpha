@@ -51,7 +51,7 @@ const nativeCamera = registerPlugin<{
   getRecordingState(): Promise<{ isRecording: boolean; duration: number; fileSize: number }>;
   switchCamera(options: { direction: 'front' | 'back' }): Promise<PreviewReceipt>;
   /** Binds VideoCapture only for Video mode (patches/eliza/camera-capture-latency.patch). */
-  setCaptureMode?(options: { mode: 'photo' | 'video' }): Promise<unknown>;
+  setCaptureMode?(options: { mode: 'photo' | 'video'; quality?: string; bitrate?: number; frameRate?: number }): Promise<unknown>;
   setZoom(options: { zoom: number }): Promise<void>;
   setSettings(options: { settings: { flash: 'off' | 'on' } }): Promise<void>;
   setFocusPoint(options: { x: number; y: number }): Promise<void>;
@@ -708,6 +708,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   const active = () => cameraViewVisible() && (requestedCaptureHolds>0 || !chatCovers() || chatGrace());
   /** The one photo being written natively, if any; releasing the preview waits for it. */
   let photoWrite: Promise<unknown> | undefined;
+  const RECORDING = { audio: true, saveToGallery: true, quality: 'medium', maxDuration: 300, maxFileSize: 104857600 } as const;
   let previewReceipt: PreviewReceipt | undefined;
   /** Bind VideoCapture only while Video mode is chosen. Builds without setCaptureMode bind it when recording starts. */
   let modeChange: Promise<void> = Promise.resolve();
@@ -720,7 +721,12 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
       if (writing) await Promise.race([writing.then(() => {}, () => {}), new Promise(resolve => window.setTimeout(resolve, 10000))]);
       return camera.stopPreview();
     },
-    async startRecording(options: Parameters<typeof camera.startRecording>[0]) { await modeChange; return camera.startRecording(options); },
+    async startRecording(options: Parameters<typeof camera.startRecording>[0]) {
+      const token = session.token();
+      await modeChange;
+      if (session.phase !== 'ready' || !session.current(token)) throw new Error('Camera preview unavailable');
+      return camera.startRecording(options);
+    },
     stopRecording: () => camera.stopRecording(),
   };
   /** Everything waiting for the preview (a queued agent capture or scan) resumes when a start settles. */
@@ -739,7 +745,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   const session=createCameraSession({
     camera:sessionCamera,active,available:()=>browserMode||Capacitor.isPluginAvailable('ElizaCamera'),
     preview:()=>({direction,resolution:{width:1280,height:720},mirror:direction==='front'}),
-    recording:()=>({audio:true,saveToGallery:true,quality:'medium',maxDuration:300,maxFileSize:104857600}),
+    recording: () => RECORDING,
     hooks:{
       recordingFinishing(){api?.set({rec:false});},
       recordingSaved:adoptVideo,
@@ -785,7 +791,18 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   function bindMode(mode:string){
     if(session.phase!=='ready')return;
     const token=session.token(),wanted=mode==='video'?'video':'photo';
-    modeChange=modeChange.then(async()=>{if(token!==session.token()||typeof camera.setCaptureMode!=='function')return;try{await camera.setCaptureMode({mode:wanted});}catch{/* startRecording binds video itself. */}});
+    modeChange = modeChange.then(async () => {
+      if (!session.current(token) || typeof camera.setCaptureMode !== 'function') return;
+      try {
+        await camera.setCaptureMode({ mode: wanted, quality: RECORDING.quality });
+      } catch (error) {
+        // If native kept a preview, startRecording may still bind video itself.
+        if ((error as {code?:unknown})?.code === 'PREVIEW_STOPPED' && session.current(token)) {
+          await stop();
+          if (cameraViewVisible() && session.phase === 'off') showAccess('unavailable');
+        }
+      }
+    });
   }
   async function stop() {
     pendingShot=undefined;
@@ -822,6 +839,26 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     captures = [item, ...captures.filter(row => row.id !== item.id)]; loaded = false; lastCapture = item;
     api?.setView('photos', { nativeCaptureRevision: item.id });
     message(limitReached?'Maximum length reached. Video saved.':'');
+  }
+  function flipLens(owner: Bag) {
+    const next = direction === 'back' ? 'front' : 'back';
+    return control(async () => {
+      if (flash) {
+        await camera.setSettings({ settings: { flash: 'off' } });
+        flash = false;
+        owner.set({ flash: false });
+      }
+      if (Math.abs(zoomRatio - 1) > 1e-3) {
+        await camera.setZoom({ zoom: 1 });
+        zoomRatio = 1;
+        owner.set({ nativeZoom: 1 });
+      }
+      return camera.switchCamera({ direction: next });
+    }, receipt => {
+      direction = next;
+      adoptLens(receipt);
+      owner.set({ front: next === 'front', flash });
+    });
   }
   const finishVideo=()=>session.finishRecording();
   async function record() {
@@ -1057,11 +1094,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     data.ask = () => {
       if (!askCameraFrame(currentApi)) message(ready ? 'Finish the current capture, then ask again.' : 'Start the camera first.');
     };
-    data.flip = () => {
-      const next = direction === 'back' ? 'front' : 'back';
-      // Flash and zoom return to their defaults before the lens changes, so the new lens never inherits a setting it lacks.
-      void control(async () => { flash = false; zoomRatio = 1; currentApi.set({ flash: false }); return camera.switchCamera({ direction: next }); }, receipt => { direction = next; adoptLens(receipt); currentApi.set({ front: next === 'front', flash }); });
-    };
+    data.flip = () => { void flipLens(currentApi); };
     data.flashAvailable = ready && (browserMode ? browserCamera.flashAvailable() : lens.hasFlash);
     if (browserMode) data.flashLabel = browserCamera.lightingLabel(flash);
     data.toggleFlash = () => { const next = !flash; void control(() => camera.setSettings({ settings: { flash: next ? 'on' : 'off' } }), () => { flash = next; currentApi.set({ flash: next }); }); };
