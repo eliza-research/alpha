@@ -84,6 +84,7 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
   let entries: StorageEntry[] = [], categoryFolders: CategoryFolder[] | undefined, trashItems: TrashRow[] = [], loaded = false, busy = false, error = '';
   let selection: Set<string> | null = null, filter: FilesFilter | null = null, filterRows: StorageEntry[] = [];
   let dialog: Dialog | undefined, dialogTrigger: HTMLElement | null = null, opened: {path: string; volume?: string; selectionId?: string} | undefined;
+  let selectionEpoch = 0;
   let generation = 0, filterGeneration = 0, revision = 0, watching = '', active = false, pressTimer: ReturnType<typeof setTimeout> | undefined, pressed = '';
   const repaint = () => api?.set({filesBrowserRevision: ++revision});
   const modal = createInlineModal(() => { if (!busy) { dialog = undefined; repaint(); } }, () => dialogTrigger?.isConnected ? dialogTrigger : document.querySelector<HTMLElement>('[data-alpha-subview="files-folder"] button[aria-label="Sort and more"]'));
@@ -169,6 +170,7 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
   /** Back from a folder walks up to where the folder was entered (Browse or a category). */
   let base: {from: Place; path: string; volume?: string} = {from: {kind: 'browse'}, path: ''};
   function show(next: Place) {
+    selectionEpoch++;
     place = next; selection = null; dialog = undefined; entries = []; categoryFolders = undefined; loaded = false; error = '';
     api?.set({menu: false, folder: next.kind === 'browse' ? null : '__files_browser'});
     void reload();
@@ -185,15 +187,17 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
 
   async function openFile(entry: StorageEntry) {
     if (busy || !api) return;
+    const currentApi = api, ticket = selectionEpoch;
+    const current = () => ticket === selectionEpoch && currentApi.isActive();
     busy = true; repaint();
     try {
       const volume = place.kind === 'folder' ? place.volume : undefined;
       const value = await storage.storageSelect({path: entry.path, ...onVolume(volume)});
+      if (!current()) { if (value.selectionId) await DailyApps.forgetSelected({selectionId: value.selectionId}).catch(() => {}); return; }
       if (value.status !== 'selected') { failed(value as Result); return; }
-      if (!api.isActive()) { if (value.selectionId) await DailyApps.forgetSelected({selectionId: value.selectionId}).catch(() => {}); return; }
       opened = {path: entry.path, ...onVolume(volume), selectionId: value.selectionId};
-      await accept('files', value, api, false);
-    } catch { toast('This file could not open.'); }
+      await accept('files', value, currentApi, false);
+    } catch { if (current()) toast('This file could not open.'); }
     finally { busy = false; repaint(); }
   }
   async function share(paths: string[], volume?: string) {
@@ -315,10 +319,15 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
       if (access !== 'granted') return {status: 'failed', summary: 'Files needs all-files access. Nothing was changed.'};
       if (op.type === 'files_filter') { const n = await showFilter(validateFilesFilter(filesFilterOf(op))); return {status: 'succeeded', summary: `Showing ${countLabel(n)} in Files.`}; }
       if (op.type === 'files_open') {
+        const currentApi = api, ticket = selectionEpoch;
         const value = await storage.storageSelect({path: op.path});
+        if (ticket !== selectionEpoch || !currentApi.isActive?.()) {
+          if (value.selectionId) await DailyApps.forgetSelected({selectionId: value.selectionId}).catch(() => {});
+          return {status: 'failed', summary: 'Files changed. Nothing was opened.'};
+        }
         if (value.status !== 'selected') return {status: 'failed', summary: 'That file is not there. Nothing was opened.'};
         opened = {path: op.path, selectionId: value.selectionId};
-        await accept('files', value, api, false);
+        await accept('files', value, currentApi, false);
         return {status: 'succeeded', summary: 'Opened the file in Files.'};
       }
       if (op.type === 'files_share') { const value = await storage.storageShare({paths: op.paths}); return value.status === 'opened' ? {status: 'succeeded', summary: 'Opened the share sheet. Nothing is sent until you pick an app.'} : {status: 'failed', summary: value.message || 'Sharing could not open.'}; }
@@ -369,7 +378,12 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
     ICONS = Object.fromEntries(Object.entries(ICON_KEYS).map(([key, name]) => [key, currentApi.ic?.[name] ?? ''])) as typeof ICONS;
     const out = render(state, currentApi);
     const visible = currentApi.isActive?.() !== false;
-    if (visible) activate(); else deactivate();
+    if (visible && !active) {
+      // Reload publishes its loading state. Start it after React finishes this render.
+      queueMicrotask(() => {
+        if (api === currentApi && currentApi.isActive?.() !== false) activate();
+      });
+    } else if (!visible) deactivate();
     const sort: SortMode = state.sort === 'name' || state.sort === 'size' ? state.sort : 'date';
     const granted = access === 'granted';
     // Browse (no search box and no Recents: the agent filters, decision F2).
@@ -490,6 +504,7 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
     return back?.(state, currentApi);
   };
   module.onLeave = (...args: any[]) => {
+    selectionEpoch++;
     dialog = undefined; selection = null; clearTimeout(pressTimer);
     deactivate();
     return leave?.(...args);

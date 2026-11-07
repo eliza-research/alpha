@@ -74,6 +74,7 @@ for (const theme of ['light', 'dark'] as const) for (const view of VIEWS) {
     // One fresh profile covers the same root's content, landmark and focus.
     if (view !== 'Camera') await themeIsApplied(surface, theme);
     await expect(surface.getByText(EMPTY[view]).filter({visible:true}).first()).toBeVisible();
+    if(view==='Files'){await expect(surface.getByText(/No recent files/)).toHaveCount(0);await expect(surface.getByRole('button',{name:/^Open /})).toHaveCount(0);}
     if (view === 'Camera') {
       const recovery = surface.getByRole('alert', { name: 'Camera unavailable', exact: true });
       await expect(recovery).toBeVisible();

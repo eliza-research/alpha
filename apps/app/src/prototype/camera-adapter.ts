@@ -1133,13 +1133,16 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     thumbTimer=window.setTimeout(()=>{thumbTimer=undefined;if(!disposed)void settleThumbnails(rows,from,to);},120);
   }
   async function settleThumbnails(rows:SavedPhoto[],from:number,to:number){
-    const live=new Map(captures.map(row=>[row.id,row] as const));
+    const token=libraryEpoch,live=new Map(captures.map(row=>[row.id,row] as const));
     const plan=thumbnailPlan(rows.map(row=>live.get(row.id)??row),from,to,LIBRARY_LIMITS.thumbnailsKept);
     if(plan.drop.length){const drop=new Set(plan.drop);captures=captures.map(row=>drop.has(row.id)&&row.image?{...row,image:''}:row);}
     for(const batch of batches(plan.fetch.filter(id=>!thumbFetching.has(id)),24)){
       batch.forEach(id=>thumbFetching.add(id));
       try{
         const result=await library.thumbnails!({ids:batch.map(nativeId)});if(disposed)return;
+        // A provider change can replace these ids while the thumbnail read is in flight.
+        // Retry after releasing the pending ids instead of giving newer rows old pixels.
+        if(token!==libraryEpoch){photosApi?.set({nativeCaptureRevision:Date.now()});return;}
         const images=new Map(result.items.filter(item=>item.image).map(item=>['native-camera-'+item.id,item.image] as const));
         if(images.size){captures=captures.map(row=>!row.image&&images.has(row.id)?{...row,image:images.get(row.id)!}:row);photosApi?.set({nativeCaptureRevision:Date.now()});}
       }catch{/* The tiles keep their placeholder until the next scroll asks again. */}
@@ -1240,7 +1243,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     // Access: one row while access is partial or denied; nothing once it is full.
     data.libraryAccessControl=!browserMode&&!!libraryAccess&&libraryAccess.scope!=='full'&&!st.open&&!st.album&&!selection&&!onAlbums;
     data.libraryAccessBusy=requestingLibraryAccess;
-    data.libraryAccessChoose=async()=>{if(requestingLibraryAccess)return;requestingLibraryAccess=true;currentApi.set({nativeLibraryAccessRevision:Date.now()});const before=libraryAccess?.scope;try{libraryAccess=await nativeLibrary.requestLibraryAccess();if(libraryAccess.scope===before&&before==='denied')await nativeLibrary.openLibrarySettings();loaded=false;await refresh();}catch{currentApi.toast('Photo access could not open.');}finally{requestingLibraryAccess=false;currentApi.set({nativeLibraryAccessRevision:Date.now()});}};
+    data.libraryAccessChoose=async()=>{if(requestingLibraryAccess)return;requestingLibraryAccess=true;currentApi.set({nativeLibraryAccessRevision:Date.now()});const before=libraryAccess?.scope;try{libraryAccess=await nativeLibrary.requestLibraryAccess();if(libraryAccess.scope===before&&before==='denied')await nativeLibrary.openLibrarySettings();retirePhotoRead();captures=[];preview=undefined;next='';loaded=false;cancelEdit();closeVideo();currentApi.set({open:null,nativePhotoSelection:null});await refresh();}catch{currentApi.toast('Photo access could not open. You can review it in Android settings.');}finally{requestingLibraryAccess=false;currentApi.set({nativeLibraryAccessRevision:Date.now()});}};
     data.copyRecovery=browserMode&&!!st.nativeCopyRecovery;data.openCopyRecovery=()=>void openCopyRecovery(currentApi);
     if (!trashLoaded && !trashLoading && !st.nativeTrashError && libraryAvailable()) queueMicrotask(() => { void loadTrash(currentApi); });
     if (!counts && !countsBusy && !countsError && libraryAvailable()) queueMicrotask(() => { void loadCounts(currentApi); });

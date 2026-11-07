@@ -33,12 +33,14 @@
 </sc-slot>
 <sc-slot name="cards">
     {{homeAgendaCard}}
+    <sc-if value="{{homeShowWorkflow}}">
     <button data-alpha-home-workflows onClick="{{goFlows}}" aria-label="{{homeWorkflowLabel}}" aria-description="{{homeWorkflowDescription}}" class="home-card" style="flex-shrink: 0; scroll-snap-align: start; width: max-content; min-width: 172px; max-width: calc(100% - 48px); border-radius: 30px; background: var(--s2); padding: 22px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between">
       <div style="display:flex;justify-content:flex-end;width:100%"><span aria-hidden="true" style="display:block;flex-shrink:0;width:24px;height:24px;background:var(--acct);mask:url('/icons/lucide/workflow.svg') center/contain no-repeat;-webkit-mask:url('/icons/lucide/workflow.svg') center/contain no-repeat"></span></div>
       <sc-if value="{{homeWorkflowHasRows}}"><div style="display:flex;flex-direction:column;gap:10px;max-width:260px;min-width:0;text-align:left"><sc-for list="{{homeWorkflowRows}}" as="flow"><div style="min-width:0"><div style="font-size:18px;font-weight:600;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{flow.name}}</div><div style="font-size:12px;line-height:1.4;color:var(--mut)">{{flow.status}}</div></div></sc-for></div></sc-if>
       <sc-if value="{{homeWorkflowTitle}}"><span class="serif" style="font-size:26px;line-height:1.1;min-width:0;max-width:260px;text-align:left;overflow-wrap:anywhere">{{homeWorkflowTitle}}</span></sc-if>
       <span style="display:flex;flex-direction:column;align-items:flex-start;min-width:0;font-size:12px;line-height:1.4;color:var(--mut);text-align:left"><span>{{homeWorkflowTime}}</span><sc-if value="{{homeWorkflowFreshness}}"><span data-alpha-home-workflow-freshness>{{homeWorkflowFreshness}}</span></sc-if></span>
     </button>
+    </sc-if>
     {{homeAttentionCard}}
     <!-- Each card placeholder stays alone in its text node, so it renders as the shared card element. -->
     {{homeBriefCard}}
@@ -808,12 +810,6 @@
   <sc-if value="{{calendar.reminderDeleteUnknown}}"><div role="status" style="padding:12px;color:var(--mut)">{{calendar.reminderDeleteUnknown}} reminder action(s) await confirmation.<button class="tap" aria-label="Check reminder action status" onClick="{{calendar.checkReminderDeletions}}" style="padding:8px;color:var(--acc)">Check action status</button></div></sc-if>
 
   <sc-if value="{{calendar.editDraftAvailable}}"><button aria-label="Resume unsaved calendar edits" onClick="{{calendar.resumeEditDraft}}" style="margin:0 16px 8px;padding:12px;min-height:44px;border-radius:12px;background:var(--s2);color:var(--fg)">Resume unsaved changes</button><button aria-label="Discard retained calendar edits" onClick="{{calendar.discardEditDraft}}" style="margin:0 16px 8px;padding:12px;min-height:44px;border-radius:12px;background:var(--s2);color:var(--fg)">Discard retained edits</button></sc-if>
-  <sc-if value="{{calendar.formDraftAvailable}}">
-    <div role="group" aria-label="Unsaved event draft" style="display:flex;gap:8px;flex-wrap:wrap;margin:0 16px 8px">
-      <button class="tap" aria-label="Resume event draft" disabled="{{calendar.formDraftBusy}}" onClick="{{calendar.resumeFormDraft}}" style="min-height:44px;padding:12px;border-radius:12px;background:var(--s2);color:var(--fg)">Resume draft</button>
-      <button class="tap" aria-label="Discard event draft" disabled="{{calendar.formDraftBusy}}" onClick="{{calendar.discardFormDraft}}" style="min-height:44px;padding:12px;border-radius:12px;background:var(--s2);color:var(--fg)">Discard draft</button>
-    </div>
-  </sc-if>
   <sc-if value="{{calendar.formDraftListError}}"><div role="status" style="padding:12px 24px">Form storage needs review. Current edits are retained.<button onClick="{{calendar.retryFormDraft}}" style="padding:12px">Retry form storage</button><button onClick="{{calendar.recoverFormDraft}}" style="padding:12px">Recover saved form</button></div></sc-if>
   <sc-if value="{{calendar.editDraftListError}}"><div role="status" style="padding:12px 24px">Form storage needs review. Current edits are retained.<button onClick="{{calendar.retryEditDraft}}" style="padding:12px">Retry edit storage</button><button onClick="{{calendar.recoverEditDraft}}" style="padding:12px">Recover saved edits</button></div></sc-if>
   <sc-if value="{{calendar.browserRecovery}}"><button aria-label="Recover browser calendar" onClick="{{calendar.openBrowserRecovery}}" style="margin:0 16px 8px;padding:12px;border-radius:12px;background:var(--s2);color:var(--fg)">Calendar recovery</button></sc-if>
@@ -949,8 +945,10 @@
       <div data-alpha-app-header="detail" style="display: flex; align-items: center; height: 56px; margin-top: 44px; padding: 0 8px; gap: 2px; flex-shrink: 0">
         <button class="ib" aria-label="Back to calendar" onClick="{{calendar.ev.close}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button>
         <span style="flex-grow: 1"></span>
+        <sc-if value="{{calendar.ev.canModify}}">
         <button class="ib" aria-label="Edit event" disabled="{{calendar.ev.busy}}" onClick="{{calendar.ev.edit}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.edit}}"></path></svg></button>
         <button class="ib" aria-label="Delete event" disabled="{{calendar.ev.busy}}" onClick="{{calendar.ev.del}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.trash}}"></path></svg></button>
+        </sc-if>
       </div>
 
   <div class="scr" style="flex-grow: 1; overflow-y: auto; padding: 4px 24px 130px; touch-action: pan-y; min-width: 0; overflow-wrap: anywhere">
@@ -1618,7 +1616,7 @@
     </div>
     <div role="group" aria-label="Photos sections" style="display: flex; gap: 2px; margin: 0 16px 4px; padding: 2px; border-radius: 24px; background: var(--s2); flex-shrink: 0">
       <sc-for list="{{photos.tabs}}" as="t">
-        <button aria-label="{{t.label}}" aria-pressed="{{t.on}}" onClick="{{t.pick}}" style="flex: 1; height: 44px; border-radius: 22px; font-size: 14.5px; font-weight: 600; transition: background .2s; {{t.css}}">{{t.label}}</button>
+        <button aria-label="{{t.label}}" aria-pressed="{{t.on}}" onClick="{{t.pick}}" style="flex: 1; min-width: 0; min-height: 44px; padding: 8px; border-radius: 22px; font-size: 14.5px; font-weight: 600; transition: background .2s; {{t.css}}">{{t.label}}</button>
       </sc-for>
     </div>
   </sc-if>
@@ -1652,7 +1650,8 @@
         </button>
       </div>
     </sc-if>
-    <div class="scr" ref="{{photos.gridRef}}" data-alpha-app-scroll="photos" style="flex-grow: 1; overflow-y: auto; touch-action: pan-y; padding: 12px 0 180px">
+    <!-- Virtual row spacers own scroll position. Browser anchoring would shift it a second time. -->
+    <div class="scr" ref="{{photos.gridRef}}" data-alpha-app-scroll="photos" style="flex-grow: 1; overflow-y: auto; overflow-anchor: none; touch-action: pan-y; padding: 12px 0 180px">
       <div aria-hidden="true" style="{{photos.gridBefore}}"></div>
       <sc-for list="{{photos.groups}}" as="g">
         <section aria-label="{{g.label}}">
@@ -1746,7 +1745,8 @@
           <button class="ib" aria-label="Delete all forever" onClick="{{photos.alb.emptyTrash}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.trash}}"></path></svg></button>
         </sc-if>
       </div>
-      <div class="scr" ref="{{photos.gridRef}}" data-alpha-app-scroll="photos" style="flex-grow: 1; overflow-y: auto; touch-action: pan-y; padding: 12px 0 180px">
+      <!-- Virtual row spacers own scroll position. Browser anchoring would shift it a second time. -->
+    <div class="scr" ref="{{photos.gridRef}}" data-alpha-app-scroll="photos" style="flex-grow: 1; overflow-y: auto; overflow-anchor: none; touch-action: pan-y; padding: 12px 0 180px">
         <div class="photo-grid" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px; {{photos.gridCss}}">
           <sc-for list="{{photos.alb.items}}" as="p">
             <button data-owned-media-id="{{p.nativeMediaId}}" aria-label="{{p.alt}}" aria-pressed="{{p.pressed}}" onClick="{{p.tap}}" onPointerDown="{{p.pd}}" onPointerMove="{{p.pm}}" onPointerUp="{{p.pu}}" onPointerLeave="{{p.pu}}" onPointerCancel="{{p.pu}}" style="position: relative; display: block; aspect-ratio: 1; overflow: hidden; background: var(--s2); touch-action: pan-y; {{p.dim}}">
@@ -2055,6 +2055,7 @@
 
       </sc-if>
       <sc-if value="{{maps.regionalBasemap}}"><span class="alpha-map-credit-links"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">{{maps.mapAttribution}}</a></span></sc-if>
+      <sc-if value="{{maps.cloudBasemap}}"><span class="alpha-map-credit-links"><strong>Google Maps</strong> · {{maps.mapAttribution}}</span></sc-if>
       <details class="alpha-map-privacy"><summary aria-label="Map information" title="Map information"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ic.info}}"></path></svg></summary>
         <div class="alpha-map-info">
           <sc-if value="{{maps.nativePositionDetails}}"><p>{{maps.nativePositionDetails}}</p></sc-if>
@@ -2309,12 +2310,12 @@
       <sc-if value="{{notes.ed.menuShown}}"><button aria-hidden="true" tabindex="-1" onClick="{{notes.ed.closeMenu}}" style="position: absolute; inset: 0; z-index: 11; background: transparent"></button></sc-if>
       <sc-if value="{{notes.ed.menuOpen}}"><div class="notes-menu" role="dialog" aria-label="Note actions">
         <button onClick="{{notes.ed.pin}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.notesPin}}"></path></svg>{{notes.ed.pinLabel}}</button>
-        <button onClick="{{notes.ed.moveTo}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.notesFolder}}"></path></svg>Move to…</button>
+        <button onClick="{{notes.ed.moveTo}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.folder}}"></path></svg>Move to…</button>
         <hr>
         <button onClick="{{notes.ed.del}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.trash}}"></path></svg>Delete</button>
       </div></sc-if>
       <sc-if value="{{notes.ed.moveOpen}}"><div class="notes-menu" role="dialog" aria-label="Move to">
-        <sc-for list="{{notes.ed.moveRows}}" as="m"><button aria-pressed="{{m.checked}}" onClick="{{m.pick}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.notesFolder}}"></path></svg><span style="flex: 1 1 auto">{{m.name}}</span>{{m.mark}}</button></sc-for>
+        <sc-for list="{{notes.ed.moveRows}}" as="m"><button aria-pressed="{{m.checked}}" onClick="{{m.pick}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.folder}}"></path></svg><span style="flex: 1 1 auto">{{m.name}}</span>{{m.mark}}</button></sc-for>
       </div></sc-if>
       </div></sc-if>
     </div>
@@ -2392,12 +2393,12 @@
       <sc-if value="{{notes.vo.menuShown}}"><button aria-hidden="true" tabindex="-1" onClick="{{notes.vo.closeMenu}}" style="position: absolute; inset: 0; z-index: 11; background: transparent"></button></sc-if>
       <sc-if value="{{notes.vo.menuOpen}}"><div class="notes-menu" role="dialog" aria-label="Note actions">
         <button onClick="{{notes.vo.pin}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.notesPin}}"></path></svg>{{notes.vo.pinLabel}}</button>
-        <button onClick="{{notes.vo.moveTo}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.notesFolder}}"></path></svg>Move to…</button>
+        <button onClick="{{notes.vo.moveTo}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.folder}}"></path></svg>Move to…</button>
         <hr>
         <button onClick="{{notes.vo.del}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.trash}}"></path></svg>Delete</button>
       </div></sc-if>
       <sc-if value="{{notes.vo.moveOpen}}"><div class="notes-menu" role="dialog" aria-label="Move to">
-        <sc-for list="{{notes.vo.moveRows}}" as="m"><button aria-pressed="{{m.checked}}" onClick="{{m.pick}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.notesFolder}}"></path></svg><span style="flex: 1 1 auto">{{m.name}}</span>{{m.mark}}</button></sc-for>
+        <sc-for list="{{notes.vo.moveRows}}" as="m"><button aria-pressed="{{m.checked}}" onClick="{{m.pick}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.folder}}"></path></svg><span style="flex: 1 1 auto">{{m.name}}</span>{{m.mark}}</button></sc-for>
       </div></sc-if>
       </div></sc-if>
     </div>
@@ -2425,12 +2426,12 @@
       <sc-if value="{{notes.lk.menuShown}}"><button aria-hidden="true" tabindex="-1" onClick="{{notes.lk.closeMenu}}" style="position: absolute; inset: 0; z-index: 11; background: transparent"></button></sc-if>
       <sc-if value="{{notes.lk.menuOpen}}"><div class="notes-menu" role="dialog" aria-label="Note actions">
         <button onClick="{{notes.lk.pin}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.notesPin}}"></path></svg>{{notes.lk.pinLabel}}</button>
-        <button onClick="{{notes.lk.moveTo}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.notesFolder}}"></path></svg>Move to…</button>
+        <button onClick="{{notes.lk.moveTo}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.folder}}"></path></svg>Move to…</button>
         <hr>
         <button onClick="{{notes.lk.del}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.trash}}"></path></svg>Delete</button>
       </div></sc-if>
       <sc-if value="{{notes.lk.moveOpen}}"><div class="notes-menu" role="dialog" aria-label="Move to">
-        <sc-for list="{{notes.lk.moveRows}}" as="m"><button aria-pressed="{{m.checked}}" onClick="{{m.pick}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.notesFolder}}"></path></svg><span style="flex: 1 1 auto">{{m.name}}</span>{{m.mark}}</button></sc-for>
+        <sc-for list="{{notes.lk.moveRows}}" as="m"><button aria-pressed="{{m.checked}}" onClick="{{m.pick}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.folder}}"></path></svg><span style="flex: 1 1 auto">{{m.name}}</span>{{m.mark}}</button></sc-for>
       </div></sc-if>
       </div></sc-if>
     </div>
@@ -3980,7 +3981,6 @@
   <sc-if value="{{draftStatus}}"><div style="max-height:24dvh;overflow:auto;padding:6px 16px;background:var(--bg);color:var(--fg);border-radius:16px;font-size:12px"><p role="status" aria-label="Assistant draft status" style="margin:0">{{draftStatus}}</p><sc-if value="{{draftConflict}}"><p style="white-space:pre-wrap;max-height:80px;overflow:auto">Saved copy: {{draftSavedText}}</p><button onClick="{{restoreSavedDraft}}" style="min-height:44px;padding:8px">Restore saved draft</button><button onClick="{{keepCurrentDraft}}" style="min-height:44px;padding:8px">Replace saved draft with this text</button></sc-if><sc-if value="{{draftRetry}}"><button onClick="{{retryDraft}}" style="min-height:44px;padding:8px">Retry draft storage</button></sc-if><sc-if value="{{draftRecovery}}"><button onClick="{{recoverDraft}}" style="min-height:44px;padding:8px">Recover assistant draft</button></sc-if></div></sc-if>
   </sc-if>
   <sc-if value="{{inlineChatRecorder}}">
-    <sc-if value="{{chatRecorder.cloudDisclosure}}"><p class="alpha-voice-error" role="note">{{chatRecorder.cloudDisclosureText}}</p></sc-if>
     <sc-if value="{{chatRecorder.voiceDetails}}"><sc-if value="{{chatRecorder.errorDetail}}"><p class="alpha-voice-error">{{chatRecorder.errorDetail}}</p></sc-if></sc-if>
       <sc-if value="{{chatRecorder.recoveryLabel}}"><button data-alpha-voice-recovery class="tap alpha-voice-recovery" onClick="{{chatRecorder.recover}}">{{chatRecorder.recoveryLabel}}</button></sc-if>
     <sc-if value="{{chatRecorder.needsPlaybackUnlock}}"><button class="tap alpha-voice-unlock" onClick="{{chatRecorder.unlockPlayback}}">Enable sound</button></sc-if>

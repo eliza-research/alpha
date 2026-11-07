@@ -6,7 +6,7 @@ import { createCloudVoice } from './cloud-voice';
 import { selectVoiceRoute } from './voice-selection';
 import { browserDevProfile } from '../browser/dev-profile';
 import { developmentCloudVoiceEnabled } from './development-cloud-voice';
-import type { NoteRecorderDriver, NoteRecordingStatus, SavedNoteAudio, SegmentTranscriber } from '../prototype/note-recorder';
+import type { NoteRecorderDriver, NoteRecordingBinding, NoteRecordingStatus, SavedNoteAudio, SegmentTranscriber } from '../prototype/note-recorder';
 import type { TranscriptProvenance } from './voice-states';
 
 /**
@@ -14,7 +14,7 @@ import type { TranscriptProvenance } from './voice-states';
  * AlphaVoiceCloud plugin. No length limit: Stop, Discard, low storage or an error end it.
  */
 const native = registerPlugin<{
-  startNoteRecording(): Promise<NoteRecordingStatus>;
+  startNoteRecording(input: NoteRecordingBinding): Promise<NoteRecordingStatus>;
   noteRecordingStatus(): Promise<NoteRecordingStatus>;
   pauseNoteRecording(input: { recordingId: string }): Promise<NoteRecordingStatus>;
   resumeNoteRecording(input: { recordingId: string }): Promise<NoteRecordingStatus>;
@@ -27,7 +27,10 @@ const native = registerPlugin<{
 
 export function createNoteRecorderDriver(): NoteRecorderDriver {
   return {
-    start: () => native.startNoteRecording(),
+    start: binding => {
+      if (!binding) throw Error('Notes recording owner is unavailable');
+      return native.startNoteRecording(binding);
+    },
     status: () => native.noteRecordingStatus(),
     pause: recordingId => native.pauseNoteRecording({ recordingId }),
     resume: recordingId => native.resumeNoteRecording({ recordingId }),
@@ -48,8 +51,7 @@ const silence = (error: unknown) => (error as { code?: string })?.code === 'no-s
  * Null when no route is ready: the recording is then saved with its audio only. Throws
  * `sign-in` when the Cloud route has no signed-in account.
  */
-export async function noteSegmentTranscriber(signal: AbortSignal): Promise<{ transcribe: SegmentTranscriber; provenance: TranscriptProvenance } | null> {
-  const selected = selectVoiceRoute('default');
+export async function noteSegmentTranscriber(signal: AbortSignal, selected = selectVoiceRoute('default')): Promise<{ transcribe: SegmentTranscriber; provenance: TranscriptProvenance } | null> {
   const wrap = (run: (segmentId: string, signal: AbortSignal) => Promise<{ text: string }>): SegmentTranscriber => async (segmentId, owned) => {
     try { return (await run(segmentId, owned)).text; } catch (error) { if (silence(error)) return ''; throw error; }
   };
@@ -60,6 +62,7 @@ export async function noteSegmentTranscriber(signal: AbortSignal): Promise<{ tra
       provenance: { route: developmentCloudVoiceEnabled ? 'development-agent' : 'eliza-cloud' },
       transcribe: wrap(async (recordingId, owned) => {
         const requestId = crypto.randomUUID(), cancel = () => { void cloud.cancel({ requestId }).catch(() => {}); };
+        owned.throwIfAborted();
         owned.addEventListener('abort', cancel, { once: true });
         try { return await cloud.transcribeRecording({ recordingId, requestId }); } finally { owned.removeEventListener('abort', cancel); }
       }),

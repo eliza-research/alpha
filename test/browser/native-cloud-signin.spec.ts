@@ -214,19 +214,31 @@ test.describe('in-app Eliza Cloud sign-in on the production Android composition'
   await noHandOff(page);
  });
 
- test('a slow sign-in readiness check shows progress, prevents repeated taps and keeps own keys available',async({page})=>{
+ test('a slow sign-in readiness check keeps the screen white until the chooser is ready',async({page})=>{
+  await page.emulateMedia({reducedMotion:'no-preference'});
   await boot(page,{...await entitlements(),signIn:'readiness-hold'});
   await agent(page,'unavailable');
   const welcome=signInDialog(page);
   const google=welcome.getByRole('button',{name:'Continue with Google',exact:true});
-  await expect(google).toBeDisabled({timeout:2000});
-  await expect(welcome.getByText('Checking Eliza Cloud sign-in…',{exact:true})).toBeVisible();
+  await expect(welcome.getByRole('status',{name:'Loading Alpha',exact:true})).toBeVisible();
+  await expect(welcome).toHaveCSS('background-color','rgb(255, 255, 255)');
+  await expect(welcome.locator('.alpha-auth-mark')).toHaveCount(0);
+  await expect(welcome.getByRole('heading')).toHaveCount(0);
+  await expect(welcome.getByText(/Checking.*sign-in/)).toHaveCount(0);
+  await expect(google).toHaveCount(0);
+  await expect(welcome.getByRole('form',{name:'Sign in with email',exact:true})).toHaveCount(0);
   // The required page's own readiness check is not an attempt the owner started: nothing to go Back from.
   await expect(welcome.getByRole('button',{name:/^(Back|Cancel sign-in)$/})).toHaveCount(0);
-  // Own API keys never wait for the Cloud readiness check.
-  await expect(welcome.getByRole('button',{name:'Use my own API keys',exact:true})).toBeEnabled();
+  const ownKeys=welcome.getByRole('button',{name:'Use my own API keys',exact:true});
+  await expect(ownKeys).toHaveCount(0);
   // The check ends by itself (6 s cap): email stays usable in Alpha, and a late answer adopts Google.
   await expect(welcome.getByRole('button',{name:'Email me a code',exact:true})).toBeEnabled({timeout:10_000});
+  const heading=welcome.getByRole('heading',{name:'Welcome to Alpha.',exact:true});
+  await expect(heading.locator('..')).toHaveCSS('animation-name','alpha-auth-reveal');
+  await expect(welcome.locator('.alpha-auth-brand')).toHaveCSS('animation-name','alpha-auth-reveal');
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await expect(heading.locator('..')).toHaveCSS('animation-name','none');
+  await expect(ownKeys).toBeEnabled();
   await page.evaluate(()=>(window as any).signInFixture.releaseReadiness());
   await expect(google).toBeEnabled();
   expect((await calls(page)).filter(c=>c.method==='status'&&c.plugin==='AlphaCloudSignIn')).toHaveLength(1);
@@ -261,7 +273,7 @@ test.describe('in-app Eliza Cloud sign-in on the production Android composition'
    await boot(page,{...await entitlements(),signIn:mode});
    await agent(page,'unavailable');
    if(mode==='readiness-hold'){
-    await expect(page.getByText('Checking Eliza Cloud sign-in…',{exact:true})).toBeVisible();
+    await expect(page.getByRole('status',{name:'Loading Alpha',exact:true})).toBeVisible();
     await page.clock.runFor(6000);
    }
    await readySignIn(page);

@@ -359,7 +359,7 @@
            || !previous.optString("filter", "none").equals(filter))
          throw new IllegalArgumentException("This save identity already has a different edit");
        return result(token);
-@@ -329,6 +380,372 @@
+@@ -329,6 +380,419 @@
          bitmap.recycle();
      }
    }
@@ -422,7 +422,8 @@
 +   * private file, and only then copied over the original with a truncating write. Before that write
 +   * the original's bytes are kept in a private backup named in the journal; a write that fails is
 +   * undone from it, and a write that was interrupted (the process died) is settled from it by the
-+   * next {@link #result}: the edited bytes count as saved, anything else is restored. The backup
++   * next {@link #result}: the edited bytes count as saved, a partial prefix of this edit is restored,
++   * and other bytes are left alone for inspection. The backup
 +   * is removed only once the original holds either the edit or its own bytes again. JPEG capture
 +   * metadata is kept; orientation is normal because the rotation is in the pixels. The receipt is
 +   * {@code {status: "saved", id, replaced: true, revision?}} with the original's id and, once
@@ -482,12 +483,18 @@
 +      File kept = backup(token);
 +      writeDurably(snapshot, kept);
 +      snapshot = null;
++      File encoded = editBackup(token);
++      try (InputStream input = new FileInputStream(staged)) {
++        writeDurably(input, encoded);
++      }
 +      record.put("backup", kept.getName())
++          .put("editBackup", encoded.getName())
 +          .put("original", hex(s.digest))
 +          .put("edited", hex(fileDigest(staged)))
 +          .put("status", "writing");
 +      if (!journal.edit().putString(token, record.toString()).commit()) {
 +        kept.delete();
++        encoded.delete();
 +        throw new IOException("Save receipt could not be persisted");
 +      }
 +      Uri target = source(s.id);
@@ -503,8 +510,10 @@
 +      // The original is written; a receipt write failure must not turn that into a failure.
 +      // Without the receipt the backup stays, and the next result settles the edit as saved.
 +      record.put("status", "saved");
-+      if (journal.edit().putString(token, record.toString()).commit())
++      if (journal.edit().putString(token, record.toString()).commit()) {
 +        kept.delete();
++        encoded.delete();
++      }
 +      String revision = settled(s);
 +      if (revision != null) {
 +        record.put("revision", revision);
@@ -517,7 +526,9 @@
 +      // Before the original was opened for writing nothing was written to it.
 +      if (!opened && !"stale".equals(record.optString("status"))) {
 +        backup(token).delete();
++        editBackup(token).delete();
 +        record.remove("backup");
++        record.remove("editBackup");
 +        record.put("status", "failed");
 +        journal.edit().putString(token, record.toString()).commit();
 +      }
@@ -535,12 +546,23 @@
 +  private File backup(String token) {
 +    return new File(new File(context.getFilesDir(), "photo-replace-backups"), token + ".original");
 +  }
++  /** The exact encoded edit, retained so recovery can recognize its own interrupted write. */
++  private File editBackup(String token) {
++    return new File(new File(context.getFilesDir(), "photo-replace-backups"), token + ".edited");
++  }
 +  private static void writeDurably(byte[] bytes, File file) throws IOException {
++    try (InputStream input = new ByteArrayInputStream(bytes)) {
++      writeDurably(input, file);
++    }
++  }
++  private static void writeDurably(InputStream input, File file) throws IOException {
 +    File parent = file.getParentFile();
 +    if (parent != null && !parent.isDirectory() && !parent.mkdirs())
 +      throw new IOException("Original could not be kept");
 +    try (FileOutputStream output = new FileOutputStream(file)) {
-+      output.write(bytes);
++      byte[] chunk = new byte[65536];
++      int n;
++      while ((n = input.read(chunk)) != -1) output.write(chunk, 0, n);
 +      output.flush();
 +      output.getFD().sync();
 +    }
@@ -575,10 +597,10 @@
 +  }
 +  /**
 +   * Settles a Replace whose write did not finish, from the original's current bytes: the edit
-+   * counts as {@code saved}; the original's own bytes as {@code failed}; anything else (truncated
-+   * or half written) is overwritten from the backup and, once it reads back as the original, is
-+   * {@code failed}. Until then the record stays {@code writing} and the backup is kept. Returns the
-+   * settled status.
++   * counts as {@code saved}; the original's own bytes as {@code failed}. Only a prefix of the
++   * retained encoded edit can be restored automatically. Different bytes may be a later external
++   * edit and remain untouched. Old records without the encoded edit also remain unresolved.
++   * Until settled, the record stays {@code writing} and both private files are kept.
 +   */
 +  private String settleReplace(String token, JSONObject record) throws Exception {
 +    String name = record.optString("backup", "");
@@ -599,7 +621,15 @@
 +      status = "failed";
 +    else {
 +      try {
-+        copyOver(kept, source(id));
++        File encoded = editBackup(token);
++        if (!encoded.getName().equals(record.optString("editBackup")) || !encoded.isFile()
++            || !hex(fileDigest(encoded)).equals(record.optString("edited"))
++            || !hex(fileDigest(kept)).equals(record.optString("original")))
++          return "writing";
++        Uri target = source(id);
++        // A previous restore may itself have stopped after a prefix of the original.
++        if (!writtenPrefix(target, encoded) && !writtenPrefix(target, kept)) return "writing";
++        copyOver(kept, target);
 +        if (!hex(digest(id)).equals(record.optString("original")))
 +          return "writing";
 +      } catch (Exception notRestored) {
@@ -614,7 +644,24 @@
 +      return "writing";
 +    }
 +    kept.delete();
++    editBackup(token).delete();
 +    return status;
++  }
++  private boolean writtenPrefix(Uri target, File bytes) throws IOException {
++    try (InputStream current = resolver.openInputStream(target);
++        InputStream expected = new FileInputStream(bytes)) {
++      return current != null && writtenPrefix(current, expected);
++    }
++  }
++  /** An interrupted truncating write contains an exact prefix of the bytes this operation wrote. */
++  static boolean writtenPrefix(InputStream current, InputStream encoded) throws IOException {
++    BufferedInputStream actual = new BufferedInputStream(current);
++    BufferedInputStream expected = new BufferedInputStream(encoded);
++    int value;
++    while ((value = actual.read()) != -1) {
++      if (value != expected.read()) return false;
++    }
++    return true;
 +  }
 +  private JSObject replaceStale(String token, JSONObject record) throws Exception {
 +    record.put("status", "stale");

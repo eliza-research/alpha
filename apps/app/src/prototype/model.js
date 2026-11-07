@@ -1437,7 +1437,7 @@ registerView("calendar", {
       var alertLabel = ev.alert == null ? "" : (ev.alert === 0 ? "Alert at start" : (ev.alert >= 60 ? ev.alert / 60 + " hour before" : ev.alert + " min before"));
       D = {
         title: ev.title, when: calRange(ev.t, ev.d), day: calDayName(api, evDay) + (repeatLabel ? " · " + repeatLabel : ""),
-        dot: CAL_COLORS[c.color], calName: c.name,
+        dot: CAL_COLORS[c.color], calName: c.name, canModify: true,
         recurringReminder: false, reminderPolicy: "", reminderHistory: [], reminderDone: function () {}, reminderSnooze: function () {},
         hasWhere: !!ev.where, where: isPhone ? ((ev.who || [])[0] ? "Call " + calPerson(api, ev.who[0]).name.split(" ")[0] : "Phone call") : ev.where, whereIcon: isPhone ? IC.phone : IC.pin,
         goWhere: function () { if (isPhone) { if ((ev.who || [])[0]) api.open("phone", { call: ev.who[0] }); } else api.open("maps", { query: ev.where }); },
@@ -2850,7 +2850,6 @@ IC.notesPin = IC.notesPin || "M9 3h6l-1 6 4 4H6l4-4zM12 13v8";
 IC.notesList = IC.notesList || "M10 6h10M10 12h10M10 18h10M4 6l1.5 1.5L8 5M4 12l1.5 1.5L8 11M4 18l1.5 1.5L8 17";
 IC.notesBox = IC.notesBox || "M5 5h14v14H5z";
 IC.notesRecDot = IC.notesRecDot || "M12 7.5a4.5 4.5 0 1 1 0 9a4.5 4.5 0 1 1 0-9zM12 10a2 2 0 1 1 0 4a2 2 0 1 1 0-4z";
-IC.notesFolder = IC.notesFolder || "M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z";
 IC.notesWave = IC.notesWave || "M3 12h2M7 8v8M11 5v14M15 9v6M19 11v2M21 12h0";
 var NOTES_RED = "var(--alpha-notes-red)";
 
@@ -5509,7 +5508,7 @@ class Component extends DCLogic {
     var msgs = S.msgs.map(function (m) {
       var c = m.card || {}; var t = c.type;
       return {
-        id: m.id, text: m.text, displayText: m.text, hasCalendarText: true, calendarReviews: [], isUser: m.from === "user", isAgent: m.from === "agent", c: c,
+        id: m.id, text: m.text, displayText: m.from === "agent" && typeof m.displayText === "string" ? m.displayText : m.text, hasCalendarText: true, calendarReviews: [], isUser: m.from === "user", isAgent: m.from === "agent", c: c,
         cAgenda: t === "agenda", cEvent: t === "event", cDigest: t === "digest", cNote: t === "note", cFlow: t === "flow", cSummary: t === "summary", cDraft: t === "draft", cCall: t === "call", cGeneric: t === "generic",
         gIcon: IC[c.icon] || IC.spark, evIcon: c.act && !c.done ? IC.plus : IC.check, callIni: c.ini || ((c.who || "").split(" ").map(function (w) { return w.charAt(0); }).join("").slice(0, 2)),
         sumSave: t === "summary" && !c.done && !!c.act, sumOpen: t === "summary" && !c.act && !!c.go,

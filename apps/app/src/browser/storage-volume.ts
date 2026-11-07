@@ -261,7 +261,15 @@ export class BrowserStorageVolume {
   }
   async volume() {
     let free = 0, total = 0;
-    try { const estimate = await navigator.storage?.estimate?.(); total = estimate?.quota ?? 0; free = Math.max(0, total - (estimate?.usage ?? 0)); } catch { /* Free space is then not shown. */ }
+    try {
+      const estimate = await navigator.storage?.estimate?.();
+      const quota = estimate?.quota, usage = estimate?.usage;
+      if (typeof quota === 'number' && Number.isFinite(quota) && quota > 0 &&
+          typeof usage === 'number' && Number.isFinite(usage) && usage >= 0 && usage <= quota) {
+        total = quota;
+        free = total - usage;
+      }
+    } catch { /* Free space is then not shown. */ }
     return {id: 'primary', name: 'Internal storage', primary: true, free, total};
   }
 

@@ -42,6 +42,21 @@ async function fresh(){
 async function idOf(lib,path){let id='root';for(const part of path.split('/')){id=(await lib.list({id})).entries.find(e=>e.name===part).id;}return id;}
 const names=async(v,path)=>(await v.list(path)).entries.map(e=>e.name).sort();
 
+test('volume free space requires a finite, nonnegative and internally consistent estimate', async t => {
+ const descriptor=Object.getOwnPropertyDescriptor(globalThis,'navigator');
+ let estimate;
+ Object.defineProperty(globalThis,'navigator',{configurable:true,value:{storage:{estimate:async()=>estimate}}});
+ t.after(()=>{if(descriptor)Object.defineProperty(globalThis,'navigator',descriptor);else delete globalThis.navigator;});
+ const v=await fresh();
+ estimate={usage:1024,quota:4096};
+ assert.deepEqual(await v.volume(),{id:'primary',name:'Internal storage',primary:true,free:3072,total:4096});
+ for(const invalid of [undefined,{}, {usage:-1,quota:4096},{usage:Infinity,quota:4096},
+   {usage:1024,quota:Infinity},{usage:4097,quota:4096},{usage:0,quota:-1},{usage:0,quota:0}]){
+  estimate=invalid;
+  assert.deepEqual(await v.volume(),{id:'primary',name:'Internal storage',primary:true,free:0,total:0});
+ }
+});
+
 test('categories are queries over storage: a camera photo is never in Downloads (CategoryIsQuery)',async()=>{
  const v=await fresh();
  await v.add('DCIM/Camera','IMG_1.jpg');await v.add('Download','bank.pdf');await v.add('Documents','notes.txt');await v.add('Recordings','memo.m4a');await v.add('Movies','clip.mp4');await v.add('Download','photo.png');

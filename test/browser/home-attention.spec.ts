@@ -21,8 +21,8 @@ test('a failed calendar read shows the retry state instead of neutral copy, then
   // about a device-calendar read failure, so it chooses the test-mocks browser calendar first.
   await openBrowserCalendar(page);
   await returnToApps(page);
-  const card = page.locator('[data-alpha-layer="home"] .scr > button').first();
-  await expect(card).toContainText('No upcoming events');
+  const card = page.locator('[data-alpha-home-calendar]');
+  await expect(card).toHaveCount(0);
   await page.evaluate(async () => {
     const { BrowserCalendar } = await import('/src/browser/calendar.ts');
     const proto = BrowserCalendar.prototype as any;
@@ -38,13 +38,13 @@ test('a failed calendar read shows the retry state instead of neutral copy, then
     (BrowserCalendar.prototype as any).list = (window as any).__calendarList;
     window.dispatchEvent(new Event('alpha:calendar-preferences'));
   });
-  await expect(card).toContainText('No upcoming events');
+  await expect(card).toHaveCount(0);
 });
 
 test('a failed Agent Calendar read shows the retry state and recovers only after retry', async ({ page }) => {
   await page.goto('/');await installHomeCalendar(page);
   const card = page.locator('[data-alpha-home-calendar]');
-  await expect(card).toContainText('Nothing planned');
+  await expect(card).toHaveCount(0);
   await refreshHomeCalendar(page,{fail:true});
   await expect(card).toHaveAttribute('aria-label', 'Open Agent Calendar');
   await expect(card).toContainText('Calendar unavailable');
@@ -58,7 +58,7 @@ test('a failed Agent Calendar read shows the retry state and recovers only after
   await expect(page.locator('html')).toHaveAttribute('data-active-view','calendar');
   await expect.poll(()=>page.evaluate(()=>(window as any).homeCalendarFixture.requests.length)).toBeGreaterThan(before);
   await returnToApps(page);
-  await expect(card).toContainText('Nothing planned');
+  await expect(card).toHaveCount(0);
 });
 
 // A retained brief sits beside the attention items without replacing them; a record of an

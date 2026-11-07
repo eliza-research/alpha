@@ -45,7 +45,7 @@ async function nativeStub(page: Page, stub: Stub) {
 const calls = (page: Page, plugin: string, method: string) => page.evaluate(([plugin, method]) => (window as any).nativeCalls.filter((c: any) => c.plugin === plugin && c.method === method).map((c: any) => c.options ?? null), [plugin, method]);
 const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
 
-test('the launcher drawer lists installed apps with icons, launches by package and opens the dialer', async ({ page }, info) => {
+test('Apps lists Android entries with icons and launches by package', async ({ page }, info) => {
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
   await nativeStub(page, {
     apps: [
@@ -66,19 +66,17 @@ test('the launcher drawer lists installed apps with icons, launches by package a
   await expect(drawer.getByRole('button', { name: 'Open Bad icon', exact: true })).toHaveCount(0);
   await expect(drawer.getByRole('button', { name: 'Open Settings duplicate', exact: true })).toHaveCount(0);
   // Installed apps only, without a count; Alpha's views are on Home.
-  await expect.poll(() => drawer.locator('[data-launcher-app] > button').evaluateAll(nodes => nodes.map(node => node.getAttribute('aria-label')))).toEqual(['Open Broken app', 'Open Phone (Phone by Example)', 'Open Settings']);
+  await expect.poll(() => drawer.locator('[data-launcher-app] > button').evaluateAll(nodes => nodes.map(node => node.getAttribute('aria-label')))).toEqual(['Open Broken app', 'Open Settings']);
   await expect(drawer.getByText(/\d+ apps?$/)).toHaveCount(0);
   await expect(drawer.getByRole('button', { name: 'Open Settings', exact: true }).locator('img')).toHaveAttribute('src', PNG);
 
-  // The Phone shortcut is the resolved ACTION_DIAL handler, opened in two taps from Home.
-  const phone = drawer.getByRole('button', { name: 'Open Phone (Phone by Example)', exact: true });
-  await expect(phone).toBeVisible();
-  await phone.click();
-  expect(await calls(page, 'ElizaSystem', 'openDefaultApp')).toEqual([{ role: 'dial' }]);
+  // Only Android's installed inventory appears, even when a default dialer was resolved.
+  await expect(drawer.getByRole('button', { name: /^Open Phone/ })).toHaveCount(0);
+  await expect(drawer.getByRole('button', { name: 'Open Calendar', exact: true })).toHaveCount(0);
+  expect(await calls(page, 'ElizaSystem', 'openDefaultApp')).toEqual([]);
 
   // Search, then launch by package name only.
   await drawer.getByRole('searchbox', { name: 'Search apps', exact: true }).fill('sett');
-  await expect(phone).toHaveCount(0);
   await drawer.getByRole('button', { name: 'Open Settings', exact: true }).click();
   await expect.poll(() => calls(page, 'ElizaSystem', 'launchApp')).toEqual([{ packageName: 'com.android.settings' }]);
 
@@ -99,6 +97,8 @@ test('an empty installed-app list says so and offers no Phone shortcut without a
   await expect(drawer.getByText('No apps', { exact: true })).toBeVisible();
   await expect(drawer.getByRole('button', { name: 'Open Calendar', exact: true })).toHaveCount(0);
   await expect(drawer.getByRole('button', { name: /^Open Phone/ })).toHaveCount(0);
+  await drawer.getByRole('button', { name: 'Close apps', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Calendar', exact: true })).toBeVisible();
 });
 
 test('typing a search while the installed-app list is still loading still shows the results', async ({ page }) => {
@@ -132,7 +132,7 @@ test('required denied notification remains pending after cold start without repe
  await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Set up Alpha access',exact:true}).click();
  await expect(panel.getByRole('button',{name:'Open Android settings',exact:true})).toBeVisible();
  expect(await calls(page,'DailyApps','requestPermissions')).toEqual([]);
- expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('alpha:startup-permission-walkthrough:v1')!))).toEqual({version:3,status:'pending',step:0});
+ expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('alpha:startup-permission-walkthrough:v1')!))).toEqual({version:4,status:'pending',step:0});
 });
 
 test('an Activity opened with the alpha.assistant extra renders chat and Close only', async ({ page }) => {

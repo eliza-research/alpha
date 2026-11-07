@@ -81,7 +81,7 @@ test('every subview of a retained view is opened by a state that asserts it is t
 });
 
 test('the sweep applies every dimension and cannot be narrowed silently', () => {
-  assert.match(sweep, /const STATES = \[\.\.\.LIVE_STATES, \.\.\.DEVELOPMENT_STATES, \.\.\.MOCK_STATES, \.\.\.CONNECTED_STATES, \.\.\.FAILURE_STATES\];/);
+  assert.match(sweep, /const STATES = \[\.\.\.LIVE_STATES, \.\.\.BROWSER_APP_STATES, \.\.\.DEVELOPMENT_STATES, \.\.\.MOCK_STATES, \.\.\.CONNECTED_STATES, \.\.\.FAILURE_STATES\];/);
   assert.match(sweep, /for \(const theme of \['light', 'dark'\] as const\)/);
   assert.match(sweep, /auditTree\(page\)/);
   // Round 10: every lane also applies the dock and toast rules (nothing on Home under the
@@ -113,7 +113,7 @@ test('the sweep applies every dimension and cannot be narrowed silently', () => 
     assert.ok(states.includes(name), `${name} is swept`);
   // Above 200%: the largest in-app size with the largest system font (300%), over every live and
   // launcher state, with the clipping, overlap, dock, name, tab-order and reading-order rules.
-  assert.match(sweep, /for \(const state of \[\.\.\.LIVE_STATES, \.\.\.LAUNCHER_STATES\]\) \{\s*test\(`300% text[\s\S]{0,400}setTextScale\(page, 3\);\s*const found = blocking\(format\(\[\.\.\.await auditPage\(page, \{ clipping: true, overlap: true, dock: true \}\), \.\.\.await auditTree\(page\), \.\.\.await auditTabOrder\(page\), \.\.\.await auditReadingOrder\(page\)\]\)\);/);
+  assert.match(sweep, /for \(const state of \[\.\.\.LIVE_STATES, \.\.\.BROWSER_APP_STATES, \.\.\.LAUNCHER_STATES\]\) \{\s*test\(`300% text[\s\S]{0,400}setTextScale\(page, 3\);\s*const found = blocking\(format\(\[\.\.\.await auditPage\(page, \{ clipping: true, overlap: true, dock: true \}\), \.\.\.await auditTree\(page\), \.\.\.await auditTabOrder\(page\), \.\.\.await auditReadingOrder\(page\)\]\)\);/);
   // The 300% defects open when the lane was added (#701) run as expected failures; the list only shrinks.
   const open300 = sweep.match(/const OPEN_AT_300 = new Set\(\[([^\]]*)\]\);/)?.[1];
   assert.ok(open300 !== undefined, 'the open 300% defects are listed in one place');
@@ -130,7 +130,8 @@ test('the sweep applies every dimension and cannot be narrowed silently', () => 
   assert.doesNotMatch(sweep, /test\.skip|test\.fixme|\.only\(/);
   assert.doesNotMatch(production, /test\.skip|test\.fixme|\.only\(/);
   assert.doesNotMatch(states, /fixme|largeTextOpen/);
-  assert.match(production, /for \(const state of LIVE_STATES\)/);
+  assert.match(production, /const STATES = \[\.\.\.LIVE_STATES, PRODUCTION_APPS_STATE\];/);
+  assert.match(production, /for \(const state of STATES\)/);
   assert.match(production, /auditPage\(page, \{ contrast: true, targetSize: 24, clipping: true, overlap: true, dock: true \}\)/);
 });
 

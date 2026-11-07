@@ -1,3 +1,4 @@
+import {openCameraTools} from './camera-tools';
 import {test,expect} from '@playwright/test';
 // Runs in the `production` project: a flag-off build without mocks, fixtures or the
 // browser development profile. A synthetic canvas stream stands in for the camera

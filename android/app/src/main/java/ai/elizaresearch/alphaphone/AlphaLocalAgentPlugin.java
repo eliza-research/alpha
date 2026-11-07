@@ -18,6 +18,26 @@ import org.json.JSONObject;
 /** First-party local runtime bridge. Runtime and owner bearer tokens stay native. */
 @CapacitorPlugin(name="Agent")
 public final class AlphaLocalAgentPlugin extends Plugin {
+
+/** Content-free classification of one failed attach. Never stores exception text. */
+private static final class ResidentAttachDiagnostic {
+  enum Stage { TOKEN, STATUS, ENROLLMENT }
+  Stage stage = Stage.TOKEN;
+  private int status;
+
+  void response(int value) { status = value >= 100 && value <= 599 ? value : 0; }
+
+  String failure(Throwable error) {
+    String kind = error instanceof java.net.SocketTimeoutException ? "SocketTimeoutException"
+      : error instanceof java.io.IOException ? "IOException"
+      : error instanceof SecurityException ? "SecurityException"
+      : error instanceof IllegalStateException ? "IllegalStateException"
+      : error instanceof org.json.JSONException ? "JSONException" : "Exception";
+    return "category=resident-attach method=GET stage=" + stage.name().toLowerCase(java.util.Locale.ROOT)
+      + " status=" + status + " errorClass=" + kind;
+  }
+}
+
  private final ExecutorService workers=Executors.newFixedThreadPool(2);
  private final ExecutorService voiceWorkers=new java.util.concurrent.ThreadPoolExecutor(1,1,0L,java.util.concurrent.TimeUnit.MILLISECONDS,new java.util.concurrent.SynchronousQueue<>());
  private final ExecutorService rendererWorkers=new java.util.concurrent.ThreadPoolExecutor(1,1,0L,java.util.concurrent.TimeUnit.MILLISECONDS,new java.util.concurrent.SynchronousQueue<>());
@@ -38,6 +58,8 @@ public final class AlphaLocalAgentPlugin extends Plugin {
  private final CredentialRequestFence providerConfigurations=new CredentialRequestFence(lifecycleLock,credentialIntents);
  private static long powerAuthorizationMutationEpoch;
  static long credentialAuthorityEpoch(){synchronized(lifecycleLock){return powerAuthorizationMutationEpoch;}}
+ /** Compound credential-slot operations must enter before acquiring the vault lock. */
+ static Object credentialLifecycleLock(){return lifecycleLock;}
  /** Revalidate an async operation against semantic credential changes, using the existing lock order. */
  static <T> T withCredentialAuthority(long owner,java.util.concurrent.Callable<T> action)throws Exception{
   synchronized(lifecycleLock){
@@ -612,15 +634,18 @@ public final class AlphaLocalAgentPlugin extends Plugin {
    epoch=admitted;
    if(attached){
     PluginWorkers.submit(workers,()->{
+     ResidentAttachDiagnostic diagnostic=new ResidentAttachDiagnostic();
      try{
       String root=ElizaAgentService.localAgentToken();if(root==null||root.isEmpty())throw new IllegalStateException();
-      authenticatedStatus(epoch,root);
+      diagnostic.stage=ResidentAttachDiagnostic.Stage.STATUS;
+      authenticatedStatus(epoch,root,diagnostic::response);
+      diagnostic.stage=ResidentAttachDiagnostic.Stage.ENROLLMENT;
       // Attach never pairs: the enrollment it was admitted against must still be the current one.
       synchronized(lifecycleLock){requireCurrent(epoch);if(!root.equals(rootToken)||ownerToken==null)throw new IllegalStateException();}
       resolveCurrent(call,epoch,new JSObject().put("state","ready").put("attached",true));
      }
      catch(Superseded stale){rejectSuperseded(call);}
-     catch(Exception unverified){synchronized(lifecycleLock){attachUnverified=true;}rejectPending(call,"The running local agent did not answer. Start again to restart it; no chat was sent.");}
+     catch(Exception unverified){android.util.Log.w("AlphaAgentRequest",diagnostic.failure(unverified));synchronized(lifecycleLock){attachUnverified=true;}rejectPending(call,"The running local agent did not answer. Start again to restart it; no chat was sent.");}
     },()->rejectPending(call,"Local agent bridge is closed."));
     return;
    }
@@ -897,8 +922,10 @@ public final class AlphaLocalAgentPlugin extends Plugin {
   if(body!=null)input.put("body",body);
   return new JSONObject(ElizaAgentService.requestLocalAgent(input.toString()));
  }
- private static JSONObject json(String path,String method,JSONObject body,String token) throws Exception {
+ private static JSONObject json(String path,String method,JSONObject body,String token) throws Exception {return json(path,method,body,token,status->{});}
+ private static JSONObject json(String path,String method,JSONObject body,String token,java.util.function.IntConsumer observedStatus) throws Exception {
   JSONObject response=raw(path,method,body==null?null:body.toString(),token,null,120000);
+  observedStatus.accept(response.getInt("status"));
   if(response.getInt("status")!=200)throw new IllegalStateException("Local enrollment unavailable");
   return new JSONObject(response.getString("body"));
  }
@@ -906,13 +933,15 @@ public final class AlphaLocalAgentPlugin extends Plugin {
   requireCurrent(epoch);
   if(root==null||root.isEmpty()||!root.equals(ElizaAgentService.localAgentToken()))throw new IllegalStateException("Local runtime token changed");
  }
- private JSONObject enrollmentJson(long epoch,String path,String method,JSONObject body,String token,String root) throws Exception {
+ private JSONObject enrollmentJson(long epoch,String path,String method,JSONObject body,String token,String root) throws Exception {return enrollmentJson(epoch,path,method,body,token,root,status->{});}
+ private JSONObject enrollmentJson(long epoch,String path,String method,JSONObject body,String token,String root,java.util.function.IntConsumer observedStatus) throws Exception {
   requireEnrollmentRoot(epoch,root);
   // Admission precedes dispatch. In-flight native requests are not claimed cancelled.
-  JSONObject result=json(path,method,body,token);requireEnrollmentRoot(epoch,root);return result;
+  JSONObject result=json(path,method,body,token,observedStatus);requireEnrollmentRoot(epoch,root);return result;
  }
- private JSONObject authenticatedStatus(long epoch,String root) throws Exception {
-  JSONObject status=enrollmentJson(epoch,"/api/auth/status","GET",null,root,root);
+ private JSONObject authenticatedStatus(long epoch,String root) throws Exception {return authenticatedStatus(epoch,root,status->{});}
+ private JSONObject authenticatedStatus(long epoch,String root,java.util.function.IntConsumer observedStatus) throws Exception {
+  JSONObject status=enrollmentJson(epoch,"/api/auth/status","GET",null,root,root,observedStatus);
   if(!Boolean.TRUE.equals(status.opt("authenticated")))throw new IllegalStateException("Local runtime token not authenticated");
   if(status.getString("instanceId").isEmpty())throw new IllegalStateException("Local runtime instance unavailable");
   return status;

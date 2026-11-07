@@ -157,10 +157,11 @@ export class CanonicalNotesUi {
   * A finished Notes recording as an agent voice note: its transcript and length, in the selected
   * folder. Agent notes keep no audio (as dictation), so the recording itself is not stored.
   */
- async saveVoice(transcript:string,durationMs:number,folderId:string|null):Promise<boolean>{
+ async saveVoice(transcript:string,durationMs:number,folderId:string|null,current:()=>boolean):Promise<boolean>{
   try{
-   if(!await this.leave(null))return false;
+   if(!current()||!await this.leave(null))return false;
    if(this.controller.revision===null)await this.controller.refresh();
+   if(!current())return false;
    this.editor.begin('voice');
    const data:Record<string,NoteJson>={lines:transcript?[{s:'me',at:0,t:transcript}]:[],summary:[],actions:[],dur:Math.round(durationMs)/1000,...(folderId?{folderId}:{})};
    this.editor.edit({title:'Voice note',body:transcript,format:parseNoteFormat({kind:'voice',data})});

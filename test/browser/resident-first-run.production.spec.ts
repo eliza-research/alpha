@@ -20,22 +20,23 @@ async function firstRun(page: Page, overrides: Partial<StubAccount> = {}, ownedL
   // synthetic native status; the product must read it back before advancing. No UI completion seed.
   await page.addInitScript(() => {
     const w=window as any, previous=w.Capacitor.nativePromise;
-    const state:Record<string,boolean>={notifications:false,microphone:false,camera:false,location:false,calendar:false,photos:false};
+    const state:Record<string,boolean>={notifications:false,microphone:false,camera:false,location:false,calendar:false,photos:false,files:false};
     w.firstRunAccess={requests:[] as string[]};
-    const ports:Record<string,string[]>={DailyApps:['checkPermissions','requestPermissions'],AlphaVoiceCloud:['checkPermissions','requestPermissions'],ElizaLocation:['checkPermissions','requestPermissions'],AlphaCalendar:['checkPermissions','requestAccess'],AlphaPhotoLibrary:['scope','requestAccess']};
+    const ports:Record<string,string[]>={DailyApps:['checkPermissions','requestPermissions'],AlphaVoiceCloud:['checkPermissions','requestPermissions'],ElizaLocation:['checkPermissions','requestPermissions'],AlphaCalendar:['checkPermissions','requestAccess'],AlphaPhotoLibrary:['scope','requestAccess'],AlphaFiles:['storageState','storageRequestAccess']};
     for(const [name,methods] of Object.entries(ports)) {
       let header=w.Capacitor.PluginHeaders.find((row:any)=>row.name===name);
       if(!header)w.Capacitor.PluginHeaders.push(header={name,methods:[]});
       for(const method of methods)if(!header.methods.some((row:any)=>row.name===method))header.methods.push({name:method,rtype:'promise'});
     }
     w.Capacitor.nativePromise=async(plugin:string,method:string,input:any)=>{
-      const key=plugin==='AlphaNotifications'?'notifications':plugin==='AlphaVoiceCloud'?'microphone':plugin==='DailyApps'?'camera':plugin==='ElizaLocation'?'location':plugin==='AlphaCalendar'?'calendar':plugin==='AlphaPhotoLibrary'?'photos':null;
-      if(key && (method==='requestPermissions'||method==='requestAccess')){
+      const key=plugin==='AlphaNotifications'?'notifications':plugin==='AlphaVoiceCloud'?'microphone':plugin==='DailyApps'?'camera':plugin==='ElizaLocation'?'location':plugin==='AlphaCalendar'?'calendar':plugin==='AlphaPhotoLibrary'?'photos':plugin==='AlphaFiles'?'files':null;
+      if(key && (method==='requestPermissions'||method==='requestAccess'||method==='storageRequestAccess')){
         const requested=plugin==='DailyApps'?input.permissions[0]:key;
         if(!(requested in state))throw Error('Unexpected startup permission');
         w.firstRunAccess.requests.push(requested);state[requested]=true;return {};
       }
       if(plugin==='AlphaNotifications'&&method==='status')return {permissionGranted:state.notifications,appEnabled:state.notifications};
+      if(plugin==='AlphaFiles'&&method==='storageState')return {status:'ready',access:state.files?'granted':'denied',volumes:[]};
       if(plugin==='AlphaPhotoLibrary'&&method==='scope')return {scope:state.photos?'selected':'denied',locked:false};
       if(key&&method==='checkPermissions')return key==='location'?{location:state.location?'granted':'prompt',accuracy:state.location?'approximate':'none'}:{[key]:state[key]?'granted':'prompt'};
       return previous(plugin,method,input);
@@ -130,13 +131,13 @@ test('first run: native email sign-in, credits, provider binding, then the resid
   const access=page.locator('dialog.alpha-startup-permissions');
   await expect(access).toBeVisible();
   expect(await page.evaluate(()=>(window as any).firstRunAccess.requests)).toEqual([]);
-  for(const name of ['Notifications','Microphone','Camera','Location','Calendar','Photos']) {
+  for(const name of ['Notifications','Microphone','Camera','Location','Calendar','Photos','Files']) {
     await expect(access.getByRole('heading',{name,exact:true})).toBeVisible();
     await expect(access.getByRole('button',{name:/Skip|Not now|Back/})).toHaveCount(0);
     await access.getByRole('button',{name:'Allow',exact:true}).click();
   }
   await expect(access.getByRole('heading',{name:'You’re all set',exact:true})).toBeVisible();
-  expect(await page.evaluate(()=>(window as any).firstRunAccess.requests)).toEqual(['notifications','microphone','camera','location','calendar','photos']);
+  expect(await page.evaluate(()=>(window as any).firstRunAccess.requests)).toEqual(['notifications','microphone','camera','location','calendar','photos','files']);
   await access.getByRole('button',{name:'Go to Alpha',exact:true}).click();
   await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 30_000 });
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));

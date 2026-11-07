@@ -5,6 +5,29 @@ Owner preparation for [issue #662](https://github.com/eliza-research/alphaphone/
 build host. It records no result. Everything it produces is **APK-build evidence only**: not an
 emulator HOME-role test, an image boot, a device result or user acceptance.
 
+## Protected app-keystore proof
+
+`release-app-signing.yml` exercises the existing protected PKCS#12 app keystore
+using two code-free APK fixtures with dedicated non-Alpha package IDs. Dispatch on
+canonical `main` with the reviewed `source_commit` and SHA-256 of
+`scripts/ci/build-app-signing-fixtures.py` as `fixture_generator_sha256`. Review the
+exact workflow and source commit shown in the run name before approving `release`.
+The job accepts no external artifact and exports only the source, certificate and
+fixture byte digests. Production APK signing from a trusted build, full signed
+verification on the staged build tree, and approval for distribution are separate.
+
+This workflow enrolls only the existing application certificate. It does not change
+OS signing keys, OTA trust, `lastRelease`, or voice qualification. The `release`
+environment must retain its main-only policy, independent reviewer, blocked
+self-review and disabled administrator bypass. No secrets are needed for the
+source checks or ordinary pull-request CI.
+
+Before preparing a product APK, run `npm run android:build:inputs` against the
+selected source. The native voice record and staged bytes must match that SDK pin,
+with the required qualification recorded; the Cloud lab profile does not satisfy
+the production verifier's packaged, qualified native-voice requirement. A successful
+closed-fixture proof cannot change that result.
+
 ## Read-only state on 2026-10-28 (main 94676c82, Eliza pin 1f2a922f)
 
 ### The pin contains the merged cycle-1 upstream branches

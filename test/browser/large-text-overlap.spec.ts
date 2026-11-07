@@ -183,11 +183,17 @@ test('Files locations, share targets and avatar initials keep whole words at 200
   await setTextScale(page, 2);
   let found = blocking(format(await auditPage(page, { clipping: true, overlap: true })));
   expect(found, found.join('\n')).toEqual([]);
-  // At 200% a location tile takes the whole row; at the default size two share it.
-  const tiles = () => page.getByRole('button', { name: /^(Downloads|Documents)$/ }).evaluateAll(list => list.map(element => Math.round(element.getBoundingClientRect().top)));
-  await expect.poll(async () => new Set(await tiles()).size).toBe(2);
-  await setTextScale(page, 1);
-  await expect.poll(async () => new Set(await tiles()).size).toBe(1);
+  // Browse keeps one category per row at either scale, with each label inside its row.
+  for (const scale of [2, 1]) {
+    await setTextScale(page, scale);
+    const labels = await textBoxes(page, '[data-alpha-app-scroll="files"] button[aria-label="Downloads"], [data-alpha-app-scroll="files"] button[aria-label="Documents"]');
+    expect(labels).toHaveLength(2);
+    expect(new Set(labels.map(label => Math.round(label.own.top))).size).toBe(2);
+    for (const label of labels) for (const line of label.lines) {
+      expect(line.left).toBeGreaterThanOrEqual(label.own.left - 1);
+      expect(line.right).toBeLessThanOrEqual(label.own.right + 1);
+    }
+  }
 
   for (const start of ['calendar:event', 'photos:viewer']) {
     await page.goto(`/?mode=mock&start=${start}`);

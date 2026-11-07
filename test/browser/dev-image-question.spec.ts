@@ -1,3 +1,4 @@
+import {openCameraTools} from './camera-tools';
 import {test,expect} from '@playwright/test';
 test('camera question uses an unsaved frame and releases review on cancel',async({page})=>{
  await page.addInitScript(()=>{const canvas=document.createElement('canvas');canvas.width=320;canvas.height=240;const context=canvas.getContext('2d')!;const paint=()=>{context.fillStyle='white';context.fillRect(0,0,320,240);context.fillStyle='black';context.font='36px sans-serif';context.fillText('ALPHA',30,100);};paint();setInterval(paint,50);const devices=navigator.mediaDevices;devices.getUserMedia=async()=>canvas.captureStream(20);Object.defineProperty(navigator,'mediaDevices',{configurable:true,value:devices});});

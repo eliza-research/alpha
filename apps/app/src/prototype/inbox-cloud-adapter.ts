@@ -15,7 +15,7 @@ import { registerPlugin } from '../platform-plugins';
 const attachmentNative=registerPlugin<{openReviewed(input:Record<string,unknown>):Promise<{message:string}>;saveReviewed(input:Record<string,unknown>):Promise<{status:string;message:string}>;cancel():Promise<void>}>('AlphaMailAttachments');
 import {reviewMailContext,validateMailContext,type ReviewedMailContext,type MailContextSource} from '../runtime/reviewed-mail-context';
 import { inboxProviderControls } from './inbox-provider-controls';
-import { presentHomeInboxCard } from './home-cards';
+import { homeReadIsStale, presentHomeInboxCard } from './home-cards';
 import { inboxDrafts, type ComposePrefill } from './inbox-drafts';
 import { attachmentReadFailure, classifyGmailFailure, gmailReadable, MailReadStateGuard, mailReadStateMessage, GMAIL_ACCOUNTS_CHANGED, type GmailFailureKind } from '../runtime/gmail-mailbox';
 import { connectionController, agentPendingText } from '../runtime/connection-ui';
@@ -671,16 +671,19 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
     // The shared Home mail card from the page the user loaded in Inbox: account and read time, never a body.
     // A page dropped since (an account change or disconnect elsewhere) after a real read says when it last
     // updated, with the last count only in the accessible name.
-    const card=presentHomeInboxCard({now:Date.now(),pending,connected,disconnected,unchecked:!!binding&&!accountsChecked,
+    const now=Date.now();
+    const card=presentHomeInboxCard({now,pending,connected,disconnected,unchecked:!!binding&&!accountsChecked,
       loaded:cached?{unread:cached.messages.filter(m=>m.unread),more:cached.more,label:accounts.find(a=>a.connectionId===selected)?.label||restored?.label||'',readAt:cached.readAt}:null,
       failure:homeFailure?homeFailure==='revoked'?'revoked':'error':null,
       stale:binding&&attention.state==='stale'?{state:'stale',unread:attention.unread,...(attention.source?{source:attention.source}:{}),updatedAt:attention.updatedAt}:null});
     // Until a page is loaded the card shows only "Inbox". Its name keeps that word and says where it
     // opens: a bare "Inbox" is the Inbox app tile's name. A resolved startup with no email set up is not
     // unknown: it uses the shared "Connect email" card (docs/daily-overview.md), which opens Connections.
-    if(!cached&&!disconnected&&(pending||!binding||!accountsChecked||homeFailure))return {...out,homeAttentionLabel:out.homeAttentionAction==='connections'?'Inbox: set up email in Connections':'Open Inbox',homeInboxCount:'',homeInboxRows:[],homeInboxHasRows:false,homeInboxTitle:'Inbox',homeInboxStatus:'',homeInboxDescription:'',homeInboxState:'pending'};
+    if(!cached&&!disconnected&&(pending||!binding||!accountsChecked||homeFailure))return {...out,homeAttentionLabel:out.homeAttentionAction==='connections'?'Inbox: set up email in Connections':'Open Inbox',homeInboxCount:'',homeInboxRows:[],homeInboxHasRows:false,homeInboxTitle:'Inbox',homeInboxStatus:'',homeInboxDescription:'',homeInboxState:'pending',homeInboxConfirmedEmpty:false};
     return {...out,homeAttentionLabel:card.label,homeInboxCount:card.count,homeInboxRows:card.rows.map(row=>({subject:row.title,from:row.detail})),homeInboxHasRows:card.rows.length>0,
-      homeInboxTitle:card.title,homeInboxStatus:card.status,homeInboxDescription:card.description,homeInboxState:card.state};
+      homeInboxTitle:card.title,homeInboxStatus:card.status,homeInboxDescription:card.description,homeInboxState:card.state,
+      homeInboxConfirmedEmpty:card.state==='ready'&&accountsChecked&&connected&&cached?.more===false&&!card.rows.length
+        &&cached.readAt!=null&&cached.readAt>0&&cached.readAt<=now&&!homeReadIsStale(cached.readAt,now)};
   };
   // Mail content is never sent to the agent automatically, so chips ask only for help the agent can give.
   // Sharing one message goes through the explicit "Review email with agent" review.

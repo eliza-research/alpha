@@ -19,14 +19,16 @@
  * This module has no imports so its logic runs under `node --test`.
  */
 export type NoteSegment = { segmentId: string; durationMs: number; text?: string };
+export type NoteRecordingBinding = { ownerDigest: string; folderId: string | null };
 export type NoteRecordingStatus = {
   state: 'idle' | 'recording' | 'paused' | 'stopped';
   recordingId?: string; recovered?: boolean; stopReason?: string;
+  binding?: NoteRecordingBinding;
   durationMs?: number; segments?: NoteSegment[]; peak?: number;
 };
 export type SavedNoteAudio = { audioId: string; noteId: string; durationMs: number; transcript: string };
 export interface NoteRecorderDriver {
-  start(): Promise<NoteRecordingStatus>;
+  start(binding?: NoteRecordingBinding): Promise<NoteRecordingStatus>;
   status(): Promise<NoteRecordingStatus>;
   pause(recordingId: string): Promise<NoteRecordingStatus>;
   resume(recordingId: string): Promise<NoteRecordingStatus>;
@@ -40,7 +42,8 @@ export interface NoteRecorderDriver {
 export interface NoteLiveHandlers { speechStart(): void; interim(text: string): void; final(text: string): void; lost(): void }
 /** Opens a live transcription stream for display, or null when none is available. */
 export type NoteLivePort = (handlers: NoteLiveHandlers) => Promise<{ close(): Promise<void> | void } | null>;
-type NoteRecorderOptions = { pollMs?: number; visible?: () => boolean; live?: NoteLivePort };
+type NoteRecorderOwner = { identity: string; folderId: string | null; current(): boolean };
+type NoteRecorderOptions = { pollMs?: number; visible?: () => boolean; live?: NoteLivePort; owner?: () => NoteRecorderOwner | undefined };
 /** Text of one finished segment; '' for silence. Throws when the route fails. */
 export type SegmentTranscriber = (segmentId: string, signal: AbortSignal) => Promise<string>;
 /** `failed`: the microphone did not start; the recorder stays open with one error line. */
@@ -57,6 +60,7 @@ export function noteRecorderError(reason: string | undefined): string {
   if (reason === 'transcription') return 'Transcription stopped. The audio is kept.';
   if (reason === 'sign-in') return 'Sign in to transcribe. The audio is kept.';
   if (reason === 'save') return 'Couldn’t save. Try Done again.';
+  if (reason === 'owner') return 'Return to the original Notes account. Your recording is kept.';
   if (reason === 'capture') return 'The microphone isn’t available.';
   return 'The microphone stopped.';
 }
@@ -89,6 +93,10 @@ export class NoteRecorderSession {
   private handle?: { remove(): Promise<void> | void };
   private poll?: ReturnType<typeof setTimeout>;
   private epoch = 0;
+  private owner?: NoteRecorderOwner;
+  private ownerDigest?: string;
+  private ownedRecordingId?: string;
+  private recordingFolder: string | null = null;
   /** The epoch a Discard ended while the microphone was still starting. */
   private abandoned = -1;
   /** Live utterances (display only), tagged with the recording time their speech started. */
@@ -110,6 +118,39 @@ export class NoteRecorderSession {
   }
 
   get open() { return this.phase !== 'closed'; }
+  get folderId() { return this.recordingFolder; }
+  private owned(epoch: number) {
+    return epoch === this.epoch && (!this.options.owner || this.owner?.current() === true);
+  }
+  private async bindOwner(epoch: number) {
+    if (!this.options.owner) return;
+    const owner = this.options.owner();
+    if (!owner) throw Error('Notes recording owner is unavailable');
+    const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(owner.identity));
+    if (epoch !== this.epoch || !owner.current()) throw Error('Notes recording owner changed');
+    this.owner = owner;
+    this.ownerDigest = Array.from(new Uint8Array(bytes), byte => byte.toString(16).padStart(2, '0')).join('');
+    this.recordingFolder = owner.folderId;
+  }
+  private matches(status: NoteRecordingStatus) {
+    if (!this.options.owner) return true;
+    const binding = status.binding;
+    return !!binding && !!this.ownerDigest && binding.ownerDigest === this.ownerDigest &&
+      (binding.folderId === null || /^f-[A-Za-z0-9_-]{1,64}$/.test(binding.folderId)) &&
+      (!this.recordingId || binding.folderId === this.recordingFolder);
+  }
+  /** End microphone and speech work for the old authority, retaining the journal. */
+  recheckOwner() {
+    if (!this.owner || this.owner.current()) return;
+    const id = this.ownedRecordingId, wasOpen = this.open;
+    this.close();
+    if (wasOpen) {
+      this.phase = 'failed';
+      this.error = noteRecorderError('owner');
+      this.changed();
+    }
+    if (id) void this.driver.stop(id).catch(() => {});
+  }
   /** The finished segments' text, in order, up to the first one not yet transcribed. */
   transcript(): string {
     const parts: string[] = [];
@@ -127,6 +168,7 @@ export class NoteRecorderSession {
    * after it. A live utterance drops out once a transcribed segment covers its start.
    */
   displayTranscript(): string {
+    if (!this.owned(this.epoch)) return '';
     const committed = this.committedMs();
     const live = this.liveFinals.filter(u => u.at >= committed).map(u => u.text);
     if (this.liveInterim && this.liveAt >= committed) live.push(this.liveInterim);
@@ -134,16 +176,16 @@ export class NoteRecorderSession {
   }
   /** Opens the live stream while recording and visible; closes it otherwise. */
   private syncLive() {
-    const want = this.phase === 'recording' && !!this.options.live && !this.liveLost && this.options.visible?.() !== false;
+    const want = this.owned(this.epoch) && this.phase === 'recording' && !!this.options.live && !this.liveLost && this.options.visible?.() !== false;
     if (!want) { this.closeLive(); return; }
     if (this.liveStream || this.liveOpening) return;
     const epoch = this.epoch; this.liveOpening = true;
     let stream: { close(): Promise<void> | void } | null | undefined;
     const handlers: NoteLiveHandlers = {
-      speechStart: () => { if (epoch !== this.epoch) return; this.liveAt = this.durationMs; this.liveInterim = ''; },
-      interim: text => { if (epoch !== this.epoch) return; this.liveInterim = String(text || ''); this.changed(); },
+      speechStart: () => { if (!this.owned(epoch)) return; this.liveAt = this.durationMs; this.liveInterim = ''; },
+      interim: text => { if (!this.owned(epoch)) return; this.liveInterim = String(text || ''); this.changed(); },
       final: text => {
-        if (epoch !== this.epoch) return;
+        if (!this.owned(epoch)) return;
         const value = String(text || '').trim();
         if (value) this.liveFinals.push({ text: value, at: this.liveAt });
         this.liveInterim = ''; this.liveAt = this.durationMs;
@@ -158,7 +200,7 @@ export class NoteRecorderSession {
       stream = opened;
       this.liveOpening = false;
       if (!opened) { if (epoch === this.epoch) this.liveLost = true; return; }
-      if (epoch !== this.epoch || this.phase !== 'recording' || this.liveLost) { void Promise.resolve(opened.close()).catch(() => {}); return; }
+      if (!this.owned(epoch) || this.phase !== 'recording' || this.liveLost) { void Promise.resolve(opened.close()).catch(() => {}); return; }
       this.liveStream = opened; this.liveAt = this.durationMs;
     }, () => { this.liveOpening = false; if (epoch === this.epoch) this.liveLost = true; });
   }
@@ -174,12 +216,27 @@ export class NoteRecorderSession {
     const epoch = ++this.epoch;
     this.phase = 'starting'; this.error = ''; this.changed();
     try {
-      await this.attach(epoch);
+      await this.bindOwner(epoch);
+      if (!this.owned(epoch)) return;
       const existing = await this.driver.status();
-      if (epoch !== this.epoch) return;
-      const status = existing.state === 'idle' ? await this.driver.start() : existing;
+      if (!this.owned(epoch)) return;
+      if (existing.state !== 'idle' && !this.matches(existing)) {
+        this.phase = 'failed'; this.error = noteRecorderError('owner'); this.changed(); return;
+      }
+      await this.attach(epoch);
+      if (!this.owned(epoch)) return;
+      const binding = this.ownerDigest ? { ownerDigest: this.ownerDigest, folderId: this.recordingFolder } : undefined;
+      const status = existing.state === 'idle' ? await this.driver.start(binding) : existing;
       // Discarded while starting: the recording the microphone just began goes too.
-      if (epoch !== this.epoch) { if (this.abandoned === epoch && existing.state === 'idle' && status.recordingId) await this.driver.discard(status.recordingId).catch(() => {}); return; }
+      if (!this.owned(epoch)) {
+        if (existing.state === 'idle' && status.recordingId) {
+          if (this.abandoned === epoch) await this.driver.discard(status.recordingId).catch(() => {});
+          else if (binding) await this.driver.stop(status.recordingId).catch(() => {});
+        }
+        return;
+      }
+      if (!this.matches(status) || binding && existing.state === 'idle' && status.binding?.folderId !== binding.folderId)
+        throw Error('Notes recording owner could not be verified');
       this.apply(status);
       // Say at once when transcription needs the user (Cloud sign-in); recording goes on regardless.
       void this.transcriber().then(() => {}, error => {
@@ -196,11 +253,14 @@ export class NoteRecorderSession {
   /** Show an open recording left by an earlier process or page without starting one. */
   async adopt(): Promise<boolean> {
     if (this.open) return true;
+    const original = this.epoch;
     const status = await this.driver.status();
-    if (status.state === 'idle' || this.open) return this.open;
+    if (original !== this.epoch || status.state === 'idle' || this.open) return this.open;
     const epoch = ++this.epoch;
+    await this.bindOwner(epoch);
+    if (!this.owned(epoch) || !this.matches(status)) return false;
     await this.attach(epoch);
-    if (epoch !== this.epoch) return false;
+    if (!this.owned(epoch)) return false;
     this.phase = 'starting'; this.apply(status); return true;
   }
   private async attach(epoch: number) {
@@ -217,10 +277,13 @@ export class NoteRecorderSession {
   }
   /** A status from the recorder (a poll answer or an event). */
   apply(status: NoteRecordingStatus) {
+    if (!this.owned(this.epoch) || status.state !== 'idle' && !this.matches(status)) return;
+    if (status.state !== 'idle' && this.recordingId && status.recordingId !== this.recordingId) return;
     if (!this.open || this.phase === 'finishing' && status.state !== 'idle') { if (this.phase === 'finishing') this.absorb(status); return; }
     if (status.state === 'idle') { if (this.phase !== 'starting') this.close(); return; }
-    if (this.recordingId && status.recordingId !== this.recordingId) return;
     this.recordingId = status.recordingId;
+    this.ownedRecordingId = status.recordingId;
+    if (status.binding) this.recordingFolder = status.binding.folderId;
     this.absorb(status);
     const previous = this.phase;
     this.phase = status.state;
@@ -259,7 +322,7 @@ export class NoteRecorderSession {
     const run = (async () => {
       let route: SegmentTranscriber | null = null, resolved = false;
       for (;;) {
-        if (epoch !== this.epoch || this.transcriptionFailed || this.options.visible?.() === false) return;
+        if (!this.owned(epoch) || this.transcriptionFailed || this.options.visible?.() === false) return;
         const next = this.segments.find(s => !this.texts.has(s.segmentId));
         if (!next || !this.recordingId) return;
         if (!resolved) {
@@ -271,7 +334,7 @@ export class NoteRecorderSession {
             if ((error as { code?: string })?.code === 'sign-in') { this.transcriptionFailed = true; this.error = noteRecorderError('sign-in'); this.changed(); }
             return;
           }
-          if (epoch !== this.epoch) return;
+          if (!this.owned(epoch)) return;
         }
         if (!route) return; // No transcription route: the recording is saved with its audio only.
         const controller = new AbortController(); this.transcribing = controller;
@@ -281,7 +344,7 @@ export class NoteRecorderSession {
           if (epoch !== this.epoch || controller.signal.aborted || aborted(error)) return; // Hidden or closed: resumes later.
           this.transcriptionFailed = true; if (this.phase !== 'stopped' || !this.error) this.error = noteRecorderError('transcription'); this.changed(); return;
         } finally { if (this.transcribing === controller) this.transcribing = undefined; }
-        if (epoch !== this.epoch) return;
+        if (!this.owned(epoch)) return;
         this.texts.set(next.segmentId, typeof text === 'string' ? text : '');
         // Journaled with the segment, so a crash keeps the transcript up to here.
         try { await this.driver.setText(this.recordingId, next.segmentId, this.texts.get(next.segmentId)!); } catch { /* The audio is kept; the text is saved with the note. */ }
@@ -292,11 +355,26 @@ export class NoteRecorderSession {
     const tracked = this.pumping;
     return tracked;
   }
-  async pause() { if (this.phase === 'recording' && this.recordingId) this.apply(await this.driver.pause(this.recordingId)); }
+  async pause() {
+    const id = this.recordingId;
+    if (!this.owned(this.epoch) || this.phase !== 'recording' || !id) return;
+    const epoch = this.epoch;
+    const status = await this.driver.pause(id);
+    if (epoch === this.epoch) this.apply(status);
+  }
   async resume() {
-    if (!this.recordingId || !['paused', 'stopped'].includes(this.phase)) return;
-    try { this.error = this.transcriptionFailed ? this.error : ''; this.apply(await this.driver.resume(this.recordingId)); }
-    catch (error) { this.error = noteRecorderError(startFailure(error)); this.changed(); }
+    const id = this.recordingId;
+    if (!this.owned(this.epoch) || !id || !['paused', 'stopped'].includes(this.phase)) return;
+    const epoch = this.epoch;
+    try {
+      this.error = this.transcriptionFailed ? this.error : '';
+      const status = await this.driver.resume(id);
+      if (epoch === this.epoch) this.apply(status);
+    } catch (error) {
+      if (epoch !== this.epoch) return;
+      this.error = noteRecorderError(startFailure(error));
+      this.changed();
+    }
   }
   async togglePause() { if (this.phase === 'failed') await this.begin().catch(() => {}); else if (this.phase === 'recording') await this.pause(); else await this.resume(); }
   /**
@@ -308,14 +386,16 @@ export class NoteRecorderSession {
    */
   async finish(persist: (saved: SavedNoteAudio, transcript: string) => Promise<boolean>, keepAudio = true): Promise<boolean> {
     const id = this.recordingId;
-    if (!id || !['recording', 'paused', 'stopped'].includes(this.phase)) return false;
+    if (!this.owned(this.epoch) || !id || !['recording', 'paused', 'stopped'].includes(this.phase)) return false;
     const epoch = this.epoch;
     this.phase = 'finishing'; this.confirmingDiscard = false; if (this.poll) clearTimeout(this.poll); this.poll = undefined; this.closeLive(); this.changed();
     try {
-      this.absorb(await this.driver.stop(id));
-      if (epoch !== this.epoch) return false;
+      const stopped = await this.driver.stop(id);
+      if (!this.owned(epoch)) return false;
+      if (stopped.recordingId !== id || stopped.state !== 'stopped' || !this.matches(stopped)) throw Error('Recording changed');
+      this.absorb(stopped);
       await this.pump(true);
-      if (epoch !== this.epoch) return false;
+      if (!this.owned(epoch)) return false;
       if (!this.segments.length) throw Error('No audio');
       // A destination that keeps no audio saves only a transcript of every segment; until then
       // the recording stays, so Done never leaves a note without the words or the audio.
@@ -328,9 +408,10 @@ export class NoteRecorderSession {
       const noteId = id;
       // A destination that keeps no audio (agent notes) gets the transcript and length only.
       const saved = keepAudio ? await this.driver.save({ recordingId: id, noteId, transcript }) : { audioId: id, noteId, durationMs: this.durationMs, transcript };
-      if (epoch !== this.epoch) return false;
+      if (!this.owned(epoch)) return false;
       if (saved.noteId !== noteId || saved.audioId !== id || !Number.isFinite(saved.durationMs)) throw Error('Invalid saved recording');
       if (!await persist(saved, transcript)) throw Error('Note not saved');
+      if (!this.owned(epoch)) return false;
       // The note holds the audio now; the segments go. Until here a failed save can retry.
       if (epoch === this.epoch) this.close();
       await this.driver.discard(id).catch(() => {});
@@ -342,7 +423,7 @@ export class NoteRecorderSession {
   }
   /** Discard asks once; the second call deletes every segment. */
   async discard(confirmed = false) {
-    if (!this.open) return;
+    if (!this.open || this.owner && !this.owned(this.epoch)) return;
     if (!confirmed && this.durationMs >= 1000 && this.phase !== 'starting') { this.confirmingDiscard = true; this.changed(); return; }
     const id = this.recordingId;
     if (this.phase === 'starting') this.abandoned = this.epoch;
@@ -356,6 +437,7 @@ export class NoteRecorderSession {
     this.phase = 'closed'; this.recordingId = undefined; this.durationMs = 0; this.segments = []; this.levels = [];
     this.texts.clear(); this.transcriptionFailed = false; this.confirmingDiscard = false; this.error = '';
     this.liveFinals = []; this.liveInterim = ''; this.liveLost = false;
+    this.owner = undefined; this.ownerDigest = undefined; this.ownedRecordingId = undefined; this.recordingFolder = null;
     this.changed();
   }
   /**
