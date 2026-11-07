@@ -1,5 +1,5 @@
 import type {DomainRecovery} from '../browser/domain-document';
-import {captureDevicePreferences,cachedDevicePreferences,editDevicePreferences,initializeDevicePreferences,readDevicePreferences} from '../browser/device-preferences';
+import {captureDevicePreferences,cachedDevicePreferences,editDevicePreferences,initializeDevicePreferences} from '../browser/device-preferences';
 import {Capacitor} from '@capacitor/core';
 import {browserLocalAgentEnabled,saveNativeGoogleAgentAccess} from './local-agent';
 
@@ -10,10 +10,6 @@ export const GOOGLE_AGENT_ACCESS_PATH='/__alpha-agent-google-access';
 export function googleAgentAccess():GoogleAgentAccess{
  const saved=cachedDevicePreferences();
  return {gmailChanges:saved?.agentGmailChanges!==false,calendarEdits:saved?.agentCalendarEdits!==false};
-}
-/** The saved Calendar edits switch, read fresh from the device document: undefined when it cannot be read, never on. */
-export async function savedGoogleCalendarEdits():Promise<boolean|undefined>{
- try{return (await readDevicePreferences()).agentCalendarEdits;}catch{return undefined;}
 }
 /** UI intent capture only. The phone's Google host reads the file publishGoogleAgentAccess writes, and treats a missing one as off. */
 export async function captureGoogleCalendarAccess(){

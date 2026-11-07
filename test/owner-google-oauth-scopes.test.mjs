@@ -60,12 +60,12 @@ test("consent paths are exactly what CloudProtocol posts to connect/initiate", {
 test("the Settings screen starts only the consent paths marked ui", () => {
   const ui = fs.readFileSync("apps/app/src/runtime/google-connection-ui.tsx", "utf8");
   const connects = [...ui.matchAll(/(?:onClick=\{\(\)=>void|await) connect\((.*?)\)(?:\}>|;)/g)].map(m => m[1].trim());
-  assert.deepEqual(connects.sort(), ["", "accounts.some(account=>gmailGrantTier(account)==='modify')?'modify':'send','write'", "gmail,'write'"].sort(),
+  assert.deepEqual(connects.sort(), ["heldGmailTier(accounts,'send')", "heldGmailTier(accounts,'send'),'write'", "heldGmailTier(connected,'read'),'write'"].sort(),
     "a new Settings consent button needs a row in ALPHA_CONSENT_PATHS and the runbook matrix");
   assert.doesNotMatch(ui, /initiateGmail/);
   const uiPaths = ALPHA_CONSENT_PATHS.filter(p => p.surface === "ui").map(p => p.call.slice(1).join("/")).sort();
   assert.deepEqual(uiPaths, ["write/modify", "write/read", "write/send"]);
-  assert.match(ui, /const gmail=connected\.some\(account=>gmailGrantTier\(account\)==='modify'\)\?'modify':connected\.some\(account=>account\.grantedCapabilities\.includes\('google\.gmail\.send'\)\)\?'send':'read';/, "the Calendar intent asks Gmail read only, and never narrows Gmail access already granted");
+  assert.match(ui, /const heldGmailTier=\(accounts:GmailAccount\[\],floor:'read'\|'send'\)=>accounts\.some\(account=>account\.connected&&gmailGrantTier\(account\)==='modify'\)\?'modify':accounts\.some\(account=>account\.connected&&account\.grantedCapabilities\.includes\('google\.gmail\.send'\)\)\?'send':floor;/, "every consent keeps the Gmail tier already granted; only the Calendar intent may ask Gmail read");
   assert.match(ui, /async function connect\(permission:'read'\|'modify'\|'send'='send',calendarPermission:'read'\|'write'='write'\)/, "Connect asks for every scope Cloud grants up front");
 });
 
