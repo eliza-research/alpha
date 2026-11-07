@@ -1,4 +1,5 @@
 import {test,expect,type Page} from '@playwright/test';
+import {preloadPageModules} from './helpers/page-modules';
 
 // A synthetic voice delegate exercises the real adapter/template without capturing audio,
 // opening a speech connection or submitting a provider/model request.
@@ -18,6 +19,7 @@ async function setup(page:Page){
   if(navigator.mediaDevices)navigator.mediaDevices.getUserMedia=async()=>{(window as any).voicePresentationFixture.media++;throw Error('Actual microphone forbidden in synthetic presentation test');};
  });
  await page.goto('/');await expect(page.locator('textarea[data-alpha-composer]')).toBeEnabled();
+ await preloadPageModules(page,['/src/runtime/connection-ui.tsx','/src/prototype/model.js']);
  await page.evaluate(async()=>{
   const {connectionController:c}=await import('/src/runtime/connection-ui.tsx'),{Component}=await import('/src/prototype/model.js');
   const f=(window as any).voicePresentationFixture;

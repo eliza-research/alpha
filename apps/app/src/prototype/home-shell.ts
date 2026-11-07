@@ -34,6 +34,8 @@ const HOME_EDIT_CSS = `
  * (long-press an icon) removes and rearranges icons and "+" restores hidden views. */
 export function installHomeShell(Component: any, views: Record<string, Bag>, bridge: LauncherBridge, options: {
   icons?: boolean;
+  /** Installed apps exist on Android, or through the explicitly enabled browser fixture. */
+  appInventory?: 'android' | 'simulated';
   /** Replaces the installed favorites record (tests only). */
   favorites?: FavoritesStore;
   /** Exact browser device mirrors only; never inferred from labels. */
@@ -57,6 +59,9 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
   const {launcher} = shell, prefix = ALPHA_PRODUCT.storage.launcherBuiltinPrefix;
   const icon = (id: string) => mobileShellIconUrl(ALPHA_PRODUCT, id);
   const grid = icon(ALPHA_PRODUCT.icons.allApps);
+  // Installed apps exist on Android, or through the explicitly enabled browser fixture; without
+  // either there is no Apps entry, no drawer and no Home editing (nothing is read to edit).
+  const inventory = options.appInventory;
   const glyphs = {app: grid, phone: icon('phone'), search: icon('search'), close: icon('x'), plus: icon('plus'), info: icon('info')};
   const rerender = () => owner?.setState({launcherRevision: Date.now()});
   // The Add to Home sheet owns focus while open; Escape and Back close it.
@@ -90,9 +95,9 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
   let stop: (() => void) | undefined;
   p.componentDidMount = function (...args: any[]) {
     owner = this;
-    stop = shell.observe({follow: options.follow});
+    if (inventory) stop = shell.observe({follow: options.follow});
     const result = mount?.apply(this, args);
-    shell.prepareHome();
+    if (inventory) shell.prepareHome();
     return result;
   };
   p.componentWillUnmount = function (...args: any[]) {
@@ -119,15 +124,16 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
   // Opening a view (a tap, the agent or a notification) ends Home edit mode.
   p.openView = function (...args: any[]) { closeEdit(this); return openView?.apply(this, args); };
   p.openAllApps = function () {
-    if (this.S().homeEdit) return;
+    if (!inventory || this.props?.assistantSurface || this.S().homeEdit) return;
     this.setState({...this.shellNavigate({type: 'drawer', open: true}), drawerMenu: null}); void launcher.load();
   };
   p.renderVals = function () {
     const out = render.call(this), S = this.S(), self = this;
     shell.syncViews();
     const snapshot = launcher.snapshot();
-    const drawerOpen = !!S.drawer && !!out.isOn && !out.isView;
-    const editing = !!S.homeEdit && !!out.isOn && !out.isView && !drawerOpen && !out.assistantSurface;
+    const showDrawer = !!inventory && !out.assistantSurface;
+    const drawerOpen = showDrawer && !!S.drawer && !!out.isOn && !out.isView;
+    const editing = !!inventory && !!S.homeEdit && !!out.isOn && !out.isView && !drawerOpen && !out.assistantSurface;
     const face = (key: string, tile: {image?: string; glyphUrl?: string; badge?: boolean}) => createElement('span', {'data-mobile-shell-tile-face': '', 'data-alpha-home-key': key},
       tile.image ? createElement('img', {alt: '', src: tile.image}) : tile.glyphUrl ? createElement('span', {'aria-hidden': 'true', style: glyph(tile.glyphUrl, 30)}) : null,
       tile.badge && !editing ? createElement('span', {'data-mobile-shell-tile-badge': ''}) : null,
@@ -145,13 +151,13 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
       return {...base, face: face(entry.key, base), ...(editing ? {ariaLabel: `Remove ${base.label} from Home`, onOpen: () => {}} : {})};
     };
     const appsTile = {key: 'alpha:apps-drawer', label: 'Apps', glyphUrl: grid, iconId: ALPHA_PRODUCT.icons.allApps, onOpen: () => self.openAllApps(), dialog: true};
-    const tiles = out.assistantSurface ? [] : [...shell.homeEntries().map(tile), ...(editing ? [] : [appsTile])];
+    const tiles = out.assistantSurface ? [] : [...shell.homeEntries().map(tile), ...(editing || !showDrawer ? [] : [appsTile])];
     const gridProps: Bag = {
       'data-alpha-home-apps': '', 'data-alpha-home-editing': editing ? 'true' : undefined,
       onPointerDown: (event: PointerEvent) => {
         swallow = ''; endPress();
         const target = tileOf(event.target), key = keyOf(target);
-        if (!target || !key || event.button > 0) return;
+        if (!target || !key || event.button > 0 || !inventory) return;
         if (!editing) { press = {key, x: event.clientX, y: event.clientY, timer: setTimeout(() => { press = null; swallow = key; self.setState({homeEdit: true, homeAdd: false}); }, HOLD_MS)}; return; }
         // A press on the remove control never starts a drag.
         if ((event.target as Element).closest('[data-alpha-home-remove]')) return;
@@ -184,7 +190,7 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
       onPointerCancel: () => { endPress(); if (drag) { endDrag(); rerender(); } },
       onContextMenu: (event: MouseEvent) => {
         const key = keyOf(tileOf(event.target));
-        if (!key) return;
+        if (!key || !inventory) return;
         event.preventDefault(); endPress();
         if (!editing) { swallow = key; self.setState({homeEdit: true, homeAdd: false}); }
       },
@@ -206,15 +212,16 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
         event.preventDefault(); launcher.clearError(); launcher.moveFavorite(app, step as -1 | 1); focusTile(key);
       },
     };
+    const hideCards = out.homeHasOverviewCards === false;
     const homeShell = createElement(MobileHomeScreen, {
       tiles, covered: !!out.homeHidden,
       onFocusCapture: out.focusAppContent, 'data-alpha-layer': 'home',
       style: {inset: '44px 0 0', zIndex: 10, scrollPaddingBottom: 110},
-      layoutProps: {'data-alpha-home-layout': ''}, cardsProps: {className: 'scr'}, gridProps, clearanceProps: {'data-alpha-home-clearance': ''},
+      layoutProps: {'data-alpha-home-layout': ''}, cardsProps: {className: 'scr', hidden: hideCards, style: hideCards ? {display: 'none'} : undefined}, gridProps, clearanceProps: {'data-alpha-home-clearance': ''},
     });
     const homeEditStyle = createElement('style', null, HOME_EDIT_CSS);
     const appInfo = options.appInfo;
-    const allAppsDrawer = createElement(AppsDrawer, {
+    const allAppsDrawer = showDrawer ? createElement(AppsDrawer, {
       launcher, builtinPrefix: prefix, query: String(S.drawerQ || ''), glyphs,
       onQuery: query => self.setState({...self.shellNavigate({type: 'drawer-query', query}), drawerMenu: null}),
       onClose: () => self.setState({...self.shellNavigate({type: 'drawer', open: false}), drawerMenu: null}),
@@ -236,7 +243,7 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
       } : undefined,
       'data-alpha-layer': 'drawer', className: 'alpha-app-drawer fadein',
       style: {inset: '44px 0 0', zIndex: 30, padding: '12px 0 108px'},
-    });
+    }) : null;
     // Product views not on Home, offered by edit mode's "+".
     const hidden = editing ? snapshot.apps.filter(app => app.packageName.startsWith(prefix) && !snapshot.favorites.includes(appKey(app))).map(app => {
       const view = alphaViews.fromLauncherKey(appKey(app)), url = view && alphaViews.iconUrl(view);

@@ -75,10 +75,12 @@ export const CHECKS = Object.freeze({
     const signer = readJson(root, "android/release-signer.json");
     const product = readJson(root, "android/aosp/pixel10a-product.json");
     const channel = readJson(root, "android/aosp/pixel10a-ota-channel.json");
+    const payloadDigest = product.signer?.apexPayloadAvbPublicKeySha256;
     const fields = [
       ["android/release-signer.json signerSha256", signer.signerSha256],
       ["pixel10a-product.json signer.platformCertificateSha256", product.signer?.platformCertificateSha256],
       ...Object.entries(product.signer?.releaseCertificates ?? {}).map(([name, value]) => [`pixel10a-product.json signer.releaseCertificates.${name}`, value]),
+      ["pixel10a-product.json signer.apexPayloadAvbPublicKeySha256", /^[0-9a-f]{64}$/.test(payloadDigest ?? "") ? payloadDigest : undefined],
       ["pixel10a-product.json avb.publicKeySha256", product.avb?.publicKeySha256],
       ["pixel10a-ota-channel.json otaCertificateSha256", channel.otaCertificateSha256],
       ["pixel10a-ota-channel.json avbPublicKeySha256", channel.avbPublicKeySha256],

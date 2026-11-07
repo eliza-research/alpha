@@ -30,7 +30,7 @@ const memory = () => { const values = new Map(); return { getItem: key => values
   await maps.initializeCloudMaps();
   assert.equal(configured, 0, 'a provider Cloud never installed is not touched');
   assert.equal(maps.cloudMapsCoverage(), undefined);
-  assert.deepEqual(maps.cloudMapsDiagnostics(), { configured: true, error: 'unauthorized' });
+  assert.deepEqual(maps.cloudMapsDiagnostics(), { configured: true, error: 'unauthorized', message: 'Sign in to Eliza Cloud to use Maps.' });
 }
 
 // Signed in: coverage configures the provider and the shared controller plans a validated route.

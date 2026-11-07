@@ -249,6 +249,10 @@ test('Agent Calendar freshness: an unverified next event is never fresh or an em
   for(const status of ['error','unavailable','partial']){
     const saved=state;state={...state,status,error:'Calendar service unavailable',feed:status==='partial'?{...state.feed,state:'partial'}:null};
     const failed=render();assert.equal(reads,0,'failure rendering never starts reads');assert.doesNotMatch(failed.homeCalendarTitle,/Verified today|Nothing planned/);
+    if(status==='partial'){
+      assert.equal(failed.homeCalendarTitle,'Calendar');
+      assert.equal(failed.homeCalendarDescription,'Open Calendar to retry');
+    }
     failed.goCalendar();assert.equal(reads,1,'explicit navigation retries the actual failed/unverified feed');reads=0;state=saved;
   }
   current=false;assert.doesNotMatch(render().homeCalendarTitle,/Verified today|Nothing planned/,'retired connection drops the event');current=true;

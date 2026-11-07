@@ -35,7 +35,7 @@ test('prompt creation is paused, edits preserve wake/enable policy, and invalid 
 test('scheduled Run uses fire rather than acknowledgment and reports a non-fired outcome',async()=>{const f=await fixture(()=>({fire:{kind:'skipped',reason:'Owner paused this item'}}));try{await assert.rejects(f.client.scheduledVerb('scheduled-task','fire',signal()),/Owner paused/);assert.deepEqual(f.calls.map(call=>call.path),['/api/lifeops/scheduled-tasks/scheduled-task/fire']);}finally{await f.close();}});
 test('LifeOps reminders use the existing in-app definition/idempotency contract and preserve unchanged past due dates',async()=>{const f=await fixture(call=>call.path.includes('/occurrences/')?{occurrence:{id:'occurrence',state:'pending'}}:{definition:{id:call.method==='POST'?'created':'definition',...call.body}});try{await f.client.createReminder({message:'Review this draft',due:future(),timezone:'UTC',idempotencyKey:'same-owned-key'},signal());assert.equal(f.calls[0].body.idempotencyKey,'same-owned-key');assert.equal(f.calls[0].body.metadata.nativeProjection,'in_app_only');assert.equal(f.calls[0].body.reminderPlan.steps[0].channel,'in_app');const row=(await new AutomationsProtocol(async()=>({reminders:[reminder],automations:[],tasks:[]})).list(signal())).rows[0];await f.client.editReminder(row,'Changed message',protocol.automationLocalDateInput(reminder.definition.cadence.dueAt),signal());assert.deepEqual(f.calls[1].body,{title:'Changed message'});await f.client.snoozeReminder('occurrence',signal());await f.client.cancelReminder('definition',signal());assert.deepEqual(f.calls.slice(1).map(call=>[call.path,call.method]),[['/api/lifeops/definitions/definition','PUT'],['/api/lifeops/occurrences/occurrence/snooze','POST'],['/api/lifeops/definitions/definition','PUT']]);}finally{await f.close();}});
 
-const {presentHomeWorkflowFreshness}=await import('../apps/app/src/prototype/home-cards.ts');
+const {homeReadIsStale,presentHomeWorkflowFreshness}=await import('../apps/app/src/prototype/home-cards.ts');
 const transformed=file=>stripTypeScriptTypes(fs.readFileSync(file,'utf8').replace(/^import .*;\n/gm,'').replace(/export /g,''),{mode:'transform'});
 function adapterFixture(request,storage={},options={}){
  const listeners=new Set(),events=new Map(),session={sessionId:'session',origin:'https://synthetic.invalid',ownerId:'owner',agentId:'agent'};
@@ -48,7 +48,7 @@ function adapterFixture(request,storage={},options={}){
  const windowEvents=new Map();
  const dom=options.dom?new JSDOM('<div class="os"><button id="origin">Filters</button></div>',{pretendToBeVisual:true}):null;
  if(dom){dom.window.HTMLDialogElement.prototype.showModal=function(){this.open=true;};dom.window.document.querySelector('.os').inert=false;}
- const context={...protocol,presentHomeWorkflowFreshness,connectionController:controller,DailyApps:{listReminders:async()=>({reminders:options.deviceReminders??[{id:'device',title:'On-device reminder',body:'Existing phone row',at:Date.now()+10000,status:'scheduled'}]})},Capacitor:{getPlatform:()=> 'android'},localStorage,window:dom?.window||{dispatchEvent(event){for(const fn of windowEvents.get(event.type)||[])fn(event);},addEventListener(name,fn){const f=windowEvents.get(name)||new Set();f.add(fn);windowEvents.set(name,f);},removeEventListener(name,fn){windowEvents.get(name)?.delete(fn);}},document:dom?.window.document||{hidden:false,addEventListener:(name,fn)=>events.set(name,fn),removeEventListener(){}},getComputedStyle:dom?.window.getComputedStyle,innerWidth:400,innerHeight:800,catalog:JSON.parse(fs.readFileSync('apps/app/src/icon-catalog.json','utf8')),queueMicrotask,AbortController,Date,crypto,Event,console};
+ const context={...protocol,homeReadIsStale,presentHomeWorkflowFreshness,connectionController:controller,DailyApps:{listReminders:async()=>({reminders:options.deviceReminders??[{id:'device',title:'On-device reminder',body:'Existing phone row',at:Date.now()+10000,status:'scheduled'}]})},Capacitor:{getPlatform:()=> 'android'},localStorage,window:dom?.window||{dispatchEvent(event){for(const fn of windowEvents.get(event.type)||[])fn(event);},addEventListener(name,fn){const f=windowEvents.get(name)||new Set();f.add(fn);windowEvents.set(name,f);},removeEventListener(name,fn){windowEvents.get(name)?.delete(fn);}},document:dom?.window.document||{hidden:false,addEventListener:(name,fn)=>events.set(name,fn),removeEventListener(){}},getComputedStyle:dom?.window.getComputedStyle,innerWidth:400,innerHeight:800,catalog:JSON.parse(fs.readFileSync('apps/app/src/icon-catalog.json','utf8')),queueMicrotask,AbortController,Date:options.now?class extends Date{static now(){return options.now();}}:Date,crypto,Event,console};
  vm.runInNewContext('(()=>{'+transformed('.eliza/client-features/packages/contracts/src/workflow-intents.ts')+'\nglobalThis.SharedWorkflowIntentStore=WorkflowIntentStore;globalThis.sharedWorkflowIntentKey=workflowIntentKey;globalThis.emptyWorkflowIntentArchive=emptyWorkflowIntentArchive;globalThis.storageWorkflowIntentBackend=storageWorkflowIntentBackend;globalThis.workflowIntentOwnerPrefix=workflowIntentOwnerPrefix;})();',context);
  vm.runInNewContext(transformed('apps/app/src/runtime/workflow-intents.ts')+'\nglobalThis.WorkflowIntentStore=WorkflowIntentStore;globalThis.workflowIntentKey=workflowIntentKey;',context);
  vm.runInNewContext(transformed('.eliza/client-features/packages/ui/src/utils/automation-feed-filter.ts')+'\nglobalThis.FEED_FILTERS=FEED_FILTERS;globalThis.passesFilter=passesFilter;',context);
@@ -154,4 +154,19 @@ test('Alpha reminder status text follows current canonical English labels',async
  const strings=JSON.parse(fs.readFileSync('vendor/eliza/packages/ui/src/i18n/locales/en.json','utf8'));
  const cases=[['unscheduled',null,null],['blocked',{id:'occurrence',state:'visible'},{outcome:'blocked_channel'}],['duplicate',{id:'occurrence',state:'visible'},{outcome:'skipped_duplicate'}],['unknown',{id:'occurrence',state:'unrecognized'},null]];
  for(const [status,occurrence,latestAttempt] of cases){const f=await fixture(call=>call.path==='/api/lifeops/reminders'?{reminders:[{...reminder,occurrence,latestAttempt}]}:read(call)),app=adapterFixture(f.request);try{app.render();await wait(()=>app.render().cards.length===5&&!app.render().automation.loading);assert.equal(app.render().cards.find(card=>card.name==='Check the draft').statusLabel,strings['automationsreminders.status.'+status]);}finally{app.close();await f.close();}}
+});
+
+
+test('Home hides only a fresh complete empty unified snapshot',async()=>{
+ let now=new Date(2026,10,7,12).getTime();
+ const f=await fixture(call=>call.path==='/api/automations'?{automations:[]}:call.path.includes('scheduled-tasks')?{tasks:[]}:call.path.includes('/reminders')?{reminders:[]}:{});
+ const app=adapterFixture(f.request,{}, {deviceReminders:[],now:()=>now});
+ try{
+  assert.equal(app.home().homeWorkflowConfirmedEmpty,false);
+  app.render();await wait(()=>app.home().homeWorkflowConfirmedEmpty===true);
+  now+=86400000;assert.equal(app.home().homeWorkflowConfirmedEmpty,false,'yesterday is not a fresh empty read');
+  now-=86400001;assert.equal(app.home().homeWorkflowConfirmedEmpty,false,'future timestamps are not accepted');
+  app.retire();assert.equal(app.home().homeWorkflowConfirmedEmpty,false,'another owner cannot inherit the empty snapshot');
+  assert.ok(f.calls.every(call=>call.method==='GET'));
+ }finally{app.close();await f.close();}
 });

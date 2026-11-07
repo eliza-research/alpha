@@ -467,7 +467,7 @@ dialog:is(.alpha-operation-review,.alpha-calendar-editor,.alpha-calendar-meeting
 .alpha-wide .calendar-month-dialog { max-width:560px; margin-inline:auto; }
 /* Photos: the grid gains columns with width instead of growing each tile; never fewer than three
  * (two for albums), so portrait keeps its reference grid. Tiles stay square crops of the media. */
-.photo-grid { grid-template-columns:repeat(auto-fill,minmax(min(112px,calc((100% - 4px) / 3)),1fr))!important; }
+.photo-grid { margin-inline:12px; grid-template-columns:repeat(auto-fill,minmax(min(112px,calc((100% - 4px) / 3)),1fr))!important; }
 .photo-album-grid { grid-template-columns:repeat(auto-fill,minmax(min(168px,calc((100% - 12px) / 2)),1fr))!important; }
 /* The viewer fits the whole 3:4 frame in the space it has (letterboxed in landscape) rather than
  * cropping it to the screen's width, and shows the media inside without cropping either. */
@@ -548,8 +548,6 @@ button[aria-label$=" on or off"][aria-pressed]::before { content:""; position:ab
 .alpha-chat-composer { display:flex; align-items:center; gap:6px; flex-shrink:0; min-height:68px; box-sizing:border-box; margin:0 12px max(30px,var(--alpha-bottom-clearance)); padding:6px 6px 6px 20px; border-radius:28px; background:var(--s2); color:var(--fg); }
 .alpha-wide:not(.alpha-landscape) .alpha-chat-composer { width:calc(100% - 24px); max-width:560px; margin-inline:auto; }
 .alpha-voice-input { position:relative; flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center; gap:4px; }
-.alpha-voice-input > .alpha-voice-connecting { position:absolute; inset:0; display:flex; align-items:center; }
-.alpha-voice-connecting { font-size:14px; line-height:1.4; color:var(--fg); overflow-wrap:anywhere; }
 .alpha-voice-status-hidden,.alpha-message-action-announcement { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
 .alpha-voice-error { margin:8px 20px; font-size:13px; line-height:1.4; overflow-wrap:anywhere; }
 .alpha-chat-notices :is(.alpha-voice-recovery,.alpha-voice-unlock) { min-height:44px; margin:0 20px 8px; padding:8px 16px; border-radius:22px; color:var(--acct); font:inherit; }

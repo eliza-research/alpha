@@ -14,13 +14,15 @@ export const SLOP = 10;
 export const DIAL_KEY = 'dial';
 
 /** The drawer's entries: installed apps only, alphabetical (search ranks matches first). The
- * default dialer appears once, as Phone; its own same-profile entry is folded into that tile. */
+ * default dialer's own same-profile launcher entry appears once, as Phone (Android's dial hand-off);
+ * a resolved dialer without an installed launcher entry adds nothing, so the drawer never lists
+ * more than the installed inventory. */
 export function appsDrawerEntries(snapshot: ReturnType<Launcher['snapshot']>, builtinPrefix: string, query: string) {
   const installed = snapshot.apps.filter(app => !app.packageName.startsWith(builtinPrefix));
   const dialOwn = snapshot.dial?.packageName ? installed.filter(app => app.packageName === snapshot.dial!.packageName && !app.user) : [];
   const dialEntry = dialOwn.length === 1 ? dialOwn[0] : undefined;
   const listed = dialEntry ? installed.filter(app => app !== dialEntry) : installed;
-  const dial: InstalledApp | null = snapshot.dial ? {packageName: snapshot.dial.packageName || '', label: 'Phone', ...(snapshot.dial.icon ? {icon: snapshot.dial.icon} : {})} : null;
+  const dial: InstalledApp | null = snapshot.dial && dialEntry ? {packageName: snapshot.dial.packageName || '', label: 'Phone', ...(snapshot.dial.icon ? {icon: snapshot.dial.icon} : {})} : null;
   const details = describeLauncherApps(listed);
   return filterLauncherApps(dial ? [...listed, dial] : listed, query).map(app => app === dial
     ? {key: DIAL_KEY, app: dial, target: dialEntry, dial: true, detail: [] as string[]}

@@ -18,9 +18,9 @@ const button = (page: Page, name: string) => name==='Inbox'
   ? page.getByRole('button', { name, exact: true }).and(page.locator('[data-mobile-shell-tile]'))
   : page.getByRole('button', { name, exact: true });
 
-async function androidWithMailbox(page: Page) {
+async function androidWithMailbox(page: Page, unread = false) {
   await installResidentAgentPlugin(page);
-  await page.addInitScript(({ agentId }) => {
+  await page.addInitScript(({ agentId, unread }) => {
     const w = window as any;
     w.androidBridge = {};
     const store = new Map<string, string>();
@@ -126,7 +126,7 @@ async function androidWithMailbox(page: Page) {
             const reply = (receipt: unknown, extra: Record<string, unknown> = {}) => ({ status: 200, data: { version: 1, providerExactlyOnce: false, receipt, ...extra } });
             if (path === google + '/accounts') return { status: 200, data: [{ configured: true, connected: true, reason: 'connected', connectionId: 'grant-1', grantedCapabilities: ['google.gmail.triage','google.gmail.send','google.gmail.drafts','google.gmail.mailbox'], identity: { email: 'owner@example.invalid' } }] };
             if (path === google + '/gmail/inbox-v1/capabilities') return { status: 200, data: { version: 1, from: 'owner@example.invalid', threads: true, send: true, providerDrafts: false, mailboxMutations: true, attachments: true, providerExactlyOnce: false, atomicDraftReplacement: false } };
-            if (path === google + '/gmail/search') { m.searches++; return { status: 200, data: { messages: [{ externalId: 'm1', threadId: 't1', subject: 'Harbour schedule', from: 'Synthetic sender', fromEmail: 'sender@example.invalid', to: ['owner@example.invalid'], cc: [], snippet: 'Preview', receivedAt: '2026-10-06T12:00:00Z', isUnread: false }], syncedAt: '2026-10-08T12:00:00Z', nextPageToken: null } }; }
+            if (path === google + '/gmail/search') { m.searches++; return { status: 200, data: { messages: [{ externalId: 'm1', threadId: 't1', subject: 'Harbour schedule', from: 'Synthetic sender', fromEmail: 'sender@example.invalid', to: ['owner@example.invalid'], cc: [], snippet: 'Preview', receivedAt: '2026-10-06T12:00:00Z', isUnread: unread }], syncedAt: '2026-10-08T12:00:00Z', nextPageToken: null } }; }
             if(path===google+'/gmail/read')return {status:200,data:{message:{externalId:'m1',threadId:'t1',subject:'Harbour schedule',from:'Synthetic sender',fromEmail:'sender@example.invalid',to:['owner@example.invalid'],cc:[],snippet:'Preview',receivedAt:'2026-10-06T12:00:00Z',isUnread:false},bodyText:'Owned fixture body',links:[]}};
             if (path === google + '/gmail/inbox-v1/operations' && input.method === 'POST') {
               const p = body.proposal, review = { kind: p.kind, mode: p.mode, from: 'owner@example.invalid', to: p.to, cc: p.cc, bcc: p.bcc, subject: p.subject, bodyText: p.bodyText, attachments: [] };
@@ -151,7 +151,7 @@ async function androidWithMailbox(page: Page) {
         f.unexpected.push(plugin + '.' + method); throw Error('Unexpected native operation');
       },
     };
-  }, { agentId: AGENT });
+  }, { agentId: AGENT, unread });
 }
 const fixture = (page: Page) => page.evaluate(() => {
   const f = (window as any).declineFixture;
@@ -216,14 +216,16 @@ test('Android: the send review shows Cc and Bcc, an edit after review is reviewe
 
 test('Android: Home withholds the old count until a changed account is reverified', async ({ page }) => {
   test.setTimeout(120_000);
-  await androidWithMailbox(page);
+  // Keep a non-empty attention card: a fresh mailbox with zero unread now collapses.
+  await androidWithMailbox(page, true);
   await connected(page);
   await button(page, 'Inbox').click();
-  await expect(button(page, 'Synthetic sender, Harbour schedule')).toBeVisible({ timeout: 30_000 });
+  await expect(button(page, 'Unread, Synthetic sender, Harbour schedule')).toBeVisible({ timeout: 30_000 });
   await button(page, 'Back to apps').click();
   const card = page.locator('[data-alpha-layer="home"] [data-alpha-home-inbox]');
   await expect(card).toContainText(/Updated \d{1,2}:\d{2}/);
   await expect(card).not.toContainText('Not updated since');
+  await expect(card).toHaveAccessibleName('Open Inbox: 1 unread email');
   // Hold the new account lookup: the old read cannot become current merely because
   // Settings announced a change. Home now refreshes its authorized source itself.
   const searches = (await fixture(page)).searches;
@@ -247,10 +249,11 @@ test('Android: Home withholds the old count until a changed account is reverifie
   await page.evaluate(()=>(window as any).releaseHomeAccountRead());
   await expect(card).toContainText(/Updated \d{1,2}:\d{2}/);
   await expect(card).not.toContainText('Not updated since');
+  await expect(card).toHaveAccessibleName('Open Inbox: 1 unread email');
   await expect.poll(async()=>(await fixture(page)).searches).toBeGreaterThan(searches);
   // The current card still opens the same verified mailbox.
   await card.click();
-  await expect(button(page, 'Synthetic sender, Harbour schedule')).toBeVisible({ timeout: 30_000 });
+  await expect(button(page, 'Unread, Synthetic sender, Harbour schedule')).toBeVisible({ timeout: 30_000 });
   expect((await fixture(page)).unexpected).toEqual([]);
 });
 

@@ -85,6 +85,30 @@ reset-only data management are planned. These are requirements, not claims that 
 current Cloud voice/credit UI or other source already implements them.
 See [speech research](docs/local-speech-research-2026-10-12.md) for native candidates.
 
+## Cloud release qualification — November 6
+
+The release scope is Cloud voice with Cartesia. Keep Android microphone capture,
+playback and the resident agent; local speech-model qualification remains a
+separate native-profile task. The existing explicit `cloud` build profile verifies
+its packaged resident, worker and source provenance and excludes local speech
+models. Direct mode and embedding routing are not changed by release admission.
+
+A Cloud release needs passing voice evidence for each exact signed APK, supplied
+after testing with `node scripts/verify-apks.mjs --runtime-profile=cloud
+--cloud-voice-evidence=/absolute/path/cloud-voice.json`. The receipt format is
+`alpha-cloud-voice-qualification-v1`, with a `results` array. Each result names
+`apkSha256`, `provider: "cartesia"`, `outcome: "passed"`, and a `checks` object
+whose `consent`, `session`, `acousticInput`, `blueBar`, `transcript`,
+`audibleSpeakerReply`, `mute`, `unmute`, and `stopReleased` fields are all true
+only after the corresponding check passed. Do not put transcripts, credentials,
+account identifiers or recorded audio in this receipt.
+
+Missing, failed, incomplete, duplicate or different-APK evidence keeps the release
+non-distributable. The verifier records only the receipt digest and allowed
+fields. Signing, version, flag-off bundle, resident provenance and notice gates
+still apply. Native-profile releases still require their qualified on-device voice
+bundle. This qualification does not publish a release or replace owner acceptance.
+
 ## Explicit Cloud QA profile — October 18
 
 The owner-approved `cloud` runtime profile supersedes the local-speech-only wording

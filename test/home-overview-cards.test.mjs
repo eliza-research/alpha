@@ -143,3 +143,26 @@ test('the Home agenda values come from the shared card model for an event, an ov
   const none=h.homeCalendarValues(h.presentHomeAgendaCard({now,item:null,provenance:{origin:'',read:'',description:''},emptyTitle:'Calendar has not been verified',sourceName:'Agent Calendar'}));
   assert.deepEqual([none.homeCalendarTitle,none.homeCalendarTime,none.homeCalendarLabel,none.homeCalendarHasEvent,none.homeCalendarHasMeta],['Calendar has not been verified','Wed, Oct 7','Open Agent Calendar',false,false]);
 });
+
+test('Home suppresses only confirmed empty cards and keeps a retained brief', () => {
+  class Shell {
+    renderVals() { return this.values; }
+  }
+  c.installHomeOverviewCards(Shell);
+  const shell = new Shell();
+  const empty = {homeCalendarConfirmedEmpty: true, homeInboxConfirmedEmpty: true, homeWorkflowConfirmedEmpty: true};
+  shell.values = empty;
+  let rendered = shell.renderVals();
+  assert.deepEqual([rendered.homeAgendaCard, rendered.homeAttentionCard, rendered.homeShowWorkflow, rendered.homeHasOverviewCards],
+    [null, null, false, false]);
+  shell.values = {...empty, homeBriefHas: true, homeBriefTitle: 'Follow up on the failed run', homeBriefFailed: true};
+  rendered = shell.renderVals();
+  assert.equal(rendered.homeHasOverviewCards, true);
+  assert.match(html(rendered.homeBriefCard), /Follow up on the failed run/);
+  shell.values = {homeCalendarTitle: 'Calendar unavailable', homeInboxTitle: 'Reconnect email'};
+  rendered = shell.renderVals();
+  assert.equal(rendered.homeHasOverviewCards, true);
+  assert.equal(rendered.homeShowWorkflow, true);
+  assert.match(html(rendered.homeAgendaCard), /Calendar unavailable/);
+  assert.match(html(rendered.homeAttentionCard), /Reconnect email/);
+});

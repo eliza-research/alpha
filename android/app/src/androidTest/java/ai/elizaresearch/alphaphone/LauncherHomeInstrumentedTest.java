@@ -228,17 +228,20 @@ public class LauncherHomeInstrumentedTest {
   }
  }
 
- @Test public void phoneShortcutOpensTheStockDialerWithinTwoTapsAndHomeReturns() throws Exception {
+ @Test public void installedPhoneOpensTheStockDialerWithinTwoTapsAndHomeReturns() throws Exception {
   assumeAlphaIsHome();
   Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
   ResolveInfo dialer = context.getPackageManager().resolveActivity(new Intent(Intent.ACTION_DIAL, Uri.parse("tel:")), PackageManager.MATCH_DEFAULT_ONLY);
   Assume.assumeTrue("A stock dialer handles ACTION_DIAL on this image", dialer != null && dialer.activityInfo != null && !"android".equals(dialer.activityInfo.packageName));
   String dialerPackage = dialer.activityInfo.packageName;
+  Assume.assumeTrue("The stock dialer has an installed launcher entry",
+   context.getPackageManager().getLaunchIntentForPackage(dialerPackage) != null);
   try (BoundedActivityScenario<MainActivity> scenario = BoundedActivityScenario.launch(MainActivity.class)) {
    AppNavigation.liveMode();
    eval(AppNavigation.request("Home"));
    until(AppNavigation.selected("Home") + "&&!document.querySelector('.os')?.inert", "Home ready");
-   // Tap 1: Apps. Tap 2: Phone (the resolved ACTION_DIAL handler, not Alpha's deferred Phone view).
+   // Tap 1: Apps. Tap 2: Phone, the stock dialer's installed launcher entry folded into one tile that
+   // opens the resolved ACTION_DIAL handler (not Alpha's deferred Phone view).
    tap("Apps");
    String phone = "[...document.querySelectorAll('[data-alpha-layer=\"drawer\"] button')].find(b=>/^Open Phone/.test(b.getAttribute('aria-label')||'')&&!b.disabled)";
    until(phone, "The drawer offers the resolved Phone shortcut");

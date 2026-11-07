@@ -54,8 +54,25 @@ export function cloudVoiceFailure(error: unknown, context: { recording?: boolean
 }
 
 /** Product registration only; shared transport owns speech lifecycle and cancellation. */
-const streamingNative = registerPlugin<CloudStreamPort>('AlphaCloudSpeechStream');
+const streamingNative = registerPlugin<CloudStreamPort & {cloudStreamTiming(): Promise<unknown>}>('AlphaCloudSpeechStream');
 export function nativeCloudStreamingAvailable() { return Capacitor.isNativePlatform() && Capacitor.isPluginAvailable('AlphaCloudSpeechStream'); }
+
+/** Read the content-free Cloud startup stages already held by the native bridge. */
+export async function readNativeCloudStreamTiming(timeoutMs = 2_000): Promise<unknown> {
+  if (!nativeCloudStreamingAvailable()) return null;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      streamingNative.cloudStreamTiming(),
+      new Promise<null>(resolve => { timer = setTimeout(() => resolve(null), timeoutMs); }),
+    ]);
+  } catch {
+    // Older bridge builds may register the plugin without this method.
+    return null;
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
+}
 export function createCloudStreamingSpeech(input: Parameters<typeof createSharedCloudStreamingSpeech>[0]) { return createSharedCloudStreamingSpeech(input, streamingNative); }
 
 export type VoiceClip = { recordingId: string; durationMs: number };

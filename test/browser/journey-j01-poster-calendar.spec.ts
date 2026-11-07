@@ -68,7 +68,7 @@ test('J01 poster scan becomes exactly one reviewed Calendar event; suggestions a
  await page.goto('/?mode=dev');await ready(page);await openBrowserCalendar(page);await returnToApps(page);
  // Home's agenda reads the calendar chosen in Calendar (docs/daily-overview.md): the empty browser calendar.
  const homeAgenda=page.getByRole('region',{name:'Home',exact:true}).locator('[data-alpha-home-calendar]');
- await expect(homeAgenda).toHaveAccessibleName('Open your calendar');await expect(homeAgenda).toContainText('No upcoming events');
+ await expect(homeAgenda).toHaveCount(0);
  expect(await events(page)).toHaveLength(0);
 
  // 1. Scan, review suggestions, then cancel from the scan review: nothing is saved.
