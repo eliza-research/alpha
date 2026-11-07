@@ -134,7 +134,9 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     const status = view.status, region = regionalMap(), raster=cloudMapsBasemap(), basemap = region || raster || globalBasemap, globalMap = !region&&!raster;
     // Alpha's Cloud provider is operator-owned. Translate only the generic setup
     // prompt after a service-configuration refusal; preserve other recovery messages.
-    const statusText = !regionalMapsConfigured && cloudMapsDiagnostics().error === 'unconfigured' && status.text.startsWith('Connect a Maps provider')
+    const cloudFailure = cloudMapsDiagnostics();
+    const statusText = !regionalMapsConfigured && cloudFailure.error === 'unconfigured' &&
+      (status.text.startsWith('Connect a Maps provider') || status.text === cloudFailure.message)
       ? 'Maps is unavailable right now. Try again later.' : status.text;
     const directionsOpen = view.mode === 'directions' || view.mode === 'origin' || view.mode === 'navigation';
     const isPlace = view.mode === 'place', isResults = view.mode === 'results' || view.mode === 'origin', isNav = view.mode === 'navigation';
