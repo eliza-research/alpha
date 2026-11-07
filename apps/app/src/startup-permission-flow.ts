@@ -40,7 +40,7 @@ export function startupGoogleAccess(accounts: readonly {connected: boolean; conn
   return {gmail: connected.some(account => account.grantedCapabilities.includes('google.gmail.triage')), calendar: connected.some(account => account.grantedCapabilities.includes('google.calendar.read'))};
 }
 
-/** Installed names: the "Not now" dismissal and which OS prompts were already shown. */
+/** Installed names: which OS prompts were already shown, and the Settings reopen event. */
 export const STARTUP_PERMISSIONS_KEY = 'alpha.startup-permissions.v1';
 export const STARTUP_PERMISSIONS_REOPEN = 'alpha:startup-permissions-reopen';
 export type StartupPermissionMemory = WalkthroughMemory;

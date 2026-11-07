@@ -40,7 +40,7 @@ test('Settings review of completed setup closes at once by button, Escape or bac
  await f.remount();assert.equal(f.dialog(),null);assert.equal(f.calls.length,0);
 });
 test('Settings review can also be left from Ready, and finishing it keeps completion',async t=>{
- const f=await fixture(t,{durable:completed});await f.reopen();for(let i=0;i<4;i++)await f.click('Continue');assert.equal(f.heading(),'You’re all set');await f.cancel();assert.equal(f.dialog(),null);
+ const f=await fixture(t,{durable:completed});await f.reopen();for(let i=0;i<4;i++)await f.click('Continue');assert.equal(f.heading(),'Setup finished');await f.cancel();assert.equal(f.dialog(),null);
  await f.reopen();for(let i=0;i<4;i++)await f.click('Continue');await f.click('Go to Alpha');assert.equal(f.dialog(),null);assert.deepEqual(f.progress(),completed);await f.remount();assert.equal(f.dialog(),null);
 });
 test('a targeted review of completed setup closes on Escape without rewriting completion',async t=>{

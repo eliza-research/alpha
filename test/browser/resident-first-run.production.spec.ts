@@ -135,7 +135,8 @@ test('first run: native email sign-in, credits, provider binding, then the resid
     await expect(access.getByRole('button',{name:/Skip|Not now|Back/})).toHaveCount(0);
     await access.getByRole('button',{name:'Allow',exact:true}).click();
   }
-  await expect(access.getByRole('heading',{name:'You’re all set',exact:true})).toBeVisible();
+  // Setup does not wait for the agent, so its AI binding may or may not be confirmed here.
+  await expect(access.getByRole('heading',{name:/^(You’re all set|Setup finished)$/})).toBeVisible();
   expect(await page.evaluate(()=>(window as any).firstRunAccess.requests)).toEqual(['notifications','microphone','camera','location','calendar','photos']);
   await access.getByRole('button',{name:'Go to Alpha',exact:true}).click();
   await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 30_000 });

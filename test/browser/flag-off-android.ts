@@ -398,7 +398,8 @@ export async function seedCompletedAccessSetup(page: Page) {
 /** Dismiss the explicit post-auth Ready card; quiet restoration of completed setup opens no card. */
 export async function completeAccessSetup(page: Page) {
   const panel=page.locator('dialog.alpha-startup-permissions');
-  const ready=panel.getByRole('heading',{name:'You’re all set',exact:true});
+  // The heading depends on whether the agent's AI binding was confirmed before the last step.
+  const ready=panel.getByRole('heading',{name:/^(You’re all set|Setup finished)$/});
   if(await panel.count()){
     await expect(ready).toBeVisible();
     await panel.getByRole('button',{name:'Go to Alpha',exact:true}).click();
