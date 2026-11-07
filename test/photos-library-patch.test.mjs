@@ -51,16 +51,25 @@ public class CatalogOrderCheck{static void check(boolean ok,String what){if(!ok)
   rows.sort(PermittedMediaCatalog.CATALOG_ORDER);
   StringBuilder order=new StringBuilder();for(Object[] r:rows)order.append(r[3]).append(',');
   check(order.toString().equals("internal-today-later-id,internal-today,sd-card-today,video,old-high-id,"),"order "+order);
-  java.util.List<String> v=new java.util.ArrayList<>();
-  check(PermittedMediaCatalog.after(0,5000,2,1,v).equals(" AND "+PermittedMediaCatalog.SHOT+"<?")&&v.equals(java.util.List.of("5000")),"an earlier source continues below the time");
-  v.clear();check(PermittedMediaCatalog.after(3,5000,2,1,v).equals(" AND "+PermittedMediaCatalog.SHOT+"<=?")&&v.equals(java.util.List.of("5000")),"a later source keeps rows at the same time");
-  v.clear();check(PermittedMediaCatalog.after(2,5000,2,1,v).equals(" AND ("+PermittedMediaCatalog.SHOT+"<? OR ("+PermittedMediaCatalog.SHOT+"=? AND _id<?))")&&v.equals(java.util.List.of("5000","5000","1")),"the same source continues below the _id");
   check(PermittedMediaCatalog.SHOT.equals("ifnull(nullif(datetaken,0),date_added*1000)"),"capture time, else date added");
-  System.out.println("ok");
+  // One page key per line for the SQLite run below: the WHERE suffix, then each arg, tab-separated.
+  for(int[] k:new int[][]{{0,2},{3,2},{2,2}}){java.util.List<String> bound=new java.util.ArrayList<>();String where=PermittedMediaCatalog.after(k[0],5000,k[1],3,bound);
+   System.out.println(where+"\\t"+String.join("\\t",bound));}
  }}`);
  const sources=path.dirname(path.join(media,'x'));const javaRoot=path.resolve(sources,'../../../..');
  execFileSync('javac',['-proc:none','-nowarn','-implicit:class','-d',path.join(work,'out'),'-cp',androidJar,'-sourcepath',javaRoot+path.delimiter+path.join(work,'stub'),path.join(work,'stub/ai/eliza/plugins/media/CatalogOrderCheck.java'),path.join(media,'PermittedMediaCatalog.java')],{timeout:120000,stdio:'pipe'});
- assert.equal(execFileSync('java',['-cp',path.join(work,'out')+path.delimiter+androidJar,'ai.eliza.plugins.media.CatalogOrderCheck'],{encoding:'utf8',timeout:60000}).trim(),'ok');
+ const keys=execFileSync('java',['-cp',path.join(work,'out')+path.delimiter+androidJar,'ai.eliza.plugins.media.CatalogOrderCheck'],{encoding:'utf8',timeout:60000}).trimEnd().split('\n').map(line=>{const [where,...args]=line.split('\t');return {where,args};});
+ // Android binds every selection arg as TEXT. Run each page key on a real SQLite table with the
+ // args bound as strings: SHOT has no column affinity, so an uncast "?" would match every row.
+ const {DatabaseSync}=await import('node:sqlite');const db=new DatabaseSync(':memory:');
+ db.exec('CREATE TABLE files(_id INTEGER PRIMARY KEY, datetaken INTEGER, date_added INTEGER)');
+ // shot 6000, 5000 (_id 2, 3, 4), 4000 via date_added, 1000.
+ db.exec('INSERT INTO files VALUES (1,6000,0),(2,5000,0),(3,5000,0),(4,5000,0),(5,0,4),(6,1000,0)');
+ const page=key=>db.prepare('SELECT _id FROM files WHERE 1=1'+key.where+' ORDER BY _id').all(...key.args).map(row=>row._id);
+ assert.deepEqual(keys.map(key=>key.args.every(arg=>typeof arg==='string')),[true,true,true]);
+ assert.deepEqual(page(keys[0]),[5,6],'an earlier source continues below the time');
+ assert.deepEqual(page(keys[1]),[2,3,4,5,6],'a later source keeps rows at the same time');
+ assert.deepEqual(page(keys[2]),[2,5,6],'the same source continues below the _id');
 });
 
 test('Photos grid thumbnails can be read again by id, so off-screen rows drop theirs',{skip:!ready&&'vendor/eliza not checked out'},async()=>{

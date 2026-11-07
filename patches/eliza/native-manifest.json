@@ -80,7 +80,7 @@
     },
     {
       "file": "photos-library.patch",
-      "sha256": "5f531b35a2288f8d24cbc1710d0b4558f199291ef7a1338a490982e54ab005c0",
+      "sha256": "bc740ac2cf1eeccc516f58c844ee323efc8c4d20e54d4b08efd0a6c70e8acf10",
       "module": "plugins/plugin-native-media/android",
       "targets": [
         {
@@ -101,7 +101,7 @@
         {
           "path": "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PermittedMediaCatalog.java",
           "beforeSha256": "e1ab1a24393b45b05025415e8809b3dd61b3e7f0d9bb757395123791bec1814a",
-          "afterSha256": "92dbdd426903bb24978d558c184219fc1f70e1ae2e511fab6c3d22a12437bbb4"
+          "afterSha256": "0fda5ac9e93014c92802defdc40486c9bd7ede95e7902a7693f5372b18a105e6"
         },
         {
           "path": "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PermittedMediaReview.java",

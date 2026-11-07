@@ -781,7 +781,7 @@
      if (s != null && (token == null || s.token.equals(token)))
 --- a/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PermittedMediaCatalog.java
 +++ b/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PermittedMediaCatalog.java
-@@ -71,17 +71,51 @@
+@@ -71,17 +71,54 @@
    };
    private static final class Page {
      final String snapshot, query, kind;
@@ -825,20 +825,23 @@
 +   * Rows of {@code source} that come after the key (shot, source, id) in catalog order: newest
 +   * capture time first, then source index, then _id descending. {@code args} receives the values.
 +   */
++  // Selection args are bound as TEXT and SHOT has no column affinity, so an uncast "?" never
++  // equals it and always sorts above it: every bound value is cast back to INTEGER.
++  static final String NUMBER = "CAST(? AS INTEGER)";
 +  static String after(int source, long shot, int lastSource, long id, List<String> args) {
 +    args.add(Long.toString(shot));
 +    if (source < lastSource)
-+      return " AND " + SHOT + "<?";
++      return " AND " + SHOT + "<" + NUMBER;
 +    if (source > lastSource)
-+      return " AND " + SHOT + "<=?";
++      return " AND " + SHOT + "<=" + NUMBER;
 +    args.add(Long.toString(shot));
 +    args.add(Long.toString(id));
-+    return " AND (" + SHOT + "<? OR (" + SHOT + "=? AND _id<?))";
++    return " AND (" + SHOT + "<" + NUMBER + " OR (" + SHOT + "=" + NUMBER + " AND _id<" + NUMBER + "))";
 +  }
    private boolean observing;
    public PermittedMediaCatalog(Context context, Runnable changed) {
      this(context, true, changed);
-@@ -246,6 +280,9 @@
+@@ -246,6 +283,9 @@
          Build.VERSION.SDK_INT >= 30 ? FIELDS : java.util.Arrays.copyOf(FIELDS, 8)));
      if (video)
        result.add(MediaStore.Video.VideoColumns.DURATION);
@@ -848,7 +851,7 @@
      return result.toArray(new String[0]);
    }
    private String revision(Cursor row, String volume) {
-@@ -277,6 +314,7 @@
+@@ -277,6 +317,7 @@
      result.put("identity",
          version(volume) + ":" + row.getLong(3)
              + (Build.VERSION.SDK_INT >= 30 ? ":" + row.getLong(8) : ""));
@@ -856,7 +859,7 @@
      return result;
    }
    public Uri uri(MediaLibraryKey key) {
-@@ -303,6 +341,15 @@
+@@ -303,6 +344,15 @@
        main.removeCallbacks(timeout);
      }
    }
@@ -872,7 +875,7 @@
    private boolean readable(boolean video) {
      return !"denied".equals(access().getString(video ? "videos" : "images"));
    }
-@@ -351,8 +398,8 @@
+@@ -351,8 +401,8 @@
        long from, long to, int limit) throws Exception {
      if (from < 0 || to < from || limit < 1 || limit > PAGE_SIZE)
        throw new IllegalArgumentException("Invalid bounded media query");
@@ -883,7 +886,7 @@
        throw new IllegalArgumentException("Unsupported media filter");
      String pageKind = kind + ":" + filter + ":" + from + ":" + to + ":" + limit;
      if (search == null || search.length() > 128 || search.indexOf('\0') >= 0 || kind == null
-@@ -360,89 +407,93 @@
+@@ -360,89 +410,93 @@
        throw new IllegalArgumentException("Invalid photo query");
      List<String> volumes = volumes();
      String snapshot = snapshot(volumes);
@@ -1048,7 +1051,7 @@
      }
      current(snapshot, volumes);
      JSObject result = new JSObject();
-@@ -564,7 +615,7 @@
+@@ -564,7 +618,7 @@
      List<String> volumes = volumes();
      String snapshot = snapshot(volumes);
      long until = SystemClock.elapsedRealtime() + 3000;
@@ -1057,7 +1060,7 @@
      for (String volume : volumes)
        for (boolean video : new boolean[] {false, true}) {
          if (!readable(video))
-@@ -574,8 +625,8 @@
+@@ -574,8 +628,8 @@
          if (Build.VERSION.SDK_INT >= 30)
            args.putInt(MediaStore.QUERY_ARG_MATCH_TRASHED, MediaStore.MATCH_INCLUDE);
          String[] projection = Build.VERSION.SDK_INT >= 30
@@ -1068,7 +1071,7 @@
          try (Cursor rows = query(volume, video, args, projection)) {
            if (rows == null)
              throw new IllegalStateException("Media provider unavailable");
-@@ -590,6 +641,11 @@
+@@ -590,6 +644,11 @@
                videos++;
              if (Build.VERSION.SDK_INT >= 30 && rows.getInt(0) == 1)
                favorites++;
@@ -1080,7 +1083,7 @@
            }
          }
        }
-@@ -597,6 +653,8 @@
+@@ -597,6 +656,8 @@
      JSObject result = new JSObject();
      result.put("favorites", favorites);
      result.put("videos", videos);
