@@ -6,7 +6,7 @@ import vm from 'node:vm';
 import {deferred} from './fixtures/wait-for.mjs';
 const source=readFileSync(process.env.ALPHA_RESTORE_SOURCE||'apps/app/src/runtime/connection-ui.tsx','utf8');
 const part=(start,end)=>{const a=source.indexOf(start),b=source.indexOf(end,a);assert.ok(a>=0&&b>a);return source.slice(a,b);};
-const code=transformSync([
+const code=stripTypeScriptTypes([
  part('async function createSelectedConversation(', '/** Only remove'),
  part('async function restoreConversationHistory(', '/** Restored chats'),
  part('async function restoreSavedHistory(', 'type HistoryEntry'),
