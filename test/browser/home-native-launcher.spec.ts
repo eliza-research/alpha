@@ -128,6 +128,32 @@ test('a mounted Android WebView freezes input and waits for draft readback befor
   expect(await page.evaluate(() => (window as any).updateReconnects)).toBe(1);
 });
 
+test('native idle restores a mounted editor after a newer result without replaying reconnect', async ({page}) => {
+  const update = {activationId:'22222222-2222-4333-8444-555555555555',bridgeId:'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'};
+  await nativeStub(page,{update:{...update,mounted:true}});
+  await page.goto('/');
+  const input = page.getByRole('textbox',{name:'Ask Alpha',exact:true});
+  await input.fill('Keep my draft after updating');
+  await expect.poll(() => page.evaluate(() => [...(window as any).updateSlots.values()].some(value => typeof value==='string'&&value.includes('Keep my draft after updating')))).toBe(true);
+  await page.evaluate(async update => {
+    const w = window as any;
+    const {connectionController}=await import('/src/runtime/connection-ui.tsx');
+    w.updateReconnects=0;
+    connectionController.captureAppUpdateReconnect=()=>async stillSettled=>{if(stillSettled())w.updateReconnects++;};
+    w.updateState = {...update,pending:true,phase:'preparing'};
+    w.notifyUpdateReady(w.updateState);
+  }, update);
+  const dialog = page.getByRole('dialog',{name:'App update'});
+  await expect(dialog).toBeVisible();
+  await expect.poll(() => calls(page,'AlphaDevice','activateUpdate')).toEqual([{...update,ready:true}]);
+  await page.evaluate(update => {
+    (window as any).updateState = {...update,activationId:'33333333-2222-4333-8444-555555555555',pending:false,idle:true,outcome:'canceled',resume:true};
+  }, update);
+  await expect(dialog).toHaveCount(0);
+  await expect(input).toHaveValue('Keep my draft after updating');
+  expect(await page.evaluate(() => (window as any).updateReconnects)).toBe(0);
+});
+
 test('a mounted Android WebView refuses an update when draft readback differs', async ({page}) => {
   const update = {activationId:'44444444-2222-4333-8444-555555555555',bridgeId:'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'};
   await nativeStub(page,{update:{...update,mounted:true}});

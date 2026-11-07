@@ -49,3 +49,17 @@ test('a newly launched successor can mount after native startup reconciles the j
     async activateUpdate() { assert.fail('No pending preparation'); },
   }, async () => assert.fail('No pause to wait for'));
 });
+
+test('same-bridge native idle releases startup after a newer attempt replaced the result', async () => {
+  const states = [
+    {activationId, bridgeId, pending:true, phase:'paused'},
+    {activationId:other, bridgeId:other, pending:false, idle:true, outcome:'failed'},
+    {activationId:other, bridgeId, pending:false, idle:true, outcome:'failed'},
+  ];
+  let reads = 0;
+  await waitForAppUpdateStartup({
+    async updateState() { return states[reads++]; },
+    async activateUpdate() { assert.fail('No preparation to acknowledge'); },
+  }, async () => assert.ok(reads < states.length, 'Native idle must unblock the current WebView'));
+  assert.equal(reads, 3);
+});

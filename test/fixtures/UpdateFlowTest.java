@@ -1664,6 +1664,7 @@ public final class UpdateFlowTest {
    check(AlphaDevicePlugin.UpdatePause.store().read()!=null&&AlphaLocalAgentPlugin.releases==0,"dismissal/resume does not release the pause");
    PluginCall read=new PluginCall(new JSObject());other.updateState(read);read.awaitAnswer();
    check(read.result.optBoolean("canContinue",false),"the sibling WebView can reach the kept confirmation");
+   check(!read.result.optBoolean("idle",false),"an Android session still held for confirmation is not idle");
    String siblingBridgeId=read.result.optString("bridgeId");
    PluginCall stale=new PluginCall(new JSObject().put("activationId",activationId).put("bridgeId",bridgeId));
    other.continueUpdate(stale);stale.awaitAnswer();
@@ -1680,6 +1681,7 @@ public final class UpdateFlowTest {
    check(reconciled.result!=null&&activationId.equals(reconciled.result.optString("activationId"))
      &&"canceled".equals(reconciled.result.optString("outcome")),"reconciliation returns the proven activation result");
    check(Boolean.TRUE.equals(reconciled.result.opt("resume")),"only the owner of the last confirmation may restart");
+   check(Boolean.TRUE.equals(reconciled.result.opt("idle")),"the native bridge proves idle only after its journal clears");
    check(owner.events.stream().filter(e->e.equals("alphaUpdateSettled:canceled")).count()==1,"cancellation settles once");
    check(other.events.stream().filter(e->e.equals("alphaUpdateSettled:canceled")).count()==1
      &&joining.events.stream().filter(e->e.equals("alphaUpdateSettled:canceled")).count()==1,"all live renderers receive the terminal result");

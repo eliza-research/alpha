@@ -378,7 +378,10 @@ public final class AlphaDevicePlugin extends Plugin {
     }
     result.put("activationId",record.id).put("phase","paused").put("canContinue",canContinue);
    }
-   else if(settledActivation!=null)result.put("activationId",settledActivation).put("outcome",settledOutcome).put("resume",updateBridgeId.equals(settledResumeBridge));
+   else{
+    result.put("idle",true);
+    if(settledActivation!=null)result.put("activationId",settledActivation).put("outcome",settledOutcome).put("resume",updateBridgeId.equals(settledResumeBridge));
+   }
    return result;
   }
  }
