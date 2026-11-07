@@ -222,7 +222,14 @@ public final class AlphaDevicePlugin extends Plugin {
 
  private static final String UPDATE_STATUS="ai.elizaresearch.alphaphone.UPDATE_STATUS";
  /** SHA-256 of the original certificate of Alpha's one signer (apksigner's digest), which key rotation never changes: an update manifest offers an APK only to installs of that signing lineage. */
- static String appSigner(Context context)throws Exception{android.content.pm.SigningInfo signing=context.getPackageManager().getPackageInfo(context.getPackageName(),PackageManager.GET_SIGNING_CERTIFICATES).signingInfo;return signing.hasMultipleSigners()?null:hex(java.security.MessageDigest.getInstance("SHA-256").digest(signing.getSigningCertificateHistory()[0].toByteArray()));}
+ static String appSigner(Context context)throws Exception{
+  return signingRoot(context.getPackageManager().getPackageInfo(context.getPackageName(),PackageManager.GET_SIGNING_CERTIFICATES).signingInfo);
+ }
+ private static String signingRoot(android.content.pm.SigningInfo signing)throws Exception{
+  if(signing==null||signing.hasMultipleSigners())return null;
+  android.content.pm.Signature[] history=signing.getSigningCertificateHistory();
+  return history==null||history.length==0||history[0]==null?null:hex(java.security.MessageDigest.getInstance("SHA-256").digest(history[0].toByteArray()));
+ }
  /**
   * A session's binding: package, versionCode, SHA-256, signer and boot. It is the session's referrer, so it sits in the record Android
   * writes with the seal and goes with the session, and a session comes back from a kill or a reboot with it or not at all (AOSP 10 to 17).
@@ -596,10 +603,18 @@ public final class AlphaDevicePlugin extends Plugin {
        try(java.io.InputStream in=connection.getInputStream();java.io.OutputStream out=new java.io.FileOutputStream(apk)){copyVerified(in,out,size,sha256,deadline);}
       }finally{connection.disconnect();}
       // Android would also accept a same-versionCode reinstall; only the offered, newer build of this package goes on.
-      android.content.pm.PackageInfo archive=getContext().getPackageManager().getPackageArchiveInfo(apk.getPath(),0);
+      android.content.pm.PackageInfo archive=getContext().getPackageManager().getPackageArchiveInfo(
+       apk.getPath(),PackageManager.GET_PERMISSIONS|PackageManager.GET_SIGNING_CERTIFICATES);
       if(archive==null||!getContext().getPackageName().equals(archive.packageName)||archive.getLongVersionCode()!=versionCode||versionCode<=BuildConfig.VERSION_CODE)throw new java.io.IOException("Update does not match its manifest");
+      String signer=appSigner(getContext());
+      // The release verifier requires READ_CONTACTS only in the launcher manifest.
+      // Read that existing flavor marker from the APK, independent of the offer.
+      if(archive.requestedPermissions==null||
+       BuildConfig.IS_LAUNCHER!=java.util.Arrays.asList(archive.requestedPermissions).contains("android.permission.READ_CONTACTS")||
+       signer==null||!signer.equals(signingRoot(archive.signingInfo)))
+       throw new java.io.IOException("Update does not match this installation");
       throwIfDestroyed();
-      String binding="alpha-update://"+getContext().getPackageName()+"/"+versionCode+"/"+sha256+"/"+appSigner(getContext())+"/"+updateBoot()+"/intent";
+      String binding="alpha-update://"+getContext().getPackageName()+"/"+versionCode+"/"+sha256+"/"+signer+"/"+updateBoot()+"/intent";
       if(!UPDATE_BINDING.matcher(binding).matches())throw new java.io.IOException("Update not admitted");
       PackageInstaller.SessionParams params=new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
       params.setAppPackageName(getContext().getPackageName());params.setSize(size);params.setReferrerUri(android.net.Uri.parse(binding));

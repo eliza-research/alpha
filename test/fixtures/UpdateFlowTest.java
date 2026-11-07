@@ -129,7 +129,13 @@ public final class UpdateFlowTest {
   plugin.context=context;plugin.activity=new Activity();plugin.activity.state=state;plugin.load();
   return plugin;
  }
- private static PackageInfo archive(String packageName,long versionCode){PackageInfo info=new PackageInfo();info.packageName=packageName;info.versionCode=versionCode;return info;}
+ private static PackageInfo archive(String packageName,long versionCode){
+  PackageInfo info=new PackageInfo();info.packageName=packageName;info.versionCode=versionCode;
+  info.requestedPermissions=BuildConfig.IS_LAUNCHER?new String[]{"android.permission.INTERNET","android.permission.READ_CONTACTS"}:new String[]{"android.permission.INTERNET"};
+  Signature signer=new Signature(new byte[]{7});
+  info.signingInfo=new SigningInfo(new Signature[]{signer},new Signature[]{signer});
+  return info;
+ }
  private static PluginCall offered(long versionCode)throws Exception{return new PluginCall(new JSObject().put("apkUrl","https://updates.test/alpha-"+versionCode+".apk").put("sha256",sha256(APK)).put("sizeBytes",(long)APK.length).put("versionCode",versionCode));}
  private static PluginCall offered()throws Exception{return offered(8);}
  /** A binding as Alpha writes one, for this boot unless a test moves the count. */
@@ -1576,6 +1582,28 @@ public final class UpdateFlowTest {
   Intent answer=confirmation(restarting,asked);
   check(stays.activity.started.equals(List.of(answer)),"which hears Android's own status");
  }
+ private static void onlyTheInstalledFlavorAndLineageReachAndroid(File cache)throws Exception{
+  for(boolean launcher:new boolean[]{true,false}){
+   Context context=installing(cache);
+   BuildConfig.IS_LAUNCHER=launcher;
+   context.packages.archive=archive(context.getPackageName(),8);
+   context.packages.archive.requestedPermissions=launcher?new String[]{"android.permission.INTERNET"}:
+     new String[]{"android.permission.INTERNET","android.permission.READ_CONTACTS"};
+   AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);
+   AlphaLocalAgentPlugin.stops=0;
+   check(tap(owner).rejected.get()==1&&context.packages.installer.sessions.isEmpty()&&AlphaLocalAgentPlugin.stops==0,
+     "the opposite flavor is refused before staging or stopping the resident");
+   context.packages.archive=archive(context.getPackageName(),8);
+   Signature original=new Signature(new byte[]{7}),other=new Signature(new byte[]{8});
+   context.packages.archive.signingInfo=new SigningInfo(new Signature[]{other},new Signature[]{other});
+   check(tap(owner).rejected.get()==1&&context.packages.installer.sessions.isEmpty()&&AlphaLocalAgentPlugin.stops==0,
+     "a different signing lineage is refused before staging or stopping the resident");
+   context.packages.archive.signingInfo=new SigningInfo(new Signature[]{other},new Signature[]{original,other});
+   check(tap(owner).resolved.get()==1&&context.packages.installer.committed.size()==1,
+     "a same-flavor successor with the original signing root reaches Android once");
+  }
+  BuildConfig.IS_LAUNCHER=true;
+ }
  private static void everyFailureSettlesQuietly(File cache)throws Exception{
   Context binder=installing(cache);
   AlphaDevicePlugin plugin=bridge(binder,Lifecycle.State.RESUMED);
@@ -1728,6 +1756,7 @@ public final class UpdateFlowTest {
   int status=1;
   try{
    applicationAttachBeforePublicationDoesNotFenceOrdinaryStartup(cache);
+   onlyTheInstalledFlavorAndLineageReachAndroid(cache);
    updateWaitsForDraftsAndExactShutdown(cache);
    refusedDraftFlushNeverStopsOrCommits(cache);
    destroyedSiblingCannotSatisfyDraftBarrier(cache);
