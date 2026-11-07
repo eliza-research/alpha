@@ -133,6 +133,8 @@ export async function readLocalAgentStream(response:Response, signal:AbortSignal
   let value;try{value=JSON.parse(data);}catch{return invalid('Invalid stream event');}
   if(!value||typeof value!=='object'||Array.isArray(value))return invalid('Invalid stream event');
   if(value.type==='error'){
+   // A busy room refuses before the turn is recorded or run: the message was provably not accepted.
+   if(value.code==='room_busy')throw Object.assign(Error('The agent is busy and did not accept this message.'),{status:429,beforeDispatch:true});
    if(value.terminalFailure||value.failureKind||value.actionResults!==undefined)onReplyReady?.(undefined);
    // The upstream failure kind (CHAT_FAILURE_KINDS) travels with the error; its prose never does.
    const kind=typeof value.failureKind==='string'?value.failureKind:value.terminalFailure&&typeof value.terminalFailure==='object'&&typeof value.terminalFailure.kind==='string'?value.terminalFailure.kind:undefined;
