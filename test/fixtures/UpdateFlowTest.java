@@ -1607,6 +1607,13 @@ public final class UpdateFlowTest {
   context.packages.installed.signingInfo=new SigningInfo(new Signature[]{original,rotated},null);
   check(AlphaDevicePlugin.appSigner(context)==null,"several signers have no one lineage: nothing is reported");
  }
+ private static void applicationAttachBeforePublicationDoesNotFenceOrdinaryStartup(File cache)throws Exception{
+  Context context=installing(cache);context.applicationPublished=false;
+  AlphaDevicePlugin.UpdatePause.journal=null;AlphaDevicePlugin.UpdatePause.configure(context);
+  check(AlphaDevicePlugin.UpdatePause.context==context,"early attach retains the usable base context before Application publication");
+  check(AlphaDevicePlugin.UpdatePause.store().read()==null,"ordinary startup reads the empty update journal");
+  ai.eliza.plugins.agent.updater.RuntimeUpdatePause.beforeStart();
+ }
  private static void updateWaitsForDraftsAndExactShutdown(File cache)throws Exception{
   var original=com.getcapacitor.Plugin.ready;
   try{
@@ -1651,6 +1658,7 @@ public final class UpdateFlowTest {
   File cache=Files.createTempDirectory("alpha-update-flow").toFile();
   int status=1;
   try{
+   applicationAttachBeforePublicationDoesNotFenceOrdinaryStartup(cache);
    updateWaitsForDraftsAndExactShutdown(cache);
    refusedDraftFlushNeverStopsOrCommits(cache);
    aStartSweepsTheDownloadOfAKilledProcess(cache);

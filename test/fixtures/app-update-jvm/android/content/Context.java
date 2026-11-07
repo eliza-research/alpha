@@ -6,7 +6,8 @@ public class Context {
  public final java.util.List<BroadcastReceiver> receivers=new java.util.ArrayList<>();
  public final java.io.File data;
  public Context(java.io.File cache){this.cache=cache;try{data=java.nio.file.Files.createTempDirectory("alpha-update-native-").toFile();java.nio.file.Files.write(new java.io.File(data,"base.apk").toPath(),new byte[]{1,2,3});}catch(Exception failure){throw new RuntimeException(failure);}}
- public Context getApplicationContext(){return this;}
+ public boolean applicationPublished=true;
+ public Context getApplicationContext(){return applicationPublished?this:null;}
  public java.io.File getNoBackupFilesDir(){return data;}
  public android.content.pm.ApplicationInfo getApplicationInfo(){android.content.pm.ApplicationInfo info=new android.content.pm.ApplicationInfo();info.sourceDir=new java.io.File(data,"base.apk").getPath();return info;}
  public java.io.File getCacheDir(){return cache;}

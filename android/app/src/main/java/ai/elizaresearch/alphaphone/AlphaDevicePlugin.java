@@ -244,7 +244,9 @@ public final class AlphaDevicePlugin extends Plugin {
   static volatile String liveOwner;
   static volatile long shutdownRequest=-1;
   static void configure(Context base){
-   context=base.getApplicationContext();executingApk=base.getApplicationInfo().sourceDir;
+   // Application.attachBaseContext runs before LoadedApk publishes its Application.
+   Context application=base.getApplicationContext();context=application!=null?application:base;
+   executingApk=base.getApplicationInfo().sourceDir;
    ai.eliza.plugins.agent.updater.RuntimeUpdatePause.configureStartAdmission(()->{
     try{return store().read()==null;}catch(Exception unavailable){return false;}
    });
