@@ -281,7 +281,7 @@ public final class AlphaDevicePlugin extends Plugin {
    return session!=null&&expected.equals(String.valueOf(session.getReferrerUri()));
   }
   /** Returns only a proven settled owner. It never starts the runtime or retains a provider credential. */
-  static ai.eliza.plugins.agent.updater.RuntimeUpdatePause.Record reconcile()throws Exception {
+  static synchronized ai.eliza.plugins.agent.updater.RuntimeUpdatePause.Record reconcile()throws Exception {
    var record=store().read();if(record==null||record.id.equals(liveOwner))return null;
    PackageInstaller installer=context.getPackageManager().getPackageInstaller();
    PackageInstaller.SessionInfo session=installer.getSessionInfo(record.session);
@@ -293,6 +293,9 @@ public final class AlphaDevicePlugin extends Plugin {
     boolean uncommitted=binds(record,session)&&!session.isSealed()&&(!record.committing||record.boot!=boot||"REL".equals(Build.VERSION.CODENAME)&&(Build.VERSION.SDK_INT<=30||Build.VERSION.SDK_INT>=33&&Build.VERSION.SDK_INT<=37)&&session.getProgress()==0f);
     if(uncommitted)observation=ai.eliza.plugins.agent.updater.RuntimeUpdatePause.Session.PROVEN_UNCOMMITTED;
    }
+   // An old process with a pending Android session cannot settle. Its WebViews
+   // poll this state while waiting, so do not hash the installed APK each time.
+   if(observation==ai.eliza.plugins.agent.updater.RuntimeUpdatePause.Session.PENDING&&BuildConfig.VERSION_CODE!=record.targetCode)return null;
    // A stop that timed out in this process does not become success just because its install was abandoned.
    if(shutdownRequest>=0&&!AlphaLocalAgentPlugin.updateShutdownConfirmed(context,shutdownRequest))return null;
    var installed=context.getPackageManager().getPackageInfo(context.getPackageName(),0);
@@ -377,9 +380,12 @@ public final class AlphaDevicePlugin extends Plugin {
    return result;
   }
  }
- /** Startup admission is queried after listeners are installed, before the page starts owners or the resident. */
+ /** Startup readback can settle a proven terminal session even if the broadcast was lost. */
  @PluginMethod public void updateState(PluginCall call){
-  PluginWorkers.submit(diagnosticsWorker,()->{try{call.resolve(readUpdateState());}catch(Exception unavailable){call.reject("Update status unavailable");}},()->call.reject("Update status unavailable"));
+  PluginWorkers.submit(diagnosticsWorker,()->{
+   if(activation==null)reconcileUpdate();
+   try{call.resolve(readUpdateState());}catch(Exception unavailable){call.reject("Update status unavailable");}
+  },()->call.reject("Update status unavailable"));
  }
  private boolean reconcileUpdate(){
   try{var settled=UpdatePause.reconcile();if(settled!=null){settleUpdate(settled.id,BuildConfig.VERSION_CODE==settled.targetCode?"installed":"canceled");return true;}}catch(Exception unavailable){/* Unknown stays paused; no replay. */}

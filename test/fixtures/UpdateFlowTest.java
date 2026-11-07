@@ -1673,9 +1673,10 @@ public final class UpdateFlowTest {
    other.continueUpdate(reopen);reopen.awaitAnswer();
    check(reopen.resolved.get()==1&&other.activity.started.equals(List.of(confirm)),"an exact continuation opens the same Android confirmation");
    check(connections.isEmpty()&&context.packages.installer.committed.equals(List.of(session))&&context.packages.installer.abandoned.isEmpty(),"continuation never downloads, commits or abandons an APK");
-   ended(context,session,PackageInstaller.STATUS_FAILURE_ABORTED);
-   PluginCall reconciled=new PluginCall(new JSObject());owner.reconcileUpdate(reconciled);reconciled.awaitAnswer();
-   check(AlphaDevicePlugin.UpdatePause.store().read()==null&&AlphaLocalAgentPlugin.releases==1,"actual terminal cancellation releases the owned shutdown");
+   // Android no longer lists the session, but the application never gets its terminal broadcast.
+   context.packages.installer.destroy(session);
+   PluginCall reconciled=new PluginCall(new JSObject());other.updateState(reconciled);reconciled.awaitAnswer();
+   check(AlphaDevicePlugin.UpdatePause.store().read()==null&&AlphaLocalAgentPlugin.releases==1,"startup readback recovers a lost terminal cancellation");
    check(reconciled.result!=null&&activationId.equals(reconciled.result.optString("activationId"))
      &&"canceled".equals(reconciled.result.optString("outcome")),"reconciliation returns the proven activation result");
    check(owner.events.stream().filter(e->e.equals("alphaUpdateSettled:canceled")).count()==1,"cancellation settles once");
