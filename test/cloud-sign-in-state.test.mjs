@@ -75,7 +75,11 @@ test('mandatory chooser omits inert Back and distinguishes readiness from an ema
   // The automatic readiness check is not an attempt the owner started: nothing to go Back from.
   await render({view:choose,dismissible:false,ready:false,busy:true,probing:true,message:'Checking Eliza Cloud sign-in…'});
   assert.equal(buttons().includes('Back'),false);
-  assert.equal(document.querySelector('[name="email"]').disabled,true);
+  assert.equal(document.querySelector('[name="email"]'),null);
+  assert.deepEqual(buttons(),[]);
+  assert.equal(document.querySelector('[role="status"]').getAttribute('aria-label'),'Loading Alpha');
+  assert.ok(document.querySelector('.alpha-auth-mark'));
+  assert.equal(document.body.textContent,'');
   // A failed or cancelled check shows its reason and one retry, never a column of dead controls.
   await render({busy:false,probing:false,message:'',unavailable:true,error:'Alpha could not reach Eliza Cloud.',actions:{verify(){},google(){},email(){},resend(){},cancel(){},retry(){}}});
   assert.equal(document.querySelector('[name="email"]'),null);assert.deepEqual(buttons(),['Try again']);
@@ -224,8 +228,8 @@ test('own API keys sit below the Cloud methods and replace them when chosen',asy
   assert.equal(buttons.at(-1),own,'the own-keys entry is last, after the Cloud methods');
   assert.ok(document.querySelector('h1').compareDocumentPosition(own)&4);own.click();assert.equal(opened,1);
   await render({busy:true,probing:true,ready:false,message:'Checking Eliza Cloud sign-in…'});
-  assert.equal([...document.querySelectorAll('button')].find(button=>button.textContent==='Use my own API keys').disabled,false,'readiness never blocks the own-keys path');
-  await render({alternate:React.createElement('form',{'aria-label':'Own API keys'})});
+  assert.equal([...document.querySelectorAll('button')].some(button=>button.textContent==='Use my own API keys'),false,'Direct is hidden during readiness');
+  await render({busy:false,probing:false,ready:true,message:'',alternate:React.createElement('form',{'aria-label':'Own API keys'})});
   assert.equal(document.querySelector('form[aria-label="Sign in with email"]'),null,'the Cloud methods give way to the key form');
   assert.ok(document.querySelector('form[aria-label="Own API keys"]'));assert.equal(document.querySelector('h1').textContent,'Welcome to Alpha.');
   assert.equal(document.querySelector('[role="status"]'),null);
@@ -265,7 +269,7 @@ const explicitEntrySource=ui.includes('export function explicitSignedOutCloudEnt
 const entryFunction=transformSync(`const isAndroid=false,browserCloudResidentEnabled=false,ownProviderSelected=()=>false,productionCloudSignInRequired=()=>false;${explicitEntrySource}function selectEntry(snapshot){const productionSignInRequired=false,explicitSignInEntry=explicitSignedOutCloudEntry(snapshot),signInEntryRequired=productionSignInRequired||explicitSignInEntry,signInPage=signInEntryPage(snapshot),sending=null;const providerChoice=null,panel=null,ownKeyEntry=false,setOwnKeyEntry=()=>{},ownKeyAttempted=false,setOwnKeyAttempted=()=>{},signInPageShown=!!snapshot.signIn||signInEntryRequired,OwnKeyForm=()=>null,ownKeySaving=false,LOCAL_PROVIDER_MODEL='qwen',automaticSignInProbe={current:false},signInProbeMessage=()=>'Checking Eliza Cloud sign-in…',residentEnvironment=()=> 'production',inAppGoogle=false,inAppPhone=false,inAppEmail=true,cloudSignInPhone=false,loadSignInService=()=>null,RESIDENT_UNPACKAGED='unpackaged',browserCloudResidentEnabled=false,testMocksEnabled=false;${selectorSource}return null;}`,{loader:'tsx',format:'cjs',jsx:'automatic'}).code;
 const noAuthCalls=[];const entryController=new Proxy({},{get:(_,name)=>()=>noAuthCalls.push(name)});
 const selectEntry=new Function('require','CloudSignInPanel','connectionController','ResidentRecoveryPanel','useState',entryFunction+';return selectEntry;')(createRequire(import.meta.url),CloudSignInPanel,entryController,()=>null,React.useState);
-test('explicit signed-out account and plan entry render approved email/Google chooser directly, with no legacy CTA or auth action',async()=>{const {renderToStaticMarkup}=await import('react-dom/server');for(const purpose of['cloud-account','plan']){const element=selectEntry({open:true,purpose,cloudAccount:null,busy:false,message:'',error:'',signIn:null});assert.ok(element,'the actual root-page branch must select the existing sign-in component');const html=renderToStaticMarkup(element);assert.match(html,/Welcome to Alpha/);assert.match(html,/Continue with Google/);assert.match(html,/Sign in with email/);assert.match(html,/role="dialog"/,'an opened sign-in stays a dialog');assert.match(html,/>Back</,'an opened sign-in keeps Back');assert.doesNotMatch(html,/Sign in to use connected services such as Gmail/);assert.deepEqual(noAuthCalls,[]);}});
+test('explicit signed-out account and plan entry show only the logo before the chooser is ready',async()=>{const {renderToStaticMarkup}=await import('react-dom/server');for(const purpose of['cloud-account','plan']){const element=selectEntry({open:true,purpose,cloudAccount:null,busy:false,message:'',error:'',signIn:null});assert.ok(element,'the actual root-page branch must select the existing sign-in component');const html=renderToStaticMarkup(element);assert.match(html,/alpha-auth-mark/);assert.match(html,/aria-label="Loading Alpha"/);assert.doesNotMatch(html,/Welcome to Alpha|Checking|Continue with Google|Sign in with email|>Back</);assert.match(html,/role="dialog"/,'an opened sign-in stays a dialog');assert.deepEqual(noAuthCalls,[]);}});
 test('verified account is not redirected from membership into first-run sign-in',()=>{assert.equal(selectEntry({open:true,purpose:'cloud-account',cloudAccount:{userId:'synthetic-owner'},busy:false,signIn:null}),null);});
 
 test('explicit account chooser preserves newer in-app email/phone readiness and never starts hosted auth',async()=>{
