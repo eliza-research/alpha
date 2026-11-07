@@ -25,6 +25,9 @@ public class AlphaFilesPlugin extends Plugin {
  private final ExecutorService worker=Executors.newSingleThreadExecutor();
  private final AtomicBoolean picking=new AtomicBoolean();
  private DocumentFolderTree tree;
+ /** Plugin.requestPermissions launches for a plugin that declares permissions (legacyStorage);
+  * a late call is answered like every other Alpha plugin (LateLaunch). */
+ @Override @PluginMethod public void requestPermissions(PluginCall call){LateLaunch.ask(call,()->super.requestPermissions(call));}
  @Override public void load(){tree=new DocumentFolderTree(getContext(),PREF,uri->SelectedDocumentAccess.authorize(getContext(),uri,0));}
  private void run(PluginCall call,DocumentFolderTree.Work task){PluginWorkers.submit(worker,()->call.resolve(tree.guarded(task)),()->call.resolve(DocumentFolderTree.result("unavailable","Files closed. Reopen Files to continue.")));}
  @PluginMethod public void choose(PluginCall call){
