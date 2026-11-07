@@ -2,7 +2,8 @@
 
 Review of four owner requests (2026-11-06): slim Settings, clean up Home's top card row, stop the
 app grid moving, and make the chat dock behave by one set of rules. Each part has a model in
-[`tla/`](tla/) (current code versus this design, checked with TLC: [results](tla/results.md)) and
+[Quint specifications](../../specs/quint/legacy/README.md) comparing the historical current
+code with this design. The [historical TLC results](tla/results.md) are retained, alongside
 an interactive before/after prototype in [`prototypes/`](prototypes/index.html).
 
 Evidence class: source review, TLC and the browser development build. Nothing here is emulator,

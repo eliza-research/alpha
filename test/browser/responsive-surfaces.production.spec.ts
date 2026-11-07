@@ -106,23 +106,25 @@ test('a Calendar event draft keeps its text, caret and field through resizing, i
   }
 });
 
-test('the Calendar month picker is a bounded sheet on a wide screen and scrolls on a short one', async ({ page }) => {
+test('the Calendar views menu stays within a short screen and Month days keep their tap size', async ({ page }) => {
   await open(page, 'Calendar');
-  await page.getByRole('button', { name: 'Month view', exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: 'Choose calendar date', exact: true });
+  await page.getByRole('button', { name: 'Calendar views', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Views and calendars', exact: true });
   await expect(dialog).toBeVisible();
-  await resize(page, TABLET_LANDSCAPE);
-  const wide = await box(dialog);
-  expect(wide.width).toBeLessThanOrEqual(561);
-  expect(Math.abs(wide.x - (1280 - wide.x - wide.width))).toBeLessThan(4);
   await resize(page, SMALL_LANDSCAPE);
-  // The sheet's own transition can still be settling after the renderer has measured.
+  // The menu's own transition can still be settling after the renderer has measured.
   await expect.poll(async () => { const bounds = await box(dialog); return bounds.y + bounds.height; }).toBeLessThanOrEqual(361);
-  // Every day stays reachable by scrolling the sheet, at full tap size.
-  const last = dialog.getByRole('button').last();
-  await last.scrollIntoViewIfNeeded();
-  await expect(last).toBeInViewport({ ratio: 1 });
-  expect((await box(last)).height).toBeGreaterThanOrEqual(44);
+  // Every choice stays reachable by scrolling the menu, at full tap size.
+  const month = dialog.getByRole('radio', { name: 'Month', exact: true });
+  await month.scrollIntoViewIfNeeded();
+  await expect(month).toBeInViewport({ ratio: 1 });
+  expect((await box(month)).height).toBeGreaterThanOrEqual(44);
+  await month.click();
+  await expect(dialog).toHaveCount(0);
+  await resize(page, TABLET_LANDSCAPE);
+  const day = page.locator('[data-alpha-calendar-month]').getByRole('button', { name: /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), / }).first();
+  await expect(day).toBeVisible();
+  expect((await box(day)).height).toBeGreaterThanOrEqual(44);
 });
 
 test('Workflows and Files lists keep a readable column instead of stretching', async ({ page }) => {

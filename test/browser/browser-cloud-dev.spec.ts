@@ -55,8 +55,9 @@ test('browser restores an existing host Cloud account, uses canonical voice and 
   expect(voice.transcript).toEqual({text:'Closed fixture transcript',local:false});expect(voice.prepared).toBe(true);expect(voice.plan).toBe('active');expect(voice.publicStorage).not.toContain(secret);expect(voice.opened).toEqual(['https://cloud.eliza.app/cloud/billing']);
   await page.evaluate(async()=>{const c=(await import('/src/runtime/connection-ui.tsx')).connectionController;c.openCloudAccount();});
   const account=page.getByRole('dialog',{name:'Eliza Cloud',exact:true});await expect(account.getByText('owned@example.invalid',{exact:true})).toBeVisible();await page.screenshot({path:info.outputPath('existing-cloud-account.png'),animations:'disabled'});
-  await account.getByRole('button',{name:'Sign out of Eliza Cloud',exact:true}).click();
-  await expect(page.getByRole('status').filter({hasText:'This sign-in was revoked.'})).toBeVisible();
+  await account.getByRole('button',{name:'Sign out',exact:true}).click();
+  // One short line whether or not Cloud confirmed the revocation (docs/flow-redesign-2026-11 SI-30).
+  await expect(page.getByRole('status').filter({hasText:'Signed out.'})).toBeVisible();
   // Reload only after sign-out has removed the host credential, not its earlier in-memory detach.
   await expect.poll(async()=>{
    try{return JSON.parse(await readFile(join(deploymentProfile,'credentials.json'),'utf8'));}
@@ -73,7 +74,7 @@ test('browser restores an existing host Cloud account, uses canonical voice and 
   // shared in-app entry explicitly before that handoff; native production uses this entry.
   await page.evaluate(async()=>(await import('/src/runtime/connection-ui.tsx')).connectionController.beginSignIn('production'));
   const signIn=page.getByRole('dialog',{name:'Sign in',exact:true});
-  await expect(signIn.getByRole('form',{name:'Sign in with email'})).toBeVisible();
+  await expect(signIn.getByRole('form',{name:'Sign in with email or phone'})).toBeVisible();
   await expect(signIn.getByRole('button',{name:'Continue with Google',exact:true})).toHaveCount(0);
   await signIn.getByRole('button',{name:'Browser sign-in (diagnostic)',exact:true}).click();
   await expect.poll(()=>page.evaluate(async()=>(await import('/src/runtime/connection-ui.tsx')).connectionController.getSnapshot().cloudAccount?.userId)).toBe(owner);

@@ -55,19 +55,31 @@
       "port": 5420
     },
     {
-      "name": "chat-drag-main-ui",
-      "runtimeExecutable": "npm",
+      "name": "view-refresh-prototype",
+      "runtimeExecutable": "python3",
       "runtimeArgs": [
-        "--prefix",
-        "/tmp/claude-1000/-home-shaw-Work-alphaphone/d0e28343-6c26-4cf5-8759-cdbe010223a6/scratchpad/wt",
-        "run",
-        "dev:ui",
-        "--",
-        "--port",
-        "5430",
-        "--strictPort"
+        "-m",
+        "http.server",
+        "8790",
+        "--bind",
+        "127.0.0.1"
       ],
-      "port": 5430
+      "port": 8790,
+      "autoPort": false
+    },
+    {
+      "name": "flow-prototype",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8790",
+        "--bind",
+        "127.0.0.1",
+        "--directory",
+        "."
+      ],
+      "port": 8790
     }
   ]
 }

@@ -157,7 +157,7 @@ test.describe('first run requires Eliza Cloud sign-in while the agent runs',()=>
   await boot(page,{saved:false});
   const dialog=signInPage(page);await expect(dialog).toBeVisible();
   await started(page);
-  await expect(page.getByRole('button',{name:'Sign in with Eliza Cloud',exact:true})).toBeEnabled();
+  await expect(dialog.getByRole('textbox',{name:/^Email( or phone number)?$/})).toBeEnabled();
   await expect(dialog.getByRole('heading',{name:'Sign in',exact:true})).toBeVisible();
   await expect(dialog).not.toContainText('Reconnect agent');await expect(dialog).not.toContainText('Phone action history');
   await expect(page.getByRole('button',{name:'Use local apps without AI',exact:true})).toHaveCount(0);
@@ -194,8 +194,8 @@ test.describe('first run requires Eliza Cloud sign-in while the agent runs',()=>
  });
 
  test('an expired saved sign-in exposes the real sign-in action without a plan or permission bypass',async({page},info)=>{
-  await boot(page,{identity:'401'});await expect(signInPage(page)).toBeVisible();await started(page);await expect(page.getByRole('button',{name:'Sign in with Eliza Cloud',exact:true})).toBeEnabled();await expect(page.getByRole('alert')).toContainText('sign-in has expired');
-  await expect(page.getByRole('button',{name:'Retry saved connection',exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Continue',exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Choose a plan',exact:true})).toHaveCount(0);await expect(page.getByRole('dialog',{name:'Set up Alpha access'})).toHaveCount(0);
+  await boot(page,{identity:'401'});await expect(signInPage(page)).toBeVisible();await started(page);await expect(signInPage(page).getByRole('textbox',{name:/^Email( or phone number)?$/})).toBeEnabled();await expect(page.getByRole('alert')).toHaveText('Your sign-in expired. Sign in again.');
+  await expect(page.getByRole('button',{name:'Retry saved connection',exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Choose a plan',exact:true})).toHaveCount(0);await expect(page.getByRole('dialog',{name:'Set up Alpha access'})).toHaveCount(0);
   expect((await calls(page)).some(c=>c.method==='configureCloudProvider'||c.method==='openExternal')).toBe(false);await page.evaluate(()=>document.fonts.ready);await page.screenshot({path:info.outputPath('expired-saved-sign-in.png'),animations:'disabled'});
  });
 });
@@ -237,7 +237,7 @@ test.describe('plan state binds Cloud inference; the agent always runs',()=>{
   await boot(page,{...await entitlements(),plan:'past_due'});
   await admitted(page);await openAccountPlan(page);
   await expect(page.getByText('Synthetic plan · payment due',{exact:true})).toBeVisible();
-  await expect(page.getByText(/Payment is past due\. Update payment in Eliza Cloud to keep AI available\./)).toBeVisible();
+  await expect(page.getByText(/Payment is past due\./)).toBeVisible();
   await page.evaluate(()=>document.fonts.ready);await page.screenshot({path:info.outputPath('past-due-warning.png'),animations:'disabled'});
   await release(page);
   await page.getByRole('button',{name:'Manage plan in Eliza Cloud',exact:true}).click();
@@ -380,7 +380,7 @@ test.describe('entitlement route unavailable: authenticated billing mode fallbac
   await boot(page,{route:'absent',limits:'absent'});
   await needsPlan(page);await idle(page);
   await expect(page.getByText('Plan status unavailable',{exact:true})).toBeVisible();
-  await expect(page.getByText(/did not report a plan for this account/)).toBeVisible();
+  await expect(page.getByText('No plan found for this account.',{exact:true})).toBeVisible();
   expect(await configured(page)).toBe(0);
   // Check plan again reads Cloud again and admits once a plan is reported.
   await fixture(page,{limits:'active'});
@@ -430,7 +430,7 @@ test.describe('outages and offline use',()=>{
  test('a billing outage without a recent plan is "needs plan" with a retry',async({page})=>{
   await boot(page,{route:'503'});
   await needsPlan(page);await started(page);
-  await expect(page.getByText(/could not confirm a plan for this account right now/)).toBeVisible();
+  await expect(page.getByText('Eliza Cloud couldn’t confirm your plan.',{exact:true})).toBeVisible();
   expect(await configured(page)).toBe(0);
  });
  test('a billing outage after a recent verified plan keeps the agent',async({page})=>{
@@ -449,7 +449,8 @@ test.describe('outages and offline use',()=>{
   const recent=JSON.stringify({version:1,environment:'production',credentialId:CREDENTIAL,userId:USER,organizationId:null,status:'active',planName:'Synthetic plan',verifiedAt:Date.now()-3600_000,endsAt:null});
   await boot(page,{identity:'offline',storage:{'alpha.connection.plan-admission.v1':recent}});
   await started(page);await idle(page);const gate=signInPage(page);await expect(gate).toBeVisible();
-  await expect(gate.getByRole('button',{name:'Sign in with Eliza Cloud',exact:true})).toBeEnabled();
+  // Offline with a recent admission: the kept sign-in is retried by itself; another account stays one tap away.
+  await expect(gate.getByRole('button',{name:'Use another account',exact:true})).toBeEnabled();
   await page.keyboard.press('Escape');await expect(gate).toBeVisible();expect(await configured(page)).toBe(0);
   await page.evaluate(()=>document.fonts.ready);await page.screenshot({path:info.outputPath('offline-recent-plan.png'),animations:'disabled'});
  });
@@ -557,7 +558,7 @@ test.describe('account, plan and sign-in expiry',()=>{
   await page.evaluate(()=>document.fonts.ready);await page.screenshot({path:info.outputPath('plan-panel.png'),animations:'disabled'});
   await dialog.getByRole('button',{name:'Sign out',exact:true}).click();
   // Signed out, the dedicated page returns and the agent restarts without Cloud inference.
-  await expect(signInPage(page)).toBeVisible();await expect(signInPage(page).getByRole('button',{name:'Sign in with Eliza Cloud',exact:true})).toBeVisible();
+  await expect(signInPage(page)).toBeVisible();await expect(signInPage(page).getByRole('textbox',{name:/^Email( or phone number)?$/})).toBeVisible();
   expect(await page.evaluate(()=>localStorage.getItem('alpha.connection.plan-admission.v1'))).toBeNull();
   expect(await page.evaluate(()=>(window as any).planController.residentPlanSettings())).toMatchObject({signedIn:false,plan:'Not signed in'});
  });
@@ -565,13 +566,13 @@ test.describe('account, plan and sign-in expiry',()=>{
  test('a sign-in key that expires within 14 days is warned about and offers re-approval',async({page},info)=>{
   await boot(page,{...await entitlements(),expiresAt:Date.now()+5*24*3600_000});
   await admitted(page);await openAccountPlan(page);
-  await expect(page.getByText(/Your Eliza Cloud sign-in on this phone expires .*\. Approve this phone again to keep AI available\./)).toBeVisible();
+  await expect(page.getByText(/^Sign-in expires .*\.$/)).toBeVisible();
   expect(await page.evaluate(()=>(window as any).planController.residentPlanSettings().keyExpiring)).toBe(true);
   await page.evaluate(()=>document.fonts.ready);await page.screenshot({path:info.outputPath('sign-in-expiry-warning.png'),animations:'disabled'});
   await release(page);
-  await page.getByRole('button',{name:'Approve this phone again',exact:true}).click();
+  await page.getByRole('button',{name:'Sign in again',exact:true}).click();
   // Re-approval opens the native email form without sending a code until explicitly requested.
-  await expect(page.getByRole('textbox',{name:'Email',exact:true})).toBeVisible();
+  await expect(page.getByRole('textbox',{name:/^Email( or phone number)?$/})).toBeVisible();
   expect((await calls(page)).some(c=>c.plugin==='AlphaCloudSignIn'&&c.method==='status')).toBe(true);
   expect((await calls(page)).filter(c=>c.path?.startsWith('/api/auth/cli-session')||c.method==='openExternal'||c.method==='startEmail')).toEqual([]);
  });
@@ -579,7 +580,7 @@ test.describe('account, plan and sign-in expiry',()=>{
  test('a key with more than 14 days left shows no expiry warning',async({page})=>{
   await boot(page,await entitlements());
   await admitted(page);
-  await expect(page.getByRole('button',{name:'Approve this phone again',exact:true})).toHaveCount(0);
+  await expect(page.getByRole('button',{name:'Sign in again',exact:true})).toHaveCount(0);
   await release(page);
  });
 });
@@ -587,9 +588,9 @@ test.describe('account, plan and sign-in expiry',()=>{
 test('failed native provider binding reports AI off and exposes the error before history',async({page})=>{
  await boot(page,{...await entitlements(),holdProvider:false,providerFailure:'Synthetic account verification failure'});await started(page);await idle(page);
  const dialog=await openAccountPlan(page);
- await expect(dialog.getByText('AI is off. Your saved Eliza Cloud sign-in is retained; check the connection below.',{exact:true})).toBeVisible();
- await expect(dialog.getByText('Your agent uses Eliza Cloud for AI.',{exact:true})).toHaveCount(0);
- const error=dialog.getByRole('alert').filter({hasText:'Synthetic account verification failure'});await expect(error).toBeVisible();
+ await expect(dialog.getByRole('region',{name:'AI inference'}).getByText('Off',{exact:true})).toBeVisible();
+ await expect(dialog.getByRole('region',{name:'AI inference'}).getByText('On',{exact:true})).toHaveCount(0);
+ const error=dialog.getByRole('alert').filter({hasText:'AI couldn’t connect. Try again in Settings.'});await expect(error).toBeVisible();await expect(dialog.getByText(/Synthetic account verification failure/)).toHaveCount(0);
  const history=dialog.getByText('Conversation history',{exact:true});await expect(history).toBeVisible();
  expect(await error.evaluate((node,other)=>(node.compareDocumentPosition(other!)&Node.DOCUMENT_POSITION_FOLLOWING)!==0,await history.elementHandle())).toBe(true);
  expect(await configured(page)).toBe(1);

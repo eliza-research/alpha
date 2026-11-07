@@ -34,6 +34,9 @@ export interface ConnectionPort {
   secureCompareExchange(input:{slot:string;expectedValue:string|null;value:string|null}):Promise<{status:"saved"|"conflict"}>;
   secureRemove(input:{slot:string}):Promise<void>;
   openExternal(input:{url:string;requestId:string}):Promise<void>;
+  /** Android: the App Link Cloud may return a Google connection to, or null when Android would not hand it to Alpha. */
+  googleReturnUrl?():Promise<{url:string|null}>;
+  addListener?(event:'googleConnectReturn',listener:(value:unknown)=>void):Promise<{remove():Promise<void>}>;
 }
 /** Secret storage for the web build's connection slots only. Values are AES-GCM encrypted with a
  * non-extractable key held in IndexedDB; without IndexedDB they live in memory for this page only.
@@ -250,6 +253,23 @@ export const nativeRemoteRequest:RemoteRequester=async input=>{
     body:input.body===undefined?undefined:JSON.parse(input.body),signal:input.signal||new AbortController().signal,timeoutMs:120000,redirect:'error'});
   return {status:response.status,body:response.data};
 };
+const nativeGoogleReturn=(Capacitor as typeof Capacitor&{PluginHeaders?:{name:string;methods?:{name:string}[]}[]}).PluginHeaders?.some(header=>header.name==='AlphaConnection'&&header.methods?.some(method=>method.name==='googleReturnUrl'))??false;
+/** The verified Google connector return URL on this phone, or null (then Alpha re-reads on return). */
+export async function googleConnectReturnUrl():Promise<string|null>{
+  if(!nativeGoogleReturn||!native.googleReturnUrl)return null;
+  try{const value=(await native.googleReturnUrl()).url;return typeof value==='string'&&/^https:\/\/[a-z0-9.-]+\/alphaphone\/google\/return$/.test(value)?value:null;}catch{return null;}
+}
+/** Subscribes to App Link returns from Google's consent; returns an unsubscribe function. */
+export function onGoogleConnectReturn(listener:(value:{state:string;result:'connected'|'denied'|'failed';connectionId?:string})=>void):()=>void{
+  if(!nativeGoogleReturn||!native.addListener)return()=>{};
+  let removed=false,handle:{remove():Promise<void>}|null=null;
+  void native.addListener('googleConnectReturn',raw=>{
+    const row=raw as Record<string,unknown>;
+    if(!row||typeof row.state!=='string'||!['connected','denied','failed'].includes(row.result as string))return;
+    listener({state:row.state,result:row.result as 'connected'|'denied'|'failed',...(typeof row.connectionId==='string'?{connectionId:row.connectionId}:{})});
+  }).then(value=>{handle=value;if(removed)void value.remove();});
+  return()=>{removed=true;void handle?.remove();};
+}
 export async function openConnectionBrowser(url:string,signal:AbortSignal) {
   signal.throwIfAborted();
   const requestId=crypto.randomUUID();
@@ -283,3 +303,4 @@ export async function openConnectionBrowser(url:string,signal:AbortSignal) {
     window.removeEventListener('focus',focused);
   }
 }
+

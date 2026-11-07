@@ -86,11 +86,12 @@ for(const scenario of ['connected','empty','error','restored'] as const)test(`Sh
  await page.evaluate(scenario=>{const f=(window as any).gm;if(scenario==='empty')f.accounts=[];if(scenario==='error')f.accountFailure=true;f.accountGate=null;f.releaseAccounts();},scenario);
  if(scenario==='empty'){
   await expect(page.getByRole('button',{name:'Connect Gmail',exact:true})).toBeVisible();
-  await expect(page.getByText('Shared content is ready for a new email. Connect Gmail to continue; nothing has been sent.',{exact:true})).toBeVisible();
+  // Not connected, Inbox shows the mail icon and Connect Gmail and nothing else (docs/flow-redesign-2026-11).
+  await expect(page.getByText(/Shared content is ready for a new email/)).toHaveCount(0);
   await page.evaluate(()=>{const f=(window as any).gm;f.accounts=f.originalAccounts;window.dispatchEvent(new Event('alpha:google-accounts-changed'));});
  }else if(scenario==='error'){
   await expect(page.getByRole('button',{name:'Retry',exact:true})).toBeVisible();
-  await expect(page.getByText('You appear to be offline. Gmail was not reached. Retry when you are connected.',{exact:true})).toBeVisible();
+  await expect(page.getByText('Offline',{exact:true})).toBeVisible();
   await expect(page.getByRole('button',{name:'Connect Gmail',exact:true})).toHaveCount(0);
   await expect(page.getByText('Checking Gmail connection…',{exact:true})).toHaveCount(0);
   await page.evaluate(()=>(window as any).gm.accountFailure=false);await page.getByRole('button',{name:'Retry',exact:true}).click();
@@ -175,7 +176,7 @@ test('a stale archive review is discarded and retried against the current messag
  expect((await gm(page)).dispatches).toEqual([]);
 });
 
-for(const [kind,text] of [['offline',/offline/],[409,/revoked or needs authorization/],[503,/unavailable right now/]] as const)test(`Inbox read failure ${kind} explains itself and retries only when asked`,async({page})=>{
+for(const [kind,text] of [['offline',/^Offline$/],[409,/needs to be reconnected/],[503,/unavailable right now/]] as const)test(`Inbox read failure ${kind} explains itself and retries only when asked`,async({page})=>{
  await setup(page);
  await page.evaluate(kind=>{(window as any).gm.fail=kind;},kind);
  await page.getByRole('button',{name:'Inbox',exact:true}).click();
@@ -187,27 +188,43 @@ for(const [kind,text] of [['offline',/offline/],[409,/revoked or needs authoriza
  expect((await gm(page)).searches.length).toBe(2);
 });
 
+// Settings > Google opens the Google accounts panel. The panel lists accounts only for a Cloud
+// account with an organization, so the fixture snapshot gains one here.
+async function openGoogleAccounts(page:Page){
+ await page.evaluate(async()=>{const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');const snapshot={...c.getSnapshot(),cloudAccount:{...c.getSnapshot().cloudAccount!,organizationId:'fixture-org'}};c.getSnapshot=()=>snapshot as any;});
+ await page.getByRole('button',{name:'Google',exact:true}).click();
+ const panel=page.getByRole('dialog',{name:'Google accounts',exact:true});await expect(panel).toBeVisible();return panel;
+}
+
 test('Settings disconnect asks first and Inbox then shows the honest disconnected state',async({page})=>{
  await setup(page);await page.getByRole('button',{name:'Inbox',exact:true}).click();
  await expect(page.getByRole('region',{name:'Inbox',exact:true}).getByText('Subject in-0-a',{exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Back to apps',exact:true}).click();await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Connections',exact:true}).click();
- const disconnect=page.getByRole('button',{name:'Disconnect Google account owner@example.test',exact:true});await expect(disconnect).toBeVisible();
- page.once('dialog',dialog=>dialog.dismiss());await disconnect.click();expect((await gm(page)).disconnects).toEqual([]);
- page.once('dialog',dialog=>{expect(dialog.message()).toContain('including Gmail and Calendar');expect(dialog.message()).toContain('mail and calendar events are not deleted');void dialog.accept();});await disconnect.click();
+ await page.getByRole('button',{name:'Back to apps',exact:true}).click();await page.getByRole('button',{name:'Settings',exact:true}).click();
+ const panel=await openGoogleAccounts(page);
+ const disconnect=panel.getByRole('button',{name:'Disconnect Google account owner@example.test',exact:true});await expect(disconnect).toBeVisible();
+ // The in-panel confirmation names what stops and what is kept; Cancel changes nothing.
+ await disconnect.click();const confirm=panel.getByRole('alert');
+ await expect(confirm).toContainText('Disconnect owner@example.test?');await expect(confirm).toContainText('stops using Gmail and Calendar');await expect(confirm).toContainText('mail and calendar events are not deleted');
+ await confirm.getByRole('button',{name:'Cancel',exact:true}).click();await expect(confirm).toHaveCount(0);expect((await gm(page)).disconnects).toEqual([]);
+ await disconnect.click();await panel.getByRole('alert').getByRole('button',{name:'Disconnect',exact:true}).click();
  await expect(disconnect).toHaveCount(0);expect((await gm(page)).disconnects).toEqual(['grant-0']);
- await page.getByRole('button',{name:'Open Inbox',exact:true}).click();await expect(page.getByText('Subject in-0-a',{exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toHaveCount(0);
+ await expect(panel.getByText('owner@example.test disconnected.',{exact:true})).toBeVisible();
+ await panel.getByRole('button',{name:'Close Google accounts',exact:true}).click();await expect(panel).toHaveCount(0);
+ await page.evaluate(()=>window.dispatchEvent(new Event('launcher-home')));
+ await page.getByRole('button',{name:'Inbox',exact:true}).click();await expect(page.getByText('Subject in-0-a',{exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toHaveCount(0);
 });
 
-test('Settings Connections disconnects one confirmed account and reports the read-back',async({page})=>{
+test('Settings Google accounts disconnects one confirmed account and reports the read-back',async({page})=>{
  await setup(page,{accounts:['first@example.test','second@example.test']});
  await page.getByRole('button',{name:'Settings',exact:true}).click();
- await page.getByRole('button',{name:'Connections',exact:true}).click();
- await expect(page.getByRole('button',{name:'Disconnect Google account second@example.test',exact:true})).toBeVisible();
- page.once('dialog',dialog=>{expect(dialog.message()).toContain('Calendar');return dialog.accept();});
- await page.getByRole('button',{name:'Disconnect Google account second@example.test',exact:true}).click();
- await expect(page.getByText(/second@example\.test is disconnected/).first()).toBeVisible();
- await expect(page.getByRole('button',{name:'Disconnect Google account second@example.test',exact:true})).toHaveCount(0);
- await expect(page.getByRole('button',{name:'Disconnect Google account first@example.test',exact:true})).toBeVisible();
+ const panel=await openGoogleAccounts(page);
+ await expect(panel.getByRole('button',{name:'Disconnect Google account second@example.test',exact:true})).toBeVisible();
+ await panel.getByRole('button',{name:'Disconnect Google account second@example.test',exact:true}).click();
+ await expect(panel.getByRole('alert')).toContainText('Calendar');expect((await gm(page)).disconnects).toEqual([]);
+ await panel.getByRole('alert').getByRole('button',{name:'Disconnect',exact:true}).click();
+ await expect(panel.getByText('second@example.test disconnected.',{exact:true})).toBeVisible();
+ await expect(panel.getByRole('button',{name:'Disconnect Google account second@example.test',exact:true})).toHaveCount(0);
+ await expect(panel.getByRole('button',{name:'Disconnect Google account first@example.test',exact:true})).toBeVisible();
  expect((await gm(page)).disconnects).toEqual(['grant-1']);
 });
 

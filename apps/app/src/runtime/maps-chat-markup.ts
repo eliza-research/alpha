@@ -28,16 +28,17 @@ function shareChoice(id:string,body:string):MapsShareChoice|null{
  return {id,options};
 }
 
-/** Replace valid Maps markup with presentation metadata. Malformed markup stays literal text. */
+/** Replace valid Maps markup with presentation metadata. Malformed markup stays literal text.
+ * `specs` are the validated cards themselves, in the same order, for opening a result in Maps. */
 export function mapsChatText(text:string){
- const cards:MapsChatCard[]=[];let choice:MapsShareChoice|null=null,rendered=text;
+ const cards:MapsChatCard[]=[],specs:MapsCardSpec[]=[];let choice:MapsShareChoice|null=null,rendered=text;
  const regions=findMapsCardRegions(text);
- for(const region of [...regions].reverse()){cards.unshift(present(region.card));rendered=rendered.slice(0,region.start)+rendered.slice(region.end);}
+ for(const region of [...regions].reverse()){cards.unshift(present(region.card));specs.unshift(region.card);rendered=rendered.slice(0,region.start)+rendered.slice(region.end);}
  rendered=rendered.replace(SHARE_CHOICE,(whole,id,body)=>{
   // The question itself stays in the surrounding prose; only its answers become buttons.
   const parsed=choice?null:shareChoice(id,body);if(!parsed)return whole;choice=parsed;return '';
  });
  // Ordinary messages keep their exact text, including indentation and trailing paragraphs.
  const displayText=cards.length||choice?rendered.replace(/\n{3,}/g,'\n\n').trim():rendered;
- return {displayText,cards,choice:choice as MapsShareChoice|null};
+ return {displayText,cards,specs,choice:choice as MapsShareChoice|null};
 }

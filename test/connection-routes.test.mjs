@@ -26,6 +26,12 @@ test('the transport applies the origin policy before any connection and never to
  assert.match(request,/if \(!ConnectionRoutes\.admittedHeader\(normalized, BuildConfig\.ELIZA_DEV_ALLOW_TEST_MOCKS\)&&!ConnectionRoutes\.mapsRequestIdentity\(normalized,value,url\.getRawPath\(\),method\)\) throw new IllegalArgumentException\(\);/);
  assert.doesNotMatch(request,/Set\.of\("accept"/,'no inline header allowlist');
  assert.doesNotMatch(request,/storage\(|CredentialSlot|AlphaCredentialStore|secure(Read|Write|Remove)/,'request() has no credential-slot access');
+ // Google Calendar owner writes: PATCH and DELETE pass the method gate, and a PATCH carries a body,
+ // only through the pure googleCalendarEvents rule, and only after managed path admission.
+ const methodGate=request.indexOf('ConnectionRoutes.googleCalendarEvents(url.getRawPath(),url.getRawQuery(),method,call.getString("body")!=null)');
+ const bodyGate=request.indexOf('"PATCH".equals(method)&&(ConnectionRoutes.calendarSync(url.getPath(),url.getRawQuery(),method,true)||ConnectionRoutes.googleCalendarEvents(url.getRawPath(),url.getRawQuery(),method,true))');
+ assert.ok(methodGate>service&&methodGate<request.indexOf('openConnection()'),'the events method gate follows admission and precedes the connection');
+ assert.ok(bodyGate>methodGate&&bodyGate<request.indexOf('connection.setDoOutput(true)'),'the events body gate precedes writing the body');
 });
 
 // Source check that openExternal decides its host from ConnectionRoutes (run on the JVM above).

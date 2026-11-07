@@ -37,7 +37,7 @@ SystemUI, because a browser has none; it is a developer surface (`simulatedShade
 | A tap on the Alpha mark, or a drag up that starts on the bar or pill | Alpha | Opens the conversation sheet. Only the dock opens the chat (`docs/ui-refresh-2026-11`). |
 | The open chat sheet: the Resize chat grabber | Alpha | The sheet follows the finger and rests where it is released. A release within 120 canvas pixels of the collapsed form collapses it, within 120 of the top goes full screen, and a flick (at least 1 canvas pixel per millisecond at release) jumps to either end (`chatRelease` in `chat-overlay-motion-adapter.ts`). |
 | Outside a raised chat (portrait): the open sheet, the bar raised from the pill, or the bar with the keyboard up | Alpha | Any touch, tap or drag, lowers it to the view's resting form (pill, or the unfocused bar on Home and Browser), closes the keyboard and reaches nothing underneath; the next touch is ordinary. The draft stays. Assistive technology activates controls directly. In landscape the chat docks beside the app, which stays live. |
-| Back with a raised chat | Alpha | Unwinds one level: keyboard, full to sheet, sheet to rest, raised bar to pill, then the view's own Back (`tla/ChatInput.tla`). |
+| Back with a raised chat | Alpha | Unwinds one level: keyboard, full to sheet, sheet to rest, raised bar to pill, then the view's own Back (`specs/quint/legacy/ChatInput.qnt`). |
 | Full-screen chat | Alpha | No grabber: nothing of Alpha's competes with Android's top-edge band. The header starts 16 screen pixels below Android's status bar on the launcher (`--alpha-chat-full-top`, at least 60px of canvas). Shrink chat returns to the last resting height, Minimize chat collapses. |
 
 ## Empty Home

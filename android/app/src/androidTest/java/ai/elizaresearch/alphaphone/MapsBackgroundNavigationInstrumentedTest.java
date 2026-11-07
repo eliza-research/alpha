@@ -3,6 +3,7 @@ package ai.elizaresearch.alphaphone;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.content.Context;
+import android.content.Intent;
 import android.os.SystemClock;
 import android.service.notification.StatusBarNotification;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
@@ -15,8 +16,10 @@ import static org.junit.Assert.*;
 /**
  * Screen-off navigation through AlphaNavigationService, driven by scripts/maps/test-native-navigation.mjs
  * (simulator GPS through the actual Android location provider, explicit argument mapsBackground=1).
- * Proves guidance keeps updating with the screen off and that the notification's Stop ends the
- * session exactly once. It is emulator evidence, not physical-device or road-safety acceptance.
+ * Proves guidance keeps updating with the screen off, that opening and closing the assistant
+ * window leaves the launcher's session running, and that the notification's Stop ends the
+ * session exactly once, heard by the launcher. It is emulator evidence for the HOME-role path,
+ * not a full AOSP image, physical-device or road-safety acceptance.
  */
 @RunWith(AndroidJUnit4.class)
 public final class MapsBackgroundNavigationInstrumentedTest {
@@ -79,13 +82,14 @@ public final class MapsBackgroundNavigationInstrumentedTest {
    waitFor("document.querySelector('[data-alpha-map-plane]')?.dataset.mapReady==='true'");
    input("Search places", "Casino de Monte Carlo");
    String result = "[...document.querySelectorAll('[data-alpha-maps-root] button')].find(e=>e.textContent.trim().startsWith('Casino de Monte Carlo'))"; waitFor(result); js("(" + result + ").click()");
-   click("Directions"); input("Route origin coordinates", "43.7384, 7.4246");
-   waitFor("document.querySelector('[data-alpha-maps-root]').textContent.includes('no live traffic')");
+   click("Directions"); input("Starting point", "43.7384, 7.4246");
+   String start = "[...document.querySelectorAll('[data-alpha-maps-root] button')].find(e=>e.textContent.trim()==='Start')";
+   waitFor("/\\d km/.test(document.querySelector('[data-alpha-maps-root]').textContent)&&" + start);
    phase("background-origin");
    int stopsBefore = Integer.parseInt(AlphaNavigationService.snapshot()[1]);
-   String start = "[...document.querySelectorAll('[data-alpha-maps-root] button')].find(e=>e.textContent.trim()==='Start')"; waitFor(start); js("(" + start + ").click()");
+   js("(" + start + ").click()");
    watches(1);
-   waitFor("document.querySelector('[data-alpha-maps-status]')?.textContent.includes('continues with the screen off')");
+   for (int i = 0; i < 100 && AlphaNavigationService.snapshot()[0].isEmpty(); i++) SystemClock.sleep(100);
    String session = AlphaNavigationService.snapshot()[0];
    assertFalse("A native navigation session is active", session.isEmpty());
    for (int i = 0; i < 50 && navigationNotification() == null; i++) SystemClock.sleep(100);
@@ -93,6 +97,21 @@ public final class MapsBackgroundNavigationInstrumentedTest {
    assertNotNull("Ongoing navigation notification is posted", posted);
    assertTrue("Navigation notification is ongoing", (posted.getNotification().flags & Notification.FLAG_ONGOING_EVENT) != 0);
    String titleBefore = AlphaNavigationService.snapshot()[3];
+
+   // The assistant window has its own renderer and Maps bridge. Opening and closing it neither
+   // ends the launcher's session nor takes over its notification Stop.
+   Intent assist = new Intent(context, AlphaAssistActivity.class).setAction(Intent.ACTION_ASSIST);
+   try (BoundedActivityScenario<AlphaAssistActivity> assistant = BoundedActivityScenario.launch(assist)) {
+    assertEquals("Opening the assistant keeps the session", session, AlphaNavigationService.snapshot()[0]);
+    WebViewTestDriver.withActivity(AlphaAssistActivity.class, android.app.Activity::finish);
+    for (int i = 0; i < 50 && assistant.getState() != androidx.lifecycle.Lifecycle.State.DESTROYED; i++) SystemClock.sleep(100);
+    assertEquals(androidx.lifecycle.Lifecycle.State.DESTROYED, assistant.getState());
+   }
+   SystemClock.sleep(1000);
+   assertEquals("Closing the assistant keeps the launcher's session", session, AlphaNavigationService.snapshot()[0]);
+   assertEquals("Closing the assistant stops nothing", stopsBefore, Integer.parseInt(AlphaNavigationService.snapshot()[1]));
+   assertNotNull("The navigation notification stays posted", navigationNotification());
+   assertEquals("The launcher is still navigating", "true", js("!!document.querySelector('[aria-label=\"End navigation\"]')"));
 
    // Screen off: the location watch, guidance and the native session continue.
    shell("input keyevent KEYCODE_SLEEP");

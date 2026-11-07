@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import { AlphaMapsDeviceNavigation } from '../apps/app/src/maps/device-navigation.ts';
 import { withResidentMapsNavigation } from '../apps/app/src/maps/resident-relay.ts';
-import { bindAgentNavigation, residentMapsNavigationPort } from '../apps/app/src/maps/agent-navigation.ts';
+import { bindAgentNavigation, mapsAgentResultsPort, residentMapsNavigationPort } from '../apps/app/src/maps/agent-navigation.ts';
 import { MapsController } from '../.eliza/client-features/plugins/plugin-maps/src/client/state.ts';
 import { SavedPlaces } from '../.eliza/client-features/plugins/plugin-maps/src/client/saved-places.ts';
 import { MapsFailure } from '../.eliza/client-features/plugins/plugin-maps/src/client/contracts.ts';
@@ -50,11 +50,12 @@ function provider(options = {}) {
  };
 }
 
-/** The Maps screen as prototype/maps-adapter.ts drives it: the user's Start is the only way guidance begins. */
+/** The Maps screen as prototype/maps-adapter.ts drives it: the user's Start begins guidance, or the
+ * binding's own Start when the owner allows agent actions without asking. */
 function screen(maps, options = {}) {
  const controller = new MapsController(config, maps, new SavedPlaces('test.maps.agent', memory()), noLocation);
  let navigating = false, routeId = '', fix, placeName = '', released = new Set(), sheet = 'base', rerouting = false, arrived = false;
- const located = [];
+ const located = [], searched = [], starts = [];
  const surface = {
   sheet: () => sheet,
   async present() { return options.present ?? true; },
@@ -69,14 +70,17 @@ function screen(maps, options = {}) {
   async reroute(from) {
    rerouting = true;
    try { await controller.reroute(from); } finally { rerouting = false; }
+   // As the adapter: a failed reroute keeps the route being followed (and retries by itself).
    const route = controller.snapshot().route;
-   if (route.phase === 'ready') routeId = route.value.id; else navigating = false;
+   if (route.phase === 'ready') routeId = route.value.id;
   },
+  async showResults(query) { sheet = 'results'; searched.push(query); await controller.search(query); },
+  startGuidance() { const route = controller.snapshot().route; if (navigating || route.phase !== 'ready') return false; starts.push(route.value.id); navigating = true; routeId = route.value.id; sheet = 'navigation'; return true; },
   async stop() { navigating = false; routeId = ''; fix = undefined; rerouting = false; arrived = false; },
   onRelease(listener) { released.add(listener); return () => released.delete(listener); },
  };
  return {
-  controller, surface, located,
+  controller, surface, located, searched, starts,
   /** The user's own Start on the reviewed route sheet. */
   userStarts(position) { const route = controller.snapshot().route; assert.equal(route.phase, 'ready'); navigating = true; routeId = route.value.id; sheet = 'navigation'; fix = position; },
   moveTo(position) { fix = position; },
@@ -177,13 +181,72 @@ function screen(maps, options = {}) {
  assert.deepEqual(await nav.reroute(), { state: 'navigating', placeName: 'Port Hercule', travelMode: 'drive' });
  assert.deepEqual(maps.calls.at(-1), ['route', PALACE, PORT, 'drive']);
  assert.notEqual(phone.surface.guidance().routeId, before);
- // A failed replan ends guidance on the phone; the agent hears the typed reason.
+ // A failed replan keeps guidance on the route being followed; the agent hears the typed reason.
  const failing = provider(), broken = screen(failing), brokenNav = new AlphaMapsDeviceNavigation(broken.surface, owner);
  await brokenNav.start({ destination: portRef, travelMode: 'drive' });
  broken.userStarts({ coordinate: CASINO, accuracyMeters: 8, timestamp: Date.now(), precision: 'precise' });
- failing.route = async () => { throw new MapsFailure('offline', 'Eliza Cloud Maps is unreachable. Check the connection.'); };
- await failsWith(brokenNav.reroute(), 'MAPS_PROVIDER_NETWORK', /unreachable/);
- assert.equal(broken.surface.guidance(), null);
+ const kept = broken.surface.guidance().routeId;
+ failing.route = async () => { throw new MapsFailure('offline', 'Offline. Maps reconnects when you’re back online.'); };
+ await failsWith(brokenNav.reroute(), 'MAPS_PROVIDER_NETWORK', /Offline.*The current route was kept\./);
+ assert.equal(broken.surface.guidance().routeId, kept, 'guidance continues on the route it was following');
+}
+
+// Direct start: only when "Ask before agent actions" is off does an agent's route begin guidance.
+{
+ const allowed = screen(provider()), direct = new AlphaMapsDeviceNavigation(allowed.surface, { ...owner, directStart: async () => true });
+ assert.deepEqual(await direct.start({ destination: portRef, travelMode: 'walk' }), { state: 'navigating', placeName: 'Port Hercule', travelMode: 'walk' });
+ assert.equal(allowed.starts.length, 1, 'the screen\'s own Start ran once');
+ assert.equal(allowed.surface.guidance().routeId, allowed.controller.snapshot().route.value.id);
+ for (const [label, directStart] of [['asks', async () => false], ['read failed', async () => { throw new Error('settings unavailable'); }], ['not given', undefined]]) {
+  const phone = screen(provider()), nav = new AlphaMapsDeviceNavigation(phone.surface, { ...owner, ...(directStart ? { directStart } : {}) });
+  assert.deepEqual(await nav.start({ destination: portRef, travelMode: 'drive' }), { state: 'awaiting-confirmation', placeName: 'Port Hercule', travelMode: 'drive' }, label);
+  assert.equal(phone.starts.length, 0, `${label}: Start stays the user's`);
+  assert.equal(phone.surface.guidance(), null, label);
+ }
+ // The user changed the route sheet while the preference was read: Start stays theirs.
+ const changing = screen(provider());
+ const raced = new AlphaMapsDeviceNavigation(changing.surface, { ...owner, directStart: async () => { changing.controller.setMode('drive'); return true; } });
+ assert.equal((await raced.start({ destination: portRef, travelMode: 'walk' })).state, 'awaiting-confirmation');
+ assert.equal(changing.starts.length, 0);
+ // A Show in Maps tap on a route card is the user's, not an agent action: Start stays theirs.
+ const card = { name: 'Port', latitude: PORT.latitude, longitude: PORT.longitude, provider: 'eliza-cloud', providerPlaceId: 'N1234' };
+ const tapped = screen(provider()), tap = new AlphaMapsDeviceNavigation(tapped.surface, { ...owner, directStart: async () => true });
+ assert.deepEqual(await tap.open({ kind: 'route', destination: card, travelMode: 'walk' }), { state: 'awaiting-confirmation', placeName: 'Port Hercule', travelMode: 'walk' });
+ assert.equal(tapped.starts.length, 0, 'a tap never starts guidance');
+ assert.equal(tapped.surface.guidance(), null);
+ // The automatic open of a reply that just arrived is the agent acting, so its setting applies.
+ const arrived = screen(provider()), reply = new AlphaMapsDeviceNavigation(arrived.surface, { ...owner, directStart: async () => true });
+ assert.deepEqual(await reply.open({ kind: 'route', destination: card, travelMode: 'walk' }, { allowDirectStart: true }), { state: 'navigating', placeName: 'Port Hercule', travelMode: 'walk' });
+ assert.equal(arrived.starts.length, 1);
+}
+
+// Chat results: an agent's search, place or route card opens Maps at that result, once.
+{
+ const maps = provider(), phone = screen(maps), nav = new AlphaMapsDeviceNavigation(phone.surface, owner);
+ const card = { name: 'Port', latitude: PORT.latitude, longitude: PORT.longitude, provider: 'eliza-cloud', providerPlaceId: 'N1234' };
+ assert.deepEqual(await nav.open({ kind: 'places', query: 'harbour', places: [card, { ...card, provider: 'google', providerPlaceId: 'g1' }] }), { state: 'selected' });
+ assert.deepEqual(phone.searched, ['harbour']);
+ assert.equal(phone.surface.sheet(), 'results');
+ assert.equal(await nav.open({ kind: 'places', query: 'harbour', places: [card] }), null, 'the search already shown is not run again');
+ assert.deepEqual(phone.searched, ['harbour']);
+ assert.deepEqual(await nav.open({ kind: 'place', place: card }), { state: 'selected', placeName: 'Port Hercule' });
+ assert.equal(phone.surface.sheet(), 'place');
+ const details = maps.calls.filter(([kind]) => kind === 'detail').length;
+ assert.equal(await nav.open({ kind: 'place', place: card }), null, 'the place already shown (for example by the relay) is not reopened');
+ assert.equal(maps.calls.filter(([kind]) => kind === 'detail').length, details);
+ assert.deepEqual(await nav.open({ kind: 'route', destination: card, travelMode: 'walk' }), { state: 'awaiting-confirmation', placeName: 'Port Hercule', travelMode: 'walk' });
+ assert.equal(phone.surface.sheet(), 'directions');
+ const routes = maps.calls.filter(([kind]) => kind === 'route').length;
+ assert.equal(await nav.open({ kind: 'route', destination: card, travelMode: 'walk' }), null);
+ assert.equal(maps.calls.filter(([kind]) => kind === 'route').length, routes);
+ // Nothing opens over active guidance.
+ phone.userStarts({ coordinate: CASINO, accuracyMeters: 8, timestamp: Date.now(), precision: 'precise' });
+ assert.equal(await nav.open({ kind: 'places', query: 'coffee', places: [] }), null);
+ assert.deepEqual(phone.searched, ['harbour']);
+ await failsWith(nav.open({ kind: 'locate' }), 'MAPS_INVALID_INPUT');
+ const hidden = screen(provider(), { present: false });
+ await failsWith(new AlphaMapsDeviceNavigation(hidden.surface, owner).open({ kind: 'places', query: 'coffee', places: [] }), 'MAPS_DEVICE_UNAVAILABLE', /Open Alpha/);
+ assert.deepEqual(hidden.searched, []);
 }
 
 // While a new route is planned, the session is still active: no agent request takes it over, and arrival ends rerouting.
@@ -286,6 +349,7 @@ function screen(maps, options = {}) {
  assert.equal(binding.registered(), true);
  const offeredA = registered.at(-1);
  assert.ok(offeredA);
+ assert.equal(mapsAgentResultsPort.current, offeredA, 'chat results use the same binding as relay requests');
  assert.equal((await offeredA.select(portRef)).state, 'selected');
  // An unrelated change event keeps the same binding.
  change();
@@ -299,7 +363,9 @@ function screen(maps, options = {}) {
  fix.resolve({ coordinate: CASINO, accuracyMeters: 8, timestamp: Date.now(), precision: 'precise' });
  await failsWith(pending, 'MAPS_DEVICE_UNAVAILABLE', /cancelled/);
  assert.equal(registered.at(-1), null, 'the agent is told navigation is gone');
+ assert.equal(mapsAgentResultsPort.current, null, 'no chat result opens Maps without an installed account');
  await failsWith(offeredA.select(portRef), 'MAPS_PROVIDER_CHANGED', /account on the phone changed/);
+ await failsWith(offeredA.open({ kind: 'place', place: { name: 'Port', latitude: PALACE.latitude, longitude: PALACE.longitude, provider: 'eliza-cloud', providerPlaceId: 'N1234' } }), 'MAPS_PROVIDER_CHANGED');
  await failsWith(offeredA.stop(), 'MAPS_PROVIDER_CHANGED', /account/);
  // The next account gets a fresh binding; the previous one stays retired.
  const accountB = provider();

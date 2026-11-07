@@ -5,7 +5,7 @@ import { registerPlugin } from '../platform-plugins';
 import { Capacitor } from '@capacitor/core';
 import { DailyApps } from '../daily';
 import {calendarFormTimeProblem} from '../runtime/calendar-form-draft';
-import {calendarAgenda,calendarAgendaRows,calendarDayColumns,calendarDayCount,calendarDayLabel,calendarReturnDay,visibleCalendarDays} from './calendar-days';
+import {calendarAgenda,calendarAgendaRows,calendarDayColumns,calendarDayCount,calendarDayLabel,calendarLoadRange,calendarReturnDay,calendarView,calendarViewDays} from './calendar-days';
 import {mapsEventOriginFor} from '../runtime/maps-event-return';
 import {rememberNoteOrigin,forgetNoteOrigin,noteOriginSupported,eventNoteOriginId} from './note-origin-adapter';
 type Bag = Record<string, any>;
@@ -66,7 +66,9 @@ export function installCalendarAdapter(Component: any, views: Bag) {
   let agentSelection:Bag|undefined,agentSelectionKey='',agentSelectionEpoch=0;
   p.calendarSelection=function(){const state=this.vget('calendar');if(agentSelection?.kind==='calendar-source')return state.form?.cal===agentSelection.formCal?{kind:'calendar-source',id:agentSelection.id,revision:agentSelection.revision,accountId:agentSelection.id,sourceRevision:agentSelection.revision}:undefined;return agentSelection&&state.open===agentSelection.open?{kind:'calendar-event',id:agentSelection.id,revision:agentSelection.revision,accountId:agentSelection.accountId,sourceRevision:agentSelection.sourceRevision}:undefined;};
   type Range={begin:number;end:number;key:string};
-  const rangeFor=(state:Bag):Range=>{const today=new Date(),date=new Date(today.getFullYear(),today.getMonth(),today.getDate()+Number(state.day||0));date.setDate(1);if(state.month!=null)date.setMonth(date.getMonth()+Number(state.month||0));const begin=new Date(date.getFullYear(),date.getMonth()-1,1).getTime(),end=new Date(date.getFullYear(),date.getMonth()+2,1).getTime();return {begin:Math.max(0,begin),end,key:`${begin}:${end}`};};
+  // The shown month and its neighbours; Search widens it (calendar-days.ts).
+  const rangeFor=(state:Bag):Range=>calendarLoadRange(state);
+  const rangeCovers=(key:string,range:Range)=>{if(!key)return false;const [begin,end]=key.split(':').map(Number),[wantBegin,wantEnd]=range.key.split(':').map(Number);return begin<=wantBegin&&end>=wantEnd;};
   let desired:Range|undefined,loadedKey='',attemptedKey='',scheduled=false,runningToken=0,truncated=false;
   const schedule=()=>{if(scheduled)return;scheduled=true;queueMicrotask(()=>{scheduled=false;if(owner&&!loading&&desired?.key!==attemptedKey)void refresh();});};
   const mapEvent=(event:Bag)=>{
@@ -140,22 +142,23 @@ export function installCalendarAdapter(Component: any, views: Bag) {
   views.calendar.render=(state:Bag,api:Bag)=>{
     const range=rangeFor(state);
     if(desired?.key!==range.key){desired=range;++generation;status='Loading calendars…';schedule();}
-    const rangeReady=loadedKey===range.key,reminderStale=!!state.reminderStale||!!owner?.reminderRefreshFailed;
+    // A loaded window that covers the requested one stays usable while the exact window loads, so
+    // closing Search (wide window to the shown months) neither blanks the timeline nor drops rows.
+    const rangeReady=loadedKey===range.key||rangeCovers(loadedKey,range),reminderStale=!!state.reminderStale||!!owner?.reminderRefreshFailed;
     if(!rangeReady)state={...state,events:(state.events||[]).filter((e:Bag)=>!e.alphaCalendarId)};
     const providerState=state;
     const browserCalendar=!Capacitor.isNativePlatform()?calendars.find(c=>c.id==='local'):undefined;
     if(browserCalendar){state={...state,calPrefs:{...state.calPrefs,personal:{on:browserCalendar.visible!==false,color:browserCalendar.color||'acc'}},events:browserCalendar.visible===false?(state.events||[]).filter((e:Bag)=>!e.alphaCalendarId):state.events};}
     const out=render(state,api);
     if(browserCalendar?.visible===false&&state.open){const detail=render(providerState,api);out.ev=detail.ev;out.detail=detail.detail;}
-    out.emptyText=rangeReady?(truncated?'Calendar results incomplete. Some events may be missing.':reminderStale?'Reminders unavailable. Retry before relying on this schedule.':'No visible events or reminders for this day.'+(Capacitor.isNativePlatform()?' Only calendars stored in Android Calendar on this phone appear here.':'')):status;
-    // Source disclosure: Android CalendarProvider calendars only. Connected Google calendars need OAuth (not yet available).
-    out.calendarSourceLabel=Capacitor.isNativePlatform()?'On-device calendars':'Browser calendar';
-    out.calendarSourceText=Capacitor.isNativePlatform()?'Shows calendars stored in Android Calendar on this phone, including accounts synced by Android. Connected Google calendars are not shown here yet.':'Shows the calendar stored in this browser.';
+    out.emptyText=rangeReady?(truncated?'Calendar results incomplete. Some events may be missing.':reminderStale?'Reminders unavailable. Retry before relying on this schedule.':'Nothing scheduled'):status;
     out.nativeStatusLabel=[rangeReady&&truncated?'Calendar results incomplete. Some events may be missing.':'',reminderStale?'Reminders may be out of date. Tap to retry.':''].filter(Boolean).join(' ');
     out.nativeStatusRetry=()=>{void refresh(false,true);void owner?.refreshReminders();};
     out.browserRecovery=!Capacitor.isNativePlatform()&&loadFailed&&!loading;out.openBrowserRecovery=openCalendarRecovery;
     out.reminderRecovery=!Capacitor.isNativePlatform()&&reminderStale;out.openReminderRecovery=openReminderRecovery;out.openReminderCreationRecovery=openReminderCreationRecovery;out.openReminderActionRecovery=openReminderActionRecovery;
     if(!rangeReady&&!state.open&&!state.form)out.empty=true;
+    // Search results wait for the wide read instead of reporting no results for events that exist.
+    if(!rangeReady&&state.search!=null){out.searchEmpty=false;out.searchLoading=String(state.search).trim()?status:'';}
     const allDay=(state.events||[]).filter((e:Bag)=>(e.alphaCalendarId||e.googleCalendarRecord)&&e.allDay);
     const day=Number(state.day||0),onDay=(off:number)=>allDay.filter((e:Bag)=>off>=e.off&&off<e.nativeAllDayEndOff);
     const timed=(state.events||[]).filter((e:Bag)=>(e.alphaCalendarId||e.googleCalendarRecord)&&!e.allDay);
@@ -180,14 +183,15 @@ export function installCalendarAdapter(Component: any, views: Bag) {
     // The renderer's selected-day layout (`events` from a renderer without day columns).
     const dayEventsOf=(result:Bag):Bag[]=>result.dayEvents??result.events??[];
     out.dayEvents=dayEventsOf(out);
-    if(allDay.length||timed.length)out.dayEvents=dayEventsOf(render({...state,events:timeline},api));
+    // Layout-only passes render one day (view 'day'), so they never rebuild Week, Month or Schedule.
+    if(allDay.length||timed.length)out.dayEvents=dayEventsOf(render({...state,view:'day',events:timeline},api));
     // Wide canvases show the selected day and the days after it side by side (measured width,
     // runtime/canvas-geometry.ts); large text keeps the single-day agenda. Each column is the
     // same per-day layout, so event identity, recurrence occurrence and time zone are unchanged.
-    const dayCount=calendarDayCount();
-    const visibleDays=visibleCalendarDays(day,dayCount);
+    const view=calendarView(state.view),dayCount=view==='week'?7:calendarDayCount();
+    const visibleDays=calendarViewDays(view,day,api.now,dayCount);
     const timelines=new Map<number,Bag[]>(visibleDays.map(off=>[off,off===day?timeline:[...local,...segmentsFor(off)]]));
-    const columns=dayCount>1?visibleDays.map(off=>({off,events:off===day?out.dayEvents as Bag[]:dayEventsOf(render({...state,day:off,events:timelines.get(off)},api))})):[];
+    const columns=dayCount>1?visibleDays.map(off=>({off,events:off===day?out.dayEvents as Bag[]:dayEventsOf(render({...state,view:'day',day:off,events:timelines.get(off)},api))})):[];
     const realDay=visibleDays.flatMap(off=>timelines.get(off)!.filter((e:Bag)=>(e.alphaCalendarId||e.googleCalendarRecord||e.alphaReminderId)&&!e.allDay&&e.off===off&&Number.isFinite(e.t)&&e.t>=0));
     const first=Math.min(7,...realDay.map((e:Bag)=>Math.floor(e.t))),last=Math.max(23,...realDay.map((e:Bag)=>Math.min(24,Math.ceil(e.t+e.d))));
     if(first<7||last>23){
@@ -209,28 +213,40 @@ export function installCalendarAdapter(Component: any, views: Bag) {
     if(dayCount>1){
       out.nativeAllDay=visibleDays.flatMap(off=>onDay(off).map((e:Bag)=>({title:`${calendarDayLabel(api.now,off)} · ${e.title}`,open:()=>api.set({open:e.id,openDay:off})})));
       const now=new Date(api.now),time=now.getHours()+now.getMinutes()/60;
-      out.dayColumns=calendarDayColumns(columns,api.now,out.nowTop,time>=first&&time<=last,day);
+      out.dayColumns=calendarDayColumns(columns,api.now,out.nowTop,time>=first&&time<=last,day,{compact:view==='week',pick:(off:number)=>api.set({view:'day',day:off,month:null})});
       out.multiDay=true;out.dayCount=dayCount;out.showNow=false;
       out.empty=(!rangeReady&&!state.open&&!state.form)||(columns.every(column=>!column.events.length)&&!out.nativeAllDay.length);
-      if(out.empty&&rangeReady)out.emptyText='No visible events or reminders for these days.';
+      if(out.empty&&rangeReady)out.emptyText='Nothing scheduled';
     }
-    out.hasNativeAllDay=out.nativeAllDay.length>0;
+    // The all-day strip belongs to the timeline (Day and Week); Month and Schedule list those rows themselves.
+    out.hasNativeAllDay=out.nativeAllDay.length>0&&(view==='day'||view==='week');
     if(out.hasNativeAllDay)out.empty=false;
     // Large text lists the selected day instead of drawing timed blocks; the timeline stays mounted
     // (hidden) so its scroll position survives returning to normal text.
-    out.agenda=calendarAgenda();
+    out.agenda=(view==='day'||view==='week')&&calendarAgenda();
     out.agendaRows=out.agenda?calendarAgendaRows(out.nativeAllDay,out.dayEvents):[];
     const selectedDate=new Date(api.now);selectedDate.setDate(selectedDate.getDate()+day);
     const weekStart=day-(selectedDate.getDay()+6)%7;
-    out.week=out.week.map((w:Bag,i:number)=>occupied(weekStart+i)?{...w,dot:weekStart+i===0?'var(--acct)':'var(--mut)'}:w);
-    const monthBase=new Date(selectedDate);monthBase.setDate(1);monthBase.setMonth(monthBase.getMonth()+Number(state.month||0));
-    const gridStart=new Date(monthBase);gridStart.setDate(1-(monthBase.getDay()+6)%7);
-    const gridOff=(civilDay(gridStart)-civilDay(new Date(api.now)))/DAY;
-    out.mdays=out.mdays.map((d:Bag,i:number)=>occupied(gridOff+i)?{...d,dot:gridOff+i===0?'var(--acct)':'var(--fg)'}:d);
+    out.week=(out.week||[]).map((w:Bag,i:number)=>occupied(weekStart+i)?{...w,dot:weekStart+i===0?'var(--acct)':'var(--mut)'}:w);
+    // Month and Schedule from the merged rows: local events, Android and Google all-day spans, and
+    // timed provider events clipped to each day they cover (so an overnight event shows on both days).
+    if(typeof out.calItems==='function'&&(allDay.length||timed.length)){
+      const eventsOn=(off:number)=>out.calItems(off,[...local,...onDay(off),...segmentsFor(off)]);
+      if(out.monthView&&out.monthCellsFor)out.monthCells=out.monthCellsFor(eventsOn);
+      if(out.scheduleView&&out.scheduleRowsFor){out.scheduleRows=out.scheduleRowsFor(eventsOn);out.scheduleEmpty=!out.scheduleRows.length;}
+    }
+    // The device calendars as one switch in the title menu, named for where they are. It stays
+    // listed while hidden, when none of its rows reach the renderer.
+    if(calendars.length&&Array.isArray(out.calToggles)){
+      const prefs=providerState.calPrefs||{},on=browserCalendar?browserCalendar.visible!==false:prefs.personal?.on!==false;
+      const name=browserCalendar?'In this app':Capacitor.isNativePlatform()?'On this phone':'Personal',existing=out.calToggles.find((row:Bag)=>row.id==='personal');
+      const toggle=browserCalendar?()=>void calendar.changePreferences({action:'visibility'}).catch(()=>api.toast('Calendar settings could not be saved. Try again.')):()=>api.set({calPrefs:{...prefs,personal:{...(prefs.personal||{}),on:!on}}});
+      out.calToggles=[{id:'personal',sub:'',dot:existing?.dot||'var(--acct)',name,on,checked:String(on),label:`Show ${name} calendar`,toggle},...out.calToggles.filter((row:Bag)=>row.id!=='personal')];out.hasCalToggles=true;
+    }
     const newEvent=async(separateCreation=false)=>{
       const activeOwner=owner,now=new Date(),day=Number(state.day||0),hour=now.getHours()+now.getMinutes()/60;
       const draft={id:null,creationId:crypto.randomUUID(),separateCreation,title:'',off:day,t:day===0?Math.min(21,Math.ceil(hour+.01)):10,d:1,where:'',video:false,who:[],cal:'native:local',repeat:'none',alert:null,notes:''};
-      ++creationDraftEpoch;api.set({month:null,form:draft});
+      ++creationDraftEpoch;api.set({menu:false,form:draft});
       const token=++agentSelectionEpoch;agentSelection=undefined;agentSelectionKey='';
       const current=()=>owner===activeOwner&&!document.hidden&&api.isActive()&&api.get('calendar').form?.creationId===draft.creationId;
       try{const permission=await calendar.requestAccess();if(permission.status!=='granted'||!current())return;const source=await calendar.prepareAgentSource();if(current()&&token===agentSelectionEpoch&&source.status==='ready'&&api.get('calendar').form?.cal==='native:local'){agentSelection={kind:'calendar-source',id:source.sourceId,revision:source.sourceRevision,formCal:'native:local'};api.set({nativeAgentSourceRevision:source.sourceRevision});}}catch{if(current())api.toast('Calendar source unavailable for agent actions.');}

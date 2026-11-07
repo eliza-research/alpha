@@ -62,11 +62,12 @@ test('Connection dialog follows a live theme change and remains keyboard accessi
   await page.getByRole('button',{name:'Theme: Dark',exact:true}).click();
   // Open by keyboard: WebKit intentionally does not focus buttons on a pointer click.
   const opener=page.getByRole('button',{name:'Eliza Cloud',exact:true});await opener.focus();await opener.press('Enter');
-  const dialog=page.getByRole('dialog',{name:'Eliza Cloud',exact:true});
+  // Not signed in, the account entry opens the sign-in methods directly.
+  const dialog=page.getByRole('dialog',{name:'Sign in',exact:true});
   await expect(dialog).toHaveCSS('background-color','rgb(0, 0, 0)');
   await page.setViewportSize({width:412,height:300});
   await expect(dialog.getByText('Remote agent',{exact:true})).toHaveCount(0);
-  const signIn=dialog.getByRole('button',{name:'Sign in with Eliza Cloud',exact:true});
+  const signIn=dialog.getByRole('button',{name:'Continue',exact:true});
   await signIn.focus();await expect(signIn).toBeInViewport();
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);

@@ -29,6 +29,11 @@ test('guidance presents the next maneuver, the following step and the remaining 
   assert.equal(view.thenIcon, MANEUVER_ICONS.right);
   assert.equal(view.remainingTime, '3 min');
   assert.match(view.remaining, /^900 m · arrive .+ · no live traffic$/);
+  // A route planned with live traffic says so; the shown arrival is never presented as more than it is.
+  const live = guidanceView({ offRouteMeters: 2, alongMeters: 100, remainingMeters: 900, remainingSeconds: 150, stepIndex: 0,
+    next: { index: 1, step: step('Turn left onto Rue A', 'left'), distanceMeters: 120 } }, new Date(2026, 9, 8, 12, 0), 'live');
+  assert.match(live.remaining, /^900 m · arrive .+ · live traffic$/);
+  assert.doesNotMatch(live.remaining, /no live traffic/);
   assert.equal(view.spoken, 'Turn left onto Rue A');
   const near = guidanceView({ offRouteMeters: 1, alongMeters: 0, remainingMeters: 10, remainingSeconds: 5, stepIndex: 0, next: { index: 1, step: step('Arrive at destination', 'arrive'), distanceMeters: 10 } });
   assert.equal(near.spoken, 'Arrive at destination');

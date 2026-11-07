@@ -20,7 +20,7 @@ test('event address searches once, preserves result choice and returns to the sa
  await expect(page.getByRole('button',{name:/^East entrance/}).first()).toBeVisible();await expect(page.getByRole('button',{name:/^West entrance/}).first()).toBeVisible();
  expect(await page.evaluate(()=>(window as any).travelQueries)).toEqual([address]);
  await page.getByRole('button',{name:/^West entrance/}).first().click();await expect(page.getByRole('button',{name:'Directions',exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Directions',exact:true}).click();const origin=page.getByRole('textbox',{name:'Route origin coordinates'});await origin.fill('43.738, 7.424');await origin.press('Enter');await expect(page.getByText(/no live traffic/).first()).toBeVisible();expect(await page.evaluate(()=>(window as any).travelRoutes)).toEqual([{from:{latitude:43.738,longitude:7.424},to:{latitude:43.74,longitude:7.425},mode:'drive'}]);await page.screenshot({path:info.outputPath('reviewed-event-route.png')});
+ await page.getByRole('button',{name:'Directions',exact:true}).click();const origin=page.getByRole('textbox',{name:'Starting point',exact:true});await origin.fill('43.738, 7.424');await origin.press('Enter');await expect(page.locator('[data-alpha-maps-start]')).toHaveAttribute('data-can-start','true');await expect(page.locator('[data-alpha-maps-sheet="directions"]')).toContainText(/\d+\.\d km/);expect(await page.evaluate(()=>(window as any).travelRoutes)).toEqual([{from:{latitude:43.738,longitude:7.424},to:{latitude:43.74,longitude:7.425},mode:'drive'}]);await page.screenshot({path:info.outputPath('reviewed-event-route.png')});
  // Unwind the route and selected place, then the event-owned search returns directly to Calendar.
  // A fourth Back would dismiss the event detail we are checking.
  await back(page);await expect(page.getByRole('button',{name:'Directions',exact:true})).toBeVisible();
@@ -30,7 +30,7 @@ test('event address searches once, preserves result choice and returns to the sa
  await page.getByRole('button',{name:address,exact:true}).click();await expect(page.getByRole('button',{name:/^East entrance/}).first()).toBeVisible();expect(await page.evaluate(()=>(window as any).travelQueries)).toEqual([address,address]);
 });
 test('missing Maps provider retains the event address without inventing a destination',async({page})=>{
- await event(page,false);await expect(page.getByRole('textbox',{name:'Search places',exact:true})).toHaveValue(address);await expect(page.getByText(/Maps provider not connected|Connect a Maps provider/).first()).toBeVisible();await expect(page.getByRole('button',{name:'Directions',exact:true})).toHaveCount(0);await back(page);await expect(page.locator('html')).toHaveAttribute('data-active-view','calendar');await expect(page.getByText('Return to this exact event',{exact:true})).toBeVisible();
+ await event(page,false);await expect(page.getByRole('textbox',{name:'Search places',exact:true})).toHaveValue(address);await expect(page.getByText(/Sign in to (Eliza Cloud )?use Maps|Connecting Maps…/).first()).toBeVisible();await expect(page.getByText(/Maps provider/)).toHaveCount(0);await expect(page.getByRole('button',{name:'Directions',exact:true})).toHaveCount(0);await back(page);await expect(page.locator('html')).toHaveAttribute('data-active-view','calendar');await expect(page.getByText('Return to this exact event',{exact:true})).toBeVisible();
 });
 
 test('a late event-address response cannot replace a newer Maps search',async({page})=>{

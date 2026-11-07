@@ -52,13 +52,14 @@ test('signing out of account A and into account B stops the resident before A is
 
   // Sign out of A: the resident stops before A's key is revoked and removed.
   let dialog = await agentConnection(page);
-  await dialog.getByRole('button', { name: 'Sign out of Eliza Cloud', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Sign out', exact: true }).click();
   dialog=page.getByRole('main',{name:'Sign in',exact:true});
-  await expect(dialog.getByRole('button', { name: 'Sign in with Eliza Cloud', exact: true })).toBeEnabled({ timeout: 30_000 });
+  // Signed out, the sign-in methods open by themselves (no separate Sign in step).
+  await expect(dialog.getByRole('textbox', { name: /^Email( or phone number)?$/ })).toBeEnabled({ timeout: 30_000 });
   const signOut = await stub(page, s => s.order.length) as number;
   // Sign in as B.
   await setStub(page, { nextToken: B.token });
-  await dialog.getByRole('button', { name: 'Sign in with Eliza Cloud', exact: true }).click();await enterNativeEmailCode(page);
+  await enterNativeEmailCode(page);
   await expect(page.getByRole('main',{name:'Sign in',exact:true})).toHaveCount(0, { timeout: 30_000 });
   await completeAccessSetup(page);
 
@@ -128,7 +129,7 @@ test('a second sign-in over a saved key uses the native replacement result witho
   // P-43: the resident starts signed out; sign-in is offered from Settings › Agent connection.
   await expect.poll(() => harness(page, f => f.calls.includes('Agent.start')), { timeout: 30_000 }).toBe(true);
   let welcome = await openYourAgent(page);
-  await welcome.getByRole('button', { name: 'Sign in with Eliza Cloud', exact: true }).click();await enterNativeEmailCode(page);
+  await enterNativeEmailCode(page);
   await expect(page.getByRole('main',{name:'Sign in',exact:true})).toHaveCount(0, { timeout: 30_000 });
   await completeAccessSetup(page);
   expect(await stub(page, s => s.order.filter((entry: string) => entry.startsWith('revoke')))).toEqual([]);
@@ -138,9 +139,9 @@ test('a second sign-in over a saved key uses the native replacement result witho
   // The resident starts again with AI off; Your agent says the saved sign-in is no longer valid.
   await expect.poll(() => harness(page, f => f.calls.includes('Agent.start')), { timeout: 30_000 }).toBe(true);
   welcome = await openYourAgent(page);
-  await expect(welcome.getByText('Your Eliza Cloud sign-in has expired. Sign in with Eliza Cloud again.', { exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(welcome.getByText('Your sign-in expired. Sign in again.', { exact: true })).toBeVisible({ timeout: 30_000 });
   await expect(welcome).not.toContainText(/pair/i);
-  await welcome.getByRole('button', { name: 'Sign in with Eliza Cloud', exact: true }).click();await enterNativeEmailCode(page);
+  await enterNativeEmailCode(page);
   await expect(page.getByRole('main',{name:'Sign in',exact:true})).toHaveCount(0, { timeout: 30_000 });
   await completeAccessSetup(page);
   const order = await stub(page, s => s.order) as string[];

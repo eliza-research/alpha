@@ -143,7 +143,7 @@ test('MVP mock account and privacy journeys exclude Contacts controls', async ({
   await expect(page.getByText(/CardDAV|Gmail, Calendar, Contacts/)).toHaveCount(0);
   await page.getByRole('button',{name:'Google',exact:true}).click();
   // Fixture credentials stay in the explicitly labelled mock; no account call occurs.
-  await page.getByRole('textbox',{name:'Email',exact:true}).fill('mvp-fixture@example.test');
+  await page.getByRole('textbox',{name:/^Email( or phone number)?$/}).fill('mvp-fixture@example.test');
   await page.getByRole('textbox',{name:'Password',exact:true}).fill('mock-only');
   await page.getByRole('button',{name:'Sign in',exact:true}).click();
   await expect(page.getByRole('button',{name:'Mail: Act',exact:true})).toBeVisible();

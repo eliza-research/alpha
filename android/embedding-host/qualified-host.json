@@ -69,7 +69,7 @@
   },
   "requalification": {
     "required": true,
-    "atPin": "912f972e58b1b707ecdf2271eeba495f2ed966ef",
-    "reason": "Upstream changed the native llama.cpp fork from 0d9fd4b9 to b3eb2bf6. The recorded libraries remain historical; rebuild and qualify new libraries without relabeling these bytes. The Cloud profile packages no local engine and is unaffected."
+    "atPin": "b25d8aef2916385c571f4367e099809254fde0bb",
+    "reason": "Upstream changed the native llama.cpp fork from 0d9fd4b9 to b3eb2bf6 and then to 6337fd4c. The recorded libraries remain historical; rebuild and qualify new libraries without relabeling these bytes. The Cloud profile packages no local engine and is unaffected."
   }
 }

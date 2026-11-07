@@ -612,7 +612,7 @@
     </div>
   </sc-if>
   <sc-if value="{{inbox.searching}}">
-    <div data-alpha-app-header="main" style="display: flex; align-items: center; height: 56px; margin-top: 44px; padding: 0 16px; flex-shrink: 0">
+    <div data-alpha-app-header="main" style="display: flex; align-items: center; height: 56px; margin-top: 44px; padding: 0 16px; gap: 8px; flex-shrink: 0">
     <sc-if value="{{showAppBack}}"><button class="app-header-back" aria-label="Back to inbox" onClick="{{inbox.closeSearch}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button></sc-if>
       <form role="search" aria-label="Search Gmail" onSubmit="{{inbox.submitSearch}}" style="flex-grow: 1; min-width: 0; display: flex; align-items: center; gap: 10px; height: 48px; padding: 0 4px 0 16px; border-radius: 24px; background: var(--s2)">
         <svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px; color: var(--mut)"><path d="{{ic.search}}"></path></svg>
@@ -628,7 +628,7 @@
     <sc-if value="{{inbox.hasExtraFolders}}">{{inbox.folderPicker}}</sc-if>
   </div>
 
-  <sc-if value="{{inbox.hasActionChips}}"><div class="scr" style="display:flex;gap:8px;padding:0 20px 8px;overflow-x:auto;flex-shrink:0"><sc-for list="{{inbox.actionChips}}" as="action"><button aria-label="{{action.label}}" onClick="{{action.pick}}" style="min-height:36px;padding:0 12px;border-radius:18px;background:var(--s2);color:var(--fg);font-size:13px;white-space:nowrap;flex-shrink:0">{{action.label}}</button></sc-for></div></sc-if>
+  <sc-if value="{{inbox.hasActionChips}}"><div class="scr" style="display:flex;gap:8px;padding:0 20px 8px;overflow-x:auto;flex-shrink:0"><sc-for list="{{inbox.actionChips}}" as="action"><button aria-label="{{action.label}}" onClick="{{action.pick}}" style="min-height:44px;padding:0 12px;border-radius:22px;background:var(--s2);color:var(--fg);font-size:14px;font-weight:600;white-space:nowrap;flex-shrink:0">{{action.label}}</button></sc-for></div></sc-if>
   <sc-if value="{{inbox.cachedListNotice}}"><p role="status" style="margin:0;padding:0 20px 8px;font-size:12px;color:var(--mut)">{{inbox.cachedListNotice}}</p></sc-if>
   <div class="scr" data-alpha-app-scroll="inbox" data-mail-cached="{{inbox.cachedListShown}}" style="flex-grow: 1; overflow-y: auto; padding-bottom: 120px; touch-action: pan-y">
     <sc-for list="{{inbox.rows}}" as="it">
@@ -663,7 +663,7 @@
         <svg class="i" viewBox="0 0 24 24" style="width: 28px; height: 28px"><path d="{{inbox.emptyIcon}}"></path></svg>
         <span style="font-size: 15px">{{inbox.emptyText}}</span>
         <sc-if value="{{inbox.emptyAdd}}">
-          <button onClick="{{inbox.addAcct}}" style="height: 36px; padding: 0 16px; border-radius: 18px; background: var(--s2); color: var(--fg); font-size: 14px; font-weight: 600; margin-top: 4px">{{inbox.addAccountLabel}}</button>
+          <button onClick="{{inbox.addAcct}}" style="min-height: 44px; padding: 0 20px; border-radius: 22px; background: var(--fg); color: var(--bg); font-size: 15px; font-weight: 600; margin-top: 4px">{{inbox.addAccountLabel}}</button>
         </sc-if>
       </div>
     </sc-if>
@@ -682,8 +682,6 @@
         <button class="ib" aria-label="Back to inbox" onClick="{{back}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button>
         <span style="flex-grow: 1"></span>
         <button class="ib" aria-label="Reply" disabled="{{inbox.d.loading}}" onClick="{{inbox.d.reply}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.reply}}"></path></svg></button>
-        <sc-if value="{{inbox.d.canReplyAll}}"><button aria-label="Reply all" disabled="{{inbox.d.loading}}" onClick="{{inbox.d.replyAll}}" style="padding:8px;font-size:12px">Reply all</button></sc-if>
-        <sc-if value="{{inbox.d.canToggleRead}}"><button onClick="{{inbox.d.toggleRead}}" style="padding:8px;font-size:12px">{{inbox.d.readLabel}}</button></sc-if>
         <button class="ib" aria-label="Forward" disabled="{{inbox.d.loading}}" onClick="{{inbox.d.forward}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.inboxFwd}}"></path></svg></button>
         <sc-if value="{{inbox.d.canArchive}}">
           <button class="ib" aria-label="Archive" onClick="{{inbox.d.archive}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.archive}}"></path></svg></button>
@@ -693,11 +691,12 @@
       <div class="scr inbox-message-content" role="region" aria-label="Email message" tabindex="0" style="flex-grow: 1; overflow-y: auto; padding: 4px 24px 130px; touch-action: pan-y">
         <sc-if value="{{inbox.d.canLoadThread}}"><button onClick="{{inbox.d.loadThread}}" style="min-height:44px;padding:8px 0;color:var(--acct)">Show conversation</button></sc-if><sc-if value="{{inbox.d.hasThread}}"><p style="font-size:12px;color:var(--mut)">{{inbox.d.threadStatus}}</p>
         <div class="scr" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:10px">
-          <sc-for list="{{inbox.d.threadRows}}" as="message"><button onClick="{{message.pick}}" style="padding:8px 12px;border-radius:18px;background:var(--s2);white-space:nowrap">{{message.label}}</button></sc-for>
-          <sc-if value="{{inbox.d.hasPreviousThread}}"><button onClick="{{inbox.d.previousThread}}" style="padding:8px 12px;white-space:nowrap">Previous thread page</button></sc-if>
-          <sc-if value="{{inbox.d.hasNextThread}}"><button onClick="{{inbox.d.nextThread}}" style="padding:8px 12px;white-space:nowrap">Next thread page</button></sc-if>
+          <sc-for list="{{inbox.d.threadRows}}" as="message"><button onClick="{{message.pick}}" style="min-height:44px;padding:0 14px;border-radius:22px;background:var(--s2);white-space:nowrap;flex-shrink:0;display:inline-flex;align-items:center">{{message.label}}</button></sc-for>
+          <sc-if value="{{inbox.d.hasPreviousThread}}"><button onClick="{{inbox.d.previousThread}}" style="min-height:44px;padding:0 14px;border-radius:22px;background:var(--s2);white-space:nowrap;flex-shrink:0;display:inline-flex;align-items:center">Previous thread page</button></sc-if>
+          <sc-if value="{{inbox.d.hasNextThread}}"><button onClick="{{inbox.d.nextThread}}" style="min-height:44px;padding:0 14px;border-radius:22px;background:var(--s2);white-space:nowrap;flex-shrink:0;display:inline-flex;align-items:center">Next thread page</button></sc-if>
         </div>
         </sc-if><h1 class="serif" style="margin: 0; font-size: 32px; line-height: 1.1; letter-spacing: -.01em">{{inbox.d.subj}}</h1>
+        <div class="inbox-message-actions"><sc-if value="{{inbox.d.canReplyAll}}"><button disabled="{{inbox.d.loading}}" onClick="{{inbox.d.replyAll}}">Reply all</button></sc-if><sc-if value="{{inbox.d.canToggleRead}}"><button onClick="{{inbox.d.toggleRead}}">{{inbox.d.readLabel}}</button></sc-if></div>
         <div style="display: flex; align-items: flex-start; gap: 12px; margin-top: 20px">
           <sc-if value="{{inbox.d.hasPerson}}">
             <button aria-label="{{inbox.d.name}}" onClick="{{inbox.d.who}}" style="width: 44px; height: 44px; border-radius: 22px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; background: var(--s2); white-space: nowrap">{{inbox.d.ini}}</button>
@@ -729,7 +728,7 @@
           </div>
         </sc-if>
         <sc-if value="{{inbox.d.canAsk}}">
-          <button onClick="{{inbox.d.ask}}" style="margin-top: 26px; min-height: 36px; padding: 0 16px 0 14px; border-radius: 18px; background: var(--s2); display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600"><span style="color: var(--acct); font-family: Denton, Fraunces, Georgia, serif; font-style: italic; font-size: 19px; line-height: 1"><span class="alpha-compute-mark" aria-hidden="true"></span></span>Review email with agent</button>
+          <button onClick="{{inbox.d.ask}}" style="margin-top: 26px; min-height: 44px; padding: 0 16px 0 14px; border-radius: 22px; background: var(--s2); display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600"><span style="color: var(--acct); font-family: Denton, Fraunces, Georgia, serif; font-style: italic; font-size: 19px; line-height: 1"><span class="alpha-compute-mark" aria-hidden="true"></span></span>Review email with agent</button>
         </sc-if>
       </div>
     </div>
@@ -779,18 +778,20 @@
           </div>
         </sc-if>
 
-        <sc-if value="{{inbox.c.showSendHint}}"><p style="font-size:12px;color:var(--mut);margin:8px 0">Enable Gmail changes in Settings to send. Your draft stays on this device.</p></sc-if>
+        <sc-if value="{{inbox.c.showSendHint}}"><p style="font-size:12px;color:var(--mut);margin:8px 0">Reconnect Gmail to send. Your draft stays on this device.</p></sc-if>
         <sc-if value="{{inbox.c.canSaveProvider}}"><button onClick="{{inbox.c.saveProvider}}" style="padding:12px 0;text-align:left;color:var(--acct)">Review save to Gmail drafts</button></sc-if>
         <sc-if value="{{inbox.c.local}}"><div role="status" style="font-size:12px;color:var(--mut);padding:8px 0">{{inbox.c.status}}</div></sc-if>
         <sc-if value="{{inbox.c.recoveryVisible}}"><div role="status" aria-label="Email edit recovery status" style="font-size:12px;color:var(--mut);padding:8px 0">{{inbox.c.retainedStatus}}</div></sc-if>
-        <sc-if value="{{inbox.c.retainedConflict}}"><div><button onClick="{{inbox.c.restoreEdits}}" style="min-height:44px;padding:12px">Restore retained email edits</button><button onClick="{{inbox.c.replaceEdits}}" style="min-height:44px;padding:12px">Replace retained email edits</button></div></sc-if>
-        <sc-if value="{{inbox.c.retainedError}}"><div><button onClick="{{inbox.c.retryEdits}}" style="min-height:44px;padding:12px">Retry email recovery storage</button><button onClick="{{inbox.c.recoverEdits}}" style="min-height:44px;padding:12px">Recover email edits</button></div></sc-if>
-        <sc-if value="{{inbox.c.staleBase}}"><button onClick="{{inbox.c.useLatest}}" style="min-height:44px;padding:12px">Use latest saved draft</button></sc-if>
+        <sc-if value="{{inbox.c.retainedConflict}}"><div class="inbox-recovery-actions"><button onClick="{{inbox.c.restoreEdits}}">Restore retained email edits</button><button onClick="{{inbox.c.replaceEdits}}">Replace retained email edits</button></div></sc-if>
+        <sc-if value="{{inbox.c.retainedError}}"><div class="inbox-recovery-actions"><button onClick="{{inbox.c.retryEdits}}">Retry email recovery storage</button><button onClick="{{inbox.c.recoverEdits}}">Recover email edits</button></div></sc-if>
+        <sc-if value="{{inbox.c.staleBase}}"><div class="inbox-recovery-actions"><button onClick="{{inbox.c.useLatest}}">Use latest saved draft</button></div></sc-if>
         <sc-if value="{{inbox.c.confirm}}">
           <div role="dialog" aria-label="Discard local draft" style="padding:16px;background:var(--s2);border-radius:16px">
             <p>Discard this local draft permanently?</p>
-            <button disabled="{{inbox.c.busy}}" onClick="{{inbox.c.cancelDiscard}}">Keep draft</button>
-            <button disabled="{{inbox.c.busy}}" onClick="{{inbox.c.confirmDiscard}}">Discard permanently</button>
+            <div style="display:flex;gap:8px;margin-top:12px">
+              <button disabled="{{inbox.c.busy}}" onClick="{{inbox.c.cancelDiscard}}" style="flex:1;min-height:44px;border-radius:22px;background:var(--bg);color:var(--fg);font-weight:600">Keep draft</button>
+              <button disabled="{{inbox.c.busy}}" onClick="{{inbox.c.confirmDiscard}}" style="flex:1;min-height:44px;border-radius:22px;background:#a32121;color:#fff;font-weight:600">Discard permanently</button>
+            </div>
           </div>
         </sc-if>
         <sc-if value="{{inbox.c.showRecipientDetails}}"><input aria-label="Cc" placeholder="Cc" value="{{inbox.c.cc}}" disabled="{{inbox.c.busy}}" onChange="{{inbox.c.onCc}}" style="height:44px;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--fg)"><input aria-label="Bcc" placeholder="Bcc" value="{{inbox.c.bcc}}" disabled="{{inbox.c.busy}}" onChange="{{inbox.c.onBcc}}" style="height:44px;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--fg)"></sc-if>
@@ -812,7 +813,7 @@
     </div>
   </sc-if>
 
-  <sc-if value="{{inbox.contextReviewOpen}}"><div ref="{{inbox.contextModal}}" class="scr inbox-review-modal" role="dialog" aria-modal="true" aria-label="Review email sharing" style="position:absolute;inset:0;z-index:10;background:var(--bg);padding:54px 20px 30px;overflow:auto;box-sizing:border-box"><button onClick="{{inbox.contextReview.close}}" style="padding:10px">Cancel</button><h2 class="serif">Share this email with your agent?</h2><p style="overflow-wrap:anywhere">Destination: {{inbox.contextReview.destination}}</p><p>The complete text below will be sent. Attachments are excluded.</p><div style="white-space:pre-wrap;overflow-wrap:anywhere">{{inbox.contextReview.source}}</div><button disabled="{{inbox.contextReview.busy}}" onClick="{{inbox.contextReview.send}}" style="padding:14px;border-radius:24px;background:var(--acc);color:white">Send reviewed email to agent</button></div></sc-if>
+  <sc-if value="{{inbox.contextReviewOpen}}"><div ref="{{inbox.contextModal}}" class="scr inbox-review-modal" role="dialog" aria-modal="true" aria-label="Review email sharing" style="position:absolute;inset:0;z-index:10;background:var(--bg);padding:54px 20px 30px;overflow:auto;box-sizing:border-box"><button class="ib" aria-label="Cancel" onClick="{{inbox.contextReview.close}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button><h2 class="serif">Share this email with your agent?</h2><p style="overflow-wrap:anywhere">Destination: {{inbox.contextReview.destination}}</p><p>The complete text below will be sent. Attachments are excluded.</p><div style="white-space:pre-wrap;overflow-wrap:anywhere">{{inbox.contextReview.source}}</div><button disabled="{{inbox.contextReview.busy}}" onClick="{{inbox.contextReview.send}}" style="display:block;width:100%;min-height:52px;margin-top:20px;padding:0 20px;border-radius:26px;background:var(--acc);color:#fff;font-weight:600">Send reviewed email to agent</button></div></sc-if>
   <sc-if value="{{inbox.attachmentOpen}}">
     <div ref="{{inbox.attachmentModal}}" class="inbox-attachment-review inbox-review-modal" role="dialog" aria-modal="true" aria-label="Review attachment">
       <div class="inbox-attachment-actions"><button onClick="{{inbox.attachment.close}}">Back to message</button><button onClick="{{inbox.attachment.save}}" disabled="{{inbox.attachment.saveDisabled}}">Save to Files</button><sc-if value="{{inbox.attachment.external}}"><button onClick="{{inbox.attachment.open}}">Open reviewed file</button></sc-if></div>
@@ -830,14 +831,16 @@
       <p data-alpha-review-attachments style="white-space:pre-wrap;overflow-wrap:anywhere">{{inbox.provider.attachments}}</p>
       <div style="white-space:pre-wrap;overflow-wrap:anywhere;padding:16px 0;border-top:1px solid var(--line)">{{inbox.provider.body}}</div>
       <details style="font-size:12px;overflow-wrap:anywhere"><summary>Receipt details</summary>{{inbox.provider.requestId}}<br>{{inbox.provider.result}}</details>
-      <sc-if value="{{inbox.provider.canConfirm}}"><button disabled="{{inbox.provider.busy}}" onClick="{{inbox.provider.confirm}}" style="padding:14px;border-radius:24px;background:var(--acc);color:white">{{inbox.provider.confirmLabel}}</button></sc-if>
-      <sc-if value="{{inbox.provider.canEditDraft}}"><button disabled="{{inbox.provider.busy}}" onClick="{{inbox.provider.editDraft}}" style="padding:14px">Edit this Gmail draft</button><button disabled="{{inbox.provider.busy}}" onClick="{{inbox.provider.deleteDraft}}" style="padding:14px">Review permanent draft deletion</button></sc-if>
-      <sc-if value="{{inbox.provider.canUndo}}"><button disabled="{{inbox.provider.busy}}" onClick="{{inbox.provider.undo}}" style="padding:14px">Review undo mailbox change</button></sc-if>
+      <div class="inbox-provider-actions">
+      <sc-if value="{{inbox.provider.canConfirm}}"><button disabled="{{inbox.provider.busy}}" onClick="{{inbox.provider.confirm}}" style="min-height:52px;padding:0 20px;border-radius:26px;background:var(--acc);color:#fff;font-weight:600">{{inbox.provider.confirmLabel}}</button></sc-if>
+      <sc-if value="{{inbox.provider.canEditDraft}}"><button disabled="{{inbox.provider.busy}}" onClick="{{inbox.provider.editDraft}}">Edit this Gmail draft</button><button disabled="{{inbox.provider.busy}}" onClick="{{inbox.provider.deleteDraft}}">Review permanent draft deletion</button></sc-if>
+      <sc-if value="{{inbox.provider.canUndo}}"><button disabled="{{inbox.provider.busy}}" onClick="{{inbox.provider.undo}}">Review undo mailbox change</button></sc-if>
       <sc-if value="{{inbox.provider.replacementWarning}}"><p style="font-size:12px;color:var(--mut)">Another client can change this Gmail draft after review. Replacement cannot be guaranteed atomic.</p></sc-if><sc-if value="{{inbox.provider.deletionWarning}}"><p style="font-size:12px;color:var(--mut)">This permanently deletes the selected Gmail draft.</p></sc-if>
-      <sc-if value="{{inbox.provider.canRetry}}"><button disabled="{{inbox.provider.busy}}" onClick="{{inbox.provider.retry}}" style="padding:14px">{{inbox.provider.retryLabel}}</button></sc-if>
-      <button disabled="{{inbox.provider.busy}}" onClick="{{inbox.provider.check}}" style="padding:14px">Check saved receipt</button>
-      <sc-if value="{{inbox.provider.canReload}}"><button disabled="{{inbox.provider.busy}}" onClick="{{inbox.provider.reload}}" style="padding:14px">Reload exact review</button></sc-if>
-      <sc-if value="{{inbox.provider.canClear}}"><p style="font-size:12px;color:var(--mut)">{{inbox.provider.draftNote}}</p><button disabled="{{inbox.provider.busy}}" onClick="{{inbox.provider.clear}}" style="padding:14px">{{inbox.provider.clearLabel}}</button></sc-if>
+      <sc-if value="{{inbox.provider.canRetry}}"><button disabled="{{inbox.provider.busy}}" onClick="{{inbox.provider.retry}}">{{inbox.provider.retryLabel}}</button></sc-if>
+      <button disabled="{{inbox.provider.busy}}" onClick="{{inbox.provider.check}}">Check saved receipt</button>
+      <sc-if value="{{inbox.provider.canReload}}"><button disabled="{{inbox.provider.busy}}" onClick="{{inbox.provider.reload}}">Reload exact review</button></sc-if>
+      <sc-if value="{{inbox.provider.canClear}}"><p style="font-size:12px;color:var(--mut)">{{inbox.provider.draftNote}}</p><button disabled="{{inbox.provider.busy}}" onClick="{{inbox.provider.clear}}">{{inbox.provider.clearLabel}}</button></sc-if>
+      </div>
     </div>
   </sc-if>
 
@@ -847,39 +850,53 @@
 
 <sc-if value="{{is.calendar}}">
 <div onFocusCapture="{{calendar.captureSubviewFocus}}" style="display: flex; flex-direction: column; height: 100%; position: relative">
-  <div data-alpha-subview="calendar-list" inert="{{calendar.listCovered}}" aria-hidden="{{calendar.listCovered}}" style="display:flex;flex-direction:column;flex:1;min-height:0">
+  <div data-alpha-subview="calendar-list" data-alpha-calendar-view="{{calendar.view}}" inert="{{calendar.listCovered}}" aria-hidden="{{calendar.listCovered}}" style="display:flex;flex-direction:column;flex:1;min-height:0">
+  <sc-if value="{{calendar.searching}}">
+  <div data-alpha-calendar-search style="display:flex;flex-direction:column;flex:1;min-height:0">
+    <div data-alpha-app-header="main" style="display: flex; align-items: center; height: 56px; margin-top: 44px; padding: 0 16px 0 8px; gap: 8px; flex-shrink: 0">
+      <button class="ib" aria-label="Close search" onClick="{{calendar.closeSearch}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button>
+      <input ref="{{calendar.searchRef}}" type="search" aria-label="Search events" placeholder="Search events" value="{{calendar.searchQuery}}" onChange="{{calendar.onSearch}}" enterkeyhint="search" class="calendar-search-input">
+    </div>
+    <div class="scr calendar-list" role="region" aria-label="Search results" tabindex="0">
+      <sc-for list="{{calendar.searchRows}}" as="e">
+        <button class="calendar-item" onClick="{{e.open}}" aria-label="{{e.title}}, {{e.when}}" style="--calendar-item:{{e.color}}"><span class="calendar-item-title">{{e.title}}</span><span class="calendar-item-meta">{{e.when}}</span><sc-if value="{{e.where}}"><span class="calendar-item-meta">{{e.where}}</span></sc-if></button>
+      </sc-for>
+      <sc-if value="{{calendar.searchLoading}}"><p class="calendar-empty" role="status">{{calendar.searchLoading}}</p></sc-if>
+      <sc-if value="{{calendar.searchEmpty}}"><p class="calendar-empty">No results</p></sc-if>
+    </div>
+  </div>
+  </sc-if>
+  <sc-if value="{{calendar.notSearching}}">
   <div data-alpha-app-header="main" style="display: flex; align-items: center; height: 56px; margin-top: 44px; padding: 0 8px 0 20px; gap: 2px; flex-shrink: 0">
     <sc-if value="{{showAppBack}}"><button class="app-header-back" aria-label="Back to apps" onClick="{{backToApps}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button></sc-if>
-    <button onClick="{{calendar.toggleMonth}}" aria-label="Month view" aria-expanded="{{calendar.monthOpen}}" style="display: flex; align-items: center; gap: 6px; min-height: 48px; flex-grow: 1; min-width: 0">
-      <h1 data-alpha-app-title class="serif" style="margin: 0; min-width: 0; font-size: 32px; letter-spacing: -.01em; white-space: nowrap">{{calendar.month}}</h1>
-      <svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px; color: var(--mut); margin-top: 4px"><path d="{{calendar.chevron}}"></path></svg>
+    <button onClick="{{calendar.toggleMenu}}" aria-label="Calendar views" aria-haspopup="dialog" aria-expanded="{{calendar.menuOpen}}" style="display: flex; align-items: center; gap: 6px; min-height: 48px; flex-grow: 1; min-width: 0">
+      <h1 data-alpha-app-title class="serif" style="margin: 0; min-width: 0; font-size: 32px; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{calendar.month}}</h1>
+      <svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px; color: var(--mut); margin-top: 4px; flex-shrink: 0"><path d="{{calendar.chevron}}"></path></svg>
     </button>
-    <sc-if value="{{calendar.canRefreshGoogleCalendar}}"><button class="ib" aria-label="Refresh Google Calendar" disabled="{{calendar.googleCalendarRefreshing}}" onClick="{{calendar.refreshGoogleCalendar}}"><span aria-hidden="true" style="display:block;width:20px;height:20px;background:currentColor;mask:url('/icons/lucide/rotate-cw.svg') center/contain no-repeat;-webkit-mask:url('/icons/lucide/rotate-cw.svg') center/contain no-repeat"></span></button></sc-if>
+    <button class="ib" aria-label="Search" onClick="{{calendar.openSearch}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.search}}"></path></svg></button>
     <button class="ib" aria-label="Clock alarms" onClick="{{calendar.openClock}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.clock}}"></path></svg></button>
-
-    <sc-if value="{{calendar.dayMode}}">
-      <sc-if value="{{calendar.notToday}}">
-        <button class="ib" aria-label="Today" onClick="{{calendar.goToday}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.calToday}}"></path></svg></button>
-      </sc-if>
-      <button class="ib" aria-label="New event" onClick="{{calendar.newEvent}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.plus}}"></path></svg></button>
+    <sc-if value="{{calendar.notToday}}">
+      <button class="ib" aria-label="Today" onClick="{{calendar.goToday}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.calToday}}"></path></svg></button>
     </sc-if>
+    <button class="ib" aria-label="New event" onClick="{{calendar.newEvent}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.plus}}"></path></svg></button>
   </div>
 
-  <sc-if value="{{calendar.reminderTapPending}}"><div role="status" style="padding:12px;color:var(--mut)">A reminder notification link is saved.<button class="tap" aria-label="Open saved reminder notification" onClick="{{calendar.checkReminderTap}}" style="padding:8px;color:var(--acc)">Open saved reminder</button><button class="tap" aria-label="Dismiss saved reminder link" onClick="{{calendar.dismissReminderTap}}" style="padding:8px;color:var(--mut)">Dismiss link</button></div></sc-if>
-  <sc-if value="{{calendar.reminderCreateUnknown}}"><div role="status" style="padding:12px;color:var(--mut)">{{calendar.reminderCreateUnknown}} new reminder(s) await confirmation.<button class="tap" aria-label="Check new reminder status" onClick="{{calendar.checkReminderCreations}}" style="padding:8px;color:var(--acc)">Check new reminder status</button></div></sc-if>
-  <sc-if value="{{calendar.reminderDeleteUnknown}}"><div role="status" style="padding:12px;color:var(--mut)">{{calendar.reminderDeleteUnknown}} reminder action(s) await confirmation.<button class="tap" aria-label="Check reminder action status" onClick="{{calendar.checkReminderDeletions}}" style="padding:8px;color:var(--acc)">Check action status</button></div></sc-if>
+  <sc-if value="{{calendar.reminderTapPending}}"><div role="status" class="calendar-status"><p>A reminder notification link is saved.</p><div class="calendar-actions"><button class="calendar-pill calendar-pill-primary" aria-label="Open saved reminder notification" onClick="{{calendar.checkReminderTap}}">Open saved reminder</button><button class="calendar-pill" aria-label="Dismiss saved reminder link" onClick="{{calendar.dismissReminderTap}}">Dismiss link</button></div></div></sc-if>
+  <sc-if value="{{calendar.reminderCreateUnknown}}"><div role="status" class="calendar-status"><p>{{calendar.reminderCreateUnknown}} new reminder(s) await confirmation.</p><div class="calendar-actions"><button class="calendar-pill" aria-label="Check new reminder status" onClick="{{calendar.checkReminderCreations}}">Check new reminder status</button></div></div></sc-if>
+  <sc-if value="{{calendar.reminderDeleteUnknown}}"><div role="status" class="calendar-status"><p>{{calendar.reminderDeleteUnknown}} reminder action(s) await confirmation.</p><div class="calendar-actions"><button class="calendar-pill" aria-label="Check reminder action status" onClick="{{calendar.checkReminderDeletions}}">Check action status</button></div></div></sc-if>
 
   <sc-if value="{{calendar.editDraftAvailable}}"><button aria-label="Resume unsaved calendar edits" onClick="{{calendar.resumeEditDraft}}" style="margin:0 16px 8px;padding:12px;min-height:44px;border-radius:12px;background:var(--s2);color:var(--fg)">Resume unsaved changes</button><button aria-label="Discard retained calendar edits" onClick="{{calendar.discardEditDraft}}" style="margin:0 16px 8px;padding:12px;min-height:44px;border-radius:12px;background:var(--s2);color:var(--fg)">Discard retained edits</button></sc-if>
-  <sc-if value="{{calendar.formDraftListError}}"><div role="status" style="padding:12px 24px">Form storage needs review. Current edits are retained.<button onClick="{{calendar.retryFormDraft}}" style="padding:12px">Retry form storage</button><button onClick="{{calendar.recoverFormDraft}}" style="padding:12px">Recover saved form</button></div></sc-if>
-  <sc-if value="{{calendar.editDraftListError}}"><div role="status" style="padding:12px 24px">Form storage needs review. Current edits are retained.<button onClick="{{calendar.retryEditDraft}}" style="padding:12px">Retry edit storage</button><button onClick="{{calendar.recoverEditDraft}}" style="padding:12px">Recover saved edits</button></div></sc-if>
+  <sc-if value="{{calendar.formDraftListError}}"><div role="status" class="calendar-status"><p>Form storage needs review. Current edits are retained.</p><div class="calendar-actions"><button class="calendar-pill" onClick="{{calendar.retryFormDraft}}">Retry form storage</button><button class="calendar-pill" onClick="{{calendar.recoverFormDraft}}">Recover saved form</button></div></div></sc-if>
+  <sc-if value="{{calendar.editDraftListError}}"><div role="status" class="calendar-status"><p>Form storage needs review. Current edits are retained.</p><div class="calendar-actions"><button class="calendar-pill" onClick="{{calendar.retryEditDraft}}">Retry edit storage</button><button class="calendar-pill" onClick="{{calendar.recoverEditDraft}}">Recover saved edits</button></div></div></sc-if>
   <sc-if value="{{calendar.browserRecovery}}"><button aria-label="Recover browser calendar" onClick="{{calendar.openBrowserRecovery}}" style="margin:0 16px 8px;padding:12px;border-radius:12px;background:var(--s2);color:var(--fg)">Calendar recovery</button></sc-if>
   <sc-if value="{{calendar.reminderRecovery}}"><button aria-label="Recover browser reminders" onClick="{{calendar.openReminderRecovery}}" style="margin:0 16px 8px;padding:12px;border-radius:12px;background:var(--s2);color:var(--fg)">Reminder recovery</button></sc-if>
   <sc-if value="{{calendar.reminderRecovery}}"><button aria-label="Recover browser reminder creation history" onClick="{{calendar.openReminderCreationRecovery}}" style="margin:0 16px 8px;padding:12px;border-radius:12px;background:var(--s2);color:var(--fg)">Reminder creation recovery</button></sc-if>
   <sc-if value="{{calendar.reminderRecovery}}"><button aria-label="Recover browser reminder action history" onClick="{{calendar.openReminderActionRecovery}}" style="margin:0 16px 8px;padding:12px;border-radius:12px;background:var(--s2);color:var(--fg)">Reminder action recovery</button></sc-if>
-  <sc-if value="{{calendar.creationRecovery}}"><div role="status" style="margin: 0 16px 8px; padding: 12px; border-radius: 12px; background: var(--s2); font-size: 13px"><p>{{calendar.creationRecoveryText}}</p><button onClick="{{calendar.checkCreations}}" style="padding: 8px">Check event creation receipts</button><button onClick="{{calendar.separateCreation}}" style="padding: 8px">Create a separate event</button></div></sc-if>
+  <sc-if value="{{calendar.creationRecovery}}"><div role="status" class="calendar-status calendar-status-card"><p>{{calendar.creationRecoveryText}}</p><div class="calendar-actions"><button class="calendar-pill" onClick="{{calendar.checkCreations}}">Check event creation receipts</button><button class="calendar-pill" onClick="{{calendar.separateCreation}}">Create a separate event</button></div></div></sc-if>
   <sc-if value="{{calendar.nativeStatusLabel}}"><button aria-label="Retry calendar and reminders" onClick="{{calendar.nativeStatusRetry}}" style="margin: 0 16px 8px; padding: 10px 12px; border-radius: 12px; background: var(--s2); color: var(--fg); text-align: left; font-size: 13px">{{calendar.nativeStatusLabel}}</button></sc-if>
   <sc-if value="{{calendar.googleCalendarNotice}}"><p role="status" style="margin:0;padding:4px 24px 8px;font-size:13px;color:var(--mut)">{{calendar.googleCalendarNotice}}</p></sc-if>
-  <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); padding: 4px 12px 8px; flex-shrink: 0">
+  <sc-if value="{{calendar.googleConnectOffered}}"><div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 16px 8px;padding:6px 6px 6px 14px;border-radius:14px;background:var(--s2);font-size:14px"><span>Show your Google Calendar</span><button aria-label="Connect Google Calendar" disabled="{{calendar.googleConnecting}}" onClick="{{calendar.connectGoogleCalendar}}" class="calendar-pill calendar-pill-primary" style="flex-shrink:0;padding:0 18px">{{calendar.googleConnectLabel}}</button></div></sc-if>
+  <sc-if value="{{calendar.dayView}}"><div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); padding: 4px 12px 8px; flex-shrink: 0">
     <sc-for list="{{calendar.week}}" as="w">
       <button onClick="{{w.pick}}" aria-label="Day {{w.n}}" style="display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 4px 0">
         <span style="font-size: 11px; color: var(--mut); font-weight: 500">{{w.l}}</span>
@@ -887,7 +904,7 @@
         <span style="width: 4px; height: 4px; border-radius: 2px; background: {{w.dot}}"></span>
       </button>
     </sc-for>
-  </div>
+  </div></sc-if>
 
   <sc-if value="{{calendar.hasInvites}}">
     <div style="padding: 0 16px 8px; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0">
@@ -904,22 +921,28 @@
     </div>
   </sc-if>
 
-  <sc-if value="{{calendar.hasNativeAllDay}}">
+  <sc-if value="{{calendar.timelineView}}"><sc-if value="{{calendar.hasNativeAllDay}}">
     <div data-alpha-calendar-all-day data-alpha-calendar-agenda="{{calendar.agenda}}" style="display: flex; gap: 10px; padding: 0 16px 8px 12px; flex-shrink: 0; max-height: 132px; overflow-y: auto">
       <span style="width: 38px; padding-top: 12px; font-size: 11px; text-align: right; color: var(--mut); flex-shrink: 0">All day</span>
       <div style="display: flex; flex-direction: column; gap: 6px; flex-grow: 1; min-width: 0">
         <sc-for list="{{calendar.nativeAllDay}}" as="a">
-          <button aria-label="{{a.title}}, All day" onClick="{{a.open}}" style="min-height: 40px; border-radius: 14px; background: var(--s2); padding: 10px 16px; text-align: left; font-size: 14px; font-weight: 600">{{a.title}}</button>
+          <button aria-label="{{a.title}}, All day" onClick="{{a.open}}" style="min-height: 44px; border-radius: 14px; background: var(--s2); padding: 10px 16px; text-align: left; font-size: 14px; font-weight: 600">{{a.title}}</button>
         </sc-for>
       </div>
     </div>
-  </sc-if>
+  </sc-if></sc-if>
 
-  <sc-if value="{{calendar.multiDay}}">
+  <sc-if value="{{calendar.weekView}}">
+    <div data-alpha-calendar-week-heads style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); padding: 0 16px 6px 60px; flex-shrink: 0">
+      <sc-for list="{{calendar.dayColumns}}" as="c"><button class="calendar-week-head" onClick="{{c.pick}}" aria-label="{{c.dayLabel}}" aria-current="{{c.current}}" style="{{c.headCss}}"><span>{{c.weekday}}</span><b>{{c.n}}</b></button></sc-for>
+    </div>
+  </sc-if>
+  <sc-if value="{{calendar.dayView}}"><sc-if value="{{calendar.multiDay}}">
     <div data-alpha-calendar-day-heads aria-hidden="true" style="display: grid; grid-template-columns: repeat({{calendar.dayCount}}, minmax(0, 1fr)); padding: 0 16px 6px 60px; flex-shrink: 0; font-size: 13px; font-weight: 600; color: var(--mut)">
       <sc-for list="{{calendar.dayColumns}}" as="c"><span style="padding-left: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; {{c.headCss}}">{{c.label}}</span></sc-for>
     </div>
-  </sc-if>
+  </sc-if></sc-if>
+  <sc-if value="{{calendar.timelineView}}">
   <div class="scr calendar-timeline" data-alpha-calendar-agenda="{{calendar.agenda}}" role="region" aria-label="Calendar timeline" tabindex="0" onPointerDown="{{calendar.tlDown}}" onPointerUp="{{calendar.tlUp}}" style="flex-grow: 1; overflow-y: auto; touch-action: pan-y; border-top: 1px solid var(--line)">
     <div style="position: relative; height: calc(912px * var(--calendar-timeline-scale)); min-height: calc({{calendar.nativeTimelineHeight}} * var(--calendar-timeline-scale)); margin-bottom: 110px">
       <sc-for list="{{calendar.hours}}" as="h">
@@ -934,6 +957,7 @@
           <span style="position: absolute; left: 6px; top: 6px; bottom: 6px; width: 3px; border-radius: 2px; background: {{e.stripe}}"></span>
           <span class="calendar-block-text" style="flex-grow: 1; min-width: 0"><span style="display: block; font-size: 14px; font-weight: 600; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{e.title}}</span><span style="display: block; font-size: 12px; opacity: .85; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{e.sub}}</span></span>
           <sc-if value="{{e.showTime}}"><span style="font-size: 12px; opacity: .75; white-space: nowrap">{{e.time}}</span></sc-if>
+          <sc-if value="{{e.pending}}"><span class="calendar-pending-dot" aria-hidden="true"></span></sc-if>
         </button>
       </sc-for>
       <sc-if value="{{calendar.multiDay}}">
@@ -945,6 +969,7 @@
           <span style="position: absolute; left: 6px; top: 6px; bottom: 6px; width: 3px; border-radius: 2px; background: {{e.stripe}}"></span>
           <span class="calendar-block-text" style="flex-grow: 1; min-width: 0"><span style="display: block; font-size: 14px; font-weight: 600; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{e.title}}</span><span style="display: block; font-size: 12px; opacity: .85; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{e.sub}}</span></span>
           <sc-if value="{{e.showTime}}"><span style="font-size: 12px; opacity: .75; white-space: nowrap">{{e.time}}</span></sc-if>
+          <sc-if value="{{e.pending}}"><span class="calendar-pending-dot" aria-hidden="true"></span></sc-if>
         </button>
               </sc-for>
               <sc-if value="{{c.showNow}}"><div aria-hidden="true" style="position: absolute; left: 0; right: 0; top: calc({{c.nowTop}}px * var(--calendar-timeline-scale)); height: 2px; background: var(--acct)"></div></sc-if>
@@ -959,6 +984,7 @@
       </sc-if>
     </div>
   </div>
+  </sc-if>
   <sc-if value="{{calendar.agenda}}">
     <div class="scr calendar-agenda" role="region" aria-label="Calendar agenda" tabindex="0" style="flex-grow: 1; overflow-y: auto; border-top: 1px solid var(--line); padding: 12px 16px 120px; box-sizing: border-box">
       <h2 style="margin: 4px 0 12px; font-size: 17px; font-weight: 600">{{calendar.dayName}}</h2>
@@ -967,6 +993,40 @@
       </sc-for>
       <sc-if value="{{calendar.empty}}"><p style="font-size: 14px; line-height: 1.5; color: var(--mut)">{{calendar.emptyText}}</p></sc-if>
     </div>
+  </sc-if>
+
+  <sc-if value="{{calendar.monthView}}">
+    <div class="calendar-month" data-alpha-calendar-month role="region" aria-label="{{calendar.month}}">
+      <div class="calendar-month-nav"><button class="ib" aria-label="Previous month" onClick="{{calendar.mPrev}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button><button class="ib" aria-label="Next month" onClick="{{calendar.mNext}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.right}}"></path></svg></button></div>
+      <div class="calendar-month-heads" aria-hidden="true"><sc-for list="{{calendar.monthWeekdays}}" as="d"><span>{{d}}</span></sc-for></div>
+      <div class="scr calendar-month-grid">
+        <sc-for list="{{calendar.monthCells}}" as="m">
+          <button class="calendar-month-cell" onClick="{{m.pick}}" aria-label="{{m.label}}" aria-current="{{m.current}}" style="{{m.cellCss}}">
+            <span class="calendar-month-n" style="{{m.numCss}}">{{m.n}}</span>
+            <sc-for list="{{m.chips}}" as="chip"><span class="calendar-chip" style="--calendar-item:{{chip.color}}">{{chip.title}}</span></sc-for>
+            <sc-if value="{{m.more}}"><span class="calendar-chip-more">{{m.more}}</span></sc-if>
+          </button>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{calendar.scheduleView}}">
+    <div class="scr calendar-list" data-alpha-calendar-schedule role="region" aria-label="Schedule" tabindex="0">
+      <sc-for list="{{calendar.scheduleRows}}" as="d">
+        <sc-if value="{{d.monthHead}}"><h2 class="calendar-schedule-month">{{d.monthHead}}</h2></sc-if>
+        <div class="calendar-schedule-day" role="group" aria-label="{{d.label}}">
+          <div class="calendar-schedule-date" style="{{d.headCss}}" aria-hidden="true"><span>{{d.weekday}}</span><b>{{d.n}}</b></div>
+          <div class="calendar-schedule-items">
+            <sc-for list="{{d.items}}" as="e">
+              <button class="calendar-item" onClick="{{e.open}}" aria-label="{{e.title}}, {{e.time}}" style="--calendar-item:{{e.color}}"><span class="calendar-item-title">{{e.title}}</span><span class="calendar-item-meta">{{e.time}}</span><sc-if value="{{e.where}}"><span class="calendar-item-meta">{{e.where}}</span></sc-if><sc-if value="{{e.pending}}"><span class="calendar-pending-dot" aria-hidden="true"></span></sc-if></button>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+      <sc-if value="{{calendar.scheduleEmpty}}"><p class="calendar-empty">{{calendar.emptyText}}</p></sc-if>
+    </div>
+  </sc-if>
   </sc-if>
 
   </div>
@@ -979,23 +1039,25 @@
       <sc-if value="{{calendar.clock.isSnooze}}"><label style="font-size:14px;display:flex;flex-direction:column;gap:8px;margin-bottom:18px">Requested snooze minutes<input aria-label="Snooze minutes" type="number" min="1" max="60" value="{{calendar.clock.snooze}}" onChange="{{calendar.clock.onSnooze}}" style="font:inherit;color:var(--fg);background:var(--s2);border:0;border-radius:16px;padding:14px"></label></sc-if>
       <sc-if value="{{calendar.clock.days}}"><fieldset style="border:0;margin:0 0 18px;padding:0"><legend style="font-size:14px;margin-bottom:8px">Repeat</legend><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{calendar.clock.days}}" as="day"><button class="tap" aria-label="{{day.label}}" aria-pressed="{{day.on}}" onClick="{{day.toggle}}" style="min-width:44px;min-height:44px;padding:0 10px;border-radius:22px;{{day.css}}">{{day.short}}</button></sc-for></div></fieldset></sc-if>
       <button class="tap" aria-label="Review Clock request" aria-disabled="{{calendar.clock.busy}}" onClick="{{calendar.clock.prepare}}" style="padding:16px;border-radius:24px;background:var(--acc);color:#fff;font-weight:600;margin-top:12px">Review request</button>
-      <sc-if value="{{calendar.clock.review}}"><div style="margin-top:18px;padding:18px;border-radius:20px;background:var(--s2)"><p style="font-size:15px;line-height:1.5;margin:0 0 16px">{{calendar.clock.review.text}}</p><button class="tap" aria-label="Confirm Clock request" onClick="{{calendar.clock.review.confirm}}" style="padding:14px 18px;border-radius:20px;background:var(--fg);color:var(--bg);font-weight:600">{{calendar.clock.review.label}}</button><button class="tap" aria-label="Cancel Clock review" onClick="{{calendar.clock.review.cancel}}" style="padding:14px;color:var(--mut)">Cancel</button></div></sc-if>
+      <sc-if value="{{calendar.clock.review}}"><div style="margin-top:18px;padding:18px;border-radius:20px;background:var(--s2)"><p style="font-size:15px;line-height:1.5;margin:0 0 16px">{{calendar.clock.review.text}}</p><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="tap" aria-label="Confirm Clock request" onClick="{{calendar.clock.review.confirm}}" style="min-height:48px;padding:0 18px;border-radius:24px;background:var(--fg);color:var(--bg);font-weight:600">{{calendar.clock.review.label}}</button><button class="tap" aria-label="Cancel Clock review" onClick="{{calendar.clock.review.cancel}}" style="min-height:48px;padding:0 16px;border-radius:24px;color:var(--mut)">Cancel</button></div></div></sc-if>
       <p role="status" aria-live="polite" style="font-size:14px;line-height:1.5;margin-top:18px">{{calendar.clock.message}}</p>
     </div>
   </sc-if>
-  <sc-if value="{{calendar.monthOpen}}">
-    <div ref="{{calendar.monthModalRef}}" style="position:absolute;inset:0;z-index:4">
-    <button aria-hidden="true" tabindex="-1" onClick="{{calendar.closeMonth}}" style="position:absolute;inset:0;background:var(--scrim);width:100%;height:100%"></button>
-    <div class="drop calendar-month-dialog" role="dialog" aria-modal="true" aria-label="Choose calendar date" style="position:absolute;left:0;right:0;top:44px;max-height:calc(100% - 64px);overflow:auto;box-sizing:border-box;background:var(--bg);border-radius:28px;padding:12px 16px 20px">
-      <div style="display:flex;align-items:center;gap:4px;margin-bottom:12px"><h2 class="serif" style="font-size:28px;margin:0;flex:1">{{calendar.month}}</h2><button class="ib" aria-label="Previous month" onClick="{{calendar.mPrev}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button><button class="ib" aria-label="Next month" onClick="{{calendar.mNext}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.right}}"></path></svg></button><button class="ib" aria-label="Close month" onClick="{{calendar.closeMonth}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.x}}"></path></svg></button></div>
-      <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); row-gap: 2px">
-        <sc-for list="{{calendar.mdays}}" as="m">
-          <button onClick="{{m.pick}}" aria-label="{{m.label}}" style="display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 2px 0">
-            <span style="width: 38px; height: 38px; border-radius: 19px; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; {{m.cs}}">{{m.n}}</span>
-            <span style="width: 4px; height: 4px; border-radius: 2px; background: {{m.dot}}"></span>
-          </button>
-        </sc-for>
+  <sc-if value="{{calendar.menuOpen}}">
+    <div ref="{{calendar.menuModalRef}}" data-alpha-calendar-menu style="position:absolute;inset:0;z-index:5">
+    <button aria-hidden="true" tabindex="-1" onClick="{{calendar.closeMenu}}" style="position:absolute;inset:0;width:100%;height:100%;background:transparent"></button>
+    <div class="drop calendar-menu" role="dialog" aria-modal="true" aria-label="Views and calendars">
+      <div role="radiogroup" aria-label="View" class="calendar-menu-group">
+        <sc-for list="{{calendar.viewMenu}}" as="v"><button class="calendar-menu-item" role="radio" aria-checked="{{v.checked}}" onClick="{{v.pick}}"><span>{{v.label}}</span><sc-if value="{{v.on}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="width:18px;height:18px"><path d="{{ic.check}}"></path></svg></sc-if></button></sc-for>
       </div>
+      <sc-if value="{{calendar.hasCalToggles}}">
+        <div role="group" aria-label="Calendars" class="calendar-menu-group calendar-menu-calendars">
+          <sc-for list="{{calendar.calToggles}}" as="c"><button class="calendar-menu-item" role="switch" aria-checked="{{c.checked}}" aria-label="{{c.label}}" onClick="{{c.toggle}}"><span class="calendar-menu-box" data-on="{{c.checked}}" style="--calendar-item:{{c.dot}}" aria-hidden="true"></span><span class="calendar-menu-name">{{c.name}}</span></button></sc-for>
+        </div>
+      </sc-if>
+      <sc-if value="{{calendar.canRefreshGoogleCalendar}}">
+        <div class="calendar-menu-group calendar-menu-calendars"><button class="calendar-menu-item" aria-disabled="{{calendar.googleCalendarRefreshing}}" onClick="{{calendar.refreshGoogleCalendar}}"><span>Refresh Google Calendar</span></button></div>
+      </sc-if>
     </div>
     </div>
   </sc-if>
@@ -1011,9 +1073,12 @@
 
   <div class="scr" style="flex-grow: 1; overflow-y: auto; padding: 4px 24px 130px; touch-action: pan-y; min-width: 0; overflow-wrap: anywhere">
         <h1 class="serif" style="margin: 0; font-size: 38px; line-height: 1.05; letter-spacing: -.01em">{{calendar.ev.title}}</h1>
-        <sc-if value="{{calendar.ev.readOnly}}"><p style="color:var(--mut);font-size:13px">Google Calendar · Read only</p></sc-if>
+        <sc-if value="{{calendar.ev.conflict}}"><div role="status" class="calendar-conflict"><p>{{calendar.ev.conflict.text}}</p><div class="calendar-actions"><button class="calendar-pill" onClick="{{calendar.ev.conflict.keepMine}}">Keep mine</button><button class="calendar-pill" onClick="{{calendar.ev.conflict.keepTheirs}}">Keep Google’s</button></div></div></sc-if>
+        <sc-if value="{{calendar.ev.sourceNote}}"><p style="margin:8px 0 0;color:var(--mut);font-size:13px">{{calendar.ev.sourceNote}}</p></sc-if>
         <div style="font-size: 17px; margin-top: 14px">{{calendar.ev.when}}</div>
         <div style="display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--mut); margin-top: 4px"><span style="width: 8px; height: 8px; border-radius: 4px; background: {{calendar.ev.dot}}"></span>{{calendar.ev.day}} · {{calendar.ev.calName}}</div>
+        <sc-if value="{{calendar.ev.pending}}"><div role="status" style="display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--mut); margin-top: 4px"><span class="calendar-pending-dot" style="position: static" aria-hidden="true"></span>Waiting to sync</div></sc-if>
+        <sc-if value="{{calendar.ev.guestNote}}"><div style="font-size: 14px; color: var(--mut); margin-top: 4px">{{calendar.ev.guestNote}}</div></sc-if>
         <sc-if value="{{calendar.ev.hasOrigin}}"><div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 14px; color: var(--mut); margin-top: 8px"><span>{{calendar.ev.originLabel}}</span><button class="tap" aria-label="{{calendar.ev.originOpenLabel}}" onClick="{{calendar.ev.openOrigin}}" style="min-height: 44px; padding: 0 14px; border-radius: 18px; background: var(--s2); color: var(--fg); font-weight: 600">Open note</button></div></sc-if>
 
         <sc-if value="{{calendar.ev.recurringReminder}}">
@@ -1042,7 +1107,7 @@
             <div style="display: flex; align-items: center; gap: 16px; min-height: 56px">
               <svg class="i" viewBox="0 0 24 24" style="color: var(--mut); flex-shrink: 0"><path d="{{ic.video}}"></path></svg>
               <span style="flex-grow: 1; min-width: 0; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{calendar.ev.video}}</span>
-              <button onClick="{{calendar.ev.join}}" style="height: 40px; padding: 0 18px; border-radius: 20px; background: var(--acc); color: #fff; font-weight: 600; font-size: 14px; flex-shrink: 0">Join</button>
+              <button onClick="{{calendar.ev.join}}" style="height: 44px; padding: 0 18px; border-radius: 22px; background: var(--acc); color: #fff; font-weight: 600; font-size: 14px; flex-shrink: 0">Join</button>
             </div>
           </sc-if>
           <sc-if value="{{calendar.ev.hasWhere}}">
@@ -1068,7 +1133,7 @@
                 <span style="flex-grow: 1; font-size: 15px">{{p.name}}</span>
                 <span style="font-size: 13px; color: var(--mut)">{{p.st}}</span>
               </button>
-              <sc-if value="{{p.canRespond}}"><button aria-label="Set response for {{p.name}}" onClick="{{p.response}}" style="align-self:flex-end;padding:8px 12px;border-radius:12px;background:var(--s2)">Response</button></sc-if>
+              <sc-if value="{{p.canRespond}}"><button aria-label="Set response for {{p.name}}" onClick="{{p.response}}" style="align-self:flex-end;min-height:44px;padding:0 16px;border-radius:22px;background:var(--s2)">Response</button></sc-if>
             </sc-for>
           </div>
         </sc-if>
@@ -1085,13 +1150,24 @@
             </sc-for>
           </div>
         </sc-if>
-        <sc-if value="{{calendar.ev.browserSeries}}"><div style="display:flex;gap:12px;margin-top:20px"><button onClick="{{calendar.ev.editSeries}}" style="padding:12px;border-radius:16px;background:var(--s2)">Edit series</button><button onClick="{{calendar.ev.deleteSeries}}" style="padding:12px;border-radius:16px;background:var(--s2)">Delete series</button></div></sc-if>
+        <sc-if value="{{calendar.ev.browserSeries}}"><div class="calendar-actions" style="margin-top:20px"><button class="calendar-pill" onClick="{{calendar.ev.editSeries}}">Edit series</button><button class="calendar-pill" onClick="{{calendar.ev.deleteSeries}}">Delete series</button></div></sc-if>
         <sc-if value="{{calendar.ev.noPrep}}">
-          <button onClick="{{calendar.ev.ask}}" aria-label="Ask {{name}} to prep me" style="display: flex; align-items: center; gap: 8px; margin-top: 24px; height: 36px; padding: 0 16px 0 14px; border-radius: 18px; background: var(--s2); font-size: 14px; font-weight: 600">
+          <button onClick="{{calendar.ev.ask}}" aria-label="Ask {{name}} to prep me" style="display: flex; align-items: center; gap: 8px; margin-top: 24px; height: 44px; padding: 0 18px 0 14px; border-radius: 22px; background: var(--s2); font-size: 14px; font-weight: 600">
             <span style="font-family: Denton, Fraunces, Georgia, serif; font-style: italic; font-size: 19px; line-height: 1; color: var(--acct)"><span class="alpha-compute-mark" aria-hidden="true"></span></span>Prep me
           </button>
         </sc-if>
       </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{calendar.deleteSheet}}">
+    <div ref="{{calendar.sheetModalRef}}" data-alpha-calendar-delete-sheet style="position:absolute;inset:0;z-index:7">
+    <button aria-hidden="true" tabindex="-1" onClick="{{calendar.deleteSheet.cancel}}" style="position:absolute;inset:0;width:100%;height:100%;background:var(--scrim)"></button>
+    <div class="calendar-sheet" role="dialog" aria-modal="true" aria-label="{{calendar.deleteSheet.title}}">
+      <h2>{{calendar.deleteSheet.title}}</h2>
+      <sc-for list="{{calendar.deleteSheet.options}}" as="o"><button class="calendar-sheet-button" onClick="{{o.go}}" style="{{o.css}}">{{o.label}}</button></sc-for>
+      <button class="calendar-sheet-button" onClick="{{calendar.deleteSheet.cancel}}">Cancel</button>
+    </div>
     </div>
   </sc-if>
 
@@ -1100,16 +1176,16 @@
       <div data-alpha-app-header="detail" style="display: flex; align-items: center; height: 56px; margin-top: 44px; padding: 0 16px 0 8px; gap: 2px; flex-shrink: 0">
         <button class="ib" aria-label="Back to calendar" onClick="{{calendar.f.cancel}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button>
         <span style="flex-grow: 1"></span>
-        <button aria-label="Save event" aria-disabled="{{calendar.f.saveOff}}" onClick="{{calendar.f.save}}" style="height: 36px; padding: 0 18px; border-radius: 18px; font-weight: 600; font-size: 15px; transition: background .2s; {{calendar.f.saveCss}}">Save</button>
+        <button aria-label="Save event" aria-disabled="{{calendar.f.saveOff}}" onClick="{{calendar.f.save}}" style="height: 44px; padding: 0 20px; border-radius: 22px; font-weight: 600; font-size: 15px; transition: background .2s; {{calendar.f.saveCss}}">Save</button>
       </div>
       <div class="scr calendar-draft-fields" role="region" aria-label="Event details" tabindex="0" style="flex-grow: 1; overflow-y: auto; padding: 4px 0 130px; touch-action: pan-y">
         <p role="status" aria-label="Calendar form draft status" style="margin:4px 24px;font-size:13px;color:var(--mut)">{{calendar.formDraftStatus}}</p>
         <sc-if value="{{calendar.canDiscardFormDraft}}"><button aria-label="Discard calendar draft" onClick="{{calendar.discardFormDraft}}" style="margin:0 12px;min-height:44px;padding:8px 12px;color:var(--mut);font-size:13px">Discard draft</button></sc-if>
         <sc-if value="{{calendar.editDraftStatus}}"><p role="status" aria-label="Calendar edit draft status" style="margin:4px 24px;font-size:13px;color:var(--mut)">{{calendar.editDraftStatus}}</p></sc-if>
-        <sc-if value="{{calendar.formDraftError}}"><div style="padding:0 24px"><button onClick="{{calendar.retryFormDraft}}" style="padding:12px">Retry form storage</button><button onClick="{{calendar.recoverFormDraft}}" style="padding:12px">Recover saved form</button></div></sc-if>
-        <sc-if value="{{calendar.editDraftError}}"><div style="padding:0 24px"><button onClick="{{calendar.retryEditDraft}}" style="padding:12px">Retry edit storage</button><button onClick="{{calendar.recoverEditDraft}}" style="padding:12px">Recover saved edits</button></div></sc-if>
-        <sc-if value="{{calendar.formDraftConflict}}"><div style="padding:12px 24px;overflow-wrap:anywhere">Another saved form: {{calendar.formDraftSavedTitle}}<button onClick="{{calendar.restoreFormDraft}}" style="padding:12px">Restore saved form</button><button onClick="{{calendar.replaceFormDraft}}" style="padding:12px">Replace saved form</button></div></sc-if>
-        <sc-if value="{{calendar.editDraftConflict}}"><div style="padding:12px 24px;overflow-wrap:anywhere">Another saved edit: {{calendar.editDraftSavedTitle}}<button onClick="{{calendar.restoreEditDraft}}" style="padding:12px">Restore saved edits</button><button onClick="{{calendar.replaceEditDraft}}" style="padding:12px">Replace saved edits</button></div></sc-if>
+        <sc-if value="{{calendar.formDraftError}}"><div class="calendar-actions" style="padding:4px 24px 8px"><button class="calendar-pill" onClick="{{calendar.retryFormDraft}}">Retry form storage</button><button class="calendar-pill" onClick="{{calendar.recoverFormDraft}}">Recover saved form</button></div></sc-if>
+        <sc-if value="{{calendar.editDraftError}}"><div class="calendar-actions" style="padding:4px 24px 8px"><button class="calendar-pill" onClick="{{calendar.retryEditDraft}}">Retry edit storage</button><button class="calendar-pill" onClick="{{calendar.recoverEditDraft}}">Recover saved edits</button></div></sc-if>
+        <sc-if value="{{calendar.formDraftConflict}}"><div class="calendar-status" style="overflow-wrap:anywhere"><p>Another saved form: {{calendar.formDraftSavedTitle}}</p><div class="calendar-actions"><button class="calendar-pill" onClick="{{calendar.restoreFormDraft}}">Restore saved form</button><button class="calendar-pill" onClick="{{calendar.replaceFormDraft}}">Replace saved form</button></div></div></sc-if>
+        <sc-if value="{{calendar.editDraftConflict}}"><div class="calendar-status" style="overflow-wrap:anywhere"><p>Another saved edit: {{calendar.editDraftSavedTitle}}</p><div class="calendar-actions"><button class="calendar-pill" onClick="{{calendar.restoreEditDraft}}">Restore saved edits</button><button class="calendar-pill" onClick="{{calendar.replaceEditDraft}}">Replace saved edits</button></div></div></sc-if>
         <div style="padding: 0 24px"><input value="{{calendar.f.title}}" onChange="{{calendar.f.onTitle}}" placeholder="Title" aria-label="Title" class="serif" style="width: 100%; font-size: 34px; border: none; outline: none; background: transparent; color: var(--fg); padding: 6px 0; letter-spacing: -.01em"></div>
 
         <sc-if value="{{calendar.f.noteLinkNotice}}"><p data-alpha-note-link-notice style="margin: 8px 24px 0; font-size: 14px; color: var(--mut)">{{calendar.f.noteLinkNotice}}</p></sc-if>
@@ -1169,13 +1245,13 @@
             <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap; min-height: 36px">
               <svg class="i" viewBox="0 0 24 24" style="color: var(--mut); flex-shrink: 0"><path d="{{ic.user}}"></path></svg>
               <sc-for list="{{calendar.f.chosen}}" as="p">
-                <button onClick="{{p.remove}}" aria-label="{{p.label}}" style="display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 10px 0 4px; border-radius: 18px; background: var(--bg); font-size: 14px; font-weight: 600">
+                <button onClick="{{p.remove}}" aria-label="{{p.label}}" style="display: flex; align-items: center; gap: 6px; height: 44px; padding: 0 12px 0 8px; border-radius: 22px; background: var(--bg); font-size: 14px; font-weight: 600">
                   <span style="width: 28px; height: 28px; border-radius: 14px; background: var(--s3); display: flex; align-items: center; justify-content: center; font-size: 10.5px; font-weight: 700; white-space: nowrap">{{p.ini}}</span>{{p.first}}
                   <svg class="i" viewBox="0 0 24 24" style="width: 14px; height: 14px; color: var(--mut)"><path d="{{ic.x}}"></path></svg>
                 </button>
               </sc-for>
               <sc-if value="{{calendar.f.notPicking}}">
-                <button onClick="{{calendar.f.openPick}}" style="display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px 0 10px; border-radius: 18px; background: var(--bg); font-size: 14px; font-weight: 600"><svg class="i" viewBox="0 0 24 24" style="width: 16px; height: 16px"><path d="{{ic.plus}}"></path></svg>Add people</button>
+                <button onClick="{{calendar.f.openPick}}" style="display: flex; align-items: center; gap: 6px; height: 44px; padding: 0 16px 0 12px; border-radius: 22px; background: var(--bg); font-size: 14px; font-weight: 600"><svg class="i" viewBox="0 0 24 24" style="width: 16px; height: 16px"><path d="{{ic.plus}}"></path></svg>Add people</button>
               </sc-if>
             </div>
             <sc-if value="{{calendar.f.picking}}">
@@ -1201,23 +1277,23 @@
               <svg class="i" viewBox="0 0 24 24" style="color: var(--mut); flex-shrink: 0"><path d="{{ic.cal}}"></path></svg>
               <div style="display: flex; gap: 8px; flex-wrap: wrap">
                 <sc-for list="{{calendar.f.cals}}" as="c">
-                  <button onClick="{{c.pick}}" style="height: 36px; padding: 0 14px; border-radius: 18px; font-size: 13.5px; font-weight: 600; display: flex; align-items: center; gap: 8px; {{c.css}}"><span style="width: 8px; height: 8px; border-radius: 4px; background: {{c.dot}}"></span>{{c.name}}</button>
+                  <button onClick="{{c.pick}}" style="height: 44px; padding: 0 16px; border-radius: 22px; font-size: 13.5px; font-weight: 600; display: flex; align-items: center; gap: 8px; {{c.css}}"><span style="width: 8px; height: 8px; border-radius: 4px; background: {{c.dot}}"></span>{{c.name}}</button>
                 </sc-for>
               </div>
             </div>
             <div style="display: flex; align-items: center; gap: 14px; min-height: 48px">
               <svg class="i" viewBox="0 0 24 24" style="color: var(--mut); flex-shrink: 0"><path d="{{ic.calRepeat}}"></path></svg>
-              <div style="display: flex; gap: 6px; flex-wrap: wrap">
+              <div style="display: flex; gap: 8px; flex-wrap: wrap">
                 <sc-for list="{{calendar.f.repeats}}" as="c">
-                  <button onClick="{{c.pick}}" style="height: 36px; padding: 0 12px; border-radius: 18px; font-size: 13.5px; font-weight: 600; {{c.css}}">{{c.label}}</button>
+                  <button onClick="{{c.pick}}" style="height: 44px; padding: 0 16px; border-radius: 22px; font-size: 13.5px; font-weight: 600; {{c.css}}">{{c.label}}</button>
                 </sc-for>
               </div>
             </div>
             <div style="display: flex; align-items: center; gap: 14px; min-height: 48px">
               <svg class="i" viewBox="0 0 24 24" style="color: var(--mut); flex-shrink: 0"><path d="{{ic.bell}}"></path></svg>
-              <div style="display: flex; gap: 6px; flex-wrap: wrap">
+              <div style="display: flex; gap: 8px; flex-wrap: wrap">
                 <sc-for list="{{calendar.f.alerts}}" as="c">
-                  <button onClick="{{c.pick}}" style="height: 36px; padding: 0 12px; border-radius: 18px; font-size: 13.5px; font-weight: 600; {{c.css}}">{{c.label}}</button>
+                  <button onClick="{{c.pick}}" style="height: 44px; padding: 0 16px; border-radius: 22px; font-size: 13.5px; font-weight: 600; {{c.css}}">{{c.label}}</button>
                 </sc-for>
               </div>
             </div>
@@ -2106,15 +2182,14 @@
     <div data-alpha-maps-status data-location-state="{{maps.nativeLocationState}}" data-map-state="{{maps.nativeMapState}}" style="position: absolute; left: 20px; right: 20px; top: {{maps.nativeStatusTop}}px; max-height:calc(100% - {{maps.nativeStatusTop}}px - 110px); overflow-y:auto; box-sizing:border-box; z-index: 2; padding: 16px; border-radius: 22px; background: var(--bg); color: var(--mut); font-size: 14px; line-height: 1.45; box-shadow: 0 0 0 1px var(--line)">
       <p role="status" style="margin:0">{{maps.nativeStatus}}</p>
       <sc-if value="{{maps.nativeMapsHandoff}}"><button class="tap" data-alpha-maps-app-handoff aria-label="Open in maps app" onClick="{{maps.openInMapsApp}}" style="min-height:52px;margin-top:8px;padding:0 16px;border-radius:26px;background:var(--acc);color:#fff;font:inherit">Open in maps app</button></sc-if>
-      <sc-if value="{{maps.nativeStatusControls}}"><sc-if value="{{maps.nativeMapStatus}}"><p style="margin:6px 0">{{maps.nativeMapStatus}}</p></sc-if><p style="margin:6px 0">{{maps.nativeLocationHelp}}</p><div style="display:flex;flex-wrap:wrap;gap:8px">
+      <sc-if value="{{maps.nativeStatusControls}}"><sc-if value="{{maps.nativeMapStatus}}"><p style="margin:6px 0">{{maps.nativeMapStatus}}</p></sc-if><sc-if value="{{maps.nativeLocationHelp}}"><p style="margin:6px 0">{{maps.nativeLocationHelp}}</p></sc-if><div style="display:flex;flex-wrap:wrap;gap:8px">
         <button class="tap" aria-label="{{maps.nativeLocationLabel}}" disabled="{{maps.nativeLocationBusy}}" onClick="{{maps.nativeLocation}}" style="min-height:52px;padding:0 16px;border-radius:26px;background:var(--acc);color:#fff;font:inherit">{{maps.nativeLocationLabel}}</button>
-        <button class="tap" aria-label="Enter coordinates" onClick="{{maps.nativeManualLocation}}" style="min-height:52px;padding:0 12px;border-radius:26px;background:var(--s2);color:var(--fg);font:inherit">Enter coordinates</button>
         <sc-if value="{{maps.nativeLocationDenied}}"><button class="tap" aria-label="Location settings" onClick="{{maps.nativeLocationSettings}}" style="min-height:52px;padding:0 12px;border-radius:26px;background:var(--s2);color:var(--fg);font:inherit">Location settings</button></sc-if>
         <sc-if value="{{maps.nativeMapRetry}}"><button class="tap" aria-label="Retry map" onClick="{{maps.retryNativeMap}}" style="min-height:52px;padding:0 12px;border-radius:26px;background:var(--s2);color:var(--fg);font:inherit">Retry map</button></sc-if>
       </div></sc-if>
     </div>
   </sc-if>
-  <sc-if value="{{maps.eventReturnFloating}}"><button data-alpha-maps-event-return aria-label="Back to event" title="{{maps.backToEventTitle}}" onClick="{{maps.backToEvent}}" style="position: absolute; left: 12px; top: 114px; z-index: 5; background: var(--bg); color: var(--fg); box-shadow: 0 6px 22px var(--shc), 0 0 0 1px var(--line); height: 40px; padding: 0 14px 0 8px; border-radius: 20px; display: flex; align-items: center; gap: 4px; font-size: 14px; font-weight: 600"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px; flex-shrink: 0"><path d="{{ic.back}}"></path></svg>Back to event</button></sc-if>
+  <sc-if value="{{maps.eventReturnFloating}}"><button data-alpha-maps-event-return aria-label="Back to event" title="{{maps.backToEventTitle}}" onClick="{{maps.backToEvent}}" style="position: absolute; left: 12px; top: 114px; z-index: 5; background: var(--bg); color: var(--fg); box-shadow: 0 6px 22px var(--shc), 0 0 0 1px var(--line); height: 44px; padding: 0 14px 0 8px; border-radius: 22px; display: flex; align-items: center; gap: 4px; font-size: 14px; font-weight: 600"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px; flex-shrink: 0"><path d="{{ic.back}}"></path></svg>Back to event</button></sc-if>
   <sc-if value="{{maps.showSearch}}">
     <div data-alpha-app-header="main" data-alpha-app-header-overlay style="position: absolute; left: 12px; right: 12px; top: 52px; height: 54px; border-radius: 27px; background: var(--bg); box-shadow: 0 6px 22px var(--shc), 0 0 0 1px var(--line); display: flex; align-items: center; padding: 0 5px; z-index: 3">
     <sc-if value="{{showAppBack}}"><button class="app-header-back" aria-label="Back to apps" onClick="{{backToApps}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button></sc-if>
@@ -2128,7 +2203,7 @@
   <sc-if value="{{maps.isBase}}">
     <div class="scr" style="position: absolute; left: 0; right: 0; top: 116px; display: flex; gap: 8px; overflow-x: auto; padding: 0 12px 10px; touch-action: pan-x; z-index: 3">
       <sc-for list="{{maps.chips}}" as="c">
-        <button class="tap" onClick="{{c.go}}" style="flex-shrink: 0; height: 40px; padding: 0 16px 0 12px; border-radius: 20px; background: var(--bg); box-shadow: 0 4px 14px var(--shc), 0 0 0 1px var(--line); display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{c.d}}"></path></svg>{{c.label}}</button>
+        <button class="tap" onClick="{{c.go}}" style="flex-shrink: 0; height: 44px; padding: 0 16px 0 12px; border-radius: 22px; background: var(--bg); box-shadow: 0 4px 14px var(--shc), 0 0 0 1px var(--line); display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{c.d}}"></path></svg>{{c.label}}</button>
       </sc-for>
     </div>
   </sc-if>
@@ -2151,7 +2226,7 @@
         <sc-if value="{{maps.emptyQ}}">
           <div class="scr" style="display: flex; gap: 8px; overflow-x: auto; padding: 4px 20px 14px; touch-action: pan-x">
             <sc-for list="{{maps.cats}}" as="c">
-              <button class="tap" onClick="{{c.go}}" style="flex-shrink: 0; height: 40px; padding: 0 16px 0 12px; border-radius: 20px; background: var(--s2); display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{c.d}}"></path></svg>{{c.label}}</button>
+              <button class="tap" onClick="{{c.go}}" style="flex-shrink: 0; height: 44px; padding: 0 16px 0 12px; border-radius: 22px; background: var(--s2); display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{c.d}}"></path></svg>{{c.label}}</button>
             </sc-for>
           </div>
           <sc-for list="{{maps.savedRows}}" as="r">
@@ -2223,23 +2298,23 @@
       <div style="display: flex; align-items: center; gap: 4px">
         <button class="ib" aria-label="Back to place" onClick="{{maps.dr.close}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button>
         <div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
-          <sc-if value="{{maps.native}}"><input aria-label="Route origin coordinates" placeholder="Origin latitude, longitude" value="{{maps.originText}}" onChange="{{maps.onOrigin}}" onKeyDown="{{maps.originKey}}" style="height:32px;border:0;background:transparent;color:var(--fg);font-size:15px;width:100%"><button aria-label="Use current location for route" onClick="{{maps.originLocation}}" style="font-size:12px;text-align:left;color:var(--acct)">Use current location for route</button></sc-if>
+          <sc-if value="{{maps.native}}"><input aria-label="Starting point" placeholder="Choose starting point" value="{{maps.originText}}" onChange="{{maps.onOrigin}}" onKeyDown="{{maps.originKey}}" style="height:44px;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--fg);font-size:15px;width:100%"><button aria-label="Use your location" onClick="{{maps.originLocation}}" style="align-self:flex-start;min-height:44px;padding:0 4px;display:inline-flex;align-items:center;font-size:13px;font-weight:600;color:var(--acct)">Use your location</button></sc-if>
           <sc-if value="{{maps.notNative}}"><div style="display: flex; align-items: center; gap: 12px; height: 32px; font-size: 15px; color: var(--mut)"><span style="width: 10px; height: 10px; border-radius: 5px; background: var(--acc); box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px var(--acc); margin: 0 4px; flex-shrink: 0"></span>Your location</div></sc-if>
           <div style="display: flex; align-items: center; gap: 12px; height: 32px; font-size: 15px; font-weight: 600"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px; color: var(--acct)"><path d="{{ic.pin}}"></path></svg>{{maps.dr.name}}</div>
         </div>
       </div>
-      <div style="display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0 8px">
+      <div style="display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 0 8px">
         <sc-for list="{{maps.dr.modes}}" as="md">
-          <button aria-label="{{md.label}}" aria-pressed="{{md.on}}" onClick="{{md.go}}" style="flex: 1 1 0; min-width: max-content; padding: 0 8px; box-sizing: border-box; min-height: 40px; border-radius: 20px; display: flex; align-items: center; justify-content: center; gap: 5px; font-size: 13px; font-weight: 600; white-space: nowrap; {{md.css}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{md.d}}"></path></svg>{{md.t}}</button>
+          <button aria-label="{{md.label}}" aria-pressed="{{md.on}}" onClick="{{md.go}}" style="flex: 1 1 0; min-width: max-content; padding: 0 8px; box-sizing: border-box; min-height: 44px; border-radius: 22px; display: flex; align-items: center; justify-content: center; gap: 5px; font-size: 13px; font-weight: 600; white-space: nowrap; {{md.css}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{md.d}}"></path></svg>{{md.t}}</button>
         </sc-for>
       </div>
-      <sc-if value="{{maps.eventReturnInline}}"><button data-alpha-maps-event-return aria-label="Back to event" title="{{maps.backToEventTitle}}" onClick="{{maps.backToEvent}}" style="margin: 8px 0 0 8px; background: var(--s2); color: var(--fg); height: 40px; padding: 0 14px 0 8px; border-radius: 20px; display: flex; align-items: center; gap: 4px; font-size: 14px; font-weight: 600"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px; flex-shrink: 0"><path d="{{ic.back}}"></path></svg>Back to event</button></sc-if>
+      <sc-if value="{{maps.eventReturnInline}}"><button data-alpha-maps-event-return aria-label="Back to event" title="{{maps.backToEventTitle}}" onClick="{{maps.backToEvent}}" style="margin: 8px 0 0 8px; background: var(--s2); color: var(--fg); height: 44px; padding: 0 14px 0 8px; border-radius: 22px; display: flex; align-items: center; gap: 4px; font-size: 14px; font-weight: 600"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px; flex-shrink: 0"><path d="{{ic.back}}"></path></svg>Back to event</button></sc-if>
     </div>
     <div class="enter" data-alpha-maps-sheet="directions" style="position: absolute; left: 0; right: 0; bottom: 0; --alpha-sheet-height: {{maps.sheetH}}px; border-radius: 28px 28px 0 0; background: var(--bg); box-shadow: 0 -10px 40px var(--shc), 0 -1px 0 var(--line); z-index: 4; padding: 22px 20px 0; box-sizing: border-box">
-      <div style="display: flex; align-items: baseline; gap: 12px"><span class="serif" style="font-size: 44px; line-height: 1">{{maps.dr.min}}</span><span style="font-size: 15px; color: var(--mut)">{{maps.dr.meta}}</span></div>
+      <div style="display: flex; align-items: baseline; gap: 12px"><span class="serif" style="font-size: 44px; line-height: 1">{{maps.dr.min}}</span><sc-if value="{{maps.dr.meta}}"><span style="font-size: 15px; color: var(--mut)">{{maps.dr.meta}}</span></sc-if></div>
       <div style="font-size: 14px; color: var(--mut); margin-top: 8px">{{maps.dr.via}}</div>
       <div style="display: flex; gap: 8px; margin-top: 20px">
-        <button onClick="{{maps.dr.start}}" style="flex-grow: 1; height: 56px; border-radius: 28px; background: var(--acc); color: #fff; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 17px; font-weight: 600"><svg class="i" viewBox="0 0 24 24" style="fill: currentColor"><path d="{{ic.mapsNav}}"></path></svg>Start</button>
+        <button data-alpha-maps-start data-can-start="{{maps.dr.canStart}}" disabled="{{maps.dr.startDisabled}}" aria-disabled="{{maps.dr.startDisabled}}" onClick="{{maps.dr.start}}" style="flex-grow: 1; height: 56px; border-radius: 28px; background: var(--acc); color: #fff; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 17px; font-weight: 600"><svg class="i" viewBox="0 0 24 24" style="fill: currentColor"><path d="{{ic.mapsNav}}"></path></svg>Start</button>
         <button class="ib" aria-label="{{maps.dr.shareLabel}}" onClick="{{maps.dr.shareEta}}" style="width: 56px; height: 56px; border-radius: 28px; background: var(--s2)"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.share}}"></path></svg></button>
       </div>
     </div>
@@ -2266,9 +2341,9 @@
       <button aria-label="End navigation" onClick="{{maps.dr.nav.end}}" style="width: 56px; height: 56px; border-radius: 28px; background: #262626; color: #ffffff; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.x}}"></path></svg></button>
       <div style="flex-grow: 1; min-width: 0; text-align: center">
         <div class="serif" style="font-size: 30px; line-height: 1.05">{{maps.dr.nav.left}}</div>
-        <div style="font-size: 13px; color: #8F8F8F; margin-top: 3px">{{maps.dr.nav.meta}}</div>
+        <sc-if value="{{maps.dr.nav.meta}}"><div style="font-size: 13px; color: #8F8F8F; margin-top: 3px">{{maps.dr.nav.meta}}</div></sc-if>
         <sc-if value="{{maps.dr.nav.remaining}}"><div role="status" aria-label="Remaining distance and time" style="font-size: 13px; color: #BDBDBD; margin-top: 2px">{{maps.dr.nav.remaining}}</div></sc-if>
-        <sc-if value="{{maps.dr.nav.reroute}}"><button onClick="{{maps.dr.nav.reroute}}" style="min-height: 36px; margin-top: 4px; padding: 0 12px; border-radius: 18px; background: #262626; color: #ffffff; font-size: 13px; font-weight: 600">Reroute from here</button></sc-if>
+        <sc-if value="{{maps.dr.nav.reroute}}"><button onClick="{{maps.dr.nav.reroute}}" style="min-height: 44px; margin-top: 4px; padding: 0 14px; border-radius: 22px; background: #262626; color: #ffffff; font-size: 13px; font-weight: 600">Reroute from here</button></sc-if>
       </div>
       <button aria-label="Ask {{name}}" onClick="{{maps.dr.nav.ask}}" style="width: 56px; height: 56px; border-radius: 28px; background: #262626; color: #ffffff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-family: Denton, Fraunces, Georgia, serif; font-style: italic; font-size: 24px"><span class="alpha-compute-mark" aria-hidden="true"></span></button>
       <button aria-label="{{maps.dr.nav.voiceLabel}}" onClick="{{maps.dr.nav.voice}}" style="width: 56px; height: 56px; border-radius: 28px; background: #262626; color: #ffffff; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg class="i" viewBox="0 0 24 24"><path d="{{maps.dr.nav.voiceD}}"></path></svg></button>
@@ -4046,7 +4121,7 @@
           <div style="display: flex; flex-direction: column; gap: 12px">
             <sc-if value="{{m.hasCalendarText}}"><div data-alpha-message-text role="{{m.messageActionsRole}}" tabIndex="{{m.messageActionsTabIndex}}" aria-label="{{m.messageActionsLabel}}" aria-haspopup="{{m.messageActionsPopup}}" aria-expanded="{{m.messageActionsOpen}}" onClick="{{m.openMessageActions}}" onKeyDown="{{m.messageActionsKey}}" onContextMenu="{{m.messageActionsContext}}" onPointerDown="{{m.messageActionsDown}}" onPointerMove="{{m.messageActionsMove}}" onPointerUp="{{m.messageActionsCancel}}" onPointerCancel="{{m.messageActionsCancel}}" style="font-size: 16px; line-height: 1.5">{{m.displayText}}</div></sc-if>
             <sc-for list="{{m.calendarReviews}}" as="review"><section class="calendar-request-review" data-calendar-request-id="{{review.id}}"><strong>Calendar request</strong><p role="status">{{review.status}}</p><button class="tap" aria-label="Review Calendar request {{review.id}}" onClick="{{review.open}}">Review request</button></section></sc-for>
-            <sc-for list="{{m.mapsCards}}" as="card"><section class="maps-chat-card" data-maps-card-kind="{{card.kind}}"><strong>{{card.title}}</strong><sc-for list="{{card.lines}}" as="line"><p>{{line.text}}</p></sc-for><sc-if value="{{card.hasAttribution}}"><small>{{card.attribution}}</small></sc-if></section></sc-for>
+            <sc-for list="{{m.mapsCards}}" as="card"><section class="maps-chat-card" data-maps-card-kind="{{card.kind}}"><strong>{{card.title}}</strong><sc-for list="{{card.lines}}" as="line"><p>{{line.text}}</p></sc-for><sc-if value="{{card.hasAttribution}}"><small>{{card.attribution}}</small></sc-if><sc-if value="{{card.canOpen}}"><button class="maps-chat-card-open" onClick="{{card.open}}">Show in Maps</button></sc-if></section></sc-for>
             <sc-if value="{{m.hasMapsChoice}}"><div class="maps-chat-choice" role="group" aria-label="Share location"><sc-for list="{{m.mapsChoices}}" as="option"><button class="tap" onClick="{{option.choose}}">{{option.label}}</button></sc-for></div></sc-if>
 
 

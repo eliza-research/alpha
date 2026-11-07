@@ -67,7 +67,7 @@ adb shell pm get-app-links ai.elizaresearch.alphaphone     # shows the verificat
 Email code sign-in does not depend on the App Link, but the readiness probe does: Alpha offers its
 in-app screens only after Cloud reports the client registration, the redirect allowlist admits the
 return URL, and the return host's `assetlinks.json` lists this APK's package and signing certificate.
-Until then **Sign in with Eliza Cloud** opens the Cloud sign-in hand-off in the browser. The answer is
+Until then the **Sign in** screen shows "Waiting for connection" and checks again by itself. The answer is
 cached (6 hours when ready, 10 minutes when not); clearing Alpha's app data resets it.
 
 On the phone: **Settings › Agent connection › Subscription gate QA**, choose **Staging**, then
@@ -97,24 +97,24 @@ result. Use a staging account and staging codes minted with
 `packages/cloud/scripts/admin/mint-subscription-grant-codes.ts` against the staging database; do
 not reuse production codes.
 
-1. First run shows **Welcome to Alpha** with **Sign in with Eliza Cloud** only; Back/Escape do not
-   dismiss it.
-2. Sign in on Alpha's own screen (**Sign in to Eliza Cloud**). No Eliza Cloud web page opens.
+1. First run shows **Sign in** (**Continue with Google**, then one email-or-phone field with
+   **Continue**); Back/Escape do not dismiss it.
+2. Sign in on Alpha's own **Sign in** screen. No Eliza Cloud web page opens.
    Check each row and record the result:
 
    | Case | Expected |
    |---|---|
-   | Email: valid address, **Email me a code** | Code screen names the address. **Resend code** stays disabled for 60 s. |
-   | Email: wrong code | "That code did not work"; the field is cleared; the step stays. |
-   | Email: right code | Signed in; the plan gate continues below. |
+   | Email: valid address, **Continue** | **Check your email** names the address. **Resend code** stays disabled for 60 s. |
+   | Email: wrong code | "That code didn’t work. Check it, or resend."; the field is cleared; the step stays. |
+   | Email: right code | The sixth digit submits it (there is no Verify button); signed in; the plan gate continues below. |
    | Account with an authenticator app or SMS second step | **Enter your verification code** screen; the right code signs in. |
    | **Continue with Google** | A Custom Tab shows Google's own page (not Eliza's). After consent it returns straight to Alpha and signs in. |
-   | Google: close the tab without finishing | "Google sign-in was closed before it finished"; nothing is stored. |
+   | Google: close the tab without finishing | No message; Alpha stays on **Sign in**; nothing is stored. |
    | **Cancel sign-in** while waiting | Back to the choice screen; the pending attempt is burned; nothing is stored. |
    | A second sign-in while one runs | Refused ("already in progress"). |
-   | A brand-new email or Google account | Signed in, and the account panel says "This sign-in created a new Eliza Cloud account". |
+   | A brand-new email or Google account | Signed in, and the account panel says "Signed in. Eliza Cloud created a new account for this sign-in." |
    | Existing account (e.g. the owner's) via Google and via email | Same Cloud user and organization both ways; no "new account" notice. |
-   | Airplane mode, then **Email me a code** | "Alpha could not reach Eliza Cloud"; nothing is stored. |
+   | Airplane mode, then **Continue** | The button reads "Waiting for connection" (no error); the step is sent once the network returns; nothing is stored before then. |
    | Reopen an old return link (copied from history) | Ignored; nothing is stored. |
 
    With no plan, the gate shows **Choose a plan** with Redeem code, Choose a plan and
@@ -138,7 +138,7 @@ not reuse production codes.
 10. **Reset Alpha data**: the local reset completes; the old key no longer authenticates
     (`GET /api/v1/user` with it returns 401) when Cloud was reachable.
 11. Sign-in key expiry warning: shown within 14 days of the key's `expiresAt` (in-app sign-in
-    keys last 30 days); **Approve this phone again** opens the in-app sign-in screen.
+    keys last 30 days) as "Sign-in expires {date}."; **Sign in again** opens the in-app sign-in screen.
 
 ## Automated coverage (no real account)
 

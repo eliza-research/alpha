@@ -1,4 +1,4 @@
-import type { Maneuver, RouteStep } from './contracts';
+import type { Maneuver, Route, RouteStep } from './contracts';
 import type { RouteProgress } from './route-distance';
 
 /** 24px stroke icons (prototype `.i` style) for each provider-neutral maneuver. */
@@ -40,8 +40,9 @@ export function atStep(progress: RouteProgress, steps: readonly RouteStep[], ind
  const { next: _next, then: _then, ...rest } = progress;
  return { ...rest, ...(next ? { next } : {}), ...(then ? { then } : {}) };
 }
-/** Presentation of one progress reading for the navigation sheet, voice and notification. */
-export function guidanceView(progress: RouteProgress, now = new Date()) {
+/** Presentation of one progress reading for the navigation sheet, voice and notification.
+ * The arrival time says whether it includes live traffic, as the route was planned. */
+export function guidanceView(progress: RouteProgress, now = new Date(), traffic: Route['traffic'] = 'none') {
  const next = progress.next, then = progress.then;
  const arrival = new Date(now.getTime() + progress.remainingSeconds * 1000);
  const clock = arrival.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -55,7 +56,7 @@ export function guidanceView(progress: RouteProgress, now = new Date()) {
   thenIcon: then ? maneuverIcon(then.step.maneuver) : '',
   thenText: then?.step.instruction || '',
   remainingTime: guidanceDuration(progress.remainingSeconds),
-  remaining: `${guidanceDistance(progress.remainingMeters)} · arrive ${clock} · no live traffic`,
+  remaining: `${guidanceDistance(progress.remainingMeters)} · arrive ${clock} · ${traffic === 'live' ? 'live traffic' : 'no live traffic'}`,
   /** One utterance per upcoming step: the provider's own instruction text. */
   spoken: next ? instruction : '',
   notificationTitle: next ? `${distance} · ${instruction}` : instruction,

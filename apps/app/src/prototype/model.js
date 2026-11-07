@@ -14,7 +14,8 @@ import { isMvpView, DEFERRED_MVP_VIEWS, deferredMvpPrompt } from "./mvp-features
 import { emptyHomeShadePull, pullStart, shadeFallback } from "./system-shade";
 import React from "react";
 import { DCLogic } from "./dc-lite.js";
-import { calendarDayColumns, calendarDayCount, calendarReturnDay, markVisibleWeek, visibleCalendarDays } from "./calendar-days";
+import { calendarDayColumns, calendarDayCount, calendarLoadRange, calendarReturnDay, calendarView, calendarViewDays, markVisibleWeek, visibleCalendarDays } from "./calendar-days";
+import { calendarMonthCells, calendarScheduleRows, calendarSearchRows } from "./calendar-views";
 import { WEEKDAYS, MONTHS, formatTime, formatClock, formatHours, formatHoursRange, formatHour, weekdayName, formatShortDate, formatLongDate, formatMonthDay, formatMonthTitle } from "./locale-time";
 
 
@@ -1105,6 +1106,10 @@ var CAL_REPEAT = [["none", "Once"], ["daily", "Daily"], ["weekdays", "Weekdays"]
 var CAL_ALERT = [[null, "None"], [0, "At start"], [10, "10 min"], [60, "1 hour"]];
 var CAL_PENDING = null;
 var CAL_H0 = 7, CAL_H1 = 23, CAL_PX = 56;
+var CAL_VIEW_MENU = [["schedule", "Schedule"], ["day", "Day"], ["week", "Week"], ["month", "Month"]];
+var CAL_DELETE_SCOPE = { "this": "This event", following: "This and following events", all: "All events" };
+/* A calendar colour is a theme key (CAL_COLORS) or, for provider calendars, a CSS colour. */
+function calColor(c) { return CAL_COLORS[c.color] || c.color || CAL_COLORS.fg; }
 
 function calAmpm(t) { t = ((t % 24) + 24) % 24; return formatHours(t); }
 function calRange(t, d) { return formatHoursRange(((t % 24) + 24) % 24, (((t + d) % 24) + 24) % 24); }
@@ -1116,13 +1121,17 @@ function calDayName(api, off) {
   var d = calDate(api, off); return formatShortDate(d);
 }
 function calOccurs(e, off, api) {
+  if (e.skip && e.skip.indexOf(off) >= 0) return false;
   if (e.off === off) return true;
   if (!e.repeat || e.repeat === "none" || off < e.off) return false;
+  if (e.until != null && off > e.until) return false;
   if (e.repeat === "daily") return true;
   if (e.repeat === "weekdays") return calDow(api, off) < 5;
   if (e.repeat === "weekly") return (off - e.off) % 7 === 0;
   return false;
 }
+/* On a day, including every day a provider all-day event spans. */
+function calOn(e, off, api) { return e.nativeAllDayEndOff != null ? off >= e.off && off < e.nativeAllDayEndOff : calOccurs(e, off, api); }
 function calEvents(api) { var st = api.get("calendar"); return st.events || CAL_SEED; }
 function calFind(list, id) { for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i]; return null; }
 function calPeople(api) { var c = api.get("contacts"); return (c && c.list && c.list.length) ? c.list : PEOPLE; }
@@ -1136,7 +1145,10 @@ function calCals(st, api) {
       else list.push({ id: a.id || ("acct" + i), name: a.provider || "Calendar", sub: a.address || "", color: "mut" });
     });
   } else { var subs = copy("calendar").calendarSubs || []; list[0].sub = subs[0] || ""; list[1].sub = subs[1] || ""; }
-  if (st.googleCalendarName) list.push({ id: 'google', name: st.googleCalendarName, sub: 'Google Calendar', color: 'acc' });
+  // Every Google calendar the owner shows on Google, each with its own colour (a CSS colour);
+  // rows carry that calendar's id in `cal`. The single-calendar `googleCalendarName` stays as a fallback.
+  if (Array.isArray(st.googleCalendars) && st.googleCalendars.length) st.googleCalendars.forEach(function (g) { if (g && g.id) list.push({ id: g.id, name: g.name || "Google Calendar", sub: g.account || "", color: g.color || "acc", provider: true }); });
+  else if (st.googleCalendarName) list.push({ id: 'google', name: st.googleCalendarName, sub: '', color: 'acc', provider: true });
   var prefs = st.calPrefs || {};
   return list.map(function (c) { var p = prefs[c.id] || {}; return Object.assign({}, c, { on: p.on !== false, color: p.color || c.color }); });
 }
@@ -1182,14 +1194,16 @@ function calPrep(e, api) {
 
 registerView("calendar", {
   title: "Calendar", icon: "cal", aliases: ["schedule", "agenda"],
-  state: { day: 0, open: null, openDay: null, month: null, form: null, add: null, events: CAL_SEED, calPrefs: {} },
-  persist: ["events", "calPrefs"],
+  // view: Schedule / Day / Week / Month (title menu). month: Month view's offset from the selected
+  // day's month, null outside Month view. search: the query while Search is open, else null.
+  state: { day: 0, view: "day", menu: false, search: null, deleteAsk: null, open: null, openDay: null, month: null, form: null, add: null, events: CAL_SEED, calPrefs: {} },
+  persist: ["events", "calPrefs", "view"],
   jumps: [[null, "Calendar"], ["event", "Event"], ["new", "New event"], ["month", "Month"], ["invite", "Invite"], ["add", "Add from app"]],
   preset: function (sub, api) {
     var pr = copy("calendar").presets || {};
     if (sub === "event") return pr.event || null;
     if (sub === "invite") return pr.invite || null;
-    if (sub === "month") return { month: 0 };
+    if (sub === "month") return { view: "month", month: 0 };
     if (sub === "add") return pr.add || null;
     if (sub === "new") return { form: { id: null, title: "", off: 0, t: 17, d: 1, where: "", video: false, who: [], cal: "work", repeat: "none", alert: 10, notes: "" } };
   },
@@ -1201,11 +1215,17 @@ registerView("calendar", {
     return sg.day || ["What does my afternoon look like?", "Find me an hour to focus"];
   },
   voicePhrase: "Find me an hour to focus",
+  // The title menu and the delete sheet never outlive a visit; the chosen view does.
+  onLeave: function (api) { var s = api.get("calendar"); if (s.menu || s.deleteAsk) api.set({ menu: false, deleteAsk: null }); },
   back: function (st, api) {
     if (st.form && st.form.pq != null) { api.set({ form: Object.assign({}, st.form, { pq: null }) }); return true; }
     if (st.form) { api.set({ form: null }); return true; }
-    if (st.open) { var oe = calFind(st.events || CAL_SEED, st.open); api.set({ open: null, openDay: null, day: calendarReturnDay(st.day || 0, st.openDay != null ? st.openDay : (oe ? oe.off : st.day || 0)) }); return true; }
-    if (st.month != null) { api.set({ month: null }); return true; }
+    if (st.deleteAsk) { api.set({ deleteAsk: null }); return true; }
+    // Schedule always runs from today, so closing anything there keeps day 0 (calendarLoadRange).
+    var sched = calendarView(st.view) === "schedule";
+    if (st.open) { var oe = calFind(st.events || CAL_SEED, st.open); api.set({ open: null, openDay: null, day: sched ? 0 : calendarReturnDay(st.day || 0, st.openDay != null ? st.openDay : (oe ? oe.off : st.day || 0)) }); return true; }
+    if (st.menu) { api.set({ menu: false }); return true; }
+    if (st.search != null) { api.set(sched ? { search: null, day: 0 } : { search: null }); return true; }
     return false;
   },
   actions: {
@@ -1365,18 +1385,25 @@ registerView("calendar", {
       return {
         title: e.title, time: fmtT(e.t), agendaTime: formatHours(e.t), top: (e.t - CAL_H0) * CAL_PX + 8, h: h, left: 60 + laneOf[e.id] * w, w: w - 4,
         css: css + (short ? ";align-items:center;padding-top:0;padding-bottom:0" : ""),
-        stripe: e.key || e.hold || pending ? "transparent" : CAL_COLORS[c.color],
+        stripe: e.key || e.hold || pending ? "transparent" : calColor(c),
         sub: !short && e.d >= 1 ? (e.where || (e.video ? "Video call" : "")) : "", showTime: w >= 150,
+        // A change saved here that has not reached its calendar yet (offline outbox).
+        pending: !!e.pendingSync,
         open: function () { if (api.swallowed()) return; set({ open: e.id, openDay: day }); }
       };
     });
     return events;
     };
+    var view = calendarView(st.view);
+    var weekView = view === "week", monthView = view === "month", scheduleView = view === "schedule";
+    var searching = st.search != null;
     var evs = on(sel);
     var dayEvents = layoutDay(sel);
-    var dayCount = calendarDayCount();
-    var dayOffs = visibleCalendarDays(sel, dayCount);
+    // Week view is always seven columns, Monday to Sunday; Day view keeps the measured count.
+    var dayCount = weekView ? 7 : calendarDayCount();
+    var dayOffs = calendarViewDays(view, sel, api.now, dayCount);
     var dayColumns = dayCount > 1 ? dayOffs.map(function (off) { return { off: off, events: off === sel ? dayEvents : layoutDay(off) }; }) : [];
+    var pickDay = function (off) { set({ view: "day", day: off, month: null }); };
     var hours = []; for (var h = CAL_H0; h <= CAL_H1; h++) hours.push({ top: (h - CAL_H0) * CAL_PX + 8, label: formatHour(h), lt: (h - CAL_H0) * CAL_PX });
     var nowT = api.now.getHours() + api.now.getMinutes() / 60;
     var sw = api.sw(function (dx, dy) { if (Math.abs(dx) < Math.abs(dy) * 1.2) return false; set({ day: sel + (dx < 0 ? 1 : -1) }); }, { axis: "x" });
@@ -1389,37 +1416,65 @@ registerView("calendar", {
       return { ini: p.ini, title: e.title, when: calDayName(api, e.off) + " · " + calAmpm(e.t), open: function () { set({ day: e.off, open: e.id, openDay: e.off }); }, accept: rs("yes"), decline: rs("declined") };
     });
 
-    // month panel
-    var monthOpen = st.month != null;
-    var mBase = new Date(selDate); mBase.setDate(1); mBase.setMonth(mBase.getMonth() + (st.month || 0));
-    var mStartDow = (mBase.getDay() + 6) % 7;
-    var gridStart = new Date(mBase); gridStart.setDate(1 - mStartDow);
-    var mdays = [];
-    for (var i = 0; i < 42; i++) {
-      var gd = new Date(gridStart); gd.setDate(gridStart.getDate() + i); gd.setHours(12, 0, 0, 0);
-      (function (gd) {
-        var off = Math.round((gd - today) / 864e5);
-        var inM = gd.getMonth() === mBase.getMonth();
-        var has = on(off).length > 0;
-        var cs = off === 0 ? "background:var(--acc);color:#fff" : (off === sel ? "box-shadow:inset 0 0 0 1.5px var(--fg)" : "");
-        mdays.push({ n: gd.getDate(), cs: cs + (inM || off === 0 ? "" : ";color:var(--mut)"), dot: has ? (off === 0 ? "var(--acct)" : "var(--fg)") : "transparent", pick: function () { set({ day: off, month: null }); }, label: DAYS[gd.getDay()] + " " + MONS[gd.getMonth()] + " " + gd.getDate() });
-      })(gd);
-    }
-    var lastRow = mdays.slice(35).every(function (d) { return d.cs.indexOf("opacity") >= 0; });
-    if (lastRow) mdays = mdays.slice(0, 35);
-    var calRows = cals.map(function (c) {
+    // Month, Schedule and Search share one item shape (calendar-views.ts). The provider adapter
+    // passes its own `eventsOn` (Android and Google rows clipped per day) to the same builders.
+    var calItem = function (e, off) {
+      var c = calOf(e.cal), allDay = !!e.allDay;
+      return { id: e.id, title: e.title, color: calColor(c), pending: !!e.pendingSync, allDay: allDay, t: allDay ? 0 : e.t, d: e.d, time: allDay ? "All day" : calRange(e.t, e.d), where: e.where || "",
+        open: function () { set({ open: e.id, openDay: off }); } };
+    };
+    var itemsOn = function (off, events) { return (events || list).filter(function (e) { return visible(e) && calOn(e, off, api); }).map(function (e) { return calItem(e, off); }); };
+    var mBase = new Date(selDate); mBase.setDate(1); mBase.setMonth(mBase.getMonth() + (monthView ? (st.month || 0) : 0));
+    var monthCellsFor = function (eventsOn) {
+      return calendarMonthCells(mBase, api.now, eventsOn, { selected: sel }).map(function (m) {
+        return Object.assign({}, m, { numCss: m.isToday ? "background:var(--acc);color:#fff" : (m.selected ? "box-shadow:inset 0 0 0 1.5px var(--fg)" : ""), cellCss: m.inMonth ? "" : "color:var(--mut)", current: m.isToday ? "date" : "false", pick: function () { pickDay(m.off); } });
+      });
+    };
+    var scheduleRowsFor = function (eventsOn) {
+      // Today forward, never before the loaded window, so no row stands for days that were not read.
+      var range = calendarLoadRange(st, api.now), offOf = function (t) { return Math.round((new Date(t).setHours(12, 0, 0, 0) - today.getTime()) / 864e5); };
+      var from = Math.max(0, offOf(range.begin)), last = offOf(range.end) - 1;
+      return calendarScheduleRows(from, Math.max(from, last), eventsOn, api.now).map(function (row) { return Object.assign({}, row, { headCss: row.isToday ? "color:var(--acct)" : "" }); });
+    };
+    var searchRows = !searching ? [] : calendarSearchRows(st.search, list.filter(visible).map(function (e) {
+      return { event: e, title: e.title, where: e.where, notes: e.notes, start: e.nativeEvent && Number.isFinite(e.nativeEvent.begin) ? e.nativeEvent.begin : calDate(api, e.off).getTime() + ((e.t || 0) - 12) * 36e5 };
+    }), 100, api.now.getTime()).map(function (r) {
+      var e = r.event;
+      return { title: e.title, when: calDayName(api, e.off) + " · " + (e.allDay ? "All day" : calRange(e.t, e.d)), where: e.where || "", color: calColor(calOf(e.cal)), open: function () { set({ open: e.id, openDay: e.off, day: scheduleView ? 0 : e.off }); } };
+    });
+    // Title menu: the four views, then one switch per calendar that has events or comes from a provider.
+    var viewMenu = CAL_VIEW_MENU.map(function (v) {
+      return { id: v[0], label: v[1], on: view === v[0], checked: view === v[0] ? "true" : "false",
+        pick: function () { set({ view: v[0], menu: false, month: v[0] === "month" ? 0 : null, day: v[0] === "schedule" ? 0 : sel }); } };
+    });
+    var calToggles = cals.filter(function (c) { return c.provider || list.some(function (e) { return e.cal === c.id; }); }).map(function (c) {
       var patch = function (p) { var pr = Object.assign({}, st.calPrefs || {}); pr[c.id] = Object.assign({}, pr[c.id] || {}, p); set({ calPrefs: pr }); };
-      return { name: c.name, sub: c.sub, on: c.on, sw: CAL_COLORS[c.color], track: api.track(c.on), kx: api.kx(c.on), dim: c.on ? "" : "opacity:.5",
-        toggle: function () { patch({ on: !c.on }); },
-        color: function () { patch({ color: CAL_COLOR_ORDER[(CAL_COLOR_ORDER.indexOf(c.color) + 1) % CAL_COLOR_ORDER.length] }); } };
+      return { id: c.id, name: c.name, sub: c.sub, on: c.on, checked: c.on ? "true" : "false", dot: calColor(c), label: "Show " + c.name, toggle: function () { patch({ on: !c.on }); } };
     });
 
     // detail
     var ev = st.open ? calFind(list, st.open) : null;
     var evDay = ev ? (st.openDay != null && calOccurs(ev, st.openDay, api) ? st.openDay : ev.off) : 0;
     var undo = function (label, ev) {
-      api.toast(label, { undo: function () { var l = calEvents(api); if (!calFind(l, ev.id)) api.setView("calendar", { events: l.concat([ev]) }); } });
+      api.toast(label, { undo: function () { var l = calEvents(api); api.setView("calendar", { events: calFind(l, ev.id) ? l.map(function (x) { return x.id === ev.id ? ev : x; }) : l.concat([ev]) }); } });
     };
+    // Delete one occurrence, it and the rest of the series, or the whole event; Undo restores it.
+    var deleteScope = function (e, off, scope) {
+      var repeats = !!(e.repeat && e.repeat !== "none");
+      var whole = !repeats || scope === "all" || (scope === "following" && off <= e.off);
+      var next = whole ? null : Object.assign({}, e, scope === "this" ? { skip: (e.skip || []).concat([off]) } : { until: off - 1 });
+      var l = calEvents(api);
+      set({ events: next ? l.map(function (x) { return x.id === e.id ? next : x; }) : l.filter(function (x) { return x.id !== e.id; }), deleteAsk: null, open: null, openDay: null, day: scheduleView ? 0 : off });
+      undo(e.title + " deleted", e);
+    };
+    var DS = null, askEv = st.deleteAsk ? calFind(list, st.deleteAsk.id) : null;
+    if (askEv) {
+      var askOff = st.deleteAsk.off != null ? st.deleteAsk.off : askEv.off;
+      var scopes = st.deleteAsk.scopes || (askEv.repeat && askEv.repeat !== "none" ? ["this", "following", "all"] : ["all"]);
+      DS = { title: "Delete “" + askEv.title + "”?",
+        options: scopes.map(function (s, i) { return { scope: s, label: scopes.length === 1 ? "Delete" : CAL_DELETE_SCOPE[s], css: i === 0 ? "background:var(--fg);color:var(--bg)" : "background:var(--s2);color:var(--fg)", go: function () { deleteScope(askEv, askOff, s); } }; }),
+        cancel: function () { set({ deleteAsk: null }); } };
+    }
     var formFrom = function (e, off) { return { id: e ? e.id : null, title: e ? e.title : "", off: e ? (e.repeat && e.repeat !== "none" ? e.off : off) : off, t: e ? e.t : 17, d: e ? e.d : 1, where: e ? (e.where === "Phone" ? "Phone" : e.where || "") : "", video: e ? !!e.video : false, who: e ? (e.who || []).slice() : [], cal: e ? e.cal : "work", repeat: e ? e.repeat || "none" : "none", alert: e ? (e.alert == null ? null : e.alert) : 10, notes: e ? e.notes || "" : "" }; };
     var D = null;
     if (ev) {
@@ -1432,7 +1487,10 @@ registerView("calendar", {
       var alertLabel = ev.alert == null ? "" : (ev.alert === 0 ? "Alert at start" : (ev.alert >= 60 ? ev.alert / 60 + " hour before" : ev.alert + " min before"));
       D = {
         title: ev.title, when: calRange(ev.t, ev.d), day: calDayName(api, evDay) + (repeatLabel ? " · " + repeatLabel : ""),
-        dot: CAL_COLORS[c.color], calName: c.name,
+        dot: calColor(c), calName: c.name,
+        // Provider adapters fill these: where the event lives (shown under the title), a conflict
+        // ({ text, keepMine, keepTheirs }) and a note that guests will not be notified.
+        sourceNote: "", pending: !!ev.pendingSync, conflict: null, guestNote: "",
         recurringReminder: false, reminderPolicy: "", reminderHistory: [], reminderDone: function () {}, reminderSnooze: function () {},
         hasWhere: !!ev.where, where: isPhone ? ((ev.who || [])[0] ? "Call " + calPerson(api, ev.who[0]).name.split(" ")[0] : "Phone call") : ev.where, whereIcon: isPhone ? IC.phone : IC.pin,
         goWhere: function () { if (isPhone) { if ((ev.who || [])[0]) api.open("phone", { call: ev.who[0] }); } else api.open("maps", { query: ev.where }); },
@@ -1445,9 +1503,9 @@ registerView("calendar", {
         rsvp: isInvite ? [rsvpBtn("yes", "Going"), rsvpBtn("maybe", "Maybe"), rsvpBtn("declined", "No")] : [],
         hasPrep: !!(ev.prep && ev.prep.length), prep: ev.prep || [], noPrep: !(ev.prep && ev.prep.length),
         ask: function () { api.send("Prep me for " + ev.title); },
-        close: function () { set({ open: null, openDay: null, day: calendarReturnDay(sel, evDay) }); },
+        close: function () { set({ open: null, openDay: null, day: scheduleView ? 0 : calendarReturnDay(sel, evDay) }); },
         edit: function () { set({ form: formFrom(ev, evDay) }); },
-        del: function () { set({ events: list.filter(function (x) { return x.id !== ev.id; }), open: null, openDay: null, day: evDay }); undo(ev.title + " deleted", ev); }
+        del: function () { if (ev.repeat && ev.repeat !== "none") set({ deleteAsk: { id: ev.id, off: evDay } }); else deleteScope(ev, evDay, "all"); }
       };
     }
 
@@ -1483,7 +1541,7 @@ registerView("calendar", {
         onPq: function (e) { fp({ pq: e.target.value }); },
         pqKey: function (e) { if (e.key === "Enter" && sugg.length) { e.preventDefault(); sugg[0].pick(); } if (e.key === "Escape") fp({ pq: null }); },
         valid: !!(f.title || "").trim(), saveOff: !(f.title || "").trim(), saveCss: (f.title || "").trim() ? "background:var(--acc);color:#fff" : "background:var(--s2);color:var(--mut)",
-        cals: cals.map(function (c) { return { name: c.name, dot: CAL_COLORS[c.color], css: chip(f.cal === c.id), pick: function () { fp({ cal: c.id }); } }; }),
+        cals: cals.filter(function (c) { return !c.provider; }).map(function (c) { return { name: c.name, dot: calColor(c), css: chip(f.cal === c.id), pick: function () { fp({ cal: c.id }); } }; }),
         repeats: CAL_REPEAT.map(function (r) { return { label: r[1], css: chip(f.repeat === r[0]), pick: function () { fp({ repeat: r[0] }); } }; }),
         alerts: CAL_ALERT.map(function (a) { return { label: a[1], css: chip(f.alert === a[0]), pick: function () { fp({ alert: a[0] }); } }; }),
         cancel: function () { set({ form: null }); },
@@ -1495,32 +1553,45 @@ registerView("calendar", {
           if (f.video && !ne.video) ne.video = "meet.lumen.example/" + title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
           if (!f.video) delete ne.video;
           var nl = old ? list.map(function (x) { return x.id === old.id ? ne : x; }) : list.concat([ne]);
-          if (old) { set({ events: nl, form: null, day: f.off, openDay: f.off }); api.toast("Saved"); }
-          else { set({ events: nl, form: null, day: f.off, open: null }); api.toast("Added " + title); }
+          if (old) { set({ events: nl, form: null, day: scheduleView ? 0 : f.off, openDay: f.off }); api.toast("Saved"); }
+          else { set({ events: nl, form: null, day: scheduleView ? 0 : f.off, open: null }); api.toast("Added " + title); }
         }
       };
     }
 
+    var scheduleRows = scheduleView ? scheduleRowsFor(itemsOn) : [];
     return {
       attendeeChoices: calPeople(api).map(function (person) { return { id: person.id, name: person.name }; }),
-      month: monthOpen ? formatMonthTitle(mBase, mBase.getFullYear() !== today.getFullYear()) : formatMonthTitle(selDate, selDate.getFullYear() !== today.getFullYear()),
-      dayMode: !monthOpen,
+      month: monthView ? formatMonthTitle(mBase, mBase.getFullYear() !== today.getFullYear()) : formatMonthTitle(selDate, selDate.getFullYear() !== today.getFullYear()),
+      view: view, dayView: view === "day", weekView: weekView, monthView: monthView, scheduleView: scheduleView, timelineView: view === "day" || weekView,
+      dayMode: view === "day",
       dayName: calDayName(api, sel),
-      emptyText: dayCount > 1 ? "Free on these days" : sel === 0 ? "Nothing scheduled today" : "Free all day",
-      week: markVisibleWeek(week, sel - sdow, sel, dayCount),
+      emptyText: "Nothing scheduled",
+      week: markVisibleWeek(week, sel - sdow, sel, weekView ? 1 : dayCount),
       events: dayCount > 1 ? [] : dayEvents, dayEvents: dayEvents, hours: hours,
       empty: dayCount > 1 ? dayColumns.every(function (c) { return !c.events.length; }) : evs.length === 0,
       multiDay: dayCount > 1, dayCount: dayCount,
-      dayColumns: calendarDayColumns(dayColumns, api.now, (nowT - CAL_H0) * CAL_PX + 8, nowT >= CAL_H0 && nowT <= CAL_H1, sel),
+      dayColumns: calendarDayColumns(dayColumns, api.now, (nowT - CAL_H0) * CAL_PX + 8, nowT >= CAL_H0 && nowT <= CAL_H1, sel, { compact: weekView, pick: pickDay }),
       showNow: dayCount < 2 && sel === 0 && nowT >= CAL_H0 && nowT <= CAL_H1, nowTop: (nowT - CAL_H0) * CAL_PX + 8,
       tlDown: tlDown, tlUp: tlUp,
-      notToday: sel !== 0, goToday: function () { set({ day: 0, month: null }); },
-      toggleMonth: function () { set({ month: monthOpen ? null : 0 }); },
-      newEvent: function () { var nx = sel === 0 ? Math.min(21, Math.ceil(nowT + 0.01)) : 10; set({ form: Object.assign(formFrom(null, sel), { t: nx }), month: null }); },
-      hasInvites: invites.length > 0 && !monthOpen, invites: invites,
-      monthOpen: monthOpen, mTitle: formatMonthTitle(mBase, mBase.getFullYear() !== today.getFullYear()),
-      mdays: mdays, mPrev: function () { set({ month: (st.month || 0) - 1 }); }, mNext: function () { set({ month: (st.month || 0) + 1 }); },
-      closeMonth: function () { set({ month: null }); }, calRows: calRows, chevron: monthOpen ? IC.up : IC.down,
+      notToday: monthView ? sel !== 0 || (st.month || 0) !== 0 : !scheduleView && sel !== 0,
+      goToday: function () { set({ day: 0, month: monthView ? 0 : null }); },
+      // Title menu (views and calendar switches), owned by calendar-month-focus.ts for focus and Back.
+      menuOpen: !!st.menu, toggleMenu: function () { set({ menu: !st.menu }); }, closeMenu: function () { set({ menu: false }); },
+      viewMenu: viewMenu, calToggles: calToggles, hasCalToggles: calToggles.length > 0, chevron: st.menu ? IC.up : IC.down,
+      newEvent: function () { var nx = sel === 0 ? Math.min(21, Math.ceil(nowT + 0.01)) : 10; set({ form: Object.assign(formFrom(null, sel), { t: nx }), menu: false }); },
+      hasInvites: invites.length > 0 && view === "day", invites: invites,
+      // Month view: a grid of whole weeks with event chips; a day opens Day view.
+      monthCells: monthView ? monthCellsFor(itemsOn) : [], mTitle: formatMonthTitle(mBase, mBase.getFullYear() !== today.getFullYear()),
+      monthWeekdays: [0, 1, 2, 3, 4, 5, 6].map(function (i) { return calDate(api, i - calDow(api, 0)).toLocaleDateString(undefined, { weekday: "narrow" }); }),
+      mPrev: function () { set({ month: (st.month || 0) - 1 }); }, mNext: function () { set({ month: (st.month || 0) + 1 }); },
+      // Schedule view: today forward through the loaded range, days with something on them.
+      scheduleRows: scheduleRows, scheduleEmpty: scheduleView && !scheduleRows.length,
+      calItems: itemsOn, monthCellsFor: monthCellsFor, scheduleRowsFor: scheduleRowsFor,
+      // Search: results open the event; the detail closes back to the results.
+      searching: searching, notSearching: !searching, searchQuery: st.search || "", searchRows: searchRows, searchEmpty: searching && !!String(st.search).trim() && !searchRows.length, searchLoading: "",
+      openSearch: function () { set({ search: "", menu: false }); }, onSearch: function (e) { set({ search: e.target.value }); }, closeSearch: function () { set(scheduleView ? { search: null, day: 0 } : { search: null }); },
+      deleteSheet: DS,
       detail: !!D && !F, ev: D,
       form: !!F, f: F,
       noop: function () {}
@@ -5152,7 +5223,8 @@ class Component extends DCLogic {
     opts = opts || {}; var self = this;
     this.undoFn = opts.undo || null;
     this.setState({ toast: msg, toastUndo: !!opts.undo }); this.clear("t");
-    this.later(function () { self.undoFn = null; self.setState({ toast: "", toastUndo: false }); }, opts.undo ? 5000 : 1900, "t");
+    // An Undo toast may ask to stay for its action's Undo window (Calendar delete: DELETE_UNDO_MS), up to 30 s.
+    this.later(function () { self.undoFn = null; self.setState({ toast: "", toastUndo: false }); }, opts.undo ? (opts.ms > 0 && opts.ms <= 30000 ? opts.ms : 5000) : 1900, "t");
   }
 
   /* ---- per-app state ---- */

@@ -19,7 +19,8 @@ export function installCalendarEditDraftAdapter(Component:any,views:Bag){
  };
  p.componentDidUpdate=function(previous:Bag){
   update.call(this,previous);const form=this.vget('calendar').form;
-  if(!form?.id||!form.alphaCalendarId&&!form.alphaReminderId)return;
+  // Google event edits are retained too (their target is the event and the version it started from).
+  if(!form?.id||!form.alphaCalendarId&&!form.alphaReminderId&&!form.googleEventId)return;
   if(this.calendarEditDraftIdentity!==calendarEditIdentity(form)){this.calendarEditDraftIdentity=calendarEditIdentity(form);this.calendarEditDraftAnchor=new Date();}
   const today=new Date(),anchor=this.calendarEditDraftAnchor as Date;
   const civil=(date:Date)=>Date.UTC(date.getFullYear(),date.getMonth(),date.getDate());
@@ -27,7 +28,8 @@ export function installCalendarEditDraftAdapter(Component:any,views:Bag){
   try{const text=encodeCalendarEdit(form,this.calendarEditDraftAnchor);const wasInvalid=this.calendarEditFormValidationError;this.calendarEditFormValidationError=false;if(wasInvalid)this.vset('calendar',{});if(text===this.calendarEditDraftSuppressed)return;this.calendarEditDraftText=text;this.calendarEditDraft?.edit(text);}catch{if(!this.calendarEditFormValidationError){this.calendarEditFormValidationError=true;this.vset('calendar',{});}}
  };
  p.calendarEditFormCommitted=function(form:Bag){
-  if(!form?.id||!this.calendarEditDraft)return;
+  // Only forms componentDidUpdate retains (an unsent Google create, for one, never is).
+  if(!form?.id||!this.calendarEditDraft||!form.alphaCalendarId&&!form.alphaReminderId&&!form.googleEventId)return;
   const failed=()=>{if(this.live)this.toast('Saved, but the retained form could not be cleared. Review it before trying again.');};
   try{const text=encodeCalendarEdit(form,this.calendarEditDraftAnchor||new Date());this.calendarEditDraftSuppressed=text;
    void this.calendarEditDraft.consume(text,()=>this.live&&this.calendarEditDraftText===text).catch(failed);
@@ -39,7 +41,7 @@ export function installCalendarEditDraftAdapter(Component:any,views:Bag){
  views.calendar.render=function(state:Bag,api:Bag){
   const out=render(state,api),shell=owner,controller=shell?.calendarEditDraft,draft=controller?.state;
   if(!shell||!controller)return out;
-  const active=!!state.form?.id&&!!(state.form.alphaCalendarId||state.form.alphaReminderId);
+  const active=!!state.form?.id&&!!(state.form.alphaCalendarId||state.form.alphaReminderId||state.form.googleEventId);
   out.editDraftAvailable=!state.form&&!!shell.calendarEditDraftText;
   out.editDraftStatus=active?(shell.calendarEditFormValidationError?'This form is too large or has unsupported values. Current edits are not saved.':draft.message.replace('before sending','before saving')):'';
   out.editDraftConflict=active&&draft.conflict;

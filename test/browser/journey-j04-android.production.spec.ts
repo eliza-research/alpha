@@ -52,7 +52,10 @@ test('an event location opens unconfigured Maps, hands off to an installed map a
 
   // No provider: the notice says so, and no route, ETA or Directions is invented.
   const maps = page.getByRole('region', { name: 'Maps' });
-  await expect(maps.locator('[data-alpha-maps-status]')).toContainText(/Maps provider/);
+  // No shown text names a "Maps provider" any more: the stub's Cloud has no Maps route (404), so
+  // Maps gives the real reason (docs/flow-redesign-2026-11).
+  await expect(maps.locator('[data-alpha-maps-status]')).toContainText('Maps isn’t available yet.');
+  await expect(maps.locator('[data-alpha-maps-status]')).not.toContainText(/Maps provider/);
   await expect(button(page, 'Directions')).toHaveCount(0);
   await expect(maps).not.toContainText(/\b\d+\s*min\b|\bETA\b|Arrive|route to/i);
   await expect(button(page, 'Back to event')).toBeVisible();

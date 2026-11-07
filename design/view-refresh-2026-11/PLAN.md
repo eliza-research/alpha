@@ -293,17 +293,42 @@ a pure projection of `DeviceApps.list`.
 
 ---
 
-## Decisions for you (also in the prototype, with your answers recorded there)
+## Decisions
+Answered 2026-11-06:
+- **F1: All-files access.** Pre-granted to the launcher on the AOSP image. The standalone
+  APK asks for it at the beginning, as a step in the startup permission walkthrough
+  (`startup-permission-flow.ts`, which already has a checked spec in
+  `specs/startup-permissions`; that spec gains the step). `MANAGE_EXTERNAL_STORAGE` is an
+  app-op, not a runtime permission, so `default-permissions` XML can't grant it. The image
+  sets the app-op for the launcher during provisioning (to be verified on Cuttlefish and the
+  Pixel 10a image).
+- **N2:** Recently deleted keeps notes for 30 days, matching Apple Notes.
+- **C2:** New captures go to `DCIM/Camera`, the Android standard.
+
+Still open, taken as recommended unless you say otherwise:
 - **C1:** Keep Scan as a camera mode? *(rec: keep)*
-- **C2:** Save new captures to `DCIM/Camera` (standard) instead of `Pictures/`? *(rec: yes)*
 - **P1:** Photo grid edge-to-edge (iOS/Google standard) or inset rounded? *(rec: edge-to-edge)*
 - **P2:** Remove the photo search box entirely in favour of Ask Alpha? *(rec: yes)*
 - **N1:** Folders (Apple) or labels (Keep, multi-tag)? *(rec: folders)*
-- **N2:** Trash retention: 30 days? *(rec: 30)*
 - **N3:** Notes list or 2-column grid? *(rec: list)*
-- **F1:** Files access model: A, B or C? *(rec: A)*
 - **F2:** Drop Recents entirely? *(rec: yes)*
 - **A1:** Apps drawer: icon grid or list? *(rec: grid)*
+
+## TLA+ models (written and checked 2026-11-06)
+Specs are in `artifacts/review-2026-11/specs/{camera-session,photos-library,notes-view,files-browser}`,
+run by `specs/check-view-refresh.sh <tla2tools.jar>`, with results in each `results/`.
+`Design.cfg` is the proposed design. Each `AsBuilt_*.cfg` turns off one fix, to show that
+today's code has the defect. Each `Ablate_*.cfg` turns off one design rule, to show the
+rule is needed.
+
+Design changes the models found:
+- **Camera:** if the agent queues a photo during start and you then start recording, the
+  agent's request would wait as long as you record. Rule: starting a recording refuses the
+  queued agent capture, and the agent says so.
+- **Camera:** every start re-checks access, since you may have granted it in Settings after
+  a denial. Without this, Camera could stay "starting" forever.
+- **Files:** moving or restoring into a folder that already has that name picks a free
+  "name (1)" and never replaces the existing file.
 
 ## Phases after approval
 0. On the Pixel 10a, measure camera cold and warm first frame and shutter latency, and

@@ -9,12 +9,13 @@ export interface GmailFailure { kind: GmailFailureKind; message: string }
 
 const messages: Record<GmailFailureKind, Record<'read' | 'operation', string>> = {
   offline: {
-    read: 'You appear to be offline. Gmail was not reached. Retry when you are connected.',
+    read: 'Offline',
     // A request may have reached Gmail before the connection dropped, so this does not claim no change.
     operation: 'You appear to be offline. Gmail may not have received this change. When you are connected, check the saved receipt before trying again.',
   },
   revoked: {
-    read: 'Gmail access was revoked or needs authorization again. Reconnect Gmail, then retry.',
+    // Also a read 409 (authorization needed again), so this does not say the account was disconnected.
+    read: 'Gmail needs to be reconnected.',
     operation: 'Gmail no longer allows this change for the selected account. Reconnect Gmail, then retry. Nothing was changed.',
   },
   stale: {
@@ -100,9 +101,9 @@ export async function disconnectGmailAccount(client: DisconnectClient, connectio
   }
 }
 export function disconnectMessage(outcome: GmailDisconnectOutcome, label: string): string {
-  if (outcome === 'disconnected') return `${label} is disconnected. Cloud no longer holds its Gmail access. No mail was deleted; local drafts stay on this phone until you discard them. Google may still list the app in your Google Account permissions.`;
-  if (outcome === 'still-connected') return `Disconnect was requested, but Gmail still reports ${label} as connected. Check the connection again.`;
-  return `Disconnect of ${label} was not confirmed. Check the connection to see its current state before trying again.`;
+  if (outcome === 'disconnected') return `${label} disconnected.`;
+  if (outcome === 'still-connected') return `${label} is still connected. Try again.`;
+  return `Couldn’t disconnect ${label}. Try again.`;
 }
 
 interface ReadStateClient {

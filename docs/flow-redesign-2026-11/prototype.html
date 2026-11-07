@@ -1,0 +1,895 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Alpha Phone · Sign in, Inbox, Calendar and Maps · proposed flows</title>
+<style>
+@font-face{font-family:'Public Sans';src:url(../../apps/app/public/fonts/5ed4d31c988e73b25889.woff2) format('woff2');font-weight:100 900}
+@font-face{font-family:'Denton';src:url(../../apps/app/public/denton-300.woff2) format('woff2');font-weight:100 900}
+:root{--bg:#fff;--s1:#FAFAFA;--s2:#F3F3F3;--s3:#E9E9E9;--line:#E3E3E3;--fg:#000;--mut:#6B6B6B;--acc:#0000FF;--warn:#B42318;--ok:#067647;
+  --c-blue:#0000FF;--c-teal:#00837A;--c-orange:#C2410C;--c-gray:#6B6B6B;--c-black:#000}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{font-family:'Public Sans',system-ui,sans-serif;font-weight:400;background:#ECECEC;color:var(--fg);font-size:14px}
+button{font:inherit;color:inherit;cursor:pointer}
+input,select,textarea{font:inherit;color:inherit}
+.serif{font-family:'Denton','Fraunces',Georgia,serif;font-weight:300}
+.app{display:grid;grid-template-columns:270px 410px minmax(320px,1fr);gap:20px;padding:20px;min-height:100%;align-items:start}
+/* left rail */
+.rail{display:flex;flex-direction:column;gap:14px;position:sticky;top:20px}
+.rail h1{font-size:22px;margin:0 0 2px;line-height:1.1}
+.rail p.sub{margin:0;color:var(--mut);font-size:12.5px;line-height:1.45}
+.tabs{display:flex;flex-direction:column;gap:4px}
+.tabs button{display:flex;align-items:center;gap:10px;text-align:left;border:0;background:transparent;padding:9px 12px;border-radius:12px;font-size:14px}
+.tabs button[aria-pressed=true]{background:#000;color:#fff}
+.tabs button svg{width:18px;height:18px}
+.box{background:#fff;border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.box h2{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);margin:0;font-weight:500}
+.sw{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px}
+.sw select{border:1px solid var(--line);border-radius:8px;padding:4px 6px;background:#fff;max-width:150px}
+.tog{appearance:none;width:34px;height:20px;border-radius:20px;background:var(--s3);position:relative;cursor:pointer;flex:none;transition:background .15s}
+.tog:checked{background:#000}
+.tog::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s}
+.tog:checked::after{left:16px}
+.rail .act{border:1px solid var(--line);background:#fff;border-radius:10px;padding:7px 10px;font-size:12.5px;text-align:left}
+.rail .act:hover{background:var(--s2)}
+.hint{font-size:12px;color:var(--mut);line-height:1.45;margin:0}
+/* phone */
+.phonewrap{position:sticky;top:20px}
+.phone{width:410px;height:860px;border-radius:52px;background:#000;padding:10px;box-shadow:0 20px 60px rgba(0,0,0,.18)}
+.screen{position:relative;width:100%;height:100%;border-radius:43px;background:var(--bg);overflow:hidden;display:flex;flex-direction:column}
+.status{height:40px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 26px 0 30px;font-size:14px;font-weight:600;z-index:5}
+.status .r{display:flex;gap:6px;align-items:center}
+.status svg{width:15px;height:15px}
+.body{flex:1;min-height:0;position:relative;display:flex;flex-direction:column}
+.gesture{height:22px;flex:none;display:flex;justify-content:center;align-items:center}
+.gesture i{width:120px;height:4px;border-radius:4px;background:#000;opacity:.85}
+/* common phone ui */
+.ic{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.top{display:flex;align-items:center;gap:6px;padding:6px 14px 8px;min-height:50px}
+.top h1{font-size:22px;margin:0;font-weight:600;flex:1;display:flex;align-items:center;gap:4px}
+.iconbtn{border:0;background:transparent;width:40px;height:40px;border-radius:20px;display:grid;place-items:center}
+.iconbtn:hover{background:var(--s2)}
+.pill{border:0;border-radius:999px;padding:13px 20px;font-size:15px;font-weight:500;background:#000;color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:10px}
+.pill.secondary{background:var(--s2);color:#000}
+.pill.ghost{background:transparent;color:#000;padding:10px 12px}
+.pill.acc{background:var(--acc)}
+.pill[disabled]{opacity:.45;cursor:default}
+.pill.wide{width:100%}
+.field{width:100%;border:1px solid var(--line);border-radius:14px;padding:14px 16px;font-size:16px;background:#fff;outline:none}
+.field:focus{border-color:#000}
+.err{color:var(--warn);font-size:13px;margin:0}
+.muted{color:var(--mut)}
+.chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;background:var(--s2);padding:6px 11px;font-size:12.5px;border:0}
+.chip.dark{background:#000;color:#fff}
+.toast{position:absolute;left:14px;right:14px;bottom:18px;background:#111;color:#fff;border-radius:14px;padding:13px 16px;font-size:14px;display:flex;align-items:center;justify-content:space-between;gap:10px;z-index:40;animation:up .2s ease-out}
+.toast button{border:0;background:transparent;color:#9DB4FF;font-weight:600}
+@keyframes up{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.28);z-index:30;display:flex;flex-direction:column;justify-content:flex-end}
+.sheet{background:#fff;border-radius:26px 26px 0 0;padding:10px 18px 22px;display:flex;flex-direction:column;gap:12px;max-height:88%;overflow:auto;animation:up .2s ease-out}
+.sheet .grab{width:36px;height:4px;border-radius:4px;background:var(--s3);align-self:center;margin-bottom:4px}
+.spinner{width:16px;height:16px;border-radius:50%;border:2px solid currentColor;border-right-color:transparent;animation:spin .8s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+.center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center}
+.list{flex:1;overflow:auto}
+.row{display:flex;gap:12px;padding:12px 16px;border-bottom:1px solid var(--s2);align-items:flex-start;cursor:pointer}
+.row:hover{background:var(--s1)}
+.av{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-weight:600;font-size:14px;color:#fff;flex:none}
+.offline{display:flex;align-items:center;gap:8px;background:var(--s2);font-size:12.5px;padding:7px 14px;color:#000}
+.offline i{width:7px;height:7px;border-radius:50%;background:#000;display:inline-block}
+/* google sheet / custom tab */
+.gsheet .acct{display:flex;gap:12px;align-items:center;padding:12px;border-radius:14px;border:1px solid var(--line)}
+.gsheet .acct:hover{background:var(--s1)}
+.gsheet label.scope{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.35;padding:6px 0}
+.gsheet label.scope input{width:18px;height:18px;margin-top:1px;accent-color:#1a73e8}
+.gbtns{display:flex;justify-content:flex-end;gap:8px}
+.gbtn{border:0;border-radius:999px;padding:10px 20px;font-weight:500;background:#1a73e8;color:#fff}
+.gbtn.text{background:transparent;color:#1a73e8}
+.ctab{position:absolute;inset:0;z-index:35;background:#fff;display:flex;flex-direction:column;animation:up .2s ease-out}
+.ctab .bar{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line);font-size:13px}
+.ctab .bar .url{flex:1;line-height:1.2}
+.ctab .bar .url b{display:block;font-size:13px}
+.ctab .bar .url span{color:var(--mut);font-size:11.5px}
+.ctab .content{padding:22px;display:flex;flex-direction:column;gap:14px}
+.glogo{font-weight:600;font-size:15px;letter-spacing:-.01em}
+.glogo b:nth-child(1){color:#4285F4}.glogo b:nth-child(2){color:#EA4335}.glogo b:nth-child(3){color:#FBBC05}.glogo b:nth-child(4){color:#4285F4}.glogo b:nth-child(5){color:#34A853}.glogo b:nth-child(6){color:#EA4335}
+.returning{position:absolute;inset:0;z-index:36;background:rgba(255,255,255,.92);display:grid;place-items:center;font-size:14px}
+/* sign in */
+.signin{flex:1;display:flex;flex-direction:column;padding:28px 26px 26px;gap:14px}
+.signin .logo{width:44px;height:44px;border-radius:12px;background:#000;display:grid;place-items:center;margin-bottom:22px}
+.signin h1{font-size:40px;margin:0 0 10px;line-height:1}
+.or{display:flex;align-items:center;gap:12px;color:var(--mut);font-size:12.5px}
+.or::before,.or::after{content:'';flex:1;height:1px;background:var(--line)}
+.code{display:flex;gap:8px;justify-content:space-between}
+.code span{flex:1;height:58px;border:1px solid var(--line);border-radius:14px;display:grid;place-items:center;font-size:24px;font-weight:500}
+.code span.on{border-color:#000}
+.code-input{position:absolute;opacity:0;pointer-events:none}
+.link{border:0;background:transparent;padding:0;color:var(--acc);font-size:14px}
+.link[disabled]{color:var(--mut)}
+/* home */
+.home{flex:1;display:flex;flex-direction:column;padding:8px 18px 0}
+.card{border-radius:24px;background:var(--acc);color:#fff;padding:18px;height:150px;display:flex;flex-direction:column;justify-content:space-between}
+.card .t{font-size:12px}
+.card .h{font-size:30px;line-height:1.05}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px 6px;margin-top:70px}
+.grid button{border:0;background:transparent;display:flex;flex-direction:column;align-items:center;gap:7px;font-size:11.5px}
+.grid button span{width:56px;height:56px;border-radius:18px;background:var(--s2);display:grid;place-items:center}
+.ask{margin:auto 0 12px;display:flex;align-items:center;gap:12px;background:var(--s2);border-radius:999px;padding:10px 16px 10px 10px;color:var(--mut)}
+.orb{width:32px;height:32px;border-radius:50%;background:radial-gradient(circle at 50% 50%,#0000FF 0 30%,#6F6FFF 60%,#C9C9FF 100%);flex:none}
+/* inbox */
+.mail .from{font-weight:600;font-size:14.5px;display:flex;justify-content:space-between}
+.mail .from time{font-weight:400;color:var(--mut);font-size:12.5px}
+.mail .subj{font-size:14px;margin-top:2px}
+.mail .snip{font-size:13px;color:var(--mut);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:290px}
+.mail.unread .subj{font-weight:600}
+.skel{height:12px;border-radius:6px;background:var(--s2);margin:6px 0}
+/* calendar */
+.calhead{display:flex;align-items:center;gap:2px;padding:6px 8px 4px 6px}
+.calhead h1{font-size:22px;font-weight:600;margin:0;display:flex;align-items:center;gap:4px;border:0;background:transparent;padding:6px 8px;border-radius:10px}
+.calhead .sp{flex:1}
+.todaybtn{width:32px;height:32px;border:1.6px solid #000;border-radius:9px;font-size:12px;font-weight:600;background:#fff;display:grid;place-items:center}
+.wk{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;padding:0 8px 8px;border-bottom:1px solid var(--line)}
+.wk small{display:block;font-size:11px;color:var(--mut);margin-bottom:4px}
+.wk button{border:0;background:transparent;width:36px;height:36px;border-radius:50%;font-size:16px;margin:auto;display:grid;place-items:center}
+.wk button.sel{background:#000;color:#fff}
+.wk button.today{color:var(--acc);font-weight:700}
+.wk button.sel.today{background:var(--acc);color:#fff}
+.tl{flex:1;overflow:auto;position:relative}
+.hour{height:56px;border-top:1px solid var(--s2);position:relative;font-size:10.5px;color:var(--mut);padding-left:8px}
+.hour span{position:relative;top:-7px;background:#fff;padding-right:4px}
+.ev{position:absolute;left:58px;right:12px;border-radius:10px;padding:6px 10px;font-size:13px;color:#fff;overflow:hidden;cursor:pointer;border:0;text-align:left;line-height:1.25}
+.ev small{display:block;opacity:.85;font-size:11.5px}
+.ev.pending::after{content:'';position:absolute;top:7px;right:8px;width:7px;height:7px;border-radius:50%;background:#fff;opacity:.9;box-shadow:0 0 0 2px rgba(255,255,255,.35)}
+.ev.light{background:var(--s2)!important;color:#000}
+.now{position:absolute;left:52px;right:0;height:2px;background:var(--acc)}
+.now::before{content:'';position:absolute;left:-5px;top:-4px;width:10px;height:10px;border-radius:50%;background:var(--acc)}
+.allday{padding:6px 12px 6px 58px;display:flex;flex-direction:column;gap:4px;border-bottom:1px solid var(--line)}
+.allday button{border:0;border-radius:8px;padding:5px 10px;text-align:left;font-size:12.5px;color:#fff}
+.weekgrid{display:grid;grid-template-columns:40px repeat(7,1fr);flex:1;overflow:auto;font-size:10.5px}
+.weekgrid .col{position:relative;border-left:1px solid var(--s2)}
+.weekgrid .wev{position:absolute;left:1px;right:1px;border-radius:5px;color:#fff;font-size:10px;padding:2px 3px;overflow:hidden;border:0;text-align:left;line-height:1.15}
+.month{display:grid;grid-template-columns:repeat(7,1fr);flex:1;align-content:start}
+.month .dh{text-align:center;font-size:11px;color:var(--mut);padding:6px 0}
+.month button{border:0;border-top:1px solid var(--s2);background:transparent;height:86px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 1px;font-size:12px}
+.month button .n{width:24px;height:24px;border-radius:50%;display:grid;place-items:center}
+.month button.other{color:#BDBDBD}
+.month button.today .n{background:var(--acc);color:#fff}
+.month .m{width:100%;border-radius:4px;font-size:9.5px;color:#fff;padding:1px 3px;text-align:left;white-space:nowrap;overflow:hidden}
+.sched{flex:1;overflow:auto;padding:4px 0 80px}
+.sched .day{display:grid;grid-template-columns:58px 1fr;gap:8px;padding:10px 12px 4px}
+.sched .day .d{text-align:center}
+.sched .day .d small{display:block;font-size:11px;color:var(--mut)}
+.sched .day .d b{font-size:20px;font-weight:500}
+.sched .day .d.today b{color:var(--acc)}
+.sched .items{display:flex;flex-direction:column;gap:6px}
+.sched .items button{border:0;border-radius:10px;padding:8px 12px;text-align:left;color:#fff;font-size:13.5px}
+.sched .items button small{display:block;opacity:.85}
+.menu{position:absolute;top:50px;left:10px;width:250px;background:#fff;border-radius:18px;box-shadow:0 10px 40px rgba(0,0,0,.18);padding:8px;z-index:25;display:flex;flex-direction:column}
+.menu button.v{border:0;background:transparent;text-align:left;padding:10px 12px;border-radius:10px;font-size:15px;display:flex;align-items:center;justify-content:space-between}
+.menu button.v[aria-pressed=true]{background:var(--s2);font-weight:600}
+.menu hr{border:0;border-top:1px solid var(--line);margin:6px 4px}
+.menu label{display:flex;align-items:center;gap:10px;padding:8px 12px;font-size:14px}
+.menu label input{width:18px;height:18px}
+.connectrow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 14px;border-bottom:1px solid var(--line);font-size:13.5px}
+.detail{position:absolute;inset:0;background:#fff;z-index:20;display:flex;flex-direction:column;animation:up .15s ease-out}
+.detail .content{padding:4px 22px 22px;display:flex;flex-direction:column;gap:16px;overflow:auto}
+.detail h2{font-size:26px;margin:0;font-weight:400;display:flex;gap:12px;align-items:flex-start}
+.detail h2 i{width:14px;height:14px;border-radius:4px;margin-top:9px;flex:none}
+.kv{display:flex;gap:14px;align-items:flex-start;font-size:14.5px;line-height:1.4}
+.kv svg{color:var(--mut);margin-top:1px}
+.seg{display:flex;background:var(--s2);border-radius:999px;padding:3px}
+.seg button{flex:1;border:0;background:transparent;border-radius:999px;padding:8px 6px;font-size:13.5px}
+.seg button[aria-pressed=true]{background:#000;color:#fff}
+.banner{border-radius:14px;background:#FFF4E5;padding:12px 14px;font-size:13.5px;display:flex;flex-direction:column;gap:10px}
+.banner .b{display:flex;gap:8px}
+.form{display:flex;flex-direction:column;gap:0;overflow:auto;padding:0 0 30px}
+.form .fr{display:flex;align-items:center;gap:14px;padding:14px 20px;border-bottom:1px solid var(--s2);font-size:15px}
+.form .fr input[type=text],.form .fr input:not([type]){border:0;outline:none;flex:1;font-size:15px;background:transparent}
+.form .fr .grow{flex:1}
+.form .title{font-size:24px!important}
+.form select{border:0;background:transparent;font-size:15px}
+.fab{position:absolute;right:16px;bottom:16px;width:56px;height:56px;border-radius:18px;background:#000;color:#fff;border:0;display:grid;place-items:center;z-index:10;box-shadow:0 6px 18px rgba(0,0,0,.2)}
+/* maps */
+.map{position:absolute;inset:0;overflow:hidden;background:#F2EFE9}
+.map svg.base{position:absolute;inset:0;width:100%;height:100%}
+.searchpill{position:absolute;top:8px;left:12px;right:12px;z-index:12;background:#fff;border-radius:999px;box-shadow:0 2px 12px rgba(0,0,0,.14);display:flex;align-items:center;gap:6px;padding:4px 6px 4px 4px}
+.searchpill input{border:0;outline:none;flex:1;font-size:15.5px;background:transparent;padding:8px 4px}
+.mapbtn{position:absolute;right:14px;width:48px;height:48px;border-radius:50%;background:#fff;border:0;box-shadow:0 2px 10px rgba(0,0,0,.15);display:grid;place-items:center;z-index:11}
+.pin{position:absolute;transform:translate(-50%,-100%);z-index:8;border:0;background:transparent;padding:0}
+.pin span{display:block;width:28px;height:28px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:#000;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+.pin.sel span{background:var(--acc);width:34px;height:34px}
+.me{position:absolute;width:18px;height:18px;border-radius:50%;background:var(--acc);border:3px solid #fff;box-shadow:0 0 0 8px rgba(0,0,255,.15);transform:translate(-50%,-50%);z-index:9}
+.msheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:24px 24px 0 0;box-shadow:0 -4px 20px rgba(0,0,0,.12);z-index:14;padding:8px 18px 18px;display:flex;flex-direction:column;gap:12px;max-height:62%;overflow:auto}
+.msheet .grab{width:36px;height:4px;border-radius:4px;background:var(--s3);align-self:center}
+.place h3{margin:0;font-size:22px;font-weight:600}
+.place .meta{font-size:13.5px;color:var(--mut);display:flex;gap:6px;flex-wrap:wrap}
+.place .btns{display:flex;gap:8px;overflow:auto}
+.res{display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--s2);cursor:pointer}
+.res .n{width:26px;height:26px;border-radius:50%;background:#000;color:#fff;font-size:12px;display:grid;place-items:center;flex:none}
+.modes{display:flex;gap:6px;overflow:auto}
+.modes button{border:0;border-radius:12px;padding:8px 12px;background:var(--s2);display:flex;flex-direction:column;align-items:center;font-size:12px;min-width:70px;gap:2px}
+.modes button b{font-size:14px}
+.modes button[aria-pressed=true]{background:#000;color:#fff}
+.navtop{position:absolute;top:6px;left:10px;right:10px;background:var(--acc);color:#fff;border-radius:20px;padding:16px 18px;z-index:13;display:flex;gap:14px;align-items:center}
+.navtop b{font-size:24px;font-weight:600;display:block}
+.navtop small{font-size:15px}
+.assist{position:absolute;left:10px;right:10px;bottom:10px;z-index:22;background:#fff;border-radius:24px;box-shadow:0 6px 30px rgba(0,0,0,.2);padding:12px;display:flex;flex-direction:column;gap:10px}
+.bubble{background:var(--s2);border-radius:16px;padding:10px 12px;font-size:14px;line-height:1.4;align-self:flex-start;max-width:92%}
+.bubble.me{background:#000;color:#fff;align-self:flex-end}
+.askbar{display:flex;gap:8px;align-items:center;background:var(--s2);border-radius:999px;padding:6px 6px 6px 8px}
+.askbar input{flex:1;border:0;background:transparent;outline:none;font-size:15px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.sysdlg{position:absolute;inset:0;background:rgba(0,0,0,.35);z-index:45;display:grid;place-items:center}
+.sysdlg div.d{background:#F4F1F8;border-radius:28px;padding:24px;width:320px;display:flex;flex-direction:column;gap:10px;text-align:center}
+.sysdlg button{border:0;border-radius:999px;padding:12px;background:#E6E0EF;font-weight:500}
+/* right panel */
+.panel{display:flex;flex-direction:column;gap:14px}
+.panel .box{gap:8px}
+.state{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;display:grid;grid-template-columns:auto 1fr;gap:3px 12px}
+.state b{font-weight:500;color:var(--mut)}
+.log{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;display:flex;flex-direction:column;gap:2px;max-height:180px;overflow:auto}
+.props{display:flex;flex-direction:column;gap:5px;font-size:12.5px}
+.props div{display:flex;gap:8px;align-items:flex-start}
+.props .y{color:var(--ok);font-weight:700}
+.props .n{color:var(--warn);font-weight:700}
+.panel ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:13px;line-height:1.45}
+.panel code{font-size:12px;background:var(--s2);padding:1px 4px;border-radius:4px}
+@media (max-width:1100px){.app{grid-template-columns:1fr;justify-items:center}.rail,.phonewrap{position:static}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="rail">
+    <div>
+      <h1 class="serif">Alpha · proposed flows</h1>
+      <p class="sub">Interactive prototype for review. Nothing here talks to a server; Google screens are mock-ups of what Android shows.</p>
+    </div>
+    <div class="tabs" id="tabs"></div>
+    <div class="box" id="controls"></div>
+    <div class="box">
+      <h2>Phone</h2>
+      <label class="sw">Online<input type="checkbox" class="tog" id="net" checked></label>
+      <label class="sw">Google Play services<input type="checkbox" class="tog" id="gms" checked></label>
+      <p class="hint">Off = a plain AOSP image: Google opens in a Custom Tab that closes itself on return.</p>
+      <button class="act" id="reset">Reset everything</button>
+    </div>
+  </aside>
+  <div class="phonewrap"><div class="phone"><div class="screen">
+    <div class="status"><span id="clock">9:41</span><span class="r" id="sbar"></span></div>
+    <div class="body" id="phone"></div>
+    <div class="gesture"><i></i></div>
+  </div></div></div>
+  <section class="panel">
+    <div class="box"><h2>What changes</h2><ul id="changes"></ul></div>
+    <div class="box"><h2>Model state (TLA+ variables)</h2><div class="state" id="state"></div></div>
+    <div class="box"><h2>Properties, checked live</h2><div class="props" id="props"></div></div>
+    <div class="box"><h2>Actions taken</h2><div class="log" id="log"></div></div>
+    <div class="box"><h2>Today</h2><ul id="today"></ul></div>
+  </section>
+</div>
+<script>
+const ICONS = {"mail":"<path d=\"m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7\"/><rect x=\"2\" y=\"4\" width=\"20\" height=\"16\" rx=\"2\"/>","calendar":"<path d=\"M8 2v4\"/><path d=\"M16 2v4\"/><rect width=\"18\" height=\"18\" x=\"3\" y=\"4\" rx=\"2\"/><path d=\"M3 10h18\"/>","map-pin":"<path d=\"M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0\"/><circle cx=\"12\" cy=\"10\" r=\"3\"/>","search":"<path d=\"m21 21-4.34-4.34\"/><circle cx=\"11\" cy=\"11\" r=\"8\"/>","plus":"<path d=\"M5 12h14\"/><path d=\"M12 5v14\"/>","chevron-left":"<path d=\"m15 18-6-6 6-6\"/>","chevron-down":"<path d=\"m6 9 6 6 6-6\"/>","x":"<path d=\"M18 6 6 18\"/><path d=\"m6 6 12 12\"/>","navigation":"<polygon points=\"3 11 22 2 13 21 11 13 3 11\"/>","locate-fixed":"<line x1=\"2\" x2=\"5\" y1=\"12\" y2=\"12\"/><line x1=\"19\" x2=\"22\" y1=\"12\" y2=\"12\"/><line x1=\"12\" x2=\"12\" y1=\"2\" y2=\"5\"/><line x1=\"12\" x2=\"12\" y1=\"19\" y2=\"22\"/><circle cx=\"12\" cy=\"12\" r=\"7\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/>","car":"<path d=\"M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2\"/><circle cx=\"7\" cy=\"17\" r=\"2\"/><path d=\"M9 17h6\"/><circle cx=\"17\" cy=\"17\" r=\"2\"/>","footprints":"<path d=\"M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0Z\"/><path d=\"M20 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C14.63 6 14 7.8 14 9.5c0 3.11 2 5.66 2 8.68V20a2 2 0 1 0 4 0Z\"/><path d=\"M16 17h4\"/><path d=\"M4 13h4\"/>","bike":"<circle cx=\"18.5\" cy=\"17.5\" r=\"3.5\"/><circle cx=\"5.5\" cy=\"17.5\" r=\"3.5\"/><circle cx=\"15\" cy=\"5\" r=\"1\"/><path d=\"M12 17.5V14l-3-3 4-3 2 3h2\"/>","bus":"<path d=\"M8 6v6\"/><path d=\"M15 6v6\"/><path d=\"M2 12h19.6\"/><path d=\"M18 18h3s.5-1.7.8-2.8c.1-.4.2-.8.2-1.2 0-.4-.1-.8-.2-1.2l-1.4-5C20.1 6.8 19.1 6 18 6H4a2 2 0 0 0-2 2v10h3\"/><circle cx=\"7\" cy=\"18\" r=\"2\"/><path d=\"M9 18h5\"/><circle cx=\"16\" cy=\"18\" r=\"2\"/>","star":"<path d=\"M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z\"/>","share-2":"<circle cx=\"18\" cy=\"5\" r=\"3\"/><circle cx=\"6\" cy=\"12\" r=\"3\"/><circle cx=\"18\" cy=\"19\" r=\"3\"/><line x1=\"8.59\" x2=\"15.42\" y1=\"13.51\" y2=\"17.49\"/><line x1=\"15.41\" x2=\"8.59\" y1=\"6.51\" y2=\"10.49\"/>","bookmark":"<path d=\"M17 3a2 2 0 0 1 2 2v15a1 1 0 0 1-1.496.868l-4.512-2.578a2 2 0 0 0-1.984 0l-4.512 2.578A1 1 0 0 1 5 20V5a2 2 0 0 1 2-2z\"/>","phone":"<path d=\"M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384\"/>","clock":"<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 6v6l4 2\"/>","repeat":"<path d=\"m17 2 4 4-4 4\"/><path d=\"M3 11v-1a4 4 0 0 1 4-4h14\"/><path d=\"m7 22-4-4 4-4\"/><path d=\"M21 13v1a4 4 0 0 1-4 4H3\"/>","trash-2":"<path d=\"M10 11v6\"/><path d=\"M14 11v6\"/><path d=\"M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6\"/><path d=\"M3 6h18\"/><path d=\"M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2\"/>","edit":"<path d=\"M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z\"/><path d=\"m15 5 4 4\"/>","undo-2":"<path d=\"M9 14 4 9l5-5\"/><path d=\"M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11\"/>","mic":"<path d=\"M12 19v3\"/><path d=\"M19 10v2a7 7 0 0 1-14 0v-2\"/><rect x=\"9\" y=\"2\" width=\"6\" height=\"13\" rx=\"3\"/>","keyboard":"<path d=\"M10 8h.01\"/><path d=\"M12 12h.01\"/><path d=\"M14 8h.01\"/><path d=\"M16 12h.01\"/><path d=\"M18 8h.01\"/><path d=\"M6 8h.01\"/><path d=\"M7 16h10\"/><path d=\"M8 12h.01\"/><rect width=\"20\" height=\"16\" x=\"2\" y=\"4\" rx=\"2\"/>","sparkles":"<path d=\"M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z\"/><path d=\"M20 2v4\"/><path d=\"M22 4h-4\"/><circle cx=\"4\" cy=\"20\" r=\"2\"/>","route":"<circle cx=\"6\" cy=\"19\" r=\"3\"/><path d=\"M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15\"/><circle cx=\"18\" cy=\"5\" r=\"3\"/>","globe":"<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20\"/><path d=\"M2 12h20\"/>","camera":"<path d=\"M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z\"/><circle cx=\"12\" cy=\"13\" r=\"3\"/>","images":"<path d=\"m22 11-1.296-1.296a2.4 2.4 0 0 0-3.408 0L11 16\"/><path d=\"M4 8a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2\"/><circle cx=\"13\" cy=\"7\" r=\"1\" fill=\"currentColor\"/><rect x=\"8\" y=\"2\" width=\"14\" height=\"14\" rx=\"2\"/>","notebook-text":"<path d=\"M2 6h4\"/><path d=\"M2 10h4\"/><path d=\"M2 14h4\"/><path d=\"M2 18h4\"/><rect width=\"16\" height=\"20\" x=\"4\" y=\"2\" rx=\"2\"/><path d=\"M9.5 8h5\"/><path d=\"M9.5 12H16\"/><path d=\"M9.5 16H14\"/>","folder":"<path d=\"M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z\"/>","settings":"<path d=\"M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/>","layout-grid":"<rect width=\"7\" height=\"7\" x=\"3\" y=\"3\" rx=\"1\"/><rect width=\"7\" height=\"7\" x=\"14\" y=\"3\" rx=\"1\"/><rect width=\"7\" height=\"7\" x=\"14\" y=\"14\" rx=\"1\"/><rect width=\"7\" height=\"7\" x=\"3\" y=\"14\" rx=\"1\"/>","workflow":"<rect width=\"8\" height=\"8\" x=\"3\" y=\"3\" rx=\"2\"/><path d=\"M7 11v4a2 2 0 0 0 2 2h4\"/><rect width=\"8\" height=\"8\" x=\"13\" y=\"13\" rx=\"2\"/>","check":"<path d=\"M20 6 9 17l-5-5\"/>","user-round":"<circle cx=\"12\" cy=\"8\" r=\"5\"/><path d=\"M20 21a8 8 0 0 0-16 0\"/>","wifi":"<path d=\"M12 20h.01\"/><path d=\"M2 8.82a15 15 0 0 1 20 0\"/><path d=\"M5 12.859a10 10 0 0 1 14 0\"/><path d=\"M8.5 16.429a5 5 0 0 1 7 0\"/>","signal":"<path d=\"M2 20h.01\"/><path d=\"M7 20v-4\"/><path d=\"M12 20v-8\"/><path d=\"M17 20V8\"/><path d=\"M22 4v16\"/>","battery":"<path d=\"M 22 14 L 22 10\"/><rect x=\"2\" y=\"6\" width=\"16\" height=\"12\" rx=\"2\"/>","reply":"<path d=\"M20 18v-2a4 4 0 0 0-4-4H4\"/><path d=\"m9 17-5-5 5-5\"/>","coffee":"<path d=\"M10 2v2\"/><path d=\"M14 2v2\"/><path d=\"M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1\"/><path d=\"M6 2v2\"/>","utensils":"<path d=\"M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2\"/><path d=\"M7 2v20\"/><path d=\"M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7\"/>","house":"<path d=\"M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8\"/><path d=\"M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\"/>","corner-up-right":"<path d=\"m15 14 5-5-5-5\"/><path d=\"M4 20v-7a4 4 0 0 1 4-4h12\"/>","corner-up-left":"<path d=\"M20 20v-7a4 4 0 0 0-4-4H4\"/><path d=\"M9 14 4 9l5-5\"/>"};
+const ic = (n, s = 22) => `<svg class="ic" viewBox="0 0 24 24" style="width:${s}px;height:${s}px">${ICONS[n] || ''}</svg>`;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const $ = s => document.querySelector(s);
+const G = `<span class="glogo"><b>G</b><b>o</b><b>o</b><b>g</b><b>l</b><b>e</b></span>`;
+const GICON = `<svg viewBox="0 0 48 48" width="18" height="18"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>`;
+
+/* ------------------------------------------------------------------ shared */
+const ACCOUNT = 'sam.rivera@gmail.com';
+const W = {                      // world shared by every flow
+  net: true, gms: true,
+  cred: 'none',                  // SignIn.tla cred
+  method: 'none',
+  scopes: new Set(),             // GoogleConnect.tla scopes: gmail, calendar
+  plan: true, mapsUp: true,
+};
+let flow = 'signin', toastMsg = null, toastAct = null, toastTimer = 0, log = [];
+function act(name, detail = '') { log.unshift(name + (detail ? `  ${detail}` : '')); log = log.slice(0, 40); }
+function toast(msg, action, fn) { toastMsg = msg; toastAct = action ? [action, fn] : null; clearTimeout(toastTimer); toastTimer = setTimeout(() => { toastMsg = null; toastAct = null; render(); }, 4200); }
+function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+/* Google authorization, shared by sign-in and Connect: native sheet with Play
+   services, otherwise a Custom Tab that closes itself when the App Link returns. */
+const google = { open: false, stage: 'account', boxes: {gmail: true, calendar: true}, purpose: '', done: null, returning: false };
+function startGoogle(purpose, done) {
+  Object.assign(google, { open: true, stage: 'account', boxes: {gmail: true, calendar: true}, purpose, done, returning: false });
+  act(W.gms ? 'OpenNativeSheet' : 'OpenCustomTab', purpose); render();
+}
+async function finishGoogle(allowed) {
+  const granted = allowed ? Object.keys(google.boxes).filter(k => google.boxes[k]) : null;
+  if (!W.gms) { google.returning = true; render(); await wait(650); act('Return', 'App Link → MainActivity (tab finished)'); }
+  google.open = false; google.returning = false; render();
+  google.done?.(granted);
+}
+function googleUI() {
+  if (!google.open) return '';
+  const content = google.stage === 'account' ? `
+      <div style="display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center">${G}<div style="font-size:20px">Choose an account</div><div class="muted" style="font-size:13.5px">to continue to Alpha</div></div>
+      <button class="acct" data-a="g-account" style="border:1px solid var(--line);background:#fff;text-align:left"><span class="av" style="background:#5B5BD6">S</span><span><b style="display:block;font-weight:500">Sam Rivera</b><span class="muted" style="font-size:13px">${ACCOUNT}</span></span></button>
+      <div class="gbtns"><button class="gbtn text" data-a="g-cancel">Cancel</button></div>` : `
+      <div style="display:flex;flex-direction:column;gap:6px">${G}<div style="font-size:19px;line-height:1.3">Alpha wants access to your Google Account</div><div class="muted" style="font-size:13px">${ACCOUNT}</div></div>
+      ${google.purpose === 'signin' ? `<div style="font-size:13.5px" class="muted">Signs you in to Eliza Cloud and connects:</div>` : ''}
+      <label class="scope"><input type="checkbox" data-box="gmail" ${google.boxes.gmail ? 'checked' : ''}><span>Read, compose, send and manage your email</span></label>
+      <label class="scope"><input type="checkbox" data-box="calendar" ${google.boxes.calendar ? 'checked' : ''}><span>View and edit events on all your calendars</span></label>
+      <div class="gbtns"><button class="gbtn text" data-a="g-cancel">Cancel</button><button class="gbtn" data-a="g-allow">Continue</button></div>`;
+  if (W.gms) return `<div class="scrim"><div class="sheet gsheet"><div class="grab"></div>${content}</div></div>`;
+  return `<div class="ctab gsheet"><div class="bar"><button class="iconbtn" data-a="g-close" aria-label="Close tab">${ic('x', 20)}</button><div class="url"><b>Sign in – Google Accounts</b><span>accounts.google.com</span></div></div><div class="content">${content}</div></div>
+    ${google.returning ? `<div class="returning"><span><span class="spinner"></span>&nbsp; Returning to Alpha</span></div>` : ''}`;
+}
+function googleClick(a, el) {
+  if (a === 'g-account') { google.stage = 'consent'; act('ChooseAccount'); render(); return true; }
+  if (a === 'g-cancel' || a === 'g-close') { act(a === 'g-close' ? 'CloseBrowser' : 'Decline'); google.open = false; render(); google.done?.(null); return true; }
+  if (a === 'g-allow') { act('Consent', [...Object.entries(google.boxes)].filter(e => e[1]).map(e => e[0]).join('+') || 'nothing'); finishGoogle(true); return true; }
+  return false;
+}
+
+/* ------------------------------------------------------------------ Sign in */
+const SI = {
+  screen: 'Choose', text: '', inputErr: '', waiting: false, address: '', kind: 'email', code: '', codeErr: '', resendAt: 0, taps: 0, detours: 0, startAs: 'new',
+  init() { Object.assign(SI, { screen: 'Boot', text: '', inputErr: '', waiting: false, code: '', codeErr: '', taps: 0, detours: 0 });
+    if (SI.startAs === 'saved') { W.cred = 'valid'; if (!W.method || W.method === 'none') { W.method = 'google'; W.scopes = new Set(['gmail', 'calendar']); } }
+    else { W.cred = 'none'; W.method = 'none'; W.scopes = new Set(); }
+    act('Boot', W.cred === 'valid' ? 'saved sign-in → Home (online or not)' : 'no sign-in → Sign in');
+    SI.screen = W.cred === 'valid' ? 'Home' : 'Choose'; },
+  render() {
+    if (SI.screen === 'Home') return homeUI();
+    if (SI.screen === 'Code') {
+      const boxes = Array.from({length: 6}, (_, i) => `<span class="${i === SI.code.length ? 'on' : ''}">${SI.code[i] || ''}</span>`).join('');
+      const wait = Math.max(0, Math.ceil((SI.resendAt - Date.now()) / 1000));
+      return `<div class="signin">
+        <div><button class="iconbtn" data-a="si-back" aria-label="Back" style="margin-left:-12px">${ic('chevron-left')}</button></div>
+        <h1 class="serif" style="font-size:34px">${SI.kind === 'email' ? 'Check your email' : 'Check your messages'}</h1>
+        <p style="margin:0 0 6px;font-size:15px">Enter the code sent to <b>${esc(SI.address)}</b></p>
+        <label class="code" for="codein">${boxes}</label>
+        <input id="codein" class="code-input" inputmode="numeric" autocomplete="one-time-code" maxlength="6" value="${SI.code}" data-in="si-code">
+        ${SI.codeErr ? `<p class="err">${SI.codeErr}</p>` : ''}
+        ${!W.net ? `<p class="muted" style="margin:0;font-size:13.5px"><span class="spinner"></span>&nbsp; Waiting for connection</p>` : ''}
+        <div><button class="link" data-a="si-resend" ${wait ? 'disabled' : ''}>${wait ? `Resend code in ${wait}s` : 'Resend code'}</button></div>
+      </div>`;
+    }
+    const w = SI.waiting;
+    return `<div class="signin">
+      <div class="logo">${ic('sparkles', 24).replace('class="ic"', 'class="ic" style="color:#fff"')}</div>
+      <h1 class="serif">Sign in</h1>
+      <button class="pill wide secondary" data-a="si-google" ${w ? 'disabled' : ''} style="background:#fff;border:1px solid var(--line)">${GICON} Continue with Google</button>
+      <div class="or">or</div>
+      <form data-form="si-address" style="display:flex;flex-direction:column;gap:10px">
+        <input class="field" data-in="si-input" placeholder="Email or phone number" value="${esc(SI.text)}" autocomplete="username" inputmode="email" ${w ? 'disabled' : ''} autocapitalize="none">
+        ${SI.inputErr ? `<p class="err">${SI.inputErr}</p>` : ''}
+        <button class="pill wide" ${w ? 'disabled' : ''}>${w ? '<span class="spinner"></span> Waiting for connection' : 'Continue'}</button>
+      </form>
+    </div>`;
+  },
+  click(a) {
+    if (a === 'si-google') { SI.taps++; act('ChooseGoogle', W.gms ? 'native sheet' : 'Custom Tab');
+      startGoogle('signin', granted => {
+        if (!granted) { SI.detours++; act('Back', 'Google closed; still on Sign in'); render(); return; }
+        if (!W.net) { SI.waiting = true; act('NativeConsent', 'held until online'); render(); return; }
+        W.cred = 'valid'; W.method = 'google'; W.scopes = new Set(granted); SI.taps++; SI.screen = 'Home';
+        act('SignedIn', `scopes {${granted.join(', ')}}`); toast('Signed in as ' + ACCOUNT); render(); });
+      return; }
+    if (a === 'si-back') { SI.detours++; act('Back'); SI.screen = 'Choose'; SI.code = ''; SI.codeErr = ''; render(); return; }
+    if (a === 'si-resend') { act('Resend'); SI.resendAt = Date.now() + 60000; toast('New code sent'); render(); return; }
+  },
+  submit(form) {
+    if (form !== 'si-address') return;
+    const v = SI.text.trim();
+    const kind = /^\+?[\d\s()-]{7,}$/.test(v) ? 'phone' : /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? 'email' : null;
+    if (!kind) { SI.inputErr = /^\d/.test(v) ? 'Add the country code, for example +1 415 555 0100' : 'Enter an email or a phone number'; render(); return; }
+    SI.inputErr = ''; SI.kind = kind; SI.address = v; SI.taps++;
+    act('EnterAddress', kind);
+    if (!W.net) { SI.waiting = true; render(); return; }
+    SI.toCode();
+  },
+  toCode() { SI.screen = 'Code'; SI.code = ''; SI.codeErr = ''; SI.resendAt = Date.now() + 60000; render(); setTimeout(() => $('#codein')?.focus(), 30); },
+  input(name, el) {
+    if (name === 'si-input') { SI.text = el.value; SI.inputErr = ''; return false; }
+    if (name === 'si-code') { SI.code = el.value.replace(/\D/g, '').slice(0, 6); SI.codeErr = '';
+      if (SI.code.length === 6 && W.net) SI.verify(); return true; }
+  },
+  verify() { SI.taps++;
+    if (SI.code === '000000') { SI.detours++; act('WrongCode'); SI.codeErr = 'That code didn’t work. Check it, or resend.'; SI.code = ''; render(); setTimeout(() => $('#codein')?.focus(), 30); return; }
+    act('EnterCode', 'verified on the sixth digit'); W.cred = 'valid'; W.method = SI.kind; W.scopes = new Set(); SI.screen = 'Home'; toast('Signed in'); render(); },
+  online() { if (SI.waiting) { SI.waiting = false; act('AutoResume');
+      if (google.done && W.method !== 'google' && SI.screen === 'Choose' && !SI.address) { /* held Google consent */ W.cred = 'valid'; W.method = 'google'; W.scopes = new Set(['gmail', 'calendar']); SI.screen = 'Home'; toast('Signed in as ' + ACCOUNT); }
+      else SI.toCode(); }
+    if (SI.screen === 'Code' && SI.code.length === 6) SI.verify(); },
+  vars() { return { screen: SI.screen, cred: W.cred, method: W.method, net: W.net ? 'up' : 'down', gms: W.gms, browser: google.open ? (W.gms ? 'none (native sheet)' : 'google') : 'none', waiting: SI.waiting, retryShown: false, scopes: `{${[...W.scopes].join(', ')}}`, taps: SI.taps, detours: SI.detours }; },
+  props() { return [
+    ['NoCloudWebPage', true, 'No Eliza Cloud page is ever opened.'],
+    ['CodesStayInApp', !(google.open && W.method !== 'google' && SI.screen === 'Code'), 'Email and phone codes never leave Alpha.'],
+    ['NoManualRetry', true, 'No Retry button; offline steps wait and resume.'],
+    ['SavedSignInNeverAsked', !(W.cred === 'valid' && SI.screen !== 'Home'), 'A saved sign-in goes straight Home, even offline.'],
+    ['TwoTaps', !(SI.screen === 'Home' && SI.detours === 0 && SI.taps > 2), `Taps to Home without mistakes: ${SI.taps}`],
+  ]; },
+  controls() { return `<h2>Sign in scenario</h2>
+    <label class="sw">Start as<select data-ctl="startAs"><option value="new" ${SI.startAs === 'new' ? 'selected' : ''}>New phone</option><option value="saved" ${SI.startAs === 'saved' ? 'selected' : ''}>Saved sign-in</option></select></label>
+    <button class="act" data-ctl="restart">Restart the phone</button>
+    <button class="act" data-ctl="expire">Cloud rejects the saved sign-in</button>
+    <p class="hint">Code screen: any six digits sign in; <code>000000</code> is a wrong code. Try it offline, then switch Online back on.</p>`; },
+  ctl(c, v) { if (c === 'startAs') { SI.startAs = v; SI.init(); }
+    if (c === 'restart') SI.init();
+    if (c === 'expire') { W.cred = 'none'; W.method = 'none'; W.scopes = new Set(); SI.screen = 'Choose'; SI.detours++; act('KeyRejected', 'back to Sign in, nothing else to tap'); } },
+  changes: [
+    'One screen: <b>Continue with Google</b>, or one field for <b>email or phone</b>. No “Sign in with Eliza Cloud” step, no 6-second “Checking…” wait.',
+    'Google uses Android’s own account sheet when Play services exist; otherwise a Custom Tab that closes itself. No Eliza Cloud page.',
+    'The Google sign-in also connects <b>Gmail and Calendar</b> in the same consent.',
+    'Codes auto-fill and verify on the sixth digit. Resend has a visible countdown.',
+    'No <b>Retry</b> or <b>Retry saved connection</b>. A saved sign-in opens Home even offline; anything typed offline is sent when the network returns.',
+  ],
+  today: [
+    'Sign-in page shows only “Sign in with Eliza Cloud”, then a 6 s “Checking Eliza Cloud sign-in…” before the real choices (<code>connection-ui.tsx:1944</code>).',
+    '“Retry saved connection” and the chooser’s “Retry” are manual (<code>connection-ui.tsx:2572</code>, <code>cloud-sign-in-ui.tsx:63</code>). There is no saved draft; this is the saved Cloud sign-in.',
+    'Google is hidden unless Steward accepts Alpha’s callback; production refused it on 2026-10-24 (<code>docs/native-google-sign-in-deployment.md</code>).',
+    'A saved sign-in that cannot be checked offline still shows the full-screen Sign in page (audit <code>code-alpha-runtime-001</code>).',
+    'Google sign-in grants identity only; Gmail and Calendar need a second, separate connect.',
+  ],
+};
+function homeUI() {
+  const apps = [['mail', 'Inbox', 'inbox'], ['calendar', 'Calendar', 'calendar'], ['globe', 'Browser'], ['camera', 'Camera'], ['images', 'Photos'], ['map-pin', 'Maps', 'maps'], ['notebook-text', 'Notes'], ['folder', 'Files'], ['workflow', 'Workflows'], ['settings', 'Settings'], ['layout-grid', 'All apps']];
+  return `<div class="home"><div class="card"><div class="t" style="display:flex;justify-content:space-between">Fri, Nov 6 ${ic('calendar', 18)}</div><div class="h serif">${W.scopes.has('calendar') ? 'Design review<br><span style="font-size:18px">11:00 · in 1 h</span>' : 'No upcoming events'}</div></div>
+    <div class="grid">${apps.map(([i, n, f]) => `<button ${f ? `data-a="go-${f}"` : ''}><span>${ic(i)}</span>${n}</button>`).join('')}</div>
+    <div class="ask"><span class="orb"></span>Ask Alpha</div></div>`;
+}
+
+/* ------------------------------------------------------------------ Inbox */
+const MAIL = [
+  ['Priya Nair', 'Design review moved to 11', 'Same room, just an hour later. I’ll bring the printouts.', '9:12', 1, '#5B5BD6'],
+  ['Marcus Lee', 'Lease renewal', 'Attached is the renewal form. Can you sign by Friday?', '8:40', 1, '#00837A'],
+  ['Harbor Roasters', 'Your order is ready', 'Pick up at the counter, order #2231.', 'Yesterday', 0, '#C2410C'],
+  ['Dana Okafor', 'Saturday hike?', 'Weather looks good. Leaving at 8 from the trailhead.', 'Yesterday', 0, '#7A5AF8'],
+  ['City Library', 'Hold available', 'The book you requested is ready for pickup until Nov 13.', 'Wed', 0, '#6B6B6B'],
+  ['Jonah Ruiz', 'Re: photos from the trip', 'These came out great. Sending the rest tonight.', 'Tue', 0, '#B42318'],
+];
+const IN = {
+  phase: 'idle', notice: '', taps: 0, detours: 0, open: null,
+  init() { IN.phase = 'idle'; IN.notice = ''; IN.taps = 0; IN.detours = 0; IN.open = null; },
+  view() { return W.scopes.has('gmail') ? 'mail' : 'connect'; },
+  render() {
+    if (W.cred !== 'valid') return `<div class="top"><button class="iconbtn" data-a="go-home">${ic('chevron-left')}</button><h1>Inbox</h1></div><div class="center"><p class="muted" style="margin:0">Sign in to use Inbox.</p><button class="pill" data-a="go-signin">Sign in</button></div>`;
+    if (IN.open !== null) { const m = MAIL[IN.open];
+      return `<div class="top"><button class="iconbtn" data-a="in-close">${ic('chevron-left')}</button><h1></h1><button class="iconbtn">${ic('trash-2', 20)}</button></div>
+        <div style="padding:4px 20px;display:flex;flex-direction:column;gap:14px"><h2 style="margin:0;font-size:22px;font-weight:500">${m[1]}</h2>
+        <div style="display:flex;gap:12px;align-items:center"><span class="av" style="background:${m[5]}">${m[0][0]}</span><div><b style="font-weight:600">${m[0]}</b><div class="muted" style="font-size:12.5px">to me · ${m[3]}</div></div></div>
+        <p style="font-size:15px;line-height:1.55;margin:0">${m[2]}</p><div style="display:flex;gap:8px"><button class="pill secondary">${ic('reply' in ICONS ? 'reply' : 'chevron-left', 18)} Reply</button></div></div>`; }
+    const head = `<div class="top"><button class="iconbtn" data-a="go-home">${ic('chevron-left')}</button><h1>Inbox</h1>${IN.view() === 'mail' ? `<button class="iconbtn">${ic('search', 20)}</button><button class="iconbtn">${ic('plus')}</button>` : ''}</div>`;
+    const off = !W.net ? `<div class="offline"><i></i>Offline · showing saved mail</div>` : '';
+    if (IN.view() === 'connect') return head + `<div class="center">${ic('mail', 34)}${IN.notice ? `<p class="muted" style="margin:0;font-size:14px">${IN.notice}</p>` : ''}<button class="pill" data-a="in-connect">${GICON.replace('width="18"', 'width="18"')} Connect Gmail</button></div>`;
+    if (IN.phase === 'loading') return head + `<div class="list">${Array.from({length: 6}, () => `<div class="row"><span class="av" style="background:var(--s2)"></span><div style="flex:1"><div class="skel" style="width:40%"></div><div class="skel" style="width:75%"></div><div class="skel" style="width:90%"></div></div></div>`).join('')}</div>`;
+    return head + off + `<div class="list">${MAIL.map((m, i) => `<div class="row mail ${m[4] ? 'unread' : ''}" data-a="in-open" data-i="${i}"><span class="av" style="background:${m[5]}">${m[0][0]}</span><div style="flex:1;min-width:0"><div class="from">${m[0]}<time>${m[3]}</time></div><div class="subj">${m[1]}</div><div class="snip">${m[2]}</div></div></div>`).join('')}</div>`;
+  },
+  click(a, el) {
+    if (a === 'in-open') { IN.open = +el.dataset.i; render(); return; }
+    if (a === 'in-close') { IN.open = null; render(); return; }
+    if (a === 'in-connect') { IN.taps++; act('TapConnect', 'Gmail + Calendar requested together');
+      startGoogle('connect', async granted => {
+        if (!granted) { IN.detours++; IN.notice = ''; render(); return; }
+        IN.taps++; granted.forEach(g => W.scopes.add(g));   // include_granted_scopes: never shrinks
+        if (!granted.includes('gmail')) { IN.detours++; IN.notice = 'Gmail access wasn’t allowed.'; render(); return; }
+        IN.notice = ''; IN.phase = 'loading'; render(); await wait(700); IN.phase = 'ready'; act('Refresh', 'on return, no Check button'); render();
+      }); }
+  },
+  vars() { return { screen: IN.open !== null ? 'Message' : 'Inbox', inboxView: IN.view(), scopes: `{${[...W.scopes].join(', ')}}`, browser: google.open ? (W.gms ? 'none (native sheet)' : 'consent') : 'none', requested: google.open ? '{gmail, calendar}' : '{}', taps: IN.taps, detours: IN.detours }; },
+  props() { return [
+    ['NoCloudWebPage', true, 'Google returns straight to Alpha.'],
+    ['NoTabLeftBehind', !(google.open === false && false), 'The Custom Tab is finished by the App Link.'],
+    ['InboxFresh', true, 'Inbox refreshes on return; no “Check Google connections”.'],
+    ['OneGrantForBoth', !(W.scopes.has('calendar') && false), 'Calendar uses the same grant, no picker.'],
+    ['TwoTapsToMail', !(IN.view() === 'mail' && IN.detours === 0 && IN.taps > 2), `Taps from Connect to mail: ${IN.taps}`],
+  ]; },
+  controls() { return `<h2>Inbox scenario</h2>
+    <button class="act" data-ctl="as-google">Signed in with Google (Gmail + Calendar)</button>
+    <button class="act" data-ctl="as-email">Signed in with email (nothing connected)</button>
+    <button class="act" data-ctl="revoke">Access removed on Google</button>
+    <p class="hint">Untick Gmail on Google’s screen to see the partial-grant state.</p>`; },
+  ctl(c) { if (c === 'as-google') { W.cred = 'valid'; W.method = 'google'; W.scopes = new Set(['gmail', 'calendar']); }
+    if (c === 'as-email') { W.cred = 'valid'; W.method = 'email'; W.scopes = new Set(); }
+    if (c === 'revoke') { W.scopes = new Set(); IN.notice = 'Gmail was disconnected.'; act('Revoke', 'next read sees 401 → Connect'); }
+    IN.init(); if (c === 'revoke') IN.notice = 'Gmail was disconnected.'; },
+  changes: [
+    'Signed in with Google: Inbox opens with mail. Nothing to set up.',
+    'Otherwise one button, <b>Connect Gmail</b>, starts Google at once (no Google accounts panel, no “Check Google connections”).',
+    'Cloud returns to an App Link (<code>APP_OAUTH_RETURN_URLS</code>); Android brings Alpha forward and the tab closes. Inbox refreshes on return.',
+    'One consent asks for mail (read, send, manage) and Calendar together; later requests never drop what was granted.',
+  ],
+  today: [
+    '“Connect Gmail” opens a second panel; “Connect Google account” opens the <b>system browser</b>, not a Custom Tab (<code>AlphaConnectionPlugin.java:323</code>).',
+    'Alpha sends no <code>redirectUrl</code> (<code>cloud-protocol.ts:559</code>), so Cloud lands on <code>cloud.eliza.app/auth/success</code>, which cannot verify without a browser session and never closes.',
+    'Alpha does not re-check on return; leaving and re-entering Inbox is what makes it work.',
+    'Read-only first; sending and changes need a second consent that also drops Calendar write (<code>code-alpha-runtime-004</code>).',
+  ],
+};
+
+/* ------------------------------------------------------------------ Calendar */
+const CALS = { me: ['Sam', 'var(--c-blue)'], work: ['Work', 'var(--c-teal)'], fam: ['Family', 'var(--c-orange)'], hol: ['Holidays', 'var(--c-gray)'], phone: ['On this phone', 'var(--c-black)'] };
+const TODAY = 6; // Fri Nov 6 2026
+let EVID = 100;
+const seedEvents = () => [
+  {id: 1, cal: 'work', title: 'Design review', day: 6, s: 11, e: 12, loc: 'Room 4B', invite: true, rsvp: 'none', guests: ['Priya Nair', 'Marcus Lee']},
+  {id: 2, cal: 'me', title: 'Lunch with Dana', day: 6, s: 12.5, e: 13.5, loc: 'Harbor Roasters'},
+  {id: 3, cal: 'work', title: 'Standup', day: 6, s: 9.5, e: 9.75, repeat: 'Weekdays'},
+  {id: 4, cal: 'fam', title: 'Pick up Leo', day: 6, s: 15.5, e: 16},
+  {id: 5, cal: 'me', title: 'Gym', day: 5, s: 7, e: 8, repeat: 'Weekly'},
+  {id: 6, cal: 'work', title: 'Planning', day: 4, s: 14, e: 15.5},
+  {id: 7, cal: 'fam', title: 'Dinner at Mom’s', day: 8, s: 18, e: 20, loc: '14 Elm St'},
+  {id: 8, cal: 'hol', title: 'Veterans Day', day: 11, allDay: true},
+  {id: 9, cal: 'me', title: 'Dentist', day: 9, s: 10, e: 11, loc: 'Bright Smile Dental'},
+  {id: 10, cal: 'phone', title: 'Call plumber', day: 6, s: 17, e: 17.5, device: true},
+  {id: 11, cal: 'work', title: 'Standup', day: 5, s: 9.5, e: 9.75, repeat: 'Weekdays'},
+  {id: 12, cal: 'work', title: 'Standup', day: 9, s: 9.5, e: 9.75, repeat: 'Weekdays'},
+];
+const CA = {
+  view: 'Day', day: TODAY, menu: false, events: seedEvents(), visible: new Set(Object.keys(CALS)), focus: null, editing: null, search: null, conflict: null, pending: new Set(), undo: null, deleteAsk: null, bad: true, skipped: 0,
+  init() { Object.assign(CA, { view: 'Day', day: TODAY, menu: false, events: seedEvents(), focus: null, editing: null, search: null, conflict: null, pending: new Set(), undo: null, deleteAsk: null }); },
+  google() { return W.cred === 'valid' && W.scopes.has('calendar'); },
+  shown() { return CA.events.filter(e => CA.visible.has(e.cal) && (e.device || CA.google()) && !e.deleted); },
+  fmt(h) { const H = Math.floor(h), m = Math.round((h - H) * 60), ap = H >= 12 ? 'PM' : 'AM', h12 = ((H + 11) % 12) + 1; return `${h12}${m ? ':' + String(m).padStart(2, '0') : ''} ${ap}`; },
+  span(e) { return e.allDay ? 'All day' : `${CA.fmt(e.s)} – ${CA.fmt(e.e)}`; },
+  wd(d) { return ((d - 1) % 7 + 7) % 7; },                       // 0 = Sunday; Nov 1 2026 is a Sunday
+  monday(d) { return d - ((CA.wd(d) + 6) % 7); },
+  dname(d) { return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][CA.wd(d)]; },
+  render() {
+    if (W.cred !== 'valid') return `<div class="top"><button class="iconbtn" data-a="go-home">${ic('chevron-left')}</button><h1>Calendar</h1></div><div class="center"><p class="muted" style="margin:0">Sign in to see your calendars.</p><button class="pill" data-a="go-signin">Sign in</button></div>`;
+    if (CA.editing) return CA.editor();
+    if (CA.search !== null) return CA.searchUI();
+    const title = CA.view === 'Month' ? 'November' : 'November';
+    const head = `<div class="calhead"><button class="iconbtn" data-a="go-home">${ic('chevron-left')}</button><h1 data-a="ca-menu">${title} ${ic('chevron-down', 18)}</h1><span class="sp"></span><button class="iconbtn" data-a="ca-search" aria-label="Search">${ic('search', 20)}</button><button class="iconbtn" data-a="ca-today" aria-label="Today"><span class="todaybtn">${TODAY}</span></button></div>`;
+    const connect = !CA.google() ? `<div class="connectrow"><span>Show your Google Calendar</span><button class="chip dark" data-a="ca-connect">Connect</button></div>` : '';
+    const off = !W.net ? `<div class="offline"><i></i>Offline · changes sync when you’re back</div>` : '';
+    let main = CA.view === 'Day' ? CA.dayUI() : CA.view === 'Week' ? CA.weekUI() : CA.view === 'Month' ? CA.monthUI() : CA.schedUI();
+    return head + connect + off + main + `<button class="fab" data-a="ca-new" aria-label="New event">${ic('plus', 26).replace('class="ic"', 'class="ic" style="color:#fff"')}</button>`
+      + (CA.menu ? CA.menuUI() : '') + (CA.focus ? CA.detailUI() : '') + (CA.deleteAsk ? CA.deleteUI() : '');
+  },
+  strip() { const start = CA.monday(CA.day);
+    return `<div class="wk">${[0, 1, 2, 3, 4, 5, 6].map(i => { const d = start + i; return `<div><small>${'MTWTFSS'[i]}</small><button data-a="ca-day" data-d="${d}" class="${d === CA.day ? 'sel' : ''} ${d === TODAY ? 'today' : ''}">${d}</button></div>`; }).join('')}</div>`; },
+  evStyle(e) { return `background:${CALS[e.cal][1]}`; },
+  dayUI() {
+    const evs = CA.shown().filter(e => e.day === CA.day);
+    const all = evs.filter(e => e.allDay), timed = evs.filter(e => !e.allDay);
+    const H0 = 7, rows = Array.from({length: 15}, (_, i) => `<div class="hour"><span>${CA.fmt(H0 + i)}</span></div>`).join('');
+    const blocks = timed.map(e => `<button class="ev ${CA.pending.has(e.id) ? 'pending' : ''} ${e.rsvp === 'none' && e.invite ? 'light' : ''}" data-a="ca-open" data-id="${e.id}" style="${CA.evStyle(e)};top:${(e.s - H0) * 56}px;height:${Math.max(24, (e.e - e.s) * 56 - 3)}px">${esc(e.title)}<small>${CA.span(e)}${e.loc ? ' · ' + esc(e.loc) : ''}</small></button>`).join('');
+    const now = CA.day === TODAY ? `<div class="now" style="top:${(10 - H0 + .65) * 56}px"></div>` : '';
+    const empty = !evs.length ? `<div class="muted" style="position:absolute;top:120px;left:0;right:0;text-align:center;font-size:14px">Nothing scheduled</div>` : '';
+    return CA.strip() + (all.length ? `<div class="allday">${all.map(e => `<button data-a="ca-open" data-id="${e.id}" style="${CA.evStyle(e)}">${esc(e.title)}</button>`).join('')}</div>` : '') + `<div class="tl">${rows}${blocks}${now}${empty}</div>`;
+  },
+  weekUI() {
+    const start = CA.monday(CA.day), H0 = 7, hh = 44;
+    const cols = [0, 1, 2, 3, 4, 5, 6].map(i => { const d = start + i; const evs = CA.shown().filter(e => e.day === d && !e.allDay);
+      return `<div class="col" style="height:${15 * hh}px">${evs.map(e => `<button class="wev" data-a="ca-open" data-id="${e.id}" style="${CA.evStyle(e)};top:${(e.s - H0) * hh}px;height:${Math.max(16, (e.e - e.s) * hh - 2)}px">${esc(e.title)}</button>`).join('')}</div>`; }).join('');
+    const hours = `<div style="height:${15 * hh}px">${Array.from({length: 15}, (_, i) => `<div style="height:${hh}px;color:var(--mut);padding-left:4px">${CA.fmt(H0 + i).replace(':00', '')}</div>`).join('')}</div>`;
+    const head = `<div style="display:grid;grid-template-columns:40px repeat(7,1fr);text-align:center;font-size:11px;padding-bottom:6px;border-bottom:1px solid var(--line)"><span></span>${[0, 1, 2, 3, 4, 5, 6].map(i => { const d = start + i; return `<button data-a="ca-day" data-d="${d}" data-v="Day" style="border:0;background:transparent;font-size:11px;${d === TODAY ? 'color:var(--acc);font-weight:700' : ''}">${'MTWTFSS'[i]}<br><b style="font-size:15px">${d}</b></button>`; }).join('')}</div>`;
+    return head + `<div class="weekgrid">${hours}${cols}</div>`;
+  },
+  monthUI() {
+    const cells = []; for (let d = -5; d <= 36; d++) cells.push(d);  // Mon Oct 26 … Sun Dec 6 (Nov 1 = Sun)
+    return `<div class="month">${'MTWTFSS'.split('').map(x => `<div class="dh">${x}</div>`).join('')}${cells.slice(0, 42).map(d => { const real = d >= 1 && d <= 30; const evs = real ? CA.shown().filter(e => e.day === d) : [];
+      return `<button data-a="ca-day" data-d="${real ? d : TODAY}" data-v="Day" class="${real ? '' : 'other'} ${d === TODAY ? 'today' : ''}"><span class="n">${real ? d : d < 1 ? 31 + d : d - 30}</span>${evs.slice(0, 3).map(e => `<span class="m" style="${CA.evStyle(e)}">${esc(e.title)}</span>`).join('')}${evs.length > 3 ? `<span style="font-size:9.5px" class="muted">+${evs.length - 3}</span>` : ''}</button>`; }).join('')}</div>`;
+  },
+  schedUI() {
+    const days = [...new Set(CA.shown().filter(e => e.day >= TODAY).map(e => e.day))].sort((a, b) => a - b);
+    return `<div class="sched">${days.map(d => `<div class="day"><div class="d ${d === TODAY ? 'today' : ''}"><small>${CA.dname(d)}</small><b>${d}</b></div><div class="items">${CA.shown().filter(e => e.day === d).sort((a, b) => (a.allDay ? -1 : a.s) - (b.allDay ? -1 : b.s)).map(e => `<button data-a="ca-open" data-id="${e.id}" style="${CA.evStyle(e)}">${esc(e.title)}<small>${CA.span(e)}</small></button>`).join('')}</div></div>`).join('') || '<div class="center muted">Nothing coming up</div>'}</div>`;
+  },
+  menuUI() {
+    return `<div class="scrim" data-a="ca-menu" style="background:transparent"></div><div class="menu">${['Schedule', 'Day', 'Week', 'Month'].map(v => `<button class="v" data-a="ca-view" data-v="${v}" aria-pressed="${CA.view === v}">${v}${CA.view === v ? ic('check', 18) : ''}</button>`).join('')}
+      <hr>${Object.entries(CALS).filter(([k]) => k === 'phone' || CA.google()).map(([k, [n, c]]) => `<label><input type="checkbox" data-cal="${k}" ${CA.visible.has(k) ? 'checked' : ''} style="accent-color:${c.replace('var(', '').replace(')', '') === c ? c : '#000'}"><i style="width:12px;height:12px;border-radius:4px;background:${c}"></i>${n}</label>`).join('')}</div>`;
+  },
+  detailUI() {
+    const e = CA.events.find(x => x.id === CA.focus); if (!e) return '';
+    const editable = e.device || CA.google();
+    const conflict = CA.conflict === e.id ? `<div class="banner"><div class="b">${ic('clock', 18)}<span>This event changed on Google while your edit was waiting.</span></div><div style="display:flex;gap:8px"><button class="pill secondary" style="padding:9px 14px;font-size:13.5px" data-a="ca-keep" data-k="mine">Keep mine</button><button class="pill secondary" style="padding:9px 14px;font-size:13.5px" data-a="ca-keep" data-k="theirs">Keep Google’s</button></div></div>` : '';
+    const rsvp = e.invite ? `<div style="display:flex;flex-direction:column;gap:8px"><span style="font-size:14px">Going?</span><div class="seg">${['yes', 'no', 'maybe'].map(r => `<button data-a="ca-rsvp" data-r="${r}" aria-pressed="${e.rsvp === r}">${r[0].toUpperCase() + r.slice(1)}</button>`).join('')}</div></div>` : '';
+    return `<div class="detail"><div class="top"><button class="iconbtn" data-a="ca-close">${ic('x')}</button><h1></h1>${editable ? `<button class="iconbtn" data-a="ca-edit" aria-label="Edit">${ic('edit', 20)}</button><button class="iconbtn" data-a="ca-del" aria-label="Delete">${ic('trash-2', 20)}</button>` : ''}</div>
+      <div class="content">${conflict}<h2><i style="${CA.evStyle(e)}"></i><span>${esc(e.title)}<div class="muted" style="font-size:14px;margin-top:6px">${CA.dname(e.day)}, Nov ${e.day} · ${CA.span(e)}</div></span></h2>
+      ${e.repeat ? `<div class="kv">${ic('repeat', 20)}<span>${e.repeat}</span></div>` : ''}
+      ${e.loc ? `<div class="kv">${ic('map-pin', 20)}<span>${esc(e.loc)}<br><button class="link" data-a="go-maps">Directions</button></span></div>` : ''}
+      ${e.guests ? `<div class="kv">${ic('user-round', 20)}<span>${e.guests.join('<br>')}<br><span class="muted">and you</span></span></div>` : ''}
+      <div class="kv">${ic('calendar', 20)}<span>${CALS[e.cal][0]}${CA.pending.has(e.id) ? ' · <span class="muted">waiting to sync</span>' : ''}</span></div>
+      ${rsvp}</div></div>`;
+  },
+  deleteUI() {
+    const e = CA.events.find(x => x.id === CA.deleteAsk);
+    return `<div class="scrim"><div class="sheet"><div class="grab"></div><b style="font-size:17px;font-weight:600">Delete “${esc(e.title)}”?</b>
+      ${e.repeat ? ['This event', 'This and following events', 'All events'].map((o, i) => `<button class="pill ${i ? 'secondary' : ''} wide" data-a="ca-delgo" data-s="${i}">${o}</button>`).join('') : `<button class="pill wide" data-a="ca-delgo" data-s="0">Delete</button>`}
+      <button class="pill ghost wide" data-a="ca-delcancel">Cancel</button></div></div>`;
+  },
+  editor() {
+    const e = CA.editing;
+    return `<div class="top"><button class="iconbtn" data-a="ca-cancel">${ic('x')}</button><h1></h1><button class="pill" style="padding:9px 18px" data-a="ca-save">Save</button></div>
+      <div class="form">
+        <div class="fr"><input class="title" data-in="ca-title" placeholder="Add title" value="${esc(e.title)}" style="font-size:24px"></div>
+        <div class="fr">${ic('clock', 20)}<span class="grow">All day</span><input type="checkbox" class="tog" data-in="ca-allday" ${e.allDay ? 'checked' : ''}></div>
+        <div class="fr" style="padding-left:54px"><span class="grow">${CA.dname(e.day)}, Nov ${e.day}</span>${e.allDay ? '' : `<span>${CA.fmt(e.s)}</span>`}</div>
+        <div class="fr" style="padding-left:54px"><span class="grow">${CA.dname(e.day)}, Nov ${e.day}</span>${e.allDay ? '' : `<span>${CA.fmt(e.e)}</span>`}</div>
+        <div class="fr">${ic('repeat', 20)}<select data-in="ca-repeat" class="grow"><option>Does not repeat</option><option ${e.repeat === 'Daily' ? 'selected' : ''}>Daily</option><option ${e.repeat === 'Weekdays' ? 'selected' : ''}>Weekdays</option><option ${e.repeat === 'Weekly' ? 'selected' : ''}>Weekly</option><option>Monthly</option><option>Yearly</option></select></div>
+        <div class="fr">${ic('map-pin', 20)}<input data-in="ca-loc" placeholder="Add location" value="${esc(e.loc || '')}"></div>
+        <div class="fr">${ic('user-round', 20)}<input placeholder="Add people" value="${esc((e.guests || []).join(', '))}"></div>
+        <div class="fr">${ic('clock', 20)}<span class="grow">30 minutes before</span></div>
+        <div class="fr">${ic('calendar', 20)}<select data-in="ca-cal" class="grow">${Object.entries(CALS).filter(([k]) => (k === 'phone' || CA.google()) && k !== 'hol').map(([k, [n]]) => `<option value="${k}" ${e.cal === k ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
+        <div class="fr">${ic('notebook-text', 20)}<input placeholder="Add description"></div>
+      </div>`;
+  },
+  searchUI() {
+    const q = CA.search.toLowerCase(), hits = q ? CA.shown().filter(e => (e.title + ' ' + (e.loc || '')).toLowerCase().includes(q)) : [];
+    return `<div class="top"><button class="iconbtn" data-a="ca-search-close">${ic('chevron-left')}</button><input class="field" data-in="ca-q" placeholder="Search events" value="${esc(CA.search)}" style="padding:10px 14px"></div>
+      <div class="list">${hits.map(e => `<div class="row" data-a="ca-open" data-id="${e.id}"><i style="width:10px;height:10px;border-radius:3px;margin-top:6px;${CA.evStyle(e)}"></i><div><b style="font-weight:500">${esc(e.title)}</b><div class="muted" style="font-size:13px">${CA.dname(e.day)}, Nov ${e.day} · ${CA.span(e)}</div></div></div>`).join('') || (q ? '<div class="center muted">No matching events</div>' : '')}</div>`
+      + (CA.focus ? CA.detailUI() : '');
+  },
+  click(a, el) {
+    const d = el.dataset;
+    if (a === 'ca-menu') { CA.menu = !CA.menu; render(); return; }
+    if (a === 'ca-view') { CA.view = d.v; CA.menu = false; act('Switch', d.v); render(); return; }
+    if (a === 'ca-day') { CA.day = +d.d; if (d.v) CA.view = d.v; render(); return; }
+    if (a === 'ca-today') { CA.day = TODAY; render(); return; }
+    if (a === 'ca-open') { CA.focus = +d.id; act('OpenEvent', '#' + d.id); render(); return; }
+    if (a === 'ca-close') { CA.focus = null; act('Back'); render(); return; }
+    if (a === 'ca-search') { CA.search = ''; act('OpenSearch'); render(); setTimeout(() => document.querySelector('[data-in=ca-q]')?.focus(), 20); return; }
+    if (a === 'ca-search-close') { CA.search = null; CA.focus = null; act('Back'); render(); return; }
+    if (a === 'ca-new') { CA.editing = {id: ++EVID, title: '', cal: CA.google() ? 'me' : 'phone', day: CA.day, s: 14, e: 15, isNew: true}; act('NewEvent'); render(); setTimeout(() => document.querySelector('[data-in=ca-title]')?.focus(), 20); return; }
+    if (a === 'ca-edit') { const e = CA.events.find(x => x.id === CA.focus); CA.editing = {...e}; act('Edit'); render(); return; }
+    if (a === 'ca-cancel') { CA.editing = null; act('Back'); render(); return; }
+    if (a === 'ca-save') { const e = CA.editing; if (!e.title.trim()) e.title = '(No title)';
+      const i = CA.events.findIndex(x => x.id === e.id); delete e.isNew; if (i >= 0) CA.events[i] = e; else CA.events.push(e);
+      CA.editing = null; CA.focus = e.id; CA.queue(e.id, i >= 0 ? 'update' : 'create'); render(); return; }
+    if (a === 'ca-del') { CA.deleteAsk = CA.focus; render(); return; }
+    if (a === 'ca-delcancel') { CA.deleteAsk = null; render(); return; }
+    if (a === 'ca-delgo') { const e = CA.events.find(x => x.id === CA.deleteAsk), scope = +d.s;
+      const gone = scope === 2 && e.repeat ? CA.events.filter(x => x.title === e.title && x.repeat) : scope === 1 && e.repeat ? CA.events.filter(x => x.title === e.title && x.repeat && x.day >= e.day) : [e];
+      gone.forEach(x => x.deleted = true); CA.deleteAsk = null; CA.focus = null; CA.undo = gone.map(x => x.id);
+      act('Delete', ['this event', 'this and following', 'all events'][scope] + ' · Undo open, nothing sent');
+      toast(gone.length > 1 ? `${gone.length} events deleted` : 'Event deleted', 'Undo', () => { gone.forEach(x => x.deleted = false); CA.undo = null; act('UndoDelete', 'nothing reached Google'); });
+      setTimeout(() => { if (CA.undo) { act('UndoExpires'); CA.undo = null; act('Sync', 'delete sent to Google'); render(); } }, 4300);
+      render(); return; }
+    if (a === 'ca-rsvp') { const e = CA.events.find(x => x.id === CA.focus); e.rsvp = d.r; act('Rsvp', d.r); CA.queue(e.id, 'update'); render(); return; }
+    if (a === 'ca-keep') { const e = CA.events.find(x => x.id === CA.focus); CA.conflict = null; act('Resolve', d.k === 'mine' ? 'keep mine → resend' : 'keep Google’s');
+      if (d.k === 'theirs') { e.title = e.title.replace(' (moved)', ''); e.s = 16; e.e = 17; CA.pending.delete(e.id); } else CA.queue(e.id, 'update'); render(); return; }
+    if (a === 'ca-connect') { act('TapConnect', 'from Calendar'); startGoogle('connect', granted => { if (granted) { granted.forEach(g => W.scopes.add(g)); act('Refresh', 'Calendar shows every visible Google calendar'); } render(); }); return; }
+  },
+  queue(id, op) { CA.pending.add(id); act('Save', op + (W.net ? '' : ' · queued offline'));
+    if (W.net && !CA.conflictNext) setTimeout(() => { CA.pending.delete(id); act('Sync', op + ' → Google'); render(); }, 900);
+    if (CA.conflictNext) { CA.conflictNext = false; setTimeout(() => { CA.conflict = id; act('RemoteChange', 'Google changed it meanwhile'); render(); }, 700); } },
+  online() { if (CA.pending.size) { setTimeout(() => { act('Sync', `${CA.pending.size} queued change(s) → Google`); CA.pending.clear(); render(); }, 600); } },
+  input(name, el) {
+    if (name === 'ca-title') CA.editing.title = el.value;
+    if (name === 'ca-loc') CA.editing.loc = el.value;
+    if (name === 'ca-allday') { CA.editing.allDay = el.checked; return true; }
+    if (name === 'ca-repeat') CA.editing.repeat = el.value === 'Does not repeat' ? undefined : el.value;
+    if (name === 'ca-cal') CA.editing.cal = el.value;
+    if (name === 'ca-q') { CA.search = el.value; const pos = el.selectionStart; render(); const n = document.querySelector('[data-in=ca-q]'); n.focus(); n.setSelectionRange(pos, pos); }
+    return false;
+  },
+  change(el) { if (el.dataset.cal) { el.checked ? CA.visible.add(el.dataset.cal) : CA.visible.delete(el.dataset.cal); render(); } },
+  vars() { return { view: CA.focus ? 'Event' : CA.editing ? 'Editor' : CA.search !== null ? 'Search' : CA.view, top: CA.view, access: CA.google() ? 'write' : 'none', net: W.net ? 'up' : 'down', focus: CA.focus || 0, 'op ≠ none': `{${[...CA.pending].join(', ')}}`, conflict: CA.conflict || 'none', undo: CA.undo ? CA.undo.join(',') : 0, bad: `${CA.bad} (skipped ${CA.bad ? 1 : 0})` }; },
+  props() { return [
+    ['AlwaysBack', true, 'Every sheet has Back/close.'],
+    ['GoogleVisibleWhenConnected', !(W.scopes.has('calendar') && !CA.google()), 'Connected Google shows with no picker.'],
+    ['BadEventIsolated', true, CA.bad ? 'A broken Google event is skipped; the rest show.' : 'No broken event in the feed.'],
+    ['EditableWhenWritable', true, 'Google events edit, delete and RSVP in Alpha.'],
+    ['SavedChangeVisible', true, 'Saved changes show at once; a dot means “waiting to sync”.'],
+    ['UndoBeforeSend', true, 'Delete is sent only after Undo closes.'],
+  ]; },
+  controls() { return `<h2>Calendar scenario</h2>
+    <button class="act" data-ctl="as-google">Signed in with Google (Calendar allowed)</button>
+    <button class="act" data-ctl="as-email">Signed in with email (Google not connected)</button>
+    <button class="act" data-ctl="conflict">Next save: Google changed it meanwhile</button>
+    <label class="sw">Feed has one broken event<input type="checkbox" class="tog" data-ctl="bad" ${CA.bad ? 'checked' : ''}></label>
+    <p class="hint">Tap the title for Schedule / Day / Week / Month and calendar toggles. “Design review” is an invitation (RSVP). “Standup” repeats.</p>`; },
+  ctl(c, v, el) { if (c === 'as-google') { W.cred = 'valid'; W.method = 'google'; W.scopes = new Set(['gmail', 'calendar']); CA.init(); }
+    if (c === 'as-email') { W.cred = 'valid'; W.method = 'email'; W.scopes = new Set(); CA.init(); }
+    if (c === 'conflict') { CA.conflictNext = true; toast('Edit an event and save it'); }
+    if (c === 'bad') CA.bad = el.checked; },
+  changes: [
+    'Google Calendar appears as soon as Google is connected: every calendar you show on Google, colour-coded, toggled from the title menu. No “Calendar to display” picker in Settings.',
+    'Not connected: one row, <b>Show your Google Calendar · Connect</b>, on the Calendar screen itself.',
+    'Schedule, Day, Week and Month views; search; Today; a + button.',
+    'Google events are first-class: create, edit, delete (this / following / all) and RSVP in Alpha, with Undo before anything is sent.',
+    'Offline edits show at once and sync later. A conflict asks once: Keep mine / Keep Google’s.',
+    'One broken event is skipped, never the whole calendar.',
+  ],
+  today: [
+    'Google events show only after a calendar is chosen in Settings › Google accounts; Calendar has no link to it and says nothing (<code>google-calendar-view-adapter.ts:30</code>). This is why Gmail-connected Calendar looks broken.',
+    'Only one Google calendar at a time, read-only (<code>google-connection-ui.tsx:76</code>).',
+    'One zero-length Google event fails the whole feed (<code>google-calendar.ts:62</code>).',
+    'Two-way “linked sync” needs a separate review, write grant and agent session; conflicts have no way out (<code>code-alpha-runtime-008</code>).',
+    'No search, schedule list or true week grid; guests, alerts and video hand off to Android Calendar.',
+  ],
+};
+
+/* ------------------------------------------------------------------ Maps */
+const PLACES = [
+  {id: 'p1', name: 'Harbor Roasters', kind: 'Coffee', rating: 4.7, open: 'Open · closes 6 PM', addr: '210 Water St', x: 64, y: 34, min: {drive: 6, walk: 18, bike: 8, transit: 14}},
+  {id: 'p2', name: 'Blue Door Coffee', kind: 'Coffee', rating: 4.5, open: 'Open · closes 5 PM', addr: '88 Pine Ave', x: 30, y: 46, min: {drive: 4, walk: 11, bike: 5, transit: 10}},
+  {id: 'p3', name: 'Common Grounds', kind: 'Café', rating: 4.3, open: 'Open 24 hours', addr: '5 Market Sq', x: 52, y: 62, min: {drive: 3, walk: 7, bike: 3, transit: 9}},
+  {id: 'p4', name: 'Ferry Terminal', kind: 'Transit station', rating: 4.6, open: 'Open', addr: '1 Embarcadero', x: 80, y: 18, min: {drive: 9, walk: 29, bike: 12, transit: 16}},
+  {id: 'home', name: 'Home', kind: 'Saved', rating: null, open: '', addr: '42 Alder Ln', x: 18, y: 78, min: {drive: 7, walk: 24, bike: 10, transit: 19}},
+];
+const MA = {
+  screen: 'Base', query: '', results: [], place: null, mode: 'drive', session: 'idle', message: '', loc: 'unknown', locAsk: false, assistant: false, chat: [], step: 0, pendingSearch: null, autoStart: false, rerouting: false,
+  init() { Object.assign(MA, { screen: 'Base', query: '', results: [], place: null, mode: 'drive', message: '', assistant: false, chat: [], step: 0, pendingSearch: null, rerouting: false }); MA.connect(); },
+  ok() { return W.net && W.plan && W.mapsUp && W.cred === 'valid'; },
+  cause() { return W.cred !== 'valid' ? 'signin' : !W.net ? 'offline' : !W.plan ? 'plan' : !W.mapsUp ? 'down' : ''; },
+  async connect() { if (MA.session === 'connecting') return; MA.session = 'connecting'; act('Connect', 'at launch, not when Maps opens'); render(); await wait(400);
+    if (MA.ok()) { MA.session = 'ready'; MA.message = ''; act('Connected');
+      if (MA.pendingSearch) { const q = MA.pendingSearch; MA.pendingSearch = null; MA.doSearch(q); } }
+    else { MA.session = 'error'; MA.message = MA.cause(); act('Connected', 'error: ' + MA.message); }
+    render(); },
+  msgUI() {
+    const m = MA.message; if (!m) return '';
+    const t = {offline: ['Offline', 'Search and directions resume when you’re back online.'], plan: ['Maps comes with an Eliza Cloud plan', ''], down: ['Maps is unavailable right now', 'Trying again automatically.'], signin: ['Sign in to search and get directions', '']}[m];
+    return `<div class="msheet" style="z-index:15"><div class="grab"></div><b style="font-size:16px;font-weight:600">${t[0]}</b>${t[1] ? `<span class="muted" style="font-size:13.5px">${t[1]}</span>` : ''}${m === 'plan' ? `<button class="pill" data-a="ma-plan">See plans</button>` : m === 'signin' ? `<button class="pill" data-a="go-signin">Sign in</button>` : ''}</div>`;
+  },
+  mapSVG() {
+    const route = MA.screen === 'Route' || MA.screen === 'Nav';
+    const p = MA.place; const me = {x: 40, y: 72};
+    const path = p ? `M ${me.x} ${me.y} L ${me.x} ${(me.y + p.y) / 2} L ${p.x} ${(me.y + p.y) / 2} L ${p.x} ${p.y}` : '';
+    return `<svg class="base" viewBox="0 0 100 100" preserveAspectRatio="none">
+      <rect width="100" height="100" fill="#F2EFE9"/><path d="M0 8 Q30 2 62 9 T100 4 V0 H0Z" fill="#AAD3F5"/><rect x="8" y="50" width="16" height="14" rx="2" fill="#CDE8C5"/><rect x="66" y="70" width="22" height="16" rx="2" fill="#CDE8C5"/>
+      ${[16, 30, 46, 62, 78, 92].map(y => `<path d="M0 ${y} H100" stroke="#fff" stroke-width="${y === 46 ? 2.4 : 1.2}"/>`).join('')}
+      ${[10, 26, 40, 56, 72, 88].map(x => `<path d="M${x} 6 V100" stroke="#fff" stroke-width="${x === 56 ? 2.4 : 1.2}"/>`).join('')}
+      <path d="M0 100 L100 20" stroke="#FFE7A3" stroke-width="2"/>
+      ${route ? `<path d="${path}" stroke="var(--acc)" stroke-width="1.6" fill="none" vector-effect="non-scaling-stroke" style="stroke-width:6px" stroke-linejoin="round" stroke-linecap="round"/>` : ''}
+    </svg>`;
+  },
+  render() {
+    const me = MA.loc === 'granted' ? `<span class="me" style="left:40%;top:72%"></span>` : '';
+    const pins = (MA.screen === 'Results' ? MA.results : MA.place ? [MA.place] : []).map((p, i) => `<button class="pin ${MA.place?.id === p.id ? 'sel' : ''}" data-a="ma-pick" data-id="${p.id}" style="left:${p.x}%;top:${p.y}%"><span></span></button>`).join('');
+    let ui = '';
+    if (MA.screen === 'Nav') {
+      const steps = [['corner-up-right', '300 m', 'Turn right onto Pine Ave'], ['corner-up-left', '1.2 km', 'Turn left onto Water St'], ['map-pin', '150 m', `${MA.place.name} on the right`]];
+      const s = steps[Math.min(MA.step, 2)];
+      ui = `<div class="navtop">${ic(s[0], 34).replace('class="ic"', 'class="ic" style="color:#fff"')}<div><b>${s[1]}</b><small>${MA.rerouting ? 'Rerouting…' : s[2]}</small></div></div>
+        <div class="msheet"><div style="display:flex;align-items:center;justify-content:space-between"><div><b style="font-size:22px;font-weight:600;color:var(--ok)">${Math.max(1, MA.place.min[MA.mode] - MA.step * 2)} min</b><div class="muted" style="font-size:13.5px">${(3.4 - MA.step * .9).toFixed(1)} km · ${MA.message === 'offline' ? 'offline, following saved route' : 'arrive 10:52'}</div></div><button class="pill" style="background:var(--warn)" data-a="ma-stop">Stop</button></div></div>`;
+    } else if (MA.screen === 'Arrived') {
+      ui = `<div class="msheet"><b style="font-size:20px;font-weight:600">You’ve arrived</b><span class="muted">${MA.place.name} · ${MA.place.addr}</span><button class="pill" data-a="ma-done">Done</button></div>`;
+    } else {
+      ui = `<form class="searchpill" data-form="ma-search">${MA.screen === 'Base' ? `<button type="button" class="iconbtn" data-a="go-home">${ic('chevron-left')}</button>` : `<button type="button" class="iconbtn" data-a="ma-back">${ic('chevron-left')}</button>`}<input data-in="ma-q" placeholder="Search Maps" value="${esc(MA.query)}" enterkeyhint="search"><button type="button" class="iconbtn" data-a="ma-ask" aria-label="Ask Alpha"><span class="orb" style="width:26px;height:26px"></span></button></form>`;
+      if (MA.screen === 'Base' && !MA.message) ui += `<div style="position:absolute;top:66px;left:12px;right:12px;z-index:11;display:flex;gap:6px;overflow:auto">${[['coffee', 'Coffee'], ['utensils', 'Restaurants'], ['house', 'Home']].map(([i, n]) => `<button class="chip" style="background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.12)" data-a="ma-chip" data-q="${n}">${ic(i in ICONS ? i : 'search', 16)} ${n}</button>`).join('')}</div>`;
+      ui += `<button class="mapbtn" style="bottom:${MA.screen === 'Base' ? 24 : 300}px" data-a="ma-locate" aria-label="My location">${ic('locate-fixed', 22)}</button>`;
+      if (MA.screen === 'Results') ui += `<div class="msheet"><div class="grab"></div>${MA.results.map((p, i) => `<div class="res" data-a="ma-pick" data-id="${p.id}"><span class="n">${i + 1}</span><div style="flex:1"><b style="font-weight:600">${p.name}</b><div class="muted" style="font-size:13px">${p.kind} · ★ ${p.rating} · ${p.open}</div></div><span class="muted" style="font-size:13px">${p.min.walk} min</span></div>`).join('')}</div>`;
+      if (MA.screen === 'Place') { const p = MA.place; ui += `<div class="msheet place"><div class="grab"></div><h3>${p.name}</h3><div class="meta">${p.rating ? `<span>★ ${p.rating}</span>·` : ''}<span>${p.kind}</span>${p.open ? `·<span style="color:var(--ok)">${p.open}</span>` : ''}</div><div class="muted" style="font-size:13.5px">${p.addr}</div>
+        <div class="btns"><button class="pill acc" data-a="ma-dirs">${ic('navigation', 18).replace('class="ic"', 'class="ic" style="color:#fff"')} Directions</button><button class="pill secondary">${ic('bookmark', 18)} Save</button><button class="pill secondary">${ic('share-2', 18)} Share</button><button class="pill secondary">${ic('phone', 18)} Call</button></div></div>`; }
+      if (MA.screen === 'Route') { const p = MA.place; ui += `<div class="msheet"><div class="grab"></div>
+        <div style="display:flex;flex-direction:column;gap:6px;font-size:14.5px"><div style="display:flex;gap:10px;align-items:center"><i style="width:10px;height:10px;border-radius:50%;background:var(--acc)"></i>${MA.loc === 'granted' ? 'Your location' : `<button class="link" data-a="ma-locate">Use your location</button>`}</div><div style="display:flex;gap:10px;align-items:center"><i style="width:10px;height:10px;border-radius:2px;background:#000"></i>${p.name}</div></div>
+        <div class="modes">${[['drive', 'car', 'Drive'], ['walk', 'footprints', 'Walk'], ['bike', 'bike', 'Bike'], ['transit', 'bus', 'Transit']].map(([m, i, n]) => `<button data-a="ma-mode" data-m="${m}" aria-pressed="${MA.mode === m}">${ic(i, 18).replace('class="ic"', MA.mode === m ? 'class="ic" style="color:#fff"' : 'class="ic"')}<b>${p.min[m]} min</b></button>`).join('')}</div>
+        <button class="pill acc wide" data-a="ma-start" ${MA.loc === 'granted' ? '' : 'disabled'}>Start</button></div>`; }
+    }
+    const assist = MA.assistant ? `<div class="assist">${MA.chat.map(([who, t]) => `<div class="bubble ${who === 'me' ? 'me' : ''}">${t}</div>`).join('')}
+      ${MA.chat.length ? '' : `<div class="chips">${['Coffee near me', 'Directions to the ferry terminal', 'Take me home'].map(c => `<button class="chip" data-a="ma-say" data-t="${c}">${c}</button>`).join('')}</div>`}
+      <form class="askbar" data-form="ma-say"><span class="orb" style="width:26px;height:26px"></span><input data-in="ma-say" placeholder="Ask Alpha"><button class="iconbtn" type="button" data-a="ma-ask">${ic('x', 18)}</button></form></div>` : '';
+    const sys = MA.locAsk ? `<div class="sysdlg"><div class="d">${ic('map-pin', 26)}<b style="font-size:17px;font-weight:500">Allow Alpha to access this device’s location?</b><button data-a="ma-loc" data-v="granted">While using the app</button><button data-a="ma-loc" data-v="granted">Only this time</button><button data-a="ma-loc" data-v="denied">Don’t allow</button></div></div>` : '';
+    const off = !W.net && MA.screen !== 'Nav' ? `<div class="offline" style="position:absolute;top:62px;left:12px;right:12px;z-index:13;border-radius:12px"><i></i>Offline</div>` : '';
+    return `<div class="map">${MA.mapSVG()}${pins}${me}</div>${ui}${off}${MA.screen !== 'Nav' && MA.screen !== 'Arrived' ? MA.msgUI() : ''}${assist}${sys}`;
+  },
+  doSearch(q) {
+    MA.query = q; act('Search', q);
+    if (MA.session !== 'ready') { MA.pendingSearch = q; MA.message = MA.cause() || 'down'; render(); return; }
+    const ql = q.toLowerCase(); MA.results = PLACES.filter(p => p.id !== 'home' && ((ql.includes('coffee') || ql.includes('caf')) ? /coffee|caf/i.test(p.kind) : (p.name + ' ' + p.kind).toLowerCase().includes(ql)));
+    if (ql === 'home') { MA.place = PLACES.find(p => p.id === 'home'); MA.screen = 'Place'; render(); return; }
+    if (!MA.results.length) MA.results = PLACES.slice(0, 3);
+    MA.screen = 'Results'; MA.place = null; render();
+  },
+  needLoc(then) { if (MA.loc === 'granted') return then(); MA.locAsk = true; MA.afterLoc = then; render(); },
+  agent(text) {
+    MA.chat.push(['me', esc(text)]); act('AgentAsks', text);
+    const t = text.toLowerCase();
+    const done = (reply, fn) => setTimeout(() => {
+      if (MA.session !== 'ready') { MA.chat.push(['bot', {offline: 'You’re offline. I’ll look this up when you’re back online.', plan: 'Maps search needs an Eliza Cloud plan.', down: 'Maps is unavailable right now; I’ll try again shortly.', signin: 'Sign in to Eliza Cloud first.'}[MA.cause() || 'down']]); act('AgentResult', 'honest error'); render(); return; }
+      fn(); MA.chat.push(['bot', reply]); act('AgentResult', 'Maps opened at the result'); render(); }, 600);
+    if (t.includes('coffee')) done('Here are three coffee places near you. Harbor Roasters is the best rated.', () => { MA.doSearch('coffee'); });
+    else if (t.includes('ferry') || t.includes('directions')) done('Ferry Terminal is 9 minutes by car. Tap Start when you’re ready.', () => { MA.place = PLACES[3]; MA.needLoc(() => {}); MA.screen = 'Route'; });
+    else if (t.includes('home') || t.includes('take me')) done(MA.autoStart ? 'Starting directions home.' : 'Home is 7 minutes by car. Tap Start to go.', () => { MA.place = PLACES.find(p => p.id === 'home'); MA.loc = 'granted'; MA.screen = MA.autoStart ? 'Nav' : 'Route'; MA.step = 0; });
+    else done('I can search places, get directions or start navigation. Try “coffee near me”.', () => {});
+    render();
+  },
+  click(a, el) {
+    const d = el.dataset;
+    if (a === 'ma-chip') { MA.doSearch(d.q === 'Home' ? 'home' : d.q); return; }
+    if (a === 'ma-pick') { MA.place = PLACES.find(p => p.id === d.id); MA.screen = 'Place'; act('PickPlace', MA.place.name); render(); return; }
+    if (a === 'ma-back') { act('Back'); MA.screen = {Results: 'Base', Place: MA.results.length ? 'Results' : 'Base', Route: 'Place', Arrived: 'Base'}[MA.screen] || 'Base'; if (MA.screen === 'Base') { MA.query = ''; MA.place = null; } render(); return; }
+    if (a === 'ma-dirs') { act('Directions'); MA.needLoc(() => {}); MA.screen = 'Route'; render(); return; }
+    if (a === 'ma-mode') { MA.mode = d.m; render(); return; }
+    if (a === 'ma-start') { act('Start'); MA.screen = 'Nav'; MA.step = 0; render(); return; }
+    if (a === 'ma-stop') { act('Stop'); MA.screen = 'Route'; render(); return; }
+    if (a === 'ma-done') { MA.screen = 'Base'; MA.place = null; MA.query = ''; render(); return; }
+    if (a === 'ma-locate') { MA.needLoc(() => { render(); }); return; }
+    if (a === 'ma-loc') { MA.locAsk = false; MA.loc = d.v; act('Location', d.v); if (d.v === 'granted') MA.afterLoc?.(); render(); return; }
+    if (a === 'ma-ask') { MA.assistant = !MA.assistant; if (!MA.assistant) { act('CloseAssistant', MA.screen === 'Nav' ? 'navigation continues' : ''); MA.chat = []; } else act('OpenAssistant'); render(); setTimeout(() => document.querySelector('[data-in=ma-say]')?.focus(), 20); return; }
+    if (a === 'ma-say') { MA.agent(d.t); return; }
+    if (a === 'ma-plan') { toast('Opens the Eliza Cloud plan sheet in Settings'); render(); return; }
+  },
+  submit(form) {
+    if (form === 'ma-search') { const q = document.querySelector('[data-in=ma-q]').value.trim(); if (q) MA.doSearch(q); }
+    if (form === 'ma-say') { const n = document.querySelector('[data-in=ma-say]'); if (n.value.trim()) MA.agent(n.value.trim()); }
+  },
+  input(name, el) { if (name === 'ma-q') MA.query = el.value; return false; },
+  online() { MA.message = ''; MA.connect(); },
+  vars() { return { screen: MA.screen, session: MA.session, message: MA.message || 'none', net: W.net ? 'up' : 'down', plan: W.plan ? 'active' : 'none', cloud: W.mapsUp ? 'ok' : 'down', route: MA.screen === 'Route' || MA.screen === 'Nav', assistant: MA.assistant, location: MA.loc }; },
+  props() { return [
+    ['NoProviderTalk', true, 'There is no Maps provider to choose.'],
+    ['HonestErrors', true, MA.message ? `Shown cause: ${MA.message}` : 'Errors name their cause.'],
+    ['SelfHealing', true, 'Reconnects on launch, network return and plan change.'],
+    ['AgentServed', true, 'Agent requests open Maps at the result, even if Maps was closed.'],
+    ['NavSurvivesAssistant', true, 'Closing the assistant keeps guidance running.'],
+    ['RouteKeptOnFailure', true, 'A failed reroute keeps the route being followed.'],
+  ]; },
+  controls() { return `<h2>Maps scenario</h2>
+    <label class="sw">Eliza Cloud plan active<input type="checkbox" class="tog" data-ctl="plan" ${W.plan ? 'checked' : ''}></label>
+    <label class="sw">Cloud Maps service up<input type="checkbox" class="tog" data-ctl="up" ${W.mapsUp ? 'checked' : ''}></label>
+    <label class="sw">Agent may start navigation<input type="checkbox" class="tog" data-ctl="auto" ${MA.autoStart ? 'checked' : ''}></label>
+    <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="act" data-ctl="next">Navigation: next turn</button><button class="act" data-ctl="off">Go off route</button><button class="act" data-ctl="arrive">Arrive</button></div>
+    <p class="hint">Use the round Alpha button in the search bar to ask the agent. Try it with Maps service off, then switch it back on.</p>`; },
+  ctl(c, v, el) {
+    if (c === 'plan') { W.plan = el.checked; act(W.plan ? 'Subscribe' : 'PlanEnds'); if (W.plan) MA.online(); else { MA.session = 'error'; MA.message = 'plan'; } }
+    if (c === 'up') { W.mapsUp = el.checked; act(W.mapsUp ? 'Heal' : 'Fault', 'Cloud Maps'); if (W.mapsUp) MA.online(); else { MA.session = 'error'; MA.message = 'down'; } }
+    if (c === 'auto') MA.autoStart = el.checked;
+    if (c === 'next' && MA.screen === 'Nav') { MA.step++; act('Advance'); if (MA.step > 2) { MA.screen = 'Arrived'; act('Arrive'); } }
+    if (c === 'off' && MA.screen === 'Nav') { act('OffRoute'); MA.rerouting = true; setTimeout(() => { MA.rerouting = false; act('Reroute', MA.ok() ? 'new route' : 'kept current route, retrying'); render(); }, 1200); }
+    if (c === 'arrive' && MA.screen === 'Nav') { MA.screen = 'Arrived'; act('Arrive'); }
+  },
+  changes: [
+    'Eliza Cloud serves Google-backed search, place details, routes and map tiles. The phone never sees a Google key and there is no “Maps provider”.',
+    'The Maps session starts at launch once signed in, and reconnects by itself on network return, plan change or Cloud recovery. No Retry.',
+    'Errors say what is wrong in plain words: offline, needs a plan, temporarily unavailable.',
+    'Ask the agent from Maps or anywhere: “coffee near me”, “directions to…”, “take me home” open Maps at the result. Start is one tap (or automatic, if allowed).',
+    'Guidance survives closing the assistant; a failed reroute keeps the current route.',
+    'Location is asked for the first time it is needed; coordinates are never typed.',
+  ],
+  today: [
+    'Cloud has <code>/api/v1/maps/*</code> but only an OpenStreetMap provider, and production has none configured: capabilities returns <code>503 maps_not_configured</code> (and <code>INFERENCE_STRONG_REVOCATION_ENABLED=false</code> blocks admission).',
+    'Every failure becomes “Connect a Maps provider to search places and plan routes.” (<code>contracts.ts:230</code>).',
+    'The session starts only when Maps opens, once; after a failure only a new search retries.',
+    'The agent cannot navigate until Maps was opened by hand (<code>ctl-alphaphone-011</code>); closing the assistant ends navigation.',
+    'Copy such as “Enter coordinates” and “Location access does not share it with your agent.”',
+  ],
+};
+
+/* ------------------------------------------------------------------ shell */
+const FLOWS = { signin: ['Sign in', 'user-round', SI], inbox: ['Inbox', 'mail', IN], calendar: ['Calendar', 'calendar', CA], maps: ['Maps', 'map-pin', MA] };
+function setFlow(f) { flow = f; if (f === 'inbox') IN.open = null; render(); }
+let lastCred = null;
+function render() {
+  // Account change: Maps reconnects by itself (Maps.tla Connect, session = "idle").
+  if (W.cred !== lastCred) { lastCred = W.cred; if (typeof MA !== 'undefined' && MA.session !== 'connecting') { MA.message = ''; MA.session = 'idle'; queueMicrotask(() => MA.connect()); } }
+  const F = FLOWS[flow][2];
+  $('#tabs').innerHTML = Object.entries(FLOWS).map(([k, [n, i]]) => `<button data-flow="${k}" aria-pressed="${flow === k}">${ic(i, 18)}${n}</button>`).join('');
+  $('#controls').innerHTML = F.controls();
+  const focused = document.activeElement?.dataset?.in;
+  $('#phone').innerHTML = F.render() + googleUI() + (toastMsg ? `<div class="toast"><span>${toastMsg}</span>${toastAct ? `<button data-a="toast">${toastAct[0]}</button>` : ''}</div>` : '');
+  $('#sbar').innerHTML = (W.net ? ic('wifi', 15) : '<span style="font-size:11px;font-weight:600">Offline</span>') + ic('signal', 15) + ic('battery', 18);
+  if (focused) { const n = document.querySelector(`[data-in="${focused}"]`); if (n && n.type !== 'checkbox') { n.focus(); const l = n.value?.length; try { n.setSelectionRange(l, l); } catch {} } }
+  const v = F.vars(); $('#state').innerHTML = Object.entries(v).map(([k, x]) => `<b>${k}</b><span>${esc(String(x))}</span>`).join('');
+  $('#props').innerHTML = F.props().map(([n, ok, t]) => `<div><span class="${ok ? 'y' : 'n'}">${ok ? '✓' : '✗'}</span><span><code>${n}</code> ${t}</span></div>`).join('');
+  $('#log').innerHTML = log.map(l => `<span>${esc(l)}</span>`).join('') || '<span class="muted">—</span>';
+  $('#changes').innerHTML = F.changes.map(c => `<li>${c}</li>`).join('');
+  $('#today').innerHTML = F.today.map(c => `<li>${c}</li>`).join('');
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-flow]'); if (t) { setFlow(t.dataset.flow); return; }
+  const c = e.target.closest('button[data-ctl]'); if (c) { FLOWS[flow][2].ctl(c.dataset.ctl, null, c); render(); return; }
+  const el = e.target.closest('[data-a]'); if (!el || !$('#phone').contains(el)) return;
+  const a = el.dataset.a;
+  if (googleClick(a, el)) return;
+  if (a === 'toast') { toastAct?.[1](); toastMsg = null; toastAct = null; render(); return; }
+  if (a.startsWith('go-')) { const f = a.slice(3); if (f === 'home') { if (W.cred === 'valid') { flow = 'signin'; SI.screen = 'Home'; } } else flow = f; if (f === 'signin' && W.cred !== 'valid') SI.screen = 'Choose'; render(); return; }
+  FLOWS[flow][2].click(a, el);
+});
+document.addEventListener('submit', e => { const f = e.target.dataset.form; if (!f) return; e.preventDefault(); FLOWS[flow][2].submit?.(f); });
+document.addEventListener('input', e => { const n = e.target.dataset?.in; if (!n) return; if (FLOWS[flow][2].input?.(n, e.target)) render(); });
+document.addEventListener('change', e => {
+  if (e.target.dataset?.box) { google.boxes[e.target.dataset.box] = e.target.checked; return; }
+  if (e.target.dataset?.cal) { CA.change(e.target); return; }
+  if (e.target.matches('select[data-ctl], input[data-ctl]')) { FLOWS[flow][2].ctl(e.target.dataset.ctl, e.target.value, e.target); render(); return; }
+  if (e.target.dataset?.in && e.target.type === 'checkbox') FLOWS[flow][2].input?.(e.target.dataset.in, e.target) && render();
+  if (e.target.tagName === 'SELECT' && e.target.dataset?.in) FLOWS[flow][2].input?.(e.target.dataset.in, e.target);
+});
+$('#net').addEventListener('change', e => { W.net = e.target.checked; act(W.net ? 'NetRecover' : 'NetDrop');
+  if (W.net) { SI.online(); CA.online(); MA.online(); } else if (MA.session === 'ready') { MA.session = 'error'; MA.message = 'offline'; }
+  render(); });
+$('#gms').addEventListener('change', e => { W.gms = e.target.checked; render(); });
+$('#reset').addEventListener('click', () => { W.net = true; W.gms = true; W.plan = true; W.mapsUp = true; $('#net').checked = true; $('#gms').checked = true; log = []; SI.startAs = 'new'; SI.init(); IN.init(); CA.init(); MA.session = 'idle'; MA.init(); flow = 'signin'; render(); });
+setInterval(() => { if (flow === 'signin' && SI.screen === 'Code') { const b = document.querySelector('[data-a=si-resend]'); const w = Math.max(0, Math.ceil((SI.resendAt - Date.now()) / 1000)); if (b) { b.textContent = w ? `Resend code in ${w}s` : 'Resend code'; b.disabled = !!w; } } }, 1000);
+SI.init(); IN.init(); CA.init(); MA.init(); render();
+</script>
+</body>
+</html>

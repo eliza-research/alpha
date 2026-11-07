@@ -394,6 +394,42 @@ test('Calendar sync bridge forwards only exact owner-bound versioned operations'
  }finally{await f.close();}
 });
 
+test('Calendar view writes forward create, change and delete of one Google event in Cloud shapes only',async()=>{
+ const f=await fixture(),grant=randomUUID(),root='/api/v1/eliza/google/calendar/events';try{
+  f.setResponse(async(url,input)=>Response.json({method:input.method,path:new URL(url).pathname,query:Object.fromEntries(new URL(url).searchParams),forwarded:input.body?JSON.parse(input.body):null}));
+  const call=(route,method='GET',body)=>f.rpc({operation:'request',environment:'production',requestId:randomUUID(),input:{url:'https://api.eliza.app'+root+route,method,headers:{Accept:'application/json'},credentialReference:reference,...(body===undefined?{}:{body:JSON.stringify(body)})}});
+  const create={side:'owner',grantId:grant,calendarId:'owner@example.invalid',title:'Synthetic',startAt:'2026-11-06T17:00:00Z',endAt:'2026-11-06T18:00:00Z',timeZone:'America/Los_Angeles',attendees:[{email:'guest@example.invalid'}]};
+  const created=await call('','POST',create);assert.equal(created.data.status,200);assert.deepEqual(created.data.data.forwarded,create);
+  const changed=await call('/abc_20261106T170000Z','PATCH',{side:'owner',grantId:grant,calendarId:'primary',title:'Renamed'});assert.equal(changed.data.data.method,'PATCH');assert.equal(changed.data.data.path,root+'/abc_20261106T170000Z');
+  const query=new URLSearchParams({side:'owner',grantId:grant,calendarId:'primary'});
+  const removed=await call('/abc?'+query,'DELETE');assert.equal(removed.data.data.method,'DELETE');assert.deepEqual(removed.data.data.query,Object.fromEntries(query));assert.equal(removed.data.data.forwarded,null);
+  const before=f.calls.length;
+  for(const [route,method,body] of [
+   ['','POST',{...create,side:'agent'}],
+   ['','POST',{...create,grantId:'bad'}],
+   ['','POST',{...create,title:' '}],
+   ['','POST',{...create,url:'https://elsewhere.invalid'}],
+   ['','POST',{...create,attendees:[{email:'guest@example.invalid',responseStatus:'accepted'}]}],
+   ['?side=owner','POST',create],
+   ['/','POST',create],
+   ['','GET'],
+   ['/abc','PATCH',{side:'owner',grantId:grant,calendarId:'primary'}],
+   ['/abc','PATCH',{side:'owner',grantId:grant,calendarId:'primary',attendees:[]}],
+   ['/abc','PATCH',{side:'owner',grantId:grant,calendarId:'primary',responseStatus:'maybe'}],
+   ['/abc?'+query,'PATCH',{side:'owner',grantId:grant,calendarId:'primary',title:'x'}],
+   ['/abc','PUT',{side:'owner',grantId:grant,calendarId:'primary',title:'x'}],
+   ['/abc/instances','PATCH',{side:'owner',grantId:grant,calendarId:'primary',title:'x'}],
+   ['/a-b','PATCH',{side:'owner',grantId:grant,calendarId:'primary',title:'x'}],
+   ['/abc','DELETE'],
+   ['/abc?'+query+'&side=agent','DELETE'],
+   ['/abc?'+new URLSearchParams({side:'agent',grantId:grant,calendarId:'primary'}),'DELETE'],
+   ['/abc?'+new URLSearchParams({side:'owner',grantId:grant}),'DELETE'],
+   ['/abc?'+query,'DELETE',{}],
+  ])assert.notEqual((await call(route,method,body)).data?.status,200,`${method} ${route}`);
+  assert.equal(f.calls.length,before,'rejected writes never reach Cloud');
+ }finally{await f.close();}
+});
+
 test('agent Calendar transport admits only canonical scoped sync operations',async()=>{
  const f=await fixture();try{
   f.setResponse(async()=>Response.json({version:1,calendarId:'owner@example.test',accountId:'account',read:true,write:true,idempotentCreate:true,conditionalWrites:true,providerExactlyOnce:false}));
