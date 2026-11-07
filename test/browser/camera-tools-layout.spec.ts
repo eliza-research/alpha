@@ -16,7 +16,8 @@ for (const viewport of [{width: 412, height: 915}, {width: 360, height: 640}, {w
     await expect(root.getByRole('button', {name: /Choose image|Scan document|Ask Alpha/})).toHaveCount(0);
     for (const name of ['Back to apps', 'Photo mode', 'Video mode', 'Take photo']) {
       const button = root.getByRole('button', {name, exact: true});
-      await expect(button).toBeInViewport({ratio: 1});
+      // The fitted phone uses a fractional transform at narrow desktop preview widths.
+      await expect(button).toBeInViewport({ratio: 0.9999});
       expect(await button.evaluate(element => {
         const rect = element.getBoundingClientRect();
         return element.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));

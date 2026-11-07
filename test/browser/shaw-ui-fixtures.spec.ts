@@ -53,7 +53,7 @@ for(const [orientation,viewport] of [['portrait',{width:412,height:915}],['lands
   await page.evaluate(()=>{
    const w=window as any,base=w.Capacitor.nativePromise,f=w.mediaFixture;
    const items=Array.from({length:9},(_,index)=>({...f.row,id:`m:external_primary:i:${91+index}`,name:`Synthetic photo ${index+1}.jpg`,date:f.row.date-index*60000}));
-   w.Capacitor.nativePromise=async(plugin:string,method:string,input:any)=>plugin==='AlphaPhotos'&&method==='listPermitted'?{items,next:'',access:{scope:'selected',images:'selected',videos:'selected'}}:base(plugin,method,input);
+   w.Capacitor.nativePromise=async(plugin:string,method:string,input:any)=>plugin==='AlphaPhotos'&&(method==='list'||method==='listPermitted')?{items:input?.trashed?[]:items,next:'',access:{scope:'selected',images:'selected',videos:'selected'}}:base(plugin,method,input);
    f.emit();
   });
   await expect(page.getByRole('button',{name:/^Photo, /})).toHaveCount(9);
