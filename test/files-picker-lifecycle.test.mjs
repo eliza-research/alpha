@@ -14,7 +14,7 @@ async function harness(){
  const view={render:()=>({}),onLeave(){}};
  const ctx=vm.createContext({setTimeout,clearTimeout,queueMicrotask,window:new EventTarget(),CustomEvent:class{},HTMLElement:class{},document:doc});
  vm.runInContext(rules+';'+source+';globalThis.install=installFilesBrowserAdapter',ctx);
- agent=ctx.install({files:view},async(_module,value)=>accepted.push(value.selectionId),()=>{},{
+ agent=ctx.install(view,async(_module,value)=>accepted.push(value.selectionId),()=>{},{
   storage, createInlineModal:()=>({}), menuFocus:()=>null,
   async forgetSelected(selectionId){forgotten.push(selectionId);if(failForget)throw Error('release failed');},
  });

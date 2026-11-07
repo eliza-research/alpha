@@ -184,7 +184,7 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
       current = { ...current, text: undefined, status: 'Could not read this document. Select it again or open in Android.' }; refresh();
     }
   }
-  Component.prototype.filesAgent=installFilesBrowserAdapter(views,accept,clear,{
+  Component.prototype.filesAgent=installFilesBrowserAdapter(views.files as Parameters<typeof installFilesBrowserAdapter>[0],accept,clear,{
     storage:registerPlugin<FilesStoragePort<NativeResult>>('AlphaFiles'),
     createInlineModal,
     menuFocus:()=>document.querySelector<HTMLElement>('[data-alpha-subview="files-folder"] button[aria-label="Sort and more"]'),

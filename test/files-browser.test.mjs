@@ -202,7 +202,7 @@ test('every Browse category id has a native answer on Android; Downloads is the 
 });
 test('the agent filter queries documents as their types and folders by a walk, not the newest rows of any type',()=>{
  const adapter=readFileSync('.eliza/client-features/plugins/plugin-files/src/browser/files-browser-adapter.ts','utf8');
- assert.match(adapter,/value\.kind === 'document' \? \{documents: true\} : value\.kind === 'folder' \? \{folders: true\}/);
+ assert.match(adapter,/value\.kind === ["']document["']\s*\?\s*\{\s*documents: true\s*\}\s*:\s*value\.kind === ["']folder["']\s*\?\s*\{\s*folders: true\s*\}/);
  const catalog=readFileSync(`${nativeStorage}/StorageCatalog.java`,'utf8');
  assert.match(catalog,/if\(documents\)\{[^\n]*args\.add\(DOCUMENT_TYPES\[i\]\)[^\n]*MIME_TYPE\+" IN \("/);
  const plugin=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaFilesPlugin.java','utf8');
@@ -213,11 +213,11 @@ test('the agent filter queries documents as their types and folders by a walk, n
 });
 test('each mounted volume is its own Storage row and tree; Trash spans volumes and acts on the row\'s volume',()=>{
  const adapter=readFileSync('.eliza/client-features/plugins/plugin-files/src/browser/files-browser-adapter.ts','utf8');
- assert.match(adapter,/vols: volumes\.map\(volume => \(\{[^\n]*go: \(\) => go\(\{kind: 'folder', path: '', \.\.\.onVolume\(volume\.primary \? undefined : volume\.id\)\}\)/);
- assert.match(adapter,/storageList\(\{path: at\.path, \.\.\.onVolume\(at\.volume\)\}\)/);
- assert.match(adapter,/\[undefined, \.\.\.extraVolumes\(\)\]\.map\(async volume =>/);
- assert.match(adapter,/storageEmptyTrash\(\{ids: ids\.slice\(at, at \+ EMPTY_BATCH\), confirmed: true, \.\.\.onVolume\(volume\)\}\)/);
- assert.match(adapter,/dialog = \{kind: 'empty', items: \[\.\.\.trashItems\]\}/,'Empty deletes the rows the owner was shown');
+ assert.match(adapter,/vols: volumes\.map\(\(?volume\)? => \(\{[\s\S]*?go: \(\) =>\s*go\(\{\s*kind: ["']folder["'],\s*path: ["']["'],\s*\.\.\.onVolume\(volume\.primary \? undefined : volume\.id\),?\s*\}\)/);
+ assert.match(adapter,/storageList\(\{\s*path: at\.path,\s*\.\.\.onVolume\(at\.volume\),?\s*\}\)/);
+ assert.match(adapter,/\[undefined, \.\.\.extraVolumes\(\)\]\.map\(async \(?volume\)? =>/);
+ assert.match(adapter,/storageEmptyTrash\(\{\s*ids: ids\.slice\(at, at \+ EMPTY_BATCH\),\s*confirmed: true,\s*\.\.\.onVolume\(volume\),?\s*\}\)/);
+ assert.match(adapter,/dialog = \{\s*kind: ["']empty["'],\s*items: \[\.\.\.trashItems\],?\s*\}/,'Empty deletes the rows the owner was shown');
  assert.match(adapter,/void emptyTrash\(d\.items\)/);
  assert.equal(Number(adapter.match(/const EMPTY_BATCH = (\d+);/)[1]),Number(readFileSync(`${nativeStorage}/StorageBrowser.java`,'utf8').match(/BATCH_MAX=(\d+)/)[1]));
  assert.match(readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaFilesPlugin.java','utf8'),/b\.emptyTrash\(strings\(call,"ids",StorageBrowser\.BATCH_MAX\)\)/,'native refuses an Empty without ids');
