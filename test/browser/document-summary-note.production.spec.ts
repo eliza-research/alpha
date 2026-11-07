@@ -124,8 +124,8 @@ test('J03 on Android: a resident session that changes before Save withdraws the 
   // The resident agent is reconnected from Settings: a new verified session.
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
   await button(page, 'Settings').click();
-  await button(page, 'Agent connection').click();
-  await page.getByRole('region', { name: 'Settings',exact:true }).getByRole('button', { name: 'Reconnect agent', exact: true }).click();
+  await button(page, 'Agent').click();
+  await page.getByRole('region', { name: 'Settings',exact:true }).getByRole('button', { name: 'Restart agent', exact: true }).click();
   await expect.poll(() => harness(page, f => f.calls.filter((call: string) => call === 'Agent.start').length), { timeout: 30_000 }).toBe(2);
   await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0, { timeout: 30_000 });
   await button(page, 'Open conversation').click();
