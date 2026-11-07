@@ -133,13 +133,13 @@ test('the chooser and Settings offer only production connections', async ({ page
   await expect(chooser).toHaveCount(0);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   const settings = page.locator('[data-screen]');
-  await expect(settings.getByText('Agent connection', { exact: true })).toBeVisible();
+  await expect(settings.getByRole('button', { name: 'Agent', exact: true })).toBeVisible();
   const settingsText = await settings.innerText();
   expect(settingsText).not.toMatch(/mock mode/i);
   expect(settingsText).not.toMatch(/staging/i);
   await page.getByText('About', { exact: true }).click();
-  // The About header names the web runtime; there is no separate Runtime row.
-  await expect(settings.getByText('Web browser', { exact: true }).first()).toBeVisible();
+  // About identifies the installed product and version.
+  await expect(settings.getByText('Alpha Phone', { exact: true }).first()).toBeVisible();
   await expect(settings.getByText('Runtime', { exact: true })).toHaveCount(0);
   await expect(settings.getByText('Web app', { exact: true })).toHaveCount(0);
   await expect(settings.getByText('Development preview', { exact: true })).toHaveCount(0);
@@ -196,7 +196,7 @@ test('deferred apps are absent and root views show honest unconnected states', a
   for (const deferred of ['Phone', 'Messages', 'Contacts', 'Wallet']) await expect(page.getByRole('button', { name: deferred, exact: true })).toHaveCount(0);
   const states: Record<string, RegExp> = {
     Inbox: /Connect Eliza Cloud/, Workflows: /Your agent runs on your phone, not here\. Open Alpha on your Android phone to use it\. Reminders on this phone stay available\./, Notes: /Notes is unavailable for this agent connection\. Check Settings › Agent connection\./,
-    Photos: /No photos/, Maps: /Add a location/, Calendar: /\d/, Files: /Internal storage|Storage is unavailable/, Settings: /Agent connection/,
+    Photos: /No photos/, Maps: /Add a location/, Calendar: /\d/, Files: /Internal storage|Storage is unavailable/, Settings: /Agent/,
   };
   for (const [view, expected] of Object.entries(states)) {
     await page.goto('/?tools=1');
@@ -419,7 +419,7 @@ for (const mode of ['signed-out','empty','credits','unavailable','funded','repla
    await expect(dialog.getByRole('button',{name:'Email me a code',exact:true})).toBeVisible();
    await expect(dialog.getByRole('status').filter({hasText:'This developer build does not include the on-device agent.'})).toHaveText('This developer build does not include the on-device agent.');
   }else if(needsPlan)await expect(dialog.getByRole('region',{name:'Subscription',exact:true})).toBeVisible();
-  else if(!signedOut&&mode!=='replaced')await expect(dialog.getByText('On this device',{exact:true})).toBeVisible();
+  else if(!signedOut&&mode!=='replaced'){await expect(dialog.getByRole('button',{name:'Sign out',exact:true})).toBeVisible();await expect(dialog.getByRole('button',{name:'Manage plan',exact:true})).toBeVisible();}
   if(signedOut){
    await expect(dialog.getByText(/Sign in to verify your account|review access/)).toHaveCount(0);
    await expect(dialog.getByRole('button',{name:'Email me a code',exact:true})).toBeVisible();
