@@ -18,6 +18,7 @@
   "signer": {
     "apkDescriptor": "android/release-signer.json",
     "platformCertificateSha256": "UNSET",
+    "apexPayloadAvbPublicKeySha256": "UNSET",
     "releaseCertificates": {
       "shared": "UNSET",
       "media": "UNSET",

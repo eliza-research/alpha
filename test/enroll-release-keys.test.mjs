@@ -137,6 +137,7 @@ test("a release ceremony is recorded field by field, a dry run writes nothing an
   assert.deepEqual(signer.lastRelease, JSON.parse(unenrolled[RELEASE_SIGNER]).lastRelease, "lastRelease follows a distributed release, not enrollment");
   assert.equal(product.signer.platformCertificateSha256, digest("platform").certificateSha256);
   for (const name of IMAGE_CERTIFICATES) assert.equal(product.signer.releaseCertificates[name], digest(name).certificateSha256);
+  assert.equal(product.signer.apexPayloadAvbPublicKeySha256, digest("apex_payload").avbPublicKeySha256);
   assert.equal(product.avb.publicKeySha256, digest("avb").avbPublicKeySha256);
   assert.equal(channel.otaCertificateSha256, digest("releasekey").certificateSha256);
   assert.equal(channel.avbPublicKeySha256, digest("avb").avbPublicKeySha256);
@@ -209,10 +210,12 @@ test("reused, debug, mismatched, missing and unexpected keys are refused before 
   // --certificates re-hashes the public files: a swapped certificate or AVB key is refused.
   fs.copyFileSync(path.join(dir, "shared.x509.pem"), path.join(dir, "media.x509.pem"));
   fs.writeFileSync(path.join(dir, "avb_pkmd.bin"), randomBytes(1032));
+  fs.writeFileSync(path.join(dir, "apex_payload.avbpubkey"), randomBytes(1032));
   const swapped = run(["--fingerprints", file, "--certificates", dir, "--write"], fixture);
   assert.equal(swapped.code, 1);
   assert.match(swapped.err, /media\.x509\.pem is [0-9a-f]{64}, not fingerprints\.json/);
   assert.match(swapped.err, /avb_pkmd\.bin does not hash to fingerprints\.json/);
+  assert.match(swapped.err, /apex_payload\.avbpubkey does not hash to fingerprints\.json/);
   assert.deepEqual(recordText(fixture), unenrolled);
   assert.equal(run(["--write"], fixture).code, 2, "--fingerprints is required");
 });
