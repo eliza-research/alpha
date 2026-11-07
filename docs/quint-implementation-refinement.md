@@ -27,6 +27,18 @@ schedule and projection limits. The aggregate records unobserved fields and
 unexercised actions as open obligations. `--require-complete` fails while the
 universal application refinement obligation remains open.
 
+## First checked source milestone
+
+At commit `41d178701e`, all 51 runtime models have current source-bound receipts
+covering 1,392 concrete traces and 9,769 checked checkpoints. The 52 receipts
+include two ResidentRuntime campaigns. The application, native and composition
+cohorts were retained from the integrated run, and the services cohort was rerun
+after repairing asynchronous scan polling. The combined inputs were checked
+against the current files before saving
+[`refinement-baseline.json`](../specs/quint/evidence/refinement-baseline.json).
+This is a bounded correspondence milestone. The full command and deeper
+coordinator obligations continue below.
+
 ## Corrections found through source execution
 
 | Component | Finding and change | Remaining boundary |
@@ -54,6 +66,7 @@ component projections. Its failing traces remain explicit work items.
   acknowledgement without the previous token held by an interrupted interactive
   call. The model currently retains that token across restart. The recovered
   state must preserve uncertainty about previous-session revocation.
+- Positional Settings row keys can retarget an already-focused button when delayed permission data inserts a group. Stable group/row identity is being added and checked through the real renderer.
 - Main chat integration uses `installAgentAdapter` and separate draft-recovery
   state. The first `AlphaClient` and `AssistantDraftController` projections leave
   that live coordinator work open.
