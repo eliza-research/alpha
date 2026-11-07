@@ -127,13 +127,13 @@ export function installReminderAdapter(Component: Bag, views: Bag) {
     window.addEventListener('alpha:reminders-document-changed',this.reminderCommittedHandler);
     this.reminderListener=DailyApps.addListener('reminderOpened', r=>void this.refreshReminders(r.id,r.occurrenceId)).catch(()=>null);
     this.reminderResume=DailyApps.addListener('appResumed', ()=>{void this.refreshReminders();void checkReminderTap();}).catch(()=>null);
-    this.reminderTapVisible=()=>{if(!document.hidden)void checkReminderTap();};document.addEventListener('visibilitychange',this.reminderTapVisible);
+    this.reminderTapVisible=()=>{if(!document.hidden)void checkReminderTap();};document.addEventListener('visibilitychange',this.reminderTapVisible);window.addEventListener('focus',this.reminderTapVisible);
     this.reminderTapListener=DailyApps.addListener('pendingReminderTap',()=>void checkReminderTap(true)).catch(()=>null);
   };
   p.componentWillUnmount = function () {
     closeNoticeQuestion?.();closeNoticeQuestion=undefined;
     this.reminderTapConnection?.();
-    document.removeEventListener('visibilitychange',this.reminderTapVisible);
+    document.removeEventListener('visibilitychange',this.reminderTapVisible);window.removeEventListener('focus',this.reminderTapVisible);
     window.removeEventListener('pointerdown',interaction,true);window.removeEventListener('keydown',interaction,true);
     void this.reminderTapListener?.then((l:Bag)=>l?.remove());
     void this.reminderListener?.then((l:Bag)=>l?.remove()); void this.reminderResume?.then((l:Bag)=>l?.remove());

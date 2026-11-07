@@ -2,7 +2,6 @@ package ai.elizaresearch.alphaphone;
 
 import ai.eliza.plugins.notifications.MailBackgroundDelivery;
 import ai.eliza.plugins.notifications.MailNoticePoster;
-import ai.eliza.plugins.securestore.nativeonly.JsonCredentialSlots;
 import android.content.Context;
 import org.json.JSONObject;
 
@@ -10,15 +9,17 @@ import org.json.JSONObject;
  * the encrypted 'gmail-background:v1' slot, the production Cloud key, reset fence and notice identifiers. */
 final class GmailBackground {
  static final String SLOT="gmail-background:v1";
- static final MailNoticePoster.Config NOTICES=new MailNoticePoster.Config("alpha-gmail","New Gmail messages","New unread Inbox messages for the selected Google account. Background checks may be delayed by Android.",
-  "ai.elizaresearch.alphaphone.OPEN_GMAIL_NOTICE","alpha-gmail:","alpha-gmail-ask:","alpha-gmail-",R.drawable.notification_icon,"New mail in Gmail","Open Inbox with the matching account to review.","Alpha Phone","Open Alpha to review.","Ask Alpha",MainActivity.class);
+ static final MailNoticePoster.Config NOTICES=new MailNoticePoster.Config("alpha-gmail","New Gmail messages","New unread Inbox messages. Android may delay checks.",
+  "ai.elizaresearch.alphaphone.OPEN_GMAIL_NOTICE","alpha-gmail:","alpha-gmail-ask:","alpha-gmail-",R.drawable.notification_icon,"New mail in Gmail","Tap to open Inbox.","Alpha Phone","Tap to open.","Ask Alpha",MainActivity.class);
  private static MailBackgroundDelivery delivery;private static MailNoticePoster poster;
  static synchronized MailNoticePoster poster(Context context){if(poster==null)poster=new MailNoticePoster(context.getApplicationContext(),NOTICES);return poster;}
  static synchronized MailBackgroundDelivery get(Context context){
   if(delivery!=null)return delivery;
   Context app=context.getApplicationContext();AlphaCredentialStore store=new AlphaCredentialStore(app);
   delivery=new MailBackgroundDelivery(new MailBackgroundDelivery.Host(){
-   public Object lock(){return JsonCredentialSlots.LOCK;}
+   // Lifecycle first: the slot writes below then take the vault lock in the order every writer uses,
+   // and a Cloud key commit (which holds both) withdraws reentrantly.
+   public Object lock(){return AlphaLocalAgentPlugin.credentialLock();}
    public String readState()throws Exception{return store.readCredentialSlot(SLOT);}
    public void writeState(String value)throws Exception{store.writeCredentialSlot(SLOT,value);}
    public void removeState()throws Exception{store.removeCredentialSlot(SLOT);}

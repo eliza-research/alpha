@@ -400,7 +400,7 @@ test('disconnecting the agent mid-reply never shows the old reply or a recovery 
   // The interruption is stated once; the old turn's text, reply and recovery offer never appear under the new owner.
   await expect(conversation(page).getByText(/^Request cancelled\./)).toHaveCount(1);
   // The message was posted before the owner changed: the notice says it may have arrived, so it is not blindly resent.
-  await expect(conversation(page).getByText(/Your message may have reached the previous agent connection\. Check its saved conversations before sending it again\.$/)).toHaveCount(1);
+  await expect(conversation(page).getByText(/It may already have been sent, so check before sending it again\.$/)).toHaveCount(1);
   for (const text of ['Asked the first agent', 'Late reply for the old agent', UNKNOWN, MAY_FINISH]) await expect(conversation(page).getByText(text, { exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /^Check saved conversation/ })).toHaveCount(0);
   await expect(stop(page)).toHaveCount(0);

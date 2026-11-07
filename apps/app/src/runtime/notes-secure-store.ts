@@ -10,6 +10,8 @@ export const SECURE_NOTES_SLOT = 'notes-records:v1:device';
 /** Encrypted Keystore slot for edits whose collection commit failed or is uncertain. */
 export const SECURE_NOTES_DRAFT_SLOT = 'notes-draft:v1:device';
 const config = {...notesStorageKeys,secureSlot:SECURE_NOTES_SLOT,daily:'alphaphone:daily:v1'};
+/** The localStorage keys an empty secure slot migrates from on open. */
+export const LEGACY_NOTES_SOURCE_KEYS = [config.legacy,config.current,config.daily] as const;
 type LegacyStorage = {getItem(key:string):string|null;setItem(key:string,value:string):void;removeItem(key:string):void};
 export function readLegacyDailyNotes(storage:Pick<LegacyStorage,'getItem'>){return readLegacy(config,storage);}
 

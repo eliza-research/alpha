@@ -175,7 +175,7 @@ test('a chat turn without Cloud inference gets an honest answer with the plan ac
   assert.ok(renderCard('funding').sub.includes('Nebula subscription'));
   assert.equal(renderCard('unknown'),undefined);
 
-  assert.match(adapter, /const planCard=planActionCard\(\(e as \{planAction\?:unknown\}\)\.planAction\);/);
+  assert.match(adapter, /const planCard=planActionCard\(\(e as \{planAction\?:unknown\}\)\.planAction\)\?\?managePlan;/);
 });
 
 test('the plan surface is a notice beside the running agent, not a gate', () => {
@@ -210,7 +210,7 @@ test('native starts the agent without a provider and never offers it a Cloud key
   assert.doesNotMatch(plugin, /Configure your model provider before starting the local agent|Configure a model provider before starting/);
   const configure = between(plugin, 'static void configureEnvironment(', '@PluginMethod public void start(');
   // The shared launch order applies the provider or, when none is usable, the unbound environment.
-  assert.match(configure, /if\(!NativeProviderSlot\.applyLaunchEnvironment\(BuildConfig\.ELIZA_RUNTIME_PROFILE,provider,cloudSaved,[^\n]*\)\)\{provider=null;saved=null;cloudSaved=null;\}/);
+  assert.match(configure, /if\(!NativeProviderSlot\.applyLaunchEnvironment\(BuildConfig\.ELIZA_RUNTIME_PROFILE,provider,cloudSaved,[^\n]*\)\)\{provider=null;saved=null;cloudSaved=null;googleBinding=null;\}/);
   assert.match(configure, /launchedGeneration=LocalAgentProviderAdmission\.launchGeneration\(saved,cloudSaved\);/);
   const sharedSlot = read('vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/NativeProviderSlot.java');
   assert.match(between(sharedSlot, 'public static boolean applyLaunchEnvironment(', '\n  }\n'), /if \(!bound\) applyUnboundEnvironment\(env\);/);

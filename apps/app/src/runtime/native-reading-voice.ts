@@ -1,4 +1,4 @@
-import {testMocksEnabled} from '../build-flags';
+import {cloudRuntimeEnabled,testMocksEnabled} from '../build-flags';
 import {registerPlugin} from '../platform-plugins';
 import {playOwnedSpeech} from '../local-speech-playback';
 import {createOnDeviceVoice} from './local-voice';
@@ -6,8 +6,11 @@ import {createPairedVoice} from './paired-voice';
 import {connectionController} from './connection-ui';
 const native=registerPlugin<any>('AlphaVoiceCloud');
 /** Approved page text stays native; the renderer passes only its one-use token.
- * Resident reading needs Paradee-8M playback only, not recognition, so it gates on playbackReady. */
+ * Resident reading needs Paradee-8M playback only, not recognition, so it gates on playbackReady.
+ * The Cloud QA profile has no on-device speech, and page text is never sent to Cloud. */
+export const CLOUD_PROFILE_READING_NOTE="Page reading uses on-device speech, which this build doesn't include.";
 export function createNativeReadingVoice(){
+ if(cloudRuntimeEnabled)return null;
  const resident=connectionController.getResidentReadingBinding();
  if(resident){
   const voice=createOnDeviceVoice();if(!voice)return null;

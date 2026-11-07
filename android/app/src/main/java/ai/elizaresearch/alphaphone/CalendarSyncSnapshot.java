@@ -76,7 +76,7 @@ final class CalendarSyncSnapshot {
   if(family.size()!=1)throw new UnsupportedOperationException("This series has modified exceptions. Review it in Calendar before syncing.");
   ContentValues row=parent();long begin=number(row,"dtstart"),end;
   if(row.get("dtend")!=null)end=number(row,"dtend");
-  else{String duration=row.getAsString("duration");if(duration==null)throw new UnsupportedOperationException("Calendar event duration is unavailable");end=Math.addExact(begin,java.time.Duration.parse(duration).toMillis());}
+  else{String duration=row.getAsString("duration");if(duration==null)throw new UnsupportedOperationException("Calendar event duration is unavailable");end=Math.addExact(begin,duration(duration));}
   if(end<=begin)throw new IllegalStateException("Invalid Calendar event times");
   boolean allDay=number(row,"allDay")!=0;String zone=row.getAsString("eventTimezone");
   if(!allDay&&(zone==null||zone.isEmpty()))throw new UnsupportedOperationException("Calendar event timezone is unavailable");
@@ -86,8 +86,19 @@ final class CalendarSyncSnapshot {
   for(String field:new String[]{"rrule","rdate","exrule","exdate"}){String raw=row.getAsString(field);if(raw!=null&&!raw.isEmpty()){if(raw.contains("\r")||raw.contains("\n"))throw new UnsupportedOperationException("Review multiline recurrence before syncing");recurrence.put((allDay&&field.equals("exdate")?"EXDATE;VALUE=DATE":field.toUpperCase(java.util.Locale.ROOT))+":"+raw);}}
   org.json.JSONArray guests=new org.json.JSONArray();java.util.HashSet<String> emails=new java.util.HashSet<>();
   for(ContentValues guest:attendees){long relationship=number(guest,"attendeeRelationship");if(number(guest,"attendeeType")>2)throw new UnsupportedOperationException("Review unsupported Calendar guest types");if(relationship==2)continue;if(relationship!=0&&relationship!=1)throw new UnsupportedOperationException("Review Calendar guest roles before syncing");String email=guest.getAsString("attendeeEmail");if(email==null||!email.matches("[^\\s@,;<>]+@[^\\s@,;<>]+\\.[^\\s@,;<>]+")||!emails.add(email.toLowerCase(java.util.Locale.ROOT)))throw new UnsupportedOperationException("Review Calendar guest email addresses before syncing");guests.put(new org.json.JSONObject().put("email",email.toLowerCase(java.util.Locale.ROOT)).put("optional",number(guest,"attendeeType")==2));}
-  java.util.function.LongFunction<String> instant=value->java.time.Instant.ofEpochMilli(value).toString();
+  // Fixed milliseconds: Instant.toString drops ".000", so whole seconds would digest differently from the provider form.
+  java.util.function.LongFunction<String> instant=value->UTC.format(java.time.Instant.ofEpochMilli(value));
   return new org.json.JSONObject().put("title",text(row,"title")).put("description",text(row,"description")).put("location",text(row,"eventLocation")).put("startAt",allDay?instant.apply(begin).substring(0,10):instant.apply(begin)).put("endAt",allDay?instant.apply(end).substring(0,10):instant.apply(end)).put("timeZone",allDay?org.json.JSONObject.NULL:zone).put("isAllDay",allDay).put("attendees",guests).put("recurrence",recurrence);
+ }
+ private static final java.time.format.DateTimeFormatter UTC=new java.time.format.DateTimeFormatterBuilder().appendInstant(3).toFormatter();
+ private static final java.util.regex.Pattern DURATION=java.util.regex.Pattern.compile("([+-])?P(?:(\\d+)W|(?:(\\d+)D)?(?:T?(?:(\\d+)H)?(?:(\\d+)M)?(?:(\\d+)S)?)?)");
+ /** RFC 2445 DURATION in milliseconds: sign, weeks or days, and H/M/S (CalendarProvider also writes them without T, as in P3600S). */
+ static long duration(String value){
+  java.util.regex.Matcher match=value==null?null:DURATION.matcher(value);
+  if(match==null||!match.matches()||value.endsWith("P")||value.endsWith("T"))throw new UnsupportedOperationException("Review this Calendar event's length before syncing");
+  long seconds=0;long[] scale={604800,86400,3600,60,1};
+  try{for(int i=0;i<scale.length;i++)if(match.group(i+2)!=null)seconds=Math.addExact(seconds,Math.multiplyExact(Long.parseLong(match.group(i+2)),scale[i]));return Math.multiplyExact("-".equals(match.group(1))?-seconds:seconds,1000L);}
+  catch(ArithmeticException|NumberFormatException overflow){throw new UnsupportedOperationException("Review this Calendar event's length before syncing");}
  }
  private static String text(ContentValues row,String field){String value=row.getAsString(field);return value==null?"":value;}
  /** All dependent rows and their counts belong in the same CalendarProvider applyBatch as

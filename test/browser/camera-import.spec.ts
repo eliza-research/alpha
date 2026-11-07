@@ -1,5 +1,6 @@
 import {test,expect,type Page} from '@playwright/test';
 import {openLegacyNotes} from './helpers/legacy-notes';
+import {canonicalNotesFixture,openCanonicalNotes} from './helpers/canonical-notes';
 test.beforeEach(async({page})=>{await page.addInitScript(()=>{localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));(window as any).cameraImportAttempts=0;navigator.mediaDevices.getUserMedia=async()=>{(window as any).cameraImportAttempts++;throw new DOMException('No camera','NotFoundError');};});await page.goto('/');await page.getByRole('button',{name:'Camera',exact:true}).click();await cameraRecovery(page);});
 async function cameraRecovery(page:Page){const recovery=page.getByRole('alert',{name:'Camera unavailable',exact:true});await expect(recovery).toBeVisible();await expect(recovery.getByRole('button',{name:'Try again',exact:true})).toBeEnabled();return recovery;}
 async function image(page:Page){const data=await page.evaluate(()=>{const c=document.createElement('canvas');c.width=1200;c.height=360;const ctx=c.getContext('2d')!;ctx.fillStyle='white';ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle='black';ctx.font='60px Arial';ctx.fillText('Alpha Phone local scan',50,100);ctx.fillText('Review text before saving.',50,210);return c.toDataURL('image/png').split(',')[1];});return {name:'chosen.png',mimeType:'image/png',buffer:Buffer.from(data,'base64')};}
@@ -21,6 +22,17 @@ test('selected image scans locally with truthful provenance and explicit Notes s
  const review=page.getByRole('dialog',{name:'Review scanned text'});await expect(review).toContainText('selected file stays unchanged and is not copied to Photos');await expect(review.getByRole('textbox',{name:'Scanned text'})).toBeEnabled({timeout:60000});expect(await review.getByRole('textbox',{name:'Scanned text'}).inputValue()).toContain('Alpha Phone local scan');expect(await count(page)).toBe(0);
  await review.getByRole('button',{name:'Save to Notes',exact:true}).click();await expect(review.getByRole('status',{name:'Scan status'})).toHaveText('Saved to Notes.');await review.getByRole('button',{name:'Close scan',exact:true}).click();expect(remote).toEqual([]);expect(ocr).toContain('/ocr/eng.traineddata.gz');
  await page.reload();await openLegacyNotes(page);await expect(page.getByText('Alpha Phone local scan',{exact:true}).first()).toBeVisible();
+});
+test('Save to Notes under the default agent Notes creates one canonical note',async({page})=>{
+ test.setTimeout(90000);
+ await canonicalNotesFixture(page);await openCanonicalNotes(page);
+ await page.evaluate(()=>window.dispatchEvent(new Event('launcher-home')));
+ await page.getByRole('button',{name:'Camera',exact:true}).click();await cameraRecovery(page);
+ const file=await image(page);await page.getByRole('button',{name:'Choose image',exact:true}).click();const importer=page.getByRole('dialog',{name:'Choose camera image'});await importer.getByLabel('Image file').setInputFiles(file);await importer.getByRole('button',{name:'Scan text',exact:true}).click();
+ const review=page.getByRole('dialog',{name:'Review scanned text'}),text=review.getByRole('textbox',{name:'Scanned text'});await expect(text).toBeEnabled({timeout:60000});await text.fill('Scanned receipt\nTotal 12.40');
+ await review.getByRole('button',{name:'Save to Notes',exact:true}).click();await expect(review.getByRole('status',{name:'Scan status'})).toHaveText('Saved to Notes.');
+ const creates=await page.evaluate(()=>(window as any).canonicalNotesFixture.requests.filter((r:any)=>r.body?.capability==='create-note').map((r:any)=>r.body.params.content));
+ expect(creates).toEqual(['Scanned receipt\nTotal 12.40']);expect(await page.evaluate(()=>(window as any).canonicalNotesFixture.state.notes.map((n:any)=>n.title))).toEqual(['Scanned receipt']);
 });
 test('invalid selections and cancellation neither save photos nor start OCR',async({page})=>{
  await page.getByRole('button',{name:'Choose image',exact:true}).click();const dialog=page.getByRole('dialog',{name:'Choose camera image'});await dialog.getByLabel('Image file').setInputFiles({name:'not-image.png',mimeType:'image/png',buffer:Buffer.from('not an image')});await expect(dialog.getByRole('status')).toContainText('Choose a readable');await expect(dialog.getByRole('button',{name:'Save to Photos',exact:true})).toBeDisabled();

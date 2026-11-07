@@ -136,7 +136,7 @@ for (const mode of ['place', 'route', 'stale-before-approval', 'stale-after-read
     } else if(mode==='stale-before-approval') {
       await expect(page.getByText(/Review|context|confirmed result/i).last()).toBeVisible();
     } else {
-      await expect(page.getByText(/Shared the exact selected Maps snapshot with approval/).last()).toBeVisible();
+      await expect(page.getByText(/Shared the selected Maps view\./).last()).toBeVisible();
       const result=await page.evaluate(()=>(window as any).mapsUploaded);
       expect(result.target).toEqual(sent.metadata.alphaPhone.context.selectedObject);
       expect(result.fields.kind).toBe(mode==='route'?'map-route':'map-place');

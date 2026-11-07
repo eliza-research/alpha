@@ -30,7 +30,7 @@ async function openPendingVideoCopy(page:Page){
  });
  await page.getByRole('button',{name:'Photos',exact:true}).click();
  await page.getByRole('button',{name:/^Captured video /}).click();
- await expect(page.getByRole('button',{name:'Video. Tap to show or hide controls, swipe to browse',exact:true})).toBeVisible();await page.getByRole('button',{name:'Play video',exact:true}).click();await expect(page.locator('[data-alpha-photo-frame] video')).toBeVisible();await page.getByRole('button',{name:'Pause video',exact:true}).click();await page.getByRole('button',{name:'Edit video',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Video viewer',exact:true})).toBeVisible();await page.getByRole('button',{name:'Play video',exact:true}).click();await expect(page.locator('[data-alpha-photo-frame] video')).toBeVisible();await page.getByRole('button',{name:'Pause video',exact:true}).click();await page.getByRole('button',{name:'Edit video',exact:true}).click();
  const dialog=page.getByRole('dialog',{name:'Edit video',exact:true});
  await expect(dialog.getByRole('button',{name:'Save video copy',exact:true})).toBeEnabled();
  await dialog.getByRole('slider',{name:'Start seconds'}).press('ArrowRight');
@@ -63,12 +63,14 @@ for(const result of ['valid','permission revoked','source changed'])test(`native
  await expect.poll(()=>page.evaluate(()=>(window as any).mediaFixture.checkRequests)).toBe(2);
  await page.evaluate(()=>(window as any).mediaFixture.complete(true));
  await expect(dialog).toBeVisible();
- await expect(page.getByText('Saved a copy. Original unchanged.',{exact:true})).toHaveCount(0);
+ await expect(page.getByText('Copy saved.',{exact:true})).toHaveCount(0);
  expect(await page.evaluate(()=>(window as any).mediaFixture.cancelCount)).toBe(0);
  await page.evaluate(result=>{const f=(window as any).mediaFixture;if(result==='permission revoked')f.scope='denied';if(result==='source changed')f.row.mutationRevision='provider:changed-after-receipt';f.releaseChecks();},result);
  await expect(dialog).toHaveCount(0);
  if(result==='valid')await expect(page.getByText('240 × 320 · saved to Android Photos',{exact:true})).toBeVisible();
- else{await expect.poll(()=>page.evaluate(()=>(window as any).mediaFixture.cancelCount)).toBeGreaterThan(0);await expect(page.getByRole('button',{name:'Back from photo',exact:true})).toHaveCount(0);await expect(page.getByText('Saved a copy. Original unchanged.',{exact:true})).toHaveCount(0);}
+ else{await expect.poll(()=>page.evaluate(()=>(window as any).mediaFixture.cancelCount)).toBeGreaterThan(0);await expect(page.getByRole('button',{name:'Back from photo',exact:true})).toHaveCount(0);}
+ // The copy was published: its receipt is said even though the viewer closed.
+ await expect(page.getByText('Copy saved.',{exact:true})).toBeVisible();
  expect(await page.evaluate(()=>(window as any).mediaFixture.saveCount)).toBe(1);
 });
 test('notification during receipt acknowledgement cannot expose a revoked source',async({page})=>{
@@ -81,7 +83,7 @@ test('notification during receipt acknowledgement cannot expose a revoked source
  await expect.poll(()=>page.evaluate(()=>(window as any).mediaFixture.ackNotified)).toBe(true);
  await expect(dialog).toHaveCount(0);
  await expect(page.getByRole('button',{name:'Back from photo',exact:true})).toHaveCount(0);
- await expect(page.getByText('Saved a copy. Original unchanged.',{exact:true})).toHaveCount(0);
+ await expect(page.getByText('Copy saved.',{exact:true})).toBeVisible();
 });
 test('late validated receipt does not replace a newer selected video',async({page})=>{
  const dialog=await openPendingVideoCopy(page);

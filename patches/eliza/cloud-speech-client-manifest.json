@@ -4,12 +4,12 @@
   "patches": [
     {
       "file": "cloud-speech-client.patch",
-      "sha256": "36ebc9fd0076d07ed7dde7e607c48b2c38ae21dc2087ba069e927d521a4074bb",
+      "sha256": "756b64568b67ad38abd65f4bef01998e0942fdbdfc59cc6904fdf5fc88fbd9fa",
       "targets": [
         {
           "path": "packages/voice/src/native-cloud-speech.ts",
           "beforeSha256": null,
-          "afterSha256": "b3c9a787c7f93954f79ed8e14e928049b2b0f536e60ea01ef88453cf3f6aeefd"
+          "afterSha256": "215e8a254d5ee31833fc728a85fc5322dad4a4dd42e7d18e84b54d6082d9f528"
         },
         {
           "path": "packages/voice/src/cloud-speech-chunks.ts",

@@ -289,10 +289,10 @@ recording a clip on the device:
    `{ nothingHeard: true }`: the agent replaces it with an empty, interruption-marked reply
    (`heardNothing`), so it keeps that it answered and was cut off but none of the unheard words; an
    agent that predates the explicit report refuses it (`rejected`) and keeps the reply. A speech
-   failure is not a barge-in: when playback fails before the first sentence finished
-   (`playbackFailed`, for example a refused Cloud speech request) nothing is sent (`nothing-heard`)
-   and both the agent and the view keep the whole reply; after a finished sentence only the heard
-   prefix is kept, as for an interruption. **Gaps:** a
+   failure is not a barge-in: when playback fails (`playbackFailed`, for example a refused Cloud
+   speech request) nothing is sent (`nothing-heard`) and both the agent and the view keep the whole
+   reply, at any point in it. After a finished sentence the owner is told the rest was not read
+   aloud and that the full reply is shown. **Gaps:** a
    reply the agent
    completes after the user interrupted it while it was still being generated has no message id
    in the voice session, is not trimmed and appears in full after a reload; a partially played

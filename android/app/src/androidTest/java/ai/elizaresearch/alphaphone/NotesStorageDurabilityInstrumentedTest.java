@@ -153,10 +153,11 @@ public final class NotesStorageDurabilityInstrumentedTest {
    // A fresh Activity and WebView: the previous renderer and its in-memory list are gone.
    try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
     openNotes();
-    until("document.documentElement.dataset.notesDraftState==='resumed'","Draft resumed");
-    assertTrue("Resumed edit is saved",new JSONObject(NotesSecureFixture.read()).getString("currentRaw").contains(title));
-    assertTrue("Draft cleared after its edit was saved",slot(AlphaCredentialStore.NOTES_DRAFT).isNull("value"));
-    click("Open "+title);click("Delete note");
+    // The draft is kept and named, never applied automatically.
+    until("document.documentElement.dataset.notesDraftState==='kept'","Draft kept");
+    until("document.body.textContent.includes('Unsaved changes from an earlier session are kept on this phone.')","Status names the kept draft");
+    assertTrue("Draft still holds the unsaved title",slot(AlphaCredentialStore.NOTES_DRAFT).getString("value").contains(title));
+    assertFalse("The kept edit was not written to saved notes",NotesSecureFixture.read().contains(title));
    }
   }catch(Exception|AssertionError failure){primary=failure;throw failure;}finally{
    try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){

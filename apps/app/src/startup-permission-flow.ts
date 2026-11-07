@@ -55,6 +55,12 @@ export function readStartupPermissionMemory(store: Store | null = defaultStore()
 export function writeStartupPermissionMemory(patch: Partial<StartupPermissionMemory>, store: Store | null = defaultStore()) {
   return memory(store).write(patch);
 }
+/** Access setup opens once an account (or saved own Cerebras keys) is in place. A foreground
+ * connection operation holds it back; a resident start or a background rebind does not. */
+export function startupPermissionsActive(connection: {cloudAccount?: unknown; setupRevision?: number; providerStatus?: {selected?: boolean; provider?: string} | null; busy: boolean; residentStarting?: boolean; backgroundWork?: boolean; signIn?: unknown}) {
+  const ready = !!connection.cloudAccount || (!!connection.setupRevision && connection.providerStatus?.selected === true && connection.providerStatus.provider === 'cerebras');
+  return ready && !(connection.busy && !connection.residentStarting && !connection.backgroundWork) && !connection.signIn;
+}
 /** Settings → "Set up Alpha access" calls this to show the panel again. Prompts already denied
  * stay on the Android-settings path; nothing is requested until the user taps. */
 export function reopenStartupPermissions(store: Store | null = defaultStore()) {
