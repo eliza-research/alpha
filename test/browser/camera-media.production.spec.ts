@@ -1,4 +1,3 @@
-import {openCameraTools} from './camera-tools';
 import {test,expect} from '@playwright/test';
 // Runs in the `production` project: a flag-off build without mocks, fixtures or the
 // browser development profile. A synthetic canvas stream stands in for the camera
@@ -21,6 +20,14 @@ test('a camera capture is searchable and Ask Alpha reviews it locally without th
  // The header is Back and Flash only: no title, image import, scan or ask button.
  for(const name of ['Ask Alpha about this','Choose image','Scan document','Scan mode'])await expect(page.getByRole('button',{name,exact:true})).toHaveCount(0);
  await expect(page.locator('[data-alpha-camera-root] [data-alpha-app-title]')).toHaveCount(0);
+ // Camera frame question (mainline #815's check, reached by asking in chat): an unsaved frame, reviewed text only.
+ await page.getByRole('button',{name:'Type',exact:true}).click();
+ const ask=page.locator('[data-alpha-layer="composer"][aria-hidden="false"], [data-alpha-layer="conversation"][aria-hidden="false"]').getByRole('textbox').first();
+ await ask.fill('What am I looking at?');await ask.press('Enter');
+ const frame=page.getByRole('dialog',{name:'Ask about selected content'});
+ await expect(frame.getByRole('img',{name:'Image for question review'})).toBeVisible();
+ await expect(frame.getByRole('button',{name:'Extract text locally'})).toBeEnabled();
+ await frame.getByRole('button',{name:'Cancel',exact:true}).click();await expect(frame).toHaveCount(0);
  await page.getByRole('button',{name:'Take photo',exact:true}).click();
  await expect(page.getByRole('button',{name:'Open last photo',exact:true})).toBeVisible();
 

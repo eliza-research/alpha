@@ -56,10 +56,12 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
     open: view => owner?.openView(alphaViews.hostKey(view)),
     changed: () => owner?.setState({launcherRevision: Date.now()}),
   });
-  const inventory = options.appInventory;
   const {launcher} = shell, prefix = ALPHA_PRODUCT.storage.launcherBuiltinPrefix;
   const icon = (id: string) => mobileShellIconUrl(ALPHA_PRODUCT, id);
   const grid = icon(ALPHA_PRODUCT.icons.allApps);
+  // Installed apps exist on Android, or through the explicitly enabled browser fixture; without
+  // either there is no Apps entry, no drawer and no Home editing (nothing is read to edit).
+  const inventory = options.appInventory;
   const glyphs = {app: grid, phone: icon('phone'), search: icon('search'), close: icon('x'), plus: icon('plus'), info: icon('info')};
   const rerender = () => owner?.setState({launcherRevision: Date.now()});
   // The Add to Home sheet owns focus while open; Escape and Back close it.
@@ -131,7 +133,7 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
     const snapshot = launcher.snapshot();
     const showDrawer = !!inventory && !out.assistantSurface;
     const drawerOpen = showDrawer && !!S.drawer && !!out.isOn && !out.isView;
-    const editing = !!S.homeEdit && !!out.isOn && !out.isView && !drawerOpen && !out.assistantSurface;
+    const editing = !!inventory && !!S.homeEdit && !!out.isOn && !out.isView && !drawerOpen && !out.assistantSurface;
     const face = (key: string, tile: {image?: string; glyphUrl?: string; badge?: boolean}) => createElement('span', {'data-mobile-shell-tile-face': '', 'data-alpha-home-key': key},
       tile.image ? createElement('img', {alt: '', src: tile.image}) : tile.glyphUrl ? createElement('span', {'aria-hidden': 'true', style: glyph(tile.glyphUrl, 30)}) : null,
       tile.badge && !editing ? createElement('span', {'data-mobile-shell-tile-badge': ''}) : null,
@@ -155,7 +157,7 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
       onPointerDown: (event: PointerEvent) => {
         swallow = ''; endPress();
         const target = tileOf(event.target), key = keyOf(target);
-        if (!target || !key || event.button > 0) return;
+        if (!target || !key || event.button > 0 || !inventory) return;
         if (!editing) { press = {key, x: event.clientX, y: event.clientY, timer: setTimeout(() => { press = null; swallow = key; self.setState({homeEdit: true, homeAdd: false}); }, HOLD_MS)}; return; }
         // A press on the remove control never starts a drag.
         if ((event.target as Element).closest('[data-alpha-home-remove]')) return;
@@ -188,7 +190,7 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
       onPointerCancel: () => { endPress(); if (drag) { endDrag(); rerender(); } },
       onContextMenu: (event: MouseEvent) => {
         const key = keyOf(tileOf(event.target));
-        if (!key) return;
+        if (!key || !inventory) return;
         event.preventDefault(); endPress();
         if (!editing) { swallow = key; self.setState({homeEdit: true, homeAdd: false}); }
       },

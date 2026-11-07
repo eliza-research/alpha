@@ -92,7 +92,7 @@ test('the drawer menu offers Add to Home (or On Home) and App info for exactly t
   let saved=null;const info=[];
   const Shell=shellClass([]);
   const shell=installHomeShell(Shell,{},{list:async()=>({apps:listed}),launch:async()=>{},resolveDefault:async()=>({available:true,packageName:'com.android.dialer',label:'Dialer'}),openDefault:async()=>{}},
-    {appInventory:'simulated',favorites:{read:()=>saved,write:keys=>{saved=[...keys];}},appInfo:async target=>{info.push(target);}});
+    {appInventory:'android',favorites:{read:()=>saved,write:keys=>{saved=[...keys];}},appInfo:async target=>{info.push(target);}});
   const home=new Shell();home.renderVals();home.componentDidMount();
   try {
     home.openAllApps();await shell.launcher.load();

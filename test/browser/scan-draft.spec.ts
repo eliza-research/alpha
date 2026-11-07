@@ -1,4 +1,3 @@
-import {openCameraTools} from './camera-tools';
 import {openScanDraftOptions} from './scan-review-navigation';
 import {test,expect} from '@playwright/test';
 async function open(page:any){await page.goto('/');await page.evaluate(async()=>{const c=document.createElement('canvas');c.width=200;c.height=400;c.getContext('2d')!.fillRect(0,0,200,400);const {openScanDocument}=await import('/src/prototype/scan-document.ts');openScanDocument(await new Promise<Blob>(r=>c.toBlob(b=>r(b!))));});}
