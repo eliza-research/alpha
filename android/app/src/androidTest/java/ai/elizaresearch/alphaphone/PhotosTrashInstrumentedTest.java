@@ -22,6 +22,10 @@ public final class PhotosTrashInstrumentedTest {
  private String host(String script)throws Exception{return WebViewTestDriver.evaluate(script);}
  private void ready(String script)throws Exception{for(int i=0;i<200;i++){if("true".equals(host("Boolean("+script+")")))return;SystemClock.sleep(100);}fail("Owned Photos control missing");}
  private void click(String label)throws Exception{String q="[...document.querySelectorAll('button')].find(e=>e.getAttribute('aria-label')==="+JSONObject.quote(label)+")";ready(q);host("("+q+").click()");}
+ /** The album sheet; its aria-label is the sheet's changing title. */
+ private static final String ALBUM_MANAGER="document.querySelector('[data-alpha-album-manager]')";
+ /** Requires the album sheet open, submits from it, then waits for the receipt to close it. */
+ private void saveAlbum(String label)throws Exception{ready(ALBUM_MANAGER);click(label);ready("!"+ALBUM_MANAGER);}
  private void photos()throws Exception{host(AppNavigation.request("Photos"));ready(AppNavigation.selected("Photos"));}
  private void media(String id)throws Exception{String q="document.querySelector('[data-owned-media-id=\"native-camera-"+id+"\"]')";ready(q);host(q+".click()");}
  private Bundle include(){Bundle b=new Bundle();b.putInt(MediaStore.QUERY_ARG_MATCH_TRASHED,MediaStore.MATCH_INCLUDE);return b;}
@@ -124,18 +128,18 @@ public final class PhotosTrashInstrumentedTest {
   Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();ContentResolver resolver=context.getContentResolver();java.util.List<Uri> fixtures=new java.util.ArrayList<>();Throwable primary=null;String name="Album fixture "+UUID.randomUUID(),renamed=name+" renamed";String createdAlbumId=null;
   try{Uri photo=fixture(resolver);fixtures.add(photo);byte[] original=bytes(resolver,photo);
    try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
-    AppNavigation.liveMode();photos();media(key(photo));click("Photo info");click("Add to album");click("New album");albumName(name);click("Save album");ready("!document.querySelector('[aria-label=\"Album management\"]')");
+    AppNavigation.liveMode();photos();media(key(photo));click("Photo info");click("Add to album");click("New album");albumName(name);saveAlbum("Save album");
     JSONObject first=namedAlbum(name);createdAlbumId=first.getString("id");assertEquals(1,first.getInt("count"));assertEquals(key(photo),first.getJSONArray("memberIds").getString(0));
-    click("Back from photo");click("Albums");click(name);media(key(photo));click("Back from photo");click("Manage album");albumName(renamed);click("Save album");ready("!document.querySelector('[aria-label=\"Album management\"]')");
+    click("Back from photo");click("Albums");click(name);media(key(photo));click("Back from photo");click("Manage album");albumName(renamed);saveAlbum("Save album");
     assertTrue("Stale album edit is rejected",nativeCall("changeAlbum",new JSONObject().put("operation","rename").put("id",first.getString("id")).put("revision",first.getString("revision")).put("name","Must not appear")).optBoolean("rejected"));
     scenario.recreate();AppNavigation.liveMode();photos();click("Albums");click(renamed);media(key(photo));
     JSONObject trashed=trash(photo,metadata(photo),true);assertEquals("Trashed membership is hidden",0,nativeCall("list",new JSONObject().put("album","custom:"+first.getString("id"))).getJSONArray("items").length());
     trash(photo,trashed,false);assertTrue("Restoring the same original asset restores membership",contains(nativeCall("list",new JSONObject().put("album","custom:"+first.getString("id"))).getJSONArray("items"),key(photo)));
     // Re-read selected metadata after its generation changed, then explicit removal.
-    click("Back from photo");media(key(photo));click("Photo info");click("Add to album");click("Remove from "+renamed);ready("!document.querySelector('[aria-label=\"Album management\"]')");assertEquals(0,namedAlbum(renamed).getInt("count"));
-    click("Photo info");click("Add to album");click("Add to "+renamed);ready("!document.querySelector('[aria-label=\"Album management\"]')");assertEquals(1,namedAlbum(renamed).getInt("count"));
+    click("Back from photo");media(key(photo));click("Photo info");click("Add to album");saveAlbum("Remove from "+renamed);assertEquals(0,namedAlbum(renamed).getInt("count"));
+    click("Photo info");click("Add to album");saveAlbum("Add to "+renamed);assertEquals(1,namedAlbum(renamed).getInt("count"));
     click("Back from photo");click("Manage album");click("Delete album");click("Close album management");assertEquals(1,namedAlbum(renamed).getInt("count"));
-    click("Manage album");click("Delete album");click("Confirm delete album");ready("!document.querySelector('[aria-label=\"Album management\"]')");
+    click("Manage album");click("Delete album");saveAlbum("Confirm delete album");
     JSONArray remaining=nativeCall("albums",new JSONObject()).getJSONArray("items");for(int i=0;i<remaining.length();i++)assertNotEquals(first.getString("id"),remaining.getJSONObject(i).getString("id"));
     assertArrayEquals("Album deletion never deletes or rewrites media",original,bytes(resolver,photo));assertFalse(metadata(photo).optBoolean("rejected"));
    }
@@ -179,11 +183,11 @@ public final class PhotosTrashInstrumentedTest {
      host(AppNavigation.request("Home"));ready(AppNavigation.selected("Home"));photos();
      // Return to Library using the real Back controls, then select the fixture.
      host("document.querySelector('button[aria-label=\"Back to albums\"]')?.click()");click("Library");media(key(photo));click("Photo info");
-     ready("document.querySelector('[aria-label=\"Album management\"]')");
+     ready(ALBUM_MANAGER);
     }
     for(int i=0;i<100;i++){JSONArray albums=nativeCall("albums",new JSONObject()).getJSONArray("items");boolean found=false;for(int j=0;j<albums.length();j++)if(albums.getJSONObject(j).getString("name").equals(prefix+" renamed"))found=true;if(found)break;SystemClock.sleep(100);}
     assertEquals(1,namedAlbum(prefix+" renamed").getInt("count"));
-    assertEquals("Late successful receipt leaves the newly opened manager intact","true",host("Boolean(document.querySelector('[aria-label=\"Album management\"]'))"));
+    assertEquals("Late successful receipt leaves the newly opened manager intact","true",host("Boolean("+ALBUM_MANAGER+"?.getAttribute('aria-label')==='Photo info')"));
     assertEquals("Fresh info sheet remains usable","true",host("Boolean(document.querySelector('button[aria-label=\"Add to album\"]'))"));assertArrayEquals(original,bytes(resolver,photo));
    }
   }catch(Exception|AssertionError failure){primary=failure;throw failure;}finally{cleanup(context,fixtures,primary);synchronized(AlphaPhotosPlugin.ALBUMS_LOCK){android.content.SharedPreferences preferences=context.getSharedPreferences("alpha-owned-albums",0);JSONArray existing=new JSONArray(preferences.getString("albums","[]")),keep=new JSONArray();for(int i=0;i<existing.length();i++){JSONObject album=existing.getJSONObject(i);if(!names.contains(album.getString("name")))keep.put(album);}assertTrue(preferences.edit().putString("albums",keep.toString()).commit());}}

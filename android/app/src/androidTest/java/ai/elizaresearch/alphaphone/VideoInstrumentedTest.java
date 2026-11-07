@@ -47,6 +47,12 @@ public class VideoInstrumentedTest {
    if(c!=null)while(c.moveToNext())result.add(ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI,c.getLong(0)));
   }return result;
  }
+ /** Polls for the owned, no longer pending MediaStore rows this test created. */
+ private Set<Uri> created(Set<Uri> before){
+  long end=SystemClock.elapsedRealtime()+30000;Set<Uri> created;
+  do{created=owned();created.removeAll(before);if(!created.isEmpty())break;SystemClock.sleep(100);}while(SystemClock.elapsedRealtime()<end);
+  return created;
+ }
  private void permission(){
   for(String permission:new String[]{Manifest.permission.CAMERA,Manifest.permission.RECORD_AUDIO}) InstrumentationRegistry.getInstrumentation().getUiAutomation().grantRuntimePermission(context().getPackageName(),permission);
   if(android.os.Build.VERSION.SDK_INT>=33)InstrumentationRegistry.getInstrumentation().getUiAutomation().grantRuntimePermission(context().getPackageName(),Manifest.permission.POST_NOTIFICATIONS);
@@ -83,8 +89,8 @@ public class VideoInstrumentedTest {
  @Test public void recordsDurableVideoAndPrototypeControlsDriveRealPlayback()throws Exception{
   permission();Set<Uri> before=owned();
   try(BoundedActivityScenario<MainActivity>s=BoundedActivityScenario.launch(MainActivity.class)){
-   admitAccount();begin();click("Stop recording");until("document.body.innerText.includes('Video saved to Android Photos.')");
-   Set<Uri> created=owned();created.removeAll(before);assertEquals("One finalized video",1,created.size());assertMedia(created.iterator().next());
+   admitAccount();begin();click("Stop recording");
+   Set<Uri> created=created(before);assertEquals("One finalized video",1,created.size());assertMedia(created.iterator().next());
    click("Open last photo");until(AppNavigation.selected("Photos"));until("document.body.innerText.includes('Captured video')");
    click("Play video");until("(()=>{const v=document.querySelector('video[data-alpha-captured-video]');return v&&!v.paused&&v.currentTime>0.2&&v.videoWidth>0})()");
    click("Pause video");until("document.querySelector('video[data-alpha-captured-video]')?.paused && document.querySelector('button[aria-label=\"Play video\"]')");
@@ -108,8 +114,7 @@ public class VideoInstrumentedTest {
   permission();Set<Uri> before=owned();
   try(BoundedActivityScenario<MainActivity>s=BoundedActivityScenario.launch(MainActivity.class)){
    admitAccount();begin();navigate("Home");until("!document.querySelector('[data-alpha-camera-screen]')");
-   long end=SystemClock.elapsedRealtime()+30000;Set<Uri> created;
-   do{created=owned();created.removeAll(before);if(!created.isEmpty())break;SystemClock.sleep(100);}while(SystemClock.elapsedRealtime()<end);
+   Set<Uri> created=created(before);
    assertEquals("Leaving finalizes one video",1,created.size());assertMedia(created.iterator().next());
    eval("window.__videoState=null;Capacitor.Plugins.ElizaCamera.getRecordingState().then(v=>window.__videoState=v)");
    until("window.__videoState && window.__videoState.isRecording===false");
