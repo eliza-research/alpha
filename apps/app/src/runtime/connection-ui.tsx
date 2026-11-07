@@ -164,6 +164,8 @@ export interface ConnectionSnapshot {
   kind: 'starting' | 'recovering' | 'offline' | 'remote' | 'local' | 'resident' | 'cloud'; name: string;
   /** A resident start is in progress; the dialog may close and the start continues (P-43). */
   residentStarting?: boolean;
+  /** The busy operation runs in the background (resident start or rebind) and opened no dialog. */
+  backgroundWork?: boolean;
   residentRecoveryReason?: ResidentRecoveryReason;
   residentRecovery?: ResidentRecoveryView;
   session: VerifiedSession | null; agents: CloudAgent[];
@@ -821,7 +823,7 @@ let residentStartInBackground = false;
 async function work(message: string, action: (signal: AbortSignal) => Promise<void>, background = false, openOnError = false, preserveError = false) {
   if (operation) return;
   const controller = new AbortController(); signInReadinessOwner = null; operation = controller; residentStartInBackground = background;
-  update({ busy: true, ...(background ? {} : { open: true }), message, error: preserveError ? state.error : '' });
+  update({ busy: true, backgroundWork: background, ...(background ? {} : { open: true }), message, error: preserveError ? state.error : '' });
   try { await action(controller.signal); }
   catch (error) {
     const recovery=residentRecoveryReason(error);if(recovery&&!active)update({residentRecoveryReason:recovery});
@@ -836,7 +838,7 @@ async function work(message: string, action: (signal: AbortSignal) => Promise<vo
   }
   // A resident start ends with its operation, in one update: setup shown behind the start never
   // sees a still-busy connection that is no longer starting.
-  finally { if (operation === controller) { operation = null; residentStartInBackground = false; } update({ busy: false, residentStarting: false, ...(background&&!state.open?{message:''}:{}) }); runQueuedResidentRebind(); runQueuedSignInReturn(); }
+  finally { if (operation === controller) { operation = null; residentStartInBackground = false; } update({ busy: false, backgroundWork: false, residentStarting: false, ...(background&&!state.open?{message:''}:{}) }); runQueuedResidentRebind(); runQueuedSignInReturn(); }
 }
 /** Start (or restart) the resident. A failure leaves the `recovering` state with a Retry, never "no agent". */
 async function startResident(message = RESIDENT_STARTING, background = true) {

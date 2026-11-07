@@ -143,15 +143,28 @@ test('a resident start ends with its operation in one update, so setup behind it
   }
 });
 
-test('access setup is not held behind a background resident start, only behind a foreground step',()=>{
-  const main=readFileSync(new URL('../apps/app/src/main.tsx',import.meta.url),'utf8');
-  const expression=/<StartupPermissions active=\{([^}]*)\} \/>/.exec(main)?.[1];
-  assert.ok(expression,'StartupPermissions gate');
-  const active=new Function('connection','return '+expression);
+test('a background rebind keeps access setup open; a foreground operation holds it',async()=>{
+  const {startupPermissionsActive}=await import('../apps/app/src/startup-permission-flow.ts');
+  const work=stripTypeScriptTypes(between(ui,'async function work(','/** Start (or restart) the resident.'),{mode:'transform'});
+  for(const background of [true,false]){
+    const seen=[],state={cloudAccount:{userId:'owner'},signIn:null,busy:false,open:false,residentStarting:false,error:'',message:''};
+    const box={state,AbortController,active:null,cloud:{},testMocksEnabled:false,
+      update:patch=>{Object.assign(state,patch);seen.push(startupPermissionsActive(state));},
+      residentRecoveryReason:()=>null,errorMessage:error=>error.message,expired:()=>false,residentCloudFlow:()=>true,runQueuedResidentRebind:()=>{},runQueuedSignInReturn:()=>{}};
+    vm.createContext(box);vm.runInContext('var operation=null,residentStartInBackground=false,signInReadinessOwner=null;\n'+work+';globalThis.run=work;',box);
+    await box.run('Reconnecting your agent…',async()=>{await new Promise(resolve=>setTimeout(resolve,5));},background);
+    assert.deepEqual(seen,background?[true,true]:[false,true]);
+    assert.equal(state.backgroundWork,false);
+  }
+});
+
+test('access setup is not held behind a background resident start or rebind, only behind a foreground step',async()=>{
+  const {startupPermissionsActive:active}=await import('../apps/app/src/startup-permission-flow.ts');
   const signedIn={cloudAccount:{userId:'owner'},signIn:null};
   assert.equal(active({...signedIn,busy:true,residentStarting:true}),true,'the agent starting behind setup');
   assert.equal(active({...signedIn,busy:false}),true);
   assert.equal(active({...signedIn,busy:true,residentStarting:false}),false,'a foreground step such as checking a code');
+  assert.equal(active({...signedIn,busy:true,backgroundWork:true}),true,'a background rebind of the resident');
   assert.equal(active({...signedIn,signIn:{step:'code'},busy:false}),false);
   assert.equal(active({cloudAccount:null,signIn:null,busy:false}),false);
   // Own Cerebras keys open setup only after the sign-in page saved them (setupRevision), not on a passive status read.
