@@ -24,6 +24,7 @@ function refusal(status:number,code:string){return Object.assign(Error(code),{st
 function requestId(value:unknown):string{if(typeof value!=='string'||!UUID.test(value))throw Error('Invalid request identity');return value;}
 /** DEV transport only. Canonical Cloud owns login, identity, plan entitlement and speech authorization. */
 export function createBrowserCloudDevHandler(options:{profile:string;request?:typeof fetch;environment?:Environment;diagnostic?:(event:{environment:Environment;operation:string;status:number;code?:string})=>void;resident?:{selectOwn?:(input:{apiKey:string;cartesiaKey?:string},signal?:AbortSignal)=>Promise<unknown>;selectCloud?:(signal?:AbortSignal)=>Promise<unknown>;bind:(credential:{token:string;credentialId:string;reference:string;expiresAt?:number})=>Promise<unknown>;clear:()=>Promise<unknown>;status:(id?:string)=>unknown;ready:(signal:AbortSignal)=>Promise<unknown>}}){
+ const agentEnvironment=options.environment??'production';
  const profile=path.resolve(options.profile,cloudStorageNamespace.replaceAll(':','-')),stateFile=path.join(profile,'credentials.json'),initialFile=path.join(profile,'initial-credential.json'),fetchCloud=options.request??fetch;
  let queue:Promise<unknown>=Promise.resolve();
  const pending=new Map<string,{environment:Environment;expiresAt:number;previousReference:string|null}>();
@@ -242,7 +243,7 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
      if(data.operation==='residentClear'){resetCalendarAccess();return options.resident!.clear();}
      if(data.operation==='residentStatus')return options.resident!.status(typeof data.credentialId==='string'?data.credentialId:undefined);
      if(data.operation==='residentGoogleCalendarAccess'){
-      if(env!=='production'||typeof data.calendarEdits!=='boolean'||!UUID.test(data.credentialId)||Object.keys(data).some(key=>!['operation','environment','credentialId','calendarEdits'].includes(key)))throw Error('Invalid Calendar access intent');
+      if(env!==agentEnvironment||typeof data.calendarEdits!=='boolean'||!UUID.test(data.credentialId)||Object.keys(data).some(key=>!['operation','environment','credentialId','calendarEdits'].includes(key)))throw Error('Invalid Calendar access intent');
       const c=(await load())[env];if(!c||c.credentialId!==data.credentialId)throw refusal(409,'account-changed');
       const generation=calendarGeneration;await current(env,c,controller.signal);if(generation!==calendarGeneration)throw refusal(409,'calendar-owner-access-changed');
       calendarAccess=data.calendarEdits?{credentialId:c.credentialId,reference:c.credentialReference,generation}:null;
@@ -321,28 +322,28 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
  // credential store and fences with the browser bridge; no bearer leaves it.
  const agentRead=async(input:{url:string;method:string;body?:unknown;credentialReference?:string;signal:AbortSignal})=>{
    const url=new URL(input.url);
-   if(url.origin!==authorities.production||url.username||url.password||url.hash||url.port||input.method!=='GET'||input.body!==undefined||!(url.pathname==='/api/v1/user'&&!url.search||['/api/v1/eliza/google/accounts','/api/v1/eliza/google/gmail/search','/api/v1/eliza/google/gmail/read','/api/v1/eliza/google/calendar/calendars','/api/v1/eliza/google/calendar/feed'].includes(url.pathname)&&managedGoogleRequest(url,'GET',undefined)))throw refusal(403,'agent-read-route-refused');
-   const c=await admitted('production',input.credentialReference);
-   const response=await canonical('production',url.pathname+url.search,input.signal,{},c);
-   const data=await boundedServiceJson(response);await current('production',c,input.signal);
+   if(url.origin!==authorities[agentEnvironment]||url.username||url.password||url.hash||url.port||input.method!=='GET'||input.body!==undefined||!(url.pathname==='/api/v1/user'&&!url.search||['/api/v1/eliza/google/accounts','/api/v1/eliza/google/gmail/search','/api/v1/eliza/google/gmail/read','/api/v1/eliza/google/calendar/calendars','/api/v1/eliza/google/calendar/feed'].includes(url.pathname)&&managedGoogleRequest(url,'GET',undefined)))throw refusal(403,'agent-read-route-refused');
+   const c=await admitted(agentEnvironment,input.credentialReference);
+   const response=await canonical(agentEnvironment,url.pathname+url.search,input.signal,{},c);
+   const data=await boundedServiceJson(response);await current(agentEnvironment,c,input.signal);
    return {status:response.status,data};
   };
  const agentCalendarOperation=async(input:Parameters<typeof agentRead>[0])=>{
    const url=new URL(input.url),body=input.body===undefined?undefined:JSON.stringify(input.body);
    if(!url.pathname.startsWith('/api/v1/eliza/google/calendar/sync-v1/'))return agentRead(input);
-   if(url.origin!==authorities.production||url.username||url.password||url.hash||url.port||!managedGoogleRequest(url,input.method,body))throw refusal(403,'agent-calendar-route-refused');
-   const c=await admitted('production',input.credentialReference);
-   const response=await canonical('production',url.pathname+url.search,input.signal,{method:input.method,...(body===undefined?{}:{headers:{'Content-Type':'application/json'},body})},c);
-   const data=await boundedServiceJson(response);await current('production',c,input.signal);return {status:response.status,data};
+   if(url.origin!==authorities[agentEnvironment]||url.username||url.password||url.hash||url.port||!managedGoogleRequest(url,input.method,body))throw refusal(403,'agent-calendar-route-refused');
+   const c=await admitted(agentEnvironment,input.credentialReference);
+   const response=await canonical(agentEnvironment,url.pathname+url.search,input.signal,{method:input.method,...(body===undefined?{}:{headers:{'Content-Type':'application/json'},body})},c);
+   const data=await boundedServiceJson(response);await current(agentEnvironment,c,input.signal);return {status:response.status,data};
  };
 
  async function startGoogleHost(apiToken:string,binding:{credentialId:string;reference:string}){
   let retired=false;const generation=resetCalendarAccess();
-  const current=async()=>{if(retired||generation!==calendarGeneration)throw refusal(409,'account-changed');const c=(await load()).production;if(retired||generation!==calendarGeneration||!c||c.credentialId!==binding.credentialId||c.credentialReference!==binding.reference)throw refusal(409,'account-changed');await admitted('production',binding.reference,binding.credentialId);return publicCredential(c);};
+  const current=async()=>{if(retired||generation!==calendarGeneration)throw refusal(409,'account-changed');const c=(await load())[agentEnvironment];if(retired||generation!==calendarGeneration||!c||c.credentialId!==binding.credentialId||c.credentialReference!==binding.reference)throw refusal(409,'account-changed');await admitted(agentEnvironment,binding.reference,binding.credentialId);return publicCredential(c);};
   const read=async(input:Parameters<typeof agentRead>[0])=>{await current();const result=await agentRead(input);await current();return result;};
   const calendar=async(input:Parameters<typeof agentCalendarOperation>[0])=>{if(!new URL(input.url).pathname.startsWith('/api/v1/eliza/google/calendar/sync-v1/'))return read(input);await current();if(!calendarAllowed(binding,generation))throw refusal(403,'calendar-owner-access-disabled');const result=await agentCalendarOperation(input);await current();if(!calendarAllowed(binding,generation))throw refusal(409,'calendar-owner-access-changed');return result;};
   const port={agentCredential:current,agentRead:read,agentGmailOperation:read,agentCalendarOperation:calendar};
-  await current();const host=await startManagedGoogleAgentHost({port,apiToken,access:()=>({gmailChanges:false,calendarEdits:calendarAllowed(binding,generation)})});
+  await current();const host=await startManagedGoogleAgentHost({port,apiToken,environment:agentEnvironment,access:()=>({gmailChanges:false,calendarEdits:calendarAllowed(binding,generation)})});
   return {port:host.port,close:()=>{retired=true;if(generation===calendarGeneration)resetCalendarAccess();return host.close();}};
  }
  return Object.assign(handler,{
@@ -381,7 +382,7 @@ export function browserCloudDevBridge():Plugin {
    resident=await createCloudResidentHost({source:path.resolve(process.env.ALPHA_ELIZA_SOURCE!),profile:path.resolve(process.env.ALPHA_REMOTE_PROFILE!),port:Number(process.env.ALPHA_REMOTE_PORT),environment:selected,profileMode,cloudRealtimeVoice:process.env.ALPHA_DEV_CLOUD_REALTIME_VOICE==='1',
     // Calendar writes require explicit current-owner intent plus the existing OAuth,
     // canonical control and write-capability gates. Gmail remains read-only.
-    startGoogleHost:selected==='production'?handler.startGoogleHost:undefined});
+    startGoogleHost:handler.startGoogleHost});
   }
   if(resident)server.httpServer?.once('close',()=>{void resident.close();});
   server.middlewares.use(BROWSER_CLOUD_BRIDGE_PATH,(req,res)=>{void handler(req,res);});

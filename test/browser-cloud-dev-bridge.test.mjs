@@ -1050,3 +1050,30 @@ test('Cloud tiles use the existing account fence and a scoped GET allowance iden
   assert.equal(f.calls.length,count,'refused tile requests never reach Cloud');
  }finally{await f.close();}
 });
+
+for(const selected of ['production','staging'])test(`managed Calendar host stays bound to ${selected} and rejects other issuers, owners and expired bindings`,async()=>{
+ const resident={async bind(){return {};},async clear(){return {};},status(){return {};},async ready(){return {};}};
+ const f=await fixture(resident,selected),token='a'.repeat(64),grant='55555555-5555-4555-8555-555555555555';let host;
+ const sourceFile=profileFile(f.profile,'initial-credential.json'),seed=JSON.parse(await readFile(sourceFile,'utf8'));
+ seed.environment=selected;await writeFile(sourceFile,JSON.stringify(seed),{mode:0o600});
+ const base=selected==='production'?productionCloud.api:stagingCloud.api,other=selected==='production'?stagingCloud.api:productionCloud.api;
+ f.setResponse(async(url)=>{assert.equal(new URL(url).origin,base);if(url.includes('/accounts'))return Response.json([{configured:true,connected:true,reason:'connected',connectionId:grant,identity:{email:'owner@example.invalid'},grantedCapabilities:['google.calendar.read','google.calendar.write']}]);if(url.includes('/calendars'))return Response.json([{calendarId:'holiday',summary:'Holidays',primary:false,selected:true,accessRole:'reader'}]);throw Error('Unexpected provider route');});
+ const direct=(url,signal=new AbortController().signal)=>f.host().agentRead({url,method:'GET',credentialReference:reference,signal});
+ const call=async body=>{const r=await fetch('http://127.0.0.1:'+host.port+'/__alpha-owner-gmail',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify(body)});return {status:r.status,data:await r.json()};};
+ try{
+  await assert.rejects(f.host().startGoogleHost(token,{credentialId,reference:'browser-cloud-reference:'+randomUUID()}));assert.equal(f.calls.length,0);
+  host=await f.host().startGoogleHost(token,{credentialId,reference});
+  const sources=await call({calendar:{operation:'sources'}});assert.equal(sources.status,200);assert.equal(sources.data.calendars[0].calendarId,'holiday');assert.ok(f.calls.every(c=>new URL(c.url).origin===base));
+  let before=f.calls.length;await assert.rejects(direct(other+'/api/v1/user'));assert.equal(f.calls.length,before,'other environment refused before dispatch');
+  assert.notEqual((await f.rpc({operation:'residentGoogleCalendarAccess',environment:selected==='production'?'staging':'production',credentialId,calendarEdits:true})).status,200);
+  assert.equal((await f.rpc({operation:'residentGoogleCalendarAccess',environment:selected,credentialId,calendarEdits:false})).status,200);
+  assert.notEqual((await call({calendar:{operation:'write-capabilities',grantId:sources.data.calendars[0].grantId,calendarId:'holiday'}})).status,200);assert.equal(f.calls.length,before,'explicit Calendar write gate stays off');
+  await writeFile(sourceFile,JSON.stringify({...seed,credentialId:randomUUID()}),{mode:0o600});assert.equal((await call({calendar:{operation:'sources'}})).status,409);assert.equal(f.calls.length,before,'wrong owner binding refuses before provider');
+  await writeFile(sourceFile,JSON.stringify({...seed,expiresAt:Date.now()-1}),{mode:0o600});assert.notEqual((await call({calendar:{operation:'sources'}})).status,200);assert.equal(f.calls.length,before,'expired binding refuses before provider');
+  await writeFile(sourceFile,JSON.stringify(seed),{mode:0o600});
+  const controller=new AbortController(),entered=Promise.withResolvers();
+  f.setResponse(async(_url,input)=>new Promise((_resolve,reject)=>{entered.resolve();input.signal.addEventListener('abort',()=>reject(input.signal.reason),{once:true});}));
+  const pending=direct(base+'/api/v1/eliza/google/accounts?side=owner',controller.signal);const outcome=pending.then(()=>null,error=>error);await entered.promise;controller.abort();assert.equal((await outcome).name,'AbortError');
+  await host.close();before=f.calls.length;await assert.rejects(call({calendar:{operation:'sources'}}));assert.equal(f.calls.length,before,'retired host cannot issue reads');
+ }finally{await host?.close();await f.close();}
+});
