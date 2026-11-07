@@ -69,7 +69,8 @@ function readDomains(adb) {
   return readbackInventory(adb(["shell", "run-as", PACKAGE, "sh", "-c", `'${DOMAIN_SCRIPT}'`], { allowFailure: true, withStderr: true }));
 }
 
-const rotationJournal = path.join(os.homedir(), ".local", "state", "alphaphone-pilot-rotation");
+const rotationJournalAnchor = os.homedir();
+const rotationJournal = path.join(rotationJournalAnchor, ".local", "state", "alphaphone-pilot-rotation");
 
 async function main() {
   const argv = process.argv.slice(2);
@@ -122,7 +123,7 @@ async function main() {
   if (device.serialSha256 !== unit.device?.serialSha256) throw new Error(`Serial does not belong to unit ${options.alias}`);
   if (apk.rehearsal && !device.emulator) throw new Error("--build debug is an emulator rehearsal only");
 
-  const releaseInstallLock = claimPilotInstall(rotationJournal, device.serialSha256);
+  const releaseInstallLock = claimPilotInstall(rotationJournal, device.serialSha256, rotationJournalAnchor);
   let pulled;
   try {
     const pendingRotation = inspectPilotRotation(rotationJournal, device.serialSha256);

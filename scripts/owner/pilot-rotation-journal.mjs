@@ -62,18 +62,21 @@ export function inspectPilotRotation(directory, deviceId) {
 }
 
 /** Hold the same device lock across every pilot install, regardless of alias or worktree. */
-export function claimPilotInstall(directory, deviceId) {
+export function claimPilotInstall(directory, deviceId, durableAnchor) {
+  directory = path.resolve(directory);
+  const anchor = path.resolve(durableAnchor);
+  const relative = path.relative(anchor, directory);
+  if (!relative || relative === ".." || relative.startsWith(".." + path.sep) || path.isAbsolute(relative))
+    throw new Error("Pilot journal must be inside its durable anchor");
   const files = paths(directory, deviceId);
-  const created = fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
+  fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
   const owner = fs.lstatSync(directory);
   if (!owner.isDirectory() || owner.uid !== process.getuid() || (owner.mode & 0o077) !== 0)
     throw new Error("Pilot rotation journal directory must be owner-only");
-  if (created) {
-    const firstParent = path.dirname(created);
-    for (let parent = path.dirname(directory); ; parent = path.dirname(parent)) {
-      syncDirectory(parent);
-      if (parent === firstParent) break;
-    }
+  // Another process may have just created an ancestor and not synced it yet.
+  for (let parent = path.dirname(directory); ; parent = path.dirname(parent)) {
+    syncDirectory(parent);
+    if (parent === anchor) break;
   }
   try { fs.mkdirSync(files.lock, { mode: 0o700 }); }
   catch (error) {

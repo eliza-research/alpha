@@ -22,20 +22,20 @@ const intent = {
 function journalFixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "alpha-rotation-journal-test-"));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  return path.join(root, "private", "journal");
+  return { anchor: root, directory: path.join(root, "private", "journal") };
 }
 
 test("a lost installer response survives the lock release and forbids another dispatch", t => {
-  const directory = journalFixture(t);
+  const { directory, anchor } = journalFixture(t);
   const id = device.serialSha256;
   assert.deepEqual(inspectPilotRotation(directory, id), { state: "none" });
-  const release = claimPilotInstall(directory, id);
+  const release = claimPilotInstall(directory, id, anchor);
   try {
-    assert.throws(() => claimPilotInstall(directory, id), /lock is held/);
+    assert.throws(() => claimPilotInstall(directory, id, anchor), /lock is held/);
     beginPilotRotation(directory, id, intent);
   } finally { release(); }
 
-  const next = claimPilotInstall(directory, id);
+  const next = claimPilotInstall(directory, id, anchor);
   try {
     const pending = inspectPilotRotation(directory, id);
     assert.deepEqual(observePilotRotation(pending, { device, installed: before, apkSha256: intent.installedApkSha256 }),
@@ -49,9 +49,9 @@ test("a lost installer response survives the lock release and forbids another di
 });
 
 test("a terminal result must match the durable intent and still consumes the migration", t => {
-  const directory = journalFixture(t);
+  const { directory, anchor } = journalFixture(t);
   const id = device.serialSha256;
-  const release = claimPilotInstall(directory, id);
+  const release = claimPilotInstall(directory, id, anchor);
   try {
     const pin = beginPilotRotation(directory, id, intent);
     assert.throws(() => completePilotRotation(directory, id, "0".repeat(64), intent.replacementApkSha256),
@@ -63,5 +63,22 @@ test("a terminal result must match the durable intent and still consumes the mig
     assert.deepEqual(observePilotRotation(applied, {
       device, installed: { ...before, userId: "wrong", versionCode: 45 }, apkSha256: intent.replacementApkSha256,
     }), { state: "verified-applied", observation: "unmatched", replayAllowed: false });
+  } finally { release(); }
+});
+
+
+test("claim syncs every parent even when a peer already created the journal", t => {
+  const { directory, anchor } = journalFixture(t);
+  fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
+  const openSync = fs.openSync;
+  const opened = [];
+  t.mock.method(fs, "openSync", (file, flags, ...args) => {
+    if ((flags & fs.constants.O_DIRECTORY) !== 0) opened.push(file);
+    return openSync(file, flags, ...args);
+  });
+  const release = claimPilotInstall(directory, device.serialSha256, anchor);
+  try {
+    assert.deepEqual(opened, [path.dirname(directory), anchor, directory]);
+    assert.throws(() => claimPilotInstall(directory, device.serialSha256, directory), /inside its durable anchor/);
   } finally { release(); }
 });
