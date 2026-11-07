@@ -299,7 +299,7 @@ test('the Files agent contract carries the reviewed identity and the runner refu
  assert.match(adapter,/storageTransfer\(\{paths: op\.paths, dest: op\.dest, copy: false, expect: op\.reviewed\}\)/);
  assert.match(adapter,/storageTrash\(\{paths: op\.paths, expect: op\.reviewed\}\)/);
  // The agent's result is the outcome only, no navigation instruction (PLAN principle 1).
- assert.match(adapter,/`Moved \$\{done\} of \$\{op\.paths\.length\} to Trash\.`\}/);assert.doesNotMatch(adapter,/Restore from Files/);
+ assert.match(adapter,/`Moved \$\{done\} of \$\{op\.paths\.length\} to Trash\.`\}/);assert.doesNotMatch(adapter,/Restore from Files/); assert.match(adapter,/summary: 'Opened the share sheet.'}/);assert.doesNotMatch(adapter,/Nothing is sent until/);
  const plugin=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaFilesPlugin.java','utf8');
  assert.match(plugin,/b\.transfer\(paths,call\.getString\("dest",""\),copy,expected\(call,paths\.size\(\)\)\)/);
  assert.match(plugin,/b\.trash\(paths,System\.currentTimeMillis\(\),expected\(call,paths\.size\(\)\)\)/);

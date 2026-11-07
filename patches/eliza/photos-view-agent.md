@@ -71,9 +71,9 @@ only when both `photos.library.v1` and `photos.view.v1` were negotiated.
   an opened review, not a saved change.
 - Wording: the redesign removes the "Device library" album, so the shared copy no longer says
   "Photos > Device library". `proposalContextNotice` for a library operation now says "Open
-  Photos to review this action."; `describeLibraryOperation` for `photo_library_select` says
-  "Nothing is changed or shared." and for `photo_library_review` says "You confirm it in Photos,
-  then in Android." followed by the action detail.
+  Photos to review this action."; `describeLibraryOperation` for `photo_library_select` has no
+  description (the title is the effect), and for `photo_library_review` it is the action detail
+  alone.
 - `packages/agent/src/api/device-action-routes.ts`: accepts and advertises
   `photos.library.v1` and `photos.view.v1`. At the pin the route accepts neither, so without
   this change a phone could not negotiate them at all.

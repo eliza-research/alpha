@@ -330,7 +330,7 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
         await accept('files', value, currentApi, false);
         return {status: 'succeeded', summary: 'Opened the file in Files.'};
       }
-      if (op.type === 'files_share') { const value = await storage.storageShare({paths: op.paths}); return value.status === 'opened' ? {status: 'succeeded', summary: 'Opened the share sheet. Nothing is sent until you pick an app.'} : {status: 'failed', summary: value.message || 'Sharing could not open.'}; }
+      if (op.type === 'files_share') { const value = await storage.storageShare({paths: op.paths}); return value.status === 'opened' ? {status: 'succeeded', summary: 'Opened the share sheet.'} : {status: 'failed', summary: value.message || 'Sharing could not open.'}; }
       if (op.type === 'files_folder_create') { const value = await storage.storageCreateFolder({parent: op.parent, name: op.name}); void reload(); return value.status === 'ready' ? {status: 'succeeded', summary: 'Created ' + (value.path || op.name) + '.'} : {status: 'failed', summary: value.message || 'The folder was not created.'}; }
       // Only the files the owner reviewed: each must still have the identity read for the card.
       if (!op.reviewed || op.reviewed.length !== op.paths.length) return {status: 'failed', summary: 'Nothing was changed.'};
