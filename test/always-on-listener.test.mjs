@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
+import {javaBinary} from './fixtures/jvm-tools.mjs';
 test('Alpha public components still compile against the common listener and preserve stored identity',()=>{
  const root=path.resolve(import.meta.dirname,'..'),shared=path.join(root,'vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense');
  const component=path.join(root,'android/sense/src/main/java/ai/elizaresearch/alphaphone/sense');
@@ -17,7 +18,7 @@ test('Alpha public components still compile against the common listener and pres
   fs.writeFileSync(path.join(temp,'R.java'),'package ai.eliza.sense; public final class R { public static final class drawable { public static final int ic_listening=1; }}');
   fs.writeFileSync(path.join(temp,'NativeAsr.java'),'package ai.eliza.voice; public interface NativeAsr extends AutoCloseable { String transcribe(float[] samples); void cancel(); void close(); }');
   fs.writeFileSync(path.join(temp,'VoiceAssets.java'),'package ai.eliza.voice; public final class VoiceAssets { public static VoiceAssets install(android.content.Context context){return null;} public NativeAsr openAsr(){return null;} }');
-  const java=process.env.JAVA_HOME?path.join(process.env.JAVA_HOME,'bin/javac'):'javac';
+  const java=javaBinary('javac');
   const sources=dir=>fs.readdirSync(dir).filter(file=>file.endsWith('.java')).map(file=>path.join(dir,file));
   execFileSync(java,['--release','21','-cp',path.join(process.env.ANDROID_HOME??path.join(os.homedir(),'Android/Sdk'),'platforms/android-36/android.jar'),'-d',path.join(temp,'out'),...sources(temp),...sources(shared),...sources(component)],{timeout:60000});
  } finally {fs.rmSync(temp,{recursive:true,force:true});}
@@ -36,8 +37,7 @@ test('legacy AlphaListener is a thin alias of the shared native control bridge',
   };
   const files=Object.entries(stubs).map(([name,text])=>{const file=path.join(temp,name);fs.writeFileSync(file,text);return file;});
   const sdk=path.join(process.env.ANDROID_HOME??path.join(os.homedir(),'Android/Sdk'),'platforms/android-36/android.jar');
-  const java=process.env.JAVA_HOME?path.join(process.env.JAVA_HOME,'bin/javac'):'javac';
-  execFileSync(java,['--release','21','-cp',sdk,'-d',path.join(temp,'out'),...files,...['SenseInvocation','SenseListenerClient','SensePlugin'].map(name=>path.join(source,`${name}.java`)),path.join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaListenerPlugin.java')]);
+  execFileSync(javaBinary('javac'),['--release','21','-cp',sdk,'-d',path.join(temp,'out'),...files,...['SenseInvocation','SenseListenerClient','SensePlugin'].map(name=>path.join(source,`${name}.java`)),path.join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaListenerPlugin.java')],{timeout:60000});
  } finally {fs.rmSync(temp,{recursive:true,force:true});}
 });
 test('a cold listener wake is bound to Alpha native owner state, never renderer input',()=>{

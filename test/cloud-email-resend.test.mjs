@@ -4,7 +4,7 @@ import {mkdtempSync,writeFileSync,rmSync,readFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {runJvm} from './fixtures/jvm-tools.mjs';
-import {execFileSync} from 'node:child_process';
+import {assertBefore} from './fixtures/assert-order.mjs';
 import {emailCodeResendAt} from '../scripts/cloud-email-code.ts';
 
 const now=Date.parse('2026-10-26T12:00:00Z');
@@ -19,7 +19,6 @@ test('browser email resend uses a thirty-second minimum and never shortens serve
 });
 test('the actual native resend calculation matches all browser deadline cases',()=>{
   const root=resolve(import.meta.dirname,'..'),dir=mkdtempSync(join(tmpdir(),'alpha-resend-'));
-  const java=process.env.JAVA_HOME||'/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home';
   const literal=value=>value===null?'null':typeof value==='number'?value+'L':JSON.stringify(value);
   try{
     const source=join(dir,'ResendTest.java');
@@ -32,8 +31,8 @@ test('the actual native resend calculation matches all browser deadline cases',(
 test('native and browser send paths retain server cooldowns before rejecting failed sends',()=>{
   const native=readFileSync(new URL('../vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java',import.meta.url),'utf8');
   assert.ok(native.includes('connection.getHeaderField("Retry-After")'));
-  assert.ok(native.indexOf('emailSendAllowedAt = Math.max(emailSendAllowedAt, resendAt)')<native.indexOf('if (sent.status != 200'));
+  assertBefore(native,'emailSendAllowedAt = Math.max(emailSendAllowedAt, resendAt)','if (sent.status != 200');
   const browser=readFileSync(new URL('../scripts/browser-cloud-dev-bridge.ts',import.meta.url),'utf8');
   assert.ok(browser.includes("response.headers.get('Retry-After')"));
-  assert.ok(browser.indexOf('emailSendAllowedAt=Math.max(emailSendAllowedAt,emailCodeResendAt')<browser.indexOf('if(sent.status!==200'));
+  assertBefore(browser,'emailSendAllowedAt=Math.max(emailSendAllowedAt,emailCodeResendAt','if(sent.status!==200');
 });
