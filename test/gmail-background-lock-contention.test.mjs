@@ -65,6 +65,7 @@ import org.json.JSONObject;
 final class AlphaLocalAgentPlugin {
  static final Object lifecycleLock=new Object();
  ${agent.includes('static Object credentialLifecycleLock(')?method(agent,'static Object credentialLifecycleLock('):''}
+ ${method(agent,'private static void requireLockOrder(')}
  ${method(agent,'static <T> T withCredentialSlotMutation(')}
 }
 final class AlphaCredentialStore {

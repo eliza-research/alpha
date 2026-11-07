@@ -27,7 +27,11 @@ public final class CalendarSyncReceiptRecoveryTest {
   history.put("saved",row("owner-scope","apply","42","desired").put("createdAt",9000L).put("phase","terminal").put("acknowledged",true).put("outcome",new JSONObject().put("status","saved")));
   for(int i=0;i<4;i++)history.put("ack-"+i,row("owner-scope","apply","42","desired").put("createdAt",8000L+i).put("phase","terminal").put("acknowledged",true).put("outcome",new JSONObject().put("status","conflict")));
   CalendarSyncReceiptRecovery.prune(history,id->id.equals("undone"));
-  check(history.length()==121&&history.has("pending")&&!history.has("undone")&&!history.has("unknown")&&!history.has("saved")&&!history.has("ack-0"));for(int i=0;i<120;i++)check(history.has("dispatching-"+i));
+  check(history.length()==122&&history.has("pending")&&!history.has("undone")&&history.has("unknown")&&!history.has("saved")&&!history.has("ack-0"));for(int i=0;i<120;i++)check(history.has("dispatching-"+i));
+  history=new JSONObject();
+  for(int i=0;i<128;i++)history.put("unknown-"+i,row("owner-scope","apply","42","desired").put("phase","terminal").put("outcome",new JSONObject().put("status","unknown")));
+  CalendarSyncReceiptRecovery.prune(history,id->{throw new AssertionError("Unconfirmed writes cannot become deletion receipts");});
+  check(history.length()==128);
   System.out.println("PASS native Calendar readback-only receipt recovery and owner isolation");
  }
 }
