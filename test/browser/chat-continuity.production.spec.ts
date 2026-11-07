@@ -163,6 +163,7 @@ async function restartDuringSend(page: Page, asked: string) {
   await expect(draftStatus(page)).toHaveText(UNSETTLED, { timeout: 30_000 });
   await expect(composer(page)).toHaveValue('');
   await expect(page.getByText(`Saved copy: ${asked}`, { exact: true })).toBeVisible();
+  await expect(button(page, 'Restore saved draft')).toBeInViewport({ratio:1});
   return foreign;
 }
 
@@ -229,6 +230,7 @@ test('a restart during a new chat\'s first message offers it for review on the c
   await expect(draftStatus(page)).toHaveText(UNSETTLED, { timeout: 30_000 });
   await expect(composer(page)).toHaveValue('');
   await expect(page.getByText(`Saved copy: ${asked}`, { exact: true })).toBeVisible();
+  await expect(button(page, 'Restore saved draft')).toBeInViewport({ratio:1});
   await composer(page).fill('A different question');
   await composer(page).press('Enter');
   await expect(page.getByText(REVIEW_UNSETTLED, { exact: true })).toBeVisible();
