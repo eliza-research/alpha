@@ -200,7 +200,7 @@ test('actual SDK and Alpha preserve A queued playback while B failure settles on
  const observed=[];let readAutomaticMute;
  const observe=row=>{if(observed.length<32&&Buffer.byteLength(JSON.stringify([...observed,row]))<=7168)observed.push(row);};
  // Compile the paired SDK client without replacing its reducer, frame parser or drain.
- const bundled=await build({entryPoints:['vendor/eliza/packages/ui/src/voice/voice-session-client-core.ts'],nodePaths:process.env.ALPHA_CLOUD_COLLECTOR_SOURCE?[process.env.ALPHA_CLOUD_COLLECTOR_SOURCE+'/node_modules']:[],bundle:true,platform:'browser',conditions:['eliza-source','browser'],format:'esm',write:false});
+ const bundled=await build({entryPoints:['vendor/eliza/packages/ui/src/voice/voice-session-client-core.ts'],alias:{'@elizaos/core/logging':'./.eliza/client-features/packages/core/src/logging.ts'},nodePaths:process.env.ALPHA_CLOUD_COLLECTOR_SOURCE?[process.env.ALPHA_CLOUD_COLLECTOR_SOURCE+'/node_modules']:[],bundle:true,platform:'browser',conditions:['eliza-source','browser'],format:'esm',write:false});
  const {createVoiceSessionClient}=await import('data:text/javascript;base64,'+Buffer.from(bundled.outputFiles[0].text).toString('base64'));
  const sockets=[],playbackProcessors=[],tracks=[];
  const node=()=>({connect(){return this;},disconnect(){}});
