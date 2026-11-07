@@ -396,3 +396,110 @@
 + }
 + static double peak(byte[] pcm,int size){double peak=0;for(int i=0;i+1<size;i+=2){int sample=(short)((pcm[i]&255)|(pcm[i+1]<<8));peak=Math.max(peak,Math.abs(sample)/32768.0);}return Math.min(1,peak);}
 +}
+--- a/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/LocalSpeechBridgePlugin.java
++++ b/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/LocalSpeechBridgePlugin.java
+@@ -92,6 +92,7 @@
+  private SpeechAudioFocus focus;
+  private volatile boolean destroyed;
+  private volatile boolean speechForeground=true;
++ private SpeechOutputWarmup outputWarmup;
+  private final LocalSpeechEngine localEngine=new LocalSpeechEngine(()->SessionSpeech.shared(getContext()));
+  private final Object localCancellationGate=new Object();
+  private SpeechRequestGate.Request localActiveRequest; // Guarded by localCancellationGate.
+@@ -214,7 +215,7 @@
+  protected final void cancelSpeech(String requestId){SpeechRequestGate.Request request=gate.get(requestId);if(request!=null)request.cancel();if(Objects.equals(playbackRequestId,requestId)){clearPlayback();notifyListeners("playbackFailed",new JSObject());}}
+  /** True while a clip, a streamed utterance or a request holds the speaker. */
+  protected final boolean speakerBusy(){return playbackFile!=null||streamPlayback!=null||!gate.idle();}
+- @PluginMethod public void cancel(PluginCall call){SpeechRequestGate.Request request=gate.get(call.getString("requestId",""));if(request!=null)request.cancel();call.resolve();}
++ @PluginMethod public void cancel(PluginCall call){main.post(this::closeOutputWarmup);SpeechRequestGate.Request request=gate.get(call.getString("requestId",""));if(request!=null)request.cancel();call.resolve();}
+ 
+  // ---- Recording drafts ----------------------------------------------------------------------
+ 
+@@ -247,7 +248,7 @@
+   main.postDelayed(timeout,REQUEST_TIMEOUT_MS);
+   if(drain==SpeechRequestGate.Drain.JOINED)return;
+   main.post(()->{
+-   try{capture.cancel();}catch(RuntimeException error){finishDrain(false,"Recording cancellation failed");return;}
++   try{closeOutputWarmup();capture.cancel();}catch(RuntimeException error){finishDrain(false,"Recording cancellation failed");return;}
+    // Never wait on the UI thread. The serial worker barrier follows cancelled work and its cleanup.
+    submitWork(()->main.post(()->finishDrain(true,destroyed?"Voice unavailable":null)),()->finishDrain(false,"Voice cancellation is unavailable"));
+   });
+@@ -266,6 +267,14 @@
+  // Local CPU execution has no dependency on an account, URL, or host process. The status resolves
+  // only when the native pair loads, every bundle file verifies and a context opens. A build without
+  // the voice bundle answers "unavailable" without loading any native library.
++ /** Keeps the output path awake while a foreground voice turn waits for its reply. */
++ @PluginMethod public void warmSpeechOutput(PluginCall call){main.post(()->{
++  if(!destroyed&&speechForeground&&(focus==null||!focus.callActive())&&!speakerBusy()){
++   closeOutputWarmup();outputWarmup=new SpeechOutputWarmup(LocalSpeechEngine.STREAM_RATE);
++  }
++  call.resolve();
++ });}
++ private void closeOutputWarmup(){if(outputWarmup!=null){outputWarmup.close();outputWarmup=null;}}
+  @PluginMethod public void localSpeechStatus(PluginCall call){submitLocal(call,request->{
+   localEngine.use(engine->{if(request.cancelled||destroyed)throw new IOException();engine.prepare();return null;});
+   if(request.cancelled||destroyed)throw new IOException();JSObject out=new JSObject();out.put("ready",true);out.put("execution","device");out.put("provider","fused-paradee-asr");request.result=out;
+@@ -404,7 +413,7 @@
+   }
+  }
+  /** Clears unplayed speech and tells the renderer why. */
+- private void stopSpeechFor(String reason){String previous=playbackId;if(previous==null)return;clearPlayback(false);JSObject event=new JSObject();event.put("playbackId",previous);event.put("reason",reason);notifyListeners("playbackStopped",event);}
++ private void stopSpeechFor(String reason){closeOutputWarmup();String previous=playbackId;if(previous==null)return;clearPlayback(false);JSObject event=new JSObject();event.put("playbackId",previous);event.put("reason",reason);notifyListeners("playbackStopped",event);}
+  /** The audio mode entered a call (Android 12+ watcher): stop speech and assistant capture honestly. */
+  private void callStarted(){if(destroyed)return;stopSpeechFor(SpeechAudioFocusPolicy.CALL_ACTIVE);stopCaptureForCall();}
+  private void stopCaptureForCall(){
+@@ -412,7 +421,7 @@
+   if(capture!=null)capture.stopAutomatically();
+  }
+  private void clearPlayback(){clearPlayback(true);}
+- private void clearPlayback(boolean stopped){String previous=playbackId;if(preparingPlayback!=null){preparingPlayback.reject("Playback cancelled");preparingPlayback=null;}if(player!=null){player.release();player=null;}if(streamPlayback!=null){streamPlayback.stop();streamPlayback=null;VoiceLatencyProbe.TRIALS.stopped(playbackTrial);}if(focus!=null)focus.release();if(playbackFile!=null)playbackFile.delete();playbackFile=null;playbackId=null;playbackRequestId=null;playbackLocalReply=false;playbackTrial=null;playbackLeadIn=-1;if(stopped&&previous!=null){JSObject event=new JSObject();event.put("playbackId",previous);notifyListeners("playbackStopped",event);}}
++ private void clearPlayback(boolean stopped){closeOutputWarmup();String previous=playbackId;if(preparingPlayback!=null){preparingPlayback.reject("Playback cancelled");preparingPlayback=null;}if(player!=null){player.release();player=null;}if(streamPlayback!=null){streamPlayback.stop();streamPlayback=null;VoiceLatencyProbe.TRIALS.stopped(playbackTrial);}if(focus!=null)focus.release();if(playbackFile!=null)playbackFile.delete();playbackFile=null;playbackId=null;playbackRequestId=null;playbackLocalReply=false;playbackTrial=null;playbackLeadIn=-1;if(stopped&&previous!=null){JSObject event=new JSObject();event.put("playbackId",previous);notifyListeners("playbackStopped",event);}}
+  @PluginMethod public void stopPlayback(PluginCall call){String requestId=call.getString("requestId");main.post(()->{if(requestId==null||Objects.equals(playbackRequestId,requestId))clearPlayback();call.resolve();});}
+ 
+  // ---- Voice-turn latency --------------------------------------------------------------------
+--- /dev/null
++++ b/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechOutputWarmup.java
+@@ -0,0 +1,43 @@
++package ai.eliza.voice;
++
++import java.util.function.LongSupplier;
++
++/** Bounded silence keeps the output path awake until the first reply samples are ready. */
++final class SpeechOutputWarmup implements AutoCloseable {
++ static final long LIMIT_NS=15_000_000_000L;
++ private volatile boolean closed;
++ private final Object lifecycle=new Object();
++ private StreamingSpeechPlayback.Output output;
++ private final Thread writer;
++
++ SpeechOutputWarmup(int rate){this(rate,()->AudioTrackSpeechOutput.open(rate),System::nanoTime);}
++ SpeechOutputWarmup(int rate,StreamingSpeechPlayback.OutputFactory factory,LongSupplier now){
++  writer=new Thread(()->{
++   StreamingSpeechPlayback.Output opened=null;
++   try{
++    opened=factory.open();
++    synchronized(lifecycle){
++     if(closed)return;
++     output=opened;
++     opened.play();
++    }
++    float[] silence=new float[rate/50];long end=now.getAsLong()+LIMIT_NS;
++    while(!closed&&now.getAsLong()<end)if(opened.write(silence,0,silence.length)<=0)break;
++   }catch(Exception unavailable){/* Only the warm start is lost. */}
++   finally{
++    synchronized(lifecycle){if(output==opened)output=null;}
++    if(opened!=null){try{opened.abort();}catch(RuntimeException ignored){}try{opened.release();}catch(RuntimeException ignored){}}
++   }
++  },"eliza-speech-warmup");
++  writer.setDaemon(true);writer.start();
++ }
++ @Override public void close(){
++  StreamingSpeechPlayback.Output active;
++  synchronized(lifecycle){
++   closed=true;
++   active=output;
++  }
++  if(active!=null)try{active.abort();}catch(RuntimeException ignored){}
++  writer.interrupt();
++ }
++}
