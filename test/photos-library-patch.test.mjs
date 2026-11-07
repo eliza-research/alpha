@@ -61,3 +61,15 @@ public class CatalogOrderCheck{static void check(boolean ok,String what){if(!ok)
  execFileSync('javac',['-proc:none','-nowarn','-implicit:class','-d',path.join(work,'out'),'-cp',androidJar,'-sourcepath',javaRoot+path.delimiter+path.join(work,'stub'),path.join(work,'stub/ai/eliza/plugins/media/CatalogOrderCheck.java'),path.join(media,'PermittedMediaCatalog.java')],{timeout:120000,stdio:'pipe'});
  assert.equal(execFileSync('java',['-cp',path.join(work,'out')+path.delimiter+androidJar,'ai.eliza.plugins.media.CatalogOrderCheck'],{encoding:'utf8',timeout:60000}).trim(),'ok');
 });
+
+test('Photos grid thumbnails can be read again by id, so off-screen rows drop theirs',{skip:!ready&&'vendor/eliza not checked out'},async()=>{
+ const plugin=await source('PhotosPlugin'),catalog=await source('PermittedMediaCatalog');
+ const thumbnails=method(plugin,'public void thumbnails(PluginCall call)');
+ assert.match(plugin,/@PluginMethod\n  public void thumbnails\(PluginCall call\)/);
+ assert.match(thumbnails,/ids\.length\(\) > OwnedMediaLibrary\.PAGE/);
+ assert.match(thumbnails,/PhotoLibraryAccess\.permitted\(id\) \? permitted\.thumbnailOf\(id, 240\)\s*: owned\.preview\(id, 240\)/);
+ const of=method(catalog,'public String thumbnailOf(String id, int size)');
+ assert.match(of,/readable\(key\.video\)/);assert.match(of,/volumes\(\)\.contains\(key\.volume\)/);
+ const js=fs.readFileSync(path.join(root,'apps/app/src/prototype/camera-adapter.ts'),'utf8');
+ assert.match(js,/thumbnailPlan\(rows\.map\(row=>live\.get\(row\.id\)\?\?row\),from,to,LIBRARY_LIMITS\.thumbnailsKept\)/);
+});

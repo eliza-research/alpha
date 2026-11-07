@@ -95,6 +95,22 @@ export function batches<T>(items: readonly T[], size: number): T[][] {
   return out;
 }
 
+/** Which loaded rows hold a thumbnail: at most `keep` rows around the rendered range [from, to) of
+ * `rows` keep (or fetch again) their image; every other row drops it, so a long scroll does not hold
+ * thousands of thumbnail strings. Returns the ids to drop and the ids to fetch, in row order. */
+export function thumbnailPlan<T extends ViewRow & { image?: string }>(rows: readonly T[], from: number, to: number, keep: number): { drop: string[]; fetch: string[] } {
+  const start = Math.max(0, Math.min(from, rows.length)), end = Math.max(start, Math.min(to, rows.length));
+  const margin = Math.max(0, Math.floor((Math.max(keep, end - start) - (end - start)) / 2));
+  const low = Math.max(0, start - margin), high = Math.min(rows.length, end + margin);
+  const drop: string[] = [], fetch: string[] = [];
+  rows.forEach((row, index) => {
+    const kept = index >= low && index < high;
+    if (!kept && row.image) drop.push(row.id);
+    else if (kept && index >= start && index < end && !row.image) fetch.push(row.id);
+  });
+  return { drop, fetch };
+}
+
 /** How a favorite, trash or restore selection is sent: owned items in internal batches of `owned`;
  * permitted library items (ids `m:…`) in reviewed requests of up to `permitted`, each one Android
  * confirmation, so a large selection is not one confirmation per 20 items. */

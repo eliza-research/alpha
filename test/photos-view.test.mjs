@@ -147,3 +147,14 @@ test('FixNoCap: permitted items go in one reviewed request per 500; Cancel ends 
  assert.deepEqual(mixed,[1,2,3],'Another failure does not stop later batches');assert.ok(outcome[0].error);assert.equal(outcome[2].receipt,3);
  assert.equal(await v.runBatches([[1]],async()=>1,()=>true),undefined);
 });
+
+test('thumbnails are kept only around the rendered rows; rendered rows without one are fetched again',()=>{
+ const rows=Array.from({length:2000},(_,i)=>row('r'+i,now-i*60000,{image:'data:x'}));
+ const plan=v.thumbnailPlan(rows,900,940,240);
+ assert.equal(2000-plan.drop.length,240,'240 thumbnails kept around rows 900-940');
+ assert.ok(!plan.drop.includes('r900')&&!plan.drop.includes('r939'));assert.ok(plan.drop.includes('r0'));
+ assert.deepEqual(plan.fetch,[]);
+ const back=v.thumbnailPlan(rows.map(r=>({...r,image:''})),10,30,240);
+ assert.deepEqual(back.fetch,Array.from({length:20},(_,i)=>'r'+(10+i)),'scrolling back fetches the rendered rows');
+ assert.deepEqual(v.thumbnailPlan(rows.slice(0,100),0,50,240).drop,[],'a small library keeps every thumbnail');
+});

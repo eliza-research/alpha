@@ -15,7 +15,7 @@ import {reviewContentQuestion} from '../browser/content-question';
 import {createCaptureRevisions,captureUnchanged} from './context-selection';
 import {createDeviceLibrary,setMainLibraryHost,LibraryAgentRefusal,type HostOperation} from './photo-library-adapter';
 import type {PhotosViewResult} from '../runtime/photos-view-contract';
-import {virtualGrid,newestFirst,mergeWindow,readWindow,changeBatches,runBatches,groupSections,patchRows,insertRows,patchSelection,favoriteTarget,batches,daysLeft,pinchColumns,dragRange,filterMatches,filterLabel,viewerTitle,formatBytes,shotAt,albumOf,GRID_COLUMNS,type PhotosFilter} from '../runtime/photos-view';
+import {virtualGrid,newestFirst,mergeWindow,readWindow,changeBatches,runBatches,thumbnailPlan,groupSections,patchRows,insertRows,patchSelection,favoriteTarget,batches,daysLeft,pinchColumns,dragRange,filterMatches,filterLabel,viewerTitle,formatBytes,shotAt,albumOf,GRID_COLUMNS,type PhotosFilter} from '../runtime/photos-view';
 import {LIBRARY_LIMITS,type LibraryAgentOperation,type LibraryAgentResult} from '../runtime/photo-library';
 import {openVideoEditReview} from './video-edit-review';
 import {openScanReview,ScanKeepError} from './scan-review';
@@ -79,6 +79,8 @@ const nativeLibrary = registerPlugin<{
   cancelVideoEdit(options:{sessionId?:string}):Promise<void>;
   list(options: { before?: string; trashed?: boolean; album?: string; limit?: number }): Promise<{ items: SavedPhoto[]; next: string }>;
   read(options: { id: string; includeTrashed?: boolean }): Promise<SavedPhoto>;
+  /** Grid thumbnails again for rows whose thumbnail the grid dropped (patches/eliza/photos-library.patch). */
+  thumbnails?(options: { ids: string[] }): Promise<{ items: { id: string; image: string }[] }>;
   setTrashed(options: { id: string; revision: string; trashed: boolean }): Promise<SavedPhoto & {status:string}>;
   share(options: { id: string;revision?:string }): Promise<{ status: string; message?: string }>;
   setFavorite(options: {id:string;revision:string;favorite:boolean}): Promise<SavedPhoto>;
@@ -1122,6 +1124,28 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     el.addEventListener('scroll',()=>{measureGrid(el,owner);const album=owner.get('photos')?.album;if(el.scrollTop+el.clientHeight<el.scrollHeight-900)return;
       if(album==='trash'){if(trashNext&&!trashLoading)void loadTrash(owner,true);}else if(album){if(albumNext&&!albumBusy)void loadAlbum(album,owner,true);}else if(next&&!loading)void refresh(true);},{passive:true});
   }
+  /** Thumbnail memory: at most LIBRARY_LIMITS.thumbnailsKept rows around the rendered range keep their
+   * thumbnail; the rest drop it and are read again (thumbnails) when the grid returns to them. */
+  let thumbTimer:number|undefined;const thumbFetching=new Set<string>();
+  function scheduleThumbnails(rows:SavedPhoto[],from:number,to:number){
+    if(browserMode||typeof library.thumbnails!=='function')return;
+    window.clearTimeout(thumbTimer);
+    thumbTimer=window.setTimeout(()=>{thumbTimer=undefined;if(!disposed)void settleThumbnails(rows,from,to);},120);
+  }
+  async function settleThumbnails(rows:SavedPhoto[],from:number,to:number){
+    const live=new Map(captures.map(row=>[row.id,row] as const));
+    const plan=thumbnailPlan(rows.map(row=>live.get(row.id)??row),from,to,LIBRARY_LIMITS.thumbnailsKept);
+    if(plan.drop.length){const drop=new Set(plan.drop);captures=captures.map(row=>drop.has(row.id)&&row.image?{...row,image:''}:row);}
+    for(const batch of batches(plan.fetch.filter(id=>!thumbFetching.has(id)),24)){
+      batch.forEach(id=>thumbFetching.add(id));
+      try{
+        const result=await library.thumbnails!({ids:batch.map(nativeId)});if(disposed)return;
+        const images=new Map(result.items.filter(item=>item.image).map(item=>['native-camera-'+item.id,item.image] as const));
+        if(images.size){captures=captures.map(row=>!row.image&&images.has(row.id)?{...row,image:images.get(row.id)!}:row);photosApi?.set({nativeCaptureRevision:Date.now()});}
+      }catch{/* The tiles keep their placeholder until the next scroll asks again. */}
+      finally{batch.forEach(id=>thumbFetching.delete(id));}
+    }
+  }
   const gridCss=()=>`grid-template-columns:repeat(${gridColumns},minmax(0,1fr))`;
   const durationLabel=(row:SavedPhoto)=>row.kind==='video'&&row.duration?`${Math.floor(row.duration/60)}:${String(Math.floor(row.duration%60)).padStart(2,'0')}`:'';
   const tileLabel=(row:SavedPhoto)=>{const when=viewerTitle(shotAt(row));return `${row.kind==='video'?'Video':'Photo'}, ${when.day} ${when.time}`;};
@@ -1283,6 +1307,12 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     // Virtualised: sections off screen become one spacer each side; on-screen sections render only
     // their visible rows, with padding for the rest, so the sticky day header stays in its section.
     const grouped = groupSections(shownCaptures), grid = virtualGrid(grouped.map(group => group.items.length), gridMetrics());
+    {
+      // The rendered range in shownCaptures: only rows around it keep their thumbnail.
+      const offsets: number[] = []; grouped.reduce((at, group, index) => { offsets[index] = at; return at + group.items.length; }, 0);
+      const first = grid.sections[0], last = grid.sections[grid.sections.length - 1];
+      if (first && last) scheduleThumbnails(shownCaptures, offsets[first.index] + first.from, offsets[last.index] + last.to);
+    }
     const sections = grid.sections.map(part => { const group = grouped[part.index]; return { label: group.label, place: '', count: String(group.items.length), pad: `padding-top:${part.padTop}px;padding-bottom:${part.padBottom}px`, items: tiles(group.items.slice(part.from, part.to), currentApi, false, shownCaptures) }; });
     data.gridBefore = `height:${grid.before}px`; data.gridAfter = `height:${grid.after}px`;
     data.groups = [...sections, ...(data.groups || [])];
@@ -1426,6 +1456,6 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   const resumed=()=>{void restartAfterResume(()=>({denied:session.denied,phase:session.phase,disposed}),()=>cameraAccess.checkPermissions()).then(restart=>{if(restart){session.rearm();schedule();}});};
   let resumeHandle:{remove():Promise<void>}|undefined;
   void DailyApps.addListener('appResumed',resumed).then(handle=>{if(disposed)void handle.remove();else resumeHandle=handle;}).catch(()=>{});
-  return () => { releaseHost();if(requestedPhoto===takeRequestedPhoto)requestedPhoto=undefined;window.clearTimeout(noticeTimer);noticeGeneration++;watchLibrary(false);deviceLibrary.dispose();captureQuestion=undefined;frameQuestion=undefined;void libraryChangeHandle?.remove();hideAccess();void resumeHandle?.remove();window.removeEventListener('alpha:albums-document-changed',albumsChanged);if(scanApi&&prototype.api===scanApi)prototype.api=originalApi;disposed = true;cancelEdit();endHold();selection=undefined; clearInterval(timer); window.clearTimeout(chatTimer); closeVideo(); removePresence(); document.removeEventListener('visibilitychange', visibility); window.removeEventListener('pagehide', pageHide); window.removeEventListener('resize', resize); void stop(); style.remove(); captures = []; module.render = render; module.onLeave = leave; module.back = cameraBack; module.actions = cameraActions; if (scanRequest) scanRequest = undefined; if (views.photos) { views.photos.render = photosRender; views.photos.back = photosBack; views.photos.onLeave = photosLeave; } };
+  return () => { releaseHost();if(requestedPhoto===takeRequestedPhoto)requestedPhoto=undefined;window.clearTimeout(noticeTimer);window.clearTimeout(thumbTimer);noticeGeneration++;watchLibrary(false);deviceLibrary.dispose();captureQuestion=undefined;frameQuestion=undefined;void libraryChangeHandle?.remove();hideAccess();void resumeHandle?.remove();window.removeEventListener('alpha:albums-document-changed',albumsChanged);if(scanApi&&prototype.api===scanApi)prototype.api=originalApi;disposed = true;cancelEdit();endHold();selection=undefined; clearInterval(timer); window.clearTimeout(chatTimer); closeVideo(); removePresence(); document.removeEventListener('visibilitychange', visibility); window.removeEventListener('pagehide', pageHide); window.removeEventListener('resize', resize); void stop(); style.remove(); captures = []; module.render = render; module.onLeave = leave; module.back = cameraBack; module.actions = cameraActions; if (scanRequest) scanRequest = undefined; if (views.photos) { views.photos.render = photosRender; views.photos.back = photosBack; views.photos.onLeave = photosLeave; } };
 
 }

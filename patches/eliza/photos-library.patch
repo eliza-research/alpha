@@ -809,7 +809,23 @@
      return result;
    }
    public Uri uri(MediaLibraryKey key) {
-@@ -351,8 +389,8 @@
+@@ -303,6 +341,15 @@
+       main.removeCallbacks(timeout);
+     }
+   }
++  /** A listed item's grid thumbnail again (the client drops thumbnails of rows far off screen). */
++  public String thumbnailOf(String id, int size) throws Exception {
++    MediaLibraryKey key = MediaLibraryKey.parse(id);
++    if (!readable(key.video))
++      throw new SecurityException("Media access was revoked");
++    if (!volumes().contains(key.volume))
++      throw new IllegalArgumentException("Media volume unavailable");
++    return thumbnail(key, size);
++  }
+   private boolean readable(boolean video) {
+     return !"denied".equals(access().getString(video ? "videos" : "images"));
+   }
+@@ -351,8 +398,8 @@
        long from, long to, int limit) throws Exception {
      if (from < 0 || to < from || limit < 1 || limit > PAGE_SIZE)
        throw new IllegalArgumentException("Invalid bounded media query");
@@ -820,7 +836,7 @@
        throw new IllegalArgumentException("Unsupported media filter");
      String pageKind = kind + ":" + filter + ":" + from + ":" + to + ":" + limit;
      if (search == null || search.length() > 128 || search.indexOf('\0') >= 0 || kind == null
-@@ -360,89 +398,93 @@
+@@ -360,89 +407,93 @@
        throw new IllegalArgumentException("Invalid photo query");
      List<String> volumes = volumes();
      String snapshot = snapshot(volumes);
@@ -985,7 +1001,7 @@
      }
      current(snapshot, volumes);
      JSObject result = new JSObject();
-@@ -564,7 +606,7 @@
+@@ -564,7 +615,7 @@
      List<String> volumes = volumes();
      String snapshot = snapshot(volumes);
      long until = SystemClock.elapsedRealtime() + 3000;
@@ -994,7 +1010,7 @@
      for (String volume : volumes)
        for (boolean video : new boolean[] {false, true}) {
          if (!readable(video))
-@@ -574,8 +616,8 @@
+@@ -574,8 +625,8 @@
          if (Build.VERSION.SDK_INT >= 30)
            args.putInt(MediaStore.QUERY_ARG_MATCH_TRASHED, MediaStore.MATCH_INCLUDE);
          String[] projection = Build.VERSION.SDK_INT >= 30
@@ -1005,7 +1021,7 @@
          try (Cursor rows = query(volume, video, args, projection)) {
            if (rows == null)
              throw new IllegalStateException("Media provider unavailable");
-@@ -590,6 +632,11 @@
+@@ -590,6 +641,11 @@
                videos++;
              if (Build.VERSION.SDK_INT >= 30 && rows.getInt(0) == 1)
                favorites++;
@@ -1017,7 +1033,7 @@
            }
          }
        }
-@@ -597,6 +644,8 @@
+@@ -597,6 +653,8 @@
      JSObject result = new JSObject();
      result.put("favorites", favorites);
      result.put("videos", videos);
@@ -1264,7 +1280,7 @@
    @PluginMethod
    public void editResult(PluginCall call) {
      if (VideoCopyEdits.isVideoOperation(call.getString("operationId"))) {
-@@ -451,16 +484,19 @@
+@@ -451,22 +484,59 @@
            call.resolve(albums.list(album.substring(7), call.getString("before", "")));
            return;
          }
@@ -1286,7 +1302,47 @@
        } catch (Exception failure) {
          call.reject("Saved media could not be loaded");
        }
-@@ -545,7 +581,7 @@
+     });
+   }
+ 
++  /**
++   * Grid thumbnails (240 px JPEG data URLs) for up to {@link OwnedMediaLibrary#PAGE} listed items,
++   * read again when the grid returns to rows whose thumbnails it dropped to bound memory. An item
++   * that is gone or unreadable answers an empty image.
++   */
++  @PluginMethod
++  public void thumbnails(PluginCall call) {
++    submit(call, () -> {
++      try {
++        JSArray ids = call.getArray("ids");
++        if (ids == null || ids.length() < 1 || ids.length() > OwnedMediaLibrary.PAGE)
++          throw new IllegalArgumentException();
++        JSArray items = new JSArray();
++        for (int i = 0; i < ids.length(); i++) {
++          String id = ids.getString(i);
++          JSObject item = new JSObject();
++          item.put("id", id);
++          try {
++            item.put("image", PhotoLibraryAccess.permitted(id) ? permitted.thumbnailOf(id, 240)
++                                                               : owned.preview(id, 240));
++          } catch (Exception unavailable) {
++            item.put("image", "");
++          }
++          items.put(item);
++        }
++        JSObject result = new JSObject();
++        result.put("items", items);
++        call.resolve(result);
++      } catch (Exception invalid) {
++        call.reject("Select 1-" + OwnedMediaLibrary.PAGE + " listed items.");
++      }
++    });
++  }
++
+   @PluginMethod
+   public void read(PluginCall call) {
+     diagnostic(Diagnostic.READ_INVOKED);
+@@ -545,7 +615,7 @@
      submit(call, () -> {
        try {
          JSArray items = call.getArray("items");
@@ -1295,7 +1351,7 @@
            throw new IllegalArgumentException();
          ArrayList<Uri> uris = new ArrayList<>();
          Set<String> unique = new HashSet<>();
-@@ -635,7 +671,9 @@
+@@ -635,7 +705,9 @@
          String operation = call.getString("operation", "");
          boolean[] change = PhotoLibraryAccess.batchChange(operation);
          JSArray items = call.getArray("items");
