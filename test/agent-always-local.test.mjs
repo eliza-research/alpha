@@ -175,7 +175,7 @@ test('a chat turn without Cloud inference gets an honest answer with the plan ac
   assert.ok(renderCard('funding').sub.includes('Nebula subscription'));
   assert.equal(renderCard('unknown'),undefined);
 
-  assert.match(adapter, /const planCard=planActionCard\(\(e as \{planAction\?:unknown\}\)\.planAction\);/);
+  assert.match(adapter, /const planCard=planActionCard\(\(e as \{planAction\?:unknown\}\)\.planAction\)\?\?managePlan;/);
 });
 
 test('the plan surface is a notice beside the running agent, not a gate', () => {
