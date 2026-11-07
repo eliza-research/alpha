@@ -137,6 +137,7 @@ export const CLASS_REGISTRY = {
   AppInfo: { note: "Settings' App details for exactly the asked package (intercepted intent) and the refusals; no other app is changed" },
   NoteRecorder: { note: "real microphone audio across three segment rollovers and a simulated process loss; grants RECORD_AUDIO itself; about 90 s" },
   NoteRecordingSave: { note: "retains one recording twice into the same voice note, with a 200k-character transcript" },
+  PhotoReplace: { note: "Replace over its own owned PNG fixtures with an injected write failure: restored from the backup, kept until a later result restores it, or saved when the write completed" },
   StorageCategories: { note: "every Browse category id over a private cache root; the Downloads listing is a temporary Download/ folder, not shared storage" },
   FilesFolderQuestion: { note: "real DocumentsUI tree grant; the folder question reviews entry names only, and a delete or revoked grant during review adds nothing (MVP-13)" },
   // J05-2: native page excerpt -> reviewed question -> composer; a note's web source across recreation.

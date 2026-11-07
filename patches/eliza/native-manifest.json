@@ -80,7 +80,7 @@
     },
     {
       "file": "photos-library.patch",
-      "sha256": "843bd381fc7754bbfca02e3e1ea575f5e5c415a49933205360785cf769ce814c",
+      "sha256": "f663a30464893fe9860dc4efa8ffce6dc0731ebebe5a1cee26f9ffeed4f7f8eb",
       "module": "plugins/plugin-native-media/android",
       "targets": [
         {
@@ -96,7 +96,7 @@
         {
           "path": "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/OwnedPhotoEdits.java",
           "beforeSha256": "3f09d9455d95e8bec27699133ecb976466ca6af690f3563a466399bb282e4d48",
-          "afterSha256": "4959ddd1b6b1e5f0727376559d1a98ecd15797879e87bb95d9d4ebd61ce98911"
+          "afterSha256": "c89d982b2dacc4cbe710d7daaca021d100808ad937a87d706023a0bfb8995479"
         },
         {
           "path": "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PermittedMediaCatalog.java",
