@@ -23,7 +23,7 @@ export class BrowserDeletions extends WebPlugin{
   // A changed or missing selection is a definite refusal before admission: nothing is staged.
   let selected:Awaited<ReturnType<BrowserDaily['deletionSelection']>>;try{selected=await this.daily.deletionSelection(target);}catch{return {status:'stale'};}
   const captured=owner||selected.owner;
-  if(!await this.reviews.confirm(id,'Delete reminder?',selected.row.title+'\n\nDelete this reminder after 10 seconds? Its alert is paused immediately. You can Undo during that time.','Delete reminder'))return {status:'cancelled'};
+  if(!await this.reviews.confirm(id,'Delete reminder?',selected.row.title+'\n\nIts alert pauses now. You can undo for 10 seconds.','Delete reminder'))return {status:'cancelled'};
   return {status:'queued',deletion:await this.daily.stageDeletion(target,captured,id,binding,journalBinding)};
  }
 }

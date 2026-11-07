@@ -10,8 +10,8 @@ public final class AlphaReminders {
  private AlphaReminders() {}
  public static final ReminderConfiguration CONFIGURATION = new ReminderConfiguration(
   "alpha-reminder-envelope-v1", "alpha-local-reminders-v1", "reminder-taps:v1",
-  "alpha-local-reminders", "Local reminders",
-  "Reminders scheduled on this device. Delivery time may vary with Android battery policies.",
+  "alpha-local-reminders", "Reminders",
+  "Reminders you set on this phone. Android may delay them.",
   "Alpha Phone reminder", "ai.elizaresearch.alphaphone.REMIND",
   "ai.elizaresearch.alphaphone.REMINDER_DECISION", "ai.elizaresearch.alphaphone.OPEN_REMINDER",
   "alpha-reminder:", "alpha-reminder-decision:", "alpha-reminder-tap:",
