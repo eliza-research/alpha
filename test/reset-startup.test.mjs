@@ -32,6 +32,13 @@ test('pending reset retries, shows bounded recovery instead of a launcher restar
   put('android/system/Os.java',`package android.system; public class Os {public static java.io.FileDescriptor open(String path,int flags,int mode){return new java.io.FileDescriptor();}public static void fsync(java.io.FileDescriptor fd){}public static void close(java.io.FileDescriptor fd){} }`);
   put('ai/elizaresearch/alphaphone/Dependencies.java',`package ai.elizaresearch.alphaphone;
 class ResetRecoveryActivity extends android.app.Activity {static final String PROCESS_SUFFIX=":reset_recovery";}
+class AlphaDevicePlugin {static final class UpdatePause {
+ static int configured;
+ static void configure(android.content.Context base){
+  if(AlphaDataReset.RESET.pending(base))throw new AssertionError("A pending reset must stop before updater admission");
+  configured++;
+ }
+}}
 class NativeDigestHost {NativeDigestHost(android.content.Context c){NativeSourceHost.started++;}void read(){}}
 class NativeOwnerReminderHost {NativeOwnerReminderHost(android.content.Context c){NativeSourceHost.started++;}void read(){}}
 class NativeSourceHost {static int started;static void configure(Runnable r){started++;}static void configureOwnerReminderContext(Runnable r){started++;}}
@@ -57,7 +64,7 @@ public class ResetStartupTest {
   // A stale attempt without a confirmed request neither withdraws listener consent nor clears data,
   // even with an acknowledging listener, and recreates no reset state in fresh data.
   SenseListenerClient.resetSaved=true;check(AlphaDataReset.RESET.attempt(app,System.currentTimeMillis())==DataReset.Outcome.DEFERRED);check(SenseListenerClient.calls==0&&android.app.ActivityManager.calls==0);check(android.content.Context.data.listFiles().length==0);
-  app.attachBaseContext(app);app.onCreate();check(NativeSourceHost.started==9);
+  app.attachBaseContext(app);check(AlphaDevicePlugin.UpdatePause.configured==1);app.onCreate();check(NativeSourceHost.started==9);
   // Package-scoped: Android's own-package clear only; the sibling app's fixture data is untouched.
   check(new java.io.File(args[1],"keep").isFile());NativeSourceHost.started=0;
   AlphaDataReset.RESET.record(app);check(AlphaDataReset.RESET.pending(new AlphaApplication()));
@@ -78,7 +85,7 @@ public class ResetStartupTest {
   check(android.app.ActivityManager.calls==clears);check(AlphaDataReset.RESET.pending(app));check(NativeSourceHost.started==0);
   // The recovery process neither stops itself nor starts Alpha's runtime.
   android.app.Application.process="fixture.alpha:reset_recovery";AlphaApplication recovery=new AlphaApplication();recovery.attachBaseContext(app);recovery.onCreate();
-  check(NativeSourceHost.started==0);check(android.content.Context.recoveries==25);android.app.Application.process="fixture.alpha";
+  check(NativeSourceHost.started==0);check(AlphaDevicePlugin.UpdatePause.configured==1);check(android.content.Context.recoveries==25);android.app.Application.process="fixture.alpha";
   // A user's Try again is always a fresh attempt; still fail-closed while unacknowledged.
   check(AlphaDataReset.RESET.attempt(app,System.currentTimeMillis())==DataReset.Outcome.LISTENER_UNACKNOWLEDGED);check(SenseListenerClient.calls==DataReset.AUTOMATIC_ATTEMPTS+1);check(android.app.ActivityManager.calls==clears);check(AlphaDataReset.RESET.pending(app));
   // Window policy: budget returns after the window or a clock change; unreadable state defers automatic attempts.
@@ -118,7 +125,7 @@ public class ResetStartupTest {
   // A stale attempt without a confirmed request neither withdraws listener consent nor clears data,
   // even with an acknowledging listener, and recreates no reset state in fresh data.
   SenseListenerClient.resetSaved=true;int listenerBefore=SenseListenerClient.calls,clearsBefore=android.app.ActivityManager.calls;check(AlphaDataReset.RESET.attempt(app,System.currentTimeMillis())==DataReset.Outcome.DEFERRED);check(SenseListenerClient.calls==listenerBefore&&android.app.ActivityManager.calls==clearsBefore);check(android.content.Context.data.listFiles().length==0);
-  app.attachBaseContext(app);app.onCreate();check(NativeSourceHost.started==9);
+  app.attachBaseContext(app);check(AlphaDevicePlugin.UpdatePause.configured==2);app.onCreate();check(NativeSourceHost.started==9);
   // Package-scoped: Android's own-package clear only; the sibling app's fixture data is untouched.
   check(new java.io.File(args[1],"keep").isFile());
   System.out.println("PASS reset startup admission and interrupted dispatch");
