@@ -38,6 +38,26 @@ test('client source rejects changed pin and upstream content without replacing i
  fs.writeFileSync(path.join(root,'upstream.lock.json'),JSON.stringify({commit}));
  fs.appendFileSync(path.join(vendor,CLIENT_FEATURE_PATHS[0]),'corrupt');assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/dirty|drift/);assert.deepEqual(fs.readFileSync(path.join(source,'.source.json')),stamp);
 }));
+test('scan draft patch authenticates its original, patch and resulting source',()=>fixture(({root,vendor,git})=>{
+ const name='plugins/plugin-native-camera/src/scan-document.ts';
+ fs.copyFileSync(path.join('vendor/eliza',name),path.join(vendor,name));
+ git(['add',name]);git(['-c','user.name=Source fixture','-c','user.email=fixture@example.invalid','commit','-qm','Scan source']);
+ const commit=git(['rev-parse','HEAD']);fs.writeFileSync(path.join(root,'upstream.lock.json'),JSON.stringify({commit}));
+ const patches=path.join(root,'patches/eliza');fs.mkdirSync(patches,{recursive:true});
+ const patchName='scan-document-client.patch',manifestName='scan-document-client-manifest.json';
+ fs.copyFileSync(path.join('patches/eliza',patchName),path.join(patches,patchName));
+ const manifest={...JSON.parse(fs.readFileSync(path.join('patches/eliza',manifestName))),baseCommit:commit};
+ const write=()=>fs.writeFileSync(path.join(patches,manifestName),JSON.stringify(manifest));write();
+ const source=prepareClientFeatures({root,projectVoice:false});
+ const receipt=JSON.parse(fs.readFileSync(path.join(source,'.source.json')));
+ assert.equal(receipt.scanPatch.afterSha256,manifest.afterSha256);
+ assert.match(fs.readFileSync(path.join(source,name),'utf8'),/autoSaved = !explicitlySaved/);
+ fs.appendFileSync(path.join(patches,patchName),'\n');
+ assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/patch digest or target mismatch/);
+ fs.copyFileSync(path.join('patches/eliza',patchName),path.join(patches,patchName));
+ manifest.beforeSha256='0'.repeat(64);write();
+ assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/patch source mismatch/);
+}));
 test('client source refuses unknown directories and cache symlinks',()=>fixture(({root})=>{
  const source=path.join(root,'.eliza/client-features');fs.mkdirSync(source,{recursive:true});fs.writeFileSync(path.join(source,'keep'),'owned elsewhere');assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/unrecognized/);assert.equal(fs.readFileSync(path.join(source,'keep'),'utf8'),'owned elsewhere');
  fs.rmSync(source,{recursive:true});prepareClientFeatures({root,projectVoice:false});fs.symlinkSync(path.join(root,'upstream.lock.json'),path.join(source,'unexpected-link'));assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/Symlink/);assert.equal(fs.existsSync(path.join(root,'upstream.lock.json')),true);
