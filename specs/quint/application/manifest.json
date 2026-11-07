@@ -106,7 +106,24 @@
       "failedSaveKeepsDraftTest",
       "deletionRestartRestoreTest",
       "expiryTest",
-      "concurrentEditTest"
+      "concurrentEditTest",
+      "canonicalDirtyRefreshKeepsDraftTest",
+      "canonicalCleanRefreshFollowsSnapshotTest",
+      "canonicalInvalidationsCoalesceTest",
+      "canonicalWriteRetiresOlderReadTest",
+      "canonicalTypingDuringSaveQueuesOnlyNewEditTest",
+      "canonicalUnknownWriteRetainsDraftTest",
+      "canonicalExplicitRetryRemainsAvailableTest",
+      "canonicalQueueBeforeNewEditDoesNotReplayTest",
+      "canonicalReadFailureRecoversTest",
+      "canonicalForeignReadCannotPublishTest",
+      "canonicalRetiredOwnerCannotPublishTest",
+      "canonicalFolderRenameKeepsMembershipTest",
+      "canonicalDeletedFolderIsUnfiledTest",
+      "canonicalNewFolderNeverAdoptsOldReferenceTest",
+      "canonicalFolderCasRejectsStaleWriteTest",
+      "canonicalMissingCleanSelectionClosesTest",
+      "canonicalDiscardIsExplicitTest"
     ],
     "sources": [
       "apps/app/src/runtime/notes-store.ts",
@@ -114,11 +131,24 @@
       "apps/app/src/runtime/notes-trash-policy.ts",
       "apps/app/src/runtime/notes-secure-store.ts",
       "apps/app/src/prototype/notes-document-adapter.ts",
-      "apps/app/src/browser/domain-document.ts"
+      "apps/app/src/browser/domain-document.ts",
+      "apps/app/src/prototype/canonical-notes-controller.ts",
+      "apps/app/src/prototype/canonical-notes-editor.ts",
+      "apps/app/src/prototype/canonical-notes-ui.ts",
+      "apps/app/src/prototype/notes-folders-adapter.ts",
+      "apps/app/src/runtime/notes-folders.ts",
+      "apps/app/src/runtime/notes-folders-model.ts"
     ],
     "abstractions": [
-      "Finite representative identities and contents. Exact source symbols and modeling limits are documented in the family README.",
-      "Model safety checks do not establish implementation refinement or device acceptance."
+      "Legacy mode preserves the existing one-note local Trash/CAS compatibility contract. Canonical mode represents one existing record, one editor draft, one initial folder and one newly allocated folder identity.",
+      "Canonical source identities, revisions and edit generations are bounded. Content values stand for authored text and rich metadata. Folder-document revisions represent exact compare-and-exchange document identity, not a stored revision field.",
+      "Canonical refresh, owner retirement, dirty-draft preservation, queued edits and uncertain mutation outcomes are explicit. An uncertain response forbids automatic follow-up; explicit user retries retain the current public API behavior.",
+      "Native/provider/transport correctness and complete implementation refinement require separate evidence."
+    ],
+    "sharedSources": [
+      "plugins/plugin-notes/src/client/notes-controller.ts",
+      "plugins/plugin-notes/src/client/notes-editor.ts",
+      "plugins/plugin-notes/src/client/notes-snapshot-state.ts"
     ]
   },
   {

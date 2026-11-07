@@ -11,7 +11,7 @@ repository-wide allocation and source hashes are recorded in `../coverage.json`.
 | `StartupPermissions` | `createStartupPermissionFlow`, `readStartupPermissionMemory`, `readStartupPermissionProgress`, `writeStartupPermissionProgress` | One representative permission transaction, six ordered native setup steps, durable prompt attempt and progress, legacy completed installation |
 | `PermissionWalkthrough` | `StartupPermissions.allow`, `advance`, `finish`, `savedProgress` | Six independent permission maps, signed-in prerequisite, sequential requests, targeted Settings review, final platform recheck and historical completed records |
 | `AssistantConversation` | `AlphaClient.run`, `send`, `approve`, `cancel`, `replaceAssistantDraft` | One foreground request and one proposal identity, consumption before dispatch, automatic-workflow survival across ordinary navigation, sensitive-view cancellation, compare-and-exchange composer draft |
-| `NotesLifecycle` | `editNotesTrash`, `planNotesTrash`, Notes document adapter and secure store | One representative note, opaque record content, dirty draft, revision conflict, write-ahead Trash, three-day boundary, restore and storage failure |
+| `NotesLifecycle` | Legacy `editNotesTrash`/`planNotesTrash`, canonical `NotesController`, `NotesEditor`, `NotesSnapshotState`, `CanonicalNotesUi` and the Notes folder document | Separate legacy Trash/CAS and canonical owner/read/write generations, dirty-draft preservation, queued edits, uncertain writes, current selection, stable folder identity and deleted-folder projection |
 | `DurableStore` | `BrowserDomainDocument.load`, `edit`, `capture`, `restore`, `reset` | One document transaction, two distinct revisions, preserved legacy bytes, corrupt metadata, explicit recovery and persistence failure |
 | `BrowserSession` | `browsingSnapshot`, `restoreBrowsing`, native `BrowserSessionStore` | Two normal tabs and one private tab, history privacy, pristine restore, navigation epoch. URL parsing, cookie machinery and actual WebView execution retain their implementation contracts |
 | `CredentialVault` | `passwordSurfaceOpen`, `refresh`, `locked`, `clearSecrets`, native origin-bound autofill | One ephemeral secret, lock/foreground/generation, origin review, damaged-vault confirmed fresh-unlock reset and immutable test-only transfer admission. Native encryption and authentication are external inputs |
@@ -26,6 +26,29 @@ repository-wide allocation and source hashes are recorded in `../coverage.json`.
 | `FilesAndSharing` | `reviewFileEmail`, `reviewMailAttachment`, `mediaCopyIntent`, share adapters | One exact source, owner and draft identity, initially unchecked selection, reread before local insertion, cancellation and revoked grant. Send has its own Inbox model |
 | `PreferencesAndPresentation` | `keyboardFreeHeight`, `canvasGeometry`, `surfaceLayout`, `publishSurfaceLayout`, shell preferences | Representative portrait/wide geometry, keyboard exclusion, large-text fallback, preference readback, draft/selection continuity and one system shade |
 | `CallbackLanding` | Static delegation-return page | Query multiplicity, state shape, result exclusivity, size/description limits, early URL scrubbing and exact app-link exposure |
+
+## Notes lifecycle modes
+
+`NotesLifecycle` starts either the legacy local Trash/CAS contract or a canonical
+resident Notes contract. The canonical mode has one existing note, one editor
+draft, one current owner, a distinct foreign callback identity and two successive
+folder identities. Three read generations and two writes bound the exploration.
+The legacy mode retains its four storage, deletion and restore scenarios.
+
+Canonical scenarios exercise owner retirement, superseded reads, clean and dirty
+refreshes, selection validity and edits typed during a pending save. A queued save
+captures the edit version that requested it. Only an acknowledged write can start
+that captured newer edit automatically. An uncertain write keeps the draft for
+review, while a subsequent explicit save remains available through the public
+editor API. Read completion and a coalesced invalidation's next refresh are
+separate model actions.
+
+The folder contract uses document identity as its compare-and-exchange revision.
+Rename keeps a folder ID. Deletion leaves the note's stored reference intact and
+projects it as unfiled. A newly created folder has a distinct ID and cannot adopt
+that reference. Rich authored values, folder names and content are equality
+classes. New-note creation, canonical Trash operations and complete implementation
+refinement remain outside this bounded variant.
 
 ## Trace conformance
 
