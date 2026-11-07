@@ -13,6 +13,7 @@ if(!process.execArgv.some((arg,i)=>arg==='--import'&&process.execArgv[i+1]==='ts
  process.exit(child.status??1);
 }
 const {DeviceActions}=await import('../apps/app/src/runtime/device-actions.ts');
+const {FILES_CAPABILITY}=await import('../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/files-browser-contract.ts');
 const {PHONE_DIAL_CAPABILITY,telephonyDeviceCapabilities}=await import('../apps/app/src/runtime/phone-dial-contract.ts');
 
 const connection=readFileSync(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
@@ -27,7 +28,7 @@ const offered=['reminders.create.v1','reminders.local-record.v2','calendar.creat
 async function capabilities(platform,offers=offered){
  const negotiate=runInNewContext(stripTypeScriptTypes(negotiateSource,{mode:'transform'})+';deviceCapabilities',{
   Capacitor:{getPlatform:()=>platform,isNativePlatform:()=>platform!=='web',isPluginAvailable:()=>false},
-  CAMERA_CAPTURE_CAPABILITY:'camera.capture-photo.v1',SMS_SEND_CAPABILITY:'sms.send.v1',
+  CAMERA_CAPTURE_CAPABILITY:'camera.capture-photo.v1',SMS_SEND_CAPABILITY:'sms.send.v1',FILES_CAPABILITY,
   CALENDAR_AVAILABILITY_CAPABILITY:'calendar.availability-read.v1',
   availabilityNegotiated:()=>false,foregroundExecutor:undefined,aospImage:false,
   clockHandoffCapabilities:()=>[],clockRepeatDaysSupported:async()=>false,
