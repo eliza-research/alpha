@@ -13,6 +13,8 @@ async function capture(page:Page,info:TestInfo,name:string){
   await expect(page.getByRole('button',{name:'Calendar',exact:true})).toBeInViewport({ratio:1});
  }
  await settled(page);
+ // The synthetic Photos bridge has no secure reminder store; let its startup notice expire before the layout receipt.
+ await expect(page.getByText('Reminders could not refresh. Previously loaded reminders may be out of date.',{exact:true})).toBeHidden();
  await page.evaluate(()=>{const badge=document.createElement('div');badge.textContent='UI FIXTURE · synthetic data';badge.style.cssText='position:fixed;right:4px;top:4px;z-index:2147483647;padding:3px 6px;background:#112b46;color:white;font:10px sans-serif;pointer-events:none';badge.setAttribute('aria-hidden','true');document.body.append(badge);});
  await page.screenshot({path:info.outputPath(`UI-FIXTURE-${name}.png`),animations:'disabled'});
 }
