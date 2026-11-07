@@ -57,6 +57,9 @@ function fixture({currentOnly=false,producerInputs=false}={}){
  const manifest=structuredClone(qualified);for(const row of manifest.libraries){row.sha256=createHash('sha256').update('fixture-'+row.name).digest('hex');row.bytes=Buffer.byteLength('fixture-'+row.name);}
  if(producerInputs)manifest.producerInputs=embeddingProducerInputPaths.map(name=>({path:name,sha256:sha(execFileSync('git',['-C',vendor,'show','HEAD:'+name]))}));
  fs.writeFileSync(path.join(dir,'android/embedding-host/qualified-host.json'),JSON.stringify(manifest));
+ // The voice host stages the same arm64 engine file, so its record names the same bytes.
+ fs.mkdirSync(path.join(dir,'android/voice-host'),{recursive:true});
+ fs.writeFileSync(path.join(dir,'android/voice-host/qualified-voice-host.json'),JSON.stringify({abis:[{abi:'arm64-v8a',libraries:[manifest.libraries.find(row=>row.name==='libelizainference.so')]}]}));
  return {dir,vendor,manifest,lock(commit){const file=path.join(dir,'upstream.lock.json'),lock=JSON.parse(fs.readFileSync(file,'utf8'));lock.commit=commit;fs.writeFileSync(file,JSON.stringify(lock));},write(){fs.writeFileSync(path.join(dir,'android/embedding-host/qualified-host.json'),JSON.stringify(manifest));},close(){fs.rmSync(dir,{recursive:true,force:true});}};
 }
 test('missing and corrupted native host bytes fail before APK packaging',()=>{
@@ -68,6 +71,19 @@ test('partial native set, changed identity and wrong model dimensions are refuse
  for(const mutation of [m=>m.libraries.pop(),m=>m.identity='other.product',m=>m.model.dimensions=1536,m=>m.pin='0'.repeat(40)]){
   const f=fixture();try{mutation(f.manifest);f.write();assert.throws(()=>verifyEmbeddingHost(f.dir),/admission changed|Incomplete/);}finally{f.close();}
  }
+});
+test('embedding and voice host records that name different arm64 engines are refused, naming both files',()=>{
+ const f=fixture();try{
+  const file=path.join(f.dir,'android/voice-host/qualified-voice-host.json'),voice=JSON.parse(fs.readFileSync(file,'utf8'));
+  assert.throws(()=>verifyEmbeddingHost(f.dir),/BGE384 model missing/,'matching records pass the engine check');
+  for(const mutate of [row=>row.sha256='0'.repeat(64),row=>row.bytes+=1]){
+   const changed=structuredClone(voice);mutate(changed.abis[0].libraries[0]);fs.writeFileSync(file,JSON.stringify(changed));
+   assert.throws(()=>verifyEmbeddingHost(f.dir),error=>/libelizainference\.so differs/.test(error.message)&&error.message.includes('android/embedding-host/qualified-host.json')&&error.message.includes('android/voice-host/qualified-voice-host.json'));
+  }
+  fs.writeFileSync(file,JSON.stringify({abis:[{abi:'x86_64',libraries:voice.abis[0].libraries}]}));
+  assert.throws(()=>verifyEmbeddingHost(f.dir),/libelizainference\.so differs/);
+  fs.unlinkSync(file);assert.throws(()=>verifyEmbeddingHost(f.dir),/qualified-voice-host\.json is missing/);
+ }finally{f.close();}
 });
 test('a valid native set does not bypass the pinned local model admission',()=>{
  const f=fixture();try{assert.throws(()=>verifyEmbeddingHost(f.dir),/BGE384 model missing/);const model=path.join(f.dir,qualified.model.path);fs.mkdirSync(path.dirname(model),{recursive:true});fs.writeFileSync(model,'incorrect model');assert.throws(()=>verifyEmbeddingHost(f.dir),/BGE384 model missing or changed/);}finally{f.close();}

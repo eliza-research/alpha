@@ -57,6 +57,16 @@ export function verifyEmbeddingInputs(productRoot,qualification,{requireProducer
   }
  } catch(error){throw Error('Embedding host source admission changed: '+error.message,{cause:error});}
 }
+const embeddingRecord='android/embedding-host/qualified-host.json',voiceRecord='android/voice-host/qualified-voice-host.json';
+/** Both hosts stage jniLibs/arm64-v8a/libelizainference.so, so their records must name the same engine bytes. */
+export function verifyEmbeddingEngine(productRoot,manifest){
+ const file=path.join(productRoot,voiceRecord);
+ if(!fs.existsSync(file))throw Error(voiceRecord+' is missing; '+embeddingRecord+' cannot be checked against it');
+ const engine=row=>row?.libraries?.find(library=>library.name==='libelizainference.so');
+ const embedding=engine(manifest),voice=engine(JSON.parse(fs.readFileSync(file,'utf8')).abis?.find(row=>row.abi==='arm64-v8a'));
+ const label=row=>row?String(row.sha256).slice(0,8)+'/'+row.bytes+' bytes':'none';
+ if(!embedding||!voice||embedding.sha256!==voice.sha256||embedding.bytes!==voice.bytes)throw Error('arm64-v8a libelizainference.so differs: '+embeddingRecord+' records '+label(embedding)+', '+voiceRecord+' records '+label(voice)+'; both ship as jniLibs/arm64-v8a/libelizainference.so');
+}
 /** Build admission reads exact staged bytes; it never downloads or repairs a missing artifact. */
 export function verifyEmbeddingHost(productRoot,{allowAbsentRuntime=false,requireProducerInputs=false}={}) {
  // The explicit unpackaged developer build has no agent to use this host. Never
@@ -68,10 +78,11 @@ export function verifyEmbeddingHost(productRoot,{allowAbsentRuntime=false,requir
   if(files.every(file=>!fs.existsSync(path.join(productRoot,file))))return {status:'not-packaged',distributable:false};
  }
 
- const manifest=JSON.parse(fs.readFileSync(path.join(productRoot,'android/embedding-host/qualified-host.json'),'utf8'));
+ const manifest=JSON.parse(fs.readFileSync(path.join(productRoot,embeddingRecord),'utf8'));
  // Set by a pin move that changed a native build input or the engine gitlink; a new --receipt replaces the record.
  if(manifest.requalification?.required===true)throw Error('Embedding host requalification required at '+String(manifest.requalification.atPin).slice(0,12)+': '+manifest.requalification.reason);
  if(!/^[a-f0-9]{64}$/.test(manifest.qualificationReceiptSha256)||manifest.jniIdentityRelocated!==true)throw Error('Embedding host qualification missing or changed');
+ verifyEmbeddingEngine(productRoot,manifest);
  verifyEmbeddingInputs(productRoot,manifest,{requireProducerInputs});
  if(manifest.model?.sha256!==model.sha256||manifest.model?.path!==model.path||manifest.model?.dimensions!==384)throw Error('Embedding host model admission changed');
  if(!Array.isArray(manifest.libraries)||manifest.libraries.length!==names.length||new Set(manifest.libraries.map(row=>row.name)).size!==names.length)throw Error('Incomplete embedding host library set');
