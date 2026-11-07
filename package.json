@@ -69,7 +69,8 @@
     "quint:coverage": "node scripts/check-quint.mjs coverage",
     "quint:temporal": "node scripts/check-quint.mjs temporal",
     "quint:compare": "node scripts/check-quint.mjs compare",
-    "quint:conformance": "node --test test/quint-conformance.test.mjs test/quint-native-conformance.test.mjs test/quint-scan-conformance.test.mjs test/quint-recovery-vad-conformance.test.mjs"
+    "quint:conformance": "node --test test/quint-conformance.test.mjs test/quint-native-conformance.test.mjs test/quint-scan-conformance.test.mjs test/quint-recovery-vad-conformance.test.mjs",
+    "quint:refinement": "node scripts/check-quint-refinement.mjs"
   },
   "dependencies": {
     "@capacitor/android": "8.5.2",
@@ -104,6 +105,7 @@
     "jsdom": "30.1.2",
     "tsx": "4.23.15",
     "typescript": "7.0.2",
-    "vite": "8.3.3"
+    "vite": "8.3.3",
+    "zod": "4.6.7"
   }
 }
