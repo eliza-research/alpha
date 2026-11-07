@@ -54,7 +54,7 @@ test('Drafts, Archive and Trash load their lists; a Gmail draft opens for editin
  expect((await fixture(page)).searches.slice(-2)).toEqual(['in:trash','in:archive']);
  // A reply draft stays in Gmail: its thread headers cannot be reproduced exactly here.
  await page.getByRole('button',{name:/Re: Thread reply/}).click();
- await expect(page.getByText(/is a reply, has attachments or formatting/)).toBeVisible();
+ await expect(page.getByText('Edit this draft in Gmail.',{exact:true})).toBeVisible();
  await expect(page.getByRole('textbox',{name:'Message',exact:true})).toHaveCount(0);
  await page.getByRole('button',{name:/Quarterly plan/}).click();
  await expect(page.getByRole('textbox',{name:'Subject',exact:true})).toHaveValue('Quarterly plan');
