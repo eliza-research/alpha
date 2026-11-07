@@ -104,7 +104,7 @@ public class SystemShadeInstrumentedTest {
    // touch, so a pull would land on the panel and the standalone half would pass vacuously.
    until("!document.querySelector('.alpha-connection-scrim')");
    until(AndroidShade.ALPHA_SHADE_ABSENT);
-   // The plugin call the button makes, with Alpha in front.
+   // The plugin call an empty-Home pull makes, with Alpha in front.
    js("window.__shadeOutcome=null;Capacitor.Plugins.AlphaDevice.openNotificationShade().then(r=>window.__shadeOutcome=r.status,()=>window.__shadeOutcome='rejected')");
    until("window.__shadeOutcome!==null");
    String outcome = js("window.__shadeOutcome");
