@@ -5,6 +5,7 @@ import android.content.*;
 import android.database.Cursor;
 import android.graphics.*;
 import android.net.Uri;
+import android.os.Bundle;
 import android.provider.MediaStore;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
