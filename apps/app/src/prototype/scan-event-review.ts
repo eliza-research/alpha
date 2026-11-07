@@ -4,7 +4,7 @@ const repeatLabel:Record<NonNullable<ScanEventSuggestion['recurrence']>['repeat'
 /** Suggestions only. Every inference is listed, repeats need an explicit tick and Calendar's own Save remains the only write. */
 export function createScanEventReview(text:()=>string,active:()=>boolean,review:(draft:ScanEventDraft)=>boolean,now:()=>Date=()=>new Date()){
  const details=document.createElement('details'),summary=document.createElement('summary');summary.textContent='Create event draft';summary.style.cssText='cursor:pointer;min-height:44px;padding-top:12px';
- const description=document.createElement('p');description.textContent='Check every suggested detail against the photo. Inferred years, weekdays, “today” or “tomorrow”, time-zone conversions, all-day and repeat suggestions are listed below. Ambiguous dates, time-zone abbreviations and unclear times stay blank for you to enter. Duration starts at 60 minutes unless a clear same-day time range is printed. This opens a draft in Calendar; Save there to create the event.';
+ const description=document.createElement('p');description.textContent='Check each detail against the photo. Unclear dates and times stay blank. Save in Calendar to create the event.';
  const zone=document.createElement('p');zone.textContent='Local time · '+Intl.DateTimeFormat().resolvedOptions().timeZone;
  const notes=document.createElement('ul');notes.setAttribute('aria-label','Suggestion notes');notes.style.cssText='margin:0;padding-left:20px;display:grid;gap:4px';notes.hidden=true;
  const source=document.createElement('p');source.setAttribute('aria-label','Printed time zone');source.hidden=true;

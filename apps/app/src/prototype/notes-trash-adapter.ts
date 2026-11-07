@@ -93,7 +93,7 @@ export function installNotesTrashAdapter(Component:Shell,views:Record<string,Bag
    },
   };
  }
- const unavailableMessage=(shell:Shell)=>shell.notesPending&&!shell.notesStorageFailed?'Still saving. Try again in a moment. Nothing was deleted.':'Notes storage needs recovery. Nothing was deleted.';
+ const unavailableMessage=(shell:Shell)=>shell.notesPending&&!shell.notesStorageFailed?'Still saving. Try again in a moment.':'Notes storage needs attention. Try again after it recovers.';
 
  async function moveToTrash(shell:Shell,note:Bag,index:number){
   const outcome=await actionsFor(shell).moveToTrash(collection(shell),note as NoteRecord,index,()=>shell.notesStore.target(note.id));
@@ -133,7 +133,10 @@ export function installNotesTrashAdapter(Component:Shell,views:Record<string,Bag
  }
 
  async function erase(shell:Shell,ids:'all'|string){
-  if(busy)return;busy=true;shell.vset('notes',{trashBusy:true,trashConfirm:null});
+  if(busy)return;
+  // A failed save can hold a restored copy in the unsaved draft; erasing now would let it return.
+  if(!ready(shell)){if(shell.live)shell.vset('notes',{trashConfirm:null});shell.toast(unavailableMessage(shell));return;}
+  busy=true;shell.vset('notes',{trashBusy:true,trashConfirm:null});
   try{
    const outcome=await actionsFor(shell).erase(ids);
    shell.toast(outcome.status==='unconfirmed'?'Permanent deletion is unconfirmed. Reopen Trash to check.':outcome.failed?`${outcome.failed} item(s) could not be deleted yet. They stay in Trash.`:ids==='all'?'Trash emptied':outcome.erased?'Deleted forever':'This note is no longer in Trash.');
@@ -225,7 +228,7 @@ export function installNotesTrashAdapter(Component:Shell,views:Record<string,Bag
   view.trashFullOpen=!!full;
   view.trashConfirmOpen=!!full||(!!confirm&&!!state.trashOpen);
   view.trashConfirmTitle=full?'Trash is full':confirm?.id==='all'?'Empty Trash?':'Delete forever?';
-  view.trashConfirmText=full?`“${full.title}” was not deleted because Trash has no room for a restorable copy. Empty Trash to make room, or delete this ${full.voice?'voice note and its recording':'note'} permanently now. Permanent deletion skips Trash and cannot be undone.`
+  view.trashConfirmText=full?`Trash is full, so “${full.title}” wasn't deleted. Empty Trash, or delete ${full.voice?'it and its recording':'it'} permanently now. This can't be undone.`
    :confirm?.id==='all'?`${rows.length} item${rows.length===1?'':'s'} will be deleted permanently. This cannot be undone.`:`“${confirm?.title||'This note'}” will be deleted permanently. This cannot be undone.`;
   view.trashConfirmLabel=full?'Delete forever without Trash':confirm?.id==='all'?'Confirm empty Trash':'Confirm delete forever';
   view.trashConfirmText2=confirm?.id==='all'&&!full?'Empty Trash':'Delete forever';

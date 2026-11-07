@@ -34,12 +34,6 @@ export function startupLocationAccess(value: unknown) {
   return {granted, enabled, description};
 }
 
-/** Connected identity alone does not establish Gmail or Calendar permission. */
-export function startupGoogleAccess(accounts: readonly {connected: boolean; connectionId?: string | null; grantedCapabilities: readonly string[]}[]) {
-  const connected = accounts.filter(account => account.connected === true && !!account.connectionId);
-  return {gmail: connected.some(account => account.grantedCapabilities.includes('google.gmail.triage')), calendar: connected.some(account => account.grantedCapabilities.includes('google.calendar.read'))};
-}
-
 /** Installed names: which OS prompts were already shown, and the Settings reopen event. */
 export const STARTUP_PERMISSIONS_KEY = 'alpha.startup-permissions.v1';
 export const STARTUP_PERMISSIONS_REOPEN = 'alpha:startup-permissions-reopen';

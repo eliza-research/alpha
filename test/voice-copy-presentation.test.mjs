@@ -52,7 +52,7 @@ test('actual voice error clears input activity, keeps failure internal without a
    assert.equal(alert,null,'no voice error banner');
    assert.equal(notices.querySelector('.alpha-voice-error:not([role="note"])'),null,'no error or support-code content');
    if(error){
-    assert.equal(model.lines[0].t,'Sign in to Cloud again in Settings, then retry voice.','failure remains classified internally');assert.doesNotMatch(doc.body.textContent,/Sign in to Cloud|401|PRIVATE/);
+    assert.equal(model.lines[0].t,'Eliza Cloud sign-in expired. Sign in again in Settings, then retry voice.','failure remains classified internally');assert.doesNotMatch(doc.body.textContent,/sign-in expired|401|PRIVATE/);
     assert.equal(doc.querySelector('[role="status"][aria-label="Voice conversation status"]').textContent,'','the alert is not repeated in the status region');
     assert.equal(notices.querySelector('[data-alpha-voice-recovery]'),null,'uncertain capture keeps retry out of the composer');
    }else assert.equal(notices.querySelector('[data-alpha-voice-recovery]'),null);

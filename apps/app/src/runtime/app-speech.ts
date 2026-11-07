@@ -1,6 +1,7 @@
 import {cloudRuntimeEnabled,testMocksEnabled} from '../build-flags';
 import {createOnDeviceVoice} from './local-voice';
 import {speakCloudText} from './cloud-voice';
+import {confirmSpeechRetirement} from '../local-speech-playback';
 import {connectionController} from './connection-ui';
 import {markTtsPlaybackStarted,markTtsPlaybackEnded} from '../../../../.eliza/client-features/packages/ui/src/voice/tts-playback-activity.ts';
 let retirement:Promise<void>=Promise.resolve();
@@ -13,7 +14,7 @@ export async function speakAppText(text:string,signal:AbortSignal,onStarted?:()=
  const previous=retirement;let admitted=false;
  const interrupted=new Promise<never>((_,reject)=>owned.signal.addEventListener('abort',()=>{if(!admitted)reject(owned.signal.reason);},{once:true}));void interrupted.catch(()=>{});
  const pending=(async()=>{
-  current();const voice=createOnDeviceVoice();await previous;current();admitted=true;
+  current();const voice=createOnDeviceVoice();await confirmSpeechRetirement(previous);current();admitted=true;
   if(!voice||!await voice.playbackReady(owned.signal))throw Error('On-device speech is unavailable. Retry local speech or read the text.');
   current();let marked=false;
   try{await voice.speak(text,owned.signal,()=>{current();marked=true;markTtsPlaybackStarted();onStarted?.();},true,{queue,assertCurrent:current});current();}

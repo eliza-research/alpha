@@ -8308,7 +8308,7 @@ Source: scripts/stage-local-agent-runtime.mjs
 Flags: unverified
 Obligation (unverified): The staged runtime can ship in standard Android builds. When it is staged, Bun and the bundled agent and workflow-worker npm packages are enumerated from the prepared source; the remaining payload files (musl loader, libstdc++/libgcc_s, PGlite WebAssembly and data, PostgreSQL extensions, models) are not. The licence has not been verified from shipped metadata. This flag is a record of that, not a clearance.
 
-The on-device agent payload (Bun runtime and the bundled elizaOS agent with its dependencies) is staged from pinned upstream source and may be included in standard Android builds. These notices were generated without the staged runtime, so its Bun and dependency notices are not listed. A PACKAGED distribution build regenerates them after staging with node scripts/generate-licenses.mjs --packaged-runtime (resident-android.yml); an APK built without that step does not carry them.
+This build does not include the on-device agent runtime (Bun and the bundled elizaOS agent), so no agent notices are listed.
 
 ==============================================================================
 opencollective-postinstall

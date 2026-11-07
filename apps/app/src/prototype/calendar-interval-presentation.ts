@@ -1,4 +1,5 @@
 import {calendarAgenda,calendarAgendaRows,calendarDayColumns,calendarDayCount,calendarDayLabel,visibleCalendarDays} from './calendar-days';
+import {formatHour} from './locale-time';
 type Bag=Record<string,any>;
 const DAY=86400000;
 const civilDay=(date:Date)=>Date.UTC(date.getFullYear(),date.getMonth(),date.getDate());
@@ -43,9 +44,9 @@ export function presentCalendarIntervals(render:(state:Bag,api:Bag)=>Bag,state:B
       for(const column of columns)column.events=column.events.map((e:Bag)=>({...e,top:e.top+shift}));
       out.dayEvents=out.dayEvents.map((e:Bag)=>({...e,top:e.top+shift}));
       const added=[];
-      for(let hour=first;hour<7;hour++)added.push({top:(hour-first)*56+8,lt:(hour-first)*56,label:`${hour%12||12} am`});
+      for(let hour=first;hour<7;hour++)added.push({top:(hour-first)*56+8,lt:(hour-first)*56,label:formatHour(hour)});
       out.hours=[...added,...out.hours.map((h:Bag)=>({...h,top:h.top+shift,lt:h.lt+shift}))];
-      if(last===24)out.hours.push({top:(24-first)*56+8,lt:(24-first)*56,label:'Midnight'});
+      if(last===24)out.hours.push({top:(24-first)*56+8,lt:(24-first)*56,label:formatHour(0)});
       out.nowTop+=shift;out.nativeTimelineHeight=`${Math.max(912+shift,(last-first)*56+16)}px`;
       const now=new Date(api.now),time=now.getHours()+now.getMinutes()/60;
       out.showNow=day===0&&time>=first&&time<=last;

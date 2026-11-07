@@ -1,9 +1,9 @@
 import {writeFileSync} from 'node:fs';
 import {test,expect,type Page} from '@playwright/test';
-// Production lane only (flag-off build). Every Settings control must do something real: open a
-// page, a dialog, a view or a file, change visible state, or state its verified authority guard.
-// An unexplained toast-only affordance fails. Fixture device facts (NPU, uptime, seeded battery) must
-// not appear.
+// Production lane only (flag-off build). The sweep presses each Settings control, and each control on a
+// subpage it opens. A control must open a page, a dialog, a view or a file, change visible state, or state
+// its verified authority guard. A toast alone fails, and so does a control with no effect unless its label
+// is on the reviewed inert list. Fixture device facts (NPU, uptime, seeded battery) must not appear.
 const offline=()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));
 test.describe.configure({timeout:240_000});
 // The development lane serves a flag-on build where simulated facts are expected; these
@@ -17,8 +17,18 @@ async function snapshot(page:Page){
   const live=[...document.querySelectorAll('[data-settings-page]:not([inert])')].pop() as HTMLElement|undefined;
   const toast=[...document.querySelectorAll('.drop span')].map(e=>e.textContent?.trim()).filter(Boolean).join(' | ');
   const dialogs=[...document.querySelectorAll('dialog[open],[role="dialog"],[role="alertdialog"],.alpha-connection-scrim')].length;
-  return {view:document.documentElement.dataset.activeView||'',pages:pages.join('>'),dialogs,toast,text:(live?.innerText||'').replace(/\s+/g,' ')};
+  // Toggles and fields change state without changing text.
+  const controls=[...(live?.querySelectorAll('[aria-pressed],[aria-checked],[aria-expanded],input,select,textarea')||[])].map(e=>[e.getAttribute('aria-pressed'),e.getAttribute('aria-checked'),e.getAttribute('aria-expanded'),(e as HTMLInputElement).value??''].join(',')).join('|');
+  return {view:document.documentElement.dataset.activeView||'',pages:pages.join('>'),dialogs,toast,controls,text:(live?.innerText||'').replace(/\s+/g,' ')};
  });
+}
+type Snapshot=Awaited<ReturnType<typeof snapshot>>;
+const acted=(before:Snapshot,after:Snapshot,downloads:string[])=>after.pages!==before.pages||after.view!==before.view||after.dialogs>before.dialogs||after.text!==before.text||after.controls!==before.controls||downloads.length>0;
+/** Waits for the press to act or raise a toast; a control that does neither settles as it was. */
+async function settle(page:Page,before:Snapshot,downloads:string[]){
+ let after=before;
+ await expect.poll(async()=>{after=await snapshot(page);return acted(before,after,downloads)||!!after.toast&&after.toast!==before.toast;},{timeout:2_000}).toBe(true).catch(()=>{});
+ return after;
 }
 async function closeOverlays(page:Page){
  for(let i=0;i<3;i++){
@@ -37,6 +47,8 @@ async function openSettings(page:Page){
 }
 /** Labels whose effect is outside the page and verified by their own suites. */
 const external=new Set(['Agent connection','Manage Cloud account','Open Inbox','Scheduled digests','Wipe memory']);
+/** Reviewed controls that may have no visible effect in this build. Entries are a top label or 'Page > Control'; each hides a dead control, so add one only with its reason. */
+const inert=new Set<string>([]);
 
 test('production Settings controls act or explain the current Calendar authority guard',async({page})=>{
  page.on('dialog',dialog=>void dialog.dismiss());
@@ -45,30 +57,35 @@ test('production Settings controls act or explain the current Calendar authority
  await openSettings(page);
  const top=await current(page).getByRole('button').evaluateAll(list=>list.map(e=>e.getAttribute('aria-label')||e.textContent?.trim()||'').filter(Boolean));
  expect(top.length).toBeGreaterThan(8);
- const toastOnly:string[]=[],visited:string[]=[];
+ const failures:string[]=[],visited:string[]=[],subpages:Record<string,{offered:number;pressed:number}>={};
+ const judge=(name:string,before:Snapshot,after:Snapshot)=>{
+  if(acted(before,after,downloads))return;
+  if(after.toast)failures.push(`${name}: toast only (${after.toast})`);
+  else if(!inert.has(name))failures.push(`${name}: no effect`);
+ };
  for(const label of top){
   if(external.has(label))continue;
   await openSettings(page);
   const row=current(page).getByRole('button',{name:label,exact:true}).first();
+  // Rows behind a closed group or out of this build are not pressable; the floors below catch a sweep that skips too many.
   if(!await row.isVisible())continue;
   // Reset per control, so an earlier download never counts as this control's effect.
   downloads.length=0;
-  const before=await snapshot(page);await row.click();await page.waitForTimeout(400);
-  const after=await snapshot(page);visited.push(label);
-  const effect=after.pages!==before.pages||after.view!==before.view||after.dialogs>before.dialogs||after.text!==before.text||downloads.length>0;
-  if(!effect&&after.toast)toastOnly.push(`${label}: ${after.toast}`);
+  const before=await snapshot(page);await row.click();
+  const after=await settle(page,before,downloads);visited.push(label);
+  judge(label,before,after);
   if(after.pages===before.pages)continue;
   // A subpage opened: exercise each of its controls once from a fresh copy of that page.
-  const sub=await current(page).getByRole('button').evaluateAll(list=>list.map(e=>e.getAttribute('aria-label')||e.textContent?.trim()||'').filter(Boolean));
+  const sub=(await current(page).getByRole('button').evaluateAll(list=>list.map(e=>e.getAttribute('aria-label')||e.textContent?.trim()||'').filter(Boolean))).filter(control=>!/^Back to /.test(control)&&!external.has(control));
+  subpages[label]={offered:sub.length,pressed:0};
   for(const control of sub){
-   if(/^Back to /.test(control)||external.has(control))continue;
    await closeOverlays(page);
-   if((await snapshot(page)).pages!==after.pages){await openSettings(page);await current(page).getByRole('button',{name:label,exact:true}).first().click();await page.waitForTimeout(300);}
+   if((await snapshot(page)).pages!==after.pages){await openSettings(page);await current(page).getByRole('button',{name:label,exact:true}).first().click();await expect.poll(async()=>(await snapshot(page)).pages).toBe(after.pages);}
    const target=current(page).getByRole('button',{name:control,exact:true}).first();
    if(!await target.isVisible().catch(()=>false))continue;
    const was=await snapshot(page);downloads.length=0;
-   await target.click();await page.waitForTimeout(400);
-   const now=await snapshot(page);visited.push(`${label} > ${control}`);
+   await target.click();
+   const now=await settle(page,was,downloads);visited.push(`${label} > ${control}`);subpages[label].pressed++;
    // Google connection is intentionally refused while the signed-out Calendar
    // has no current owner/source scope. Its successful and interrupted flows are
    // exercised by calendar-sync-settings; this sweep must verify this guard,
@@ -78,14 +95,17 @@ test('production Settings controls act or explain the current Calendar authority
     expect(now.pages).toBe(was.pages);expect(now.dialogs).toBe(was.dialogs);
     continue;
    }
-   const changed=now.pages!==was.pages||now.view!==was.view||now.dialogs>was.dialogs||now.text!==was.text||downloads.length>0;
-   if(!changed&&now.toast)toastOnly.push(`${label} > ${control}: ${now.toast}`);
+   judge(`${label} > ${control}`,was,now);
   }
  }
  await test.info().attach('visited-controls',{body:visited.join('\n'),contentType:'text/plain'});
  writeFileSync(test.info().outputPath('visited.txt'),visited.join('\n'));
- expect(visited.length).toBeGreaterThan(top.length);
- expect(toastOnly).toEqual([]);
+ // Floors, not an exact list, so copy changes do not churn this test: most top rows are pressed,
+ // several subpages open, and every subpage that offers controls has at least one pressed.
+ expect(visited.filter(name=>!name.includes(' > ')).length).toBeGreaterThan(8);
+ expect(Object.keys(subpages).length).toBeGreaterThanOrEqual(4);
+ for(const [page,{offered,pressed}] of Object.entries(subpages))if(offered)expect(pressed,`${page} controls pressed`).toBeGreaterThan(0);
+ expect(failures).toEqual([]);
 });
 
 /** Rows the Settings cleanup removed or put behind the Developer gate; a product build shows none of them. */

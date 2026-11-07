@@ -136,7 +136,7 @@ test('a deletion that would push Trash past its byte limit is refused: the note 
  await page.getByRole('button',{name:'Delete note',exact:true}).click();
  const dialog=page.getByRole('dialog',{name:'Trash is full'});
  await expect(dialog).toBeVisible();
- await expect(dialog).toContainText('was not deleted because Trash has no room for a restorable copy');
+ await expect(dialog).toContainText('wasn\'t deleted. Empty Trash, or delete it permanently now. This can\'t be undone.');
  await expect(page.getByText('Second heavy moved to Trash',{exact:true})).toHaveCount(0);
  expect(await savedRecords(page)).toEqual(saved);
  expect(await trashEntries(page)).toEqual(full);

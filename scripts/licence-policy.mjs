@@ -1,3 +1,6 @@
+import fs from 'node:fs';
+import path from 'node:path';
+
 /**
  * Licence policy (owner decision P-09, 2026-10-10): an open-source dependency licence never
  * stops a build and is never a release blocker. Every licence text and notice still ships, and
@@ -28,6 +31,24 @@
  * Change it only on the owner's word.
  */
 export const UNRESOLVED_FONT_LICENCE_BLOCKS_DISTRIBUTION = false;
+
+/**
+ * The written offer for the complete corresponding source of Bun's LGPL components
+ * (JavaScriptCore). It is legal text only the owner supplies: `{"offer": "<who to contact, how,
+ * for how long>"}`. When it is present the Bun notice ships it; when it is absent the notice
+ * names only the source addresses and the licence review reports SOURCE_OFFER_MISSING.
+ */
+export const SOURCE_OFFER_FILE = 'config/source-offer.json';
+export const SOURCE_OFFER_MISSING = 'written source offer for Bun LGPL components not recorded';
+
+/** The recorded offer text, null when none is recorded; a malformed record throws. */
+export function readSourceOffer(root) {
+  const file = path.join(root, SOURCE_OFFER_FILE);
+  if (!fs.existsSync(file)) return null;
+  const offer = JSON.parse(fs.readFileSync(file, 'utf8'))?.offer;
+  if (typeof offer !== 'string' || !offer.trim()) throw new Error(`${SOURCE_OFFER_FILE} has no "offer" text`);
+  return offer.trim();
+}
 
 export const UNKNOWN = 'UNKNOWN';
 export const UNVERIFIED = 'license unverified';

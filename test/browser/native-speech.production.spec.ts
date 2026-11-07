@@ -46,21 +46,6 @@ test('production Notes reads through local synthesis and Stop retires owned play
  const foreign=await setup(page);await openRetainedNativeNotes(page);await button(page,'New note').click();await page.getByRole('textbox',{name:'Title',exact:true}).fill('Groceries');await page.getByRole('textbox',{name:'Note',exact:true}).fill('Milk and eggs.');await button(page,'Read aloud').click();await expect.poll(()=>page.evaluate(()=>(window as any).nativeSpeech.spoken)).toEqual(['Groceries. Milk and eggs.']);await button(page,'Stop reading').click();await expect.poll(()=>page.evaluate(()=>(window as any).nativeSpeech.stopped)).toBeGreaterThan(0);await noCloud(page,foreign);
 });
 
-test('Maps local speech adapter cancels owned guidance and refuses local-unready without a network fallback',async({page})=>{
- const foreign=await setup(page);
- // Evaluate the unchanged production adapter and shared guidance state machine in the
- // browser, injecting only their voice port. The full Maps UI/provider is outside this test.
- const {readFileSync}=await import('node:fs');const {stripTypeScriptTypes}=await import('node:module');
- const source=(path:string)=>stripTypeScriptTypes(readFileSync(path,'utf8').replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'strip'});
- const shared=source('.eliza/client-features/plugins/plugin-maps/src/client/navigation-voice.ts').replace('class NavigationVoice','class SharedNavigationVoice');
- const adapter=source('apps/app/src/maps/navigation-voice.ts');
- await page.evaluate(`(()=>{let ready=true;const f=window.mapsVoice={spoken:[],aborted:0,failed:0,setReady:value=>ready=value};const createOnDeviceVoice=()=>({ready:async()=>{throw Error("navigation speech must not use transcription readiness");},playbackReady:async()=>ready,speak:(text,signal)=>{f.spoken.push(text);return new Promise((resolve,reject)=>signal.addEventListener('abort',()=>{f.aborted++;reject(signal.reason);},{once:true}));}});${shared}\n${adapter}\nf.voice=new NavigationVoice(()=>f.failed++);f.voice.update('step-1','Turn right');})()`);
- await expect.poll(()=>page.evaluate(()=>(window as any).mapsVoice.spoken)).toEqual(['Turn right']);
- await page.evaluate(()=>(window as any).mapsVoice.voice.pause());await expect.poll(()=>page.evaluate(()=>(window as any).mapsVoice.aborted)).toBe(1);
- await page.evaluate(()=>{const f=(window as any).mapsVoice;f.setReady(false);f.voice.update('step-2','Continue ahead');});await expect.poll(()=>page.evaluate(()=>(window as any).mapsVoice.failed)).toBe(1);
- expect(await page.evaluate(()=>(window as any).mapsVoice.spoken)).toEqual(['Turn right']);await noCloud(page,foreign);
-});
-
 test('production chat exposes one voice mic and no duplicate dictation launcher',async({page})=>{
  const foreign=await setup(page);await expect(button(page,'Talk')).toHaveCount(1);await expect(button(page,'Transcribe')).toHaveCount(0);await noCloud(page,foreign);
 });

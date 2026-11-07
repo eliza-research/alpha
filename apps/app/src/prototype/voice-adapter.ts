@@ -9,7 +9,7 @@ import {cloudRuntimeEnabled,testMocksEnabled} from '../build-flags';
 import {developmentCartesiaConversation,developmentCartesiaVoiceEnabled} from '../runtime/development-cartesia-conversation';
 import {BatchVoiceConversation,type BatchVoiceState} from '@elizaos/ui/voice/batch-conversation';
 import {recordingRevision} from './summary-source';
-import {noteOriginFor} from '../runtime/note-origin';
+import {noteOriginFor,voiceNoteContentRevision} from '../runtime/note-origin';
 import {reviewContentQuestion} from '../browser/content-question';
 import {recordingLevels} from '../browser/audio-levels';
 import {browserDevProfile} from '../browser/dev-profile';
@@ -605,14 +605,14 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
       const voiceStopped=(value:BatchVoiceState)=>{
         const failure=value.error as {code?:unknown;reason?:unknown}|undefined,code=failure?.code;
         const denied=voiceFailure(value.error,{transcribing:false,browser:!Capacitor.isNativePlatform()});
-        return cloudVoiceFailure(value.error)
-          ||(failure?.reason==='call-active'||code==='call-active'?'Voice paused for a call. Start again after the call.'
+        return cloudVoiceFailure(value.error,{conversation:true})
+          ||(failure?.reason==='call-active'||code==='call-active'?'Voice paused for a call.'
           :code==='audio-focus-lost'?'Voice stopped because another app took the audio.'
           :code==='expired'?'Voice session ended. Start again.'
           :denied?.kind==='denied'?(conversationDenied=true,denied.message)
           :code==='no-speech'?'No speech heard. Nothing was sent.'
-          :code==='live-asr'?'On-device transcription stopped. Start again.'
-          :code==='capture'?'The microphone stopped. Start again.'
+          :code==='live-asr'?'On-device transcription stopped.'
+          :code==='capture'?'The microphone stopped.'
           :code==='speech-refused'?'This reply may contain a password or code, so it wasn\'t read aloud. It\'s in the chat.'
           :'Voice stopped. Check your connection and conversation history before trying again.');
       };
@@ -768,7 +768,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
           if(value.phase==='idle'&&conversationState.phase!=='idle'){const held=conversationState;void conversation.stop().catch(()=>{}).then(()=>{if(token===generation&&chatDestination===chat&&conversationVoice===conversation&&conversationState===held){conversationState=value;stopClock();refresh();}});return;}if(value.phase==='speaking')quietRetries=0;conversationState=value;if(value.phase==='error')error=voiceStopped(value);if(value.phase==='listening'){stopClock();tick=setInterval(refresh,250);}else stopClock();refresh();},
       });
       conversationVoice=conversation;await conversation.start();current();
-    }catch(failure){if(token!==generation||controller.signal.aborted)return;if(quietVoiceRetry(failure,chat,token))return;conversationState={phase:'error',error:failure};const classified=voiceFailure(failure,{transcribing:false,browser:!Capacitor.isNativePlatform()});conversationDenied=classified?.kind==='denied';error=cloudVoiceFailure(failure)||(classified&&(classified.kind==='denied'||classified.kind==='no-microphone')?classified.message:null)||'Voice could not start. Try again, or use the keyboard.';refresh();}
+    }catch(failure){if(token!==generation||controller.signal.aborted)return;if(quietVoiceRetry(failure,chat,token))return;conversationState={phase:'error',error:failure};const classified=voiceFailure(failure,{transcribing:false,browser:!Capacitor.isNativePlatform()});conversationDenied=classified?.kind==='denied';error=cloudVoiceFailure(failure,{conversation:true})||(classified&&(classified.kind==='denied'||classified.kind==='no-microphone')?classified.message:null)||'Voice could not start. Try again, or use the keyboard.';refresh();}
   }
   Component.prototype.stopVoiceConversation = function(){if(chatDestination?.shell===this){cancelChat(false,true);return stopping;}if(retirement&&retirement.shell===this)return retirement.promise;if(mediaUnconfirmed)return stopping;};
   Component.prototype.resumeReadReplyVoice=function(hint:import('../runtime/alpha-client').NativeNotesReadReplyHint,reply:import('../runtime/alpha-client').NativeNotesReadReply){
@@ -1032,7 +1032,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
         if(actionText.length>4000){current.toast('Shorten the action items first.');return;}
         noteHandoffBusy=true;
         try{
-          const origin=noteOriginFor(note,await recordingRevision(note));
+          const origin=noteOriginFor(note,await voiceNoteContentRevision(note));
           if(!reviewed())return;
           const shared={id:null,title:'',off:1,t:9,d:1,where:'',video:false,who:[],repeat:'none',notes:actionText,...(origin?{origin}:{})};
           current.open('calendar',{calendarAuthority:current.get('calendar').calendarAuthority,form:kind==='event'?{...shared,creationId:crypto.randomUUID(),separateCreation:false,cal:'native:local',alert:null}:{...shared,cal:'alpha-reminders',alert:0},open:null,month:null,day:1},'hidden');

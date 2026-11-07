@@ -284,7 +284,7 @@ test(`browser batch: ${failing===ACK?'an ack whose Cloud speech request fails is
   t.f.releaseReply();for(let i=0;i<10;i++)await t.clock.flush();
   assert.deepEqual(t.texts(),[ACK,REPLY]);
   if(failing===ACK)assert.notEqual(t.f.renderChat()?.state,'error');
-  else{assert.equal(t.f.renderChat()?.state,'error');assert.match(t.f.renderChat()?.lines?.[0]?.t,/\(502\)/);}
+  else{assert.equal(t.f.renderChat()?.state,'error');assert.match(t.f.renderChat()?.lines?.[0]?.t,/voice couldn’t complete this request\. Try again later\.$/);}
  }finally{await closeBatch(t);}
 });
 

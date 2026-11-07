@@ -3,7 +3,9 @@
  *
  *   node scripts/qualify-head.mjs [--allow-unpackaged-runtime] [--fresh]
  *                                 [--engines chromium,firefox,webkit] [--skip-android]
- *   node scripts/qualify-head.mjs --candidate   # re-read campaign evidence for HEAD's existing result
+ *                                 [--candidate-archive <apk-manifest.json>]
+ *   node scripts/qualify-head.mjs --candidate [--candidate-archive <apk-manifest.json>]
+ *                                 # re-read campaign evidence for HEAD's existing result
  *
  * Writes test-results/qualify/<sha>/result.json with the git SHA, the
  * upstream.lock.json commit, `npm run verify`, `npm run android:build` (standalone
@@ -29,6 +31,10 @@
  * this run's apks[].sha256. candidateQualified is true only when the head qualified and every
  * campaign passed. `--candidate` recomputes it later, once campaign records exist, without
  * re-running any step. The campaigns never change `qualified`, which stays source and build only.
+ * resident-android installs the CI archive's APKs, which CI signs differently from a local build, so it
+ * stays mismatched against the local apks[] unless `--candidate-archive` names that archive's
+ * apk-manifest.json; then it is bound to the archive's app APKs and the result records that set
+ * (candidate.ciArchive, and candidateSet on the row).
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -42,13 +48,17 @@ export { STORAGE_SPECS };
 export const ENGINES = Object.freeze(["chromium", "firefox", "webkit"]);
 
 export function parseQualifyArgs(argv) {
-  const options = { allowUnpackagedRuntime: false, fresh: false, skipAndroid: false, candidateOnly: false, engines: [...ENGINES] };
+  const options = { allowUnpackagedRuntime: false, fresh: false, skipAndroid: false, candidateOnly: false, candidateArchive: undefined, engines: [...ENGINES] };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--allow-unpackaged-runtime") options.allowUnpackagedRuntime = true;
     else if (arg === "--fresh") options.fresh = true;
     else if (arg === "--skip-android") options.skipAndroid = true;
     else if (arg === "--candidate") options.candidateOnly = true;
+    else if (arg === "--candidate-archive") {
+      options.candidateArchive = argv[++i];
+      if (!options.candidateArchive) throw new Error("--candidate-archive takes the CI archive's apk-manifest.json");
+    }
     else if (arg === "--engines") {
       const value = argv[++i];
       const engines = (value ?? "").split(",").filter(Boolean);
@@ -57,7 +67,7 @@ export function parseQualifyArgs(argv) {
       options.engines = engines;
     } else throw new Error(`Unknown option ${arg}`);
   }
-  if (options.candidateOnly && argv.length !== 1) throw new Error("--candidate takes no other option");
+  if (options.candidateOnly && argv.length !== (options.candidateArchive ? 3 : 1)) throw new Error("--candidate takes no other option but --candidate-archive");
   return options;
 }
 
@@ -92,9 +102,7 @@ export const CAMPAIGNS = Object.freeze([
   { id: "emulator-suite:instrumentation", kind: "emulator-suite", file: "test-results/emulator-suite/instrumentation.json" },
   { id: "emulator-suite:browser-reading", kind: "emulator-suite", file: "test-results/emulator-suite/browser-reading.json" },
   { id: "emulator-suite:fused-speech", kind: "emulator-suite", file: "test-results/emulator-suite/fused-speech.json" },
-  // android-resident-instrumentation.mjs output saved with the installed APK's hash (apkSha256 or apks[]).
-  // That script does not record an APK hash yet, so that campaign reads as mismatched (unbound)
-  // until its producer does; that keeps the candidate unqualified.
+  // android-resident-instrumentation.mjs output, which records the installed app APK's hash (apkSha256).
   { id: "resident-instrumentation", kind: "record-dir", dir: "test-results/resident-instrumentation" },
   // resident-android.yml artifacts: the archive's apk-manifest.json (file name -> SHA-256) and the native proofs.
   { id: "resident-android", kind: "resident-ci", manifest: "test-results/resident-ci-archive/apk-manifest.json", dir: "test-results/resident-ci-native" },
@@ -107,6 +115,9 @@ const appHashes = record => [
   ...(Array.isArray(record?.apks) ? record.apks.filter(apk => (!apk.role || apk.role === "app") && apk.testMocks !== true).map(apk => apk.sha256) : []),
   ...(typeof record?.apkSha256 === "string" ? [record.apkSha256] : []),
 ];
+// App APKs in a CI archive's apk-manifest.json (file name -> SHA-256); test and helper APKs are not the candidate.
+const archiveAppHashes = manifest => Object.entries(manifest ?? {})
+  .filter(([name]) => /^(standalone|launcher)-(debug|release[^.]*)\.apk$/.test(name)).map(([, sha256]) => sha256);
 const testMocksOnly = record => Array.isArray(record?.apks) && record.apks.some(apk => apk.testMocks === true) && !appHashes(record).length;
 
 /**
@@ -118,29 +129,29 @@ export function readCampaigns(root = process.cwd(), campaigns = CAMPAIGNS) {
     const at = rel => path.join(root, rel);
     if (campaign.kind === "emulator-suite") {
       const report = readJsonFile(at(campaign.file));
-      if (!report) return { id: campaign.id, present: false, passed: false, apkSha256: [], records: [] };
+      if (!report) return { id: campaign.id, kind: campaign.kind, present: false, passed: false, apkSha256: [], records: [] };
       // The suite report names each instrumentation record; those bind the installed APKs.
       // A test-mocks step (browser-reading) is recorded but cannot bind; every other record must name a flag-off app APK.
       const records = (report.steps ?? []).filter(step => step.results).map(step => step.results);
       const rows = records.map(rel => readJsonFile(at(rel)));
       const bound = rows.filter(row => !testMocksOnly(row));
       const hashes = bound.flatMap(appHashes);
-      return { id: campaign.id, present: true, passed: report.passed === true, apkSha256: [...new Set(hashes)], records: [campaign.file, ...records],
+      return { id: campaign.id, kind: campaign.kind, present: true, passed: report.passed === true, apkSha256: [...new Set(hashes)], records: [campaign.file, ...records],
         unbound: !bound.length || bound.some(row => !appHashes(row).length) };
     }
     if (campaign.kind === "record-dir") {
       const files = jsonFiles(at(campaign.dir));
       const rows = files.map(readJsonFile);
-      return { id: campaign.id, present: files.length > 0, passed: rows.length > 0 && rows.every(row => row?.passed === true),
+      return { id: campaign.id, kind: campaign.kind, present: files.length > 0, passed: rows.length > 0 && rows.every(row => row?.passed === true),
         apkSha256: [...new Set(rows.flatMap(appHashes))], records: files.map(file => path.relative(root, file)), unbound: rows.some(row => !appHashes(row).length) };
     }
     const manifest = readJsonFile(at(campaign.manifest));
     const proofs = jsonFiles(at(campaign.dir));
-    if (!manifest) return { id: campaign.id, present: proofs.length > 0, passed: false, apkSha256: [], records: proofs.map(file => path.relative(root, file)), unbound: proofs.length > 0 };
-    // The app APKs the native job installed; test and helper APKs are not the candidate.
-    const hashes = Object.entries(manifest).filter(([name]) => /^(standalone|launcher)-(debug|release[^.]*)\.apk$/.test(name)).map(([, sha256]) => sha256);
+    if (!manifest) return { id: campaign.id, kind: campaign.kind, present: proofs.length > 0, passed: false, apkSha256: [], records: proofs.map(file => path.relative(root, file)), unbound: proofs.length > 0 };
+    // The app APKs the native job installed.
+    const hashes = archiveAppHashes(manifest);
     const rows = proofs.map(readJsonFile).filter(row => row && typeof row === "object" && "passed" in row);
-    return { id: campaign.id, present: true, passed: rows.length > 0 && rows.every(row => row.passed === true), apkSha256: [...new Set(hashes)],
+    return { id: campaign.id, kind: campaign.kind, present: true, passed: rows.length > 0 && rows.every(row => row.passed === true), apkSha256: [...new Set(hashes)],
       records: [campaign.manifest, ...proofs.map(file => path.relative(root, file))] };
   });
 }
@@ -149,19 +160,52 @@ export function readCampaigns(root = process.cwd(), campaigns = CAMPAIGNS) {
  * Admit campaign evidence for one candidate: a campaign counts only when every APK it installed is
  * one of this qualify run's apks[].sha256. Status per campaign: passed, failed (bound but did not
  * pass), mismatched (installed other APKs, or recorded no APK hash) or missing.
+ * `ciArchive` ({manifest, apkSha256}) binds resident CI campaigns to that archive's app APKs instead.
  */
-export function candidateManifest(apks, campaigns) {
-  const candidate = new Set((apks ?? []).map(row => row.sha256).filter(sha => /^[0-9a-f]{64}$/.test(sha ?? "")));
+export function candidateManifest(apks, campaigns, ciArchive) {
+  const hashSet = list => new Set((list ?? []).filter(sha => /^[0-9a-f]{64}$/.test(sha ?? "")));
+  const candidate = hashSet((apks ?? []).map(row => row.sha256));
+  const archive = ciArchive ? hashSet(ciArchive.apkSha256) : undefined;
   const rows = campaigns.map(campaign => {
-    const base = { id: campaign.id, records: campaign.records ?? [], apkSha256: campaign.apkSha256 ?? [] };
+    const fromArchive = campaign.kind === "resident-ci" && archive !== undefined;
+    const base = { id: campaign.id, records: campaign.records ?? [], apkSha256: campaign.apkSha256 ?? [],
+      ...(campaign.kind === "resident-ci" ? { candidateSet: fromArchive ? `ci-archive ${ciArchive.manifest}` : "local-build" } : {}) };
     if (!campaign.present) return { ...base, status: "missing" };
-    const foreign = base.apkSha256.filter(sha => !candidate.has(sha));
+    const foreign = base.apkSha256.filter(sha => !(fromArchive ? archive : candidate).has(sha));
     if (!base.apkSha256.length || campaign.unbound) return { ...base, status: "mismatched", reason: "the record names no installed APK SHA-256" };
-    if (foreign.length) return { ...base, status: "mismatched", reason: `installed APKs that are not this candidate: ${foreign.join(", ")}` };
+    if (foreign.length) return { ...base, status: "mismatched", reason: campaign.kind === "resident-ci" && !fromArchive
+      ? "it installed the CI archive's APKs, which are signed differently from this local build; pass --candidate-archive <apk-manifest.json> to bind it to that archive"
+      : `installed APKs that are not this candidate: ${foreign.join(", ")}` };
     return { ...base, status: campaign.passed ? "passed" : "failed" };
   });
   return { evidenceScope: "emulator (E) and resident CI campaigns bound to this candidate's APK hashes; not device or user acceptance",
-    candidateApks: [...candidate].sort(), campaigns: rows, complete: rows.length > 0 && rows.every(row => row.status === "passed") };
+    candidateApks: [...candidate].sort(),
+    ...(archive ? { ciArchive: { manifest: ciArchive.manifest, apkSha256: [...archive].sort(),
+      note: "resident CI campaigns are bound to this CI archive, not to the local build in apks[]" } } : {}),
+    campaigns: rows, complete: rows.length > 0 && rows.every(row => row.status === "passed") };
+}
+
+/** Read a CI archive's apk-manifest.json as the candidate set for resident CI campaigns. */
+export function readCiArchive(file, name = file) {
+  const manifest = readJsonFile(file);
+  if (!manifest || typeof manifest !== "object") throw new Error(`${file} is not a readable apk-manifest.json`);
+  const apkSha256 = archiveAppHashes(manifest);
+  if (!apkSha256.length) throw new Error(`${file} names no standalone or launcher app APK`);
+  return { manifest: name, apkSha256 };
+}
+
+/** Paths in `git status --porcelain=v1 -z` output; a rename or copy names its new path. */
+export function dirtyPaths(status) {
+  const entries = status.split("\0");
+  const paths = [];
+  for (let i = 0; i < entries.length; i++) {
+    const entry = entries[i];
+    if (!entry) continue;
+    paths.push(entry.slice(3));
+    // The original path of a rename or copy follows as its own entry.
+    if (/[RC]/.test(entry.slice(0, 2))) i++;
+  }
+  return paths;
 }
 
 /**
@@ -174,15 +218,15 @@ export function releaseDistribution(apks) {
   return { releasesDistributable: releases.length > 0 && releases.every(row => row.distributable === true) && releaseBlockers.length === 0, releaseBlockers };
 }
 
-function git(args) {
+function git(args, { raw = false } = {}) {
   const out = spawnSync("git", args, { encoding: "utf8" });
   if (out.status !== 0) throw new Error(`git ${args.join(" ")} failed: ${out.stderr}`);
-  return out.stdout.trim();
+  return raw ? out.stdout : out.stdout.trim();
 }
 
 /** Record the candidate manifest in a result and derive candidateQualified. */
-export function recordCandidate(result, root) {
-  result.candidate = candidateManifest(result.androidBuild?.apks, readCampaigns(root));
+export function recordCandidate(result, root, ciArchive) {
+  result.candidate = candidateManifest(result.androidBuild?.apks, readCampaigns(root), ciArchive);
   result.candidateQualified = result.qualified === true && result.candidate.complete;
   return result;
 }
@@ -190,12 +234,14 @@ export function recordCandidate(result, root) {
 function main() {
   const options = parseQualifyArgs(process.argv.slice(2));
   const root = path.resolve(import.meta.dirname, "..");
+  const archiveFile = options.candidateArchive && path.resolve(options.candidateArchive);
   process.chdir(root);
   const sha = git(["rev-parse", "HEAD"]);
+  const ciArchive = archiveFile ? readCiArchive(archiveFile, path.relative(root, archiveFile)) : undefined;
   if (options.candidateOnly) {
     const file = path.join("test-results/qualify", sha, "result.json");
     if (!fs.existsSync(file)) throw new Error(`${file} does not exist; qualify the head first`);
-    const result = recordCandidate(JSON.parse(fs.readFileSync(file, "utf8")), root);
+    const result = recordCandidate(JSON.parse(fs.readFileSync(file, "utf8")), root, ciArchive);
     fs.writeFileSync(file, JSON.stringify(result, null, 2) + "\n");
     for (const row of result.candidate.campaigns) console.log(`${row.id}: ${row.status}${row.reason ? ` (${row.reason})` : ""}`);
     console.log(`${file}: candidate ${result.candidateQualified ? "QUALIFIED" : "NOT QUALIFIED"}`);
@@ -203,7 +249,8 @@ function main() {
     return;
   }
   // Untracked (non-ignored) files can change what builds, so they make the tree dirty too.
-  const status = git(["status", "--porcelain", "--untracked-files=normal"]);
+  // Untrimmed: the first entry's leading space is part of its status code.
+  const status = git(["status", "--porcelain=v1", "-z", "--untracked-files=normal"], { raw: true });
   const lock = JSON.parse(fs.readFileSync("upstream.lock.json", "utf8"));
   const vendorHead = git(["-C", "vendor/eliza", "rev-parse", "HEAD"]);
   const directory = path.join("test-results/qualify", sha);
@@ -216,7 +263,7 @@ function main() {
     schemaVersion: 1,
     sha,
     clean: status === "",
-    dirtyFiles: status ? status.split("\n").map(line => line.slice(3)) : [],
+    dirtyFiles: dirtyPaths(status),
     upstream: { lockCommit: lock.commit, vendorHead, matches: lock.commit === vendorHead },
     startedAt: new Date().toISOString(),
     evidenceScope: "source tests, browser engines against a development server and APK builds only; not emulator, AOSP image, real integration or device acceptance",
@@ -316,7 +363,7 @@ function main() {
   // Qualification of the head is not a distribution decision: releases without
   // the packaged resident runtime (--allow-unpackaged-runtime) stay non-distributable.
   Object.assign(result, releaseDistribution(result.androidBuild?.apks));
-  recordCandidate(result, root);
+  recordCandidate(result, root, ciArchive);
   write();
   for (const blocker of result.releaseBlockers) console.warn(`RELEASE BLOCKER ${blocker}`);
   for (const row of result.candidate.campaigns) console.log(`campaign ${row.id}: ${row.status}${row.reason ? ` (${row.reason})` : ""}`);

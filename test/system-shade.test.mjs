@@ -117,3 +117,68 @@ test('an overflowing Home takes only a clearly downward drag at its top from the
   assert.equal(m.overflowPullDecision(true, 0, -20), 'release', 'upward scrolls Home as usual');
   assert.equal(m.overflowPullDecision(true, 30, 10), 'release', 'horizontal: a card row or Back');
 });
+
+test('the overflow pull listens to touches only while Home is showing, and still claims a pull there', async () => {
+  const { tsImport } = await import('tsx/esm/api');
+  const { installSystemShade } = await tsImport('../apps/app/src/prototype/system-shade.ts', import.meta.url);
+  class FakeElement {
+    constructor(attrs = {}, parent = null) { Object.assign(this, { attrs, parentElement: parent, scrollTop: 0, scrollHeight: 100, clientHeight: 100, ownerDocument: doc }); }
+    matches(selector) { return selector.split(',').some(part => { const attr = /^\[([a-z-]+)(?:="([^"]*)")?\]$/.exec(part.trim()); return !!attr && attr[1] in this.attrs && (attr[2] === undefined || this.attrs[attr[1]] === attr[2]); }); }
+    closest(selector) { for (let node = this; node; node = node.parentElement) if (node.matches(selector)) return node; return null; }
+    getBoundingClientRect() { return { top: 0, width: 412 }; }
+  }
+  const listeners = new Map();
+  const doc = {
+    activeElement: null,
+    addEventListener: (type, listener) => listeners.set(type, listener),
+    removeEventListener: type => listeners.delete(type),
+    querySelector: () => null,
+  };
+  doc.body = new FakeElement();
+  doc.activeElement = doc.body;
+  const screen = new FakeElement({ 'data-screen': '' }, doc.body);
+  const layer = new FakeElement({ 'data-alpha-layer': 'home', overflow: 'auto' }, screen);
+  const tile = new FakeElement({}, layer);
+  layer.scrollHeight = 400;
+  const saved = { document: globalThis.document, window: globalThis.window, Element: globalThis.Element, getComputedStyle: globalThis.getComputedStyle, requestAnimationFrame: globalThis.requestAnimationFrame, cancelAnimationFrame: globalThis.cancelAnimationFrame };
+  Object.assign(globalThis, {
+    document: doc,
+    window: { addEventListener() {}, removeEventListener() {} },
+    Element: FakeElement,
+    getComputedStyle: node => ({ overflowY: node.attrs.overflow ?? 'visible' }),
+    requestAnimationFrame: () => 1,
+    cancelAnimationFrame() {},
+  });
+  try {
+    class Shell {
+      constructor() { this.state = { ...home }; }
+      pullContext() { return { ...this.state }; }
+    }
+    installSystemShade(Shell, { native: false });
+    const shell = new Shell();
+    const touchTypes = () => ['touchstart', 'touchmove', 'touchend', 'touchcancel'].filter(type => listeners.has(type));
+    shell.componentDidMount();
+    assert.equal(touchTypes().length, 4, 'listening on Home');
+    const touch = y => { let prevented = false; return { event: { target: tile, cancelable: true, touches: [{ clientX: 100, clientY: y }], preventDefault: () => { prevented = true; } }, prevented: () => prevented }; };
+    listeners.get('touchstart')(touch(300).event);
+    const down = touch(320);
+    listeners.get('touchmove')(down.event);
+    assert.equal(down.prevented(), true, 'a downward pull at the top of an overflowing Home is claimed');
+    listeners.get('touchend')();
+    shell.state.view = 'notes';
+    shell.componentDidUpdate();
+    assert.deepEqual(touchTypes(), [], 'no touch listeners while an app is open');
+    shell.state.view = null;
+    shell.componentDidUpdate();
+    assert.equal(touchTypes().length, 4, 'listening again back on Home');
+    shell.state.screen = 'lock';
+    shell.componentDidUpdate();
+    assert.deepEqual(touchTypes(), [], 'none on the lock screen');
+    shell.state.screen = 'home';
+    shell.componentDidUpdate();
+    shell.componentWillUnmount();
+    assert.deepEqual(touchTypes(), [], 'removed on unmount');
+  } finally {
+    for (const [key, value] of Object.entries(saved)) if (value === undefined) delete globalThis[key]; else globalThis[key] = value;
+  }
+});

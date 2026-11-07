@@ -17,20 +17,13 @@ import {seedCompletedAccessSetup} from './flag-off-android';
 // says the shipped renderer takes the real path or shows an honest unavailable state; it never
 // says the native side of that path works. See docs/core-loop-audit.md.
 import { test, expect, type Page } from '@playwright/test';
-import {completeAccessSetup, fenceNetwork} from './flag-off-android';
+import {completeAccessSetup,expectNoDevelopmentSurface,fenceNetwork} from './flag-off-android';
 
 const SELECTION = 'alpha.connection.selection.v1';
 const offline = () => localStorage.setItem('alpha.connection.selection.v1', JSON.stringify({ kind: 'offline' }));
 const button = (page: Page, name: string) => name==='Inbox'
   ? page.getByRole('button', { name, exact: true }).and(page.locator('[data-mobile-shell-tile]'))
   : page.getByRole('button', { name, exact: true });
-/** No mock, fixture or development surface, whatever the loop. */
-async function expectNoDevelopmentSurface(page: Page) {
-  await expect(page.locator('.mock-mode-banner')).toHaveCount(0);
-  await expect(page.locator('.alpha-dev-tools')).toHaveCount(0);
-  await expect(button(page, 'Device controls')).toHaveCount(0);
-  await expect(page.getByText(/Development (connections|device actions|reply|provider)/)).toHaveCount(0);
-}
 /** Production Android as the renderer sees it: funded Cloud account, packaged resident agent that
  * keeps its conversations across a page reload, an intercepted Clock handoff and a native browser
  * whose pages are synthetic (no WebView loads anything). `voice` adds the native recorder whose

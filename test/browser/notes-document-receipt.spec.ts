@@ -56,7 +56,7 @@ test('A document failure that arrives while the page is hidden is shown once the
   await page.getByRole('button', { name: 'Share note', exact: true }).click();
   const exportButton = page.getByRole('button', { name: 'Save locally', exact: true });
   await expect(exportButton).toBeVisible();
-  const failure = page.locator('[data-alpha-toast]').getByText('Document operation failed. No completed export or import is confirmed.', { exact: true });
+  const failure = page.locator('[data-alpha-toast]').getByText('That didn\'t finish. Check your file and try again.', { exact: true });
   // The export itself fails (no object URL can be made), and it fails while the page is hidden.
   await page.evaluate(() => {
     const state = window as unknown as { __receiptHidden: boolean; __exportAttempts: number };
