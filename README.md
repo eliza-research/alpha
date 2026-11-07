@@ -66,6 +66,7 @@ the required evidence rather than treating a successful APK build as acceptance.
 - [Working PRD](docs/prd.md)
 - [Detailed implementation plan](docs/implementation-plan.md)
 - [Architecture and upstream ownership](docs/architecture.md)
+- [Quint application-state models](specs/quint/README.md) and [migration report](docs/quint-migration-report.md)
 - [Requirements and open decisions](docs/decisions.md)
 - [Verification gates and evidence](docs/verification.md)
 - [Source/design provenance](docs/sources.md)

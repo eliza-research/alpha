@@ -191,7 +191,7 @@ export function setHomeSources(next: Partial<typeof homeSources>) {
   window.dispatchEvent(new Event(HOME_SOURCES_CHANGED));
 }
 
-/** Which Home cards are drawn (docs/ui-refresh-2026-11, tla/HomeLayout.tla). A card is drawn only
+/** Which Home cards are drawn (docs/ui-refresh-2026-11, specs/quint/legacy/HomeLayout.qnt). A card is drawn only
  * when it has something to show: the next event or an overdue reminder, an enabled workflow,
  * unread mail from a connected account, a retained brief. With none, Home shows the date, and a
  * Connect Google button while Google is known to be disconnected. Installed outermost, after
