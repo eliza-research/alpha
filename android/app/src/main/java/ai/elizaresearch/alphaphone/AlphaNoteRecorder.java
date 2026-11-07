@@ -68,6 +68,8 @@ final class AlphaNoteRecorder {
  private String state="idle"; // idle | recording | paused | stopped
  private String stopReason;
  private boolean recovered;
+ private String ownerDigest;
+ private String folderId;
  private final Runnable rollover=this::rollover;
 
  private AlphaNoteRecorder(Context context){this.context=context;recover();}
@@ -86,8 +88,10 @@ final class AlphaNoteRecorder {
    if(id!=null||!session.getName().matches(ID)){deleteTree(session);continue;}
    try{
     List<Segment> segments=new ArrayList<>();
+    JSONObject record;
     try(InputStream in=new AtomicFile(new File(session,"segments.json")).openRead()){
-     JSONArray list=new JSONObject(new String(in.readAllBytes(),StandardCharsets.UTF_8)).getJSONArray("segments");
+     record=new JSONObject(new String(in.readAllBytes(),StandardCharsets.UTF_8));
+     JSONArray list=record.getJSONArray("segments");
      for(int i=0;i<list.length();i++){JSONObject s=list.getJSONObject(i);segments.add(new Segment(Math.max(1,s.getLong("d")),s.has("t")?s.getString("t"):null));}
     }
     if(segments.isEmpty())throw new IOException("No finished audio");
@@ -96,6 +100,10 @@ final class AlphaNoteRecorder {
     File[] partial=session.listFiles((d,n)->n.endsWith(".m4a")&&parseIndex(n)>=segments.size());
     if(partial!=null)for(File f:partial)f.delete();
     id=session.getName();dir=session;finished.addAll(segments);index=segments.size();
+    String recordedOwner=record.optString("ownerDigest","");
+    String recordedFolder=record.optString("folderId","");
+    ownerDigest=validOwner(recordedOwner)&&validFolder(recordedFolder)?recordedOwner:null;
+    folderId=ownerDigest!=null&&!recordedFolder.isEmpty()?recordedFolder:null;
     state="paused";recovered=true;stopReason=null;
    }catch(Exception unreadable){deleteTree(session);}
   }
@@ -103,12 +111,16 @@ final class AlphaNoteRecorder {
  private static int parseIndex(String name){try{return Integer.parseInt(name.substring(0,name.length()-4));}catch(RuntimeException e){return -1;}}
  private long usableSpace(){try{return root().getUsableSpace();}catch(RuntimeException unavailable){return 0;}}
 
- synchronized JSObject start() throws IOException {
+ private static boolean validOwner(String value){return value!=null&&value.matches("[a-f0-9]{64}");}
+ private static boolean validFolder(String value){return value==null||value.isEmpty()||value.matches("f-[A-Za-z0-9_-]{1,64}");}
+ synchronized JSObject start(String owner,String destination) throws IOException {
   if(id!=null)throw new IllegalStateException("A recording is already open");
+  if(!validOwner(owner)||!validFolder(destination))throw new IllegalArgumentException("Invalid recording ownership");
   if(usableSpace()<MIN_FREE_BYTES)throw new IOException("storage");
   String next=UUID.randomUUID().toString();File folder=new File(root(),next);
   if(!folder.mkdirs())throw new IOException("Recording storage unavailable");
   id=next;dir=folder;finished.clear();index=0;pausedTotal=0;stopReason=null;recovered=false;
+  ownerDigest=owner;folderId=destination==null||destination.isEmpty()?null:destination;
   state="recording";
   try{writeJournal();open(index);}catch(IOException|RuntimeException error){discard();throw error;}
   publish();return status();
@@ -215,7 +227,7 @@ final class AlphaNoteRecorder {
   MediaRecorder active=recorder;recorder=null;
   if(active!=null){try{active.stop();}catch(RuntimeException ignored){}active.release();}
   if(dir!=null)deleteTree(dir);
-  id=null;dir=null;finished.clear();index=0;state="idle";stopReason=null;recovered=false;pausedTotal=0;pausedAt=0;
+  id=null;dir=null;ownerDigest=null;folderId=null;finished.clear();index=0;state="idle";stopReason=null;recovered=false;pausedTotal=0;pausedAt=0;
   publish();
  }
  synchronized boolean owns(String recordingId){return id!=null&&id.equals(recordingId);}
@@ -238,6 +250,7 @@ final class AlphaNoteRecorder {
   JSObject out=new JSObject();out.put("state",state);
   if(id==null)return out;
   out.put("recordingId",id);out.put("recovered",recovered);
+  if(ownerDigest!=null)out.put("binding",new JSObject().put("ownerDigest",ownerDigest).put("folderId",folderId==null?JSONObject.NULL:folderId));
   if(stopReason!=null)out.put("stopReason",stopReason);
   long total=0;JSArray segments=new JSArray();
   for(int i=0;i<finished.size();i++){Segment s=finished.get(i);total+=s.durationMs;JSObject o=new JSObject();o.put("segmentId",id+"-s"+i);o.put("durationMs",s.durationMs);if(s.text!=null)o.put("text",s.text);segments.put(o);}
@@ -251,7 +264,12 @@ final class AlphaNoteRecorder {
 
  private void writeJournal() throws IOException {
   AtomicFile file=journal();FileOutputStream out=null;
-  try{JSONArray list=new JSONArray();for(Segment s:finished){JSONObject o=new JSONObject().put("d",s.durationMs);if(s.text!=null)o.put("t",s.text);list.put(o);}out=file.startWrite();out.write(new JSONObject().put("segments",list).toString().getBytes(StandardCharsets.UTF_8));file.finishWrite(out);}
+  try{
+   JSONArray list=new JSONArray();
+   for(Segment s:finished){JSONObject o=new JSONObject().put("d",s.durationMs);if(s.text!=null)o.put("t",s.text);list.put(o);}
+   JSONObject record=new JSONObject().put("segments",list).put("ownerDigest",ownerDigest).put("folderId",folderId);
+   out=file.startWrite();out.write(record.toString().getBytes(StandardCharsets.UTF_8));file.finishWrite(out);
+  }
   catch(org.json.JSONException|IOException error){if(out!=null)file.failWrite(out);throw new IOException("Recording index unavailable",error);}
  }
 

@@ -135,7 +135,7 @@ async function android(page: Page, options: { clock?: 'opened' | 'unavailable' |
           // The native Notes recorder (AlphaNoteRecorder): one finished segment, then stopped.
           const rid = '00000000-0000-4000-8000-000000000001';
           if (method === 'noteRecordingStatus') return structuredClone(v.note ?? { state: 'idle' });
-          if (method === 'startNoteRecording') { v.starts++; v.note = { state: 'recording', recordingId: rid, durationMs: 3000, peak: 0.4, segments: [{ segmentId: rid + '-s0', durationMs: 3000 }] }; return structuredClone(v.note); }
+          if (method === 'startNoteRecording') { v.starts++; v.note = { state: 'recording', recordingId: rid, binding: {ownerDigest:input.ownerDigest,folderId:input.folderId}, durationMs: 3000, peak: 0.4, segments: [{ segmentId: rid + '-s0', durationMs: 3000 }] }; return structuredClone(v.note); }
           if (method === 'pauseNoteRecording') { v.note.state = 'paused'; return structuredClone(v.note); }
           if (method === 'resumeNoteRecording') { v.note.state = 'recording'; return structuredClone(v.note); }
           if (method === 'stopNoteRecording') { v.stops++; v.note.state = 'stopped'; v.note.stopReason = 'user'; return structuredClone(v.note); }
