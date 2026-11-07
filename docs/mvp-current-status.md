@@ -85,7 +85,9 @@ the operator's index of build, provisioning, release and support material is the
 
 ## Product boundaries
 
-Current local integration pin `77428481fb` carries the combined Notes, Files, Photos and updater source. It retains the SDK history of Alpha main and Pixel v44. The hosted Android build and packaged dependency review remain open.
+Current local integration pin `9237023aee` carries reviewed Files identities and absolute-path rejection. The pinned SDK's Cloud embedding and plugin-selection checks passed locally. The hosted Android build and packaged dependency review remain open.
+
+Earlier local integration pin `77428481fb` carries the combined Notes, Files, Photos and updater source. It retains the SDK history of Alpha main and Pixel v44.
 
 Earlier local integration pin `ec0cfd6d05` carries the combined Calendar, updater and Files source. The dependency audit and exact hosted Android build remain open. Earlier build and device receipts retain their own pins.
 
