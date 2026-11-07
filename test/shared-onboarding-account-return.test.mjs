@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {stripTypeScriptTypes} from 'node:module';
 import vm from 'node:vm';
 const text=readFileSync(process.env.CONTROLLER_SOURCE||'apps/app/src/runtime/connection-ui.tsx','utf8');
-const source=stripTypeScriptTypes(text.slice(text.indexOf('function update(patch:'),text.indexOf('// P-43:')),{mode:'transform'});
+const source=stripTypeScriptTypes(text.slice(text.indexOf('function update(patch:'),text.indexOf('// P-43:')),{mode:'strip'});
 for(const [name,before,patch,expected] of [
  ['completed account sign-in closes the account panel',{purpose:'cloud-account',open:true,cloudAccount:null},{cloudAccount:{credentialId:'new'}},false],
  ['refresh of an existing account keeps explicitly opened Settings panel',{purpose:'cloud-account',open:true,cloudAccount:{credentialId:'same'}},{cloudAccount:{credentialId:'same'}},true],

@@ -4,6 +4,7 @@ import {mkdtempSync,mkdirSync,writeFileSync,rmSync,readFileSync,readdirSync} fro
 import {tmpdir,homedir} from 'node:os';
 import {join,dirname,resolve} from 'node:path';
 import {execFileSync} from 'node:child_process';
+import {javaBinary} from './fixtures/jvm-tools.mjs';
 // Alpha registers the shared reset (plugin-native-system reset.*) under its installed names; the
 // authorization, disclosure, recording, dispatch and recovery behavior are tested upstream.
 const root=resolve(import.meta.dirname,'..');
@@ -12,7 +13,6 @@ const alpha=name=>resolve(root,`android/app/src/main/java/ai/elizaresearch/alpha
 test('Alpha reset is the shared native review, coordinator and recovery under Alpha names and copy',()=>{
  const dir=mkdtempSync(join(tmpdir(),'alpha-reset-wiring-')),files=[];
  const put=(name,text)=>{const file=join(dir,'src',name);mkdirSync(dirname(file),{recursive:true});writeFileSync(file,text);files.push(file);};
- const bin=name=>process.env.JAVA_HOME?join(process.env.JAVA_HOME,'bin',name):name;
  const sdk=join(process.env.ANDROID_HOME??join(homedir(),'Android/Sdk'),'platforms/android-36/android.jar');
  try{
   put('com/getcapacitor/Plugin.java','package com.getcapacitor; public class Plugin { protected void handleOnDestroy(){} public android.content.Context getContext(){return null;} public android.app.Activity getActivity(){return null;} public void startActivityForResult(PluginCall call,android.content.Intent intent,String callback){} }');
@@ -55,8 +55,8 @@ public final class WiringCheck {
   const authDir=resolve(root,'vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud');
   const auth=readdirSync(authDir).filter(name=>name.endsWith('.java')&&!['CloudSignInPlugin.java','NativeGoogleCredential.java'].includes(name)).map(name=>join(authDir,name));
   const calendar=resolve(root,'vendor/eliza/plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/CalendarConfiguration.java');
-  execFileSync(bin('javac'),['--release','17','-proc:none','-cp',sdk,'-d',join(dir,'classes'),...files,...shared,...auth,calendar,...['AlphaDataReset','ResetBeforeDispatch','AlphaResetPlugin','ResetRecoveryActivity'].map(alpha)],{timeout:120000});
-  assert.match(execFileSync(bin('java'),['-cp',`${join(dir,'classes')}:${sdk}`,'ai.elizaresearch.alphaphone.WiringCheck'],{encoding:'utf8',timeout:30000}),/PASS Alpha reset wiring/);
+  execFileSync(javaBinary('javac'),['--release','17','-proc:none','-cp',sdk,'-d',join(dir,'classes'),...files,...shared,...auth,calendar,...['AlphaDataReset','ResetBeforeDispatch','AlphaResetPlugin','ResetRecoveryActivity'].map(alpha)],{timeout:120000});
+  assert.match(execFileSync(javaBinary('java'),['-cp',`${join(dir,'classes')}:${sdk}`,'ai.elizaresearch.alphaphone.WiringCheck'],{encoding:'utf8',timeout:30000}),/PASS Alpha reset wiring/);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });
 test('Settings opens only the native review; Application admission runs before providers',()=>{

@@ -10,7 +10,7 @@ import test from 'node:test';
 // The whole browser voice module is compiled, as browser-voice-cancellation does, so the harness does not
 // depend on where the streamed clip sits in it. Its imports are stripped; only WebPlugin, which BrowserVoice
 // extends, is read while the module loads, and nothing else in it runs here.
-const code=stripTypeScriptTypes(readFileSync('apps/app/src/browser/voice.ts','utf8').replace(/^import .*;\n/gm,'').replace(/^export /gm,'').replaceAll('import.meta.env.DEV','false'),{mode:'transform'})+';return {StreamedSpeech,streamedSpeechSource};';
+const code=stripTypeScriptTypes(readFileSync('apps/app/src/browser/voice.ts','utf8').replace(/^import .*;\n/gm,'').replace(/^export /gm,'').replaceAll('import.meta.env.DEV','false'),{mode:'strip'})+';return {StreamedSpeech,streamedSpeechSource};';
 const idle=async()=>{for(let i=0;i<5;i++)await new Promise(resolve=>setTimeout(resolve,0));};
 function harness(){
  const medias=[],revoked=[],cancelled=[];let upstream;

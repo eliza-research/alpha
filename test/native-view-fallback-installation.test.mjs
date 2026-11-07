@@ -6,7 +6,7 @@ import {randomUUID} from 'node:crypto';
 import vm from 'node:vm';
 
 // Exercise the owning registry: a route-only test cannot detect plugin collisions.
-const source=stripTypeScriptTypes(readFileSync('vendor/eliza/packages/agent/src/api/view-installations.ts','utf8'),{mode:'transform'}).replace(/^import[\s\S]*?;\n/gm,'').replace(/^export /gm,'');
+const source=stripTypeScriptTypes(readFileSync('vendor/eliza/packages/agent/src/api/view-installations.ts','utf8'),{mode:'strip'}).replace(/^import[\s\S]*?;\n/gm,'').replace(/^export /gm,'');
 const declarations=JSON.parse(readFileSync('config/native-view-declarations.json','utf8'));
 for(const nativeFirst of [true,false])test(`Inbox plugin and native fallback coexist, native first=${nativeFirst}`,()=>{
  const context=vm.createContext({randomUUID,ElizaError:class extends Error{},bindViewAssets(){},getViewAssetRoot(){}});

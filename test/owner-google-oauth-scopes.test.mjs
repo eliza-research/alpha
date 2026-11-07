@@ -12,7 +12,7 @@ const prepared = fs.existsSync(".eliza/client-features/plugins/plugin-inbox/src/
 
 /** Run a module snippet with type transforms (CloudProtocol uses parameter properties). */
 function runTs(source) {
-  const child = spawnSync(process.execPath, ["--experimental-transform-types", "--no-warnings", "--input-type=module", "-e", source], { encoding: "utf8" });
+  const child = spawnSync(process.execPath, ["--import=tsx", "--no-warnings", "--input-type=module", "-e", source], { encoding: "utf8" });
   assert.equal(child.status, 0, child.stderr);
   return JSON.parse(child.stdout.trim().split("\n").at(-1));
 }

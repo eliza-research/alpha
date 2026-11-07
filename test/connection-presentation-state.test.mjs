@@ -13,7 +13,7 @@ const functions=[
  section('async function refreshActionReview(', 'function boundNavigation('),
  section('function boundNavigation(', '/*\n * DEVELOPMENT INFRASTRUCTURE'),
 ].join('\n');
-const code=stripTypeScriptTypes(functions,{mode:'transform'});
+const code=stripTypeScriptTypes(functions,{mode:'strip'});
 function fixture({android=true,dev=false,browserResident=false,account={expiresAt:Date.now()+60000},purpose='agent',open=false}={}){
  const entries=[{id:'review-1',state:'reconciliation_required'}];let release;
  const selected={request(){},actions:{}};
@@ -70,7 +70,7 @@ test('unresolved saved-session restore does not start the earlier automatic sign
  const gate=source.includes('const signInEntryRequired=')?'signInEntryRequired':'productionSignInRequired';const a=source.indexOf('  useEffect(() => {\n    if (!'+gate+')'),b=source.indexOf('  }, [',a);assert.ok(a>=0&&b>a);
  let probes=0,automaticSignInProbe={current:false};
  const callback=source.slice(a,b).replace('  useEffect(() => {','(()=>{')+'})';
- const evaluate=()=>{f.context.snapshot=f.snapshot();f.context.productionSignInRequired=f.context.productionCloudSignInRequired(f.snapshot());f.context.signInEntryRequired=f.context.productionSignInRequired||(typeof f.context.explicitSignedOutCloudEntry==='function'&&f.context.explicitSignedOutCloudEntry(f.snapshot()));f.context.automaticSignInProbe=automaticSignInProbe;f.context.residentEnvironment=()=> 'production';f.context.connectionController={beginSignIn:()=>{probes++;}};vm.runInContext(stripTypeScriptTypes('var runProbe='+callback+';runProbe();',{mode:'transform'}),f.context);};
+ const evaluate=()=>{f.context.snapshot=f.snapshot();f.context.productionSignInRequired=f.context.productionCloudSignInRequired(f.snapshot());f.context.signInEntryRequired=f.context.productionSignInRequired||(typeof f.context.explicitSignedOutCloudEntry==='function'&&f.context.explicitSignedOutCloudEntry(f.snapshot()));f.context.automaticSignInProbe=automaticSignInProbe;f.context.residentEnvironment=()=> 'production';f.context.connectionController={beginSignIn:()=>{probes++;}};vm.runInContext(stripTypeScriptTypes('var runProbe='+callback+';runProbe();',{mode:'strip'}),f.context);};
  evaluate();assert.equal(probes,0,'the sign-in effect is declared first but must leave restore alone');assert.equal(f.context.connectionChooserVisible(f.snapshot()),false);
  f.update({cloudAccount:{expiresAt:Date.now()+60000},startupResolved:true,automaticRestore:false});evaluate();assert.equal(probes,0);assert.equal(f.context.connectionChooserVisible(f.snapshot()),false);
 });
@@ -101,7 +101,7 @@ const preflightSource = [
   '  },',
   '}; globalThis.preflightController = preflightController;',
 ].join('\n');
-const preflightCode = stripTypeScriptTypes(preflightSource, {mode: 'transform'});
+const preflightCode = stripTypeScriptTypes(preflightSource, {mode: 'strip'});
 function preflightFixture(balance, options = {}) {
   const f = fixture({purpose: 'plan', ...options});
   let bindings = 0;
@@ -203,7 +203,7 @@ test('a resident send with a network binds its conversation as before', async ()
 // carries its own reason, or a send from outside the composer, still says so. The real statement
 // runs, including the preview gate read before the held send is released.
 const refusalStart = adapter.indexOf('if(this.live){', adapter.indexOf('// Nothing reached the agent: put the text back'));
-const refusal = stripTypeScriptTypes(adapter.slice(refusalStart, adapter.indexOf('\n        else if(fromComposer)this.composerDraft?.release();', refusalStart)), {mode: 'transform'});
+const refusal = stripTypeScriptTypes(adapter.slice(refusalStart, adapter.indexOf('\n        else if(fromComposer)this.composerDraft?.release();', refusalStart)), {mode: 'strip'});
 class NotDispatched extends Error {}
 class AlphaClientError extends Error { constructor(code, message) { super(message); this.code = code; } }
 const toastsFor = (e, {fromComposer = true, preview = false, holding = true} = {}) => {
@@ -263,7 +263,7 @@ const returnCode = stripTypeScriptTypes([
   `globalThis.connectionController={${section('  recheckPlanOnReturn(', '  /**')}${section('  networkChanged(', '  openCloudAccount(')}};`,
   section('  useEffect(()=>{const offline=', '\n'),
   section('  useEffect(()=>{const visible=', '\n'),
-].join('\n'), {mode: 'transform'});
+].join('\n'), {mode: 'strip'});
 function returnFixture({offline = false} = {}) {
   const listeners = {}, target = {addEventListener: (type, listener) => { (listeners[type] ??= []).push(listener); }, removeEventListener() {}};
   const box = {residentCloudFlow: () => true, operation: null, planRecheck: null, sending: null, state: {busy: false, session: {}, inferenceOffline: offline, cloudAccount: {credentialId: 'credential-1'}}, Date, planManagementReturn: false, lastPlanRecheck: -Infinity, PLAN_RECHECK_INTERVAL_MS: 60_000, environment: 'production', residentEnvironment: () => box.environment, ownCloudServiceRestore: null, residentBinding: 'kept', rechecks: 0, service: null, update: patch => { Object.assign(box.state, patch); }, retractReadiness() {}, useEffect: run => run(), document: {...target, hidden: false}, window: target};
@@ -371,7 +371,7 @@ test('a network return held back by a reply, an edit or other work checks on the
 // still waiting, so an A→B→A change never spends it on a second plan read. An admission that runs
 // with no network records its own. Both run here from source up to their first Cloud or agent read,
 // which never settles; the provider read answers with the provider status shown.
-const admissionCode = stripTypeScriptTypes(section('async function residentSignedIn(', '/** The key is stored;') + section('async function connectResident(', 'async function connectCloud('), {mode: 'transform'});
+const admissionCode = stripTypeScriptTypes(section('async function residentSignedIn(', '/** The key is stored;') + section('async function connectResident(', 'async function connectCloud('), {mode: 'strip'});
 const signInAdmission = {binding: 'unbound'};
 function admissions(box) {
   vm.runInContext(admissionCode, box);
@@ -424,7 +424,7 @@ test('a fresh start, restart, rebind, redeem or sign-in retires a waiting networ
 // bound Cloud key reads as selected. A failed read retains the confirmed provider and marks it unavailable.
 function statusReads(box) {
   Object.assign(box, {isAndroid: false, testMocksEnabled: false, developmentPageSuspended: false, listeners: new Set(), flushConversationEvents() {}, providerStatusGeneration: 0});
-  vm.runInContext(stripTypeScriptTypes(section('function update(', '// P-43: where') + `Object.assign(connectionController,{${section('  async refreshProviderStatus(', '  /** Stops the running agent')}});`, {mode: 'transform'}), box);
+  vm.runInContext(stripTypeScriptTypes(section('function update(', '// P-43: where') + `Object.assign(connectionController,{${section('  async refreshProviderStatus(', '  /** Stops the running agent')}});`, {mode: 'strip'}), box);
   return status => { box.localProviderStatus = async () => { if (!status) throw Error('unavailable'); return status; }; return box.connectionController.refreshProviderStatus(); };
 }
 test('a provider class changed and changed back by status reads alone while a network return waits does not spend it', async () => {
@@ -551,13 +551,13 @@ for (const [continuation, changes, run] of [
   ['a render update', classChanges, async (box, _, retire) => { await retire(); box.update({message: 'Render update', open: true}); }],
   ['the optional Cloud account detached', classChanges.filter(([, , after]) => after === ownProvider), async (box, _, retire) => {
     Object.assign(box, {retireReadReplies() {}, clearPersonalSetup() {}, appRequests: new Set(), membershipRead: null, pendingBillingReview: null});
-    vm.runInContext(stripTypeScriptTypes(section('function detachService()', '\n'), {mode: 'transform'}), box);
+    vm.runInContext(stripTypeScriptTypes(section('function detachService()', '\n'), {mode: 'strip'}), box);
     await retire(); box.detachService(); assert.equal(box.state.cloudAccount, null);
   }],
   // The real onView of the admission's EntitlementRefresher, its account still the current service.
   ['the admission\'s automatic plan retry failing', classChanges.filter(([, , after]) => after !== ownProvider), async (box, _, retire) => {
     Object.assign(box, {planAdmission: (await import('../apps/app/src/runtime/subscription-entitlement.ts')).planAdmission, admitted: box.service});
-    const onView = vm.runInContext(stripTypeScriptTypes(`({${section('    onView:next=>{', '\n    onAuthFailure')}}).onView`, {mode: 'transform'}), box);
+    const onView = vm.runInContext(stripTypeScriptTypes(`({${section('    onView:next=>{', '\n    onAuthFailure')}}).onView`, {mode: 'strip'}), box);
     await retire(); onView({kind: 'unavailable', reason: 'outage'}); assert.deepEqual(box.state.residentSubscription, {kind: 'unavailable', reason: 'outage'});
   }],
 ]) {
@@ -581,7 +581,7 @@ const recheckCode = stripTypeScriptTypes([
   section('async function admitCloudResident(', '/**\n * Cloud reported'),
   section('async function recheckResidentPlan(', '/** Bind or unbind'),
   section('function residentBindingController(', '/** The packaged-runtime refusal.'),
-].join('\n'), {mode: 'transform'});
+].join('\n'), {mode: 'strip'});
 test('a plan check that cannot reach Cloud admits nothing and reports no plan as valid; a missing plan still shows its notice', async () => {
   const shared = await import('../.eliza/client-features/packages/auth/src/auth/cloud-resident-binding.ts');
   const entitlement = await import('../apps/app/src/runtime/subscription-entitlement.ts');
@@ -666,7 +666,7 @@ test('closing unknown balance preserves required sign-in for signed-out and expi
 
 const verifyServiceCode = stripTypeScriptTypes(
   section('async function verifyService(', 'let pendingBillingReview:'),
-  {mode: 'transform'},
+  {mode: 'strip'},
 );
 function serviceVerificationFixture({replaceCredential, identityPatch} = {}) {
   let credential = {credentialId: 'credential-1', credentialReference: 'native-reference-1'};
@@ -755,7 +755,7 @@ const savedAdmissionCode=stripTypeScriptTypes([
  section('async function admitCloudResident(', '/**\n * Cloud reported, on a background refresh'),
  section('async function applyResidentBinding(', '/** The packaged-runtime refusal.'),
  section('function residentSignInRequired()', '\n'),
-].join('\n'),{mode:'transform'});
+].join('\n'),{mode:'strip'});
 // The shared resident binding controller (projected from the pinned upstream source) decides the binding.
 const residentBinding=await import('../.eliza/client-features/packages/auth/src/auth/cloud-resident-binding.ts');
 const residentTail=source.slice(source.indexOf('  // Restore only the saved choice for this verified agent and owner;'),source.indexOf('async function connectCloud('));
@@ -768,7 +768,7 @@ async function offlineRestoreFixture({kind='offline',recent=false,newer=null}={}
  vm.runInContext(savedAdmissionCode+';globalThis.admit=admitCloudResident;globalThis.bind=applyResidentBinding;',f.context);
  f.update({startupResolved:false,automaticRestore:true});
  f.context.admission=await f.context.admit(new AbortController().signal);f.context.bound=await f.context.bind(f.context.admission,new AbortController().signal);f.context.signal=new AbortController().signal;
- await vm.runInContext(stripTypeScriptTypes('(async function(){'+residentTail+')',{mode:'transform'}),f.context)();
+ await vm.runInContext(stripTypeScriptTypes('(async function(){'+residentTail+')',{mode:'strip'}),f.context)();
  f.update({startupResolved:true,automaticRestore:false});
  return {...f,historyReads,credentialWrites,unbinds,identityReads};
 }
@@ -791,7 +791,7 @@ test('retained offline account controls still open explicitly without claiming v
 test('explicit signed-out entry waits for restore, probes once when settled, and never probes after close',()=>{
  const f=fixture({account:null,purpose:'cloud-account',open:true,android:false});let probes=0;const ref={current:false};
  const gate=source.includes('const signInEntryRequired=')?'signInEntryRequired':'productionSignInRequired',a=source.indexOf('  useEffect(() => {\n    if (!'+gate+')'),b=source.indexOf('  }, [',a);assert.ok(a>=0&&b>a);const callback=source.slice(a,b).replace('  useEffect(() => {','(()=>{')+'})';
- const evaluate=()=>{f.context.snapshot=f.snapshot();f.context.productionSignInRequired=f.context.productionCloudSignInRequired(f.snapshot());f.context.signInEntryRequired=f.context.productionSignInRequired||(typeof f.context.explicitSignedOutCloudEntry==='function'&&f.context.explicitSignedOutCloudEntry(f.snapshot()));f.context.automaticSignInProbe=ref;f.context.residentEnvironment=()=> 'production';f.context.connectionController={beginSignIn:()=>{probes++;}};vm.runInContext(stripTypeScriptTypes('var runProbe='+callback+';runProbe();',{mode:'transform'}),f.context);};
+ const evaluate=()=>{f.context.snapshot=f.snapshot();f.context.productionSignInRequired=f.context.productionCloudSignInRequired(f.snapshot());f.context.signInEntryRequired=f.context.productionSignInRequired||(typeof f.context.explicitSignedOutCloudEntry==='function'&&f.context.explicitSignedOutCloudEntry(f.snapshot()));f.context.automaticSignInProbe=ref;f.context.residentEnvironment=()=> 'production';f.context.connectionController={beginSignIn:()=>{probes++;}};vm.runInContext(stripTypeScriptTypes('var runProbe='+callback+';runProbe();',{mode:'strip'}),f.context);};
  f.update({startupResolved:false,automaticRestore:true});evaluate();assert.equal(probes,0);f.update({startupResolved:true,automaticRestore:false});evaluate();assert.equal(probes,1);evaluate();assert.equal(probes,1);f.update({open:false});evaluate();assert.equal(probes,1);assert.equal(ref.current,false);
 });
 
@@ -878,7 +878,7 @@ const providerSwitchSource=stripTypeScriptTypes([
  'globalThis.providerController={',
  section('  async configureLocal(', '  /** Stops the running agent'),
  '};',
-].join('\n'),{mode:'transform'});
+].join('\n'),{mode:'strip'});
 function providerSwitchFixture(){
  const events=[];
  const context=vm.createContext({AbortController,DOMException,

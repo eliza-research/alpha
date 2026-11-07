@@ -9,7 +9,7 @@ const scope=calendar.slice(calendar.indexOf('export const browserCalendarScope='
 const handler=adapter.slice(adapter.indexOf('  const openBrowserView ='),adapter.indexOf("  window.addEventListener('alpha:browser-open-view'"));
 function open({testMocks=true,platform='web',authority='browser-local',view='calendar'}={}){
  const calls=[],shell={vget:()=>({calendarAuthority:authority}),openView:(...args)=>calls.push(args)};
- const execute=new Function('shell','testMocksEnabled','Capacitor',stripTypeScriptTypes(scope.replace('export ', '')+handler, {mode:'transform'})+';return openBrowserView;')(shell,testMocks,{getPlatform:()=>platform});
+ const execute=new Function('shell','testMocksEnabled','Capacitor',stripTypeScriptTypes(scope.replace('export ', '')+handler, {mode:'strip'})+';return openBrowserView;')(shell,testMocks,{getPlatform:()=>platform});
  execute({detail:view});return calls;
 }
 test('a browser Calendar link preserves an explicitly selected source',()=>{

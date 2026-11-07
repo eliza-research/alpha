@@ -9,14 +9,14 @@ const source=readFileSync('apps/app/src/prototype/camera-adapter.ts','utf8');
 const save=source.slice(source.indexOf('  async function saveCameraPhoto('),source.indexOf('  async function capture()'));
 const request=source.slice(source.indexOf('  const takeRequestedPhoto='),source.indexOf('  requestedPhoto=takeRequestedPhoto;'));
 // The capture lock is the shared camera session's (plugin-native-camera), run as-is.
-const shared=stripTypeScriptTypes(['host-ports','session'].map(name=>readFileSync(`.eliza/client-features/plugins/plugin-native-camera/src/${name}.ts`,'utf8')).join('\n').replace(/^import[^;]*;$/gm,'').replace(/^export /gm,''),{mode:'transform'});
+const shared=stripTypeScriptTypes(['host-ports','session'].map(name=>readFileSync(`.eliza/client-features/plugins/plugin-native-camera/src/${name}.ts`,'utf8')).join('\n').replace(/^import[^;]*;$/gm,'').replace(/^export /gm,''),{mode:'strip'});
 function cameraFixture(browser=false){
  let calls=0,mode='ok',release;
  const camera={startPreview:async()=>{},stopPreview:async()=>{},async capturePhoto(options){calls++;assert.equal(options.saveToGallery,true);if(mode==='hold')await new Promise(resolve=>{release=resolve});if(mode==='fail')throw Error('write unavailable');return {path:mode==='invalid'?'file:///tmp/45':browser?'browser-photo:///1792274767123123456789012':'content://media/external/images/media/45',format:'jpeg',base64:'jpeg-fixture',width:1280,height:720}}};
  const api={S:{chat:'hidden'},isActive:()=>true,set(){},setView(){throw Error('An agent capture must not change views')}};
  const context=vm.createContext({camera,api,validateCameraCaptureResult,nativeId:id=>id.replace('native-camera-',''),browserMode:browser,disposed:false,captures:[],loaded:true,requestedCaptureActive:false,document:{hidden:false,querySelector:()=>({})},finder:'#camera',schedule(){},message(){},Date});
  const visibility=source.match(/  const cameraViewVisible[^\n]+\n  const active[^\n]+/)[0];
- vm.runInContext(shared+stripTypeScriptTypes(visibility+'\n'+save+request+';globalThis.capture=takeRequestedPhoto;',{mode:'transform'}),context);
+ vm.runInContext(shared+stripTypeScriptTypes(visibility+'\n'+save+request+';globalThis.capture=takeRequestedPhoto;',{mode:'strip'}),context);
  vm.runInContext('globalThis.session=createCameraSession({camera,active:()=>true,preview:()=>({}),recording:()=>({})});',context);
  // The request starts the preview itself through the session, as on an agent request from another view.
  context.start=async retry=>{await context.session.start(retry);};
@@ -54,7 +54,7 @@ function continuationFixture(){
  const session={sessionId:'session'},selected={actions},attempt={controller:new AbortController()};
  const state={session},pending={messageId:'message-one',selected,session,generation:7,conversationId:'conversation',client:{deliveredContext:()=>context},attempt,expiresAt:Date.now()+30000};
  const scope=vm.createContext({requestedCameraContinuation:pending,navigationContext:()=>context,document:{hidden:false},epoch:7,active:selected,state,conversationMemory:new Map([['key','conversation']]),conversationKey:()=> 'key',readDevicePreferences:async()=>({askBeforeAgentActions:false}),Date});
- vm.runInContext(stripTypeScriptTypes('globalThis.controller={'+controllerSource.slice(start,end)+'};',{mode:'transform'}),scope);
+ vm.runInContext(stripTypeScriptTypes('globalThis.controller={'+controllerSource.slice(start,end)+'};',{mode:'strip'}),scope);
  return {scope,context,pending,session,state,attempt,camera,run:(message='message-one')=>scope.controller.continueRequestedCamera(message,signal())};
 }
 const continued=continuationFixture();assert.equal((await continued.run())[0].status,'succeeded');assert.equal(continued.camera.calls,1);assert.equal((await continued.run()).length,0);assert.equal(continued.camera.calls,1);

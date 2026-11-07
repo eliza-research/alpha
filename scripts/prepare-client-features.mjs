@@ -290,8 +290,9 @@ export const CLIENT_FEATURE_PATHS = [
   // Framework-free resident Cloud binding controller (AP-04/P-22).
   'packages/auth/src/auth/cloud-resident-binding.ts',
 ];
-/** Copy authenticated upstream source outside the immutable vendor checkout. */
-export function prepareClientFeatures({ root = projectRoot, projectVoice = true } = {}) {
+/** Copy authenticated upstream source outside the immutable vendor checkout. With check, only
+ * confirm the prepared copy is current and throw instead of rebuilding it. */
+export function prepareClientFeatures({ root = projectRoot, projectVoice = true, check = false } = {}) {
   const upstream = upstreamNativeSource(root);
   const source = new Map(CLIENT_FEATURE_PATHS.flatMap(prefix => [...upstream.read(prefix)]));
   const sourceFiles = Object.fromEntries([...source].map(([name, file]) => [name, file.sha256]));
@@ -370,6 +371,7 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true 
     const actual = inventory(destination); delete actual['.source.json'];
     if (previous.baseCommit === upstream.pin && previous.projectionVersion === provenance.projectionVersion && JSON.stringify(previous.speechPatch ?? null) === JSON.stringify(provenance.speechPatch ?? null) && matches(previous.files || {}, files) && matches(actual, files)) return destination;
   }
+  if (check) throw Error('Client feature source is missing or stale: run npm run upstream:prepare-client');
   fs.mkdirSync(parent, { recursive: true });
   const temporary = fs.mkdtempSync(path.join(parent, 'client-features-stage-'));
   try {
@@ -385,6 +387,8 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true 
     return destination;
   } finally { fs.rmSync(temporary, { force: true, recursive: true }); }
 }
+/** Check-only: the prepared copy's path when current; never writes the shared tree. */
+export const checkClientFeatures = (options = {}) => prepareClientFeatures({ ...options, check: true });
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   console.log(`Client feature source prepared: ${prepareClientFeatures()}`);

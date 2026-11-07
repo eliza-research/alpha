@@ -50,6 +50,10 @@ jobs:
           python3 -m pip install cmake==4.0.3
           test "$(cmake --version | head -1)" = "cmake version 4.0.3"
       - run: npm ci
+      # The host JVM tests in npm run verify and the Calendar bridge both need the pinned org.json jar.
+      - name: Prepare normal host-test JSON
+        timeout-minutes: 1
+        run: bash scripts/ci/prepare-host-test-json.sh
       - name: Verify standalone manual qualification
         if: github.event_name == 'workflow_dispatch'
         run: npm run verify
@@ -74,9 +78,7 @@ jobs:
           VITE_ELIZA_DEV_ALLOW_TEST_MOCKS: ""
         run: npm run android:build -- --allow-unpackaged-runtime --skip-instrumentation
       # Use actual normal JavaCompile outputs; this qualification assembles no extra APK.
-      - name: Prepare normal host-test JSON for Calendar bridge
-        timeout-minutes: 1
-        run: bash scripts/ci/prepare-host-test-json.sh
+      # It reads ALPHA_JSON_JAR from the host-test JSON step above.
       - name: Qualify actual Calendar bridge in normal Java compile context
         timeout-minutes: 4
         env:

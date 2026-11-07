@@ -3,13 +3,13 @@ import {resolveCloudEnvironment} from '../apps/app/src/runtime/cloud-environment
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './fixtures/ts-source.mjs';
 import vm from 'node:vm';
 import {EntitlementError} from '../apps/app/src/runtime/subscription-entitlement.ts';
 import * as cloudSignInModule from '../apps/app/src/runtime/cloud-sign-in.ts';
 // The shared upstream coordinator (@elizaos/contracts/notice-routes), as the renderer imports it.
 import {NoticeOwnerCoordinator} from '../.eliza/client-features/packages/contracts/src/notice-routes.ts';
-const controllerSource=stripTypeScriptTypes(readFileSync('apps/app/src/runtime/connection-ui.tsx','utf8').split('export function ConnectionChooser()')[0].replace(/\nfunction ResidentRecoveryPanel\([\s\S]*?\n}\n(?=export function productionCloudSignInRequired)/, '\n').replace(/^import .*;\n/gm,'').replace(/export /g,'').replaceAll('import.meta.env','fixtureViteEnv'),{mode:'transform'});
+const controllerSource=stripTypeScriptTypes(readFileSync('apps/app/src/runtime/connection-ui.tsx','utf8').split('export function ConnectionChooser()')[0].replace(/\nfunction ResidentRecoveryPanel\([\s\S]*?\n}\n(?=export function productionCloudSignInRequired)/, '\n').replace(/^import .*;\n/gm,'').replace(/export /g,'').replaceAll('import.meta.env','fixtureViteEnv'),{mode:'strip'});
 function fixture({offline=false,credential=null,fail=false}={}){
  let release;const read=new Promise(resolve=>release=resolve),transitions=[];
  const memory=new Map(offline?[['alpha.connection.selection.v1',JSON.stringify({kind:'offline',localApps:true})]]:[]);

@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {stageWorkerArtifact,verifyWorkerArtifact,workerHash} from '../scripts/workflow-worker-artifact.mjs';
+import {javaBinary} from './fixtures/jvm-tools.mjs';
 const root=path.resolve(import.meta.dirname,'..');
 function fixture(directory){
  const files={};for(const name of ['node_modules/smthrs/package.json','node_modules/zod/package.json','node_modules/effect/package.json','node_modules/@smthrs/engine/package.json','dependencies.json','lib/worker.js']){
@@ -74,13 +75,12 @@ public class WorkerAssetTest {
  }
 }`;
   const harnessPath=path.join(temporary,'WorkerAssetTest.java');fs.writeFileSync(harnessPath,harness);
-  const java=process.env.JAVA_HOME||(process.platform==='darwin'?'/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home':'');const binary=name=>java?path.join(java,'bin',name):name;
-  execFileSync(binary('javac'),['--release','8','-d',temporary,path.join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/WorkflowWorkerAssets.java'),harnessPath],{timeout:20000});
-  assert.match(execFileSync(binary('java'),['-cp',temporary,identity+'.WorkerAssetTest',assets,state],{encoding:'utf8',timeout:20000}),/^PASS extract/);
+  execFileSync(javaBinary('javac'),['--release','8','-d',temporary,path.join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/WorkflowWorkerAssets.java'),harnessPath],{timeout:20000});
+  assert.match(execFileSync(javaBinary('java'),['-cp',temporary,identity+'.WorkerAssetTest',assets,state],{encoding:'utf8',timeout:20000}),/^PASS extract/);
   if(process.env.ALPHA_WORKFLOW_WORKER_OUTPUT){
    const realAssets=path.join(temporary,'real-assets'),realState=path.join(temporary,'real-agent');
    const staged=stageWorkerArtifact(process.env.ALPHA_WORKFLOW_WORKER_OUTPUT,realAssets);fs.mkdirSync(realState);
-   assert.match(execFileSync(binary('java'),['-cp',temporary,identity+'.WorkerAssetTest',realAssets,realState],{encoding:'utf8',timeout:30000}),/^PASS extract/);
+   assert.match(execFileSync(javaBinary('java'),['-cp',temporary,identity+'.WorkerAssetTest',realAssets,realState],{encoding:'utf8',timeout:30000}),/^PASS extract/);
    console.log(`Verified native extractor against ${staged.files} real worker artifact files (host JVM only)`);
   }
  }finally{fs.rmSync(temporary,{recursive:true,force:true});}

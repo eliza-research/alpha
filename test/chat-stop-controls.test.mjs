@@ -8,7 +8,7 @@ const adapter=readFileSync(new URL('../apps/app/src/prototype/agent-adapter.ts',
 const template=readFileSync(new URL('../apps/app/src/prototype/template.html',import.meta.url),'utf8');
 const start=adapter.indexOf('    out.canStopReply='),end=adapter.indexOf('\n    if (isAndroid)',start);
 assert(start>=0&&end>start,'actual render Stop/Send/Talk closure is present');
-const code=stripTypeScriptTypes(adapter.slice(start,end),{mode:'transform'});
+const code=stripTypeScriptTypes(adapter.slice(start,end),{mode:'strip'});
 const render=new Function('alphaClient','connectionController','state','hasDraft',`const out={hasDraft,noDraft:!hasDraft};(function(){${code}}).call({S:()=>state});return out;`);
 function shown(surface,button,values){
  for(let node=button;node&&node!==surface.parentElement;node=node.parentElement){

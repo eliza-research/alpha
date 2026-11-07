@@ -4,6 +4,7 @@ import {mkdtempSync,rmSync,mkdirSync,writeFileSync,readFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve,dirname} from 'node:path';
 import {execFileSync} from 'node:child_process';
+import {javaBinary} from './fixtures/jvm-tools.mjs';
 const root=resolve(import.meta.dirname,'..');
 // Alpha's registration (AlphaDataReset, AlphaApplication) compiled with the shared coordinator from the
 // reviewed pin (plugin-native-system reset.DataReset); Android and Alpha's other startup classes are stand-ins.
@@ -11,7 +12,6 @@ const upstreamReset=resolve(root,'vendor/eliza/plugins/plugin-native-system/andr
 test('pending reset retries, shows bounded recovery instead of a launcher restart loop, before startup callbacks; accepted, refused and failed dispatch never resumes old runtime',()=>{
  const dir=mkdtempSync(join(tmpdir(),'alpha-reset-startup-')),sources=[];
  const put=(name,body)=>{const path=join(dir,name);mkdirSync(dirname(path),{recursive:true});writeFileSync(path,body);sources.push(path);};
- const bin=name=>process.env.JAVA_HOME?join(process.env.JAVA_HOME,'bin',name):name;
  try{
   // The shared Cloud reset step (ai.eliza.auth.cloud.CloudKeyRevocation, tested upstream) as a recording stand-in.
   put('ai/eliza/auth/cloud/CloudSignInConfig.java',`package ai.eliza.auth.cloud; public final class CloudSignInConfig {}`);
@@ -124,8 +124,8 @@ public class ResetStartupTest {
  }
 }`);
   const sibling=join(dir,'other-app');mkdirSync(sibling);writeFileSync(join(sibling,'keep'),'x');
-  execFileSync(bin('javac'),['--release','17','-d',join(dir,'classes'),...sources,...['DataReset','DataResetCopy'].map(name=>join(upstreamReset,`${name}.java`)),...['AlphaDataReset','AlphaApplication'].map(name=>join(root,`android/app/src/main/java/ai/elizaresearch/alphaphone/${name}.java`))],{timeout:60000});
-  assert.match(execFileSync(bin('java'),['-cp',join(dir,'classes'),'ai.elizaresearch.alphaphone.ResetStartupTest',join(dir,'private-fixture'),sibling],{encoding:'utf8',timeout:60000}),/PASS reset startup/);
+  execFileSync(javaBinary('javac'),['--release','17','-d',join(dir,'classes'),...sources,...['DataReset','DataResetCopy'].map(name=>join(upstreamReset,`${name}.java`)),...['AlphaDataReset','AlphaApplication'].map(name=>join(root,`android/app/src/main/java/ai/elizaresearch/alphaphone/${name}.java`))],{timeout:60000});
+  assert.match(execFileSync(javaBinary('java'),['-cp',join(dir,'classes'),'ai.elizaresearch.alphaphone.ResetStartupTest',join(dir,'private-fixture'),sibling],{encoding:'utf8',timeout:60000}),/PASS reset startup/);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });
 

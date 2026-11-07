@@ -5,25 +5,23 @@
 // checks that Alpha keeps its installed slot, bridge and work names and no duplicate engine.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {existsSync,readdirSync,readFileSync,mkdtempSync,rmSync} from 'node:fs';
-import {homedir,tmpdir} from 'node:os';
+import {existsSync,readFileSync,readdirSync,mkdtempSync,rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {prepareNativeFixture} from './fixtures/native-source.mjs';
+import {jsonJar as jar,jvmSkip,javaBinary} from './fixtures/jvm-tools.mjs';
 const root=resolve(import.meta.dirname,'..');
-const cache=join(homedir(),'.gradle/caches/modules-2/files-2.1/org.json/json/20250517');
-const jar=process.env.ALPHA_JSON_JAR||(existsSync(cache)?readdirSync(cache).flatMap(hash=>readdirSync(join(cache,hash)).filter(n=>n==='json-20250517.jar').map(n=>join(cache,hash,n)))[0]:undefined);
-const bin=name=>process.env.JAVA_HOME?join(process.env.JAVA_HOME,'bin',name):name;
 const alpha=name=>readFileSync(join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone',name+'.java'),'utf8');
 
-test('the shared deadline, journal, dispatch claim, receipt recovery and coordinator pass at the pin',{skip:!jar?'Pinned JVM JSON dependency unavailable':false},()=>{
+test('the shared deadline, journal, dispatch claim, receipt recovery and coordinator pass at the pin',{skip:jvmSkip('json')},()=>{
  const dir=mkdtempSync(join(tmpdir(),'alpha-shared-deletion-'));
  try{
   const prepared=prepareNativeFixture(root,dir);
   const plugin=join(prepared.root,'plugins/plugin-native-action-journal'),source=join(plugin,'android/src/main/java/ai/eliza/plugins/actionjournal'),deletion=join(source,'deletion');
   const classes=join(dir,'classes');
-  execFileSync(bin('javac'),['--release','17','-cp',jar,'-d',classes,join(source,'ActionJournal.java'),join(source,'ActionJournalConfiguration.java'),...readdirSync(deletion).filter(n=>n.endsWith('.java')).map(n=>join(deletion,n)),join(root,'vendor/eliza/plugins/plugin-native-action-journal/test/native-host/DeferredDeletionTest.java')],{timeout:120000});
-  assert.match(execFileSync(bin('java'),['-cp',classes+':'+jar,'DeferredDeletionTest'],{encoding:'utf8',timeout:120000}),/^\d+ assertions passed/);
+  execFileSync(javaBinary('javac'),['--release','17','-cp',jar,'-d',classes,join(source,'ActionJournal.java'),join(source,'ActionJournalConfiguration.java'),...readdirSync(deletion).filter(n=>n.endsWith('.java')).map(n=>join(deletion,n)),join(root,'vendor/eliza/plugins/plugin-native-action-journal/test/native-host/DeferredDeletionTest.java')],{timeout:120000});
+  assert.match(execFileSync(javaBinary('java'),['-cp',classes+':'+jar,'DeferredDeletionTest'],{encoding:'utf8',timeout:120000}),/^\d+ assertions passed/);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });
 

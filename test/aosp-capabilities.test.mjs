@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {ALPHA_IMAGE_PROVISIONING, assertAlphaProvisioningDefault, writeAospCapabilityOverlay} from '../scripts/aosp-capability-overlay.mjs';
+import {javaBinary} from './fixtures/jvm-tools.mjs';
 
 test('compiled image admission uses the shared decision, requires every trusted fact and keeps adapter roles unavailable',t=>{
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-image-cap-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
@@ -36,9 +37,8 @@ public class CapabilityTest {
  // Alpha's adapters compile against the shared decision (plugin-native-messages ImageCapability) at the pin.
  const alpha='android/app/src/main/java/ai/elizaresearch/alphaphone', shared='vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages';
  const sources=[`${alpha}/AlphaImageCapabilities.java`,`${alpha}/AlphaImageCapability.java`,`${shared}/ImageCapability.java`,`${shared}/SmsTelephonyConfiguration.java`];
- const binary=name=>process.env.JAVA_HOME?path.join(process.env.JAVA_HOME,'bin',name):name;
- execFileSync(binary('javac'),['--release','11','-d',dir,...sources,...Object.keys(files).map(name=>path.join(dir,name))],{timeout:30000,stdio:'pipe'});
- const run=(...args)=>execFileSync(binary('java'),[...args,'-cp',dir,'ai.elizaresearch.alphaphone.CapabilityTest',...(args.length?[args[0]]:[])],{encoding:'utf8',timeout:30000});
+ execFileSync(javaBinary('javac'),['--release','11','-d',dir,...sources,...Object.keys(files).map(name=>path.join(dir,name))],{timeout:30000,stdio:'pipe'});
+ const run=(...args)=>execFileSync(javaBinary('java'),[...args,'-cp',dir,'ai.elizaresearch.alphaphone.CapabilityTest',...(args.length?[args[0]]:[])],{encoding:'utf8',timeout:30000});
  assert.match(run(),/PASS image admission/);
  // Debug, test-mocks and non-launcher builds are refused even with every image fact present.
  for(const flag of ['-Dt.debug=true','-Dt.mocks=true','-Dt.flavor=true'])assert.match(run(flag),/PASS refused/);

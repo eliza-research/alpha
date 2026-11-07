@@ -2,20 +2,17 @@
 // contract, and structural guards on the plugin's start path. Not emulator or device evidence.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {existsSync,readdirSync,mkdtempSync,rmSync,readFileSync} from 'node:fs';
-import {homedir,tmpdir} from 'node:os';
+import {mkdtempSync,rmSync,readFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {execFileSync} from 'node:child_process';
+import {jsonJar,jvmSkip,javaBinary} from './fixtures/jvm-tools.mjs';
 const root=resolve(import.meta.dirname,'..');
-const cache=join(homedir(),'.gradle/caches/modules-2/files-2.1/org.json/json/20250517');
-const cached=existsSync(cache)?readdirSync(cache).flatMap(hash=>readdirSync(join(cache,hash)).filter(name=>name==='json-20250517.jar').map(name=>join(cache,hash,name)))[0]:undefined;
-const jsonJar=process.env.ALPHA_JSON_JAR||cached;
-test('an admitted running resident is attached to; any change in runtime, enrollment or provider restarts',{skip:!jsonJar?'Set ALPHA_JSON_JAR or install the pinned Gradle JSON test dependency':false},()=>{
+test('an admitted running resident is attached to; any change in runtime, enrollment or provider restarts',{skip:jvmSkip('json')},()=>{
  const temporary=mkdtempSync(join(tmpdir(),'resident-attachment-'));
- const java=process.env.JAVA_HOME||(process.platform==='darwin'?'/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home':'');const binary=name=>java?join(java,'bin',name):name;
  try{
-  execFileSync(binary('javac'),['--release','11','-cp',jsonJar,'-d',temporary,join(root,'vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/ResidentAttachment.java'),join(root,'test/fixtures/ResidentAttachmentTest.java')],{timeout:120000});
-  const output=execFileSync(binary('java'),['-cp',temporary+':'+jsonJar,'ai.elizaresearch.alphaphone.ResidentAttachmentTest'],{encoding:'utf8',timeout:120000});
+  execFileSync(javaBinary('javac'),['--release','11','-cp',jsonJar,'-d',temporary,join(root,'vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/ResidentAttachment.java'),join(root,'test/fixtures/ResidentAttachmentTest.java')],{timeout:120000});
+  const output=execFileSync(javaBinary('java'),['-cp',temporary+':'+jsonJar,'ai.elizaresearch.alphaphone.ResidentAttachmentTest'],{encoding:'utf8',timeout:120000});
   // Two surfaces before enrollment (MVP-16): the pending pairing is not shared; accepted limit.
   assert.match(output,/^PASS pre-enrollment: a second surface before enrollment starts on its own/m);
   assert.match(output,/^PASS resident attachment/m);

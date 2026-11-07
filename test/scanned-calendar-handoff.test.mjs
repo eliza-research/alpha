@@ -7,7 +7,7 @@ import * as reminderJournal from '../.eliza/client-features/plugins/plugin-assis
 
 // Execute the complete adapter with only its platform/service dependencies
 // replaced. No Calendar write API is supplied: handoff must only open a form.
-const code=stripTypeScriptTypes(readFileSync('apps/app/src/prototype/agent-calendar-adapter.ts','utf8').replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'transform'});
+const code=stripTypeScriptTypes(readFileSync('apps/app/src/prototype/agent-calendar-adapter.ts','utf8').replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'strip'});
 function fixture({status='ready',sources=1,authority='canonical',platform='web',form=null,provider='eliza',recordPort=null,pendingText=()=> 'Synthetic pending',testMocks=false,calendars=null,empty=false,events=[],error=null}={}){
  const state={status,ownerKey:'owner-A',error,feed:{events},calendars:calendars??Array.from({length:sources},(_,i)=>({summary:`Source ${i}`,provider,side:'owner',grantId:provider==='eliza'?'eliza-calendar':'google-grant',calendarId:provider==='eliza'&&i===0?'primary':String(i),includeInFeed:true,accessRole:'owner'}))};
  const refreshes=[],creates=[],updates=[],listeners={};let published;
@@ -91,7 +91,7 @@ test('native Android Calendar keeps its own repeat and alert controls',()=>{
  const f=fixture({platform:'android',authority:'android-native'}),out=f.views.calendar.render({form:{repeat:'weekly'}},{set(){},toast(){}});assert.deepEqual(out.f.repeats,[{label:'Weekly'}]);assert.deepEqual(out.f.alerts,[{label:'10 min'}]);
 });
 test('New Event with no current port explains pending state and does not replace a retained draft',()=>{
- const source=readFileSync('apps/app/src/runtime/connection-ui.tsx','utf8'),pendingCode=stripTypeScriptTypes(source.slice(source.indexOf('export function residentPendingText('),source.indexOf('/** Passive surfaces')).replace(/^export /gm,''),{mode:'transform'});
+ const source=readFileSync('apps/app/src/runtime/connection-ui.tsx','utf8'),pendingCode=stripTypeScriptTypes(source.slice(source.indexOf('export function residentPendingText('),source.indexOf('/** Passive surfaces')).replace(/^export /gm,''),{mode:'strip'});
  for(const [kind,expected] of [['starting',/starting/],['recovering',/stopped/],['offline',/unavailable for this agent connection/]])for(const recordPort of [null,{current:()=>false}]){
   const pendingText=new Function('state','residentAlwaysPresent','RESIDENT_RECOVERY_PENDING','PENDING_FALLBACK',pendingCode+';return agentPendingText;')({kind},kind!=='offline','Recovery review.','Unavailable.');
   const f=fixture({recordPort,pendingText}),before=structuredClone(f.calendar),toasts=[],api={get:()=>f.calendar,set:patch=>Object.assign(f.calendar,patch),toast:x=>toasts.push(x)};f.views.calendar.render(f.calendar,api).newEvent();assert.deepEqual(f.calendar,before);assert.deepEqual(f.creates,[]);assert.equal(toasts.length,1);assert.match(toasts[0],expected);
@@ -166,9 +166,9 @@ test('actual device and browser recovery choices preserve data and refuse an exi
 });
 
 // Execute the REAL ReminderAdapter inner render, not a synthetic placeholder domain choice.
-const realReminderCode=stripTypeScriptTypes(readFileSync('apps/app/src/prototype/reminder-adapter.ts','utf8').replace(/^import .*?;\n/gm,'').replace(/^export /gm,''),{mode:'transform'});
+const realReminderCode=stripTypeScriptTypes(readFileSync('apps/app/src/prototype/reminder-adapter.ts','utf8').replace(/^import .*?;\n/gm,'').replace(/^export /gm,''),{mode:'strip'});
 const reminderPresentationFile=readFileSync('apps/app/src/runtime/reminder-creations.ts','utf8');
-const reminderPresentationCode=stripTypeScriptTypes(reminderPresentationFile.slice(reminderPresentationFile.indexOf('export function reminderEvents('),reminderPresentationFile.indexOf('/** Specific, stable reason')).replace(/^export /gm,''),{mode:'transform'});
+const reminderPresentationCode=stripTypeScriptTypes(reminderPresentationFile.slice(reminderPresentationFile.indexOf('export function reminderEvents('),reminderPresentationFile.indexOf('/** Specific, stable reason')).replace(/^export /gm,''),{mode:'strip'});
 function actualDomainFixture({withReminder=true,platform='android',calendars=[googleSource,localSource]}={}){
  const calendar={calendarAuthority:'canonical',form:null},calls={creates:[],nativeSchedules:0,destinationChanges:[]},state={ownerKey:'domain-owner',status:'ready',feed:{events:[]},calendars};
  const cap={getPlatform:()=>platform,isNativePlatform:()=>platform==='android',isPluginAvailable:()=>true};

@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {execFileSync} from 'node:child_process';
 import {deploymentOutputs,validateCloudDeployment} from '../scripts/cloud-deployment.mjs';
 import {preparePatchedNative} from '../scripts/prepare-patched-native.mjs';
+import {runJvm} from './fixtures/jvm-tools.mjs';
 const defaults=JSON.parse(fs.readFileSync(new URL('../config/cloud-deployment.json',import.meta.url)));
 test('committed renderer and native authorities match the deployment configuration',()=>{
  for(const [file,contents] of Object.entries(deploymentOutputs(defaults)))assert.equal(fs.readFileSync(file,'utf8'),contents);
@@ -56,8 +56,7 @@ public class DeploymentTest {public static void main(String[] args){
  if(!CloudDeployment.storageSlot("notes-records:v1:device").equals("notes-records:v1:device"))throw new AssertionError("local notes changed");
  System.out.println("PASS");}}
 `);
-  execFileSync('javac',['--release','11','-d',temp,...['CloudDeployment.java',...files,'AlphaRegistration.java','DeploymentTest.java'].map(f=>path.join(temp,f)),...sharedFiles]);
-  assert.equal(execFileSync('java',['-cp',temp,'ai.elizaresearch.alphaphone.DeploymentTest'],{encoding:'utf8'}).trim(),'PASS');
+  assert.equal(runJvm([...['CloudDeployment.java',...files,'AlphaRegistration.java','DeploymentTest.java'].map(f=>path.join(temp,f)),...sharedFiles],'ai.elizaresearch.alphaphone.DeploymentTest').trim(),'PASS');
  }finally{fs.rmSync(temp,{recursive:true,force:true});}
 });
 test('configuration refuses credentials, insecure URLs, paths, aliases and accidental environment overlap',()=>{

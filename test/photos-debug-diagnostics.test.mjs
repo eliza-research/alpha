@@ -4,6 +4,7 @@ import {readFileSync,mkdtempSync,writeFileSync,mkdirSync,rmSync} from 'node:fs';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {execFileSync} from 'node:child_process';
+import {javaBinary} from './fixtures/jvm-tools.mjs';
 function declaration(source,signature){const start=source.indexOf(signature);assert.notEqual(start,-1);let end=source.indexOf('{',start),depth=1;for(end++;depth;end++){if(source[end]==='{')depth++;if(source[end]==='}')depth--;}return source.slice(start,end);}
 test('Photos QA emits only fixed debug enum markers; exception payloads and release builds stay silent',()=>{
  // The marker enum and its failure categories are the shared PhotosPlugin's; Alpha logs them in debug builds only.
@@ -37,8 +38,7 @@ test('Photos QA emits only fixed debug enum markers; exception payloads and rele
  System.out.println("PASS fixed debug markers, failure categories, no exception payload, release silence");
  }}
  `);
-  const bin=name=>process.env.JAVA_HOME?join(process.env.JAVA_HOME,'bin',name):name;
-  execFileSync(bin('javac'),['--release','11','-d',dir,join(dir,'android/util/Log.java'),join(dir,'PhotosDiagnosticHarness.java')]);
-  assert.match(execFileSync(bin('java'),['-cp',dir,'PhotosDiagnosticHarness'],{encoding:'utf8'}),/PASS fixed debug markers/);
+  execFileSync(javaBinary('javac'),['--release','11','-d',dir,join(dir,'android/util/Log.java'),join(dir,'PhotosDiagnosticHarness.java')]);
+  assert.match(execFileSync(javaBinary('java'),['-cp',dir,'PhotosDiagnosticHarness'],{encoding:'utf8'}),/PASS fixed debug markers/);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });

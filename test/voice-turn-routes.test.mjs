@@ -223,7 +223,7 @@ test('the end-of-turn chain keeps Clef off: the local scorer decides, and its pa
   const {stripTypeScriptTypes} = await import('node:module'), vm = await import('node:vm');
   const source = fs.readFileSync(new URL('../apps/app/src/runtime/voice-selection.ts', import.meta.url), 'utf8').replace(/^import .*;\n/gm, '').replaceAll('export function', 'function').replaceAll('export type', 'type');
   const box = {cloudRuntimeEnabled: false, testMocksEnabled: true, browserDevProfile: false, connectionController: {}};
-  vm.runInNewContext('{' + stripTypeScriptTypes(source, {mode: 'transform'}) + '\nglobalThis.selection={clefEndpointStage};}', box);
+  vm.runInNewContext('{' + stripTypeScriptTypes(source, {mode: 'strip'}) + '\nglobalThis.selection={clefEndpointStage};}', box);
   const selection = box.selection;
   assert.deepEqual(JSON.parse(JSON.stringify(selection.clefEndpointStage())), {enabled: false, client: null});
   assert.equal(routes.clefEndpointStageEnabled(selection.clefEndpointStage()), false);

@@ -8,7 +8,7 @@ const section=(a,b)=>{const start=source.indexOf(a),end=source.indexOf(b,start+a
 const initialize=section('  async initialize() {','  /** Test mocks and the flag-off web preview only:');
 const work=section('async function work(', '/** Start (or restart) the resident.');
 const helper=source.includes('async function restoreOptionalBrowserCloudAccount(')?section('async function restoreOptionalBrowserCloudAccount(', 'export const connectionController ='):'';
-const code=stripTypeScriptTypes(work+'\n'+helper+'\nglobalThis.controller={'+initialize+'};',{mode:'transform'});
+const code=stripTypeScriptTypes(work+'\n'+helper+'\nglobalThis.controller={'+initialize+'};',{mode:'strip'});
 const credential={credentialId:'fixture-id',credentialReference:'browser-cloud-reference:fixture'};
 function fixture({values=[credential,credential],choice={kind:'resident'},attachFails=false,android=false,profile=false,cloudResident=false,accepts=true,search='',readChoice,testMocks=false}={}){
  const calls=[],history={messages:[{id:'retained',text:'Exact retained history'}]};let context;

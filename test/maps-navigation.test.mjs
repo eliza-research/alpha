@@ -3,14 +3,19 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { prepareClientFeatures } from '../scripts/prepare-client-features.mjs';
+import { checkClientFeatures } from '../scripts/prepare-client-features.mjs';
 
 test('upstream plugin-maps navigation tests pass on the pinned source', () => {
-  const root = prepareClientFeatures();
+  // Check only: the shared tree is prepared by npm run upstream:prepare-client, never by a test.
+  const root = checkClientFeatures();
   const directory = path.join(root, 'plugins/plugin-maps/test');
   const tests = ['navigation-client.test.mjs'].map(name => path.join(directory, name));
   for (const file of tests) assert.ok(fs.existsSync(file), file);
-  execFileSync(process.execPath, ['--experimental-transform-types', '--test', ...tests], { stdio: 'pipe', timeout: 60_000 });
+  // An independent child suite: inheriting NODE_TEST_CONTEXT would make it report to this
+  // runner over IPC and exit 0 even when its own tests fail.
+  const env = { ...process.env }; delete env.NODE_TEST_CONTEXT;
+  try { execFileSync(process.execPath, ['--import=tsx', '--test', ...tests], { stdio: 'pipe', timeout: 60_000, env, encoding: 'utf8' }); }
+  catch (error) { throw new Error(`plugin-maps navigation suite failed (status ${error.status}):\n${error.stdout || ''}\n${error.stderr || ''}`, { cause: error }); }
 });
 
 test('guidance presents the next maneuver, the following step and the remaining trip', async () => {

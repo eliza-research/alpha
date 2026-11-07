@@ -24,7 +24,7 @@ async function fixture(){
  };
  const source=fs.readFileSync('scripts/local-agent-dev-bridge.ts','utf8').replace(/^import\b[\s\S]*?;\s*$/gm,'').replace(/^export /gm,'');
  const box={URL,Buffer,Response,AbortSignal,AbortController,DOMException,Date,Map,Set,JSON,Number,Error,process,console,once,readFileSync:fs.readFileSync,statSync:fs.statSync,randomUUID,createHash,httpRequest,dirname:path.dirname,join:path.join,homedir:os.homedir,isPreparedViewNavigationRequest:()=>false,parseViewInteractionClientId:()=>undefined,ownerRouteGroup:()=>undefined,ownerRouteAllowed:()=>false};
- vm.runInNewContext(stripTypeScriptTypes(source,{mode:'transform'})+';globalThis.make=createLocalAgentDevHandler;',box);
+ vm.runInNewContext(stripTypeScriptTypes(source,{mode:'strip'})+';globalThis.make=createLocalAgentDevHandler;',box);
  const handler=box.make({origin:'http://127.0.0.1:47839',tokenFile,request,selectableProvider:true}),server=createServer(handler);
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const origin=`http://127.0.0.1:${server.address().port}`;
  const call=(signal,overrides={})=>fetch(origin,{method:'POST',headers:{Origin:origin,'Content-Type':'application/json','X-Alpha-Local-Agent':'1'},body:JSON.stringify({path:'/api/v1/voice/session/transcribe',method:'POST',ownerId:owner,headers:{},audioBase64:Buffer.from('synthetic PCM fixture').toString('base64'),requestId:randomUUID(),...overrides}),signal});
