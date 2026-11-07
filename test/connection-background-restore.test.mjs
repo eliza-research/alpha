@@ -2,13 +2,15 @@ import {residentRecoveryReason} from '../apps/app/src/runtime/resident-recovery.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
 // Execute the real operation boundary; infrastructure state is injected, no network/storage/media.
 const source=await readFile(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
 const begin=source.indexOf('async function work('),end=source.indexOf('\nfunction activate(',begin);
 assert.ok(begin>=0&&end>begin);
-const code=stripTypeScriptTypes(source.slice(begin,end),{mode:'strip'});
+const settlement=source.match(/^let operationSettled:[^\n]+\nfunction holdOperation\(\)[^\n]+/m)?.[0];
+assert.ok(settlement,'The operation boundary must include its actual settlement helper');
+const code=stripTypeScriptTypes(settlement+'\n'+source.slice(begin,end),{mode:'strip'});
 function fixture(){
  const state={open:false,busy:false,purpose:'agent',message:'',error:''},updates=[];
  const context=vm.createContext({residentRecoveryReason,testMocksEnabled:false,residentAlwaysPresent:false,AbortController,state,operation:null,active:null,cloud:{},expired:()=>false,errorMessage:e=>e.message,residentCloudFlow:()=>false,runQueuedResidentRebind:()=>{},runQueuedSignInReturn:()=>{},update:next=>{Object.assign(state,next);updates.push({...state});}});
