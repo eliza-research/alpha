@@ -15,13 +15,13 @@ function fixture(streamError){
  f.box.recordEndpointVoiceTiming=()=>{};f.box.activeVoiceTurn=()=>undefined;f.box.recordHeardVoiceTiming=()=>{};
  f.box.shouldRespondToVoiceTurn=()=>true;f.box.buildVoiceTurnSignal=()=>({});f.box.toSpeakableText=t=>t;
  f.box.nativeCloudStreamingAvailable=()=>true;
- let handlers,stopped=0;const spoken=[];
+ let handlers,stopped=0,attempts=0;const spoken=[];
  f.box.createCloudStreamingSpeech=()=>({
-  async listen(input){if(streamError)throw Object.assign(Error('Cloud streaming request failed'),{code:streamError});handlers=input;input.signal.addEventListener('abort',()=>stopped++,{once:true});return {fullDuplex:true,close:async()=>{},cancel:async()=>stopped++};},
+  async listen(input){attempts++;if(streamError)throw typeof streamError==='string'?Object.assign(Error('Cloud streaming request failed'),{code:streamError}):streamError;handlers=input;input.signal.addEventListener('abort',()=>stopped++,{once:true});return {fullDuplex:true,close:async()=>{},cancel:async()=>stopped++};},
   async speak(text,signal,onStarted){signal.throwIfAborted();spoken.push(text);onStarted();},
   async stop(){stopped++;},
  });
- return Object.assign(f,{clock,spoken,getHandlers:()=>handlers,stopped:()=>stopped});
+ return Object.assign(f,{clock,spoken,getHandlers:()=>handlers,attempts:()=>attempts,stopped:()=>stopped});
 }
 
 test('Cloud Talk streams endpointed speech into the resident without batch STT or progress TTS',async()=>{
@@ -38,7 +38,7 @@ test('Cloud Talk streams endpointed speech into the resident without batch STT o
 });
 
 test('only an absent streaming route retains compatibility recording; auth and provider failures do not replay',async()=>{
- for(const code of ['cloud-http-404','cloud-http-401','cloud-http-503']){
+ for(const code of ['cloud-http-404','voice-http-401','voice-http-503']){
   const f=fixture(code);
   try{
    await f.shell.startVoice();await f.clock.flush();
@@ -55,4 +55,28 @@ test('stopping streaming Talk retires capture and never falls back to batch reco
   const stopping=f.shell.stopVoiceConversation();await f.clock.flush();await stopping;
   assert.ok(f.stopped()>0);assert.equal(f.starts,0);assert.equal(f.uploads,0);assert.equal(f.sends,0);
  }finally{f.close();await f.clock.flush();}
+});
+
+// The native bridge rejects a refused streaming start as the batch route does: voice-http-<status>
+// with a 429's retry facts as data (cloud-http-404 alone means "no streaming route").
+test('a refused streaming start shows what the batch route shows for the same refusal, and waits the same way',async()=>{
+ const timeline=async(failure,streaming)=>{
+  const f=fixture(streaming?failure:undefined);
+  if(!streaming){f.box.nativeCloudStreamingAvailable=()=>false;f.startError=failure;}
+  const shown=()=>{const view=f.renderChat();return JSON.stringify([view?.state,view?.lines,streaming?f.attempts():f.starts,f.shell.messages,f.uploads,f.sends]);};
+  try{
+   await f.shell.startVoice();await f.clock.flush();const seen=[shown()];
+   for(let second=0;second<8;second++){await f.clock.advance(1000);seen.push(shown());}
+   return seen;
+  }finally{f.close();await f.clock.flush();}
+ };
+ const refusals=[[401],[402],[429,{retryAfterSeconds:3,limitCode:'rate_limited'}],[429,{retryAfterSeconds:42}],[503]];
+ for(const [status,data] of refusals){
+  const refused=()=>Object.assign(Error('Cloud streaming speech is unavailable'),{code:'voice-http-'+status},data?{data}:{});
+  const streaming=await timeline(refused(),true),batch=await timeline(refused(),false);
+  assert.deepEqual(streaming,batch,`${status} ${JSON.stringify(data??{})}`);
+ }
+ const text=async status=>{const f=fixture(Object.assign(Error('refused'),{code:'voice-http-'+status}));try{await f.shell.startVoice();await f.clock.flush();return f.renderChat()?.lines?.[0]?.t;}finally{f.close();await f.clock.flush();}};
+ assert.equal(await text(401),'Sign in to Cloud again in Settings, then retry voice.');
+ assert.match(await text(402),/declined cloud voice for your account's billing/);
 });

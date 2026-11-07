@@ -2,7 +2,7 @@ diff --git a/packages/voice/src/native-cloud-speech.ts b/packages/voice/src/nati
 new file mode 100644
 --- /dev/null
 +++ b/packages/voice/src/native-cloud-speech.ts
-@@ -0,0 +1,124 @@
+@@ -0,0 +1,125 @@
 +/** Native Cloud speech transport. The host supplies its credential-owning bridge;
 + * only text, levels, timing, and lifecycle events enter the renderer. No platform imports. */
 +import type {AssistantCapture, AssistantListenHandlers} from './voice-assistant-session.js';
@@ -16,6 +16,7 @@ new file mode 100644
 +  peak?: unknown;
 +  utteranceId?: unknown;
 +  code?: unknown;
++  data?: unknown;
 +}
 +export interface CloudStreamPort {
 +  startCloudSpeech(input:{sessionId:string;environment:string;credentialId:string}):Promise<{sessionId:string;sampleRate:number;echoCancelled:boolean}>;
@@ -59,7 +60,7 @@ new file mode 100644
 +    if(retired||event.sessionId!==sessionId)return;
 +    try{
 +      check();
-+      if(event.type==='error'){fail(Object.assign(Error('Cloud streaming speech is unavailable.'),{code:typeof event.code==='string'?event.code:'cloud-stream'}));return;}
++      if(event.type==='error'){fail(Object.assign(Error('Cloud streaming speech is unavailable.'),{code:typeof event.code==='string'?event.code:'cloud-stream'},event.data&&typeof event.data==='object'?{data:event.data}:{}));return;}
 +      if(event.type==='audio-start'||event.type==='audio-end'){
 +        if(typeof event.utteranceId!=='string')return;
 +        const pending=utterances.get(event.utteranceId);if(!pending)return;
@@ -93,7 +94,7 @@ new file mode 100644
 +  })();
 +  return {
 +    async listen(handlers:AssistantListenHandlers):Promise<AssistantCapture>{
-+      check();handlers.signal.throwIfAborted();listening=lifecycle=handlers;
++      check();handlers.signal.throwIfAborted();listening=lifecycle=handlers;speechActive=false;
 +      if(ownerSignal&&ownerSignal!==handlers.signal)throw Error('Cloud speech owner changed.');
 +      if(!ownerSignal){ownerSignal=handlers.signal;ownerSignal.addEventListener('abort',ownerAborted,{once:true});}
 +      try{await open();check();handlers.signal.throwIfAborted();await port.setCloudSpeechMuted({sessionId,muted:false});check();}
@@ -105,7 +106,7 @@ new file mode 100644
 +          // One 2.5 s bound covers the native mute and the final it releases: an unanswered mute rejects too.
 +          let timer:ReturnType<typeof setTimeout>|undefined;
 +          try{await Promise.race([port.setCloudSpeechMuted({sessionId,muted:true}).then(()=>final),new Promise<void>((_,reject)=>{timer=setTimeout(()=>reject(Error('Cloud speech did not confirm the mute in time.')),2500);})]);}
-+          finally{if(timer)clearTimeout(timer);ended=()=>{};if(listening===handlers)listening=undefined;}
++          finally{if(timer)clearTimeout(timer);ended=()=>{};if(listening===handlers){listening=undefined;speechActive=false;}}
 +        },
 +        async cancel(){if(listening===handlers)listening=undefined;if(lifecycle===handlers)lifecycle=undefined;await stop();},
 +      };
