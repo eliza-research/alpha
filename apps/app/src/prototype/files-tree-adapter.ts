@@ -11,10 +11,10 @@ type Entry={id:string;parentId?:string;name:string;mimeType:string;directory:boo
 type Outcome={id:string;status:string;message:string};
 type Listing={status:string;message:string;folder?:Entry;entries?:Entry[];rootId?:string;entry?:Entry;cursor?:string;total?:number;truncated?:boolean;outcomes?:Outcome[]};
 /** Category tiles open the system picker narrowed to a type; the provider decides. */
-const CATEGORIES:Record<string,{mime?:string[];hint:string}>={
+const CATEGORIES:Record<string,{mime?:string[];hint:string;initialLocation?:'downloads'}>={
  Documents:{mime:['application/pdf','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation','application/vnd.oasis.opendocument.text','text/plain','application/rtf'],hint:'Choose a document · PDF or Office'},
  Recordings:{mime:['audio/*'],hint:'Choose an audio recording'},
- Downloads:{hint:'Choose any file · open the Downloads folder in the picker'},
+ Downloads:{hint:'Choose a downloaded file',initialLocation:'downloads'},
  Receipts:{hint:'Choose any file · receipts are not detected automatically'},
 };
 const modifiedOf=(e:Entry)=>Number.isFinite(e.modified)&&e.modified!>0?e.modified!:Number.isFinite(e.modifiedAt)&&e.modifiedAt!>0?e.modifiedAt!:undefined;
@@ -88,10 +88,24 @@ export function installFilesTreeAdapter(views:Bag,accept:(module:string,result:N
  async function choose(importFolder=false){if(busy)return;busy=true;try{const value=await (importFolder ? tree.importFolder() : tree.choose());if(value.status==='ready'){clearSelected();selected=undefined;selectedCapability=undefined;apply(value);api?.set({folder:'__native_tree',open:null,menu:false});}else if(value.status!=='cancelled')api?.toast(value.message);}catch{api?.toast('Folder selection unavailable.');}finally{busy=false;repaint();}}
  async function openEntry(entry:Entry){if(busy)return;if(entry.directory){void load(entry.id);return;}busy=true;try{const value=await tree.select({id:entry.id});if(value.status==='selected'){if(!api?.isActive()){if(value.selectionId)await DailyApps.forgetSelected({selectionId:value.selectionId});return;}selected=entry;selectedCapability=value.selectionId;await accept('files',value,api!,{kind:'tree',treeId:entry.id});}else api?.toast(value.message||'File unavailable. Refresh this folder.');}catch{api?.toast('This file could not open. Refresh the folder.');}finally{busy=false;repaint();}}
  // The picker itself hides the page, so only a view switch (epoch) or inactive owner fences its result, never document.hidden.
- async function pick(owner:Bag,mime?:string[]){
+ async function pick(owner:Bag,mime?:string[],initialLocation?:'downloads'){
   if(busy)return;busy=true;const ticket=selectionEpoch;
-  try{const value=await DailyApps.perform({action:'files',...(mime?{mime}:{})});if(value.status==='selected'){if(ticket!==selectionEpoch||!owner.isActive()){if(value.selectionId)await DailyApps.forgetSelected({selectionId:value.selectionId}).catch(()=>{});return;}await accept('files',value,owner);}else if(value.status!=='cancelled')owner.toast(value.message||'No file was selected.');}
-  catch{owner.toast('The file picker is unavailable. Try again.');}
+  try{
+   const value=await DailyApps.perform({action:'files',...(mime?{mime}:{}),...(initialLocation&&Capacitor.isNativePlatform()?{initialLocation}:{})});
+   if(value.status==='selected'){
+    if(ticket!==selectionEpoch||!owner.isActive()){
+     if(value.selectionId)await DailyApps.forgetSelected({selectionId:value.selectionId}).catch(()=>{});
+     return;
+    }
+    const selectedType=value.mimeType;
+    if(mime&&selectedType&&selectedType!=='application/octet-stream'&&!mime.some(type=>type===selectedType||type.endsWith('/*')&&selectedType.startsWith(type.slice(0,-1)))){
+     if(value.selectionId)await DailyApps.forgetSelected({selectionId:value.selectionId}).catch(()=>{});
+     owner.toast('Choose a file that matches this category.');
+     return;
+    }
+    await accept('files',value,owner);
+   }else if(value.status!=='cancelled')owner.toast(value.message||'No file was selected.');
+  }catch{owner.toast('The file picker is unavailable. Try again.');}
   finally{busy=false;repaint();}
  }
  async function openRecent(row:RecentFile,owner:Bag){
@@ -144,7 +158,7 @@ export function installFilesTreeAdapter(views:Bag,accept:(module:string,result:N
   api=currentApi;const out=render(state,currentApi);
   // Category tiles: real pickers with honest hints instead of fixture counts. nativeTree keeps
   // the data adapter's generic 'Choose a document' copy from replacing the category hint.
-  if(Array.isArray(out.locs))out.locs=out.locs.map((loc:Bag)=>{const category=CATEGORIES[loc?.name];return category&&!loc.nativeTree?{...loc,nativeTree:true,sub:category.hint,go:()=>void pick(currentApi,category.mime)}:loc;});
+  if(Array.isArray(out.locs))out.locs=out.locs.map((loc:Bag)=>{const category=CATEGORIES[loc?.name];return category&&!loc.nativeTree?{...loc,nativeTree:true,sub:category.hint,go:()=>void pick(currentApi,category.mime,category.initialLocation)}:loc;});
   // Recent: documents opened here (selected or from a chosen folder) and saved scan PDFs.
   const recentRows=filesIndex.list();
   const recentRow=(row:RecentFile)=>({id:'recent:'+row.key,name:row.name,chip:'',d:FILE,isFile:true,isFolder:false,selOn:false,selOff:false,rowCss:row.status==='revoked'?'opacity:.6':'',
