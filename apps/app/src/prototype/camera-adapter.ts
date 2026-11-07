@@ -693,7 +693,8 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     if (maskCache.top !== top) { screen.style.setProperty('--alpha-camera-top', top); maskCache.top = top; }
     if (maskCache.bottom !== bottom) { screen.style.setProperty('--alpha-camera-bottom', bottom); maskCache.bottom = bottom; }
   }
-  let requestedCaptureActive=false;
+  let requestedCaptureHolds=0;
+  let pendingShot:number|undefined;
   const cameraViewVisible = () => !disposed && !document.hidden && !!api?.isActive() && !!document.querySelector(finder);
   const chatCovers = () => ['sheet', 'full'].includes(api?.S.chat);
   /** When the chat sheet started covering Camera; the session stays bound for CHAT_GRACE_MS after that. */
@@ -704,7 +705,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     else if (!covered && chatCoveredAt !== undefined) { chatCoveredAt = undefined; window.clearTimeout(chatTimer); chatTimer = undefined; }
   }
   const chatGrace = () => chatCoveredAt === undefined || Date.now() - chatCoveredAt < CHAT_GRACE_MS;
-  const active = () => cameraViewVisible() && (requestedCaptureActive || !chatCovers() || chatGrace());
+  const active = () => cameraViewVisible() && (requestedCaptureHolds>0 || !chatCovers() || chatGrace());
   /** The one photo being written natively, if any; releasing the preview waits for it. */
   let photoWrite: Promise<unknown> | undefined;
   let previewReceipt: PreviewReceipt | undefined;
@@ -743,7 +744,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
       recordingFinishing(){api?.set({rec:false});},
       recordingSaved:adoptVideo,
       recordingFailed(){limitStop=false;if(!disposed)message('Video may not have saved. Check Photos.');},
-      changed(){settle();schedule();},
+      changed(){settle();schedule();takePendingShot();},
     },
   });
   function hideAccess(){accessPanel?.remove();accessPanel=undefined;}
@@ -787,6 +788,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     modeChange=modeChange.then(async()=>{if(token!==session.token()||typeof camera.setCaptureMode!=='function')return;try{await camera.setCaptureMode({mode:wanted});}catch{/* startRecording binds video itself. */}});
   }
   async function stop() {
+    pendingShot=undefined;
     // A scan review that opened a system picker stays open while Android covers the WebView.
     closeQuestion?.();closeQuestion=undefined;if(!systemPickerActive())cancelScan(); mask(false); hideAccess();
     await session.stop();
@@ -851,7 +853,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     lastCapture = item;
     if (item.id) captures = [item, ...captures.filter(row => row.id !== item.id)];
     loaded = false;
-    if(showSaved)owner.setView('photos', { nativeCaptureRevision: item.id || Date.now() });
+    if(showSaved&&pendingShot!==session.token()&&active()&&owner.get('camera').mode==='photo')owner.setView('photos', { nativeCaptureRevision: item.id || Date.now() });
     else owner.set({nativeCaptureRevision:item.id || Date.now()});
     return item;
   }
@@ -861,10 +863,23 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     job.then(clear,clear);
     return job;
   }
+  /** A busy preview retains one shutter press for this Photo session. */
+  function takePendingShot(){
+    if(pendingShot===undefined||session.busy)return;
+    const token=pendingShot;pendingShot=undefined;
+    void Promise.resolve().then(()=>{
+      if(session.phase==='ready'&&session.current(token)&&api?.get('camera').mode==='photo')return capture();
+    });
+  }
   async function capture() {
+    if (!api || !active()) return;
     if (session.phase !== 'ready') { if (session.phase !== 'starting') await start(true); return; }
-    if (!api) return;
     if (api.get('camera').mode === 'video') { await record(); return; }
+    if (scanning || session.recording || session.recordingStarting || session.finalizing) {
+      message('Camera is busy. Try again.');
+      return;
+    }
+    if (session.busy) { pendingShot=session.token(); return; }
     cancelScan();
     const owner = api;
     await session.exclusive(async token=>{
@@ -883,7 +898,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
       const owner=api;
       if(!cameraViewVisible()||!owner)return {status:'failed',summary:'Open Camera, then ask again. No photo was taken.'};
       if(agentRequest||session.busy)return busy;
-      request=agentRequest={queued:false,refused:false};requestedCaptureActive=true;
+      request=agentRequest={queued:false,refused:false};requestedCaptureHolds++;
       if(session.phase!=='ready'){
         request.queued=true;
         if(session.phase!=='starting')void start(true);
@@ -903,7 +918,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
       });
       return attempt.status==='busy'?busy:attempt.value;
     }catch{return {status:dispatched?'unknown':'failed',summary:dispatched?'The photo outcome is unconfirmed. Check Photos before taking another.':'The Camera request changed. No photo was taken.'};}
-    finally{if(request&&agentRequest===request)agentRequest=undefined;if(request){requestedCaptureActive=false;schedule();}}
+    finally{if(request&&agentRequest===request)agentRequest=undefined;if(request){requestedCaptureHolds--;schedule();}}
   };
   requestedPhoto=takeRequestedPhoto;
   /** The host Keep port of a scanned page: the browser's photo store, or the owned captures store with the capture's operation identity. */
@@ -924,8 +939,9 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   let scanning=false;
   async function scanFrame(owner:Bag){
     if(scanning||session.busy){message('Camera is busy. Try again.');return;}
-    scanning=true;requestedCaptureActive=true;cancelScan();
+    scanning=true;requestedCaptureHolds++;
     try{
+      cancelScan();
       if(session.phase!=='ready'){if(session.phase!=='starting')void start(true);await untilSettled();}
       if(session.phase!=='ready'||!active())return;
       await session.exclusive(async token=>{
@@ -946,7 +962,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
           closeScan=()=>{scan.close();closeReview();};
         }catch{if(session.current(token))message('Page not captured. Try again.');}
       });
-    }finally{scanning=false;requestedCaptureActive=false;schedule();}
+    }finally{scanning=false;requestedCaptureHolds--;schedule();}
   }
   scanRequest=()=>{
     const owner=api;if(disposed||!owner||!cameraViewVisible())return false;
@@ -1054,7 +1070,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     data.zooms = stops.map(([ratio, label]) => ({ label, aria: `Zoom ${label.replace('×', '')}x`, css: Math.abs(ratio - zoomRatio) < 1e-3 ? ZOOM_ON : ZOOM_OFF, pick: () => { void control(() => camera.setZoom({ zoom: ratio }), () => { zoomRatio = ratio; currentApi.set({ nativeZoom: ratio }); }); } }));
     data.vfUp = (event: PointerEvent) => { const bounds = document.querySelector(finder)?.getBoundingClientRect(); focusAt((event.clientX - (bounds?.left ?? 0)) / (bounds?.width || window.innerWidth), (event.clientY - (bounds?.top ?? 0)) / (bounds?.height || window.innerHeight)); };
     data.showModes = !recordingBusy;
-    data.modes = (data.modes || []).map((m: Bag) => ({ ...m, pick: () => { if (recordingBusy || session.capturing) return; const mode = m.label.toLowerCase(); if (mode === 'photo' || mode === 'video') { if (currentApi.get('camera').mode !== mode) bindMode(mode); currentApi.set({ mode, rec: false }); } } }));
+    data.modes = (data.modes || []).map((m: Bag) => ({ ...m, pick: () => { if (recordingBusy || session.capturing) return; const mode = m.label.toLowerCase(); if (mode === 'photo' || mode === 'video') { if (currentApi.get('camera').mode !== mode) {pendingShot=undefined;bindMode(mode);} currentApi.set({ mode, rec: false }); } } }));
     const last = lastCapture;
     data.lastLabel = last?.kind === 'video' ? 'Open last video' : 'Open last photo';
     if (last) {

@@ -7,17 +7,17 @@ const source=fs.readFileSync(new URL('../apps/app/src/prototype/camera-adapter.t
 const slice=(from,to)=>{const a=source.indexOf(from),b=source.indexOf(to,a);assert.ok(a>=0&&b>a,`camera-adapter.ts still has ${from} … ${to}`);return source.slice(a,b);};
 const helpers=slice('const ZOOM_STOPS','/** Install after native').replace(/^export /gm,'');
 const scanWords=slice('const SCAN_REQUEST','const browserMode').replace(/^export /gm,'');
-const session=slice('  let requestedCaptureActive=false;','  function askCameraFrame(');
+const session=slice('  let requestedCaptureHolds=0;','  function askCameraFrame(');
 const syncCamera=source.match(/  const syncCamera = [^\n]+\n/)[0];
 const sessionSource=fs.readFileSync(new URL('../.eliza/client-features/plugins/plugin-native-camera/src/session.ts',import.meta.url),'utf8');
 const hostPorts=fs.readFileSync(new URL('../.eliza/client-features/plugins/plugin-native-camera/src/host-ports.ts',import.meta.url),'utf8');
 const shared=stripTypeScriptTypes((hostPorts+sessionSource).replace(/^import[^;]*;$/gm,'').replace(/^export /gm,''),{mode:'transform'});
 const settle=async()=>{for(let i=0;i<16;i++)await Promise.resolve();};
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
-function fixture({permission=false,failing=true,receipt={width:1280,height:720,deviceId:'0',minZoom:0.5,maxZoom:10,hasFlash:true,zoom:1,flash:'off'}}={}){
+function fixture({permission=false,failing=true,navigateAfterPhoto=false,receipt={width:1280,height:720,deviceId:'0',minZoom:0.5,maxZoom:10,hasFlash:true,zoom:1,flash:'off'}}={}){
  const env=new JSDOM('<div data-alpha-camera-root data-alpha-layer><button data-alpha-camera="viewfinder"></button></div>',{pretendToBeVisual:true});const timers=new Map();let timerId=0;
  env.window.setTimeout=(fn,ms)=>{timers.set(++timerId,{fn,ms});return timerId;};env.window.clearTimeout=id=>timers.delete(id);
- const calls={starts:0,stops:0,masked:false,captures:[],focus:0,switches:[],recordings:0,list:[],scans:0};let failed=failing;
+ const calls={starts:0,stops:0,masked:false,captures:[],focus:0,switches:[],recordings:0,list:[],scans:0,views:[]};let failed=failing;
  const gates={start:undefined,capture:undefined};const clock={now:1000};
  let context;
  const camera={
@@ -33,12 +33,12 @@ function fixture({permission=false,failing=true,receipt={width:1280,height:720,d
  let view={chat:'hidden',active:true};
  context=vm.createContext({window:env.window,document:env.window.document,console,camera,library,Date:{now:()=>clock.now},Uint8Array,atob,Blob:env.window.Blob,
   mask:enable=>calls.masked=enable,Capacitor:{isPluginAvailable:()=>true},validateCameraCaptureResult:value=>value,systemPickerActive:()=>false,device:{openSettings:async()=>({status:'opened'})},
-  openScanReview:()=>{calls.scans++;return ()=>{};},createScanCapture:()=>({keep:async()=>undefined,close(){}}),ScanKeepError:Error,importBrowserPhoto:async()=>({}),browserCamera:{flashAvailable:()=>false},view:()=>view});
+  openScanReview:()=>{calls.scans++;return ()=>{};},createScanCapture:()=>({keep:async()=>undefined,close(){}}),ScanKeepError:Error,importBrowserPhoto:async()=>({}),browserCamera:{flashAvailable:()=>false},view:()=>view,calls,navigateAfterPhoto});
  const prelude=`let accessPanel,disposed=false,direction='back',flash=false,duration=0,loaded=true,captures=[],closeQuestion,closeScan,scanRequest;
   let lens={minZoom:1,maxZoom:1,hasFlash:false,zoom:1,flash:false},zoomRatio=1,lastCapture;let requestedPhoto;
   const browserMode=false,libraryAvailable=()=>true,normalize=row=>({...row,id:'native-camera-'+row.id}),nativeId=id=>id.replace(/^native-camera-/,''),cancelScan=()=>{};function schedule(){}
   const finder='[data-alpha-camera="viewfinder"]';let state={said:'',mode:'photo'};
-  const api={S:{get chat(){return view().chat;}},isActive:()=>view().active,set:patch=>Object.assign(state,patch),get:()=>state,setView:()=>{},shell:patch=>{view().chat=patch.chat;}};`;
+  const api={S:{get chat(){return view().chat;}},isActive:()=>view().active,set:patch=>Object.assign(state,patch),get:()=>state,setView:name=>{calls.views.push(name);if(navigateAfterPhoto&&name==='photos')view().active=false;},shell:patch=>{view().chat=patch.chat;}};`;
  vm.runInContext(shared+stripTypeScriptTypes(prelude+helpers+scanWords+session+syncCamera+`;globalThis.testCamera={start,stop,control,capture,record,focusAt,takeRequestedPhoto,zoomStops,lensFromReceipt,photoReceiptPath,cameraScanRequested,scanRequest:()=>scanRequest(),active,installViewPresence,syncCamera,CHAT_GRACE_MS,
   flip:()=>{const next=direction==='back'?'front':'back';return control(async()=>{flash=false;zoomRatio=1;return camera.switchCamera({direction:next});},r=>{direction=next;adoptLens(r);});},
   setFlash:on=>{flash=on;},setZoom:z=>{zoomRatio=z;},mode:m=>{state.mode=m;},
@@ -88,6 +88,30 @@ function fixture({permission=false,failing=true,receipt={width:1280,height:720,d
  assert.equal(f.api.state().last.id,'native-camera-42','The capture becomes the last-capture tile');assert.equal(f.api.state().said,'','No "Saving photo" pill');
  assert.equal(f.api.state().fl,1,'Shutter flash');f.env.window.close();
 }
+// A tap during the first gallery write survives until the last queued shot opens Photos.
+{
+ const f=fixture({failing:false,navigateAfterPhoto:true});await f.api.start();await settle();
+ f.gates.capture=deferred();const first=f.api.capture();await settle();
+ await f.api.capture();await f.api.capture();assert.equal(f.calls.captures.length,1);
+ f.gates.capture.resolve();f.gates.capture=undefined;await first;await settle();await settle();
+ assert.equal(f.calls.captures.length,2,'One pending shutter press is retained until the current photo finishes');
+ assert.deepEqual(f.calls.views,['photos'],'Photos opens once after both captures');
+ f.env.window.close();
+}
+// A busy lens retains one pending shot, but a mode change or leaving clears the intent.
+{
+ const f=fixture({failing:false});await f.api.start();await settle();
+ const gate=deferred();const zoom=f.api.control(()=>gate.promise,()=>{});await settle();
+ await f.api.capture();assert.equal(f.calls.captures.length,0);
+ gate.resolve();await zoom;await settle();await settle();assert.equal(f.calls.captures.length,1);
+ const modeGate=deferred();const flash=f.api.control(()=>modeGate.promise,()=>{});await settle();
+ await f.api.capture();f.api.mode('video');modeGate.resolve();await flash;await settle();await settle();
+ assert.equal(f.calls.captures.length,1);assert.equal(f.calls.recordings,0);
+ f.api.mode('photo');const leaveGate=deferred();const control=f.api.control(()=>leaveGate.promise,()=>{});await settle();
+ await f.api.capture();f.setView({active:false});leaveGate.resolve();await control;await settle();await settle();
+ assert.equal(f.calls.captures.length,1,'A pending shot is never taken after leaving Camera');
+ f.env.window.close();
+}
 // FixLeave: leaving during a capture waits for the native result before the preview is released, and clears capturing.
 {
  const f=fixture({failing:false});await f.api.start();f.gates.capture=deferred();const shot=f.api.capture();await settle();assert.equal(f.api.state().capturing,true);
@@ -105,6 +129,22 @@ function fixture({permission=false,failing=true,receipt={width:1280,height:720,d
  const f=fixture({failing:false});f.gates.start=deferred();void f.api.start();await settle();
  const request=f.api.takeRequestedPhoto('op-2',new AbortController().signal,()=>{});await settle();f.setView({active:false});await f.api.stop();
  const result=await request;assert.equal(result.status,'failed');assert.match(result.summary,/No photo was taken/);assert.equal(f.calls.captures.length,0);f.gates.start.resolve();f.env.window.close();
+}
+// An agent capture queued past the chat grace keeps Camera active even when a scan request finishes first.
+{
+ const f=fixture({failing:false});await f.api.start();f.setView({chat:'sheet'});f.api.syncCamera();f.clock.now+=f.api.CHAT_GRACE_MS;f.api.syncCamera();await settle();assert.equal(f.api.state().phase,'off');
+ f.gates.start=deferred();
+ const request=f.api.takeRequestedPhoto('op-hold',new AbortController().signal,()=>{});await settle();
+ assert.equal(f.api.scanRequest(),true);await settle();
+ // The scan closes the chat; reopen it so only the agent request's hold keeps Camera active.
+ f.setView({chat:'sheet'});
+ f.gates.capture=deferred();f.gates.start.resolve();f.gates.start=undefined;await settle();await settle();await settle();
+ assert.equal(f.calls.captures.length,1,'The agent photo is being written');
+ f.api.syncCamera();await settle();
+ assert.equal(f.api.state().phase,'ready','The scan request ending does not release the hold of the agent capture still being written');
+ f.gates.capture.resolve();f.gates.capture=undefined;
+ const result=await request;assert.equal(result.status,'succeeded',result.summary);
+ f.env.window.close();
 }
 // A start failure fails the queued agent capture for its real cause.
 {
