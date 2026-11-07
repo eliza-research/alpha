@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './fixtures/ts-source.mjs';
 import vm from 'node:vm';
 
 // msg-alphaphone-029: a Cloud protocol refusal used to reach the owner as "Cloud http (403)" or
@@ -9,7 +9,7 @@ import vm from 'node:vm';
 // go to the diagnostic log only. Runs the shipped errorMessage.
 const ui=readFileSync(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
 const between=(start,end)=>{const from=ui.indexOf(start),to=ui.indexOf(end,from);assert.ok(from>=0&&to>from,start);return ui.slice(from,to);};
-const code=stripTypeScriptTypes(between('/** A code that expired on the code step','/** A resident start that does not open the dialog'),{mode:'transform'});
+const code=stripTypeScriptTypes(between('/** A code that expired on the code step','/** A resident start that does not open the dialog'),{mode:'strip'});
 // The shipped class's shape (cloud-protocol.ts uses parameter properties, which node cannot strip).
 class CloudProtocolError extends Error{constructor(code,status){super(`Cloud ${code}${status?` (${status})`:''}`);this.code=code;this.status=status;}}
 

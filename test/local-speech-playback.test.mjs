@@ -58,7 +58,7 @@ function listenFixture({cloud}) {
   };
   const load = (file, names) => {
     const source = fs.readFileSync(file, 'utf8').replace(/^import .*;\n/gm, '').replace(/^export /gm, '');
-    vm.runInNewContext('{' + stripTypeScriptTypes(source, {mode: 'transform'}) + '\n' + names.map(name => `globalThis.${name}=${name};`).join('') + '}', box);
+    vm.runInNewContext('{' + stripTypeScriptTypes(source, {mode:'strip'}) + '\n' + names.map(name => `globalThis.${name}=${name};`).join('') + '}', box);
   };
   load('apps/app/src/runtime/voice-selection.ts', ['selectVoiceRoute']);
   load('apps/app/src/runtime/local-speech-text.ts', ['screenSpeechText']);

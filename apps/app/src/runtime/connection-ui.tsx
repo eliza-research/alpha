@@ -875,9 +875,8 @@ function errorMessage(error: unknown): string {
   if (error instanceof EntitlementError && error.code === 'account-mismatch') return `${cloudServiceName(cloud.environment)} returned plan status for a different account. Sign in again.`;
   // Production phones have no pairing to fall back on: an expired session is a Cloud sign-in.
   if (error && typeof error === 'object' && 'status' in error && error.status === 401) return !testMocksEnabled ? residentSignInExpired() : 'Your session has expired. Sign in or pair again.';
-  // Cloud's own protocol codes never reach the owner as "Cloud http (403)".
-  if (error instanceof CloudProtocolError) return error.code === 'account-changed' ? ACCOUNT_CHANGED : `${cloudServiceName(cloud.environment)} could not complete this. Try again.`;
   if (error && typeof error === 'object' && 'status' in error && error.status === 503) return 'The agent is starting or temporarily unavailable. Try again shortly.';
+  // Cloud's own protocol codes never reach the owner as "Cloud http (403)".
   if (error instanceof CloudProtocolError) {
     reportCloudProtocolError(error);
     const name = cloudServiceName(cloud.environment);

@@ -9,7 +9,7 @@ import vm from 'node:vm';
 // It now re-reads the key once the attempt unwinds and adopts a key other than the one held before.
 const ui=readFileSync(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
 const between=(start,end)=>{const from=ui.indexOf(start),to=ui.indexOf(end,from);assert.ok(from>=0&&to>from,start);return ui.slice(from,to);};
-const code=stripTypeScriptTypes(`globalThis.controller={${between('  async cancelSignIn() {','  /** Google\'s external browser flow')}};`,{mode:'transform'});
+const code=stripTypeScriptTypes(`globalThis.controller={${between('  async cancelSignIn() {','  /** Google\'s external browser flow')}};`,{mode:'strip'});
 
 function harness({stored,prior='old-key',environment='production',active=true}){
   const view={step:'google',environment},operation=new AbortController(),events=[];

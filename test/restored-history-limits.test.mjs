@@ -12,9 +12,10 @@ const between=(start,end)=>{const from=ui.indexOf(start),to=ui.indexOf(end,from)
 const presentation=await import('../apps/app/src/runtime/action-message-presentation.ts');
 const code=stripTypeScriptTypes([
   between('function restoredText(','/** Eliza Cloud\'s API answers'),
+  between('export const RESTORED_FAILURES','/** The error a failed reply'),
   between('function deliverConversationMessages(','/** A journaled effect belongs'),
   between('function startConversationEvents(','/** Insert canonical delivery IDs'),
-].join('\n'),{mode:'transform'});
+].join('\n'),{mode:'strip'});
 const MARKER=' [Message shortened for display]';
 
 function harness(){

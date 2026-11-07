@@ -7,7 +7,7 @@ import vm from 'node:vm';
 // The real on-device speech planner, and the real local-voice.ts over a closed native bridge.
 function load(file, names, box) {
   const source = readFileSync(file, 'utf8').replace(/^import .*;\n/gm, '').replace(/^export /gm, '');
-  vm.runInNewContext('{' + stripTypeScriptTypes(source, {mode: 'transform'}) + ';Object.assign(globalThis,{' + names.join(',') + '});}', box);
+  vm.runInNewContext('{' + stripTypeScriptTypes(source, {mode:'strip'}) + ';Object.assign(globalThis,{' + names.join(',') + '});}', box);
   return box;
 }
 const {planLocalSpeech} = load('apps/app/src/runtime/local-speech-text.ts', ['planLocalSpeech'], {});

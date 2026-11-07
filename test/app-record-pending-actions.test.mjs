@@ -57,6 +57,6 @@ test('Review event from an agent note goes through Calendar admission with its n
   views.notes.render({},shell.api('notes')).ed.draftEvent();await new Promise(resolve=>setTimeout(resolve,0));
   assert.equal(reviewed.length,1);assert.deepEqual(reviewed[0].origin,origin);assert.equal(reviewed[0].notes,'Book the venue');assert.equal(reviewed[0].alert,null);
   assert.deepEqual(opened,[],'Calendar admission opens Calendar itself');
-  assert.match(toasts[0],admitted?/Nothing is on your calendar yet/:/can't open this event yet/);
+  assert.match(toasts[0],admitted?/^Review the time, then Save\.$/:/can't open this event yet/);
  }
 });

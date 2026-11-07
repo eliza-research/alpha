@@ -9,7 +9,7 @@ import vm from 'node:vm';
 // retired connection's rows into the new one. Runs the shipped connectionController.reconcile.
 const ui=readFileSync(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
 const between=(start,end)=>{const from=ui.indexOf(start),to=ui.indexOf(end,from);assert.ok(from>=0&&to>from,start);return ui.slice(from,to);};
-const reconcile=stripTypeScriptTypes(`globalThis.controller={${between('  async reconcile(entryId','  async reconcileAction(')}};`,{mode:'transform'});
+const reconcile=stripTypeScriptTypes(`globalThis.controller={${between('  async reconcile(entryId','  async reconcileAction(')}};`,{mode:'strip'});
 
 function harness(read){
   const reconciled=[],old={actions:{reconcile:async(id,outcome)=>{reconciled.push([id,outcome]);}}};

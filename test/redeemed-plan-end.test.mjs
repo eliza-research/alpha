@@ -16,7 +16,7 @@ const code=stripTypeScriptTypes([
   section('async function admitCloudResident(', '/**\n * Cloud reported'),
   section('async function recheckResidentPlan(', '/** Bind or unbind'),
   section('function residentBindingController(', '/** The packaged-runtime refusal.'),
-].join('\n'),{mode:'transform'});
+].join('\n'),{mode:'strip'});
 const shared=await import('../.eliza/client-features/packages/auth/src/auth/cloud-resident-binding.ts');
 const entitlement=await import('../apps/app/src/runtime/subscription-entitlement.ts');
 const DAY=86_400_000;
@@ -62,7 +62,7 @@ test('without a redeem, or for another credential or environment, the stored end
 
 // The restart after a redeem re-verifies the account into a new connection object; the redeemed
 // end must still be recorded and shown for that same account, and never for another one.
-const redeemCode=stripTypeScriptTypes(`globalThis.controller={${section('  async residentRedeem(', '  /** Checks the plan again')}};`,{mode:'transform'});
+const redeemCode=stripTypeScriptTypes(`globalThis.controller={${section('  async residentRedeem(', '  /** Checks the plan again')}};`,{mode:'strip'});
 async function redeem(nextCredential){
   const identity={environment:'production',credentialId:'credential-1',userId:'user-1',organizationId:null},end=Date.now()+90*DAY,writes=[];
   const account={identity,credentialReference:'ref-1',client:{environment:'production',redeemSubscriptionCode:async()=>({planEndsAt:end,paidPlanTakesPrecedence:false})}};

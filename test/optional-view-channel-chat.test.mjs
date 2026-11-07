@@ -44,7 +44,7 @@ test('an unmapped VIEWS handoff is reported in chat without a claim or a throw',
  const client=new ViewNavigationClient(async(path,body)=>{requests.push({path,body});return {};},()=>true,()=>context);
  const sandbox={views:{},alphaClient:{getState:()=>({context})},context(){}};
  vm.createContext(sandbox);
- vm.runInContext(`${stripTypeScriptTypes(helper,{mode:'transform'})};globalThis.deliver=deliverChatNavigation;`,sandbox);
+ vm.runInContext(`${stripTypeScriptTypes(helper,{mode:'strip'})};globalThis.deliver=deliverChatNavigation;`,sandbox);
  const said=[],toasts=[],shell={live:true,S:()=>({view:'home'}),agentSay(text,card){said.push({text,card});},toast(message){toasts.push(message);},openView(){throw Error('No screen may open');},goHome(){throw Error('No screen may open');}};
  const binding={requestId:'owned-handoff',clientId:client.clientId,viewId:'wallet',viewType:'gui',installationId:'owned-installation'};
  const result={actionName:'VIEWS',success:true,values:{mode:'show',viewId:'wallet',viewPath:'/wallet',viewType:'gui',navigationPrepared:true,completedActionHandoffId:'owned-handoff',navigationBinding:binding}};

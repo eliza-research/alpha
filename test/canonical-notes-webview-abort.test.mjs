@@ -1,4 +1,4 @@
-import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import path from 'node:path';import vm from 'node:vm';import {transformSync} from 'esbuild';import {stripTypeScriptTypes} from 'node:module';
+import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import path from 'node:path';import vm from 'node:vm';import {transformSync} from 'esbuild';import {stripTypeScriptTypes} from './fixtures/ts-source.mjs';
 // The staged canonical client, controller and snapshot state run with
 // WebView113's static AbortSignal surface. Only the resident transport is a fixture.
 function fixture({wait=false}={}){
