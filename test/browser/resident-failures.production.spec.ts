@@ -76,8 +76,8 @@ for (const [kind, text] of Object.entries(KINDS)) for (const frame of ['done', '
       // Agent connection no longer says the agent is ready.
       await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
       await button(page, 'Settings').click();
-      await page.getByRole('button', { name: 'Agent connection', exact: true }).click();
-      await expect(page.getByRole('heading',{name:'Agent connection',exact:true})).toBeVisible();
+      await page.getByRole('button', { name: 'Agent', exact: true }).click();
+      await expect(page.getByRole('heading',{name:'Agent',exact:true})).toBeVisible();
       await expect(page.getByRole('region',{name:'Settings',exact:true})).not.toContainText('Connected');
     }
     // Exactly one stream request and no automatic resend of any kind.

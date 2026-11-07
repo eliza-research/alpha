@@ -1,7 +1,7 @@
 import {test,expect, type Page} from '@playwright/test';
 const key='alpha.browser.password-provider.v1';
 test.beforeEach(async({page})=>{await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));});
-async function settings(page:Page){await page.goto('/?mode=dev');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Password manager',exact:true}).click();}
+async function settings(page:Page){await page.goto('/?mode=dev');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Passwords',exact:true}).click();}
 async function install(page:Page){await page.getByRole('button',{name:'Add development provider',exact:true}).click();await page.getByRole('button',{name:'Add provider',exact:true}).click();await expect(page.getByText('Development provider installed',{exact:true})).toBeVisible();}
 async function select(page:Page){await page.getByRole('button',{name:'Choose password provider',exact:true}).click();await page.getByRole('button',{name:'Proton Pass · development',exact:true}).click();await expect(page.getByText('Development provider selected',{exact:true})).toBeVisible();}
 test('development provider persists selection and fills only a disposable sample',async({page})=>{

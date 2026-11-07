@@ -28,8 +28,8 @@ async function boot(page:Page,mode:Mode='success',signedOut=false){
  },{mode,token});
  await page.goto('/');await expect.poll(()=>page.evaluate(()=>(window as any).recoveryCalls.starts)).toBe(1);
  if(signedOut){const gate=page.getByRole('main',{name:'Sign in',exact:true});await expect(gate).toBeVisible();return gate;}
- await expect(button(page,'Settings')).toBeVisible();await completeAccessSetup(page);await button(page,'Settings').click();await page.getByRole('button',{name:'Agent connection',exact:true}).click();
- const panel=page.getByRole('region',{name:'Settings',exact:true});await expect(panel.getByRole('heading',{name:'Agent connection',exact:true})).toBeVisible();return panel;
+ await expect(button(page,'Settings')).toBeVisible();await completeAccessSetup(page);await button(page,'Settings').click();await page.getByRole('button',{name:'Agent',exact:true}).click();
+ const panel=page.getByRole('region',{name:'Settings',exact:true});await expect(panel.getByRole('heading',{name:'Agent',exact:true})).toBeVisible();return panel;
 }
 const calls=(page:Page)=>page.evaluate(()=>(window as any).recoveryCalls as {starts:number;reviews:number;archives:unknown[]});
 test('recovery review is explicit and cancelling preserves the block without archival or another start',async({page},testInfo)=>{

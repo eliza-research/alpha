@@ -9,7 +9,7 @@ const SECRET_MARKERS = ['synthetic-dev-', 'typed-synthetic-Z9q', 'abcdefghjkmnpq
 async function devVault(page: Page) {
   await page.goto('/?mode=dev');
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.getByRole('button', { name: 'Password manager', exact: true }).click();
+  await page.getByRole('button', { name: 'Passwords', exact: true }).click();
 }
 async function agentContext(page: Page) {
   return page.evaluate(async () => { const { alphaClient } = await import('/src/runtime/alpha-client.ts'); return alphaClient.getState().context; });
@@ -93,7 +93,7 @@ test('development vault locks when leaving and reports autofill selection only a
   await expect(page.getByRole('button', { name: 'Open Example sign-in', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Back to Settings', exact: true }).click();
   await expect.poll(async () => (await agentContext(page)).sensitive).toBe(false);
-  await page.getByRole('button', { name: 'Password manager', exact: true }).click();
+  await page.getByRole('button', { name: 'Passwords', exact: true }).click();
   await expect(page.getByText('Locked', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Open Example sign-in', exact: true })).toHaveCount(0);
 });
@@ -101,8 +101,8 @@ test('development vault locks when leaving and reports autofill selection only a
 test('browser build without the development profile offers no simulated vault', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.getByRole('button', { name: 'Password manager', exact: true }).click();
-  await expect(page.getByText('Available in the Android app', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Passwords', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Password manager', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Unlock passwords', exact: true })).toHaveCount(0);
 });
 
@@ -150,7 +150,7 @@ async function nativeVault(page: Page, options: { leak?: boolean; selected?: str
   }, options);
   await page.goto('/');
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.getByRole('button', { name: 'Password manager', exact: true }).click();
+  await page.getByRole('button', { name: 'Passwords', exact: true }).click();
 }
 
 test('native vault: Android unlock, app bindings, copy and autofill picker with status readback', async ({ page }) => {
@@ -257,6 +257,6 @@ test('leaving Settings for another view locks the development vault', async ({ p
   // Locked and forgotten as soon as Settings is left, not only when it is reopened.
   expect(await page.evaluate(async () => (await import('/src/passwords/password-manager.ts')).passwordManagerHoldsEntries())).toBe(false);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.getByRole('button', { name: 'Password manager', exact: true }).click();
+  await page.getByRole('button', { name: 'Passwords', exact: true }).click();
   await expect(page.getByText('Locked', { exact: true })).toBeVisible();
 });

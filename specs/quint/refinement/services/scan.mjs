@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {build} from 'esbuild';
-import {chromium} from '@playwright/test';
+import {chromium, expect} from '@playwright/test';
 import {checkTraces, captureInputs} from '../check-traces.mjs';
 import {action} from './support.mjs';
 
@@ -54,14 +54,14 @@ export async function scanRefinement() {
       });
       const trace = {name: `real scan UI and IndexedDB ${mode}`, init: action('initFor', true), expect: {'s.savedPages': [], 's.storedRevision': 0}, steps: []};
       await page.evaluate(async () => { const canvas = document.createElement('canvas'); canvas.width = canvas.height = 2; const ctx = canvas.getContext('2d'); ctx.fillStyle = 'red'; ctx.fillRect(0, 0, 2, 2); const first = await new Promise(resolve => canvas.toBlob(resolve, 'image/png')); window.scanImageIds.set(await window.imageIdentity(first), 1); window.closeScan = window.scanApi.openScanDocument(first); });
-      await page.waitForFunction(async () => !!await window.scanApi.readScanDraft());
+      await expect.poll(() => page.evaluate(async () => !!await window.scanApi.readScanDraft()), {timeout: 30000}).toBe(true);
       let observed = await page.evaluate(() => window.observeScanDraft());
       trace.steps.push({label: 'normal entrypoint automatically saves first page', action: [action('add', 1), action('beginAutoSave'), action('saveCommit')], expect: {'s.savedPages': observed.pages, 's.storedRevision': observed.revision}});
       if (mode.startsWith('explicit')) {
         const before = await page.evaluate(async () => (await window.scanApi.readScanDraft()).revision);
         await page.getByText('Draft options', {exact: true}).click();
         await page.getByRole('button', {name: 'Save document draft', exact: true}).click();
-        await page.waitForFunction(async previous => { const saved = await window.scanApi.readScanDraft(); return saved.revision !== previous && !document.querySelector('button[aria-label="Add page"]').disabled && document.querySelector('[role=status]').textContent.includes('Document draft saved'); }, before);
+        await expect.poll(() => page.evaluate(async previous => { const saved = await window.scanApi.readScanDraft(); return saved.revision !== previous && !document.querySelector('button[aria-label="Add page"]').disabled && document.querySelector('[role=status]').textContent.includes('Document draft saved'); }, before), {timeout: 30000}).toBe(true);
         observed = await page.evaluate(() => window.observeScanDraft());
         const saved = await page.evaluate(async () => ({has: !!await window.scanApi.readScanDraft(), status: document.querySelector('[role=status]').textContent}));
         assert.match(saved.status, /draft saved/);
@@ -72,7 +72,7 @@ export async function scanRefinement() {
         const before = await page.evaluate(async () => (await window.scanApi.readScanDraft()).revision);
         await page.evaluate(async () => { const canvas = document.createElement('canvas'); canvas.width = canvas.height = 2; canvas.getContext('2d').fillRect(0, 0, 2, 2); const image = await new Promise(resolve => canvas.toBlob(resolve, 'image/png')); window.scanImageIds.set(await window.imageIdentity(image), 2); window.scanPorts.imageUrl = URL.createObjectURL(image); });
         await page.getByRole('button', {name: 'Add page', exact: true}).click();
-        await page.waitForFunction(async previous => { const saved = await window.scanApi.readScanDraft(); return saved.revision !== previous && saved.pages.length === 2; }, before);
+        await expect.poll(() => page.evaluate(async previous => { const saved = await window.scanApi.readScanDraft(); return saved.revision !== previous && saved.pages.length === 2; }, before), {timeout: 30000}).toBe(true);
         observed = await page.evaluate(() => window.observeScanDraft());
         const count = await page.evaluate(async () => (await window.scanApi.readScanDraft()).pages.length);
         trace.steps.push({label: 'subsequent page change saves without surrendering explicit ownership', action: [action('beginPicker', false), action('picked', true), action('beginAutoSave'), action('saveCommit')], expect: {'s.savedPages': observed.pages, 's.storedRevision': observed.revision}});
@@ -88,7 +88,7 @@ export async function scanRefinement() {
       trace.steps.push({label: 'picker visibility event preserves the owning review', action: action('hide'), expect: {'s.closed': await page.getByRole('dialog', {name: 'Review scan document'}).count() === 0}});
       await page.evaluate(() => { Object.defineProperty(document, 'hidden', {configurable: true, value: false}); document.dispatchEvent(new Event('visibilitychange')); window.releaseExport(); });
       await page.waitForFunction(() => !window.scanApi.systemPickerActive() && document.querySelector('[role=status]').textContent === 'Export completed');
-      if (mode === 'automatic') await page.waitForFunction(async () => !await window.scanApi.readScanDraft());
+      if (mode === 'automatic') await expect.poll(() => page.evaluate(async () => !await window.scanApi.readScanDraft()), {timeout: 30000}).toBe(true);
       const state = await page.evaluate(async () => { const draft = await window.scanApi.readScanDraft(); return {revision: draft?.revision ?? null, count: draft?.pages.length ?? 0, disabled: document.querySelector('button[aria-label="Save document PDF"]').disabled}; });
       const finish = [action('resume'), action('exportReply', mode === 'unverified' ? 'unverified' : 'exported')];
       if (mode === 'automatic') finish.push(action('clearAutoDraft'));

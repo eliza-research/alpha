@@ -170,7 +170,7 @@ try {
   }, mode);
   await limited.goto(url, { waitUntil: 'load', timeout: 180000 });
   await limited.getByRole('button', { name: 'Settings', exact: true }).click();
-  await limited.getByRole('button', { name: 'Agent connection', exact: true }).click();
+  await limited.getByRole('button', { name: 'Agent', exact: true }).click();
   await limited.getByText('Local development agent', { exact: true }).click();
   const local = limited.locator('.alpha-connection details').filter({ has: limited.getByText('Local development agent', { exact: true }) });
   await local.getByLabel('Local agent address').fill('http://127.0.0.1:47842');

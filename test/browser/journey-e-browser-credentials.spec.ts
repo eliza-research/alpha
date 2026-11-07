@@ -218,10 +218,12 @@ test('browser navigation, tabs, private tab, reviewed reading and password manag
     await button(page, 'Back to page').click();
   });
 
-  await test.step('password manager from the Browser menu: honest autofill state and development vault', async () => {
-    await menu(page, 'Password manager');
+  await test.step('password management in Settings with honest autofill state and development vault', async () => {
+    await returnToApps(page);
+    await page.getByRole('button', {name:'Settings', exact:true}).click();
+    await page.getByRole('button', {name:'Passwords', exact:true}).click();
     const settings = page.getByRole('region', {name: 'Settings'});
-    await expect(settings.getByRole('heading', {name: 'Password manager', exact: true})).toBeVisible();
+    await expect(settings.getByRole('heading', {name: 'Passwords', exact: true})).toBeVisible();
     await expect(settings).toContainText(/Vault\s*Locked/);
     await expect(settings).toContainText('Unavailable in this browser. Use Show or Copy for website passwords.');
     await expect(settings).toContainText(/Autofill service\s*None selected/);

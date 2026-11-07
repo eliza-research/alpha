@@ -3,8 +3,8 @@ import { returnToApps } from './app-navigation';
 import {test,expect,type Page} from '@playwright/test';
 test.beforeEach(async({context})=>guardNoMedia(context));
 const key='alpha.browser.execution.local.v1';
-async function open(page:Page){await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent connection',exact:true}).click();}
-async function setup(page:Page){await page.goto('/?mode=dev');await open(page);await page.getByRole('button',{name:'Connect development profile'}).click();await page.getByRole('button',{name:'Agent connection',exact:true}).click();await page.getByText('Development device actions',{exact:true}).click();}
+async function open(page:Page){await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent',exact:true}).click();}
+async function setup(page:Page){await page.goto('/?mode=dev');await open(page);await page.getByRole('button',{name:'Connect development profile'}).click();await page.getByRole('button',{name:'Agent',exact:true}).click();await page.getByText('Development device actions',{exact:true}).click();}
 async function queue(page:Page){await page.getByRole('button',{name:'Queue action for review'}).click();await expect(page.getByText('Action queued. Send a chat message to review it on the current screen.',{exact:true})).toBeVisible();}
 async function chat(page:Page){await page.getByRole('button',{name:'Close connection settings'}).click();await returnToApps(page);await page.getByRole('textbox',{name:'Ask Alpha',exact:true}).fill('Review my development action');await page.getByRole('textbox',{name:'Ask Alpha',exact:true}).press('Enter');await expect(page.getByText('Create note',{exact:true})).toBeVisible();}
 const state=(page:Page)=>page.evaluate(async()=>(await (await import('/src/browser/development-execution-document.ts')).readExecutionPart({namespace:'local'} as any,'actions',()=>({proposals:[],journal:[]}))));

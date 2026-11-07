@@ -45,7 +45,7 @@ for(const scenario of ['decline','accepted-reload','lost-activation','quote-chan
     throw Error('Unexpected Cloud fixture route '+path);
    }};
   },scenario);
-  await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent connection',exact:true}).click();await page.locator('summary').filter({hasText:/^Development Cloud agent infrastructure$/}).click();
+  await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent',exact:true}).click();await page.locator('summary').filter({hasText:/^Development Cloud agent infrastructure$/}).click();
   await page.evaluate(async()=>{const {connectionController}=await import('/src/runtime/connection-ui.tsx');void connectionController.signInBrowser();});
   const review=page.getByRole('region',{name:'Dedicated hosting review'});
   // Section has an accessible name and is a region; display real reviewed price fields.
@@ -91,7 +91,7 @@ for(const scenario of ['decline','accepted-reload','lost-activation','quote-chan
    await expect(page.getByText('Dedicated setup accepted',{exact:true})).toBeVisible();
    expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('fixture.cloud.setup')!))).toMatchObject({activation:1,cutover:0});return;
   }
-  await page.reload();await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent connection',exact:true}).click();await page.locator('summary').filter({hasText:/^Development Cloud agent infrastructure$/}).click();await page.getByRole('button',{name:'Refresh agent status',exact:true}).click();
+  await page.reload();await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent',exact:true}).click();await page.locator('summary').filter({hasText:/^Development Cloud agent infrastructure$/}).click();await page.getByRole('button',{name:'Refresh agent status',exact:true}).click();
   if(scenario==='stopped-resume'){await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('fixture.cloud.setup')!);s.stopped=true;s.quote=1;localStorage.setItem('fixture.cloud.setup',JSON.stringify(s));});await page.getByRole('button',{name:'Refresh agent status',exact:true}).click();await expect(page.getByRole('button',{name:'Start Dedicated',exact:true})).toBeEnabled();await page.getByRole('button',{name:'Start Dedicated',exact:true}).click();await page.getByRole('button',{name:'Check setup status',exact:true}).click();}
   await expect(page.getByRole('button',{name:'Continue setup',exact:true})).toBeVisible();
   expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('fixture.cloud.setup')!))).toMatchObject({activation:scenario==='stopped-resume'?2:1,cutover:0});
@@ -144,7 +144,7 @@ for(const scenario of ['adopt-existing','owner-during-connect','organization-dur
     throw Error('Unexpected boundary fixture route '+path);
    }};
   },scenario);
-  await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent connection',exact:true}).click();await page.locator('summary').filter({hasText:/^Development Cloud agent infrastructure$/}).click();
+  await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent',exact:true}).click();await page.locator('summary').filter({hasText:/^Development Cloud agent infrastructure$/}).click();
   await page.getByRole('button',{name:'Refresh agent status',exact:true}).click();
   if(scenario==='adopt-existing'){
    await page.getByRole('button',{name:'Start Dedicated',exact:true}).click();

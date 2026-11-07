@@ -97,7 +97,7 @@ for (const mode of ['confirm','transcribed','zone','modal','unknown','receipt-lo
     await page.addInitScript(()=>{Object.defineProperty(navigator,'mediaDevices',{configurable:true,value:{getUserMedia:async()=>{throw Error('Physical capture forbidden');}}});HTMLMediaElement.prototype.play=async()=>{throw Error('Physical playback forbidden');};});
     await page.goto('/?mode=dev');
     const connect=async()=>{
-      if(mode==='browser'){await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent connection',exact:true}).click();}
+      if(mode==='browser'){await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent',exact:true}).click();}
     await page.getByText('Local development agent', { exact: true }).click();
     const local = page.locator('.alpha-connection details').filter({ has: page.getByText('Local development agent', { exact: true }) });
     await local.getByLabel('Local agent address').fill('http://127.0.0.1:47842');

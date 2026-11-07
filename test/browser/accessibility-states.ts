@@ -23,7 +23,7 @@ const settle = async (page: Page) => {
   await page.waitForTimeout(450);
 };
 
-const press = async (page: Page, steps: string[]) => { for (const step of steps) await page.getByRole('button', { name: step, exact: true }).first().click(); };
+const press = async (page: Page, steps: string[]) => { for (const step of steps) await page.getByRole('button', { name: step, exact: true }).first().press('Enter'); };
 /** The named subview is on screen and exposed (not retired behind another subview). */
 const showing = async (page: Page, subview?: string) => {
   if (subview) await expect(page.locator(`[data-alpha-subview="${subview}"]:not([inert])`)).toBeVisible();
@@ -56,6 +56,16 @@ const mock = (start: string, steps: string[] = [], shows?: string): State => ({
     await showing(page, shows);
   },
 });
+const retiredSettings = (route: string, label: string): State => ({
+  name: `live retired Settings ${label} route`,
+  open: async (page, theme) => {
+    await live(`retired Settings ${label} route`, ['Settings']).open(page, theme);
+    expect(await page.evaluate(async route => (await import('/src/prototype/settings-adapter.ts' as string)).settingsPage(route, true), route)).toBeNull();
+    await expect(page.getByRole('heading', {name: 'Settings', exact: true})).toBeVisible();
+    await expect(page.getByRole('button', {name: label, exact: true})).toHaveCount(0);
+    await expect(page.getByRole('heading', {name: label, exact: true})).toHaveCount(0);
+  },
+});
 
 /** Primary views and the subviews, dialogs and failure states reachable without a provider. */
 export const LIVE_STATES: State[] = [
@@ -78,6 +88,8 @@ export const LIVE_STATES: State[] = [
   live('Files', ['Files']),
   live('Workflows', ['Workflows']),
   live('Settings', ['Settings']),
+  retiredSettings('character', 'Character'),
+  retiredSettings('accounts', 'Accounts'),
   // Settings pages and sheets the browser build reaches (docs/ui-refresh-2026-11 Settings structure).
   live('Settings about', ['Settings', 'About']),
   live('Settings problem log', ['Settings', 'About', 'Problem log']),
@@ -155,7 +167,7 @@ export const MOCK_STATES: State[] = [
   // were removed; the Google accounts panel is swept live as 'Settings Google'.)
   mock('workflows', ['New automation', 'Edit When step'], 'workflows-builder'),
   mock('workflows:new', ['Add Read step'], 'workflows-builder'),
-  mock('settings', ['Character']),
+  mock('settings:character'),
   mock('settings', ['Notifications']),
   mock('settings:accounts', ['you@gmail.example']),
 ]);
@@ -350,14 +362,25 @@ export const LAUNCHER_STATES: State[] = [
   launcher('Notes', ['Notes']),
   launcher('Files', ['Files']),
   launcher('Settings', ['Settings']),
-  launcher('Settings display', ['Settings', 'Display']),
+  {
+    name: 'launcher Settings appearance',
+    open: async (page, theme) => {
+      await launcher('Settings appearance', ['Settings']).open(page, theme);
+      await expect(page.getByRole('button', {name: 'Theme: System', exact: true})).toBeVisible();
+      await expect(page.getByRole('button', {name: 'Display', exact: true})).toHaveCount(0);
+    },
+  },
 ];
 
 /** A seeded local calendar (browser store), so the Calendar view has events to audit. */
 const syntheticCalendar = async (page: Page) => page.evaluate(async () => {
   const { BrowserCalendar } = await import('/src/browser/calendar.ts' as string), calendar = new BrowserCalendar(), day = new Date(); day.setHours(10, 0, 0, 0);
-  for (const [title, offset] of [['Synthetic design review', 0], ['Synthetic venue walkthrough', 2]] as const)
-    await calendar.save({ calendarId: 'local', title, location: 'Synthetic room 4', begin: day.getTime() + offset * 3_600_000, end: day.getTime() + (offset + 1) * 3_600_000, allDay: false, creationId: crypto.randomUUID() });
+  for (const [title, offset] of [['Synthetic design review', 0], ['Synthetic venue walkthrough', 2]] as const) {
+    const creationId=crypto.randomUUID();
+    const result=await calendar.save({ calendarId: 'local', title, location: 'Synthetic room 4', begin: day.getTime() + offset * 3_600_000, end: day.getTime() + (offset + 1) * 3_600_000, allDay: false, creationId });
+    if(result.status!=='saved')throw Error('Synthetic calendar event was not saved');
+    await calendar.acknowledgeCreation({creationId});
+  }
 });
 const calendarWithEvents: State = {
   name: 'connected Calendar with events',

@@ -29,7 +29,7 @@ async function nativeFixture(page:any,installation='installed',selection='none')
  },{installation,selection});
  await page.goto('/');
  await page.getByRole('button',{name:'Settings',exact:true}).click();
- await page.getByRole('button',{name:'Password manager',exact:true}).click();
+ await page.getByRole('button',{name:'Passwords',exact:true}).click();
 }
 test('setup handoff does not claim selected; explicit refresh observes return and cancellation',async({page})=>{
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await nativeFixture(page);
@@ -64,8 +64,9 @@ test('unavailable handoff and unrecognized publisher never claim enablement or o
  await expect(page.getByText('Password provider setup is unavailable. No provider change is confirmed.',{exact:true})).toBeVisible();
 });
 test('browser environment reports native provider unavailable without simulated installation',async({page})=>{
- await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Password manager',exact:true}).click();
- await expect(page.getByText('Native provider status is unavailable here',{exact:true})).toBeVisible();
+ await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Passwords',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Password manager',exact:true})).toHaveCount(0);
  await expect(page.getByRole('button',{name:'Choose password provider in Android',exact:true})).toHaveCount(0);
 });
 
@@ -90,16 +91,20 @@ test('unverified publisher selection is never labeled verified Proton selection'
  await expect(page.getByText('Provider package selected · publisher not verified',{exact:true})).toBeVisible();
  await expect(page.getByText('Proton Pass selected',{exact:true})).toHaveCount(0);
 });
-test('browser menu opens Password manager detail with a working Settings back path',async({page},testInfo)=>{
- await page.goto('/');await page.getByRole('button',{name:'Browser',exact:true}).click();
+test('browser menu leaves password management in Settings with a working back path',async({page},testInfo)=>{
+ await page.goto('/?mode=dev');await page.getByRole('button',{name:'Browser',exact:true}).click();
  await page.getByRole('button',{name:'Menu',exact:true}).click();
- await page.getByRole('button',{name:'Password manager',exact:true}).click();
- await expect(page.getByRole('heading',{name:'Password manager',exact:true})).toBeVisible();
- await expect(page.getByText('Native provider status is unavailable here',{exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Password manager',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Passwords',exact:true})).toHaveCount(0);
+ await page.evaluate(()=>window.dispatchEvent(new Event('launcher-home')));
+ await page.getByRole('button',{name:'Settings',exact:true}).click();
+ await page.getByRole('button',{name:'Passwords',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Passwords',exact:true})).toBeVisible();
+ await expect(page.getByText('Locked',{exact:true})).toBeVisible();
  await page.screenshot({path:testInfo.outputPath('password-provider-detail.png')});
  await page.getByRole('button',{name:'Back to Settings',exact:true}).click();
- await expect(page.getByRole('heading',{name:'Password manager',exact:true})).toHaveCount(0);
- await expect(page.getByRole('button',{name:'Password manager',exact:true})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Passwords',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Passwords',exact:true})).toBeVisible();
 });
 
 test('disabled verified provider stays unavailable to launch even when selected',async({page})=>{

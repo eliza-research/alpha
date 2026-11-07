@@ -271,7 +271,7 @@ test('production ignores the development render-failure hook', async ({ page }) 
   await page.evaluate(() => window.dispatchEvent(new Event('alpha:force-render-error')));
   await settings.click();
   await expect(page.getByRole('alertdialog')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Agent connection', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Agent', exact: true })).toBeVisible();
 });
 
 // Production speech is device-only (owner rule): the browser build has no on-device engine, so a

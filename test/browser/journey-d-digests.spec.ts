@@ -52,7 +52,7 @@ async function advanceTo(page:Page,iso:string){const delta=Date.parse(iso)-await
 async function connect(page:Page){
  await page.goto('/?mode=dev');
  await page.getByRole('button',{name:'Settings',exact:true}).click();
- await page.getByRole('button',{name:'Agent connection',exact:true}).click();
+ await page.getByRole('button',{name:'Agent',exact:true}).click();
  const dialog=page.getByRole('dialog',{name:'Development connections'});
  await dialog.getByRole('textbox',{name:'Scripted reply'}).fill(OUTPUT);
  await dialog.getByRole('button',{name:'Save development reply'}).click();

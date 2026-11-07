@@ -89,10 +89,10 @@ for (const state of [...FIXTURE_STATES, ...LAUNCHER_STATES]) {
   }
 }
 
-// The launcher bridge has no draft-storage plugin. Its normal read retries fail
-// after the drawer opens, adding a real status row above the floating composer.
-// Check that mutation checkpoint, rather than waiting another frame for layout.
-test('launcher All apps keeps scroll clearance when a late draft status arrives', async ({ page }, info) => {
+// The current collapsed composer renders status in its separate notice region.
+// Add a late source-owned unsent notice after opening the drawer and retain the
+// bottom-clearance assertion without relying on an obsolete draft-store read.
+test('launcher All apps keeps scroll clearance when a late assistant status arrives', async ({ page }, info) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.addInitScript(() => {
@@ -103,7 +103,8 @@ test('launcher All apps keeps scroll clearance when a late draft status arrives'
       const status = new MutationObserver(() => {
         const list = document.querySelector<HTMLElement>('[data-alpha-app-scroll="drawer"]');
         const clock = list?.querySelector<HTMLElement>('[aria-label="Open Synthetic clock"]');
-        if (!list || !clock || !dock.textContent?.includes('Local draft could not be read')) return;
+        const notice = document.querySelector<HTMLElement>('[data-alpha-draft-notice]');
+        if (!list || !clock || !notice?.textContent?.includes('Not sent. Your message is back in the composer.')) return;
         const box = clock.getBoundingClientRect(), dockBox = dock.getBoundingClientRect();
         const screen = document.querySelector<HTMLElement>('[data-screen]')!;
         const scale = screen.getBoundingClientRect().width / screen.offsetWidth;
@@ -118,6 +119,23 @@ test('launcher All apps keeps scroll clearance when a late draft status arrives'
     waiting.observe(document, { childList: true, subtree: true });
   });
   await LAUNCHER_STATES.find(state => state.name === 'launcher All apps')!.open(page, 'light');
+  await page.evaluate(() => {
+    const root = document.getElementById('root') as any;
+    const key = Object.keys(root).find(key => key.startsWith('__reactContainer$'))!;
+    const pending = [root[key]];
+    while (pending.length) {
+      const fiber = pending.pop();
+      if (typeof fiber?.stateNode?.vset === 'function') {
+        fiber.stateNode.unsentNotice = 'Not sent. Your message is back in the composer.';
+        fiber.stateNode.setState({});
+        return;
+      }
+      if (fiber?.sibling) pending.push(fiber.sibling);
+      if (fiber?.child) pending.push(fiber.child);
+    }
+    throw Error('No phone shell');
+  });
+  await expect(page.locator('[data-alpha-draft-notice]')).toContainText('Not sent. Your message is back in the composer.');
   await expect.poll(() => page.evaluate(() => (window as any).__alphaLateDockLayout)).toBeTruthy();
   const layout = await page.evaluate(() => (window as any).__alphaLateDockLayout as { room: number; need: number });
   await info.attach('late-draft-status-layout', { body: JSON.stringify(layout), contentType: 'application/json' });

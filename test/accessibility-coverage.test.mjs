@@ -145,7 +145,7 @@ test('the dock, title and toast fixes the sweep depends on stay in the source', 
   assert.match(read('apps/app/src/prototype/chat-overlay-motion-adapter.ts'), /if \(!sheet && !target\.matches\(":focus-visible"\)\) return;/);
   // A screen title is not shortened with a large system font: it takes its own row.
   assert.match(read('apps/app/src/runtime/text-scale.ts'), /classList\.toggle\(TEXT_XL_CLASS, scale > TEXT_XL_ABOVE\)/);
-  assert.match(css, /\.alpha-text-xl\.standalone-app \[data-alpha-app-header\] \[data-alpha-app-title\] \{[^}]*flex:1 0 100%;[^}]*white-space:normal!important;[^}]*text-overflow:clip!important/);
+  assert.match(css, /\.alpha-text-xl \[data-alpha-app-header\] \[data-alpha-app-title\] \{[^}]*flex:1 0 100%;[^}]*white-space:normal!important;[^}]*text-overflow:clip!important/);
   // A toast under a top-layer dialog is shown and announced inside that dialog.
   assert.match(main, /installToastLayer\(\)/);
   const toast = read('apps/app/src/runtime/toast-layer.ts');

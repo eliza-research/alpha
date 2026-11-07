@@ -443,7 +443,7 @@ for (const shell of HOME_SHELLS) for (const scale of [1, 1.5, 2]) {
   });
 }
 
-async function homeHasClearance(page:Page){return page.locator('[data-alpha-home-layout]').evaluate(el=>{const screen=document.querySelector('[data-screen]')!.getBoundingClientRect(),bar=document.querySelector('[data-alpha-layer="composer"]')!.getBoundingClientRect();return parseFloat(getComputedStyle(el).paddingBottom)>=screen.bottom-bar.top+4;});}
+async function homeHasClearance(page:Page){return page.locator('[data-alpha-home-layout]').evaluate(el=>{const frame=document.querySelector<HTMLElement>('[data-screen]')!,screen=frame.getBoundingClientRect(),bar=document.querySelector('[data-alpha-layer="composer"]')!.getBoundingClientRect(),scale=screen.width/frame.offsetWidth,spacer=document.querySelector('[data-alpha-home-clearance]')!.getBoundingClientRect().height;return parseFloat(getComputedStyle(el).paddingBottom)*scale+spacer>=screen.bottom-bar.top+4;});}
 test('Home keeps enough scroll clearance when Android raises the dock and when the draft grows',async({page})=>{
  await openHome(page,'/',2);const home=page.locator('[data-alpha-layer="home"]'),height=(await home.boundingBox())!.height;
  await page.evaluate(()=>{document.documentElement.classList.add('native-phone');document.documentElement.style.setProperty('--native-bottom-inset','72px');});
@@ -454,13 +454,15 @@ test('Home keeps enough scroll clearance when Android raises the dock and when t
 });
 test('a status line on the composer adds Home scroll clearance without moving its rows',async({page})=>{
  await openHome(page,'/',1);const home=page.locator('[data-alpha-layer="home"]'),tile=home.getByRole('button',{name:'Inbox',exact:true});
- const before={tile:(await tile.boundingBox())!.y,height:(await home.boundingBox())!.height,padding:await page.locator('[data-alpha-home-layout]').evaluate(el=>parseFloat(getComputedStyle(el).paddingBottom))};
+ const spacer=page.locator('[data-alpha-home-clearance]');
+ const before={tile:(await tile.boundingBox())!.y,height:(await home.boundingBox())!.height,padding:await page.locator('[data-alpha-home-layout]').evaluate(el=>parseFloat(getComputedStyle(el).paddingBottom)),spacer:await spacer.evaluate(el=>el.getBoundingClientRect().height)};
  await page.evaluate(()=>{const block=document.createElement('div');block.dataset.testStack='';block.style.height='40px';document.querySelector('[data-alpha-layer="composer"]')!.prepend(block);});
- await expect.poll(()=>page.locator('[data-alpha-home-layout]').evaluate(el=>parseFloat(getComputedStyle(el).paddingBottom))).toBe(before.padding+40);
+ await expect.poll(()=>spacer.evaluate(el=>el.getBoundingClientRect().height)).toBeGreaterThan(before.spacer);
+ expect(await page.locator('[data-alpha-home-layout]').evaluate(el=>parseFloat(getComputedStyle(el).paddingBottom))).toBe(before.padding);
  expect((await tile.boundingBox())!.y).toBeCloseTo(before.tile,0);expect((await home.boundingBox())!.height).toBe(before.height);
  await expect.poll(()=>homeHasClearance(page)).toBe(true);
  await page.evaluate(()=>document.querySelector('[data-test-stack]')!.remove());
- await expect.poll(()=>page.locator('[data-alpha-home-layout]').evaluate(el=>parseFloat(getComputedStyle(el).paddingBottom))).toBe(before.padding);
+ await expect.poll(()=>spacer.evaluate(el=>el.getBoundingClientRect().height)).toBe(before.spacer);
 });
 
 test.describe('landscape Home', () => {
@@ -522,23 +524,24 @@ test.describe('keyboard focus and the floating dock', () => {
     await page.goto('/');
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     const scroller = page.locator('[data-alpha-app-scroll="settings"]');
-    const row = page.getByRole('button', { name: 'Display', exact: true });
+    await expect(page.getByRole('button', { name: 'Display', exact: true })).toHaveCount(0);
+    const row = page.getByRole('button', { name: 'About', exact: true });
     await row.scrollIntoViewIfNeeded();
     const dock = (await page.locator('[data-alpha-layer="pill"] > *, [data-alpha-layer="composer"]').first().boundingBox())!;
     // Put the row so that its lower edge is just inside the dock's band, to the left of the pill.
-    await scroller.evaluate((el, top) => { const target = Array.from(el.querySelectorAll('button')).find(item => (item.getAttribute('aria-label') || item.textContent || '').trim().startsWith('Display'))!; el.scrollTop += target.getBoundingClientRect().bottom - (top + 10); }, dock.y);
+    await scroller.evaluate((el, top) => { const target = Array.from(el.querySelectorAll('button')).find(item => item.getAttribute('aria-label') === 'About')!; el.scrollTop += target.getBoundingClientRect().bottom - (top + 10); }, dock.y);
     const box = (await row.boundingBox())!, before = await scroller.evaluate(el => el.scrollTop);
     await page.mouse.click(box.x + 24, box.y + 8);
-    await expect(page.getByRole('heading', { name: 'Display', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'About', exact: true })).toBeVisible();
     expect(before).toBeGreaterThan(0);
   });
 });
 
 test.describe('screen titles with a large system font', () => {
-  for (const title of [{ name: 'Photos', steps: ['Photos'] }, { name: 'Camera', steps: ['Camera'] }, { name: 'Password manager', steps: ['Settings', 'Password manager'] }]) {
+  for (const title of [{ name: 'Photos', steps: ['Photos'], url: '/' }, { name: 'Camera', steps: ['Camera'], url: '/' }, { name: 'Passwords', steps: ['Settings', 'Passwords'], url: '/?mode=dev' }]) {
     test(`"${title.name}" is shown whole at 200% text`, async ({ page }) => {
       await page.addInitScript(offline);
-      await page.goto('/');
+      await page.goto(title.url);
       for (const step of title.steps) await page.getByRole('button', { name: step, exact: true }).first().click();
       const heading = page.locator('[data-alpha-app-header] [data-alpha-app-title]').filter({ hasText: title.name }).filter({ visible: true }).first();
       await expect(heading).toBeVisible();
@@ -573,7 +576,20 @@ test.describe('screen titles with a large system font', () => {
   }
 
   test('the Home calendar title is not cut by its own clamp at 200% text', async ({ page }) => {
+    await page.clock.setFixedTime(new Date('2027-03-13T08:00:00Z'));
     await openHome(page, '/', 2);
+    await page.evaluate(async () => {
+      const {BrowserCalendar} = await import('/src/browser/calendar.ts' as string);
+      const begin=Date.now()+60*60*1000;
+      const calendar=new BrowserCalendar(),creationId=crypto.randomUUID();
+      await calendar.save({calendarId:'local',title:'Team review',location:'',begin,end:begin+60*60*1000,allDay:false,creationId});
+      await calendar.acknowledgeCreation({creationId});
+    });
+    await page.reload();
+    await setTextScale(page, 2);
+    await page.getByRole('button', {name:'Calendar',exact:true}).click();
+    await expect(page.getByText('Team review', {exact:true}).first()).toBeVisible();
+    await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
     const title = page.locator('.home-calendar-title');
     await expect(title).toBeVisible();
     expect(await title.evaluate(el => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(1);

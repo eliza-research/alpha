@@ -1,6 +1,6 @@
 import { returnToApps } from './app-navigation';
 import {test,expect,type Page} from '@playwright/test';
-async function open(page:Page){await returnToApps(page);await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent connection',exact:true}).click();}
+async function open(page:Page){await returnToApps(page);await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent',exact:true}).click();}
 async function select(page:Page,account:string){await page.getByRole('combobox',{name:'Sample account'}).selectOption(account);await page.getByRole('button',{name:'Use development account'}).click();await expect(page.getByText(`Connected development account: ${account}`,{exact:true})).toBeVisible();await page.getByRole('combobox',{name:'Development profile'}).selectOption('cloud');}
 async function connect(page:Page){await page.getByRole('button',{name:'Connect development profile'}).click();await expect(page.getByRole('dialog',{name:'Development connections'})).toHaveCount(0);}
 const session=(page:Page)=>page.evaluate(async()=>{const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');return c.getSnapshot().session;});

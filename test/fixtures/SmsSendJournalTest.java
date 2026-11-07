@@ -5,6 +5,11 @@ import java.nio.file.Files;
 
 /** JVM checks of the reviewed-SMS journal and provider mapping (#421). No SIM, radio or provider. */
 public final class SmsSendJournalTest {
+ static final class MemoryStorage implements SmsSendJournal.Storage {
+  String value;
+  public String read() { return value; }
+  public void write(String next) { value = next; }
+ }
  static void require(boolean yes, String what) { if (!yes) throw new AssertionError(what); }
  static void throwsOn(Runnable action, String what) { try { action.run(); } catch (RuntimeException expected) { return; } throw new AssertionError(what); }
  public static void main(String[] args) throws Exception {
@@ -111,8 +116,10 @@ public final class SmsSendJournalTest {
 
   // The bound never blocks sending, even when every record still awaits delivery reports, and a dropped
   // operation ID is refused rather than sent again.
-  File boundFile = new File(dir, "bound");
-  SmsSendJournal bound = new SmsSendJournal(boundFile);
+  // Capacity checks exercise the production Storage contract. The small journal
+  // above separately checks the host-only file adapter and its reload behavior.
+  MemoryStorage boundStorage = new MemoryStorage();
+  SmsSendJournal bound = new SmsSendJournal(boundStorage);
   for (int i = 0; i < SmsSendJournal.MAX_RECORDS + 5; i++) {
    bound.beginDispatch("b" + i, one, "m" + i, 3, new int[] { 1 }, 10_000 + i, 7);
    bound.endDispatch("b" + i, true); bound.sentResult("b" + i, 0, true);
@@ -123,17 +130,13 @@ public final class SmsSendJournalTest {
   require(expired, "a dropped ID with the same binding reads expired");
   throwsOn(() -> bound.existing("b0", SmsSendJournal.sha256(SmsSendJournal.bindingText(one, "other", 3))), "a dropped ID with other content is refused");
   throwsOn(() -> { try { bound.beginDispatch("b0", one, "m0", 3, new int[] { 1 }, 1, 7); } catch (java.io.IOException e) { throw new RuntimeException(e); } }, "a dropped ID is never dispatched again");
-  SmsSendJournal boundReloaded = new SmsSendJournal(boundFile);
+  SmsSendJournal boundReloaded = new SmsSendJournal(boundStorage);
   throwsOn(() -> boundReloaded.existing("b0", b0), "tombstones survive reload");
   require(boundReloaded.existing("b" + (SmsSendJournal.MAX_RECORDS + 4), SmsSendJournal.sha256(SmsSendJournal.bindingText(one, "m" + (SmsSendJournal.MAX_RECORDS + 4), 3))) != null, "kept records survive reload");
 
   // No lifetime lockout and no forgotten key: beyond the tombstone bound, IDs are compacted into the
   // retired-ID filter. Every earlier ID stays refused (including after reload) and new IDs still send.
-  final String[] memory = { null };
-  SmsSendJournal.Storage storage = new SmsSendJournal.Storage() {
-   public String read() { return memory[0]; }
-   public void write(String value) { memory[0] = value; }
-  };
+  MemoryStorage storage = new MemoryStorage();
   SmsSendJournal capacity = new SmsSendJournal(storage);
   int lifetime = SmsSendJournal.MAX_RECORDS + SmsSendJournal.MAX_TOMBSTONES + 300;
   String longId = "c".repeat(120);
@@ -141,7 +144,7 @@ public final class SmsSendJournalTest {
   require(capacity.retiredCount() == 300, "oldest tombstones are compacted, not discarded");
   SmsSendJournal.Record afterLifetime = capacity.beginDispatch("overflow", one, "x", 3, new int[] { 1 }, 99999, 7);
   require(afterLifetime != null && "unknown".equals(afterLifetime.status()), "sending continues past the old lifetime capacity");
-  require(memory[0].length() < 1024 * 1024 / 2, "journal with compacted IDs stays well inside the encrypted slot");
+  require(storage.value.length() < 1024 * 1024 / 2, "journal with compacted IDs stays well inside the encrypted slot");
   SmsSendJournal capacityReloaded = new SmsSendJournal(storage);
   String xHash = SmsSendJournal.sha256(SmsSendJournal.bindingText(one, "x", 3));
   for (int i = 0; i < lifetime; i++) {
@@ -159,14 +162,15 @@ public final class SmsSendJournalTest {
   require(!capacity.ambiguousProviderOwner(afterLifetime, 0, 600000), "cancelled-only pruning keeps attribution");
 
   // A pruned dispatched record disables attribution only for records near or before it.
-  SmsSendJournal watermark = new SmsSendJournal(new File(dir, "watermark"));
+  MemoryStorage watermarkStorage = new MemoryStorage();
+  SmsSendJournal watermark = new SmsSendJournal(watermarkStorage);
   for (int i = 0; i <= SmsSendJournal.MAX_RECORDS; i++) { watermark.beginDispatch("w" + i, one, "w" + i, 3, new int[] { 1 }, 1000 + i, 7); watermark.endDispatch("w" + i, true); watermark.sentResult("w" + i, 0, true); }
   require(watermark.get("w0") == null, "dispatched record pruned");
   SmsSendJournal.Record nearPruned = watermark.get("w1");
   require(watermark.ambiguousProviderOwner(nearPruned, 0, 600000), "records within the window of a pruned send stay unknown");
   SmsSendJournal.Record later = watermark.beginDispatch("later", one, "later", 3, new int[] { 1 }, 1000 + 600000 + 10, 7);
   require(!watermark.ambiguousProviderOwner(later, 0, 600000), "records after the window attribute again");
-  require(new SmsSendJournal(new File(dir, "watermark")).ambiguousProviderOwner(nearPruned, 0, 600000), "watermark survives reload");
+  require(new SmsSendJournal(watermarkStorage).ambiguousProviderOwner(nearPruned, 0, 600000), "watermark survives reload");
   // A journal saved before the watermark existed keeps attribution off once anything was pruned.
   File legacyFile = new File(dir, "legacy");
   Files.write(legacyFile.toPath(), ("t1|old|" + xHash + "\n").getBytes("UTF-8"));
