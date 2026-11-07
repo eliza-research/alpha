@@ -12,7 +12,7 @@ const expect=baseExpect.configure({timeout:15_000});
 // ran these tests out of time under load (as in #700).
 test.use({contextOptions:{reducedMotion:'reduce'}});
 import {returnToApps} from './app-navigation';
-import {openBrowserCalendar,selectCalendarSource} from './helpers/browser-calendar';
+import {calendarUnavailable,failBrowserCalendarReads,openBrowserCalendar,restoreBrowserCalendarReads,selectCalendarSource} from './helpers/browser-calendar';
 // Daily overview contract on Home (development lane): every card names its source and when it was
 // read, shows loading/empty/error states honestly, keeps overdue reminders visible, and shows the
 // latest retained brief only when one exists. Mail and digest data here is synthetic and injected
@@ -88,23 +88,16 @@ test('a failed calendar read shows the failure with no read time, and opening Ca
  await page.addInitScript(offline);await page.goto('/');await browserCalendarHome(page);
  const card=calendarCard(page),source=card.locator('[data-alpha-home-calendar-source]');
  await expect(source).toHaveCount(0);
- await page.evaluate(async()=>{
-  const {BrowserCalendar}=await import('/src/browser/calendar.ts'),proto=BrowserCalendar.prototype as any;
-  (window as any).__calendarList=proto.list;proto.list=()=>Promise.reject(Error('Calendar storage unavailable'));
-  window.dispatchEvent(new Event('alpha:calendar-preferences'));
- });
- await expect(card).toContainText('Calendar unavailable');
+ await failBrowserCalendarReads(page);
+ await expect(card).toContainText(calendarUnavailable);
  await expect(source).toHaveText('Open Calendar to retry');
  await expect(card).not.toContainText(/This app|Read \d/);
  await expect(card).toHaveAttribute('aria-description','Calendar could not be read. Open Calendar to retry.');
  // Staying on Home does not hide the failure, and the source working again changes nothing by itself.
- await page.evaluate(async()=>{
-  const {BrowserCalendar}=await import('/src/browser/calendar.ts'),proto=BrowserCalendar.prototype as any,list=(window as any).__calendarList;
-  (window as any).__calendarReads=0;proto.list=function(...args:unknown[]){(window as any).__calendarReads++;return list.apply(this,args);};
- });
+ await restoreBrowserCalendarReads(page,{notify:false});
  await page.getByRole('textbox',{name:'Ask Alpha',exact:true}).fill('Unsent rerender');
  await page.waitForTimeout(500);
- await expect(card).toContainText('Calendar unavailable');
+ await expect(card).toContainText(calendarUnavailable);
  expect(await page.evaluate(()=>(window as any).__calendarReads)).toBe(0);
  // The route the card names: opening Calendar from it reads the calendar again.
  await card.click();
@@ -311,7 +304,8 @@ test('Inbox card never reads mail from Home and shows the account and read time 
  await page.waitForTimeout(1500);
  expect(await mailReads(page)).toEqual({reads:0,threads:0});
  await expect(card).not.toContainText(/unread|Synthetic overview subject|Read \d/);
- await expect(card).toContainText(/Open to (check|load) email|Connect email|Inbox/);
+ await expect(card).toContainText('Open to load email');
+ await expect(card).not.toContainText('Connect email');
  // The user opens Inbox: one explicit read. Home then shows that page's metadata and when it was read.
  await page.getByRole('button',{name:'Inbox',exact:true}).click();
  await expect(page.getByRole('button',{name:/Unread, Synthetic sender A/})).toBeVisible();
