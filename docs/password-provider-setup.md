@@ -63,8 +63,10 @@ Fill rules (implemented in the shared `PasswordFormPolicy`, tested on a JVM):
 
 ### Export and import
 
-Alpha registers the shared `ElizaPasswordTransfer` plugin from the reviewed upstream
-pin. Export uses Android's document picker, requires fresh authentication after the
+Developer tooling only. `MainActivity` registers the shared `ElizaPasswordTransfer`
+plugin only in builds with `ELIZA_DEV_ALLOW_TEST_MOCKS`, and the renderer has no transfer
+client otherwise, so release builds have no export or import (see the table above).
+The rest of this section describes that developer build. Export uses Android's document picker, requires fresh authentication after the
 picker returns, and asks for confirmation before writing an unencrypted CSV. The
 native implementation streams bounded rows rather than building a second full vault
 copy. A failed export warns that the selected file may still contain passwords.

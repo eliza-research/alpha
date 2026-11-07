@@ -1,5 +1,8 @@
 # Explicit standalone paired ASR
 
+> **Retired by P-42 (docs/decisions.md).** Alpha has no whisper.cpp provider; on-device
+> speech recognition runs through `libelizainference` (docs/fused-speech.md). Kept as history.
+
 The isolated local agent47846 now serves an explicitly enabled whisper.cpp
 provider through its normal authenticated HTTP host. This is separate from
 `/api/asr/local-inference`, whose fused Gemma bundle remains unavailable and
