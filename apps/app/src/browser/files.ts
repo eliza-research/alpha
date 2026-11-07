@@ -2,7 +2,7 @@ import { createBrowserFiles } from '../../../../.eliza/client-features/plugins/p
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { openSelectedDocumentViewer } from './selected-document-viewer';
 import { runFilePicker, inputFiles } from './file-picker';
-import { BrowserStorageVolume } from './storage-volume';
+import { BrowserStorageVolume } from '../../../../.eliza/client-features/plugins/plugin-files/src/browser/storage-volume.ts';
 /** Keep installed data and Alpha presentation; storage behavior belongs to plugin-files. */
 const SharedFiles = createBrowserFiles({
  databaseName: 'alpha.browser.files.v1',
@@ -20,7 +20,10 @@ export class BrowserFiles extends SharedFiles {
  async sourceReference(input:{selectionId:string}){await this.attachment(input);const id=this.sourceSelections.get(input.selectionId);if(!id||!/^[a-f0-9-]{36}$/.test(id))throw Error('Select the library file again.');return 'b1:'+id;}
  async selectSourceReference(reference:string){if(!/^b1:[a-f0-9-]{36}$/.test(reference))throw Error('Source belongs to another device or is unavailable.');return this.select({id:reference.slice(3)});}
  // Files browser (PLAN section 4): the same storage* surface as AlphaFilesPlugin, over this library.
- private readonly volume=new BrowserStorageVolume(this as any,()=>this.storageChanged());
+ private readonly volume=new BrowserStorageVolume(this as any,{
+  trashFolder: '.Trash-alpha',
+  trashKey: 'alpha.files.trash.v1',
+ },()=>this.storageChanged());
  private storageChanged(){this.notifyListeners('storageChanged',{});}
  /** Another Alpha flow saved a file here: open Files listings refresh. */
  async importFile(...args:Parameters<InstanceType<typeof SharedFiles>['importFile']>){const value=await super.importFile(...args);this.storageChanged();return value;}

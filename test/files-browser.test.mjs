@@ -5,9 +5,9 @@ const url=(code)=>'data:text/javascript;base64,'+Buffer.from(code).toString('bas
 const strip=path=>stripTypeScriptTypes(readFileSync(path,'utf8'));
 const storageUrl=url(strip('.eliza/client-features/plugins/plugin-files/src/browser/storage-model.ts'));
 const storage=await import(storageUrl);
-const volumeModule=await import(url(strip('apps/app/src/browser/storage-volume.ts').replace("from '../../../../.eliza/client-features/plugins/plugin-files/src/browser/storage-model'",`from '${storageUrl}'`)));
+const {BrowserStorageVolume}=await import('../.eliza/client-features/plugins/plugin-files/src/browser/storage-volume.ts');
 const contract=await import(url(strip('apps/app/src/runtime/files-agent-contract.ts').replace("from '../../../../.eliza/client-features/plugins/plugin-files/src/browser/storage-model'",`from '${storageUrl}'`)));
-const {BrowserStorageVolume,TRASH_FOLDER}=volumeModule;
+const TRASH_FOLDER='.Trash-alpha';
 /** The browser file library's contract (plugin-files): unique names per folder, a move or
  * rename into a used name is refused, delete only removes an empty folder. */
 function library(){
@@ -33,7 +33,7 @@ let clock=1_000_000;
 const memory=()=>{const m=new Map();return {getItem:k=>m.has(k)?m.get(k):null,setItem:(k,v)=>m.set(k,String(v))};};
 async function fresh(){
  clock=1_000_000;const lib=library(),changes=[];
- const v=new BrowserStorageVolume(lib,()=>changes.push(clock),()=>clock,memory());
+ const v=new BrowserStorageVolume(lib,{trashFolder:TRASH_FOLDER,trashKey:'alpha.files.trash.v1'},()=>changes.push(clock),()=>clock,memory());
  for(const f of ['DCIM','Documents','Download','Movies','Pictures','Recordings'])await lib.createFolder({id:'root',name:f});
  await v.createFolder('DCIM','Camera');
  v.add=async(folder,name,text='x',type)=>{const id=folder?await idOf(lib,folder):'root';await lib.importFile(new File([text],name,{type:type??storage.mimeFromName(name)}),id);};
