@@ -5,7 +5,7 @@ import {stripTypeScriptTypes} from 'node:module';
 import {createRequire} from 'node:module';
 const require=createRequire(import.meta.url);
 const {JSDOM}=require('jsdom');
-const source=stripTypeScriptTypes(fs.readFileSync(new URL('../apps/app/src/runtime/calendar-sync-settings.ts',import.meta.url),'utf8'),{mode:'transform'}).replace(/^import .*;\n/gm,'').replace('export function openCalendarSyncSettings','function openCalendarSyncSettings');
+const source=stripTypeScriptTypes(fs.readFileSync(new URL('../apps/app/src/runtime/calendar-sync-settings.ts',import.meta.url),'utf8'),{mode:'strip'}).replace(/^import .*;\n/gm,'').replace('export function openCalendarSyncSettings','function openCalendarSyncSettings');
 const settle=async()=>{await Promise.resolve();await Promise.resolve();await Promise.resolve();};
 function fixture(state={status:'Sync is off.',enabled:false,running:false},review=async()=>{throw Error('Choose a Google calendar for sync first.');},offered=[{connectionId:'connection',sourceId:'google:connection:owner%40example.test',providerCalendarId:'owner@example.test',name:'owner@example.test',account:'owner@example.test'},{connectionId:'connection',sourceId:'google:connection:team',providerCalendarId:'team',name:'Team',account:'owner@example.test'}]){
  const env=new JSDOM('<div class="os"></div><button id="prior">Calendar settings</button>',{pretendToBeVisual:true});
@@ -75,7 +75,7 @@ console.log('PASS 3 canonical sync dialog cases: same-source review/select/resum
  const settings=fs.readFileSync(new URL('../apps/app/src/prototype/settings-adapter.ts',import.meta.url),'utf8');
  const start=settings.indexOf('// calendar-settings:begin'),end=settings.indexOf('// calendar-settings:end',start);
  assert(start>=0&&end>start,'the actual Settings Calendar block must remain explicit');
- const block=stripTypeScriptTypes(settings.slice(start,end),{mode:'transform'});
+ const block=stripTypeScriptTypes(settings.slice(start,end),{mode:'strip'});
  function page({native=false,authority='canonical',status='ready',grants=[],gmail='',display={},transition=false,choices=false,scopeAvailable=true}={}){
   const calls={pages:[],connects:[],transition:0,recovery:0,returned:0,retry:0};
   const scope={owner:'synthetic-calendar-scope'},state={page:'calendar'},page={groups:[]},out={stack:[]};

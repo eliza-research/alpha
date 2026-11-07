@@ -584,6 +584,7 @@ public final class AlphaLocalAgentPlugin extends Plugin {
  static boolean shutdownRetryRequired(){
   if(uncertainCommitRequest>=0)return true;
   return !((credentialShutdownRequest==-1&&!stopping)||(credentialShutdownRequest>=0&&ElizaAgentService.isCredentialShutdownConfirmed(credentialShutdownRequest)));
+ }
  /** Caller holds lifecycleLock. Sends a fresh strict stop for a retained credential shutdown.
   * Retain the exact request even if Android dispatch throws. It commits nothing; abandonment
   * keeps starts fenced until this request's actual stop ACK. */

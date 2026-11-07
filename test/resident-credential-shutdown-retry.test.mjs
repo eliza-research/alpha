@@ -136,6 +136,9 @@ public class StopReissueHarness {
  static class JSObject {String state;JSObject(){}JSObject(String json){}JSObject put(String key,Object value){if("state".equals(key))state=String.valueOf(value);return this;}}
  static class PluginCall {JSObject resolved;int rejected;void resolve(JSObject value){resolved=value;}void reject(String message){rejected++;}}
  static class AlphaCanonicalNotifications {static void forget(Context context){}}
+ // getStatus reads boot state on the plugin's worker; the harness runs that work inline.
+ static class PluginWorkers {static void submit(Object workers,Runnable task,Runnable closed){task.run();}}
+ final Object workers=new Object();
  static class ElizaAgentService {
   static CredentialShutdownLease lease=new CredentialShutdownLease();static boolean siblingAlive=true;static int strictStops,plainStops,starts;
   static long reserveCredentialShutdown(){return lease.acquire();}

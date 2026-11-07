@@ -153,15 +153,16 @@ test('a resident start ends with its operation in one update, so setup behind it
 
 test('a background rebind keeps access setup open; a foreground operation holds it',async()=>{
   const {startupPermissionsActive}=await import('../apps/app/src/startup-permission-flow.ts');
-  const work=stripTypeScriptTypes(between(ui,'async function work(','/** Start (or restart) the resident.'),{mode:'transform'});
+  const work=stripTypeScriptTypes(between(ui,'async function work(','/** Start (or restart) the resident.'),{mode:'strip'});
   for(const background of [true,false]){
     const seen=[],state={cloudAccount:{userId:'owner'},signIn:null,busy:false,open:false,residentStarting:false,error:'',message:''};
     const box={state,AbortController,active:null,cloud:{},testMocksEnabled:false,
       update:patch=>{Object.assign(state,patch);seen.push(startupPermissionsActive(state));},
-      residentRecoveryReason:()=>null,errorMessage:error=>error.message,expired:()=>false,residentCloudFlow:()=>true,runQueuedResidentRebind:()=>{},runQueuedSignInReturn:()=>{}};
-    vm.createContext(box);vm.runInContext('var operation=null,residentStartInBackground=false,signInReadinessOwner=null;\n'+work+';globalThis.run=work;',box);
+      residentRecoveryReason:()=>null,errorMessage:error=>error.message,errorKindOf:()=>null,expired:()=>false,residentCloudFlow:()=>true,runQueuedResidentRebind:()=>{},runQueuedSignInReturn:()=>{}};
+    vm.createContext(box);vm.runInContext('var operation=null,planRecheck=null,residentStartInBackground=false,signInReadinessOwner=null;\n'+work+';globalThis.run=work;',box);
     await box.run('Reconnecting your agent…',async()=>{await new Promise(resolve=>setTimeout(resolve,5));},background);
-    assert.deepEqual(seen,background?[true,true]:[false,true]);
+    // The finally update and releaseOperation each publish; setup stays open after the start.
+    assert.deepEqual(seen,background?[true,true,true]:[false,true,true]);
     assert.equal(state.backgroundWork,false);
   }
 });

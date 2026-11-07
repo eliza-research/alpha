@@ -87,7 +87,7 @@ test('the local agent host bridge is unavailable without test mocks',async()=>{
  try{
   const local=await load(false,'runtime/local-agent.ts'),storage=await load(false,'runtime/local-agent-storage.ts');
   assert.equal(local.browserLocalAgentEnabled,false);
-  await assert.rejects(new local.LocalAgentProtocol().connect(new AbortController().signal),/unavailable here/);
+  await assert.rejects(new local.LocalAgentProtocol().connect(new AbortController().signal),/runs on your phone, not here/);
   await assert.rejects(storage.developmentDeviceStore.read('slot'),/unavailable here/);
   assert.deepEqual(calls,[],'no request reaches /__alpha-local-agent');
  }finally{globalThis.fetch=fetch;}

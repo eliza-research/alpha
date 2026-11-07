@@ -7,7 +7,7 @@ const ui=source.slice(source.indexOf('  function hideAccess()'),source.indexOf('
 const lifecycle=source.slice(source.indexOf('  // A start in flight is shared'),source.indexOf('  /** The session\'s recordingSaved hook'));
 const sessionSource=fs.readFileSync(new URL('../.eliza/client-features/plugins/plugin-native-camera/src/session.ts',import.meta.url),'utf8');
 const hostPorts=fs.readFileSync(new URL('../.eliza/client-features/plugins/plugin-native-camera/src/host-ports.ts',import.meta.url),'utf8');
-const shared=stripTypeScriptTypes((hostPorts+sessionSource).replace(/^import[^;]*;$/gm,'').replace(/^export /gm,''),{mode:'transform'});
+const shared=stripTypeScriptTypes((hostPorts+sessionSource).replace(/^import[^;]*;$/gm,'').replace(/^export /gm,''),{mode:'strip'});
 const settle=async()=>{for(let i=0;i<8;i++)await Promise.resolve();};
 function fixture(permission=false){
  const env=new JSDOM('<div data-alpha-camera-root data-alpha-layer><button aria-label="Viewfinder. Tap to focus, hold to ask Alpha, swipe to change mode"></button></div>');const timers=new Map();let timerId=0;
@@ -16,7 +16,7 @@ function fixture(permission=false){
  const camera={startPreview:async()=>{calls.starts++;if(failed)throw permission?Object.assign(Error('Camera permission denied'),{code:'CAMERA_PERMISSION_DENIED'}):Error('Camera in use');},stopPreview:async()=>{}};
  const context=vm.createContext({window:env.window,document:env.window.document,console,camera,mask:enable=>calls.masked=enable,active:()=>true,Capacitor:{isPluginAvailable:()=>true}});
  const prelude=`let accessPanel,disposed=false,direction='back',flash=false;const browserMode=true;const finder='[aria-label="Viewfinder. Tap to focus, hold to ask Alpha, swipe to change mode"]';let state={said:''};const api={set:patch=>Object.assign(state,patch),get:()=>state};const session=createCameraSession({camera,active,available:()=>true,preview:()=>({direction}),recording:()=>({})});`;
- vm.runInContext(shared+stripTypeScriptTypes(prelude+ui+lifecycle+`;globalThis.testCamera={start,control,flip:zooms=>flipCamera(api,zooms),setFlash:on=>{flash=on;},direction:()=>direction,state:()=>({phase:session.phase,denied:session.denied,said:state.said,flash:state.flash,zoom:state.zoom,front:state.front})};`,{mode:'transform'}),context);
+ vm.runInContext(shared+stripTypeScriptTypes(prelude+ui+lifecycle+`;globalThis.testCamera={start,control,flip:zooms=>flipCamera(api,zooms),setFlash:on=>{flash=on;},direction:()=>direction,state:()=>({phase:session.phase,denied:session.denied,said:state.said,flash:state.flash,zoom:state.zoom,front:state.front})};`,{mode:'strip'}),context);
  return {env,timers,calls,camera,api:context.testCamera,state:vm.runInContext('state',context),recover:()=>failed=false};
 }
 {

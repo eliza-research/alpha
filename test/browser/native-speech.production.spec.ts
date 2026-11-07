@@ -49,7 +49,7 @@ test('Maps local speech adapter cancels owned guidance and refuses local-unready
  // Evaluate the unchanged production adapter and shared guidance state machine in the
  // browser, injecting only their voice port. The full Maps UI/provider is outside this test.
  const {readFileSync}=await import('node:fs');const {stripTypeScriptTypes}=await import('node:module');
- const source=(path:string)=>stripTypeScriptTypes(readFileSync(path,'utf8').replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'transform'});
+ const source=(path:string)=>stripTypeScriptTypes(readFileSync(path,'utf8').replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'strip'});
  const shared=source('.eliza/client-features/plugins/plugin-maps/src/client/navigation-voice.ts').replace('class NavigationVoice','class SharedNavigationVoice');
  const adapter=source('apps/app/src/maps/navigation-voice.ts');
  await page.evaluate(`(()=>{let ready=true;const f=window.mapsVoice={spoken:[],aborted:0,failed:0,setReady:value=>ready=value};const createOnDeviceVoice=()=>({ready:async()=>{throw Error("navigation speech must not use transcription readiness");},playbackReady:async()=>ready,speak:(text,signal)=>{f.spoken.push(text);return new Promise((resolve,reject)=>signal.addEventListener('abort',()=>{f.aborted++;reject(signal.reason);},{once:true}));}});${shared}\n${adapter}\nf.voice=new NavigationVoice(()=>f.failed++);f.voice.update('step-1','Turn right');})()`);

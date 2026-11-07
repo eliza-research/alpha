@@ -44,7 +44,7 @@ test('reconnects retire the session while busy, and the notice owner update carr
  // The real controller marks the connection busy before Continue / Check plan again / pairing
  // retires the session; the coordinator (tested directly) defers a null owner until it settles.
  const controller=readFileSync('apps/app/src/runtime/connection-ui.tsx','utf8'),adapter=readFileSync('apps/app/src/prototype/workflow-adapter.ts','utf8');
- assert.match(controller,/update\(\{ busy: true, \.\.\.\(background \? \{\} : \{ open: true \}\), message, error: preserveError \? state\.error : '' \}\);\s*try \{ await action\(controller\.signal\); \}/);
+ assert.match(controller,/update\(\{ busy: true, backgroundWork: background, \.\.\.\(background \? \{\} : \{ open: true \}\), message, error: preserveError \? state\.error : '' \}\);\s*try \{ await action\(controller\.signal\); \}/);
  assert.match(controller,/async startLocal\(\) \{ if\(state\.residentRecoveryReason\)\{update\(\{open:true,purpose:'agent',error:residentRecoveryMessage\(state\.residentRecoveryReason\)\}\);return;\} if \(residentAlwaysPresent\) \{ if \(!operation\) \{ retire\(\); await startResident\('Starting the local agent…', false\); \} return; \} await work\('Starting the local agent…', signal => \{ retire\(\);/);
  assert.match(adapter,/startupResolved:connectionController\.getSnapshot\(\)\.startupResolved,busy:connectionController\.getSnapshot\(\)\.busy\}\)/);
 });

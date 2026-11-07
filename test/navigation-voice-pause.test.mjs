@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './fixtures/ts-source.mjs';
 import vm from 'node:vm';
 const tick=()=>new Promise(resolve=>setTimeout(resolve,0));
-const load=(box,file,names)=>{let src=readFileSync(file,'utf8').replace(/^import [\s\S]*?;\n/gm,'').replace(/^export /gm,'');src=stripTypeScriptTypes(src,{mode:'transform'});vm.runInNewContext('{'+src+';Object.assign(globalThis,{'+names+'});}',box);};
+const load=(box,file,names)=>{let src=readFileSync(file,'utf8').replace(/^import [\s\S]*?;\n/gm,'').replace(/^export /gm,'');src=stripTypeScriptTypes(src,{mode:'strip'});vm.runInNewContext('{'+src+';Object.assign(globalThis,{'+names+'});}',box);};
 // The real Alpha wrapper, shared NavigationVoice and createOnDeviceVoice over a stubbed native bridge.
 function fixture({ready=true,cloud=false,hold=false}={}){
  const f={spoken:[],cloud:[],failed:[],listeners:{}};

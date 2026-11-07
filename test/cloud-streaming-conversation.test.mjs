@@ -110,6 +110,9 @@ test('the batch fallback after a missing streaming route shows no stale error',a
   const view=f.renderChat();
   assert.equal(f.starts,1,'the recorded-clip loop took over');
   assert.notEqual(view.state,'error');assert.doesNotMatch(JSON.stringify(view.lines),/Voice stopped/);
+ }finally{f.close();await f.clock.flush();}
+});
+
 async function speakTurn(f,text,at=0){
  const h=f.getHandlers();h.onSpeechStart(at);h.onSpeechEnd(at+20);h.onSegment(text);
  await f.clock.advance(0);await f.clock.flush();
