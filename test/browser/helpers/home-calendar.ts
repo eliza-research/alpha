@@ -1,9 +1,11 @@
 import {expect,type Page} from '@playwright/test';
+import {preloadPageModules} from './page-modules';
 
 export type HomeCalendarEvent={title:string;startAt:string;endAt:string;isAllDay?:boolean};
 /** Read-only CalendarService fixture. Home never substitutes browser Calendar records. */
 export async function installHomeCalendar(page:Page,event:HomeCalendarEvent|null=null){
  await expect(page.getByRole('button',{name:'Calendar',exact:true})).toBeVisible();
+ await preloadPageModules(page,['/src/runtime/connection-ui.tsx']);
  await page.evaluate(async input=>{
   const {connectionController}=await import('/src/runtime/connection-ui.tsx');
   const identity={ownerId:'home-calendar-owner',agentId:'home-calendar-agent',sessionId:'home-calendar-session',origin:location.origin};
