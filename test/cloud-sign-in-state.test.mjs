@@ -70,6 +70,21 @@ test('actual OTP form clears only when the attempt or verification stage changes
   assert.equal(document.querySelector('[name="one-time-code"]'),null,'cancel leaves no code input');
 }));
 
+test('own-key alternate stays mounted through pending checks and rejection when Cloud is not ready',async()=>panel(async({document,render})=>{
+  const alternate=React.createElement('form',{'aria-label':'Own API keys'},React.createElement('input',{type:'password','aria-label':'Fixture key'}));
+  await render({view:choose,ready:false,unavailable:true,alternate,busy:false});
+  const input=document.querySelector('input');input.value='synthetic-form-value';
+  for(const next of [{busy:true,unavailable:false,probing:false},{busy:true,probing:true},{busy:false,probing:false,unavailable:true,error:'Key rejected'}]){
+    await render(next);
+    assert.equal(document.querySelector('input')===input,true,'readiness must not remount the explicit own-key form');
+    assert.equal(input.value==='synthetic-form-value',true,'entered values remain in their original fields');
+    assert.equal(document.querySelector('.alpha-auth-loading'),null);
+  }
+  await render({alternate:undefined,busy:true,probing:true,unavailable:false});
+  assert.equal(document.querySelector('input'),null,'leaving own keys removes its inputs');
+  assert.ok(document.querySelector('.alpha-auth-loading'),'ordinary Cloud readiness still uses its blank loading state');
+}));
+
 test('mandatory chooser omits inert Back and distinguishes readiness from an email request',async()=>panel(async({document,window,render})=>{
   const buttons=()=>[...document.querySelectorAll('button')].map(button=>button.textContent);
   // The automatic readiness check is not an attempt the owner started: nothing to go Back from.

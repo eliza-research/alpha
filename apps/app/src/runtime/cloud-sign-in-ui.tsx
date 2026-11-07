@@ -48,7 +48,7 @@ export function CloudSignInPanel({ view, busy, google, phone, emailEnabled = tru
   const [method, setMethod] = useState<'email' | 'phone' | null>(null);
   const choose = view.step === 'choose' ? view : null;
   const showPhone = !!phone && (!emailEnabled || (method ?? (choose?.phone && !choose.email ? 'phone' : 'email')) === 'phone');
-  const checking = view.step === 'choose' && (probing || (!ready && !unavailable));
+  const checking = view.step === 'choose' && !alternate && (probing || (!ready && !unavailable));
   // Resend becomes available when the host's cooldown ends; the countdown is the only timer.
   useEffect(() => {
     if (view.step !== 'code') return;
