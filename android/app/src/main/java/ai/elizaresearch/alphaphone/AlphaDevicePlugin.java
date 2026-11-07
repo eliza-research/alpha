@@ -276,6 +276,10 @@ public final class AlphaDevicePlugin extends Plugin {
    }
   }
   static void committing(String id)throws Exception{store().committing(id);}
+  static boolean binds(ai.eliza.plugins.agent.updater.RuntimeUpdatePause.Record record,PackageInstaller.SessionInfo session){
+   String expected="alpha-update://"+context.getPackageName()+"/"+record.targetCode+"/"+record.targetDigest+"/"+record.signer+"/"+record.boot+"/intent";
+   return session!=null&&expected.equals(String.valueOf(session.getReferrerUri()));
+  }
   /** Returns only a proven settled owner. It never starts the runtime or retains a provider credential. */
   static ai.eliza.plugins.agent.updater.RuntimeUpdatePause.Record reconcile()throws Exception {
    var record=store().read();if(record==null||record.id.equals(liveOwner))return null;
@@ -284,11 +288,9 @@ public final class AlphaDevicePlugin extends Plugin {
    var observation=ai.eliza.plugins.agent.updater.RuntimeUpdatePause.Session.PENDING;
    if(session==null)observation=ai.eliza.plugins.agent.updater.RuntimeUpdatePause.Session.ABSENT;
    else {
-    String expected="alpha-update://"+context.getPackageName()+"/"+record.targetCode+"/"+record.targetDigest+"/"+record.signer+"/"+record.boot+"/intent";
-    boolean bound=expected.equals(String.valueOf(session.getReferrerUri()));
     int boot=Settings.Global.getInt(context.getContentResolver(),Settings.Global.BOOT_COUNT);
     // PAUSING was durably written before any commit intent. COMMITTING retains the existing Android ordering proof.
-    boolean uncommitted=bound&&!session.isSealed()&&(!record.committing||record.boot!=boot||"REL".equals(Build.VERSION.CODENAME)&&(Build.VERSION.SDK_INT<=30||Build.VERSION.SDK_INT>=33&&Build.VERSION.SDK_INT<=37)&&session.getProgress()==0f);
+    boolean uncommitted=binds(record,session)&&!session.isSealed()&&(!record.committing||record.boot!=boot||"REL".equals(Build.VERSION.CODENAME)&&(Build.VERSION.SDK_INT<=30||Build.VERSION.SDK_INT>=33&&Build.VERSION.SDK_INT<=37)&&session.getProgress()==0f);
     if(uncommitted)observation=ai.eliza.plugins.agent.updater.RuntimeUpdatePause.Session.PROVEN_UNCOMMITTED;
    }
    // A stop that timed out in this process does not become success just because its install was abandoned.
@@ -362,7 +364,15 @@ public final class AlphaDevicePlugin extends Plugin {
    if(pending!=null)return preparation(pending).put("pending",true);
    var record=UpdatePause.store().read();
    JSObject result=new JSObject().put("bridgeId",updateBridgeId).put("pending",record!=null);
-   if(record!=null)result.put("activationId",record.id).put("phase","paused");
+   if(record!=null){
+    Intent confirm=record.session==updateSession?updateConfirm:null;
+    boolean canContinue=false;
+    if(record.committing&&confirm!=null&&record.boot==updateBoot()){
+     var session=getContext().getPackageManager().getPackageInstaller().getSessionInfo(record.session);
+     canContinue=UpdatePause.binds(record,session)&&!pastConfirmation(session,confirm);
+    }
+    result.put("activationId",record.id).put("phase","paused").put("canContinue",canContinue);
+   }
    else if(settledActivation!=null)result.put("activationId",settledActivation).put("outcome",settledOutcome);
    return result;
   }
@@ -421,6 +431,33 @@ public final class AlphaDevicePlugin extends Plugin {
   */
  private static boolean pastConfirmation(PackageInstaller.SessionInfo session,Intent confirm){
   return session==null||session.getProgress()>0.8f||session.isActive()&&!"android.content.pm.action.CONFIRM_DEVELOPER_VERIFICATION".equals(confirm.getAction());
+ }
+ /** Reopens only Android's kept confirmation, using the same session and timing fence as the Settings tap. */
+ private void reopenUpdateConfirmation(PackageInstaller.SessionInfo pending){
+  Intent confirm=pending.getSessionId()==updateSession?updateConfirm:null;
+  AlphaDevicePlugin owner=updateOwner;
+  long asked=updateAsked;
+  // Leave time for a queued accept, an activity not yet covering Alpha, or a status in flight.
+  if(confirm!=null&&!pastConfirmation(pending,confirm)&&(asked==0||System.nanoTime()-asked>=java.util.concurrent.TimeUnit.SECONDS.toNanos(3))&&(!updateOpen||owner==null||owner.inFront())&&(!updateDue||owner==this)){
+   updateOwner=this;updateOpen=false;updateDue=true;
+   getActivity().runOnUiThread(()->{if(inFront())confirmUpdate();});
+  }
+ }
+ /** A newly opened WebView can reach the already-staged update without mounting editors or downloading again. */
+ @PluginMethod public void continueUpdate(PluginCall call){
+  PluginWorkers.submit(updateWorker,()->{
+   if(!updating.compareAndSet(false,true)){call.resolve();return;}
+   try{
+    var record=UpdatePause.store().read();
+    if(record==null||!record.committing||!record.id.equals(call.getString("activationId"))||!updateBridgeId.equals(call.getString("bridgeId"))||record.boot!=updateBoot()||!record.signer.equals(appSigner(getContext())))throw new java.io.IOException("Update confirmation unavailable");
+    var pending=getContext().getPackageManager().getPackageInstaller().getSessionInfo(record.session);
+    if(!UpdatePause.binds(record,pending))throw new java.io.IOException("Update confirmation unavailable");
+    throwIfDestroyed();
+    reopenUpdateConfirmation(pending);
+    call.resolve();
+   }catch(Exception unavailable){call.reject("Update confirmation unavailable");}
+   finally{updating.set(false);}
+  },()->call.reject("Update confirmation unavailable"));
  }
  /** Opens the kept confirmation once, never over one still open, on the main thread like updateStatus and handleOnResume. */
  private void confirmUpdate(){
@@ -538,14 +575,7 @@ public final class AlphaDevicePlugin extends Plugin {
      }
      if(pending!=null){
       throwIfDestroyed();
-      Intent confirm=pending.getSessionId()==updateSession?updateConfirm:null;
-      AlphaDevicePlugin owner=updateOwner;
-      long asked=updateAsked;
-      // A kept confirmation opens again, the one thing a tap does here, unless Android is past asking; for three seconds after
-      // Alpha's last exchange with it, which spares a status in flight, a start not yet covering Alpha (Android allows a pause
-      // 500 ms) and, usually, an accept not yet listed, which waits for Android's one install thread; while a confirmation may
-      // be up behind its owner; and while another bridge owes the one it kept. A start Android dropped frees itself.
-      if(confirm!=null&&!pastConfirmation(pending,confirm)&&(asked==0||System.nanoTime()-asked>=java.util.concurrent.TimeUnit.SECONDS.toNanos(3))&&(!updateOpen||owner==null||owner.inFront())&&(!updateDue||owner==this)){updateOwner=this;updateOpen=false;updateDue=true;getActivity().runOnUiThread(()->{if(inFront())confirmUpdate();});}
+      reopenUpdateConfirmation(pending);
      }else{
       if(UpdatePause.store().read()!=null)throw new java.io.IOException("Update outcome is pending");
       long deadline=System.nanoTime()+UPDATE_DEADLINE_NANOS;

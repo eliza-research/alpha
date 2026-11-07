@@ -16,7 +16,7 @@ async function nativeStub(page: Page, stub: Stub) {
       DailyApps: ['surfaceInfo', 'requestPermissions', 'closeAssistant'],
       AlphaNotifications: ['status', 'list'],
       AlphaVoiceCloud: ['checkPermissions', 'requestPermissions'],
-      AlphaDevice: ['openSettings', ...(stub.update ? ['updateState','activateUpdate'] : [])],
+      AlphaDevice: ['openSettings', ...(stub.update ? ['updateState','activateUpdate','continueUpdate'] : [])],
     };
     if (stub.update) w.updateState = {...stub.update,pending:true,phase:'preparing'};
     const answer = (plugin: string, method: string, options: any) => {
@@ -54,6 +54,14 @@ test('a new Android WebView holds Home until its update settles', async ({page})
   await expect.poll(() => calls(page,'AlphaDevice','activateUpdate')).toEqual([{...update,ready:true}]);
   await expect(page.getByRole('button',{name:'Settings',exact:true})).toHaveCount(0);
   expect(await calls(page,'ElizaSystem','getBuildInfo')).toEqual([]);
+  await expect(page.getByRole('button',{name:'Continue update'})).toHaveCount(0);
+  await page.evaluate(() => {
+    const w = window as any;
+    w.updateState = {...w.updateState,phase:'paused',canContinue:true};
+  });
+  await page.getByRole('button',{name:'Continue update'}).click();
+  expect(await calls(page,'AlphaDevice','continueUpdate')).toEqual([update]);
+  await expect(page.getByRole('button',{name:'Settings',exact:true})).toHaveCount(0);
   await page.evaluate(() => {
     const w = window as any;
     w.updateState = {...w.updateState,pending:false,outcome:'canceled'};

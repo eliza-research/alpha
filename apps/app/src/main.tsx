@@ -6,7 +6,7 @@ import {installCanonicalCalendarDrafts} from './prototype/canonical-calendar-dra
 import {installAgentCalendarAdapter,deviceCalendarScope} from './prototype/agent-calendar-adapter';
 import {Capacitor} from '@capacitor/core';
 import {registerPlugin} from './platform-plugins';
-import {supportsAppUpdateStartup,waitForAppUpdateStartup} from './runtime/app-update-startup';
+import {holdAppUpdateStartup,supportsAppUpdateStartup} from './runtime/app-update-startup';
 import {ownerReminderNotifications} from './runtime/owner-reminder-notification-port';
 import {installCalendarApprovalAdapter} from './prototype/calendar-approval-adapter';
 import {bindBrowserDeletionOwner} from './runtime/deletion-owner';
@@ -303,8 +303,8 @@ async function applyDeviceLocale() {
 async function mountPhone() {
   const capacitor = Capacitor as typeof Capacitor & {PluginHeaders?:unknown};
   if (isAndroid && supportsAppUpdateStartup(capacitor.PluginHeaders)) {
-    const device = registerPlugin<Parameters<typeof waitForAppUpdateStartup>[0]>('AlphaDevice');
-    await waitForAppUpdateStartup(device);
+    const device = registerPlugin<Parameters<typeof holdAppUpdateStartup>[0]>('AlphaDevice');
+    await holdAppUpdateStartup(device, document.getElementById('root')!);
   }
   // Android owns its system bars; browser defaults to the standalone app.
   launcherPresentation = isAndroid
