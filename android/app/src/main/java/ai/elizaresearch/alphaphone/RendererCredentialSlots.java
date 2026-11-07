@@ -17,7 +17,9 @@ final class RendererCredentialSlots {
   // In-app Cloud sign-in: the pending Google PKCE record and the key acknowledgement receipt.
   "cloud-signin", "google-workspace-return",
   // Physical deployment slots are native-owned. Renderer calls must use logical names.
-  "cloud-deployment"
+  "cloud-deployment",
+  // SMS send ledger and per-operation records: AlphaTelephony owns them.
+  "sms-send-ledger", "alpha-sms-operation"
  };
  /** Full-match patterns of the draft and pending-action slots that admit compare-and-exchange. */
  private static final String[] COMPARE_EXCHANGE = {
