@@ -1037,3 +1037,16 @@ test('a committed public Google attempt retains its delayed cancel outcome while
   assert.equal(f.cancellations.length,1);
  }finally{f.close();await Promise.allSettled([a,b,cancellingA].filter(Boolean));}
 });
+
+test('Cloud tiles use the existing account fence and a scoped GET allowance identity',async()=>{
+ const f=await fixture();try{
+  f.setResponse(async()=>Response.json({encoding:'base64',contentType:'image/png',data:'iVBORw=='}));
+  const key=randomUUID(),base={url:'https://api.eliza.app/api/v1/maps/tiles/2/1/3',method:'GET',credentialReference:reference,headers:{'Idempotency-Key':key}};
+  const call=change=>f.rpc({operation:'request',environment:'production',requestId:randomUUID(),input:{...base,...change}});
+  const result=await call({});assert.equal(result.status,200);assert.equal(result.data.data.data,'iVBORw==');
+  assert.equal(new Headers(f.calls.at(-1).input.headers).get('Idempotency-Key'),key);
+  const count=f.calls.length;
+  for(const change of [{url:base.url+'?key=x'},{url:'https://api.eliza.app/api/v1/maps/tiles/2/4/0'},{body:'{}'},{method:'POST'},{headers:{}},{headers:{'Idempotency-Key':key,Authorization:'Bearer unowned'}}])assert.notEqual((await call(change)).status,200);
+  assert.equal(f.calls.length,count,'refused tile requests never reach Cloud');
+ }finally{await f.close();}
+});

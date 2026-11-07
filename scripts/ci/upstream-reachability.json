@@ -2,13 +2,13 @@
   "schema": 1,
   "repository": "elizaOS/eliza",
   "base": "develop",
-  "baseCommit": "c35106fb14003a5a85e9793dabcf047118cc09e0",
-  "head": "4c651368721fe6ef6df7720329a5e35f132aef05",
-  "recordedAt": "2026-11-06",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...4c651368721fe6ef6df7720329a5e35f132aef05",
+  "baseCommit": "a38f9caf556722308e8fe0e4643dac7d4336a2ae",
+  "head": "3c76d07819b253b3c8f071f84ec7e6a5374a9a66",
+  "recordedAt": "2026-11-07",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...3c76d07819b253b3c8f071f84ec7e6a5374a9a66",
   "status": "diverged",
-  "aheadBy": 2,
-  "behindBy": 80,
+  "aheadBy": 4,
+  "behindBy": 87,
   "mergeBase": "0594fc72da4450a84a986ad12e730e3faa902018",
   "pinOnlyCommits": [
     {
@@ -18,6 +18,14 @@
     {
       "sha": "4c651368721fe6ef6df7720329a5e35f132aef05",
       "subject": "Admit explicit Cloud APK profiles only with exact voice evidence"
+    },
+    {
+      "sha": "130821d04f69c30af48c753f615cc429a6b9eb09",
+      "subject": "Integrate reviewed Google raster client and scoped native tile routes"
+    },
+    {
+      "sha": "3c76d07819b253b3c8f071f84ec7e6a5374a9a66",
+      "subject": "Keep voice reply drafting notes out of visible text"
     }
   ],
   "pullRequests": []
