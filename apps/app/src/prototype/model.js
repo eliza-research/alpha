@@ -2864,7 +2864,13 @@ function notesFind(list, id) { for (var i = 0; i < list.length; i++) if (list[i]
 function notesUpd(api, id, patch) {
   if (api.canonicalNotes) return api.canonicalNotes.update(id, patch);
   var s = api.get("notes");
-  var list = s.list.map(function (n) { return n.id === id ? Object.assign({}, n, typeof patch === "function" ? patch(n) : patch) : n; });
+  var list = s.list.map(function (n) {
+    if (n.id !== id) return n;
+    var next = Object.assign({}, n, typeof patch === "function" ? patch(n) : patch);
+    // An edit to the content is a modification (the list is newest first); pinning or a folder move is not.
+    if (["title", "body", "items", "lines"].some(function (k) { return next[k] !== n[k]; })) next.modifiedAt = Date.now();
+    return next;
+  });
   var change = { list: list };
   if (s.blankCreationId === id && !notesEmpty(notesFind(list, id))) change.blankCreationId = null;
   return api.set(change);
@@ -2967,7 +2973,8 @@ function notesNew(api, kind) {
   var id = "n" + Date.now(), st0 = api.get("notes");
   var inFolder = notesFolderOf({ folderId: st0.folder }, st0.folders);
   if (api.canonicalNotes) { void api.canonicalNotes.create(kind, inFolder); api.set({ compose: false, q: null }); return; }
-  var n = kind === "list" ? { id: id, kind: "list", title: "", items: [], pinned: false, when: "Now" } : { id: id, kind: "text", title: "", body: "", pinned: false, when: "Now" };
+  var now = Date.now();
+  var n = kind === "list" ? { id: id, kind: "list", title: "", items: [], pinned: false, when: "Now", createdAt: now, modifiedAt: now } : { id: id, kind: "text", title: "", body: "", pinned: false, when: "Now", createdAt: now, modifiedAt: now };
   if (inFolder) n.folderId = inFolder;
   var leave = notesLeave(api, id);
   api.set(Object.assign(leave, { list: [n].concat(leave.list || api.get("notes").list), blankCreationId: id, compose: false, q: null }));
@@ -3042,7 +3049,7 @@ registerView("notes", {
     if (m && m[1].trim()) {
       var text = m[1].trim().replace(/\.$/, ""); var id = "n" + Date.now();
       var title = text.length <= 44 ? cap(text) : cap(text.split(/\s+/).slice(0, 5).join(" ")) + "…";
-      var note = { id: id, kind: "text", title: title, body: text.length <= 44 ? "" : cap(text) + ".", pinned: false, when: "Now" };
+      var note = { id: id, kind: "text", title: title, body: text.length <= 44 ? "" : cap(text) + ".", pinned: false, when: "Now", createdAt: Date.now(), modifiedAt: Date.now() };
       return { text: /^\s*remember/i.test(raw) ? "I'll remember. It's in Notes." : "Saved to Notes.", card: { type: "note", body: cap(text), go: { view: "notes", patch: { open: id } } },
         then: function () { var s = api.get("notes"); api.set({ list: [note].concat(s.list) }); } };
     }

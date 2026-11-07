@@ -88,7 +88,9 @@ export class BrowserStorageVolume {
     return {path: joinPath(folder, free)};
   }
   async rename(path: string, name: string): Promise<{path: string}> {
-    const from = validPath(path), clean = validName(name), row = await this.entry(from);
+    const from = validPath(path), clean = validName(name);
+    if (clean.startsWith('.')) throw Error('Invalid name');
+    const row = await this.entry(from);
     if (!row) throw new Missing();
     if (clean === row.name) return {path: from};
     if ((await this.children(row.parentId)).some(e => e.id !== row.id && e.name.toLowerCase() === clean.toLowerCase())) throw new Exists();
@@ -203,6 +205,8 @@ export class BrowserStorageVolume {
   /** Permanent deletion, only after the owner confirmed it. */
   async emptyTrash(ids: string[] | undefined, confirmed: boolean): Promise<Status & {count?: number}> {
     if (!confirmed) return {status: 'confirmation-required', message: 'Confirm before deleting permanently.'};
+    // Only the confirmed items: something trashed after the confirmation is not deleted.
+    if (!Array.isArray(ids) || !ids.length) return {status: 'invalid', message: 'Invalid name or path.'};
     const trashId = await this.existingTrashId(), records = this.records();
     let count = 0;
     for (const row of trashId ? await this.children(trashId) : []) {

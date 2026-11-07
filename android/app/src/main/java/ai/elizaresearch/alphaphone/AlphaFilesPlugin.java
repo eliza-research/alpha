@@ -108,11 +108,16 @@ public class AlphaFilesPlugin extends Plugin {
   for(StorageBrowser.Row r:rows){if(n++>=StorageBrowser.LIST_MAX)break;entries.put(row(r));}
   JSObject out=new JSObject();out.put("entries",entries);out.put("truncated",rows.size()>StorageBrowser.LIST_MAX);return out;
  });}
- @PluginMethod public void storageCategory(PluginCall call){storage(call,b->{JSObject out=new JSObject();out.put("entries",StorageCatalog.category(resolver(),call.getString("category","")));return out;});}
+ @PluginMethod public void storageCategory(PluginCall call){storage(call,b->StorageCatalog.category(resolver(),primaryBrowser(),call.getString("category","")));}
+ /** Categories are on the primary volume whichever volume the call named. */
+ private StorageBrowser primaryBrowser(){StorageCatalog.Volume v=StorageCatalog.volume(getContext(),"primary");return new StorageBrowser(v==null?android.os.Environment.getExternalStorageDirectory():v.directory);}
  /** Candidates for the agent's read-only filter; the renderer applies the exact rules. */
  @PluginMethod public void storageQuery(PluginCall call){storage(call,b->{
-  Double from=call.getDouble("from"),to=call.getDouble("to");
-  JSObject out=new JSObject();out.put("entries",StorageCatalog.query(resolver(),call.getString("text"),call.getString("mimePrefix"),call.getString("folder"),from==null?0:from.longValue(),to==null?0:to.longValue()));return out;
+  Double from=call.getDouble("from"),to=call.getDouble("to");long since=from==null?0:from.longValue(),until=to==null?0:to.longValue();
+  JSObject out=new JSObject();
+  // MediaStore has no folder rows to query, so the folder kind walks the tree.
+  if(Boolean.TRUE.equals(call.getBoolean("folders",false))){JSArray rows=new JSArray();for(StorageBrowser.Row r:primaryBrowser().folders(call.getString("folder",""),call.getString("text"),since,until,StorageCatalog.QUERY_MAX,StorageBrowser.WALK_MAX))rows.put(row(r));out.put("entries",rows);return out;}
+  out.put("entries",StorageCatalog.query(resolver(),call.getString("text"),call.getString("mimePrefix"),Boolean.TRUE.equals(call.getBoolean("documents",false)),call.getString("folder"),since,until));return out;
  });}
  @PluginMethod public void storageTransfer(PluginCall call){storage(call,b->{
   List<String> paths=strings(call,"paths",StorageBrowser.BATCH_MAX);boolean copy=Boolean.TRUE.equals(call.getBoolean("copy",false));
@@ -141,8 +146,8 @@ public class AlphaFilesPlugin extends Plugin {
  /** Permanent deletion. The renderer sends confirmed only after the owner confirmed it. */
  @PluginMethod public void storageEmptyTrash(PluginCall call){storage(call,b->{
   if(!Boolean.TRUE.equals(call.getBoolean("confirmed",false)))return result("confirmation-required","Confirm before deleting permanently.");
-  JSArray ids=call.getArray("ids");List<String> list=null;if(ids!=null){list=strings(call,"ids",StorageBrowser.BATCH_MAX);}
-  JSObject out=new JSObject();out.put("count",b.emptyTrash(list));return out;
+  // Only the ids the owner confirmed: an item trashed after the confirmation is never deleted.
+  JSObject out=new JSObject();out.put("count",b.emptyTrash(strings(call,"ids",StorageBrowser.BATCH_MAX)));return out;
  });}
  private Uri contentUri(java.io.File file){return androidx.core.content.FileProvider.getUriForFile(getContext(),getContext().getPackageName()+".storage",file);}
  /** One share sheet for the listed files. Nothing is sent until the owner picks an app. */
@@ -174,12 +179,16 @@ public class AlphaFilesPlugin extends Plugin {
   activity.runOnUiThread(()->{try{activity.startActivity(intent);opened[0]=true;}catch(RuntimeException e){opened[0]=false;}finally{started.countDown();}});
   return started.await(5,TimeUnit.SECONDS)&&opened[0];
  }
- /** Watches the folder (or MediaStore for a category) on screen; a change emits storageChanged once per burst. */
+ /** Watches what is on screen; a change emits storageChanged once per burst. A folder (and the
+  * Downloads category, which is the Download folder) is watched with inotify and MediaStore:
+  * MediaProvider and DownloadProvider write on the lower filesystem, which may raise no inotify
+  * event on the FUSE path. */
  @PluginMethod public void storageWatch(PluginCall call){storage(call,b->{
   stopWatching();String path=call.getString("path");String category=call.getString("category");
-  if(path!=null){java.io.File folder=b.resolve(path,true);
+  java.io.File folder=path!=null?b.resolve(path,true):"downloads".equals(category)?new java.io.File(primaryBrowser().root,StorageCatalog.DOWNLOAD_FOLDER):null;
+  if(folder!=null&&folder.isDirectory()){
    observer=new FileObserver(folder,FileObserver.CREATE|FileObserver.DELETE|FileObserver.MOVED_FROM|FileObserver.MOVED_TO|FileObserver.CLOSE_WRITE|FileObserver.DELETE_SELF|FileObserver.MOVE_SELF){@Override public void onEvent(int event,String name){burst();}};observer.startWatching();}
-  if(category!=null||path==null){mediaObserver=new android.database.ContentObserver(main){@Override public void onChange(boolean self){burst();}};resolver().registerContentObserver(android.provider.MediaStore.Files.getContentUri(android.provider.MediaStore.VOLUME_EXTERNAL),true,mediaObserver);}
+  mediaObserver=new android.database.ContentObserver(main){@Override public void onChange(boolean self){burst();}};resolver().registerContentObserver(android.provider.MediaStore.Files.getContentUri(android.provider.MediaStore.VOLUME_EXTERNAL),true,mediaObserver);
   return new JSObject();
  });}
  @PluginMethod public void storageUnwatch(PluginCall call){stopWatching();call.resolve(new JSObject());}

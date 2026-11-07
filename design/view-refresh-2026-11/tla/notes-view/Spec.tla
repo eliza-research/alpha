@@ -11,7 +11,8 @@
 (* Notes has two sources on mainline (docs/architecture.md): the         *)
 (* device-local collection and agent notes. Both follow this model, with  *)
 (* two differences outside its state: Done into agent notes saves the     *)
-(* transcript (`asr`) and length only, since agent notes keep no audio;    *)
+(* transcript (`asr`) and length only, since agent notes keep no audio,    *)
+(* and so is refused (the recording stays) until asr = recorded;          *)
 (* and in agent notes a deleted folder's stored reference is not rewritten *)
 (* but reads as None, so FolderRefsValid holds for the noteFolder the view *)
 (* shows (noteFolderOf). Neither changes a modelled transition.            *)
@@ -28,6 +29,14 @@
 (* Audio is counted in segments (a segment is ~30 s of audio). MaxSeg      *)
 (* bounds the model only; with FixUnlimited the product has no limit.      *)
 (* Fix* = FALSE is the code as written; TRUE is the proposed design.       *)
+(*                                                                         *)
+(* `shown` is whether Notes is on screen. The renderer transcribes         *)
+(* segments only while it is (note-recorder.ts pump; a hidden WebView is   *)
+(* not relied on), so with AsrWhileHidden = FALSE (the code) the           *)
+(* transcript keeps up while Notes is shown and catches up when it is      *)
+(* shown again; a recording made with the screen off is transcribed then.  *)
+(* TranscriptKeepsUp and AsrSettles claim exactly that; AsBuilt_Hidden     *)
+(* shows the unconditional claim (TranscriptKeepsUpHidden) does not hold.  *)
 (* FixRestoreFolder is a design ablation: the code has no folders yet, so  *)
 (* FALSE shows the rule is needed, not that today's code breaks it.        *)
 (***************************************************************************)
@@ -41,7 +50,8 @@ CONSTANTS Notes, Folders,  \* model values
           FixUnlimited,    \* no duration cap for notes (VA:289,510; plugin :82,483)
           FixSegments,     \* audio is finalized per segment, so a crash keeps it
           FixStreamAsr,    \* transcription follows the recording segment by segment
-          FixRestoreFolder \* restore falls back to "no folder" if the folder is gone
+          FixRestoreFolder, \* restore falls back to "no folder" if the folder is gone
+          AsrWhileHidden   \* segments are transcribed while Notes is hidden too
 
 VARIABLES rec,        \* "idle" | "recording" | "paused" | "saved"
           recorded,   \* segments captured so far in this recording
@@ -55,9 +65,10 @@ VARIABLES rec,        \* "idle" | "recording" | "paused" | "saved"
           trash,      \* notes in Recently deleted
           rev,        \* note revision (for reviewed agent moves)
           review,     \* pending agent move [n, f, r] or NoReview
-          budget
+          budget,
+          shown       \* Notes is on screen
 
-vars == <<rec, recorded, durable, asr, stopCause, folders, folderName, noteFolder, live, trash, rev, review, budget>>
+vars == <<rec, recorded, durable, asr, stopCause, folders, folderName, noteFolder, live, trash, rev, review, budget, shown>>
 MaxRev == 2
 NoReview == [n |-> None, f |-> None, r |-> 0]
 
@@ -70,6 +81,7 @@ TypeOK ==
   /\ noteFolder \in [Notes -> Folders \cup {None}]
   /\ live \subseteq Notes /\ trash \subseteq Notes /\ live \cap trash = {}
   /\ rev \in [Notes -> 0..MaxRev] /\ budget \in 0..Budget
+  /\ shown \in BOOLEAN
 
 Init ==
   /\ rec = "idle" /\ recorded = 0 /\ durable = 0 /\ asr = 0 /\ stopCause = "none"
@@ -77,10 +89,11 @@ Init ==
   /\ folderName \in {m \in [Folders -> Names] : \A f, g \in Folders : f # g => m[f] # m[g]}
   /\ noteFolder \in [Notes -> Folders \cup {None}]
   /\ live = Notes /\ trash = {} /\ rev = [n \in Notes |-> 0]
-  /\ review = NoReview /\ budget = Budget
+  /\ review = NoReview /\ budget = Budget /\ shown = TRUE
 
-NoteVars == <<folders, folderName, noteFolder, live, trash, rev, review>>
-RecVars  == <<rec, recorded, durable, asr, stopCause>>
+NoteVars == <<folders, folderName, noteFolder, live, trash, rev, review, shown>>
+\* `shown` is in both, so every action but Hide and Show leaves it unchanged.
+RecVars  == <<rec, recorded, durable, asr, stopCause, shown>>
 Bump(n) == rev' = [rev EXCEPT ![n] = IF @ < MaxRev THEN @ + 1 ELSE @]
 
 ----------------------------------------------------------------------------
@@ -125,8 +138,13 @@ ProcessDeath ==
 AsrSegment ==
   /\ asr < durable
   /\ FixStreamAsr \/ rec = "saved"
+  /\ shown \/ AsrWhileHidden
   /\ asr' = asr + 1
   /\ UNCHANGED <<rec, recorded, durable, stopCause>> /\ UNCHANGED NoteVars /\ UNCHANGED budget
+
+\* Notes leaves the screen (screen off, another view) or comes back; recording goes on.
+Hide == shown /\ shown' = FALSE /\ UNCHANGED <<folders, folderName, noteFolder, live, trash, rev, review, rec, recorded, durable, asr, stopCause, budget>>
+Show == ~shown /\ shown' = TRUE /\ UNCHANGED <<folders, folderName, noteFolder, live, trash, rev, review, rec, recorded, durable, asr, stopCause, budget>>
 
 ----------------------------------------------------------------------------
 (* Folders, Recently deleted, agent moves *)
@@ -188,6 +206,7 @@ AgentReject ==
 
 Next ==
   \/ Record \/ Segment \/ Pause \/ Resume \/ Stop \/ StorageFull \/ ProcessDeath \/ AsrSegment
+  \/ Hide \/ Show
   \/ \E n \in Notes : TrashNote(n) \/ Restore(n) \/ Expire(n)
        \/ \E f \in Folders \cup {None} : MoveToFolder(n, f) \/ AgentProposeMove(n, f)
   \/ \E f \in Folders : DeleteFolder(f) \/ \E nm \in Names : RenameFolder(f, nm)
@@ -202,8 +221,12 @@ NoLengthLimit == stopCause # "cap"
 CrashKeepsAudio ==
   [][ProcessDeath => durable >= recorded - (IF recorded > 0 THEN 1 ELSE 0)]_vars
 TranscriptPrefixOfAudio == asr <= durable
-\* While recording, finished segments get transcribed without waiting for Stop.
-TranscriptKeepsUp == (rec = "recording" /\ asr < durable) ~> (asr = durable \/ rec # "recording")
+\* While recording, finished segments get transcribed without waiting for Stop, while Notes is
+\* shown (with AsrWhileHidden, also while hidden).
+TranscriptKeepsUp ==
+  (rec = "recording" /\ asr < durable /\ (shown \/ AsrWhileHidden)) ~> (asr = durable \/ rec # "recording" \/ ~(shown \/ AsrWhileHidden))
+\* The unconditional claim: holds only with AsrWhileHidden (AsBuilt_Hidden shows the gap).
+TranscriptKeepsUpHidden == (rec = "recording" /\ asr < durable) ~> (asr = durable \/ rec # "recording")
 FolderNamesUnique == \A f, g \in folders : f # g => folderName[f] # folderName[g]
 \* Renaming a folder never changes which notes are in it, or whether a note is live.
 RenameKeepsMembership ==
@@ -211,6 +234,7 @@ RenameKeepsMembership ==
 FolderRefsValid == \A n \in live : noteFolder[n] \in folders \cup {None}
 AgentMoveOnlyReviewed ==
   [][AgentApply => rev[review.n] = review.r]_vars
-AsrSettles == (rec = "saved" /\ asr < durable) ~> (asr = durable \/ rec # "saved")
+AsrSettles ==
+  (rec = "saved" /\ asr < durable /\ (shown \/ AsrWhileHidden)) ~> (asr = durable \/ rec # "saved" \/ ~(shown \/ AsrWhileHidden))
 ReviewSettles == (review # NoReview) ~> (review = NoReview)
 ====

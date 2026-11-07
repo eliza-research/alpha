@@ -242,8 +242,18 @@ public class AlphaNoteAudioPlugin extends Plugin {
    catch(Exception error){call.reject("The recording could not be saved.");}
   },()->call.reject("The recording could not be saved."));
  }
- /** A Notes recording has no length limit: the joined file is moved into place, not copied. */
- JSObject retainNoteRecording(File source,String recordingId,String noteId,long duration,String transcript)throws Exception {return JSObject.fromJSONObject(recordings(getContext(),NOTE_RECORDINGS).retain(source,recordingId,noteId,duration,transcript,true));}
+ /**
+  * A Notes recording has no length limit: the joined file is moved into place, not copied. The
+  * note holds the whole transcript; the recording's metadata keeps at most its bounded prefix, so
+  * a long recording's transcript never stops the audio from being saved.
+  */
+ JSObject retainNoteRecording(File source,String recordingId,String noteId,long duration,String transcript)throws Exception {return JSObject.fromJSONObject(recordings(getContext(),NOTE_RECORDINGS).retain(source,recordingId,noteId,duration,transcriptPrefix(transcript,NOTE_RECORDINGS.maxTranscript),true));}
+ /** At most `max` UTF-16 units, never ending inside a surrogate pair. */
+ static String transcriptPrefix(String transcript,int max){
+  if(transcript==null||transcript.length()<=max)return transcript;
+  int end=max;if(end>0&&Character.isHighSurrogate(transcript.charAt(end-1)))end--;
+  return transcript.substring(0,end);
+ }
  @PluginMethod public void describe(PluginCall call){try{call.resolve(JSObject.fromJSONObject(recordings().describe(call.getString("audioId"))));}catch(Exception error){call.reject("Saved recording is unavailable");}}
  @PluginMethod public void play(PluginCall call){main.post(()->{try{
   String key=RecordingStore.id(call.getString("audioId"));File file=recordings().playable(key);stop();

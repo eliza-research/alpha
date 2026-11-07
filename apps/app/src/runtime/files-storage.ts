@@ -65,14 +65,23 @@ export function inCategory(category: FilesCategory, entry: Pick<StorageEntry, 'p
   if (category === 'audio') return entry.mimeType.startsWith('audio/');
   return DOCUMENT_MIME_TYPES.includes(entry.mimeType);
 }
-/** Images and Videos are shown grouped by the folder that holds them (Camera, Screenshots, …). */
-export function groupByFolder(entries: readonly StorageEntry[]): {folder: string; name: string; count: number; latest: StorageEntry}[] {
-  const groups = new Map<string, StorageEntry[]>();
-  for (const entry of entries) { const key = parentOf(entry.path); groups.set(key, [...(groups.get(key) ?? []), entry]); }
-  return [...groups].map(([folder, rows]) => {
-    const latest = rows.reduce((a, b) => b.modified > a.modified ? b : a);
-    return {folder, name: folder ? folder.slice(folder.lastIndexOf('/') + 1) : 'Internal storage', count: rows.length, latest};
-  }).sort((a, b) => b.latest.modified - a.latest.modified || a.folder.localeCompare(b.folder));
+/** A category's files counted per folder (Android counts every file, not only the listed ones). */
+export type CategoryFolder = {folder: string; count: number; latest: StorageEntry};
+/**
+ * Images and Videos are shown grouped by the folder that holds them (Camera, Screenshots, …).
+ * `counted` (the storage's own per-folder counts over the whole category) wins over grouping
+ * `entries`, which may be a bounded newest-first part of it.
+ */
+export function groupByFolder(entries: readonly StorageEntry[], counted?: readonly CategoryFolder[]): {folder: string; name: string; count: number; latest: StorageEntry}[] {
+  const groups = new Map<string, {count: number; latest: StorageEntry}>();
+  if (counted) for (const group of counted) groups.set(group.folder, {count: group.count, latest: group.latest});
+  else for (const entry of entries) {
+    const key = parentOf(entry.path), group = groups.get(key);
+    if (!group) groups.set(key, {count: 1, latest: entry});
+    else { group.count++; if (entry.modified > group.latest.modified) group.latest = entry; }
+  }
+  return [...groups].map(([folder, {count, latest}]) => ({folder, name: folder ? folder.slice(folder.lastIndexOf('/') + 1) : 'Internal storage', count, latest}))
+    .sort((a, b) => b.latest.modified - a.latest.modified || a.folder.localeCompare(b.folder));
 }
 
 export function parentOf(path: string): string { const slash = path.lastIndexOf('/'); return slash < 0 ? '' : path.slice(0, slash); }

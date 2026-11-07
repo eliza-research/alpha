@@ -98,6 +98,8 @@ test('the drawer menu offers Add to Home (or On Home) and App info for exactly t
     let rendered=home.renderVals(),drawer=renderToStaticMarkup(rendered.allAppsDrawer);
     assert.deepEqual([...drawer.matchAll(/aria-label="Open ([^"]+)"/g)].map(m=>m[1]),['Caméra','Mail (Work)','Phone (Dialer)','Settings'],'the dialer appears once, as Phone');
     assert.doesNotMatch(drawer,/role="menu"/);
+    // Activating a tile launches its app, so the button announces no popup; the menu is the long-press action.
+    assert.doesNotMatch(drawer,/aria-haspopup="menu"|aria-expanded=/);
     const work=shell.launcher.snapshot().apps.find(app=>app.user==='10');
     const key='org.example.mail/org.example.Mail#10';
     rendered.allAppsDrawer.props.onMenu(key);
@@ -216,4 +218,61 @@ test('installed favorites with older Alpha view ids are migrated to canonical id
   assert.deepEqual(installHomeShell(shellClass([]),{},{list:async()=>({apps}),launch:async()=>{}},{storage}).migration,{status:'unchanged'});
   shell.launcher.toggleFavorite({packageName:'alpha:notes',label:'Notes'});
   assert.deepEqual(JSON.parse(store.get('alpha.launcher.favorites.v1')),{version:2,keys:['com.android.settings','alpha:automations'],defaultPolicy:'alpha-apps'});
+});
+
+test('Back leaves edit mode under voice or an open conversation, and a menu whose app is gone costs no extra Back', async () => {
+  const previous=globalThis.document;
+  globalThis.document=Object.assign(new EventTarget(),{hidden:false});
+  const based=[];
+  class Shell extends shellClass([]) { back(){based.push({...this.state});super.back();} }
+  const shell=installHomeShell(Shell,{},{list:async()=>({apps}),launch:async()=>{}},{favorites:{read:()=>[],write:()=>{}}});
+  const home=new Shell();home.renderVals();home.componentDidMount();
+  try {
+    await shell.launcher.load();
+    // Voice or the conversation sheet is above edit mode: the base Back handles it, edit mode stays.
+    for (const above of [{voice:'listening'},{chat:'sheet'},{chat:'full'}]) {
+      home.setState({homeEdit:true,homeAdd:true,voice:'off',chat:'rest',...above});based.length=0;
+      home.back();
+      assert.equal(home.state.homeEdit,true,`edit mode stays under ${JSON.stringify(above)}`);
+      assert.equal(home.state.homeAdd,true);
+      assert.equal(based.length,1,'the base Back ran');
+    }
+    home.setState({voice:'off',chat:'rest'});
+    home.back();assert.equal(home.state.homeAdd,false);
+    home.back();assert.equal(home.state.homeEdit,false);
+    // An entry removed while its menu is open: no menu shows, and one Back closes the drawer.
+    home.openAllApps();await shell.launcher.load();
+    home.setState({drawerMenu:'org.example.gone'});
+    assert.doesNotMatch(renderToStaticMarkup(home.renderVals().allAppsDrawer),/role="menu"/);
+    home.back();
+    assert.equal(home.state.drawer,false,'the first Back closes the drawer');
+    assert.equal(home.state.drawerMenu,null);
+  } finally { home.componentWillUnmount(); if(previous===undefined)delete globalThis.document;else globalThis.document=previous; }
+});
+
+test('a favorites save that fails in Home edit mode shows its error in the edit bar; the next good edit clears it', async () => {
+  const previous=globalThis.document,previousFrame=globalThis.requestAnimationFrame;
+  globalThis.document=Object.assign(new EventTarget(),{hidden:false,querySelector:()=>null,elementsFromPoint:()=>[]});
+  globalThis.requestAnimationFrame=()=>0;
+  let saved=['alpha:inbox','alpha:notes'],fail=false;
+  const Shell=shellClass([]);
+  const shell=installHomeShell(Shell,{},{list:async()=>({apps}),launch:async()=>{}},{favorites:{read:()=>saved,write:keys=>{if(fail)throw Error('full');saved=[...keys];}}});
+  const home=new Shell();home.renderVals();home.componentDidMount();
+  const tile=key=>{const face={getAttribute:()=>key};const el={querySelector:()=>face,style:{},setAttribute(){},removeAttribute(){}};el.closest=s=>s==='[data-mobile-shell-tile]'?el:null;return el;};
+  const event=(target,extra={})=>{const e={target,button:0,clientX:0,clientY:0,detail:0,preventDefault(){},stopPropagation(){},...extra};return e;};
+  try {
+    await shell.launcher.load();
+    home.setState({homeEdit:true});
+    assert.equal(home.renderVals().homeEdit.error,'');
+    fail=true;
+    home.renderVals().homeShell.props.gridProps.onClickCapture(event(tile('alpha:notes')));
+    assert.deepEqual(saved,['alpha:inbox','alpha:notes'],'nothing changed');
+    assert.match(home.renderVals().homeEdit.error,/Favorites could not be saved/);
+    fail=false;
+    home.renderVals().homeShell.props.gridProps.onKeyDown(event(tile('alpha:inbox'),{key:'ArrowRight'}));
+    assert.deepEqual(saved,['alpha:notes','alpha:inbox']);
+    assert.equal(home.renderVals().homeEdit.error,'');
+  } finally { home.componentWillUnmount(); globalThis.requestAnimationFrame=previousFrame; if(previous===undefined)delete globalThis.document;else globalThis.document=previous; }
+  const {readFileSync}=await import('node:fs');
+  assert.match(readFileSync(new URL('../apps/app/src/prototype/template.html',import.meta.url),'utf8'),/<sc-if value="\{\{homeEdit\.error\}\}"><p role="alert"[^>]*>\{\{homeEdit\.error\}\}<\/p><\/sc-if>/);
 });

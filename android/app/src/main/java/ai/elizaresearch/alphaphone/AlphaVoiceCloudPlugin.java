@@ -65,7 +65,9 @@ public final class AlphaVoiceCloudPlugin extends LocalSpeechBridgePlugin {
  @Override protected void handleOnResume(){noteForeground=true;super.handleOnResume();}
  @Override protected void handleOnPause(){noteForeground=false;super.handleOnPause();}
  private boolean callActive(){android.media.AudioManager audio=(android.media.AudioManager)getContext().getSystemService(android.content.Context.AUDIO_SERVICE);int mode=audio==null?android.media.AudioManager.MODE_NORMAL:audio.getMode();return mode==android.media.AudioManager.MODE_IN_CALL||mode==android.media.AudioManager.MODE_IN_COMMUNICATION||mode==android.media.AudioManager.MODE_RINGTONE;}
- private final AlphaNoteRecorder.Listener noteRecorderEvents=status->{notifyListeners("noteRecordingChanged",status);if(!"recording".equals(status.getString("state"))&&!"paused".equals(status.getString("state")))AlphaNoteRecordingService.recordingClosed(getContext(),status.getString("recordingId"));};
+ /** The last state the notification showed, so it is rebuilt only when the state changes. */
+ private volatile String lastNoteState;
+ private final AlphaNoteRecorder.Listener noteRecorderEvents=status->{notifyListeners("noteRecordingChanged",status);if(!"recording".equals(status.getString("state"))&&!"paused".equals(status.getString("state")))AlphaNoteRecordingService.recordingClosed(getContext(),status.getString("recordingId"));else if(!java.util.Objects.equals(status.getString("state"),lastNoteState))AlphaNoteRecordingService.refresh(getContext());lastNoteState=status.getString("state");};
  private AlphaNoteRecorder noteRecorder(){AlphaNoteRecorder recorder=AlphaNoteRecorder.get(getContext());recorder.setListener(noteRecorderEvents);return recorder;}
  private static String noteRecordingId(PluginCall call){String value=call.getString("recordingId");if(value==null||!value.matches(AlphaNoteRecorder.ID))throw new IllegalArgumentException();return value;}
  @PluginMethod public void startNoteRecording(PluginCall call){

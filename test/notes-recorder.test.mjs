@@ -267,3 +267,131 @@ test('the live stream follows pause and resume, is not reopened after it is lost
   assert.equal(none.displayTranscript(), '');
   none.close();
 });
+
+test('agent notes (no audio kept): Done never deletes the audio while the transcript is missing or partial', async () => {
+  // No transcription route: nothing can be transcribed, so nothing may be discarded.
+  const none = fakeDriver(), persisted = [];
+  const quiet = new NoteRecorderSession(none, async () => null, () => {}, {pollMs: 60_000});
+  await quiet.begin();
+  none.segment(); none.segment();
+  assert.equal(await quiet.finish(async (_audio, transcript) => { persisted.push(transcript); return true; }, false), false);
+  assert.deepEqual(persisted, [], 'no transcript-only note is saved');
+  assert.equal(none.state.discarded, 0, 'the only audio stays');
+  assert.equal(quiet.phase, 'stopped');
+  assert.equal(quiet.error, 'Transcription stopped. The audio is kept.');
+  quiet.close();
+  // A segment fails: the transcript covers only part of the audio.
+  const partial = fakeDriver();
+  const s = session(partial, async segmentId => { if (segmentId.endsWith('-s1')) throw new Error('route down'); return 'first'; });
+  await s.begin();
+  partial.segment(); partial.segment();
+  await settle();
+  assert.equal(await s.finish(async () => true, false), false);
+  assert.equal(partial.state.discarded, 0);
+  assert.equal(s.phase, 'stopped');
+  // Notes hidden while Done runs: the pump does not transcribe, so Done waits.
+  const hidden = fakeDriver();
+  let visible = true;
+  const h = new NoteRecorderSession(hidden, async () => async () => 'words', () => {}, {pollMs: 60_000, visible: () => visible});
+  await h.begin();
+  visible = false; hidden.segment();
+  assert.equal(await h.finish(async () => true, false), false);
+  assert.equal(hidden.state.discarded, 0);
+  // Every segment transcribed: the note is saved and only then the segments go.
+  visible = true;
+  const saved = [];
+  assert.equal(await h.finish(async (_audio, transcript) => { saved.push(transcript); return true; }, false), true);
+  assert.deepEqual(saved, ['words']);
+  await settle();
+  assert.equal(hidden.state.discarded, 1);
+});
+
+test('a retried Done after a restart saves into the note the stored audio already belongs to', async () => {
+  const driver = fakeDriver(), owners = new Map();
+  driver.save = async input => {
+    // RecordingStore.retain refuses a recording already owned by another note.
+    if (owners.has(input.recordingId) && owners.get(input.recordingId) !== input.noteId) throw new Error('owner mismatch');
+    owners.set(input.recordingId, input.noteId);
+    return {audioId: input.recordingId, noteId: input.noteId, durationMs: driver.state.status.durationMs, transcript: input.transcript};
+  };
+  const first = session(driver);
+  await first.begin();
+  driver.segment();
+  assert.equal(await first.finish(async () => false), false, 'the audio is retained but the note is not saved');
+  first.leave();
+  // The process restarts: a new session adopts the stopped recording.
+  const again = session(driver);
+  assert.equal(await again.adopt(), true);
+  assert.equal(await again.finish(async () => true), true);
+  assert.equal(driver.state.discarded, 1);
+});
+
+test('Discard while the microphone is still starting also discards the recording it starts', async () => {
+  const driver = fakeDriver();
+  let release;
+  const start = driver.start;
+  driver.start = () => new Promise(resolve => { release = () => resolve(start()); });
+  const s = session(driver);
+  const begun = s.begin();
+  await settle();
+  assert.equal(s.phase, 'starting');
+  await s.discard();
+  assert.equal(s.phase, 'closed');
+  release();
+  await begun;
+  await settle();
+  assert.equal(driver.state.discarded, 1, 'no recording is left running behind the list');
+  assert.equal(driver.state.status.state, 'idle');
+  // Leaving Notes while starting keeps the recording for the next visit.
+  const kept = fakeDriver();
+  let go;
+  const startKept = kept.start;
+  kept.start = () => new Promise(resolve => { go = () => resolve(startKept()); });
+  const k = session(kept);
+  const pending = k.begin();
+  await settle();
+  k.leave();
+  go(); await pending; await settle();
+  assert.equal(kept.state.discarded, 0);
+  assert.equal(kept.state.status.state, 'recording');
+});
+
+test('a long recording\'s transcript never stops its audio from being saved: the metadata keeps a bounded prefix', () => {
+  const store = native('AlphaNoteAudioPlugin.java');
+  const limit = Number(store.match(/NOTE_RECORDINGS=new RecordingStore\.Limits\(Long\.MAX_VALUE,Long\.MAX_VALUE,([\d_]+),/)[1].replaceAll('_', ''));
+  assert.ok(limit > 0);
+  assert.match(store, /\.retain\(source,recordingId,noteId,duration,transcriptPrefix\(transcript,NOTE_RECORDINGS\.maxTranscript\),true\)/);
+  // The same prefix rule, checked here: a 4-hour transcript fits, and no surrogate pair is split.
+  const body = store.match(/static String transcriptPrefix\(String transcript,int max\)\{([\s\S]*?)\n \}/)[1];
+  assert.match(body, /transcript\.length\(\)<=max\)return transcript;/);
+  assert.match(body, /Character\.isHighSurrogate\(transcript\.charAt\(end-1\)\)\)end--;/);
+});
+
+test('the native recorder has a device test for segments, pause accounting, crash recovery and the joined file', () => {
+  const device = read('android/app/src/androidTest/java/ai/elizaresearch/alphaphone/NoteRecorderInstrumentedTest.java');
+  assert.match(device, /segments\(status\)<3/, 'records past two segment rollovers');
+  assert.match(device, /paused time does not count/);
+  assert.match(device, /AlphaNoteRecorder next=fresh\(\)/, 'a new recorder recovers the crashed recording');
+  assert.match(device, /the partial segment is dropped/);
+  assert.match(device, /next\.joined\(crashedId\)/);
+  assert.match(device, /player\.prepare\(\)/, 'the joined file plays');
+});
+
+test('the recording notification follows pause: "Paused" with Resume, and its chronometer is the recording length', () => {
+  const service = native('AlphaNoteRecordingService.java');
+  assert.match(service, /setContentTitle\(paused\?"Paused":"Recording"\)/);
+  assert.match(service, /paused\?"Resume":"Pause"/);
+  assert.match(service, /setWhen\(System\.currentTimeMillis\(\)-Math\.max\(0,status\.optLong\("durationMs",0\)\)\)/);
+  assert.match(service, /ACTION_PAUSE\.equals\(action\)\|\|ACTION_RESUME\.equals\(action\)[\s\S]*?refresh\(this\);/, 'a notification action shows the new state');
+  assert.match(native('AlphaVoiceCloudPlugin.java'), /AlphaNoteRecordingService\.refresh\(getContext\(\)\)/, 'a pause in Alpha updates the notification');
+  assert.match(read('android/app/src/androidTest/java/ai/elizaresearch/alphaphone/NoteRecorderInstrumentedTest.java'), /theNotificationShowsPausedWithResumeAndTheRecordingLength/);
+});
+
+test('the browser recorder finishes bounded segments as it records, as the native one does', () => {
+  const voice = read('apps/app/src/browser/voice.ts');
+  const segmentMs = Number(voice.match(/const NOTE_SEGMENT_MS=([\d_]+);/)[1].replaceAll('_', ''));
+  assert.ok(segmentMs <= 30_000, 'every browser segment fits the on-device window and the 60 s request bound');
+  assert.match(voice, /this\.noteCapture\.start\(\{unlimited:true,segmentMs:NOTE_SEGMENT_MS,onSegment:/);
+  assert.match(voice, /if\(!note\.segments\.length\)note\.segments=\[\{segmentId:clip\.recordingId/, 'the whole clip is one segment only when no segment was written');
+  assert.match(read('apps/app/src/browser/audio-capture.ts'), /if\(part\)await Promise\.race\(\[part\.flushed,/, 'the last segment arrives before stop resolves');
+});

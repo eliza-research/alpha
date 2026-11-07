@@ -26,7 +26,7 @@ import org.json.JSONObject;
 final class StorageBrowser {
  static final long RETENTION_MS=30L*86400000L;
  static final String TRASH=".Trash-alpha";
- static final int BATCH_MAX=500,LIST_MAX=5000;
+ static final int BATCH_MAX=500,LIST_MAX=5000,WALK_MAX=20000;
  final File root;
  StorageBrowser(File root){this.root=root;}
 
@@ -77,6 +77,35 @@ final class StorageBrowser {
   }
   return out;
  }
+ /** The files directly in `path`, newest first (the Downloads category); a missing folder has none. */
+ List<Row> files(String path,int max)throws IOException{
+  List<Row> rows,out=new ArrayList<>();
+  try{rows=list(path);}catch(java.io.FileNotFoundException missing){return out;}
+  rows.sort((a,b)->Long.compare(b.modified,a.modified));
+  for(Row r:rows){if(out.size()>=max)break;if(!r.directory)out.add(r);}
+  return out;
+ }
+ /** Folders for the agent's folder filter: a bounded walk under `under` (hidden folders and the
+  * trash skipped) for folders whose name holds every word and whose time is in range, newest first. */
+ List<Row> folders(String under,String text,long from,long to,int max,int visitMax)throws IOException{
+  File start=resolve(under==null?"":under,true);List<Row> out=new ArrayList<>();if(!start.isDirectory())return out;
+  List<String> words=new ArrayList<>();if(text!=null)for(String w:text.toLowerCase(Locale.ROOT).split("[^\\p{L}\\p{N}]+"))if(!w.isEmpty())words.add(w);
+  java.util.ArrayDeque<File> queue=new java.util.ArrayDeque<>();queue.add(start);int visited=0;
+  while(!queue.isEmpty()&&visited++<visitMax){
+   File[] kids=queue.removeFirst().listFiles();if(kids==null)continue;
+   for(File kid:kids){
+    String name=kid.getName();if(name.startsWith(".")||!kid.isDirectory())continue;
+    queue.add(kid);
+    long modified=kid.lastModified();String lower=name.toLowerCase(Locale.ROOT);boolean match=(from<=0||modified>=from)&&(to<=0||modified<=to);
+    for(String w:words)if(!lower.contains(w)){match=false;break;}
+    if(!match)continue;
+    int children=0;String[] list=kid.list();if(list!=null)for(String k:list)if(!k.startsWith("."))children++;
+    out.add(new Row(relative(kid),name,true,"",0,modified,children));
+   }
+  }
+  out.sort((a,b)->Long.compare(b.modified,a.modified));
+  return out.size()>max?new ArrayList<>(out.subList(0,max)):out;
+ }
  static String mime(String name){
   int dot=name.lastIndexOf('.');String ext=dot>0?name.substring(dot+1).toLowerCase(Locale.ROOT):"";
   String type=ext.isEmpty()?null:android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext);
@@ -96,15 +125,16 @@ final class StorageBrowser {
    if(source.isDirectory()&&(targetPath.equals(sourcePath)||targetPath.startsWith(sourcePath+File.separator))){out.add(new Outcome(path,"invalid",null));continue;}
    File destination=freeTarget(target,source.getName(),source.isDirectory());
    try{
-    if(copy)copyRecursive(source,destination);else moveFile(source,destination);
+    if(copy)copyFresh(source,destination);else moveFile(source,destination);
     out.add(new Outcome(path,copy?"copied":"moved",relative(destination)));
    }catch(IOException e){out.add(new Outcome(path,"failed",null));}
   }
   return out;
  }
- /** Rename refuses an existing name instead of replacing it. */
+ /** Rename refuses an existing name instead of replacing it, and a hidden (dot) name, which no
+  * listing shows and which could name the trash. */
  String rename(String path,String name)throws IOException{
-  File source=resolve(path,false);validName(name);if(!source.exists())throw new java.io.FileNotFoundException();
+  File source=resolve(path,false);validName(name);if(name.startsWith("."))throw new IllegalArgumentException("Invalid name");if(!source.exists())throw new java.io.FileNotFoundException();
   File destination=new File(source.getParentFile(),name);
   if(destination.exists()&&!destination.getCanonicalPath().equals(source.getCanonicalPath())&&!name.equalsIgnoreCase(source.getName()))throw new IllegalStateException("exists");
   if(!source.renameTo(destination))throw new IOException("Rename failed");
@@ -175,21 +205,26 @@ final class StorageBrowser {
   }
   return out;
  }
- /** Permanent deletion, only after the owner confirmed Empty (or Delete now) in the UI. */
+ /** Permanent deletion of the items the owner confirmed (Empty or Delete now) in the UI. */
  int emptyTrash(List<String> ids)throws IOException{
+  if(ids==null)throw new IllegalArgumentException("Name the confirmed items");
   File trash=existingTrash();int count=0;if(trash==null)return 0;
-  List<String> targets=new ArrayList<>();
-  if(ids==null){File[] infos=new File(trash,"info").listFiles();if(infos!=null)for(File f:infos)targets.add(f.getName().replaceAll("\\.json$",""));}else targets.addAll(ids);
-  for(String id:targets){if(id==null||!id.matches("[a-f0-9-]{36}"))continue;File data=new File(trash,"files/"+id);if(data.exists()&&!deleteRecursive(data))continue;new File(trash,"info/"+id+".json").delete();count++;}
+  for(String id:ids){if(id==null||!id.matches("[a-f0-9-]{36}"))continue;File data=new File(trash,"files/"+id);if(data.exists()&&!deleteRecursive(data))continue;new File(trash,"info/"+id+".json").delete();count++;}
   return count;
  }
 
  static void moveFile(File source,File destination)throws IOException{
   if(destination.exists())throw new IOException("Destination exists");
   if(source.renameTo(destination))return;
-  // Another volume or mount: copy, check, then remove the source.
-  copyRecursive(source,destination);
+  // Another volume or mount: copy, check, then remove the source. A failed copy leaves nothing
+  // behind; once the copy is complete it is kept, since removing the source may have begun.
+  copyFresh(source,destination);
   if(!deleteRecursive(source))throw new IOException("Source not removed");
+ }
+ /** A copy into a new destination that is removed again if the copy fails part way. */
+ static void copyFresh(File source,File destination)throws IOException{
+  if(destination.exists())throw new IOException("Destination exists");
+  try{copyRecursive(source,destination);}catch(IOException e){deleteRecursive(destination);throw e;}
  }
  static void copyRecursive(File source,File destination)throws IOException{
   if(destination.exists())throw new IOException("Destination exists");

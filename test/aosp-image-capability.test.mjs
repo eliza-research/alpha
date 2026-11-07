@@ -122,17 +122,21 @@ test("no Alpha Java lists or launches apps: installed apps and default hand-offs
   // The password-provider hand-off opens one verified-publisher app by package; it is not the
   // launcher inventory. Nothing else in Alpha may list or launch apps.
   const handoffs = new Set(["PasswordProviderSupport.java"]);
-  // App info (the Apps drawer's long-press menu) resolves one listed entry exactly as a launch
-  // would, so a stale one is refused alike, and then opens only Android's App details for it.
+  // App info (the Apps drawer's long-press menu) needs only the package in the entry's profile:
+  // a disabled app or one in a paused or locked work profile still opens Android's App details
+  // (where it is enabled again); a removed app or profile is refused. It resolves no launch.
   const system = read(`${JAVA}/AlphaSystemPlugin.java`);
   const info = system.slice(system.indexOf("@PluginMethod public void openAppInfo("));
   assert.ok(info.length < system.length, "AlphaSystemPlugin.openAppInfo exists");
-  assert.equal((system.match(/SystemLauncherApps\.resolve\(/g) || []).length, 1);
-  assert.match(info, /^@PluginMethod public void openAppInfo\(PluginCall call\)\{[\s\S]*?SystemLauncherApps\.resolve\(/);
-  assert.match(info, /startAppDetailsActivity\(target\.component,target\.user,null,null\)/);
+  assert.equal((system.match(/SystemLauncherApps\.resolve\(/g) || []).length, 0, 'App info is not refused like a launch');
+  assert.doesNotMatch(info, /SystemLauncherApps\.(PROFILE_LOCKED|DISABLED)\b/);
+  assert.match(info, /getPackageManager\(\)\.getApplicationInfo\(name,PackageManager\.MATCH_DISABLED_COMPONENTS\)/);
+  assert.match(info, /launcher\.getApplicationInfo\(name,PackageManager\.MATCH_DISABLED_COMPONENTS,handle\)/);
+  assert.match(info, /startAppDetailsActivity\(new ComponentName\(name,activity==null\|\|activity\.isEmpty\(\)\?name:activity\),handle,null,null\)/);
   assert.match(info, /Settings\.ACTION_APPLICATION_DETAILS_SETTINGS/);
+  assert.match(read('android/app/src/androidTest/java/ai/elizaresearch/alphaphone/AppInfoInstrumentedTest.java'), /com\.android\.settings/, 'App info has a device test');
   for (const name of fs.readdirSync(JAVA).filter(file => file.endsWith(".java") && !handoffs.has(file))) {
-    const source = read(`${JAVA}/${name}`), checked = name === "AlphaSystemPlugin.java" ? source.replace("SystemLauncherApps.resolve(", "") : source;
+    const source = read(`${JAVA}/${name}`), checked = source;
     assert.doesNotMatch(checked, /SystemLauncherApps\.(list|launchIntent|resolve)\(|getLaunchIntentForPackage|startMainActivity|CATEGORY_LAUNCHER/, `${name} lists or launches no app`);
   }
 });

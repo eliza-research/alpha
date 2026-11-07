@@ -3,7 +3,7 @@ import type {FavoritesStore, InstalledApp, LauncherBridge} from '@elizaos/capaci
 import {appKey} from '@elizaos/capacitor-system/launcher';
 import {createMobileShellLauncher, mobileShellIconUrl, MobileHomeScreen, type MobileHomeEntry, type MobileHomeTile} from '@elizaos/ui/mobile-shell';
 import {ALPHA_PRODUCT, alphaViews} from '../product/alpha-product';
-import {AppsDrawer, HOLD_MS, SLOP} from './apps-drawer';
+import {AppsDrawer, HOLD_MS, SLOP, appsDrawerEntries} from './apps-drawer';
 import {createInlineModal} from '../runtime/inline-modal';
 type Bag = Record<string, any>;
 
@@ -81,9 +81,11 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
   const place = (key: string, target: string) => {
     const keys = shell.homeEntries().map(entry => entry.key), from = keys.indexOf(key), to = keys.indexOf(target), app = installedApp(key);
     if (from < 0 || to < 0 || from === to || !app) return;
+    launcher.clearError();
     for (let step = 0; step < Math.abs(to - from); step++) launcher.moveFavorite(app, to > from ? 1 : -1);
   };
-  const remove = (key: string) => { const app = installedApp(key); if (app && launcher.isFavorite(app)) launcher.toggleFavorite(app); };
+  // Each edit starts without the last one's error; a failed save shows in the edit bar.
+  const remove = (key: string) => { const app = installedApp(key); if (app && launcher.isFavorite(app)) { launcher.clearError(); launcher.toggleFavorite(app); } };
 
   let stop: (() => void) | undefined;
   p.componentDidMount = function (...args: any[]) {
@@ -97,13 +99,19 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
     stop?.(); launcher.cancelPending(); stop = undefined; endPress(); endDrag(); if (owner === this) owner = null;
     return unmount?.apply(this, args);
   };
+  /** The drawer entry whose menu is open, while that entry is still listed (an app removed behind
+   * its open menu leaves no menu to close). */
+  const openMenu = (S: Bag) => S.drawerMenu && appsDrawerEntries(launcher.snapshot(), prefix, String(S.drawerQ || '')).some(entry => entry.key === S.drawerMenu) ? S.drawerMenu as string : null;
   // Back closes the innermost launcher layer first: an entry's menu, the Add sheet, then edit mode.
+  // Voice, an open conversation and the assistant surface lie above edit mode, so the base Back
+  // handles them first.
   p.back = function (...args: any[]) {
     const S = this.S();
     if (!S.view && !S.shade) {
-      if (S.drawerMenu) return this.setState({drawerMenu: null});
-      if (S.homeAdd) return this.setState({homeAdd: false});
-      if (S.homeEdit && !S.drawer) { endDrag(); return this.setState({homeEdit: false}); }
+      if (S.drawerMenu) { this.setState({drawerMenu: null}); if (openMenu(S)) return; }
+      const above = (S.voice && S.voice !== 'off') || S.chat === 'full' || S.chat === 'sheet' || !!this.props?.assistantSurface;
+      if (!above && S.homeAdd) return this.setState({homeAdd: false});
+      if (!above && S.homeEdit && !S.drawer) { endDrag(); return this.setState({homeEdit: false}); }
     }
     return back?.apply(this, args);
   };
@@ -195,7 +203,7 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
         if (event.key === 'Delete' || event.key === 'Backspace') { event.preventDefault(); remove(key); return; }
         const app = step && installedApp(key);
         if (!app) return;
-        event.preventDefault(); launcher.moveFavorite(app, step as -1 | 1); focusTile(key);
+        event.preventDefault(); launcher.clearError(); launcher.moveFavorite(app, step as -1 | 1); focusTile(key);
       },
     };
     const homeShell = createElement(MobileHomeScreen, {
@@ -210,7 +218,7 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
       launcher, builtinPrefix: prefix, query: String(S.drawerQ || ''), glyphs,
       onQuery: query => self.setState({...self.shellNavigate({type: 'drawer-query', query}), drawerMenu: null}),
       onClose: () => self.setState({...self.shellNavigate({type: 'drawer', open: false}), drawerMenu: null}),
-      menu: drawerOpen ? S.drawerMenu || null : null,
+      menu: drawerOpen ? openMenu(S) : null,
       onMenu: key => self.setState({drawerMenu: key}),
       onAddHome: (app: InstalledApp) => {
         if (launcher.isFavorite(app)) return;
@@ -232,12 +240,12 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
     // Product views not on Home, offered by edit mode's "+".
     const hidden = editing ? snapshot.apps.filter(app => app.packageName.startsWith(prefix) && !snapshot.favorites.includes(appKey(app))).map(app => {
       const view = alphaViews.fromLauncherKey(appKey(app)), url = view && alphaViews.iconUrl(view);
-      return {key: appKey(app), label: app.label, glyph: `mask:url('${url || grid}') center/contain no-repeat;-webkit-mask:url('${url || grid}') center/contain no-repeat`, add: () => { launcher.toggleFavorite(app); if (!launcher.snapshot().apps.some(other => other.packageName.startsWith(prefix) && !launcher.isFavorite(other))) self.setState({homeAdd: false}); }};
+      return {key: appKey(app), label: app.label, glyph: `mask:url('${url || grid}') center/contain no-repeat;-webkit-mask:url('${url || grid}') center/contain no-repeat`, add: () => { launcher.clearError(); launcher.toggleFavorite(app); if (!launcher.snapshot().apps.some(other => other.packageName.startsWith(prefix) && !launcher.isFavorite(other))) self.setState({homeAdd: false}); }};
     }) : [];
     return {...out, homeShell, homeEditStyle, allAppsDrawer, drawerOpen, homeEdit: {
-      on: editing, noAdd: !hidden.length,
+      on: editing, noAdd: !hidden.length, error: editing ? snapshot.launchError || '' : '',
       add: () => { if (hidden.length) self.setState({homeAdd: true}); },
-      done: () => { endDrag(); self.setState({homeEdit: false, homeAdd: false}); },
+      done: () => { endDrag(); launcher.clearError(); self.setState({homeEdit: false, homeAdd: false}); },
       adding: editing && !!S.homeAdd && hidden.length > 0, hidden, closeAdd: () => self.setState({homeAdd: false}), sheetRef: addSheet.ref,
     }};
   };

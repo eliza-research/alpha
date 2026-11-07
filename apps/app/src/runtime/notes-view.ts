@@ -39,9 +39,15 @@ export function noteInstant(note:Note):number{
  const at=typeof value==='number'?value:typeof value==='string'?Date.parse(value):NaN;
  return Number.isFinite(at)?at:-1;
 }
-/** Pinned notes first, then newest first; ties keep their stored order. */
+/**
+ * Pinned notes first, then newest first; ties keep their stored order. A note with no time (an
+ * older device note) is placed by its stored position, which is newest first: it counts as at
+ * least as new as every note stored after it.
+ */
 export function sortNotes<N extends Note>(list:readonly N[]):N[]{
- return list.map((note,index)=>({note,index})).sort((a,b)=>Number(!!b.note.pinned)-Number(!!a.note.pinned)||noteInstant(b.note)-noteInstant(a.note)||a.index-b.index).map(x=>x.note);
+ const at=list.map(noteInstant);
+ for(let i=at.length-2;i>=0;i--)if(at[i]<0)at[i]=Math.max(at[i],at[i+1]);
+ return list.map((note,index)=>({note,index,at:at[index]})).sort((a,b)=>Number(!!b.note.pinned)-Number(!!a.note.pinned)||b.at-a.at||a.index-b.index).map(x=>x.note);
 }
 /** The two-line preview: body text, checklist items with their state, a voice transcript or a link's domain. */
 export function notePreview(note:Note):string{
