@@ -100,7 +100,7 @@ for(const mode of ['compose','cancel','source-changed','owner-changed'] as const
     return {};
    }};
   },'ready');
- await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:/Agent connection/}).click();await page.getByRole('button',{name:'Start local agent',exact:true}).click();await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
+ await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent',exact:true}).click();await page.getByRole('button',{name:'Start local agent',exact:true}).click();await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
  // Completed-installation UI progress keeps this fixture focused on the Gmail notice review.
  await page.evaluate(async()=>{
   const c=(await import('/src/runtime/connection-ui.tsx')).connectionController,f=(window as any).deliveryFixture,snapshot=c.getSnapshot.bind(c);f.reads=0;

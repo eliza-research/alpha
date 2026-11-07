@@ -33,7 +33,7 @@ for(const entry of ['cold','chooser'] as const)for(const failure of ['none','hos
   if(entry==='chooser'){
 
    await page.getByRole('button',{name:'Settings',exact:true}).click();
-   await page.getByRole('button',{name:/Agent connection/}).click();
+   await page.getByRole('button',{name:'Agent',exact:true}).click();
    await page.locator('.alpha-connection-scrim summary').filter({hasText:/^Mock mode$/}).click();
    await page.getByRole('button',{name:'Enter mock mode',exact:true}).click();
   }else await expect(page.getByRole('status')).toContainText('Pausing live background activity');
