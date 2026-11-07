@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "baseCommit": "ec0cfd6d05f72987c160e30930e07e6b78e32dd0",
+  "baseCommit": "0893a8bb1541973b480b2d8d8c7b5cd395e33b6d",
   "patches": [
     {
       "file": "google-browser-sign-in.patch",
@@ -80,7 +80,7 @@
     },
     {
       "file": "photos-library.patch",
-      "sha256": "843bd381fc7754bbfca02e3e1ea575f5e5c415a49933205360785cf769ce814c",
+      "sha256": "9e334306c70a05b2e87f7d6e072fdc88099d4ec9576f27b111e6408f881fb7a2",
       "module": "plugins/plugin-native-media/android",
       "targets": [
         {
@@ -100,8 +100,8 @@
         },
         {
           "path": "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PermittedMediaCatalog.java",
-          "beforeSha256": "e1ab1a24393b45b05025415e8809b3dd61b3e7f0d9bb757395123791bec1814a",
-          "afterSha256": "7557192828082f862e59098cfbbe9c3aa346541e842caeea794739785e3391ea"
+          "beforeSha256": "f03983b15814b42b321771e57d1b0d483135b853ea12bf52c6720df3578f79fc",
+          "afterSha256": "750b42abc62db5737f35c3a3357741a6ad3311dee4c35135ce60f249f9bc2143"
         },
         {
           "path": "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PermittedMediaReview.java",
@@ -110,13 +110,13 @@
         },
         {
           "path": "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotoLibraryAccess.java",
-          "beforeSha256": "f56c327aaed4f2e30770201bf9e4c5976764c00a31c7e279f3eb3051fd843e4b",
-          "afterSha256": "87a609d2c452dadeb06f53a5e59ba4c128fa48835581ad80aceae3d466a7f276"
+          "beforeSha256": "33d8da93b0d6f84952edcd3e5af0198bf4f6de6bc62219dc20ed684cf9ec5b34",
+          "afterSha256": "eb8c6207fcd136bc77e9ea89b6be78b296e97c97f827ddd3939599a8aa9872ca"
         },
         {
           "path": "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotosPlugin.java",
-          "beforeSha256": "62e8269a02b73c580824c0c946f6a12123d88db3fc9e525b5439cb7af969d92b",
-          "afterSha256": "4daeeaf241e8ffb3bc1eaba39a591d2f2886e25d3a49c26d07198cb2903c8ca3"
+          "beforeSha256": "b8de6359c6b7d99a11a053d0f1903383cb8d5814a5905ee734f6951608931a54",
+          "afterSha256": "f12044374d14a9e264bb3c81524f342ee5da954d487bbd27f3af75c27ae5c338"
         }
       ]
     },

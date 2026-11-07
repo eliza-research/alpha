@@ -33,6 +33,9 @@ function matches(actual, expected) {
     Object.entries(expected).every(([file, digest]) => actual[file] === digest);
 }
 export const CLIENT_FEATURE_PATHS = [
+  'packages/core/src/utils/type-guards.ts',
+  'packages/cloud/sdk/native-host/subscription-grant.mjs',
+  'packages/cloud/sdk/native-host/subscription-grant.d.mts',
   'packages/contracts/src/browser-address-input.ts',
   'packages/contracts/src/browser-request-grounding.ts',
   // Generated IANA TLD data imported by browser-request-grounding; this leaf has no imports.
