@@ -15,6 +15,7 @@
  *   android/aosp/pixel10a-product.json     signer.platformCertificateSha256   <- platform
  *                                          signer.releaseCertificates.<name>  <- shared, media, networkstack,
  *                                                                                sdk_sandbox, bluetooth, nfc, apex
+ *                                          signer.apexPayloadAvbPublicKeySha256 <- apex_payload
  *                                          avb.publicKeySha256                <- avb (SHA-256 of avb_pkmd.bin)
  *   android/aosp/pixel10a-ota-channel.json otaCertificateSha256               <- releasekey
  *                                          avbPublicKeySha256                 <- avb
@@ -26,7 +27,7 @@
  * recorded unless --replace is given (platform, AVB and the other image keys cannot change on a
  * device in the field without a data wipe; the application key only through a v3 rotation lineage).
  * With --certificates (the ceremony directory, or any directory with its public files) every
- * <name>.x509.pem and avb_pkmd.bin is hashed again and must equal fingerprints.json; private key
+ * certificate, avb_pkmd.bin and apex_payload.avbpubkey are checked against fingerprints.json; private key
  * files are never read. The application certificate's SHA-1 and colon-form SHA-256 are printed for
  * the Google Android OAuth client and the App Links association (H-12, H-13).
  *
@@ -53,6 +54,7 @@ export const ENROLLMENT = Object.freeze([
   { file: RELEASE_SIGNER, field: ["signerSha256"], key: APPLICATION_KEY, digest: "certificateSha256" },
   { file: PRODUCT, field: ["signer", "platformCertificateSha256"], key: "platform", digest: "certificateSha256" },
   ...IMAGE_CERTIFICATES.map(name => ({ file: PRODUCT, field: ["signer", "releaseCertificates", name], key: name, digest: "certificateSha256" })),
+  { file: PRODUCT, field: ["signer", "apexPayloadAvbPublicKeySha256"], key: "apex_payload", digest: "avbPublicKeySha256", initial: "UNSET" },
   { file: PRODUCT, field: ["avb", "publicKeySha256"], key: "avb", digest: "avbPublicKeySha256" },
   { file: CHANNEL, field: ["otaCertificateSha256"], key: "releasekey", digest: "certificateSha256" },
   { file: CHANNEL, field: ["avbPublicKeySha256"], key: "avb", digest: "avbPublicKeySha256" },
@@ -135,11 +137,14 @@ export function certificateProblems(directory, fingerprints) {
       if (subject) problems.push(`${file} has ${subject}`);
     }
   }
-  const avb = byName.get("avb");
-  if (avb) {
-    const file = path.join(directory, "avb_pkmd.bin");
-    if (!fs.existsSync(file)) problems.push(`${file} is missing`);
-    else if (sha256(fs.readFileSync(file)) !== avb.avbPublicKeySha256) problems.push(`${file} does not hash to fingerprints.json avb.avbPublicKeySha256`);
+  for (const [name, filename] of [["avb", "avb_pkmd.bin"], ["apex_payload", "apex_payload.avbpubkey"]]) {
+    const entry = byName.get(name);
+    if (!entry) continue;
+    const file = path.join(directory, filename);
+    const info = fs.lstatSync(file, { throwIfNoEntry: false });
+    if (!info) problems.push(`${file} is missing`);
+    else if (!info.isFile()) problems.push(`${file} is not a regular file`);
+    else if (sha256(fs.readFileSync(file)) !== entry.avbPublicKeySha256) problems.push(`${file} does not hash to fingerprints.json ${name}.avbPublicKeySha256`);
   }
   return problems;
 }
@@ -156,7 +161,8 @@ export function plannedChanges(root, fingerprints, { replace = false } = {}) {
   for (const row of ENROLLMENT) {
     if (!records.has(row.file)) records.set(row.file, readJson(root, row.file));
     const record = records.get(row.file);
-    const from = get(record, row.field);
+    const recorded = get(record, row.field);
+    const from = recorded === undefined ? row.initial : recorded;
     if (from === undefined) throw new Error(`${row.file} has no ${row.field.join(".")}`);
     const to = byName.get(row.key)?.[row.digest];
     const state = UNSET.has(from) ? "set" : from === to ? "same" : "conflict";
