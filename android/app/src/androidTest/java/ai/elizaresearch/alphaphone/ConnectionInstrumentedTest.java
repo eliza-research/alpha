@@ -67,7 +67,7 @@ public class ConnectionInstrumentedTest {
   org.junit.Assume.assumeTrue("Owned native credential isolation campaign", "1".equals(InstrumentationRegistry.getArguments().getString("nativeSlotIsolation")));
   assertTrue("Fresh secondary user required",android.os.Process.myUid()/100000>0);
   AlphaCredentialStore nativeStore=new AlphaCredentialStore(InstrumentationRegistry.getInstrumentation().getTargetContext());
-  // One bare and one versioned slot per native-only namespace, so a dropped namespace fails here.
+  // One bare and one versioned slot per native-only namespace; test/native-secure-slots.test.mjs pins the list.
   java.util.List<String> slots=new java.util.ArrayList<>();
   for(String namespace:RendererCredentialSlots.nativeNamespaces()){slots.add(namespace);slots.add(namespace+":v1:fixture");}
   java.util.List<String> ownedSlots=new java.util.ArrayList<>();
