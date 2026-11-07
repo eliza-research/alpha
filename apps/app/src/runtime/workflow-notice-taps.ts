@@ -77,6 +77,8 @@ export function createWorkflowApprovalPoster(options:{session:()=>ApprovalPoster
    }catch(error){if(!session.current())return;if(!definiteNoticeFailure(error))unread.add(flow.id);}
   }
   if(!session.current())return;
+  // A workflow that could not be read keeps its last state, as its notices do.
+  if(waitingIdentity===session.identity)for(const id of unread)if(waiting.has(id))nextWaiting.add(id);
   waiting=nextWaiting;waitingIdentity=session.identity;options.changed();
   const live=new Set(flows.map(flow=>flow.id)),stale=[...posted].filter(([id,notice])=>notice.identity===session.identity&&!found.some(entry=>entry.id===id)&&(!live.has(notice.workflowId)||!unread.has(notice.workflowId))).map(([id])=>id);
   // Another owner's notices are fenced natively (NoticeOwnerCoordinator); this process stops tracking them.

@@ -23,7 +23,7 @@ test('an agent-started waiting run with no open receipt posts one redacted notic
 });
 test('a settled proposal withdraws its notice; a transient read failure keeps it',async()=>{
  const {agent,posted,withdrawn,poster}=fixture();await poster.poll(true);
- agent.fail=Object.assign(Error('offline'),{status:503});await poster.poll(true);assert.deepEqual(withdrawn,[]);
+ agent.fail=Object.assign(Error('offline'),{status:503});await poster.poll(true);assert.deepEqual(withdrawn,[]);assert.equal(poster.waiting('a','flow'),true,'an unreadable workflow keeps showing Waiting for you');
  agent.fail=null;agent.pending=[];await poster.poll(true);
  assert.deepEqual(withdrawn,[posted[0].id]);assert.equal(poster.waiting('a','flow'),false);
  await poster.poll(true);assert.equal(withdrawn.length,1,'a withdrawn notice is not withdrawn again');
