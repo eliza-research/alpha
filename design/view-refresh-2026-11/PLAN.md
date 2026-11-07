@@ -36,8 +36,9 @@ Principles applied to every view:
 | Status pill "Starting camera…" | Removed. The viewfinder fades in on the first real frame |
 | Modes: Video · Photo · Scan | Video · Photo (decision C1: Scan removed as a mode; ask Alpha to scan what Camera sees) |
 
-"Ask Alpha about this" stays reachable through the chat pill. When Camera is open, the
-agent already has `camera_capture_photo` and ask-about-frame, so it doesn't need a button.
+"Ask Alpha about this" stays reachable through the chat pill. When Camera is open, a question
+about what it sees ("What am I looking at?") opens the reviewed frame question on one unsaved
+frame, the same way "Scan this" opens scan review, so it doesn't need a button.
 
 ### Start and shutter speed (native, CameraX: `vendor/eliza/plugins/plugin-native-camera`, via `patches/eliza`)
 Measured path today: render → rAF → `start()` → `await stopping` → bridge →

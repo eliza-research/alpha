@@ -98,6 +98,7 @@ const device=registerPlugin<{openSettings(options:{page:'privacy'}):Promise<{sta
 /** Only an explicit permission denial gets settings recovery (shared camera host rule). */
 export const mediaAccessDenied=cameraAccessDenied;
 let captureQuestion:((item?:{id:string})=>boolean)|undefined;
+let frameQuestion:((question:string)=>boolean)|undefined;
 /** A request to scan what Camera sees; asking Alpha in Camera reaches it. */
 let scanRequest:(()=>boolean)|undefined;
 export function requestCameraScan():boolean{return scanRequest?.()??false;}
@@ -105,6 +106,11 @@ const SCAN_REQUEST=/\bscan\b.*\b(document|doc|receipt|qr|code|poster|page|letter
 /** Whether a chat message asks to scan what the camera sees. */
 export function cameraScanRequested(text:unknown):boolean{return SCAN_REQUEST.test(String(text||'').toLowerCase().slice(0,200));}
 export function askAboutCapture(item?:{id:string}):boolean{return captureQuestion?.(item)??false;}
+const FRAME_QUESTION=/^(?:hey alpha,? )?(?:what am i looking at|what(?:'s| is) (?:this|that|in front of me)|what do you see|describe (?:this|that|what you see)|what does (?:this|that|it) say|read (?:this|that) (?:to me|for me))\b/;
+/** Whether a chat message asks about what the camera sees right now. */
+export function cameraFrameQuestionRequested(text:unknown):boolean{return FRAME_QUESTION.test(String(text||'').toLowerCase().replace(/[‘’]/g,"'").trim().slice(0,200));}
+/** Opens the reviewed question on one unsaved frame of the live preview, with the asked question. */
+export function askAboutCameraFrame(question:string):boolean{return frameQuestion?.(question)??false;}
 const browserMode=!Capacitor.isNativePlatform();
 const camera:typeof nativeCamera=browserMode?browserCamera:nativeCamera;
 // Check every implemented browser method against the native port contract.
@@ -959,12 +965,19 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     if(owner.S.chat!=='hidden')owner.shell({chat:'hidden'});
     void scanFrame(owner);return true;
   };
-  function askCameraFrame(owner:Bag):boolean{
+  function askCameraFrame(owner:Bag,question?:string):boolean{
     if(session.recording||session.recordingStarting||session.finalizing||session.capturing||session.phase!=='ready')return false;
     closeQuestion?.();const token=session.token();
-    closeQuestion=reviewContentQuestion({name:'Camera frame',text:'',current:()=>session.current(token),compose:draft=>owner.composeContentQuestion(draft),image:async signal=>{const photo=await camera.capturePhoto({format:'jpeg',quality:85,saveToGallery:false});signal.throwIfAborted();if(!photo.base64)throw Error('Camera frame unavailable.');return new Blob([Uint8Array.from(atob(photo.base64),char=>char.charCodeAt(0))],{type:'image/jpeg'});}});
+    closeQuestion=reviewContentQuestion({name:'Camera frame',text:'',question,current:()=>session.current(token),compose:draft=>owner.composeContentQuestion(draft),image:async signal=>{const photo=await camera.capturePhoto({format:'jpeg',quality:85,saveToGallery:false});signal.throwIfAborted();if(!photo.base64)throw Error('Camera frame unavailable.');return new Blob([Uint8Array.from(atob(photo.base64),char=>char.charCodeAt(0))],{type:'image/jpeg'});}});
     return true;
   }
+  frameQuestion=question=>{
+    const owner=api;if(disposed||!owner||!cameraViewVisible())return false;
+    if(!askCameraFrame(owner,question))return false;
+    // Close the chat so the frame review is visible.
+    if(owner.S.chat!=='hidden')owner.shell({chat:'hidden'});
+    return true;
+  };
   /** The reviewed item is still the listed one at the revision the review started with:
    * an edited, replaced or removed capture ends its review instead of continuing under the same id. */
   function sameCapture(selected:SavedPhoto):boolean{
@@ -1375,6 +1388,6 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   const resumed=()=>{void restartAfterResume(()=>({denied:session.denied,phase:session.phase,disposed}),()=>cameraAccess.checkPermissions()).then(restart=>{if(restart){session.rearm();schedule();}});};
   let resumeHandle:{remove():Promise<void>}|undefined;
   void DailyApps.addListener('appResumed',resumed).then(handle=>{if(disposed)void handle.remove();else resumeHandle=handle;}).catch(()=>{});
-  return () => { releaseHost();if(requestedPhoto===takeRequestedPhoto)requestedPhoto=undefined;window.clearTimeout(noticeTimer);noticeGeneration++;watchLibrary(false);deviceLibrary.dispose();captureQuestion=undefined;void libraryChangeHandle?.remove();hideAccess();void resumeHandle?.remove();window.removeEventListener('alpha:albums-document-changed',albumsChanged);if(scanApi&&prototype.api===scanApi)prototype.api=originalApi;disposed = true;cancelEdit();endHold();selection=undefined; clearInterval(timer); window.clearTimeout(chatTimer); closeVideo(); removePresence(); document.removeEventListener('visibilitychange', visibility); window.removeEventListener('pagehide', pageHide); window.removeEventListener('resize', resize); void stop(); style.remove(); captures = []; module.render = render; module.onLeave = leave; module.back = cameraBack; module.actions = cameraActions; if (scanRequest) scanRequest = undefined; if (views.photos) { views.photos.render = photosRender; views.photos.back = photosBack; views.photos.onLeave = photosLeave; } };
+  return () => { releaseHost();if(requestedPhoto===takeRequestedPhoto)requestedPhoto=undefined;window.clearTimeout(noticeTimer);noticeGeneration++;watchLibrary(false);deviceLibrary.dispose();captureQuestion=undefined;frameQuestion=undefined;void libraryChangeHandle?.remove();hideAccess();void resumeHandle?.remove();window.removeEventListener('alpha:albums-document-changed',albumsChanged);if(scanApi&&prototype.api===scanApi)prototype.api=originalApi;disposed = true;cancelEdit();endHold();selection=undefined; clearInterval(timer); window.clearTimeout(chatTimer); closeVideo(); removePresence(); document.removeEventListener('visibilitychange', visibility); window.removeEventListener('pagehide', pageHide); window.removeEventListener('resize', resize); void stop(); style.remove(); captures = []; module.render = render; module.onLeave = leave; module.back = cameraBack; module.actions = cameraActions; if (scanRequest) scanRequest = undefined; if (views.photos) { views.photos.render = photosRender; views.photos.back = photosBack; views.photos.onLeave = photosLeave; } };
 
 }

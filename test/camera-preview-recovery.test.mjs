@@ -8,6 +8,7 @@ const slice=(from,to)=>{const a=source.indexOf(from),b=source.indexOf(to,a);asse
 const helpers=slice('const ZOOM_STOPS','/** Install after native').replace(/^export /gm,'');
 const scanWords=slice('const SCAN_REQUEST','const browserMode').replace(/^export /gm,'');
 const session=slice('  let requestedCaptureActive=false;','  function askCameraFrame(');
+const frameAsk=slice('  function askCameraFrame(','  /** The reviewed item is still');
 const syncCamera=source.match(/  const syncCamera = [^\n]+\n/)[0];
 const sessionSource=fs.readFileSync(new URL('../.eliza/client-features/plugins/plugin-native-camera/src/session.ts',import.meta.url),'utf8');
 const hostPorts=fs.readFileSync(new URL('../.eliza/client-features/plugins/plugin-native-camera/src/host-ports.ts',import.meta.url),'utf8');
@@ -17,7 +18,7 @@ const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve
 function fixture({permission=false,failing=true,receipt={width:1280,height:720,deviceId:'0',minZoom:0.5,maxZoom:10,hasFlash:true,zoom:1,flash:'off'}}={}){
  const env=new JSDOM('<div data-alpha-camera-root data-alpha-layer><button data-alpha-camera="viewfinder"></button></div>',{pretendToBeVisual:true});const timers=new Map();let timerId=0;
  env.window.setTimeout=(fn,ms)=>{timers.set(++timerId,{fn,ms});return timerId;};env.window.clearTimeout=id=>timers.delete(id);
- const calls={starts:0,stops:0,masked:false,captures:[],focus:0,switches:[],recordings:0,list:[],scans:0};let failed=failing;
+ const calls={starts:0,stops:0,masked:false,captures:[],focus:0,switches:[],recordings:0,list:[],scans:0,questions:[]};let failed=failing;
  const gates={start:undefined,capture:undefined};const clock={now:1000};
  let context;
  const camera={
@@ -33,13 +34,13 @@ function fixture({permission=false,failing=true,receipt={width:1280,height:720,d
  let view={chat:'hidden',active:true};
  context=vm.createContext({window:env.window,document:env.window.document,console,camera,library,Date:{now:()=>clock.now},Uint8Array,atob,Blob:env.window.Blob,
   mask:enable=>calls.masked=enable,Capacitor:{isPluginAvailable:()=>true},validateCameraCaptureResult:value=>value,systemPickerActive:()=>false,device:{openSettings:async()=>({status:'opened'})},
-  openScanReview:()=>{calls.scans++;return ()=>{};},createScanCapture:()=>({keep:async()=>undefined,close(){}}),ScanKeepError:Error,importBrowserPhoto:async()=>({}),browserCamera:{flashAvailable:()=>false},view:()=>view});
+  openScanReview:()=>{calls.scans++;return ()=>{};},reviewContentQuestion:input=>{calls.questions.push(input);return ()=>{};},createScanCapture:()=>({keep:async()=>undefined,close(){}}),ScanKeepError:Error,importBrowserPhoto:async()=>({}),browserCamera:{flashAvailable:()=>false},view:()=>view});
  const prelude=`let accessPanel,disposed=false,direction='back',flash=false,duration=0,loaded=true,captures=[],closeQuestion,closeScan,scanRequest;
-  let lens={minZoom:1,maxZoom:1,hasFlash:false,zoom:1,flash:false},zoomRatio=1,lastCapture;let requestedPhoto;
+  let frameQuestion;let lens={minZoom:1,maxZoom:1,hasFlash:false,zoom:1,flash:false},zoomRatio=1,lastCapture;let requestedPhoto;
   const browserMode=false,libraryAvailable=()=>true,normalize=row=>({...row,id:'native-camera-'+row.id}),nativeId=id=>id.replace(/^native-camera-/,''),cancelScan=()=>{};function schedule(){}
   const finder='[data-alpha-camera="viewfinder"]';let state={said:'',mode:'photo'};
   const api={S:{get chat(){return view().chat;}},isActive:()=>view().active,set:patch=>Object.assign(state,patch),get:()=>state,setView:()=>{},shell:patch=>{view().chat=patch.chat;}};`;
- vm.runInContext(shared+stripTypeScriptTypes(prelude+helpers+scanWords+session+syncCamera+`;globalThis.testCamera={bindMode,modeSettled:()=>modeChange,recordingOptions:()=>RECORDING,start,stop,control,capture,record,focusAt,takeRequestedPhoto,zoomStops,lensFromReceipt,photoReceiptPath,cameraScanRequested,scanRequest:()=>scanRequest(),active,installViewPresence,syncCamera,CHAT_GRACE_MS,
+ vm.runInContext(shared+stripTypeScriptTypes(prelude+helpers+scanWords+session+frameAsk+syncCamera+`;globalThis.testCamera={cameraFrameQuestionRequested,askAboutCameraFrame,bindMode,modeSettled:()=>modeChange,recordingOptions:()=>RECORDING,start,stop,control,capture,record,focusAt,takeRequestedPhoto,zoomStops,lensFromReceipt,photoReceiptPath,cameraScanRequested,scanRequest:()=>scanRequest(),active,installViewPresence,syncCamera,CHAT_GRACE_MS,
   flip:()=>{const next=direction==='back'?'front':'back';return control(async()=>{flash=false;zoomRatio=1;return camera.switchCamera({direction:next});},r=>{direction=next;adoptLens(r);});},
   setFlash:on=>{flash=on;},setZoom:z=>{zoomRatio=z;},mode:m=>{state.mode=m;},
   state:()=>({phase:session.phase,denied:session.denied,said:state.said,capturing:session.capturing,recording:session.recording,flash,zoomRatio,lens,last:lastCapture,fl:state.fl})};
@@ -59,6 +60,18 @@ function fixture({permission=false,failing=true,receipt={width:1280,height:720,d
  assert.equal(f.api.state().phase,'off','A released preview ends the session');
  assert.equal(f.env.window.document.querySelector('[role="alert"]').getAttribute('aria-label'),'Camera unavailable');
  globalThis.__modeImpl=undefined;f.env.window.close();
+}
+// A question about what the camera sees opens the reviewed question on one unsaved frame, with the asked text.
+{
+ const f=fixture({failing:false});await f.api.start();await settle();
+ for(const text of['What am I looking at?','what’s this','Describe what you see','What does this say?'])assert.equal(f.api.cameraFrameQuestionRequested(text),true,text);
+ for(const text of['Scan this','take a photo','what am I doing tomorrow','Tell me what is this week'])assert.equal(f.api.cameraFrameQuestionRequested(text),false,text);
+ f.setView({chat:'sheet'});
+ assert.equal(f.api.askAboutCameraFrame('What am I looking at?'),true);
+ assert.equal(f.calls.questions.length,1);assert.equal(f.setView({}).chat,'hidden','The chat closes so the review is visible');assert.equal(f.calls.questions[0].question,'What am I looking at?');assert.equal(f.calls.questions[0].name,'Camera frame');
+ const frame=await f.calls.questions[0].image(new AbortController().signal);assert.equal(frame.type,'image/jpeg');
+ assert.equal(f.calls.captures.at(-1).saveToGallery,false,'The frame is never written to the gallery');
+ f.env.window.close();
 }
 // Preview failure, permission denial and recovery.
 {
