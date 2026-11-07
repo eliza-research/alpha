@@ -12,7 +12,8 @@
  *   --eliza-git-dir <dir> --pin <sha>      upstream git objects: the source dependency chain markers
  *   --json                                 machine-readable output instead of the text packet
  *
- * Output is the flagged entries grouped as the runbook describes, plus probe results. A flag is a
+ * Output is the flagged entries grouped as the runbook describes, distribution blockers (a shipped
+ * Bun with no recorded written source offer), plus probe results. A flag is a
  * record of what was found; nothing printed here is a clearance. Absolute build-host paths found
  * in a bundle are counted, never printed.
  */
@@ -20,9 +21,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {FLAGS} from '../licence-policy.mjs';
+import {FLAGS, SOURCE_OFFER_FILE, SOURCE_OFFER_MISSING, readSourceOffer} from '../licence-policy.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+
+const BUN = 'Bun JavaScript runtime (libeliza_bun.so)';
 
 /** Packages #674 names, and the role each review needs. */
 export const WATCHED = [
@@ -30,7 +33,7 @@ export const WATCHED = [
   {name: 'ffmpeg-static', topic: 'GPL-3.0-or-later wrapper; does a GPL ffmpeg binary ship?'},
   {name: 'ua-parser-js', topic: 'AGPL-3.0-or-later; executed on the phone?'},
   {name: 'rpc-websockets', topic: 'LGPL-3.0-only; bundled (not separately replaceable)'},
-  {name: 'Bun JavaScript runtime (libeliza_bun.so)', topic: 'statically linked JavaScriptCore (LGPL)'},
+  {name: BUN, topic: 'statically linked JavaScriptCore (LGPL)'},
   {name: /^eSpeak NG/, topic: 'GPL-3.0-or-later, statically linked into libelizainference'},
   {name: /^Phonon-2/, topic: 'CC-BY-4.0 weights; attribution and training-data terms'},
   {name: 'OpenStreetMap data', topic: 'ODbL-1.0 duties of the Maps service'},
@@ -111,6 +114,17 @@ export function acceptanceStatus(entries, accepted = OWNER_ACCEPTED) {
     const status = !found.length ? 'not-present' : found.every(v => v === a.version) ? 'covered' : 'version-not-covered';
     return {name: a.name, acceptedVersion: a.version, decided: a.decided, issue: a.issue, foundVersions: found, status};
   });
+}
+
+/**
+ * Distribution blockers the notices raise: shipped Bun (statically linked LGPL JavaScriptCore)
+ * with no written source offer recorded in SOURCE_OFFER_FILE.
+ */
+export function distributionBlockers(entries, root = ROOT) {
+  const list = Array.isArray(entries) ? entries : [];
+  if (!list.some(entry => entry?.name === BUN)) return [];
+  try { return readSourceOffer(root) ? [] : [`${SOURCE_OFFER_MISSING} (${SOURCE_OFFER_FILE})`]; }
+  catch (error) { return [`${SOURCE_OFFER_MISSING}: ${error.message}`]; }
 }
 
 export function flagCounts(rows) {
@@ -195,6 +209,7 @@ export function buildPacket(argv, root = ROOT) {
     const all = readJson(noticesFile);
     const rows = reviewRows(all);
     packet.acceptance = acceptanceStatus(all);
+    packet.blockers = distributionBlockers(all, root);
     packet.notices = {file: path.relative(root, path.resolve(noticesFile)), flagged: rows.length, counts: flagCounts(rows), watched: rows.filter(r => r.watched), otherFlagged: rows.filter(r => !r.watched).length};
   }
   const apkManifest = argValue(argv, '--apk-manifest');
@@ -222,6 +237,10 @@ export function formatPacket(packet) {
     lines.push('', 'Entries #674 asks about:');
     for (const r of packet.notices.watched) lines.push(`  ${r.name.slice(0, 70)} | ${r.license} | ${r.flags.join(', ')}${r.shippedBy ? ` | ${r.shippedBy}` : ''}\n    -> ${r.watched}`);
     lines.push(`  (${packet.notices.otherFlagged} other flagged entries, mostly licence-text-missing-from-package / unverified)`);
+  }
+  if (packet.blockers?.length) {
+    lines.push('', 'Distribution blockers:');
+    for (const blocker of packet.blockers) lines.push(`  ${blocker}`);
   }
   if (packet.acceptance) {
     lines.push('', 'Owner acceptances (exact version only):');
