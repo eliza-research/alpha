@@ -28,6 +28,7 @@
     <button class="ib" data-alpha-home-add onClick="{{homeEdit.add}}" disabled="{{homeEdit.noAdd}}" aria-label="Add to Home" aria-haspopup="dialog" style="background: var(--s2)"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.plus}}"></path></svg></button>
     <button data-alpha-home-done onClick="{{homeEdit.done}}" style="min-height: 44px; padding: 0 18px; border-radius: 22px; background: var(--fg); color: var(--bg); font-size: 14px">Done</button>
   </div>
+  <sc-if value="{{homeEdit.error}}"><p role="alert" data-alpha-home-edit-error style="margin: 0 16px 12px; font-size: 14px">{{homeEdit.error}}</p></sc-if>
 </sc-if>
 </sc-slot>
 <sc-slot name="cards">

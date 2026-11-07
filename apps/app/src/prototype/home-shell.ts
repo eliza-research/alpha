@@ -81,9 +81,11 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
   const place = (key: string, target: string) => {
     const keys = shell.homeEntries().map(entry => entry.key), from = keys.indexOf(key), to = keys.indexOf(target), app = installedApp(key);
     if (from < 0 || to < 0 || from === to || !app) return;
+    launcher.clearError();
     for (let step = 0; step < Math.abs(to - from); step++) launcher.moveFavorite(app, to > from ? 1 : -1);
   };
-  const remove = (key: string) => { const app = installedApp(key); if (app && launcher.isFavorite(app)) launcher.toggleFavorite(app); };
+  // Each edit starts without the last one's error; a failed save shows in the edit bar.
+  const remove = (key: string) => { const app = installedApp(key); if (app && launcher.isFavorite(app)) { launcher.clearError(); launcher.toggleFavorite(app); } };
 
   let stop: (() => void) | undefined;
   p.componentDidMount = function (...args: any[]) {
@@ -201,7 +203,7 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
         if (event.key === 'Delete' || event.key === 'Backspace') { event.preventDefault(); remove(key); return; }
         const app = step && installedApp(key);
         if (!app) return;
-        event.preventDefault(); launcher.moveFavorite(app, step as -1 | 1); focusTile(key);
+        event.preventDefault(); launcher.clearError(); launcher.moveFavorite(app, step as -1 | 1); focusTile(key);
       },
     };
     const homeShell = createElement(MobileHomeScreen, {
@@ -238,12 +240,12 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
     // Product views not on Home, offered by edit mode's "+".
     const hidden = editing ? snapshot.apps.filter(app => app.packageName.startsWith(prefix) && !snapshot.favorites.includes(appKey(app))).map(app => {
       const view = alphaViews.fromLauncherKey(appKey(app)), url = view && alphaViews.iconUrl(view);
-      return {key: appKey(app), label: app.label, glyph: `mask:url('${url || grid}') center/contain no-repeat;-webkit-mask:url('${url || grid}') center/contain no-repeat`, add: () => { launcher.toggleFavorite(app); if (!launcher.snapshot().apps.some(other => other.packageName.startsWith(prefix) && !launcher.isFavorite(other))) self.setState({homeAdd: false}); }};
+      return {key: appKey(app), label: app.label, glyph: `mask:url('${url || grid}') center/contain no-repeat;-webkit-mask:url('${url || grid}') center/contain no-repeat`, add: () => { launcher.clearError(); launcher.toggleFavorite(app); if (!launcher.snapshot().apps.some(other => other.packageName.startsWith(prefix) && !launcher.isFavorite(other))) self.setState({homeAdd: false}); }};
     }) : [];
     return {...out, homeShell, homeEditStyle, allAppsDrawer, drawerOpen, homeEdit: {
-      on: editing, noAdd: !hidden.length,
+      on: editing, noAdd: !hidden.length, error: editing ? snapshot.launchError || '' : '',
       add: () => { if (hidden.length) self.setState({homeAdd: true}); },
-      done: () => { endDrag(); self.setState({homeEdit: false, homeAdd: false}); },
+      done: () => { endDrag(); launcher.clearError(); self.setState({homeEdit: false, homeAdd: false}); },
       adding: editing && !!S.homeAdd && hidden.length > 0, hidden, closeAdd: () => self.setState({homeAdd: false}), sheetRef: addSheet.ref,
     }};
   };
