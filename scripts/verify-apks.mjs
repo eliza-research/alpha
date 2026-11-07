@@ -298,7 +298,7 @@ fs.writeFileSync(
       evidence: "apk-build",
       testMocks,
       demoEntryPoints: testMocks,
-      mapsConfigured: buildRecord ? buildRecord.mapsConfigured : Boolean(process.env.VITE_MAPS_BASE_URL),
+      mapsProvider: buildRecord?.mapsProvider ?? (testMocks && process.env.VITE_MAPS_BASE_URL ? "regional-gateway" : "cloud"),
       allowUnpackagedRuntime: allowUnpackaged,
       runtimeProfile,
       ...(localEmbeddings ? {localEmbeddings:true} : {}),

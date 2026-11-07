@@ -234,7 +234,8 @@ export function consumerBuildOptions(options, env, root) {
         testMocks: options.testMocks,
         runtimeProfile: options.runtimeProfile || "native",
         ...(options.localEmbeddings ? {localEmbeddings:true} : {}),
-        mapsConfigured: Boolean(env.VITE_MAPS_BASE_URL),
+        // The renderer reads VITE_MAPS_BASE_URL only in test-mocks builds; every other build uses Cloud Maps.
+        mapsProvider: options.testMocks && env.VITE_MAPS_BASE_URL ? "regional-gateway" : "cloud",
         signingRequested: signingRequested(env),
         versionOverride: { code: env.ELIZAOS_VERSION_CODE ?? null, name: env.ELIZAOS_VERSION_NAME ?? null },
       },

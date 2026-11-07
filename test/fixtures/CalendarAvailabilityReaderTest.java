@@ -1,8 +1,8 @@
 package ai.elizaresearch.alphaphone;
 
-import android.content.ContentResolver;
 import android.database.Cursor;
 import android.net.Uri;
+import ai.elizaresearch.alphaphone.SqliteCalendarProvider.Rows;
 import ai.eliza.plugins.calendar.read.CalendarSourceIdentity;
 import ai.eliza.plugins.calendar.read.SelectedCalendarReader;
 import java.nio.charset.StandardCharsets;
@@ -25,14 +25,13 @@ import org.json.JSONObject;
 /**
  * Runs the pinned upstream SelectedCalendarReader availability read (availabilitySources and
  * readAvailability, elizaOS/eliza#35911), which Alpha calls, plus Alpha's own zone check and
- * journal policy and its freshness gate (CalendarSyncFreshness), on the JVM. The provider is a stand-in: the
+ * journal policy and the plugin's gate (CalendarAvailabilityGate, CalendarSyncFreshness), on the JVM. The provider is a stand-in: the
  * reader's exact projection, selection, arguments and sort order are executed by the sqlite3
  * command-line shell over tables that use CalendarProvider's column names and hold titles,
  * descriptions, locations and calendars the owner never chose. This checks the reader's SQL
  * and row handling. It is not Android CalendarProvider, a permission check or a device run.
  */
 public final class CalendarAvailabilityReaderTest {
- private static final String UNIT="\u001f",RECORD="\u001e";
  private static final long HOUR=3600000L,DAY=86400000L;
  private static final DateTimeFormatter INSTANT=new DateTimeFormatterBuilder().appendInstant(3).toFormatter();
  private static final String[] EXPECTED_PROJECTION={"calendar_id","begin","end","allDay","availability","eventStatus","selfAttendeeStatus"};
@@ -43,51 +42,17 @@ public final class CalendarAvailabilityReaderTest {
   try{work.run();}catch(Exception thrown){if(type.isInstance(thrown))return;throw new AssertionError("Expected "+type.getSimpleName()+" but got "+thrown);}
   throw new AssertionError("Expected "+type.getSimpleName());
  }
- /** AlphaCalendarPlugin.readAvailability's order: source identity, then Alpha's freshness gate, then the upstream read. */
- static JSONArray gatedRead(ContentResolver resolver,JSONArray selected,String start,String finish,ZoneId zone)throws Exception{
-  SelectedCalendarReader.assertSourceIdentities(resolver,selected);
-  CalendarSyncFreshness.requireLocal(resolver,selected);
-  return SelectedCalendarReader.readAvailability(resolver,selected,start,finish,zone);
- }
  static String iso(long at){return INSTANT.format(Instant.ofEpochMilli(at));}
- static String sqlite(String database,String sql){
-  try{
-   Process process=new ProcessBuilder("sqlite3","-batch","-noheader","-separator",UNIT,"-newline",RECORD,database,sql).redirectErrorStream(true).start();
-   String output=new String(process.getInputStream().readAllBytes(),StandardCharsets.UTF_8);
-   if(process.waitFor()!=0)throw new IllegalStateException("sqlite3 rejected the provider query: "+output+"\n"+sql);
-   return output;
-  }catch(RuntimeException error){throw error;}catch(Exception error){throw new IllegalStateException(error);}
- }
- /** One result set. Every value arrives with its SQLite storage class, as a provider cursor reports it. */
- static final class Rows implements Cursor {
-  private final List<String[]> rows;private int at=-1;
-  Rows(List<String[]> rows){this.rows=rows;}
-  private String value(int column){return rows.get(at)[column*2];}
-  private String type(int column){return rows.get(at)[column*2+1];}
-  public boolean moveToFirst(){at=0;return !rows.isEmpty();}
-  public boolean moveToNext(){return ++at<rows.size();}
-  public boolean isNull(int column){return type(column).equals("null");}
-  public int getType(int column){return type(column).equals("integer")?FIELD_TYPE_INTEGER:3;}
-  public long getLong(int column){return Long.parseLong(value(column));}
-  public int getInt(int column){return Integer.parseInt(value(column));}
-  public String getString(int column){return isNull(column)?null:value(column);}
-  public void close(){}
- }
- /** SQLite-backed stand-in for the Calendars and Instances provider URIs the reader uses. */
- static final class Provider extends ContentResolver {
-  final String database;
+ static String sqlite(String database,String sql){return SqliteCalendarProvider.sqlite(database,sql);}
+ /** The shared SQLite stand-in, for the Calendars and Instances provider URIs the reader uses. */
+ static final class Provider extends SqliteCalendarProvider {
   final List<String> instanceSelections=new ArrayList<>(),instanceUris=new ArrayList<>();
   final List<String[]> instanceArguments=new ArrayList<>();
   Runnable afterInstances;List<String[]> hostileRows;
   Provider(Path directory)throws Exception {
-   database=directory.resolve("provider-"+System.nanoTime()+".db").toString();
-   sqlite(database,"CREATE TABLE calendars(_id INTEGER PRIMARY KEY,account_name TEXT,account_type TEXT,name TEXT,calendar_displayName TEXT,calendar_access_level INTEGER,ownerAccount TEXT);"
+   super(directory,"CREATE TABLE calendars(_id INTEGER PRIMARY KEY,account_name TEXT,account_type TEXT,name TEXT,calendar_displayName TEXT,calendar_access_level INTEGER,ownerAccount TEXT);"
     +"CREATE TABLE instances(calendar_id INTEGER,event_id INTEGER,title TEXT,description TEXT,eventLocation TEXT,\"begin\" INTEGER,\"end\" INTEGER,allDay INTEGER,availability INTEGER,eventStatus INTEGER,selfAttendeeStatus INTEGER,deleted INTEGER);");
   }
-  /** Fixture writes are applied together before the next provider read. */
-  private final StringBuilder pending=new StringBuilder();
-  void write(String sql){pending.append(sql);}
-  private void flush(){if(pending.length()>0){String sql=pending.toString();pending.setLength(0);sqlite(database,sql);}}
   void calendar(long id,String label,int access){
    write("INSERT INTO calendars VALUES("+id+",'"+label+"@account.example','LOCAL','"+label+"_CALENDAR_NAME','"+label+"_CALENDAR_NAME',"+access+",'"+label+"@owner.example');");
   }
@@ -97,38 +62,18 @@ public final class CalendarAvailabilityReaderTest {
     +(availability==null?"NULL":availability.toString())+","+(status==null?"NULL":status.toString())+","+(self==null?"NULL":self.toString())+","+(deleted?1:0)+");");
   }
   @Override public Cursor query(Uri uri,String[] projection,String selection,String[] arguments,String sort){
-   String[] path=uri.value.split("/");String table,scope;
-   if(path[0].equals("calendars")&&path.length<=2){table="calendars";scope=path.length==2?"_id="+Long.parseLong(path[1]):"1";}
-   else if(path[0].equals("instances")&&path.length==3){
-    // CalendarProvider's own range clause for an Instances URI: begin<=rangeEnd AND end>=rangeBegin.
-    table="instances";scope="\"begin\"<="+Long.parseLong(path[2])+" AND \"end\">="+Long.parseLong(path[1]);
+   String[] path=uri.value.split("/");boolean instances=path[0].equals("instances");
+   require(path[0].equals("calendars")&&path.length<=2||instances&&path.length==3,"Unexpected provider URI "+uri.value);
+   if(instances){
     same(Arrays.toString(EXPECTED_PROJECTION),Arrays.toString(projection),"The reader projects times, all-day, availability and status only");
     instanceUris.add(uri.value);instanceSelections.add(selection);instanceArguments.add(arguments==null?new String[0]:arguments.clone());
-   }else throw new AssertionError("Unexpected provider URI "+uri.value);
-   StringBuilder columns=new StringBuilder();
-   for(String column:projection){
-    require(column.matches("[A-Za-z_]+"),"Projection is a plain column: "+column);
-    // The reader must never ask for event content, whatever it then does with the row.
-    require(!Arrays.asList("title","description","eventLocation","organizer","event_id","_id").contains(column)||table.equals("calendars"),"Event content column requested: "+column);
-    if(columns.length()>0)columns.append(',');columns.append(column).append(",typeof(").append(column).append(')');
    }
-   String bound="1";
-   if(selection!=null){
-    StringBuilder text=new StringBuilder();int used=0;
-    for(char c:selection.toCharArray()){
-     if(c!='?'){text.append(c);continue;}
-     require(arguments!=null&&used<arguments.length&&arguments[used].matches("[0-9]{1,19}"),"Each placeholder binds one numeric argument");
-     text.append(arguments[used++]);
-    }
-    require(used==(arguments==null?0:arguments.length),"Every argument is bound");bound=text.toString();
-   }
-   if(table.equals("instances")&&hostileRows!=null)return new Rows(hostileRows);
-   flush();
-   String output=sqlite(database,"SELECT "+columns+" FROM "+table+" WHERE ("+scope+") AND ("+bound+")"+(sort==null?"":" ORDER BY "+sort)+";");
-   List<String[]> rows=new ArrayList<>();
-   for(String record:output.split(RECORD,-1)){if(record.isEmpty())continue;String[] cells=record.split(UNIT,-1);require(cells.length==projection.length*2,"Complete provider row");rows.add(cells);}
-   if(table.equals("instances")&&afterInstances!=null){Runnable hook=afterInstances;afterInstances=null;hook.run();}
-   return new Rows(rows);
+   // The reader must never ask for event content, whatever it then does with the row.
+   for(String column:projection)require(!Arrays.asList("title","description","eventLocation","organizer","event_id","_id").contains(column)||!instances,"Event content column requested: "+column);
+   if(instances&&hostileRows!=null)return new Rows(hostileRows);
+   Cursor rows=super.query(uri,projection,selection,arguments,sort);
+   if(instances&&afterInstances!=null){Runnable hook=afterInstances;afterInstances=null;hook.run();}
+   return rows;
   }
  }
  static JSONArray chosen(Provider provider,long... ids)throws Exception {
@@ -178,6 +123,10 @@ public final class CalendarAvailabilityReaderTest {
     provider.event(1,"NEXT_DAY",dayEnd+2*HOUR,dayEnd+3*HOUR,false,0,1,null,false);
     provider.event(2,"PARTNER",dayStart+9*HOUR,dayStart+17*HOUR,false,0,1,null,false);
     provider.event(3,"SHARED",dayStart+20*HOUR,dayStart+21*HOUR,false,0,1,null,false);
+    // An event on the no-access calendar overlaps every window below; no exact row list includes it.
+    // The pinned reader does not itself refuse a forged selection of this calendar: that is an
+    // upstream follow-up (SelectedCalendarReader does not check calendar_access_level).
+    provider.event(4,"HIDDEN",dayStart,dayEnd,false,0,1,null,false);
 
     // Only the chosen calendar: provider availability is carried, cancelled, declined and deleted rows are not occurrences.
     JSONArray work=SelectedCalendarReader.readAvailability(provider,chosen(provider,1),iso(dayStart),iso(dayEnd),zone);
@@ -200,7 +149,6 @@ public final class CalendarAvailabilityReaderTest {
     // Touching intervals do not overlap: an event ending at the window start or starting at its end is not read.
     rows(SelectedCalendarReader.readAvailability(provider,chosen(provider,1),iso(dayStart+10*HOUR),iso(dayStart+11*HOUR),zone));
     rows(SelectedCalendarReader.readAvailability(provider,chosen(provider,1),iso(dayStart+9*HOUR+1800000),iso(dayStart+9*HOUR+1800001),zone),row(dayStart+9*HOUR,dayStart+10*HOUR,false,"busy"));
-    for(String[] bound:provider.instanceArguments)for(String id:bound)require(!id.equals("4"),"A calendar the owner did not choose is never bound");
 
     // All-day events are stored as UTC-midnight civil dates and block the owner's local date.
     long civil=date.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli();
@@ -260,12 +208,17 @@ public final class CalendarAvailabilityReaderTest {
    Provider remote=new Provider(directory);remote.calendar(1,"LOCAL",700);remote.calendar(2,"REMOTE",100);
    remote.write("UPDATE calendars SET account_type='com.example' WHERE _id=2;");
    same(2,SelectedCalendarReader.availabilitySources(remote).length(),"Remote freebusy source is still offered");
-   rejects(CalendarSyncFreshness.FreshnessUnknown.class,()->gatedRead(remote,chosen(remote,2),start,end,zone));
-   rejects(CalendarSyncFreshness.FreshnessUnknown.class,()->gatedRead(remote,chosen(remote,1,2),start,end,zone));
+   rejects(CalendarSyncFreshness.FreshnessUnknown.class,()->CalendarAvailabilityGate.read(remote,chosen(remote,2),start,end,zone));
+   rejects(CalendarSyncFreshness.FreshnessUnknown.class,()->CalendarAvailabilityGate.read(remote,chosen(remote,1,2),start,end,zone));
    same(0,remote.instanceUris.size(),"Unknown remote freshness never reads partial local intervals");
-   rows(gatedRead(remote,chosen(remote,1),start,end,zone));
+   rows(CalendarAvailabilityGate.read(remote,chosen(remote,1),start,end,zone));
    remote.write("UPDATE calendars SET account_type=NULL WHERE _id=2;");
-   rejects(CalendarSyncFreshness.FreshnessUnknown.class,()->gatedRead(remote,chosen(remote,2),start,end,zone));
+   rejects(CalendarSyncFreshness.FreshnessUnknown.class,()->CalendarAvailabilityGate.read(remote,chosen(remote,2),start,end,zone));
+   // The gate reports a changed source before judging freshness, and a missing selection reads nothing.
+   JSONArray remoteReviewed=chosen(remote,2);int remoteReads=remote.instanceUris.size();remote.write("UPDATE calendars SET name='RENAMED' WHERE _id=2;");
+   rejects(SelectedCalendarReader.SourceChanged.class,()->CalendarAvailabilityGate.read(remote,remoteReviewed,start,end,zone));
+   rejects(IllegalArgumentException.class,()->CalendarAvailabilityGate.read(remote,null,start,end,zone));
+   same(remoteReads,remote.instanceUris.size(),"Refused gate reads never query instances");
 
    // Malformed selections and windows are refused before any provider read.
    JSONArray valid=chosen(provider,1);JSONObject one=valid.getJSONObject(0);String revision=one.getString("revision");

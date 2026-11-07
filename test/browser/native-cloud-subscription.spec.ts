@@ -2,7 +2,6 @@ import {openCloudPlanFromSettings} from './helpers/cloud-plan-settings';
 import {seedCompletedAccessSetup} from './flag-off-android';
 import {test,expect,type Page} from '@playwright/test';
 import {installResidentAgentPlugin} from './helpers/resident-agent-plugin';
-import {completeAccessSetup} from './flag-off-android';
 import {createServer,type ViteDevServer} from 'vite';
 import {resolve} from 'node:path';
 import {webcrypto} from 'node:crypto';
@@ -172,9 +171,6 @@ async function needsPlan(page:Page){
  const notice=page.getByRole('region',{name:'Eliza Cloud plan notice'});
  await expect(notice).toContainText('AI replies are off. Your agent is still running.');await expect(accountPanel(page)).toHaveCount(0);
  await expect(notice.getByRole('button',{name:'Choose a plan',exact:true})).toBeVisible();
- // A fresh phone's startup access panel (a modal) is declined first; the notice stays beside the agent.
- const startup=page.locator('dialog.alpha-startup-permissions');
- if(await startup.isVisible().catch(()=>false))await completeAccessSetup(page);
  await notice.getByRole('button',{name:'Redeem code',exact:true}).click();
  const panel=page.getByRole('dialog',{name:'Eliza Cloud account & plan',exact:true});await expect(panel).toBeVisible();return panel;
 }
@@ -488,11 +484,14 @@ test.describe('outages and offline use',()=>{
   expect(await configured(page)).toBe(0);
  });
  test('a failed background refresh does not renew the verified plan timestamp',async({page})=>{
-  await boot(page,{...await entitlements({rfa:Math.floor(Date.now()/1000)+4}),holdProvider:false});
+  // Cloud asks for a refresh 30 s out; the page clock runs past it instead of waiting.
+  await page.clock.install();
+  await boot(page,{...await entitlements({rfa:Math.floor(Date.now()/1000)+30}),holdProvider:false});
   await expect.poll(()=>configured(page)).toBe(1);await idle(page);
   const before=await page.evaluate(()=>localStorage.getItem('alpha.connection.plan-admission.v1'));
   await fixture(page,{route:'503'});
-  await expect.poll(()=>page.evaluate(()=>(window as any).planController.getSnapshot().residentSubscription?.refreshFailed),{timeout:10000}).toBe(true);
+  await page.clock.runFor(30000);
+  await expect.poll(()=>page.evaluate(()=>(window as any).planController.getSnapshot().residentSubscription?.refreshFailed)).toBe(true);
   expect(await page.evaluate(()=>localStorage.getItem('alpha.connection.plan-admission.v1'))).toBe(before);
  });
  test('a billing outage without a recent plan is "needs plan" with a retry',async({page})=>{
@@ -709,10 +708,12 @@ test.describe('account, plan and sign-in expiry',()=>{
   expect((await calls(page)).filter(c=>c.path?.startsWith('/api/auth/cli-session')||c.method==='openExternal'||c.method==='startEmail')).toEqual([]);
  });
 
- test('a key with more than 14 days left shows no expiry warning',async({page})=>{
-  await boot(page,await entitlements());
-  await admitted(page);
-  await expect(page.getByRole('button',{name:'Approve this phone again',exact:true})).toHaveCount(0);
+ // The warning starts at 14 days left: one hour either side of it, and the fixture's 60-day key.
+ for(const [left,label,warned] of [[60*24*3600_000,'60 days',false],[14*24*3600_000+3600_000,'just over 14 days',false],[14*24*3600_000-3600_000,'just under 14 days',true]] as const)test(`a key with ${label} left ${warned?'shows an':'shows no'} expiry warning`,async({page})=>{
+  await boot(page,{...await entitlements(),expiresAt:Date.now()+left});
+  await admitted(page);await openAccountPlan(page);
+  await expect(page.getByRole('button',{name:'Approve this phone again',exact:true})).toHaveCount(warned?1:0);
+  expect(await page.evaluate(()=>(window as any).planController.residentPlanSettings().keyExpiring)).toBe(warned);
   await release(page);
  });
 });
@@ -744,7 +745,6 @@ test.beforeEach(async({page})=>seedCompletedAccessSetup(page));
 test.describe('explicit membership code entry',()=>{
  async function notice(page:Page){
   await boot(page,{...await entitlements(),plan:'none',cashBalance:5,holdProvider:false});await started(page);await idle(page);
-  const startup=page.locator('dialog.alpha-startup-permissions');if(await startup.isVisible().catch(()=>false))await completeAccessSetup(page);
   const notice=page.getByRole('region',{name:'Eliza Cloud plan notice'});await expect(notice).toBeVisible();return notice;
  }
  // On the phone's own agent the plan action opens the resident account & plan panel, which carries

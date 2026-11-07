@@ -34,11 +34,12 @@ const tools={
  javac:()=>runs(javaBinary('javac'))?false:'No javac: set JAVA_HOME or put a JDK on PATH',
  sqlite3:()=>runs('sqlite3')?false:'No sqlite3 on PATH',
 };
-/** Skip reason for the first missing tool ('json', 'javac', 'sqlite3'), or false. On CI a missing
- * tool is a failure, never a skip: the test runs and fails where the tool is needed. */
+/** Skip reason for the first missing tool ('json', 'javac', 'sqlite3'), or false. Takes names or one
+ * array of names. On CI a missing tool is a failure, never a skip: the test runs and fails where the
+ * tool is needed. */
 export function jvmSkip(...names){
  if(process.env.CI)return false;
- for(const name of names){const reason=tools[name]();if(reason)return reason;}
+ for(const name of names.flat()){const reason=tools[name]();if(reason)return reason;}
  return false;
 }
 /** Skip reason when org.json is missing. On CI a missing jar is a failure, never a skip. */

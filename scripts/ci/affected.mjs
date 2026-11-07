@@ -68,7 +68,7 @@ export function browserPlan(paths, exists = existsSync) {
     browser_total: shards.length,
     browser_development: !narrow || development.length > 0,
     browser_production: !narrow || specs.some(path => productionSpec.test(path)),
-    browser_speech: !narrow || development.some(path => /\/(browser-(agent-recording|agent-tts|host-disclosure)|host-reminder-recovery)\.spec\.ts$/.test(path)),
+    browser_speech: !narrow || development.some(path => /\/(browser-(agent-tts|host-disclosure)|host-reminder-recovery)\.spec\.ts$/.test(path)),
   };
 }
 

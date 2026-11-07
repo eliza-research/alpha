@@ -6,7 +6,7 @@ import {setupLiveAssistant} from './voice-assistant-fixture';
 // Preserved from native-speech.production: append reviewed text, cancel late ASR,
 // unavailable capture, background retirement (four cases). Preserved from
 // voice-assistant.production: live dictation versus assistant submission and lost
-// capture recovery (two cases); interruptSpeech accounting (the busy hold closes capture on submission; interrupting reopens it) is retained separately.
+// capture recovery (two cases; the echo-canceller hold is in voice-assistant.production); interruptSpeech accounting (the busy hold closes capture on submission; interrupting reopens it) is retained separately.
 // Dictation's public component API is retained but there is no chat dictation button.
 // Override only the source build-flags module to exercise local/native branches; no shipped hooks.
 // The stub must export every build flag: updateChannelCheckEnabled joined the module in f4ebce3b3 (#713).
@@ -118,30 +118,9 @@ test('API interruptSpeech preserves listening; Mute controls capture with presse
  await clean(page,foreign);
 });
 
-test('API dictation recovery: without an echo canceller, speech during playback never interrupts (input held); a lost Transcribe capture can start again',async({page})=>{
+test('API dictation recovery: a lost Transcribe capture can start again',async({page})=>{
  const foreign=await setupLive(page);
- await page.evaluate(()=>{const w=window as any;w.live.noCanceller=true;w.flagOff.replies.push('The library closes at six tonight.');});
- await button(page,'Talk').click();
- await expect(voice(page)).toHaveAttribute('data-voice-state','listening');
- await say(page,'When does the library close');
- await expect(voice(page)).toHaveAttribute('data-voice-state','speaking');
- const stopped=await live(page,f=>f.stopped);
- // Busy hold (shared session at the #780 pin 35e0a605b3): submission closed the capture, so the
- // reply's own audio (heard without an echo canceller) has no open microphone to reach.
- expect(await live(page,f=>f.active)).toBeNull();
- expect(await live(page,f=>f.sharedVoiceSession.getSnapshot().inputHeld)).toBe(true);
- const routed=await live(page,f=>f.routes.length);
- await page.evaluate(()=>{const f=(window as any).live,t=Date.now();f.frames([t-64,t-32,t],[{type:'speech-start',timestampMs:t-64}]);});
- await page.waitForTimeout(150);
- await page.evaluate(()=>{const f=(window as any).live,t=Date.now();f.frames([t],[{type:'speech-end',timestampMs:t}]);});
- await page.waitForTimeout(1600);
- expect(await live(page,f=>f.stopped)).toBe(stopped);
- expect(await live(page,f=>f.routes.length)).toBe(routed);
- await expect(voice(page)).toHaveAttribute('data-voice-state','speaking');
- expect(await posts(page)).toEqual(['When does the library close']);
- await button(page,'Stop voice conversation').click();
- await expect(voice(page)).toHaveCount(0);
- // Transcribe: the microphone is lost mid-recording; recording again works.
+ // The microphone is lost mid-recording; recording again works.
  await invokeDictation(page);
  await expect(transcription(page)).toHaveAttribute('data-voice-state','recording');
  await page.evaluate(()=>{const f=(window as any).live;f.emit('liveCaptureEnded',{captureId:f.active,error:'capture'});f.active=null;});
@@ -151,6 +130,6 @@ test('API dictation recovery: without an echo canceller, speech during playback 
  await say(page,'Buy stamps');
  await button(page,'Stop recording').click();
  await expect(page.getByRole('textbox',{name:'Review transcript',exact:true})).toHaveValue('Buy stamps');
- expect(await live(page,f=>f.captures.length)).toBe(3);
+ expect(await live(page,f=>f.captures.length)).toBe(2);
  await clean(page,foreign);
 });

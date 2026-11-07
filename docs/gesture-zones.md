@@ -63,8 +63,8 @@ text or display size) scrolls normally; only at its top, where it cannot scroll 
 Alpha take a clearly downward drag on empty Home from the WebView (a non-passive `touchmove` that
 calls `preventDefault`, `overflowPullDecision` in `system-shade.ts`), so that pull reaches Alpha
 too. Upward drags, sideways drags and drags on a Home scrolled away from its top stay the
-WebView's. Chromium's touch pipeline is covered by the landscape case in
-`notifications-handle.spec.ts`; whether the AOSP image's WebView delivers either path is not
+WebView's. Chromium's touch pipeline is covered by the short portrait case (412x560) in
+`notifications-handle.spec.ts`, since the launcher is portrait only; whether the AOSP image's WebView delivers either path is not
 measured.
 
 ## Asking Android

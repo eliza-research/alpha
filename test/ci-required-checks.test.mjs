@@ -35,6 +35,19 @@ test('production lane selects production-surface and every *.production.spec.ts 
   assert.equal(mixed.browser_production, true);
 });
 
+test('the local-agent profile step runs every profile spec whole and the change gate selects each of them', async () => {
+  const { browserPlan } = await import('../scripts/ci/affected.mjs');
+  const files = ['test/browser/browser-agent-tts.spec.ts', 'test/browser/browser-host-disclosure.spec.ts', 'test/browser/host-reminder-recovery.spec.ts'];
+  const step = /name: Exercise synthetic local-agent speech profile\n(?:.*\n)*?.*VITE_LOCAL_AGENT=1 .*npm run test:browser -- (.*)\n/.exec(read('.github/workflows/browser.yml'))?.[1];
+  assert.ok(step, 'profile step');
+  assert.doesNotMatch(step, /--grep/);
+  for (const file of files) {
+    assert.ok(step.includes(file), file);
+    assert.equal(browserPlan([file], () => true).browser_speech, true, file);
+  }
+  assert.equal(browserPlan(['test/browser/notes.spec.ts'], () => true).browser_speech, false);
+});
+
 test('Android foundation runs on main and develop pushes and both workflows end in the required aggregate jobs', () => {
   const android = read('.github/workflows/android.yml');
   assert.match(android, /^on:\n(?:.*\n)*?  push:\n    branches: \[main, develop\]\n/m);

@@ -190,9 +190,8 @@ test('first run: Cancel while verifying the email code keeps no key and the resi
   await expect(page.getByText(WAITING, { exact: true })).toBeVisible();
   await expect.poll(() => stub(page, s => s.order.includes('native sign-in verifyEmail'))).toBe(true);
   await page.getByRole('button', { name: 'Back', exact: true }).click();
-  const polls = await stub(page, s => s.polls);
-  await page.waitForTimeout(2000);
-  expect(await stub(page, s => s.polls)).toBe(polls);
+  // Back cancels the native attempt, which ends the held verify; nothing is stored afterwards.
+  await expect.poll(() => stub(page, s => s.order.includes('native sign-in cancel'))).toBe(true);
   await nothingLeft(page, welcome, true);
   expect(foreign).toEqual([]);
 });

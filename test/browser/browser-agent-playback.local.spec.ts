@@ -13,7 +13,7 @@ async function attach(page:any){
  });
 }
 test('first host speech request plays without a readiness probe',async({page})=>{
- test.skip(process.env.ALPHA_REAL_KOKORO!=='1','Opt in against a freshly restarted real local host');
+ test.skip(process.env.ALPHA_REAL_LOCAL_TTS!=='1','Opt in against a freshly restarted real local host');
  test.setTimeout(150000);
  const speechRequests:string[]=[];
  page.on('request',request=>{if(request.url().endsWith('/__alpha-local-agent')){const input=request.postDataJSON();if(input?.path?.startsWith('/api/tts/'))speechRequests.push(input.path);}});

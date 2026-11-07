@@ -3,9 +3,10 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {stripTypeScriptTypes} from './fixtures/ts-source.mjs';
 import vm from 'node:vm';
+import {deferred} from './fixtures/wait-for.mjs';
 const source=readFileSync(process.env.ALPHA_RESTORE_SOURCE||'apps/app/src/runtime/connection-ui.tsx','utf8');
 const part=(start,end)=>{const a=source.indexOf(start),b=source.indexOf(end,a);assert.ok(a>=0&&b>a);return source.slice(a,b);};
-const code=stripTypeScriptTypes([
+const code=transformSync([
  part('async function createSelectedConversation(', '/** Only remove'),
  part('async function restoreConversationHistory(', '/** Restored chats'),
  part('async function restoreSavedHistory(', 'type HistoryEntry'),
@@ -25,17 +26,17 @@ function fixture(){
  return {box,state,memory,writes,get choice(){return choice;},set choice(value){choice=value;},get createCount(){return createCount;}};
 }
 test('native automatic restore awaits the second asynchronous selection read',async()=>{
- const f=fixture();f.choice={id:'saved',revision:'native'};f.box.conversationList=async()=>[{id:'saved'}];let reads=0,release;
- f.box.captureConversationChoice=async()=>{reads++;if(reads===2)await new Promise(resolve=>release=resolve);return structuredClone(f.choice);};
+ const f=fixture();f.choice={id:'saved',revision:'native'};f.box.conversationList=async()=>[{id:'saved'}];let reads=0,release;const reached=deferred();
+ f.box.captureConversationChoice=async()=>{reads++;if(reads===2){const gate=new Promise(resolve=>release=resolve);reached.resolve();await gate;}return structuredClone(f.choice);};
  const pending=f.box.restoreConversationHistory('saved',new AbortController().signal,true,true);
- while(!release)await Promise.resolve();
+ await Promise.race([reached.promise,pending.then(()=>{throw Error('restore finished without the second read');})]);
  assert.equal(f.state.history.conversationId,'manual-visible');release();await pending;
  assert.equal(f.state.history.conversationId,'saved');assert.equal(reads,2);assert.equal(f.memory.get('owner-key'),'saved');
 });
 test('a newer manual choice during missing-conversation lookup prevents fallback creation',async()=>{
- const f=fixture();let release;f.box.conversationList=()=>new Promise(resolve=>release=resolve);
+ const f=fixture();let release;const reached=deferred();f.box.conversationList=()=>{const list=new Promise(resolve=>release=resolve);reached.resolve();return list;};
  const pending=f.box.restoreSavedHistory(new AbortController().signal);
- while(!release)await Promise.resolve();f.choice={id:'manual-newer',revision:'r2'};release([]);await pending;
+ await Promise.race([reached.promise,pending.then(()=>{throw Error('restore finished without the conversation lookup');})]);f.choice={id:'manual-newer',revision:'r2'};release([]);await pending;
  assert.equal(f.choice.id,'manual-newer');assert.equal(f.createCount,0);assert.equal(f.state.history.conversationId,'manual-visible');assert.equal(f.memory.size,0);assert.match(f.state.historyError,/could not be restored/);
 });
 test('failed fallback compare-and-set cannot publish a new in-memory conversation',async()=>{

@@ -380,16 +380,27 @@ export const button = (page: Page, name: string) => name==='Inbox'
   ? page.getByRole('button', { name, exact: true }).and(page.locator('[data-mobile-shell-tile]'))
   : page.getByRole('button', { name, exact: true });
 
-/** Aborts and records every request that leaves the preview server. */
-export async function fenceNetwork(page: Page) {
+/** Aborts and records every request and WebSocket that leaves the preview server (test-owned hosts
+ * excepted for requests). page.route never sees WebSockets, so they are fenced on their own: local
+ * sockets (dev-server HMR, the local agent) pass through, any other host is recorded and closed. */
+export async function fenceNetwork(page: Page, allowed: string[] = []) {
   const foreign: string[] = [];
   await page.route('**/*', route => {
     const url = new URL(route.request().url());
     // Closed public-imagery fixture: never allow a real external request or coordinate leak.
     if(route.request().method()==='GET'&&url.href==='https://tiles.openfreemap.org/styles/bright')return route.fulfill({json:{version:8,sources:{},layers:[{id:'background',type:'background',paint:{'background-color':'#e7ebed'}}]}});
-    if (url.hostname === '127.0.0.1' || ['data:', 'blob:'].includes(url.protocol)) return route.fallback();
+    if (url.hostname === '127.0.0.1' || ['data:', 'blob:'].includes(url.protocol) || allowed.includes(url.hostname)) return route.fallback();
     foreign.push(`${route.request().method()} ${url.origin}${url.pathname}`); return route.abort();
   });
+  const socket = (raw: string) => { const url = new URL(raw); return ['127.0.0.1', 'localhost'].includes(url.hostname) ? null : `WS ${url.origin}${url.pathname}`; };
+  await page.routeWebSocket(/.*/, ws => {
+    const entry = socket(ws.url());
+    if (!entry) return ws.connectToServer();
+    if (!foreign.includes(entry)) foreign.push(entry);
+    return ws.close();
+  });
+  // Record-only backstop for a socket the route above did not see.
+  page.on('websocket', ws => { const entry = socket(ws.url()); if (entry && !foreign.includes(entry)) foreign.push(entry); });
   return foreign;
 }
 /** No mock, fixture or development surface is present in the build under test. */
@@ -403,17 +414,20 @@ export async function expectNoDevelopmentSurface(page: Page) {
 export async function seedCompletedAccessSetup(page: Page) {
   await page.addInitScript(()=>localStorage.setItem('alpha:startup-permission-walkthrough:v1',JSON.stringify({version:1,status:'completed',step:4})));
 }
-/** Dismiss the explicit post-auth Ready card; quiet restoration of completed setup opens no card. */
+/** Dismiss the explicit post-auth Ready card; quiet restoration of completed setup opens no card.
+ * Waits for one of the two outcomes: the Ready card is showing, or no panel and completed setup is stored. */
 export async function completeAccessSetup(page: Page) {
   const panel=page.locator('dialog.alpha-startup-permissions');
   // The heading depends on whether the agent's AI binding was confirmed before the last step.
   const ready=panel.getByRole('heading',{name:/^(You’re all set|Setup finished)$/});
-  if(await panel.count()){
-    await expect(ready).toBeVisible();
+  const stored=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('alpha:startup-permission-walkthrough:v1')||'null')?.status);
+  let outcome='';
+  await expect.poll(async()=>outcome=await ready.isVisible()?'ready':!await panel.count()&&await stored()==='completed'?'completed':'',{message:'Access setup shows the Ready card or is stored as completed'}).not.toBe('');
+  if(outcome==='ready'){
     await panel.getByRole('button',{name:'Go to Alpha',exact:true}).click();
     await expect(panel).toHaveCount(0);
   }
-  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('alpha:startup-permission-walkthrough:v1')||'null')?.status)).toBe('completed');
+  expect(await stored()).toBe('completed');
 }
 /** A funded resident account connects by itself; no Welcome dialog and no chooser remain. */
 export async function residentHome(page: Page) {

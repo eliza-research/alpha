@@ -49,9 +49,7 @@ async function run({head,mode,dataDir,module}:{head:string;mode:string;dataDir:s
    if(!cancelled&&!cancellationError)throw new Error('Missing cancellation result');
    reports.push({test:'active-cancellation',passed:true,outcome:cancelled?.outcome,elapsedMs:Date.now()-start});
   }else if(mode==='proposal'){
-   const result=await backend.chat('Create a note titled Runtime acceptance with the exact body Pinned runtime prepared this note.',AbortSignal.timeout(90000),{view:'notes',revision:7});
-   if(result.proposals.length!==1||result.proposals[0].operation.type!=='create_note'||result.proposals[0].operation.body!=='Pinned runtime prepared this note.'||result.proposals[0].contextRevision!==7)throw new Error('Actual runtime action proposal did not match');
-   reports.push({test:'real-runtime-proposal',passed:true,result});
+   // No create_note check: that development action is not in the resident, so it proves nothing about Notes.
    const navigation=await backend.chat('Open the calendar view in Alpha Phone.',AbortSignal.timeout(90000),{view:'notes',revision:8});
    if(navigation.proposals.length!==1||navigation.proposals[0].operation.type!=='open_view'||navigation.proposals[0].operation.view!=='calendar'||navigation.proposals[0].contextRevision!==8)throw new Error('Runtime navigation proposal mismatch');
    reports.push({test:'real-runtime-navigation-proposal',passed:true,result:navigation});

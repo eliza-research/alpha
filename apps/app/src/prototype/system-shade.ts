@@ -43,7 +43,7 @@ export function pullStart(target: EventTarget | null): PullStart | null { return
 /**
  * A Home whose content fits gives vertical drags to the page, so a downward pull reaches Alpha as
  * pointer events instead of being taken by the WebView for scrolling or overscroll. A Home that
- * overflows (launcher landscape, large text) scrolls normally; at its top a downward pull on empty
+ * overflows (a short screen, large text) scrolls normally; at its top a downward pull on empty
  * Home is taken over by the shared installOverflowPull instead.
  */
 export function markHomeFits(): void {
