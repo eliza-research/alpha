@@ -17,7 +17,7 @@ test('a voice row without a duration shows no clock and never NaN',()=>{
 });
 /** The restored projection (canonical-notes-ui.ts) over the real model.js Notes view. */
 function installCanonicalProjection(f){
- const code=stripTypeScriptTypes(readFileSync('apps/app/src/prototype/canonical-notes-ui.ts','utf8').replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'transform'});
+ const code=stripTypeScriptTypes(readFileSync('apps/app/src/prototype/canonical-notes-ui.ts','utf8').replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'strip'});
  const install=new Function('parseNoteFormat','projectNoteForModel','noteScheduleDraft','agentPendingText','agentAvailabilityNotice','DailyApps','CanonicalNotesController','CanonicalNotesEditor',code+';return installCanonicalNotesView;')(x=>x,x=>x,async()=>({}),(_s,text)=>text,(_s,text)=>text,{},class{},class{});
  install(class{},{notes:f.view});
 }

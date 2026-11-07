@@ -39,6 +39,16 @@ The overview domain and cards are upstream elizaOS code that Alpha consumes thro
 
 ## Cards
 
+Home draws a card only when it has something to show (docs/ui-refresh-2026-11): the calendar card
+for a next event or an overdue reminder, the workflows card for at least one enabled workflow or
+automation (paused ones are not listed), the Inbox card for unread mail from a connected account,
+and the brief card for a retained brief. The other states in this table stay in each card's values
+and accessible description but draw no card. With no card, the row of one fixed height holds the
+date line, with one Connect Google button while signed in to Eliza Cloud with Google known to be
+disconnected (`googleConnectionController.open()`). Source, origin and freshness are no longer
+drawn on a card; they stay in its accessible description. A failed calendar read is read again
+when Calendar is opened by any route (`openView('calendar')`).
+
 | Card | Source | Attribution and freshness shown | States |
 | --- | --- | --- | --- |
 | Calendar (`data-alpha-home-calendar`) | The calendar source chosen in Calendar: the agent's calendar feed (Agent Calendar) by default; the device calendars read by the Calendar adapter only after the owner chooses them there (Android calendars, or the browser calendar in test-mocks builds), and Agent Calendar again when chosen back (opening the card opens Calendar on the source it showed); reminders from the reminder store. Agent Calendar states: reading, not connected, under review, failed or unavailable (`Open Calendar to retry`, read again on open), fresh (`Agent Calendar`, `As of <time>` in the description), empty only after a complete read, and stale (a partial feed or a snapshot from an earlier day keeps the item with `Not updated since <time>` and `data-alpha-home-calendar-stale="true"`). An agent event shows its day and time range and is named `Open calendar event: <title>, <day>, <time>` as a device event is. A reminder saved on this phone that comes before the agent's next event leads the card with the reminder store's source, as it does with device calendars. Under an overdue reminder the agent's next event shows on the `Next:` line | Calendar name beside the date, `Read <time>` beside the event time; the full sentence is the card's accessible description. An upcoming reminder shows `Reminder` and the reminder store's read time instead of a calendar's | Loading, no upcoming events, results limited to the first 2,000 events, read failed with `Open Calendar to retry` (opening Calendar from the card reads it again), access off, not connected |

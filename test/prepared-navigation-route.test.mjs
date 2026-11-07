@@ -5,7 +5,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {nativeSource,runJvm,jsonJarSkip} from './fixtures/jvm-tools.mjs';
-const helper=stripTypeScriptTypes(readFileSync('apps/app/src/runtime/prepared-view-navigation.ts','utf8'),{mode:'transform'}).replace(/^export /gm,'');
+const helper=stripTypeScriptTypes(readFileSync('apps/app/src/runtime/prepared-view-navigation.ts','utf8'),{mode:'strip'}).replace(/^export /gm,'');
 const admitted=new Function(helper+';return isPreparedViewNavigationRequest;')();
 const valid={clientId:'renderer-1',delivery:'completed-action',prepareOnly:true,viewType:'gui',completedActionHandoffId:'observed-1'};
 const cases=[

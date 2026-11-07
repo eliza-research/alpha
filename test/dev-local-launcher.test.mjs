@@ -36,7 +36,7 @@ async function launch(overrides={}){
   return {stdout,agent:JSON.parse(fs.readFileSync(path.join(root,'agent.json'),'utf8')),vite:JSON.parse(fs.readFileSync(path.join(root,'vite.json'),'utf8'))};
  }finally{fs.rmSync(root,{recursive:true,force:true});}
 }
-const flags=stripTypeScriptTypes(fs.readFileSync('apps/app/src/build-flags.ts','utf8').replace(/^export /gm,'').replaceAll('import.meta.env','env'),{mode:'transform'});
+const flags=stripTypeScriptTypes(fs.readFileSync('apps/app/src/build-flags.ts','utf8').replace(/^export /gm,'').replaceAll('import.meta.env','env'),{mode:'strip'});
 /** import.meta.env as Vite derives it from the launched process environment (vite.config.ts `define`). */
 function renderer(processEnv,DEV){
  const env={DEV,...Object.fromEntries(Object.entries(processEnv).filter(([key])=>key.startsWith('VITE_'))),VITE_ELIZA_DEV_ALLOW_TEST_MOCKS:processEnv.ELIZA_DEV_ALLOW_TEST_MOCKS==='1'||processEnv.VITE_ELIZA_DEV_ALLOW_TEST_MOCKS==='1'?'1':''};

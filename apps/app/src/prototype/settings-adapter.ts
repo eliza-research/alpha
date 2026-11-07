@@ -677,13 +677,15 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       const provider = facts.passwordProvider || {};
       const passwordAction = (label: string, kind: string, val = ''): Bag => row(label, async () => {
         if (passwordOpening) return; passwordOpening = true; const instance = owner; changed();
-        try { const result = await device.openPasswordProvider({ action: kind }); if (result?.status !== 'opened') throw Error('Unconfirmed provider handoff'); }
-        catch { if (owner === instance) api.toast('Password provider setup is unavailable.'); }
+        try { const result = await device.openPasswordProvider({ action: kind }); if (result?.status !== 'opened') throw Error('Unconfirmed provider handoff'); if (owner === instance && result.destination !== 'development') api.toast(result.destination === 'system-settings' ? 'Opened Android settings. Search for passwords or autofill, then choose your provider.' : 'Opened provider setup. Complete or cancel there; no change is confirmed yet.'); }
+        catch { if (owner === instance) api.toast('Password provider setup is unavailable. No provider change is confirmed.'); }
         finally { passwordOpening = false; if (owner === instance) { changed(); void refresh(); } }
       }, passwordOpening ? 'Opening…' : val);
-      const selection: Bag = { proton: 'Proton Pass', other: 'Another app', none: 'None' };
-      const others = browserDevProfile ? [passwordAction('Password provider', 'settings', provider.selection === 'proton' ? 'Development provider' : 'None'), provider.installation === 'installed' ? passwordAction('Open development vault', 'open') : passwordAction('Add development provider', 'install')]
-        : native ? [passwordAction('Password provider', 'settings', selection[provider.selection] || ''), ...(provider.installation === 'installed' ? [passwordAction('Open Proton Pass', 'open')] : provider.installation === 'absent' ? [passwordAction('Get Proton Pass', 'install')] : [])] : [];
+      // The selection Android reports; a provider whose publisher is not verified is never named Proton Pass.
+      const selection: Bag = { proton: provider.installation === 'installed' ? 'Proton Pass selected' : provider.installation === 'disabled' ? 'Proton Pass selected · app disabled' : 'Provider package selected · publisher not verified', other: 'Another provider selected', none: 'No provider selected', unknown: 'Selection unavailable' };
+      const providerValue = provider.support === 'unavailable' ? 'Autofill unavailable for this device or user' : selection[provider.selection] || 'Selection unavailable';
+      const others = browserDevProfile ? [passwordAction('Password provider', 'settings', provider.selection === 'proton' ? 'Development provider selected' : 'No provider selected'), provider.installation === 'installed' ? passwordAction('Open development vault', 'open') : passwordAction('Add development provider', 'install')]
+        : native ? [passwordAction('Password provider', 'settings', providerValue), ...(provider.installation === 'installed' ? [passwordAction('Open Proton Pass', 'open')] : provider.installation === 'absent' ? [passwordAction('Get Proton Pass from Proton', 'install')] : [])] : [];
       // Alpha's own vault first; another provider stays available.
       stack.push(subpage('Passwords', [...passwordManagerGroups(helpers), group(others, 'Other providers')], { back: () => { leavePasswordManager(); back(); } }));
       const entry = current === 'password-entry' ? passwordEntryPage(helpers, () => api.set({ page: 'password-provider' })) : null;

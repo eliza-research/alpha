@@ -10,8 +10,8 @@ const source=baseline?execFileSync('git',['show','51bcc46d4338ed4363739a751302a6
 const start=source.indexOf('  useEffect(() => {\n    if (!visible) return;\n    const previous = document.activeElement');
 const end=source.indexOf('  const env = (): CloudEnvironment',start);
 assert.ok(start>=0&&end>start);
-const inert=stripTypeScriptTypes(readFileSync(new URL('../apps/app/src/runtime/modal-inert.ts',import.meta.url),'utf8').replace('export function','function'),{mode:'transform'});
-const effects=stripTypeScriptTypes(source.slice(start,end),{mode:'transform'});
+const inert=stripTypeScriptTypes(readFileSync(new URL('../apps/app/src/runtime/modal-inert.ts',import.meta.url),'utf8').replace('export function','function'),{mode:'strip'});
+const effects=stripTypeScriptTypes(source.slice(start,end),{mode:'strip'});
 const make=new Function('React','useRef','useEffect','holdPhoneInert','connectionController',`return function Chooser({visible,snapshot}){const panel=useRef(null);${effects};return visible?React.createElement('div',{role:'dialog',tabIndex:-1,ref:panel},React.createElement('input',{'aria-label':'Email'})):null;}`);
 const hold=new Function(inert+';return holdPhoneInert;')();
 async function fixture(run){

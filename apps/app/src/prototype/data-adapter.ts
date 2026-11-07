@@ -3,6 +3,7 @@ import {mockAttentionRows} from './mock-attention';
 import {HOME_DEFAULTS} from './model.js';
 import {browserStorageUsage} from '../browser/storage-usage';
 import {browserDevProfile} from '../browser/dev-profile';
+import {formatFullDate} from './locale-time';
 import {homeCalendarEmptyTitle, homeCalendarName, homeCalendarValues, homeReadIsStale, presentHomeAgendaCard, presentHomeAttention, presentHomeBrief, presentHomeBriefCard, presentHomeCalendarSource, selectHomeAgenda, type HomeAgendaCardInput, type HomeAttentionSummary, type HomeBriefSummary} from './home-cards';
 type Bag = Record<string, any>;
 const installed = new WeakSet<object>();
@@ -16,7 +17,7 @@ export function installPrototypeDataAdapter(Component: any, views: Record<string
   // Home draws no card for a failed calendar read, so opening Calendar by any route reads it again.
   const openView = Component.prototype.openView;
   Component.prototype.openView = function (key: string, ...args: any[]) {
-    if (key === 'calendar') { const source = views.calendar?.displaySources?.(); if (source?.error) source.retry?.(); }
+    if (key === 'calendar') { try { const source = views.calendar?.displaySources?.(); if (source?.error) source.retry?.(); } catch { /* Calendar still opens */ } }
     return openView.call(this, key, ...args);
   };
   const empty: Record<string, Bag> = {
@@ -150,6 +151,8 @@ export function installPrototypeDataAdapter(Component: any, views: Record<string
       homeAttentionPeople: [], homeAttentionPeopleVisibility: 'hidden',
       ...(browserDevProfile?{homeInboxCount:attention.count,homeInboxRows:unreadRows.slice(0,2).map(mail=>({subject:mail.subj||'(no subject)',from:mail.name||mail.email||''})),homeInboxHasRows:unread>0,homeInboxConfirmedEmpty:unread===0,homeInboxTitle:unread?'':'No unread email',homeInboxStatus:'Development inbox'}:{}),
       homeWorkflowLabel: brief.label, homeWorkflowTitle: brief.title, homeWorkflowTime: brief.time, homeWorkflowSource: brief.source,
+      // Only the later workflow owners publish enabled rows outside the explicit fixture.
+      homeWorkflowRows: [], homeWorkflowHasRows: false,
       // After a failed read, opening Calendar from the card reads it again; Calendar itself does not retry on entry.
       // A stale read is read again when the card is opened (the same forced read Calendar's retry uses).
       // Opening a view resets its state, so the card names the calendar source it showed: Calendar
@@ -204,7 +207,7 @@ export function installHomeCardVisibility(Component: any, openGoogle: () => void
     const none = !calendar && !workflows && !inbox && !brief;
     return {...out, homeShowCalendar: calendar, homeShowWorkflows: workflows, homeShowInbox: inbox, homeShowDate: none,
       homeShowSetup: none && out.homeGoogleConnected === false,
-      homeDateLabel: new Date().toLocaleDateString([], {weekday: 'long', month: 'long', day: 'numeric'}),
+      homeDateLabel: none ? formatFullDate(new Date()) : '',
       connectGoogle: openGoogle};
   };
 }
