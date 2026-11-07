@@ -97,7 +97,8 @@ by this service-model validation.
 `BrowserSiteState` checks policy readback before a native isolated tab can load,
 normal/private cookie separation, selected top-origin permission review followed
 by Android permission, and the current engine's manual-only HTTP authentication.
-Passkeys remain disabled through the provider readback gate. Two origins and one
+Passkeys remain disabled in app capability state. The host relies on the fresh
+WebView default WebAuthn NONE; this model does not establish a platform readback. Two origins and one
 sensor kind represent the per-origin permission record.
 
 `BrowserReadingState` models isolated extraction, sensitive-page refusal, an

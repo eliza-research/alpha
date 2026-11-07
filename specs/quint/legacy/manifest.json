@@ -16,13 +16,13 @@
     ],
     "sources": [
       "apps/app/src/runtime/connection-ui.tsx",
-      "apps/app/src/runtime/cloud-sign-in-ui.tsx",
-      "android/app/src/main/java/ai/elizaresearch/alphaphone/CloudSignInFlow.java"
+      "apps/app/src/runtime/cloud-sign-in-ui.tsx"
     ],
     "abstractions": [
       "Historical current/proposed design comparison at source ef9fbf7cd7, not a runtime conformance claim.",
       "All original state variables are fields of s; immutable Design selects behavior; record spreads preserve the original frame conditions.",
-      "Finite domains and numeric constants are unchanged from the original model configuration."
+      "Finite domains and numeric constants are unchanged from the original model configuration.",
+      "Removed implementation links are retained as historicalSourceLinks at the original migration inventory revision. They are not current source owners; current behavior is mapped in the application/service/native families."
     ],
     "constants": {
       "MaxDetours": 2,
@@ -146,6 +146,12 @@
         "GoogleWhenPossible",
         "ReachesHome"
       ]
+    },
+    "historicalSourceLinks": {
+      "revision": "875f5a8550935c5ca1797cea4ea38e7c7759ca54",
+      "paths": [
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/CloudSignInFlow.java"
+      ]
     }
   },
   {
@@ -166,7 +172,6 @@
       "currentTabAndTapCountTest"
     ],
     "sources": [
-      "apps/app/src/runtime/google-connect-flow.ts",
       "apps/app/src/runtime/google-connection-ui.tsx",
       "apps/app/src/runtime/cloud-protocol.ts"
     ],
@@ -174,7 +179,8 @@
       "Historical current/proposed design comparison at source ef9fbf7cd7, not a runtime conformance claim.",
       "All original state variables are fields of s; immutable Design selects behavior; record spreads preserve the original frame conditions.",
       "Finite domains and numeric constants are unchanged from the original model configuration.",
-      "Persistent history booleans monitor the original action properties without restricting transitions; TLC checks the equivalent invariants and temporal monitor formulas."
+      "Persistent history booleans monitor the original action properties without restricting transitions; TLC checks the equivalent invariants and temporal monitor formulas.",
+      "Removed implementation links are retained as historicalSourceLinks at the original migration inventory revision. They are not current source owners; current behavior is mapped in the application/service/native families."
     ],
     "constants": {
       "MaxDetours": 2,
@@ -313,7 +319,13 @@
         "relation": "TwoTapsToMailRelation",
         "invariant": "TwoTapsToMailInvariant"
       }
-    ]
+    ],
+    "historicalSourceLinks": {
+      "revision": "875f5a8550935c5ca1797cea4ea38e7c7759ca54",
+      "paths": [
+        "apps/app/src/runtime/google-connect-flow.ts"
+      ]
+    }
   },
   {
     "path": "specs/quint/legacy/Calendar.qnt",
@@ -332,15 +344,14 @@
       "currentReadOnlyGoogleTest"
     ],
     "sources": [
-      "apps/app/src/runtime/google-calendar.ts",
-      "apps/app/src/runtime/google-calendar-outbox.ts",
       "apps/app/src/prototype/calendar-adapter.ts"
     ],
     "abstractions": [
       "Historical current/proposed design comparison at source ef9fbf7cd7, not a runtime conformance claim.",
       "All original state variables are fields of s; immutable Design selects behavior; record spreads preserve the original frame conditions.",
       "Finite domains and numeric constants are unchanged from the original model configuration.",
-      "Persistent history booleans monitor the original action properties without restricting transitions; TLC checks the equivalent invariants and temporal monitor formulas."
+      "Persistent history booleans monitor the original action properties without restricting transitions; TLC checks the equivalent invariants and temporal monitor formulas.",
+      "Removed implementation links are retained as historicalSourceLinks at the original migration inventory revision. They are not current source owners; current behavior is mapped in the application/service/native families."
     ],
     "constants": {
       "MaxRemote": 1,
@@ -470,7 +481,14 @@
         "relation": "UndoBeforeSendRelation",
         "invariant": "UndoBeforeSendInvariant"
       }
-    ]
+    ],
+    "historicalSourceLinks": {
+      "revision": "875f5a8550935c5ca1797cea4ea38e7c7759ca54",
+      "paths": [
+        "apps/app/src/runtime/google-calendar.ts",
+        "apps/app/src/runtime/google-calendar-outbox.ts"
+      ]
+    }
   },
   {
     "path": "specs/quint/legacy/Maps.qnt",

@@ -5,10 +5,7 @@
       "sources": [
         "apps/app/src/runtime/cloud-sign-in.ts",
         "apps/app/src/runtime/cloud-sign-in-ui.tsx",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/CloudSignInFlow.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCloudSignInPlugin.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/CloudEmailCode.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/CloudSmsCode.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCredentialStore.java"
       ],
       "stateMapping": {
@@ -48,7 +45,12 @@
         "maxSamples": 1000,
         "maxSteps": 60,
         "seed": "123"
-      }
+      },
+      "sharedSources": [
+        "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInFlow.java",
+        "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudEmailCode.java",
+        "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSmsCode.java"
+      ]
     },
     {
       "sources": [
@@ -104,15 +106,16 @@
     {
       "sources": [
         "apps/app/src/runtime/google-accounts.ts",
-        "apps/app/src/runtime/google-connect-flow.ts",
         "apps/app/src/runtime/google-authorization.ts",
         "apps/app/src/runtime/gmail-account-selection.ts",
         "apps/app/src/runtime/gmail-grants.ts",
         "apps/app/src/runtime/gmail-mailbox.ts",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/GoogleConnectReturn.java"
+        "apps/app/src/runtime/google-workspace-return.ts",
+        "apps/app/src/runtime/google-connection-return.ts",
+        "apps/app/src/runtime/google-connection-ui.tsx"
       ],
       "stateMapping": {
-        "attempt/pendingEpoch/phase/returnMatched": "googleConnect waiting, matching state and foreground return",
+        "attempt/pendingEpoch/phase/returnMatched": "Google Workspace AppReturn v2 matching state, complete Cloud binding and foreground readback request",
         "account/readGrant/modifyGrant/calendarGrant": "selected connection and granted capabilities",
         "cacheVisible/review": "gmailGrantChange withdrawal and read-cache invalidation",
         "disconnectSent/revoked": "one disconnect request followed by readback"
@@ -120,7 +123,8 @@
       "abstractions": [
         "Two Google connections and two connect attempts represent arbitrary opaque IDs.",
         "Partial Gmail write capabilities are grouped as modify for the reviewed-operation gate. Calendar read/write differences are further modeled by CalendarSync.",
-        "A return requests fresh account readback and does not itself grant capabilities."
+        "A return requests fresh account readback and does not itself grant capabilities.",
+        "Native Workspace AppReturn v2 and browser foreground return have separate transports. Return success does not grant Calendar or Gmail authority; only the current account-list read supplies capabilities."
       ],
       "path": "specs/quint/services/GoogleAccounts.qnt",
       "module": "GoogleAccounts",
@@ -145,7 +149,11 @@
         "maxSamples": 1000,
         "maxSteps": 60,
         "seed": "123"
-      }
+      },
+      "sharedSources": [
+        "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/connection/WorkspaceAppReturn.java",
+        "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/connection/WorkspaceAppReturnFlow.java"
+      ]
     },
     {
       "sources": [
@@ -370,17 +378,12 @@
     },
     {
       "sources": [
-        "apps/app/src/runtime/notice-owner-coordinator.ts",
         "apps/app/src/runtime/service-read-cache.ts",
         "apps/app/src/runtime/service-read-cache-store.ts",
         "apps/app/src/runtime/gmail-background.ts",
         "apps/app/src/runtime/workflow-notice-taps.ts",
         "apps/app/src/runtime/hosted-result-notices.ts",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/WorkflowNoticeRecovery.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/WorkflowNoticeIntentDedup.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/WorkflowNoticeDelivery.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/GmailDelivery.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/GmailReconciliation.java"
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/WorkflowNoticeDelivery.java"
       ],
       "stateMapping": {
         "epoch/phase/retry": "NoticeOwnerCoordinator generation, immediate privacy transition and retryNeeded",
@@ -390,7 +393,8 @@
       "abstractions": [
         "One notice and one cached entry, two claimants and two expiry ticks.",
         "Native platform post success, uncertain delivery and detailed provider cursor pagination remain external observations. The model checks the admitted claim/consume path.",
-        "Per-entry byte limits and multiple bounded entries are checked by existing cache tests. Cache data never authorizes a provider mutation."
+        "Per-entry byte limits and multiple bounded entries are checked by existing cache tests. Cache data never authorizes a provider mutation.",
+        "The shared NoticeOwnerCoordinator and native notification contracts now own previously product-local coordination and delivery helpers. IdentityHashMap tap retention is bounded by the native contract; this one-notice model does not prove its full 512-entry capacity behavior."
       ],
       "path": "specs/quint/services/NoticesAndCaches.qnt",
       "module": "NoticesAndCaches",
@@ -415,28 +419,32 @@
         "maxSamples": 1000,
         "maxSteps": 60,
         "seed": "123"
-      }
+      },
+      "sharedSources": [
+        "plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NoticeRecovery.java",
+        "plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NoticeTapInbox.java",
+        "plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/MailBackgroundDelivery.java",
+        "plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/MailHistoryReconciliation.java",
+        "packages/contracts/src/notice-routes.ts",
+        "plugins/plugin-inbox/src/mailbox/background-notices.ts"
+      ]
     },
     {
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaBrowserPlugin.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserPermissionRecords.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserPasskeys.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserHttpAuthOrigin.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserHttpAuthAutofill.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserSessionStore.java"
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaBrowserPlugin.java"
       ],
       "stateMapping": {
-        "privateTab/thirdParty/passkeys/phase": "build profile admission with readback of cookie and WebAuthn policy",
+        "privateTab/thirdParty/passkeys/phase": "Isolated-profile admission and cookie policy readback; passkeys remain disabled in app state and rely on the fresh WebView default",
         "decisions/prompt/permissionChoice/androidAllowed": "native site review then OS runtime permission, selected top-origin gate",
         "authAttempts/passwordPresent/passwordSubmitted": "bounded manual HTTP authentication and clearing values",
         "autofillExposed/authSave": "current STANDARD_WEBVIEW cannot attest challenge origin and exposes neither"
       },
       "abstractions": [
         "One tab, two exact origin classes and one representative sensor kind; sealed 200-origin record bounds remain covered by source tests.",
-        "Cookie/profile and passkey-policy mismatches refuse tab creation. Private tabs do not persist site decisions.",
+        "Cookie/profile mismatches refuse tab creation. Private tabs do not persist site decisions. The current host leaves a fresh WebView at its default WebAuthn NONE; it does not perform the removed passkey setter/readback check.",
         "The current STANDARD_WEBVIEW engine cannot authenticate a challenge origin, so HTTP autofill remains disabled while manual input works. Shared hypothetical attested-engine behavior is excluded.",
-        "permissionResult records a completed permission callback rather than a claim that an active sensor keeps running."
+        "permissionResult records a completed permission callback rather than a claim that an active sensor keeps running.",
+        "PasskeysDisabled is the app capability policy. This model assumes the documented fresh-WebView WebAuthn default and does not verify the platform implementation or an explicit WebAuthn readback."
       ],
       "path": "specs/quint/services/BrowserSiteState.qnt",
       "module": "BrowserSiteState",
@@ -463,14 +471,18 @@
         "maxSamples": 1000,
         "maxSteps": 60,
         "seed": "123"
-      }
+      },
+      "sharedSources": [
+        "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserSitePermissionRecord.java",
+        "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserHttpAuthOrigin.java",
+        "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserHttpAuthAutofill.java",
+        "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserSessionStore.java",
+        "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserTabHostPlugin.java"
+      ]
     },
     {
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserReading.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserReadingWorld.java",
         "apps/app/src/browser/reading-review.ts",
-        "apps/app/src/browser/reading-sensitive.ts",
         "apps/app/src/browser/content-question.ts"
       ],
       "stateMapping": {
@@ -509,11 +521,16 @@
         "maxSamples": 1000,
         "maxSteps": 60,
         "seed": "123"
-      }
+      },
+      "sharedSources": [
+        "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserReviewedReading.java",
+        "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserReadingWorld.java",
+        "plugins/plugin-native-browser-surface/src/page-reading.ts",
+        "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserPageReading.java"
+      ]
     },
     {
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserDownloads.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaBrowserPlugin.java"
       ],
       "stateMapping": {
@@ -554,7 +571,10 @@
         "maxSamples": 1000,
         "maxSteps": 60,
         "seed": "123"
-      }
+      },
+      "sharedSources": [
+        "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserDownloads.java"
+      ]
     },
     {
       "path": "specs/quint/services/ScanDocument.qnt",

@@ -22,11 +22,11 @@ module BrowserSiteState {
     nondet privateTab = Set(false, true).oneOf()
     initFor(privateTab)
   }
-  /// A provider that ignores cookie or WebAuthn policy never gets a usable tab.
-  action build(cookiePolicyAccepted: bool, webAuthnDisabled: bool): bool = all {
+  /// Cookie policy is read back. WebAuthn stays at the fresh WebView default NONE.
+  action build(cookiePolicyAccepted: bool): bool = all {
     s.phase == "new",
-    s' = { ...s, phase: if (cookiePolicyAccepted and webAuthnDisabled) "ready" else "failed",
-      thirdParty: cookiePolicyAccepted and webAuthnDisabled and not(s.privateTab) }
+    s' = { ...s, phase: if (cookiePolicyAccepted) "ready" else "failed",
+      thirdParty: cookiePolicyAccepted and not(s.privateTab) }
   }
   action navigate(origin: int): bool = all {
     s.phase.in(Set("ready", "committed")), s.navigation < 2, origin.in(Set(1, 2)),
@@ -88,7 +88,7 @@ module BrowserSiteState {
   action close = s' = { ...s, phase: "closed", privateCookie: false,
     prompt: "none", passwordPresent: false, autofillExposed: false, permissionResult: false }
   action step = any {
-    build(true, true), build(false, true), build(true, false), navigate(1), navigate(2), commit,
+    build(true), build(false), navigate(1), navigate(2), commit,
     cookie, permissionRequest(1), permissionRequest(2), permissionDecision(true),
     permissionDecision(false), androidResult(true), androidResult(false),
     authChallenge(true), authChallenge(false), typePassword, submitPassword,
@@ -104,18 +104,18 @@ module BrowserSiteState {
   val TypeOK = s.phase.in(Set("new", "ready", "failed", "loading", "committed", "closed")) and s.prompt.in(Set("none", "site", "runtime", "auth")) and s.navigation.in(0.to(2)) and s.authAttempts.in(0.to(3))
   val safety = TypeOK and PrivateCookiePolicy and PrivatePermissionPolicy and CurrentPermission and
     PasskeysDisabled and StandardHttpAuthManual and PasswordLifetime and s.authAttempts <= 3
-  run privateGrantTest = initFor(true).then(build(true, true)).then(navigate(1)).then(commit)
+  run privateGrantTest = initFor(true).then(build(true)).then(navigate(1)).then(commit)
     .then(cookie).then(permissionRequest(1)).then(permissionDecision(true)).then(androidResult(true))
     .expect(s.permissionResult and s.privateCookie and safety).then(close)
     .expect(not(s.privateCookie) and safety)
-  run storedDecisionStillNeedsAndroidTest = initFor(false).then(build(true, true)).then(navigate(1))
+  run storedDecisionStillNeedsAndroidTest = initFor(false).then(build(true)).then(navigate(1))
     .then(commit).then(permissionRequest(1)).then(permissionDecision(true)).then(androidResult(false))
     .then(permissionRequest(1)).expect(s.prompt == "runtime")
     .then(androidResult(true)).expect(s.permissionResult and safety)
-  run providerAdmissionTest = initFor(true).then(build(false, true)).expect(s.phase == "failed" and safety)
-  run manualAuthTest = initFor(false).then(build(true, true)).then(navigate(1))
+  run providerAdmissionTest = initFor(true).then(build(false)).expect(s.phase == "failed" and safety)
+  run manualAuthTest = initFor(false).then(build(true)).then(navigate(1))
     .then(authChallenge(true)).then(typePassword).then(submitPassword)
     .expect(s.passwordSubmitted and not(s.passwordPresent or s.authSave) and safety)
-  run switchedTabCancelsPromptTest = initFor(false).then(build(true, true)).then(navigate(1))
+  run switchedTabCancelsPromptTest = initFor(false).then(build(true)).then(navigate(1))
     .then(commit).then(permissionRequest(1)).then(deselect).expect(s.prompt == "none" and safety)
 }
