@@ -60,7 +60,7 @@ test('Maps local speech adapter cancels owned guidance and refuses local-unready
  const foreign=await setup(page);
  // Evaluate the unchanged production adapter and shared guidance state machine in the
  // browser, injecting only their voice port. The full Maps UI/provider is outside this test.
- const {readFileSync}=await import('node:fs');const {stripTypeScriptTypes}=await import('node:module');
+ const {readFileSync}=await import('node:fs');const {stripTypeScriptTypes}=await import('../support/strip-types.mjs');
  const source=(path:string)=>stripTypeScriptTypes(readFileSync(path,'utf8').replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'strip'});
  const shared=source('.eliza/client-features/plugins/plugin-maps/src/client/navigation-voice.ts').replace('class NavigationVoice','class SharedNavigationVoice');
  const adapter=source('apps/app/src/maps/navigation-voice.ts');

@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { stripTypeScriptTypes } from "node:module";
+import { stripTypeScriptTypes } from "../support/strip-types.mjs";
 import { resolve } from "node:path";
 import { expect, test } from "@playwright/test";
 

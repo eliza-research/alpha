@@ -302,7 +302,7 @@ test('a failed Load more drops the stale cursor and Retry reloads from the first
 
 test('From switcher returns the email to its account when the other account already has a local draft',async({page})=>{
  await setup(page,{accounts:['first@example.test','second@example.test']});
- await page.evaluate(()=>{const owner=JSON.stringify(['production','fixture-owner','','grant-1']);(window as any).gmSlots['inbox-drafts:v1:'+owner]={version:1,id:'saved-1',revision:'rev-1',owner,to:[],subject:'Second saved',body:'Kept'};});
+ await page.evaluate(()=>{const owner=JSON.stringify(['production','fixture-owner','fixture-org','grant-1']);(window as any).gmSlots['inbox-drafts:v1:'+owner]={version:1,id:'saved-1',revision:'rev-1',owner,to:[],subject:'Second saved',body:'Kept'};});
  await page.getByRole('button',{name:'Inbox',exact:true}).click();
  await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Compose',exact:true}).click();
@@ -314,7 +314,7 @@ test('From switcher returns the email to its account when the other account alre
  await expect(page.getByRole('textbox',{name:'Subject',exact:true})).toHaveValue('Stays subject');
  await expect(page.getByRole('textbox',{name:'Message',exact:true})).toHaveValue('Stays body');
  const f=await gm(page);expect(f.prepares).toEqual([]);
- expect((await page.evaluate(()=>(window as any).gmSlots['inbox-drafts:v1:'+JSON.stringify(['production','fixture-owner','','grant-1'])])).subject).toBe('Second saved');
+ expect((await page.evaluate(()=>(window as any).gmSlots['inbox-drafts:v1:'+JSON.stringify(['production','fixture-owner','fixture-org','grant-1'])])).subject).toBe('Second saved');
 });
 
 for(const saved of [false,true])test(`Share to email opens a new populated draft and preserves ${saved?'saved':'unsaved'} earlier email`,async({page})=>{
