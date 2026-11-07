@@ -19,6 +19,7 @@ import { MapsController } from '../maps/state';
 import { mapsConnection, onMapsConnectionChange } from '../maps/runtime';
 import { MapsScreenController, type MapsScreenView } from '../maps/screen';
 import { connectionController } from '../runtime/connection-ui';
+import { cloudServiceName } from '../runtime/cloud-protocol';
 import type { Coordinate, TravelMode } from '../maps/contracts';
 
 type Bag = Record<string, any>;
@@ -111,9 +112,9 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
   }
   module.back = () => screen.back(); module.onLeave = () => screen.release(); module.ongoing = () => null;
   module.reply = () => null;
-  // Maps comes from Eliza Cloud, so signing in is the only thing to offer; a failed read offers nothing more.
-  const signIn = { label: 'Sign in to Eliza Cloud to use Maps', go: () => connectionController.openCloudAccount() };
-  module.suggestions = () => mapsConnected() ? ['Help me with this place', 'Explain Maps coverage'] : !regionalMapsConfigured && !connectionController.getCloudClient() ? [signIn, 'Explain location permissions'] : ['Explain location permissions'];
+  // Maps comes from the Cloud service, so signing in is the only thing to offer; a failed read offers nothing more.
+  const signIn = () => ({ label: `Sign in to ${cloudServiceName(connectionController.getCloudEnvironment() ?? connectionController.getSnapshot().signIn?.environment ?? 'production')} to use Maps`, go: () => connectionController.openCloudAccount() });
+  module.suggestions = () => mapsConnected() ? ['Help me with this place', 'Explain Maps coverage'] : !regionalMapsConfigured && !connectionController.getCloudClient() ? [signIn(), 'Explain location permissions'] : ['Explain location permissions'];
   module.render = (st: Bag, currentApi: Bag) => {
     api = currentApi;
     // Cross-app navigation carries a one-use search, not a selected destination.

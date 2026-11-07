@@ -205,8 +205,10 @@ also has push-to-main and nightly triggers that stay inert unless the repository
 variable `ELIZA_RESIDENT_QUALIFICATION` is `push` or `nightly`; set it only for a
 period that needs PACKAGED release qualification on every main commit or daily. Preparation remains automatic for changes
 to shared/build inputs. The Bun seccomp reproduction is a diagnostic, not a routine
-gate. The other schedules are the daily `main` browser run and the weekly dependency
-advisory audit; there are no hidden branch-specific automatic diagnostic runs.
+gate. The other schedules are the daily `main` browser run, the weekly dependency
+advisory audit and the weekly digest process recovery run, which stays inert unless
+`DIGEST_RESTART_AUTOMATIC` is `true`; there are no hidden branch-specific automatic
+diagnostic runs.
 
 ```sh
 # Use the reviewed branch/ref. Native resident dispatch retains its qualification campaigns.
