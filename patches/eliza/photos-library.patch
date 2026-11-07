@@ -785,7 +785,27 @@
      final int bucket;
      final long before, until;
      Page(String snapshot, String query, String kind, int bucket, long before) {
-@@ -251,6 +252,8 @@
+@@ -151,13 +152,19 @@
+       throw new SecurityException("Media access changed");
+   }
+   public void publish(com.getcapacitor.PluginCall call, JSObject value, long ticket) {
++    publish(call, value, ticket, null);
++  }
++  public void publish(com.getcapacitor.PluginCall call, JSObject value, long ticket,
++      Runnable onPublished) {
+     main.post(() -> {
+       try {
+         requireReadTicket(ticket);
+         call.resolve(value);
+       } catch (Exception changed) {
+         call.reject("Media access changed. Reopen Photos and reload.");
++        return;
+       }
++      if (onPublished != null) onPublished.run();
+     });
+   }
+   public void invalidate() {
+@@ -251,6 +258,8 @@
        result.add(MediaStore.Video.VideoColumns.DURATION);
      result.add(MediaStore.MediaColumns.BUCKET_DISPLAY_NAME);
      result.add(MediaStore.MediaColumns.DATE_TAKEN);
@@ -794,7 +814,7 @@
      return result.toArray(new String[0]);
    }
    private String revision(Cursor row, String volume) {
-@@ -288,6 +291,7 @@
+@@ -288,6 +297,7 @@
      result.put("bucket", folder.substring(0, Math.min(256, folder.length())));
      int taken = row.getColumnIndex(MediaStore.MediaColumns.DATE_TAKEN);
      result.put("dateTaken", taken < 0 || row.isNull(taken) ? 0 : row.getLong(taken));
@@ -802,7 +822,7 @@
      return result;
    }
    public Uri uri(MediaLibraryKey key) {
-@@ -380,8 +384,8 @@
+@@ -380,8 +390,8 @@
        long from, long to, int limit) throws Exception {
      if (from < 0 || to < from || limit < 1 || limit > PAGE_SIZE)
        throw new IllegalArgumentException("Invalid bounded media query");
@@ -813,7 +833,7 @@
        throw new IllegalArgumentException("Unsupported media filter");
      String pageKind = kind + ":" + filter + ":" + from + ":" + to + ":" + limit;
      if (search == null || search.length() > 128 || search.indexOf('\0') >= 0 || kind == null
-@@ -389,15 +393,10 @@
+@@ -389,15 +399,10 @@
        throw new IllegalArgumentException("Invalid photo query");
      List<String> volumes = volumes();
      String snapshot = snapshot(volumes);
@@ -832,7 +852,7 @@
      if (cursor != null && !cursor.isEmpty()) {
        Page page;
        synchronized (pages) {
-@@ -407,70 +406,83 @@
+@@ -407,70 +412,83 @@
            || !page.snapshot.equals(snapshot) || !page.query.equals(search)
            || !page.kind.equals(pageKind))
          throw new IllegalStateException("Photo page expired; refresh Photos");
@@ -892,6 +912,17 @@
 -              pages.put(next, new Page(snapshot, search, pageKind, bucketIndex, before));
 -            }
 -            break outer;
+-          }
+-          JSObject item = metadata(rows, volume, bucket.video);
+-          before = rows.getLong(0);
+-          if (thumbnails && SystemClock.elapsedRealtime() < thumbnailUntil) {
+-            try {
+-              item.put("image", thumbnail(MediaLibraryKey.parse(item.getString("id")), 240));
+-            } catch (Exception unavailable) {
+-              item.put("image", "");
+-            }
+-          }
+-          items.put(item);
 +    for (; volumeIndex < volumes.size(); volumeIndex++, before = Long.MAX_VALUE) {
 +      String volume = volumes.get(volumeIndex);
 +      int want = limit + 1 - items.length();
@@ -946,15 +977,7 @@
 +                entry -> entry.getValue().until < SystemClock.elapsedRealtime());
 +            while (pages.size() >= 32) pages.remove(pages.keySet().iterator().next());
 +            pages.put(next, new Page(snapshot, search, pageKind, volumeIndex, before));
-           }
--          JSObject item = metadata(rows, volume, bucket.video);
--          before = rows.getLong(0);
--          if (thumbnails && SystemClock.elapsedRealtime() < thumbnailUntil) {
--            try {
--              item.put("image", thumbnail(MediaLibraryKey.parse(item.getString("id")), 240));
--            } catch (Exception unavailable) {
--              item.put("image", "");
--            }
++          }
 +          break outer;
 +        }
 +        JSObject item = (JSObject) row[1];
@@ -964,15 +987,13 @@
 +            item.put("image", thumbnail(MediaLibraryKey.parse(item.getString("id")), 240));
 +          } catch (Exception unavailable) {
 +            item.put("image", "");
-           }
--          items.put(item);
--        }
-+        }
++          }
+         }
 +        items.put(item);
        }
      }
      current(snapshot, volumes);
-@@ -600,7 +612,7 @@
+@@ -600,7 +618,7 @@
      List<String> volumes = volumes();
      String snapshot = snapshot(volumes);
      long until = SystemClock.elapsedRealtime() + 3000;
@@ -981,7 +1002,7 @@
      for (String volume : volumes)
        for (boolean video : new boolean[] {false, true}) {
          if (!readable(video))
-@@ -610,8 +622,8 @@
+@@ -610,8 +628,8 @@
          if (Build.VERSION.SDK_INT >= 30)
            args.putInt(MediaStore.QUERY_ARG_MATCH_TRASHED, MediaStore.MATCH_INCLUDE);
          String[] projection = Build.VERSION.SDK_INT >= 30
@@ -992,7 +1013,7 @@
          try (Cursor rows = query(volume, video, args, projection)) {
            if (rows == null)
              throw new IllegalStateException("Media provider unavailable");
-@@ -626,6 +638,11 @@
+@@ -626,6 +644,11 @@
                videos++;
              if (Build.VERSION.SDK_INT >= 30 && rows.getInt(0) == 1)
                favorites++;
@@ -1004,7 +1025,7 @@
            }
          }
        }
-@@ -633,6 +650,8 @@
+@@ -633,6 +656,8 @@
      JSObject result = new JSObject();
      result.put("favorites", favorites);
      result.put("videos", videos);
@@ -1159,7 +1180,35 @@
        case "restore":
 --- a/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotosPlugin.java
 +++ b/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotosPlugin.java
-@@ -121,16 +121,49 @@
+@@ -100,39 +100,74 @@
+ 
+   @PluginMethod
+   public void beginEdit(PluginCall call) {
+-    submit(call, () -> {
++    submitRead(call, () -> {
+       try {
+-        call.resolve(edits.begin(call.getString("id"), call.getString("revision")));
++        return edits.begin(call.getString("id"), call.getString("revision"));
+       } catch (Exception e) {
+         call.reject(e.getMessage() == null ? "Photo editor unavailable" : e.getMessage());
++        return null;
+       }
+     });
+   }
+ 
+   @PluginMethod
+   public void previewEdit(PluginCall call) {
+-    submit(call, () -> {
++    submitRead(call, () -> {
+       try {
+-        call.resolve(edits.preview(call.getString("sessionId"), call.getInt("rotation", 0),
+-            call.getBoolean("crop", false), call.getString("filter", "none")));
++        return edits.preview(call.getString("sessionId"), call.getInt("rotation", 0),
++            call.getBoolean("crop", false), call.getString("filter", "none"));
+       } catch (Exception e) {
+         call.reject(e.getMessage() == null ? "Preview unavailable" : e.getMessage());
++        return null;
+       }
      });
    }
  
@@ -1170,13 +1219,11 @@
 +   */
    @PluginMethod
    public void saveEdit(PluginCall call) {
--    submit(call, () -> {
--      try {
++    boolean replace = Boolean.TRUE.equals(call.getBoolean("replace", false));
+     submit(call, () -> {
+       try {
 -        call.resolve(edits.save(call.getString("sessionId"), call.getInt("rotation", 0),
 -            call.getBoolean("crop", false), call.getString("filter", "none")));
-+    boolean replace = Boolean.TRUE.equals(call.getBoolean("replace", false));
-+    submit(call, () -> {
-+      try {
 +        String token = call.getString("sessionId");
 +        int rotation = call.getInt("rotation", 0);
 +        boolean crop = call.getBoolean("crop", false);
@@ -1202,40 +1249,96 @@
          call.reject(e.getMessage() == null ? "Save outcome unknown; inspect Photos before retrying" : e.getMessage());
        }
      });
-+  }
-+
+   }
+ 
 +  private JSObject replaceEdit(String token, int rotation, boolean crop, String filter)
 +      throws Exception {
 +    JSObject receipt = edits.replace(token, rotation, crop, filter);
 +    // A replaced original has new bytes: open pages and read tickets of the old ones end here.
 +    if ("saved".equals(receipt.getString("status"))) permitted.invalidate();
 +    return receipt;
-   }
++  }
++
+   @PluginMethod
+   public void editResult(PluginCall call) {
+     if (VideoCopyEdits.isVideoOperation(call.getString("operationId"))) {
+@@ -247,30 +282,30 @@
  
    @PluginMethod
-@@ -259,16 +292,19 @@
-           call.resolve(albums.list(album.substring(7), call.getString("before", "")));
-           return;
+   public void list(PluginCall call) {
+-    submit(call, () -> {
++    submitRead(call, () -> {
+       try {
+         boolean trashed = call.getBoolean("trashed", false);
+         if (trashed && Build.VERSION.SDK_INT < PhotoLibraryAccess.TRASH_SDK) {
+           call.reject("Android trash requires Android 11 or later");
+-          return;
++          return null;
          }
+         String album = call.getString("album", "");
+-        if (PhotoLibraryAccess.customAlbum(album)) {
+-          call.resolve(albums.list(album.substring(7), call.getString("before", "")));
+-          return;
+-        }
++        if (PhotoLibraryAccess.customAlbum(album))
++          return albums.list(album.substring(7), call.getString("before", ""));
 +        // A caller that needs fewer rows (Camera's last-capture tile reads one) asks for a smaller page.
 +        int limit = Math.max(1, Math.min(OwnedMediaLibrary.PAGE, call.getInt("limit", OwnedMediaLibrary.PAGE)));
          String[] listing = PhotoLibraryAccess.permittedListing(album, trashed);
-         if (PhotoLibraryAccess.readable(permitted.access())) {
+-        if (PhotoLibraryAccess.readable(permitted.access())) {
 -          call.resolve(permitted.list(call.getString("before", ""), "", listing[0], true, listing[1]));
-+          call.resolve(permitted.list(call.getString("before", ""), "", listing[0], true, listing[1],
-+              0, Long.MAX_VALUE, limit));
-           return;
-         }
+-          return;
+-        }
++        if (PhotoLibraryAccess.readable(permitted.access()))
++          return permitted.list(call.getString("before", ""), "", listing[0], true, listing[1],
++              0, Long.MAX_VALUE, limit);
          if (album.equals("favorites") && Build.VERSION.SDK_INT < PhotoLibraryAccess.TRASH_SDK) {
            call.reject("Favorites require Android 11 or later");
-           return;
+-          return;
++          return null;
          }
 -        call.resolve(owned.list(call.getString("before", ""), trashed, album));
-+        call.resolve(owned.list(call.getString("before", ""), trashed, album, limit));
++        return owned.list(call.getString("before", ""), trashed, album, limit);
        } catch (Exception failure) {
          call.reject("Saved media could not be loaded");
++        return null;
        }
-@@ -352,7 +388,7 @@
+     });
+   }
+@@ -278,7 +313,7 @@
+   @PluginMethod
+   public void read(PluginCall call) {
+     diagnostic(Diagnostic.READ_INVOKED);
+-    submit(call, () -> {
++    submitRead(call, () -> {
+       try {
+         boolean trashed = Boolean.TRUE.equals(call.getBoolean("includeTrashed", false));
+         String key = call.getString("id", "");
+@@ -294,19 +329,17 @@
+                 throw new SecurityException("Selected video changed or is unavailable");
+               }
+             }));
+-          call.resolve(result);
+-          diagnostic(Diagnostic.READ_SUCCEEDED);
+-          return;
++          return result;
+         }
+         JSObject result = owned.read(key, trashed);
+         if (OwnedMediaLibrary.video(key)) result.put("path", playback.authorize(OwnedMediaLibrary.uri(key)));
+-        call.resolve(result);
+-        diagnostic(Diagnostic.READ_SUCCEEDED);
++        return result;
+       } catch (Exception failure) {
+         diagnostic(Diagnostic.readFailure(failure));
+         call.reject("This saved media is no longer available");
++        return null;
+       }
+-    });
++    }, () -> diagnostic(Diagnostic.READ_SUCCEEDED));
+   }
+ 
+   /**
+@@ -352,7 +385,7 @@
      submit(call, () -> {
        try {
          JSArray items = call.getArray("items");
@@ -1244,3 +1347,71 @@
            throw new IllegalArgumentException();
          ArrayList<Uri> uris = new ArrayList<>();
          Set<String> unique = new HashSet<>();
+@@ -457,15 +490,12 @@
+ 
+   @PluginMethod
+   public void summary(PluginCall call) {
+-    submit(call, () -> {
++    submitRead(call, () -> {
+       try {
+-        if (PhotoLibraryAccess.readable(permitted.access())) {
+-          call.resolve(permitted.summary());
+-          return;
+-        }
+-        call.resolve(owned.summary());
++        return PhotoLibraryAccess.readable(permitted.access()) ? permitted.summary() : owned.summary();
+       } catch (Exception failure) {
+         call.reject("Album counts could not be loaded");
++        return null;
+       }
+     });
+   }
+@@ -521,15 +551,16 @@
+ 
+   @PluginMethod
+   public void albums(PluginCall call) {
+-    submit(call, () -> {
++    submitRead(call, () -> {
+       if (Build.VERSION.SDK_INT < PhotoLibraryAccess.TRASH_SDK) {
+         call.reject("Owned albums require Android 11 or later");
+-        return;
++        return null;
+       }
+       try {
+-        call.resolve(albums.albums());
++        return albums.albums();
+       } catch (Exception failure) {
+         call.reject("Owned albums could not be loaded");
++        return null;
+       }
+     });
+   }
+--- a/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PermittedPhotosPlugin.java
++++ b/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PermittedPhotosPlugin.java
+@@ -214,18 +214,23 @@
+     requestLibraryAccess(call);
+   }
+ 
+-  private interface ReadAction {
++  protected interface ReadAction {
+     JSObject run() throws Exception;
+   }
+ 
+-  private void submitRead(PluginCall call, ReadAction action) {
++  protected final void submitRead(PluginCall call, ReadAction action) {
++    submitRead(call, action, null);
++  }
++
++  /** Null from an action means it already rejected the call. */
++  protected final void submitRead(PluginCall call, ReadAction action, Runnable onPublished) {
+     try {
+       long ticket = permitted.readTicket();
+       submit(call, () -> {
+         try {
+           permitted.requireReadTicket(ticket);
+           JSObject value = action.run();
+-          permitted.publish(call, value, ticket);
++          if (value != null) permitted.publish(call, value, ticket, onPublished);
+         } catch (Exception changed) {
+           call.reject("Photo library changed or is unavailable. Refresh Photos and check its access.");
+         }
