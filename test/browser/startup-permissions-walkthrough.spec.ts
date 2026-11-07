@@ -38,6 +38,7 @@ test('required browser denial and cold return expose Settings/check access witho
 
 // Browser-rendered recovery with controlled permission APIs, not proof of an OS grant.
 test('a pending notification prompt releases Checking at its deadline while required setup stays gated',async({page})=>{
+ await page.clock.install();
  await open(page);
  await page.evaluate(()=>{
   Notification.requestPermission=()=>{
@@ -48,7 +49,9 @@ test('a pending notification prompt releases Checking at its deadline while requ
  const panel=page.locator('dialog.alpha-startup-permissions');
  await panel.getByRole('button',{name:'Allow',exact:true}).click();
  await expect(panel.getByRole('button',{name:'Checking…',exact:true})).toBeDisabled();
- await expect(panel.getByRole('button',{name:'Check access',exact:true})).toBeEnabled({timeout:17000});
+ // The 15 s prompt deadline, advanced on the page clock.
+ await page.clock.runFor(15000);
+ await expect(panel.getByRole('button',{name:'Check access',exact:true})).toBeEnabled();
  await expect(panel.getByRole('heading',{name:'Notifications',exact:true})).toBeVisible();
  await expect(panel.getByRole('button',{name:/Skip|Not now|Back|Go to Alpha/})).toHaveCount(0);
  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('alpha:startup-permission-walkthrough:v1')!))).toEqual({version:1,status:'pending',step:0});
