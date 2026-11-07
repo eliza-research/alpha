@@ -98,17 +98,17 @@ test("the renderer asks on Android only, says so before any speech route or exce
   assert.match(adapter, /report\(new Error\(READING_UNSUPPORTED_MESSAGE\)\)/);
   assert.match(adapter, /readingUnavailable:readingSupport\?\.state==='unavailable',readingNote:READING_UNSUPPORTED_MESSAGE,/);
   assert.match(template, /<sc-if value="\{\{browser\.readingUnavailable\}\}"><p role="note" aria-label="Page reading unavailable" data-alpha-reading-unavailable [^>]*>\{\{browser\.readingNote\}\}<\/p><\/sc-if>/);
-  // Only an explicit boolean is believed.
-  assert.match(capability, /if \(available === true\) state = "available";\s*else if \(available === false\) state = "unavailable";/);
 });
 
-test("BrowserReadingNavigation runs exactly one method per provider and records which", () => {
-  const source = fs.readFileSync("android/app/src/androidTest/java/ai/elizaresearch/alphaphone/BrowserReadingNavigationInstrumentedTest.java", "utf8");
-  assert.match(source, /assumeFalse\("This WebView provider has isolated-world injection[^\n]{0,120}?,provider\(\)\);/, "the unavailable method runs only without the capability");
-  assert.match(source, /assumeTrue\("This WebView provider has no isolated-world injection[^\n]{0,160}?,provider\(\)\);/, "the full method runs only with it");
-  assert.match(source, /assertEquals\("The product reports the provider's isolated-world capability as it is",capable,BrowserReadingWorld\.supported\(\)\);/);
-  assert.match(source, /seen\.putString\("browserReadingProvider",capable\?"isolated-world":"no-isolated-world"\)/);
-  // The full method's assertions are the ones it had.
-  for (const kept of ['assertFalse("Old document must not bind after invalidation",world.ready());', 'extracted.get().contains("Current synthetic page /second")', 'world.pageStarted("https://reading.invalid/other");assertFalse(world.ready());'])
-    assert.ok(source.includes(kept), kept);
+test("each refusal carries its own reject code, so the renderer never parses message text", () => {
+  // The refusals themselves run in the instrumented BrowserIsolatedReading and BrowserSensitiveReading classes.
+  assert.match(policy, /public static final String ISOLATED_WORLD_UNAVAILABLE = "isolated-world-unavailable";/);
+  assert.match(policy, /public static final String SENSITIVE_PAGE = "sensitive-page";/);
+  assert.match(policy, /public static final String READING_NOT_READY = "reading-not-ready";/);
+  assert.match(reading, /ISOLATED_MESSAGE="Isolated page reading is unavailable\. Update Android System WebView, then reload this page\.";/);
+  const review = reading.slice(reading.indexOf("private void review(PluginCall call"), reading.indexOf("private void scheduleTimeout("));
+  assert.match(review, /rejected\.reject\("Reading unavailable on a sensitive or ambiguous page",BrowserPageReading\.SENSITIVE_PAGE\);/, "a page the extractor blocks is a sensitive refusal");
+  assert.match(review, /if\(rejected!=null\)rejected\.reject\(ISOLATED_MESSAGE,BrowserPageReading\.ISOLATED_WORLD_UNAVAILABLE\);/, "an isolated world that fails to run is unavailable, not sensitive");
+  // A sensitive page is never reported as merely unavailable.
+  assert.ok(review.indexOf("SENSITIVE_PAGE") < review.indexOf("ISOLATED_WORLD_UNAVAILABLE"));
 });

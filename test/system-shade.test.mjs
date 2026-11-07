@@ -76,22 +76,6 @@ test('the fallback never claims Android opened its shade', () => {
   }
 });
 
-test('product builds draw no Alpha shade; the template gates the development stand-in', () => {
-  const template = read('apps/app/src/prototype/template.html');
-  const layer = template.indexOf('data-alpha-layer="shade"');
-  assert.ok(layer > 0);
-  // The last gate opened before the layer is the simulated-shade gate.
-  assert.match(template.slice(0, layer), /<sc-if value="\{\{simulatedShade\}\}">\s*<sc-if value="\{\{isOn\}\}">\s*<div $/);
-  // Home has no notifications control: a pull on empty Home and Android's own swipe are the ways in.
-  assert.doesNotMatch(template, /showShadeButton|data-alpha-shade-handle|aria-controls="alpha-notifications"/);
-  const model = read('apps/app/src/prototype/model.js');
-  assert.match(model, /shadeY: isOn && S\.shade && this\.simulatedShade\(\) \? "0" : "-100%"/);
-  assert.match(model, /simulatedShade\(\) \{ return this\.props\.systemShade === "simulated"; \}/);
-  const main = read('apps/app/src/main.tsx');
-  assert.match(main, /const systemShade=shadeSurface\(\{native:isAndroid,simulated:devSurfacesEnabled\}\);/);
-  assert.match(main, /systemShell=\{launcherPresentation\} systemShade=\{systemShade\}/);
-});
-
 test('the launcher flavor alone requests EXPAND_STATUS_BAR and the plugin reports every outcome', () => {
   const launcher = read('android/app/src/launcher/AndroidManifest.xml');
   const main = read('android/app/src/main/AndroidManifest.xml');

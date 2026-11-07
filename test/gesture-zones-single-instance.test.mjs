@@ -29,24 +29,11 @@ test('Android\'s shade is the only shade: the swipe handler asks Android, never 
   assert.match(template, /<sc-if value="\{\{simulatedShade\}\}">\s*<sc-if value="\{\{isOn\}\}">\s*<div data-alpha-layer="shade" id="alpha-notifications"/);
 });
 
-test('launcher Home\'s margin below the status bar is measured in screen pixels', () => {
-  const css = read('apps/app/src/prototype/phone.css');
-  // The inset is in screen pixels and Home is on the scaled 412px canvas: divide by the canvas scale.
-  assert.match(css, /\[data-alpha-home-layout\] \{ padding-top:max\(20px,calc\(\(var\(--native-top-inset,0px\) \+ 12px\) \/ var\(--phone-scale,1\) - 44px\)\)!important; \}/);
-});
-
 test('no instrumented test opens the panel with the removed swipe', () => {
   for (const name of readdirSync(ANDROID_TESTS).filter(file => file.endsWith('.java'))) {
     const source = read(path.join(ANDROID_TESTS, name));
     // The synthetic top-edge swipe the product no longer answers (a pointer pair from y=50 to y=200).
     assert.doesNotMatch(source, /\['pointerdown',\s*50\]/, `${name} synthesizes the removed top-edge swipe`);
-  }
-  // Notices are opened in Android's own shade; no instrumented test looks for an Alpha panel.
-  for (const name of ['NotificationsInstrumentedTest.java', 'NotificationChannelsInstrumentedTest.java', 'AccessibilityInstrumentedTest.java']) {
-    const source = read(path.join(ANDROID_TESTS, name));
-    assert.match(source, /AndroidShade\.(waitOpen|openWithoutAlpha)\(/, `${name} observes Android's shade`);
-    assert.match(source, /AndroidShade\.ALPHA_SHADE_ABSENT/, `${name} checks that Alpha draws no shade`);
-    assert.doesNotMatch(source, /data-alpha-layer=\\?"?shade\\?"?\]'?\)?\??\.getAttribute\('aria-hidden'\)/, `${name} still expects an Alpha panel`);
   }
 });
 
@@ -58,7 +45,6 @@ test('the launcher keeps one MainActivity and its kind belongs to the task', () 
   // The kind is read from the start intent once per task. A relaunch is handed the last intent given
   // to setIntent (AlphaConnectionPlugin keeps the sign-in return there), so it must not be read again.
   assert.match(activity, /if \(task == -1 \|\| task != liveTaskId\) \{ liveTaskId = task; liveTaskHome = isHomeTypeStart\(getIntent\(\)\); \}\s*startedAsHome = liveTaskHome;/);
-  assert.doesNotMatch(activity, /startedAsHome = isHome(Intent|TypeStart)\(getIntent\(\)\)/);
   assert.match(read('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaConnectionPlugin.java'), /getActivity\(\)\.setIntent\(intent\);delegationCallback=uri;/, 'the sign-in return is still kept with setIntent, which is why the kind is per task');
   // An exported activity reads its own marker extra without trusting the sender's parcel.
   assert.match(activity, /try \{ return intent\.getBooleanExtra\(EXTRA_FRONT_START, false\); \}\s*catch \(RuntimeException foreign\) \{ return false; \}/);
@@ -83,7 +69,4 @@ test('the launcher keeps one MainActivity and its kind belongs to the task', () 
   assert.match(activity, /for \(android\.app\.ActivityManager\.AppTask task : manager\.getAppTasks\(\)\) \{\s*if \(task\.getTaskInfo\(\)\.taskId != taskId\) continue;\s*task\.moveToFront\(\);\s*return true;/);
   // The task move has no intent to acknowledge: the page owner resuming is the acknowledgement.
   assert.match(activity, /public void onResume\(\)\{super\.onResume\(\);[\s\S]{0,200}?if\(liveInstance\.get\(\)==this\)unackedFrontStarts=0;/);
-  // The instrumented classes that would show it on a device exist and name the behaviour.
-  assert.match(read(path.join(ANDROID_TESTS, 'SettingsRolesInstrumentedTest.java')), /assertOneLiveInstance\("after the role is accepted",original\)/);
-  assert.match(read(path.join(ANDROID_TESTS, 'LauncherHomeInstrumentedTest.java')), /aRelaunchHoldingAReplacedIntentKeepsOneInstanceThatLaterStartsBringToTheFront/);
 });

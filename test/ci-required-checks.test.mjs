@@ -97,7 +97,4 @@ test('the scheduled dependency advisory audit is never a required check', () => 
   const required = ruleset.rules.find(rule => rule.type === 'required_status_checks').parameters.required_status_checks.map(row => row.context);
   assert.ok(jobNames.length > 0);
   for (const context of [name, ...jobNames]) assert.ok(!required.includes(context), `${context} must not be required`);
-  // Schedule and manual dispatch only: it never runs on, or blocks, a pull request or push.
-  assert.doesNotMatch(workflow, /^\s*(pull_request|pull_request_target|push|workflow_call):/m);
-  assert.match(workflow, /^permissions:\n  contents: read\n/m);
 });

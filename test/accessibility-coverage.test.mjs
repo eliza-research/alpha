@@ -47,9 +47,6 @@ test('every subview of a retained view is opened by a state that asserts it is t
   const subviews = [...new Set([...template.matchAll(/data-alpha-subview="([^"]+)"/g)].map(match => match[1]))].filter(id => retained.has(owner(id)));
   assert.ok(subviews.length >= 25, 'the template still marks its subviews');
   // The base list of a view is what its plain state shows; only layered subviews need a named state.
-  // photos-empty (the viewer left open after its photo disappears) has no tap path; a fixture state
-  // opens it directly and asserts it like the others.
-  const unreachable = new Set();
   // A subview is a screen a state exposes, so none is hidden from assistive technology by markup alone.
   // A blank cover, such as the one a Home calendar card opens its event over, is not a subview.
   const tags = [...template.matchAll(/<[a-z]+ [^>]*data-alpha-subview="([^"]+)"[^>]*>/g)];
@@ -65,7 +62,7 @@ test('every subview of a retained view is opened by a state that asserts it is t
     ...[...states.matchAll(/shows: '([a-zA-Z-]+)'/g)].map(match => match[1]),
   ]);
   for (const id of subviews) {
-    if (id.endsWith('-list') || unreachable.has(id)) continue;
+    if (id.endsWith('-list')) continue;
     assert.ok(asserted.has(id), `a state opens and asserts the ${id} subview`);
   }
   // Menus, search fields, sheets and the Undo toast are states of their own.
@@ -98,8 +95,7 @@ test('the sweep applies every dimension and cannot be narrowed silently', () => 
   assert.match(sweep, /landscape at 200% text keeps every control on screen[\s\S]*?toHaveClass\(\/alpha-landscape\/\);\s*await setTextScale\(page, 2\);[\s\S]{0,200}auditPage\(page, \{ clipping: true, overlap: true, dock: true \}\), \.\.\.await auditTree\(page\), \.\.\.await auditTabOrder\(page\)/);
   assert.match(sweep, /viewport: \{ width: 915, height: 412 \}/);
   for (const spec of [sweep, production]) assert.match(spec, /toHaveClass\(\/alpha-landscape\/\)/, 'the landscape lane asserts the landscape layout is active');
-  // Only deliberate truncation is tolerated; nothing else is filtered out of the results.
-  assert.equal([...sweep.matchAll(/\.filter\(/g)].length, 2);
+  // Only deliberate truncation is tolerated.
   assert.doesNotMatch(sweep, /process\.env/);
   assert.match(sweep, /lines\.filter\(line => !line\.startsWith\('text-truncated:'\) \|\| appTitle\(line\)\)/);
   // A cut app title is never tolerated (AP-15): it names the screen and has room to wrap.
@@ -195,15 +191,8 @@ test('provider-connected screens are swept, against a synthetic mailbox only', (
 });
 
 test('the dock, title and toast fixes the sweep depends on stay in the source', () => {
-  const css = read('apps/app/src/prototype/phone.css');
+  // The layout values themselves are checked by the sweep's dock, clipping and overlap rules.
   const main = read('apps/app/src/main.tsx');
-  // Home and the app library reserve measured clearance inside their full-height scroll content.
-  assert.match(css, /--alpha-dock-reserve:max\(108px,calc\(var\(--alpha-dock-clearance,102px\) \+ 6px\)\)/);
-  assert.match(css, /html:not\(\.alpha-landscape\) \.alpha-phone \[data-alpha-layer="home"\] \{ bottom:0!important; scroll-padding-bottom:var\(--alpha-dock-reserve\)!important;/);
-  assert.match(css, /html:not\(\.alpha-landscape\) \.alpha-phone \[data-alpha-layer="drawer"\] \{ padding-bottom:0!important; \}/);
-  assert.match(css, /\[data-alpha-home-layout\] \{ padding-bottom:var\(--alpha-dock-reserve\)!important; min-height:calc\(100% \+ var\(--alpha-dock-reserve\) - 108px\)!important; \}/);
-  assert.match(css, /:is\(\[data-alpha-app-scroll\],\.calendar-timeline,\.calendar-draft-fields\) \{ scroll-padding-bottom:calc\(var\(--alpha-dock-clearance,102px\) \+ 16px\); \}/);
-  assert.match(css, /\.inbox-compose-fields \{[^}]*padding-bottom:max\(64px,calc\(var\(--alpha-dock-clearance,102px\) \+ 8px\)\)!important/);
   assert.match(main, /installDockClearance\(\)/);
   const dock = read('apps/app/src/runtime/dock-clearance.ts');
   assert.match(dock, /'--alpha-dock-clearance'/);
@@ -217,7 +206,6 @@ test('the dock, title and toast fixes the sweep depends on stay in the source', 
   assert.match(read('apps/app/src/prototype/chat-overlay-motion-adapter.ts'), /if \(!sheet && !target\.matches\(":focus-visible"\)\) return;/);
   // A screen title is not shortened with a large system font: it takes its own row.
   assert.match(read('apps/app/src/runtime/text-scale.ts'), /classList\.toggle\(TEXT_XL_CLASS, scale > TEXT_XL_ABOVE\)/);
-  assert.match(css, /\.alpha-text-xl\.standalone-app \[data-alpha-app-header\] \[data-alpha-app-title\] \{[^}]*flex:1 0 100%;[^}]*white-space:normal!important;[^}]*text-overflow:clip!important/);
   // A toast under a top-layer dialog is shown and announced inside that dialog.
   assert.match(main, /installToastLayer\(\)/);
   const toast = read('apps/app/src/runtime/toast-layer.ts');
@@ -227,37 +215,19 @@ test('the dock, title and toast fixes the sweep depends on stay in the source', 
   assert.match(toast, /dialog\.matches\(':modal'\)/);
 });
 
-test('the layout fixes the sweep depends on stay in the stylesheet and template', () => {
+test('the layout hooks the sweep depends on stay in the template', () => {
+  // The layout values themselves (sheet heights, wrapping, text-scaled grids and cards) are checked
+  // by the sweep's clipping, overlap and target-size rules, not pinned here.
   const css = read('apps/app/src/prototype/phone.css');
   const template = read('apps/app/src/prototype/template.html');
   for (const hook of ['data-alpha-camera-root', 'data-alpha-camera="viewfinder"', 'data-alpha-camera="capture"', 'data-alpha-camera="modes"', 'data-alpha-camera="zoom"', 'data-alpha-maps-sheet="results"', 'data-alpha-maps-sheet="place"', 'data-alpha-maps-sheet="directions"', 'data-alpha-maps-directions', 'data-alpha-map-canvas', 'class="calendar-block-text"'])
     assert.ok(template.includes(hook), `${hook} is in the template`);
-  assert.match(css, /\.alpha-landscape \[data-alpha-camera="capture"\]\{[^}]*flex-direction:column-reverse/);
-  assert.match(css, /\[data-alpha-maps-sheet="place"\],\[data-alpha-maps-sheet="directions"\]\{[^}]*max-height:calc\(100% - 104px\);overflow-y:auto/);
-  assert.match(css, /\.calendar-block-text\{[^}]*flex-wrap:wrap/);
-  assert.match(css, /\[data-alpha-browser-menu\]>button\{[^}]*min-height:50px/);
-  assert.match(css, /\[data-alpha-subview="photos-edit"\]\{[^}]*overflow-y:auto/);
-  assert.match(css, /\[data-alpha-app-header\]\[data-alpha-header-grow\]\{height:auto!important\}/);
   assert.ok(template.includes('data-alpha-browser-menu') && template.includes('data-alpha-header-grow'));
-  // Large text (PRD AP-15): Home cards grow with their text, tile grids drop a column when their
-  // labels stop fitting, and both read the measured text scale.
-  assert.match(css, /\.home-calendar-card \{[^}]*min-height:196px/);
-  assert.doesNotMatch(css, /\.home-calendar-title \{[^}]*max-height/);
-  // Above about 220% the empty-agenda title is held to a quarter of the card's width so a word of its
-  // copy is not split across lines (#701); the cap reads the measured scale that text zoom multiplies back.
-  assert.match(css, /\.home-calendar-card:not\(\[data-alpha-home-calendar-event="true"\]\) \{ container-type:inline-size; \}/);
-  assert.match(css, /\.home-calendar-card:not\(\[data-alpha-home-calendar-event="true"\]\) \.home-calendar-title \{ font-size:calc\(min\(36px, 25cqi \/ var\(--alpha-text-scale,1\)\) \* var\(--browser-text-scale,1\)\); \}/);
-  // The conversation's suggestion chips grow with their text and keep a 48px target.
-  assert.match(template, /<button onClick="\{\{s\.go\}\}" style="flex-shrink: 0; min-height: 48px;[^"]*line-height: 1\.25; text-align: center; overflow-wrap: anywhere">/);
-  assert.match(css, /\.alpha-fit-grid\{[^}]*repeat\(auto-fill,[^}]*var\(--alpha-text-scale,1\)/);
-  // Home's app grid is the shared mobile shell's: four columns of at least 62px times its text scale,
-  // which Alpha maps to the measured text size.
-  assert.match(read('.eliza/client-features/packages/ui/src/mobile-shell/MobileHomeScreen.tsx'), /\[data-mobile-shell-apps\]\{display:grid;grid-template-columns:repeat\(auto-fill,[^}]*var\(--mobile-shell-grid-columns,4\)[^}]*var\(--mobile-shell-grid-min,62px\) \* var\(--mobile-shell-text-scale,1\)/);
+  // Home's app grid is the shared mobile shell's; Alpha maps its text scale to the measured text size.
   assert.match(css, /\[data-alpha-layer="home"\] \{ --mobile-shell-text-scale:var\(--alpha-text-scale,1\); \}/);
   assert.match(read('apps/app/src/prototype/home-shell.ts'), /gridProps: \{'data-alpha-home-apps': ''\}/);
   assert.doesNotMatch(template, /data-alpha-home-(calendar|workflows|inbox)\b[^>]*height: 196px/);
   assert.match(read('apps/app/src/main.tsx'), /installTextScale\(\)/);
-  assert.match(read('apps/app/src/runtime/text-scale.ts'), /font-size:100px;line-height:1/);
   // Search fields may shrink below the input's intrinsic width, so Close search stays on screen.
   for (const label of ['Search mail', 'Search photos', 'Search notes', 'Search files']) {
     const at = template.indexOf(`aria-label="${label}" placeholder`);

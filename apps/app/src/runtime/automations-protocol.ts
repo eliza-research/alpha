@@ -37,7 +37,7 @@ function localDate(value:string):Date{
  return date;
 }
 /** One instant label for every list row ("Oct 29, 2026, 6:00 PM"), in the record's zone when it names a valid one. */
-export function automationWhen(stamp:string|number,zone?:string):string{const date=new Date(stamp);if(!Number.isFinite(date.getTime()))return '';const options:Intl.DateTimeFormatOptions={year:'numeric',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'};try{return date.toLocaleString(undefined,{...options,...(zone?{timeZone:zone}:{})});}catch{return date.toLocaleString(undefined,options);}}
+export function automationWhen(stamp:string|number,zone?:string,locale?:string):string{const date=new Date(stamp);if(!Number.isFinite(date.getTime()))return '';const options:Intl.DateTimeFormatOptions={year:'numeric',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'};try{return date.toLocaleString(locale,{...options,...(zone?{timeZone:zone}:{})});}catch{return date.toLocaleString(locale,options);}}
 function schedule(value:unknown):string {
  const t=object(value);switch(t.triggerType??t.kind){
   case 'once':return automationWhen(Date.parse(text(t.scheduledAtIso??t.atIso??t.dueAt)),text(t.timezone??t.tz).trim()||undefined)||'Once';

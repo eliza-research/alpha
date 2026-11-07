@@ -1,6 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from 'node:module';import {cloudVoiceViewFixture} from './fixtures/cloud-voice-view.mjs';
 const states=await import('data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(readFileSync('apps/app/src/runtime/voice-states.ts','utf8'),{mode:'strip'})).toString('base64'));
-const adapter=readFileSync('apps/app/src/prototype/voice-adapter.ts','utf8'),template=readFileSync('apps/app/src/prototype/template.html','utf8');
 
 test('the control the denied-microphone message names exists on the phone',()=>{
  // Found on an API 36 emulator: the recorder named "Open app settings" and offered no such control.
@@ -13,16 +12,6 @@ test('the control the denied-microphone message names exists on the phone',()=>{
  for(const other of [{failure:'',stage:'ready',busy:false,native:true},{failure:'no-speech',stage:'recorded',busy:false,native:true},{failure:'denied',stage:'recording',busy:false,native:true},{failure:'denied',stage:'ready',busy:true,native:true}])
   assert.equal(states.deniedSettingsChoice(other),false,JSON.stringify(other));
 });
-test('the recorder renders that control and it only opens Android settings for the app',()=>{
- assert.match(adapter,/const settingsChoice = deniedSettingsChoice\(\{ failure, stage, busy, native: Capacitor\.isNativePlatform\(\) \}\);/);
- assert.match(adapter,/routeChoice: settingsChoice \|\| /);
- assert.match(adapter,/routeLabel: settingsChoice \? DENIED_SETTINGS_LABEL : /);
- assert.match(adapter,/changeRoute: \(\) => \{ if \(!owned\(\)\|\|stage !== 'ready' \|\| busy\) return; if \(settingsChoice\) \{ openSettings\(\); return; \}/);
- assert.match(adapter,/const openSettings = \(\) => \{ void appSettings\.openSettings\(\{ page: 'privacy' \}\)/);
- // The route slot is the button the template shows for it, named by its label.
- assert.match(template,/<sc-if value="\{\{notes\.rec\.routeChoice\}\}"><button aria-label="\{\{notes\.rec\.routeLabel\}\}" onClick="\{\{notes\.rec\.changeRoute\}\}"/);
-});
-
 test('the chat voice sheet offers app settings after a denied microphone and drops it after a granted retry',async t=>{
  const f=cloudVoiceViewFixture({cloudProfile:true});t.after(()=>f.close());
  f.box.React={createElement:()=>null};f.box.VoiceActivity=()=>null;

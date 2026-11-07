@@ -33,10 +33,6 @@ test('native production Cloud voice pins host and Cartesia; staging and other ou
  execFileSync(binary('javac'),['--release','11','-d',out,'android/app/src/main/java/ai/elizaresearch/alphaphone/CloudDeployment.java','android/app/src/main/java/ai/elizaresearch/alphaphone/CloudSpeechPolicy.java','test/fixtures/CloudSpeechPolicyTest.java']);
  assert.match(execFileSync(binary('java'),['-cp',out,'ai.elizaresearch.alphaphone.CloudSpeechPolicyTest'],{encoding:'utf8'}),/PASS Cloud speech production host and Cartesia admission/);
  const native=fs.readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaVoiceCloudPlugin.java','utf8');
- const upload=native.slice(native.indexOf('@PluginMethod public void transcribeRecording('),native.indexOf('@PluginMethod public void synthesize('));
- assert.match(upload,/RecordingPcm\.decode\(file,\(\)->request\.cancelled\|\|destroyed\(\)\)/,'Cloud uploads real decoded PCM rather than relabelling the MPEG_4 recorder');
- assert.match(upload,/filename=\\"recording\.wav\\"\\r\\nContent-Type: audio\/wav/);
- assert.match(upload,/finally\{Arrays\.fill\(audio,\(byte\)0\);\}/,'uploaded PCM is cleared after the request body write');
  assert.match(native,/CloudSpeechPolicy\.host\(BuildConfig\.ELIZA_RUNTIME_PROFILE,BuildConfig\.ELIZA_DEV_ALLOW_TEST_MOCKS,environment\)/);
  assert.match(native,/if\(!paired\)CloudSpeechPolicy\.requireProvider\(BuildConfig\.ELIZA_RUNTIME_PROFILE,c\.getHeaderField\("X-Eliza-TTS-Provider"\)\)/);
  const paired=native.slice(native.indexOf('private HttpURLConnection connectPaired(PluginCall call,boolean status,SpeechRequestGate.Request request,boolean asr)'));

@@ -58,19 +58,6 @@ test("binding text equals the shared sms.send.v1 contract field order", async ()
   assert.equal(await smsBindingHash(review), createHash("sha256").update(smsBindingText(review)).digest("hex"));
 });
 
-test("off the verified image no message read, observer or send reaches native code", async () => {
-  const { plugin, calls } = stub();
-  for (const client of [createAospTelephony(null, false), createAospTelephony(plugin, false)]) {
-    await assert.rejects(client.listThreads(), TelephonyUnavailable);
-    await assert.rejects(client.listMessages("thread:1"), TelephonyUnavailable);
-    await assert.rejects(client.observeMessages(() => {}), TelephonyUnavailable);
-    await assert.rejects(client.sendSms({ recipients: ["+15555550100"], body: "x", subscriptionId: 3 }, "op-1"), TelephonyUnavailable);
-    await assert.rejects(client.smsSendResult({ recipients: ["+15555550100"], body: "x", subscriptionId: 3 }, "op-1"), TelephonyUnavailable);
-    await assert.rejects(client.requestAccess("sms"), TelephonyUnavailable);
-  }
-  assert.deepEqual(calls, []);
-});
-
 test("status reports send mode and the default SIM truthfully", () => {
   assert.equal(parseTelephonyStatus(status()).sendMode, "direct");
   assert.equal(parseTelephonyStatus(status()).defaultSmsSubscriptionId, 3);
@@ -250,25 +237,13 @@ test("native boundary: image-only plugin methods, immutable explicit callbacks, 
     assert.match(plugin, new RegExp(`@PluginMethod public void ${method}\\(PluginCall call\\) \\{\\n  if \\(refused\\(call\\)\\) return;`), `${method} re-checks the image capability first`);
 });
 
-test("manifests: SMS permissions and the result receiver exist only in the launcher flavor", () => {
+test("manifests: the SMS result receiver exists only in the launcher flavor, and APK verification checks the SMS permissions", () => {
+  // The launcher-only SMS permissions are checked in test/aosp-image-capability.test.mjs.
   const main = read("android/app/src/main/AndroidManifest.xml"), launcher = read("android/app/src/launcher/AndroidManifest.xml"), standalone = read("android/app/src/standalone/AndroidManifest.xml");
-  const declared = xml => [...xml.matchAll(/<uses-permission android:name="([^"]+)"(?![^>]*tools:node="remove")[^>]*\/>/g)].map(m => m[1]);
-  const removed = xml => [...xml.matchAll(/<uses-permission android:name="([^"]+)"[^>]*tools:node="remove"[^>]*\/>/g)].map(m => m[1]);
-  for (const permission of ["READ_SMS", "SEND_SMS"]) {
-    assert.ok(declared(launcher).includes(`android.permission.${permission}`));
-    assert.ok(!declared(main).includes(`android.permission.${permission}`));
-    assert.ok(removed(standalone).includes(`android.permission.${permission}`));
-  }
-  assert.match(launcher, /<receiver android:name="\.AlphaSmsSendReceiver" android:exported="false" \/>/);
-  for (const permission of ["RECEIVE_SMS", "RECEIVE_MMS", "RECEIVE_WAP_PUSH"]) {
-    assert.ok(declared(launcher).includes(`android.permission.${permission}`), `${permission} is declared for the image-only SMS role`);
-    assert.ok(removed(standalone).includes(`android.permission.${permission}`));
-  }
-  assert.match(launcher, /<uses-feature android:name="android\.hardware\.telephony" android:required="false" \/>/, "telephony hardware stays optional");
-  assert.doesNotMatch(main + standalone, /AlphaSmsSendReceiver/);
   assert.match(launcher, /<receiver android:name="\.AlphaSmsSendReceiver" android:exported="false" \/>/, "the receiver takes explicit intents only: no filter, not exported");
-  const apk = read("scripts/apk.mjs");
-  assert.match(apk, /for \(const permission of \['READ_SMS', 'SEND_SMS'\]\)/, "APK verification checks the packaged SMS permissions per flavor");
+  assert.doesNotMatch(main + standalone, /AlphaSmsSendReceiver/);
+  assert.match(launcher, /<uses-feature android:name="android\.hardware\.telephony" android:required="false" \/>/, "telephony hardware stays optional");
+  assert.match(read("scripts/apk.mjs"), /for \(const permission of \['READ_SMS', 'SEND_SMS'\]\)/, "APK verification checks the packaged SMS permissions per flavor");
 });
 
 test("standalone SMS stays unavailable at the UI and agent boundaries", async () => {

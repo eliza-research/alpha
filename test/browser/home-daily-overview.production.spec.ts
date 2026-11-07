@@ -1,10 +1,11 @@
 import {test,expect} from '@playwright/test';
 import {fenceNetwork} from './flag-off-android';
 // Production lane (flag-off build, mocks unset): the daily overview on a fresh profile with no
-// account. The calendar card reports its unverified source, no brief card or fixture content is
-// present, and loading Home makes no request beyond the app's own origin.
+// account. The calendar card reports its unverified source, no brief card, avatar or fixture content is
+// present, the Workflows card opens Workflows without inventing results, and loading Home makes no
+// request beyond the app's own origin.
 
-test('fresh Home shows unverified Agent Calendar state, no brief card, no fixture content and no outside request',async({page},info)=>{
+test('fresh Home shows unverified Agent Calendar state, no brief card or fixture content, an unloaded Workflows card and no outside request',async({page},info)=>{
  const errors:string[]=[],outside=await fenceNetwork(page);
  page.on('pageerror',error=>errors.push(error.message));
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
@@ -21,6 +22,8 @@ test('fresh Home shows unverified Agent Calendar state, no brief card, no fixtur
  await expect(calendar).toHaveAttribute('data-overview-state','empty');
  await expect(calendar).toHaveAccessibleName('Open Agent Calendar');
  await expect(calendar).toHaveAttribute('data-alpha-home-calendar-overdue','false');
+ await expect(calendar).toHaveAttribute('data-alpha-home-calendar-event','false');
+ await expect(page.getByRole('img',{name:'Has a meeting link'})).toHaveCount(0);
  await expect(home.locator('[data-alpha-home-brief]')).toHaveCount(0);
  const inbox=home.locator('[data-alpha-home-inbox]');
  await expect(inbox).toHaveAccessibleName('Connect email');
@@ -32,4 +35,10 @@ test('fresh Home shows unverified Agent Calendar state, no brief card, no fixtur
  expect(outside).toEqual([]);
  expect(errors).toEqual([]);
  await page.screenshot({path:info.outputPath('home-overview-production.png'),animations:'disabled'});
+ // No workflow has loaded: the card offers to open Workflows rather than showing a result.
+ const workflows=page.getByRole('button',{name:'Open workflows and automations',exact:true});
+ await expect(workflows).toContainText('Workflows');
+ await expect(workflows).toContainText('Open to view');
+ await workflows.click();
+ await expect(page.locator('html')).toHaveAttribute('data-active-view','workflows');
 });

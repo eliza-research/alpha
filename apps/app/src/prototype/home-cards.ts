@@ -92,31 +92,6 @@ export function agentReminderLead(local: HomeAgendaCardInput, feed: {state: stri
   if (feed.state !== 'error' && feed.state !== 'stale') return local;
   return {...local, provenance: {origin: '', read: feed.read, description: feed.description}, stale: feed.state === 'stale'};
 }
-/** The agent calendar controller's state that Home's agenda card reads (AgentCalendarState). */
-export interface AgentAgendaFeedState {
-  status: string;
-  next?: {calendarFeedState?: string | null; timeReference?: {asOf?: string | null} | null} | null;
-  /** The next event was read with every source complete in this binding and has not ended since. */
-  nextFresh?: boolean;
-  error?: string | null;
-}
-/**
- * The shared agenda-feed presentation of the agent calendar. A ready or partial read whose next
- * event is not verified (the next read failed, a source was incomplete, or the event ended before
- * it was read again) is shown as stale with the event, or as unverified without one: never as a
- * fresh event or an empty schedule.
- */
-export function presentAgentAgendaFeed(state: AgentAgendaFeedState | null | undefined, hasItem: boolean, now: number, emptyLabel: string) {
-  const status = state?.status ?? 'disconnected';
-  const unverified = (status === 'ready' || status === 'partial') && state?.nextFresh !== true;
-  const feedState = state?.next?.calendarFeedState;
-  const feed = presentHomeAgendaFeed({status: (unverified ? 'partial' : status) as Parameters<typeof presentHomeAgendaFeed>[0]['status'], hasItem,
-    feedState: feedState === 'complete' || feedState === 'partial' || feedState === 'unavailable' ? feedState : null,
-    asOf: Date.parse(state?.next?.timeReference?.asOf ?? '') || null, error: state?.error ?? null, now, source: 'Agent Calendar', emptyLabel});
-  if (!unverified) return feed;
-  const reason = (state?.error ?? '').trim().replace(/[.\s]+$/, '') || 'Agent Calendar has not been verified';
-  return {...feed, description: `${reason}. Open Calendar to retry.`};
-}
 /** The Home template values of an agenda card (read by home-overview-cards.ts and the Home adapters). */
 export function homeCalendarValues(card: OverviewAgendaCardModel) {
   return {

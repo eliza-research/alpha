@@ -9,7 +9,7 @@ import {verifyEmbeddingHost, verifyEmbeddingInputs} from '../scripts/stage-embed
 import {embeddingProducerInputPaths,nativeInputPaths, nativeBinding, nativeInputs, nativeGenerated} from '../scripts/embedding-native-contract.mjs';
 const root=path.resolve(import.meta.dirname,'..');
 const git=(directory,...args)=>execFileSync('git',['-C',directory,...args],{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
-const committed=JSON.parse(execFileSync('git',['show','HEAD:android/embedding-host/qualified-host.json'],{cwd:root,encoding:'utf8'}));
+const committed=JSON.parse(fs.readFileSync(path.join(root,'android/embedding-host/qualified-host.json'),'utf8'));
 // The admission rules are tested on a qualification shaped like the committed record but made for the
 // pinned source: native build inputs and engine gitlink read from vendor/eliza at upstream.lock.json,
 // and the built pin left as recorded (a reviewed build is never relabelled). The committed record's own

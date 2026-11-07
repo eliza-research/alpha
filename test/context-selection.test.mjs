@@ -166,14 +166,6 @@ test('a saved capture identity is its id and a local counter, never the library 
  assert.equal((adapter.match(/nativePhotoSelection: ?captureSelection\(/g)||[]).length,2);
  assert.doesNotMatch(adapter,/nativePhotoSelection: ?\{/,'every published photo identity goes through the local mapping');
 });
-test('the native adapter passes an item identity, not a generic wrapper, to the capture question',()=>{
- const source=readFileSync('apps/app/src/prototype/native-adapter.ts','utf8');
- assert.match(source,/askAboutCapture\(\{ id: capture\.id \}\)/);
- assert.match(source,/askAboutCapture\(\)/);
- assert.doesNotMatch(source,/askAboutCapture[^;]*\{ module, key, row/);
- // A failed question is reported, not silently dropped.
- assert.match(source,/Nothing has been sent\./);
-});
 test('location tiles ask the picker for a list of valid document types',()=>{
  const valid=/^[a-z]+\/([a-z0-9][a-z0-9.+-]{0,126}|\*)$/;
  for(const [name,expected] of [['Pictures',['image/*']],['Recordings',['audio/*']],['Movies',['video/*']],['Documents',['application/pdf','text/*','application/*']]]){

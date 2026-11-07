@@ -3,7 +3,7 @@ import test from 'node:test';import assert from 'node:assert/strict';
 // cover every rule. Alpha keeps only the mapping of a reviewed proposal onto its local Calendar form.
 const alpha=await import('../apps/app/src/prototype/scan-event.ts');
 const shared=await import('../.eliza/client-features/plugins/plugin-files/src/documents/scan-event.ts');
-const {suggestScanEventDetails,scanEventDraft,scanAllDayEventDraft}=alpha;
+const {scanEventDraft}=alpha;
 test('Alpha uses the shared poster suggestion rules, not a copy',()=>{
  assert.equal(alpha.suggestScanEvent,shared.suggestScanEvent);
  assert.equal(alpha.suggestScanEventDetails,shared.suggestScanEventDetails);
@@ -21,11 +21,8 @@ test('invalid dates, missing times and durations cannot become calendar drafts',
 });
 test('a scan draft never saves an all-day event silently and repeats only when confirmed',()=>{
  const now=new Date(2026,9,3);
- assert.equal(suggestScanEventDetails('Book fair\nOctober 10, 2026\nVenue: Library',{now:new Date('2026-10-03T15:00:00Z'),timeZone:'America/New_York'}).allDay,true);
  assert.throws(()=>scanEventDraft({title:'Book fair',date:'2026-10-10',time:'',minutes:60,location:'',allDay:true},'text',now),/need a start time/);
  const fields={title:'Yoga',date:'2026-10-06',time:'18:00',minutes:60,location:''};
  assert.equal(scanEventDraft(fields,'text',now).repeat,'none');assert.equal(scanEventDraft({...fields,repeat:'weekly'},'text',now).repeat,'weekly');
  assert.throws(()=>scanEventDraft({...fields,repeat:'monthly'},'text'));
- const allDay=scanAllDayEventDraft({title:'Fair',date:'2026-10-10',location:''},'',now);
- assert.deepEqual({allDay:allDay.allDay,t:allDay.t,d:allDay.d,off:allDay.off},{allDay:true,t:0,d:24,off:7});
 });

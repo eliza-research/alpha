@@ -112,8 +112,16 @@ test('external edits and deletes reconcile; a row id reused after delete is a di
  const changes=catalog.applyChanges([{...item(3),trashed:true},{...item(2,{revision:'1:1:99'})},{...item(9)}],99);
  assert.deepEqual(changes,{removed:['lib:i:3:30'],changed:['lib:i:2:20'],added:1});assert.equal(catalog.generation,99);
  assert.equal('trashed' in catalog.items[0],false);
- // MediaStore _id 2 reused with a new add generation is not the old item.
- assert.notEqual('lib:i:2:20','lib:i:2:21');assert.ok(m.isLibraryId('lib:i:2:21'));
+ // MediaStore _id 2 reused with a new add generation is not the old item: it never updates the old row,
+ // and once the old row is missing a selection bound to it is dropped, not moved to the new one.
+ const reused=new m.LibraryCatalog(),selection=new m.LibrarySelection();
+ reused.apply(m.parsePage(page([item(2)])),true);selection.toggle(reused.items[0]);
+ assert.deepEqual(reused.applyChanges([item(2,{id:'lib:i:2:21',revision:'1700000500:3000:5'})],100),{removed:[],changed:[],added:1});
+ assert.deepEqual(reused.items.map(row=>[row.id,row.revision]),[['lib:i:2:20',item(2).revision]]);
+ assert.deepEqual(reused.reconcile(m.parseValidation({items:[{id:'lib:i:2:20',status:'missing'}]})),{removed:['lib:i:2:20'],changed:[]});
+ assert.equal(reused.items.length,0);
+ assert.deepEqual(selection.reconcile(reused),{dropped:1,changed:0});
+ assert.equal(selection.has('lib:i:2:21'),false);assert.equal(selection.size,0);
 });
 
 test('permission downgrade or a MediaStore version change clears the catalog and selection',()=>{
