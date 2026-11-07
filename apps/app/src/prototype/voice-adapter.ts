@@ -606,12 +606,12 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
         const failure=value.error as {code?:unknown;reason?:unknown}|undefined,code=failure?.code;
         const denied=voiceFailure(value.error,{transcribing:false,browser:!Capacitor.isNativePlatform()});
         return cloudVoiceFailure(value.error,{conversation:true})
-          ||(failure?.reason==='call-active'||code==='call-active'?'Voice paused for a call.'
+          ||(failure?.reason==='call-active'||code==='call-active'?'Voice paused for a phone call.'
           :code==='audio-focus-lost'?'Voice stopped because another app took the audio.'
           :code==='expired'?'Voice session ended. Start again.'
           :denied?.kind==='denied'?(conversationDenied=true,denied.message)
           :code==='no-speech'?'No speech heard. Nothing was sent.'
-          :code==='live-asr'?'On-device transcription stopped.'
+          :code==='live-asr'?'Transcription stopped.'
           :code==='capture'?'The microphone stopped.'
           :code==='speech-refused'?'This reply may contain a password or code, so it wasn\'t read aloud. It\'s in the chat.'
           :'Voice stopped. Check your connection and conversation history before trying again.');

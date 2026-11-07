@@ -6,6 +6,4 @@ The launcher reads an owner-only `~/.config/alphaphone/cerebras-key`, selects di
 
 Read a fresh pairing code with the host's loopback-only `GET /api/auth/pair-code`; exchange its `code` and `instanceId` through `POST /api/auth/pair`. Never expose the owner token or pairing code in logs or screenshots. For an Android emulator, reverse port 47839 through ADB and configure the phone to use that endpoint. Stop the launcher gracefully to stop its child host.
 
-The opt-in check `ALPHA_LOCAL_REMOTE_TEST=1 node scripts/test-local-remote.mjs` drives the production remote client against this running host. It is not part of `npm run verify`.
-
 Verified on 2026-09-29 with source HEAD `995f73e830abf3b6340bf651c16757dbc16650ae`: real app-host health ready, machine-session pairing, first-run provisioning, conversation creation, arithmetic response `56`, and two persisted history messages. Runtime status reports provider `cerebras`, Cloud disconnected, no Cloud key; final deferred boot settled with zero failed plugins/services and no connected messaging integrations. This is local-host protocol evidence, not enclave deployment, phone UI acceptance, Gmail OAuth, or voice acceptance. The source uses its existing built workspace packages; the HEAD alone does not prove that every prebuilt dependency was rebuilt from that revision.

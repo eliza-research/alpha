@@ -17,7 +17,9 @@ test('Maps local speech adapter cancels owned guidance and refuses local-unready
   playbackReady:async()=>ready,
   speak:(text,signal)=>{f.spoken.push(text);return new Promise((resolve,reject)=>signal.addEventListener('abort',()=>{f.aborted++;reject(signal.reason);},{once:true}));},
  });
- const NavigationVoice=new Function('createOnDeviceVoice',`${shared}\n${adapter}\nreturn NavigationVoice;`)(createOnDeviceVoice);
+ // The screen stays on and this is the on-device profile, so the adapter's screen-off and Cloud paths stay idle.
+ const document={hidden:false,addEventListener(){},removeEventListener(){}};
+ const NavigationVoice=new Function('createOnDeviceVoice','document','cloudRuntimeEnabled','speakAppText',`${shared}\n${adapter}\nreturn NavigationVoice;`)(createOnDeviceVoice,document,false,async()=>{throw Error('navigation speech must not use the Cloud route here');});
  const settle=()=>new Promise(resolve=>setTimeout(resolve,0));
  const voice=new NavigationVoice(error=>f.failures.push(error));
  voice.update('step-1','Turn right');await settle();

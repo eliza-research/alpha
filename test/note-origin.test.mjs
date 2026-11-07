@@ -145,7 +145,7 @@ test('an event link to an agent note opens it while Previous notes is selected',
       api: () => ({notesSourceOptions: [{id: 'canonical', choose() { if (refuse) return; shell.notesSourceMode = 'canonical'; shell.notesReady = Promise.resolve().then(() => { if (port) shell.canonicalNotesUi = binding; }); }}]})};
     const api = {isActive: () => true, get: () => ({open: 'e1'}), toast: text => toasts.push(text), open: (...args) => opened.push(args)};
     const canonicalOrigin = new Function('shell', 'resolveNoteLink', 'noteOriginTitle', 'recordNoteRevision', 'document',
-      'let opening=false;' + stripTypeScriptTypes(source.slice(start, end), {mode: 'transform'}) + ';return canonicalOrigin;')(shell, resolveNoteLink, noteOriginTitle, recordNoteRevision, {hidden: false});
+      'let opening=false;' + stripTypeScriptTypes(source.slice(start, end), {mode:'strip'}) + ';return canonicalOrigin;')(shell, resolveNoteLink, noteOriginTitle, recordNoteRevision, {hidden: false});
     const out = canonicalOrigin({ev: {}}, link, api, 'e1');
     assert.equal(out.ev.originLabel, 'From a note in Notes');
     await out.ev.openOrigin();

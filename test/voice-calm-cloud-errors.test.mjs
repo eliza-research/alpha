@@ -231,9 +231,9 @@ test('Try voice again after a terminal error starts the quiet waits over',async 
 
 test('a call, lost audio focus, an ended session and no speech each say what stopped voice',async t=>{
  for(const [label,error,expected] of [
-  ['call code',Object.assign(Error('call'),{code:'call-active'}),'Voice paused for a call. Start again after the call.'],
-  ['call reason',Object.assign(Error('call'),{code:'call-active',reason:'call-active'}),'Voice paused for a call. Start again after the call.'],
-  ['call reason only',Object.assign(Error('call'),{reason:'call-active'}),'Voice paused for a call. Start again after the call.'],
+  ['call code',Object.assign(Error('call'),{code:'call-active'}),'Voice paused for a phone call.'],
+  ['call reason',Object.assign(Error('call'),{code:'call-active',reason:'call-active'}),'Voice paused for a phone call.'],
+  ['call reason only',Object.assign(Error('call'),{reason:'call-active'}),'Voice paused for a phone call.'],
   ['audio focus',Object.assign(Error('focus'),{code:'audio-focus-lost'}),'Voice stopped because another app took the audio.'],
   ['expired',Object.assign(Error('expired'),{code:'expired'}),'Voice session ended. Start again.'],
   ['no speech',Object.assign(Error('silence'),{code:'no-speech'}),'No speech heard. Nothing was sent.'],
