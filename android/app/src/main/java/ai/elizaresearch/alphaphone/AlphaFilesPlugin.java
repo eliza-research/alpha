@@ -130,9 +130,21 @@ public class AlphaFilesPlugin extends Plugin {
   if(Boolean.TRUE.equals(call.getBoolean("folders",false))){JSArray rows=new JSArray();for(StorageBrowser.Row r:primaryBrowser().folders(call.getString("folder",""),call.getString("text"),since,until,StorageCatalog.QUERY_MAX,StorageBrowser.WALK_MAX))rows.put(row(r));out.put("entries",rows);return out;}
   out.put("entries",StorageCatalog.query(resolver(),call.getString("text"),call.getString("mimePrefix"),Boolean.TRUE.equals(call.getBoolean("documents",false)),call.getString("folder"),since,until));return out;
  });}
+ /** The identities an agent review bound ({@code expect}: [{size, modified}] per path), or null. */
+ private static List<StorageBrowser.Identity> expected(PluginCall call,int count)throws org.json.JSONException{
+  JSArray array=call.getArray("expect");if(array==null)return null;if(array.length()!=count)throw new IllegalArgumentException();
+  List<StorageBrowser.Identity> out=new ArrayList<>();
+  for(int i=0;i<array.length();i++){org.json.JSONObject o=array.optJSONObject(i);if(o==null||!o.has("size")||!o.has("modified"))throw new IllegalArgumentException();long size=o.getLong("size"),modified=o.getLong("modified");if(size<0||modified<0)throw new IllegalArgumentException();out.add(new StorageBrowser.Identity(size,modified));}
+  return out;
+ }
+ /** Each path's identity (size, modified) for an agent review card; {@code missing} where it is not there. */
+ @PluginMethod public void storageIdentity(PluginCall call){storage(call,b->{
+  JSArray rows=new JSArray();for(StorageBrowser.Identity identity:b.identities(strings(call,"paths",StorageBrowser.BATCH_MAX))){JSObject o=new JSObject();if(identity==null){o.put("missing",true);o.put("size",0);o.put("modified",0);}else{o.put("size",identity.size);o.put("modified",identity.modified);}rows.put(o);}
+  JSObject out=new JSObject();out.put("identities",rows);return out;
+ });}
  @PluginMethod public void storageTransfer(PluginCall call){storage(call,b->{
   List<String> paths=strings(call,"paths",StorageBrowser.BATCH_MAX);boolean copy=Boolean.TRUE.equals(call.getBoolean("copy",false));
-  List<StorageBrowser.Outcome> done=b.transfer(paths,call.getString("dest",""),copy);
+  List<StorageBrowser.Outcome> done=b.transfer(paths,call.getString("dest",""),copy,expected(call,paths.size()));
   List<String> touched=new ArrayList<>();for(StorageBrowser.Outcome o:done){if(o.to!=null)touched.add(o.to);if(!copy&&"moved".equals(o.status))touched.add(o.path);}scan(b,touched);
   JSObject out=new JSObject();out.put("outcomes",outcomes(done));return out;
  });}
@@ -141,7 +153,7 @@ public class AlphaFilesPlugin extends Plugin {
  });}
  @PluginMethod public void storageCreateFolder(PluginCall call){storage(call,b->{JSObject out=new JSObject();out.put("path",b.createFolder(call.getString("parent",""),call.getString("name","")));return out;});}
  @PluginMethod public void storageTrash(PluginCall call){storage(call,b->{
-  List<String> paths=strings(call,"paths",StorageBrowser.BATCH_MAX);List<StorageBrowser.Outcome> done=b.trash(paths,System.currentTimeMillis());
+  List<String> paths=strings(call,"paths",StorageBrowser.BATCH_MAX);List<StorageBrowser.Outcome> done=b.trash(paths,System.currentTimeMillis(),expected(call,paths.size()));
   List<String> gone=new ArrayList<>();for(StorageBrowser.Outcome o:done)if("trashed".equals(o.status))gone.add(o.path);scan(b,gone);
   JSObject out=new JSObject();out.put("outcomes",outcomes(done));return out;
  });}
