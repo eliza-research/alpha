@@ -282,7 +282,7 @@ export class BrowserStorageVolume {
         case 'storageState': return {status: 'ready', access: 'granted', volumes: [await this.volume()]};
         case 'storageRequestAccess': return {status: 'ready', access: 'granted'};
         case 'storageList': return {status: 'ready', ...await this.list(input.path ?? '')};
-        case 'storageCategory': return {status: 'ready', ...await this.category(input.category)};
+        case 'storageCategory': { const {entries} = await this.category(input.category); return {status: 'ready', ...(input.countOnly ? {count: entries.length} : {entries})}; }
         case 'storageQuery': return {status: 'ready', ...await this.query()};
         case 'storageTransfer': return {status: 'ready', ...await this.transfer(input.paths, input.dest ?? '', input.copy === true, input.expect)};
         case 'storageIdentity': return {status: 'ready', ...await this.identity(input.paths)};

@@ -194,8 +194,30 @@ test('category counts and folder groups cover the whole category, not only the l
  assert.match(adapter,/next\[id\] = value\.count \?\? value\.entries\?\.length \?\? 0/);
  assert.match(adapter,/groupByFolder\(entries, categoryFolders\)/);
  const catalog=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/StorageCatalog.java','utf8');
- assert.match(catalog,/while\(cursor\.moveToNext\(\)&&\(tally!=null\|\|out\.length\(\)<limit\)\)/,'a category reads every row to count it');
+ assert.match(catalog,/while\(cursor\.moveToNext\(\)&&\(tally!=null\|\|out\.length\(\)<limit\)\)/,'an opened category reads every row to count it');
  assert.match(catalog,/out\.put\("count",tally\.count\);out\.put\("truncated",tally\.count>entries\.length\(\)\)/);
+});
+test('Browse reads category counts only, without walking or sending any row',async()=>{
+ const adapter=readFileSync('apps/app/src/prototype/files-browser-adapter.ts','utf8');
+ const counts=adapter.slice(adapter.indexOf('async function loadCounts'),adapter.indexOf('async function reload'));
+ assert.match(counts,/storage\.storageCategory\(\{category: id, countOnly: true\}\)/);
+ const plugin=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaFilesPlugin.java','utf8');
+ assert.match(plugin,/Boolean\.TRUE\.equals\(call\.getBoolean\("countOnly",false\)\)\s*\?StorageCatalog\.count\(/);
+ const catalog=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/StorageCatalog.java','utf8');
+ const count=catalog.slice(catalog.indexOf('static JSObject count('),catalog.indexOf('static JSObject category(ContentResolver resolver,String category)'));
+ assert.match(count,/new String\[\]\{MediaStore\.MediaColumns\._ID\}/,'one column');assert.match(count,/cursor\.getCount\(\)/);
+ assert.doesNotMatch(count,/moveToNext|JSArray/,'no row is read or sent');
+ // The count's SQL keeps exactly the rows rows() lists: hidden names and hidden folders (the trash) are out.
+ const visible=catalog.match(/static final String VISIBLE="([^"]+)";/)[1];
+ const {DatabaseSync}=await import('node:sqlite');const db=new DatabaseSync(':memory:');
+ db.exec('CREATE TABLE files(_id INTEGER PRIMARY KEY, relative_path TEXT, _display_name TEXT)');
+ const rows=[['DCIM/Camera/','a.jpg'],['DCIM/Camera/','.b.jpg'],['DCIM/.thumbnails/','c.jpg'],['.trash/','d.jpg'],['Pictures/x/.hide/y/','e.jpg'],['Pictures/','f.jpg'],[null,'g.jpg'],['Pictures/',null],['Pictures/a.b/','h.jpg'],['','i.jpg']];
+ const insert=db.prepare('INSERT INTO files(relative_path,_display_name) VALUES (?,?)');for(const r of rows)insert.run(...r);
+ const listed=([relative,name])=>{if(relative==null||name==null)return false;const folder=relative.replace(/\/+$/,'');return !name.startsWith('.')&&!('/'+folder).includes('/.');};
+ assert.equal(db.prepare('SELECT COUNT(*) AS n FROM files WHERE '+visible).get().n,rows.filter(listed).length);
+ // The browser volume answers a count-only call with the count alone.
+ const v=await fresh();await v.add('DCIM/Camera','one.jpg','x');await v.add('DCIM/Camera','two.jpg','y');
+ assert.deepEqual(await v.run('storageCategory',{category:'images',countOnly:true}),{status:'ready',count:2});
 });
 test('a folder watch also follows MediaStore, so provider writes (downloads, camera) refresh the open folder (ListingsConverge)',()=>{
  const plugin=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaFilesPlugin.java','utf8');

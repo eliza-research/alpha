@@ -23,7 +23,8 @@ public class StorageCategoriesInstrumentedTest {
  @Test public void everyCategoryIdIsAnswered()throws Exception{
   Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();
   StorageBrowser browser=new StorageBrowser(tempRoot(context));
-  for(String id:StorageCatalog.CATEGORY_IDS){JSONObject out=StorageCatalog.category(context.getContentResolver(),browser,id);assertNotNull(id,out.getJSONArray("entries"));assertTrue(id,out.getInt("count")>=out.getJSONArray("entries").length());assertTrue(id,out.has("truncated"));}
+  for(String id:StorageCatalog.CATEGORY_IDS){JSONObject out=StorageCatalog.category(context.getContentResolver(),browser,id);assertNotNull(id,out.getJSONArray("entries"));assertTrue(id,out.getInt("count")>=out.getJSONArray("entries").length());assertTrue(id,out.has("truncated"));
+   assertEquals(id+": Browse's count-only answer equals the listed count",out.getInt("count"),StorageCatalog.count(context.getContentResolver(),browser,id).getInt("count"));}
   try{StorageCatalog.category(context.getContentResolver(),browser,"recent");fail("an unknown category is refused");}catch(IllegalArgumentException expected){}
  }
 

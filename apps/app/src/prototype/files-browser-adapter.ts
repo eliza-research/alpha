@@ -24,7 +24,7 @@ const storage = registerPlugin<{
   storageRequestAccess(): Promise<Result>;
   storageList(input: {path: string; volume?: string}): Promise<Result & {entries?: StorageEntry[]; truncated?: boolean}>;
   /** `count` and `folders` cover the whole category; `entries` may be its newest part (`truncated`). */
-  storageCategory(input: {category: FilesCategory}): Promise<Result & {entries?: StorageEntry[]; count?: number; truncated?: boolean; folders?: CategoryFolder[]}>;
+  storageCategory(input: {category: FilesCategory; countOnly?: boolean}): Promise<Result & {entries?: StorageEntry[]; count?: number; truncated?: boolean; folders?: CategoryFolder[]}>;
   storageQuery(input: {text?: string; mimePrefix?: string; documents?: boolean; folders?: boolean; folder?: string; from?: number; to?: number}): Promise<Result & {entries?: StorageEntry[]}>;
   /** `expect` (one identity per path) leaves any path whose size or modified time differs untouched ("changed"). */
   storageTransfer(input: {paths: string[]; dest: string; copy: boolean; volume?: string; expect?: FilesIdentity[]}): Promise<Result & {outcomes?: Outcome[]}>;
@@ -116,7 +116,7 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
   async function loadCounts(ticket: number) {
     if (access !== 'granted') return;
     const next: Partial<Record<FilesCategory, number>> = {};
-    await Promise.all(CATEGORIES.map(async ({id}) => { try { const value = await storage.storageCategory({category: id}); if (value.status === 'ready') next[id] = value.count ?? value.entries?.length ?? 0; } catch { /* Count stays blank. */ } }));
+    await Promise.all(CATEGORIES.map(async ({id}) => { try { const value = await storage.storageCategory({category: id, countOnly: true}); if (value.status === 'ready') next[id] = value.count ?? value.entries?.length ?? 0; } catch { /* Count stays blank. */ } }));
     let trash = 0;
     const rows = await trashAcross(); if (rows) trash = rows.length;
     if (ticket === generation) { counts = next; trashCount = trash; }
