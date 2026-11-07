@@ -133,6 +133,11 @@ export const CLASS_REGISTRY = {
   CameraScan: {},
   CameraLatency: { args: { cameraLatency: "1" }, note: "cold/warm first frame (PreviewView STREAMING, also traced as alpha.camera.firstFrame) and shutter-to-thumbnail, reported as cameraLatency.* status; -e cameraLatencyAssert 1 fails on a missed Pixel 10a target; emulator numbers are not device evidence" },
   FilesTree: {},
+  // View refresh 2026-11 (design/view-refresh-2026-11 PLAN.md).
+  AppInfo: { note: "opens Settings' App details for a named package from the Apps drawer menu and refuses a removed app, Alpha itself and malformed input; nothing about the app changes" },
+  NoteRecorder: { note: "records real microphone audio (grants RECORD_AUDIO itself) across segments, recovers after a simulated crash and joins one playable file; about 90 s; emulator audio is not device evidence" },
+  NoteRecordingSave: {},
+  StorageCategories: { note: "every Browse category id answered by the native category path; Downloads lists Download/ newest first" },
   FilesFolderQuestion: { note: "real DocumentsUI tree grant; the folder question reviews entry names only, and a delete or revoked grant during review adds nothing (MVP-13)" },
   // J05-2: native page excerpt -> reviewed question -> composer; a note's web source across recreation.
   BrowserPageQuestion: { args: { browserPageQuestion: "1" }, note: "offline: every page is served from memory to the tab's WebView (the first tab opens on https://reading.invalid/start, which never resolves); needs a WebView provider with isolated-world injection; the agent's answer and the summary-note save that follows it need a connected agent and are not covered" },
