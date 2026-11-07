@@ -26,7 +26,7 @@ function fixture({permission=false,failing=true,receipt={width:1280,height:720,d
   capturePhoto:async options=>{calls.captures.push(options);if(gates.capture)await gates.capture.promise;return options.saveToGallery?{format:'jpeg',width:4000,height:3000,path:'content://media/external/images/media/'+(41+calls.captures.length),thumbnail:'AAAA'}:{format:'jpeg',width:4000,height:3000,base64:'AAAA'};},
   setFocusPoint:()=>{calls.focus++;return new Promise(()=>{});},// a focus that never settles
   switchCamera:async options=>{calls.switches.push({...options,flash:context.flashNow(),zoom:context.zoomNow()});return {...receipt,minZoom:1,maxZoom:4,hasFlash:false};},
-  setZoom:async()=>{},setSettings:async()=>{},
+  setZoom:async()=>{},setSettings:async()=>{},setCaptureMode:async o=>{if(globalThis.__modeImpl)return globalThis.__modeImpl(o);},
   startRecording:async()=>{calls.recordings++;},stopRecording:async()=>({path:'content://media/external/video/media/9',duration:1,width:1,height:1,fileSize:1}),
  };
  const library={list:async options=>{calls.list.push(options);return {items:[]};},read:async({id})=>({id,image:'',width:1,height:1,date:0,revision:'r'})};
@@ -39,12 +39,26 @@ function fixture({permission=false,failing=true,receipt={width:1280,height:720,d
   const browserMode=false,libraryAvailable=()=>true,normalize=row=>({...row,id:'native-camera-'+row.id}),nativeId=id=>id.replace(/^native-camera-/,''),cancelScan=()=>{};function schedule(){}
   const finder='[data-alpha-camera="viewfinder"]';let state={said:'',mode:'photo'};
   const api={S:{get chat(){return view().chat;}},isActive:()=>view().active,set:patch=>Object.assign(state,patch),get:()=>state,setView:()=>{},shell:patch=>{view().chat=patch.chat;}};`;
- vm.runInContext(shared+stripTypeScriptTypes(prelude+helpers+scanWords+session+syncCamera+`;globalThis.testCamera={start,stop,control,capture,record,focusAt,takeRequestedPhoto,zoomStops,lensFromReceipt,photoReceiptPath,cameraScanRequested,scanRequest:()=>scanRequest(),active,installViewPresence,syncCamera,CHAT_GRACE_MS,
+ vm.runInContext(shared+stripTypeScriptTypes(prelude+helpers+scanWords+session+syncCamera+`;globalThis.testCamera={bindMode,modeSettled:()=>modeChange,recordingOptions:()=>RECORDING,start,stop,control,capture,record,focusAt,takeRequestedPhoto,zoomStops,lensFromReceipt,photoReceiptPath,cameraScanRequested,scanRequest:()=>scanRequest(),active,installViewPresence,syncCamera,CHAT_GRACE_MS,
   flip:()=>{const next=direction==='back'?'front':'back';return control(async()=>{flash=false;zoomRatio=1;return camera.switchCamera({direction:next});},r=>{direction=next;adoptLens(r);});},
   setFlash:on=>{flash=on;},setZoom:z=>{zoomRatio=z;},mode:m=>{state.mode=m;},
   state:()=>({phase:session.phase,denied:session.denied,said:state.said,capturing:session.capturing,recording:session.recording,flash,zoomRatio,lens,last:lastCapture,fl:state.fl})};
   globalThis.flashNow=()=>flash;globalThis.zoomNow=()=>zoomRatio;`,{mode:'transform'}),context);
  return {env,timers,calls,gates,clock,api:context.testCamera,recover:()=>failed=false,setView:v=>Object.assign(view,v)};
+}
+// Video mode pre-binds VideoCapture for the quality every recording asks for, so starting one does not rebind;
+// when native could bind neither mode it released the preview, which shows as unavailable.
+{
+ const f=fixture({failing:false});const modes=[];
+ await f.api.start();await settle();
+ globalThis.__modeImpl=async o=>{modes.push(o);};
+ f.api.bindMode('video');await f.api.modeSettled();
+ assert.equal(modes.length,1);assert.equal(modes[0].mode,'video');assert.equal(modes[0].quality,f.api.recordingOptions().quality,'Video mode binds the recording quality');
+ globalThis.__modeImpl=async()=>{throw Object.assign(Error('Camera preview stopped'),{code:'PREVIEW_STOPPED'});};
+ f.api.bindMode('photo');await f.api.modeSettled();await settle();
+ assert.equal(f.api.state().phase,'off','A released preview ends the session');
+ assert.equal(f.env.window.document.querySelector('[role="alert"]').getAttribute('aria-label'),'Camera unavailable');
+ globalThis.__modeImpl=undefined;f.env.window.close();
 }
 // Preview failure, permission denial and recovery.
 {

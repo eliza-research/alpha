@@ -50,7 +50,8 @@ const nativeCamera = registerPlugin<{
   getRecordingState(): Promise<{ isRecording: boolean; duration: number; fileSize: number }>;
   switchCamera(options: { direction: 'front' | 'back' }): Promise<PreviewReceipt>;
   /** Binds VideoCapture only for Video mode (patches/eliza/camera-capture-latency.patch). */
-  setCaptureMode?(options: { mode: 'photo' | 'video' }): Promise<unknown>;
+  /** Video mode pre-binds VideoCapture for these recording options (quality, bitrate, frame rate). */
+  setCaptureMode?(options: { mode: 'photo' | 'video'; quality?: string; bitrate?: number; frameRate?: number }): Promise<unknown>;
   setZoom(options: { zoom: number }): Promise<void>;
   setSettings(options: { settings: { flash: 'off' | 'on' } }): Promise<void>;
   setFocusPoint(options: { x: number; y: number }): Promise<void>;
@@ -693,6 +694,8 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     if (maskCache.bottom !== bottom) { screen.style.setProperty('--alpha-camera-bottom', bottom); maskCache.bottom = bottom; }
   }
   let requestedCaptureActive=false;
+  /** Every recording's options; Video mode pre-binds VideoCapture for the same quality, so starting one does not rebind. */
+  const RECORDING={audio:true,saveToGallery:true,quality:'medium',maxDuration:300,maxFileSize:104857600} as const;
   const cameraViewVisible = () => !disposed && !document.hidden && !!api?.isActive() && !!document.querySelector(finder);
   const chatCovers = () => ['sheet', 'full'].includes(api?.S.chat);
   /** When the chat sheet started covering Camera; the session stays bound for CHAT_GRACE_MS after that. */
@@ -737,7 +740,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   const session=createCameraSession({
     camera:sessionCamera,active,available:()=>browserMode||Capacitor.isPluginAvailable('ElizaCamera'),
     preview:()=>({direction,resolution:{width:1280,height:720},mirror:direction==='front'}),
-    recording:()=>({audio:true,saveToGallery:true,quality:'medium',maxDuration:300,maxFileSize:104857600}),
+    recording:()=>RECORDING,
     hooks:{
       recordingFinishing(){api?.set({rec:false});},
       recordingSaved:adoptVideo,
@@ -783,7 +786,10 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   function bindMode(mode:string){
     if(session.phase!=='ready')return;
     const token=session.token(),wanted=mode==='video'?'video':'photo';
-    modeChange=modeChange.then(async()=>{if(token!==session.token()||typeof camera.setCaptureMode!=='function')return;try{await camera.setCaptureMode({mode:wanted});}catch{/* startRecording binds video itself. */}});
+    modeChange=modeChange.then(async()=>{if(token!==session.token()||typeof camera.setCaptureMode!=='function')return;try{await camera.setCaptureMode({mode:wanted,quality:RECORDING.quality});}catch(error){
+      // Neither mode could be bound and native released the preview: show it as unavailable.
+      if((error as {code?:unknown})?.code==='PREVIEW_STOPPED'&&token===session.token()){await session.stop();if(!disposed){mask(false);showAccess('unavailable');}}
+      /* Otherwise startRecording binds video itself. */}});
   }
   async function stop() {
     // A scan review that opened a system picker stays open while Android covers the WebView.
