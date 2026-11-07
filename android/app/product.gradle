@@ -83,6 +83,15 @@ def verifyEmbeddingHost = tasks.register('verifyEmbeddingHost', Exec) {
 }
 tasks.named('preBuild').configure { dependsOn verifyEmbeddingHost }
 
+// The staged in-process Google host must be the built artifact, and that artifact must match
+// current product sources. Unpackaged and test-mocks builds skip it, as the preflight does.
+def verifyNativeGoogleHost = tasks.register('verifyNativeGoogleHost', Exec) {
+ onlyIf { runtimeProfile == 'native' && !unpackagedRuntime && testMocksRaw?.toString() != '1' }
+ workingDir rootProject.projectDir.parentFile
+ commandLine 'node', 'scripts/runtime-profile.mjs', '--verify-native'
+}
+tasks.named('preBuild').configure { dependsOn verifyNativeGoogleHost }
+
 // On-device voice: the shared paradee-voice library (:local-speech) links libelizainference but does
 // not package it; the app packages its resident host's engine, so the two must be identical bytes.
 // Staged voice outputs must also be the bytes android/voice-host/qualified-voice-host.json records.

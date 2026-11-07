@@ -8,6 +8,7 @@ import {checkoutProblems, embeddingHostProblems, preparedRuntimeProblems, VOICE_
 import {TURBO_AGENT_DETECTION_ENV, preparedSourceEnv} from '../scripts/local-agent-source.mjs';
 import {ensurePreparedWorkflowWorker} from '../scripts/prepared-workflow-worker.mjs';
 import {workerHash} from '../scripts/workflow-worker-artifact.mjs';
+import {verifyNativeGoogleHost} from '../scripts/runtime-profile.mjs';
 
 const read = file => fs.readFileSync(file, 'utf8');
 
@@ -84,7 +85,38 @@ test('preflight names the exact command for each missing build input', t => {
   f.write('android/app/src/main/assets/agent/alpha-source.json', '{"stamp":0}\n');
   assert.match(preparedRuntimeProblems(f.root, f.source, {embeddingHost})[0], /different prepared source/);
   f.write('android/app/src/main/assets/agent/alpha-source.json', '{"stamp":1}\n');
-  assert.deepEqual(preparedRuntimeProblems(f.root, f.source, {embeddingHost}), []);
+  // The Google host check has its own test below; here it passes.
+  assert.deepEqual(preparedRuntimeProblems(f.root, f.source, {embeddingHost, googleHost: () => {}}), []);
+});
+
+test('preflight refuses a staged native Google host older than its product sources', t => {
+  const f = fixture(t);
+  f.write(path.relative(f.root, path.join(f.source, '.alpha-runtime-source.json')), '{"stamp":1}\n');
+  f.write('android/app/src/main/assets/agent/alpha-source.json', '{"stamp":1}\n');
+  // A built host artifact recording the hash of one product input, staged as agent:stage-android does.
+  const hash = text => workerHash(Buffer.from(text));
+  const artifact = `artifacts/mobile-workflow-worker-${f.commit}`, staged = 'android/app/src/main/assets/agent/workflow-worker';
+  f.write('backend/managed-google-route-policy.ts', 'export const policy = 1;\n');
+  const manifest = JSON.stringify({version: 1, files: {'google-host.mjs': hash('host-1')}, nativeGoogleHost: {version: 1, module: 'google-host.mjs', bunVersion: '1.4.2', inputs: {'backend/managed-google-route-policy.ts': hash('export const policy = 1;\n')}}});
+  for (const directory of [artifact, staged]) {
+    f.write(`${directory}/manifest.json`, manifest);
+    f.write(`${directory}/google-host.mjs`, 'host-1');
+  }
+  const options = {embeddingHost: () => ({}), googleHost: root => verifyNativeGoogleHost(root)};
+  assert.deepEqual(preparedRuntimeProblems(f.root, f.source, options), []);
+  // An edited input without restaging: this used to pass every gate and ship the old host.
+  f.write('backend/managed-google-route-policy.ts', 'export const policy = 2;\n');
+  let problems = preparedRuntimeProblems(f.root, f.source, options);
+  assert.equal(problems.length, 1);
+  assert.match(problems[0], /staged native Google host is not current \(Native Google host source changed; build a fresh host artifact; Gradle :app:verifyNativeGoogleHost/);
+  assert.match(problems[0], /Run: npm run agent:build-workflow-worker && npm run agent:stage-android/);
+  // The developer lanes stage no resident and skip the check.
+  assert.deepEqual(preparedRuntimeProblems(f.root, f.source, {...options, allowUnpackagedRuntime: true}), []);
+  assert.deepEqual(preparedRuntimeProblems(f.root, f.source, {...options, testMocks: true}), []);
+  // A rebuilt artifact that was never staged.
+  f.write('backend/managed-google-route-policy.ts', 'export const policy = 1;\n');
+  f.write(`${staged}/google-host.mjs`, 'host-0');
+  assert.match(preparedRuntimeProblems(f.root, f.source, options)[0], /Staged native Google host differs from the built host artifact/);
 });
 
 test('preflight rejects an unpinned checkout and android:build stops before sync and Gradle', t => {
@@ -167,7 +199,7 @@ test('preflight names the embedding host and who must supply it when the build s
   f.write('android/app/src/main/assets/agent/workflow-worker/manifest.json', '{}');
   f.write('android/app/src/main/assets/agent/alpha-source.json', '{"stamp":1}\n');
   const missing = () => { throw new Error('Qualified embedding host library missing or changed: libelizainference.so'); };
-  let problems = preparedRuntimeProblems(f.root, f.source, {embeddingHost: missing});
+  let problems = preparedRuntimeProblems(f.root, f.source, {embeddingHost: missing, googleHost: () => {}});
   assert.equal(problems.length, 1);
   assert.match(problems[0], /qualified embedding host is not staged \(Qualified embedding host library missing or changed: libelizainference\.so; Gradle :app:verifyEmbeddingHost/);
   assert.match(problems[0], /npm run agent:build-embedding-host \(a step of npm run android:build:local\) stages the libraries only when it can reproduce the reviewed bytes/);

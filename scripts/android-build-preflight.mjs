@@ -131,7 +131,7 @@ export function voiceHostProblems(root, {allowUnpackagedRuntime = false, voiceHo
  * Prepared runtime inputs. `preparedSource` is the resolved prepared runtime
  * directory (sourceDirectory()). Distribution builds also need the staged runtime.
  */
-export function preparedRuntimeProblems(root, preparedSource, {allowUnpackagedRuntime = false, testMocks = false, embeddingHost = verifyEmbeddingHost, runtimeProfile = "native", localEmbeddings = false} = {}) {
+export function preparedRuntimeProblems(root, preparedSource, {allowUnpackagedRuntime = false, testMocks = false, embeddingHost = verifyEmbeddingHost, googleHost = verifyStagedGoogleHost, runtimeProfile = "native", localEmbeddings = false} = {}) {
   if(runtimeProfile === "cloud") {
     if(allowUnpackagedRuntime || testMocks) return ["Cloud profile requires a genuine packaged resident and test mocks off"];
     try { execFileSync(process.execPath,[path.join(root,'scripts/runtime-profile.mjs'),'--verify-cloud',...(localEmbeddings?['--local-embeddings']:[])],{cwd:root,env:{...process.env,ALPHA_LOCAL_AGENT_SOURCE_DIR:preparedSource},stdio:['ignore','pipe','pipe']}); return []; } catch(error) { return [error.message]; }
@@ -153,7 +153,19 @@ export function preparedRuntimeProblems(root, preparedSource, {allowUnpackagedRu
     try{verifyMobileBuildReceipt(root,preparedSource,path.dirname(staged));}
     catch(error){return [`The staged resident build producer is not admitted (${error.message}). Run: npm run agent:stage-android.`,...embedding];}
   }
+  // The in-process Google host is built from product sources the upstream stamp does not cover.
+  try { googleHost(root, preparedSource); }
+  catch (error) { return [`The staged native Google host is not current (${error.message}; Gradle :app:verifyNativeGoogleHost rejects the build). Run: npm run agent:build-workflow-worker && npm run agent:stage-android (or ${FULL_CHAIN}).`, ...embedding]; }
   return embedding;
+}
+
+/** Runs scripts/runtime-profile.mjs --verify-native, the same check Gradle runs. */
+function verifyStagedGoogleHost(root, preparedSource) {
+  try {
+    execFileSync(process.execPath, [path.join(root, 'scripts/runtime-profile.mjs'), '--verify-native'], {cwd: root, env: {...process.env, ALPHA_LOCAL_AGENT_SOURCE_DIR: preparedSource}, stdio: ['ignore', 'pipe', 'pipe']});
+  } catch (error) {
+    throw new Error(String(error.stderr ?? '').match(/^Error: (.*)$/m)?.[1] ?? error.message);
+  }
 }
 
 /**

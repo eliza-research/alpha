@@ -153,8 +153,8 @@ export function signerDigest(file, { apiLevel } = {}) {
 }
 export const parseSignerDigest = parseApkSignerDigest;
 
-export function validateApk(file, identity, wantsHome) {
-  const data = inspectApk(file);
+export function validateApk(file, identity, wantsHome, inspect = inspectApk) {
+  const data = inspect(file);
   if (data.packageName !== identity.appId)
     throw new Error(`Wrong package in ${file}: ${data.packageName}`);
   if (data.home !== wantsHome || !data.launcher || !data.webPayload)
@@ -180,7 +180,12 @@ export function validateApk(file, identity, wantsHome) {
   // The dialer role grants CALL_PHONE to its holder; only the launcher declares the role components.
   if (data.xml.includes('android.permission.CALL_PHONE') !== wantsHome)
     throw new Error(`Invalid CALL_PHONE permission for distribution in ${file}`);
-  for (const component of ['AlphaInCallService', 'AlphaCallActivity', 'AlphaDialPadActivity', 'AlphaSmsDeliverReceiver', 'AlphaMmsWapPushReceiver', 'AlphaMmsResultReceiver', 'AlphaRespondViaMessageService', 'AlphaSmsComposeActivity'])
+  // Phone state (the native phone plugin's permission, removed for standalone) and the system shade
+  // are launcher-only; the merged manifest, not the source manifests, is what ships.
+  for (const permission of ['READ_PHONE_STATE', 'EXPAND_STATUS_BAR'])
+    if (data.xml.includes(`android.permission.${permission}`) !== wantsHome)
+      throw new Error(`Invalid ${permission} permission for distribution in ${file}`);
+  for (const component of ['AlphaInCallService', 'AlphaCallActivity', 'AlphaDialPadActivity', 'AlphaSmsDeliverReceiver', 'AlphaSmsSendReceiver', 'AlphaMmsWapPushReceiver', 'AlphaMmsResultReceiver', 'AlphaRespondViaMessageService', 'AlphaSmsComposeActivity'])
     if (data.xml.includes(`ai.elizaresearch.alphaphone.${component}`) !== wantsHome)
       throw new Error(`Invalid telephony-role component ${component} for distribution in ${file}`);
   // The SMS role grants these to its holder; only the launcher declares the role components.
