@@ -133,15 +133,18 @@
       "normalHistoryTest"
     ],
     "sources": [
-      "apps/app/src/browser/browsing-session.ts",
       "apps/app/src/browser/browser-surface.ts",
       "apps/app/src/prototype/browser-adapter.ts",
-      "android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserSessionStore.java",
       "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaBrowserPlugin.java"
     ],
     "abstractions": [
       "Finite representative identities and contents. Exact source symbols and modeling limits are documented in the family README.",
-      "Model safety checks do not establish implementation refinement or device acceptance."
+      "Model safety checks do not establish implementation refinement or device acceptance.",
+      "Normal/private persistence normalization is owned by the shared browser-surface package. Alpha browser-surface and browser-adapter enforce navigation and current-page presentation. The finite model abstracts exact URL validation and storage serialization."
+    ],
+    "sharedSources": [
+      "plugins/plugin-native-browser-surface/src/browsing-session.ts",
+      "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserSessionStore.java"
     ]
   },
   {
@@ -232,14 +235,19 @@
       "apps/app/src/runtime/canvas-geometry.ts",
       "apps/app/src/runtime/text-scale.ts",
       "apps/app/src/prototype/home-cards.ts",
-      "apps/app/src/prototype/home-launcher.ts",
+      "apps/app/src/prototype/home-shell.ts",
       "apps/app/src/prototype/settings-adapter.ts",
       "apps/app/src/browser/display.ts",
-      "android/app/src/main/java/ai/elizaresearch/alphaphone/SystemShade.java"
+      "apps/app/src/prototype/system-shade.ts"
     ],
     "abstractions": [
       "Finite representative identities and contents. Exact source symbols and modeling limits are documented in the family README.",
-      "Model safety checks do not establish implementation refinement or device acceptance."
+      "Model safety checks do not establish implementation refinement or device acceptance.",
+      "Keyboard-free layout uses the shared responsive-layout algorithm through canvas-geometry. Home shell and system-shade integration remain Alpha-owned; the model covers layout choices and state retention, not pixel geometry or all launcher editing behavior."
+    ],
+    "sharedSources": [
+      "packages/ui/src/components/shell/responsive-layout.ts",
+      "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SystemShade.java"
     ]
   },
   {
@@ -426,11 +434,13 @@
       "apps/app/src/prototype/model.js",
       "apps/app/src/prototype/calendar-adapter.ts",
       "apps/app/src/prototype/calendar-month-focus.ts",
-      "apps/app/src/prototype/calendar-views.ts",
       "apps/app/src/prototype/calendar-days.ts",
-      "apps/app/src/prototype/google-calendar-view-adapter.ts",
       "apps/app/src/runtime/google-calendar-selection.ts",
-      "apps/app/src/runtime/calendar-form-draft.ts"
+      "apps/app/src/runtime/calendar-form-draft.ts",
+      "apps/app/src/prototype/agent-calendar-adapter.ts",
+      "apps/app/src/runtime/agent-calendar.ts",
+      "apps/app/src/runtime/agent-calendar-view.ts",
+      "apps/app/src/runtime/home-calendar-selection.ts"
     ],
     "stateMapping": {
       "view/day/month/search/menu/deleteSheet/chat/openEvent/openDay": "Calendar persistent view choice and transient Back ordering",
@@ -442,7 +452,8 @@
       "Two source identities (device event and Google event), two account identities, day/month offsets -1..1 and up to five read-generation changes.",
       "Date arithmetic, DST resolution, recurrence expansion and visual grid geometry remain pure implementation contracts; this model tracks transitions and retained identities across those calculations.",
       "Calendar writes are modeled in CalendarSync. This module tracks presentation/read/draft state and never gives a restored form provider authority.",
-      "Cached rows may remain while a broader/narrower range is loading. Committed-result freshness and owner isolation are checked independently of cache presentation."
+      "Cached rows may remain while a broader/narrower range is loading. Committed-result freshness and owner isolation are checked independently of cache presentation.",
+      "The removed direct Google view adapter is superseded by the canonical AgentCalendar controller and presentation adapter. The older Android/browser-local Calendar adapter remains an explicitly selected source. This model abstracts their common owner/range/form guards and does not equate their provider data models."
     ]
   },
   {
