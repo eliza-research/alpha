@@ -62,3 +62,18 @@ test('discard is still possible after a failed local save',async()=>{
  await h.render().discard();await h.render().discard();for(let i=0;i<10;i++)await Promise.resolve();
  assert.equal(h.records.size,1);assert.equal([...h.records.values()][0],null);assert.equal(h.authoring.active,false);
 });
+
+test('update preparation waits for a closed editor’s exact queued draft',async()=>{
+ const h=await harness();
+ await h.editHeld('Retain for update');
+ h.authoring.close();
+ let acknowledged=false;
+ const readback=h.authoring.flushForAppUpdate(()=>true).then(()=>{acknowledged=true;});
+ await Promise.resolve();
+ assert.equal(acknowledged,false);
+ h.release();
+ await readback;
+ assert.equal(h.stored(),'Retain for update');
+ h.writeElsewhere('Another window changed the draft');
+ await assert.rejects(h.authoring.flushForAppUpdate(()=>true),/could not be verified/);
+});

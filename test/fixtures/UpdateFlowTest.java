@@ -194,7 +194,7 @@ public final class UpdateFlowTest {
  private static void forgetProcess()throws Exception{
   AlphaDevicePlugin.UpdatePause.liveOwner=null;AlphaDevicePlugin.UpdatePause.shutdownRequest=-1;
 
-  plugin("activation",null);plugin("settledActivation",null);plugin("settledOutcome",null);
+  plugin("activation",null);plugin("settledActivation",null);plugin("settledOutcome",null);plugin("settledResumeBridge",null);
   var registry=AlphaDevicePlugin.class.getDeclaredField("updateBridges");
   registry.setAccessible(true);((java.util.Set<?>)registry.get(null)).clear();
   plugin("updateOwner",null);plugin("updateConfirm",null);plugin("updateSession",0);plugin("updateDue",false);plugin("updateOpen",false);plugin("updateAsked",0L);
@@ -1679,6 +1679,7 @@ public final class UpdateFlowTest {
    check(AlphaDevicePlugin.UpdatePause.store().read()==null&&AlphaLocalAgentPlugin.releases==1,"startup readback recovers a lost terminal cancellation");
    check(reconciled.result!=null&&activationId.equals(reconciled.result.optString("activationId"))
      &&"canceled".equals(reconciled.result.optString("outcome")),"reconciliation returns the proven activation result");
+   check(Boolean.TRUE.equals(reconciled.result.opt("resume")),"only the owner of the last confirmation may restart");
    check(owner.events.stream().filter(e->e.equals("alphaUpdateSettled:canceled")).count()==1,"cancellation settles once");
    check(other.events.stream().filter(e->e.equals("alphaUpdateSettled:canceled")).count()==1
      &&joining.events.stream().filter(e->e.equals("alphaUpdateSettled:canceled")).count()==1,"all live renderers receive the terminal result");
@@ -1686,6 +1687,7 @@ public final class UpdateFlowTest {
    check(readback.resolved.get()==1&&Boolean.FALSE.equals(readback.result.opt("pending"))
      &&activationId.equals(readback.result.optString("activationId"))&&"canceled".equals(readback.result.optString("outcome")),
      "a renderer that missed the event can read the same terminal identity");
+   check(Boolean.FALSE.equals(readback.result.opt("resume")),"a sibling cannot start another resident");
   }finally{com.getcapacitor.Plugin.ready=original;AlphaLocalAgentPlugin.confirmed=true;}
  }
  private static void refusedDraftFlushNeverStopsOrCommits(File cache)throws Exception{

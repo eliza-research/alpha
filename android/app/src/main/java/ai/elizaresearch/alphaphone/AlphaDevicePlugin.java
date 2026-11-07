@@ -318,7 +318,7 @@ public final class AlphaDevicePlugin extends Plugin {
  private static final java.util.Set<AlphaDevicePlugin> updateBridges=new java.util.HashSet<>();
  private final String updateBridgeId=java.util.UUID.randomUUID().toString();
  private static volatile UpdateActivation activation;
- private static String settledActivation,settledOutcome;
+ private static String settledActivation,settledOutcome,settledResumeBridge;
  private JSObject preparation(UpdateActivation pending){return new JSObject().put("activationId",pending.id).put("bridgeId",updateBridgeId).put("phase",pending.sealed?"paused":"preparing");}
  private void registerUpdateBridge(){
   UpdateActivation pending;
@@ -356,6 +356,8 @@ public final class AlphaDevicePlugin extends Plugin {
   synchronized(updateBarrier){
    if(id.equals(settledActivation))return;
    settledActivation=id;settledOutcome=outcome;
+   AlphaDevicePlugin resumeOwner=updateBridges.contains(updateOwner)?updateOwner:this;
+   settledResumeBridge="canceled".equals(outcome)?resumeOwner.updateBridgeId:null;
    if(activation!=null&&activation.id.equals(id))activation=null;
    bridges=new java.util.ArrayList<>(updateBridges);
   }
@@ -376,7 +378,7 @@ public final class AlphaDevicePlugin extends Plugin {
     }
     result.put("activationId",record.id).put("phase","paused").put("canContinue",canContinue);
    }
-   else if(settledActivation!=null)result.put("activationId",settledActivation).put("outcome",settledOutcome);
+   else if(settledActivation!=null)result.put("activationId",settledActivation).put("outcome",settledOutcome).put("resume",updateBridgeId.equals(settledResumeBridge));
    return result;
   }
  }
