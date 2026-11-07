@@ -26,11 +26,18 @@ export async function publishGoogleAgentAccess(){
  await fetch(GOOGLE_AGENT_ACCESS_PATH,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(googleAgentAccess())}).catch(()=>{});
 }
 export async function setGoogleAgentAccess(change:Partial<GoogleAgentAccess>,guard?:{current():boolean;expectedCalendarEdits:boolean;receipt:DomainRecovery}){
+ let before:GoogleAgentAccess|undefined;
  await editDevicePreferences(state=>{
   // Rechecked inside the canonical edit, including every document conflict retry.
   if(guard&&(!guard.current()||state.agentCalendarEdits!==guard.expectedCalendarEdits))throw Error('Calendar choice changed. Review it again.');
+  before={gmailChanges:state.agentGmailChanges,calendarEdits:state.agentCalendarEdits};
   if(change.gmailChanges!==undefined)state.agentGmailChanges=change.gmailChanges;
   if(change.calendarEdits!==undefined)state.agentCalendarEdits=change.calendarEdits;
  },undefined,guard?.receipt);
- await publishGoogleAgentAccess();
+ try{await publishGoogleAgentAccess();}
+ catch(error){
+  // The host kept its previous switches: put Settings back so a switch never shows what the host does not enforce.
+  const previous=before;if(previous)await editDevicePreferences(state=>{state.agentGmailChanges=previous.gmailChanges;state.agentCalendarEdits=previous.calendarEdits;}).catch(()=>{});
+  throw error;
+ }
 }

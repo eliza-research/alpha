@@ -58,5 +58,6 @@ test('on the phone the saved switches reach the native Google host, and a failed
  assert.deepEqual(state.saves.at(-1),{gmailChanges:true,calendarEdits:true});
  state.saveFails=true;
  await assert.rejects(access.setGoogleAgentAccess({gmailChanges:false}),/could not be saved/,'Settings reports the switch as not saved');
+ assert.deepEqual({gmailChanges:state.cached.agentGmailChanges,calendarEdits:state.cached.agentCalendarEdits},state.saves.at(-1),'Settings goes back to what the host still enforces');
  assert.deepEqual(state.posts,[],'The phone never uses the development host route');
 });

@@ -367,11 +367,11 @@ export async function linkGoogleCalendar(scope:CanonicalCalendarSyncSettings,acc
    if(!await ready())return stopped();
    if(!['ready','partial','unavailable'].includes(scope.calendar.state.status))return sent?unconfirmed():result('not-linked','Waiting for Calendar. Nothing was sent; connect Google Calendar again when Calendar is ready.');
    const review=latest=await scope.calendar.reviewSync(),control=review.control,owner=scope.calendar.state.ownerKey;
-   if(revision!==undefined&&control.revision!==revision)return result('not-linked','Calendar sync changed elsewhere. Review Calendar sync; saved events are unchanged.');
+   if(revision!==undefined&&control.revision!==revision)return result('not-linked','Calendar sync changed elsewhere. Ask your agent to check it; saved events are unchanged.');
    const saved=control.destination&&review.sources.find(source=>source.connectorAccountId===control.destination?.connectorAccountId&&source.calendarId===control.destination.providerCalendarId);
-   if(control.destination&&!saved)return result('not-linked','The saved Google sync calendar is unavailable. Review Calendar sync; saved events are unchanged.');
+   if(control.destination&&!saved)return result('not-linked','The saved Google sync calendar is unavailable. Ask your agent to check Calendar sync; saved events are unchanged.');
    // Only an approved (and, when Google named one, the returned) account may be reported Synced or resumed.
-   if(saved&&!emails.has(saved.accountEmail?.toLowerCase()??''))return result('not-linked','The saved Google sync calendar is not on the Google account approved for Calendar changes. Review Calendar sync; saved events are unchanged.');
+   if(saved&&!emails.has(saved.accountEmail?.toLowerCase()??''))return result('not-linked','The saved Google sync calendar is not on the Google account approved for Calendar changes. Ask your agent to check Calendar sync; saved events are unchanged.');
    const pending=control.pendingDispatch?JSON.stringify(control.pendingDispatch):'',before=dispatch;dispatch=pending;
    if(saved&&!control.paused){
     // Active with a background dispatch is on, not Synced. It is syncing only if the dispatch changed since the last

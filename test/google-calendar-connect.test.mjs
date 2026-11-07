@@ -125,7 +125,7 @@ test('a saved destination is Synced or resumed only on an approved account, and 
  const mixed=[account(OWNER,WRITE),account(SECOND,READ,'22222222-2222-4222-8222-222222222222')];
  for(const [control,accounts] of [[{revision:3,paused:false,destination:second},mixed],[{revision:3,destination:second},mixed],[{revision:3,destination:second},[account(OWNER,WRITE)]]]){
   const f=await agent({sources,control}),result=await f.link(accounts);
-  assert.equal(result.outcome,'not-linked');assert.match(result.message,/not on the Google account approved for Calendar changes\. Review Calendar sync/);
+  assert.equal(result.outcome,'not-linked');assert.match(result.message,/not on the Google account approved for Calendar changes\. Ask your agent to check Calendar sync/);
   assert.deepEqual(f.attempts,[],'a read-only or unnamed account is never resumed');assert.equal(f.control.paused,control.paused??true);f.calendar.retire();
  }
 });
@@ -133,7 +133,7 @@ test('a saved destination is Synced or resumed only on an approved account, and 
 test('a change made elsewhere between steps is kept: the link stops at the newer revision and the last step never writes',async()=>{
  // Another surface pauses right after our resume commits.
  const f=await agent();f.afterPost=body=>{if(body.operation==='resume'){f.control.paused=true;f.control.revision++;}};
- const paused=await f.link();assert.equal(paused.outcome,'not-linked');assert.match(paused.message,/^Calendar sync changed elsewhere\. Review Calendar sync/);
+ const paused=await f.link();assert.equal(paused.outcome,'not-linked');assert.match(paused.message,/^Calendar sync changed elsewhere\. Ask your agent to check it/);
  assert.deepEqual(operations(f),['select','resume'],'the pause is not resumed again');assert.equal(f.control.paused,true);
  // Another surface pauses (a new revision) right after our select commits.
  const g=await agent();g.afterPost=body=>{if(body.operation==='select')g.control.revision++;};
@@ -298,7 +298,7 @@ async function panel(rows,{calendarEdits=true,gmailChanges=true,unreadable=false
    list:async()=>{live(binding);p.lists++;if(p.listFails)throw Error('Cloud is unavailable');return structuredClone(p.rows);},
    connect:async(signal,calendarPermission,gmailPermission)=>{live(binding);p.consents.push([calendarPermission,gmailPermission]);return 'https://accounts.google.com/o/oauth2/v2/auth';},
    // No Cloud disconnect runs: only what the panel hands the callsite is recorded.
-   disconnect:async connectionId=>{live(binding);p.disconnects.push({connectionId,calendar});return {outcome:'disconnected',accounts:[],calendarLifecycle:p.onDisconnect?.(calendar,connectionId)??{calendarPause:'unavailable',callbackRetirement:'confirmed',providerDrain:'unavailable',pauseRequest:null}};},
+   disconnect:async connectionId=>{live(binding);p.disconnects.push({connectionId,calendar});return {...(p.disconnectResult??{outcome:'disconnected',accounts:[]}),calendarLifecycle:p.onDisconnect?.(calendar,connectionId)??{calendarPause:'unavailable',callbackRetirement:'confirmed',providerDrain:'unavailable',pauseRequest:null}};},
   })},
   './google-calendar-selection':{clearGoogleCalendarSelectionForConnection:()=>{}},
   './native-connection':{openConnectionBrowser:async()=>{p.opens++;},googleWorkspaceReturnPort:undefined},
@@ -449,7 +449,7 @@ test('a panel opened from Calendar passes its disconnect lifecycle and keeps an 
   await p.act(()=>p.button('Disconnect Google account owner@example.test').click());await p.act(()=>p.button('Confirm disconnect Google account').click());
   const [{calendar}]=p.disconnects;
   assert.deepEqual(calendar.capture().control,{revision:2,paused:false,destination:{connectorAccountId:GRANT,providerCalendarId:OWNER},pendingDispatch:null},'the review the link read back');
-  assert.match(p.status(),/^Disconnect disconnected\. Calendar sync pause was not confirmed\. Review Calendar sync/);
+  assert.match(p.status(),/^Disconnect disconnected\. Calendar sync pause was not confirmed\. Ask your agent to check Calendar sync/);
   assert.equal(p.controller.calendar().retained.get('pause-key').status,'unknown','the unknown pause stays retained');
   await p.act(()=>p.controller.close());p.onDisconnect=null;await p.act(()=>p.controller.open());
   await p.act(()=>p.button('Disconnect Google account owner@example.test').click());await p.act(()=>p.button('Confirm disconnect Google account').click());
@@ -466,6 +466,20 @@ test('Connect Google Calendar starts no consent until this load verified the acc
   assert.deepEqual(p.consents,[],'an unknown Gmail tier never asks Google for less');assert.equal(p.opens,0);assert.match(p.status(),/could not be verified/);
   p.listFails=false;await p.act(()=>p.button('Check Google connections').click());
   await p.act(()=>p.button('Connect Google Calendar').click());assert.deepEqual(p.consents,[['write','send']]);
+ }finally{await p.close();f.calendar.retire();}
+});
+
+test('after a disconnect with no account readback, Connect Google Calendar starts no consent',async()=>{
+ const f=await agent(),modify=[...READ,'google.gmail.send','google.gmail.drafts','google.gmail.mailbox'];
+ const p=await panel([account(OWNER,modify),account(SECOND,READ,'22222222-2222-4222-8222-222222222222')]);
+ try{
+  await p.act(()=>p.controller.openCalendar(f.scope));
+  p.disconnectResult={outcome:'unconfirmed'};
+  await p.act(()=>p.button(`Disconnect Google account ${SECOND}`).click());
+  await p.act(()=>p.button('Confirm disconnect Google account').click());
+  assert.equal(p.disconnects.length,1);
+  await p.act(()=>p.button('Connect Google Calendar').click());
+  assert.deepEqual(p.consents,[],'an unknown Gmail tier never asks Google for less');assert.match(p.status(),/could not be verified/);
  }finally{await p.close();f.calendar.retire();}
 });
 
