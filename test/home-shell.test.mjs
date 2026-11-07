@@ -217,3 +217,33 @@ test('installed favorites with older Alpha view ids are migrated to canonical id
   shell.launcher.toggleFavorite({packageName:'alpha:notes',label:'Notes'});
   assert.deepEqual(JSON.parse(store.get('alpha.launcher.favorites.v1')),{version:2,keys:['com.android.settings','alpha:automations'],defaultPolicy:'alpha-apps'});
 });
+
+test('Back leaves edit mode under voice or an open conversation, and a menu whose app is gone costs no extra Back', async () => {
+  const previous=globalThis.document;
+  globalThis.document=Object.assign(new EventTarget(),{hidden:false});
+  const based=[];
+  class Shell extends shellClass([]) { back(){based.push({...this.state});super.back();} }
+  const shell=installHomeShell(Shell,{},{list:async()=>({apps}),launch:async()=>{}},{favorites:{read:()=>[],write:()=>{}}});
+  const home=new Shell();home.renderVals();home.componentDidMount();
+  try {
+    await shell.launcher.load();
+    // Voice or the conversation sheet is above edit mode: the base Back handles it, edit mode stays.
+    for (const above of [{voice:'listening'},{chat:'sheet'},{chat:'full'}]) {
+      home.setState({homeEdit:true,homeAdd:true,voice:'off',chat:'rest',...above});based.length=0;
+      home.back();
+      assert.equal(home.state.homeEdit,true,`edit mode stays under ${JSON.stringify(above)}`);
+      assert.equal(home.state.homeAdd,true);
+      assert.equal(based.length,1,'the base Back ran');
+    }
+    home.setState({voice:'off',chat:'rest'});
+    home.back();assert.equal(home.state.homeAdd,false);
+    home.back();assert.equal(home.state.homeEdit,false);
+    // An entry removed while its menu is open: no menu shows, and one Back closes the drawer.
+    home.openAllApps();await shell.launcher.load();
+    home.setState({drawerMenu:'org.example.gone'});
+    assert.doesNotMatch(renderToStaticMarkup(home.renderVals().allAppsDrawer),/role="menu"/);
+    home.back();
+    assert.equal(home.state.drawer,false,'the first Back closes the drawer');
+    assert.equal(home.state.drawerMenu,null);
+  } finally { home.componentWillUnmount(); if(previous===undefined)delete globalThis.document;else globalThis.document=previous; }
+});

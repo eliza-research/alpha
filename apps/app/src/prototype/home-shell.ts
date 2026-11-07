@@ -3,7 +3,7 @@ import type {FavoritesStore, InstalledApp, LauncherBridge} from '@elizaos/capaci
 import {appKey} from '@elizaos/capacitor-system/launcher';
 import {createMobileShellLauncher, mobileShellIconUrl, MobileHomeScreen, type MobileHomeEntry, type MobileHomeTile} from '@elizaos/ui/mobile-shell';
 import {ALPHA_PRODUCT, alphaViews} from '../product/alpha-product';
-import {AppsDrawer, HOLD_MS, SLOP} from './apps-drawer';
+import {AppsDrawer, HOLD_MS, SLOP, appsDrawerEntries} from './apps-drawer';
 import {createInlineModal} from '../runtime/inline-modal';
 type Bag = Record<string, any>;
 
@@ -97,13 +97,19 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
     stop?.(); launcher.cancelPending(); stop = undefined; endPress(); endDrag(); if (owner === this) owner = null;
     return unmount?.apply(this, args);
   };
+  /** The drawer entry whose menu is open, while that entry is still listed (an app removed behind
+   * its open menu leaves no menu to close). */
+  const openMenu = (S: Bag) => S.drawerMenu && appsDrawerEntries(launcher.snapshot(), prefix, String(S.drawerQ || '')).some(entry => entry.key === S.drawerMenu) ? S.drawerMenu as string : null;
   // Back closes the innermost launcher layer first: an entry's menu, the Add sheet, then edit mode.
+  // Voice, an open conversation and the assistant surface lie above edit mode, so the base Back
+  // handles them first.
   p.back = function (...args: any[]) {
     const S = this.S();
     if (!S.view && !S.shade) {
-      if (S.drawerMenu) return this.setState({drawerMenu: null});
-      if (S.homeAdd) return this.setState({homeAdd: false});
-      if (S.homeEdit && !S.drawer) { endDrag(); return this.setState({homeEdit: false}); }
+      if (S.drawerMenu) { this.setState({drawerMenu: null}); if (openMenu(S)) return; }
+      const above = (S.voice && S.voice !== 'off') || S.chat === 'full' || S.chat === 'sheet' || !!this.props?.assistantSurface;
+      if (!above && S.homeAdd) return this.setState({homeAdd: false});
+      if (!above && S.homeEdit && !S.drawer) { endDrag(); return this.setState({homeEdit: false}); }
     }
     return back?.apply(this, args);
   };
@@ -210,7 +216,7 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
       launcher, builtinPrefix: prefix, query: String(S.drawerQ || ''), glyphs,
       onQuery: query => self.setState({...self.shellNavigate({type: 'drawer-query', query}), drawerMenu: null}),
       onClose: () => self.setState({...self.shellNavigate({type: 'drawer', open: false}), drawerMenu: null}),
-      menu: drawerOpen ? S.drawerMenu || null : null,
+      menu: drawerOpen ? openMenu(S) : null,
       onMenu: key => self.setState({drawerMenu: key}),
       onAddHome: (app: InstalledApp) => {
         if (launcher.isFavorite(app)) return;
