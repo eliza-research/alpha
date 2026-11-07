@@ -109,11 +109,14 @@ test('Cloud startup diagnostics tolerate absent, outdated, and stalled native br
  const {readFileSync}=await import('node:fs');
  const {stripTypeScriptTypes}=await import('node:module');
  const vm=await import('node:vm');
- const source=readFileSync(new URL('../apps/app/src/runtime/native-voice-turn.ts',import.meta.url),'utf8');
- const fn=source.slice(source.indexOf('export async function readNativeCloudStreamTiming')).trim().replace(/^export /,'');
+ const source=readFileSync(new URL('../apps/app/src/runtime/cloud-voice.ts',import.meta.url),'utf8');
+ const start=source.indexOf('export async function readNativeCloudStreamTiming');
+ const end=source.indexOf('export function createCloudStreamingSpeech',start);
+ assert.ok(start>=0&&end>start);
+ const fn=source.slice(start,end).trim().replace(/^export /,'');
  const read=(present,stream)=>vm.runInNewContext(`(${stripTypeScriptTypes(fn)})`,{
-  Capacitor:{isNativePlatform:()=>true,isPluginAvailable:()=>present},
-  registerPlugin:name=>{assert.equal(name,'AlphaCloudSpeechStream');return stream;},
+  nativeCloudStreamingAvailable:()=>present,
+  streamingNative:stream,
   setTimeout,clearTimeout,
  });
  const payload={format:'alpha-cloud-stream-timing-v1',records:[]};
