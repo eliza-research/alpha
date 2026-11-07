@@ -376,31 +376,35 @@
     "step": "step",
     "invariant": "safety",
     "tests": [
-      "partialBatchTest",
-      "staleRevisionTest",
-      "permissionLossMidBatchTest",
-      "hiddenPickerReturnTest",
-      "stalePickerReturnTest",
-      "folderCreationTest"
+      "categoriesTest",
+      "collisionKeepsBothTest",
+      "trashRestoreCollisionTest",
+      "staleReviewedIdentityTest",
+      "missingSelectionTest",
+      "revokedReviewTest",
+      "permanentTrashReviewTest",
+      "selectionRefreshTest"
     ],
     "sources": [
-      "apps/app/src/prototype/files-tree-adapter.ts",
-      "apps/app/src/prototype/files-index.ts",
-      "apps/app/src/prototype/context-selection.ts",
+      "apps/app/src/prototype/files-browser-adapter.ts",
+      "apps/app/src/runtime/files-storage.ts",
+      "apps/app/src/runtime/files-agent-contract.ts",
+      "apps/app/src/browser/storage-volume.ts",
       "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaFilesPlugin.java",
-      "android/app/src/main/java/ai/elizaresearch/alphaphone/SelectedDocumentAccess.java"
+      "android/app/src/main/java/ai/elizaresearch/alphaphone/StorageBrowser.java",
+      "android/app/src/main/java/ai/elizaresearch/alphaphone/StorageCatalog.java"
     ],
     "stateMapping": {
-      "granted/session/capabilities": "native persisted tree grant and bounded per-process entry map",
-      "selection/review/expected/pending/attempted/succeeded/failed": "current selection, revision-bound changeMany and per-item partial outcomes",
-      "picker/pickerEpoch/active/hidden": "view-generation-fenced system picker return, permitted while the document is hidden",
-      "folder/requestFolder/shown/cursor/listingPending": "single-flight tree listing, page cursor and deduplicated loadMore"
+      "locations/origins/names": "Volume-relative paths and recorded Trash origins; name clashes keep both entries",
+      "selected/folder/stale": "Folder selection and the delayed storageChanged refresh that removes missing selections",
+      "review/revisions": "Agent FilesIdentity size/modified checks in reviewed storage transfers",
+      "access": "Current storage permission admission, rechecked by the native bridge"
     },
     "abstractions": [
-      "Three representative entries (two files and one created folder), two folder identities, two sessions, revisions 0..2 and up to four applied effects.",
-      "Opaque entry and selection capabilities retain their role without provider paths or credentials. Tree access and separately selected document access remain distinct.",
-      "Provider failures and stale revisions are per-item; a committed item is not rolled back when a later item fails. Review is required before mutation, with an extra permanent-delete confirmation.",
-      "The model covers Alpha tree orchestration and native request admission. Document provider filesystem implementation and exact payload bytes remain implementation test boundaries."
+      "Three files, three folders and three names model the current volume browser, categories, Trash and reviewed agent transfers. The previous SAF-tree listing model is superseded.",
+      "The transition structure follows design/view-refresh-2026-11/tla/files-browser with category, name-conflict and reviewed-identity fixes enabled. Grant withdrawal is additionally modeled.",
+      "Multi-volume traversal, recursive byte copying, per-item batch failures, MIME parsing and the 30-day Trash timer remain covered by their implementation tests. This model does not represent document-picker or persistent SAF-tree access.",
+      "Opaque identity revisions represent the native size/modified pair. Matching that pair is the current implementation guard, not a cryptographic assertion about file contents."
     ]
   },
   {
