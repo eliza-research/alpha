@@ -29,6 +29,7 @@
       { "name": "eliza-calendar", "source": { "root": "patchedNative", "path": "plugins/plugin-native-calendar/android" }, "relocateBuild": true },
       { "name": "eliza-reminders", "source": { "root": "patchedNative", "path": "plugins/plugin-native-reminders/android" }, "relocateBuild": true },
       { "name": "elizaos-capacitor-secure-store", "source": { "root": "patchedNative", "path": "plugins/plugin-native-secure-store/android" }, "relocateBuild": true },
+      { "name": "elizaos-capacitor-secure-store-nativeonly", "source": { "root": "patchedNative", "path": "plugins/plugin-native-secure-store/android-nativeonly" }, "relocateBuild": true, "appDependency": false },
       { "name": "eliza-passwords", "source": { "root": "upstream", "path": "plugins/plugin-native-passwords/android" } },
       { "name": "eliza-cloud-auth", "source": { "root": "patchedNative", "path": "packages/auth/android" }, "relocateBuild": true },
       { "name": "eliza-notifications", "source": { "root": "patchedNative", "path": "plugins/plugin-native-notifications/android" }, "relocateBuild": true },

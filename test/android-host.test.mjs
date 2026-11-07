@@ -107,11 +107,11 @@ test('test mocks reach debug variants only and product admission runs before eve
  assert.doesNotMatch(product, /\b(signingConfigs|productFlavors|applicationId|minSdk|targetSdk|compileSdk|keystore)\b/i, 'the product script holds no generator-owned policy');
 });
 
-test('the listener, fixtures and test sources never link into either distribution APK', t => {
+test('the host links its native-only secure store transitively and keeps fixture modules separate', t => {
  const {profile} = generate(t);
  const linked = profile.modules.filter(module => module.appDependency).map(module => module.name);
  const separate = profile.modules.filter(module => !module.appDependency).map(module => module.name).sort();
- assert.deepEqual(separate, ['notification-fixture', 'sense', 'sense-speech', 'video-fixture']);
+ assert.deepEqual(separate, ['elizaos-capacitor-secure-store-nativeonly', 'notification-fixture', 'sense', 'sense-speech', 'video-fixture']);
  // Shared checkouts, node_modules and the authenticated patched staging never receive build outputs.
  assert.deepEqual(profile.modules.filter(module => !module.relocateBuild).map(module => module.name).sort(),
   ['local-speech', 'notification-fixture', 'sense', 'sense-speech', 'video-fixture']);

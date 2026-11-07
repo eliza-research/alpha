@@ -172,6 +172,7 @@
     "plugins/plugin-native-notifications/android",
     "plugins/plugin-native-reminders/android",
     "plugins/plugin-native-secure-store/android",
+    "plugins/plugin-native-secure-store/android-nativeonly",
     "plugins/plugin-native-system/android"
   ]
 }
