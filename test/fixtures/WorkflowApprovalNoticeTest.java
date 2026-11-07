@@ -5,7 +5,7 @@ import java.util.*;
 public final class WorkflowApprovalNoticeTest {
  static void require(boolean value,String message){if(!value)throw new AssertionError(message);}
  interface Work {void run()throws Exception;}
- static void rejects(Work work,String message)throws Exception{try{work.run();}catch(Exception expected){return;}throw new AssertionError(message);}
+ static void rejects(Class<? extends Exception> type,String pattern,Work work,String message)throws Exception{try{work.run();}catch(Exception thrown){if(type.isInstance(thrown)&&(pattern==null||thrown.getMessage()!=null&&java.util.regex.Pattern.compile(pattern).matcher(thrown.getMessage()).find()))return;throw new AssertionError(message+": "+"Expected "+type.getSimpleName()+" /"+pattern+"/ but got "+thrown,thrown);}throw new AssertionError(message);}
  static class Store implements WorkflowNoticeDelivery.Storage {Map<String,String> values=new HashMap<>();public String read(String slot){return values.get(slot);}public void write(String slot,String value){values.put(slot,value);}}
  static class Poster implements WorkflowNoticeDelivery.Poster {
   int quiet=0;boolean steps=true,approvals=true;List<String> posted=new ArrayList<>(),cancelled=new ArrayList<>();Map<String,String> active=new HashMap<>();Map<String,Long> timeouts=new HashMap<>();
@@ -26,13 +26,13 @@ public final class WorkflowApprovalNoticeTest {
   require("succeeded".equals(delivery.publishApproval(first,binding,now+10*minute,now)),"first approval posts");
   require(poster.timeouts.get(first)==10*minute,"notice times out when the approval expires");
   require("succeeded".equals(delivery.publishApproval(first,binding,now+10*minute,now+minute))&&poster.posted.size()==1,"same approval never posts twice");
-  rejects(()->delivery.publishApproval(first,"c".repeat(64),now+10*minute,now),"binding change refused");
-  rejects(()->delivery.publishApproval(first,binding,now+20*minute,now),"expiry change refused");
+  rejects(IllegalStateException.class,"receipt mismatch",()->delivery.publishApproval(first,"c".repeat(64),now+10*minute,now),"binding change refused");
+  rejects(IllegalStateException.class,"expiry changed",()->delivery.publishApproval(first,binding,now+20*minute,now),"expiry change refused");
   String raw=store.values.get(WorkflowNoticeDelivery.APPROVAL_SLOT);require(!raw.contains("run1")&&!raw.contains(WorkflowNoticeDelivery.APPROVAL_TITLE),"receipt holds no route or text");
   // A well-shaped but different persisted digest must not count as the original receipt.
   JSONObject damaged=new JSONObject(raw);damaged.getJSONObject(first).put("digest","0".repeat(64));
   store.values.put(WorkflowNoticeDelivery.APPROVAL_SLOT,damaged.toString());
-  rejects(()->new WorkflowNoticeDelivery(store,poster).publishApproval(first,binding,now+10*minute,now),"changed receipt digest refused");
+  rejects(IllegalStateException.class,"receipt mismatch",()->new WorkflowNoticeDelivery(store,poster).publishApproval(first,binding,now+10*minute,now),"changed receipt digest refused");
   require(poster.posted.size()==1,"corrupt receipt never reposts");store.values.put(WorkflowNoticeDelivery.APPROVAL_SLOT,raw);
   // Tap after process death: a fresh ledger instance still resolves the exact run.
   taps.capture(token);JSONObject pending=new WorkflowNoticeTaps(store).pending();require("run1".equals(pending.getString("runId"))&&pending.getBoolean("retained"),"tap opens that run");
@@ -75,16 +75,16 @@ public final class WorkflowApprovalNoticeTest {
    // Approvals: every stored status answers as stored, nothing is posted and nothing is rewritten.
    require("succeeded".equals(upgraded.publishApproval(posted,binding,now+5*minute,now))&&"withdrawn".equals(upgraded.publishApproval(decided,binding,now+5*minute,now))&&"failed".equals(upgraded.publishApproval(muted6,binding,now+5*minute,now))&&"unknown".equals(upgraded.publishApproval(uncertain,binding,now+5*minute,now)),"stored approval receipts answer as stored");
    require(quiet.posted.isEmpty()&&storedApprovals.equals(old.values.get("workflow-approval-notices:v1")),"stored approval receipts read without reposting or rewriting");
-   rejects(()->upgraded.publishApproval(posted,"c".repeat(64),now+5*minute,now),"stored approval receipt keeps its binding check");
-   rejects(()->upgraded.publishApproval(posted,binding,now+6*minute,now),"stored approval receipt keeps its expiry check");
+   rejects(IllegalStateException.class,"receipt mismatch",()->upgraded.publishApproval(posted,"c".repeat(64),now+5*minute,now),"stored approval receipt keeps its binding check");
+   rejects(IllegalStateException.class,"expiry changed",()->upgraded.publishApproval(posted,binding,now+6*minute,now),"stored approval receipt keeps its expiry check");
    {WorkflowNoticeTaps routes=new WorkflowNoticeTaps(old);String stored=routes.prepare(posted,binding,route("run8"));routes.capture(stored);require(routes.pending().getBoolean("retained"),"a stored posted approval still opens its run");routes.consume(stored);}
    quiet.active.put(uncertain,WorkflowNoticeDelivery.APPROVAL_TITLE+"\n"+WorkflowNoticeDelivery.APPROVAL_BODY);
    require("succeeded".equals(upgraded.publishApproval(uncertain,binding,now+5*minute,now))&&quiet.posted.isEmpty(),"a stored uncertain approval is confirmed from the live notice, never reposted");
    // Steps: the Poster above fails the test on any step post, so a repost cannot pass unnoticed.
    require("succeeded".equals(upgraded.publish("op-posted",binding,"Exact title","Exact body"))&&"succeeded".equals(upgraded.receipt("op-posted",binding,"Exact title","Exact body"))&&"failed".equals(upgraded.publish("op-denied",binding,"Exact title","Exact body"))&&"unknown".equals(upgraded.publish("op-uncertain",binding,"Exact title","Exact body")),"stored step receipts answer as stored");
    require(storedSteps.equals(old.values.get("workflow-notice-delivery:v1")),"stored step receipts are not rewritten");
-   rejects(()->upgraded.publish("op-posted",binding,"Other title","Exact body"),"stored step receipt keeps its digest check");
-   rejects(()->upgraded.publish("op-posted","c".repeat(64),"Exact title","Exact body"),"stored step receipt keeps its binding check");
+   rejects(IllegalStateException.class,"receipt mismatch",()->upgraded.publish("op-posted",binding,"Other title","Exact body"),"stored step receipt keeps its digest check");
+   rejects(IllegalStateException.class,"receipt mismatch",()->upgraded.publish("op-posted","c".repeat(64),"Exact title","Exact body"),"stored step receipt keeps its binding check");
    require(WorkflowNoticeDelivery.SLOT.equals("workflow-notice-delivery:v1")&&WorkflowNoticeDelivery.APPROVAL_SLOT.equals("workflow-approval-notices:v1"),"deployed slot names unchanged");
    require(upgraded.expireApprovals(now+5*minute).size()==4&&new JSONObject(old.values.get("workflow-approval-notices:v1")).length()==0,"stored approval receipts expire");}
   // Receipts the retired ledger left at "applying" (the process died between its intent and its result
@@ -111,15 +111,15 @@ public final class WorkflowApprovalNoticeTest {
    require("succeeded".equals(d4.postApproval(t4,live,binding,route("run4"),now+10*minute,now)),"live approval posts");
    for(int i=0;i<255;i++)d4.withdrawApproval("approval-"+String.format("%064x",i),now);
    require(new JSONObject(s4.values.get(WorkflowNoticeDelivery.APPROVAL_SLOT)).length()==256,"approval ledger at capacity");
-   rejects(()->d4.postApproval(t4,refused,binding,route("run5"),now+10*minute,now),"a full ledger refuses a new approval");require(t4.token(refused)!=null&&p4.posted.size()==1,"the refused post leaves its prepared route and posts nothing");
+   rejects(IllegalStateException.class,"history is full",()->d4.postApproval(t4,refused,binding,route("run5"),now+10*minute,now),"a full ledger refuses a new approval");require(t4.token(refused)!=null&&p4.posted.size()==1,"the refused post leaves its prepared route and posts nothing");
    String before=s4.values.get(WorkflowNoticeDelivery.APPROVAL_SLOT);
-   rejects(()->d4.withdrawApproval(t4,refused,now),"a full ledger cannot record the withdrawal");require(t4.token(refused)==null&&before.equals(s4.values.get(WorkflowNoticeDelivery.APPROVAL_SLOT)),"the refused withdrawal still releases the route and changes no receipt");
+   rejects(IllegalStateException.class,"history is full",()->d4.withdrawApproval(t4,refused,now),"a full ledger cannot record the withdrawal");require(t4.token(refused)==null&&before.equals(s4.values.get(WorkflowNoticeDelivery.APPROVAL_SLOT)),"the refused withdrawal still releases the route and changes no receipt");
    d4.withdrawApproval(t4,live,now+minute);require(t4.token(live)==null&&p4.cancelled.contains(live)&&"withdrawn".equals(d4.publishApproval(live,binding,now+10*minute,now+minute)),"a recorded withdrawal cancels, releases and never reposts");
    // A receipt that could not be marked withdrawn is still posted, so its route stays openable.
    boolean[] deny={false};Store s5=new Store(){public void write(String slot,String value){if(deny[0]&&WorkflowNoticeDelivery.APPROVAL_SLOT.equals(slot))throw new IllegalStateException("Disk");super.write(slot,value);}};
    Poster p5=new Poster();WorkflowNoticeDelivery d5=new WorkflowNoticeDelivery(s5,p5);WorkflowNoticeTaps t5=new WorkflowNoticeTaps(s5);
    require("succeeded".equals(d5.postApproval(t5,live,binding,route("run4"),now+10*minute,now)),"posted before the storage fault");
-   deny[0]=true;rejects(()->d5.withdrawApproval(t5,live,now+minute),"a storage fault refuses the withdrawal");
+   deny[0]=true;rejects(IllegalStateException.class,"^Disk$",()->d5.withdrawApproval(t5,live,now+minute),"a storage fault refuses the withdrawal");
    require(t5.token(live)!=null&&p5.active.containsKey(live)&&!p5.cancelled.contains(live),"an unrecorded withdrawal keeps the posted notice and its route");
    deny[0]=false;d5.withdrawApproval(t5,live,now+minute);require(t5.token(live)==null&&p5.cancelled.contains(live)&&"withdrawn".equals(d5.publishApproval(live,binding,now+10*minute,now+minute))&&p5.posted.size()==1,"the repeated withdrawal is recorded, cancels and releases");}
   // A -> B -> A keeps encrypted metadata, fences old taps, and only an explicit revalidation can resume quietly.
@@ -128,13 +128,13 @@ public final class WorkflowApprovalNoticeTest {
    d6.withdrawOtherOwners(t6,owner("owner"),now);require("succeeded".equals(d6.postApproval(t6,id,binding,own,now+10*minute,now)),"owner A posts");
    t6.prepare("step1",binding,own);d6.publish("step1",binding,"Private","Body");String oldTap=t6.token(id);t6.capture(oldTap);
    require(d6.withdrawOtherOwners(t6,owner("B"),now+minute)==2,"approval and result withdrawn on owner change");
-   require(p6.active.isEmpty()&&t6.pending().length()==0,"no cross-owner notice or pending tap");final WorkflowNoticeTaps beforeRestart=t6;rejects(()->beforeRestart.capture(oldTap),"old tap rejected under B");
+   require(p6.active.isEmpty()&&t6.pending().length()==0,"no cross-owner notice or pending tap");final WorkflowNoticeTaps beforeRestart=t6;rejects(IllegalStateException.class,"receipt unconfirmed",()->beforeRestart.capture(oldTap),"old tap rejected under B");
    require("owner-changed".equals(d6.postApproval(t6,id,binding,own,now+10*minute,now+minute)),"queued A post refused under B");
    require(t6.suspendedApprovals(owner("owner"),now+minute).length()==1,"suspended route survives");
    d6=new WorkflowNoticeDelivery(s6,p6);t6=new WorkflowNoticeTaps(s6);d6.withdrawOtherOwners(t6,owner("owner"),now+2*minute);
    require(p6.posted.size()==2,"return alone does not post without revalidation");
    require("succeeded".equals(d6.resumeApproval(t6,id,binding,own,now+10*minute,now+2*minute))&&p6.quiet==1,"explicit exact return posts quietly");
-   String fresh=t6.token(id);require(!fresh.equals(oldTap),"fresh tap binding after restart");final WorkflowNoticeTaps current=t6;rejects(()->current.capture(oldTap),"old PendingIntent oldTap remains invalid");t6.capture(fresh);require(t6.pending().getBoolean("retained"),"fresh tap opens matching owner");
+   String fresh=t6.token(id);require(!fresh.equals(oldTap),"fresh tap binding after restart");final WorkflowNoticeTaps current=t6;rejects(ai.eliza.plugins.notifications.NoticeRoutes.UnknownTap.class,null,()->current.capture(oldTap),"old PendingIntent oldTap remains invalid");t6.capture(fresh);require(t6.pending().getBoolean("retained"),"fresh tap opens matching owner");
    require("not-suspended".equals(d6.resumeApproval(t6,id,binding,own,now+10*minute,now+2*minute))&&p6.quiet==1,"duplicate resume does not repost or rotate");
    d6.withdrawOtherOwners(t6,owner("B"),now+3*minute);d6.withdrawApproval(t6,id,now+3*minute);d6.withdrawOtherOwners(t6,owner("owner"),now+4*minute);
    require(t6.suspendedApprovals(owner("owner"),now+4*minute).length()==0&&"not-suspended".equals(d6.resumeApproval(t6,id,binding,own,now+10*minute,now+4*minute)),"decided while away never resumes");
@@ -147,9 +147,9 @@ public final class WorkflowApprovalNoticeTest {
    Poster p=new Poster();WorkflowNoticeDelivery d=new WorkflowNoticeDelivery(fault,p);WorkflowNoticeTaps t=new WorkflowNoticeTaps(fault);
    String a1="approval-"+"4".repeat(64),a2="approval-"+"5".repeat(64),b="approval-"+"6".repeat(64);JSONObject ar=route("fault-a"),br=route("fault-b").put("ownerId","B");
    d.postApproval(t,a1,binding,ar,now+10*minute,now);d.postApproval(t,a2,binding,ar,now+10*minute,now);d.postApproval(t,b,binding,br,now+10*minute,now);String prior=t.token(a1),matching=t.token(b);
-   failFence[0]=true;rejects(()->d.withdrawOtherOwners(t,owner("B"),now+minute),"fence write failure reported");require(p.active.size()==3,"uncommitted fence cancels no notice");failFence[0]=false;
-   failReceipt[0]=true;rejects(()->d.withdrawOtherOwners(t,owner("B"),now+minute),"one receipt write failure reported");
-   require(p.active.containsKey(a1)&&!p.active.containsKey(a2)&&p.active.containsKey(b),"other old-owner notice still attempted, matching owner untouched");rejects(()->t.capture(prior),"persisted fence refuses tap even if OS cancellation failed");
+   failFence[0]=true;rejects(IllegalStateException.class,"Fence disk fault",()->d.withdrawOtherOwners(t,owner("B"),now+minute),"fence write failure reported");require(p.active.size()==3,"uncommitted fence cancels no notice");failFence[0]=false;
+   failReceipt[0]=true;rejects(IllegalStateException.class,"Receipt disk fault",()->d.withdrawOtherOwners(t,owner("B"),now+minute),"one receipt write failure reported");
+   require(p.active.containsKey(a1)&&!p.active.containsKey(a2)&&p.active.containsKey(b),"other old-owner notice still attempted, matching owner untouched");rejects(IllegalStateException.class,"receipt unconfirmed",()->t.capture(prior),"persisted fence refuses tap even if OS cancellation failed");
    d.withdrawOtherOwners(t,owner("B"),now+2*minute);require(!p.active.containsKey(a1)&&p.active.containsKey(b)&&matching.equals(t.token(b))&&p.posted.size()==3,"retry completes without repost or matching-owner token changes");
    d.withdrawOtherOwners(t,owner("B"),now+2*minute);require(p.active.containsKey(b)&&matching.equals(t.token(b))&&p.posted.size()==3,"repeated fence preserves unrelated owner's notice");
    d.withdrawOtherOwners(t,owner("owner"),now+3*minute);d.resumeApproval(t,a1,binding,ar,now+10*minute,now+3*minute);d.resumeApproval(t,a2,binding,ar,now+10*minute,now+3*minute);require(p.quiet==2,"both successfully suspended approvals resume once quietly");
@@ -160,16 +160,16 @@ public final class WorkflowApprovalNoticeTest {
    String aId="approval-"+"7".repeat(64),originId="approval-"+"8".repeat(64),agentId="approval-"+"9".repeat(64);JSONObject aRoute=route("a"),otherOrigin=route("b").put("origin","https://other.invalid"),otherAgent=route("c").put("agentId","other-agent");
    d.postApproval(t,aId,binding,aRoute,now+10*minute,now);d.postApproval(t,originId,binding,otherOrigin,now+10*minute,now);d.postApproval(t,agentId,binding,otherAgent,now+10*minute,now);String oldOrigin=t.token(originId),oldAgent=t.token(agentId),matching=t.token(aId);
    require(d.withdrawOtherOwners(t,NoticeOwner.fromRoute(aRoute),now+minute)==2,"same ownerId on other origin or agent is withdrawn");
-   require(p.active.size()==1&&p.active.containsKey(aId)&&matching.equals(t.token(aId)),"full matching tuple remains untouched");rejects(()->t.capture(oldOrigin),"other-origin token fenced");rejects(()->t.capture(oldAgent),"other-agent token fenced");
+   require(p.active.size()==1&&p.active.containsKey(aId)&&matching.equals(t.token(aId)),"full matching tuple remains untouched");rejects(IllegalStateException.class,"receipt unconfirmed",()->t.capture(oldOrigin),"other-origin token fenced");rejects(IllegalStateException.class,"receipt unconfirmed",()->t.capture(oldAgent),"other-agent token fenced");
    require("owner-changed".equals(d.postApproval(t,originId,binding,otherOrigin,now+10*minute,now+minute)),"stale colliding-origin post refused");
-   collision.values.put(WorkflowNoticeTaps.OWNER_SLOT,new JSONObject().put("ownerId","owner").toString());rejects(()->t.capture(matching),"old ownerId-only fence fails closed");require("owner-changed".equals(d.postApproval(t,aId,binding,aRoute,now+10*minute,now+minute)),"old fence refuses fresh posts");
+   collision.values.put(WorkflowNoticeTaps.OWNER_SLOT,new JSONObject().put("ownerId","owner").toString());rejects(IllegalStateException.class,"receipt unconfirmed",()->t.capture(matching),"old ownerId-only fence fails closed");require("owner-changed".equals(d.postApproval(t,aId,binding,aRoute,now+10*minute,now+minute)),"old fence refuses fresh posts");
    d.withdrawOtherOwners(t,NoticeOwner.fromRoute(aRoute),now+minute);t.capture(matching);require(t.pending().getBoolean("retained"),"validated tuple replaces legacy fence");
    d.withdrawOtherOwners(t,null,now+2*minute);require(p.active.isEmpty()&&t.pending().length()==0&&t.suspendedApprovals(null,now).length()==0,"explicit sign-out hides every owner and exposes no suspended routes");
   }
   // Bounds.
-  rejects(()->delivery.publishApproval("op1",binding,now+minute,now),"only approval IDs");
-  rejects(()->delivery.publishApproval(fourth,binding,now+8*86400000L,now),"over-long approval refused");
-  rejects(()->taps.forget("op1"),"step routes are never released here");
+  rejects(IllegalArgumentException.class,"Invalid approval notice identity",()->delivery.publishApproval("op1",binding,now+minute,now),"only approval IDs");
+  rejects(IllegalArgumentException.class,"exceeds the reviewed bound",()->delivery.publishApproval(fourth,binding,now+8*86400000L,now),"over-long approval refused");
+  rejects(IllegalArgumentException.class,"Only approval routes",()->taps.forget("op1"),"step routes are never released here");
   require(delivery.approvalTimeout(now+minute,now)==minute&&delivery.approvalTimeout(now,now)==-1,"timeout policy");
   require(WorkflowNoticeDelivery.STEP_NOTICE_TIMEOUT_MS==24L*3600000,"step notices time out after a day");
   System.out.println("PASS workflow approval notices: one per approval ID, expiry timeout, tap after restart, withdrawal on decision (also before publish and when refused) and on an owner change, stored receipts, pruning and bounds");

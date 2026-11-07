@@ -60,7 +60,7 @@ test('explicit native legacy recovery uses real encrypted slots and current toke
    ${ownerCache}
    ${nativeLifecycle.slice(commitStart,commitEnd)}
    ${nativeLifecycle.slice(fastStart,fastEnd)}
-    beforeCommit.run();synchronized(ai.eliza.plugins.securestore.nativeonly.JsonCredentialSlots.LOCK){ownerBoundary(assertOwner);return mutation.commit();}
+    beforeCommit.run();synchronized(ai.eliza.plugins.securestore.nativeonly.JsonCredentialSlots.LOCK){ownerBoundary(assertOwner);return commitCredentials(mutation);}
    }}
    static void ownerBoundary(Runnable owner){owner.run();}static boolean providerAdmissionReadable(){return true;}
    ${nativeLifecycle.slice(bindingStart,bindingEnd)}

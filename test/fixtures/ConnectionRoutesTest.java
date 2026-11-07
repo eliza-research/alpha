@@ -127,10 +127,7 @@ public final class ConnectionRoutesTest {
   check(!ConnectionRoutes.managedService("/api/auth/cli-session/b7a2c1d0-5e4f-4a3b-8c2d-1e0f9a8b7c6d",null,"GET",false,false),"sign-in hand-off poll refused flag-off");
   check(ConnectionRoutes.managedService("/api/auth/cli-session",null,"POST",true,true),"sign-in hand-off kept in test-mocks builds");
   // Reset Alpha data revokes only the presented key through the shared CloudKeyRevocation (tested with
-  // the sign-in library upstream); this transport admits exactly the same self-revocation DELETE.
-  check(revoke("https","api.eliza.app",-1,"/api/v1/api-keys/current",null,"DELETE",false,false),"production self-revocation target");
-  check(revoke("https","api-staging.eliza.app",-1,"/api/v1/api-keys/current",null,"DELETE",false,true),"staging self-revocation target in test-mocks builds");
-  check(!revoke("https","api-staging.eliza.app",-1,"/api/v1/api-keys/current",null,"DELETE",false,false),"flag-off reset never targets staging");
+  // the sign-in library upstream); this transport admits the same self-revocation DELETE checked above.
   check(ConnectionRoutes.managedService("/api/v1/subscription/entitlement",null,"GET",false,false)&&ConnectionRoutes.managedService("/api/v1/subscription/entitlement-keys",null,"GET",false,false),"subscription entitlement reads allowed");
   check(!ConnectionRoutes.managedService("/api/v1/subscription/entitlement",null,"POST",true,false)&&!ConnectionRoutes.managedService("/api/v1/subscription/checkout",null,"GET",false,false),"subscription writes and other subscription paths refused");
   check(ConnectionRoutes.managedService("/api/v1/eliza/google/gmail/inbox-v1/thread","grantId=owned", "GET",false,false),"owner Gmail route allowed");
