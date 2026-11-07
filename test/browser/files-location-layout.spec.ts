@@ -5,7 +5,7 @@ for(const theme of ['light','dark'])test(`Files aligns category, storage and Tra
  await page.getByRole('button',{name:'Files',exact:true}).click();
  const list=page.locator('[data-alpha-app-scroll="files"]');
  await expect(list.getByRole('heading',{name:'Storage',exact:true})).toBeVisible();
- const labels=[];
+ const labels=[], rowTops=[];
  for(const name of ['Downloads','Images','Videos','Audio','Documents','Internal storage','Trash']){
   const row=list.getByRole('button',{name,exact:true});
   await expect(row).toBeVisible();
@@ -14,7 +14,9 @@ for(const theme of ['light','dark'])test(`Files aligns category, storage and Tra
   expect(label).not.toBeNull();
   expect(box?.height).toBeGreaterThanOrEqual(44);
   labels.push(label!.x);
+  rowTops.push(box!.y);
  }
+ expect(new Set(rowTops).size).toBe(labels.length);
  expect(Math.max(...labels)-Math.min(...labels)).toBeLessThan(1);
  await page.screenshot({path:info.outputPath('files-aligned.png'),animations:'disabled'});
 });

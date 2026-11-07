@@ -388,6 +388,12 @@ html:not(.alpha-landscape) .alpha-phone [data-screen]:not([data-alpha-chat-half=
 .alpha-landscape [data-alpha-maps-sheet]{left:auto!important;width:min(440px,50%);border-radius:28px 0 0 0!important}
 .alpha-landscape [data-alpha-maps-directions]{right:auto!important;width:calc(50% - 24px);box-sizing:border-box;max-height:calc(100% - 64px);overflow-y:auto}
 
+/* Keep portrait capture controls above the assistant on short windows. */
+html:not(.alpha-landscape) [data-alpha-camera="capture"]{top:min(712px,calc(100% - var(--alpha-dock-clearance,102px) - 106px))!important}
+html:not(.alpha-landscape) [data-alpha-camera="modes"]{top:min(656px,calc(100% - var(--alpha-dock-clearance,102px) - 162px))!important}
+html:not(.alpha-landscape) [data-alpha-camera="zoom"]{top:min(585px,calc(100% - var(--alpha-dock-clearance,102px) - 217px))!important}
+html:not(.alpha-landscape) [data-alpha-camera="viewfinder"]{height:min(549px,calc(100% - var(--alpha-dock-clearance,102px) - 258px))!important}
+
 /* Camera in landscape: the portrait stack (viewfinder, zoom, modes, capture row) is 800px tall and
  * would leave every capture control below the screen. The capture controls move to a column on the
  * right; zoom, mode and scan status sit over the bottom of the viewfinder. */
@@ -638,7 +644,7 @@ button[aria-label$=" on or off"][aria-pressed]::before { content:""; position:ab
 /* Camera modes at a large system font: the Photo, Video and Scan labels no longer fit one row
  * across the screen at a fixed 44px. The row grows to the labels' height inside the band between
  * the viewfinder and the capture row, and scrolls sideways instead of pushing a mode off screen. */
-.alpha-text-xl:not(.alpha-landscape) [data-alpha-camera="modes"]{top:648px!important;height:auto!important;min-height:44px;overflow-x:auto;overflow-y:hidden;justify-content:safe center!important;padding:0 8px;box-sizing:border-box;touch-action:pan-x}
+.alpha-text-xl:not(.alpha-landscape) [data-alpha-camera="modes"]{top:min(648px,calc(100% - var(--alpha-dock-clearance,102px) - 170px))!important;height:auto!important;min-height:44px;overflow-x:auto;overflow-y:hidden;justify-content:safe center!important;padding:0 8px;box-sizing:border-box;touch-action:pan-x}
 .alpha-text-xl [data-alpha-camera="modes"] button{line-height:1.1;gap:2px!important;padding:0 10px!important}
 /* Notes folders, filter chip and the editor's ⋯ menu (view refresh 2026-11, PLAN.md section 3). */
 .notes-folders { scrollbar-width:none; }

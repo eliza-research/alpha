@@ -41,9 +41,10 @@ async function freshPhone(page: Page) {
       if (path === '/api/v1/billing/limits')
         return { status: 200, data: { success: true, data: { schemaVersion: 2, v2: { subscription: { status: 'not_applicable', reason: 'no_organization_subscription' },
           balance: { status: 'available', source: 'organizations', observedAt: new Date().toISOString(), value: { balance: { value: '5.00', unit: 'usd', currency: 'USD' }, revision: '1' } } } } } };
-      const key = plugin === 'AlphaNotifications' ? 'notifications' : plugin === 'AlphaVoiceCloud' ? 'microphone' : plugin === 'DailyApps' ? 'camera' : plugin === 'ElizaLocation' ? 'location' : plugin === 'AlphaCalendar' ? 'calendar' : plugin === 'AlphaPhotoLibrary' ? 'photos' : null;
-      if (key && (method === 'requestPermissions' || method === 'requestAccess')) { granted[plugin === 'DailyApps' ? input.permissions[0] : key] = true; return {}; }
+      const key = plugin === 'AlphaNotifications' ? 'notifications' : plugin === 'AlphaVoiceCloud' ? 'microphone' : plugin === 'DailyApps' ? 'camera' : plugin === 'ElizaLocation' ? 'location' : plugin === 'AlphaCalendar' ? 'calendar' : plugin === 'AlphaPhotoLibrary' ? 'photos' : plugin === 'AlphaFiles' ? 'files' : null;
+      if (key && (method === 'requestPermissions' || method === 'requestAccess' || method === 'storageRequestAccess')) { granted[plugin === 'DailyApps' ? input.permissions[0] : key] = true; return {}; }
       if (plugin === 'AlphaNotifications' && method === 'status') return { permissionGranted: granted.notifications, appEnabled: granted.notifications };
+      if (plugin === 'AlphaFiles' && method === 'storageState') return {status: 'ready', access: granted.files ? 'granted' : 'denied', volumes: []};
       if (plugin === 'AlphaPhotoLibrary' && method === 'scope') return { scope: granted.photos ? 'selected' : 'denied', locked: false };
       if (plugin === 'AlphaFiles' && method === 'storageState') return {status: 'ready', access: granted.files ? 'granted' : 'denied'};
       if (plugin === 'AlphaFiles' && method === 'storageRequestAccess') { granted.files = true; return {status: 'ready', access: 'granted'}; }

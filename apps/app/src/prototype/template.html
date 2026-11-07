@@ -1627,7 +1627,7 @@
     </div>
     <div role="group" aria-label="Photos sections" style="display: flex; gap: 2px; margin: 0 16px 4px; padding: 2px; border-radius: 24px; background: var(--s2); flex-shrink: 0">
       <sc-for list="{{photos.tabs}}" as="t">
-        <button aria-label="{{t.label}}" aria-pressed="{{t.on}}" onClick="{{t.pick}}" style="flex: 1; min-height: 44px; padding: 6px 4px; border-radius: 22px; font-size: 14.5px; font-weight: 600; line-height: 1.2; transition: background .2s; {{t.css}}">{{t.label}}</button>
+        <button aria-label="{{t.label}}" aria-pressed="{{t.on}}" onClick="{{t.pick}}" style="flex: 1; min-width: 0; min-height: 44px; padding: 6px 4px; border-radius: 22px; font-size: 14.5px; font-weight: 600; line-height: 1.2; transition: background .2s; {{t.css}}">{{t.label}}</button>
       </sc-for>
     </div>
   </sc-if>
@@ -2319,12 +2319,12 @@
       <sc-if value="{{notes.ed.menuShown}}"><button aria-hidden="true" tabindex="-1" onClick="{{notes.ed.closeMenu}}" style="position: absolute; inset: 0; z-index: 11; background: transparent"></button></sc-if>
       <sc-if value="{{notes.ed.menuOpen}}"><div class="notes-menu" role="dialog" aria-label="Note actions">
         <button onClick="{{notes.ed.pin}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.notesPin}}"></path></svg>{{notes.ed.pinLabel}}</button>
-        <button onClick="{{notes.ed.moveTo}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.notesFolder}}"></path></svg>Move to…</button>
+        <button onClick="{{notes.ed.moveTo}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.folder}}"></path></svg>Move to…</button>
         <hr>
         <button onClick="{{notes.ed.del}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.trash}}"></path></svg>Delete</button>
       </div></sc-if>
       <sc-if value="{{notes.ed.moveOpen}}"><div class="notes-menu" role="dialog" aria-label="Move to">
-        <sc-for list="{{notes.ed.moveRows}}" as="m"><button aria-pressed="{{m.checked}}" onClick="{{m.pick}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.notesFolder}}"></path></svg><span style="flex: 1 1 auto">{{m.name}}</span>{{m.mark}}</button></sc-for>
+        <sc-for list="{{notes.ed.moveRows}}" as="m"><button aria-pressed="{{m.checked}}" onClick="{{m.pick}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.folder}}"></path></svg><span style="flex: 1 1 auto">{{m.name}}</span>{{m.mark}}</button></sc-for>
       </div></sc-if>
       </div></sc-if>
     </div>
@@ -2402,12 +2402,12 @@
       <sc-if value="{{notes.vo.menuShown}}"><button aria-hidden="true" tabindex="-1" onClick="{{notes.vo.closeMenu}}" style="position: absolute; inset: 0; z-index: 11; background: transparent"></button></sc-if>
       <sc-if value="{{notes.vo.menuOpen}}"><div class="notes-menu" role="dialog" aria-label="Note actions">
         <button onClick="{{notes.vo.pin}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.notesPin}}"></path></svg>{{notes.vo.pinLabel}}</button>
-        <button onClick="{{notes.vo.moveTo}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.notesFolder}}"></path></svg>Move to…</button>
+        <button onClick="{{notes.vo.moveTo}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.folder}}"></path></svg>Move to…</button>
         <hr>
         <button onClick="{{notes.vo.del}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.trash}}"></path></svg>Delete</button>
       </div></sc-if>
       <sc-if value="{{notes.vo.moveOpen}}"><div class="notes-menu" role="dialog" aria-label="Move to">
-        <sc-for list="{{notes.vo.moveRows}}" as="m"><button aria-pressed="{{m.checked}}" onClick="{{m.pick}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.notesFolder}}"></path></svg><span style="flex: 1 1 auto">{{m.name}}</span>{{m.mark}}</button></sc-for>
+        <sc-for list="{{notes.vo.moveRows}}" as="m"><button aria-pressed="{{m.checked}}" onClick="{{m.pick}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.folder}}"></path></svg><span style="flex: 1 1 auto">{{m.name}}</span>{{m.mark}}</button></sc-for>
       </div></sc-if>
       </div></sc-if>
     </div>
@@ -2435,12 +2435,12 @@
       <sc-if value="{{notes.lk.menuShown}}"><button aria-hidden="true" tabindex="-1" onClick="{{notes.lk.closeMenu}}" style="position: absolute; inset: 0; z-index: 11; background: transparent"></button></sc-if>
       <sc-if value="{{notes.lk.menuOpen}}"><div class="notes-menu" role="dialog" aria-label="Note actions">
         <button onClick="{{notes.lk.pin}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.notesPin}}"></path></svg>{{notes.lk.pinLabel}}</button>
-        <button onClick="{{notes.lk.moveTo}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.notesFolder}}"></path></svg>Move to…</button>
+        <button onClick="{{notes.lk.moveTo}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.folder}}"></path></svg>Move to…</button>
         <hr>
         <button onClick="{{notes.lk.del}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.trash}}"></path></svg>Delete</button>
       </div></sc-if>
       <sc-if value="{{notes.lk.moveOpen}}"><div class="notes-menu" role="dialog" aria-label="Move to">
-        <sc-for list="{{notes.lk.moveRows}}" as="m"><button aria-pressed="{{m.checked}}" onClick="{{m.pick}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.notesFolder}}"></path></svg><span style="flex: 1 1 auto">{{m.name}}</span>{{m.mark}}</button></sc-for>
+        <sc-for list="{{notes.lk.moveRows}}" as="m"><button aria-pressed="{{m.checked}}" onClick="{{m.pick}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.folder}}"></path></svg><span style="flex: 1 1 auto">{{m.name}}</span>{{m.mark}}</button></sc-for>
       </div></sc-if>
       </div></sc-if>
     </div>

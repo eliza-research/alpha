@@ -2850,7 +2850,6 @@ IC.notesPin = IC.notesPin || "M9 3h6l-1 6 4 4H6l4-4zM12 13v8";
 IC.notesList = IC.notesList || "M10 6h10M10 12h10M10 18h10M4 6l1.5 1.5L8 5M4 12l1.5 1.5L8 11M4 18l1.5 1.5L8 17";
 IC.notesBox = IC.notesBox || "M5 5h14v14H5z";
 IC.notesRecDot = IC.notesRecDot || "M12 7.5a4.5 4.5 0 1 1 0 9a4.5 4.5 0 1 1 0-9zM12 10a2 2 0 1 1 0 4a2 2 0 1 1 0-4z";
-IC.notesFolder = IC.notesFolder || "M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z";
 IC.notesWave = IC.notesWave || "M3 12h2M7 8v8M11 5v14M15 9v6M19 11v2M21 12h0";
 var NOTES_RED = "var(--alpha-notes-red)";
 

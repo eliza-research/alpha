@@ -50,10 +50,9 @@ for(const scenario of ['decline','accepted-reload','lost-activation','quote-chan
   },scenario);
   await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent connection',exact:true}).click();await page.locator('summary').filter({hasText:/^Development Cloud agent infrastructure$/}).click();
   await preloadPageModules(page,setupModules);
-  await page.evaluate(()=>{
-   const {connectionController}=(window as any).__alphaModules['/src/runtime/connection-ui.tsx'];
-   void connectionController.signInBrowser();
-  });
+  // Keep this trigger synchronous. Chromium may collect an inspector-awaited import Promise
+  // even after its module has been preloaded; the retained namespace needs no new import.
+  await page.evaluate(()=>{void (window as any).__alphaModules['/src/runtime/connection-ui.tsx'].connectionController.signInBrowser();});
   const review=page.getByRole('region',{name:'Dedicated hosting review'});
   // Section has an accessible name and is a region; display real reviewed price fields.
   await expect(review).toBeVisible();await expect(review).toContainText('$2.40/day');await expect(review).toContainText('Minimum charge per successful start: $0.50');
@@ -93,7 +92,7 @@ for(const scenario of ['decline','accepted-reload','lost-activation','quote-chan
     expect(await page.evaluate(async()=>{const c=(await import('/src/runtime/connection-ui.tsx')).connectionController;return {client:c.getCloudClient(),account:c.getSnapshot().cloudAccount};})).toEqual({client:null,account:null});
    }else await expect(page.getByText('Signed in to Eliza Cloud',{exact:true})).toBeVisible();
    expect(await intentSnapshot(page)).toEqual(before);
-   await page.evaluate(async()=>{const {connectionController}=await import('/src/runtime/connection-ui.tsx');void connectionController.signInBrowser();});
+   await page.evaluate(()=>{void (window as any).__alphaModules['/src/runtime/connection-ui.tsx'].connectionController.signInBrowser();});
    await expect(page.getByText('Signed in to Eliza Cloud',{exact:true})).toBeVisible();
    await expect(page.getByText('Dedicated setup accepted',{exact:true})).toBeVisible();
    expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('fixture.cloud.setup')!))).toMatchObject({activation:1,cutover:0});return;

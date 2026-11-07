@@ -531,6 +531,9 @@ test('the native recorder has a device test for segments, pause accounting, cras
   assert.match(device, /the partial segment is dropped/);
   assert.match(device, /next\.joined\(crashedId\)/);
   assert.match(device, /player\.prepare\(\)/, 'the joined file plays');
+  assert.match(device, /recorder\.start\(owner,folder\)/, 'the device recording starts with an explicit owner and folder');
+  assert.match(device, /back\.getJSONObject\("binding"\)\.getString\("ownerDigest"\)/, 'recovery checks its recorded owner');
+  assert.doesNotMatch(native('AlphaNoteRecorder.java'), /\.readAllBytes\(/, 'journal recovery supports the API 29 minimum');
 });
 
 test('the recording notification follows pause: "Paused" with Resume, and its chronometer is the recording length', () => {
