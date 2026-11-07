@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "baseCommit": "ae1a9dda6712cd20fa249982afef1ef0abd28a3c",
+  "path": "plugins/plugin-native-camera/src/scan-document.ts",
+  "beforeSha256": "5b10c2317a305318b221da906b13aebe24f7517a7ac2d7a217ac31095b8101af",
+  "afterSha256": "5c8e7eb2d7ae5f79a3199ec35e9d88658cd961343cf51a29a3c930c61d8c8256",
+  "patchSha256": "0acc077101d88a79271cc49aafcb88b6f607213e88aa97b9c2308d2f11267229"
+}
