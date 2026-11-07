@@ -158,7 +158,8 @@ export function createDeviceLibrary(port: PhotoLibraryPort = nativePort, availab
     async runView(operation, signal) {
       const host = visibleHost();
       // The filter is read-only and works on whatever Photos shows, including Alpha's own captures.
-      if (operation.type !== 'photos_filter' && (acting || review)) throw new LibraryAgentRefusal('Finish the open review first.');
+      // Any other request waits for every open review, the host's share or album review included (AgentOpen).
+      if (operation.type !== 'photos_filter' && (acting || review || host.reviewOpen())) throw new LibraryAgentRefusal('Finish the open review first.');
       return host.run(operation, signal) as Promise<PhotosViewResult>;
     },
   };

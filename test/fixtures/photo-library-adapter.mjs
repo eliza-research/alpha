@@ -110,6 +110,12 @@ function fakeHost(){
  // While the host's album or share review waits, no second review opens.
  host.pending=true;
  await assert.rejects(library.agent.run({type:'photo_library_select',ids:['lib:i:3:30']},signal),/Finish the open review/);
+ // Nor does the agent navigate under it (AgentOpen: review.ids = {}); the read-only filter still works.
+ const before=host.calls.length;
+ await assert.rejects(library.agent.runView({type:'photos_open',id:'lib:i:3:30'},signal),/Finish the open review/);
+ await assert.rejects(library.agent.runView({type:'photos_share',ids:['lib:i:3:30']},signal),/Finish the open review/);
+ assert.deepEqual(await library.agent.runView({type:'photos_filter',kind:'video'},signal),{kind:'photos_filter',shown:2,more:false});
+ assert.deepEqual(host.calls.slice(before).map(call=>call.type),['photos_filter']);
  host.pending=false;
  // A review binds the revisions the assistant read; the provider confirms they are current before it opens.
  const search=await library.agent.run({type:'photo_library_search',limit:3},signal);
