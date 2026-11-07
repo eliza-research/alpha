@@ -227,12 +227,14 @@ test('Camera keeps one capture session and an undistorted preview through rotati
   await expect(tile).toHaveCount(1);
   for (const tab of ['Library', 'Albums']) await expectTarget(page, page.getByRole('button', { name: tab, exact: true }));
   // Photos retains its selected density through rotation. The default is four
-  // edge-to-edge columns with 2px gaps (view refresh PLAN section 2).
+  // columns with 2px gaps and the existing 12px inset.
   const grid = page.locator('.photo-grid').filter({visible: true}).first();
   for (const viewport of [PORTRAIT, LANDSCAPE]) {
     await resize(page, viewport);
     await expect.poll(() => grid.evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length)).toBe(4);
     await expect(grid).toHaveCSS('column-gap', '2px');
+    await expect(grid).toHaveCSS('margin-left', '12px');
+    await expect(grid).toHaveCSS('margin-right', '12px');
     const gridBounds = await box(grid), tileBounds = await box(tile);
     expect(tileBounds.width).toBeCloseTo((gridBounds.width - 6) / 4, 1);
     expect(Math.abs(tileBounds.width - tileBounds.height)).toBeLessThan(1);
