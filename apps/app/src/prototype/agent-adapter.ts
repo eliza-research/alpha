@@ -595,19 +595,26 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     this.startupDraft=this.connectionSession?null:undefined;
     this.connectionUnsubscribe = connectionController.subscribe(() => {
       const connection=connectionController.getSnapshot(),session=connection.session?.sessionId;
+      let draftBindingAfterPaint=false;
       if (session !== this.connectionSession) {
         const preserveStartupDraft=!this.connectionSession&&!!session&&!connection.startupResolved&&typeof this.startupDraft==='string'&&this.startupDraft===String(this.S().draft||'');
+        // Detach before the UI clears. Its update must not save an empty draft to the old owner.
+        this.draftBindingAbort?.abort();
+        this.composerDraft.retire(false);
         this.startupDraft=null;
         cancelMessageContext(this);
         this.closeSummaryReview?.();this.reviewedSourceDraft=null;
         clearMapsSelection();
         this.connectionSession = session;
         alphaClient.disconnect();
-        if (this.live) this.setState({ msgs: [], ...(preserveStartupDraft?{}:{draft:''}), typing: false });
+        if (this.live) {
+          draftBindingAfterPaint=true;
+          this.setState({ msgs: [], ...(preserveStartupDraft?{}:{draft:''}), typing: false },this.refreshDraftBinding);
+        }
       }
       const history = connectionController.getSnapshot().history;
       if (history && history.sessionId === session && this.restoredHistory !== history) {
-        if(!history.automatic){cancelMessageContext(this);this.reviewedSourceDraft=null;}
+        if(!history.automatic){this.draftBindingAbort?.abort();this.composerDraft.retire(false);draftBindingAfterPaint=true;cancelMessageContext(this);this.reviewedSourceDraft=null;}
         this.restoredHistory = history;
         alphaClient.disconnect();
         if (this.live) this.setState((previous:Shell)=>{
@@ -615,7 +622,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
           const messages=history.messages.map(message => ({ ...message, messageBinding:message.deviceReceipt?undefined:{conversationId:history.conversationId,session:connectionController.getSnapshot().session}, card:null }));
           const newer=history.deliveryRevisionAtStart===undefined?[]:previous.msgs.filter((message:any)=>typeof message.conversationDeliveryRevision==='number'&&(history.automatic||message.conversationDeliveryRevision>history.deliveryRevisionAtStart!)&&message.messageBinding?.conversationId===history.conversationId);
           return {msgs:collapseSystemNotices(mergeConversationDelivery(messages,newer)),typing:false,...(history.automatic?{}:{draft:'',chat:'full'})};
-        });
+        },history.automatic?undefined:this.refreshDraftBinding);
       }
       const delivery=connectionController.getSnapshot().conversationDelivery;
       if(delivery&&delivery.sessionId===session&&delivery.conversationId===connectionController.getSelectedConversationId()&&this.lastConversationDelivery!==delivery){
@@ -628,7 +635,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         });
       }
       syncStoppedReplyNotice(this,session!==undefined&&history?.sessionId===session?history:null);
-      if (this.live) {syncCanonicalNotes(this);context(this);this.refreshDraftBinding();}
+      if (this.live) {syncCanonicalNotes(this);context(this);if(!draftBindingAfterPaint)this.refreshDraftBinding();}
     });
     // Canonical is the default; no legacy store/migration/cleanup is opened.
     syncCanonicalNotes(this);
