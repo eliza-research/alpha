@@ -85,7 +85,9 @@ the operator's index of build, provisioning, release and support material is the
 
 ## Product boundaries
 
-Current integration pin `475a8d59dc` retains typed Maps admission errors through search and directions. Unchanged dependency and native inputs are recorded in `docs/evidence/sdk-475a8d59dc-build-input-admission-20261107.json`; prior native refusal and release gates remain open.
+Current local integration pin `ec0cfd6d05` carries the combined Calendar, updater and Files source. The dependency audit and exact hosted Android build remain open. Earlier build and device receipts retain their own pins.
+
+Earlier integration pin `475a8d59dc` retains typed Maps admission errors through search and directions. Unchanged dependency and native inputs are recorded in `docs/evidence/sdk-475a8d59dc-build-input-admission-20261107.json`; prior native refusal and release gates remain open.
 
 Current integration pin `3a2e43de28` restores the verified Google credential, Calendar, Notes and Cloud voice fixes over `3c76d07819`. Source input comparison is recorded in `docs/evidence/sdk-3a2e43de28-build-input-admission-20261107.json`. Native qualification and release acceptance remain open.
 

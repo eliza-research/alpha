@@ -20,10 +20,9 @@ import {LIBRARY_LIMITS,type LibraryAgentOperation,type LibraryAgentResult} from 
 import {openVideoEditReview} from './video-edit-review';
 import {openScanReview,ScanKeepError} from './scan-review';
 import {openScanDocument,pickNativeScanImage} from './scan-document';
-import {openCameraImageImport} from './browser-image-import';
 import {systemPickerActive} from './scan-pdf';
 import {DailyApps} from '../daily';
-import {browserCamera,browserLibrary,browserPhotoLibrary,mountBrowserCamera,importBrowserPhoto,saveBrowserMedia} from './browser-camera';
+import {browserCamera,browserLibrary,browserPhotoLibrary,mountBrowserCamera,importBrowserPhoto,openCameraImageImport,saveBrowserMedia} from './browser-camera';
 import { registerPlugin } from '../platform-plugins';
 import { Capacitor } from '@capacitor/core';
 
