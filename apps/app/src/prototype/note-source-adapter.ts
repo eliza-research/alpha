@@ -33,7 +33,7 @@ export async function releaseUnusedSourceReferences(notes:readonly unknown[]):Pr
 export const sourceOf=documentSourceOf;
 /** What the source review shows. The SHA-256 stays the match identity but is not shown. */
 const typeLabel:Record<string,string>={'text/plain':'Text file','application/pdf':'PDF','image/png':'PNG image','image/jpeg':'JPEG image','image/webp':'WebP image'};
-export const sizeLabel=(bytes:number)=>bytes<1024*1024?`${Math.max(1,Math.round(bytes/1024))} KB`:`${(bytes/(1024*1024)).toFixed(1).replace(/\.0$/,'')} MB`;
+const sizeLabel=(bytes:number)=>Math.round(bytes/1024)<1024?`${Math.max(1,Math.round(bytes/1024))} KB`:`${(bytes/(1024*1024)).toFixed(1).replace(/\.0$/,'')} MB`;
 /** Alpha's cross-app source review. Notes owns persistence; existing file ports
  * own picker grants and exact-byte validation. Never persist temporary grants. */
 export function installNoteSourceAdapter(views:Bag){

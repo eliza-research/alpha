@@ -38,7 +38,7 @@ export function inboxUnsaved(owner:string,publish:()=>void,restore:(value:InboxU
   peek():InboxUnsaved|null{try{return text?readInboxUnsaved(text,owner):null;}catch{return null;}},
   get conflict(){return controller.state.conflict;},
   get error(){return controller.state.error;},
-  get status(){return invalid?'Current email edits are too large to retain. Shorten them before closing.':controller.state.message;},
+  get status(){return invalid?retainedMessages.tooLarge:controller.state.message;},
   edit(value:InboxUnsaved){try{text=encodeInboxUnsaved(value);invalid=false;controller.edit(text);}catch{invalid=true;}publish();},
   resume(){if(controller.state.conflict){applying=true;try{controller.restoreSaved();}finally{applying=false;}}else if(text)restore(readInboxUnsaved(text,owner));},
   replace(){controller.keepCurrent();},
