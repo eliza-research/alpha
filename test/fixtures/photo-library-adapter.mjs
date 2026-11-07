@@ -1,7 +1,9 @@
-// Run with `node --import=tsx` from test/photo-library.test.mjs. Drives the Photos device
-// library adapter against an in-memory port: no Android, no MediaStore, no device.
+// Run with `node --import=tsx` from test/photo-library.test.mjs. Drives the Photos agent bridge
+// against an in-memory port and a fake main Library host: no Android, no MediaStore, no device.
+// Catalog paging, change reconciliation and scope rules are tested directly on LibraryCatalog in
+// test/photo-library.test.mjs; the grid's own window/patch rules in test/photos-view.test.mjs.
 import assert from 'node:assert/strict';
-const {createDeviceLibrary,deviceLibraryAgent,LibraryAgentRefusal}=await import('../../apps/app/src/prototype/photo-library-adapter.ts');
+const {createDeviceLibrary,deviceLibraryAgent,LibraryAgentRefusal,setMainLibraryHost}=await import('../../apps/app/src/prototype/photo-library-adapter.ts');
 const lib=await import('../../apps/app/src/runtime/photo-library.ts');
 
 const tick=async(n=6)=>{for(let i=0;i<n;i++)await new Promise(resolve=>setTimeout(resolve,0));};
@@ -10,63 +12,31 @@ function fakePort(){
  const state={rows:[3,2,1],scope:'full',pages:[],changes:{reset:false,items:[],generation:0},watch:[],listeners:{}};
  const scope=()=>({scope:state.scope,images:state.scope==='full',videos:state.scope==='full',canSelectMore:state.scope==='selected',canEditOthers:true,locked:false,version:'v1'});
  const port={
-  async scope(){return scope();},async requestAccess(){return scope();},
+  async scope(){return scope();},
   async page(options){state.pages.push(options);const rows=state.rows.filter(row=>!options.before||row<Number(options.before)).slice(0,options.limit);return {...scope(),items:rows.map(item),next:'',generation:40};},
   async inspect({id}){const row=state.rows.find(r=>item(r).id===id);if(!row)throw Object.assign(Error('missing'),{code:'LIBRARY_MISSING'});return item(row);},
   async validate({items}){return {...scope(),items:items.map(entry=>({id:entry.id,status:state.rows.some(r=>item(r).id===entry.id)?'current':'missing'}))};},
-  async changes(){return {...scope(),...state.changes};},
-  async requestChange(options){state.changes.requested=(state.changes.requested||0)+1;if(!state.change)throw Error('not in this fixture');return state.change(options);},async share(){throw Error('not in this fixture');},
-  async watch({active}){state.watch.push(active);return {active};},
-  async addListener(event,listener){state.listeners[event]=listener;return {remove:async()=>{}};},
+  async requestChange(options){state.changes.requested=(state.changes.requested||0)+1;if(!state.change)throw Error('not in this fixture');return state.change(options);},
+  async share(options){state.shared=(state.shared||[]).concat([options.items]);return {status:'opened',count:options.items.length};},
  };
  return {state,port};
 }
-const fakeApi=()=>{const store={photos:{album:'device'}};return {store,api:{get:name=>store[name],set(){},isActive:()=>true}};};
-
-// 1. New rows reported by a change read reload a fresh first page instead of waiting for a restart.
-{
- const {state,port}=fakePort(),{api}=fakeApi(),library=createDeviceLibrary(port,()=>true);
- library.tile(api);library.album({},api);await tick();
- assert.deepEqual(library.album({},api).items.map(row=>row.nativeMediaId),['lib:i:3:30','lib:i:2:20','lib:i:1:10']);
- assert.deepEqual(state.watch,[true],'observer starts only with the album open');
- state.rows=[4,3,2,1];state.changes={reset:false,items:[item(4)],generation:41};
- const before=state.pages.length;
- library.tile(api).open();await tick();
- assert.equal(state.pages.length,before+1,'a fresh page is read');
- assert.equal(state.pages.at(-1).before,'','from the first page');
- const view=library.album({},api);
- assert.equal(view.items[0].nativeMediaId,'lib:i:4:40','the new item appears without a restart');
- assert.match(view.status,/1 new item/);
- assert.equal(view.more,true);assert.equal(view.moreLabel,'Reload','an explicit reload is always available');
- // 2. Leaving Photos stops the observer and the next visit starts from a fresh first page.
- library.leave();assert.equal(state.watch.at(-1),false);
- state.rows=[5,4,3,2,1];state.changes={reset:false,items:[],generation:41};
- const visits=state.pages.length;library.tile(api).open();await tick();
- assert.equal(state.pages.length,visits+1);assert.equal(library.album({},api).items[0].nativeMediaId,'lib:i:5:50');
- library.dispose();
+/** The main Photos Library (camera-adapter's host): records what the agent asked of it. */
+function fakeHost(){
+ const host={visible:true,changes:0,trashed:[],calls:[]};
+ host.release=setMainLibraryHost({visible:()=>host.visible,reviewOpen:()=>!!host.pending,reviewChanged:()=>{host.changes++;},trashed:ids=>host.trashed.push(...ids),
+  async run(operation){host.calls.push(operation);
+   if(operation.type==='photos_filter')return {kind:'photos_filter',shown:2,more:false};
+   if(operation.type==='photos_open')return {kind:'photos_open',opened:operation.id==='lib:i:3:30'};
+   if(operation.type==='photo_library_select')return {kind:'photo_library_select',selected:operation.ids.length,missing:0};
+   return {kind:operation.type,status:'review_opened',count:operation.ids.length,missing:0};}});
+ return host;
 }
 
-// 3. A grant widened in Settings while Photos is not showing the album reloads on the next visit.
+// 4. Agent operations: identity-only rows with opaque revisions; reviews open over the main Library.
 {
- const {state,port}=fakePort(),{store,api}=fakeApi();state.scope='selected';state.rows=[2];
- const library=createDeviceLibrary(port,()=>true);
- library.tile(api);library.album({},api);await tick();
- assert.deepEqual(library.album({},api).items.map(row=>row.nativeMediaId),['lib:i:2:20']);
- store.photos={album:null};
- state.scope='full';state.rows=[3,2,1];
- state.listeners.scopeChanged({...await port.scope(),previous:'selected'});await tick();
- store.photos={album:'device'};
- const before=state.pages.length;library.tile(api).open();await tick();
- assert.equal(state.pages.length,before+1,'widened scope reads a fresh page');
- assert.deepEqual(library.album({},api).items.map(row=>row.nativeMediaId),['lib:i:3:30','lib:i:2:20','lib:i:1:10']);
- library.dispose();
-}
-
-// 4. Agent operations: identity-only rows with opaque revisions; review opens the in-app review.
-{
- const {state,port}=fakePort(),{store,api}=fakeApi(),library=createDeviceLibrary(port,()=>true);
+ const {state,port}=fakePort(),host=fakeHost(),library=createDeviceLibrary(port,()=>true);
  assert.equal(deviceLibraryAgent(),library.agent);
- library.tile(api);library.album({},api);await tick();
  const signal=new AbortController().signal;
  const search=await library.agent.run(lib.validateLibraryOperation({type:'photo_library_search',limit:2}),signal);
  const op={type:'photo_library_search',limit:2};
@@ -83,83 +53,87 @@ const fakeApi=()=>{const store={photos:{album:'device'}};return {store,api:{get:
  assert.throws(()=>lib.validateLibraryOperation({type:'photo_library_review',action:'trash',items:[{id:'lib:i:3:30',revision:item(3).revision}]}),/Invalid reviewed item/);
  const review=lib.validateLibraryOperation({type:'photo_library_review',action:'trash',items:[{id:'lib:i:3:30',revision:search.items[0].revision}]});
  assert.deepEqual(await library.agent.run(review,signal),{kind:'photo_library_review',status:'review_opened',action:'trash',count:1});
- const view=library.album({},api);
- assert.equal(view.dev.reviewing,true);assert.equal(view.dev.reviewTitle,'Move 1 item to trash?');
- view.dev.cancel();
+ assert.equal(library.reviewCard().title,'Move 1 item to trash?');assert.ok(host.changes>0,'the host re-renders');
+ await assert.rejects(library.agent.run({type:'photo_library_select',ids:['lib:i:3:30']},signal),/Finish the open review/);
+ await assert.rejects(library.agent.runView({type:'photos_share',ids:['lib:i:3:30']},signal),/Finish the open review/);
+ library.reviewCard().cancel();assert.equal(library.reviewCard(),undefined);
  await assert.rejects(library.agent.run({type:'photo_library_review',action:'trash',items:[{id:'lib:i:3:30',revision:'rev-zz-999'}]},signal),/changed since/);
  const selected=await library.agent.run({type:'photo_library_select',ids:['lib:i:3:30','lib:i:9:90']},signal);
- assert.deepEqual(selected,{kind:'photo_library_select',selected:1,missing:1});
- // Select and review need the owner-visible album.
- store.photos={album:null};
- await assert.rejects(library.agent.run({type:'photo_library_select',ids:['lib:i:3:30']},signal),/Open Photos > Device library/);
- // Denied scope refuses everything.
+ assert.deepEqual(selected,{kind:'photo_library_select',selected:2,missing:0});
+ // Select and review need Photos on screen.
+ host.visible=false;
+ await assert.rejects(library.agent.run({type:'photo_library_select',ids:['lib:i:3:30']},signal),/Open Photos, then ask again/);
+ host.visible=true;
+ // Denied scope refuses every library read and change.
  state.scope='denied';
  await assert.rejects(library.agent.run({type:'photo_library_search'},signal),/not allowed/);
- library.dispose();
+ host.release();library.dispose();
  assert.equal(deviceLibraryAgent(),undefined);
 }
 // 5. The adapter reads the real native change contract (PermittedMediaReview): resolved
 //    {status:'complete'|'partial',outcomes:[...]}, rejected LIBRARY_DECLINED / LIBRARY_STALE.
 {
  const rejection=(message,code)=>()=>{throw Object.assign(Error(message),{code});};
- for(const [name,change,expected,revalidates] of [
-  ['complete',()=>({status:'complete',outcomes:[{id:'lib:i:3:30',status:'trashed'}]}),/^1 item changed and verified\. /,true],
-  ['partial',()=>({status:'partial',outcomes:[{id:'lib:i:3:30',status:'stale'}]}),/^0 of 1 changes verified; 1 changed elsewhere and was skipped\./,true],
-  ['unverified',()=>({status:'partial',outcomes:[{id:'lib:i:3:30',status:'unverified'}]}),/^0 of 1 changes verified\./,true],
-  ['declined',rejection('Photo change cancelled. No change was dispatched.','LIBRARY_DECLINED'),/^Android review was cancelled\. Nothing changed\. /,false],
-  ['stale',rejection('Selected media changed or is unavailable. Refresh Photos.','LIBRARY_STALE'),/^An item changed before Android review\. Nothing changed; review again\. /,true],
-  ['other',rejection('Finish the current photo review first.','LIBRARY_BUSY'),/^The action could not be completed\./,false],
+ for(const [name,change,expected,undo] of [
+  ['complete',()=>({status:'complete',outcomes:[{id:'lib:i:3:30',status:'trashed'}]}),/^$/,['lib:i:3:30']],
+  ['partial',()=>({status:'partial',outcomes:[{id:'lib:i:3:30',status:'stale'}]}),/^0 of 1 changes verified; 1 changed elsewhere and was skipped\.$/,[]],
+  ['unverified',()=>({status:'partial',outcomes:[{id:'lib:i:3:30',status:'unverified'}]}),/^0 of 1 changes verified\.$/,[]],
+  ['declined',rejection('Photo change cancelled. No change was dispatched.','LIBRARY_DECLINED'),/^Nothing changed\.$/,[]],
+  ['stale',rejection('Selected media changed or is unavailable. Refresh Photos.','LIBRARY_STALE'),/^An item changed\. Nothing changed; review again\.$/,[]],
+  ['other',rejection('Finish the current photo review first.','LIBRARY_BUSY'),/^The action could not be completed\.$/,[]],
  ]){
-  const {state,port}=fakePort(),{api}=fakeApi(),library=createDeviceLibrary(port,()=>true);
-  library.tile(api);library.album({},api);await tick();
+  const {state,port}=fakePort(),host=fakeHost(),library=createDeviceLibrary(port,()=>true);
   const signal=new AbortController().signal,search=await library.agent.run({type:'photo_library_search',limit:1},signal);
   await library.agent.run(lib.validateLibraryOperation({type:'photo_library_review',action:'trash',items:[{id:'lib:i:3:30',revision:search.items[0].revision}]}),signal);
-  state.change=change;let validations=0;const validate=port.validate;port.validate=async options=>{validations++;return validate(options);};
-  library.album({},api).dev.confirm();await tick(10);
-  assert.equal(state.changes.requested,1,name);assert.match(library.album({},api).status,expected,name);
-  assert.equal(validations>0,revalidates,name+' revalidation');
-  library.dispose();
+  state.change=change;
+  library.reviewCard().confirm();await tick(10);
+  assert.equal(state.changes.requested,1,name);assert.match(library.takeStatus(),expected,name);
+  assert.deepEqual(host.trashed,undo,name+' undo offered only for verified moves');
+  host.release();library.dispose();
  }
 }
-// Delayed reads from an earlier visit/grant must never mutate the new catalog.
-for (const operation of ['changes', 'validate']) {
- const {state,port}=fakePort(),{api}=fakeApi(),library=createDeviceLibrary(port,()=>true);
- library.tile(api);library.album({},api);await tick();
- let complete;
- const original=port[operation];
- port[operation]=()=>new Promise(resolve=>{complete=resolve;});
- state.listeners.libraryChanged();await tick();
- assert.equal(typeof complete,'function',operation+' read started');
- library.leave();port[operation]=original;
- state.rows=[4,3,2,1];library.tile(api).open();await tick();
- complete(operation==='changes'?{reset:false,items:[{...item(3),trashed:true}],generation:41}:{items:[{id:item(3).id,status:'missing'}]});
- await tick();
- assert.deepEqual(library.album({},api).items.map(row=>row.nativeMediaId),state.rows.map(row=>item(row).id),operation+' cannot remove a fresh item after reopen');
- library.dispose();
-}
+// 6. View requests (photos.view.v1) act on the main Library; album and share reviews open there.
 {
- const {state,port}=fakePort(),{api}=fakeApi(),library=createDeviceLibrary(port,()=>true);
- let complete;
- const page=port.page;
- port.page=async options=>{const snapshot=await page(options);return new Promise(resolve=>{complete=()=>resolve(snapshot);});};
- library.tile(api);library.album({},api);await tick();
- assert.equal(typeof complete,'function','page started before revoke');
- state.scope='denied';state.listeners.scopeChanged(await port.scope());await tick();
- complete();await tick();
- const view=library.album({},api);
- assert.equal(view.count,'Not allowed');assert.equal(view.items.length,0,'pre-revocation page cannot restore removed media');
- library.dispose();
-}
-{
- const {state,port}=fakePort(),{api}=fakeApi(),library=createDeviceLibrary(port,()=>true);
- let reject;
- const page=port.page;
- port.page=()=>new Promise((resolve,fail)=>{reject=fail;});
- library.tile(api);library.album({},api);await tick();
- assert.equal(typeof reject,'function','old page pending');
- library.leave();port.page=page;state.rows=[4,3,2,1];library.tile(api).open();await tick();
- reject(Object.assign(Error('old grant denied'),{code:'LIBRARY_DENIED'}));await tick();
- assert.deepEqual(library.album({},api).items.map(row=>row.nativeMediaId),state.rows.map(row=>item(row).id),'an old denial must not clear a fresh catalog');
+ const {state,port}=fakePort(),host=fakeHost(),library=createDeviceLibrary(port,()=>true);
+ const signal=new AbortController().signal;
+ // The filter is read-only and needs no device library at all, even without scope.
+ state.scope='denied';
+ assert.deepEqual(await library.agent.runView({type:'photos_filter',kind:'video'},signal),{kind:'photos_filter',shown:2,more:false});
+ assert.equal(state.changes.requested,undefined,'a filter requests no change');
+ assert.deepEqual(await library.agent.runView({type:'photos_open',id:'lib:i:3:30'},signal),{kind:'photos_open',opened:true});
+ assert.deepEqual(await library.agent.runView({type:'photos_open',id:'lib:i:9:90'},signal),{kind:'photos_open',opened:false});
+ assert.deepEqual(await library.agent.runView({type:'photos_album_create',name:'Trip',ids:['lib:i:3:30']},signal),{kind:'photos_album_create',status:'review_opened',count:1,missing:0});
+ assert.deepEqual(await library.agent.runView({type:'photos_share',ids:['lib:i:3:30','lib:i:2:20']},signal),{kind:'photos_share',status:'review_opened',count:2,missing:0});
+ assert.deepEqual(host.calls.map(call=>call.type),['photos_filter','photos_open','photos_open','photos_album_create','photos_share']);
+ assert.equal(state.shared,undefined,'nothing is shared before the owner confirms in Photos');
+ state.scope='full';
+ // While the host's album or share review waits, no second review opens.
+ host.pending=true;
+ await assert.rejects(library.agent.run({type:'photo_library_select',ids:['lib:i:3:30']},signal),/Finish the open review/);
+ host.pending=false;
+ // A review binds the revisions the assistant read; the provider confirms they are current before it opens.
+ const search=await library.agent.run({type:'photo_library_search',limit:3},signal);
+ // Stale before approval (NoActionOnStaleRev): an item changed after review applies nothing.
+ const again=await library.agent.run(lib.validateLibraryOperation({type:'photo_library_review',action:'favorite',items:[{id:'lib:i:2:20',revision:search.items[1].revision}]}),signal);
+ assert.equal(again.status,'review_opened');
+ state.rows=state.rows.filter(row=>row!==2);
+ library.reviewCard().confirm();await tick(10);
+ assert.equal(state.changes.requested,undefined,'no Android request for a stale review');assert.equal(library.reviewCard(),undefined);
+ assert.match(library.takeStatus(),/changed/);
+ // A review the provider no longer validates never opens.
+ await assert.rejects(library.agent.run(lib.validateLibraryOperation({type:'photo_library_review',action:'trash',items:[{id:'lib:i:2:20',revision:search.items[1].revision}]}),signal),LibraryAgentRefusal);
+ // A reviewed share opens Android's share sheet with exactly the reviewed items.
+ await library.agent.run(lib.validateLibraryOperation({type:'photo_library_review',action:'share',items:[{id:'lib:i:3:30',revision:search.items[0].revision}]}),signal);
+ library.reviewCard().confirm();await tick(10);
+ assert.equal(state.shared.length,1);assert.equal(state.shared[0][0].id,'lib:i:3:30');
+ // Photos not showing: everything is refused, including the read-only filter.
+ host.visible=false;
+ await assert.rejects(library.agent.runView({type:'photos_filter'},signal),/Open Photos/);
+ await assert.rejects(library.agent.runView({type:'photos_open',id:'lib:i:3:30'},signal),/Open Photos/);
+ await assert.rejects(library.agent.run({type:'photo_library_select',ids:['lib:i:1:10']},signal),/Open Photos/);
+ // No Library mounted at all: refused, never acted on elsewhere.
+ host.release();
+ await assert.rejects(library.agent.runView({type:'photos_filter'},signal),/Open Photos/);
  library.dispose();
 }
 console.log('PASS photo library adapter');

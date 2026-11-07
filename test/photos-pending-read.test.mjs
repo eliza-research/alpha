@@ -10,7 +10,7 @@ function fixture(){
  const state={open:null,album:null,nativePhotoSelection:null},requests=[],toasts=[];
  const api={get:()=>state,isActive:()=>true,set:patch=>Object.assign(state,patch),toast:message=>toasts.push(message)};
  const sandbox={disposed:false,document:{hidden:false},photoReadEpoch:0,reading:'',preview:undefined,photosApi:api,Date,
-  library:{read:()=>new Promise((resolve,reject)=>requests.push({resolve,reject}))},nativeId:id=>id,normalize:row=>row,captureSelection:row=>({id:row.id}),closeVideo(){},cancelEdit(){},refresh(){},
+  library:{read:()=>new Promise((resolve,reject)=>requests.push({resolve,reject}))},nativeId:id=>id,normalize:row=>row,captureSelection:row=>({id:row.id}),closeVideo(){},cancelEdit(){},refresh(){},loadTrash(){},loadCounts(){},loadCustomAlbums(){},loadAlbum(){},
   libraryEpoch:0,captures:[],albumRows:[],trash:[],albumNext:'',trashNext:'',albumKey:'',counts:undefined,countsEpoch:0,countsBusy:false,albumsEpoch:0,albumsBusy:false,albumsLoaded:false,customAlbums:[],albumEpoch:0,trashEpoch:0,selection:undefined,next:'',loaded:false};
  vm.createContext(sandbox);
  const code=[declaration('const retirePhotoRead='),declaration('async function openSaved('),declaration('function invalidateLibrary(')].join('\n')+'\nglobalThis.openSaved=openSaved;globalThis.invalidateLibrary=invalidateLibrary;';
@@ -19,12 +19,15 @@ function fixture(){
 }
 for(const late of ['resolve','reject'])test(`catalog invalidation permits reopening; late ${late} cannot affect newer same-photo read`,async()=>{
  const f=fixture();const first=f.sandbox.openSaved('qa-photo',f.api);assert.equal(f.requests.length,1);assert.equal(f.state.open,'qa-photo');
- f.sandbox.invalidateLibrary();assert.equal(f.state.open,null);
+ f.sandbox.invalidateLibrary(true);assert.equal(f.state.open,null);
  const second=f.sandbox.openSaved('qa-photo',f.api);assert.equal(f.requests.length,2,'a normal retry dispatches a fresh read');
  if(late==='resolve')f.requests[0].resolve({id:'qa-photo',image:'old pixels'});else f.requests[0].reject(Error('old read failed'));
  await first;assert.equal(f.sandbox.preview,undefined,'retired pixels never republish');assert.equal(f.state.open,'qa-photo');assert.equal(f.toasts.length,0);
  await f.sandbox.openSaved('qa-photo',f.api);assert.equal(f.requests.length,2,'old finally cannot release newer in-flight guard');
  f.requests[1].resolve({id:'qa-photo',image:'current pixels'});await second;assert.equal(f.sandbox.preview.image,'current pixels');assert.equal(f.state.nativePhotoSelection.id,'qa-photo');
+});
+test('a store change patches the catalog without closing the viewer',()=>{
+ const f=fixture();f.state.open='qa-photo';f.sandbox.invalidateLibrary();assert.equal(f.state.open,'qa-photo');
 });
 test('hidden or departed Photos cannot publish a pending read',async()=>{
  for(const hidden of [true,false]){const f=fixture();const pending=f.sandbox.openSaved('qa-photo',f.api);if(hidden)f.sandbox.document.hidden=true;else f.api.isActive=()=>false;f.requests[0].resolve({id:'qa-photo',image:'withheld'});await pending;assert.equal(f.sandbox.preview,undefined);assert.equal(f.state.nativePhotoSelection,null);}

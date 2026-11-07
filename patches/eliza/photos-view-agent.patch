@@ -1,0 +1,1478 @@
+diff --git a/packages/agent/src/api/device-action-routes.ts b/packages/agent/src/api/device-action-routes.ts
+index 4b66eca..64d0b6b 100644
+--- a/packages/agent/src/api/device-action-routes.ts
++++ b/packages/agent/src/api/device-action-routes.ts
+@@ -95,6 +95,8 @@ export function deviceRequestCredential(
+     "calendar.agenda-read.v1",
+     "notes.local-record.v1",
+     "notes.query.v1",
++    "photos.library.v1",
++    "photos.view.v1",
+     CALENDAR_NAMED_READ_CAPABILITY,
+     CALENDAR_AVAILABILITY_CAPABILITY,
+     NAMED_TARGET_CAPABILITY,
+@@ -182,6 +184,8 @@ export async function handleDeviceActionRoutes(
+             "calendar.agenda-read.v1",
+             "notes.local-record.v1",
+             "notes.query.v1",
++            "photos.library.v1",
++            "photos.view.v1",
+             CALENDAR_AVAILABILITY_CAPABILITY,
+             NAMED_TARGET_CAPABILITY,
+             NOTES_SEARCH_CAPABILITY,
+diff --git a/plugins/plugin-assistant/src/services/device-actions/action.ts b/plugins/plugin-assistant/src/services/device-actions/action.ts
+index 522bfb9..beca6a7 100644
+--- a/plugins/plugin-assistant/src/services/device-actions/action.ts
++++ b/plugins/plugin-assistant/src/services/device-actions/action.ts
+@@ -48,6 +48,14 @@ import {
+ import { isMapsOperation, validateMapsResult } from "./maps-contract.ts";
+ import { isNotesOperation, validateNotesResult } from "./notes-contract.ts";
+ import { validateNotesQueryResult } from "./notes-query-result.ts";
++import { LIBRARY_LIMITS } from "./photo-library-contract.ts";
++import {
++  isPhotosViewOperation,
++  isPhotosViewType,
++  PHOTOS_FILTER_ALBUMS,
++  PHOTOS_SHARE_MAX,
++  validatePhotosViewResult,
++} from "./photos-view-contract.ts";
+ import {
+   isPhoneDial,
+   phoneDialResultText,
+@@ -253,6 +261,61 @@ const notesSchemas: ActionParameterSchema[] = [
+       : {}),
+   },
+ }));
++const photosIdsSchema = (max: number) => ({
++  type: "array",
++  items: { type: "string" },
++  description: `1 to ${max} distinct library ids the phone returned; never guessed`,
++});
++const photosViewSchemas: ActionParameterSchema[] = [
++  {
++    type: "object",
++    additionalProperties: false,
++    required: ["type"],
++    properties: {
++      type: { type: "string", enum: ["photos_filter"] },
++      from: { type: "integer", description: "Start, epoch milliseconds" },
++      to: { type: "integer", description: "End, epoch milliseconds" },
++      kind: { type: "string", enum: ["image", "video"] },
++      favorite: { type: "boolean" },
++      album: {
++        type: "string",
++        description: `One of ${PHOTOS_FILTER_ALBUMS.join(", ")}, or custom:<album id>`,
++      },
++      text: {
++        type: "string",
++        description: `At most ${LIBRARY_LIMITS.query} characters`,
++      },
++    },
++  },
++  {
++    type: "object",
++    additionalProperties: false,
++    required: ["type", "id"],
++    properties: {
++      type: { type: "string", enum: ["photos_open"] },
++      id: { type: "string", description: "One library id" },
++    },
++  },
++  {
++    type: "object",
++    additionalProperties: false,
++    required: ["type", "name", "ids"],
++    properties: {
++      type: { type: "string", enum: ["photos_album_create"] },
++      name: { type: "string", description: "Album name, 1 to 80 characters" },
++      ids: photosIdsSchema(LIBRARY_LIMITS.kept),
++    },
++  },
++  {
++    type: "object",
++    additionalProperties: false,
++    required: ["type", "ids"],
++    properties: {
++      type: { type: "string", enum: ["photos_share"] },
++      ids: photosIdsSchema(PHOTOS_SHARE_MAX),
++    },
++  },
++];
+ const calendarString = { type: "string" };
+ const calendarSource = {
+   type: "object",
+@@ -590,6 +653,7 @@ export const proposeDeviceAction: Action = {
+     "Device Notes/Calendar proposals require the current turn to select native device record/source authority. Ordinary app Notes/Calendar requests, including creation from Home, use their canonical service operations when runtime record authority is selected; a phone capability or missing discovered child does not redirect the record store. " +
+     "Reviewed SIM SMS requires sms.send.v1, exact canonical recipients, body and the active subscriptionId shown by the phone. Never invent a SIM ID or substitute an external compose intent. The owner reviews the exact content on the unlocked phone. submitted proves submission only; sent proves all sent callbacks; delivered requires all matching delivery reports. Unknown or partial failure must never be automatically retried. " +
+     "A reviewed dial uses phone_dial with target {kind: number, number: digits with optional leading +} (requires phone.dial.v1) or {kind: contact, query: the contact name} (also requires contacts.lookup.v1; the phone looks the contact up locally and the owner picks the number, which is never returned). After the owner's approval the phone opens its dial screen with the number; the owner places the call there. handed-off proves only that the dial screen opened, never a placed, connected or completed call. Never retry automatically. " +
++    "With photos.library.v1 and photos.view.v1: photos_filter {from, to: epoch ms; kind image|video; favorite; album favorites|videos|camera|screenshots|custom:<id>; text} narrows the phone Photos grid behind a clearable chip and returns only how many items it shows; photos_open {id} opens one item in the Photos viewer; both run directly only when the owner's current message asked for them. photos_album_create {name, ids} and photos_share {ids} are reviewed by the owner in Photos; a share then opens Android's share sheet, and review_opened proves neither a created album nor a share. Use only library ids the phone returned; never guess them. " +
+     "Native Notes discovery from Home uses notes_query with query {kind: title, text: requested title} or {kind: latest, by: created|updated}, only with notes.query.v1. Candidates remain on the phone; the owner confirms exactly one note to share. Unknown chronology or ties require local owner choice; a returned owner-choice-uncertain basis does not prove latest. Never substitute backend Notes. " +
+     "For a one-shot relative reminder use reminder_create_after with fields title, body and schedule {after: elapsed duration with units such as 2m, alertMinutes: 0 for one alert or null for no alert}. The server resolves exact instants from the authenticated turn start; do not calculate epoch timestamps. Requires reminders.create.v1. Use returned reminderTiming dueAtDisplay and alertAtDisplay verbatim when available; they already use the phone timezone. Otherwise keep the returned UTC instants explicit, without inventing a local timezone. Create reviewed no-alert, lead or recurring reminders only with reminder_create and reminders.create.v1. The legacy create_reminder supports only title and dueAt and always requests an alert; never discard requested timing. reminder_create.fields requires title, body and schedule; schedule requires at, dueAt, alertMinutes (null means no alert), recurrence (null or exact repeat). at=dueAt-(alertMinutes??0)*60000; recurrence leadMinutes matches. No-alert creates pending, not delivered. Propose an approved selected Maps snapshot, note, reminder, view change, or HTTPS browser navigation on the phone enrolled for this authenticated turn. Browser navigation is only for a web address the user typed in this message and asks to open now; never for a deferred, hypothetical, question-about, past or reported mention. Notes read-selected/update/delete requires notes.local-record.v1 and exact selected sourceId/sourceRevision/noteId/revision. Existing create_note creates a text note. Selected reminder read/update/complete/snooze/cancel requires reminders.local-record.v1 and exact sourceId/sourceRevision/reminderId/occurrenceId/revision. Preserve target.timingVersion=2 when supplied by the phone. TimingVersion 2 targets and schedules with dueAt plus alertMinutes require reminders.local-record.v2. Supply both timing fields together; alertMinutes null means no notification, at equals dueAt, and any recurrence leadMinutes is zero. Numeric alerts require at=dueAt-alertMinutes*60000 and matching recurrence leadMinutes. No-alert tasks cannot be snoozed; only an explicitly reviewed schedule edit enables an alert. Cancel stops all future repeats; snooze is ten minutes. For creation from Home use calendar_create_local and calendar.create.v1; the host derives original readable event details through Calendar and code converts the timezone; the phone resolves its default On this phone calendar and requires native confirmation. For next-event discovery use calendar_read_next with no guessed timestamps and calendar.next-read.v1; the native clock fixes a window from now through the next 30 owner-local days; the foreground native review discovers readable Calendar sources and shares only the approved next event, or an explicit no-events-in-window result. Never infer a source from arbitrary UI selection; no background access is granted. Calendar create/read-selected/update/delete additionally requires calendar.local-event.v1 and the exact current native source/target revisions; never invent IDs or revisions. Maps read-selected requires maps.selected-read.v1 and exact current clientDevice.context kind/id/revision; never infer coordinates from the opaque identifier. The phone owner must explicitly review and approve, except that a typed address the user asks to open now may open without a review." +
+     " " +
+@@ -668,6 +732,7 @@ export const proposeDeviceAction: Action = {
+           ...calendarSchemas,
+           calendarAvailabilitySchema,
+           ...notesSchemas,
++          ...photosViewSchemas,
+           notesQuerySchema,
+           notesSearchSchema,
+           ...namedTargetSchemas,
+@@ -1054,6 +1119,7 @@ export const proposeDeviceAction: Action = {
+         isCalendarOperation(payload.operation) ||
+         isNotesOperation(payload.operation) ||
+         isNativeNotesQuery(payload.operation) ||
++        isPhotosViewOperation(payload.operation) ||
+         isForegroundReviewOperation(payload.operation)) &&
+       receipt &&
+       typeof receipt === "object" &&
+@@ -1085,7 +1151,15 @@ export const proposeDeviceAction: Action = {
+                   ? validateReminderResult(payload.operation, receipt.result)
+                   : isNotesOperation(payload.operation)
+                     ? validateNotesResult(payload.operation, receipt.result)
+-                    : validateCalendarResult(payload.operation, receipt.result);
++                    : isPhotosViewOperation(payload.operation)
++                      ? validatePhotosViewResult(
++                          payload.operation,
++                          receipt.result,
++                        )
++                      : validateCalendarResult(
++                          payload.operation,
++                          receipt.result,
++                        );
+       return {
+         success: true,
+         transcriptVisibility: "internal",
+@@ -1278,6 +1352,7 @@ export function deviceActionForCapabilities(
+                 type !== "phone_dial" &&
+                 type !== "clock_alarm" &&
+                 type !== "notes_query" &&
++                !isPhotosViewType(type) &&
+                 !isForegroundReviewType(type)
+               : deviceOperationSupportedByCapabilities(
+                   type === "reminder_create_after" ? "reminder_create" : type,
+diff --git a/plugins/plugin-assistant/src/services/device-actions/client-coordinator.test.ts b/plugins/plugin-assistant/src/services/device-actions/client-coordinator.test.ts
+index 7f4e14f..5ce0e9b 100644
+--- a/plugins/plugin-assistant/src/services/device-actions/client-coordinator.test.ts
++++ b/plugins/plugin-assistant/src/services/device-actions/client-coordinator.test.ts
+@@ -1329,3 +1329,152 @@ describe("shared phone and reminder-read parity", () => {
+     expect(reads).toBe(1);
+   });
+ });
++
++describe("photos view operations", () => {
++  const photosContext: DeviceContextEnvelope = {
++    view: "photos",
++    revision: 3,
++    sensitive: false,
++  };
++  const capabilities = ["photos.library.v1", "photos.view.v1"];
++  function photosFixture(
++    operation: Record<string, unknown>,
++    photoLibraryResult: unknown,
++    negotiated = capabilities,
++  ) {
++    const fixture = fixtureServer(operation);
++    const request = async (path: string, body: unknown, s: AbortSignal) => {
++      const response = await fixture.request(path, body, s);
++      for (const item of response.proposals ?? [response.proposal])
++        if (item) Object.assign(item.payload, { requestMessageId: "message" });
++      return response;
++    };
++    const { journal } = memoryJournal();
++    let effects = 0;
++    const actions = new DeviceActionCoordinator({
++      session,
++      credential: { ...credential, capabilities: negotiated },
++      scope,
++      request,
++      journal,
++      execute: async () => {
++        effects++;
++        return { status: "succeeded", summary: "Done", photoLibraryResult };
++      },
++      profile,
++    });
++    return { ...fixture, actions, effects: () => effects };
++  }
++
++  it("refuses Photos proposals unless both capabilities were negotiated", async () => {
++    for (const negotiated of [["photos.library.v1"], ["photos.view.v1"]]) {
++      const f = photosFixture(
++        { type: "photos_open", id: "lib:i:1:10" },
++        undefined,
++        negotiated,
++      );
++      const review = await f.actions.pendingReview(photosContext, signal());
++      expect(review[0].proposal).toBeNull();
++      expect(review[0].notice).toMatch(/Photos actions were not negotiated/);
++    }
++  });
++
++  it("reviews an album and a share and reports the review result, not a change", async () => {
++    for (const [operation, title] of [
++      [
++        { type: "photos_album_create", name: "Trip", ids: ["lib:i:1:10"] },
++        "Create album “Trip”",
++      ],
++      [{ type: "photos_share", ids: ["lib:i:1:10"] }, "Share 1 item"],
++    ] as const) {
++      const result = {
++        kind: operation.type,
++        status: "review_opened",
++        count: 1,
++        missing: 0,
++      };
++      const f = photosFixture(operation, result);
++      const [card] = await f.actions.pending(photosContext, signal());
++      expect(card).toMatchObject({ title });
++      // A reviewed Photos operation never runs as a direct request.
++      expect(
++        await f.actions.performRequested(
++          "message",
++          photosContext,
++          signal(),
++          async () => true,
++        ),
++      ).toEqual([]);
++      expect(f.effects()).toBe(0);
++      expect(
++        await f.actions.approve("proposal", photosContext, signal()),
++      ).toMatchObject({ status: "succeeded", committedChanges: [] });
++      expect(f.effects()).toBe(1);
++      expect(f.server.providerReceipt).toMatchObject({
++        outcome: "applied",
++        result,
++      });
++    }
++  });
++
++  it("runs a filter and an open directly only for the requesting message", async () => {
++    for (const [operation, result] of [
++      [
++        { type: "photos_filter", kind: "video" },
++        { kind: "photos_filter", shown: 3, more: false },
++      ],
++      [
++        { type: "photos_open", id: "lib:v:2:20" },
++        { kind: "photos_open", opened: true },
++      ],
++    ] as const) {
++      const f = photosFixture(operation, result);
++      await f.actions.pending(photosContext, signal());
++      expect(
++        await f.actions.performRequested(
++          "other-message",
++          photosContext,
++          signal(),
++          async () => true,
++        ),
++      ).toEqual([]);
++      expect(
++        await f.actions.performRequested(
++          "message",
++          photosContext,
++          signal(),
++          async () => true,
++        ),
++      ).toMatchObject([{ status: "succeeded", committedChanges: [] }]);
++      expect(f.effects()).toBe(1);
++      expect(f.server.providerReceipt).toMatchObject({ result });
++    }
++  });
++
++  it("never reports a malformed Photos result as applied", async () => {
++    const f = photosFixture(
++      { type: "photos_filter", favorite: true },
++      { kind: "photos_filter", shown: 2, more: false, items: ["x"] },
++    );
++    await f.actions.pending(photosContext, signal());
++    expect(
++      await f.actions.approve("proposal", photosContext, signal()),
++    ).toMatchObject({ status: "unknown" });
++    expect(f.server.receipts).toEqual([]);
++  });
++
++  it("is reviewed only in Photos on the unlocked phone", () => {
++    const op = { type: "photos_share", ids: ["lib:i:1:10"] } as const;
++    expect(proposalContextNotice(op, photosContext, profile)).toBeUndefined();
++    expect(
++      proposalContextNotice(
++        op,
++        { view: "home", revision: 1, sensitive: false },
++        profile,
++      ),
++    ).toBe("Open Photos to review this action.");
++    expect(
++      proposalContextNotice(op, { ...photosContext, sensitive: true }, profile),
++    ).toBe("Unlock the phone to review this action.");
++  });
++});
+diff --git a/plugins/plugin-assistant/src/services/device-actions/client-coordinator.ts b/plugins/plugin-assistant/src/services/device-actions/client-coordinator.ts
+index 6a6f778..c3d8ad5 100644
+--- a/plugins/plugin-assistant/src/services/device-actions/client-coordinator.ts
++++ b/plugins/plugin-assistant/src/services/device-actions/client-coordinator.ts
+@@ -126,6 +126,17 @@ import {
+   validateLibraryOperation,
+   validateLibraryResult,
+ } from "./photo-library-contract.ts";
++import {
++  describePhotosViewOperation,
++  isPhotosViewOperation,
++  PHOTOS_VIEW_DIRECT_TYPES,
++  type PhotosViewOperation,
++  type PhotosViewResult,
++  photosViewCapabilityAvailable,
++  photosViewContextAllowed,
++  validatePhotosViewOperation,
++  validatePhotosViewResult,
++} from "./photos-view-contract.ts";
+ import {
+   isReminderOperation,
+   type ReminderOperation,
+@@ -223,6 +234,7 @@ export type DeviceOperation =
+   | ClockHandoffOperation
+   | MapsOperation
+   | LibraryAgentOperation
++  | PhotosViewOperation
+   | ReminderOperation
+   | NotesOperation
+   | NativeNotesQueryOperation
+@@ -314,7 +326,7 @@ export interface DeviceExecutionResult {
+   reminderResult?: ReminderResult | ReminderCreateResult;
+   mapsResult?: MapsResult;
+   clockResult?: ClockHandoffResult;
+-  photoLibraryResult?: LibraryAgentResult;
++  photoLibraryResult?: LibraryAgentResult | PhotosViewResult;
+   cameraResult?: CameraCaptureResult;
+   smsResult?: SmsSendResult;
+   dialResult?: PhoneDialResult;
+@@ -494,6 +506,7 @@ export function validateDeviceOperation(
+   if (isClockHandoffOperation(p)) return validateClockHandoffDispatch(p);
+   if (isMapsOperation(p)) return validateMapsOperation(p);
+   if (isLibraryOperation(p)) return validateLibraryOperation(p);
++  if (isPhotosViewOperation(p)) return validatePhotosViewOperation(p);
+   if (isReminderOperation(p)) return validateReminderOperation(p);
+   if (isNotesOperation(p)) return validateNotesOperation(p);
+   if (isCalendarOperation(p)) return validateCalendarOperation(p);
+@@ -774,6 +787,12 @@ export function assertProposalContext<C extends DeviceContextEnvelope>(
+     assertClockHandoffTimeZone(operation, context.timeZone);
+   if (isMapsOperation(operation)) assertMapsContext(operation, context, ports);
+   if (isLibraryOperation(operation)) assertLibraryContext(context);
++  if (isPhotosViewOperation(operation) && !photosViewContextAllowed(context))
++    throw new ContextNotice(
++      context.sensitive
++        ? "Unlock the phone to review this action."
++        : "Open Photos to review this action.",
++    );
+   if (isReminderOperation(operation)) assertReminderContext(operation, context);
+   if (isNativeNotesQuery(operation)) assertNotesQueryContext(context);
+   if (isNotesOperation(operation)) assertNotesContext(operation, context);
+@@ -796,7 +815,7 @@ export function proposalContextNotice<C extends DeviceContextEnvelope>(
+     if (isMapsOperation(operation))
+       return "Open the selected place or route in Maps to review this action.";
+     if (isLibraryOperation(operation))
+-      return "Open Photos > Device library to review this action.";
++      return "Open Photos to review this action.";
+     if (isReminderOperation(operation))
+       return "Open the selected reminder in Calendar to review this action.";
+     if (isNativeNotesQuery(operation))
+@@ -1232,6 +1251,11 @@ export class DeviceActionCoordinator<
+       throw Error("Notes discovery was not negotiated with this agent");
+     if (isLibraryOperation(op) && !this.capability(PHOTO_LIBRARY_CAPABILITY))
+       throw Error("Device library access was not negotiated with this agent");
++    if (
++      isPhotosViewOperation(op) &&
++      !photosViewCapabilityAvailable(this.credential.capabilities)
++    )
++      throw Error("Photos actions were not negotiated with this agent");
+     if (
+       isForegroundReviewOperation(op) &&
+       (!foregroundReviewOperationAvailable(op, this.credential.capabilities) ||
+@@ -1407,6 +1431,11 @@ export class DeviceActionCoordinator<
+       };
+     if (isLibraryOperation(op))
+       return { ...base, ...describeLibraryOperation(op, this.profile.appName) };
++    if (isPhotosViewOperation(op))
++      return {
++        ...base,
++        ...describePhotosViewOperation(op, this.profile.appName),
++      };
+     const notesDestination =
+       (op.type === "notes_delete" || op.type === "notes_update") &&
+       !context.sensitive &&
+@@ -1576,6 +1605,7 @@ export class DeviceActionCoordinator<
+       "browser_navigate",
+       "camera_capture_photo",
+       "photo_library_select",
++      ...PHOTOS_VIEW_DIRECT_TYPES,
+     ];
+     const results: DeviceOperationReceipt[] = [];
+     for (const [proposalId, entry] of [...this.proposals]) {
+@@ -1806,13 +1836,12 @@ export class DeviceActionCoordinator<
+         throw Error("Unconfirmed camera capture cannot return a saved photo");
+     } else if (result.cameraResult !== undefined)
+       throw Error("Unexpected camera result");
+-    let photoLibraryResult: LibraryAgentResult | undefined;
+-    if (isLibraryOperation(op)) {
++    let photoLibraryResult: LibraryAgentResult | PhotosViewResult | undefined;
++    if (isLibraryOperation(op) || isPhotosViewOperation(op)) {
+       if (result.status === "succeeded")
+-        photoLibraryResult = validateLibraryResult(
+-          op,
+-          result.photoLibraryResult,
+-        );
++        photoLibraryResult = isPhotosViewOperation(op)
++          ? validatePhotosViewResult(op, result.photoLibraryResult)
++          : validateLibraryResult(op, result.photoLibraryResult);
+       else if (result.photoLibraryResult !== undefined)
+         throw Error("Failed library action cannot return content");
+     } else if (result.photoLibraryResult !== undefined)
+@@ -2778,9 +2807,12 @@ export class DeviceActionCoordinator<
+   private async savedLibraryResult(
+     p: DeviceProposal,
+     summary: DeviceJournalEntry,
+-  ): Promise<LibraryAgentResult | undefined> {
++  ): Promise<LibraryAgentResult | PhotosViewResult | undefined> {
+     const op = p.operation;
+-    if (!isLibraryOperation(op) || summary.status !== "succeeded")
++    if (
++      !(isLibraryOperation(op) || isPhotosViewOperation(op)) ||
++      summary.status !== "succeeded"
++    )
+       return undefined;
+     const entry = await this.savedEntry(
+       p,
+@@ -2788,7 +2820,9 @@ export class DeviceActionCoordinator<
+       "No exact saved library receipt; the library will not be read again",
+       { succeeded: true },
+     );
+-    return validateLibraryResult(op, entry.result?.photoLibraryResult);
++    return isPhotosViewOperation(op)
++      ? validatePhotosViewResult(op, entry.result?.photoLibraryResult)
++      : validateLibraryResult(op, entry.result?.photoLibraryResult);
+   }
+   private async savedCalendarResult(
+     p: DeviceProposal,
+@@ -2951,7 +2985,11 @@ export class DeviceActionCoordinator<
+         "Applied camera capture requires its exact saved photo receipt",
+       );
+     const photoLibraryResult = await saved(() => this.savedLibraryResult(p, e));
+-    if (applied && isLibraryOperation(op) && !photoLibraryResult)
++    if (
++      applied &&
++      (isLibraryOperation(op) || isPhotosViewOperation(op)) &&
++      !photoLibraryResult
++    )
+       throw Error("Applied library action requires its exact saved receipt");
+     const readResult = await saved(() => this.savedReadResult(p, e));
+     const calendarResult = await saved(() => this.savedCalendarResult(p, e));
+@@ -3033,7 +3071,7 @@ type TypedResults = {
+   clockResult?: ClockHandoffResult;
+   mapsResult?: MapsResult;
+   cameraResult?: CameraCaptureResult;
+-  photoLibraryResult?: LibraryAgentResult;
++  photoLibraryResult?: LibraryAgentResult | PhotosViewResult;
+   readResult?: WorkflowReadResult;
+   calendarResult?: CalendarResult;
+   notesResult?: NotesResult | NotesQueryResult;
+diff --git a/plugins/plugin-assistant/src/services/device-actions/contract.ts b/plugins/plugin-assistant/src/services/device-actions/contract.ts
+index 7f26cf0..f33967a 100644
+--- a/plugins/plugin-assistant/src/services/device-actions/contract.ts
++++ b/plugins/plugin-assistant/src/services/device-actions/contract.ts
+@@ -40,6 +40,12 @@ import {
+   type PhoneDialOperation,
+   validatePhoneDial,
+ } from "./phone-dial-contract.ts";
++import {
++  isPhotosViewType,
++  type PhotosViewOperation,
++  photosViewCapabilityAvailable,
++  validatePhotosViewOperation,
++} from "./photos-view-contract.ts";
+ import {
+   type ReminderOperation,
+   validateReminderOperation,
+@@ -97,6 +103,7 @@ export type DeviceOperation =
+   | NotesOperation
+   | NativeNotesQueryOperation
+   | CalendarOperation
++  | PhotosViewOperation
+   | ForegroundReviewOperation
+   | WorkflowReadOperation
+   | WorkflowPresentationOperation
+@@ -128,6 +135,8 @@ export function deviceOperationSupportedByCapabilities(
+       capabilities?.includes(NOTES_QUERY_CAPABILITY) === true &&
+       capabilities.includes("notes.local-record.v1")
+     );
++  if (isPhotosViewType(type))
++    return photosViewCapabilityAvailable(capabilities);
+   if (type === "clock_alarm")
+     return capabilities?.includes(CLOCK_ALARMS_CAPABILITY) === true;
+   if (type === "clock_handoff")
+@@ -242,6 +251,17 @@ export function validateDeviceOperation(value: unknown): DeviceOperation {
+       } catch {
+         throw new DeviceActionError("Invalid Notes operation");
+       }
++    case "photos_filter":
++    case "photos_open":
++    case "photos_album_create":
++    case "photos_share":
++      try {
++        return validatePhotosViewOperation(p);
++      } catch (error) {
++        throw new DeviceActionError(
++          `Invalid Photos operation: ${(error as Error).message}`,
++        );
++      }
+     case "calendar_create_local":
+     case "calendar_read_next":
+     case "calendar_create":
+diff --git a/plugins/plugin-assistant/src/services/device-actions/effect-receipts.ts b/plugins/plugin-assistant/src/services/device-actions/effect-receipts.ts
+index c8a2870..6fb5e21 100644
+--- a/plugins/plugin-assistant/src/services/device-actions/effect-receipts.ts
++++ b/plugins/plugin-assistant/src/services/device-actions/effect-receipts.ts
+@@ -16,6 +16,11 @@ import {
+   phoneDialReceiptOutcome,
+   validatePhoneDialResult,
+ } from "./phone-dial-contract.ts";
++import {
++  isPhotosViewOperation,
++  type PhotosViewOperation,
++  validatePhotosViewResult,
++} from "./photos-view-contract.ts";
+ import {
+   isSmsSend,
+   smsBindingText,
+@@ -117,6 +122,25 @@ export function deviceActionEffectReceipts(
+         }),
+       ];
+     }
++    if (isPhotosViewOperation(operation)) {
++      // Filter and open change only what Photos shows. An album or share result proves only
++      // that the owner review opened in Photos; neither is proof of a created album or a share.
++      validatePhotosViewResult(operation, provider.result);
++      return [
++        normalizeEffectReceipt({
++          ...base,
++          receiptId: execution.attemptId,
++          operation: "device." + operation.type,
++          resource: { kind: "device.operation", id: provider.operationId },
++          idempotency: {
++            key: execution.providerIdempotencyKey,
++            replayed: false,
++          },
++          outcome: "noop",
++          reason: photosViewReceiptReason(operation),
++        }),
++      ];
++    }
+     const read = deviceOperationIsRead(operation);
+     const noMatch =
+       isNamedTargetOperation(operation) &&
+@@ -220,6 +244,18 @@ export function deviceApprovalPersistenceReceipt(
+   });
+ }
+ 
++function photosViewReceiptReason(operation: PhotosViewOperation): string {
++  switch (operation.type) {
++    case "photos_filter":
++    case "photos_open":
++      return "Changed only what Photos shows; no media was changed or shared.";
++    case "photos_album_create":
++      return "Opened the album review in Photos; no album exists until the owner confirms it there.";
++    case "photos_share":
++      return "Opened the share review in Photos; nothing leaves the phone until the owner confirms there and picks a target in Android's share sheet.";
++  }
++}
++
+ /** Exhaustive closed operation union: new operations require explicit classification. */
+ function deviceOperationIsRead(operation: DeviceOperation): boolean {
+   switch (operation.type) {
+@@ -237,6 +273,14 @@ function deviceOperationIsRead(operation: DeviceOperation): boolean {
+       return true;
+     case "calendar_named":
+       return operation.action === "read";
++    // View state only: no data change (receipts are built by photosViewReceiptReason).
++    case "photos_filter":
++    case "photos_open":
++      return true;
++    // A data change and an outward share, each opened as an owner review.
++    case "photos_album_create":
++    case "photos_share":
++      return false;
+     case "notes_named":
+     case "reminder_named":
+     case "notes_update":
+diff --git a/plugins/plugin-assistant/src/services/device-actions/photo-library-contract.ts b/plugins/plugin-assistant/src/services/device-actions/photo-library-contract.ts
+index 3525542..824963c 100644
+--- a/plugins/plugin-assistant/src/services/device-actions/photo-library-contract.ts
++++ b/plugins/plugin-assistant/src/services/device-actions/photo-library-contract.ts
+@@ -780,13 +780,12 @@ export function describeLibraryOperation(
+   if (op.type === "photo_library_select")
+     return {
+       title: `Select ${op.ids.length === 1 ? "1 item" : `${op.ids.length} items`} in Photos`,
+-      description:
+-        "Mark these items as selected in Photos > Device library on this phone. Nothing is changed or shared.",
++      description: "Nothing is changed or shared.",
+     };
+   const text = reviewText(op.action, op.items.length, appName);
+   return {
+     title: text.title,
+-    description: `Open this review in Photos > Device library. You confirm it there and then in Android's own dialog or share sheet before anything changes or leaves the phone. ${text.detail}`,
++    description: `You confirm it in Photos, then in Android. ${text.detail}`,
+   };
+ }
+ 
+diff --git a/plugins/plugin-assistant/src/services/device-actions/photos-view-contract.test.ts b/plugins/plugin-assistant/src/services/device-actions/photos-view-contract.test.ts
+new file mode 100644
+index 0000000..bccfcc1
+--- /dev/null
++++ b/plugins/plugin-assistant/src/services/device-actions/photos-view-contract.test.ts
+@@ -0,0 +1,324 @@
++import { readFileSync } from "node:fs";
++import { describe, expect, it } from "vitest";
++import {
++  deviceOperationSupportedByCapabilities,
++  validateDeviceOperation,
++} from "./contract";
++import {
++  LIBRARY_LIMITS,
++  PHOTO_LIBRARY_CAPABILITY,
++} from "./photo-library-contract";
++import {
++  describePhotosViewOperation,
++  isPhotosViewOperation,
++  PHOTOS_FILTER_ALBUMS,
++  PHOTOS_SHARE_MAX,
++  PHOTOS_VIEW_CAPABILITY,
++  PHOTOS_VIEW_DIRECT_TYPES,
++  PHOTOS_VIEW_TYPES,
++  photosViewContextAllowed,
++  validatePhotosViewOperation,
++  validatePhotosViewResult,
++} from "./photos-view-contract";
++
++const id = (n: number, kind = "i") => `lib:${kind}:${n}:${n * 10}`;
++const ids = (count: number) =>
++  Array.from({ length: count }, (_, i) => id(i + 1));
++const valid = validatePhotosViewOperation;
++const invalid = (value: unknown) => () => validatePhotosViewOperation(value);
++
++describe("photos view contract", () => {
++  it("carries no product name", () => {
++    const source = readFileSync(
++      new URL("./photos-view-contract.ts", import.meta.url),
++      "utf8",
++    );
++    expect(source).not.toMatch(/Alpha/);
++  });
++
++  it("recognises exactly the Photos view operation types", () => {
++    expect([...PHOTOS_VIEW_TYPES]).toEqual([
++      "photos_filter",
++      "photos_open",
++      "photos_album_create",
++      "photos_share",
++    ]);
++    expect([...PHOTOS_VIEW_DIRECT_TYPES]).toEqual([
++      "photos_filter",
++      "photos_open",
++    ]);
++    expect([...PHOTOS_FILTER_ALBUMS]).toEqual([
++      "favorites",
++      "videos",
++      "camera",
++      "screenshots",
++    ]);
++    for (const type of PHOTOS_VIEW_TYPES)
++      expect(isPhotosViewOperation({ type })).toBe(true);
++    for (const type of ["photo_library_select", "photos_trash", "x"])
++      expect(isPhotosViewOperation({ type })).toBe(false);
++    expect(isPhotosViewOperation(null)).toBe(false);
++    expect(invalid({ type: "photos_trash", ids: [id(1)] })).toThrow(
++      "Unsupported Photos operation",
++    );
++    expect(invalid([])).toThrow("Invalid Photos operation");
++  });
++
++  it("validates photos_filter", () => {
++    expect(valid({ type: "photos_filter" })).toEqual({ type: "photos_filter" });
++    const full = {
++      type: "photos_filter",
++      from: 0,
++      to: 1_700_000_000_000,
++      kind: "video",
++      favorite: false,
++      album: "custom:trip_2026-a",
++      text: "beach",
++    };
++    expect(valid(full)).toEqual(full);
++    for (const album of PHOTOS_FILTER_ALBUMS)
++      expect(valid({ type: "photos_filter", album })).toEqual({
++        type: "photos_filter",
++        album,
++      });
++    expect(
++      valid({ type: "photos_filter", text: "x".repeat(LIBRARY_LIMITS.query) }),
++    ).toEqual({
++      type: "photos_filter",
++      text: "x".repeat(LIBRARY_LIMITS.query),
++    });
++    for (const from of [-1, 1.5, "1", Number.MAX_SAFE_INTEGER + 1, Number.NaN])
++      expect(invalid({ type: "photos_filter", from })).toThrow(
++        "Invalid filter date",
++      );
++    expect(invalid({ type: "photos_filter", from: 2, to: 1 })).toThrow(
++      "Invalid filter date range",
++    );
++    expect(invalid({ type: "photos_filter", kind: "all" })).toThrow(
++      "Invalid filter kind",
++    );
++    expect(invalid({ type: "photos_filter", favorite: "yes" })).toThrow(
++      "Invalid favorites filter",
++    );
++    for (const album of [
++      "Favorites",
++      "custom:",
++      "custom:a b",
++      `custom:${"a".repeat(81)}`,
++      3,
++    ])
++      expect(invalid({ type: "photos_filter", album })).toThrow(
++        "Invalid filter album",
++      );
++    for (const text of [
++      "x".repeat(LIBRARY_LIMITS.query + 1),
++      "a\nb",
++      "a\u007f",
++      7,
++    ])
++      expect(invalid({ type: "photos_filter", text })).toThrow(
++        "Invalid filter text",
++      );
++    expect(invalid({ type: "photos_filter", favorites: true })).toThrow(
++      "Unexpected Photos field",
++    );
++  });
++
++  it("validates photos_open", () => {
++    expect(valid({ type: "photos_open", id: id(4, "v") })).toEqual({
++      type: "photos_open",
++      id: id(4, "v"),
++    });
++    for (const bad of ["4", "lib:x:1:1", "m:external:i:1", undefined])
++      expect(invalid({ type: "photos_open", id: bad })).toThrow(
++        "Invalid library id",
++      );
++    expect(invalid({ type: "photos_open", id: id(1), ids: [] })).toThrow(
++      "Unexpected Photos field",
++    );
++  });
++
++  it("validates photos_album_create without truncating", () => {
++    expect(
++      valid({ type: "photos_album_create", name: "  Trip  ", ids: [id(1)] }),
++    ).toEqual({ type: "photos_album_create", name: "Trip", ids: [id(1)] });
++    expect(
++      valid({ type: "photos_album_create", name: "a".repeat(80), ids: ids(2) })
++        .name,
++    ).toBe("a".repeat(80));
++    expect(
++      valid({
++        type: "photos_album_create",
++        name: "All",
++        ids: ids(LIBRARY_LIMITS.kept),
++      }).ids,
++    ).toHaveLength(LIBRARY_LIMITS.kept);
++    for (const name of ["", "   ", "a".repeat(81), "a\tb", 1, undefined])
++      expect(
++        invalid({ type: "photos_album_create", name, ids: [id(1)] }),
++      ).toThrow("Choose an album name between 1 and 80 characters");
++    for (const bad of [
++      [],
++      [id(1), id(1)],
++      ["x"],
++      ids(LIBRARY_LIMITS.kept + 1),
++      "x",
++    ])
++      expect(
++        invalid({ type: "photos_album_create", name: "Trip", ids: bad }),
++      ).toThrow("Invalid album items");
++    expect(
++      invalid({
++        type: "photos_album_create",
++        name: "Trip",
++        ids: [id(1)],
++        id: "a",
++      }),
++    ).toThrow("Unexpected Photos field");
++  });
++
++  it("validates photos_share", () => {
++    expect(valid({ type: "photos_share", ids: [id(1), id(2, "v")] })).toEqual({
++      type: "photos_share",
++      ids: [id(1), id(2, "v")],
++    });
++    expect(
++      valid({ type: "photos_share", ids: ids(PHOTOS_SHARE_MAX) }).ids,
++    ).toHaveLength(100);
++    for (const bad of [[], [id(1), id(1)], ["x"], ids(PHOTOS_SHARE_MAX + 1)])
++      expect(invalid({ type: "photos_share", ids: bad })).toThrow(
++        "Invalid share items",
++      );
++    expect(
++      invalid({ type: "photos_share", ids: [id(1)], target: "mail" }),
++    ).toThrow("Unexpected Photos field");
++  });
++
++  it("is admitted by the device contract and wraps its errors", () => {
++    expect(validateDeviceOperation({ type: "photos_open", id: id(1) })).toEqual(
++      { type: "photos_open", id: id(1) },
++    );
++    expect(() =>
++      validateDeviceOperation({ type: "photos_share", ids: [] }),
++    ).toThrow("Invalid Photos operation: Invalid share items");
++  });
++
++  it("is offered only when both photos.library.v1 and photos.view.v1 were negotiated", () => {
++    expect(PHOTOS_VIEW_CAPABILITY).toBe("photos.view.v1");
++    const both = [PHOTO_LIBRARY_CAPABILITY, PHOTOS_VIEW_CAPABILITY];
++    for (const type of PHOTOS_VIEW_TYPES) {
++      expect(deviceOperationSupportedByCapabilities(type, both)).toBe(true);
++      expect(
++        deviceOperationSupportedByCapabilities(type, [
++          PHOTO_LIBRARY_CAPABILITY,
++        ]),
++      ).toBe(false);
++      expect(
++        deviceOperationSupportedByCapabilities(type, [PHOTOS_VIEW_CAPABILITY]),
++      ).toBe(false);
++      expect(deviceOperationSupportedByCapabilities(type, [])).toBe(false);
++      expect(deviceOperationSupportedByCapabilities(type, undefined)).toBe(
++        false,
++      );
++    }
++    // The capability does not widen unrelated operations.
++    expect(deviceOperationSupportedByCapabilities("notes_query", both)).toBe(
++      false,
++    );
++  });
++
++  it("describes each operation for the review card in short owner-facing text", () => {
++    const d = describePhotosViewOperation;
++    expect(d({ type: "photos_filter" })).toEqual({
++      title: "Filter Photos",
++      description: "Everything",
++    });
++    expect(
++      d({
++        type: "photos_filter",
++        kind: "video",
++        favorite: true,
++        album: "camera",
++        text: "beach",
++        from: 1,
++      }),
++    ).toEqual({
++      title: "Filter Photos",
++      description:
++        "Videos · Favorites · In Camera · “beach” · In the requested dates",
++    });
++    expect(d({ type: "photos_filter", album: "custom:a1" }).description).toBe(
++      "In an album",
++    );
++    expect(d({ type: "photos_open", id: id(1) })).toEqual({
++      title: "Open photo",
++      description: "In Photos. Nothing is changed or shared.",
++    });
++    expect(d({ type: "photos_open", id: id(1, "v") }).title).toBe("Open video");
++    expect(
++      d({ type: "photos_album_create", name: "Trip", ids: [id(1), id(2)] }),
++    ).toEqual({
++      title: "Create album “Trip”",
++      description: "2 items. You confirm it in Photos.",
++    });
++    expect(d({ type: "photos_share", ids: [id(1)] }, "Eliza")).toEqual({
++      title: "Share 1 item",
++      description:
++        "You confirm it in Photos, then pick where it goes in Android's share sheet. Nothing leaves Eliza before that.",
++    });
++  });
++
++  it("validates results without accepting extra fields", () => {
++    const filter = { type: "photos_filter" } as const;
++    expect(
++      validatePhotosViewResult(filter, {
++        kind: "photos_filter",
++        shown: 0,
++        more: false,
++      }),
++    ).toEqual({ kind: "photos_filter", shown: 0, more: false });
++    for (const bad of [
++      { kind: "photos_filter", shown: -1, more: false },
++      { kind: "photos_filter", shown: 1.5, more: false },
++      { kind: "photos_filter", shown: 1 },
++      { kind: "photos_filter", shown: 1, more: true, items: [] },
++      { kind: "photos_open", opened: true },
++      null,
++    ])
++      expect(() => validatePhotosViewResult(filter, bad)).toThrow();
++    const open = { type: "photos_open", id: id(1) } as const;
++    expect(
++      validatePhotosViewResult(open, { kind: "photos_open", opened: false }),
++    ).toEqual({ kind: "photos_open", opened: false });
++    expect(() =>
++      validatePhotosViewResult(open, { kind: "photos_open", opened: 1 }),
++    ).toThrow("Invalid photos open result");
++    for (const op of [
++      { type: "photos_album_create", name: "Trip", ids: [id(1), id(2)] },
++      { type: "photos_share", ids: [id(1), id(2)] },
++    ] as const) {
++      const row = {
++        kind: op.type,
++        status: "review_opened",
++        count: 1,
++        missing: 1,
++      };
++      expect(validatePhotosViewResult(op, row)).toEqual(row);
++      for (const bad of [
++        { ...row, count: 0, missing: 2 },
++        { ...row, count: 2, missing: 1 },
++        { ...row, status: "done" },
++        { ...row, ids: [] },
++      ])
++        expect(() => validatePhotosViewResult(op, bad)).toThrow();
++    }
++  });
++
++  it("allows review only in Photos on the unlocked phone", () => {
++    expect(photosViewContextAllowed({ view: "photos" })).toBe(true);
++    expect(photosViewContextAllowed({ view: "photos", sensitive: true })).toBe(
++      false,
++    );
++    expect(photosViewContextAllowed({ view: "home" })).toBe(false);
++  });
++});
+diff --git a/plugins/plugin-assistant/src/services/device-actions/photos-view-contract.ts b/plugins/plugin-assistant/src/services/device-actions/photos-view-contract.ts
+new file mode 100644
+index 0000000..2c6c2c3
+--- /dev/null
++++ b/plugins/plugin-assistant/src/services/device-actions/photos-view-contract.ts
+@@ -0,0 +1,312 @@
++/** Phone Photos view operations: filter the grid, open one item, create an album, share items.
++ * Dependency-free apart from the photo library contract, so hosts and tests can use the rules
++ * anywhere. Validation rejects rather than truncates. Owner-facing text names the app through an
++ * `appName` argument; hosts pass their product name.
++ *
++ * `photos_filter` only narrows what the Photos grid shows, behind a clearable chip, and returns
++ * counts, never items. `photos_open` opens one item in the Photos viewer. Neither changes or
++ * shares media, so both may run directly when the owner's own current message asked for them;
++ * otherwise they are reviewed. `photos_album_create` is a data change and `photos_share` sends
++ * media out of the phone, so the owner reviews each in Photos first; a share then opens
++ * Android's share sheet, and nothing leaves the phone before the owner picks a target there.
++ * All four require both `photos.library.v1` and `photos.view.v1`. */
++import {
++  isLibraryId,
++  LIBRARY_APP_NAME,
++  LIBRARY_LIMITS,
++  type LibraryKind,
++  libraryKindOf,
++  PHOTO_LIBRARY_CAPABILITY,
++} from "./photo-library-contract.ts";
++
++export const PHOTOS_VIEW_CAPABILITY = "photos.view.v1";
++/** Album keys photos_filter accepts besides a custom album id ("custom:<id>"). */
++export const PHOTOS_FILTER_ALBUMS = [
++  "favorites",
++  "videos",
++  "camera",
++  "screenshots",
++] as const;
++export type PhotosFilterAlbum =
++  | (typeof PHOTOS_FILTER_ALBUMS)[number]
++  | `custom:${string}`;
++export const PHOTOS_ALBUM_NAME_MAX = 80;
++export const PHOTOS_SHARE_MAX = 100;
++const CUSTOM_ALBUM = /^custom:[A-Za-z0-9_-]{1,80}$/;
++const CONTROL = /[\u0000-\u001f\u007f]/;
++
++export type PhotosViewOperation =
++  | {
++      type: "photos_filter";
++      from?: number;
++      to?: number;
++      kind?: LibraryKind;
++      favorite?: boolean;
++      album?: PhotosFilterAlbum;
++      text?: string;
++    }
++  | { type: "photos_open"; id: string }
++  | { type: "photos_album_create"; name: string; ids: string[] }
++  | { type: "photos_share"; ids: string[] };
++export type PhotosViewType = PhotosViewOperation["type"];
++
++export const PHOTOS_VIEW_TYPES: readonly PhotosViewType[] = [
++  "photos_filter",
++  "photos_open",
++  "photos_album_create",
++  "photos_share",
++];
++/** May run without a review only when bound to the owner's own current message. */
++export const PHOTOS_VIEW_DIRECT_TYPES: readonly PhotosViewType[] = [
++  "photos_filter",
++  "photos_open",
++];
++
++export function isPhotosViewType(type: unknown): type is PhotosViewType {
++  return (PHOTOS_VIEW_TYPES as readonly unknown[]).includes(type);
++}
++export function isPhotosViewOperation(
++  value: unknown,
++): value is PhotosViewOperation {
++  return (
++    !!value &&
++    typeof value === "object" &&
++    isPhotosViewType((value as { type?: unknown }).type)
++  );
++}
++/** Both the library and the view capability must have been negotiated. */
++export function photosViewCapabilityAvailable(
++  capabilities?: readonly string[],
++): boolean {
++  return (
++    capabilities?.includes(PHOTO_LIBRARY_CAPABILITY) === true &&
++    capabilities.includes(PHOTOS_VIEW_CAPABILITY)
++  );
++}
++
++type Bag = Record<string, unknown>;
++function bag(value: unknown, message: string): Bag {
++  if (!value || typeof value !== "object" || Array.isArray(value))
++    throw Error(message);
++  return value as Bag;
++}
++function only(op: Bag, keys: readonly string[], message: string): void {
++  for (const key of Object.keys(op))
++    if (!keys.includes(key)) throw Error(message);
++}
++function libraryIds(value: unknown, max: number, message: string): string[] {
++  if (
++    !Array.isArray(value) ||
++    !value.length ||
++    value.length > max ||
++    !value.every(isLibraryId) ||
++    new Set(value).size !== value.length
++  )
++    throw Error(message);
++  return [...value] as string[];
++}
++
++export function validatePhotosViewOperation(
++  value: unknown,
++): PhotosViewOperation {
++  const op = bag(value, "Invalid Photos operation");
++  const allowed = (keys: string[]) => only(op, keys, "Unexpected Photos field");
++  if (op.type === "photos_filter") {
++    allowed(["type", "from", "to", "kind", "favorite", "album", "text"]);
++    for (const key of ["from", "to"] as const)
++      if (
++        op[key] !== undefined &&
++        !(Number.isSafeInteger(op[key]) && (op[key] as number) >= 0)
++      )
++        throw Error("Invalid filter date");
++    if (
++      op.from !== undefined &&
++      op.to !== undefined &&
++      (op.from as number) > (op.to as number)
++    )
++      throw Error("Invalid filter date range");
++    if (op.kind !== undefined && op.kind !== "image" && op.kind !== "video")
++      throw Error("Invalid filter kind");
++    if (op.favorite !== undefined && typeof op.favorite !== "boolean")
++      throw Error("Invalid favorites filter");
++    if (
++      op.album !== undefined &&
++      !(
++        typeof op.album === "string" &&
++        ((PHOTOS_FILTER_ALBUMS as readonly string[]).includes(op.album) ||
++          CUSTOM_ALBUM.test(op.album))
++      )
++    )
++      throw Error("Invalid filter album");
++    if (
++      op.text !== undefined &&
++      !(
++        typeof op.text === "string" &&
++        op.text.length <= LIBRARY_LIMITS.query &&
++        !CONTROL.test(op.text)
++      )
++    )
++      throw Error("Invalid filter text");
++    return {
++      type: "photos_filter",
++      ...(op.from !== undefined ? { from: op.from as number } : {}),
++      ...(op.to !== undefined ? { to: op.to as number } : {}),
++      ...(op.kind !== undefined ? { kind: op.kind as LibraryKind } : {}),
++      ...(op.favorite !== undefined
++        ? { favorite: op.favorite as boolean }
++        : {}),
++      ...(op.album !== undefined
++        ? { album: op.album as PhotosFilterAlbum }
++        : {}),
++      ...(op.text !== undefined ? { text: op.text as string } : {}),
++    };
++  }
++  if (op.type === "photos_open") {
++    allowed(["type", "id"]);
++    if (!isLibraryId(op.id)) throw Error("Invalid library id");
++    return { type: "photos_open", id: op.id };
++  }
++  if (op.type === "photos_album_create") {
++    allowed(["type", "name", "ids"]);
++    if (
++      typeof op.name !== "string" ||
++      op.name.trim().length < 1 ||
++      op.name.trim().length > PHOTOS_ALBUM_NAME_MAX ||
++      CONTROL.test(op.name)
++    )
++      throw Error("Choose an album name between 1 and 80 characters");
++    return {
++      type: "photos_album_create",
++      name: op.name.trim(),
++      ids: libraryIds(op.ids, LIBRARY_LIMITS.kept, "Invalid album items"),
++    };
++  }
++  if (op.type === "photos_share") {
++    allowed(["type", "ids"]);
++    return {
++      type: "photos_share",
++      ids: libraryIds(op.ids, PHOTOS_SHARE_MAX, "Invalid share items"),
++    };
++  }
++  throw Error("Unsupported Photos operation");
++}
++
++const quoted = (value: string) => `“${value}”`;
++const items = (count: number) => `${count} ${count === 1 ? "item" : "items"}`;
++const ALBUM_LABELS: Record<(typeof PHOTOS_FILTER_ALBUMS)[number], string> = {
++  favorites: "Favorites",
++  videos: "Videos",
++  camera: "Camera",
++  screenshots: "Screenshots",
++};
++/** The review card: the change itself, nothing else. */
++export function describePhotosViewOperation(
++  op: PhotosViewOperation,
++  appName: string = LIBRARY_APP_NAME,
++): { title: string; description: string } {
++  if (op.type === "photos_filter")
++    return {
++      title: "Filter Photos",
++      description:
++        [
++          op.kind === "image" ? "Photos" : op.kind === "video" ? "Videos" : "",
++          op.favorite === true
++            ? "Favorites"
++            : op.favorite === false
++              ? "Not favorites"
++              : "",
++          op.album
++            ? op.album.startsWith("custom:")
++              ? "In an album"
++              : `In ${ALBUM_LABELS[op.album as keyof typeof ALBUM_LABELS]}`
++            : "",
++          op.text ? quoted(op.text) : "",
++          op.from !== undefined || op.to !== undefined
++            ? "In the requested dates"
++            : "",
++        ]
++          .filter(Boolean)
++          .join(" · ") || "Everything",
++    };
++  if (op.type === "photos_open")
++    return {
++      title: libraryKindOf(op.id) === "video" ? "Open video" : "Open photo",
++      description: "In Photos. Nothing is changed or shared.",
++    };
++  if (op.type === "photos_album_create")
++    return {
++      title: `Create album ${quoted(op.name)}`,
++      description: `${items(op.ids.length)}. You confirm it in Photos.`,
++    };
++  return {
++    title: `Share ${items(op.ids.length)}`,
++    description: `You confirm it in Photos, then pick where it goes in Android's share sheet. Nothing leaves ${appName} before that.`,
++  };
++}
++
++/** Where a proposal may be reviewed or run: Photos, open on the unlocked phone. */
++export function photosViewContextAllowed(context: {
++  view: string;
++  sensitive?: boolean;
++}): boolean {
++  return !context.sensitive && context.view === "photos";
++}
++
++/** The structured result the phone returns. Filter and open report only counts or a flag; an
++ * album or share result proves only that the owner review opened in Photos. */
++export type PhotosViewResult =
++  | { kind: "photos_filter"; shown: number; more: boolean }
++  | { kind: "photos_open"; opened: boolean }
++  | {
++      kind: "photos_album_create";
++      status: "review_opened";
++      count: number;
++      missing: number;
++    }
++  | {
++      kind: "photos_share";
++      status: "review_opened";
++      count: number;
++      missing: number;
++    };
++const count = (value: unknown, min: number) =>
++  Number.isInteger(value) && (value as number) >= min;
++export function validatePhotosViewResult(
++  op: PhotosViewOperation,
++  value: unknown,
++): PhotosViewResult {
++  const row = bag(value, "Invalid Photos result");
++  if (row.kind !== op.type) throw Error("Photos result kind mismatch");
++  const keys = (list: string[]) =>
++    only(row, list, "Unexpected Photos result field");
++  if (op.type === "photos_filter") {
++    keys(["kind", "shown", "more"]);
++    if (!count(row.shown, 0) || typeof row.more !== "boolean")
++      throw Error("Invalid photos filter result");
++    return { kind: op.type, shown: row.shown as number, more: row.more };
++  }
++  if (op.type === "photos_open") {
++    keys(["kind", "opened"]);
++    if (typeof row.opened !== "boolean")
++      throw Error("Invalid photos open result");
++    return { kind: op.type, opened: row.opened };
++  }
++  keys(["kind", "status", "count", "missing"]);
++  if (
++    row.status !== "review_opened" ||
++    !count(row.count, 1) ||
++    !count(row.missing, 0) ||
++    (row.count as number) + (row.missing as number) !== op.ids.length
++  )
++    throw Error(
++      op.type === "photos_share"
++        ? "Invalid share review result"
++        : "Invalid album review result",
++    );
++  return {
++    kind: op.type,
++    status: "review_opened",
++    count: row.count as number,
++    missing: row.missing as number,
++  };
++}
+diff --git a/plugins/plugin-assistant/src/services/device-actions/service.ts b/plugins/plugin-assistant/src/services/device-actions/service.ts
+index 599af5d..fd03eac 100644
+--- a/plugins/plugin-assistant/src/services/device-actions/service.ts
++++ b/plugins/plugin-assistant/src/services/device-actions/service.ts
+@@ -121,6 +121,14 @@ import {
+   validateNotesResult,
+ } from "./notes-contract.ts";
+ import { notesDeleteAfterReadPlan } from "./notes-delete-continuation.ts";
++import { PHOTO_LIBRARY_CAPABILITY } from "./photo-library-contract.ts";
++import {
++  isPhotosViewOperation,
++  PHOTOS_VIEW_CAPABILITY,
++  PHOTOS_VIEW_TYPES,
++  photosViewCapabilityAvailable,
++  validatePhotosViewResult,
++} from "./photos-view-contract.ts";
+ import { originalRequestsNotesDeletion } from "./notes-delete-intent.ts";
+ import { validateNotesQueryResult } from "./notes-query-result.ts";
+ import { notesUpdateAfterReadPlan } from "./notes-update-continuation.ts";
+@@ -1772,6 +1780,8 @@ export class DeviceActionService {
+           SMS_SEND_CAPABILITY,
+           PHONE_DIAL_CAPABILITY,
+           CONTACT_LOOKUP_CAPABILITY,
++          PHOTO_LIBRARY_CAPABILITY,
++          PHOTOS_VIEW_CAPABILITY,
+         ],
+       };
+     });
+@@ -2073,6 +2083,7 @@ export class DeviceActionService {
+         "calendar_read_selected",
+         "calendar_update",
+         "calendar_delete",
++        ...PHOTOS_VIEW_TYPES,
+         ...FOREGROUND_REVIEW_TYPES,
+       ].includes(validated.type)
+     )
+@@ -2503,6 +2514,7 @@ export class DeviceActionService {
+         if (
+           (isCameraCapture(operation) ||
+             isNativeNotesQuery(operation) ||
++            isPhotosViewOperation(operation) ||
+             isForegroundReviewOperation(operation) ||
+             operation.type === "calendar_create_local" ||
+             operation.type === "calendar_read_next") &&
+@@ -2577,6 +2589,11 @@ export class DeviceActionService {
+       !c.capabilities?.includes(NOTES_CAPABILITY)
+     )
+       throw new DeviceActionError("Notes capability unavailable");
++    if (
++      isPhotosViewOperation(payload.operation) &&
++      !photosViewCapabilityAvailable(c.capabilities)
++    )
++      throw new DeviceActionError("Photos capability unavailable");
+     if (
+       isCalendarOperation(payload.operation) &&
+       !calendarCapabilityAvailable(payload.operation.type, c.capabilities)
+@@ -2731,6 +2748,11 @@ export class DeviceActionService {
+         !c.capabilities?.includes(NOTES_CAPABILITY)
+       )
+         throw new DeviceActionError("Notes capability unavailable");
++      if (
++        isPhotosViewOperation(payload.operation) &&
++        !photosViewCapabilityAvailable(c.capabilities)
++      )
++        throw new DeviceActionError("Photos capability unavailable");
+       const read =
+         payload.operation.type === "read_selected_notes" ||
+         payload.operation.type === "read_calendar_range" ||
+@@ -2875,6 +2897,18 @@ export class DeviceActionService {
+         } catch {
+           throw new DeviceActionError("Invalid Notes receipt");
+         }
++      } else if (
++        isPhotosViewOperation(payload.operation) &&
++        receipt.outcome === "applied"
++      ) {
++        try {
++          receipt = {
++            ...receipt,
++            result: validatePhotosViewResult(payload.operation, value.result),
++          };
++        } catch {
++          throw new DeviceActionError("Invalid Photos receipt");
++        }
+       } else if (
+         isCalendarOperation(payload.operation) &&
+         receipt.outcome === "applied"
+@@ -3014,6 +3048,11 @@ export class DeviceActionService {
+         !c.capabilities?.includes(NOTES_CAPABILITY)
+       )
+         throw new DeviceActionError("Notes capability unavailable");
++      if (
++        isPhotosViewOperation(payload.operation) &&
++        !photosViewCapabilityAvailable(c.capabilities)
++      )
++        throw new DeviceActionError("Photos capability unavailable");
+       if (isSmsSend(payload.operation)) {
+         if (receipt.operationId !== request.execution?.providerIdempotencyKey)
+           throw new DeviceActionError(
+@@ -3154,6 +3193,18 @@ export class DeviceActionService {
+         } catch {
+           throw new DeviceActionError("Invalid Notes receipt");
+         }
++      } else if (
++        isPhotosViewOperation(payload.operation) &&
++        receipt.outcome === "applied"
++      ) {
++        try {
++          receipt = {
++            ...receipt,
++            result: validatePhotosViewResult(payload.operation, value.result),
++          };
++        } catch {
++          throw new DeviceActionError("Invalid Photos receipt");
++        }
+       } else if (
+         isCalendarOperation(payload.operation) &&
+         receipt.outcome === "applied"
+diff --git a/plugins/plugin-assistant/src/services/device-actions/tools.ts b/plugins/plugin-assistant/src/services/device-actions/tools.ts
+index cdc80b4..fec64ef 100644
+--- a/plugins/plugin-assistant/src/services/device-actions/tools.ts
++++ b/plugins/plugin-assistant/src/services/device-actions/tools.ts
+@@ -15,6 +15,7 @@ import {
+ import { deviceOperationSupportedByCapabilities } from "./contract.ts";
+ import { MAPS_CAPABILITY } from "./maps-contract.ts";
+ import { NOTES_CAPABILITY, notesSelectionTarget } from "./notes-contract.ts";
++import { isPhotosViewType } from "./photos-view-contract.ts";
+ import { deviceReadHostContextRevision } from "./read-completion.ts";
+ import {
+   REMINDER_CAPABILITY,
+@@ -53,6 +54,8 @@ function capabilityAvailable(
+       caps?.includes(CALENDAR_CAPABILITY) === true &&
+       deviceReadHostContextRevision(runtime) !== null
+     );
++  if (isPhotosViewType(type))
++    return deviceOperationSupportedByCapabilities(type, caps);
+   if (
+     type === "reminder_create_after" &&
+     runtime.actions.some((action) => action.name === "OWNER_REMINDERS") &&
+@@ -82,6 +85,10 @@ const capabilityBoundTypes = new Set([
+   "calendar_update",
+   "maps_read_selected",
+   "reminder_create_after",
++  "photos_filter",
++  "photos_open",
++  "photos_album_create",
++  "photos_share",
+ ]);
+ const reminderTypes = new Set([
+   "reminder_create",
+@@ -136,6 +143,26 @@ const declarations = [
+     "notes_read_selected",
+     "Read one selected connected device note using the exact source and record identity/revision returned by the current phone selection or DEVICE_NOTES_QUERY. If the user names a title and those opaque fields are missing, first discover and run DEVICE_NOTES_QUERY; do not derive noteId from title text, guess a revision, or substitute unknown. Never treat a title string as a selected record ID.",
+   ],
++  [
++    "DEVICE_PHOTOS_FILTER",
++    "photos_filter",
++    "Filter the Photos grid on this phone by date range (epoch ms), kind (image or video), favorite, album and/or text matched on the phone. Read-only: Photos shows the matching items behind a clearable filter chip and returns only how many it shows, never the items.",
++  ],
++  [
++    "DEVICE_PHOTOS_OPEN",
++    "photos_open",
++    "Open one photo or video in the Photos viewer on this phone by a library id the phone returned. Nothing is changed or shared. Never guess the id.",
++  ],
++  [
++    "DEVICE_PHOTOS_ALBUM_CREATE",
++    "photos_album_create",
++    "Create a Photos album with a name (1 to 80 characters) and the given library ids. The owner reviews the name and items in Photos first; review_opened does not prove the album was created. Never guess ids.",
++  ],
++  [
++    "DEVICE_PHOTOS_SHARE",
++    "photos_share",
++    "Share up to 100 photos or videos by library id. The owner reviews them in Photos, then picks a target in Android's share sheet; nothing leaves the phone before that. review_opened does not prove anything was shared. Never retry automatically.",
++  ],
+   [
+     "DEVICE_CALENDAR_CREATE",
+     "calendar_create_local",
+@@ -324,9 +351,11 @@ export const deviceActionTools: readonly Action[] = Object.freeze(
+               ? ["tasks", "reminders", "general"]
+               : type === "browser_navigate"
+                 ? ["browser", "web", "general"]
+-                : type.startsWith("calendar_create")
+-                  ? ["calendar", "general"]
+-                  : ["notes", "general"],
++                : isPhotosViewType(type)
++                  ? ["media", "general"]
++                  : type.startsWith("calendar_create")
++                    ? ["calendar", "general"]
++                    : ["notes", "general"],
+     validate: async (
+       runtime: Parameters<NonNullable<Action["validate"]>>[0],
+       message: Parameters<NonNullable<Action["validate"]>>[1],
+diff --git a/plugins/plugin-assistant/test/device-actions.e2e.test.ts b/plugins/plugin-assistant/test/device-actions.e2e.test.ts
+index 2c8d8fb..d2af841 100644
+--- a/plugins/plugin-assistant/test/device-actions.e2e.test.ts
++++ b/plugins/plugin-assistant/test/device-actions.e2e.test.ts
+@@ -1449,6 +1449,8 @@ test("device approval REST lifecycle survives restart and never duplicates claim
+           "calendar.agenda-read.v1",
+           "calendar.named-read.v1",
+           "notes.query.v1",
++          "photos.library.v1",
++          "photos.view.v1",
+           "reminders.local-record.v2",
+           "reminders.create.v1",
+           "clock.handoff.v2",

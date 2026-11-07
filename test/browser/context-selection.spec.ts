@@ -216,7 +216,7 @@ test.describe('capture',()=>{
  test.beforeEach(async({page})=>{await offline(page);await page.goto('/');});
  test('a photo question is bound to the open item and its revision',async({page})=>{
   await photo(page,'FIRST');await photo(page,'SECOND');
-  await page.getByRole('button',{name:'Photos',exact:true}).click();await page.getByRole('button',{name:/Captured photo/}).first().click();
+  await page.getByRole('button',{name:'Photos',exact:true}).click();await page.getByRole('button',{name:/^Photo, /}).first().click();
   await expect.poll(async()=>(await selectedObject(page))?.kind).toBe('photo');const selected=await selectedObject(page);
   await page.getByRole('button',{name:'Ask Alpha about this photo',exact:true}).click();
   const dialog=review(page);await expect(dialog.getByRole('heading')).toHaveText('Ask Alpha');await expect(dialog.getByLabel('Selected source',{exact:true})).toHaveText('Selected photo');await expect(dialog.getByRole('img')).toBeVisible();
@@ -230,7 +230,7 @@ test.describe('capture',()=>{
   for(const value of library)expect(JSON.stringify(selected)).not.toContain(value);
  });
  test('a changed photo is a new revision of the same identity',async({page})=>{
-  await photo(page,'ONLY');await page.getByRole('button',{name:'Photos',exact:true}).click();await page.getByRole('button',{name:/Captured photo/}).first().click();
+  await photo(page,'ONLY');await page.getByRole('button',{name:'Photos',exact:true}).click();await page.getByRole('button',{name:/^Photo, /}).first().click();
   await expect.poll(async()=>(await selectedObject(page))?.kind).toBe('photo');const selected=await selectedObject(page);
   await page.getByRole('button',{name:'Favorite',exact:true}).click();await expect(page.getByRole('button',{name:'Remove from favorites',exact:true})).toBeVisible();
   await expect.poll(async()=>(await selectedObject(page))?.revision).not.toBe(selected!.revision);
@@ -238,7 +238,7 @@ test.describe('capture',()=>{
  });
  test('a photo trashed during its review adds nothing, and the other photo is never sent',async({page})=>{
   await photo(page,'FIRST');await photo(page,'SECOND');
-  await page.getByRole('button',{name:'Photos',exact:true}).click();await page.getByRole('button',{name:/Captured photo/}).first().click();
+  await page.getByRole('button',{name:'Photos',exact:true}).click();await page.getByRole('button',{name:/^Photo, /}).first().click();
   await expect.poll(async()=>(await selectedObject(page))?.kind).toBe('photo');const selected=await selectedObject(page);
   await page.getByRole('button',{name:'Ask Alpha about this photo',exact:true}).click();
   const dialog=review(page);await expect(dialog.getByRole('img')).toBeVisible();
@@ -251,13 +251,6 @@ test.describe('capture',()=>{
   // The stale viewer closes. The remaining photo was not opened or sent in its place.
   await expect.poll(()=>selectedObject(page)).toBeNull();
   await expect(page.getByRole('button',{name:'Ask Alpha about this photo',exact:true})).toHaveCount(0);
-  await expect(page.getByRole('button',{name:/Captured photo/})).toHaveCount(1);
- });
- test('a typed library search is not treated as a capture and stays visibly unavailable',async({page})=>{
-  await photo(page,'ONLY');await page.getByRole('button',{name:'Photos',exact:true}).click();await expect(page.getByRole('button',{name:/Captured photo/}).first()).toBeVisible();
-  await page.getByRole('button',{name:'Search photos',exact:true}).click();await page.keyboard.type('beach');
-  await page.getByRole('button',{name:/^Ask .*beach/}).click();
-  await expect(page.getByText('Content analysis is not connected. No photo or document content has been sent.',{exact:true})).toBeVisible();
-  await expect(review(page)).toHaveCount(0);await expect(composer(page)).toHaveCount(0);
+  await expect(page.getByRole('button',{name:/^Photo, /})).toHaveCount(1);
  });
 });

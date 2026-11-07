@@ -35,7 +35,7 @@ final class AlphaActionJournal {
   // A free/busy answer holds up to 200 busy intervals: it has its own exact shape and bound.
   if(retainedOperation!=null&&CalendarAvailabilityJournalResult.TYPE.equals(retainedOperation.optString("type"))){CalendarAvailabilityJournalResult.check(retainedOperation,entry.getString("operationId"),status,result);return;}
   if("succeeded".equals(status)&&entry.getJSONObject("record").has("workflow")&&retainedOperation!=null&&Set.of("read_selected_notes","read_calendar_range","read_selected_reminders").contains(retainedOperation.optString("type"))&&result==null)throw new IllegalArgumentException();
-  if("succeeded".equals(status)&&retainedOperation!=null&&Set.of("calendar_create_local","calendar_read_next","clock_handoff","maps_read_selected","photo_library_search","photo_library_inspect","photo_library_select","photo_library_review","notes_read_selected","notes_query","notes_update","notes_delete","reminder_create","reminder_read_selected","reminder_update","reminder_complete","reminder_snooze","reminder_cancel").contains(retainedOperation.optString("type"))&&result==null)throw new IllegalArgumentException();
+  if("succeeded".equals(status)&&retainedOperation!=null&&Set.of("calendar_create_local","calendar_read_next","clock_handoff","maps_read_selected","photo_library_search","photo_library_inspect","photo_library_select","photo_library_review","photos_filter","photos_open","photos_album_create","photos_share","notes_read_selected","notes_query","notes_update","notes_delete","reminder_create","reminder_read_selected","reminder_update","reminder_complete","reminder_snooze","reminder_cancel").contains(retainedOperation.optString("type"))&&result==null)throw new IllegalArgumentException();
   if(result!=null){
    JSONObject record=entry.getJSONObject("record"),operation=record.optJSONObject("operation");String type=operation==null?"":operation.optString("type");boolean workflowRead=record.has("workflow")&&Set.of("read_selected_notes","read_calendar_range","read_selected_reminders").contains(type);
    if("clock_handoff".equals(type)){
@@ -74,8 +74,9 @@ final class AlphaActionJournal {
     if(result.length()!=(result.has("calendarResult")?2:1)||!entry.getString("operationId").equals(result.optString("operationId")))throw new IllegalArgumentException();
     JSONObject calendar=result.optJSONObject("calendarResult");if("succeeded".equals(status)){if(calendar==null||!type.equals(calendar.optString("kind"))||calendar.optInt("version")!=1)throw new IllegalArgumentException();}else if(calendar!=null)throw new IllegalArgumentException();
     if(result.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8).length>80000)throw new IllegalArgumentException();
-   }else if(Set.of("photo_library_search","photo_library_inspect","photo_library_select","photo_library_review").contains(type)){
-    // Device library results (issue 408): identity-only rows, validated in photo-library.ts; here only shape and bound.
+   }else if(Set.of("photo_library_search","photo_library_inspect","photo_library_select","photo_library_review","photos_filter","photos_open","photos_album_create","photos_share").contains(type)){
+    // Photo library results (issue 408) and Photos view results (photos.view.v1, carried in photoLibraryResult):
+    // identity-only rows or counts, validated in photo-library.ts / photos-view-contract.ts; here only shape and bound.
     if(result.length()!=(result.has("photoLibraryResult")?2:1)||!entry.getString("operationId").equals(result.optString("operationId")))throw new IllegalArgumentException();
     JSONObject library=result.optJSONObject("photoLibraryResult");if("succeeded".equals(status)){if(library==null||!type.equals(library.optString("kind")))throw new IllegalArgumentException();}else if(library!=null)throw new IllegalArgumentException();
     if(result.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8).length>16000)throw new IllegalArgumentException();

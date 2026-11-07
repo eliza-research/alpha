@@ -14,7 +14,7 @@ async function openPendingVideoCopy(page:Page){
   f.checkReleases=[];f.releaseChecks=()=>{f.holdChecks=false;for(const release of f.checkReleases.splice(0))release();};
   cap.nativePromise=async(plugin:string,method:string,input:any)=>{
    if(plugin==='AlphaPhotos'&&f.holdChecks&&(f.checkRequests||0)<2&&(method==='libraryAccess'||method==='read'&&input.id===f.row.id)){f.checkRequests=(f.checkRequests||0)+1;await new Promise<void>(resolve=>f.checkReleases.push(resolve));}
-   if(plugin==='AlphaPhotos'&&method==='listPermitted'){const result=await original(plugin,method,input);if(f.copy&&f.scope!=='denied')result.items.push(f.copy);return result;}
+   if(plugin==='AlphaPhotos'&&(method==='listPermitted'||method==='list'&&!input?.trashed&&!input?.album)){const result=await original(plugin,method,input);if(f.copy&&f.scope!=='denied')result.items.push(f.copy);return result;}
    if(plugin==='AlphaPhotos'&&['beginVideoEdit','saveVideoEdit','cancelVideoEdit','editResult','read'].includes(method)){
     f.calls.push({plugin,method,input});
     if(method==='read'){if(f.scope==='denied'||f.deleted)throw Error('Source unavailable');return input.id==='v:92'?f.copy:f.row;}
@@ -29,7 +29,7 @@ async function openPendingVideoCopy(page:Page){
   };
  });
  await page.getByRole('button',{name:'Photos',exact:true}).click();
- await page.getByRole('button',{name:/^Captured video /}).click();
+ await page.getByRole('button',{name:/^Video, /}).click();
  await expect(page.getByRole('button',{name:'Video. Tap to show or hide controls, swipe to browse',exact:true})).toBeVisible();await page.getByRole('button',{name:'Play video',exact:true}).click();await expect(page.locator('[data-alpha-photo-frame] video')).toBeVisible();await page.getByRole('button',{name:'Pause video',exact:true}).click();await page.getByRole('button',{name:'Edit video',exact:true}).click();
  const dialog=page.getByRole('dialog',{name:'Edit video',exact:true});
  await expect(dialog.getByRole('button',{name:'Save video copy',exact:true})).toBeEnabled();
@@ -63,12 +63,12 @@ for(const result of ['valid','permission revoked','source changed'])test(`native
  await expect.poll(()=>page.evaluate(()=>(window as any).mediaFixture.checkRequests)).toBe(2);
  await page.evaluate(()=>(window as any).mediaFixture.complete(true));
  await expect(dialog).toBeVisible();
- await expect(page.getByText('Saved a copy. Original unchanged.',{exact:true})).toHaveCount(0);
+ await expect(page.getByText('Copy saved',{exact:true})).toHaveCount(0);
  expect(await page.evaluate(()=>(window as any).mediaFixture.cancelCount)).toBe(0);
  await page.evaluate(result=>{const f=(window as any).mediaFixture;if(result==='permission revoked')f.scope='denied';if(result==='source changed')f.row.mutationRevision='provider:changed-after-receipt';f.releaseChecks();},result);
  await expect(dialog).toHaveCount(0);
- if(result==='valid')await expect(page.getByText('240 × 320 · saved to Android Photos',{exact:true})).toBeVisible();
- else{await expect.poll(()=>page.evaluate(()=>(window as any).mediaFixture.cancelCount)).toBeGreaterThan(0);await expect(page.getByRole('button',{name:'Back from photo',exact:true})).toHaveCount(0);await expect(page.getByText('Saved a copy. Original unchanged.',{exact:true})).toHaveCount(0);}
+ if(result==='valid')await showsCopy(page);
+ else{await expect.poll(()=>page.evaluate(()=>(window as any).mediaFixture.cancelCount)).toBeGreaterThan(0);await expect(page.getByRole('button',{name:'Back from photo',exact:true})).toHaveCount(0);await expect(page.getByText('Copy saved',{exact:true})).toHaveCount(0);}
  expect(await page.evaluate(()=>(window as any).mediaFixture.saveCount)).toBe(1);
 });
 test('notification during receipt acknowledgement cannot expose a revoked source',async({page})=>{
@@ -81,7 +81,7 @@ test('notification during receipt acknowledgement cannot expose a revoked source
  await expect.poll(()=>page.evaluate(()=>(window as any).mediaFixture.ackNotified)).toBe(true);
  await expect(dialog).toHaveCount(0);
  await expect(page.getByRole('button',{name:'Back from photo',exact:true})).toHaveCount(0);
- await expect(page.getByText('Saved a copy. Original unchanged.',{exact:true})).toHaveCount(0);
+ await expect(page.getByText('Copy saved',{exact:true})).toHaveCount(0);
 });
 test('late validated receipt does not replace a newer selected video',async({page})=>{
  const dialog=await openPendingVideoCopy(page);
@@ -91,11 +91,17 @@ test('late validated receipt does not replace a newer selected video',async({pag
  await dialog.getByRole('button',{name:'Close video editor',exact:true}).click();
  await page.getByRole('button',{name:'Back from photo',exact:true}).click();
  await page.evaluate(()=>(window as any).mediaFixture.emit());
- await expect(page.getByRole('button',{name:/^Captured video /})).toHaveCount(2);
- await page.getByRole('button',{name:/^Captured video /}).last().click();
- await expect(page.getByText('240 × 320 · saved to Android Photos',{exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:/^Video, /})).toHaveCount(2);
+ await page.getByRole('button',{name:/^Video, /}).first().click();// newest first: the later copy leads
+ await showsCopy(page);
  await page.evaluate(()=>(window as any).mediaFixture.releaseChecks());
  await expect.poll(()=>page.evaluate(()=>localStorage.getItem('alpha.photos.pending-copy.v1'))).toBe(null);
- await expect(page.getByText('240 × 320 · saved to Android Photos',{exact:true})).toBeVisible();
+ await showsCopy(page);
  expect(await page.evaluate(()=>(window as any).mediaFixture.saveCount)).toBe(1);
 });
+/** The viewer shows the saved copy: its Info lists the copy's dimensions. */
+async function showsCopy(page:Page){
+ await page.getByRole('button',{name:'Video info',exact:true}).click();
+ await expect(page.getByRole('dialog',{name:'Video info',exact:true}).getByText('240 × 320',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Close info',exact:true}).click();
+}

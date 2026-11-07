@@ -223,7 +223,7 @@ test('Camera keeps one capture session and an undistorted preview through rotati
 
   await page.goto('/');
   await page.getByRole('button', { name: 'Photos', exact: true }).click();
-  const tile = page.getByRole('button', { name: /^Captured photo / });
+  const tile = page.getByRole('button', { name: /^Photo, / });
   await expect(tile).toHaveCount(1);
   for (const tab of ['Library', 'Albums']) await expectTarget(page, page.getByRole('button', { name: tab, exact: true }));
   // The grid adds columns with width instead of growing each square tile.

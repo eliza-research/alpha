@@ -11,6 +11,6 @@ export async function openOwnedPhotoViewer(page:Page,theme='light'){
   await importBrowserPhoto({original:new File([],'accessibility-fixture.jpg',{type:'image/jpeg'}),image:canvas.toDataURL('image/jpeg'),width:240,height:180},new AbortController().signal);
  });
  await page.getByRole('button',{name:'Photos',exact:true}).click();
- await page.getByRole('button',{name:/^Captured photo /}).click();
+ await page.getByRole('button',{name:/^Photo, /}).click();
  await expect(page.locator('[data-alpha-subview="photos-viewer"]:not([inert])')).toBeVisible();
 }

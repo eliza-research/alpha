@@ -13,7 +13,10 @@ import {readMediaCopyIntent,admitMediaCopyIntent,acknowledgeMediaCopyIntent,medi
 import {createInlineModal} from '../runtime/inline-modal';
 import {reviewContentQuestion} from '../browser/content-question';
 import {createCaptureRevisions,captureUnchanged} from './context-selection';
-import {createDeviceLibrary} from './photo-library-adapter';
+import {createDeviceLibrary,setMainLibraryHost,LibraryAgentRefusal,type HostOperation} from './photo-library-adapter';
+import type {PhotosViewResult} from '../runtime/photos-view-contract';
+import {virtualGrid,newestFirst,mergeWindow,groupSections,patchRows,insertRows,patchSelection,favoriteTarget,batches,daysLeft,pinchColumns,dragRange,filterMatches,filterLabel,viewerTitle,formatBytes,shotAt,albumOf,GRID_COLUMNS,type PhotosFilter} from '../runtime/photos-view';
+import {LIBRARY_LIMITS,type LibraryAgentOperation,type LibraryAgentResult} from '../runtime/photo-library';
 import {openVideoEditReview} from './video-edit-review';
 import {openScanReview,ScanKeepError} from './scan-review';
 import {systemPickerActive} from './scan-pdf';
@@ -56,7 +59,7 @@ const nativeCamera = registerPlugin<{
 const cameraAccess = registerPlugin<{ checkPermissions(): Promise<{ camera?: string }> }>('ElizaCamera');
 export {restartAfterResume};
 type LibraryAccess = {scope:'full'|'partial'|'selected'|'denied';images:'full'|'selected'|'denied';videos:'full'|'selected'|'denied'};
-type SavedPhoto = { name?:string;owned?:boolean;kind?: 'image' | 'video'; duration?: number; path?: string; id: string; image: string; width: number; height: number; date: number; revision: string; mutationRevision?: string; contentRevision?: string; trashed?: boolean; expiresAt?: number; favorite?: boolean };
+type SavedPhoto = { name?:string;owned?:boolean;folder?:string;taken?:number;size?:number;kind?: 'image' | 'video'; duration?: number; path?: string; id: string; image: string; width: number; height: number; date: number; revision: string; mutationRevision?: string; contentRevision?: string; trashed?: boolean; expiresAt?: number; favorite?: boolean };
 const nativeLibrary = registerPlugin<{
   addListener(event:'libraryChanged',listener:()=>void):Promise<{remove():Promise<void>}>;
   libraryAccess():Promise<LibraryAccess>;
@@ -67,7 +70,7 @@ const nativeLibrary = registerPlugin<{
   listPermitted(options:{before?:string;query?:string;kind?:'all'|'image'|'video';thumbnails?:boolean;filter?:'all'|'favorites'|'trash'}):Promise<{items:SavedPhoto[];next:string;access:LibraryAccess}>;
   beginEdit(options:{id:string;revision:string}):Promise<EditPreview>;
   previewEdit(options:{sessionId:string;rotation:number;crop:boolean;filter:string}):Promise<EditPreview>;
-  saveEdit(options:{sessionId:string;rotation:number;crop:boolean;filter:string}):Promise<EditReceipt>;
+  saveEdit(options:{sessionId:string;rotation:number;crop:boolean;filter:string;replace?:boolean}):Promise<EditReceipt>;
   editResult(options:{operationId:string}):Promise<EditReceipt>;
   cancelEdit(options:{sessionId:string}):Promise<void>;
   beginVideoEdit(options:{id:string;revision:string}):Promise<{sessionId:string;operationId:string;duration:number;width:number;height:number}>;
@@ -79,11 +82,11 @@ const nativeLibrary = registerPlugin<{
   share(options: { id: string;revision?:string }): Promise<{ status: string; message?: string }>;
   setFavorite(options: {id:string;revision:string;favorite:boolean}): Promise<SavedPhoto>;
   deletePermittedTrash(options:{items:{id:string;revision:string}[]}):Promise<{status:string;outcomes:{id:string;status:string}[]}>;
-  changeMany(options:{operation:'favorite'|'trash'|'restore';items:{id:string;revision:string}[]}):Promise<{status:string;outcomes:{id:string;status:string;item?:SavedPhoto}[]}>;
+  changeMany(options:{operation:'favorite'|'unfavorite'|'trash'|'restore';items:{id:string;revision:string}[]}):Promise<{status:string;outcomes:{id:string;status:string;item?:SavedPhoto}[]}>;
   shareMany(options:{items:{id:string;revision:string}[]}): Promise<{status:string;count:number;message?:string}>;
   albums(): Promise<{items:OwnedAlbum[]}>;
   changeAlbum(options:Record<string,unknown>): Promise<{status:string;id:string;revision:string}>;
-  summary(): Promise<{favorites:number;videos:number;trash:number;canFavorite:boolean}>;
+  summary(): Promise<{favorites:number;videos:number;camera?:number;screenshots?:number;trash:number;canFavorite:boolean}>;
   prepareDeleteTrash(options:{items:{id:string;revision:string}[]}|{all:true}): Promise<{confirmation:string;count:number}>;
   cancelDeleteTrash(options:{confirmation:string}): Promise<void>;
   deletePreparedTrash(options:{confirmation:string}): Promise<{status:string;deletedIds:string[];skippedIds:string[];failedIds:string[]}>;
@@ -93,22 +96,6 @@ const photoAttachments=registerPlugin<{readPhotoSelected(input:{id:string;revisi
 const device=registerPlugin<{openSettings(options:{page:'privacy'}):Promise<{status:string}>}>('AlphaDevice');
 /** Only an explicit permission denial gets settings recovery (shared camera host rule). */
 export const mediaAccessDenied=cameraAccessDenied;
-/** Describe or extract text from a capture before anything reaches the
- * conversation draft. Pixels never leave the device; only reviewed text does. */
-const CAPTURE_STOP=new Set(['of','at','the','in','on','from','with','and','my','a','an','me','show','find']);
-export function captureSearchWords(query:unknown):string[]{return String(query||'').toLowerCase().replace(/'s\b/g,'').replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(word=>word&&!CAPTURE_STOP.has(word));}
-/** Searchable facts are the capture's own metadata: kind, favorite, date words.
- * Nothing is inferred from pixels. Every query word must prefix-match. */
-export function captureMatches(row:{kind?:string;favorite?:boolean;date:number;width?:number;height?:number},words:string[],now=new Date()):boolean{
-  if(!words.length)return true;
-  const date=new Date(row.date),day=new Date(date.getFullYear(),date.getMonth(),date.getDate()).getTime(),today=new Date(now.getFullYear(),now.getMonth(),now.getDate()).getTime(),ago=Math.round((today-day)/86400000);
-  const bag=['captured','camera','alpha',row.kind==='video'?'video':'photo',row.kind==='video'?'videos':'photos',row.kind==='video'?'clip':'picture',row.kind==='video'?'clips':'pictures',
-    date.toLocaleDateString('en-US',{weekday:'long'}).toLowerCase(),date.toLocaleDateString('en-US',{month:'long'}).toLowerCase(),String(date.getFullYear()),String(date.getDate())];
-  if(ago===0)bag.push('today');if(ago===1)bag.push('yesterday');if(ago>=0&&ago<7)bag.push('week');if(date.getDay()===0||date.getDay()===6)bag.push('weekend');
-  if(row.favorite)bag.push('favorite','favorites','fav');
-  if(row.width&&row.height)bag.push(row.width>row.height?'landscape':row.width<row.height?'portrait':'square');
-  return words.every(word=>bag.some(term=>term.startsWith(word)));
-}
 let captureQuestion:((item?:{id:string})=>boolean)|undefined;
 /** A request to scan what Camera sees; asking Alpha in Camera reaches it. */
 let scanRequest:(()=>boolean)|undefined;
@@ -123,8 +110,9 @@ const camera:typeof nativeCamera=browserMode?browserCamera:nativeCamera;
 browserPhotoLibrary satisfies Pick<typeof nativeLibrary,Exclude<keyof typeof browserPhotoLibrary,'saveVideoCopy'|'share'|'shareMany'>>;
 const library=browserMode?browserLibrary as unknown as typeof nativeLibrary:nativeLibrary;
 const libraryAvailable=()=>browserMode||Capacitor.isPluginAvailable('AlphaPhotos');
-type EditPreview={sessionId:string;operationId:string;image:string;width:number;height:number;reduced:boolean;maxEdge:number;filter:string};
-type EditReceipt={status:string;operationId:string;id?:string};
+/** canReplace: the native edit pipeline can overwrite this original (owned, or Android allows a write request). */
+type EditPreview={sessionId:string;operationId:string;image:string;width:number;height:number;reduced:boolean;maxEdge:number;filter:string;canReplace?:boolean};
+type EditReceipt={status:string;operationId:string;id?:string;replaced?:boolean;revision?:string;message?:string};
 type OwnedAlbum = {id:string;name:string;revision:string;count:number;memberIds:string[]};
 const finder = '[data-alpha-camera="viewfinder"]';
 /** Zoom chips offered when the bound lens's range covers them. A lens with only 1× shows none. */
@@ -211,7 +199,18 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   function closeVideo() { if (video) { video.pause(); video.removeAttribute('src'); video.load(); video.remove(); } video = undefined; videoId = ''; }
   let captures: SavedPhoto[] = [];
   let photosApi: Bag | undefined, loaded = false, loading = false, next = '', libraryEpoch = 0;
-  let libraryAccess:LibraryAccess|undefined,requestingLibraryAccess=false,libraryQuery='';
+  let libraryAccess:LibraryAccess|undefined,requestingLibraryAccess=false;
+  /** The newest rows Photos keeps loaded; a reload re-reads at most RELOAD_LIMIT of them. */
+  const WINDOW=LIBRARY_LIMITS.kept,RELOAD_LIMIT=240,BATCH=20,SHARE_BATCH=100;
+  /** The agent's read-only filter (photos_filter), shown as a clearable chip. */
+  let photosFilter:(PhotosFilter&{label:string})|undefined;
+  let gridColumns:number=GRID_COLUMNS.default;
+  /** Drag-to-extend: the tile the drag started on and the selection it started from. */
+  let drag:{anchor:string;base:SavedPhoto[];order:SavedPhoto[];moved:boolean}|undefined;
+  /** An agent album request waiting for the owner (photos_album_create): exact rows and revisions shown. */
+  let albumReview:{name:string;items:SavedPhoto[];missing:number}|undefined;
+  /** An agent share request waiting for the owner (photos_share). */
+  let shareReview:{items:SavedPhoto[];missing:number}|undefined;
   const permittedLibrary=()=>!browserMode&&!!libraryAccess&&libraryAccess.scope!=='denied';
   let preview: SavedPhoto | undefined, reading = '', sharing = false;
   let photoReadEpoch=0;
@@ -248,7 +247,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
             await pendingCopy?.checking;
             await finishEdit(receipt,owner,ticket);return receipt.status==='saved';
           }catch{if(ticket.intent)await recoverEdit(owner,ticket);else if(current()){owner.set({nativeCopyRecovery:true});owner.toast('Copy request could not be retained. Check saved-copy recovery before another save.');}return false;}
-          finally{signal.removeEventListener('abort',abort);if(pendingCopy&&pendingNativeVideoCopy===pendingCopy){pendingNativeVideoCopy=undefined;if(pendingCopy.refresh&&!disposed)invalidateLibrary(true);}}
+          finally{signal.removeEventListener('abort',abort);if(pendingCopy&&pendingNativeVideoCopy===pendingCopy){pendingNativeVideoCopy=undefined;if(pendingCopy.refresh&&!disposed)invalidateLibrary();}}
         },()=>{if(session){if(nativeVideoSession===session.sessionId)nativeVideoSession=undefined;void nativeLibrary.cancelVideoEdit({sessionId:session.sessionId}).catch(()=>{});}if(editEpoch===token){++editEpoch;closeVideoEdit=undefined;videoEditSource=undefined;}});
         return;
       }
@@ -261,13 +260,13 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     catch(error){if(edit===current){current.busy=false;owner.toast(error instanceof Error?error.message:'Preview unavailable. Original unchanged.');}}
     finally{if(owner.isActive())owner.set({nativeEditRevision:Date.now()});}
   }
-  type EditCompletion={token:string;epoch:number;source:string|undefined;intent?:MediaCopyIntent};
+  type EditCompletion={token:string;epoch:number;source:string|undefined;intent?:MediaCopyIntent;replace?:boolean};
   const completionCurrent=(ticket:EditCompletion,owner:Bag)=>!disposed&&!document.hidden&&owner.isActive()&&editEpoch===ticket.epoch&&owner.get('photos').open===ticket.source&&(!edit||edit.operationId===ticket.token);
   async function finishEdit(value:EditReceipt,owner:Bag,ticket:EditCompletion){
     // A late/duplicate outcome may only retire its own persisted operation.
     // It cannot consume a new save or cancel/navigate a newer editor/selection.
     if(value.operationId!==ticket.token||!ticket.intent)throw Error('Saved-copy receipt identity changed');
-    const terminal=(value.status==='saved'&&!!value.id)||['failed','unchanged','not-started'].includes(value.status);if(!terminal)return false;
+    const terminal=(value.status==='saved'&&!!value.id)||['failed','unchanged','not-started','stale'].includes(value.status);if(!terminal)return false;
     await acknowledgeMediaCopyIntent(ticket.intent);
     // A library notification can arrive while acknowledgement yields too.
     const pendingCopy=pendingNativeVideoCopy;
@@ -276,8 +275,9 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     if(edit?.operationId===ticket.token)cancelEdit();
     if(!updateView)return true;owner.set({nativeCopyRecovery:false});
     if(videoEditSource&&videoEditSource===ticket.source&&closeVideoEdit){const close=closeVideoEdit;closeVideoEdit=undefined;close();}
-    if(value.status==='saved'&&value.id){owner.toast('Saved a copy. Original unchanged.');void refresh();await openSaved('native-camera-'+value.id,owner);}
-    else{owner.toast(value.status==='failed'?'Copy was not saved. Original unchanged.':'No copy was created. Original unchanged.');owner.set({nativeEditRevision:Date.now()});}return true;
+    if(value.status==='saved'&&value.id&&value.replaced){owner.toast('Saved');retirePhotoRead();preview=undefined;invalidateLibrary();await openSaved('native-camera-'+value.id,owner);}
+    else if(value.status==='saved'&&value.id){owner.toast('Copy saved');void refresh();await openSaved('native-camera-'+value.id,owner);}
+    else{owner.toast(value.status==='stale'?'Photo changed. Nothing was replaced.':value.status==='failed'?(ticket.replace?'Not saved. Try again.':'Copy not saved. Try again.'):'No changes to save');owner.set({nativeEditRevision:Date.now()});}return true;
   }
   let recoveringEdit=false,automaticEditRecovery='';
   async function recoverEdit(owner:Bag,original?:EditCompletion){
@@ -290,14 +290,14 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     }catch{if(!disposed&&owner.isActive()&&editEpoch===epoch){owner.set({nativeCopyRecovery:true});owner.toast('Copy outcome could not be checked. Use saved-copy recovery; no additional copy was created.');}}
     finally{recoveringEdit=false;}
   }
-  async function saveEdit(owner:Bag){
-    const current=edit;if(!current||current.busy)return;
-    const ticket:EditCompletion={token:current.operationId,epoch:editEpoch,source:current.source};
+  async function saveEdit(owner:Bag,replace=false){
+    const current=edit;if(!current||current.busy||replace&&!current.canReplace)return;
+    const ticket:EditCompletion={token:current.operationId,epoch:editEpoch,source:current.source,replace};
     if(current.uncertain){void recoverEdit(owner);return;}current.busy=true;owner.set({nativeEditRevision:Date.now()});
     try{
       ticket.intent=await admitMediaCopyIntent(ticket.token);automaticEditRecovery=ticket.token;
       if(!completionCurrent(ticket,owner)){await acknowledgeMediaCopyIntent(ticket.intent);return;}
-      const value=await library.saveEdit({sessionId:current.sessionId,rotation:current.rotation,crop:current.crop,filter:current.filter});
+      const value=await library.saveEdit({sessionId:current.sessionId,rotation:current.rotation,crop:current.crop,filter:current.filter,...(replace?{replace:true}:{})});
       if(!await finishEdit(value,owner,ticket)){if(edit===current)current.uncertain=true;await recoverEdit(owner,ticket);}
     }catch{if(edit===current)current.uncertain=true;if(ticket.intent)await recoverEdit(owner,ticket);else if(completionCurrent(ticket,owner)){owner.set({nativeCopyRecovery:true});owner.toast('Copy request could not be retained. Check saved-copy recovery before another save.');}}
     finally{if(edit===current){current.busy=false;if(completionCurrent(ticket,owner))owner.set({nativeEditRevision:Date.now()});}}
@@ -309,10 +309,11 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
       openDomainRecovery({capture:signal=>domain.capture(signal),reset:async(expected,signal)=>{await domain.reset(expected,signal);editRecoveryChecked=false;automaticEditRecovery='';if(owner.isActive())owner.set({nativeCopyRecovery:false});}},'saved-copy request','Saved-copy recovery','Download the pending request before resetting. A photo or video copy may already exist. Inspect Photos before saving another copy. Reset clears only the saved request; it does not delete media, undo a saved copy or repeat an edit. Close older Alpha tabs before continuing.',controller.signal);
     }catch{if(!controller.signal.aborted&&owner.isActive())owner.toast('Saved-copy recovery is unavailable. The request remains retained.');}
   }
-  let counts: {favorites:number;videos:number;trash:number;canFavorite:boolean} | undefined, countsBusy = false, countsError = false, countsEpoch = 0;
+  let counts: {favorites:number;videos:number;camera?:number;screenshots?:number;trash:number;canFavorite:boolean} | undefined, countsBusy = false, countsError = false, countsEpoch = 0;
   let albumRows: SavedPhoto[] = [], albumKey = '', albumNext = '', albumBusy = false, albumEpoch = 0;
   let customAlbums: OwnedAlbum[] = [], albumsLoaded=false, albumsBusy=false, albumsEpoch=0;
-  let manager: {media?:SavedPhoto;album?:OwnedAlbum;name:string;creating?:boolean;choosing?:boolean;confirmDelete?:boolean}|undefined;
+  /** media: one item (viewer Info); items: the selection (Add to album). */
+  let manager: {media?:SavedPhoto;items?:SavedPhoto[];album?:OwnedAlbum;name:string;creating?:boolean;choosing?:boolean;confirmDelete?:boolean}|undefined;
   let albumTrigger:HTMLElement|null=null;
   const albumModal=createInlineModal(()=>{manager=undefined;photosApi?.set({sheet:null});},()=>albumTrigger);
   let selection: SavedPhoto[]|undefined;let holdTimer:number|undefined;let swallowedTap='';
@@ -337,59 +338,113 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     loading = true; const token = ++libraryEpoch;
     try {
       if(!browserMode)libraryAccess=await nativeLibrary.libraryAccess();
-      const result = permittedLibrary()?await nativeLibrary.listPermitted({...(more?{before:next}:{}),query:libraryQuery}):await library.list(more ? { before: next } : {});
-      if (disposed || token !== libraryEpoch) return;
-      const rows = result.items.map(normalize);
-      captures = more ? [...captures, ...rows.filter(row => !captures.some(old => old.id === row.id))] : rows;
-      if(permittedLibrary())captures=captures.slice(-240);
-      next = result.next; loaded = true; loading = false;
+      // One catalog: AlphaPhotos lists every permitted item, or Alpha's own captures without access.
+      // A reload re-reads as many rows as were showing (bounded), so a change patches the window in place.
+      const want=more?1:Math.min(Math.max(captures.length,1),RELOAD_LIMIT),rows:SavedPhoto[]=[];let cursor=more?next:'';
+      do{const result=await library.list(cursor?{before:cursor}:{});if(disposed||token!==libraryEpoch)return;rows.push(...result.items.map(normalize));cursor=result.next;}while(cursor&&!more&&rows.length<want);
+      captures = more ? mergeWindow(captures, rows, WINDOW) : newestFirst(rows).slice(0, WINDOW);
+      next = cursor; loaded = true; loading = false;
+      patchView();
       photosApi?.set({ nativeLibraryError: '', nativeCaptureRevision: token });
       if (!more && photosApi) { void loadCounts(photosApi); void loadCustomAlbums(photosApi); }
       if (api?.isActive()) api.set({ nativeCaptureRevision: token });
-    } catch { loaded = true; loading = false; if (!disposed) photosApi?.set({ nativeLibraryError: 'Saved photos could not be loaded. Tap to retry.' }); }
+    } catch { loaded = true; loading = false; if (!disposed) photosApi?.set({ nativeLibraryError: 'Photos could not be loaded. Tap to retry.' }); }
     finally { loading = false; if (refreshAgain && !disposed) { refreshAgain = false; queueMicrotask(() => { void refresh(); }); } }
+  }
+  /** The rows a selection may hold: what the open list shows (SelectionSubsetOfVisible). */
+  function selectionPool(owner:Bag|undefined=photosApi):SavedPhoto[]{
+    const album=owner?.get('photos')?.album;
+    if(album==='trash')return trash;
+    if(album)return albumRows;
+    return captures.filter(row=>filterMatches(row,photosFilter,albumMembers));
+  }
+  const albumMembers=(key:string)=>{const album=customAlbums.find(row=>'custom:'+row.id===key);return album?.memberIds.map(id=>'native-camera-'+id);};
+  /** After any load: keep selected rows that still exist (with their current revision); close the
+   * viewer only when its item is gone (FixPatch). Unrelated store events change nothing visible. */
+  function patchView(){
+    if(selection&&!mutating&&!sharing){selection=patchSelection(selection,selectionPool());photosApi?.set({nativeMultiSelection:Date.now()});}
+    const owner=photosApi,open=owner?.get('photos')?.open;
+    if(!owner||!open||edit||closeVideoEdit)return;
+    const live=[...captures,...albumRows,...trash].find(row=>row.id===open);
+    const shown=preview;
+    if(live){if(shown&&shown.id===open&&(live.mutationRevision!==shown.mutationRevision||!!live.trashed!==!!shown.trashed||live.favorite!==shown.favorite)){preview={...shown,...live};owner.set({nativePhotoSelection:captureSelection(preview)});}return;}
+    // Not in a loaded list (it may be on a later page): read it; only a missing item closes the viewer.
+    const token=photoReadEpoch;
+    void library.read({id:nativeId(open),includeTrashed:true}).then(row=>{if(disposed||token!==photoReadEpoch||owner.get('photos').open!==open)return;const fresh=normalize(row);if(preview?.id===open)preview={...preview,...fresh};},()=>{
+      if(disposed||token!==photoReadEpoch||owner.get('photos').open!==open)return;
+      retirePhotoRead();preview=undefined;closeVideo();owner.set({open:null,nativePhotoSelection:null,sheet:null,nativeCaptureRevision:Date.now()});
+    });
   }
   function toggleSelection(row:SavedPhoto,owner:Bag){
     if(!selection||mutating||sharing)return;
     if(selection.some(item=>item.id===row.id))selection=selection.filter(item=>item.id!==row.id);
-    else if(selection.length<20)selection=[...selection,row];else owner.toast('Select up to 20 items.');
+    else selection=[...selection,row];
     owner.set({nativePhotoSelection:null,nativeMultiSelection:Date.now()});
   }
-  function thumbnailEvents(row:SavedPhoto,owner:Bag){return {
-    selecting:!!selection,on:!!selection?.some(item=>item.id===row.id),selCss:selection?.some(item=>item.id===row.id)?'background:var(--acc);box-shadow:0 0 0 2px #ffffff':'background:rgba(0,0,0,.7);box-shadow:inset 0 0 0 2px #ffffff',
+  function startSelection(owner:Bag,rows:SavedPhoto[]=[]){
+    if(mutating||sharing)return;
+    const st=owner.get('photos');selection=rows;selectionTab=st?.tab==='alb'?'alb':'lib';swallowedTap='';endHold();
+    owner.set({open:null,nativePhotoSelection:null,nativeMultiSelection:Date.now()});
+  }
+  /** Drag over tiles after a long press, or while selecting, selects the range in grid order. */
+  function dragTo(event:PointerEvent,owner:Bag){
+    if(!drag||!selection)return;
+    const target=document.elementFromPoint(event.clientX,event.clientY)?.closest<HTMLElement>('[data-owned-media-id]'),id=target?.dataset.ownedMediaId;
+    if(!id||(!drag.moved&&id===drag.anchor))return;
+    drag.moved=true;swallowedTap=drag.anchor;
+    const range=dragRange(drag.order,drag.anchor,id),ids=new Set(drag.base.map(row=>row.id));
+    selection=[...drag.base,...range.filter(row=>!ids.has(row.id))];
+    owner.set({nativeMultiSelection:Date.now()});
+  }
+  function thumbnailEvents(row:SavedPhoto,owner:Bag,order:SavedPhoto[]){const on=!!selection?.some(item=>item.id===row.id);return {
+    selecting:!!selection,on,pressed:selection?on:undefined,selCss:on?'background:var(--acc);box-shadow:0 0 0 2px #ffffff':'background:rgba(0,0,0,.35);box-shadow:inset 0 0 0 2px #ffffff',tileCss:on?'transform:scale(.88);border-radius:6px':'',
     tap:()=>{endHold();if(swallowedTap===row.id){swallowedTap='';return;}if(selection)toggleSelection(row,owner);else void openSaved(row.id,owner);},
-    pd:()=>{endHold();if(selection||sharing||mutating)return;holdTimer=window.setTimeout(()=>{holdTimer=undefined;if(!owner.isActive()||disposed)return;selection=[row];selectionTab=owner.get('photos')?.tab==='alb'?'alb':'lib';swallowedTap=row.id;owner.set({open:null,nativePhotoSelection:null,nativeMultiSelection:Date.now()});},450);},pu:()=>{endHold();window.setTimeout(()=>{swallowedTap='';},0);},
+    pd:(event?:PointerEvent)=>{endHold();if(sharing||mutating)return;
+      // Keep the pointer on this tile so moving across others extends instead of ending the press.
+      try{if(event&&event.currentTarget instanceof Element)event.currentTarget.setPointerCapture(event.pointerId);}catch{/* not capturable */}
+      if(selection){drag={anchor:row.id,base:selection.filter(item=>item.id!==row.id),order,moved:false};if(!on)drag.base=[...selection];return;}
+      holdTimer=window.setTimeout(()=>{holdTimer=undefined;if(!owner.isActive()||disposed)return;startSelection(owner,[row]);swallowedTap=row.id;drag={anchor:row.id,base:[],order,moved:false};},450);},
+    pm:(event:PointerEvent)=>{if(drag)dragTo(event,owner);},
+    pu:()=>{endHold();drag=undefined;window.setTimeout(()=>{swallowedTap='';},0);},
   };}
   async function shareSelection(owner:Bag){
-    if(!selection?.length||sharing||mutating)return;const chosen=selection,token=photoReadEpoch,current=()=>!disposed&&!document.hidden&&photoReadEpoch===token&&owner.isActive()&&selection===chosen&&chosen.every(sameCapture);sharing=true;owner.set({nativeMultiSelection:Date.now()});
+    if(!selection?.length||sharing||mutating)return;if(selection.length>SHARE_BATCH){owner.toast(`Share up to ${SHARE_BATCH} at a time.`);return;}const chosen=selection,token=photoReadEpoch,current=()=>!disposed&&!document.hidden&&photoReadEpoch===token&&owner.isActive()&&selection===chosen&&chosen.every(sameCapture);sharing=true;owner.set({nativeMultiSelection:Date.now()});
     try{const items=chosen.map(row=>({id:nativeId(row.id),revision:row.mutationRevision||''})),result:Awaited<ReturnType<typeof nativeLibrary.shareMany>>=browserMode?await browserPhotoLibrary.shareMany({items},current):await nativeLibrary.shareMany({items});if(owner.isActive()&&result.message)owner.toast(result.message);}
     catch(error){if(owner.isActive()&&!(browserMode&&error instanceof DOMException&&error.name==='AbortError'))owner.toast(error instanceof Error?error.message:'Selection could not be shared. Reselect the items.');}
     finally{sharing=false;if(!disposed)owner.set({nativeMultiSelection:Date.now()});}
   }
+  /** Batch change of the selection (or of Undo's items). Large selections run in native-sized batches;
+   * rows are patched in place, so favorite and restore never reorder the grid. */
   async function changeSelection(owner:Bag,operation:'favorite'|'trash'|'restore',undoItems?:SavedPhoto[]){
     if(mutating||sharing||disposed)return;
     const chosen=undoItems||selection;if(!chosen?.length)return;
-    const selectionAtStart=selection;
+    const native:'favorite'|'unfavorite'|'trash'|'restore'=operation==='favorite'?(favoriteTarget(chosen)?'favorite':'unfavorite'):operation;
     mutating=true;closeVideo();preview=undefined;retirePhotoRead();
     owner.set({open:null,nativePhotoSelection:null,nativeMultiSelection:Date.now()});
+    const verified:SavedPhoto[]=[],changed:SavedPhoto[]=[];let failed=0,unverified=false;
     try{
-      const receipt=await library.changeMany({operation,items:chosen.map(row=>({id:nativeId(row.id),revision:row.mutationRevision||''}))});
-      if(disposed)return;
-      const verified=receipt.outcomes.filter(row=>row.item),changed=verified.filter(row=>row.status!=='unchanged');
-      const successful=new Set(verified.map(row=>'native-camera-'+row.id));
-      ++libraryEpoch;++trashEpoch;albumKey='';++albumEpoch;
-      captures=captures.filter(row=>!successful.has(row.id));trash=trash.filter(row=>!successful.has(row.id));
-      for(const row of verified){const before=chosen.find(item=>nativeId(item.id)===row.id);const item={...before,...normalize(row.item!)};if(item.trashed)trash.unshift(item);else captures.unshift(item);}
-      if(owner.isActive()&&selection===selectionAtStart){
-        selection=undoItems?undefined:chosen.filter(row=>!successful.has(row.id));if(!selection?.length)selection=undefined;
-        owner.set({nativeMultiSelection:Date.now(),nativeCaptureRevision:Date.now()});
-        const failed=receipt.outcomes.length-verified.length;
-        const message=operation==='favorite'?`${verified.length} favorited`:operation==='trash'?`${verified.length} moved to Recently deleted`:`${verified.length} restored`;
-        const undo=operation==='trash'?changed.map(row=>normalize(row.item!)):[];
-        owner.toast(message+(failed?`; ${failed} not verified. Cancel selection and reselect to refresh.`:''),undo.length?{undo:()=>{void changeSelection(owner,'restore',undo);}}:undefined);
+      for(const batch of batches(chosen,BATCH)){
+        if(disposed)return;
+        let receipt;try{receipt=await library.changeMany({operation:native,items:batch.map(row=>({id:nativeId(row.id),revision:row.mutationRevision||''}))});}
+        catch{unverified=true;failed+=batch.length;continue;}
+        for(const outcome of receipt.outcomes){if(!outcome.item){failed++;continue;}const before=batch.find(item=>nativeId(item.id)===outcome.id);const item={...before,...normalize(outcome.item)} as SavedPhoto;verified.push(item);if(outcome.status!=='unchanged')changed.push(item);}
+        failed+=Math.max(0,batch.length-receipt.outcomes.length);
       }
-    }catch{if(owner.isActive())owner.toast('Batch outcome could not be verified. Reopen Photos before retrying.');}
-    finally{mutating=false;if(!disposed){void refresh();void loadTrash(owner);void loadCounts(owner);void loadCustomAlbums(owner);owner.set({nativeMultiSelection:Date.now()});}}
+      if(disposed)return;
+      ++libraryEpoch;++trashEpoch;albumKey='';++albumEpoch;
+      const live=verified.filter(row=>!row.trashed),gone=verified.filter(row=>row.trashed);
+      captures=insertRows(patchRows(captures,verified,row=>!row.trashed),operation==='restore'?live:[]);
+      trash=insertRows(patchRows(trash,verified,row=>!!row.trashed),operation==='trash'?gone:[]);
+      albumRows=patchRows(albumRows,verified,row=>!row.trashed);
+      if(owner.isActive()){
+        selection=undefined;selectionTab=undefined;
+        owner.set({nativeMultiSelection:Date.now(),nativeCaptureRevision:Date.now()});
+        const n=verified.length,message=operation==='favorite'?(native==='favorite'?`Added ${n} to Favorites`:`Removed ${n} from Favorites`):operation==='trash'?`${n} moved to Recently deleted`:`${n} restored`;
+        const undo=operation==='trash'?changed.filter(row=>row.trashed):[];
+        owner.toast(message+(failed?` · ${failed} not changed`:''),undo.length?{undo:()=>{void changeSelection(owner,'restore',undo);}}:undefined);
+      }
+      if(unverified&&!verified.length&&owner.isActive())owner.toast('Nothing changed. Try again.');
+    }finally{mutating=false;if(!disposed){void refresh();void loadTrash(owner);void loadCounts(owner);void loadCustomAlbums(owner);owner.set({nativeMultiSelection:Date.now()});}}
   }
   // Browser-owned album storage reports damaged saved data by failing to read.
   // Albums then offers the exact-byte recovery dialog; saved media is unaffected.
@@ -402,25 +457,42 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   async function loadCustomAlbums(owner: Bag) {
     if(disposed)return;const token=++albumsEpoch;albumsBusy=true;
     try{const result=await library.albums();if(!disposed&&token===albumsEpoch){customAlbums=result.items;albumsLoaded=true;albumsRecovery=false;owner.set({nativeAlbumsError:'',nativeAlbumsRevision:token});}}
-    catch{const recovery=await albumStoreNeedsRecovery().catch(()=>false);if(!disposed&&token===albumsEpoch){albumsLoaded=true;albumsRecovery=recovery;owner.set({nativeAlbumsError:recovery?'Saved albums need recovery. Open Recover albums in Albums.':'Custom albums could not be loaded. Reopen album management to retry.',nativeAlbumsRevision:token});}}
+    catch{const recovery=await albumStoreNeedsRecovery().catch(()=>false);if(!disposed&&token===albumsEpoch){albumsLoaded=true;albumsRecovery=recovery;owner.set({nativeAlbumsError:recovery?'Albums could not be read.':'Albums could not be loaded.',nativeAlbumsRevision:token});}}
     finally{if(token===albumsEpoch)albumsBusy=false;}
   }
   function openAlbumManager(owner:Bag,media?:SavedPhoto,album?:OwnedAlbum,trigger?:HTMLElement){
     albumTrigger=trigger||(document.activeElement instanceof HTMLElement?document.activeElement:null);
     manager={media,album,name:album?.name||''};owner.set({sheet:'owned-album'});void loadCustomAlbums(owner);
   }
+  /** Adds rows one by one at their shown revisions; a row changed since is skipped by the store. */
+  async function addMembers(album:{id:string;revision:string},rows:SavedPhoto[]):Promise<{added:number;skipped:number}>{
+    let revision=album.revision,added=0,skipped=0;
+    for(const row of rows){if(disposed)break;try{const result=await library.changeAlbum({operation:'add',id:album.id,revision,mediaId:nativeId(row.id),mediaRevision:row.mutationRevision});revision=result.revision;added++;}catch{skipped++;try{revision=(await library.albums()).items.find(item=>item.id===album.id)?.revision||revision;}catch{/* keep the last revision */}}}
+    return {added,skipped};
+  }
   async function mutateAlbum(owner:Bag,operation:string,target?:OwnedAlbum){
     const current=manager;if(!current||mutating||disposed)return;
-    const album=target||current.album,media=current.media;
+    const album=target||current.album,media=current.media,items=current.items;
     mutating=true;owner.set({nativePhotoMutation:Date.now()});
     try{
-      await library.changeAlbum({operation,...(album?{id:album.id,revision:album.revision}:{}),...(media?{mediaId:nativeId(media.id),mediaRevision:media.mutationRevision}:{}),name:current.name});
+      let note='';
+      if(items?.length&&(operation==='create'||operation==='add')){
+        // Add to album from a selection: create (with the first item), then add the rest.
+        const [first,...rest]=items;let base:{id:string;revision:string};
+        if(operation==='create'){const created=await library.changeAlbum({operation:'create',name:current.name,mediaId:nativeId(first.id),mediaRevision:first.mutationRevision});base={id:created.id,revision:created.revision};}
+        else base={id:album!.id,revision:album!.revision};
+        const result=await addMembers(base,operation==='create'?rest:items);
+        const name=operation==='create'?current.name.trim():album!.name,count=result.added+(operation==='create'?1:0);
+        note=`Added ${count} to “${name}”`+(result.skipped?` · ${result.skipped} not added`:'');
+      }else await library.changeAlbum({operation,...(album?{id:album.id,revision:album.revision}:{}),...(media?{mediaId:nativeId(media.id),mediaRevision:media.mutationRevision}:{}),name:current.name});
       if(disposed)return;
       albumKey='';++albumEpoch;
       if(manager===current&&owner.isActive()&&owner.get('photos').sheet==='owned-album'){
         manager=undefined;
-        owner.set({sheet:null,...(operation==='delete'?{album:null,open:null,nativePhotoSelection:null}:{}),nativeAlbumsError:''});
-        if(operation==='delete'||operation==='remove')owner.toast(operation==='delete'?'Album deleted. Its media was kept.':'Removed from album. Its media was kept.');
+        if(items){selection=undefined;selectionTab=undefined;}
+        owner.set({sheet:null,...(operation==='delete'?{album:null,open:null,nativePhotoSelection:null}:{}),nativeAlbumsError:'',nativeMultiSelection:Date.now()});
+        if(note)owner.toast(note);
+        else if(operation==='delete'||operation==='remove')owner.toast(operation==='delete'?'Album deleted':'Removed from album');
       }
       await loadCustomAlbums(owner);
     }catch(error){if(!disposed){if(manager===current&&owner.isActive())owner.toast(error instanceof Error?error.message:'Album could not be saved.');void loadCustomAlbums(owner);}}
@@ -432,16 +504,17 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     catch { countsError = true; }
     finally { if (token === countsEpoch) countsBusy = false; }
   }
+  const ALBUM_KEYS:Record<string,string>={fav:'favorites',video:'videos',camera:'camera',shot:'screenshots'};
   async function loadAlbum(key: string, owner: Bag, more = false) {
     if (disposed || (albumBusy && albumKey === key && more)) return;
-    const token = ++albumEpoch; albumKey = key; albumBusy = true;
-    if (!more) { albumRows = []; albumNext = ''; }
+    const token = ++albumEpoch, same = albumKey === key; albumKey = key; albumBusy = true;
+    // Reloading the open album keeps its rows until the new page arrives, so a selection survives.
+    if (!more && !same) { albumRows = []; albumNext = ''; }
     try {
-      const result = await library.list({ album: key.startsWith('custom:') ? key : key === 'fav' ? 'favorites' : 'videos', ...(more ? {before:albumNext} : {}) });
+      const result = await library.list({ album: key.startsWith('custom:') ? key : ALBUM_KEYS[key] ?? 'videos', ...(more ? {before:albumNext} : {}) });
       if (disposed || token !== albumEpoch) return;
-      const rows = result.items.map(normalize); albumRows = more ? [...albumRows,...rows.filter(row => !albumRows.some(old => old.id === row.id))] : rows;
-      if(permittedLibrary())albumRows=albumRows.slice(-240);
-      albumNext = result.next; owner.set({nativeAlbumError:'',nativeAlbumRevision:token});
+      const rows = result.items.map(normalize); albumRows = more ? mergeWindow(albumRows, rows, WINDOW) : newestFirst(rows);
+      albumNext = result.next; patchView(); owner.set({nativeAlbumError:'',nativeAlbumRevision:token});
       if (!more) void loadCounts(owner);
     } catch { if (!disposed && token === albumEpoch) owner.set({nativeAlbumError:'Album could not be loaded. Tap to retry.'}); }
     finally { if (token === albumEpoch) albumBusy = false; }
@@ -452,7 +525,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     try {
       const result = normalize(await library.setFavorite({id:nativeId(row.id),revision:row.mutationRevision,favorite:!row.favorite}));
       if (disposed) return;
-      const updated = {...row,...result}; captures = captures.map(item=>item.id===row.id?updated:item);
+      const updated = {...row,...result}; captures = patchRows(captures,[updated],()=>true); albumRows = patchRows(albumRows,[updated],()=>true);
       const stillSelected = owner.isActive() && owner.get('photos').open === row.id;
       if (stillSelected) preview = updated;
       owner.set({...(stillSelected ? {nativePhotoSelection:captureSelection(updated)} : {}),nativeCaptureRevision:Date.now()});
@@ -469,8 +542,9 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     mutating=true;owner.set({nativePhotoMutation:Date.now()});
     try {
       const selected=items?.map(row=>({id:nativeId(row.id),revision:row.mutationRevision||''}));
-      if(permittedLibrary()&&(!selected?.length||selected.length>20)){owner.toast('Select up to 20 deleted items first.');return;}
-      const result=permittedLibrary()?{confirmation:'',count:selected!.length,items:selected}:await library.prepareDeleteTrash(selected?{items:selected}:{all:true});
+      if(permittedLibrary()&&!selected?.length){owner.toast('Select items first.');return;}
+      // Permitted media and large selections are deleted in batches after this one confirmation.
+      const result=permittedLibrary()||selected&&selected.length>BATCH?{confirmation:'',count:selected!.length,items:selected}:await library.prepareDeleteTrash(selected?{items:selected}:{all:true});
       if(disposed||!owner.isActive()||owner.get('photos').album!=='trash'){if(result.confirmation)void library.cancelDeleteTrash({confirmation:result.confirmation}).catch(()=>{});return;}
       if(result.count===0){void library.cancelDeleteTrash({confirmation:result.confirmation}).catch(()=>{});owner.toast('Recently deleted is empty.');return;}
       if(prepared?.confirmation)void library.cancelDeleteTrash({confirmation:prepared.confirmation}).catch(()=>{});
@@ -483,15 +557,22 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     const snapshot=prepared;mutating=true;closeVideo();owner.set({nativePhotoMutation:Date.now()});
     try {
       let result:{deletedIds:string[];skippedIds:string[];failedIds:string[]};
-      if(snapshot.items){const receipt=await nativeLibrary.deletePermittedTrash({items:snapshot.items});result={deletedIds:[],skippedIds:[],failedIds:[]};for(const item of snapshot.items){const outcome=receipt.outcomes.find(row=>row.id===item.id);if(outcome?.status==='deleted')result.deletedIds.push(item.id);else if(outcome?.status==='stale')result.skippedIds.push(item.id);else result.failedIds.push(item.id);}}
+      if(snapshot.items){
+        result={deletedIds:[],skippedIds:[],failedIds:[]};
+        for(const batch of batches(snapshot.items,BATCH)){
+          if(disposed)return;
+          if(permittedLibrary()){const receipt=await nativeLibrary.deletePermittedTrash({items:batch});for(const item of batch){const outcome=receipt.outcomes.find(row=>row.id===item.id);if(outcome?.status==='deleted')result.deletedIds.push(item.id);else if(outcome?.status==='stale')result.skippedIds.push(item.id);else result.failedIds.push(item.id);}}
+          else{const ticket=await library.prepareDeleteTrash({items:batch}),receipt=await library.deletePreparedTrash({confirmation:ticket.confirmation});result.deletedIds.push(...receipt.deletedIds);result.skippedIds.push(...receipt.skippedIds);result.failedIds.push(...receipt.failedIds);}
+        }
+      }
       else result=await library.deletePreparedTrash({confirmation:snapshot.confirmation});
       if(disposed)return;
       ++libraryEpoch;++trashEpoch;const deleted=new Set(result.deletedIds.map(id=>'native-camera-'+id));trash=trash.filter(row=>!deleted.has(row.id));captures=captures.filter(row=>!deleted.has(row.id));preview=undefined;
       const remaining=result.skippedIds.length+result.failedIds.length;
-      selection=selection?.filter(row=>!deleted.has(row.id));if(!selection?.length)selection=undefined;owner.set({sheet:null,open:null,nativePhotoSelection:null,nativeTrashMutationStatus:remaining?`${result.deletedIds.length} deleted. ${remaining} changed or could not be deleted; review the remaining items.`:''});
-      owner.toast(remaining?'Some items were not deleted.':`${result.deletedIds.length} ${result.deletedIds.length===1?'item':'items'} deleted forever`);
+      selection=selection?.filter(row=>!deleted.has(row.id));if(!selection?.length)selection=undefined;owner.set({sheet:null,open:null,nativePhotoSelection:null,nativeTrashMutationStatus:remaining?`${remaining} not deleted. Try again.`:''});
+      owner.toast(`${result.deletedIds.length} deleted`);
       void refresh();void loadTrash(owner);void loadCounts(owner);void loadCustomAlbums(owner);
-    }catch(error){if(!disposed){owner.set({sheet:null,nativeTrashMutationStatus:'Deletion could not be completed. Review the remaining items.'});owner.toast(error instanceof Error?error.message:'Deletion failed.');void loadTrash(owner);}}
+    }catch(error){if(!disposed){owner.set({sheet:null,nativeTrashMutationStatus:'Not deleted. Try again.'});owner.toast(error instanceof Error?error.message:'Deletion failed.');void loadTrash(owner);}}
     finally{if(prepared===snapshot)prepared=undefined;mutating=false;if(!disposed)owner.set({nativePhotoMutation:Date.now()});}
   }
   async function loadTrash(owner: Bag, more = false) {
@@ -502,25 +583,26 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
       const result = await library.list({ trashed: true, ...(more ? { before: trashNext } : {}) });
       if (disposed || token !== trashEpoch) return;
       const rows = result.items.map(normalize);
-      trash = more ? [...trash, ...rows.filter(row => !trash.some(old => old.id === row.id))] : rows;
-      if(permittedLibrary())trash=trash.slice(-240);
-      trashNext = result.next; trashLoaded = true;
+      trash = more ? mergeWindow(trash, rows, WINDOW) : newestFirst(rows);
+      trashNext = result.next; trashLoaded = true; patchView();
       owner.set({ nativeTrashError: '', nativeTrashRevision: Date.now() });
     } catch { if (!disposed) owner.set({ nativeTrashError: browserMode?'Browser trash could not be loaded. Tap to retry.':'Android trash could not be loaded. Android 11 or later is required.' }); }
     finally { trashLoading = false; if (trashRefreshAgain && !disposed) { trashRefreshAgain = false; queueMicrotask(() => { void loadTrash(owner); }); } }
   }
-  async function changeTrash(row: SavedPhoto, desired: boolean, owner: Bag) {
+  async function changeTrash(row: SavedPhoto, desired: boolean, owner: Bag, nextId?: string) {
     if (mutating || sharing || disposed) return;
     if (!row.mutationRevision) { owner.toast('Refresh Photos before changing this media.'); return; }
     mutating = true; closeVideo();
     try {
       const result = normalize(await library.setTrashed({ id: nativeId(row.id), revision: row.mutationRevision, trashed: desired }));
       if (disposed) return;
-      ++libraryEpoch; ++trashEpoch; captures = captures.filter(item => item.id !== row.id); trash = trash.filter(item => item.id !== row.id);
-      if (desired) trash.unshift({ ...row, ...result });
-      else captures.unshift({ ...row, ...result });
+      ++libraryEpoch; ++trashEpoch; const updated = { ...row, ...result };
+      captures = insertRows(captures.filter(item => item.id !== row.id), desired ? [] : [updated]); albumRows = albumRows.filter(item => item.id !== row.id);
+      trash = insertRows(trash.filter(item => item.id !== row.id), desired ? [updated] : []);
       preview = undefined; retirePhotoRead();
       owner.set({ open: null, nativePhotoSelection: null, sheet: null, sel: null, nativeCaptureRevision: Date.now() });
+      // Delete in the viewer moves on to the neighbouring item.
+      if (nextId && owner.isActive()) void openSaved(nextId, owner);
       owner.toast(desired ? 'Moved to Recently deleted' : 'Restored', desired ? { undo: () => { void changeTrash({ ...row, ...result }, false, owner); } } : undefined);
       void refresh(); void loadTrash(owner); void loadCounts(owner); void loadCustomAlbums(owner); albumKey=''; ++albumEpoch;
     } catch (error) {
@@ -956,10 +1038,114 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   module.actions = { ...(cameraActions || {}), scan: () => { if (api) void scanFrame(api); } };
   module.back = () => { if (session.recording || session.recordingStarting || session.finalizing) { void stop(); return true; } return false; };
   module.onLeave = () => { void stop(); };
+  /** Pinch on the grid: 4 columns by default, 3 or 5 when pinched. Wheel-free; two touches only. */
+  /** The Library grid's scroll position and size: only the rows on screen are rendered. */
+  let gridEl:HTMLElement|undefined,gridView={scrollTop:0,viewport:0,width:0,header:40,key:''};
+  const GRID_GAP=2,GRID_TOP=12,GRID_OVERSCAN=3;
+  function gridMetrics(){
+    const width=gridView.width||Math.min(window.innerWidth||400,480),viewport=gridView.viewport||window.innerHeight||800;
+    return {columns:gridColumns,width,gap:GRID_GAP,header:gridView.header,scrollTop:Math.max(0,gridView.scrollTop-GRID_TOP),viewport,overscan:GRID_OVERSCAN};
+  }
+  function measureGrid(el:HTMLElement,owner:Bag){
+    const header=el.querySelector<HTMLElement>('.photo-day-header')?.offsetHeight;
+    gridView={...gridView,scrollTop:el.scrollTop,viewport:el.clientHeight,width:el.clientWidth,header:header&&header>0?header:gridView.header};
+    // Re-render only when the set of rendered rows changes (row-sized steps), not on every pixel.
+    const pitch=(gridView.width-GRID_GAP*(gridColumns-1))/gridColumns+GRID_GAP,key=[gridColumns,Math.floor(gridView.scrollTop/Math.max(1,pitch)),Math.round(gridView.viewport/Math.max(1,pitch)),gridView.width,gridView.header].join(':');
+    if(key!==gridView.key){gridView.key=key;owner.set({nativeGridWindow:key});}
+  }
+  function attachGrid(el:HTMLElement|null,owner:Bag){
+    if(el&&el!==gridEl){gridEl=el;queueMicrotask(()=>{if(gridEl===el&&el.isConnected)measureGrid(el,owner);});}
+    if(!el||el.dataset.alphaPhotosGrid)return;el.dataset.alphaPhotosGrid='1';
+    if(typeof ResizeObserver==='function')new ResizeObserver(()=>{if(el.isConnected)measureGrid(el,owner);}).observe(el);
+    let start=0,startColumns=gridColumns;
+    const distance=(touches:TouchList)=>Math.hypot(touches[0].clientX-touches[1].clientX,touches[0].clientY-touches[1].clientY);
+    el.addEventListener('touchstart',event=>{if(event.touches.length===2){start=distance(event.touches);startColumns=gridColumns;}},{passive:true});
+    el.addEventListener('touchmove',event=>{if(event.touches.length!==2||!start)return;const columns=pinchColumns(startColumns,start,distance(event.touches));if(columns!==gridColumns){gridColumns=columns;owner.set({nativeGridColumns:columns});}},{passive:true});
+    el.addEventListener('touchend',event=>{if(event.touches.length<2)start=0;},{passive:true});
+    // Newest-first paging: the next page loads as the end of the grid comes into view.
+    el.addEventListener('scroll',()=>{measureGrid(el,owner);const album=owner.get('photos')?.album;if(el.scrollTop+el.clientHeight<el.scrollHeight-900)return;
+      if(album==='trash'){if(trashNext&&!trashLoading)void loadTrash(owner,true);}else if(album){if(albumNext&&!albumBusy)void loadAlbum(album,owner,true);}else if(next&&!loading)void refresh(true);},{passive:true});
+  }
+  const gridCss=()=>`grid-template-columns:repeat(${gridColumns},minmax(0,1fr))`;
+  const durationLabel=(row:SavedPhoto)=>row.kind==='video'&&row.duration?`${Math.floor(row.duration/60)}:${String(Math.floor(row.duration%60)).padStart(2,'0')}`:'';
+  const tileLabel=(row:SavedPhoto)=>{const when=viewerTitle(shotAt(row));return `${row.kind==='video'?'Video':'Photo'}, ${when.day} ${when.time}`;};
+  const imageCss=(row:SavedPhoto)=>row.image?`url("${row.image}") center / cover no-repeat`:'var(--s2)';
+  function tiles(rows:SavedPhoto[],owner:Bag,trashMode=false,order:SavedPhoto[]=rows){
+    const now=Date.now();
+    return rows.map(row=>{const left=trashMode?daysLeft(row.expiresAt,now):undefined;return {nativeMediaId:row.id,bg:imageCss(row),tf:'',flt:'',vid:row.kind==='video',dur:durationLabel(row),fav:!trashMode&&!!row.favorite&&!selection,left:left===undefined?'':`${left}d`,dim:mutating?'opacity:.35;pointer-events:none':'',alt:tileLabel(row)+(left!==undefined?`, ${left} ${left===1?'day':'days'} left`:''),...thumbnailEvents(row,owner,order)};});
+  }
+  /** The agent asked to filter, select or create an album: it acts on the Library the owner sees. */
+  const host={
+    visible:()=>!disposed&&!document.hidden&&!!photosApi?.isActive(),
+    reviewOpen:()=>!!albumReview||!!shareReview,
+    reviewChanged:()=>{photosApi?.set({nativeAgentReview:Date.now()});const note=deviceLibrary.takeStatus();if(note&&photosApi?.isActive())photosApi.toast(note);},
+    trashed:(ids:string[])=>{const owner=photosApi;if(!owner||!ids.length)return;void (async()=>{await loadTrash(owner);await refresh();const rows=trash.filter(row=>ids.includes(nativeId(row.id)));if(owner.isActive())owner.toast(`${ids.length} moved to Recently deleted`,rows.length?{undo:()=>{void changeSelection(owner,'restore',rows);}}:undefined);})();},
+    async run(operation:HostOperation,signal:AbortSignal):Promise<LibraryAgentResult|PhotosViewResult>{
+      const owner=photosApi;if(!owner?.isActive()||disposed)throw new LibraryAgentRefusal('Open Photos, then ask again.');
+      if(edit||closeVideoEdit||mutating||sharing)throw new LibraryAgentRefusal('Photos is busy. Try again.');
+      if(!loaded)await refresh();signal.throwIfAborted();
+      if(operation.type==='photos_filter'){
+        const {type:_type,...wanted}=operation;void _type;
+        const albumName=(key:string)=>customAlbums.find(row=>'custom:'+row.id===key)?.name;
+        photosFilter={...wanted,label:filterLabel(wanted,albumName)};
+        // The filter never changes media; the selection keeps only rows it still shows.
+        if(selection)selection=selection.filter(row=>filterMatches(row,photosFilter,albumMembers));
+        owner.set({tab:'lib',album:null,open:null,nativePhotoSelection:null,nativePhotosFilter:Date.now()});
+        const shown=captures.filter(row=>filterMatches(row,photosFilter,albumMembers)).length;
+        return {kind:'photos_filter',shown,more:!!next};
+      }
+      if(operation.type==='photos_open'){
+        // Opening is navigation only: the viewer shows the item; nothing changes or is shared.
+        const row=captures.find(item=>nativeId(item.id)===operation.id);
+        if(!row)return {kind:'photos_open',opened:false};
+        selection=undefined;selectionTab=undefined;photosFilter=undefined;
+        owner.set({tab:'lib',album:null,sheet:null,chrome:true,nativeMultiSelection:Date.now()});
+        await openSaved(row.id,owner);
+        return {kind:'photos_open',opened:owner.get('photos').open===row.id};
+      }
+      const wanted=new Set(operation.ids),rows=captures.filter(row=>wanted.has(nativeId(row.id)));
+      if(operation.type==='photo_library_select'){
+        selection=rows;selectionTab='lib';photosFilter=undefined;
+        owner.set({tab:'lib',album:null,open:null,nativePhotoSelection:null,nativeMultiSelection:Date.now()});
+        return {kind:'photo_library_select',selected:rows.length,missing:operation.ids.length-rows.length};
+      }
+      if(!rows.length)throw new LibraryAgentRefusal('Those items are not in Photos. Nothing changed.');
+      if(albumReview||shareReview)throw new LibraryAgentRefusal('Finish the open review first.');
+      if(operation.type==='photos_share'){
+        // Reviewed: the owner confirms over the grid, then picks a target in Android's share sheet.
+        shareReview={items:rows.map(row=>({...row})),missing:operation.ids.length-rows.length};
+        owner.set({tab:'lib',album:null,open:null,nativeAgentReview:Date.now()});
+        return {kind:'photos_share',status:'review_opened',count:rows.length,missing:operation.ids.length-rows.length};
+      }
+      albumReview={name:operation.name,items:rows.map(row=>({...row})),missing:operation.ids.length-rows.length};
+      owner.set({tab:'lib',album:null,open:null,nativeAgentReview:Date.now()});
+      return {kind:'photos_album_create',status:'review_opened',count:rows.length,missing:operation.ids.length-rows.length};
+    },
+  };
+  const releaseHost=setMainLibraryHost(host);
+  /** photos_share after the owner confirmed: the exact reviewed rows, at the reviewed revisions. */
+  async function confirmShareReview(owner:Bag){
+    const pending=shareReview;if(!pending||sharing||mutating)return;
+    sharing=true;owner.set({nativeAgentReview:Date.now()});
+    try{
+      const items=pending.items.map(row=>({id:nativeId(row.id),revision:row.mutationRevision||''})),token=photoReadEpoch;
+      const result:{status:string;message?:string}=browserMode?await browserPhotoLibrary.shareMany({items},()=>!disposed&&!document.hidden&&photoReadEpoch===token&&owner.isActive()):await nativeLibrary.shareMany({items});
+      if(result.status!=='opened'&&owner.isActive())owner.toast(result.message||'Sharing could not open.');
+    }catch(error){if(owner.isActive()&&!(error instanceof DOMException&&error.name==='AbortError'))owner.toast('An item changed. Nothing was shared; ask again.');}
+    finally{if(shareReview===pending)shareReview=undefined;sharing=false;if(!disposed)owner.set({nativeAgentReview:Date.now()});}
+  }
+  async function confirmAlbumReview(owner:Bag){
+    const pending=albumReview;if(!pending||mutating)return;
+    mutating=true;owner.set({nativeAgentReview:Date.now()});
+    try{
+      const [first,...rest]=pending.items,created=await library.changeAlbum({operation:'create',name:pending.name,mediaId:nativeId(first.id),mediaRevision:first.mutationRevision});
+      const result=await addMembers({id:created.id,revision:created.revision},rest);
+      if(owner.isActive())owner.toast(`Created “${pending.name.trim()}”`+(result.skipped?` · ${result.skipped} changed and not added`:''));
+    }catch{if(owner.isActive())owner.toast('Album not created. An item changed; ask again.');}
+    finally{if(albumReview===pending)albumReview=undefined;mutating=false;albumKey='';++albumEpoch;if(!disposed){void loadCustomAlbums(owner);owner.set({nativeAgentReview:Date.now()});}}
+  }
   if (photosRender) views.photos.render = (st: Bag, currentApi: Bag) => {
     photosApi = currentApi;
-    const query=!browserMode&&st.searching?String(st.q||'').slice(0,128):'';
-    if(query!==libraryQuery){libraryQuery=query;loaded=false;++libraryEpoch;captures=[];next='';if(loading)refreshAgain=true;}
     // Read canonical intent once per Photos entry, without replaying a save.
     if(currentApi.isActive()&&!edit&&!editRecoveryChecked){
       editRecoveryChecked=true;const token=editEpoch;
@@ -967,89 +1153,132 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     }
     if (!loaded && !loading) queueMicrotask(() => { void refresh(); });
     const data = photosRender(st, currentApi);data.normalSelecting=true;if(data.v)data.v.notDeleted=true;
-    data.libraryAccessControl=!browserMode&&libraryAccess?.scope==='denied'&&!st.open&&!st.album&&!selection;
-    data.libraryAccessLabel=libraryAccess?.scope==='full'?'All permitted photos and videos':libraryAccess?.scope==='selected'?'Selected photos and videos':libraryAccess?.scope==='partial'?`Photos: ${libraryAccess.images}; videos: ${libraryAccess.videos}`:'Only photos and videos saved by Alpha';
+    const onAlbums=st.tab==='alb'&&!st.album;
+    // Header: "Photos" / "Albums" with text tabs; Select in the Library and in albums.
+    data.tabs=(data.tabs||[]).map((tab:Bag)=>({...tab,pick:()=>{if(mutating||sharing)return;selection=undefined;selectionTab=undefined;drag=undefined;currentApi.set({nativeMultiSelection:Date.now()});tab.pick?.();}}));
+    data.libTab=!onAlbums&&!selection;
+    // Access: one row while access is partial or denied; nothing once it is full.
+    data.libraryAccessControl=!browserMode&&!!libraryAccess&&libraryAccess.scope!=='full'&&!st.open&&!st.album&&!selection&&!onAlbums;
     data.libraryAccessBusy=requestingLibraryAccess;
-    data.libraryAccessNeedsChoice=libraryAccess?.scope!=='full';data.libraryAccessButton='Choose photo access';
-    data.libraryAccessChoose=async()=>{if(requestingLibraryAccess)return;requestingLibraryAccess=true;currentApi.set({nativeLibraryAccessRevision:Date.now()});try{libraryAccess=await nativeLibrary.requestLibraryAccess();retirePhotoRead();captures=[];preview=undefined;next='';loaded=false;cancelEdit();closeVideo();currentApi.set({open:null,nativePhotoSelection:null});await refresh();}catch{currentApi.toast('Photo access could not open. You can review it in Android settings.');}finally{requestingLibraryAccess=false;currentApi.set({nativeLibraryAccessRevision:Date.now()});}};
-    data.searchPlaceholder=permittedLibrary()?'Filename in permitted library':'People, places, days';
+    data.libraryAccessChoose=async()=>{if(requestingLibraryAccess)return;requestingLibraryAccess=true;currentApi.set({nativeLibraryAccessRevision:Date.now()});const before=libraryAccess?.scope;try{libraryAccess=await nativeLibrary.requestLibraryAccess();if(libraryAccess.scope===before&&before==='denied')await nativeLibrary.openLibrarySettings();loaded=false;await refresh();}catch{currentApi.toast('Photo access could not open.');}finally{requestingLibraryAccess=false;currentApi.set({nativeLibraryAccessRevision:Date.now()});}};
     data.copyRecovery=browserMode&&!!st.nativeCopyRecovery;data.openCopyRecovery=()=>void openCopyRecovery(currentApi);
     if (!trashLoaded && !trashLoading && !st.nativeTrashError && libraryAvailable()) queueMicrotask(() => { void loadTrash(currentApi); });
     if (!counts && !countsBusy && !countsError && libraryAvailable()) queueMicrotask(() => { void loadCounts(currentApi); });
-    data.trashN = counts ? String(counts.trash) : trashLoaded ? String(trash.length) + (trashNext ? '+' : '') : '…';
-    data.tiles = [['fav','Favorites',counts?.favorites],['video','Videos',counts?.videos]].map(([key,name,count])=>({name,count:count??'…',bg:(captures.find(row=>key==='fav'?row.favorite:row.kind==='video')?.image ? `url("${captures.find(row=>key==='fav'?row.favorite:row.kind==='video')?.image}") center / cover no-repeat` : 'var(--s2)'),tf:'',flt:'',open:()=>{currentApi.set({album:key,open:null,nativePhotoSelection:null});closeVideo();void loadAlbum(String(key),currentApi);}}));
     if(!albumsLoaded&&!albumsBusy)queueMicrotask(()=>{void loadCustomAlbums(currentApi);});
-    data.tiles.push(...customAlbums.map(album=>({name:album.name,count:album.count,bg:'var(--s2)',tf:'',flt:'',open:()=>{currentApi.set({album:'custom:'+album.id,open:null,nativePhotoSelection:null});closeVideo();void loadAlbum('custom:'+album.id,currentApi);void loadCustomAlbums(currentApi);}})));
-    const deviceTile=deviceLibrary.tile(currentApi);if(deviceTile)data.tiles.push(deviceTile);
-    if(albumsRecovery)data.tiles.push({name:'Recover albums',count:'Original data retained',bg:'var(--s2)',tf:'',flt:'',open:()=>{void import('../browser/preference-recovery').then(m=>m.openAlbumRecovery()).catch(()=>currentApi.toast('Album recovery could not be opened. Try again.'));}});
+    data.trashN = counts ? String(counts.trash) : trashLoaded ? String(trash.length) + (trashNext ? '+' : '') : '';
+    // Albums: Favorites, Videos, Camera, Screenshots, then custom albums with covers.
+    const cover=(rows:SavedPhoto[])=>rows[0]?.image?`url("${rows[0].image}") center / cover no-repeat`:'var(--s2)';
+    const openAlbum=(key:string)=>{currentApi.set({album:key,open:null,nativePhotoSelection:null});closeVideo();void loadAlbum(key,currentApi);};
+    const builtIn:[string,string,string,number|undefined][]=[['fav','Favorites','favorites',counts?.favorites],['video','Videos','videos',counts?.videos],['camera','Camera','camera',counts?.camera],['shot','Screenshots','screenshots',counts?.screenshots]];
+    data.tiles=builtIn.filter(([key,,,count])=>key==='fav'||count===undefined&&captures.some(row=>albumOf(row,ALBUM_KEYS[key]))||!!count).map(([key,name,album,count])=>({name,count:count??'',bg:cover(captures.filter(row=>albumOf(row,album))),tf:'',flt:'',open:()=>openAlbum(key)}));
+    data.tiles.push(...customAlbums.map(album=>({name:album.name,count:album.count,bg:cover(captures.filter(row=>album.memberIds.includes(nativeId(row.id)))),tf:'',flt:'',open:()=>{openAlbum('custom:'+album.id);void loadCustomAlbums(currentApi);}})));
+    data.hasPeople=false;
+    data.albumsError=albumsRecovery?String(st.nativeAlbumsError||'Albums could not be read.'):'';data.albumsRecover=()=>{void import('../browser/preference-recovery').then(m=>m.openAlbumRecovery()).catch(()=>currentApi.toast('Album recovery could not open.'));};
     data.albumBackLabel='Back to albums';data.selectionBusy=mutating||sharing;
     data.albumManager=st.sheet==='owned-album'&&!!manager;
-    if(manager){const selectedManager=manager;data.am={modalRef:albumModal.ref,title:manager.confirmDelete?'Delete album?':manager.creating?'New album':manager.album?'Manage album':manager.choosing?'Add to album':manager.media?.kind==='video'?'Video info':'Photo info',name:manager.name,onName:(event:Event)=>{if(manager){manager.name=(event.target as HTMLInputElement).value;currentApi.set({nativeAlbumDraft:Date.now()});}},
-      managing:!!manager.album,naming:!!manager.creating||!!manager.album&&!manager.confirmDelete,info:!!manager.media&&!manager.creating&&!manager.choosing,description:manager.media?`${manager.media.width} × ${manager.media.height} · ${manager.media.kind==='video'?'Video':'Photo'}${manager.media.kind==='video'&&Number.isFinite(manager.media.duration)&&manager.media.duration!>0?' · '+manager.media.duration!.toFixed(1)+'s':''} · ${browserMode?'saved in this app':'on this device'}`:'',choose:()=>{if(manager){manager.choosing=true;currentApi.set({nativeAlbumDraft:Date.now()});}},choosing:!!manager.media&&!!manager.choosing&&!manager.creating,confirming:!!manager.confirmDelete,error:st.nativeAlbumsError||'',busy:mutating,
-      items:customAlbums.map(album=>({name:album.name,label:(album.memberIds.includes(nativeId(manager?.media?.id||''))?'Remove from ':'Add to ')+album.name,go:()=>{void mutateAlbum(currentApi,album.memberIds.includes(nativeId(selectedManager.media?.id||''))?'remove':'add',album);}})),
+    if(manager){const selectedManager=manager,many=manager.items;data.am={modalRef:albumModal.ref,title:manager.confirmDelete?'Delete album?':manager.creating?'New album':manager.album?'Manage album':'Add to album',name:manager.name,onName:(event:Event)=>{if(manager){manager.name=(event.target as HTMLInputElement).value;currentApi.set({nativeAlbumDraft:Date.now()});}},
+      managing:!!manager.album,naming:!!manager.creating||!!manager.album&&!manager.confirmDelete,info:false,description:'',choose:()=>{},choosing:(!!manager.media||!!many)&&!manager.creating,confirming:!!manager.confirmDelete,error:st.nativeAlbumsError||'',busy:mutating,
+      items:customAlbums.map(album=>{const member=!many&&album.memberIds.includes(nativeId(manager?.media?.id||''));return {name:album.name,label:(member?'Remove from ':'Add to ')+album.name,go:()=>{void mutateAlbum(currentApi,member?'remove':'add',album);}};}),
       create:()=>{if(manager){manager.creating=true;manager.name='';currentApi.set({nativeAlbumDraft:Date.now()});}},save:()=>{void mutateAlbum(currentApi,selectedManager.creating?'create':'rename');},askDelete:()=>{if(manager){manager.confirmDelete=true;currentApi.set({nativeAlbumDraft:Date.now()});}},delete:()=>{void mutateAlbum(currentApi,'delete');},close:()=>{manager=undefined;currentApi.set({sheet:null});}};}
-    data.selStart=()=>{if(mutating||sharing)return;selection=[];selectionTab=st.tab==='alb'?'alb':'lib';swallowedTap='';endHold();currentApi.set({tab:'lib',sel:null,open:null,nativePhotoSelection:null,nativeMultiSelection:Date.now()});};
-    if(selection){data.hdr=false;data.selecting=true;data.selN=selection.length?String(selection.length):'Select';data.selNone=!selection.length;data.selectionDisabled=!selection.length||mutating||sharing;data.selDim=!selection.length||sharing||mutating?'opacity:.35;pointer-events:none':'';data.selCancel=()=>cancelPhotoSelection(currentApi);data.trashSelecting=st.album==='trash';data.normalSelecting=st.album!=='trash';data.trashCanDelete=true;data.selRecover=()=>{void changeSelection(currentApi,'restore');};data.selDeleteForever=()=>{if(selection?.length)void preparePermanent(currentApi,selection);};data.selShare=()=>{void shareSelection(currentApi);};data.selSaveLocally=browserMode?()=>{const chosen=selection||[],token=photoReadEpoch;return saveBrowserMedia({items:chosen.map(row=>({id:nativeId(row.id),revision:row.mutationRevision||''}))},()=>!disposed&&!document.hidden&&photoReadEpoch===token&&currentApi.isActive()&&selection===chosen&&chosen.every(sameCapture));}:undefined;data.selFav=()=>{void changeSelection(currentApi,'favorite');};data.selDel=()=>{void changeSelection(currentApi,'trash');};}
+    data.selStart=()=>startSelection(currentApi);
+    if(selection){
+      const pool=selectionPool(currentApi),all=pool.length>0&&pool.every(row=>selection!.some(item=>item.id===row.id));
+      data.hdr=false;data.selecting=true;data.selN=selection.length?`${selection.length} selected`:'Select items';data.selNone=!selection.length;
+      data.selAllLabel=all?'Deselect all':'Select all';data.selAll=()=>{if(mutating||sharing||!selection)return;selection=all?[]:pool.slice();currentApi.set({nativeMultiSelection:Date.now()});};
+      data.selectionDisabled=!selection.length||mutating||sharing;data.selDim=!selection.length||sharing||mutating?'opacity:.35;pointer-events:none':'';data.selCancel=()=>cancelPhotoSelection(currentApi);
+      data.trashSelecting=st.album==='trash';data.normalSelecting=st.album!=='trash';data.trashCanDelete=true;
+      data.selFavLabel=favoriteTarget(selection)?'Favorite':'Unfavorite';
+      data.selRecover=()=>{void changeSelection(currentApi,'restore');};data.selDeleteForever=()=>{if(selection?.length)void preparePermanent(currentApi,selection);};data.selShare=()=>{void shareSelection(currentApi);};
+      data.selSaveLocally=browserMode?()=>{const chosen=selection||[],token=photoReadEpoch;return saveBrowserMedia({items:chosen.map(row=>({id:nativeId(row.id),revision:row.mutationRevision||''}))},()=>!disposed&&!document.hidden&&photoReadEpoch===token&&currentApi.isActive()&&selection===chosen&&chosen.every(sameCapture));}:undefined;
+      data.selFav=()=>{void changeSelection(currentApi,'favorite');};data.selDel=()=>{void changeSelection(currentApi,'trash');};
+      data.selAlbum=(event:Event)=>{if(!selection?.length||mutating)return;albumTrigger=event.currentTarget as HTMLElement;manager={items:selection.slice(),name:'',choosing:true};currentApi.set({sheet:'owned-album'});void loadCustomAlbums(currentApi);};
+    }
     data.mutationBusy = mutating;
     data.emptyOpen = st.sheet==='empty' && !!prepared;
-    data.trashCount = prepared ? `${prepared.count} ${prepared.items?'selected':'app-owned'} ${prepared.count===1?'item':'items'} · This cannot be undone.` : '';
-    const priorCloseSheet = data.closeSheet; data.closeSheet=()=>{if(st.sheet==='empty')cancelPermanent(currentApi);else if(st.sheet==='owned-album'){manager=undefined;currentApi.set({sheet:null});}else priorCloseSheet?.();};
+    data.trashCount = prepared ? `${prepared.count} ${prepared.count===1?'item':'items'}` : '';
+    const priorCloseSheet = data.closeSheet; data.closeSheet=()=>{if(st.sheet==='empty')cancelPermanent(currentApi);else if(st.sheet==='owned-album'){manager=undefined;currentApi.set({sheet:null});}else if(st.sheet==='photo-info')currentApi.set({sheet:null});else priorCloseSheet?.();};
     data.openTrash = () => { currentApi.set({ album: 'trash', open: null, nativePhotoSelection: null }); closeVideo(); void loadTrash(currentApi); };
     data.emptyNow = () => { void deletePermanent(currentApi); };
     data.trashAsk = () => { void preparePermanent(currentApi); };
+    data.gridRef=(el:HTMLElement|null)=>attachGrid(el,currentApi);data.gridCss=gridCss();
     if (st.album === 'trash') {
       data.album = true; data.viewing = false; data.viewEmpty = false;
       data.albumBackLabel=selection?'Cancel selection':'Back to albums';
-      data.alb = {notSelecting:!selection,select:()=>{if(mutating||sharing)return;selection=[];selectionTab=st.tab==='alb'?'alb':'lib';currentApi.set({open:null,nativePhotoSelection:null,nativeMultiSelection:Date.now()});},selecting:!!selection,selectAllLabel:trash.length>20?'Select first 20':'Select shown',selectAll:()=>{if(mutating||sharing)return;if(!selection)selectionTab=st.tab==='alb'?'alb':'lib';selection=trash.slice(0,20);if(trash.length>20)currentApi.toast('Select up to 20 items at a time.');currentApi.set({nativeMultiSelection:Date.now()});},title: selection?`${selection.length} selected`:'Recently deleted', isTrash: true, canEmpty: !permittedLibrary()&&!selection&&trash.length>0, notTrash: false, count: selection?'':data.trashN, empty: !trash.length,
+      data.alb = {canSelect:!selection&&trash.length>0,select:()=>startSelection(currentApi),title: selection?(selection.length?`${selection.length} selected`:'Select items'):'Recently deleted', isTrash: true, canEmpty: !permittedLibrary()&&!selection&&trash.length>0, notTrash: false, count: '', empty: trashLoaded&&!trash.length,
         close: () => {if(mutating||sharing)return;if(selection)cancelPhotoSelection(currentApi);else currentApi.set({album:null});}, emptyTrash: () => { void preparePermanent(currentApi); },
-        status: st.nativeTrashError || st.nativeTrashMutationStatus || (trashLoading ? 'Loading…' : permittedLibrary()?'Open to preview, or select items to recover or delete.':''), more: !!trashNext || !!st.nativeTrashError,
-        moreLabel: st.nativeTrashError ? 'Retry' : trashLoading ? 'Loading…' : 'Load more', loadMore: () => { void loadTrash(currentApi, !st.nativeTrashError); },
-        items: trash.map(row => ({ nativeMediaId: row.id, bg: row.image ? `url("${row.image}") center / cover no-repeat` : 'var(--s2)', tf: '', flt: '', vid: row.kind === 'video', dur: '', selecting:!!selection,on:!!selection?.some(item=>item.id===row.id),selCss:selection?.some(item=>item.id===row.id)?'background:var(--acc)':'background:#0006;box-shadow:inset 0 0 0 2px #fff',dim:mutating?'opacity:.35;pointer-events:none':'',
-          alt: `Deleted ${row.kind === 'video' ? 'video' : 'photo'} ${new Date(row.date).toLocaleTimeString()}${row.expiresAt ? '; Android expiration ' + new Date(row.expiresAt).toLocaleDateString() : ''}`,
-          tap:()=>{if(selection)toggleSelection(row,currentApi);else void openSaved(row.id,currentApi);},pd:()=>{},pu:()=>{} })) };
+        status: st.nativeTrashError || st.nativeTrashMutationStatus || '', more: !!st.nativeTrashError, moreLabel: 'Retry', loadMore: () => { void loadTrash(currentApi); },
+        items: tiles(trash,currentApi,true) };
     }
-    if (st.album === 'device') { data.album = true; data.viewing = false; data.viewEmpty = false; data.alb = deviceLibrary.album(st, currentApi); }
-    if (st.album === 'fav' || st.album === 'video' || st.album?.startsWith('custom:')) {
+    if (st.album && st.album !== 'trash') {
       if(albumKey !== st.album){albumRows=[];albumNext='';queueMicrotask(()=>{void loadAlbum(st.album,currentApi);});}
-      data.album=true;data.alb={title:st.album.startsWith('custom:')?(customAlbums.find(row=>'custom:'+row.id===st.album)?.name||'Album'):st.album==='fav'?'Favorites':'Videos',isCustom:st.album.startsWith('custom:'),manage:(event:Event)=>{const album=customAlbums.find(row=>'custom:'+row.id===st.album);if(album)openAlbumManager(currentApi,undefined,album,event.currentTarget as HTMLElement);},isTrash:false,notTrash:true,count:st.album.startsWith('custom:')?(customAlbums.find(row=>'custom:'+row.id===st.album)?.count??'…'):counts?(st.album==='fav'?counts.favorites:counts.videos):'…',empty:!albumRows.length,
-        close:()=>currentApi.set({album:null}),status:st.nativeAlbumError||(albumBusy?'Loading…':''),more:!!albumNext||!!st.nativeAlbumError,moreLabel:st.nativeAlbumError?'Retry':albumBusy?'Loading…':'Load more',loadMore:()=>{void loadAlbum(st.album,currentApi,!st.nativeAlbumError);},
-        items:albumRows.map(row=>({nativeMediaId:row.id,bg:row.image?`url("${row.image}") center / cover no-repeat`:'var(--s2)',tf:'',flt:'',vid:row.kind==='video',dur:'',dim:'',alt:`${row.kind==='video'?'Captured video':'Captured photo'} ${new Date(row.date).toLocaleTimeString()}`,...thumbnailEvents(row,currentApi)}))};
+      const custom=customAlbums.find(row=>'custom:'+row.id===st.album),names:Record<string,string>={fav:'Favorites',video:'Videos',camera:'Camera',shot:'Screenshots'};
+      data.album=true;data.alb={title:selection?(selection.length?`${selection.length} selected`:'Select items'):custom?.name||names[st.album]||'Album',isCustom:!!custom&&!selection,canSelect:!selection&&albumRows.length>0,select:()=>startSelection(currentApi),manage:(event:Event)=>{if(custom)openAlbumManager(currentApi,undefined,custom,event.currentTarget as HTMLElement);},isTrash:false,notTrash:true,count:'',empty:!albumBusy&&!albumRows.length,
+        close:()=>{if(selection)cancelPhotoSelection(currentApi);else currentApi.set({album:null});},status:st.nativeAlbumError||'',more:!!st.nativeAlbumError,moreLabel:'Retry',loadMore:()=>{void loadAlbum(st.album,currentApi);},
+        items:tiles(albumRows,currentApi)};
     }
-    data.libraryLoading = !loaded || loading;
-    // Search covers every loaded capture; Load more keeps paging while searching.
-    data.libraryMore = !!next && !st.filter;
-    data.libraryMoreLabel = loading ? 'Loading…' : 'Load more photos';
-    data.libraryLoadMore = () => { if (next) void refresh(true); };
+    data.libraryLoading = (!loaded || loading) && !captures.length;
+    data.libraryMore = false;
     data.libraryError = st.nativeLibraryError || '';
     data.libraryRetry = () => { void refresh(); };
-    const bg = (c: typeof captures[number]) => `url("${c.image}") center / cover no-repeat`;
-    const words = st.searching ? captureSearchWords(st.q) : [];
-    const shownCaptures = st.filter ? [] : permittedLibrary()?captures:captures.filter(c => captureMatches(c, words));
-    data.canSearch = captures.length > 0 || (data.groups || []).some((g: Bag) => g.items?.length);
-    if (shownCaptures.length) data.groups = [{ label: words.length ? `${permittedLibrary()?'Permitted library':'Captured on this device'} · ${shownCaptures.length} ${shownCaptures.length === 1 ? 'match' : 'matches'}${next ? ' so far' : ''}` : permittedLibrary()?'Permitted library · up to 240 loaded items':'Captured on this device', place: '', items: shownCaptures.map(c => ({ nativeMediaId: c.id, bg: bg(c), tf: '', flt: '', vid: c.kind === 'video', dur: c.duration ? `${Math.floor(c.duration / 60)}:${String(Math.floor(c.duration % 60)).padStart(2, '0')}` : '', fav: !!c.favorite, dim: '', alt: (c.kind === 'video' ? 'Captured video ' : 'Captured photo ') + new Date(c.date).toLocaleTimeString(), ...thumbnailEvents(c,currentApi) })) }, ...(data.groups || [])];
-    const selected = preview?.id === st.open ? preview : captures.find(c => c.id === st.open)||trash.find(c=>c.id===st.open);
+    // Library: newest first, grouped by day (Today, Yesterday, weekday dates), then by month.
+    const shownCaptures = st.filter ? [] : captures.filter(row=>filterMatches(row,photosFilter,albumMembers));
+    if (photosFilter) { data.hasFilter = true; data.filterLabel = photosFilter.label; data.filterN = String(shownCaptures.length) + (next ? '+' : ''); data.clearFilter = () => { photosFilter = undefined; currentApi.set({ nativePhotosFilter: Date.now() }); }; }
+    // Drag ranges follow the whole visible grid, across day headers.
+    // Virtualised: sections off screen become one spacer each side; on-screen sections render only
+    // their visible rows, with padding for the rest, so the sticky day header stays in its section.
+    const grouped = groupSections(shownCaptures), grid = virtualGrid(grouped.map(group => group.items.length), gridMetrics());
+    const sections = grid.sections.map(part => { const group = grouped[part.index]; return { label: group.label, place: '', count: String(group.items.length), pad: `padding-top:${part.padTop}px;padding-bottom:${part.padBottom}px`, items: tiles(group.items.slice(part.from, part.to), currentApi, false, shownCaptures) }; });
+    data.gridBefore = `height:${grid.before}px`; data.gridAfter = `height:${grid.after}px`;
+    data.groups = [...sections, ...(data.groups || [])];
+    const nothing = !data.groups.length && loaded && !loading && !st.nativeLibraryError;
+    data.empty = nothing && !photosFilter; data.noMatches = nothing && !!photosFilter;
+    // An agent review (photo_library_review or photos_album_create) waits over the grid.
+    const review = deviceLibrary.reviewCard();
+    data.agentReview = review ? { title: review.title, detail: review.detail, confirmLabel: 'Continue', busy: review.busy, confirm: review.confirm, cancel: review.cancel }
+      : shareReview ? { title: `Share ${shareReview.items.length} ${shareReview.items.length === 1 ? 'item' : 'items'}?`, detail: '', confirmLabel: 'Share', busy: sharing, confirm: () => { void confirmShareReview(currentApi); }, cancel: () => { shareReview = undefined; currentApi.set({ nativeAgentReview: Date.now() }); } }
+      : albumReview ? { title: `Create album “${albumReview.name.trim()}”?`, detail: `${albumReview.items.length} ${albumReview.items.length === 1 ? 'item' : 'items'}`, confirmLabel: 'Create', busy: mutating, confirm: () => { void confirmAlbumReview(currentApi); }, cancel: () => { albumReview = undefined; currentApi.set({ nativeAgentReview: Date.now() }); } } : null;
+    const sequence = st.album === 'trash' ? trash : st.album ? albumRows : shownCaptures;
+    const selected = preview?.id === st.open ? preview : [...captures, ...albumRows, ...trash].find(c => c.id === st.open);
     if (selected) {
       if (!st.nativePhotoSelection && preview?.id !== st.open) queueMicrotask(() => { if (currentApi.get('photos').open === selected.id) void openSaved(selected.id, currentApi); });
+      const index = sequence.findIndex(row => row.id === selected.id);
+      const go = (step: number) => { const target = sequence[index + step]; if (index < 0 || !target) return; void openSaved(target.id, currentApi); };
+      let gesture: { x: number; y: number } | undefined, swiped = false;
+      const when = viewerTitle(shotAt(selected)), chrome = st.chrome !== false;
       data.viewing = true; data.viewEmpty = false; data.editing = !!edit&&edit.source===selected.id;
-      data.v = { bg: bg(selected), tf: '', flt: '', slide: '', day: selected.kind === 'video' ? 'Captured video' : 'Captured photo', sub: `${selected.width} × ${selected.height} · ${browserMode?'saved in this app':'saved to Android Photos'}`, chromeOp: 1, chromePE: 'auto', favIcon: selected.favorite ? 'fill:currentColor' : 'fill:none', favLabel: selected.favorite ? 'Remove from favorites' : 'Favorite', vid: selected.kind === 'video', playing: !!video && !video.paused, playBtn: selected.kind === 'video' && (!video || video.paused), prog: `width:${video?.duration ? Math.min(100, video.currentTime / video.duration * 100) : 0}%`, play: () => { void playVideo(selected, currentApi); }, pause: () => { video?.pause(); currentApi.set({ nativePlaybackRevision: Date.now() }); }, notSecure: true, tap: () => {}, down: () => {}, up: () => {}, share: async () => {
+      data.v = { bg: imageCss(selected).replace('cover', 'contain'), tf: '', flt: '', slide: '', day: when.day, sub: when.time, chromeOp: chrome ? 1 : 0, chromePE: chrome ? 'auto' : 'none', favIcon: selected.favorite ? 'fill:currentColor' : 'fill:none', favLabel: selected.favorite ? 'Remove from favorites' : 'Favorite', vid: selected.kind === 'video', playing: !!video && !video.paused, playBtn: selected.kind === 'video' && (!video || video.paused), prog: `width:${video?.duration ? Math.min(100, video.currentTime / video.duration * 100) : 0}%`, play: () => { void playVideo(selected, currentApi); }, pause: () => { video?.pause(); currentApi.set({ nativePlaybackRevision: Date.now() }); }, notSecure: true,
+        // Tap shows or hides the controls; a horizontal swipe moves to the neighbouring item.
+        tap: () => { if (swiped) { swiped = false; return; } currentApi.set({ chrome: !chrome }); },
+        down: (event: PointerEvent) => { gesture = { x: event.clientX, y: event.clientY }; swiped = false; },
+        up: (event: PointerEvent) => { const start = gesture; gesture = undefined; if (!start) return; const dx = event.clientX - start.x, dy = event.clientY - start.y; if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.5) { swiped = true; go(dx < 0 ? 1 : -1); } },
+        hasPrev: index > 0, hasNext: index >= 0 && index < sequence.length - 1, prev: () => go(-1), next: () => go(1),
+        share: async () => {
         if(sharing || mutating)return;
         sharing=true;
         try { const input={id:nativeId(selected.id),revision:selected.mutationRevision},token=photoReadEpoch,current=()=>!disposed&&!document.hidden&&photoReadEpoch===token&&currentApi.isActive()&&currentApi.get('photos').open===selected.id&&sameCapture(selected),result:Awaited<ReturnType<typeof nativeLibrary.share>>=browserMode?await browserPhotoLibrary.share(input,current):await nativeLibrary.share(input); if(result.status!=='opened')currentApi.toast(result.message||'Sharing could not open.'); }
         catch(error) { if(!(browserMode&&error instanceof DOMException&&error.name==='AbortError'))currentApi.toast(browserMode&&error instanceof Error?error.message:'This photo is no longer available for sharing.'); }
         finally { sharing=false; }
-      }, fav: () => { void favorite(selected,currentApi); }, edit: () => {void beginEdit(selected,currentApi);}, del: () => { void changeTrash(selected, true, currentApi); }, info: (event:Event) => openAlbumManager(currentApi,selected,undefined,event.currentTarget as HTMLElement), ask: () => { askCapture(selected,currentApi); } };
+      }, fav: () => { void favorite(selected,currentApi); }, edit: () => {void beginEdit(selected,currentApi);}, del: () => { void changeTrash(selected, true, currentApi, (sequence[index + 1] || sequence[index - 1])?.id); }, info: () => { currentApi.set({ sheet: 'photo-info', chrome: true }); }, ask: () => { askCapture(selected,currentApi); } };
       data.v.saveLocally=browserMode?()=>{const token=photoReadEpoch;return saveBrowserMedia({items:[{id:nativeId(selected.id),revision:selected.mutationRevision||''}]},()=>!disposed&&!document.hidden&&photoReadEpoch===token&&currentApi.isActive()&&currentApi.get('photos').open===selected.id&&sameCapture(selected));}:undefined;
-      data.v.isDeleted=!!selected.trashed;data.v.notDeleted=!selected.trashed;data.v.canDeleteForever=!!selected.trashed;data.v.recover=()=>void changeTrash(selected,false,currentApi);data.v.deleteForever=()=>void preparePermanent(currentApi,[selected]);if(selected.trashed){data.v.notSecure=false;data.v.day=selected.kind==='video'?'Deleted video':'Deleted photo';data.v.sub=selected.expiresAt?'Expires '+new Date(selected.expiresAt).toLocaleDateString():'Recently deleted';}
+      data.v.isDeleted=!!selected.trashed;data.v.notDeleted=!selected.trashed;data.v.canDeleteForever=!!selected.trashed;data.v.recover=()=>void changeTrash(selected,false,currentApi);data.v.deleteForever=()=>void preparePermanent(currentApi,[selected]);if(selected.trashed){data.v.notSecure=false;const left=daysLeft(selected.expiresAt);data.v.sub=left===undefined?when.time:`${left} ${left===1?'day':'days'} left`;}
       data.v.viewerLabel=`${selected.kind==='video'?'Video':'Photo'}. Tap to show or hide controls, swipe to browse`;data.v.askLabel=`Ask Alpha about this ${selected.kind==='video'?'video':'photo'}`;
       data.v.editLabel=selected.kind==='video'?'Edit video':'Edit photo';data.v.shareLabel=selected.kind==='video'?'Share video':'Share photo';data.v.infoLabel=selected.kind==='video'?'Video info':'Photo info';data.v.deleteLabel=selected.kind==='video'?'Delete video':'Delete photo';
       data.v.canEmail=!browserMode&&selected.kind!=='video'&&!selected.trashed&&nativeId(selected.id).startsWith('m:')&&!!selected.mutationRevision&&Capacitor.isPluginAvailable('AlphaMailAttachments')&&typeof views.inbox.fileEmailTarget==='function';
       data.v.email=()=>emailPhoto(selected,currentApi);
-      if(edit?.source===selected.id){const current=edit;data.v.ed={bg:`url("${current.image}") center / contain no-repeat`,tf:'',flt:'none',cropOn:current.crop,cropCss:current.crop?'background:#ffffff;color:#000000':'background:rgba(255,255,255,.12);color:#ffffff',status:current.uncertain?'Save outcome unresolved. Save checks the existing operation; it never creates another copy.':`Saves a new copy · original unchanged${current.reduced?' · reduced to '+current.maxEdge+' px maximum':''}. Crop trims the center at 1.3×.`,saveDisabled:current.busy,rotate:()=>void transformEdit(currentApi,true),crop:()=>void transformEdit(currentApi,false),cancel:()=>{cancelEdit();currentApi.set({nativeEditRevision:Date.now()});},save:()=>void saveEdit(currentApi),filters:[['none','Original'],['vivid','Vivid'],['warm','Warm'],['cool','Cool'],['mono','Mono'],['fade','Fade'],['noir','Noir']].map(([id,label])=>({label,bg:`url("${selected.image}") center / cover no-repeat`,flt:({none:'none',vivid:'saturate(1.55) contrast(1.08)',warm:'sepia(.3) saturate(1.35) hue-rotate(-8deg)',cool:'saturate(1.1) hue-rotate(14deg) brightness(1.03)',mono:'grayscale(1) contrast(1.05)',fade:'contrast(.78) brightness(1.12) saturate(.75)',noir:'grayscale(1) contrast(1.55) brightness(.88)'} as Record<string,string>)[id],on:current.filter===id,ring:current.filter===id?'box-shadow:0 0 0 2px #000,0 0 0 4px #fff':'',lc:current.filter===id?'#fff':'rgba(255,255,255,.6)',pick:()=>void transformEdit(currentApi,false,id)}))};}
+      // Info: date, file, size, dimensions, folder and albums.
+      const albums=customAlbums.filter(album=>album.memberIds.includes(nativeId(selected.id))).map(album=>album.name);
+      const facts=[['Date',`${new Date(shotAt(selected)).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'})} ${when.time}`],['File',selected.name||''],['Size',formatBytes(selected.size)],['Dimensions',selected.width&&selected.height?`${selected.width} × ${selected.height}`:''],['Length',durationLabel(selected)],['Folder',(selected.folder||'').replace(/\/$/,'')],['Albums',albums.join(', ')]].filter(([,value])=>value).map(([label,value])=>({label,value}));
+      data.v.info2={date:when.day,time:when.time,desc:'',hasPlace:false,hasPeople:false,people:[],facts,hasFacts:true,canAlbum:!selected.trashed,addToAlbum:()=>{
+        // The info sheet closes as the album sheet opens; focus returns to the viewer's Info control.
+        const infoControl=document.querySelector<HTMLElement>(`[data-alpha-subview="photos-viewer"] button[aria-label="${data.v.infoLabel}"]`)||undefined;
+        openAlbumManager(currentApi,selected,undefined,infoControl);if(manager)manager.choosing=true;currentApi.set({nativeAlbumDraft:Date.now()});}};
+      data.infoOpen=st.sheet==='photo-info'||!!data.infoOpen;
+      if(edit?.source===selected.id){const current=edit;data.v.ed={bg:`url("${current.image}") center / contain no-repeat`,tf:'',flt:'none',cropOn:current.crop,cropCss:current.crop?'background:#ffffff;color:#000000':'background:rgba(255,255,255,.12);color:#ffffff',status:current.uncertain?'Save outcome unknown. Tap Save copy to check it.':'',saveLabel:'Save copy',saveDisabled:current.busy,canReplace:!!current.canReplace&&!current.uncertain,replace:()=>void saveEdit(currentApi,true),rotate:()=>void transformEdit(currentApi,true),crop:()=>void transformEdit(currentApi,false),cancel:()=>{cancelEdit();currentApi.set({nativeEditRevision:Date.now()});},save:()=>void saveEdit(currentApi),filters:[['none','Original'],['vivid','Vivid'],['warm','Warm'],['cool','Cool'],['mono','Mono'],['fade','Fade'],['noir','Noir']].map(([id,label])=>({label,bg:`url("${selected.image}") center / cover no-repeat`,flt:({none:'none',vivid:'saturate(1.55) contrast(1.08)',warm:'sepia(.3) saturate(1.35) hue-rotate(-8deg)',cool:'saturate(1.1) hue-rotate(14deg) brightness(1.03)',mono:'grayscale(1) contrast(1.05)',fade:'contrast(.78) brightness(1.12) saturate(.75)',noir:'grayscale(1) contrast(1.55) brightness(.88)'} as Record<string,string>)[id],on:current.filter===id,ring:current.filter===id?'box-shadow:0 0 0 2px #000,0 0 0 4px #fff':'',lc:current.filter===id?'#fff':'rgba(255,255,255,.6)',pick:()=>void transformEdit(currentApi,false,id)}))};}
     }
     return data;
   };
   if (views.photos) views.photos.back = (st: Bag, currentApi: Bag) => { if(edit){cancelEdit();currentApi.set({nativeEditRevision:Date.now()});return true;}if(selection){cancelPhotoSelection(currentApi);return true;}if(st.sheet==='owned-album'){manager=undefined;currentApi.set({sheet:null});return true;}if(st.sheet==='empty'){cancelPermanent(currentApi);return true;}if(st.sheet)return photosBack?.(st,currentApi); if (preview?.id === st.open || captures.some(c => c.id === st.open) || albumRows.some(c => c.id === st.open)) { retirePhotoRead();currentApi.set({ open: null, nativePhotoSelection: null }); preview = undefined; closeVideo(); return true; } return photosBack?.(st, currentApi); };
-  if(views.photos)views.photos.onLeave=(owner:Bag)=>{retirePhotoRead();deviceLibrary.leave();owner.set({nativeLibrarySelection:null});closeQuestion?.();closeQuestion=undefined;void photoAttachments.cancelPhotoSelected().catch(()=>{});cancelEdit();editRecoveryChecked=false;automaticEditRecovery='';selection=undefined;selectionTab=undefined;swallowedTap='';endHold();manager=undefined;const old=prepared;prepared=undefined;if(old)void library.cancelDeleteTrash({confirmation:old.confirmation}).catch(()=>{});owner.set({sheet:null});photosLeave?.(owner);};
+  if(views.photos)views.photos.onLeave=(owner:Bag)=>{retirePhotoRead();deviceLibrary.leave();closeQuestion?.();closeQuestion=undefined;void photoAttachments.cancelPhotoSelected().catch(()=>{});cancelEdit();editRecoveryChecked=false;automaticEditRecovery='';selection=undefined;selectionTab=undefined;swallowedTap='';endHold();manager=undefined;const old=prepared;prepared=undefined;if(old)void library.cancelDeleteTrash({confirmation:old.confirmation}).catch(()=>{});owner.set({sheet:null});photosLeave?.(owner);};
   async function playVideo(selected: SavedPhoto, owner: Bag) {
     if (selected.kind !== 'video') return;
     try {
@@ -1099,12 +1328,16 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   const resize = () => { if (session.phase === 'ready') mask(true); schedule(); };
   const visibility = () => { if (document.hidden) { retirePhotoRead();watchLibrary(false);cancelEdit();closeVideo();if(permittedLibrary()){++libraryEpoch;captures=[];albumRows=[];trash=[];albumNext='';trashNext='';albumKey='';counts=undefined;++countsEpoch;countsBusy=false;++albumsEpoch;albumsBusy=false;albumsLoaded=false;customAlbums=[];++albumEpoch;++trashEpoch;preview=undefined;selection=undefined;next='';loaded=false;photosApi?.set({open:null,nativePhotoSelection:null,nativeCaptureRevision:Date.now()});}void stop(); } else { loaded = false; if (photosApi?.isActive()) void refresh(); schedule(); } };
   let libraryChangeHandle:{remove():Promise<void>}|undefined;
-  function invalidateLibrary(preserveViewer=false){
-    retirePhotoRead();
-    ++libraryEpoch;captures=[];albumRows=[];trash=[];albumNext='';trashNext='';albumKey='';counts=undefined;++countsEpoch;countsBusy=false;++albumsEpoch;albumsBusy=false;albumsLoaded=false;customAlbums=[];++albumEpoch;++trashEpoch;selection=undefined;next='';loaded=false;
-    if(!preserveViewer){preview=undefined;cancelEdit();closeVideo();photosApi?.set({open:null,nativePhotoSelection:null,nativeCaptureRevision:Date.now()});}
-    else photosApi?.set({nativePhotoSelection:null,nativeCaptureRevision:Date.now()});
-    if(photosApi?.isActive()&&!document.hidden)void refresh();
+  /** A MediaStore change: re-read what is loaded and patch it (FixPatch). The selection keeps rows that
+   * still exist and the viewer stays open unless its item is gone. `hard` (the edited source changed
+   * under a pending copy) also closes the editor and the viewer. */
+  function invalidateLibrary(hard=false){
+    counts=undefined;++countsEpoch;countsBusy=false;albumsLoaded=false;albumsBusy=false;++albumsEpoch;
+    if(hard){retirePhotoRead();preview=undefined;cancelEdit();closeVideo();photosApi?.set({open:null,nativePhotoSelection:null,nativeCaptureRevision:Date.now()});}
+    const owner=photosApi;
+    if(!owner?.isActive()||document.hidden){loaded=false;return;}
+    void refresh();void loadTrash(owner);void loadCounts(owner);void loadCustomAlbums(owner);
+    const key=owner.get('photos')?.album;if(typeof key==='string'&&key&&key!=='trash')void loadAlbum(key,owner);
   }
   function checkPendingVideoSource(copy:PendingNativeVideoCopy){
     copy.checkAgain=true;if(copy.checking)return;
@@ -1114,9 +1347,9 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
         try{
           const [access,source]=await Promise.all([nativeLibrary.libraryAccess(),nativeLibrary.read({id:nativeId(copy.source.id)})]);
           if(disposed||pendingNativeVideoCopy!==copy||editEpoch!==copy.epoch)return;
-          if(access.scope==='denied'||access.videos==='denied'||source.id!==nativeId(copy.source.id)||source.mutationRevision!==copy.source.mutationRevision||source.trashed){invalidateLibrary();return;}
+          if(access.scope==='denied'||access.videos==='denied'||source.id!==nativeId(copy.source.id)||source.mutationRevision!==copy.source.mutationRevision||source.trashed){invalidateLibrary(true);return;}
           libraryAccess=access;
-        }catch{if(!disposed&&pendingNativeVideoCopy===copy&&editEpoch===copy.epoch)invalidateLibrary();return;}
+        }catch{if(!disposed&&pendingNativeVideoCopy===copy&&editEpoch===copy.epoch)invalidateLibrary(true);return;}
       }
     })().finally(()=>{copy.checking=undefined;});
   }
@@ -1136,6 +1369,6 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   const resumed=()=>{void restartAfterResume(()=>({denied:session.denied,phase:session.phase,disposed}),()=>cameraAccess.checkPermissions()).then(restart=>{if(restart){session.rearm();schedule();}});};
   let resumeHandle:{remove():Promise<void>}|undefined;
   void DailyApps.addListener('appResumed',resumed).then(handle=>{if(disposed)void handle.remove();else resumeHandle=handle;}).catch(()=>{});
-  return () => { if(requestedPhoto===takeRequestedPhoto)requestedPhoto=undefined;window.clearTimeout(noticeTimer);noticeGeneration++;watchLibrary(false);deviceLibrary.dispose();captureQuestion=undefined;void libraryChangeHandle?.remove();hideAccess();void resumeHandle?.remove();window.removeEventListener('alpha:albums-document-changed',albumsChanged);if(scanApi&&prototype.api===scanApi)prototype.api=originalApi;disposed = true;cancelEdit();endHold();selection=undefined; clearInterval(timer); window.clearTimeout(chatTimer); closeVideo(); removePresence(); document.removeEventListener('visibilitychange', visibility); window.removeEventListener('pagehide', pageHide); window.removeEventListener('resize', resize); void stop(); style.remove(); captures = []; module.render = render; module.onLeave = leave; module.back = cameraBack; module.actions = cameraActions; if (scanRequest) scanRequest = undefined; if (views.photos) { views.photos.render = photosRender; views.photos.back = photosBack; views.photos.onLeave = photosLeave; } };
+  return () => { releaseHost();if(requestedPhoto===takeRequestedPhoto)requestedPhoto=undefined;window.clearTimeout(noticeTimer);noticeGeneration++;watchLibrary(false);deviceLibrary.dispose();captureQuestion=undefined;void libraryChangeHandle?.remove();hideAccess();void resumeHandle?.remove();window.removeEventListener('alpha:albums-document-changed',albumsChanged);if(scanApi&&prototype.api===scanApi)prototype.api=originalApi;disposed = true;cancelEdit();endHold();selection=undefined; clearInterval(timer); window.clearTimeout(chatTimer); closeVideo(); removePresence(); document.removeEventListener('visibilitychange', visibility); window.removeEventListener('pagehide', pageHide); window.removeEventListener('resize', resize); void stop(); style.remove(); captures = []; module.render = render; module.onLeave = leave; module.back = cameraBack; module.actions = cameraActions; if (scanRequest) scanRequest = undefined; if (views.photos) { views.photos.render = photosRender; views.photos.back = photosBack; views.photos.onLeave = photosLeave; } };
 
 }
