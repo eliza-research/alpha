@@ -79,7 +79,8 @@ function fixture({permission=false,failing=true,receipt={width:1280,height:720,d
 {
  const f=fixture({failing:false});await f.api.start();await settle();
  for(const text of['What am I looking at?','what’s this','Describe what you see','What does this say?'])assert.equal(f.api.cameraFrameQuestionRequested(text),true,text);
- for(const text of['Scan this','take a photo','what am I doing tomorrow','Tell me what is this week'])assert.equal(f.api.cameraFrameQuestionRequested(text),false,text);
+ for(const text of['Scan this','take a photo','what am I doing tomorrow','Tell me what is this week',"What is this week's forecast?",'what’s that song called','What is that restaurant near me','read this article later','describe this to my sister','What do you see in the news today?'])assert.equal(f.api.cameraFrameQuestionRequested(text),false,text);
+ for(const text of['Hey Alpha, what is this?','what is that, please?','Read this to me','what do you see right now?'])assert.equal(f.api.cameraFrameQuestionRequested(text),true,text);
  f.setView({chat:'sheet'});
  assert.equal(f.api.askAboutCameraFrame('What am I looking at?'),true);
  assert.equal(f.calls.questions.length,1);assert.equal(f.setView({}).chat,'hidden','The chat closes so the review is visible');assert.equal(f.calls.questions[0].question,'What am I looking at?');assert.equal(f.calls.questions[0].name,'Camera frame');

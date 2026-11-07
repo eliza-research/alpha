@@ -108,7 +108,9 @@ const SCAN_REQUEST=/\bscan\b.*\b(document|doc|receipt|qr|code|poster|page|letter
 /** Whether a chat message asks to scan what the camera sees. */
 export function cameraScanRequested(text:unknown):boolean{return SCAN_REQUEST.test(String(text||'').toLowerCase().slice(0,200));}
 export function askAboutCapture(item?:{id:string}):boolean{return captureQuestion?.(item)??false;}
-const FRAME_QUESTION=/^(?:hey alpha,? )?(?:what am i looking at|what(?:'s| is) (?:this|that|in front of me)|what do you see|describe (?:this|that|what you see)|what does (?:this|that|it) say|read (?:this|that) (?:to me|for me))\b/;
+// The whole message is the question (at most "please", "here", "now" and punctuation around it), so
+// "What is this week's forecast?" stays a chat message.
+const FRAME_QUESTION=/^(?:hey alpha,? )?(?:please )?(?:what am i looking at|what(?:'s| is) (?:this|that|in front of me)|what do you see|describe (?:this|that|what you see)|what does (?:this|that|it) say|read (?:this|that)(?: (?:to me|for me))?)(?:,? (?:here|right now|now|please))*[\s?.!]*$/;
 /** Whether a chat message asks about what the camera sees right now. */
 export function cameraFrameQuestionRequested(text:unknown):boolean{return FRAME_QUESTION.test(String(text||'').toLowerCase().replace(/[‘’]/g,"'").trim().slice(0,200));}
 /** Opens the reviewed question on one unsaved frame of the live preview, with the asked question. */
