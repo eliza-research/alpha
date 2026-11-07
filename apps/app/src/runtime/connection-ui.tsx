@@ -2492,7 +2492,15 @@ export const connectionController = {
       const cancel=()=>{void cloudSignIn!.cancel().catch(()=>{});};
       signal.addEventListener('abort',cancel,{once:true});
       try{
-        const outcome=await cloudSignIn!.restoreSavedSignIn!();signal.throwIfAborted();
+        let outcome:{restored:boolean};
+        try{outcome=await cloudSignIn!.restoreSavedSignIn!();}
+        catch(error){
+          // Native refused the saved key itself: offer only a new sign-in. Other failures keep Restore.
+          const code=error&&typeof error==='object'&&'code' in error?error.code:undefined;
+          if(code!=='expired'&&code!=='rejected')throw error;
+          signal.throwIfAborted();update({legacySignInRecovery:false});throw Error('This saved sign-in has expired. Sign in to continue.');
+        }
+        signal.throwIfAborted();
         if(outcome.restored!==true)throw Error('Saved sign-in is no longer available. Sign in to continue.');
         update({legacySignInRecovery:false,residentSavedCredential:true,signIn:null});
       }finally{signal.removeEventListener('abort',cancel);}
