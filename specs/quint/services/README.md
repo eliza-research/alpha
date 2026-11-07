@@ -11,7 +11,7 @@ listed in `manifest.json`. All transitions are local specification execution.
 | [IdentitySession](IdentitySession.qnt) | phase/method/pending/consumed, receipt/key/acknowledged/ackTries, epoch/attemptOwner/owner | `KeyBeforeAck`, `DurableReceiptBeforeKey`, `SingleUseGoogleReturn`, `MatchedReturnBurned`, `BoundedAttempts`, `AuthenticatedKey` |
 | [ServiceAuthorization](ServiceAuthorization.qnt) | plan/validFor/refresh/failures, signedRefusal/credits, owner/epoch/requestOwner/requestEpoch, request/dispatched | `RefusalNotUpgraded`, `ExpiryHonest`, `LocalIndependent`, `ExactManagedRoute`, `CurrentDispatch` |
 | [GoogleAccounts](GoogleAccounts.qnt) | attempt/pendingEpoch/phase/returnMatched, account/readGrant/modifyGrant/calendarGrant, cacheVisible/review, disconnectSent/revoked | `ReviewNeedsCurrentModify`, `CacheNeedsRead`, `ModifyIncludesRead`, `RevokedAccountEmpty` |
-| [CalendarSync](CalendarSync.qnt) | phase/kind/holder/instance, undoOpen/clockKnown, baseRevision/remoteRevision/checked, retryAuthorized/applied/sends, consent/localRevision/consentReview | `NoAutomaticUnknownCreate`, `UndoBeforeDispatch`, `PausedNeedsDecision`, `DurableClaim`, `VisibleOwnerBound` |
+| [CalendarSync](CalendarSync.qnt) | phase/kind/holder/instance, undoOpen/clockKnown, baseRevision/remoteRevision/checked, retryAuthorized/applied/sends, consent/localRevision/consentReview | `NoAutomaticUnknownWrite`, `UndoBeforeDispatch`, `PausedNeedsDecision`, `DurableClaim`, `VisibleOwnerBound` |
 | [InboxDelivery](InboxDelivery.qnt) | phase/durable/opOwner/opGrant, reviewedRevision/reviewedAttachments/exactReview, outcome/providerConfirmed/draftExists, dispatches | `AtMostOneDispatch`, `PersistBeforeDispatch`, `CacheBound`, `SuccessfulCleanup`, `UnknownCannotRearm` |
 | [MapsNavigation](MapsNavigation.qnt) | generation/requestGeneration/requestEpoch, locationGranted/fixFresh, route/previousRoute/guidance/rerouting, assistant/foreground | `GuidanceHasRoute`, `RerouteKeepsRoute`, `RetiredRouteHidden`, `FailedRerouteKept` |
 | [WorkflowExecution](WorkflowExecution.qnt) | version/reviewedVersion/phase, queued/sourceCurrent/enabled/mocks, intentSaved/submission/admittedSubmission/executions, approval/requestDigest/reviewedDigest/effects, cancelRequested/outcome | `AtMostOneExecution`, `DurableSubmission`, `ReviewedEffect`, `DisabledTriggersEmpty`, `ProductionTriggerGate` |
@@ -32,12 +32,14 @@ Account, session and revision fields stay separate wherever an asynchronous
 completion relies on them. Every module includes `TypeOK`, `safety`, explicit
 stuttering and executable scenario tests.
 
-`CalendarSync` includes one Google outbox operation and the reviewed local-linked
-sync admission boundary. Its `checking` phase separates preflight from the stored
-`dispatching` phase so cancellation before a network call can be exercised.
-Unknown creates wait for feed matching or an explicit owner decision. An explicit
-retry can create another provider event if the first outcome remains unknown.
-The model therefore does not assert globally exactly-once Calendar creates.
+`CalendarSync` represents a canonical Calendar mutation and reviewed linked-sync
+admission. The current shared mutation ledger quarantines every unknown write,
+including updates and deletes. Restart cannot rearm an ambiguous operation.
+Only an explicit non-acceptance or read-only preflight failure permits retry.
+An exact source-bound receipt/readback can settle linked-sync recovery. Hiding a
+result preserves the durable unknown state. Native deletion timers are a
+separate subcontract composed at the same admission boundary. The manifest
+records this composition and the finite limits.
 
 `InboxDelivery` follows the durable `preparing`, `review`, `dispatching` and
 `observed` phases. Restart recovery reads the original operation identity.
@@ -139,12 +141,11 @@ retryable known non-writes from the `requested`, `exported` and `unverified` res
 that lock the current review. Two pages and four opaque non-reused revisions keep
 the model finite while preserving ordering and concurrency distinctions.
 
-The source comment says an explicitly saved draft survives confirmed export.
-Current native code retains `autoSaved` after the explicit Save draft action,
-so autosave followed by Save draft and confirmed export still clears that draft.
-`explicitSaveAfterAutosaveCounterexampleTest` records current behavior. Loaded drafts set
-`autoSaved` to false and survive export. This source/comment discrepancy remains
-visible rather than being changed in the specification.
+The current shared Save draft implementation clears `autoSaved`, so an
+explicitly saved draft survives confirmed export even when autosave ran first.
+The model's `explicitSaveAfterAutosavePreservedTest` records that behavior. Loaded drafts
+also survive export. This mapping follows the current shared owner instead of
+the historical native implementation removed during the upstream migration.
 
 The existing `scan-review-pdf-errors` tests passed all three cases for conversion
 failure, unknown export failure and resolved status retry behavior.

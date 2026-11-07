@@ -149,33 +149,34 @@
     },
     {
       "sources": [
-        "apps/app/src/runtime/google-calendar-outbox.ts",
-        "apps/app/src/runtime/google-calendar-writer.ts",
-        "apps/app/src/runtime/google-calendar.ts",
-        "apps/app/src/runtime/calendar-sync-controller.ts",
+        "apps/app/src/runtime/agent-calendar.ts",
+        "apps/app/src/runtime/agent-calendar-client.ts",
+        "apps/app/src/runtime/canonical-calendar-draft.ts",
         "apps/app/src/runtime/calendar-sync-settings.ts",
         "apps/app/src/runtime/calendar-linked-provider.ts",
         "apps/app/src/runtime/calendar-linked-store.ts",
         "apps/app/src/runtime/calendar-sync-host.ts",
+        "apps/app/src/runtime/native-calendar-sync.ts",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncConsent.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncFreshness.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncMutation.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncReceiptRecovery.java"
       ],
       "stateMapping": {
-        "phase/kind/holder/instance": "GoogleCalendarOutboxOp phase and durable holder recovery",
-        "undoOpen/clockKnown": "monotonic deletion deadline, paused restart and owner choice",
-        "baseRevision/remoteRevision/checked": "read-before-write and conditional event version",
-        "retryAuthorized/applied/sends": "uncertain create matching, explicit retry and write outcome",
-        "consent/localRevision/consentReview": "reviewed linked-sync preference and exact current context",
-        "writable/restorePermission": "Fresh current-account Calendar permission read updates admission without resetting durable operation ownership, unknown outcome or retry authorization"
+        "phase/kind/holder/instance": "Abstract approval queue/preflight and CalendarMutationLedger prepared/executing/succeeded/failed_retryable/ambiguous phases, with execution session and durable claim identity",
+        "undoOpen/clockKnown": "Separate deferred-deletion subcontract: monotonic native deletion deadline, paused restart and explicit current-owner choice",
+        "baseRevision/remoteRevision/checked": "Read-before-write source identity and conditional provider version in canonical approval and linked-sync preflight",
+        "retryAuthorized/applied/sends": "Only explicit provider non-acceptance or read-only preflight failure permits another attempt; unknown outcomes remain durable and blocked",
+        "consent/localRevision/consentReview": "Linked sync enablement binds a reviewed local revision, Google selection and current Cloud/agent owner",
+        "writable/restorePermission": "Fresh current-account Calendar permission read updates admission without resetting operation ownership, unknown outcome or retry authorization"
       },
       "abstractions": [
-        "One outbox entry, two revisions, two holders and at most two sends expose interference without the full event collection.",
-        "checking splits the durable dispatching phase into preflight and actual network dispatch. Restarts map both back to source recovery states.",
-        "Recurring-event scope, timestamp parsing, merging multiple queued edits and upstream linked reconciler internals remain abstractions checked by runtime contracts.",
-        "Unknown creates allow an explicit retry after owner review. The model does not claim globally exactly-once Calendar creates.",
-        "Permission restoration is an authorized current-account readback. It preserves pending operation owner, request epoch, unknown-create state and linked-sync consent."
+        "One operation, two revisions, two execution sessions and at most two sends expose interference without the full event collection.",
+        "Abstract queued/checking phases represent approval scheduling and read-only preflight. Dispatching represents a durable executing claim. Unknown writes of every kind stay ambiguous after restart.",
+        "Canonical mutation receipts, linked-sync reconciliation and native deletion timers are separate source subcontracts composed at their admission boundary; the model does not assert one shared production outbox implements all transitions.",
+        "findCreated represents exact source-bound receipt/readback available to linked-sync recovery, never existence alone. Canonical ambiguous mutations remain quarantined. Hiding a result does not clear its durable ambiguity.",
+        "Recurring-event scope, byte-level receipt identity, multi-entry scheduling, database transactions and provider correctness remain implementation-test obligations.",
+        "Permission restoration is an authorized current-account readback. It preserves pending operation owner, request epoch, unknown-write state and linked-sync consent."
       ],
       "path": "specs/quint/services/CalendarSync.qnt",
       "module": "CalendarSync",
@@ -188,13 +189,15 @@
         "conflictTest",
         "uncertainCreateTest",
         "restartDeleteTest",
+        "unknownUpdateTest",
+        "knownFailureRetryTest",
         "retiredOwnerTest",
         "permissionRestorationTest",
         "restoredPermissionKeepsUnknownTest",
         "restoredPermissionKeepsOwnerFenceTest"
       ],
       "invariants": [
-        "NoAutomaticUnknownCreate",
+        "NoAutomaticUnknownWrite",
         "UndoBeforeDispatch",
         "PausedNeedsDecision",
         "DurableClaim",
@@ -205,7 +208,18 @@
         "maxSamples": 1000,
         "maxSteps": 60,
         "seed": "123"
-      }
+      },
+      "sharedSources": [
+        "plugins/plugin-calendar/src/mutations/types.ts",
+        "plugins/plugin-calendar/src/mutations/execution.ts",
+        "plugins/plugin-calendar/src/mutations/ledger.ts",
+        "plugins/plugin-calendar/src/mutations/resolve.ts",
+        "plugins/plugin-calendar/src/linked-sync/sync-controller.ts",
+        "plugins/plugin-calendar/src/linked-sync/linked-store.ts",
+        "plugins/plugin-calendar/src/linked-sync/sync-host.ts",
+        "packages/contracts/src/calendar-linked-sync.ts",
+        "plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/DeferredDeletionJournal.java"
+      ]
     },
     {
       "sources": [

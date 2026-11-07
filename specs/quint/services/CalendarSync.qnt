@@ -1,4 +1,5 @@
-/// One durable Google Calendar outbox item plus its linked-sync consent boundary.
+/// One current Calendar mutation ledger entry and the linked-sync consent boundary.
+/// Queued/checking/dispatching/done name abstract phases, not persisted source enum strings.
 module CalendarSync {
   type Calendar = {
     owner: int, epoch: int, operationOwner: int, requestEpoch: int,
@@ -28,7 +29,7 @@ module CalendarSync {
     s' = { ...s, consent: value, consentReview: false }
   }
   action enqueue(kind: str, linked: bool): bool = all {
-    s.phase == "empty", s.writable, kind.in(Set("create", "update", "delete", "rsvp")),
+    s.phase == "empty", s.writable, kind.in(Set("create", "update", "delete")),
     not(linked) or s.consent,
     s' = { ...s, phase: "queued", kind: kind, operationOwner: s.owner,
       undoOpen: kind == "delete", clockKnown: true, baseRevision: s.remoteRevision,
@@ -76,22 +77,28 @@ module CalendarSync {
   }
   action lostReply = all {
     s.phase == "dispatching",
-    s' = { ...s, phase: if (s.kind == "create") "uncertain" else "queued",
-      holder: 0, retryAuthorized: s.kind != "create", checked: false }
+    s' = { ...s, phase: "uncertain",
+      holder: 0, retryAuthorized: false, checked: false }
   }
+  /// Only explicit provider non-acceptance or a read-only preflight failure is retryable.
   action providerFailure = all {
     s.phase.in(Set("checking", "dispatching")),
-    s' = { ...s, phase: "failed", holder: 0, checked: false }
+    s' = { ...s, phase: "failed", holder: 0, checked: false, retryAuthorized: true }
   }
+  action retryKnownFailure = all {
+    s.phase == "failed", s.retryAuthorized, s.operationOwner == s.owner,
+    s' = { ...s, phase: "queued", checked: false }
+  }
+  /// `found` means an exact source-bound receipt/readback, never existence alone.
   action findCreated(found: bool): bool = all {
     s.phase == "uncertain", s.online, s.operationOwner == s.owner,
     s' = { ...s, phase: if (found) "done" else "uncertain", applied: found }
   }
-  /// Unknown creates may be retried only after an explicit owner decision.
+  /// Hiding an ambiguous operation retains its durable uncertainty. A retry needs
+  /// a provider-confirmed non-acceptance, which is a different transition.
   action resolveUncertain(send: bool): bool = all {
-    s.phase == "uncertain", s.operationOwner == s.owner,
-    s' = { ...s, phase: if (send) "queued" else "empty",
-      retryAuthorized: send, resultVisible: send }
+    s.phase == "uncertain", s.operationOwner == s.owner, not(send),
+    s' = { ...s, consent: false, resultVisible: false }
   }
   action resolveConflict(mine: bool): bool = all {
     s.phase == "conflict", s.operationOwner == s.owner,
@@ -109,9 +116,9 @@ module CalendarSync {
   action restart = all {
     s.instance < 2,
     s' = { ...s, instance: s.instance + 1, holder: 0, checked: false,
-      phase: if (s.phase == "dispatching" and s.kind == "create") "uncertain"
+      phase: if (s.phase == "dispatching") "uncertain"
         else if (s.phase.in(Set("checking", "dispatching"))) "queued" else s.phase,
-      retryAuthorized: if (s.phase == "dispatching" and s.kind == "create") false else s.retryAuthorized }
+      retryAuthorized: if (s.phase == "dispatching") false else s.retryAuthorized }
   }
   action switchOwner = all {
     s.epoch < 2,
@@ -120,19 +127,19 @@ module CalendarSync {
   }
   action step = any {
     reviewConsent, localChange, setConsent(true), setConsent(false), enqueue("create", false), enqueue("update", false),
-    enqueue("delete", false), enqueue("rsvp", false), enqueue("update", true), undo, deadline,
+    enqueue("delete", false), enqueue("update", true), undo, deadline,
     rebootClock, resolvePaused(true), resolvePaused(false), claim, checkRevision, dispatch,
-    completed, lostReply, providerFailure, findCreated(false), findCreated(true),
+    completed, lostReply, providerFailure, retryKnownFailure, findCreated(false), findCreated(true),
     resolveUncertain(false), resolveUncertain(true), resolveConflict(false), resolveConflict(true),
     remoteEdit, network, revoke, restorePermission, restart, switchOwner, s' = s
   }
-  val NoAutomaticUnknownCreate = s.phase == "uncertain" implies not(s.retryAuthorized)
+  val NoAutomaticUnknownWrite = s.phase == "uncertain" implies not(s.retryAuthorized)
   val UndoBeforeDispatch = s.phase == "dispatching" implies not(s.undoOpen)
   val PausedNeedsDecision = s.phase == "paused" implies not(s.clockKnown)
   val DurableClaim = s.phase == "dispatching" implies s.holder != 0
   val VisibleOwnerBound = s.resultVisible implies s.operationOwner == s.owner
-  val TypeOK = s.phase.in(Set("empty", "queued", "paused", "checking", "dispatching", "uncertain", "conflict", "failed", "done")) and s.kind.in(Set("create", "update", "delete", "rsvp")) and s.epoch.in(0.to(2)) and s.sends.in(0.to(2)) and s.instance.in(1.to(2)) and s.remoteRevision.in(0.to(2))
-  val safety = TypeOK and NoAutomaticUnknownCreate and UndoBeforeDispatch and PausedNeedsDecision and DurableClaim and VisibleOwnerBound
+  val TypeOK = s.phase.in(Set("empty", "queued", "paused", "checking", "dispatching", "uncertain", "conflict", "failed", "done")) and s.kind.in(Set("create", "update", "delete")) and s.epoch.in(0.to(2)) and s.sends.in(0.to(2)) and s.instance.in(1.to(2)) and s.remoteRevision.in(0.to(2))
+  val safety = TypeOK and NoAutomaticUnknownWrite and UndoBeforeDispatch and PausedNeedsDecision and DurableClaim and VisibleOwnerBound
   run reviewedSyncConsentTest = init.then(reviewConsent).then(localChange)
     .expect(not(s.consentReview) and not(s.consent))
     .then(reviewConsent).then(setConsent(true)).then(enqueue("update", true))
@@ -146,10 +153,16 @@ module CalendarSync {
     .then(completed).expect(s.applied and safety)
   run uncertainCreateTest = init.then(enqueue("create", false)).then(claim).then(dispatch)
     .then(lostReply).then(findCreated(false)).expect(s.phase == "uncertain" and s.sends == 1)
-    .then(resolveUncertain(false)).expect(s.phase == "empty" and safety)
+    .then(resolveUncertain(false)).expect(s.phase == "uncertain" and not(s.resultVisible) and safety)
   run restartDeleteTest = init.then(enqueue("delete", false)).then(rebootClock)
     .expect(s.phase == "paused").then(resolvePaused(true)).then(claim)
-    .then(checkRevision).then(dispatch).then(restart).expect(s.phase == "queued" and safety)
+    .then(checkRevision).then(dispatch).then(restart).expect(s.phase == "uncertain" and not(s.retryAuthorized) and safety)
+  run unknownUpdateTest = init.then(enqueue("update", false)).then(claim).then(checkRevision)
+    .then(dispatch).then(lostReply).then(restart)
+    .expect(s.phase == "uncertain" and not(s.retryAuthorized) and s.sends == 1 and safety)
+  run knownFailureRetryTest = init.then(enqueue("update", false)).then(claim).then(checkRevision)
+    .then(dispatch).then(providerFailure).then(retryKnownFailure).then(claim).then(checkRevision)
+    .then(dispatch).then(completed).expect(s.phase == "done" and s.sends == 2 and safety)
   run permissionRestorationTest = init.then(enqueue("update", false)).then(revoke)
     .expect(s.phase == "queued" and not(s.writable) and s.sends == 0)
     .then(restorePermission).then(claim).then(checkRevision).then(dispatch).then(completed)

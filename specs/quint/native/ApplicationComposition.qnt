@@ -720,7 +720,6 @@ module ApplicationComposition {
     calendarEnqueue("update"),
     calendarEnqueue("create"),
     calendarEnqueue("delete"),
-    calendarEnqueue("rsvp"),
     calendarEnqueueLinked("update"),
     calendarReviewConsent,
     {
@@ -911,7 +910,7 @@ module ApplicationComposition {
     .then(calendarUndo).then(check(safety and Calendar::s.phase == "empty"))
   run uncertainCalendarCreateRecoveryTest = readySetup.then(calendarEnqueue("create")).then(calendarClaim)
     .then(calendarDispatch).then(calendarLostReply).then(calendarFindCreated(false))
-    .then(calendarResolveUncertain(false)).then(check(safety and Calendar::s.phase == "empty"))
+    .then(calendarResolveUncertain(false)).then(check(safety and Calendar::s.phase == "uncertain" and not(Calendar::s.resultVisible)))
   run changedInboxDraftCanCancelAndRetryTest = readySetup.then(inboxPrepare).then(inboxReview)
     .then(inboxEditDraft).then(inboxCancelReview).then(inboxPrepare).then(inboxReview)
     .then(inboxConfirm).then(inboxProviderResult("unknown")).then(restartInbox)
