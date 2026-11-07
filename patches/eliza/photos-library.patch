@@ -219,8 +219,19 @@
   */
  public final class OwnedPhotoEdits {
    private final Context context;
-@@ -30,12 +33,37 @@
+@@ -28,20 +31,59 @@
+     String revision(String id) throws Exception;
+   }
    private final SourceAccess sourceAccess;
++  /**
++   * Opens the original for Replace's truncating write. The default asks the ContentResolver; a
++   * host test may wrap the stream to inject a failed write.
++   */
++  public interface ReplaceOutput {
++    OutputStream open(ContentResolver resolver, Uri target) throws IOException;
++  }
++  private static final ReplaceOutput RESOLVER_OUTPUT = (r, target) -> r.openOutputStream(target, "wt");
++  private final ReplaceOutput replaceOutput;
    private volatile Session active;
    private static final int MAX_EDGE = 2048;
 +  /** A replaced original keeps up to this many pixels (16 MP); larger originals are reduced. */
@@ -259,7 +270,18 @@
    }
    public OwnedPhotoEdits(Context c, OwnedMediaConfig config) {
      this(c, config, null);
-@@ -134,8 +162,11 @@
+   }
+   public OwnedPhotoEdits(Context c, OwnedMediaConfig config, SourceAccess sourceAccess) {
++    this(c, config, sourceAccess, null);
++  }
++  public OwnedPhotoEdits(Context c, OwnedMediaConfig config, SourceAccess sourceAccess,
++      ReplaceOutput replaceOutput) {
+     this.sourceAccess = sourceAccess;
++    this.replaceOutput = replaceOutput == null ? RESOLVER_OUTPUT : replaceOutput;
+     context = c;
+     this.config = config;
+     resolver = c.getContentResolver();
+@@ -134,8 +176,11 @@
      s.pixels = pixels;
      active = s;
      try {
@@ -272,7 +294,7 @@
      } catch (Exception error) {
        close();
        throw error;
-@@ -148,32 +179,35 @@
+@@ -148,32 +193,35 @@
      current(s);
      return s;
    }
@@ -315,7 +337,7 @@
          geometry.recycle();
        throw e;
      }
-@@ -226,6 +260,8 @@
+@@ -226,6 +274,8 @@
      if (record == null)
        return receipt("not-started", token, null);
      JSONObject saved = new JSONObject(record);
@@ -324,7 +346,7 @@
      boolean published = saved.optString("status").equals("saved");
      String savedId = saved.optString("id", null);
      if (published && savedId != null)
-@@ -272,7 +308,8 @@
+@@ -272,7 +322,8 @@
      String existing = journal.getString(token, null);
      if (existing != null) {
        JSONObject previous = new JSONObject(existing);
@@ -334,7 +356,7 @@
            || !previous.optString("filter", "none").equals(filter))
          throw new IllegalArgumentException("This save identity already has a different edit");
        return result(token);
-@@ -329,6 +366,268 @@
+@@ -329,6 +380,418 @@
          bitmap.recycle();
      }
    }
@@ -394,12 +416,17 @@
 +   * revision and SHA-256 must still be the reviewed ones before decoding and again just before the
 +   * write, else the answer is {@code stale} and nothing is written. The edit is applied to the
 +   * full-resolution original (up to {@link #REPLACE_PIXELS}), encoded in its own format to a
-+   * private file, and only then copied over the original with a truncating write. JPEG capture
++   * private file, and only then copied over the original with a truncating write. Before that write
++   * the original's bytes are kept in a private backup named in the journal; a write that fails is
++   * undone only when the damage can be tied to this operation. The next {@link #result} can
++   * recognize either complete version or retry a restore against the recorded partial write. The backup
++   * is removed only once the original holds either the edit or its own bytes again. JPEG capture
 +   * metadata is kept; orientation is normal because the rotation is in the pixels. The receipt is
 +   * {@code {status: "saved", id, replaced: true, revision?}} with the original's id and, once
 +   * MediaStore has rescanned it, its new revision. The journal records the phases, so a later
-+   * {@link #result} reports {@code failed} (nothing written), {@code stale}, {@code unknown} (the
-+   * write began but was not confirmed) or {@code saved}. Android's consent, when needed, is the
++   * {@link #result} reports {@code failed} (the original is unchanged), {@code stale},
++   * {@code unknown} (the original could not be restored yet; the backup is kept and the next
++   * {@link #result} tries again) or {@code saved}. Android's consent, when needed, is the
 +   * caller's ({@link #replaceConsent}).
 +   */
 +  public JSObject replace(String token, int rotation, boolean crop, String filter)
@@ -444,30 +471,43 @@
 +      full = decodeFull(snapshot);
 +      edited = transform(s, full, rotation, crop, filter);
 +      staged = stage(edited, s.mime, snapshot);
-+      snapshot = null;
 +      if (s.cancelled || active != s)
 +        throw new IllegalArgumentException("Photo editor closed");
 +      if (!unchanged(s))
 +        return replaceStale(token, record);
-+      record.put("status", "writing");
-+      if (!journal.edit().putString(token, record.toString()).commit())
-+        throw new IOException("Save receipt could not be persisted");
++      // A durable copy of the original before it is truncated, named in the journal first.
++      File kept = backup(token);
 +      Uri target = source(s.id);
-+      try (InputStream input = new FileInputStream(staged);
-+          OutputStream output = resolver.openOutputStream(target, "wt")) {
-+        if (output == null)
-+          throw new IOException("Original could not be opened for writing");
-+        opened = true;
-+        byte[] chunk = new byte[65536];
-+        int n;
-+        while ((n = input.read(chunk)) != -1) output.write(chunk, 0, n);
-+        output.flush();
-+        if (output instanceof FileOutputStream)
-+          ((FileOutputStream) output).getFD().sync();
++      writeDurably(snapshot, kept);
++      snapshot = null;
++      record.put("backup", kept.getName())
++          .put("target", target.toString())
++          .put("original", hex(s.digest))
++          .put("edited", hex(fileDigest(staged)))
++          .put("status", "writing");
++      if (!journal.edit().putString(token, record.toString()).commit()) {
++        kept.delete();
++        throw new IOException("Save receipt could not be persisted");
++      }
++      if (!unchanged(s)) {
++        record.remove("backup");
++        kept.delete();
++        return replaceStale(token, record);
++      }
++      opened = true;
++      try {
++        copyOver(staged, target, token, record);
++      } catch (Exception writeFailed) {
++        // Put the original back from the backup; only then is this a plain failure. A write
++        // that completed before the error (a failed close) is the saved edit.
++        if (!settleReplace(token, record).equals("saved"))
++          throw writeFailed;
 +      }
 +      // The original is written; a receipt write failure must not turn that into a failure.
++      // Without the receipt the backup stays, and the next result settles the edit as saved.
 +      record.put("status", "saved");
-+      journal.edit().putString(token, record.toString()).commit();
++      if (journal.edit().putString(token, record.toString()).commit())
++        kept.delete();
 +      String revision = settled(s);
 +      if (revision != null) {
 +        record.put("revision", revision);
@@ -479,6 +519,8 @@
 +    } catch (Exception failure) {
 +      // Before the original was opened for writing nothing was written to it.
 +      if (!opened && !"stale".equals(record.optString("status"))) {
++        backup(token).delete();
++        record.remove("backup");
 +        record.put("status", "failed");
 +        journal.edit().putString(token, record.toString()).commit();
 +      }
@@ -491,6 +533,131 @@
 +      if (staged != null)
 +        staged.delete();
 +    }
++  }
++  /** The private backup a Replace keeps of its original until the write is settled. */
++  private File backup(String token) {
++    return new File(new File(context.getFilesDir(), "photo-replace-backups"), token + ".original");
++  }
++  private static void writeDurably(byte[] bytes, File file) throws IOException {
++    File parent = file.getParentFile();
++    if (parent != null && !parent.isDirectory() && !parent.mkdirs())
++      throw new IOException("Original could not be kept");
++    try (FileOutputStream output = new FileOutputStream(file)) {
++      output.write(bytes);
++      output.flush();
++      output.getFD().sync();
++    }
++  }
++  /** Copies {@code from} over {@code target} with a truncating, synced write. */
++  private void copyOver(File from, Uri target, String token, JSONObject record) throws IOException {
++    boolean opened = false;
++    try (InputStream input = new FileInputStream(from);
++        OutputStream output = replaceOutput.open(resolver, target)) {
++      if (output == null)
++        throw new IOException("Original could not be opened for writing");
++      opened = true;
++      byte[] chunk = new byte[65536];
++      int n;
++      while ((n = input.read(chunk)) != -1) output.write(chunk, 0, n);
++      output.flush();
++      if (output instanceof FileOutputStream)
++        ((FileOutputStream) output).getFD().sync();
++    } catch (IOException failure) {
++      if (opened)
++        rememberDamage(token, record, from);
++      throw failure;
++    }
++  }
++  private static byte[] fileDigest(File file) throws Exception {
++    java.security.MessageDigest hash = java.security.MessageDigest.getInstance("SHA-256");
++    try (InputStream input = new FileInputStream(file)) {
++      byte[] buffer = new byte[65536];
++      int n;
++      while ((n = input.read(buffer)) != -1) hash.update(buffer, 0, n);
++    }
++    return hash.digest();
++  }
++  private static String hex(byte[] bytes) {
++    StringBuilder out = new StringBuilder(bytes.length * 2);
++    for (byte b : bytes) out.append(String.format(java.util.Locale.ROOT, "%02x", b & 0xff));
++    return out.toString();
++  }
++  /** Records a failed writer's exact incomplete output while that output is still observable. */
++  private void rememberDamage(String token, JSONObject record, File attempted) {
++    String id = record.optString("id");
++    try {
++      if (!source(id).toString().equals(record.optString("target")))
++        return;
++      byte[] current = bytes(id);
++      if (current.length >= attempted.length())
++        return;
++      try (InputStream expected = new BufferedInputStream(new FileInputStream(attempted))) {
++        for (byte value : current) {
++          if (expected.read() != (value & 0xff))
++            return;
++        }
++      }
++      String hash = hex(java.security.MessageDigest.getInstance("SHA-256").digest(current));
++      JSONObject updated = new JSONObject(record.toString());
++      updated.put("damage", hash);
++      if (journal.edit().putString(token, updated.toString()).commit())
++        record.put("damage", hash);
++    } catch (Exception unavailable) {
++      // Unreadable or unconfirmed bytes are never authority to restore over the original.
++    }
++  }
++  /**
++   * Recognizes a complete edit or original, or restores only the recorded partial write. An
++   * unrelated edit, an unreadable item, or a crash before recording damage leaves the backup kept.
++   */
++  private String settleReplace(String token, JSONObject record) throws Exception {
++    String name = record.optString("backup", "");
++    File kept = name.isEmpty() ? null : backup(token);
++    if (kept == null || !kept.getName().equals(name) || !kept.isFile()
++        || record.optString("original").isEmpty())
++      return "writing";
++    String id = record.getString("id"), now;
++    Uri target;
++    try {
++      target = source(id);
++      if (record.has("target") && !target.toString().equals(record.getString("target")))
++        return "writing";
++      now = hex(digest(id));
++    } catch (Exception unreadable) {
++      return "writing";
++    }
++    String status;
++    if (now.equals(record.optString("edited")))
++      status = "saved";
++    else if (now.equals(record.optString("original")))
++      status = "failed";
++    else {
++      if (!now.equals(record.optString("damage"))
++          || !target.toString().equals(record.optString("target")))
++        return "writing";
++      try {
++        if (!hex(fileDigest(kept)).equals(record.optString("original")))
++          return "writing";
++        // A MediaStore rescan can change the revision without changing the bytes we just wrote.
++        revision(id);
++        if (!now.equals(hex(digest(id))) || !target.equals(source(id)))
++          return "writing";
++        copyOver(kept, target, token, record);
++        if (!hex(digest(id)).equals(record.optString("original")))
++          return "writing";
++      } catch (Exception notRestored) {
++        return "writing";
++      }
++      status = "failed";
++    }
++    record.put("status", status);
++    record.remove("backup");
++    if (!journal.edit().putString(token, record.toString()).commit()) {
++      record.put("status", "writing").put("backup", name);
++      return "writing";
++    }
++    kept.delete();
++    return status;
 +  }
 +  private JSObject replaceStale(String token, JSONObject record) throws Exception {
 +    record.put("status", "stale");
@@ -514,6 +681,11 @@
 +      case "stale":
 +        return receipt("stale", token, null);
 +      case "writing": {
++        String settled = settleReplace(token, record);
++        if (settled.equals("saved"))
++          return replaced(token, record.getString("id"), null);
++        if (settled.equals("failed"))
++          return receipt("failed", token, null);
 +        JSObject unknown = receipt("unknown", token, null);
 +        unknown.put("message", "Replacing the original was not confirmed. Inspect Photos.");
 +        return unknown;

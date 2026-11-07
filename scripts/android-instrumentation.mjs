@@ -194,6 +194,7 @@ export const CLASS_REGISTRY = {
   HostedResultsLifecycle: {},
   LocalAgentProvider: {},
   PhotoEdit: {},
+  PhotoReplace: { note: "owned synthetic PNGs only; injected write failures and newer-edit recovery" },
   PhotoFilter: {},
   PhotosMultiShare: {},
   PhotosTrash: {},
