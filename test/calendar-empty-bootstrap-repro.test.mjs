@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes,createRequire} from 'node:module';
+import {createRequire} from 'node:module';
+import {stripTypeScriptTypes} from './fixtures/ts-source.mjs';
 import test from 'node:test';
 import vm from 'node:vm';
 const sdk='.eliza/client-features';
 const {WebPlugin}=createRequire(import.meta.url)('@capacitor/core');
 const read=p=>readFileSync(p,'utf8');
-const code=source=>stripTypeScriptTypes(source.replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'transform'});
+const code=source=>stripTypeScriptTypes(source.replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'strip'});
 function evaluate(path,names,deps={}){return new Function(...Object.keys(deps),code(read(path))+';return {'+names+'};')(...Object.values(deps));}
 // In-memory implementation of the normal transactional Documents port. All domain,
 // browser adapter, initialization, preservation, controller and memo code is real.
@@ -30,7 +31,7 @@ function fixture(){
  const {SingleFlightMemo}=evaluate(sdk+'/packages/core/src/runtime/single-flight-memo.ts','SingleFlightMemo');
  const ui=read('apps/app/src/runtime/connection-ui.tsx');
  const slice=ui.slice(ui.indexOf('type CalendarAgendaSourceObservation='),ui.indexOf('async function deviceCapabilities'));
- const observe=vm.runInNewContext(stripTypeScriptTypes(slice,{mode:'transform'})+';calendarAgendaObservation',{SingleFlightMemo,calendarSource,calendarTarget,window:events,Capacitor:{isNativePlatform:()=>false},registerPlugin:name=>{assert.equal(name,'AlphaCalendar');return browser;}});
+ const observe=vm.runInNewContext(stripTypeScriptTypes(slice,{mode:'strip'})+';calendarAgendaObservation',{SingleFlightMemo,calendarSource,calendarTarget,window:events,Capacitor:{isNativePlatform:()=>false},registerPlugin:name=>{assert.equal(name,'AlphaCalendar');return browser;}});
  let valid=true;const markers=new Map();
  const {legacyCalendarPreservation}=evaluate('apps/app/src/runtime/legacy-calendar-preservation.ts','legacyCalendarPreservation',{calendarDocument});
  const preservation=legacyCalendarPreservation({has:async(owner,fingerprint)=>markers.get(owner)===fingerprint,retain:async(owner,fingerprint)=>{markers.set(owner,fingerprint);}});

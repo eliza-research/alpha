@@ -113,7 +113,7 @@ function controllerFixture({isAndroid=false,browserCloudResidentEnabled=false}={
     const cloud={cancelLogin(){events.push({cancel:true});}};
     const client={};
     const signInClient=()=>client,ensureResident=async()=>{},residentRecoveryReason=()=>null;
-    const errorMessage=e=>e.message,runQueuedResidentRebind=()=>{},runQueuedSignInReturn=()=>{};
+    const errorMessage=e=>e.message,errorKindOf=()=>null,runQueuedResidentRebind=()=>{},runQueuedSignInReturn=()=>{};let planRecheck=null;
     const testMocksEnabled=false,isAndroid=${isAndroid},browserCloudResidentEnabled=${browserCloudResidentEnabled},expired=()=>false,residentCloudFlow=()=>true;
     let required=false;const productionCloudSignInRequired=()=>required,residentSignInRequired=()=>required;let pendingBillingReview=null;const clearPersonalSetup=()=>{};
     ${ui.includes('export function explicitSignedOutCloudEntry(')?part('export function explicitSignedOutCloudEntry(', 'export function connectionChooserVisible(').replace('export ',''):'function explicitSignedOutCloudEntry(){return false;}'}

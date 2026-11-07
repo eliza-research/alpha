@@ -66,3 +66,11 @@ test('missing server capability is an explicit source state, not a healthy empty
  const calls=await setup(page);await page.route('**/__unified_api/api/lifeops/reminders',route=>route.fulfill({status:404,contentType:'application/json',body:'{}'}));await page.getByRole('button',{name:'Filter workflows',exact:true}).click();await page.getByRole('dialog',{name:'Filter workflows',exact:true}).getByRole('button',{name:'Refresh list',exact:true}).click();await expect(page.getByRole('alert')).toContainText('Agent reminders are not available on this agent.');await expect(page.locator('[data-alpha-layer=app]').getByText('Document review',{exact:true})).toBeVisible();
  await page.getByRole('button',{name:'New automation',exact:true}).click();await expect(page.getByRole('button',{name:/^Reminder(?! on this phone)/,exact:false})).toBeDisabled();await expect(page.getByRole('button',{name:/^Reminder(?! on this phone)/,exact:false})).toContainText('not available on this agent');await expect(page.getByRole('button',{name:/^Automation/,exact:false})).toBeEnabled();await page.getByRole('button',{name:'More options',exact:true}).click();await expect(page.getByRole('button',{name:'Reminder on this phone',exact:false})).toBeEnabled();expect(calls.filter(call=>call.method!=='GET')).toHaveLength(0);
 });
+
+test('a locked row shows the recovery line and Allow another asks before releasing it',async({page})=>{
+ await setup(page);await page.route('**/__unified_api/api/triggers/prompt/execute',route=>route.abort());
+ await page.locator('[data-alpha-layer=app]').getByText('Document review',{exact:true}).click();await page.getByRole('button',{name:'Run now',exact:true}).click();await page.getByRole('button',{name:'Confirm Run now',exact:true}).click();
+ const detail=page.locator('[data-alpha-subview=automations-detail]');await expect(detail.getByRole('alert').filter({hasText:'Couldn’t confirm the last change. Check it, then allow another.'})).toBeVisible();await expect(detail.getByRole('button',{name:'Run now',exact:true})).toBeDisabled();
+ page.once('dialog',dialog=>{expect(dialog.message()).toBe('Check this automation first. Allowing another may repeat the change.');void dialog.accept();});await detail.getByRole('button',{name:'Allow another',exact:true}).click();
+ await expect(detail.getByRole('button',{name:'Run now',exact:true})).toBeEnabled();
+});

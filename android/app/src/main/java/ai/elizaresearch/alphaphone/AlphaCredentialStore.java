@@ -73,6 +73,10 @@ final class AlphaCredentialStore {
  static String readSlotBeforeAttach(Context base,String name)throws Exception{
   return new JsonCredentialSlots(new File(base.getNoBackupFilesDir(),"connection-credentials"),"alpha.connection.aes.v1",AlphaCredentialStore::slotLimit).read(CloudDeployment.storageSlot(name));
  }
+ /** The raw pre-namespace slot (LegacyCloudRecovery's source), for reset revocation only. */
+ static String readLegacySlotBeforeAttach(Context base,String name)throws Exception{
+  return new JsonCredentialSlots(new File(base.getNoBackupFilesDir(),"connection-credentials"),"alpha.connection.aes.v1",AlphaCredentialStore::slotLimit).read(name);
+ }
  /** Critical credential changes cannot leave a child process using the old environment. */
  void writeCredentialSlot(String name,String value)throws Exception{if(value==null)throw new IllegalArgumentException("Credential value required");requireCapacity(name,value);mutateSlot(name,null,value,false);}
  void removeCredentialSlot(String name)throws Exception{mutateSlot(name,null,null,false);}

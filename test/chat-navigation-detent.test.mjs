@@ -25,7 +25,7 @@ function harness(initial,source=helper){
     setState(patch,done){Object.assign(this.state,patch);this.transitions.push({...this.state});done?.();}
     ${transitions}
   }
-  ${stripTypeScriptTypes(source,{mode:'transform'})}
+  ${stripTypeScriptTypes(source,{mode:'strip'})}
   globalThis.shell=new Shell();globalThis.deliver=deliverChatNavigation;`,context);
   return {shell:context.shell,deliver:context.deliver};
 }

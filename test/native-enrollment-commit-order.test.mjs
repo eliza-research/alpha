@@ -5,7 +5,7 @@ import {stripTypeScriptTypes} from 'node:module';
 const source=readFileSync(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
 const start=source.indexOf('    credential.enrollmentId=registered.enrollmentId;await store.write(slot,credential);'),end=source.indexOf('    client.deviceHeaders=headers;',start);
 assert.ok(start>=0&&end>start);
-const execute=new Function('store','slot','credential','registered','signal','request','session','isAndroid',`return(async()=>{${stripTypeScriptTypes(source.slice(start,end),{mode:'transform'})}})();`);
+const execute=new Function('store','slot','credential','registered','signal','request','session','isAndroid',`return(async()=>{${stripTypeScriptTypes(source.slice(start,end),{mode:'strip'})}})();`);
 const run=(...args)=>execute(...args,true);
 function fixture(){
  const committed=Promise.withResolvers(),entered=Promise.withResolvers(),order=[];

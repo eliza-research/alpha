@@ -6,6 +6,7 @@ import {join,resolve} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {transformSync} from 'esbuild';
 import {readFileSync} from 'node:fs';
+import {javaBinary} from './fixtures/jvm-tools.mjs';
 const root=resolve(import.meta.dirname,'..');
 // The renderer contract is the pinned @elizaos/contracts/deletion-window (staged client features).
 const src=transformSync(readFileSync(join(root,'.eliza/client-features/packages/contracts/src/deletion-window.ts'),'utf8'),{loader:'ts',format:'esm'}).code;
@@ -35,10 +36,10 @@ test('different owner and unprovable browser/reboot clock cannot dispatch; pendi
  assert.equal(saved.phase,'queued');assert.equal(claimDeletion(saved,'owner-A',clock(20100,1,'new-renderer'),'undo'),true);
 });
 test('native deadline agrees on same-boot restart, exact expiry, reboot and invalid clocks',()=>{
- const dir=mkdtempSync(join(tmpdir(),'alpha-delete-deadline-')),bin=n=>process.env.JAVA_HOME?join(process.env.JAVA_HOME,'bin',n):n;
+ const dir=mkdtempSync(join(tmpdir(),'alpha-delete-deadline-'));
  const shared=join(root,'vendor/eliza/plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/DeletionDeadline.java');
  try{const file=join(dir,'DeadlineTest.java');writeFileSync(file,`import ai.eliza.plugins.actionjournal.deletion.DeletionDeadline; public class DeadlineTest {static void check(boolean v){if(!v)throw new AssertionError();}public static void main(String[] args){check(DeletionDeadline.WINDOW_MS==10000);DeletionDeadline d=new DeletionDeadline("boot:1",100,100000);check(d.expiresAt==110000);check(d.state("boot:1",10099)==DeletionDeadline.State.OPEN);check(d.state("boot:1",10100)==DeletionDeadline.State.EXPIRED);check(d.state("boot:1",99)==DeletionDeadline.State.CLOCK_CHANGED);check(d.state("boot:2",20000)==DeletionDeadline.State.CLOCK_CHANGED);try{new DeletionDeadline("boot",Long.MAX_VALUE,0);throw new AssertionError();}catch(IllegalArgumentException expected){}System.out.println("PASS deletion deadline");}}`);
- execFileSync(bin('javac'),['--release','11','-d',dir,shared,file],{timeout:60000});assert.match(execFileSync(bin('java'),['-cp',dir,'DeadlineTest'],{encoding:'utf8',timeout:10000}),/PASS deletion deadline/);
+ execFileSync(javaBinary('javac'),['--release','11','-d',dir,shared,file],{timeout:60000});assert.match(execFileSync(javaBinary('java'),['-cp',dir,'DeadlineTest'],{encoding:'utf8',timeout:10000}),/PASS deletion deadline/);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });
 test('Undo is confirmed only by an undone receipt; a late Undo after dispatch is never shown as kept',()=>{

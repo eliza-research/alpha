@@ -7,7 +7,7 @@ import vm from 'node:vm';
 const source=readFileSync('apps/app/src/runtime/connection-ui.tsx','utf8');
 const start=source.indexOf('  async performVoiceRequestedActions('),end=source.indexOf('  voiceRendererClientId()',start);
 assert(start>0&&end>start);
-const method=stripTypeScriptTypes('const controller={'+source.slice(start,end)+'};globalThis.controller=controller;',{mode:'transform'});
+const method=stripTypeScriptTypes('const controller={'+source.slice(start,end)+'};globalThis.controller=controller;',{mode:'strip'});
 const messageId='11111111-2222-4333-8444-555555555555';
 function fixture(){
  const state={context:{view:'home',revision:1,sensitive:false},ask:false,owned:true,proofCurrent:true,calls:[]};

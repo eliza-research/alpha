@@ -43,7 +43,7 @@ export interface LocalAgentBridge {
 const native = registerPlugin<Omit<LocalAgentBridge, 'subscribeVoiceEvents'> & NativeStreamPort & NativeVoiceEventPort & NativeViewEventPort>('Agent');
 // Capacitor proxies synthesize functions for unknown methods. Do not use that
 // proxy to feature-detect streaming before the native IPC adapter implements it.
-const nativeBridge:LocalAgentBridge={subscribeVoiceEvents:(ownerId,listener)=>subscribeNativeVoiceEvents(native,ownerId,listener),start:()=>native.start(),request:input=>native.request(input),stream:(input,signal,onText,onReplyReady)=>streamNativeAgent(native,input,signal,onText,onReplyReady)};
+const nativeBridge:LocalAgentBridge={subscribeVoiceEvents:(ownerId,listener)=>subscribeNativeVoiceEvents(native,ownerId,listener),start:input=>native.start(input),cancelStart:input=>native.cancelStart!(input),request:input=>native.request(input),stream:(input,signal,onText,onReplyReady)=>streamNativeAgent(native,input,signal,onText,onReplyReady)};
 // The host bridge at /__alpha-local-agent exists only on the development server
 // with test mocks or the explicit real Cloud resident mode. This
 // module is also imported by Node contract tests, where import.meta.env is absent.
@@ -58,8 +58,8 @@ export async function localAgentPackaged():Promise<boolean> {
   try{return (await native.getStatus?.())?.packaged===true;}catch{return false;}
 }
 const unavailableBridge: LocalAgentBridge = {
-  async start() { throw new Error('On-device agent is unavailable here. Connect to an agent or use Cloud.'); },
-  async request() { throw new Error('On-device agent is unavailable here. Connect to an agent or use Cloud.'); },
+  async start() { throw new Error('Your agent runs on your phone, not here. Open Alpha on your Android phone to use it.'); },
+  async request() { throw new Error('Your agent runs on your phone, not here. Open Alpha on your Android phone to use it.'); },
 };
 const browserBridge: LocalAgentBridge | null = developmentBridgeAllowed ? {
   subscribeConversationEvents(ownerId,listener,onState){return subscribeBrowserConversationEvents(this,ownerId,listener,onState);},
@@ -417,7 +417,12 @@ export class LocalAgentProtocol {
         // A refusal, an undispatched stream or a terminal failure frame is the outcome: nothing is re-read.
         if(!options.clientMessageId||(error&&typeof error==='object'&&(('status' in error&&typeof error.status==='number'&&error.status<500)||'beforeDispatch' in error||'failureKind' in error)))throw error;
         this.recoveries++;
-        const recovered=await this.json(path,body,signal,headers);valid();
+        // This route answers 429 only when the room refuses admission, after the same key found no
+        // turn in flight or settled: the message was provably not accepted.
+        const recovered=await this.json(path,body,signal,headers).catch(error=>{
+          if(error&&typeof error==='object'&&(error as {status?:unknown}).status===429)throw Object.assign(error,{beforeDispatch:true});
+          throw error;
+        });valid();
         if(typeof recovered.text!=='string'||typeof recovered.agentName!=='string')throw new Error('Invalid local agent reply.');
         return recovered as RemoteChatReply;
       }finally{this.streams.delete(controller);}

@@ -19,7 +19,7 @@ function load(store, f = {account: true, dev: false}) {
     connectionController: {getSnapshot:()=>({residentInference:(f.own||f.direct)?'direct':'cloud',providerStatus:{voiceConfigured:f.voice===true}}),getCloudEnvironment: () => f.account ? 'production' : null, getCloudClient: () => f.account ? {sessionId: 'synthetic-session', credentialId: 'synthetic-credential'} : null},
   };
   const source = fs.readFileSync('apps/app/src/runtime/voice-selection.ts', 'utf8').replace(/^import .*;\n/gm, '').replaceAll('export function', 'function').replaceAll('export type', 'type');
-  vm.runInNewContext('{' + stripTypeScriptTypes(source, {mode: 'transform'}) + '\nglobalThis.api={selectVoiceRoute,chooseVoiceRoute,voiceRoutePreference,cloudVoiceAvailable,voicePreferenceKeys,cloudSpeechDisclosure,voiceSendPolicy,setVoiceSendPolicyForTests};}', box);
+  vm.runInNewContext('{' + stripTypeScriptTypes(source, {mode: 'strip'}) + '\nglobalThis.api={selectVoiceRoute,chooseVoiceRoute,voiceRoutePreference,cloudVoiceAvailable,voicePreferenceKeys,cloudSpeechDisclosure,voiceSendPolicy,setVoiceSendPolicyForTests};}', box);
   return {...box.api, events, f};
 }
 
@@ -39,6 +39,7 @@ test('legacy preference persistence detects dropped or unavailable storage', () 
   for(const store of [{getItem:()=>null,setItem(){}},{getItem(){throw Error('blocked');},setItem(){throw Error('blocked');}}]) {
     const v=load(store);assert.equal(v.chooseVoiceRoute('cloud',{disclosed:'cloud-speech-uses-plan'}),false);assert.equal(v.selectVoiceRoute(),'device');
   }
+});
 
 test('the voice send policy defaults to auto-send and only test-mocks builds can exercise review', () => {
   const production = load(storage());
@@ -51,8 +52,6 @@ test('the voice send policy defaults to auto-send and only test-mocks builds can
   assert.equal(mocks.voiceSendPolicy(), 'review');
   assert.equal(mocks.setVoiceSendPolicyForTests('anything'), true);
   assert.equal(mocks.voiceSendPolicy(), 'auto-send', 'an unknown policy falls back to the constant');
-});
-
 });
 
 test('spoken replies have no preference: only the route is stored, and an old Read replies aloud value is not read', () => {

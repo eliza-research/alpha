@@ -11,7 +11,7 @@ const offlineNetwork = () => {
   const refuse = name => (...args) => { attempts.push([name, String(args[0] ?? '')]); throw new TypeError('Network is offline'); };
   return {attempts, fetch: refuse('fetch'), XMLHttpRequest: class { constructor() { attempts.push(['xhr', '']); throw new TypeError('Network is offline'); } }, WebSocket: class { constructor(url) { attempts.push(['websocket', url]); throw new TypeError('Network is offline'); } }, navigator: {onLine: false}};
 };
-const strip = (path, keep) => stripTypeScriptTypes(fs.readFileSync(path, 'utf8').replace(/^import .*;\n/gm, '').replace(/^export /gm, ''), {mode: 'transform'}) + `\nglobalThis.api={${keep}};`;
+const strip = (path, keep) => stripTypeScriptTypes(fs.readFileSync(path, 'utf8').replace(/^import .*;\n/gm, '').replace(/^export /gm, ''), {mode: 'strip'}) + `\nglobalThis.api={${keep}};`;
 
 test('signed out and offline, every voice route request stays on this device', () => {
   const network = offlineNetwork(), bytes = new Map([['alphaphone:voice-route:v1', JSON.stringify({version: 1, route: 'cloud', disclosed: 'cloud-speech-uses-plan', chosenAt: 1})]]);

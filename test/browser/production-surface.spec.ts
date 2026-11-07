@@ -395,7 +395,7 @@ for (const mode of ['signed-out','empty','credits','unavailable','funded','repla
   const dialog=signedOut?page.locator('[role="main"].alpha-cloud-sign-in'):needsPlan?page.getByRole('dialog',{name:'Eliza Cloud account & plan',exact:true}):page.getByRole('region',{name:'Settings',exact:true});
   if(needsPlan){
    const notice=page.getByRole('region',{name:'Eliza Cloud plan notice'});
-   await expect(notice).toContainText('Your agent is running on this device. AI replies aren’t available right now');
+   await expect(notice).toContainText('AI replies are off. Your agent is still running.');
    await expect(page.getByRole('dialog')).toHaveCount(0);
    await expect(notice.getByRole('button',{name:'Choose a plan',exact:true})).toBeVisible();
    await notice.getByRole('button',{name:'Redeem code',exact:true}).click();

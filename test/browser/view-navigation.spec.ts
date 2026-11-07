@@ -6,7 +6,7 @@ import { expect, test } from "@playwright/test";
 const root = resolve(import.meta.dirname, "../..");
 const compile = (path: string) =>
 	stripTypeScriptTypes(readFileSync(resolve(root, path), "utf8"), {
-		mode: "transform",
+		mode: "strip",
 	}).replace(/^import[\s\S]*?;\n/gm, "");
 const source = [
 	".eliza/client-features/packages/core/src/events.ts",

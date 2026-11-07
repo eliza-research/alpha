@@ -20,13 +20,13 @@ const body=`function make(React, signInReadiness, options){
  const ownProviderSelected=()=>false;
  const {useRef,useEffect,useSyncExternalStore}=React;
  let state={residentRecoveryReason:options.recoveryReason,open:true,purpose:'agent',cloudAccount:null,startupResolved:true,residentSavedCredential:false,residentPlanNotice:null,error:'',message:'',busy:false,signIn:{step:'choose',environment:'production'},session:{sessionId:'existing-owner-session'},kind:'resident',legacySignInRecovery:true};
- let epoch=0,operation=null,residentStartInBackground=false,residentStartFailure='',sending=null,active={kind:'resident'},signInReadinessOwner=null,googleSignInGeneration=0,inAppGoogle=false,inAppPhone=false,inAppEmail=true;
+ let planRecheck=null,epoch=0,operation=null,residentStartInBackground=false,residentStartFailure='',sending=null,active={kind:'resident'},signInReadinessOwner=null,googleSignInGeneration=0,inAppGoogle=false,inAppPhone=false,inAppEmail=true;
  const timeline=[],listeners=new Set(),actionReceipts=new Map(),conversationMemory=new Map(),appRequests=new Set();
  const RESIDENT_NAME='Local agent',RESIDENT_STARTING='Starting',SIGN_IN_READINESS_WAIT_MS=6000;
  const isAndroid=true,testMocksEnabled=false,residentAlwaysPresent=true,developmentPageSuspended=false;
  const residentCloudFlow=()=>true,residentEnvironment=()=> 'production',cloudEnvironmentAllowed=environment=>environment==='production';
  const cloudServiceName=()=> 'Service',cloud={environment:'production',cancelLogin(){}};
- const makeCloud=()=>cloud,errorMessage=error=>error?.status===401?'Expired':error?.message??'Unavailable',expired=()=>false,residentRecoveryReason=()=>null,residentRecoveryMessage=()=> 'Recovery required';
+ const makeCloud=()=>cloud,errorMessage=error=>error?.status===401?'Expired':error?.message??'Unavailable',errorKindOf=()=>null,expired=()=>false,residentRecoveryReason=()=>null,residentRecoveryMessage=()=> 'Recovery required';
  const flushConversationEvents=()=>Promise.resolve(),retireConversationEvents=()=>{},retireReadReplies=()=>{},pauseHostedBackground=()=>Promise.resolve(),retireClockReviews=()=>Promise.resolve(),cancelStoppedReply=()=>{},runQueuedResidentRebind=()=>{},runQueuedSignInReturn=()=>{},clearClientObservationSupport=()=>{};
  let nativeResolve,admissionResolve,nativeCalls=0,nativeCancels=0,admissions=0,probeCalls=0,copied=false,invocation;const admissionGate=new Promise(resolve=>{admissionResolve=resolve;});
  const native=new Promise(resolve=>{nativeResolve=resolve;}),probeResolves=[];

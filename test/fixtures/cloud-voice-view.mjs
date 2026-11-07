@@ -13,7 +13,7 @@ import {loadPreparedBatchVoice} from './shared-batch-voice.mjs';
 
 function load(file,box,names,transform=source=>source){
  const source=transform(fs.readFileSync('apps/app/src/'+file,'utf8')).replace(/^import .*;\n/gm,'').replaceAll('export async function','async function').replaceAll('export function','function').replaceAll('export const','const').replaceAll('export type','type');
- vm.runInNewContext('{'+stripTypeScriptTypes(source,{mode:'transform'})+'\n'+names.map(name=>'globalThis.'+name+'='+name+';').join('\n')+'}',box);
+ vm.runInNewContext('{'+stripTypeScriptTypes(source,{mode:'strip'})+'\n'+names.map(name=>'globalThis.'+name+'='+name+';').join('\n')+'}',box);
 }
 export function cloudVoiceViewFixture(options={}){
  const f={account:'cloud-account',credential:'cloud-credential',agent:'agent-session',kind:'resident',platform:'android',native:true,open:false,starts:0,stops:0,uploads:0,cloudSpeech:0,localFactories:0,localSpeech:0,pairedFactories:0,accountOpens:0,sends:0,audioSaves:0,recordingCancels:[],activeRecording:null,lastRecording:null,error:null,peak:0,conversation:'11111111-1111-4111-8111-111111111111',contextRevision:1,sendInputs:[],...options};

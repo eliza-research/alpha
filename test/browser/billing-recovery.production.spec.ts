@@ -17,8 +17,8 @@ const id = '9f1dc45a-4011-4e44-947a-30d999d24fa5';
 // Synthetic, never a real grant code: 16 Crockford characters once normalized.
 const CODE = 'synt-hetc-0de0-0001', NORMALIZED = 'SYNTHETC0DE00001';
 const NEEDED = 'Choose a monthly plan or enter a membership code to ask Alpha.';
-const REFUSED = 'Eliza Cloud declined this AI request for your account’s billing. Check your subscription or enter a membership code, then send again. Nothing was retried or purchased.';
-const SHEET_REFUSED = 'Eliza Cloud declined your last AI request for billing. Check your subscription or enter a membership code, then send again.';
+const REFUSED = 'Eliza Cloud declined this request for billing. Check your subscription or enter a membership code, then send again.';
+const SHEET_REFUSED = 'Your last request was declined for billing.';
 const composer = (page: Page) => page.locator('[data-alpha-layer="composer"][aria-hidden="false"], [data-alpha-layer="conversation"][aria-hidden="false"]').getByRole('textbox').first();
 const conversation = (page: Page) => page.locator('[data-alpha-layer="conversation"]');
 const bubble = (page: Page, text: string) => page.getByRole('button', { name: 'Message actions: ' + text, exact: true });

@@ -1,15 +1,15 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './fixtures/ts-source.mjs';
 import test from 'node:test';
 // Entire real controller, with only its external client/editor imports replaced.
 // Reads and accepted writes use injected synthetic ports; zero provider/native I/O.
 const text=readFileSync('apps/app/src/runtime/agent-calendar.ts','utf8');
-const code=stripTypeScriptTypes(text.replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'transform'});
+const code=stripTypeScriptTypes(text.replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'strip'});
 const unexpected=()=>{throw Error('Unexpected editor/default client dependency');};
 const {AgentCalendar}=new Function('agentCalendarClient','eventEditorMutability','cancellationModeForEditorEvent',code+';return {AgentCalendar};')(unexpected,unexpected,unexpected);
 const view=readFileSync('apps/app/src/runtime/agent-calendar-view.ts','utf8');
-const homeCode=stripTypeScriptTypes(view.slice(view.indexOf('export function canonicalHomeCalendar(')).replace(/^export /,''),{mode:'transform'});
+const homeCode=stripTypeScriptTypes(view.slice(view.indexOf('export function canonicalHomeCalendar(')).replace(/^export /,''),{mode:'strip'});
 const home=new Function(homeCode+';return canonicalHomeCalendar;')();
 const defer=()=>{let resolve;const promise=new Promise(r=>resolve=r);return{promise,resolve};};
 const flush=async()=>{for(let i=0;i<30;i++)await Promise.resolve();};
@@ -30,7 +30,9 @@ test('next read failure keeps a same-source cached event but never presents it a
 });
 test('partial coverage and feed failure never mark next as verified',async()=>{
  const f=await fixture();f.api.getLifeOpsCalendarFeed=async()=>({state:'partial',events:[]});await f.calendar.refresh({});assert.equal(f.calendar.state.nextFresh,false);
- f.api.getLifeOpsCalendarFeed=async()=>{throw Error('Feed unavailable');};await f.calendar.refresh({});assert.equal(f.calendar.state.feed,null);assert.equal(f.calendar.state.nextFresh,false);assert.equal(home(f.calendar.state.next,f.calendar.state.nextFresh).verified,false);f.retire();
+ const shown=f.calendar.state.feed;f.api.getLifeOpsCalendarFeed=async()=>{throw Error('Feed unavailable');};await f.calendar.refresh({});
+ // A same-window re-read whose feed read fails keeps the shown feed, with the fixed owner text.
+ assert.equal(f.calendar.state.feed,shown);assert.equal(f.calendar.state.status,'partial');assert.equal(f.calendar.state.error,'Calendar could not load. Try again.');assert.equal(f.calendar.state.nextFresh,false);assert.equal(home(f.calendar.state.next,f.calendar.state.nextFresh).verified,false);f.retire();
 });
 test('source failure, removed source and another agent cannot publish a verified next event',async()=>{
  const f=await fixture();f.api.getLifeOpsNextCalendarEventContext=async()=>{throw Error('Unavailable');};f.api.getLifeOpsCalendars=async()=>({calendars:[]});await f.calendar.refresh({});assert.equal(f.calendar.state.next,null);
@@ -68,9 +70,9 @@ test('a cached event is cleared when the source no longer grants readable event 
 test('included readable source remains eligible; selectionVersion or provider selected flag is not feed opt-out',async()=>{
  const f=await fixture();f.source.selectionVersion=2;f.source.selected=false;f.source.accessRole='reader';f.api.getLifeOpsNextCalendarEventContext=async()=>{throw Error('Unavailable');};await f.calendar.refresh({});assert.equal(f.calendar.state.next,f.next);assert.equal(f.calendar.state.nextFresh,false);f.retire();
 });
-test('foreign next event keeps the specific owner refusal before the source/end-time guard',async()=>{
+test('foreign next event is refused with the fixed owner text and clears the feed',async()=>{
  const f=await fixture();f.next.event={...f.event,agentId:'another-agent'};await f.calendar.refresh({});
- assert.equal(f.calendar.state.status,'error');assert.match(f.calendar.state.error,/another agent/);assert.equal(f.calendar.state.feed,null);assert.equal(f.calendar.state.next,null);assert.equal(f.calendar.state.nextFresh,false);assert.equal(f.writes.length,0);f.retire();
+ assert.equal(f.calendar.state.status,'error');assert.equal(f.calendar.state.error,'Calendar could not load. Try again.');assert.equal(f.calendar.state.feed,null);assert.equal(f.calendar.state.next,null);assert.equal(f.calendar.state.nextFresh,false);assert.equal(f.writes.length,0);f.retire();
 });
 test('an identical refresh while reading queues one trailing read instead of aborting and stacking resident reads; a changed window still aborts all three',async()=>{
  // The resident keeps serving an aborted read (next-context ignores disconnect), so abort-and-restart of the
@@ -81,7 +83,7 @@ test('an identical refresh while reading queues one trailing read instead of abo
  const first=calendar.refresh({});await idle();const repeats=[calendar.refresh({}),calendar.refresh({})];await idle();
  assert.equal(signals.length,1);assert.equal(signals[0].aborted,false);assert.equal(held.length,1);
  held[0]();await first;await Promise.all(repeats);await idle();
- assert.equal(calendar.state.status,'loading');assert.equal(signals.length,2,'one trailing read set for both repeats');
+ assert.equal(calendar.state.status,'ready','the trailing same-window read keeps the shown feed');assert.notEqual(calendar.state.feed,null);assert.equal(signals.length,2,'one trailing read set for both repeats');
  held[1]();await idle();assert.equal(calendar.state.status,'ready');assert.equal(calendar.state.nextFresh,true);
  const london=calendar.refresh({timeZone:'Europe/London'});await idle();const repeat=calendar.refresh({timeZone:'Europe/London'});await idle();
  const paris=calendar.refresh({timeZone:'Europe/Paris'});await idle();
@@ -89,4 +91,32 @@ test('an identical refresh while reading queues one trailing read instead of abo
  held[3]();await Promise.all([london,repeat,paris]);await idle();
  assert.deepEqual(zones,[null,null,'Europe/London','Europe/Paris'],'the superseded window never runs as a trailing read');
  assert.equal(signals.length,4);assert.equal(calendar.state.status,'ready');calendar.retire();f.retire();
+});
+test('a same-window re-read never publishes a loading state or an empty feed',async()=>{
+ const f=await fixture(),seen=[];const stop=f.calendar.subscribe(()=>seen.push({status:f.calendar.state.status,feed:f.calendar.state.feed,calendars:f.calendar.state.calendars.length}));
+ await f.calendar.refresh({});stop();
+ assert.ok(seen.length>0);for(const state of seen){assert.equal(state.status,'ready');assert.notEqual(state.feed,null);assert.equal(state.calendars,1);}
+ assert.equal(f.calendar.state.nextFresh,true);f.retire();
+});
+test('a changed window still shows loading with a cleared feed',async()=>{
+ const f=await fixture(),seen=[];const stop=f.calendar.subscribe(()=>seen.push(f.calendar.state.status));
+ await f.calendar.refresh({timeZone:'Europe/London'});stop();assert.equal(seen[0],'loading');assert.equal(f.calendar.state.status,'ready');f.retire();
+});
+test('a next event that ended on the phone clock is dropped without failing the Calendar',async()=>{
+ const f=await fixture(),feed=f.calendar.state.feed;f.api.getLifeOpsNextCalendarEventContext=async()=>({...f.next,event:{...f.event,endAt:new Date(Date.now()-500).toISOString()}});
+ await f.calendar.refresh({});
+ assert.equal(f.calendar.state.status,'ready');assert.equal(f.calendar.state.error,null);assert.equal(f.calendar.state.next,null);assert.equal(f.calendar.state.nextFresh,false);assert.notEqual(f.calendar.state.feed,null);assert.notEqual(f.calendar.state.feed,feed,'the fresh feed replaces the old one');f.retire();
+});
+test('a failed same-window re-read keeps the shown feed but drops the unverified next event',async()=>{
+ const f=await fixture(),feed=f.calendar.state.feed;f.api.getLifeOpsCalendars=async()=>{throw Error('socket hang up');};
+ await f.calendar.refresh({});
+ assert.equal(f.calendar.state.status,'ready');assert.equal(f.calendar.state.feed,feed);assert.equal(f.calendar.state.calendars.length,1);assert.equal(f.calendar.state.next,null);assert.equal(f.calendar.state.nextFresh,false);
+ assert.equal(f.calendar.state.error,'Calendar could not load. Try again.','transport text never reaches the owner');f.retire();
+});
+test('an integrity failure on a same-window re-read still clears the feed',async()=>{
+ for(const fail of [f=>{f.api.getLifeOpsCalendarFeed=async()=>({state:'complete',events:[{...f.event,agentId:'other'}]});},f=>{f.api.getLifeOpsCalendarFeed=async()=>({state:'complete',timeMin:'2026-01-01T00:00:00Z',timeMax:'2026-02-01T00:00:00Z',events:[]});}]){
+  const f=await fixture(),window={timeMin:'2026-01-02T00:00:00Z',timeMax:'2026-02-01T00:00:00Z'};f.api.getLifeOpsCalendarFeed=async()=>({state:'complete',...window,events:[]});await f.calendar.refresh(window);assert.equal(f.calendar.state.status,'ready');
+  fail(f);await f.calendar.refresh(window);
+  assert.equal(f.calendar.state.status,'error');assert.equal(f.calendar.state.feed,null);assert.deepEqual(f.calendar.state.calendars,[]);assert.equal(f.calendar.state.next,null);assert.equal(f.calendar.state.error,'Calendar could not load. Try again.');f.retire();
+ }
 });

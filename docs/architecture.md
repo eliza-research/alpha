@@ -114,7 +114,9 @@ remains required before shipping it. The coordinator, native review, authorizati
 recovery surface are the shared `plugin-native-system` `reset` package (`DataReset`,
 `DataResetPlugin`, `DataResetRecoveryActivity`); Alpha registers only its installed names
 (`AlphaReset`, `reset-alpha` marker, `:reset_recovery` process), copy and the bounded
-Cloud key revocation before dispatch (`AlphaDataReset`). Settings and tile system facts
+work before dispatch (`AlphaDataReset`): deleting its own "On this phone" LOCAL calendar,
+which lives in the system Calendar provider and survives the clear (skipped without
+Calendar access), then Cloud key revocation, including a retained pre-namespace key. Settings and tile system facts
 (switch states, transport, battery), the allowlisted Android settings handoffs, the
 launcher's shade request and Android role wording are likewise the shared ElizaSystem
 bridge (`SystemFacts`, `SystemSettingsPages`, `SystemShade`) and

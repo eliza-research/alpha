@@ -1,10 +1,13 @@
-import {test,expect} from '@playwright/test';
+import {test,expect,type Page} from '@playwright/test';
 // Runs in the `production` project: a flag-off build without mocks, fixtures or the
 // browser development profile. A synthetic canvas stream stands in for the camera
 // permission boundary only; capture, IndexedDB storage, search, the file picker and
 // the reviewed question flow are the shipped code. Nothing is uploaded or sent.
 
 const offline=()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));
+// Records CSP violations in each loaded document, so a blocked fetch or image is caught.
+const recordViolations=()=>{const seen:string[]=[];(window as unknown as {cspViolations:string[]}).cspViolations=seen;document.addEventListener('securitypolicyviolation',event=>seen.push(event.violatedDirective+' '+event.blockedURI.slice(0,40)));};
+const violations=(page:Page)=>page.evaluate(()=>(window as unknown as {cspViolations:string[]}).cspViolations);
 const fakeCamera=()=>{
  const canvas=document.createElement('canvas');canvas.width=640;canvas.height=480;const context=canvas.getContext('2d')!;
  const paint=()=>{context.fillStyle='white';context.fillRect(0,0,640,480);context.fillStyle='black';context.font='64px sans-serif';context.fillText('ALPHA',150,260);};paint();setInterval(paint,50);
@@ -13,7 +16,7 @@ const fakeCamera=()=>{
 
 test('a camera capture is searchable and Ask Alpha reviews it locally without the development profile',async({page})=>{
  const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
- await page.addInitScript(offline);await page.addInitScript(fakeCamera);
+ await page.addInitScript(recordViolations);await page.addInitScript(offline);await page.addInitScript(fakeCamera);
  await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-connection-mode','live');
  await page.getByRole('button',{name:'Camera',exact:true}).click();
  await expect.poll(()=>page.locator('[aria-label^="Viewfinder."] video').evaluate((v:HTMLVideoElement)=>v.readyState)).toBeGreaterThanOrEqual(2);
@@ -39,12 +42,18 @@ test('a camera capture is searchable and Ask Alpha reviews it locally without th
  await page.getByRole('button',{name:/^Captured photo /}).click();
 
  await page.getByRole('button',{name:'Ask Alpha about this photo',exact:true}).click();
- await expect(review.getByRole('img',{name:'Image for question review'})).toBeVisible();
+ // The saved photo is read back from its stored data: URL; the preview must decode and
+ // local text extraction must be offered, not just an empty image element.
+ const savedPreview=review.getByRole('img',{name:'Image for question review'});
+ await expect(savedPreview).toBeVisible();
+ await expect.poll(()=>savedPreview.evaluate((image:HTMLImageElement)=>image.naturalWidth)).toBeGreaterThan(0);
+ await expect(review.getByRole('button',{name:'Extract text locally'})).toBeEnabled();
  await expect(page.getByText('image analysis is not connected')).toHaveCount(0);
  await review.getByRole('textbox',{name:'Content excerpt'}).fill('A white page that says ALPHA');
  await review.getByRole('button',{name:'Use in conversation'}).click();
  await expect(page.getByRole('textbox',{name:'Message Alpha',exact:true})).toHaveValue('What does this mean?\n\nSource: Selected photo\n\nA white page that says ALPHA');
  expect(errors).toEqual([]);
+ expect(await violations(page)).toEqual([]);
 });
 
 test('a selected document is listed in Recent, found by search and reopened from Recent',async({page})=>{

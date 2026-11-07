@@ -1,4 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import os from 'node:os';import path from 'node:path';import {execFileSync} from 'node:child_process';
+import {javaBinary} from './fixtures/jvm-tools.mjs';
 const shared='vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/NativeRuntimeEmbeddings.java';
 test('Alpha selects embeddings only through the shared native runtime profile',()=>{
  const source=fs.readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java','utf8');
@@ -37,6 +38,6 @@ class EmbeddingProfileTest {
   for(File asset:new File[]{model,engine,jni}){asset.delete();e=cloud();e.put("ELIZA_LOCAL_EMBEDDING_MODEL_PATH","stale-model");NativeRuntimeEmbeddings.apply("native",l,f,e);check("0".equals(e.get("ELIZA_LOCAL_EMBEDDING_ENABLED")));check("false".equals(e.get("ELIZAOS_CLOUD_USE_EMBEDDINGS")));check(!e.containsKey("ELIZA_LOCAL_EMBEDDING_MODEL_PATH"));asset.createNewFile();}
   System.out.println("PASS native, cloud, and three missing asset gates");
  }
-}`);const bin=n=>process.env.JAVA_HOME?path.join(process.env.JAVA_HOME,'bin',n):n;execFileSync(bin('javac'),['--release','11','-d',dir,shared,path.join(dir,'EmbeddingProfileTest.java')]);assert.match(execFileSync(bin('java'),['-cp',dir,'EmbeddingProfileTest',dir],{encoding:'utf8'}),/PASS native, cloud/);
+}`);execFileSync(javaBinary('javac'),['--release','11','-d',dir,shared,path.join(dir,'EmbeddingProfileTest.java')]);assert.match(execFileSync(javaBinary('java'),['-cp',dir,'EmbeddingProfileTest',dir],{encoding:'utf8'}),/PASS native, cloud/);
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });

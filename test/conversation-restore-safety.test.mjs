@@ -64,3 +64,22 @@ test('explicit restoration still reports a failed restart-selection save',async(
  await f.box.restoreConversationHistory('saved',new AbortController().signal,false,false);
  assert.match(f.state.message,/restart selection could not be saved/);assert.equal(f.state.history.conversationId,'saved');
 });
+test('a restored failure row shows Alpha copy instead of the agent\'s saved failure prose',async()=>{
+ const {systemNoticeKind,systemNoticeDisplayText}=await import('../apps/app/src/runtime/action-message-presentation.ts');
+ const {isCalendarReadFailureCode}=await import('../.eliza/client-features/packages/contracts/src/calendar.ts');
+ const box={systemNoticeKind,systemNoticeDisplayText,isCalendarReadFailureCode,restoredText:text=>text,Error};
+ vm.runInNewContext(stripTypeScriptTypes([part('export const RESTORED_FAILURES','/** A completed Calendar read').replace(/^export /,''),part('function restoredMessages(','/** Eliza Cloud'),part('function calendarRefusalKept(','/** The error a failed reply')].join('\n'),{mode:'transform'})+';globalThis.restoredMessages=restoredMessages;',box);
+ const prose='Connect an LLM provider to start chatting. Open Settings → Providers, or choose Eliza Cloud during first-run setup.';
+ const rows=box.restoredMessages([
+  {id:'u1',role:'user',text:'Hello'},
+  {id:'a1',role:'assistant',text:prose,failureKind:'provider_issue'},
+  {id:'a2',role:'assistant',text:'Heard part',failureKind:'interrupted',interrupted:true},
+  {id:'a3',role:'assistant',text:'A normal reply.'},
+  {id:'a4',role:'assistant',text:'I couldn\'t confirm that Calendar request.',failureKind:'reply_generation_error',terminalFailure:{kind:'reply_generation_error',transient:false,code:'CALENDAR_READ_RECEIPT_MISMATCH'}},
+ ]);
+ assert.deepEqual(JSON.parse(JSON.stringify(rows[1])),{id:'a1',from:'agent',text:'This reply couldn’t be completed.',unfinished:true,failureKind:'provider_issue'});
+ assert.ok(!JSON.stringify(rows).includes('Settings → Providers'));
+ assert.equal(rows[2].text,'Heard part');assert.equal(rows[2].unfinished,true);
+ assert.equal(rows[3].text,'A normal reply.');assert.equal(rows[3].unfinished,undefined);
+ assert.equal(rows[4].text,'I couldn\'t confirm that Calendar request.','a Calendar refusal keeps its answer');assert.equal(rows[4].unfinished,undefined);
+});

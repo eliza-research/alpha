@@ -4,13 +4,13 @@ import {mkdtempSync,readFileSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {execFileSync} from 'node:child_process';
+import {javaBinary} from './fixtures/jvm-tools.mjs';
 const root=resolve(import.meta.dirname,'..');
 test('storage responses finish before the next read/CAS; retirement refuses queued and later work',()=>{
  const temporary=mkdtempSync(join(tmpdir(),'alpha-storage-queue-'));
- const binary=name=>process.env.JAVA_HOME?join(process.env.JAVA_HOME,'bin',name):name;
  try{
-  execFileSync(binary('javac'),['--release','11','-d',temporary,join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/SerialStorageTasks.java'),join(root,'test/fixtures/SerialStorageTasksTest.java')],{timeout:60000});
-  assert.match(execFileSync(binary('java'),['-cp',temporary,'ai.elizaresearch.alphaphone.SerialStorageTasksTest'],{encoding:'utf8',timeout:10000}),/PASS serialized storage responses and retirement/);
+  execFileSync(javaBinary('javac'),['--release','11','-d',temporary,join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/SerialStorageTasks.java'),join(root,'test/fixtures/SerialStorageTasksTest.java')],{timeout:60000});
+  assert.match(execFileSync(javaBinary('java'),['-cp',temporary,'ai.elizaresearch.alphaphone.SerialStorageTasksTest'],{encoding:'utf8',timeout:10000}),/PASS serialized storage responses and retirement/);
  }finally{rmSync(temporary,{recursive:true,force:true});}
 });
 test('all renderer slot operations use the serialized lane through response dispatch; HTTP stays parallel',()=>{

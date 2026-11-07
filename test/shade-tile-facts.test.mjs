@@ -4,7 +4,7 @@ import test from 'node:test';import assert from 'node:assert/strict';import {rea
 const source=readFileSync('apps/app/src/prototype/native-adapter.ts','utf8');
 const region=source.slice(source.indexOf('// tile-facts:begin'),source.indexOf('// tile-facts:end'));
 assert.ok(region.length>100,'tile-facts region is present');
-const toModule=text=>'data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(text,{mode:'transform'})).toString('base64');
+const toModule=text=>'data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(text,{mode:'strip'})).toString('base64');
 const shared=toModule(readFileSync('vendor/eliza/plugins/plugin-native-system/src/settings.ts','utf8'));
 const imported=source.match(/^import \{[^}]*\} from '@elizaos\/capacitor-system\/settings';$/m);
 assert.ok(imported,'the adapter uses the shared presentation');

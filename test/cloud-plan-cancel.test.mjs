@@ -7,7 +7,7 @@ const text=readFileSync(process.env.SETTINGS_SOURCE||'apps/app/src/prototype/set
 const start=text.indexOf('        const plan=connectionController.residentPlanSettings();');
 const end=text.indexOf("        page.groups.push(group([{kNav:true,label:'Agent connection'",start);
 assert(start>=0&&end>start);
-const source=stripTypeScriptTypes(text.slice(start,end),{mode:'transform'});
+const source=stripTypeScriptTypes(text.slice(start,end),{mode:'strip'});
 for(const busy of [false,true])test(`Cloud account operations retain a usable ${busy?'Cancel':'Sign out'} action`,()=>{
  let cancellations=0,signouts=0;const box={serviceName:'Nebula',state:{page:'cloud-plan'},connection:{busy,message:'Signing out…'},connectionController:{residentPlanSettings:()=>({signedIn:true,account:'synthetic@example.invalid',plan:'Synthetic plan',inference:'Unavailable'}),cancel:()=>{cancellations++;},cloudSignOut:()=>{signouts++;}},info:(label,value)=>({label,value}),group:rows=>({rows}),action:(label,go)=>({label,go}),runtimeLocation:'On this device',page:{groups:[]},out:{stack:[]},api:{set:()=>{}}};
  vm.runInNewContext(source,box);assert.equal(box.out.stack[0].title,'Nebula account & plan');const rows=box.out.stack[0].groups.at(-1).rows;

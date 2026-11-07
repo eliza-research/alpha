@@ -11,7 +11,7 @@ import {voiceFakeClock} from './fixtures/shared-batch-voice.mjs';
 const flagSource = stripTypeScriptTypes([
   'apps/app/src/build-flags.ts',
   'apps/app/src/runtime/development-cartesia-flag.ts',
-].map(file=>readFileSync(file,'utf8')).join('\n').replace(/^import .*;\n/gm,'').replace(/^export /gm,'').replaceAll('import.meta.env','env'),{mode:'transform'});
+].map(file=>readFileSync(file,'utf8')).join('\n').replace(/^import .*;\n/gm,'').replace(/^export /gm,'').replaceAll('import.meta.env','env'),{mode:'strip'});
 function enabled(overrides={},native=false){
   return vm.runInNewContext(flagSource+'\ndevelopmentCartesiaVoiceEnabled',{
     env:{DEV:true,VITE_ELIZA_DEV_ALLOW_TEST_MOCKS:'0',VITE_ALPHA_PRIVATE_LOCAL_PREVIEW:'1',VITE_LOCAL_AGENT:'1',VITE_ALPHA_DEV_CARTESIA:'1',...overrides},

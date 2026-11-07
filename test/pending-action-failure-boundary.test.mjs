@@ -13,8 +13,8 @@ assert(mapStart>=0&&mapEnd>mapStart);
 const start=source.indexOf('      let responseFailure: Error | undefined;');
 const end=source.indexOf('    } catch (error) {',start);
 assert(start>=0&&end>start);
-const mapper=stripTypeScriptTypes(source.slice(mapStart,mapEnd),{mode:'transform'});
-const orchestration=stripTypeScriptTypes(`async function finish(){${source.slice(start,end)}}`,{mode:'transform'});
+const mapper=stripTypeScriptTypes(source.slice(mapStart,mapEnd),{mode:'strip'});
+const orchestration=stripTypeScriptTypes(`async function finish(){${source.slice(start,end)}}`,{mode:'strip'});
 const labels=source.match(/export const REPLY_FAILURES = (\{[\s\S]*?\n\}) as const;/);
 assert(labels,'canonical reply labels must remain available');
 const replyLabels=new Function(`return (${labels[1]})`)();
@@ -45,8 +45,8 @@ async function finish({kind='handler_error',limit=null,effectApplied=false,resid
  const context={view:'home',sensitive:false,timeZone:'UTC',revision:1};
  const run={...env,context,reply:{text:'PRIVATE_PROVIDER_FAILURE_CANARY',terminalFailure:record,...(hasServerId?{userMessageId}:{})},
    replyFailure:failure,effectAppliedBeforeFailure:()=>effectApplied,EFFECT_APPLIED_INTERRUPTED:appliedText,
-   isAndroid:false,ownProviderSelected:()=>false,isCalendarReadFailureCode:()=>false,
-   failureKindOf:reply=>reply.terminalFailure?.kind,readServiceLimit:()=>limit,
+   isAndroid:false,ownProviderSelected:()=>false,isCalendarReadFailureCode:()=>false,calendarRefusalKept:()=>false,
+   failureKindOf:reply=>reply.terminalFailure?.kind,terminalCodeOf:reply=>reply.terminalFailure?.code,readServiceLimit:()=>limit,channelType:'DM',
    retractReadiness(){state.message='';},validateUuid:value=>value===userMessageId,
    message:{context},id:'conversation',session:{...verifiedSession},generation:1,
    requestSignal:new AbortController().signal,assertCurrent(){},directRequestedActions:false,
@@ -65,15 +65,15 @@ const adapter=readFileSync('apps/app/src/prototype/agent-adapter.ts','utf8');
 const renderStart=adapter.indexOf("        const recorded=e&&typeof e==='object'");
 const renderEnd=adapter.indexOf('\n      }\n    }\n    finally { if(this.sendAttempt===attempt)',renderStart);
 assert(renderStart>=0&&renderEnd>renderStart);
-const errorPresentation=stripTypeScriptTypes(`function present(){${adapter.slice(renderStart,renderEnd)}}`,{mode:'transform'});
+const errorPresentation=stripTypeScriptTypes(`function present(){${adapter.slice(renderStart,renderEnd)}}`,{mode:'strip'});
 const helpersStart=adapter.indexOf('function planActionCard(');
 const helpersEnd=adapter.indexOf('/** Decline one pending proposal',helpersStart);
 assert(helpersStart>=0&&helpersEnd>helpersStart);
-const helpers=stripTypeScriptTypes(adapter.slice(helpersStart,helpersEnd),{mode:'transform'});
+const helpers=stripTypeScriptTypes(adapter.slice(helpersStart,helpersEnd),{mode:'strip'});
 const sayStart=adapter.indexOf('  p.agentSay = function');
 const sayEnd=adapter.indexOf('  p.reply = function',sayStart);
 assert(sayStart>=0&&sayEnd>sayStart);
-const say=stripTypeScriptTypes(adapter.slice(sayStart,sayEnd).replace('p.agentSay =','const agentSay ='),{mode:'transform'});
+const say=stripTypeScriptTypes(adapter.slice(sayStart,sayEnd).replace('p.agentSay =','const agentSay ='),{mode:'strip'});
 function present(error,{current=true,reconciling=false,conversationId='conversation',session=verifiedSession,deferUpdates=false}={}){
  const state={chat:'sheet',msgs:[{id:'local-user',from:'user',text:'Synthetic request'}]};
  let selectedConversation=conversationId,selectedSession={...session};
@@ -103,7 +103,8 @@ function visibleFailureAndNotice(r){
 }
 for(const kind of ['handler_error','fatal_error','unknown_failure'])test(`${kind}: failure remains interrupted while unsupported notice is visible once`,async()=>{
  const r=await finish({kind});noEffects(r);const view=visibleFailureAndNotice(r);
- assert.match(view.failures()[0].text,/Sorry, I couldn’t finish that reply/);
+ // A known kind says what happened (handler_error: part may be done); an unknown kind stays generic.
+ assert.match(view.failures()[0].text,kind==='handler_error'?/Part of it may already be done/:/Sorry, I couldn’t finish that reply/);
  assert.doesNotMatch(view.failures()[0].text,/Pending phone actions are available|succeeded|created/i);
  assert.equal(r.error.planAction,undefined);assert.equal(r.error.userMessageId,userMessageId);
  assert.equal(r.state.lastServiceLimit.kind,'prior-limit','failure never clears existing limit');
@@ -127,9 +128,9 @@ test('billing refusal keeps its funding action, visible failure and once-only no
  assert.equal(view.failures()[0].card.planAction,'funding');assert.equal(r.error.serviceLimit,'billing-refused');
  assert.equal(r.state.fundingRefused,true);assert.equal(r.state.membershipDismissed,false);assert.equal(r.events.refresh,1);
 });
-test('provider-less resident keeps its retry card and notice without sending again',async()=>{
+test('provider-less resident keeps its provider check card and notice without sending again',async()=>{
  const r=await finish({kind:'no_provider',resident:true,account:true});noEffects(r);const view=visibleFailureAndNotice(r);
- assert.equal(r.error.planAction,'retry');assert.equal(view.failures()[0].card.planAction,'retry');
+ assert.equal(r.error.planAction,'provider');assert.equal(view.failures()[0].card.planAction,'provider');
  assert.equal(r.error.failureKind,'no_provider');assert.equal(r.events.posts,1);
 });
 for(const kind of ['handler_error','provider_issue','insufficient_credits'])test(`${kind}: applied-effect failure and notice never claim nothing happened`,async()=>{

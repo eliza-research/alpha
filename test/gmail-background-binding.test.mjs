@@ -6,9 +6,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync,existsSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
-import {homedir,tmpdir} from 'node:os';
+import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
-import {mkdtempSync,readdirSync,rmSync} from 'node:fs';
+import {mkdtempSync,rmSync} from 'node:fs';
+import {jsonJar,javaBinary} from './fixtures/jvm-tools.mjs';
 
 const root=resolve(import.meta.dirname,'..');
 const java=name=>readFileSync(join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone',name),'utf8');
@@ -42,17 +43,13 @@ test('background admission no longer depends on the agent inference provider',()
 });
 
 // The shared engine and delivery are exercised at the pin, against the real projected sources.
-const cache=join(homedir(),'.gradle/caches/modules-2/files-2.1/org.json/json/20250517');
-const cached=existsSync(cache)?readdirSync(cache).flatMap(hash=>readdirSync(join(cache,hash)).filter(name=>name==='json-20250517.jar').map(name=>join(cache,hash,name)))[0]:undefined;
-const jsonJar=process.env.ALPHA_JSON_JAR||cached;
 test('the pinned shared reconciliation and delivery pass their JVM checks',()=>{
  assert.ok(jsonJar,'Pinned JVM JSON dependency required');
  const plugin=join(root,'vendor/eliza/plugins/plugin-native-notifications'),sources=join(plugin,'android/src/main/java/ai/eliza/plugins/notifications'),tests=join(plugin,'test/native-host');
  const temporary=mkdtempSync(join(tmpdir(),'gmail-background-'));
- const home=process.env.JAVA_HOME||(process.platform==='darwin'?'/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home':'');const binary=name=>home?join(home,'bin',name):name;
  try{
-  execFileSync(binary('javac'),['--release','17','-cp',jsonJar,'-d',temporary,join(sources,'MailHistoryReconciliation.java'),join(sources,'MailBackgroundDelivery.java'),join(tests,'MailHistoryReconciliationTest.java'),join(tests,'MailBackgroundDeliveryTest.java')],{timeout:60000});
-  const run=main=>execFileSync(binary('java'),['-cp',temporary+':'+jsonJar,main],{encoding:'utf8',timeout:60000});
+  execFileSync(javaBinary('javac'),['--release','17','-cp',jsonJar,'-d',temporary,join(sources,'MailHistoryReconciliation.java'),join(sources,'MailBackgroundDelivery.java'),join(tests,'MailHistoryReconciliationTest.java'),join(tests,'MailBackgroundDeliveryTest.java')],{timeout:60000});
+  const run=main=>execFileSync(javaBinary('java'),['-cp',temporary+':'+jsonJar,main],{encoding:'utf8',timeout:60000});
   assert.match(run('MailHistoryReconciliationTest'),/^PASS mail durable/);
   assert.match(run('MailBackgroundDeliveryTest'),/^\d+ assertions passed/);
  }finally{rmSync(temporary,{recursive:true,force:true});}

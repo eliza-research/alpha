@@ -30,7 +30,7 @@ const sdkOptions=options=>{
   },
  };
 };
-const source=stripTypeScriptTypes((readFileSync('apps/app/src/runtime/development-cartesia-flag.ts','utf8')+readFileSync('apps/app/src/runtime/development-cartesia-conversation.ts','utf8')).replace(/^import .*;\n/gm,'').replace(/^export \{.*\} from .*;\n/gm,'').replace("await import('@elizaos/ui/voice/voice-session-client')","await loadClient()").replace(/^export /gm,''),{mode:'transform'});
+const source=stripTypeScriptTypes((readFileSync('apps/app/src/runtime/development-cartesia-flag.ts','utf8')+readFileSync('apps/app/src/runtime/development-cartesia-conversation.ts','utf8')).replace(/^import .*;\n/gm,'').replace(/^export \{.*\} from .*;\n/gm,'').replace("await import('@elizaos/ui/voice/voice-session-client')","await loadClient()").replace(/^export /gm,''),{mode:'strip'});
 const binding={conversationId:'conversation',session:{agentId:'agent'}};
 async function setup({revoked=true,alreadyRetired=false,cloudRealtime=false,attestation={},askBefore=true,clientFactory}={}){
  let current=true,options,sdk,stops=0,history=0,manualMuted=false;const calls=[],errors=[],performed=[],notices=[];const preferenceWindow=new EventTarget();
@@ -200,7 +200,7 @@ test('actual SDK and Alpha preserve A queued playback while B failure settles on
  const observed=[];let readAutomaticMute;
  const observe=row=>{if(observed.length<32&&Buffer.byteLength(JSON.stringify([...observed,row]))<=7168)observed.push(row);};
  // Compile the paired SDK client without replacing its reducer, frame parser or drain.
- const bundled=await build({entryPoints:['vendor/eliza/packages/ui/src/voice/voice-session-client-core.ts'],nodePaths:process.env.ALPHA_CLOUD_COLLECTOR_SOURCE?[process.env.ALPHA_CLOUD_COLLECTOR_SOURCE+'/node_modules']:[],bundle:true,platform:'browser',conditions:['eliza-source','browser'],format:'esm',write:false});
+ const bundled=await build({entryPoints:['vendor/eliza/packages/ui/src/voice/voice-session-client-core.ts'],nodePaths:process.env.ALPHA_CLOUD_COLLECTOR_SOURCE?[process.env.ALPHA_CLOUD_COLLECTOR_SOURCE+'/packages/ui/node_modules',process.env.ALPHA_CLOUD_COLLECTOR_SOURCE+'/node_modules']:[],bundle:true,platform:'browser',conditions:['eliza-source','browser'],format:'esm',write:false});
  const {createVoiceSessionClient}=await import('data:text/javascript;base64,'+Buffer.from(bundled.outputFiles[0].text).toString('base64'));
  const sockets=[],playbackProcessors=[],tracks=[];
  const node=()=>({connect(){return this;},disconnect(){}});

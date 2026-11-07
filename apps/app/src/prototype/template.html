@@ -3390,7 +3390,7 @@
           </sc-if>
           <div class="automation-actions"><button class="primary" disabled="{{workflows.automation.saveDisabled}}" onClick="{{workflows.automation.save}}">{{workflows.automation.saveLabel}}</button><button disabled="{{workflows.automation.busy}}" onClick="{{workflows.automation.close}}">Cancel</button></div>
         </sc-if>
-        <sc-if value="{{workflows.automation.locked}}"><p role="alert">An earlier action has an unknown outcome. Refresh its record or execution history before repeating it.</p></sc-if>
+        <sc-if value="{{workflows.automation.locked}}"><p role="alert">Couldn’t confirm the last change. Check it, then allow another.</p><div class="automation-actions"><button disabled="{{workflows.automation.busy}}" onClick="{{workflows.automation.allowAnother}}">Allow another</button></div></sc-if>
         <div class="automation-actions"><sc-for list="{{workflows.automation.actions}}" as="action"><button disabled="{{action.disabled}}" onClick="{{action.run}}">{{action.label}}</button></sc-for></div>
         <sc-if value="{{workflows.automation.review}}"><div class="automation-review" role="group" aria-label="Review automation action"><p>{{workflows.automation.reviewPrompt}}</p><sc-if value="{{workflows.automation.reviewDetails}}"><p style="white-space:pre-line">{{workflows.automation.reviewDetails}}</p></sc-if><div class="automation-actions"><button class="primary" onClick="{{workflows.automation.confirm}}">{{workflows.automation.reviewConfirmLabel}}</button><button onClick="{{workflows.automation.cancelReview}}">Keep unchanged</button></div></div></sc-if>
         <sc-if value="{{workflows.automation.message}}"><p role="status">{{workflows.automation.message}}</p></sc-if>

@@ -5,10 +5,17 @@ export interface NativeStreamPort {
  requestStream(input:Record<string,unknown>):Promise<{streamId:string}>;
  cancelStream(input:{streamId:string}):Promise<unknown>;
 }
+/** The agent sends a heartbeat every 5 s, so a minute without any frame is a stalled stream. */
+const STREAM_IDLE_MS=60000;
+/** Native gives one turn on this route up to 600 s. */
+const STREAM_TURN_MS=600000;
 /** Closing IPC does not cancel committed effects. Interrupted sends require history reconciliation. */
 export async function streamNativeAgent(port:NativeStreamPort,input:{path:string;ownerId:string;headers:Record<string,string>;body:string},signal:AbortSignal,onText:(text:string)=>void,onReplyReady?:(results:readonly unknown[]|undefined)=>void){
- const bounded=anyAbortSignal([signal,AbortSignal.timeout(120000)]),streamId=crypto.randomUUID();
- bounded.throwIfAborted();
+ const deadline=new AbortController(),streamId=crypto.randomUUID();
+ const expire=()=>deadline.abort(new DOMException('Native stream timed out','TimeoutError'));
+ let idle=setTimeout(expire,STREAM_IDLE_MS);const turn=setTimeout(expire,STREAM_TURN_MS);
+ const bounded=anyAbortSignal([signal,deadline.signal]);
+ try{bounded.throwIfAborted();}catch(error){clearTimeout(idle);clearTimeout(turn);throw error;}
  let active=true,started=false,responded=false,terminal=false,bytes=0;
  let controller!:ReadableStreamDefaultController<Uint8Array>;
  let resolveResponse!:(value:Response)=>void,rejectResponse!:(error:Error)=>void;
@@ -24,6 +31,8 @@ export async function streamNativeAgent(port:NativeStreamPort,input:{path:string
  let rejectAddition:(()=>void)|undefined;
  const addition=port.addListener('alphaAgentStream',envelope=>{
   if(!active||envelope?.streamId!==streamId)return;
+  // Every frame for this stream, heartbeats included, proves it is alive.
+  clearTimeout(idle);if(!terminal)idle=setTimeout(expire,STREAM_IDLE_MS);
   let interrupted=false;
   try{
    const event=envelope.event;
@@ -65,7 +74,7 @@ export async function streamNativeAgent(port:NativeStreamPort,input:{path:string
   const result=await readLocalAgentStream(await response,bounded,onText,onReplyReady,input);
   await completed;bounded.throwIfAborted();return result;
  }finally{
-  active=false;bounded.removeEventListener('abort',abort);
+  active=false;clearTimeout(idle);clearTimeout(turn);bounded.removeEventListener('abort',abort);
   if(rejectAddition)bounded.removeEventListener('abort',rejectAddition);
   if(remove)cleanup(remove());
   if(started)cleanup(port.cancelStream({streamId}));

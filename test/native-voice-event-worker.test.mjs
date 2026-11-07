@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {execFileSync} from 'node:child_process';
+import {runJvm} from './fixtures/jvm-tools.mjs';
 test('actual voice worker refuses repeated admission while a cancelled feed is still enrolling',()=>{
  const source=fs.readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java','utf8');
  const initializer=source.match(/ExecutorService voiceWorkers=([^;]+);/)?.[1];assert.ok(initializer);
@@ -25,8 +25,7 @@ public class VoiceWorkerTest {
   boolean[] refused={false};PluginWorkers.submit(worker,()->{throw new AssertionError();},()->refused[0]=true);if(!refused[0])throw new AssertionError();
  }
 }`);
-  execFileSync('javac',['-d',dir,path.join(dir,'PluginWorkers.java'),path.join(dir,'VoiceWorkerTest.java')]);
-  execFileSync('java',['-cp',dir,'ai.elizaresearch.alphaphone.VoiceWorkerTest'],{timeout:15000});
+  runJvm([path.join(dir,'PluginWorkers.java'),path.join(dir,'VoiceWorkerTest.java')],'ai.elizaresearch.alphaphone.VoiceWorkerTest');
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
 
@@ -45,7 +44,6 @@ public class VoiceAdmissionTest {
   if(VoiceEventAdmission.current(null,null,null,"owner","owner",20,10))throw new AssertionError("unenrolled");
  }
 }`);
-  execFileSync('javac',['-d',dir,path.join(dir,'VoiceEventAdmission.java'),path.join(dir,'VoiceAdmissionTest.java')]);
-  execFileSync('java',['-cp',dir,'ai.elizaresearch.alphaphone.VoiceAdmissionTest'],{timeout:15000});
+  runJvm([path.join(dir,'VoiceEventAdmission.java'),path.join(dir,'VoiceAdmissionTest.java')],'ai.elizaresearch.alphaphone.VoiceAdmissionTest');
  } finally {fs.rmSync(dir,{recursive:true,force:true});}
 });

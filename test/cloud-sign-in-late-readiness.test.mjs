@@ -43,7 +43,8 @@ test('immediate native readiness keeps the existing path and does not issue anot
 });
 test('new ordinary operations revoke late-readiness ownership at the actual work boundary',()=>{
  const assignments=[...source.matchAll(/(?<![.\w])operation\s*=\s*controller\s*;/g)];
- assert.equal(assignments.length,4,'all ordinary, plan-refresh, edit and device-request operation boundaries');
+ // The background plan check runs under its own controller and never takes the operation slot.
+ assert.equal(assignments.length,3,'all ordinary, edit and device-request operation boundaries');
  for(const assignment of assignments)assert.match(source.slice(Math.max(0,assignment.index-45),assignment.index),/signInReadinessOwner\s*=\s*null;\s*$/);
  assert.match(source,/const SIGN_IN_READINESS_WAIT_MS = 6000;/);
 });

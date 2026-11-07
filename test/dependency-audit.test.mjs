@@ -17,6 +17,7 @@ const snapshot = JSON.parse(fs.readFileSync(SNAPSHOT, 'utf8'));
 const dispositions = JSON.parse(fs.readFileSync(DISPOSITIONS, 'utf8'));
 const clone = value => JSON.parse(JSON.stringify(value));
 const today = snapshot.auditedOn;
+const addDays = (date, days) => new Date(Date.parse(`${date}T00:00:00Z`) + days * 86400000).toISOString().slice(0, 10);
 const check = (overrides = {}) => checkDispositions({snapshot, dispositions, lock, lockText, today, ...overrides});
 
 test('the committed audit snapshot matches package-lock.json and every advisory path is dispositioned', () => {
@@ -178,7 +179,7 @@ test('resident dispositions are bound to the commit and must cover every residen
   const finding = (id, severity = 'high', name = 'undici') => ({package: name, versions: ['5.29.0'], severity, advisory: {id, severity, vulnerableRange: '<6.0.0', title: 't', url: `https://github.com/advisories/${id}`}});
   const resident = {upstreamCommit: commit, input: UPSTREAM_BUN_LOCK, inputSha256: 'b'.repeat(64), auditedOn: today, packages: 2, counts: {}, findings: [finding('GHSA-aaaa-aaaa-aaaa')]};
   const exception = {advisory: 'GHSA-aaaa-aaaa-aaaa', severity: 'high', packages: ['undici'], reachability: 'Not reached on device', justification: 'No upstream fix yet',
-    removeWhen: 'upstream takes undici 6', reviewedBy: 'reviewer', reviewedOn: today, reviewBy: '2026-12-01'};
+    removeWhen: 'upstream takes undici 6', reviewedBy: 'reviewer', reviewedOn: today, reviewBy: addDays(today, 30)};
   const reviewed = {resident: {upstreamCommit: commit, exceptions: [exception]}};
   assert.deepEqual(checkResident({snapshot: resident, dispositions: reviewed, commit, inputSha256: 'b'.repeat(64), today}), []);
   assert.ok(checkResident({snapshot: resident, dispositions: {resident: {...reviewed.resident, upstreamCommit: 'c'.repeat(40)}}, commit, today})
@@ -195,7 +196,7 @@ test('packaged resident audit checks shipped findings without invalidating absen
   const snapshot = {upstreamCommit: commit, input: 'packaged-runtime notices', auditedOn: today, findings: [finding]};
   const shipped = {advisory: finding.advisory.id, packages: ['uuid'], severity: 'moderate', ships: true,
     reachability: 'Only v4 without caller-supplied buffer', justification: 'Reviewed shipped consumer call sites',
-    removeWhen: 'Upstream updates uuid', reviewedBy: 'reviewer', reviewedOn: today, reviewBy: '2026-12-01'};
+    removeWhen: 'Upstream updates uuid', reviewedBy: 'reviewer', reviewedOn: today, reviewBy: addDays(today, 30)};
   const absent = {...shipped, advisory: 'GHSA-bbbb-bbbb-bbbb', packages: ['undici'], ships: false};
   const check = (row = shipped, snap = snapshot, date = today) => checkResident({snapshot: snap,
     dispositions: {resident: {upstreamCommit: commit, exceptions: [row, absent]}}, commit, today: date});
@@ -207,7 +208,7 @@ test('packaged resident audit checks shipped findings without invalidating absen
   assert.ok(check({...shipped, severity: 'low'}).some(p => p.includes('severity rose')));
   assert.ok(check(shipped, snapshot, '2099-01-01').some(p => p.includes('expired on')));
   assert.ok(check({...shipped, reviewBy: 'invalid'}).some(p => p.includes('must be YYYY-MM-DD')));
-  assert.ok(check({...shipped, reviewBy: '2028-12-01'}).some(p => p.includes('reviewBy must fall within')));
+  assert.ok(check({...shipped, reviewBy: addDays(today, MAX_EXCEPTION_DAYS + 30)}).some(p => p.includes('reviewBy must fall within')));
   for (const field of ['reachability', 'justification', 'removeWhen', 'reviewedBy']) {
     assert.ok(check({...shipped, [field]: ''}).some(p => p.includes(`missing ${field}`)));
   }

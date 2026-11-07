@@ -14,7 +14,7 @@ const source = async () => {
   // The review wording and limits are the shared @elizaos/plugin-inbox/mailbox module at the pin.
   let shared = await readFile(new URL('../.eliza/client-features/plugins/plugin-inbox/src/mailbox/use-in-email.ts', import.meta.url), 'utf8');
   shared = shared.replace(/^import .*;\n/gm, '').replace(/^export (?=function |const )/gm, '');
-  return '{' + stripTypeScriptTypes(shared, { mode: 'transform' }) + stripTypeScriptTypes(text, { mode: 'transform' }) + '\nglobalThis.installUseInEmailReview=installUseInEmailReview;globalThis.describeEmailTarget=describeEmailTarget;globalThis.USE_IN_EMAIL_ATTACHMENT_POLICY=USE_IN_EMAIL_ATTACHMENT_POLICY;}';
+  return '{' + stripTypeScriptTypes(shared, { mode: 'strip' }) + stripTypeScriptTypes(text, { mode: 'strip' }) + '\nglobalThis.installUseInEmailReview=installUseInEmailReview;globalThis.describeEmailTarget=describeEmailTarget;globalThis.USE_IN_EMAIL_ATTACHMENT_POLICY=USE_IN_EMAIL_ATTACHMENT_POLICY;}';
 };
 const plain = value => JSON.parse(JSON.stringify(value));
 

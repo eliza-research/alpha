@@ -16,7 +16,7 @@ test('actual owner persistence distinguishes installation, session, agent, provi
   put('PersistTest.java',`package ai.elizaresearch.alphaphone;import org.json.*;import android.content.Context;import java.nio.file.*;
 class HostedInbox {static String id(String v){if(v==null||!v.matches("[A-Za-z0-9][A-Za-z0-9_-]{0,127}"))throw new IllegalArgumentException();return v;}}
 class HostedResultNotices {static String hash(String v)throws Exception{byte[] h=java.security.MessageDigest.getInstance("SHA-256").digest(v.getBytes(java.nio.charset.StandardCharsets.UTF_8));StringBuilder s=new StringBuilder();for(byte b:h)s.append(String.format("%02x",b&255));return s.toString();}}
-class ResidentResultSession {static JSONObject snapshot(String a,String b,long c,String d){throw new AssertionError();}}
+class ResidentResultSession {static final String PLACEHOLDER_AGENT="00000000-0000-0000-0000-000000000000";static JSONObject snapshot(String a,String b,long c,String d){throw new AssertionError();}}
 class NativeNotificationProjector {static int retired;static void retireOwner(Context c,String o){retired++;}}
 class AlphaCredentialStore {
  static String saved;static boolean failProvider,failWrite,failRead;static int writes;

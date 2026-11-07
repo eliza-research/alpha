@@ -45,11 +45,11 @@ async function sendRefused(page: Page, text: string) {
 
 const KINDS = {
   // Cloud's billing refusal of a signed-in account: one answer naming both ways back (cloud-membership-ui.tsx).
-  insufficient_credits: 'Eliza Cloud declined this AI request for your account’s billing. Check your subscription or enter a membership code, then send again. Nothing was retried or purchased.',
+  insufficient_credits: 'Eliza Cloud declined this request for billing. Check your subscription or enter a membership code, then send again.',
   provider_issue: 'Alpha’s AI service could not complete this reply. Nothing was resent.',
   generation_timeout: 'Alpha’s AI service could not complete this reply. Nothing was resent.',
-  // Bound to an admitted plan, yet the agent ran without a provider: a recheck is offered.
-  no_provider: 'Your agent answered without its AI connection. Check the connection again; nothing was retried.',
+  // Bound to an admitted plan, yet the agent ran without a provider: a check of what native bound is offered.
+  no_provider: 'AI isn’t connected right now. Check Eliza Cloud again.',
 } as const;
 
 for (const [kind, text] of Object.entries(KINDS)) for (const frame of ['done', 'error'] as const) {
@@ -71,7 +71,7 @@ for (const [kind, text] of Object.entries(KINDS)) for (const frame of ['done', '
       await expect(account).toBeVisible();
       const membership = account.getByRole('region', { name: 'Subscription', exact: true });
       await expect(membership).not.toContainText(/Available credits|Add credits|\$\d/);
-      await expect(membership.getByRole('status').filter({ hasText: 'Eliza Cloud declined your last AI request for billing.' })).toHaveCount(1);
+      await expect(membership.getByRole('status').filter({ hasText: 'Your last request was declined for billing.' })).toHaveCount(1);
       await expect(membership.getByRole('button', { name: 'Choose a monthly plan', exact: true })).toBeVisible();
       await expect(membership.getByRole('button', { name: 'Enter membership code', exact: true })).toBeVisible();
       expect(await stub(page, s => s.opened)).toEqual([]);
@@ -128,13 +128,13 @@ for (const frame of ['done', 'error'] as const) test(`a provider-less turn witho
   await residentStub(page, { accounts: [{ ...owner, plan: 'none' }] });
   await residentHome(page);
   // No plan is a notice beside the running agent, not a gate.
-  await expect(page.getByRole('region', { name: 'Eliza Cloud plan notice' })).toContainText('AI replies aren’t available right now');
+  await expect(page.getByRole('region', { name: 'Eliza Cloud plan notice' })).toContainText('AI replies are off. Your agent is still running.');
   await expect(page.getByRole('dialog')).toHaveCount(0);
   expect(await harness(page, f => f.calls.filter((call: string) => call === 'Agent.start').length)).toBeGreaterThan(0);
   expect(await stub(page, s => s.order.filter((entry: string) => entry.startsWith('configureCloudProvider')))).toEqual([]);
   await setStub(page, { stream: { failure: 'no_provider', frame } });
   await send(page, 'Asked without a plan');
-  await expect(conversation(page).getByText(/^I'm running on this device, but AI replies aren’t available right now\./)).toHaveCount(1);
+  await expect(conversation(page).getByText(/^(I'm running on this device, but AI replies need an Eliza Cloud plan|Eliza Cloud couldn't confirm your plan right now)\./)).toHaveCount(1);
   await expect(page.getByText(/Set up AI/)).toHaveCount(0);
   await expect(page.getByText(/PRIVATE_PROVIDER_ERROR_CANARY/)).toHaveCount(0);
   const plan = page.getByRole('button', { name: /^Redeem code or choose a plan/ });
@@ -259,7 +259,7 @@ test('a resident send the runtime no longer accepts (401) asks for an Eliza Clou
   await setStub(page, { stream: 'expired' });
   await send(page, 'Sent with an expired session');
   const dialog = page.getByRole('main',{name:'Welcome to Alpha.',exact:true});
-  await expect(dialog.getByRole('alert')).toHaveText('Your Cloud sign-in has expired. Sign in with Cloud again.', { timeout: 30_000 });
+  await expect(dialog.getByRole('alert')).toHaveText('Sign in to Eliza Cloud again to turn AI back on.', { timeout: 30_000 });
   // This fixture reports Google unavailable: a quiet retry instead of a dead Google button.
   await expect(dialog.getByRole('button', { name: 'Retry Google sign-in', exact: true })).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'Email me a code', exact: true })).toBeEnabled();

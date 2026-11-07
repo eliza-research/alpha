@@ -7,9 +7,9 @@ const source=readFileSync('apps/app/src/prototype/agent-adapter.ts','utf8');
 const begin=source.indexOf('this.backHandler = (event: Event) => {'),end=source.indexOf("window.addEventListener('alpha-back', this.backHandler)",begin);
 assert.ok(begin>=0&&end>begin);
 const slice=(from,to)=>{const a=source.indexOf(from),b=source.indexOf(to,a);assert.ok(a>=0&&b>a,from);return source.slice(a,b);};
-const panels=stripTypeScriptTypes(slice('  function modalPanels(){','  // Native Back reaches'),{mode:'transform'});
-const availability=stripTypeScriptTypes(slice('  function updateBackAvailability(','\n  const notesLeave'),{mode:'transform'});
-const code=panels+stripTypeScriptTypes(source.slice(begin,end),{mode:'transform'});
+const panels=stripTypeScriptTypes(slice('  function modalPanels(){','  // Native Back reaches'),{mode:'strip'});
+const availability=stripTypeScriptTypes(slice('  function updateBackAvailability(','\n  const notesLeave'),{mode:'strip'});
+const code=panels+stripTypeScriptTypes(source.slice(begin,end),{mode:'strip'});
 function fixture({popover=true,dialog=false,supported=true,toast=false,fallback=false}={}){
  const calls={popover:0,focus:0,dialog:0,navigate:0,cancelReply:0};
  const menu={id:'alpha-mail-folders',hidePopover(){calls.popover++;popover=false;}};

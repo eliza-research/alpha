@@ -3,6 +3,7 @@ import org.json.*;
 public final class ResidentDeliveryTest {
  static void require(boolean value){if(!value)throw new AssertionError();}
  interface Task{void run()throws Exception;}
+ static void retries(Task task)throws Exception {try{task.run();}catch(java.io.IOException expected){return;}throw new AssertionError("expected a retryable failure");}
  static void rejects(Task task)throws Exception {try{task.run();}catch(Exception expected){return;}throw new AssertionError("unexpected success");}
  public static void main(String[] args)throws Exception {
   android.content.Context context=new android.content.Context();HostedDelivery delivery=HostedDelivery.get(context);
@@ -20,8 +21,16 @@ public final class ResidentDeliveryTest {
   delivery.polling(true);require(HostedDeliveryWorker.resident&&HostedDeliveryWorker.scheduled==2);
   delivery.disableSession("other-session");require(delivery.status().getBoolean("backgroundEnabled"));
   delivery.disableSession("ui-session");require(!delivery.status().getBoolean("backgroundEnabled"));require(delivery.store.read("resident-results:v1:credential")==null);rejects(()->delivery.sync(generation));
-  delivery.begin(attempt);JSONObject next=delivery.configure(request);ElizaAgentService.root="replacement";rejects(()->delivery.sync(next.getString("generation")));require(delivery.status().getString("backgroundStatus").equals("reconnect-required"));
+  delivery.begin(attempt);JSONObject next=delivery.configure(request);String nextGeneration=next.getString("generation");ResidentResultTransportTest.Channel resident=ElizaAgentService.channel;
+  // A restart of the same resident is adopted and keeps the scheduled generation.
+  ElizaAgentService.root="restarted";delivery.syncBackground(nextGeneration);require(delivery.status().getString("backgroundStatus").equals("current")&&delivery.status().getBoolean("backgroundEnabled"));
+  require(new JSONObject(delivery.store.read("resident-results:v1:credential")).getString("runtimeDigest").equals(HostedResultNotices.hash("restarted")));
+  ElizaAgentService.root=null;retries(()->delivery.syncBackground(nextGeneration));require(delivery.status().getString("backgroundStatus").equals("retry")&&delivery.status().getBoolean("backgroundEnabled"));
+  ElizaAgentService.root="starting";resident.agentStatus="starting";retries(()->delivery.syncBackground(nextGeneration));require(delivery.status().getString("backgroundStatus").equals("retry")&&delivery.status().getBoolean("backgroundEnabled"));
+  resident.agentStatus="running";delivery.syncBackground(nextGeneration);require(delivery.status().getString("backgroundStatus").equals("current"));
+  // A real replacement runs another agent: the fence still disables delivery.
+  ElizaAgentService.root="replacement";resident.agent="other";rejects(()->delivery.sync(nextGeneration));require(delivery.status().getString("backgroundStatus").equals("reconnect-required"));
   require(!delivery.status().getBoolean("backgroundEnabled"));require(delivery.history("ui-session").length()==1);
-  System.out.println("PASS resident configure, shared inbox, polling, retirement, credential cleanup and runtime replacement");
+  System.out.println("PASS resident configure, shared inbox, polling, retirement, credential cleanup, restart adoption and runtime replacement");
  }
 }

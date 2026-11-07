@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from '../test/fixtures/ts-source.mjs';
 import {EventEmitter} from 'node:events';
 import {PassThrough} from 'node:stream';
 import {fileURLToPath} from 'node:url';
@@ -23,7 +23,7 @@ const imports=new Map([
 ]);
 const module=new vm.SourceTextModule(stripTypeScriptTypes(source),{initializeImportMeta:meta=>{meta.resolve=()=> 'file:///synthetic-worker.ts';}});
 await module.link(name=>{assert.ok(imports.has(name),`Unexpected service import: ${name}`);return imports.get(name);});await module.evaluate();
-const asrModule=new vm.SourceTextModule(stripTypeScriptTypes(fs.readFileSync(new URL('../vendor/eliza/packages/app/src/api/standalone-asr-service.ts',import.meta.url),'utf8'),{mode:'transform'}),{initializeImportMeta:meta=>{meta.resolve=()=> 'file:///synthetic-asr-worker.ts';}});
+const asrModule=new vm.SourceTextModule(stripTypeScriptTypes(fs.readFileSync(new URL('../vendor/eliza/packages/app/src/api/standalone-asr-service.ts',import.meta.url),'utf8'),{mode:'strip'}),{initializeImportMeta:meta=>{meta.resolve=()=> 'file:///synthetic-asr-worker.ts';}});
 await asrModule.link(name=>name==='./standalone-speech-service'?module:imports.get(name));await asrModule.evaluate();
 for(const NativeService of [module.namespace.StandaloneTtsService,asrModule.namespace.StandaloneAsrService]) {
  const Service=NativeService===module.namespace.StandaloneTtsService?NativeService:class extends NativeService {synthesize(id,_text,signal){return this.transcribe(id,Buffer.from([1,0]),16000,signal);}};

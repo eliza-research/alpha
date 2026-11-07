@@ -170,7 +170,7 @@ async function confirmBillingAccount(page:Page){
  * code, which opens the plan panel (the notice's other action is Choose a plan). */
 async function needsPlan(page:Page){
  const notice=page.getByRole('region',{name:'Eliza Cloud plan notice'});
- await expect(notice).toContainText('AI replies aren’t available right now');await expect(accountPanel(page)).toHaveCount(0);
+ await expect(notice).toContainText('AI replies are off. Your agent is still running.');await expect(accountPanel(page)).toHaveCount(0);
  await expect(notice.getByRole('button',{name:'Choose a plan',exact:true})).toBeVisible();
  // A fresh phone's startup access panel (a modal) is declined first; the notice stays beside the agent.
  const startup=page.locator('dialog.alpha-startup-permissions');
@@ -725,7 +725,7 @@ test('failed native provider binding reports unconfirmed inference and exposes t
  const settings=page.getByRole('region',{name:'Settings',exact:true});
  await expect(settings.getByText('Not available',{exact:true})).toBeVisible();
  const error=settings.getByText(/Synthetic account verification failure/);await expect(error).toBeVisible();
- await expect(error).toContainText('Cloud inference removal could not be confirmed. Your agent is running; retry in Settings.');
+ await expect(error).toContainText('AI could not be confirmed off. Your agent is running; retry in Settings.');
  const history=settings.getByText('Conversation history',{exact:true});await expect(history).toBeVisible();
  expect(await error.evaluate((node,other)=>(node.compareDocumentPosition(other!)&Node.DOCUMENT_POSITION_FOLLOWING)!==0,await history.elementHandle())).toBe(true);
  expect(await configured(page)).toBe(1);

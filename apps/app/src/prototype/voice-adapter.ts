@@ -693,7 +693,11 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
           // After the short gap: the chain. Unavailable, slow or failing: the long gap decides.
           ...(streamingCloud?{}:{endpoint:(text:string,signal:AbortSignal)=>{current();return semanticEndpoint!(text,signal);}}),
           shouldRespond:(text,context)=>shouldRespondToVoiceTurn(text,context)&&(!cueHeard||shouldRespondToVoiceTurn(text,{recentAgentReply:cueHeard.text,replyAgeMs:cueAge(cueHeard),agentSpeaking:cueHeard.settledAt===undefined})),
-          turnSignal:text=>buildVoiceTurnSignal(text),
+          // The session asks for the signal only after the endpointer or the long gap committed the
+          // turn, so a low text end-of-turn score must not hold it back: the server vetoes a turn on
+          // nextSpeaker 'user' or a score below 0.4. A committed turn carries no score (none is made
+          // up); a turn the gate refuses (disfluency, bystander, own voice) keeps the whole signal.
+          turnSignal:text=>{const signal=buildVoiceTurnSignal(text);return signal.agentShouldSpeak?{nextSpeaker:'agent',agentShouldSpeak:true,source:`${signal.source}+committed`}:signal;},
           send:sendTurn,
           speakable:text=>toSpeakableText(text),
           speak:async input=>{input.signal.throwIfAborted();current();const started=()=>{current();input.onStarted();};const pending=streamingCloud?streamingCloud.speak(input.text,input.signal,started):local!.speak(input.text,input.signal,started,true);conversationSpeech=pending;try{await pending;input.signal.throwIfAborted();current();}catch(failure){if((failure as {code?:string})?.code==='speech-cleanup-unconfirmed'){mediaUnconfirmed=failure;stopping=Promise.reject(failure);void stopping.catch(()=>{});}throw failure;}finally{if(conversationSpeech===pending)conversationSpeech=undefined;}},

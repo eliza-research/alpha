@@ -4,6 +4,7 @@ import {readFileSync,mkdtempSync,writeFileSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
+import {javaBinary} from './fixtures/jvm-tools.mjs';
 // Real consumer request/callback methods against a JVM model of Capacitor's plugin-ID queues.
 // This reproduces callback ownership; it does not establish real Android permission acceptance.
 function method(source,signature){const start=source.indexOf(signature);assert.notEqual(start,-1,signature);let end=source.indexOf('{',start),depth=1;for(end++;depth;end++){if(source[end]==='{')depth++;if(source[end]==='}')depth--;}return source.slice(start,end);}
@@ -74,5 +75,5 @@ public class PermissionOwnerHarness {
  }
 }`;
  const dir=mkdtempSync(join(tmpdir(),'alpha-photo-permission-owner-'));
- try{const file=join(dir,'PermissionOwnerHarness.java');writeFileSync(file,body);const bin=name=>process.env.JAVA_HOME?join(process.env.JAVA_HOME,'bin',name):name;execFileSync(bin('javac'),['--release','11','-d',dir,file],{stdio:'pipe'});assert.match(execFileSync(bin('java'),['-cp',dir,'PermissionOwnerHarness'],{encoding:'utf8'}),/PASS permission owner/);}finally{rmSync(dir,{recursive:true,force:true});}
+ try{const file=join(dir,'PermissionOwnerHarness.java');writeFileSync(file,body);execFileSync(javaBinary('javac'),['--release','11','-d',dir,file],{stdio:'pipe'});assert.match(execFileSync(javaBinary('java'),['-cp',dir,'PermissionOwnerHarness'],{encoding:'utf8'}),/PASS permission owner/);}finally{rmSync(dir,{recursive:true,force:true});}
 });

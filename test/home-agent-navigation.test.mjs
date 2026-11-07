@@ -1,14 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './fixtures/ts-source.mjs';
 import {webcrypto} from 'node:crypto';
 import vm from 'node:vm';
 import {tsImport} from 'tsx/esm/api';
 // Targets resolve through Alpha's product view registry (canonical ids, served ids, availability).
 const {alphaCanonicalViewId,alphaViewKey,alphaViewPaths}=await tsImport('../apps/app/src/product/alpha-product.ts',import.meta.url);
 const paths=['.eliza/client-features/packages/core/src/events.ts','.eliza/client-features/packages/core/src/views/view-interact-protocol.ts','.eliza/client-features/packages/core/src/views/view-action-handoff.ts','.eliza/client-features/packages/core/src/views/completed-action-navigation.ts','apps/app/src/runtime/view-navigation.ts'];
-const source=paths.map(path=>stripTypeScriptTypes(readFileSync(path,'utf8'),{mode:'transform'}).replace(/^import[\s\S]*?;\n/gm,'').replace(/^export /gm,'')).join('\n');
+const source=paths.map(path=>stripTypeScriptTypes(readFileSync(path,'utf8'),{mode:'strip'}).replace(/^import[\s\S]*?;\n/gm,'').replace(/^export /gm,'')).join('\n');
 function fixture(){const window=new EventTarget();const context=vm.createContext({alphaCanonicalViewId,alphaViewKey,alphaViewPaths,window,document:{hidden:false},crypto:webcrypto,structuredClone,AbortController,AbortSignal,DOMException,Event,CustomEvent,URL,console,localStorage:{getItem(){return null}},setTimeout,clearTimeout});vm.runInContext('class AlphaClientError extends Error{};const browserDevProfile=false;const Capacitor={getPlatform:()=>"web",PluginHeaders:[]};const TELEPHONY_PROFILE_METHOD="imageCapability";const detectTelephonyProfile=()=>false;'+source+';globalThis.Client=ViewNavigationClient;',context);return context;}
 for(const [id,target] of [['chat','home'],['inbox','inbox'],['calendar','calendar'],['browser','browser'],['camera','camera'],['photos','photos'],['maps','maps'],['notes','notes'],['files','files'],['automations','workflows'],['settings','settings']])test('agent navigation reaches Home destination '+target,async()=>{const c=fixture();let state={view:'home',revision:1,sensitive:false};const calls=[];const client=new c.Client(async(path,body)=>{calls.push({path,body});return path.endsWith('claim')?{claimId:'owned'}:{ok:true,accepted:true};},()=>true,()=>state);const binding={requestId:'owned-handoff',clientId:client.clientId,viewId:id,viewType:'gui',installationId:'owned-installation'};const attempt=client.capture(state);let navigated;const result=await client.deliver([{actionName:'VIEWS',success:true,values:{mode:'show',viewId:id,viewPath:'/'+id,viewType:'gui',navigationPrepared:true,completedActionHandoffId:'owned-handoff',navigationBinding:binding}}],attempt,async(view,current)=>{current();navigated=view;state={view,revision:2,sensitive:false};return true;});assert.equal(navigated,target);assert.equal(result.status,'delivered');assert.equal(calls.length,2);client.dispose();});
 

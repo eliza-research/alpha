@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { registerHooks, stripTypeScriptTypes } from "node:module";
+import { registerHooks } from "node:module";
+import { stripTypeScriptTypes } from "./fixtures/ts-source.mjs";
 // The shared store (@elizaos/plugin-calendar/linked-sync) through Alpha's installed-key wrapper.
 const { CalendarLinkedStore } = await import(
 	"../apps/app/src/runtime/calendar-linked-store.ts"
@@ -11,7 +12,7 @@ const engineCode = stripTypeScriptTypes(
 		".eliza/client-features/packages/contracts/src/calendar-linked-sync.ts",
 		"utf8",
 	),
-	{ mode: "transform" },
+	{ mode: "strip" },
 );
 const { LinkedCalendarReconciler } = await import(
 	"data:text/javascript;base64," + Buffer.from(engineCode).toString("base64")
@@ -356,7 +357,7 @@ test("installed Calendar sync settings keep their storage names and record shape
 						shortCircuit: true,
 						source: stripTypeScriptTypes(
 							readFileSync(new URL(url), "utf8"),
-							{ mode: "transform" },
+							{ mode: "strip" },
 						),
 					}
 				: next(url, context),

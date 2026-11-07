@@ -10,9 +10,9 @@ import vm from 'node:vm';
 // it shown as starting, and the earlier failure rules (P-43, a refused key) still hold.
 const ui=readFileSync(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
 const between=(text,start,end)=>{const from=text.indexOf(start),to=text.indexOf(end,from);assert.ok(from>=0&&to>from,start);return text.slice(from,to);};
-const residentSignedIn=stripTypeScriptTypes(between(ui,'async function residentSignedIn(','/** The key is stored;'),{mode:'transform'});
-const signedIn=stripTypeScriptTypes(between(ui,'async function signedIn(','/** The development hosted-agent client.'),{mode:'transform'});
-const showPostSignInSetup=stripTypeScriptTypes(between(ui,'function showPostSignInSetup(','/**\n * A verified sign-in on the resident flow'),{mode:'transform'});
+const residentSignedIn=stripTypeScriptTypes(between(ui,'async function readCloudCredential(','/** Notice shown when Cloud inference')+between(ui,'async function residentSignedIn(','/** The key is stored;'),{mode:'strip'});
+const signedIn=stripTypeScriptTypes(between(ui,'async function signedIn(','/** The development hosted-agent client.'),{mode:'strip'});
+const showPostSignInSetup=stripTypeScriptTypes(between(ui,'function showPostSignInSetup(','/**\n * A verified sign-in on the resident flow'),{mode:'strip'});
 const ISSUED='11111111-1111-4111-8111-111111111111';
 const COMMITTED={credentialId:ISSUED,credentialReference:'browser-cloud-reference:33333333-3333-4333-8333-333333333333',userId:'owner',organizationId:'organization'};
 
@@ -20,7 +20,7 @@ function harness({admission={binding:'cloud'},admitted=true,refusedAccount=false
   // The agent before the sign-in ran without Cloud AI ('unavailable').
   const events=[],state={signIn:{step:'code'},open:true,busy:true,message:'Checking your code…',kind:'starting',purpose:'agent',setupRevision:0,cloudAccount:null,residentPlanNotice:null,residentStarting:false,residentInference:'unavailable'};
   let stored={credentialId:ISSUED};
-  const box={ownProviderSelected:()=>false,state,events,active:null,residentAlwaysPresent:true,cloud:{environment:'production'},residentCloudFlow:()=>true,prepareSignInReplacement:()=>events.push('replace'),
+  const box={DOMException,ownProviderSelected:()=>false,state,events,active:null,residentAlwaysPresent:true,cloud:{environment:'production'},residentCloudFlow:()=>true,prepareSignInReplacement:()=>events.push('replace'),
     update:patch=>{Object.assign(state,patch);events.push({update:patch,snapshot:{...state}});},
     retire:()=>{events.push('retire');state.kind='starting';},
     residentEnvironment:()=>'production',cloudServiceName:()=>'Eliza Cloud',
@@ -78,7 +78,7 @@ test('a failed restart after setup recovers once, keeps setup and rethrows for t
 });
 
 test('a key Cloud refused right after issuing it is removed and never opens setup',async()=>{
-  const admission={binding:'unbound',notice:{open:true,error:'refused'}};
+  const admission={binding:'unbound',notice:{open:true,error:'refused',errorKind:'sign-in-rejected'},authRefused:true};
   const box=harness({admission,refusedAccount:true});
   await box.run(new AbortController().signal,false);
   const connect=box.events.find(event=>event.connect);
@@ -86,7 +86,15 @@ test('a key Cloud refused right after issuing it is removed and never opens setu
   assert.equal(connect.connect,admission);assert.equal(connect.during.signIn,null);assert.notEqual(connect.during.residentStarting,true);assert.equal(connect.during.message,'');
   assert.equal(box.events.indexOf('clear key')>box.events.indexOf(connect),true);
   assert.equal(box.state.setupRevision,0);
-  assert.deepEqual({open:box.state.open,error:box.state.error},{open:true,error:'Eliza Cloud refused this sign-in. Your agent keeps running; sign in again to turn AI on.'});
+  assert.deepEqual({open:box.state.open,error:box.state.error,errorKind:box.state.errorKind},{open:true,error:'Eliza Cloud refused this sign-in. Your agent keeps running; sign in again to turn AI on.',errorKind:'sign-in-rejected'});
+});
+
+test('a key Cloud did not refuse (an outage, an unreadable answer, a newer sign-in) is kept for a retry',async()=>{
+  const admission={binding:'unbound',notice:{open:true,error:'Eliza Cloud could not complete this. Try again.',errorKind:null}};
+  const box=harness({admission,refusedAccount:true});
+  await box.run(new AbortController().signal,false);
+  assert.equal(box.events.includes('clear key'),false,'the freshly issued key is not deleted');
+  assert.notEqual(box.state.error,'Eliza Cloud refused this sign-in. Your agent keeps running; sign in again to turn AI on.');
 });
 
 test('an expected key replaced while the account is admitted still stops the sign-in before the restart',async()=>{
@@ -128,13 +136,13 @@ test('a cancelled admission leaves the sign-in step and the agent to the caller 
 });
 
 test('a resident start ends with its operation in one update, so setup behind it never blinks',async()=>{
-  const work=stripTypeScriptTypes(between(ui,'async function work(','/** Start (or restart) the resident.'),{mode:'transform'});
+  const work=stripTypeScriptTypes(between(ui,'async function work(','/** Start (or restart) the resident.'),{mode:'strip'});
   for(const fail of [false,true]){
     const seen=[],state={busy:false,open:false,residentStarting:false,error:'',message:''};
     const box={state,AbortController,active:null,cloud:{},testMocksEnabled:false,
       update:patch=>{Object.assign(state,patch);seen.push({busy:state.busy,starting:state.residentStarting});},
-      residentRecoveryReason:()=>null,errorMessage:error=>error.message,expired:()=>false,residentCloudFlow:()=>true,runQueuedResidentRebind:()=>{},runQueuedSignInReturn:()=>{}};
-    vm.createContext(box);vm.runInContext('var operation=null,residentStartInBackground=false,signInReadinessOwner=null;\n'+work+';globalThis.run=work;',box);
+      residentRecoveryReason:()=>null,errorMessage:error=>error.message,errorKindOf:()=>null,expired:()=>false,residentCloudFlow:()=>true,runQueuedResidentRebind:()=>{},runQueuedSignInReturn:()=>{}};
+    vm.createContext(box);vm.runInContext('var operation=null,planRecheck=null,residentStartInBackground=false,signInReadinessOwner=null;\n'+work+';globalThis.run=work;',box);
     await box.run('Starting your agent…',async()=>{box.update({residentStarting:true});await new Promise(resolve=>setTimeout(resolve,5));if(fail)throw Error('Local agent failed to start.');},true);
     const started=seen.findIndex(row=>row.starting);
     assert.ok(started>=0);

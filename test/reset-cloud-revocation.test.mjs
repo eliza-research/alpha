@@ -1,45 +1,72 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,mkdirSync,writeFileSync,rmSync,readFileSync,readdirSync} from 'node:fs';
-import {tmpdir} from 'node:os';
+import {mkdtempSync,mkdirSync,writeFileSync,rmSync,readdirSync} from 'node:fs';
+import {tmpdir,homedir} from 'node:os';
 import {join,dirname,resolve} from 'node:path';
-import {runJvm,jsonJarSkip} from './fixtures/jvm-tools.mjs';
-// Alpha binds the shared bounded reset step (ai.eliza.auth.cloud.CloudKeyRevocation.resetStep, behavior
-// tested upstream in packages/auth) to its live registration and its pre-attach credential slots. Host
-// JVM only: the real shared step with Alpha's registration and a recording transport; no Android, Cloud
-// request or credential.
+import {execFileSync} from 'node:child_process';
+import {javaBinary,jsonJar,jsonJarSkip} from './fixtures/jvm-tools.mjs';
+// Alpha's reset step (ResetBeforeDispatch) binds the shared bounded revocation
+// (ai.eliza.auth.cloud.CloudKeyRevocation.resetStep, behavior tested upstream in packages/auth) to its
+// live registration, its pre-attach credential slots and a retained pre-namespace production key.
+// Host JVM only: the real ResetBeforeDispatch and shared step with a recording transport and stubbed
+// slots; no Android, Calendar provider, Cloud request or credential.
 const root=resolve(import.meta.dirname,'..');
-const binding='.beforeDispatch(ai.eliza.auth.cloud.CloudKeyRevocation.resetStep(()->AlphaCloudSignInPlugin.REGISTRATION,AlphaCredentialStore::readSlotBeforeAttach)::run)';
-test('Alpha reset binds the shared Cloud revocation step to its registration and pre-attach slots',()=>{
- const registration=readFileSync(join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDataReset.java'),'utf8');
- assert.ok(registration.includes(binding),'AlphaDataReset passes the shared step, not a local copy');
- assert.match(readFileSync(join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCredentialStore.java'),'utf8'),/static String readSlotBeforeAttach\(Context base,String name\)throws Exception\{/,'the slot reader works before the credential store attaches (startup resume)');
-});
-test('the bound step revokes each environment this build registers, best effort and bounded',{skip:jsonJarSkip},()=>{
+const system=resolve(root,'vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system');
+test('the reset step revokes each saved key once, a distinct legacy key too, best effort and bounded',{skip:jsonJarSkip},()=>{
  const dir=mkdtempSync(join(tmpdir(),'alpha-reset-revoke-')),files=[];
- const put=(name,text)=>{const file=join(dir,name);mkdirSync(dirname(file),{recursive:true});writeFileSync(file,text);files.push(file);};
+ const put=(name,text)=>{const file=join(dir,'src',name);mkdirSync(dirname(file),{recursive:true});writeFileSync(file,text);files.push(file);};
+ const sdk=join(process.env.ANDROID_HOME??join(homedir(),'Android/Sdk'),'platforms/android-36/android.jar');
  const auth=resolve(root,'vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud');
  const shared=readdirSync(auth).filter(name=>name.endsWith('.java')&&!['CloudSignInPlugin.java','NativeGoogleCredential.java'].includes(name)).map(name=>join(auth,name));
  try{
-  put('android/content/Context.java','package android.content; public class Context {}');
-  put('ai/elizaresearch/alphaphone/Fixture.java',`package ai.elizaresearch.alphaphone;
+  put('ai/elizaresearch/alphaphone/AlphaCalendarPlugin.java','package ai.elizaresearch.alphaphone; final class AlphaCalendarPlugin {static ai.eliza.plugins.calendar.CalendarConfiguration CONFIGURATION;}');
+  put('ai/elizaresearch/alphaphone/AlphaCredentialStore.java',`package ai.elizaresearch.alphaphone;
+final class AlphaCredentialStore {
+ static boolean unreadable;static java.util.Map<String,String> current=new java.util.HashMap<>(),legacy=new java.util.HashMap<>();
+ static String readSlotBeforeAttach(android.content.Context c,String n)throws Exception{if(unreadable)throw new Exception("locked");return current.get(n);}
+ static String readLegacySlotBeforeAttach(android.content.Context c,String n)throws Exception{if(unreadable)throw new Exception("locked");return legacy.get(n);}
+}`);
+  // Not final here so a case can move the build to another deployment; the real one is a constant.
+  put('ai/elizaresearch/alphaphone/LegacyCloudRecovery.java','package ai.elizaresearch.alphaphone; final class LegacyCloudRecovery {static String LEGACY_NAMESPACE=CloudDeployment.STORAGE_NAMESPACE;}');
+  put('ai/elizaresearch/alphaphone/AlphaCloudSignInPlugin.java',`package ai.elizaresearch.alphaphone;
 import ai.eliza.auth.cloud.*;
-class AlphaCredentialStore {static boolean unreadable;static java.util.List<String> slots=new java.util.ArrayList<>();static String readSlotBeforeAttach(android.content.Context c,String n)throws Exception{if(unreadable)throw new Exception("locked");slots.add(n);return new org.json.JSONObject().put("token","eliza_mobile_"+n.replace(':','_')).toString();}}
-class AlphaCloudSignInPlugin {static CloudSignInConfig REGISTRATION=registration(false);
- static CloudSignInConfig registration(boolean mocks){CloudSignInConfig.Builder b=CloudSignInConfig.builder().clientId("ai.elizaresearch.alphaphone").deviceName("Alpha Phone").productName("Alpha Phone").googleClientId("alpha-phone").environment(new CloudSignInEnvironment("production","api.eliza.app","eliza.app","elizacloud","Eliza Cloud","/alphaphone/auth/callback"));if(mocks)b.environment(new CloudSignInEnvironment("staging","api-staging.eliza.app","staging.eliza.app","elizacloud-staging","Eliza Cloud","/alphaphone/auth/callback"));return b.build();}}
+final class AlphaCloudSignInPlugin {static CloudSignInConfig REGISTRATION=registration(false);
+ static CloudSignInConfig registration(boolean mocks){CloudSignInConfig.Builder b=CloudSignInConfig.builder().clientId("ai.elizaresearch.alphaphone").deviceName("Alpha Phone").productName("Alpha Phone").googleClientId("alpha-phone").environment(new CloudSignInEnvironment("production","api.eliza.app","eliza.app","elizacloud","Eliza Cloud","/alphaphone/auth/callback"));if(mocks)b.environment(new CloudSignInEnvironment("staging","api-staging.eliza.app","staging.eliza.app","elizacloud-staging","Eliza Cloud","/alphaphone/auth/callback"));return b.build();}}`);
+  put('ai/elizaresearch/alphaphone/Fixture.java',`package ai.elizaresearch.alphaphone;
+import ai.eliza.plugins.system.reset.DataReset;
 public class Fixture {
  static java.util.List<String> revoked=new java.util.ArrayList<>();static boolean block;
- public static void main(String[] args){
-  // The exact binding expression from AlphaDataReset, with a recording transport in place of HTTP.
-  CloudKeyRevocation.ResetStep<android.content.Context> step=CloudKeyRevocation.resetStep(()->AlphaCloudSignInPlugin.REGISTRATION,AlphaCredentialStore::readSlotBeforeAttach,(config,environment,token)->{if(block)try{Thread.sleep(10000);}catch(InterruptedException expected){}revoked.add(environment.name+"="+token);return true;});
-  android.content.Context c=new android.content.Context();
-  step.run(c,1000);check(AlphaCredentialStore.slots.equals(java.util.List.of("cloud:production"))&&revoked.equals(java.util.List.of("production=eliza_mobile_cloud_production")));
-  AlphaCloudSignInPlugin.REGISTRATION=AlphaCloudSignInPlugin.registration(true);step.run(c,1000);check(revoked.size()==3&&revoked.contains("staging=eliza_mobile_cloud_staging"));
-  AlphaCredentialStore.unreadable=true;step.run(c,1000);check(revoked.size()==3);AlphaCredentialStore.unreadable=false;
-  block=true;long start=System.nanoTime();step.run(c,30);check((System.nanoTime()-start)/1000000<2000);
+ static String key(String id,String token)throws Exception{return new org.json.JSONObject().put("credentialId",id).put("token",token).toString();}
+ static void reset(){revoked.clear();AlphaCredentialStore.current.clear();AlphaCredentialStore.legacy.clear();}
+ public static void main(String[] args)throws Exception{
+  // Alpha's composed step with a recording transport in place of HTTP. A null context leaves the
+  // Calendar step to fail inside its own best-effort catch, as a missing provider would.
+  DataReset.BeforeDispatch step=ResetBeforeDispatch.create((config,environment,token)->{if(block)try{Thread.sleep(10000);}catch(InterruptedException expected){}revoked.add(environment.name+"="+token);return true;});
+  AlphaCredentialStore.current.put("cloud:production",key("current","eliza_mobile_current"));
+  step.run(null,1000);check(revoked.equals(java.util.List.of("production=eliza_mobile_current")),"namespaced key revoked");
+  reset();AlphaCredentialStore.current.put("cloud:production",key("current","eliza_mobile_current"));AlphaCredentialStore.legacy.put("cloud:production",key("legacy","eliza_mobile_legacy"));
+  step.run(null,1000);check(revoked.equals(java.util.List.of("production=eliza_mobile_current","production=eliza_mobile_legacy")),"a distinct legacy key is revoked after the current one");
+  reset();AlphaCredentialStore.current.put("cloud:production",key("same","eliza_mobile_same"));AlphaCredentialStore.legacy.put("cloud:production",key("same","eliza_mobile_same"));
+  step.run(null,1000);check(revoked.equals(java.util.List.of("production=eliza_mobile_same")),"the same key is revoked once");
+  reset();AlphaCredentialStore.legacy.put("cloud:production",key("legacy","eliza_mobile_legacy"));
+  step.run(null,1000);check(revoked.equals(java.util.List.of("production=eliza_mobile_legacy")),"a legacy key alone is revoked");
+  reset();AlphaCredentialStore.legacy.put("cloud:production",key("legacy","eliza_mobile_legacy"));LegacyCloudRecovery.LEGACY_NAMESPACE="cloud-deployment:other:";
+  step.run(null,1000);check(revoked.isEmpty(),"a legacy key from another deployment is never sent");LegacyCloudRecovery.LEGACY_NAMESPACE=CloudDeployment.STORAGE_NAMESPACE;
+  reset();AlphaCloudSignInPlugin.REGISTRATION=AlphaCloudSignInPlugin.registration(true);
+  AlphaCredentialStore.current.put("cloud:production",key("p","eliza_mobile_production"));AlphaCredentialStore.current.put("cloud:staging",key("s","eliza_mobile_staging"));AlphaCredentialStore.legacy.put("cloud:staging",key("old","eliza_mobile_old_staging"));
+  step.run(null,1000);check(revoked.equals(java.util.List.of("production=eliza_mobile_production","staging=eliza_mobile_staging")),"each registered environment; the legacy reader is production only");
+  reset();AlphaCredentialStore.current.put("cloud:production",key("current","eliza_mobile_current"));AlphaCredentialStore.unreadable=true;
+  step.run(null,1000);check(revoked.isEmpty(),"an unreadable store skips revocation");AlphaCredentialStore.unreadable=false;
+  reset();AlphaCredentialStore.current.put("cloud:production",key("current","eliza_mobile_current"));AlphaCredentialStore.legacy.put("cloud:production",key("legacy","eliza_mobile_legacy"));
+  block=true;long start=System.nanoTime();step.run(null,300);check((System.nanoTime()-start)/1000000<2000,"the whole step stays within the coordinator's budget");
   System.out.println("PASS Alpha reset revocation binding");}
- static void check(boolean ok){if(!ok)throw new AssertionError();}}
+ static void check(boolean ok,String why){if(!ok)throw new AssertionError(why+": "+revoked);}}
 `);
-  assert.match(runJvm([...files,...shared],'ai.elizaresearch.alphaphone.Fixture',{json:true}),/PASS Alpha reset revocation binding/);
+  const reset=['reset/DataReset','reset/DataResetCopy','reset/DataResetRecoveryActivity','reset/ResetAuthorization','SenseListenerClient','SenseInvocation'].map(name=>join(system,`${name}.java`));
+  const calendar=resolve(root,'vendor/eliza/plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/CalendarConfiguration.java');
+  const alpha=['ResetBeforeDispatch','CloudDeployment'].map(name=>resolve(root,`android/app/src/main/java/ai/elizaresearch/alphaphone/${name}.java`));
+  // org.json comes from the real jar ahead of android.jar's stubs.
+  execFileSync(javaBinary('javac'),['--release','17','-proc:none','-cp',`${jsonJar}:${sdk}`,'-d',join(dir,'classes'),...files,...shared,...reset,calendar,...alpha],{timeout:120000});
+  assert.match(execFileSync(javaBinary('java'),['-cp',`${join(dir,'classes')}:${jsonJar}:${sdk}`,'ai.elizaresearch.alphaphone.Fixture'],{encoding:'utf8',timeout:60000}),/PASS Alpha reset revocation binding/);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });
