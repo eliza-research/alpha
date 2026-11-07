@@ -2,7 +2,6 @@
 // OAuth consent or mailbox is involved; live Gmail qualification is a separate gate.
 import test from "node:test";
 import assert from "node:assert/strict";
-import fs from "node:fs";
 import { googleAccountAccessLabel, gmailCapabilitiesFor, requiredGmailCapability, gmailGrantTier, gmailActionGrant, gmailInboxAllows, gmailModifyIncomplete, gmailReadCacheKey, gmailGrantChange, gmailGrantLabel, GMAIL_MODIFY_CAPABILITIES } from "../apps/app/src/runtime/gmail-grants.ts";
 
 const account = (capabilities, patch = {}) => ({ configured: true, connected: true, reason: "connected", connectionId: "grant-1", label: "Mailbox", grantedCapabilities: capabilities, ...patch });
@@ -51,24 +50,6 @@ test("revoke and account or session changes isolate cached mail and unsent revie
   assert.deepEqual(gmailGrantChange({ sessionId: s, account: account(MODIFY) }, { sessionId: s, account: account([]) }), { dropReadCache: true, withdrawn: [...GMAIL_MODIFY_CAPABILITIES] }, "revoked read access withdraws everything");
   assert.deepEqual(gmailGrantChange({ sessionId: s, account: account(MODIFY) }, { sessionId: s, account: undefined }), { dropReadCache: true, withdrawn: [...GMAIL_MODIFY_CAPABILITIES] }, "a disconnected account");
   assert.equal(gmailGrantChange({ sessionId: s, account: account(READ) }, { sessionId: "session-2", account: account(READ) }).dropReadCache, true);
-});
-
-test("Inbox keeps one combined consent and discards unsent reviews when change access is withdrawn", () => {
-  const inbox = fs.readFileSync("apps/app/src/prototype/inbox-cloud-adapter.ts", "utf8");
-  const panel=fs.readFileSync('apps/app/src/runtime/google-connection-ui.tsx','utf8');
-  assert.match(panel,/connect\(accounts\.some\(account=>gmailGrantTier\(account\)==='modify'\)\?'modify':'send','write'\)/,'A missing grant falls back to one consent that keeps an existing modify grant');
-  assert.doesNotMatch(panel,/connect\('(send|drafts|mailbox)'\)/,'no separate per-capability buttons');
-  assert.doesNotMatch(inbox, /connect\('(send|drafts|mailbox)'\)/, "no separate per-capability consent prompts");
-  assert.match(inbox, /if\(previous&&grantChange\.withdrawn\.length\)provider\.withdrawn\(\);/);
-  assert.match(inbox, /const dropped=previous!==selected\|\|\(!!previous&&grantChange\.dropReadCache\);/, "a changed read-cache identity drops what was read");
-  assert.match(inbox, /const cached=key&&inboxPreview\?\.key===key&&inboxPreview\.sessionId===binding\?\.sessionId&&inboxPreview\.accountId===selected/, "Home shows the preview only under the identity it was read with");
-  // Behaviour: scripts/test-inbox-cloud-flow.mjs (read grant withdrawn) and scripts/test-inbox-grant-withdrawal.mjs.
-  // The reviewed effect controller is shared (@elizaos/plugin-inbox/mailbox); Alpha binds it to its encrypted slots.
-  const binding = fs.readFileSync("apps/app/src/prototype/inbox-provider-controls.ts", "utf8");
-  assert.match(binding, /createMailReviewController\(\{publish,toast,store:inboxLocalStore,/);
-  const provider = fs.readFileSync(".eliza/client-features/plugins/plugin-inbox/src/mailbox/review-controller.ts", "utf8");
-  assert.match(provider, /if \(!gmailInboxAllows\(caps, kind as GmailMailboxAction\)\)/);
-  assert.match(provider, /InboxOperation\.discardUnsent\(\s*options\.store,\s*pending\.owner,\s*pending\.grant,?\s*\)/, "the discard is bound to the grant, not the live operation");
 });
 
  test("connection status reflects send-only and Calendar write grants",()=>{

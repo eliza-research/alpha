@@ -19,18 +19,23 @@ function stub(answers = {}) {
   return { plugin, calls };
 }
 
-test("off the verified image nothing reaches native code", async () => {
-  const { plugin, calls } = stub({ status: status() });
+test("off the verified image no client method reaches native code", async () => {
+  const sms = { recipients: ["+15555550100"], body: "Hi", subscriptionId: 3 };
+  const mms = { recipients: ["+15555550100"], body: "Hi", subscriptionId: 3, attachments: [] };
+  // Every client method, with arguments it would otherwise accept.
+  const calls = {
+    imageCapability: [], status: [], requestAccess: ["sms"], requestRole: ["sms"], searchContacts: ["Ada"], recentCalls: [],
+    dial: ["+15555550100"], composeSms: [{ ...sms, subscriptionId: null }], listThreads: [], listMessages: ["thread:1"],
+    threadPage: [], messagePage: ["thread:1"], observeMessages: [() => {}], markThreadRead: ["thread:1", 1], sendSms: [sms, "op-1"],
+    sendMms: [mms, "op-1"], mmsSendResult: [mms, "op-1"], cancelSmsReview: ["op-1"], smsSendHistory: [], smsSendResult: [sms, "op-1"],
+  };
+  const { plugin, calls: native } = stub({ status: status() });
   for (const client of [createAospTelephony(null, false), createAospTelephony(plugin, false), createAospTelephony(null, true)]) {
     assert.equal(client.available, false);
-    await assert.rejects(client.status(), TelephonyUnavailable);
-    await assert.rejects(client.searchContacts("Ada"), TelephonyUnavailable);
-    await assert.rejects(client.dial("+15555550100"), TelephonyUnavailable);
-    await assert.rejects(client.composeSms({ recipients: ["+15555550100"], body: "Hi", subscriptionId: null }), TelephonyUnavailable);
-    await assert.rejects(client.requestRole("sms"), TelephonyUnavailable);
-    await assert.rejects(client.requestAccess("contacts"), TelephonyUnavailable);
+    assert.deepEqual(Object.keys(client).filter(key => typeof client[key] === "function").sort(), Object.keys(calls).sort(), "the table covers every client method");
+    for (const [method, args] of Object.entries(calls)) await assert.rejects(client[method](...args), TelephonyUnavailable, method);
   }
-  assert.deepEqual(calls, [], "a standalone install or agent request never reaches the native boundary");
+  assert.deepEqual(native, [], "a standalone install or agent request never reaches the native boundary");
 });
 
 test("status is validated; an unread SIM list is never shown as no SIM", () => {

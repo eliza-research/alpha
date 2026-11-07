@@ -142,6 +142,11 @@ test("Pixel 10a staging options: development or production, never both, always w
   assert.throws(() => pixel10aOptions({ ...base, development: true, production: true }), /exclusive/);
   assert.throws(() => pixel10aOptions(base), /--development or --production/);
   assert.throws(() => pixel10aOptions({ ...base, production: true, factory: null }), /--aosp-source and --factory-image/);
+  assert.throws(() => pixel10aOptions({ ...base, development: true, source: null }), /--aosp-source and --factory-image/);
+  // Without a target the existing product is staged, and a factory image alone is refused.
+  assert.equal(pixel10aOptions({ development: true, target: null }), false);
+  assert.throws(() => pixel10aOptions({ factory: "/factory" }), /requires --target pixel10a/);
+  assert.throws(() => pixel10aOptions({ ...base, target: "stallion", development: true }), /Only --target pixel10a/);
 });
 
 test("stage-aosp --target pixel10a --production refuses the committed descriptor before reading source or APK", () => {
