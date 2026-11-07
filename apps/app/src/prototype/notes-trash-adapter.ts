@@ -18,11 +18,14 @@ export const NOTES_TRASH_MAINTENANCE_INTERVAL_MS=15*60*1000;
 
 /**
  * Deleted notes go to a durable Trash and are erased three days after deletion.
- * Maintenance (drop rows whose note is live again, purge expired rows) runs at startup,
- * whenever Notes opens, when the app returns to the foreground (visibilitychange and the
- * native appResumed event) and on a 15-minute timer while the shell is alive, so expiry
- * never depends on the user opening Notes. It is idempotent and reads authoritative
- * storage only. On Android a native WorkManager sweep is the backstop while Alpha is closed.
+ * Maintenance (drop rows whose note is live again, purge expired rows) is scheduled at
+ * startup, whenever Notes opens, when the app returns to the foreground (visibilitychange
+ * and the native appResumed event) and on a 15-minute timer while the shell is alive, but
+ * each pass returns at once in the default canonical source mode: it does work only after
+ * Previous/Older notes (the legacy source) has been opened in this session. It is
+ * idempotent and reads authoritative storage only. On Android the native WorkManager sweep
+ * (AlphaNoteAudioPlugin.sweepExpiredTrash) bounds expiry and recordings regardless; in a
+ * browser, legacy Trash rows can outlive three days until that source is opened.
  */
 export function installNotesTrashAdapter(Component:Shell,views:Record<string,Bag>){
  const notes=views.notes,render=notes.render,back=notes.back;
@@ -48,9 +51,10 @@ export function installNotesTrashAdapter(Component:Shell,views:Record<string,Bag
  /** Idempotent: a second run with the same clock finds nothing to do. */
  async function maintain(shell:Shell,background:boolean,now=Date.now()){
   if(shell.notesSourceMode==='canonical')return;
-  // Interrupted voice deletions are settled with every pass (startup, resume, timer, Notes open), so
-  // a permanent deletion cut short by process death never waits for the person to open Notes. Not
-  // awaited: it queues for the deletion-effects lock on its own and never delays Trash upkeep.
+  // Interrupted voice deletions are settled with every pass that gets past the canonical check above,
+  // so only once the legacy source is selected in this session; until then a deletion cut short by
+  // process death stays under review. Not awaited: it queues for the deletion-effects lock on its
+  // own and never delays Trash upkeep.
   try{const recover=voice(shell).recoverVoiceDeletions;if(typeof recover==='function')void Promise.resolve(recover()).catch(()=>{/* The row stays under review. */});}catch{/* Unavailable. */}
   const result=await maintainNotesTrash({policy:notesTrashPolicy,read:readNotesTrash,edit:editNotesTrash,liveNoteIds:savedNoteIds,withLock:work=>withNotesDeletionLock(work),purge:entry=>purge(shell,entry)},now);
   // Source links of notes that are neither saved nor restorable from Trash give up their grants.
