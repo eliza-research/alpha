@@ -786,12 +786,6 @@
   <sc-if value="{{calendar.reminderDeleteUnknown}}"><div role="status" style="padding:12px;color:var(--mut)">{{calendar.reminderDeleteUnknown}} reminder action(s) await confirmation.<button class="tap" aria-label="Check reminder action status" onClick="{{calendar.checkReminderDeletions}}" style="padding:8px;color:var(--acc)">Check action status</button></div></sc-if>
 
   <sc-if value="{{calendar.editDraftAvailable}}"><button aria-label="Resume unsaved calendar edits" onClick="{{calendar.resumeEditDraft}}" style="margin:0 16px 8px;padding:12px;min-height:44px;border-radius:12px;background:var(--s2);color:var(--fg)">Resume unsaved changes</button><button aria-label="Discard retained calendar edits" onClick="{{calendar.discardEditDraft}}" style="margin:0 16px 8px;padding:12px;min-height:44px;border-radius:12px;background:var(--s2);color:var(--fg)">Discard retained edits</button></sc-if>
-  <sc-if value="{{calendar.formDraftAvailable}}">
-    <div role="group" aria-label="Unsaved event draft" style="display:flex;gap:8px;flex-wrap:wrap;margin:0 16px 8px">
-      <button class="tap" aria-label="Resume event draft" disabled="{{calendar.formDraftBusy}}" onClick="{{calendar.resumeFormDraft}}" style="min-height:44px;padding:12px;border-radius:12px;background:var(--s2);color:var(--fg)">Resume draft</button>
-      <button class="tap" aria-label="Discard event draft" disabled="{{calendar.formDraftBusy}}" onClick="{{calendar.discardFormDraft}}" style="min-height:44px;padding:12px;border-radius:12px;background:var(--s2);color:var(--fg)">Discard draft</button>
-    </div>
-  </sc-if>
   <sc-if value="{{calendar.formDraftListError}}"><div role="status" style="padding:12px 24px">Form storage needs review. Current edits are retained.<button onClick="{{calendar.retryFormDraft}}" style="padding:12px">Retry form storage</button><button onClick="{{calendar.recoverFormDraft}}" style="padding:12px">Recover saved form</button></div></sc-if>
   <sc-if value="{{calendar.editDraftListError}}"><div role="status" style="padding:12px 24px">Form storage needs review. Current edits are retained.<button onClick="{{calendar.retryEditDraft}}" style="padding:12px">Retry edit storage</button><button onClick="{{calendar.recoverEditDraft}}" style="padding:12px">Recover saved edits</button></div></sc-if>
   <sc-if value="{{calendar.browserRecovery}}"><button aria-label="Recover browser calendar" onClick="{{calendar.openBrowserRecovery}}" style="margin:0 16px 8px;padding:12px;border-radius:12px;background:var(--s2);color:var(--fg)">Calendar recovery</button></sc-if>
@@ -1546,11 +1540,9 @@
   <div data-alpha-app-header="main" data-alpha-app-header-overlay style="position: absolute; left: 0; right: 0; top: 44px; height: 52px; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; z-index: 2">
     <sc-if value="{{showAppBack}}"><button class="app-header-back" aria-label="Back to apps" onClick="{{backToApps}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button></sc-if><span data-alpha-app-title class="app-header-context">Camera</span>
     <sc-if value="{{camera.flashAvailable}}"><button class="ib" aria-label="{{camera.flashLabel}}" onClick="{{camera.toggleFlash}}"><svg class="i" viewBox="0 0 24 24"><path d="{{camera.flashIcon}}"></path></svg></button></sc-if>
-    <sc-if value="{{camera.importAvailable}}"><button data-alpha-header-icon-action aria-label="Choose image" onClick="{{camera.importImage}}" style="min-height:44px;padding:0 16px;border-radius:22px;background:rgba(255,255,255,.16);color:var(--alpha-white);font:inherit"><span class="app-header-action-label">Choose image</span><svg class="i app-header-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.photo}}"></path></svg></button><button data-alpha-header-icon-action aria-label="Scan document" onClick="{{camera.scanDocument}}" style="min-height:44px;padding:0 12px;border-radius:22px;background:rgba(255,255,255,.16);color:var(--alpha-white);font:inherit"><span class="app-header-action-label">Scan document</span><svg class="i app-header-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.camScan}}"></path></svg></button></sc-if>
     <sc-if value="{{camera.rec}}">
       <span role="timer" aria-label="Recording" style="display:flex;align-items:center;gap:8px;height:30px;padding:0 12px;border-radius:15px;background:rgba(0,0,0,.75);color:var(--alpha-white);font-size:14px;font-weight:600;font-variant-numeric:tabular-nums"><span class="dot" aria-hidden="true" style="width:7px;height:7px;border-radius:4px;background:var(--alpha-record-dot)"></span>{{camera.recTime}}</span>
     </sc-if>
-    <button class="ib" data-alpha-header-icon-action aria-label="Ask Alpha about this" onClick="{{camera.ask}}" style="border-radius:22px;background:rgba(255,255,255,.16);color:var(--alpha-white)"><span class="alpha-compute-mark" aria-hidden="true" style="width:24px;height:24px"></span></button>
   </div>
 
   <sc-if value="{{camera.hasSaid}}">
@@ -1590,6 +1582,17 @@
       <sc-if value="{{camera.scanPages.reorder}}"><button aria-label="Reorder pages" onClick="{{camera.scanPages.reorder}}" style="min-height: 40px; padding: 0 14px; border-radius: 20px; background: rgba(0,0,0,.65); color: var(--alpha-white); font-size: 13.5px; font-weight: 600">Reorder pages</button></sc-if>
     </div>
   </sc-if>
+
+  <details class="alpha-camera-tools" data-alpha-camera="tools">
+    <summary aria-label="Camera tools"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.more}}"></path></svg></summary>
+    <div>
+      <sc-if value="{{camera.importAvailable}}">
+        <button onClick="{{camera.importImage}}">Choose image</button>
+        <button onClick="{{camera.scanDocument}}">Scan document</button>
+      </sc-if>
+      <button onClick="{{camera.ask}}">Ask Alpha about this</button>
+    </div>
+  </details>
 
   <div data-alpha-camera="modes" style="position: absolute; left: 0; right: 0; top: 656px; height: 44px; display: flex; align-items: center; justify-content: center; gap: 8px">
     <sc-for list="{{camera.modes}}" as="m">

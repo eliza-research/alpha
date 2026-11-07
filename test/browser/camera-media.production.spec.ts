@@ -1,3 +1,4 @@
+import {openCameraTools} from './camera-tools';
 import {test,expect} from '@playwright/test';
 // Runs in the `production` project: a flag-off build without mocks, fixtures or the
 // browser development profile. A synthetic canvas stream stands in for the camera
@@ -18,7 +19,7 @@ test('a camera capture is searchable and Ask Alpha reviews it locally without th
  await page.getByRole('button',{name:'Camera',exact:true}).click();
  await expect.poll(()=>page.locator('[aria-label^="Viewfinder."] video').evaluate((v:HTMLVideoElement)=>v.readyState)).toBeGreaterThanOrEqual(2);
  // Camera frame question: an unsaved frame, reviewed text only.
- await page.getByRole('button',{name:'Ask Alpha about this',exact:true}).click();
+ await openCameraTools(page);await page.getByRole('button',{name:'Ask Alpha about this',exact:true}).click();
  const review=page.getByRole('dialog',{name:'Ask about selected content'});
  await expect(review.getByRole('img',{name:'Image for question review'})).toBeVisible();
  await expect(review.getByRole('button',{name:'Extract text locally'})).toBeEnabled();
