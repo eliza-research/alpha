@@ -42067,7 +42067,8 @@
         "IdentitySession",
         "GoogleAccounts",
         "GoogleConsentAdmission",
-        "GoogleCalendarLinkPublication"
+        "GoogleCalendarLinkPublication",
+        "GoogleCalendarAccessChoice"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -42109,12 +42110,13 @@
         "GoogleAccounts",
         "GoogleConnect",
         "GoogleConsentAdmission",
-        "GoogleCalendarLinkPublication"
+        "GoogleCalendarLinkPublication",
+        "GoogleCalendarAccessChoice"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "fbd8ebfb3786594cbc8ec34c02dfe375eba9934109cb3bd7c6d5b51468b57a4e",
+      "sha256": "f89743ecf42447a7fac50692d2c5368e5de6cfd737c0a47d6102b1ae04b78e4f",
       "stateAnchors": []
     },
     {

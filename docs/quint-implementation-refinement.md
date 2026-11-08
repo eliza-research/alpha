@@ -572,3 +572,24 @@ provider acknowledgement after the result is durable. A notice effect
 with a lost reply can be offered again. Native-ready selection keeps the
 separate native inbox. Larger histories and same-scope queue schedules
 retain separate evidence.
+
+The renderer digest queue checks six schedules and 46 checkpoints.
+Distinct inbox instances share FIFO ownership of the exact browser
+storage scope. The Android renderer fallback has a different scope and
+can read concurrently. A queued cancellation skips dispatch when its
+predecessor settles. A refused predecessor still releases its slot.
+
+The historical Home layout campaign compares two mounted traces and
+20 checkpoints. It observes the four card sources, drawer and dock
+behavior, and a grid change after a real inset callback. Separate receipts
+record the mounted empty card shells and the historical date and setup
+controls. Synthetic Settings role decline and grant stay outside the
+original Home transition relation.
+
+The Google Calendar access choice campaign checks 17 schedules and 118
+checkpoints. A visible choice now belongs to the exact verified account
+read and Calendar intent that produced it. Replacing the Cloud binding or
+receiving a newer read retires the old choice and its held continuation.
+A fresh read-only owner needs its own consent, and the source admits
+only its own verified write rows. The related consent model now checks
+that a newer read withdraws the saved-off choice.

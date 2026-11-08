@@ -12,7 +12,7 @@
   "toolSha256": "403a33cab0dff7ace6219b29e7ffef373319677a7d8be6641466dd16a6750b5b",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "06e5bcb127199c602ce79e86bab3a17b10373f32628000f974a37d45cf214e72",
+  "ledgerSha256": "7bcad280202517e42ead8d8db34f7537e5e495fbf6780b770973a0fc96965b73",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -42399,7 +42399,8 @@
       "sha256": "320ef175dac4dfd94d648999969cf47b363b5205693f71164a63d7d7ef3533b0",
       "allocatedModels": [
         "InboxDelivery",
-        "RendererHostedInbox"
+        "RendererHostedInbox",
+        "RendererDigestQueue"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -42672,7 +42673,8 @@
         "IdentitySession",
         "GoogleAccounts",
         "GoogleConsentAdmission",
-        "GoogleCalendarLinkPublication"
+        "GoogleCalendarLinkPublication",
+        "GoogleCalendarAccessChoice"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -42690,12 +42692,13 @@
     },
     {
       "path": "apps/app/src/runtime/google-connection-ui.tsx",
-      "sha256": "fbd8ebfb3786594cbc8ec34c02dfe375eba9934109cb3bd7c6d5b51468b57a4e",
+      "sha256": "f89743ecf42447a7fac50692d2c5368e5de6cfd737c0a47d6102b1ae04b78e4f",
       "allocatedModels": [
         "GoogleAccounts",
         "GoogleConnect",
         "GoogleConsentAdmission",
-        "GoogleCalendarLinkPublication"
+        "GoogleCalendarLinkPublication",
+        "GoogleCalendarAccessChoice"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -42703,43 +42706,43 @@
       "owners": [
         {
           "owner": "<module>",
-          "line": 21,
+          "line": 23,
           "bindings": 4,
           "writes": 6
         },
         {
           "owner": "GoogleConnectionsPanel",
-          "line": 49,
+          "line": 51,
           "bindings": 26,
           "writes": 26
         },
         {
-          "owner": "GoogleConnectionsPanel.ArrowFunction@50",
-          "line": 50,
+          "owner": "GoogleConnectionsPanel.ArrowFunction@52",
+          "line": 52,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "GoogleConnectionsPanel.ArrowFunction@70.ArrowFunction@70",
-          "line": 71,
+          "owner": "GoogleConnectionsPanel.ArrowFunction@72.ArrowFunction@72",
+          "line": 73,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "GoogleConnectionsPanel.load",
-          "line": 93,
+          "line": 95,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "GoogleConnectionsPanel.connect",
-          "line": 160,
+          "line": 162,
           "bindings": 3,
           "writes": 5
         },
         {
           "owner": "GoogleConnectionsPanel.disconnect",
-          "line": 193,
+          "line": 195,
           "bindings": 2,
           "writes": 1
         }
@@ -218464,6 +218467,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "658d925daf73dcdf1bf4dc86242541b172a048ab472cfeb348c9437014e55d8a"
+    "sha256": "1d3e8700e6a0e18b60119e57c3ba6f7943ae00c8c44e918474e4657e722769a6"
   }
 }

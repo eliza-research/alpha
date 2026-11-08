@@ -1,5 +1,5 @@
 import {expect,type Page} from '@playwright/test';
-import {preloadPageModules} from './page-modules';
+import {preloadPageModules} from './page-modules.ts';
 
 export type HomeCalendarEvent={title:string;startAt:string;endAt:string;isAllDay?:boolean};
 /** Read-only CalendarService fixture. Home never substitutes browser Calendar records. */

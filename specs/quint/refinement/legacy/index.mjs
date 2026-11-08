@@ -1,5 +1,6 @@
 import {fileURLToPath} from 'node:url';
 import {checkChatInputRefinement} from '../../legacy/chat-input/check-chat-input-refinement.mjs';
+import {checkHomeLayoutRefinement} from '../../legacy/home-layout/check-home-layout-refinement.mjs';
 import {checkSettingsNavRefinement} from '../../legacy/settings-nav/check-settings-nav-refinement.mjs';
 import {checkActionSettlementRefinement} from '../../legacy/core/check-action-settlement-refinement.mjs';
 import {checkApprovalServiceRefinement} from '../../legacy/core/check-approval-service-refinement.mjs';
@@ -48,6 +49,16 @@ const settingsNavDifferences = {
   SettingsNavProposedInfoRows: ['The mounted Settings information includes an AI connection entry',
     'The original proposed profile restricts the information rows to its historical set.'],
 };
+const homeLayoutDifferences = {
+  HomeLayoutCurrentEmptyBrief: ['The current Home brief keeps an empty shell',
+    'The original current profile only displays the brief when it has content.'],
+  HomeLayoutProposedEmptyShells: ['Home keeps empty Calendar, Workflows, Inbox and Brief shells',
+    'The original proposed profile displays those cards only when their content is available.'],
+  HomeLayoutProposedDateLine: ['The mounted Home omits the historical date line',
+    'The proposed design requires the date line in its Home header.'],
+  HomeLayoutProposedSetupLink: ['The mounted Home omits the historical setup row',
+    'The proposed design exposes its setup row when Home role needs attention. The source checks the Settings offer separately.'],
+};
 
 export async function runLegacyRefinement() {
   const receipts = [], obligations = [];
@@ -65,6 +76,14 @@ export async function runLegacyRefinement() {
       const obligations = mismatches.map(mismatch => {
         const [obligation, reason] = settingsNavDifferences[mismatch.id];
         return {model: 'SettingsNav', obligation, reason, evidence: mismatch.receiptPath};
+      });
+      return {receipts, obligations};
+    }],
+    ['HomeLayout', async () => {
+      const {receipts, mismatches} = await checkHomeLayoutRefinement([driver]);
+      const obligations = mismatches.map(mismatch => {
+        const [obligation, reason] = homeLayoutDifferences[mismatch.id];
+        return {model: 'HomeLayout', obligation, reason, evidence: mismatch.receiptPath};
       });
       return {receipts, obligations};
     }],
