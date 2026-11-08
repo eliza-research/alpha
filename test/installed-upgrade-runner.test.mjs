@@ -23,14 +23,17 @@ function exercise(kind,mode='pass',bridge=false){
   const adb=path.join(root,'platform-tools/adb'),aapt=path.join(root,'build-tools/36.0.0/aapt'),state=path.join(root,'state.json'),log=path.join(root,'commands.jsonl');
   fs.mkdirSync(path.dirname(adb),{recursive:true});fs.mkdirSync(path.dirname(aapt),{recursive:true});
   fs.writeFileSync(state,JSON.stringify({user:'0',exists:false,files:mode==='existing'?{[pkg]:'unowned'}:{}}));fs.writeFileSync(log,'');
-  fs.writeFileSync(aapt,`#!/usr/bin/env node
-const args=process.argv.slice(2),test=/androidTest|test.apk/.test(args[2]);
-const extra=args[2].includes('androidTest')?${JSON.stringify(mode)}!=='candidate-missing-runner':['baseline-process','baseline-undeclared'].includes(${JSON.stringify(mode)});
-if(args[1]==='badging')console.log("package: name='${pkg}"+(test?'.test':'')+"'");
-else {
- console.log('E: manifest\\n  E: instrumentation\\n    A: android:name="androidx.test.runner.AndroidJUnitRunner"\\n    A: android:targetPackage="${pkg}"');
- if(extra)console.log('  E: instrumentation\\n    A: android:name="${pkg}.WorkflowNoticeProcessRunner"\\n    A: android:targetPackage="${pkg}"');
-}
+  // Canned aapt output: a shell script, so each call does not start Node.
+  const extraTest=mode!=='candidate-missing-runner',extraBaseline=['baseline-process','baseline-undeclared'].includes(mode);
+  fs.writeFileSync(aapt,`#!/bin/sh
+case "$3" in *androidTest*|*test?apk*) suffix=.test;; *) suffix=;; esac
+case "$3" in *androidTest*) extra=${extraTest};; *) extra=${extraBaseline};; esac
+if [ "$2" = badging ]; then
+ echo "package: name='${pkg}$suffix'"
+else
+ printf '%s\\n' 'E: manifest' '  E: instrumentation' '    A: android:name="androidx.test.runner.AndroidJUnitRunner"' '    A: android:targetPackage="${pkg}"'
+ if [ "$extra" = true ]; then printf '%s\\n' '  E: instrumentation' '    A: android:name="${pkg}.WorkflowNoticeProcessRunner"' '    A: android:targetPackage="${pkg}"'; fi
+fi
 `,{mode:0o700});
   fs.writeFileSync(adb,`#!/usr/bin/env node
 const fs=require('node:fs'),a=process.argv.slice(4),stateFile=${JSON.stringify(state)},s=JSON.parse(fs.readFileSync(stateFile)),pkg=${JSON.stringify(pkg)},mode=${JSON.stringify(mode)},host=${JSON.stringify(host)};
@@ -74,8 +77,10 @@ else {console.error('Unexpected command '+JSON.stringify(a));process.exit(1);}
 const legacyClass='ai.elizaresearch.alphaphone.WorkflowLegacyReminderUpgradeInstrumentedTest',legacySelector=legacyClass+'#upgradedLegacyOneOffReminderIsIncludedInNativeDigest';
 const instruments=r=>r.commands.filter(a=>a.includes('instrument'));
 const installs=r=>r.commands.filter(a=>a[0]==='install').map(a=>a.at(-1));
+// The plain reminder pass is identical for two tests below; run it once.
+let reminderPass;const passRun=kind=>kind==='reminder'?reminderPass??=exercise('reminder'):exercise(kind,'pass',true);
 for(const kind of ['calendar','reminder'])test(`${kind} upgrade delegates both variants and restores its owned fixture`,()=>{
- const r=exercise(kind,'pass',kind==='calendar');assert.equal(r.status,0,r.stderr);assert.equal(r.reports.length,2);assert.ok(r.reports.every(p=>p.passed&&p.ownerRestored&&!p.cleanupDeferred));assert.deepEqual(r.state.files,{});assert.equal(r.state.exists,false);assert.equal(r.state.user,'0');
+ const r=passRun(kind);assert.equal(r.status,0,r.stderr);assert.equal(r.reports.length,2);assert.ok(r.reports.every(p=>p.passed&&p.ownerRestored&&!p.cleanupDeferred));assert.deepEqual(r.state.files,{});assert.equal(r.state.exists,false);assert.equal(r.state.user,'0');
  // Baseline seed, candidate verify and one companion class per distribution.
  assert.equal(instruments(r).length,6);
  if(kind==='reminder')assert.ok(r.reports.every(p=>p.intentPreservation.passed&&p.intentPreservation.routes===3));else assert.ok(r.reports.every(p=>p.bridge.totalTests===1));
@@ -106,7 +111,7 @@ for(const mode of ['baseline-undeclared','candidate-missing-runner'])test(`remin
 });
 
 test('reminder upgrade runs the legacy workflow digest class on both distributions against the upgraded pair',()=>{
- const r=exercise('reminder');assert.equal(r.status,0,r.stderr);
+ const r=passRun('reminder');assert.equal(r.status,0,r.stderr);
  const calls=instruments(r),selectors=calls.map(a=>a[a.indexOf('class')+1]);
  assert.equal(selectors.filter(selector=>selector===legacySelector).length,2);
  for(const variant of [0,1]){

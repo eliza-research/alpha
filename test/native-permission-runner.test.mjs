@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {exercise} from './fixtures/isolated-native-campaign.mjs';
+import {exercise,permissionCampaign} from './fixtures/isolated-native-campaign.mjs';
 const run=mode=>exercise(mode,'camera');
 test('camera campaign owns its APKs and user and scopes permission changes to that user',()=>{
  const r=run('pass');assert.equal(r.code,0,r.stderr);assert.equal(r.record.passed,true);assert.equal(r.record.userLifecycle.removed,true);assert.equal(r.state.created,false);assert.equal(r.state.user,'0');
@@ -68,18 +68,11 @@ for(const [scenario,method,gate,permissions]of [
  });
 }
 
-test('every permission-campaign kind routes to the native-permissions runner, not the calendar fallback', async () => {
- const fs = await import('node:fs');
- const source = fs.readFileSync(new URL('./fixtures/isolated-native-campaign.mjs', import.meta.url), 'utf8');
- const scriptsBlock = source.match(/const scripts=\{([\s\S]*?)\};/)?.[1];
- assert.ok(scriptsBlock, 'isolated-native-campaign declares its scripts map');
- const permissionKinds = [...(source.match(/const permissionCampaign=\[([^\]]*)\]/)?.[1].matchAll(/'([^']+)'/g) ?? [])].map(match => match[1]);
- assert.ok(permissionKinds.includes('camera-capture'), 'camera-capture stays in the permission campaign');
- for (const kind of permissionKinds) {
-  const entry = new RegExp(`(?:^|,)\\s*(?:'${kind}'|${kind}):path\\.resolve\\('([^']+)'\\)`).exec(scriptsBlock);
-  assert.ok(entry, `${kind} must be listed in the scripts map`);
-  assert.equal(entry[1], 'scripts/test-native-permissions.mjs', `${kind} must resolve to the native-permissions runner`);
- }
+// Every permission kind must reach the native-permissions runner: a kind no case above runs gets its own pass run here.
+const routed=new Set(['camera','settings','channels','voice','voice-limit','notice','notice-denied','camera-capture','voice-revoke']);
+test('every routed kind belongs to the permission campaign',()=>{for(const kind of routed)assert.ok(permissionCampaign.includes(kind),kind);});
+for(const kind of permissionCampaign.filter(kind=>!routed.has(kind)))test(`${kind} routes to the native-permissions runner`,()=>{
+ const r=exercise('pass',kind);assert.equal(r.code,0,r.stderr);assert.equal(r.record.scenario,kind);assert.equal(r.record.userLifecycle.removed,true);
 });
 
 test('voice-revoke grants, revokes while the recording phase runs, verifies in a new process and grants again',()=>{

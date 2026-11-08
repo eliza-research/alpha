@@ -7,7 +7,7 @@ import {execFileSync,spawnSync} from 'node:child_process';
 import child from 'node:child_process';
 import {syncBuiltinESMExports} from 'node:module';
 import {createHash,randomBytes} from 'node:crypto';
-import {copyFilesClone} from '../scripts/copy-file-clone.mjs';
+import {copyFilesClone,planCloneBatches,cloneArgumentBytes,CLONE_ARGUMENT_BYTES} from '../scripts/copy-file-clone.mjs';
 const root=path.resolve(import.meta.dirname,'..');
 const hash=file=>createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 function fixture(t){
@@ -65,7 +65,7 @@ for filename in sys.argv[1:]:
 print(json.dumps(ids))`,path.join(f.cache,'packages/example/data.bin'),path.join(f.destination,'packages/example/data.bin')],{encoding:'utf8'}));
   assert.ok(ids[0]>0);assert.equal(ids[0],ids[1]);
   assert.equal(fs.statSync(path.join(f.cache,'packages/example/data.bin')).dev,fs.statSync(path.join(f.destination,'packages/example/data.bin')).dev);
-  console.log(JSON.stringify({sameVolumeApfsCloneId:ids[0],sharedDataStreamBytes:1024*1024,independentFileIdentity:true}));
+  t.diagnostic(JSON.stringify({sameVolumeApfsCloneId:ids[0],sharedDataStreamBytes:1024*1024,independentFileIdentity:true}));
  }
  fs.appendFileSync(path.join(f.destination,'packages/example/data.bin'),'destination-only');assert.deepEqual(f.snapshot(),before);
  const refused=f.run();assert.notEqual(refused.status,0);assert.match(refused.stderr,/Unexpected runtime source change/);
@@ -115,7 +115,7 @@ test('copy-on-write hints retain correct independent files when the filesystem f
  const f=fixture(t),before=f.snapshot(),preload=path.join(f.directory,'fallback.mjs'),metrics=path.join(f.directory,'copies.json');
  f.write(preload,`import fs from 'node:fs';import child from 'node:child_process';import path from 'node:path';import {syncBuiltinESMExports} from 'node:module';const copy=fs.copyFileSync,run=child.execFileSync,copies=[];let nativeAttempts=0;child.execFileSync=(command,args,options)=>{if(command==='/bin/cp'){nativeAttempts++;throw Object.assign(Error('clone unsupported'),{code:'ENOTSUP'});}return run(command,args,options);};fs.copyFileSync=(source,target,flags)=>{const result=copy(source,target,flags&~fs.constants.COPYFILE_FICLONE),stat=fs.statSync(target);copies.push({target,bytes:fs.statSync(source).size,exclusive:!!(flags&fs.constants.COPYFILE_EXCL),inode:stat.ino,mtime:stat.mtimeMs});return result;};syncBuiltinESMExports();process.on('exit',()=>fs.writeFileSync(${JSON.stringify(metrics)},JSON.stringify({copies,nativeAttempts})));`);
  const result=f.run({preload});assert.equal(result.status,0,result.stderr);const measured=JSON.parse(fs.readFileSync(metrics)),copies=measured.copies;assert.ok(copies.length>0);assert.ok(copies.every(copy=>copy.exclusive&&fs.statSync(copy.target).ino===copy.inode&&fs.statSync(copy.target).mtimeMs===copy.mtime));if(process.platform==='darwin')assert.ok(measured.nativeAttempts<copies.length);assert.deepEqual(f.snapshot(),before);assert.equal(hash(path.join(f.destination,'packages/example/data.bin')),before.data);
- console.log(JSON.stringify({resourceGraph:{files:copies.length,trackedRegularBytes:copies.reduce((sum,copy)=>sum+copy.bytes,0),oldCheckoutMaterializedBytes:copies.reduce((sum,copy)=>sum+copy.bytes,0),nativeCloneProcesses:measured.nativeAttempts,normalCopyFallbackVerified:true}}));
+ t.diagnostic(JSON.stringify({resourceGraph:{files:copies.length,trackedRegularBytes:copies.reduce((sum,copy)=>sum+copy.bytes,0),oldCheckoutMaterializedBytes:copies.reduce((sum,copy)=>sum+copy.bytes,0),nativeCloneProcesses:measured.nativeAttempts,normalCopyFallbackVerified:true}}));
 });
 
 
@@ -140,7 +140,7 @@ test('directory batches reduce real clone processes and preserve renamed files a
   start=performance.now();copyFilesClone(many,{exclusive:true});const afterMs=performance.now()-start,afterProcesses=calls.length-beforeProcesses;
   for(let index=0;index<one.length;index++)assert.equal(hash(one[index].destination),hash(many[index].destination));
   if(process.platform==='darwin'){assert.equal(beforeProcesses,files.length);assert.equal(afterProcesses,3);}
-  console.log(JSON.stringify({copyPhase:{files:files.length,beforeProcesses,afterProcesses,beforeMs,afterMs}}));
+  t.diagnostic(JSON.stringify({copyPhase:{files:files.length,beforeProcesses,afterProcesses,beforeMs,afterMs}}));
   const long=path.join(f.directory,'long-sources'),target=path.join(f.directory,'long-target');fs.mkdirSync(long);fs.mkdirSync(target);
   const largeBatch=Array.from({length:240},(_,index)=>{const name=`part-${index}-`+'x'.repeat(210)+'.txt',source=path.join(long,name),destination=path.join(target,name);fs.writeFileSync(source,'small');return {source,destination};});
   const previous=calls.length;copyFilesClone(largeBatch,{exclusive:true});
@@ -148,6 +148,27 @@ test('directory batches reduce real clone processes and preserve renamed files a
   if(process.platform==='darwin'){assert.ok(calls.length-previous>=2);for(const args of calls.slice(previous))assert.ok(args.reduce((sum,arg)=>sum+Buffer.byteLength(arg)+16,0)<=64*1024);}
  }finally{child.execFileSync=original;syncBuiltinESMExports();}
  assert.deepEqual(f.snapshot(),before);
+});
+
+// The planner is pure, so its Darwin batching runs on every host, not only on macOS.
+test('clone batches keep renamed files alone and every Darwin argv under the bound',()=>{
+ const target='/private/var/folders/alpha-fixture/long-target',sources='/private/var/folders/alpha-fixture/long-sources';
+ const largeBatch=Array.from({length:240},(_,index)=>{const name=`part-${index}-`+'x'.repeat(210)+'.txt';return {source:path.join(sources,name),destination:path.join(target,name)};});
+ const renamed={source:'/cache/standalone-debug.apk',destination:'/artifacts/launcher-debug.apk'};
+ assert.deepEqual(planCloneBatches([...largeBatch,renamed],'linux'),[{files:[...largeBatch,renamed]}]);
+ for(const exclusive of [false,true]){
+  const batches=planCloneBatches([renamed,...largeBatch],'darwin',{exclusive});
+  assert.deepEqual(batches[0],{files:[renamed],target:renamed.destination});
+  const directoryBatches=batches.slice(1);
+  assert.equal(directoryBatches.length,2);assert.ok(directoryBatches.every(batch=>batch.directory&&batch.target===target));
+  assert.deepEqual(directoryBatches.flatMap(batch=>batch.files),largeBatch);
+  for(const batch of directoryBatches)assert.ok(cloneArgumentBytes(['/bin/cp','-c',...(exclusive?['-n']:[]),...batch.files.map(file=>file.source),batch.target])<=CLONE_ARGUMENT_BYTES);
+  // Each full batch stops only because the next file would cross the bound.
+  const first=directoryBatches[0],next=directoryBatches[1].files[0];
+  assert.ok(cloneArgumentBytes(['/bin/cp','-c',...(exclusive?['-n']:[]),...first.files.map(file=>file.source),next.source,target])>CLONE_ARGUMENT_BYTES);
+ }
+ const split=planCloneBatches([{source:'/a/one.txt',destination:'/x/one.txt'},{source:'/a/two.txt',destination:'/y/two.txt'},{source:'/b/three.txt',destination:'/x/three.txt'}],'darwin');
+ assert.deepEqual(split.map(batch=>[batch.target,batch.files.length]),[['/x',2],['/y',1]]);
 });
 
 test('full source preparation uses the calling Bun frozen install and preserves the vendor on installer failure',t=>{
