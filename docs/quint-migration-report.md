@@ -253,3 +253,64 @@ safety evidence, and the seven migrated designs retain exhaustive finite checks.
 See `specs/quint/verification.md` for the completed check results, command bounds,
 Android build blockers and the distinction between model coverage and full
 implementation refinement.
+
+## Reconciliation with current main on November 8
+
+PR 825 was retargeted on GitHub to `main` while implementation refinement was
+running. The checked source revision `796880e9ec` remains preserved on the PR
+branch. Current main is `f2a0eb035da9c8ede24efe735d981a27dd403283` and consumes
+upstream `475a8d59dc1811c2cde093613519906a5a3f6457`. The common-ancestor diff
+contains 2,162 changed files, including moved shared controllers and generated
+Android host ownership. A merge-tree check reports conflicts across product
+sources, tests, build policy and the upstream pin.
+
+The reconciliation worktree starts from current main's product sources. The
+Quint artifacts and their historical evidence are carried forward. Each source
+adapter must be reviewed against the new implementation before its result can
+become current evidence. Historical receipts keep their recorded hashes.
+
+### Additional authored TLA+ discovered on main
+
+| Main source | Required conversion |
+| --- | --- |
+| `design/view-refresh-2026-11/tla/camera-session/Spec.tla` | Preserve camera focus, capture/leave, lens, chat grace and queued-agent design comparisons and each configuration. |
+| `design/view-refresh-2026-11/tla/files-browser/Spec.tla` | Preserve folder/category/identity behavior, conflict and restore comparisons, finite budgets and fairness. |
+| `design/view-refresh-2026-11/tla/notes-view/Spec.tla` | Preserve recording/ASR, segment, visibility, draft capacity, folder restoration and rename comparisons with fairness. |
+| `design/view-refresh-2026-11/tla/photos-library/Spec.tla` | Preserve patch, favorite, capacity and window comparisons, store revisions and queued-agent fairness. |
+
+The four specifications and their configurations are new migration inputs. A
+tracked-file search at the new upstream commit finds no authored `.tla` or
+`.qnt` files there. The existing seven converted legacy designs remain historical
+Quint models.
+
+### Revised parallel work packages
+
+1. The application owner converts the four additional TLA+ designs, then ports
+   the UI state models and source adapters. The current shell and Apps drawer use
+   the shared mobile-shell launcher. Notes has pinned and ordinary rows, Files
+   uses `files-browser-adapter.ts`, and mutable template lists still require
+   source-backed identity review. Old UI patches are applied only where the
+   corresponding current implementation exhibits the same defect.
+2. The native owner maps reset, sign-in and deletion to the shared classes at
+   the new pin. Activity and connection remain product wrappers. Shared behavior
+   repairs use authenticated patches or reviewed upstream commits. Credential
+   refinement includes the new shutdown-lease and provider-request lifecycle.
+3. The services owner ports account, Calendar, Inbox, workflow, Maps and cache
+   adapters and the new provider-draft/forward campaign. Removed local code is
+   mapped to its actual shared successor, with current source hashes and ordinary
+   entry points.
+4. The coordinator preserves current main's product identity and build policy,
+   integrates Quint tooling, inventories all current source and consumed shared
+   state, composes the family models, and runs repository and Android gates.
+   Current runtime-state reporting follows parsed Quint declarations, nested
+   record aliases and imported instances so omitted fields stay visible.
+
+### Exit conditions
+
+All authored TLA+ is converted with its comparison configurations and temporal
+properties retained. Every registered runtime model has current source-bound
+receipts, with unobserved fields, unexecuted actions and external contracts
+listed. The merged product passes repository verification and production bundle
+admission. Android distribution, native installation, AOSP and real-provider
+results retain their own qualification requirements. The PR becomes mergeable
+against current main after the reconciled implementation is validated.

@@ -99,6 +99,24 @@ component projections.
   operation from the cleared review. Only secret-presence Booleans enter these
   receipts. Save, remove, transfer and origin-bound fill remain separate work.
 
+## Checked coordinator source revision
+
+The complete repository command passed at source revision `796880e9ec`.
+All 183 Quint phases and 510 scenarios passed, followed by TypeScript,
+1,993 Node tests with 1,987 passes and six skips, and the flag-off production
+build and bundle audit. The application, services and native family tests include
+all integrated coordinator adapters at that revision. A preceding run recorded
+one `SIGTRAP` from a Quint subprocess without diagnostics. Its direct retry and
+the complete repeated command passed. No core dump or OOM journal entry was
+available to establish the signal's cause.
+
+GitHub subsequently targets this PR at current `main`. That branch has a newer
+upstream pin and shared-controller ownership, so the preceding results remain
+bound to the preserved source revision. A separate reconciliation branch keeps
+current main's product source and ports the models, tests and demonstrated fixes.
+The migration report records the four additional authored TLA+ designs and the
+revised parallel work packages. Current-main refinement is still in progress.
+
 ## Reproduction
 
 Use the pinned Node and npm dependencies, JDK 21 and the pinned host JSON jar.
