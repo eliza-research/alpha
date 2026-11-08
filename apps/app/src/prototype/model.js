@@ -1943,7 +1943,7 @@ registerView("camera", {
     var lastLook = last ? phLook(last, "thumb") : null;
     var poster = camPoster(now);
 
-    function pt(e) { var sc = e.currentTarget.closest("[data-screen]"); var r = sc.getBoundingClientRect(); var s = r.width / (sc.offsetWidth || 412) || 1; return { x: (e.clientX - r.left) / s, y: (e.clientY - r.top) / s }; }
+    function pt(e) { var sc = e.currentTarget.closest("[data-screen]"); var r = sc.getBoundingClientRect(); var w = sc.offsetWidth || 412, s = r.width / w || 1; return { x: (e.clientX - r.left) / s, y: (e.clientY - r.top) / s, w: w }; }
     return {
       bg: bg, vfBg: isScan ? "linear-gradient(135deg, var(--alpha-scan-viewfinder-1), var(--alpha-scan-viewfinder-2))" : "var(--alpha-gray-11)",
       drift: "transform: translate(" + dr[0] + "px, calc(-50% + " + dr[1] + "px))",
@@ -1991,7 +1991,7 @@ registerView("camera", {
       vfUp: function (e) {
         clearTimeout(CAM.lp); var g = CAM.g; CAM.g = null; if (!g || CAM.long) return;
         var p = pt(e); var dx = p.x - g.x, dy = p.y - g.y;
-        if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) && g.x > 30 && g.x < 382) {
+        if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) && g.x > 30 && g.x < g.w - 30) {
           var ni = modeIdx + (dx < 0 ? 1 : -1); if (ni >= 0 && ni < CAM_MODES.length) setMode(CAM_MODES[ni][0]); return;
         }
         if (Math.abs(dx) < 10 && Math.abs(dy) < 10) {
