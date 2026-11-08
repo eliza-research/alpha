@@ -2196,5 +2196,38 @@
       "Exact mounted Settings review, live port and pending confirmation, with separate marker capture, expected receipt, CAS commit and UI settlement.",
       "Two owners, four port lifetimes and attempts, two real inventory equality classes. Chromium IndexedDB and closed record transport. Installed provider and arbitrary device loss are separate."
     ]
+  },
+  {
+    "path": "specs/quint/application/CanonicalCalendarEditorClose.qnt",
+    "module": "CanonicalCalendarEditorClose",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "pickerBackThenFormBackKeepsDraftTest",
+      "closeInvalidFormKeepsTheLastValidCopyTest",
+      "declinedDiscardThenConsumedDraftUnblocksSettingsTest",
+      "editBackKeepsItsEventDetailTest",
+      "exactRetainedEditBlocksSameOrDifferentEventTest",
+      "replacedOwnerCannotResumeOldVisibleDraftTest"
+    ],
+    "invariants": [
+      "ExactDraftOwner",
+      "NoClosedValidationLatch",
+      "PickerBelongsToEditor"
+    ],
+    "sources": [
+      "apps/app/src/prototype/canonical-calendar-drafts.ts",
+      "apps/app/src/prototype/agent-calendar-adapter.ts",
+      "apps/app/src/prototype/model.js",
+      "apps/app/src/prototype/template.html",
+      "apps/app/src/prototype/subview-accessibility.ts",
+      "apps/app/src/runtime/canonical-calendar-draft.ts",
+      "apps/app/src/runtime/assistant-draft-store.ts"
+    ],
+    "abstractions": [
+      "Mounted Calendar picker and editor Back, exact detail and draft identity, deliberate discard and owner retirement, and Settings scope after discard.",
+      "Two owners, two synthetic service event targets and four form identities. Actual IndexedDB over a closed Calendar record transport. Provider saves and other draft destinations are separate."
+    ]
   }
 ]

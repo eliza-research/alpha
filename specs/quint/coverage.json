@@ -17641,7 +17641,8 @@
         "CalendarPresentation",
         "AgentCalendarRefresh",
         "AgentCalendarMutation",
-        "CalendarPreservationConfirmation"
+        "CalendarPreservationConfirmation",
+        "CanonicalCalendarEditorClose"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -20648,7 +20649,8 @@
       "path": "apps/app/src/prototype/canonical-calendar-drafts.ts",
       "models": [
         "CalendarPresentation",
-        "CanonicalCalendarDraft"
+        "CanonicalCalendarDraft",
+        "CanonicalCalendarEditorClose"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -25296,7 +25298,8 @@
         "SettingsNav",
         "ShellNavigation",
         "AccessibleToastLifetime",
-        "CalendarPreservationConfirmation"
+        "CalendarPreservationConfirmation",
+        "CanonicalCalendarEditorClose"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -35178,7 +35181,8 @@
       "sha256": "f1ce374b0455bba558449b5e48ff8911d82cadbea55422a39a0c02c41421db46",
       "models": [
         "ShellNavigation",
-        "ListFocus"
+        "ListFocus",
+        "CanonicalCalendarEditorClose"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -35598,7 +35602,8 @@
         "ListFocus",
         "ModalToastForwarding",
         "DockClearanceOwnership",
-        "CalendarPreservationConfirmation"
+        "CalendarPreservationConfirmation",
+        "CanonicalCalendarEditorClose"
       ],
       "treatment": "stateless-presentation-contract",
       "scope": "application",
@@ -37901,7 +37906,8 @@
       "sha256": "124b4c6087346cea3c9b4c63f8e4273770716f761ab486b65a0e7aa91d0f3d04",
       "models": [
         "AssistantConversation",
-        "DraftDispatch"
+        "DraftDispatch",
+        "CanonicalCalendarEditorClose"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -38915,7 +38921,8 @@
       "models": [
         "CalendarPresentation",
         "CalendarSync",
-        "CanonicalCalendarDraft"
+        "CanonicalCalendarDraft",
+        "CanonicalCalendarEditorClose"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
