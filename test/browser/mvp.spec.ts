@@ -96,7 +96,7 @@ test('Scheduled digests traps focus, closes on native Back, and restores the tri
   await expect(dialog).toBeVisible();await expect(dialog).toBeFocused();
   await expect(dialog.getByRole('button',{name:'Result notifications',exact:true})).toBeVisible();
   await expect(dialog).not.toContainText('Result link is waiting for a verified connection.');
-  await expect(dialog).toContainText('Choose where your agent runs to set up scheduled digests.');
+  await expect(dialog).not.toContainText('Choose where your agent runs');
   await expect(page.locator('.os')).toHaveAttribute('inert','');
   await page.keyboard.press('Shift+Tab');
   expect(await dialog.evaluate(el=>el.contains(document.activeElement))).toBe(true);

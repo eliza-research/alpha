@@ -159,10 +159,10 @@ test('reopening after a missed time shows one honest missed record and one notic
  await page.clock.install({time:new Date('2026-10-03T12:00:10Z')});
  await page.goto('/?mode=dev');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent connection',exact:true}).click();await page.getByRole('button',{name:'Connect development profile'}).click();
  await page.evaluate(async()=>window.dispatchEvent(new Event('alpha:hosted-digests')));const panel=page.getByRole('dialog',{name:'Scheduled digests',exact:true});
- await expect(panel).toContainText('Schedules run while this app is open. If scheduled times pass while it is not running, one is recorded below as missed and none is run later.');
+ await expect(panel).toContainText('Schedules run while this app is open. Missed times don’t run later.');
  await panel.getByText('Share a snapshot',{exact:true}).click();await panel.getByLabel('Label',{exact:true}).fill('Daily source');await panel.getByLabel('Snapshot text',{exact:true}).fill('Reviewed snapshot content');await panel.getByRole('button',{name:'Review snapshot',exact:true}).click();await panel.getByRole('button',{name:'Confirm',exact:true}).click();
  await panel.getByRole('combobox',{name:'Reviewed source',exact:true}).selectOption({index:1});await panel.getByLabel('Time zone',{exact:true}).fill('UTC');await panel.getByLabel('Morning',{exact:true}).fill('12:05');
- await expect(panel).toContainText('Only these digests are scheduled; workflows you build run when you start them.');
+ await expect(panel).toContainText('Missed times don’t run later. Only these digests run on a schedule.');
  await panel.getByRole('button',{name:'Review morning schedule',exact:true}).click();await panel.getByRole('button',{name:'Confirm',exact:true}).click();await expect(panel.getByRole('region',{name:'Digest schedules',exact:true})).toContainText('Morning at 12:05 (UTC)');
  // The app is closed across two scheduled days, then reopened 40 minutes after the latest one.
  await page.goto('about:blank');await page.clock.setFixedTime(new Date('2026-10-05T12:45:00Z'));await page.goto('/?mode=dev');await page.evaluate(async()=>window.dispatchEvent(new Event('alpha:hosted-digests')));

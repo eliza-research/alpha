@@ -77,7 +77,7 @@ async function openDigests(page:Page){
 }
 async function createSchedules(page:Page){
  const panel=await openDigests(page);
- await expect(panel.getByText('Schedules run while this app is open. If scheduled times pass while it is not running, one is recorded below as missed and none is run later.',{exact:true})).toBeVisible();
+ await expect(panel.getByText('Schedules run while this app is open. Missed times don’t run later.',{exact:true})).toBeVisible();
  await panel.getByText('Share a snapshot',{exact:true}).click();
  await panel.getByLabel('Label',{exact:true}).fill('Journey source');
  await panel.getByLabel('Snapshot text',{exact:true}).fill('Reviewed snapshot content');
@@ -89,8 +89,8 @@ async function createSchedules(page:Page){
  for(const [template,label,time] of [['morning','Morning','07:00'],['evening','Evening','19:00']] as const){
   await panel.getByLabel(label,{exact:true}).fill(time);
   await panel.getByRole('button',{name:`Review ${template} schedule`,exact:true}).click();
-  await expect(panel.getByText(new RegExp(`^Enable ${template} digest at ${time} in UTC, every day\\. Source: Journey source\\.`))).toBeVisible();
-  await expect(panel.getByText(/No email delivery or device action is authorized\.$/)).toBeVisible();
+  await expect(panel.getByText(new RegExp(`^Turn on the ${template} digest\\?\\s+Runs daily at ${time} \\(UTC\\) and reads the Journey source snapshot\\.`))).toBeVisible();
+  await expect(panel.getByText(/It can’t send email or act on your phone\. Digests use the configured development reply\.$/)).toBeVisible();
   await panel.getByRole('button',{name:'Confirm',exact:true}).click();
   await expect(panel.getByRole('region',{name:'Digest schedules'}).getByRole('listitem').filter({hasText:`${label} at ${time} (UTC) · Journey source · On`})).toHaveCount(1);
  }

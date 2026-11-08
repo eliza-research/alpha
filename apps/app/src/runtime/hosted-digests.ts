@@ -8,6 +8,7 @@
 import {
   RetainedBriefStore,
   type DigestResult,
+  type DigestSpec,
   type RetainedDigestSummary,
 } from '../../../../.eliza/client-features/plugins/plugin-workflow/src/client/hosted-digests.ts';
 
@@ -35,4 +36,23 @@ export function bindRetainedDigestScope(scope: string | null): void {
  * occurrence never replaces the last brief on Home. Returns false when `scope` is not the bound one. */
 export function rememberRetainedDigests(results: DigestResult[] | null, agent = 'Your agent', scope?: string): boolean {
   return retained.remember(results, {agent, ...(scope === undefined ? {} : {scope})});
+}
+/** A saved request still in review never reached the agent, so it may be discarded. Once dispatched
+ * only Retry is safe; a record from an older build has no phase and counts as dispatched. */
+export function digestPendingDiscardable(pending: {phase?: unknown}): boolean {
+  return pending.phase === 'review';
+}
+/** Pause or resume keeps the saved schedule: only `enabled` changes, never the time, zone or source. */
+export function digestToggledSpec(spec: DigestSpec, enabled: boolean): DigestSpec {
+  return {...spec, enabled};
+}
+/** Selected calendar ids the latest phone calendar list no longer offers. */
+export function digestMissingCalendars(selected: readonly string[], choices: ReadonlyArray<{id: string}>): string[] {
+  return selected.filter(id => !choices.some(choice => choice.id === id));
+}
+/** What a result tap that cannot open says. Before the digest binding exists the agent is still
+ * connecting, so the tap waits for the next check instead of claiming another account. */
+export function digestTapNotice(kind: string, bound: boolean): string | null {
+  if (!bound) return null;
+  return kind === 'other-account' ? 'Sign in to the matching account to open this result.' : 'This result isn’t available.';
 }

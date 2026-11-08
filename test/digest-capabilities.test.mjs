@@ -38,7 +38,7 @@ test('native evening, source pausing and the dossier follow what the agent adver
 test('the dossier button is offered only with resident phone sources, whose pinned agent registers the route',async()=>{
  const {readFile}=await import('node:fs/promises');
  const ui=await readFile(resolve(root,'apps/app/src/runtime/hosted-digest-ui.tsx'),'utf8');
- const button=ui.split('\n').find(line=>line.includes('Review on-demand dossier'));
+ const button=ui.split('\n').find(line=>line.includes('Review on-demand brief'));
  assert.ok(button,'the dossier review button exists');
  assert.match(button,/^\{features\.dossier&&/,'it renders only when the dossier feature is on');
  assert.match(ui,/dossier:nativeSupported\}/,'which is exactly native phone sources on the resident agent');
