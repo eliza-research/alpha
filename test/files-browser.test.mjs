@@ -305,3 +305,11 @@ test('the Files agent contract carries the reviewed identity and the runner refu
  assert.match(plugin,/b\.trash\(paths,System\.currentTimeMillis\(\),expected\(call,paths\.size\(\)\)\)/);
  assert.match(plugin,/public void storageIdentity\(PluginCall call\)/);
 });
+test('the production plugin exposes only the storage browser; a retired SAF tree grant is released', () => {
+ const plugin=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaFilesPlugin.java','utf8');
+ const methods=[...plugin.matchAll(/@PluginMethod public void (\w+)\(/g)].map(m=>m[1]);
+ assert.deepEqual(methods.filter(name=>name!=='requestPermissions'&&!name.startsWith('storage')),[],'no SAF tree bridge method (choose, list, changeMany, shareMany, rename, delete, move, select, forget, ...)');
+ assert.doesNotMatch(plugin,/tree\.(adopt|list|changeMany|shareMany|rename|delete|move|select)\(/);
+ assert.match(plugin,/public void load\(\)\{PluginWorkers\.submit\(storageWorker,this::releaseRetiredTree/);
+ assert.match(plugin,/new DocumentFolderTree\(getContext\(\),PREF,[^)]*\)\.forget\(\)/,'a tree an earlier version chose has its persisted grant released');
+});
