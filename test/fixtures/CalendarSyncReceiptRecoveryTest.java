@@ -15,6 +15,31 @@ public final class CalendarSyncReceiptRecoveryTest {
   event.put("title","Changed after observation");check(receipt.getJSONObject("snapshot").getJSONObject("event").getString("title").equals("Observed target"));
   operations.getJSONObject("owned").put("acknowledged",true);check(CalendarSyncReceiptRecovery.observe(document,"owner-scope","42","new-revision","desired",event).length()==0);
   operations.put("conflict",row("owner-scope","apply","42","desired").put("outcome",new JSONObject().put("status","conflict")));check(CalendarSyncReceiptRecovery.observe(document,"owner-scope","42","new-revision","desired",event).length()==0);
+  JSONObject history=new JSONObject();
+  for(int i=0;i<128;i++)history.put("conflict-"+i,row("owner-scope","apply","42","desired").put("createdAt",1000L+i).put("phase","terminal").put("outcome",new JSONObject().put("status","conflict")));
+  CalendarSyncReceiptRecovery.prune(history,(id,operation)->{throw new AssertionError("Only queued rows ask the deletion journal");});
+  check(history.length()==63&&!history.has("conflict-0")&&!history.has("conflict-64")&&history.has("conflict-65")&&history.has("conflict-127"));
+  history=new JSONObject();
+  for(int i=0;i<120;i++)history.put("dispatching-"+i,row("owner-scope","apply","42","desired").put("createdAt",(long)i));
+  history.put("pending",row("owner-scope","delete","42","desired").put("createdAt",0L).put("phase","terminal").put("outcome",new JSONObject().put("status","queued")));
+  history.put("undone",row("owner-scope","delete","42","desired").put("createdAt",0L).put("phase","terminal").put("outcome",new JSONObject().put("status","queued")));
+  history.put("unknown",row("owner-scope","apply","42","desired").put("createdAt",5000L).put("phase","terminal").put("outcome",new JSONObject().put("status","unknown")));
+  history.put("saved",row("owner-scope","apply","42","desired").put("createdAt",9000L).put("phase","terminal").put("acknowledged",true).put("outcome",new JSONObject().put("status","saved")));
+  for(int i=0;i<4;i++)history.put("ack-"+i,row("owner-scope","apply","42","desired").put("createdAt",8000L+i).put("phase","terminal").put("acknowledged",true).put("outcome",new JSONObject().put("status","conflict")));
+  CalendarSyncReceiptRecovery.prune(history,(id,operation)->id.equals("undone"));
+  check(history.length()==122&&history.has("pending")&&!history.has("undone")&&history.has("unknown")&&!history.has("saved")&&!history.has("ack-0"));for(int i=0;i<120;i++)check(history.has("dispatching-"+i));
+  history=new JSONObject();
+  for(int i=0;i<128;i++)history.put("unknown-"+i,row("owner-scope","apply","42","desired").put("phase","terminal").put("outcome",new JSONObject().put("status","unknown")));
+  CalendarSyncReceiptRecovery.prune(history,(id,operation)->{throw new AssertionError("Unconfirmed writes cannot become deletion receipts");});
+  check(history.length()==128);
+  history=new JSONObject();
+  for(int i=0;i<128;i++)history.put("unknown-"+i,row("owner-scope","apply","42","desired").put("createdAt",i).put("phase","terminal").put("acknowledged",true).put("outcome",new JSONObject().put("status","unknown")));
+  CalendarSyncReceiptRecovery.prune(history,(id,operation)->{throw new AssertionError("Unknown remains uncertain even with a stale acknowledgment");});
+  check(history.length()==128);
+  history=new JSONObject();
+  for(int i=0;i<128;i++)history.put("pending-"+i,row("foreign-scope","delete","42","desired").put("createdAt",i).put("phase","terminal").put("outcome",new JSONObject().put("status","queued")));
+  CalendarSyncReceiptRecovery.prune(history,(id,operation)->"owner-scope".equals(operation.getString("scope")));
+  check(history.length()==128);
   System.out.println("PASS native Calendar readback-only receipt recovery and owner isolation");
  }
 }

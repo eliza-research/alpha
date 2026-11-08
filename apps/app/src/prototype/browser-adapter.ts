@@ -184,6 +184,8 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
       }
     } catch { if (approvedSignal) throw new Error('Invalid approved browser destination'); report(new Error('Enter search words or a valid HTTP or HTTPS address without credentials.')); return; }
     const s = state(); if (!s) { if (approvedSignal) throw new Error('Browser unavailable'); return; }
+    // Restored rows count: an agent open past the cap fails visibly instead of being dropped.
+    if (newTab && s.tabs.length >= MAX_TABS) { const full = new Error('Close a tab before opening another.'); if (approvedSignal) throw full; report(full); return; }
     profileUnsupportedTab=undefined;
     const selectedTab=s.cur;
     const id = newTab ? newTabId() : s.cur, priv = newTab ? privateTab : isPrivate(id);
@@ -291,13 +293,14 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
     } catch (error) { report(error); }
     finally { sharing=false; confirming=false; lastGeometry=''; await update(); }
   }
-  /** Remove renderer tabs whose native WebView is already gone. */
+  /** Remove renderer tabs whose native WebView is already gone. A closed pop-up returns to its opener. */
   function forgetTabs(ids: string[]) {
     tabs.forget(ids); for (const id of ids) restored.delete(id);
     const s = state(); if (!s) return;
     const rest = s.tabs.filter((tab: Bag) => !ids.includes(tab.id));
     const next = rest.length ? rest : [{ id: newTabId(), hist: ['newtab'], pos: 0 }];
-    shell.vset('browser', { tabs: next, cur: next.some((tab: Bag) => tab.id === s.cur) ? s.cur : next[0].id });
+    const opener = s.tabs.find((tab: Bag) => tab.id === s.cur)?.opener;
+    shell.vset('browser', { tabs: next, cur: next.some((tab: Bag) => tab.id === s.cur) ? s.cur : next.some((tab: Bag) => tab.id === opener) ? opener : next[0].id });
   }
   function savedSnapshot() {
     const s = state(); if (!s) return null;
@@ -475,7 +478,10 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
   void Browser.addListener('tabOpened',(event:BrowserTabOpened)=>{
     const s=state();if(disposed||!s||s.tabs.some((tab:Bag)=>tab.id===event.id))return;
     const opened=tabs.applyOpened(event);if(!opened)return;
-    shell.vset('browser',{tabs:[...s.tabs,{id:opened.id,hist:['newtab'],pos:0,...(opened.private?{priv:true}:{})}],cur:event.id,editing:false,tabsOpen:false,menu:false,lib:null,share:false});refresh();
+    if(s.tabs.length>=MAX_TABS){tabs.forget([opened.id]);void Browser.close({session,id:opened.id}).catch(()=>{});shell.toast('Close a tab before opening another.');return;}
+    // The opener is kept only in memory, so a pop-up that closes itself returns to the page that opened it.
+    const opener=event.opener&&s.tabs.some((tab:Bag)=>tab.id===event.opener)?{opener:event.opener}:{};
+    shell.vset('browser',{tabs:[...s.tabs,{id:opened.id,hist:['newtab'],pos:0,...(opened.private?{priv:true}:{}),...opener}],cur:event.id,editing:false,tabsOpen:false,menu:false,lib:null,share:false});refresh();
   }).then((value:any)=>{openedListener=value;}).catch(()=>{});
   void Browser.addListener('tabClosed',(event:BrowserTabEvent)=>{const id=disposed?undefined:tabs.applyClosed(event);if(id)forgetTabs([id]);}).then((value:any)=>{closedListener=value;}).catch(()=>{});
   void Browser.addListener('notice',(event:BrowserTabNotice)=>{const message=disposed?undefined:tabs.notice(event);if(message!==undefined)shell?.toast(message);}).then((value:any)=>{noticeListener=value;}).catch(()=>{});
