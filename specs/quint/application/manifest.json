@@ -1007,5 +1007,30 @@
       "Native Photos Trash read lifecycle with coalesced requests, current epochs, hidden loaded-marker invalidation and resume. Three media identities and four request identities.",
       "Deletion/restore effects, selection, native retention and browser Trash are separate obligations."
     ]
+  },
+  {
+    "path": "specs/quint/application/FilesFilter.qnt",
+    "module": "FilesFilter",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "oldFailureCannotEraseNewRowsTest",
+      "deniedReadbackCannotQueryTest",
+      "clearedQueryCannotPublishTest",
+      "cancelledQueryCannotPublishTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/selection-adapter.ts",
+      ".eliza/client-features/plugins/plugin-files/src/browser/files-browser-adapter.ts",
+      ".eliza/client-features/plugins/plugin-files/src/browser/storage-model.ts",
+      ".eliza/client-features/plugins/plugin-files/src/browser/files-agent-contract.ts",
+      "patches/eliza/files-list-identity-client.patch",
+      "patches/eliza/files-list-identity-client-manifest.json"
+    ],
+    "abstractions": [
+      "Installed agent filter operations from a mounted Browse view, with separate access and query generations, current filter ownership, cancellation and filtered result ordering.",
+      "Three operation identities, two text classes and four unique row identities. Reload after mount, category/Trash list transactions, file mutations and provider query implementation remain separate obligations."
+    ]
   }
 ]

@@ -32,16 +32,54 @@
 @@ -396 +402 @@
 -        if (ticket !== generation) return;
 +        if (!current()) return;
-@@ -412,0 +419 @@
+@@ -413 +419,3 @@
+-      if (filter) await runFilter(filter);
 +      if (!current()) return;
-@@ -413,0 +421 @@
++      if (filter) await runFilter(filter, current);
 +      if (!current()) return;
 @@ -421 +429 @@
 -      if (ticket === generation) {
 +      if (current()) {
-@@ -831 +839 @@
+@@ -782 +790 @@
+-  async function runFilter(value: FilesFilter) {
++  async function runFilter(value: FilesFilter, admitted: () => boolean): Promise<number | undefined> {
+@@ -783,0 +792 @@
++    const current = () => ticket === filterGeneration && filter === value && admitted();
+@@ -810,10 +819,6 @@
+-      if (ticket !== filterGeneration) return;
+-      filterRows =
+-        query.status === "ready"
+-          ? sortEntries(
+-              (query.entries || []).filter((entry) =>
+-                filterMatches(value, entry),
+-              ),
+-              "date",
+-            )
+-          : [];
++      if (!current()) return;
++      if (query.status === "ready") {
++        filterRows = sortEntries((query.entries || []).filter((entry) => filterMatches(value, entry)), "date");
++        return filterRows.length;
++      }
++      filterRows = [];
+@@ -821 +826 @@
+-      filterRows = [];
++      if (current()) filterRows = [];
+@@ -825 +830,2 @@
+-  async function showFilter(value: FilesFilter) {
++  async function showFilter(value: FilesFilter, signal: AbortSignal) {
++    const current = () => filter === value && !signal.aborted;
+@@ -826,0 +833 @@
++    filterRows = [];
+@@ -831,2 +838,3 @@
 -    await refreshState();
-+    if (!await refreshState(() => filter === value)) return 0;
+-    await runFilter(value);
++    if (!current() || !await refreshState(current) || !current() || access !== "granted") return;
++    const count = await runFilter(value, current);
++    if (!current()) return;
+@@ -834 +842 @@
+-    return filterRows.length;
++    return count;
 @@ -871 +879,6 @@
 -      await refreshState();
 +      const refreshed = await refreshState(() => !signal.aborted);
@@ -53,23 +91,31 @@
 @@ -875 +888 @@
 -          summary: "Files needs all-files access. Nothing was changed.",
 +          summary: "Files needs storage access. Nothing was changed.",
-@@ -911 +924 @@
+@@ -878 +891,6 @@
+-        const n = await showFilter(validateFilesFilter(filesFilterOf(op)));
++        const n = await showFilter(validateFilesFilter(filesFilterOf(op)), signal);
++        signal.throwIfAborted();
++        if (n === undefined) return {
++          status: "failed",
++          summary: "Files could not read this filter.",
++        };
+@@ -911 +929 @@
 -                "Opened the share sheet. Nothing is sent until you pick an app.",
 +                "Opened the share sheet.",
-@@ -1013 +1026 @@
+@@ -1013 +1031 @@
 -      id: entry.path,
 +      id: JSON.stringify([place.kind === "folder" ? place.volume || "primary" : "primary", entry.path]),
-@@ -1108,0 +1122 @@
+@@ -1108,0 +1127 @@
 +        id,
-@@ -1115,0 +1130 @@
+@@ -1115,0 +1135 @@
 +        id: volume.id,
-@@ -1257,0 +1273 @@
+@@ -1257,0 +1278 @@
 +                id: JSON.stringify([at.volume || "primary", crumb.path]),
-@@ -1283,0 +1300 @@
+@@ -1283,0 +1305 @@
 +            id: "sort:" + mode,
-@@ -1289,0 +1307 @@
+@@ -1289,0 +1312 @@
 +            id: "reverse-order",
-@@ -1297,0 +1316 @@
+@@ -1297,0 +1321 @@
 +                  id: "select",
-@@ -1460,0 +1480 @@
+@@ -1460,0 +1485 @@
 +                    id: JSON.stringify([d.volume || "primary", f.path]),

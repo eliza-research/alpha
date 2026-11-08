@@ -23,6 +23,7 @@ import {checkCanonicalNotesFeedback} from './canonical-notes-feedback.mjs';
 import {checkCanonicalNotesMutation} from './canonical-notes-mutation.mjs';
 import {checkCanonicalNotesView} from './canonical-notes-view.mjs';
 import {checkFilesBrowserController} from './files-browser-coordinator.mjs';
+import {checkFilesFilter} from './files-filter.mjs';
 import {checkPhotosWindow} from './photos-window.mjs';
 import {checkPhotosTrash} from './photos-trash.mjs';
 
@@ -31,7 +32,7 @@ const adapters = [application, shellNavigation, startupPermissions, assistantCon
   permissionWalkthrough, developmentDevice, permanentVoiceDeletion, developmentHost, filesTree,
   calendarPresentation, draftDispatch, notificationCollection, callbackLanding,
   runStartupPermissionsCoordinatorRefinement, checkVaultCoordinator, checkNotesCoordinator, listFocus, checkRecoveryUI, checkShellCoordinator, checkNativeViewSubscription, filesPreview, runPermissionChoicesRefinement, checkCanonicalNotesController, checkCanonicalNotesDraft,
-  checkCanonicalNotesFeedback, checkCanonicalNotesMutation, checkCanonicalNotesView, checkFilesBrowserController, checkPhotosWindow, checkPhotosTrash];
+  checkCanonicalNotesFeedback, checkCanonicalNotesMutation, checkCanonicalNotesView, checkFilesBrowserController, checkFilesFilter, checkPhotosWindow, checkPhotosTrash];
 
 /** Component traces, with remaining obligations kept explicit for the aggregate report. */
 export async function runApplicationRefinement() {

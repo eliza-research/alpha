@@ -25,6 +25,7 @@ repository-wide allocation and source hashes are recorded in `../coverage.json`.
 | `DraftDispatch` | `AssistantDraftController.hold`, `release`, `commit`, `open` | Text retained through dispatch, newer typing, per-conversation queues, reopened pending drafts and failed durable clears. `A+B` represents the ordered newline concatenation |
 | `FilesTree` | Current volume browser, `files-storage`, `files-agent-contract`, `StorageBrowser` and `StorageCatalog` | Categories query storage, collisions keep both files, Trash retains origins, refresh prunes missing selections, agent moves check reviewed identity and permanent deletion requires review |
 | `FilesBrowserController` | Prepared shared Files browser installed by the Alpha host | Folder read generations, access and volume readback, agent share admission and stale completion |
+| `FilesFilter` | Prepared Files browser agent runner and shared matching | Filter admission, access readback, query ownership, result counts and cancellation |
 | `PhotosWindow` | Native catalog reads in the Alpha Photos adapter and shared window helper | Paginated window merge, reload coalescing and hidden/disposed read fencing |
 | `PhotosTrash` | Native Trash reads in the Alpha Photos adapter | Coalesced pagination, resume reload and stale completion fencing |
 | `CalendarPresentation` | `calendar-views`, `calendar-month-focus`, Google Calendar selection | Selected month/day, menu/delete/search Back order, query-range generations, visible calendars and captured edit identity |
