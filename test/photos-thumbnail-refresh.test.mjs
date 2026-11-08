@@ -39,3 +39,27 @@ test('a thumbnail read finishing after a catalog reload preserves the new row an
   await context.settleThumbnails(context.captures, 0, 1);
   assert.equal(context.captures[0].image, 'new pixels');
 });
+
+test('album covers keep their thumbnail through a deep scroll, and a cover dropped earlier is read again', async () => {
+  const row = n => ({id: 'native-camera-m:external_primary:i:' + n, date: 1000 - n, revision: 'r', image: 'pixels ' + n});
+  const reads = [];
+  const context = vm.createContext({
+    captures: Array.from({length: 600}, (_, n) => row(n)), libraryEpoch: 1, disposed: false, thumbFetching: new Set(), browserMode: false,
+    thumbnailPlan, batches, LIBRARY_LIMITS: {thumbnailsKept: 240}, queueMicrotask,
+    nativeId: id => id.replace(/^native-camera-/, ''),
+    library: {thumbnails: async ({ids}) => { reads.push(ids); return {items: ids.map(id => ({id, image: 'read ' + id}))}; }},
+    photosApi: {set: () => {}},
+  });
+  vm.runInContext(implementation, context);
+  // Albums showed rows 0 (Camera) and 3 (a custom album) as covers; the owner then scrolls far down.
+  context.keepCovers([context.captures[0], context.captures[3], undefined]);
+  await context.settleThumbnails(context.captures, 500, 520);
+  assert.equal(context.captures[0].image, 'pixels 0', 'a cover keeps its thumbnail');
+  assert.equal(context.captures[3].image, 'pixels 3');
+  assert.equal(context.captures[1].image, '', 'other rows far from the window drop theirs');
+  // A cover whose thumbnail was dropped before Albums opened is read again when Albums shows it.
+  context.keepCovers([context.captures[1]]);
+  await new Promise(resolve => setTimeout(resolve, 0));
+  assert.deepEqual(reads.at(-1), ['m:external_primary:i:1']);
+  assert.equal(context.captures[1].image, 'read m:external_primary:i:1');
+});

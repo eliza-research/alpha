@@ -24,7 +24,7 @@ const storage = registerPlugin<{
   storageRequestAccess(): Promise<Result>;
   storageList(input: {path: string; volume?: string}): Promise<Result & {entries?: StorageEntry[]; truncated?: boolean}>;
   /** `count` and `folders` cover the whole category; `entries` may be its newest part (`truncated`). */
-  storageCategory(input: {category: FilesCategory}): Promise<Result & {entries?: StorageEntry[]; count?: number; truncated?: boolean; folders?: CategoryFolder[]}>;
+  storageCategory(input: {category: FilesCategory; countOnly?: boolean}): Promise<Result & {entries?: StorageEntry[]; count?: number; truncated?: boolean; folders?: CategoryFolder[]}>;
   storageQuery(input: {text?: string; mimePrefix?: string; documents?: boolean; folders?: boolean; folder?: string; from?: number; to?: number}): Promise<Result & {entries?: StorageEntry[]}>;
   /** `expect` (one identity per path) leaves any path whose size or modified time differs untouched ("changed"). */
   storageTransfer(input: {paths: string[]; dest: string; copy: boolean; volume?: string; expect?: FilesIdentity[]}): Promise<Result & {outcomes?: Outcome[]}>;
@@ -116,7 +116,7 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
   async function loadCounts(ticket: number) {
     if (access !== 'granted') return;
     const next: Partial<Record<FilesCategory, number>> = {};
-    await Promise.all(CATEGORIES.map(async ({id}) => { try { const value = await storage.storageCategory({category: id}); if (value.status === 'ready') next[id] = value.count ?? value.entries?.length ?? 0; } catch { /* Count stays blank. */ } }));
+    await Promise.all(CATEGORIES.map(async ({id}) => { try { const value = await storage.storageCategory({category: id, countOnly: true}); if (value.status === 'ready') next[id] = value.count ?? value.entries?.length ?? 0; } catch { /* Count stays blank. */ } }));
     let trash = 0;
     const rows = await trashAcross(); if (rows) trash = rows.length;
     if (ticket === generation) { counts = next; trashCount = trash; }
@@ -330,7 +330,7 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
         await accept('files', value, currentApi, false);
         return {status: 'succeeded', summary: 'Opened the file in Files.'};
       }
-      if (op.type === 'files_share') { const value = await storage.storageShare({paths: op.paths}); return value.status === 'opened' ? {status: 'succeeded', summary: 'Opened the share sheet. Nothing is sent until you pick an app.'} : {status: 'failed', summary: value.message || 'Sharing could not open.'}; }
+      if (op.type === 'files_share') { const value = await storage.storageShare({paths: op.paths}); return value.status === 'opened' ? {status: 'succeeded', summary: 'Opened the share sheet.'} : {status: 'failed', summary: value.message || 'Sharing could not open.'}; }
       if (op.type === 'files_folder_create') { const value = await storage.storageCreateFolder({parent: op.parent, name: op.name}); void reload(); return value.status === 'ready' ? {status: 'succeeded', summary: 'Created ' + (value.path || op.name) + '.'} : {status: 'failed', summary: value.message || 'The folder was not created.'}; }
       // Only the files the owner reviewed: each must still have the identity read for the card.
       if (!op.reviewed || op.reviewed.length !== op.paths.length) return {status: 'failed', summary: 'Nothing was changed.'};

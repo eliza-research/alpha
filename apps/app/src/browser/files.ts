@@ -28,7 +28,7 @@ export class BrowserFiles extends SharedFiles {
  storageState(){return this.volume.run('storageState',{});}
  storageRequestAccess(){return this.volume.run('storageRequestAccess',{});}
  storageList(input:{path?:string}){return this.volume.run('storageList',input);}
- storageCategory(input:{category:string}){return this.volume.run('storageCategory',input);}
+ storageCategory(input:{category:string;countOnly?:boolean}){return this.volume.run('storageCategory',input);}
  storageQuery(input:Record<string,unknown>){return this.volume.run('storageQuery',input);}
  storageTransfer(input:{paths:string[];dest:string;copy?:boolean;expect?:{size:number;modified:number}[]}){return this.volume.run('storageTransfer',input);}
  storageIdentity(input:{paths:string[]}){return this.volume.run('storageIdentity',input);}
