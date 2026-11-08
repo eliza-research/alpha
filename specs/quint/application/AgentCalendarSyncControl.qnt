@@ -230,7 +230,7 @@ module AgentCalendarSyncControl {
   })
   val ExactSending = s.sending.length() == s.dispatches.length()
     and s.dispatches.indices().forall(i => s.sending.nth(i) == s.dispatches.nth(i).id)
-  val Bounded = s.epoch.in(1.to(8)) and s.lastId.in(0.to(7)) and s.attempts.keys() == 1.to(s.lastId)
+  val Bounded = s.epoch.in(1.to(8)) and s.lastId.in(0.to(7)) and s.attempts.keys() == IDs.filter(id => id <= s.lastId)
   val safety = ActiveOwnsEpoch and DispatchMatchesReview and ExactSending and Bounded
 
   action reviewedPrimary = start("review", "", true).then(preserve(1, "same"))
