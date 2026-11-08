@@ -11,7 +11,9 @@ test('Android renderer pending key is admitted without accessing the native deli
 test('browser pending key remains unchanged and every pending operation uses its bound key',()=>{
  assert.equal(pending(false),nativeScope+':pending');
  assert.match(source,/b\.storage\.read<Pending>\(b\.pendingSlot\)/);
- assert.match(source,/b\.storage\.write\(b\.pendingSlot, value\)/);
- assert.equal((source.match(/b\.storage\.remove\(b\.pendingSlot\)/g)||[]).length,2);
+ assert.match(source,/b\.storage\.write\(b\.pendingSlot, reviewed\)/);
+ assert.match(source,/b\.storage\.write\(b\.pendingSlot, dispatched\)/);
+ // Saved, rejected by the agent, refused by the phone before dispatch, and discarded while in review.
+ assert.equal((source.match(/b\.storage\.remove\(b\.pendingSlot\)/g)||[]).length,4);
  assert.doesNotMatch(source,/b\.slot\s*\+\s*":pending"/);
 });

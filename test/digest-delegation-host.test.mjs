@@ -10,5 +10,5 @@ test('the Android Cloud delegation panel is not mounted in a browser host',()=>{
  assert.ok(picker.indexOf('<BrowserDigestDelegation ')<mount.index,'the development profile branch is checked first');
 });
 test('the schedule note separates its two sentences',()=>{
- assert.match(digest,/run when you start them\.\{' '\}\n\s*\{interactiveDevelopment \? 'Digests use the configured development reply\.' : 'Model usage is billed by the connected agent\.'\}/);
+ assert.match(digest,/Only these digests run on a schedule\.\{' '\}\n\s*\{billing\}/);
 });
