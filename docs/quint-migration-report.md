@@ -270,10 +270,12 @@ are separate from the current-source application, service and native contracts.
 
 The originating four-model check passed typechecking, scenarios and 1,000
 80-transition samples per model. Large temporal checks have separate receipts.
-The Camera Focus property-specific attempt failed during Apalache startup,
-without a counterexample. The historical Focus violation is reproduced by its
-scenario and combined-configuration check; current Camera focus remains
-nonblocking under the existing never-settling-focus shutter regression.
+An earlier Camera Focus property-specific attempt failed during Apalache
+startup. The later unchanged-input `CameraSession-properties-stable.json`
+completed all 13 Camera property campaigns at 15:24 UTC on November 8, including
+the expected historical Focus counterexample and passing Design properties.
+Current Camera focus remains nonblocking under the existing never-settling-focus
+shutter regression.
 
 The 17 current service refinement receipts also passed together in a diagnostic
 run with unchanged inputs on 2026-11-08. The complete normal verification command

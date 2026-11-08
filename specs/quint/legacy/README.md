@@ -196,12 +196,13 @@ conformance is a separate obligation of the application, native and service
 refinement adapters.
 
 The property-specific `CameraSession-properties-final.json` run encountered an
-Apalache startup error while checking `AsBuilt_Focus-NoLostShutter`. That failed
-tool invocation produced no counterexample and does not qualify the property.
-The historical Focus configuration and its executable scenario intentionally
-violate `NoLostShutter`; the Design scenario permits shutter input during focus.
-Photos and the other large temporal state spaces require their own completed
-receipts. Their unfinished runs are not counted as passing evidence here.
+Apalache startup error while checking `AsBuilt_Focus-NoLostShutter`. A later
+`CameraSession-properties-stable.json` run completed all 13 property campaigns
+with unchanged inputs at 15:24 UTC on November 8. Its model and configuration
+hashes match this integration. The Focus configuration produces the expected
+`dropped = TRUE` counterexample; the Design properties pass. The failed attempt
+remains separate. Photos and the other large temporal state spaces require
+their own completed receipts. Unfinished runs are not counted as passing here.
 
 The integration recheck passed all four typechecks, all 38 scenarios and
 80 traces of 40 transitions per model at seed 20261108. Its stable-input receipt

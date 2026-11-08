@@ -5717,7 +5717,7 @@
       ],
       "scope": "test-support",
       "treatment": "domain-contract-or-support",
-      "sha256": "35dc822773674cee2388828b2bffda2211dd2dc9a7bde9558125d9b3f6deff47",
+      "sha256": "1a07dd627d1c2f195f50a6b03d8e15fdad4e7bfafb5d94bbba222af4b73868fb",
       "stateAnchors": [
         {
           "line": 22,
@@ -6874,7 +6874,7 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaFilesPlugin.java",
-      "sha256": "1d0abe7919adc8e51692030365cc57781941ba827fa1f168ca0978a622951f9f",
+      "sha256": "2ddc45abefd02f93a4e10b8f1dd3a761268971377d8c21b349c92171f64d5f94",
       "models": [
         "FilesAndSharing",
         "FilesTree"
@@ -6883,36 +6883,20 @@
       "treatment": "state-and-transition-projection",
       "stateAnchors": [
         {
-          "line": 27,
+          "line": 22,
           "text": "private static final String STORAGE_TRASH_FOLDER=\".Trash-alpha\";"
         },
         {
-          "line": 28,
-          "text": "private final ExecutorService worker=Executors.newSingleThreadExecutor();"
-        },
-        {
-          "line": 29,
-          "text": "private final AtomicBoolean picking=new AtomicBoolean();"
-        },
-        {
-          "line": 30,
-          "text": "private DocumentFolderTree tree;"
-        },
-        {
-          "line": 63,
+          "line": 32,
           "text": "private final ExecutorService storageWorker=Executors.newSingleThreadExecutor();"
         },
         {
-          "line": 64,
-          "text": "private FileObserver observer;private android.database.ContentObserver mediaObserver;"
+          "line": 33,
+          "text": "private final StorageBrowser.WatchSlot watch=new StorageBrowser.WatchSlot();"
         },
         {
-          "line": 65,
+          "line": 34,
           "text": "private final android.os.Handler main=new android.os.Handler(android.os.Looper.getMainLooper());"
-        },
-        {
-          "line": 66,
-          "text": "private final Runnable changed=()->notifyListeners(\"storageChanged\",new JSObject());"
         }
       ]
     },
@@ -12540,7 +12524,7 @@
     },
     {
       "path": "apps/app/src/browser/files.ts",
-      "sha256": "41a7098d0e69f3fc013d7a15ebe29c6f5be07881ecab345e8b1da2c2f7a1aa7e",
+      "sha256": "79890f6d2d3adb963aca66b53e486e07c27a0fc7430d5be4f8d3311057dbbfe8",
       "models": [
         "BrowserSession"
       ],
@@ -20701,7 +20685,7 @@
     },
     {
       "path": "apps/app/src/prototype/camera-adapter.ts",
-      "sha256": "0d83f76f0ec72a8a8343645ecbb7ccc065db0c2af6fa6c6eed1cc8c5fc3b717d",
+      "sha256": "55237397b4940a90bb867c5734d8d08d3a59e2f2652c369962eb3941d740ebf7",
       "models": [
         "MediaLifecycle"
       ],
@@ -20753,1527 +20737,1563 @@
           "text": "const SCAN_REQUEST=/\\bscan\\b.*\\b(document|doc|receipt|qr|code|poster|page|letter|form|card|menu|sign|this|that|it|text)\\b/;"
         },
         {
-          "line": 110,
-          "text": "const FRAME_QUESTION=/^(?:hey alpha,? )?(?:what am i looking at|what(?:'s| is) (?:this|that|in front of me)|what do you see|describe (?:this|that|what you see)|what does (?:this|that|it) say|read (?:t"
-        },
-        {
-          "line": 115,
-          "text": "const browserMode=!Capacitor.isNativePlatform();"
-        },
-        {
-          "line": 116,
-          "text": "const camera:typeof nativeCamera=browserMode?browserCamera:nativeCamera;"
+          "line": 111,
+          "text": "const FRAME_QUESTION=/^(?:hey alpha,? )?(?:please )?(?:what am i looking at|what(?:'s| is) (?:this|that|in front of me)|what do you see|describe (?:this|that|what you see)|what does (?:this|that|it) s"
         },
         {
           "line": 119,
-          "text": "const library=browserMode?browserLibrary as unknown as typeof nativeLibrary:nativeLibrary;"
+          "text": "const browserMode=!Capacitor.isNativePlatform();"
         },
         {
           "line": 120,
+          "text": "const camera:typeof nativeCamera=browserMode?browserCamera:nativeCamera;"
+        },
+        {
+          "line": 123,
+          "text": "const library=browserMode?browserLibrary as unknown as typeof nativeLibrary:nativeLibrary;"
+        },
+        {
+          "line": 124,
           "text": "const libraryAvailable=()=>browserMode||Capacitor.isPluginAvailable('AlphaPhotos');"
         },
         {
-          "line": 125,
+          "line": 129,
           "text": "const finder = '[data-alpha-camera=\"viewfinder\"]';"
         },
         {
-          "line": 127,
+          "line": 131,
           "text": "const ZOOM_STOPS: [number, string][] = [[0.5, '.5'], [1, '1×'], [2, '2'], [5, '5']];"
         },
         {
-          "line": 129,
+          "line": 133,
           "text": "const row = (value && typeof value === 'object' ? value : {}) as Record<string, unknown>;"
         },
         {
-          "line": 130,
+          "line": 134,
           "text": "const min = Number(row.minZoom), max = Number(row.maxZoom), zoom = Number(row.zoom);"
         },
         {
-          "line": 131,
+          "line": 135,
           "text": "const minZoom = Number.isFinite(min) && min > 0 && min <= 1 ? min : 1, maxZoom = Number.isFinite(max) && max >= 1 ? max : 1;"
         },
         {
-          "line": 135,
+          "line": 139,
           "text": "const stops = ZOOM_STOPS.filter(([ratio]) => ratio >= lens.minZoom - 1e-3 && ratio <= lens.maxZoom + 1e-3);"
         },
         {
-          "line": 144,
+          "line": 148,
           "text": "export const CHAT_GRACE_MS = 10_000;"
         },
         {
-          "line": 155,
+          "line": 159,
           "text": "const prototype = (Component as { prototype?: ShellPrototype } | undefined)?.prototype;"
         },
         {
-          "line": 156,
+          "line": 160,
           "text": "let installed = true;"
         },
         {
-          "line": 157,
+          "line": 161,
           "text": "const notify = () => { if (installed) changed(); };"
         },
         {
-          "line": 158,
+          "line": 162,
           "text": "const didMount = prototype?.componentDidMount, didUpdate = prototype?.componentDidUpdate;"
         },
         {
-          "line": 159,
+          "line": 163,
           "text": "const mounted = function (this: unknown, ...args: unknown[]) { const result = didMount?.apply(this, args); notify(); return result; };"
         },
         {
-          "line": 160,
+          "line": 164,
           "text": "const updated = function (this: unknown, ...args: unknown[]) { const result = didUpdate?.apply(this, args); notify(); return result; };"
         },
         {
-          "line": 175,
+          "line": 179,
           "text": "const module = views.camera;"
         },
         {
-          "line": 177,
+          "line": 181,
           "text": "const render = module.render, leave = module.onLeave, cameraBack = module.back;"
         },
         {
-          "line": 178,
+          "line": 182,
           "text": "const photosRender = views.photos?.render, photosBack = views.photos?.back, photosLeave = views.photos?.onLeave;"
         },
         {
-          "line": 179,
+          "line": 183,
           "text": "const prototype=(_Component as any)?.prototype, originalApi=prototype?.api;"
         },
         {
-          "line": 180,
+          "line": 184,
           "text": "const scanApi=typeof originalApi==='function'?function(this:Bag,key:string){"
         },
         {
-          "line": 181,
+          "line": 185,
           "text": "const value=originalApi.call(this,key);"
         },
         {
-          "line": 186,
+          "line": 190,
           "text": "const list=this.vget('notes').list||[];"
         },
         {
-          "line": 193,
+          "line": 197,
           "text": "let closeQuestion:(()=>void)|undefined;"
         },
         {
-          "line": 195,
+          "line": 199,
           "text": "const captureSelection=createCaptureRevisions();"
         },
         {
-          "line": 196,
+          "line": 200,
           "text": "const deviceLibrary=createDeviceLibrary();"
         },
         {
-          "line": 197,
+          "line": 201,
           "text": "let closeScan:(()=>void)|undefined;"
         },
         {
-          "line": 198,
+          "line": 202,
           "text": "const cancelScan=()=>{closeScan?.();closeScan=undefined;};"
         },
         {
-          "line": 199,
+          "line": 203,
           "text": "let api: Bag | undefined;"
         },
         {
-          "line": 200,
+          "line": 204,
           "text": "let direction: 'front' | 'back' = 'back';"
         },
         {
-          "line": 201,
+          "line": 205,
           "text": "let flash = false, disposed = false;"
         },
         {
-          "line": 202,
+          "line": 206,
           "text": "let lens: Lens = { minZoom: 1, maxZoom: 1, hasFlash: false, zoom: 1, flash: false }, zoomRatio = 1;"
         },
         {
-          "line": 204,
+          "line": 208,
           "text": "let lastCapture: SavedPhoto | undefined, lastEpoch=0;"
         },
         {
-          "line": 207,
+          "line": 211,
           "text": "let accessPanel: HTMLElement | undefined;"
         },
         {
-          "line": 208,
+          "line": 212,
           "text": "let duration = 0;"
         },
         {
-          "line": 209,
+          "line": 213,
           "text": "let video: HTMLVideoElement | undefined, videoId = '';"
         },
         {
-          "line": 211,
+          "line": 215,
           "text": "let captures: SavedPhoto[] = [];"
         },
         {
-          "line": 212,
+          "line": 216,
           "text": "let photosApi: Bag | undefined, loaded = false, loading = false, next = '', libraryEpoch = 0;"
         },
         {
-          "line": 213,
+          "line": 217,
           "text": "let libraryAccess:LibraryAccess|undefined,requestingLibraryAccess=false;"
         },
         {
-          "line": 215,
+          "line": 219,
           "text": "const WINDOW=LIBRARY_LIMITS.kept,BATCH=20,SHARE_BATCH=100;"
         },
         {
-          "line": 217,
+          "line": 221,
           "text": "const PERMITTED_BATCH=500;"
         },
         {
-          "line": 219,
+          "line": 223,
           "text": "let photosFilter:(PhotosFilter&{label:string})|undefined;"
         },
         {
-          "line": 220,
+          "line": 224,
           "text": "let gridColumns:number=GRID_COLUMNS.default;"
         },
         {
-          "line": 222,
+          "line": 226,
           "text": "let drag:{anchor:string;base:SavedPhoto[];order:SavedPhoto[];moved:boolean}|undefined;"
         },
         {
-          "line": 224,
+          "line": 228,
           "text": "let albumReview:{name:string;items:SavedPhoto[];missing:number}|undefined;"
         },
         {
-          "line": 226,
+          "line": 230,
           "text": "let shareReview:{items:SavedPhoto[];missing:number}|undefined;"
         },
         {
-          "line": 227,
+          "line": 231,
           "text": "const permittedLibrary=()=>!browserMode&&!!libraryAccess&&libraryAccess.scope!=='denied';"
         },
         {
-          "line": 228,
+          "line": 232,
           "text": "let preview: SavedPhoto | undefined, reading = '', sharing = false;"
         },
         {
-          "line": 229,
+          "line": 233,
           "text": "let photoReadEpoch=0;"
         },
         {
-          "line": 230,
+          "line": 234,
           "text": "const retirePhotoRead=()=>{++photoReadEpoch;reading='';};"
         },
         {
-          "line": 231,
+          "line": 235,
           "text": "let edit: (EditPreview & {source:string;rotation:number;crop:boolean;busy:boolean;uncertain?:boolean})|undefined,editEpoch=0;"
         },
         {
-          "line": 232,
+          "line": 236,
           "text": "let editRecoveryChecked=false,copyRecovery:AbortController|undefined;"
         },
         {
-          "line": 233,
+          "line": 237,
           "text": "let closeVideoEdit:(()=>void)|undefined,videoEditSource:string|undefined,nativeVideoSession:string|undefined,nativeVideoOpening:number|undefined;"
         },
         {
-          "line": 235,
+          "line": 239,
           "text": "let pendingNativeVideoCopy:PendingNativeVideoCopy|undefined;"
         },
         {
-          "line": 236,
+          "line": 240,
           "text": "function cancelEdit(){copyRecovery?.abort();copyRecovery=undefined;const oldVideo=nativeVideoSession,opening=nativeVideoOpening;nativeVideoSession=undefined;nativeVideoOpening=undefined;closeVideoEdit"
         },
         {
-          "line": 239,
+          "line": 243,
           "text": "cancelEdit();closeVideo();const token=editEpoch;let videoSessionId:string|undefined,copyIntentChecked=false;"
         },
         {
-          "line": 240,
+          "line": 244,
           "text": "const current=()=>!disposed&&!document.hidden&&token===editEpoch&&owner.isActive()&&owner.get('photos').open===row.id;"
         },
         {
-          "line": 242,
+          "line": 246,
           "text": "const pending=await readMediaCopyIntent();copyIntentChecked=true;if(!current())return;"
         },
         {
-          "line": 246,
+          "line": 250,
           "text": "const session=browserMode?undefined:await nativeLibrary.beginVideoEdit({id:nativeId(row.id),revision:row.mutationRevision!});"
         },
         {
-          "line": 249,
+          "line": 253,
           "text": "const source=await library.read({id:nativeId(row.id)});if(!current()){if(session)void nativeLibrary.cancelVideoEdit({sessionId:session.sessionId});return;}"
         },
         {
-          "line": 251,
+          "line": 255,
           "text": "const operationId=session?.operationId||crypto.randomUUID();videoEditSource=row.id;"
         },
         {
-          "line": 253,
+          "line": 257,
           "text": "const ticket:EditCompletion={token:operationId,epoch:token,source:row.id};let pendingCopy:PendingNativeVideoCopy|undefined;"
         },
         {
-          "line": 254,
+          "line": 258,
           "text": "const abort=()=>{if(session)void nativeLibrary.cancelVideoEdit({sessionId:session.sessionId}).catch(()=>{});};signal.addEventListener('abort',abort,{once:true});"
         },
         {
-          "line": 259,
+          "line": 263,
           "text": "const receipt=session?await nativeLibrary.saveVideoEdit({sessionId:session.sessionId,...parameters}):await browserPhotoLibrary.saveVideoCopy({id:source.id,revision:row.mutationRevision!,operationId,ed"
         },
         {
-          "line": 267,
+          "line": 271,
           "text": "const value=await library.beginEdit({id:nativeId(row.id),revision:row.mutationRevision});if(!current()){void library.cancelEdit({sessionId:value.sessionId});return;}"
         },
         {
-          "line": 271,
+          "line": 275,
           "text": "async function transformEdit(owner:Bag,rotate:boolean,chosenFilter?:string){const current=edit;if(!current||current.busy||current.uncertain)return;current.busy=true;const rotation=rotate?(current.rota"
         },
         {
-          "line": 272,
+          "line": 276,
           "text": "try{const value=await library.previewEdit({sessionId:current.sessionId,rotation,crop,filter});if(edit===current)edit={...current,...value,rotation,crop,busy:false};}"
         },
         {
-          "line": 277,
+          "line": 281,
           "text": "const completionCurrent=(ticket:EditCompletion,owner:Bag)=>!disposed&&!document.hidden&&owner.isActive()&&editEpoch===ticket.epoch&&owner.get('photos').open===ticket.source&&(!edit||edit.operationId=="
         },
         {
-          "line": 282,
+          "line": 286,
           "text": "const terminal=(value.status==='saved'&&!!value.id)||['failed','unchanged','not-started','stale'].includes(value.status);if(!terminal)return false;"
         },
         {
-          "line": 285,
+          "line": 289,
           "text": "const pendingCopy=pendingNativeVideoCopy;"
         },
         {
-          "line": 287,
+          "line": 291,
           "text": "const updateView=completionCurrent(ticket,owner);"
         },
         {
-          "line": 290,
+          "line": 294,
           "text": "if(videoEditSource&&videoEditSource===ticket.source&&closeVideoEdit){const close=closeVideoEdit;closeVideoEdit=undefined;close();}"
         },
         {
-          "line": 295,
+          "line": 299,
           "text": "let recoveringEdit=false,automaticEditRecovery='';"
         },
         {
-          "line": 298,
+          "line": 302,
           "text": "const epoch=editEpoch,source=owner.get('photos').open;let ticket:EditCompletion|undefined;"
         },
         {
-          "line": 300,
+          "line": 304,
           "text": "const intent=await readMediaCopyIntent();if(!intent||original&&JSON.stringify(original.intent)!==JSON.stringify(intent))return;"
         },
         {
-          "line": 302,
+          "line": 306,
           "text": "const value=await library.editResult({operationId:intent.token});if(!await finishEdit(value,owner,ticket)&&completionCurrent(ticket,owner)){owner.set({nativeCopyRecovery:true});owner.toast('Copy outco"
         },
         {
-          "line": 307,
+          "line": 311,
           "text": "const current=edit;if(!current||current.busy||replace&&!current.canReplace)return;"
         },
         {
-          "line": 308,
+          "line": 312,
           "text": "const ticket:EditCompletion={token:current.operationId,epoch:editEpoch,source:current.source,replace};"
         },
         {
-          "line": 313,
+          "line": 317,
           "text": "const value=await library.saveEdit({sessionId:current.sessionId,rotation:current.rotation,crop:current.crop,filter:current.filter,...(replace?{replace:true}:{})});"
         },
         {
-          "line": 320,
+          "line": 324,
           "text": "copyRecovery?.abort();const controller=copyRecovery=new AbortController(),token=editEpoch;"
         },
         {
-          "line": 321,
+          "line": 325,
           "text": "try{const domain=await mediaCopyIntentDocument(),{openDomainRecovery}=await import('../browser/domain-recovery');if(controller.signal.aborted||disposed||!owner.isActive()||editEpoch!==token)return;"
         },
         {
-          "line": 325,
+          "line": 329,
           "text": "let counts: {favorites:number;videos:number;camera?:number;screenshots?:number;trash:number;canFavorite:boolean} | undefined, countsBusy = false, countsError = false, countsEpoch = 0;"
         },
         {
-          "line": 326,
+          "line": 330,
           "text": "let albumRows: SavedPhoto[] = [], albumKey = '', albumNext = '', albumBusy = false, albumEpoch = 0;"
         },
         {
-          "line": 327,
+          "line": 331,
           "text": "let customAlbums: OwnedAlbum[] = [], albumsLoaded=false, albumsBusy=false, albumsEpoch=0;"
         },
         {
-          "line": 329,
+          "line": 333,
           "text": "let manager: {media?:SavedPhoto;items?:SavedPhoto[];album?:OwnedAlbum;name:string;creating?:boolean;choosing?:boolean;confirmDelete?:boolean}|undefined;"
         },
         {
-          "line": 330,
+          "line": 334,
           "text": "let albumTrigger:HTMLElement|null=null;"
         },
         {
-          "line": 331,
+          "line": 335,
           "text": "const albumModal=createInlineModal(()=>{manager=undefined;photosApi?.set({sheet:null});},()=>albumTrigger);"
         },
         {
-          "line": 332,
+          "line": 336,
           "text": "let selection: SavedPhoto[]|undefined;let holdTimer:number|undefined;let swallowedTap='';"
         },
         {
-          "line": 333,
+          "line": 337,
           "text": "let selectionTab:'lib'|'alb'|undefined;"
         },
         {
-          "line": 334,
+          "line": 338,
           "text": "const endHold=()=>{if(holdTimer!==undefined)clearTimeout(holdTimer);holdTimer=undefined;};"
         },
         {
-          "line": 336,
+          "line": 340,
           "text": "const tab=selectionTab;selection=undefined;selectionTab=undefined;swallowedTap='';endHold();"
         },
         {
-          "line": 339,
+          "line": 343,
           "text": "let prepared: {confirmation:string;count:number;items?:{id:string;revision:string}[]} | undefined;"
         },
         {
-          "line": 340,
+          "line": 344,
           "text": "let trash: SavedPhoto[] = [], trashNext = '', trashLoaded = false, trashLoading = false, mutating = false, refreshAgain = false, trashRefreshAgain = false, trashEpoch = 0;"
         },
         {
-          "line": 341,
+          "line": 345,
           "text": "const nativeId = (id: string) => id.replace(/^native-camera-/, '');"
         },
         {
-          "line": 342,
+          "line": 346,
           "text": "const normalize = (photo: SavedPhoto): SavedPhoto => ({ ...photo, id: 'native-camera-' + photo.id });"
         },
         {
-          "line": 351,
+          "line": 355,
           "text": "loading = true; const token = ++libraryEpoch;"
         },
         {
-          "line": 356,
+          "line": 360,
           "text": "const read=await readWindow(async options=>{const result=await library.list(options);return {items:result.items.map(normalize),next:result.next};},{more,cursor:next,loaded:captures.length,limit:WINDOW"
         },
         {
-          "line": 358,
+          "line": 362,
           "text": "const rows=read.rows,cursor=read.next;"
         },
         {
-          "line": 370,
+          "line": 374,
           "text": "const album=owner?.get('photos')?.album;"
         },
         {
-          "line": 375,
+          "line": 379,
           "text": "const albumMembers=(key:string)=>{const album=customAlbums.find(row=>'custom:'+row.id===key);return album?.memberIds.map(id=>'native-camera-'+id);};"
         },
         {
-          "line": 380,
+          "line": 384,
           "text": "const owner=photosApi,open=owner?.get('photos')?.open;"
         },
         {
-          "line": 382,
+          "line": 386,
           "text": "const live=[...captures,...albumRows,...trash].find(row=>row.id===open);"
         },
         {
-          "line": 383,
+          "line": 387,
           "text": "const shown=preview;"
         },
         {
-          "line": 386,
+          "line": 390,
           "text": "const token=photoReadEpoch;"
         },
         {
-          "line": 387,
+          "line": 391,
           "text": "void library.read({id:nativeId(open),includeTrashed:true}).then(row=>{if(disposed||token!==photoReadEpoch||owner.get('photos').open!==open)return;const fresh=normalize(row);if(preview?.id===open)previ"
         },
         {
-          "line": 400,
+          "line": 404,
           "text": "const st=owner.get('photos');selection=rows;selectionTab=st?.tab==='alb'?'alb':'lib';swallowedTap='';endHold();"
         },
         {
-          "line": 406,
+          "line": 410,
           "text": "const target=document.elementFromPoint(event.clientX,event.clientY)?.closest<HTMLElement>('[data-owned-media-id]'),id=target?.dataset.ownedMediaId;"
         },
         {
-          "line": 409,
+          "line": 413,
           "text": "const range=dragRange(drag.order,drag.anchor,id),ids=new Set(drag.base.map(row=>row.id));"
         },
         {
-          "line": 413,
+          "line": 417,
           "text": "function thumbnailEvents(row:SavedPhoto,owner:Bag,order:SavedPhoto[]){const on=!!selection?.some(item=>item.id===row.id);return {"
         },
         {
-          "line": 425,
+          "line": 429,
           "text": "if(!selection?.length||sharing||mutating)return;if(selection.length>SHARE_BATCH){owner.toast(`Share up to ${SHARE_BATCH} at a time.`);return;}const chosen=selection,token=photoReadEpoch,current=()=>!d"
         },
         {
-          "line": 426,
+          "line": 430,
           "text": "try{const items=chosen.map(row=>({id:nativeId(row.id),revision:row.mutationRevision||''})),result:Awaited<ReturnType<typeof nativeLibrary.shareMany>>=browserMode?await browserPhotoLibrary.shareMany({i"
         },
         {
-          "line": 434,
+          "line": 438,
           "text": "const chosen=undoItems||selection;if(!chosen?.length)return;"
         },
         {
-          "line": 435,
+          "line": 439,
           "text": "const native:'favorite'|'unfavorite'|'trash'|'restore'=operation==='favorite'?(favoriteTarget(chosen)?'favorite':'unfavorite'):operation;"
         },
         {
-          "line": 438,
+          "line": 442,
           "text": "const token=photoReadEpoch,access=libraryAccess,current=()=>!disposed&&!document.hidden&&owner.isActive()&&photoReadEpoch===token&&libraryAccess?.scope===access?.scope&&libraryAccess?.images===access?"
         },
         {
-          "line": 439,
+          "line": 443,
           "text": "const verified:SavedPhoto[]=[],changed:SavedPhoto[]=[];let failed=0,unverified=false,declined=false;"
         },
         {
-          "line": 441,
+          "line": 445,
           "text": "const runs=await runBatches(changeBatches(chosen,row=>nativeId(row.id),{owned:BATCH,permitted:PERMITTED_BATCH}),batch=>library.changeMany({operation:native,items:batch.map(row=>({id:nativeId(row.id),r"
         },
         {
-          "line": 443,
+          "line": 447,
           "text": "for(const {batch,receipt,declined:cancelled} of runs){"
         },
         {
-          "line": 446,
+          "line": 450,
           "text": "for(const outcome of receipt.outcomes){if(!outcome.item){failed++;continue;}const before=batch.find(item=>nativeId(item.id)===outcome.id);const item={...before,...normalize(outcome.item)} as SavedPhot"
         },
         {
-          "line": 451,
+          "line": 455,
           "text": "const live=verified.filter(row=>!row.trashed),gone=verified.filter(row=>row.trashed);"
         },
         {
-          "line": 459,
+          "line": 463,
           "text": "const n=verified.length,message=operation==='favorite'?(native==='favorite'?`Added ${n} to Favorites`:`Removed ${n} from Favorites`):operation==='trash'?`${n} moved to Recently deleted`:`${n} restored"
         },
         {
-          "line": 460,
+          "line": 464,
           "text": "const undo=operation==='trash'?changed.filter(row=>row.trashed):[];"
         },
         {
-          "line": 468,
+          "line": 472,
           "text": "let albumsRecovery=false;"
         },
         {
-          "line": 471,
+          "line": 475,
           "text": "const {albumDocument}=await import('../browser/preference-documents');"
         },
         {
-          "line": 475,
+          "line": 479,
           "text": "if(disposed)return;const token=++albumsEpoch;albumsBusy=true;"
         },
         {
-          "line": 476,
+          "line": 480,
           "text": "try{const result=await library.albums();if(!disposed&&token===albumsEpoch){customAlbums=result.items;albumsLoaded=true;albumsRecovery=false;owner.set({nativeAlbumsError:'',nativeAlbumsRevision:token})"
         },
         {
-          "line": 477,
+          "line": 481,
           "text": "catch{const recovery=await albumStoreNeedsRecovery().catch(()=>false);if(!disposed&&token===albumsEpoch){albumsLoaded=true;albumsRecovery=recovery;owner.set({nativeAlbumsError:recovery?'Albums could n"
         },
         {
-          "line": 486,
+          "line": 490,
           "text": "let revision=album.revision,added=0,skipped=0;"
         },
         {
-          "line": 487,
+          "line": 491,
           "text": "for(const row of rows){if(disposed)break;try{const result=await library.changeAlbum({operation:'add',id:album.id,revision,mediaId:nativeId(row.id),mediaRevision:row.mutationRevision});revision=result."
         },
         {
-          "line": 491,
+          "line": 495,
           "text": "const current=manager;if(!current||mutating||disposed)return;"
         },
         {
-          "line": 492,
+          "line": 496,
           "text": "const album=target||current.album,media=current.media,items=current.items;"
         },
         {
-          "line": 495,
+          "line": 499,
           "text": "let note='';"
         },
         {
-          "line": 498,
+          "line": 502,
           "text": "const [first,...rest]=items;let base:{id:string;revision:string};"
         },
         {
-          "line": 499,
+          "line": 503,
           "text": "if(operation==='create'){const created=await library.changeAlbum({operation:'create',name:current.name,mediaId:nativeId(first.id),mediaRevision:first.mutationRevision});base={id:created.id,revision:cr"
         },
         {
-          "line": 501,
+          "line": 505,
           "text": "const result=await addMembers(base,operation==='create'?rest:items);"
         },
         {
-          "line": 502,
+          "line": 506,
           "text": "const name=operation==='create'?current.name.trim():album!.name,count=result.added+(operation==='create'?1:0);"
         },
         {
-          "line": 519,
+          "line": 523,
           "text": "const token = ++countsEpoch; countsBusy = true;"
         },
         {
-          "line": 520,
+          "line": 524,
           "text": "try { const result = await library.summary(); if (!disposed && token === countsEpoch) { counts = result; countsError = false; owner.set({ nativeAlbumCounts: token }); } }"
         },
         {
-          "line": 524,
+          "line": 528,
           "text": "const ALBUM_KEYS:Record<string,string>={fav:'favorites',video:'videos',camera:'camera',shot:'screenshots'};"
         },
         {
-          "line": 527,
+          "line": 531,
           "text": "const token = ++albumEpoch, same = albumKey === key; albumKey = key; albumBusy = true;"
         },
         {
-          "line": 531,
+          "line": 535,
           "text": "const result = await library.list({ album: key.startsWith('custom:') ? key : ALBUM_KEYS[key] ?? 'videos', ...(more ? {before:albumNext} : {}) });"
         },
         {
-          "line": 533,
+          "line": 537,
           "text": "const rows = result.items.map(normalize); albumRows = more ? mergeWindow(albumRows, rows, WINDOW) : newestFirst(rows);"
         },
         {
-          "line": 543,
+          "line": 547,
           "text": "const result = normalize(await library.setFavorite({id:nativeId(row.id),revision:row.mutationRevision,favorite:!row.favorite}));"
         },
         {
-          "line": 545,
+          "line": 549,
           "text": "const updated = {...row,...result}; captures = patchRows(captures,[updated],()=>true); albumRows = patchRows(albumRows,[updated],()=>true);"
         },
         {
-          "line": 546,
+          "line": 550,
           "text": "const stillSelected = owner.isActive() && owner.get('photos').open === row.id;"
         },
         {
-          "line": 555,
+          "line": 559,
           "text": "const old=prepared;prepared=undefined;owner.set({sheet:null});if(old?.confirmation)void library.cancelDeleteTrash({confirmation:old.confirmation}).catch(()=>{});"
         },
         {
-          "line": 561,
+          "line": 565,
           "text": "const selected=items?.map(row=>({id:nativeId(row.id),revision:row.mutationRevision||''}));"
         },
         {
-          "line": 564,
+          "line": 568,
           "text": "const result=permittedLibrary()||selected&&selected.length>BATCH?{confirmation:'',count:selected!.length,items:selected}:await library.prepareDeleteTrash(selected?{items:selected}:{all:true});"
         },
         {
-          "line": 574,
+          "line": 578,
           "text": "const snapshot=prepared;mutating=true;closeVideo();owner.set({nativePhotoMutation:Date.now()});"
         },
         {
-          "line": 576,
+          "line": 580,
           "text": "let result:{deletedIds:string[];skippedIds:string[];failedIds:string[]};"
         },
         {
-          "line": 579,
+          "line": 583,
           "text": "for(const batch of batches(snapshot.items,BATCH)){"
         },
         {
-          "line": 581,
+          "line": 585,
           "text": "if(permittedLibrary()){const receipt=await nativeLibrary.deletePermittedTrash({items:batch});for(const item of batch){const outcome=receipt.outcomes.find(row=>row.id===item.id);if(outcome?.status==='d"
         },
         {
-          "line": 582,
+          "line": 586,
           "text": "else{const ticket=await library.prepareDeleteTrash({items:batch}),receipt=await library.deletePreparedTrash({confirmation:ticket.confirmation});result.deletedIds.push(...receipt.deletedIds);result.ski"
         },
         {
-          "line": 587,
+          "line": 591,
           "text": "++libraryEpoch;++trashEpoch;const deleted=new Set(result.deletedIds.map(id=>'native-camera-'+id));trash=trash.filter(row=>!deleted.has(row.id));captures=captures.filter(row=>!deleted.has(row.id));prev"
         },
         {
-          "line": 588,
+          "line": 592,
           "text": "const remaining=result.skippedIds.length+result.failedIds.length;"
         },
         {
-          "line": 598,
+          "line": 602,
           "text": "trashLoading = true; const token = ++trashEpoch;"
         },
         {
-          "line": 600,
+          "line": 604,
           "text": "const result = await library.list({ trashed: true, ...(more ? { before: trashNext } : {}) });"
         },
         {
-          "line": 602,
+          "line": 606,
           "text": "const rows = result.items.map(normalize);"
         },
         {
-          "line": 614,
+          "line": 618,
           "text": "const result = normalize(await library.setTrashed({ id: nativeId(row.id), revision: row.mutationRevision, trashed: desired }));"
         },
         {
-          "line": 616,
+          "line": 620,
           "text": "++libraryEpoch; ++trashEpoch; const updated = { ...row, ...result };"
         },
         {
-          "line": 633,
+          "line": 637,
           "text": "const readEpoch=++photoReadEpoch;"
         },
         {
-          "line": 638,
+          "line": 642,
           "text": "const row = normalize(await library.read({ id: nativeId(id), includeTrashed: currentApi.get('photos').album === 'trash' }));"
         },
         {
-          "line": 650,
+          "line": 654,
           "text": "const marked = new Set<HTMLElement>();"
         },
         {
-          "line": 651,
+          "line": 655,
           "text": "const style = document.createElement('style');"
         },
         {
-          "line": 662,
+          "line": 666,
           "text": "let maskCache: { vf: HTMLElement; screen: HTMLElement; top: string; bottom: string } | undefined;"
         },
         {
-          "line": 663,
+          "line": 667,
           "text": "let screenChildren: MutationObserver | undefined;"
         },
         {
-          "line": 666,
+          "line": 670,
           "text": "for (const el of marked) {"
         },
         {
-          "line": 675,
+          "line": 679,
           "text": "const vf = document.querySelector<HTMLElement>(finder);"
         },
         {
-          "line": 676,
+          "line": 680,
           "text": "const screen = vf?.closest<HTMLElement>('[data-screen]');"
         },
         {
-          "line": 680,
+          "line": 684,
           "text": "for (let el: HTMLElement | null = vf; el; el = el.parentElement) { el.setAttribute('data-alpha-camera-clear', ''); marked.add(el); }"
         },
         {
-          "line": 685,
+          "line": 689,
           "text": "let branch: HTMLElement = vf;"
         },
         {
-          "line": 687,
+          "line": 691,
           "text": "const cameraZ = Number(getComputedStyle(branch).zIndex);"
         },
         {
-          "line": 689,
+          "line": 693,
           "text": "for (const sibling of Array.from(screen.children)) {"
         },
         {
-          "line": 691,
+          "line": 695,
           "text": "const computed = getComputedStyle(sibling), z = Number(computed.zIndex);"
         },
         {
-          "line": 700,
+          "line": 704,
           "text": "const frame = screen.parentElement?.firstElementChild;"
         },
         {
-          "line": 707,
+          "line": 711,
           "text": "const rect = vf.getBoundingClientRect(), sr = screen.getBoundingClientRect();"
         },
         {
-          "line": 708,
+          "line": 712,
           "text": "const scale = sr.width / (screen.offsetWidth || 412);"
         },
         {
-          "line": 709,
+          "line": 713,
           "text": "const top = `${(rect.top - sr.top) / scale}px`, bottom = `${(rect.bottom - sr.top) / scale}px`;"
         },
         {
-          "line": 713,
+          "line": 717,
           "text": "let requestedCaptureHolds=0;"
         },
         {
-          "line": 714,
+          "line": 718,
           "text": "let pendingShot:number|undefined;"
         },
         {
-          "line": 715,
+          "line": 719,
           "text": "const cameraViewVisible = () => !disposed && !document.hidden && !!api?.isActive() && !!document.querySelector(finder);"
         },
         {
-          "line": 716,
+          "line": 720,
           "text": "const chatCovers = () => ['sheet', 'full'].includes(api?.S.chat);"
         },
         {
-          "line": 718,
+          "line": 722,
           "text": "let chatCoveredAt: number | undefined, chatTimer: number | undefined;"
         },
         {
-          "line": 720,
+          "line": 724,
           "text": "let chatGraceOver = false;"
         },
         {
-          "line": 722,
+          "line": 726,
           "text": "const covered = cameraViewVisible() && chatCovers();"
         },
         {
-          "line": 726,
+          "line": 730,
           "text": "const chatGrace = () => chatCoveredAt === undefined || (!chatGraceOver && Date.now() - chatCoveredAt < CHAT_GRACE_MS);"
         },
         {
-          "line": 727,
+          "line": 731,
           "text": "const active = () => cameraViewVisible() && (requestedCaptureHolds>0 || !chatCovers() || chatGrace());"
         },
         {
-          "line": 729,
+          "line": 733,
           "text": "let photoWrite: Promise<unknown> | undefined;"
         },
         {
-          "line": 730,
+          "line": 734,
           "text": "const RECORDING = { audio: true, saveToGallery: true, quality: 'medium', maxDuration: 300, maxFileSize: 104857600 } as const;"
         },
         {
-          "line": 731,
+          "line": 735,
           "text": "let previewReceipt: PreviewReceipt | undefined;"
         },
         {
-          "line": 733,
+          "line": 737,
           "text": "let modeChange: Promise<void> = Promise.resolve();"
         },
         {
-          "line": 736,
+          "line": 739,
+          "text": "let previewReleased = false;"
+        },
+        {
+          "line": 742,
           "text": "const sessionCamera = {"
         },
         {
-          "line": 737,
+          "line": 743,
           "text": "async startPreview(options: Parameters<typeof camera.startPreview>[0]) { const receipt = await camera.startPreview(options); previewReceipt = receipt; return receipt; },"
         },
         {
-          "line": 739,
+          "line": 745,
           "text": "const writing = photoWrite;"
         },
         {
-          "line": 744,
+          "line": 750,
           "text": "const token = session.token();"
         },
         {
-          "line": 752,
+          "line": 758,
           "text": "const waiters = new Set<() => void>();"
         },
         {
-          "line": 753,
+          "line": 759,
           "text": "function settle() { if (session.phase === 'starting') return; const ready = [...waiters]; waiters.clear(); for (const resume of ready) resume(); }"
         },
         {
-          "line": 757,
+          "line": 763,
           "text": "const done = () => { signal?.removeEventListener('abort', abort); resolve(); };"
         },
         {
-          "line": 758,
+          "line": 764,
           "text": "const abort = () => { waiters.delete(done); reject(signal?.reason); };"
         },
         {
-          "line": 763,
+          "line": 769,
           "text": "let limitStop = false;"
         },
         {
-          "line": 764,
+          "line": 770,
           "text": "const session=createCameraSession({"
         },
         {
-          "line": 778,
+          "line": 784,
           "text": "const vf=document.querySelector<HTMLElement>(finder),screen=vf?.closest<HTMLElement>('[data-alpha-camera-root]')||vf?.closest<HTMLElement>('[data-alpha-layer]')||vf?.closest<HTMLElement>('[data-screen"
         },
         {
-          "line": 779,
+          "line": 785,
           "text": "const label=kind==='unavailable'?'Camera unavailable':kind==='camera'?'Camera access is off':'Microphone access is off';"
         },
         {
-          "line": 780,
+          "line": 786,
           "text": "const panel=document.createElement('div');panel.setAttribute('role','alert');panel.setAttribute('aria-label',label);panel.dataset.alphaCameraAccess=kind;"
         },
         {
-          "line": 782,
+          "line": 788,
           "text": "const title=document.createElement('strong');title.textContent=label;"
         },
         {
-          "line": 783,
+          "line": 789,
           "text": "const actions=document.createElement('div');actions.style.cssText='display:flex;gap:8px;justify-content:center;flex-wrap:wrap';"
         },
         {
-          "line": 784,
+          "line": 790,
           "text": "const action=(text:string,go:()=>void)=>{const b=document.createElement('button');b.type='button';b.textContent=text;b.style.cssText='min-height:44px;padding:0 16px;border-radius:22px;background:rgba("
         },
         {
-          "line": 790,
+          "line": 796,
           "text": "let noticeTimer:number|undefined,noticeGeneration=0;"
         },
         {
-          "line": 792,
+          "line": 798,
           "text": "const message = (value:string,persistent=false) => {"
         },
         {
-          "line": 793,
+          "line": 799,
           "text": "window.clearTimeout(noticeTimer);noticeTimer=undefined;const generation=++noticeGeneration;"
         },
         {
-          "line": 802,
+          "line": 808,
           "text": "const epoch=++lastEpoch;"
         },
         {
-          "line": 805,
+          "line": 811,
           "text": "const result=await library.list({album:'camera',limit:1});"
         },
         {
-          "line": 807,
+          "line": 813,
           "text": "const row=result.items[0],next=row?normalize(row):undefined;"
         },
         {
-          "line": 814,
+          "line": 820,
           "text": "const token=session.token(),wanted=mode==='video'?'video':'photo';"
         },
         {
-          "line": 836,
+          "line": 844,
           "text": "const outcome=await session.start(retry);"
         },
         {
-          "line": 842,
+          "line": 850,
           "text": "let value:T|undefined;"
         },
         {
-          "line": 843,
+          "line": 851,
           "text": "const outcome=await session.control(async()=>{value=await task();});"
         },
         {
-          "line": 854,
+          "line": 862,
           "text": "const limitReached=limitStop;limitStop=false;"
         },
         {
-          "line": 856,
+          "line": 864,
           "text": "const id = receipt.path.split('/').pop();"
         },
         {
-          "line": 858,
+          "line": 866,
           "text": "const item = normalize(await library.read({ id: 'v:' + id }));"
         },
         {
-          "line": 865,
+          "line": 873,
           "text": "const next = direction === 'back' ? 'front' : 'back';"
         },
         {
-          "line": 884,
+          "line": 892,
           "text": "const finishVideo=()=>session.finishRecording();"
         },
         {
-          "line": 890,
+          "line": 898,
           "text": "const outcome=await session.startRecording();"
         },
         {
-          "line": 900,
+          "line": 908,
           "text": "const photo = await camera.capturePhoto(browserMode ? { format: 'jpeg', quality: 85, saveToGallery: true } : { format: 'jpeg', saveToGallery: true, thumbnailOnly: true });"
         },
         {
-          "line": 901,
+          "line": 909,
           "text": "const preview = photo.thumbnail || photo.base64;"
         },
         {
-          "line": 903,
+          "line": 911,
           "text": "const legacyFile = !browserMode && typeof photo.path === 'string' && /^file:\\/\\/\\//.test(photo.path);"
         },
         {
-          "line": 904,
+          "line": 912,
           "text": "const path = photoReceiptPath(photo.path, browserMode);"
         },
         {
-          "line": 908,
+          "line": 916,
           "text": "const mediaId = path ? path.split('/').pop() : '';"
         },
         {
-          "line": 909,
+          "line": 917,
           "text": "const item: SavedPhoto = { id: mediaId ? 'native-camera-' + mediaId : '', image: 'data:image/jpeg;base64,' + preview, width: photo.width, height: photo.height, date: Date.now(), revision: 'captured' }"
         },
         {
-          "line": 919,
+          "line": 927,
           "text": "const job=saveCameraPhoto(owner,showSaved);photoWrite=job;"
         },
         {
-          "line": 920,
+          "line": 928,
           "text": "const clear=()=>{if(photoWrite===job)photoWrite=undefined;};"
         },
         {
-          "line": 927,
+          "line": 935,
           "text": "const token=pendingShot;pendingShot=undefined;"
         },
         {
-          "line": 942,
+          "line": 950,
           "text": "const owner = api;"
         },
         {
-          "line": 950,
+          "line": 958,
           "text": "let agentRequest:{queued:boolean;refused:boolean}|undefined;"
         },
         {
-          "line": 951,
+          "line": 959,
           "text": "const takeRequestedPhoto=async(operationId:string,signal:AbortSignal,current:()=>void):Promise<CameraCaptureAttempt>=>{"
         },
         {
-          "line": 952,
+          "line": 960,
           "text": "const busy:CameraCaptureAttempt={status:'failed',summary:'Camera is busy. No photo was taken.'};"
         },
         {
-          "line": 953,
+          "line": 961,
           "text": "let dispatched=false,request:{queued:boolean;refused:boolean}|undefined;"
         },
         {
-          "line": 956,
+          "line": 964,
           "text": "const owner=api;"
         },
         {
-          "line": 970,
+          "line": 978,
           "text": "const attempt=await session.exclusive(async():Promise<CameraCaptureAttempt>=>{"
         },
         {
-          "line": 972,
+          "line": 980,
           "text": "const item=await writePhoto(owner,false);"
         },
         {
-          "line": 974,
+          "line": 982,
           "text": "const cameraResult=validateCameraCaptureResult({version:1,kind:'camera_capture_photo',operationId,mediaId:nativeId(item.id),width:item.width,height:item.height,mime:'image/jpeg'},operationId);"
         },
         {
-          "line": 986,
+          "line": 994,
           "text": "const row=await importBrowserPhoto({original:new File([],'scan.jpg',{type:'image/jpeg'}),image:'data:image/jpeg;base64,'+photo.base64,width:photo.width,height:photo.height},signal);"
         },
         {
-          "line": 990,
+          "line": 998,
           "text": "const result=await library.keepCapture({dataBase64:photo.base64,operationId});"
         },
         {
-          "line": 997,
+          "line": 1005,
           "text": "let scanning=false;"
         },
         {
-          "line": 1007,
+          "line": 1015,
           "text": "const photo=await camera.capturePhoto({format:'jpeg',quality:85,saveToGallery:false});"
         },
         {
-          "line": 1010,
+          "line": 1018,
           "text": "const bytes=Uint8Array.from(atob(photo.base64),char=>char.charCodeAt(0));"
         },
         {
-          "line": 1011,
+          "line": 1019,
           "text": "const scan=createScanCapture({...photo,base64:photo.base64},'unsaved',(page,operationId,signal)=>keepScan(page,operationId,signal,owner));"
         },
         {
-          "line": 1012,
+          "line": 1020,
           "text": "const closeReview=openScanReview(new Blob([bytes],{type:'image/jpeg'}),(text,id)=>owner.saveScannedNote?.(text,id)??Promise.resolve(false),draft=>{if(disposed||!active())return false;return owner.revi"
         },
         {
-          "line": 1026,
+          "line": 1034,
           "text": "const owner=api;if(disposed||!owner||!cameraViewVisible())return false;"
         },
         {
-          "line": 1035,
+          "line": 1043,
           "text": "const image=await pickNativeScanImage();"
         },
         {
-          "line": 1044,
+          "line": 1052,
           "text": "cancelScan();const owner=api,token=session.token();"
         },
         {
-          "line": 1046,
+          "line": 1054,
           "text": "if(!session.current(token))throw Error('Camera closed.');const row=await importBrowserPhoto(image,signal);loaded=false;"
         },
         {
-          "line": 1055,
+          "line": 1063,
           "text": "closeQuestion?.();const token=session.token();"
         },
         {
-          "line": 1056,
+          "line": 1064,
           "text": "closeQuestion=reviewContentQuestion({name:'Camera frame',text:'',question,current:()=>session.current(token),compose:draft=>owner.composeContentQuestion(draft),image:async signal=>{const photo=await c"
         },
         {
-          "line": 1060,
+          "line": 1068,
           "text": "const owner=api;if(disposed||!owner||!cameraViewVisible())return false;"
         },
         {
-          "line": 1069,
+          "line": 1077,
           "text": "const live=[preview,...captures,...albumRows].find(row=>row?.id===selected.id);"
         },
         {
-          "line": 1073,
+          "line": 1081,
           "text": "closeQuestion?.();const session=connectionController.getCloudClient()?.sessionId;"
         },
         {
-          "line": 1074,
+          "line": 1082,
           "text": "const current=()=>!disposed&&!document.hidden&&owner.isActive()&&owner.get('photos').open===selected.id&&sameCapture(selected)&&connectionController.getCloudClient()?.sessionId===session;"
         },
         {
-          "line": 1084,
+          "line": 1092,
           "text": "const live=()=>!disposed&&!document.hidden&&owner.isActive()&&owner.get('photos').open===selected.id&&sameCapture(selected);"
         },
         {
-          "line": 1086,
+          "line": 1094,
           "text": "const unchanged=(row:SavedPhoto)=>captureUnchanged(selected,row);"
         },
         {
-          "line": 1090,
+          "line": 1098,
           "text": "let row:SavedPhoto|undefined;"
         },
         {
-          "line": 1099,
+          "line": 1107,
           "text": "})();},image:async signal=>{const row=await library.read({id:nativeId(selected.id)});signal.throwIfAborted();if(!unchanged(row))throw Error('Photo changed.');if(!/^(blob:|data:image\\/)/.test(row.image"
         },
         {
-          "line": 1104,
+          "line": 1112,
           "text": "if(!item){const owner=api;return !!owner?.isActive()&&askCameraFrame(owner);}"
         },
         {
-          "line": 1105,
+          "line": 1113,
           "text": "const owner=photosApi;if(!owner?.isActive())return false;"
         },
         {
-          "line": 1106,
+          "line": 1114,
           "text": "const selected=[preview,...captures,...albumRows].find(row=>row?.id===item.id);"
         },
         {
-          "line": 1109,
+          "line": 1117,
           "text": "const ZOOM_ON='background-color:var(--alpha-white);color:var(--alpha-black);width:40px;height:40px;padding:2px;box-sizing:content-box;background-clip:content-box;font-size:13px';"
         },
         {
-          "line": 1110,
+          "line": 1118,
           "text": "const ZOOM_OFF='background-color:rgba(0,0,0,.65);color:var(--alpha-white);width:34px;height:34px;padding:5px;box-sizing:content-box;background-clip:content-box;font-size:12px';"
         },
         {
-          "line": 1113,
+          "line": 1121,
           "text": "const data = render(st, currentApi);"
         },
         {
-          "line": 1114,
+          "line": 1122,
           "text": "const ready = session.phase === 'ready', recordingBusy = session.recording || session.recordingStarting || session.finalizing;"
         },
         {
-          "line": 1128,
+          "line": 1136,
           "text": "data.toggleFlash = () => { const next = !flash; void control(() => camera.setSettings({ settings: { flash: next ? 'on' : 'off' } }), () => { flash = next; currentApi.set({ flash: next }); }); };"
         },
         {
-          "line": 1129,
+          "line": 1137,
           "text": "const stops = ready ? zoomStops(lens) : [];"
         },
         {
-          "line": 1132,
+          "line": 1140,
           "text": "data.vfUp = (event: PointerEvent) => { const bounds = document.querySelector(finder)?.getBoundingClientRect(); focusAt((event.clientX - (bounds?.left ?? 0)) / (bounds?.width || window.innerWidth), (ev"
         },
         {
-          "line": 1135,
+          "line": 1143,
           "text": "data.modes = (data.modes || []).map((m: Bag) => ({ ...m, pick: () => { if (recordingBusy || session.capturing) return; const mode = m.label.toLowerCase(); if (mode === 'photo' || mode === 'video') { i"
         },
         {
-          "line": 1136,
+          "line": 1144,
           "text": "const last = lastCapture;"
         },
         {
-          "line": 1144,
+          "line": 1152,
           "text": "const cameraActions = module.actions;"
         },
         {
-          "line": 1150,
+          "line": 1158,
           "text": "let gridEl:HTMLElement|undefined,gridView={scrollTop:0,viewport:0,width:0,header:40,key:''};"
         },
         {
-          "line": 1151,
+          "line": 1159,
           "text": "const GRID_GAP=2,GRID_TOP=12,GRID_OVERSCAN=3;"
         },
         {
-          "line": 1153,
+          "line": 1161,
           "text": "const width=gridView.width||Math.min(window.innerWidth||400,480),viewport=gridView.viewport||window.innerHeight||800;"
         },
         {
-          "line": 1157,
+          "line": 1165,
           "text": "const header=el.querySelector<HTMLElement>('.photo-day-header')?.offsetHeight;"
         },
         {
-          "line": 1158,
+          "line": 1166,
           "text": "const width=el.querySelector<HTMLElement>('.photo-grid')?.clientWidth"
         },
         {
-          "line": 1162,
+          "line": 1170,
           "text": "const pitch=(gridView.width-GRID_GAP*(gridColumns-1))/gridColumns+GRID_GAP,key=[gridColumns,Math.floor(gridView.scrollTop/Math.max(1,pitch)),Math.round(gridView.viewport/Math.max(1,pitch)),gridView.wi"
         },
         {
-          "line": 1168,
+          "line": 1176,
           "text": "const album=owner.get('photos')?.album;"
         },
         {
-          "line": 1175,
+          "line": 1183,
           "text": "let start=0,startColumns=gridColumns;"
         },
         {
-          "line": 1176,
+          "line": 1184,
           "text": "const distance=(touches:TouchList)=>Math.hypot(touches[0].clientX-touches[1].clientX,touches[0].clientY-touches[1].clientY);"
         },
         {
-          "line": 1178,
+          "line": 1186,
           "text": "el.addEventListener('touchmove',event=>{if(event.touches.length!==2||!start)return;const columns=pinchColumns(startColumns,start,distance(event.touches));if(columns!==gridColumns){gridColumns=columns;"
         },
         {
-          "line": 1181,
+          "line": 1189,
           "text": "el.addEventListener('scroll',()=>{measureGrid(el,owner);const album=owner.get('photos')?.album;if(el.scrollTop+el.clientHeight<el.scrollHeight-900)return;"
         },
         {
-          "line": 1185,
+          "line": 1193,
           "text": "let thumbTimer:number|undefined;const thumbFetching=new Set<string>();"
         },
         {
-          "line": 1189,
-          "text": "const epoch=photoReadEpoch;"
-        },
-        {
-          "line": 1193,
-          "text": "const token=libraryEpoch,epoch=photoReadEpoch,owner=photosApi;"
-        },
-        {
           "line": 1194,
-          "text": "const current=()=>!disposed&&!document.hidden&&token===libraryEpoch&&epoch===photoReadEpoch&&owner===photosApi&&!!owner?.isActive()&&!owner.get('photos')?.open&&!owner.get('photos')?.album&&owner.get("
-        },
-        {
-          "line": 1196,
-          "text": "const live=new Map(captures.map(row=>[row.id,row] as const));"
-        },
-        {
-          "line": 1197,
-          "text": "const visible=rows.filter(row=>live.has(row.id)).map(row=>live.get(row.id)!);"
+          "text": "let coverIds=new Set<string>();"
         },
         {
           "line": 1198,
-          "text": "const plan=thumbnailPlan(visible,from,to,LIBRARY_LIMITS.thumbnailsKept),shown=new Set(visible.map(row=>row.id)),drop=new Set(plan.drop);"
+          "text": "const epoch=photoReadEpoch;"
         },
         {
-          "line": 1200,
-          "text": "for(const batch of batches(plan.fetch.filter(id=>!thumbFetching.has(id)),24)){"
+          "line": 1202,
+          "text": "const token=libraryEpoch,epoch=photoReadEpoch,owner=photosApi;"
         },
         {
-          "line": 1204,
-          "text": "const result=await library.thumbnails!({ids:batch.map(nativeId)});"
+          "line": 1203,
+          "text": "const current=()=>!disposed&&!document.hidden&&token===libraryEpoch&&epoch===photoReadEpoch&&owner===photosApi&&!!owner?.isActive()&&!owner.get('photos')?.open&&!owner.get('photos')?.album&&owner.get("
+        },
+        {
+          "line": 1205,
+          "text": "const live=new Map(captures.map(row=>[row.id,row] as const));"
         },
         {
           "line": 1206,
-          "text": "const requested=new Set(batch),images=new Map(result.items.filter(item=>item.image&&requested.has('native-camera-'+item.id)).map(item=>['native-camera-'+item.id,item.image] as const));"
+          "text": "const visible=rows.filter(row=>live.has(row.id)).map(row=>live.get(row.id)!);"
         },
         {
-          "line": 1212,
-          "text": "const gridCss=()=>`grid-template-columns:repeat(${gridColumns},minmax(0,1fr))`;"
+          "line": 1207,
+          "text": "const plan=thumbnailPlan(visible,from,to,LIBRARY_LIMITS.thumbnailsKept),shown=new Set(visible.map(row=>row.id)),drop=new Set(plan.drop);"
+        },
+        {
+          "line": 1209,
+          "text": "for(const batch of batches(plan.fetch.filter(id=>!thumbFetching.has(id)),24)){"
         },
         {
           "line": 1213,
-          "text": "const durationLabel=(row:SavedPhoto)=>row.kind==='video'&&row.duration?`${Math.floor(row.duration/60)}:${String(Math.floor(row.duration%60)).padStart(2,'0')}`:'';"
-        },
-        {
-          "line": 1214,
-          "text": "const tileLabel=(row:SavedPhoto)=>{const when=viewerTitle(shotAt(row));return `${row.kind==='video'?'Video':'Photo'}, ${when.day} ${when.time}`;};"
+          "text": "const result=await library.thumbnails!({ids:batch.map(nativeId)});"
         },
         {
           "line": 1215,
-          "text": "const imageCss=(row:SavedPhoto)=>row.image?`url(\"${row.image}\") center / cover no-repeat`:'var(--s2)';"
-        },
-        {
-          "line": 1217,
-          "text": "const now=Date.now();"
-        },
-        {
-          "line": 1218,
-          "text": "return rows.map(row=>{const left=trashMode?daysLeft(row.expiresAt,now):undefined;return {id:'capture:'+row.id,nativeMediaId:row.id,bg:imageCss(row),tf:'',flt:'',vid:row.kind==='video',dur:durationLabe"
-        },
-        {
-          "line": 1221,
-          "text": "const host={"
-        },
-        {
-          "line": 1224,
-          "text": "reviewChanged:()=>{photosApi?.set({nativeAgentReview:Date.now()});const note=deviceLibrary.takeStatus();if(note&&photosApi?.isActive())photosApi.toast(note);},"
+          "text": "const requested=new Set(batch),images=new Map(result.items.filter(item=>item.image&&requested.has('native-camera-'+item.id)).map(item=>['native-camera-'+item.id,item.image] as const));"
         },
         {
           "line": 1225,
-          "text": "trashed:(ids:string[])=>{const owner=photosApi;if(!owner||!ids.length)return;void (async()=>{await loadTrash(owner);await refresh();const rows=trash.filter(row=>ids.includes(nativeId(row.id)));if(owne"
+          "text": "const missing=rows.flatMap(row=>row&&!row.image&&!thumbFetching.has(row.id)?[row.id]:[]);"
         },
         {
-          "line": 1227,
-          "text": "const owner=photosApi;if(!owner?.isActive()||disposed)throw new LibraryAgentRefusal('Open Photos, then ask again.');"
+          "line": 1229,
+          "text": "const token=libraryEpoch,epoch=photoReadEpoch,owner=photosApi;"
+        },
+        {
+          "line": 1230,
+          "text": "const current=()=>!disposed&&!document.hidden&&token===libraryEpoch&&epoch===photoReadEpoch&&owner===photosApi&&!!owner?.isActive()&&!owner.get('photos')?.open&&owner.get('photos')?.tab==='alb';"
         },
         {
           "line": 1231,
-          "text": "const {type:_type,...wanted}=operation;void _type;"
+          "text": "for(const batch of batches(ids.filter(id=>!thumbFetching.has(id)),24)){"
         },
         {
-          "line": 1232,
-          "text": "const albumName=(key:string)=>customAlbums.find(row=>'custom:'+row.id===key)?.name;"
+          "line": 1235,
+          "text": "const result=await library.thumbnails!({ids:batch.map(nativeId)});"
         },
         {
           "line": 1237,
-          "text": "const shown=captures.filter(row=>filterMatches(row,photosFilter,albumMembers)).length;"
+          "text": "const requested=new Set(batch),images=new Map(result.items.filter(item=>item.image&&requested.has('native-camera-'+item.id)).map(item=>['native-camera-'+item.id,item.image] as const));"
         },
         {
-          "line": 1242,
-          "text": "const row=captures.find(item=>nativeId(item.id)===operation.id);"
+          "line": 1243,
+          "text": "const gridCss=()=>`grid-template-columns:repeat(${gridColumns},minmax(0,1fr))`;"
+        },
+        {
+          "line": 1244,
+          "text": "const durationLabel=(row:SavedPhoto)=>row.kind==='video'&&row.duration?`${Math.floor(row.duration/60)}:${String(Math.floor(row.duration%60)).padStart(2,'0')}`:'';"
+        },
+        {
+          "line": 1245,
+          "text": "const tileLabel=(row:SavedPhoto)=>{const when=viewerTitle(shotAt(row));return `${row.kind==='video'?'Video':'Photo'}, ${when.day} ${when.time}`;};"
+        },
+        {
+          "line": 1246,
+          "text": "const imageCss=(row:SavedPhoto)=>row.image?`url(\"${row.image}\") center / cover no-repeat`:'var(--s2)';"
+        },
+        {
+          "line": 1248,
+          "text": "const now=Date.now();"
         },
         {
           "line": 1249,
-          "text": "const wanted=new Set(operation.ids),rows=captures.filter(row=>wanted.has(nativeId(row.id)));"
+          "text": "return rows.map(row=>{const left=trashMode?daysLeft(row.expiresAt,now):undefined;return {id:'capture:'+row.id,nativeMediaId:row.id,bg:imageCss(row),tf:'',flt:'',vid:row.kind==='video',dur:durationLabe"
+        },
+        {
+          "line": 1252,
+          "text": "const host={"
+        },
+        {
+          "line": 1255,
+          "text": "reviewChanged:()=>{photosApi?.set({nativeAgentReview:Date.now()});const note=deviceLibrary.takeStatus();if(note&&photosApi?.isActive())photosApi.toast(note);},"
+        },
+        {
+          "line": 1256,
+          "text": "trashed:(ids:string[])=>{const owner=photosApi;if(!owner||!ids.length)return;void (async()=>{await loadTrash(owner);await refresh();const rows=trash.filter(row=>ids.includes(nativeId(row.id)));if(owne"
+        },
+        {
+          "line": 1258,
+          "text": "const owner=photosApi;if(!owner?.isActive()||disposed)throw new LibraryAgentRefusal('Open Photos, then ask again.');"
+        },
+        {
+          "line": 1262,
+          "text": "const {type:_type,...wanted}=operation;void _type;"
+        },
+        {
+          "line": 1263,
+          "text": "const albumName=(key:string)=>customAlbums.find(row=>'custom:'+row.id===key)?.name;"
         },
         {
           "line": 1268,
-          "text": "const releaseHost=setMainLibraryHost(host);"
+          "text": "const shown=captures.filter(row=>filterMatches(row,photosFilter,albumMembers)).length;"
         },
         {
-          "line": 1271,
-          "text": "const pending=shareReview;if(!pending||sharing||mutating)return;"
+          "line": 1273,
+          "text": "const row=captures.find(item=>nativeId(item.id)===operation.id);"
         },
         {
-          "line": 1274,
-          "text": "const items=pending.items.map(row=>({id:nativeId(row.id),revision:row.mutationRevision||''})),token=photoReadEpoch;"
-        },
-        {
-          "line": 1275,
-          "text": "const result:{status:string;message?:string}=browserMode?await browserPhotoLibrary.shareMany({items},()=>!disposed&&!document.hidden&&photoReadEpoch===token&&owner.isActive()):await nativeLibrary.shar"
-        },
-        {
-          "line": 1281,
-          "text": "const pending=albumReview;if(!pending||mutating)return;"
-        },
-        {
-          "line": 1284,
-          "text": "const [first,...rest]=pending.items,created=await library.changeAlbum({operation:'create',name:pending.name,mediaId:nativeId(first.id),mediaRevision:first.mutationRevision});"
-        },
-        {
-          "line": 1285,
-          "text": "const result=await addMembers({id:created.id,revision:created.revision},rest);"
-        },
-        {
-          "line": 1294,
-          "text": "editRecoveryChecked=true;const token=editEpoch;"
-        },
-        {
-          "line": 1298,
-          "text": "const data = photosRender(st, currentApi);data.normalSelecting=true;if(data.v)data.v.notDeleted=true;"
+          "line": 1280,
+          "text": "const wanted=new Set(operation.ids),rows=captures.filter(row=>wanted.has(nativeId(row.id)));"
         },
         {
           "line": 1299,
-          "text": "const onAlbums=st.tab==='alb'&&!st.album;"
+          "text": "const releaseHost=setMainLibraryHost(host);"
+        },
+        {
+          "line": 1302,
+          "text": "const pending=shareReview;if(!pending||sharing||mutating)return;"
+        },
+        {
+          "line": 1305,
+          "text": "const items=pending.items.map(row=>({id:nativeId(row.id),revision:row.mutationRevision||''})),token=photoReadEpoch;"
         },
         {
           "line": 1306,
-          "text": "data.libraryAccessChoose=async()=>{if(requestingLibraryAccess)return;requestingLibraryAccess=true;currentApi.set({nativeLibraryAccessRevision:Date.now()});const before=libraryAccess?.scope;try{library"
+          "text": "const result:{status:string;message?:string}=browserMode?await browserPhotoLibrary.shareMany({items},()=>!disposed&&!document.hidden&&photoReadEpoch===token&&owner.isActive()):await nativeLibrary.shar"
         },
         {
-          "line": 1313,
-          "text": "const cover=(rows:SavedPhoto[])=>rows[0]?.image?`url(\"${rows[0].image}\") center / cover no-repeat`:'var(--s2)';"
-        },
-        {
-          "line": 1314,
-          "text": "const openAlbum=(key:string)=>{currentApi.set({album:key,open:null,nativePhotoSelection:null});closeVideo();void loadAlbum(key,currentApi);};"
+          "line": 1312,
+          "text": "const pending=albumReview;if(!pending||mutating)return;"
         },
         {
           "line": 1315,
+          "text": "const [first,...rest]=pending.items,created=await library.changeAlbum({operation:'create',name:pending.name,mediaId:nativeId(first.id),mediaRevision:first.mutationRevision});"
+        },
+        {
+          "line": 1316,
+          "text": "const result=await addMembers({id:created.id,revision:created.revision},rest);"
+        },
+        {
+          "line": 1325,
+          "text": "editRecoveryChecked=true;const token=editEpoch;"
+        },
+        {
+          "line": 1329,
+          "text": "const data = photosRender(st, currentApi);data.normalSelecting=true;if(data.v)data.v.notDeleted=true;"
+        },
+        {
+          "line": 1330,
+          "text": "const onAlbums=st.tab==='alb'&&!st.album;"
+        },
+        {
+          "line": 1337,
+          "text": "data.libraryAccessChoose=async()=>{if(requestingLibraryAccess)return;requestingLibraryAccess=true;currentApi.set({nativeLibraryAccessRevision:Date.now()});const before=libraryAccess?.scope;try{library"
+        },
+        {
+          "line": 1344,
+          "text": "const covers:(SavedPhoto|undefined)[]=[];"
+        },
+        {
+          "line": 1345,
+          "text": "const cover=(rows:SavedPhoto[])=>{covers.push(rows[0]);return rows[0]?.image?`url(\"${rows[0].image}\") center / cover no-repeat`:'var(--s2)';};"
+        },
+        {
+          "line": 1346,
+          "text": "const openAlbum=(key:string)=>{currentApi.set({album:key,open:null,nativePhotoSelection:null});closeVideo();void loadAlbum(key,currentApi);};"
+        },
+        {
+          "line": 1347,
           "text": "const builtIn:[string,string,string,number|undefined][]=[['fav','Favorites','favorites',counts?.favorites],['video','Videos','videos',counts?.videos],['camera','Camera','camera',counts?.camera],['shot"
         },
         {
-          "line": 1322,
+          "line": 1355,
           "text": "if(manager){const selectedManager=manager,many=manager.items;data.am={modalRef:albumModal.ref,title:manager.confirmDelete?'Delete album?':manager.creating?'New album':manager.album?'Manage album':'Add"
         },
         {
-          "line": 1324,
+          "line": 1357,
           "text": "items:customAlbums.map(album=>{const member=!many&&album.memberIds.includes(nativeId(manager?.media?.id||''));return {id:'custom:'+album.id,name:album.name,label:(member?'Remove from ':'Add to ')+albu"
         },
         {
-          "line": 1328,
+          "line": 1361,
           "text": "const pool=selectionPool(currentApi),all=pool.length>0&&pool.every(row=>selection!.some(item=>item.id===row.id));"
         },
         {
-          "line": 1335,
+          "line": 1368,
           "text": "data.selSaveLocally=browserMode?()=>{const chosen=selection||[],token=photoReadEpoch;return saveBrowserMedia({items:chosen.map(row=>({id:nativeId(row.id),revision:row.mutationRevision||''}))},()=>!dis"
         },
         {
-          "line": 1342,
+          "line": 1375,
           "text": "const priorCloseSheet = data.closeSheet; data.closeSheet=()=>{if(st.sheet==='empty')cancelPermanent(currentApi);else if(st.sheet==='owned-album'){manager=undefined;currentApi.set({sheet:null});}else i"
         },
         {
-          "line": 1357,
+          "line": 1390,
           "text": "const custom=customAlbums.find(row=>'custom:'+row.id===st.album),names:Record<string,string>={fav:'Favorites',video:'Videos',camera:'Camera',shot:'Screenshots'};"
         },
         {
-          "line": 1367,
+          "line": 1400,
           "text": "const shownCaptures = st.filter ? [] : captures.filter(row=>filterMatches(row,photosFilter,albumMembers));"
         },
         {
-          "line": 1372,
+          "line": 1405,
           "text": "const grouped = groupSections(shownCaptures), grid = virtualGrid(grouped.map(group => group.items.length), gridMetrics());"
         },
         {
-          "line": 1373,
+          "line": 1406,
           "text": "const offsets:number[]=[];grouped.reduce((at,group,index)=>{offsets[index]=at;return at+group.items.length;},0);"
         },
         {
-          "line": 1374,
+          "line": 1407,
           "text": "const first=grid.sections[0],last=grid.sections[grid.sections.length-1];"
         },
         {
-          "line": 1376,
+          "line": 1409,
           "text": "const sections = grid.sections.map(part => { const group = grouped[part.index]; return { id: group.key, label: group.label, place: '', count: String(group.items.length), pad: `padding-top:${part.padTo"
         },
         {
-          "line": 1379,
+          "line": 1412,
           "text": "const nothing = !data.groups.length && loaded && !loading && !st.nativeLibraryError;"
         },
         {
-          "line": 1382,
+          "line": 1415,
           "text": "const review = deviceLibrary.reviewCard();"
         },
         {
-          "line": 1386,
+          "line": 1419,
           "text": "const sequence = st.album === 'trash' ? trash : st.album ? albumRows : shownCaptures;"
         },
         {
-          "line": 1387,
+          "line": 1420,
           "text": "const selected = preview?.id === st.open ? preview : [...captures, ...albumRows, ...trash].find(c => c.id === st.open);"
         },
         {
-          "line": 1390,
+          "line": 1423,
           "text": "const index = sequence.findIndex(row => row.id === selected.id);"
         },
         {
-          "line": 1391,
+          "line": 1424,
           "text": "const go = (step: number) => { const target = sequence[index + step]; if (index < 0 || !target) return; void openSaved(target.id, currentApi); };"
         },
         {
-          "line": 1392,
+          "line": 1425,
           "text": "let gesture: { x: number; y: number } | undefined, swiped = false;"
         },
         {
-          "line": 1393,
+          "line": 1426,
           "text": "const when = viewerTitle(shotAt(selected)), chrome = st.chrome !== false;"
         },
         {
-          "line": 1399,
+          "line": 1432,
           "text": "up: (event: PointerEvent) => { const start = gesture; gesture = undefined; if (!start) return; const dx = event.clientX - start.x, dy = event.clientY - start.y; if (Math.abs(dx) > 48 && Math.abs(dx) >"
         },
         {
-          "line": 1404,
+          "line": 1437,
           "text": "try { const input={id:nativeId(selected.id),revision:selected.mutationRevision},token=photoReadEpoch,current=()=>!disposed&&!document.hidden&&photoReadEpoch===token&&currentApi.isActive()&&currentApi."
         },
         {
-          "line": 1408,
+          "line": 1441,
           "text": "data.v.saveLocally=browserMode?()=>{const token=photoReadEpoch;return saveBrowserMedia({items:[{id:nativeId(selected.id),revision:selected.mutationRevision||''}]},()=>!disposed&&!document.hidden&&phot"
         },
         {
-          "line": 1409,
+          "line": 1442,
           "text": "data.v.isDeleted=!!selected.trashed;data.v.notDeleted=!selected.trashed;data.v.canDeleteForever=!!selected.trashed;data.v.recover=()=>void changeTrash(selected,false,currentApi);data.v.deleteForever=("
         },
         {
-          "line": 1410,
+          "line": 1443,
           "text": "const shown=st.album==='trash'?trash:st.album?albumRows:shownCaptures,at=shown.findIndex(row=>row.id===selected.id);"
         },
         {
-          "line": 1411,
+          "line": 1444,
           "text": "const step=(row:SavedPhoto|undefined)=>()=>{if(row&&!edit&&!mutating&&!sharing)void openSaved(row.id,currentApi);};"
         },
         {
-          "line": 1418,
+          "line": 1451,
           "text": "const albums=customAlbums.filter(album=>album.memberIds.includes(nativeId(selected.id))).map(album=>album.name);"
         },
         {
-          "line": 1419,
+          "line": 1452,
           "text": "const facts=[['Date',`${new Date(shotAt(selected)).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'})} ${when.time}`],['File',selected.name||''],['Size',formatByt"
         },
         {
-          "line": 1422,
+          "line": 1455,
           "text": "const infoControl=document.querySelector<HTMLElement>(`[data-alpha-subview=\"photos-viewer\"] button[aria-label=\"${data.v.infoLabel}\"]`)||undefined;"
         },
         {
-          "line": 1425,
+          "line": 1458,
           "text": "if(edit?.source===selected.id){const current=edit;data.v.ed={bg:`url(\"${current.image}\") center / contain no-repeat`,tf:'',flt:'none',cropOn:current.crop,cropCss:current.crop?'background:#ffffff;color"
         },
         {
-          "line": 1430,
+          "line": 1463,
           "text": "if(views.photos)views.photos.onLeave=(owner:Bag)=>{retirePhotoRead();window.clearTimeout(thumbTimer);deviceLibrary.leave();shareReview=undefined;albumReview=undefined;closeQuestion?.();closeQuestion=u"
         },
         {
-          "line": 1435,
+          "line": 1468,
           "text": "const row = preview?.id === selected.id ? preview : normalize(await library.read({ id: nativeId(selected.id) }));"
         },
         {
-          "line": 1443,
+          "line": 1476,
           "text": "const update = () => { if (owner.isActive() && owner.get('photos').open === selected.id) owner.set({ nativePlaybackRevision: Date.now() }); };"
         },
         {
-          "line": 1452,
+          "line": 1485,
           "text": "const owner = photosApi;"
         },
         {
-          "line": 1454,
+          "line": 1487,
           "text": "const frame = document.querySelector('[data-alpha-photo-frame]');"
         },
         {
-          "line": 1457,
+          "line": 1490,
           "text": "let polling = false;"
         },
         {
-          "line": 1458,
+          "line": 1491,
           "text": "const timer = window.setInterval(async () => {"
         },
         {
-          "line": 1461,
+          "line": 1494,
           "text": "try { const state = await camera.getRecordingState(); if (session.recording) { duration = state.duration; if (!state.isRecording) { limitStop = true; void finishVideo(); } else api?.set({ nativeRecord"
         },
         {
-          "line": 1465,
+          "line": 1498,
           "text": "let queued = false;"
         },
         {
-          "line": 1466,
+          "line": 1499,
           "text": "let libraryWatching=false;"
         },
         {
-          "line": 1467,
+          "line": 1500,
           "text": "const watchLibrary=(want:boolean)=>{if(browserMode||want===libraryWatching)return;libraryWatching=want;void nativeLibrary.watchLibrary({active:want}).catch(()=>{libraryWatching=false;});};"
         },
         {
-          "line": 1469,
+          "line": 1502,
           "text": "const syncPhotos = () => { watchLibrary(!disposed&&!document.hidden&&!!photosApi?.isActive()&&permittedLibrary());if((edit||videoEditSource)&&(!photosApi?.isActive()||photosApi.get('photos').open!==(e"
         },
         {
-          "line": 1471,
-          "text": "const syncCamera = () => { trackChat(); if (active()) { if (session.phase === 'off') void start(); else if (session.phase === 'ready') mask(true); } else if (session.phase !== 'off') void stop(); };"
+          "line": 1504,
+          "text": "const syncCamera = () => { trackChat(); if (active()) { if (session.phase === 'off'&&!previewReleased) void start(); else if (session.phase === 'ready') mask(true); } else { previewReleased=false; if "
         },
         {
-          "line": 1472,
+          "line": 1505,
           "text": "const sync = () => { queued = false; if (disposed) return; syncPhotos(); syncCamera(); };"
         },
         {
-          "line": 1476,
+          "line": 1509,
           "text": "const removePresence = installViewPresence(_Component, schedule);"
         },
         {
-          "line": 1477,
+          "line": 1510,
           "text": "const resize = () => { if (session.phase === 'ready') mask(true); schedule(); };"
         },
         {
-          "line": 1478,
+          "line": 1511,
           "text": "const visibility = () => { if (document.hidden) { retirePhotoRead();setLast(undefined);window.clearTimeout(thumbTimer);watchLibrary(false);cancelEdit();closeVideo();if(permittedLibrary()){++libraryEpo"
         },
         {
-          "line": 1479,
+          "line": 1512,
           "text": "let libraryChangeHandle:{remove():Promise<void>}|undefined;"
         },
         {
-          "line": 1487,
+          "line": 1520,
           "text": "const owner=photosApi;"
         },
         {
-          "line": 1490,
+          "line": 1523,
           "text": "const key=owner.get('photos')?.album;if(typeof key==='string'&&key&&key!=='trash')void loadAlbum(key,owner);"
         },
         {
-          "line": 1498,
+          "line": 1531,
           "text": "const [access,source]=await Promise.all([nativeLibrary.libraryAccess(),nativeLibrary.read({id:nativeId(copy.source.id)})]);"
         },
         {
-          "line": 1508,
+          "line": 1541,
           "text": "const copy=pendingNativeVideoCopy;"
         },
         {
-          "line": 1514,
+          "line": 1547,
           "text": "const albumsChanged=()=>{if(!browserMode||disposed)return;albumsLoaded=false;albumsBusy=false;++albumsEpoch;albumKey='';albumBusy=false;++albumEpoch;if(photosApi?.isActive()){void loadCustomAlbums(pho"
         },
         {
-          "line": 1516,
+          "line": 1549,
           "text": "const pageHide=()=>{retirePhotoRead();setLast(undefined);window.clearTimeout(thumbTimer);cancelEdit();closeVideo();void stop();};"
         },
         {
-          "line": 1519,
+          "line": 1552,
           "text": "const resumed=()=>{void restartAfterResume(()=>({denied:session.denied,phase:session.phase,disposed}),()=>cameraAccess.checkPermissions()).then(restart=>{if(restart){session.rearm();schedule();}});};"
         },
         {
-          "line": 1520,
+          "line": 1553,
           "text": "let resumeHandle:{remove():Promise<void>}|undefined;"
         }
       ]
@@ -33820,7 +33840,7 @@
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
-      "sha256": "1840bf11ecb6e419eeae4728ba97c22b4176171e4dcf62f8c962c55cf93228b1",
+      "sha256": "43c92dac368bba4c600eb124afefddc0e99f35ab4d6a6a372711a404b62383a8",
       "stateAnchors": [
         {
           "line": 36,
@@ -33855,247 +33875,247 @@
           "text": "const aborted = (error: unknown) => (error as { name?: string })?.name === 'AbortError';"
         },
         {
-          "line": 99,
+          "line": 100,
           "text": "const { code, name, message } = (error ?? {}) as { code?: string; name?: string; message?: string };"
         },
         {
-          "line": 107,
+          "line": 108,
           "text": "const total = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(total / 3600), m = Math.floor(total / 60) % 60, s = total % 60;"
         },
         {
-          "line": 163,
+          "line": 165,
           "text": "const owner = this.options.owner();"
         },
         {
-          "line": 165,
+          "line": 167,
           "text": "const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(owner.identity));"
         },
         {
-          "line": 173,
+          "line": 175,
           "text": "const binding = status.binding;"
         },
         {
-          "line": 181,
+          "line": 183,
           "text": "const id = this.ownedRecordingId, wasOpen = this.open;"
         },
         {
-          "line": 192,
+          "line": 194,
           "text": "const parts: string[] = [];"
         },
         {
-          "line": 193,
+          "line": 195,
           "text": "for (const segment of this.segments) { const text = this.texts.get(segment.segmentId); if (text === undefined) break; if (text.trim()) parts.push(text.trim()); }"
         },
         {
-          "line": 198,
+          "line": 200,
           "text": "let ms = 0;"
         },
         {
-          "line": 199,
+          "line": 201,
           "text": "for (const segment of this.segments) { if (!this.texts.has(segment.segmentId)) break; ms += segment.durationMs; }"
         },
         {
-          "line": 208,
+          "line": 210,
           "text": "const committed = this.committedMs();"
         },
         {
-          "line": 209,
+          "line": 211,
           "text": "const live = this.liveFinals.filter(u => u.at >= committed).map(u => u.text);"
         },
         {
-          "line": 215,
+          "line": 217,
           "text": "const want = this.owned(this.epoch) && this.phase === 'recording' && !!this.options.live && !this.liveLost &&"
         },
         {
-          "line": 219,
+          "line": 221,
           "text": "const epoch = this.epoch; this.liveOpening = true;"
         },
         {
-          "line": 220,
+          "line": 222,
           "text": "let stream: { close(): Promise<void> | void } | null | undefined;"
         },
         {
-          "line": 221,
+          "line": 223,
           "text": "const handlers: NoteLiveHandlers = {"
         },
         {
-          "line": 226,
+          "line": 228,
           "text": "const value = String(text || '').trim();"
         },
         {
-          "line": 230,
+          "line": 232,
           "text": "const committed = this.committedMs(); this.liveFinals = this.liveFinals.filter(u => u.at >= committed);"
         },
         {
-          "line": 245,
+          "line": 247,
           "text": "const stream = this.liveStream; this.liveStream = undefined; this.liveInterim = '';"
         },
         {
-          "line": 258,
+          "line": 260,
           "text": "const epoch = ++this.epoch;"
         },
         {
-          "line": 263,
+          "line": 265,
           "text": "const existing = await this.driver.status();"
         },
         {
-          "line": 270,
+          "line": 272,
           "text": "const binding = this.ownerDigest ? { ownerDigest: this.ownerDigest, folderId: this.recordingFolder } : undefined;"
         },
         {
-          "line": 271,
+          "line": 273,
           "text": "const status = existing.state === 'idle' ? await this.driver.start(binding) : existing;"
         },
         {
-          "line": 293,
+          "line": 295,
           "text": "const original = this.epoch;"
         },
         {
-          "line": 294,
+          "line": 296,
           "text": "const status = await this.driver.status();"
         },
         {
-          "line": 296,
+          "line": 298,
           "text": "const epoch = ++this.epoch;"
         },
         {
-          "line": 305,
+          "line": 307,
           "text": "const handle = await this.driver.listen(status => { if (epoch === this.epoch) this.apply(status); });"
         },
         {
-          "line": 313,
+          "line": 315,
           "text": "const handle = this.handle; this.handle = undefined; if (handle) void Promise.resolve(handle.remove()).catch(() => {});"
         },
         {
-          "line": 325,
+          "line": 327,
           "text": "const previous = this.phase;"
         },
         {
-          "line": 343,
+          "line": 345,
           "text": "for (const s of this.segments) if (typeof s.text === 'string' && !this.texts.has(s.segmentId)) this.texts.set(s.segmentId, s.text);"
         },
         {
-          "line": 349,
+          "line": 351,
           "text": "const epoch = this.epoch;"
-        },
-        {
-          "line": 361,
-          "text": "const epoch = this.epoch;"
-        },
-        {
-          "line": 362,
-          "text": "const run = (async () => {"
         },
         {
           "line": 363,
+          "text": "const epoch = this.epoch;"
+        },
+        {
+          "line": 364,
+          "text": "const run = (async () => {"
+        },
+        {
+          "line": 365,
           "text": "let route: SegmentTranscriber | null = null, resolved = false;"
         },
         {
-          "line": 366,
+          "line": 368,
           "text": "const next = this.segments.find(s => !this.texts.has(s.segmentId));"
         },
         {
-          "line": 380,
+          "line": 383,
           "text": "const controller = new AbortController(); this.transcribing = controller;"
         },
         {
-          "line": 381,
+          "line": 384,
           "text": "let text: string;"
         },
         {
-          "line": 395,
+          "line": 398,
           "text": "const tracked = this.pumping;"
         },
         {
-          "line": 399,
+          "line": 402,
           "text": "const id = this.recordingId;"
         },
         {
-          "line": 401,
+          "line": 404,
           "text": "const epoch = this.epoch;"
         },
         {
-          "line": 402,
+          "line": 405,
           "text": "const status = await this.driver.pause(id);"
         },
         {
-          "line": 406,
+          "line": 409,
           "text": "const id = this.recordingId;"
-        },
-        {
-          "line": 408,
-          "text": "const epoch = this.epoch;"
         },
         {
           "line": 411,
-          "text": "const status = await this.driver.resume(id);"
-        },
-        {
-          "line": 422,
-          "text": "const id = this.recordingId, epoch = this.epoch;"
-        },
-        {
-          "line": 426,
-          "text": "const before = this.phase;"
-        },
-        {
-          "line": 429,
-          "text": "const stopped = await this.driver.stop(id);"
-        },
-        {
-          "line": 439,
-          "text": "* Done: stop, let the transcript catch up with the audio, and save both as one voice note"
-        },
-        {
-          "line": 449,
-          "text": "const id = this.recordingId;"
-        },
-        {
-          "line": 452,
           "text": "const epoch = this.epoch;"
         },
         {
-          "line": 453,
-          "text": "const alreadyStopped = this.phase === 'stopped';"
+          "line": 414,
+          "text": "const status = await this.driver.resume(id);"
         },
         {
-          "line": 454,
-          "text": "let savePending = false;"
+          "line": 425,
+          "text": "const id = this.recordingId, epoch = this.epoch;"
         },
         {
-          "line": 457,
-          "text": "const stopped = alreadyStopped ? await this.driver.status() : await this.driver.stop(id);"
+          "line": 429,
+          "text": "const before = this.phase;"
         },
         {
-          "line": 473,
-          "text": "const transcript = this.transcript();"
+          "line": 432,
+          "text": "const stopped = await this.driver.stop(id);"
         },
         {
-          "line": 476,
-          "text": "const noteId = id;"
+          "line": 442,
+          "text": "* Done: stop, let the transcript catch up with the audio, and save both as one voice note"
         },
         {
-          "line": 478,
-          "text": "const saved = keepAudio ? await this.driver.save({ recordingId: id, noteId, transcript }) : { audioId: id, noteId, durationMs: this.durationMs, transcript };"
-        },
-        {
-          "line": 481,
-          "text": "const intent = keepAudio ? undefined : {"
-        },
-        {
-          "line": 487,
-          "text": "const claimed = await this.driver.claimCanonicalSave(id);"
-        },
-        {
-          "line": 493,
-          "text": "const audio = await this.driver.save({recordingId: id, noteId: canonicalNoteId, transcript});"
-        },
-        {
-          "line": 516,
+          "line": 452,
           "text": "const id = this.recordingId;"
         },
         {
-          "line": 539,
+          "line": 455,
+          "text": "const epoch = this.epoch;"
+        },
+        {
+          "line": 456,
+          "text": "const alreadyStopped = this.phase === 'stopped';"
+        },
+        {
+          "line": 457,
+          "text": "let savePending = false;"
+        },
+        {
+          "line": 460,
+          "text": "const stopped = alreadyStopped ? await this.driver.status() : await this.driver.stop(id);"
+        },
+        {
+          "line": 476,
+          "text": "const transcript = this.transcript();"
+        },
+        {
+          "line": 479,
+          "text": "const noteId = id;"
+        },
+        {
+          "line": 481,
+          "text": "const saved = keepAudio ? await this.driver.save({ recordingId: id, noteId, transcript }) : { audioId: id, noteId, durationMs: this.durationMs, transcript };"
+        },
+        {
+          "line": 484,
+          "text": "const intent = keepAudio ? undefined : {"
+        },
+        {
+          "line": 490,
+          "text": "const claimed = await this.driver.claimCanonicalSave(id);"
+        },
+        {
+          "line": 496,
+          "text": "const audio = await this.driver.save({recordingId: id, noteId: canonicalNoteId, transcript});"
+        },
+        {
+          "line": 519,
+          "text": "const id = this.recordingId;"
+        },
+        {
+          "line": 542,
           "text": "const id = this.recordingId, recording = this.phase === 'recording';"
         }
       ]
@@ -58445,7 +58465,7 @@
         "IdentitySession",
         "NativeCredentialMutation"
       ],
-      "sha256": "93bf31f58092fc21323a30c14668d33a4faf45b2f8f8a6b589cc7a37df33d6b1"
+      "sha256": "f8f72fe7b76efba7f007f8437a7d06ba230d6c6cd8544ec5fa09f8e9ff4ea208"
     },
     {
       "path": "android/consumer-host.json",
@@ -58454,7 +58474,7 @@
         "ResidentRuntime",
         "AlwaysOnListener"
       ],
-      "sha256": "908ac2f482d34e1d34c9847a3326eb5dc9ab9167d6bb4de953868718afa78fe3"
+      "sha256": "d6ed928ba2fdaee87478107211fc92bd18e3d88683ca45dbbaacb50d935ab085"
     },
     {
       "path": "patches/eliza/cloud-speech-native.patch",
@@ -58478,7 +58498,7 @@
         "RendererFailureUI",
         "VoiceSession"
       ],
-      "sha256": "ffa94030f96b6b4573c3ca65972c77ca3e640bc78062559b4993a92657ec32e4"
+      "sha256": "085b33f9ae8263c00a1aa5aeae44cad9789effe378f534f1329967097c20e504"
     },
     {
       "path": "patches/eliza/calendar-semantic-client-manifest.json",
@@ -58566,7 +58586,7 @@
         "FilesTree",
         "ListFocus"
       ],
-      "sha256": "322c2a35ae85b2760de15c5395b1afe47b2f7beda09825958c745f6bccd9108d"
+      "sha256": "02392d7fda7af47e47bb3ba76e72b66f398ae531a70c9284cc615b8cd66946e0"
     },
     {
       "path": "patches/eliza/files-list-identity-client.patch",
@@ -58574,7 +58594,7 @@
         "FilesTree",
         "ListFocus"
       ],
-      "sha256": "8957b8646d13c1cdc9bd47ed3b00e4e1b418df8320626c79cb69fe4b5d1fb4af"
+      "sha256": "8c2d0c98aefa70729b97ea8684272dedbbf1f9520d5738849c755ba7af170862"
     },
     {
       "path": "patches/eliza/google-browser-sign-in.patch",
@@ -58679,7 +58699,7 @@
         "MediaLifecycle",
         "DeviceActions"
       ],
-      "sha256": "dcea7430f7ceca88ab0d35e80648d7bc65798956c91d6dce6009fe63cb7f5579"
+      "sha256": "08c64206da09c9dade81304bb49398133d06a9ec080a8dc257f149a5de24a44d"
     },
     {
       "path": "patches/eliza/photos-view-agent.patch",
@@ -58774,6 +58794,60 @@
         "VoiceSession"
       ],
       "sha256": "b7a8a72b062b54fff72ecffb9753be58009ed215955e1091a6bedc4dd863d35c"
+    },
+    {
+      "path": "patches/eliza/files-storage-query-client-manifest.json",
+      "models": [
+        "FilesTree",
+        "DeviceActions"
+      ],
+      "sha256": "949be13d289a4d257f504f256a9038cb7cedaf66168e923428c85a2a93a41b8b"
+    },
+    {
+      "path": "patches/eliza/files-storage-query-client.patch",
+      "models": [
+        "FilesTree",
+        "DeviceActions"
+      ],
+      "sha256": "446b53d6ffeb74331b5c99d15620e32f2f28c20d1c003507fe4b766a10a62d7a"
+    },
+    {
+      "path": "patches/eliza/files-storage-view.patch",
+      "models": [
+        "FilesTree",
+        "DeviceActions"
+      ],
+      "sha256": "4c7f0d061a4de632ad45faac794713c250be0c2a4237968b48bcfcd19e17b7fb"
+    },
+    {
+      "path": "patches/eliza/photos-library-presentation-client-manifest.json",
+      "models": [
+        "MediaLifecycle",
+        "ListFocus"
+      ],
+      "sha256": "7df42862b0310ad4e392c38b29ce56bb2b47c6ebfd2f516e598bad6e1b6180ab"
+    },
+    {
+      "path": "patches/eliza/photos-library-presentation-client.patch",
+      "models": [
+        "MediaLifecycle",
+        "ListFocus"
+      ],
+      "sha256": "7f78e4c6c08d0023cd964a1f847055a7a8d92365ef0ea024ecf31da99b7fa2df"
+    },
+    {
+      "path": "patches/eliza/photos-window-client-manifest.json",
+      "models": [
+        "MediaLifecycle"
+      ],
+      "sha256": "f6b9f933c9c757da6f88341fd2ce974b4d1a2e92f446c17bf639445bd7638921"
+    },
+    {
+      "path": "patches/eliza/photos-window-client.patch",
+      "models": [
+        "MediaLifecycle"
+      ],
+      "sha256": "585b89c1ed5a23c3397d19a3303b89bef68c872849b46ba090d7b564b12421c5"
     }
   ],
   "runtimeAssets": [
