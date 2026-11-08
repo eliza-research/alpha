@@ -80,6 +80,7 @@ export function formatMonthDay(date: Date, withYear = false) { return clean(form
 export function formatDateTime(date: Date) { return clean(format({year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'}).format(date)); }
 /** Full message date, seconds and time zone, using the device hour cycle. */
 export function formatFullDateTime(date: Date) {
+  if (!Number.isFinite(date.getTime())) return 'Date unavailable';
   return clean(format({weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', timeZoneName: 'short'}).format(date));
 }
 /** "October" or "October 2027". */

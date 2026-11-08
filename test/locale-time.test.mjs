@@ -74,6 +74,7 @@ test('model.js has no hard-coded weekday, month or 12-hour clock code paths', ()
 });
 
 test('full message dates retain seconds and follow the device hour cycle', () => {
+  assert.equal(L.formatFullDateTime(new Date('')), 'Date unavailable');
   L.setLocalePreferences({locale: 'en-US', hourCycle: 'h23'});
   assert.match(L.formatFullDateTime(afternoon), /Wednesday, October 7, 2026/);
   assert.match(L.formatFullDateTime(afternoon), /15:04:00/);
