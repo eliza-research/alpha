@@ -1549,6 +1549,30 @@
               "afterSha256": "a06d439e7682c35b5744c83ac31c474e128473b16655c864a8a003e6bc2a8e1d"
             }
           ]
+        },
+        {
+          "file": "speech-pipe-settlement.patch",
+          "sha256": "482fccdf0cc427722e22ba2c68e16dbbd1856ef7f68cdea73b0d4617777e7bb0",
+          "module": "plugins/plugin-local-inference/native/android",
+          "targets": [
+            {
+              "path": "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveSegmentPipe.java",
+              "beforeSha256": "01838880e19df9f5b12ed0741d808ac8cb17627a23eb841a4a5c98a5089ce7f9",
+              "afterSha256": "dddb7789528de0bf2cbb716f8be9c74fd748667756e05c0c843017cb8176de4c"
+            }
+          ]
+        },
+        {
+          "file": "recognizer-retired-callback.patch",
+          "sha256": "4e2ed9bade0ad8c426f243cf74af7d671aaaef3958af4fdaec408cf7506ed612",
+          "module": "plugins/plugin-local-inference/native/android",
+          "targets": [
+            {
+              "path": "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/OnDeviceRecognizer.java",
+              "beforeSha256": "00dd3c480904e57d577591b19ccdfafca132077eaa0a77b31528745dd36ea27e",
+              "afterSha256": "5e30a5d8bb04ad83b1369c0fc6ac8c95e00ecacde199d92f80eec1f487fc1894"
+            }
+          ]
         }
       ],
       "nativeInputsUnchanged": false,
@@ -1601,7 +1625,9 @@
         "patches/eliza/cloud-speech-native.patch",
         "patches/eliza/local-speech-streaming.patch",
         "patches/eliza/notes-recording-segments.patch",
-        "patches/eliza/speech-recording-admission.patch"
+        "patches/eliza/speech-recording-admission.patch",
+        "patches/eliza/speech-pipe-settlement.patch",
+        "patches/eliza/recognizer-retired-callback.patch"
       ],
       "note": "Historical component measurements retain their original qualify APK and source identity. Current shared Java, producer and explicit bridge changes require current-source qualification and owner acceptance. Neither is claimed."
     }
