@@ -12,12 +12,14 @@ const adapter = resolve(root, 'apps/app/src/prototype/agent-calendar-adapter.ts'
 export const mountedCalendarFixtureSources = [fileURLToPath(import.meta.url), main, adapter, resolve(root, 'vite.config.ts'),
   resolve(root, 'package-lock.json')];
 
-async function installCalendar({legacyTitle}) {
+async function installCalendar({legacyTitle, eventTitles}) {
   const {connectionController} = await import('/src/runtime/connection-ui.tsx');
   const {browserDocuments} = await import('/src/browser/documents.ts');
   const {calendarDocument, initialCalendarState} = await import('/src/browser/calendar-store.ts');
   const {legacyCalendarPreservation} = await import('/src/runtime/legacy-calendar-preservation.ts');
   const {calendarOwnerKey} = await import('/src/runtime/agent-calendar.ts');
+  const {assistantDraftStore} = await import('/src/runtime/assistant-draft-store.ts');
+  const {decodeCanonicalCalendarDraft} = await import('/src/runtime/canonical-calendar-draft.ts');
   const shell = window.quintMountedCalendar;
   const calendar = shell.agentCalendar;
   const capture = calendarDocument.capture.bind(calendarDocument);
@@ -29,7 +31,16 @@ async function installCalendar({legacyTitle}) {
   const notices = [], attempts = [], writes = [], requests = [], refreshes = [], publications = [];
   const queued = new Map(), gates = new Map(), captures = new Map(), markers = new Map();
   const prefix = 'alpha.calendar.retention.v1.';
-  let invoking, activePort, generation = 0, gateId = 0, hidden = false;
+  let invoking, activePort, draftScope, draftAdmission, generation = 0, gateId = 0, hidden = false;
+  const consume = shell.canonicalDraft.consume.bind(shell.canonicalDraft);
+  shell.canonicalDraft.consume = (text, ...args) => {
+    const admission = {text};
+    draftAdmission = admission;
+    const pending = consume(text, ...args);
+    const release = () => {if (draftAdmission === admission) draftAdmission = undefined;};
+    void pending.then(release, release);
+    return pending;
+  };
 
   function hold(stage, error = '') {
     const gate = {id: ++gateId, stage, error};
@@ -91,7 +102,13 @@ async function installCalendar({legacyTitle}) {
     return result;
   };
   browserDocuments.compareExchange = async (key, expected, raw, signal) => {
-    if (!key.startsWith(prefix)) return exchange(key, expected, raw, signal);
+    if (!key.startsWith(prefix)) {
+      if (key.startsWith('alpha.browser.assistant-draft:v1:') && shell.canonicalDraft?.state.consuming) {
+        const gate = block('draft-clear');
+        if (gate) await gate;
+      }
+      return exchange(key, expected, raw, signal);
+    }
     const attempt = captures.get(signal ?? shell.quintCalendarRetentionSignal?.());
     if (attempt) attempt.stage = 'marker-dispatch';
     const operation = {key, value: JSON.parse(raw), committed: false, attempt: attempt?.id ?? 0};
@@ -117,9 +134,17 @@ async function installCalendar({legacyTitle}) {
   const seed = title => calendarDocument.edit(initialCalendarState, data => {
     data.events = [{id: 'legacy-event', calendarId: 'local', title, begin: 1000, end: 2000, repeat: 'none'}];
   });
+  const ownerKeys = new Map();
   const switchPort = async (ownerId, sessionId) => {
     const id = ++generation;
     const identity = {ownerId, agentId: 'calendar-fixture-agent', sessionId, origin: location.origin};
+    const today = new Date();
+    const events = eventTitles.map((title, i) => ({id: 'fixture-event-' + i, externalId: 'fixture-external-' + i,
+      agentId: identity.agentId, provider: 'eliza', side: 'owner', grantId: 'eliza-calendar', connectorAccountId: 'fixture-account',
+      calendarId: 'primary', title, description: '', location: '', status: 'confirmed',
+      startAt: new Date(today.setHours(12 + i, 0, 0, 0)).toISOString(), endAt: new Date(today.setMinutes(30)).toISOString(),
+      isAllDay: false, timezone: 'UTC', htmlLink: null, conferenceLink: null, organizer: null, attendees: [],
+      metadata: {etag: 'fixture-event-v1-' + i}, syncedAt: new Date().toISOString(), updatedAt: new Date().toISOString()}));
     activePort = {
       identity, sessionId, current: () => generation === id,
       async request(path, method, _body, signal) {
@@ -132,7 +157,7 @@ async function installCalendar({legacyTitle}) {
           grantId: 'eliza-calendar', connectorAccountId: 'fixture-account', accountEmail: null, calendarId: 'primary',
           summary: 'Fixture Calendar', description: null, primary: true, accessRole: 'owner', backgroundColor: null,
           foregroundColor: null, timeZone: 'UTC', selected: true, includeInFeed: true, selectionVersion: 0}]};
-        if (url.pathname === '/api/lifeops/calendar/feed') return {calendarId: 'primary', events: [], source: 'cache',
+        if (url.pathname === '/api/lifeops/calendar/feed') return {calendarId: 'primary', events: structuredClone(events), source: 'cache',
           state: 'complete', sources: [], timeMin: url.searchParams.get('timeMin'), timeMax: url.searchParams.get('timeMax'), syncedAt: now};
         if (url.pathname === '/api/lifeops/calendar/next-context') return {event: null,
           readScope: {selection: 'next_event', timeMin: now, timeMax: new Date(Date.now() + 86400000).toISOString(), exhaustive: false},
@@ -142,6 +167,7 @@ async function installCalendar({legacyTitle}) {
         throw Error('Unexpected mounted Calendar request ' + url.pathname);
       },
     };
+    ownerKeys.set(ownerId, calendarOwnerKey(activePort));
     await connectionController.offline();
   };
   connectionController.getAppRecordClient = () => activePort ?? null;
@@ -164,8 +190,18 @@ async function installCalendar({legacyTitle}) {
       document.dispatchEvent(new Event('visibilitychange'));
     },
     scope: () => !!shell.calendarConnectionScope()?.canChange(),
+    bindDraftScope: () => {draftScope = shell.calendarConnectionScope();},
+    observeDraftScope: () => !!draftScope?.current() && draftScope.canChange(),
+    async saved(ownerId) {
+      const store = await assistantDraftStore(JSON.stringify(['canonical-calendar-editor', ownerKeys.get(ownerId)]));
+      return (await store.read())?.text ?? '';
+    },
     snapshot() {
-      const form = shell.vget('calendar').form;
+      const state = shell.vget('calendar');
+      const form = state.form;
+      const retained = shell.canonicalDraftText;
+      const summarize = form => form?.canonicalOwnerKey ? {owner: form.canonicalOwnerKey, id: form.creationId,
+        target: form.canonicalEventKey ?? null, title: form.title, picker: form.pq !== null && form.pq !== undefined} : null;
       return {
         owner: activePort.identity.ownerId, session: activePort.sessionId, view: shell.S().view || 'home',
         settingsPage: shell.vget('settings').page, hidden, status: calendar.state.status, refreshing: calendar.refreshing,
@@ -174,9 +210,10 @@ async function installCalendar({legacyTitle}) {
         })), active: shell.quintCalendarRetentionSignal?.() ? captures.get(shell.quintCalendarRetentionSignal())?.id ?? 0 : 0,
         writes: writes.slice(), markers: [...markers.entries()], notices: notices.slice(), refreshes: refreshes.slice(),
         publications: publications.slice(),
-        requests: requests.slice(), form: form?.canonicalOwnerKey ? {owner: form.canonicalOwnerKey, id: form.creationId,
-          title: form.title, picker: form.pq !== null && form.pq !== undefined} : null,
-        retained: shell.canonicalDraftText, invalid: !!shell.canonicalDraftInvalid, draft: shell.canonicalDraft.state,
+        requests: requests.slice(), form: summarize(form), retainedForm: retained ? summarize(decodeCanonicalCalendarDraft(retained).form) : null,
+        detail: state.open ?? null, month: state.month, feed: (calendar.state.feed?.events ?? []).map(row => row.title),
+        discarding: shell.canonicalDraft.state.consuming && draftAdmission?.text ? summarize(decodeCanonicalCalendarDraft(draftAdmission.text).form) : null,
+        retained, invalid: !!shell.canonicalDraftInvalid, draft: shell.canonicalDraft.state,
       };
     },
   };
@@ -230,7 +267,7 @@ export async function startMountedCalendar({onSource = () => {}} = {}) {
     }
   }
   const origin = 'http://127.0.0.1:' + server.httpServer.address().port;
-  return {close, async page({legacyTitle = ''} = {}) {
+  return {close, async page({legacyTitle = '', eventTitles = []} = {}) {
     const page = await browser.newPage({viewport: {width: 412, height: 915}});
     page.setDefaultTimeout(60_000);
     const errors = [], foreign = [];
@@ -243,7 +280,7 @@ export async function startMountedCalendar({onSource = () => {}} = {}) {
     await page.goto(origin, {waitUntil: 'domcontentloaded', timeout: 120_000});
     const button = name => page.getByRole('button', {name, exact: true});
     await button('Calendar').waitFor();
-    await page.evaluate(installCalendar, {legacyTitle});
+    await page.evaluate(installCalendar, {legacyTitle, eventTitles});
     const status = async (value, session) => page.waitForFunction(({value, session}) => {
       const s = window.quintCalendar.snapshot();
       return s.status === value && (!session || s.session === session) && !s.draft.opening;

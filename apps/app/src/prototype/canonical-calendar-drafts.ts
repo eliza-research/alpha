@@ -124,6 +124,15 @@ export function installCanonicalCalendarDrafts(Component:any,views:Bag){
   out.resumeFormDraft=()=>restore();out.restoreFormDraft=()=>restore(true);out.replaceFormDraft=()=>{if(current())controller.keepCurrent();};out.retryFormDraft=()=>{if(current())controller.retry();};out.formDraftSavedTitle=(()=>{try{return decodeCanonicalCalendarDraft(draft.savedText).form.title;}catch{return 'Saved draft';}})();
   out.discardFormDraft=()=>{if(!current()||state.form||!window.confirm('Discard this draft? Saved events won’t change.'))return;const text=shell.canonicalDraftText;void controller.consume(text,()=>current()&&!shell.vget('calendar').form&&shell.canonicalDraftText===text).catch(()=>{if(current())api.toast('This draft changed. Try again.');});};
   out.recoverFormDraft=()=>{if(!current())return;const recovery=controller.recovery();if(!recovery)return;shell.canonicalDraftRecovery?.abort();const abort=shell.canonicalDraftRecovery=new AbortController();openDomainRecovery(recovery,'calendar form','Calendar form recovery','Download this draft before resetting it. Saved events won’t change.',abort.signal);};
-  for(const name of ['newEvent','addAt'])if(typeof out[name]==='function'){const start=out[name];out[name]=(...args:any[])=>{if(!current())return;if(!shell.vget('calendar').form&&(draft.opening||draft.consuming)){api.toast('Opening your draft. Try again in a moment.');return;}if(shell.canonicalDraftText&&!shell.vget('calendar').form){api.toast('Finish or discard your draft first.');return;}return start.apply(out,args);};}return out;
+  const guardStart=(start:(...args:any[])=>unknown)=>(...args:any[])=>{
+   if(!current())return;
+   const form=shell.vget('calendar').form,pending=controller.state;
+   if(!form&&(pending.opening||pending.consuming)){api.toast('Opening your draft. Try again in a moment.');return;}
+   if(!form&&shell.canonicalDraftText){api.toast('Finish or discard your draft first.');return;}
+   return start(...args);
+  };
+  for(const name of ['newEvent','addAt'])if(typeof out[name]==='function')out[name]=guardStart(out[name].bind(out));
+  if(out.ev?.canonicalDraftEntry&&typeof out.ev.edit==='function')out.ev.edit=guardStart(out.ev.edit.bind(out.ev));
+  return out;
  };
 }
