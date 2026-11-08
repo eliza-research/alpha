@@ -82,3 +82,126 @@ test("the provider is a registered, read-only, DUMP-protected release component,
   assert.match(apk, /"ai\.elizaresearch\.alphaphone\.release\.DataIntegrityProvider": "android\.permission\.DUMP"/);
   assert.ok(!fs.existsSync("android/app/src/testMocks/java/ai/elizaresearch/alphaphone/release"), "no test-mocks variant of the export");
 });
+
+// The update window on a scripted adb: the order of device commands, not device evidence.
+const ALPHA = "ai.elizaresearch.alphaphone";
+const STOCK = "com.android.launcher3/.uioverrides.QuickstepLauncher";
+const APK = { file: "/tmp/new.apk", sha256: "c".repeat(64), versionCode: 2 };
+const BEFORE = { versionCode: 1, userId: "10100", firstInstallTime: "2026-10-01 10:00:00" };
+function fakeUnit({ alphaHome = true, runningAt = null, agentLog = "I ElizaAgent: Detached agent health check passed." } = {}) {
+  const state = { holder: alphaHome ? ALPHA : "com.android.launcher3", activity: alphaHome ? `${ALPHA}/.MainActivity` : STOCK, pids: "", calls: [] };
+  const adb = (args, { allowFailure = false } = {}) => {
+    const line = args.join(" ");
+    state.calls.push(line);
+    if (line.includes("get-role-holders")) return state.holder;
+    if (line.includes("resolve-activity")) return state.activity;
+    if (line === "shell am get-current-user") return "0";
+    if (line.includes("query-activities")) return `3 activities found:\n  Activity #0:\n    priority=0\n    ${ALPHA}/.MainActivity\n  Activity #1:\n    ${STOCK}\n  Activity #2:\n    com.android.settings/.FallbackHome\n`;
+    if (line.includes("add-role-holder")) { state.holder = args.at(-1); return ""; }
+    if (line.includes("set-home-activity")) { state.activity = args.at(-1); return ""; }
+    if (line === `shell pidof ${ALPHA}`) { if (!state.pids && !allowFailure) throw new Error("pidof failed"); return state.pids; }
+    if (line === `shell am force-stop ${ALPHA}`) { state.pids = ""; return ""; }
+    if (line.includes("run-as")) return "run-as: package not debuggable";
+    if (line.includes("content query")) { if (runningAt === "post-update" && state.calls.some(call => call.startsWith("install"))) state.pids = "4321"; return exported(DATA, /nonce=(\w+)/.exec(line)[1]); }
+    if (line.startsWith("install -r")) { if (runningAt === "post-update") state.pids = "4321"; return "Success"; }
+    if (line === `shell dumpsys package ${ALPHA}`) return `versionCode=2 minSdk=31\n  userId=10100\n  firstInstallTime=2026-10-01 10:00:00\n`;
+    if (line === `shell pm path ${ALPHA}`) return "package:/data/app/alpha/base.apk";
+    if (line.startsWith("shell sha256sum")) return `${APK.sha256}  /data/app/alpha/base.apk`;
+    if (line === "shell date +%s") return "1700000000";
+    if (line.startsWith("shell am start")) { state.pids = "1234"; return ""; }
+    if (line.startsWith("shell logcat")) return agentLog;
+    if (line.startsWith("shell dumpsys activity services")) return "";
+    throw new Error(`unexpected adb ${line}`);
+  };
+  if (runningAt === "pre-update") { const original = adb; return { state, adb: (args, options) => (args.join(" ") === `shell am force-stop ${ALPHA}` ? (state.calls.push(args.join(" ")), state.pids = "999", "") : original(args, options)) }; }
+  return { state, adb };
+}
+const timing = { sleep: () => {}, agentAttempts: 2 };
+const { planHome, updateUnit } = await import("../scripts/pilot-update.mjs");
+const indexOf = (calls, predicate, from = 0) => calls.findIndex((call, index) => index >= from && predicate(call));
+const lastIndexOf = (calls, predicate) => calls.findLastIndex(predicate);
+
+test("HOME held by Alpha moves to the stock launcher for the readback and comes back before Alpha is started", () => {
+  const { state, adb } = fakeUnit();
+  const home = planHome(adb);
+  assert.equal(home.stock, STOCK, "the one stock HOME app; Alpha and FallbackHome are not candidates");
+  const update = updateUnit({ adb, apk: APK, before: BEFORE, home, timing });
+  assert.deepEqual(update.failures, []);
+  assert.equal(update.passed, true);
+  const calls = state.calls;
+  const moved = indexOf(calls, call => call.includes("add-role-holder") && call.endsWith("com.android.launcher3"));
+  const firstRead = indexOf(calls, call => call.includes("content query"));
+  const restored = indexOf(calls, call => call.includes("add-role-holder") && call.endsWith(ALPHA));
+  assert.ok(moved >= 0 && moved < firstRead, "HOME leaves Alpha before the first readback");
+  assert.ok(restored > lastIndexOf(calls, call => call.includes("content query")), "and returns after the last one");
+  assert.ok(restored < indexOf(calls, call => call.startsWith("shell am start")), "before Alpha is started");
+  assert.equal(state.holder, ALPHA);
+  assert.equal(update.home.restoration.restored, true);
+  assert.equal(update.home.recovery, undefined);
+  assert.deepEqual(update.appStopped, { "pre-update": { running: null }, "post-update": { running: null } });
+  assert.deepEqual(update.agentRestart, { state: "running" });
+});
+
+test("a unit where Alpha is not HOME keeps its HOME app; two stock launchers need --stock-home", () => {
+  const { state, adb } = fakeUnit({ alphaHome: false });
+  assert.equal(planHome(adb), null);
+  assert.equal(updateUnit({ adb, apk: APK, before: BEFORE, timing }).passed, true);
+  assert.ok(!state.calls.some(call => call.includes("add-role-holder")));
+  const two = fakeUnit();
+  const query = two.adb;
+  const adb2 = (args, options) => args.join(" ").includes("query-activities") ? `${STOCK}\ncom.other.launcher/.Home\n` : query(args, options);
+  assert.throws(() => planHome(adb2), /--stock-home/);
+  assert.equal(planHome(adb2, { stockHome: "com.other.launcher/.Home" }).stock, "com.other.launcher/.Home");
+});
+
+test("Alpha running before a readback fails the update", () => {
+  const pre = fakeUnit({ runningAt: "pre-update" });
+  const refused = updateUnit({ adb: pre.adb, apk: APK, before: BEFORE, home: planHome(pre.adb), timing });
+  assert.equal(refused.passed, false);
+  assert.equal(refused.installed, false);
+  assert.match(refused.failures.join("\n"), /Alpha was running before the pre-update readback \(pid 999\)/);
+  assert.ok(!pre.state.calls.some(call => call.startsWith("install")), "nothing is installed over a running app");
+  assert.equal(pre.state.holder, ALPHA, "HOME is still put back");
+  const post = fakeUnit({ runningAt: "post-update" });
+  const update = updateUnit({ adb: post.adb, apk: APK, before: BEFORE, home: planHome(post.adb), timing });
+  assert.equal(update.passed, false);
+  assert.deepEqual(update.appStopped["post-update"], { running: "4321" });
+});
+
+test("force-stop follows the last integrity export, so its :integrity process is gone before Alpha starts", () => {
+  const { state, adb } = fakeUnit({ alphaHome: false });
+  updateUnit({ adb, apk: APK, before: BEFORE, timing });
+  const lastExport = lastIndexOf(state.calls, call => call.includes("content query"));
+  const stop = indexOf(state.calls, call => call === `shell am force-stop ${ALPHA}`, lastExport);
+  assert.ok(lastExport > indexOf(state.calls, call => call.startsWith("install")));
+  assert.ok(stop > lastExport && stop < indexOf(state.calls, call => call.startsWith("shell am start")));
+});
+
+test("an agent that is refused or never reports running after the restart fails the update", () => {
+  const refused = fakeUnit({ agentLog: "E ElizaAgent: Private IPC recovery refused\njava.io.IOException: unregistered same-UID process; preserve it" });
+  const update = updateUnit({ adb: refused.adb, apk: APK, before: BEFORE, home: planHome(refused.adb), timing });
+  assert.equal(update.passed, false);
+  assert.equal(update.agentRestart.state, "refused");
+  assert.match(update.failures.join("\n"), /the agent did not restart: Private IPC recovery refused/);
+  const silent = fakeUnit({ agentLog: "" });
+  const services = silent.adb;
+  const withService = (args, options) => args.join(" ").startsWith("shell dumpsys activity services") ? `ServiceRecord{1 u0 ${ALPHA}/ai.elizaos.app.ElizaAgentService}` : services(args, options);
+  const stalled = updateUnit({ adb: withService, apk: APK, before: BEFORE, home: planHome(withService), timing });
+  assert.equal(stalled.passed, false);
+  assert.equal(stalled.agentRestart.state, "not-running");
+  const none = fakeUnit({ agentLog: "" });
+  const cloud = updateUnit({ adb: none.adb, apk: APK, before: BEFORE, home: planHome(none.adb), timing });
+  assert.equal(cloud.agentRestart.state, "not-verified", "no on-device agent is configured: recorded, not claimed");
+  assert.equal(cloud.passed, true);
+});
+
+test("HOME that cannot be put back fails the update and records the recovery command", () => {
+  const { state, adb } = fakeUnit();
+  const home = planHome(adb);
+  const stuck = (args, options) => args.join(" ").includes("add-role-holder") && args.at(-1) === ALPHA ? "" : adb(args, options);
+  const update = updateUnit({ adb: stuck, apk: APK, before: BEFORE, home, timing });
+  assert.equal(update.passed, false);
+  assert.equal(update.agentRestart, null, "Alpha is not started while HOME is unproven");
+  assert.match(update.home.recovery, /cmd role add-role-holder --user 0 android\.app\.role\.HOME ai\.elizaresearch\.alphaphone/);
+  assert.notEqual(state.holder, ALPHA);
+});
