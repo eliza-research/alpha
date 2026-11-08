@@ -81,10 +81,11 @@ test('abort and an empty connection ID cannot start a disconnect',async()=>{
   await assert.rejects(f.helper.disconnect(' ',signal()),TypeError);
   assert.deepEqual(f.calls,[]);
 });
-test('disconnect copy identifies the whole integration and explicitly preserves personal data',()=>{
-  const prompt=googleDisconnectConfirmation(account.label,'Nebula'),done=googleDisconnectMessage('disconnected',account.label,'Nebula');
-  for(const copy of [prompt,done]){assert.match(copy,/Nebula/);assert.doesNotMatch(copy,/Eliza/);assert.match(copy,/Gmail/);assert.match(copy,/Calendar/);assert.match(copy,/Google account, mail and (?:calendar )?events (?:are|were) not deleted/);}
-  assert.match(done,/Google may still list the app/);
+test('disconnect copy names the account and the service, and keeps personal data',()=>{
+  const prompt=googleDisconnectConfirmation(account.label,'Nebula'),done=googleDisconnectMessage('disconnected',account.label);
+  assert.match(prompt,/Gmail and Calendar access through Nebula end/);assert.match(prompt,/Google account, mail and events aren't deleted/);
+  assert.ok(prompt.startsWith(`Disconnect ${account.label}?`));assert.doesNotMatch(prompt+done,/Eliza/);
+  assert.equal(done,`${account.label} disconnected. Google may still list Alpha in your account permissions.`);
   assert.match(googleDisconnectMessage('still-connected',account.label),/still reports/);
   assert.match(googleDisconnectMessage('unconfirmed',account.label),/not confirmed/);
 });

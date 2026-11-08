@@ -321,7 +321,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       if (owner !== instance || connectionController.getCloudClient()?.sessionId !== cloud.sessionId) return;
       if (result.accounts) { gmailAccounts = result.accounts; gmail = gmailGrantLabel(result.accounts); }
       else gmail = 'Authorization not verified';
-      settingsApi?.toast(googleDisconnectMessage(result.outcome, account.label,cloudServiceName(cloud.client.environment)));
+      settingsApi?.toast(googleDisconnectMessage(result.outcome, account.label));
       window.dispatchEvent(new CustomEvent(GMAIL_ACCOUNTS_CHANGED, { detail: { source: 'settings' } }));
       window.dispatchEvent(new Event(GOOGLE_ACCOUNTS_CHANGED));
     } catch { if (owner === instance) { settingsApi?.toast(disconnectMessage('unconfirmed', account.label)); gmail = 'Authorization not verified'; } }

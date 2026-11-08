@@ -1,4 +1,4 @@
-import type {CreateLifeOpsCalendarEventRequest,LifeOpsCalendarEvent,LifeOpsCalendarEventUpdate,LifeOpsCalendarFeed,LifeOpsCalendarSummary,LifeOpsNextCalendarEventContext,GetLifeOpsCalendarFeedRequest,LifeOpsLinkedCalendarControl,UpdateLifeOpsLinkedCalendarControlRequest} from '../../../../.eliza/client-features/packages/contracts/src/calendar';
+import type {CreateLifeOpsCalendarEventRequest,LifeOpsCalendarEvent,LifeOpsCalendarEventUpdate,LifeOpsCalendarFeed,LifeOpsCalendarSummary,LifeOpsNextCalendarEventContext,GetLifeOpsCalendarFeedRequest,LifeOpsLinkedCalendarControl,LifeOpsLinkedCalendarEventView,UpdateLifeOpsLinkedCalendarControlRequest} from '../../../../.eliza/client-features/packages/contracts/src/calendar';
 import {eventEditorMutability,cancellationModeForEditorEvent} from '../../../../.eliza/client-features/plugins/plugin-calendar/src/components/event-editor-policy';
 import {agentCalendarClient,type AgentCalendarClient,type AppRecordPort} from './agent-calendar-client';
 export type AgentCalendarSyncReview={binding:string;control:LifeOpsLinkedCalendarControl;sources:LifeOpsCalendarSummary[];visibleLocalEventIds:string[]};
@@ -153,6 +153,13 @@ export class AgentCalendar {
    const [control,result]=await Promise.all([api.getLinkedCalendarControl(),api.getLifeOpsCalendars({side:'owner'})]);
    return {binding,control,sources:result.calendars.filter(source=>source.provider==='google'&&source.side==='owner'&&['owner','writer'].includes(source.accessRole)),visibleLocalEventIds:this.value.feed?.events.filter(event=>event.provider==='eliza'&&event.side==='owner').map(event=>event.id)??[]};
   },true);
+ }
+ /** The linked event rows with their local titles, for the sync review: one read on the same owner-bound port, no write. */
+ async listLinkedEvents(signal:AbortSignal):Promise<LifeOpsLinkedCalendarEventView[]>{
+  const port=this.port(),check=()=>{signal.throwIfAborted();const now=this.port();if(!port?.current()||!now||this.binding!==JSON.stringify([calendarOwnerKey(port),port.sessionId,port.scope])||this.binding!==JSON.stringify([calendarOwnerKey(now),now.sessionId,now.scope]))throw Error('Calendar owner or agent changed');};
+  check();const result=await port!.request('/api/lifeops/calendar/links?view=events','GET',undefined,signal) as {links?:unknown};check();
+  if(!Array.isArray(result?.links))throw Error('Calendar sync links could not be read');
+  return result.links as LifeOpsLinkedCalendarEventView[];
  }
  /** sending runs once its fence, owner and destination checks pass, immediately before the control write. */
  async changeSync(review:AgentCalendarSyncReview,operation:UpdateLifeOpsLinkedCalendarControlRequest['operation'],key:string,current:()=>boolean,sourceKey?:string,sending?:()=>void){
