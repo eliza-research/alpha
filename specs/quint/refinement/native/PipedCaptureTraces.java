@@ -38,7 +38,18 @@ public final class PipedCaptureTraces {
  static String pendingKind(){synchronized(lock){return pending==null?"none":pending.kind;}}
  static boolean physical(){return LiveCapturePorts.records.stream().anyMatch(record->record.recording);}
  static void settleStops()throws Exception {
-  ExecutorService stop=(ExecutorService)Trace.read(controller,"stopWorker");if(!stop.isShutdown())stop.submit(()->{}).get(5,TimeUnit.SECONDS);else stop.awaitTermination(5,TimeUnit.SECONDS);
+  ExecutorService stop=(ExecutorService)Trace.read(controller,"stopWorker");
+  long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(5);
+  boolean barrierComplete=false;
+  while(!stop.isShutdown()&&!barrierComplete){
+   try{stop.submit(()->{}).get(deadline-System.nanoTime(),TimeUnit.NANOSECONDS);barrierComplete=true;}
+   catch(RejectedExecutionException full){
+    // The source has a one-slot queue. An already-queued stop can briefly block the fixture barrier.
+    if(System.nanoTime()>=deadline)throw full;
+    Thread.sleep(1);
+   }
+  }
+  if(!barrierComplete&&!stop.awaitTermination(deadline-System.nanoTime(),TimeUnit.NANOSECONDS))throw new TimeoutException("Stop worker did not terminate");
   if(capture!=null&&!(boolean)Trace.read(capture,"running")){Thread thread=(Thread)Trace.read(capture,"thread");if(thread!=null)thread.join(3000);}
  }
  static void await(java.util.function.BooleanSupplier condition)throws Exception {

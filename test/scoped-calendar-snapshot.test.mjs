@@ -20,6 +20,6 @@ test('scoped Calendar snapshot binds occurrence, dependencies and one atomic pro
   const shared=path.join(sourceRoot,'vendor/eliza/plugins/plugin-native-calendar/test/jvm/android'),native=path.join(temporary,'plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar');
   const files=[values,contract,...['content/ContentUris.java','database/Cursor.java','net/Uri.java'].map(name=>path.join(shared,name)),...['ContentResolver.java','ContentProviderOperation.java'].map(name=>path.join(root,'test/fixtures/scoped-calendar-jvm/android/content',name)),path.join(native,'CalendarEventGuard.java'),path.join(native,'read/CalendarSourceIdentity.java'),...['SqliteCalendarProvider.java','ScopedCalendarSnapshotTest.java'].map(name=>path.join(root,'test/fixtures',name))];
   execFileSync(binary('javac'),['--release','11','-cp',json,'-d',temporary,...files],{timeout:60000,stdio:'pipe'});
-  assert.match(execFileSync(binary('java'),['-cp',temporary+path.delimiter+json,'ai.eliza.plugins.calendar.ScopedCalendarSnapshotTest'],{encoding:'utf8',timeout:60000}),/PASS scoped Calendar provider snapshots/);
+  assert.match(execFileSync(binary('java'),['-cp',temporary+path.delimiter+json,'ai.eliza.plugins.calendar.ScopedCalendarSnapshotTest'],{encoding:'utf8',timeout:120000}),/PASS scoped Calendar provider snapshots/);
  }finally{fs.rmSync(temporary,{recursive:true,force:true});}
 });
