@@ -118,7 +118,7 @@ test("the Home Phone shortcut exists only in the launcher build (P-36)", () => {
 test("no Alpha Java lists or launches apps: installed apps and default hand-offs are the shared ElizaSystem", () => {
   assert.equal(fs.existsSync(`${JAVA}/DeviceAppsPlugin.java`), false);
   const product = read(`${JAVA}/AlphaDeviceAppsPlugin.java`);
-  assert.deepEqual([...product.matchAll(/@PluginMethod public void (\w+)/g)].map(m => m[1]), ["platformCapabilities"]);
+  assert.deepEqual([...product.matchAll(/@PluginMethod public void (\w+)/g)].map(m => m[1]), ["platformCapabilities", "openHomeChooser"]);
   // The password-provider hand-off opens one verified-publisher app by package; it is not the
   // launcher inventory. Nothing else in Alpha may list or launch apps.
   const handoffs = new Set(["PasswordProviderSupport.java"]);

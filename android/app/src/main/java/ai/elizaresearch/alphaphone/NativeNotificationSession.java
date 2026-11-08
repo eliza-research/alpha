@@ -38,7 +38,11 @@ final class NativeNotificationSession {
   if(!owner.equals(identity.getString("id"))||!"owner".equals(identity.getString("kind"))||!"OWNER".equals(access.getString("role"))||!"session".equals(access.getString("mode"))
     ||!"machine".equals(machine.getString("kind"))||!token.equals(machine.getString("id"))||machine.getLong("expiresAt")!=expiry)throw new SecurityException("Notification owner session rejected");
   JSONArray agents=ports.get("/api/agents",token).getJSONArray("agents");current.check();
-  if(agents.length()!=1||!agent.equals(agents.getJSONObject(0).getString("id"))||!"running".equals(agents.getJSONObject(0).getString("status")))throw new SecurityException("Notification agent changed");
+  if(agents.length()!=1)throw new SecurityException("Notification agent changed");
+  // A resident that is still starting or restarting reports another status or the placeholder id; retry.
+  JSONObject running=agents.getJSONObject(0);
+  if(!"running".equals(running.getString("status"))||ResidentResultSession.PLACEHOLDER_AGENT.equals(running.getString("id")))throw new java.io.IOException("Notification agent not ready");
+  if(!agent.equals(running.getString("id")))throw new SecurityException("Notification agent changed");
   // The process bearer rotates on every service boot. Only verified existing
   // owner authority on this same installation may adopt its current value.
   return new JSONObject().put("session",ResidentResultSession.snapshot(owner,token,expiry,root)).put("agentId",agent)

@@ -1823,7 +1823,7 @@ function boundNavigation():ViewNavigationClient|undefined {
  if(!request)return undefined;
  const subscribe=isAndroid&&selected.kind==='resident'?(clientId:string,listener:(frame:unknown)=>void,ended:()=>void)=>selected.remote.subscribeViewEvents(clientId,listener,ended):undefined;
  const execute=(view:string,capability:string,params:unknown,signal:AbortSignal,current:()=>void)=>{if(!viewInteractionExecutor)throw Error('Native view executor unavailable');return viewInteractionExecutor(view,capability,params,signal,current);};
- if(!selected.viewNavigation)return selected.viewNavigation=new ViewNavigationClient(request,()=>active===selected&&state.session===session&&epoch===generation&&!state.open&&!state.busy,()=>navigationContext?.()??null,subscribe,execute);
+ if(!selected.viewNavigation)return selected.viewNavigation=new ViewNavigationClient(request,()=>active===selected&&state.session===session&&epoch===generation&&!state.open&&!state.busy,()=>navigationContext?.()??null,subscribe,execute,async signal=>(await readDevicePreferences(signal)).askBeforeAgentActions);
  selected.viewNavigation.connectRenderer();return selected.viewNavigation;
 }
 
