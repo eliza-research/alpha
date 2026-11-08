@@ -1740,6 +1740,10 @@
           "Prefilled = FALSE",
           "Serialised = TRUE",
           "Seed = Seed"
+        ],
+        "tests": [
+          "equivalentInsertTest",
+          "writerExclusionTest"
         ]
       },
       {
@@ -1764,6 +1768,9 @@
           "Prefilled = TRUE",
           "Serialised = TRUE",
           "Seed = Seed"
+        ],
+        "tests": [
+          "retainedEvidenceTest"
         ]
       }
     ],
@@ -1815,6 +1822,11 @@
         "constantAssignments": [
           "Callers = {c1, c2, c3, c4}",
           "N = 1"
+        ],
+        "tests": [
+          "cancelledHeadSkippedTest",
+          "cancellationListenerTest",
+          "preAbortedCallerTest"
         ]
       },
       {
@@ -1840,6 +1852,9 @@
         "constantAssignments": [
           "Callers = {c1, c2, c3, c4}",
           "N = 2"
+        ],
+        "tests": [
+          "twoOwnersTest"
         ]
       }
     ],
@@ -1886,6 +1901,10 @@
         "checkDeadlock": true,
         "constantAssignments": [
           "Calls = {a, b, c, d}"
+        ],
+        "tests": [
+          "rejectionReleasesNextTest",
+          "arrivalOrderTest"
         ]
       }
     ],
@@ -1940,6 +1959,10 @@
           "Signalled = {a, b}",
           "Keyed = {a, b, c}",
           "MaxExec = 3"
+        ],
+        "tests": [
+          "lastCallerRetiresExecutionTest",
+          "stopSettlesSignallessCallerTest"
         ]
       },
       {
@@ -1969,6 +1992,10 @@
           "Signalled = {a, c}",
           "Keyed = {a, b}",
           "MaxExec = 3"
+        ],
+        "tests": [
+          "independentExecutionTest",
+          "preCancelledOneoffTest"
         ]
       }
     ],
@@ -2326,5 +2353,233 @@
       "The upstream configuration deliberately disables TLC deadlock detection.",
       "This is a literal upstream design translation. Source-executing implementation refinement is separately recorded."
     ]
+  },
+  {
+    "path": "specs/quint/legacy/CoreEmbeddingDimension.qnt",
+    "module": "CoreEmbeddingDimension",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "pinRefusesDifferentProviderTest",
+      "unpinnedWriteCanBeRetaggedTest",
+      "wrongWidthIsDroppedTest"
+    ],
+    "temporal": [
+      "CheckedTemporal"
+    ],
+    "configurations": [
+      {
+        "name": "probes",
+        "module": "CoreEmbeddingDimension",
+        "init": "init",
+        "step": "step",
+        "rawStep": "rawStep",
+        "invariant": "safety",
+        "tests": [
+          "pinRefusesDifferentProviderTest",
+          "unpinnedWriteCanBeRetaggedTest",
+          "wrongWidthIsDroppedTest"
+        ],
+        "invariants": [
+          "TypeOK",
+          "PinMatchesStore",
+          "StoredInColumn"
+        ],
+        "properties": [
+          "PinSpaceStable"
+        ],
+        "checkDeadlock": true,
+        "constantAssignments": [
+          "Embedders = {e1, e2}",
+          "MaxProbes = 3"
+        ],
+        "temporal": "CheckedTemporal"
+      }
+    ],
+    "sources": [],
+    "upstreamSources": [
+      {
+        "path": "packages/core/tla/EmbeddingDimension.tla",
+        "revision": "4787d51a142c63c98371c832997184c53f7218d3",
+        "sha256": "c9862e75a86481390ad23d07d98237db2ee609c40fe99d524dce1874683e0b58"
+      }
+    ],
+    "classification": "upstream-design-conversion"
+  },
+  {
+    "path": "specs/quint/legacy/CoreRoomHandlerQueue.qnt",
+    "module": "CoreRoomHandlerQueue",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "writesDelayReleaseTest",
+      "closeRefusesAndUnwindsTest"
+    ],
+    "temporal": [
+      "CheckedTemporal"
+    ],
+    "configurations": [
+      {
+        "name": "bounded",
+        "module": "CoreRoomHandlerQueue",
+        "init": "init",
+        "step": "step",
+        "rawStep": "rawStep",
+        "invariant": "safety",
+        "tests": [
+          "writesDelayReleaseTest",
+          "closeRefusesAndUnwindsTest"
+        ],
+        "invariants": [
+          "TypeOK",
+          "MutualExclusion",
+          "WaitersQueued",
+          "OrderedAcquisition",
+          "Bounded",
+          "NoLeakedOwnership",
+          "WritesUnderLease"
+        ],
+        "properties": [
+          "NoAdmissionAfterClose",
+          "FreedByOwner",
+          "WaiterServed",
+          "TurnFinishes"
+        ],
+        "checkDeadlock": true,
+        "constantAssignments": [
+          "Turns = {t1, t2, t3}",
+          "NumRooms = 2",
+          "MaxPerRoom = 2",
+          "MaxTotal = 3",
+          "MaxRooms = 2",
+          "MaxWrites = 1",
+          "None = None"
+        ],
+        "temporal": "CheckedTemporal"
+      },
+      {
+        "name": "cycle",
+        "module": "CoreRoomHandlerQueueCycle",
+        "init": "init",
+        "step": "step",
+        "rawStep": "rawStep",
+        "invariant": "safety",
+        "tests": [
+          "cancelledWaiterUnwindsTest",
+          "nestedForeignRoomUnwindsTest"
+        ],
+        "invariants": [
+          "TypeOK",
+          "MutualExclusion",
+          "WaitersQueued",
+          "OrderedAcquisition",
+          "Bounded",
+          "NoLeakedOwnership",
+          "WritesUnderLease"
+        ],
+        "properties": [
+          "NoAdmissionAfterClose",
+          "FreedByOwner",
+          "WaiterServed",
+          "TurnFinishes"
+        ],
+        "checkDeadlock": true,
+        "constantAssignments": [
+          "Turns = {t1, t2, t3}",
+          "NumRooms = 2",
+          "MaxPerRoom = 2",
+          "MaxTotal = 4",
+          "MaxRooms = 2",
+          "MaxWrites = 1",
+          "None = None"
+        ],
+        "temporal": "CheckedTemporal"
+      }
+    ],
+    "sources": [],
+    "upstreamSources": [
+      {
+        "path": "packages/core/tla/RoomHandlerQueue.tla",
+        "revision": "4787d51a142c63c98371c832997184c53f7218d3",
+        "sha256": "6d4ad75fe5f0eff561a65286d6df7ddde14294e8ef3c3d170eb216eb529c21c3"
+      }
+    ],
+    "classification": "upstream-design-conversion"
+  },
+  {
+    "path": "specs/quint/legacy/CoreSingleFlightMemo.qnt",
+    "module": "CoreSingleFlightMemo",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "readerSharesFetchTest",
+      "rejectionEvictsOnlyItsEntryTest"
+    ],
+    "temporal": [
+      "CheckedTemporal"
+    ],
+    "configurations": [
+      {
+        "name": "liveness",
+        "module": "CoreSingleFlightMemo",
+        "init": "init",
+        "step": "step",
+        "rawStep": "rawStep",
+        "invariant": "safety",
+        "tests": [
+          "readerSharesFetchTest",
+          "rejectionEvictsOnlyItsEntryTest"
+        ],
+        "invariants": [
+          "TypeOK",
+          "NoStaleAfterInvalidate",
+          "RejectedNotCached"
+        ],
+        "properties": [
+          "ReaderFinishes"
+        ],
+        "checkDeadlock": true,
+        "constantAssignments": [
+          "Readers = {r1, r2}",
+          "Writers = {w1, w2}"
+        ],
+        "temporal": "CheckedTemporal"
+      },
+      {
+        "name": "safety",
+        "module": "CoreSingleFlightMemoSafety",
+        "init": "init",
+        "step": "step",
+        "rawStep": "rawStep",
+        "invariant": "safety",
+        "tests": [
+          "invalidationFencesNewReaderTest"
+        ],
+        "invariants": [
+          "TypeOK",
+          "NoStaleAfterInvalidate",
+          "RejectedNotCached"
+        ],
+        "properties": [],
+        "checkDeadlock": true,
+        "constantAssignments": [
+          "Readers = {r1, r2, r3}",
+          "Writers = {w1, w2}"
+        ],
+        "symmetry": "Symmetry"
+      }
+    ],
+    "sources": [],
+    "upstreamSources": [
+      {
+        "path": "packages/core/tla/SingleFlightMemo.tla",
+        "revision": "4787d51a142c63c98371c832997184c53f7218d3",
+        "sha256": "4777364ca796bf8dbe0549d775600e5aaac205d85a0d0ec64dd6cf1a30f69dfb"
+      }
+    ],
+    "classification": "upstream-design-conversion"
   }
 ]
