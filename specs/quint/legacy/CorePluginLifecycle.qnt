@@ -211,7 +211,10 @@ module CorePluginLifecycleRegister {
   action rawStep = Model::Next
   val safety = Model::TypeOK and Model::TeardownExclusive and Model::StopAtMostOnce and Model::NoOrphanInstance
     and Model::StopStopsAll and Model::ConnectorOwnedByLast and Model::NoOrphanConnector and Model::RegisterHonest
-  temporal CheckedTemporal = Model::Fairness implies Model::Terminates
+  // Other actor and class domains are empty in this profile. Expanding its
+  // two remaining weak-fairness clauses avoids TLC's vacuous-quantifier error.
+  temporal RegisterFairness = Model::Register(51).weakFair(Model::vars) and Model::Register(52).weakFair(Model::vars)
+  temporal CheckedTemporal = RegisterFairness implies Model::Terminates
   run registrationJoinsOwnerResultTest = init.then(Model::RCall(51)).then(Model::RCall(52)).then(Model::RInit(51)).then(Model::RJoin(52))
     .expect(Model::s.pc.get(52) == Model::s.pc.get(51) and safety)
 }
