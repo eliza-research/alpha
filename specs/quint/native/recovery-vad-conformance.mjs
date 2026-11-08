@@ -106,7 +106,8 @@ public final class RecoveryVadConformance {
       if (row[0].equals("R")) {
         if (row[1].equals("reset")) { renderer=new RendererRecoveryBudget(); continue; }
         if (row[1].equals("loss")) {
-          RendererRecoveryBudget.Action result=renderer.onLoss(Long.parseLong(row[2]),Boolean.parseBoolean(row[3]));
+          // This budget projection covers genuine renderer crashes while the Activity is visible.
+          RendererRecoveryBudget.Action result=renderer.onLoss(Long.parseLong(row[2]),Boolean.parseBoolean(row[3]),true,true);
           check(result.name().equals(row[4]),label+" renderer decision "+result+" expected "+row[4]);
           check(RendererRecoveryBudget.delay(result)==Long.parseLong(row[5]),label+" renderer delay");
         }

@@ -176,8 +176,8 @@ public final class NativeQuintConformance {
     join(nativeDirectory, 'ResidentScheduleRearm.java')]);
   console.log(run('java', ['-cp', work, 'ai.elizaresearch.alphaphone.NativeQuintConformance', inputs]));
   console.log(`Listener decisions covered ${[...decisions].sort().join(', ')}`);
-  const {usableNavigationFix} = await import(pathToFileURL(join(root, 'apps/app/src/maps/navigation-fix.ts')).href);
-  const {atStep} = await import(pathToFileURL(join(root, 'apps/app/src/maps/guidance.ts')).href);
+  const {usableNavigationFix} = await import(pathToFileURL(join(root, '.eliza/client-features/plugins/plugin-maps/src/client/navigation-fix.ts')).href);
+  const {atStep} = await import(pathToFileURL(join(root, '.eliza/client-features/plugins/plugin-maps/src/client/guidance.ts')).href);
   const fixCases = [
     [30, 30000, 'precise', true], [51, 0, 'precise', false],
     [30, 30001, 'precise', false], [30, -5000, 'precise', true],
