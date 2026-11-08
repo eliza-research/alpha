@@ -11,7 +11,7 @@ export async function captureRendererImplementation(additionalSources = []) {
     absWorkingDir: root,
     stdin: {contents: `
       export {VoiceAssistantSession, splitSpokenSentences, ASSISTANT_TIMING_DEFAULTS} from './apps/app/src/runtime/voice-assistant.ts';
-      export {usableNavigationFix} from './apps/app/src/maps/navigation-fix.ts';
+      export {usableNavigationFix} from './.eliza/client-features/plugins/plugin-maps/src/client/navigation-fix.ts';
       export {atStep} from './apps/app/src/maps/guidance.ts';
     `, resolveDir: root, sourcefile: 'quint-native-implementation.ts'},
     bundle: true, write: false, platform: 'node', format: 'esm', metafile: true,

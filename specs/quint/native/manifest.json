@@ -154,7 +154,6 @@
       "invariant": "safety",
       "sources": [
         "apps/app/src/runtime/always-on-listener.ts",
-        "apps/app/src/runtime/always-on-listener-status.ts",
         "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ListeningService.java",
         "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ConsentActivity.java",
         "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ListenerControlProvider.java",
@@ -183,7 +182,8 @@
         "packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListenerPolicy.java",
         "packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListeningEpoch.java",
         "packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/IndicatorLease.java",
-        "packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListenerStore.java"
+        "packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListenerStore.java",
+        "plugins/plugin-native-system/src/sense.ts"
       ]
     },
     {
@@ -490,7 +490,6 @@
       "sources": [
         "apps/app/src/prototype/maps-adapter.ts",
         "apps/app/src/maps/guidance.ts",
-        "apps/app/src/maps/navigation-fix.ts",
         "apps/app/src/maps/native-location.ts",
         "apps/app/src/maps/background-navigation.ts",
         "apps/app/src/maps/route-distance.ts",
@@ -534,6 +533,9 @@
         "BoundedBackoff",
         "NativeSessionOwned",
         "NativeStopOnce"
+      ],
+      "sharedSources": [
+        "plugins/plugin-maps/src/client/navigation-fix.ts"
       ]
     },
     {
