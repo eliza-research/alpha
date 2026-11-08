@@ -22,12 +22,17 @@ import ai.eliza.plugins.media.SelectedDocumentCalls;
 import com.getcapacitor.annotation.ActivityCallback;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import java.util.ArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /** Product handoffs only. Opening another app never proves that a write completed. */
 @CapacitorPlugin(name = "DailyApps", permissions = {@Permission(alias = "notifications", strings = {Manifest.permission.POST_NOTIFICATIONS}), @Permission(alias = "camera", strings = {Manifest.permission.CAMERA})})
 public class DailyAppsPlugin extends ai.eliza.plugins.reminders.ReminderPlugin {
  private static final String[] ACTIONS = {"camera", "photos", "files", "maps", "calendar", "calendar-create", "reminder", "email", "inbox", "browser", "notifications", "settings", "autofill", "voice"}; // MVP-DEFERRED: "phone", "messages", "contacts".
  private boolean selectionPending;
+ /** Selected-document calls reach the document provider (a cloud file can stall for its whole download) and
+  *  the shared SelectedDocuments monitor, so they run here in call order, never on Capacitor's plugin thread. */
+ private final ExecutorService worker=Executors.newSingleThreadExecutor();
  public DailyAppsPlugin() { super(AlphaReminders.CONFIGURATION, AlphaReminders.STORAGE); }
 
  /** Cancellation uses AlphaDeletions' native review and durable ten-second window. */
@@ -38,6 +43,7 @@ public class DailyAppsPlugin extends ai.eliza.plugins.reminders.ReminderPlugin {
   super.load();
   openAssistant();
  }
+ @Override protected void handleOnDestroy(){worker.shutdownNow();super.handleOnDestroy();}
  @Override protected void handleOnNewIntent(Intent intent) { super.handleOnNewIntent(intent); openAssistant(); }
  private void openAssistant() {
   if (!(getActivity() instanceof AlphaAssistActivity)) return;
@@ -62,14 +68,15 @@ public class DailyAppsPlugin extends ai.eliza.plugins.reminders.ReminderPlugin {
   if (assistant) getActivity().runOnUiThread(() -> getActivity().finish());
  }
  /** Selected-document capabilities: the shared bridge contract over Alpha's installed registry (SelectedDocumentAccess). */
- @PluginMethod public void restoreSelected(PluginCall call){SelectedDocumentCalls.restore(call,()->SelectedDocumentAccess.documents(getContext()));}
- @PluginMethod public void renameSelected(PluginCall call){SelectedDocumentCalls.rename(call,()->SelectedDocumentAccess.documents(getContext()));}
- @PluginMethod public void pdfSelected(PluginCall call){SelectedDocumentCalls.pdf(call,()->SelectedDocumentAccess.documents(getContext()));}
- @PluginMethod public void describeSelected(PluginCall call){SelectedDocumentCalls.describe(call,()->SelectedDocumentAccess.documents(getContext()));}
- @PluginMethod public void readSelected(PluginCall call){SelectedDocumentCalls.read(call,()->SelectedDocumentAccess.documents(getContext()));}
- @PluginMethod public void openSelected(PluginCall call){SelectedDocumentCalls.open(call,()->SelectedDocumentAccess.documents(getContext()),getActivity());}
- @PluginMethod public void shareSelected(PluginCall call){SelectedDocumentCalls.share(call,()->SelectedDocumentAccess.documents(getContext()),getActivity());}
- @PluginMethod public void forgetSelected(PluginCall call){SelectedDocumentCalls.forget(call,()->SelectedDocumentAccess.documents(getContext()));}
+ @PluginMethod public void restoreSelected(PluginCall call){documents(call,()->SelectedDocumentCalls.restore(call,()->SelectedDocumentAccess.documents(getContext())));}
+ @PluginMethod public void renameSelected(PluginCall call){documents(call,()->SelectedDocumentCalls.rename(call,()->SelectedDocumentAccess.documents(getContext())));}
+ @PluginMethod public void pdfSelected(PluginCall call){documents(call,()->SelectedDocumentCalls.pdf(call,()->SelectedDocumentAccess.documents(getContext())));}
+ @PluginMethod public void describeSelected(PluginCall call){documents(call,()->SelectedDocumentCalls.describe(call,()->SelectedDocumentAccess.documents(getContext())));}
+ @PluginMethod public void readSelected(PluginCall call){documents(call,()->SelectedDocumentCalls.read(call,()->SelectedDocumentAccess.documents(getContext())));}
+ @PluginMethod public void openSelected(PluginCall call){Activity activity=getActivity();documents(call,()->SelectedDocumentCalls.open(call,()->SelectedDocumentAccess.documents(getContext()),activity));}
+ @PluginMethod public void shareSelected(PluginCall call){Activity activity=getActivity();documents(call,()->SelectedDocumentCalls.share(call,()->SelectedDocumentAccess.documents(getContext()),activity));}
+ @PluginMethod public void forgetSelected(PluginCall call){documents(call,()->SelectedDocumentCalls.forget(call,()->SelectedDocumentAccess.documents(getContext())));}
+ private void documents(PluginCall call,Runnable task){PluginWorkers.submit(worker,task,()->call.reject("Saved document access is unavailable"));}
  private Integer clockInteger(JSObject data,String key) {
   Object value=data.opt(key);if(value==null||value==org.json.JSONObject.NULL)return null;
   if(!(value instanceof Number))throw new IllegalArgumentException("Invalid Clock number");
