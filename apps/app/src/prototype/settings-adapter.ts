@@ -483,7 +483,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     settingsApi = api;
     const out = render({ ...state, page: settingsPage(state.page, developerTools), acct: null, adding: false, sheet: ['conn', 'voice', 'wipe', 'wifiPw', 'forget'].includes(state.sheet?.kind) ? null : state.sheet }, api);
     // Prototype personality values are mock-only until the agent reports them.
-    out.persona = 'Voice and agent settings';
+    out.persona = 'Voice & personality';
     const connection = connectionController.getSnapshot();
     const account = connection.cloudAccount;
     const serviceName = cloudServiceName(connectionController.getCloudClient()?.client.environment ?? account?.environment ?? connection.signIn?.environment ?? 'production');
@@ -611,7 +611,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         // calendar-settings:end
         page.groups.push(group([{
           kTog:true,label:'Review phone actions first',aria:'Review phone actions first',hasSub:true,
-          sub:'Applies to creating notes, opening apps or websites, taking photos and choosing photos. Calendar changes are handled separately. Required permissions and reviews still apply.',
+          sub:'Ask before Alpha creates notes, opens apps or uses your camera and photos.',
           on:cachedDevicePreferences()?.askBeforeAgentActions===true,
           track:cachedDevicePreferences()?.askBeforeAgentActions?'background:var(--acc)':'background:var(--line)',
           kx:cachedDevicePreferences()?.askBeforeAgentActions?20:0,
@@ -643,7 +643,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
           const day=(at:number)=>new Date(at).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'});
           if(state.page==='cloud-plan'){
             // Runtime location and Cloud inference are separate facts.
-            const rows:Bag[]=[info('Account',plan.account??(plan.offline?`${serviceName} unreachable`:'Not signed in')),info('Plan',plan.plan),info('Agent execution',runtimeLocation),info('AI replies',plan.inference)];
+            const rows:Bag[]=[info('Account',plan.account??(plan.offline?`${serviceName} unreachable`:'Not signed in')),...(plan.signedIn?[info('Plan',plan.plan)]:[]),info('AI connection',plan.inference)];
             if(plan.endsAt)rows.push(info(plan.status==='active'||plan.status==='trialing'||plan.status==='past_due'?'Plan runs until':'Plan ended',day(plan.endsAt)));
             // Plan state, not a balance: the allowance Cloud reports and the latest limit with its retry time.
             if(plan.allowance)rows.push(info('Plan allowance',plan.allowance));
@@ -658,7 +658,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
               {kNav:true,label:'Sign out',lbl:`Sign out of ${serviceName}`,chev:true,noAB:true,go:()=>void connectionController.cloudSignOut()},
             ]:plan.offline?[{kNav:true,label:'Check plan again',lbl:'Check plan again',chev:true,noAB:true,go:()=>connectionController.recheckPlanOnReturn()}]
             :[{kNav:true,label:`Sign in with ${serviceName}`,lbl:`Sign in with ${serviceName}`,chev:true,noAB:true,go:()=>void connectionController.residentCloudLogin()}];
-            out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:`${serviceName} account & plan`,hasTitle:true,backLabel:'Back to Settings',back:()=>api.set({page:null}),hero:{},groups:[group(rows),group(actions)]});
+            out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:'Account & plan',hasTitle:true,backLabel:'Back to Settings',back:()=>api.set({page:null}),hero:{},groups:[group(rows),group(actions)]});
           }
         }
         page.groups.push(group([{kNav:true,label:'Agent connection',lbl:'Agent connection',val:connectionController.getSnapshot().name,hasVal:true,chev:true,noAB:true,go:()=>native&&!testMocksEnabled?api.set({page:'agent-connection'}):connectionController.open()},{kNav:true,label:'AI provider',lbl:'AI provider',val:connection.providerStatus?.selected&&connection.providerStatus.provider==='cerebras'?'Own API keys':connection.providerStatusError?'Status unavailable':'Cloud',hasVal:true,chev:true,noAB:true,go:()=>connectionController.openProviderSettings()}]));
@@ -708,7 +708,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
               groups.push(group(rows));
             }
           }
-          out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:'Agent connection',hasTitle:true,backLabel:'Back to Settings',back:()=>api.set({page:null}),hero:{},groups});
+          out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:'Connection help',hasTitle:true,backLabel:'Back to Settings',back:()=>api.set({page:null}),hero:{},groups});
         }
         if(native)page.groups.push(group([{kNav:true,label:'Reset Alpha data',lbl:'Reset Alpha data',sub:'Erase local Alpha data · device unlock required',hasSub:true,chev:true,noAB:true,go:async()=>{
           // Shared native review (@elizaos/capacitor-system/reset): only cancelled or unavailable reach here.
@@ -874,9 +874,50 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         });
       }
     }
+    const settingsTop = out.stack.find((page: Bag) => page.isTop);
+    if (settingsTop) {
+      const rows = new Map<string, Bag>();
+      for (const section of settingsTop.groups) {
+        for (const row of section.rows) if (!rows.has(row.label)) rows.set(row.label, row);
+      }
+      const labels: Record<string, string> = {
+        'Accounts': 'Account & plan',
+        'Connections': 'Google & email',
+        'AI provider': 'AI connection',
+        'Agent connection': 'Connection help',
+        'Set up Alpha access': 'App permissions',
+        'Scheduled digests': 'Scheduled summaries',
+        'Review phone actions first': 'Ask before taking actions',
+      };
+      const sections = [
+        ['Account', ['Accounts', 'Connections', 'AI provider']],
+        ['Preferences', ['Display', 'Notifications', 'Calendar', 'Scheduled digests']],
+        ['Privacy', ['Privacy & data', 'Set up Alpha access', 'Review phone actions first', 'Password manager', 'Photos']],
+        ['Help', ['Agent connection', 'About']],
+      ] as const;
+      rows.delete('Models');
+      settingsTop.groups = sections.map(([caption, names]) => {
+        const selected = names.flatMap(name => {
+          const row = rows.get(name);
+          if (!row) return [];
+          rows.delete(name);
+          const label = labels[name] || name;
+          return [{...row, label, lbl: label, ...(row.aria ? {aria: label} : {}),
+            ...(name === 'Accounts' ? {go:()=>connectionController.residentPlanSettings()?api.set({page:'cloud-plan'}):connectionController.openCloudAccount()} : {}),
+            ...(name === 'Connections' && !account ? {sub:'Sign in to connect Google'} : {}),
+            ...(name === 'Agent connection' ? {hasVal:false, hasSub:false} : {})}];
+        });
+        return {...group(selected), cap:caption, hasCap:true};
+      }).filter(section => section.rows.length);
+      if (rows.size) settingsTop.groups.splice(2, 0, {...group([...rows.values()]), cap:'Device', hasCap:true});
+      for (const page of out.stack) {
+        if (page.title === 'Accounts') page.title = 'Account & plan';
+        if (page.title === 'Connections') page.title = 'Google & email';
+      }
+    }
     if(!Capacitor.isNativePlatform()) {
       for(const page of out.stack){
-        if(page.title==='About')page.groups=[group([info('Alpha Phone',buildVersion),...(developerTools?[info('Update channel (development)',updateChannelCheckEnabled?'Read-only check on · never downloads or installs':'Off')]:[]),info('Agent execution',runtimeLocation),info('Agent',target),info('Inference model',inferenceModel),info('Storage','App storage')]),group([problemsRow(),diagnosticsRow()]),group([licensesRow()])];
+        if(page.title==='About')page.groups=[group([info('Alpha Phone',buildVersion),...(developerTools?[info('Update channel (development)',updateChannelCheckEnabled?'Read-only check on · never downloads or installs':'Off')]:[]),...(developerTools?[info('Runs',runtimeLocation),info('AI model',inferenceModel)]:[]),info('Storage','App storage')]),group([problemsRow(),diagnosticsRow()]),group([licensesRow()])];
       }
       const browserLabels=(value:any):any=>{if(typeof value==='string')return value.replaceAll('Manage brightness in Android','Brightness').replaceAll('Manage sound in Android','Sound settings').replaceAll('Manage in Android','App settings').replaceAll('Device accounts in Android','System accounts').replaceAll('Wi-Fi transport · network names stay in Android settings','Network names stay in system settings').replaceAll('in Android','in system settings').replaceAll('Android settings','System settings').replaceAll('Android Calendar','App calendar').replaceAll('Android device information','System information').replaceAll('Android developer settings','App development settings').replaceAll('On this phone','In this app').replaceAll('on this phone','in this app').replaceAll('Android access not granted','Development event access off').replaceAll('Waiting for Android listener','Waiting for local events').replaceAll('Selected apps connected','Selected development apps connected').replaceAll('Native setting unavailable','Managed by your system');if(Array.isArray(value))return value.map(browserLabels);if(value&&typeof value==='object')return Object.fromEntries(Object.entries(value).map(([k,v])=>[k,browserLabels(v)]));return value;};
       return browserLabels(out);

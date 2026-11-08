@@ -136,3 +136,38 @@ body:has([data-alpha-layer="app"]:not([inert]) [data-settings-page]) .alpha-plan
 .alpha-provider-own{display:flex;flex-direction:column;gap:12px}
 .alpha-provider-status{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .alpha-connection .alpha-provider-status .alpha-btn--text{width:auto}
+
+/* Connection and sign-out dialogs share Alpha's in-app sheet geometry. */
+.alpha-connection-scrim:has(.alpha-connection-resume) {
+  inset: auto;
+  left: var(--phone-left, 0px);
+  top: var(--phone-top, 0px);
+  width: var(--phone-width, 100vw);
+  height: var(--phone-height, 100dvh);
+  transform: scale(var(--phone-scale, 1));
+  transform-origin: top left;
+  align-items: flex-end;
+  padding: 0;
+}
+.alpha-connection-scrim .alpha-connection-resume {
+  align-self: flex-end;
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 28px 28px 0 0;
+  padding: 20px 24px max(28px, env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -4px 24px #00000012;
+}
+.alpha-connection-resume .alpha-connection-actions button:first-child:not(.alpha-btn) {
+  background: var(--connection-acc, #0000ff);
+  color: #fff;
+}
+
+.alpha-connection-resume h1,
+.alpha-provider-panel h1,
+.alpha-google-connections > header h2 {
+  font-family: inherit;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: normal;
+}
