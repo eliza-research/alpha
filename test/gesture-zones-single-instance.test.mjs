@@ -47,7 +47,8 @@ test('the launcher keeps one MainActivity and its kind belongs to the task', () 
   assert.match(activity, /if \(task == -1 \|\| task != liveTaskId\) \{ liveTaskId = task; liveTaskHome = isHomeTypeStart\(getIntent\(\)\); \}\s*startedAsHome = liveTaskHome;/);
   assert.match(read('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaConnectionPlugin.java'), /getActivity\(\)\.setIntent\(intent\);delegationCallback=uri;/, 'the sign-in return is still kept with setIntent, which is why the kind is per task');
   // An exported activity reads its own marker extra without trusting the sender's parcel.
-  assert.match(activity, /try \{ return intent\.getBooleanExtra\(EXTRA_FRONT_START, false\); \}\s*catch \(RuntimeException foreign\) \{ return false; \}/);
+  // Only this process's own token counts: another app setting the key is an ordinary start.
+  assert.match(activity, /try \{ return FRONT_START_TOKEN\.equals\(intent\.getStringExtra\(EXTRA_FRONT_START\)\); \}\s*catch \(RuntimeException foreign\) \{ return false; \}/);
   assert.doesNotMatch(activity, /isOwnFrontStart|frontStartAt/, 'the marker alone identifies a front start; no time window');
   // The live instance's own task is never removed by the instance that hands off.
   assert.match(activity, /if \(home \|\| sameTask\) finish\(\); else finishAndRemoveTask\(\);/);
