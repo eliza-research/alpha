@@ -1157,5 +1157,27 @@
       "Installed Home notice projection for shared launcher snapshot changes, exact error equality, inventory identity and failure notice deduplication.",
       "Starts after a settled inventory. Surface and shared launcher snapshots are inputs. Native launch effects, inventory generation and favorites durability are separate obligations."
     ]
+  },
+  {
+    "path": "specs/quint/application/LauncherOwnership.qnt",
+    "module": "LauncherOwnership",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "listWaitsForDefaultTest",
+      "staleReadCannotReplaceAppsOrDialTest",
+      "staleLaunchCannotClearNewOwnerTest",
+      "failedDialRefreshesBothReadsTest"
+    ],
+    "sources": [
+      ".eliza/client-features/plugins/plugin-native-system/src/client/launcher.ts",
+      ".eliza/client-features/packages/ui/src/mobile-shell/mobile-launcher.ts",
+      "apps/app/src/prototype/home-shell.ts"
+    ],
+    "abstractions": [
+      "Shared installed launcher inventory/default read generation and native handoff lifetime. Package/activity/profile identities remain distinct; default launch dispatches the dial role.",
+      "Three app identities, two dial readback classes, eight generations and four launch calls. Builtins, favorites migration and watch scheduling remain separate."
+    ]
   }
 ]
