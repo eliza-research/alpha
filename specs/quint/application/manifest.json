@@ -2229,5 +2229,38 @@
       "Mounted Calendar picker and editor Back, exact detail and draft identity, deliberate discard and owner retirement, and Settings scope after discard.",
       "Two owners, two synthetic service event targets and four form identities. Actual IndexedDB over a closed Calendar record transport. Provider saves and other draft destinations are separate."
     ]
+  },
+  {
+    "path": "specs/quint/application/CanonicalCalendarDraftHandoff.qnt",
+    "module": "CanonicalCalendarDraftHandoff",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "noteAndReminderUseSeparateDraftAdmissionTest",
+      "scanRefusalKeepsReviewAndRetainedDraftTest",
+      "deliberateClearAdmitsFreshScanTest",
+      "pendingConsumeDoesNotAdmitNoteTest",
+      "openingReplacementSlotDoesNotAdmitIncomingDraftTest",
+      "unavailableCanonicalSourceRetainsOriginTest"
+    ],
+    "invariants": [
+      "OriginReviewIsScoped",
+      "CanonicalEditorUsesSlot",
+      "LoadingSlotHasNoOldDraft"
+    ],
+    "sources": [
+      "apps/app/src/prototype/agent-calendar-adapter.ts",
+      "apps/app/src/prototype/canonical-calendar-drafts.ts",
+      "apps/app/src/prototype/canonical-notes-ui.ts",
+      "apps/app/src/prototype/camera-adapter.ts",
+      "apps/app/src/prototype/scan-review.ts",
+      "apps/app/src/prototype/scan-event-review.ts",
+      "apps/app/src/runtime/assistant-draft-store.ts"
+    ],
+    "abstractions": [
+      "Exact mounted Note and scanned-event draft admission to the canonical Calendar editor, retaining earlier drafts and separate reminder authority.",
+      "Two owners and selected slot open, retain, consume and ready phases. Chromium IndexedDB, closed Calendar transport, synthetic image and camera port. Native capture and provider writes remain separate."
+    ]
   }
 ]
