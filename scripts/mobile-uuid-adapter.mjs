@@ -3,7 +3,7 @@ import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {isDeepStrictEqual} from 'node:util';
 
-import {coreStateBuildRecord,CORE_STATE_TARGET,NOTES_STATE_TARGETS,TURN_STATE_TARGET} from './core-state-patch.mjs';
+import {coreStateBuildRecord,CORE_STATE_TARGET,NOTES_STATE_TARGETS,TURN_STATE_TARGET,ROOM_QUEUE_TARGET} from './core-state-patch.mjs';
 
 export const MOBILE_BUILD_RECEIPT='alpha-mobile-build.json';
 export const MOBILE_UUID_POLICY='patches/eliza/mobile-uuid-build.json';
@@ -75,7 +75,7 @@ export function mobileBuildReceipt(root,source,bundle,transforms,coreTransforms)
  const inputs=mobileBuildInputs(root,source),index=path.join(inputs.packageRoot,'dist-node/index.js');
  const expected=[{path:inputs.policy.package.root+'/dist-node/index.js',sourceSha256:inputs.policy.package.files['dist-node/index.js'],bridgeSha256:hash(uuidCommonJsBridge(readRegular(inputs.packageRoot,'dist-node/index.js').toString('utf8'),index))}];
  if(!isDeepStrictEqual(transforms,expected))throw Error('Mobile UUID producer must transform exactly the reviewed barrel');
- return {...inputs.identity,transforms,coreState:coreStateBuildRecord(root,coreTransforms,[CORE_STATE_TARGET,...NOTES_STATE_TARGETS,TURN_STATE_TARGET]),bundleSha256:hash(fs.readFileSync(bundle)),smoke:{uuidSemantics:true,messageTurnBeforeProvider:true}};
+ return {...inputs.identity,transforms,coreState:coreStateBuildRecord(root,coreTransforms,[CORE_STATE_TARGET,...NOTES_STATE_TARGETS,TURN_STATE_TARGET,ROOM_QUEUE_TARGET]),bundleSha256:hash(fs.readFileSync(bundle)),smoke:{uuidSemantics:true,messageTurnBeforeProvider:true}};
 }
 
 /** Reject stale producers even when the original upstream source stamp still matches. */

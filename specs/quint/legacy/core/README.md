@@ -156,15 +156,17 @@ node --test test/quint-core-task-scheduling.test.mjs
 ## Room handler queue source comparison
 
 Run `node specs/quint/legacy/core/check-room-handler-queue-refinement.mjs`
-to replay four schedules and 72 checkpoints on the pinned shared
+to replay six schedules and 112 checkpoints on the pinned shared
 `RoomHandlerQueue`. The traces exercise both original profiles. They read the
 actual FIFO, lease admission flag, room release and writer tail at the
 corresponding mutation seams. The driver observes lexical acquisition,
 reverse release, callback failure, saturation, partial cancellation and
 already-admitted work draining after closure.
 
-Synchronous telemetry reentry is outside these four schedules. On the
-unmodified current pin, an `enqueued` listener can synchronously call
+The unmodified pinned source allowed an `enqueued` listener to synchronously call
 `runWith` again before the outer item reserves its slot. With both pending
-limits set to one, both calls are admitted, and `pendingFor` reports two.
-This is an open source counterexample to the model's capacity invariant.
+limits set to one, both calls were admitted and `pendingFor` reported two.
+The authenticated product patch reserves the slot before publishing telemetry.
+The new schedules compare both per-room and total capacity rejection when the
+listener reenters, and verify that throwing diagnostics preserve the outcome
+of accepted work.

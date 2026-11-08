@@ -8,6 +8,7 @@ import {isDeepStrictEqual} from 'node:util';
 export const CORE_STATE_MANIFEST = 'patches/eliza/core-state-manifest.json';
 export const CORE_STATE_TARGET = 'packages/core/src/services/task.ts';
 export const TURN_STATE_TARGET = 'packages/core/src/runtime/turn-controller.ts';
+export const ROOM_QUEUE_TARGET = 'packages/core/src/runtime/room-handler-queue.ts';
 export const NOTES_STATE_TARGET = 'plugins/plugin-notes/src/service.ts';
 export const NOTES_STATE_TARGETS = [NOTES_STATE_TARGET, 'plugins/plugin-notes/src/store.ts',
   'plugins/plugin-notes/src/types.ts', 'plugins/plugin-notes/src/validation.ts'];
@@ -15,6 +16,7 @@ const reviewedPatches = [
   {file: 'task-service-stop.patch', paths: [CORE_STATE_TARGET]},
   {file: 'notes-state-runtime.patch', paths: NOTES_STATE_TARGETS},
   {file: 'turn-controller-isolation.patch', paths: [TURN_STATE_TARGET]},
+  {file: 'room-queue-admission.patch', paths: [ROOM_QUEUE_TARGET]},
 ];
 export const CORE_STATE_INPUTS = ['scripts/core-state-patch.mjs', 'scripts/core-state-preload.mjs',
   'scripts/combined-agent-source.mjs', CORE_STATE_MANIFEST,
@@ -109,7 +111,7 @@ export function coreStateBuildPlugin(root, source) {
   const prepared = coreStatePatch(root, source), transforms = [];
   const byPath = new Map([...prepared.files].map(([name, entry]) => [path.resolve(source, name), {name, entry}]));
   const plugin = {name: 'authenticated-core-state', setup(build) {
-    build.onLoad({filter: /(?:[\\/]packages[\\/]core[\\/]src[\\/]services[\\/]task\.ts|[\\/]packages[\\/]core[\\/]src[\\/]runtime[\\/]turn-controller\.ts|[\\/]plugins[\\/]plugin-notes[\\/]src[\\/](?:service|store|types|validation)\.ts)$/}, args => {
+    build.onLoad({filter: /(?:[\\/]packages[\\/]core[\\/]src[\\/]services[\\/]task\.ts|[\\/]packages[\\/]core[\\/]src[\\/]runtime[\\/](?:turn-controller|room-handler-queue)\.ts|[\\/]plugins[\\/]plugin-notes[\\/]src[\\/](?:service|store|types|validation)\.ts)$/}, args => {
       const selected = byPath.get(path.resolve(args.path));
       if (!selected) throw Error('Unexpected core patch module path');
       const {name, entry} = selected;

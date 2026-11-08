@@ -2500,7 +2500,10 @@
         "temporal": "CheckedTemporal"
       }
     ],
-    "sources": [],
+    "sources": [
+      "vendor/eliza/packages/core/src/runtime/room-handler-queue.ts",
+      "patches/eliza/room-queue-admission.patch"
+    ],
     "upstreamSources": [
       {
         "path": "packages/core/tla/RoomHandlerQueue.tla",

@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import {AsyncLocalStorage} from 'node:async_hooks';
+import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {CORE_STATE_INPUTS, ROOM_QUEUE_TARGET, coreStatePatch} from '../../../../scripts/core-state-patch.mjs';
 import {checkTraces, qmap, qset} from '../../refinement/check-traces.mjs';
-import {bundleVendorCore, deferred, observeFile, tick} from './source-support.mjs';
+import {bundleVendorCore, deferred, observeFile, root, tick} from './source-support.mjs';
 
 const driver = fileURLToPath(import.meta.url);
 const turnIds = ['t1', 't2', 't3'];
@@ -13,7 +15,7 @@ const number = id => roomIds.find(key => room(key) === id);
 
 // Observe real mutations at synchronous boundaries that precede the public
 // lease and settlement promises. Hooks only read state and record snapshots.
-const queueObservers = {name: 'observe-room-queue', setup(build) {
+const queueObservers = effective => ({name: 'observe-room-queue', setup(build) {
   observeFile(build, 'room-handler-queue.ts', [
     ['this.queue.push(item);', 'this.queue.push(item); __quint.enqueued(this, item);'],
     ['this.active = next;', 'this.active = next; __quint.granted(this, next);'],
@@ -25,10 +27,10 @@ const queueObservers = {name: 'observe-room-queue', setup(build) {
     ['const operation = predecessor.then(fn);', 'const operation = predecessor.then(fn); __quint.writerAdded(ownership);'],
     ['ownership.writerTail = operation.then(\n\t\t\t() => undefined,\n\t\t\t() => undefined,\n\t\t);',
       'ownership.writerTail = operation.then(\n\t\t\t() => __quint.writerSettled(ownership),\n\t\t\t() => __quint.writerSettled(ownership),\n\t\t);'],
-  ]);
-}};
+  ], () => effective);
+}});
 
-function fixture(bundle, maxPendingTotal, name) {
+function fixture(bundle, maxPendingTotal, name, onListenerError) {
   const context = new AsyncLocalStorage();
   const turns = new Map(turnIds.map(id => [id, {pc: 'idle', want: [], result: deferred(), writes: new Map()}]));
   const turnOf = new Map(), ownedBy = new Map();
@@ -110,7 +112,7 @@ function fixture(bundle, maxPendingTotal, name) {
     },
   };
   const {RoomHandlerQueue} = bundle.instantiate(hooks);
-  const queue = new RoomHandlerQueue({maxPendingPerRoom: 2, maxPendingTotal, maxActiveRooms: 2});
+  const queue = new RoomHandlerQueue({maxPendingPerRoom: 2, maxPendingTotal, maxActiveRooms: 2, onListenerError});
   const acquire = queue.acquire.bind(queue);
   queue.acquire = async (...args) => {
     try { return await acquire(...args); }
@@ -169,8 +171,11 @@ function fixture(bundle, maxPendingTotal, name) {
 }
 
 export async function checkRoomHandlerQueueRefinement(vendorPath, extraSources = []) {
+  const patch = coreStatePatch(root, resolve(root, vendorPath ?? 'vendor/eliza'));
+  const effective = patch.files.get(ROOM_QUEUE_TARGET).bytes.toString('utf8');
   const bundle = await bundleVendorCore(vendorPath,
-    'export {RoomHandlerQueue} from "./packages/core/src/runtime/room-handler-queue.ts";', [driver, ...extraSources], [queueObservers]);
+    'export {RoomHandlerQueue} from "./packages/core/src/runtime/room-handler-queue.ts";',
+    [driver, ...CORE_STATE_INPUTS, ...extraSources], [queueObservers(effective)]);
   const capacity = fixture(bundle, 3, 'close-drains-admitted-waiter-after-writer');
   capacity.start('t1', [2, 1, 2]);
   await capacity.checkpoint('owner acquires deduplicated rooms in order');
@@ -232,16 +237,52 @@ export async function checkRoomHandlerQueueRefinement(vendorPath, extraSources =
   await Promise.all([cycle.settled('t1'), cycle.settled('t3')]);
   await cycle.drain();
 
+  const reentryTraces = [];
+  for (const [name, first, second, third, pending, code] of [
+    ['per-room', [1], 1, 1, 2, 'ROOM_HANDLER_QUEUE_SATURATED'],
+    ['global', [1, 2], 2, 1, 3, 'ROOM_HANDLER_QUEUE_GLOBAL_SATURATED'],
+  ]) {
+    const errors = [], diagnostic = Error('fixture listener failure');
+    const reentry = fixture(bundle, 3, name + '-capacity-during-enqueued-listener', (error, event) => {
+      errors.push([error, event.type]);
+      throw Error('fixture secondary diagnostic failure');
+    });
+    reentry.start('t1', first);
+    await reentry.checkpoint('first owner reserves its rooms');
+    let pendingAtEvent;
+    reentry.queue.onEvent(event => {
+      if (event.type === 'enqueued' && pendingAtEvent === undefined) {
+        pendingAtEvent = reentry.queue.pendingTotal();
+        reentry.start('t3', [third]);
+        throw diagnostic;
+      }
+      if (event.type === 'completed') throw diagnostic;
+    });
+    reentry.start('t2', [second]);
+    assert.equal(pendingAtEvent, pending, 'Telemetry sees the outer reservation');
+    assert.equal((await reentry.settled('t3')).error?.code, code);
+    await reentry.checkpoint('reentrant caller is refused at the reserved capacity');
+    reentry.finish('t1');
+    assert.deepEqual(await reentry.settled('t1'), {value: 't1'});
+    await reentry.checkpoint('the reserved waiter acquires');
+    reentry.finish('t2');
+    assert.deepEqual(await reentry.settled('t2'), {value: 't2'});
+    await reentry.drain();
+    assert.deepEqual(errors, [[diagnostic, 'enqueued'], ...first.map(() => [diagnostic, 'completed']),
+      [diagnostic, 'completed']]);
+    reentryTraces.push(reentry.trace);
+  }
+
   return Promise.all([
-    ['CoreRoomHandlerQueue', [capacity.trace, closed.trace, local.trace]],
+    ['CoreRoomHandlerQueue', [capacity.trace, closed.trace, local.trace, ...reentryTraces]],
     ['CoreRoomHandlerQueueCycle', [cycle.trace]],
   ].map(([model, traces]) => checkTraces({model, modelPath: 'specs/quint/legacy/CoreRoomHandlerQueue.qnt',
     id: model + '-source', sources: bundle.sources, driverHashes: bundle.driverHashes, traces,
     scope: 'bounded-component', assumptions: [
-      `Actual RoomHandlerQueue from the authenticated upstream blob at ${bundle.revision}.`,
+      `Actual RoomHandlerQueue at ${bundle.revision} with the authenticated product admission patch.`,
       'Observe FIFO, held rooms, capability fencing and writer tail settlement at source mutation seams. Logical turn identity comes from the caller async context or from the actual queued item.',
       'Controlled callbacks use up to three callers, two rooms, and one live writer per room. Callback failures refine ordinary release. The release boundary precedes notification of the next FIFO owner.',
-      'This profile does not exercise synchronously reentrant telemetry, arbitrary capacity values or simultaneous multi-room writer tails.',
+      'Synchronous telemetry attempts reentry at both queue limits and diagnostic failures are observed on admission and completion. Arbitrary capacities and simultaneous multi-room writer tails remain outside the profiles.',
     ]})));
 }
 

@@ -6,7 +6,7 @@ import os from 'node:os';
 import childProcess, {execFileSync, spawnSync} from 'node:child_process';
 import {syncBuiltinESMExports} from 'node:module';
 import {createHash} from 'node:crypto';
-import {CORE_STATE_TARGET, NOTES_STATE_TARGET, CORE_STATE_MANIFEST, coreStatePatch, coreStateReceipt,
+import {CORE_STATE_TARGET, NOTES_STATE_TARGET, ROOM_QUEUE_TARGET, CORE_STATE_MANIFEST, coreStatePatch, coreStateReceipt,
   coreStateBuildPlugin, coreStateBuildRecord, verifyCoreStateBuildRecord, coreRuntimeArguments, combinedCoreRuntime, coreStateRequiredTargets} from '../scripts/core-state-patch.mjs';
 import {sourceManifest} from '../scripts/combined-agent-source.mjs';
 import {writeCoreStateFixture} from './fixtures/core-state-root.mjs';
@@ -28,7 +28,8 @@ test('reviewed TaskService patch materializes exact bytes while preserving origi
   assert.equal(hash(entry.bytes), entry.afterSha256);
   assert.match(entry.bytes.toString(), /assertAcceptingExecution\(\)/);
   assert.match(entry.bytes.toString(), /startTimer\(\) \{\s+if \(this.stopped\) return/);
-  assert.equal(prepared.files.size, 6);
+  assert.deepEqual([...prepared.files.keys()], f.manifest().patches.flatMap(patch => patch.targets.map(target => target.path)));
+  assert.ok(prepared.files.has(ROOM_QUEUE_TARGET));
 });
 test('missing, modified and wrong-pin patch inputs fail closed', t => {
   for (const mode of ['missing', 'digest', 'pin', 'target', 'output', 'input', 'linked']) {
@@ -131,7 +132,7 @@ test('patch consumes the verified Buffer when its pathname is replaced before ex
     };
     syncBuiltinESMExports();
     const result = coreStatePatch(f.root, f.source);
-    assert.equal(intercepted, 3);
+    assert.equal(intercepted, expected.patches.length);
     assert.equal(hash(result.files.get(CORE_STATE_TARGET).bytes), f.manifest().patches[0].targets[0].afterSha256);
   } finally { childProcess.execFileSync = original; syncBuiltinESMExports(); }
 });

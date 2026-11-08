@@ -35,9 +35,9 @@ export async function bundleVendorCore(vendorPath, exports, driverSources, plugi
     return module.exports;
   }};
 }
-export function observeFile(builder, filename, edits) {
+export function observeFile(builder, filename, edits, readSource = path => readFileSync(path, 'utf8')) {
   builder.onLoad({filter: new RegExp(`/${filename.replaceAll('.', '\\.')}$`)}, ({path}) => {
-    let source = readFileSync(path, 'utf8');
+    let source = readSource(path);
     for (const [before, after] of edits) {
       assert.equal(source.split(before).length, 2, `One observer seam in ${filename} for ${before}`);
       source = source.replace(before, after);

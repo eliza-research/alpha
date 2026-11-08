@@ -202,7 +202,8 @@ def verify(apk, release=False, runtime_profile="native", local_embeddings=False)
                             ('notes-state-runtime.patch', ['plugins/plugin-notes/src/service.ts',
                              'plugins/plugin-notes/src/store.ts', 'plugins/plugin-notes/src/types.ts',
                              'plugins/plugin-notes/src/validation.ts']),
-                            ('turn-controller-isolation.patch', ['packages/core/src/runtime/turn-controller.ts'])]
+                            ('turn-controller-isolation.patch', ['packages/core/src/runtime/turn-controller.ts']),
+                            ('room-queue-admission.patch', ['packages/core/src/runtime/room-handler-queue.ts'])]
             if (set(core_manifest) != {'schema', 'baseCommit', 'patches'} or
                     core_manifest.get('schema') != 1 or core_manifest.get('baseCommit') != pin or
                     len(core_manifest.get('patches', [])) != len(core_targets)):

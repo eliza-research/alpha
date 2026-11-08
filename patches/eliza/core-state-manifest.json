@@ -49,6 +49,17 @@
           "afterSha256": "a69049036ad8848609ac9113090dd16dd45517a5ab03d62d506e1c17156f8111"
         }
       ]
+    },
+    {
+      "file": "room-queue-admission.patch",
+      "sha256": "343e39a3c756e3679b8a1e577352638119e0f17b1d0535023cbd1720fdddedde",
+      "targets": [
+        {
+          "path": "packages/core/src/runtime/room-handler-queue.ts",
+          "beforeSha256": "f5a31f3276827e90448df4198ae559135d32604132d2775948df9d5b2e496fac",
+          "afterSha256": "cd8f23f09c191aa9ebe3048e688a46a4a81b730405351a1cf809f4c8e214fce1"
+        }
+      ]
     }
   ]
 }
