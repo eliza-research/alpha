@@ -17703,7 +17703,7 @@
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
-      "sha256": "c21145e3609eccbe89646ead7e85e63926e0a45412226bcbfa82c6374ef7c7e2",
+      "sha256": "2e5e66abbcb87049e4a33581ffd78482e8a80b49a208956657a2ff7461aa314c",
       "stateAnchors": [
         {
           "line": 24,
@@ -18074,44 +18074,48 @@
           "text": "const home=homeCalendarSelection(model,zone(),hidden,new Date(now)),event=home.event;"
         },
         {
-          "line": 239,
+          "line": 237,
+          "text": "const syncedAt=Date.parse(model?.feed?.syncedAt??'');"
+        },
+        {
+          "line": 238,
+          "text": "const confirmedEmpty=home.verified&&!event&&Number.isFinite(syncedAt)&&syncedAt>0&&syncedAt<=now&&!homeReadIsStale(syncedAt,now);"
+        },
+        {
+          "line": 241,
           "text": "const failed=!!model?.error||model?.status==='error'||model?.status==='unavailable',unverified=model?.status==='partial';"
         },
         {
-          "line": 242,
+          "line": 244,
           "text": "const source=event&&home.verified?'Agent Calendar':'';"
         },
         {
-          "line": 243,
-          "text": "const feed=failed||unverified?presentHomeAgendaFeed({status:model?.error?'error':model!.status,hasItem:!!event,feedState:model?.feed?.state??null,asOf:Date.parse(model?.feed?.syncedAt??'')||null,error"
+          "line": 245,
+          "text": "let feed=failed||unverified?presentHomeAgendaFeed({status:model?.error?'error':model!.status,hasItem:!!event,feedState:model?.feed?.state??null,asOf:Date.parse(model?.feed?.syncedAt??'')||null,error:m"
         },
         {
-          "line": 246,
+          "line": 250,
           "text": "const provenance={origin:'',read:feed.read,description:feed.description};"
         },
         {
-          "line": 248,
+          "line": 252,
           "text": "const day=(at:string)=>{const d=new Date(at);return new Date(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()).getTime();};"
         },
         {
-          "line": 249,
+          "line": 253,
           "text": "const item=event?{title:String(event.title||''),begin:event.isAllDay?day(event.startAt):Date.parse(event.startAt),end:event.isAllDay?day(event.endAt):Date.parse(event.endAt),allDay:!!event.isAllDay,vi"
         },
         {
-          "line": 252,
+          "line": 256,
           "text": "if(out.homeCalendarOverdue===true&&out.homeAgendaInput){const input=out.homeAgendaInput as HomeAgendaCardInput;return{...out,...homeCalendarValues(presentHomeAgendaCard(overdueAgendaNext(input,out.hom"
         },
         {
-          "line": 255,
+          "line": 259,
           "text": "const local=out.homeAgendaInput as HomeAgendaCardInput|undefined;"
         },
         {
-          "line": 257,
+          "line": 261,
           "text": "if(out.homeAgendaReminder===true&&local?.item&&(!item||local.item.begin<item.begin)){const retry=feed.state==='error'||feed.state==='stale';"
-        },
-        {
-          "line": 259,
-          "text": "const syncedAt=Date.parse(model?.feed?.syncedAt??'');"
         }
       ]
     },
