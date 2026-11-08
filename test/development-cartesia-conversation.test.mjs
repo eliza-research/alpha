@@ -1,4 +1,5 @@
 import {build} from "esbuild";
+import {resolve} from "node:path";
 import {createRealtimeVoiceTiming} from '../vendor/eliza/packages/voice/src/realtime-voice-timing.ts';
 import {validateUuid} from '../vendor/eliza/packages/core/src/utils/uuid.ts';
 import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from 'node:module';import vm from 'node:vm';
@@ -200,7 +201,17 @@ test('actual SDK and Alpha preserve A queued playback while B failure settles on
  const observed=[];let readAutomaticMute;
  const observe=row=>{if(observed.length<32&&Buffer.byteLength(JSON.stringify([...observed,row]))<=7168)observed.push(row);};
  // Compile the paired SDK client without replacing its reducer, frame parser or drain.
- const bundled=await build({entryPoints:['vendor/eliza/packages/ui/src/voice/voice-session-client-core.ts'],nodePaths:process.env.ALPHA_CLOUD_COLLECTOR_SOURCE?[process.env.ALPHA_CLOUD_COLLECTOR_SOURCE+'/node_modules']:[],bundle:true,platform:'browser',conditions:['eliza-source','browser'],format:'esm',write:false});
+ const sourceRoot=resolve('vendor/eliza');
+ const bundled=await build({entryPoints:[resolve(sourceRoot,'packages/ui/src/voice/voice-session-client-core.ts')],
+  nodePaths:process.env.ALPHA_CLOUD_COLLECTOR_SOURCE?[process.env.ALPHA_CLOUD_COLLECTOR_SOURCE+'/node_modules']:[],
+  bundle:true,platform:'browser',conditions:['eliza-source','browser'],format:'esm',write:false,
+  alias:{
+   '@elizaos/host/voice/ui-context':resolve(sourceRoot,'packages/host/src/voice/ui-context.ts'),
+   '@elizaos/core/view-interaction':resolve(sourceRoot,'packages/core/src/view-interaction.ts'),
+   '@elizaos/core/logging':resolve(sourceRoot,'packages/core/src/logging.ts'),
+   '@elizaos/core/speech':resolve(sourceRoot,'packages/core/src/speech.ts'),
+   '@elizaos/voice/turn':resolve(sourceRoot,'packages/voice/src/turn.ts'),
+  }});
  const {createVoiceSessionClient}=await import('data:text/javascript;base64,'+Buffer.from(bundled.outputFiles[0].text).toString('base64'));
  const sockets=[],playbackProcessors=[],tracks=[];
  const node=()=>({connect(){return this;},disconnect(){}});

@@ -15,7 +15,7 @@ public class CloudSignInBrowserTest extends BrowserPluginBase {
  static class SignInFailure extends Exception { final String code; SignInFailure(String code) { this.code=code; } }
  static class Attempt {
   final CloudSignInEnvironment environment=TestRegistration.PRODUCTION; final Runnable credentialGuard;
-  boolean cancelled, browserLaunched, browserPaused, callbackReceived, busy; String browserState; long expiresAt;
+  boolean cancelled, browserLaunched, browserPaused, callbackReceived, busy; String browserState, pendingRecord; long expiresAt;
   Attempt(Runnable guard) { credentialGuard=guard; }
  }
  static class Uri { static Uri parse(String value) { return new Uri(value); } final String value; Uri(String value) { this.value=value; } }
@@ -62,6 +62,7 @@ public class CloudSignInBrowserTest extends BrowserPluginBase {
  boolean assetLinksGrant(CloudSignInEnvironment environment){return associated;}
  CloudCredentialSlots credentials(Runnable guard){return new CloudCredentialSlots(){
   public String read(String key){return slots.get(key);} public void write(String key,String value){guard.run();slots.put(key,value);} public void remove(String key){guard.run();slots.remove(key);}
+  public boolean compareExchange(String key,String expected,String value){guard.run();if(!Objects.equals(slots.get(key),expected))return false;if(value==null)slots.remove(key);else slots.put(key,value);return true;}
  };}
  void run(Runnable task){workers.add(task);}
  void end(Attempt owner,String code,boolean burn){owner.cancelled=true;if(attempt==owner)attempt=null;failure=code;if(burn&&intent==1)slots.remove(config().pendingSlot);}

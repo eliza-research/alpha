@@ -194,11 +194,11 @@ test("exact native verify/connect/token/ack chain keeps failures explicit and cu
     ACTUAL_CALLBACK: between(
       plugin,
       " private boolean captureCallback(",
-      " /** Cancelled, ended or consumed",
+      " private void burnUnclaimedPending(",
     ),
     ACTUAL_BURN: between(
       plugin,
-      " private void burnUnclaimedPending()",
+      " private void burnUnclaimedPending(",
       " // ── Email code and MFA:",
     ),
     ACTUAL_VERIFY:
@@ -410,7 +410,7 @@ test("the plugin owns every secret, compares state before burning and logs only 
   const capture = between(
     plugin,
     "private boolean captureCallback(",
-    "private void burnUnclaimedPending()",
+    "private void burnUnclaimedPending(",
   );
   assert.ok(
     capture.indexOf("intent.setData(null)") > 0 &&
@@ -422,13 +422,15 @@ test("the plugin owns every secret, compares state before burning and logs only 
     "// Not this device",
   );
   assert.doesNotMatch(noResult, /\.remove\(|burnUnclaimedPending/);
+  const consume = capture.indexOf(".compareExchange(config().pendingSlot, pendingRecord, null)");
+  assert.ok(consume >= 0, "consume exactly the observed pending bytes");
   assert.ok(
-    capture.indexOf("!pending.sameState(received)) return;") <
-      capture.indexOf(".remove(config().pendingSlot)"),
+    capture.indexOf("!pending.sameState(received)) return;") < consume,
+    "state comparison precedes durable consumption",
   );
   assert.ok(
-    capture.indexOf(".remove(config().pendingSlot)") <
-      capture.indexOf('"/steward/auth/oauth/exchange"'),
+    consume < capture.indexOf('"/steward/auth/oauth/exchange"'),
+    "pending record is consumed before exchange",
   );
   // Tail: Android authorization before connect; receipt, key, ack; the Steward session is revoked.
   const tail = between(

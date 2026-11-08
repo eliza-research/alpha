@@ -9,6 +9,7 @@ import org.json.JSONObject;
 public class CloudSignInChainTest {
  final Object lock=new Object(); boolean destroyed,defer; Attempt attempt; String mode="valid";
  final ArrayDeque<Runnable> queued=new ArrayDeque<>();
+ final java.util.concurrent.Executor worker=this::run;
  String issuedState, issuedChallenge; int requests; long intent, reserved;
  static final String ID="00000000-0000-4000-8000-000000000001";
  static final String NEW="eliza_mobile_"+"a".repeat(64), OLD="eliza_mobile_"+"b".repeat(64);
@@ -36,7 +37,7 @@ public class CloudSignInChainTest {
  static class Attempt {
   final CloudSignInEnvironment environment=TestRegistration.PRODUCTION;
   final String id=UUID.randomUUID().toString();final String requestId;Runnable credentialGuard=()->{};Attempt(){this(null);}Attempt(String requestId){this.requestId=requestId;}String email="owner@example.invalid",emailVerifier=CloudSignInFlow.newVerifier(),mfaType,mfaChallenge,phone;
-  long expiresAt=System.currentTimeMillis()+60000;boolean google,busy,cancelled,callbackReceived,browserLaunched;String browserState;int failedVerifies;PluginCall waiting;
+  long expiresAt=System.currentTimeMillis()+60000;boolean google,busy,cancelled,callbackReceived,browserLaunched;String browserState,pendingRecord;int failedVerifies;PluginCall waiting;
   void cancel(){cancelled=true;}
  }
  static class Response { final int status;final JSONObject data;Response(int s,JSONObject d){status=s;data=d;} }
@@ -48,6 +49,7 @@ public class CloudSignInChainTest {
    public String read(String key){return slots.get(key);}
    public void write(String key,String value){guard.run();slots.put(key,value);events.add(key.startsWith("cloud:")?"key":"receipt");}
    public void remove(String key){guard.run();slots.remove(key);}
+   public boolean compareExchange(String key,String expected,String value){guard.run();if(!Objects.equals(slots.get(key),expected))return false;if(value==null)slots.remove(key);else slots.put(key,value);return true;}
   };
  }
  /** A newer credential intent supersedes this sign-in only when the fixture says so. */
@@ -187,7 +189,7 @@ public class CloudSignInChainTest {
   slots.clear();events.clear();notifications.clear();CloudSignInChainTest host=new CloudSignInChainTest();
   CloudSignInFlow.Pending pending=CloudSignInFlow.Pending.create(TestRegistration.PRODUCTION,System.currentTimeMillis());
   slots.put(host.config().pendingSlot,pending.serialize());
-  Attempt owner=new Attempt(REQUEST);owner.google=true;owner.browserLaunched=true;owner.browserState=pending.state;owner.credentialGuard=host.reserveCredentialCommit();
+  Attempt owner=new Attempt(REQUEST);owner.google=true;owner.browserLaunched=true;owner.browserState=pending.state;owner.pendingRecord=pending.serialize();owner.credentialGuard=host.reserveCredentialCommit();
   PluginCall call=new PluginCall();owner.waiting=call;
   if(!mode.equals("cold-after-signout"))host.attempt=owner;
   if(mode.equals("cold-after-signout"))host.intent++;
@@ -205,7 +207,7 @@ public class CloudSignInChainTest {
    slots.clear();events.clear();notifications.clear();CloudSignInChainTest host=new CloudSignInChainTest();host.mode=outcome;
    CloudSignInFlow.Pending pending=CloudSignInFlow.Pending.create(TestRegistration.PRODUCTION,System.currentTimeMillis());
    slots.put(host.config().pendingSlot,pending.serialize());
-   Attempt owner=new Attempt(REQUEST);owner.google=true;owner.browserLaunched=true;owner.browserState=pending.state;owner.credentialGuard=host.reserveCredentialCommit();host.attempt=owner;owner.waiting=new PluginCall();
+   Attempt owner=new Attempt(REQUEST);owner.google=true;owner.browserLaunched=true;owner.browserState=pending.state;owner.pendingRecord=pending.serialize();owner.credentialGuard=host.reserveCredentialCommit();host.attempt=owner;owner.waiting=new PluginCall();
    PluginCall waiting=owner.waiting;
    if(outcome.equals("cancelled")){PluginCall cancel=new PluginCall();cancel.input.put("requestId",REQUEST);host.cancel(cancel);}
    if(outcome.equals("stale-attempt"))owner.browserState=CloudSignInFlow.newState();
@@ -232,12 +234,14 @@ public class CloudSignInChainTest {
    check(host.attempt==owner&&!owner.cancelled&&"old-pending".equals(slots.get(host.config().pendingSlot)),"stale/malformed cancel cannot retire MFA or burn state");
    check(mode.equals("malformed")?"invalid-request".equals(cancel.error):cancel.result!=null,"cancel outcome is explicit");
   }else{
-   check(owner.cancelled&&host.attempt==null&&cancel.result!=null,"matching or legacy cancel retires owner");
+   check(owner.cancelled&&host.attempt==null,"matching or legacy cancel retires owner");
+   check(mode.startsWith("queued")?cancel.result==null:cancel.result!=null,"queued cancellation waits for its durable retirement");
    if(mode.startsWith("queued")){
     Attempt newer=new Attempt(ID);newer.credentialGuard=host.reserveCredentialCommit();host.attempt=newer;
     if(mode.equals("queued-completed"))host.attempt=null;
     slots.put(host.config().pendingSlot,"new-pending");while(!host.queued.isEmpty())host.queued.remove().run();
     check(!newer.cancelled&&"new-pending".equals(slots.get(host.config().pendingSlot)),"queued old cleanup cannot erase remounted owner");
+    check(cancel.result!=null,"queued cancellation settles after its compare-and-exchange");
    }else check(!slots.containsKey(host.config().pendingSlot),"owned pending removed");
   }
  }
