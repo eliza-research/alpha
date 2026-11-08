@@ -72,7 +72,7 @@
 +  /** A parameterless return arrived: only a hint, since any app can send one. */
 +  volatile boolean cancelled, callbackReceived, browserLaunched, browserPaused, returnHint;
 +  /** Guarded by lock. A recognized return is waiting for its storage read. */
-+  boolean returnClaimed;
++  boolean returnClaimed, returnHintElapsed;
 +  String browserState, pendingRecord;
 @@ -99,0 +119,4 @@
 + /** The browser state of the last cancelled Google attempt, so a return queued behind the cancel stays quiet. */
@@ -285,7 +285,7 @@
 -    end(owner, "mfa_required".equals(received.error) ? "mfa-browser" : "app_link_unverified".equals(received.error) ? "app-link-unverified" : "provider-refused", false);
 -    return;
 -   }
-@@ -410,7 +553,72 @@
+@@ -410,7 +553,73 @@
 -    JSONObject body = new JSONObject().put("code", received.code).put("redirectUri", returned.callback())
 -     .put("tenantId", returned.tenant).put("codeVerifier", pending.verifier);
 -    Response exchanged = post(owner, "/steward/auth/oauth/exchange", body, null);
@@ -317,7 +317,8 @@
 +     main.postDelayed(() -> {
 +      synchronized (lock) {
 +       if (attempt != waiting || waiting.cancelled || waiting.callbackReceived) return;
-+       end(waiting, "app-link-unverified", false);
++       waiting.returnHintElapsed = true;
++       if (!waiting.returnClaimed) end(waiting, "app-link-unverified", false);
 +      }
 +     }, BROWSER_RETURN_GRACE_MS);
 +     return;
@@ -365,76 +366,77 @@
 +    } catch (SignInFailure failure) { end(owner, failure.code, false); }
 +    catch (Exception unexpected) { end(owner, "unavailable", false); }
 +   } finally { releaseReturnClaim(claimed); }
-@@ -420,5 +628,10 @@
+@@ -420,5 +629,11 @@
 - /** Cancelled, ended or consumed: the pending record is never reused. */
 - private void burnUnclaimedPending() {
 -  run(() -> { try { store().remove(config().pendingSlot); } catch (Exception ignored) { /* Absent or unreadable. */ } });
 - }
 - /** A delayed scoped cancellation cannot erase a newer attempt's pending record. */
-+ /** A recognized but unconsumable return ends its own attempt after browser pause. */
++ /** A recognized but unconsumable return releases its own elapsed grace. */
 + private void releaseReturnClaim(Attempt claimed) {
 +  if (claimed == null) return;
 +  synchronized (lock) {
 +   claimed.returnClaimed = false;
-+   if (attempt != claimed || !claimed.browserPaused || claimed.cancelled || claimed.callbackReceived || claimed.returnHint) return;
-+   end(claimed, "browser-closed", true);
++   if (attempt != claimed || claimed.cancelled || claimed.callbackReceived) return;
++   if (claimed.returnHintElapsed) end(claimed, "app-link-unverified", false);
++   else if (claimed.browserPaused && !claimed.returnHint) end(claimed, "browser-closed", true);
 +  }
 + }
 + /** Retire only the captured record; a successor may already own the slot. */
-@@ -427,0 +641,2 @@
+@@ -427,0 +643,2 @@
 +    String expected = owner.pendingRecord;
 +    if (expected == null) expected = store().read(config().pendingSlot);
-@@ -429 +644 @@
+@@ -429 +646 @@
 -    credentials(() -> {
 +    CloudCredentialSlots slots = credentials(() -> {
-@@ -432,2 +647,4 @@
+@@ -432,2 +649,4 @@
 -    }).remove(config().pendingSlot);
 -   } catch (Exception ignored) { /* Closed, superseded, absent or unreadable. */ }
 +    });
 +    if (expected != null) slots.compareExchange(config().pendingSlot, expected, null);
 +    synchronized (lock) { if (attempt == null) pendingRetirementUnconfirmed = false; }
 +   } catch (Exception ignored) { /* Unconfirmed retirement keeps callback admission fenced. */ }
-@@ -448 +665 @@
+@@ -448 +667 @@
 -  final Attempt current;
 +  final Attempt current, previous;
-@@ -455,2 +672,4 @@
+@@ -455,2 +674,4 @@
 -   if (attempt != null) attempt.cancel();
 -   current = new Attempt(environment, false, requestId, reserveCredentialCommit());
 +   // A resend leaves the code already sent usable until the new one is out.
 +   previous = attempt != null && attempt.mfaType == null && attempt.expiresAt > now ? attempt : null;
 +   if (attempt != null && previous == null) attempt.cancel();
 +   current = new Attempt(environment, false, requestId, () -> { throw new IllegalStateException("Code not sent"); });
-@@ -469,0 +689,2 @@
+@@ -469,0 +691,2 @@
 +     current.credentialGuard = reserveCredentialCommit();
 +     if (previous != null) previous.cancel();
-@@ -471,0 +693,2 @@
+@@ -471,0 +695,2 @@
 +    // A Google return this sign-in supersedes can no longer finish.
 +    burnUnclaimedPending(current);
-@@ -473,2 +696,2 @@
+@@ -473,2 +698,2 @@
 -   } catch (SignInFailure failure) { release(current); refused(current.environment, failure.code); call.reject(failure.code, failure.code); }
 -   catch (Exception unexpected) { release(current); call.reject("unavailable", "unavailable"); }
 +   } catch (SignInFailure failure) { notSent(current, previous); refused(current.environment, failure.code); call.reject(failure.code, failure.code); }
 +   catch (Exception unexpected) { notSent(current, previous); call.reject("unavailable", "unavailable"); }
-@@ -486 +709 @@
+@@ -486 +711 @@
 -  final Attempt current;
 +  final Attempt current, previous;
-@@ -493,2 +716,3 @@
+@@ -493,2 +718,3 @@
 -   if (attempt != null) attempt.cancel();
 -   current = new Attempt(environment, false, requestId, reserveCredentialCommit());
 +   previous = attempt != null && attempt.mfaType == null && attempt.expiresAt > now ? attempt : null;
 +   if (attempt != null && previous == null) attempt.cancel();
 +   current = new Attempt(environment, false, requestId, () -> { throw new IllegalStateException("Code not sent"); });
-@@ -506,0 +731,2 @@
+@@ -506,0 +733,2 @@
 +     current.credentialGuard = reserveCredentialCommit();
 +     if (previous != null) previous.cancel();
-@@ -508,0 +735 @@
+@@ -508,0 +737 @@
 +    burnUnclaimedPending(current);
-@@ -510,2 +737,2 @@
+@@ -510,2 +739,2 @@
 -   } catch (SignInFailure failure) { release(current); refused(current.environment, failure.code); call.reject(failure.code, failure.code); }
 -   catch (Exception unexpected) { release(current); call.reject("unavailable", "unavailable"); }
 +   } catch (SignInFailure failure) { notSent(current, previous); refused(current.environment, failure.code); call.reject(failure.code, failure.code); }
 +   catch (Exception unexpected) { notSent(current, previous); call.reject("unavailable", "unavailable"); }
-@@ -512,0 +740,9 @@
+@@ -512,0 +742,9 @@
 + }
 + /** A failed send leaves the code already sent (if still live) as the attempt, so a failed resend strands nothing. */
 + private void notSent(Attempt current, Attempt previous) {
@@ -444,10 +446,10 @@
 +   if (attempt == current) attempt = restore ? previous : null;
 +   if (!restore && previous != null) previous.cancel();
 +  }
-@@ -589 +825 @@
+@@ -589 +827 @@
 -  Attempt current;
 +  final Attempt current;
-@@ -592 +828,10 @@
+@@ -592 +830,10 @@
 -   current = attempt; attempt = null;
 +   current = attempt;
 +  }
@@ -459,7 +461,7 @@
 +   if (attempt != current) { call.resolve(); return; }
 +   attempt = null; pendingRetirementUnconfirmed = true;
 +   if (current != null && current.google) cancelledBrowserState = current.browserState;
-@@ -595,4 +840,13 @@
+@@ -595,4 +842,13 @@
 -  // The explicit cancel burns a pending Google record.
 -  if (requestId != null) burnUnclaimedPending(current);
 -  else burnUnclaimedPending();
@@ -477,7 +479,7 @@
 + private void cancellationFailed(PluginCall call) {
 +  notifyListeners("signInIncomplete", new JSObject().put("code", "storage"), true);
 +  call.reject("Pending sign-in cancellation was not saved", "storage");
-@@ -735 +989,6 @@
+@@ -735 +991,6 @@
 -   if (previous != null) outcome.put("previousSignIn", CloudKeyRevocation.revoke(config(), environment, previous) ? "revoked" : "unconfirmed");
 +   if (previous != null) {
 +    // One short inline try so completion is not held up; an unconfirmed revocation is retried later.
@@ -485,7 +487,7 @@
 +    if (!revoked) retryRevocation(current.credentialGuard, environment, previous, 0);
 +    outcome.put("previousSignIn", revoked ? "revoked" : "unconfirmed");
 +   }
-@@ -741,0 +1001,9 @@
+@@ -741,0 +1003,9 @@
 + }
 + /** The replaced key is held only in this closure, never stored. Closing the plugin or a newer
 +  * credential action (sign-in, sign-out, reset) drops the remaining retries. */
@@ -495,7 +497,7 @@
 +   try { if (destroyed) return; guard.run(); } catch (RuntimeException superseded) { return; }
 +   if (!CloudKeyRevocation.revoke(config(), environment, previous)) retryRevocation(guard, environment, previous, round + 1);
 +  }), REVOCATION_RETRY_MS[round]);
-@@ -823,2 +1091,2 @@
+@@ -823,2 +1093,2 @@
 -  synchronized (lock) { current.cancel(); waiting = current.waiting; current.waiting = null; if (attempt == current) attempt = null; }
 -  if (current.google && burn) burnUnclaimedPending();
 +  synchronized (lock) { current.cancel(); waiting = current.waiting; current.waiting = null; if (attempt == current) { attempt = null; if (current.google && burn) pendingRetirementUnconfirmed = true; } }

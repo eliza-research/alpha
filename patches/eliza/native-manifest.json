@@ -4,7 +4,7 @@
   "patches": [
     {
       "file": "google-browser-sign-in.patch",
-      "sha256": "6e696968cb4dd17b5e385b0ef483424a6c5654a1cdb0af7d4072a44cfdf96bf1",
+      "sha256": "a858770391c5bb20558b3f4a29a8ad40861aca95e5917fba8b1c7c656371018e",
       "module": "packages/auth/android",
       "targets": [
         {
@@ -25,7 +25,7 @@
         {
           "path": "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java",
           "beforeSha256": "0c2ba91faf22459538bd852cb305507ac2b17982afbe6bdc6e8465526a1ba1d4",
-          "afterSha256": "1cc0ccea92faf0d1ad29d0d655f21562269f155b319c68000212b0088ba89f38"
+          "afterSha256": "4baa995efb9ae7a34f462b9c4150ffe7df03d096bcb6134b24c186fb80a63ac1"
         },
         {
           "path": "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInReadiness.java",
