@@ -93,7 +93,10 @@ engine/JNI work goes upstream; product policy remains in Alpha.
 
 Subscription authorization is asynchronously refreshed and cached, with server-side
 bounded quotas on existing service requests. Local speech has no billing dependency.
-Photos offers full permitted library access to the local agent; resets erase Alpha
+The Photos Device library is owner-operated in the renderer. Agent library access (P-24,
+A-18) waits for the upstream `photos.library.v1` schema, server allowlist and actions; Alpha then
+advertises it only when `AlphaPhotoLibrary` is available, and does not advertise it before then
+(header validation would reject it and drop every device action). Resets erase Alpha
 private state without implying remote/provider or device-wide media deletion.
 No app-data backup/import/export/transfer feature is planned.
 
