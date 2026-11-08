@@ -7247,7 +7247,8 @@
         "NoticesAndCaches",
         "NotificationCollection",
         "CanonicalNotificationTapAdmission",
-        "CanonicalNotificationTap"
+        "CanonicalNotificationTap",
+        "WorkflowNoticeDelivery"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -8828,7 +8829,8 @@
       "sha256": "90ff62412ce277eb232784dc977bef58d1505c71bb0ca3af716de81d6d2f7429",
       "models": [
         "NoticesAndCaches",
-        "WorkflowExecution"
+        "WorkflowExecution",
+        "WorkflowNoticeDelivery"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -8843,7 +8845,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/WorkflowNoticePoster.java",
       "sha256": "0dc19225e430e6c33b30c8ec835afdebe8e89fd11709b2ef7a6b05d2338f692a",
       "models": [
-        "WorkflowExecution"
+        "WorkflowExecution",
+        "WorkflowNoticeDelivery"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -8853,7 +8856,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/WorkflowNoticeTaps.java",
       "sha256": "3fef38e84d71703b7272d9cf4c0987c332ecf712ecbf0284cafb68efb3d941dc",
       "models": [
-        "WorkflowExecution"
+        "WorkflowExecution",
+        "WorkflowNoticeDelivery"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -8863,7 +8867,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/WorkflowNoticeTapsFactory.java",
       "sha256": "eb6eea48f7b8b96d1ea1e59dc9aac8b27152a33add16774e4c4c2aada0c57fa5",
       "models": [
-        "WorkflowExecution"
+        "WorkflowExecution",
+        "WorkflowNoticeDelivery"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -504409,7 +504414,8 @@
       "models": [
         "DeviceActions",
         "NoticesAndCaches",
-        "NotificationCollection"
+        "NotificationCollection",
+        "WorkflowNoticeDelivery"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -504456,7 +504462,8 @@
         "DeviceActions",
         "NoticesAndCaches",
         "NotificationCollection",
-        "CanonicalNotificationTap"
+        "CanonicalNotificationTap",
+        "WorkflowNoticeDelivery"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -504494,7 +504501,8 @@
       "models": [
         "DeviceActions",
         "NoticesAndCaches",
-        "NotificationCollection"
+        "NotificationCollection",
+        "WorkflowNoticeDelivery"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -504590,7 +504598,8 @@
       "models": [
         "DeviceActions",
         "NoticesAndCaches",
-        "NotificationCollection"
+        "NotificationCollection",
+        "WorkflowNoticeDelivery"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -504608,7 +504617,8 @@
       "models": [
         "DeviceActions",
         "NoticesAndCaches",
-        "NotificationCollection"
+        "NotificationCollection",
+        "WorkflowNoticeDelivery"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -504652,7 +504662,8 @@
       "models": [
         "DeviceActions",
         "NoticesAndCaches",
-        "NotificationCollection"
+        "NotificationCollection",
+        "WorkflowNoticeDelivery"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -504683,7 +504694,8 @@
       "models": [
         "DeviceActions",
         "NoticesAndCaches",
-        "NotificationCollection"
+        "NotificationCollection",
+        "WorkflowNoticeDelivery"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",

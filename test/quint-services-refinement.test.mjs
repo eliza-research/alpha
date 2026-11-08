@@ -1,25 +1,37 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
+import {closeSync, fstatSync, mkdtempSync, openSync, readSync, rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 
 test('service components and coordinators check real-source traces and preserve explicit platform obligations', {timeout: 900000}, () => {
-  const result = spawnSync(process.execPath, ['--import=tsx', '--input-type=module', '-e', `
-    import {runServicesRefinement} from './specs/quint/refinement/services/index.mjs';
-    const result = await runServicesRefinement();
-    if (result.receipts.some(receipt => !receipt.passed)) throw Error('Incomplete service model checks');
-    console.log('QUINT_SUMMARY ' + JSON.stringify({
-      receipts: result.receipts.length,
-      traces: result.receipts.reduce((sum, receipt) => sum + receipt.traces, 0),
-      obligations: result.obligations.length,
-    }));
-  `], {cwd: new URL('..', import.meta.url), encoding: 'utf8', timeout: 880000, maxBuffer: 8 * 1024 * 1024});
-  assert.ifError(result.error);
-  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
-  const prefix = 'QUINT_SUMMARY ';
-  const summaries = result.stdout.split('\n').filter(line => line.startsWith(prefix));
-  assert.equal(summaries.length, 1, 'one service refinement summary');
-  const {receipts, traces, obligations} = JSON.parse(summaries[0].slice(prefix.length));
-  assert.equal(receipts, 35);
-  assert.ok(traces >= receipts);
-  assert.ok(obligations >= 37, 'remaining obligations accompany the bounded evidence');
+  const directory = mkdtempSync(join(tmpdir(), 'alpha-quint-services-'));
+  const log = openSync(join(directory, 'run.log'), 'w+');
+  try {
+    const result = spawnSync(process.execPath, ['--import=tsx', '--input-type=module', '-e', `
+      import {writeSync} from 'node:fs';
+      import {runServicesRefinement} from './specs/quint/refinement/services/index.mjs';
+      const result = await runServicesRefinement();
+      if (result.receipts.some(receipt => !receipt.passed)) throw Error('Incomplete service model checks');
+      writeSync(3, JSON.stringify({
+        receipts: result.receipts.length,
+        traces: result.receipts.reduce((sum, receipt) => sum + receipt.traces, 0),
+        obligations: result.obligations.length,
+      }));
+    `], {cwd: new URL('..', import.meta.url), encoding: 'utf8', timeout: 880000, stdio: ['ignore', log, log, 'pipe']});
+    if (result.error || result.status !== 0) {
+      const size = fstatSync(log).size;
+      const tail = Buffer.alloc(Math.min(size, 64 * 1024));
+      const read = readSync(log, tail, 0, tail.length, size - tail.length);
+      assert.fail(`Service refinement exited with ${result.error ?? result.signal ?? result.status}\n${tail.toString('utf8', 0, read)}`);
+    }
+    const {receipts, traces, obligations} = JSON.parse(result.output[3]);
+    assert.equal(receipts, 35);
+    assert.ok(traces >= receipts);
+    assert.ok(obligations >= 37, 'remaining obligations accompany the bounded evidence');
+  } finally {
+    closeSync(log);
+    rmSync(directory, {recursive: true, force: true});
+  }
 });

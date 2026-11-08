@@ -12,7 +12,7 @@
   "toolSha256": "403a33cab0dff7ace6219b29e7ffef373319677a7d8be6641466dd16a6750b5b",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "71e9c4f488071f41bc3fa640f90fce9a0ed24f374118358c50532eb90b94f62f",
+  "ledgerSha256": "4d105785cf25c878105fde3efd2e39483cba508be2c50c1ba8d120064189747a",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -22047,7 +22047,8 @@
         "NoticesAndCaches",
         "NotificationCollection",
         "CanonicalNotificationTapAdmission",
-        "CanonicalNotificationTap"
+        "CanonicalNotificationTap",
+        "WorkflowNoticeDelivery"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -27373,7 +27374,8 @@
       "sha256": "90ff62412ce277eb232784dc977bef58d1505c71bb0ca3af716de81d6d2f7429",
       "allocatedModels": [
         "NoticesAndCaches",
-        "WorkflowExecution"
+        "WorkflowExecution",
+        "WorkflowNoticeDelivery"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -27471,7 +27473,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/WorkflowNoticePoster.java",
       "sha256": "0dc19225e430e6c33b30c8ec835afdebe8e89fd11709b2ef7a6b05d2338f692a",
       "allocatedModels": [
-        "WorkflowExecution"
+        "WorkflowExecution",
+        "WorkflowNoticeDelivery"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -27503,7 +27506,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/WorkflowNoticeTaps.java",
       "sha256": "3fef38e84d71703b7272d9cf4c0987c332ecf712ecbf0284cafb68efb3d941dc",
       "allocatedModels": [
-        "WorkflowExecution"
+        "WorkflowExecution",
+        "WorkflowNoticeDelivery"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -27529,7 +27533,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/WorkflowNoticeTapsFactory.java",
       "sha256": "eb6eea48f7b8b96d1ea1e59dc9aac8b27152a33add16774e4c4c2aada0c57fa5",
       "allocatedModels": [
-        "WorkflowExecution"
+        "WorkflowExecution",
+        "WorkflowNoticeDelivery"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -183007,7 +183012,8 @@
       "allocatedModels": [
         "DeviceActions",
         "NoticesAndCaches",
-        "NotificationCollection"
+        "NotificationCollection",
+        "WorkflowNoticeDelivery"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -183277,7 +183283,8 @@
         "DeviceActions",
         "NoticesAndCaches",
         "NotificationCollection",
-        "CanonicalNotificationTap"
+        "CanonicalNotificationTap",
+        "WorkflowNoticeDelivery"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -183354,7 +183361,8 @@
       "allocatedModels": [
         "DeviceActions",
         "NoticesAndCaches",
-        "NotificationCollection"
+        "NotificationCollection",
+        "WorkflowNoticeDelivery"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -183968,7 +183976,8 @@
       "allocatedModels": [
         "DeviceActions",
         "NoticesAndCaches",
-        "NotificationCollection"
+        "NotificationCollection",
+        "WorkflowNoticeDelivery"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -184021,7 +184030,8 @@
       "allocatedModels": [
         "DeviceActions",
         "NoticesAndCaches",
-        "NotificationCollection"
+        "NotificationCollection",
+        "WorkflowNoticeDelivery"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -184259,7 +184269,8 @@
       "allocatedModels": [
         "DeviceActions",
         "NoticesAndCaches",
-        "NotificationCollection"
+        "NotificationCollection",
+        "WorkflowNoticeDelivery"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -184335,7 +184346,8 @@
       "allocatedModels": [
         "DeviceActions",
         "NoticesAndCaches",
-        "NotificationCollection"
+        "NotificationCollection",
+        "WorkflowNoticeDelivery"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -218380,6 +218392,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "28123cf37e95958822e32c515ba822c1f12e2798316fa5fbdad4299070e67df6"
+    "sha256": "439b51822e4193b56e7ec8188c5b2730ba7c71ef1e139448c9b5be88ea09d510"
   }
 }

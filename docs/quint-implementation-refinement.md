@@ -114,6 +114,11 @@ SMS capacity checks use the production journal Storage interface. Separate
 small file-adapter checks retain actual file write and reload coverage, while
 capacity checks avoid hundreds of host-only fsync operations.
 
+The service test sends its structured receipt summary separately from the
+worker log. A concurrent verification run exhausted the previous 8 MiB
+output pipe. The scoped Calendar fixture starts SQLite subprocesses and now
+allows the same 60-second budget for execution as for JVM compilation.
+
 ## Platform validation
 
 The initial local Android attempts stopped at input preflight. The current
@@ -367,3 +372,30 @@ agent identity, expiry, foreground checks, and the exact compare-and-clear
 before acknowledging the resident read. An ambiguous acknowledgement
 cannot retry the consumed token or erase its successor. Installed ingress
 and the real resident read effect remain separate.
+
+The Calendar event-return campaign checks 38 schedules and 203 checkpoints
+using the default record port and actual shared API. It distinguishes exact
+occurrence timestamps, read versions, retired owner and date-window state,
+and a retained edit draft. The mounted Maps visit and installed Calendar
+provider have separate obligations.
+
+The native update composition campaign checks three schedules and 33
+checkpoints across the actual activation controller and durable pause
+journal. It follows the exact execution identity through staging abandonment,
+PAUSING and COMMITTING, and terminal reconnect authority. A release failure
+after rename can leave durable admission idle while the retained shutdown
+lease still refuses startup. Bounded symbolic safety passed through eight
+steps. Installed PackageInstaller and power-loss durability remain separate.
+
+The original runtime lifecycle translation now compares 17 source
+checkpoints over three startup and stop schedules. It executes actual
+AgentRuntime and real PGlite during successful initialization. Queued ingress
+enters after closure with an aborted signal, and duplicate stop calls share
+the same promise. The original finite stop profile remains executable.
+
+The native workflow notice campaign checks 14 schedules and 206 checkpoints
+against the pinned delivery ledger, route preparation, and manager poster.
+It observes owner withdrawal, interrupted claim and terminal writes, and
+exact readback without a second post. Bounded symbolic safety passed through
+eight steps. Installed notification delivery, approval suspension, and
+canonical tap consumption retain separate evidence.
